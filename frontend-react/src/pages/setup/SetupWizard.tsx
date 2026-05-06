@@ -62,6 +62,7 @@ const DEFAULT_COMPANY_CODE = 'EBC'
 // ---------------------------------------------------------------------------
 
 export default function SetupWizard() {
+  const { t } = useTranslation()
   const [currentStep, setCurrentStep] = useState<StepId>('welcome')
   const currentIndex = STEPS.findIndex((s) => s.id === currentStep)
 
@@ -411,10 +412,10 @@ export default function SetupWizard() {
           )}
           {currentStep === 'program' && (
             <div>
-              <h2 className="text-xl font-bold text-slate-800 mb-2">Program típus kiválasztása</h2>
+              <h2 className="text-xl font-bold text-slate-800 mb-2">{t('setup.programTipusKivalasztasa')}</h2>
               <p className="text-sm text-slate-600 mb-6">
-                Mit futtat ez a gép? Ez határozza meg, milyen menüpontok jelennek meg, és hogy ki tud bejelentkezni.
-                A választás a telepítés után is módosítható a Beállításokban.
+                {t('setup.mitFuttatEzAGepEzHatarozzaMegMilyenMenupontokJelennekMegEsHogyKiTudBejelentkezni')}
+                {t('setup.aValasztasATelepitesUtanIsModosithatoABeallitasokban')}
               </p>
               <div className="space-y-3">
                 {([
@@ -441,8 +442,8 @@ export default function SetupWizard() {
                 ))}
               </div>
               <p className="mt-4 text-xs text-slate-500">
-                A bejelentkezett dolgozó munkaköre alapján a szerver ellenőrzi, hogy jogosult-e erre a program-típusra.
-                Ha nem, hibaüzenetet kap a login-nal.
+                {t('setup.aBejelentkezettDolgozoMunkakoreAlapjanASzerverEllenorziHogyJogosultEErreAProgramTipusra')}
+                {t('setup.haNemHibauzenetetKapALoginNal')}
               </p>
             </div>
           )}
@@ -487,11 +488,11 @@ export default function SetupWizard() {
             disabled={currentIndex === 0 || isSaving}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
-            <ChevronLeft className="w-4 h-4" /> Vissza
+            <ChevronLeft className="w-4 h-4" />{t('common.back')}
           </button>
 
           <div className="text-sm text-slate-500">
-            Lépés {currentIndex + 1} / {STEPS.length}
+            {t('setup.lepes')}{currentIndex + 1} / {STEPS.length}
           </div>
 
           {currentIndex < STEPS.length - 1 ? (
@@ -501,7 +502,7 @@ export default function SetupWizard() {
               disabled={!canAdvance || isSaving}
               className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition"
             >
-              Tovább <ChevronRight className="w-4 h-4" />
+              {t('common.next')}<ChevronRight className="w-4 h-4" />
             </button>
           ) : (
             <button
@@ -513,7 +514,7 @@ export default function SetupWizard() {
               {isSaving ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Telepítés...</>
               ) : (
-                <><Rocket className="w-4 h-4" /> Telepítés befejezése</>
+                <><Rocket className="w-4 h-4" />{t('setup.telepitesBefejezese')}</>
               )}
             </button>
           )}
@@ -535,13 +536,14 @@ export default function SetupWizard() {
 // ---------------------------------------------------------------------------
 
 function SetupHeader({ currentIndex }: { currentIndex: number }) {
+  const { t } = useTranslation()
   return (
     <div className="px-10 py-6 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
       <div className="flex items-center gap-3 mb-5">
         <ShieldCheck className="w-7 h-7" />
         <div>
-          <h1 className="text-xl font-semibold">Valuta Pénztár — Első indítás</h1>
-          <p className="text-xs text-blue-100">A telepítés 4 lépésben elkészül.</p>
+          <h1 className="text-xl font-semibold">{t('setup.valutaPenztarElsoInditas')}</h1>
+          <p className="text-xs text-blue-100">{t('setup.aTelepites4LepesbenElkeszul')}</p>
         </div>
       </div>
 
@@ -582,15 +584,16 @@ function SetupHeader({ currentIndex }: { currentIndex: number }) {
 // ---------------------------------------------------------------------------
 
 function WelcomeStep() {
+  const { t } = useTranslation()
   return (
     <div className="max-w-2xl mx-auto text-center py-8">
       <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 text-blue-600 mb-6">
         <Rocket className="w-10 h-10" />
       </div>
-      <h2 className="text-3xl font-bold text-slate-900 mb-3">Üdvözöljük a Valuta Pénztárban!</h2>
+      <h2 className="text-3xl font-bold text-slate-900 mb-3">{t('setup.udvozoljukAValutaPenztarban')}</h2>
       <p className="text-slate-600 mb-8">
-        Ez a varázsló végigvezeti az első indítás beállításain. 4 rövid lépésben
-        elkészítjük a telepítést, utána a program azonnal használatra kész lesz.
+        {t('setup.ezAVarazsloVegigvezetiAzElsoInditasBeallitasain4RovidLepesben')}
+        {t('setup.elkeszitjukATelepitestUtanaAProgramAzonnalHasznalatraKeszLesz')}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
         <InfoTile
@@ -644,12 +647,13 @@ interface BranchStepProps {
 }
 
 function BranchStep(props: BranchStepProps) {
+  const { t } = useTranslation()
   const { branches, totalFiltered, page, totalPages, onPageChange, search, onSearchChange, selected, onSelect } = props
   return (
     <div>
-      <h2 className="text-2xl font-bold text-slate-900 mb-2">Válassza ki az irodát</h2>
+      <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('setup.valasszaKiAzIrodat')}</h2>
       <p className="text-slate-600 mb-5">
-        Ez a fiók / iroda, amelyikben a számítógép fizikailag található. Összesen {totalFiltered} iroda közül.
+        {t('setup.ezAFiokIrodaAmelyikbenASzamitogepFizikailagTalalhatoOsszesen')}{totalFiltered} {t('setup.irodaKozul')}
       </p>
 
       <div className="relative mb-5">
@@ -686,7 +690,7 @@ function BranchStep(props: BranchStepProps) {
         })}
         {branches.length === 0 && (
           <div className="col-span-full text-center py-8 text-slate-500">
-            Nincs találat a keresésre.
+            {t('setup.nincsTalalatAKeresesre')}
           </div>
         )}
       </div>
@@ -702,7 +706,7 @@ function BranchStep(props: BranchStepProps) {
             <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="text-sm text-slate-600 px-2">
-            {page + 1} / {totalPages} oldal
+            {page + 1} / {totalPages} {t('common.oldal')}
           </span>
           <button
             type="button"
@@ -719,8 +723,8 @@ function BranchStep(props: BranchStepProps) {
         <div className="mt-5 p-3 rounded-lg bg-blue-50 border border-blue-200 flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0" />
           <div>
-            <div className="text-sm font-semibold text-blue-900">Kiválasztva: {selected.name}</div>
-            <div className="text-xs text-blue-700">Kód: {selected.code} • {selected.city}</div>
+            <div className="text-sm font-semibold text-blue-900">{t('setup.kivalasztva')}{selected.name}</div>
+            <div className="text-xs text-blue-700">{t('setup.kod')}{selected.code} • {selected.city}</div>
           </div>
         </div>
       )}
@@ -785,9 +789,9 @@ function ServerStep(props: ServerStepProps) {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-slate-900 mb-2">Szerver kapcsolat</h2>
+      <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('setup.szerverKapcsolat')}</h2>
       <p className="text-slate-600 mb-5">
-        Adja meg a központi backend URL-jét és a tesztelés hitelesítő adatait.
+        {t('setup.adjaMegAKozpontiBackendUrlJetEsATesztelesHitelesitoAdatait')}
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl">
@@ -799,7 +803,7 @@ function ServerStep(props: ServerStepProps) {
             title="A központi backend URL-je — telepítéskor rögzített, csak szervizélra módosítható."
             className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed outline-none"
           />
-          <p className="text-xs text-slate-500 mt-1">Központi Hetzner backend — automatikusan beállítva.</p>
+          <p className="text-xs text-slate-500 mt-1">{t('setup.kozpontiHetznerBackendAutomatikusanBeallitva')}</p>
         </FieldLabel>
 
         <FieldLabel label="Cégkód" icon={<Building2 className="w-4 h-4" />}>
@@ -821,7 +825,7 @@ function ServerStep(props: ServerStepProps) {
               disabled={offlineMode || workerListLoading}
               className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100 bg-white"
             >
-              <option value="">-- Válasszon pénztárost --</option>
+              <option value="">{t('auth.valasszonPenztarost')}</option>
               {workerList.map((w) => (
                 <option key={w.code} value={w.code}>{w.name} ({w.code})</option>
               ))}
@@ -837,7 +841,7 @@ function ServerStep(props: ServerStepProps) {
             />
           )}
           <span className="text-xs text-slate-500 mt-1 block">
-            Az itt kiválasztott pénztáros kódjához az 5. lépésen állítja be az új jelszót.
+            {t('setup.azIttKivalasztottPenztarosKodjahozAz5LepesenAllitjaBeAzUjJelszot')}
           </span>
         </FieldLabel>
       </div>
@@ -856,7 +860,7 @@ function ServerStep(props: ServerStepProps) {
         >
           {connectionTest.state === 'testing'
             ? <><Loader2 className="w-4 h-4 animate-spin" /> Tesztelés...</>
-            : <><Wifi className="w-4 h-4" /> Kapcsolat tesztelése</>}
+            : <><Wifi className="w-4 h-4" />{t('setup.kapcsolatTesztelese')}</>}
         </button>
 
         {connectionTest.state === 'ok' && (
@@ -954,6 +958,7 @@ interface AdminStepProps {
 }
 
 function AdminStep(props: AdminStepProps) {
+  const { t } = useTranslation()
   // v2.5.21: az `onAdminUsernameChange` mar nem hasznalt — a felhasznalonev
   // automatikusan a step 4-en valasztott pénztáros kodot tukrozi (read-only field).
   const {
@@ -968,10 +973,10 @@ function AdminStep(props: AdminStepProps) {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-slate-900 mb-2">Új jelszó beállítása</h2>
+      <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('resetPassword.submit')}</h2>
       <p className="text-slate-600 mb-5">
-        Adjon meg egy biztonságos jelszót (legalább 8 karakter). Ezzel a jelszóval és a
-        lent látható pénztáros kóddal lép majd be a programba.
+        {t('setup.adjonMegEgyBiztonsagosJelszotLegalabb8KarakterEzzelAJelszovalEsA')}
+        {t('setup.lentLathatoPenztarosKoddalLepMajdBeAProgramba')}
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl mb-8">
@@ -985,7 +990,7 @@ function AdminStep(props: AdminStepProps) {
             // valasztott pénztáros kod, hogy a wizard veg utan tényleg ezzel lépjen be.
           />
           <span className="text-xs text-slate-500 mt-1 block">
-            Ezt a kódot kell beírnia a bejelentkezésnél is.
+            {t('setup.eztAKodotKellBeirniaABejelentkezesnelIs')}
           </span>
         </FieldLabel>
         <div /> {/* spacer */}
@@ -1000,7 +1005,7 @@ function AdminStep(props: AdminStepProps) {
                 : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200',
             ].join(' ')}
           />
-          {pwTooShort && <span className="text-xs text-red-600 mt-1 block">Minimum 8 karakter.</span>}
+          {pwTooShort && <span className="text-xs text-red-600 mt-1 block">{t('setup.minimum8Karakter')}</span>}
         </FieldLabel>
         <FieldLabel label="Jelszó megerősítése">
           <input
@@ -1013,13 +1018,13 @@ function AdminStep(props: AdminStepProps) {
                 : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200',
             ].join(' ')}
           />
-          {pwMismatch && <span className="text-xs text-red-600 mt-1 block">A két jelszó nem egyezik.</span>}
+          {pwMismatch && <span className="text-xs text-red-600 mt-1 block">{t('resetPassword.mismatchError')}</span>}
         </FieldLabel>
       </div>
 
       <div className="p-5 rounded-lg bg-slate-50 border border-slate-200">
         <h3 className="text-sm font-semibold text-slate-900 mb-3 inline-flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-blue-600" /> Összefoglaló
+          <ShieldCheck className="w-4 h-4 text-blue-600" />{t('setup.osszefoglalo')}
         </h3>
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
           <SummaryRow label="Iroda" value={selectedBranch ? `${selectedBranch.name} (#${selectedBranch.code})` : '—'} />
@@ -1032,15 +1037,15 @@ function AdminStep(props: AdminStepProps) {
       </div>
 
       <div className="mt-5 p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-900">
-        <strong className="block mb-1">Bejelentkezéskor így használja:</strong>
-        Cégkód: <code className="px-1 bg-white rounded">{companyCode}</code>{' · '}
-        Pénztáros kód: <code className="px-1 bg-white rounded">{adminUsername || '...'}</code>{' · '}
-        Jelszó: az itt megadott új jelszó.
+        <strong className="block mb-1">{t('setup.bejelentkezeskorIgyHasznalja')}</strong>
+        {t('setup.cegkod')}<code className="px-1 bg-white rounded">{companyCode}</code>{' · '}
+        {t('setup.penztarosKod')}<code className="px-1 bg-white rounded">{adminUsername || '...'}</code>{' · '}
+        {t('setup.jelszoAzIttMegadottUjJelszo')}
       </div>
 
       <p className="mt-3 text-xs text-slate-500">
-        A „Telepítés befejezése” gomb megnyomásakor a program kriptográfiai kulcsokat generál,
-        elmenti a konfigurációt a helyi .env fájlba, majd automatikusan újraindul.
+        {t('setup.aTelepitesBefejezeseGombMegnyomasakorAProgramKriptografiaiKulcsokatGeneral')}
+        {t('setup.elmentiAKonfiguraciotAHelyiEnvFajlbaMajdAutomatikusanUjraindul')}
       </p>
     </div>
   )

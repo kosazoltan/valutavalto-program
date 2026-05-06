@@ -3,8 +3,10 @@ import { Users, Plus, Edit, Trash2, Search, X, Save, Shield } from 'lucide-react
 import { roleApi, Role, RoleCreateRequest, permissionApi, Permission } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 export default function RolePage() {
+  const { t } = useTranslation()
   const [roles, setRoles] = useState<Role[]>([])
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [loading, setLoading] = useState(true)
@@ -292,7 +294,7 @@ export default function RolePage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Users />
-          Szerepkörök
+          {t('settings.roles')}
         </h1>
         <div className="flex gap-2">
           <button
@@ -301,14 +303,14 @@ export default function RolePage() {
             disabled={loading}
           >
             <Plus size={16} />
-            Alapértelmezett munkakörök létrehozása
+            {t('settings.alapertelmezettMunkakorokLetrehozasa')}
           </button>
           <button
             onClick={handleCreate}
             className="form-button-primary flex items-center gap-2"
           >
             <Plus size={16} />
-            Új szerepkör
+            {t('settings.ujSzerepkor')}
           </button>
         </div>
       </div>
@@ -323,7 +325,7 @@ export default function RolePage() {
       {/* Filters */}
       <div className="form-panel">
         <div>
-          <label className="form-label">Keresés</label>
+          <label className="form-label">{t('common.search')}</label>
           <div className="relative">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input
@@ -358,7 +360,7 @@ export default function RolePage() {
 
             <div className="space-y-4">
               <div>
-                <label className="form-label">Szerepkör kód *</label>
+                <label className="form-label">{t('settings.szerepkorKod')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -370,7 +372,7 @@ export default function RolePage() {
               </div>
 
               <div>
-                <label className="form-label">Szerepkör név *</label>
+                <label className="form-label">{t('settings.szerepkorNev')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -382,7 +384,7 @@ export default function RolePage() {
 
 
               <div>
-                <label className="form-label">Leírás</label>
+                <label className="form-label">{t('common.description')}</label>
                 <textarea
                   className="form-input"
                   rows={3}
@@ -401,7 +403,7 @@ export default function RolePage() {
                   }}
                   className="form-button"
                 >
-                  Mégse
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleSave}
@@ -409,7 +411,7 @@ export default function RolePage() {
                   className="form-button-primary flex items-center gap-2"
                 >
                   <Save size={16} />
-                  Mentés
+                  {t('common.save')}
                 </button>
               </div>
             </div>
@@ -423,7 +425,7 @@ export default function RolePage() {
           <div className="bg-white rounded-lg p-4 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">
-                Jogosultságok kezelése: {selectedRole.name}
+                {t('settings.jogosultsagokKezelese')}{selectedRole.name}
               </h2>
               <button
                 onClick={() => {
@@ -488,7 +490,7 @@ export default function RolePage() {
                 }}
                 className="form-button"
               >
-                Bezárás
+                {t('common.close')}
               </button>
             </div>
           </div>
@@ -500,21 +502,21 @@ export default function RolePage() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th>Kód</th>
-              <th>Név</th>
-              <th>Típus</th>
-              <th>Hierarchia</th>
-              <th>Jogosultságok</th>
-              <th>Típus</th>
-              <th>Státusz</th>
-              <th>Műveletek</th>
+              <th>{t('common.code')}</th>
+              <th>{t('common.name')}</th>
+              <th>{t('common.type')}</th>
+              <th>{t('settings.hierarchia')}</th>
+              <th>{t('settings.permissions')}</th>
+              <th>{t('common.type')}</th>
+              <th>{t('common.status')}</th>
+              <th>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {filteredRoles.length === 0 ? (
               <tr>
                 <td colSpan={8} className="text-center text-gray-500 py-4">
-                  Nincs találat
+                  {t('common.noResult')}
                 </td>
               </tr>
             ) : (
@@ -532,14 +534,14 @@ export default function RolePage() {
                       className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
                     >
                       <Shield size={14} />
-                      {role.permissions?.length || 0} jogosultság
+                      {role.permissions?.length || 0} {t('common.jogosultsag')}
                     </button>
                   </td>
                   <td>
                     {role.isSystemRole ? (
-                      <span className="badge badge-orange">Rendszer</span>
+                      <span className="badge badge-orange">{t('settings.system')}</span>
                     ) : (
-                      <span className="badge badge-gray">Egyedi</span>
+                      <span className="badge badge-gray">{t('settings.egyedi')}</span>
                     )}
                   </td>
                   <td>
@@ -557,7 +559,7 @@ export default function RolePage() {
                         className="form-button text-sm flex items-center gap-1"
                       >
                         <Edit size={14} />
-                        Szerkesztés
+                        {t('common.edit')}
                       </button>
                       {!role.isSystemRole && (
                         <button
@@ -565,7 +567,7 @@ export default function RolePage() {
                           className="form-button text-sm text-red-600 flex items-center gap-1"
                         >
                           <Trash2 size={14} />
-                          Törlés
+                          {t('common.delete')}
                         </button>
                       )}
                     </div>

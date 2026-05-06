@@ -19,6 +19,7 @@ import {
 import { TableSkeleton } from './LoadingSkeleton'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 /** Branch aggregated data for the matrix */
 interface BranchRow {
@@ -29,6 +30,7 @@ interface BranchRow {
 }
 
 export default function StockMatrix() {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [balances, setBalances] = useState<CashBalance[]>([])
   const [currencies, setCurrencies] = useState<Currency[]>([])
@@ -153,15 +155,16 @@ export default function StockMatrix() {
       {/* Header with auto-refresh controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-secondary-900">Készlet Mátrix</h1>
+          <h1 className="text-xl font-bold text-secondary-900">{t('treasury.keszletMatrix')}</h1>
           <div className="flex items-center gap-2 text-sm text-secondary-600">
             <RefreshCw size={16} className={autoRefresh ? 'animate-spin' : ''} />
             {autoRefresh ? (
               <span>
-                Auto-refresh: <strong>{countdown}s</strong>
+                {/* eslint-disable-next-line i18next/no-literal-string */}
+                {t('treasury.autoRefresh')}<strong>{countdown}s</strong>
               </span>
             ) : (
-              <span className="text-warning-600">Szüneteltetve</span>
+              <span className="text-warning-600">{t('treasury.szuneteltetve')}</span>
             )}
           </div>
         </div>
@@ -172,7 +175,7 @@ export default function StockMatrix() {
           </button>
           <button onClick={handleExport} className="form-button h-8 text-xs">
             <Download size={16} />
-            <span>Export CSV</span>
+            <span>{t('treasury.exportCsv')}</span>
           </button>
         </div>
       </div>
@@ -180,13 +183,13 @@ export default function StockMatrix() {
       {/* Filters */}
       <div className="flex items-center gap-4 px-4 py-3 bg-white border border-form-border rounded-lg">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-secondary-700">Iroda:</label>
+          <label className="text-sm font-medium text-secondary-700">{t('audit.iroda')}</label>
           <select
             className="form-input w-48 h-8 text-xs"
             value={branchFilter}
             onChange={(e) => setBranchFilter(e.target.value)}
           >
-            <option value="all">Mind ({branchRows.length})</option>
+            <option value="all">{t('treasury.mind')}{branchRows.length})</option>
             {branchRows.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
@@ -195,14 +198,14 @@ export default function StockMatrix() {
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-secondary-700">Valuta:</label>
+          <label className="text-sm font-medium text-secondary-700">{t('components.valuta')}</label>
           <select
             className="form-input w-40 h-8 text-xs"
             value={currencyFilter}
             onChange={(e) => setCurrencyFilter(e.target.value)}
           >
-            <option value="all">Mind ({currencies.length})</option>
-            <option value="top8">TOP 8</option>
+            <option value="all">{t('treasury.mind')}{currencies.length})</option>
+            <option value="top8">{t('treasury.top8')}</option>
             {currencies
               .filter((c) => c.active)
               .map((c) => (
@@ -219,7 +222,7 @@ export default function StockMatrix() {
         <table className="data-grid w-full min-w-[1200px]">
           <thead>
             <tr>
-              <th className="sticky left-0 bg-secondary-50 z-10 min-w-[180px]">Iroda</th>
+              <th className="sticky left-0 bg-secondary-50 z-10 min-w-[180px]">{t('common.office')}</th>
               {displayCurrencies.map((c) => (
                 <th key={c.code} className="text-right min-w-[80px]">
                   <div className="flex flex-col items-end">
@@ -228,7 +231,7 @@ export default function StockMatrix() {
                   </div>
                 </th>
               ))}
-              <th className="text-right min-w-[100px]">ÖSSZ. (Ft)</th>
+              <th className="text-right min-w-[100px]">{t('treasury.osszFt')}</th>
             </tr>
           </thead>
           <tbody>
@@ -257,7 +260,7 @@ export default function StockMatrix() {
             {/* Summary row */}
             <tr className="bg-secondary-100 border-t-2 border-secondary-300">
               <td className="sticky left-0 bg-secondary-100 font-bold text-secondary-900 z-10">
-                ÖSSZES (∑)
+                {t('treasury.osszes')}
               </td>
               {displayCurrencies.map((c) => (
                 <td key={c.code} className="text-right font-mono font-bold text-secondary-900">
@@ -274,10 +277,10 @@ export default function StockMatrix() {
 
       {/* Legend */}
       <div className="flex items-center gap-4 text-xs text-secondary-600">
-        <span>Jelmagyarázat:</span>
-        <span>🟢 Normál (&gt; küszöb)</span>
-        <span>🟡 Alacsony (≤ küszöb, &gt; kritikus)</span>
-        <span>🔴 Kritikus (≤ kritikus)</span>
+        <span>{t('treasury.jelmagyarazat')}</span>
+        <span>{t('treasury.NormalgtKuszob')}</span>
+        <span>{t('treasury.AlacsonyKuszobgtKritikus')}</span>
+        <span>{t('treasury.KritikusKritikus')}</span>
       </div>
     </div>
   )

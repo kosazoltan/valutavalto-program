@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Search, PlayCircle, Calendar, FileVideo } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 const isElectron = () => !!window.electronAPI
 
@@ -29,6 +30,7 @@ interface RecordingMetadata {
 }
 
 export default function CameraPlaybackPage() {
+  const { t } = useTranslation()
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [localRecordings, setLocalRecordings] = useState<LocalRecordingEntry[]>([])
@@ -94,8 +96,8 @@ export default function CameraPlaybackPage() {
     <div className="space-y-3">
       <h1 className="text-lg font-bold flex items-center gap-2">
         <PlayCircle className="h-6 w-6" />
-        Felvétel visszajátszás
-        {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokális)</span>}
+        {t('camera.felvetelVisszajatszas')}
+        {isElectron() && <span className="text-sm font-normal text-muted-foreground">{t('camera.lokalis')}</span>}
       </h1>
 
       {/* Search controls */}
@@ -103,13 +105,13 @@ export default function CameraPlaybackPage() {
         <div className="p-4 pb-2">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Keresés dátum szerint
+            {t('camera.keresesDatumSzerint')}
           </h3>
         </div>
         <div className="p-4">
           <div className="flex gap-3 items-end">
             <div>
-              <label className="text-sm font-medium">Kezdő dátum</label>
+              <label className="text-sm font-medium">{t('common.startDate')}</label>
               <input
                 className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                 type="date"
@@ -118,7 +120,7 @@ export default function CameraPlaybackPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Záró dátum</label>
+              <label className="text-sm font-medium">{t('camera.zaroDatum')}</label>
               <input
                 className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                 type="date"
@@ -132,7 +134,7 @@ export default function CameraPlaybackPage() {
               disabled={loading || !startDate || !endDate}
             >
               <Search className="h-4 w-4 mr-2" />
-              Keresés
+              {t('common.search')}
             </button>
           </div>
         </div>
@@ -142,7 +144,7 @@ export default function CameraPlaybackPage() {
       {selectedVideo && (
         <div className="rounded-lg border bg-card shadow-sm">
           <div className="p-4 pb-2">
-            <h3 className="text-lg font-semibold">Lejátszás</h3>
+            <h3 className="text-lg font-semibold">{t('camera.lejatszas')}</h3>
           </div>
           <div className="p-4">
             <video
@@ -161,7 +163,7 @@ export default function CameraPlaybackPage() {
           <div className="p-4 pb-2">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <FileVideo className="h-5 w-5" />
-              Lokális felvételek ({localRecordings.length})
+              {t('camera.lokalisFelvetelek')}{localRecordings.length})
             </h3>
           </div>
           <div className="p-4">
@@ -169,7 +171,7 @@ export default function CameraPlaybackPage() {
               {localRecordings.map((rec) => (
                 <div key={rec.transactionId} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="space-y-1">
-                    <p className="font-medium">Tranzakció: {rec.transactionId}</p>
+                    <p className="font-medium">{t('camera.tranzakcio')}{rec.transactionId}</p>
                     <p className="text-sm text-muted-foreground">
                       {rec.date} -- {formatDate(rec.createdAt)}
                     </p>
@@ -181,7 +183,7 @@ export default function CameraPlaybackPage() {
                       onClick={() => playLocalFile(rec.filePath)}
                     >
                       <PlayCircle className="h-4 w-4 mr-1" />
-                      Lejátszás
+                      {t('camera.lejatszas')}
                     </button>
                   </div>
                 </div>
@@ -197,7 +199,7 @@ export default function CameraPlaybackPage() {
           <div className="p-4 pb-2">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <FileVideo className="h-5 w-5" />
-              Szerveren tárolt felvételek ({serverRecordings.length})
+              {t('camera.szerverenTaroltFelvetelek')}{serverRecordings.length})
             </h3>
           </div>
           <div className="p-4">
@@ -219,7 +221,7 @@ export default function CameraPlaybackPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm">{formatFileSize(rec.fileSizeBytes)}</p>
-                    <p className="text-xs text-muted-foreground">{rec.linkedTransactions} tranzakció</p>
+                    <p className="text-xs text-muted-foreground">{rec.linkedTransactions} {t('camera.tranzakcio')}</p>
                   </div>
                 </div>
               ))}
@@ -230,7 +232,7 @@ export default function CameraPlaybackPage() {
 
       {!loading && !hasResults && (
         <div className="text-center py-12 text-muted-foreground">
-          Használja a keresőt felvételek megjelenítéséhez
+          {t('camera.hasznaljaAKeresotFelvetelekMegjelenitesehez')}
         </div>
       )}
     </div>

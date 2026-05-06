@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Shield, AlertTriangle, Users, Clock, XCircle, FileText, RefreshCw } from 'lucide-react'
 import { amlApi, RollingWindowAuditDto, AmlDailySummary, AmlReportDto } from '../../services/api/aml'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 // ============================================================================
 // Sprint 6.2 - Compliance Dashboard
@@ -15,6 +16,7 @@ import { logger } from '../../utils/logger'
 // ============================================================================
 
 export default function ComplianceDashboardPage() {
+    const { t } = useTranslation()
     const [today] = useState(() => new Date().toISOString().slice(0, 10))
     const [summary, setSummary] = useState<AmlDailySummary | null>(null)
     const [overdue, setOverdue] = useState<AmlReportDto[]>([])
@@ -67,10 +69,10 @@ export default function ComplianceDashboardPage() {
                 <div>
                     <h1 className="text-base font-bold flex items-center gap-2">
                         <Shield className="w-5 h-5 text-blue-600" />
-                        Compliance Dashboard
+                        {t('compliance.complianceDashboard')}
                     </h1>
                     <p className="text-gray-600 text-xs">
-                        Pmt. (2017. LIII. tv.) + AML + Szankciós + 8 napos gördülő limit audit
+                        {t('compliance.pmt2017LiiiTvAmlSzankcios8NaposGorduloLimitAudit')}
                     </p>
                 </div>
                 <button
@@ -78,7 +80,7 @@ export default function ComplianceDashboardPage() {
                     className="flex items-center gap-1 px-3 py-2 border rounded hover:bg-gray-50"
                 >
                     <RefreshCw className="w-4 h-4" />
-                    Frissítés
+                    {t('common.refresh')}
                 </button>
             </div>
 
@@ -96,28 +98,28 @@ export default function ComplianceDashboardPage() {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         <div className="bg-red-50 border border-red-200 rounded p-4">
                             <div className="text-sm text-red-700 flex items-center gap-1">
-                                <Clock className="w-4 h-4" /> OVERDUE bejelentések
+                                <Clock className="w-4 h-4" />{t('compliance.overdueBejelentesek')}
                             </div>
                             <div className="text-3xl font-bold text-red-700 mt-1">{overdue.length}</div>
-                            <div className="text-xs text-red-600 mt-1">2 munkanap után lejárt</div>
+                            <div className="text-xs text-red-600 mt-1">{t('compliance.2MunkanapUtanLejart')}</div>
                         </div>
                         <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
                             <div className="text-sm text-yellow-700 flex items-center gap-1">
-                                <FileText className="w-4 h-4" /> Pending bejelentések
+                                <FileText className="w-4 h-4" />{t('compliance.pendingBejelentesek')}
                             </div>
                             <div className="text-3xl font-bold mt-1">{pending.length}</div>
-                            <div className="text-xs text-gray-600 mt-1">DRAFT / SUBMITTED</div>
+                            <div className="text-xs text-gray-600 mt-1">{t('compliance.draftSubmitted')}</div>
                         </div>
                         <div className="bg-orange-50 border border-orange-200 rounded p-4">
                             <div className="text-sm text-orange-700 flex items-center gap-1">
-                                <Users className="w-4 h-4" /> 8 napos limit
+                                <Users className="w-4 h-4" />{t('compliance.8NaposLimit')}
                             </div>
                             <div className="text-3xl font-bold mt-1">{rollingWindow.length}</div>
-                            <div className="text-xs text-gray-600 mt-1">Ügyfél a küszöb fölött</div>
+                            <div className="text-xs text-gray-600 mt-1">{t('compliance.ugyfelAKuszobFolott')}</div>
                         </div>
                         <div className="bg-blue-50 border border-blue-200 rounded p-4">
                             <div className="text-sm text-blue-700 flex items-center gap-1">
-                                <AlertTriangle className="w-4 h-4" /> Mai gyanús
+                                <AlertTriangle className="w-4 h-4" />{t('compliance.maiGyanus')}
                             </div>
                             <div className="text-3xl font-bold mt-1">{summary?.suspiciousChecks ?? 0}</div>
                             <div className="text-xs text-gray-600 mt-1">{today}</div>
@@ -128,15 +130,15 @@ export default function ComplianceDashboardPage() {
                     {overdue.length > 0 && (
                         <div className="bg-white shadow rounded overflow-hidden mb-6">
                             <div className="bg-red-100 px-4 py-2 text-red-900 font-semibold">
-                                Lejárt határidejű bejelentések ({overdue.length})
+                                {t('compliance.lejartHataridejuBejelentesek')}{overdue.length})
                             </div>
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-2 text-left">Ügyfél</th>
-                                        <th className="px-4 py-2 text-left">Tipus</th>
-                                        <th className="px-4 py-2 text-right">Osszeg HUF</th>
-                                        <th className="px-4 py-2 text-left">Hatarido</th>
+                                        <th className="px-4 py-2 text-left">{t('common.customer')}</th>
+                                        <th className="px-4 py-2 text-left">{t('backup.tipus')}</th>
+                                        <th className="px-4 py-2 text-right">{t('compliance.osszegHuf')}</th>
+                                        <th className="px-4 py-2 text-left">{t('compliance.hatarido')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -159,10 +161,10 @@ export default function ComplianceDashboardPage() {
                     <div className="bg-white shadow rounded overflow-hidden mb-6">
                         <div className="bg-orange-100 px-4 py-3 flex items-center justify-between">
                             <div className="text-orange-900 font-semibold">
-                                8 napos gördülő limit feletti ügyfelek ({rollingWindow.length})
+                                {t('compliance.8NaposGorduloLimitFelettiUgyfelek')}{rollingWindow.length})
                             </div>
                             <div className="flex items-center gap-2">
-                                <label className="text-sm">Küszöb (HUF):</label>
+                                <label className="text-sm">{t('compliance.kuszobHuf')}</label>
                                 <input
                                     type="number"
                                     value={threshold}
@@ -173,20 +175,20 @@ export default function ComplianceDashboardPage() {
                                     onClick={handleRollingRefresh}
                                     className="px-2 py-1 bg-orange-600 text-white rounded text-xs"
                                 >
-                                    Frissítés
+                                    {t('common.refresh')}
                                 </button>
                             </div>
                         </div>
                         {rollingWindow.length === 0 ? (
-                            <div className="p-6 text-center text-gray-500 text-sm">Nincs ügyfél a küszöb felett</div>
+                            <div className="p-6 text-center text-gray-500 text-sm">{t('compliance.nincsUgyfelAKuszobFelett')}</div>
                         ) : (
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-2 text-left">Ügyfél</th>
-                                        <th className="px-4 py-2 text-right">8 napos osszeg</th>
-                                        <th className="px-4 py-2 text-right">Kuszob%</th>
-                                        <th className="px-4 py-2 text-center">High-risk flag</th>
+                                        <th className="px-4 py-2 text-left">{t('common.customer')}</th>
+                                        <th className="px-4 py-2 text-right">{t('compliance.8NaposOsszeg')}</th>
+                                        <th className="px-4 py-2 text-right">{t('compliance.kuszob')}</th>
+                                        <th className="px-4 py-2 text-center">{t('compliance.highRiskFlag')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -222,23 +224,23 @@ export default function ComplianceDashboardPage() {
                     {summary && (
                         <div className="bg-white shadow rounded overflow-hidden">
                             <div className="bg-blue-100 px-4 py-2 text-blue-900 font-semibold">
-                                Mai nap összesítő ({summary.date})
+                                {t('compliance.maiNapOsszesito')}{summary.date})
                             </div>
                             <div className="grid grid-cols-4 gap-4 p-4">
                                 <div>
-                                    <div className="text-xs text-gray-600">Standard ellenőrzés</div>
+                                    <div className="text-xs text-gray-600">{t('compliance.standardEllenorzes')}</div>
                                     <div className="text-lg font-bold">{summary.standardChecks}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-gray-600">Fokozott</div>
+                                    <div className="text-xs text-gray-600">{t('compliance.fokozott')}</div>
                                     <div className="text-lg font-bold">{summary.enhancedChecks}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-gray-600">Gyanús</div>
+                                    <div className="text-xs text-gray-600">{t('compliance.gyanus')}</div>
                                     <div className="text-lg font-bold text-orange-600">{summary.suspiciousChecks}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-gray-600">Összeg (HUF)</div>
+                                    <div className="text-xs text-gray-600">{t('compliance.osszegHuf2')}</div>
                                     <div className="text-lg font-bold font-mono">
                                         {summary.totalAmountHuf.toLocaleString('hu-HU')}
                                     </div>

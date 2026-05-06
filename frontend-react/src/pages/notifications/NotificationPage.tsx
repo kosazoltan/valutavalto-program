@@ -5,8 +5,10 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { safeArray } from '@/utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 export default function NotificationPage() {
+  const { t } = useTranslation()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -104,12 +106,12 @@ export default function NotificationPage() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold flex items-center gap-2">
-          <Bell />Értesítések
-          {unreadCount > 0 && <span className="badge badge-red text-xs">{unreadCount} olvasatlan</span>}
+          <Bell />{t('notifications.ertesitesek')}
+          {unreadCount > 0 && <span className="badge badge-red text-xs">{unreadCount} {t('notifications.olvasatlan')}</span>}
         </h1>
         <div className="flex gap-2">
-          <button onClick={() => void handleMarkAllAsRead()} className="form-button"><CheckCircle size={16} /> Mind olvasott</button>
-          <button onClick={() => setShowSend(true)} className="form-button-primary"><Send size={16} /> Új értesítés</button>
+          <button onClick={() => void handleMarkAllAsRead()} className="form-button"><CheckCircle size={16} />{t('notifications.mindOlvasott')}</button>
+          <button onClick={() => setShowSend(true)} className="form-button-primary"><Send size={16} />{t('notifications.ujErtesites')}</button>
         </div>
       </div>
 
@@ -118,34 +120,34 @@ export default function NotificationPage() {
       {/* Send form */}
       {showSend && (
         <div className="form-panel space-y-3 border-2 border-blue-200">
-          <h2 className="font-semibold">Értesítés küldése</h2>
+          <h2 className="font-semibold">{t('notifications.ertesitesKuldese')}</h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="form-label">Cím *</label>
+              <label className="form-label">{t('circulars.cim')}</label>
               <input className="form-input" value={sendForm.title} onChange={e => setSendForm({ ...sendForm, title: e.target.value })} />
             </div>
             <div>
-              <label className="form-label">Típus</label>
+              <label className="form-label">{t('common.type')}</label>
               <select className="form-input" value={sendForm.type} onChange={e => setSendForm({ ...sendForm, type: e.target.value })}>
-                <option value="INFO">Információ</option>
-                <option value="WARNING">Figyelmeztetés</option>
-                <option value="ERROR">Hiba</option>
-                <option value="SUCCESS">Siker</option>
+                <option value="INFO">{t('notifications.informacio')}</option>
+                <option value="WARNING">{t('notifications.figyelmeztetes')}</option>
+                <option value="ERROR">{t('common.error')}</option>
+                <option value="SUCCESS">{t('notifications.siker')}</option>
               </select>
             </div>
           </div>
           <div>
-            <label className="form-label">Üzenet *</label>
+            <label className="form-label">{t('notifications.uzenet')}</label>
             <textarea className="form-input" rows={3} value={sendForm.message} onChange={e => setSendForm({ ...sendForm, message: e.target.value })} />
           </div>
           <div>
-            <label className="form-label">Címzett dolgozó ID-k (vesszővel elválasztva, üres = saját)</label>
+            <label className="form-label">{t('notifications.cimzettDolgozoIdKVesszovelElvalasztvaUresSajat')}</label>
             <input className="form-input" value={sendForm.targetWorkerIds} onChange={e => setSendForm({ ...sendForm, targetWorkerIds: e.target.value })} placeholder="pl. 1,2,3" />
           </div>
           <div className="flex gap-2">
-            <button onClick={() => void handleSend()} className="form-button-primary"><Mail size={16} /> Küldés</button>
-            <button onClick={() => void handleBroadcast()} className="form-button"><Megaphone size={16} /> Körlevél mindenkinek</button>
-            <button onClick={() => setShowSend(false)} className="form-button">Mégse</button>
+            <button onClick={() => void handleSend()} className="form-button-primary"><Mail size={16} />{t('common.send')}</button>
+            <button onClick={() => void handleBroadcast()} className="form-button"><Megaphone size={16} />{t('notifications.korlevelMindenkinek')}</button>
+            <button onClick={() => setShowSend(false)} className="form-button">{t('common.cancel')}</button>
           </div>
         </div>
       )}
@@ -154,30 +156,30 @@ export default function NotificationPage() {
       <div className="form-panel flex gap-3 items-end">
         <Filter size={16} className="text-gray-400" />
         <div>
-          <label className="form-label">Típus</label>
+          <label className="form-label">{t('common.type')}</label>
           <select className="form-input" value={filterType} onChange={e => setFilterType(e.target.value)}>
-            <option value="">Mind</option>
+            <option value="">{t('common.all')}</option>
             {types.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div>
-          <label className="form-label">Státusz</label>
+          <label className="form-label">{t('common.status')}</label>
           <select className="form-input" value={filterRead} onChange={e => setFilterRead(e.target.value)}>
-            <option value="">Mind</option>
-            <option value="unread">Olvasatlan</option>
-            <option value="read">Olvasott</option>
+            <option value="">{t('common.all')}</option>
+            <option value="unread">{t('notifications.olvasatlan')}</option>
+            <option value="read">{t('notifications.olvasott')}</option>
           </select>
         </div>
-        <span className="text-sm text-gray-500">{filtered.length} értesítés</span>
+        <span className="text-sm text-gray-500">{filtered.length} {t('notifications.ertesites')}</span>
       </div>
 
       {/* Table */}
       <div className="form-panel">
         {loading ? <div>Betöltés...</div> : filtered.length === 0 ? (
-          <div className="text-center text-gray-500 py-4">Nincs értesítés</div>
+          <div className="text-center text-gray-500 py-4">{t('notifications.nincsErtesites')}</div>
         ) : (
           <table className="data-grid w-full">
-            <thead><tr><th>Típus</th><th>Cím</th><th>Üzenet</th><th>Dátum</th><th>Státusz</th><th>Műveletek</th></tr></thead>
+            <thead><tr><th>{t('common.type')}</th><th>{t('common.address')}</th><th>{t('notifications.uzenet2')}</th><th>{t('common.date')}</th><th>{t('common.status')}</th><th>{t('common.actions')}</th></tr></thead>
             <tbody>
               {filtered.map(n => (
                 <tr key={n.id} className={n.isRead ? '' : 'bg-blue-50 font-medium'}>
@@ -186,7 +188,7 @@ export default function NotificationPage() {
                   <td className="text-sm max-w-xs truncate">{n.message}</td>
                   <td className="text-sm">{new Date(n.createdAt).toLocaleString('hu-HU')}</td>
                   <td><span className={`badge ${n.isRead ? 'badge-green' : 'badge-yellow'}`}>{n.isRead ? 'Olvasva' : 'Új'}</span></td>
-                  <td>{!n.isRead && <button onClick={() => void handleMarkAsRead(n.id)} className="form-button text-xs"><CheckCircle size={12} /> Olvasott</button>}</td>
+                  <td>{!n.isRead && <button onClick={() => void handleMarkAsRead(n.id)} className="form-button text-xs"><CheckCircle size={12} /> {t('notifications.olvasott')}</button>}</td>
                 </tr>
               ))}
             </tbody>

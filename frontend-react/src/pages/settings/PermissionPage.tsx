@@ -4,8 +4,10 @@ import { permissionApi, Permission, PermissionCreateRequest } from '../../servic
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 export default function PermissionPage() {
+  const { t } = useTranslation()
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -159,14 +161,14 @@ export default function PermissionPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Shield />
-          Jogosultságok
+          {t('settings.permissions')}
         </h1>
         <button
           onClick={handleCreate}
           className="form-button-primary flex items-center gap-2"
         >
           <Plus size={16} />
-          Új jogosultság
+          {t('settings.ujJogosultsag')}
         </button>
       </div>
 
@@ -174,7 +176,7 @@ export default function PermissionPage() {
       <div className="form-panel">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="form-label">Keresés</label>
+            <label className="form-label">{t('common.search')}</label>
             <div className="relative">
               <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
@@ -187,13 +189,13 @@ export default function PermissionPage() {
             </div>
           </div>
           <div>
-            <label className="form-label">Modul</label>
+            <label className="form-label">{t('settings.modul')}</label>
             <select
               className="form-input"
               value={selectedModule}
               onChange={(e) => setSelectedModule(e.target.value)}
             >
-              <option value="">Összes modul</option>
+              <option value="">{t('settings.osszesModul')}</option>
               {modules.map(module => (
                 <option key={module} value={module}>{module}</option>
               ))}
@@ -223,7 +225,7 @@ export default function PermissionPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="form-label">Jogosultság kód *</label>
+                <label className="form-label">{t('settings.jogosultsagKod')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -235,7 +237,7 @@ export default function PermissionPage() {
               </div>
 
               <div>
-                <label className="form-label">Jogosultság név *</label>
+                <label className="form-label">{t('settings.jogosultsagNev')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -246,7 +248,7 @@ export default function PermissionPage() {
               </div>
 
               <div>
-                <label className="form-label">Modul *</label>
+                <label className="form-label">{t('settings.modul2')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -257,7 +259,7 @@ export default function PermissionPage() {
               </div>
 
               <div>
-                <label className="form-label">Leírás</label>
+                <label className="form-label">{t('common.description')}</label>
                 <textarea
                   className="form-input"
                   rows={3}
@@ -276,7 +278,7 @@ export default function PermissionPage() {
                     onChange={(e) => setFormData({ ...formData, isSystemPermission: e.target.checked })}
                     disabled={!!editingPermission}
                   />
-                  <span>Rendszer jogosultság</span>
+                  <span>{t('settings.rendszerJogosultsag')}</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
@@ -285,7 +287,7 @@ export default function PermissionPage() {
                     checked={formData.isActive ?? true}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                   />
-                  <span>Aktív</span>
+                  <span>{t('common.active')}</span>
                 </label>
               </div>
 
@@ -297,14 +299,14 @@ export default function PermissionPage() {
                   }}
                   className="form-button"
                 >
-                  Mégse
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleSave}
                   className="form-button-primary flex items-center gap-2"
                 >
                   <Save size={16} />
-                  Mentés
+                  {t('common.save')}
                 </button>
               </div>
             </div>
@@ -317,20 +319,20 @@ export default function PermissionPage() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th>Kód</th>
-              <th>Név</th>
-              <th>Modul</th>
-              <th>Leírás</th>
-              <th>Típus</th>
-              <th>Státusz</th>
-              <th>Műveletek</th>
+              <th>{t('common.code')}</th>
+              <th>{t('common.name')}</th>
+              <th>{t('settings.modul')}</th>
+              <th>{t('common.description')}</th>
+              <th>{t('common.type')}</th>
+              <th>{t('common.status')}</th>
+              <th>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {filteredPermissions.length === 0 ? (
               <tr>
                 <td colSpan={7} className="text-center text-gray-500 py-4">
-                  Nincs találat
+                  {t('common.noResult')}
                 </td>
               </tr>
             ) : (
@@ -346,9 +348,9 @@ export default function PermissionPage() {
                   </td>
                   <td>
                     {permission.isSystemPermission ? (
-                      <span className="badge badge-orange">Rendszer</span>
+                      <span className="badge badge-orange">{t('settings.system')}</span>
                     ) : (
-                      <span className="badge badge-gray">Egyedi</span>
+                      <span className="badge badge-gray">{t('settings.egyedi')}</span>
                     )}
                   </td>
                   <td>
@@ -366,7 +368,7 @@ export default function PermissionPage() {
                         className="form-button text-sm flex items-center gap-1"
                       >
                         <Edit size={14} />
-                        Szerkesztés
+                        {t('common.edit')}
                       </button>
                       {!permission.isSystemPermission && (
                         <button
@@ -374,7 +376,7 @@ export default function PermissionPage() {
                           className="form-button text-sm text-red-600 flex items-center gap-1"
                         >
                           <Trash2 size={14} />
-                          Törlés
+                          {t('common.delete')}
                         </button>
                       )}
                     </div>

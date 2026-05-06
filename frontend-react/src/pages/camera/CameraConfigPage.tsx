@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Settings, Plus, Trash2, Save } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 const isElectron = () => !!window.electronAPI
 
@@ -20,6 +21,7 @@ interface CameraConfigItem {
 }
 
 export default function CameraConfigPage() {
+  const { t } = useTranslation()
   const [configs, setConfigs] = useState<CameraConfigItem[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<CameraConfigItem | null>(null)
@@ -119,15 +121,15 @@ export default function CameraConfigPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold flex items-center gap-2">
           <Settings className="h-6 w-6" />
-          Kamera konfiguráció
-          {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokális)</span>}
+          {t('camera.kameraKonfiguracio')}
+          {isElectron() && <span className="text-sm font-normal text-muted-foreground">{t('camera.lokalis')}</span>}
         </h1>
         <button
           className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           onClick={() => setEditing(newConfig())}
         >
           <Plus className="h-4 w-4 mr-2" />
-          Új kamera
+          {t('camera.ujKamera')}
         </button>
       </div>
 
@@ -135,7 +137,7 @@ export default function CameraConfigPage() {
       {isElectron() && localDevices.length > 0 && (
         <div className="rounded-lg border bg-card shadow-sm">
           <div className="p-4 pb-2">
-            <h3 className="text-lg font-semibold">Észlelt lokális kamerák</h3>
+            <h3 className="text-lg font-semibold">{t('camera.eszleltLokalisKamerak')}</h3>
           </div>
           <div className="p-4">
             <div className="space-y-1">
@@ -158,7 +160,7 @@ export default function CameraConfigPage() {
           <div className="p-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Kamera neve</label>
+                <label className="text-sm font-medium">{t('camera.kameraNeve')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.cameraName}
@@ -175,7 +177,7 @@ export default function CameraConfigPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Szélesség</label>
+                <label className="text-sm font-medium">{t('camera.szelesseg')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   type="number"
@@ -184,7 +186,7 @@ export default function CameraConfigPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Magasság</label>
+                <label className="text-sm font-medium">{t('camera.magassag')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   type="number"
@@ -193,7 +195,7 @@ export default function CameraConfigPage() {
                 />
               </div>
               <div className="col-span-2">
-                <label className="text-sm font-medium">Tárolási útvonal</label>
+                <label className="text-sm font-medium">{t('camera.tarolasiUtvonal')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.localStoragePath}
@@ -207,13 +209,13 @@ export default function CameraConfigPage() {
                 onClick={() => saveConfig(editing)}
               >
                 <Save className="h-4 w-4 mr-2" />
-                Mentés
+                {t('common.save')}
               </button>
               <button
                 className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
                 onClick={() => setEditing(null)}
               >
-                Mégse
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -224,7 +226,7 @@ export default function CameraConfigPage() {
       {loading ? (
         <p>Betöltés...</p>
       ) : configs.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">Nincs konfigurált kamera</div>
+        <div className="text-center py-12 text-muted-foreground">{t('camera.nincsKonfiguraltKamera')}</div>
       ) : (
         <div className="space-y-3">
           {configs.map((config) => (
@@ -236,20 +238,22 @@ export default function CameraConfigPage() {
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                       config.enabled ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
                     }`}>
-                      {config.enabled ? 'Aktív' : 'Inaktív'}
+                      {config.enabled ? t('common.active') : t('common.inactive')}
                     </span>
                   </div>
+                  {/* eslint-disable i18next/no-literal-string */}
                   <p className="text-sm text-muted-foreground">
                     {config.resolutionWidth}x{config.resolutionHeight} @ {config.fps} FPS
                   </p>
-                  <p className="text-xs text-muted-foreground">Útvonal: {config.localStoragePath}</p>
+                  {/* eslint-enable i18next/no-literal-string */}
+                  <p className="text-xs text-muted-foreground">{t('camera.utvonal')}{config.localStoragePath}</p>
                 </div>
                 <div className="flex gap-2">
                   <button
                     className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
                     onClick={() => setEditing(config)}
                   >
-                    Szerkesztés
+                    {t('common.edit')}
                   </button>
                   <button
                     className="inline-flex items-center justify-center rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90"

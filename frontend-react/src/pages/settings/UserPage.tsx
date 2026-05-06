@@ -3,8 +3,10 @@ import { Users, Plus, Edit, Trash2, Search, X, Save, Key } from 'lucide-react'
 import { userApi, UserDetail, UserCreateRequest, UserUpdateRequest, roleApi, Role } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 export default function UserPage() {
+  const { t } = useTranslation()
   const [users, setUsers] = useState<UserDetail[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
@@ -237,14 +239,14 @@ export default function UserPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Users />
-          Felhasználók
+          {t('settings.users')}
         </h1>
         <button
           onClick={handleCreate}
           className="form-button-primary flex items-center gap-2"
         >
           <Plus size={16} />
-          Új felhasználó
+          {t('settings.ujFelhasznalo')}
         </button>
       </div>
 
@@ -258,7 +260,7 @@ export default function UserPage() {
       {/* Filters */}
       <div className="form-panel">
         <div>
-          <label className="form-label">Keresés</label>
+          <label className="form-label">{t('common.search')}</label>
           <div className="relative">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input
@@ -293,7 +295,7 @@ export default function UserPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="form-label">Felhasználónév *</label>
+                <label className="form-label">{t('settings.felhasznalonev')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -306,7 +308,7 @@ export default function UserPage() {
 
               {!editingUser && (
                 <div>
-                  <label className="form-label">Jelszó *</label>
+                  <label className="form-label">{t('settings.jelszo')}</label>
                   <input
                     type="password"
                     className="form-input"
@@ -318,7 +320,7 @@ export default function UserPage() {
               )}
 
               <div>
-                <label className="form-label">Teljes név</label>
+                <label className="form-label">{t('representatives.teljesNev')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -329,7 +331,7 @@ export default function UserPage() {
               </div>
 
               <div>
-                <label className="form-label">Email *</label>
+                <label className="form-label">{t('settings.email')}</label>
                 <input
                   type="email"
                   className="form-input"
@@ -340,13 +342,13 @@ export default function UserPage() {
               </div>
 
               <div>
-                <label className="form-label">Szerepkör</label>
+                <label className="form-label">{t('settings.szerepkor2')}</label>
                 <select
                   className="form-input"
                   value={formData.roleId}
                   onChange={(e) => setFormData({ ...formData, roleId: e.target.value })}
                 >
-                  <option value="">Nincs szerepkör</option>
+                  <option value="">{t('settings.nincsSzerepkor')}</option>
                   {roles.map(role => (
                     <option key={role.id} value={role.id}>{role.name}</option>
                   ))}
@@ -361,14 +363,14 @@ export default function UserPage() {
                   }}
                   className="form-button"
                 >
-                  Mégse
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleSave}
                   className="form-button-primary flex items-center gap-2"
                 >
                   <Save size={16} />
-                  Mentés
+                  {t('common.save')}
                 </button>
               </div>
             </div>
@@ -382,7 +384,7 @@ export default function UserPage() {
           <div className="bg-white rounded-lg p-4 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">
-                Jelszó megváltoztatása: {selectedUser.username}
+                {t('settings.jelszoMegvaltoztatasa')}{selectedUser.username}
               </h2>
               <button
                 onClick={() => {
@@ -398,7 +400,7 @@ export default function UserPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="form-label">Új jelszó *</label>
+                <label className="form-label">{t('settings.ujJelszo')}</label>
                 <input
                   type="password"
                   className="form-input"
@@ -417,14 +419,14 @@ export default function UserPage() {
                   }}
                   className="form-button"
                 >
-                  Mégse
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleSavePassword}
                   className="form-button-primary flex items-center gap-2"
                 >
                   <Key size={16} />
-                  Mentés
+                  {t('common.save')}
                 </button>
               </div>
             </div>
@@ -437,21 +439,21 @@ export default function UserPage() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th>Felhasználónév</th>
-              <th>Név</th>
-              <th>Email</th>
-              <th>Szerepkörök</th>
-              <th>Alapértelmezett fiók</th>
-              <th>Státusz</th>
-              <th>Utolsó belépés</th>
-              <th>Műveletek</th>
+              <th>{t('settings.felhasznalonev2')}</th>
+              <th>{t('common.name')}</th>
+              <th>{t('common.email')}</th>
+              <th>{t('settings.roles')}</th>
+              <th>{t('settings.alapertelmezettFiok')}</th>
+              <th>{t('common.status')}</th>
+              <th>{t('settings.utolsoBelepes')}</th>
+              <th>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {filteredUsers.length === 0 ? (
               <tr>
                 <td colSpan={8} className="text-center text-gray-500 py-4">
-                  Nincs találat
+                  {t('common.noResult')}
                 </td>
               </tr>
             ) : (
@@ -481,7 +483,7 @@ export default function UserPage() {
                         {user.isActive ? 'Aktív' : 'Inaktív'}
                       </button>
                       {user.isLocked && (
-                        <span className="badge badge-orange">Zárolt</span>
+                        <span className="badge badge-orange">{t('settings.zarolt')}</span>
                       )}
                     </div>
                   </td>
@@ -495,27 +497,27 @@ export default function UserPage() {
                         className="form-button text-xs flex items-center gap-1"
                       >
                         <Edit size={12} />
-                        Szerkesztés
+                        {t('common.edit')}
                       </button>
                       <button
                         onClick={() => handleChangePassword(user)}
                         className="form-button text-xs flex items-center gap-1"
                       >
                         <Key size={12} />
-                        Jelszó
+                        {t('auth.password')}
                       </button>
                       <button
                         onClick={() => handleArchive(user.id)}
                         className="form-button text-xs text-orange-600 flex items-center gap-1"
                       >
-                        Archiválás
+                        {t('archiving.archivalas')}
                       </button>
                       <button
                         onClick={() => handleDelete(user.id)}
                         className="form-button text-xs text-red-600 flex items-center gap-1"
                       >
                         <Trash2 size={12} />
-                        Törlés
+                        {t('common.delete')}
                       </button>
                     </div>
                   </td>

@@ -5,6 +5,7 @@ import RateTemplateEditor from './RateTemplateEditor'
 import WorkgroupManager from './WorkgroupManager'
 import DiscountLevelEditor from './DiscountLevelEditor'
 import RatePublishHistory from './RatePublishHistory'
+import { useTranslation } from 'react-i18next'
 
 const tabs = [
   { key: 'settlement', label: 'Árfolyam rögzítés' },
@@ -17,6 +18,7 @@ const tabs = [
 type TabKey = (typeof tabs)[number]['key']
 
 export default function RateCreationDashboard() {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<TabKey>('settlement')
 
   return (
@@ -24,7 +26,7 @@ export default function RateCreationDashboard() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold flex items-center gap-2">
           <BarChart3 className="h-6 w-6" />
-          Árfolyam kezelés
+          {t('ratemanagement.arfolyamKezeles')}
         </h1>
       </div>
 

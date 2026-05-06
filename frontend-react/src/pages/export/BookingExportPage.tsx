@@ -4,6 +4,7 @@ import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useAuthStore } from '../../stores/authStore'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Fix #146 live UI test: a korabbi page a nemletezo GET /booking-export-ot
@@ -22,6 +23,7 @@ interface BranchDto {
 }
 
 export default function BookingExportPage() {
+  const { t } = useTranslation()
   const workerBranchId = useAuthStore((s) => s.worker?.branchId ?? '')
   const [branches, setBranches] = useState<BranchDto[]>([])
   const [branchId, setBranchId] = useState<string>(workerBranchId)
@@ -66,26 +68,26 @@ export default function BookingExportPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Download className="h-6 w-6" />
-          Könyvelés export (CSV)
+          {t('export.konyvelesExportCsv')}
         </h1>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-white rounded shadow p-4">
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Penztari egyseg</label>
+          <label className="block text-xs text-gray-500 mb-1">{t('export.penztariEgyseg')}</label>
           <select value={branchId} onChange={(e) => setBranchId(e.target.value)} className="form-input w-full">
-            <option value="">-- Valassz --</option>
+            <option value="">{t('export.valassz')}</option>
             {branches.map((b) => (
               <option key={b.id} value={b.id}>{b.name}{b.code ? ' (' + b.code + ')' : ''}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Datum (napi / keszlet)</label>
+          <label className="block text-xs text-gray-500 mb-1">{t('export.datumNapiKeszlet')}</label>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="form-input w-full" />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Honap (havi)</label>
+          <label className="block text-xs text-gray-500 mb-1">{t('export.honapHavi')}</label>
           <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="form-input w-full" />
         </div>
       </div>
@@ -107,7 +109,7 @@ export default function BookingExportPage() {
           className="form-button-primary flex items-center justify-center gap-2 py-4"
         >
           <Download className="h-5 w-5" />
-          Napi export ({date})
+          {t('export.napiExport')}{date})
         </button>
         <button
           onClick={() => void downloadCsv('/booking/monthly', { month }, 'konyveles-havi-' + month + '.csv')}
@@ -115,7 +117,7 @@ export default function BookingExportPage() {
           className="form-button-primary flex items-center justify-center gap-2 py-4"
         >
           <Download className="h-5 w-5" />
-          Havi export ({month})
+          {t('export.haviExport')}{month})
         </button>
         <button
           onClick={() => void downloadCsv('/booking/inventory', { date }, 'keszlet-' + date + '.csv')}
@@ -123,13 +125,13 @@ export default function BookingExportPage() {
           className="form-button-primary flex items-center justify-center gap-2 py-4"
         >
           <Download className="h-5 w-5" />
-          Készlet export ({date})
+          {t('export.keszletExport')}{date})
         </button>
       </div>
 
       <div className="text-xs text-gray-500">
-        Tipp: a letoltott CSV fajl konvertalhato Excel-be (UTF-8 encoding), vagy kozvetlenul
-        beolvashato a konyvelesi rendszerbe.
+        {t('export.tippALetoltottCsvFajlKonvertalhatoExcelBeUtf8EncodingVagyKozvetlenul')}
+        {t('export.beolvashatoAKonyvelesiRendszerbe')}
       </div>
     </div>
   )

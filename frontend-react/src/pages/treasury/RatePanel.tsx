@@ -16,6 +16,7 @@ import { TableSkeleton } from './LoadingSkeleton'
 import { recordLocalAuditEvent } from '../../utils/electronTransactions'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 interface RateRow {
   currency: Currency
@@ -26,6 +27,7 @@ interface RateRow {
 }
 
 export default function RatePanel() {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [rateRows, setRateRows] = useState<RateRow[]>([])
   const [lastPoll, setLastPoll] = useState<string>('')
@@ -146,26 +148,26 @@ export default function RatePanel() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-secondary-900">Árfolyam Kezelő</h1>
+          <h1 className="text-xl font-bold text-secondary-900">{t('treasury.arfolyamKezelo')}</h1>
           <div className="flex items-center gap-2 text-sm text-secondary-600">
             <RefreshCw size={16} />
             <span>
-              Utolsó frissítés: <strong>{lastPoll}</strong>
+              {t('rates.utolsoFrissites')}<strong>{lastPoll}</strong>
             </span>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => void fetchData()} className="form-button h-8 text-xs">
             <RefreshCw size={14} />
-            <span>Frissítés most</span>
+            <span>{t('treasury.frissitesMost')}</span>
           </button>
           <button onClick={() => setShowManualModal(true)} className="form-button h-8 text-xs">
             <Edit2 size={14} />
-            <span>Manuális bevitel</span>
+            <span>{t('treasury.manualisBevitel')}</span>
           </button>
           <button onClick={() => setShowSpreadEditor(true)} className="form-button h-8 text-xs">
             <Server size={14} />
-            <span>Spread editor</span>
+            <span>{t('treasury.spreadEditor')}</span>
           </button>
         </div>
       </div>
@@ -175,11 +177,12 @@ export default function RatePanel() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th className="w-24">Valuta</th>
-              <th className="text-right w-28">MNB / Alap</th>
-              <th className="text-right w-28">Vétel</th>
-              <th className="text-right w-28">Eladás</th>
-              <th className="text-right w-32">Spread</th>
+              <th className="w-24">{t('common.currency')}</th>
+              <th className="text-right w-28">{t('treasury.mnbAlap')}</th>
+              <th className="text-right w-28">{t('cashier.buy')}</th>
+              <th className="text-right w-28">{t('cashier.sell')}</th>
+              <th className="text-right w-32">{t('ratemanagement.spread2')}</th>
+              {/* eslint-disable-next-line i18next/no-literal-string */}
               <th className="text-right w-24">Δ%</th>
               <th className="w-16"></th>
             </tr>
@@ -188,7 +191,7 @@ export default function RatePanel() {
             {rateRows.length === 0 && (
               <tr>
                 <td colSpan={7} className="text-center text-sm text-secondary-400 py-8">
-                  Nincs árfolyam adat
+                  {t('treasury.nincsArfolyamAdat')}
                 </td>
               </tr>
             )}
@@ -265,28 +268,28 @@ export default function RatePanel() {
       <div className="form-panel">
         <h2 className="text-lg font-bold text-secondary-900 mb-4 flex items-center gap-2">
           <Server size={20} className="text-primary-600" />
-          MNB Polling Státusz
+          {t('treasury.mnbPollingStatusz')}
         </h2>
         <div className="grid grid-cols-4 gap-4">
           <div className="p-4 bg-success-50 border border-success-200 rounded-lg">
-            <div className="text-xs text-secondary-600 mb-1">Utolsó sikeres frissítés</div>
+            <div className="text-xs text-secondary-600 mb-1">{t('treasury.utolsoSikeresFrissites')}</div>
             <div className="text-sm font-bold text-secondary-900">{lastPoll || '—'}</div>
-            <div className="text-xs text-success-700 mt-1">✅ Elérhető</div>
+            <div className="text-xs text-success-700 mt-1">{t('treasury.Elerheto')}</div>
           </div>
           <div className="p-4 bg-primary-50 border border-primary-200 rounded-lg">
-            <div className="text-xs text-secondary-600 mb-1">Következő frissítés</div>
-            <div className="text-sm font-bold text-secondary-900">Manuális</div>
-            <div className="text-xs text-secondary-500 mt-1">R billentyű</div>
+            <div className="text-xs text-secondary-600 mb-1">{t('treasury.kovetkezoFrissites')}</div>
+            <div className="text-sm font-bold text-secondary-900">{t('treasury.manualis')}</div>
+            <div className="text-xs text-secondary-500 mt-1">{t('treasury.rBillentyu')}</div>
           </div>
           <div className="p-4 bg-secondary-50 border border-secondary-200 rounded-lg">
-            <div className="text-xs text-secondary-600 mb-1">Aktív valuták</div>
+            <div className="text-xs text-secondary-600 mb-1">{t('treasury.aktivValutak')}</div>
             <div className="text-sm font-bold text-secondary-900">{rateRows.length}</div>
-            <div className="text-xs text-secondary-500 mt-1">valuta beállítva</div>
+            <div className="text-xs text-secondary-500 mt-1">{t('treasury.valutaBeallitva')}</div>
           </div>
           <div className="p-4 bg-secondary-50 border border-secondary-200 rounded-lg">
-            <div className="text-xs text-secondary-600 mb-1">Hibák (ma)</div>
+            <div className="text-xs text-secondary-600 mb-1">{t('treasury.hibakMa')}</div>
             <div className="text-sm font-bold text-secondary-900">0</div>
-            <div className="text-xs text-secondary-500 mt-1">0 hiba</div>
+            <div className="text-xs text-secondary-500 mt-1">{t('treasury.0Hiba')}</div>
           </div>
         </div>
       </div>
@@ -306,13 +309,13 @@ export default function RatePanel() {
             <form onSubmit={(e) => void handleManualRateSubmit(e)} className="space-y-4">
               {!editCurrency && (
                 <div>
-                  <label className="form-label">Valuta</label>
+                  <label className="form-label">{t('common.currency')}</label>
                   <select
                     className="form-input w-full"
                     value={manualCurrencyId}
                     onChange={(e) => setManualCurrencyId(Number(e.target.value))}
                   >
-                    <option value={0}>Válassz valutát</option>
+                    <option value={0}>{t('treasury.valasszValutat2')}</option>
                     {rateRows.map((r) => (
                       <option key={r.currency.id} value={r.currency.id}>
                         {r.currency.code} — {r.currency.name}
@@ -323,7 +326,7 @@ export default function RatePanel() {
               )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Vétel árfolyam</label>
+                  <label className="form-label">{t('treasury.vetelArfolyam')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -334,7 +337,7 @@ export default function RatePanel() {
                   />
                 </div>
                 <div>
-                  <label className="form-label">Eladás árfolyam</label>
+                  <label className="form-label">{t('treasury.eladasArfolyam')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -347,7 +350,7 @@ export default function RatePanel() {
               </div>
               <div className="p-3 bg-warning-50 border border-warning-200 rounded-lg">
                 <div className="text-xs text-warning-800">
-                  <strong>Figyelem:</strong> Manuális bevitel felülírja az aktuális árfolyamot.
+                  <strong>{t('treasury.figyelem')}</strong>{t('treasury.manualisBevitelFelulirjaAzAktualisArfolyamot')}
                 </div>
               </div>
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-secondary-200">
@@ -356,11 +359,11 @@ export default function RatePanel() {
                   className="form-button"
                   onClick={() => setShowManualModal(false)}
                 >
-                  Mégse
+                  {t('common.cancel')}
                 </button>
                 <button type="submit" className="form-button-primary">
                   <Save size={18} />
-                  <span>Mentés</span>
+                  <span>{t('common.save')}</span>
                 </button>
               </div>
             </form>
@@ -373,24 +376,24 @@ export default function RatePanel() {
         <ModalOverlay onClose={() => setShowSpreadEditor(false)}>
           <div className="bg-white rounded-lg shadow-xl p-4 max-w-3xl w-full mx-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-bold text-secondary-900">Spread szerkesztő</h2>
+              <h2 className="text-xl font-bold text-secondary-900">{t('treasury.spreadSzerkeszto')}</h2>
               <button onClick={() => setShowSpreadEditor(false)} className="text-secondary-400 hover:text-secondary-600">
                 <X size={20} />
               </button>
             </div>
             <div className="p-3 bg-primary-50 border border-primary-200 rounded-lg text-sm text-secondary-700 mb-4">
-              A spread (árfolyam margin) = eladási árfolyam − vételi árfolyam. A táblázat csak olvasható
-              áttekintés — az egyes valuták szerkesztéséhez kattints a ceruza ikonra.
+              {t('treasury.aSpreadArfolyamMarginEladasiArfolyamVeteliArfolyamATablazatCsakOlvashato')}
+              {t('treasury.attekintesAzEgyesValutakSzerkesztesehezKattintsACeruzaIkonra')}
             </div>
             <table className="data-grid w-full">
               <thead>
                 <tr>
-                  <th className="w-24">Valuta</th>
-                  <th className="text-right w-28">MNB / Alap</th>
-                  <th className="text-right w-28">Vétel</th>
-                  <th className="text-right w-28">Eladás</th>
-                  <th className="text-right w-28">Spread Ft</th>
-                  <th className="text-right w-24">Spread %</th>
+                  <th className="w-24">{t('common.currency')}</th>
+                  <th className="text-right w-28">{t('treasury.mnbAlap')}</th>
+                  <th className="text-right w-28">{t('cashier.buy')}</th>
+                  <th className="text-right w-28">{t('cashier.sell')}</th>
+                  <th className="text-right w-28">{t('treasury.spreadFt')}</th>
+                  <th className="text-right w-24">{t('treasury.spread')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -420,7 +423,7 @@ export default function RatePanel() {
             </table>
             <div className="flex justify-end mt-6">
               <button onClick={() => setShowSpreadEditor(false)} className="form-button-primary">
-                Bezárás
+                {t('common.close')}
               </button>
             </div>
           </div>

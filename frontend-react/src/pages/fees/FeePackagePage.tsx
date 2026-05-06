@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '@/services/api/index';
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 interface FeePackage {
   id: number;
@@ -25,6 +26,7 @@ interface FeePackage {
 }
 
 export default function FeePackagePage() {
+  const { t } = useTranslation()
   const [feePackages, setFeePackages] = useState<FeePackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -127,8 +129,8 @@ export default function FeePackagePage() {
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-3">
         <div>
-          <h1 className="text-lg font-bold">Díjcsomagok</h1>
-          <p className="text-gray-500">Tranzakciós díjak és költségek kezelése</p>
+          <h1 className="text-lg font-bold">{t('fees.dijcsomagok')}</h1>
+          <p className="text-gray-500">{t('fees.tranzakciosDijakEsKoltsegekKezelese')}</p>
         </div>
         <button
           type="button"
@@ -138,7 +140,7 @@ export default function FeePackagePage() {
           }}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          + Új díjcsomag
+          {t('fees.ujDijcsomag')}
         </button>
       </div>
 
@@ -156,20 +158,20 @@ export default function FeePackagePage() {
         {loading ? (
           <div className="text-center py-8">Betöltés...</div>
         ) : filteredPackages.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">Nincsenek díjcsomagok</div>
+          <div className="text-center py-8 text-gray-500">{t('fees.nincsenekDijcsomagok')}</div>
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="p-3 text-left">Kód</th>
-                <th className="p-3 text-left">Név</th>
-                <th className="p-3 text-left">Vételi díj</th>
-                <th className="p-3 text-left">Eladási díj</th>
-                <th className="p-3 text-left">Kezelési díj</th>
-                <th className="p-3 text-left">Expressz</th>
-                <th className="p-3 text-left">Ügyfelek</th>
-                <th className="p-3 text-left">Státusz</th>
-                <th className="p-3 text-left">Műveletek</th>
+                <th className="p-3 text-left">{t('common.code')}</th>
+                <th className="p-3 text-left">{t('common.name')}</th>
+                <th className="p-3 text-left">{t('fees.veteliDij')}</th>
+                <th className="p-3 text-left">{t('fees.eladasiDij')}</th>
+                <th className="p-3 text-left">{t('cashier.handlingFee')}</th>
+                <th className="p-3 text-left">{t('fees.expressz')}</th>
+                <th className="p-3 text-left">{t('archiving.ugyfelek')}</th>
+                <th className="p-3 text-left">{t('common.status')}</th>
+                <th className="p-3 text-left">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -180,7 +182,7 @@ export default function FeePackagePage() {
                     <div className="flex items-center gap-2">
                       {pkg.name}
                       {pkg.isDefault && (
-                        <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">Alapért.</span>
+                        <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">{t('fees.alapert')}</span>
                       )}
                     </div>
                   </td>
@@ -190,8 +192,8 @@ export default function FeePackagePage() {
                   <td className="p-3 text-sm">
                     {formatFee(pkg.sellFeeType, pkg.sellFeeValue, pkg.sellFeeMin, pkg.sellFeeMax)}
                   </td>
-                  <td className="p-3">{pkg.handlingFee?.toLocaleString()} Ft</td>
-                  <td className="p-3">{pkg.expressFee?.toLocaleString()} Ft</td>
+                  <td className="p-3">{pkg.handlingFee?.toLocaleString()} {t('components.ft')}</td>
+                  <td className="p-3">{pkg.expressFee?.toLocaleString()} {t('components.ft')}</td>
                   <td className="p-3">{pkg.customerCount || 0}</td>
                   <td className="p-3">
                     <span className={`px-2 py-1 text-xs text-white rounded ${pkg.isActive ? 'bg-green-500' : 'bg-gray-500'}`}>
@@ -207,7 +209,7 @@ export default function FeePackagePage() {
                           className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
                           title="Alapértelmezetté tétel"
                         >
-                          Alapért.
+                          {t('fees.alapert')}
                         </button>
                       )}
                       <button
@@ -218,7 +220,7 @@ export default function FeePackagePage() {
                         }}
                         className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
                       >
-                        Szerkesztés
+                        {t('common.edit')}
                       </button>
                       <button
                         type="button"
@@ -226,7 +228,7 @@ export default function FeePackagePage() {
                         disabled={pkg.isDefault}
                         className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
                       >
-                        Törlés
+                        {t('common.delete')}
                       </button>
                     </div>
                   </td>
@@ -283,6 +285,7 @@ function FeePackageForm({
   }) => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState({
     code: feePackage?.code || '',
     name: feePackage?.name || '',
@@ -310,7 +313,7 @@ function FeePackageForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="code" className="block text-sm font-medium mb-1">Kód *</label>
+          <label htmlFor="code" className="block text-sm font-medium mb-1">{t('common.codeRequired')}</label>
           <input
             id="code"
             type="text"
@@ -322,7 +325,7 @@ function FeePackageForm({
           />
         </div>
         <div>
-          <label htmlFor="name" className="block text-sm font-medium mb-1">Név *</label>
+          <label htmlFor="name" className="block text-sm font-medium mb-1">{t('common.nameRequired')}</label>
           <input
             id="name"
             type="text"
@@ -334,7 +337,7 @@ function FeePackageForm({
           />
         </div>
         <div className="col-span-2">
-          <label htmlFor="description" className="block text-sm font-medium mb-1">Leírás</label>
+          <label htmlFor="description" className="block text-sm font-medium mb-1">{t('common.description')}</label>
           <input
             id="description"
             type="text"
@@ -347,23 +350,23 @@ function FeePackageForm({
       </div>
 
       <hr className="my-4" />
-      <h3 className="font-semibold">Vételi díjak</h3>
+      <h3 className="font-semibold">{t('fees.veteliDijak')}</h3>
       <div className="grid grid-cols-4 gap-4">
         <div>
-          <label htmlFor="buyFeeType" className="block text-sm font-medium mb-1">Típus</label>
+          <label htmlFor="buyFeeType" className="block text-sm font-medium mb-1">{t('cashier.receiptType')}</label>
           <select
             id="buyFeeType"
             value={formData.buyFeeType}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, buyFeeType: e.target.value })}
             className="w-full p-2 border rounded"
           >
-            <option value="FIXED">Fix összeg</option>
-            <option value="PERCENT">Százalék</option>
+            <option value="FIXED">{t('fees.fixOsszeg')}</option>
+            <option value="PERCENT">{t('fees.szazalek')}</option>
           </select>
         </div>
         <div>
           <label htmlFor="buyFeeValue" className="block text-sm font-medium mb-1">
-            Érték {formData.buyFeeType === 'PERCENT' ? '(%)' : '(Ft)'}
+            {formData.buyFeeType === 'PERCENT' ? t('fees.ertekSzazalek') : t('fees.ertekFt')}
           </label>
           <input
             id="buyFeeValue"
@@ -376,7 +379,7 @@ function FeePackageForm({
           />
         </div>
         <div>
-          <label htmlFor="buyFeeMin" className="block text-sm font-medium mb-1">Minimum (Ft)</label>
+          <label htmlFor="buyFeeMin" className="block text-sm font-medium mb-1">{t('fees.minimumFt')}</label>
           <input
             id="buyFeeMin"
             type="number"
@@ -387,7 +390,7 @@ function FeePackageForm({
           />
         </div>
         <div>
-          <label htmlFor="buyFeeMax" className="block text-sm font-medium mb-1">Maximum (Ft)</label>
+          <label htmlFor="buyFeeMax" className="block text-sm font-medium mb-1">{t('fees.maximumFt')}</label>
           <input
             id="buyFeeMax"
             type="number"
@@ -400,23 +403,23 @@ function FeePackageForm({
       </div>
 
       <hr className="my-4" />
-      <h3 className="font-semibold">Eladási díjak</h3>
+      <h3 className="font-semibold">{t('fees.eladasiDijak')}</h3>
       <div className="grid grid-cols-4 gap-4">
         <div>
-          <label htmlFor="sellFeeType" className="block text-sm font-medium mb-1">Típus</label>
+          <label htmlFor="sellFeeType" className="block text-sm font-medium mb-1">{t('cashier.receiptType')}</label>
           <select
             id="sellFeeType"
             value={formData.sellFeeType}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, sellFeeType: e.target.value })}
             className="w-full p-2 border rounded"
           >
-            <option value="FIXED">Fix összeg</option>
-            <option value="PERCENT">Százalék</option>
+            <option value="FIXED">{t('fees.fixOsszeg')}</option>
+            <option value="PERCENT">{t('fees.szazalek')}</option>
           </select>
         </div>
         <div>
           <label htmlFor="sellFeeValue" className="block text-sm font-medium mb-1">
-            Érték {formData.sellFeeType === 'PERCENT' ? '(%)' : '(Ft)'}
+            {formData.sellFeeType === 'PERCENT' ? t('fees.ertekSzazalek') : t('fees.ertekFt')}
           </label>
           <input
             id="sellFeeValue"
@@ -429,7 +432,7 @@ function FeePackageForm({
           />
         </div>
         <div>
-          <label htmlFor="sellFeeMin" className="block text-sm font-medium mb-1">Minimum (Ft)</label>
+          <label htmlFor="sellFeeMin" className="block text-sm font-medium mb-1">{t('fees.minimumFt')}</label>
           <input
             id="sellFeeMin"
             type="number"
@@ -440,7 +443,7 @@ function FeePackageForm({
           />
         </div>
         <div>
-          <label htmlFor="sellFeeMax" className="block text-sm font-medium mb-1">Maximum (Ft)</label>
+          <label htmlFor="sellFeeMax" className="block text-sm font-medium mb-1">{t('fees.maximumFt')}</label>
           <input
             id="sellFeeMax"
             type="number"
@@ -453,10 +456,10 @@ function FeePackageForm({
       </div>
 
       <hr className="my-4" />
-      <h3 className="font-semibold">Egyéb díjak</h3>
+      <h3 className="font-semibold">{t('fees.egyebDijak')}</h3>
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label htmlFor="handlingFee" className="block text-sm font-medium mb-1">Kezelési díj (Ft)</label>
+          <label htmlFor="handlingFee" className="block text-sm font-medium mb-1">{t('fees.kezelesiDijFt')}</label>
           <input
             id="handlingFee"
             type="number"
@@ -467,7 +470,7 @@ function FeePackageForm({
           />
         </div>
         <div>
-          <label htmlFor="expressFee" className="block text-sm font-medium mb-1">Expressz díj (Ft)</label>
+          <label htmlFor="expressFee" className="block text-sm font-medium mb-1">{t('fees.expresszDijFt')}</label>
           <input
             id="expressFee"
             type="number"
@@ -478,7 +481,7 @@ function FeePackageForm({
           />
         </div>
         <div>
-          <label htmlFor="offHoursSurcharge" className="block text-sm font-medium mb-1">Munkaidőn kívüli pótdíj (Ft)</label>
+          <label htmlFor="offHoursSurcharge" className="block text-sm font-medium mb-1">{t('fees.munkaidonKivuliPotdijFt')}</label>
           <input
             id="offHoursSurcharge"
             type="number"
@@ -498,7 +501,7 @@ function FeePackageForm({
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, isActive: e.target.checked })}
           className="h-4 w-4"
         />
-        <label htmlFor="isActive" className="text-sm font-medium">Aktív</label>
+        <label htmlFor="isActive" className="text-sm font-medium">{t('common.active')}</label>
       </div>
 
       <div className="flex justify-end gap-2">
@@ -507,7 +510,7 @@ function FeePackageForm({
           onClick={onCancel}
           className="px-4 py-2 border rounded hover:bg-gray-50"
         >
-          Mégse
+          {t('common.cancel')}
         </button>
         <button
           type="submit"

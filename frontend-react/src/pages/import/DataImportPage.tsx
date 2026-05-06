@@ -4,6 +4,7 @@ import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 interface DataImportItem {
   id: string | number
@@ -15,6 +16,7 @@ interface DataImportItem {
 }
 
 export default function DataImportPage() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<DataImportItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -52,7 +54,7 @@ export default function DataImportPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Upload className="h-6 w-6" />
-          Adatimport
+          {t('import.adatimport')}
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
@@ -85,18 +87,18 @@ export default function DataImportPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Tipus</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Fajlnev</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Allapot</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Rekordok</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Importalva</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('backup.tipus')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('import.fajlnev')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('backup.allapot')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('import.rekordok')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('import.importalva')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
               <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Nincs adat</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
             ) : filtered.map(item => (
               <tr key={item.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">{item.importType ?? '-'}</td>
@@ -111,7 +113,7 @@ export default function DataImportPage() {
       </div>
 
       <div className="text-sm text-gray-500">
-        Összesen: {filtered.length} / {items.length}
+        {t('audit.osszesen')}{filtered.length} / {items.length}
       </div>
     </div>
   )

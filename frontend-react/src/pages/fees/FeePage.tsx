@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { DollarSign, Plus } from 'lucide-react'
 import { feeApi, FeeType, FeeRate, FeeDiscount } from '../../services/api/index'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 export default function FeePage() {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<'types' | 'rates' | 'discounts'>('types')
   const [types, setTypes] = useState<FeeType[]>([])
   const [rates, setRates] = useState<FeeRate[]>([])
@@ -58,7 +60,7 @@ export default function FeePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold flex items-center gap-2"><DollarSign />Díjkezelés</h1>
+      <h1 className="text-xl font-bold flex items-center gap-2"><DollarSign />{t('fees.dijkezeles')}</h1>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
@@ -74,18 +76,18 @@ export default function FeePage() {
         ))}
       </div>
       <div className="flex justify-end">
-        <button type="button" onClick={() => { setFormData({}); setShowForm(true) }} className="form-button-primary"><Plus size={16} />Új</button>
+        <button type="button" onClick={() => { setFormData({}); setShowForm(true) }} className="form-button-primary"><Plus size={16} />{t('common.new')}</button>
       </div>
       {loading ? <div>Betöltés...</div> : (
         <div className="form-panel">
           {activeTab === 'types' && (
             <table className="data-grid w-full">
-              <thead><tr><th>Kód</th><th>Név</th><th>Számítás</th><th>Műveletek</th></tr></thead>
+              <thead><tr><th>{t('common.code')}</th><th>{t('common.name')}</th><th>{t('fees.szamitas')}</th><th>{t('common.actions')}</th></tr></thead>
               <tbody>
-                {types.map(t => (
-                  <tr key={t.id}>
-                    <td>{t.code}</td><td>{t.name}</td><td>{t.calculationMethod}</td>
-                    <td><button type="button" onClick={() => { setFormData(t); setShowForm(true) }} className="form-button text-xs">Szerkesztés</button></td>
+                {types.map(ft => (
+                  <tr key={ft.id}>
+                    <td>{ft.code}</td><td>{ft.name}</td><td>{ft.calculationMethod}</td>
+                    <td><button type="button" onClick={() => { setFormData(ft); setShowForm(true) }} className="form-button text-xs">{t('common.edit')}</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -93,12 +95,12 @@ export default function FeePage() {
           )}
           {activeTab === 'rates' && (
             <table className="data-grid w-full">
-              <thead><tr><th>Díjtípus</th><th>Valuta</th><th>Mérték</th><th>Műveletek</th></tr></thead>
+              <thead><tr><th>{t('fees.dijtipus')}</th><th>{t('common.currency')}</th><th>{t('fees.mertek')}</th><th>{t('common.actions')}</th></tr></thead>
               <tbody>
                 {rates.map(r => (
                   <tr key={r.id}>
                     <td>{r.feeTypeName}</td><td>{r.currencyCode}</td><td>{r.rate}</td>
-                    <td><button type="button" onClick={() => { setFormData(r); setShowForm(true) }} className="form-button text-xs">Szerkesztés</button></td>
+                    <td><button type="button" onClick={() => { setFormData(r); setShowForm(true) }} className="form-button text-xs">{t('common.edit')}</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -106,12 +108,12 @@ export default function FeePage() {
           )}
           {activeTab === 'discounts' && (
             <table className="data-grid w-full">
-              <thead><tr><th>Kód</th><th>Név</th><th>Típus</th><th>Érték</th><th>Műveletek</th></tr></thead>
+              <thead><tr><th>{t('common.code')}</th><th>{t('common.name')}</th><th>{t('common.type')}</th><th>{t('fees.ertek')}</th><th>{t('common.actions')}</th></tr></thead>
               <tbody>
                 {discounts.map(d => (
                   <tr key={d.id}>
                     <td>{d.code}</td><td>{d.name}</td><td>{d.discountType}</td><td>{d.discountValue}</td>
-                    <td><button type="button" onClick={() => { setFormData(d); setShowForm(true) }} className="form-button text-xs">Szerkesztés</button></td>
+                    <td><button type="button" onClick={() => { setFormData(d); setShowForm(true) }} className="form-button text-xs">{t('common.edit')}</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -126,13 +128,13 @@ export default function FeePage() {
             <div className="space-y-4">
               {activeTab === 'types' && (
                 <>
-                  <div><label className="form-label">Kód</label><input className="form-input" value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value})} /></div>
-                  <div><label className="form-label">Név</label><input className="form-input" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
+                  <div><label className="form-label">{t('common.code')}</label><input className="form-input" value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value})} /></div>
+                  <div><label className="form-label">{t('common.name')}</label><input className="form-input" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
                 </>
               )}
               <div className="flex gap-2">
-                <button type="button" onClick={() => setShowForm(false)} className="form-button">Mégse</button>
-                <button type="button" onClick={handleSave} className="form-button-primary">Mentés</button>
+                <button type="button" onClick={() => setShowForm(false)} className="form-button">{t('common.cancel')}</button>
+                <button type="button" onClick={handleSave} className="form-button-primary">{t('common.save')}</button>
               </div>
             </div>
           </div>

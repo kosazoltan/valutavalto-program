@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PrintReceiptData } from '@/types/receipt';
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 interface ReceiptPreviewModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export default function ReceiptPreviewModal({
   printLabel,
   allowPrint = true,
 }: ReceiptPreviewModalProps) {
+  const { t } = useTranslation()
   const [isPrinting, setIsPrinting] = useState(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -119,7 +121,8 @@ export default function ReceiptPreviewModal({
       <div className="relative w-full max-w-sm max-h-[90vh] rounded-2xl bg-white shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-xl font-bold text-gray-800">Bizonylat Előnézet</h2>
+          <h2 className="text-xl font-bold text-gray-800">{t('components.bizonylatElonezet2')}</h2>
+          {/* eslint-disable i18next/no-literal-string */}
           <button
             onClick={onClose}
             className="rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
@@ -127,6 +130,7 @@ export default function ReceiptPreviewModal({
           >
             ✕
           </button>
+          {/* eslint-enable i18next/no-literal-string */}
         </div>
 
         {/* Receipt content — 80mm thermal printer format */}
@@ -145,8 +149,8 @@ export default function ReceiptPreviewModal({
               <p className="text-lg font-bold">{company.name}</p>
               <p className="text-xs">{company.fullName}</p>
               <p className="text-xs">{company.address}</p>
-              <p className="text-xs">Adószám: {company.taxNumber}</p>
-              {company.regNumber && <p className="text-xs">Cégjegyzékszám: {company.regNumber}</p>}
+              <p className="text-xs">{t('components.adoszam')}{company.taxNumber}</p>
+              {company.regNumber && <p className="text-xs">{t('common.companyRegNumber')} {company.regNumber}</p>}
             </div>
 
             <div className="my-3 border-t-2 border-gray-400" />
@@ -161,16 +165,16 @@ export default function ReceiptPreviewModal({
             {/* Bizonylat adatok */}
             <div className="space-y-1">
               <p>
-                <span className="font-semibold">Bizonylat:</span> {receiptData.receiptNumber}
+                <span className="font-semibold">{t('components.bizonylat')}</span> {receiptData.receiptNumber}
               </p>
               <p>
-                <span className="font-semibold">Dátum:</span> {receiptData.date} {receiptData.time}
+                <span className="font-semibold">{t('components.datum')}</span> {receiptData.date} {receiptData.time}
               </p>
               <p>
-                <span className="font-semibold">Pénztár:</span> {receiptData.branchCode}
+                <span className="font-semibold">{t('components.penztar')}</span> {receiptData.branchCode}
               </p>
               <p>
-                <span className="font-semibold">Pénztáros:</span> {receiptData.cashierName}
+                <span className="font-semibold">{t('components.penztaros')}</span> {receiptData.cashierName}
               </p>
             </div>
 
@@ -183,53 +187,53 @@ export default function ReceiptPreviewModal({
                   {receiptData.type === 'sell' ? 'Deviza eladás:' : 'Deviza vásárlás:'}
                 </p>
                 <p>
-                  <span>Valutanem:</span> {receiptData.currencyCode ?? '—'}
+                  <span>{t('components.valutanem')}</span> {receiptData.currencyCode ?? '—'}
                 </p>
                 <p>
-                  <span>Összeg:</span> {formatAmount(receiptData.foreignAmount)}{' '}
+                  <span>{t('components.osszeg')}</span> {formatAmount(receiptData.foreignAmount)}{' '}
                   {receiptData.currencyCode ?? ''}
                 </p>
                 <p>
-                  <span>Árfolyam:</span> {formatRate(receiptData.rate)}
+                  <span>{t('components.arfolyam')}</span> {formatRate(receiptData.rate)}
                 </p>
 
                 <div className="my-2 border-t border-gray-400" />
 
                 <p className="text-sm font-bold">
-                  HUF összeg: {formatAmount(receiptData.hufAmount)} Ft
+                  {t('components.hufOsszeg')}{formatAmount(receiptData.hufAmount)} {t('common.ft')}
                 </p>
 
                 {receiptData.roundingDiff !== undefined && receiptData.roundingDiff !== 0 && (
                   <p className="text-sm">
-                    Kerekítés: {formatAmount(receiptData.roundingDiff)} Ft
+                    {t('components.kerekites')}{formatAmount(receiptData.roundingDiff)} {t('common.ft')}
                   </p>
                 )}
 
                 <p className="text-lg font-bold">
-                  FIZETENDŐ: {formatAmount(receiptData.roundedHufAmount ?? receiptData.hufAmount)}{' '}
-                  Ft
+                  {t('components.fizetendo')}{formatAmount(receiptData.roundedHufAmount ?? receiptData.hufAmount)}{' '}
+                  {t('components.ft')}
                 </p>
               </div>
             )}
 
             {receiptData.type === 'conversion' && (
               <div className="space-y-2">
-                <p className="font-semibold">KONVERZIÓ</p>
+                <p className="font-semibold">{t('components.konverzio')}</p>
                 <p>
-                  <span>Forrás:</span> {formatAmount(receiptData.sourceAmount)} {receiptData.sourceCurrencyCode ?? ''}
+                  <span>{t('components.forras')}</span> {formatAmount(receiptData.sourceAmount)} {receiptData.sourceCurrencyCode ?? ''}
                 </p>
                 <p>
-                  <span>Cél:</span> {formatAmount(receiptData.targetAmount)} {receiptData.targetCurrencyCode ?? ''}
+                  <span>{t('components.cel')}</span> {formatAmount(receiptData.targetAmount)} {receiptData.targetCurrencyCode ?? ''}
                 </p>
                 <p>
-                  <span>Köztes HUF:</span> {formatAmount(receiptData.hufAmount)} Ft
+                  <span>{t('components.koztesHuf')}</span> {formatAmount(receiptData.hufAmount)} {t('common.ft')}
                 </p>
                 <p>
-                  <span>Árfolyam:</span> {formatRate(receiptData.rate)}
+                  <span>{t('components.arfolyam')}</span> {formatRate(receiptData.rate)}
                 </p>
                 {receiptData.note && (
                   <p>
-                    <span className="font-semibold">Megjegyzés:</span> {receiptData.note}
+                    <span className="font-semibold">{t('components.megjegyzes')}</span> {receiptData.note}
                   </p>
                 )}
               </div>
@@ -238,34 +242,34 @@ export default function ReceiptPreviewModal({
             {/* Stornó specifikus adatok */}
             {receiptData.type === 'storno' && (
               <div className="space-y-2">
-                <p className="font-semibold text-red-700">STORNÓZOTT TRANZAKCIÓ</p>
+                <p className="font-semibold text-red-700">{t('components.stornozottTranzakcio')}</p>
 
                 {receiptData.originalReceiptNumber && (
                   <p>
-                    <span className="font-semibold">Eredeti bizonylat:</span>{' '}
+                    <span className="font-semibold">{t('components.eredetiBizonylat')}</span>{' '}
                     {receiptData.originalReceiptNumber}
                   </p>
                 )}
 
                 <p>
-                  <span>Valutanem:</span> {receiptData.currencyCode ?? '—'}
+                  <span>{t('components.valutanem')}</span> {receiptData.currencyCode ?? '—'}
                 </p>
                 <p>
-                  <span>Összeg:</span> {formatAmount(receiptData.foreignAmount)}{' '}
+                  <span>{t('components.osszeg')}</span> {formatAmount(receiptData.foreignAmount)}{' '}
                   {receiptData.currencyCode ?? ''}
                 </p>
                 <p>
-                  <span>Árfolyam:</span> {formatRate(receiptData.rate)}
+                  <span>{t('components.arfolyam')}</span> {formatRate(receiptData.rate)}
                 </p>
                 <p>
-                  <span className="font-semibold">HUF összeg:</span>{' '}
-                  {formatAmount(receiptData.roundedHufAmount ?? receiptData.hufAmount)} Ft
+                  <span className="font-semibold">{t('components.hufOsszeg')}</span>{' '}
+                  {formatAmount(receiptData.roundedHufAmount ?? receiptData.hufAmount)} {t('common.ft')}
                 </p>
 
                 {receiptData.stornoReason && (
                   <>
                     <div className="my-2 border-t border-gray-400" />
-                    <p className="font-semibold">Stornó oka:</p>
+                    <p className="font-semibold">{t('components.stornoOka')}</p>
                     <p className="text-[10px] italic">{receiptData.stornoReason}</p>
                   </>
                 )}
@@ -275,15 +279,15 @@ export default function ReceiptPreviewModal({
             {/* Átadás-átvétel */}
             {receiptData.type === 'transfer' && (
               <div className="space-y-2">
-                <p className="font-semibold">ÁTADÁS-ÁTVÉTEL</p>
+                <p className="font-semibold">{t('components.atadasAtvetel')}</p>
                 {receiptData.transferTarget && (
                   <p>
-                    <span className="font-semibold">Cél:</span> {receiptData.transferTarget}
+                    <span className="font-semibold">{t('components.cel')}</span> {receiptData.transferTarget}
                   </p>
                 )}
                 {receiptData.transferNote && (
                   <p>
-                    <span className="font-semibold">Megjegyzés:</span> {receiptData.transferNote}
+                    <span className="font-semibold">{t('components.megjegyzes')}</span> {receiptData.transferNote}
                   </p>
                 )}
               </div>
@@ -294,16 +298,16 @@ export default function ReceiptPreviewModal({
               <>
                 <div className="my-3 border-t border-gray-300" />
                 <div className="space-y-1">
-                  <p className="font-semibold">ÜGYFÉL ADATOK:</p>
-                  <p>Név: {receiptData.customerName}</p>
+                  <p className="font-semibold">{t('components.ugyfelAdatok')}</p>
+                  <p>{t('components.nev')}{receiptData.customerName}</p>
                   {receiptData.customerDocType && (
                     <p>Igazolv.: {receiptData.customerDocType}</p>
                   )}
                   {receiptData.customerDocNumber && (
-                    <p>Szám: {receiptData.customerDocNumber}</p>
+                    <p>{t('components.szam')}{receiptData.customerDocNumber}</p>
                   )}
                   {receiptData.customerAddress && (
-                    <p>Cím: {receiptData.customerAddress}</p>
+                    <p>{t('components.cim')}{receiptData.customerAddress}</p>
                   )}
                 </div>
               </>
@@ -328,7 +332,7 @@ export default function ReceiptPreviewModal({
                 <>
                   <div className="my-3 border-t border-gray-300" />
                   <div className="text-center">
-                    <p className="mb-2 font-semibold">QR KÓD:</p>
+                    <p className="mb-2 font-semibold">{t('components.qrKod')}</p>
                     <img
                       src={qrCodeDataUrl}
                       alt="Bizonylat QR kód"
@@ -344,7 +348,7 @@ export default function ReceiptPreviewModal({
             {/* Lábléc */}
             <div className="my-3 border-t-2 border-gray-400" />
             <div className="text-center text-xs text-gray-600">
-              <p>Köszönjük, hogy minket választott!</p>
+              <p>{t('components.koszonjukHogyMinketValasztott')}</p>
             </div>
           </div>
         </div>
@@ -364,7 +368,7 @@ export default function ReceiptPreviewModal({
             disabled={isPrinting}
             className="rounded-lg bg-gray-200 px-4 py-3 font-semibold text-gray-700 hover:bg-gray-300 disabled:cursor-not-allowed disabled:bg-gray-100"
           >
-            Mégse (ESC)
+            {t('components.megseEsc')}
           </button>
         </div>
       </div>

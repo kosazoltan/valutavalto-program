@@ -5,8 +5,10 @@ import { shipmentRequestApi, ShipmentRequest } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 export default function ShipmentListPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const worker = useAuthStore((state) => state.worker)
   const branchId = worker?.branchId || ''
@@ -99,14 +101,14 @@ export default function ShipmentListPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Package />
-          Átadás-átvétel (szállítmányigények)
+          {t('shipments.atadasAtvetelSzallitmanyigenyek')}
         </h1>
         <Link
           to="/shipments/new"
           className="form-button-primary flex items-center gap-2"
         >
           <Plus size={16} />
-          Új szállítmányigény
+          {t('shipments.ujSzallitmanyigeny')}
         </Link>
       </div>
 
@@ -114,19 +116,19 @@ export default function ShipmentListPage() {
       <div className="form-panel">
         <div className="flex gap-3 items-end">
           <div>
-            <label className="form-label">Státusz</label>
+            <label className="form-label">{t('common.status')}</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="form-input"
             >
-              <option value="">Mind</option>
-              <option value="DRAFT">Vázlat</option>
-              <option value="SUBMITTED">Kérve</option>
-              <option value="APPROVED">Jóváhagyva</option>
-              <option value="IN_TRANSIT">Úton</option>
-              <option value="DELIVERED">Kézbesítve</option>
-              <option value="CANCELLED">Megszakítva</option>
+              <option value="">{t('common.all')}</option>
+              <option value="DRAFT">{t('shipments.vazlat')}</option>
+              <option value="SUBMITTED">{t('shipments.kerve')}</option>
+              <option value="APPROVED">{t('shipments.jovahagyva')}</option>
+              <option value="IN_TRANSIT">{t('shipments.uton')}</option>
+              <option value="DELIVERED">{t('shipments.kezbesitve')}</option>
+              <option value="CANCELLED">{t('shipments.megszakitva')}</option>
             </select>
           </div>
           <button
@@ -134,7 +136,7 @@ export default function ShipmentListPage() {
             className="form-button"
             disabled={loading}
           >
-            Frissítés
+            {t('common.refresh')}
           </button>
         </div>
       </div>
@@ -154,20 +156,20 @@ export default function ShipmentListPage() {
         </div>
       ) : shipments.length === 0 ? (
         <div className="form-panel text-center py-8 text-gray-500">
-          Nincsenek szállítmányigények
+          {t('shipments.nincsenekSzallitmanyigenyek')}
         </div>
       ) : (
         <div className="form-panel p-0">
           <table className="data-grid w-full">
             <thead>
               <tr>
-                <th>Igény szám</th>
-                <th>Kérő fiók</th>
-                <th>Cél fiók</th>
-                <th>Kézbesítési dátum</th>
-                <th>Státusz</th>
-                <th>Kérve</th>
-                <th className="w-32">Műveletek</th>
+                <th>{t('shipments.igenySzam')}</th>
+                <th>{t('shipments.keroFiok')}</th>
+                <th>{t('shipments.celFiok')}</th>
+                <th>{t('shipments.kezbesitesiDatum')}</th>
+                <th>{t('common.status')}</th>
+                <th>{t('shipments.kerve')}</th>
+                <th className="w-32">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>

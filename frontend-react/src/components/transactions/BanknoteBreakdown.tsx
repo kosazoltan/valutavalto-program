@@ -3,6 +3,7 @@ import { Banknote, Plus, AlertCircle, Loader2 } from 'lucide-react'
 import { transactionBanknoteApi, TransactionBanknote, TransactionBanknoteCreateRequest } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../ui/toaster'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   transactionId: number
@@ -20,6 +21,7 @@ const COMMON_DENOMINATIONS: Record<string, number[]> = {
 }
 
 export default function BanknoteBreakdown({ transactionId, currencyCode, direction, readOnly }: Props) {
+  const { t } = useTranslation()
   const [banknotes, setBanknotes] = useState<TransactionBanknote[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -68,7 +70,7 @@ export default function BanknoteBreakdown({ transactionId, currencyCode, directi
     <div className="border rounded p-3 bg-gray-50">
       <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
         <Banknote size={14} />
-        Címletezés ({direction === 'IN' ? 'Beérkező' : 'Kiadandó'})
+        {t('components.cimletezes')}{direction === 'IN' ? 'Beérkező' : 'Kiadandó'})
       </h3>
 
       {error && (
@@ -87,22 +89,22 @@ export default function BanknoteBreakdown({ transactionId, currencyCode, directi
             <table className="w-full text-sm mb-2">
               <thead>
                 <tr className="text-left text-gray-500 text-xs">
-                  <th className="pb-1">Névérték</th>
-                  <th className="pb-1">Darab</th>
-                  <th className="pb-1 text-right">Összeg</th>
+                  <th className="pb-1">{t('components.nevertek')}</th>
+                  <th className="pb-1">{t('components.darab')}</th>
+                  <th className="pb-1 text-right">{t('common.amount')}</th>
                 </tr>
               </thead>
               <tbody>
                 {banknotes.map(b => (
                   <tr key={b.id} className="border-t border-gray-200">
                     <td className="py-1 font-mono">{b.faceValue.toLocaleString('hu-HU')} {currencyCode}</td>
-                    <td className="py-1">{b.quantity} db</td>
+                    <td className="py-1">{b.quantity} {t('components.db')}</td>
                     <td className="py-1 text-right font-mono">{b.totalValue.toLocaleString('hu-HU')} {currencyCode}</td>
                   </tr>
                 ))}
                 <tr className="border-t-2 border-gray-400 font-semibold">
-                  <td className="pt-1">Összesen</td>
-                  <td className="pt-1">{totalPieces} db</td>
+                  <td className="pt-1">{t('common.total')}</td>
+                  <td className="pt-1">{totalPieces} {t('components.db')}</td>
                   <td className="pt-1 text-right font-mono">{total.toLocaleString('hu-HU')} {currencyCode}</td>
                 </tr>
               </tbody>
@@ -112,7 +114,7 @@ export default function BanknoteBreakdown({ transactionId, currencyCode, directi
           {!readOnly && (
             <div className="flex gap-2 items-end">
               <div>
-                <label className="text-xs text-gray-500">Névérték</label>
+                <label className="text-xs text-gray-500">{t('components.nevertek')}</label>
                 {denominations.length > 0 ? (
                   <select
                     value={newRow.faceValue}
@@ -135,7 +137,7 @@ export default function BanknoteBreakdown({ transactionId, currencyCode, directi
                 )}
               </div>
               <div>
-                <label className="text-xs text-gray-500">Darab</label>
+                <label className="text-xs text-gray-500">{t('components.darab')}</label>
                 <input
                   type="number"
                   min={1}
@@ -145,7 +147,7 @@ export default function BanknoteBreakdown({ transactionId, currencyCode, directi
                 />
               </div>
               <button onClick={handleAdd} className="form-button flex items-center gap-1 text-sm">
-                <Plus size={12} /> Hozzáad
+                <Plus size={12} />{t('components.hozzaad')}
               </button>
             </div>
           )}

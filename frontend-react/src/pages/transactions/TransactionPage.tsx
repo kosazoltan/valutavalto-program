@@ -24,8 +24,10 @@ import CurrencySelector from './components/CurrencySelector'
 import CurrencySearchInput from './components/CurrencySearchInput'
 import CustomerPanel from './components/LegacyCustomerPanel'
 import type { Customer } from './components/LegacyCustomerPanel'
+import { useTranslation } from 'react-i18next'
 
 export default function TransactionPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { currencyRates, electronQueueAvailable } = useTransactionRates()
 
@@ -271,11 +273,11 @@ export default function TransactionPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <ArrowLeftRight />
-          Új tranzakció
+          {t('misc.ujTranzakcio')}
         </h1>
         <div className="flex gap-2">
           <button onClick={() => navigate('/transactions')} className="form-button flex items-center gap-1" title="Mégsem (Esc)">
-            <X size={16} /> Mégsem
+            <X size={16} />{t('common.cancel')}
           </button>
           <button
             onClick={handleSaveAndPrint}
@@ -302,7 +304,7 @@ export default function TransactionPage() {
         <div className="form-panel">
           <h2 className="font-semibold mb-2 pb-1 border-b flex items-center gap-2">
             <Calculator size={18} />
-            Tranzakció adatok
+            {t('transactions.tranzakcioAdatok')}
           </h2>
 
           {/* Transaction type toggle */}
@@ -315,8 +317,8 @@ export default function TransactionPage() {
                 transactionType === 'BUY' ? 'bg-green-600 text-white border-green-700' : 'bg-gray-100 border-form-border hover:bg-gray-200'
               }`}
             >
-              VÉTEL
-              <div className="text-xs font-normal">(Ügyfél elad {selectedCurrency?.code || 'devizát'})</div>
+              {t('transactions.vetel')}
+              <div className="text-xs font-normal">{t('transactions.ugyfelElad')}{selectedCurrency?.code || 'devizát'})</div>
             </button>
             <button
               onClick={() => setTransactionType('SELL')}
@@ -326,8 +328,8 @@ export default function TransactionPage() {
                 transactionType === 'SELL' ? 'bg-blue-600 text-white border-blue-700' : 'bg-gray-100 border-form-border hover:bg-gray-200'
               }`}
             >
-              ELADÁS
-              <div className="text-xs font-normal">(Ügyfél vesz {selectedCurrency?.code || 'devizát'})</div>
+              {t('transactions.eladas')}
+              <div className="text-xs font-normal">{t('transactions.ugyfelVesz')}{selectedCurrency?.code || 'devizát'})</div>
             </button>
           </div>
 
@@ -339,17 +341,17 @@ export default function TransactionPage() {
 
           {/* Current rate display */}
           <div className="form-group-box pt-4 mb-3">
-            <span className="form-group-box-title">Alkalmazott árfolyam</span>
+            <span className="form-group-box-title">{t('transactions.alkalmazottArfolyam')}</span>
             <div className="text-center">
               <span className="text-3xl font-bold font-mono text-primary">{formatDecimal(currentRate, 2, 2)}</span>
-              <span className="ml-2 text-gray-500">HUF / 1 {selectedCurrency?.code || ''}</span>
+              <span className="ml-2 text-gray-500">{t('transactions.huf1')}{selectedCurrency?.code || ''}</span>
             </div>
           </div>
 
           {/* Amount inputs */}
           <div className="space-y-3">
             <div className="form-group-box pt-4">
-              <span className="form-group-box-title">{selectedCurrency?.code || 'Deviza'} összeg</span>
+              <span className="form-group-box-title">{selectedCurrency?.code || 'Deviza'} {t('transactions.osszeg')}</span>
               <NumberInput
                 ref={foreignAmountRef}
                 value={foreignAmount}
@@ -368,7 +370,7 @@ export default function TransactionPage() {
               <ArrowLeftRight size={24} className="mx-auto" />
             </div>
             <div className="form-group-box pt-4">
-              <span className="form-group-box-title">HUF összeg</span>
+              <span className="form-group-box-title">{t('stornos.hufOsszeg')}</span>
               <NumberInput
                 ref={hufAmountRef}
                 value={hufAmount}
@@ -405,8 +407,8 @@ export default function TransactionPage() {
             <div className="mt-2 p-2 rounded bg-red-100 border border-red-300 text-red-800 text-sm flex items-start gap-2">
               <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
               <div>
-                <strong>Források igazolása szükséges!</strong>
-                <div className="text-xs mt-1">3.500.000 Ft feletti tranzakció</div>
+                <strong>{t('transactions.forrasokIgazolasaSzukseges')}</strong>
+                <div className="text-xs mt-1">{t('transactions.3500000FtFelettiTranzakcio')}</div>
               </div>
             </div>
           )}
@@ -440,14 +442,14 @@ export default function TransactionPage() {
 
       {/* Keyboard shortcuts help */}
       <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded border">
-        <div className="font-semibold mb-1">Billentyűzet használat:</div>
+        <div className="font-semibold mb-1">{t('transactions.billentyuzetHasznalat')}</div>
         <div className="grid grid-cols-3 gap-2">
-          <div>Esc - Mégsem</div>
-          <div>1-8 - Deviza választás</div>
-          <div>↑↓ - Deviza navigáció</div>
-          <div>Enter - Következő mező</div>
-          <div>Enter (gombról) - Művelet végrehajtás</div>
-          <div>Tab - Mezők közötti lépés</div>
+          <div>{t('transactions.escMegsem')}</div>
+          <div>{t('transactions.18DevizaValasztas')}</div>
+          <div>{t('transactions.DevizaNavigacio')}</div>
+          <div>{t('transactions.enterKovetkezoMezo')}</div>
+          <div>{t('transactions.enterGombrolMuveletVegrehajtas')}</div>
+          <div>{t('transactions.tabMezokKozottiLepes')}</div>
         </div>
       </div>
     </div>

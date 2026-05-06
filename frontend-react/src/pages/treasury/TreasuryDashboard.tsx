@@ -15,6 +15,7 @@ import { formatInteger, formatMillions } from './treasuryUtils'
 import { DashboardSkeleton } from './LoadingSkeleton'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 interface BranchRanking {
   id: string
@@ -33,6 +34,7 @@ interface BranchClosing {
 }
 
 export default function TreasuryDashboard() {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [turnover, setTurnover] = useState<DailyTurnoverSummary | null>(null)
   const [balances, setBalances] = useState<CashBalance[]>([])
@@ -144,15 +146,15 @@ export default function TreasuryDashboard() {
       {/* Page header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-lg font-bold text-secondary-900">Értéktári Dashboard</h1>
+          <h1 className="text-lg font-bold text-secondary-900">{t('treasury.ertektariDashboard')}</h1>
           <p className="text-sm text-secondary-500 mt-1">
-            Összesített készlet, forgalom, irodai rangsor
+            {t('treasury.osszesitettKeszletForgalomIrodaiRangsor')}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={() => void fetchData()} className="form-button h-8 text-xs">
             <RefreshCw size={14} />
-            <span>Frissítés</span>
+            <span>{t('common.refresh')}</span>
           </button>
           <span className="text-xs text-secondary-400">
             {lastRefresh.toLocaleTimeString('hu-HU')}
@@ -168,10 +170,10 @@ export default function TreasuryDashboard() {
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-start gap-2">
           <Lock size={18} className="text-amber-600 shrink-0 mt-0.5" />
           <div className="text-sm">
-            <p className="font-semibold text-amber-900">Korlátozott jogosultság</p>
+            <p className="font-semibold text-amber-900">{t('treasury.korlatozottJogosultsag')}</p>
             <p className="text-xs text-amber-800">
-              Az összesített készlet és TOP-irodák lekérdezéséhez MANAGER vagy ADMIN
-              szerepkör szükséges. A napi forgalom és tranzakció-adatok elérhetők.
+              {t('treasury.azOsszesitettKeszletEsTopIrodakLekerdezesehezManagerVagyAdmin')}
+              {t('treasury.szerepkorSzuksegesANapiForgalomEsTranzakcioAdatokElerhetok')}
             </p>
           </div>
         </div>
@@ -201,10 +203,10 @@ export default function TreasuryDashboard() {
         <div className="form-panel">
           <h2 className="text-base font-bold text-secondary-900 mb-3 flex items-center gap-2">
             <Trophy size={18} className="text-accent-600" />
-            TOP Irodák (készlet érték)
+            {t('treasury.topIrodakKeszletErtek')}
           </h2>
           {topBranches.length === 0 ? (
-            <p className="text-sm text-secondary-400">Nincs adat</p>
+            <p className="text-sm text-secondary-400">{t('common.noData')}</p>
           ) : (
             <table className="w-full text-sm">
               <tbody>
@@ -229,7 +231,7 @@ export default function TreasuryDashboard() {
         <div className="form-panel">
           <h2 className="text-base font-bold text-secondary-900 mb-3 flex items-center gap-2">
             <CheckCircle size={18} className="text-success-600" />
-            Zárási állapot (ma)
+            {t('treasury.zarasiAllapotMa')}
           </h2>
           <div className="flex flex-wrap gap-1.5 mb-3">
             {closingStatuses.map((branch) => (
@@ -250,14 +252,14 @@ export default function TreasuryDashboard() {
               </div>
             ))}
             {closingStatuses.length === 0 && (
-              <p className="text-sm text-secondary-400">Nincs iroda adat</p>
+              <p className="text-sm text-secondary-400">{t('treasury.nincsIrodaAdat')}</p>
             )}
           </div>
           {closingStatuses.length > 0 && (
             <div className="text-xs text-secondary-600">
-              <strong>{closedCount}/{closingStatuses.length}</strong> zárva
-              {inProgressCount > 0 && <>, <strong>{inProgressCount}</strong> folyamatban</>}
-              {notClosedCount > 0 && <>, <strong>{notClosedCount}</strong> hiányzik</>}
+              <strong>{closedCount}/{closingStatuses.length}</strong>{t('treasury.zarva')}
+              {inProgressCount > 0 && <>, <strong>{inProgressCount}</strong> {t('treasury.folyamatban')}</>}
+              {notClosedCount > 0 && <>, <strong>{notClosedCount}</strong> {t('treasury.hianyzik')}</>}
             </div>
           )}
         </div>

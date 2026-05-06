@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Landmark, Calendar, RefreshCw } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 interface BankTurnover {
   companyCode: string
@@ -13,6 +14,7 @@ interface BankTurnover {
 }
 
 export default function BankTurnoverPage() {
+  const { t } = useTranslation()
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [data, setData] = useState<BankTurnover[]>([])
   const [loading, setLoading] = useState(false)
@@ -44,7 +46,7 @@ export default function BankTurnoverPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Landmark className="h-5 w-5 text-green-600" />
-          <h2 className="text-xl font-semibold">Bankforgalom összesítő</h2>
+          <h2 className="text-xl font-semibold">{t('treasury.bankforgalomOsszesito')}</h2>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -69,7 +71,7 @@ export default function BankTurnoverPage() {
       {error && (
         <div className="rounded border border-red-300 bg-red-50 p-4 text-sm text-red-700">
           {error}
-          <button onClick={fetchData} className="ml-3 underline">Újra</button>
+          <button onClick={fetchData} className="ml-3 underline">{t('treasury.ujra')}</button>
         </div>
       )}
 
@@ -79,10 +81,10 @@ export default function BankTurnoverPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50 text-left">
-                <th className="px-3 py-2">Valutanem</th>
-                <th className="px-3 py-2 text-right">Felvett (KP)</th>
-                <th className="px-3 py-2 text-right">Kifizetett (KP)</th>
-                <th className="px-3 py-2 text-right">Netto</th>
+                <th className="px-3 py-2">{t('treasury.valutanem')}</th>
+                <th className="px-3 py-2 text-right">{t('treasury.felvettKp')}</th>
+                <th className="px-3 py-2 text-right">{t('treasury.kifizetettKp')}</th>
+                <th className="px-3 py-2 text-right">{t('treasury.netto')}</th>
               </tr>
             </thead>
             <tbody>
@@ -104,7 +106,7 @@ export default function BankTurnoverPage() {
       )}
 
       {!loading && data.length === 0 && (
-        <p className="py-8 text-center text-gray-400">Nincs bankforgalom a kiválasztott napra.</p>
+        <p className="py-8 text-center text-gray-400">{t('treasury.nincsBankforgalomAKivalasztottNapra')}</p>
       )}
 
       {loading && (

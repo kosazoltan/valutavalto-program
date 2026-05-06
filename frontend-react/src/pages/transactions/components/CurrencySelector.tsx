@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { formatDecimal } from '../../../utils/numberFormat'
 import type { CurrencyRate } from '../hooks/useTransactionRates'
+import { useTranslation } from 'react-i18next'
 
 interface CurrencySelectorProps {
   currencyRates: CurrencyRate[]
@@ -13,6 +14,7 @@ export default function CurrencySelector({
   selectedCurrency,
   onSelect,
 }: CurrencySelectorProps) {
+  const { t } = useTranslation()
   const currencyListRef = useRef<HTMLDivElement>(null)
   const selectedIndexRef = useRef(0)
 
@@ -44,7 +46,7 @@ export default function CurrencySelector({
 
   return (
     <div className="form-panel">
-      <h2 className="font-semibold mb-2 pb-1 border-b">Deviza választás</h2>
+      <h2 className="font-semibold mb-2 pb-1 border-b">{t('transactions.devizaValasztas')}</h2>
       <div
         ref={currencyListRef}
         className="space-y-1 max-h-[400px] overflow-auto focus:outline-none focus:ring-2 focus:ring-primary rounded"
@@ -79,16 +81,16 @@ export default function CurrencySelector({
                 </span>
               </div>
               <div className="text-right text-sm font-mono">
-                <div>V: {formatDecimal(currency.buyRate, 2, 2)}</div>
-                <div>E: {formatDecimal(currency.sellRate, 2, 2)}</div>
+                <div>{t('transactions.v')}{formatDecimal(currency.buyRate, 2, 2)}</div>
+                <div>{t('transactions.e')}{formatDecimal(currency.sellRate, 2, 2)}</div>
               </div>
             </div>
           </button>
         ))}
       </div>
       <div className="mt-2 text-xs text-gray-500">
-        <div>Navigáció: Nyilak ↑↓</div>
-        <div>Választás: Enter</div>
+        <div>{t('transactions.navigacioNyilak')}</div>
+        <div>{t('transactions.valasztasEnter')}</div>
       </div>
     </div>
   )

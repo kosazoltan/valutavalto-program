@@ -13,8 +13,10 @@ import {
   type LocalPendingHandoverOperation,
 } from '../../utils/localQueue'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 export default function HandoverSheetPage() {
+  const { t } = useTranslation()
   const electronQueueAvailable = isElectronQueueAvailable()
   const [sheets, setSheets] = useState<HandoverSheet[]>([])
   const [cashDesks, setCashDesks] = useState<CashDesk[]>([])
@@ -194,11 +196,11 @@ export default function HandoverSheetPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <FileText />
-          Átadó Lapok
+          {t('handover.atadoLapok')}
         </h1>
         <button type="button" onClick={() => setShowForm(true)} className="form-button-primary flex items-center gap-2">
           <Plus size={16} />
-          Új átadó lap
+          {t('handover.ujAtadoLap')}
         </button>
       </div>
 
@@ -210,7 +212,7 @@ export default function HandoverSheetPage() {
 
       <div className="form-panel">
         <div>
-          <label className="form-label">Keresés</label>
+          <label className="form-label">{t('common.search')}</label>
           <div className="relative">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input type="text" className="form-input pl-8" placeholder="Lapszám..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -222,31 +224,31 @@ export default function HandoverSheetPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 w-full max-w-2xl">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold">Új átadó lap</h2>
+              <h2 className="text-lg font-bold">{t('handover.ujAtadoLap')}</h2>
               <button type="button" onClick={() => setShowForm(false)} className="text-gray-500">X</button>
             </div>
             <div className="space-y-4">
               <div>
-                <label htmlFor="fromCashDesk" className="form-label">Küldő pénztár</label>
+                <label htmlFor="fromCashDesk" className="form-label">{t('handover.kuldoPenztar')}</label>
                 <select id="fromCashDesk" title="Küldő pénztár kiválasztása" className="form-input" value={formData.fromCashDeskId} onChange={(e) => setFormData({ ...formData, fromCashDeskId: e.target.value })}>
                   <option value="">Válasszon...</option>
                   {cashDesks.map(cd => <option key={cd.id} value={cd.id}>{cd.name}</option>)}
                 </select>
               </div>
               <div>
-                <label htmlFor="toCashDesk" className="form-label">Fogadó pénztár</label>
+                <label htmlFor="toCashDesk" className="form-label">{t('handover.fogadoPenztar')}</label>
                 <select id="toCashDesk" title="Fogadó pénztár kiválasztása" className="form-input" value={formData.toCashDeskId} onChange={(e) => setFormData({ ...formData, toCashDeskId: e.target.value })}>
                   <option value="">Válasszon...</option>
                   {cashDesks.map(cd => <option key={cd.id} value={cd.id}>{cd.name}</option>)}
                 </select>
               </div>
               <div>
-                <label htmlFor="transferDate" className="form-label">Átadás dátuma</label>
+                <label htmlFor="transferDate" className="form-label">{t('handover.atadasDatuma')}</label>
                 <input id="transferDate" type="date" className="form-input" placeholder="éééé-hh-nn" value={formData.transferDate} onChange={(e) => setFormData({ ...formData, transferDate: e.target.value })} />
               </div>
               <div className="flex justify-end gap-2 pt-4 border-t">
-                <button type="button" onClick={() => setShowForm(false)} className="form-button">Mégse</button>
-                <button type="button" onClick={handleGenerate} className="form-button-primary">Generálás</button>
+                <button type="button" onClick={() => setShowForm(false)} className="form-button">{t('common.cancel')}</button>
+                <button type="button" onClick={handleGenerate} className="form-button-primary">{t('darius.generalas')}</button>
               </div>
             </div>
           </div>
@@ -256,16 +258,16 @@ export default function HandoverSheetPage() {
       <div className="form-panel">
         {localPendingOperations.length > 0 && (
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            {localPendingOperations.length} helyi handover művelet vár még szerveres visszaigazolásra.
+            {localPendingOperations.length} {t('handover.helyiHandoverMuveletVar')}
           </div>
         )}
         <table className="data-grid w-full">
           <thead>
-            <tr><th>Lapszám</th><th>Küldő</th><th>Fogadó</th><th>Dátum</th><th>Státusz</th><th>Műveletek</th></tr>
+            <tr><th>{t('handover.lapszam')}</th><th>{t('handover.kuldo')}</th><th>{t('handover.fogado')}</th><th>{t('common.date')}</th><th>{t('common.status')}</th><th>{t('common.actions')}</th></tr>
           </thead>
           <tbody>
             {filteredSheets.length === 0 ? (
-              <tr><td colSpan={6} className="text-center text-gray-500 py-4">Nincs találat</td></tr>
+              <tr><td colSpan={6} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
             ) : (
               filteredSheets.map((s) => (
                 <tr key={s.id}>
@@ -276,8 +278,8 @@ export default function HandoverSheetPage() {
                   <td><span className={`badge ${s.status === 'COMPLETED' ? 'badge-green' : s.status === 'PENDING_SYNC' ? 'badge-yellow' : 'badge-yellow'}`}>{s.status === 'PENDING_SYNC' ? 'HELYBEN MENTVE' : s.status}</span></td>
                   <td>
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => handlePrint(s.id)} disabled={s.status === 'PENDING_SYNC'} className="form-button text-xs disabled:opacity-50"><Printer size={12} />Nyomtatás</button>
-                      {s.status !== 'COMPLETED' && <button type="button" onClick={() => handleComplete(s.id)} disabled={s.status === 'PENDING_SYNC'} className="form-button text-xs disabled:opacity-50"><CheckCircle size={12} />Befejezés</button>}
+                      <button type="button" onClick={() => handlePrint(s.id)} disabled={s.status === 'PENDING_SYNC'} className="form-button text-xs disabled:opacity-50"><Printer size={12} />{t('common.print')}</button>
+                      {s.status !== 'COMPLETED' && <button type="button" onClick={() => handleComplete(s.id)} disabled={s.status === 'PENDING_SYNC'} className="form-button text-xs disabled:opacity-50"><CheckCircle size={12} />{t('archiving.befejezes')}</button>}
                     </div>
                   </td>
                 </tr>

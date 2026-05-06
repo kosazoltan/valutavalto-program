@@ -5,8 +5,10 @@ import { authorizedRepresentativeApi, AuthorizedRepresentative } from '../../ser
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import AuthorizationSection from '../../components/representatives/AuthorizationSection'
+import { useTranslation } from 'react-i18next'
 
 export default function RepresentativeDetailPage() {
+  const { t } = useTranslation()
   const { customerId, representativeId } = useParams<{ customerId: string; representativeId: string }>()
   const [rep, setRep] = useState<AuthorizedRepresentative | null>(null)
   const [loading, setLoading] = useState(true)
@@ -44,7 +46,7 @@ export default function RepresentativeDetailPage() {
         <AlertCircle className="inline mr-2" size={16} />
         {error || 'Meghatalmazott nem található'}
         <div className="mt-4">
-          <Link to={`/customers/${customerId}/representatives`} className="form-button">Vissza</Link>
+          <Link to={`/customers/${customerId}/representatives`} className="form-button">{t('common.back')}</Link>
         </div>
       </div>
     )
@@ -78,57 +80,57 @@ export default function RepresentativeDetailPage() {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="form-panel">
-          <h2 className="section-title flex items-center gap-2"><User size={16} /> Személyes adatok</h2>
+          <h2 className="section-title flex items-center gap-2"><User size={16} />{t('representatives.szemelyesAdatok')}</h2>
           <dl className="space-y-2">
             <div className="flex justify-between">
-              <dt className="text-gray-500 text-sm">Teljes név</dt>
+              <dt className="text-gray-500 text-sm">{t('representatives.teljesNev')}</dt>
               <dd className="font-semibold">{rep.fullName}</dd>
             </div>
             {rep.birthDate && (
               <div className="flex justify-between">
-                <dt className="text-gray-500 text-sm">Születési dátum</dt>
+                <dt className="text-gray-500 text-sm">{t('common.birthDate')}</dt>
                 <dd>{new Date(rep.birthDate).toLocaleDateString('hu-HU')}</dd>
               </div>
             )}
             {rep.birthPlace && (
               <div className="flex justify-between">
-                <dt className="text-gray-500 text-sm">Születési hely</dt>
+                <dt className="text-gray-500 text-sm">{t('common.birthPlace')}</dt>
                 <dd>{rep.birthPlace}</dd>
               </div>
             )}
             {rep.nationalityDid && (
               <div className="flex justify-between">
-                <dt className="text-gray-500 text-sm">Állampolgárság</dt>
+                <dt className="text-gray-500 text-sm">{t('common.nationality')}</dt>
                 <dd>{rep.nationalityDid}</dd>
               </div>
             )}
             {rep.address && (
               <div className="flex justify-between">
-                <dt className="text-gray-500 text-sm">Cím</dt>
+                <dt className="text-gray-500 text-sm">{t('common.address')}</dt>
                 <dd>{rep.address}</dd>
               </div>
             )}
             {rep.phone && (
               <div className="flex justify-between">
-                <dt className="text-gray-500 text-sm">Telefon</dt>
+                <dt className="text-gray-500 text-sm">{t('common.phone')}</dt>
                 <dd className="font-mono">{rep.phone}</dd>
               </div>
             )}
             {rep.email && (
               <div className="flex justify-between">
-                <dt className="text-gray-500 text-sm">E-mail</dt>
+                <dt className="text-gray-500 text-sm">{t('customers.eMail')}</dt>
                 <dd>{rep.email}</dd>
               </div>
             )}
             {rep.relationshipDid && (
               <div className="flex justify-between">
-                <dt className="text-gray-500 text-sm">Kapcsolat</dt>
+                <dt className="text-gray-500 text-sm">{t('display.kapcsolat')}</dt>
                 <dd>{rep.relationshipDid}</dd>
               </div>
             )}
             {rep.representativeTypeDid && (
               <div className="flex justify-between">
-                <dt className="text-gray-500 text-sm">Típus</dt>
+                <dt className="text-gray-500 text-sm">{t('common.type')}</dt>
                 <dd>{rep.representativeTypeDid}</dd>
               </div>
             )}
@@ -136,30 +138,30 @@ export default function RepresentativeDetailPage() {
         </div>
 
         <div className="form-panel">
-          <h2 className="section-title flex items-center gap-2"><FileText size={16} /> Okmány adatok</h2>
+          <h2 className="section-title flex items-center gap-2"><FileText size={16} />{t('customers.okmanyAdatok')}</h2>
           <dl className="space-y-2">
             <div className="flex justify-between">
-              <dt className="text-gray-500 text-sm">Okmány típus</dt>
+              <dt className="text-gray-500 text-sm">{t('customers.okmanyTipus')}</dt>
               <dd>{rep.documentTypeDid || '-'}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500 text-sm">Okmányszám</dt>
+              <dt className="text-gray-500 text-sm">{t('common.documentNumber')}</dt>
               <dd className="font-mono font-semibold">{rep.documentNumber || '-'}</dd>
             </div>
             {rep.documentValidFrom && (
               <div className="flex justify-between">
-                <dt className="text-gray-500 text-sm">Érvényes -tól</dt>
+                <dt className="text-gray-500 text-sm">{t('representatives.ervenyesTol')}</dt>
                 <dd>{new Date(rep.documentValidFrom).toLocaleDateString('hu-HU')}</dd>
               </div>
             )}
             {rep.documentValidTo && (
               <div className="flex justify-between">
-                <dt className="text-gray-500 text-sm">Érvényes -ig</dt>
+                <dt className="text-gray-500 text-sm">{t('representatives.ervenyesIg')}</dt>
                 <dd>{new Date(rep.documentValidTo).toLocaleDateString('hu-HU')}</dd>
               </div>
             )}
             <div className="flex justify-between">
-              <dt className="text-gray-500 text-sm">Regisztrálva</dt>
+              <dt className="text-gray-500 text-sm">{t('representatives.regisztralva')}</dt>
               <dd>{rep.registeredAt ? new Date(rep.registeredAt).toLocaleString('hu-HU') : '-'}</dd>
             </div>
           </dl>

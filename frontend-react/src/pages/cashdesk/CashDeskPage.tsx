@@ -6,6 +6,7 @@ import { cashBalanceApi, dailySessionApi } from '../../services/api/index'
 import type { CashBalance, DailySession } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 interface CashDeskBalanceItem {
   currencyId: number
@@ -44,6 +45,7 @@ function formatOpenedAtTimestamp(raw: string | null | undefined): string {
 }
 
 export default function CashDeskPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [status, setStatus] = useState<CashDeskStatus>({
     isOpen: false,
@@ -138,7 +140,7 @@ export default function CashDeskPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Vault />
-          Pénztár
+          {t('branch.branch')}
         </h1>
         <div className="flex gap-2">
           <button
@@ -146,17 +148,17 @@ export default function CashDeskPage() {
             className="form-button-primary flex items-center gap-1"
           >
             <FileCheck size={16} />
-            Napi zárás
+            {t('misc.napiZaras')}
           </button>
           {status.isOpen ? (
             <button className="form-button flex items-center gap-1 text-red-600">
               <Lock size={16} />
-              Pénztár zárás
+              {t('cashdesk.penztarZaras')}
             </button>
           ) : (
             <button className="form-button-primary flex items-center gap-1">
               <Unlock size={16} />
-              Pénztár nyitás
+              {t('cashdesk.penztarNyitas')}
             </button>
           )}
         </div>
@@ -170,12 +172,12 @@ export default function CashDeskPage() {
           {status.isOpen ? (
             <>
               <CheckCircle className="text-green-600" size={20} />
-              <span className="text-green-800 font-semibold">Pénztár nyitva</span>
+              <span className="text-green-800 font-semibold">{t('cashdesk.penztarNyitva')}</span>
             </>
           ) : (
             <>
               <Lock className="text-red-600" size={20} />
-              <span className="text-red-800 font-semibold">Pénztár zárva</span>
+              <span className="text-red-800 font-semibold">{t('cashdesk.penztarZarva')}</span>
             </>
           )}
         </div>
@@ -183,11 +185,11 @@ export default function CashDeskPage() {
           <span className="flex items-center gap-1">
             <Clock size={14} />
             {/* v2.3.38 (B12 audit fix): ISO timestamp -> hu-HU formatum (NEM raw "2026-04-29T11:43:07.623294") */}
-            Nyitva: {formatOpenedAtTimestamp(status.openedAt)}
+            {t('cashdesk.nyitva')}{formatOpenedAtTimestamp(status.openedAt)}
           </span>
           {/* v2.3.42 (Sourcery #303): ures string-et is missing-kent kezeljuk
               (a `??` csak null/undefined fallback, NEM ures string) */}
-          <span>Kezelő: {status.openedBy?.trim() ? status.openedBy : '—'}</span>
+          <span>{t('cashdesk.kezelo')}{status.openedBy?.trim() ? status.openedBy : '—'}</span>
         </div>
       </div>
 
@@ -195,21 +197,21 @@ export default function CashDeskPage() {
         {/* Cash Balances */}
         <div className="col-span-2 form-panel">
           <div className="flex justify-between items-center mb-3">
-            <h2 className="section-title">Pénzkészlet</h2>
+            <h2 className="section-title">{t('cashdesk.penzkeszlet')}</h2>
             <div className="flex gap-2">
               <button 
                 onClick={() => { setMovementType('in'); setShowMovementDialog(true); }}
                 className="form-button flex items-center gap-1"
               >
                 <Plus size={16} />
-                Bevét
+                {t('cashdesk.bevet')}
               </button>
               <button 
                 onClick={() => { setMovementType('out'); setShowMovementDialog(true); }}
                 className="form-button flex items-center gap-1"
               >
                 <Minus size={16} />
-                Kivét
+                {t('cashdesk.kivet')}
               </button>
             </div>
           </div>
@@ -231,13 +233,13 @@ export default function CashDeskPage() {
                     {balanceStatus === 'low' && (
                       <span className="flex items-center gap-1 text-orange-600 text-sm">
                         <AlertTriangle size={14} />
-                        Alacsony készlet
+                        {t('cashdesk.alacsonyKeszlet')}
                       </span>
                     )}
                     {balanceStatus === 'high' && (
                       <span className="flex items-center gap-1 text-yellow-600 text-sm">
                         <AlertTriangle size={14} />
-                        Magas készlet
+                        {t('cashdesk.magasKeszlet')}
                       </span>
                     )}
                   </div>
@@ -246,7 +248,7 @@ export default function CashDeskPage() {
                       {item.balance.toLocaleString('hu-HU')}
                     </div>
                     <div className="text-xs text-gray-500">
-                      Min: {item.minBalance.toLocaleString('hu-HU')} | Max: {item.maxBalance.toLocaleString('hu-HU')}
+                      {t('cashdesk.min')}{item.minBalance.toLocaleString('hu-HU')} {t('cashdesk.max')} {item.maxBalance.toLocaleString('hu-HU')}
                     </div>
                   </div>
                 </div>
@@ -257,28 +259,28 @@ export default function CashDeskPage() {
 
         {/* Today's Stats */}
         <div className="form-panel">
-          <h2 className="section-title">Mai statisztika</h2>
+          <h2 className="section-title">{t('cashdesk.maiStatisztika')}</h2>
           <div className="space-y-3">
             <div className="bg-blue-50 p-3 rounded">
-              <div className="text-sm text-blue-600">Tranzakciók</div>
+              <div className="text-sm text-blue-600">{t('archiving.tranzakciok')}</div>
               <div className="text-lg font-bold text-blue-800">{status.todayStats.transactions}</div>
             </div>
             <div className="bg-green-50 p-3 rounded">
-              <div className="text-sm text-green-600">Vétel összesen</div>
+              <div className="text-sm text-green-600">{t('cashdesk.vetelOsszesen')}</div>
               <div className="text-xl font-bold text-green-800">
-                {status.todayStats.buyTotal.toLocaleString('hu-HU')} Ft
+                {status.todayStats.buyTotal.toLocaleString('hu-HU')} {t('common.ft')}
               </div>
             </div>
             <div className="bg-red-50 p-3 rounded">
-              <div className="text-sm text-red-600">Eladás összesen</div>
+              <div className="text-sm text-red-600">{t('cashdesk.eladasOsszesen')}</div>
               <div className="text-xl font-bold text-red-800">
-                {status.todayStats.sellTotal.toLocaleString('hu-HU')} Ft
+                {status.todayStats.sellTotal.toLocaleString('hu-HU')} {t('common.ft')}
               </div>
             </div>
             <div className="bg-purple-50 p-3 rounded">
-              <div className="text-sm text-purple-600">Napi eredmény</div>
+              <div className="text-sm text-purple-600">{t('cashdesk.napiEredmeny')}</div>
               <div className="text-xl font-bold text-purple-800">
-                {status.todayStats.profit.toLocaleString('hu-HU')} Ft
+                {status.todayStats.profit.toLocaleString('hu-HU')} {t('common.ft')}
               </div>
             </div>
           </div>
@@ -287,7 +289,7 @@ export default function CashDeskPage() {
 
       {/* Denomination Panel */}
       <div className="form-panel">
-        <h2 className="section-title">Címletek (HUF)</h2>
+        <h2 className="section-title">{t('cashdesk.cimletekHuf')}</h2>
         <div className="grid grid-cols-8 gap-2">
           {[20000, 10000, 5000, 2000, 1000, 500, 200, 100].map((denom) => (
             <div key={denom} className="text-center p-2 bg-gray-50 rounded border">
@@ -315,21 +317,21 @@ export default function CashDeskPage() {
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="form-label">Valuta</label>
+                <label className="form-label">{t('common.currency')}</label>
                 <select 
                   value={movementCurrency}
                   onChange={(e) => setMovementCurrency(e.target.value)}
                   className="form-input"
                 >
-                  <option value="HUF">HUF - Magyar Forint</option>
-                  <option value="EUR">EUR - Euró</option>
-                  <option value="USD">USD - USA Dollár</option>
-                  <option value="GBP">GBP - Angol Font</option>
-                  <option value="CHF">CHF - Svájci Frank</option>
+                  <option value="HUF">{t('cashdesk.hufMagyarForint')}</option>
+                  <option value="EUR">{t('cashdesk.eurEuro')}</option>
+                  <option value="USD">{t('cashdesk.usdUsaDollar')}</option>
+                  <option value="GBP">{t('cashdesk.gbpAngolFont')}</option>
+                  <option value="CHF">{t('cashdesk.chfSvajciFrank')}</option>
                 </select>
               </div>
               <div>
-                <label className="form-label">Összeg</label>
+                <label className="form-label">{t('common.amount')}</label>
                 <NumberInput
                   value={movementAmount}
                   onChange={(val) => setMovementAmount(val)}
@@ -342,7 +344,7 @@ export default function CashDeskPage() {
                 />
               </div>
               <div>
-                <label className="form-label">Megjegyzés</label>
+                <label className="form-label">{t('common.note')}</label>
                 <textarea className="form-input" rows={2} placeholder="Opcionális..." />
               </div>
             </div>
@@ -351,7 +353,7 @@ export default function CashDeskPage() {
                 onClick={() => setShowMovementDialog(false)}
                 className="form-button"
               >
-                Mégse
+                {t('common.cancel')}
               </button>
               <button 
                 onClick={handleMovement}

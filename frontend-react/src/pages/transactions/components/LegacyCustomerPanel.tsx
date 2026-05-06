@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { User, Search, CheckCircle } from 'lucide-react'
 import type { IdentificationLevel } from '../hooks/useIdentificationLevel'
+import { useTranslation } from 'react-i18next'
 
 export interface Customer {
   id: string
@@ -25,6 +26,7 @@ export default function CustomerPanel({
   selectedCurrencyCode: _selectedCurrencyCode,
   onCustomerAddressChange,
 }: CustomerPanelProps) {
+  const { t } = useTranslation()
   const customerSearchRef = useRef<HTMLInputElement>(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [customerName, setCustomerName] = useState('')
@@ -78,11 +80,11 @@ export default function CustomerPanel({
     <div className="form-panel">
       <h2 className="font-semibold mb-2 pb-1 border-b flex items-center gap-2">
         <User size={18} />
-        Ügyfél adatok
+        {t('transactions.ugyfelAdatok2')}
       </h2>
 
       <div className="form-group-box pt-4 mb-3">
-        <span className="form-group-box-title">Ügyfél keresés</span>
+        <span className="form-group-box-title">{t('transactions.ugyfelKereses')}</span>
         <div className="flex gap-1">
           <input
             ref={customerSearchRef}
@@ -111,23 +113,23 @@ export default function CustomerPanel({
         <div className="space-y-2">
           <div className="p-2 bg-green-50 border border-green-200 rounded flex items-center gap-2">
             <CheckCircle size={18} className="text-green-600" />
-            <span className="text-green-700 font-semibold">Ügyfél kiválasztva</span>
+            <span className="text-green-700 font-semibold">{t('transactions.ugyfelKivalasztva2')}</span>
           </div>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>
-              <label className="form-label">Név</label>
+              <label className="form-label">{t('common.name')}</label>
               <div className="font-semibold">{customer.name}</div>
             </div>
             <div>
-              <label className="form-label">Állampolgárság</label>
+              <label className="form-label">{t('common.nationality')}</label>
               <div>{customer.nationality}</div>
             </div>
             <div>
-              <label className="form-label">Okmány típus</label>
+              <label className="form-label">{t('customers.okmanyTipus')}</label>
               <div>{customer.documentType}</div>
             </div>
             <div>
-              <label className="form-label">Okmányszám</label>
+              <label className="form-label">{t('common.documentNumber')}</label>
               <div className="font-mono">{customer.documentNumber}</div>
             </div>
           </div>
@@ -135,23 +137,23 @@ export default function CustomerPanel({
             onClick={() => onCustomerChange(null)}
             className="form-button w-full mt-2 focus:ring-2 focus:ring-primary"
           >
-            Másik ügyfél
+            {t('transactions.masikUgyfel')}
           </button>
         </div>
       ) : identificationLevel === 'SIMPLE' ? (
         <div className="text-center text-gray-500 py-8">
           <User size={48} className="mx-auto mb-2 text-gray-300" />
-          <div>100.000 Ft alatt</div>
-          <div className="text-sm">ügyfél azonosítás nem szükséges</div>
+          <div>{t('transactions.100000FtAlatt')}</div>
+          <div className="text-sm">{t('transactions.ugyfelAzonositasNemSzukseges')}</div>
         </div>
       ) : (
         <div className="space-y-2">
           <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 text-sm">
-            Kérjük válasszon ügyfelet vagy adja meg az adatokat!
+            {t('transactions.kerjukValasszonUgyfeletVagyAdjaMegAzAdatokat')}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="col-span-2">
-              <label className="form-label">Név *</label>
+              <label className="form-label">{t('common.nameRequired')}</label>
               <input
                 type="text"
                 className="form-input w-full focus:ring-2 focus:ring-primary"
@@ -162,7 +164,7 @@ export default function CustomerPanel({
               />
             </div>
             <div>
-              <label className="form-label">Okmány típus *</label>
+              <label className="form-label">{t('transactions.okmanyTipus2')}</label>
               <select
                 className="form-input w-full focus:ring-2 focus:ring-primary"
                 value={customerDocType}
@@ -170,13 +172,13 @@ export default function CustomerPanel({
                 data-field="customer-doc-type"
                 onKeyDown={(e) => handleFieldKeyDown(e, 'customer-doc-type')}
               >
-                <option>Személyi igazolvány</option>
-                <option>Útlevél</option>
-                <option>Vezetői engedély</option>
+                <option>{t('customers.szemelyiIgazolvany')}</option>
+                <option>{t('customers.utlevel')}</option>
+                <option>{t('customers.vezetoiEngedely')}</option>
               </select>
             </div>
             <div>
-              <label className="form-label">Okmányszám *</label>
+              <label className="form-label">{t('pep.okmanyszam')}</label>
               <input
                 type="text"
                 className="form-input w-full focus:ring-2 focus:ring-primary"
@@ -187,7 +189,7 @@ export default function CustomerPanel({
               />
             </div>
             <div>
-              <label className="form-label">Állampolgárság *</label>
+              <label className="form-label">{t('transactions.allampolgarsag3')}</label>
               <select
                 className="form-input w-full focus:ring-2 focus:ring-primary"
                 value={customerNationality}
@@ -195,15 +197,15 @@ export default function CustomerPanel({
                 data-field="customer-nationality"
                 onKeyDown={(e) => handleFieldKeyDown(e, 'customer-nationality')}
               >
-                <option>Magyar</option>
-                <option>EU állampolgár</option>
-                <option>Egyéb</option>
+                <option>{t('settings.magyar')}</option>
+                <option>{t('transactions.euAllampolgar')}</option>
+                <option>{t('common.other')}</option>
               </select>
             </div>
             {identificationLevel === 'FULL' && (
               <>
                 <div>
-                  <label className="form-label">Születési hely *</label>
+                  <label className="form-label">{t('transactions.szuletesiHely3')}</label>
                   <input
                     type="text"
                     className="form-input w-full focus:ring-2 focus:ring-primary"
@@ -214,7 +216,7 @@ export default function CustomerPanel({
                   />
                 </div>
                 <div>
-                  <label className="form-label">Születési idő *</label>
+                  <label className="form-label">{t('transactions.szuletesiIdo3')}</label>
                   <input
                     type="date"
                     className="form-input w-full focus:ring-2 focus:ring-primary"
@@ -225,7 +227,7 @@ export default function CustomerPanel({
                   />
                 </div>
                 <div>
-                  <label className="form-label">Anyja neve *</label>
+                  <label className="form-label">{t('transactions.anyjaNeve')}</label>
                   <input
                     type="text"
                     className="form-input w-full focus:ring-2 focus:ring-primary"
@@ -236,7 +238,7 @@ export default function CustomerPanel({
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="form-label">Lakcím *</label>
+                  <label className="form-label">{t('transactions.lakcim2')}</label>
                   <input
                     type="text"
                     className="form-input w-full focus:ring-2 focus:ring-primary"
@@ -263,7 +265,7 @@ export default function CustomerPanel({
               }
             }}
           >
-            Ügyfél mentése
+            {t('transactions.ugyfelMentese')}
           </button>
         </div>
       )}

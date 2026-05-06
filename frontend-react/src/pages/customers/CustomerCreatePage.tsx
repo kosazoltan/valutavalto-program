@@ -4,8 +4,10 @@ import { ArrowLeft, Save, User, Building, AlertCircle } from 'lucide-react'
 import { customerApi, CustomerCreateRequest } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 export default function CustomerCreatePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [customerType, setCustomerType] = useState<'person' | 'company'>('person')
   const [saving, setSaving] = useState(false)
@@ -82,7 +84,7 @@ export default function CustomerCreatePage() {
           <Link to="/customers" className="toolbar-button">
             <ArrowLeft size={18} />
           </Link>
-          <h1 className="text-xl font-bold text-gray-800">Új ügyfél rögzítése</h1>
+          <h1 className="text-xl font-bold text-gray-800">{t('customers.ujUgyfelRogzitese')}</h1>
         </div>
       </div>
 
@@ -98,7 +100,7 @@ export default function CustomerCreatePage() {
       <form onSubmit={(e) => void handleSubmit(e)} className="space-y-3">
         {/* Customer Type Selection */}
         <div className="form-panel">
-          <h2 className="section-title">Ügyfél típusa</h2>
+          <h2 className="section-title">{t('customers.ugyfelTipusa')}</h2>
           <div className="flex gap-3">
             <button
               type="button"
@@ -110,7 +112,7 @@ export default function CustomerCreatePage() {
               }`}
             >
               <User size={18} />
-              Magánszemély
+              {t('customers.maganszemely')}
             </button>
             <button
               type="button"
@@ -122,7 +124,7 @@ export default function CustomerCreatePage() {
               }`}
             >
               <Building size={18} />
-              Céges ügyfél
+              {t('customers.cegesUgyfel')}
             </button>
           </div>
         </div>
@@ -137,34 +139,34 @@ export default function CustomerCreatePage() {
             {customerType === 'person' ? (
               <div className="space-y-3">
                 <div>
-                  <label className="form-label required">Név</label>
+                  <label className="form-label required">{t('common.name')}</label>
                   <input type="text" value={formData.name} onChange={(e) => updateField('name', e.target.value)} className="form-input" required />
                 </div>
                 <div>
-                  <label className="form-label">Születési név</label>
+                  <label className="form-label">{t('common.birthName')}</label>
                   <input type="text" value={formData.birthName} onChange={(e) => updateField('birthName', e.target.value)} className="form-input" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="form-label required">Születési dátum</label>
+                    <label className="form-label required">{t('common.birthDate')}</label>
                     <input type="date" value={formData.birthDate} onChange={(e) => updateField('birthDate', e.target.value)} className="form-input" required />
                   </div>
                   <div>
-                    <label className="form-label">Születési hely</label>
+                    <label className="form-label">{t('common.birthPlace')}</label>
                     <input type="text" value={formData.birthPlace} onChange={(e) => updateField('birthPlace', e.target.value)} className="form-input" />
                   </div>
                 </div>
                 <div>
-                  <label className="form-label required">Anyja neve</label>
+                  <label className="form-label required">{t('common.motherName')}</label>
                   <input type="text" value={formData.motherName} onChange={(e) => updateField('motherName', e.target.value)} className="form-input" required />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="form-label">Állampolgárság</label>
+                    <label className="form-label">{t('common.nationality')}</label>
                     <input type="text" value={formData.nationality} onChange={(e) => updateField('nationality', e.target.value)} className="form-input" />
                   </div>
                   <div>
-                    <label className="form-label">Adószám</label>
+                    <label className="form-label">{t('common.taxNumber')}</label>
                     <input type="text" value={formData.taxNumber} onChange={(e) => updateField('taxNumber', e.target.value)} className="form-input font-mono" />
                   </div>
                 </div>
@@ -172,15 +174,15 @@ export default function CustomerCreatePage() {
             ) : (
               <div className="space-y-3">
                 <div>
-                  <label className="form-label required">Cégnév</label>
+                  <label className="form-label required">{t('blacklist.cegnev2')}</label>
                   <input type="text" value={formData.companyName} onChange={(e) => updateField('companyName', e.target.value)} className="form-input" required />
                 </div>
                 <div>
-                  <label className="form-label required">Cégjegyzékszám</label>
+                  <label className="form-label required">{t('common.companyRegNumber')}</label>
                   <input type="text" value={formData.registrationNumber} onChange={(e) => updateField('registrationNumber', e.target.value)} className="form-input font-mono" required />
                 </div>
                 <div>
-                  <label className="form-label required">Adószám</label>
+                  <label className="form-label required">{t('common.taxNumber')}</label>
                   <input type="text" value={formData.vatNumber} onChange={(e) => updateField('vatNumber', e.target.value)} className="form-input font-mono" required />
                 </div>
               </div>
@@ -189,23 +191,23 @@ export default function CustomerCreatePage() {
 
           {/* Document Info */}
           <div className="form-panel">
-            <h2 className="section-title">Okmány adatok</h2>
+            <h2 className="section-title">{t('customers.okmanyAdatok')}</h2>
             <div className="space-y-3">
               <div>
-                <label className="form-label required">Okmány típusa</label>
+                <label className="form-label required">{t('customers.okmanyTipusa')}</label>
                 <select value={formData.documentType} onChange={(e) => updateField('documentType', e.target.value)} className="form-input" required>
-                  <option>Személyi igazolvány</option>
-                  <option>Útlevél</option>
-                  <option>Vezetői engedély</option>
-                  <option>Tartózkodási engedély</option>
+                  <option>{t('customers.szemelyiIgazolvany')}</option>
+                  <option>{t('customers.utlevel')}</option>
+                  <option>{t('customers.vezetoiEngedely')}</option>
+                  <option>{t('customers.tartozkodasiEngedely')}</option>
                 </select>
               </div>
               <div>
-                <label className="form-label required">Okmányszám</label>
+                <label className="form-label required">{t('common.documentNumber')}</label>
                 <input type="text" value={formData.documentNumber} onChange={(e) => updateField('documentNumber', e.target.value)} className="form-input font-mono" required />
               </div>
               <div>
-                <label className="form-label">Okmány érvényessége</label>
+                <label className="form-label">{t('customers.okmanyErvenyessege')}</label>
                 <input type="date" value={formData.documentExpiry} onChange={(e) => updateField('documentExpiry', e.target.value)} className="form-input" />
               </div>
             </div>
@@ -213,24 +215,24 @@ export default function CustomerCreatePage() {
 
           {/* Address */}
           <div className="form-panel">
-            <h2 className="section-title">Lakcím / Székhely</h2>
+            <h2 className="section-title">{t('customers.lakcimSzekhely')}</h2>
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="form-label required">Irányítószám</label>
+                  <label className="form-label required">{t('customers.iranyitoszam')}</label>
                   <input type="text" value={formData.postalCode} onChange={(e) => updateField('postalCode', e.target.value)} className="form-input" required />
                 </div>
                 <div className="col-span-2">
-                  <label className="form-label required">Város</label>
+                  <label className="form-label required">{t('common.city')}</label>
                   <input type="text" value={formData.city} onChange={(e) => updateField('city', e.target.value)} className="form-input" required />
                 </div>
               </div>
               <div>
-                <label className="form-label required">Utca, házszám</label>
+                <label className="form-label required">{t('customers.utcaHazszam')}</label>
                 <input type="text" value={formData.address} onChange={(e) => updateField('address', e.target.value)} className="form-input" required />
               </div>
               <div>
-                <label className="form-label">Ország</label>
+                <label className="form-label">{t('common.country')}</label>
                 <input type="text" value={formData.country} onChange={(e) => updateField('country', e.target.value)} className="form-input" />
               </div>
             </div>
@@ -238,14 +240,14 @@ export default function CustomerCreatePage() {
 
           {/* Contact */}
           <div className="form-panel">
-            <h2 className="section-title">Elérhetőségek</h2>
+            <h2 className="section-title">{t('customers.elerhetosegek')}</h2>
             <div className="space-y-3">
               <div>
-                <label className="form-label">Telefonszám</label>
+                <label className="form-label">{t('customers.telefonszam')}</label>
                 <input type="tel" value={formData.phone} onChange={(e) => updateField('phone', e.target.value)} className="form-input font-mono" placeholder="+36..." />
               </div>
               <div>
-                <label className="form-label">E-mail cím</label>
+                <label className="form-label">{t('customers.eMailCim')}</label>
                 <input type="email" value={formData.email} onChange={(e) => updateField('email', e.target.value)} className="form-input" />
               </div>
             </div>
@@ -254,7 +256,7 @@ export default function CustomerCreatePage() {
 
         {/* Submit */}
         <div className="form-panel flex justify-end gap-2">
-          <Link to="/customers" className="form-button">Mégse</Link>
+          <Link to="/customers" className="form-button">{t('common.cancel')}</Link>
           <button type="submit" disabled={saving} className="form-button-primary flex items-center gap-1">
             <Save size={16} />
             {saving ? 'Mentés...' : 'Mentés'}

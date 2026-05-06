@@ -4,6 +4,7 @@ import { Printer, X } from 'lucide-react'
 import { Transaction } from '../services/api/index'
 import { formatDecimal, formatInteger } from '../utils/numberFormat'
 import { toast } from './ui/toaster'
+import { useTranslation } from 'react-i18next'
 
 interface ReceiptPrintProps {
   transaction: Transaction
@@ -45,6 +46,7 @@ export default function ReceiptPrint({
   workerName,
   onClose
 }: ReceiptPrintProps) {
+  const { t } = useTranslation()
   const printRef = useRef<HTMLDivElement>(null)
 
   // QR kód tartalom (NAV-kompatibilis: pipe-separated)
@@ -137,7 +139,7 @@ export default function ReceiptPrint({
       <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">Bizonylat előnézet</h2>
+          <h2 className="text-lg font-semibold">{t('components.bizonylatElonezet')}</h2>
           <div className="flex gap-2">
             <button
               type="button"
@@ -145,7 +147,7 @@ export default function ReceiptPrint({
               className="form-button-primary flex items-center gap-1"
             >
               <Printer size={16} />
-              Nyomtatás
+              {t('common.print')}
             </button>
             <button
               type="button"
@@ -171,10 +173,10 @@ export default function ReceiptPrint({
               {branchAddress && <div className="text-xs text-gray-600">{branchAddress}</div>}
               {companyAddress && !branchAddress && <div className="text-xs text-gray-600">{companyAddress}</div>}
               {(branchPhone || companyPhone) && (
-                <div className="text-xs text-gray-600">Tel: {branchPhone || companyPhone}</div>
+                <div className="text-xs text-gray-600">{t('components.tel')}{branchPhone || companyPhone}</div>
               )}
-              <div className="text-xs text-gray-600">Adószám: {companyTaxNumber}</div>
-              {branchCode && <div className="text-xs">Pénztár: {branchCode}</div>}
+              <div className="text-xs text-gray-600">{t('components.adoszam')}{companyTaxNumber}</div>
+              {branchCode && <div className="text-xs">{t('components.penztar')} {branchCode}</div>}
             </div>
 
             <div className="double-separator" />
@@ -195,41 +197,41 @@ export default function ReceiptPrint({
             <div className="double-separator" />
 
             {/* === ALAP ADATOK === */}
-            <div className="row"><span>Bizonylat:</span><span className="bold">{transaction.receiptNumber}</span></div>
+            <div className="row"><span>{t('components.bizonylat')}</span><span className="bold">{transaction.receiptNumber}</span></div>
             <div className="row">
-              <span>Dátum:</span>
+              <span>{t('components.datum')}</span>
               <span>{new Date(transaction.createdAt).toLocaleDateString('hu-HU')} {new Date(transaction.createdAt).toLocaleTimeString('hu-HU')}</span>
             </div>
-            <div className="row"><span>Pénztáros:</span><span>{workerName}</span></div>
+            <div className="row"><span>{t('components.penztaros')}</span><span>{workerName}</span></div>
 
             <div className="separator" />
 
             {/* === TRANZAKCIÓ RÉSZLETEK === */}
-            <div className="row"><span>Valuta:</span><span className="bold">{transaction.currencyCode}</span></div>
+            <div className="row"><span>{t('components.valuta')}</span><span className="bold">{transaction.currencyCode}</span></div>
             <div className="row">
-              <span>Összeg:</span>
+              <span>{t('components.osszeg')}</span>
               <span className="bold">{formatDecimal(transaction.currencyAmount, 2, 2)} {transaction.currencyCode}</span>
             </div>
-            <div className="row"><span>Árfolyam:</span><span>{formatDecimal(transaction.exchangeRate, 2, 4)}</span></div>
+            <div className="row"><span>{t('components.arfolyam')}</span><span>{formatDecimal(transaction.exchangeRate, 2, 4)}</span></div>
 
             <div className="separator" />
 
             {/* HUF összeg */}
             <div className="row bold">
-              <span>HUF összeg:</span>
-              <span>{formatInteger(transaction.hufAmount)} Ft</span>
+              <span>{t('components.hufOsszeg')}</span>
+              <span>{formatInteger(transaction.hufAmount)} {t('components.ft')}</span>
             </div>
 
             {/* Kerekítés (ha van) */}
             {transaction.roundingDiff !== undefined && transaction.roundingDiff !== null && transaction.roundingDiff !== 0 && (
               <>
                 <div className="row text-gray-600">
-                  <span>Kerekítés:</span>
-                  <span>{formatInteger(transaction.roundingDiff)} Ft</span>
+                  <span>{t('components.kerekites')}</span>
+                  <span>{formatInteger(transaction.roundingDiff)} {t('components.ft')}</span>
                 </div>
                 <div className="total row">
-                  <span>FIZETENDŐ:</span>
-                  <span>{formatInteger(transaction.roundedHufAmount ?? transaction.hufAmount)} Ft</span>
+                  <span>{t('components.fizetendo')}</span>
+                  <span>{formatInteger(transaction.roundedHufAmount ?? transaction.hufAmount)} {t('components.ft')}</span>
                 </div>
               </>
             )}
@@ -237,36 +239,36 @@ export default function ReceiptPrint({
             {/* Kezelési díj */}
             {transaction.handlingFee != null && transaction.handlingFee > 0 && (
               <div className="row">
-                <span>Kezelési díj:</span>
-                <span>{formatInteger(transaction.handlingFee)} Ft</span>
+                <span>{t('components.kezelesiDij')}</span>
+                <span>{formatInteger(transaction.handlingFee)} {t('components.ft')}</span>
               </div>
             )}
 
             {/* === ÜGYFÉL ADATOK (300K felett kötelező) === */}
             {transaction.customerName && (
               <div className="customer-section">
-                <div className="bold" style={{ marginBottom: '2px' }}>ÜGYFÉL ADATOK:</div>
-                <div className="row"><span>Név:</span><span>{transaction.customerName}</span></div>
+                <div className="bold" style={{ marginBottom: '2px' }}>{t('components.ugyfelAdatok')}</div>
+                <div className="row"><span>{t('components.nev')}</span><span>{transaction.customerName}</span></div>
                 {transaction.customerBirthPlace && (
-                  <div className="row"><span>Szül. hely:</span><span>{transaction.customerBirthPlace}</span></div>
+                  <div className="row"><span>{t('components.szulHely')}</span><span>{transaction.customerBirthPlace}</span></div>
                 )}
                 {transaction.customerBirthDate && (
-                  <div className="row"><span>Szül. idő:</span><span>{transaction.customerBirthDate}</span></div>
+                  <div className="row"><span>{t('components.szulIdo')}</span><span>{transaction.customerBirthDate}</span></div>
                 )}
                 {transaction.customerMotherName && (
-                  <div className="row"><span>Anyja neve:</span><span>{transaction.customerMotherName}</span></div>
+                  <div className="row"><span>{t('components.anyjaNeve')}</span><span>{transaction.customerMotherName}</span></div>
                 )}
                 {transaction.customerAddress && (
-                  <div className="row"><span>Lakcím:</span><span>{transaction.customerAddress}</span></div>
+                  <div className="row"><span>{t('components.lakcim')}</span><span>{transaction.customerAddress}</span></div>
                 )}
                 {transaction.customerDocType && (
-                  <div className="row"><span>Okmány:</span><span>{transaction.customerDocType}</span></div>
+                  <div className="row"><span>{t('components.okmany')}</span><span>{transaction.customerDocType}</span></div>
                 )}
                 {transaction.customerDocumentNumber && (
-                  <div className="row"><span>Okmányszám:</span><span>{transaction.customerDocumentNumber}</span></div>
+                  <div className="row"><span>{t('components.okmanyszam')}</span><span>{transaction.customerDocumentNumber}</span></div>
                 )}
                 {transaction.customerNationality && (
-                  <div className="row"><span>Állampolgárság:</span><span>{transaction.customerNationality}</span></div>
+                  <div className="row"><span>{t('components.allampolgarsag')}</span><span>{transaction.customerNationality}</span></div>
                 )}
               </div>
             )}
@@ -274,7 +276,7 @@ export default function ReceiptPrint({
             {/* === PEP (KÖZSZEREPLŐ) NYILATKOZAT — 300k+ Ft, JOGSZABÁLYI KÖTELEZŐ === */}
             {transaction.hufAmount != null && Math.abs(transaction.hufAmount) >= 300000 && (
               <div style={{ margin: '6px 0', padding: '4px', border: '1px solid #999' }}>
-                <div className="bold" style={{ marginBottom: '2px' }}>KÖZSZEREPLŐI NYILATKOZAT</div>
+                <div className="bold" style={{ marginBottom: '2px' }}>{t('components.kozszereploiNyilatkozat')}</div>
                 <div>{transaction.customerIsPep ? 'Az ügyfél kiemelt közszereplő' : 'Nem közszereplő'}</div>
               </div>
             )}
@@ -282,15 +284,15 @@ export default function ReceiptPrint({
             {/* === JOGCÍM NYILATKOZAT — 300k+ Ft, JOGSZABÁLYI KÖTELEZŐ === */}
             {transaction.hufAmount != null && Math.abs(transaction.hufAmount) >= 300000 && (
               <div style={{ margin: '6px 0', padding: '4px', border: '1px solid #999' }}>
-                <div className="bold" style={{ marginBottom: '2px' }}>JOGCÍM NYILATKOZAT</div>
+                <div className="bold" style={{ marginBottom: '2px' }}>{t('components.jogcimNyilatkozat')}</div>
                 <div style={{ fontSize: '10px', lineHeight: '1.3' }}>
-                  Büntetőjogi felelősségem tudatában
-                  nyilatkozom, hogy a fenti tranzakciót
-                  saját nevemben bonyolítom,
+                  {t('components.buntetojogiFelelossegemTudataban')}
+                  {t('components.nyilatkozomHogyAFentiTranzakciot')}
+                  {t('components.sajatNevembenBonyolitom')}
                 </div>
                 {transaction.sourceOfFunds && (
                   <div style={{ marginTop: '2px' }}>
-                    <span>Pénzeszközöm forrása: </span>
+                    <span>{t('components.penzeszkozomForrasa')}</span>
                     <span className="bold">{transaction.sourceOfFunds}</span>
                   </div>
                 )}
@@ -302,7 +304,7 @@ export default function ReceiptPrint({
             {/* === ÁFA-MENTESSÉGI SZÖVEG (TÖRVÉNYI KÖTELEZŐ) === */}
             <div className="vat-exempt">
               <div>Szj 67.13.10.0</div>
-              <div>Az ÁFA alól mentes: 2007. évi CXVII tv. 85. § e)</div>
+              <div>{t('components.azAfaAlolMentes2007EviCxviiTv85E')}</div>
             </div>
 
             <div className="separator" />
@@ -311,11 +313,11 @@ export default function ReceiptPrint({
             <div className="signature-row">
               <div className="signature-block">
                 <div className="signature-line" />
-                <div>Pénztáros</div>
+                <div>{t('components.penztaros2')}</div>
               </div>
               <div className="signature-block">
                 <div className="signature-line" />
-                <div>Ügyfél</div>
+                <div>{t('common.customer')}</div>
               </div>
             </div>
 
@@ -324,16 +326,16 @@ export default function ReceiptPrint({
               {qrDataUrl ? (
                 <img src={qrDataUrl} alt="QR" style={{ width: '100px', height: '100px' }} />
               ) : (
-                <div style={{ fontSize: '8px', color: '#999' }}>QR: {generateQrData()}</div>
+                <div style={{ fontSize: '8px', color: '#999' }}>{t('components.qr')}{generateQrData()}</div>
               )}
             </div>
 
             {/* === LÁBLÉC === */}
             <div className="footer">
-              <div>Köszönjük, hogy minket választott!</div>
+              <div>{t('components.koszonjukHogyMinketValasztott')}</div>
               <div style={{ marginTop: '4px' }}>
-                A bizonylat a pénzmosás elleni törvény
-                alapján nem helyettesíti a számlát.
+                {t('components.aBizonylatAPenzmosasElleniTorveny')}
+                {t('components.alapjanNemHelyettesitiASzamlat')}
               </div>
             </div>
           </div>

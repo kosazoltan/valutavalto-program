@@ -4,6 +4,7 @@ import type { IdentificationLevel } from '../hooks/useIdentificationLevel'
 import { customerApi, amlApi } from '../../../services/api/index'
 import type { Customer as ApiCustomer, CustomerCreateRequest, AmlCheckResultDto } from '../../../services/api/transactions'
 import { logger } from '../../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 export interface CustomerPanelData {
   id?: number
@@ -54,6 +55,7 @@ export default function CustomerPanel({
   onCustomerReady,
   onAmlResult,
 }: CustomerPanelProps) {
+  const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<ApiCustomer[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -299,7 +301,7 @@ export default function CustomerPanel({
     <div className="space-y-3">
       <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
         <User className="w-5 h-5" />
-        UGYFEL ADATOK
+        {t('transactions.ugyfelAdatok')}
       </h3>
 
       {/* Identification level selector */}
@@ -345,7 +347,7 @@ export default function CustomerPanel({
             </p>
             {requiresSourceVerification && (
               <p className="text-amber-700 dark:text-amber-300 mt-1">
-                Penz eredetenek igazolasa KOTELEZO (3.500.000 Ft felett)
+                {t('transactions.penzEredetenekIgazolasaKotelezo3500000FtFelett')}
               </p>
             )}
           </div>
@@ -381,7 +383,7 @@ export default function CustomerPanel({
           <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-700 rounded-lg flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CheckCircle size={18} className="text-green-600 dark:text-green-400" />
-              <span className="text-green-700 dark:text-green-300 font-semibold">Ugyfel kivalasztva</span>
+              <span className="text-green-700 dark:text-green-300 font-semibold">{t('transactions.ugyfelKivalasztva')}</span>
             </div>
             <button onClick={handleClearCustomer} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
               <X size={18} />
@@ -389,64 +391,64 @@ export default function CustomerPanel({
           </div>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Nev</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('competitors.nev')}</label>
               <div className="font-semibold text-gray-900 dark:text-white">{selectedCustomer.name}</div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Allampolgarsag</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.allampolgarsag')}</label>
               <div className="text-gray-900 dark:text-white">{selectedCustomer.nationality ?? 'Magyar'}</div>
             </div>
             {selectedCustomer.documentType && (
               <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Okmany</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('sanction.okmany')}</label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.documentType}</div>
               </div>
             )}
             {selectedCustomer.documentNumber && (
               <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Okmany szam</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.okmanySzam')}</label>
                 <div className="font-mono text-gray-900 dark:text-white">{selectedCustomer.documentNumber}</div>
               </div>
             )}
             {selectedCustomer.birthPlace && (
               <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Szuletesi hely</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.szuletesiHely')}</label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.birthPlace}</div>
               </div>
             )}
             {selectedCustomer.birthDate && (
               <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Szuletesi ido</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.szuletesiIdo')}</label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.birthDate}</div>
               </div>
             )}
             {selectedCustomer.birthName && (
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Elozo nev</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.elozoNev')}</label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.birthName}</div>
               </div>
             )}
             {selectedCustomer.motherName && (
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Anyja neve</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('common.motherName')}</label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.motherName}</div>
               </div>
             )}
             {selectedCustomer.address && (
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Lakcim</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.lakcim')}</label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.address}</div>
               </div>
             )}
             {selectedCustomer.residence && (
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Tartozkodasi hely</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.tartozkodasiHely')}</label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.residence}</div>
               </div>
             )}
             {selectedCustomer.addressCardNumber && (
               <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Lakcimkartya szam</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.lakcimkartyaSzam')}</label>
                 <div className="font-mono text-gray-900 dark:text-white">{selectedCustomer.addressCardNumber}</div>
               </div>
             )}
@@ -456,21 +458,21 @@ export default function CustomerPanel({
         /* SIMPLE — only nationality */
         <div className="p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Allampolgarsag</label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.allampolgarsag')}</label>
             <select
               className={fieldClass}
               style={fieldStyle}
               value={customerNationality}
               onChange={(e) => setCustomerNationality(e.target.value)}
             >
-              <option>Magyar</option>
-              <option>EU allampolgarsag</option>
-              <option>Egyeb</option>
+              <option>{t('settings.magyar')}</option>
+              <option>{t('transactions.euAllampolgarsag')}</option>
+              <option>{t('transactions.egyeb')}</option>
             </select>
           </div>
           <div className="text-center text-gray-500 dark:text-gray-400 py-2">
             <User size={32} className="mx-auto mb-1 text-gray-300 dark:text-gray-600" />
-            <div className="text-sm">100.000 Ft alatt — tovabbi azonositas nem szukseges</div>
+            <div className="text-sm">{t('transactions.100000FtAlattTovabbiAzonositasNemSzukseges')}</div>
           </div>
         </div>
       ) : (
@@ -510,56 +512,56 @@ export default function CustomerPanel({
             )}
             {showResults && searchResults.length === 0 && !isSearching && searchQuery.trim().length >= 2 && (
               <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 text-sm text-gray-500">
-                Nem talalhato ugyfel. Adja meg az adatokat kezzel!
+                {t('transactions.nemTalalhatoUgyfelAdjaMegAzAdatokatKezzel')}
               </div>
             )}
           </div>
 
           {/* Manual entry */}
           <div className="p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Kezzel megadas</p>
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t('transactions.kezzelMegadas')}</p>
             <div className="grid grid-cols-2 gap-2">
               {/* --- Always shown for SIMPLIFIED+ --- */}
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Nev *</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.nev')}</label>
                 <input type="text" className={fieldClass} style={fieldStyle}
                   value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Szuletesi ido *</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.szuletesiIdo2')}</label>
                 <input type="date" className={fieldClass} style={fieldStyle}
                   value={customerBirthDate} onChange={(e) => setCustomerBirthDate(e.target.value)} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Szuletesi hely *</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.szuletesiHely2')}</label>
                 <input type="text" className={fieldClass} style={fieldStyle}
                   value={customerBirthPlace} onChange={(e) => setCustomerBirthPlace(e.target.value)} />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Allampolgarsag *</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.allampolgarsag2')}</label>
                 <select className={fieldClass} style={fieldStyle}
                   value={customerNationality} onChange={(e) => setCustomerNationality(e.target.value)}>
-                  <option>Magyar</option>
-                  <option>EU allampolgarsag</option>
-                  <option>Egyeb</option>
+                  <option>{t('settings.magyar')}</option>
+                  <option>{t('transactions.euAllampolgarsag')}</option>
+                  <option>{t('transactions.egyeb')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Okmany tipus *</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.okmanyTipus')}</label>
                 <select className={fieldClass} style={fieldStyle}
                   value={customerDocType} onChange={(e) => setCustomerDocType(e.target.value)}>
-                  <option>Szemelyi igazolvany</option>
-                  <option>Utlevel</option>
-                  <option>Vezetoi engedely</option>
-                  <option>Tartozkodasi engedely</option>
+                  <option>{t('transactions.szemelyiIgazolvany')}</option>
+                  <option>{t('transactions.utlevel')}</option>
+                  <option>{t('transactions.vezetoiEngedely')}</option>
+                  <option>{t('transactions.tartozkodasiEngedely')}</option>
                 </select>
               </div>
 
               <div className={showFull ? '' : 'col-span-2'}>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Okmanyszam *</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.okmanyszam')}</label>
                 <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle}
                   value={customerDocNumber} onChange={(e) => setCustomerDocNumber(e.target.value)} />
               </div>
@@ -568,28 +570,28 @@ export default function CustomerPanel({
               {showFull && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Elozo nev (szul. nev)</label>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.elozoNevSzulNev')}</label>
                     <input type="text" className={fieldClass} style={fieldStyle}
                       value={customerBirthName} onChange={(e) => setCustomerBirthName(e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Anyja neve *</label>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.anyjaNeve')}</label>
                     <input type="text" className={fieldClass} style={fieldStyle}
                       value={customerMotherName} onChange={(e) => setCustomerMotherName(e.target.value)} />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Lakcim es iranyitoszam *</label>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.lakcimEsIranyitoszam')}</label>
                     <input type="text" className={fieldClass} style={fieldStyle}
                       value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)}
                       placeholder="pl. 1234 Budapest, Fo utca 1." />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Tartozkodasi hely</label>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.tartozkodasiHely')}</label>
                     <input type="text" className={fieldClass} style={fieldStyle}
                       value={customerResidence} onChange={(e) => setCustomerResidence(e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Lakcimkartya szama</label>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.lakcimkartyaSzama')}</label>
                     <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle}
                       value={customerAddressCardNumber} onChange={(e) => setCustomerAddressCardNumber(e.target.value)} />
                   </div>

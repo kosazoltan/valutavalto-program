@@ -5,6 +5,7 @@ import { toast } from '../../components/ui/toaster'
 import { closingWizardApi } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 /** HUF cimletek — csökkeno sorrendben */
 const HUF_DENOMINATIONS = [20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5] as const
@@ -45,6 +46,7 @@ const INITIAL_STEPS: ClosingStep[] = [
 ]
 
 export default function ClosingWizardPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const worker = useAuthStore((s) => s.worker)
   const [steps, setSteps] = useState<ClosingStep[]>(INITIAL_STEPS)
@@ -241,15 +243,15 @@ export default function ClosingWizardPage() {
   const statusText = (step: ClosingStep) => {
     switch (step.status) {
       case 'done':
-        return <span className="text-green-600 dark:text-green-400 font-medium">RENDBEN ({step.completedAt})</span>
+        return <span className="text-green-600 dark:text-green-400 font-medium">{t('closing.rendben')}{step.completedAt})</span>
       case 'failed':
-        return <span className="text-red-600 dark:text-red-400 font-medium">HIBA: {step.message}</span>
+        return <span className="text-red-600 dark:text-red-400 font-medium">{t('closing.hiba')}{step.message}</span>
       case 'running':
         return <span className="text-blue-600 dark:text-blue-400 font-medium animate-pulse">FOLYAMATBAN...</span>
       case 'skipped':
         return <span className="text-gray-400">KIHAGYVA</span>
       default:
-        return <span className="text-gray-400">VÁR</span>
+        return <span className="text-gray-400">{t('closing.var')}</span>
     }
   }
 
@@ -268,17 +270,17 @@ export default function ClosingWizardPage() {
               <ChevronLeft className="w-4 h-4" />
             </button>
             <Lock className="w-5 h-5 text-[var(--primary)]" />
-            <h1 className="text-lg font-bold text-gray-900 dark:text-white">NAPZÁRÁS WIZARD</h1>
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white">{t('closing.napzarasWizard')}</h1>
           </div>
           <span className="text-xs font-semibold bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
-            {completedCount} / {steps.length} kész
+            {completedCount} / {steps.length} {t('common.kesz')}
           </span>
         </div>
 
         {/* PROGRESS BAR */}
         <div>
           <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-0.5">
-            <span>Előrehaladás</span>
+            <span>{t('closing.elorehaladas')}</span>
             <span>{Math.round(progress)}%</span>
           </div>
           <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -321,10 +323,10 @@ export default function ClosingWizardPage() {
           >
             <div className="flex items-center gap-2 mb-1">
               <Coins className="w-4 h-4 text-amber-500" />
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Esti penztár cimletezése</h2>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('closing.estiPenztarCimletezese')}</h2>
               {waitingForDenom && !denomSubmitted && (
                 <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded">
-                  KITOLTÉS SZUKSÉGES
+                  {t('closing.kitoltesSzukseges')}
                 </span>
               )}
             </div>
@@ -352,9 +354,9 @@ export default function ClosingWizardPage() {
                   ))}
                 </div>
                 <div className="mt-1 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-1">
-                  <span className="text-sm font-bold text-gray-800 dark:text-gray-200">Osszesen:</span>
+                  <span className="text-sm font-bold text-gray-800 dark:text-gray-200">{t('cashdesk.osszesen')}</span>
                   <span className="text-base font-bold text-blue-900 dark:text-blue-300">
-                    {denomTotal.toLocaleString('hu-HU')} Ft
+                    {denomTotal.toLocaleString('hu-HU')} {t('common.ft')}
                   </span>
                 </div>
                 <button
@@ -362,14 +364,14 @@ export default function ClosingWizardPage() {
                   disabled={denomTotal === 0 || !denomEditable}
                   className="mt-1 w-full rounded bg-amber-600 py-1.5 text-sm font-bold text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  Cimletezés rogzitese és továbblépés
+                  {t('closing.cimletezesRogziteseEsTovabblepes')}
                 </button>
               </>
             ) : (
               <div className="flex items-center gap-2 rounded bg-green-50 dark:bg-green-900/20 p-2">
                 <Check className="h-4 w-4 text-green-600" />
                 <span className="text-xs font-medium text-green-800 dark:text-green-300">
-                  Cimletezés rogzitve: {denomTotal.toLocaleString('hu-HU')} Ft
+                  {t('closing.cimletezesRogzitve')}{denomTotal.toLocaleString('hu-HU')} {t('common.ft')}
                 </span>
               </div>
             )}
@@ -383,7 +385,7 @@ export default function ClosingWizardPage() {
               onClick={runClosing}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-base font-bold rounded-lg shadow transition-colors"
             >
-              ELLENŐRZÉS INDÍTÁSA
+              {t('closing.ellenorzesInditasa')}
             </button>
           )}
 
@@ -392,7 +394,7 @@ export default function ClosingWizardPage() {
               onClick={handleCancel}
               className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-base font-bold rounded-lg shadow transition-colors"
             >
-              ÚJRA
+              {t('closing.ujra')}
             </button>
           )}
 
@@ -408,7 +410,7 @@ export default function ClosingWizardPage() {
             {canFinalize ? (
               <span className="flex items-center gap-2">
                 <Check className="w-4 h-4" />
-                RENDBEN — Napzárás végrehajtása
+                {t('closing.rendbenNapzarasVegrehajtasa')}
               </span>
             ) : (
               'Minden lépés szükséges a napzáráshoz'

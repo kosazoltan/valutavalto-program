@@ -30,6 +30,7 @@ import {
   saveAndSyncPendingTransfer,
 } from '../../utils/electronTransactions'
 import { getLocalPendingTransfers } from '../../utils/localQueue'
+import { useTranslation } from 'react-i18next'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -84,6 +85,7 @@ type TabType = 'outgoing' | 'incoming' | 'pending'
  * - Átvétel kezelés
  */
 export default function TransferPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const worker = useAuthStore((state) => state.worker)
   const electronQueueAvailable = isElectronQueueAvailable()
@@ -356,21 +358,21 @@ export default function TransferPage() {
       <table className="data-grid w-full">
         <thead>
           <tr>
-            <th>Átadólap szám</th>
+            <th>{t('transfers.atadolapSzam')}</th>
             <th>{isOutgoing ? 'Cél iroda' : 'Forrás iroda'}</th>
-            <th>Típus</th>
-            <th>Valuta</th>
-            <th className="text-right">Összeg</th>
-            <th>Dátum</th>
-            <th>Státusz</th>
-            {showActions && <th className="w-32">Műveletek</th>}
+            <th>{t('common.type')}</th>
+            <th>{t('common.currency')}</th>
+            <th className="text-right">{t('common.amount')}</th>
+            <th>{t('common.date')}</th>
+            <th>{t('common.status')}</th>
+            {showActions && <th className="w-32">{t('common.actions')}</th>}
           </tr>
         </thead>
         <tbody>
           {transfers.length === 0 ? (
             <tr>
               <td colSpan={showActions ? 8 : 7} className="text-center text-gray-500 py-8">
-                Nincsenek átadások
+                {t('transfers.nincsenekAtadasok')}
               </td>
             </tr>
           ) : (
@@ -459,10 +461,10 @@ export default function TransferPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <ArrowRightLeft />
-          Átadás bank / másik értéktár
+          {t('transfers.atadasBankMasikErtektar')}
           {pendingCount > 0 && (
             <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-              {pendingCount} új
+              {pendingCount} {t('common.uj')}
             </span>
           )}
         </h1>
@@ -472,9 +474,9 @@ export default function TransferPage() {
       <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800 flex items-start gap-2">
         <Building2 size={16} className="flex-shrink-0 mt-0.5" />
         <div>
-          <strong>Banki ki/beszállítás és értéktár-értéktár közötti mozgás.</strong> A pénztárak felé
-          szervezett átadás-átvételhez használja az <Link to="/shipments" className="underline font-semibold">Átadás-átvétel (pénztáraknak)</Link> menüpontot.
-          A teljes banki workflow (banki rendelés / Western Union napi kerete / sürgősségi kivét) skeleton-je megnézhető a <Link to="/bank-orders" className="underline font-semibold">Banki rendelések</Link> menüpontban (teljes implementáció: v2.4.0).
+          <strong>{t('transfers.bankiKiBeszallitasEsErtektarErtektarKozottiMozgas')}</strong>{t('transfers.aPenztarakFele')}
+          {t('transfers.szervezettAtadasAtvetelhezHasznaljaAz')}<Link to="/shipments" className="underline font-semibold">{t('transfers.atadasAtvetelPenztaraknak')}</Link>{t('transfers.menupontot')}
+          {t('transfers.aTeljesBankiWorkflowBankiRendelesWesternUnionNapiKereteSurgossegiKivetSkeletonJeMegnezhetoA')}<Link to="/bank-orders" className="underline font-semibold">{t('transfers.bankiRendelesek')}</Link>{t('transfers.menupontbanTeljesImplementacioV240')}
         </div>
       </div>
 
@@ -487,7 +489,7 @@ export default function TransferPage() {
           disabled={loading}
         >
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          Frissítés
+          {t('common.refresh')}
         </button>
         <button
           type="button"
@@ -495,7 +497,7 @@ export default function TransferPage() {
           className="form-button-primary flex items-center gap-1"
         >
           <Send size={16} />
-          Új átadás
+          {t('transfers.ujAtadas')}
         </button>
       </div>
 
@@ -528,7 +530,7 @@ export default function TransferPage() {
           }`}
         >
           <Clock size={16} className="inline mr-1" />
-          Átvételre váró ({pendingCount})
+          {t('transfers.atvetelreVaro')}{pendingCount})
         </button>
         <button
           type="button"
@@ -540,7 +542,7 @@ export default function TransferPage() {
           }`}
         >
           <Send size={16} className="inline mr-1" />
-          Kimenő átadások
+          {t('transfers.kimenoAtadasok')}
         </button>
         <button
           type="button"
@@ -552,7 +554,7 @@ export default function TransferPage() {
           }`}
         >
           <Download size={16} className="inline mr-1" />
-          Bejövő átadások
+          {t('transfers.bejovoAtadasok')}
         </button>
       </div>
 
@@ -575,19 +577,19 @@ export default function TransferPage() {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-4">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Send />
-              Új átadás létrehozása
+              {t('transfers.ujAtadasLetrehozasa')}
             </h2>
 
             <div className="space-y-4">
               <div>
-                <label htmlFor="to-branch" className="form-label">Cél iroda *</label>
+                <label htmlFor="to-branch" className="form-label">{t('transfers.celIroda')}</label>
                 <select
                   id="to-branch"
                   value={toBranchId}
                   onChange={(e) => setToBranchId(e.target.value)}
                   className="form-input w-full"
                 >
-                  <option value="">-- Válasszon irodát --</option>
+                  <option value="">{t('transfers.valasszonIrodat')}</option>
                   {branches
                     .filter(b => b.id !== worker?.branchId)
                     .map(b => (
@@ -597,30 +599,30 @@ export default function TransferPage() {
               </div>
 
               <div>
-                <label htmlFor="transfer-type" className="form-label">Típus *</label>
+                <label htmlFor="transfer-type" className="form-label">{t('circulars.tipus')}</label>
                 <select
                   id="transfer-type"
                   value={transferType}
                   onChange={(e) => setTransferType(e.target.value as CreateTransferRequest['transferType'])}
                   className="form-input w-full"
                 >
-                  <option value="CURRENCY">Valuta átadás</option>
-                  <option value="CASH">Készpénz (HUF) átadás</option>
-                  <option value="HANDLING_FEE">Kezelési díj átadás</option>
-                  <option value="VAULT_DEPOSIT">Értéktár feltöltés</option>
-                  <option value="VAULT_WITHDRAW">Értéktár leszedés</option>
+                  <option value="CURRENCY">{t('transfers.valutaAtadas')}</option>
+                  <option value="CASH">{t('transfers.keszpenzHufAtadas')}</option>
+                  <option value="HANDLING_FEE">{t('transfers.kezelesiDijAtadas')}</option>
+                  <option value="VAULT_DEPOSIT">{t('transfers.ertektarFeltoltes')}</option>
+                  <option value="VAULT_WITHDRAW">{t('transfers.ertektarLeszedes')}</option>
                 </select>
               </div>
 
               <div>
-                <label htmlFor="currency" className="form-label">Valuta *</label>
+                <label htmlFor="currency" className="form-label">{t('transfers.valuta')}</label>
                 <select
                   id="currency"
                   value={currencyId ?? ''}
                   onChange={(e) => setCurrencyId(e.target.value ? Number(e.target.value) : null)}
                   className="form-input w-full"
                 >
-                  <option value="">-- Válasszon valutát --</option>
+                  <option value="">{t('transfers.valasszonValutat')}</option>
                   {currencies.map(c => (
                     <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
                   ))}
@@ -628,7 +630,7 @@ export default function TransferPage() {
               </div>
 
               <div>
-                <label htmlFor="amount" className="form-label">Összeg *</label>
+                <label htmlFor="amount" className="form-label">{t('transfers.osszeg')}</label>
                 <NumberInput
                   id="amount"
                   value={amount}
@@ -641,7 +643,7 @@ export default function TransferPage() {
               </div>
 
               <div>
-                <label htmlFor="notes" className="form-label">Megjegyzés</label>
+                <label htmlFor="notes" className="form-label">{t('common.note')}</label>
                 <textarea
                   id="notes"
                   value={notes}
@@ -659,7 +661,7 @@ export default function TransferPage() {
                 onClick={() => setShowNewTransfer(false)}
                 className="form-button"
               >
-                Mégsem
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -668,7 +670,7 @@ export default function TransferPage() {
                 disabled={loading}
               >
                 {loading ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
-                Átadás létrehozása
+                {t('transfers.atadasLetrehozasa')}
               </button>
             </div>
           </div>
@@ -681,35 +683,35 @@ export default function TransferPage() {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-4">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Download />
-              Átvétel végrehajtása
+              {t('transfers.atvetelVegrehajtasa')}
             </h2>
 
             <div className="space-y-4">
               <div className="bg-gray-50 p-3 rounded">
-                <div className="text-sm text-gray-600">Átadólap szám</div>
+                <div className="text-sm text-gray-600">{t('transfers.atadolapSzam')}</div>
                 <div className="font-mono font-semibold">{selectedTransfer.transferNumber}</div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-sm text-gray-600">Forrás iroda</div>
+                  <div className="text-sm text-gray-600">{t('transfers.forrasIroda')}</div>
                   <div className="font-semibold">{selectedTransfer.fromBranchCode}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600">Átadó</div>
+                  <div className="text-sm text-gray-600">{t('transfers.atado')}</div>
                   <div className="font-semibold">{selectedTransfer.fromWorkerName}</div>
                 </div>
               </div>
 
               <div className="bg-blue-50 p-3 rounded">
-                <div className="text-sm text-gray-600">Küldött összeg</div>
+                <div className="text-sm text-gray-600">{t('transfers.kuldottOsszeg')}</div>
                 <div className="text-xl font-mono font-bold text-blue-700">
                   {formatDecimal(selectedTransfer.amount, 2, 2)} {selectedTransfer.currencyCode}
                 </div>
               </div>
 
               <div>
-                <label htmlFor="received-amount" className="form-label">Átvett összeg *</label>
+                <label htmlFor="received-amount" className="form-label">{t('transfers.atvettOsszeg')}</label>
                 <NumberInput
                   id="received-amount"
                   value={receivedAmount}
@@ -721,7 +723,7 @@ export default function TransferPage() {
               </div>
 
               <div>
-                <label htmlFor="receive-notes" className="form-label">Megjegyzés</label>
+                <label htmlFor="receive-notes" className="form-label">{t('common.note')}</label>
                 <textarea
                   id="receive-notes"
                   value={receiveNotes}
@@ -742,7 +744,7 @@ export default function TransferPage() {
                 }}
                 className="form-button"
               >
-                Mégsem
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -751,7 +753,7 @@ export default function TransferPage() {
                 disabled={loading}
               >
                 {loading ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-                Átvétel megerősítése
+                {t('transfers.atvetelMegerositese')}
               </button>
             </div>
           </div>

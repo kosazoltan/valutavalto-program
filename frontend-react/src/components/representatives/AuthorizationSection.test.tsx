@@ -111,7 +111,7 @@ describe('AuthorizationSection', () => {
     await waitFor(() => screen.getByText('Nincs meghatalmazás'))
     await userEvent.click(screen.getByText('Új meghatalmazás'))
     expect(screen.getByText('Létrehozás')).toBeDefined()
-    expect(screen.getByText('Mégsem')).toBeDefined()
+    expect(screen.getByText('Mégse')).toBeDefined()
   })
 
   it('form sikeres submit meghívja a createAuthorization API-t', async () => {
@@ -134,14 +134,14 @@ describe('AuthorizationSection', () => {
     })
   })
 
-  it('Mégsem gombra kattintva form bezáródik', async () => {
+  it('Mégse gombra kattintva form bezáródik', async () => {
     renderComponent()
     await waitFor(() => screen.getByText('Nincs meghatalmazás'))
 
     await userEvent.click(screen.getByText('Új meghatalmazás'))
-    await waitFor(() => screen.getByText('Mégsem'))
+    await waitFor(() => screen.getByText('Mégse'))
 
-    await userEvent.click(screen.getByText('Mégsem'))
+    await userEvent.click(screen.getByText('Mégse'))
     expect(screen.queryByText('Létrehozás')).toBeNull()
   })
 

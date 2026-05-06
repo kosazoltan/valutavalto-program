@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Package, Play, CheckCircle2, XCircle, AlertTriangle, Plus, Eye } from 'lucide-react'
 import { vaultStocktakeApi, VaultStocktakeSession, StocktakeStatus } from '../../services/api/vaultStocktake'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 // ============================================================================
 // Értéktár leltár (stocktake) oldal - Sprint 7.1
@@ -32,6 +33,7 @@ const STATUS_COLORS: Record<StocktakeStatus, string> = {
 }
 
 export default function VaultStocktakeListPage() {
+    const { t } = useTranslation()
     const [sessions, setSessions] = useState<VaultStocktakeSession[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -97,10 +99,10 @@ export default function VaultStocktakeListPage() {
                 <div>
                     <h1 className="text-base font-bold flex items-center gap-2">
                         <Package className="w-5 h-5 text-blue-600" />
-                        Értéktár leltár
+                        {t('vaultStocktake.ertektarLeltar')}
                     </h1>
                     <p className="text-gray-600 text-xs">
-                        Címletenkénti értéktár ellenőrzés (legacy: LELTAR.DLL parity)
+                        {t('vaultStocktake.cimletenkentiErtektarEllenorzesLegacyLeltarDllParity')}
                     </p>
                 </div>
                 <button
@@ -108,7 +110,7 @@ export default function VaultStocktakeListPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
                     <Plus className="w-4 h-4" />
-                    Új leltár
+                    {t('vaultStocktake.ujLeltar')}
                 </button>
             </div>
 
@@ -116,19 +118,19 @@ export default function VaultStocktakeListPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
                     <div className="text-sm text-yellow-700 flex items-center gap-1">
-                        <Play className="w-4 h-4" /> Aktív leltárak
+                        <Play className="w-4 h-4" />{t('vaultStocktake.aktivLeltarak')}
                     </div>
                     <div className="text-2xl font-bold mt-1">{totalOpen}</div>
                 </div>
                 <div className="bg-purple-50 border border-purple-200 rounded p-4">
                     <div className="text-sm text-purple-700 flex items-center gap-1">
-                        <AlertTriangle className="w-4 h-4" /> Ellenőrzésre vár
+                        <AlertTriangle className="w-4 h-4" />{t('vaultStocktake.ellenorzesreVar')}
                     </div>
                     <div className="text-2xl font-bold mt-1">{totalReview}</div>
                 </div>
                 <div className="bg-green-50 border border-green-200 rounded p-4">
                     <div className="text-sm text-green-700 flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4" /> Lezárt
+                        <CheckCircle2 className="w-4 h-4" />{t('reports.lezart')}
                     </div>
                     <div className="text-2xl font-bold mt-1">{totalClosed}</div>
                 </div>
@@ -146,19 +148,19 @@ export default function VaultStocktakeListPage() {
                 <div className="text-center text-gray-500 py-8">Toltodik...</div>
             ) : sessions.length === 0 ? (
                 <div className="text-center text-gray-500 py-12 bg-gray-50 rounded">
-                    Meg nincs leltar session. Kattints az "Új leltár" gombra.
+                    {t('vaultStocktake.megNincsLeltarSessionKattintsAzUjLeltarGombra')}
                 </div>
             ) : (
                 <div className="bg-white shadow rounded overflow-hidden">
                     <table className="w-full text-sm">
                         <thead className="bg-gray-100">
                             <tr>
-                                <th className="px-4 py-3 text-left">Session</th>
-                                <th className="px-4 py-3 text-left">Status</th>
-                                <th className="px-4 py-3 text-left">Indította</th>
-                                <th className="px-4 py-3 text-left">Indítva</th>
-                                <th className="px-4 py-3 text-right">Eltérés (HUF)</th>
-                                <th className="px-4 py-3 text-right">Művelet</th>
+                                <th className="px-4 py-3 text-left">{t('vaultStocktake.session')}</th>
+                                <th className="px-4 py-3 text-left">{t('vaultStocktake.status2')}</th>
+                                <th className="px-4 py-3 text-left">{t('vaultStocktake.inditotta')}</th>
+                                <th className="px-4 py-3 text-left">{t('transit.inditva')}</th>
+                                <th className="px-4 py-3 text-right">{t('vaultStocktake.elteresHuf2')}</th>
+                                <th className="px-4 py-3 text-right">{t('common.operation')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -192,7 +194,7 @@ export default function VaultStocktakeListPage() {
                                             className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800"
                                         >
                                             <Eye className="w-4 h-4" />
-                                            Reszletek
+                                            {t('vaultStocktake.reszletek')}
                                         </a>
                                     </td>
                                 </tr>
@@ -206,10 +208,10 @@ export default function VaultStocktakeListPage() {
             {showCreate && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded p-6 w-full max-w-md mx-4">
-                        <h2 className="text-lg font-bold mb-4">Új leltár session</h2>
+                        <h2 className="text-lg font-bold mb-4">{t('vaultStocktake.ujLeltarSession')}</h2>
                         <div className="space-y-3">
                             <div>
-                                <label className="block text-sm font-medium mb-1">Session nev *</label>
+                                <label className="block text-sm font-medium mb-1">{t('vaultStocktake.sessionNev')}</label>
                                 <input
                                     type="text"
                                     className="w-full border rounded px-3 py-2"
@@ -219,7 +221,7 @@ export default function VaultStocktakeListPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Iroda (branch UUID, opcionalis)</label>
+                                <label className="block text-sm font-medium mb-1">{t('vaultStocktake.irodaBranchUuidOpcionalis')}</label>
                                 <input
                                     type="text"
                                     className="w-full border rounded px-3 py-2"
@@ -229,7 +231,7 @@ export default function VaultStocktakeListPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Megjegyzes</label>
+                                <label className="block text-sm font-medium mb-1">{t('treasury.megjegyzes')}</label>
                                 <textarea
                                     className="w-full border rounded px-3 py-2"
                                     rows={2}
@@ -244,7 +246,7 @@ export default function VaultStocktakeListPage() {
                                 className="px-4 py-2 border rounded hover:bg-gray-50"
                                 disabled={creating}
                             >
-                                Megse
+                                {t('transactions.megse')}
                             </button>
                             <button
                                 onClick={handleCreate}

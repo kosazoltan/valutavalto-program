@@ -4,6 +4,7 @@ import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 interface PoliceRequestItem {
   id: string | number
@@ -15,6 +16,7 @@ interface PoliceRequestItem {
 }
 
 export default function PoliceRequestPage() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<PoliceRequestItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -64,14 +66,14 @@ export default function PoliceRequestPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Shield className="h-6 w-6" />
-          Rendőrségi megkeresések
+          {t('police.rendorsegiMegkeresesek')}
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <button className="form-button-primary flex items-center gap-1">
-            <Plus className="h-4 w-4" /> Új
+            <Plus className="h-4 w-4" />{t('common.new')}
           </button>
         </div>
       </div>
@@ -100,19 +102,19 @@ export default function PoliceRequestPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Iktatószám</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Dátum</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Típus</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Állapot</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Előadó</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Műveletek</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('police.iktatoszam')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.date')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.type')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.status2')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('police.eloado')}</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Nincs adat</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
             ) : filtered.map(item => (
               <tr key={item.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">{item.requestNumber ?? '-'}</td>
@@ -135,7 +137,7 @@ export default function PoliceRequestPage() {
       </div>
 
       <div className="text-sm text-gray-500">
-        Összesen: {filtered.length} / {items.length}
+        {t('audit.osszesen')}{filtered.length} / {items.length}
       </div>
     </div>
   )

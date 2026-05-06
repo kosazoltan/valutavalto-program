@@ -2,8 +2,10 @@ import { useState, useEffect, useMemo } from 'react'
 import { Settings, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
 import { systemParameterApi, SystemParameter, SystemParameterCreateRequest } from '../../services/api/index'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 export default function SystemParameterPage() {
+  const { t } = useTranslation()
   const [parameters, setParameters] = useState<SystemParameter[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -140,7 +142,7 @@ export default function SystemParameterPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Settings />
-          Rendszerparaméterek
+          {t('settings.rendszerparameterek')}
         </h1>
         <button
           type="button"
@@ -148,7 +150,7 @@ export default function SystemParameterPage() {
           className="form-button-primary flex items-center gap-2"
         >
           <Plus size={16} />
-          Új paraméter
+          {t('organizations.ujParameter')}
         </button>
       </div>
 
@@ -163,7 +165,7 @@ export default function SystemParameterPage() {
       <div className="form-panel">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="form-label">Keresés</label>
+            <label className="form-label">{t('common.search')}</label>
             <div className="relative">
               <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
@@ -176,13 +178,13 @@ export default function SystemParameterPage() {
             </div>
           </div>
           <div>
-            <label className="form-label">Kategória</label>
+            <label className="form-label">{t('common.category')}</label>
             <select
               className="form-input"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
-              <option value="">Összes kategória</option>
+              <option value="">{t('settings.osszesKategoria')}</option>
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
@@ -213,7 +215,7 @@ export default function SystemParameterPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="form-label">Paraméter kulcs *</label>
+                <label className="form-label">{t('settings.parameterKulcs')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -225,7 +227,7 @@ export default function SystemParameterPage() {
               </div>
 
               <div>
-                <label className="form-label">Paraméter érték *</label>
+                <label className="form-label">{t('settings.parameterErtek')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -237,7 +239,7 @@ export default function SystemParameterPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Típus *</label>
+                  <label className="form-label">{t('circulars.tipus')}</label>
                   <select
                     className="form-input"
                     value={formData.parameterType}
@@ -250,7 +252,7 @@ export default function SystemParameterPage() {
                 </div>
 
                 <div>
-                  <label className="form-label">Kategória *</label>
+                  <label className="form-label">{t('circulars.kategoria')}</label>
                   <input
                     type="text"
                     className="form-input"
@@ -262,7 +264,7 @@ export default function SystemParameterPage() {
               </div>
 
               <div>
-                <label className="form-label">Leírás</label>
+                <label className="form-label">{t('common.description')}</label>
                 <textarea
                   className="form-input"
                   rows={3}
@@ -280,7 +282,7 @@ export default function SystemParameterPage() {
                     checked={formData.isActive ?? true}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                   />
-                  <span>Aktív</span>
+                  <span>{t('common.active')}</span>
                 </label>
               </div>
 
@@ -293,7 +295,7 @@ export default function SystemParameterPage() {
                   }}
                   className="form-button"
                 >
-                  Mégse
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
@@ -301,7 +303,7 @@ export default function SystemParameterPage() {
                   className="form-button-primary flex items-center gap-2"
                 >
                   <Save size={16} />
-                  Mentés
+                  {t('common.save')}
                 </button>
               </div>
             </div>
@@ -314,20 +316,20 @@ export default function SystemParameterPage() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th>Kulcs</th>
-              <th>Érték</th>
-              <th>Típus</th>
-              <th>Kategória</th>
-              <th>Leírás</th>
-              <th>Státusz</th>
-              <th>Műveletek</th>
+              <th>{t('organizations.kulcs2')}</th>
+              <th>{t('fees.ertek')}</th>
+              <th>{t('common.type')}</th>
+              <th>{t('common.category')}</th>
+              <th>{t('common.description')}</th>
+              <th>{t('common.status')}</th>
+              <th>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {filteredParameters.length === 0 ? (
               <tr>
                 <td colSpan={7} className="text-center text-gray-500 py-4">
-                  Nincs találat
+                  {t('common.noResult')}
                 </td>
               </tr>
             ) : (
@@ -361,7 +363,7 @@ export default function SystemParameterPage() {
                         className="form-button text-sm flex items-center gap-1"
                       >
                         <Edit size={14} />
-                        Szerkesztés
+                        {t('common.edit')}
                       </button>
                       <button
                         type="button"
@@ -369,7 +371,7 @@ export default function SystemParameterPage() {
                         className="form-button text-sm text-red-600 flex items-center gap-1"
                       >
                         <Trash2 size={14} />
-                        Törlés
+                        {t('common.delete')}
                       </button>
                     </div>
                   </td>

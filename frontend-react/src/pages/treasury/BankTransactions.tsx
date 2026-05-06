@@ -22,8 +22,10 @@ import {
 import { getLocalPendingBankTransactions } from '../../utils/localQueue'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 export default function BankTransactions() {
+  const { t } = useTranslation()
   const electronQueueAvailable = isElectronQueueAvailable()
   const [loading, setLoading] = useState(true)
   const [transactions, setTransactions] = useState<BankTransaction[]>([])
@@ -160,12 +162,12 @@ export default function BankTransactions() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-secondary-900">Banki Tranzakciok</h1>
+          <h1 className="text-xl font-bold text-secondary-900">{t('treasury.bankiTranzakciok')}</h1>
           <span className="badge badge-blue">
-            <TrendingUp size={12} /> Vétel: {transactions.filter(t => t.transactionType === 'BUY').length}
+            <TrendingUp size={12} />{t('darius.vetel')}{transactions.filter(t => t.transactionType === 'BUY').length}
           </span>
           <span className="badge badge-orange">
-            <TrendingDown size={12} /> Eladás: {transactions.filter(t => t.transactionType === 'SELL').length}
+            <TrendingDown size={12} />{t('darius.eladas')}{transactions.filter(t => t.transactionType === 'SELL').length}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -174,16 +176,16 @@ export default function BankTransactions() {
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
           >
-            <option value="all">Minden tipus</option>
-            <option value="BUY">Vétel</option>
-            <option value="SELL">Eladás</option>
+            <option value="all">{t('treasury.mindenTipus')}</option>
+            <option value="BUY">{t('cashier.buy')}</option>
+            <option value="SELL">{t('cashier.sell')}</option>
           </select>
           <button onClick={() => void fetchData()} className="form-button h-8 text-xs">
             <RefreshCw size={14} />
           </button>
           <button onClick={() => setShowNewModal(true)} className="form-button-primary h-8 text-xs">
             <Plus size={16} />
-            <span>Uj tranzakcio</span>
+            <span>{t('treasury.ujTranzakcio')}</span>
           </button>
         </div>
       </div>
@@ -194,14 +196,14 @@ export default function BankTransactions() {
           <thead>
             <tr>
               <th className="w-16">ID</th>
-              <th className="w-20">Típus</th>
-              <th className="w-16">Valuta</th>
-              <th className="text-right w-28">Mennyiség</th>
-              <th className="text-right w-24">Árfolyam</th>
-              <th className="text-right w-28">HUF érték</th>
-              <th className="w-32">Bank</th>
-              <th className="w-24">Státusz</th>
-              <th className="w-32">Dátum</th>
+              <th className="w-20">{t('common.type')}</th>
+              <th className="w-16">{t('common.currency')}</th>
+              <th className="text-right w-28">{t('cashdesk.mennyiseg')}</th>
+              <th className="text-right w-24">{t('cashier.exchangeRate')}</th>
+              <th className="text-right w-28">{t('stockSnapshot.hufValue')}</th>
+              <th className="w-32">{t('sync.bank')}</th>
+              <th className="w-24">{t('common.status')}</th>
+              <th className="w-32">{t('common.date')}</th>
               <th className="w-8"></th>
             </tr>
           </thead>
@@ -209,7 +211,7 @@ export default function BankTransactions() {
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={10} className="text-center text-sm text-secondary-400 py-8">
-                  Nincs talalat
+                  {t('treasury.nincsTalalat')}
                 </td>
               </tr>
             )}
@@ -231,7 +233,7 @@ export default function BankTransactions() {
                   {tx.exchangeRate?.toFixed(2)}
                 </td>
                 <td className="text-right font-mono font-semibold">
-                  {formatInteger(tx.hufAmount)} Ft
+                  {formatInteger(tx.hufAmount)} {t('common.ft')}
                 </td>
                 <td className="text-xs text-secondary-600">
                   {tx.bankName || '-'}
@@ -262,7 +264,7 @@ export default function BankTransactions() {
           <div className="bg-white rounded-lg shadow-xl p-4 max-w-lg w-full mx-4" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-secondary-900 mb-3 flex items-center gap-2">
               <Building2 size={24} className="text-primary-600" />
-              Uj banki tranzakcio
+              {t('treasury.ujBankiTranzakcio')}
             </h2>
             <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
               {/* Type selector */}
@@ -278,8 +280,8 @@ export default function BankTransactions() {
                 >
                   <TrendingUp size={20} className={txType === 'BUY' ? 'text-blue-600' : 'text-secondary-400'} />
                   <div className="text-left">
-                    <div className="font-semibold">Vétel</div>
-                    <div className="text-xs text-secondary-500">Bankbol valuta</div>
+                    <div className="font-semibold">{t('cashier.buy')}</div>
+                    <div className="text-xs text-secondary-500">{t('treasury.bankbolValuta')}</div>
                   </div>
                 </button>
                 <button
@@ -293,22 +295,22 @@ export default function BankTransactions() {
                 >
                   <TrendingDown size={20} className={txType === 'SELL' ? 'text-orange-600' : 'text-secondary-400'} />
                   <div className="text-left">
-                    <div className="font-semibold">Eladás</div>
-                    <div className="text-xs text-secondary-500">Banknak valuta</div>
+                    <div className="font-semibold">{t('cashier.sell')}</div>
+                    <div className="text-xs text-secondary-500">{t('treasury.banknakValuta')}</div>
                   </div>
                 </button>
               </div>
 
               {/* Currency */}
               <div>
-                <label className="form-label">Valuta</label>
+                <label className="form-label">{t('common.currency')}</label>
                 <select
                   className="form-input w-full"
                   value={currencyCode}
                   onChange={e => setCurrencyCode(e.target.value)}
                   required
                 >
-                  <option value="">Valassz valutat</option>
+                  <option value="">{t('treasury.valasszValutat')}</option>
                   {currencies.filter(c => c.code !== 'HUF').map(c => (
                     <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
                   ))}
@@ -318,7 +320,7 @@ export default function BankTransactions() {
               {/* Amount + Rate */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Mennyiseg</label>
+                  <label className="form-label">{t('treasury.mennyiseg')}</label>
                   <input
                     type="number"
                     className="form-input w-full font-mono"
@@ -331,7 +333,7 @@ export default function BankTransactions() {
                   />
                 </div>
                 <div>
-                  <label className="form-label">Árfolyam (HUF/1 egység)</label>
+                  <label className="form-label">{t('treasury.arfolyamHuf1Egyseg')}</label>
                   <input
                     type="number"
                     className="form-input w-full font-mono"
@@ -348,9 +350,9 @@ export default function BankTransactions() {
               {/* HUF preview */}
               {hufAmount && (
                 <div className="p-3 rounded-lg bg-secondary-50 border border-secondary-200">
-                  <div className="text-sm text-secondary-600">HUF ellenerteke:</div>
+                  <div className="text-sm text-secondary-600">{t('treasury.hufEllenerteke')}</div>
                   <div className="text-lg font-bold font-mono text-secondary-900">
-                    {parseInt(hufAmount).toLocaleString('hu-HU')} Ft
+                    {parseInt(hufAmount).toLocaleString('hu-HU')} {t('common.ft')}
                   </div>
                 </div>
               )}
@@ -358,7 +360,7 @@ export default function BankTransactions() {
               {/* Bank details */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Bank neve</label>
+                  <label className="form-label">{t('treasury.bankNeve')}</label>
                   <input
                     type="text"
                     className="form-input w-full"
@@ -368,7 +370,7 @@ export default function BankTransactions() {
                   />
                 </div>
                 <div>
-                  <label className="form-label">Banki hivatkozas</label>
+                  <label className="form-label">{t('treasury.bankiHivatkozas')}</label>
                   <input
                     type="text"
                     className="form-input w-full"
@@ -381,7 +383,7 @@ export default function BankTransactions() {
 
               {/* Note */}
               <div>
-                <label className="form-label">Megjegyzes</label>
+                <label className="form-label">{t('treasury.megjegyzes')}</label>
                 <textarea
                   className="form-input w-full min-h-[60px]"
                   value={note}
@@ -392,7 +394,7 @@ export default function BankTransactions() {
               {/* Buttons */}
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <button type="button" className="form-button" onClick={() => setShowNewModal(false)}>
-                  Mégse
+                  {t('common.cancel')}
                 </button>
                 <button type="submit" className="form-button-primary" disabled={submitting}>
                   <CheckCircle size={18} />
@@ -409,7 +411,7 @@ export default function BankTransactions() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowDetailModal(null)}>
           <div className="bg-white rounded-lg shadow-xl p-4 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">
-              Tranzakcio #{showDetailModal.id}
+              {t('treasury.tranzakcio')}{showDetailModal.id}
             </h2>
             <div className="space-y-2 text-sm">
               <Row label="Típus" value={showDetailModal.transactionType === 'BUY' ? 'Banki vétel' : 'Banki eladás'} />
@@ -430,7 +432,7 @@ export default function BankTransactions() {
             {/* Workflow gombok — csak amig nem COMPLETED */}
             {showDetailModal.status !== 'COMPLETED' && (
               <div className="mt-4 space-y-2 border-t pt-4">
-                <div className="text-xs font-semibold text-secondary-600 mb-2">Workflow lepesek</div>
+                <div className="text-xs font-semibold text-secondary-600 mb-2">{t('treasury.workflowLepesek')}</div>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -452,13 +454,13 @@ export default function BankTransactions() {
                   </button>
                 </div>
                 <div className="text-xs text-secondary-500">
-                  Ha mindket oldal megerositve, a tranzakcio automatikusan COMPLETED allapotba kerul.
+                  {t('treasury.haMindketOldalMegerositveATranzakcioAutomatikusanCompletedAllapotbaKerul')}
                 </div>
               </div>
             )}
 
             <button onClick={() => setShowDetailModal(null)} className="form-button-primary w-full mt-6">
-              Bezaras
+              {t('components.bezaras')}
             </button>
           </div>
         </div>

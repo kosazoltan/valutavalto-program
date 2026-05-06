@@ -3,8 +3,10 @@ import { FileText, Calendar } from 'lucide-react'
 import { reportExtendedApi } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 export default function ExtendedReportsPage() {
+  const { t } = useTranslation()
   const [reportType, setReportType] = useState('transaction-list')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -75,13 +77,13 @@ export default function ExtendedReportsPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <FileText />
-          Bővített Riportok
+          {t('reports.bovitettRiportok')}
         </h1>
       </div>
 
       <div className="form-panel space-y-4">
         <div>
-          <label className="form-label">Riport típus</label>
+          <label className="form-label">{t('reports.riportTipus')}</label>
           <select className="form-input" value={reportType} onChange={(e) => setReportType(e.target.value)}>
             {reportTypes.map(rt => <option key={rt.value} value={rt.value}>{rt.label}</option>)}
           </select>
@@ -90,22 +92,22 @@ export default function ExtendedReportsPage() {
         {(reportType === 'monthly-inventory' || reportType === 'monthly-turnover' || reportType === 'monthly-transfers') ? (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">Év</label>
+              <label className="form-label">{t('decade.ev')}</label>
               <input type="number" className="form-input" value={year} onChange={(e) => setYear(parseInt(e.target.value))} />
             </div>
             <div>
-              <label className="form-label">Hónap</label>
+              <label className="form-label">{t('monthlyClose.month')}</label>
               <input type="number" className="form-input" min="1" max="12" value={month} onChange={(e) => setMonth(parseInt(e.target.value))} />
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">Kezdő dátum</label>
+              <label className="form-label">{t('common.startDate')}</label>
               <input type="date" className="form-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
             <div>
-              <label className="form-label">Vég dátum</label>
+              <label className="form-label">{t('common.endDate')}</label>
               <input type="date" className="form-input" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
           </div>
@@ -119,7 +121,7 @@ export default function ExtendedReportsPage() {
 
       {reportData && (
         <div className="form-panel">
-          <h2 className="text-lg font-bold mb-4">Riport eredmények</h2>
+          <h2 className="text-lg font-bold mb-4">{t('reports.riportEredmenyek')}</h2>
           <pre className="bg-gray-50 p-4 rounded overflow-auto max-h-96">{JSON.stringify(reportData, null, 2)}</pre>
         </div>
       )}

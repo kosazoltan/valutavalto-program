@@ -6,6 +6,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { safeArray } from '@/utils/safeArray'
 import { useAuthStore } from '../../stores/authStore'
+import { useTranslation } from 'react-i18next'
 
 interface GroupForm {
   code: string
@@ -17,6 +18,7 @@ interface GroupForm {
 const emptyForm: GroupForm = { code: '', name: '', parentGroupId: '', isActive: true }
 
 export default function BranchGroupPage() {
+  const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
   const workerId = worker?.id ? String(worker.id) : ''
 
@@ -111,7 +113,7 @@ export default function BranchGroupPage() {
           ) : <span className="w-4" />}
           <span className="font-mono text-sm text-gray-500">{g.code}</span>
           <span className="font-medium flex-1">{g.name}</span>
-          <span className="text-sm text-gray-500">{g.branchIds?.length || 0} fiók</span>
+          <span className="text-sm text-gray-500">{g.branchIds?.length || 0} {t('branches.fiok')}</span>
           <span className={`badge ${g.isActive ? 'badge-green' : 'badge-red'}`}>{g.isActive ? 'Aktív' : 'Inaktív'}</span>
           <button onClick={() => handleEdit(g)} className="form-button text-xs"><Edit2 size={12} /></button>
           <button onClick={() => void handleDelete(g.id)} className="form-button text-xs text-red-600"><Trash2 size={12} /></button>
@@ -124,8 +126,8 @@ export default function BranchGroupPage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><Building2 />Fiókcsoportok</h1>
-        <button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm) }} className="form-button-primary"><Plus size={16} /> Új csoport</button>
+        <h1 className="text-xl font-bold flex items-center gap-2"><Building2 />{t('branches.fiokcsoportok')}</h1>
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm) }} className="form-button-primary"><Plus size={16} />{t('branches.ujCsoport')}</button>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
@@ -135,17 +137,17 @@ export default function BranchGroupPage() {
           <h2 className="font-semibold">{editingId ? 'Csoport szerkesztése' : 'Új fiókcsoport'}</h2>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="form-label">Kód *</label>
+              <label className="form-label">{t('common.codeRequired')}</label>
               <input className="form-input" value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} />
             </div>
             <div>
-              <label className="form-label">Név *</label>
+              <label className="form-label">{t('common.nameRequired')}</label>
               <input className="form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
             </div>
             <div>
-              <label className="form-label">Szülő csoport</label>
+              <label className="form-label">{t('branches.szuloCsoport')}</label>
               <select className="form-input" value={form.parentGroupId} onChange={e => setForm({ ...form, parentGroupId: e.target.value })}>
-                <option value="">— Nincs (gyökér) —</option>
+                <option value="">{t('branches.NincsGyoker')}</option>
                 {safeArray<BranchGroup>(groups).filter(g => g.id !== editingId).map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
@@ -153,18 +155,18 @@ export default function BranchGroupPage() {
             </div>
           </div>
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} /> Aktív
+            <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} />{t('common.active')}
           </label>
           <div className="flex gap-2">
-            <button onClick={() => void handleSave()} className="form-button-primary">Mentés</button>
-            <button onClick={() => { setShowForm(false); setEditingId(null) }} className="form-button">Mégse</button>
+            <button onClick={() => void handleSave()} className="form-button-primary">{t('common.save')}</button>
+            <button onClick={() => { setShowForm(false); setEditingId(null) }} className="form-button">{t('common.cancel')}</button>
           </div>
         </div>
       )}
 
       <div className="form-panel">
         {loading ? <div>Betöltés...</div> : safeArray<BranchGroup>(groups).length === 0 ? (
-          <div className="text-center text-gray-500 py-4">Nincs fiókcsoport</div>
+          <div className="text-center text-gray-500 py-4">{t('branches.nincsFiokcsoport')}</div>
         ) : (
           <div>
             {roots.length > 0 ? roots.map(r => renderGroup(r, 0)) : safeArray<BranchGroup>(groups).map(g => renderGroup(g, 0))}

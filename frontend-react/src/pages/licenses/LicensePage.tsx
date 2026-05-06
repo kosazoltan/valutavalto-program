@@ -3,6 +3,7 @@ import { Key, RefreshCw, AlertTriangle, CheckCircle, XCircle } from 'lucide-reac
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Fix #148 live UI re-test P1: LicenseResponse tenyleges mezonevek:
@@ -31,6 +32,7 @@ function parseFeatures(s: string | undefined): string[] {
 }
 
 export default function LicensePage() {
+  const { t } = useTranslation()
   const [license, setLicense] = useState<LicenseResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -61,7 +63,7 @@ export default function LicensePage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Key className="h-6 w-6" />
-          Licenc (aktuális)
+          {t('licenses.licencAktualis')}
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissites">
@@ -80,28 +82,28 @@ export default function LicensePage() {
       {loading ? (
         <div className="text-center text-sm text-gray-500 py-8">Betoltes...</div>
       ) : !license ? (
-        <div className="text-center text-sm text-gray-500 py-8">Nincs aktiv licenc</div>
+        <div className="text-center text-sm text-gray-500 py-8">{t('licenses.nincsAktivLicenc')}</div>
       ) : (
         <div className="bg-white rounded shadow p-4 space-y-3">
           <div className="flex items-center gap-2">
             {active ? (
-              <><CheckCircle className="h-5 w-5 text-green-600" /> <span className="font-semibold text-green-700">Aktiv</span></>
+              <><CheckCircle className="h-5 w-5 text-green-600" /> <span className="font-semibold text-green-700">{t('competitors.aktiv')}</span></>
             ) : (
-              <><XCircle className="h-5 w-5 text-red-600" /> <span className="font-semibold text-red-700">Inaktiv</span></>
+              <><XCircle className="h-5 w-5 text-red-600" /> <span className="font-semibold text-red-700">{t('licenses.inaktiv')}</span></>
             )}
             {license.status && <span className="text-sm text-gray-500 ml-2">({license.status})</span>}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div><span className="text-gray-500">Kulcs:</span> <span className="font-mono">{license.licenseKey ?? '-'}</span></div>
-            <div><span className="text-gray-500">Ervenyes:</span> {license.validFrom ? new Date(license.validFrom).toLocaleDateString('hu-HU') : '-'}</div>
-            <div><span className="text-gray-500">Lejar:</span> {license.validTo ? new Date(license.validTo).toLocaleDateString('hu-HU') : '-'}</div>
-            {license.remainingDays != null && <div><span className="text-gray-500">Hatralevo napok:</span> <b>{license.remainingDays}</b></div>}
-            {license.maxBranches != null && <div><span className="text-gray-500">Max penztari egyseg:</span> {license.maxBranches}</div>}
-            {license.maxWorkers != null && <div><span className="text-gray-500">Max dolgozo:</span> {license.maxWorkers}</div>}
+            <div><span className="text-gray-500">{t('licenses.kulcs')}</span> <span className="font-mono">{license.licenseKey ?? '-'}</span></div>
+            <div><span className="text-gray-500">{t('licenses.ervenyes')}</span> {license.validFrom ? new Date(license.validFrom).toLocaleDateString('hu-HU') : '-'}</div>
+            <div><span className="text-gray-500">{t('licenses.lejar')}</span> {license.validTo ? new Date(license.validTo).toLocaleDateString('hu-HU') : '-'}</div>
+            {license.remainingDays != null && <div><span className="text-gray-500">{t('licenses.hatralevoNapok')}</span> <b>{license.remainingDays}</b></div>}
+            {license.maxBranches != null && <div><span className="text-gray-500">{t('licenses.maxPenztariEgyseg')}</span> {license.maxBranches}</div>}
+            {license.maxWorkers != null && <div><span className="text-gray-500">{t('licenses.maxDolgozo')}</span> {license.maxWorkers}</div>}
           </div>
           {features.length > 0 && (
             <div>
-              <div className="text-gray-500 text-sm mb-1">Feature-ek:</div>
+              <div className="text-gray-500 text-sm mb-1">{t('licenses.featureEk')}</div>
               <div className="flex flex-wrap gap-1">
                 {features.map((f) => (
                   <span key={f} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{f}</span>

@@ -3,6 +3,7 @@ import { HardDrive, RefreshCw, Trash2 } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next'
 
 const isElectron = () => !!window.electronAPI
 
@@ -15,6 +16,7 @@ interface StorageStats {
 }
 
 export default function CameraStatusPage() {
+  const { t } = useTranslation()
   const [stats, setStats] = useState<StorageStats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -75,8 +77,8 @@ export default function CameraStatusPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold flex items-center gap-2">
           <HardDrive className="h-6 w-6" />
-          Kamera rendszer állapot
-          {isElectron() && <span className="text-sm font-normal text-muted-foreground">(lokális)</span>}
+          {t('camera.kameraRendszerAllapot')}
+          {isElectron() && <span className="text-sm font-normal text-muted-foreground">{t('camera.lokalis')}</span>}
         </h1>
         <div className="flex gap-2">
           <button
@@ -84,14 +86,14 @@ export default function CameraStatusPage() {
             onClick={fetchStats}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            Frissítés
+            {t('common.refresh')}
           </button>
           <button
             className="inline-flex items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
             onClick={triggerCleanup}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Lejárt felvételek törlése
+            {t('camera.lejartFelvetelekTorlese')}
           </button>
         </div>
       </div>
@@ -103,22 +105,22 @@ export default function CameraStatusPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4">
-                <p className="text-sm text-muted-foreground">Felvételek</p>
+                <p className="text-sm text-muted-foreground">{t('camera.felvetelek')}</p>
                 <p className="text-3xl font-bold">{stats?.totalRecordings ?? 0}</p>
               </div>
             </div>
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4">
-                <p className="text-sm text-muted-foreground">Tárhelyhasználat</p>
+                <p className="text-sm text-muted-foreground">{t('camera.tarhelyhasznalat')}</p>
                 <p className="text-3xl font-bold">{stats ? formatSize(stats.totalUsageBytes) : '-'}</p>
                 <p className="text-xs text-muted-foreground">
-                  {stats ? formatSize(stats.availableSpaceBytes) : '-'} szabad
+                  {stats ? formatSize(stats.availableSpaceBytes) : '-'} {t('common.szabad')}
                 </p>
               </div>
             </div>
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4">
-                <p className="text-sm text-muted-foreground">Időszak</p>
+                <p className="text-sm text-muted-foreground">{t('common.period')}</p>
                 <p className="text-lg font-bold">
                   {stats?.oldestDate ?? '-'} -- {stats?.newestDate ?? '-'}
                 </p>
@@ -129,7 +131,7 @@ export default function CameraStatusPage() {
           {stats && (
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4 pb-2">
-                <h3 className="text-lg font-semibold">Tárhelyhasználat</h3>
+                <h3 className="text-lg font-semibold">{t('camera.tarhelyhasznalat')}</h3>
               </div>
               <div className="p-4">
                 <div className="w-full bg-muted rounded-full h-4 overflow-hidden">
@@ -140,7 +142,7 @@ export default function CameraStatusPage() {
                     style={{ width: `${Math.min(usagePercent, 100)}%` }}
                   />
                 </div>
-                <p className="text-sm text-muted-foreground mt-2">{usagePercent.toFixed(1)}% használat</p>
+                <p className="text-sm text-muted-foreground mt-2">{usagePercent.toFixed(1)}{t('camera.hasznalat')}</p>
               </div>
             </div>
           )}

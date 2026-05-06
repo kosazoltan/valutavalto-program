@@ -6,6 +6,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { safeArray } from '@/utils/safeArray'
 import { useAuthStore } from '../../stores/authStore'
+import { useTranslation } from 'react-i18next'
 
 interface MonthlyArchiveStatus {
   yearMonth: string
@@ -16,6 +17,7 @@ interface MonthlyArchiveStatus {
 }
 
 export default function ArchivingPage() {
+  const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
   const branchId = worker?.branchId || ''
 
@@ -95,9 +97,9 @@ export default function ArchivingPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'COMPLETED': return <span className="badge badge-green"><CheckCircle size={10} className="inline" /> Kész</span>
-      case 'IN_PROGRESS': return <span className="badge badge-blue"><Clock size={10} className="inline animate-spin" /> Folyamatban</span>
-      case 'FAILED': return <span className="badge badge-red"><AlertTriangle size={10} className="inline" /> Hiba</span>
+      case 'COMPLETED': return <span className="badge badge-green"><CheckCircle size={10} className="inline" />{t('archiving.kesz')}</span>
+      case 'IN_PROGRESS': return <span className="badge badge-blue"><Clock size={10} className="inline animate-spin" />{t('common.inProgress')}</span>
+      case 'FAILED': return <span className="badge badge-red"><AlertTriangle size={10} className="inline" />{t('common.error')}</span>
       default: return <span className="badge badge-gray">{status || 'Várakozik'}</span>
     }
   }
@@ -105,10 +107,10 @@ export default function ArchivingPage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><Archive />Archiválás</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2"><Archive />{t('archiving.archivalas')}</h1>
         <div className="flex gap-2">
-          <button onClick={() => void loadData()} className="form-button"><RefreshCw size={16} /> Frissítés</button>
-          <button onClick={() => setShowNewTask(true)} className="form-button-primary"><Plus size={16} /> Új feladat</button>
+          <button onClick={() => void loadData()} className="form-button"><RefreshCw size={16} />{t('common.refresh')}</button>
+          <button onClick={() => setShowNewTask(true)} className="form-button-primary"><Plus size={16} />{t('archiving.ujFeladat')}</button>
         </div>
       </div>
 
@@ -116,21 +118,21 @@ export default function ArchivingPage() {
 
       {/* Monthly archive */}
       <div className="form-panel space-y-3">
-        <h2 className="font-semibold flex items-center gap-2"><Calendar size={18} /> Havi archiválás</h2>
+        <h2 className="font-semibold flex items-center gap-2"><Calendar size={18} />{t('archiving.haviArchivalas')}</h2>
         <div className="flex items-end gap-3">
           <div>
-            <label className="form-label">Hónap</label>
+            <label className="form-label">{t('monthlyClose.month')}</label>
             <input className="form-input" type="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} />
           </div>
           <button onClick={() => void handleMonthlyArchive()} className="form-button-primary">
-            <Archive size={16} /> Havi archiválás indítása
+            <Archive size={16} />{t('archiving.haviArchivalasInditasa')}
           </button>
         </div>
         {monthlyStatus && (
           <div className="flex items-center gap-4 text-sm">
             {getStatusBadge(monthlyStatus.status)}
-            <span>Archivált: {monthlyStatus.archivedCount}/{monthlyStatus.totalCount}</span>
-            {monthlyStatus.completedAt && <span className="text-gray-500">Befejezve: {new Date(monthlyStatus.completedAt).toLocaleString('hu-HU')}</span>}
+            <span>{t('archiving.archivalt')}{monthlyStatus.archivedCount}/{monthlyStatus.totalCount}</span>
+            {monthlyStatus.completedAt && <span className="text-gray-500">{t('archiving.befejezve')} {new Date(monthlyStatus.completedAt).toLocaleString('hu-HU')}</span>}
           </div>
         )}
       </div>
@@ -138,53 +140,53 @@ export default function ArchivingPage() {
       {/* New task form */}
       {showNewTask && (
         <div className="form-panel space-y-3 border-2 border-blue-200">
-          <h2 className="font-semibold">Új archiválási feladat</h2>
+          <h2 className="font-semibold">{t('archiving.ujArchivalasiFeladat')}</h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="form-label">Típus</label>
+              <label className="form-label">{t('common.type')}</label>
               <select className="form-input" value={newTask.taskType} onChange={e => setNewTask({ ...newTask, taskType: e.target.value })}>
-                <option value="FULL">Teljes</option>
-                <option value="INCREMENTAL">Inkrementális</option>
-                <option value="CLEANUP">Takarítás</option>
+                <option value="FULL">{t('archiving.teljes')}</option>
+                <option value="INCREMENTAL">{t('archiving.inkrementalis')}</option>
+                <option value="CLEANUP">{t('archiving.takaritas')}</option>
               </select>
             </div>
             <div>
-              <label className="form-label">Entitás</label>
+              <label className="form-label">{t('archiving.entitas')}</label>
               <select className="form-input" value={newTask.entityType} onChange={e => setNewTask({ ...newTask, entityType: e.target.value })}>
-                <option value="TRANSACTIONS">Tranzakciók</option>
-                <option value="CUSTOMERS">Ügyfelek</option>
-                <option value="RATES">Árfolyamok</option>
-                <option value="REPORTS">Jelentések</option>
-                <option value="LOGS">Naplók</option>
+                <option value="TRANSACTIONS">{t('archiving.tranzakciok')}</option>
+                <option value="CUSTOMERS">{t('archiving.ugyfelek')}</option>
+                <option value="RATES">{t('cashier.rates')}</option>
+                <option value="REPORTS">{t('archiving.jelentesek')}</option>
+                <option value="LOGS">{t('archiving.naplok')}</option>
               </select>
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => void handleCreateTask()} className="form-button-primary">Létrehozás</button>
-            <button onClick={() => setShowNewTask(false)} className="form-button">Mégse</button>
+            <button onClick={() => void handleCreateTask()} className="form-button-primary">{t('common.create')}</button>
+            <button onClick={() => setShowNewTask(false)} className="form-button">{t('common.cancel')}</button>
           </div>
         </div>
       )}
 
       {/* Tasks table */}
       <div className="form-panel">
-        <h2 className="font-semibold mb-2">Archiválási feladatok</h2>
+        <h2 className="font-semibold mb-2">{t('archiving.archivalasiFeladatok')}</h2>
         {loading ? <div>Betöltés...</div> : safeArray<ArchiveTask>(tasks).length === 0 ? (
-          <div className="text-center text-gray-500 py-4">Nincs archiválási feladat</div>
+          <div className="text-center text-gray-500 py-4">{t('archiving.nincsArchivalasiFeladat')}</div>
         ) : (
           <table className="data-grid w-full">
-            <thead><tr><th>Típus</th><th>Entitás</th><th>Státusz</th><th>Kezdés</th><th>Befejezés</th><th>Műveletek</th></tr></thead>
+            <thead><tr><th>{t('common.type')}</th><th>{t('archiving.entitas')}</th><th>{t('common.status')}</th><th>{t('archiving.kezdes')}</th><th>{t('archiving.befejezes')}</th><th>{t('common.actions')}</th></tr></thead>
             <tbody>
-              {safeArray<ArchiveTask>(tasks).map(t => (
-                <tr key={t.id}>
-                  <td>{t.taskType}</td>
-                  <td>{t.entityType}</td>
-                  <td>{getStatusBadge(t.status)}</td>
-                  <td className="text-sm">{t.startedAt ? new Date(t.startedAt).toLocaleString('hu-HU') : '-'}</td>
-                  <td className="text-sm">{t.completedAt ? new Date(t.completedAt).toLocaleString('hu-HU') : '-'}</td>
+              {safeArray<ArchiveTask>(tasks).map(task => (
+                <tr key={task.id}>
+                  <td>{task.taskType}</td>
+                  <td>{task.entityType}</td>
+                  <td>{getStatusBadge(task.status)}</td>
+                  <td className="text-sm">{task.startedAt ? new Date(task.startedAt).toLocaleString('hu-HU') : '-'}</td>
+                  <td className="text-sm">{task.completedAt ? new Date(task.completedAt).toLocaleString('hu-HU') : '-'}</td>
                   <td>
-                    {t.status !== 'COMPLETED' && t.status !== 'IN_PROGRESS' && (
-                      <button onClick={() => void handleExecute(t.id)} className="form-button text-xs"><Play size={12} /> Futtatás</button>
+                    {task.status !== 'COMPLETED' && task.status !== 'IN_PROGRESS' && (
+                      <button onClick={() => void handleExecute(task.id)} className="form-button text-xs"><Play size={12} />{t('archiving.futtatas')}</button>
                     )}
                   </td>
                 </tr>

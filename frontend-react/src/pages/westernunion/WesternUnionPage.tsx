@@ -4,6 +4,7 @@ import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 interface WuTransaction {
   id: string
@@ -54,6 +55,7 @@ const emptyForm = {
 }
 
 export default function WesternUnionPage() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<WuTransaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -155,23 +157,23 @@ export default function WesternUnionPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <Globe className="h-6 w-6" />
-          Western Union
+          {t('westernunion.westernUnion')}
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <button onClick={() => openModal('send')} className="form-button-primary flex items-center gap-1">
-            <Send className="h-4 w-4" /> Küldés
+            <Send className="h-4 w-4" />{t('common.send')}
           </button>
           <button onClick={() => openModal('receive')} className="form-button flex items-center gap-1 border-green-300 text-green-700 hover:bg-green-50">
-            <Download className="h-4 w-4" /> Fogadás
+            <Download className="h-4 w-4" />{t('westernunion.fogadas')}
           </button>
           <button onClick={() => openModal('ic-in')} className="form-button flex items-center gap-1 text-sm">
-            <ArrowLeftRight className="h-3 w-3" /> IC In
+            <ArrowLeftRight className="h-3 w-3" />{t('westernunion.icIn')}
           </button>
           <button onClick={() => openModal('ic-out')} className="form-button flex items-center gap-1 text-sm">
-            <ArrowLeftRight className="h-3 w-3" /> IC Out
+            <ArrowLeftRight className="h-3 w-3" />{t('westernunion.icOut')}
           </button>
         </div>
       </div>
@@ -204,23 +206,23 @@ export default function WesternUnionPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Típus</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.type')}</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">MTCN</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Küldő</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Címzett</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Ország</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('handover.kuldo')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('transit.cimzett')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.country')}</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">USD</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">HUF</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Állapot</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Dátum</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Művelet</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.status2')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.date')}</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.operation')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
               <tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-500">Nincs WU tranzakció</td></tr>
+              <tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-500">{t('westernunion.nincsWuTranzakcio')}</td></tr>
             ) : filtered.map(item => (
               <tr key={item.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm font-medium">
@@ -259,7 +261,7 @@ export default function WesternUnionPage() {
       </div>
 
       <div className="text-sm text-gray-500">
-        Összesen: {filtered.length} / {items.length}
+        {t('audit.osszesen')}{filtered.length} / {items.length}
       </div>
 
       {/* Modal */}
@@ -279,7 +281,7 @@ export default function WesternUnionPage() {
                     value={form.mtcn} onChange={e => setForm(f => ({ ...f, mtcn: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="form-label">Cél ország</label>
+                  <label className="form-label">{t('westernunion.celOrszag')}</label>
                   <input type="text" className="form-input w-full" placeholder="pl. HU"
                     value={form.destinationCountry} onChange={e => setForm(f => ({ ...f, destinationCountry: e.target.value }))} />
                 </div>
@@ -287,12 +289,12 @@ export default function WesternUnionPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label">Küldő neve</label>
+                  <label className="form-label">{t('westernunion.kuldoNeve')}</label>
                   <input type="text" className="form-input w-full"
                     value={form.senderName} onChange={e => setForm(f => ({ ...f, senderName: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="form-label">Címzett neve</label>
+                  <label className="form-label">{t('westernunion.cimzettNeve')}</label>
                   <input type="text" className="form-input w-full"
                     value={form.receiverName} onChange={e => setForm(f => ({ ...f, receiverName: e.target.value }))} />
                 </div>
@@ -300,31 +302,31 @@ export default function WesternUnionPage() {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="form-label">USD összeg</label>
+                  <label className="form-label">{t('westernunion.usdOsszeg')}</label>
                   <input type="number" step="0.01" className="form-input w-full"
                     value={form.amountUsd} onChange={e => setForm(f => ({ ...f, amountUsd: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="form-label">HUF összeg</label>
+                  <label className="form-label">{t('stornos.hufOsszeg')}</label>
                   <input type="number" step="1" className="form-input w-full"
                     value={form.amountHuf} onChange={e => setForm(f => ({ ...f, amountHuf: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="form-label">Árfolyam</label>
+                  <label className="form-label">{t('cashier.exchangeRate')}</label>
                   <input type="number" step="0.01" className="form-input w-full"
                     value={form.exchangeRate} onChange={e => setForm(f => ({ ...f, exchangeRate: e.target.value }))} />
                 </div>
               </div>
 
               <div>
-                <label className="form-label">Díj (fee)</label>
+                <label className="form-label">{t('westernunion.dijFee')}</label>
                 <input type="number" step="0.01" className="form-input w-full"
                   value={form.feeAmount} onChange={e => setForm(f => ({ ...f, feeAmount: e.target.value }))} />
               </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
-              <button onClick={() => setModal(null)} className="form-button">Mégse</button>
+              <button onClick={() => setModal(null)} className="form-button">{t('common.cancel')}</button>
               <button onClick={handleSubmit} disabled={submitting}
                 className="form-button-primary flex items-center gap-1">
                 {submitting ? 'Mentés...' : 'Rögzítés'}

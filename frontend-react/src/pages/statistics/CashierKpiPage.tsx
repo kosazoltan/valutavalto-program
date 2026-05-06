@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { cashierKpiApi, type CashierKpiSummary } from '../../services/api/cashierKpi'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 type QuickRange = 'today' | 'week' | 'month' | 'custom'
 
@@ -52,6 +53,7 @@ function rangeFor(quick: QuickRange): { from: string; to: string } {
 }
 
 export default function CashierKpiPage() {
+    const { t } = useTranslation()
     const [quick, setQuick] = useState<QuickRange>('month')
     const initialRange = useMemo(() => rangeFor('month'), [])
     const [dateFrom, setDateFrom] = useState<string>(initialRange.from)
@@ -114,10 +116,10 @@ export default function CashierKpiPage() {
                 <div>
                     <h1 className="text-base font-bold text-secondary-900 flex items-center gap-2">
                         <Users className="text-primary-600" size={18} />
-                        Pénztáros KPI Dashboard
+                        {t('statistics.penztarosKpiDashboard')}
                     </h1>
                     <p className="text-xs text-secondary-500">
-                        Forgalom, tranzakciószám és sztornó arány pénztárosonként.
+                        {t('statistics.forgalomTranzakcioszamEsSztornoAranyPenztarosonkent')}
                     </p>
                 </div>
                 <button
@@ -127,7 +129,7 @@ export default function CashierKpiPage() {
                     className="form-button"
                 >
                     <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                    <span>Frissítés</span>
+                    <span>{t('common.refresh')}</span>
                 </button>
             </div>
 
@@ -222,10 +224,10 @@ export default function CashierKpiPage() {
                 <div className="form-panel p-4 flex items-center gap-4 bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200">
                     <Award className="text-yellow-600" size={32} />
                     <div>
-                        <div className="text-xs text-secondary-500 uppercase tracking-wide">Legnagyobb forgalom</div>
+                        <div className="text-xs text-secondary-500 uppercase tracking-wide">{t('statistics.legnagyobbForgalom')}</div>
                         <div className="text-xl font-bold text-secondary-900">{topWorkerByTurnover.workerName}</div>
                         <div className="text-sm text-secondary-600">
-                            {formatHuf(topWorkerByTurnover.totalHuf)} - {formatInt(topWorkerByTurnover.txCount)} tranzakció - átlag {formatHuf(topWorkerByTurnover.avgTxHuf)}
+                            {formatHuf(topWorkerByTurnover.totalHuf)} - {formatInt(topWorkerByTurnover.txCount)} {t('statistics.tranzakcioAtlag')} {formatHuf(topWorkerByTurnover.avgTxHuf)}
                         </div>
                     </div>
                 </div>
@@ -234,34 +236,34 @@ export default function CashierKpiPage() {
             {/* Worker table */}
             <div className="form-panel">
                 <div className="px-4 py-3 border-b border-secondary-200 flex items-center justify-between">
-                    <h2 className="font-semibold text-secondary-900">Pénztárosok bontása</h2>
+                    <h2 className="font-semibold text-secondary-900">{t('statistics.penztarosokBontasa')}</h2>
                     <div className="flex items-center gap-2">
-                        <span className="text-xs text-secondary-500">Rendezés:</span>
+                        <span className="text-xs text-secondary-500">{t('statistics.rendezes')}</span>
                         <select
                             className="form-input h-8 text-xs w-40"
                             value={sortBy}
                             onChange={e => setSortBy(e.target.value as typeof sortBy)}
                         >
-                            <option value="totalHuf">Forgalom (csökkenő)</option>
-                            <option value="txCount">Tranzakció szám</option>
-                            <option value="reversalRatio">Sztornó %</option>
-                            <option value="name">Név</option>
+                            <option value="totalHuf">{t('statistics.forgalomCsokkeno')}</option>
+                            <option value="txCount">{t('statistics.tranzakcioSzam')}</option>
+                            <option value="reversalRatio">{t('statistics.sztorno')}</option>
+                            <option value="name">{t('common.name')}</option>
                         </select>
                     </div>
                 </div>
                 <table className="data-grid w-full">
                     <thead>
                         <tr>
-                            <th>Pénztáros</th>
-                            <th className="text-right">Tranzakció</th>
-                            <th className="text-right">Vétel</th>
-                            <th className="text-right">Eladás</th>
-                            <th className="text-right">Sztornó</th>
-                            <th className="text-right">Sztornó %</th>
-                            <th className="text-right">Forgalom</th>
-                            <th className="text-right">Átlag tx</th>
-                            <th className="text-right">Kezelési díj</th>
-                            <th className="text-right">Ügyfél</th>
+                            <th>{t('components.penztaros2')}</th>
+                            <th className="text-right">{t('closing.tranzakcio')}</th>
+                            <th className="text-right">{t('cashier.buy')}</th>
+                            <th className="text-right">{t('cashier.sell')}</th>
+                            <th className="text-right">{t('cashier.storno')}</th>
+                            <th className="text-right">{t('statistics.sztorno')}</th>
+                            <th className="text-right">{t('cashier.turnover')}</th>
+                            <th className="text-right">{t('statistics.atlagTx')}</th>
+                            <th className="text-right">{t('cashier.handlingFee')}</th>
+                            <th className="text-right">{t('common.customer')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -275,7 +277,7 @@ export default function CashierKpiPage() {
                         {!loading && sortedRows.length === 0 && (
                             <tr>
                                 <td colSpan={10} className="text-center text-sm text-secondary-400 py-8">
-                                    Nincs tranzakció ebben az időszakban.
+                                    {t('statistics.nincsTranzakcioEbbenAzIdoszakban')}
                                 </td>
                             </tr>
                         )}

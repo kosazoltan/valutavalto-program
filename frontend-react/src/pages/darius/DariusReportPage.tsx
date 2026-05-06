@@ -3,6 +3,7 @@ import { FileSpreadsheet, CheckCircle, XCircle, Clock, RefreshCw, Send, ThumbsUp
 import { dariusApi, DariusDailyReport, DariusMonthlyDto } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 type Tab = 'daily' | 'monthly' | 'missing'
 
@@ -18,6 +19,7 @@ function formatDate(d: string) { return d ? new Date(d).toLocaleDateString('hu-H
 function formatNum(n?: number) { return n != null ? n.toLocaleString('hu-HU') : '—' }
 
 export default function DariusReportPage() {
+  const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>('daily')
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10)
@@ -106,11 +108,11 @@ export default function DariusReportPage() {
     <div className="space-y-3">
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <FileSpreadsheet /> Darius / Raiffeisen jelentések
+          <FileSpreadsheet />{t('darius.dariusRaiffeisenJelentesek')}
         </h1>
         <div className="flex gap-2">
           <button onClick={handleRetry} className="btn-secondary text-xs flex items-center gap-1" title="Sikertelenek újraküldése">
-            <RefreshCw size={14} /> Retry
+            <RefreshCw size={14} />{t('darius.retry')}
           </button>
         </div>
       </div>
@@ -130,20 +132,20 @@ export default function DariusReportPage() {
       {/* Filters */}
       <div className="flex gap-3 items-end">
         <div>
-          <label className="text-xs text-gray-500">Dátum tól</label>
+          <label className="text-xs text-gray-500">{t('darius.datumTol')}</label>
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="input-field text-sm" />
         </div>
         <div>
-          <label className="text-xs text-gray-500">Dátum ig</label>
+          <label className="text-xs text-gray-500">{t('darius.datumIg')}</label>
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="input-field text-sm" />
         </div>
         <div className="border-l pl-3 flex gap-2 items-end">
           <div>
-            <label className="text-xs text-gray-500">Generálás dátuma</label>
+            <label className="text-xs text-gray-500">{t('darius.generalasDatuma')}</label>
             <input type="date" value={generateDate} onChange={e => setGenerateDate(e.target.value)} className="input-field text-sm" />
           </div>
           <button onClick={handleGenerate} disabled={loading} className="btn-primary text-sm flex items-center gap-1">
-            <FileSpreadsheet size={14} /> Generálás
+            <FileSpreadsheet size={14} />{t('darius.generalas')}
           </button>
         </div>
       </div>
@@ -155,7 +157,7 @@ export default function DariusReportPage() {
         <div className="grid grid-cols-3 gap-3">
           {/* Report list */}
           <div className="col-span-2 space-y-1">
-            {reports.length === 0 && <div className="text-gray-400 text-sm py-4 text-center">Nincs jelentés az időszakban</div>}
+            {reports.length === 0 && <div className="text-gray-400 text-sm py-4 text-center">{t('darius.nincsJelentesAzIdoszakban')}</div>}
             {reports.map(r => (
               <div key={r.id} role="button" tabIndex={0} onClick={() => setSelected(r)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(r) } }}
@@ -167,13 +169,13 @@ export default function DariusReportPage() {
                     <StatusBadge status={r.status} />
                   </div>
                   <div className="text-xs text-gray-500">
-                    {r.transactionCount} tx · {r.branchCount} iroda
+                    {r.transactionCount} {t('darius.tx')} {r.branchCount} {t('common.iroda')}
                   </div>
                 </div>
                 <div className="flex gap-4 mt-1 text-xs text-gray-500">
-                  <span>Vétel: {formatNum(r.totalBuyHuf)} Ft</span>
-                  <span>Eladás: {formatNum(r.totalSellHuf)} Ft</span>
-                  <span>Díj: {formatNum(r.totalHandlingFeeHuf)} Ft</span>
+                  <span>{t('darius.vetel')}{formatNum(r.totalBuyHuf)} {t('components.ft')}</span>
+                  <span>{t('darius.eladas')}{formatNum(r.totalSellHuf)} {t('components.ft')}</span>
+                  <span>{t('darius.dij')}{formatNum(r.totalHandlingFeeHuf)} {t('components.ft')}</span>
                 </div>
               </div>
             ))}
@@ -183,27 +185,27 @@ export default function DariusReportPage() {
           <div className="space-y-2">
             {selected ? (
               <div className="p-3 border rounded space-y-2">
-                <h3 className="font-medium text-sm">Részletek — {formatDate(selected.reportDate)}</h3>
+                <h3 className="font-medium text-sm">{t('darius.reszletek')}{formatDate(selected.reportDate)}</h3>
                 <div className="text-xs space-y-1">
-                  <div>Státusz: <StatusBadge status={selected.status} /></div>
-                  <div>Payload hash: <code className="text-[10px] bg-gray-100 px-1 rounded">{selected.payloadHash?.slice(0, 16)}...</code></div>
-                  {selected.approvedBy && <div>Jóváhagyta: {selected.approvedBy} ({formatDate(selected.approvedAt || '')})</div>}
-                  {selected.submittedBy && <div>Beküldte: {selected.submittedBy}</div>}
-                  {selected.ackReference && <div>ACK ref: {selected.ackReference}</div>}
-                  {selected.errorMessage && <div className="text-red-600">Hiba: {selected.errorMessage}</div>}
-                  {selected.retryCount > 0 && <div>Retry: {selected.retryCount}/{selected.maxRetries}</div>}
+                  <div>{t('darius.statusz')}<StatusBadge status={selected.status} /></div>
+                  <div>{t('darius.payloadHash')}<code className="text-[10px] bg-gray-100 px-1 rounded">{selected.payloadHash?.slice(0, 16)}...</code></div>
+                  {selected.approvedBy && <div>{t('camera.jovahagyta')} {selected.approvedBy} ({formatDate(selected.approvedAt || '')})</div>}
+                  {selected.submittedBy && <div>{t('darius.bekuldte')} {selected.submittedBy}</div>}
+                  {selected.ackReference && <div>{t('darius.ackRef')} {selected.ackReference}</div>}
+                  {selected.errorMessage && <div className="text-red-600">{t('foertektar.hiba')} {selected.errorMessage}</div>}
+                  {selected.retryCount > 0 && <div>{t('darius.retry')} {selected.retryCount}/{selected.maxRetries}</div>}
                 </div>
 
                 {/* Actions */}
                 <div className="flex gap-2 pt-2 border-t">
                   {selected.status === 'GENERATED' && !selected.approvedBy && (
                     <button onClick={() => handleApprove(selected.id)} className="btn-secondary text-xs flex items-center gap-1">
-                      <ThumbsUp size={12} /> Jóváhagyás
+                      <ThumbsUp size={12} />{t('common.approve')}
                     </button>
                   )}
                   {(selected.status === 'GENERATED' || selected.status === 'FAILED') && selected.approvedBy && (
                     <button onClick={() => handleSubmit(selected.id)} className="btn-primary text-xs flex items-center gap-1">
-                      <Send size={12} /> Beküldés
+                      <Send size={12} />{t('darius.bekuldes')}
                     </button>
                   )}
                 </div>
@@ -211,17 +213,17 @@ export default function DariusReportPage() {
                 {/* Lines */}
                 {selected.lines && selected.lines.length > 0 && (
                   <div className="pt-2 border-t">
-                    <h4 className="text-xs font-medium mb-1">Valuta sorok</h4>
+                    <h4 className="text-xs font-medium mb-1">{t('darius.valutaSorok')}</h4>
                     <div className="max-h-60 overflow-y-auto">
                       <table className="w-full text-[10px]">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="text-left p-1">Iroda</th>
-                            <th className="text-left p-1">Valuta</th>
-                            <th className="text-right p-1">Vétel db</th>
-                            <th className="text-right p-1">Eladás db</th>
-                            <th className="text-right p-1">Vétel Ft</th>
-                            <th className="text-right p-1">Eladás Ft</th>
+                            <th className="text-left p-1">{t('common.office')}</th>
+                            <th className="text-left p-1">{t('common.currency')}</th>
+                            <th className="text-right p-1">{t('darius.vetelDb')}</th>
+                            <th className="text-right p-1">{t('darius.eladasDb')}</th>
+                            <th className="text-right p-1">{t('darius.vetelFt')}</th>
+                            <th className="text-right p-1">{t('darius.eladasFt')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -242,7 +244,7 @@ export default function DariusReportPage() {
                 )}
               </div>
             ) : (
-              <div className="text-gray-400 text-sm text-center py-8">Válasszon egy jelentést</div>
+              <div className="text-gray-400 text-sm text-center py-8">{t('darius.valasszonEgyJelentest')}</div>
             )}
           </div>
         </div>
@@ -252,34 +254,34 @@ export default function DariusReportPage() {
         <div className="space-y-3">
           <div className="grid grid-cols-4 gap-3">
             <div className="p-3 bg-blue-50 rounded border">
-              <div className="text-xs text-gray-500">Összes jelentés</div>
+              <div className="text-xs text-gray-500">{t('darius.osszesJelentes')}</div>
               <div className="text-lg font-bold">{monthly.totalReports}</div>
             </div>
             <div className="p-3 bg-green-50 rounded border">
-              <div className="text-xs text-gray-500">Visszaigazolt</div>
+              <div className="text-xs text-gray-500">{t('darius.visszaigazolt')}</div>
               <div className="text-lg font-bold text-green-700">{monthly.acknowledgedCount}</div>
             </div>
             <div className="p-3 bg-red-50 rounded border">
-              <div className="text-xs text-gray-500">Sikertelen</div>
+              <div className="text-xs text-gray-500">{t('darius.sikertelen')}</div>
               <div className="text-lg font-bold text-red-700">{monthly.failedCount}</div>
             </div>
             <div className="p-3 bg-yellow-50 rounded border">
-              <div className="text-xs text-gray-500">Függőben</div>
+              <div className="text-xs text-gray-500">{t('darius.fuggoben')}</div>
               <div className="text-lg font-bold text-yellow-700">{monthly.pendingCount}</div>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="p-3 border rounded">
-              <div className="text-xs text-gray-500">Vétel összesen</div>
-              <div className="font-bold">{formatNum(monthly.totalBuyHuf)} Ft</div>
+              <div className="text-xs text-gray-500">{t('cashdesk.vetelOsszesen')}</div>
+              <div className="font-bold">{formatNum(monthly.totalBuyHuf)} {t('components.ft')}</div>
             </div>
             <div className="p-3 border rounded">
-              <div className="text-xs text-gray-500">Eladás összesen</div>
-              <div className="font-bold">{formatNum(monthly.totalSellHuf)} Ft</div>
+              <div className="text-xs text-gray-500">{t('cashdesk.eladasOsszesen')}</div>
+              <div className="font-bold">{formatNum(monthly.totalSellHuf)} {t('components.ft')}</div>
             </div>
             <div className="p-3 border rounded">
-              <div className="text-xs text-gray-500">Kezelési díj összesen</div>
-              <div className="font-bold">{formatNum(monthly.totalHandlingFeeHuf)} Ft</div>
+              <div className="text-xs text-gray-500">{t('darius.kezelesiDijOsszesen')}</div>
+              <div className="font-bold">{formatNum(monthly.totalHandlingFeeHuf)} {t('components.ft')}</div>
             </div>
           </div>
         </div>
@@ -288,10 +290,10 @@ export default function DariusReportPage() {
       {tab === 'missing' && !loading && (
         <div>
           {missingDates.length === 0 ? (
-            <div className="text-green-600 text-sm flex items-center gap-2 py-4"><CheckCircle size={16} /> Nincs hiányzó nap az időszakban</div>
+            <div className="text-green-600 text-sm flex items-center gap-2 py-4"><CheckCircle size={16} />{t('darius.nincsHianyzoNapAzIdoszakban')}</div>
           ) : (
             <div className="space-y-1">
-              <div className="text-sm text-red-600 font-medium">{missingDates.length} hiányzó nap:</div>
+              <div className="text-sm text-red-600 font-medium">{missingDates.length} {t('darius.hianyzoNap')}</div>
               <div className="flex flex-wrap gap-2">
                 {missingDates.map(d => (
                   <button key={d} onClick={() => { setGenerateDate(d); handleGenerate() }}

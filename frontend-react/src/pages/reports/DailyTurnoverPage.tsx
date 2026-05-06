@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useAuthStore } from '../../stores/authStore'
 import { turnoverApi } from '../../services/api/index'
+import { useTranslation } from 'react-i18next'
 
 interface TurnoverData {
   date: string
@@ -33,6 +34,7 @@ interface TurnoverData {
 type Period = 'daily' | 'weekly' | 'monthly' | 'yearly'
 
 export default function DailyTurnoverPage() {
+  const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
   const branchId = worker?.branchId || ''
 
@@ -63,28 +65,28 @@ export default function DailyTurnoverPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold flex items-center gap-2"><BarChart3 />Forgalom összesítő</h1>
+      <h1 className="text-xl font-bold flex items-center gap-2"><BarChart3 />{t('reports.forgalomOsszesito')}</h1>
 
       {/* Szűrők */}
       <div className="form-panel flex gap-3 items-end flex-wrap">
         <div>
-          <label className="form-label">Időszak</label>
+          <label className="form-label">{t('common.period')}</label>
           <select className="form-input" value={period} onChange={e => setPeriod(e.target.value as Period)}>
-            <option value="daily">Napi</option>
-            <option value="weekly">Heti</option>
-            <option value="monthly">Havi</option>
-            <option value="yearly">Éves</option>
+            <option value="daily">{t('reports.napi')}</option>
+            <option value="weekly">{t('reports.heti')}</option>
+            <option value="monthly">{t('reports.havi')}</option>
+            <option value="yearly">{t('reports.eves')}</option>
           </select>
         </div>
         <div>
-          <label className="form-label">Dátum</label>
+          <label className="form-label">{t('common.date')}</label>
           <div className="flex items-center gap-1">
             <Calendar size={16} className="text-gray-400" />
             <input className="form-input" type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
         </div>
         <button onClick={() => void loadTurnover()} disabled={loading} className="form-button-primary">
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Lekérdezés
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />{t('reports.lekerdezes')}
         </button>
       </div>
 
@@ -99,17 +101,17 @@ export default function DailyTurnoverPage() {
             <div className="form-panel text-center bg-green-50">
               <TrendingUp size={24} className="mx-auto text-green-600 mb-1" />
               <div className="text-lg font-bold text-green-700">{fmtHuf(data.totals.totalBuyHuf)}</div>
-              <div className="text-sm text-gray-500">Összes vétel</div>
+              <div className="text-sm text-gray-500">{t('reports.osszesVetel')}</div>
             </div>
             <div className="form-panel text-center bg-blue-50">
               <TrendingDown size={24} className="mx-auto text-blue-600 mb-1" />
               <div className="text-lg font-bold text-blue-700">{fmtHuf(data.totals.totalSellHuf)}</div>
-              <div className="text-sm text-gray-500">Összes eladás</div>
+              <div className="text-sm text-gray-500">{t('reports.osszesEladas')}</div>
             </div>
             <div className="form-panel text-center bg-yellow-50">
               <ArrowRightLeft size={24} className="mx-auto text-yellow-600 mb-1" />
               <div className="text-lg font-bold text-yellow-700">{fmtHuf(data.totals.totalProfit)}</div>
-              <div className="text-sm text-gray-500">Profit</div>
+              <div className="text-sm text-gray-500">{t('reports.profit')}</div>
             </div>
           </div>
 
@@ -117,35 +119,35 @@ export default function DailyTurnoverPage() {
           <div className="grid grid-cols-3 gap-3">
             <div className="form-panel text-center">
               <div className="text-lg font-bold">{data.totals.totalTransactions}</div>
-              <div className="text-sm text-gray-500">Összes tranzakció</div>
+              <div className="text-sm text-gray-500">{t('customers.osszesTranzakcio')}</div>
             </div>
             <div className="form-panel text-center">
               <div className="text-lg font-bold">{fmtHuf(data.totals.totalHandlingFees)}</div>
-              <div className="text-sm text-gray-500">Kezelési díjak</div>
+              <div className="text-sm text-gray-500">{t('reports.kezelesiDijak')}</div>
             </div>
             <div className="form-panel text-center">
               <div className="text-lg font-bold">{fmtHuf(data.totals.totalCommissions)}</div>
-              <div className="text-sm text-gray-500">Jutalékok</div>
+              <div className="text-sm text-gray-500">{t('reports.jutalekok')}</div>
             </div>
           </div>
 
           {/* Devizánkénti bontás */}
           <div className="form-panel">
-            <h2 className="font-semibold mb-2">Devizánkénti forgalom — {data.branchName} — {data.date}</h2>
+            <h2 className="font-semibold mb-2">{t('reports.devizankentiForgalom')}{data.branchName} — {data.date}</h2>
             {(data.currencies || []).length === 0 ? (
-              <div className="text-center text-gray-500 py-4">Nincs forgalmi adat</div>
+              <div className="text-center text-gray-500 py-4">{t('reports.nincsForgalmiAdat')}</div>
             ) : (
               <table className="data-grid w-full text-sm">
                 <thead>
                   <tr>
-                    <th>Deviza</th>
-                    <th className="text-right">Vétel db</th>
-                    <th className="text-right">Vétel összeg</th>
-                    <th className="text-right">Eladás db</th>
-                    <th className="text-right">Eladás összeg</th>
-                    <th className="text-right">Konverzió</th>
-                    <th className="text-right">Nettó mozgás</th>
-                    <th className="text-right">Profit</th>
+                    <th>{t('common.deviza')}</th>
+                    <th className="text-right">{t('darius.vetelDb')}</th>
+                    <th className="text-right">{t('reports.vetelOsszeg')}</th>
+                    <th className="text-right">{t('darius.eladasDb')}</th>
+                    <th className="text-right">{t('reports.eladasOsszeg')}</th>
+                    <th className="text-right">{t('cashier.conversion')}</th>
+                    <th className="text-right">{t('reports.nettoMozgas')}</th>
+                    <th className="text-right">{t('reports.profit')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -166,7 +168,7 @@ export default function DailyTurnoverPage() {
                 </tbody>
                 <tfoot>
                   <tr className="font-bold bg-gray-50">
-                    <td>ÖSSZESEN</td>
+                    <td>{t('reports.osszesen')}</td>
                     <td className="text-right">{data.currencies.reduce((s, c) => s + c.buyCount, 0)}</td>
                     <td></td>
                     <td className="text-right">{data.currencies.reduce((s, c) => s + c.sellCount, 0)}</td>

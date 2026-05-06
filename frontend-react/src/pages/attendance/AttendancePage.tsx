@@ -18,6 +18,7 @@ import {
 } from '../../services/api/workerAttendance'
 import { workerMasterApi, type WorkerMaster } from '../../services/api/index'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 type Tab = 'my' | 'team'
 
@@ -39,6 +40,7 @@ function formatDateTime(iso: string): string {
 }
 
 export default function AttendancePage() {
+    const { t } = useTranslation()
     const [tab, setTab] = useState<Tab>('my')
 
     // Default: last 7 days
@@ -57,20 +59,20 @@ export default function AttendancePage() {
             <div>
                 <h1 className="text-base font-bold text-secondary-900 flex items-center gap-2">
                     <Clock className="text-primary-600" size={18} />
-                    Munkaidő nyilvántartás
+                    {t('attendance.munkaidoNyilvantartas')}
                 </h1>
                 <p className="text-xs text-secondary-500">
-                    Bejelentkezési és kijelentkezési napló — saját vagy csapattag.
+                    {t('attendance.bejelentkezesiEsKijelentkezesiNaploSajatVagyCsapattag')}
                 </p>
             </div>
 
             {/* Tabs */}
             <div className="flex border-b border-secondary-200">
                 <TabButton active={tab === 'my'} onClick={() => setTab('my')} icon={<User size={14} />}>
-                    Saját naplóm
+                    {t('attendance.sajatNaplom')}
                 </TabButton>
                 <TabButton active={tab === 'team'} onClick={() => setTab('team')} icon={<Users size={14} />}>
-                    Csapattag (SUPERVISOR+)
+                    {t('attendance.csapattagSupervisor')}
                 </TabButton>
             </div>
 
@@ -142,6 +144,7 @@ function MyAttendanceTab({ from, to }: { from: string; to: string }) {
 // ==================== TEAM TAB ====================
 
 function TeamAttendanceTab({ from, to }: { from: string; to: string }) {
+    const { t } = useTranslation()
     const [workers, setWorkers] = useState<WorkerMaster[]>([])
     const [selectedWorkerId, setSelectedWorkerId] = useState<number | ''>('')
     const [entries, setEntries] = useState<WorkerAttendanceDto[]>([])
@@ -181,13 +184,13 @@ function TeamAttendanceTab({ from, to }: { from: string; to: string }) {
     return (
         <div className="space-y-3">
             <div className="form-panel p-4">
-                <label className="form-label">Csapattag kivalasztasa</label>
+                <label className="form-label">{t('attendance.csapattagKivalasztasa')}</label>
                 <select
                     className="form-input w-full"
                     value={selectedWorkerId}
                     onChange={e => setSelectedWorkerId(e.target.value ? Number(e.target.value) : '')}
                 >
-                    <option value="">-- Valassz csapattagot --</option>
+                    <option value="">{t('attendance.valasszCsapattagot')}</option>
                     {workers.map(w => (
                         <option key={w.id} value={w.id}>
                             {w.fullName} ({w.workerCode ?? `#${w.id}`})
@@ -224,6 +227,7 @@ function AttendanceList({
     onRefresh: () => void
     showWorkerName: boolean
 }) {
+    const { t } = useTranslation()
     const totalMinutes = useMemo(() => {
         return entries.reduce((sum, e) => sum + calculateDuration(e), 0)
     }, [entries])
@@ -263,7 +267,7 @@ function AttendanceList({
             <div className="flex justify-end">
                 <button onClick={onRefresh} className="form-button text-xs">
                     <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-                    <span>Frissítés</span>
+                    <span>{t('common.refresh')}</span>
                 </button>
             </div>
 
@@ -272,11 +276,11 @@ function AttendanceList({
                 <table className="data-grid w-full">
                     <thead>
                         <tr>
-                            {showWorkerName && <th>Pénztáros</th>}
-                            <th>Bejelentkezés</th>
-                            <th>Kijelentkezés</th>
-                            <th className="text-right">Időtartam</th>
-                            <th>Iroda</th>
+                            {showWorkerName && <th>{t('components.penztaros')}</th>}
+                            <th>{t('auth.login')}</th>
+                            <th>{t('auth.logout')}</th>
+                            <th className="text-right">{t('attendance.idotartam')}</th>
+                            <th>{t('branch.branchName')}</th>
                             <th>IP</th>
                         </tr>
                     </thead>
@@ -291,7 +295,7 @@ function AttendanceList({
                         {!loading && entries.length === 0 && (
                             <tr>
                                 <td colSpan={showWorkerName ? 6 : 5} className="text-center py-8 text-secondary-400">
-                                    Nincs adat az időtartományban
+                                    {t('attendance.nincsAdatAzIdotartomanyban')}
                                 </td>
                             </tr>
                         )}

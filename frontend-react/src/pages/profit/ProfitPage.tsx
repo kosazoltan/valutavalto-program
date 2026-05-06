@@ -4,6 +4,7 @@ import { api } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { useTranslation } from 'react-i18next'
 
 /**
  * ProfitReport shape (backend: ProfitCalculationService.ProfitReport)
@@ -42,6 +43,7 @@ function formatHuf(v: number | string | undefined): string {
 }
 
 export default function ProfitPage() {
+  const { t } = useTranslation()
   const [report, setReport] = useState<ProfitReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -87,7 +89,7 @@ export default function ProfitPage() {
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
           <TrendingUp className="h-6 w-6" />
-          Haszon kimutatás
+          {t('profit.haszonKimutatas')}
         </h1>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissites">
@@ -106,19 +108,19 @@ export default function ProfitPage() {
       {/* Osszesitett sor */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded shadow p-3">
-          <div className="text-xs text-gray-500">Bevétel</div>
+          <div className="text-xs text-gray-500">{t('profit.bevetel')}</div>
           <div className="text-xl font-mono">{formatHuf(report?.revenue)}</div>
         </div>
         <div className="bg-white rounded shadow p-3">
-          <div className="text-xs text-gray-500">Költségek</div>
+          <div className="text-xs text-gray-500">{t('profit.koltsegek')}</div>
           <div className="text-xl font-mono">{formatHuf(report?.expenses)}</div>
         </div>
         <div className="bg-white rounded shadow p-3">
-          <div className="text-xs text-gray-500">Bruttó haszon</div>
+          <div className="text-xs text-gray-500">{t('profit.bruttoHaszon')}</div>
           <div className="text-xl font-mono">{formatHuf(report?.grossProfit)}</div>
         </div>
         <div className="bg-white rounded shadow p-3">
-          <div className="text-xs text-gray-500">Nettó haszon</div>
+          <div className="text-xs text-gray-500">{t('profit.nettoHaszon')}</div>
           <div className="text-xl font-mono">{formatHuf(report?.netProfit)}</div>
         </div>
       </div>
@@ -128,19 +130,19 @@ export default function ProfitPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Deviza</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Vétel db</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Eladás db</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Vétel HUF</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Eladás HUF</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Haszon</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.deviza')}</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('darius.vetelDb')}</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('darius.eladasDb')}</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('profit.vetelHuf')}</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('profit.eladasHuf')}</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('profit.haszon')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betoltes...</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Nincs adat</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
             ) : rows.map((r, i) => (
               <tr key={`${r.currencyCode ?? r.currency ?? 'idx'}-${i}`} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">{r.currencyCode ?? r.currency ?? '-'}</td>
@@ -156,7 +158,7 @@ export default function ProfitPage() {
       </div>
 
       <div className="text-sm text-gray-500">
-        Tranzakciók: {report?.totalTransactions ?? 0}
+        {t('decade.tranzakciok')}{report?.totalTransactions ?? 0}
       </div>
     </div>
   )

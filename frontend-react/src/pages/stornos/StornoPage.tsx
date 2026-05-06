@@ -10,8 +10,10 @@ import {
   saveAndSyncPendingStorno,
 } from '../../utils/electronTransactions'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 export default function StornoPage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const worker = useAuthStore((state) => state.worker)
@@ -174,7 +176,7 @@ export default function StornoPage() {
         >
           <ArrowLeft size={16} />
         </button>
-        <h1 className="text-xl font-bold text-gray-800">Sztornó</h1>
+        <h1 className="text-xl font-bold text-gray-800">{t('cashier.storno')}</h1>
       </div>
 
       {/* Error */}
@@ -189,46 +191,46 @@ export default function StornoPage() {
 
       {/* Transaction Info */}
       <div className="form-panel">
-        <h2 className="text-lg font-semibold mb-3">Tranzakció adatai</h2>
+        <h2 className="text-lg font-semibold mb-3">{t('stornos.tranzakcioAdatai')}</h2>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="form-label">Tranzakció szám</label>
+            <label className="form-label">{t('statistics.tranzakcioSzam')}</label>
             <div className="form-input bg-gray-50">{transaction.receiptNumber || transaction.id}</div>
           </div>
           <div>
-            <label className="form-label">Dátum</label>
+            <label className="form-label">{t('common.date')}</label>
             <div className="form-input bg-gray-50">{new Date(transaction.createdAt).toLocaleString('hu-HU')}</div>
           </div>
           <div>
-            <label className="form-label">Típus</label>
+            <label className="form-label">{t('common.type')}</label>
             <div className="form-input bg-gray-50">
               {transaction.transactionType === 'BUY' ? 'Vétel' : transaction.transactionType === 'SELL' ? 'Eladás' : transaction.transactionType}
             </div>
           </div>
           <div>
-            <label className="form-label">Deviza</label>
+            <label className="form-label">{t('common.deviza')}</label>
             <div className="form-input bg-gray-50">{transaction.currencyCode}</div>
           </div>
           <div>
-            <label className="form-label">Deviza összeg</label>
+            <label className="form-label">{t('stornos.devizaOsszeg')}</label>
             <div className="form-input bg-gray-50 font-mono">
               {transaction.currencyAmount?.toLocaleString('hu-HU', { minimumFractionDigits: 2 })}
             </div>
           </div>
           <div>
-            <label className="form-label">HUF összeg</label>
+            <label className="form-label">{t('stornos.hufOsszeg')}</label>
             <div className="form-input bg-gray-50 font-mono font-semibold">
-              {transaction.hufAmount?.toLocaleString('hu-HU')} Ft
+              {transaction.hufAmount?.toLocaleString('hu-HU')} {t('common.ft')}
             </div>
           </div>
           <div>
-            <label className="form-label">Árfolyam</label>
+            <label className="form-label">{t('cashier.exchangeRate')}</label>
             <div className="form-input bg-gray-50 font-mono">
               {transaction.exchangeRate?.toFixed(4)}
             </div>
           </div>
           <div>
-            <label className="form-label">Ügyfél</label>
+            <label className="form-label">{t('common.customer')}</label>
             <div className="form-input bg-gray-50">{transaction.customerName || 'Névtelen'}</div>
           </div>
         </div>
@@ -248,7 +250,7 @@ export default function StornoPage() {
             </h3>
             <p className="text-sm text-gray-700 mb-2">{checkResult.message}</p>
             <p className="text-sm text-gray-600">
-              Napi sztornók száma: <strong>{checkResult.dailyStornoCount}</strong>
+              {t('stornos.napiSztornokSzama')}<strong>{checkResult.dailyStornoCount}</strong>
             </p>
           </div>
         </div>
@@ -257,10 +259,10 @@ export default function StornoPage() {
       {/* Approval Request (if needed) */}
       {checkResult.requiresApproval && !approval && (
         <div className="form-panel">
-          <h2 className="text-lg font-semibold mb-3">Engedélykérés</h2>
+          <h2 className="text-lg font-semibold mb-3">{t('stornos.engedelykeres')}</h2>
           <div className="space-y-4">
             <div>
-              <label className="form-label">Sztornó oka *</label>
+              <label className="form-label">{t('stornos.sztornoOka')}</label>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -274,7 +276,7 @@ export default function StornoPage() {
               disabled={loading || !reason.trim()}
               className="form-button-primary"
             >
-              Engedélykérés küldése
+              {t('stornos.engedelykeresKuldese')}
             </button>
           </div>
         </div>
@@ -303,12 +305,12 @@ export default function StornoPage() {
               </h3>
               {approval.requestReason && (
                 <p className="text-sm text-gray-700 mb-2">
-                  <strong>Kérés oka:</strong> {approval.requestReason}
+                  <strong>{t('stornos.keresOka')}</strong> {approval.requestReason}
                 </p>
               )}
               {approval.rejectionReason && (
                 <p className="text-sm text-red-700 mb-2">
-                  <strong>Elutasítás oka:</strong> {approval.rejectionReason}
+                  <strong>{t('stornos.elutasitasOka')}</strong> {approval.rejectionReason}
                 </p>
               )}
             </div>
@@ -319,10 +321,10 @@ export default function StornoPage() {
       {/* Storno Form */}
       {(!checkResult.requiresApproval || approval?.approvalStatusDid === 'APPROVED') && (
         <div className="form-panel">
-          <h2 className="text-lg font-semibold mb-3">Sztornó adatai</h2>
+          <h2 className="text-lg font-semibold mb-3">{t('stornos.sztornoAdatai')}</h2>
           <div className="space-y-4">
             <div>
-              <label className="form-label">Sztornó oka *</label>
+              <label className="form-label">{t('stornos.sztornoOka')}</label>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -335,7 +337,7 @@ export default function StornoPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="form-label">Egyedi árfolyam (opcionális)</label>
+                <label className="form-label">{t('stornos.egyediArfolyamOpcionalis')}</label>
                 <input
                   type="number"
                   value={customRate}
@@ -347,16 +349,16 @@ export default function StornoPage() {
                 />
               </div>
               <div>
-                <label className="form-label">Fizetési mód</label>
+                <label className="form-label">{t('stornos.fizetesiMod')}</label>
                 <select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
                   className="form-input"
                   disabled={loading}
                 >
-                  <option value="CASH">Készpénz</option>
-                  <option value="CARD">Kártya</option>
-                  <option value="MIXED">Vegyes</option>
+                  <option value="CASH">{t('stornos.keszpenz')}</option>
+                  <option value="CARD">{t('stornos.kartya')}</option>
+                  <option value="MIXED">{t('stornos.vegyes')}</option>
                 </select>
               </div>
             </div>
@@ -368,14 +370,14 @@ export default function StornoPage() {
                 className="form-button-primary flex items-center gap-2"
               >
                 <Save size={16} />
-                Sztornó végrehajtása
+                {t('stornos.sztornoVegrehajtasa')}
               </button>
               <button
                 onClick={() => navigate('/transactions')}
                 className="form-button"
                 disabled={loading}
               >
-                Mégse
+                {t('common.cancel')}
               </button>
             </div>
           </div>

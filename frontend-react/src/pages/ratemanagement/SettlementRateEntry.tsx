@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
 import { useGridNavigation } from '../../hooks/useGridNavigation'
 import { useUndoStack } from '../../hooks/useUndoStack'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Arfolyam rogzites — Legacy: arfdata.dat adatbevitel.
@@ -80,6 +81,7 @@ function toNum(val: string): number | null {
 }
 
 export default function SettlementRateEntry() {
+  const { t } = useTranslation()
   const [rates, setRates] = useState<ExchangeRateData[]>([])
   const [workgroups, setWorkgroups] = useState<WorkgroupInfo[]>([])
   const [currencies, setCurrencies] = useState<CurrencyInfo[]>([])
@@ -335,7 +337,7 @@ export default function SettlementRateEntry() {
       {workgroups.length > 0 && (
         <div className="flex items-center gap-3 rounded-lg border bg-card p-3 shadow-sm">
           <Users className="h-4 w-4 text-muted-foreground" />
-          <label className="text-sm font-medium">Munkacsoport:</label>
+          <label className="text-sm font-medium">{t('ratemanagement.munkacsoport')}</label>
           <select
             className="border rounded px-3 py-1.5 text-sm bg-background"
             value={selectedWorkgroup ?? ''}
@@ -351,7 +353,7 @@ export default function SettlementRateEntry() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Rögzítse az árfolyamokat az összes aktív valutához. A "Publikálás" gombbal az árfolyamok azonnal élővé válnak.
+          {t('ratemanagement.rogzitseAzArfolyamokatAzOsszesAktivValutahozAPublikalasGombbalAzArfolyamokAzonnalEloveValnak')}
         </p>
         <div className="flex gap-2">
           <button
@@ -376,7 +378,7 @@ export default function SettlementRateEntry() {
             disabled={saving}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            Frissítés
+            {t('common.refresh')}
           </button>
           <button
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
@@ -402,7 +404,7 @@ export default function SettlementRateEntry() {
       )}
       {validationErrors.length > 0 && (
         <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm">
-          <div className="font-medium text-destructive mb-2">Validacios hibak ({validationErrors.length}):</div>
+          <div className="font-medium text-destructive mb-2">{t('ratemanagement.validaciosHibak')}{validationErrors.length}):</div>
           <ul className="list-disc list-inside space-y-1 text-destructive/90">
             {validationErrors.map((ve, i) => (
               <li key={i}>
@@ -424,12 +426,12 @@ export default function SettlementRateEntry() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="text-left p-3 font-medium w-28">Valuta</th>
-                <th className="text-left p-3 font-medium">Hivatalos (MNB)</th>
-                <th className="text-left p-3 font-medium">Vételi árfolyam</th>
-                <th className="text-left p-3 font-medium">Eladási árfolyam</th>
-                <th className="text-left p-3 font-medium w-24">Spread</th>
-                <th className="text-left p-3 font-medium w-16">Limit</th>
+                <th className="text-left p-3 font-medium w-28">{t('common.currency')}</th>
+                <th className="text-left p-3 font-medium">{t('ratemanagement.hivatalosMnb')}</th>
+                <th className="text-left p-3 font-medium">{t('ratemanagement.veteliArfolyam')}</th>
+                <th className="text-left p-3 font-medium">{t('ratemanagement.eladasiArfolyam')}</th>
+                <th className="text-left p-3 font-medium w-24">{t('ratemanagement.spread2')}</th>
+                <th className="text-left p-3 font-medium w-16">{t('components.limit')}</th>
               </tr>
             </thead>
             <tbody>
@@ -526,9 +528,9 @@ export default function SettlementRateEntry() {
                           <div className="grid grid-cols-3 gap-4">
                             {/* Limit 1 */}
                             <div className="space-y-2 rounded-md border p-3">
-                              <h4 className="text-xs font-semibold text-muted-foreground uppercase">Limit 1</h4>
+                              <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('ratemanagement.limit1')}</h4>
                               <div>
-                                <label className="text-xs text-muted-foreground">Osszeg (Ft)</label>
+                                <label className="text-xs text-muted-foreground">{t('ratemanagement.osszegFt')}</label>
                                 <input
                                   type="text"
                                   inputMode="decimal"
@@ -540,7 +542,7 @@ export default function SettlementRateEntry() {
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                  <label className="text-xs text-muted-foreground">Vétel</label>
+                                  <label className="text-xs text-muted-foreground">{t('cashier.buy')}</label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
@@ -550,7 +552,7 @@ export default function SettlementRateEntry() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">Eladás</label>
+                                  <label className="text-xs text-muted-foreground">{t('cashier.sell')}</label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
@@ -564,9 +566,9 @@ export default function SettlementRateEntry() {
 
                             {/* Limit 2 */}
                             <div className="space-y-2 rounded-md border p-3">
-                              <h4 className="text-xs font-semibold text-muted-foreground uppercase">Limit 2</h4>
+                              <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('ratemanagement.limit2')}</h4>
                               <div>
-                                <label className="text-xs text-muted-foreground">Osszeg (Ft)</label>
+                                <label className="text-xs text-muted-foreground">{t('ratemanagement.osszegFt')}</label>
                                 <input
                                   type="text"
                                   inputMode="decimal"
@@ -578,7 +580,7 @@ export default function SettlementRateEntry() {
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                  <label className="text-xs text-muted-foreground">Vétel</label>
+                                  <label className="text-xs text-muted-foreground">{t('cashier.buy')}</label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
@@ -588,7 +590,7 @@ export default function SettlementRateEntry() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">Eladás</label>
+                                  <label className="text-xs text-muted-foreground">{t('cashier.sell')}</label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
@@ -602,9 +604,9 @@ export default function SettlementRateEntry() {
 
                             {/* Limit 3 */}
                             <div className="space-y-2 rounded-md border p-3">
-                              <h4 className="text-xs font-semibold text-muted-foreground uppercase">Limit 3</h4>
+                              <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('ratemanagement.limit3')}</h4>
                               <div>
-                                <label className="text-xs text-muted-foreground">Osszeg (Ft)</label>
+                                <label className="text-xs text-muted-foreground">{t('ratemanagement.osszegFt')}</label>
                                 <input
                                   type="text"
                                   inputMode="decimal"
@@ -616,7 +618,7 @@ export default function SettlementRateEntry() {
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                  <label className="text-xs text-muted-foreground">Vétel</label>
+                                  <label className="text-xs text-muted-foreground">{t('cashier.buy')}</label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
@@ -626,7 +628,7 @@ export default function SettlementRateEntry() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">Eladás</label>
+                                  <label className="text-xs text-muted-foreground">{t('cashier.sell')}</label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
@@ -652,7 +654,7 @@ export default function SettlementRateEntry() {
       {/* Bottom actions */}
       <div className="flex justify-between items-center">
         <span className="text-xs text-muted-foreground">
-          {rates.filter(r => r.baseBuyRate.trim() && r.baseSellRate.trim()).length} / {rates.length} valuta kitoltve
+          {rates.filter(r => r.baseBuyRate.trim() && r.baseSellRate.trim()).length} / {rates.length} {t('ratemanagement.valutaKitoltve')}
         </span>
         <button
           className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"

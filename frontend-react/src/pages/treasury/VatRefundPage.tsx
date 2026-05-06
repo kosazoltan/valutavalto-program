@@ -17,6 +17,7 @@ import { formatDateTime } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import { useTranslation } from 'react-i18next'
 
 const VOUCHER_TYPE_LABELS: Record<VatRefundType, string> = {
   AK: 'Külföldi ügyfél ÁFA',
@@ -44,6 +45,7 @@ function formatCurrency(amount: number | undefined | null): string {
 }
 
 export default function VatRefundPage() {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [records, setRecords] = useState<VatRefundItem[]>([])
   const [showNewModal, setShowNewModal] = useState(false)
@@ -175,11 +177,11 @@ export default function VatRefundPage() {
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold text-secondary-900 flex items-center gap-2">
             <Receipt size={22} className="text-primary-600" />
-            ÁFA Visszatérítés
+            {t('treasury.afaVisszaterites')}
           </h1>
-          <span className="badge badge-blue">Aktív: {activeCount}</span>
+          <span className="badge badge-blue">{t('treasury.aktiv')}{activeCount}</span>
           {reversedCount > 0 && (
-            <span className="badge badge-orange">Sztornó: {reversedCount}</span>
+            <span className="badge badge-orange">{t('treasury.sztorno')}{reversedCount}</span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -188,7 +190,7 @@ export default function VatRefundPage() {
           </button>
           <button onClick={() => setShowNewModal(true)} className="form-button-primary h-8 text-xs">
             <Plus size={16} />
-            <span>Új bizonylat</span>
+            <span>{t('treasury.ujBizonylat')}</span>
           </button>
         </div>
       </div>
@@ -197,20 +199,20 @@ export default function VatRefundPage() {
       <div className="form-panel">
         <div className="flex flex-wrap gap-3 items-end">
           <div>
-            <label className="form-label text-xs">Típus</label>
+            <label className="form-label text-xs">{t('common.type')}</label>
             <select
               className="form-input w-44 h-8 text-xs"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as VatRefundType | 'all')}
             >
-              <option value="all">Minden típus</option>
+              <option value="all">{t('treasury.mindenTipus2')}</option>
               {VOUCHER_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="form-label text-xs">Ügyfél/Cég</label>
+            <label className="form-label text-xs">{t('treasury.ugyfelCeg')}</label>
             <input
               type="text"
               className="form-input w-44 h-8 text-xs"
@@ -220,16 +222,16 @@ export default function VatRefundPage() {
             />
           </div>
           <div>
-            <label className="form-label text-xs">Dátumtól</label>
+            <label className="form-label text-xs">{t('components.datumtol')}</label>
             <input type="date" className="form-input h-8 text-xs" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
           </div>
           <div>
-            <label className="form-label text-xs">Dátumig</label>
+            <label className="form-label text-xs">{t('components.datumig')}</label>
             <input type="date" className="form-input h-8 text-xs" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           </div>
           {(typeFilter !== 'all' || customerFilter || dateFrom || dateTo) && (
             <button className="form-button h-8 text-xs" onClick={() => { setTypeFilter('all'); setCustomerFilter(''); setDateFrom(''); setDateTo('') }}>
-              Szűrő törlése
+              {t('treasury.szuroTorlese')}
             </button>
           )}
         </div>
@@ -240,20 +242,20 @@ export default function VatRefundPage() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th className="w-24">Sorszám</th>
-              <th className="w-36">Típus</th>
-              <th className="w-44">Ügyfél/Cég</th>
-              <th className="text-right w-28">Bruttó (Ft)</th>
-              <th className="text-right w-28">ÁFA (Ft)</th>
-              <th className="text-right w-16">ÁFA %</th>
-              <th className="w-24">Státusz</th>
-              <th className="w-28">Dátum</th>
+              <th className="w-24">{t('treasury.sorszam')}</th>
+              <th className="w-36">{t('common.type')}</th>
+              <th className="w-44">{t('treasury.ugyfelCeg')}</th>
+              <th className="text-right w-28">{t('treasury.bruttoFt')}</th>
+              <th className="text-right w-28">{t('treasury.afaFt')}</th>
+              <th className="text-right w-16">{t('treasury.afa')}</th>
+              <th className="w-24">{t('common.status')}</th>
+              <th className="w-28">{t('common.date')}</th>
               <th className="w-12"></th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={9} className="text-center text-sm text-secondary-400 py-8">Nincs találat</td></tr>
+              <tr><td colSpan={9} className="text-center text-sm text-secondary-400 py-8">{t('common.noResult')}</td></tr>
             )}
             {filtered.map((r) => {
               const TypeIcon = VOUCHER_TYPE_ICONS[r.voucherType]
@@ -267,8 +269,8 @@ export default function VatRefundPage() {
                     </span>
                   </td>
                   <td className="text-xs text-secondary-700">{r.customerName || r.companyName || '-'}</td>
-                  <td className="text-right font-mono font-semibold">{formatCurrency(r.grossAmount)} Ft</td>
-                  <td className="text-right font-mono text-xs">{formatCurrency(r.vatAmount)} Ft</td>
+                  <td className="text-right font-mono font-semibold">{formatCurrency(r.grossAmount)} {t('components.ft')}</td>
+                  <td className="text-right font-mono text-xs">{formatCurrency(r.vatAmount)} {t('components.ft')}</td>
                   <td className="text-right font-mono text-xs">{r.vatPercentage != null ? `${r.vatPercentage}%` : '-'}</td>
                   <td>
                     <span className={`badge ${r.isReversed ? 'badge-orange' : 'badge-green'}`}>
@@ -299,12 +301,12 @@ export default function VatRefundPage() {
           <div className="bg-white rounded-lg shadow-xl p-4 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-secondary-900 mb-3 flex items-center gap-2">
               <Receipt size={24} className="text-primary-600" />
-              Új ÁFA bizonylat
+              {t('treasury.ujAfaBizonylat')}
             </h2>
             <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
               {/* Type selector */}
               <div>
-                <label className="form-label">Bizonylat típusa</label>
+                <label className="form-label">{t('treasury.bizonylatTipusa')}</label>
                 <div className="grid grid-cols-1 gap-2">
                   {VOUCHER_TYPES.map((t) => {
                     const Icon = VOUCHER_TYPE_ICONS[t.value]
@@ -331,11 +333,11 @@ export default function VatRefundPage() {
               {/* Amounts */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Bruttó összeg (Ft)</label>
+                  <label className="form-label">{t('treasury.bruttoOsszegFt')}</label>
                   <input type="number" className="form-input w-full font-mono" placeholder="0" value={grossAmount} onChange={(e) => setGrossAmount(e.target.value)} required min="1" step="1" />
                 </div>
                 <div>
-                  <label className="form-label">ÁFA %</label>
+                  <label className="form-label">{t('treasury.afa')}</label>
                   <select className="form-input w-full" value={vatPercentage} onChange={(e) => setVatPercentage(parseInt(e.target.value))}>
                     {VAT_PERCENT_OPTIONS.map((p) => (<option key={p} value={p}>{p}%</option>))}
                   </select>
@@ -346,12 +348,12 @@ export default function VatRefundPage() {
               {grossAmount && parseFloat(grossAmount) > 0 && (
                 <div className="p-3 rounded-lg bg-secondary-50 border border-secondary-200 grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <span className="text-secondary-500 text-xs">ÁFA összeg:</span>
-                    <div className="font-bold font-mono">{formatCurrency(computedVatAmount)} Ft</div>
+                    <span className="text-secondary-500 text-xs">{t('treasury.afaOsszeg')}</span>
+                    <div className="font-bold font-mono">{formatCurrency(computedVatAmount)} {t('components.ft')}</div>
                   </div>
                   <div>
-                    <span className="text-secondary-500 text-xs">Nettó összeg:</span>
-                    <div className="font-bold font-mono">{formatCurrency(computedNetAmount)} Ft</div>
+                    <span className="text-secondary-500 text-xs">{t('treasury.nettoOsszeg')}</span>
+                    <div className="font-bold font-mono">{formatCurrency(computedNetAmount)} {t('components.ft')}</div>
                   </div>
                 </div>
               )}
@@ -359,11 +361,11 @@ export default function VatRefundPage() {
               {/* AK: Customer data */}
               {voucherType === 'AK' && (
                 <>
-                  <div><label className="form-label">Ügyfél neve *</label><input type="text" className="form-input w-full" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required /></div>
-                  <div><label className="form-label">Ügyfél lakcíme</label><input type="text" className="form-input w-full" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} /></div>
+                  <div><label className="form-label">{t('pep.ugyfelNeve2')}</label><input type="text" className="form-input w-full" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required /></div>
+                  <div><label className="form-label">{t('treasury.ugyfelLakcime')}</label><input type="text" className="form-input w-full" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} /></div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div><label className="form-label">Azonosító (útlevél/szig)</label><input type="text" className="form-input w-full" value={customerIdentifier} onChange={(e) => setCustomerIdentifier(e.target.value)} /></div>
-                    <div><label className="form-label">Bankszámlaszám</label><input type="text" className="form-input w-full" value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} /></div>
+                    <div><label className="form-label">{t('treasury.azonositoUtlevelSzig')}</label><input type="text" className="form-input w-full" value={customerIdentifier} onChange={(e) => setCustomerIdentifier(e.target.value)} /></div>
+                    <div><label className="form-label">{t('treasury.bankszamlaszam')}</label><input type="text" className="form-input w-full" value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} /></div>
                   </div>
                 </>
               )}
@@ -371,15 +373,15 @@ export default function VatRefundPage() {
               {/* AB: Company data */}
               {voucherType === 'AB' && (
                 <>
-                  <div><label className="form-label">Cég neve *</label><input type="text" className="form-input w-full" value={companyName} onChange={(e) => setCompanyName(e.target.value)} required /></div>
-                  <div><label className="form-label">Telephely cím</label><input type="text" className="form-input w-full" value={siteAddress} onChange={(e) => setSiteAddress(e.target.value)} /></div>
-                  <div><label className="form-label">Okiratszám</label><input type="text" className="form-input w-full" value={deedNumber} onChange={(e) => setDeedNumber(e.target.value)} /></div>
+                  <div><label className="form-label">{t('treasury.cegNeve')}</label><input type="text" className="form-input w-full" value={companyName} onChange={(e) => setCompanyName(e.target.value)} required /></div>
+                  <div><label className="form-label">{t('treasury.telephelyCim')}</label><input type="text" className="form-input w-full" value={siteAddress} onChange={(e) => setSiteAddress(e.target.value)} /></div>
+                  <div><label className="form-label">{t('treasury.okiratszam')}</label><input type="text" className="form-input w-full" value={deedNumber} onChange={(e) => setDeedNumber(e.target.value)} /></div>
                 </>
               )}
 
               {/* Buttons */}
               <div className="flex justify-end gap-3 pt-4 border-t">
-                <button type="button" className="form-button" onClick={() => { setShowNewModal(false); resetForm() }}>Mégse</button>
+                <button type="button" className="form-button" onClick={() => { setShowNewModal(false); resetForm() }}>{t('common.cancel')}</button>
                 <button type="submit" className="form-button-primary" disabled={submitting}>
                   <CheckCircle size={18} />
                   <span>{submitting ? 'Mentés...' : 'Rögzítés'}</span>
@@ -418,10 +420,10 @@ export default function VatRefundPage() {
             <div className="flex gap-3 mt-6">
               {!showDetailModal.isReversed && (
                 <button className="form-button flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50" onClick={() => { setShowDetailModal(null); setStornoTarget(showDetailModal) }}>
-                  <XCircle size={16} /> Sztornó
+                  <XCircle size={16} />{t('cashier.storno')}
                 </button>
               )}
-              <button onClick={() => setShowDetailModal(null)} className="form-button-primary flex-1">Bezárás</button>
+              <button onClick={() => setShowDetailModal(null)} className="form-button-primary flex-1">{t('common.close')}</button>
             </div>
           </div>
         </div>
@@ -432,14 +434,14 @@ export default function VatRefundPage() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setStornoTarget(null)}>
           <div className="bg-white rounded-lg shadow-xl p-4 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-bold text-secondary-900 mb-3 flex items-center gap-2">
-              <XCircle size={20} className="text-red-500" /> Sztornó megerősítés
+              <XCircle size={20} className="text-red-500" />{t('treasury.sztornoMegerosites')}
             </h2>
-            <p className="text-sm text-secondary-600 mb-2">{stornoTarget.serialNumber} sztornózása?</p>
+            <p className="text-sm text-secondary-600 mb-2">{stornoTarget.serialNumber} {t('treasury.sztornozasa')}</p>
             <p className="text-sm font-semibold text-secondary-800 mb-3">
-              {VOUCHER_TYPE_LABELS[stornoTarget.voucherType]} — {formatCurrency(stornoTarget.grossAmount)} Ft
+              {VOUCHER_TYPE_LABELS[stornoTarget.voucherType]} — {formatCurrency(stornoTarget.grossAmount)} {t('common.ft')}
             </p>
             <div className="flex gap-3">
-              <button className="form-button flex-1" onClick={() => setStornoTarget(null)}>Mégse</button>
+              <button className="form-button flex-1" onClick={() => setStornoTarget(null)}>{t('common.cancel')}</button>
               <button className="form-button-primary flex-1 bg-red-600 hover:bg-red-700 border-red-600" onClick={() => void handleStorno()} disabled={stornoSubmitting}>
                 {stornoSubmitting ? 'Feldolgozás...' : 'Sztornó'}
               </button>

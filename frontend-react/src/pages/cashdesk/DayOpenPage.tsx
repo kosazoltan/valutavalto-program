@@ -7,6 +7,7 @@ import type { CashBalance } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { clearPersistedToken } from '../../services/api/index'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 /** HUF cimletek — csökkeno sorrendben */
 const HUF_DENOMINATIONS = [20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5] as const
@@ -19,6 +20,7 @@ const HUF_DENOMINATIONS = [20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20
  */
 
 export default function DayOpenPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const worker = useAuthStore((s) => s.worker)
   const logout = useAuthStore((s) => s.logout)
@@ -114,12 +116,12 @@ export default function DayOpenPage() {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3">
         <CheckCircle className="h-10 w-10 text-green-500" />
-        <h2 className="text-lg font-bold text-gray-800">A nap már nyitva van</h2>
+        <h2 className="text-lg font-bold text-gray-800">{t('cashdesk.aNapMarNyitvaVan')}</h2>
         <button
           onClick={() => navigate('/cashier')}
           className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
         >
-          Tovább a pénztárhoz
+          {t('cashdesk.tovabbAPenztarhoz')}
         </button>
       </div>
     )
@@ -131,7 +133,7 @@ export default function DayOpenPage() {
           {/* Header */}
           <div className="text-center">
             <Sun className="mx-auto h-8 w-8 text-amber-500" />
-            <h1 className="mt-1 text-base font-bold text-gray-900">Napnyitás</h1>
+            <h1 className="mt-1 text-base font-bold text-gray-900">{t('cashdesk.napnyitas')}</h1>
             <p className="text-xs text-gray-500">
               {new Date().toLocaleDateString('hu-HU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               {' — '}
@@ -151,7 +153,7 @@ export default function DayOpenPage() {
           {balances.length > 0 && (
             <div className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
               <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Nyito egyenleg
+                {t('cashdesk.nyitoEgyenleg')}
               </h3>
 
               {/* HUF balance — highlighted */}
@@ -159,7 +161,7 @@ export default function DayOpenPage() {
                 <div className="mb-1 flex items-center justify-between rounded bg-blue-50 px-2 py-1">
                   <span className="text-sm font-bold text-blue-900">HUF</span>
                   <span className="text-sm font-bold text-blue-900">
-                    {hufBalance.currentBalance.toLocaleString('hu-HU')} Ft
+                    {hufBalance.currentBalance.toLocaleString('hu-HU')} {t('common.ft')}
                   </span>
                 </div>
               )}
@@ -193,7 +195,7 @@ export default function DayOpenPage() {
           {showDenomination && (
             <div className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
               <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                HUF címletezés
+                {t('cashdesk.hufCimletezes')}
               </h3>
               {/* Codex P2 #345 fix: a 2-oszlopos cella (max-w-lg/2 ≈ 250px) NEM fér el
                   w-20 label + w-20 input + computed text esetén. Kompaktabb: w-14 + w-14
@@ -218,16 +220,16 @@ export default function DayOpenPage() {
                     {/* Codex P2 #347: min-w-0 kell a truncate-hez, mert flex item default
                         min-width: auto megakadalyozza a shrink-et a tartalom alá. */}
                     <span className="min-w-0 flex-1 text-xs text-gray-500 truncate">
-                      = {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')} Ft
+                      = {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')} {t('common.ft')}
                     </span>
                   </div>
                 ))}
               </div>
               {/* Total */}
               <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
-                <span className="text-sm font-bold text-gray-800">Osszesen:</span>
+                <span className="text-sm font-bold text-gray-800">{t('cashdesk.osszesen')}</span>
                 <span className="text-lg font-bold text-blue-900">
-                  {denomTotal.toLocaleString('hu-HU')} Ft
+                  {denomTotal.toLocaleString('hu-HU')} {t('common.ft')}
                 </span>
               </div>
               {/* Comparison with system balance */}
@@ -270,7 +272,7 @@ export default function DayOpenPage() {
             }}
             className="w-full text-center text-xs text-gray-500 hover:text-gray-700"
           >
-            Kijelentkezés
+            {t('layout.logoutButton')}
           </button>
       </div>
     </div>

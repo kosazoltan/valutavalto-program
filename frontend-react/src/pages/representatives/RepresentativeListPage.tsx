@@ -4,8 +4,10 @@ import { Users, Plus, Eye, AlertCircle, Loader2, ArrowLeft } from 'lucide-react'
 import { authorizedRepresentativeApi, AuthorizedRepresentative } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 export default function RepresentativeListPage() {
+  const { t } = useTranslation()
   const { customerId } = useParams<{ customerId: string }>()
   const navigate = useNavigate()
   const [representatives, setRepresentatives] = useState<AuthorizedRepresentative[]>([])
@@ -38,7 +40,7 @@ export default function RepresentativeListPage() {
     return (
       <div className="form-panel">
         <div className="text-center text-gray-500 py-8">
-          Ügyfél ID hiányzik
+          {t('representatives.ugyfelIdHianyzik')}
         </div>
       </div>
     )
@@ -55,7 +57,7 @@ export default function RepresentativeListPage() {
           </Link>
           <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <Users />
-            Meghatalmazottak
+            {t('customers.meghatalmazottak')}
             {customerName && <span className="text-base font-normal text-gray-500">— {customerName}</span>}
           </h1>
         </div>
@@ -64,7 +66,7 @@ export default function RepresentativeListPage() {
           className="form-button-primary flex items-center gap-2"
         >
           <Plus size={16} />
-          Új meghatalmazott
+          {t('representatives.ujMeghatalmazott')}
         </Link>
       </div>
 
@@ -84,20 +86,20 @@ export default function RepresentativeListPage() {
         </div>
       ) : representatives.length === 0 ? (
         <div className="form-panel text-center py-8 text-gray-500">
-          Nincsenek meghatalmazottak
+          {t('representatives.nincsenekMeghatalmazottak')}
         </div>
       ) : (
         <div className="form-panel p-0">
           <table className="data-grid w-full">
             <thead>
               <tr>
-                <th>Név</th>
-                <th>Okmányszám</th>
-                <th>Okmány típus</th>
-                <th>Kapcsolat</th>
-                <th>Érvényes</th>
-                <th>Státusz</th>
-                <th className="w-24">Műveletek</th>
+                <th>{t('common.name')}</th>
+                <th>{t('common.documentNumber')}</th>
+                <th>{t('customers.okmanyTipus')}</th>
+                <th>{t('display.kapcsolat')}</th>
+                <th>{t('rates.ervenyes')}</th>
+                <th>{t('common.status')}</th>
+                <th className="w-24">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
