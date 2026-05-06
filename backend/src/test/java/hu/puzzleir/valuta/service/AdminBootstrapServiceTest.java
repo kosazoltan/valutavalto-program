@@ -161,8 +161,8 @@ class AdminBootstrapServiceTest {
     }
 
     @Test
-    @DisplayName("Bootstrap flag már true -> ValidationException (idempotencia védelem)")
-    void rejectsRepeatedBootstrap() {
+    @DisplayName("Bootstrap flag már true -> meglévő worker jelszó frissítés (újratelepítés)")
+    void updatesPasswordOnRepeatedBootstrap() {
         SystemParameter completedFlag = SystemParameter.builder()
                 .parameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY)
                 .parameterValue("true")
@@ -170,13 +170,29 @@ class AdminBootstrapServiceTest {
                 .build();
         when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
                 .thenReturn(Optional.of(completedFlag));
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(ebcCompany));
 
-        assertThatThrownBy(() -> service.bootstrapAdmin(validRequest()))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("beállítás már lezajlott");
+        Worker existing = new Worker();
+        existing.setId(99L);
+        existing.setCompany(ebcCompany);
+        existing.setCode("ADMIN");
+        existing.setName("Régi Admin");
+        existing.setRole(WorkerRole.ADMIN);
+        existing.setActive(true);
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(ebcCompany.getId(), "ADMIN"))
+                .thenReturn(Optional.of(existing));
+        when(passwordEncoder.encode("SuperErosJelszo123!")).thenReturn("$2b$10$newhash");
+        when(workerRepository.save(any(Worker.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        verify(workerRepository, never()).save(any());
-        verify(systemParameterRepository, never()).save(any());
+        BootstrapAdminResponseDto response = service.bootstrapAdmin(validRequest());
+
+        assertThat(response.isSuccess()).isTrue();
+        ArgumentCaptor<Worker> captor = ArgumentCaptor.forClass(Worker.class);
+        verify(workerRepository).save(captor.capture());
+        Worker saved = captor.getValue();
+        assertThat(saved.getPasswordHash()).isEqualTo("$2b$10$newhash");
+        assertThat(saved.getPasswordChangedAt()).isNotNull();
+        assertThat(saved.getActive()).isTrue();
     }
 
     @Test

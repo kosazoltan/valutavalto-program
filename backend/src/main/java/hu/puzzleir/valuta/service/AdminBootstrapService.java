@@ -53,28 +53,9 @@ public class AdminBootstrapService {
     private final SystemParameterRepository systemParameterRepository;
     private final PasswordEncoder passwordEncoder;
 
-    /**
-     * Admin bootstrap végrehajtása. Lépések:
-     * <ol>
-     *   <li>Ellenőrzi a flag-et — ha már true, 400-t dob</li>
-     *   <li>Keresi a cégkódot (normalizálva); ha nincs, 400</li>
-     *   <li>Keresi a workert (companyId + workerCode, ignore case);
-     *       ha nincs, újat hoz létre az első aktív branch-hez kötve</li>
-     *   <li>Beállítja: passwordHash = BCrypt(newPassword),
-     *       role = ADMIN, active = true, passwordChangedAt = now()</li>
-     *   <li>Beírja / frissíti a {@code auth.bootstrap-completed = "true"}
-     *       system paramétert</li>
-     * </ol>
-     */
     @Transactional(rollbackFor = Exception.class)
     public BootstrapAdminResponseDto bootstrapAdmin(BootstrapAdminRequestDto dto) {
-        if (isBootstrapAlreadyCompleted()) {
-            log.warn("Admin bootstrap elutasítva: a flag már true-ra van állítva.");
-            throw new ValidationException(
-                    "Az első indítási beállítás már lezajlott ezen a rendszeren. "
-                    + "Ha admin jelszót szeretnél cserélni, használd a belépés utáni Profil menüt."
-            );
-        }
+        boolean alreadyCompleted = isBootstrapAlreadyCompleted();
 
         String normalizedCompanyCode = normalize(dto.getCompanyCode());
         String normalizedWorkerCode = normalize(dto.getWorkerCode());
@@ -85,6 +66,28 @@ public class AdminBootstrapService {
                         "Ismeretlen cégkód: " + normalizedCompanyCode
                         + ". Ellenőrizd az adatbázisban, hogy létrejött-e a cég."
                 ));
+
+        if (alreadyCompleted) {
+            Worker existing = workerRepository.findByCompanyIdAndCodeIgnoreCase(
+                    company.getId(), normalizedWorkerCode)
+                    .orElseThrow(() -> new ValidationException(
+                            "A bootstrap már lezajlott, és a megadott kódhoz ("
+                            + normalizedWorkerCode + ") nem található worker."
+                    ));
+            existing.setPasswordHash(passwordEncoder.encode(dto.getNewPassword()));
+            existing.setPasswordChangedAt(LocalDateTime.now());
+            existing.setActive(true);
+            Worker saved = workerRepository.save(existing);
+            log.info("Admin bootstrap (re-install password update) — worker id={}, companyCode={}, workerCode={}",
+                    saved.getId(), company.getCode(), saved.getCode());
+            return BootstrapAdminResponseDto.builder()
+                    .success(true)
+                    .message("Admin jelszó frissítve (újratelepítés). Most már bejelentkezhetsz.")
+                    .workerId(saved.getId())
+                    .companyCode(company.getCode())
+                    .workerCode(saved.getCode())
+                    .build();
+        }
 
         Worker worker = workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), normalizedWorkerCode)
                 .orElseGet(() -> createWorkerShell(company, normalizedWorkerCode, dto.getWorkerName()));
