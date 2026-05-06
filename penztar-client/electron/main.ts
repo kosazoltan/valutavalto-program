@@ -902,17 +902,33 @@ app.whenReady().then(async () => {
     }
     const apiBaseUrl = loadProductionUrls().api_url;
     const fullUrl = params.url.startsWith('http') ? params.url : `${apiBaseUrl}${params.url}`;
-    try {
-      const response = await fetchViaElectronNet({
-        ...params,
-        url: fullUrl,
-      });
-      return response;
-    } catch (err) {
-      const msg = (err as Error).message ?? String(err);
-      log.warn('[main] api:fetch error for', params.method, params.url, ':', msg);
-      return { ok: false, status: 0, statusText: 'NETWORK_ERROR', headers: {}, body: JSON.stringify({ error: msg }) };
+
+    const MAX_RETRIES = 3;
+    const RETRY_DELAYS = [1000, 3000, 5000];
+    let lastErr: Error | null = null;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
+      try {
+        const response = await fetchViaElectronNet({
+          ...params,
+          url: fullUrl,
+        });
+        return response;
+      } catch (err) {
+        lastErr = err as Error;
+        const msg = lastErr.message ?? String(err);
+        const isNetworkErr = /Network error|Timeout|ECONNRESET|EAI_AGAIN|ECONNREFUSED|ENOTFOUND/i.test(msg);
+        if (!isNetworkErr || attempt === MAX_RETRIES - 1) {
+          log.warn('[main] api:fetch failed after', attempt + 1, 'attempt(s) for', params.method, params.url, ':', msg);
+          return { ok: false, status: 0, statusText: 'NETWORK_ERROR', headers: {}, body: JSON.stringify({ error: msg }) };
+        }
+        log.warn('[main] api:fetch retry', attempt + 1, '/', MAX_RETRIES, 'for', params.method, params.url, ':', msg);
+        await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt] ?? 5000));
+      }
     }
+
+    const msg = lastErr?.message ?? 'Unknown error';
+    return { ok: false, status: 0, statusText: 'NETWORK_ERROR', headers: {}, body: JSON.stringify({ error: msg }) };
   });
 
   // Custom 'app' protocol handler regisztráció
