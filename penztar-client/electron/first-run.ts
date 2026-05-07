@@ -230,6 +230,7 @@ export function persistBootstrapPasswordConfig(
   if (!bootstrapPassword) {
     deleteConfig('bootstrap_password');
     deleteConfig('bootstrap_password_encrypted');
+    deleteConfig('bootstrap_password_fallback_pending');
     return;
   }
 
@@ -237,12 +238,13 @@ export function persistBootstrapPasswordConfig(
   if (encryptedBootstrapPassword) {
     setConfig('bootstrap_password_encrypted', encryptedBootstrapPassword);
     deleteConfig('bootstrap_password');
+    deleteConfig('bootstrap_password_fallback_pending');
     return;
   }
 
   try {
     setConfig('bootstrap_password', bootstrapPassword);
-    deleteConfig('bootstrap_password_encrypted');
+    setConfig('bootstrap_password_fallback_pending', '1');
     log.warn('[Setup] safeStorage nem elerheto, bootstrap jelszo ideiglenesen plaintext SQLite configban marad; sikeres bootstrap login utan torlodik.');
   } catch (err) {
     log.warn('[Setup] bootstrap jelszo fallback mentese sikertelen; meglevo bootstrap titok erintetlen marad:', err);

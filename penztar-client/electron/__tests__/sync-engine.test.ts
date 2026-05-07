@@ -55,6 +55,7 @@ import { selectBootstrapRoleCode, SyncEngine } from '../sync-engine';
 import {
   deleteConfig,
   getConfig,
+  setConfig,
   getPendingTransactions,
   getPendingConversions,
   getPendingBankTransactions,
@@ -73,6 +74,7 @@ import {
 
 const mockedGetConfig = vi.mocked(getConfig);
 const mockedDeleteConfig = vi.mocked(deleteConfig);
+const mockedSetConfig = vi.mocked(setConfig);
 const mockedGetPendingTransactions = vi.mocked(getPendingTransactions);
 const mockedGetPendingConversions = vi.mocked(getPendingConversions);
 const mockedGetPendingBankTransactions = vi.mocked(getPendingBankTransactions);
@@ -167,6 +169,42 @@ describe('SyncEngine — bootstrap password storage', () => {
 
     expect(password).toBe('legacy-fallback-pass');
     expect(mockedDeleteConfig).toHaveBeenCalledWith('bootstrap_password_encrypted');
+  });
+
+  it('uses pending plaintext fallback before stale encrypted bootstrap password', () => {
+    const encrypted = Buffer.from('old-ciphertext').toString('base64');
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'bootstrap_password_encrypted') return encrypted;
+      if (key === 'bootstrap_password') return 'new-fallback-pass';
+      if (key === 'bootstrap_password_fallback_pending') return '1';
+      return null;
+    });
+    vi.mocked(safeStorage.decryptString).mockReturnValue('old-encrypted-pass');
+    const engine = new SyncEngine();
+
+    const password = (engine as unknown as { getStoredBootstrapPassword(): string }).getStoredBootstrapPassword();
+
+    expect(password).toBe('new-fallback-pass');
+    expect(safeStorage.decryptString).not.toHaveBeenCalled();
+  });
+
+  it('reencrypts pending plaintext bootstrap password after successful login cleanup', () => {
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'bootstrap_password') return 'new-fallback-pass';
+      return null;
+    });
+    vi.mocked(safeStorage.encryptString).mockReturnValue(Buffer.from('encrypted:new-fallback-pass'));
+    const engine = new SyncEngine();
+
+    (engine as unknown as { cleanupBootstrapPasswordAfterSuccessfulLogin(): void })
+      .cleanupBootstrapPasswordAfterSuccessfulLogin();
+
+    expect(mockedSetConfig).toHaveBeenCalledWith(
+      'bootstrap_password_encrypted',
+      Buffer.from('encrypted:new-fallback-pass').toString('base64'),
+    );
+    expect(mockedDeleteConfig).toHaveBeenCalledWith('bootstrap_password');
+    expect(mockedDeleteConfig).toHaveBeenCalledWith('bootstrap_password_fallback_pending');
   });
 });
 

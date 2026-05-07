@@ -351,6 +351,12 @@ export class SyncEngine {
   }
 
   private getStoredBootstrapPassword(): string {
+    const plaintext = getConfig('bootstrap_password')?.trim() || '';
+    const fallbackPending = getConfig('bootstrap_password_fallback_pending')?.trim() === '1';
+    if (fallbackPending && plaintext) {
+      return plaintext;
+    }
+
     const encrypted = getConfig('bootstrap_password_encrypted');
     if (encrypted && safeStorage.isEncryptionAvailable()) {
       try {
@@ -360,7 +366,34 @@ export class SyncEngine {
         deleteConfig('bootstrap_password_encrypted');
       }
     }
-    return getConfig('bootstrap_password')?.trim() || '';
+    return plaintext;
+  }
+
+  private cleanupBootstrapPasswordAfterSuccessfulLogin(): void {
+    if (process.env.PENZTAR_BOOTSTRAP_PASSWORD) {
+      return;
+    }
+
+    const plaintext = getConfig('bootstrap_password')?.trim();
+    if (!plaintext) {
+      return;
+    }
+
+    try {
+      if (safeStorage.isEncryptionAvailable()) {
+        const encrypted = safeStorage.encryptString(plaintext);
+        setConfig('bootstrap_password_encrypted', encrypted.toString('base64'));
+        deleteConfig('bootstrap_password');
+        deleteConfig('bootstrap_password_fallback_pending');
+        log.info('[SyncEngine] bootstrap_password titkositva es plaintext fallback torolve (sikeres login utan)');
+        return;
+      }
+    } catch (err) {
+      log.warn('[SyncEngine] bootstrap_password ujratitkositas sikertelen, plaintext fallback megmarad:', err);
+      return;
+    }
+
+    log.warn('[SyncEngine] safeStorage nem elerheto, bootstrap_password plaintext fallback megmarad kovetkezo inditashoz.');
   }
 
   private persistAuthToken(token: string): void {
@@ -446,11 +479,7 @@ export class SyncEngine {
 
       this.persistAuthToken(token);
       this.lastTokenValidationAt = Date.now();
-      // Security: sikeres login utan torolheto a plaintext bootstrap_password (ha a DB-ben volt)
-      if (!process.env.PENZTAR_BOOTSTRAP_PASSWORD && getConfig('bootstrap_password')) {
-        deleteConfig('bootstrap_password');
-        log.info('[SyncEngine] bootstrap_password torolve (sikeres login utan)');
-      }
+      this.cleanupBootstrapPasswordAfterSuccessfulLogin();
       log.info('[SyncEngine] Lokális auth/session bootstrap sikeres');
       return token;
     } catch (err) {
