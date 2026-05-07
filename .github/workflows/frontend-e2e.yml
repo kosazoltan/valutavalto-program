@@ -27,6 +27,7 @@ jobs:
   auth-reload-smoke:
     name: Auth Reload Smoke (Playwright)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: frontend-react
@@ -45,9 +46,11 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Install Playwright Chromium
+        timeout-minutes: 8
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright E2E suite
+        timeout-minutes: 10
         run: npm run test:e2e
 
       - name: Upload Playwright report
