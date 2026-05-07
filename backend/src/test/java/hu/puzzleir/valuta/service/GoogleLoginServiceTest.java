@@ -256,6 +256,57 @@ class GoogleLoginServiceTest {
     }
 
     @Test
+    @DisplayName("Legacy Google login role assignment nelkul penztar appMode-ban worker.role fallbackot es branch fallbackot hasznal")
+    void legacyWorkerRoleFallback_setsBranchBeforeJwt() throws Exception {
+        when(googleIdTokenService.verify("ok"))
+                .thenReturn(identity("g-sub-legacy", "cashier@gmail.com"));
+        Worker w = worker("BORSI", "cashier@gmail.com", true, "g-sub-legacy");
+        w.setBranch(null);
+        Branch fallbackBranch = Branch.builder()
+                .id(UUID.randomUUID())
+                .code("TISZA")
+                .name("Tisza iroda")
+                .company(w.getCompany())
+                .build();
+        when(workerRepository.findGoogleLoginCandidatesByEmail("cashier@gmail.com")).thenReturn(List.of(w));
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of());
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(w.getCompany().getId()))
+                .thenReturn(List.of(fallbackBranch));
+        when(jwtTokenProvider.generateToken(any(), any(), any())).thenAnswer(inv -> {
+            Worker tokenWorker = inv.getArgument(0);
+            assertThat(tokenWorker.getBranch()).isEqualTo(fallbackBranch);
+            return "jwt-legacy";
+        });
+        when(jwtTokenProvider.getTokenIdFromToken("jwt-legacy")).thenReturn("token-id-legacy");
+        when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(sessionRepository.save(any(WorkerSession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        LoginResponseDto response = service.loginWithGoogle("ok", new MockHttpServletRequest(), "penztar");
+
+        assertThat(response.getActiveRole()).isNull();
+        assertThat(response.getValidAppModes()).containsExactly("penztar");
+        assertThat(response.getWorker().getBranchCode()).isEqualTo("TISZA");
+        assertThat(w.getBranch()).isEqualTo(fallbackBranch);
+    }
+
+    @Test
+    @DisplayName("Legacy Google CASHIER role assignment nelkul nem lephet be ertektar appMode-ba")
+    void legacyWorkerRoleFallback_rejectsWrongAppMode() throws Exception {
+        when(googleIdTokenService.verify("ok"))
+                .thenReturn(identity("g-sub-legacy", "cashier@gmail.com"));
+        Worker w = worker("BORSI", "cashier@gmail.com", true, "g-sub-legacy");
+        when(workerRepository.findGoogleLoginCandidatesByEmail("cashier@gmail.com")).thenReturn(List.of(w));
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.loginWithGoogle("ok", new MockHttpServletRequest(), "ertektar"))
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessageContaining("szerepkör");
+
+        verify(jwtTokenProvider, never()).generateToken(any(), any(), any());
+        verify(sessionRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("happy path foertektar canonical role -> validAppModes tartalmazza 'full'-t")
     void happyPath_foertektarRole_setsFullAppMode() throws Exception {
         when(googleIdTokenService.verify("ok"))

@@ -78,6 +78,10 @@ public class WorkerFirstTimeSetupService {
         }
 
         List<String> roleCodes = workerRoleService.getRoleCodesForWorker(worker.getId());
+        if (roleCodes.isEmpty()
+                && !AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(worker.getRole(), dto.getAppMode())) {
+            throw new ValidationException("Nincs ebben a programban használható szerepköre.");
+        }
         String activeRole = resolveActiveRoleForSetup(roleCodes, dto.getAppMode());
         List<String> permissions = activeRole == null
                 ? List.of()

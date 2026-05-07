@@ -160,6 +160,11 @@ public class GoogleLoginService {
 
         // 5. Operativ szerepkor (V57) — egyezo logika a WorkerService.login-nal
         List<String> roleCodes = workerRoleService.getRoleCodesForWorker(worker.getId());
+        if (roleCodes.isEmpty()
+                && !AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(worker.getRole(), appMode)) {
+            throw new AuthenticationException("Ez a szerepkör nem használható ebben a programban: " + worker.getRole());
+        }
+
         String activeRole = null;
         List<String> permissions = List.of();
         boolean roleSelectionRequired = false;
@@ -180,14 +185,9 @@ public class GoogleLoginService {
             throw new AuthenticationException("Ez a szerepkör nem használható ebben a programban: " + activeRole);
         }
 
-        // 6. JWT + Session
-        String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
-        String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
-        String clientIp = clientIpResolver.resolveClientIp(httpRequest);
-
         // Codex P1 PR #361 follow-up: legacy worker eseten `worker.getBranch()` lehet null,
-        // de a `worker_session.branch_id` non-nullable. Ugyanaz a fallback minta mint
-        // a `WorkerService.login` 435-444. soraban — ceg-szintu elso aktiv branch.
+        // es a JWT branch claim is non-null erteket var. Ugyanaz a fallback minta mint
+        // a `WorkerService.login` agan — ceg-szintu elso aktiv branch.
         Branch sessionBranch = worker.getBranch();
         if (sessionBranch == null) {
             sessionBranch = branchRepository.findByCompanyIdAndIsActiveTrue(worker.getCompany().getId())
@@ -200,7 +200,13 @@ public class GoogleLoginService {
                         worker.getCode(), worker.getCompany().getId());
                 throw new AuthenticationException("Nincs elerheto iroda a bejelentkezeshez!");
             }
+            worker.setBranch(sessionBranch);
         }
+
+        // 6. JWT + Session
+        String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
+        String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
+        String clientIp = clientIpResolver.resolveClientIp(httpRequest);
 
         WorkerSession session = WorkerSession.builder()
                 .company(worker.getCompany())

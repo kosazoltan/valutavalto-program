@@ -384,6 +384,11 @@ public class WorkerService {
                 .map(ra -> ra.getRoleDef().getCode())
                 .collect(Collectors.toList());
 
+        if (roleCodes.isEmpty()
+                && !AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(worker.getRole(), dto.getAppMode())) {
+            throw new AuthenticationException("Ez a szerepkör nem használható ebben a programban: " + worker.getRole());
+        }
+
         // Ha 0 vagy 1 role van → automatikus belépés azzal
         String activeRole = null;
         List<String> permissions = List.of();
@@ -410,12 +415,9 @@ public class WorkerService {
             throw new AuthenticationException("Ez a szerepkör nem használható ebben a programban: " + activeRole);
         }
 
-        // JWT token generálás
-        String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
-        String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
-        
         // Session tracking
-        // BUGFIX: worker.getBranch() may be null → use company's first active branch as fallback
+        // BUGFIX: worker.getBranch() may be null -> use company's first active branch before JWT generation,
+        // because JwtTokenProvider also embeds branchId/branchCode claims.
         Branch sessionBranch = worker.getBranch();
         if (sessionBranch == null) {
             sessionBranch = branchRepository.findByCompanyIdAndIsActiveTrue(company.getId()).stream()
@@ -425,7 +427,12 @@ public class WorkerService {
             if (sessionBranch == null) {
                 throw new ValidationException("Nincs elérhető iroda a bejelentkezéshez!");
             }
+            worker.setBranch(sessionBranch);
         }
+
+        // JWT token generálás
+        String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
+        String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
         
         WorkerSession session = WorkerSession.builder()
                 .company(company)

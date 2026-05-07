@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.entity.WorkerRole;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Sourcery + Copilot PR #361 follow-up #3: a `validAppModes` szamitas + a canonical
@@ -45,7 +46,7 @@ public final class AppModeRoleConstants {
     );
 
     /**
-     * Egyseges `validAppModes` szamitas a canonical role-codes + worker.role (ADMIN fallback) alapjan.
+     * Egyseges `validAppModes` szamitas a canonical role-codes + worker.role legacy fallback alapjan.
      *
      * <p>Logika:
      * <ul>
@@ -54,29 +55,39 @@ public final class AppModeRoleConstants {
      *   <li>"ertekszallito" canonical role -> "ertekszallito" appMode (ertekszallito Electron)</li>
      *   <li>{@link #KAMERA_CANONICAL_ROLES} barmelyike -> "kamera" appMode (kameraszoftver, NEM browser)</li>
      *   <li>{@link #SERVER_CANONICAL_ROLES} barmelyike -> "full" appMode (browser admin)</li>
-     *   <li>WorkerRole.ADMIN enum (legacy fallback) -> "full" appMode</li>
+     *   <li>WorkerRole legacy fallback csak role assignment nelkuli regi dolgozokhoz:
+     *       CASHIER -> "penztar", SUPERVISOR/MANAGER/ADMIN -> "full"</li>
      * </ul>
      * </p>
      */
     public static List<String> computeValidAppModes(List<String> roleCodes, WorkerRole workerRoleEnum) {
+        List<String> normalizedRoleCodes = normalizeRoleCodes(roleCodes);
         List<String> validAppModes = new ArrayList<>();
-        if (roleCodes.contains("penztar")) validAppModes.add("penztar");
-        if (roleCodes.contains("ertektar")) validAppModes.add("ertektar");
-        if (roleCodes.contains("ertekszallito")) validAppModes.add("ertekszallito");
-        if (roleCodes.stream()
-                .map(roleCode -> roleCode == null ? "" : roleCode.trim().toLowerCase())
-                .anyMatch(LEGACY_ERTEKSZALLITO_ROLES::contains)
-                && !validAppModes.contains("ertekszallito")) {
-            validAppModes.add("ertekszallito");
+        if (normalizedRoleCodes.contains("penztar") || hasAny(normalizedRoleCodes, LEGACY_PENZTAR_ROLES)) {
+            addIfAbsent(validAppModes, "penztar");
         }
-        if (roleCodes.stream().anyMatch(KAMERA_CANONICAL_ROLES::contains)) {
-            validAppModes.add("kamera");
+        if (normalizedRoleCodes.contains("ertektar") || hasAny(normalizedRoleCodes, LEGACY_ERTEKTAR_ROLES)) {
+            addIfAbsent(validAppModes, "ertektar");
         }
-        if (roleCodes.stream().anyMatch(SERVER_CANONICAL_ROLES::contains)) {
-            validAppModes.add("full");
+        if (normalizedRoleCodes.contains("ertekszallito") || hasAny(normalizedRoleCodes, LEGACY_ERTEKSZALLITO_ROLES)) {
+            addIfAbsent(validAppModes, "ertekszallito");
         }
-        if (workerRoleEnum == WorkerRole.ADMIN && !validAppModes.contains("full")) {
-            validAppModes.add("full");
+        if (hasAny(normalizedRoleCodes, KAMERA_CANONICAL_ROLES)) {
+            addIfAbsent(validAppModes, "kamera");
+        }
+        if (hasAny(normalizedRoleCodes, SERVER_CANONICAL_ROLES)
+                || hasAny(normalizedRoleCodes, LEGACY_SERVER_ROLES)) {
+            addIfAbsent(validAppModes, "full");
+        }
+        if (normalizedRoleCodes.isEmpty()) {
+            if (workerRoleEnum == WorkerRole.CASHIER) {
+                addIfAbsent(validAppModes, "penztar");
+            }
+            if (isLegacyServerWorkerRole(workerRoleEnum)) {
+                addIfAbsent(validAppModes, "full");
+            }
+        } else if (workerRoleEnum == WorkerRole.ADMIN) {
+            addIfAbsent(validAppModes, "full");
         }
         return validAppModes;
     }
@@ -129,8 +140,61 @@ public final class AppModeRoleConstants {
         return roleCodes.stream().anyMatch(roleCode -> isRoleSelectableForAppMode(roleCode, appMode));
     }
 
+    public static boolean isLegacyWorkerRoleSelectableForAppMode(WorkerRole workerRole, String appMode) {
+        if (appMode == null || appMode.isBlank()) {
+            return true;
+        }
+        if (workerRole == null) {
+            return false;
+        }
+
+        String normalizedAppMode = appMode.trim().toLowerCase(Locale.ROOT);
+        boolean serverRole = isLegacyServerWorkerRole(workerRole);
+        return switch (normalizedAppMode) {
+            case "full" -> serverRole;
+            case "penztar" -> serverRole || workerRole == WorkerRole.CASHIER;
+            case "ertektar", "ertekszallito" -> serverRole;
+            case "kamera" -> false;
+            default -> false;
+        };
+    }
+
     private static boolean isServerRole(String normalizedRole) {
         return SERVER_CANONICAL_ROLES.contains(normalizedRole)
                 || LEGACY_SERVER_ROLES.contains(normalizedRole);
+    }
+
+    private static boolean isLegacyServerWorkerRole(WorkerRole workerRole) {
+        return workerRole == WorkerRole.SUPERVISOR
+                || workerRole == WorkerRole.MANAGER
+                || workerRole == WorkerRole.ADMIN;
+    }
+
+    private static List<String> normalizeRoleCodes(List<String> roleCodes) {
+        if (roleCodes == null || roleCodes.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> normalized = new ArrayList<>();
+        for (String roleCode : roleCodes) {
+            if (roleCode == null) {
+                continue;
+            }
+            String value = roleCode.trim().toLowerCase(Locale.ROOT);
+            if (!value.isBlank()) {
+                normalized.add(value);
+            }
+        }
+        return normalized;
+    }
+
+    private static boolean hasAny(List<String> roleCodes, List<String> candidates) {
+        return roleCodes.stream().anyMatch(candidates::contains);
+    }
+
+    private static void addIfAbsent(List<String> values, String value) {
+        if (!values.contains(value)) {
+            values.add(value);
+        }
     }
 }

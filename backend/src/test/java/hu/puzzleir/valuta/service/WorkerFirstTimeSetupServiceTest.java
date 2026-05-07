@@ -150,6 +150,26 @@ class WorkerFirstTimeSetupServiceTest {
     }
 
     @Test
+    @DisplayName("Legacy CASHIER role assignment nelkul sem allithat jelszot ertektar appMode-ban")
+    void rejectsLegacyWorkerRoleWhenNoAssignmentsMatchAppMode() {
+        Worker worker = seedWorker("$2b$10$seed");
+        WorkerFirstTimeSetupRequestDto dto = request("1234");
+        dto.setAppMode("ertektar");
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.setupWorkerPassword(dto))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("használható");
+
+        verify(passwordEncoder, never()).encode(any());
+        verify(workerRepository, never()).save(any(Worker.class));
+        verify(jwtTokenProvider, never()).generateToken(any(Worker.class));
+    }
+
+    @Test
     @DisplayName("Lezart bootstrap utan hibas kezdo jelszo nem ir uj hash-t")
     void rejectsWrongCurrentPasswordAfterBootstrap() {
         Worker worker = seedWorker("$2b$10$seed");

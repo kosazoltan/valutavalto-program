@@ -26,6 +26,26 @@ class AppModeRoleConstantsTest {
     }
 
     @Test
+    void computeValidAppModesNormalizesUppercaseLegacyRoleCodes() {
+        assertThat(AppModeRoleConstants.computeValidAppModes(
+                List.of("CASHIER", "MANAGER"),
+                null))
+                .containsExactly("penztar", "ertektar", "full");
+    }
+
+    @Test
+    void computeValidAppModesFallsBackToLegacyWorkerRoleWhenAssignmentsMissing() {
+        assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.CASHIER))
+                .containsExactly("penztar");
+        assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.SUPERVISOR))
+                .containsExactly("full");
+        assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.MANAGER))
+                .containsExactly("full");
+        assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.ADMIN))
+                .containsExactly("full");
+    }
+
+    @Test
     void ertekszallitoRoleIsSelectableOnlyInCourierOrSupervisorLocalMode() {
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("ertekszallito", "ertekszallito"))
                 .isTrue();
@@ -44,6 +64,25 @@ class AppModeRoleConstantsTest {
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("COURIER", "penztar"))
                 .isFalse();
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("COURIER", "full"))
+                .isFalse();
+    }
+
+    @Test
+    void legacyWorkerRoleEnumIsSelectableOnlyForItsAllowedAppModes() {
+        assertThat(AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(WorkerRole.CASHIER, "penztar"))
+                .isTrue();
+        assertThat(AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(WorkerRole.CASHIER, "ertektar"))
+                .isFalse();
+        assertThat(AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(WorkerRole.CASHIER, "full"))
+                .isFalse();
+
+        assertThat(AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(WorkerRole.MANAGER, "full"))
+                .isTrue();
+        assertThat(AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(WorkerRole.MANAGER, "penztar"))
+                .isTrue();
+        assertThat(AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(WorkerRole.MANAGER, "ertektar"))
+                .isTrue();
+        assertThat(AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(WorkerRole.MANAGER, "kamera"))
                 .isFalse();
     }
 
