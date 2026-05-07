@@ -65,7 +65,7 @@ public class PasswordResetService {
      * @return a generalt token (TESZT celu — production-ban csak logolni
      *         vagy email-ben kikuldeni, NE returnolni a API valaszban)
      */
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(readOnly = false, rollbackFor = Exception.class)
     public String requestForgotPassword(String email) {
         if (email == null || email.isBlank()) {
             return null;
