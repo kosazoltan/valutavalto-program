@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.DataCollection;
 import hu.puzzleir.valuta.service.DataCollectionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +40,8 @@ public class DataCollectionController {
             @Valid @RequestBody CollectRequestDto request) {
         DataCollection result = dataCollectionService.collectBranchData(
             request.getBranchId(), request.getDate());
-        return ResponseEntity.ok(toDto(result));
+        DataCollectionDto dto = toDto(result);
+        return dataCollectionResponse(dto);
     }
 
     /**
@@ -50,8 +52,9 @@ public class DataCollectionController {
     public ResponseEntity<List<DataCollectionDto>> collectAll(
             @Valid @RequestBody CollectAllRequestDto request) {
         List<DataCollection> results = dataCollectionService.collectAllBranches(request.getDate());
-        return ResponseEntity.ok(
-            results.stream().map(this::toDto).collect(Collectors.toList()));
+        List<DataCollectionDto> dtos = results.stream().map(this::toDto).collect(Collectors.toList());
+        boolean allCompleted = dtos.stream().allMatch(this::isCompleted);
+        return ResponseEntity.status(allCompleted ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE).body(dtos);
     }
 
     /**
@@ -84,6 +87,14 @@ public class DataCollectionController {
     }
 
     // ============ DTO KONVERZIÓ ============
+
+    private ResponseEntity<DataCollectionDto> dataCollectionResponse(DataCollectionDto dto) {
+        return ResponseEntity.status(isCompleted(dto) ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE).body(dto);
+    }
+
+    private boolean isCompleted(DataCollectionDto dto) {
+        return dto != null && "COMPLETED".equalsIgnoreCase(dto.getStatus());
+    }
 
     private DataCollectionDto toDto(DataCollection dc) {
         return DataCollectionDto.builder()
