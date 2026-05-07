@@ -115,7 +115,7 @@ find "$BACKUP_DIR" -name 'valuta-*.dump' -mtime +7 -delete
 ### 3.1 Teljes DB restore (catastrophic loss)
 
 > **ELŐFELTÉTEL:** új vagy tisztított PostgreSQL instance, DBA jogosultság, a backup fájl elérhető.
-> A `repair-on-migrate=true` PRODUCTION profilban aktív (`application-production.properties:71`) — restore után ez automatikusan kezeli a migration checksum-mismatch eseteket az első indításkor.
+> A Flyway production alapértelmezés fail-closed: `repair-on-migrate=false`. Checksum vagy history hiba esetén előbb DBA validáció kell, és csak egyszeri emergency indításhoz állítható `FLYWAY_REPAIR_ON_MIGRATE=true`.
 
 ```bash
 # 1. Backend leállítása (hogy ne írjon a DB-be restore közben)
@@ -147,6 +147,12 @@ sudo -u postgres psql -d valuta -c \
 
 # 5. Backend indítása
 sudo systemctl start valuta-backend
+
+# Emergency Flyway repair csak validált checksum/history incidensnél:
+# sudo systemctl set-environment FLYWAY_REPAIR_ON_MIGRATE=true
+# sudo systemctl restart valuta-backend
+# sudo systemctl unset-environment FLYWAY_REPAIR_ON_MIGRATE
+# sudo systemctl restart valuta-backend
 
 # 6. Smoke test — lásd 4. szakasz
 ```
