@@ -6,51 +6,9 @@ import { authApi, publicApi, type PublicWorker } from '../../services/api/index'
 import { Eye, EyeOff, User, Lock, Building2, Shield, RefreshCw, ChevronDown } from 'lucide-react'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
-import { useAppMode, type AppMode } from '../../hooks/useAppMode'
+import { useAppMode } from '../../hooks/useAppMode'
+import { appModeLabel, isRoleSelectableForAppMode } from '../../utils/appModeRoles'
 import { useTranslation } from 'react-i18next'
-
-/**
- * Szerver (full mód) whitelist: csak ezek a role-ok léphetnek be böngészőben.
- *
- * V181 (2026-05-03): teruleti_vezeto + biztonsagi_vezeto KIVEVE — ezek a kamera
- * canonical role-ok (lokal penztar modul kameraszoftver), NEM a szerver-admin felulet.
- * A backend `validAppModes` "kamera"-t ad vissza nekik (NEM "full"-t).
- */
-const SERVER_ALLOWED_CANONICAL_ROLES = [
-  'ugyvezeto', 'foertektar', 'irodavezeto', 'belso_ellenor',
-  'berszamfejto', 'penzugyi_vezeto', 'irodai_dolgozo',
-  'csoportvezeto', 'arfolyam_nezo',
-]
-// Legacy enum fallback
-const SERVER_ALLOWED_LEGACY_ROLES = ['SUPERVISOR', 'MANAGER', 'ADMIN']
-const LEGACY_PENZTAR_ROLES = ['CASHIER']
-const LEGACY_ERTEKTAR_ROLES = ['MANAGER', 'TREASURY_MANAGER']
-
-function isServerRole(roleCode: string): boolean {
-  return SERVER_ALLOWED_CANONICAL_ROLES.includes(roleCode.toLowerCase())
-    || SERVER_ALLOWED_LEGACY_ROLES.includes(roleCode.toUpperCase())
-}
-
-function isRoleSelectableForAppMode(roleCode: string, appMode: AppMode): boolean {
-  const canonical = roleCode.toLowerCase()
-  const legacy = roleCode.toUpperCase()
-  const serverRole = isServerRole(roleCode)
-
-  if (appMode === 'full') return serverRole
-  if (appMode === 'penztar') {
-    return serverRole || canonical === 'penztar' || LEGACY_PENZTAR_ROLES.includes(legacy)
-  }
-  if (appMode === 'ertektar') {
-    return serverRole || canonical === 'ertektar' || LEGACY_ERTEKTAR_ROLES.includes(legacy)
-  }
-  return false
-}
-
-function appModeLabel(appMode: AppMode): string {
-  if (appMode === 'penztar') return 'Valutaváltó Pénztár'
-  if (appMode === 'ertektar') return 'Értéktár'
-  return 'Szerver'
-}
 
 /**
  * Setup wizard altal elmentett config (localStorage / Electron config).
@@ -178,8 +136,7 @@ export default function LoginPage() {
   const handleLoginResponse = (response: Awaited<ReturnType<typeof authApi.login>>) => {
     // Szerver (full mód) whitelist: csak főértéktáros / belső ellenőr / ügyvezető
     const effectiveRole = response.activeRole ?? response.worker.role
-    const canonicalAllowed = SERVER_ALLOWED_CANONICAL_ROLES.includes(effectiveRole.toLowerCase())
-    const legacyAllowed = SERVER_ALLOWED_LEGACY_ROLES.includes(effectiveRole)
+    const serverAllowed = isRoleSelectableForAppMode(effectiveRole, 'full')
 
     // v2.1.4: Backend adta validAppModes ellenorzese (robusztusabb mint egyedi role-check)
     if (response.validAppModes && response.validAppModes.length > 0) {
@@ -196,7 +153,7 @@ export default function LoginPage() {
         setError('Hozzáférés megtagadva. A munkaköröd alapján ezekbe a programokba léphetsz be: ' + allowedProgs + '. Most "' + appMode + '" módban próbálsz belépni.')
         return
       }
-    } else if (appMode === 'full' && !canonicalAllowed && !legacyAllowed) {
+    } else if (appMode === 'full' && !serverAllowed) {
       setError('Hozzáférés megtagadva. A szerverre csak főértéktáros, belső ellenőr, irodavezető, ügyvezető és egyéb szerver-oldali munkakörök léphetnek be. Pénztárosok és értéktárosok a lokál alkalmazást használják.')
       return
     }

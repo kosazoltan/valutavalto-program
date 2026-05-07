@@ -5,6 +5,8 @@ import { Toaster } from './components/ui/toaster'
 import ErrorBoundary from './components/ErrorBoundary'
 import { api, clearPersistedToken, hasPersistedToken, loadPersistedToken } from './services/api/index'
 import { HEARTBEAT_INTERVAL_MS } from './config/heartbeat'
+import { useAppMode } from './hooks/useAppMode'
+import { appModeLabel, isRoleSelectableForAppMode } from './utils/appModeRoles'
 
 // Layouts
 import MainLayout from './layouts/MainLayout'
@@ -220,10 +222,16 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const [isRestoring, setIsRestoring] = useState(() => hasPersistedToken())
+  const { mode: appMode, isLoading: appModeLoading } = useAppMode()
+  const [isRestoring, setIsRestoring] = useState(() => hasPersistedToken() || appModeLoading)
 
   // Desktopon és weben is megpróbáljuk visszatölteni a tárolt JWT-t.
   useEffect(() => {
+    if (appModeLoading) {
+      setIsRestoring(true)
+      return
+    }
+
     const restoreToken = async () => {
       try {
         const token = await loadPersistedToken()
@@ -248,6 +256,12 @@ export default function App() {
                 })
                 if (res.data) {
                   // V57: activeRole + permissions restore a JWT payload-ból
+                  const restoredRole = payload.activeRole ?? res.data.role
+                  if (!isRoleSelectableForAppMode(restoredRole, appMode)) {
+                    logger.warn('App', `Token restore elutasítva: ${restoredRole} role nem használható ebben a programban (${appModeLabel(appMode)}).`)
+                    await clearPersistedToken()
+                    return
+                  }
                   useAuthStore.getState().login(
                     res.data, token, 'Bearer',
                     new Date(payload.exp * 1000).toISOString(),
@@ -264,6 +278,11 @@ export default function App() {
                   apiErr.message.includes('timeout')
                 )
                 if (isNetworkError && window.electronAPI) {
+                  if (!isRoleSelectableForAppMode('CASHIER', appMode)) {
+                    logger.warn('App', `Offline token restore elutasítva: CASHIER fallback nem használható ebben a programban (${appModeLabel(appMode)}).`)
+                    await clearPersistedToken()
+                    return
+                  }
                   // Offline fallback: fail-closed CASHIER-only profile
                   // SECURITY: nem bízunk a JWT role/permissions claimekben offline módban,
                   // mert a lokális token manipulálható. Fix CASHIER role + üres permissions.
@@ -309,7 +328,7 @@ export default function App() {
       }
     }
     void restoreToken()
-  }, [])
+  }, [appMode, appModeLoading])
 
   // 2026-04-29 v2.3.11 (E-B6.4 renderer heartbeat + window error catcher):
   // 60 másodpercenként rögzítünk egy életjelet a logger-be — fagyás-detection
