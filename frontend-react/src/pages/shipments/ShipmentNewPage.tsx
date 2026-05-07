@@ -33,6 +33,7 @@ export default function ShipmentNewPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [createdRequestId, setCreatedRequestId] = useState<string | null>(null)
   const disabled = loading || saving
 
   useEffect(() => {
@@ -49,41 +50,50 @@ export default function ShipmentNewPage() {
       })
       .catch((err) => {
         if (!active) return
-        logger.error('ShipmentNewPage', 'Referenciaadat betoltesi hiba:', err)
+        logger.error('ShipmentNewPage', t('shipments.referenciaadatBetoltesiHiba'), err)
         setError(getErrorMessage(err))
       })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [])
 
-  const patch = (values: Partial<FormState>) => setForm((current) => ({ ...current, ...values }))
+  const patch = (values: Partial<FormState>) => {
+    setCreatedRequestId(null)
+    setForm((current) => ({ ...current, ...values }))
+  }
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
     const amount = Number(form.amount.replace(',', '.'))
     if (!form.fromBranchId || !form.toBranchId || !form.currencyId || !Number.isFinite(amount) || amount <= 0) {
-      setError('Kérő iroda, cél iroda, valuta és pozitív összeg megadása kötelező.')
+      setError(t('shipments.kotelezoMezokPozitivOsszeg'))
       return
     }
     if (form.fromBranchId === form.toBranchId) {
-      setError('A kérő és a cél iroda nem lehet ugyanaz.')
+      setError(t('shipments.keroEsCelIrodaNemLehetUgyanaz'))
       return
     }
     setSaving(true)
     try {
-      const created = await shipmentRequestApi.create({
-        fromBranchId: form.fromBranchId,
-        toBranchId: form.toBranchId,
-        deliveryDate: form.deliveryDate || undefined,
-        notes: form.notes,
-        items: [{ currencyId: form.currencyId, requestedAmount: amount }],
-      })
-      if (!created.id) throw new Error('A szerver nem adott szállítmány azonosítót.')
-      await shipmentRequestApi.submit(created.id)
+      let requestId = createdRequestId
+      if (!requestId) {
+        const created = await shipmentRequestApi.create({
+          fromBranchId: form.fromBranchId,
+          toBranchId: form.toBranchId,
+          deliveryDate: form.deliveryDate || undefined,
+          notes: form.notes,
+          items: [{ currencyId: form.currencyId, requestedAmount: amount }],
+        })
+        if (!created.id) throw new Error(t('shipments.hianyzoSzallitmanyAzonosito'))
+        requestId = created.id
+        setCreatedRequestId(requestId)
+      }
+      await shipmentRequestApi.submit(requestId)
+      setCreatedRequestId(null)
       navigate('/shipments', { replace: true })
     } catch (err) {
-      logger.error('ShipmentNewPage', 'Szallitmanyigeny letrehozasi hiba:', err)
+      logger.error('ShipmentNewPage', t('shipments.szallitmanyigenyLetrehozasiHiba'), err)
       setError(getErrorMessage(err))
     } finally {
       setSaving(false)
@@ -110,42 +120,42 @@ export default function ShipmentNewPage() {
       <form onSubmit={submit} className="form-panel space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="block">
-            <span className="form-label">Kérő iroda</span>
+            <span className="form-label">{t('shipments.keroIroda')}</span>
             <select className="form-input" value={form.fromBranchId} disabled={disabled} onChange={(e) => patch({ fromBranchId: e.target.value })}>
-              <option value="">Válasszon irodát</option>
+              <option value="">{t('shipments.valasszonIrodat')}</option>
               {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} - {branch.name}</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="form-label">Cél iroda</span>
+            <span className="form-label">{t('shipments.celIroda')}</span>
             <select className="form-input" value={form.toBranchId} disabled={disabled} onChange={(e) => patch({ toBranchId: e.target.value })}>
-              <option value="">Válasszon cél irodát</option>
+              <option value="">{t('shipments.valasszonCelIrodat')}</option>
               {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} - {branch.name}</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="form-label">Kért kézbesítési dátum</span>
-            <input type="date" className="form-input" value={form.deliveryDate} disabled={saving} onChange={(e) => patch({ deliveryDate: e.target.value })} />
+            <span className="form-label">{t('shipments.kertKezbesitesiDatum')}</span>
+            <input type="date" className="form-input" value={form.deliveryDate} disabled={disabled} onChange={(e) => patch({ deliveryDate: e.target.value })} />
           </label>
           <label className="block">
-            <span className="form-label">Valuta</span>
+            <span className="form-label">{t('common.currency')}</span>
             <select className="form-input" value={form.currencyId} disabled={disabled} onChange={(e) => patch({ currencyId: e.target.value })}>
-              <option value="">Válasszon valutát</option>
+              <option value="">{t('shipments.valasszonValutat')}</option>
               {currencies.map((currency) => <option key={currency.id} value={currency.id}>{currency.code} - {currency.name}</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="form-label">Összeg</span>
-            <input type="number" min="0.01" step="0.01" className="form-input" value={form.amount} disabled={saving} onChange={(e) => patch({ amount: e.target.value })} />
+            <span className="form-label">{t('common.amount')}</span>
+            <input type="number" min="0.01" step="0.01" className="form-input" value={form.amount} disabled={disabled} onChange={(e) => patch({ amount: e.target.value })} />
           </label>
           <label className="block md:col-span-2">
-            <span className="form-label">Megjegyzés</span>
-            <textarea className="form-input min-h-24" value={form.notes} disabled={saving} onChange={(e) => patch({ notes: e.target.value })} />
+            <span className="form-label">{t('common.note')}</span>
+            <textarea className="form-input min-h-24" value={form.notes} disabled={disabled} onChange={(e) => patch({ notes: e.target.value })} />
           </label>
         </div>
         <div className="flex justify-end">
           <button type="submit" className="form-button-primary flex items-center gap-2" disabled={disabled}>
-            <Send size={16} />{saving ? 'Beküldés...' : 'Igény beküldése'}
+            <Send size={16} />{saving ? t('shipments.bekuldesFolyamatban') : t('shipments.igenyBekuldese')}
           </button>
         </div>
       </form>

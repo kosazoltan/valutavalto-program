@@ -1,16 +1,16 @@
 package hu.puzzleir.valuta.service;
 
-import hu.puzzleir.valuta.entity.Branch;
-import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.config.NavBridgeProperties;
 import hu.puzzleir.valuta.dto.eveningclosing.DailyDataPackage;
 import hu.puzzleir.valuta.dto.eveningclosing.DataSyncResult;
 import hu.puzzleir.valuta.dto.pos.PosClosingResult;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,9 +69,11 @@ public class DailyClosingService {
     private final DecadeReportService decadeReportService;
     private final AmlService amlService;
     private final ReceiptSequenceService receiptSequenceService;
+    private final NavBridgeProperties navBridgeProperties;
 
-    @Value("${nav.bridge.simulated-success-enabled:false}")
-    private boolean navBridgeSimulatedSuccessEnabled;
+    static final String NAV_BRIDGE_SIMULATION_DISABLED_MESSAGE =
+            "NAV integracio aktiv, de nincs eles NAV jelentes-visszaigazolas; "
+                    + "a bridge szimulacio nem zarhat napot production modban";
 
     /** Max lep esek szama */
     private static final int TOTAL_STEPS = 9;
@@ -387,18 +389,15 @@ public class DailyClosingService {
      * Legacy: navzarocontrol + napijelrutin + DekzarCtrl + napzarnyomtatorutin
      */
     private StepCheckResult checkNavControlAndReport(UUID branchId, LocalDate date) {
-        // Issue #120: ha nincs NAV integracio a branch-en, SKIP (ne blokkolja a napzarast).
-        // A meglevo checkUnreportedTransactions query a printed=false flag-et nezi, ami valojaban
-        // NEM a NAV-jelentes allapota. Amig nincs valodi nav_report integracio,
-        // a hasFeature check szerint az egesz step kihagyhato.
+        // Issue #120: NAV integracio nelkul SKIP, NAV integracio mellett viszont fail-closed.
+        // A regi checkUnreportedTransactions query a printed=false flag-et nezi, ami valojaban
+        // NEM a NAV-jelentes allapota; ez csak explicit bridge-szimulacio mellett hasznalhato.
         if (!hasFeature(branchId, "NAV_INTEGRATION")) {
             return StepCheckResult.skipped("NAV integracio nem aktiv ezen az irodan");
         }
 
-        if (!navBridgeSimulatedSuccessEnabled) {
-            return StepCheckResult.failed(
-                    "NAV integracio aktiv, de nincs eles NAV jelentes-visszaigazolas; "
-                            + "a bridge szimulacio nem zarhat napot production modban");
+        if (!navBridgeProperties.isSimulatedSuccessEnabled()) {
+            return StepCheckResult.failed(NAV_BRIDGE_SIMULATION_DISABLED_MESSAGE);
         }
 
         // NAV: ellenorizzuk hogy minden tranzakcio jelentve van-e

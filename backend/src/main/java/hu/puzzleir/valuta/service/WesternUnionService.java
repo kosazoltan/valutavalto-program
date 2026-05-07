@@ -531,7 +531,7 @@ public class WesternUnionService {
         return wuDailyLimitRepository
                 .findByCompanyIdAndBusinessDateAndCurrencyCode(companyId, effectiveDate, WU_LIMIT_CURRENCY)
                 .map(WuDailyLimitDto::from)
-                .orElseGet(() -> WuDailyLimitDto.from(newDailyLimit(companyId, effectiveDate)));
+                .orElseGet(() -> defaultDailyLimitDto(effectiveDate));
     }
 
     @Transactional
@@ -590,7 +590,6 @@ public class WesternUnionService {
                     dailyLimit.toPlainString(), used.toPlainString(), amountUsd.toPlainString()));
         }
         limit.setUsedAmount(newUsed);
-        limit.setUpdatedAt(LocalDateTime.now());
         return wuDailyLimitRepository.save(limit);
     }
 
@@ -602,7 +601,6 @@ public class WesternUnionService {
         hu.puzzleir.valuta.entity.WuDailyLimit limit = getOrCreateDailyLimitForUpdate(companyId, businessDate);
         BigDecimal used = limit.getUsedAmount() != null ? limit.getUsedAmount() : BigDecimal.ZERO;
         limit.setUsedAmount(used.subtract(amountUsd).max(BigDecimal.ZERO));
-        limit.setUpdatedAt(LocalDateTime.now());
         wuDailyLimitRepository.save(limit);
     }
 
@@ -610,18 +608,35 @@ public class WesternUnionService {
         LocalDate effectiveDate = businessDate != null ? businessDate : LocalDate.now();
         return wuDailyLimitRepository
                 .findByCompanyDateCurrencyForUpdate(companyId, effectiveDate, WU_LIMIT_CURRENCY)
-                .orElseGet(() -> wuDailyLimitRepository.save(newDailyLimit(companyId, effectiveDate)));
+                .orElseGet(() -> createDailyLimitAfterLockedMiss(companyId, effectiveDate));
     }
 
-    private hu.puzzleir.valuta.entity.WuDailyLimit newDailyLimit(UUID companyId, LocalDate businessDate) {
-        Company company = companyRepository.findById(companyId)
+    private hu.puzzleir.valuta.entity.WuDailyLimit createDailyLimitAfterLockedMiss(UUID companyId, LocalDate businessDate) {
+        Company company = companyRepository.findByIdForUpdate(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cég nem található: " + companyId));
+        return wuDailyLimitRepository
+                .findByCompanyDateCurrencyForUpdate(companyId, businessDate, WU_LIMIT_CURRENCY)
+                .orElseGet(() -> wuDailyLimitRepository.save(newDailyLimit(company, businessDate)));
+    }
+
+    private hu.puzzleir.valuta.entity.WuDailyLimit newDailyLimit(Company company, LocalDate businessDate) {
         return hu.puzzleir.valuta.entity.WuDailyLimit.builder()
                 .company(company)
                 .businessDate(businessDate)
                 .currencyCode(WU_LIMIT_CURRENCY)
                 .dailyLimit(DEFAULT_WU_DAILY_LIMIT_USD)
                 .usedAmount(BigDecimal.ZERO)
+                .build();
+    }
+
+    private WuDailyLimitDto defaultDailyLimitDto(LocalDate businessDate) {
+        return WuDailyLimitDto.builder()
+                .businessDate(businessDate)
+                .currencyCode(WU_LIMIT_CURRENCY)
+                .dailyLimit(DEFAULT_WU_DAILY_LIMIT_USD)
+                .usedAmount(BigDecimal.ZERO)
+                .remainingAmount(DEFAULT_WU_DAILY_LIMIT_USD)
+                .usagePercent(BigDecimal.ZERO)
                 .resetAt(businessDate.plusDays(1).atStartOfDay())
                 .build();
     }
