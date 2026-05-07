@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ExchangeRatePollingControllerSecurityTest {
 
     @Test
-    @DisplayName("GET /rates/polling/sources csak supervisor/manager/admin szerepkorrel elerheto")
+    @DisplayName("GET /api/v1/rates/polling/sources csak supervisor/manager/admin szerepkorrel elerheto")
     void getSourcesRequiresPrivilegedRole() throws NoSuchMethodException {
         Method method = ExchangeRatePollingController.class.getMethod("getSources");
         PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
