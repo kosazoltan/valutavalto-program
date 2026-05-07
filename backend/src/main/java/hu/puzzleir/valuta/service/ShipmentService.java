@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
+import hu.puzzleir.valuta.entity.ShipmentRequestItem;
 import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
 import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -126,13 +128,14 @@ public class ShipmentService {
 
     private void validateCreateRequest(ShipmentRequest request) {
         validateEditableRequest(request);
-        if (request.getItems() == null) {
-            throw new ValidationException("Legalább egy szállítmány tétel kötelező!");
-        }
+        validateRequiredItems(request.getItems());
     }
 
     private void validateEditableRequest(ShipmentRequest request) {
-        if (request == null || request.getFromBranchId() == null || request.getToBranchId() == null) {
+        if (request == null) {
+            throw new ValidationException("Szállítmánykérés adatai kötelezőek!");
+        }
+        if (request.getFromBranchId() == null || request.getToBranchId() == null) {
             throw new ValidationException("Forrás és cél iroda megadása kötelező!");
         }
         if (request.getFromBranchId().equals(request.getToBranchId())) {
@@ -141,16 +144,23 @@ public class ShipmentService {
         if (request.getDeliveryDate() != null && request.getDeliveryDate().isBefore(LocalDate.now())) {
             throw new ValidationException("A kézbesítési dátum nem lehet múltbeli!");
         }
-        if (request.getItems() != null && request.getItems().isEmpty()) {
-            throw new ValidationException("Legalább egy szállítmány tétel kötelező!");
-        }
         if (request.getItems() != null) {
-            validateItems(request);
+            validateRequiredItems(request.getItems());
         }
     }
 
-    private void validateItems(ShipmentRequest request) {
-        request.getItems().forEach(item -> {
+    private void validateRequiredItems(List<ShipmentRequestItem> items) {
+        if (items == null || items.isEmpty()) {
+            throw new ValidationException("Legalább egy szállítmány tétel kötelező!");
+        }
+        validateItems(items);
+    }
+
+    private void validateItems(List<ShipmentRequestItem> items) {
+        items.forEach(item -> {
+            if (item == null) {
+                throw new ValidationException("Minden szállítmány tétel megadása kötelező!");
+            }
             BigDecimal requestedAmount = item.getRequestedAmount();
             if (item.getCurrencyId() == null || requestedAmount == null || requestedAmount.signum() <= 0) {
                 throw new ValidationException("Minden tételnél valuta és pozitív összeg kötelező!");

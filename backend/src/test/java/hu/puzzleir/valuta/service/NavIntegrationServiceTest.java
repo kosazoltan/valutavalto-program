@@ -6,7 +6,6 @@ import hu.puzzleir.valuta.dto.nav.NavSendResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.nio.file.Path;
 
@@ -24,8 +23,7 @@ class NavIntegrationServiceTest {
         IntegrationTransportProperties properties = new IntegrationTransportProperties();
         properties.setRootPath(tempDir.toString());
         FileTransportService fileTransportService = new FileTransportService(properties, new ObjectMapper());
-        service = new NavIntegrationService(properties, fileTransportService);
-        ReflectionTestUtils.setField(service, "bridgeSimulatedSuccessEnabled", false);
+        service = new NavIntegrationService(properties, fileTransportService, false);
     }
 
     @Test
@@ -56,7 +54,10 @@ class NavIntegrationServiceTest {
 
     @Test
     void sendTransactionCanBeExplicitlyEnabledForIsolatedTests() {
-        ReflectionTestUtils.setField(service, "bridgeSimulatedSuccessEnabled", true);
+        IntegrationTransportProperties properties = new IntegrationTransportProperties();
+        properties.setRootPath(tempDir.toString());
+        FileTransportService fileTransportService = new FileTransportService(properties, new ObjectMapper());
+        service = new NavIntegrationService(properties, fileTransportService, true);
 
         NavSendResult result = service.sendTransaction(123L, "COM1");
 

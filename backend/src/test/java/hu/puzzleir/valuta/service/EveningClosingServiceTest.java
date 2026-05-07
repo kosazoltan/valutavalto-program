@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.config.EveningClosingProperties;
 import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.dto.eveningclosing.*;
 import hu.puzzleir.valuta.entity.*;
@@ -13,7 +14,6 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -51,6 +51,7 @@ class EveningClosingServiceTest {
     @Mock private SystemParameterService systemParameterService;
     @Mock private IntegrationTransportProperties integrationTransportProperties;
     @Mock private FileTransportService fileTransportService;
+    @Mock private EveningClosingProperties eveningClosingProperties;
 
     private static final UUID BRANCH_UUID = UUID.randomUUID();
     private static final UUID COMPANY_UUID = UUID.randomUUID();
@@ -72,6 +73,7 @@ class EveningClosingServiceTest {
         when(denominationBalanceRepository.findByBranchIdAndDate(any(), any())).thenReturn(Collections.emptyList());
         when(exchangeRateRepository.findActiveRatesByDate(any(), any())).thenReturn(Collections.emptyList());
         when(reservationRepository.findActiveByBranchAndDate(any(), any(), any())).thenReturn(Collections.emptyList());
+        when(eveningClosingProperties.isArtifactSuccessEnabled()).thenReturn(false);
     }
 
     // ============ BUG 1: getDenominations ============
@@ -260,21 +262,45 @@ class EveningClosingServiceTest {
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("HQ URL nincs konfigurálva");
+        assertThat(result.getMessage()).contains("branch-sync/evening-closing");
+        assertThat(result.getMessage()).doesNotContain("C:/");
         assertThat(result.getAttemptCount()).isEqualTo(1);
         verify(fileTransportService).writeJson(anyString(), eq("evening_daily_report"), any());
+
+        ArgumentCaptor<EveningSyncLog> syncLogCaptor = ArgumentCaptor.forClass(EveningSyncLog.class);
+        verify(eveningSyncLogRepository).save(syncLogCaptor.capture());
+        EveningSyncLog savedLog = syncLogCaptor.getValue();
+        assertThat(savedLog.getStatus()).isEqualTo(EveningSyncStatus.ARTIFACT_PENDING.name());
+        assertThat(savedLog.getAttemptCount()).isEqualTo(1);
+        assertThat(savedLog.getPackageChecksum()).isEqualTo("checksum-123");
+        assertThat(savedLog.getArtifactPath()).isEqualTo(
+                "branch-sync/evening-closing/123/2026-03-16/evening_daily_report.json");
+        assertThat(savedLog.getErrorMessage()).isEqualTo("HQ_URL_MISSING");
+        assertThat(savedLog.getCompletedAt()).isNull();
     }
 
     @Test
     @DisplayName("HQ URL nélküli artifact csak explicit bridge-success kapcsolóval lehet sikeres")
     void sendToHeadquarters_missingUrlCanBeExplicitlyMarkedSuccessfulForTests() throws Exception {
         stubArtifactSync();
-        ReflectionTestUtils.setField(service, "artifactSuccessEnabled", true);
+        when(eveningClosingProperties.isArtifactSuccessEnabled()).thenReturn(true);
 
         DataSyncResult result = service.sendToHeadquarters(emptyPackage());
 
         assertThat(result.isSuccess()).isTrue();
         assertThat(result.getChecksum()).isEqualTo("checksum-123");
         verify(fileTransportService).writeJson(anyString(), eq("evening_daily_report"), any());
+
+        ArgumentCaptor<EveningSyncLog> syncLogCaptor = ArgumentCaptor.forClass(EveningSyncLog.class);
+        verify(eveningSyncLogRepository).save(syncLogCaptor.capture());
+        EveningSyncLog savedLog = syncLogCaptor.getValue();
+        assertThat(savedLog.getStatus()).isEqualTo(EveningSyncStatus.EVENING_SYNC_DONE.name());
+        assertThat(savedLog.getAttemptCount()).isEqualTo(1);
+        assertThat(savedLog.getPackageChecksum()).isEqualTo("checksum-123");
+        assertThat(savedLog.getArtifactPath()).isEqualTo(
+                "branch-sync/evening-closing/123/2026-03-16/evening_daily_report.json");
+        assertThat(savedLog.getErrorMessage()).isNull();
+        assertThat(savedLog.getCompletedAt()).isNotNull();
     }
 
     // ============ HELPER METÓDUSOK ============
@@ -291,6 +317,7 @@ class EveningClosingServiceTest {
     private void stubArtifactSync() throws Exception {
         IntegrationTransportProperties.Sync sync = new IntegrationTransportProperties.Sync();
         sync.setDir("branch-sync");
+        when(integrationTransportProperties.getRootPath()).thenReturn("C:/managed");
         when(integrationTransportProperties.getSync()).thenReturn(sync);
         when(systemParameterService.getValue("evening.closing.headquarters.url")).thenReturn("");
         when(eveningSyncLogRepository.findByBranchIdAndSyncDate(any(), any())).thenReturn(Optional.empty());
@@ -298,7 +325,7 @@ class EveningClosingServiceTest {
         when(fileTransportService.sanitizePathSegment(anyString(), anyString()))
                 .thenAnswer(inv -> inv.getArgument(0));
         when(fileTransportService.writeJson(anyString(), eq("evening_daily_report"), any()))
-                .thenReturn(Path.of("C:/tmp/evening_daily_report.json"));
+                .thenReturn(Path.of("C:/managed/branch-sync/evening-closing/123/2026-03-16/evening_daily_report.json"));
     }
 
     private Transaction buildTransaction(String customerId, String customerName, String docNumber) {

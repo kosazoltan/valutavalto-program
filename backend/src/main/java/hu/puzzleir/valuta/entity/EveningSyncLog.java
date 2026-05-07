@@ -49,6 +49,9 @@ public class EveningSyncLog {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    @Column(name = "artifact_path", length = 1024)
+    private String artifactPath;
+
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 

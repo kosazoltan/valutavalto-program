@@ -1,16 +1,16 @@
 package hu.puzzleir.valuta.service;
 
-import hu.puzzleir.valuta.entity.Branch;
-import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.config.NavBridgeProperties;
 import hu.puzzleir.valuta.dto.eveningclosing.DailyDataPackage;
 import hu.puzzleir.valuta.dto.eveningclosing.DataSyncResult;
 import hu.puzzleir.valuta.dto.pos.PosClosingResult;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,9 +69,11 @@ public class DailyClosingService {
     private final DecadeReportService decadeReportService;
     private final AmlService amlService;
     private final ReceiptSequenceService receiptSequenceService;
+    private final NavBridgeProperties navBridgeProperties;
 
-    @Value("${nav.bridge.simulated-success-enabled:false}")
-    private boolean navBridgeSimulatedSuccessEnabled;
+    static final String NAV_BRIDGE_SIMULATION_DISABLED_MESSAGE =
+            "NAV integracio aktiv, de nincs eles NAV jelentes-visszaigazolas; "
+                    + "a bridge szimulacio nem zarhat napot production modban";
 
     /** Max lep esek szama */
     private static final int TOTAL_STEPS = 9;
@@ -387,18 +389,15 @@ public class DailyClosingService {
      * Legacy: navzarocontrol + napijelrutin + DekzarCtrl + napzarnyomtatorutin
      */
     private StepCheckResult checkNavControlAndReport(UUID branchId, LocalDate date) {
-        // Issue #120: ha nincs NAV integracio a branch-en, SKIP (ne blokkolja a napzarast).
-        // A meglevo checkUnreportedTransactions query a printed=false flag-et nezi, ami valojaban
-        // NEM a NAV-jelentes allapota. Amig nincs valodi nav_report integracio,
-        // a hasFeature check szerint az egesz step kihagyhato.
+        // Issue #120: NAV integracio nelkul SKIP, NAV integracio mellett viszont fail-closed.
+        // A regi checkUnreportedTransactions query a printed=false flag-et nezi, ami valojaban
+        // NEM a NAV-jelentes allapota; ez csak explicit bridge-szimulacio mellett hasznalhato.
         if (!hasFeature(branchId, "NAV_INTEGRATION")) {
             return StepCheckResult.skipped("NAV integracio nem aktiv ezen az irodan");
         }
 
-        if (!navBridgeSimulatedSuccessEnabled) {
-            return StepCheckResult.failed(
-                    "NAV integracio aktiv, de nincs eles NAV jelentes-visszaigazolas; "
-                            + "a bridge szimulacio nem zarhat napot production modban");
+        if (!navBridgeProperties.isSimulatedSuccessEnabled()) {
+            return StepCheckResult.failed(NAV_BRIDGE_SIMULATION_DISABLED_MESSAGE);
         }
 
         // NAV: ellenorizzuk hogy minden tranzakcio jelentve van-e
@@ -450,13 +449,17 @@ public class DailyClosingService {
             // NEM dobunk kivételt — ne akadjon meg a zárás
         }
 
-        // 1. Napi arfolyamok rogzitese (snapshot a zaraskor ervenyes arfolyamokrol)
+        // 1. Esti zárás adatcsomag küldés a központnak (legacy ESTIZAR ekvivalens)
+        // Fail-closed: ez még a POS napi zárás előtt fut, hogy ne maradjon visszagörgetett DB + lezárt terminál állapot.
+        executeEveningSync(branchId, closingDate);
+
+        // 2. Napi arfolyamok rogzitese (snapshot a zaraskor ervenyes arfolyamokrol)
         snapshotDailyRates(companyId, closingDate);
 
-        // 2. Napi munkamenet lezarasa
+        // 3. Napi munkamenet lezarasa
         dailySessionService.closeSession(closingDate);
 
-        // 3. Napi mérleg számítása (MODERN KIEGÉSZÍTÉS — Delphi napi forgalom számítás)
+        // 4. Napi mérleg számítása (MODERN KIEGÉSZÍTÉS — Delphi napi forgalom számítás)
         try {
             dailyBalanceService.calculateAllCurrenciesForDay(branchId, closingDate);
             log.info("Napi mérleg számítás sikeres: datum={}, iroda={}", closingDate, branchId);
@@ -466,11 +469,8 @@ public class DailyClosingService {
             // NEM dobunk kivételt — ne akadjon meg a zárás, csak logoljuk
         }
 
-        // 4. POS terminál napi zárás — ha van aktív terminál az irodán
+        // 5. POS terminál napi zárás — ha van aktív terminál az irodán
         executePosTerminalClosing(branchId, closingDate);
-
-        // 5. Esti zárás adatcsomag küldés a központnak (legacy ESTIZAR ekvivalens)
-        executeEveningSync(branchId, closingDate);
 
         // 6. Napi tranzakciók archiválása (legacy BfCopy + BtCopy)
         try {
@@ -580,28 +580,26 @@ public class DailyClosingService {
      * Modern: REST API — JSON adatcsomag.
      */
     private void executeEveningSync(UUID branchId, LocalDate closingDate) {
+        DataSyncResult result;
         try {
             DailyDataPackage pkg = eveningClosingService.prepareDailyPackage(branchId, closingDate);
-            DataSyncResult result = eveningClosingService.sendToHeadquarters(pkg);
-
-            if (result.isSuccess()) {
-                log.info("Esti zárás adatcsomag sikeresen elküldve: branchId={}, datum={}, checksum={}",
-                        branchId, closingDate, result.getChecksum());
-            } else {
-                log.warn("Esti zárás adatcsomag küldés sikertelen: branchId={}, datum={}, hiba={}",
-                        branchId, closingDate, result.getMessage());
-                throw new ValidationException("Esti zárás adatcsomag küldés sikertelen: " + result.getMessage());
-            }
-        } catch (ValidationException e) {
-            throw e;
-        } catch (Exception e) {
+            result = eveningClosingService.sendToHeadquarters(pkg);
+        } catch (RuntimeException e) {
             log.error("Esti zárás adatcsomag küldés hiba: branchId={}, datum={}, hiba={}",
                     branchId, closingDate, e.getMessage(), e);
-            if (e instanceof RuntimeException runtimeException) {
-                throw runtimeException;
-            }
-            throw new ValidationException("Esti zárás adatcsomag küldés hiba: " + e.getMessage());
+            throw new ValidationException("Esti zárás adatcsomag küldés hiba: " + e.getMessage(), e);
         }
+
+        if (result != null && result.isSuccess()) {
+            log.info("Esti zárás adatcsomag sikeresen elküldve: branchId={}, datum={}, checksum={}",
+                    branchId, closingDate, result.getChecksum());
+            return;
+        }
+
+        String failureMessage = result != null ? result.getMessage() : "nincs szinkron válasz";
+        log.warn("Esti zárás adatcsomag küldés sikertelen: branchId={}, datum={}, hiba={}",
+                branchId, closingDate, failureMessage);
+        throw new ValidationException("Esti zárás adatcsomag küldés sikertelen: " + failureMessage);
     }
 
     /**

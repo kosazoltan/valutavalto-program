@@ -1,6 +1,5 @@
 [Unit]
 Description=Valutavalto client_error_log cleanup timer (daily)
-Requires=valuta-client-error-cleanup.service
 
 [Timer]
 OnCalendar=*-*-* 02:10:00 UTC
