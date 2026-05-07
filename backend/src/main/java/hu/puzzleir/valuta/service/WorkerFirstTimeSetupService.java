@@ -29,8 +29,8 @@ import java.util.List;
  *   <li>NEM one-shot — minden worker-nek lehet sajat first-time setup-ja</li>
  *   <li>Csak akkor engedelyez jelszovaltast, ha:
  *     <ul>
- *       <li>a worker.passwordChangedAt == null (seed default jelszo aktiv), VAGY</li>
- *       <li>currentPassword egyezik a BCrypt hash-sel</li>
+ *       <li>a workernek nincs meg passwordHash-e es a bootstrap meg nincs lezarva, VAGY</li>
+ *       <li>mar letezo hash eseten a currentPassword egyezik a BCrypt hash-sel</li>
  *     </ul>
  *   </li>
  *   <li>Sikeres bealllitas utan JWT token-t ad vissza (auto-login)</li>
@@ -40,6 +40,18 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class WorkerFirstTimeSetupService {
+
+    private static final String ACTIVE_PASSWORD_REQUIRED_MESSAGE =
+            "Ez a dolgozo mar beallitott jelszot — a jelenlegi jelszo is kotelezo a valtashoz.";
+    private static final String ACTIVE_PASSWORD_MISMATCH_MESSAGE = "A jelenlegi jelszo nem egyezik.";
+    private static final String POST_BOOTSTRAP_SEED_PASSWORD_REQUIRED_MESSAGE =
+            "A telepites mar lezarult — a jelenlegi vagy kezdo dolgozoi jelszo kotelezo "
+            + "az uj jelszo beallitasahoz.";
+    private static final String PRE_BOOTSTRAP_SEED_PASSWORD_REQUIRED_MESSAGE =
+            "A dolgozohoz kezdo jelszo tartozik — a jelenlegi vagy kezdo dolgozoi jelszo kotelezo "
+            + "az uj jelszo beallitasahoz.";
+    private static final String SEED_PASSWORD_MISMATCH_MESSAGE =
+            "A megadott jelenlegi (seed) jelszo nem egyezik.";
 
     private final CompanyRepository companyRepository;
     private final WorkerRepository workerRepository;
@@ -83,37 +95,24 @@ public class WorkerFirstTimeSetupService {
         //    jelszo ismereteben allithato at, kulonben worker kod ismeretevel
         //    publikus fiokatvetel lenne.
         boolean bootstrapCompleted = adminBootstrapService.isBootstrapAlreadyCompleted();
-        boolean currentPasswordProvided = dto.getCurrentPassword() != null
-                && !dto.getCurrentPassword().isBlank();
 
         if (worker.getPasswordChangedAt() != null) {
             // Mar aktiv user-jelszo van -> csak a regi jelszoval engedjuk cserelni
-            if (!currentPasswordProvided) {
-                throw new ValidationException(
-                        "Ez a dolgozo mar beallitott jelszot — a jelenlegi jelszo is kotelezo "
-                        + "a valtashoz."
-                );
-            }
-            if (!passwordEncoder.matches(dto.getCurrentPassword(), worker.getPasswordHash())) {
-                throw new ValidationException("A jelenlegi jelszo nem egyezik.");
-            }
-        } else if (worker.getPasswordHash() != null && !worker.getPasswordHash().isBlank()) {
+            validateCurrentPassword(
+                    worker,
+                    dto.getCurrentPassword(),
+                    ACTIVE_PASSWORD_REQUIRED_MESSAGE,
+                    ACTIVE_PASSWORD_MISMATCH_MESSAGE);
+        } else if (hasPasswordHash(worker)) {
             // Seed-jelszo van (pl. V111 = "1234"). Ez is titoknak szamit:
             // public first-time setup endpointen currentPassword nelkul nem adunk uj jelszot.
-            if (!currentPasswordProvided) {
-                String setupState = bootstrapCompleted ? "A telepites mar lezarult" : "A dolgozohoz kezdo jelszo tartozik";
-                throw new ValidationException(
-                        setupState + " — a jelenlegi vagy kezdo dolgozoi jelszo "
-                        + "kotelezo az uj jelszo beallitasahoz."
-                );
-            }
-            if (currentPasswordProvided) {
-                if (!passwordEncoder.matches(dto.getCurrentPassword(), worker.getPasswordHash())) {
-                    throw new ValidationException(
-                            "A megadott jelenlegi (seed) jelszo nem egyezik."
-                    );
-                }
-            }
+            validateCurrentPassword(
+                    worker,
+                    dto.getCurrentPassword(),
+                    bootstrapCompleted
+                            ? POST_BOOTSTRAP_SEED_PASSWORD_REQUIRED_MESSAGE
+                            : PRE_BOOTSTRAP_SEED_PASSWORD_REQUIRED_MESSAGE,
+                    SEED_PASSWORD_MISMATCH_MESSAGE);
         } else if (bootstrapCompleted) {
             throw new ValidationException(
                     "A dolgozohoz nincs kezdo jelszo beallitva. Lezart telepites utan "
@@ -201,5 +200,22 @@ public class WorkerFirstTimeSetupService {
         }
         // Tobbszerepkoros setupnal appMode nelkul nem valasztunk sorrendfuggo aktiv role-t.
         throw new ValidationException("Tobb szerepkor eseten a programtipus megadasa kotelezo.");
+    }
+
+    private boolean hasPasswordHash(Worker worker) {
+        return worker.getPasswordHash() != null && !worker.getPasswordHash().isBlank();
+    }
+
+    private void validateCurrentPassword(
+            Worker worker,
+            String currentPassword,
+            String missingMessage,
+            String mismatchMessage) {
+        if (currentPassword == null || currentPassword.isBlank()) {
+            throw new ValidationException(missingMessage);
+        }
+        if (!passwordEncoder.matches(currentPassword, worker.getPasswordHash())) {
+            throw new ValidationException(mismatchMessage);
+        }
     }
 }

@@ -228,6 +228,10 @@ public class JwtTokenProvider {
         return LocalDateTime.ofInstant(expirationInstant, ZoneId.systemDefault());
     }
 
+    public LocalDateTime getConfiguredExpirationDateTimeFromNow() {
+        return LocalDateTime.ofInstant(Instant.now().plusMillis(expiration), ZoneId.systemDefault());
+    }
+
     /**
      * Operatív szerepkör kinyerése token-ből (V57)
      */

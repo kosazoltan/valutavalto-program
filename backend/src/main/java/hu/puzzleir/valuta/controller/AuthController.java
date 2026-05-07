@@ -392,7 +392,7 @@ public class AuthController {
 
     private LocalDateTime blacklistExpiresAt(String token) {
         LocalDateTime expiresAt = jwtTokenProvider.getExpirationDateTimeFromToken(token);
-        return expiresAt != null ? expiresAt : LocalDateTime.now().plusHours(24);
+        return expiresAt != null ? expiresAt : jwtTokenProvider.getConfiguredExpirationDateTimeFromNow();
     }
 
     /**
