@@ -1,4 +1,4 @@
-export type LoginAppMode = 'full' | 'penztar' | 'ertektar'
+export type LoginAppMode = 'full' | 'penztar' | 'ertektar' | 'ertekszallito'
 
 const SERVER_ALLOWED_CANONICAL_ROLES = [
   'ugyvezeto', 'foertektar', 'irodavezeto', 'belso_ellenor',
@@ -8,6 +8,7 @@ const SERVER_ALLOWED_CANONICAL_ROLES = [
 const SERVER_ALLOWED_LEGACY_ROLES = ['SUPERVISOR', 'MANAGER', 'ADMIN']
 const LEGACY_PENZTAR_ROLES = ['CASHIER']
 const LEGACY_ERTEKTAR_ROLES = ['MANAGER', 'TREASURY_MANAGER']
+const LEGACY_ERTEKSZALLITO_ROLES = ['COURIER']
 
 function isServerRole(roleCode: string): boolean {
   return SERVER_ALLOWED_CANONICAL_ROLES.includes(roleCode.toLowerCase())
@@ -30,11 +31,15 @@ export function isRoleSelectableForAppMode(
   if (appMode === 'ertektar') {
     return serverRole || canonical === 'ertektar' || LEGACY_ERTEKTAR_ROLES.includes(legacy)
   }
+  if (appMode === 'ertekszallito') {
+    return serverRole || canonical === 'ertekszallito' || LEGACY_ERTEKSZALLITO_ROLES.includes(legacy)
+  }
   return false
 }
 
 export function appModeLabel(appMode: LoginAppMode): string {
   if (appMode === 'penztar') return 'Valutaváltó Pénztár'
   if (appMode === 'ertektar') return 'Értéktár'
+  if (appMode === 'ertekszallito') return 'Értékszállító'
   return 'Szerver'
 }
