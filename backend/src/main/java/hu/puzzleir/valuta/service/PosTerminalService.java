@@ -24,7 +24,7 @@ import java.util.*;
  * Legacy: OtpTermStorno, OtpAruvisszavet, otpterminal DLL-ek.
  * Modern: többféle terminál provider támogatása (OTP, Borgun, Worldline) + MOCK mód.
  *
- * A szolgáltatás MOCK módban mindig APPROVED-ot ad vissza (dev/test),
+ * A szolgáltatás MOCK módban csak explicit tesztkonfigurációval ad jóváhagyást,
  * éles módban a megfelelő terminál protokollon kommunikál.
  */
 @Service
@@ -45,8 +45,11 @@ public class PosTerminalService {
     @Value("${pos.terminal.mock-approval-enabled:false}")
     private boolean mockApprovalEnabled;
 
+    private static final String MOCK_APPROVAL_DISABLED_MESSAGE = "MOCK POS jóváhagyás tiltva";
+    private static final String MOCK_STATUS_DISABLED_MESSAGE = "MOCK POS mód tiltva";
+
     @jakarta.annotation.PostConstruct
-    void warnBridgeDrivers() {
+    void warnFallbackApprovalModes() {
         log.warn("POS TERMINÁL: Borgun és Worldline driverek BRIDGE MÓDBAN futnak — "
                 + "file-artifact alapú, nem valódi terminál kommunikáció. "
                 + "OTP driver TCP/IP alapú, az működik. Bridge szimulált jóváhagyás={}, MOCK jóváhagyás={}",
@@ -242,8 +245,7 @@ public class PosTerminalService {
         TerminalType mode = resolveTerminalType(terminal);
         if (mode == TerminalType.MOCK) {
             if (!mockApprovalEnabled) {
-                return TerminalStatus.offline(terminalId, terminal.getTerminalName(), terminal.getTerminalType(),
-                    "MOCK POS mód tiltva");
+                return mockApprovalDisabledStatus(terminal);
             }
             return TerminalStatus.online(terminalId, terminal.getTerminalName(),
                     terminal.getTerminalType(), terminal.getLastTransactionAt());
@@ -324,9 +326,9 @@ public class PosTerminalService {
     // ============ MOCK IMPLEMENTÁCIÓ (dev/test) ============
 
     private PosTransactionResult executeMockPayment(BigDecimal amount, String currency, String terminalId) {
-        if (!mockApprovalEnabled) {
-            log.warn("MOCK POS fizetés tiltva: terminalId={}", terminalId);
-            return PosTransactionResult.error("MOCK POS jóváhagyás tiltva");
+        Optional<PosTransactionResult> disabled = mockApprovalDisabledTransaction("fizetés", terminalId);
+        if (disabled.isPresent()) {
+            return disabled.get();
         }
         String authCode = "MOCK-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
         String refNumber = "REF-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -335,9 +337,9 @@ public class PosTerminalService {
     }
 
     private PosTransactionResult executeMockReversal(String originalRef, String terminalId) {
-        if (!mockApprovalEnabled) {
-            log.warn("MOCK POS sztornó tiltva: terminalId={}", terminalId);
-            return PosTransactionResult.error("MOCK POS jóváhagyás tiltva");
+        Optional<PosTransactionResult> disabled = mockApprovalDisabledTransaction("sztornó", terminalId);
+        if (disabled.isPresent()) {
+            return disabled.get();
         }
         String authCode = "MOCK-S-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
         String refNumber = "REF-S-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -346,12 +348,36 @@ public class PosTerminalService {
     }
 
     private PosClosingResult executeMockDailyClose(String terminalId) {
-        if (!mockApprovalEnabled) {
-            log.warn("MOCK POS napi zárás tiltva: terminalId={}", terminalId);
-            return PosClosingResult.failure("MOCK POS jóváhagyás tiltva");
+        Optional<PosClosingResult> disabled = mockApprovalDisabledClosing("napi zárás", terminalId);
+        if (disabled.isPresent()) {
+            return disabled.get();
         }
         log.debug("MOCK POS napi zárás: terminál={} → SUCCESS", terminalId);
         return PosClosingResult.success(0, BigDecimal.ZERO);
+    }
+
+    private Optional<PosTransactionResult> mockApprovalDisabledTransaction(String action, String terminalId) {
+        if (mockApprovalEnabled) {
+            return Optional.empty();
+        }
+        log.warn("MOCK POS {} tiltva: terminalId={}", action, terminalId);
+        return Optional.of(PosTransactionResult.error(MOCK_APPROVAL_DISABLED_MESSAGE));
+    }
+
+    private Optional<PosClosingResult> mockApprovalDisabledClosing(String action, String terminalId) {
+        if (mockApprovalEnabled) {
+            return Optional.empty();
+        }
+        log.warn("MOCK POS {} tiltva: terminalId={}", action, terminalId);
+        return Optional.of(PosClosingResult.failure(MOCK_APPROVAL_DISABLED_MESSAGE));
+    }
+
+    private TerminalStatus mockApprovalDisabledStatus(PosTerminal terminal) {
+        return TerminalStatus.offline(
+                terminal.getTerminalId(),
+                terminal.getTerminalName(),
+                terminal.getTerminalType(),
+                MOCK_STATUS_DISABLED_MESSAGE);
     }
 
     // ============ OTP IMPLEMENTÁCIÓ ============
