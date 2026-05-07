@@ -64,7 +64,7 @@ public class PasswordResetService {
      * @return a generalt token (TESZT celu — production-ban csak logolni
      *         vagy email-ben kikuldeni, NE returnolni a API valaszban)
      */
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class)
     public String requestForgotPassword(String email) {
         if (email == null || email.isBlank()) {
             return null;
@@ -95,6 +95,8 @@ public class PasswordResetService {
                 .expiresAt(now.plus(TOKEN_TTL))
                 .build());
 
+        cleanupExpiredTokens();
+
         // CodeQL java/sensitive-log fix: NEM logoljuk az emailt (PII/GDPR) es a tokent
         // (security-sensitive) - csak worker id-t es egy nem-rekonstrualhato hashet a tokenrol.
         log.info("Forgot password token generalva: worker id={}, tokenHash={}",
@@ -107,8 +109,6 @@ public class PasswordResetService {
         // marad (anti-enumeration: a kliens semmilyen visszajelzest nem kap arrol hogy
         // a kuldes sikerult-e vagy sem).
         sendResetEmail(worker, token);
-
-        cleanupExpiredTokens();
 
         return token;
     }
@@ -154,7 +154,7 @@ public class PasswordResetService {
         if (token == null || token.isBlank()) {
             throw new ValidationException("Ervenytelen vagy lejart token");
         }
-        PasswordResetToken resetToken = resetTokenRepository.findByTokenHashAndUsedAtIsNull(hashToken(token))
+        PasswordResetToken resetToken = resetTokenRepository.findUnusedByTokenHashForUpdate(hashToken(token))
                 .orElseThrow(() -> new ValidationException("Ervenytelen vagy lejart token"));
         Instant now = Instant.now();
         if (now.isAfter(resetToken.getExpiresAt())) {
@@ -164,7 +164,7 @@ public class PasswordResetService {
         resetTokenRepository.save(resetToken);
 
         Worker worker = workerRepository.findById(resetToken.getWorkerId())
-                .orElseThrow(() -> new ValidationException("Worker not found"));
+                .orElseThrow(() -> new ValidationException("Dolgozo nem talalhato"));
         worker.setPasswordHash(passwordEncoder.encode(newPassword));
         worker.setPasswordChangedAt(java.time.LocalDateTime.now());
         workerRepository.save(worker);
