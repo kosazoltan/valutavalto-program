@@ -29,8 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -586,13 +584,17 @@ public class WorkerService {
         String normalizedInput = normalizeLoginCode(normalizedWorkerCode);
 
         Optional<Worker> directMatch = workerRepository.findByCompanyIdAndCode(company.getId(), normalizedWorkerCode)
-                .or(() -> workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), normalizedWorkerCode))
-                .or(() -> workerRepository.findByCompanyId(company.getId()).stream()
-                        .filter(w -> normalizeLoginCode(w.getCode()).equals(normalizedInput))
-                        .findFirst())
-                .or(() -> workerRepository.findByCompanyId(company.getId()).stream()
+                .or(() -> workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), normalizedWorkerCode));
+        if (directMatch.isPresent()) {
+            return directMatch;
+        }
+
+        List<Worker> companyWorkers = workerRepository.findByCompanyId(company.getId());
+        return companyWorkers.stream()
+                .filter(w -> normalizeLoginCode(w.getCode()).equals(normalizedInput))
+                .findFirst()
+                .or(() -> companyWorkers.stream()
                         .filter(w -> normalizeLoginCode(w.getName()).equals(normalizedInput))
                         .findFirst());
-        return directMatch;
     }
 }
