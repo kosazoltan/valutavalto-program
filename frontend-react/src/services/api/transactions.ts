@@ -881,17 +881,17 @@ export interface ShipmentRequest {
   id: string
   requestNumber: string
   requestingBranchId: string
-  requestingBranchName: string
+  requestingBranchName?: string
   targetBranchId: string
-  targetBranchName: string
+  targetBranchName?: string
   sourceBranchId?: string
   sourceBranchName?: string
-  shipmentType: string
+  shipmentType?: string
   requestedDeliveryDate: string
   priorityDid?: string
   requestStatus: string
   requestedByWorkerId: string
-  requestedByWorkerName: string
+  requestedByWorkerName?: string
   requestedAt: string
   approvedByWorkerId?: string
   approvedByWorkerName?: string
@@ -932,8 +932,39 @@ export interface ShipmentCreateRequest {
  * `{status, deliveryDate, fromBranchId, toBranchId, requestedBy, ...}`-t a
  * frontend `{requestStatus, requestedDeliveryDate, requestingBranchId, targetBranchId, ...}`-ra.
  */
+const shipmentResponseKeys = {
+  requestedByWorkerId: ['requestedByWorkerId', 'requestedById'],
+  requestedAt: ['requestedAt', 'createdAt', 'requestDate'],
+} as const
+
+function firstDefined(raw: Record<string, unknown>, keys: readonly string[]): unknown {
+  for (const key of keys) {
+    if (raw[key] !== undefined && raw[key] !== null) {
+      return raw[key]
+    }
+  }
+  return undefined
+}
+
+function optionalString(value: unknown): string | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined
+  }
+  return String(value)
+}
+
+function parseShipmentCurrencyId(value: string | number): number {
+  const parsed = typeof value === 'number' ? value : Number(value.trim())
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new Error('Ervenytelen valutaazonosito a szallitmany tetelben')
+  }
+  return parsed
+}
+
 function normalizeShipmentRequest(raw: Record<string, unknown>): ShipmentRequest {
     const r = raw as Partial<ShipmentRequest> & Record<string, unknown>
+    const requestedByWorkerId = optionalString(firstDefined(r, shipmentResponseKeys.requestedByWorkerId))
+    const requestedAt = optionalString(firstDefined(r, shipmentResponseKeys.requestedAt))
     return {
         ...r,
         // Ha a backend raw mezot kuldott, de frontend-kompat mezoje hianyzik, masoljuk at
@@ -944,8 +975,8 @@ function normalizeShipmentRequest(raw: Record<string, unknown>): ShipmentRequest
         requestingBranchName: (r.requestingBranchName ?? r['fromBranchName']) as ShipmentRequest['requestingBranchName'],
         targetBranchName: (r.targetBranchName ?? r['toBranchName']) as ShipmentRequest['targetBranchName'],
         requestedByWorkerName: (r.requestedByWorkerName ?? r['requestedBy']) as ShipmentRequest['requestedByWorkerName'],
-        requestedByWorkerId: (r.requestedByWorkerId ?? r['requestedById']) as ShipmentRequest['requestedByWorkerId'],
-        requestedAt: (r.requestedAt ?? r['createdAt'] ?? r['requestDate']) as ShipmentRequest['requestedAt'],
+        requestedByWorkerId: requestedByWorkerId as ShipmentRequest['requestedByWorkerId'],
+        requestedAt: requestedAt as ShipmentRequest['requestedAt'],
         requestNumber: (r.requestNumber ?? r['number']) as ShipmentRequest['requestNumber'],
     } as ShipmentRequest
 }
@@ -1014,7 +1045,7 @@ export const shipmentRequestApi = {
       deliveryDate: request.deliveryDate || undefined,
       notes: request.notes?.trim() || undefined,
       items: request.items.map((item) => ({
-        currencyId: Number(item.currencyId),
+        currencyId: parseShipmentCurrencyId(item.currencyId),
         requestedAmount: item.requestedAmount,
       })),
     }

@@ -46,7 +46,7 @@
 |---|---|---|
 | **Sentry SDK integráció** | **NINCS** | helyette saját `DiagnosticsController` + `client_error_log` |
 | **Grafana / Prometheus deploy** | **COMMITTED / VERIFY DEPLOY** | `deploy/hetzner/monitoring/docker-compose.monitoring.yml` + provisioned config |
-| **Dedicated alert manager** (Alertmanager / PagerDuty) | **COMMITTED / VERIFY DEPLOY** | Alertmanager config a monitoring stack része; élő webhook credential ellenőrizendő |
+| **Dedicated alert manager** (Alertmanager / Telegram) | **COMMITTED / VERIFY DEPLOY** | Alertmanager config a monitoring stack része; élő Telegram bot token + `TELEGRAM_CHAT_ID` ellenőrizendő |
 | **Uptime monitor külső szolgáltatás** (UptimeRobot / Better Uptime) | **VERIFY** | repoban nincs nyom — DNS/Cloudflare szinten esetleg |
 | **APM / distributed tracing** | **NINCS** | nem releváns single-node deploymentnél |
 
@@ -189,9 +189,9 @@ A `D:\valutavalto-vault\sessions\YYYY-MM-DD-error-review.md` fájlba dokumentál
 Telepítés után verifikáció:
 
 ```bash
-systemctl list-timers valuta-client-error-cleanup.timer
-systemctl start valuta-client-error-cleanup.service
-journalctl -u valuta-client-error-cleanup -n 20 --no-pager
+sudo systemctl list-timers valuta-client-error-cleanup.timer
+sudo systemctl start valuta-client-error-cleanup.service
+sudo journalctl -u valuta-client-error-cleanup -n 20 --no-pager
 ```
 
 ---
@@ -362,7 +362,7 @@ Ha 15 percen belül NEM zöld a smoke test (lásd `dr-backup-runbook.md` 4. szak
 |---|---|---|
 | Külső uptime monitor (`bootstrap-status` ping) | P0 | UptimeRobot / Better Uptime, 1 perces interval |
 | Grafana + Prometheus deploy élő verifikáció | P1 | `deploy/hetzner/bootstrap-vps.sh` monitoring lépés + Grafana login/scrape check |
-| `client_error_log` 90 napos cleanup timer élő verifikáció | P1 | `systemctl list-timers valuta-client-error-cleanup.timer` |
+| `client_error_log` 90 napos cleanup timer élő verifikáció | P1 | `sudo systemctl list-timers valuta-client-error-cleanup.timer` |
 | Caddy access log retention + rotate | P2 | logrotate config |
 | HikariCP exhausted alert | P2 | Grafana alert rule + GitHub Issue webhook |
 | AML overdue daily SQL alert | P0 | naponta 08:00 cron + ha COUNT > 0 → email DPO |
