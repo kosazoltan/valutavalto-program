@@ -55,7 +55,8 @@ Ez az utasitas minden olyan ugynokre ervenyes (Claude, OpenAI Codex, Cursor, Gem
 
 ### Obsidian memoria
 
-- **Aktiv vault ebben a repoban**: `D:\valutavalto-vault\` (sessions/, feedback/, references/)
+- **Aktiv vault ebben a repoban**: `D:\repo\valutavalto-program\vault\` (sessions/, feedback/, procedures/, references/)
+- A korábbi `D:\valutavalto-vault\` törölve lett; tilos újra létrehozni vagy használni, hogy ne legyen kettős olvasás/írás.
 - Az ugynok **koteles a relevans jegyzeteket beolvasni** a munka megkezdese elott (`vault\README.md`, legfrissebb session-jegyzet, feedback skim).
 - Hasznalatkor figyelni: **wikilinkek, tagek, YAML frontmatter, backlink logika, jegyzetek kozotti osszefugges**.
 - Uj bejegyzes: **atomikus, visszakereshetonek, forrasoltan tenyalapu**.
@@ -74,7 +75,7 @@ Ebben a repoban jelenleg aktiv:
 - **AI_CONSTITUTION.md** (10 nem-alkukepes szabaly + 7 tiltas + 7 reteg architektura)
 - **AGENTS.md / CODEX.md / VSCODE.md / ANTIGRAVITY.md** (multi-AI extends)
 - **`.cursor/rules/*.mdc`** (always-on Cursor rule-ok)
-- **Obsidian vault** `D:\valutavalto-vault\` (sessions/, feedback/, references/)
+- **Obsidian/repo vault** `D:\repo\valutavalto-program\vault\` (sessions/, feedback/, procedures/, references/)
 - **`.remember/remember.md`** (quick-state handoff)
 - **`docs/LESSONS_LEARNED.md`** (korabbi hibak)
 - **`docs/knowledge/memory/*.yaml`** (historikus session memoria, csak olvasni, uj jegyzet a vault-ba megy)
@@ -129,9 +130,10 @@ Minden lezart munkamenet utan **kotelezo memoriamentest vegezni**, ha a session 
 
 ### Mentesi celhely (ebben a repoban)
 
-- **Vault session-jegyzet**: `D:\valutavalto-vault\sessions\YYYY-MM-DD-rovid-leiras.md`
-- **Vault feedback** (uj user-direktiva): `D:\valutavalto-vault\feedback\<topic>.md`
-- **Vault references** (uj projekt-tudas kulso forrasbol): `D:\valutavalto-vault\references\<topic>.md`
+- **Vault session-jegyzet**: `D:\repo\valutavalto-program\vault\sessions\YYYY-MM-DD-rovid-leiras.md`
+- **Vault feedback** (uj user-direktiva): `D:\repo\valutavalto-program\vault\feedback\<topic>.md`
+- **Vault procedures** (workflow): `D:\repo\valutavalto-program\vault\procedures\<workflow-name>.md`
+- **Vault references** (uj projekt-tudas kulso forrasbol): `D:\repo\valutavalto-program\vault\references\<topic>.md`
 - **`.remember/remember.md`**: quick-state update (Main HEAD, open PR/issue, production health)
 - **CLAUDE.md** "Aktualis release-allapot" szekcio: ha valtozott
 

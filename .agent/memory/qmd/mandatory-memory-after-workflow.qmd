@@ -1,0 +1,50 @@
+---
+title: Mandatory Memory Write After Every Completed Workflow
+created: 2026-05-07
+type: procedural-memory
+status: active
+source: user directive in Cursor session 2026-05-07 21:37 CEST
+---
+
+# Mandatory Memory Write After Every Completed Workflow
+
+## Rule
+
+After every completed work process in the Valutavalto project, the agent must update the
+available memory layers with verified facts from that work.
+
+This applies to:
+
+- bug fixes
+- PR triage and AI review resolution
+- tests, CI, deploy, and security-gate work
+- installer, Electron, backend, frontend, and database work
+- legacy/Anti parity analysis
+- receipt/bizonylat and processed-material analysis
+
+## Required Memory Targets
+
+- Short-term: current state, active blockers, active directives.
+- Medium-term: session handoff and recent workflow result.
+- Operational: reproducible command, procedure, test result, failure recovery.
+- Long-term: stable project fact, legacy parity fact, architecture or business rule.
+- QMD/YAML/Cognee/vector/Obsidian mirror: regenerate with `npm run memory:sync`.
+
+## Verification
+
+At the end of the workflow, run:
+
+```powershell
+npm run memory:build
+npm run memory:status
+```
+
+If external sync is intended:
+
+```powershell
+npm run memory:sync
+```
+
+If Cognee or Obsidian REST is blocked, report it explicitly and rely on the generated
+repo-local bundle plus filesystem Obsidian mirror. Never claim live external ingestion
+unless the status report proves it.

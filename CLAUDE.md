@@ -192,7 +192,7 @@ Ha **DOWN**: először helyreállítani (Hetzner + Scaleway HA failover), utána
 
 ## KÖTELEZŐ ÉRVÉNYŰ: Session memory workflow (Obsidian-alapú, 2026-04-27 óta)
 
-**EGYETLEN aktív memóriarendszer:** `D:\valutavalto-vault\` (Obsidian vault, dedikált a valutaváltó-projekt számára).
+**EGYETLEN aktív memóriarendszer:** `D:\repo\valutavalto-program\vault\` (repo-local Obsidian-kompatibilis vault, dedikált a valutaváltó-projekt számára).
 
 A korábbi rendszerek **deprecated** (2026-04-27 user-direktíva — "memória mizéria megszüntetése"):
 - ❌ `.memory/` (SQLite + Node.js MCP) — **TÖRÖLVE** (Bence/Eszter/Tamás belső koncepció refek)
@@ -200,16 +200,16 @@ A korábbi rendszerek **deprecated** (2026-04-27 user-direktíva — "memória m
 - ❌ Több párhuzamos memóriarendszer
 
 **Minden session elején** olvasd be (ebben a sorrendben):
-1. `D:\valutavalto-vault\README.md` — vault használati protokoll
-2. `D:\valutavalto-vault\sessions\` — legfrissebb session-jegyzet (YYYY-MM-DD)
-3. `D:\valutavalto-vault\feedback\` — kötelező user-direktívák (skim mindent)
+1. `D:\repo\valutavalto-program\vault\README.md` — vault használati protokoll
+2. `D:\repo\valutavalto-program\vault\sessions\` — legfrissebb session-jegyzet (YYYY-MM-DD)
+3. `D:\repo\valutavalto-program\vault\feedback\` — kötelező user-direktívák (skim mindent)
 4. `.remember/remember.md` — csak quick-state handoff (4-5 sor)
 5. `docs/LESSONS_LEARNED.md` — korábbi hibák, amiket NE ismételj
 
 **Minden session végén** mentsd a vault-ba:
-1. `D:\valutavalto-vault\sessions\YYYY-MM-DD-rovid-leiras.md` — új session-jegyzet
-2. `D:\valutavalto-vault\feedback\<topic>.md` — ha új user-direktíva érkezett
-3. `D:\valutavalto-vault\references\<topic>.md` — ha új projekt-tudás érkezett külső forrásból
+1. `D:\repo\valutavalto-program\vault\sessions\YYYY-MM-DD-rovid-leiras.md` — új session-jegyzet
+2. `D:\repo\valutavalto-program\vault\feedback\<topic>.md` — ha új user-direktíva érkezett
+3. `D:\repo\valutavalto-program\vault\references\<topic>.md` — ha új projekt-tudás érkezett külső forrásból
 4. `.remember/remember.md` — quick-state update (Main HEAD, open PR/issue, production health)
 5. CLAUDE.md "Nyitott következő feladatok" → frissítés ha változott
 
