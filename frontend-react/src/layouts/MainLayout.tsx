@@ -16,14 +16,15 @@ import {
   Loader2,
 } from 'lucide-react'
 import { useAppMode } from '../hooks/useAppMode'
-import type { AppMode } from '../hooks/useAppMode'
+import { CASHIER_APP_MODE } from '../types/appMode'
+import type { AppMode } from '../types/appMode'
 
 import { menuGroups, SZERVER_ROLES } from "./menuGroups"
 import { useFeatureFlags } from "../hooks/useFeatureFlags"
 import TransitBadge from "../components/TransitBadge"
 
 export function shouldRequireDailySession(appMode: AppMode): boolean {
-  return appMode === 'penztar'
+  return appMode === CASHIER_APP_MODE
 }
 
 export default function MainLayout() {
@@ -43,13 +44,17 @@ export default function MainLayout() {
   const { mode: appMode, isLoading: appModeLoading } = useAppMode()
   const navigate = useNavigate()
 
+  const markSessionReadyWithoutDailyGate = useCallback(() => {
+    setSessionInfo(null)
+    setSessionError(null)
+    setShowSessionDialog(false)
+    setSessionReady(true)
+    setSessionChecking(false)
+  }, [])
+
   const initSession = useCallback(async () => {
     if (!shouldRequireDailySession(appMode)) {
-      setSessionInfo(null)
-      setSessionError(null)
-      setShowSessionDialog(false)
-      setSessionReady(true)
-      setSessionChecking(false)
+      markSessionReadyWithoutDailyGate()
       return
     }
 
@@ -80,7 +85,7 @@ export default function MainLayout() {
     } finally {
       setSessionChecking(false)
     }
-  }, [appMode])
+  }, [appMode, markSessionReadyWithoutDailyGate])
 
   useEffect(() => {
     if (appModeLoading) {

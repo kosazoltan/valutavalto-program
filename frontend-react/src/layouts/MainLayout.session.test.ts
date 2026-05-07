@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { AppMode } from '../hooks/useAppMode'
+import type { AppMode } from '../types/appMode'
 import { shouldRequireDailySession } from './MainLayout'
 
 describe('MainLayout daily session gate', () => {
