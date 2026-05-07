@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.UUID;
 
 /**
@@ -34,13 +35,11 @@ public class BackupController {
      * POST /api/v1/backup/create
      */
     @PostMapping("/create")
-    public ResponseEntity<BackupRecordResponse> createBackup(@Valid @RequestBody CreateBackupRequest request) {
-        BackupType type = request.getType() != null ? request.getType() : BackupType.FULL;
-        BackupRecordResponse response = backupService.createBackup(type, "admin");
-        HttpStatus status = response.getStatus() == BackupStatus.COMPLETED
-                ? HttpStatus.OK
-                : HttpStatus.SERVICE_UNAVAILABLE;
-        return ResponseEntity.status(status).body(response);
+    public ResponseEntity<BackupRecordResponse> createBackup(
+            @Valid @RequestBody CreateBackupRequest request,
+            Principal principal) {
+        BackupRecordResponse response = backupService.createBackup(request.getType(), resolveCreatedBy(principal));
+        return ResponseEntity.status(httpStatusForBackup(response.getStatus())).body(response);
     }
 
     /**
@@ -75,5 +74,20 @@ public class BackupController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=backup_" + id + ".sql")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(data);
+    }
+
+    private String resolveCreatedBy(Principal principal) {
+        if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+            return "unknown";
+        }
+        return principal.getName();
+    }
+
+    private HttpStatus httpStatusForBackup(BackupStatus status) {
+        return switch (status) {
+            case COMPLETED -> HttpStatus.OK;
+            case RUNNING -> HttpStatus.ACCEPTED;
+            case FAILED -> HttpStatus.SERVICE_UNAVAILABLE;
+        };
     }
 }

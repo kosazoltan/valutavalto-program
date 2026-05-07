@@ -30,7 +30,10 @@ export function handleApiError(error: unknown): ApplicationError {
   if (error instanceof AxiosError) {
     const status = error.response?.status;
     const message =
-      error.response?.data?.message || error.message || 'Ismeretlen hiba történt';
+      error.response?.data?.message
+      || error.response?.data?.errorMessage
+      || error.message
+      || 'Ismeretlen hiba történt';
     const code = error.response?.data?.code || error.code;
     const details = error.response?.data;
 

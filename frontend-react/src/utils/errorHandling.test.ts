@@ -66,6 +66,13 @@ describe('handleApiError', () => {
     expect(result.message).toBe('Bad request')
   })
 
+  it('uses response errorMessage when message is missing', () => {
+    const axErr = makeAxiosError(503, { errorMessage: 'manifest write failed' })
+    const result = handleApiError(axErr)
+    expect(result.status).toBe(503)
+    expect(result.message).toBe('manifest write failed')
+  })
+
   it('uses axios message when response has no message', () => {
     const axErr = makeAxiosError(500, {})
     const result = handleApiError(axErr)

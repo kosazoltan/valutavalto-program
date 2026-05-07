@@ -698,7 +698,9 @@ export const cameraExportApi = {
     api.post<CameraExportRequest>('/camera/export/request', null, { params: { ...p } }),
   approve: (id: string) => api.post<CameraExportRequest>(`/camera/export/${id}/approve`),
   reject: (id: string, reason: string) => api.post<CameraExportRequest>(`/camera/export/${id}/reject?reason=${encodeURIComponent(reason)}`),
-  execute: (id: string) => api.post<CameraExportRequest>(`/camera/export/${id}/execute`),
+  execute: (id: string) => api.post<CameraExportRequest>(`/camera/export/${id}/execute`, null, {
+    validateStatus: status => (status >= 200 && status < 300) || status === 503,
+  }),
   getById: (id: string) => api.get<CameraExportRequest>(`/camera/export/${id}`),
   getPending: () => api.get<CameraExportRequest[]>('/camera/export/pending'),
   getByBranch: (branchId: string) => api.get<CameraExportRequest[]>(`/camera/export/branch/${branchId}`),

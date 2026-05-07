@@ -69,10 +69,7 @@ public class CameraExportController {
     @PreAuthorize("hasAnyAuthority('VIDEO_EXPORT', 'SYSTEM_ADMIN')")
     public ResponseEntity<CameraExportRequest> execute(@PathVariable UUID requestId) {
         CameraExportRequest request = exportService.executeExport(requestId);
-        HttpStatus status = request.getStatus() == CameraExportStatus.COMPLETED
-                ? HttpStatus.OK
-                : HttpStatus.SERVICE_UNAVAILABLE;
-        return ResponseEntity.status(status).body(request);
+        return ResponseEntity.status(httpStatusForExport(request.getStatus())).body(request);
     }
 
     // === Lekérdezések ===
@@ -117,5 +114,16 @@ public class CameraExportController {
             "chainIntact", intact,
             "verifiedAt", LocalDateTime.now().toString()
         ));
+    }
+
+    private HttpStatus httpStatusForExport(CameraExportStatus status) {
+        if (status == null) {
+            return HttpStatus.SERVICE_UNAVAILABLE;
+        }
+        return switch (status) {
+            case COMPLETED -> HttpStatus.OK;
+            case REQUESTED, APPROVED, EXPORTING -> HttpStatus.ACCEPTED;
+            case REJECTED, FAILED -> HttpStatus.SERVICE_UNAVAILABLE;
+        };
     }
 }

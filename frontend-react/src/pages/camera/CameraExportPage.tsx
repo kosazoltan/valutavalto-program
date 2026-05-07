@@ -94,9 +94,14 @@ export default function CameraExportPage() {
   }
 
   const handleExecute = async (id: string) => {
+    setError('')
     try {
       const res = await cameraExportApi.execute(id)
-      setSelected(res.data); loadCustody(id)
+      setSelected(res.data)
+      if (res.data.status === 'FAILED' && res.data.errorMessage) {
+        setError(res.data.errorMessage)
+      }
+      loadCustody(id)
     } catch (err) { setError(getErrorMessage(err)) }
   }
 
