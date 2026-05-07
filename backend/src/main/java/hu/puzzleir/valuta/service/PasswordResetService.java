@@ -55,8 +55,9 @@ public class PasswordResetService {
     private String frontendBaseUrl;
 
     /**
-     * Kerelem forgot-password flow-ra. A nyers token csak emailben megy ki,
-     * az adatbazisba a token SHA-256 hash-e kerul.
+     * Kerelem forgot-password flow-ra. Production-ban a nyers token csak
+     * email-ben megy ki; az adatbazisba a token SHA-256 hash-e kerul.
+     * Dev/test kornyezetben a hivo a tokent diagnosztikai celbol visszakaphatja.
      *
      * <p>Anti-enumeration: akkor is 200-at adunk vissza ha az email
      * nem letezik a DB-ben. Igy egy attacker nem tudja felderiteni
@@ -65,7 +66,7 @@ public class PasswordResetService {
      * @return a generalt token (TESZT celu — production-ban csak logolni
      *         vagy email-ben kikuldeni, NE returnolni a API valaszban)
      */
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class)
     public String requestForgotPassword(String email) {
         if (email == null || email.isBlank()) {
             return null;
@@ -96,6 +97,8 @@ public class PasswordResetService {
                 .expiresAt(now.plus(TOKEN_TTL))
                 .build());
 
+        cleanupExpiredTokens();
+
         // CodeQL java/sensitive-log fix: NEM logoljuk az emailt (PII/GDPR) es a tokent
         // (security-sensitive) - csak worker id-t es egy nem-rekonstrualhato hashet a tokenrol.
         log.info("Forgot password token generalva: worker id={}, tokenHash={}",
@@ -109,13 +112,11 @@ public class PasswordResetService {
         // a kuldes sikerult-e vagy sem).
         sendResetEmail(worker, token);
 
-        cleanupExpiredTokens();
-
         return token;
     }
 
     /**
-     * Reset link emailben kikuldese a workernek. Aszinkron — nem blokkolja a hivot.
+     * Reset link email-ben kikuldese a workernek. Aszinkron — nem blokkolja a hivot.
      *
      * <p>A link formatuma: {@code <frontendBaseUrl>/reset-password?token=<URL-encoded-token>}.</p>
      */
@@ -155,7 +156,7 @@ public class PasswordResetService {
         if (token == null || token.isBlank()) {
             throw new ValidationException("Ervenytelen vagy lejart token");
         }
-        PasswordResetToken resetToken = resetTokenRepository.findByTokenHashAndUsedAtIsNull(hashToken(token))
+        PasswordResetToken resetToken = resetTokenRepository.findUnusedByTokenHashForUpdate(hashToken(token))
                 .orElseThrow(() -> new ValidationException("Ervenytelen vagy lejart token"));
         Instant now = Instant.now();
         if (now.isAfter(resetToken.getExpiresAt())) {
@@ -165,7 +166,7 @@ public class PasswordResetService {
         resetTokenRepository.save(resetToken);
 
         Worker worker = workerRepository.findById(resetToken.getWorkerId())
-                .orElseThrow(() -> new ValidationException("Worker not found"));
+                .orElseThrow(() -> new ValidationException("Dolgozo nem talalhato"));
         worker.setPasswordHash(passwordEncoder.encode(newPassword));
         worker.setPasswordChangedAt(java.time.LocalDateTime.now());
         workerRepository.save(worker);
