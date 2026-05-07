@@ -79,7 +79,7 @@ class RefreshTokenServiceSelectorTest {
         HttpServletRequest req = new MockHttpServletRequest();
         when(repository.save(any(RefreshToken.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        RefreshTokenService.IssuedToken issued = service.issue(worker, req);
+        RefreshTokenService.IssuedToken issued = service.issue(worker, req, "ertektar");
 
         assertThat(issued.rawUuid()).contains(".").as("cookie format `selector.verifier`");
         String[] parts = issued.rawUuid().split("\\.");
@@ -91,6 +91,7 @@ class RefreshTokenServiceSelectorTest {
         verify(repository).save(captor.capture());
         RefreshToken saved = captor.getValue();
         assertThat(saved.getSelector()).isEqualTo(parts[0]);
+        assertThat(saved.getActiveRole()).isEqualTo("ertektar");
         // tokenHash a VERIFIER BCrypt-hashe (NEM a selector + verifier-e)
         assertThat(encoder.matches(parts[1], saved.getTokenHash())).isTrue();
         assertThat(encoder.matches(issued.rawUuid(), saved.getTokenHash()))

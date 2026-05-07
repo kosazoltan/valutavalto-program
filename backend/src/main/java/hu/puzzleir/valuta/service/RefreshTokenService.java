@@ -56,6 +56,11 @@ public class RefreshTokenService {
      */
     @Transactional
     public IssuedToken issue(Worker worker, HttpServletRequest request) {
+        return issue(worker, request, null);
+    }
+
+    @Transactional
+    public IssuedToken issue(Worker worker, HttpServletRequest request, String activeRole) {
         String selector = randomUrlSafe(SELECTOR_BYTES);
         String verifier = randomUrlSafe(VERIFIER_BYTES);
         String rawCookie = selector + COOKIE_SEPARATOR + verifier;
@@ -68,6 +73,7 @@ public class RefreshTokenService {
             .tokenHash(verifierHash)
             .workerId(worker.getId())
             .companyId(worker.getCompany().getId())
+            .activeRole(normalizeActiveRole(activeRole))
             .issuedAt(now)
             .expiresAt(expires)
             .userAgent(truncate(request.getHeader("User-Agent"), 512))
@@ -125,7 +131,12 @@ public class RefreshTokenService {
     /** Token rotation: regi revoke + uj issue. */
     @Transactional
     public IssuedToken rotate(RefreshToken oldToken, Worker worker, HttpServletRequest request) {
-        IssuedToken newIssued = issue(worker, request);
+        return rotate(oldToken, worker, request, oldToken.getActiveRole());
+    }
+
+    @Transactional
+    public IssuedToken rotate(RefreshToken oldToken, Worker worker, HttpServletRequest request, String activeRole) {
+        IssuedToken newIssued = issue(worker, request, activeRole);
         oldToken.setRevokedAt(Instant.now());
         oldToken.setReplacedBy(newIssued.hash());
         repository.save(oldToken);
@@ -162,6 +173,13 @@ public class RefreshTokenService {
     private static String truncate(String s, int max) {
         if (s == null) return null;
         return s.length() > max ? s.substring(0, max) : s;
+    }
+
+    private static String normalizeActiveRole(String activeRole) {
+        if (activeRole == null || activeRole.isBlank()) {
+            return null;
+        }
+        return activeRole.trim();
     }
 
     /** Audit P0.3: URL-safe Base64 random a SecureRandom-bol (no padding). */

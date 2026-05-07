@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.dto.auth.SelectRoleRequestDto;
 import hu.puzzleir.valuta.dto.worker.WorkerDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.RefreshToken;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
 import hu.puzzleir.valuta.exception.BusinessException;
@@ -73,7 +74,7 @@ class AuthRefreshCookieIssueFailureTest {
         when(clientIpResolver.resolveClientIp(request)).thenReturn("127.0.0.1");
         when(workerService.login(requestDto, "127.0.0.1", null)).thenReturn(loginResponse());
         when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
-        when(refreshTokenService.issue(worker, request)).thenThrow(new IllegalStateException("database unavailable"));
+        when(refreshTokenService.issue(worker, request, null)).thenThrow(new IllegalStateException("database unavailable"));
 
         assertThatThrownBy(() -> controller.login(requestDto, request, response))
                 .isInstanceOfSatisfying(BusinessException.class, ex -> {
@@ -116,7 +117,7 @@ class AuthRefreshCookieIssueFailureTest {
                 .contains("refreshToken=")
                 .contains("Max-Age=0");
         verify(workerRepository, never()).findById(42L);
-        verify(refreshTokenService, never()).issue(any(), any());
+        verify(refreshTokenService, never()).issue(any(), any(), any());
     }
 
     @Test
@@ -143,7 +144,7 @@ class AuthRefreshCookieIssueFailureTest {
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "ertektar"));
         when(workerRoleService.getPermissionCodesForRole("penztar")).thenReturn(List.of("TRADE_EXECUTE"));
         when(jwtTokenProvider.generateToken(worker, "penztar", List.of("TRADE_EXECUTE"))).thenReturn("final-token");
-        when(refreshTokenService.issue(worker, request))
+        when(refreshTokenService.issue(worker, request, "penztar"))
                 .thenReturn(new RefreshTokenService.IssuedToken("selector.verifier", "hash", Instant.now()));
 
         var result = controller.selectRole(new SelectRoleRequestDto("temp-token", "penztar"), request, response);
@@ -178,7 +179,7 @@ class AuthRefreshCookieIssueFailureTest {
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar"));
         when(workerRoleService.getPermissionCodesForRole("penztar")).thenReturn(List.of("TRADE_EXECUTE"));
         when(jwtTokenProvider.generateToken(worker, "penztar", List.of("TRADE_EXECUTE"))).thenReturn("final-token");
-        when(refreshTokenService.issue(worker, request)).thenThrow(new IllegalStateException("database unavailable"));
+        when(refreshTokenService.issue(worker, request, "penztar")).thenThrow(new IllegalStateException("database unavailable"));
 
         assertThatThrownBy(() -> controller.selectRole(new SelectRoleRequestDto("temp-token", "penztar"), request, response))
                 .isInstanceOfSatisfying(BusinessException.class, ex -> {
@@ -201,7 +202,7 @@ class AuthRefreshCookieIssueFailureTest {
         Worker worker = worker();
         when(googleLoginService.loginWithGoogle("id-token", request)).thenReturn(loginResponse());
         when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
-        when(refreshTokenService.issue(worker, request)).thenThrow(new IllegalStateException("database unavailable"));
+        when(refreshTokenService.issue(worker, request, null)).thenThrow(new IllegalStateException("database unavailable"));
 
         assertThatThrownBy(() -> controller.googleLogin(requestDto, request, response))
                 .isInstanceOfSatisfying(BusinessException.class, ex -> {
@@ -237,7 +238,43 @@ class AuthRefreshCookieIssueFailureTest {
                 .contains("refreshToken=")
                 .contains("Max-Age=0");
         verify(workerRepository, never()).findById(42L);
-        verify(refreshTokenService, never()).issue(any(), any());
+        verify(refreshTokenService, never()).issue(any(), any(), any());
+    }
+
+    @Test
+    void refreshCookiePreservesStoredActiveRole() {
+        AuthController controller = new AuthController(
+                workerService,
+                jwtTokenProvider,
+                workerRepository,
+                workerRoleService,
+                tokenBlacklistService,
+                adminBootstrapService,
+                workerFirstTimeSetupService,
+                passwordResetService,
+                refreshTokenService,
+                clientIpResolver);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setCookies(new jakarta.servlet.http.Cookie("refreshToken", "selector.verifier"));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        Worker worker = worker();
+        RefreshToken oldRefresh = RefreshToken.builder()
+                .workerId(42L)
+                .activeRole("ertektar")
+                .build();
+        when(refreshTokenService.findActiveBySelectorAndVerifier("selector.verifier"))
+                .thenReturn(Optional.of(oldRefresh));
+        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "ertektar"));
+        when(workerRoleService.getPermissionCodesForRole("ertektar")).thenReturn(List.of("VAULT_READ"));
+        when(jwtTokenProvider.generateToken(worker, "ertektar", List.of("VAULT_READ"))).thenReturn("refreshed-token");
+        when(refreshTokenService.rotate(oldRefresh, worker, request, "ertektar"))
+                .thenReturn(new RefreshTokenService.IssuedToken("new.selector", "hash", Instant.now()));
+
+        var result = controller.refreshCookie(request, response);
+
+        assertThat(result.getBody()).containsEntry("token", "refreshed-token");
+        assertThat(response.getHeader("Set-Cookie")).contains("refreshToken=new.selector");
     }
 
     @Test

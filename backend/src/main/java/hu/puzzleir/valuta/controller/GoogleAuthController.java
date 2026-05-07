@@ -80,7 +80,10 @@ public class GoogleAuthController {
             Worker worker = workerRepository.findById(response.getWorker().getId())
                     .orElseThrow(() -> new AuthenticationException("Worker nem talalhato login utan."));
             try {
-                RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, httpRequest);
+                RefreshTokenService.IssuedToken issued = refreshTokenService.issue(
+                        worker,
+                        httpRequest,
+                        response.getActiveRole());
                 ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
                         .httpOnly(true)
                         .secure(httpRequest.isSecure())
