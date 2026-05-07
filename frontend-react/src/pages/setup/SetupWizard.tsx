@@ -162,10 +162,7 @@ export default function SetupWizard() {
   // engedjük kiválasztani — különben a felhasználó tévedésből pénztárt
   // választhatna értéktárhoz, és a területi szűrés is rosszul mutatna.
   const filteredBranches = useMemo(() => {
-    let list = branches
-    if (appModeChoice === 'ertektar') {
-      list = list.filter((b) => b.isVault === true)
-    }
+    let list = branches.filter((branch) => isBranchSelectableForAppMode(branch, appModeChoice))
     const q = branchSearch.trim().toLowerCase()
     if (!q) return list
     return list.filter((b) =>
