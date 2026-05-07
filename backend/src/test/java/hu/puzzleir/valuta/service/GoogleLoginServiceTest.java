@@ -256,6 +256,31 @@ class GoogleLoginServiceTest {
     }
 
     @Test
+    @DisplayName("Google login session IP VARCHAR(45) limitre vagja a resolver valaszat")
+    void happyPath_truncatesResolvedClientIpForSessionStorage() throws Exception {
+        when(googleIdTokenService.verify("ok"))
+                .thenReturn(identity("g-sub-1", "user@gmail.com"));
+        Worker w = worker("W1", "user@gmail.com", true, "g-sub-1");
+        when(workerRepository.findGoogleLoginCandidatesByEmail("user@gmail.com")).thenReturn(List.of(w));
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar"));
+        when(workerRoleService.getPermissionCodesForRole("penztar")).thenReturn(List.of("TRANSACTION_BUY"));
+        when(jwtTokenProvider.generateToken(any(), any(), any())).thenReturn("jwt-token");
+        when(jwtTokenProvider.getTokenIdFromToken("jwt-token")).thenReturn("token-id-1");
+        when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(sessionRepository.save(any(WorkerSession.class))).thenAnswer(inv -> inv.getArgument(0));
+        String overlongClientIp = "203.0.113.10, 198.51.100.25, invalid-forwarded-hop-with-too-many-chars";
+        when(clientIpResolver.resolveClientIp(any())).thenReturn(overlongClientIp);
+
+        service.loginWithGoogle("ok", new MockHttpServletRequest());
+
+        ArgumentCaptor<WorkerSession> sessionCaptor = ArgumentCaptor.forClass(WorkerSession.class);
+        verify(sessionRepository).save(sessionCaptor.capture());
+        assertThat(sessionCaptor.getValue().getIpAddress())
+                .hasSize(45)
+                .isEqualTo(overlongClientIp.substring(0, 45));
+    }
+
+    @Test
     @DisplayName("happy path foertektar canonical role -> validAppModes tartalmazza 'full'-t")
     void happyPath_foertektarRole_setsFullAppMode() throws Exception {
         when(googleIdTokenService.verify("ok"))

@@ -170,7 +170,7 @@ public class GoogleLoginService {
         // 6. JWT + Session
         String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
         String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
-        String clientIp = clientIpResolver.resolveClientIp(httpRequest);
+        String clientIp = truncate(clientIpResolver.resolveClientIp(httpRequest), 45);
 
         // Codex P1 PR #361 follow-up: legacy worker eseten `worker.getBranch()` lehet null,
         // de a `worker_session.branch_id` non-nullable. Ugyanaz a fallback minta mint
@@ -263,5 +263,12 @@ public class GoogleLoginService {
             // SHA-256 minden JDK-ban elerheto — ez nem fog elofordulni
             return "(sha256-unavailable)";
         }
+    }
+
+    private static String truncate(String value, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+        return value.length() > maxLength ? value.substring(0, maxLength) : value;
     }
 }
