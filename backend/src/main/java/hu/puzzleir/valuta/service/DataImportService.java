@@ -1,13 +1,12 @@
 package hu.puzzleir.valuta.service;
 
-import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.config.DataImportProperties;
+import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.BranchRepository;
-import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.DataImportJobRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -35,9 +34,9 @@ public class DataImportService {
 
     private final DataImportJobRepository dataImportJobRepository;
     private final BranchRepository branchRepository;
+    private final DataImportProperties dataImportProperties;
 
-    @Value("${data-import.simulated-success-enabled:false}")
-    private boolean simulatedSuccessEnabled;
+    private static final String SIMULATED_SUCCESS_PROPERTY = "data-import.simulated-success-enabled";
 
     /**
      * Napi zárás import indítása.
@@ -209,12 +208,21 @@ public class DataImportService {
      * Éles környezetben ez FTP/API/fájl olvasás lenne.
      */
     private int simulateImport(String type, UUID branchId, LocalDate date) {
-        if (!simulatedSuccessEnabled) {
-            throw new IllegalStateException(
-                    "Data import driver nincs konfigurálva; szimulált COMPLETED import tiltva");
+        if (!dataImportProperties.isSimulatedSuccessEnabled()) {
+            log.warn("Data import szimuláció tiltva: type={}, branchId={}, date={}, {}=false",
+                    type, branchId, date, SIMULATED_SUCCESS_PROPERTY);
+            throw new DataImportSimulationDisabledException(
+                    "Data import driver nincs konfigurálva; szimulált COMPLETED import tiltva "
+                            + "(property: " + SIMULATED_SUCCESS_PROPERTY + "=false)");
         }
         log.info("Simulating {} import for branch {} on {}", type, branchId, date);
         // A tényleges implementáció a Helga DLL logika szerint töltené be az adatokat
         return 0;
+    }
+
+    private static class DataImportSimulationDisabledException extends RuntimeException {
+        private DataImportSimulationDisabledException(String message) {
+            super(message);
+        }
     }
 }

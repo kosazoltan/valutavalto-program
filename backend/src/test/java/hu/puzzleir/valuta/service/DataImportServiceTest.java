@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.config.DataImportProperties;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.DataImportJob;
 import hu.puzzleir.valuta.entity.DataImportStatus;
@@ -10,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -31,11 +31,13 @@ class DataImportServiceTest {
     private BranchRepository branchRepository;
 
     private DataImportService service;
+    private DataImportProperties dataImportProperties;
 
     @BeforeEach
     void setUp() {
-        service = new DataImportService(dataImportJobRepository, branchRepository);
-        ReflectionTestUtils.setField(service, "simulatedSuccessEnabled", false);
+        dataImportProperties = new DataImportProperties();
+        dataImportProperties.setSimulatedSuccessEnabled(false);
+        service = new DataImportService(dataImportJobRepository, branchRepository, dataImportProperties);
 
         Branch branch = new Branch();
         branch.setId(BRANCH_ID);
@@ -57,12 +59,13 @@ class DataImportServiceTest {
         assertThat(result.getStatus()).isEqualTo(DataImportStatus.FAILED);
         assertThat(result.getImportedRecords()).isZero();
         assertThat(result.getErrorLog()).contains("Data import driver nincs konfigurálva");
+        assertThat(result.getErrorLog()).contains("data-import.simulated-success-enabled=false");
         assertThat(result.getCompletedAt()).isNotNull();
     }
 
     @Test
     void simulatedImportCanBeExplicitlyEnabledForIsolatedTests() {
-        ReflectionTestUtils.setField(service, "simulatedSuccessEnabled", true);
+        dataImportProperties.setSimulatedSuccessEnabled(true);
 
         DataImportJob result = service.importInventory(BRANCH_ID);
 
