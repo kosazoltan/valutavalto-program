@@ -10,7 +10,7 @@
 // A .env fájl helye: <userData>/.env  (pl. Windowson: %APPDATA%\valuta-penztar\.env)
 // A <userData> path az Electron app nevétől függ (electron-builder.json → productName).
 
-import { app, net } from 'electron';
+import { app, net, safeStorage } from 'electron';
 import log from 'electron-log/main';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -195,7 +195,7 @@ function buildEnvFileContent(params: {
     `PENZTAR_APP_MODE=${escapeEnvValue(params.appMode ?? 'penztar')}`,
     `PENZTAR_BOOTSTRAP_COMPANY_CODE=${escapeEnvValue(params.companyCode)}`,
     `PENZTAR_BOOTSTRAP_WORKER_CODE=${escapeEnvValue(params.bootstrapUsername)}`,
-    `PENZTAR_BOOTSTRAP_PASSWORD=${escapeEnvValue(params.bootstrapPassword)}`,
+    `PENZTAR_BOOTSTRAP_PASSWORD=""`,
     `PENZTAR_BOOTSTRAP_ROLE_CODE=${escapeEnvValue(params.bootstrapRoleCode)}`,
     ``,
     `# Kriptográfiai titkok — a wizard generálta, minden telepítésen egyedi.`,
@@ -208,6 +208,19 @@ function buildEnvFileContent(params: {
     `SETUP_OFFLINE_MODE=${params.offlineMode ? '1' : '0'}`,
     ``,
   ].join('\n');
+}
+
+function encryptConfigSecret(value: string): string | null {
+  if (!value) return null;
+  try {
+    if (!safeStorage.isEncryptionAvailable()) {
+      return null;
+    }
+    return safeStorage.encryptString(value).toString('base64');
+  } catch (err) {
+    log.warn('[Setup] safeStorage titkositas sikertelen:', err);
+    return null;
+  }
 }
 
 export function resolveEffectiveBootstrapCredentials(
@@ -1121,7 +1134,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     // NGM: az installUuid-t a try BLOKK ELOTT generaljuk, hogy kivetel eseten se legyen ures.
     let installUuid: string = crypto.randomUUID();
     try {
-      const { setConfig, getConfig } = await import('./sqlite');
+      const { setConfig, getConfig, deleteConfig } = await import('./sqlite');
       setConfig('server_url', resolvedApiUrl);
       if (payload.branchCode) {
         setConfig('branch_code', payload.branchCode);
@@ -1133,6 +1146,14 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       setConfig('bootstrap_company_code', normalizedCompanyCode);
       if (effectiveBootstrapCredentials.bootstrapUsername) {
         setConfig('bootstrap_worker_code', effectiveBootstrapCredentials.bootstrapUsername);
+      }
+      deleteConfig('bootstrap_password');
+      deleteConfig('bootstrap_password_encrypted');
+      const encryptedBootstrapPassword = encryptConfigSecret(effectiveBootstrapCredentials.bootstrapPassword);
+      if (encryptedBootstrapPassword) {
+        setConfig('bootstrap_password_encrypted', encryptedBootstrapPassword);
+      } else if (effectiveBootstrapCredentials.bootstrapPassword) {
+        log.warn('[Setup] safeStorage nem elerheto, bootstrap jelszo nincs perzisztalva plaintext-ben.');
       }
       setConfig('bootstrap_role_code', bootstrapRoleCode);
       // v2.3.0: a telepito-ban kivalasztott (es jelszot beallitott) dolgozo identity

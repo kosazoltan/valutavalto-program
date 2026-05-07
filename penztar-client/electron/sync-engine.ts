@@ -344,9 +344,8 @@ export class SyncEngine {
   private getBootstrapCredentials(): BootstrapCredentials | null {
     const companyCode = process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE?.trim() || getConfig('bootstrap_company_code')?.trim() || '';
     const workerCode = process.env.PENZTAR_BOOTSTRAP_WORKER_CODE?.trim() || getConfig('bootstrap_worker_code')?.trim() || '';
-    // Security: env var elsodleges, config fallback csak ha nincs env
-    // A bootstrap_password NEM mentodhet plaintext-ben a DB-be tobbe
-    const password = process.env.PENZTAR_BOOTSTRAP_PASSWORD?.trim() || getConfig('bootstrap_password')?.trim() || '';
+    // Security: regi env var kompatibilitas utan DPAPI/safeStorage titkositott config.
+    const password = process.env.PENZTAR_BOOTSTRAP_PASSWORD?.trim() || this.getStoredBootstrapPassword();
     // FIGYELEM: a bootstrap_password torlese CSAK sikeres login UTAN tortenjen meg
     // (bootstrapAuthSession success agaban). Itt NE toroljuk, mert ha a login hibazik
     // (pl. rossz companyCode), a user elveszti a plaintext jelszavat es nem tud ujra login-olni.
@@ -364,6 +363,19 @@ export class SyncEngine {
       roleCode,
       appMode,
     };
+  }
+
+  private getStoredBootstrapPassword(): string {
+    const encrypted = getConfig('bootstrap_password_encrypted');
+    if (encrypted && safeStorage.isEncryptionAvailable()) {
+      try {
+        return safeStorage.decryptString(Buffer.from(encrypted, 'base64')).trim();
+      } catch (err) {
+        log.warn('[SyncEngine] bootstrap_password_encrypted nem dekodolhato, torolve:', err);
+        deleteConfig('bootstrap_password_encrypted');
+      }
+    }
+    return getConfig('bootstrap_password')?.trim() || '';
   }
 
   private persistAuthToken(token: string): void {
