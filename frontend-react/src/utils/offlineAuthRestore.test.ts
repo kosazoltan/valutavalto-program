@@ -50,6 +50,36 @@ describe('resolveOfflineRestoreProfile', () => {
       .toBeNull()
   })
 
+  it('rejects supervisory/server roles during local offline restore', () => {
+    expect(resolveOfflineRestoreProfile({
+      activeRole: 'ugyvezeto',
+      roles: ['ugyvezeto', 'ADMIN', 'MANAGER'],
+    }, 'penztar')).toBeNull()
+
+    expect(resolveOfflineRestoreProfile({
+      activeRole: 'MANAGER',
+      roles: ['MANAGER'],
+    }, 'ertektar')).toBeNull()
+  })
+
+  it('strips untrusted supervisory roles when a local offline role is available', () => {
+    const profile = resolveOfflineRestoreProfile({
+      activeRole: 'ugyvezeto',
+      roles: ['ugyvezeto', 'penztar', 'ADMIN'],
+    }, 'penztar')
+
+    expect(profile?.activeRole).toBe('penztar')
+    expect(profile?.roles).toEqual(['penztar'])
+    expect(profile?.worker.role).toBe('penztar')
+  })
+
+  it('allows legacy local treasury and courier roles in their own offline app modes', () => {
+    expect(resolveOfflineRestoreProfile({ activeRole: 'TREASURY_MANAGER' }, 'ertektar'))
+      .toMatchObject({ activeRole: 'TREASURY_MANAGER', roles: ['TREASURY_MANAGER'] })
+    expect(resolveOfflineRestoreProfile({ activeRole: 'COURIER' }, 'ertekszallito'))
+      .toMatchObject({ activeRole: 'COURIER', roles: ['COURIER'] })
+  })
+
   it('preserves non-string JWT identity claims as strings', () => {
     const profile = resolveOfflineRestoreProfile({
       workerId: '12',

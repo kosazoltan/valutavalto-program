@@ -1,6 +1,5 @@
 import type { AppMode } from '../hooks/useAppMode'
 import type { Worker } from '../stores/authStore'
-import { isRoleSelectableForAppMode } from './appModeRoles'
 
 export interface OfflineJwtPayload {
   workerId?: unknown
@@ -27,7 +26,7 @@ export function resolveOfflineRestoreProfile(
   appMode: AppMode,
 ): OfflineRestoreProfile | null {
   const candidateRoles = collectCandidateRoles(payload)
-  const activeRole = candidateRoles.find((role) => isRoleSelectableForAppMode(role, appMode))
+  const activeRole = candidateRoles.find((role) => isOfflineLocalRoleForAppMode(role, appMode))
   if (!activeRole) {
     return null
   }
@@ -48,8 +47,24 @@ export function resolveOfflineRestoreProfile(
       companyName: stringValue(payload.companyName),
     },
     activeRole,
-    roles: candidateRoles.filter((role) => isRoleSelectableForAppMode(role, appMode)),
+    roles: [activeRole],
   }
+}
+
+function isOfflineLocalRoleForAppMode(roleCode: string, appMode: AppMode): boolean {
+  const canonical = roleCode.trim().toLowerCase()
+  const legacy = roleCode.trim().toUpperCase()
+
+  if (appMode === 'penztar') {
+    return canonical === 'penztar' || legacy === 'CASHIER'
+  }
+  if (appMode === 'ertektar') {
+    return canonical === 'ertektar' || legacy === 'TREASURY_MANAGER'
+  }
+  if (appMode === 'ertekszallito') {
+    return canonical === 'ertekszallito' || legacy === 'COURIER'
+  }
+  return false
 }
 
 function collectCandidateRoles(payload: OfflineJwtPayload): string[] {
