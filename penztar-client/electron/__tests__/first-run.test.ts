@@ -53,7 +53,7 @@ describe('isFirstRun', () => {
 
   it('ujrainditja a wizardot a diagnosztikakban latott stale offline setup allapotnal', () => {
     writeEnv([
-      'VITE_API_URL="https://excvaluta.com/api/v1"',
+      'VITE_API_URL="https://"',
       'JWT_SECRET="' + validSecret('a') + '"',
       'PENZTAR_BOOTSTRAP_WORKER_CODE=""',
       'PENZTAR_BOOTSTRAP_PASSWORD=""',
