@@ -17,6 +17,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { publicApi } from '../../services/api/index'
+import type { ElectronAppMode } from '../../types/appMode'
 
 // ---------------------------------------------------------------------------
 // Típusok
@@ -38,11 +39,18 @@ interface SetupWorkerOption {
 
 export function isBranchSelectableForAppMode(
   branch: Branch | null | undefined,
-  appMode: 'penztar' | 'ertektar' | 'ertekszallito',
+  appMode: ElectronAppMode,
 ): boolean {
   if (!branch) return false
   if (appMode === 'ertektar') return branch.isVault === true
   return true
+}
+
+export function filterBranchesForAppMode(
+  branches: Branch[],
+  appMode: ElectronAppMode,
+): Branch[] {
+  return branches.filter((branch) => isBranchSelectableForAppMode(branch, appMode))
 }
 
 export function resolveSelectedWorkerForSetup(params: {
@@ -103,7 +111,7 @@ export default function SetupWizard() {
   const [bootstrapPassword, setBootstrapPassword] = useState('')
   const [availableWorkers, setAvailableWorkers] = useState<SetupWorkerOption[]>([])
   const [offlineMode, setOfflineMode] = useState(false)
-  const [appModeChoice, setAppModeChoice] = useState<'penztar' | 'ertektar' | 'ertekszallito'>('penztar')
+  const [appModeChoice, setAppModeChoice] = useState<ElectronAppMode>('penztar')
   const [connectionTest, setConnectionTest] = useState<
     { state: 'idle' | 'testing' | 'ok' | 'fail'; message?: string }
   >({ state: 'idle' })
@@ -162,7 +170,7 @@ export default function SetupWizard() {
   // engedjük kiválasztani — különben a felhasználó tévedésből pénztárt
   // választhatna értéktárhoz, és a területi szűrés is rosszul mutatna.
   const filteredBranches = useMemo(() => {
-    let list = branches.filter((branch) => isBranchSelectableForAppMode(branch, appModeChoice))
+    let list = filterBranchesForAppMode(branches, appModeChoice)
     const q = branchSearch.trim().toLowerCase()
     if (!q) return list
     return list.filter((b) =>
