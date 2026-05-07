@@ -391,7 +391,9 @@ public class AuthController {
     }
 
     /**
-     * Elfelejtett jelszo — reset tokent general, perzisztensen tarol, majd emailben kikuldi.
+     * Elfelejtett jelszo — reset tokent general, hash-kent perzisztensen tarol.
+     * Production-ban email-ben kuldi ki a nyers tokent; dev/test profilban
+     * diagnosztikai celbol a response is tartalmazhatja.
      *
      * <p>POST /api/v1/auth/forgot-password</p>
      * <p>Body: {"email": "user@example.com"}</p>

@@ -59,6 +59,14 @@ class ShipmentServiceTest {
     }
 
     @Test
+    void createRejectsNullRequest() {
+        assertThatThrownBy(() -> service.create(null))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Szállítmánykérés adatai");
+        verifyNoInteractions(repository);
+    }
+
+    @Test
     void createRejectsMissingItems() {
         ShipmentRequest request = validRequest();
         request.setItems(List.of());
@@ -66,6 +74,50 @@ class ShipmentServiceTest {
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Legalább egy");
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void createRejectsPastDeliveryDate() {
+        ShipmentRequest request = validRequest();
+        request.setDeliveryDate(LocalDate.now().minusDays(1));
+
+        assertThatThrownBy(() -> service.create(request))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("múltbeli");
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void createRejectsNullItem() {
+        ShipmentRequest request = validRequest();
+        request.getItems().set(0, null);
+
+        assertThatThrownBy(() -> service.create(request))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("tétel megadása");
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void createRejectsMissingCurrencyId() {
+        ShipmentRequest request = validRequest();
+        request.getItems().getFirst().setCurrencyId(null);
+
+        assertThatThrownBy(() -> service.create(request))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("valuta és pozitív összeg");
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void createRejectsMissingAmount() {
+        ShipmentRequest request = validRequest();
+        request.getItems().getFirst().setRequestedAmount(null);
+
+        assertThatThrownBy(() -> service.create(request))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("valuta és pozitív összeg");
         verifyNoInteractions(repository);
     }
 
