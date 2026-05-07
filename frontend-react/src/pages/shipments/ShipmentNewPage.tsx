@@ -34,7 +34,7 @@ export default function ShipmentNewPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [createdRequestId, setCreatedRequestId] = useState<string | null>(null)
-  const disabled = loading || saving
+  const formDisabled = loading || saving
 
   useEffect(() => {
     setForm((current) => current.fromBranchId ? current : { ...current, fromBranchId: worker?.branchId ?? '' })
@@ -55,7 +55,7 @@ export default function ShipmentNewPage() {
       })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [])
+  }, [t])
 
   const patch = (values: Partial<FormState>) => {
     setCreatedRequestId(null)
@@ -121,40 +121,40 @@ export default function ShipmentNewPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="block">
             <span className="form-label">{t('shipments.keroIroda')}</span>
-            <select className="form-input" value={form.fromBranchId} disabled={disabled} onChange={(e) => patch({ fromBranchId: e.target.value })}>
+            <select className="form-input" value={form.fromBranchId} disabled={formDisabled} onChange={(e) => patch({ fromBranchId: e.target.value })}>
               <option value="">{t('shipments.valasszonIrodat')}</option>
               {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} - {branch.name}</option>)}
             </select>
           </label>
           <label className="block">
             <span className="form-label">{t('shipments.celIroda')}</span>
-            <select className="form-input" value={form.toBranchId} disabled={disabled} onChange={(e) => patch({ toBranchId: e.target.value })}>
+            <select className="form-input" value={form.toBranchId} disabled={formDisabled} onChange={(e) => patch({ toBranchId: e.target.value })}>
               <option value="">{t('shipments.valasszonCelIrodat')}</option>
               {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} - {branch.name}</option>)}
             </select>
           </label>
           <label className="block">
             <span className="form-label">{t('shipments.kertKezbesitesiDatum')}</span>
-            <input type="date" className="form-input" value={form.deliveryDate} disabled={disabled} onChange={(e) => patch({ deliveryDate: e.target.value })} />
+            <input type="date" className="form-input" value={form.deliveryDate} disabled={formDisabled} onChange={(e) => patch({ deliveryDate: e.target.value })} />
           </label>
           <label className="block">
             <span className="form-label">{t('common.currency')}</span>
-            <select className="form-input" value={form.currencyId} disabled={disabled} onChange={(e) => patch({ currencyId: e.target.value })}>
+            <select className="form-input" value={form.currencyId} disabled={formDisabled} onChange={(e) => patch({ currencyId: e.target.value })}>
               <option value="">{t('shipments.valasszonValutat')}</option>
               {currencies.map((currency) => <option key={currency.id} value={currency.id}>{currency.code} - {currency.name}</option>)}
             </select>
           </label>
           <label className="block">
             <span className="form-label">{t('common.amount')}</span>
-            <input type="number" min="0.01" step="0.01" className="form-input" value={form.amount} disabled={disabled} onChange={(e) => patch({ amount: e.target.value })} />
+            <input type="number" min="0.01" step="0.01" className="form-input" value={form.amount} disabled={formDisabled} onChange={(e) => patch({ amount: e.target.value })} />
           </label>
           <label className="block md:col-span-2">
             <span className="form-label">{t('common.note')}</span>
-            <textarea className="form-input min-h-24" value={form.notes} disabled={disabled} onChange={(e) => patch({ notes: e.target.value })} />
+            <textarea className="form-input min-h-24" value={form.notes} disabled={formDisabled} onChange={(e) => patch({ notes: e.target.value })} />
           </label>
         </div>
         <div className="flex justify-end">
-          <button type="submit" className="form-button-primary flex items-center gap-2" disabled={disabled}>
+          <button type="submit" className="form-button-primary flex items-center gap-2" disabled={formDisabled}>
             <Send size={16} />{saving ? t('shipments.bekuldesFolyamatban') : t('shipments.igenyBekuldese')}
           </button>
         </div>
