@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Method;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,6 +52,7 @@ class PasswordResetServiceTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(service, "frontendBaseUrl", "https://excvaluta.com");
+        ReflectionTestUtils.setField(service, "logHashSecret", "test-log-hash-secret-minimum-32-chars");
     }
 
     @Test
@@ -199,6 +201,35 @@ class PasswordResetServiceTest {
 
         verify(workerRepository).findByEmail("mixed@example.com");
         verify(emailNotificationService).sendEmail(eqIgnoreNull("mixed@example.com"), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("requestForgotPassword: email normalizalas Locale.ROOT alapu")
+    void emailNormalization_usesLocaleRoot() {
+        Locale previous = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+            when(workerRepository.findByEmail("info@example.com")).thenReturn(Optional.empty());
+
+            service.requestForgotPassword("INFO@example.com");
+
+            verify(workerRepository).findByEmail("info@example.com");
+        } finally {
+            Locale.setDefault(previous);
+        }
+    }
+
+    @Test
+    @DisplayName("logHash: HMAC alapu, 20 hex karakteres es normalizalt")
+    void logHash_usesKeyedHash() throws Exception {
+        Method method = PasswordResetService.class.getDeclaredMethod("logHash", String.class);
+        method.setAccessible(true);
+
+        String first = (String) method.invoke(service, "  Mixed@Example.COM ");
+        String second = (String) method.invoke(service, "mixed@example.com");
+
+        assertThat(first).isEqualTo(second);
+        assertThat(first).matches("[0-9a-f]{20}");
     }
 
     @Test
