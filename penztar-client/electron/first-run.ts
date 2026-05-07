@@ -139,7 +139,7 @@ function looksLikeValidApiUrl(value: string | undefined): boolean {
 }
 
 function looksLikeStaleOfflineSetup(values: Record<string, string>): boolean {
-  if (values.SETUP_OFFLINE_MODE !== '1') {
+  if (values.SETUP_COMPLETED !== '1' || values.SETUP_OFFLINE_MODE !== '1') {
     return false;
   }
 
@@ -149,7 +149,8 @@ function looksLikeStaleOfflineSetup(values: Record<string, string>): boolean {
   // is written for the selected worker.
   const workerCode = values.PENZTAR_BOOTSTRAP_WORKER_CODE?.trim() ?? '';
   const password = values.PENZTAR_BOOTSTRAP_PASSWORD?.trim() ?? '';
-  return workerCode.length === 0 && password.length === 0;
+  const legacyBrokenApiUrl = !looksLikeValidApiUrl(values.VITE_API_URL);
+  return legacyBrokenApiUrl && workerCode.length === 0 && password.length === 0;
 }
 
 export function resolveEffectiveBootstrapCredentials(
@@ -412,11 +413,11 @@ export function isFirstRun(): SetupCheckResult {
   if (!looksLikeValidSecret(values.JWT_SECRET)) {
     return { isFirstRun: true, envPath, reason: 'jwt-secret-invalid' };
   }
-  if (!looksLikeValidApiUrl(values.VITE_API_URL)) {
-    return { isFirstRun: true, envPath, reason: 'api-url-invalid' };
-  }
   if (looksLikeStaleOfflineSetup(values)) {
     return { isFirstRun: true, envPath, reason: 'stale-offline-setup' };
+  }
+  if (!looksLikeValidApiUrl(values.VITE_API_URL)) {
+    return { isFirstRun: true, envPath, reason: 'api-url-invalid' };
   }
   return { isFirstRun: false, envPath };
 }
