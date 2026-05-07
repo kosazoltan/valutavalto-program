@@ -134,7 +134,7 @@ export default function LoginPage() {
 
   /** Login eredmény feldolgozása — ha multi-role, role-választó megjelenítése */
   const handleLoginResponse = (response: Awaited<ReturnType<typeof authApi.login>>) => {
-    // Szerver (full mód) whitelist: csak főértéktáros / belső ellenőr / ügyvezető
+    // Szerver (full mód) whitelist: a kozponti admin/felugyeleti role-ok kozos allowlistaja.
     const effectiveRole = response.activeRole ?? response.worker.role
     const serverAllowed = isRoleSelectableForAppMode(effectiveRole, 'full')
 

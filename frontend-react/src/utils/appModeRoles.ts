@@ -1,4 +1,4 @@
-export type LoginAppMode = 'full' | 'penztar' | 'ertektar'
+import type { AppMode } from '../hooks/useAppMode'
 
 const SERVER_ALLOWED_CANONICAL_ROLES = [
   'ugyvezeto', 'foertektar', 'irodavezeto', 'belso_ellenor',
@@ -6,7 +6,8 @@ const SERVER_ALLOWED_CANONICAL_ROLES = [
   'csoportvezeto', 'arfolyam_nezo',
 ]
 const SERVER_ALLOWED_LEGACY_ROLES = ['SUPERVISOR', 'MANAGER', 'ADMIN']
-const LEGACY_PENZTAR_ROLES = ['CASHIER']
+export const OFFLINE_RESTORE_ROLE = 'CASHIER'
+const LEGACY_PENZTAR_ROLES = [OFFLINE_RESTORE_ROLE]
 const LEGACY_ERTEKTAR_ROLES = ['MANAGER', 'TREASURY_MANAGER']
 
 function isServerRole(roleCode: string): boolean {
@@ -16,7 +17,7 @@ function isServerRole(roleCode: string): boolean {
 
 export function isRoleSelectableForAppMode(
   roleCode: string | null | undefined,
-  appMode: LoginAppMode,
+  appMode: AppMode,
 ): boolean {
   if (!roleCode) return false
   const canonical = roleCode.toLowerCase()
@@ -33,7 +34,7 @@ export function isRoleSelectableForAppMode(
   return false
 }
 
-export function appModeLabel(appMode: LoginAppMode): string {
+export function appModeLabel(appMode: AppMode): string {
   if (appMode === 'penztar') return 'Valutaváltó Pénztár'
   if (appMode === 'ertektar') return 'Értéktár'
   return 'Szerver'
