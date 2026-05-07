@@ -32,9 +32,6 @@ export function resolveOfflineRestoreProfile(
     return null
   }
 
-  const selectableRoles = candidateRoles.filter((role) => isRoleSelectableForAppMode(role, appMode))
-  const roles = selectableRoles.length > 0 ? selectableRoles : [activeRole]
-
   return {
     worker: {
       id: Number(payload.workerId) || 0,
@@ -51,7 +48,7 @@ export function resolveOfflineRestoreProfile(
       companyName: stringValue(payload.companyName),
     },
     activeRole,
-    roles,
+    roles: candidateRoles.filter((role) => isRoleSelectableForAppMode(role, appMode)),
   }
 }
 
@@ -75,5 +72,5 @@ function collectCandidateRoles(payload: OfflineJwtPayload): string[] {
 }
 
 function stringValue(value: unknown): string {
-  return typeof value === 'string' ? value : ''
+  return value == null ? '' : String(value)
 }

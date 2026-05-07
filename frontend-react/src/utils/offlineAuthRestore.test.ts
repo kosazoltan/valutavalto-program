@@ -49,4 +49,28 @@ describe('resolveOfflineRestoreProfile', () => {
     expect(resolveOfflineRestoreProfile({ activeRole: 'CASHIER', roles: ['CASHIER'] }, 'ertektar'))
       .toBeNull()
   })
+
+  it('preserves non-string JWT identity claims as strings', () => {
+    const profile = resolveOfflineRestoreProfile({
+      workerId: '12',
+      workerCode: 1234,
+      workerName: 5678,
+      branchId: 42,
+      branchCode: 100,
+      companyId: 77,
+      companyCode: 88,
+      activeRole: 'penztar',
+      roles: ['penztar'],
+    }, 'penztar')
+
+    expect(profile?.worker).toMatchObject({
+      id: 12,
+      workerCode: '1234',
+      fullName: '5678',
+      branchId: '42',
+      branchCode: '100',
+      companyId: '77',
+      companyCode: '88',
+    })
+  })
 })
