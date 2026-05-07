@@ -50,6 +50,7 @@ public final class AppModeRoleConstants {
      * <ul>
      *   <li>"penztar" canonical role -> "penztar" appMode (penztaros Electron)</li>
      *   <li>"ertektar" canonical role -> "ertektar" appMode (ertektar Electron)</li>
+     *   <li>"ertekszallito" canonical role -> "ertekszallito" appMode (ertekszallito Electron)</li>
      *   <li>{@link #KAMERA_CANONICAL_ROLES} barmelyike -> "kamera" appMode (kameraszoftver, NEM browser)</li>
      *   <li>{@link #SERVER_CANONICAL_ROLES} barmelyike -> "full" appMode (browser admin)</li>
      *   <li>WorkerRole.ADMIN enum (legacy fallback) -> "full" appMode</li>
@@ -60,6 +61,7 @@ public final class AppModeRoleConstants {
         List<String> validAppModes = new ArrayList<>();
         if (roleCodes.contains("penztar")) validAppModes.add("penztar");
         if (roleCodes.contains("ertektar")) validAppModes.add("ertektar");
+        if (roleCodes.contains("ertekszallito")) validAppModes.add("ertekszallito");
         if (roleCodes.stream().anyMatch(KAMERA_CANONICAL_ROLES::contains)) {
             validAppModes.add("kamera");
         }
