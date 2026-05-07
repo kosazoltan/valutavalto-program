@@ -498,8 +498,11 @@ public class WorkerService {
         if (jwtToken != null) {
             try {
                 String tokenId = jwtTokenProvider.getTokenIdFromToken(jwtToken);
-                LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
-                tokenBlacklistService.blacklistToken(tokenId, workerId, "LOGOUT", expiresAt);
+                LocalDateTime expiresAt = jwtTokenProvider.getExpirationDateTimeFromToken(jwtToken);
+                if (expiresAt == null) {
+                    expiresAt = jwtTokenProvider.getConfiguredExpirationDateTimeFromNow();
+                }
+                tokenBlacklistService.blacklistToken(tokenId, workerId, TokenBlacklistService.REASON_LOGOUT, expiresAt);
             } catch (Exception e) {
                 // Ha a token parse sikertelen, nem gond — a session már lezárva
             }
