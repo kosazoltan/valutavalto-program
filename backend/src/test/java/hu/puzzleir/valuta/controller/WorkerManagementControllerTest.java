@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.validation.PasswordPolicy;
 import hu.puzzleir.valuta.service.WorkerManagementService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -9,8 +10,8 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class WorkerManagementControllerTest {
 
@@ -19,17 +20,33 @@ class WorkerManagementControllerTest {
 
     @Test
     void resetPasswordRejectsShortPasswordBeforeServiceCall() {
-        ResponseEntity<Void> response = controller.resetPassword(42L, Map.of("newPassword", "1234567"));
+        ResponseEntity<Void> response = controller.resetPassword(
+                42L, Map.of("newPassword", passwordOfLength(PasswordPolicy.MIN_LENGTH - 1)));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        verify(workerManagementService, never()).resetPassword(42L, "1234567");
+        verifyNoInteractions(workerManagementService);
+    }
+
+    @Test
+    void resetPasswordRejectsOverMaximumPasswordBeforeServiceCall() {
+        ResponseEntity<Void> response = controller.resetPassword(
+                42L, Map.of("newPassword", passwordOfLength(PasswordPolicy.MAX_LENGTH + 1)));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        verifyNoInteractions(workerManagementService);
     }
 
     @Test
     void resetPasswordAcceptsEightCharacterPassword() {
-        ResponseEntity<Void> response = controller.resetPassword(42L, Map.of("newPassword", "12345678"));
+        String password = passwordOfLength(PasswordPolicy.MIN_LENGTH);
+
+        ResponseEntity<Void> response = controller.resetPassword(42L, Map.of("newPassword", password));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(workerManagementService).resetPassword(42L, "12345678");
+        verify(workerManagementService).resetPassword(42L, password);
+    }
+
+    private String passwordOfLength(int length) {
+        return "A1" + "a".repeat(length - 2);
     }
 }

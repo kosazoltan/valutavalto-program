@@ -3,7 +3,7 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.worker.WorkerAttendanceDto;
 import hu.puzzleir.valuta.dto.worker.WorkerBreakDto;
 import hu.puzzleir.valuta.service.WorkerManagementService;
-import hu.puzzleir.valuta.service.WorkerService;
+import hu.puzzleir.valuta.validation.PasswordPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -46,11 +46,8 @@ public class WorkerManagementController {
     public ResponseEntity<Void> resetPassword(
             @PathVariable Long id,
             @Valid @RequestBody Map<String, String> body) {
-        String newPassword = body.get("newPassword");
-        if (newPassword == null || newPassword.isBlank()) {
-            return ResponseEntity.badRequest().build();
-        }
-        if (newPassword.length() < 8 || newPassword.length() > 128) {
+        String newPassword = body != null ? body.get("newPassword") : null;
+        if (isInvalidPassword(newPassword)) {
             return ResponseEntity.badRequest().build();
         }
         workerManagementService.resetPassword(id, newPassword);
@@ -78,5 +75,12 @@ public class WorkerManagementController {
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<WorkerBreakDto> endBreak(@PathVariable Long id) {
         return ResponseEntity.ok(workerManagementService.endBreak(id));
+    }
+
+    private boolean isInvalidPassword(String password) {
+        return password == null
+                || password.isBlank()
+                || password.length() < PasswordPolicy.MIN_LENGTH
+                || password.length() > PasswordPolicy.MAX_LENGTH;
     }
 }
