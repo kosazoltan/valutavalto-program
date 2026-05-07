@@ -26,8 +26,10 @@ import java.util.HexFormat;
 /**
  * Elfelejtett-jelszo flow — persistent reset token storage.
  *
- * <p>The raw token only travels in email. The database stores a SHA-256 hash,
- * so a backend restart does not break an already issued reset link.</p>
+ * <p>Production-ban a nyers token csak email-ben megy ki. Dev/test
+ * kornyezetben a hivo diagnosztikai celbol visszakaphatja. Az adatbazis csak
+ * SHA-256 hash-t tarol, igy egy backend restart nem tori el a mar kikuldott
+ * reset linket.</p>
  *
  * <p>Token elettartam: 15 perc. Anti-enumeration: ha az email nem
  * regisztralt, akkor is success-t ad vissza a requestForgot.</p>
