@@ -152,7 +152,11 @@ describe('resolveBootstrapRoleCodeForAppMode', () => {
     expect(resolveBootstrapRoleCodeForAppMode('ertekszallito')).toBe('ertekszallito');
   });
 
-  it('hianyzo appMode eseten penztar role-ra esik vissza', () => {
-    expect(resolveBootstrapRoleCodeForAppMode(undefined)).toBe('penztar');
+  it('hianyzo appMode eseten megtartja a legacy CASHIER bootstrap role-t', () => {
+    expect(resolveBootstrapRoleCodeForAppMode(undefined)).toBe('CASHIER');
+  });
+
+  it('full appMode eseten server oldali canonical role-t ir bootstrap role-kent', () => {
+    expect(resolveBootstrapRoleCodeForAppMode('full')).toBe('ugyvezeto');
   });
 });

@@ -15,6 +15,9 @@ import log from 'electron-log/main';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { resolveBootstrapRoleCodeForAppMode } from './setup-app-mode-roles';
+
+export { resolveBootstrapRoleCodeForAppMode } from './setup-app-mode-roles';
 
 // ---------------------------------------------------------------------------
 // Típusok
@@ -50,7 +53,7 @@ export interface SetupSavePayload {
   bootstrapUsername?: string;    // wizardbeli teszt-felhasználó (opcionális, csak offline módban üres)
   bootstrapPassword?: string;
   offlineMode: boolean;          // ha true, a szerver kapcsolatot kihagyjuk a wizardban
-  appMode?: 'penztar' | 'ertektar' | 'ertekszallito';  // v2.1.4: program-tipus
+  appMode?: 'penztar' | 'ertektar' | 'ertekszallito' | 'full';  // v2.1.4: program-tipus
   // v2.3.0: a telepito dolgozoi dropdown-bol kivalasztott worker identity.
   // Ha kitoltve -> /auth/first-time-worker-setup (meglevo worker jelszo beallitas,
   // megtartott role-lel), egyebkent /auth/bootstrap-admin (uj admin letrehozas).
@@ -216,18 +219,6 @@ export function resolveEffectiveBootstrapCredentials(
     bootstrapUsername: workerCode,
     bootstrapPassword: payload.adminPassword,
   };
-}
-
-export function resolveBootstrapRoleCodeForAppMode(appMode: SetupSavePayload['appMode'] | undefined): string {
-  switch (appMode) {
-    case 'ertektar':
-      return 'ertektar';
-    case 'ertekszallito':
-      return 'ertekszallito';
-    case 'penztar':
-    default:
-      return 'penztar';
-  }
 }
 
 // ---------------------------------------------------------------------------
