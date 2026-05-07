@@ -49,5 +49,37 @@ class CameraExportControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(response.getBody()).isSameAs(failed);
+        assertThat(response.getBody()).extracting(CameraExportRequest::getErrorMessage)
+                .isEqualTo("manifest write failed");
+    }
+
+    @Test
+    void executeReturnsAcceptedForExportingRequest() {
+        UUID requestId = UUID.randomUUID();
+        CameraExportRequest exporting = CameraExportRequest.builder()
+                .id(requestId)
+                .status(CameraExportStatus.EXPORTING)
+                .build();
+        when(exportService.executeExport(requestId)).thenReturn(exporting);
+
+        ResponseEntity<CameraExportRequest> response = controller.execute(requestId);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(response.getBody()).isSameAs(exporting);
+    }
+
+    @Test
+    void executeReturnsServiceUnavailableWhenStatusMissing() {
+        UUID requestId = UUID.randomUUID();
+        CameraExportRequest missingStatus = CameraExportRequest.builder()
+                .id(requestId)
+                .build();
+        missingStatus.setStatus(null);
+        when(exportService.executeExport(requestId)).thenReturn(missingStatus);
+
+        ResponseEntity<CameraExportRequest> response = controller.execute(requestId);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(response.getBody()).isSameAs(missingStatus);
     }
 }
