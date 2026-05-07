@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.dto.auth.GoogleLoginRequestDto;
 import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.AuthenticationException;
+import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.service.GoogleLoginService;
 import hu.puzzleir.valuta.service.RefreshTokenService;
@@ -13,6 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -70,9 +72,8 @@ public class GoogleAuthController {
         // 2. HttpOnly refresh cookie — ugyanaz a 7-napos `refreshToken` mint AuthController.login.
         //    Audit P0.2 kovetelmeny: production-ben `Secure` flag aktiv (a `forward-headers-strategy=framework`
         //    miatt a `request.isSecure()` HTTPS proxy mogul jovo kerelemre true-t ad vissza).
-        // Sourcery PR #361 follow-up #3: NEM nyelhetjuk el az AuthenticationException-t a workerRepository
-        // hibaja eseten — ez data integrity problema, NEM cookie-issue problema. A worker not-found
-        // konkretat propagaljuk, a tobbi (RefreshTokenService failure) marad warn+continue.
+        // Fail-closed: ha a refresh token/cookie nem hozhato letre, a login nem stabil.
+        // Ilyenkor nincs felig sikeres belepes, ami az elso silent refreshnel varatlanul kidobna a usert.
         Worker worker = workerRepository.findById(response.getWorker().getId())
                 .orElseThrow(() -> new AuthenticationException("Worker nem talalhato login utan."));
         try {
@@ -86,9 +87,11 @@ public class GoogleAuthController {
                     .build();
             httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         } catch (Exception ex) {
-            // A login mar sikeres — a refresh cookie hibaja NE buktassa el a teljes loginot.
-            // A user JWT access tokent kap, a silent refresh majd 401-en logout-ol.
-            log.warn("HttpOnly refresh cookie kiadas Google login utan bukott: {}", ex.getMessage());
+            log.error("HttpOnly refresh cookie kiadas Google login utan bukott: {}", ex.getMessage(), ex);
+            throw new BusinessException(
+                    "Google belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.",
+                    "LOGIN_SESSION_ISSUE_FAILED",
+                    HttpStatus.SERVICE_UNAVAILABLE);
         }
 
         return ResponseEntity.ok(response);

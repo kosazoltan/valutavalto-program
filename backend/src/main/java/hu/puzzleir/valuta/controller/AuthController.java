@@ -18,6 +18,7 @@ import hu.puzzleir.valuta.service.WorkerFirstTimeSetupService;
 import hu.puzzleir.valuta.service.TokenBlacklistService;
 import hu.puzzleir.valuta.service.WorkerRoleService;
 import hu.puzzleir.valuta.service.WorkerService;
+import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +26,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import hu.puzzleir.valuta.service.RefreshTokenService;
 import hu.puzzleir.valuta.entity.RefreshToken;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import java.time.Duration;
 import jakarta.validation.Valid;
@@ -86,9 +88,12 @@ public class AuthController {
 
         // HttpOnly refresh cookie (vezerlokonyv par.12.3)
         // A raw UUID csak a cookie-ban utazik; a DB-ben BCrypt-hashelve van.
+        Worker worker = workerRepository.findById(response.getWorker().getId())
+            .orElseThrow(() -> new BusinessException(
+                    "Belépés nem véglegesíthető: a dolgozó rekord nem található.",
+                    "LOGIN_SESSION_ISSUE_FAILED",
+                    HttpStatus.SERVICE_UNAVAILABLE));
         try {
-            Worker worker = workerRepository.findById(response.getWorker().getId())
-                .orElseThrow(() -> new ValidationException("Worker nem talalhato login utan"));
             RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, request);
             ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
                 .httpOnly(true)
@@ -100,7 +105,11 @@ public class AuthController {
             httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         } catch (Exception e) {
             org.slf4j.LoggerFactory.getLogger(AuthController.class)
-                .warn("HttpOnly refresh cookie kiadas bukott: {}", e.getMessage());
+                .error("HttpOnly refresh cookie kiadas bukott login utan: {}", e.getMessage(), e);
+            throw new BusinessException(
+                    "Belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.",
+                    "LOGIN_SESSION_ISSUE_FAILED",
+                    HttpStatus.SERVICE_UNAVAILABLE);
         }
 
         return ResponseEntity.ok(response);
