@@ -167,6 +167,7 @@ describe('selectBootstrapLoginRoleCode', () => {
   it('tobb role eseten az appMode-hoz illo role-t valasztja setup loginhoz', () => {
     expect(selectBootstrapLoginRoleCode('penztar', ['ertektar', 'penztar'])).toBe('penztar');
     expect(selectBootstrapLoginRoleCode('ertektar', ['penztar', 'ertektar'])).toBe('ertektar');
+    expect(selectBootstrapLoginRoleCode('ertekszallito', ['COURIER'])).toBe('COURIER');
   });
 
   it('lokalis appban server role-lal is tud setup device regisztraciot folytatni', () => {

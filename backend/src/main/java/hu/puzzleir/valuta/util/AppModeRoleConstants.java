@@ -23,6 +23,7 @@ public final class AppModeRoleConstants {
 
     private static final List<String> LEGACY_PENZTAR_ROLES = List.of("cashier");
     private static final List<String> LEGACY_ERTEKTAR_ROLES = List.of("manager", "treasury_manager");
+    private static final List<String> LEGACY_ERTEKSZALLITO_ROLES = List.of("courier");
     private static final List<String> LEGACY_SERVER_ROLES = List.of("supervisor", "manager", "admin");
 
     /**
@@ -62,6 +63,12 @@ public final class AppModeRoleConstants {
         if (roleCodes.contains("penztar")) validAppModes.add("penztar");
         if (roleCodes.contains("ertektar")) validAppModes.add("ertektar");
         if (roleCodes.contains("ertekszallito")) validAppModes.add("ertekszallito");
+        if (roleCodes.stream()
+                .map(roleCode -> roleCode == null ? "" : roleCode.trim().toLowerCase())
+                .anyMatch(LEGACY_ERTEKSZALLITO_ROLES::contains)
+                && !validAppModes.contains("ertekszallito")) {
+            validAppModes.add("ertekszallito");
+        }
         if (roleCodes.stream().anyMatch(KAMERA_CANONICAL_ROLES::contains)) {
             validAppModes.add("kamera");
         }
@@ -104,7 +111,9 @@ public final class AppModeRoleConstants {
             case "ertektar" -> serverRole
                     || "ertektar".equals(normalizedRole)
                     || LEGACY_ERTEKTAR_ROLES.contains(normalizedRole);
-            case "ertekszallito" -> serverRole || "ertekszallito".equals(normalizedRole);
+            case "ertekszallito" -> serverRole
+                    || "ertekszallito".equals(normalizedRole)
+                    || LEGACY_ERTEKSZALLITO_ROLES.contains(normalizedRole);
             case "kamera" -> KAMERA_CANONICAL_ROLES.contains(normalizedRole);
             default -> false;
         };
