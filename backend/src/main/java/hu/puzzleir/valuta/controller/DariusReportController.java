@@ -2,9 +2,11 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.darius.DariusDailyReportDto;
 import hu.puzzleir.valuta.dto.darius.DariusMonthlyDto;
+import hu.puzzleir.valuta.entity.DariusReportStatus;
 import hu.puzzleir.valuta.service.DariusReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -52,7 +54,8 @@ public class DariusReportController {
     @PostMapping("/{reportId}/submit")
     @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'MAIN_TREASURY', 'SYSTEM_ADMIN')")
     public ResponseEntity<DariusDailyReportDto> submit(@PathVariable UUID reportId) {
-        return ResponseEntity.ok(dariusReportService.submitReport(reportId));
+        DariusDailyReportDto report = dariusReportService.submitReport(reportId);
+        return ResponseEntity.status(statusForReport(report)).body(report);
     }
 
     // === Acknowledgment ===
@@ -70,7 +73,9 @@ public class DariusReportController {
     @PostMapping("/retry-failed")
     @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'SYSTEM_ADMIN')")
     public ResponseEntity<List<DariusDailyReportDto>> retryFailed() {
-        return ResponseEntity.ok(dariusReportService.retryFailedReports());
+        List<DariusDailyReportDto> reports = dariusReportService.retryFailedReports();
+        boolean anyFailed = reports.stream().anyMatch(this::isFailedReport);
+        return ResponseEntity.status(anyFailed ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.OK).body(reports);
     }
 
     // === Lekérdezések ===
@@ -114,5 +119,13 @@ public class DariusReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return ResponseEntity.ok(dariusReportService.findMissingDates(startDate, endDate));
+    }
+
+    private HttpStatus statusForReport(DariusDailyReportDto report) {
+        return isFailedReport(report) ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.OK;
+    }
+
+    private boolean isFailedReport(DariusDailyReportDto report) {
+        return report != null && DariusReportStatus.FAILED.name().equals(report.getStatus());
     }
 }
