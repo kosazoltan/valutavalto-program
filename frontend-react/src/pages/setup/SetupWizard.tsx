@@ -38,7 +38,7 @@ interface SetupWorkerOption {
 
 export function isBranchSelectableForAppMode(
   branch: Branch | null | undefined,
-  appMode: 'penztar' | 'ertektar',
+  appMode: 'penztar' | 'ertektar' | 'ertekszallito',
 ): boolean {
   if (!branch) return false
   if (appMode === 'ertektar') return branch.isVault === true
@@ -103,7 +103,7 @@ export default function SetupWizard() {
   const [bootstrapPassword, setBootstrapPassword] = useState('')
   const [availableWorkers, setAvailableWorkers] = useState<SetupWorkerOption[]>([])
   const [offlineMode, setOfflineMode] = useState(false)
-  const [appModeChoice, setAppModeChoice] = useState<'penztar' | 'ertektar'>('penztar')
+  const [appModeChoice, setAppModeChoice] = useState<'penztar' | 'ertektar' | 'ertekszallito'>('penztar')
   const [connectionTest, setConnectionTest] = useState<
     { state: 'idle' | 'testing' | 'ok' | 'fail'; message?: string }
   >({ state: 'idle' })
@@ -505,6 +505,11 @@ export default function SetupWizard() {
                     id: 'ertektar' as const,
                     title: 'Értéktár',
                     desc: 'Értéktáros munka: pénztárak ellátása / átadás-átvétel bank és más értéktárak felé, napi + havi + dekádzárás. Local-first.',
+                  },
+                  {
+                    id: 'ertekszallito' as const,
+                    title: 'Értékszállító',
+                    desc: 'Szállítói munka: átadás-átvételi bizonylatok kezelése, aláírás, úton lévő csomagok követése. Local-first.',
                   },
                 ]).map((opt) => (
                   <button

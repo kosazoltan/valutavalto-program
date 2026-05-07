@@ -32,6 +32,15 @@ describe('isBranchSelectableForAppMode', () => {
       isVault: false,
     }, 'penztar')).toBe(true)
   })
+
+  it('ertekszallito modban a fizikai fiok valaszthato', () => {
+    expect(isBranchSelectableForAppMode({
+      code: 'KORUT',
+      name: 'Korut',
+      city: 'Szeged',
+      isVault: false,
+    }, 'ertekszallito')).toBe(true)
+  })
 })
 
 describe('resolveSelectedWorkerForSetup', () => {
