@@ -18,12 +18,22 @@ class AppModeRoleConstantsTest {
     }
 
     @Test
-    void ertekszallitoRoleIsSelectableOnlyInCourierOrSupervisorLocalMode() {
+    void computeValidAppModesCombinesCourierWithOtherCanonicalModesInStableOrder() {
+        assertThat(AppModeRoleConstants.computeValidAppModes(
+                List.of("ertekszallito", "penztar", "ertektar", "teruleti_vezeto", "foertektar"),
+                null))
+                .containsExactly("penztar", "ertektar", "ertekszallito", "kamera", "full");
+    }
+
+    @Test
+    void ertekszallitoRoleIsSelectableOnlyInCourierAppMode() {
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("ertekszallito", "ertekszallito"))
                 .isTrue();
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("ertekszallito", "penztar"))
                 .isFalse();
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("ertekszallito", "ertektar"))
+                .isFalse();
+        assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("ertekszallito", "kamera"))
                 .isFalse();
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("ertekszallito", "full"))
                 .isFalse();
