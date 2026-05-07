@@ -790,6 +790,37 @@ describe('SyncEngine — párhuzamos sync trigger (race condition)', () => {
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
+  it('should reject concurrent syncAll with a different explicit token', async () => {
+    mockedGetPendingTransactions.mockReturnValue([makeTx(1)]);
+
+    let resolveFirst: () => void;
+    const firstDone = new Promise<void>((resolve) => { resolveFirst = resolve; });
+
+    const mockFetch = vi.fn().mockImplementation(async () => {
+      await firstDone;
+      return { ok: true, json: () => Promise.resolve({ success: true }) };
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const firstSync = engine.syncAll('stale-token');
+    const secondResult = await engine.syncAll('fresh-token');
+
+    expect(secondResult).toEqual({
+      synced: 0,
+      failed: 0,
+      errors: ['Szinkronizáció már fut eltérő auth tokennel — próbáld újra a folyamatban lévő futás után'],
+    });
+
+    resolveFirst!();
+    const firstResult = await firstSync;
+
+    expect(firstResult).toEqual({ synced: 1, failed: 0, errors: [] });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockedMarkTransactionSynced).toHaveBeenCalledWith(1);
+    const firstRequest = mockFetch.mock.calls[0][1] as { headers: Record<string, string> };
+    expect(firstRequest.headers.Authorization).toBe('Bearer stale-token');
+  });
+
   it('runSync (internal) should skip second trigger if already running', async () => {
     // Access private runSync via the isRunning flag check through getStatus
     // We test that the status.isRunning guard works by verifying no double-fetch
