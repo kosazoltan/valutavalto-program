@@ -19,7 +19,7 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
     @Query("SELECT sr FROM ShipmentRequest sr ORDER BY sr.createdAt DESC")
     Page<ShipmentRequest> findAllOrdered(Pageable pageable);
 
-    @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(sr.requestNumber, 5) AS integer)), 0) FROM ShipmentRequest sr " +
-           "WHERE sr.requestNumber LIKE :prefix%")
+    @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(sr.requestNumber, LENGTH(:prefix) + 1) AS integer)), 0) " +
+           "FROM ShipmentRequest sr WHERE sr.requestNumber LIKE CONCAT(:prefix, '%')")
     int findMaxRequestNumber(@Param("prefix") String prefix);
 }
