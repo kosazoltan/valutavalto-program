@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.dto.auth;
 
+import hu.puzzleir.valuta.validation.PasswordPolicy;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -41,6 +42,6 @@ public class BootstrapAdminRequestDto {
     private String email;
 
     @NotBlank(message = "Új jelszó kötelező")
-    @Size(min = 8, max = 128, message = "A jelszó 8 és 128 karakter között legyen")
+    @Size(min = PasswordPolicy.MIN_LENGTH, max = PasswordPolicy.MAX_LENGTH, message = PasswordPolicy.LENGTH_MESSAGE)
     private String newPassword;
 }

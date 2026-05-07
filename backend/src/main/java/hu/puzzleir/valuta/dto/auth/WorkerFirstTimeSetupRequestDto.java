@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.dto.auth;
 
+import hu.puzzleir.valuta.validation.PasswordPolicy;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -38,7 +39,7 @@ public class WorkerFirstTimeSetupRequestDto {
     private String workerCode;
 
     @NotBlank(message = "Uj jelszo kotelezo")
-    @Size(min = 8, max = 128, message = "A jelszo 8 es 128 karakter kozott legyen")
+    @Size(min = PasswordPolicy.MIN_LENGTH, max = PasswordPolicy.MAX_LENGTH, message = PasswordPolicy.LENGTH_MESSAGE)
     private String newPassword;
 
     /**
@@ -46,6 +47,6 @@ public class WorkerFirstTimeSetupRequestDto {
      * ha a workerhez mar tartozik hash; csak a friss elso telepites engedi
      * elhagyni.
      */
-    @Size(max = 128, message = "A jelszo max 128 karakter")
+    @Size(max = PasswordPolicy.MAX_LENGTH, message = PasswordPolicy.MAX_LENGTH_MESSAGE)
     private String currentPassword;
 }

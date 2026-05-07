@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.dto.auth;
 
+import hu.puzzleir.valuta.validation.PasswordPolicy;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -18,6 +19,6 @@ public class ResetPasswordRequestDto {
     private String token;
 
     @NotBlank
-    @Size(min = 8, max = 128)
+    @Size(min = PasswordPolicy.MIN_LENGTH, max = PasswordPolicy.MAX_LENGTH, message = PasswordPolicy.LENGTH_MESSAGE)
     private String newPassword;
 }
