@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isRoleSelectableForAppMode } from './appModeRoles'
+import { canonicalizeRoleForAppMode, isRoleSelectableForAppMode } from './appModeRoles'
 
 describe('isRoleSelectableForAppMode', () => {
   it('lokalis role-t csak a sajat appMode-jaban enged', () => {
@@ -21,5 +21,6 @@ describe('isRoleSelectableForAppMode', () => {
   it('legacy courier role-t ertekszallito appMode-ban enged', () => {
     expect(isRoleSelectableForAppMode('COURIER', 'ertekszallito')).toBe(true)
     expect(isRoleSelectableForAppMode('COURIER', 'ertektar')).toBe(false)
+    expect(canonicalizeRoleForAppMode('COURIER')).toBe('ertekszallito')
   })
 })
