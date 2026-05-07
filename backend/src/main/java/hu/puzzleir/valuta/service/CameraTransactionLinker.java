@@ -23,6 +23,7 @@ public class CameraTransactionLinker {
 
     private final CameraRecordingRepository recordingRepository;
     private final CameraTransactionLinkRepository linkRepository;
+    private final hu.puzzleir.valuta.repository.TransactionRepository transactionRepository;
 
     /**
      * Link a transaction to the current camera recording(s).
@@ -72,10 +73,21 @@ public class CameraTransactionLinker {
 
     /**
      * Find recordings by receipt number.
+     *
+     * <p>F9 GDPR cross-tenant fix (2026-05-06): a bizonylat-szám több cégnél is
+     * létezhet (V&lt;3-jegy iroda&gt;NNNNNN formátum cég-szinten egyedi). Először
+     * a cég-szűrt Transaction lookup, aztán a kameralink transactionId alapján.
+     * Más cég bizonylatszámához tartozó kameralink NEM jelenhet meg.</p>
      */
     @Transactional(readOnly = true)
     public List<CameraTransactionLink> findByReceiptNumber(String receiptNumber) {
-        return linkRepository.findByReceiptNumber(receiptNumber);
+        java.util.UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyIdOrNull();
+        if (companyId == null) {
+            return List.of();
+        }
+        return transactionRepository.findByReceiptNumberAndCompanyId(receiptNumber, companyId)
+                .map(tx -> linkRepository.findByTransactionId(tx.getId()))
+                .orElseGet(List::of);
     }
 
     /**

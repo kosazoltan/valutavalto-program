@@ -196,7 +196,12 @@ public class RaiffeisenRateService {
                     if (!val.isEmpty()) {
                         try {
                             numbers.add(new BigDecimal(val));
-                        } catch (NumberFormatException ignored) {
+                        } catch (NumberFormatException nfe) {
+                            // F10 fix (2026-05-06): NEM némán nyeljük el — ha a Raiffeisen
+                            // HTML formátum változik, vagy hibás cell-ben szám-jellegű, de
+                            // nem-numeric karakter van, az operátornak látnia kell.
+                            log.warn("[raiffeisen-rate] number parse failure for cell value '{}' (row {}, col {}): {}",
+                                    val, i, j, nfe.getMessage());
                         }
                     }
                 }
@@ -254,7 +259,11 @@ public class RaiffeisenRateService {
         while (m.find() && numbers.size() < maxCount) {
             try {
                 numbers.add(new BigDecimal(m.group(1)));
-            } catch (NumberFormatException ignored) {
+            } catch (NumberFormatException nfe) {
+                // F10 fix (2026-05-06): logoljuk a parse-hibát ahelyett hogy némán
+                // elnyelnénk. Stale-but-bad rate kockázat detektálható a logból.
+                log.warn("[raiffeisen-rate] extractNumbers parse failure for match '{}': {}",
+                        m.group(1), nfe.getMessage());
             }
         }
         return numbers;
