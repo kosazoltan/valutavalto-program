@@ -121,21 +121,22 @@ class WorkerFirstTimeSetupServiceTest {
     }
 
     @Test
-    @DisplayName("Elso, meg le nem zart telepiteskor a seed worker currentPassword nelkul is beallithato")
-    void allowsSeedWorkerWithoutCurrentPasswordBeforeBootstrap() {
+    @DisplayName("Elso, meg le nem zart telepiteskor seed hash-sel currentPassword nelkul sem veheto at worker")
+    void rejectsSeedWorkerWithoutCurrentPasswordBeforeBootstrap() {
         Worker worker = seedWorker("$2b$10$seed");
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
                 .thenReturn(Optional.of(worker));
         when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(false);
-        when(passwordEncoder.encode("UjGlobalisJelszo123!")).thenReturn("$2b$10$new");
-        when(workerRepository.save(any(Worker.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(jwtTokenProvider.generateToken(any(Worker.class))).thenReturn("jwt-token");
 
-        WorkerFirstTimeSetupResponseDto response = service.setupWorkerPassword(request(null));
+        assertThatThrownBy(() -> service.setupWorkerPassword(request(null)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("kezdo jelszo tartozik")
+                .hasMessageContaining("jelenlegi vagy kezdo");
 
-        assertThat(response.isSuccess()).isTrue();
-        verify(workerRepository).save(any(Worker.class));
+        verify(passwordEncoder, never()).encode(any());
+        verify(workerRepository, never()).save(any(Worker.class));
+        verify(jwtTokenProvider, never()).generateToken(any(Worker.class));
     }
 
     @Test
@@ -152,6 +153,24 @@ class WorkerFirstTimeSetupServiceTest {
                 .hasMessageContaining("hitelesitett admin");
 
         verify(workerRepository, never()).save(any(Worker.class));
+    }
+
+    @Test
+    @DisplayName("Friss, bootstrap elotti hash nelkuli workerhez tovabbra is beallithato az elso jelszo")
+    void allowsMissingHashBeforeBootstrap() {
+        Worker worker = seedWorker(null);
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(false);
+        when(passwordEncoder.encode("UjGlobalisJelszo123!")).thenReturn("$2b$10$new");
+        when(workerRepository.save(any(Worker.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(jwtTokenProvider.generateToken(any(Worker.class))).thenReturn("jwt-token");
+
+        WorkerFirstTimeSetupResponseDto response = service.setupWorkerPassword(request(null));
+
+        assertThat(response.isSuccess()).isTrue();
+        verify(workerRepository).save(any(Worker.class));
     }
 
     private WorkerFirstTimeSetupRequestDto request(String currentPassword) {

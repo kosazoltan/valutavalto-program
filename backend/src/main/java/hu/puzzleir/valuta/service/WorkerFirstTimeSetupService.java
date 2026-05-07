@@ -95,11 +95,12 @@ public class WorkerFirstTimeSetupService {
                 throw new ValidationException("A jelenlegi jelszo nem egyezik.");
             }
         } else if (worker.getPasswordHash() != null && !worker.getPasswordHash().isBlank()) {
-            // Seed-jelszo van (pl. V111 = "1234"). Lezart bootstrap utan ez is
-            // titoknak szamit: currentPassword nelkul nem adunk uj jelszot.
-            if (!currentPasswordProvided && bootstrapCompleted) {
+            // Seed-jelszo van (pl. V111 = "1234"). Ez is titoknak szamit:
+            // public first-time setup endpointen currentPassword nelkul nem adunk uj jelszot.
+            if (!currentPasswordProvided) {
+                String setupState = bootstrapCompleted ? "A telepites mar lezarult" : "A dolgozohoz kezdo jelszo tartozik";
                 throw new ValidationException(
-                        "A telepites mar lezarult — a jelenlegi vagy kezdo dolgozoi jelszo "
+                        setupState + " — a jelenlegi vagy kezdo dolgozoi jelszo "
                         + "kotelezo az uj jelszo beallitasahoz."
                 );
             }
@@ -110,8 +111,6 @@ public class WorkerFirstTimeSetupService {
                     );
                 }
             }
-            // Bootstrap elott tovabbra is engedett az ures currentPassword:
-            // ez az intended first-time setup path friss telepiteskor.
         } else if (bootstrapCompleted) {
             throw new ValidationException(
                     "A dolgozohoz nincs kezdo jelszo beallitva. Lezart telepites utan "
