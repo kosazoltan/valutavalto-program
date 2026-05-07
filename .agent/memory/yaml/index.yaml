@@ -1,4 +1,4 @@
-generated_at: 2026-05-07T20:41:10.212Z
+generated_at: 2026-05-07T20:44:53.523Z
 schema_version: 1
 source_count: 193
 short_term:
@@ -345,7 +345,7 @@ medium_term:
     type: medium-term-episodic
     path: vault/sessions/2026-04-30-v2.4.7-install-and-v2.4.8-treasury-ui.md
     status: "IN-PROGRESS (CI pending, installer build pending)"
-    sha256: fc7fe41608fe8c38ac847d33128ebe91cb42624d573262e31cb307617d557a0b
+    sha256: 7138efa44493ea365e81ca93f9437f74cf1862b5940dbd5ac4c97fc4bace6642
     summary: "--- date: 2026-04-30 title: v2.4.7 éles telepítés + v2.4.8 Főértéktár UI overhaul type: install-deploy + ui-refactor duration: 19:00 → 20:00 CEST status: IN-PROGRESS (CI pending, installer build pending) related-prs: \"#334\" main-head: \"64352b16 (v2.4.7)\" --- # v2.4.7 telepítés + v2.4.8 UI sprint ## TL;DR User új session-t indított a token-takarékosság miatt. Két lépcső: 1. **v2.4.7 telepítve a fejlesztői gépre** — un"
     keywords: [eles, telepites, foertektar, overhaul, date, 2026, title, type, install, deploy, refactor, duration]
   - id: 14d65c37589c6f03
@@ -1362,7 +1362,7 @@ long_term:
     type: long-term-reference
     path: vault/references/product-ready-roadmap-2026-05-06.md
     status: ACTIVE
-    sha256: e91b91af6c6a35c6ad884d5c48092a0e231142eaee97cbbc5335cb652393b201
+    sha256: 9477c664a63927497caf85b56986f5efa6f9a3c4257950ebd3db9e25cd3c7863
     summary: "--- title: Product Ready Roadmap — 2026-05-06 tényalapú terv type: reference created: 2026-05-06 supersedes: - v2.4-sprint-roadmap.md (frissebb tények alapján) status: ACTIVE author: Claude Opus 4.7 + Kósa Zoltán session --- # EXC Valutaváltó ERP — Product Ready Roadmap (2026-05-06) ## TL;DR > **2026-05-06 22:00 KORREKCIÓ:** A korábbi \"~85% Product Ready\" becslés szubjektív > találgatás volt mérési alap nélkül — KIVÉ"
     keywords: [product, ready, roadmap, 2026, tenyalapu, terv, title, type, reference, created, supersedes, sprint]
   - id: 4df3091e85acd201

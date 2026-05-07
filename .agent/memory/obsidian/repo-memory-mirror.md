@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-05-07T20:41:10.212Z
+generated: 2026-05-07T20:44:53.523Z
 ---
 
 # Repo Memory Mirror
@@ -9,7 +9,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
 - sources: 193
-- generated: 2026-05-07T20:41:10.212Z
+- generated: 2026-05-07T20:44:53.523Z
 
 ## Sources
 - [[AGENTS.md]] — `AGENTS.md` (short-term-core)
