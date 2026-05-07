@@ -17,10 +17,13 @@ import hu.puzzleir.valuta.service.WorkerFirstTimeSetupService;
 import hu.puzzleir.valuta.service.WorkerRoleService;
 import hu.puzzleir.valuta.service.WorkerService;
 import hu.puzzleir.valuta.util.ClientIpResolver;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -84,6 +87,18 @@ class AuthRefreshCookieIssueFailureTest {
         when(refreshTokenService.issue(worker, request)).thenThrow(new IllegalStateException("database unavailable"));
 
         assertLoginSessionIssueFailed(() -> controller.googleLogin(requestDto, request, response));
+    }
+
+    @Test
+    void loginEndpointsAreTransactionalToRollBackSessionSideEffectsOnCookieFailure() throws NoSuchMethodException {
+        assertThat(AuthController.class
+                .getMethod("login", LoginRequestDto.class, HttpServletRequest.class, HttpServletResponse.class)
+                .getAnnotation(Transactional.class))
+                .isNotNull();
+        assertThat(GoogleAuthController.class
+                .getMethod("googleLogin", GoogleLoginRequestDto.class, HttpServletRequest.class, HttpServletResponse.class)
+                .getAnnotation(Transactional.class))
+                .isNotNull();
     }
 
     private LoginResponseDto loginResponse() {

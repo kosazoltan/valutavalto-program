@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto;
 import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
 import hu.puzzleir.valuta.dto.auth.SelectRoleRequestDto;
 import hu.puzzleir.valuta.entity.Worker;
+import hu.puzzleir.valuta.exception.AuthenticationException;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
 import hu.puzzleir.valuta.service.AdminBootstrapService;
@@ -70,6 +71,7 @@ public class AuthController {
      * Body: { "companyCode": "BEST", "workerCode": "P001", "password": "1234" }
      */
     @PostMapping("/login")
+    @Transactional(rollbackFor = Exception.class)
     public ResponseEntity<LoginResponseDto> login(
             @Valid @RequestBody(required = false) LoginRequestDto dto,
             HttpServletRequest request,
@@ -88,10 +90,8 @@ public class AuthController {
         // HttpOnly refresh cookie (vezerlokonyv par.12.3)
         // A raw UUID csak a cookie-ban utazik; a DB-ben BCrypt-hashelve van.
         Worker worker = workerRepository.findById(response.getWorker().getId())
-            .orElseThrow(() -> new BusinessException(
-                    "Belépés nem véglegesíthető: a dolgozó rekord nem található.",
-                    "LOGIN_SESSION_ISSUE_FAILED",
-                    HttpStatus.SERVICE_UNAVAILABLE));
+            .orElseThrow(() -> new AuthenticationException(
+                    "Belépés nem véglegesíthető: a dolgozó rekord nem található."));
         try {
             RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, request);
             RefreshTokenCookies.addRefreshToken(httpResponse, request, issued.rawUuid());
@@ -168,11 +168,11 @@ public class AuthController {
         // Audit P0.3 (2026-05-03): O(1) selector lookup + EGYETLEN BCrypt verify.
         // Korabban `findAll().stream().filter(BCrypt.matches)` minden refresh-kor
         // futtatott BCrypt-et MINDEN aktiv tokenre — DoS-kockazat (~150ms/token).
-        java.util.Optional<hu.puzzleir.valuta.entity.RefreshToken> matched =
+        java.util.Optional<RefreshToken> matched =
             refreshTokenService.findActiveBySelectorAndVerifier(rawRefresh);
         if (matched.isEmpty()) return ResponseEntity.status(401).build();
 
-        hu.puzzleir.valuta.entity.RefreshToken oldRefresh = matched.get();
+        RefreshToken oldRefresh = matched.get();
         Worker worker = workerRepository.findById(oldRefresh.getWorkerId())
             .filter(w -> Boolean.TRUE.equals(w.getActive()))
             .orElse(null);
