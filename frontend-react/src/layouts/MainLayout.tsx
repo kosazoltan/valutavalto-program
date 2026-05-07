@@ -16,10 +16,15 @@ import {
   Loader2,
 } from 'lucide-react'
 import { useAppMode } from '../hooks/useAppMode'
+import type { AppMode } from '../hooks/useAppMode'
 
 import { menuGroups, SZERVER_ROLES } from "./menuGroups"
 import { useFeatureFlags } from "../hooks/useFeatureFlags"
 import TransitBadge from "../components/TransitBadge"
+
+export function shouldRequireDailySession(appMode: AppMode): boolean {
+  return appMode === 'penztar'
+}
 
 export default function MainLayout() {
   const { t } = useTranslation()
@@ -35,10 +40,19 @@ export default function MainLayout() {
   // (ugyvezeto, foertektar, belso_ellenor, stb.), minden lokal appMode-ban
   // lathatja a teljes menut, hogy ellenorizhesse a penztar/ertektar muveleteket.
   const hasSupervisoryAccess = SZERVER_ROLES.some((r) => hasCanonicalRole(r))
-  const { mode: appMode } = useAppMode()
+  const { mode: appMode, isLoading: appModeLoading } = useAppMode()
   const navigate = useNavigate()
 
   const initSession = useCallback(async () => {
+    if (!shouldRequireDailySession(appMode)) {
+      setSessionInfo(null)
+      setSessionError(null)
+      setShowSessionDialog(false)
+      setSessionReady(true)
+      setSessionChecking(false)
+      return
+    }
+
     try {
       setSessionChecking(true)
       setSessionError(null)
@@ -66,11 +80,15 @@ export default function MainLayout() {
     } finally {
       setSessionChecking(false)
     }
-  }, [])
+  }, [appMode])
 
   useEffect(() => {
+    if (appModeLoading) {
+      return
+    }
+
     initSession()
-  }, [initSession])
+  }, [appModeLoading, initSession])
 
   const handleRetryOpen = async () => {
     try {
