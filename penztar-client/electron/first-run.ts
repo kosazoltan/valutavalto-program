@@ -65,6 +65,13 @@ export interface SetupSaveResult {
   errorMessage?: string;
 }
 
+export interface ResolvedWorkerIdentity {
+  workerCode: string;
+  workerName?: string;
+  workerRole?: string;
+  branchCode?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Fix iroda törzs (~60 iroda) — a telepítőbe szánt baseline.
 // A lista sorrendben, 2×8 rácshoz igazítva jelenik meg a wizardban.
@@ -143,6 +150,26 @@ function looksLikeStaleOfflineSetup(values: Record<string, string>): boolean {
   const workerCode = values.PENZTAR_BOOTSTRAP_WORKER_CODE?.trim() ?? '';
   const password = values.PENZTAR_BOOTSTRAP_PASSWORD?.trim() ?? '';
   return workerCode.length === 0 && password.length === 0;
+}
+
+export function resolveEffectiveBootstrapCredentials(
+  payload: Pick<SetupSavePayload, 'adminUsername' | 'adminPassword' | 'bootstrapUsername' | 'bootstrapPassword' | 'selectedWorkerCode'>,
+  resolvedWorkerIdentity?: ResolvedWorkerIdentity | null,
+): { username: string; password: string } {
+  const selectedWorkerCode = payload.selectedWorkerCode?.trim();
+  if (selectedWorkerCode) {
+    return {
+      username: selectedWorkerCode.toUpperCase(),
+      password: payload.adminPassword,
+    };
+  }
+
+  const username = payload.bootstrapUsername?.trim()
+    || resolvedWorkerIdentity?.workerCode?.trim()
+    || payload.adminUsername.trim().toUpperCase();
+  const password = payload.bootstrapPassword?.trim() || payload.adminPassword;
+
+  return { username, password };
 }
 
 function generateSecretHex(bytes: number): string {
@@ -847,12 +874,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     // v2.3.0: Eldontes — worker first-time setup vagy legacy admin bootstrap?
     // Ha a wizard-ban kivalasztott worker (selectedWorkerCode), az uj flow-t
     // hasznaljuk. Ha nincs, fallback a legacy bootstrap-admin-ra.
-    let resolvedWorkerIdentity: {
-      workerCode: string;
-      workerName?: string;
-      workerRole?: string;
-      branchCode?: string;
-    } | null = null;
+    let resolvedWorkerIdentity: ResolvedWorkerIdentity | null = null;
 
     if (payload.selectedWorkerCode && payload.selectedWorkerCode.trim().length > 0) {
       log.info('[Setup] Worker first-time-setup uton (kivalasztott dolgozo):', payload.selectedWorkerCode);
@@ -938,6 +960,8 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     const sqlCipherKey = generateSecretHex(32);            // 256 bit
     const offlineLicenseSecret = generateSecretHex(32);    // 256 bit
 
+    const effectiveBootstrapCredentials = resolveEffectiveBootstrapCredentials(payload, resolvedWorkerIdentity);
+
     // --- .env írás (atomikus: .env.tmp → rename) ---
     if (!fs.existsSync(envDir)) {
       fs.mkdirSync(envDir, { recursive: true });
@@ -947,8 +971,8 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       branchName: payload.branchName,
       apiUrl: resolvedApiUrl,
       companyCode: normalizedCompanyCode,
-      bootstrapUsername: payload.bootstrapUsername ?? '',
-      bootstrapPassword: payload.bootstrapPassword ?? '',
+      bootstrapUsername: effectiveBootstrapCredentials.username,
+      bootstrapPassword: effectiveBootstrapCredentials.password,
       jwtSecret,
       sqlCipherKey,
       offlineLicenseSecret,
@@ -975,8 +999,8 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
         log.info('[Setup] SQLite app_mode elmentve:', payload.appMode);
       }
       setConfig('bootstrap_company_code', normalizedCompanyCode);
-      if (payload.bootstrapUsername) {
-        setConfig('bootstrap_worker_code', payload.bootstrapUsername.trim());
+      if (effectiveBootstrapCredentials.username) {
+        setConfig('bootstrap_worker_code', effectiveBootstrapCredentials.username);
       }
       // v2.3.0: a telepito-ban kivalasztott (es jelszot beallitott) dolgozo identity
       // tarolasa — ezt olvassa a LoginPage prefill-hez es UI displayhez.
@@ -1005,24 +1029,24 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     }
 
     // V100: Online-modban regisztraljuk a penztar-eszkozt a backend-en
-    if (!payload.offlineMode && payload.bootstrapUsername && payload.bootstrapPassword) {
+    if (!payload.offlineMode && effectiveBootstrapCredentials.username && effectiveBootstrapCredentials.password) {
       try {
         // v2.3.1 Codex P2 fix #217 first-run.ts:926: ha a workerFirstTimeSetup
         // utat vettuk (selectedWorkerCode), akkor most mar az ADMIN-PASSWORD
         // ervenyes, NEM a bootstrapPassword (amit felulirtunk).
         // A bootstrapUsername = selectedWorkerCode eseten az uj jelszoval loginolunk,
         // egyebkent a legacy bootstrap credentials-szel.
-        const bootstrapUsernameUpper = payload.bootstrapUsername.trim().toUpperCase();
+        const bootstrapUsernameUpper = effectiveBootstrapCredentials.username.trim().toUpperCase();
         const selectedWorkerUpper = payload.selectedWorkerCode?.trim().toUpperCase() ?? "";
         const usedWorkerSetup = selectedWorkerUpper.length > 0
           && bootstrapUsernameUpper === selectedWorkerUpper;
-        const loginPassword = usedWorkerSetup ? payload.adminPassword : payload.bootstrapPassword;
+        const loginPassword = effectiveBootstrapCredentials.password;
         if (usedWorkerSetup) {
           log.info('[Setup] V100 device-reg: a selectedWorker uj (adminPassword) jelszaval loginolunk.');
         }
         const login = await bootstrapLogin(resolvedApiUrl, {
           companyCode: normalizedCompanyCode,
-          workerCode: payload.bootstrapUsername.trim(),
+          workerCode: effectiveBootstrapCredentials.username,
           password: loginPassword,
         });
         if (login.success && login.token) {
