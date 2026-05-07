@@ -251,11 +251,15 @@ export function resolveBootstrapRoleCodeForAppMode(appMode: SetupSavePayload['ap
 }
 
 function preferredBootstrapLoginRoleCodesForAppMode(appMode: SetupSavePayload['appMode'] | undefined): string[] {
-  const canonical = resolveBootstrapRoleCodeForAppMode(appMode);
+  const canonical = normalizeBootstrapRoleCode(resolveBootstrapRoleCodeForAppMode(appMode));
   if (appMode === 'ertekszallito') {
-    return [canonical, 'courier'];
+    return [canonical, normalizeBootstrapRoleCode('courier')];
   }
   return [canonical];
+}
+
+function normalizeBootstrapRoleCode(roleCode: string): string {
+  return roleCode.trim().toLowerCase();
 }
 
 const BOOTSTRAP_SERVER_ROLE_CODES = new Set([
@@ -282,9 +286,11 @@ export function selectBootstrapLoginRoleCode(
     .filter((roleCode) => roleCode.length > 0);
   const preferredRoleCodes = preferredBootstrapLoginRoleCodesForAppMode(appMode);
 
-  const preferred = normalizedRoleCodes.find((roleCode) =>
-    preferredRoleCodes.includes(roleCode.toLowerCase()));
-  if (preferred) return preferred;
+  for (const preferredRoleCode of preferredRoleCodes) {
+    const preferred = normalizedRoleCodes.find((roleCode) =>
+      normalizeBootstrapRoleCode(roleCode) === preferredRoleCode);
+    if (preferred) return preferred;
+  }
 
   const serverRole = normalizedRoleCodes.find((roleCode) =>
     BOOTSTRAP_SERVER_ROLE_CODES.has(roleCode) || BOOTSTRAP_SERVER_ROLE_CODES.has(roleCode.toLowerCase()));

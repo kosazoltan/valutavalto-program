@@ -46,6 +46,14 @@ class AppModeRoleConstantsTest {
     }
 
     @Test
+    void computeValidAppModesNormalizesCanonicalRoleCodes() {
+        assertThat(AppModeRoleConstants.computeValidAppModes(
+                List.of(" PENZTAR ", "ERTEKTAR"),
+                null))
+                .containsExactly("penztar", "ertektar");
+    }
+
+    @Test
     void ertekszallitoRoleIsSelectableOnlyInCourierOrSupervisorLocalMode() {
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("ertekszallito", "ertekszallito"))
                 .isTrue();

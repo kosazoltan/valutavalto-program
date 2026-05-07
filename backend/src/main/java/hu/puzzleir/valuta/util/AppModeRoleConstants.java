@@ -196,15 +196,16 @@ public final class AppModeRoleConstants {
 
         List<String> normalized = new ArrayList<>();
         for (String roleCode : roleCodes) {
-            if (roleCode == null) {
-                continue;
-            }
-            String value = roleCode.trim().toLowerCase(Locale.ROOT);
+            String value = normalizeRoleCode(roleCode);
             if (!value.isBlank()) {
                 normalized.add(value);
             }
         }
         return normalized;
+    }
+
+    private static String normalizeRoleCode(String roleCode) {
+        return roleCode == null ? "" : roleCode.trim().toLowerCase(Locale.ROOT);
     }
 
     private static boolean hasAny(List<String> roleCodes, List<String> candidates) {

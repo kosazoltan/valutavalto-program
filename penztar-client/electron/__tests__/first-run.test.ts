@@ -170,6 +170,10 @@ describe('selectBootstrapLoginRoleCode', () => {
     expect(selectBootstrapLoginRoleCode('ertekszallito', ['COURIER'])).toBe('COURIER');
   });
 
+  it('ertekszallito modban a canonical role-t preferalja a legacy courier fallback elott', () => {
+    expect(selectBootstrapLoginRoleCode('ertekszallito', ['COURIER', 'ertekszallito'])).toBe('ertekszallito');
+  });
+
   it('lokalis appban server role-lal is tud setup device regisztraciot folytatni', () => {
     expect(selectBootstrapLoginRoleCode('penztar', ['foertektar'])).toBe('foertektar');
     expect(selectBootstrapLoginRoleCode('ertektar', ['ADMIN'])).toBe('ADMIN');
