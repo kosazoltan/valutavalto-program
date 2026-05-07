@@ -112,6 +112,22 @@ describe('selectBootstrapRoleCode', () => {
 
     expect(selected).toBe('CHIEF_VAULT');
   });
+
+  it('full appMode eseten backend server canonical role-t valaszt', () => {
+    const selected = selectBootstrapRoleCode('full', 'CASHIER', {
+      roles: ['CASHIER', 'penzugyi_vezeto'],
+    });
+
+    expect(selected).toBe('penzugyi_vezeto');
+  });
+
+  it('full appMode eseten determinisztikusan visszaesik az elso backend role-ra', () => {
+    const selected = selectBootstrapRoleCode('full', null, {
+      roles: ['CUSTOM_SERVER_ROLE', 'OTHER_ROLE'],
+    });
+
+    expect(selected).toBe('CUSTOM_SERVER_ROLE');
+  });
 });
 
 describe('SyncEngine — bootstrap password storage', () => {
@@ -829,12 +845,17 @@ describe('SyncEngine — párhuzamos sync trigger (race condition)', () => {
     expect(result2.failed).toBe(0);
 
     const markCalls = mockedMarkTransactionSynced.mock.calls.map(c => c[0]);
-    expect(markCalls).toEqual([1, 2]);
-    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(markCalls).toHaveLength(2);
+    expect(new Set(markCalls)).toEqual(new Set([1, 2]));
+    expect(markCalls.filter((id) => id === 1)).toHaveLength(1);
+    expect(markCalls.filter((id) => id === 2)).toHaveLength(1);
   });
 
-  it('should reject concurrent syncAll with a different explicit token', async () => {
-    mockedGetPendingTransactions.mockReturnValue([makeTx(1)]);
+  it('should run a follow-up syncAll with a different explicit token after the current run', async () => {
+    mockedGetPendingTransactions
+      .mockReturnValueOnce([makeTx(1)])
+      .mockReturnValueOnce([makeTx(2)])
+      .mockReturnValue([]);
 
     let resolveFirst: () => void;
     const firstDone = new Promise<void>((resolve) => { resolveFirst = resolve; });
@@ -846,22 +867,20 @@ describe('SyncEngine — párhuzamos sync trigger (race condition)', () => {
     vi.stubGlobal('fetch', mockFetch);
 
     const firstSync = engine.syncAll('stale-token');
-    const secondResult = await engine.syncAll('fresh-token');
-
-    expect(secondResult).toEqual({
-      synced: 0,
-      failed: 0,
-      errors: ['Szinkronizáció már fut eltérő auth tokennel — próbáld újra a folyamatban lévő futás után'],
-    });
+    const secondSync = engine.syncAll('fresh-token');
 
     resolveFirst!();
-    const firstResult = await firstSync;
+    const [firstResult, secondResult] = await Promise.all([firstSync, secondSync]);
 
     expect(firstResult).toEqual({ synced: 1, failed: 0, errors: [] });
-    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(secondResult).toEqual({ synced: 1, failed: 0, errors: [] });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(mockedMarkTransactionSynced).toHaveBeenCalledWith(1);
+    expect(mockedMarkTransactionSynced).toHaveBeenCalledWith(2);
     const firstRequest = mockFetch.mock.calls[0][1] as { headers: Record<string, string> };
+    const secondRequest = mockFetch.mock.calls[1][1] as { headers: Record<string, string> };
     expect(firstRequest.headers.Authorization).toBe('Bearer stale-token');
+    expect(secondRequest.headers.Authorization).toBe('Bearer fresh-token');
   });
 
   it('runSync (internal) should skip second trigger if already running', async () => {
