@@ -78,7 +78,8 @@ class WorkerFirstTimeSetupServiceTest {
 
         verify(passwordEncoder, never()).encode(any());
         verify(workerRepository, never()).save(any(Worker.class));
-        verify(jwtTokenProvider, never()).generateToken(any(Worker.class));
+        verifyNoTokenGenerated();
+        verify(workerRoleService, never()).getRoleCodesForWorker(any());
     }
 
     @Test
@@ -168,6 +169,8 @@ class WorkerFirstTimeSetupServiceTest {
         when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
                 .thenReturn(Optional.of(worker));
         when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of("ertektar"));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
+        when(passwordEncoder.matches("1234", "$2b$10$seed")).thenReturn(true);
 
         assertThatThrownBy(() -> service.setupWorkerPassword(dto))
                 .isInstanceOf(ValidationException.class)
@@ -175,7 +178,29 @@ class WorkerFirstTimeSetupServiceTest {
 
         verify(passwordEncoder, never()).encode(any());
         verify(workerRepository, never()).save(any(Worker.class));
-        verify(jwtTokenProvider, never()).generateToken(any(Worker.class));
+        verifyNoTokenGenerated();
+    }
+
+    @Test
+    @DisplayName("AppMode fallbackban nem valaszt sorrendfuggoen tobb szerver role kozul")
+    void rejectsAmbiguousSelectableFallbackRoles() {
+        Worker worker = seedWorker("$2b$10$seed");
+        WorkerFirstTimeSetupRequestDto dto = request("1234");
+        dto.setAppMode("ertektar");
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
+        when(passwordEncoder.matches("1234", "$2b$10$seed")).thenReturn(true);
+        when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of("ugyvezeto", "foertektar"));
+
+        assertThatThrownBy(() -> service.setupWorkerPassword(dto))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Tobb");
+
+        verify(passwordEncoder, never()).encode(any());
+        verify(workerRepository, never()).save(any(Worker.class));
+        verifyNoTokenGenerated();
     }
 
     @Test
@@ -187,6 +212,8 @@ class WorkerFirstTimeSetupServiceTest {
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
                 .thenReturn(Optional.of(worker));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
+        when(passwordEncoder.matches("1234", "$2b$10$seed")).thenReturn(true);
         when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of());
 
         assertThatThrownBy(() -> service.setupWorkerPassword(dto))
@@ -232,7 +259,7 @@ class WorkerFirstTimeSetupServiceTest {
 
         verify(passwordEncoder, never()).encode(any());
         verify(workerRepository, never()).save(any(Worker.class));
-        verify(jwtTokenProvider, never()).generateToken(any(Worker.class));
+        verifyNoTokenGenerated();
     }
 
     @Test
@@ -290,5 +317,10 @@ class WorkerFirstTimeSetupServiceTest {
         worker.setPasswordHash(passwordHash);
         worker.setPasswordChangedAt(null);
         return worker;
+    }
+
+    private void verifyNoTokenGenerated() {
+        verify(jwtTokenProvider, never()).generateToken(any(Worker.class));
+        verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(String.class), any());
     }
 }

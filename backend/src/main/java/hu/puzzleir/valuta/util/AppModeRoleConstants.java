@@ -137,10 +137,68 @@ public final class AppModeRoleConstants {
         if (appMode == null || appMode.isBlank()) {
             return true;
         }
-        if (roleCodes == null || roleCodes.isEmpty()) {
-            return false;
+        return !selectableRolesForAppMode(roleCodes, appMode).isEmpty();
+    }
+
+    public static String canonicalLocalRoleForAppMode(String appMode) {
+        if (appMode == null || appMode.isBlank()) {
+            return null;
         }
-        return roleCodes.stream().anyMatch(roleCode -> isRoleSelectableForAppMode(roleCode, appMode));
+        return switch (appMode.trim().toLowerCase()) {
+            case "penztar" -> "penztar";
+            case "ertektar" -> "ertektar";
+            case "ertekszallito" -> "ertekszallito";
+            default -> null;
+        };
+    }
+
+    public static String preferredSelectableLocalRoleForAppMode(List<String> roleCodes, String appMode) {
+        String preferredRole = canonicalLocalRoleForAppMode(appMode);
+        if (preferredRole == null) {
+            return null;
+        }
+        return sanitizeRoleCodes(roleCodes).stream()
+                .filter(roleCode -> preferredRole.equals(roleCode.toLowerCase()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static List<String> selectableRolesForAppMode(List<String> roleCodes, String appMode) {
+        List<String> sanitizedRoleCodes = sanitizeRoleCodes(roleCodes);
+        if (appMode == null || appMode.isBlank()) {
+            return sanitizedRoleCodes;
+        }
+        return sanitizedRoleCodes.stream()
+                .filter(roleCode -> isRoleSelectableForAppMode(roleCode, appMode))
+                .toList();
+    }
+
+    public static String validateLoginRolesForAppMode(
+            List<String> roleCodes,
+            String activeRole,
+            boolean roleSelectionRequired,
+            String appMode) {
+        if (appMode == null || appMode.isBlank()) {
+            return null;
+        }
+        if (roleSelectionRequired && !hasAnySelectableRoleForAppMode(roleCodes, appMode)) {
+            return "Nincs ebben a programban használható szerepköre.";
+        }
+        if (activeRole != null && !activeRole.isBlank()
+                && !isRoleSelectableForAppMode(activeRole, appMode)) {
+            return "Ez a szerepkör nem használható ebben a programban: " + activeRole;
+        }
+        return null;
+    }
+
+    private static List<String> sanitizeRoleCodes(List<String> roleCodes) {
+        if (roleCodes == null || roleCodes.isEmpty()) {
+            return List.of();
+        }
+        return roleCodes.stream()
+                .filter(roleCode -> roleCode != null && !roleCode.isBlank())
+                .map(String::trim)
+                .toList();
     }
 
     public static boolean isLegacyWorkerRoleSelectableForAppMode(WorkerRole workerRole, String appMode) {

@@ -15,6 +15,9 @@ import log from 'electron-log/main';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import type { SetupWorkerOption } from '@valuta/shared-ipc';
+
+export type { SetupWorkerOption } from '@valuta/shared-ipc';
 
 // ---------------------------------------------------------------------------
 // Típusok
@@ -26,12 +29,6 @@ export interface Branch {
   city: string;
   address?: string;
   isVault?: boolean;
-}
-
-export interface SetupWorkerOption {
-  code: string;
-  name: string;
-  region?: string;
 }
 
 export interface SetupCheckResult {
@@ -223,6 +220,33 @@ function encryptConfigSecret(value: string): string | null {
   }
 }
 
+export function persistBootstrapPasswordConfig(
+  bootstrapPassword: string,
+  setConfig: (key: string, value: string) => void,
+  deleteConfig: (key: string) => void,
+): void {
+  if (!bootstrapPassword) {
+    deleteConfig('bootstrap_password');
+    deleteConfig('bootstrap_password_encrypted');
+    return;
+  }
+
+  const encryptedBootstrapPassword = encryptConfigSecret(bootstrapPassword);
+  if (encryptedBootstrapPassword) {
+    setConfig('bootstrap_password_encrypted', encryptedBootstrapPassword);
+    deleteConfig('bootstrap_password');
+    return;
+  }
+
+  try {
+    setConfig('bootstrap_password', bootstrapPassword);
+    deleteConfig('bootstrap_password_encrypted');
+    log.warn('[Setup] safeStorage nem elerheto, bootstrap jelszo ideiglenesen plaintext SQLite configban marad; sikeres bootstrap login utan torlodik.');
+  } catch (err) {
+    log.warn('[Setup] bootstrap jelszo fallback mentese sikertelen; meglevo bootstrap titok erintetlen marad:', err);
+  }
+}
+
 export function resolveEffectiveBootstrapCredentials(
   payload: Pick<SetupSavePayload, 'adminUsername' | 'adminPassword' | 'bootstrapUsername'>,
   resolvedWorkerIdentity: { workerCode?: string } | null,
@@ -275,6 +299,9 @@ const BOOTSTRAP_SERVER_ROLE_CODES = new Set([
   'SUPERVISOR',
   'MANAGER',
   'ADMIN',
+  'supervisor',
+  'manager',
+  'admin',
 ]);
 
 export function selectBootstrapLoginRoleCode(
@@ -575,13 +602,21 @@ export async function getWorkers(
   companyCode?: string,
   branchCode?: string,
 ): Promise<SetupWorkerOption[]> {
-  if (!apiUrl || !branchCode) {
-    log.info('[Setup] getWorkers: nincs apiUrl/branchCode, ures lista.');
+  const normalizedApiUrl = apiUrl?.trim() ?? '';
+  const normalizedCompanyCode = companyCode?.trim() ?? '';
+  const normalizedBranchCode = branchCode?.trim() ?? '';
+
+  if (!normalizedApiUrl || !normalizedCompanyCode || !normalizedBranchCode) {
+    log.info('[Setup] getWorkers: nincs apiUrl/companyCode/branchCode, ures lista.');
     return [];
   }
 
   try {
-    const fetched = await fetchWorkersFromBackend(apiUrl, companyCode, branchCode);
+    const fetched = await fetchWorkersFromBackend(
+      normalizedApiUrl,
+      normalizedCompanyCode,
+      normalizedBranchCode,
+    );
     if (fetched && fetched.length > 0) {
       log.info(`[Setup] getWorkers: backend adott ${fetched.length} dolgozot.`);
       return fetched;
@@ -597,15 +632,21 @@ export async function getWorkers(
 
 export async function fetchWorkersFromBackend(
   apiUrl: string,
-  companyCode: string | undefined,
+  companyCode: string,
   branchCode: string,
   timeoutMs = 6000,
 ): Promise<SetupWorkerOption[] | null> {
-  const base = normalizeApiBase(apiUrl);
-  const params = new URLSearchParams({ branchCode });
-  if (companyCode?.trim()) {
-    params.set('companyCode', companyCode.trim());
+  const normalizedCompanyCode = companyCode.trim();
+  const normalizedBranchCode = branchCode.trim();
+  if (!normalizedCompanyCode || !normalizedBranchCode) {
+    log.info('[Setup] fetchWorkersFromBackend: nincs companyCode/branchCode, nincs backend hivas.');
+    return null;
   }
+  const base = normalizeApiBase(apiUrl);
+  const params = new URLSearchParams({
+    branchCode: normalizedBranchCode,
+    companyCode: normalizedCompanyCode,
+  });
   const url = `${base}/public/workers?${params.toString()}`;
   const response = await httpJsonWithRetry<Array<{ code: string; name: string; region?: string }>>(
     url,
@@ -1162,14 +1203,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       if (effectiveBootstrapCredentials.bootstrapUsername) {
         setConfig('bootstrap_worker_code', effectiveBootstrapCredentials.bootstrapUsername);
       }
-      deleteConfig('bootstrap_password');
-      deleteConfig('bootstrap_password_encrypted');
-      const encryptedBootstrapPassword = encryptConfigSecret(effectiveBootstrapCredentials.bootstrapPassword);
-      if (encryptedBootstrapPassword) {
-        setConfig('bootstrap_password_encrypted', encryptedBootstrapPassword);
-      } else if (effectiveBootstrapCredentials.bootstrapPassword) {
-        log.warn('[Setup] safeStorage nem elerheto, bootstrap jelszo nincs perzisztalva plaintext-ben.');
-      }
+      persistBootstrapPasswordConfig(effectiveBootstrapCredentials.bootstrapPassword, setConfig, deleteConfig);
       setConfig('bootstrap_role_code', bootstrapRoleCode);
       // v2.3.0: a telepito-ban kivalasztott (es jelszot beallitott) dolgozo identity
       // tarolasa — ezt olvassa a LoginPage prefill-hez es UI displayhez.

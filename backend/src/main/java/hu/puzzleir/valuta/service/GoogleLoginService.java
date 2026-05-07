@@ -176,14 +176,17 @@ public class GoogleLoginService {
             roleSelectionRequired = true;
         }
 
-        if (roleSelectionRequired
-                && !AppModeRoleConstants.hasAnySelectableRoleForAppMode(roleCodes, appMode)) {
-            throw new AuthenticationException("Nincs ebben a programban használható szerepköre.");
+        String appModeValidationError = AppModeRoleConstants.validateLoginRolesForAppMode(
+                roleCodes,
+                activeRole,
+                roleSelectionRequired,
+                appMode);
+        if (appModeValidationError != null) {
+            throw new AuthenticationException(appModeValidationError);
         }
-        if (activeRole != null
-                && !AppModeRoleConstants.isRoleSelectableForAppMode(activeRole, appMode)) {
-            throw new AuthenticationException("Ez a szerepkör nem használható ebben a programban: " + activeRole);
-        }
+        List<String> responseRoleCodes = roleSelectionRequired
+                ? AppModeRoleConstants.selectableRolesForAppMode(roleCodes, appMode)
+                : roleCodes;
 
         // Codex P1 PR #361 follow-up: legacy worker eseten `worker.getBranch()` lehet null,
         // es a JWT branch claim is non-null erteket var. Ugyanaz a fallback minta mint
@@ -242,7 +245,7 @@ public class GoogleLoginService {
                 .worker(WorkerDto.from(worker))
                 .expiresIn(expiresInMs)
                 .expiresAt(expiresAt.toString())
-                .roles(roleCodes)
+                .roles(responseRoleCodes)
                 .activeRole(activeRole)
                 .permissions(permissions)
                 .roleSelectionRequired(roleSelectionRequired)

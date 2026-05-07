@@ -562,16 +562,16 @@ let _webAccessToken: string | null = null
 function isExpiredJwt(token: string): boolean {
   const parts = token.split('.')
   if (parts.length !== 3 || !parts[1]) {
-    return false
+    return true
   }
 
   try {
     const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
     const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
     const payload = JSON.parse(atob(padded)) as { exp?: unknown }
-    return typeof payload.exp === 'number' && payload.exp <= Math.floor(Date.now() / 1000)
+    return typeof payload.exp !== 'number' || payload.exp <= Math.floor(Date.now() / 1000)
   } catch {
-    return false
+    return true
   }
 }
 
@@ -581,7 +581,7 @@ async function refreshAccessTokenFromCookie(): Promise<string | null> {
     const newToken = res?.data?.token
     return typeof newToken === 'string' && newToken ? newToken : null
   } catch (err) {
-    logger.debug('client', 'loadPersistedToken: refresh-cookie unavailable (user not logged in)', err)
+    logger.debug('client', 'refresh-cookie bootstrap unavailable (user not logged in)', err)
     return null
   }
 }
@@ -654,15 +654,20 @@ export async function loadPersistedToken(): Promise<string | null> {
     const token: string | null = window.electronAPI.secureLoadToken
       ? await window.electronAPI.secureLoadToken()
       : await window.electronAPI.getConfig('auth_token')
-    if (token && !isExpiredJwt(token)) {
-      _electronTokenPresent = true
-      return token
-    }
+    if (token) {
+      const expired = isExpiredJwt(token)
+      if (!expired) {
+        _electronTokenPresent = true
+        return token
+      }
 
-    if (token && isExpiredJwt(token)) {
       const refreshedToken = await refreshAccessTokenFromCookie()
       if (refreshedToken) {
-        await persistToken(refreshedToken)
+        try {
+          await persistToken(refreshedToken)
+        } catch (err) {
+          logger.warn('client', 'Electron refreshed token persistence failed; using in-memory token for this startup', err)
+        }
         _electronTokenPresent = true
         return refreshedToken
       }

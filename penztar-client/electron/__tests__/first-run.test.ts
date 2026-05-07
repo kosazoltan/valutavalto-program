@@ -35,8 +35,11 @@ vi.mock('electron', () => ({
   },
 }));
 
+import { net, safeStorage } from 'electron';
 import {
+  getWorkers,
   isFirstRun,
+  persistBootstrapPasswordConfig,
   resolveBootstrapRoleCodeForAppMode,
   resolveEffectiveBootstrapCredentials,
   selectBootstrapLoginRoleCode,
@@ -151,6 +154,50 @@ describe('resolveEffectiveBootstrapCredentials', () => {
   });
 });
 
+describe('persistBootstrapPasswordConfig', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(safeStorage.isEncryptionAvailable).mockReturnValue(true);
+    vi.mocked(safeStorage.encryptString).mockImplementation((value: string) => Buffer.from(`enc:${value}`));
+  });
+
+  it('encrypted configba menti a bootstrap jelszot es torli a plaintext fallbackot', () => {
+    const setConfig = vi.fn();
+    const deleteConfig = vi.fn();
+
+    persistBootstrapPasswordConfig('NewGlobalPass123', setConfig, deleteConfig);
+
+    expect(setConfig).toHaveBeenCalledWith(
+      'bootstrap_password_encrypted',
+      Buffer.from('enc:NewGlobalPass123').toString('base64'),
+    );
+    expect(deleteConfig).toHaveBeenCalledWith('bootstrap_password');
+  });
+
+  it('safeStorage hianyaban ideiglenes plaintext fallbackot ment a sync bootstraphoz', () => {
+    const setConfig = vi.fn();
+    const deleteConfig = vi.fn();
+    vi.mocked(safeStorage.isEncryptionAvailable).mockReturnValue(false);
+
+    persistBootstrapPasswordConfig('NewGlobalPass123', setConfig, deleteConfig);
+
+    expect(setConfig).toHaveBeenCalledWith('bootstrap_password', 'NewGlobalPass123');
+    expect(deleteConfig).toHaveBeenCalledWith('bootstrap_password_encrypted');
+  });
+
+  it('fallback mentesi hiba eseten nem torli a korabbi encrypted bootstrap titkot', () => {
+    const setConfig = vi.fn(() => {
+      throw new Error('sqlite locked');
+    });
+    const deleteConfig = vi.fn();
+    vi.mocked(safeStorage.isEncryptionAvailable).mockReturnValue(false);
+
+    persistBootstrapPasswordConfig('NewGlobalPass123', setConfig, deleteConfig);
+
+    expect(deleteConfig).not.toHaveBeenCalledWith('bootstrap_password_encrypted');
+  });
+});
+
 describe('resolveBootstrapRoleCodeForAppMode', () => {
   it('az appMode-hoz illeszkedo canonical role code-ot irja ki bootstrap role-kent', () => {
     expect(resolveBootstrapRoleCodeForAppMode('penztar')).toBe('penztar');
@@ -177,6 +224,7 @@ describe('selectBootstrapLoginRoleCode', () => {
   it('lokalis appban server role-lal is tud setup device regisztraciot folytatni', () => {
     expect(selectBootstrapLoginRoleCode('penztar', ['foertektar'])).toBe('foertektar');
     expect(selectBootstrapLoginRoleCode('ertektar', ['ADMIN'])).toBe('ADMIN');
+    expect(selectBootstrapLoginRoleCode('penztar', ['admin'])).toBe('admin');
   });
 
   it('nem valaszt masik lokalis apphoz tartozo role-t', () => {
@@ -216,5 +264,23 @@ describe('shouldUseWorkerFirstTimeSetup', () => {
       selectedWorkerCode: 'BORSI',
       bootstrapCompleted: true,
     })).toBe(false);
+  });
+});
+
+describe('getWorkers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('nem indit backend worker lekerest hianyzo cegkodnal', async () => {
+    await expect(getWorkers('https://excvaluta.com/api/v1', '   ', 'KORUT')).resolves.toEqual([]);
+
+    expect(net.request).not.toHaveBeenCalled();
+  });
+
+  it('nem indit backend worker lekerest hianyzo fiokkodnal', async () => {
+    await expect(getWorkers('https://excvaluta.com/api/v1', 'EBC', '   ')).resolves.toEqual([]);
+
+    expect(net.request).not.toHaveBeenCalled();
   });
 });

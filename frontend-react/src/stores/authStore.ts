@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persistToken, clearPersistedToken } from '../services/api/index'
+import { canonicalizeRoleForAppMode } from '../utils/appModeRoles'
 
 export interface Worker {
   id: number
@@ -138,10 +139,19 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     const { roles, activeRole, worker } = get()
     // ADMIN fallback: teljes hozzaferes minden canonical role-hoz (konzisztens a tobbi helperrel)
     const effectiveRole = activeRole || worker?.role
-    if (effectiveRole === 'ADMIN') return true
-    const list = Array.isArray(canonicalRoles) ? canonicalRoles : [canonicalRoles]
-    if (activeRole && list.includes(activeRole)) return true
-    return (roles ?? []).some((r: string) => list.includes(r))
+    if (effectiveRole?.trim().toUpperCase() === 'ADMIN') return true
+
+    const list = new Set(
+      (Array.isArray(canonicalRoles) ? canonicalRoles : [canonicalRoles])
+        .map((role) => canonicalizeRoleForAppMode(role)),
+    )
+    const matchesRequestedRole = (role: string | null | undefined): boolean => {
+      const canonical = canonicalizeRoleForAppMode(role)
+      return Boolean(canonical) && list.has(canonical)
+    }
+
+    if (matchesRequestedRole(activeRole) || matchesRequestedRole(worker?.role)) return true
+    return (roles ?? []).some((r: string) => matchesRequestedRole(r))
   },
 
   isSupervisorOrAbove: () => {

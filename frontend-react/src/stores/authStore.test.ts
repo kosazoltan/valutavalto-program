@@ -227,4 +227,15 @@ describe('authStore', () => {
       expect(state.worker?.workerCode).toBe('W001')
     })
   })
+
+  describe('hasCanonicalRole', () => {
+    it('legacy COURIER role-t ertekszallito canonical role-kent kezeli', () => {
+      const courierWorker = { ...mockWorker, role: 'COURIER' }
+      act(() => {
+        useAuthStore.getState().login(courierWorker, 'tok', 'Bearer', '', 'COURIER', [], ['COURIER'])
+      })
+
+      expect(useAuthStore.getState().hasCanonicalRole('ertekszallito')).toBe(true)
+    })
+  })
 })
