@@ -226,6 +226,8 @@ describe('selectBootstrapLoginRoleCode', () => {
     expect(selectBootstrapLoginRoleCode('penztar', ['foertektar'])).toBe('foertektar');
     expect(selectBootstrapLoginRoleCode('ertektar', ['ADMIN'])).toBe('ADMIN');
     expect(selectBootstrapLoginRoleCode('penztar', ['admin'])).toBe('admin');
+    expect(selectBootstrapLoginRoleCode('penztar', ['manager'])).toBe('manager');
+    expect(selectBootstrapLoginRoleCode('ertektar', ['supervisor'])).toBe('supervisor');
   });
 
   it('nem valaszt masik lokalis apphoz tartozo role-t', () => {
