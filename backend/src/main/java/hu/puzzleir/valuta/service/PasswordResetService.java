@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.HexFormat;
+import java.util.Locale;
 
 /**
  * Elfelejtett-jelszo flow — persistent reset token storage.
@@ -72,13 +73,13 @@ public class PasswordResetService {
 
         Optional<Worker> workerOpt = workerRepository.findByEmail(email.trim().toLowerCase());
         if (workerOpt.isEmpty()) {
-            log.info("Forgot password: ismeretlen email (anti-enumeration silent): {}", email);
+            log.info("Forgot password: ismeretlen email (anti-enumeration silent): emailHash={}", logHash(email));
             return null;
         }
 
         Worker worker = workerOpt.get();
         if (!Boolean.TRUE.equals(worker.getActive())) {
-            log.warn("Forgot password: inaktiv worker: {}", email);
+            log.warn("Forgot password: inaktiv worker: emailHash={}", logHash(email));
             return null;
         }
 
@@ -183,5 +184,12 @@ public class PasswordResetService {
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }
+    }
+
+    private static String logHash(String value) {
+        if (value == null) {
+            return "(null)";
+        }
+        return hashToken(value.trim().toLowerCase(Locale.ROOT)).substring(0, 12);
     }
 }
