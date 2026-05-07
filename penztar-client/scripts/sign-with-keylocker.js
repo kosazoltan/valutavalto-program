@@ -26,27 +26,28 @@
 
 'use strict';
 
-const { execSync, execFileSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 
 /**
- * Ezt a függvényt hívja az electron-builder a `signtoolOptions.sign` config-ból.
+ * Ezt a függvényt hívja az electron-builder a `win.sign` config-ból.
  *
  * @param {object} configuration - electron-builder által átadott config
  * @param {string} configuration.path - az aláírandó .exe path-ja
  * @returns {Promise<void>}
  */
 exports.default = async function signWithKeyLocker(configuration) {
-  const filePath = configuration.path;
+  const rawFilePath = configuration && configuration.path;
 
   // 1. SKIP feltétel: CODE_SIGN_ENABLED nincs / nem "1"
   if (process.env.CODE_SIGN_ENABLED !== '1') {
-    console.log(`[sign-with-keylocker] CODE_SIGN_ENABLED=${process.env.CODE_SIGN_ENABLED || '(unset)'} → signing SKIPPED for ${filePath}`);
+    console.log(`[sign-with-keylocker] CODE_SIGN_ENABLED=${process.env.CODE_SIGN_ENABLED || '(unset)'} → signing SKIPPED for ${rawFilePath || '(unknown file)'}`);
     return;
   }
 
+  const filePath = resolveRequiredPath(rawFilePath, 'configuration.path');
   console.log(`[sign-with-keylocker] CODE_SIGN_ENABLED=1, signing ${filePath}...`);
 
   // 2. Required env vars validáció — explicit error ha bármi hiányzik
@@ -74,6 +75,9 @@ exports.default = async function signWithKeyLocker(configuration) {
     console.log(`[sign-with-keylocker] Client cert decoded from SM_CLIENT_CERT_FILE_B64 → ${tempCertFile}`);
   }
 
+  if (clientCertFile) {
+    clientCertFile = resolveRequiredPath(clientCertFile, 'SM_CLIENT_CERT_FILE');
+  }
   if (!clientCertFile || !fs.existsSync(clientCertFile)) {
     throw new Error(
       `[sign-with-keylocker] Client cert file not found. Set SM_CLIENT_CERT_FILE (path) or SM_CLIENT_CERT_FILE_B64 (base64 content).`,
@@ -94,35 +98,69 @@ exports.default = async function signWithKeyLocker(configuration) {
 
   // smctl healthcheck (preflight) — ha nincs hálózat vagy hibás credential, korán bukik
   try {
-    execFileSync('smctl', ['healthcheck'], { stdio: 'inherit', env: smctlEnv });
+    runTool('smctl', ['healthcheck'], { env: smctlEnv });
   } catch (err) {
-    if (tempCertFile) fs.unlinkSync(tempCertFile);
+    cleanupTempCert(tempCertFile);
     throw new Error(`[sign-with-keylocker] smctl healthcheck FAILED. Check SM_* env vars + network. ${err.message}`);
   }
 
-  // Tényleges aláírás — execFileSync (no shell) to prevent command injection via env vars
+  // Tényleges aláírás
   const keypairAlias = process.env.SM_KEYPAIR_ALIAS;
   const timestampServer = process.env.SM_TIMESTAMP_SERVER || 'http://timestamp.digicert.com';
-  const signArgs = ['sign', '--keypair-alias', keypairAlias, '--input', filePath, '--tsa-server', timestampServer];
+  const signArgs = [
+    'sign',
+    '--keypair-alias',
+    keypairAlias,
+    '--input',
+    filePath,
+    '--tsa-server',
+    timestampServer,
+  ];
 
-  console.log(`[sign-with-keylocker] Running: smctl ${signArgs.join(' ')}`);
   try {
-    execFileSync('smctl', signArgs, { stdio: 'inherit', env: smctlEnv });
+    runTool('smctl', signArgs, { env: smctlEnv });
   } catch (err) {
-    if (tempCertFile) fs.unlinkSync(tempCertFile);
+    cleanupTempCert(tempCertFile);
     throw new Error(`[sign-with-keylocker] smctl sign FAILED for ${filePath}. ${err.message}`);
   }
 
   // Cleanup temp cert (CI esetén)
-  if (tempCertFile) {
-    try { fs.unlinkSync(tempCertFile); } catch { /* ignore */ }
-  }
+  cleanupTempCert(tempCertFile);
 
   // 5. Verifikáció — signtool verify
   try {
-    execSync(`signtool verify /pa /v "${filePath}"`, { stdio: 'inherit' });
+    runTool('signtool', ['verify', '/pa', '/v', filePath]);
     console.log(`[sign-with-keylocker] ✅ ${filePath} signed and verified successfully.`);
   } catch (err) {
     throw new Error(`[sign-with-keylocker] signtool verify FAILED for ${filePath}. The file was signed but verification failed: ${err.message}`);
   }
 };
+
+function resolveRequiredPath(value, label) {
+  if (typeof value !== 'string' || value.trim() === '' || value.includes('\0')) {
+    throw new Error(`[sign-with-keylocker] Invalid ${label}.`);
+  }
+  return path.resolve(value);
+}
+
+function runTool(command, args, options = {}) {
+  console.log(`[sign-with-keylocker] Running: ${command} ${args.map(formatArgForLog).join(' ')}`);
+  execFileSync(command, args, {
+    stdio: 'inherit',
+    shell: false,
+    ...options,
+  });
+}
+
+function formatArgForLog(value) {
+  return JSON.stringify(String(value));
+}
+
+function cleanupTempCert(tempCertFile) {
+  if (!tempCertFile) return;
+  try {
+    fs.unlinkSync(tempCertFile);
+  } catch (err) {
+    console.warn(`[sign-with-keylocker] Temp cert cleanup failed for ${tempCertFile}: ${err.message}`);
+  }
+}
