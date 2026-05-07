@@ -299,10 +299,48 @@ class AuthRefreshCookieIssueFailureTest {
         verify(tokenBlacklistService).blacklistToken(
                 eq("old-token-id"),
                 eq(42L),
-                eq("ROLE_REVOKED"),
+                eq(TokenBlacklistService.REASON_ROLE_REVOKED),
                 eq(tokenExpiresAt));
         verify(workerRoleService, never()).getPermissionCodesForRole("ertektar");
         verify(jwtTokenProvider, never()).generateToken(any(), any(), any());
+    }
+
+    @Test
+    void refreshTokenBlacklistFallbackUsesConfiguredJwtExpirationWhenTokenExpiryIsMissing() {
+        AuthController controller = new AuthController(
+                workerService,
+                jwtTokenProvider,
+                workerRepository,
+                workerRoleService,
+                tokenBlacklistService,
+                adminBootstrapService,
+                workerFirstTimeSetupService,
+                passwordResetService,
+                refreshTokenService,
+                refreshCookieService,
+                clientIpResolver);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer access-token");
+        Worker worker = worker();
+        LocalDateTime configuredExpiresAt = LocalDateTime.of(2026, 5, 7, 16, 30);
+        when(jwtTokenProvider.validateToken("access-token")).thenReturn(true);
+        when(jwtTokenProvider.getTokenIdFromToken("access-token")).thenReturn("old-token-id");
+        when(tokenBlacklistService.isBlacklisted("old-token-id")).thenReturn(false);
+        when(jwtTokenProvider.getWorkerIdFromToken("access-token")).thenReturn(42L);
+        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(jwtTokenProvider.getExpirationDateTimeFromToken("access-token")).thenReturn(null);
+        when(jwtTokenProvider.getConfiguredExpirationDateTimeFromNow()).thenReturn(configuredExpiresAt);
+        when(jwtTokenProvider.getActiveRoleFromToken("access-token")).thenReturn("ertektar");
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar"));
+
+        var result = controller.refreshToken(request);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        verify(tokenBlacklistService).blacklistToken(
+                eq("old-token-id"),
+                eq(42L),
+                eq(TokenBlacklistService.REASON_ROLE_REVOKED),
+                eq(configuredExpiresAt));
     }
 
     @Test
@@ -342,7 +380,7 @@ class AuthRefreshCookieIssueFailureTest {
         verify(tokenBlacklistService).blacklistToken(
                 eq("old-token-id"),
                 eq(42L),
-                eq("REFRESH"),
+                eq(TokenBlacklistService.REASON_REFRESH),
                 eq(tokenExpiresAt));
     }
 
