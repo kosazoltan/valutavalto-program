@@ -131,8 +131,8 @@ export default function LoginPage() {
 
     // v2.1.4: Backend adta validAppModes ellenorzese (robusztusabb mint egyedi role-check)
     if (response.validAppModes && response.validAppModes.length > 0) {
-      // A 'full' (szerver admin - ugyvezeto, foertektar, belso_ellenor, irodavezeto)
-      // minden appMode-ba belep (supervisory hozzaferes a penztar/ertektar gepekhez is).
+      // A 'full' szerver/felugyeleti allowlistaja (ugyvezeto, foertektar,
+      // irodavezeto, belso_ellenor, berszamfejto stb.) minden appMode-ba belep.
       const hasFullAccess = response.validAppModes.includes('full')
       if (!hasFullAccess && !response.validAppModes.includes(appMode)) {
         const allowedProgs = response.validAppModes.map((m) => {
