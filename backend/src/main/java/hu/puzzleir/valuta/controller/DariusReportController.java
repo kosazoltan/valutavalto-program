@@ -126,6 +126,17 @@ public class DariusReportController {
     }
 
     private boolean isFailedReport(DariusDailyReportDto report) {
-        return report != null && DariusReportStatus.FAILED.name().equals(report.getStatus());
+        return reportStatus(report) == DariusReportStatus.FAILED;
+    }
+
+    private DariusReportStatus reportStatus(DariusDailyReportDto report) {
+        if (report == null || report.getStatus() == null) {
+            return null;
+        }
+        try {
+            return DariusReportStatus.valueOf(report.getStatus());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 }

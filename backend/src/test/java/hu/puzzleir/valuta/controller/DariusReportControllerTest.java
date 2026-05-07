@@ -65,4 +65,20 @@ class DariusReportControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(response.getBody()).containsExactly(submitted, failed);
     }
+
+    @Test
+    void retryFailedReturnsOkWhenAllReportsSubmitted() {
+        DariusDailyReportDto firstSubmitted = DariusDailyReportDto.builder()
+                .status(DariusReportStatus.SUBMITTED.name())
+                .build();
+        DariusDailyReportDto secondSubmitted = DariusDailyReportDto.builder()
+                .status(DariusReportStatus.ACKNOWLEDGED.name())
+                .build();
+        when(dariusReportService.retryFailedReports()).thenReturn(List.of(firstSubmitted, secondSubmitted));
+
+        ResponseEntity<List<DariusDailyReportDto>> response = controller.retryFailed();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsExactly(firstSubmitted, secondSubmitted);
+    }
 }
