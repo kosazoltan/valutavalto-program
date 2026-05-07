@@ -34,13 +34,14 @@ public class GenericSerialLedDriver implements LedDriverProtocol {
 
     @Override
     public boolean connect(String connectionString) {
-        this.connectionString = connectionString;
         if (!simulatedTransportEnabled) {
             log.warn("LED driver transport nincs bekötve, csatlakozás elutasítva: {}", connectionString);
             this.connected = false;
+            this.connectionString = null;
             return false;
         }
 
+        this.connectionString = connectionString;
         log.info("LED driver csatlakozás: {} (SIMULATED)", connectionString);
         this.connected = true;
         return true;
@@ -48,8 +49,14 @@ public class GenericSerialLedDriver implements LedDriverProtocol {
 
     @Override
     public void disconnect() {
+        if (!connected) {
+            log.debug("LED driver lecsatlakozás kihagyva: nincs aktív kapcsolat");
+            connectionString = null;
+            return;
+        }
         log.info("LED driver lecsatlakozás: {}", connectionString);
         this.connected = false;
+        this.connectionString = null;
     }
 
     @Override
