@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -90,7 +91,8 @@ public class MnbReportController {
     @PostMapping("/{id}/submit")
     public ResponseEntity<MnbSubmissionResult> submitReport(@PathVariable UUID id) {
         MnbSubmissionResult result = mnbReportService.submitReport(id);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.status(result.isSuccess() ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
+            .body(result);
     }
 
     /**
