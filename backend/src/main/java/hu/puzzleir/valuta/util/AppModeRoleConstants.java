@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.entity.WorkerRole;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Sourcery + Copilot PR #361 follow-up #3: a `validAppModes` szamitas + a canonical
@@ -59,20 +60,19 @@ public final class AppModeRoleConstants {
      * </p>
      */
     public static List<String> computeValidAppModes(List<String> roleCodes, WorkerRole workerRoleEnum) {
+        List<String> normalizedRoleCodes = normalizeRoleCodes(roleCodes);
         List<String> validAppModes = new ArrayList<>();
-        if (roleCodes.contains("penztar")) validAppModes.add("penztar");
-        if (roleCodes.contains("ertektar")) validAppModes.add("ertektar");
-        if (roleCodes.contains("ertekszallito")) validAppModes.add("ertekszallito");
-        if (roleCodes.stream()
-                .map(roleCode -> roleCode == null ? "" : roleCode.trim().toLowerCase())
-                .anyMatch(LEGACY_ERTEKSZALLITO_ROLES::contains)
+        if (normalizedRoleCodes.contains("penztar")) validAppModes.add("penztar");
+        if (normalizedRoleCodes.contains("ertektar")) validAppModes.add("ertektar");
+        if (normalizedRoleCodes.contains("ertekszallito")) validAppModes.add("ertekszallito");
+        if (hasAny(normalizedRoleCodes, LEGACY_ERTEKSZALLITO_ROLES)
                 && !validAppModes.contains("ertekszallito")) {
             validAppModes.add("ertekszallito");
         }
-        if (roleCodes.stream().anyMatch(KAMERA_CANONICAL_ROLES::contains)) {
+        if (hasAny(normalizedRoleCodes, KAMERA_CANONICAL_ROLES)) {
             validAppModes.add("kamera");
         }
-        if (roleCodes.stream().anyMatch(SERVER_CANONICAL_ROLES::contains)) {
+        if (hasAny(normalizedRoleCodes, SERVER_CANONICAL_ROLES)) {
             validAppModes.add("full");
         }
         if (workerRoleEnum == WorkerRole.ADMIN && !validAppModes.contains("full")) {
@@ -132,5 +132,28 @@ public final class AppModeRoleConstants {
     private static boolean isServerRole(String normalizedRole) {
         return SERVER_CANONICAL_ROLES.contains(normalizedRole)
                 || LEGACY_SERVER_ROLES.contains(normalizedRole);
+    }
+
+    private static List<String> normalizeRoleCodes(List<String> roleCodes) {
+        if (roleCodes == null || roleCodes.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> normalized = new ArrayList<>();
+        for (String roleCode : roleCodes) {
+            String value = normalizeRoleCode(roleCode);
+            if (!value.isBlank()) {
+                normalized.add(value);
+            }
+        }
+        return normalized;
+    }
+
+    private static String normalizeRoleCode(String roleCode) {
+        return roleCode == null ? "" : roleCode.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static boolean hasAny(List<String> roleCodes, List<String> candidates) {
+        return roleCodes.stream().anyMatch(candidates::contains);
     }
 }
