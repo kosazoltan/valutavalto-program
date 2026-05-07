@@ -50,8 +50,10 @@ vi.mock('../sqlite', () => ({
   saveCachedWorker: vi.fn(),
 }));
 
+import { safeStorage } from 'electron';
 import { selectBootstrapRoleCode, SyncEngine } from '../sync-engine';
 import {
+  deleteConfig,
   getConfig,
   getPendingTransactions,
   getPendingConversions,
@@ -70,6 +72,7 @@ import {
 } from '../sqlite';
 
 const mockedGetConfig = vi.mocked(getConfig);
+const mockedDeleteConfig = vi.mocked(deleteConfig);
 const mockedGetPendingTransactions = vi.mocked(getPendingTransactions);
 const mockedGetPendingConversions = vi.mocked(getPendingConversions);
 const mockedGetPendingBankTransactions = vi.mocked(getPendingBankTransactions);
@@ -108,6 +111,46 @@ describe('selectBootstrapRoleCode', () => {
     });
 
     expect(selected).toBe('CHIEF_VAULT');
+  });
+});
+
+describe('SyncEngine — bootstrap password storage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(safeStorage.isEncryptionAvailable).mockReturnValue(true);
+  });
+
+  it('decrypts bootstrap_password_encrypted when safeStorage is available', () => {
+    const encrypted = Buffer.from('ciphertext').toString('base64');
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'bootstrap_password_encrypted') return encrypted;
+      return null;
+    });
+    vi.mocked(safeStorage.decryptString).mockReturnValue('NewGlobalPass123');
+    const engine = new SyncEngine();
+
+    const password = (engine as unknown as { getStoredBootstrapPassword(): string }).getStoredBootstrapPassword();
+
+    expect(password).toBe('NewGlobalPass123');
+    expect(safeStorage.decryptString).toHaveBeenCalledWith(Buffer.from(encrypted, 'base64'));
+  });
+
+  it('deletes broken encrypted bootstrap password and falls back to plaintext config', () => {
+    const encrypted = Buffer.from('broken').toString('base64');
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'bootstrap_password_encrypted') return encrypted;
+      if (key === 'bootstrap_password') return 'legacy-fallback-pass';
+      return null;
+    });
+    vi.mocked(safeStorage.decryptString).mockImplementation(() => {
+      throw new Error('decrypt failed');
+    });
+    const engine = new SyncEngine();
+
+    const password = (engine as unknown as { getStoredBootstrapPassword(): string }).getStoredBootstrapPassword();
+
+    expect(password).toBe('legacy-fallback-pass');
+    expect(mockedDeleteConfig).toHaveBeenCalledWith('bootstrap_password_encrypted');
   });
 });
 

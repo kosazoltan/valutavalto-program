@@ -171,14 +171,17 @@ public class GoogleLoginService {
             roleSelectionRequired = true;
         }
 
-        if (roleSelectionRequired
-                && !AppModeRoleConstants.hasAnySelectableRoleForAppMode(roleCodes, appMode)) {
-            throw new AuthenticationException("Nincs ebben a programban használható szerepköre.");
+        String appModeValidationError = AppModeRoleConstants.validateLoginRolesForAppMode(
+                roleCodes,
+                activeRole,
+                roleSelectionRequired,
+                appMode);
+        if (appModeValidationError != null) {
+            throw new AuthenticationException(appModeValidationError);
         }
-        if (activeRole != null
-                && !AppModeRoleConstants.isRoleSelectableForAppMode(activeRole, appMode)) {
-            throw new AuthenticationException("Ez a szerepkör nem használható ebben a programban: " + activeRole);
-        }
+        List<String> responseRoleCodes = roleSelectionRequired
+                ? AppModeRoleConstants.selectableRolesForAppMode(roleCodes, appMode)
+                : roleCodes;
 
         // 6. JWT + Session
         String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
@@ -236,7 +239,7 @@ public class GoogleLoginService {
                 .worker(WorkerDto.from(worker))
                 .expiresIn(expiresInMs)
                 .expiresAt(expiresAt.toString())
-                .roles(roleCodes)
+                .roles(responseRoleCodes)
                 .activeRole(activeRole)
                 .permissions(permissions)
                 .roleSelectionRequired(roleSelectionRequired)
