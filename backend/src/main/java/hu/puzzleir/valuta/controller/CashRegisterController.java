@@ -11,6 +11,7 @@ import hu.puzzleir.valuta.service.CashRegisterDeviceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -36,14 +37,14 @@ public class CashRegisterController {
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CashRegisterEventDto> openDay(@RequestParam UUID branchId) {
         branchService.findById(branchId); // IDOR védelem: cég ellenőrzés
-        return ResponseEntity.ok(cashRegisterService.openDay(branchId));
+        return eventResponse(cashRegisterService.openDay(branchId));
     }
 
     @PostMapping("/close")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CashRegisterEventDto> closeDay(@RequestParam UUID branchId) {
         branchService.findById(branchId); // IDOR védelem: cég ellenőrzés
-        return ResponseEntity.ok(cashRegisterService.closeDay(branchId));
+        return eventResponse(cashRegisterService.closeDay(branchId));
     }
 
     @PostMapping("/receipt")
@@ -51,7 +52,7 @@ public class CashRegisterController {
     public ResponseEntity<CashRegisterEventDto> printReceipt(
             @Valid @RequestBody CashRegisterReceiptRequest request) {
         branchService.findById(request.getBranchId()); // IDOR védelem: cég ellenőrzés
-        return ResponseEntity.ok(cashRegisterService.printReceipt(request));
+        return eventResponse(cashRegisterService.printReceipt(request));
     }
 
     @PostMapping("/storno")
@@ -59,14 +60,14 @@ public class CashRegisterController {
     public ResponseEntity<CashRegisterEventDto> printStorno(
             @Valid @RequestBody CashRegisterStornoRequest request) {
         branchService.findById(request.getBranchId()); // IDOR védelem: cég ellenőrzés
-        return ResponseEntity.ok(cashRegisterService.printStorno(request));
+        return eventResponse(cashRegisterService.printStorno(request));
     }
 
     @GetMapping("/x-report/{branchId}")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CashRegisterEventDto> getXReport(@PathVariable UUID branchId) {
         branchService.findById(branchId); // IDOR védelem: cég ellenőrzés
-        return ResponseEntity.ok(cashRegisterService.getXReport(branchId));
+        return eventResponse(cashRegisterService.getXReport(branchId));
     }
 
     @GetMapping("/z-report/{branchId}")
@@ -75,7 +76,7 @@ public class CashRegisterController {
             @PathVariable UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         branchService.findById(branchId);
-        return ResponseEntity.ok(cashRegisterService.generateZReport(branchId, date));
+        return eventResponse(cashRegisterService.generateZReport(branchId, date));
     }
 
     @GetMapping("/receipt-gaps/{branchId}")
@@ -131,5 +132,16 @@ public class CashRegisterController {
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<CashRegisterDeviceDto>> listCashRegisterDevices() {
         return ResponseEntity.ok(cashRegisterDeviceService.listForCurrentCompany());
+    }
+
+    private ResponseEntity<CashRegisterEventDto> eventResponse(CashRegisterEventDto event) {
+        HttpStatus status = hasErrorStatus(event) ? HttpStatus.BAD_GATEWAY : HttpStatus.OK;
+        return ResponseEntity.status(status).body(event);
+    }
+
+    private boolean hasErrorStatus(CashRegisterEventDto event) {
+        return event != null
+                && event.getRawResponse() != null
+                && event.getRawResponse().contains("\"status\":\"ERROR\"");
     }
 }
