@@ -187,14 +187,26 @@ public class AuthController {
         if (worker == null) return ResponseEntity.status(401).build();
 
         // Uj access token generalas (aktiv role + permissions)
-        java.util.List<String> roleCodes = workerRoleService.getRoleCodesForWorker(worker.getId());
+        List<String> roleCodes = workerRoleService.getRoleCodesForWorker(worker.getId());
         String activeRole = oldRefresh.getActiveRole();
-        if (activeRole == null || activeRole.isBlank() || !roleCodes.contains(activeRole)) {
-            activeRole = roleCodes.isEmpty() ? null : roleCodes.get(0);
+        if (activeRole != null && !activeRole.isBlank()) {
+            if (!roleCodes.contains(activeRole)) {
+                refreshTokenService.revoke(oldRefresh);
+                clearRefreshCookie(request, httpResponse);
+                return ResponseEntity.status(401).build();
+            }
+        } else if (roleCodes.size() == 1) {
+            activeRole = roleCodes.get(0);
+        } else if (roleCodes.size() > 1) {
+            refreshTokenService.revoke(oldRefresh);
+            clearRefreshCookie(request, httpResponse);
+            return ResponseEntity.status(401).build();
+        } else {
+            activeRole = null;
         }
-        java.util.List<String> perms = activeRole != null
+        List<String> perms = activeRole != null
             ? workerRoleService.getPermissionCodesForRole(activeRole)
-            : java.util.List.of();
+            : List.of();
         String newAccess = jwtTokenProvider.generateToken(worker, activeRole, perms);
 
         // Token rotation - regi revoke + uj issue

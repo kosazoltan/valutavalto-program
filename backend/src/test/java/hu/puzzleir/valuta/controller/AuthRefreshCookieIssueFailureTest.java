@@ -450,6 +450,81 @@ class AuthRefreshCookieIssueFailureTest {
     }
 
     @Test
+    void refreshCookieRejectsRevokedStoredActiveRole() {
+        AuthController controller = new AuthController(
+                workerService,
+                jwtTokenProvider,
+                workerRepository,
+                workerRoleService,
+                tokenBlacklistService,
+                adminBootstrapService,
+                workerFirstTimeSetupService,
+                passwordResetService,
+                refreshTokenService,
+                clientIpResolver);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setCookies(new jakarta.servlet.http.Cookie("refreshToken", "selector.verifier"));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        Worker worker = worker();
+        RefreshToken oldRefresh = RefreshToken.builder()
+                .workerId(42L)
+                .activeRole("ertektar")
+                .build();
+        when(refreshTokenService.findActiveBySelectorAndVerifier("selector.verifier"))
+                .thenReturn(Optional.of(oldRefresh));
+        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar"));
+
+        var result = controller.refreshCookie(request, response);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getHeader("Set-Cookie"))
+                .contains("refreshToken=")
+                .contains("Max-Age=0");
+        verify(refreshTokenService).revoke(oldRefresh);
+        verify(workerRoleService, never()).getPermissionCodesForRole("ertektar");
+        verify(jwtTokenProvider, never()).generateToken(any(), any(), any());
+        verify(refreshTokenService, never()).rotate(any(), any(), any(), any());
+    }
+
+    @Test
+    void refreshCookieRejectsAmbiguousLegacySessionWithoutActiveRole() {
+        AuthController controller = new AuthController(
+                workerService,
+                jwtTokenProvider,
+                workerRepository,
+                workerRoleService,
+                tokenBlacklistService,
+                adminBootstrapService,
+                workerFirstTimeSetupService,
+                passwordResetService,
+                refreshTokenService,
+                clientIpResolver);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setCookies(new jakarta.servlet.http.Cookie("refreshToken", "selector.verifier"));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        Worker worker = worker();
+        RefreshToken oldRefresh = RefreshToken.builder()
+                .workerId(42L)
+                .activeRole(null)
+                .build();
+        when(refreshTokenService.findActiveBySelectorAndVerifier("selector.verifier"))
+                .thenReturn(Optional.of(oldRefresh));
+        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "ertektar"));
+
+        var result = controller.refreshCookie(request, response);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getHeader("Set-Cookie"))
+                .contains("refreshToken=")
+                .contains("Max-Age=0");
+        verify(refreshTokenService).revoke(oldRefresh);
+        verify(jwtTokenProvider, never()).generateToken(any(), any(), any());
+        verify(refreshTokenService, never()).rotate(any(), any(), any(), any());
+    }
+
+    @Test
     void firstTimeWorkerSetupIssuesRefreshCookieForAutoLogin() {
         AuthController controller = new AuthController(
                 workerService,
