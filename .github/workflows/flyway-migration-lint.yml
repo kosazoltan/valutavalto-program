@@ -1,0 +1,79 @@
+name: Flyway Migration Lint
+
+# F14/F15 fix (2026-05-07 backend audit follow-up):
+#  - F14: out-of-order V<n>_<m>__ style version detection. A V3_5/V3_7/V108_1
+#    formátumokat Flyway "decimal" verzióként értelmezi, és bizonyos
+#    konfigurációkban out-of-order error-t dob. Új migration NEM használhatja
+#    ezt a formátumot.
+#  - F15: már alkalmazott migration fájl módosítását blokkoljuk. Flyway
+#    `validate` checksum-ellenőrzést végez, és bármi változás → outage.
+#    A CI lint script biztosítja hogy a main-on lévő migration-fájlok
+#    NEM változnak hozzáadás nélkül.
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/main/resources/db/migration/**'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/src/main/resources/db/migration/**'
+
+jobs:
+  migration-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history needed for diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: F14 — Reject decimal-style version (V<n>_<m>__)
+        run: |
+          set -e
+          MIGR_DIR="backend/src/main/resources/db/migration"
+          # Find files matching V<digits>_<digits>__
+          DECIMAL_FILES=$(ls "$MIGR_DIR" 2>/dev/null | grep -E '^V[0-9]+_[0-9]+__' || true)
+          if [ -n "$DECIMAL_FILES" ]; then
+            # Allow legacy decimal-style files that already exist on main
+            git fetch origin main --depth=1 2>/dev/null || true
+            ALLOWED=$(git ls-tree --name-only origin/main "$MIGR_DIR" 2>/dev/null | grep -E '^V[0-9]+_[0-9]+__' || true)
+            NEW_DECIMAL=$(comm -23 <(echo "$DECIMAL_FILES" | sort) <(echo "$ALLOWED" | sed "s|$MIGR_DIR/||" | sort) || echo "$DECIMAL_FILES")
+            if [ -n "$NEW_DECIMAL" ]; then
+              echo "::error::F14 — New migration uses decimal-style version (V<n>_<m>__). Use V<integer>__ only:"
+              echo "$NEW_DECIMAL"
+              exit 1
+            else
+              echo "Existing decimal-style files (allowed legacy):"
+              echo "$DECIMAL_FILES"
+            fi
+          fi
+          echo "F14 lint OK."
+
+      - name: F15 — Reject modification of already-merged migration files
+        if: github.event_name == 'pull_request'
+        run: |
+          set -e
+          MIGR_DIR="backend/src/main/resources/db/migration"
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          # Files modified (NOT added) under migration dir
+          MODIFIED=$(git diff --name-only --diff-filter=M "$BASE_SHA" -- "$MIGR_DIR")
+          if [ -n "$MODIFIED" ]; then
+            echo "::error::F15 — Already-merged migration file MODIFIED. Flyway checksum mismatch will cause production outage on next deploy. Create a new V<n+1>__ instead."
+            echo "Modified files:"
+            echo "$MODIFIED"
+            exit 1
+          fi
+          echo "F15 lint OK — only additions in $MIGR_DIR."
+
+      - name: F14b — Detect duplicate version prefixes
+        run: |
+          set -e
+          MIGR_DIR="backend/src/main/resources/db/migration"
+          DUPS=$(ls "$MIGR_DIR" 2>/dev/null | awk -F'__' '{print $1}' | sort | uniq -c | awk '$1 > 1 {print $2}')
+          if [ -n "$DUPS" ]; then
+            echo "::error::Duplicate Flyway version prefix found (Flyway will refuse to apply):"
+            echo "$DUPS"
+            exit 1
+          fi
+          echo "No duplicate versions."

@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -97,19 +98,23 @@ public class JwtTokenProvider {
     }
     
     /**
-     * Token létrehozás
+     * Token létrehozás.
+     *
+     * <p>F12 fix (2026-05-07): java.util.Date helyett java.time.Instant.
+     * A JJWT 0.12+ API a `java.util.Date`-et várja az issuedAt/expiration metódusokhoz,
+     * ezért az `Instant` adapter `Date.from(...)`-t használunk a határfelületen.</p>
      */
     private String createToken(Map<String, Object> claims, String subject) {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + expiration);
-        
+        Instant now = Instant.now();
+        Instant expiryAt = now.plusMillis(expiration);
+
         SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
-        
+
         return Jwts.builder()
                 .claims(claims)
                 .subject(subject)
-                .issuedAt(now)
-                .expiration(expiryDate)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiryAt))
                 .signWith(key)
                 .compact();
     }
@@ -205,11 +210,15 @@ public class JwtTokenProvider {
     }
     
     /**
-     * Token lejárati idő ellenőrzés
+     * Token lejárati idő ellenőrzés.
+     *
+     * <p>F12 fix (2026-05-07): java.time.Instant alapú összehasonlítás.
+     * A JJWT 0.12 továbbra is `Date`-et ad vissza, de azt azonnal
+     * `Instant`-ra konvertáljuk az időaritmetikához.</p>
      */
     public boolean isTokenExpired(String token) {
-        Date expiration = getClaims(token).getExpiration();
-        return expiration.before(new Date());
+        Instant expirationInstant = getClaims(token).getExpiration().toInstant();
+        return expirationInstant.isBefore(Instant.now());
     }
 
     /**

@@ -39,11 +39,25 @@ public class ConfigExportService {
 
     /**
      * Fiók konfigurációjának exportálása.
+     *
+     * <p>F3 fix (2026-05-07): cross-tenant védelem. A hívó admin csak a saját
+     * cégének branch-jét tudja exportálni. Más cég branch-jének exportálása
+     * SecurityException-t dob.</p>
      */
     @Transactional(readOnly = true)
     public ConfigBundleDto exportConfig(UUID branchId) {
         Branch branch = branchRepository.findById(branchId)
             .orElseThrow(() -> new ResourceNotFoundException("Fiók nem található: " + branchId));
+
+        // F3 cross-tenant guard: csak a saját cég branch-je exportálható
+        UUID callerCompanyId = SecurityUtils.getCurrentCompanyIdOrNull();
+        UUID branchCompanyId = branch.getCompany() != null ? branch.getCompany().getId() : null;
+        if (callerCompanyId == null || branchCompanyId == null
+                || !callerCompanyId.equals(branchCompanyId)) {
+            log.warn("[CONFIG_EXPORT] cross-tenant denied — caller company {} requested branch {} (company {})",
+                    callerCompanyId, branchId, branchCompanyId);
+            throw new SecurityException("Cross-tenant export tiltott — más cég branch-je NEM exportálható");
+        }
 
         log.info("Konfiguráció export: branchId={}, branchCode={}", branchId, branch.getCode());
 
