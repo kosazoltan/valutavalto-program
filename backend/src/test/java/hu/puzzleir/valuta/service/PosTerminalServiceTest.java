@@ -52,6 +52,49 @@ class PosTerminalServiceTest {
         service = new PosTerminalService(repository, systemParameterService, otpProtocol,
                 properties, fileTransportService);
         ReflectionTestUtils.setField(service, "bridgeSimulatedApprovalEnabled", false);
+        ReflectionTestUtils.setField(service, "mockApprovalEnabled", false);
+    }
+
+    @Test
+    void mockPaymentFailsClosedByDefault() {
+        PosTerminal terminal = activeTerminal("TERM-MOCK", "MOCK");
+        when(repository.findByTerminalId("TERM-MOCK")).thenReturn(Optional.of(terminal));
+
+        PosTransactionResult result = service.initiatePayment(
+                new BigDecimal("12500"), "HUF", "TERM-MOCK");
+
+        assertThat(result.approved()).isFalse();
+        assertThat(result.status()).isEqualTo(PosResultStatus.ERROR);
+        assertThat(result.errorMessage()).contains("MOCK POS jóváhagyás tiltva");
+        assertThat(terminal.getLastTransactionAt()).isNull();
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void mockStatusIsOfflineWhenMockApprovalIsDisabled() {
+        when(repository.findByTerminalId("TERM-MOCK"))
+                .thenReturn(Optional.of(activeTerminal("TERM-MOCK", "MOCK")));
+
+        TerminalStatus status = service.getStatus("TERM-MOCK");
+
+        assertThat(status.active()).isTrue();
+        assertThat(status.reachable()).isFalse();
+        assertThat(status.statusMessage()).contains("MOCK POS mód tiltva");
+    }
+
+    @Test
+    void mockReversalAndDailyCloseFailClosedByDefault() {
+        PosTerminal terminal = activeTerminal("TERM-MOCK", "MOCK");
+        when(repository.findByTerminalId("TERM-MOCK")).thenReturn(Optional.of(terminal));
+
+        PosTransactionResult reversal = service.initiateReversal("ORIGINAL-REF", "TERM-MOCK");
+        PosClosingResult close = service.dailyClose("TERM-MOCK");
+
+        assertThat(reversal.approved()).isFalse();
+        assertThat(reversal.errorMessage()).contains("MOCK POS jóváhagyás tiltva");
+        assertThat(close.success()).isFalse();
+        assertThat(close.errorMessage()).contains("MOCK POS jóváhagyás tiltva");
+        verify(repository, never()).save(any());
     }
 
     @Test
@@ -118,6 +161,21 @@ class PosTerminalServiceTest {
 
         PosTransactionResult result = service.initiatePayment(
                 new BigDecimal("12500"), "HUF", "TERM-BORGUN");
+
+        assertThat(result.approved()).isTrue();
+        assertThat(result.status()).isEqualTo(PosResultStatus.APPROVED);
+        assertThat(terminal.getLastTransactionAt()).isNotNull();
+        verify(repository).save(terminal);
+    }
+
+    @Test
+    void mockPaymentCanBeExplicitlyEnabledForIsolatedTests() {
+        ReflectionTestUtils.setField(service, "mockApprovalEnabled", true);
+        PosTerminal terminal = activeTerminal("TERM-MOCK", "MOCK");
+        when(repository.findByTerminalId("TERM-MOCK")).thenReturn(Optional.of(terminal));
+
+        PosTransactionResult result = service.initiatePayment(
+                new BigDecimal("12500"), "HUF", "TERM-MOCK");
 
         assertThat(result.approved()).isTrue();
         assertThat(result.status()).isEqualTo(PosResultStatus.APPROVED);

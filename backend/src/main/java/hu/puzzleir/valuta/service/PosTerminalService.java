@@ -42,12 +42,15 @@ public class PosTerminalService {
     @Value("${pos.terminal.bridge.simulated-approval-enabled:false}")
     private boolean bridgeSimulatedApprovalEnabled;
 
+    @Value("${pos.terminal.mock-approval-enabled:false}")
+    private boolean mockApprovalEnabled;
+
     @jakarta.annotation.PostConstruct
     void warnBridgeDrivers() {
         log.warn("POS TERMINÁL: Borgun és Worldline driverek BRIDGE MÓDBAN futnak — "
                 + "file-artifact alapú, nem valódi terminál kommunikáció. "
-                + "OTP driver TCP/IP alapú, az működik. Szimulált jóváhagyás engedélyezve={}",
-                bridgeSimulatedApprovalEnabled);
+                + "OTP driver TCP/IP alapú, az működik. Bridge szimulált jóváhagyás={}, MOCK jóváhagyás={}",
+                bridgeSimulatedApprovalEnabled, mockApprovalEnabled);
     }
 
     /**
@@ -238,6 +241,10 @@ public class PosTerminalService {
 
         TerminalType mode = resolveTerminalType(terminal);
         if (mode == TerminalType.MOCK) {
+            if (!mockApprovalEnabled) {
+                return TerminalStatus.offline(terminalId, terminal.getTerminalName(), terminal.getTerminalType(),
+                    "MOCK POS mód tiltva");
+            }
             return TerminalStatus.online(terminalId, terminal.getTerminalName(),
                     terminal.getTerminalType(), terminal.getLastTransactionAt());
         }
@@ -317,6 +324,10 @@ public class PosTerminalService {
     // ============ MOCK IMPLEMENTÁCIÓ (dev/test) ============
 
     private PosTransactionResult executeMockPayment(BigDecimal amount, String currency, String terminalId) {
+        if (!mockApprovalEnabled) {
+            log.warn("MOCK POS fizetés tiltva: terminalId={}", terminalId);
+            return PosTransactionResult.error("MOCK POS jóváhagyás tiltva");
+        }
         String authCode = "MOCK-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
         String refNumber = "REF-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         log.debug("MOCK POS fizetés: {} {} → APPROVED (auth={}, ref={})", amount, currency, authCode, refNumber);
@@ -324,6 +335,10 @@ public class PosTerminalService {
     }
 
     private PosTransactionResult executeMockReversal(String originalRef, String terminalId) {
+        if (!mockApprovalEnabled) {
+            log.warn("MOCK POS sztornó tiltva: terminalId={}", terminalId);
+            return PosTransactionResult.error("MOCK POS jóváhagyás tiltva");
+        }
         String authCode = "MOCK-S-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
         String refNumber = "REF-S-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         log.debug("MOCK POS sztornó: eredeti ref={} → APPROVED (auth={}, ref={})", originalRef, authCode, refNumber);
@@ -331,6 +346,10 @@ public class PosTerminalService {
     }
 
     private PosClosingResult executeMockDailyClose(String terminalId) {
+        if (!mockApprovalEnabled) {
+            log.warn("MOCK POS napi zárás tiltva: terminalId={}", terminalId);
+            return PosClosingResult.failure("MOCK POS jóváhagyás tiltva");
+        }
         log.debug("MOCK POS napi zárás: terminál={} → SUCCESS", terminalId);
         return PosClosingResult.success(0, BigDecimal.ZERO);
     }
