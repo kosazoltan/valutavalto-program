@@ -396,11 +396,12 @@ class AuthRefreshCookieIssueFailureTest {
                 hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto.builder()
                         .success(true)
                         .workerId(42L)
+                        .activeRole("penztar")
                         .token("access-token")
                         .build();
         when(workerFirstTimeSetupService.setupWorkerPassword(requestDto)).thenReturn(setupResponse);
         when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
-        when(refreshTokenService.issue(worker, request))
+        when(refreshTokenService.issue(worker, request, "penztar"))
                 .thenReturn(new RefreshTokenService.IssuedToken("selector.verifier", "hash", Instant.now()));
 
         org.springframework.http.ResponseEntity<hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto> result =
@@ -432,10 +433,11 @@ class AuthRefreshCookieIssueFailureTest {
                 .thenReturn(hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto.builder()
                         .success(true)
                         .workerId(42L)
+                        .activeRole("penztar")
                         .token("access-token")
                         .build());
         when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
-        when(refreshTokenService.issue(worker, request)).thenThrow(new IllegalStateException("database unavailable"));
+        when(refreshTokenService.issue(worker, request, "penztar")).thenThrow(new IllegalStateException("database unavailable"));
 
         assertThatThrownBy(() -> controller.firstTimeWorkerSetup(requestDto, request, response))
                 .isInstanceOfSatisfying(BusinessException.class, ex -> {

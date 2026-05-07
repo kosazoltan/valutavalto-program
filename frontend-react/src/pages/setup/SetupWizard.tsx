@@ -368,6 +368,7 @@ export default function SetupWizard() {
             workerCode: selectedWorkerCode,
             newPassword: adminPassword,
             currentPassword: bootstrapPassword || undefined,
+            appMode: appModeChoice,
           }),
         })
         if (!setupResp.ok) {

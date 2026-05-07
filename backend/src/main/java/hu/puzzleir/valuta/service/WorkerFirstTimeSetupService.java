@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
+import hu.puzzleir.valuta.util.AppModeRoleConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Worker first-time password setup service.
@@ -44,6 +46,7 @@ public class WorkerFirstTimeSetupService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AdminBootstrapService adminBootstrapService;
+    private final WorkerRoleService workerRoleService;
 
     /**
      * Worker elso jelszavanak beallitasa / reset.
@@ -73,6 +76,12 @@ public class WorkerFirstTimeSetupService {
                     "Ez a dolgozoi fiok inaktiv. Vedd fel a kapcsolatot az adminisztratorral."
             );
         }
+
+        List<String> roleCodes = workerRoleService.getRoleCodesForWorker(worker.getId());
+        String activeRole = resolveActiveRoleForSetup(roleCodes, dto.getAppMode());
+        List<String> permissions = activeRole == null
+                ? List.of()
+                : workerRoleService.getPermissionCodesForRole(activeRole);
 
         // 3) Biztonsagi ellenorzes:
         //    A permitAll setup endpoint az elso telepiteshez kell. Miutan a
@@ -129,7 +138,9 @@ public class WorkerFirstTimeSetupService {
                 saved.getId(), company.getCode(), saved.getCode(), saved.getRole());
 
         // 5) JWT token generalasa auto-login-hoz
-        String token = jwtTokenProvider.generateToken(saved);
+        String token = activeRole == null
+                ? jwtTokenProvider.generateToken(saved)
+                : jwtTokenProvider.generateToken(saved, activeRole, permissions);
         long expiresAt = System.currentTimeMillis() + 86400000L; // 24 ora
 
         return WorkerFirstTimeSetupResponseDto.builder()
@@ -141,6 +152,8 @@ public class WorkerFirstTimeSetupService {
                 .workerCode(saved.getCode())
                 .workerName(saved.getName())
                 .workerRole(saved.getRole() != null ? saved.getRole().name() : null)
+                .activeRole(activeRole)
+                .roles(roleCodes)
                 .branchCode(saved.getBranch() != null ? saved.getBranch().getCode() : null)
                 .branchName(saved.getBranch() != null ? saved.getBranch().getName() : null)
                 .token(token)
@@ -150,5 +163,35 @@ public class WorkerFirstTimeSetupService {
 
     private static String normalize(String value) {
         return value == null ? "" : value.trim().toUpperCase();
+    }
+
+    private static String resolveActiveRoleForSetup(List<String> roleCodes, String appMode) {
+        if (roleCodes == null || roleCodes.isEmpty()) {
+            return null;
+        }
+        if (appMode != null && !appMode.isBlank()) {
+            String preferredRole = switch (appMode.trim().toLowerCase()) {
+                case "ertektar" -> "ertektar";
+                case "ertekszallito" -> "ertekszallito";
+                case "penztar" -> "penztar";
+                default -> null;
+            };
+            if (preferredRole != null) {
+                String exact = roleCodes.stream()
+                        .filter(roleCode -> roleCode != null
+                                && preferredRole.equals(roleCode.trim().toLowerCase()))
+                        .findFirst()
+                        .orElse(null);
+                if (exact != null) {
+                    return exact;
+                }
+            }
+            return roleCodes.stream()
+                    .filter(roleCode -> AppModeRoleConstants.isRoleSelectableForAppMode(roleCode, appMode))
+                    .findFirst()
+                    .orElseThrow(() -> new ValidationException(
+                            "Nincs ebben a programban használható szerepköre."));
+        }
+        return roleCodes.size() == 1 ? roleCodes.get(0) : null;
     }
 }

@@ -705,6 +705,7 @@ export async function workerFirstTimeSetup(
     workerCode: string;
     newPassword: string;
     currentPassword?: string;
+    appMode?: SetupSavePayload['appMode'];
   },
   timeoutMs = 15000,
 ): Promise<{
@@ -1033,6 +1034,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
         workerCode: setupWorkerCode,
         newPassword: payload.adminPassword,
         currentPassword: payload.bootstrapPassword?.trim() || undefined,
+        appMode: payload.appMode,
       });
       if (!workerSetup.success) {
         const bootstrapCompleted = await getBootstrapCompleted(resolvedApiUrl);

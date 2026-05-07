@@ -48,4 +48,18 @@ public class WorkerFirstTimeSetupRequestDto {
      */
     @Size(max = 128, message = "A jelszo max 128 karakter")
     private String currentPassword;
+
+    @Size(max = 32, message = "Az appMode max 32 karakter lehet")
+    private String appMode;
+
+    public WorkerFirstTimeSetupRequestDto(
+            String companyCode,
+            String workerCode,
+            String newPassword,
+            String currentPassword) {
+        this.companyCode = companyCode;
+        this.workerCode = workerCode;
+        this.newPassword = newPassword;
+        this.currentPassword = currentPassword;
+    }
 }

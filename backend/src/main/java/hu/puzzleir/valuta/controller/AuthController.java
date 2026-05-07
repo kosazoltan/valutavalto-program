@@ -473,7 +473,7 @@ public class AuthController {
                     "LOGIN_SESSION_ISSUE_FAILED",
                     HttpStatus.SERVICE_UNAVAILABLE));
         try {
-            RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, request);
+            RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, request, response.getActiveRole());
             ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
                 .httpOnly(true)
                 .secure(request.isSecure())

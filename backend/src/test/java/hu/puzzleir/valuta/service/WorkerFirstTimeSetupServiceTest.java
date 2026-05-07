@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -39,6 +40,7 @@ class WorkerFirstTimeSetupServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtTokenProvider jwtTokenProvider;
     @Mock private AdminBootstrapService adminBootstrapService;
+    @Mock private WorkerRoleService workerRoleService;
 
     @InjectMocks private WorkerFirstTimeSetupService service;
 
@@ -100,6 +102,51 @@ class WorkerFirstTimeSetupServiceTest {
         verify(workerRepository).save(saved.capture());
         assertThat(saved.getValue().getPasswordHash()).isEqualTo("$2b$10$new");
         assertThat(saved.getValue().getPasswordChangedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("AppMode megadasakor az auto-login token es valasz a megfelelo aktiv role-t kapja")
+    void issuesAppModeActiveRoleTokenAfterPasswordSetup() {
+        Worker worker = seedWorker("$2b$10$seed");
+        WorkerFirstTimeSetupRequestDto dto = request("1234");
+        dto.setAppMode("ertektar");
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of("penztar", "ertektar"));
+        when(workerRoleService.getPermissionCodesForRole("ertektar")).thenReturn(List.of("VAULT_READ"));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
+        when(passwordEncoder.matches("1234", "$2b$10$seed")).thenReturn(true);
+        when(passwordEncoder.encode("UjGlobalisJelszo123!")).thenReturn("$2b$10$new");
+        when(workerRepository.save(any(Worker.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(jwtTokenProvider.generateToken(any(Worker.class), org.mockito.ArgumentMatchers.eq("ertektar"), org.mockito.ArgumentMatchers.eq(List.of("VAULT_READ"))))
+                .thenReturn("jwt-ertektar");
+
+        WorkerFirstTimeSetupResponseDto response = service.setupWorkerPassword(dto);
+
+        assertThat(response.getToken()).isEqualTo("jwt-ertektar");
+        assertThat(response.getActiveRole()).isEqualTo("ertektar");
+        assertThat(response.getRoles()).containsExactly("penztar", "ertektar");
+    }
+
+    @Test
+    @DisplayName("Masik lokalis appMode-hoz tartozo role eseten nem ir uj jelszohash-t")
+    void rejectsSetupWhenNoRoleMatchesAppMode() {
+        Worker worker = seedWorker("$2b$10$seed");
+        WorkerFirstTimeSetupRequestDto dto = request("1234");
+        dto.setAppMode("penztar");
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of("ertektar"));
+
+        assertThatThrownBy(() -> service.setupWorkerPassword(dto))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("használható");
+
+        verify(passwordEncoder, never()).encode(any());
+        verify(workerRepository, never()).save(any(Worker.class));
+        verify(jwtTokenProvider, never()).generateToken(any(Worker.class));
     }
 
     @Test

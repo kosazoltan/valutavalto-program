@@ -23,6 +23,8 @@ public class WorkerFirstTimeSetupResponseDto {
     private String workerCode;
     private String workerName;
     private String workerRole;
+    private String activeRole;
+    private java.util.List<String> roles;
     private String branchCode;
     private String branchName;
     /**
