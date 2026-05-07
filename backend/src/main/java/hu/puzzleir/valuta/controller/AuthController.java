@@ -394,8 +394,33 @@ public class AuthController {
      */
     @PostMapping("/first-time-worker-setup")
     public ResponseEntity<WorkerFirstTimeSetupResponseDto> firstTimeWorkerSetup(
-            @Valid @RequestBody WorkerFirstTimeSetupRequestDto dto) {
+            @Valid @RequestBody WorkerFirstTimeSetupRequestDto dto,
+            HttpServletRequest request,
+            HttpServletResponse httpResponse) {
         WorkerFirstTimeSetupResponseDto response = workerFirstTimeSetupService.setupWorkerPassword(dto);
+        Worker worker = workerRepository.findById(response.getWorkerId())
+            .orElseThrow(() -> new BusinessException(
+                    "Telepítés utáni belépés nem véglegesíthető: a dolgozó rekord nem található.",
+                    "LOGIN_SESSION_ISSUE_FAILED",
+                    HttpStatus.SERVICE_UNAVAILABLE));
+        try {
+            RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, request);
+            ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
+                .httpOnly(true)
+                .secure(request.isSecure())
+                .sameSite("Strict")
+                .path("/api/v1/auth")
+                .maxAge(Duration.ofDays(7))
+                .build();
+            httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(AuthController.class)
+                .error("HttpOnly refresh cookie kiadas bukott first-time setup utan: {}", e.getMessage(), e);
+            throw new BusinessException(
+                    "Telepítés utáni belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.",
+                    "LOGIN_SESSION_ISSUE_FAILED",
+                    HttpStatus.SERVICE_UNAVAILABLE);
+        }
         return ResponseEntity.ok(response);
     }
 

@@ -22,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import java.time.Instant;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -89,6 +90,77 @@ class AuthRefreshCookieIssueFailureTest {
         when(refreshTokenService.issue(worker, request)).thenThrow(new IllegalStateException("database unavailable"));
 
         assertThatThrownBy(() -> controller.googleLogin(requestDto, request, response))
+                .isInstanceOfSatisfying(BusinessException.class, ex -> {
+                    BusinessException businessException = (BusinessException) ex;
+                    assertThat(businessException.getErrorCode()).isEqualTo("LOGIN_SESSION_ISSUE_FAILED");
+                    assertThat(businessException.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+                });
+    }
+
+    @Test
+    void firstTimeWorkerSetupIssuesRefreshCookieForAutoLogin() {
+        AuthController controller = new AuthController(
+                workerService,
+                jwtTokenProvider,
+                workerRepository,
+                workerRoleService,
+                tokenBlacklistService,
+                adminBootstrapService,
+                workerFirstTimeSetupService,
+                passwordResetService,
+                refreshTokenService,
+                clientIpResolver);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        Worker worker = worker();
+        hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupRequestDto requestDto =
+                new hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupRequestDto();
+        hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto setupResponse =
+                hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto.builder()
+                        .success(true)
+                        .workerId(42L)
+                        .token("access-token")
+                        .build();
+        when(workerFirstTimeSetupService.setupWorkerPassword(requestDto)).thenReturn(setupResponse);
+        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(refreshTokenService.issue(worker, request))
+                .thenReturn(new RefreshTokenService.IssuedToken("selector.verifier", "hash", Instant.now()));
+
+        org.springframework.http.ResponseEntity<hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto> result =
+                controller.firstTimeWorkerSetup(requestDto, request, response);
+
+        assertThat(result.getBody()).isSameAs(setupResponse);
+        assertThat(response.getHeader("Set-Cookie")).contains("refreshToken=selector.verifier");
+    }
+
+    @Test
+    void firstTimeWorkerSetupFailsWhenRefreshCookieCannotBeIssued() {
+        AuthController controller = new AuthController(
+                workerService,
+                jwtTokenProvider,
+                workerRepository,
+                workerRoleService,
+                tokenBlacklistService,
+                adminBootstrapService,
+                workerFirstTimeSetupService,
+                passwordResetService,
+                refreshTokenService,
+                clientIpResolver);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        Worker worker = worker();
+        hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupRequestDto requestDto =
+                new hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupRequestDto();
+        when(workerFirstTimeSetupService.setupWorkerPassword(requestDto))
+                .thenReturn(hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto.builder()
+                        .success(true)
+                        .workerId(42L)
+                        .token("access-token")
+                        .build());
+        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(refreshTokenService.issue(worker, request)).thenThrow(new IllegalStateException("database unavailable"));
+
+        assertThatThrownBy(() -> controller.firstTimeWorkerSetup(requestDto, request, response))
                 .isInstanceOfSatisfying(BusinessException.class, ex -> {
                     BusinessException businessException = (BusinessException) ex;
                     assertThat(businessException.getErrorCode()).isEqualTo("LOGIN_SESSION_ISSUE_FAILED");
