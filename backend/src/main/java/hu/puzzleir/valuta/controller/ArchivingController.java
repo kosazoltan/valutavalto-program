@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.entity.ArchiveTask;
+import hu.puzzleir.valuta.entity.ArchiveTaskStatus;
 import hu.puzzleir.valuta.entity.ArchivedTransaction;
 import hu.puzzleir.valuta.service.ArchivingService;
 import hu.puzzleir.valuta.service.MonthlyArchiveService;
@@ -52,7 +53,11 @@ public class ArchivingController {
      */
     @PostMapping("/tasks/{id}/execute")
     public ResponseEntity<ArchiveTask> executeTask(@PathVariable UUID id) {
-        return ResponseEntity.ok(archivingService.executeTask(id));
+        ArchiveTask task = archivingService.executeTask(id);
+        HttpStatus status = task.getStatus() == ArchiveTaskStatus.COMPLETED
+                ? HttpStatus.OK
+                : HttpStatus.SERVICE_UNAVAILABLE;
+        return ResponseEntity.status(status).body(task);
     }
 
     // ============ HAVI ARCHIVÁLÁS (MonthlyArchiveService) ============
