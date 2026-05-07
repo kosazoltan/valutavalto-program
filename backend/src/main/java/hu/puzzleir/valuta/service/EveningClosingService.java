@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +59,9 @@ public class EveningClosingService {
     private final SystemParameterService systemParameterService;
     private final IntegrationTransportProperties integrationTransportProperties;
     private final FileTransportService fileTransportService;
+
+    @Value("${evening.closing.artifact-success-enabled:false}")
+    private boolean artifactSuccessEnabled;
 
     /** Maximum küldési próbálkozás */
     private static final int MAX_SEND_ATTEMPTS = 3;
@@ -170,6 +174,17 @@ public class EveningClosingService {
                                 pkg.getTransactions() != null ? pkg.getTransactions().size() : 0,
                                 pkg.getChecksum(),
                                 artifact);
+
+                    if (!artifactSuccessEnabled) {
+                        syncLog.setStatus("ARTIFACT_PENDING");
+                        syncLog.setPackageChecksum(pkg.getChecksum());
+                        syncLog.setCompletedAt(LocalDateTime.now());
+                        syncLog.setErrorMessage("HQ_URL_MISSING_ARTIFACT=" + artifact);
+                        eveningSyncLogRepository.save(syncLog);
+                        return DataSyncResult.failure(
+                                "HQ URL nincs konfigurálva; adatcsomag artifactba mentve: " + artifact,
+                                attempt);
+                    }
 
                     syncLog.setStatus("EVENING_SYNC_DONE");
                     syncLog.setPackageChecksum(pkg.getChecksum());

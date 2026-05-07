@@ -13,8 +13,10 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -249,7 +251,55 @@ class EveningClosingServiceTest {
         assertThat(method.isAnnotationPresent(Deprecated.class)).isTrue();
     }
 
+    @Test
+    @DisplayName("HQ URL hiányában artifact készül, de nem sikeres központi szinkron")
+    void sendToHeadquarters_missingUrlFailsClosedByDefault() throws Exception {
+        stubArtifactSync();
+
+        DataSyncResult result = service.sendToHeadquarters(emptyPackage());
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("HQ URL nincs konfigurálva");
+        assertThat(result.getAttemptCount()).isEqualTo(1);
+        verify(fileTransportService).writeJson(anyString(), eq("evening_daily_report"), any());
+    }
+
+    @Test
+    @DisplayName("HQ URL nélküli artifact csak explicit bridge-success kapcsolóval lehet sikeres")
+    void sendToHeadquarters_missingUrlCanBeExplicitlyMarkedSuccessfulForTests() throws Exception {
+        stubArtifactSync();
+        ReflectionTestUtils.setField(service, "artifactSuccessEnabled", true);
+
+        DataSyncResult result = service.sendToHeadquarters(emptyPackage());
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getChecksum()).isEqualTo("checksum-123");
+        verify(fileTransportService).writeJson(anyString(), eq("evening_daily_report"), any());
+    }
+
     // ============ HELPER METÓDUSOK ============
+
+    private DailyDataPackage emptyPackage() {
+        return DailyDataPackage.builder()
+                .branchId(123L)
+                .date(DATE)
+                .transactions(Collections.emptyList())
+                .checksum("checksum-123")
+                .build();
+    }
+
+    private void stubArtifactSync() throws Exception {
+        IntegrationTransportProperties.Sync sync = new IntegrationTransportProperties.Sync();
+        sync.setDir("branch-sync");
+        when(integrationTransportProperties.getSync()).thenReturn(sync);
+        when(systemParameterService.getValue("evening.closing.headquarters.url")).thenReturn("");
+        when(eveningSyncLogRepository.findByBranchIdAndSyncDate(any(), any())).thenReturn(Optional.empty());
+        when(eveningSyncLogRepository.save(any(EveningSyncLog.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(fileTransportService.sanitizePathSegment(anyString(), anyString()))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(fileTransportService.writeJson(anyString(), eq("evening_daily_report"), any()))
+                .thenReturn(Path.of("C:/tmp/evening_daily_report.json"));
+    }
 
     private Transaction buildTransaction(String customerId, String customerName, String docNumber) {
         Currency eur = Currency.builder().code("EUR").build();
