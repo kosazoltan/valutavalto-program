@@ -45,6 +45,13 @@ export function isBranchSelectableForAppMode(
   return true
 }
 
+export function filterBranchesForAppMode(
+  branches: Branch[],
+  appMode: 'penztar' | 'ertektar',
+): Branch[] {
+  return branches.filter((branch) => isBranchSelectableForAppMode(branch, appMode))
+}
+
 export function resolveSelectedWorkerForSetup(params: {
   offlineMode: boolean
   workerCode: string
@@ -162,7 +169,7 @@ export default function SetupWizard() {
   // engedjük kiválasztani — különben a felhasználó tévedésből pénztárt
   // választhatna értéktárhoz, és a területi szűrés is rosszul mutatna.
   const filteredBranches = useMemo(() => {
-    let list = branches.filter((branch) => isBranchSelectableForAppMode(branch, appModeChoice))
+    let list = filterBranchesForAppMode(branches, appModeChoice)
     const q = branchSearch.trim().toLowerCase()
     if (!q) return list
     return list.filter((b) =>
