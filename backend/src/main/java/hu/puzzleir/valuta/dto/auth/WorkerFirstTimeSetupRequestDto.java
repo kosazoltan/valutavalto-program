@@ -42,11 +42,24 @@ public class WorkerFirstTimeSetupRequestDto {
     private String newPassword;
 
     /**
-     * Opcionalis: a V111 seed jelszo (pl. "1234"). Ha a workerhez mar ki
-     * volt allitva jelszo (passwordChangedAt != null), akkor ez kotelezo
-     * a jelszovaltashoz. Ha a worker meg soha nem hasznalt jelszot
-     * (passwordChangedAt == null), akkor ez elhagyhato.
+     * A jelenlegi vagy kezdo worker jelszo. Lezart bootstrap utan kotelezo,
+     * ha a workerhez mar tartozik hash; csak a friss elso telepites engedi
+     * elhagyni.
      */
     @Size(max = 128, message = "A jelszo max 128 karakter")
     private String currentPassword;
+
+    @Size(max = 32, message = "Az appMode max 32 karakter lehet")
+    private String appMode;
+
+    public WorkerFirstTimeSetupRequestDto(
+            String companyCode,
+            String workerCode,
+            String newPassword,
+            String currentPassword) {
+        this.companyCode = companyCode;
+        this.workerCode = workerCode;
+        this.newPassword = newPassword;
+        this.currentPassword = currentPassword;
+    }
 }

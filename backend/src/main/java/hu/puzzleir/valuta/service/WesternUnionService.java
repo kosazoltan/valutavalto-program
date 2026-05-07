@@ -1,6 +1,8 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.dto.wu.WuDailyLimitDto;
 import hu.puzzleir.valuta.entity.WuTransactionStatus;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -13,6 +15,7 @@ import hu.puzzleir.valuta.entity.WuCustomer;
 import hu.puzzleir.valuta.entity.WuTransaction;
 import hu.puzzleir.valuta.repository.WuBalanceRepository;
 import hu.puzzleir.valuta.repository.WuCustomerRepository;
+import hu.puzzleir.valuta.repository.WuDailyLimitRepository;
 import hu.puzzleir.valuta.repository.WuTransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +49,10 @@ public class WesternUnionService {
     private final BranchRepository branchRepository;
     private final CompanyRepository companyRepository;
     private final AmlService amlService;
+    private final WuDailyLimitRepository wuDailyLimitRepository;
+
+    private static final String WU_LIMIT_CURRENCY = "USD";
+    private static final BigDecimal DEFAULT_WU_DAILY_LIMIT_USD = new BigDecimal("10000.00");
 
     // ============ MTCN VALIDATION ============
 
@@ -125,6 +132,7 @@ public class WesternUnionService {
         validateMtcn(dto.getMtcn());
         Branch branch = findBranch(dto.getBranchId());
         performAmlCheck(dto.getSenderName(), null, dto.getAmountHuf(), dto.getAmountUsd(), dto.getExchangeRate());
+        consumeDailyLimit(branch, dto.getAmountUsd(), dto.getTransactionDate());
 
         WuTransaction tx = WuTransaction.builder()
                 .branch(branch)
@@ -159,7 +167,7 @@ public class WesternUnionService {
         updateBalance(branch, dto.getAmountUsd(), dto.getAmountHuf(), true);
 
         log.info("WU SEND recorded: MTCN={}, amount={} USD, branch={}",
-                dto.getMtcn(), dto.getAmountUsd(), dto.getBranchId());
+                maskMtcn(dto.getMtcn()), dto.getAmountUsd(), dto.getBranchId());
         return saved;
     }
 
@@ -171,6 +179,7 @@ public class WesternUnionService {
         validateMtcn(dto.getMtcn());
         Branch branch = findBranch(dto.getBranchId());
         performAmlCheck(dto.getReceiverName(), null, dto.getAmountHuf(), dto.getAmountUsd(), dto.getExchangeRate());
+        consumeDailyLimit(branch, dto.getAmountUsd(), dto.getTransactionDate());
 
         WuTransaction tx = WuTransaction.builder()
                 .branch(branch)
@@ -206,7 +215,7 @@ public class WesternUnionService {
         updateBalance(branch, dto.getAmountUsd(), dto.getAmountHuf(), false);
 
         log.info("WU RECEIVE recorded: MTCN={}, amount={} USD, branch={}",
-                dto.getMtcn(), dto.getAmountUsd(), dto.getBranchId());
+                maskMtcn(dto.getMtcn()), dto.getAmountUsd(), dto.getBranchId());
         return saved;
     }
 
@@ -334,6 +343,9 @@ public class WesternUnionService {
         boolean wasSend = "SEND".equals(original.getTransactionType())
                 || "IC_OUT".equals(original.getTransactionType())
                 || "CUSTOMER_OUT".equals(original.getTransactionType());
+        if ("SEND".equals(original.getTransactionType()) || "RECEIVE".equals(original.getTransactionType())) {
+            releaseDailyLimit(original.getCompany().getId(), original.getAmountUsd(), original.getTransactionDate());
+        }
 
         if ("IC_IN".equals(original.getTransactionType()) || "IC_OUT".equals(original.getTransactionType())) {
             updateBalanceUsdOnly(branch, original.getAmountUsd(), wasSend);
@@ -343,7 +355,7 @@ public class WesternUnionService {
         }
 
         log.info("WU STORNO created: originalId={}, stornoId={}, reason='{}'",
-                originalId, savedStorno.getId(), reason);
+                originalId, savedStorno.getId(), auditLogValue(reason));
         return savedStorno;
     }
 
@@ -471,7 +483,7 @@ public class WesternUnionService {
                 default -> {
                     // Ismeretlen típus: logoljuk, de NEM számoljuk bele egyetlen kategóriába sem
                     log.warn("WU napi riport: ismeretlen tranzakció típus kihagyva: '{}', txId={}",
-                            type, tx.getId());
+                            auditLogValue(type), tx.getId());
                 }
             }
             // STORNO fee ne számítson bele (az eredeti REVERSED rekord már kihagyva)
@@ -512,6 +524,23 @@ public class WesternUnionService {
         return wuBalanceRepository.findAllByBranchId(branchId);
     }
 
+    @Transactional(readOnly = true)
+    public WuDailyLimitDto getDailyLimit(LocalDate businessDate) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        LocalDate effectiveDate = businessDate != null ? businessDate : LocalDate.now();
+        return wuDailyLimitRepository
+                .findByCompanyIdAndBusinessDateAndCurrencyCode(companyId, effectiveDate, WU_LIMIT_CURRENCY)
+                .map(WuDailyLimitDto::from)
+                .orElseGet(() -> WuDailyLimitDto.from(newDailyLimit(companyId, effectiveDate)));
+    }
+
+    @Transactional
+    public WuDailyLimitDto useDailyLimit(BigDecimal amountUsd, LocalDate businessDate) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        LocalDate effectiveDate = businessDate != null ? businessDate : LocalDate.now();
+        return WuDailyLimitDto.from(increaseDailyLimit(companyId, amountUsd, effectiveDate));
+    }
+
     // ============ PRIVATE HELPERS ============
 
     /**
@@ -534,6 +563,81 @@ public class WesternUnionService {
             throw new ValidationException("Az iroda nincs céghez rendelve: " + branchId);
         }
         return branch;
+    }
+
+    private void consumeDailyLimit(Branch branch, BigDecimal amountUsd, LocalDateTime transactionDate) {
+        if (amountUsd == null || amountUsd.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("WU USD összeg kötelező és pozitív");
+        }
+        LocalDate businessDate = transactionDate != null ? transactionDate.toLocalDate() : LocalDate.now();
+        increaseDailyLimit(branch.getCompany().getId(), amountUsd, businessDate);
+    }
+
+    private hu.puzzleir.valuta.entity.WuDailyLimit increaseDailyLimit(
+            UUID companyId,
+            BigDecimal amountUsd,
+            LocalDate businessDate) {
+        if (amountUsd == null || amountUsd.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("WU napi keret használatához pozitív USD összeg szükséges");
+        }
+        hu.puzzleir.valuta.entity.WuDailyLimit limit = getOrCreateDailyLimitForUpdate(companyId, businessDate);
+        BigDecimal used = limit.getUsedAmount() != null ? limit.getUsedAmount() : BigDecimal.ZERO;
+        BigDecimal dailyLimit = limit.getDailyLimit() != null ? limit.getDailyLimit() : DEFAULT_WU_DAILY_LIMIT_USD;
+        BigDecimal newUsed = used.add(amountUsd);
+        if (newUsed.compareTo(dailyLimit) > 0) {
+            throw new ValidationException(String.format(
+                    "WU napi keret túllépés: limit=%s USD, használt=%s USD, kért=%s USD",
+                    dailyLimit.toPlainString(), used.toPlainString(), amountUsd.toPlainString()));
+        }
+        limit.setUsedAmount(newUsed);
+        limit.setUpdatedAt(LocalDateTime.now());
+        return wuDailyLimitRepository.save(limit);
+    }
+
+    private void releaseDailyLimit(UUID companyId, BigDecimal amountUsd, LocalDateTime transactionDate) {
+        if (companyId == null || amountUsd == null || amountUsd.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        LocalDate businessDate = transactionDate != null ? transactionDate.toLocalDate() : LocalDate.now();
+        hu.puzzleir.valuta.entity.WuDailyLimit limit = getOrCreateDailyLimitForUpdate(companyId, businessDate);
+        BigDecimal used = limit.getUsedAmount() != null ? limit.getUsedAmount() : BigDecimal.ZERO;
+        limit.setUsedAmount(used.subtract(amountUsd).max(BigDecimal.ZERO));
+        limit.setUpdatedAt(LocalDateTime.now());
+        wuDailyLimitRepository.save(limit);
+    }
+
+    private hu.puzzleir.valuta.entity.WuDailyLimit getOrCreateDailyLimitForUpdate(UUID companyId, LocalDate businessDate) {
+        LocalDate effectiveDate = businessDate != null ? businessDate : LocalDate.now();
+        return wuDailyLimitRepository
+                .findByCompanyDateCurrencyForUpdate(companyId, effectiveDate, WU_LIMIT_CURRENCY)
+                .orElseGet(() -> wuDailyLimitRepository.save(newDailyLimit(companyId, effectiveDate)));
+    }
+
+    private hu.puzzleir.valuta.entity.WuDailyLimit newDailyLimit(UUID companyId, LocalDate businessDate) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cég nem található: " + companyId));
+        return hu.puzzleir.valuta.entity.WuDailyLimit.builder()
+                .company(company)
+                .businessDate(businessDate)
+                .currencyCode(WU_LIMIT_CURRENCY)
+                .dailyLimit(DEFAULT_WU_DAILY_LIMIT_USD)
+                .usedAmount(BigDecimal.ZERO)
+                .resetAt(businessDate.plusDays(1).atStartOfDay())
+                .build();
+    }
+
+    private static String maskMtcn(String mtcn) {
+        if (mtcn == null || mtcn.length() < 4) {
+            return "****";
+        }
+        return "****" + mtcn.substring(mtcn.length() - 4);
+    }
+
+    private static String auditLogValue(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace('\r', ' ').replace('\n', ' ');
     }
 
     /**

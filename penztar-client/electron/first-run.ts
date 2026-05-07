@@ -10,11 +10,16 @@
 // A .env fájl helye: <userData>/.env  (pl. Windowson: %APPDATA%\valuta-penztar\.env)
 // A <userData> path az Electron app nevétől függ (electron-builder.json → productName).
 
-import { app, net } from 'electron';
+import { app, net, safeStorage } from 'electron';
 import log from 'electron-log/main';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import type { SetupWorkerOption } from '@valuta/shared-ipc';
+import { preferredRoleCodesForAppMode, resolveBootstrapRoleCodeForAppMode } from './setup-app-mode-roles';
+
+export type { SetupWorkerOption } from '@valuta/shared-ipc';
+export { resolveBootstrapRoleCodeForAppMode } from './setup-app-mode-roles';
 
 // ---------------------------------------------------------------------------
 // Típusok
@@ -25,6 +30,7 @@ export interface Branch {
   name: string;
   city: string;
   address?: string;
+  isVault?: boolean;
 }
 
 export interface SetupCheckResult {
@@ -50,7 +56,7 @@ export interface SetupSavePayload {
   bootstrapUsername?: string;    // wizardbeli teszt-felhasználó (opcionális, csak offline módban üres)
   bootstrapPassword?: string;
   offlineMode: boolean;          // ha true, a szerver kapcsolatot kihagyjuk a wizardban
-  appMode?: 'penztar' | 'ertektar' | 'ertekszallito';  // v2.1.4: program-tipus
+  appMode?: 'penztar' | 'ertektar' | 'ertekszallito' | 'full';  // v2.1.4: program-tipus
   // v2.3.0: a telepito dolgozoi dropdown-bol kivalasztott worker identity.
   // Ha kitoltve -> /auth/first-time-worker-setup (meglevo worker jelszo beallitas,
   // megtartott role-lel), egyebkent /auth/bootstrap-admin (uj admin letrehozas).
@@ -116,6 +122,35 @@ function looksLikeValidSecret(value: string | undefined): boolean {
   return !forbidden.some((bad) => trimmed.toLowerCase().includes(bad));
 }
 
+function looksLikeValidApiUrl(value: string | undefined): boolean {
+  if (!value) return false;
+  const trimmed = value.trim();
+  if (trimmed === 'https://' || trimmed === 'http://' || trimmed === 'https' || trimmed === 'http') {
+    return false;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    return (parsed.protocol === 'https:' || parsed.protocol === 'http:')
+      && parsed.hostname.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+function looksLikeStaleOfflineSetup(values: Record<string, string>): boolean {
+  if (values.SETUP_OFFLINE_MODE !== '1') {
+    return false;
+  }
+
+  // 2026-05-04/05 diagnostics: legacy installs had SETUP_COMPLETED=1,
+  // SETUP_OFFLINE_MODE=1, VITE_API_URL="https://", and empty bootstrap identity.
+  // That state must run the wizard again; otherwise no global backend password
+  // is written for the selected worker.
+  const workerCode = values.PENZTAR_BOOTSTRAP_WORKER_CODE?.trim() ?? '';
+  const password = values.PENZTAR_BOOTSTRAP_PASSWORD?.trim() ?? '';
+  return workerCode.length === 0 && password.length === 0;
+}
+
 function generateSecretHex(bytes: number): string {
   return crypto.randomBytes(bytes).toString('hex');
 }
@@ -137,8 +172,10 @@ function buildEnvFileContent(params: {
   branchName: string;
   apiUrl: string;
   companyCode: string;
+  appMode?: string;
   bootstrapUsername: string;
   bootstrapPassword: string;
+  bootstrapRoleCode: string;
   jwtSecret: string;
   sqlCipherKey: string;
   offlineLicenseSecret: string;
@@ -154,10 +191,11 @@ function buildEnvFileContent(params: {
     `VITE_BRANCH_NAME=${escapeEnvValue(params.branchName)}`,
     `VITE_COMPANY_CODE=${escapeEnvValue(params.companyCode)}`,
     ``,
+    `PENZTAR_APP_MODE=${escapeEnvValue(params.appMode ?? 'penztar')}`,
     `PENZTAR_BOOTSTRAP_COMPANY_CODE=${escapeEnvValue(params.companyCode)}`,
     `PENZTAR_BOOTSTRAP_WORKER_CODE=${escapeEnvValue(params.bootstrapUsername)}`,
-    `PENZTAR_BOOTSTRAP_PASSWORD=${escapeEnvValue(params.bootstrapPassword)}`,
-    `PENZTAR_BOOTSTRAP_ROLE_CODE=CASHIER`,
+    `PENZTAR_BOOTSTRAP_PASSWORD=""`,
+    `PENZTAR_BOOTSTRAP_ROLE_CODE=${escapeEnvValue(params.bootstrapRoleCode)}`,
     ``,
     `# Kriptográfiai titkok — a wizard generálta, minden telepítésen egyedi.`,
     `JWT_SECRET=${escapeEnvValue(params.jwtSecret)}`,
@@ -169,6 +207,130 @@ function buildEnvFileContent(params: {
     `SETUP_OFFLINE_MODE=${params.offlineMode ? '1' : '0'}`,
     ``,
   ].join('\n');
+}
+
+function encryptConfigSecret(value: string): string | null {
+  if (!value) return null;
+  try {
+    if (!safeStorage.isEncryptionAvailable()) {
+      return null;
+    }
+    return safeStorage.encryptString(value).toString('base64');
+  } catch (err) {
+    log.warn('[Setup] safeStorage titkositas sikertelen:', err);
+    return null;
+  }
+}
+
+export function persistBootstrapPasswordConfig(
+  bootstrapPassword: string,
+  setConfig: (key: string, value: string) => void,
+  deleteConfig: (key: string) => void,
+): void {
+  if (!bootstrapPassword) {
+    deleteConfig('bootstrap_password');
+    deleteConfig('bootstrap_password_encrypted');
+    return;
+  }
+
+  const encryptedBootstrapPassword = encryptConfigSecret(bootstrapPassword);
+  if (encryptedBootstrapPassword) {
+    setConfig('bootstrap_password_encrypted', encryptedBootstrapPassword);
+    deleteConfig('bootstrap_password');
+    return;
+  }
+
+  try {
+    setConfig('bootstrap_password', bootstrapPassword);
+    deleteConfig('bootstrap_password_encrypted');
+    log.warn('[Setup] safeStorage nem elerheto, bootstrap jelszo ideiglenesen plaintext SQLite configban marad; sikeres bootstrap login utan torlodik.');
+  } catch (err) {
+    log.warn('[Setup] bootstrap jelszo fallback mentese sikertelen; meglevo bootstrap titok erintetlen marad:', err);
+  }
+}
+
+export function resolveEffectiveBootstrapCredentials(
+  payload: Pick<SetupSavePayload, 'adminUsername' | 'adminPassword' | 'bootstrapUsername' | 'bootstrapPassword'>,
+  resolvedWorkerIdentity: { workerCode?: string } | null,
+  options: { preserveExistingPassword?: boolean } = {},
+): { bootstrapUsername: string; bootstrapPassword: string } {
+  // Worker code precedence follows the backend identity that actually owns the password:
+  // server-confirmed worker, then the login/test worker typed in the wizard, then admin fallback.
+  const workerCode = [
+    resolvedWorkerIdentity?.workerCode,
+    payload.bootstrapUsername,
+    payload.adminUsername,
+  ].find((value) => value != null && value.trim().length > 0)?.trim().toUpperCase() ?? '';
+  const currentBootstrapPassword = payload.bootstrapPassword?.trim() ?? '';
+  const bootstrapPassword = options.preserveExistingPassword && currentBootstrapPassword
+    ? currentBootstrapPassword
+    : payload.adminPassword;
+  return {
+    bootstrapUsername: workerCode,
+    bootstrapPassword,
+  };
+}
+
+function preferredBootstrapLoginRoleCodesForAppMode(appMode: SetupSavePayload['appMode'] | undefined): string[] {
+  const preferredCodes = preferredRoleCodesForAppMode(appMode);
+  const fallbackCode = resolveBootstrapRoleCodeForAppMode(appMode);
+  return (preferredCodes.length > 0 ? preferredCodes : [fallbackCode])
+    .map(normalizeBootstrapRoleCode);
+}
+
+function normalizeBootstrapRoleCode(roleCode: string): string {
+  return roleCode.trim().toLowerCase();
+}
+
+const BOOTSTRAP_SERVER_ROLE_CODES = new Set([
+  'ugyvezeto',
+  'foertektar',
+  'irodavezeto',
+  'belso_ellenor',
+  'berszamfejto',
+  'penzugyi_vezeto',
+  'irodai_dolgozo',
+  'csoportvezeto',
+  'arfolyam_nezo',
+  'SUPERVISOR',
+  'MANAGER',
+  'ADMIN',
+  'supervisor',
+  'manager',
+  'admin',
+]);
+
+export function selectBootstrapLoginRoleCode(
+  appMode: SetupSavePayload['appMode'] | undefined,
+  roleCodes: string[],
+): string | null {
+  const normalizedRoleCodes = roleCodes
+    .map((roleCode) => roleCode.trim())
+    .filter((roleCode) => roleCode.length > 0);
+  const preferredRoleCodes = preferredBootstrapLoginRoleCodesForAppMode(appMode);
+
+  for (const preferredRoleCode of preferredRoleCodes) {
+    const preferred = normalizedRoleCodes.find((roleCode) =>
+      normalizeBootstrapRoleCode(roleCode) === preferredRoleCode);
+    if (preferred) return preferred;
+  }
+
+  const serverRole = normalizedRoleCodes.find((roleCode) =>
+    BOOTSTRAP_SERVER_ROLE_CODES.has(roleCode) || BOOTSTRAP_SERVER_ROLE_CODES.has(roleCode.toLowerCase()));
+  return serverRole ?? null;
+}
+
+export function shouldUseWorkerFirstTimeSetup(params: {
+  offlineMode: boolean;
+  selectedWorkerCode?: string;
+  bootstrapUsername?: string;
+  bootstrapCompleted?: boolean | null;
+}): boolean {
+  if (params.offlineMode) return false;
+  const selectedWorkerCode = params.selectedWorkerCode?.trim();
+  if (selectedWorkerCode) return true;
+  const bootstrapUsername = params.bootstrapUsername?.trim();
+  return Boolean(bootstrapUsername && params.bootstrapCompleted === true);
 }
 
 // ---------------------------------------------------------------------------
@@ -356,6 +518,12 @@ export function isFirstRun(): SetupCheckResult {
   if (!looksLikeValidSecret(values.JWT_SECRET)) {
     return { isFirstRun: true, envPath, reason: 'jwt-secret-invalid' };
   }
+  if (!looksLikeValidApiUrl(values.VITE_API_URL)) {
+    return { isFirstRun: true, envPath, reason: 'api-url-invalid' };
+  }
+  if (looksLikeStaleOfflineSetup(values)) {
+    return { isFirstRun: true, envPath, reason: 'stale-offline-setup' };
+  }
   return { isFirstRun: false, envPath };
 }
 
@@ -409,7 +577,7 @@ export async function fetchBranchesFromBackend(
 ): Promise<Branch[] | null> {
   const base = normalizeApiBase(apiUrl);
   const url = `${base}/public/branches?companyCode=${encodeURIComponent(companyCode)}`;
-  const response = await httpJsonWithRetry<Array<{ code: string; name: string; city?: string; address?: string }>>(
+  const response = await httpJsonWithRetry<Array<{ code: string; name: string; city?: string; address?: string; isVault?: boolean }>>(
     url,
     { method: 'GET', timeoutMs },
   );
@@ -421,6 +589,72 @@ export async function fetchBranchesFromBackend(
     name: b.name,
     city: b.city ?? '',
     address: b.address,
+    isVault: b.isVault,
+  }));
+}
+
+export async function getWorkers(
+  apiUrl?: string,
+  companyCode?: string,
+  branchCode?: string,
+): Promise<SetupWorkerOption[]> {
+  const normalizedApiUrl = apiUrl?.trim() ?? '';
+  const normalizedCompanyCode = companyCode?.trim() ?? '';
+  const normalizedBranchCode = branchCode?.trim() ?? '';
+
+  if (!normalizedApiUrl || !normalizedCompanyCode || !normalizedBranchCode) {
+    log.info('[Setup] getWorkers: nincs apiUrl/companyCode/branchCode, ures lista.');
+    return [];
+  }
+
+  try {
+    const fetched = await fetchWorkersFromBackend(
+      normalizedApiUrl,
+      normalizedCompanyCode,
+      normalizedBranchCode,
+    );
+    if (fetched && fetched.length > 0) {
+      log.info(`[Setup] getWorkers: backend adott ${fetched.length} dolgozot.`);
+      return fetched;
+    }
+    log.info('[Setup] getWorkers: backend 0 dolgozo.');
+    return [];
+  } catch (err: unknown) {
+    log.warn('[Setup] getWorkers: backend hiba:',
+      err instanceof Error ? err.message : String(err));
+    return [];
+  }
+}
+
+export async function fetchWorkersFromBackend(
+  apiUrl: string,
+  companyCode: string,
+  branchCode: string,
+  timeoutMs = 6000,
+): Promise<SetupWorkerOption[] | null> {
+  const normalizedCompanyCode = companyCode.trim();
+  const normalizedBranchCode = branchCode.trim();
+  if (!normalizedCompanyCode || !normalizedBranchCode) {
+    log.info('[Setup] fetchWorkersFromBackend: nincs companyCode/branchCode, nincs backend hivas.');
+    return null;
+  }
+  const base = normalizeApiBase(apiUrl);
+  const params = new URLSearchParams({
+    branchCode: normalizedBranchCode,
+    companyCode: normalizedCompanyCode,
+  });
+  const url = `${base}/public/workers?${params.toString()}`;
+  const response = await httpJsonWithRetry<Array<{ code: string; name: string; region?: string }>>(
+    url,
+    { method: 'GET', timeoutMs },
+  );
+  if (!response.ok || !Array.isArray(response.body)) {
+    return null;
+  }
+  return response.body.map((worker) => ({
+    code: worker.code,
+    name: worker.name,
+    region: worker.region,
   }));
 }
 
@@ -505,6 +739,18 @@ export async function bootstrapAdmin(
   };
 }
 
+async function getBootstrapCompleted(apiUrl: string, timeoutMs = 8000): Promise<boolean | null> {
+  const base = normalizeApiBase(apiUrl);
+  const response = await httpJsonWithRetry<{ completed?: boolean }>(`${base}/auth/bootstrap-status`, {
+    method: 'GET',
+    timeoutMs,
+  });
+  if (!response.ok || typeof response.body?.completed !== 'boolean') {
+    return null;
+  }
+  return response.body.completed;
+}
+
 // ============ v2.3.0: WORKER FIRST-TIME SETUP (valodi dolgozo + jelszo) ============
 
 /**
@@ -524,6 +770,7 @@ export async function workerFirstTimeSetup(
     workerCode: string;
     newPassword: string;
     currentPassword?: string;
+    appMode?: SetupSavePayload['appMode'];
   },
   timeoutMs = 15000,
 ): Promise<{
@@ -648,12 +895,22 @@ export async function registerCashRegisterDevice(
  */
 export async function bootstrapLogin(
   apiUrl: string,
-  payload: { companyCode: string; workerCode: string; password: string },
+  payload: {
+    companyCode: string;
+    workerCode: string;
+    password: string;
+    appMode?: SetupSavePayload['appMode'];
+  },
   timeoutMs = 10000,
 ): Promise<{ success: boolean; token?: string; errorMessage?: string }> {
   const base = normalizeApiBase(apiUrl);
   try {
-    const resp = await httpJsonWithRetry<{ token?: string; roleSelectionRequired?: boolean; availableRoles?: Array<{ roleCode: string }> }>(
+    const resp = await httpJsonWithRetry<{
+      token?: string;
+      roleSelectionRequired?: boolean;
+      roles?: string[];
+      availableRoles?: Array<{ roleCode: string }>;
+    }>(
       `${base}/auth/login`,
       {
         method: 'POST',
@@ -661,6 +918,7 @@ export async function bootstrapLogin(
           companyCode: payload.companyCode,
           workerCode: payload.workerCode,
           password: payload.password,
+          appMode: payload.appMode,
         },
         timeoutMs,
       },
@@ -669,21 +927,30 @@ export async function bootstrapLogin(
       const msg = (resp.body as { message?: string } | undefined)?.message || resp.errorMessage || `HTTP ${resp.status}`;
       return { success: false, errorMessage: msg };
     }
-    // Ha role selection kell, vegyuk az elso rendelkezesre allot
+    // Ha role selection kell, az appMode-hoz illo role-t valasztjuk ki.
     let token = resp.body.token;
-    const firstRole = resp.body.availableRoles?.[0];
-    if (resp.body.roleSelectionRequired && firstRole) {
+    const roleCodes = [
+      ...(resp.body.roles ?? []),
+      ...(resp.body.availableRoles?.map((role) => role.roleCode) ?? []),
+    ];
+    const selectedRoleCode = selectBootstrapLoginRoleCode(payload.appMode, roleCodes);
+    if (resp.body.roleSelectionRequired && selectedRoleCode) {
       const selectedResp = await httpJsonWithRetry<{ token?: string }>(
         `${base}/auth/login/select-role`,
         {
           method: 'POST',
-          body: { token, roleCode: firstRole.roleCode },
+          body: { token, roleCode: selectedRoleCode, appMode: payload.appMode },
           timeoutMs,
         },
       );
       if (selectedResp.ok && selectedResp.body?.token) {
         token = selectedResp.body.token;
       }
+    } else if (resp.body.roleSelectionRequired) {
+      return {
+        success: false,
+        errorMessage: `Nincs a ${payload.appMode ?? 'penztar'} programhoz illeszkedo szerepkor a gyors setup loginhoz.`,
+      };
     }
     return { success: true, token };
   } catch (err: unknown) {
@@ -706,73 +973,41 @@ export async function testConnection(
   if (!normalizedUrl.endsWith('/api/v1')) {
     normalizedUrl = `${normalizedUrl}/api/v1`;
   }
-  const loginUrl = `${normalizedUrl}/auth/login`;
 
-  return await new Promise<SetupConnectionTest>((resolve) => {
-    let settled = false;
-    const safeResolve = (v: SetupConnectionTest) => {
-      if (settled) return;
-      settled = true;
-      resolve({ ...v, latencyMs: Date.now() - started });
+  if (!username.trim() || !password) {
+    const response = await httpJsonWithRetry<{ completed?: boolean }>(
+      `${normalizedUrl}/auth/bootstrap-status`,
+      { method: 'GET', timeoutMs },
+    );
+    return {
+      success: response.ok,
+      httpStatus: response.status || undefined,
+      latencyMs: response.latencyMs,
+      errorMessage: response.ok ? undefined : (response.errorMessage || `HTTP ${response.status}`),
     };
+  }
 
-    let request: Electron.ClientRequest;
-    try {
-      request = net.request({ method: 'POST', url: loginUrl });
-    } catch (err: unknown) {
-      safeResolve({
-        success: false,
-        errorMessage: err instanceof Error ? err.message : String(err),
-      });
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      try { request.abort(); } catch { /* ignore */ }
-      safeResolve({ success: false, errorMessage: `Időtúllépés (${timeoutMs} ms)` });
-    }, timeoutMs);
-
-    request.setHeader('Content-Type', 'application/json');
-    request.on('response', (response) => {
-      clearTimeout(timer);
-      // Bármilyen 2xx/4xx válasz azt jelenti, hogy a szerver elérhető.
-      // 401 ugyanolyan jó ebben a kontextusban, mint 200 — csak a rossz jelszót jelzi.
-      if (response.statusCode >= 200 && response.statusCode < 500) {
-        safeResolve({ success: true, httpStatus: response.statusCode });
-      } else {
-        safeResolve({
-          success: false,
-          httpStatus: response.statusCode,
-          errorMessage: `Szerverhiba: HTTP ${response.statusCode}`,
-        });
-      }
-      // Tartalom eldobható, csak a statusCode érdekes itt.
-      response.on('data', () => { /* drain */ });
-      response.on('end', () => { /* drain */ });
-    });
-    request.on('error', (err) => {
-      clearTimeout(timer);
-      safeResolve({
-        success: false,
-        errorMessage: err instanceof Error ? err.message : String(err),
-      });
-    });
-
-    try {
-      request.write(JSON.stringify({
+  const loginUrl = `${normalizedUrl}/auth/login`;
+  const response = await httpJsonWithRetry(loginUrl, {
+    method: 'POST',
+    body: {
         companyCode,
         workerCode: username,
         password,
-      }));
-      request.end();
-    } catch (err: unknown) {
-      clearTimeout(timer);
-      safeResolve({
-        success: false,
-        errorMessage: err instanceof Error ? err.message : String(err),
-      });
-    }
+    },
+    timeoutMs,
   });
+
+  // Barmilyen 2xx/4xx valasz azt jelenti, hogy a szerver elerheto.
+  // 401/400 ebben a setup kontextusban ugyanugy kapcsolat-siker, csak
+  // credential/business hiba.
+  const reachable = response.status >= 200 && response.status < 500;
+  return {
+    success: reachable,
+    httpStatus: response.status || undefined,
+    latencyMs: response.latencyMs || (Date.now() - started),
+    errorMessage: reachable ? undefined : (response.errorMessage || `Szerverhiba: HTTP ${response.status}`),
+  };
 }
 
 export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupSaveResult> {
@@ -838,31 +1073,54 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       workerRole?: string;
       branchCode?: string;
     } | null = null;
+    let preserveExistingBootstrapPassword = false;
 
-    if (payload.selectedWorkerCode && payload.selectedWorkerCode.trim().length > 0) {
-      log.info('[Setup] Worker first-time-setup uton (kivalasztott dolgozo):', payload.selectedWorkerCode);
-      // v2.5.19: a bootstrapPassword a SYSTEM admin auth (bootstrap-status), NEM
-      // a kivalasztott worker seed-jelszava. Ezert NEM passzoljuk currentPassword-kent
-      // — a backend WorkerFirstTimeSetupService line 102-104 explicit engedi az
-      // ures currentPassword-ot seed workerekre (passwordChangedAt == null).
+    let bootstrapCompletedBeforeSetup: boolean | null = null;
+    if (!payload.selectedWorkerCode && payload.bootstrapUsername?.trim()) {
+      bootstrapCompletedBeforeSetup = await getBootstrapCompleted(resolvedApiUrl);
+    }
+    const useWorkerFirstTimeSetup = shouldUseWorkerFirstTimeSetup({
+      offlineMode: payload.offlineMode,
+      selectedWorkerCode: payload.selectedWorkerCode,
+      bootstrapUsername: payload.bootstrapUsername,
+      bootstrapCompleted: bootstrapCompletedBeforeSetup,
+    });
+
+    if (useWorkerFirstTimeSetup) {
+      const setupWorkerCode = (
+        payload.selectedWorkerCode?.trim()
+        || payload.bootstrapUsername?.trim()
+        || payload.adminUsername.trim()
+      ).toUpperCase();
+      log.info('[Setup] Worker first-time-setup uton:', setupWorkerCode);
+      // Lezart bootstrap utan a backend a jelenlegi/kezdo worker jelszot is
+      // keri, hogy worker kod ismeretevel ne lehessen publikus fiokot atvenni.
       const workerSetup = await workerFirstTimeSetup(resolvedApiUrl, {
         companyCode: normalizedCompanyCode,
-        workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
+        workerCode: setupWorkerCode,
         newPassword: payload.adminPassword,
+        currentPassword: payload.bootstrapPassword?.trim() || undefined,
+        appMode: payload.appMode,
       });
       if (!workerSetup.success) {
+        const bootstrapCompleted = await getBootstrapCompleted(resolvedApiUrl);
+        const hint = bootstrapCompleted === true
+          ? ' Add meg a jelenlegi vagy kezdo dolgozoi jelszot a szerver lepesen.'
+          : '';
         return {
           success: false,
           envPath,
-          errorMessage: `A dolgozoi jelszo beallitasa nem sikerult: ${workerSetup.errorMessage ?? 'ismeretlen hiba'}`,
+          errorMessage: `A dolgozoi jelszo beallitasa nem sikerult: ${workerSetup.errorMessage ?? 'ismeretlen hiba'}${hint}`,
         };
       }
-      resolvedWorkerIdentity = workerSetup.workerIdentity ?? {
-        workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
-        workerName: payload.selectedWorkerName,
-        workerRole: payload.selectedWorkerRole,
-      };
-      log.info('[Setup] Worker first-time setup sikeres:', resolvedWorkerIdentity);
+      if (workerSetup.success) {
+        resolvedWorkerIdentity = workerSetup.workerIdentity ?? {
+          workerCode: setupWorkerCode,
+          workerName: payload.selectedWorkerName,
+          workerRole: payload.selectedWorkerRole,
+        };
+        log.info('[Setup] Worker first-time setup sikeres:', resolvedWorkerIdentity);
+      }
     } else {
       // Legacy: bootstrap-admin (uj admin worker + rendszer-flag)
       const bootstrap = await bootstrapAdmin(resolvedApiUrl, {
@@ -881,6 +1139,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       }
       if (bootstrap.alreadyDone) {
         log.info('[Setup] Bootstrap már lefutott ezen a rendszeren — folytatjuk.');
+        preserveExistingBootstrapPassword = true;
       } else {
         log.info('[Setup] Bootstrap admin sikeresen beállítva a backend-ben.');
       }
@@ -890,6 +1149,14 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
         workerRole: 'ADMIN',
       };
     }
+
+    const effectiveBootstrapCredentials =
+      resolveEffectiveBootstrapCredentials(
+        payload,
+        resolvedWorkerIdentity,
+        { preserveExistingPassword: preserveExistingBootstrapPassword },
+      );
+    const bootstrapRoleCode = resolveBootstrapRoleCodeForAppMode(payload.appMode);
 
     // --- Kulcs generálás ---
     const jwtSecret = generateSecretHex(32);               // 256 bit
@@ -905,8 +1172,10 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       branchName: payload.branchName,
       apiUrl: resolvedApiUrl,
       companyCode: normalizedCompanyCode,
-      bootstrapUsername: payload.bootstrapUsername ?? '',
-      bootstrapPassword: payload.bootstrapPassword ?? '',
+      appMode: payload.appMode,
+      bootstrapUsername: effectiveBootstrapCredentials.bootstrapUsername,
+      bootstrapPassword: effectiveBootstrapCredentials.bootstrapPassword,
+      bootstrapRoleCode,
       jwtSecret,
       sqlCipherKey,
       offlineLicenseSecret,
@@ -923,7 +1192,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     // NGM: az installUuid-t a try BLOKK ELOTT generaljuk, hogy kivetel eseten se legyen ures.
     let installUuid: string = crypto.randomUUID();
     try {
-      const { setConfig, getConfig } = await import('./sqlite');
+      const { setConfig, getConfig, deleteConfig } = await import('./sqlite');
       setConfig('server_url', resolvedApiUrl);
       if (payload.branchCode) {
         setConfig('branch_code', payload.branchCode);
@@ -933,9 +1202,12 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
         log.info('[Setup] SQLite app_mode elmentve:', payload.appMode);
       }
       setConfig('bootstrap_company_code', normalizedCompanyCode);
-      if (payload.bootstrapUsername) {
-        setConfig('bootstrap_worker_code', payload.bootstrapUsername.trim());
+      if (effectiveBootstrapCredentials.bootstrapUsername) {
+        setConfig('bootstrap_worker_code', effectiveBootstrapCredentials.bootstrapUsername);
       }
+      persistBootstrapPasswordConfig(effectiveBootstrapCredentials.bootstrapPassword, setConfig, deleteConfig);
+      setConfig('bootstrap_role_code', bootstrapRoleCode);
+      persistBootstrapPasswordConfig(effectiveBootstrapCredentials.bootstrapPassword, setConfig, deleteConfig);
       // v2.3.0: a telepito-ban kivalasztott (es jelszot beallitott) dolgozo identity
       // tarolasa — ezt olvassa a LoginPage prefill-hez es UI displayhez.
       if (resolvedWorkerIdentity) {
@@ -963,25 +1235,16 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     }
 
     // V100: Online-modban regisztraljuk a penztar-eszkozt a backend-en
-    if (!payload.offlineMode && payload.bootstrapUsername && payload.bootstrapPassword) {
+    if (!payload.offlineMode
+        && effectiveBootstrapCredentials.bootstrapUsername
+        && effectiveBootstrapCredentials.bootstrapPassword) {
       try {
-        // v2.3.1 Codex P2 fix #217 first-run.ts:926: ha a workerFirstTimeSetup
-        // utat vettuk (selectedWorkerCode), akkor most mar az ADMIN-PASSWORD
-        // ervenyes, NEM a bootstrapPassword (amit felulirtunk).
-        // A bootstrapUsername = selectedWorkerCode eseten az uj jelszoval loginolunk,
-        // egyebkent a legacy bootstrap credentials-szel.
-        const bootstrapUsernameUpper = payload.bootstrapUsername.trim().toUpperCase();
-        const selectedWorkerUpper = payload.selectedWorkerCode?.trim().toUpperCase() ?? "";
-        const usedWorkerSetup = selectedWorkerUpper.length > 0
-          && bootstrapUsernameUpper === selectedWorkerUpper;
-        const loginPassword = usedWorkerSetup ? payload.adminPassword : payload.bootstrapPassword;
-        if (usedWorkerSetup) {
-          log.info('[Setup] V100 device-reg: a selectedWorker uj (adminPassword) jelszaval loginolunk.');
-        }
+        log.info('[Setup] V100 device-reg: az effektív bootstrap worker/jelszó párossal loginolunk.');
         const login = await bootstrapLogin(resolvedApiUrl, {
           companyCode: normalizedCompanyCode,
-          workerCode: payload.bootstrapUsername.trim(),
-          password: loginPassword,
+          workerCode: effectiveBootstrapCredentials.bootstrapUsername,
+          password: effectiveBootstrapCredentials.bootstrapPassword,
+          appMode: payload.appMode,
         });
         if (login.success && login.token) {
           const deviceCode = `${payload.branchCode}-${payload.appMode ?? 'penztar'}-${installUuid.slice(0, 8)}`;

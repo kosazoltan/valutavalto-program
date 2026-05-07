@@ -6,12 +6,10 @@ export interface ElectronAPI {
   >;
 
   // --- v2.5.20: Google OAuth + backend `/auth/google-login` POST EGY main-process hivasban ---
-  googleOAuthFlowWithBackend(): Promise<
+  googleOAuthFlowWithBackend(appMode?: string): Promise<
     | {
         ok: true;
-        accessToken: string;
-        refreshToken?: string;
-        user?: { email?: string; companyId?: number; role?: string } & Record<string, unknown>;
+        response: unknown;
         email?: string;
       }
     | { ok: false; code: string; message: string }
@@ -391,6 +389,16 @@ export interface ElectronAPI {
     name: string;
     city: string;
     address?: string;
+    isVault?: boolean;
+  }>>;
+  setupGetWorkers?(params: {
+    apiUrl: string;
+    companyCode: string;
+    branchCode: string;
+  }): Promise<Array<{
+    code: string;
+    name: string;
+    region?: string;
   }>>;
   setupTestConnection?(params: {
     apiUrl: string;

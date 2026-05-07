@@ -5,6 +5,9 @@ import { Toaster } from './components/ui/toaster'
 import ErrorBoundary from './components/ErrorBoundary'
 import { api, clearPersistedToken, hasPersistedToken, loadPersistedToken } from './services/api/index'
 import { HEARTBEAT_INTERVAL_MS } from './config/heartbeat'
+import { useAppMode } from './hooks/useAppMode'
+import { appModeLabel, isRoleSelectableForAppMode } from './utils/appModeRoles'
+import { resolveOfflineRestoreProfile, type OfflineJwtPayload } from './utils/offlineAuthRestore'
 
 // Layouts
 import MainLayout from './layouts/MainLayout'
@@ -220,10 +223,16 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const [isRestoring, setIsRestoring] = useState(() => hasPersistedToken())
+  const { mode: appMode, isLoading: appModeLoading } = useAppMode()
+  const [isRestoring, setIsRestoring] = useState(() => hasPersistedToken() || appModeLoading)
 
   // Desktopon és weben is megpróbáljuk visszatölteni a tárolt JWT-t.
   useEffect(() => {
+    if (appModeLoading) {
+      setIsRestoring(true)
+      return
+    }
+
     const restoreToken = async () => {
       try {
         const token = await loadPersistedToken()
@@ -238,7 +247,7 @@ export default function App() {
               activeRole?: string
               permissions?: string[]
               roles?: string[]
-            }
+            } & OfflineJwtPayload
             const now = Math.floor(Date.now() / 1000)
             if (payload.exp && payload.exp > now) {
               // Token érvényes → restore auth state
@@ -248,6 +257,12 @@ export default function App() {
                 })
                 if (res.data) {
                   // V57: activeRole + permissions restore a JWT payload-ból
+                  const restoredRole = payload.activeRole ?? res.data.role
+                  if (!isRoleSelectableForAppMode(restoredRole, appMode)) {
+                    logger.warn('App', `Token restore elutasítva: ${restoredRole} role nem használható ebben a programban (${appModeLabel(appMode)}).`)
+                    await clearPersistedToken()
+                    return
+                  }
                   useAuthStore.getState().login(
                     res.data, token, 'Bearer',
                     new Date(payload.exp * 1000).toISOString(),
@@ -264,32 +279,23 @@ export default function App() {
                   apiErr.message.includes('timeout')
                 )
                 if (isNetworkError && window.electronAPI) {
-                  // Offline fallback: fail-closed CASHIER-only profile
-                  // SECURITY: nem bízunk a JWT role/permissions claimekben offline módban,
-                  // mert a lokális token manipulálható. Fix CASHIER role + üres permissions.
-                  const jwtPayload = payload as Record<string, unknown>
-                  const offlineWorker = {
-                    id: Number(jwtPayload.workerId) || 0,
-                    workerCode: String(jwtPayload.workerCode ?? ''),
-                    firstName: '',
-                    lastName: '',
-                    fullName: String(jwtPayload.workerName ?? ''),
-                    role: 'CASHIER',  // Hardcoded — offline soha nem ad magasabb jogot
-                    branchId: String(jwtPayload.branchId ?? ''),
-                    branchCode: String(jwtPayload.branchCode ?? ''),
-                    branchName: '',
-                    companyId: String(jwtPayload.companyId ?? ''),
-                    companyCode: String(jwtPayload.companyCode ?? ''),
-                    companyName: '',
+                  const offlineProfile = resolveOfflineRestoreProfile(payload, appMode)
+                  if (!offlineProfile) {
+                    logger.warn('App', `Offline token restore elutasítva: nincs ${appModeLabel(appMode)} módban használható role a tárolt tokenben.`)
+                    await clearPersistedToken()
+                    return
                   }
+                  // Offline fallback: az appMode-hoz illeszkedo aktiv role-t tartjuk meg,
+                  // de permissions nelkul. Igy az ertektar/ertekszallito app nem esik ki
+                  // automatikusan, mikozben az offline jogosultsag tovabbra is minimalis.
                   useAuthStore.getState().login(
-                    offlineWorker, token, 'Bearer',
+                    offlineProfile.worker, token, 'Bearer',
                     new Date(payload.exp! * 1000).toISOString(),
-                    'CASHIER',  // Offline: fix CASHIER activeRole
-                    [],         // Offline: üres permissions (fail-closed)
-                    ['CASHIER'],
+                    offlineProfile.activeRole,
+                    [],
+                    offlineProfile.roles,
                   )
-                  logger.warn('App', 'Offline login restore — CASHIER-only profil, korlatozott jogosultsagok.')
+                  logger.warn('App', `Offline login restore — ${offlineProfile.activeRole} profil, permissions nelkul.`)
                 } else {
                   // Token szerver oldalon érvénytelen
                   await clearPersistedToken()
@@ -309,7 +315,7 @@ export default function App() {
       }
     }
     void restoreToken()
-  }, [])
+  }, [appMode, appModeLoading])
 
   // 2026-04-29 v2.3.11 (E-B6.4 renderer heartbeat + window error catcher):
   // 60 másodpercenként rögzítünk egy életjelet a logger-be — fagyás-detection

@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,6 +69,9 @@ public class DailyClosingService {
     private final DecadeReportService decadeReportService;
     private final AmlService amlService;
     private final ReceiptSequenceService receiptSequenceService;
+
+    @Value("${nav.bridge.simulated-success-enabled:false}")
+    private boolean navBridgeSimulatedSuccessEnabled;
 
     /** Max lep esek szama */
     private static final int TOTAL_STEPS = 9;
@@ -391,6 +395,12 @@ public class DailyClosingService {
             return StepCheckResult.skipped("NAV integracio nem aktiv ezen az irodan");
         }
 
+        if (!navBridgeSimulatedSuccessEnabled) {
+            return StepCheckResult.failed(
+                    "NAV integracio aktiv, de nincs eles NAV jelentes-visszaigazolas; "
+                            + "a bridge szimulacio nem zarhat napot production modban");
+        }
+
         // NAV: ellenorizzuk hogy minden tranzakcio jelentve van-e
         long unreportedCount = transactionRepository.countUnreportedTransactions(branchId, date);
         if (unreportedCount > 0) {
@@ -580,11 +590,17 @@ public class DailyClosingService {
             } else {
                 log.warn("Esti zárás adatcsomag küldés sikertelen: branchId={}, datum={}, hiba={}",
                         branchId, closingDate, result.getMessage());
+                throw new ValidationException("Esti zárás adatcsomag küldés sikertelen: " + result.getMessage());
             }
+        } catch (ValidationException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Esti zárás adatcsomag küldés hiba: branchId={}, datum={}, hiba={}",
                     branchId, closingDate, e.getMessage(), e);
-            // NEM dobunk kivételt — ne akadjon meg a zárás
+            if (e instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new ValidationException("Esti zárás adatcsomag küldés hiba: " + e.getMessage());
         }
     }
 

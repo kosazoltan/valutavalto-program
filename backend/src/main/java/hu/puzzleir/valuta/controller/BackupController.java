@@ -2,12 +2,14 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.backup.BackupRecordResponse;
 import hu.puzzleir.valuta.dto.backup.CreateBackupRequest;
+import hu.puzzleir.valuta.entity.BackupStatus;
 import hu.puzzleir.valuta.entity.BackupType;
 import hu.puzzleir.valuta.service.BackupService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,7 +37,10 @@ public class BackupController {
     public ResponseEntity<BackupRecordResponse> createBackup(@Valid @RequestBody CreateBackupRequest request) {
         BackupType type = request.getType() != null ? request.getType() : BackupType.FULL;
         BackupRecordResponse response = backupService.createBackup(type, "admin");
-        return ResponseEntity.ok(response);
+        HttpStatus status = response.getStatus() == BackupStatus.COMPLETED
+                ? HttpStatus.OK
+                : HttpStatus.SERVICE_UNAVAILABLE;
+        return ResponseEntity.status(status).body(response);
     }
 
     /**

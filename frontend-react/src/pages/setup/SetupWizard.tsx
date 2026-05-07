@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Building2,
@@ -17,18 +17,71 @@ import {
   XCircle,
 } from 'lucide-react'
 import { publicApi } from '../../services/api/index'
+import type { ElectronAppMode } from '../../types/appMode'
 
 // ---------------------------------------------------------------------------
 // Típusok
 // ---------------------------------------------------------------------------
 
-interface Branch {
+export interface Branch {
   code: string
   name: string
   city: string
   address?: string
   /** v2.5.1-E B6: ÉRTÉKTÁRI fiók-e? Az ertektar módú telepítéskor kell. */
   isVault?: boolean
+}
+
+interface SetupWorkerOption {
+  code: string
+  name: string
+}
+
+export function isBranchSelectableForAppMode(
+  branch: Branch | null | undefined,
+  appMode: ElectronAppMode,
+): boolean {
+  if (!branch) return false
+  if (appMode === 'ertektar') return branch.isVault === true
+  return true
+}
+
+export function filterBranchesForAppMode(
+  branches: Branch[],
+  appMode: ElectronAppMode,
+): Branch[] {
+  return branches.filter((branch) => isBranchSelectableForAppMode(branch, appMode))
+}
+
+export function resolveSelectedWorkerForSetup(params: {
+  offlineMode: boolean
+  workerCode: string
+  availableWorkers: SetupWorkerOption[]
+}): SetupWorkerOption | null {
+  if (params.offlineMode) return null
+  const normalizedWorkerCode = params.workerCode.trim().toUpperCase()
+  if (!normalizedWorkerCode) return null
+  return params.availableWorkers.find((worker) => worker.code.trim().toUpperCase() === normalizedWorkerCode) ?? null
+}
+
+export function buildConnectionTestResetKey(params: {
+  apiUrl: string
+  companyCode: string
+  bootstrapUsername: string
+  bootstrapPassword: string
+  offlineMode: boolean
+  appMode: 'penztar' | 'ertektar' | 'ertekszallito'
+  branchCode?: string | null
+}): string {
+  return [
+    params.apiUrl.trim(),
+    params.companyCode.trim().toUpperCase(),
+    params.bootstrapUsername.trim().toUpperCase(),
+    params.bootstrapPassword,
+    params.offlineMode ? 'offline' : 'online',
+    params.appMode,
+    params.branchCode?.trim().toUpperCase() ?? '',
+  ].join('\x1f')
 }
 
 type StepId = 'welcome' | 'branch' | 'program' | 'server' | 'admin'
@@ -76,11 +129,23 @@ export default function SetupWizard() {
   const [companyCode, setCompanyCode] = useState(DEFAULT_COMPANY_CODE)
   const [bootstrapUsername, setBootstrapUsername] = useState('')
   const [bootstrapPassword, setBootstrapPassword] = useState('')
+  const [availableWorkers, setAvailableWorkers] = useState<SetupWorkerOption[]>([])
   const [offlineMode, setOfflineMode] = useState(false)
-  const [appModeChoice, setAppModeChoice] = useState<'penztar' | 'ertektar'>('penztar')
+  const [appModeChoice, setAppModeChoice] = useState<ElectronAppMode>('penztar')
   const [connectionTest, setConnectionTest] = useState<
     { state: 'idle' | 'testing' | 'ok' | 'fail'; message?: string }
   >({ state: 'idle' })
+  const connectionTestResetKey = useMemo(() => buildConnectionTestResetKey({
+    apiUrl,
+    companyCode,
+    bootstrapUsername,
+    bootstrapPassword,
+    offlineMode,
+    appMode: appModeChoice,
+    branchCode: selectedBranch?.code ?? null,
+  }), [apiUrl, companyCode, bootstrapUsername, bootstrapPassword, offlineMode, appModeChoice, selectedBranch?.code])
+  const connectionTestResetKeyRef = useRef(connectionTestResetKey)
+  const autoConnectionTestKeyRef = useRef<string | null>(null)
 
   const [adminUsername, setAdminUsername] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
@@ -136,10 +201,7 @@ export default function SetupWizard() {
   // engedjük kiválasztani — különben a felhasználó tévedésből pénztárt
   // választhatna értéktárhoz, és a területi szűrés is rosszul mutatna.
   const filteredBranches = useMemo(() => {
-    let list = branches
-    if (appModeChoice === 'ertektar') {
-      list = list.filter((b) => b.isVault === true)
-    }
+    let list = filterBranchesForAppMode(branches, appModeChoice)
     const q = branchSearch.trim().toLowerCase()
     if (!q) return list
     return list.filter((b) =>
@@ -159,7 +221,23 @@ export default function SetupWizard() {
 
   useEffect(() => {
     setBranchPage(0)
-  }, [branchSearch])
+  }, [branchSearch, appModeChoice])
+
+  useEffect(() => {
+    if (selectedBranch && !isBranchSelectableForAppMode(selectedBranch, appModeChoice)) {
+      setSelectedBranch(null)
+    }
+  }, [appModeChoice, selectedBranch])
+
+  useEffect(() => {
+    connectionTestResetKeyRef.current = connectionTestResetKey
+    autoConnectionTestKeyRef.current = null
+    setConnectionTest({ state: 'idle' })
+  }, [connectionTestResetKey])
+
+  const isCurrentConnectionTestRequest = useCallback((requestKey: string) => (
+    connectionTestResetKeyRef.current === requestKey
+  ), [])
 
   // --- Lépés-validáció: engedélyezett-e a tovább ---
   const canAdvance = useMemo(() => {
@@ -167,7 +245,7 @@ export default function SetupWizard() {
       case 'welcome':
         return true
       case 'branch':
-        return !!selectedBranch
+        return isBranchSelectableForAppMode(selectedBranch, appModeChoice)
       case 'program':
         return !!appModeChoice
       case 'server':
@@ -185,36 +263,66 @@ export default function SetupWizard() {
   // (ha offline mode off). Ha siker - zold banner. Ha fail - piros + retry gomb.
   useEffect(() => {
     if (currentStep !== 'server' || offlineMode) return
-    if (connectionTest.state === 'testing') return
-    if (connectionTest.state === 'ok') return // mar sikeres — ne fusson ujra
     // csak akkor indul, ha van apiUrl + companyCode
     if (!apiUrl.trim() || !companyCode.trim()) return
     // ne fusson ha a user meg nem tesztelt + semmi input sincs
     if (!bootstrapUsername.trim() && !bootstrapPassword) {
+      if (autoConnectionTestKeyRef.current === connectionTestResetKey) return
+      autoConnectionTestKeyRef.current = connectionTestResetKey
       // elso alkalommal az auto-test a bootstrap-status endpoint-ra megy
       // (nem kell a user kod/jelszo)
+      const requestKey = connectionTestResetKey
       setConnectionTest({ state: 'testing' })
+      if (window.electronAPI?.setupTestConnection) {
+        window.electronAPI.setupTestConnection({
+          apiUrl: apiUrl.trim(),
+          companyCode: companyCode.trim(),
+          username: '',
+          password: '',
+        })
+          .then((result) => {
+            if (!isCurrentConnectionTestRequest(requestKey)) return
+            if (result.success) {
+              setConnectionTest({
+                state: 'ok',
+                message: `Kapcsolodva (HTTP ${result.httpStatus ?? '?'}${
+                  result.latencyMs !== undefined ? `, ${result.latencyMs} ms` : ''
+                })`,
+              })
+            } else {
+              setConnectionTest({ state: 'fail', message: result.errorMessage || 'Ismeretlen hiba.' })
+            }
+          })
+          .catch((err: unknown) => {
+            if (!isCurrentConnectionTestRequest(requestKey)) return
+            setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
+          })
+        return
+      }
       const normalized = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '')
       const url = `${normalized}/api/v1/auth/bootstrap-status`
       const started = performance.now()
       fetch(url, { method: 'GET' })
         .then((resp) => {
+          if (!isCurrentConnectionTestRequest(requestKey)) return
           const latency = Math.round(performance.now() - started)
           if (resp.ok) {
             setConnectionTest({ state: 'ok', message: `Kapcsolodva (HTTP ${resp.status}, ${latency} ms)` })
           } else {
             setConnectionTest({ state: 'fail', message: `Szerver hiba: HTTP ${resp.status}` })
           }
-        })
+      })
         .catch((err: unknown) => {
+          if (!isCurrentConnectionTestRequest(requestKey)) return
           setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
         })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep, apiUrl, companyCode, offlineMode])
+  }, [currentStep, apiUrl, companyCode, offlineMode, bootstrapUsername, bootstrapPassword, connectionTestResetKey, isCurrentConnectionTestRequest])
 
   // --- Kapcsolat teszt (kezi, retry gombnak) ---
   const runConnectionTest = useCallback(async () => {
+    const requestKey = connectionTestResetKey
+    connectionTestResetKeyRef.current = requestKey
     setConnectionTest({ state: 'testing' })
     const started = performance.now()
     try {
@@ -225,6 +333,7 @@ export default function SetupWizard() {
           username: bootstrapUsername.trim(),
           password: bootstrapPassword,
         })
+        if (!isCurrentConnectionTestRequest(requestKey)) return
         if (result.success) {
           setConnectionTest({
             state: 'ok',
@@ -240,6 +349,7 @@ export default function SetupWizard() {
       const normalized = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '')
       const url = `${normalized}/api/v1/auth/bootstrap-status`
       const resp = await fetch(url, { method: 'GET' })
+      if (!isCurrentConnectionTestRequest(requestKey)) return
       const latency = Math.round(performance.now() - started)
       if (resp.ok) {
         setConnectionTest({ state: 'ok', message: `Sikeres (HTTP ${resp.status}, ${latency} ms)` })
@@ -247,13 +357,18 @@ export default function SetupWizard() {
         setConnectionTest({ state: 'fail', message: `Szerver hiba: HTTP ${resp.status}` })
       }
     } catch (err: unknown) {
+      if (!isCurrentConnectionTestRequest(requestKey)) return
       setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
     }
-  }, [apiUrl, companyCode, bootstrapUsername, bootstrapPassword])
+  }, [apiUrl, companyCode, bootstrapUsername, bootstrapPassword, connectionTestResetKey, isCurrentConnectionTestRequest])
 
   // --- Telepítés befejezése ---
   const handleFinish = async () => {
     if (!selectedBranch) return
+    if (!isBranchSelectableForAppMode(selectedBranch, appModeChoice)) {
+      setSaveError('A kiválasztott fiók nem használható ehhez a programtípushoz. Válasszon másik fiókot.')
+      return
+    }
     setIsSaving(true)
     setSaveError(null)
     try {
@@ -262,14 +377,11 @@ export default function SetupWizard() {
         // A ServerStep-bol a bootstrapUsername = a workerCode (pl. BORSI).
         // A workerList elemeiben a name megvan. A role nincs a public endpoint-on,
         // de az optional; a backend /first-time-worker-setup visszaadja.
-        const trimmedWorkerCode = bootstrapUsername.trim().toUpperCase()
-        // v2.3.1 Codex P2 fix #217: offline mode-ban NINCS worker-first-time-setup
-        // (a helyi backend nem biztos hogy mar fel van huzva + a user a legacy
-        //  bootstrap-admin flow-t akarja). Csak online modban aktivaljuk a
-        //  selectedWorkerCode-ot.
-        const hasWorkerSelection = !offlineMode
-          && trimmedWorkerCode.length > 0
-          && trimmedWorkerCode !== adminUsername.trim().toUpperCase()
+        const selectedWorker = resolveSelectedWorkerForSetup({
+          offlineMode,
+          workerCode: bootstrapUsername,
+          availableWorkers,
+        })
         const result = await window.electronAPI.setupSave({
           branchCode: selectedBranch.code,
           branchName: selectedBranch.name,
@@ -282,8 +394,9 @@ export default function SetupWizard() {
           offlineMode,
           appMode: appModeChoice,
           // v2.3.0: worker identity atadasa az electron-nak ha van kivalasztott dolgozo
-          ...(hasWorkerSelection ? {
-            selectedWorkerCode: trimmedWorkerCode,
+          ...(selectedWorker ? {
+            selectedWorkerCode: selectedWorker.code.trim().toUpperCase(),
+            selectedWorkerName: selectedWorker.name,
           } : {}),
         })
         if (!result.success) {
@@ -294,24 +407,42 @@ export default function SetupWizard() {
       }
       const normalized = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '')
 
-      // Eldontes: ha bootstrapUsername kitoltve es kulonbozik az adminUsername-tol,
-      // akkor a user egy LETEZO workert valasztott ki — /auth/first-time-worker-setup
-      // kell meghivni, ami a worker sajat role-jat megorzi (nem eroltet ADMIN-t).
-      // Kulonben a regi bootstrap-admin flow (admin user letrehozas).
+      // Eldontes: csak akkor megyunk worker-first-time setup uton, ha a kod
+      // a szerverrol betoltott worker-listaban szerepel. Igy a wizardban beallitott
+      // jelszo a letezo worker globalis jelszava lesz, kezzel beirt admin kodnal
+      // pedig megmarad a regi bootstrap-admin flow.
       const selectedWorkerCode = bootstrapUsername.trim().toUpperCase()
-      const useWorkerSetup = selectedWorkerCode.length > 0 && selectedWorkerCode !== adminUsername.trim().toUpperCase()
+      const selectedWorker = resolveSelectedWorkerForSetup({
+        offlineMode,
+        workerCode: selectedWorkerCode,
+        availableWorkers,
+      })
+      let bootstrapCompleted = false
+      try {
+        const statusResp = await fetch(`${normalized}/api/v1/auth/bootstrap-status`, {
+          method: 'GET',
+          credentials: 'include',
+        })
+        const statusBody = await statusResp.json().catch(() => ({} as { completed?: boolean }))
+        bootstrapCompleted = statusBody.completed === true
+      } catch {
+        bootstrapCompleted = false
+      }
+      const useWorkerSetup = selectedWorker !== null || (bootstrapCompleted && selectedWorkerCode.trim().length > 0)
       let workerIdentity: { workerCode: string; workerName?: string; workerRole?: string; branchCode?: string } | null = null
 
       if (useWorkerSetup) {
         const setupUrl = `${normalized}/api/v1/auth/first-time-worker-setup`
         const setupResp = await fetch(setupUrl, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             companyCode: companyCode.trim(),
             workerCode: selectedWorkerCode,
             newPassword: adminPassword,
             currentPassword: bootstrapPassword || undefined,
+            appMode: appModeChoice,
           }),
         })
         if (!setupResp.ok) {
@@ -324,7 +455,7 @@ export default function SetupWizard() {
         const setupBody = await setupResp.json().catch(() => ({}))
         workerIdentity = {
           workerCode: setupBody.workerCode || selectedWorkerCode,
-          workerName: setupBody.workerName,
+          workerName: setupBody.workerName || selectedWorker?.name,
           workerRole: setupBody.workerRole,
           branchCode: setupBody.branchCode,
         }
@@ -332,6 +463,7 @@ export default function SetupWizard() {
         const bootstrapUrl = `${normalized}/api/v1/auth/bootstrap-admin`
         const resp = await fetch(bootstrapUrl, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             companyCode: companyCode.trim(),
@@ -429,6 +561,11 @@ export default function SetupWizard() {
                     title: 'Értéktár',
                     desc: 'Értéktáros munka: pénztárak ellátása / átadás-átvétel bank és más értéktárak felé, napi + havi + dekádzárás. Local-first.',
                   },
+                  {
+                    id: 'ertekszallito' as const,
+                    title: 'Értékszállító',
+                    desc: 'Szállítói munka: átadás-átvételi bizonylatok kezelése, aláírás, úton lévő csomagok követése. Local-first.',
+                  },
                 ]).map((opt) => (
                   <button
                     key={opt.id}
@@ -462,6 +599,7 @@ export default function SetupWizard() {
               connectionTest={connectionTest}
               onTestConnection={runConnectionTest}
               selectedBranchCode={selectedBranch?.code ?? null}
+              onWorkerListChange={setAvailableWorkers}
             />
           )}
           {currentStep === 'admin' && (
@@ -750,42 +888,60 @@ interface ServerStepProps {
   connectionTest: { state: 'idle' | 'testing' | 'ok' | 'fail'; message?: string }
   onTestConnection: () => void
   selectedBranchCode: string | null
+  onWorkerListChange: (workers: SetupWorkerOption[]) => void
 }
 
 function ServerStep(props: ServerStepProps) {
   const { t } = useTranslation()
-  // v2.5.24: a `bootstrapPassword` + `onBootstrapPasswordChange` mar nem hasznalt
-  // a UI-n (eltavolitottuk a "Teszt jelszo" mezot), de a parent komponens meg
-  // atadja a propsban — ezert a destructuring-bol kihagyjuk, de a parent meg
-  // mukodik, mert a `setupSave`-be `bootstrapPassword` ures string mar.
   const {
     apiUrl,
     companyCode, onCompanyCodeChange,
     bootstrapUsername, onBootstrapUsernameChange,
+    bootstrapPassword, onBootstrapPasswordChange,
     offlineMode, onOfflineModeChange,
     connectionTest, onTestConnection,
     selectedBranchCode,
+    onWorkerListChange,
   } = props
 
-  const [workerList, setWorkerList] = useState<{ code: string; name: string }[]>([])
+  const [workerList, setWorkerList] = useState<SetupWorkerOption[]>([])
   const [workerListLoading, setWorkerListLoading] = useState(false)
 
   useEffect(() => {
-    if (!selectedBranchCode || offlineMode) {
+    const normalizedCompanyCode = companyCode.trim()
+    const normalizedBranchCode = selectedBranchCode?.trim() ?? ""
+
+    if (!normalizedBranchCode || !normalizedCompanyCode || offlineMode) {
       setWorkerList([])
+      onWorkerListChange([])
       return
     }
     let cancelled = false
     setWorkerListLoading(true)
-    publicApi.getWorkersByBranch(selectedBranchCode)
+    const loadWorkers = window.electronAPI?.setupGetWorkers
+      ? window.electronAPI.setupGetWorkers({
+        apiUrl: apiUrl.trim(),
+        companyCode: normalizedCompanyCode,
+        branchCode: normalizedBranchCode,
+      })
+      : publicApi.getWorkersByBranch(normalizedBranchCode, normalizedCompanyCode)
+
+    loadWorkers
       .then((list) => {
         if (cancelled) return
-        setWorkerList(list.map((w) => ({ code: w.code, name: w.name })))
+        const workers = list.map((w) => ({ code: w.code, name: w.name }))
+        setWorkerList(workers)
+        onWorkerListChange(workers)
       })
-      .catch(() => { if (!cancelled) setWorkerList([]) })
+      .catch(() => {
+        if (!cancelled) {
+          setWorkerList([])
+          onWorkerListChange([])
+        }
+      })
       .finally(() => { if (!cancelled) setWorkerListLoading(false) })
     return () => { cancelled = true }
-  }, [selectedBranchCode, offlineMode])
+  }, [apiUrl, companyCode, selectedBranchCode, offlineMode, onWorkerListChange])
 
   return (
     <div>
@@ -836,7 +992,7 @@ function ServerStep(props: ServerStepProps) {
               value={bootstrapUsername}
               onChange={(e) => onBootstrapUsernameChange(e.target.value)}
               disabled={offlineMode}
-              placeholder={workerListLoading ? "Pénztárosok betöltése..." : "Pénztáros kód (pl. ADMIN)"}
+              placeholder={workerListLoading ? "Pénztárosok betöltése..." : "Pénztáros kód"}
               className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100"
             />
           )}
@@ -844,12 +1000,22 @@ function ServerStep(props: ServerStepProps) {
             {t('setup.azIttKivalasztottPenztarosKodjahozAz5LepesenAllitjaBeAzUjJelszot')}
           </span>
         </FieldLabel>
-      </div>
 
-      {/* v2.5.24 UX: a "Teszt jelszó" mezőt eltávolítottuk — felesleges volt és zavaró.
-          A connection test most kizarolag a `bootstrap-status` endpoint-tal megy
-          (auth nélkül), így a wizard 4. lépésén a felhasználónak SEMMI jelszót
-          nem kell beírnia. A LOGIN-jelszót az 5. lépésen állítja be — egyszer. */}
+        <FieldLabel label="Jelenlegi vagy kezdő jelszó" icon={<KeyRound className="w-4 h-4" />}>
+          <input
+            type="password"
+            value={bootstrapPassword}
+            onChange={(e) => onBootstrapPasswordChange(e.target.value)}
+            disabled={offlineMode}
+            autoComplete="current-password"
+            placeholder="Szükséges, ha már van kezdő jelszó"
+            className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100 disabled:text-slate-500"
+          />
+          <span className="text-xs text-slate-500 mt-1 block">
+            Ha a dolgozóhoz már tartozik kezdő vagy jelenlegi jelszó, itt adja meg. Az új belépési jelszót a következő lépésen állítja be.
+          </span>
+        </FieldLabel>
+      </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <button

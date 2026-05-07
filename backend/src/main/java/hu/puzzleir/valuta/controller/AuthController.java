@@ -14,19 +14,20 @@ import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
 import hu.puzzleir.valuta.service.AdminBootstrapService;
 import hu.puzzleir.valuta.service.PasswordResetService;
+import hu.puzzleir.valuta.service.RefreshCookieService;
 import hu.puzzleir.valuta.service.WorkerFirstTimeSetupService;
 import hu.puzzleir.valuta.service.TokenBlacklistService;
 import hu.puzzleir.valuta.service.WorkerRoleService;
 import hu.puzzleir.valuta.service.WorkerService;
+import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.util.AppModeRoleConstants;
 import hu.puzzleir.valuta.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import hu.puzzleir.valuta.service.RefreshTokenService;
 import hu.puzzleir.valuta.entity.RefreshToken;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
-import java.time.Duration;
+import org.springframework.http.HttpStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -46,7 +47,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 @PreAuthorize("permitAll()")
 public class AuthController {
-    
     private final WorkerService workerService;
     private final JwtTokenProvider jwtTokenProvider;
     private final WorkerRepository workerRepository;
@@ -56,6 +56,7 @@ public class AuthController {
     private final WorkerFirstTimeSetupService workerFirstTimeSetupService;
     private final PasswordResetService passwordResetService;
     private final RefreshTokenService refreshTokenService;
+    private final RefreshCookieService refreshCookieService;
     /** Audit P1.4 SSOT: trusted-proxy-aware kliens IP feloldas. */
     private final ClientIpResolver clientIpResolver;
     // Audit P0.3 (2026-05-03): a `refreshTokenRepository` + `bcrypt10` direct hivatkozas
@@ -83,24 +84,26 @@ public class AuthController {
         String userAgent = request.getHeader("User-Agent");
 
         LoginResponseDto response = workerService.login(dto, ipAddress, userAgent);
+        enforceAppModeForLoginResponse(response, dto.getAppMode());
 
-        // HttpOnly refresh cookie (vezerlokonyv par.12.3)
-        // A raw UUID csak a cookie-ban utazik; a DB-ben BCrypt-hashelve van.
-        try {
+        // HttpOnly refresh cookie csak végleges, activeRole-lal rendelkező sessionhöz jár.
+        // Több szerepkörös login esetén a token ideiglenes; a role-select endpoint adja ki
+        // a tartós refresh cookie-t a kiválasztott szerepkör után.
+        if (!Boolean.TRUE.equals(response.getRoleSelectionRequired())) {
             Worker worker = workerRepository.findById(response.getWorker().getId())
-                .orElseThrow(() -> new ValidationException("Worker nem talalhato login utan"));
-            RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, request);
-            ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
-                .httpOnly(true)
-                .secure(request.isSecure())
-                .sameSite("Strict")
-                .path("/api/v1/auth")
-                .maxAge(Duration.ofDays(7))
-                .build();
-            httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        } catch (Exception e) {
-            org.slf4j.LoggerFactory.getLogger(AuthController.class)
-                .warn("HttpOnly refresh cookie kiadas bukott: {}", e.getMessage());
+                .orElseThrow(() -> new BusinessException(
+                        "Belépés nem véglegesíthető: a dolgozó rekord nem található.",
+                        "LOGIN_SESSION_ISSUE_FAILED",
+                        HttpStatus.SERVICE_UNAVAILABLE));
+            refreshCookieService.issueOrThrow(
+                    worker,
+                    request,
+                    httpResponse,
+                    response.getActiveRole(),
+                    "HttpOnly refresh cookie kiadas bukott login utan",
+                    "Belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.");
+        } else {
+            refreshCookieService.clearCookie(request, httpResponse);
         }
 
         return ResponseEntity.ok(response);
@@ -124,7 +127,7 @@ public class AuthController {
         workerService.logout(token);
 
         // Refresh cookie torlese + DB-ben revoke (vezerlokonyv par.12.3)
-        String rawRefresh = extractRefreshCookie(request);
+        String rawRefresh = refreshCookieService.extractRefreshCookie(request);
         if (rawRefresh != null && token != null) {
             try {
                 Long workerId = jwtTokenProvider.getWorkerIdFromToken(token);
@@ -134,10 +137,7 @@ public class AuthController {
                 }
             } catch (Exception ignore) { /* logout ne bukjon el rajta */ }
         }
-        ResponseCookie clearCookie = ResponseCookie.from("refreshToken", "")
-            .httpOnly(true).secure(request.isSecure()).sameSite("Strict")
-            .path("/api/v1/auth").maxAge(0).build();
-        httpResponse.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
+        refreshCookieService.clearCookie(request, httpResponse);
 
         return ResponseEntity.noContent().build();
     }
@@ -165,47 +165,67 @@ public class AuthController {
     public ResponseEntity<Map<String, String>> refreshCookie(
             HttpServletRequest request,
             HttpServletResponse httpResponse) {
-        String rawRefresh = extractRefreshCookie(request);
+        String rawRefresh = refreshCookieService.extractRefreshCookie(request);
         if (rawRefresh == null) return ResponseEntity.status(401).build();
 
         // Audit P0.3 (2026-05-03): O(1) selector lookup + EGYETLEN BCrypt verify.
         // Korabban `findAll().stream().filter(BCrypt.matches)` minden refresh-kor
         // futtatott BCrypt-et MINDEN aktiv tokenre — DoS-kockazat (~150ms/token).
-        java.util.Optional<hu.puzzleir.valuta.entity.RefreshToken> matched =
+        java.util.Optional<RefreshToken> matched =
             refreshTokenService.findActiveBySelectorAndVerifier(rawRefresh);
         if (matched.isEmpty()) return ResponseEntity.status(401).build();
 
-        hu.puzzleir.valuta.entity.RefreshToken oldRefresh = matched.get();
+        RefreshToken oldRefresh = matched.get();
         Worker worker = workerRepository.findById(oldRefresh.getWorkerId())
             .filter(w -> Boolean.TRUE.equals(w.getActive()))
             .orElse(null);
         if (worker == null) return ResponseEntity.status(401).build();
 
         // Uj access token generalas (aktiv role + permissions)
-        java.util.List<String> roleCodes = workerRoleService.getRoleCodesForWorker(worker.getId());
-        String defaultRole = roleCodes.isEmpty() ? null : roleCodes.get(0);
-        java.util.List<String> perms = defaultRole != null
-            ? workerRoleService.getPermissionCodesForRole(defaultRole)
-            : java.util.List.of();
-        String newAccess = jwtTokenProvider.generateToken(worker, defaultRole, perms);
+        List<String> roleCodes = workerRoleService.getRoleCodesForWorker(worker.getId());
+        String activeRole = RefreshTokenService.normalizeActiveRole(oldRefresh.getActiveRole());
+        if (activeRole != null) {
+            if (!roleCodes.contains(activeRole)) {
+                String normalizedActiveRole = activeRole;
+                activeRole = roleCodes.stream()
+                        .filter(roleCode -> roleCode != null && roleCode.equalsIgnoreCase(normalizedActiveRole))
+                        .findFirst()
+                        .orElse(null);
+                if (activeRole == null) {
+                    refreshTokenService.revoke(oldRefresh);
+                    refreshCookieService.clearCookie(request, httpResponse);
+                    return ResponseEntity.status(401).build();
+                }
+            }
+        } else if (roleCodes.size() == 1) {
+            activeRole = roleCodes.get(0);
+        } else if (roleCodes.size() > 1) {
+            refreshTokenService.revoke(oldRefresh);
+            refreshCookieService.clearCookie(request, httpResponse);
+            return ResponseEntity.status(401).build();
+        } else {
+            activeRole = null;
+        }
+        List<String> perms = activeRole != null
+            ? workerRoleService.getPermissionCodesForRole(activeRole)
+            : List.of();
+        String newAccess = jwtTokenProvider.generateToken(worker, activeRole, perms);
 
         // Token rotation - regi revoke + uj issue
-        RefreshTokenService.IssuedToken newIssued = refreshTokenService.rotate(oldRefresh, worker, request);
-        ResponseCookie rotated = ResponseCookie.from("refreshToken", newIssued.rawUuid())
-            .httpOnly(true).secure(request.isSecure()).sameSite("Strict")
-            .path("/api/v1/auth").maxAge(Duration.ofDays(7)).build();
-        httpResponse.addHeader(HttpHeaders.SET_COOKIE, rotated.toString());
+        RefreshTokenService.IssuedToken newIssued = refreshTokenService.rotate(oldRefresh, worker, request, activeRole);
+        refreshCookieService.addIssuedCookie(newIssued, request, httpResponse);
 
         return ResponseEntity.ok(Map.of("token", newAccess));
     }
-
-    /** Cookie-bol kiolvassa a refreshToken ertekt (null, ha nincs). */
-    private static String extractRefreshCookie(HttpServletRequest request) {
-        if (request.getCookies() == null) return null;
-        for (jakarta.servlet.http.Cookie c : request.getCookies()) {
-            if ("refreshToken".equals(c.getName())) return c.getValue();
+    private static void enforceAppModeForLoginResponse(LoginResponseDto response, String appMode) {
+        String appModeValidationError = AppModeRoleConstants.validateLoginRolesForAppMode(
+                response.getRoles(),
+                response.getActiveRole(),
+                Boolean.TRUE.equals(response.getRoleSelectionRequired()),
+                appMode);
+        if (appModeValidationError != null) {
+            throw new ValidationException(appModeValidationError);
         }
-        return null;
     }
     
     /**
@@ -220,7 +240,9 @@ public class AuthController {
      */
     @PostMapping("/login/select-role")
     public ResponseEntity<LoginResponseDto> selectRole(
-            @Valid @RequestBody SelectRoleRequestDto dto) {
+            @Valid @RequestBody SelectRoleRequestDto dto,
+            HttpServletRequest request,
+            HttpServletResponse httpResponse) {
         
         // Token validálás
         if (!jwtTokenProvider.validateToken(dto.getToken())) {
@@ -250,6 +272,10 @@ public class AuthController {
         if (!roleCodes.contains(dto.getRoleCode())) {
             throw new ValidationException("Nincs ilyen szerepköre: " + dto.getRoleCode());
         }
+
+        if (!AppModeRoleConstants.isRoleSelectableForAppMode(dto.getRoleCode(), dto.getAppMode())) {
+            throw new ValidationException("Ez a szerepkör nem használható ebben a programban: " + dto.getRoleCode());
+        }
         
         // Permission kódok az aktív role-hoz
         List<String> permissions = workerRoleService.getPermissionCodesForRole(dto.getRoleCode());
@@ -257,8 +283,20 @@ public class AuthController {
         // Új JWT generálás az aktív role-lal
         String newToken = jwtTokenProvider.generateToken(worker, dto.getRoleCode(), permissions);
 
-        // 🔴 Régi token blacklistelése (role switch → token rotation)
-        tokenBlacklistService.blacklistToken(oldTokenId, workerId, "ROLE_CHANGE", LocalDateTime.now().plusHours(24));
+        refreshCookieService.issueOrThrow(
+                worker,
+                request,
+                httpResponse,
+                dto.getRoleCode(),
+                "HttpOnly refresh cookie kiadas bukott role select utan",
+                "Belépés nem véglegesíthető: a szerepkör-választás utáni biztonságos munkamenet cookie kiadása sikertelen.");
+
+        // Régi temp token blacklistelése csak sikeres finalizálás után, hogy cookie-hiba esetén újrapróbálható maradjon.
+        tokenBlacklistService.blacklistToken(
+                oldTokenId,
+                workerId,
+                TokenBlacklistService.REASON_ROLE_CHANGE,
+                blacklistExpiresAt(dto.getToken()));
 
         long expiresInMs = 86400000L;
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(expiresInMs / 1000);
@@ -272,6 +310,7 @@ public class AuthController {
                 .activeRole(dto.getRoleCode())
                 .permissions(permissions)
                 .roleSelectionRequired(false)
+                .validAppModes(AppModeRoleConstants.computeValidAppModes(roleCodes, worker.getRole()))
                 .build());
     }
 
@@ -318,17 +357,42 @@ public class AuthController {
             return ResponseEntity.status(401).build();
         }
 
-        // Aktív role és permissions megőrzése a régi tokenből
+        // Aktív role validálása DB-ből. A refresh nem viheti tovább vakon a JWT-ben
+        // lévő régi jogosultságokat, mert role-visszavonás után privilege retention keletkezne.
+        LocalDateTime blacklistExpiresAt = blacklistExpiresAt(token);
         String activeRole = jwtTokenProvider.getActiveRoleFromToken(token);
-        java.util.List<String> permissions = jwtTokenProvider.getPermissionsFromToken(token);
+        List<String> roleCodes = workerRoleService.getRoleCodesForWorker(workerId);
+        if (activeRole != null && !activeRole.isBlank()) {
+            if (!roleCodes.contains(activeRole)) {
+                tokenBlacklistService.blacklistToken(
+                        oldTokenId,
+                        workerId,
+                        TokenBlacklistService.REASON_ROLE_REVOKED,
+                        blacklistExpiresAt);
+                return ResponseEntity.status(401).build();
+            }
+        } else if (roleCodes.size() == 1) {
+            activeRole = roleCodes.get(0);
+        } else {
+            activeRole = null;
+        }
+
+        List<String> permissions = activeRole != null && !activeRole.isBlank()
+                ? workerRoleService.getPermissionCodesForRole(activeRole)
+                : List.of();
 
         // Új token generálás az aktív role megtartásával
         String newToken = jwtTokenProvider.generateToken(worker, activeRole, permissions);
 
         // 🔴 Régi token blacklistelése (token rotation)
-        tokenBlacklistService.blacklistToken(oldTokenId, workerId, "REFRESH", LocalDateTime.now().plusHours(24));
+        tokenBlacklistService.blacklistToken(oldTokenId, workerId, TokenBlacklistService.REASON_REFRESH, blacklistExpiresAt);
 
         return ResponseEntity.ok(Map.of("token", newToken));
+    }
+
+    private LocalDateTime blacklistExpiresAt(String token) {
+        LocalDateTime expiresAt = jwtTokenProvider.getExpirationDateTimeFromToken(token);
+        return expiresAt != null ? expiresAt : jwtTokenProvider.getConfiguredExpirationDateTimeFromNow();
     }
 
     /**
@@ -385,13 +449,27 @@ public class AuthController {
      */
     @PostMapping("/first-time-worker-setup")
     public ResponseEntity<WorkerFirstTimeSetupResponseDto> firstTimeWorkerSetup(
-            @Valid @RequestBody WorkerFirstTimeSetupRequestDto dto) {
+            @Valid @RequestBody WorkerFirstTimeSetupRequestDto dto,
+            HttpServletRequest request,
+            HttpServletResponse httpResponse) {
         WorkerFirstTimeSetupResponseDto response = workerFirstTimeSetupService.setupWorkerPassword(dto);
+        Worker worker = workerRepository.findById(response.getWorkerId())
+            .orElseThrow(() -> new BusinessException(
+                    "Telepítés utáni belépés nem véglegesíthető: a dolgozó rekord nem található.",
+                    "LOGIN_SESSION_ISSUE_FAILED",
+                    HttpStatus.SERVICE_UNAVAILABLE));
+        refreshCookieService.issueOrThrow(
+                worker,
+                request,
+                httpResponse,
+                response.getActiveRole(),
+                "HttpOnly refresh cookie kiadas bukott first-time setup utan",
+                "Telepítés utáni belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.");
         return ResponseEntity.ok(response);
     }
 
     /**
-     * Elfelejtett jelszo — egy token-t general + (TODO: email-ben kikuldi).
+     * Elfelejtett jelszo — reset tokent general, perzisztensen tarol, majd emailben kikuldi.
      *
      * <p>POST /api/v1/auth/forgot-password</p>
      * <p>Body: {"email": "user@example.com"}</p>

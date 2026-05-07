@@ -19,10 +19,15 @@ export interface PublicBranch {
 
 export const publicApi = {
   /** Get active workers for the region of the given branch (no-auth). */
-  getWorkersByBranch: async (branchCode: string): Promise<PublicWorker[]> => {
-    if (!branchCode) return []
+  getWorkersByBranch: async (branchCode: string, companyCode?: string): Promise<PublicWorker[]> => {
+    const normalizedBranchCode = branchCode.trim()
+    const normalizedCompanyCode = companyCode?.trim() ?? ""
+    if (!normalizedBranchCode || !normalizedCompanyCode) return []
     const response = await api.get<PublicWorker[]>("/public/workers", {
-      params: { branchCode },
+      params: {
+        branchCode: normalizedBranchCode,
+        companyCode: normalizedCompanyCode,
+      },
     })
     return response.data ?? []
   },

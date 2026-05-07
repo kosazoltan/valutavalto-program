@@ -12,6 +12,7 @@ import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.repository.WorkerSessionRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
 import hu.puzzleir.valuta.util.AppModeRoleConstants;
+import hu.puzzleir.valuta.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,6 +66,7 @@ public class GoogleLoginService {
     private final WorkerRoleService workerRoleService;
     private final JwtTokenProvider jwtTokenProvider;
     private final BranchRepository branchRepository;
+    private final ClientIpResolver clientIpResolver;
 
     @Value("${google.login.bind-sub-on-first-login:true}")
     private boolean bindSubOnFirstLogin;
@@ -80,6 +82,10 @@ public class GoogleLoginService {
      *                                  (admin konfiguracios hiba)
      */
     public LoginResponseDto loginWithGoogle(String idToken, HttpServletRequest httpRequest) {
+        return loginWithGoogle(idToken, httpRequest, null);
+    }
+
+    public LoginResponseDto loginWithGoogle(String idToken, HttpServletRequest httpRequest, String appMode) {
         // 1. Google ID token validacio
         GoogleIdTokenService.VerifiedGoogleIdentity identity;
         try {
@@ -154,6 +160,11 @@ public class GoogleLoginService {
 
         // 5. Operativ szerepkor (V57) — egyezo logika a WorkerService.login-nal
         List<String> roleCodes = workerRoleService.getRoleCodesForWorker(worker.getId());
+        if (AppModeRoleConstants.isLegacyWorkerRoleDeniedForAppMode(
+                roleCodes, worker.getRole(), appMode)) {
+            throw new AuthenticationException(AppModeRoleConstants.legacyWorkerRoleDeniedMessage(worker.getRole()));
+        }
+
         String activeRole = null;
         List<String> permissions = List.of();
         boolean roleSelectionRequired = false;
@@ -165,13 +176,21 @@ public class GoogleLoginService {
             roleSelectionRequired = true;
         }
 
-        // 6. JWT + Session
-        String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
-        String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
+        String appModeValidationError = AppModeRoleConstants.validateLoginRolesForAppMode(
+                roleCodes,
+                activeRole,
+                roleSelectionRequired,
+                appMode);
+        if (appModeValidationError != null) {
+            throw new AuthenticationException(appModeValidationError);
+        }
+        List<String> responseRoleCodes = roleSelectionRequired
+                ? AppModeRoleConstants.selectableRolesForAppMode(roleCodes, appMode)
+                : roleCodes;
 
         // Codex P1 PR #361 follow-up: legacy worker eseten `worker.getBranch()` lehet null,
-        // de a `worker_session.branch_id` non-nullable. Ugyanaz a fallback minta mint
-        // a `WorkerService.login` 435-444. soraban — ceg-szintu elso aktiv branch.
+        // es a JWT branch claim is non-null erteket var. Ugyanaz a fallback minta mint
+        // a `WorkerService.login` agan — ceg-szintu elso aktiv branch.
         Branch sessionBranch = worker.getBranch();
         if (sessionBranch == null) {
             sessionBranch = branchRepository.findByCompanyIdAndIsActiveTrue(worker.getCompany().getId())
@@ -184,14 +203,20 @@ public class GoogleLoginService {
                         worker.getCode(), worker.getCompany().getId());
                 throw new AuthenticationException("Nincs elerheto iroda a bejelentkezeshez!");
             }
+            worker.setBranch(sessionBranch);
         }
+
+        // 6. JWT + Session
+        String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
+        String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
+        String clientIp = clientIpResolver.resolveClientIp(httpRequest);
 
         WorkerSession session = WorkerSession.builder()
                 .company(worker.getCompany())
                 .worker(worker)
                 .branch(sessionBranch)
                 .loginAt(LocalDateTime.now())
-                .ipAddress(httpRequest.getRemoteAddr())
+                .ipAddress(clientIp)
                 .userAgent(httpRequest.getHeader("User-Agent"))
                 .tokenId(tokenId)
                 .build();
@@ -204,7 +229,7 @@ public class GoogleLoginService {
         log.info("GOOGLE_LOGIN_SUCCESS workerCode={} subjectHash={} ip={}",
                 worker.getCode(),
                 safeLogHash(googleSubject),
-                httpRequest.getRemoteAddr());
+                clientIp);
 
         // 7. validAppModes szamitas — egyezo logika a WorkerService.login-nal
         long expiresInMs = 86400000L;
@@ -220,7 +245,7 @@ public class GoogleLoginService {
                 .worker(WorkerDto.from(worker))
                 .expiresIn(expiresInMs)
                 .expiresAt(expiresAt.toString())
-                .roles(roleCodes)
+                .roles(responseRoleCodes)
                 .activeRole(activeRole)
                 .permissions(permissions)
                 .roleSelectionRequired(roleSelectionRequired)

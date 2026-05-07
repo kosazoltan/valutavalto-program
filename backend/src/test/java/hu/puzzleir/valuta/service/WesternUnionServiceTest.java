@@ -31,6 +31,7 @@ class WesternUnionServiceTest {
     @Mock BranchRepository branchRepository;
     @Mock CompanyRepository companyRepository;
     @Mock AmlService amlService;
+    @Mock WuDailyLimitRepository wuDailyLimitRepository;
 
     @InjectMocks WesternUnionService service;
 
@@ -55,6 +56,11 @@ class WesternUnionServiceTest {
 
         securityUtilsMock = mockStatic(SecurityUtils.class);
         securityUtilsMock.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+        lenient().when(wuDailyLimitRepository.findByCompanyDateCurrencyForUpdate(eq(companyId), any(), eq("USD")))
+                .thenReturn(Optional.of(WuDailyLimit.builder().id(UUID.randomUUID()).company(company)
+                        .businessDate(java.time.LocalDate.now()).currencyCode("USD")
+                        .dailyLimit(new BigDecimal("10000.00")).usedAmount(BigDecimal.ZERO).build()));
+        lenient().when(wuDailyLimitRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
     @AfterEach
@@ -352,6 +358,27 @@ class WesternUnionServiceTest {
         assertThatThrownBy(() -> service.recordSend(dto))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("egyenleg");
+    }
+
+    @Test
+    void recordSend_dailyLimitExceeded_throwsBeforeBalanceUpdate() {
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(amlService.checkTransaction(any(), any(), any(), any(), any()))
+                .thenReturn(AmlService.AmlBasicCheckResult.builder().approved(true).build());
+        when(wuDailyLimitRepository.findByCompanyDateCurrencyForUpdate(eq(companyId), any(), eq("USD")))
+                .thenReturn(Optional.of(WuDailyLimit.builder().company(company)
+                        .businessDate(java.time.LocalDate.now()).currencyCode("USD")
+                        .dailyLimit(new BigDecimal("10000.00")).usedAmount(new BigDecimal("9900.00")).build()));
+
+        WuTransactionDto dto = WuTransactionDto.builder().branchId(branchId).mtcn("1234567890")
+                .amountUsd(new BigDecimal("200.00")).amountHuf(new BigDecimal("72000")).build();
+
+        assertThatThrownBy(() -> service.recordSend(dto))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("WU napi keret");
+
+        verify(wuTransactionRepository, never()).save(any());
+        verify(wuBalanceRepository, never()).findByBranchIdForUpdate(any());
     }
 
     // ============ CROSS-TENANT ============

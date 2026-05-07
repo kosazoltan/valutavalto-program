@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,22 +26,22 @@ public class SyncController {
 
     @PostMapping("/rates/{branchId}")
     public ResponseEntity<SyncLogDto> syncRates(@PathVariable UUID branchId) {
-        return ResponseEntity.ok(service.syncRatesDown(branchId));
+        return syncResponse(service.syncRatesDown(branchId));
     }
 
     @PostMapping("/transactions/{branchId}")
     public ResponseEntity<SyncLogDto> syncTransactions(@PathVariable UUID branchId) {
-        return ResponseEntity.ok(service.syncTransactionsUp(branchId));
+        return syncResponse(service.syncTransactionsUp(branchId));
     }
 
     @PostMapping("/inventory/{branchId}")
     public ResponseEntity<SyncLogDto> syncInventory(@PathVariable UUID branchId) {
-        return ResponseEntity.ok(service.syncInventoryUp(branchId));
+        return syncResponse(service.syncInventoryUp(branchId));
     }
 
     @PostMapping("/full/{branchId}")
     public ResponseEntity<SyncLogDto> syncFull(@PathVariable UUID branchId) {
-        return ResponseEntity.ok(service.syncAll(branchId));
+        return syncResponse(service.syncAll(branchId));
     }
 
     @GetMapping("/status/{branchId}")
@@ -51,5 +52,12 @@ public class SyncController {
     @GetMapping("/history/{branchId}")
     public ResponseEntity<Page<SyncLogDto>> getHistory(@PathVariable UUID branchId, Pageable pageable) {
         return ResponseEntity.ok(service.getSyncHistory(branchId, pageable));
+    }
+
+    private ResponseEntity<SyncLogDto> syncResponse(SyncLogDto result) {
+        if (result == null || !"COMPLETED".equalsIgnoreCase(result.getStatus())) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(result);
+        }
+        return ResponseEntity.ok(result);
     }
 }

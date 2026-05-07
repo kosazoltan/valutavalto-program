@@ -19,6 +19,9 @@ on:
     paths:
       - 'backend/src/main/resources/db/migration/**'
 
+permissions:
+  contents: read
+
 jobs:
   migration-lint:
     runs-on: ubuntu-latest
@@ -37,8 +40,8 @@ jobs:
           if [ -n "$DECIMAL_FILES" ]; then
             # Allow legacy decimal-style files that already exist on main
             git fetch origin main --depth=1 2>/dev/null || true
-            ALLOWED=$(git ls-tree --name-only origin/main "$MIGR_DIR" 2>/dev/null | grep -E '^V[0-9]+_[0-9]+__' || true)
-            NEW_DECIMAL=$(comm -23 <(echo "$DECIMAL_FILES" | sort) <(echo "$ALLOWED" | sed "s|$MIGR_DIR/||" | sort) || echo "$DECIMAL_FILES")
+            ALLOWED=$(git ls-tree -r --name-only origin/main "$MIGR_DIR" 2>/dev/null | sed "s|$MIGR_DIR/||" | grep -E '^V[0-9]+_[0-9]+__' || true)
+            NEW_DECIMAL=$(comm -23 <(echo "$DECIMAL_FILES" | sort) <(echo "$ALLOWED" | sort) || echo "$DECIMAL_FILES")
             if [ -n "$NEW_DECIMAL" ]; then
               echo "::error::F14 — New migration uses decimal-style version (V<n>_<m>__). Use V<integer>__ only:"
               echo "$NEW_DECIMAL"

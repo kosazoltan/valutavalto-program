@@ -1,11 +1,13 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.entity.CameraExportRequest;
+import hu.puzzleir.valuta.entity.CameraExportStatus;
 import hu.puzzleir.valuta.entity.ChainOfCustodyRecord;
 import hu.puzzleir.valuta.service.CameraExportService;
 import hu.puzzleir.valuta.service.CameraHashChainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -66,7 +68,11 @@ public class CameraExportController {
     @PostMapping("/{requestId}/execute")
     @PreAuthorize("hasAnyAuthority('VIDEO_EXPORT', 'SYSTEM_ADMIN')")
     public ResponseEntity<CameraExportRequest> execute(@PathVariable UUID requestId) {
-        return ResponseEntity.ok(exportService.executeExport(requestId));
+        CameraExportRequest request = exportService.executeExport(requestId);
+        HttpStatus status = request.getStatus() == CameraExportStatus.COMPLETED
+                ? HttpStatus.OK
+                : HttpStatus.SERVICE_UNAVAILABLE;
+        return ResponseEntity.status(status).body(request);
     }
 
     // === Lekérdezések ===

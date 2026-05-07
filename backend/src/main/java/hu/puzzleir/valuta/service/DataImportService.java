@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.DataImportJobRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,9 @@ public class DataImportService {
 
     private final DataImportJobRepository dataImportJobRepository;
     private final BranchRepository branchRepository;
+
+    @Value("${data-import.simulated-success-enabled:false}")
+    private boolean simulatedSuccessEnabled;
 
     /**
      * Napi zárás import indítása.
@@ -205,6 +209,10 @@ public class DataImportService {
      * Éles környezetben ez FTP/API/fájl olvasás lenne.
      */
     private int simulateImport(String type, UUID branchId, LocalDate date) {
+        if (!simulatedSuccessEnabled) {
+            throw new IllegalStateException(
+                    "Data import driver nincs konfigurálva; szimulált COMPLETED import tiltva");
+        }
         log.info("Simulating {} import for branch {} on {}", type, branchId, date);
         // A tényleges implementáció a Helga DLL logika szerint töltené be az adatokat
         return 0;

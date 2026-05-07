@@ -50,6 +50,9 @@ public class WorkerManagementController {
         if (newPassword == null || newPassword.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
+        if (newPassword.length() < 8 || newPassword.length() > 128) {
+            return ResponseEntity.badRequest().build();
+        }
         workerManagementService.resetPassword(id, newPassword);
         return ResponseEntity.ok().build();
     }

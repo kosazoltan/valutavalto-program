@@ -29,14 +29,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -64,23 +60,8 @@ public class WorkerService {
     // HIGH FIX #16: Brute force védelem — max 5 sikertelen próba, utána 15 perc lock
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final long LOCK_DURATION_MS = 15 * 60 * 1000L; // 15 perc
-    private static final String FALLBACK_COMPANY_CODE = "EBC";
-    private static final String FALLBACK_PASSWORD = "1234";
     // Dummy BCrypt hash for constant-time comparison when worker not found (timing side-channel prevention)
     private static final String DUMMY_BCRYPT_HASH = "$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie";
-    private static final Set<String> FALLBACK_WORKER_CODES = Set.of("KOSA", "BORSI", "BALI", "KASZA");
-    private static final Map<String, String> FALLBACK_WORKER_NAMES = Map.of(
-            "KOSA", "Kosa Zoltan",
-            "BORSI", "Borsi Tamas",
-            "BALI", "Bali Henrietta",
-            "KASZA", "Kasza Helga"
-    );
-    private static final Map<String, String> FALLBACK_WORKER_EMAILS = Map.of(
-            "KOSA", "kosa.zoltan.ebc@gmail.com",
-            "BORSI", "borsi.tamas.ebc@gmail.com",
-            "BALI", "bali.henriett.ebc@gmail.com",
-            "KASZA", "kasza.helga.ebc@gmail.com"
-    );
 
     /**
      * Brute force state: key = "companyCode:workerCode", value = [failedCount, lockUntilMs]
@@ -403,6 +384,11 @@ public class WorkerService {
                 .map(ra -> ra.getRoleDef().getCode())
                 .collect(Collectors.toList());
 
+        if (AppModeRoleConstants.isLegacyWorkerRoleDeniedForAppMode(
+                roleCodes, worker.getRole(), dto.getAppMode())) {
+            throw new AuthenticationException(AppModeRoleConstants.legacyWorkerRoleDeniedMessage(worker.getRole()));
+        }
+
         // Ha 0 vagy 1 role van → automatikus belépés azzal
         String activeRole = null;
         List<String> permissions = List.of();
@@ -420,12 +406,21 @@ public class WorkerService {
         }
         // Ha 0 role → legacy mode, nincs operatív role (backward compat)
 
-        // JWT token generálás
-        String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
-        String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
-        
+        String appModeValidationError = AppModeRoleConstants.validateLoginRolesForAppMode(
+                roleCodes,
+                activeRole,
+                roleSelectionRequired,
+                dto.getAppMode());
+        if (appModeValidationError != null) {
+            throw new AuthenticationException(appModeValidationError);
+        }
+        List<String> responseRoleCodes = roleSelectionRequired
+                ? AppModeRoleConstants.selectableRolesForAppMode(roleCodes, dto.getAppMode())
+                : roleCodes;
+
         // Session tracking
-        // BUGFIX: worker.getBranch() may be null → use company's first active branch as fallback
+        // BUGFIX: worker.getBranch() may be null -> use company's first active branch before JWT generation,
+        // because JwtTokenProvider also embeds branchId/branchCode claims.
         Branch sessionBranch = worker.getBranch();
         if (sessionBranch == null) {
             sessionBranch = branchRepository.findByCompanyIdAndIsActiveTrue(company.getId()).stream()
@@ -435,7 +430,12 @@ public class WorkerService {
             if (sessionBranch == null) {
                 throw new ValidationException("Nincs elérhető iroda a bejelentkezéshez!");
             }
+            worker.setBranch(sessionBranch);
         }
+
+        // JWT token generálás
+        String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
+        String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
         
         WorkerSession session = WorkerSession.builder()
                 .company(company)
@@ -466,7 +466,7 @@ public class WorkerService {
                 .worker(WorkerDto.from(worker))
                 .expiresIn(expiresInMs)
                 .expiresAt(expiresAt.toString()) // ISO format for frontend
-                .roles(roleCodes)
+                .roles(responseRoleCodes)
                 .activeRole(activeRole)
                 .permissions(permissions)
                 .roleSelectionRequired(roleSelectionRequired)
@@ -505,8 +505,11 @@ public class WorkerService {
         if (jwtToken != null) {
             try {
                 String tokenId = jwtTokenProvider.getTokenIdFromToken(jwtToken);
-                LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
-                tokenBlacklistService.blacklistToken(tokenId, workerId, "LOGOUT", expiresAt);
+                LocalDateTime expiresAt = jwtTokenProvider.getExpirationDateTimeFromToken(jwtToken);
+                if (expiresAt == null) {
+                    expiresAt = jwtTokenProvider.getConfiguredExpirationDateTimeFromNow();
+                }
+                tokenBlacklistService.blacklistToken(tokenId, workerId, TokenBlacklistService.REASON_LOGOUT, expiresAt);
             } catch (Exception e) {
                 // Ha a token parse sikertelen, nem gond — a session már lezárva
             }
@@ -603,59 +606,21 @@ public class WorkerService {
         String normalizedInput = normalizeLoginCode(normalizedWorkerCode);
 
         Optional<Worker> directMatch = workerRepository.findByCompanyIdAndCode(company.getId(), normalizedWorkerCode)
-                .or(() -> workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), normalizedWorkerCode))
-                .or(() -> workerRepository.findByCompanyId(company.getId()).stream()
-                        .filter(w -> normalizeLoginCode(w.getCode()).equals(normalizedInput))
-                        .findFirst())
-                .or(() -> workerRepository.findByCompanyId(company.getId()).stream()
-                        .filter(w -> normalizeLoginCode(w.getName()).equals(normalizedInput))
-                        .findFirst());
+                .or(() -> workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), normalizedWorkerCode));
         if (directMatch.isPresent()) {
             return directMatch;
         }
 
-        return ensureFallbackWorkerIfNeeded(company, normalizedWorkerCode);
-    }
-
-    private Optional<Worker> ensureFallbackWorkerIfNeeded(Company company, String normalizedWorkerCode) {
-        if (!FALLBACK_COMPANY_CODE.equalsIgnoreCase(company.getCode())) {
-            return Optional.empty();
+        List<Worker> companyWorkers = workerRepository.findByCompanyId(company.getId());
+        Worker nameMatch = null;
+        for (Worker worker : companyWorkers) {
+            if (normalizeLoginCode(worker.getCode()).equals(normalizedInput)) {
+                return Optional.of(worker);
+            }
+            if (nameMatch == null && normalizeLoginCode(worker.getName()).equals(normalizedInput)) {
+                nameMatch = worker;
+            }
         }
-
-        String normalizedCode = normalizeCode(normalizedWorkerCode);
-        if (!FALLBACK_WORKER_CODES.contains(normalizedCode)) {
-            return Optional.empty();
-        }
-
-        List<Branch> branches = new ArrayList<>(branchRepository.findByCompanyIdAndIsActiveTrue(company.getId()));
-        if (branches.isEmpty()) {
-            branches = new ArrayList<>(branchRepository.findByCompanyId(company.getId()));
-        }
-        if (branches.isEmpty()) {
-            return Optional.empty();
-        }
-
-        Branch selectedBranch = branches.stream()
-                .sorted(Comparator
-                        .comparing((Branch b) -> !"TISZA".equalsIgnoreCase(b.getCode()))
-                        .thenComparing(Branch::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
-                .findFirst()
-                .orElse(branches.get(0));
-
-        Worker worker = workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), normalizedCode)
-                .orElseGet(Worker::new);
-
-        worker.setCompany(company);
-        worker.setBranch(selectedBranch);
-        worker.setCode(normalizedCode);
-        worker.setName(FALLBACK_WORKER_NAMES.getOrDefault(normalizedCode, normalizedCode));
-        worker.setRole(WorkerRole.CASHIER);
-        worker.setActive(true);
-        worker.setPasswordHash(passwordEncoder.encode(FALLBACK_PASSWORD));
-        worker.setEmail(FALLBACK_WORKER_EMAILS.getOrDefault(normalizedCode, null));
-        // Seed/fallback worker → passwordChangedAt = null → frontend kényszeríti a jelszóváltoztatást
-        worker.setPasswordChangedAt(null);
-
-        return Optional.of(workerRepository.save(worker));
+        return Optional.ofNullable(nameMatch);
     }
 }

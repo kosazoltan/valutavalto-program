@@ -1,9 +1,11 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
 import hu.puzzleir.valuta.dto.auth.LoginRequestDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Worker;
+import hu.puzzleir.valuta.entity.WorkerRole;
 import hu.puzzleir.valuta.exception.AuthenticationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
@@ -25,6 +27,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -104,6 +107,36 @@ class WorkerServiceLoginTest {
 
         // Verify: normalizeCode converted "ebc" → "EBC" and matched directly
         verify(companyRepository).findByCode("EBC");
+    }
+
+    @Test
+    @DisplayName("Production login nem hoz létre fallback workert 1234 jelszóval")
+    void login_missingFallbackWorkerDoesNotAutoCreateWorker() {
+        Company company = new Company();
+        company.setId(UUID.randomUUID());
+        company.setCode("EBC");
+        company.setName("Test Company");
+
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCode(company.getId(), "KOSA")).thenReturn(Optional.empty());
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "KOSA")).thenReturn(Optional.empty());
+        when(workerRepository.findByCompanyId(company.getId())).thenReturn(List.of());
+        when(passwordEncoder.matches("1234", "$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie"))
+                .thenReturn(false);
+
+        LoginRequestDto dto = new LoginRequestDto();
+        dto.setCompanyCode("EBC");
+        dto.setWorkerCode("KOSA");
+        dto.setPassword("1234");
+
+        assertThatThrownBy(() -> workerService.login(dto, "127.0.0.1", "test"))
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessageContaining("pénztáros");
+
+        verify(branchRepository, never()).findByCompanyIdAndIsActiveTrue(company.getId());
+        verify(branchRepository, never()).findByCompanyId(company.getId());
+        verify(passwordEncoder, never()).encode(anyString());
+        verify(workerRepository, never()).save(any(Worker.class));
     }
 
     /**
@@ -273,5 +306,91 @@ class WorkerServiceLoginTest {
                     .isNotInstanceOf(AuthenticationException.class);
         }
         verify(workerBranchAccessService).hasAccess(workerId, requestedBranchId);
+    }
+
+    @Test
+    @DisplayName("Legacy CASHIER role assignment nelkul csak penztar appMode-ban lephet be")
+    void login_legacyCashierWithoutAssignments_rejectsTreasuryAppMode() {
+        Company company = legacyCompany();
+        Branch branch = legacyBranch(company);
+        Worker worker = legacyWorker(company, branch, WorkerRole.CASHIER);
+
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCode(company.getId(), "BORSI")).thenReturn(Optional.of(worker));
+        when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
+        when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of());
+
+        LoginRequestDto dto = legacyLoginRequest("ertektar");
+
+        assertThatThrownBy(() -> workerService.login(dto, "127.0.0.1", "test"))
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessageContaining("szerepkör");
+
+        verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(), any());
+        verify(workerSessionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Legacy CASHIER role assignment nelkul penztar appMode-ban validAppModes=penztar es branch fallback is mukodik")
+    void login_legacyCashierWithoutAssignments_allowsCashierAppModeWithBranchFallback() {
+        Company company = legacyCompany();
+        Branch branch = legacyBranch(company);
+        Worker worker = legacyWorker(company, null, WorkerRole.CASHIER);
+
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCode(company.getId(), "BORSI")).thenReturn(Optional.of(worker));
+        when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
+        when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of());
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(company.getId())).thenReturn(List.of(branch));
+        when(jwtTokenProvider.generateToken(worker, null, List.of())).thenReturn("jwt-token");
+        when(jwtTokenProvider.getTokenIdFromToken("jwt-token")).thenReturn("token-id");
+
+        LoginResponseDto response = workerService.login(legacyLoginRequest("penztar"), "127.0.0.1", "test");
+
+        assertThat(response.getActiveRole()).isNull();
+        assertThat(response.getValidAppModes()).containsExactly("penztar");
+        assertThat(response.getWorker().getBranchCode()).isEqualTo("TISZA");
+        assertThat(worker.getBranch()).isEqualTo(branch);
+        verify(workerSessionRepository).save(any());
+        verify(workerRepository).save(worker);
+    }
+
+    private Company legacyCompany() {
+        Company company = new Company();
+        company.setId(UUID.randomUUID());
+        company.setCode("EBC");
+        company.setName("Exclusive Best Change");
+        return company;
+    }
+
+    private Branch legacyBranch(Company company) {
+        Branch branch = new Branch();
+        branch.setId(UUID.randomUUID());
+        branch.setCompany(company);
+        branch.setCode("TISZA");
+        branch.setName("Tisza iroda");
+        return branch;
+    }
+
+    private Worker legacyWorker(Company company, Branch branch, WorkerRole role) {
+        Worker worker = new Worker();
+        worker.setId(10L);
+        worker.setCompany(company);
+        worker.setBranch(branch);
+        worker.setCode("BORSI");
+        worker.setName("Borsi Kollegano");
+        worker.setRole(role);
+        worker.setActive(true);
+        worker.setPasswordHash("hash");
+        return worker;
+    }
+
+    private LoginRequestDto legacyLoginRequest(String appMode) {
+        LoginRequestDto dto = new LoginRequestDto();
+        dto.setCompanyCode("EBC");
+        dto.setWorkerCode("BORSI");
+        dto.setPassword("1234");
+        dto.setAppMode(appMode);
+        return dto;
     }
 }

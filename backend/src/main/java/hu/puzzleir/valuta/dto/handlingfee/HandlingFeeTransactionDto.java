@@ -13,6 +13,7 @@ import java.util.UUID;
 public class HandlingFeeTransactionDto {
     private UUID id;
     private Long transactionId;
+    private String paymentMethod;
     private String feeType;
     private BigDecimal amount;
     private Integer discountPercent;

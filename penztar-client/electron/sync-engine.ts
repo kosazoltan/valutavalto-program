@@ -48,6 +48,11 @@ import {
 } from './sqlite';
 import { safeStorage } from 'electron';
 import log from 'electron-log';
+import {
+  collectRoleCodes,
+  normalizeSetupAppMode,
+  preferredRoleCodesForAppMode,
+} from './setup-app-mode-roles';
 
 // --- Típusok ---
 
@@ -125,6 +130,8 @@ interface CashDeskResponse {
 interface LoginResponse {
   token: string;
   roleSelectionRequired?: boolean;
+  roles?: string[];
+  availableRoles?: Array<{ roleCode?: string; code?: string }>;
 }
 
 interface BootstrapCredentials {
@@ -132,6 +139,31 @@ interface BootstrapCredentials {
   workerCode: string;
   password: string;
   roleCode?: string | null;
+  appMode?: string | null;
+}
+
+export function selectBootstrapRoleCode(
+  appMode: string | null | undefined,
+  explicitRoleCode: string | null | undefined,
+  login: Pick<LoginResponse, 'roles' | 'availableRoles'>,
+): string | null {
+  const roles = collectRoleCodes(login);
+  const preferred = preferredRoleCodesForAppMode(appMode);
+  const appModeRole = preferred.find((roleCode) => roles.has(roleCode));
+  if (appModeRole) {
+    return appModeRole;
+  }
+
+  const explicit = explicitRoleCode?.trim();
+  if (explicit && (roles.size === 0 || roles.has(explicit))) {
+    return explicit;
+  }
+
+  if (normalizeSetupAppMode(appMode) === 'full' && roles.size > 0) {
+    return [...roles][0] ?? null;
+  }
+
+  return roles.size === 1 ? [...roles][0] ?? null : null;
 }
 
 class HttpStatusError extends Error {
@@ -208,6 +240,8 @@ async function httpPost<T>(url: string, body: Record<string, unknown>, token: st
 
 export class SyncEngine {
   private intervalId: ReturnType<typeof setInterval> | null = null;
+  private syncAllInFlight: Promise<SyncResult> | null = null;
+  private syncAllInFlightTokenKey: string | null = null;
   private lastTokenValidationAt = 0;
   private readonly tokenValidationTtlMs = 120_000;
 
@@ -297,13 +331,13 @@ export class SyncEngine {
   private getBootstrapCredentials(): BootstrapCredentials | null {
     const companyCode = process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE?.trim() || getConfig('bootstrap_company_code')?.trim() || '';
     const workerCode = process.env.PENZTAR_BOOTSTRAP_WORKER_CODE?.trim() || getConfig('bootstrap_worker_code')?.trim() || '';
-    // Security: env var elsodleges, config fallback csak ha nincs env
-    // A bootstrap_password NEM mentodhet plaintext-ben a DB-be tobbe
-    const password = process.env.PENZTAR_BOOTSTRAP_PASSWORD?.trim() || getConfig('bootstrap_password')?.trim() || '';
+    // Security: regi env var kompatibilitas utan DPAPI/safeStorage titkositott config.
+    const password = process.env.PENZTAR_BOOTSTRAP_PASSWORD?.trim() || this.getStoredBootstrapPassword();
     // FIGYELEM: a bootstrap_password torlese CSAK sikeres login UTAN tortenjen meg
     // (bootstrapAuthSession success agaban). Itt NE toroljuk, mert ha a login hibazik
     // (pl. rossz companyCode), a user elveszti a plaintext jelszavat es nem tud ujra login-olni.
     const roleCode = process.env.PENZTAR_BOOTSTRAP_ROLE_CODE?.trim() || getConfig('bootstrap_role_code')?.trim() || null;
+    const appMode = process.env.PENZTAR_APP_MODE?.trim() || getConfig('app_mode')?.trim() || null;
 
     if (!companyCode || !workerCode || !password) {
       return null;
@@ -314,7 +348,21 @@ export class SyncEngine {
       workerCode,
       password,
       roleCode,
+      appMode,
     };
+  }
+
+  private getStoredBootstrapPassword(): string {
+    const encrypted = getConfig('bootstrap_password_encrypted');
+    if (encrypted && safeStorage.isEncryptionAvailable()) {
+      try {
+        return safeStorage.decryptString(Buffer.from(encrypted, 'base64')).trim();
+      } catch (err) {
+        log.warn('[SyncEngine] bootstrap_password_encrypted nem dekodolhato, torolve:', err);
+        deleteConfig('bootstrap_password_encrypted');
+      }
+    }
+    return getConfig('bootstrap_password')?.trim() || '';
   }
 
   private persistAuthToken(token: string): void {
@@ -377,12 +425,21 @@ export class SyncEngine {
 
       let token = login.token;
 
-      if (login.roleSelectionRequired && credentials.roleCode) {
+      if (login.roleSelectionRequired) {
+        const selectedRoleCode = selectBootstrapRoleCode(credentials.appMode, credentials.roleCode, login);
+        if (!selectedRoleCode) {
+          log.warn('[SyncEngine] Role selection szukseges, de nincs appMode-hoz illeszkedo role.', {
+            appMode: credentials.appMode,
+            explicitRoleCode: credentials.roleCode,
+            availableRoleCodes: [...collectRoleCodes(login)],
+          });
+          return null;
+        }
         const selected = await httpPost<LoginResponse>(
           `${serverUrl}/auth/login/select-role`,
           {
             token,
-            roleCode: credentials.roleCode,
+            roleCode: selectedRoleCode,
           },
           null,
         );
@@ -604,7 +661,48 @@ export class SyncEngine {
     return code >= 400 && code < 500 && code !== 401 && code !== 403 && code !== 429;
   }
 
+  private syncAllTokenKey(tokenOverride?: string | null): string {
+    return tokenOverride == null ? 'stored-auth-token' : `override:${tokenOverride}`;
+  }
+
   async syncAll(tokenOverride?: string | null): Promise<SyncResult> {
+    const tokenKey = this.syncAllTokenKey(tokenOverride);
+
+    if (this.syncAllInFlight) {
+      if (this.syncAllInFlightTokenKey !== tokenKey) {
+        const currentRun = this.syncAllInFlight;
+        log.warn('[SyncEngine] syncAll már fut eltérő auth tokennel, az új kérés az aktuális futás után indul');
+        return this.syncAllAfterInFlight(tokenOverride, currentRun);
+      }
+      log.info('[SyncEngine] syncAll már fut, a folyamatban lévő futás eredményére várunk');
+      return this.syncAllInFlight;
+    }
+
+    this.syncAllInFlightTokenKey = tokenKey;
+    this.syncAllInFlight = this.performSyncAll(tokenOverride);
+    try {
+      return await this.syncAllInFlight;
+    } finally {
+      this.syncAllInFlight = null;
+      this.syncAllInFlightTokenKey = null;
+    }
+  }
+
+  private async syncAllAfterInFlight(
+    tokenOverride: string | null | undefined,
+    inFlight: Promise<SyncResult>,
+  ): Promise<SyncResult> {
+    try {
+      await inFlight;
+    } catch (error) {
+      log.warn('[SyncEngine] Az előző syncAll futás hibával zárult, az új auth kontextusú futás mégis indul', error);
+    }
+
+    await Promise.resolve();
+    return this.syncAll(tokenOverride);
+  }
+
+  private async performSyncAll(tokenOverride?: string | null): Promise<SyncResult> {
     const result: SyncResult = { synced: 0, failed: 0, errors: [] };
 
     // PR #116: abandoned (business-validation-failed) kizárása az auto-sync-ből

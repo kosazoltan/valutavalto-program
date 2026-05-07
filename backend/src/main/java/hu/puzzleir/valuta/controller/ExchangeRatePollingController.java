@@ -103,9 +103,15 @@ public class ExchangeRatePollingController {
     /**
      * Árfolyam források listája.
      *
+     * <p>F5 audit verification (2026-05-07): az `exchange_rate_source` tabla
+     * rendszer-szintu MNB/ECB/MANUAL forraskatalogus, nem tenant-szintu adat.
+     * A lista megis uzemeltetesi reszletet (sourceUrl, lastError) tartalmaz,
+     * ezert ugyanahhoz a szerepkorhoz kotjuk, mint a forras modositasat.</p>
+     *
      * GET /api/v1/rates/polling/sources
      */
     @GetMapping("/sources")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<ExchangeRateSourceDto>> getSources() {
         List<ExchangeRateSourceDto> sources = sourceRepository.findAll().stream()
             .map(this::toDto)

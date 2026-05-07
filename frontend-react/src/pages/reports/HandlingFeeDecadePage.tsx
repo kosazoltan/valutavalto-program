@@ -13,18 +13,13 @@ import { getErrorMessage } from '../../utils/errorHandling'
  *
  * A backend HandlingFeeReportDto egy összesített riportot ad vissza (totalGrossFee,
  * totalDiscount, totalNetFee, totalCommissionShare, transactionCount, items[]).
- * A "dekád × valuta × kezelési díj cash/card bontás" jelenleg NEM elérhető a
- * backenden — ezért a frontend a tranzakció-listát maga csoportosítja dekádra.
- *
- * A "készpénz / bankkártya" bontást a tranzakcióhoz tartozó payment method
- * tárolása teszi lehetővé, ami a HandlingFeeTransactionDto-ban jelenleg NINCS jelen.
- * TODO(backend): paymentMethod mező hozzáadása HandlingFeeTransactionDto-hoz, vagy
- * dedikált aggregátor endpoint (GET /api/v1/handling-fees/decade-report).
+ * A frontend a tranzakció-listát dekádra és fizetési módra csoportosítja.
  */
 
 interface HandlingFeeTxn {
   id?: string
   transactionId?: number | null
+  paymentMethod?: string | null
   feeType?: string | null
   amount?: number | string | null
   discountPercent?: number | null
@@ -52,6 +47,10 @@ interface DecadeRow {
   grossFee: number
   netFee: number
   discount: number
+  cashCount: number
+  cardCount: number
+  cashNetFee: number
+  cardNetFee: number
 }
 
 function toNum(v: number | string | null | undefined): number {
@@ -62,6 +61,10 @@ function toNum(v: number | string | null | undefined): number {
 
 function formatHuf(n: number): string {
   return n.toLocaleString('hu-HU') + ' Ft'
+}
+
+function isCardPayment(paymentMethod: string | null | undefined): boolean {
+  return paymentMethod?.toUpperCase() === 'CARD'
 }
 
 function decadeOf(dateIso: string): { key: string; label: string } {
@@ -151,11 +154,19 @@ export default function HandlingFeeDecadePage() {
       const gross = toNum(item.amount)
       const net = toNum(item.netFee)
       const discount = item.discountPercent ? gross - net : 0
+      const cardPayment = isCardPayment(item.paymentMethod)
       if (existing) {
         existing.count += 1
         existing.grossFee += gross
         existing.netFee += net
         existing.discount += discount
+        if (cardPayment) {
+          existing.cardCount += 1
+          existing.cardNetFee += net
+        } else {
+          existing.cashCount += 1
+          existing.cashNetFee += net
+        }
       } else {
         map.set(d.key, {
           decadeKey: d.key,
@@ -164,6 +175,10 @@ export default function HandlingFeeDecadePage() {
           grossFee: gross,
           netFee: net,
           discount,
+          cashCount: cardPayment ? 0 : 1,
+          cardCount: cardPayment ? 1 : 0,
+          cashNetFee: cardPayment ? 0 : net,
+          cardNetFee: cardPayment ? net : 0,
         })
       }
     }
@@ -201,11 +216,6 @@ export default function HandlingFeeDecadePage() {
           <FileText className="h-6 w-6" />
           {t('reports.handlingFeeDecade.title')}
         </h1>
-      </div>
-
-      <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-yellow-800 text-xs flex items-start gap-2">
-        <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-        <span>{t('reports.handlingFeeDecade.warning')}</span>
       </div>
 
       {error && (
@@ -312,37 +322,47 @@ export default function HandlingFeeDecadePage() {
             <div className="bg-gray-50 px-4 py-2 border-b">
               <h2 className="font-semibold">{t('reports.handlingFeeDecade.decadeBreakdown')}</h2>
             </div>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.decade')}</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.transactions')}</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.grossFee')}</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.discount')}</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.netFee')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {decadeRows.length === 0 && (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
                   <tr>
-                    <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
-                      {t('reports.handlingFeeDecade.table.noData')}
-                    </td>
+                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.decade')}</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.transactions')}</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.cashCount')}</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.cardCount')}</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.grossFee')}</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.discount')}</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.netFee')}</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.cashNetFee')}</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.cardNetFee')}</th>
                   </tr>
-                )}
-                {decadeRows.map((r) => (
-                  <tr key={r.decadeKey} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 text-sm">{r.decadeLabel}</td>
-                    <td className="px-4 py-2 text-right text-sm font-mono">{r.count}</td>
-                    <td className="px-4 py-2 text-right text-sm font-mono">{formatHuf(r.grossFee)}</td>
-                    <td className="px-4 py-2 text-right text-sm font-mono">{formatHuf(r.discount)}</td>
-                    <td className="px-4 py-2 text-right text-sm font-mono font-semibold text-green-700">
-                      {formatHuf(r.netFee)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {decadeRows.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-4 text-center text-sm text-gray-500">
+                        {t('reports.handlingFeeDecade.table.noData')}
+                      </td>
+                    </tr>
+                  )}
+                  {decadeRows.map((r) => (
+                    <tr key={r.decadeKey} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 text-sm whitespace-nowrap">{r.decadeLabel}</td>
+                      <td className="px-4 py-2 text-right text-sm font-mono">{r.count}</td>
+                      <td className="px-4 py-2 text-right text-sm font-mono">{r.cashCount}</td>
+                      <td className="px-4 py-2 text-right text-sm font-mono">{r.cardCount}</td>
+                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">{formatHuf(r.grossFee)}</td>
+                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">{formatHuf(r.discount)}</td>
+                      <td className="px-4 py-2 text-right text-sm font-mono font-semibold text-green-700 whitespace-nowrap">
+                        {formatHuf(r.netFee)}
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">{formatHuf(r.cashNetFee)}</td>
+                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">{formatHuf(r.cardNetFee)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

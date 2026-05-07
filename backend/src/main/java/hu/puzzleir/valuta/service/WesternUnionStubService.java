@@ -21,7 +21,7 @@ import java.util.Locale;
 @Slf4j
 public class WesternUnionStubService {
 
-    private static final String DEFAULT_PROVIDER = "INTERNAL";
+    private static final String DEFAULT_PROVIDER = "INACTIVE";
 
     private final List<WesternUnionProviderAdapter> adapters;
     private final SystemParameterRepository systemParameterRepository;

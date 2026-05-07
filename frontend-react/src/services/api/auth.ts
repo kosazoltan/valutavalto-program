@@ -1,4 +1,4 @@
-import { api } from './client'
+import { api, REFRESH_ENDPOINT } from './client'
 
 // ================== AUTH API ==================
 
@@ -6,10 +6,12 @@ export interface LoginRequest {
   companyCode: string
   workerCode: string
   password: string
+  appMode?: string
 }
 
 export interface GoogleLoginRequest {
   idToken: string
+  appMode?: string
 }
 
 export interface LoginResponse {
@@ -37,6 +39,11 @@ export interface LoginResponse {
   validAppModes?: string[]
 }
 
+const refreshCookie = async (): Promise<{ token: string }> => {
+  const response = await api.post<{ token: string }>(REFRESH_ENDPOINT)
+  return response.data
+}
+
 export const authApi = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     const response = await api.post<LoginResponse>('/auth/login', data)
@@ -49,11 +56,9 @@ export const authApi = {
   logout: async (): Promise<void> => {
     await api.post('/auth/logout')
   },
-  refreshToken: async (): Promise<{ token: string }> => {
-    const response = await api.post<{ token: string }>('/auth/refresh')
-    return response.data
-  },
-  selectRole: async (data: { token: string; roleCode: string }): Promise<LoginResponse> => {
+  refreshCookie,
+  refreshToken: refreshCookie,
+  selectRole: async (data: { token: string; roleCode: string; appMode?: string }): Promise<LoginResponse> => {
     const response = await api.post<LoginResponse>('/auth/login/select-role', data)
     return response.data
   },

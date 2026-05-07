@@ -101,10 +101,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * H-7: Pénztáros tranzakciói egy időszakban (N+1 kiváltása)
      */
     @Query("SELECT t FROM Transaction t " +
-           "WHERE t.worker.id = :workerId " +
+           "JOIN FETCH t.currency " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.worker.id = :workerId " +
            "AND t.transactionDate BETWEEN :startDate AND :endDate " +
            "ORDER BY t.transactionDate, t.transactionTime")
-    List<Transaction> findByWorkerIdAndTransactionDateBetween(
+    List<Transaction> findByCompanyIdAndWorkerIdAndTransactionDateBetween(
+        @Param("companyId") UUID companyId,
         @Param("workerId") Long workerId,
         @Param("startDate") LocalDate startDate,
         @Param("endDate") LocalDate endDate

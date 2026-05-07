@@ -180,6 +180,47 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     vi.clearAllMocks()
   })
 
+  it('create: a backend /shipments endpointot hivja backend mezonevekkel', async () => {
+    mockApi.post.mockResolvedValue({
+      data: {
+        id: 'shipment-1',
+        status: 'DRAFT',
+        fromBranchId: 'BR-A',
+        toBranchId: 'BR-B',
+        deliveryDate: '2026-05-08',
+        requestedById: 7,
+        createdAt: '2026-05-07T08:00:00Z',
+      },
+    })
+
+    const result = await shipmentRequestApi.create({
+      fromBranchId: 'BR-A',
+      toBranchId: 'BR-B',
+      deliveryDate: '2026-05-08',
+      notes: ' teszt ',
+      items: [{ currencyId: '4', requestedAmount: 1000 }],
+    })
+
+    expect(mockApi.post).toHaveBeenCalledWith('/shipments', {
+      fromBranchId: 'BR-A',
+      toBranchId: 'BR-B',
+      deliveryDate: '2026-05-08',
+      notes: 'teszt',
+      items: [{ currencyId: 4, requestedAmount: 1000 }],
+    })
+    expect(result.requestStatus).toBe('DRAFT')
+    expect(result.requestingBranchId).toBe('BR-A')
+    expect(result.targetBranchId).toBe('BR-B')
+    expect(result.requestedAt).toBe('2026-05-07T08:00:00Z')
+  })
+
+  it('submit: a /shipments/{id}/submit endpointot hivja', async () => {
+    mockApi.post.mockResolvedValue({ data: { id: 'shipment-1', status: 'SUBMITTED' } })
+    const result = await shipmentRequestApi.submit('shipment-1')
+    expect(mockApi.post).toHaveBeenCalledWith('/shipments/shipment-1/submit')
+    expect(result.requestStatus).toBe('SUBMITTED')
+  })
+
   it('findByStatus: a /shipments endpoint-ot hivja status param-mal', async () => {
     mockApi.get.mockResolvedValue({
       data: { content: [], totalElements: 0 }

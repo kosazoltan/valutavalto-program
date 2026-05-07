@@ -72,9 +72,11 @@ public class SessionOpenService {
                 int created = cashBalanceService.initializeBranchBalances(branchId);
                 log.info("Branch {} cash_balance lazy-init: {} új rekord", branchId, created);
             } catch (RuntimeException e) {
-                // Sourcery PR #112: narrow catch + full stack trace (ne csak e.getMessage())
-                log.error("Branch {} cash_balance lazy-init FAILED — munkamenet nyitás folytatódik",
+                log.error("Branch {} cash_balance lazy-init FAILED — munkamenet nyitás tiltva",
                         branchId, e);
+                throw new ValidationException(
+                        "Kasszaegyenlegek inicializálása sikertelen. Nyitás nem folytatható: "
+                                + e.getMessage());
             }
         }
 

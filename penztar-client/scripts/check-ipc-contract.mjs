@@ -11,6 +11,7 @@ if (!proc || !logger) {
 const rootDir = proc.cwd();
 const preloadFile = path.join(rootDir, 'electron', 'preload.ts');
 const electronDir = path.join(rootDir, 'electron');
+const sharedIpcFile = path.join(rootDir, '..', 'packages', 'shared-ipc', 'src', 'index.ts');
 // Belső sync handler whitelist — ezek nem a preload-on keresztül futnak,
 // hanem a sync-engine / sync-queue IPC dispatcher közvetlenül hívja meg őket
 // a főfolyamaton belül. A check:ipc ezért nem warn-olja őket hiányzó preload
@@ -53,6 +54,26 @@ function extractMatches(text, regex) {
   return set;
 }
 
+function collectIpcChannelConstants(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return new Map();
+  }
+
+  const constants = new Map();
+  const content = readText(filePath);
+  const objectMatch = content.match(/export\s+const\s+IPC_CHANNELS\s*=\s*\{([\s\S]*?)\}\s*satisfies/);
+
+  if (!objectMatch) {
+    return constants;
+  }
+
+  for (const match of objectMatch[1].matchAll(/([A-Z0-9_]+)\s*:\s*['"`]([^'"`]+)['"`]/g)) {
+    constants.set(match[1], match[2]);
+  }
+
+  return constants;
+}
+
 if (!fs.existsSync(preloadFile)) {
   logger.error('ERROR: electron/preload.ts not found.');
   proc.exit(1);
@@ -68,6 +89,14 @@ const invokedChannels = extractMatches(
   preloadContent,
   /ipcRenderer\.invoke\(\s*['"`]([^'"`]+)['"`]/g,
 );
+const ipcChannelConstants = collectIpcChannelConstants(sharedIpcFile);
+
+for (const match of preloadContent.matchAll(/ipcRenderer\.invoke\(\s*IPC_CHANNELS\.([A-Z0-9_]+)/g)) {
+  const channel = ipcChannelConstants.get(match[1]);
+  if (channel) {
+    invokedChannels.add(channel);
+  }
+}
 
 const electronFiles = collectTsFiles(electronDir);
 const handledChannels = new Set();

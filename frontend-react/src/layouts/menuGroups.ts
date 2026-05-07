@@ -1,11 +1,12 @@
 import { Send, Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, ShieldAlert, LayoutDashboard, PlusCircle, Download, Camera, Package, ClipboardCheck, Building2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
+import { canonicalizeRoleForAppMode } from "../utils/appModeRoles"
+import type { AppMode } from "../types/appMode"
 
 export const PENZTAR_ROLES = ["penztar"] as const
 export const ERTEKTAR_ROLES = ["ertektar"] as const
+export const ERTEKSZALLITO_ROLES = ["ertekszallito"] as const
 export const SZERVER_ROLES = ["ugyvezeto", "foertektar", "irodavezeto", "belso_ellenor", "teruleti_vezeto", "biztonsagi_vezeto", "berszamfejto", "penzugyi_vezeto", "irodai_dolgozo", "csoportvezeto", "arfolyam_nezo"] as const
-
-export type AppMode = "full" | "penztar" | "ertektar"
 
 export interface MenuItem {
   path: string
@@ -84,6 +85,16 @@ export const menuGroups: MenuGroup[] = [
       { path: "/closing/monthly", label: "Havi zárás", icon: FileText },
       { path: "/customers", label: "Ügyfelek", icon: Users },
       { path: "/rates", label: "Árfolyamok (nézet)", icon: TrendingUp },
+    ],
+  },
+  {
+    label: "Értékszállító",
+    canonicalRoles: ERTEKSZALLITO_ROLES,
+    modes: ["ertekszallito"],
+    items: [
+      { path: "/transfers", label: "Átadás-átvétel aláírás", icon: ArrowLeftRight },
+      { path: "/transfer-documents", label: "Szállítólevelek", icon: FileText },
+      { path: "/transit", label: "Úton lévő csomagok", icon: ArrowLeftRight },
     ],
   },
   {
@@ -181,8 +192,11 @@ export const menuGroups: MenuGroup[] = [
 ]
 
 export function getDefaultRouteForRoles(roles: readonly string[] | undefined, activeRole: string | null | undefined): string {
-  const active = activeRole ?? ""
-  const all = new Set([active, ...(roles ?? [])].filter(Boolean))
+  const all = new Set(
+    [activeRole, ...(roles ?? [])]
+      .map((role) => canonicalizeRoleForAppMode(role))
+      .filter(Boolean),
+  )
   if (all.has("penztar")) return "/cashier"
   // ertekszallito role: az atadas-atveteli bizonylat alairasanak UI-ja
   if (all.has("ertekszallito")) return "/transfers"

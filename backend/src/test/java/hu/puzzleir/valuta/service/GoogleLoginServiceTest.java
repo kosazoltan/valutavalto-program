@@ -12,6 +12,7 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.repository.WorkerSessionRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
+import hu.puzzleir.valuta.util.ClientIpResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,7 @@ class GoogleLoginServiceTest {
     private WorkerRoleService workerRoleService;
     private JwtTokenProvider jwtTokenProvider;
     private BranchRepository branchRepository;
+    private ClientIpResolver clientIpResolver;
     private GoogleLoginService service;
 
     @BeforeEach
@@ -63,10 +65,12 @@ class GoogleLoginServiceTest {
         workerRoleService = Mockito.mock(WorkerRoleService.class);
         jwtTokenProvider = Mockito.mock(JwtTokenProvider.class);
         branchRepository = Mockito.mock(BranchRepository.class);
+        clientIpResolver = Mockito.mock(ClientIpResolver.class);
+        when(clientIpResolver.resolveClientIp(any())).thenReturn("127.0.0.1");
 
         service = new GoogleLoginService(
                 googleIdTokenService, workerRepository, sessionRepository,
-                workerRoleService, jwtTokenProvider, branchRepository);
+                workerRoleService, jwtTokenProvider, branchRepository, clientIpResolver);
         ReflectionTestUtils.setField(service, "bindSubOnFirstLogin", true);
     }
 
@@ -232,6 +236,7 @@ class GoogleLoginServiceTest {
         when(jwtTokenProvider.getTokenIdFromToken("jwt-token")).thenReturn("token-id-1");
         when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(sessionRepository.save(any(WorkerSession.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(clientIpResolver.resolveClientIp(any())).thenReturn("198.51.100.25");
 
         LoginResponseDto response = service.loginWithGoogle("ok", new MockHttpServletRequest());
 
@@ -246,6 +251,59 @@ class GoogleLoginServiceTest {
         ArgumentCaptor<WorkerSession> sessionCaptor = ArgumentCaptor.forClass(WorkerSession.class);
         verify(sessionRepository).save(sessionCaptor.capture());
         assertThat(sessionCaptor.getValue().getTokenId()).isEqualTo("token-id-1");
+        assertThat(sessionCaptor.getValue().getIpAddress()).isEqualTo("198.51.100.25");
+        verify(clientIpResolver).resolveClientIp(any());
+    }
+
+    @Test
+    @DisplayName("Legacy Google login role assignment nelkul penztar appMode-ban worker.role fallbackot es branch fallbackot hasznal")
+    void legacyWorkerRoleFallback_setsBranchBeforeJwt() throws Exception {
+        when(googleIdTokenService.verify("ok"))
+                .thenReturn(identity("g-sub-legacy", "cashier@gmail.com"));
+        Worker w = worker("BORSI", "cashier@gmail.com", true, "g-sub-legacy");
+        w.setBranch(null);
+        Branch fallbackBranch = Branch.builder()
+                .id(UUID.randomUUID())
+                .code("TISZA")
+                .name("Tisza iroda")
+                .company(w.getCompany())
+                .build();
+        when(workerRepository.findGoogleLoginCandidatesByEmail("cashier@gmail.com")).thenReturn(List.of(w));
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of());
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(w.getCompany().getId()))
+                .thenReturn(List.of(fallbackBranch));
+        when(jwtTokenProvider.generateToken(any(), any(), any())).thenAnswer(inv -> {
+            Worker tokenWorker = inv.getArgument(0);
+            assertThat(tokenWorker.getBranch()).isEqualTo(fallbackBranch);
+            return "jwt-legacy";
+        });
+        when(jwtTokenProvider.getTokenIdFromToken("jwt-legacy")).thenReturn("token-id-legacy");
+        when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(sessionRepository.save(any(WorkerSession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        LoginResponseDto response = service.loginWithGoogle("ok", new MockHttpServletRequest(), "penztar");
+
+        assertThat(response.getActiveRole()).isNull();
+        assertThat(response.getValidAppModes()).containsExactly("penztar");
+        assertThat(response.getWorker().getBranchCode()).isEqualTo("TISZA");
+        assertThat(w.getBranch()).isEqualTo(fallbackBranch);
+    }
+
+    @Test
+    @DisplayName("Legacy Google CASHIER role assignment nelkul nem lephet be ertektar appMode-ba")
+    void legacyWorkerRoleFallback_rejectsWrongAppMode() throws Exception {
+        when(googleIdTokenService.verify("ok"))
+                .thenReturn(identity("g-sub-legacy", "cashier@gmail.com"));
+        Worker w = worker("BORSI", "cashier@gmail.com", true, "g-sub-legacy");
+        when(workerRepository.findGoogleLoginCandidatesByEmail("cashier@gmail.com")).thenReturn(List.of(w));
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.loginWithGoogle("ok", new MockHttpServletRequest(), "ertektar"))
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessageContaining("szerepkör");
+
+        verify(jwtTokenProvider, never()).generateToken(any(), any(), any());
+        verify(sessionRepository, never()).save(any());
     }
 
     @Test

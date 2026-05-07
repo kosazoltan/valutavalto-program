@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.dto.eveningclosing.DailyDataPackage;
 import hu.puzzleir.valuta.dto.eveningclosing.DataSyncResult;
 import hu.puzzleir.valuta.dto.pos.PosClosingResult;
 import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +16,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -23,6 +25,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -54,6 +57,7 @@ class DailyClosingServiceExtendedTest {
     @Mock private PosTerminalService posTerminalService;
     @Mock private PosTerminalRepository posTerminalRepository;
     @Mock private EveningClosingService eveningClosingService;
+    @Mock private DailyClosingArchiveService dailyClosingArchiveService;
 
     // Új függőségek
     @Mock private MonthlyArchiveService monthlyArchiveService;
@@ -115,6 +119,7 @@ class DailyClosingServiceExtendedTest {
         when(receiptSequenceService.checkReceiptContinuity(any(), any()))
             .thenReturn(Collections.emptyList());
         when(monthlyArchiveService.archiveDailyTransactions(any(), any())).thenReturn(0);
+        when(dailyClosingArchiveService.executeFullDailyArchive(any(), any())).thenReturn("ok");
     }
 
     // ============ TESZTEK ============
@@ -240,6 +245,52 @@ class DailyClosingServiceExtendedTest {
             eq(BRANCH_ID.toString()),
             any(), any(), any(), any(), any(), any(), any()
         );
+    }
+
+    @Test
+    @DisplayName("sikertelen esti központi szinkron nem zárhatja sikeresre a napot")
+    void executeClosing_eveningSyncFailureBlocksClosing() {
+        LocalDate closingDate = LocalDate.of(2026, 3, 15);
+        when(eveningClosingService.sendToHeadquarters(any()))
+            .thenReturn(DataSyncResult.failure("HQ URL nincs konfigurálva", 1));
+
+        assertThatThrownBy(() -> dailyClosingService.startDailyClosing(closingDate))
+            .isInstanceOf(ValidationException.class)
+            .hasMessageContaining("Esti zárás adatcsomag küldés sikertelen")
+            .hasMessageContaining("HQ URL nincs konfigurálva");
+
+        verify(closingWizardRepository, times(1)).save(any(ClosingWizard.class));
+    }
+
+    @Test
+    @DisplayName("NAV kontroll fail-closed, ha aktív a NAV feature, de nincs éles/szimulált visszaigazolás")
+    void navStepFailsClosedWhenBridgeSimulationDisabled() {
+        LocalDate closingDate = LocalDate.of(2026, 3, 15);
+        when(systemParameterService.getValue("FEATURE_NAV_INTEGRATION")).thenReturn("true");
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(9, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isFalse();
+        assertThat(result.isSkipped()).isFalse();
+        assertThat(result.getMessage()).contains("nincs eles NAV jelentes-visszaigazolas");
+        verify(transactionRepository, never()).countUnreportedTransactions(any(), any());
+    }
+
+    @Test
+    @DisplayName("NAV kontroll csak explicit bridge-szimuláció mellett használja a régi printed=false számlálót")
+    void navStepUsesLegacyCounterOnlyWhenBridgeSimulationEnabled() {
+        LocalDate closingDate = LocalDate.of(2026, 3, 15);
+        ReflectionTestUtils.setField(dailyClosingService, "navBridgeSimulatedSuccessEnabled", true);
+        when(systemParameterService.getValue("FEATURE_NAV_INTEGRATION")).thenReturn("true");
+        when(transactionRepository.countUnreportedTransactions(BRANCH_ID, closingDate)).thenReturn(0L);
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(9, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isTrue();
+        assertThat(result.getMessage()).contains("NAV kontroll");
+        verify(transactionRepository).countUnreportedTransactions(BRANCH_ID, closingDate);
     }
 
     @Test

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { isElectron } from '@/utils/electron';
 import { logger } from '../utils/logger';
+import { isAppMode } from '../types/appMode';
+import type { AppMode } from '../types/appMode';
 
 /**
  * App mód típus — kiterjesztve a frontend-react 'full' móddal.
@@ -8,8 +10,9 @@ import { logger } from '../utils/logger';
  * - 'full':      böngészőben futó admin felület (teljes hozzáférés)
  * - 'penztar':   Electron pénztáros mód (F1-F12 menü)
  * - 'ertektar':  Electron értéktár / regionális központ mód
+ * - 'ertekszallito': Electron értékszállító mód
  */
-export type AppMode = 'full' | 'penztar' | 'ertektar';
+export type { AppMode } from '../types/appMode';
 
 /**
  * App mód betöltése:
@@ -23,7 +26,7 @@ async function loadAppMode(): Promise<AppMode> {
 
   try {
     const stored = await window.electronAPI?.getConfig('app_mode');
-    if (stored === 'penztar' || stored === 'ertektar') {
+    if (isAppMode(stored) && stored !== 'full') {
       return stored;
     }
   } catch (err) {

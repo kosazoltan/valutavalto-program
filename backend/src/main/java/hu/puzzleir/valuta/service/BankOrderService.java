@@ -42,6 +42,7 @@ public class BankOrderService {
     private final BranchRepository branchRepository;
     private final CurrencyRepository currencyRepository;
     private final WorkerRepository workerRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public BankOrderDto create(CreateBankOrderRequest req) {
@@ -64,8 +65,11 @@ public class BankOrderService {
 
         BankOrder saved = bankOrderRepository.save(order);
         log.info("[bank-order] CREATE id={} branch={} amount={} {} urgency={} requestedBy={}",
-                saved.getId(), branch.getCode(), saved.getAmount(), currency.getCode(),
-                saved.getUrgency(), currentWorker.getCode());
+                saved.getId(), auditLogValue(branch.getCode()), saved.getAmount(), auditLogValue(currency.getCode()),
+                saved.getUrgency(), auditLogValue(currentWorker.getCode()));
+        if (saved.getUrgency() == BankOrder.Urgency.EMERGENCY) {
+            notifyEmergencyOrder(saved);
+        }
         return BankOrderDto.from(saved);
     }
 
@@ -80,7 +84,7 @@ public class BankOrderService {
         order.setApprovedBy(approver);
         order.setApprovedAt(LocalDateTime.now());
         BankOrder saved = bankOrderRepository.save(order);
-        log.info("[bank-order] APPROVE id={} by={}", saved.getId(), approver.getCode());
+        log.info("[bank-order] APPROVE id={} by={}", saved.getId(), auditLogValue(approver.getCode()));
         return BankOrderDto.from(saved);
     }
 
@@ -98,7 +102,7 @@ public class BankOrderService {
             order.setBankReference(bankReference.trim());
         }
         BankOrder saved = bankOrderRepository.save(order);
-        log.info("[bank-order] EXECUTE id={} by={} bankRef={}", saved.getId(), executor.getCode(), bankReference);
+        log.info("[bank-order] EXECUTE id={} by={} bankRef={}", saved.getId(), auditLogValue(executor.getCode()), auditLogValue(bankReference));
         return BankOrderDto.from(saved);
     }
 
@@ -114,7 +118,7 @@ public class BankOrderService {
         order.setCancelledAt(LocalDateTime.now());
         order.setCancellationReason(reason);
         BankOrder saved = bankOrderRepository.save(order);
-        log.info("[bank-order] CANCEL id={} by={} reason={}", saved.getId(), canceller.getCode(), reason);
+        log.info("[bank-order] CANCEL id={} by={} reason={}", saved.getId(), auditLogValue(canceller.getCode()), auditLogValue(reason));
         return BankOrderDto.from(saved);
     }
 
@@ -144,5 +148,24 @@ public class BankOrderService {
         }
         return workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Worker nem található: " + workerId));
+    }
+
+    private void notifyEmergencyOrder(BankOrder order) {
+        UUID companyId = order.getBranch().getCompany().getId();
+        String title = "Sürgős banki rendelés jóváhagyásra vár";
+        String message = String.format("%s iroda: %s %s banki rendelés azonnali jóváhagyást kér.",
+                order.getBranch().getCode(),
+                order.getAmount().toPlainString(),
+                order.getCurrency().getCode());
+        for (Worker supervisor : workerRepository.findSupervisorsAndAbove(companyId)) {
+            notificationService.sendToWorker(supervisor.getId(), title, message, "URGENT");
+        }
+    }
+
+    private static String auditLogValue(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace('\r', ' ').replace('\n', ' ');
     }
 }

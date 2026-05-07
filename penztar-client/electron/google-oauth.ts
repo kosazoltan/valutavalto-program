@@ -10,7 +10,7 @@
  * <ol>
  *   <li>Ephemeral HTTP server indul `http://127.0.0.1:RANDOM_PORT/callback` cimen.</li>
  *   <li>PKCE: `code_verifier` (43-128 random URL-safe chars) + `code_challenge` (SHA-256 hash).</li>
- *   <li>External `BrowserWindow` nyilik a Google auth_uri-ra Desktop client ID-vel + PKCE-vel.</li>
+ *   <li>A rendszer alapertelmezett bongeszoje nyilik a Google auth_uri-ra Desktop client ID-vel + PKCE-vel.</li>
  *   <li>User belep, Google authorization code-dal redirectel a loopback URL-re.</li>
  *   <li>Az ephemeral server elkapja a code-ot, leallitja onmagat.</li>
  *   <li>POST `https://oauth2.googleapis.com/token` (code + code_verifier + client_secret) -> id_token.</li>
@@ -33,10 +33,9 @@
  * </ul>
  */
 
-import { BrowserWindow } from 'electron';
 import http from 'node:http';
 import crypto from 'node:crypto';
-import { net as electronNet } from 'electron';
+import { net as electronNet, shell } from 'electron';
 import log from 'electron-log/main';
 
 // Google OAuth endpoints (RFC + Google Discovery doc)
@@ -287,43 +286,15 @@ export async function performGoogleOAuthFlow(config: {
     });
   });
 
-  // 4. BrowserWindow nyitasa Google auth_uri-ra.
-  const authWindow = new BrowserWindow({
-    width: 500,
-    height: 700,
-    show: true,
-    resizable: false,
-    minimizable: false,
-    maximizable: false,
-    title: 'Google bejelentkezes',
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true,
-    },
-  });
-  authWindow.removeMenu();
-  authWindow.setMenuBarVisibility(false);
-
+  // 4. Rendszerbongeszo nyitasa. Ez a stabil natív app flow; a beagyazott
+  // Electron ablakokat a Google embedded user-agentkent visszautasithatja.
   let authCode: string;
   try {
-    await authWindow.loadURL(authUrl.toString());
-
-    // Ha a user bezarja az ablakot a callback elott -> USER_CANCELLED
-    const closedPromise = new Promise<string>((_, reject) => {
-      authWindow.on('closed', () => {
-        reject(new GoogleOAuthFailedException('USER_CANCELLED',
-            'A felhasznalo bezarta a Google bejelentkezes ablakot.'));
-      });
-    });
-
-    authCode = await Promise.race([authPromise, closedPromise]);
+    await shell.openExternal(authUrl.toString());
+    authCode = await authPromise;
   } finally {
-    if (!authWindow.isDestroyed()) {
-      authWindow.close();
-    }
     server.close();
-    log.info('[google-oauth] Loopback HTTP server leallt + auth window bezarva.');
+    log.info('[google-oauth] Loopback HTTP server leallt.');
   }
 
   // 5. Authorization code -> ID token csere
@@ -356,19 +327,15 @@ export async function performGoogleOAuthFlow(config: {
  * <p>Plusz: 3-szor probalja a backend POST-ot (1s, 3s, 5s wait) ha network-level error tortenik.
  *
  * @param config Desktop OAuth client + backend URL
- * @returns Backend `/auth/google-login` response (accessToken + refreshToken + user)
+ * @returns Backend `/auth/google-login` response JSON, plus the decoded Google email for diagnostics.
  */
 export async function performGoogleOAuthFlowWithBackendLogin(config: {
   clientId: string;
   clientSecret: string;
   apiBaseUrl: string;          // pl. https://excvaluta.com/api/v1
+  appMode?: string;
   timeoutMs?: number;
-}): Promise<{
-  accessToken: string;
-  refreshToken?: string;
-  user?: { email?: string; companyId?: number; role?: string; [k: string]: unknown };
-  email?: string;
-}> {
+}): Promise<{ response: unknown; email?: string }> {
   // 1. RFC 8252 OAuth Flow -> idToken
   const oauthResult = await performGoogleOAuthFlow({
     clientId: config.clientId,
@@ -379,7 +346,7 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
   // 2. Backend POST /auth/google-login main-process net.request-tel + retry
   const apiBase = config.apiBaseUrl.replace(/\/+$/, '');
   const url = `${apiBase}/auth/google-login`;
-  const reqBody = JSON.stringify({ idToken: oauthResult.idToken });
+  const reqBody = JSON.stringify({ idToken: oauthResult.idToken, appMode: config.appMode });
 
   const MAX_RETRIES = 3;
   const RETRY_DELAYS = [1000, 3000, 5000];
@@ -389,11 +356,7 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
       const responseJson = await postJsonViaElectronNet(url, reqBody, 30_000);
       log.info('[google-oauth] Backend google-login sikeres (attempt ' + (attempt + 1) + '/' + MAX_RETRIES + ')');
       return {
-        ...(responseJson as {
-          accessToken: string;
-          refreshToken?: string;
-          user?: Record<string, unknown>;
-        }),
+        response: responseJson,
         email: oauthResult.email,
       };
     } catch (err) {
@@ -425,10 +388,29 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
  */
 const OAUTH_ALLOWED_HOSTS = ['excvaluta.com', 'oauth2.googleapis.com', 'accounts.google.com', 'localhost'];
 
+function isPrivateOrLoopbackHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  if (host === '127.0.0.1' || host === '::1' || host === '[::1]') {
+    return true;
+  }
+  const parts = host.split('.').map((part) => Number.parseInt(part, 10));
+  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
+    return false;
+  }
+  const a = parts[0] ?? -1;
+  const b = parts[1] ?? -1;
+  return a === 10
+    || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 168)
+    || (a === 169 && b === 254)
+    || a === 127;
+}
+
 function postJsonViaElectronNet(url: string, jsonBody: string, timeoutMs: number): Promise<unknown> {
   try {
     const parsed = new URL(url);
-    if (!OAUTH_ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`))) {
+    if (!OAUTH_ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`))
+        && !isPrivateOrLoopbackHost(parsed.hostname)) {
       return Promise.reject(new GoogleOAuthFailedException('INVALID_URL', `Blocked: host not in allowlist: ${parsed.hostname}`));
     }
   } catch { return Promise.reject(new GoogleOAuthFailedException('INVALID_URL', `Invalid URL: ${url}`)); }

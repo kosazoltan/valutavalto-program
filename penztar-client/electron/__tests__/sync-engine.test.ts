@@ -50,8 +50,10 @@ vi.mock('../sqlite', () => ({
   saveCachedWorker: vi.fn(),
 }));
 
-import { SyncEngine } from '../sync-engine';
+import { safeStorage } from 'electron';
+import { selectBootstrapRoleCode, SyncEngine } from '../sync-engine';
 import {
+  deleteConfig,
   getConfig,
   getPendingTransactions,
   getPendingConversions,
@@ -70,6 +72,7 @@ import {
 } from '../sqlite';
 
 const mockedGetConfig = vi.mocked(getConfig);
+const mockedDeleteConfig = vi.mocked(deleteConfig);
 const mockedGetPendingTransactions = vi.mocked(getPendingTransactions);
 const mockedGetPendingConversions = vi.mocked(getPendingConversions);
 const mockedGetPendingBankTransactions = vi.mocked(getPendingBankTransactions);
@@ -84,6 +87,88 @@ const mockedMarkStornoSynced = vi.mocked(markStornoSynced);
 const mockedMarkDistributionSynced = vi.mocked(markDistributionSynced);
 const mockedMarkCollectionSynced = vi.mocked(markCollectionSynced);
 const mockedMarkHandoverOperationSynced = vi.mocked(markHandoverOperationSynced);
+
+describe('selectBootstrapRoleCode', () => {
+  it('ertektar appMode eseten nem valasztja a legacy CASHIER role-t, ha van ertektar role', () => {
+    const selected = selectBootstrapRoleCode('ertektar', 'CASHIER', {
+      roles: ['CASHIER', 'ertektar'],
+    });
+
+    expect(selected).toBe('ertektar');
+  });
+
+  it('penztar appMode eseten canonical penztar role-t preferal', () => {
+    const selected = selectBootstrapRoleCode('penztar', 'CASHIER', {
+      roles: ['CASHIER', 'penztar'],
+    });
+
+    expect(selected).toBe('penztar');
+  });
+
+  it('appMode nelkul explicit role-t hasznal, ha a backend valaszban valid', () => {
+    const selected = selectBootstrapRoleCode(null, 'CHIEF_VAULT', {
+      roles: ['CHIEF_VAULT', 'CASHIER'],
+    });
+
+    expect(selected).toBe('CHIEF_VAULT');
+  });
+
+  it('full appMode eseten backend server canonical role-t valaszt', () => {
+    const selected = selectBootstrapRoleCode('full', 'CASHIER', {
+      roles: ['CASHIER', 'penzugyi_vezeto'],
+    });
+
+    expect(selected).toBe('penzugyi_vezeto');
+  });
+
+  it('full appMode eseten determinisztikusan visszaesik az elso backend role-ra', () => {
+    const selected = selectBootstrapRoleCode('full', null, {
+      roles: ['CUSTOM_SERVER_ROLE', 'OTHER_ROLE'],
+    });
+
+    expect(selected).toBe('CUSTOM_SERVER_ROLE');
+  });
+});
+
+describe('SyncEngine — bootstrap password storage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(safeStorage.isEncryptionAvailable).mockReturnValue(true);
+  });
+
+  it('decrypts bootstrap_password_encrypted when safeStorage is available', () => {
+    const encrypted = Buffer.from('ciphertext').toString('base64');
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'bootstrap_password_encrypted') return encrypted;
+      return null;
+    });
+    vi.mocked(safeStorage.decryptString).mockReturnValue('NewGlobalPass123');
+    const engine = new SyncEngine();
+
+    const password = (engine as unknown as { getStoredBootstrapPassword(): string }).getStoredBootstrapPassword();
+
+    expect(password).toBe('NewGlobalPass123');
+    expect(safeStorage.decryptString).toHaveBeenCalledWith(Buffer.from(encrypted, 'base64'));
+  });
+
+  it('deletes broken encrypted bootstrap password and falls back to plaintext config', () => {
+    const encrypted = Buffer.from('broken').toString('base64');
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'bootstrap_password_encrypted') return encrypted;
+      if (key === 'bootstrap_password') return 'legacy-fallback-pass';
+      return null;
+    });
+    vi.mocked(safeStorage.decryptString).mockImplementation(() => {
+      throw new Error('decrypt failed');
+    });
+    const engine = new SyncEngine();
+
+    const password = (engine as unknown as { getStoredBootstrapPassword(): string }).getStoredBootstrapPassword();
+
+    expect(password).toBe('legacy-fallback-pass');
+    expect(mockedDeleteConfig).toHaveBeenCalledWith('bootstrap_password_encrypted');
+  });
+});
 
 describe('SyncEngine — syncAll', () => {
   let engine: SyncEngine;
@@ -745,8 +830,8 @@ describe('SyncEngine — párhuzamos sync trigger (race condition)', () => {
     // Start first sync (will be paused on first fetch)
     const firstSync = engine.syncAll('test-token');
 
-    // Start second sync immediately (isRunning=false because syncAll is not runSync,
-    // so it WILL run — this tests that both syncs can run but do not double-mark)
+    // Start second sync immediately. It should join the in-flight sync instead of
+    // reading and marking the same pending rows again.
     const secondSync = engine.syncAll('test-token');
 
     // Unblock first
@@ -754,17 +839,48 @@ describe('SyncEngine — párhuzamos sync trigger (race condition)', () => {
 
     const [result1, result2] = await Promise.all([firstSync, secondSync]);
 
-    // Both syncs complete independently (syncAll has no isRunning guard itself)
-    // Key: no crash, no undefined behaviour
-    expect(result1.synced + result2.synced).toBeGreaterThanOrEqual(2);
+    expect(result1).toEqual({ synced: 2, failed: 0, errors: [] });
+    expect(result2).toEqual(result1);
     expect(result1.failed).toBe(0);
     expect(result2.failed).toBe(0);
 
-    // NOTE: Currently syncAll has no isRunning guard, so concurrent calls
-    // may double-mark the same transaction IDs. This documents existing behavior.
-    // TODO: Add isRunning lock to syncAll to prevent double-marking.
     const markCalls = mockedMarkTransactionSynced.mock.calls.map(c => c[0]);
-    expect(markCalls.length).toBeGreaterThanOrEqual(2);
+    expect(markCalls).toHaveLength(2);
+    expect(new Set(markCalls)).toEqual(new Set([1, 2]));
+    expect(markCalls.filter((id) => id === 1)).toHaveLength(1);
+    expect(markCalls.filter((id) => id === 2)).toHaveLength(1);
+  });
+
+  it('should run a follow-up syncAll with a different explicit token after the current run', async () => {
+    mockedGetPendingTransactions
+      .mockReturnValueOnce([makeTx(1)])
+      .mockReturnValueOnce([makeTx(2)])
+      .mockReturnValue([]);
+
+    let resolveFirst: () => void;
+    const firstDone = new Promise<void>((resolve) => { resolveFirst = resolve; });
+
+    const mockFetch = vi.fn().mockImplementation(async () => {
+      await firstDone;
+      return { ok: true, json: () => Promise.resolve({ success: true }) };
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const firstSync = engine.syncAll('stale-token');
+    const secondSync = engine.syncAll('fresh-token');
+
+    resolveFirst!();
+    const [firstResult, secondResult] = await Promise.all([firstSync, secondSync]);
+
+    expect(firstResult).toEqual({ synced: 1, failed: 0, errors: [] });
+    expect(secondResult).toEqual({ synced: 1, failed: 0, errors: [] });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockedMarkTransactionSynced).toHaveBeenCalledWith(1);
+    expect(mockedMarkTransactionSynced).toHaveBeenCalledWith(2);
+    const firstRequest = mockFetch.mock.calls[0][1] as { headers: Record<string, string> };
+    const secondRequest = mockFetch.mock.calls[1][1] as { headers: Record<string, string> };
+    expect(firstRequest.headers.Authorization).toBe('Bearer stale-token');
+    expect(secondRequest.headers.Authorization).toBe('Bearer fresh-token');
   });
 
   it('runSync (internal) should skip second trigger if already running', async () => {

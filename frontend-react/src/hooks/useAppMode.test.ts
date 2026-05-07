@@ -79,6 +79,23 @@ describe('useAppMode', () => {
     delete (window as any).electronAPI
   })
 
+  it('returns mode="ertekszallito" in Electron when config says so', async () => {
+    mockIsElectron.mockReturnValue(true);
+    (window as any).electronAPI = {
+      getConfig: vi.fn().mockResolvedValue('ertekszallito'),
+    }
+
+    const { result } = renderHook(() => useAppMode())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.mode).toBe('ertekszallito')
+
+    delete (window as any).electronAPI
+  })
+
   it('defaults to "penztar" in Electron when config returns unknown value', async () => {
     mockIsElectron.mockReturnValue(true);
     (window as any).electronAPI = {

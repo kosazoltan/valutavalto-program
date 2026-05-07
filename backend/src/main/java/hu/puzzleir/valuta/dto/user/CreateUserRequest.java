@@ -24,7 +24,7 @@ public class CreateUserRequest {
     private String email;
 
     @NotBlank(message = "A jelszó megadása kötelező")
-    @Size(min = 6, max = 128, message = "A jelszó 6-128 karakter között legyen")
+    @Size(min = 8, max = 128, message = "A jelszó 8-128 karakter között legyen")
     private String password;
 
     /** WorkerRole enum name: CASHIER, SUPERVISOR, MANAGER, ADMIN */

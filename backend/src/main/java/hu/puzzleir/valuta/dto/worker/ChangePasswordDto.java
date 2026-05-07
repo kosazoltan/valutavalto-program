@@ -18,6 +18,6 @@ public class ChangePasswordDto {
     private String oldPassword;
     
     @NotBlank(message = "Új jelszó kötelező")
-    @Size(min = 4, message = "Új jelszó minimum 4 karakter")
+    @Size(min = 8, max = 128, message = "Új jelszó 8-128 karakter között legyen")
     private String newPassword;
 }

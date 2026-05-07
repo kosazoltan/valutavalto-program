@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.dto.auth;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,4 +20,17 @@ public class SelectRoleRequestDto {
 
     @NotBlank(message = "Szerepkör kód kötelező")
     private String roleCode;
+
+    /**
+     * Opcionális kliens appMode (penztar, ertektar, ertekszallito, full).
+     * Ha meg van adva, a backend role-szinten ellenőrzi, hogy a kiválasztott
+     * role használható-e abban a programban.
+     */
+    @Size(max = 32, message = "App mode maximum 32 karakter lehet")
+    private String appMode;
+
+    public SelectRoleRequestDto(String token, String roleCode) {
+        this.token = token;
+        this.roleCode = roleCode;
+    }
 }

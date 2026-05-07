@@ -53,8 +53,8 @@ public class CommissionCalculationService {
         LocalDate monthEnd = ym.atEndOfMonth();
 
         // H-7: Pénztáros tranzakcióinak összegyűjtése egyetlen range query-vel (N+1 fix)
-        List<Transaction> allTransactions = transactionRepository.findByWorkerIdAndTransactionDateBetween(
-                workerId, monthStart, monthEnd);
+        List<Transaction> allTransactions = transactionRepository.findByCompanyIdAndWorkerIdAndTransactionDateBetween(
+                companyId, workerId, monthStart, monthEnd);
 
         List<Transaction> active = allTransactions.stream()
                 .filter(Transaction::isActive)

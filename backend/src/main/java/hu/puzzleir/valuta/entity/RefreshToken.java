@@ -42,6 +42,14 @@ public class RefreshToken {
     @Column(name = "company_id", nullable = false)
     private UUID companyId;
 
+    /**
+     * A refresh tokenhez tartozó végleges operatív szerepkör.
+     * Multi-role login után ezt a role-select endpoint állítja be, hogy silent
+     * refreshkor ugyanaz a Pénztár/Értéktár/Szerver szerepkör maradjon aktív.
+     */
+    @Column(name = "active_role", length = 64)
+    private String activeRole;
+
     @Column(name = "issued_at", nullable = false)
     private Instant issuedAt;
 

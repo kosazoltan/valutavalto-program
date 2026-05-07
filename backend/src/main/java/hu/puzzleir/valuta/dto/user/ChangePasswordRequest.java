@@ -11,6 +11,6 @@ import lombok.AllArgsConstructor;
 public class ChangePasswordRequest {
 
     @NotBlank(message = "Az új jelszó megadása kötelező")
-    @Size(min = 6, max = 128, message = "A jelszó 6-128 karakter között legyen")
+    @Size(min = 8, max = 128, message = "A jelszó 8-128 karakter között legyen")
     private String newPassword;
 }

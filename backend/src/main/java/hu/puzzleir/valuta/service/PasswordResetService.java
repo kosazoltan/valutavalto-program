@@ -1,7 +1,9 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.PasswordResetToken;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.PasswordResetTokenRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,21 +13,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLEncoder;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HexFormat;
+import java.util.Locale;
 
 /**
- * Elfelejtett-jelszo flow — in-memory reset token cache.
+ * Elfelejtett-jelszo flow — persistent reset token storage.
  *
- * <p>Egy egyszeru, memory-based token-cache. Production-ban erdemes
- * Redis-re atallni, de 6 user-re ez is eleg, ha a backend nem restart-ol
- * tokens kiadas es felhasznalas kozott.</p>
+ * <p>The raw token only travels in email. The database stores a SHA-256 hash,
+ * so a backend restart does not break an already issued reset link.</p>
  *
  * <p>Token elettartam: 15 perc. Anti-enumeration: ha az email nem
  * regisztralt, akkor is success-t ad vissza a requestForgot.</p>
@@ -39,6 +42,7 @@ public class PasswordResetService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final WorkerRepository workerRepository;
+    private final PasswordResetTokenRepository resetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailNotificationService emailNotificationService;
 
@@ -50,13 +54,9 @@ public class PasswordResetService {
     @Value("${app.frontend.base-url:https://excvaluta.com}")
     private String frontendBaseUrl;
 
-    // In-memory token cache: token -> { workerId, expiresAt }
-    private static final Map<String, TokenEntry> TOKEN_CACHE = new ConcurrentHashMap<>();
-
     /**
-     * Kerelem forgot-password flow-ra. Az email-tulajdonos-nak torteno
-     * token kikuldes itt nem implementalva (Gmail API nelkuli, de a
-     * GoogleAuthController mar rendelkezik a credentialekkel).
+     * Kerelem forgot-password flow-ra. A nyers token csak emailben megy ki,
+     * az adatbazisba a token SHA-256 hash-e kerul.
      *
      * <p>Anti-enumeration: akkor is 200-at adunk vissza ha az email
      * nem letezik a DB-ben. Igy egy attacker nem tudja felderiteni
@@ -73,13 +73,13 @@ public class PasswordResetService {
 
         Optional<Worker> workerOpt = workerRepository.findByEmail(email.trim().toLowerCase());
         if (workerOpt.isEmpty()) {
-            log.info("Forgot password: ismeretlen email (anti-enumeration silent): {}", email);
+            log.info("Forgot password: ismeretlen email (anti-enumeration silent): emailHash={}", logHash(email));
             return null;
         }
 
         Worker worker = workerOpt.get();
         if (!Boolean.TRUE.equals(worker.getActive())) {
-            log.warn("Forgot password: inaktiv worker: {}", email);
+            log.warn("Forgot password: inaktiv worker: emailHash={}", logHash(email));
             return null;
         }
 
@@ -88,10 +88,13 @@ public class PasswordResetService {
         SECURE_RANDOM.nextBytes(randomBytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
 
-        TOKEN_CACHE.put(token, new TokenEntry(
-                worker.getId(),
-                Instant.now().plus(TOKEN_TTL)
-        ));
+        Instant now = Instant.now();
+        resetTokenRepository.save(PasswordResetToken.builder()
+                .workerId(worker.getId())
+                .tokenHash(hashToken(token))
+                .issuedAt(now)
+                .expiresAt(now.plus(TOKEN_TTL))
+                .build());
 
         // CodeQL java/sensitive-log fix: NEM logoljuk az emailt (PII/GDPR) es a tokent
         // (security-sensitive) - csak worker id-t es egy nem-rekonstrualhato hashet a tokenrol.
@@ -149,15 +152,19 @@ public class PasswordResetService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void resetPassword(String token, String newPassword) {
-        TokenEntry entry = TOKEN_CACHE.remove(token);
-        if (entry == null) {
+        if (token == null || token.isBlank()) {
             throw new ValidationException("Ervenytelen vagy lejart token");
         }
-        if (Instant.now().isAfter(entry.expiresAt)) {
+        PasswordResetToken resetToken = resetTokenRepository.findByTokenHashAndUsedAtIsNull(hashToken(token))
+                .orElseThrow(() -> new ValidationException("Ervenytelen vagy lejart token"));
+        Instant now = Instant.now();
+        if (now.isAfter(resetToken.getExpiresAt())) {
             throw new ValidationException("A token lejart (15 perc). Igenyelj ujat.");
         }
+        resetToken.setUsedAt(now);
+        resetTokenRepository.save(resetToken);
 
-        Worker worker = workerRepository.findById(entry.workerId)
+        Worker worker = workerRepository.findById(resetToken.getWorkerId())
                 .orElseThrow(() -> new ValidationException("Worker not found"));
         worker.setPasswordHash(passwordEncoder.encode(newPassword));
         worker.setPasswordChangedAt(java.time.LocalDateTime.now());
@@ -167,9 +174,22 @@ public class PasswordResetService {
     }
 
     private void cleanupExpiredTokens() {
-        Instant now = Instant.now();
-        TOKEN_CACHE.entrySet().removeIf(entry -> now.isAfter(entry.getValue().expiresAt));
+        resetTokenRepository.deleteExpiredOrUsed(Instant.now());
     }
 
-    private record TokenEntry(Long workerId, Instant expiresAt) {}
+    private static String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(token.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 digest unavailable", ex);
+        }
+    }
+
+    private static String logHash(String value) {
+        if (value == null) {
+            return "(null)";
+        }
+        return hashToken(value.trim().toLowerCase(Locale.ROOT)).substring(0, 12);
+    }
 }

@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.dto.ftpsync.FtpSyncResultDto;
 import hu.puzzleir.valuta.service.FtpSyncService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -27,7 +28,7 @@ public class FtpSyncController {
     @PostMapping("/rates/{branchId}")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<FtpSyncResultDto> syncRates(@PathVariable UUID branchId) {
-        return ResponseEntity.ok(ftpSyncService.syncRateFile(branchId));
+        return syncResponse(ftpSyncService.syncRateFile(branchId));
     }
 
     @PostMapping("/daily-report/{branchId}")
@@ -35,18 +36,25 @@ public class FtpSyncController {
     public ResponseEntity<FtpSyncResultDto> uploadDailyReport(
             @PathVariable UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(ftpSyncService.uploadDailyReport(branchId, date));
+        return syncResponse(ftpSyncService.uploadDailyReport(branchId, date));
     }
 
     @PostMapping("/transactions/{branchId}")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<FtpSyncResultDto> uploadTransactions(@PathVariable UUID branchId) {
-        return ResponseEntity.ok(ftpSyncService.uploadTransactionBatch(branchId));
+        return syncResponse(ftpSyncService.uploadTransactionBatch(branchId));
     }
 
     @GetMapping("/history/{branchId}")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<FtpSyncLogDto>> getSyncHistory(@PathVariable UUID branchId) {
         return ResponseEntity.ok(ftpSyncService.getSyncHistory(branchId));
+    }
+
+    private ResponseEntity<FtpSyncResultDto> syncResponse(FtpSyncResultDto result) {
+        if (result == null || !result.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(result);
+        }
+        return ResponseEntity.ok(result);
     }
 }

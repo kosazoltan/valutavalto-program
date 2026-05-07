@@ -16,10 +16,16 @@ import {
   Loader2,
 } from 'lucide-react'
 import { useAppMode } from '../hooks/useAppMode'
+import { CASHIER_APP_MODE } from '../types/appMode'
+import type { AppMode } from '../types/appMode'
 
 import { menuGroups, SZERVER_ROLES } from "./menuGroups"
 import { useFeatureFlags } from "../hooks/useFeatureFlags"
 import TransitBadge from "../components/TransitBadge"
+
+export function shouldRequireDailySession(appMode: AppMode): boolean {
+  return appMode === CASHIER_APP_MODE
+}
 
 export default function MainLayout() {
   const { t } = useTranslation()
@@ -35,10 +41,23 @@ export default function MainLayout() {
   // (ugyvezeto, foertektar, belso_ellenor, stb.), minden lokal appMode-ban
   // lathatja a teljes menut, hogy ellenorizhesse a penztar/ertektar muveleteket.
   const hasSupervisoryAccess = SZERVER_ROLES.some((r) => hasCanonicalRole(r))
-  const { mode: appMode } = useAppMode()
+  const { mode: appMode, isLoading: appModeLoading } = useAppMode()
   const navigate = useNavigate()
 
+  const markSessionReadyWithoutDailyGate = useCallback(() => {
+    setSessionInfo(null)
+    setSessionError(null)
+    setShowSessionDialog(false)
+    setSessionReady(true)
+    setSessionChecking(false)
+  }, [])
+
   const initSession = useCallback(async () => {
+    if (!shouldRequireDailySession(appMode)) {
+      markSessionReadyWithoutDailyGate()
+      return
+    }
+
     try {
       setSessionChecking(true)
       setSessionError(null)
@@ -66,11 +85,15 @@ export default function MainLayout() {
     } finally {
       setSessionChecking(false)
     }
-  }, [])
+  }, [appMode, markSessionReadyWithoutDailyGate])
 
   useEffect(() => {
+    if (appModeLoading) {
+      return
+    }
+
     initSession()
-  }, [initSession])
+  }, [appModeLoading, initSession])
 
   const handleRetryOpen = async () => {
     try {
@@ -168,8 +191,8 @@ export default function MainLayout() {
         {/* Navigation Groups */}
         <nav className="flex-1 py-2 overflow-y-auto">
           {menuGroups
-            .filter((group) => !group.modes || (group.modes as readonly string[]).includes(appMode))
-            .filter((group) => hasSupervisoryAccess || !group.canonicalRoles || (group.canonicalRoles as readonly string[]).some((r) => hasCanonicalRole(r)))
+            .filter((group) => !group.modes || group.modes.includes(appMode))
+            .filter((group) => hasSupervisoryAccess || !group.canonicalRoles || group.canonicalRoles.some((r) => hasCanonicalRole(r)))
             .filter((group) => !group.featureFlagKey || featureFlags[group.featureFlagKey])
             .map((group) => (
             <div key={group.label} className="mb-3">
@@ -179,8 +202,8 @@ export default function MainLayout() {
                 </div>
               )}
               {group.items
-                .filter((item) => !item.modes || (item.modes as readonly string[]).includes(appMode))
-                .filter((item) => hasSupervisoryAccess || !item.canonicalRoles || (item.canonicalRoles as readonly string[]).some((r) => hasCanonicalRole(r)))
+                .filter((item) => !item.modes || item.modes.includes(appMode))
+                .filter((item) => hasSupervisoryAccess || !item.canonicalRoles || item.canonicalRoles.some((r) => hasCanonicalRole(r)))
                 .filter((item) => !item.minRole || hasRole(item.minRole))
                 .map((item) => (
                 <NavLink

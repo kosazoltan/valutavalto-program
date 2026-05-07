@@ -44,6 +44,11 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
+  IPC_CHANNELS,
+  type SetupWorkerOption,
+  type SetupWorkersRequest,
+} from '@valuta/shared-ipc';
+import {
   initDatabase,
   getConfig,
   setConfig,
@@ -98,6 +103,7 @@ import {
 
   isFirstRun,
   getBranches,
+  getWorkers,
   testConnection,
   saveSetupConfig,
   type SetupSavePayload,
@@ -126,6 +132,29 @@ function loadProductionUrls(): { api_url: string; base_url: string; domain: stri
       base_url: 'https://excvaluta.com',
       domain: 'excvaluta.com',
     };
+  }
+}
+
+function normalizeApiUrl(value: string): string {
+  const trimmed = value.trim().replace(/\/+$/, '');
+  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+}
+
+function resolveConfiguredApiUrl(): string {
+  const fallback = loadProductionUrls().api_url;
+  try {
+    const configured = (getConfig('server_url') ?? '').trim();
+    if (!configured) return fallback;
+    const parsed = new URL(configured);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      log.warn('[App] server_url invalid protocol, fallback production URL:', configured);
+      return fallback;
+    }
+    return normalizeApiUrl(configured);
+  } catch (err) {
+    log.warn('[App] server_url invalid, fallback production URL:',
+        err instanceof Error ? err.message : String(err));
+    return fallback;
   }
 }
 
@@ -364,6 +393,26 @@ ipcMain.handle('setup:branches', async (
   params?: { apiUrl?: string; companyCode?: string },
 ) => {
   return await getBranches(params?.apiUrl, params?.companyCode);
+});
+
+ipcMain.handle(IPC_CHANNELS.SETUP_WORKERS, async (
+  _event,
+  params: SetupWorkersRequest,
+): Promise<SetupWorkerOption[]> => {
+  const apiUrl = params?.apiUrl?.trim() ?? '';
+  const companyCode = params?.companyCode?.trim() ?? '';
+  const branchCode = params?.branchCode?.trim() ?? '';
+
+  if (!apiUrl || !companyCode || !branchCode) {
+    log.warn('[IPC] setup:workers hianyos parameterek, ures dolgozoi lista.', {
+      hasApiUrl: Boolean(apiUrl),
+      hasCompanyCode: Boolean(companyCode),
+      hasBranchCode: Boolean(branchCode),
+    });
+    return [];
+  }
+
+  return await getWorkers(apiUrl, companyCode, branchCode);
 });
 
 ipcMain.handle('setup:test-connection', async (
@@ -829,7 +878,7 @@ app.whenReady().then(async () => {
   // a TLS handshake utan leejti. A main-process electron.net.request megbizhatobb
   // (Windows certificate store + Chromium switches mind alkalmazva, NEM renderer fetch).
   // Plus: 3-szor probalja a backend POST-ot (1s, 3s, 5s wait) ha network-level error.
-  ipcMain.handle('auth:google-oauth-flow-with-backend', async () => {
+  ipcMain.handle('auth:google-oauth-flow-with-backend', async (_evt, payload?: { appMode?: string }) => {
     const clientId = process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID
         ?? process.env.GOOGLE_DESKTOP_CLIENT_ID
         ?? '';
@@ -841,15 +890,16 @@ app.whenReady().then(async () => {
       return { ok: false, code: 'MISCONFIGURED',
           message: 'Google Desktop OAuth client nincs konfiguralva. Kerd az adminisztratort.' };
     }
-    const apiBaseUrl = loadProductionUrls().api_url;
+    const apiBaseUrl = resolveConfiguredApiUrl();
     try {
       const result = await performGoogleOAuthFlowWithBackendLogin({
         clientId,
         clientSecret,
         apiBaseUrl,
+        appMode: payload?.appMode,
       });
       log.info('[main] Google OAuth + backend login OK for:', result.email ?? '(unknown)');
-      return { ok: true, ...result };
+      return { ok: true, response: result.response, email: result.email };
     } catch (err) {
       if (err instanceof GoogleOAuthFailedException) {
         log.warn('[main] Google OAuth + backend login failed:', err.code, err.message);
@@ -873,7 +923,7 @@ app.whenReady().then(async () => {
     if (!payload || !payload.companyCode || !payload.workerCode || !payload.password) {
       return { ok: false, code: 'BAD_REQUEST', message: 'companyCode, workerCode, password kotelezo' };
     }
-    const apiBaseUrl = loadProductionUrls().api_url;
+    const apiBaseUrl = resolveConfiguredApiUrl();
     try {
       const response = await performPasswordLoginMainProcess({
         apiBaseUrl,
@@ -907,7 +957,7 @@ app.whenReady().then(async () => {
     if (!params || !params.url || !params.method) {
       return { ok: false, status: 0, statusText: 'BAD_REQUEST', headers: {}, body: '{"error":"url and method required"}' };
     }
-    const apiBaseUrl = loadProductionUrls().api_url;
+    const apiBaseUrl = resolveConfiguredApiUrl();
     const fullUrl = params.url.startsWith('http') ? params.url : `${apiBaseUrl}${params.url}`;
 
     const MAX_RETRIES = 3;

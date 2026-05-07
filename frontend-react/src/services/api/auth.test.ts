@@ -14,7 +14,7 @@ vi.mock('./client', () => {
       response: { use: vi.fn() },
     },
   }
-  return { api: mockApi }
+  return { api: mockApi, REFRESH_ENDPOINT: '/auth/refresh-cookie' }
 })
 
 const mockApi = api as unknown as {
@@ -71,8 +71,11 @@ describe('authApi', () => {
       const responseData = { token: 'google-token', tokenType: 'Bearer', expiresAt: '', worker: {} }
       mockApi.post.mockResolvedValue({ data: responseData })
 
-      const result = await authApi.googleLogin({ idToken: 'id_tok' })
-      expect(mockApi.post).toHaveBeenCalledWith('/auth/google-login', { idToken: 'id_tok' })
+      const result = await authApi.googleLogin({ idToken: 'id_tok', appMode: 'penztar' })
+      expect(mockApi.post).toHaveBeenCalledWith('/auth/google-login', {
+        idToken: 'id_tok',
+        appMode: 'penztar',
+      })
       expect(result.token).toBe('google-token')
     })
   })
@@ -85,11 +88,20 @@ describe('authApi', () => {
     })
   })
 
+  describe('refreshCookie', () => {
+    it('calls POST /auth/refresh-cookie and returns token', async () => {
+      mockApi.post.mockResolvedValue({ data: { token: 'refreshed' } })
+      const result = await authApi.refreshCookie()
+      expect(mockApi.post).toHaveBeenCalledWith('/auth/refresh-cookie')
+      expect(result.token).toBe('refreshed')
+    })
+  })
+
   describe('refreshToken', () => {
-    it('calls POST /auth/refresh and returns token', async () => {
+    it('keeps the legacy helper name as an alias for refresh-cookie', async () => {
       mockApi.post.mockResolvedValue({ data: { token: 'refreshed' } })
       const result = await authApi.refreshToken()
-      expect(mockApi.post).toHaveBeenCalledWith('/auth/refresh')
+      expect(mockApi.post).toHaveBeenCalledWith('/auth/refresh-cookie')
       expect(result.token).toBe('refreshed')
     })
   })
@@ -99,10 +111,11 @@ describe('authApi', () => {
       const responseData = { token: 'new-token', tokenType: 'Bearer', expiresAt: '', worker: {} }
       mockApi.post.mockResolvedValue({ data: responseData })
 
-      const result = await authApi.selectRole({ token: 'old-token', roleCode: 'MANAGER' })
+      const result = await authApi.selectRole({ token: 'old-token', roleCode: 'MANAGER', appMode: 'full' })
       expect(mockApi.post).toHaveBeenCalledWith('/auth/login/select-role', {
         token: 'old-token',
         roleCode: 'MANAGER',
+        appMode: 'full',
       })
       expect(result.token).toBe('new-token')
     })

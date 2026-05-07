@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.dto.nav.NavSendResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Path;
@@ -25,10 +26,14 @@ public class NavIntegrationService {
     private final IntegrationTransportProperties integrationTransportProperties;
     private final FileTransportService fileTransportService;
 
+    @Value("${nav.bridge.simulated-success-enabled:false}")
+    private boolean bridgeSimulatedSuccessEnabled;
+
     @jakarta.annotation.PostConstruct
     void warnBridgeMode() {
-        log.warn("⚠️ NAV INTEGRÁCIÓ BRIDGE MÓDBAN FUT — a hardver kommunikáció file-artifact alapú. "
-                + "Éles NAV pénztárgép kommunikációhoz valódi serial/API driver szükséges.");
+        log.warn("NAV INTEGRÁCIÓ BRIDGE MÓDBAN FUT — a hardver kommunikáció file-artifact alapú. "
+                + "Éles NAV pénztárgép kommunikációhoz valódi serial/API driver szükséges. "
+                + "Szimulált siker engedélyezve={}", bridgeSimulatedSuccessEnabled);
     }
 
     /**
@@ -43,6 +48,14 @@ public class NavIntegrationService {
         }
 
         String safeComPort = normalizeComPort(comPort);
+        if (!bridgeSimulatedSuccessEnabled) {
+            log.warn("NAV tranzakció bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: "
+                    + "transactionId={}, comPort={}", transactionId, safeComPort);
+            return NavSendResult.builder()
+                .success(false)
+                .error(bridgeDisabledMessage("tranzakció küldés"))
+                .build();
+        }
 
         try {
             Map<String, Object> payload = new LinkedHashMap<>();
@@ -76,6 +89,12 @@ public class NavIntegrationService {
      */
     public String receiveReceiptNumber(String comPort) {
         String safeComPort = normalizeComPort(comPort);
+        if (!bridgeSimulatedSuccessEnabled) {
+            log.warn("NAV nyugtaszám bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: comPort={}",
+                    safeComPort);
+            return null;
+        }
+
         String receipt = "REC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
         try {
@@ -106,6 +125,12 @@ public class NavIntegrationService {
         }
 
         String safeComPort = normalizeComPort(comPort);
+        if (!bridgeSimulatedSuccessEnabled) {
+            log.warn("NAV QR bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: comPort={}",
+                    safeComPort);
+            return false;
+        }
+
         try {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("action", "SEND_QR");
@@ -134,5 +159,9 @@ public class NavIntegrationService {
         String fallback = (comPort == null || comPort.isBlank()) ? "COM1" : comPort.trim();
         String normalized = fallback.replaceAll("[^A-Za-z0-9._-]", "_");
         return fileTransportService.sanitizePathSegment(normalized, "comPort");
+    }
+
+    private String bridgeDisabledMessage(String action) {
+        return "NAV bridge szimuláció tiltva: nincs éles pénztárgép-visszaigazolás (" + action + ")";
     }
 }

@@ -100,7 +100,7 @@ public class PublicBranchController {
     }
 
     /**
-     * GET /api/v1/public/workers?branchCode=BR039
+     * GET /api/v1/public/workers?companyCode=EBC&branchCode=BR039
      *
      * Visszaadja az adott penztar regioja szerint az osszes aktiv dolgozot,
      * csak a publikus mezokkel (code, name, region) - no email, no phone.
@@ -111,12 +111,31 @@ public class PublicBranchController {
     @GetMapping("/workers")
     @SuppressWarnings("deprecation") // Szandekos: pre-login wizard, nincs SecurityContext. A branch code globalis unique.
     public ResponseEntity<List<PublicWorkerDto>> getPublicWorkersByBranch(
+            @RequestParam(required = false) String companyCode,
             @RequestParam(required = false) String branchCode) {
         if (branchCode == null || branchCode.isBlank()) {
             return ResponseEntity.ok(Collections.emptyList());
         }
         String normalized = branchCode.trim().toUpperCase();
-        Optional<Branch> branchOpt = branchRepository.findByCode(normalized);
+        Optional<Branch> branchOpt = Optional.empty();
+        if (companyCode != null && !companyCode.isBlank()) {
+            String normalizedCompanyCode = companyCode.trim().toUpperCase();
+            Optional<Company> companyOpt = companyRepository.findByCode(normalizedCompanyCode)
+                    .or(() -> companyRepository.findByCodeIgnoreCase(normalizedCompanyCode));
+            if (companyOpt.isEmpty()) {
+                log.info("Public workers: unknown companyCode: {}", normalizedCompanyCode);
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+            branchOpt = branchRepository.findByCompanyIdAndCode(companyOpt.get().getId(), normalized);
+            if (branchOpt.isEmpty()) {
+                log.info("Public workers: unknown branchCode for company: companyCode={}, branchCode={}",
+                        normalizedCompanyCode, normalized);
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+        }
+        if (branchOpt.isEmpty()) {
+            branchOpt = branchRepository.findByCode(normalized);
+        }
         if (branchOpt.isEmpty()) {
             log.info("Public workers: unknown branchCode: {}", normalized);
             return ResponseEntity.ok(Collections.emptyList());

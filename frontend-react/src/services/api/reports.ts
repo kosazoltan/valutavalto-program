@@ -48,6 +48,7 @@ export interface PeriodReport {
 
 export interface WorkerPerformanceReport {
   workerId: number
+  workerCode?: string
   workerName: string
   startDate: string
   endDate: string
@@ -58,6 +59,13 @@ export interface WorkerPerformanceReport {
   totalSellHuf: number
   totalHandlingFees: number
   averageDailyTransactions: number
+  totalTransactions?: number
+  buyTransactions?: number
+  sellTransactions?: number
+  reversalCount?: number
+  totalTurnoverHuf?: number
+  averageTransactionValue?: number
+  currencyTurnovers?: CurrencyTurnover[]
 }
 
 export interface CurrencyReport {

@@ -36,11 +36,78 @@ export interface ApiProxyResponse {
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_RESPONSE_BYTES = 50 * 1024 * 1024; // 50 MB safety cap
 const ALLOWED_HOSTS = ['excvaluta.com', 'localhost'];
+type SafeRequestHeaders = {
+  accept?: string;
+  authorization?: string;
+  contentType?: string;
+  idempotencyKey?: string;
+  requestId?: string;
+  acceptLanguage?: string;
+};
+
+function safeHeaderValue(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  if (value.length > 8192) return null;
+  if (/[\r\n]/.test(value)) return null;
+  return value;
+}
+
+function normalizeSafeRequestHeaders(headers?: Record<string, string>): SafeRequestHeaders {
+  const safe: SafeRequestHeaders = {};
+  if (!headers) return safe;
+
+  for (const [rawKey, rawValue] of Object.entries(headers)) {
+    const value = safeHeaderValue(rawValue);
+    if (value === null) continue;
+    switch (rawKey.toLowerCase()) {
+      case 'accept':
+        safe.accept = value;
+        break;
+      case 'authorization':
+        safe.authorization = value;
+        break;
+      case 'content-type':
+        safe.contentType = value;
+        break;
+      case 'idempotency-key':
+        safe.idempotencyKey = value;
+        break;
+      case 'x-request-id':
+        safe.requestId = value;
+        break;
+      case 'accept-language':
+        safe.acceptLanguage = value;
+        break;
+      default:
+        break;
+    }
+  }
+  return safe;
+}
+
+function isPrivateOrLoopbackHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  if (host === '127.0.0.1' || host === '::1' || host === '[::1]') {
+    return true;
+  }
+  const parts = host.split('.').map((part) => Number.parseInt(part, 10));
+  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
+    return false;
+  }
+  const a = parts[0] ?? -1;
+  const b = parts[1] ?? -1;
+  return a === 10
+    || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 168)
+    || (a === 169 && b === 254)
+    || a === 127;
+}
 
 function isAllowedUrl(raw: string): boolean {
   try {
     const parsed = new URL(raw);
-    return ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`));
+    return ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`))
+      || isPrivateOrLoopbackHost(parsed.hostname);
   } catch {
     return false;
   }
@@ -56,20 +123,23 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
 
   const upperMethod = method.toUpperCase();
   const hasBody = body !== undefined && body !== null && body !== '';
+  const safeHeaders = normalizeSafeRequestHeaders(headers);
 
   return new Promise((resolve, reject) => {
     const request = electronNet.request({ method: upperMethod, url });
 
-    if (headers) {
-      for (const [key, value] of Object.entries(headers)) {
-        request.setHeader(key, value);
-      }
-    }
+    if (safeHeaders.accept) request.setHeader('Accept', safeHeaders.accept);
+    if (safeHeaders.authorization) request.setHeader('Authorization', safeHeaders.authorization);
+    if (safeHeaders.contentType) request.setHeader('Content-Type', safeHeaders.contentType);
+    if (safeHeaders.idempotencyKey) request.setHeader('Idempotency-Key', safeHeaders.idempotencyKey);
+    if (safeHeaders.requestId) request.setHeader('X-Request-Id', safeHeaders.requestId);
+    if (safeHeaders.acceptLanguage) request.setHeader('Accept-Language', safeHeaders.acceptLanguage);
+
     if (hasBody && upperMethod !== 'GET' && upperMethod !== 'HEAD'
-        && !headers?.['Content-Type'] && !headers?.['content-type']) {
+        && !safeHeaders.contentType) {
       request.setHeader('Content-Type', 'application/json');
     }
-    if (!headers?.['Accept'] && !headers?.['accept']) {
+    if (!safeHeaders.accept) {
       request.setHeader('Accept', 'application/json');
     }
 
@@ -84,10 +154,10 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
     }, timeout);
 
     request.on('response', (response: IncomingMessage) => {
-      const respHeaders: Record<string, string> = Object.create(null) as Record<string, string>;
+      const respHeaders = new Map<string, string>();
       for (const [key, value] of Object.entries(response.headers)) {
         if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
-        respHeaders[key] = Array.isArray(value) ? value.join(', ') : String(value ?? '');
+        respHeaders.set(key, Array.isArray(value) ? value.join(', ') : String(value ?? ''));
       }
 
       response.on('data', (chunk: Buffer) => {
@@ -109,13 +179,14 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
         clearTimeout(timeoutHandle);
         const status = response.statusCode ?? 0;
         const fullBuffer = Buffer.concat(chunks);
-        const ct = (respHeaders['content-type'] ?? '').toLowerCase();
+        const responseHeaders = Object.fromEntries(respHeaders);
+        const ct = (responseHeaders['content-type'] ?? '').toLowerCase();
         const isBinary = !ct.includes('json') && !ct.includes('text') && !ct.includes('xml') && !ct.includes('html') && ct !== '';
         resolve({
           ok: status >= 200 && status < 300,
           status,
           statusText: response.statusMessage ?? '',
-          headers: respHeaders,
+          headers: responseHeaders,
           body: isBinary ? fullBuffer.toString('base64') : fullBuffer.toString('utf-8'),
           isBase64: isBinary,
         });

@@ -94,9 +94,9 @@ public class CashRegisterService {
         String comPort = resolveNavComPort();
         NavSendResult navResult = invokeNavSend(buildSyntheticTransactionId(request.getReceiptNumber()), comPort);
         boolean navSuccess = navResult != null && navResult.isSuccess();
-        String navReceipt = (navResult != null && navResult.getReceiptNumber() != null && !navResult.getReceiptNumber().isBlank())
-            ? navResult.getReceiptNumber()
-            : request.getReceiptNumber();
+        String navReceipt = navSuccess
+            ? firstNonBlank(navResult.getReceiptNumber(), request.getReceiptNumber())
+            : null;
 
         CashRegisterEvent event = CashRegisterEvent.builder()
                 .branch(branch)
@@ -140,9 +140,9 @@ public class CashRegisterService {
         String originalReceipt = originalEvent.getReceiptNumber() != null ? originalEvent.getReceiptNumber() : "UNKNOWN";
         NavSendResult navResult = invokeNavSend(buildSyntheticTransactionId("STORNO-" + originalReceipt), comPort);
         boolean navSuccess = navResult != null && navResult.isSuccess();
-        String navStornoReceipt = (navResult != null && navResult.getReceiptNumber() != null && !navResult.getReceiptNumber().isBlank())
-            ? navResult.getReceiptNumber()
-            : "S-" + originalReceipt;
+        String navStornoReceipt = navSuccess
+            ? firstNonBlank(navResult.getReceiptNumber(), "S-" + originalReceipt)
+            : null;
 
         CashRegisterEvent event = CashRegisterEvent.builder()
                 .branch(branch)
@@ -344,6 +344,10 @@ public class CashRegisterService {
             // Fallback used below.
         }
         return "COM1";
+    }
+
+    private String firstNonBlank(String preferred, String fallback) {
+        return preferred != null && !preferred.isBlank() ? preferred : fallback;
     }
 
     private String buildResponse(String status, String message, String key1, String value1, String key2, String value2) {

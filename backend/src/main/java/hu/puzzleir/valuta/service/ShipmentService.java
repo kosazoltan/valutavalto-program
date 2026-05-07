@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -43,6 +44,7 @@ public class ShipmentService {
     }
 
     public ShipmentRequest create(ShipmentRequest request) {
+        validateCreateRequest(request);
         request.setRequestNumber(generateRequestNumber());
         request.setStatus(ShipmentRequestStatus.DRAFT);
         request.setRequestedById(SecurityUtils.getCurrentWorkerId());
@@ -58,6 +60,7 @@ public class ShipmentService {
         if (existing.getStatus() != ShipmentRequestStatus.DRAFT) {
             throw new ValidationException("Csak DRAFT státuszú kérés módosítható!");
         }
+        validateEditableRequest(updated);
 
         existing.setFromBranchId(updated.getFromBranchId());
         existing.setToBranchId(updated.getToBranchId());
@@ -119,6 +122,40 @@ public class ShipmentService {
                     String.format("A kérés státusza %s, de %s kellene a(z) %s művelethez!",
                             request.getStatus(), expectedCurrent, targetStatus));
         }
+    }
+
+    private void validateCreateRequest(ShipmentRequest request) {
+        validateEditableRequest(request);
+        if (request.getItems() == null) {
+            throw new ValidationException("Legalább egy szállítmány tétel kötelező!");
+        }
+    }
+
+    private void validateEditableRequest(ShipmentRequest request) {
+        if (request == null || request.getFromBranchId() == null || request.getToBranchId() == null) {
+            throw new ValidationException("Forrás és cél iroda megadása kötelező!");
+        }
+        if (request.getFromBranchId().equals(request.getToBranchId())) {
+            throw new ValidationException("A forrás és cél iroda nem lehet ugyanaz!");
+        }
+        if (request.getDeliveryDate() != null && request.getDeliveryDate().isBefore(LocalDate.now())) {
+            throw new ValidationException("A kézbesítési dátum nem lehet múltbeli!");
+        }
+        if (request.getItems() != null && request.getItems().isEmpty()) {
+            throw new ValidationException("Legalább egy szállítmány tétel kötelező!");
+        }
+        if (request.getItems() != null) {
+            validateItems(request);
+        }
+    }
+
+    private void validateItems(ShipmentRequest request) {
+        request.getItems().forEach(item -> {
+            BigDecimal requestedAmount = item.getRequestedAmount();
+            if (item.getCurrencyId() == null || requestedAmount == null || requestedAmount.signum() <= 0) {
+                throw new ValidationException("Minden tételnél valuta és pozitív összeg kötelező!");
+            }
+        });
     }
 
     private String generateRequestNumber() {

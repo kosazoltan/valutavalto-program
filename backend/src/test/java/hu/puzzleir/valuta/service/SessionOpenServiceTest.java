@@ -117,6 +117,26 @@ class SessionOpenServiceTest {
     }
 
     @Test
+    @DisplayName("openSession → cash_balance lazy init failure blocks session opening")
+    void testOpenSession_cashBalanceInitFailure_blocksOpening() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(createCompany()));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(createBranch()));
+            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(createWorker()));
+            when(cashBalanceRepository.existsByBranchId(BRANCH_ID)).thenReturn(false);
+            when(cashBalanceService.initializeBranchBalances(BRANCH_ID))
+                    .thenThrow(new RuntimeException("currency master missing"));
+
+            assertThatThrownBy(() -> service.openSession(WORKER_ID, BRANCH_ID))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("Kasszaegyenlegek inicializálása sikertelen");
+            verify(dailySessionRepository, never()).save(any(DailySession.class));
+        }
+    }
+
+    @Test
     @DisplayName("openSession → with previous close, balance carried")
     void testOpenSession_withPreviousClose() {
         try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {

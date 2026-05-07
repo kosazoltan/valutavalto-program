@@ -559,6 +559,33 @@ let _electronTokenPresent: boolean | null = null
  */
 let _webAccessToken: string | null = null
 
+function isExpiredJwt(token: string): boolean {
+  const parts = token.split('.')
+  if (parts.length !== 3 || !parts[1]) {
+    return true
+  }
+
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+    const payload = JSON.parse(atob(padded)) as { exp?: unknown }
+    return typeof payload.exp !== 'number' || payload.exp <= Math.floor(Date.now() / 1000)
+  } catch {
+    return true
+  }
+}
+
+async function refreshAccessTokenFromCookie(): Promise<string | null> {
+  try {
+    const res = await api.post(REFRESH_ENDPOINT, undefined, { withCredentials: true })
+    const newToken = res?.data?.token
+    return typeof newToken === 'string' && newToken ? newToken : null
+  } catch (err) {
+    logger.debug('client', 'refresh-cookie bootstrap unavailable (user not logged in)', err)
+    return null
+  }
+}
+
 /** Token mentése Electron-ban — DPAPI/Keychain titkosítással (ha elérhető) */
 export async function persistToken(token: string): Promise<void> {
   try {
@@ -627,8 +654,28 @@ export async function loadPersistedToken(): Promise<string | null> {
     const token: string | null = window.electronAPI.secureLoadToken
       ? await window.electronAPI.secureLoadToken()
       : await window.electronAPI.getConfig('auth_token')
-    _electronTokenPresent = Boolean(token)
-    return token
+    if (token) {
+      const expired = isExpiredJwt(token)
+      if (!expired) {
+        _electronTokenPresent = true
+        return token
+      }
+
+      const refreshedToken = await refreshAccessTokenFromCookie()
+      if (refreshedToken) {
+        try {
+          await persistToken(refreshedToken)
+        } catch (err) {
+          logger.warn('client', 'Electron refreshed token persistence failed; using in-memory token for this startup', err)
+        }
+        _electronTokenPresent = true
+        return refreshedToken
+      }
+      await clearPersistedToken()
+    }
+
+    _electronTokenPresent = false
+    return null
   }
 
   // Audit P1.3: legacy localStorage cleanup — minden web user elso load-jakor
@@ -645,22 +692,18 @@ export async function loadPersistedToken(): Promise<string | null> {
   // Egyebkent megkiseroljuk a refresh-cookie-bol (HttpOnly cookie, JS NEM eri el)
   // Ha sikeres -> uj access tokent kapunk, in-memory mentjuk
   // Ha sikertelen -> null (user be kell jelentkezzen)
-  try {
-    const res = await api.post(REFRESH_ENDPOINT, undefined, { withCredentials: true })
-    const newToken = res?.data?.token
-    if (typeof newToken === 'string' && newToken) {
-      _webAccessToken = newToken
-      // Codex P2 #384: a sikeres refresh-cookie bizonyitja, hogy van session.
-      // Frissitjuk a hint-et arra az esetre ha a localStorage uritodott (pl. private mode).
-      try { window.localStorage.setItem(WEB_SESSION_HINT_KEY, '1') } catch { /* ignore */ }
-      return newToken
-    }
-  } catch (err) {
+  const newToken = await refreshAccessTokenFromCookie()
+  if (newToken) {
+    _webAccessToken = newToken
+    // Codex P2 #384: a sikeres refresh-cookie bizonyitja, hogy van session.
+    // Frissitjuk a hint-et arra az esetre ha a localStorage uritodott (pl. private mode).
+    try { window.localStorage.setItem(WEB_SESSION_HINT_KEY, '1') } catch { /* ignore */ }
+    return newToken
+  } else {
     // Refresh cookie hianyzik VAGY lejart — normalis ha a user nincs bejelentkezve.
     // Codex P2 #384: a hint-et toroljuk, hogy a kovetkezo page-load-on a hasPersistedToken
     // false-t adjon es az App splash-mentes login-ra menjen.
     try { window.localStorage.removeItem(WEB_SESSION_HINT_KEY) } catch { /* ignore */ }
-    logger.debug('client', 'loadPersistedToken: refresh-cookie unavailable (user not logged in)', err)
   }
   return null
 }
