@@ -50,7 +50,7 @@ vi.mock('../sqlite', () => ({
   saveCachedWorker: vi.fn(),
 }));
 
-import { SyncEngine } from '../sync-engine';
+import { selectBootstrapRoleCode, SyncEngine } from '../sync-engine';
 import {
   getConfig,
   getPendingTransactions,
@@ -84,6 +84,32 @@ const mockedMarkStornoSynced = vi.mocked(markStornoSynced);
 const mockedMarkDistributionSynced = vi.mocked(markDistributionSynced);
 const mockedMarkCollectionSynced = vi.mocked(markCollectionSynced);
 const mockedMarkHandoverOperationSynced = vi.mocked(markHandoverOperationSynced);
+
+describe('selectBootstrapRoleCode', () => {
+  it('ertektar appMode eseten nem valasztja a legacy CASHIER role-t, ha van ertektar role', () => {
+    const selected = selectBootstrapRoleCode('ertektar', 'CASHIER', {
+      roles: ['CASHIER', 'ertektar'],
+    });
+
+    expect(selected).toBe('ertektar');
+  });
+
+  it('penztar appMode eseten canonical penztar role-t preferal', () => {
+    const selected = selectBootstrapRoleCode('penztar', 'CASHIER', {
+      roles: ['CASHIER', 'penztar'],
+    });
+
+    expect(selected).toBe('penztar');
+  });
+
+  it('appMode nelkul explicit role-t hasznal, ha a backend valaszban valid', () => {
+    const selected = selectBootstrapRoleCode(null, 'CHIEF_VAULT', {
+      roles: ['CHIEF_VAULT', 'CASHIER'],
+    });
+
+    expect(selected).toBe('CHIEF_VAULT');
+  });
+});
 
 describe('SyncEngine — syncAll', () => {
   let engine: SyncEngine;

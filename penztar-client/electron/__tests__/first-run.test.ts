@@ -31,7 +31,12 @@ vi.mock('electron', () => ({
   },
 }));
 
-import { isFirstRun, resolveEffectiveBootstrapCredentials, type SetupSavePayload } from '../first-run';
+import {
+  isFirstRun,
+  resolveBootstrapRoleCodeForAppMode,
+  resolveEffectiveBootstrapCredentials,
+  type SetupSavePayload,
+} from '../first-run';
 
 function writeEnv(content: string): void {
   fs.mkdirSync(mockState.userDataDir, { recursive: true });
@@ -137,5 +142,17 @@ describe('resolveEffectiveBootstrapCredentials', () => {
       bootstrapUsername: 'ADMIN',
       bootstrapPassword: 'NewGlobalPass123',
     });
+  });
+});
+
+describe('resolveBootstrapRoleCodeForAppMode', () => {
+  it('az appMode-hoz illeszkedo canonical role code-ot irja ki bootstrap role-kent', () => {
+    expect(resolveBootstrapRoleCodeForAppMode('penztar')).toBe('penztar');
+    expect(resolveBootstrapRoleCodeForAppMode('ertektar')).toBe('ertektar');
+    expect(resolveBootstrapRoleCodeForAppMode('ertekszallito')).toBe('ertekszallito');
+  });
+
+  it('hianyzo appMode eseten penztar role-ra esik vissza', () => {
+    expect(resolveBootstrapRoleCodeForAppMode(undefined)).toBe('penztar');
   });
 });

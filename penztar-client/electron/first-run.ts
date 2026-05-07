@@ -166,8 +166,10 @@ function buildEnvFileContent(params: {
   branchName: string;
   apiUrl: string;
   companyCode: string;
+  appMode?: string;
   bootstrapUsername: string;
   bootstrapPassword: string;
+  bootstrapRoleCode: string;
   jwtSecret: string;
   sqlCipherKey: string;
   offlineLicenseSecret: string;
@@ -183,10 +185,11 @@ function buildEnvFileContent(params: {
     `VITE_BRANCH_NAME=${escapeEnvValue(params.branchName)}`,
     `VITE_COMPANY_CODE=${escapeEnvValue(params.companyCode)}`,
     ``,
+    `PENZTAR_APP_MODE=${escapeEnvValue(params.appMode ?? 'penztar')}`,
     `PENZTAR_BOOTSTRAP_COMPANY_CODE=${escapeEnvValue(params.companyCode)}`,
     `PENZTAR_BOOTSTRAP_WORKER_CODE=${escapeEnvValue(params.bootstrapUsername)}`,
     `PENZTAR_BOOTSTRAP_PASSWORD=${escapeEnvValue(params.bootstrapPassword)}`,
-    `PENZTAR_BOOTSTRAP_ROLE_CODE=CASHIER`,
+    `PENZTAR_BOOTSTRAP_ROLE_CODE=${escapeEnvValue(params.bootstrapRoleCode)}`,
     ``,
     `# Kriptográfiai titkok — a wizard generálta, minden telepítésen egyedi.`,
     `JWT_SECRET=${escapeEnvValue(params.jwtSecret)}`,
@@ -213,6 +216,18 @@ export function resolveEffectiveBootstrapCredentials(
     bootstrapUsername: workerCode,
     bootstrapPassword: payload.adminPassword,
   };
+}
+
+export function resolveBootstrapRoleCodeForAppMode(appMode: SetupSavePayload['appMode'] | undefined): string {
+  switch (appMode) {
+    case 'ertektar':
+      return 'ertektar';
+    case 'ertekszallito':
+      return 'ertekszallito';
+    case 'penztar':
+    default:
+      return 'penztar';
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -928,6 +943,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
 
     const effectiveBootstrapCredentials =
       resolveEffectiveBootstrapCredentials(payload, resolvedWorkerIdentity);
+    const bootstrapRoleCode = resolveBootstrapRoleCodeForAppMode(payload.appMode);
 
     // --- Kulcs generálás ---
     const jwtSecret = generateSecretHex(32);               // 256 bit
@@ -943,8 +959,10 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       branchName: payload.branchName,
       apiUrl: resolvedApiUrl,
       companyCode: normalizedCompanyCode,
+      appMode: payload.appMode,
       bootstrapUsername: effectiveBootstrapCredentials.bootstrapUsername,
       bootstrapPassword: effectiveBootstrapCredentials.bootstrapPassword,
+      bootstrapRoleCode,
       jwtSecret,
       sqlCipherKey,
       offlineLicenseSecret,
@@ -974,6 +992,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       if (effectiveBootstrapCredentials.bootstrapUsername) {
         setConfig('bootstrap_worker_code', effectiveBootstrapCredentials.bootstrapUsername);
       }
+      setConfig('bootstrap_role_code', bootstrapRoleCode);
       // v2.3.0: a telepito-ban kivalasztott (es jelszot beallitott) dolgozo identity
       // tarolasa — ezt olvassa a LoginPage prefill-hez es UI displayhez.
       if (resolvedWorkerIdentity) {

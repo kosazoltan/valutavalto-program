@@ -125,6 +125,8 @@ interface CashDeskResponse {
 interface LoginResponse {
   token: string;
   roleSelectionRequired?: boolean;
+  roles?: string[];
+  availableRoles?: Array<{ roleCode?: string; code?: string }>;
 }
 
 interface BootstrapCredentials {
@@ -132,6 +134,51 @@ interface BootstrapCredentials {
   workerCode: string;
   password: string;
   roleCode?: string | null;
+  appMode?: string | null;
+}
+
+export function selectBootstrapRoleCode(
+  appMode: string | null | undefined,
+  explicitRoleCode: string | null | undefined,
+  login: Pick<LoginResponse, 'roles' | 'availableRoles'>,
+): string | null {
+  const roles = collectRoleCodes(login);
+  const preferred = preferredRoleCodesForAppMode(appMode);
+  const appModeRole = preferred.find((roleCode) => roles.has(roleCode));
+  if (appModeRole) {
+    return appModeRole;
+  }
+
+  const explicit = explicitRoleCode?.trim();
+  if (explicit && (roles.size === 0 || roles.has(explicit))) {
+    return explicit;
+  }
+
+  return roles.size === 1 ? [...roles][0] ?? null : null;
+}
+
+function collectRoleCodes(login: Pick<LoginResponse, 'roles' | 'availableRoles'>): Set<string> {
+  const values = [
+    ...(login.roles ?? []),
+    ...(login.availableRoles ?? []).flatMap((role) => [role.roleCode, role.code]),
+  ];
+  return new Set(values.filter((roleCode): roleCode is string =>
+    typeof roleCode === 'string' && roleCode.trim().length > 0));
+}
+
+function preferredRoleCodesForAppMode(appMode: string | null | undefined): string[] {
+  switch (appMode?.trim().toLowerCase()) {
+    case 'penztar':
+      return ['penztar', 'CASHIER'];
+    case 'ertektar':
+      return ['ertektar', 'VAULT_KEEPER', 'CHIEF_VAULT', 'foertektar'];
+    case 'ertekszallito':
+      return ['ertekszallito', 'COURIER'];
+    case 'full':
+      return ['ugyvezeto', 'foertektar', 'irodavezeto', 'belso_ellenor', 'ADMIN', 'MANAGER'];
+    default:
+      return [];
+  }
 }
 
 class HttpStatusError extends Error {
@@ -304,6 +351,7 @@ export class SyncEngine {
     // (bootstrapAuthSession success agaban). Itt NE toroljuk, mert ha a login hibazik
     // (pl. rossz companyCode), a user elveszti a plaintext jelszavat es nem tud ujra login-olni.
     const roleCode = process.env.PENZTAR_BOOTSTRAP_ROLE_CODE?.trim() || getConfig('bootstrap_role_code')?.trim() || null;
+    const appMode = process.env.PENZTAR_APP_MODE?.trim() || getConfig('app_mode')?.trim() || null;
 
     if (!companyCode || !workerCode || !password) {
       return null;
@@ -314,6 +362,7 @@ export class SyncEngine {
       workerCode,
       password,
       roleCode,
+      appMode,
     };
   }
 
@@ -377,12 +426,17 @@ export class SyncEngine {
 
       let token = login.token;
 
-      if (login.roleSelectionRequired && credentials.roleCode) {
+      if (login.roleSelectionRequired) {
+        const selectedRoleCode = selectBootstrapRoleCode(credentials.appMode, credentials.roleCode, login);
+        if (!selectedRoleCode) {
+          log.warn('[SyncEngine] Role selection szukseges, de nincs appMode-hoz illeszkedo role.');
+          return null;
+        }
         const selected = await httpPost<LoginResponse>(
           `${serverUrl}/auth/login/select-role`,
           {
             token,
-            roleCode: credentials.roleCode,
+            roleCode: selectedRoleCode,
           },
           null,
         );
