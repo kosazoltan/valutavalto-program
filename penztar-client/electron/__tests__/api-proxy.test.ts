@@ -179,18 +179,24 @@ describe('fetchViaElectronNet', () => {
     });
 
     it('csak whitelistelt request headerek jutnak at a rendererbol', async () => {
+      const headers = {
+        Authorization: 'Bearer token',
+        'idempotency-key': 'idem-1',
+        'X-Request-Id': 'req-1',
+        'X-Forwarded-For': '203.0.113.50',
+        Cookie: 'session=stolen',
+      } as Record<string, string>;
+      Object.defineProperty(headers, '__proto__', {
+        value: 'polluted',
+        enumerable: true,
+        configurable: true,
+      });
+
       const promise = fetchViaElectronNet({
         method: 'PATCH',
         url: 'https://excvaluta.com/api/v1/workers/bulk-email',
         body: '{}',
-        headers: {
-          Authorization: 'Bearer token',
-          'idempotency-key': 'idem-1',
-          'X-Request-Id': 'req-1',
-          'X-Forwarded-For': '203.0.113.50',
-          Cookie: 'session=stolen',
-          __proto__: 'polluted',
-        },
+        headers,
       });
       triggerResponse();
       vi.advanceTimersByTime(0);
@@ -363,10 +369,12 @@ describe('fetchViaElectronNet', () => {
   });
 
   describe('engedelyezett telepitesi hostok', () => {
-    it('LAN backend URL engedelyezett offline/helyi telepiteshez', async () => {
+    it('konfiguralt LAN backend URL engedelyezett offline/helyi telepiteshez', async () => {
       const promise = fetchViaElectronNet({
         method: 'GET',
         url: 'http://192.168.1.20:8080/api/v1/auth/bootstrap-status',
+      }, {
+        configuredBaseUrl: 'http://192.168.1.20:8080/api/v1',
       });
       triggerResponse();
       vi.advanceTimersByTime(0);
@@ -377,6 +385,24 @@ describe('fetchViaElectronNet', () => {
         method: 'GET',
         url: 'http://192.168.1.20:8080/api/v1/auth/bootstrap-status',
       });
+    });
+
+    it('nem konfiguralt LAN backend URL blokkolt', async () => {
+      await expect(fetchViaElectronNet({
+        method: 'GET',
+        url: 'http://192.168.1.20:8080/api/v1/auth/bootstrap-status',
+      }, {
+        configuredBaseUrl: 'https://excvaluta.com/api/v1',
+      })).rejects.toThrow('Blocked: URL host not in allowlist');
+    });
+
+    it('link-local metadata host akkor sem engedelyezett, ha privat IPv4-nek tunik', async () => {
+      await expect(fetchViaElectronNet({
+        method: 'GET',
+        url: 'http://169.254.169.254/latest/meta-data',
+      }, {
+        configuredBaseUrl: 'http://192.168.1.20:8080/api/v1',
+      })).rejects.toThrow('Blocked: URL host not in allowlist');
     });
 
     it('tetszoleges kulso host tovabbra is blokkolt', async () => {

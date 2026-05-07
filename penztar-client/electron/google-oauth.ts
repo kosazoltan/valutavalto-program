@@ -38,6 +38,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { net as electronNet } from 'electron';
 import log from 'electron-log/main';
+import { isAllowedNetworkUrl } from './network-allowlist';
 
 // Google OAuth endpoints (RFC + Google Discovery doc)
 const GOOGLE_AUTH_URI = 'https://accounts.google.com/o/oauth2/v2/auth';
@@ -386,7 +387,7 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
     try {
-      const responseJson = await postJsonViaElectronNet(url, reqBody, 30_000);
+      const responseJson = await postJsonViaElectronNet(url, reqBody, 30_000, apiBase);
       log.info('[google-oauth] Backend google-login sikeres (attempt ' + (attempt + 1) + '/' + MAX_RETRIES + ')');
       return {
         ...(responseJson as {
@@ -423,31 +424,17 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
  * Main-process net.request POST JSON helper. Robust net stack (NEM renderer fetch),
  * Windows certificate store + Chromium switches alkalmazva (--disable-http2, etc.).
  */
-const OAUTH_ALLOWED_HOSTS = ['excvaluta.com', 'oauth2.googleapis.com', 'accounts.google.com', 'localhost'];
+const OAUTH_ALLOWED_HOSTS = ['excvaluta.com', 'oauth2.googleapis.com', 'accounts.google.com'];
 
-function isPrivateOrLoopbackHost(hostname: string): boolean {
-  const host = hostname.toLowerCase();
-  if (host === '127.0.0.1' || host === '::1' || host === '[::1]') {
-    return true;
-  }
-  const parts = host.split('.').map((part) => Number.parseInt(part, 10));
-  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
-    return false;
-  }
-  const a = parts[0] ?? -1;
-  const b = parts[1] ?? -1;
-  return a === 10
-    || (a === 172 && b >= 16 && b <= 31)
-    || (a === 192 && b === 168)
-    || (a === 169 && b === 254)
-    || a === 127;
-}
-
-function postJsonViaElectronNet(url: string, jsonBody: string, timeoutMs: number): Promise<unknown> {
+function postJsonViaElectronNet(
+  url: string,
+  jsonBody: string,
+  timeoutMs: number,
+  configuredBaseUrl?: string | null,
+): Promise<unknown> {
   try {
     const parsed = new URL(url);
-    if (!OAUTH_ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`))
-        && !isPrivateOrLoopbackHost(parsed.hostname)) {
+    if (!isAllowedNetworkUrl(url, OAUTH_ALLOWED_HOSTS, configuredBaseUrl)) {
       return Promise.reject(new GoogleOAuthFailedException('INVALID_URL', `Blocked: host not in allowlist: ${parsed.hostname}`));
     }
   } catch { return Promise.reject(new GoogleOAuthFailedException('INVALID_URL', `Invalid URL: ${url}`)); }
@@ -532,7 +519,7 @@ export async function performPasswordLoginMainProcess(params: {
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
     try {
-      const responseJson = await postJsonViaElectronNet(url, reqBody, timeoutMs);
+      const responseJson = await postJsonViaElectronNet(url, reqBody, timeoutMs, apiBase);
       log.info('[main-process-login] /auth/login sikeres (attempt ' + (attempt + 1) + '/' + MAX_RETRIES + ')');
       return responseJson;
     } catch (err) {
