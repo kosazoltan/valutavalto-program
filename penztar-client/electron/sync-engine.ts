@@ -256,6 +256,7 @@ async function httpPost<T>(url: string, body: Record<string, unknown>, token: st
 export class SyncEngine {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private syncAllInFlight: Promise<SyncResult> | null = null;
+  private syncAllInFlightTokenKey: string | null = null;
   private lastTokenValidationAt = 0;
   private readonly tokenValidationTtlMs = 120_000;
 
@@ -671,17 +672,33 @@ export class SyncEngine {
     return code >= 400 && code < 500 && code !== 401 && code !== 403 && code !== 429;
   }
 
+  private syncAllTokenKey(tokenOverride?: string | null): string {
+    return tokenOverride == null ? 'stored-auth-token' : `override:${tokenOverride}`;
+  }
+
   async syncAll(tokenOverride?: string | null): Promise<SyncResult> {
+    const tokenKey = this.syncAllTokenKey(tokenOverride);
+
     if (this.syncAllInFlight) {
+      if (this.syncAllInFlightTokenKey !== tokenKey) {
+        log.warn('[SyncEngine] syncAll mar fut eltero auth tokennel, az uj keres kesobbi ujraprobalasra var');
+        return {
+          synced: 0,
+          failed: 0,
+          errors: ['Szinkronizáció már fut eltérő auth tokennel — próbáld újra a folyamatban lévő futás után'],
+        };
+      }
       log.info('[SyncEngine] syncAll mar fut, a folyamatban levo futas eredmenyere varunk');
       return this.syncAllInFlight;
     }
 
+    this.syncAllInFlightTokenKey = tokenKey;
     this.syncAllInFlight = this.performSyncAll(tokenOverride);
     try {
       return await this.syncAllInFlight;
     } finally {
       this.syncAllInFlight = null;
+      this.syncAllInFlightTokenKey = null;
     }
   }
 

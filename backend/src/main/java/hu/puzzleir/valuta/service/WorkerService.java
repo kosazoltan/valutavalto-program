@@ -401,14 +401,17 @@ public class WorkerService {
         }
         // Ha 0 role → legacy mode, nincs operatív role (backward compat)
 
-        if (roleSelectionRequired
-                && !AppModeRoleConstants.hasAnySelectableRoleForAppMode(roleCodes, dto.getAppMode())) {
-            throw new AuthenticationException("Nincs ebben a programban használható szerepköre.");
+        String appModeValidationError = AppModeRoleConstants.validateLoginRolesForAppMode(
+                roleCodes,
+                activeRole,
+                roleSelectionRequired,
+                dto.getAppMode());
+        if (appModeValidationError != null) {
+            throw new AuthenticationException(appModeValidationError);
         }
-        if (activeRole != null
-                && !AppModeRoleConstants.isRoleSelectableForAppMode(activeRole, dto.getAppMode())) {
-            throw new AuthenticationException("Ez a szerepkör nem használható ebben a programban: " + activeRole);
-        }
+        List<String> responseRoleCodes = roleSelectionRequired
+                ? AppModeRoleConstants.selectableRolesForAppMode(roleCodes, dto.getAppMode())
+                : roleCodes;
 
         // JWT token generálás
         String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
@@ -456,7 +459,7 @@ public class WorkerService {
                 .worker(WorkerDto.from(worker))
                 .expiresIn(expiresInMs)
                 .expiresAt(expiresAt.toString()) // ISO format for frontend
-                .roles(roleCodes)
+                .roles(responseRoleCodes)
                 .activeRole(activeRole)
                 .permissions(permissions)
                 .roleSelectionRequired(roleSelectionRequired)
