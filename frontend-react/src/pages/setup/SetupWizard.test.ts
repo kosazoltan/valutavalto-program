@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildConnectionTestResetKey,
+  filterBranchesForAppMode,
   isBranchSelectableForAppMode,
   resolveSelectedWorkerForSetup,
 } from './SetupWizard'
@@ -44,6 +45,21 @@ describe('isBranchSelectableForAppMode', () => {
       city: 'Szeged',
       isVault: false,
     }, 'ertekszallito')).toBe(true)
+  })
+
+  it('a listaszures ugyanazt az app-mode guardot hasznalja', () => {
+    const branches = [
+      { code: 'VAULT', name: 'Ertektar', city: 'Szeged', isVault: true },
+      { code: 'KORUT', name: 'Korut', city: 'Szeged', isVault: false },
+      { code: 'LEGACY', name: 'Legacy', city: 'Szeged' },
+    ]
+
+    expect(filterBranchesForAppMode(branches, 'ertektar').map((branch) => branch.code))
+      .toEqual(['VAULT'])
+    expect(filterBranchesForAppMode(branches, 'penztar').map((branch) => branch.code))
+      .toEqual(['VAULT', 'KORUT', 'LEGACY'])
+    expect(filterBranchesForAppMode(branches, 'ertekszallito').map((branch) => branch.code))
+      .toEqual(['VAULT', 'KORUT', 'LEGACY'])
   })
 })
 
