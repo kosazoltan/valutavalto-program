@@ -6,7 +6,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { api, clearPersistedToken, hasPersistedToken, loadPersistedToken } from './services/api/index'
 import { HEARTBEAT_INTERVAL_MS } from './config/heartbeat'
 import { useAppMode } from './hooks/useAppMode'
-import { appModeLabel, isRoleSelectableForAppMode } from './utils/appModeRoles'
+import { OFFLINE_RESTORE_ROLE, appModeLabel, isRoleSelectableForAppMode } from './utils/appModeRoles'
 
 // Layouts
 import MainLayout from './layouts/MainLayout'
@@ -278,14 +278,14 @@ export default function App() {
                   apiErr.message.includes('timeout')
                 )
                 if (isNetworkError && window.electronAPI) {
-                  if (!isRoleSelectableForAppMode('CASHIER', appMode)) {
-                    logger.warn('App', `Offline token restore elutasítva: CASHIER fallback nem használható ebben a programban (${appModeLabel(appMode)}).`)
+                  if (!isRoleSelectableForAppMode(OFFLINE_RESTORE_ROLE, appMode)) {
+                    logger.warn('App', `Offline token restore elutasítva: ${OFFLINE_RESTORE_ROLE} fallback nem használható ebben a programban (${appModeLabel(appMode)}).`)
                     await clearPersistedToken()
                     return
                   }
-                  // Offline fallback: fail-closed CASHIER-only profile
+                  // Offline fallback: fail-closed, shared fallback-role-only profile
                   // SECURITY: nem bízunk a JWT role/permissions claimekben offline módban,
-                  // mert a lokális token manipulálható. Fix CASHIER role + üres permissions.
+                  // mert a lokális token manipulálható. Fix fallback role + üres permissions.
                   const jwtPayload = payload as Record<string, unknown>
                   const offlineWorker = {
                     id: Number(jwtPayload.workerId) || 0,
@@ -293,7 +293,7 @@ export default function App() {
                     firstName: '',
                     lastName: '',
                     fullName: String(jwtPayload.workerName ?? ''),
-                    role: 'CASHIER',  // Hardcoded — offline soha nem ad magasabb jogot
+                    role: OFFLINE_RESTORE_ROLE,
                     branchId: String(jwtPayload.branchId ?? ''),
                     branchCode: String(jwtPayload.branchCode ?? ''),
                     branchName: '',
@@ -304,11 +304,11 @@ export default function App() {
                   useAuthStore.getState().login(
                     offlineWorker, token, 'Bearer',
                     new Date(payload.exp! * 1000).toISOString(),
-                    'CASHIER',  // Offline: fix CASHIER activeRole
+                    OFFLINE_RESTORE_ROLE,
                     [],         // Offline: üres permissions (fail-closed)
-                    ['CASHIER'],
+                    [OFFLINE_RESTORE_ROLE],
                   )
-                  logger.warn('App', 'Offline login restore — CASHIER-only profil, korlatozott jogosultsagok.')
+                  logger.warn('App', `Offline login restore — ${OFFLINE_RESTORE_ROLE}-only profil, korlatozott jogosultsagok.`)
                 } else {
                   // Token szerver oldalon érvénytelen
                   await clearPersistedToken()
