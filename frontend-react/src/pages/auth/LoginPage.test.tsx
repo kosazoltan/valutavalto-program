@@ -136,7 +136,7 @@ describe('LoginPage', () => {
       ...baseResponse,
       token: 'temp-token',
       activeRole: null,
-      roles: ['penztar', 'ertektar'],
+      roles: ['penztar'],
       roleSelectionRequired: true,
     })
     mocks.authSelectRole.mockResolvedValue({
