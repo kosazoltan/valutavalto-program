@@ -208,7 +208,8 @@ describe('persistBootstrapPasswordConfig', () => {
     persistBootstrapPasswordConfig('NewGlobalPass123', setConfig, deleteConfig);
 
     expect(setConfig).toHaveBeenCalledWith('bootstrap_password', 'NewGlobalPass123');
-    expect(deleteConfig).toHaveBeenCalledWith('bootstrap_password_encrypted');
+    expect(setConfig).toHaveBeenCalledWith('bootstrap_password_fallback_pending', '1');
+    expect(deleteConfig).not.toHaveBeenCalledWith('bootstrap_password_encrypted');
   });
 
   it('fallback mentesi hiba eseten nem torli a korabbi encrypted bootstrap titkot', () => {

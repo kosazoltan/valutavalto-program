@@ -107,6 +107,12 @@ for (const filePath of electronFiles) {
   for (const channel of matches) {
     handledChannels.add(channel);
   }
+  for (const match of content.matchAll(/ipcMain\.handle\(\s*IPC_CHANNELS\.([A-Z0-9_]+)/g)) {
+    const channel = ipcChannelConstants.get(match[1]);
+    if (channel) {
+      handledChannels.add(channel);
+    }
+  }
 }
 
 const missingHandlers = [...invokedChannels].filter((channel) => !handledChannels.has(channel));
