@@ -13,17 +13,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.time.Duration;
 
 /**
  * Google OAuth dolgozoi belepes controller (refaktor V178/V179, 2026-05-03).
@@ -78,15 +74,8 @@ public class GoogleAuthController {
                 .orElseThrow(() -> new AuthenticationException("Worker nem talalhato login utan."));
         try {
             RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, httpRequest);
-            ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
-                    .httpOnly(true)
-                    .secure(httpRequest.isSecure())
-                    .sameSite("Strict")
-                    .path("/api/v1/auth")
-                    .maxAge(Duration.ofDays(7))
-                    .build();
-            httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        } catch (Exception ex) {
+            RefreshTokenCookies.addRefreshToken(httpResponse, httpRequest, issued.rawUuid());
+        } catch (RuntimeException ex) {
             log.error("HttpOnly refresh cookie kiadas Google login utan bukott: {}", ex.getMessage(), ex);
             throw new BusinessException(
                     "Google belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.",

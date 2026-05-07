@@ -65,12 +65,7 @@ class AuthRefreshCookieIssueFailureTest {
         when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
         when(refreshTokenService.issue(worker, request)).thenThrow(new IllegalStateException("database unavailable"));
 
-        assertThatThrownBy(() -> controller.login(requestDto, request, response))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> {
-                    BusinessException businessException = (BusinessException) ex;
-                    assertThat(businessException.getErrorCode()).isEqualTo("LOGIN_SESSION_ISSUE_FAILED");
-                    assertThat(businessException.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-                });
+        assertLoginSessionIssueFailed(() -> controller.login(requestDto, request, response));
     }
 
     @Test
@@ -88,12 +83,7 @@ class AuthRefreshCookieIssueFailureTest {
         when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
         when(refreshTokenService.issue(worker, request)).thenThrow(new IllegalStateException("database unavailable"));
 
-        assertThatThrownBy(() -> controller.googleLogin(requestDto, request, response))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> {
-                    BusinessException businessException = (BusinessException) ex;
-                    assertThat(businessException.getErrorCode()).isEqualTo("LOGIN_SESSION_ISSUE_FAILED");
-                    assertThat(businessException.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-                });
+        assertLoginSessionIssueFailed(() -> controller.googleLogin(requestDto, request, response));
     }
 
     private LoginResponseDto loginResponse() {
@@ -107,5 +97,14 @@ class AuthRefreshCookieIssueFailureTest {
         Worker worker = new Worker();
         worker.setId(42L);
         return worker;
+    }
+
+    private static void assertLoginSessionIssueFailed(
+            org.assertj.core.api.ThrowableAssert.ThrowingCallable action) {
+        assertThatThrownBy(action)
+                .isInstanceOfSatisfying(BusinessException.class, ex -> {
+                    assertThat(ex.getErrorCode()).isEqualTo("LOGIN_SESSION_ISSUE_FAILED");
+                    assertThat(ex.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+                });
     }
 }

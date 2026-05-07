@@ -25,12 +25,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import hu.puzzleir.valuta.service.RefreshTokenService;
 import hu.puzzleir.valuta.entity.RefreshToken;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
-import java.time.Duration;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +44,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
+@Slf4j
 @PreAuthorize("permitAll()")
 public class AuthController {
     
@@ -95,17 +94,9 @@ public class AuthController {
                     HttpStatus.SERVICE_UNAVAILABLE));
         try {
             RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, request);
-            ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
-                .httpOnly(true)
-                .secure(request.isSecure())
-                .sameSite("Strict")
-                .path("/api/v1/auth")
-                .maxAge(Duration.ofDays(7))
-                .build();
-            httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        } catch (Exception e) {
-            org.slf4j.LoggerFactory.getLogger(AuthController.class)
-                .error("HttpOnly refresh cookie kiadas bukott login utan: {}", e.getMessage(), e);
+            RefreshTokenCookies.addRefreshToken(httpResponse, request, issued.rawUuid());
+        } catch (RuntimeException e) {
+            log.error("HttpOnly refresh cookie kiadas bukott login utan: {}", e.getMessage(), e);
             throw new BusinessException(
                     "Belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.",
                     "LOGIN_SESSION_ISSUE_FAILED",
@@ -143,10 +134,7 @@ public class AuthController {
                 }
             } catch (Exception ignore) { /* logout ne bukjon el rajta */ }
         }
-        ResponseCookie clearCookie = ResponseCookie.from("refreshToken", "")
-            .httpOnly(true).secure(request.isSecure()).sameSite("Strict")
-            .path("/api/v1/auth").maxAge(0).build();
-        httpResponse.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
+        RefreshTokenCookies.clearRefreshToken(httpResponse, request);
 
         return ResponseEntity.noContent().build();
     }
@@ -200,10 +188,7 @@ public class AuthController {
 
         // Token rotation - regi revoke + uj issue
         RefreshTokenService.IssuedToken newIssued = refreshTokenService.rotate(oldRefresh, worker, request);
-        ResponseCookie rotated = ResponseCookie.from("refreshToken", newIssued.rawUuid())
-            .httpOnly(true).secure(request.isSecure()).sameSite("Strict")
-            .path("/api/v1/auth").maxAge(Duration.ofDays(7)).build();
-        httpResponse.addHeader(HttpHeaders.SET_COOKIE, rotated.toString());
+        RefreshTokenCookies.addRefreshToken(httpResponse, request, newIssued.rawUuid());
 
         return ResponseEntity.ok(Map.of("token", newAccess));
     }
