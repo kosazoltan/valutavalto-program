@@ -193,10 +193,7 @@ export default function SetupWizard() {
   // engedjük kiválasztani — különben a felhasználó tévedésből pénztárt
   // választhatna értéktárhoz, és a területi szűrés is rosszul mutatna.
   const filteredBranches = useMemo(() => {
-    let list = branches
-    if (appModeChoice === 'ertektar') {
-      list = list.filter((b) => b.isVault === true)
-    }
+    let list = branches.filter((branch) => isBranchSelectableForAppMode(branch, appModeChoice))
     const q = branchSearch.trim().toLowerCase()
     if (!q) return list
     return list.filter((b) =>
@@ -229,6 +226,10 @@ export default function SetupWizard() {
     autoConnectionTestKeyRef.current = null
     setConnectionTest({ state: 'idle' })
   }, [connectionTestResetKey])
+
+  const isCurrentConnectionTestRequest = useCallback((requestKey: string) => (
+    connectionTestResetKeyRef.current === requestKey
+  ), [])
 
   // --- Lépés-validáció: engedélyezett-e a tovább ---
   const canAdvance = useMemo(() => {
@@ -272,7 +273,7 @@ export default function SetupWizard() {
           password: '',
         })
           .then((result) => {
-            if (connectionTestResetKeyRef.current !== requestKey) return
+            if (!isCurrentConnectionTestRequest(requestKey)) return
             if (result.success) {
               setConnectionTest({
                 state: 'ok',
@@ -285,7 +286,7 @@ export default function SetupWizard() {
             }
           })
           .catch((err: unknown) => {
-            if (connectionTestResetKeyRef.current !== requestKey) return
+            if (!isCurrentConnectionTestRequest(requestKey)) return
             setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
           })
         return
@@ -295,7 +296,7 @@ export default function SetupWizard() {
       const started = performance.now()
       fetch(url, { method: 'GET' })
         .then((resp) => {
-          if (connectionTestResetKeyRef.current !== requestKey) return
+          if (!isCurrentConnectionTestRequest(requestKey)) return
           const latency = Math.round(performance.now() - started)
           if (resp.ok) {
             setConnectionTest({ state: 'ok', message: `Kapcsolodva (HTTP ${resp.status}, ${latency} ms)` })
@@ -304,15 +305,16 @@ export default function SetupWizard() {
           }
       })
         .catch((err: unknown) => {
-          if (connectionTestResetKeyRef.current !== requestKey) return
+          if (!isCurrentConnectionTestRequest(requestKey)) return
           setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
         })
     }
-  }, [currentStep, apiUrl, companyCode, offlineMode, bootstrapUsername, bootstrapPassword, connectionTestResetKey])
+  }, [currentStep, apiUrl, companyCode, offlineMode, bootstrapUsername, bootstrapPassword, connectionTestResetKey, isCurrentConnectionTestRequest])
 
   // --- Kapcsolat teszt (kezi, retry gombnak) ---
   const runConnectionTest = useCallback(async () => {
-    const requestKey = connectionTestResetKeyRef.current
+    const requestKey = connectionTestResetKey
+    connectionTestResetKeyRef.current = requestKey
     setConnectionTest({ state: 'testing' })
     const started = performance.now()
     try {
@@ -323,7 +325,7 @@ export default function SetupWizard() {
           username: bootstrapUsername.trim(),
           password: bootstrapPassword,
         })
-        if (connectionTestResetKeyRef.current !== requestKey) return
+        if (!isCurrentConnectionTestRequest(requestKey)) return
         if (result.success) {
           setConnectionTest({
             state: 'ok',
@@ -339,7 +341,7 @@ export default function SetupWizard() {
       const normalized = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '')
       const url = `${normalized}/api/v1/auth/bootstrap-status`
       const resp = await fetch(url, { method: 'GET' })
-      if (connectionTestResetKeyRef.current !== requestKey) return
+      if (!isCurrentConnectionTestRequest(requestKey)) return
       const latency = Math.round(performance.now() - started)
       if (resp.ok) {
         setConnectionTest({ state: 'ok', message: `Sikeres (HTTP ${resp.status}, ${latency} ms)` })
@@ -347,10 +349,10 @@ export default function SetupWizard() {
         setConnectionTest({ state: 'fail', message: `Szerver hiba: HTTP ${resp.status}` })
       }
     } catch (err: unknown) {
-      if (connectionTestResetKeyRef.current !== requestKey) return
+      if (!isCurrentConnectionTestRequest(requestKey)) return
       setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
     }
-  }, [apiUrl, companyCode, bootstrapUsername, bootstrapPassword])
+  }, [apiUrl, companyCode, bootstrapUsername, bootstrapPassword, connectionTestResetKey, isCurrentConnectionTestRequest])
 
   // --- Telepítés befejezése ---
   const handleFinish = async () => {
@@ -418,7 +420,7 @@ export default function SetupWizard() {
       } catch {
         bootstrapCompleted = false
       }
-      const useWorkerSetup = selectedWorker !== null || (bootstrapCompleted && selectedWorkerCode.length > 0)
+      const useWorkerSetup = selectedWorker !== null || (bootstrapCompleted && selectedWorkerCode.trim().length > 0)
       let workerIdentity: { workerCode: string; workerName?: string; workerRole?: string; branchCode?: string } | null = null
 
       if (useWorkerSetup) {
@@ -898,7 +900,10 @@ function ServerStep(props: ServerStepProps) {
   const [workerListLoading, setWorkerListLoading] = useState(false)
 
   useEffect(() => {
-    if (!selectedBranchCode || offlineMode) {
+    const normalizedCompanyCode = companyCode.trim()
+    const normalizedBranchCode = selectedBranchCode?.trim() ?? ""
+
+    if (!normalizedBranchCode || !normalizedCompanyCode || offlineMode) {
       setWorkerList([])
       onWorkerListChange([])
       return
@@ -907,11 +912,11 @@ function ServerStep(props: ServerStepProps) {
     setWorkerListLoading(true)
     const loadWorkers = window.electronAPI?.setupGetWorkers
       ? window.electronAPI.setupGetWorkers({
-        apiUrl,
-        companyCode,
-        branchCode: selectedBranchCode,
+        apiUrl: apiUrl.trim(),
+        companyCode: normalizedCompanyCode,
+        branchCode: normalizedBranchCode,
       })
-      : publicApi.getWorkersByBranch(selectedBranchCode, companyCode)
+      : publicApi.getWorkersByBranch(normalizedBranchCode, normalizedCompanyCode)
 
     loadWorkers
       .then((list) => {
