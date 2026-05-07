@@ -114,11 +114,6 @@ class WorkerServiceLoginTest {
         company.setCode("EBC");
         company.setName("Test Company");
 
-        Branch branch = new Branch();
-        branch.setId(UUID.randomUUID());
-        branch.setCode("TISZA");
-        branch.setCompany(company);
-
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         when(workerRepository.findByCompanyIdAndCode(company.getId(), "KOSA")).thenReturn(Optional.empty());
         when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "KOSA")).thenReturn(Optional.empty());

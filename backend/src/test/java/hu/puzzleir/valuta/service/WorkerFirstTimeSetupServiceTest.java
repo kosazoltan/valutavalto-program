@@ -139,6 +139,52 @@ class WorkerFirstTimeSetupServiceTest {
     }
 
     @Test
+    @DisplayName("Elso, meg le nem zart telepiteskor a seed worker helyes currentPassword-del frissitheto")
+    void allowsSeedWorkerWithCorrectCurrentPasswordBeforeBootstrap() {
+        Worker worker = seedWorker("$2b$10$seed");
+        String originalPasswordHash = worker.getPasswordHash();
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(false);
+        when(passwordEncoder.matches("seedCurrentPassword", originalPasswordHash)).thenReturn(true);
+        when(passwordEncoder.encode("UjGlobalisJelszo123!")).thenReturn("$2b$10$new");
+        when(workerRepository.save(any(Worker.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(jwtTokenProvider.generateToken(any(Worker.class))).thenReturn("jwt-token");
+
+        WorkerFirstTimeSetupResponseDto response = service.setupWorkerPassword(
+                request("seedCurrentPassword")
+        );
+
+        assertThat(response.isSuccess()).isTrue();
+        assertThat(worker.getPasswordHash())
+                .isNotEqualTo(originalPasswordHash)
+                .isEqualTo("$2b$10$new");
+        verify(workerRepository).save(worker);
+    }
+
+    @Test
+    @DisplayName("Elso, meg le nem zart telepiteskor a seed worker hibas currentPassword-del elutasitasra kerul")
+    void rejectsSeedWorkerWithWrongCurrentPasswordBeforeBootstrap() {
+        Worker worker = seedWorker("$2b$10$seed");
+        String originalPasswordHash = worker.getPasswordHash();
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(false);
+        when(passwordEncoder.matches("wrongSeedPassword", originalPasswordHash)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.setupWorkerPassword(request("wrongSeedPassword")))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("jelenlegi")
+                .hasMessageContaining("seed");
+
+        assertThat(worker.getPasswordHash()).isEqualTo(originalPasswordHash);
+        verify(passwordEncoder, never()).encode(any());
+        verify(workerRepository, never()).save(any(Worker.class));
+    }
+
+    @Test
     @DisplayName("Lezart bootstrap utan hash nelkuli workerhez csak admin reset folyamat engedelyezett")
     void rejectsMissingHashAfterBootstrap() {
         Worker worker = seedWorker(null);

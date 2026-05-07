@@ -91,7 +91,7 @@ export default function SetupWizard() {
   const [apiUrl, setApiUrl] = useState(DEFAULT_API_URL)
   const [companyCode, setCompanyCode] = useState(DEFAULT_COMPANY_CODE)
   const [bootstrapUsername, setBootstrapUsername] = useState('')
-  const [bootstrapPassword, setBootstrapPassword] = useState('')
+  const [workerCurrentPassword, setWorkerCurrentPassword] = useState('')
   const [availableWorkers, setAvailableWorkers] = useState<SetupWorkerOption[]>([])
   const [offlineMode, setOfflineMode] = useState(false)
   const [appModeChoice, setAppModeChoice] = useState<'penztar' | 'ertektar'>('penztar')
@@ -207,7 +207,7 @@ export default function SetupWizard() {
     // csak akkor indul, ha van apiUrl + companyCode
     if (!apiUrl.trim() || !companyCode.trim()) return
     // ne fusson ha a user meg nem tesztelt + semmi input sincs
-    if (!bootstrapUsername.trim() && !bootstrapPassword) {
+    if (!bootstrapUsername.trim() && !workerCurrentPassword) {
       // elso alkalommal az auto-test a bootstrap-status endpoint-ra megy
       // (nem kell a user kod/jelszo)
       setConnectionTest({ state: 'testing' })
@@ -264,7 +264,7 @@ export default function SetupWizard() {
           apiUrl: apiUrl.trim(),
           companyCode: companyCode.trim(),
           username: bootstrapUsername.trim(),
-          password: bootstrapPassword,
+          password: workerCurrentPassword,
         })
         if (result.success) {
           setConnectionTest({
@@ -290,7 +290,7 @@ export default function SetupWizard() {
     } catch (err: unknown) {
       setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
     }
-  }, [apiUrl, companyCode, bootstrapUsername, bootstrapPassword])
+  }, [apiUrl, companyCode, bootstrapUsername, workerCurrentPassword])
 
   // --- Telepítés befejezése ---
   const handleFinish = async () => {
@@ -316,7 +316,8 @@ export default function SetupWizard() {
           adminUsername: adminUsername.trim(),
           adminPassword,
           bootstrapUsername: bootstrapUsername.trim(),
-          bootstrapPassword,
+          bootstrapPassword: adminPassword,
+          workerCurrentPassword,
           offlineMode,
           appMode: appModeChoice,
           // v2.3.0: worker identity atadasa az electron-nak ha van kivalasztott dolgozo
@@ -355,7 +356,7 @@ export default function SetupWizard() {
             companyCode: companyCode.trim(),
             workerCode: selectedWorkerCode,
             newPassword: adminPassword,
-            currentPassword: bootstrapPassword || undefined,
+            currentPassword: workerCurrentPassword || undefined,
           }),
         })
         if (!setupResp.ok) {
@@ -499,8 +500,8 @@ export default function SetupWizard() {
               onCompanyCodeChange={setCompanyCode}
               bootstrapUsername={bootstrapUsername}
               onBootstrapUsernameChange={setBootstrapUsername}
-              bootstrapPassword={bootstrapPassword}
-              onBootstrapPasswordChange={setBootstrapPassword}
+              workerCurrentPassword={workerCurrentPassword}
+              onWorkerCurrentPasswordChange={setWorkerCurrentPassword}
               offlineMode={offlineMode}
               onOfflineModeChange={setOfflineMode}
               connectionTest={connectionTest}
@@ -788,8 +789,8 @@ interface ServerStepProps {
   onCompanyCodeChange: (value: string) => void
   bootstrapUsername: string
   onBootstrapUsernameChange: (value: string) => void
-  bootstrapPassword: string
-  onBootstrapPasswordChange: (value: string) => void
+  workerCurrentPassword: string
+  onWorkerCurrentPasswordChange: (value: string) => void
   offlineMode: boolean
   onOfflineModeChange: (value: boolean) => void
   connectionTest: { state: 'idle' | 'testing' | 'ok' | 'fail'; message?: string }
@@ -804,7 +805,7 @@ function ServerStep(props: ServerStepProps) {
     apiUrl,
     companyCode, onCompanyCodeChange,
     bootstrapUsername, onBootstrapUsernameChange,
-    bootstrapPassword, onBootstrapPasswordChange,
+    workerCurrentPassword, onWorkerCurrentPasswordChange,
     offlineMode, onOfflineModeChange,
     connectionTest, onTestConnection,
     selectedBranchCode,
@@ -900,10 +901,10 @@ function ServerStep(props: ServerStepProps) {
         <FieldLabel label="Jelenlegi vagy kezdő jelszó" icon={<KeyRound className="w-4 h-4" />}>
           <input
             type="password"
-            value={bootstrapPassword}
-            onChange={(e) => onBootstrapPasswordChange(e.target.value)}
+            value={workerCurrentPassword}
+            onChange={(e) => onWorkerCurrentPasswordChange(e.target.value)}
             disabled={offlineMode}
-            autoComplete="current-password"
+            autoComplete="off"
             placeholder="Szükséges lezárt telepítésnél"
             className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100 disabled:text-slate-500"
           />
