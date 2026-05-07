@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.dto.eveningclosing.DailyDataPackage;
 import hu.puzzleir.valuta.dto.eveningclosing.DataSyncResult;
 import hu.puzzleir.valuta.dto.pos.PosClosingResult;
 import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -243,6 +245,21 @@ class DailyClosingServiceExtendedTest {
             eq(BRANCH_ID.toString()),
             any(), any(), any(), any(), any(), any(), any()
         );
+    }
+
+    @Test
+    @DisplayName("sikertelen esti központi szinkron nem zárhatja sikeresre a napot")
+    void executeClosing_eveningSyncFailureBlocksClosing() {
+        LocalDate closingDate = LocalDate.of(2026, 3, 15);
+        when(eveningClosingService.sendToHeadquarters(any()))
+            .thenReturn(DataSyncResult.failure("HQ URL nincs konfigurálva", 1));
+
+        assertThatThrownBy(() -> dailyClosingService.startDailyClosing(closingDate))
+            .isInstanceOf(ValidationException.class)
+            .hasMessageContaining("Esti zárás adatcsomag küldés sikertelen")
+            .hasMessageContaining("HQ URL nincs konfigurálva");
+
+        verify(closingWizardRepository, times(1)).save(any(ClosingWizard.class));
     }
 
     @Test

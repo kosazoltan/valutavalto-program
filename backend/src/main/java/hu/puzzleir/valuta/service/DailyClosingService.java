@@ -590,11 +590,17 @@ public class DailyClosingService {
             } else {
                 log.warn("Esti zárás adatcsomag küldés sikertelen: branchId={}, datum={}, hiba={}",
                         branchId, closingDate, result.getMessage());
+                throw new ValidationException("Esti zárás adatcsomag küldés sikertelen: " + result.getMessage());
             }
+        } catch (ValidationException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Esti zárás adatcsomag küldés hiba: branchId={}, datum={}, hiba={}",
                     branchId, closingDate, e.getMessage(), e);
-            // NEM dobunk kivételt — ne akadjon meg a zárás
+            if (e instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new ValidationException("Esti zárás adatcsomag küldés hiba: " + e.getMessage());
         }
     }
 
