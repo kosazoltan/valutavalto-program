@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Building2,
@@ -56,6 +56,26 @@ export function resolveSelectedWorkerForSetup(params: {
   return params.availableWorkers.find((worker) => worker.code.trim().toUpperCase() === normalizedWorkerCode) ?? null
 }
 
+export function buildConnectionTestResetKey(params: {
+  apiUrl: string
+  companyCode: string
+  bootstrapUsername: string
+  bootstrapPassword: string
+  offlineMode: boolean
+  appMode: 'penztar' | 'ertektar' | 'ertekszallito'
+  branchCode?: string | null
+}): string {
+  return [
+    params.apiUrl.trim(),
+    params.companyCode.trim().toUpperCase(),
+    params.bootstrapUsername.trim().toUpperCase(),
+    params.bootstrapPassword,
+    params.offlineMode ? 'offline' : 'online',
+    params.appMode,
+    params.branchCode?.trim().toUpperCase() ?? '',
+  ].join('\x1f')
+}
+
 type StepId = 'welcome' | 'branch' | 'program' | 'server' | 'admin'
 
 interface StepDef {
@@ -107,6 +127,16 @@ export default function SetupWizard() {
   const [connectionTest, setConnectionTest] = useState<
     { state: 'idle' | 'testing' | 'ok' | 'fail'; message?: string }
   >({ state: 'idle' })
+  const connectionTestResetKey = useMemo(() => buildConnectionTestResetKey({
+    apiUrl,
+    companyCode,
+    bootstrapUsername,
+    bootstrapPassword,
+    offlineMode,
+    appMode: appModeChoice,
+    branchCode: selectedBranch?.code ?? null,
+  }), [apiUrl, companyCode, bootstrapUsername, bootstrapPassword, offlineMode, appModeChoice, selectedBranch?.code])
+  const connectionTestResetKeyRef = useRef(connectionTestResetKey)
 
   const [adminUsername, setAdminUsername] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
@@ -193,6 +223,11 @@ export default function SetupWizard() {
     }
   }, [appModeChoice, selectedBranch])
 
+  useEffect(() => {
+    connectionTestResetKeyRef.current = connectionTestResetKey
+    setConnectionTest({ state: 'idle' })
+  }, [connectionTestResetKey])
+
   // --- Lépés-validáció: engedélyezett-e a tovább ---
   const canAdvance = useMemo(() => {
     switch (currentStep) {
@@ -225,6 +260,7 @@ export default function SetupWizard() {
     if (!bootstrapUsername.trim() && !bootstrapPassword) {
       // elso alkalommal az auto-test a bootstrap-status endpoint-ra megy
       // (nem kell a user kod/jelszo)
+      const requestKey = connectionTestResetKey
       setConnectionTest({ state: 'testing' })
       if (window.electronAPI?.setupTestConnection) {
         window.electronAPI.setupTestConnection({
@@ -234,6 +270,7 @@ export default function SetupWizard() {
           password: '',
         })
           .then((result) => {
+            if (connectionTestResetKeyRef.current !== requestKey) return
             if (result.success) {
               setConnectionTest({
                 state: 'ok',
@@ -246,6 +283,7 @@ export default function SetupWizard() {
             }
           })
           .catch((err: unknown) => {
+            if (connectionTestResetKeyRef.current !== requestKey) return
             setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
           })
         return
@@ -255,6 +293,7 @@ export default function SetupWizard() {
       const started = performance.now()
       fetch(url, { method: 'GET' })
         .then((resp) => {
+          if (connectionTestResetKeyRef.current !== requestKey) return
           const latency = Math.round(performance.now() - started)
           if (resp.ok) {
             setConnectionTest({ state: 'ok', message: `Kapcsolodva (HTTP ${resp.status}, ${latency} ms)` })
@@ -263,14 +302,15 @@ export default function SetupWizard() {
           }
         })
         .catch((err: unknown) => {
+          if (connectionTestResetKeyRef.current !== requestKey) return
           setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
         })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep, apiUrl, companyCode, offlineMode])
+  }, [currentStep, apiUrl, companyCode, offlineMode, bootstrapUsername, bootstrapPassword, connectionTest.state, connectionTestResetKey])
 
   // --- Kapcsolat teszt (kezi, retry gombnak) ---
   const runConnectionTest = useCallback(async () => {
+    const requestKey = connectionTestResetKeyRef.current
     setConnectionTest({ state: 'testing' })
     const started = performance.now()
     try {
@@ -281,6 +321,7 @@ export default function SetupWizard() {
           username: bootstrapUsername.trim(),
           password: bootstrapPassword,
         })
+        if (connectionTestResetKeyRef.current !== requestKey) return
         if (result.success) {
           setConnectionTest({
             state: 'ok',
@@ -296,6 +337,7 @@ export default function SetupWizard() {
       const normalized = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '')
       const url = `${normalized}/api/v1/auth/bootstrap-status`
       const resp = await fetch(url, { method: 'GET' })
+      if (connectionTestResetKeyRef.current !== requestKey) return
       const latency = Math.round(performance.now() - started)
       if (resp.ok) {
         setConnectionTest({ state: 'ok', message: `Sikeres (HTTP ${resp.status}, ${latency} ms)` })
@@ -303,6 +345,7 @@ export default function SetupWizard() {
         setConnectionTest({ state: 'fail', message: `Szerver hiba: HTTP ${resp.status}` })
       }
     } catch (err: unknown) {
+      if (connectionTestResetKeyRef.current !== requestKey) return
       setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
     }
   }, [apiUrl, companyCode, bootstrapUsername, bootstrapPassword])

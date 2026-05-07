@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { isBranchSelectableForAppMode, resolveSelectedWorkerForSetup } from './SetupWizard'
+import {
+  buildConnectionTestResetKey,
+  isBranchSelectableForAppMode,
+  resolveSelectedWorkerForSetup,
+} from './SetupWizard'
 
 describe('isBranchSelectableForAppMode', () => {
   it('ertektar modban csak ertektari fiokot enged', () => {
@@ -71,5 +75,35 @@ describe('resolveSelectedWorkerForSetup', () => {
       workerCode: 'ADMIN',
       availableWorkers: workers,
     })).toBeNull()
+  })
+})
+
+describe('buildConnectionTestResetKey', () => {
+  const base = {
+    apiUrl: 'https://excvaluta.com/api/v1',
+    companyCode: 'EBC',
+    bootstrapUsername: 'BORSI',
+    bootstrapPassword: 'old-secret',
+    offlineMode: false,
+    appMode: 'penztar' as const,
+    branchCode: 'KORUT',
+  }
+
+  it('changes when setup credentials or app scope changes', () => {
+    const original = buildConnectionTestResetKey(base)
+
+    expect(buildConnectionTestResetKey({ ...base, bootstrapUsername: 'KASZA' })).not.toBe(original)
+    expect(buildConnectionTestResetKey({ ...base, bootstrapPassword: 'other-secret' })).not.toBe(original)
+    expect(buildConnectionTestResetKey({ ...base, appMode: 'ertektar' })).not.toBe(original)
+    expect(buildConnectionTestResetKey({ ...base, branchCode: 'VAULT' })).not.toBe(original)
+  })
+
+  it('normalizes case and surrounding whitespace for stable identity fields', () => {
+    expect(buildConnectionTestResetKey({
+      ...base,
+      companyCode: ' ebc ',
+      bootstrapUsername: ' borsi ',
+      branchCode: ' korut ',
+    })).toBe(buildConnectionTestResetKey(base))
   })
 })
