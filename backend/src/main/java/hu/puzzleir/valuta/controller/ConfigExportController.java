@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.dto.config.ConfigBundleDto;
 import hu.puzzleir.valuta.dto.config.ImportResultDto;
 import hu.puzzleir.valuta.service.ConfigExportService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -40,7 +41,9 @@ public class ConfigExportController {
     public ResponseEntity<ImportResultDto> importConfig(
             @PathVariable UUID branchId,
             @Valid @RequestBody ConfigBundleDto bundle) {
-        return ResponseEntity.ok(configExportService.importConfig(branchId, bundle));
+        ImportResultDto result = configExportService.importConfig(branchId, bundle);
+        return ResponseEntity.status(result.isSuccess() ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
+                .body(result);
     }
 
     /**
