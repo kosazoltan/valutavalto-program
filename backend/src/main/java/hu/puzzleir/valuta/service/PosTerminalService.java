@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Supplier;
 
 /**
  * POS terminál szolgáltatás — bankkártyás fizetési terminálok kezelése.
@@ -49,7 +50,7 @@ public class PosTerminalService {
     private static final String MOCK_STATUS_DISABLED_MESSAGE = "MOCK POS mód tiltva";
 
     @jakarta.annotation.PostConstruct
-    void warnFallbackApprovalModes() {
+    void warnFallbackApprovalConfiguration() {
         log.warn("POS TERMINÁL: Borgun és Worldline driverek BRIDGE MÓDBAN futnak — "
                 + "file-artifact alapú, nem valódi terminál kommunikáció. "
                 + "OTP driver TCP/IP alapú, az működik. Bridge szimulált jóváhagyás={}, MOCK jóváhagyás={}",
@@ -244,11 +245,7 @@ public class PosTerminalService {
 
         TerminalType mode = resolveTerminalType(terminal);
         if (mode == TerminalType.MOCK) {
-            if (!mockApprovalEnabled) {
-                return mockApprovalDisabledStatus(terminal);
-            }
-            return TerminalStatus.online(terminalId, terminal.getTerminalName(),
-                    terminal.getTerminalType(), terminal.getLastTransactionAt());
+            return resolveMockStatus(terminal);
         }
 
         if (mode == TerminalType.OTP) {
@@ -326,50 +323,61 @@ public class PosTerminalService {
     // ============ MOCK IMPLEMENTÁCIÓ (dev/test) ============
 
     private PosTransactionResult executeMockPayment(BigDecimal amount, String currency, String terminalId) {
-        Optional<PosTransactionResult> disabled = mockApprovalDisabledTransaction("fizetés", terminalId);
-        if (disabled.isPresent()) {
-            return disabled.get();
-        }
-        String authCode = "MOCK-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
-        String refNumber = "REF-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        log.debug("MOCK POS fizetés: {} {} → APPROVED (auth={}, ref={})", amount, currency, authCode, refNumber);
-        return PosTransactionResult.approved(authCode, refNumber);
+        return withMockApproval(
+                "fizetés",
+                terminalId,
+                () -> PosTransactionResult.error(MOCK_APPROVAL_DISABLED_MESSAGE),
+                () -> {
+                    String authCode = "MOCK-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+                    String refNumber = "REF-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                    log.debug("MOCK POS fizetés: {} {} → APPROVED (auth={}, ref={})",
+                            amount, currency, authCode, refNumber);
+                    return PosTransactionResult.approved(authCode, refNumber);
+                });
     }
 
     private PosTransactionResult executeMockReversal(String originalRef, String terminalId) {
-        Optional<PosTransactionResult> disabled = mockApprovalDisabledTransaction("sztornó", terminalId);
-        if (disabled.isPresent()) {
-            return disabled.get();
-        }
-        String authCode = "MOCK-S-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
-        String refNumber = "REF-S-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        log.debug("MOCK POS sztornó: eredeti ref={} → APPROVED (auth={}, ref={})", originalRef, authCode, refNumber);
-        return PosTransactionResult.approved(authCode, refNumber);
+        return withMockApproval(
+                "sztornó",
+                terminalId,
+                () -> PosTransactionResult.error(MOCK_APPROVAL_DISABLED_MESSAGE),
+                () -> {
+                    String authCode = "MOCK-S-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+                    String refNumber = "REF-S-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                    log.debug("MOCK POS sztornó: eredeti ref={} → APPROVED (auth={}, ref={})",
+                            originalRef, authCode, refNumber);
+                    return PosTransactionResult.approved(authCode, refNumber);
+                });
     }
 
     private PosClosingResult executeMockDailyClose(String terminalId) {
-        Optional<PosClosingResult> disabled = mockApprovalDisabledClosing("napi zárás", terminalId);
-        if (disabled.isPresent()) {
-            return disabled.get();
-        }
-        log.debug("MOCK POS napi zárás: terminál={} → SUCCESS", terminalId);
-        return PosClosingResult.success(0, BigDecimal.ZERO);
+        return withMockApproval(
+                "napi zárás",
+                terminalId,
+                () -> PosClosingResult.failure(MOCK_APPROVAL_DISABLED_MESSAGE),
+                () -> {
+                    log.debug("MOCK POS napi zárás: terminál={} → SUCCESS", terminalId);
+                    return PosClosingResult.success(0, BigDecimal.ZERO);
+                });
     }
 
-    private Optional<PosTransactionResult> mockApprovalDisabledTransaction(String action, String terminalId) {
-        if (mockApprovalEnabled) {
-            return Optional.empty();
+    private <T> T withMockApproval(String action, String terminalId, Supplier<T> disabledResult, Supplier<T> enabledResult) {
+        if (!mockApprovalEnabled) {
+            log.warn("MOCK POS {} tiltva: terminalId={}", action, terminalId);
+            return disabledResult.get();
         }
-        log.warn("MOCK POS {} tiltva: terminalId={}", action, terminalId);
-        return Optional.of(PosTransactionResult.error(MOCK_APPROVAL_DISABLED_MESSAGE));
+        return enabledResult.get();
     }
 
-    private Optional<PosClosingResult> mockApprovalDisabledClosing(String action, String terminalId) {
-        if (mockApprovalEnabled) {
-            return Optional.empty();
+    private TerminalStatus resolveMockStatus(PosTerminal terminal) {
+        if (!mockApprovalEnabled) {
+            return mockApprovalDisabledStatus(terminal);
         }
-        log.warn("MOCK POS {} tiltva: terminalId={}", action, terminalId);
-        return Optional.of(PosClosingResult.failure(MOCK_APPROVAL_DISABLED_MESSAGE));
+        return TerminalStatus.online(
+                terminal.getTerminalId(),
+                terminal.getTerminalName(),
+                terminal.getTerminalType(),
+                terminal.getLastTransactionAt());
     }
 
     private TerminalStatus mockApprovalDisabledStatus(PosTerminal terminal) {
