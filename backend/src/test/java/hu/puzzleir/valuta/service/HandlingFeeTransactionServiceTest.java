@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeTransactionDto;
 import hu.puzzleir.valuta.entity.HandlingFeeTransaction;
+import hu.puzzleir.valuta.entity.PaymentMethod;
 import hu.puzzleir.valuta.repository.HandlingFeeTransactionRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,9 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -158,6 +162,67 @@ class HandlingFeeTransactionServiceTest {
         assertThatThrownBy(() -> service.applyDiscount(feeId, 20, "Nagytételes"))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Kezelési díj nem található");
+    }
+
+    @Test
+    @DisplayName("Riport: a kezelési díj tételek tartalmazzák a tranzakció fizetési módját")
+    void testGetFeeReport_includesPaymentMethod() {
+        // Arrange
+        UUID branchId = UUID.randomUUID();
+        HandlingFeeTransaction cashFee = HandlingFeeTransaction.builder()
+                .id(UUID.randomUUID())
+                .transactionId(10L)
+                .feeType(HandlingFeeTransaction.HandlingFeeTransactionType.TIERED)
+                .amount(new BigDecimal("1000"))
+                .netFee(new BigDecimal("1000"))
+                .discountPercent(0)
+                .workerCommissionShare(BigDecimal.ZERO)
+                .createdAt(LocalDateTime.of(2026, 5, 7, 9, 0))
+                .build();
+        HandlingFeeTransaction cardFee = HandlingFeeTransaction.builder()
+                .id(UUID.randomUUID())
+                .transactionId(11L)
+                .feeType(HandlingFeeTransaction.HandlingFeeTransactionType.TIERED)
+                .amount(new BigDecimal("2000"))
+                .netFee(new BigDecimal("1800"))
+                .discountPercent(10)
+                .workerCommissionShare(BigDecimal.ZERO)
+                .createdAt(LocalDateTime.of(2026, 5, 7, 10, 0))
+                .build();
+
+        when(repository.findByBranchAndPeriod(eq(branchId), any(), any()))
+                .thenReturn(List.of(cashFee, cardFee));
+        when(repository.findPaymentMethodsByTransactionIds(any()))
+                .thenReturn(List.of(
+                        paymentMethodProjection(10L, PaymentMethod.CASH),
+                        paymentMethodProjection(11L, PaymentMethod.CARD)));
+
+        // Act
+        var report = service.getFeeReport(
+                branchId,
+                LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 5, 10));
+
+        // Assert
+        assertThat(report.getItems())
+                .extracting(HandlingFeeTransactionDto::getPaymentMethod)
+                .containsExactly("CASH", "CARD");
+    }
+
+    private static HandlingFeeTransactionRepository.TransactionPaymentMethodProjection paymentMethodProjection(
+            Long transactionId,
+            PaymentMethod paymentMethod) {
+        return new HandlingFeeTransactionRepository.TransactionPaymentMethodProjection() {
+            @Override
+            public Long getTransactionId() {
+                return transactionId;
+            }
+
+            @Override
+            public PaymentMethod getPaymentMethod() {
+                return paymentMethod;
+            }
+        };
     }
 }
 

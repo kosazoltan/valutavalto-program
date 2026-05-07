@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.repository;
 
 import hu.puzzleir.valuta.entity.HandlingFeeTransaction;
+import hu.puzzleir.valuta.entity.PaymentMethod;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -32,4 +33,14 @@ public interface HandlingFeeTransactionRepository extends JpaRepository<Handling
         @Param("branchId") UUID branchId,
         @Param("from") LocalDateTime from,
         @Param("to") LocalDateTime to);
+
+    @Query("SELECT t.id AS transactionId, t.paymentMethod AS paymentMethod " +
+           "FROM Transaction t WHERE t.id IN :transactionIds")
+    List<TransactionPaymentMethodProjection> findPaymentMethodsByTransactionIds(
+        @Param("transactionIds") List<Long> transactionIds);
+
+    interface TransactionPaymentMethodProjection {
+        Long getTransactionId();
+        PaymentMethod getPaymentMethod();
+    }
 }

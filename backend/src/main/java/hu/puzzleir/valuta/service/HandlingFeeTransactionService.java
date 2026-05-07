@@ -17,7 +17,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Kezelési díj tranzakció részletes szolgáltatás.
@@ -110,6 +113,8 @@ public class HandlingFeeTransactionService {
             totalCommission = totalCommission.add(hft.getWorkerCommissionShare());
         }
 
+        Map<Long, String> paymentMethods = loadPaymentMethods(items);
+
         return HandlingFeeReportDto.builder()
             .dateFrom(from.toString())
             .dateTo(to.toString())
@@ -118,14 +123,21 @@ public class HandlingFeeTransactionService {
             .totalNetFee(totalNet)
             .totalCommissionShare(totalCommission)
             .transactionCount(items.size())
-            .items(items.stream().map(this::toDto).toList())
+            .items(items.stream()
+                .map(item -> toDto(item, paymentMethods.get(item.getTransactionId())))
+                .toList())
             .build();
     }
 
     private HandlingFeeTransactionDto toDto(HandlingFeeTransaction entity) {
+        return toDto(entity, loadPaymentMethod(entity.getTransactionId()));
+    }
+
+    private HandlingFeeTransactionDto toDto(HandlingFeeTransaction entity, String paymentMethod) {
         return HandlingFeeTransactionDto.builder()
             .id(entity.getId())
             .transactionId(entity.getTransactionId())
+            .paymentMethod(paymentMethod)
             .feeType(entity.getFeeType().name())
             .amount(entity.getAmount())
             .discountPercent(entity.getDiscountPercent())
@@ -134,5 +146,33 @@ public class HandlingFeeTransactionService {
             .workerCommissionShare(entity.getWorkerCommissionShare())
             .createdAt(entity.getCreatedAt())
             .build();
+    }
+
+    private String loadPaymentMethod(Long transactionId) {
+        if (transactionId == null) {
+            return null;
+        }
+        return repository.findPaymentMethodsByTransactionIds(List.of(transactionId)).stream()
+            .findFirst()
+            .map(HandlingFeeTransactionRepository.TransactionPaymentMethodProjection::getPaymentMethod)
+            .map(Enum::name)
+            .orElse(null);
+    }
+
+    private Map<Long, String> loadPaymentMethods(List<HandlingFeeTransaction> items) {
+        List<Long> transactionIds = items.stream()
+            .map(HandlingFeeTransaction::getTransactionId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+        if (transactionIds.isEmpty()) {
+            return Map.of();
+        }
+        return repository.findPaymentMethodsByTransactionIds(transactionIds).stream()
+            .filter(projection -> projection.getPaymentMethod() != null)
+            .collect(Collectors.toMap(
+                HandlingFeeTransactionRepository.TransactionPaymentMethodProjection::getTransactionId,
+                projection -> projection.getPaymentMethod().name(),
+                (left, right) -> left));
     }
 }

@@ -1253,7 +1253,6 @@
     "benyujtva": "Benyújtva:",
     "handlingFeeDecade": {
       "title": "Kezelési díj — dekád riport",
-      "warning": "A készpénz / bankkártya bontás jelenleg NEM elérhető (paymentMethod mező nem szerepel a HandlingFeeTransactionDto-ban). TODO: backend bővítés szükséges. A táblázat dekádonkénti összesítést mutat.",
       "from": "Tól",
       "to": "Ig",
       "branch": "Iroda",
@@ -1271,9 +1270,13 @@
       "table": {
         "decade": "Dekád",
         "transactions": "Tranzakciók",
+        "cashCount": "Készpénz db",
+        "cardCount": "Kártya db",
         "grossFee": "Bruttó díj",
         "discount": "Kedvezmény",
         "netFee": "Nettó díj",
+        "cashNetFee": "Készpénz nettó",
+        "cardNetFee": "Kártya nettó",
         "noData": "Nincs adat a kiválasztott időszakra."
       },
       "emptyState": "Adja meg a szűrőfeltételeket és nyomja meg a Lekérdezés gombot.",
