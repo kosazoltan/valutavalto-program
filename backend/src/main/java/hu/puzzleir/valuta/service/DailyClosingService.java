@@ -449,13 +449,17 @@ public class DailyClosingService {
             // NEM dobunk kivételt — ne akadjon meg a zárás
         }
 
-        // 1. Napi arfolyamok rogzitese (snapshot a zaraskor ervenyes arfolyamokrol)
+        // 1. Esti zárás adatcsomag küldés a központnak (legacy ESTIZAR ekvivalens)
+        // Fail-closed: ez még a POS napi zárás előtt fut, hogy ne maradjon visszagörgetett DB + lezárt terminál állapot.
+        executeEveningSync(branchId, closingDate);
+
+        // 2. Napi arfolyamok rogzitese (snapshot a zaraskor ervenyes arfolyamokrol)
         snapshotDailyRates(companyId, closingDate);
 
-        // 2. Napi munkamenet lezarasa
+        // 3. Napi munkamenet lezarasa
         dailySessionService.closeSession(closingDate);
 
-        // 3. Napi mérleg számítása (MODERN KIEGÉSZÍTÉS — Delphi napi forgalom számítás)
+        // 4. Napi mérleg számítása (MODERN KIEGÉSZÍTÉS — Delphi napi forgalom számítás)
         try {
             dailyBalanceService.calculateAllCurrenciesForDay(branchId, closingDate);
             log.info("Napi mérleg számítás sikeres: datum={}, iroda={}", closingDate, branchId);
@@ -465,11 +469,8 @@ public class DailyClosingService {
             // NEM dobunk kivételt — ne akadjon meg a zárás, csak logoljuk
         }
 
-        // 4. POS terminál napi zárás — ha van aktív terminál az irodán
+        // 5. POS terminál napi zárás — ha van aktív terminál az irodán
         executePosTerminalClosing(branchId, closingDate);
-
-        // 5. Esti zárás adatcsomag küldés a központnak (legacy ESTIZAR ekvivalens)
-        executeEveningSync(branchId, closingDate);
 
         // 6. Napi tranzakciók archiválása (legacy BfCopy + BtCopy)
         try {
@@ -579,28 +580,26 @@ public class DailyClosingService {
      * Modern: REST API — JSON adatcsomag.
      */
     private void executeEveningSync(UUID branchId, LocalDate closingDate) {
+        DataSyncResult result;
         try {
             DailyDataPackage pkg = eveningClosingService.prepareDailyPackage(branchId, closingDate);
-            DataSyncResult result = eveningClosingService.sendToHeadquarters(pkg);
-
-            if (result.isSuccess()) {
-                log.info("Esti zárás adatcsomag sikeresen elküldve: branchId={}, datum={}, checksum={}",
-                        branchId, closingDate, result.getChecksum());
-            } else {
-                log.warn("Esti zárás adatcsomag küldés sikertelen: branchId={}, datum={}, hiba={}",
-                        branchId, closingDate, result.getMessage());
-                throw new ValidationException("Esti zárás adatcsomag küldés sikertelen: " + result.getMessage());
-            }
-        } catch (ValidationException e) {
-            throw e;
-        } catch (Exception e) {
+            result = eveningClosingService.sendToHeadquarters(pkg);
+        } catch (RuntimeException e) {
             log.error("Esti zárás adatcsomag küldés hiba: branchId={}, datum={}, hiba={}",
                     branchId, closingDate, e.getMessage(), e);
-            if (e instanceof RuntimeException runtimeException) {
-                throw runtimeException;
-            }
-            throw new ValidationException("Esti zárás adatcsomag küldés hiba: " + e.getMessage());
+            throw new ValidationException("Esti zárás adatcsomag küldés hiba: " + e.getMessage(), e);
         }
+
+        if (result != null && result.isSuccess()) {
+            log.info("Esti zárás adatcsomag sikeresen elküldve: branchId={}, datum={}, checksum={}",
+                    branchId, closingDate, result.getChecksum());
+            return;
+        }
+
+        String failureMessage = result != null ? result.getMessage() : "nincs szinkron válasz";
+        log.warn("Esti zárás adatcsomag küldés sikertelen: branchId={}, datum={}, hiba={}",
+                branchId, closingDate, failureMessage);
+        throw new ValidationException("Esti zárás adatcsomag küldés sikertelen: " + failureMessage);
     }
 
     /**

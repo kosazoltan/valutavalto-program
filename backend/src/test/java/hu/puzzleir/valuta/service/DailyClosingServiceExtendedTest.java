@@ -253,6 +253,13 @@ class DailyClosingServiceExtendedTest {
     @DisplayName("sikertelen esti központi szinkron nem zárhatja sikeresre a napot")
     void executeClosing_eveningSyncFailureBlocksClosing() {
         LocalDate closingDate = LocalDate.of(2026, 3, 15);
+        PosTerminal activeTerminal = PosTerminal.builder()
+            .branchId(BRANCH_ID)
+            .terminalId("POS-1")
+            .isActive(true)
+            .build();
+        when(posTerminalRepository.findByBranchIdAndIsActiveTrueOrderByTerminalNameAsc(BRANCH_ID))
+            .thenReturn(List.of(activeTerminal));
         when(eveningClosingService.sendToHeadquarters(any()))
             .thenReturn(DataSyncResult.failure("HQ URL nincs konfigurálva", 1));
 
@@ -261,7 +268,13 @@ class DailyClosingServiceExtendedTest {
             .hasMessageContaining("Esti zárás adatcsomag küldés sikertelen")
             .hasMessageContaining("HQ URL nincs konfigurálva");
 
-        verify(closingWizardRepository, times(1)).save(any(ClosingWizard.class));
+        ArgumentCaptor<ClosingWizard> wizardCaptor = ArgumentCaptor.forClass(ClosingWizard.class);
+        verify(closingWizardRepository, atLeastOnce()).save(wizardCaptor.capture());
+        assertThat(wizardCaptor.getAllValues())
+            .noneMatch(savedWizard -> savedWizard.getWizardStatus() == WizardStatus.COMPLETED);
+        verify(dailySessionService, never()).closeSession(any());
+        verify(posTerminalRepository, never()).findByBranchIdAndIsActiveTrueOrderByTerminalNameAsc(any());
+        verify(posTerminalService, never()).dailyClose(anyString());
     }
 
     @Test
