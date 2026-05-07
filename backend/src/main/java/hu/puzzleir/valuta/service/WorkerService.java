@@ -590,11 +590,15 @@ public class WorkerService {
         }
 
         List<Worker> companyWorkers = workerRepository.findByCompanyId(company.getId());
-        return companyWorkers.stream()
-                .filter(w -> normalizeLoginCode(w.getCode()).equals(normalizedInput))
-                .findFirst()
-                .or(() -> companyWorkers.stream()
-                        .filter(w -> normalizeLoginCode(w.getName()).equals(normalizedInput))
-                        .findFirst());
+        Worker nameMatch = null;
+        for (Worker worker : companyWorkers) {
+            if (normalizeLoginCode(worker.getCode()).equals(normalizedInput)) {
+                return Optional.of(worker);
+            }
+            if (nameMatch == null && normalizeLoginCode(worker.getName()).equals(normalizedInput)) {
+                nameMatch = worker;
+            }
+        }
+        return Optional.ofNullable(nameMatch);
     }
 }
