@@ -74,6 +74,15 @@ function collectIpcChannelConstants(filePath) {
   return constants;
 }
 
+function addResolvedIpcChannelConstants(targetSet, content, invocationPattern, constants) {
+  for (const match of content.matchAll(invocationPattern)) {
+    const channel = constants.get(match[1]);
+    if (channel) {
+      targetSet.add(channel);
+    }
+  }
+}
+
 if (!fs.existsSync(preloadFile)) {
   logger.error('ERROR: electron/preload.ts not found.');
   proc.exit(1);
@@ -91,12 +100,12 @@ const invokedChannels = extractMatches(
 );
 const ipcChannelConstants = collectIpcChannelConstants(sharedIpcFile);
 
-for (const match of preloadContent.matchAll(/ipcRenderer\.invoke\(\s*IPC_CHANNELS\.([A-Z0-9_]+)/g)) {
-  const channel = ipcChannelConstants.get(match[1]);
-  if (channel) {
-    invokedChannels.add(channel);
-  }
-}
+addResolvedIpcChannelConstants(
+  invokedChannels,
+  preloadContent,
+  /ipcRenderer\.invoke\(\s*IPC_CHANNELS\.([A-Za-z0-9_]+)/g,
+  ipcChannelConstants,
+);
 
 const electronFiles = collectTsFiles(electronDir);
 const handledChannels = new Set();
@@ -108,12 +117,12 @@ for (const filePath of electronFiles) {
     handledChannels.add(channel);
   }
 
-  for (const match of content.matchAll(/ipcMain\.handle\(\s*IPC_CHANNELS\.([A-Z0-9_]+)/g)) {
-    const channel = ipcChannelConstants.get(match[1]);
-    if (channel) {
-      handledChannels.add(channel);
-    }
-  }
+  addResolvedIpcChannelConstants(
+    handledChannels,
+    content,
+    /ipcMain\.handle\(\s*IPC_CHANNELS\.([A-Za-z0-9_]+)/g,
+    ipcChannelConstants,
+  );
 }
 
 const missingHandlers = [...invokedChannels].filter((channel) => !handledChannels.has(channel));
