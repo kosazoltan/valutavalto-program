@@ -109,6 +109,22 @@ describe('selectBootstrapRoleCode', () => {
 
     expect(selected).toBe('CHIEF_VAULT');
   });
+
+  it('full appMode eseten backend server canonical role-t valaszt', () => {
+    const selected = selectBootstrapRoleCode('full', 'CASHIER', {
+      roles: ['CASHIER', 'penzugyi_vezeto'],
+    });
+
+    expect(selected).toBe('penzugyi_vezeto');
+  });
+
+  it('full appMode eseten determinisztikusan visszaesik az elso backend role-ra', () => {
+    const selected = selectBootstrapRoleCode('full', null, {
+      roles: ['CUSTOM_SERVER_ROLE', 'OTHER_ROLE'],
+    });
+
+    expect(selected).toBe('CUSTOM_SERVER_ROLE');
+  });
 });
 
 describe('SyncEngine — syncAll', () => {

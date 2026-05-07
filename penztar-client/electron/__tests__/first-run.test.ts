@@ -4,7 +4,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
 
-const mockState = vi.hoisted(() => ({ userDataDir: '' }));
+const mockState = vi.hoisted(() => ({
+  userDataDir: '',
+  safeStorageEncryptionAvailable: true,
+}));
 
 vi.mock('electron-log/main', () => ({
   default: { warn: vi.fn(), info: vi.fn(), error: vi.fn() },
@@ -29,10 +32,16 @@ vi.mock('electron', () => ({
       return request;
     }),
   },
+  safeStorage: {
+    isEncryptionAvailable: vi.fn(() => mockState.safeStorageEncryptionAvailable),
+    encryptString: vi.fn((value: string) => Buffer.from(`encrypted:${value}`)),
+  },
 }));
 
+import { safeStorage } from 'electron';
 import {
   isFirstRun,
+  persistBootstrapPasswordConfig,
   resolveBootstrapRoleCodeForAppMode,
   resolveEffectiveBootstrapCredentials,
   type SetupSavePayload,
@@ -120,6 +129,10 @@ function setupPayload(overrides: Partial<SetupSavePayload> = {}): SetupSavePaylo
 }
 
 describe('resolveEffectiveBootstrapCredentials', () => {
+  beforeEach(() => {
+    mockState.safeStorageEncryptionAvailable = true;
+  });
+
   it('worker-first-time setup után az új globális jelszót perzisztálja, nem a kezdő jelszót', () => {
     const result = resolveEffectiveBootstrapCredentials(
       setupPayload({ selectedWorkerCode: 'BORSI' }),
@@ -143,6 +156,45 @@ describe('resolveEffectiveBootstrapCredentials', () => {
       bootstrapPassword: 'NewGlobalPass123',
     });
   });
+
+  it('legacy bootstrap-admin rerun eseten megtartja a jelenlegi bootstrap jelszot', () => {
+    const result = resolveEffectiveBootstrapCredentials(
+      setupPayload({
+        adminPassword: 'NewButNotApplied123',
+        bootstrapUsername: 'ADMIN',
+        bootstrapPassword: 'ExistingPassword123',
+      }),
+      { workerCode: 'ADMIN' },
+      { preserveExistingPassword: true },
+    );
+
+    expect(result).toEqual({
+      bootstrapUsername: 'ADMIN',
+      bootstrapPassword: 'ExistingPassword123',
+    });
+  });
+});
+
+describe('persistBootstrapPasswordConfig', () => {
+  beforeEach(() => {
+    mockState.safeStorageEncryptionAvailable = true;
+    vi.mocked(safeStorage.encryptString).mockClear();
+    vi.mocked(safeStorage.isEncryptionAvailable).mockClear();
+  });
+
+  it('titkositva menti a bootstrap jelszot SQLite configba, ha safeStorage elerheto', () => {
+    const setConfig = vi.fn();
+    const deleteConfig = vi.fn();
+
+    persistBootstrapPasswordConfig('NewGlobalPass123', setConfig, deleteConfig);
+
+    expect(setConfig).toHaveBeenCalledWith(
+      'bootstrap_password_encrypted',
+      Buffer.from('encrypted:NewGlobalPass123').toString('base64'),
+    );
+    expect(deleteConfig).toHaveBeenCalledWith('bootstrap_password');
+    expect(setConfig).not.toHaveBeenCalledWith('bootstrap_password', expect.any(String));
+  });
 });
 
 describe('resolveBootstrapRoleCodeForAppMode', () => {
@@ -152,7 +204,11 @@ describe('resolveBootstrapRoleCodeForAppMode', () => {
     expect(resolveBootstrapRoleCodeForAppMode('ertekszallito')).toBe('ertekszallito');
   });
 
-  it('hianyzo appMode eseten penztar role-ra esik vissza', () => {
-    expect(resolveBootstrapRoleCodeForAppMode(undefined)).toBe('penztar');
+  it('hianyzo appMode eseten megtartja a legacy CASHIER bootstrap role-t', () => {
+    expect(resolveBootstrapRoleCodeForAppMode(undefined)).toBe('CASHIER');
+  });
+
+  it('full appMode eseten server oldali canonical role-t ir bootstrap role-kent', () => {
+    expect(resolveBootstrapRoleCodeForAppMode('full')).toBe('ugyvezeto');
   });
 });

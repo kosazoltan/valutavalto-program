@@ -10,11 +10,14 @@
 // A .env fájl helye: <userData>/.env  (pl. Windowson: %APPDATA%\valuta-penztar\.env)
 // A <userData> path az Electron app nevétől függ (electron-builder.json → productName).
 
-import { app, net } from 'electron';
+import { app, net, safeStorage } from 'electron';
 import log from 'electron-log/main';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { resolveBootstrapRoleCodeForAppMode } from './setup-app-mode-roles';
+
+export { resolveBootstrapRoleCodeForAppMode } from './setup-app-mode-roles';
 
 // ---------------------------------------------------------------------------
 // Típusok
@@ -50,7 +53,7 @@ export interface SetupSavePayload {
   bootstrapUsername?: string;    // wizardbeli teszt-felhasználó (opcionális, csak offline módban üres)
   bootstrapPassword?: string;
   offlineMode: boolean;          // ha true, a szerver kapcsolatot kihagyjuk a wizardban
-  appMode?: 'penztar' | 'ertektar' | 'ertekszallito';  // v2.1.4: program-tipus
+  appMode?: 'penztar' | 'ertektar' | 'ertekszallito' | 'full';  // v2.1.4: program-tipus
   // v2.3.0: a telepito dolgozoi dropdown-bol kivalasztott worker identity.
   // Ha kitoltve -> /auth/first-time-worker-setup (meglevo worker jelszo beallitas,
   // megtartott role-lel), egyebkent /auth/bootstrap-admin (uj admin letrehozas).
@@ -204,29 +207,64 @@ function buildEnvFileContent(params: {
 }
 
 export function resolveEffectiveBootstrapCredentials(
-  payload: Pick<SetupSavePayload, 'adminUsername' | 'adminPassword' | 'bootstrapUsername'>,
+  payload: Pick<SetupSavePayload, 'adminUsername' | 'adminPassword' | 'bootstrapUsername' | 'bootstrapPassword'>,
   resolvedWorkerIdentity: { workerCode?: string } | null,
+  options: { preserveExistingPassword?: boolean } = {},
 ): { bootstrapUsername: string; bootstrapPassword: string } {
+  // Worker code precedence follows the backend identity that actually owns the password:
+  // server-confirmed worker, then the login/test worker typed in the wizard, then admin fallback.
   const workerCode = [
     resolvedWorkerIdentity?.workerCode,
     payload.bootstrapUsername,
     payload.adminUsername,
   ].find((value) => value != null && value.trim().length > 0)?.trim().toUpperCase() ?? '';
+  const currentBootstrapPassword = payload.bootstrapPassword?.trim() ?? '';
+  const bootstrapPassword = options.preserveExistingPassword && currentBootstrapPassword
+    ? currentBootstrapPassword
+    : payload.adminPassword;
   return {
     bootstrapUsername: workerCode,
-    bootstrapPassword: payload.adminPassword,
+    bootstrapPassword,
   };
 }
 
-export function resolveBootstrapRoleCodeForAppMode(appMode: SetupSavePayload['appMode'] | undefined): string {
-  switch (appMode) {
-    case 'ertektar':
-      return 'ertektar';
-    case 'ertekszallito':
-      return 'ertekszallito';
-    case 'penztar':
-    default:
-      return 'penztar';
+function encryptConfigSecret(value: string): string | null {
+  if (!value) return null;
+  try {
+    if (!safeStorage.isEncryptionAvailable()) {
+      return null;
+    }
+    return safeStorage.encryptString(value).toString('base64');
+  } catch (err) {
+    log.warn('[Setup] safeStorage titkositas sikertelen:', err);
+    return null;
+  }
+}
+
+export function persistBootstrapPasswordConfig(
+  bootstrapPassword: string,
+  setConfig: (key: string, value: string) => void,
+  deleteConfig: (key: string) => void,
+): void {
+  if (!bootstrapPassword) {
+    deleteConfig('bootstrap_password');
+    deleteConfig('bootstrap_password_encrypted');
+    return;
+  }
+
+  const encryptedBootstrapPassword = encryptConfigSecret(bootstrapPassword);
+  if (encryptedBootstrapPassword) {
+    setConfig('bootstrap_password_encrypted', encryptedBootstrapPassword);
+    deleteConfig('bootstrap_password');
+    return;
+  }
+
+  try {
+    setConfig('bootstrap_password', bootstrapPassword);
+    deleteConfig('bootstrap_password_encrypted');
+    log.warn('[Setup] safeStorage nem elerheto, bootstrap jelszo ideiglenesen plaintext SQLite configban marad; sikeres bootstrap login utan torlodik.');
+  } catch (err) {
+    log.warn('[Setup] bootstrap jelszo fallback mentese sikertelen; meglevo bootstrap titok erintetlen marad:', err);
   }
 }
 
@@ -883,6 +921,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       workerRole?: string;
       branchCode?: string;
     } | null = null;
+    let preserveExistingBootstrapPassword = false;
 
     if (payload.selectedWorkerCode && payload.selectedWorkerCode.trim().length > 0) {
       log.info('[Setup] Worker first-time-setup uton (kivalasztott dolgozo):', payload.selectedWorkerCode);
@@ -931,6 +970,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       }
       if (bootstrap.alreadyDone) {
         log.info('[Setup] Bootstrap már lefutott ezen a rendszeren — folytatjuk.');
+        preserveExistingBootstrapPassword = true;
       } else {
         log.info('[Setup] Bootstrap admin sikeresen beállítva a backend-ben.');
       }
@@ -942,7 +982,11 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     }
 
     const effectiveBootstrapCredentials =
-      resolveEffectiveBootstrapCredentials(payload, resolvedWorkerIdentity);
+      resolveEffectiveBootstrapCredentials(
+        payload,
+        resolvedWorkerIdentity,
+        { preserveExistingPassword: preserveExistingBootstrapPassword },
+      );
     const bootstrapRoleCode = resolveBootstrapRoleCodeForAppMode(payload.appMode);
 
     // --- Kulcs generálás ---
@@ -979,7 +1023,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     // NGM: az installUuid-t a try BLOKK ELOTT generaljuk, hogy kivetel eseten se legyen ures.
     let installUuid: string = crypto.randomUUID();
     try {
-      const { setConfig, getConfig } = await import('./sqlite');
+      const { setConfig, getConfig, deleteConfig } = await import('./sqlite');
       setConfig('server_url', resolvedApiUrl);
       if (payload.branchCode) {
         setConfig('branch_code', payload.branchCode);
@@ -993,6 +1037,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
         setConfig('bootstrap_worker_code', effectiveBootstrapCredentials.bootstrapUsername);
       }
       setConfig('bootstrap_role_code', bootstrapRoleCode);
+      persistBootstrapPasswordConfig(effectiveBootstrapCredentials.bootstrapPassword, setConfig, deleteConfig);
       // v2.3.0: a telepito-ban kivalasztott (es jelszot beallitott) dolgozo identity
       // tarolasa — ezt olvassa a LoginPage prefill-hez es UI displayhez.
       if (resolvedWorkerIdentity) {
