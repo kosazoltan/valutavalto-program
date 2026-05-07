@@ -147,6 +147,7 @@ export default function LoginPage() {
         const allowedProgs = response.validAppModes.map((m) => {
           if (m === 'penztar') return 'Valutaváltó Pénztár (lokál)'
           if (m === 'ertektar') return 'Értéktár (lokál)'
+          if (m === 'ertekszallito') return 'Értékszállító (lokál)'
           if (m === 'full') return 'Szerver (böngésző)'
           return m
         }).join(', ')
