@@ -46,4 +46,15 @@ class FtpSyncControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(response.getBody()).isSameAs(failed);
     }
+
+    @Test
+    void syncRatesReturnsServiceUnavailableForNullResult() {
+        UUID branchId = UUID.randomUUID();
+        when(ftpSyncService.syncRateFile(branchId)).thenReturn(null);
+
+        ResponseEntity<FtpSyncResultDto> response = controller.syncRates(branchId);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(response.getBody()).isNull();
+    }
 }
