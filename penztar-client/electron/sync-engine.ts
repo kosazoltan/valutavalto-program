@@ -698,6 +698,8 @@ export class SyncEngine {
     const tokenKey = this.syncAllTokenKey(tokenOverride);
 
     if (this.syncAllInFlight) {
+      // Same auth context joins the current run; a different token waits and starts
+      // a follow-up run so fresh bootstrap tokens are never hidden by stale syncs.
       if (this.syncAllInFlightTokenKey !== tokenKey) {
         const currentRun = this.syncAllInFlight;
         log.warn('[SyncEngine] syncAll már fut eltérő auth tokennel, az új kérés az aktuális futás után indul');

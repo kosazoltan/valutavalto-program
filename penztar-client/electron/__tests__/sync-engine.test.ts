@@ -921,6 +921,44 @@ describe('SyncEngine — párhuzamos sync trigger (race condition)', () => {
     expect(secondRequest.headers.Authorization).toBe('Bearer fresh-token');
   });
 
+  it('should not let a stored-token run swallow a fresh explicit token override', async () => {
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'server_url') return 'http://localhost:8080/api/v1';
+      if (key === 'auth_token') return 'stored-stale-token';
+      return null;
+    });
+    mockedGetPendingTransactions
+      .mockReturnValueOnce([makeTx(1)])
+      .mockReturnValueOnce([makeTx(2)])
+      .mockReturnValue([]);
+
+    let resolveFirst: () => void;
+    const firstDone = new Promise<void>((resolve) => { resolveFirst = resolve; });
+    let callCount = 0;
+    const mockFetch = vi.fn().mockImplementation(async () => {
+      callCount++;
+      if (callCount === 1) {
+        await firstDone;
+      }
+      return { ok: true, json: () => Promise.resolve({ success: true }) };
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const storedTokenSync = engine.syncAll();
+    const freshTokenSync = engine.syncAll('fresh-bootstrap-token');
+
+    resolveFirst!();
+    const [storedResult, freshResult] = await Promise.all([storedTokenSync, freshTokenSync]);
+
+    expect(storedResult).toEqual({ synced: 1, failed: 0, errors: [] });
+    expect(freshResult).toEqual({ synced: 1, failed: 0, errors: [] });
+    const firstRequest = mockFetch.mock.calls[0][1] as { headers: Record<string, string> };
+    const secondRequest = mockFetch.mock.calls[1][1] as { headers: Record<string, string> };
+    expect(firstRequest.headers.Authorization).toBe('Bearer stored-stale-token');
+    expect(secondRequest.headers.Authorization).toBe('Bearer fresh-bootstrap-token');
+    expect(new Set(mockedMarkTransactionSynced.mock.calls.map(c => c[0]))).toEqual(new Set([1, 2]));
+  });
+
   it('runSync (internal) should skip second trigger if already running', async () => {
     // Access private runSync via the isRunning flag check through getStatus
     // We test that the status.isRunning guard works by verifying no double-fetch
