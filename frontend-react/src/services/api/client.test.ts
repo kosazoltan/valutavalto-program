@@ -47,6 +47,14 @@ vi.mock('axios', async () => {
 // Now import the module under test (after the axios mock)
 import { persistToken, clearPersistedToken, loadPersistedToken, hasPersistedToken, REFRESH_ENDPOINT } from './client'
 
+function unsignedJwtWithExp(exp: number): string {
+  const encode = (value: unknown) => btoa(JSON.stringify(value))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '')
+  return `${encode({ alg: 'none', typ: 'JWT' })}.${encode({ exp })}.sig`
+}
+
 describe('persistToken / clearPersistedToken / loadPersistedToken / hasPersistedToken (Audit P1.3)', () => {
   beforeEach(async () => {
     if ('electronAPI' in window) {
@@ -198,6 +206,31 @@ describe('persistToken / clearPersistedToken / loadPersistedToken / hasPersisted
 
     it('hasPersistedToken returns true when getConfig capability exists', () => {
       expect(hasPersistedToken()).toBe(true)
+    })
+
+    it('refreshes an expired Electron access token from the HttpOnly refresh cookie', async () => {
+      const expiredToken = unsignedJwtWithExp(Math.floor(Date.now() / 1000) - 60)
+      ;(window as any).electronAPI.getConfig = vi.fn().mockResolvedValue(expiredToken)
+      mockPost.mockResolvedValueOnce({ data: { token: 'fresh-electron-token' } })
+
+      const result = await loadPersistedToken()
+
+      expect(mockPost).toHaveBeenCalledWith(REFRESH_ENDPOINT, undefined, { withCredentials: true })
+      expect(window.electronAPI?.setConfig).toHaveBeenCalledWith('auth_token', 'fresh-electron-token')
+      expect(result).toBe('fresh-electron-token')
+      expect(hasPersistedToken()).toBe(true)
+    })
+
+    it('clears an expired Electron access token when refresh-cookie bootstrap fails', async () => {
+      const expiredToken = unsignedJwtWithExp(Math.floor(Date.now() / 1000) - 60)
+      ;(window as any).electronAPI.getConfig = vi.fn().mockResolvedValue(expiredToken)
+      mockPost.mockRejectedValueOnce(new Error('401 Unauthorized'))
+
+      const result = await loadPersistedToken()
+
+      expect(result).toBeNull()
+      expect(window.electronAPI?.deleteConfig).toHaveBeenCalledWith('auth_token')
+      expect(hasPersistedToken()).toBe(false)
     })
 
     it('hasPersistedToken returns false after clearPersistedToken', async () => {
