@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -37,6 +38,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class BankOrderService {
+
+    private static final int AUDIT_LOG_VALUE_MAX_LENGTH = 300;
+    private static final String AUDIT_LOG_TRUNCATION_MARKER = "...";
 
     private final BankOrderRepository bankOrderRepository;
     private final BranchRepository branchRepository;
@@ -157,8 +161,22 @@ public class BankOrderService {
                 order.getBranch().getCode(),
                 order.getAmount().toPlainString(),
                 order.getCurrency().getCode());
-        for (Worker supervisor : workerRepository.findSupervisorsAndAbove(companyId)) {
-            notificationService.sendToWorker(supervisor.getId(), title, message, "URGENT");
+        List<Worker> supervisors;
+        try {
+            supervisors = workerRepository.findSupervisorsAndAbove(companyId);
+        } catch (RuntimeException ex) {
+            log.warn("[bank-order] EMERGENCY notification recipients lookup failed: orderId={} companyId={}",
+                    order.getId(), companyId, ex);
+            return;
+        }
+
+        for (Worker supervisor : supervisors) {
+            try {
+                notificationService.sendToWorker(supervisor.getId(), title, message, "URGENT");
+            } catch (RuntimeException ex) {
+                log.warn("[bank-order] EMERGENCY notification send failed: orderId={} workerId={}",
+                        order.getId(), supervisor.getId(), ex);
+            }
         }
     }
 
@@ -166,6 +184,11 @@ public class BankOrderService {
         if (value == null) {
             return "";
         }
-        return value.replace('\r', ' ').replace('\n', ' ');
+        String sanitized = value.replace('\r', ' ').replace('\n', ' ');
+        if (sanitized.length() <= AUDIT_LOG_VALUE_MAX_LENGTH) {
+            return sanitized;
+        }
+        int endIndex = AUDIT_LOG_VALUE_MAX_LENGTH - AUDIT_LOG_TRUNCATION_MARKER.length();
+        return sanitized.substring(0, endIndex) + AUDIT_LOG_TRUNCATION_MARKER;
     }
 }
