@@ -68,25 +68,12 @@ public class AdminBootstrapService {
                 ));
 
         if (alreadyCompleted) {
-            Worker existing = workerRepository.findByCompanyIdAndCodeIgnoreCase(
-                    company.getId(), normalizedWorkerCode)
-                    .orElseThrow(() -> new ValidationException(
-                            "A bootstrap már lezajlott, és a megadott kódhoz ("
-                            + normalizedWorkerCode + ") nem található worker."
-                    ));
-            existing.setPasswordHash(passwordEncoder.encode(dto.getNewPassword()));
-            existing.setPasswordChangedAt(LocalDateTime.now());
-            existing.setActive(true);
-            Worker saved = workerRepository.save(existing);
-            log.info("Admin bootstrap (re-install password update) — worker id={}, companyCode={}, workerCode={}",
-                    saved.getId(), company.getCode(), saved.getCode());
-            return BootstrapAdminResponseDto.builder()
-                    .success(true)
-                    .message("Admin jelszó frissítve (újratelepítés). Most már bejelentkezhetsz.")
-                    .workerId(saved.getId())
-                    .companyCode(company.getCode())
-                    .workerCode(saved.getCode())
-                    .build();
+            log.warn("Admin bootstrap elutasítva, mert már lezárult: companyCode={}, workerCode={}",
+                    company.getCode(), normalizedWorkerCode);
+            throw new ValidationException(
+                    "A bootstrap már lezajlott; jelszó frissítéshez használd a hitelesített "
+                            + "dolgozói jelszócsere vagy reset folyamatot."
+            );
         }
 
         Worker worker = workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), normalizedWorkerCode)

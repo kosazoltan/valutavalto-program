@@ -41,7 +41,7 @@ import static org.mockito.Mockito.when;
  * Tesztesetek:
  *   1. Happy path: létezik worker, frissítjük, flag-et beállítjuk
  *   2. Worker nem létezik: új workert hozunk létre az első aktív branch-hez kötve
- *   3. Bootstrap flag már true: ValidationException (HTTP 400)
+ *   3. Bootstrap flag már true: ValidationException, nincs publikus jelszó reset
  *   4. Cégkód nem található: ValidationException
  *   5. Nincs branch a cégnél: ValidationException (újlétrehozás esetén)
  *   6. isBootstrapAlreadyCompleted: false ha nincs flag, true ha van és active
@@ -161,8 +161,8 @@ class AdminBootstrapServiceTest {
     }
 
     @Test
-    @DisplayName("Bootstrap flag már true -> meglévő worker jelszó frissítés (újratelepítés)")
-    void updatesPasswordOnRepeatedBootstrap() {
+    @DisplayName("Bootstrap flag már true -> publikus jelszófrissítés elutasítva")
+    void rejectsRepeatedBootstrapPasswordUpdate() {
         SystemParameter completedFlag = SystemParameter.builder()
                 .parameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY)
                 .parameterValue("true")
@@ -172,27 +172,14 @@ class AdminBootstrapServiceTest {
                 .thenReturn(Optional.of(completedFlag));
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(ebcCompany));
 
-        Worker existing = new Worker();
-        existing.setId(99L);
-        existing.setCompany(ebcCompany);
-        existing.setCode("ADMIN");
-        existing.setName("Régi Admin");
-        existing.setRole(WorkerRole.ADMIN);
-        existing.setActive(true);
-        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(ebcCompany.getId(), "ADMIN"))
-                .thenReturn(Optional.of(existing));
-        when(passwordEncoder.encode("SuperErosJelszo123!")).thenReturn("$2b$10$newhash");
-        when(workerRepository.save(any(Worker.class))).thenAnswer(inv -> inv.getArgument(0));
+        assertThatThrownBy(() -> service.bootstrapAdmin(validRequest()))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("bootstrap már lezajlott")
+                .hasMessageContaining("hitelesített");
 
-        BootstrapAdminResponseDto response = service.bootstrapAdmin(validRequest());
-
-        assertThat(response.isSuccess()).isTrue();
-        ArgumentCaptor<Worker> captor = ArgumentCaptor.forClass(Worker.class);
-        verify(workerRepository).save(captor.capture());
-        Worker saved = captor.getValue();
-        assertThat(saved.getPasswordHash()).isEqualTo("$2b$10$newhash");
-        assertThat(saved.getPasswordChangedAt()).isNotNull();
-        assertThat(saved.getActive()).isTrue();
+        verify(workerRepository, never()).findByCompanyIdAndCodeIgnoreCase(any(), anyString());
+        verify(passwordEncoder, never()).encode(anyString());
+        verify(workerRepository, never()).save(any(Worker.class));
     }
 
     @Test
