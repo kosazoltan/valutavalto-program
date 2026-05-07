@@ -1,5 +1,8 @@
 package hu.puzzleir.valuta.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterEventDto;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterReceiptRequest;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterStornoRequest;
@@ -32,6 +35,7 @@ public class CashRegisterController {
     private final CashRegisterService cashRegisterService;
     private final CashRegisterDeviceService cashRegisterDeviceService;
     private final BranchService branchService;
+    private final ObjectMapper objectMapper;
 
     @PostMapping("/open")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
@@ -140,8 +144,14 @@ public class CashRegisterController {
     }
 
     private boolean hasErrorStatus(CashRegisterEventDto event) {
-        return event != null
-                && event.getRawResponse() != null
-                && event.getRawResponse().contains("\"status\":\"ERROR\"");
+        if (event == null || event.getRawResponse() == null || event.getRawResponse().isBlank()) {
+            return false;
+        }
+        try {
+            JsonNode status = objectMapper.readTree(event.getRawResponse()).path("status");
+            return status.isTextual() && "ERROR".equalsIgnoreCase(status.asText());
+        } catch (JsonProcessingException ignored) {
+            return false;
+        }
     }
 }

@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterEventDto;
 import hu.puzzleir.valuta.service.BranchService;
 import hu.puzzleir.valuta.service.CashRegisterDeviceService;
@@ -8,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
@@ -36,24 +36,36 @@ class CashRegisterControllerTest {
     @Mock private CashRegisterDeviceService cashRegisterDeviceService;
     @Mock private BranchService branchService;
 
-    @InjectMocks private CashRegisterController controller;
+    private CashRegisterController controller;
 
     @BeforeEach
     void setUp() {
+        controller = new CashRegisterController(
+                cashRegisterService,
+                cashRegisterDeviceService,
+                branchService,
+                new ObjectMapper()
+        );
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 
     @Test
     @DisplayName("NAV bridge ERROR rawResponse nem HTTP 200")
     void printReceipt_returns502WhenEventContainsErrorStatus() throws Exception {
+        String rawResponse = """
+                {
+                  "message": "Bizonylat NAV továbbítás sikertelen",
+                  "status": "ERROR"
+                }
+                """;
         when(cashRegisterService.printReceipt(any()))
-                .thenReturn(event("{\"status\":\"ERROR\",\"message\":\"Bizonylat NAV tovabbitas sikertelen\"}"));
+                .thenReturn(event(rawResponse));
 
         mockMvc.perform(post("/api/v1/cash-register/receipt")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(receiptRequestJson()))
                 .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.rawResponse").value("{\"status\":\"ERROR\",\"message\":\"Bizonylat NAV tovabbitas sikertelen\"}"));
+                .andExpect(jsonPath("$.rawResponse").value(rawResponse));
     }
 
     @Test
