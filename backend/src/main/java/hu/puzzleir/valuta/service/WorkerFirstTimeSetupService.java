@@ -77,12 +77,6 @@ public class WorkerFirstTimeSetupService {
             );
         }
 
-        List<String> roleCodes = workerRoleService.getRoleCodesForWorker(worker.getId());
-        String activeRole = resolveActiveRoleForSetup(roleCodes, dto.getAppMode());
-        List<String> permissions = activeRole == null
-                ? List.of()
-                : workerRoleService.getPermissionCodesForRole(activeRole);
-
         // 3) Biztonsagi ellenorzes:
         //    A permitAll setup endpoint az elso telepiteshez kell. Miutan a
         //    bootstrap lezarult, egy letezo worker jelszava csak a jelenlegi
@@ -129,6 +123,12 @@ public class WorkerFirstTimeSetupService {
         // Ha worker.passwordHash == null es bootstrap meg nincs lezarva, friss elso
         // telepiteskent engedjuk az uj jelszo beallitasat.
 
+        List<String> roleCodes = sanitizeRoleCodes(workerRoleService.getRoleCodesForWorker(worker.getId()));
+        String activeRole = resolveActiveRoleForSetup(roleCodes, dto.getAppMode());
+        List<String> permissions = activeRole == null
+                ? List.of()
+                : workerRoleService.getPermissionCodesForRole(activeRole);
+
         // 4) Uj jelszo beallitasa + BCrypt hash + timestamp
         worker.setPasswordHash(passwordEncoder.encode(dto.getNewPassword()));
         worker.setPasswordChangedAt(LocalDateTime.now());
@@ -165,33 +165,41 @@ public class WorkerFirstTimeSetupService {
         return value == null ? "" : value.trim().toUpperCase();
     }
 
-    private static String resolveActiveRoleForSetup(List<String> roleCodes, String appMode) {
+    private static List<String> sanitizeRoleCodes(List<String> roleCodes) {
         if (roleCodes == null || roleCodes.isEmpty()) {
+            return List.of();
+        }
+        return roleCodes.stream()
+                .filter(roleCode -> roleCode != null && !roleCode.isBlank())
+                .map(String::trim)
+                .toList();
+    }
+
+    private static String resolveActiveRoleForSetup(List<String> roleCodes, String appMode) {
+        if (roleCodes.isEmpty()) {
             return null;
         }
         if (appMode != null && !appMode.isBlank()) {
-            String preferredRole = switch (appMode.trim().toLowerCase()) {
-                case "ertektar" -> "ertektar";
-                case "ertekszallito" -> "ertekszallito";
-                case "penztar" -> "penztar";
-                default -> null;
-            };
+            String preferredRole = AppModeRoleConstants.preferredSelectableLocalRoleForAppMode(roleCodes, appMode);
             if (preferredRole != null) {
-                String exact = roleCodes.stream()
-                        .filter(roleCode -> roleCode != null
-                                && preferredRole.equals(roleCode.trim().toLowerCase()))
-                        .findFirst()
-                        .orElse(null);
-                if (exact != null) {
-                    return exact;
-                }
+                return preferredRole;
             }
-            return roleCodes.stream()
-                    .filter(roleCode -> AppModeRoleConstants.isRoleSelectableForAppMode(roleCode, appMode))
-                    .findFirst()
-                    .orElseThrow(() -> new ValidationException(
-                            "Nincs ebben a programban használható szerepköre."));
+
+            List<String> selectableRoles = AppModeRoleConstants.selectableRolesForAppMode(roleCodes, appMode);
+            if (selectableRoles.isEmpty()) {
+                throw new ValidationException("Nincs ebben a programban használható szerepköre.");
+            }
+            if (selectableRoles.size() == 1) {
+                return selectableRoles.get(0);
+            }
+            throw new ValidationException(
+                    "Tobb használható szerepköre van ebben a programban. Valassz konkret szerepkort."
+            );
         }
-        return roleCodes.size() == 1 ? roleCodes.get(0) : null;
+        if (roleCodes.size() == 1) {
+            return roleCodes.get(0);
+        }
+        // Tobbszerepkoros setupnal appMode nelkul nem valasztunk sorrendfuggo aktiv role-t.
+        throw new ValidationException("Tobb szerepkor eseten a programtipus megadasa kotelezo.");
     }
 }
