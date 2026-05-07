@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.datacollection.*;
 import hu.puzzleir.valuta.entity.DataCollection;
+import hu.puzzleir.valuta.entity.DataCollectionStatus;
 import hu.puzzleir.valuta.service.DataCollectionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.springframework.lang.Nullable;
 
@@ -52,9 +52,8 @@ public class DataCollectionController {
     public ResponseEntity<List<DataCollectionDto>> collectAll(
             @Valid @RequestBody CollectAllRequestDto request) {
         List<DataCollection> results = dataCollectionService.collectAllBranches(request.getDate());
-        List<DataCollectionDto> dtos = results.stream().map(this::toDto).collect(Collectors.toList());
-        boolean allCompleted = dtos.stream().allMatch(this::isCompleted);
-        return ResponseEntity.status(allCompleted ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE).body(dtos);
+        List<DataCollectionDto> dtos = results.stream().map(this::toDto).toList();
+        return dataCollectionResponse(dtos);
     }
 
     /**
@@ -92,8 +91,17 @@ public class DataCollectionController {
         return ResponseEntity.status(isCompleted(dto) ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE).body(dto);
     }
 
+    private ResponseEntity<List<DataCollectionDto>> dataCollectionResponse(List<DataCollectionDto> dtos) {
+        HttpStatus status = areAllCompleted(dtos) ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE;
+        return ResponseEntity.status(status).body(dtos);
+    }
+
+    private boolean areAllCompleted(List<DataCollectionDto> dtos) {
+        return dtos != null && !dtos.isEmpty() && dtos.stream().allMatch(this::isCompleted);
+    }
+
     private boolean isCompleted(DataCollectionDto dto) {
-        return dto != null && "COMPLETED".equalsIgnoreCase(dto.getStatus());
+        return dto != null && DataCollectionStatus.COMPLETED.name().equalsIgnoreCase(dto.getStatus());
     }
 
     private DataCollectionDto toDto(DataCollection dc) {
