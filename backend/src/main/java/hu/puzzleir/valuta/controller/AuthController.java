@@ -391,7 +391,7 @@ public class AuthController {
     }
 
     /**
-     * Elfelejtett jelszo — egy token-t general + (TODO: email-ben kikuldi).
+     * Elfelejtett jelszo — reset tokent general, perzisztensen tarol, majd emailben kikuldi.
      *
      * <p>POST /api/v1/auth/forgot-password</p>
      * <p>Body: {"email": "user@example.com"}</p>

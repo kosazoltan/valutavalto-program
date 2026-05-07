@@ -54,9 +54,8 @@ public class PasswordResetService {
     private String frontendBaseUrl;
 
     /**
-     * Kerelem forgot-password flow-ra. Az email-tulajdonos-nak torteno
-     * token kikuldes itt nem implementalva (Gmail API nelkuli, de a
-     * GoogleAuthController mar rendelkezik a credentialekkel).
+     * Kerelem forgot-password flow-ra. A nyers token csak emailben megy ki,
+     * az adatbazisba a token SHA-256 hash-e kerul.
      *
      * <p>Anti-enumeration: akkor is 200-at adunk vissza ha az email
      * nem letezik a DB-ben. Igy egy attacker nem tudja felderiteni
