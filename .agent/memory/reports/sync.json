@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-07T20:05:10.365Z",
+  "generated_at": "2026-05-07T20:52:19.322Z",
   "cognee": {
     "reachable": true,
     "status": 200,
@@ -14,6 +14,6 @@
   "obsidian_filesystem": {
     "synced": true,
     "mode": "filesystem",
-    "path": "D:/repo/valutavalto-program/vault/references/repo-memory/repo-memory-mirror.md"
+    "path": "vault/references/repo-memory/repo-memory-mirror.md"
   }
 }

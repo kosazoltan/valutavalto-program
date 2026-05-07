@@ -9,7 +9,7 @@ companion: 2026-memory-architecture-sota.md
 
 ## TL;DR
 
-A jelenlegi `D:\valutavalto-vault\` egy egyszerű **fájlrendszeres fact-store**: `sessions/`, `feedback/`, `references/`. Erős a kronologikus naplózásban (timestamping), de **3 SOTA képességből 2-t hiányol** és 1-et csak részlegesen valósít meg.
+A jelenlegi repo-local `D:\repo\valutavalto-program\vault\` egy egyszerű **fájlrendszeres fact-store**: `sessions/`, `feedback/`, `procedures/`, `references/`. Erős a kronologikus naplózásban (timestamping), de **3 SOTA képességből 2-t hiányol** és 1-et csak részlegesen valósít meg.
 
 ## Képességmátrix (jelenlegi vs SOTA)
 

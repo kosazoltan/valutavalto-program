@@ -32,3 +32,4 @@ not pretend remote ingestion succeeded if auth or a local plugin is missing.
 - Medium-term memory: recent session handoffs and episodic state.
 - Operational memory: procedures, runbooks, lessons, CI/deploy workflows.
 - Long-term memory: historical QMD/YAML, user manuals, legal/legacy references.
+

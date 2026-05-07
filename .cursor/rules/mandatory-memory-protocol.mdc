@@ -56,7 +56,7 @@ Ez az utasitas minden olyan ugynokre ervenyes (Claude, OpenAI Codex, Cursor, Gem
 ### Obsidian memoria
 
 - **Aktiv vault ebben a repoban**: `D:\repo\valutavalto-program\vault\` (sessions/, feedback/, procedures/, references/)
-- A korábbi `D:\valutavalto-vault\` törölve lett; tilos újra létrehozni vagy használni, hogy ne legyen kettős olvasás/írás.
+- A korábbi `D:\repo\valutavalto-program\vault\` törölve lett; tilos újra létrehozni vagy használni, hogy ne legyen kettős olvasás/írás.
 - Az ugynok **koteles a relevans jegyzeteket beolvasni** a munka megkezdese elott (`vault\README.md`, legfrissebb session-jegyzet, feedback skim).
 - Hasznalatkor figyelni: **wikilinkek, tagek, YAML frontmatter, backlink logika, jegyzetek kozotti osszefugges**.
 - Uj bejegyzes: **atomikus, visszakereshetonek, forrasoltan tenyalapu**.
@@ -235,7 +235,7 @@ Egy munkamenet memoria szempontbol csak akkor zarhato le szabalyosan, ha:
 - **Hatály bevezetés**: 2026-05-04 (Kosa Zoltan user-direktiva).
 - **Tárolás**:
   - [.cursor/rules/mandatory-memory-protocol.mdc](mandatory-memory-protocol.mdc) (ez a fájl)
-  - [vault: feedback/memory-protocol-mandatory.md](D:\valutavalto-vault\feedback\memory-protocol-mandatory.md)
+  - [vault: feedback/memory-protocol-mandatory.md](D:\repo\valutavalto-program\vault\feedback\memory-protocol-mandatory.md)
   - [CLAUDE.md "MEMÓRIAHASZNÁLATI PROTOKOLL" szekció](../../CLAUDE.md)
 
 ## Kapcsolódó protokollok (egymást kiegészítik)
@@ -245,3 +245,4 @@ Egy munkamenet memoria szempontbol csak akkor zarhato le szabalyosan, ha:
 - **Security gate** ([`.cursor/rules/mandatory-security-gate.mdc`](mandatory-security-gate.mdc)) — biztonsági tanulságok kötelező memóriamentése.
 - **AI review zero-tolerance** (vault: `ai-review-mandate-zero-tolerance.md`) — minden P0/P1/P2 finding root cause + fix memóriába kerül.
 - **Hallucination tilalom** (vault: `hallucinacio-megszuntetese.md`) — research-first + Context7, a memória tényalapú forrás.
+

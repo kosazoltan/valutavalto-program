@@ -1,4 +1,4 @@
-generated_at: 2026-05-07T20:44:53.523Z
+generated_at: 2026-05-07T20:52:19.322Z
 schema_version: 1
 source_count: 193
 short_term:
@@ -20,7 +20,7 @@ short_term:
     title: "Valutaváltó ERP — Claude Code kontextus"
     type: short-term-core
     path: CLAUDE.md
-    sha256: f2b06d974a661ca8c4b0215eeddafa8ee53427a4bdc0a2535b99f7e5b713a338
+    sha256: 710c182651f0b87329c97f6306b8d559fbd52bb215b3565daa036ffe198d6842
     summary: "# Valutaváltó ERP — Claude Code kontextus > ## ⚠️ NULLADIK PRIORITAS — NEM-INFORMATIKUS VÉGFELHASZNÁLÓ ALAPELV (2026-05-05) > > **A KOLLÉGÁK NEM informatikusok ÉS NEM programozók.** Ez a teljes deliverable-pipeline alapelv, **MINDEN** más szabály felett. > > **TILOS** a kollégának küldeni: parancssort (`ipconfig`, `netsh`, `Stop-Process`), manuális mappa-törlést (`Win+R %APPDATA%`), `.env`/`hosts` fájl-szerkesztést, "
     keywords: [valutavalto, erp, claude, code, kontextus, nulladik, prioritas, nem, informatikus, vegfelhasznalo, alapelv, 2026]
   - id: efb3ff29a08872f2
@@ -341,12 +341,12 @@ medium_term:
     summary: "--- date: 2026-04-30 title: v2.4.2 → v2.4.6 autonóm batch execution — 5 PR merge, 0 production outage type: multi-pr-batch duration: 14:42 → 15:50 CEST (~1 óra 8 perc) status: ALL-MERGED-PRODUCTION-VERIFIED related-prs: \"#328, #329, #330, #331, #332\" main-head: 17407006 --- # v2.4.2 → v2.4.6 autonóm batch execution — sprint kickoff teljes hiánylista ## TL;DR User direktíva: *\"menj végig szépen sorban a teljes hiányli"
     keywords: [autonom, batch, execution, merge, production, outage, date, 2026, title, type, multi, duration]
   - id: 69cc735f55c1f87c
-    title: "v2.4.7 éles telepítés + v2.4.8 Főértéktár UI overhaul"
+    title: "v2.4.7 eles telepites + v2.4.8 Foertektar UI overhaul"
     type: medium-term-episodic
     path: vault/sessions/2026-04-30-v2.4.7-install-and-v2.4.8-treasury-ui.md
     status: "IN-PROGRESS (CI pending, installer build pending)"
-    sha256: 7138efa44493ea365e81ca93f9437f74cf1862b5940dbd5ac4c97fc4bace6642
-    summary: "--- date: 2026-04-30 title: v2.4.7 éles telepítés + v2.4.8 Főértéktár UI overhaul type: install-deploy + ui-refactor duration: 19:00 → 20:00 CEST status: IN-PROGRESS (CI pending, installer build pending) related-prs: \"#334\" main-head: \"64352b16 (v2.4.7)\" --- # v2.4.7 telepítés + v2.4.8 UI sprint ## TL;DR User új session-t indított a token-takarékosság miatt. Két lépcső: 1. **v2.4.7 telepítve a fejlesztői gépre** — un"
+    sha256: 5bd8977904e2fe34cd967d544dea4f60ffffb97c1dcc59730311773382c8e304
+    summary: "--- date: 2026-04-30 title: v2.4.7 eles telepites + v2.4.8 Foertektar UI overhaul type: install-deploy + ui-refactor duration: 19:00 -> 20:00 CEST status: IN-PROGRESS (CI pending, installer build pending) related-prs: \"#334\" main-head: \"64352b16 (v2.4.7)\" --- # v2.4.7 telepites + v2.4.8 UI sprint ## TL;DR User uj session-t inditott a token-takarekossag miatt. Ket lepcso: 1. **v2.4.7 telepitve a fejlesztoi gepre** - u"
     keywords: [eles, telepites, foertektar, overhaul, date, 2026, title, type, install, deploy, refactor, duration]
   - id: 14d65c37589c6f03
     title: "v2.5.0 Hetzner production outage + atomic rollback (PR #336 → #337)"
@@ -375,7 +375,7 @@ medium_term:
     title: "2026-05-05 — Error-reporting pipeline E2E + valuta-error-monitor routine + v2.5.18 installer"
     type: medium-term-episodic
     path: vault/sessions/2026-05-05-error-reporting-pipeline-complete-v2-5-18-installer.md
-    sha256: e196a4cad7a10e167ca34bd74ab2f79bae9fb7798bcd82a4568042548b8bebe4
+    sha256: f36ba7c6a5942b6b034ab6b2a92ee1d1ac7573475b135ad234c53241fdc7208d
     summary: "# 2026-05-05 — Error-reporting pipeline E2E + valuta-error-monitor routine + v2.5.18 installer ## Mit zárult le ### Backend reporter PR sorozat (mind merge-elve) - **#407** `feat(diagnostics): auto kliens-oldali hibajelentes (Sentry-style HTTP endpoint + PostgreSQL)` — V182 + DiagnosticsController + ErrorReportDto + ClientErrorLog entity - **#410** `feat(diagnostics): kritikus kliens hiba -> AUTO GitHub Issue auto-cr"
     keywords: [2026, error, reporting, pipeline, e2e, valuta, monitor, routine, installer, mit, zarult, backend]
   - id: 54b57983c29909b3
@@ -398,7 +398,7 @@ medium_term:
     type: medium-term-episodic
     path: vault/sessions/2026-05-07-pr434-stack-merge-memory-consolidation.md
     status: completed
-    sha256: 63e82202955c13bec68c964649cb6ad2248f5450883aef54ff52a851c1449524
+    sha256: c8255858a4037d1523c9960ef426dd795dc9c4f2cc2b7bf30e9a4aa179649f43
     summary: "--- title: 2026-05-07 — PR434 stack merge + repo-local memory consolidation type: session created: 2026-05-07 status: completed main_head: aaf0588c production_health: bootstrap 200 OK --- # 2026-05-07 — PR434 stack merge + repo-local memory consolidation ## Summary - Repo-local vault activated at `D:\\repo\\valutavalto-program\\vault\\`. - Old external `D:\\valutavalto-vault\\` deleted to prevent double read/write. - Multi"
     keywords: [2026, pr434, stack, merge, repo, local, memory, consolidation, title, type, session, created]
 operational:
@@ -1358,20 +1358,20 @@ long_term:
     summary: "--- title: P2 polish features — design + skeleton (2026-05-06) type: reference created: 2026-05-06 status: PLANNED (külön sprint-ekben implementálandó) --- # P2 features — design + implementation skeleton ## P2-1 VFD (Vacuum Fluorescent Display) ügyfélkijelző **Cél**: Az Electron pénztár-kliens másodlagos ablakban megjeleníti az ügyfélnek a tranzakció menetét — összeget, valutát, árfolyamot, sztornó figyelmeztetést. "
     keywords: [polish, features, design, skeleton, 2026, title, type, reference, created, status, planned, kulon]
   - id: 2b410f23b248e5da
-    title: "Product Ready Roadmap — 2026-05-06 tényalapú terv"
+    title: Product Ready Roadmap - 2026-05-06 tenyalapu terv
     type: long-term-reference
     path: vault/references/product-ready-roadmap-2026-05-06.md
     status: ACTIVE
-    sha256: 9477c664a63927497caf85b56986f5efa6f9a3c4257950ebd3db9e25cd3c7863
-    summary: "--- title: Product Ready Roadmap — 2026-05-06 tényalapú terv type: reference created: 2026-05-06 supersedes: - v2.4-sprint-roadmap.md (frissebb tények alapján) status: ACTIVE author: Claude Opus 4.7 + Kósa Zoltán session --- # EXC Valutaváltó ERP — Product Ready Roadmap (2026-05-06) ## TL;DR > **2026-05-06 22:00 KORREKCIÓ:** A korábbi \"~85% Product Ready\" becslés szubjektív > találgatás volt mérési alap nélkül — KIVÉ"
+    sha256: 6e3d4cd2998ac726002eb6b3d226ed37c9351215dd22285abb81afdac9161dac
+    summary: "--- title: Product Ready Roadmap - 2026-05-06 tenyalapu terv type: reference created: 2026-05-06 supersedes: - v2.4-sprint-roadmap.md (frissebb tenyek alapjan) status: ACTIVE author: Claude Opus 4.7 + Kosa Zoltan session --- # EXC Valutavalto ERP - Product Ready Roadmap (2026-05-06) ## TL;DR > **2026-05-06 22:00 KORREKCIO:** A korabbi \"~85% Product Ready\" becsles szubjektiv > talalgatas volt meresi alap nelkul - KIVE"
     keywords: [product, ready, roadmap, 2026, tenyalapu, terv, title, type, reference, created, supersedes, sprint]
   - id: 4df3091e85acd201
     title: Repo Memory Mirror
     type: long-term-reference
     path: vault/references/repo-memory/repo-memory-mirror.md
-    sha256: f6d978a0bac184e5c999f66a337307ce3240a2971a3ab2dbb8ce304ea864d589
-    summary: "--- title: Repo Memory Mirror generated: 2026-05-07T20:05:10.365Z --- # Repo Memory Mirror Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre. ## Layer Counts - sources: 193 - generated: 2026-05-07T20:05:10.365Z ## Sources - [[AGENTS.md]] — `AGENTS.md` (short-term-core) - [[AI_CONSTITUTION.md — AI működési alkotmány]] — `AI_CONSTITUTION.md` (short-term-core) - [[Valutaváltó ERP — Claude Code kontextus]] — `"
-    keywords: [repo, memory, mirror, title, generated, 2026, 07t20, 365z, fajl, lokalis, memoria, obsidian]
+    sha256: 9ca724ff438cb5231249dfb6c393d5b0392a5524e7a2974414bafa00139af6b8
+    summary: "--- title: Repo Memory Mirror generated: 2026-05-07T20:50:56.301Z --- # Repo Memory Mirror Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre. ## Layer Counts - sources: 193 - generated: 2026-05-07T20:50:56.301Z ## Sources - [[AGENTS.md]] — `AGENTS.md` (short-term-core) - [[AI_CONSTITUTION.md — AI működési alkotmány]] — `AI_CONSTITUTION.md` (short-term-core) - [[Valutaváltó ERP — Claude Code kontextus]] — `"
+    keywords: [repo, memory, mirror, title, generated, 2026, 07t20, 301z, fajl, lokalis, memoria, obsidian]
   - id: f94f2362634e3313
     title: "v2.4 sprint roadmap — C/E/F major work plans"
     type: long-term-reference
@@ -1384,6 +1384,6 @@ long_term:
     title: "Vault evolution — gap-analízis a 2026 SOTA-hoz képest"
     type: long-term-reference
     path: vault/references/vault-evolution-gap-analysis.md
-    sha256: e61604a63cfc1fabaf274d486b874762b20232caf90f6ef511f8f53c8922e5b4
-    summary: "--- title: Vault evolution — gap-analízis a 2026 SOTA-hoz képest type: reference created: 2026-05-02 companion: 2026-memory-architecture-sota.md --- # Vault gap-analízis (2026-05-02) ## TL;DR A jelenlegi `D:\\valutavalto-vault\\` egy egyszerű **fájlrendszeres fact-store**: `sessions/`, `feedback/`, `references/`. Erős a kronologikus naplózásban (timestamping), de **3 SOTA képességből 2-t hiányol** és 1-et csak részlege"
+    sha256: 3fbc64b5e0cec7cfe10863459ece2362220009cd489011eab7c04d2d1f13bbd1
+    summary: "--- title: Vault evolution — gap-analízis a 2026 SOTA-hoz képest type: reference created: 2026-05-02 companion: 2026-memory-architecture-sota.md --- # Vault gap-analízis (2026-05-02) ## TL;DR A jelenlegi repo-local `D:\\repo\\valutavalto-program\\vault\\` egy egyszerű **fájlrendszeres fact-store**: `sessions/`, `feedback/`, `procedures/`, `references/`. Erős a kronologikus naplózásban (timestamping), de **3 SOTA képesség"
     keywords: [vault, evolution, gap, analizis, 2026, sota, hoz, kepest, title, type, reference, created]

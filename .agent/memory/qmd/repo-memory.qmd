@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-05-07T20:44:53.523Z
+generated: 2026-05-07T20:52:19.322Z
 format: gfm
 ---
 
@@ -184,9 +184,9 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - source: `vault/sessions/2026-04-30-v2.4.2-2.4.6-autonomous-batch-execution.md`
   - summary: --- date: 2026-04-30 title: v2.4.2 → v2.4.6 autonóm batch execution — 5 PR merge, 0 production outage type: multi-pr-batch duration: 14:42 → 15:50 CEST (~1 óra 8 perc) status: ALL-MERGED-PRODUCTION-VERIFIED related-prs: "#328, #329, #330, #331, #332" main-head: 17407006 --- # v2.4.2 → v2.4.6 autonóm batch execution — sprint kickoff teljes hiánylista ## TL;DR User direktíva: *"menj végig szépen sorban a teljes hiányli
 
-- **v2.4.7 éles telepítés + v2.4.8 Főértéktár UI overhaul** (medium-term-episodic)
+- **v2.4.7 eles telepites + v2.4.8 Foertektar UI overhaul** (medium-term-episodic)
   - source: `vault/sessions/2026-04-30-v2.4.7-install-and-v2.4.8-treasury-ui.md`
-  - summary: --- date: 2026-04-30 title: v2.4.7 éles telepítés + v2.4.8 Főértéktár UI overhaul type: install-deploy + ui-refactor duration: 19:00 → 20:00 CEST status: IN-PROGRESS (CI pending, installer build pending) related-prs: "#334" main-head: "64352b16 (v2.4.7)" --- # v2.4.7 telepítés + v2.4.8 UI sprint ## TL;DR User új session-t indított a token-takarékosság miatt. Két lépcső: 1. **v2.4.7 telepítve a fejlesztői gépre** — un
+  - summary: --- date: 2026-04-30 title: v2.4.7 eles telepites + v2.4.8 Foertektar UI overhaul type: install-deploy + ui-refactor duration: 19:00 -> 20:00 CEST status: IN-PROGRESS (CI pending, installer build pending) related-prs: "#334" main-head: "64352b16 (v2.4.7)" --- # v2.4.7 telepites + v2.4.8 UI sprint ## TL;DR User uj session-t inditott a token-takarekossag miatt. Ket lepcso: 1. **v2.4.7 telepitve a fejlesztoi gepre** - u
 
 - **v2.5.0 Hetzner production outage + atomic rollback (PR #336 → #337)** (medium-term-episodic)
   - source: `vault/sessions/2026-05-01-v2.5.0-outage-rollback-FINAL.md`

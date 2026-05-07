@@ -13,7 +13,7 @@ production_health: bootstrap 200 OK
 
 - Repo-local vault activated at `D:\repo\valutavalto-program\vault\`.
 - Old external `D:\valutavalto-vault\` deleted to prevent double read/write.
-- Multi-layer memory generated under `.agent/memory/` from 192 sources.
+- Multi-layer memory generated under `.agent/memory/`; see `.agent/memory/reports/manifest.json` for the current source count.
 - PR #513 merged to main as stacked PR434 integration.
 - PR #516 fixed post-merge CI regressions and was merged.
 

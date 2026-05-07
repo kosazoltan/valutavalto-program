@@ -82,6 +82,6 @@ efca745d feat(diagnostics): kritikus kliens hiba -> AUTO GitHub Issue auto-creat
 ## User-direktíva alkalmazva
 
 - ✅ NULLADIK PRIORITAS (NEM-INFORMATIKUS VÉGFELHASZNÁLÓK ALAPELV) — minden auto-eskala body-ban tilos parancssor / registry / hosts / antivirus
-- ✅ Server-side Cloudflare IPv6 OFF (cfut_tdqCrYSFVm9... PATCH /zones/{id}/settings/ipv6)
+- ✅ Server-side Cloudflare IPv6 OFF (Cloudflare API PATCH /zones/{id}/settings/ipv6, token/id érték nélkül dokumentálva)
 - ✅ Tokenek gitignored .env-ben + GitHub Push Protection-kompatibilis
 - ✅ Auto error-reporting "automatikusan visszakerül hozzád javításra" (E2E verifikálva)

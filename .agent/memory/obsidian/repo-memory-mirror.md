@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-05-07T20:44:53.523Z
+generated: 2026-05-07T20:52:19.322Z
 ---
 
 # Repo Memory Mirror
@@ -9,7 +9,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
 - sources: 193
-- generated: 2026-05-07T20:44:53.523Z
+- generated: 2026-05-07T20:52:19.322Z
 
 ## Sources
 - [[AGENTS.md]] — `AGENTS.md` (short-term-core)
@@ -163,7 +163,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[NGM 23/2014 (VI.30.) — szigoru szamadasu bizonylatok]] — `vault/references/ngm-szamadas-23-2014.md` (long-term-reference)
 - [[Valutavaltó Pénztár — Operációs Kézikönyv AI Ügynöknek]] — `vault/references/operational-handbook.md` (long-term-reference)
 - [[P2 polish features — design + skeleton (2026-05-06)]] — `vault/references/p2-features-design-2026-05-06.md` (long-term-reference)
-- [[Product Ready Roadmap — 2026-05-06 tényalapú terv]] — `vault/references/product-ready-roadmap-2026-05-06.md` (long-term-reference)
+- [[Product Ready Roadmap - 2026-05-06 tenyalapu terv]] — `vault/references/product-ready-roadmap-2026-05-06.md` (long-term-reference)
 - [[Repo Memory Mirror]] — `vault/references/repo-memory/repo-memory-mirror.md` (long-term-reference)
 - [[v2.4 sprint roadmap — C/E/F major work plans]] — `vault/references/v2.4-sprint-roadmap.md` (long-term-reference)
 - [[Vault evolution — gap-analízis a 2026 SOTA-hoz képest]] — `vault/references/vault-evolution-gap-analysis.md` (long-term-reference)

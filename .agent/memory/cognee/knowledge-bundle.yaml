@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-05-07T20:44:53.523Z
+generated_at: 2026-05-07T20:52:19.322Z
 kind: knowledge_bundle
 nodes:
   - id: a54ff182c7e8acf5
@@ -910,16 +910,16 @@ nodes:
     tags: [polish, features, design, skeleton, 2026, title, type, reference, created, status]
   - id: 2b410f23b248e5da
     type: long-term-reference
-    title: "Product Ready Roadmap — 2026-05-06 tényalapú terv"
+    title: Product Ready Roadmap - 2026-05-06 tenyalapu terv
     source_path: vault/references/product-ready-roadmap-2026-05-06.md
-    summary: "--- title: Product Ready Roadmap — 2026-05-06 tényalapú terv type: reference created: 2026-05-06 supersedes: - v2.4-sprint-roadmap.md (frissebb tények alapján) status: ACTIVE author: Claude Opus 4.7 + Kósa Zoltán session --- # EXC Valutaváltó ERP — Product Ready Roadmap (2026-05-06) ## TL;DR > **2026-05-06 22:00 KORREKCIÓ:** A korábbi \"~85% Product Ready\" becslés szubjektív > találgatás volt mérési alap nélkül — KIVÉ"
+    summary: "--- title: Product Ready Roadmap - 2026-05-06 tenyalapu terv type: reference created: 2026-05-06 supersedes: - v2.4-sprint-roadmap.md (frissebb tenyek alapjan) status: ACTIVE author: Claude Opus 4.7 + Kosa Zoltan session --- # EXC Valutavalto ERP - Product Ready Roadmap (2026-05-06) ## TL;DR > **2026-05-06 22:00 KORREKCIO:** A korabbi \"~85% Product Ready\" becsles szubjektiv > talalgatas volt meresi alap nelkul - KIVE"
     tags: [product, ready, roadmap, 2026, tenyalapu, terv, title, type, reference, created]
   - id: 4df3091e85acd201
     type: long-term-reference
     title: Repo Memory Mirror
     source_path: vault/references/repo-memory/repo-memory-mirror.md
-    summary: "--- title: Repo Memory Mirror generated: 2026-05-07T20:05:10.365Z --- # Repo Memory Mirror Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre. ## Layer Counts - sources: 193 - generated: 2026-05-07T20:05:10.365Z ## Sources - [[AGENTS.md]] — `AGENTS.md` (short-term-core) - [[AI_CONSTITUTION.md — AI működési alkotmány]] — `AI_CONSTITUTION.md` (short-term-core) - [[Valutaváltó ERP — Claude Code kontextus]] — `"
-    tags: [repo, memory, mirror, title, generated, 2026, 07t20, 365z, fajl, lokalis]
+    summary: "--- title: Repo Memory Mirror generated: 2026-05-07T20:50:56.301Z --- # Repo Memory Mirror Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre. ## Layer Counts - sources: 193 - generated: 2026-05-07T20:50:56.301Z ## Sources - [[AGENTS.md]] — `AGENTS.md` (short-term-core) - [[AI_CONSTITUTION.md — AI működési alkotmány]] — `AI_CONSTITUTION.md` (short-term-core) - [[Valutaváltó ERP — Claude Code kontextus]] — `"
+    tags: [repo, memory, mirror, title, generated, 2026, 07t20, 301z, fajl, lokalis]
   - id: f94f2362634e3313
     type: long-term-reference
     title: "v2.4 sprint roadmap — C/E/F major work plans"
@@ -930,7 +930,7 @@ nodes:
     type: long-term-reference
     title: "Vault evolution — gap-analízis a 2026 SOTA-hoz képest"
     source_path: vault/references/vault-evolution-gap-analysis.md
-    summary: "--- title: Vault evolution — gap-analízis a 2026 SOTA-hoz képest type: reference created: 2026-05-02 companion: 2026-memory-architecture-sota.md --- # Vault gap-analízis (2026-05-02) ## TL;DR A jelenlegi `D:\\valutavalto-vault\\` egy egyszerű **fájlrendszeres fact-store**: `sessions/`, `feedback/`, `references/`. Erős a kronologikus naplózásban (timestamping), de **3 SOTA képességből 2-t hiányol** és 1-et csak részlege"
+    summary: "--- title: Vault evolution — gap-analízis a 2026 SOTA-hoz képest type: reference created: 2026-05-02 companion: 2026-memory-architecture-sota.md --- # Vault gap-analízis (2026-05-02) ## TL;DR A jelenlegi repo-local `D:\\repo\\valutavalto-program\\vault\\` egy egyszerű **fájlrendszeres fact-store**: `sessions/`, `feedback/`, `procedures/`, `references/`. Erős a kronologikus naplózásban (timestamping), de **3 SOTA képesség"
     tags: [vault, evolution, gap, analizis, 2026, sota, hoz, kepest, title, type]
   - id: 53eeefa5ffe5383a
     type: medium-term-episodic
@@ -1114,9 +1114,9 @@ nodes:
     tags: [autonom, batch, execution, merge, production, outage, date, 2026, title, type]
   - id: 69cc735f55c1f87c
     type: medium-term-episodic
-    title: "v2.4.7 éles telepítés + v2.4.8 Főértéktár UI overhaul"
+    title: "v2.4.7 eles telepites + v2.4.8 Foertektar UI overhaul"
     source_path: vault/sessions/2026-04-30-v2.4.7-install-and-v2.4.8-treasury-ui.md
-    summary: "--- date: 2026-04-30 title: v2.4.7 éles telepítés + v2.4.8 Főértéktár UI overhaul type: install-deploy + ui-refactor duration: 19:00 → 20:00 CEST status: IN-PROGRESS (CI pending, installer build pending) related-prs: \"#334\" main-head: \"64352b16 (v2.4.7)\" --- # v2.4.7 telepítés + v2.4.8 UI sprint ## TL;DR User új session-t indított a token-takarékosság miatt. Két lépcső: 1. **v2.4.7 telepítve a fejlesztői gépre** — un"
+    summary: "--- date: 2026-04-30 title: v2.4.7 eles telepites + v2.4.8 Foertektar UI overhaul type: install-deploy + ui-refactor duration: 19:00 -> 20:00 CEST status: IN-PROGRESS (CI pending, installer build pending) related-prs: \"#334\" main-head: \"64352b16 (v2.4.7)\" --- # v2.4.7 telepites + v2.4.8 UI sprint ## TL;DR User uj session-t inditott a token-takarekossag miatt. Ket lepcso: 1. **v2.4.7 telepitve a fejlesztoi gepre** - u"
     tags: [eles, telepites, foertektar, overhaul, date, 2026, title, type, install, deploy]
   - id: 14d65c37589c6f03
     type: medium-term-episodic

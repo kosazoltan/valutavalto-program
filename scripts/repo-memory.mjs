@@ -95,7 +95,7 @@ function classify(file, fm, title, text) {
 
 function collectSources() {
   const repoVault = path.join(root, 'vault')
-  const vault = process.env.VALUTA_VAULT_PATH || repoVault
+  const vault = repoVault
   if (!exists(vault)) {
     throw new Error(`Repo-local vault not found: ${vault}`)
   }
@@ -277,7 +277,7 @@ function writeObsidian(entries) {
 
 function copyObsidianMirrorToVault(obsMirror) {
   const repoVault = path.join(root, 'vault')
-  const vaultRoot = process.env.VALUTA_VAULT_PATH || repoVault
+  const vaultRoot = repoVault
   if (!exists(vaultRoot)) {
     return { synced: false, reason: 'vault path missing', vaultRoot }
   }
@@ -285,7 +285,7 @@ function copyObsidianMirrorToVault(obsMirror) {
   ensureDir(targetDir)
   const target = path.join(targetDir, 'repo-memory-mirror.md')
   fs.copyFileSync(obsMirror, target)
-  return { synced: true, mode: 'filesystem', path: target.replaceAll('\\', '/') }
+  return { synced: true, mode: 'filesystem', path: rel(target) }
 }
 
 async function syncCogneeBundle(cogneeBundle) {
@@ -341,7 +341,7 @@ async function syncCogneeBundle(cogneeBundle) {
 
 async function status() {
   const report = { generated_at: now, checks: [] }
-  report.checks.push({ name: 'memoryRoot', ok: exists(memoryRoot), path: memoryRoot })
+  report.checks.push({ name: 'memoryRoot', ok: exists(memoryRoot), path: rel(memoryRoot) })
   for (const layer of layers) report.checks.push({ name: layer, ok: exists(path.join(memoryRoot, layer)) })
   try {
     const res = await fetch('http://localhost:8098/health')
@@ -351,8 +351,9 @@ async function status() {
     try {
       const obsidianToken = process.env.OBSIDIAN_API_KEY || process.env.OBSIDIAN_SYNC_TOKEN
       const res = await fetch(url, { headers: obsidianToken ? { Authorization: `Bearer ${obsidianToken}` } : {} })
-      report.checks.push({ name: `obsidian:${url}`, ok: res.ok || res.status === 401, status: res.status })
-      break
+      const ok = res.ok || res.status === 401
+      report.checks.push({ name: `obsidian:${url}`, ok, status: res.status })
+      if (ok) break
     } catch (err) {
       report.checks.push({ name: `obsidian:${url}`, ok: false, error: err.message })
     }

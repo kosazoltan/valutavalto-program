@@ -18,7 +18,7 @@
 >
 > **Forrás**: Kósa Zoltán user-direktíva 2026-05-05 (Borsi-Helga-Tomi-Heni debug-ciklus után, ELFOGADHATATLAN volt a parancssoros instrukciózás).
 >
-> **Vault**: `D:\valutavalto-vault\feedback\auto-installer-everything-mandatory.md`
+> **Vault**: `D:\repo\valutavalto-program\vault\feedback\auto-installer-everything-mandatory.md`
 
 > ## AI_CONSTITUTION.md (ELSO PRIORITAS)
 >
@@ -46,7 +46,7 @@
 >
 > **Teljes szöveg:**
 > - `.cursor/rules/mandatory-session-closing-protocol.mdc` (always-on, multi-AI)
-> - `D:\valutavalto-vault\feedback\session-closing-protocol-mandatory.md` (vault feedback)
+> - `D:\repo\valutavalto-program\vault\feedback\session-closing-protocol-mandatory.md` (vault feedback)
 
 > ## FOLYAMATOS TESZTELÉSI PROTOKOLL (KÖTELEZŐ — 2026-05-04 user-direktíva)
 >
@@ -72,7 +72,7 @@
 >
 > **Teljes szöveg:**
 > - `.cursor/rules/mandatory-continuous-testing-protocol.mdc` (always-on, multi-AI)
-> - `D:\valutavalto-vault\feedback\continuous-testing-protocol-mandatory.md` (vault feedback)
+> - `D:\repo\valutavalto-program\vault\feedback\continuous-testing-protocol-mandatory.md` (vault feedback)
 
 > ## MEMÓRIAHASZNÁLATI ÉS TUDÁSKARBANTARTÁSI PROTOKOLL (KÖTELEZŐ — 2026-05-04 user-direktíva)
 >
@@ -86,7 +86,7 @@
 > 2. **Munka közbeni memóriafrissítés** — bizonyított root cause / hibajavítás / parancs / projektkonvenció / felhasználói preferencia / elkerülendő minta / külső szolgáltatás viselkedése / biztonsági tanulság / deploy tapasztalat azonnal jegyzetelendő
 > 3. **Session-zárási memóriamentés** — vault `sessions/YYYY-MM-DD-*.md` (új jegyzet) + `feedback/<topic>.md` (új user-direktíva) + `references/<topic>.md` (új projekt-tudás) + `.remember/remember.md` (quick-state)
 >
-> **Memóriaforrás-típusok:** QMD (strukturált tudástár, Quarto Markdown), YAML (gépileg olvasható, `verified`/`assumption`/`deprecated`/`blocked`/`needs-review` mezőkkel), Cognee (gráf, deprecated ebben a repoban), Vectoros (embedding/szemantikus), **Obsidian vault `D:\valutavalto-vault\` (aktív)**.
+> **Memóriaforrás-típusok:** QMD (strukturált tudástár, Quarto Markdown), YAML (gépileg olvasható, `verified`/`assumption`/`deprecated`/`blocked`/`needs-review` mezőkkel), Cognee (gráf, deprecated ebben a repoban), Vectoros (embedding/szemantikus), **repo-local Obsidian vault `D:\repo\valutavalto-program\vault\` (aktív)**.
 >
 > **Dream funkció (kötelező, tényalapú):** csendes memória-elemzés a memóriaforrások között — kapcsolatok keresése, ismétlődő hibák felismerése, javasolt gyakorlatok. NEM fantáziálás, NEM helyettesít tesztet/buildet/lintet/runtime ellenőrzést.
 >
@@ -101,7 +101,7 @@
 >
 > **Teljes szöveg:**
 > - `.cursor/rules/mandatory-memory-protocol.mdc` (always-on, multi-AI)
-> - `D:\valutavalto-vault\feedback\memory-protocol-mandatory.md` (vault feedback)
+> - `D:\repo\valutavalto-program\vault\feedback\memory-protocol-mandatory.md` (vault feedback)
 
 ## Projekt áttekintés
 Magyar valutaváltó / pénzváltó ERP rendszer. Multi-tenant (több iroda), offline-képes.
@@ -164,7 +164,7 @@ scripts/                  # Utility szkriptek
 - ❌ Hazudni "minden zöld"-et `gh pr checks` validáció nélkül
 - ❌ Csak az ALL_DONE monitor után átfutni a PR-t — proaktívan kell ellenőrizni az AI-bot review-ját
 
-**Részletes workflow:** [vault/feedback/lint-ci-codex-sourcery-every-pr-mandatory.md](D:\valutavalto-vault\feedback\lint-ci-codex-sourcery-every-pr-mandatory.md)
+**Részletes workflow:** [vault/feedback/lint-ci-codex-sourcery-every-pr-mandatory.md](D:\repo\valutavalto-program\vault\feedback\lint-ci-codex-sourcery-every-pr-mandatory.md)
 
 ## KÖTELEZŐ ÉRVÉNYŰ: Production-first fejlesztés
 > **A fejlesztés közvetlenül a produktumhoz (Hetzner HA: https://excvaluta.com) illeszkedik.**
@@ -210,8 +210,9 @@ A korábbi rendszerek **deprecated** (2026-04-27 user-direktíva — "memória m
 1. `D:\repo\valutavalto-program\vault\sessions\YYYY-MM-DD-rovid-leiras.md` — új session-jegyzet
 2. `D:\repo\valutavalto-program\vault\feedback\<topic>.md` — ha új user-direktíva érkezett
 3. `D:\repo\valutavalto-program\vault\references\<topic>.md` — ha új projekt-tudás érkezett külső forrásból
-4. `.remember/remember.md` — quick-state update (Main HEAD, open PR/issue, production health)
-5. CLAUDE.md "Nyitott következő feladatok" → frissítés ha változott
+4. `D:\repo\valutavalto-program\vault\procedures\<workflow-name>.md` — ha új vagy módosult workflow született
+5. `.remember/remember.md` — quick-state update (Main HEAD, open PR/issue, production health)
+6. CLAUDE.md "Nyitott következő feladatok" → frissítés ha változott
 
 **Tilos:**
 - ❌ Új fájl írása `~/.claude/projects/.../memory/`-ba — az csak redirect
@@ -469,7 +470,7 @@ Lasd: `docs/AI_REVIEW_AUTOMATION.md`
 ## KÖTELEZŐ ÉRVÉNYŰ: AI Review Zero-Tolerance Mandate (v2.3.18+, 2026-04-29 user-direktíva)
 
 > **Hatálybalépés:** 2026-04-29 20:55 CEST (Kósa Zoltán direkt utasítása)
-> **Vault:** `D:\valutavalto-vault\feedback\ai-review-mandate-zero-tolerance.md`
+> **Vault:** `D:\repo\valutavalto-program\vault\feedback\ai-review-mandate-zero-tolerance.md`
 
 **A szabály:**
 > Addig nem léphetsz tovább, amíg a GitHub Codex + Sourcery AI Botok jelentéseit
@@ -501,7 +502,7 @@ level >= 2). A mandate NEM-követése = production-fagyás-detection elvész.
 ## KÖTELEZŐ ÉRVÉNYŰ: Hallucinációs Kör Megszüntetése — Iparági Standard (2026-04-29 user-direktíva)
 
 > **Hatálybalépés:** 2026-04-29 21:25 CEST (Kósa Zoltán direkt utasítása)
-> **Vault:** `D:\valutavalto-vault\feedback\hallucinacio-megszuntetese.md`
+> **Vault:** `D:\repo\valutavalto-program\vault\feedback\hallucinacio-megszuntetese.md`
 > **Trigger:** 9 sorozatos Sourcery P2 follow-up PR (v2.3.13 → v2.3.22) ugyanazon a fájlon.
 
 **Context7 API kulcs (2026-04-29 user-import):**
@@ -581,7 +582,7 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
   - GitHub Release: https://github.com/kosazoltan/valutavalto-program/releases/tag/v2.3.2
 - **Újra-buildelés:** `powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 [-SkipDownloads]`. A `$Version` PARAMETER auto-load a monorepo root `package.json`-ból (PR #103 + #104 `build-common.ps1` helperrel).
 - **NSIS encoding szabály:** `.nsi` csak Windows-1252 ASCII. Ékezetek → sima ASCII. Em-dash → `-`.
-- **Aktuális memória helye:** `D:\valutavalto-vault\sessions\2026-04-29-*.md` (Obsidian vault: multi-track-execution + track-4-spring-boot-4-sprint). A `docs/knowledge/memory/*.yaml` történelmi formátum, új session-jegyzetek a vault-ba kerülnek.
+- **Aktuális memória helye:** `D:\repo\valutavalto-program\vault\sessions\2026-04-29-*.md` (Obsidian vault: multi-track-execution + track-4-spring-boot-4-sprint). A `docs/knowledge/memory/*.yaml` történelmi formátum, új session-jegyzetek a vault-ba kerülnek.
 - **Asztali shortcutok** (`C:\Users\Kósa Zoltán\OneDrive\Desktop\`): `Valuta Pénztár — Fejlesztői mód (INDÍTÁS).lnk`, `Valuta Pénztár — Fejlesztői mód (LEÁLLÍTÁS).lnk`, `Valuta Pénztár — Éles kliens (telepített).lnk`.
 - **AI review automation:** `.github/workflows/ai-review-auto-fix.yml` minden PR merge után triggerel. Sourcery weekly rate-limit (1.5M diff char) — nem blokkoló. A Bence-féle `.github/workflows/auto-review.yml` 2026-04-27 óta törölve.
 - **Production URL SSOT (BEFEJEZVE):** `config/production-urls.json` + `backend/.../config/ProductionUrls.java` + `scripts/_production-urls.ps1` + Electron `penztar-client/electron/main.ts` `loadProductionUrls()` + `electron-builder.json` extraResources. Lazy-load minden komponensben.
@@ -596,4 +597,4 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 
 **LEZÁRVA 2026-04-29-i sessionben:** ✅ Spring Boot 3.5.13 → 4.0.6 (PR #263, sprint), ✅ Tomcat 10.1.54 → 11.0.21 (PR #264), ✅ JacksonConfig builder + modulesToInstall (PR #265+#266), ✅ springdoc 3.0.3 (#263 unified, #196 dependabot zárta automatikusan), ✅ eslint 9.39 → 10.2.1 + Node engines >=20.19.0 (PR #256), ✅ react 18 → 19.2.5 (PR #257, mind a 4 csomag, peer-dep skew elhárítva), ✅ V166 silent reactivation + V167 BASE TABLE defensive migrationok (PR #255, #258), ✅ MIGRATION_NOTES.md dokumentálás (V3_5+V33+V3_7+V109+V166+V167), ✅ playwright.live testMatch full-menu spec (PR #255).
 
-**LEZÁRVA (korábbi sessionekben):** ✅ Issue #110 cash_balance (2026-04-27), ✅ V155 migration (2026-04-24), ✅ CB-016 NavClosingService VAT_RATE → tax_code mapping (V143 + SystemParameter), ✅ Production URL SSOT teljes 3-réteg refaktor (PR #173 + #174), ✅ Cognee MCP / Obsidian vault sync (`D:\valutavalto-vault\` aktív 2026-04-27 óta).
+**LEZÁRVA (korábbi sessionekben):** ✅ Issue #110 cash_balance (2026-04-27), ✅ V155 migration (2026-04-24), ✅ CB-016 NavClosingService VAT_RATE → tax_code mapping (V143 + SystemParameter), ✅ Production URL SSOT teljes 3-réteg refaktor (PR #173 + #174), ✅ Cognee MCP / Obsidian vault sync (`D:\repo\valutavalto-program\vault\` aktív 2026-04-27 óta).

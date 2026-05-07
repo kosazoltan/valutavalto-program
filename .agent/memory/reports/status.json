@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-05-07T20:41:10.692Z",
+  "generated_at": "2026-05-07T20:52:19.893Z",
   "checks": [
     {
       "name": "memoryRoot",
       "ok": true,
-      "path": "D:\\repo\\valutavalto-program\\.agent\\memory"
+      "path": ".agent/memory"
     },
     {
       "name": "qmd",
