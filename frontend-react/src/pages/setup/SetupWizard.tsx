@@ -201,7 +201,7 @@ export default function SetupWizard() {
   // engedjük kiválasztani — különben a felhasználó tévedésből pénztárt
   // választhatna értéktárhoz, és a területi szűrés is rosszul mutatna.
   const filteredBranches = useMemo(() => {
-    let list = filterBranchesForAppMode(branches, appModeChoice)
+    const list = filterBranchesForAppMode(branches, appModeChoice)
     const q = branchSearch.trim().toLowerCase()
     if (!q) return list
     return list.filter((b) =>
