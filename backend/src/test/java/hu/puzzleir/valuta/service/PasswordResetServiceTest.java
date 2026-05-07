@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.PasswordResetTokenRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
+import jakarta.persistence.LockModeType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,9 +15,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Method;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,6 +52,7 @@ class PasswordResetServiceTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(service, "frontendBaseUrl", "https://excvaluta.com");
+        ReflectionTestUtils.setField(service, "logHashSecret", "test-log-hash-secret-minimum-32-chars");
     }
 
     @Test
@@ -125,6 +131,40 @@ class PasswordResetServiceTest {
     }
 
     @Test
+    @DisplayName("requestForgotPassword: token irasa miatt nem read-only tranzakcio")
+    void requestForgotPassword_allowsDatabaseWrites() throws NoSuchMethodException {
+        Method method = PasswordResetService.class.getMethod("requestForgotPassword", String.class);
+
+        Transactional transactional = method.getAnnotation(Transactional.class);
+
+        assertThat(transactional).isNotNull();
+        assertThat(transactional.readOnly()).isFalse();
+    }
+
+    @Test
+    @DisplayName("resetPassword: token fogyasztas pessimistic write lockkal tortenik")
+    void resetTokenLookup_usesPessimisticWriteLock() throws NoSuchMethodException {
+        Method method = PasswordResetTokenRepository.class
+                .getMethod("findUnusedByTokenHashForUpdate", String.class);
+
+        Lock lock = method.getAnnotation(Lock.class);
+
+        assertThat(lock).isNotNull();
+        assertThat(lock.value()).isEqualTo(LockModeType.PESSIMISTIC_WRITE);
+    }
+
+    @Test
+    @DisplayName("cleanup: modositasi query sajat tranzakcioban is futtathato")
+    void cleanupQuery_declaresTransactionalBoundary() throws NoSuchMethodException {
+        Method method = PasswordResetTokenRepository.class.getMethod("deleteExpiredOrUsed", Instant.class);
+
+        Transactional transactional = method.getAnnotation(Transactional.class);
+
+        assertThat(transactional).isNotNull();
+        assertThat(transactional.readOnly()).isFalse();
+    }
+
+    @Test
     @DisplayName("requestForgotPassword: blank email -> NEM kuldunk emailt, NEM tobbet")
     void blankEmail_returnsNullAndDoesNothing() {
         String token = service.requestForgotPassword("  ");
@@ -164,9 +204,38 @@ class PasswordResetServiceTest {
     }
 
     @Test
+    @DisplayName("requestForgotPassword: email normalizalas Locale.ROOT alapu")
+    void emailNormalization_usesLocaleRoot() {
+        Locale previous = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+            when(workerRepository.findByEmail("info@example.com")).thenReturn(Optional.empty());
+
+            service.requestForgotPassword("INFO@example.com");
+
+            verify(workerRepository).findByEmail("info@example.com");
+        } finally {
+            Locale.setDefault(previous);
+        }
+    }
+
+    @Test
+    @DisplayName("logHash: HMAC alapu, 20 hex karakteres es normalizalt")
+    void logHash_usesKeyedHash() throws Exception {
+        Method method = PasswordResetService.class.getDeclaredMethod("logHash", String.class);
+        method.setAccessible(true);
+
+        String first = (String) method.invoke(service, "  Mixed@Example.COM ");
+        String second = (String) method.invoke(service, "mixed@example.com");
+
+        assertThat(first).isEqualTo(second);
+        assertThat(first).matches("[0-9a-f]{20}");
+    }
+
+    @Test
     @DisplayName("resetPassword: ervenytelen token -> ValidationException")
     void invalidToken_throwsValidationException() {
-        when(resetTokenRepository.findByTokenHashAndUsedAtIsNull(anyString())).thenReturn(Optional.empty());
+        when(resetTokenRepository.findUnusedByTokenHashForUpdate(anyString())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.resetPassword("not-a-real-token", "newPass123"))
                 .isInstanceOf(ValidationException.class)
@@ -187,7 +256,7 @@ class PasswordResetServiceTest {
                 .workerId(11L)
                 .expiresAt(Instant.now().plusSeconds(60))
                 .build();
-        when(resetTokenRepository.findByTokenHashAndUsedAtIsNull(anyString())).thenReturn(Optional.of(resetToken));
+        when(resetTokenRepository.findUnusedByTokenHashForUpdate(anyString())).thenReturn(Optional.of(resetToken));
         when(workerRepository.findById(11L)).thenReturn(Optional.of(worker));
         when(passwordEncoder.encode("newPassword123")).thenReturn("$2a$encoded$");
 
@@ -214,7 +283,7 @@ class PasswordResetServiceTest {
                 .workerId(13L)
                 .expiresAt(Instant.now().plusSeconds(60))
                 .build();
-        when(resetTokenRepository.findByTokenHashAndUsedAtIsNull(anyString()))
+        when(resetTokenRepository.findUnusedByTokenHashForUpdate(anyString()))
                 .thenReturn(Optional.of(resetToken))
                 .thenReturn(Optional.empty());
         when(workerRepository.findById(13L)).thenReturn(Optional.of(worker));
