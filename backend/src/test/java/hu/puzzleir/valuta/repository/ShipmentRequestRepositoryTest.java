@@ -11,7 +11,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,23 +33,25 @@ class ShipmentRequestRepositoryTest {
     void findMaxRequestNumberUsesSuffixAfterPrefix() {
         String todayPrefix = "SHR-20260507-";
         String otherDayPrefix = "SHR-20260506-";
+        LocalDate today = LocalDate.of(2026, 5, 7);
+        LocalDate otherDay = LocalDate.of(2026, 5, 6);
 
-        repository.save(request(todayPrefix + "0001"));
-        repository.save(request(todayPrefix + "0002"));
-        repository.save(request(otherDayPrefix + "0099"));
+        repository.save(request(todayPrefix + "0001", today));
+        repository.save(request(todayPrefix + "0002", today));
+        repository.save(request(otherDayPrefix + "0099", otherDay));
 
         assertThat(repository.findMaxRequestNumber(todayPrefix)).isEqualTo(2);
     }
 
-    private static ShipmentRequest request(String requestNumber) {
+    private static ShipmentRequest request(String requestNumber, LocalDate requestDate) {
         return ShipmentRequest.builder()
                 .requestNumber(requestNumber)
                 .fromBranchId(UUID.randomUUID())
                 .toBranchId(UUID.randomUUID())
                 .requestedById(1L)
                 .status(ShipmentRequestStatus.DRAFT)
-                .requestDate(LocalDate.of(2026, 5, 7))
-                .createdAt(LocalDateTime.of(2026, 5, 7, 8, 0))
+                .requestDate(requestDate)
+                .createdAt(requestDate.atTime(8, 0))
                 .build();
     }
 }

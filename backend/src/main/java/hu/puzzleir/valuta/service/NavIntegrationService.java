@@ -2,7 +2,6 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.dto.nav.NavSendResult;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,15 +18,21 @@ import java.util.UUID;
  * Bridge implementáció: a hardverhívásokat auditálható managed-storage artifactokra fordítja.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class NavIntegrationService {
 
     private final IntegrationTransportProperties integrationTransportProperties;
     private final FileTransportService fileTransportService;
+    private final boolean bridgeSimulatedSuccessEnabled;
 
-    @Value("${nav.bridge.simulated-success-enabled:false}")
-    private boolean bridgeSimulatedSuccessEnabled;
+    public NavIntegrationService(
+            IntegrationTransportProperties integrationTransportProperties,
+            FileTransportService fileTransportService,
+            @Value("${nav.bridge.simulated-success-enabled:false}") boolean bridgeSimulatedSuccessEnabled) {
+        this.integrationTransportProperties = integrationTransportProperties;
+        this.fileTransportService = fileTransportService;
+        this.bridgeSimulatedSuccessEnabled = bridgeSimulatedSuccessEnabled;
+    }
 
     @jakarta.annotation.PostConstruct
     void warnBridgeMode() {
@@ -49,12 +54,7 @@ public class NavIntegrationService {
 
         String safeComPort = normalizeComPort(comPort);
         if (!bridgeSimulatedSuccessEnabled) {
-            log.warn("NAV tranzakció bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: "
-                    + "transactionId={}, comPort={}", transactionId, safeComPort);
-            return NavSendResult.builder()
-                .success(false)
-                .error(bridgeDisabledMessage("tranzakció küldés"))
-                .build();
+            return disabledSendResult("tranzakció küldés", safeComPort, "transactionId={}", transactionId);
         }
 
         try {
@@ -89,9 +89,7 @@ public class NavIntegrationService {
      */
     public String receiveReceiptNumber(String comPort) {
         String safeComPort = normalizeComPort(comPort);
-        if (!bridgeSimulatedSuccessEnabled) {
-            log.warn("NAV nyugtaszám bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: comPort={}",
-                    safeComPort);
+        if (isBridgeSimulationDisabled("nyugtaszám lekérdezés", safeComPort)) {
             return null;
         }
 
@@ -125,9 +123,7 @@ public class NavIntegrationService {
         }
 
         String safeComPort = normalizeComPort(comPort);
-        if (!bridgeSimulatedSuccessEnabled) {
-            log.warn("NAV QR bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: comPort={}",
-                    safeComPort);
+        if (isBridgeSimulationDisabled("QR küldés", safeComPort)) {
             return false;
         }
 
@@ -163,5 +159,32 @@ public class NavIntegrationService {
 
     private String bridgeDisabledMessage(String action) {
         return "NAV bridge szimuláció tiltva: nincs éles pénztárgép-visszaigazolás (" + action + ")";
+    }
+
+    private NavSendResult disabledSendResult(String action, String comPort, String contextTemplate, Object contextValue) {
+        logBridgeSimulationDisabled(action, comPort, contextTemplate, contextValue);
+        return NavSendResult.builder()
+                .success(false)
+                .error(bridgeDisabledMessage(action))
+                .build();
+    }
+
+    private boolean isBridgeSimulationDisabled(String action, String comPort) {
+        if (bridgeSimulatedSuccessEnabled) {
+            return false;
+        }
+        logBridgeSimulationDisabled(action, comPort, null, null);
+        return true;
+    }
+
+    private void logBridgeSimulationDisabled(String action, String comPort, String contextTemplate, Object contextValue) {
+        if (contextTemplate == null) {
+            log.warn("NAV {} bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: comPort={}",
+                    action, comPort);
+            return;
+        }
+        log.warn("NAV {} bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: "
+                        + contextTemplate + ", comPort={}",
+                action, contextValue, comPort);
     }
 }

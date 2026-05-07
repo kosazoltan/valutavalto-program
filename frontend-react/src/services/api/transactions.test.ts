@@ -211,7 +211,20 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     expect(result.requestStatus).toBe('DRAFT')
     expect(result.requestingBranchId).toBe('BR-A')
     expect(result.targetBranchId).toBe('BR-B')
+    expect(result.requestedByWorkerId).toBe('7')
     expect(result.requestedAt).toBe('2026-05-07T08:00:00Z')
+  })
+
+  it('create: ervenytelen currencyId eseten nem kuld NaN payloadot', async () => {
+    await expect(
+      shipmentRequestApi.create({
+        fromBranchId: 'BR-A',
+        toBranchId: 'BR-B',
+        items: [{ currencyId: 'not-a-number', requestedAmount: 1000 }],
+      })
+    ).rejects.toThrow('Ervenytelen valutaazonosito')
+
+    expect(mockApi.post).not.toHaveBeenCalled()
   })
 
   it('submit: a /shipments/{id}/submit endpointot hivja', async () => {
