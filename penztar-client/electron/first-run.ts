@@ -856,46 +856,24 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
 
     if (payload.selectedWorkerCode && payload.selectedWorkerCode.trim().length > 0) {
       log.info('[Setup] Worker first-time-setup uton (kivalasztott dolgozo):', payload.selectedWorkerCode);
-      // v2.5.19: a bootstrapPassword a SYSTEM admin auth (bootstrap-status), NEM
-      // a kivalasztott worker seed-jelszava. Ezert NEM passzoljuk currentPassword-kent
-      // — a backend WorkerFirstTimeSetupService line 102-104 explicit engedi az
-      // ures currentPassword-ot seed workerekre (passwordChangedAt == null).
+      // Lezart bootstrap utan a backend a jelenlegi/kezdo worker jelszot is
+      // keri, hogy worker kod ismeretevel ne lehessen publikus fiokot atvenni.
       const workerSetup = await workerFirstTimeSetup(resolvedApiUrl, {
         companyCode: normalizedCompanyCode,
         workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
         newPassword: payload.adminPassword,
+        currentPassword: payload.bootstrapPassword?.trim() || undefined,
       });
       if (!workerSetup.success) {
         const bootstrapCompleted = await getBootstrapCompleted(resolvedApiUrl);
-        if (bootstrapCompleted === true) {
-          log.warn('[Setup] Worker first-time setup nem fogadta el a resetet, bootstrap-completed=true -> reinstall password update ag.');
-          const reset = await bootstrapAdmin(resolvedApiUrl, {
-            companyCode: normalizedCompanyCode,
-            workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
-            workerName: payload.selectedWorkerName || payload.selectedWorkerCode.trim().toUpperCase(),
-            email: undefined,
-            newPassword: payload.adminPassword,
-          });
-          if (!reset.success) {
-            return {
-              success: false,
-              envPath,
-              errorMessage: `A dolgozoi jelszo ujratelepitesi frissitese nem sikerult: ${reset.errorMessage ?? 'ismeretlen hiba'}`,
-            };
-          }
-          resolvedWorkerIdentity = {
-            workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
-            workerName: payload.selectedWorkerName,
-            workerRole: payload.selectedWorkerRole,
-          };
-          log.info('[Setup] Worker jelszo reinstall-aggal frissitve:', resolvedWorkerIdentity);
-        } else {
-          return {
-            success: false,
-            envPath,
-            errorMessage: `A dolgozoi jelszo beallitasa nem sikerult: ${workerSetup.errorMessage ?? 'ismeretlen hiba'}`,
-          };
-        }
+        const hint = bootstrapCompleted === true
+          ? ' Add meg a jelenlegi vagy kezdo dolgozoi jelszot a szerver lepesen.'
+          : '';
+        return {
+          success: false,
+          envPath,
+          errorMessage: `A dolgozoi jelszo beallitasa nem sikerult: ${workerSetup.errorMessage ?? 'ismeretlen hiba'}${hint}`,
+        };
       }
       if (workerSetup.success) {
         resolvedWorkerIdentity = workerSetup.workerIdentity ?? {

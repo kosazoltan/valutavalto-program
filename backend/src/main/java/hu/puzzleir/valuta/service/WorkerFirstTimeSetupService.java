@@ -43,6 +43,7 @@ public class WorkerFirstTimeSetupService {
     private final WorkerRepository workerRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final AdminBootstrapService adminBootstrapService;
 
     /**
      * Worker elso jelszavanak beallitasa / reset.
@@ -74,13 +75,17 @@ public class WorkerFirstTimeSetupService {
         }
 
         // 3) Biztonsagi ellenorzes:
-        //    Ha a worker-nek mar volt jelszo-valtasa (passwordChangedAt != null),
-        //    akkor a currentPassword megegyezes kotelezo.
-        //    Ha soha nem volt (seed worker V111), akkor a seed default jelszo
-        //    vagy ures currentPassword is elfogadhato.
+        //    A permitAll setup endpoint az elso telepiteshez kell. Miutan a
+        //    bootstrap lezarult, egy letezo worker jelszava csak a jelenlegi
+        //    jelszo ismereteben allithato at, kulonben worker kod ismeretevel
+        //    publikus fiokatvetel lenne.
+        boolean bootstrapCompleted = adminBootstrapService.isBootstrapAlreadyCompleted();
+        boolean currentPasswordProvided = dto.getCurrentPassword() != null
+                && !dto.getCurrentPassword().isBlank();
+
         if (worker.getPasswordChangedAt() != null) {
             // Mar aktiv user-jelszo van -> csak a regi jelszoval engedjuk cserelni
-            if (dto.getCurrentPassword() == null || dto.getCurrentPassword().isBlank()) {
+            if (!currentPasswordProvided) {
                 throw new ValidationException(
                         "Ez a dolgozo mar beallitott jelszot — a jelenlegi jelszo is kotelezo "
                         + "a valtashoz."
@@ -90,19 +95,31 @@ public class WorkerFirstTimeSetupService {
                 throw new ValidationException("A jelenlegi jelszo nem egyezik.");
             }
         } else if (worker.getPasswordHash() != null && !worker.getPasswordHash().isBlank()) {
-            // Seed-jelszo van (V111 = "1234") — a user opciosan beirhatja a seed-et
-            // csak akkor, ha megadott currentPassword van a request-ben.
-            if (dto.getCurrentPassword() != null && !dto.getCurrentPassword().isBlank()) {
+            // Seed-jelszo van (pl. V111 = "1234"). Lezart bootstrap utan ez is
+            // titoknak szamit: currentPassword nelkul nem adunk uj jelszot.
+            if (!currentPasswordProvided && bootstrapCompleted) {
+                throw new ValidationException(
+                        "A telepites mar lezarult — a jelenlegi vagy kezdo dolgozoi jelszo "
+                        + "kotelezo az uj jelszo beallitasahoz."
+                );
+            }
+            if (currentPasswordProvided) {
                 if (!passwordEncoder.matches(dto.getCurrentPassword(), worker.getPasswordHash())) {
                     throw new ValidationException(
                             "A megadott jelenlegi (seed) jelszo nem egyezik."
                     );
                 }
             }
-            // Ha nincs currentPassword megadva, akkor is engedelyezzuk — ez az
-            // intended first-time setup path a seed-telepitet workerekre.
+            // Bootstrap elott tovabbra is engedett az ures currentPassword:
+            // ez az intended first-time setup path friss telepiteskor.
+        } else if (bootstrapCompleted) {
+            throw new ValidationException(
+                    "A dolgozohoz nincs kezdo jelszo beallitva. Lezart telepites utan "
+                    + "csak hitelesitett admin jelszo-reset folyamat hasznalhato."
+            );
         }
-        // Ha worker.passwordHash == null (soha nem volt seed sem), szinten engedjuk
+        // Ha worker.passwordHash == null es bootstrap meg nincs lezarva, friss elso
+        // telepiteskent engedjuk az uj jelszo beallitasat.
 
         // 4) Uj jelszo beallitasa + BCrypt hash + timestamp
         worker.setPasswordHash(passwordEncoder.encode(dto.getNewPassword()));

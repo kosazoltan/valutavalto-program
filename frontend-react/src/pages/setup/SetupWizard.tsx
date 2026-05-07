@@ -800,14 +800,11 @@ interface ServerStepProps {
 
 function ServerStep(props: ServerStepProps) {
   const { t } = useTranslation()
-  // v2.5.24: a `bootstrapPassword` + `onBootstrapPasswordChange` mar nem hasznalt
-  // a UI-n (eltavolitottuk a "Teszt jelszo" mezot), de a parent komponens meg
-  // atadja a propsban — ezert a destructuring-bol kihagyjuk, de a parent meg
-  // mukodik, mert a `setupSave`-be `bootstrapPassword` ures string mar.
   const {
     apiUrl,
     companyCode, onCompanyCodeChange,
     bootstrapUsername, onBootstrapUsernameChange,
+    bootstrapPassword, onBootstrapPasswordChange,
     offlineMode, onOfflineModeChange,
     connectionTest, onTestConnection,
     selectedBranchCode,
@@ -899,12 +896,22 @@ function ServerStep(props: ServerStepProps) {
             {t('setup.azIttKivalasztottPenztarosKodjahozAz5LepesenAllitjaBeAzUjJelszot')}
           </span>
         </FieldLabel>
-      </div>
 
-      {/* v2.5.24 UX: a "Teszt jelszó" mezőt eltávolítottuk — felesleges volt és zavaró.
-          A connection test most kizarolag a `bootstrap-status` endpoint-tal megy
-          (auth nélkül), így a wizard 4. lépésén a felhasználónak SEMMI jelszót
-          nem kell beírnia. A LOGIN-jelszót az 5. lépésen állítja be — egyszer. */}
+        <FieldLabel label="Jelenlegi vagy kezdő jelszó" icon={<KeyRound className="w-4 h-4" />}>
+          <input
+            type="password"
+            value={bootstrapPassword}
+            onChange={(e) => onBootstrapPasswordChange(e.target.value)}
+            disabled={offlineMode}
+            autoComplete="current-password"
+            placeholder="Szükséges lezárt telepítésnél"
+            className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100 disabled:text-slate-500"
+          />
+          <span className="text-xs text-slate-500 mt-1 block">
+            Az új belépési jelszót a következő lépésen állítja be.
+          </span>
+        </FieldLabel>
+      </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <button
