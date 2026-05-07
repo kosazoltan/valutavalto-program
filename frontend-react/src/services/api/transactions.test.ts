@@ -212,7 +212,11 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     expect(result.requestingBranchId).toBe('BR-A')
     expect(result.targetBranchId).toBe('BR-B')
     expect(result.requestedByWorkerId).toBe('7')
+    expect(typeof result.requestedByWorkerId).toBe('string')
     expect(result.requestedAt).toBe('2026-05-07T08:00:00Z')
+    expect(result.requestingBranchName).toBeUndefined()
+    expect(result.targetBranchName).toBeUndefined()
+    expect(result.requestedByWorkerName).toBeUndefined()
   })
 
   it('create: ervenytelen currencyId eseten nem kuld NaN payloadot', async () => {

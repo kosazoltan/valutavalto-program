@@ -96,6 +96,18 @@ export default function ShipmentListPage() {
     )
   }
 
+  const formatDate = (value?: string): string => {
+    if (!value) return '-'
+    const date = new Date(value)
+    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('hu-HU')
+  }
+
+  const formatDateTime = (value?: string): string => {
+    if (!value) return '-'
+    const date = new Date(value)
+    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('hu-HU')
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -175,17 +187,17 @@ export default function ShipmentListPage() {
             <tbody>
               {shipments.map((shipment) => (
                 <tr key={shipment.id}>
-                  <td className="font-mono font-semibold">{shipment.requestNumber}</td>
-                  <td>{shipment.requestingBranchName}</td>
-                  <td>{shipment.targetBranchName}</td>
+                  <td className="font-mono font-semibold">{shipment.requestNumber ?? '-'}</td>
+                  <td>{shipment.requestingBranchName ?? shipment.requestingBranchId ?? '-'}</td>
+                  <td>{shipment.targetBranchName ?? shipment.targetBranchId ?? '-'}</td>
                   <td>
-                    {new Date(shipment.requestedDeliveryDate).toLocaleDateString('hu-HU')}
+                    {formatDate(shipment.requestedDeliveryDate)}
                   </td>
-                  <td>{getStatusBadge(shipment.requestStatus)}</td>
+                  <td>{getStatusBadge(shipment.requestStatus ?? '-')}</td>
                   <td className="text-sm text-gray-600">
-                    <div>{shipment.requestedByWorkerName}</div>
+                    <div>{shipment.requestedByWorkerName ?? shipment.requestedByWorkerId ?? '-'}</div>
                     <div className="text-xs">
-                      {new Date(shipment.requestedAt).toLocaleString('hu-HU')}
+                      {formatDateTime(shipment.requestedAt)}
                     </div>
                   </td>
                   <td>

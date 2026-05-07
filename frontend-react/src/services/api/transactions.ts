@@ -879,20 +879,20 @@ export const transactionBanknoteApi = {
 
 export interface ShipmentRequest {
   id: string
-  requestNumber: string
-  requestingBranchId: string
+  requestNumber?: string
+  requestingBranchId?: string
   requestingBranchName?: string
-  targetBranchId: string
+  targetBranchId?: string
   targetBranchName?: string
   sourceBranchId?: string
   sourceBranchName?: string
   shipmentType?: string
-  requestedDeliveryDate: string
+  requestedDeliveryDate?: string
   priorityDid?: string
-  requestStatus: string
-  requestedByWorkerId: string
+  requestStatus?: string
+  requestedByWorkerId?: string
   requestedByWorkerName?: string
-  requestedAt: string
+  requestedAt?: string
   approvedByWorkerId?: string
   approvedByWorkerName?: string
   approvedAt?: string
@@ -933,6 +933,14 @@ export interface ShipmentCreateRequest {
  * frontend `{requestStatus, requestedDeliveryDate, requestingBranchId, targetBranchId, ...}`-ra.
  */
 const shipmentResponseKeys = {
+  requestNumber: ['requestNumber', 'number'],
+  requestStatus: ['requestStatus', 'status'],
+  requestedDeliveryDate: ['requestedDeliveryDate', 'deliveryDate', 'requestDate'],
+  requestingBranchId: ['requestingBranchId', 'fromBranchId'],
+  requestingBranchName: ['requestingBranchName', 'fromBranchName'],
+  targetBranchId: ['targetBranchId', 'toBranchId'],
+  targetBranchName: ['targetBranchName', 'toBranchName'],
+  requestedByWorkerName: ['requestedByWorkerName', 'requestedBy'],
   requestedByWorkerId: ['requestedByWorkerId', 'requestedById'],
   requestedAt: ['requestedAt', 'createdAt', 'requestDate'],
 } as const
@@ -963,21 +971,19 @@ function parseShipmentCurrencyId(value: string | number): number {
 
 function normalizeShipmentRequest(raw: Record<string, unknown>): ShipmentRequest {
     const r = raw as Partial<ShipmentRequest> & Record<string, unknown>
-    const requestedByWorkerId = optionalString(firstDefined(r, shipmentResponseKeys.requestedByWorkerId))
-    const requestedAt = optionalString(firstDefined(r, shipmentResponseKeys.requestedAt))
     return {
         ...r,
         // Ha a backend raw mezot kuldott, de frontend-kompat mezoje hianyzik, masoljuk at
-        requestStatus: (r.requestStatus ?? r['status']) as ShipmentRequest['requestStatus'],
-        requestedDeliveryDate: (r.requestedDeliveryDate ?? r['deliveryDate']) as ShipmentRequest['requestedDeliveryDate'],
-        requestingBranchId: (r.requestingBranchId ?? r['fromBranchId']) as ShipmentRequest['requestingBranchId'],
-        targetBranchId: (r.targetBranchId ?? r['toBranchId']) as ShipmentRequest['targetBranchId'],
-        requestingBranchName: (r.requestingBranchName ?? r['fromBranchName']) as ShipmentRequest['requestingBranchName'],
-        targetBranchName: (r.targetBranchName ?? r['toBranchName']) as ShipmentRequest['targetBranchName'],
-        requestedByWorkerName: (r.requestedByWorkerName ?? r['requestedBy']) as ShipmentRequest['requestedByWorkerName'],
-        requestedByWorkerId: requestedByWorkerId as ShipmentRequest['requestedByWorkerId'],
-        requestedAt: requestedAt as ShipmentRequest['requestedAt'],
-        requestNumber: (r.requestNumber ?? r['number']) as ShipmentRequest['requestNumber'],
+        requestStatus: optionalString(firstDefined(r, shipmentResponseKeys.requestStatus)),
+        requestedDeliveryDate: optionalString(firstDefined(r, shipmentResponseKeys.requestedDeliveryDate)),
+        requestingBranchId: optionalString(firstDefined(r, shipmentResponseKeys.requestingBranchId)),
+        targetBranchId: optionalString(firstDefined(r, shipmentResponseKeys.targetBranchId)),
+        requestingBranchName: optionalString(firstDefined(r, shipmentResponseKeys.requestingBranchName)),
+        targetBranchName: optionalString(firstDefined(r, shipmentResponseKeys.targetBranchName)),
+        requestedByWorkerName: optionalString(firstDefined(r, shipmentResponseKeys.requestedByWorkerName)),
+        requestedByWorkerId: optionalString(firstDefined(r, shipmentResponseKeys.requestedByWorkerId)),
+        requestedAt: optionalString(firstDefined(r, shipmentResponseKeys.requestedAt)),
+        requestNumber: optionalString(firstDefined(r, shipmentResponseKeys.requestNumber)),
     } as ShipmentRequest
 }
 
