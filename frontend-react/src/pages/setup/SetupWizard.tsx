@@ -370,7 +370,7 @@ export default function SetupWizard() {
       } catch {
         bootstrapCompleted = false
       }
-      const useWorkerSetup = selectedWorker !== null || (bootstrapCompleted && selectedWorkerCode.length > 0)
+      const useWorkerSetup = selectedWorker !== null || (bootstrapCompleted && selectedWorkerCode.trim().length > 0)
       let workerIdentity: { workerCode: string; workerName?: string; workerRole?: string; branchCode?: string } | null = null
 
       if (useWorkerSetup) {
@@ -845,7 +845,10 @@ function ServerStep(props: ServerStepProps) {
   const [workerListLoading, setWorkerListLoading] = useState(false)
 
   useEffect(() => {
-    if (!selectedBranchCode || offlineMode) {
+    const normalizedCompanyCode = companyCode.trim()
+    const normalizedBranchCode = selectedBranchCode?.trim() ?? ""
+
+    if (!normalizedBranchCode || !normalizedCompanyCode || offlineMode) {
       setWorkerList([])
       onWorkerListChange([])
       return
@@ -854,11 +857,11 @@ function ServerStep(props: ServerStepProps) {
     setWorkerListLoading(true)
     const loadWorkers = window.electronAPI?.setupGetWorkers
       ? window.electronAPI.setupGetWorkers({
-        apiUrl,
-        companyCode,
-        branchCode: selectedBranchCode,
+        apiUrl: apiUrl.trim(),
+        companyCode: normalizedCompanyCode,
+        branchCode: normalizedBranchCode,
       })
-      : publicApi.getWorkersByBranch(selectedBranchCode, companyCode)
+      : publicApi.getWorkersByBranch(normalizedBranchCode, normalizedCompanyCode)
 
     loadWorkers
       .then((list) => {

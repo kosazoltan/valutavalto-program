@@ -50,8 +50,10 @@ vi.mock('../sqlite', () => ({
   saveCachedWorker: vi.fn(),
 }));
 
+import { safeStorage } from 'electron';
 import { selectBootstrapRoleCode, SyncEngine } from '../sync-engine';
 import {
+  deleteConfig,
   getConfig,
   getPendingTransactions,
   getPendingConversions,
@@ -70,6 +72,7 @@ import {
 } from '../sqlite';
 
 const mockedGetConfig = vi.mocked(getConfig);
+const mockedDeleteConfig = vi.mocked(deleteConfig);
 const mockedGetPendingTransactions = vi.mocked(getPendingTransactions);
 const mockedGetPendingConversions = vi.mocked(getPendingConversions);
 const mockedGetPendingBankTransactions = vi.mocked(getPendingBankTransactions);
@@ -108,6 +111,46 @@ describe('selectBootstrapRoleCode', () => {
     });
 
     expect(selected).toBe('CHIEF_VAULT');
+  });
+});
+
+describe('SyncEngine — bootstrap password storage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(safeStorage.isEncryptionAvailable).mockReturnValue(true);
+  });
+
+  it('decrypts bootstrap_password_encrypted when safeStorage is available', () => {
+    const encrypted = Buffer.from('ciphertext').toString('base64');
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'bootstrap_password_encrypted') return encrypted;
+      return null;
+    });
+    vi.mocked(safeStorage.decryptString).mockReturnValue('NewGlobalPass123');
+    const engine = new SyncEngine();
+
+    const password = (engine as unknown as { getStoredBootstrapPassword(): string }).getStoredBootstrapPassword();
+
+    expect(password).toBe('NewGlobalPass123');
+    expect(safeStorage.decryptString).toHaveBeenCalledWith(Buffer.from(encrypted, 'base64'));
+  });
+
+  it('deletes broken encrypted bootstrap password and falls back to plaintext config', () => {
+    const encrypted = Buffer.from('broken').toString('base64');
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'bootstrap_password_encrypted') return encrypted;
+      if (key === 'bootstrap_password') return 'legacy-fallback-pass';
+      return null;
+    });
+    vi.mocked(safeStorage.decryptString).mockImplementation(() => {
+      throw new Error('decrypt failed');
+    });
+    const engine = new SyncEngine();
+
+    const password = (engine as unknown as { getStoredBootstrapPassword(): string }).getStoredBootstrapPassword();
+
+    expect(password).toBe('legacy-fallback-pass');
+    expect(mockedDeleteConfig).toHaveBeenCalledWith('bootstrap_password_encrypted');
   });
 });
 
@@ -788,6 +831,37 @@ describe('SyncEngine — párhuzamos sync trigger (race condition)', () => {
     const markCalls = mockedMarkTransactionSynced.mock.calls.map(c => c[0]);
     expect(markCalls).toEqual([1, 2]);
     expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('should reject concurrent syncAll with a different explicit token', async () => {
+    mockedGetPendingTransactions.mockReturnValue([makeTx(1)]);
+
+    let resolveFirst: () => void;
+    const firstDone = new Promise<void>((resolve) => { resolveFirst = resolve; });
+
+    const mockFetch = vi.fn().mockImplementation(async () => {
+      await firstDone;
+      return { ok: true, json: () => Promise.resolve({ success: true }) };
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const firstSync = engine.syncAll('stale-token');
+    const secondResult = await engine.syncAll('fresh-token');
+
+    expect(secondResult).toEqual({
+      synced: 0,
+      failed: 0,
+      errors: ['Szinkronizáció már fut eltérő auth tokennel — próbáld újra a folyamatban lévő futás után'],
+    });
+
+    resolveFirst!();
+    const firstResult = await firstSync;
+
+    expect(firstResult).toEqual({ synced: 1, failed: 0, errors: [] });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockedMarkTransactionSynced).toHaveBeenCalledWith(1);
+    const firstRequest = mockFetch.mock.calls[0][1] as { headers: Record<string, string> };
+    expect(firstRequest.headers.Authorization).toBe('Bearer stale-token');
   });
 
   it('runSync (internal) should skip second trigger if already running', async () => {
