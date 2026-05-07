@@ -27,7 +27,7 @@ function createMockRequest() {
 }
 
 vi.mock('electron', () => ({
-  BrowserWindow: vi.fn(),
+  shell: { openExternal: vi.fn() },
   net: {
     request: vi.fn(() => {
       mockRequestEmitter = createMockRequest();
@@ -36,8 +36,8 @@ vi.mock('electron', () => ({
   },
 }));
 
-import { net as electronNet } from 'electron';
-import { performPasswordLoginMainProcess } from '../google-oauth';
+import { net as electronNet, shell } from 'electron';
+import { performGoogleOAuthFlow, performPasswordLoginMainProcess } from '../google-oauth';
 
 function triggerJsonResponse(body = '{"token":"ok"}') {
   const response = new EventEmitter() as EventEmitter & {
@@ -81,5 +81,15 @@ describe('performPasswordLoginMainProcess URL handling', () => {
       workerCode: 'BORSI',
       password: 'Secret123!',
     })).rejects.toMatchObject({ code: 'INVALID_URL' });
+  });
+
+  it('Google OAuth flow-t rendszerbongeszoben inditja, nem beagyazott Electron ablakban', async () => {
+    await expect(performGoogleOAuthFlow({
+      clientId: 'desktop-client-id',
+      clientSecret: 'desktop-secret',
+      timeoutMs: 1,
+    })).rejects.toMatchObject({ code: 'TIMEOUT' });
+
+    expect(shell.openExternal).toHaveBeenCalledWith(expect.stringContaining('https://accounts.google.com/o/oauth2/v2/auth'));
   });
 });

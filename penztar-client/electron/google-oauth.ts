@@ -10,7 +10,7 @@
  * <ol>
  *   <li>Ephemeral HTTP server indul `http://127.0.0.1:RANDOM_PORT/callback` cimen.</li>
  *   <li>PKCE: `code_verifier` (43-128 random URL-safe chars) + `code_challenge` (SHA-256 hash).</li>
- *   <li>External `BrowserWindow` nyilik a Google auth_uri-ra Desktop client ID-vel + PKCE-vel.</li>
+ *   <li>A rendszer alapertelmezett bongeszoje nyilik a Google auth_uri-ra Desktop client ID-vel + PKCE-vel.</li>
  *   <li>User belep, Google authorization code-dal redirectel a loopback URL-re.</li>
  *   <li>Az ephemeral server elkapja a code-ot, leallitja onmagat.</li>
  *   <li>POST `https://oauth2.googleapis.com/token` (code + code_verifier + client_secret) -> id_token.</li>
@@ -33,10 +33,9 @@
  * </ul>
  */
 
-import { BrowserWindow } from 'electron';
 import http from 'node:http';
 import crypto from 'node:crypto';
-import { net as electronNet } from 'electron';
+import { net as electronNet, shell } from 'electron';
 import log from 'electron-log/main';
 
 // Google OAuth endpoints (RFC + Google Discovery doc)
@@ -287,43 +286,15 @@ export async function performGoogleOAuthFlow(config: {
     });
   });
 
-  // 4. BrowserWindow nyitasa Google auth_uri-ra.
-  const authWindow = new BrowserWindow({
-    width: 500,
-    height: 700,
-    show: true,
-    resizable: false,
-    minimizable: false,
-    maximizable: false,
-    title: 'Google bejelentkezes',
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true,
-    },
-  });
-  authWindow.removeMenu();
-  authWindow.setMenuBarVisibility(false);
-
+  // 4. Rendszerbongeszo nyitasa. Ez a stabil natív app flow; a beagyazott
+  // Electron ablakokat a Google embedded user-agentkent visszautasithatja.
   let authCode: string;
   try {
-    await authWindow.loadURL(authUrl.toString());
-
-    // Ha a user bezarja az ablakot a callback elott -> USER_CANCELLED
-    const closedPromise = new Promise<string>((_, reject) => {
-      authWindow.on('closed', () => {
-        reject(new GoogleOAuthFailedException('USER_CANCELLED',
-            'A felhasznalo bezarta a Google bejelentkezes ablakot.'));
-      });
-    });
-
-    authCode = await Promise.race([authPromise, closedPromise]);
+    await shell.openExternal(authUrl.toString());
+    authCode = await authPromise;
   } finally {
-    if (!authWindow.isDestroyed()) {
-      authWindow.close();
-    }
     server.close();
-    log.info('[google-oauth] Loopback HTTP server leallt + auth window bezarva.');
+    log.info('[google-oauth] Loopback HTTP server leallt.');
   }
 
   // 5. Authorization code -> ID token csere
