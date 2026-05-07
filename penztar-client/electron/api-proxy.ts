@@ -15,6 +15,7 @@
 
 import { net as electronNet, IncomingMessage } from 'electron';
 import log from 'electron-log/main';
+import { isAllowedNetworkUrl } from './network-allowlist';
 
 export interface ApiProxyRequest {
   method: string;
@@ -35,7 +36,7 @@ export interface ApiProxyResponse {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_RESPONSE_BYTES = 50 * 1024 * 1024; // 50 MB safety cap
-const ALLOWED_HOSTS = ['excvaluta.com', 'localhost'];
+const ALLOWED_HOSTS = ['excvaluta.com'];
 type SafeRequestHeaders = {
   accept?: string;
   authorization?: string;
@@ -85,39 +86,18 @@ function normalizeSafeRequestHeaders(headers?: Record<string, string>): SafeRequ
   return safe;
 }
 
-function isPrivateOrLoopbackHost(hostname: string): boolean {
-  const host = hostname.toLowerCase();
-  if (host === '127.0.0.1' || host === '::1' || host === '[::1]') {
-    return true;
-  }
-  const parts = host.split('.').map((part) => Number.parseInt(part, 10));
-  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
-    return false;
-  }
-  const a = parts[0] ?? -1;
-  const b = parts[1] ?? -1;
-  return a === 10
-    || (a === 172 && b >= 16 && b <= 31)
-    || (a === 192 && b === 168)
-    || (a === 169 && b === 254)
-    || a === 127;
+export interface ApiProxyOptions {
+  configuredBaseUrl?: string | null;
 }
 
-function isAllowedUrl(raw: string): boolean {
-  try {
-    const parsed = new URL(raw);
-    return ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`))
-      || isPrivateOrLoopbackHost(parsed.hostname);
-  } catch {
-    return false;
-  }
-}
-
-export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyResponse> {
+export function fetchViaElectronNet(
+  params: ApiProxyRequest,
+  options: ApiProxyOptions = {},
+): Promise<ApiProxyResponse> {
   const { method, url, body, headers, timeoutMs } = params;
   const timeout = timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
-  if (!isAllowedUrl(url)) {
+  if (!isAllowedNetworkUrl(url, ALLOWED_HOSTS, options.configuredBaseUrl)) {
     return Promise.reject(new Error(`[api-proxy] Blocked: URL host not in allowlist: ${url}`));
   }
 
