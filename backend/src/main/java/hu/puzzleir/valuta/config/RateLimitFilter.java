@@ -92,10 +92,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         String clientIp = clientIpResolver.resolveClientIp(request);
 
-        // Login endpoint — szigorúbb limit
-        if (path.startsWith("/api/v1/auth/login")) {
+        // Login/bootstrap endpointok — szigorúbb limit
+        if (isAuthRateLimitedPath(path)) {
             if (isRateLimited(clientIp, loginLimits, loginMaxRequests, loginWindowMs)) {
-                log.warn("Rate limit elérve: login — IP: {}", clientIp);
+                log.warn("Rate limit elérve: auth — path={}, IP: {}", path, clientIp);
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json");
                 response.getWriter().write(
@@ -132,6 +132,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isAuthRateLimitedPath(String path) {
+        return path.startsWith("/api/v1/auth/login")
+                || path.startsWith("/api/v1/auth/bootstrap-admin");
     }
 
     private boolean isRateLimited(String key, Map<String, RateLimitEntry> limits,

@@ -170,13 +170,14 @@ class AdminBootstrapServiceTest {
                 .build();
         when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
                 .thenReturn(Optional.of(completedFlag));
-        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(ebcCompany));
 
         assertThatThrownBy(() -> service.bootstrapAdmin(validRequest()))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("bootstrap már lezajlott")
                 .hasMessageContaining("hitelesített");
 
+        verify(companyRepository, never()).findByCode(anyString());
+        verify(companyRepository, never()).findByCodeIgnoreCase(anyString());
         verify(workerRepository, never()).findByCompanyIdAndCodeIgnoreCase(any(), anyString());
         verify(passwordEncoder, never()).encode(anyString());
         verify(workerRepository, never()).save(any(Worker.class));

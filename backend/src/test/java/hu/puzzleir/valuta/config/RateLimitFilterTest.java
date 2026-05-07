@@ -56,6 +56,17 @@ class RateLimitFilterTest {
         assertBlocked(blocked, "Túl sok tranzakciós kérés");
     }
 
+    @Test
+    @DisplayName("Bootstrap admin endpoint uses auth login rate limit")
+    void bootstrapAdminEndpoint_usesAuthRateLimit() throws Exception {
+        for (int i = 0; i < 10; i++) {
+            assertPassed(post("/api/v1/auth/bootstrap-admin"));
+        }
+
+        ResponseResult blocked = post("/api/v1/auth/bootstrap-admin");
+        assertBlocked(blocked, "Túl sok bejelentkezési kísérlet");
+    }
+
     private ResponseResult post(String path) throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", path);
         request.setRemoteAddr("127.0.0.1");

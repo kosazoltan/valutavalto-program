@@ -60,21 +60,21 @@ public class AdminBootstrapService {
         String normalizedCompanyCode = normalize(dto.getCompanyCode());
         String normalizedWorkerCode = normalize(dto.getWorkerCode());
 
+        if (alreadyCompleted) {
+            log.debug("Admin bootstrap elutasítva, mert már lezárult: companyCode={}, workerCode={}",
+                    normalizedCompanyCode, normalizedWorkerCode);
+            throw new ValidationException(
+                    "A bootstrap már lezajlott; jelszó frissítéshez használd a hitelesített "
+                            + "dolgozói jelszócsere vagy reset folyamatot."
+            );
+        }
+
         Company company = companyRepository.findByCode(normalizedCompanyCode)
                 .or(() -> companyRepository.findByCodeIgnoreCase(normalizedCompanyCode))
                 .orElseThrow(() -> new ValidationException(
                         "Ismeretlen cégkód: " + normalizedCompanyCode
                         + ". Ellenőrizd az adatbázisban, hogy létrejött-e a cég."
                 ));
-
-        if (alreadyCompleted) {
-            log.warn("Admin bootstrap elutasítva, mert már lezárult: companyCode={}, workerCode={}",
-                    company.getCode(), normalizedWorkerCode);
-            throw new ValidationException(
-                    "A bootstrap már lezajlott; jelszó frissítéshez használd a hitelesített "
-                            + "dolgozói jelszócsere vagy reset folyamatot."
-            );
-        }
 
         Worker worker = workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), normalizedWorkerCode)
                 .orElseGet(() -> createWorkerShell(company, normalizedWorkerCode, dto.getWorkerName()));
