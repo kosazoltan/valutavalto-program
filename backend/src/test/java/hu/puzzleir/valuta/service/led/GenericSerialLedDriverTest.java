@@ -21,6 +21,8 @@ class GenericSerialLedDriverTest {
         assertThat(driver.sendScrollingText("Teszt", 5)).isFalse();
         assertThat(driver.clearDisplay()).isFalse();
         assertThat(driver.setBrightness(80)).isFalse();
+        driver.disconnect();
+        assertThat(driver.isConnected()).isFalse();
     }
 
     @Test

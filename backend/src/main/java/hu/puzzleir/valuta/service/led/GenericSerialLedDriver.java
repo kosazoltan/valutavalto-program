@@ -35,9 +35,9 @@ public class GenericSerialLedDriver implements LedDriverProtocol {
     @Override
     public boolean connect(String connectionString) {
         if (!simulatedTransportEnabled) {
-            log.warn("LED driver transport nincs bekötve, csatlakozás elutasítva: {}", connectionString);
             this.connected = false;
             this.connectionString = null;
+            log.warn("LED driver transport nincs bekötve, csatlakozás elutasítva (simulatedTransportEnabled=false)");
             return false;
         }
 
