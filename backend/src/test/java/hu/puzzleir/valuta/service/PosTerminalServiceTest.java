@@ -14,7 +14,6 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -50,8 +49,7 @@ class PosTerminalServiceTest {
         properties.setRootPath(tempDir.toString());
         FileTransportService fileTransportService = new FileTransportService(properties, new ObjectMapper());
         service = new PosTerminalService(repository, systemParameterService, otpProtocol,
-                properties, fileTransportService);
-        ReflectionTestUtils.setField(service, "bridgeSimulatedApprovalEnabled", false);
+                properties, fileTransportService, false);
     }
 
     @Test
@@ -112,7 +110,11 @@ class PosTerminalServiceTest {
 
     @Test
     void bridgePaymentCanBeExplicitlyEnabledForIsolatedTests() {
-        ReflectionTestUtils.setField(service, "bridgeSimulatedApprovalEnabled", true);
+        IntegrationTransportProperties properties = new IntegrationTransportProperties();
+        properties.setRootPath(tempDir.toString());
+        FileTransportService fileTransportService = new FileTransportService(properties, new ObjectMapper());
+        service = new PosTerminalService(repository, systemParameterService, otpProtocol,
+                properties, fileTransportService, true);
         PosTerminal terminal = activeTerminal("TERM-BORGUN", "BORGUN");
         when(repository.findByTerminalId("TERM-BORGUN")).thenReturn(Optional.of(terminal));
 

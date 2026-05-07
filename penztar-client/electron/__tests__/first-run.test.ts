@@ -31,7 +31,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-import { isFirstRun } from '../first-run';
+import { isFirstRun, resolveEffectiveBootstrapCredentials } from '../first-run';
 
 function writeEnv(content: string): void {
   fs.mkdirSync(mockState.userDataDir, { recursive: true });
@@ -94,6 +94,37 @@ describe('isFirstRun', () => {
 
     expect(isFirstRun()).toMatchObject({
       isFirstRun: false,
+    });
+  });
+});
+
+describe('resolveEffectiveBootstrapCredentials', () => {
+  it('selected worker setup uses the selected worker and the new global password', () => {
+    const credentials = resolveEffectiveBootstrapCredentials({
+      adminUsername: 'admin',
+      adminPassword: 'NewGlobalPassword1',
+      bootstrapUsername: '',
+      bootstrapPassword: '',
+      selectedWorkerCode: ' penz01 ',
+    });
+
+    expect(credentials).toEqual({
+      username: 'PENZ01',
+      password: 'NewGlobalPassword1',
+    });
+  });
+
+  it('offline legacy setup falls back to admin credentials instead of writing empty bootstrap values', () => {
+    const credentials = resolveEffectiveBootstrapCredentials({
+      adminUsername: ' admin01 ',
+      adminPassword: 'AdminGlobalPassword1',
+      bootstrapUsername: '',
+      bootstrapPassword: '',
+    });
+
+    expect(credentials).toEqual({
+      username: 'ADMIN01',
+      password: 'AdminGlobalPassword1',
     });
   });
 });

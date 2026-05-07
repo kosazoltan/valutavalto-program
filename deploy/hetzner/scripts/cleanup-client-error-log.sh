@@ -26,6 +26,11 @@ fi
 
 log "client_error_log cleanup indul: db=$DB_NAME retention_days=$RETENTION_DAYS"
 
-su -s /bin/bash postgres -c "psql -d \"$DB_NAME\" -v ON_ERROR_STOP=1 -c \"DELETE FROM client_error_log WHERE created_at < NOW() - INTERVAL '$RETENTION_DAYS days';\""
+SQL="DELETE FROM client_error_log WHERE created_at < NOW() - INTERVAL '$RETENTION_DAYS days';"
+if [ "$(id -un)" = "postgres" ]; then
+    psql -X -d "$DB_NAME" -v ON_ERROR_STOP=1 -c "$SQL"
+else
+    su -s /bin/bash postgres -c "psql -X -d \"$DB_NAME\" -v ON_ERROR_STOP=1 -c \"$SQL\""
+fi
 
 log "client_error_log cleanup kesz"
