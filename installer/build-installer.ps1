@@ -11,7 +11,8 @@ param(
     [switch]$SkipBackendBuild,
     [switch]$SkipFrontendBuild,
     [switch]$SkipDownloads,
-    [switch]$SkipNsis
+    [switch]$SkipNsis,
+    [switch]$AllowMissingProductionSecrets
 )
 
 # Build date for filename and metadata (YYYYMMDD format)
@@ -122,7 +123,11 @@ function Write-Step($msg) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 Write-Step "0/6 - Env injection (.env.production a .env-bol)"
 $rootEnv = Join-Path $RepoRoot ".env"
 if (-not (Test-Path $rootEnv)) {
-    Write-Host "WARNING: $rootEnv nem letezik - Google OAuth env nelkul a build folytatodik, de a Google login NEM fog mukodni a telepitett alkalmazasban." -ForegroundColor Yellow
+    if ($AllowMissingProductionSecrets) {
+        Write-Host "WARNING: $rootEnv nem letezik - Google OAuth env nelkul a build folytatodik explicit override miatt." -ForegroundColor Yellow
+    } else {
+        throw "PRODUCTION SECRET GATE: $rootEnv nem letezik. Google OAuth production installer nem keszulhet hianyzo .env nelkul. Fejlesztoi buildhez add meg: -AllowMissingProductionSecrets"
+    }
 } else {
     $envLines = Get-Content $rootEnv
     $googleWebClientId = ''
@@ -133,11 +138,16 @@ if (-not (Test-Path $rootEnv)) {
         elseif ($line -match '^GOOGLE_DESKTOP_CLIENT_ID=(.*)$') { $googleDesktopClientId = $Matches[1].Trim() }
         elseif ($line -match '^GOOGLE_DESKTOP_CLIENT_SECRET=(.*)$') { $googleDesktopClientSecret = $Matches[1].Trim() }
     }
-    if (-not $googleWebClientId) {
-        Write-Host "  WARN: GOOGLE_CLIENT_ID nincs a .env-ben - Google login nem fog mukodni" -ForegroundColor Yellow
-    }
-    if (-not $googleDesktopClientId -or -not $googleDesktopClientSecret) {
-        Write-Host "  WARN: GOOGLE_DESKTOP_CLIENT_ID/SECRET nincs a .env-ben - Electron Google login nem fog mukodni" -ForegroundColor Yellow
+    $missingSecretNames = @()
+    if (-not $googleWebClientId) { $missingSecretNames += 'GOOGLE_CLIENT_ID' }
+    if (-not $googleDesktopClientId) { $missingSecretNames += 'GOOGLE_DESKTOP_CLIENT_ID' }
+    if (-not $googleDesktopClientSecret) { $missingSecretNames += 'GOOGLE_DESKTOP_CLIENT_SECRET' }
+    if ($missingSecretNames.Count -gt 0) {
+        if ($AllowMissingProductionSecrets) {
+            Write-Host ("  WARN: hianyzo Google OAuth env-ek explicit override mellett: " + ($missingSecretNames -join ', ')) -ForegroundColor Yellow
+        } else {
+            throw ("PRODUCTION SECRET GATE: hianyzo Google OAuth env-ek: " + ($missingSecretNames -join ', ') + ". Production installer Google login nelkul nem adhato ki. Fejlesztoi buildhez add meg: -AllowMissingProductionSecrets")
+        }
     }
     $envFiles = @(
         @{ Example = (Join-Path $RepoRoot 'frontend-react\.env.production.example'); Target = (Join-Path $RepoRoot 'frontend-react\.env.production') },
