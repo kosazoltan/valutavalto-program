@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service.led;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -26,6 +27,9 @@ public class LedDriverFactory {
     /** Aktív driver példányok cache-elése (branch-enként lehet más) */
     private final Map<String, LedDriverProtocol> activeDrivers = new ConcurrentHashMap<>();
 
+    @Value("${led.driver.simulated-success-enabled:false}")
+    private boolean simulatedSuccessEnabled;
+
     /**
      * Driver példány lekérése típus alapján.
      * Minden hívás ÚJ példányt ad (nem cache-elt).
@@ -37,22 +41,22 @@ public class LedDriverFactory {
             // Soros port alapú driverek — jelenleg mind a GenericSerial-re mappolnak
             // Éles implementációnál minden gyártónak saját class kell
             case METRO_S1, METRO_S2, TRUELIGHT, TOPICA, SIGNTEC,
-                 LEDMAN, DELTA, GENERIC_SERIAL -> {
-                log.debug("Soros port driver: {} → GenericSerialLedDriver", type);
-                yield new GenericSerialLedDriver();
+                LEDMAN, DELTA, GENERIC_SERIAL -> {
+                    log.debug("Soros port driver: {} → GenericSerialLedDriver", type);
+                yield new GenericSerialLedDriver(simulatedSuccessEnabled);
             }
 
             // Hálózati driverek — placeholder, élesben gyártó-specifikus protokoll
             case NOVASTAR, LINSN, COLORLIGHT, HUIDU, KYSTAR,
                  MAGNIMAGE, DBSTAR, XIXUN, ONBON -> {
-                log.debug("Hálózati driver: {} → GenericSerialLedDriver (placeholder)", type);
-                yield new GenericSerialLedDriver(); // TODO: LAN-specifikus driver
+                log.debug("Hálózati driver: {} → fail-closed GenericSerialLedDriver", type);
+                yield new GenericSerialLedDriver(simulatedSuccessEnabled);
             }
 
             // Virtuális / web
             case VIRTUAL, WEB_DISPLAY -> {
                 log.debug("Virtuális driver: {}", type);
-                yield new GenericSerialLedDriver(); // TODO: WebSocket driver
+                yield new GenericSerialLedDriver(simulatedSuccessEnabled);
             }
         };
     }

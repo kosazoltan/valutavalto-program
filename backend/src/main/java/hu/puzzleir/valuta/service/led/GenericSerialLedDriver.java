@@ -11,26 +11,36 @@ import java.util.List;
  * A legtöbb LED kijelző hasonló ASCII protokollt használ:
  * - STX (0x02) + parancs + adat + ETX (0x03) + checksum
  *
- * Ez a driver a soros port kommunikációt az Electron kliens
- * oldalra delegálja IPC-n keresztül. A backend csak az adatot
- * formázza és a konfigurációt kezeli.
- *
- * Éles implementáció:
- * 1. Electron IPC → serialport npm modul → COM port
- * 2. Backend → WebSocket → Electron → serialport
+ * A tényleges soros port írás jelenleg még nincs bekötve ebbe a driverbe.
+ * Ezért alapértelmezetten fail-closed működésű: nem jelent sikeres kapcsolatot
+ * vagy írást valódi transport nélkül.
  */
 @Slf4j
 public class GenericSerialLedDriver implements LedDriverProtocol {
 
+    private final boolean simulatedTransportEnabled;
     private boolean connected = false;
     private String connectionString;
     private static final char STX = 0x02;
     private static final char ETX = 0x03;
 
+    public GenericSerialLedDriver() {
+        this(false);
+    }
+
+    GenericSerialLedDriver(boolean simulatedTransportEnabled) {
+        this.simulatedTransportEnabled = simulatedTransportEnabled;
+    }
+
     @Override
     public boolean connect(String connectionString) {
         this.connectionString = connectionString;
-        // TODO: Electron IPC bridge-en keresztül soros port megnyitás
+        if (!simulatedTransportEnabled) {
+            log.warn("LED driver transport nincs bekötve, csatlakozás elutasítva: {}", connectionString);
+            this.connected = false;
+            return false;
+        }
+
         log.info("LED driver csatlakozás: {} (SIMULATED)", connectionString);
         this.connected = true;
         return true;
@@ -67,8 +77,7 @@ public class GenericSerialLedDriver implements LedDriverProtocol {
         log.debug("LED rate board frissítés: {} sor, frame: {} byte",
                 lines.size(), frame.length());
 
-        // TODO: Electron IPC-n küldeni
-        return true;
+        return simulatedTransportEnabled;
     }
 
     @Override
@@ -79,15 +88,14 @@ public class GenericSerialLedDriver implements LedDriverProtocol {
         log.debug("LED scrolling text: speed={}, text={}, frame={} byte",
                 speed, text.length() > 30 ? text.substring(0, 30) + "..." : text, frame.length());
 
-        // TODO: Electron IPC-n küldeni
-        return true;
+        return simulatedTransportEnabled;
     }
 
     @Override
     public boolean clearDisplay() {
         if (!connected) return false;
         log.debug("LED display törölve");
-        return true;
+        return simulatedTransportEnabled;
     }
 
     @Override
@@ -95,8 +103,8 @@ public class GenericSerialLedDriver implements LedDriverProtocol {
         if (!connected) return false;
         int clamped = Math.max(0, Math.min(100, brightness));
         String frame = buildFrame("B", String.valueOf(clamped));
-        log.debug("LED fényerő: {}%", clamped);
-        return true;
+        log.debug("LED fényerő: {}%, frame={} byte", clamped, frame.length());
+        return simulatedTransportEnabled;
     }
 
     @Override
