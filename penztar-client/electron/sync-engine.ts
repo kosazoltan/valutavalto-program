@@ -255,6 +255,7 @@ async function httpPost<T>(url: string, body: Record<string, unknown>, token: st
 
 export class SyncEngine {
   private intervalId: ReturnType<typeof setInterval> | null = null;
+  private syncAllInFlight: Promise<SyncResult> | null = null;
   private lastTokenValidationAt = 0;
   private readonly tokenValidationTtlMs = 120_000;
 
@@ -671,6 +672,20 @@ export class SyncEngine {
   }
 
   async syncAll(tokenOverride?: string | null): Promise<SyncResult> {
+    if (this.syncAllInFlight) {
+      log.info('[SyncEngine] syncAll mar fut, a folyamatban levo futas eredmenyere varunk');
+      return this.syncAllInFlight;
+    }
+
+    this.syncAllInFlight = this.performSyncAll(tokenOverride);
+    try {
+      return await this.syncAllInFlight;
+    } finally {
+      this.syncAllInFlight = null;
+    }
+  }
+
+  private async performSyncAll(tokenOverride?: string | null): Promise<SyncResult> {
     const result: SyncResult = { synced: 0, failed: 0, errors: [] };
 
     // PR #116: abandoned (business-validation-failed) kizárása az auto-sync-ből

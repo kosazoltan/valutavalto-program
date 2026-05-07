@@ -771,8 +771,8 @@ describe('SyncEngine — párhuzamos sync trigger (race condition)', () => {
     // Start first sync (will be paused on first fetch)
     const firstSync = engine.syncAll('test-token');
 
-    // Start second sync immediately (isRunning=false because syncAll is not runSync,
-    // so it WILL run — this tests that both syncs can run but do not double-mark)
+    // Start second sync immediately. It should join the in-flight sync instead of
+    // reading and marking the same pending rows again.
     const secondSync = engine.syncAll('test-token');
 
     // Unblock first
@@ -780,17 +780,14 @@ describe('SyncEngine — párhuzamos sync trigger (race condition)', () => {
 
     const [result1, result2] = await Promise.all([firstSync, secondSync]);
 
-    // Both syncs complete independently (syncAll has no isRunning guard itself)
-    // Key: no crash, no undefined behaviour
-    expect(result1.synced + result2.synced).toBeGreaterThanOrEqual(2);
+    expect(result1).toEqual({ synced: 2, failed: 0, errors: [] });
+    expect(result2).toEqual(result1);
     expect(result1.failed).toBe(0);
     expect(result2.failed).toBe(0);
 
-    // NOTE: Currently syncAll has no isRunning guard, so concurrent calls
-    // may double-mark the same transaction IDs. This documents existing behavior.
-    // TODO: Add isRunning lock to syncAll to prevent double-marking.
     const markCalls = mockedMarkTransactionSynced.mock.calls.map(c => c[0]);
-    expect(markCalls.length).toBeGreaterThanOrEqual(2);
+    expect(markCalls).toEqual([1, 2]);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it('runSync (internal) should skip second trigger if already running', async () => {
