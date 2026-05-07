@@ -14,6 +14,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -379,6 +380,93 @@ class WesternUnionServiceTest {
 
         verify(wuTransactionRepository, never()).save(any());
         verify(wuBalanceRepository, never()).findByBranchIdForUpdate(any());
+    }
+
+    @Test
+    void getDailyLimit_missingRowReturnsDefaultDtoWithoutCompanyLookup() {
+        LocalDate businessDate = LocalDate.of(2026, 5, 7);
+        when(wuDailyLimitRepository.findByCompanyIdAndBusinessDateAndCurrencyCode(
+                companyId, businessDate, "USD"))
+                .thenReturn(Optional.empty());
+
+        var result = service.getDailyLimit(businessDate);
+
+        assertThat(result.getBusinessDate()).isEqualTo(businessDate);
+        assertThat(result.getCurrencyCode()).isEqualTo("USD");
+        assertThat(result.getDailyLimit()).isEqualByComparingTo("10000.00");
+        assertThat(result.getUsedAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(result.getRemainingAmount()).isEqualByComparingTo("10000.00");
+        assertThat(result.getResetAt()).isEqualTo(businessDate.plusDays(1).atStartOfDay());
+        verify(companyRepository, never()).findById(any());
+    }
+
+    @Test
+    void useDailyLimit_locksCompanyAndRechecksBeforeCreatingMissingRow() {
+        LocalDate businessDate = LocalDate.of(2026, 5, 7);
+        WuDailyLimit existing = WuDailyLimit.builder()
+                .company(company)
+                .businessDate(businessDate)
+                .currencyCode("USD")
+                .dailyLimit(new BigDecimal("10000.00"))
+                .usedAmount(BigDecimal.ZERO)
+                .build();
+
+        when(wuDailyLimitRepository.findByCompanyDateCurrencyForUpdate(companyId, businessDate, "USD"))
+                .thenReturn(Optional.empty(), Optional.of(existing));
+        when(companyRepository.findByIdForUpdate(companyId)).thenReturn(Optional.of(company));
+        when(wuDailyLimitRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var result = service.useDailyLimit(new BigDecimal("100.00"), businessDate);
+
+        assertThat(result.getUsedAmount()).isEqualByComparingTo("100.00");
+        verify(companyRepository).findByIdForUpdate(companyId);
+        verify(wuDailyLimitRepository).save(existing);
+    }
+
+    @Test
+    void reverseWuTransaction_releasesDailyLimitAndClampsAtZero() {
+        UUID originalId = UUID.randomUUID();
+        LocalDateTime transactionDate = LocalDateTime.of(2026, 5, 7, 10, 0);
+        WuTransaction original = WuTransaction.builder()
+                .id(originalId)
+                .branch(branch)
+                .company(company)
+                .transactionType("SEND")
+                .mtcn("1234567890")
+                .amountUsd(new BigDecimal("100.00"))
+                .amountHuf(new BigDecimal("36000.00"))
+                .status(WuTransactionStatus.COMPLETED)
+                .transactionDate(transactionDate)
+                .build();
+        WuDailyLimit limit = WuDailyLimit.builder()
+                .company(company)
+                .businessDate(transactionDate.toLocalDate())
+                .currencyCode("USD")
+                .dailyLimit(new BigDecimal("10000.00"))
+                .usedAmount(new BigDecimal("50.00"))
+                .build();
+
+        when(wuTransactionRepository.findById(originalId)).thenReturn(Optional.of(original));
+        when(wuDailyLimitRepository.findByCompanyDateCurrencyForUpdate(
+                companyId, transactionDate.toLocalDate(), "USD"))
+                .thenReturn(Optional.of(limit));
+        when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
+                .thenReturn(Optional.of(WuBalance.builder()
+                        .branch(branch).company(company)
+                        .usdBalance(new BigDecimal("10000")).hufBalance(new BigDecimal("5000000")).build()));
+        when(wuTransactionRepository.save(any())).thenAnswer(inv -> {
+            WuTransaction t = inv.getArgument(0);
+            if (t.getId() == null) {
+                t.setId(UUID.randomUUID());
+            }
+            return t;
+        });
+
+        service.reverseWuTransaction(originalId, "reason");
+
+        ArgumentCaptor<WuDailyLimit> limitCaptor = ArgumentCaptor.forClass(WuDailyLimit.class);
+        verify(wuDailyLimitRepository).save(limitCaptor.capture());
+        assertThat(limitCaptor.getValue().getUsedAmount()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     // ============ CROSS-TENANT ============
