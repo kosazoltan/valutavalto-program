@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.service.SynchronizationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,7 +25,9 @@ public class SynchronizationController {
     public ResponseEntity<Map<String, Object>> sync(
             @RequestParam(required = false) UUID branchId,
             @RequestParam(required = false) Long workerId) {
-        return ResponseEntity.ok(service.sync(branchId, workerId));
+        Map<String, Object> result = service.sync(branchId, workerId);
+        boolean success = Boolean.TRUE.equals(result.get("success"));
+        return ResponseEntity.status(success ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE).body(result);
     }
 
     @GetMapping("/should-sync")
