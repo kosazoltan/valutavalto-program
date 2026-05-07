@@ -37,7 +37,7 @@ vi.mock('electron', () => ({
 }));
 
 import { net as electronNet, shell } from 'electron';
-import { performGoogleOAuthFlow, performPasswordLoginMainProcess } from '../google-oauth';
+import { cancelActiveGoogleOAuthFlow, performGoogleOAuthFlow, performPasswordLoginMainProcess } from '../google-oauth';
 
 function triggerJsonResponse(body = '{"token":"ok"}') {
   const response = new EventEmitter() as EventEmitter & {
@@ -56,6 +56,8 @@ function triggerJsonResponse(body = '{"token":"ok"}') {
 describe('performPasswordLoginMainProcess URL handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(shell.openExternal).mockResolvedValue(undefined);
+    cancelActiveGoogleOAuthFlow();
   });
 
   it('engedelyezi a helyi/LAN backend URL-t a telepito altal beallitott server_url-hoz', async () => {
@@ -83,6 +85,25 @@ describe('performPasswordLoginMainProcess URL handling', () => {
     })).rejects.toMatchObject({ code: 'INVALID_URL' });
   });
 
+});
+
+async function waitForOpenExternalCall() {
+  for (let i = 0; i < 20; i += 1) {
+    if (vi.mocked(shell.openExternal).mock.calls.length > 0) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  throw new Error('shell.openExternal was not called');
+}
+
+describe('performGoogleOAuthFlow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(shell.openExternal).mockResolvedValue(undefined);
+    cancelActiveGoogleOAuthFlow();
+  });
+
   it('Google OAuth flow-t rendszerbongeszoben inditja, nem beagyazott Electron ablakban', async () => {
     await expect(performGoogleOAuthFlow({
       clientId: 'desktop-client-id',
@@ -91,5 +112,33 @@ describe('performPasswordLoginMainProcess URL handling', () => {
     })).rejects.toMatchObject({ code: 'TIMEOUT' });
 
     expect(shell.openExternal).toHaveBeenCalledWith(expect.stringContaining('https://accounts.google.com/o/oauth2/v2/auth'));
+  });
+
+  it('kulon hibakoddal jelzi, ha a rendszerbongeszo nem nyithato meg', async () => {
+    vi.mocked(shell.openExternal).mockRejectedValueOnce(new Error('no browser'));
+
+    await expect(performGoogleOAuthFlow({
+      clientId: 'desktop-client-id',
+      clientSecret: 'desktop-secret',
+      timeoutMs: 30_000,
+    })).rejects.toMatchObject({
+      code: 'BROWSER_OPEN_FAILED',
+      message: expect.stringContaining('no browser'),
+    });
+
+    expect(cancelActiveGoogleOAuthFlow()).toBe(false);
+  });
+
+  it('az aktiv rendszerbongeszős OAuth flow explicit megszakithato', async () => {
+    const promise = performGoogleOAuthFlow({
+      clientId: 'desktop-client-id',
+      clientSecret: 'desktop-secret',
+      timeoutMs: 30_000,
+    });
+
+    await waitForOpenExternalCall();
+
+    expect(cancelActiveGoogleOAuthFlow()).toBe(true);
+    await expect(promise).rejects.toMatchObject({ code: 'USER_CANCELLED' });
   });
 });

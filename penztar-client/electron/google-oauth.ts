@@ -43,6 +43,8 @@ const GOOGLE_AUTH_URI = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URI = 'https://oauth2.googleapis.com/token';
 const GOOGLE_SCOPES = ['openid', 'email', 'profile'].join(' ');
 
+let activeGoogleOAuthCancel: (() => void) | null = null;
+
 export interface GoogleOAuthResult {
   /** Google ID token (JWT) — a backend `/api/v1/auth/google-login` ezt vegzi validalni. */
   idToken: string;
@@ -62,6 +64,14 @@ export class GoogleOAuthFailedException extends Error {
     super(message);
     this.code = code;
   }
+}
+
+export function cancelActiveGoogleOAuthFlow(): boolean {
+  if (!activeGoogleOAuthCancel) {
+    return false;
+  }
+  activeGoogleOAuthCancel();
+  return true;
 }
 
 /**
@@ -105,6 +115,104 @@ function decodeIdTokenPayload(idToken: string): { email?: string; sub?: string }
   } catch {
     return {};
   }
+}
+
+function createLoopbackAuthWaiter(params: {
+  server: http.Server;
+  redirectUri: string;
+  state: string;
+  timeoutMs: number;
+}): {
+  promise: Promise<string>;
+  cancel: () => void;
+  cleanup: () => void;
+} {
+  let settled = false;
+  let timeoutHandle: NodeJS.Timeout | undefined;
+  let rejectAuth: ((reason: GoogleOAuthFailedException) => void) | undefined;
+  let resolveAuth: (code: string) => void = () => undefined;
+
+  const cleanup = () => {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+      timeoutHandle = undefined;
+    }
+    params.server.off('request', requestHandler);
+  };
+
+  const fail = (error: GoogleOAuthFailedException) => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    rejectAuth?.(error);
+  };
+
+  function requestHandler(req: http.IncomingMessage, res: http.ServerResponse) {
+    try {
+      if (!req.url) return;
+      const requestUrl = new URL(req.url, params.redirectUri);
+      if (requestUrl.pathname !== '/callback') {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('Not Found');
+        return;
+      }
+      const code = requestUrl.searchParams.get('code');
+      const returnedState = requestUrl.searchParams.get('state');
+      const errorParam = requestUrl.searchParams.get('error');
+
+      if (errorParam) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(buildHtmlResponse(false, `Google bejelentkezes hiba: ${errorParam}`));
+        fail(new GoogleOAuthFailedException('USER_CANCELLED',
+            `A felhasznalo megszakitotta a Google bejelentkezest: ${errorParam}`));
+        return;
+      }
+      if (!code) {
+        res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(buildHtmlResponse(false, 'Hianyzo authorization code.'));
+        fail(new GoogleOAuthFailedException('NO_CODE',
+            'Google callback nem tartalmazott authorization code-ot.'));
+        return;
+      }
+      if (returnedState !== params.state) {
+        res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(buildHtmlResponse(false, 'CSRF state mismatch — biztonsagi hiba.'));
+        fail(new GoogleOAuthFailedException('STATE_MISMATCH',
+            'CSRF state parameter mismatch — potencialis spoofing.'));
+        return;
+      }
+
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(buildHtmlResponse(true, 'Sikeres bejelentkezes! Visszateres az alkalmazasra...'));
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolveAuth(code);
+    } catch (handlerErr) {
+      log.error('[google-oauth] callback handler hiba:', handlerErr);
+      fail(new GoogleOAuthFailedException('CALLBACK_HANDLER_ERROR',
+          (handlerErr as Error).message));
+    }
+  }
+
+  const promise = new Promise<string>((resolve, reject) => {
+    resolveAuth = resolve;
+    rejectAuth = reject;
+    timeoutHandle = setTimeout(() => {
+      fail(new GoogleOAuthFailedException('TIMEOUT',
+          'Google bejelentkezes timeout — a felhasznalo bezarhatta a bongeszot, '
+          + 'vagy nem fejezte be a flow-t.'));
+    }, params.timeoutMs);
+
+    params.server.on('request', requestHandler);
+  });
+
+  return {
+    promise,
+    cancel: () => fail(new GoogleOAuthFailedException('USER_CANCELLED',
+        'Google bejelentkezes megszakitva az alkalmazasbol.')),
+    cleanup,
+  };
 }
 
 /**
@@ -183,6 +291,10 @@ export async function performGoogleOAuthFlow(config: {
   /** Timeout ms, default 5 perc (a user szabadon belephet/kanyarodhat). */
   timeoutMs?: number;
 }): Promise<GoogleOAuthResult> {
+  if (activeGoogleOAuthCancel) {
+    throw new GoogleOAuthFailedException('OAUTH_IN_PROGRESS',
+        'Mar folyamatban van egy Google bejelentkezes. Varj, vagy szakitsd meg az aktualis probalkozast.');
+  }
   if (!config.clientId || !config.clientSecret) {
     throw new GoogleOAuthFailedException('MISCONFIGURED',
         'Google Desktop OAuth client ID vagy secret hianyzik. ' +
@@ -225,74 +337,31 @@ export async function performGoogleOAuthFlow(config: {
   // `prompt=select_account` — ha a user mar be van jelentkezve, valaszthat masik fiokot.
   authUrl.searchParams.set('prompt', 'select_account');
 
-  // 3. Promise: vagy a callback eredmenyet vagy a timeout-ot/cancel-t var.
-  const authPromise = new Promise<string>((resolve, reject) => {
-    const timeoutHandle = setTimeout(() => {
-      reject(new GoogleOAuthFailedException('TIMEOUT',
-          'Google bejelentkezes timeout (5 perc) — a felhasznalo nem fejezte be a flow-t.'));
-    }, timeoutMs);
-
-    server.on('request', (req, res) => {
-      try {
-        if (!req.url) return;
-        const requestUrl = new URL(req.url, redirectUri);
-        if (requestUrl.pathname !== '/callback') {
-          res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-          res.end('Not Found');
-          return;
-        }
-        const code = requestUrl.searchParams.get('code');
-        const returnedState = requestUrl.searchParams.get('state');
-        const errorParam = requestUrl.searchParams.get('error');
-
-        if (errorParam) {
-          // User megtagadta a hozzaferest (`access_denied`) vagy mas Google-side error.
-          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-          res.end(buildHtmlResponse(false, `Google bejelentkezes hiba: ${errorParam}`));
-          clearTimeout(timeoutHandle);
-          reject(new GoogleOAuthFailedException('USER_CANCELLED',
-              `A felhasznalo megszakitotta a Google bejelentkezest: ${errorParam}`));
-          return;
-        }
-        if (!code) {
-          res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
-          res.end(buildHtmlResponse(false, 'Hianyzo authorization code.'));
-          clearTimeout(timeoutHandle);
-          reject(new GoogleOAuthFailedException('NO_CODE',
-              'Google callback nem tartalmazott authorization code-ot.'));
-          return;
-        }
-        if (returnedState !== state) {
-          // CSRF vedelem — a state parameternek pontosan egyeznie kell.
-          res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
-          res.end(buildHtmlResponse(false, 'CSRF state mismatch — biztonsagi hiba.'));
-          clearTimeout(timeoutHandle);
-          reject(new GoogleOAuthFailedException('STATE_MISMATCH',
-              'CSRF state parameter mismatch — potencialis spoofing.'));
-          return;
-        }
-
-        // Sikeres callback — sukerlap visszaadva a browser-nek, code propagal.
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(buildHtmlResponse(true, 'Sikeres bejelentkezes! Visszateres az alkalmazasra...'));
-        clearTimeout(timeoutHandle);
-        resolve(code);
-      } catch (handlerErr) {
-        log.error('[google-oauth] callback handler hiba:', handlerErr);
-        clearTimeout(timeoutHandle);
-        reject(new GoogleOAuthFailedException('CALLBACK_HANDLER_ERROR',
-            (handlerErr as Error).message));
-      }
-    });
+  // 3. Promise: vagy a callback eredmenyet, timeout-ot, vagy explicit cancel-t var.
+  const authWaiter = createLoopbackAuthWaiter({
+    server,
+    redirectUri,
+    state,
+    timeoutMs,
   });
+  activeGoogleOAuthCancel = authWaiter.cancel;
 
   // 4. Rendszerbongeszo nyitasa. Ez a stabil natív app flow; a beagyazott
   // Electron ablakokat a Google embedded user-agentkent visszautasithatja.
   let authCode: string;
   try {
-    await shell.openExternal(authUrl.toString());
-    authCode = await authPromise;
+    try {
+      await shell.openExternal(authUrl.toString());
+    } catch (err) {
+      authWaiter.cleanup();
+      throw new GoogleOAuthFailedException('BROWSER_OPEN_FAILED',
+          'Nem sikerult megnyitni a rendszer bongeszot a Google bejelentkezeshez: '
+          + ((err as Error).message ?? String(err)));
+    }
+    authCode = await authWaiter.promise;
   } finally {
+    authWaiter.cleanup();
+    activeGoogleOAuthCancel = null;
     server.close();
     log.info('[google-oauth] Loopback HTTP server leallt.');
   }

@@ -330,6 +330,14 @@ export default function LoginPage() {
     }
   }
 
+  const handleElectronGoogleCancel = async () => {
+    try {
+      await window.electronAPI?.googleOAuthCancel?.()
+    } catch {
+      // A cancel best-effort: a folyamat timeoutja továbbra is lezárja a login próbát.
+    }
+  }
+
   // V57: Role-választó modal
   if (showRoleSelector && pendingLoginResponse) {
     return (
@@ -436,6 +444,15 @@ export default function LoginPage() {
                   {googleLoadingElectron ? 'Bejelentkezés folyamatban...' : 'Belépés Google fiókkal'}
                 </span>
               </button>
+              {googleLoadingElectron && window.electronAPI?.googleOAuthCancel && (
+                <button
+                  type="button"
+                  onClick={handleElectronGoogleCancel}
+                  className="mt-2 w-full h-8 text-xs text-gray-600 border border-gray-200 rounded hover:bg-gray-50 transition"
+                >
+                  {t('common.cancel')}
+                </button>
+              )}
             </div>
           ) : (
             googleClientId && (

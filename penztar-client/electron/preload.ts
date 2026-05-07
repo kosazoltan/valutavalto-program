@@ -22,6 +22,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     | { ok: false; code: string; message: string }
   > => ipcRenderer.invoke('auth:google-oauth-flow-with-backend'),
 
+  googleOAuthCancel: (): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke('auth:google-oauth-cancel'),
+
   /**
    * v2.5.21 ALTALANOS BEJELENTKEZESI FIX: a sima jelszavas /auth/login POST is main process-en
    * (electron.net.request) megy, NEM renderer axios.post. ESET MITM TLS-handshake nehany

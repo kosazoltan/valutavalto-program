@@ -84,7 +84,7 @@ import { registerCameraHandlers } from './camera';
 import { registerVideoManagerHandlers } from './video-manager';
 import { registerScannerHandlers } from './scanner';
 import { registerUpdaterHandlers } from './updater';
-import { performGoogleOAuthFlow, performGoogleOAuthFlowWithBackendLogin, performPasswordLoginMainProcess, GoogleOAuthFailedException } from './google-oauth';
+import { cancelActiveGoogleOAuthFlow, performGoogleOAuthFlow, performGoogleOAuthFlowWithBackendLogin, performPasswordLoginMainProcess, GoogleOAuthFailedException } from './google-oauth';
 import { initErrorReporter, reportError, setUserIdentifier } from './error-reporter';
 import { fetchViaElectronNet, type ApiProxyRequest } from './api-proxy';
 import {
@@ -882,6 +882,10 @@ app.whenReady().then(async () => {
       return { ok: false, code: 'UNEXPECTED', message: (err as Error).message };
     }
   });
+
+  ipcMain.handle('auth:google-oauth-cancel', async () => ({
+    ok: cancelActiveGoogleOAuthFlow(),
+  }));
 
   // v2.5.21 ALTALANOS BEJELENTKEZESI FIX: a sima jelszavas /auth/login is main process-en,
   // ESET MITM kompatibilis Windows cert store + Schannel-en, 3x retry network errorra.

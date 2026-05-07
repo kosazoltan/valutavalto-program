@@ -16,6 +16,7 @@ export interface ElectronAPI {
       }
     | { ok: false; code: string; message: string }
   >;
+  googleOAuthCancel?(): Promise<{ ok: boolean }>;
 
   // --- v2.5.21: jelszavas /auth/login is main-process net.request-tel (ESET-tolerans) ---
   passwordLogin(data: {
