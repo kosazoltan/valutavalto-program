@@ -137,6 +137,7 @@ export default function SetupWizard() {
     branchCode: selectedBranch?.code ?? null,
   }), [apiUrl, companyCode, bootstrapUsername, bootstrapPassword, offlineMode, appModeChoice, selectedBranch?.code])
   const connectionTestResetKeyRef = useRef(connectionTestResetKey)
+  const autoConnectionTestKeyRef = useRef<string | null>(null)
 
   const [adminUsername, setAdminUsername] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
@@ -225,6 +226,7 @@ export default function SetupWizard() {
 
   useEffect(() => {
     connectionTestResetKeyRef.current = connectionTestResetKey
+    autoConnectionTestKeyRef.current = null
     setConnectionTest({ state: 'idle' })
   }, [connectionTestResetKey])
 
@@ -252,12 +254,12 @@ export default function SetupWizard() {
   // (ha offline mode off). Ha siker - zold banner. Ha fail - piros + retry gomb.
   useEffect(() => {
     if (currentStep !== 'server' || offlineMode) return
-    if (connectionTest.state === 'testing') return
-    if (connectionTest.state === 'ok') return // mar sikeres — ne fusson ujra
     // csak akkor indul, ha van apiUrl + companyCode
     if (!apiUrl.trim() || !companyCode.trim()) return
     // ne fusson ha a user meg nem tesztelt + semmi input sincs
     if (!bootstrapUsername.trim() && !bootstrapPassword) {
+      if (autoConnectionTestKeyRef.current === connectionTestResetKey) return
+      autoConnectionTestKeyRef.current = connectionTestResetKey
       // elso alkalommal az auto-test a bootstrap-status endpoint-ra megy
       // (nem kell a user kod/jelszo)
       const requestKey = connectionTestResetKey
@@ -300,13 +302,13 @@ export default function SetupWizard() {
           } else {
             setConnectionTest({ state: 'fail', message: `Szerver hiba: HTTP ${resp.status}` })
           }
-        })
+      })
         .catch((err: unknown) => {
           if (connectionTestResetKeyRef.current !== requestKey) return
           setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
         })
     }
-  }, [currentStep, apiUrl, companyCode, offlineMode, bootstrapUsername, bootstrapPassword, connectionTest.state, connectionTestResetKey])
+  }, [currentStep, apiUrl, companyCode, offlineMode, bootstrapUsername, bootstrapPassword, connectionTestResetKey])
 
   // --- Kapcsolat teszt (kezi, retry gombnak) ---
   const runConnectionTest = useCallback(async () => {
