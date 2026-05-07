@@ -1,5 +1,38 @@
 import { describe, expect, it } from 'vitest'
-import { resolveSelectedWorkerForSetup } from './SetupWizard'
+import { isBranchSelectableForAppMode, resolveSelectedWorkerForSetup } from './SetupWizard'
+
+describe('isBranchSelectableForAppMode', () => {
+  it('ertektar modban csak ertektari fiokot enged', () => {
+    expect(isBranchSelectableForAppMode({
+      code: 'VAULT',
+      name: 'Ertektar',
+      city: 'Szeged',
+      isVault: true,
+    }, 'ertektar')).toBe(true)
+
+    expect(isBranchSelectableForAppMode({
+      code: 'KORUT',
+      name: 'Korut',
+      city: 'Szeged',
+      isVault: false,
+    }, 'ertektar')).toBe(false)
+
+    expect(isBranchSelectableForAppMode({
+      code: 'LEGACY',
+      name: 'Legacy',
+      city: 'Szeged',
+    }, 'ertektar')).toBe(false)
+  })
+
+  it('penztar modban a nem ertektari fiok is valaszthato', () => {
+    expect(isBranchSelectableForAppMode({
+      code: 'KORUT',
+      name: 'Korut',
+      city: 'Szeged',
+      isVault: false,
+    }, 'penztar')).toBe(true)
+  })
+})
 
 describe('resolveSelectedWorkerForSetup', () => {
   const workers = [

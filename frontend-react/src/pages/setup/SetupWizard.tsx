@@ -22,7 +22,7 @@ import { publicApi } from '../../services/api/index'
 // Típusok
 // ---------------------------------------------------------------------------
 
-interface Branch {
+export interface Branch {
   code: string
   name: string
   city: string
@@ -34,6 +34,15 @@ interface Branch {
 interface SetupWorkerOption {
   code: string
   name: string
+}
+
+export function isBranchSelectableForAppMode(
+  branch: Branch | null | undefined,
+  appMode: 'penztar' | 'ertektar',
+): boolean {
+  if (!branch) return false
+  if (appMode === 'ertektar') return branch.isVault === true
+  return true
 }
 
 export function resolveSelectedWorkerForSetup(params: {
@@ -176,7 +185,13 @@ export default function SetupWizard() {
 
   useEffect(() => {
     setBranchPage(0)
-  }, [branchSearch])
+  }, [branchSearch, appModeChoice])
+
+  useEffect(() => {
+    if (selectedBranch && !isBranchSelectableForAppMode(selectedBranch, appModeChoice)) {
+      setSelectedBranch(null)
+    }
+  }, [appModeChoice, selectedBranch])
 
   // --- Lépés-validáció: engedélyezett-e a tovább ---
   const canAdvance = useMemo(() => {
@@ -184,7 +199,7 @@ export default function SetupWizard() {
       case 'welcome':
         return true
       case 'branch':
-        return !!selectedBranch
+        return isBranchSelectableForAppMode(selectedBranch, appModeChoice)
       case 'program':
         return !!appModeChoice
       case 'server':
@@ -295,6 +310,10 @@ export default function SetupWizard() {
   // --- Telepítés befejezése ---
   const handleFinish = async () => {
     if (!selectedBranch) return
+    if (!isBranchSelectableForAppMode(selectedBranch, appModeChoice)) {
+      setSaveError('A kiválasztott fiók nem használható ehhez a programtípushoz. Válasszon másik fiókot.')
+      return
+    }
     setIsSaving(true)
     setSaveError(null)
     try {
