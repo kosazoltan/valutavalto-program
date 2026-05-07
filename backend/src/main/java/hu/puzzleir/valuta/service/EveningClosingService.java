@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.config.EveningClosingProperties;
 import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.dto.eveningclosing.*;
 import hu.puzzleir.valuta.entity.*;
@@ -8,7 +9,6 @@ import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,12 +59,11 @@ public class EveningClosingService {
     private final SystemParameterService systemParameterService;
     private final IntegrationTransportProperties integrationTransportProperties;
     private final FileTransportService fileTransportService;
-
-    @Value("${evening.closing.artifact-success-enabled:false}")
-    private boolean artifactSuccessEnabled;
+    private final EveningClosingProperties eveningClosingProperties;
 
     /** Maximum küldési próbálkozás */
     private static final int MAX_SEND_ATTEMPTS = 3;
+    private static final String ARTIFACT_PENDING_ERROR = "HQ_URL_MISSING";
 
     // ============ NAPI ADATCSOMAG KÉSZÍTÉS ============
 
@@ -147,7 +146,7 @@ public class EveningClosingService {
                 .orElseGet(() -> EveningSyncLog.builder()
                         .branchId(branchUuid)
                         .syncDate(pkg.getDate())
-                        .status("PENDING")
+                        .status(EveningSyncStatus.PENDING.name())
                         .attemptCount(0)
                         .build());
 
@@ -166,30 +165,28 @@ public class EveningClosingService {
 
             try {
                 if (headquartersUrl == null || headquartersUrl.isBlank()) {
-                        Path artifact = writeEveningPackageArtifact(pkg);
-                        log.info("Esti zárás bridge artifact létrehozva (HQ URL nincs konfigurálva): " +
-                                        "branchId={}, datum={}, tranzakciók={}, checksum={}, artifact={}",
-                                pkg.getBranchId(),
-                                pkg.getDate(),
-                                pkg.getTransactions() != null ? pkg.getTransactions().size() : 0,
-                                pkg.getChecksum(),
-                                artifact);
+                    Path artifact = writeEveningPackageArtifact(pkg);
+                    String artifactReference = toManagedArtifactReference(artifact);
+                    log.info("Esti zárás bridge artifact létrehozva (HQ URL nincs konfigurálva): " +
+                                    "branchId={}, datum={}, tranzakciók={}, checksum={}, artifact={}",
+                            pkg.getBranchId(),
+                            pkg.getDate(),
+                            pkg.getTransactions() != null ? pkg.getTransactions().size() : 0,
+                            pkg.getChecksum(),
+                            artifact);
 
-                    if (!artifactSuccessEnabled) {
-                        syncLog.setStatus("ARTIFACT_PENDING");
-                        syncLog.setPackageChecksum(pkg.getChecksum());
-                        syncLog.setCompletedAt(LocalDateTime.now());
-                        syncLog.setErrorMessage("HQ_URL_MISSING_ARTIFACT=" + artifact);
+                    if (!eveningClosingProperties.isArtifactSuccessEnabled()) {
+                        markSyncLog(syncLog, EveningSyncStatus.ARTIFACT_PENDING,
+                                pkg.getChecksum(), artifactReference, ARTIFACT_PENDING_ERROR, false);
                         eveningSyncLogRepository.save(syncLog);
                         return DataSyncResult.failure(
-                                "HQ URL nincs konfigurálva; adatcsomag artifactba mentve: " + artifact,
+                                "HQ URL nincs konfigurálva; adatcsomag artifactba mentve (artifact: "
+                                        + artifactReference + ")",
                                 attempt);
                     }
 
-                    syncLog.setStatus("EVENING_SYNC_DONE");
-                    syncLog.setPackageChecksum(pkg.getChecksum());
-                    syncLog.setCompletedAt(LocalDateTime.now());
-                        syncLog.setErrorMessage("BRIDGED_TO_MANAGED_ARTIFACT");
+                    markSyncLog(syncLog, EveningSyncStatus.EVENING_SYNC_DONE,
+                            pkg.getChecksum(), artifactReference, null, true);
                     eveningSyncLogRepository.save(syncLog);
 
                     return DataSyncResult.success(pkg.getChecksum());
@@ -213,9 +210,8 @@ public class EveningClosingService {
                         targetUrl, HttpMethod.POST, request, String.class);
 
                 if (response.getStatusCode().is2xxSuccessful()) {
-                    syncLog.setStatus("EVENING_SYNC_DONE");
-                    syncLog.setPackageChecksum(pkg.getChecksum());
-                    syncLog.setCompletedAt(LocalDateTime.now());
+                    markSyncLog(syncLog, EveningSyncStatus.EVENING_SYNC_DONE,
+                            pkg.getChecksum(), null, null, true);
                     eveningSyncLogRepository.save(syncLog);
 
                     log.info("Adatcsomag sikeresen elküldve: branchId={}, datum={}, HTTP {}",
@@ -243,7 +239,7 @@ public class EveningClosingService {
         }
 
         // Minden próba sikertelen
-        syncLog.setStatus("FAILED");
+        syncLog.setStatus(EveningSyncStatus.FAILED.name());
         eveningSyncLogRepository.save(syncLog);
 
         return DataSyncResult.failure(
@@ -551,6 +547,33 @@ public class EveningClosingService {
             sb.append(String.format("%02x", b));
         }
         return sb.toString();
+    }
+
+    private void markSyncLog(
+            EveningSyncLog syncLog,
+            EveningSyncStatus status,
+            String checksum,
+            String artifactPath,
+            String errorMessage,
+            boolean completed) {
+        syncLog.setStatus(status.name());
+        syncLog.setPackageChecksum(checksum);
+        syncLog.setArtifactPath(artifactPath);
+        syncLog.setErrorMessage(errorMessage);
+        syncLog.setCompletedAt(completed ? LocalDateTime.now() : null);
+    }
+
+    private String toManagedArtifactReference(Path artifact) {
+        Path absoluteArtifact = artifact.toAbsolutePath().normalize();
+        String rootPath = integrationTransportProperties.getRootPath();
+        if (rootPath != null && !rootPath.isBlank()) {
+            Path root = Paths.get(rootPath).toAbsolutePath().normalize();
+            if (absoluteArtifact.startsWith(root)) {
+                return root.relativize(absoluteArtifact).toString().replace('\\', '/');
+            }
+        }
+        Path fileName = absoluteArtifact.getFileName();
+        return fileName != null ? fileName.toString() : "evening_daily_report.json";
     }
 
     /**
