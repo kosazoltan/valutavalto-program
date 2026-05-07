@@ -3,11 +3,13 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.dataimport.DataImportJobDto;
 import hu.puzzleir.valuta.dto.dataimport.ImportRequestDto;
 import hu.puzzleir.valuta.entity.DataImportJob;
+import hu.puzzleir.valuta.entity.DataImportStatus;
 import hu.puzzleir.valuta.service.DataImportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -36,7 +38,7 @@ public class DataImportController {
             @Valid @RequestBody ImportRequestDto request) {
         DataImportJob job = dataImportService.importDailyClosing(
                 request.getBranchId(), request.getDate());
-        return ResponseEntity.ok(toDto(job));
+        return importResponse(job);
     }
 
     /**
@@ -47,7 +49,7 @@ public class DataImportController {
     public ResponseEntity<DataImportJobDto> importInventory(
             @Valid @RequestBody ImportRequestDto request) {
         DataImportJob job = dataImportService.importInventory(request.getBranchId());
-        return ResponseEntity.ok(toDto(job));
+        return importResponse(job);
     }
 
     /**
@@ -59,7 +61,7 @@ public class DataImportController {
             @Valid @RequestBody ImportRequestDto request) {
         DataImportJob job = dataImportService.importTransactions(
                 request.getBranchId(), request.getFromDate(), request.getToDate());
-        return ResponseEntity.ok(toDto(job));
+        return importResponse(job);
     }
 
     /**
@@ -70,7 +72,7 @@ public class DataImportController {
     public ResponseEntity<DataImportJobDto> importFull(
             @Valid @RequestBody ImportRequestDto request) {
         DataImportJob job = dataImportService.importAll(request.getBranchId());
-        return ResponseEntity.ok(toDto(job));
+        return importResponse(job);
     }
 
     /**
@@ -93,10 +95,17 @@ public class DataImportController {
     @PostMapping("/{id}/retry")
     public ResponseEntity<DataImportJobDto> retry(@PathVariable UUID id) {
         DataImportJob job = dataImportService.retryFailed(id);
-        return ResponseEntity.ok(toDto(job));
+        return importResponse(job);
     }
 
     // ============ DTO KONVERZIÓ ============
+
+    private ResponseEntity<DataImportJobDto> importResponse(DataImportJob job) {
+        HttpStatus status = job.getStatus() == DataImportStatus.FAILED
+                ? HttpStatus.SERVICE_UNAVAILABLE
+                : HttpStatus.OK;
+        return ResponseEntity.status(status).body(toDto(job));
+    }
 
     private DataImportJobDto toDto(DataImportJob job) {
         return DataImportJobDto.builder()
