@@ -31,12 +31,10 @@ import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -64,23 +62,8 @@ public class WorkerService {
     // HIGH FIX #16: Brute force védelem — max 5 sikertelen próba, utána 15 perc lock
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final long LOCK_DURATION_MS = 15 * 60 * 1000L; // 15 perc
-    private static final String FALLBACK_COMPANY_CODE = "EBC";
-    private static final String FALLBACK_PASSWORD = "1234";
     // Dummy BCrypt hash for constant-time comparison when worker not found (timing side-channel prevention)
     private static final String DUMMY_BCRYPT_HASH = "$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie";
-    private static final Set<String> FALLBACK_WORKER_CODES = Set.of("KOSA", "BORSI", "BALI", "KASZA");
-    private static final Map<String, String> FALLBACK_WORKER_NAMES = Map.of(
-            "KOSA", "Kosa Zoltan",
-            "BORSI", "Borsi Tamas",
-            "BALI", "Bali Henrietta",
-            "KASZA", "Kasza Helga"
-    );
-    private static final Map<String, String> FALLBACK_WORKER_EMAILS = Map.of(
-            "KOSA", "kosa.zoltan.ebc@gmail.com",
-            "BORSI", "borsi.tamas.ebc@gmail.com",
-            "BALI", "bali.henriett.ebc@gmail.com",
-            "KASZA", "kasza.helga.ebc@gmail.com"
-    );
 
     /**
      * Brute force state: key = "companyCode:workerCode", value = [failedCount, lockUntilMs]
@@ -610,52 +593,6 @@ public class WorkerService {
                 .or(() -> workerRepository.findByCompanyId(company.getId()).stream()
                         .filter(w -> normalizeLoginCode(w.getName()).equals(normalizedInput))
                         .findFirst());
-        if (directMatch.isPresent()) {
-            return directMatch;
-        }
-
-        return ensureFallbackWorkerIfNeeded(company, normalizedWorkerCode);
-    }
-
-    private Optional<Worker> ensureFallbackWorkerIfNeeded(Company company, String normalizedWorkerCode) {
-        if (!FALLBACK_COMPANY_CODE.equalsIgnoreCase(company.getCode())) {
-            return Optional.empty();
-        }
-
-        String normalizedCode = normalizeCode(normalizedWorkerCode);
-        if (!FALLBACK_WORKER_CODES.contains(normalizedCode)) {
-            return Optional.empty();
-        }
-
-        List<Branch> branches = new ArrayList<>(branchRepository.findByCompanyIdAndIsActiveTrue(company.getId()));
-        if (branches.isEmpty()) {
-            branches = new ArrayList<>(branchRepository.findByCompanyId(company.getId()));
-        }
-        if (branches.isEmpty()) {
-            return Optional.empty();
-        }
-
-        Branch selectedBranch = branches.stream()
-                .sorted(Comparator
-                        .comparing((Branch b) -> !"TISZA".equalsIgnoreCase(b.getCode()))
-                        .thenComparing(Branch::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
-                .findFirst()
-                .orElse(branches.get(0));
-
-        Worker worker = workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), normalizedCode)
-                .orElseGet(Worker::new);
-
-        worker.setCompany(company);
-        worker.setBranch(selectedBranch);
-        worker.setCode(normalizedCode);
-        worker.setName(FALLBACK_WORKER_NAMES.getOrDefault(normalizedCode, normalizedCode));
-        worker.setRole(WorkerRole.CASHIER);
-        worker.setActive(true);
-        worker.setPasswordHash(passwordEncoder.encode(FALLBACK_PASSWORD));
-        worker.setEmail(FALLBACK_WORKER_EMAILS.getOrDefault(normalizedCode, null));
-        // Seed/fallback worker → passwordChangedAt = null → frontend kényszeríti a jelszóváltoztatást
-        worker.setPasswordChangedAt(null);
-
-        return Optional.of(workerRepository.save(worker));
+        return directMatch;
     }
 }

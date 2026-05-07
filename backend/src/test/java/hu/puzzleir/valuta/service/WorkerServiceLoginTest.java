@@ -106,6 +106,41 @@ class WorkerServiceLoginTest {
         verify(companyRepository).findByCode("EBC");
     }
 
+    @Test
+    @DisplayName("Production login nem hoz létre fallback workert 1234 jelszóval")
+    void login_missingFallbackWorkerDoesNotAutoCreateWorker() {
+        Company company = new Company();
+        company.setId(UUID.randomUUID());
+        company.setCode("EBC");
+        company.setName("Test Company");
+
+        Branch branch = new Branch();
+        branch.setId(UUID.randomUUID());
+        branch.setCode("TISZA");
+        branch.setCompany(company);
+
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCode(company.getId(), "KOSA")).thenReturn(Optional.empty());
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "KOSA")).thenReturn(Optional.empty());
+        when(workerRepository.findByCompanyId(company.getId())).thenReturn(List.of());
+        when(passwordEncoder.matches("1234", "$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie"))
+                .thenReturn(false);
+
+        LoginRequestDto dto = new LoginRequestDto();
+        dto.setCompanyCode("EBC");
+        dto.setWorkerCode("KOSA");
+        dto.setPassword("1234");
+
+        assertThatThrownBy(() -> workerService.login(dto, "127.0.0.1", "test"))
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessageContaining("pénztáros");
+
+        verify(branchRepository, never()).findByCompanyIdAndIsActiveTrue(company.getId());
+        verify(branchRepository, never()).findByCompanyId(company.getId());
+        verify(passwordEncoder, never()).encode(anyString());
+        verify(workerRepository, never()).save(any(Worker.class));
+    }
+
     /**
      * v2.4.6 (B6 — Codex P1 #331 privilege-escalation fix): a kért branchId akkor és csak
      * akkor engedélyezett, ha (a) explicit `worker_branch_access` rekord létezik VAGY
