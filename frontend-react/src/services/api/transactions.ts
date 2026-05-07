@@ -908,20 +908,20 @@ export interface ShipmentRequest {
 
 export interface ShipmentRequestItem {
   id: string
-  currencyId: string
-  currencyCode: string
-  amount: number
+  currencyId: string | number
+  currencyCode?: string
+  amount?: number
+  requestedAmount?: number
   denominationPreferences?: string
 }
 
 export interface ShipmentCreateRequest {
-  requestDate: string
-  requestedDeliveryDate: string
-  reason: string
+  fromBranchId: string
+  toBranchId: string
+  deliveryDate?: string
   items: Array<{
-    currencyId: string
-    amount: number
-    denominationPreferences?: string
+    currencyId: string | number
+    requestedAmount: number
   }>
   notes?: string
 }
@@ -944,6 +944,8 @@ function normalizeShipmentRequest(raw: Record<string, unknown>): ShipmentRequest
         requestingBranchName: (r.requestingBranchName ?? r['fromBranchName']) as ShipmentRequest['requestingBranchName'],
         targetBranchName: (r.targetBranchName ?? r['toBranchName']) as ShipmentRequest['targetBranchName'],
         requestedByWorkerName: (r.requestedByWorkerName ?? r['requestedBy']) as ShipmentRequest['requestedByWorkerName'],
+        requestedByWorkerId: (r.requestedByWorkerId ?? r['requestedById']) as ShipmentRequest['requestedByWorkerId'],
+        requestedAt: (r.requestedAt ?? r['createdAt'] ?? r['requestDate']) as ShipmentRequest['requestedAt'],
         requestNumber: (r.requestNumber ?? r['number']) as ShipmentRequest['requestNumber'],
     } as ShipmentRequest
 }
@@ -1005,14 +1007,19 @@ async function fetchPaged<T>(
 }
 
 export const shipmentRequestApi = {
-  /**
-   * @deprecated Sourcery PR #180 bug_risk + PR #187 improvement: backend
-   *   `/shipment-requests/branch/{}/create` NEM letezik. Runtime throw helyett
-   *   Promise<never> ami TypeScript compile-time figyelmeztetest is ad.
-   *   Backend refaktor szukseges: `ShipmentController.create()` uj endpoint.
-   */
-  create: async (_branchId: string, _request: ShipmentCreateRequest, _workerId: string): Promise<never> => {
-    throw new Error('shipmentRequestApi.create() DEPRECATED: backend endpoint hianyzik (Sourcery PR #180)')
+  create: async (request: ShipmentCreateRequest): Promise<ShipmentRequest> => {
+    const payload = {
+      fromBranchId: request.fromBranchId,
+      toBranchId: request.toBranchId,
+      deliveryDate: request.deliveryDate || undefined,
+      notes: request.notes?.trim() || undefined,
+      items: request.items.map((item) => ({
+        currencyId: Number(item.currencyId),
+        requestedAmount: item.requestedAmount,
+      })),
+    }
+    const response = await api.post<Record<string, unknown>>('/shipments', payload)
+    return normalizeShipmentRequest(response.data)
   },
   /**
    * @deprecated Sourcery PR #180 + PR #187 improvement: backend
@@ -1021,6 +1028,10 @@ export const shipmentRequestApi = {
    */
   prepare: async (_requestId: string, _sourceCashDeskId: string, _targetCashDeskId: string, _workerId: string): Promise<never> => {
     throw new Error('shipmentRequestApi.prepare() DEPRECATED: backend /shipment-requests/{}/prepare endpoint nem letezik.')
+  },
+  submit: async (requestId: string): Promise<ShipmentRequest> => {
+    const response = await api.post<Record<string, unknown>>(`/shipments/${requestId}/submit`)
+    return normalizeShipmentRequest(response.data)
   },
   // Fix 2026-04-24: a backend /api/v1/shipments endpoint-ot hasznalja.
   // AI review (Codex PR #180 P1): a shared client.ts interceptor MAR auto-unwrappel-i
