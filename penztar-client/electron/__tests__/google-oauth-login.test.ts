@@ -82,4 +82,13 @@ describe('performPasswordLoginMainProcess URL handling', () => {
       password: 'Secret123!',
     })).rejects.toMatchObject({ code: 'INVALID_URL' });
   });
+
+  it('link-local metadata hostot nem fogad el backend URL-kent', async () => {
+    await expect(performPasswordLoginMainProcess({
+      apiBaseUrl: 'http://169.254.169.254/api/v1',
+      companyCode: 'EBC',
+      workerCode: 'BORSI',
+      password: 'Secret123!',
+    })).rejects.toMatchObject({ code: 'INVALID_URL' });
+  });
 });
