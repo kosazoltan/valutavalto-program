@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.repository.PosTerminalRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,14 +37,18 @@ public class PosTerminalService {
     private final SystemParameterService systemParameterService;
     private final OtpTerminalProtocolService otpProtocol;
     private final IntegrationTransportProperties integrationTransportProperties;
+    private final FileTransportService fileTransportService;
+
+    @Value("${pos.terminal.bridge.simulated-approval-enabled:false}")
+    private boolean bridgeSimulatedApprovalEnabled;
 
     @jakarta.annotation.PostConstruct
     void warnBridgeDrivers() {
-        log.warn("⚠️ POS TERMINÁL: Borgun és Worldline driverek BRIDGE MÓDBAN futnak — "
+        log.warn("POS TERMINÁL: Borgun és Worldline driverek BRIDGE MÓDBAN futnak — "
                 + "file-artifact alapú, nem valódi terminál kommunikáció. "
-                + "OTP driver TCP/IP alapú, az működik.");
+                + "OTP driver TCP/IP alapú, az működik. Szimulált jóváhagyás engedélyezve={}",
+                bridgeSimulatedApprovalEnabled);
     }
-    private final FileTransportService fileTransportService;
 
     /**
      * Terminál típusok.
@@ -448,6 +453,12 @@ public class PosTerminalService {
                                                               BigDecimal amount,
                                                               String currency,
                                                               String terminalId) {
+        if (!bridgeSimulatedApprovalEnabled) {
+            log.warn("{} payment bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: terminalId={}",
+                    provider, terminalId);
+            return bridgeApprovalDisabled(provider, "payment");
+        }
+
         try {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("action", "PAYMENT");
@@ -471,6 +482,12 @@ public class PosTerminalService {
     private PosTransactionResult executeProviderBridgeReversal(TerminalType provider,
                                                                String originalRef,
                                                                String terminalId) {
+        if (!bridgeSimulatedApprovalEnabled) {
+            log.warn("{} reversal bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: terminalId={}",
+                    provider, terminalId);
+            return bridgeApprovalDisabled(provider, "reversal");
+        }
+
         try {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("action", "REVERSAL");
@@ -491,6 +508,12 @@ public class PosTerminalService {
     }
 
     private PosClosingResult executeProviderBridgeDailyClose(TerminalType provider, String terminalId) {
+        if (!bridgeSimulatedApprovalEnabled) {
+            log.warn("{} daily-close bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: terminalId={}",
+                    provider, terminalId);
+            return PosClosingResult.failure(bridgeDisabledMessage(provider, "daily close"));
+        }
+
         try {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("action", "DAILY_CLOSE");
@@ -508,6 +531,12 @@ public class PosTerminalService {
     }
 
     private boolean emitBridgeHeartbeat(TerminalType provider, PosTerminal terminal) {
+        if (!bridgeSimulatedApprovalEnabled) {
+            log.warn("{} heartbeat bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: terminalId={}",
+                    provider, terminal.getTerminalId());
+            return false;
+        }
+
         try {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("action", "HEARTBEAT");
@@ -527,6 +556,15 @@ public class PosTerminalService {
                     provider, terminal.getTerminalId(), e.getMessage());
             return false;
         }
+    }
+
+    private PosTransactionResult bridgeApprovalDisabled(TerminalType provider, String action) {
+        return PosTransactionResult.error(bridgeDisabledMessage(provider, action));
+    }
+
+    private String bridgeDisabledMessage(TerminalType provider, String action) {
+        return provider + " " + action
+                + " bridge szimuláció tiltva: nincs éles terminál-jóváhagyás";
     }
 
     private String resolvePosDir(TerminalType provider) {
