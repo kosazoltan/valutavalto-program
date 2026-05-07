@@ -1,0 +1,11 @@
+[Unit]
+Description=Valutavalto client_error_log retention cleanup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/valutavalto/scripts/cleanup-client-error-log.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=valuta-client-error-cleanup

@@ -45,8 +45,8 @@
 | Tétel | Állapot | Megjegyzés |
 |---|---|---|
 | **Sentry SDK integráció** | **NINCS** | helyette saját `DiagnosticsController` + `client_error_log` |
-| **Grafana / Prometheus deploy** | **NINCS commit-olt config** | csak az export oldal kész (Actuator) |
-| **Dedicated alert manager** (Alertmanager / PagerDuty) | **NINCS** | csak GitHub Issue auto-create |
+| **Grafana / Prometheus deploy** | **COMMITTED / VERIFY DEPLOY** | `deploy/hetzner/monitoring/docker-compose.monitoring.yml` + provisioned config |
+| **Dedicated alert manager** (Alertmanager / PagerDuty) | **COMMITTED / VERIFY DEPLOY** | Alertmanager config a monitoring stack része; élő webhook credential ellenőrizendő |
 | **Uptime monitor külső szolgáltatás** (UptimeRobot / Better Uptime) | **VERIFY** | repoban nincs nyom — DNS/Cloudflare szinten esetleg |
 | **APM / distributed tracing** | **NINCS** | nem releváns single-node deploymentnél |
 
@@ -179,11 +179,19 @@ sudo -u postgres psql -d valuta -c "
 
 A `D:\valutavalto-vault\sessions\YYYY-MM-DD-error-review.md` fájlba dokumentálni a top patterneket + javítási tervet (ha P0/P1, azonnali fix az egész code review mandate (CLAUDE.md "AI Review Zero-Tolerance Mandate") szerint).
 
-**Cleanup:** 90 nap után automatikus törlés (`V182__client_error_log_table.sql:58` COMMENT). **GAP**: a cron job nincs commitolva, manuálisan futtatandó:
+**Cleanup:** 90 nap után automatikus törlés (`V182__client_error_log_table.sql:58` COMMENT). A repo tartalmaz systemd timer-t:
+
+- `deploy/hetzner/scripts/setup-client-error-cleanup.sh`
+- `deploy/hetzner/scripts/cleanup-client-error-log.sh`
+- `deploy/hetzner/systemd/valuta-client-error-cleanup.service`
+- `deploy/hetzner/systemd/valuta-client-error-cleanup.timer`
+
+Telepítés után verifikáció:
 
 ```bash
-sudo -u postgres psql -d valuta -c \
-  "DELETE FROM client_error_log WHERE created_at < NOW() - INTERVAL '90 days';"
+systemctl list-timers valuta-client-error-cleanup.timer
+systemctl start valuta-client-error-cleanup.service
+journalctl -u valuta-client-error-cleanup -n 20 --no-pager
 ```
 
 ---
@@ -353,8 +361,8 @@ Ha 15 percen belül NEM zöld a smoke test (lásd `dr-backup-runbook.md` 4. szak
 | Gap | Prioritás | Javasolt fix |
 |---|---|---|
 | Külső uptime monitor (`bootstrap-status` ping) | P0 | UptimeRobot / Better Uptime, 1 perces interval |
-| Grafana + Prometheus deploy | P1 | 6.2 szakasz szerinti Docker Compose stack |
-| `client_error_log` 90 napos cleanup cron | P1 | `/etc/cron.d/valuta-error-log-cleanup` |
+| Grafana + Prometheus deploy élő verifikáció | P1 | `deploy/hetzner/bootstrap-vps.sh` monitoring lépés + Grafana login/scrape check |
+| `client_error_log` 90 napos cleanup timer élő verifikáció | P1 | `systemctl list-timers valuta-client-error-cleanup.timer` |
 | Caddy access log retention + rotate | P2 | logrotate config |
 | HikariCP exhausted alert | P2 | Grafana alert rule + GitHub Issue webhook |
 | AML overdue daily SQL alert | P0 | naponta 08:00 cron + ha COUNT > 0 → email DPO |

@@ -425,10 +425,29 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
  */
 const OAUTH_ALLOWED_HOSTS = ['excvaluta.com', 'oauth2.googleapis.com', 'accounts.google.com', 'localhost'];
 
+function isPrivateOrLoopbackHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  if (host === '127.0.0.1' || host === '::1' || host === '[::1]') {
+    return true;
+  }
+  const parts = host.split('.').map((part) => Number.parseInt(part, 10));
+  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
+    return false;
+  }
+  const a = parts[0] ?? -1;
+  const b = parts[1] ?? -1;
+  return a === 10
+    || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 168)
+    || (a === 169 && b === 254)
+    || a === 127;
+}
+
 function postJsonViaElectronNet(url: string, jsonBody: string, timeoutMs: number): Promise<unknown> {
   try {
     const parsed = new URL(url);
-    if (!OAUTH_ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`))) {
+    if (!OAUTH_ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`))
+        && !isPrivateOrLoopbackHost(parsed.hostname)) {
       return Promise.reject(new GoogleOAuthFailedException('INVALID_URL', `Blocked: host not in allowlist: ${parsed.hostname}`));
     }
   } catch { return Promise.reject(new GoogleOAuthFailedException('INVALID_URL', `Invalid URL: ${url}`)); }

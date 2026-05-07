@@ -1,7 +1,7 @@
 /**
  * DigiCert KeyLocker code signing hook for electron-builder.
  *
- * v2.5.25 SKELETON — AKTIVÁLÓDIK ha a CODE_SIGN_ENABLED=1 env var be van állítva
+ * Production signing hook — AKTIVÁLÓDIK ha a CODE_SIGN_ENABLED=1 env var be van állítva
  * ÉS a következő SM_* secrets jelen vannak a process env-ben:
  *   - SM_HOST: pl. "https://clientauth.one.digicert.com"
  *   - SM_API_KEY: a DigiCert ONE → KeyLocker → API Key
@@ -10,8 +10,11 @@
  *   - SM_CLIENT_CERT_PASSWORD: a .p12 fájl jelszava
  *   - SM_KEYPAIR_ALIAS: a KeyLocker-ben definiált keypair alias (pl. "valuta-penztar-sign")
  *
- * Ha CODE_SIGN_ENABLED nincs vagy NEM "1", a hook silently skip-el (a build folytatódik
- * NEM aláírtan). Ezzel a fejlesztői build-ek továbbra is működnek cert nélkül.
+ * Ha CODE_SIGN_ENABLED nincs vagy NEM "1", a hook hibával leáll. Ezzel a `npm run package`
+ * nem tud véletlenül aláíratlan production telepítőt kiadni.
+ *
+ * Fejlesztői, lokális unsigned csomagoláshoz explicit:
+ *   ALLOW_UNSIGNED_BUILD=1
  *
  * Ha CODE_SIGN_ENABLED=1 de a secrets hiányoznak, a hook EXPLICIT HIBÁVAL kilép —
  * NEM ad ki "néma" non-signed build-et.
@@ -26,7 +29,7 @@
 
 'use strict';
 
-const { execSync, execFileSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -41,10 +44,17 @@ const os = require('node:os');
 exports.default = async function signWithKeyLocker(configuration) {
   const filePath = configuration.path;
 
-  // 1. SKIP feltétel: CODE_SIGN_ENABLED nincs / nem "1"
+  // 1. Fail-closed: aláíratlan installer csak explicit fejlesztői override-dal készülhet.
   if (process.env.CODE_SIGN_ENABLED !== '1') {
-    console.log(`[sign-with-keylocker] CODE_SIGN_ENABLED=${process.env.CODE_SIGN_ENABLED || '(unset)'} → signing SKIPPED for ${filePath}`);
-    return;
+    if (process.env.ALLOW_UNSIGNED_BUILD === '1') {
+      console.log(`[sign-with-keylocker] ALLOW_UNSIGNED_BUILD=1 → signing SKIPPED for ${filePath}`);
+      return;
+    }
+    throw new Error(
+      `[sign-with-keylocker] CODE_SIGN_ENABLED=${process.env.CODE_SIGN_ENABLED || '(unset)'}. ` +
+      `Production packaging requires CODE_SIGN_ENABLED=1 and DigiCert KeyLocker SM_* env vars. ` +
+      `Set ALLOW_UNSIGNED_BUILD=1 only for local development builds.`,
+    );
   }
 
   console.log(`[sign-with-keylocker] CODE_SIGN_ENABLED=1, signing ${filePath}...`);
@@ -120,7 +130,7 @@ exports.default = async function signWithKeyLocker(configuration) {
 
   // 5. Verifikáció — signtool verify
   try {
-    execSync(`signtool verify /pa /v "${filePath}"`, { stdio: 'inherit' });
+    execFileSync('signtool', ['verify', '/pa', '/v', filePath], { stdio: 'inherit' });
     console.log(`[sign-with-keylocker] ✅ ${filePath} signed and verified successfully.`);
   } catch (err) {
     throw new Error(`[sign-with-keylocker] signtool verify FAILED for ${filePath}. The file was signed but verification failed: ${err.message}`);

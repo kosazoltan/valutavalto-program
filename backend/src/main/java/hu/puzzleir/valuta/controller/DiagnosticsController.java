@@ -75,13 +75,19 @@ public class DiagnosticsController {
 
         errorLogRepository.save(entry);
 
+        String logComponent = stripCrlf(dto.getComponent());
+        String logVersion = stripCrlf(dto.getVersion());
+        String logOsInfo = stripCrlf(dto.getOsInfo());
+        String logUser = stripCrlf(dto.getUserIdentifier());
+        String logClientIp = stripCrlf(clientIp);
+        String logMessage = stripCrlf(safeTruncate(dto.getErrorMessage(), 200));
         log.warn("[client-error] {} v{} {} | user={} | ip={} | msg='{}'",
-                stripCrlf(dto.getComponent()),
-                stripCrlf(dto.getVersion()),
-                stripCrlf(dto.getOsInfo()),
-                stripCrlf(dto.getUserIdentifier()),
-                clientIp,
-                stripCrlf(safeTruncate(dto.getErrorMessage(), 200)));
+                logComponent,
+                logVersion,
+                logOsInfo,
+                logUser,
+                logClientIp,
+                logMessage);
 
         // Aszinkron eskala: kritikus mintazatra GitHub Issue auto-create
         gitHubIssueAutoCreator.evaluateAndEscalate(entry);
@@ -168,9 +174,9 @@ public class DiagnosticsController {
         String fwd = req.getHeader("X-Forwarded-For");
         if (fwd != null && !fwd.isBlank()) {
             // Az első IP a kliens, a többi proxy chain
-            return fwd.split(",")[0].trim();
+            return stripCrlf(fwd.split(",")[0].trim());
         }
-        return req.getRemoteAddr();
+        return stripCrlf(req.getRemoteAddr());
     }
 
     private String safeTruncate(String s, int max) {

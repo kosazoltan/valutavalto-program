@@ -19,6 +19,9 @@ on:
     paths:
       - 'backend/src/main/resources/db/migration/**'
 
+permissions:
+  contents: read
+
 jobs:
   migration-lint:
     runs-on: ubuntu-latest

@@ -16,6 +16,7 @@
 #   6. Backblaze B2 backup   (kell: B2_KEY_ID + B2_APP_KEY)
 #   7. Monitoring stack      (Prometheus + Grafana + Loki + Alertmanager)
 #                            (kell: GRAFANA_ADMIN_PASSWORD + TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID)
+#   8. client_error_log cleanup timer (90 napos GDPR retention)
 #
 # Automatikus secret-generalas (openssl rand):
 #   - JWT_SECRET, APP_JWT_SECRET (hex 32)
@@ -303,6 +304,20 @@ step_monitoring() {
     log_warn "Caddy mogott exponaltasd: grafana.excvaluta.com szekcio a Caddyfile-ban."
 }
 
+step_client_error_cleanup() {
+    log_step "8. client_error_log retention cleanup timer"
+    if systemctl is-enabled --quiet valuta-client-error-cleanup.timer 2>/dev/null; then
+        log_ok "valuta-client-error-cleanup.timer mar aktiv - kihagyva."
+        return
+    fi
+    if ! ask_yn "Telepitsem?" "Y"; then
+        log "Kihagyva."
+        return
+    fi
+    bash "$SCRIPT_DIR/scripts/setup-client-error-cleanup.sh"
+    log_ok "client_error_log cleanup timer kesz. Napi futas: 02:10 UTC."
+}
+
 step_restart_backend() {
     log_step "Backend ujrainditas az uj .env-vel"
     if systemctl is-active --quiet valuta-backend.service 2>/dev/null; then
@@ -362,6 +377,7 @@ main() {
     step_tailscale
     step_b2_backup
     step_monitoring
+    step_client_error_cleanup
     step_restart_backend
     step_health_check
 

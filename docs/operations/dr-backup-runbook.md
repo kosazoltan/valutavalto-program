@@ -25,19 +25,25 @@
 
 ## 2. Backup eljárás
 
-### 2.1 Jelenlegi állapot — GAP-elemzés
+### 2.1 Jelenlegi állapot — repo bizonyíték + telepítési ellenőrzés
 
-A repo nem tartalmaz commit-olt `pg_dump` cron scriptet, sem systemd timer-t, sem Hetzner Storage Box upload szkriptet. A `scripts/` mappában csak deploy- és diagnosztikai szkriptek találhatók.
+A repo tartalmaz commit-olt backup telepítőt és systemd timer-t:
+
+- `deploy/hetzner/scripts/setup-backup.sh`
+- `deploy/hetzner/scripts/backup-pg.sh`
+- `deploy/hetzner/systemd/valuta-backup.service`
+- `deploy/hetzner/systemd/valuta-backup.timer`
+- `deploy/hetzner/backup/install-b2-backup.sh` Backblaze B2 off-site feltöltéshez
 
 | Tétel | Állapot | Megjegyzés |
 |---|---|---|
-| Application-szintű backup ütemező | **GAP** | repoban nincs |
-| `pg_dump` cron a Hetzner host-on | **VERIFY** | SSH-val ellenőrizendő (`crontab -l` postgres + root user alatt) |
-| Off-site replikáció (Storage Box / Scaleway / S3) | **GAP** | nincs commit-olt konfig |
+| Application-szintű backup ütemező | **COMMITTED / VERIFY DEPLOY** | `valuta-backup.timer` |
+| `pg_dump` napi mentés | **COMMITTED / VERIFY DEPLOY** | `backup-pg.sh`, atomikus dump + lokális retention |
+| Off-site replikáció | **COMMITTED / VERIFY DEPLOY** | Nextcloud WebDAV és B2 script is van; élő credential + timer státusz SSH-val ellenőrizendő |
 | Neon DB sync (`app.neon-sync.enabled`) | konfigurált, de **kikapcsolt** | `application.properties:194` default `false` |
-| Backup integritás-ellenőrzés (test restore) | **GAP** | dokumentálatlan |
+| Backup integritás-ellenőrzés (test restore) | **VERIFY** | havi DR drillben kötelező |
 
-**P0 javasolt akció:** verifikálni SSH-val a Hetzner gépen, hogy van-e bármilyen backup. Ha NINCS, az alábbi 2.2 szakasz szerint felállítani.
+**P0 javasolt akció:** SSH-val verifikálni, hogy `systemctl list-timers valuta-backup.timer` aktív, és a legutóbbi backup sikeresen feltöltődött off-site tárhelyre.
 
 ### 2.2 Javasolt backup eljárás (iparági standard)
 
@@ -305,11 +311,11 @@ Soron kívüli kérdés: kosa.zoltan.ebc@gmail.com
 
 | Gap | Prioritás | Javasolt fix |
 |---|---|---|
-| Commit-olt backup script + cron | P0 | `scripts/ops/valuta-pg-backup.sh` + `/etc/cron.d/valuta-pg-backup` |
-| Off-site replikáció (Storage Box / S3) | P0 | rsync vagy `wal-g` Storage Box-ra |
+| Backup timer production deploy verifikáció | P0 | `systemctl list-timers valuta-backup.timer` + legfrissebb off-site dump letöltési teszt |
+| Off-site credentialek productionben | P0 | Nextcloud/B2 env kitöltés + próba-feltöltés |
 | WAL archiválás (PITR) | P1 | PostgreSQL `archive_mode=on` + `archive_command` |
 | Failover automatika | P1 | Terraform + cloud-init template, Cloudflare API DNS-failover script |
 | Monthly DR drill log | P1 | `D:\valutavalto-vault\sessions\YYYY-MM-DR.md` minden hónap 1-jén |
 | Backup encryption-at-rest | P2 | `gpg --symmetric` a `.dump`-ra Storage Box upload előtt |
 
-**Lezárás:** ez a runbook tényalapú a 2026-05-06-i repo-állapotra. A commit-olt backup automatika hiánya a legnagyobb kockázat — első lépés a 2.1 GAP rész verifikálása SSH-val a Hetzner host-on.
+**Lezárás:** a repo oldali backup automatika már rendelkezésre áll. Product-ready kapu továbbra is az élő hoston végzett timer/off-site/restore verifikáció.

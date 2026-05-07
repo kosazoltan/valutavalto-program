@@ -177,6 +177,49 @@ describe('fetchViaElectronNet', () => {
       const ctCalls = mockSetHeader.mock.calls.filter(c => c[0] === 'Content-Type');
       expect(ctCalls).toHaveLength(1);
     });
+
+    it('csak whitelistelt request headerek jutnak at a rendererbol', async () => {
+      const promise = fetchViaElectronNet({
+        method: 'PATCH',
+        url: 'https://excvaluta.com/api/v1/workers/bulk-email',
+        body: '{}',
+        headers: {
+          Authorization: 'Bearer token',
+          'idempotency-key': 'idem-1',
+          'X-Request-Id': 'req-1',
+          'X-Forwarded-For': '203.0.113.50',
+          Cookie: 'session=stolen',
+          __proto__: 'polluted',
+        },
+      });
+      triggerResponse();
+      vi.advanceTimersByTime(0);
+      await promise;
+
+      expect(mockSetHeader).toHaveBeenCalledWith('Authorization', 'Bearer token');
+      expect(mockSetHeader).toHaveBeenCalledWith('Idempotency-Key', 'idem-1');
+      expect(mockSetHeader).toHaveBeenCalledWith('X-Request-Id', 'req-1');
+      expect(mockSetHeader).not.toHaveBeenCalledWith('X-Forwarded-For', expect.any(String));
+      expect(mockSetHeader).not.toHaveBeenCalledWith('Cookie', expect.any(String));
+      expect(mockSetHeader).not.toHaveBeenCalledWith('__proto__', expect.any(String));
+    });
+
+    it('CRLF-et tartalmazo header ertek nem tovabbitodik', async () => {
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/data',
+        headers: {
+          Authorization: 'Bearer ok',
+          'X-Request-Id': 'req-1\r\nInjected: yes',
+        },
+      });
+      triggerResponse();
+      vi.advanceTimersByTime(0);
+      await promise;
+
+      expect(mockSetHeader).toHaveBeenCalledWith('Authorization', 'Bearer ok');
+      expect(mockSetHeader).not.toHaveBeenCalledWith('X-Request-Id', expect.any(String));
+    });
   });
 
   describe('HTTP státusz kezelés', () => {
@@ -316,6 +359,31 @@ describe('fetchViaElectronNet', () => {
       await promise;
 
       expect(electronNet.request).toHaveBeenCalledWith({ method: 'POST', url: 'https://excvaluta.com/api/v1/test/data' });
+    });
+  });
+
+  describe('engedelyezett telepitesi hostok', () => {
+    it('LAN backend URL engedelyezett offline/helyi telepiteshez', async () => {
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'http://192.168.1.20:8080/api/v1/auth/bootstrap-status',
+      });
+      triggerResponse();
+      vi.advanceTimersByTime(0);
+      const result = await promise;
+
+      expect(result.ok).toBe(true);
+      expect(electronNet.request).toHaveBeenCalledWith({
+        method: 'GET',
+        url: 'http://192.168.1.20:8080/api/v1/auth/bootstrap-status',
+      });
+    });
+
+    it('tetszoleges kulso host tovabbra is blokkolt', async () => {
+      await expect(fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://example.com/api/v1/auth/bootstrap-status',
+      })).rejects.toThrow('Blocked: URL host not in allowlist');
     });
   });
 

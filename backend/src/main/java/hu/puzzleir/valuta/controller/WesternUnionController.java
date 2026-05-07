@@ -1,6 +1,8 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.wu.WuBalanceDto;
+import hu.puzzleir.valuta.dto.wu.WuDailyLimitDto;
+import hu.puzzleir.valuta.dto.wu.WuDailyLimitUseRequest;
 import hu.puzzleir.valuta.dto.wu.WuDailyReportDto;
 import hu.puzzleir.valuta.dto.wu.WuTransactionDto;
 import hu.puzzleir.valuta.entity.WuBalance;
@@ -90,6 +92,25 @@ public class WesternUnionController {
     public ResponseEntity<List<WuBalanceDto>> getBalance(@RequestParam UUID branchId) {
         List<WuBalance> balances = westernUnionService.getBalance(branchId);
         return ResponseEntity.ok(balances.stream().map(this::toBalanceDto).collect(Collectors.toList()));
+    }
+
+    /**
+     * WU napi cégszintű USD keret lekérdezése.
+     * GET /api/v1/western-union/daily-limit
+     */
+    @GetMapping("/daily-limit")
+    public ResponseEntity<WuDailyLimitDto> getDailyLimit(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(westernUnionService.getDailyLimit(date));
+    }
+
+    /**
+     * WU napi keret kézi felhasználás rögzítése integrációs fallbackhez.
+     * A normál SEND/RECEIVE végpontok automatikusan használják a keretet.
+     */
+    @PostMapping("/daily-limit/use")
+    public ResponseEntity<WuDailyLimitDto> useDailyLimit(@Valid @RequestBody WuDailyLimitUseRequest request) {
+        return ResponseEntity.ok(westernUnionService.useDailyLimit(request.getAmountUsd(), request.getBusinessDate()));
     }
 
     /**

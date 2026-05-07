@@ -129,6 +129,29 @@ function loadProductionUrls(): { api_url: string; base_url: string; domain: stri
   }
 }
 
+function normalizeApiUrl(value: string): string {
+  const trimmed = value.trim().replace(/\/+$/, '');
+  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+}
+
+function resolveConfiguredApiUrl(): string {
+  const fallback = loadProductionUrls().api_url;
+  try {
+    const configured = (getConfig('server_url') ?? '').trim();
+    if (!configured) return fallback;
+    const parsed = new URL(configured);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      log.warn('[App] server_url invalid protocol, fallback production URL:', configured);
+      return fallback;
+    }
+    return normalizeApiUrl(configured);
+  } catch (err) {
+    log.warn('[App] server_url invalid, fallback production URL:',
+        err instanceof Error ? err.message : String(err));
+    return fallback;
+  }
+}
+
 const isDev = !app.isPackaged && !process.argv.includes('--force-packaged') && process.env.ELECTRON_FORCE_PACKAGED !== '1';
 const devServerUrl = process.env.ELECTRON_RENDERER_URL ?? 'http://127.0.0.1:3000';
 
@@ -841,7 +864,7 @@ app.whenReady().then(async () => {
       return { ok: false, code: 'MISCONFIGURED',
           message: 'Google Desktop OAuth client nincs konfiguralva. Kerd az adminisztratort.' };
     }
-    const apiBaseUrl = loadProductionUrls().api_url;
+    const apiBaseUrl = resolveConfiguredApiUrl();
     try {
       const result = await performGoogleOAuthFlowWithBackendLogin({
         clientId,
@@ -873,7 +896,7 @@ app.whenReady().then(async () => {
     if (!payload || !payload.companyCode || !payload.workerCode || !payload.password) {
       return { ok: false, code: 'BAD_REQUEST', message: 'companyCode, workerCode, password kotelezo' };
     }
-    const apiBaseUrl = loadProductionUrls().api_url;
+    const apiBaseUrl = resolveConfiguredApiUrl();
     try {
       const response = await performPasswordLoginMainProcess({
         apiBaseUrl,
@@ -907,7 +930,7 @@ app.whenReady().then(async () => {
     if (!params || !params.url || !params.method) {
       return { ok: false, status: 0, statusText: 'BAD_REQUEST', headers: {}, body: '{"error":"url and method required"}' };
     }
-    const apiBaseUrl = loadProductionUrls().api_url;
+    const apiBaseUrl = resolveConfiguredApiUrl();
     const fullUrl = params.url.startsWith('http') ? params.url : `${apiBaseUrl}${params.url}`;
 
     const MAX_RETRIES = 3;

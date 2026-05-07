@@ -116,6 +116,35 @@ function looksLikeValidSecret(value: string | undefined): boolean {
   return !forbidden.some((bad) => trimmed.toLowerCase().includes(bad));
 }
 
+function looksLikeValidApiUrl(value: string | undefined): boolean {
+  if (!value) return false;
+  const trimmed = value.trim();
+  if (trimmed === 'https://' || trimmed === 'http://' || trimmed === 'https' || trimmed === 'http') {
+    return false;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    return (parsed.protocol === 'https:' || parsed.protocol === 'http:')
+      && parsed.hostname.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+function looksLikeStaleOfflineSetup(values: Record<string, string>): boolean {
+  if (values.SETUP_OFFLINE_MODE !== '1') {
+    return false;
+  }
+
+  // 2026-05-04/05 diagnostics: legacy installs had SETUP_COMPLETED=1,
+  // SETUP_OFFLINE_MODE=1, VITE_API_URL="https://", and empty bootstrap identity.
+  // That state must run the wizard again; otherwise no global backend password
+  // is written for the selected worker.
+  const workerCode = values.PENZTAR_BOOTSTRAP_WORKER_CODE?.trim() ?? '';
+  const password = values.PENZTAR_BOOTSTRAP_PASSWORD?.trim() ?? '';
+  return workerCode.length === 0 && password.length === 0;
+}
+
 function generateSecretHex(bytes: number): string {
   return crypto.randomBytes(bytes).toString('hex');
 }
@@ -356,6 +385,12 @@ export function isFirstRun(): SetupCheckResult {
   if (!looksLikeValidSecret(values.JWT_SECRET)) {
     return { isFirstRun: true, envPath, reason: 'jwt-secret-invalid' };
   }
+  if (!looksLikeValidApiUrl(values.VITE_API_URL)) {
+    return { isFirstRun: true, envPath, reason: 'api-url-invalid' };
+  }
+  if (looksLikeStaleOfflineSetup(values)) {
+    return { isFirstRun: true, envPath, reason: 'stale-offline-setup' };
+  }
   return { isFirstRun: false, envPath };
 }
 
@@ -503,6 +538,18 @@ export async function bootstrapAdmin(
     alreadyDone: false,
     errorMessage: msg || `HTTP ${response.status}`,
   };
+}
+
+async function getBootstrapCompleted(apiUrl: string, timeoutMs = 8000): Promise<boolean | null> {
+  const base = normalizeApiBase(apiUrl);
+  const response = await httpJsonWithRetry<{ completed?: boolean }>(`${base}/auth/bootstrap-status`, {
+    method: 'GET',
+    timeoutMs,
+  });
+  if (!response.ok || typeof response.body?.completed !== 'boolean') {
+    return null;
+  }
+  return response.body.completed;
 }
 
 // ============ v2.3.0: WORKER FIRST-TIME SETUP (valodi dolgozo + jelszo) ============
@@ -706,73 +753,41 @@ export async function testConnection(
   if (!normalizedUrl.endsWith('/api/v1')) {
     normalizedUrl = `${normalizedUrl}/api/v1`;
   }
-  const loginUrl = `${normalizedUrl}/auth/login`;
 
-  return await new Promise<SetupConnectionTest>((resolve) => {
-    let settled = false;
-    const safeResolve = (v: SetupConnectionTest) => {
-      if (settled) return;
-      settled = true;
-      resolve({ ...v, latencyMs: Date.now() - started });
+  if (!username.trim() || !password) {
+    const response = await httpJsonWithRetry<{ completed?: boolean }>(
+      `${normalizedUrl}/auth/bootstrap-status`,
+      { method: 'GET', timeoutMs },
+    );
+    return {
+      success: response.ok,
+      httpStatus: response.status || undefined,
+      latencyMs: response.latencyMs,
+      errorMessage: response.ok ? undefined : (response.errorMessage || `HTTP ${response.status}`),
     };
+  }
 
-    let request: Electron.ClientRequest;
-    try {
-      request = net.request({ method: 'POST', url: loginUrl });
-    } catch (err: unknown) {
-      safeResolve({
-        success: false,
-        errorMessage: err instanceof Error ? err.message : String(err),
-      });
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      try { request.abort(); } catch { /* ignore */ }
-      safeResolve({ success: false, errorMessage: `Időtúllépés (${timeoutMs} ms)` });
-    }, timeoutMs);
-
-    request.setHeader('Content-Type', 'application/json');
-    request.on('response', (response) => {
-      clearTimeout(timer);
-      // Bármilyen 2xx/4xx válasz azt jelenti, hogy a szerver elérhető.
-      // 401 ugyanolyan jó ebben a kontextusban, mint 200 — csak a rossz jelszót jelzi.
-      if (response.statusCode >= 200 && response.statusCode < 500) {
-        safeResolve({ success: true, httpStatus: response.statusCode });
-      } else {
-        safeResolve({
-          success: false,
-          httpStatus: response.statusCode,
-          errorMessage: `Szerverhiba: HTTP ${response.statusCode}`,
-        });
-      }
-      // Tartalom eldobható, csak a statusCode érdekes itt.
-      response.on('data', () => { /* drain */ });
-      response.on('end', () => { /* drain */ });
-    });
-    request.on('error', (err) => {
-      clearTimeout(timer);
-      safeResolve({
-        success: false,
-        errorMessage: err instanceof Error ? err.message : String(err),
-      });
-    });
-
-    try {
-      request.write(JSON.stringify({
+  const loginUrl = `${normalizedUrl}/auth/login`;
+  const response = await httpJsonWithRetry(loginUrl, {
+    method: 'POST',
+    body: {
         companyCode,
         workerCode: username,
         password,
-      }));
-      request.end();
-    } catch (err: unknown) {
-      clearTimeout(timer);
-      safeResolve({
-        success: false,
-        errorMessage: err instanceof Error ? err.message : String(err),
-      });
-    }
+    },
+    timeoutMs,
   });
+
+  // Barmilyen 2xx/4xx valasz azt jelenti, hogy a szerver elerheto.
+  // 401/400 ebben a setup kontextusban ugyanugy kapcsolat-siker, csak
+  // credential/business hiba.
+  const reachable = response.status >= 200 && response.status < 500;
+  return {
+    success: reachable,
+    httpStatus: response.status || undefined,
+    latencyMs: response.latencyMs || (Date.now() - started),
+    errorMessage: reachable ? undefined : (response.errorMessage || `Szerverhiba: HTTP ${response.status}`),
+  };
 }
 
 export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupSaveResult> {
@@ -851,18 +866,45 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
         newPassword: payload.adminPassword,
       });
       if (!workerSetup.success) {
-        return {
-          success: false,
-          envPath,
-          errorMessage: `A dolgozoi jelszo beallitasa nem sikerult: ${workerSetup.errorMessage ?? 'ismeretlen hiba'}`,
-        };
+        const bootstrapCompleted = await getBootstrapCompleted(resolvedApiUrl);
+        if (bootstrapCompleted === true) {
+          log.warn('[Setup] Worker first-time setup nem fogadta el a resetet, bootstrap-completed=true -> reinstall password update ag.');
+          const reset = await bootstrapAdmin(resolvedApiUrl, {
+            companyCode: normalizedCompanyCode,
+            workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
+            workerName: payload.selectedWorkerName || payload.selectedWorkerCode.trim().toUpperCase(),
+            email: undefined,
+            newPassword: payload.adminPassword,
+          });
+          if (!reset.success) {
+            return {
+              success: false,
+              envPath,
+              errorMessage: `A dolgozoi jelszo ujratelepitesi frissitese nem sikerult: ${reset.errorMessage ?? 'ismeretlen hiba'}`,
+            };
+          }
+          resolvedWorkerIdentity = {
+            workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
+            workerName: payload.selectedWorkerName,
+            workerRole: payload.selectedWorkerRole,
+          };
+          log.info('[Setup] Worker jelszo reinstall-aggal frissitve:', resolvedWorkerIdentity);
+        } else {
+          return {
+            success: false,
+            envPath,
+            errorMessage: `A dolgozoi jelszo beallitasa nem sikerult: ${workerSetup.errorMessage ?? 'ismeretlen hiba'}`,
+          };
+        }
       }
-      resolvedWorkerIdentity = workerSetup.workerIdentity ?? {
-        workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
-        workerName: payload.selectedWorkerName,
-        workerRole: payload.selectedWorkerRole,
-      };
-      log.info('[Setup] Worker first-time setup sikeres:', resolvedWorkerIdentity);
+      if (workerSetup.success) {
+        resolvedWorkerIdentity = workerSetup.workerIdentity ?? {
+          workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
+          workerName: payload.selectedWorkerName,
+          workerRole: payload.selectedWorkerRole,
+        };
+        log.info('[Setup] Worker first-time setup sikeres:', resolvedWorkerIdentity);
+      }
     } else {
       // Legacy: bootstrap-admin (uj admin worker + rendszer-flag)
       const bootstrap = await bootstrapAdmin(resolvedApiUrl, {
