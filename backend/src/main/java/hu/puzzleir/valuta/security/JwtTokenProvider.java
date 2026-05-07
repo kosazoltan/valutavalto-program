@@ -14,6 +14,8 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -219,6 +221,11 @@ public class JwtTokenProvider {
     public boolean isTokenExpired(String token) {
         Instant expirationInstant = getClaims(token).getExpiration().toInstant();
         return expirationInstant.isBefore(Instant.now());
+    }
+
+    public LocalDateTime getExpirationDateTimeFromToken(String token) {
+        Instant expirationInstant = getClaims(token).getExpiration().toInstant();
+        return LocalDateTime.ofInstant(expirationInstant, ZoneId.systemDefault());
     }
 
     /**

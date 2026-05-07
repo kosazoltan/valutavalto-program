@@ -125,7 +125,7 @@ export default function LoginPage() {
 
   /** Login eredmény feldolgozása — ha multi-role, role-választó megjelenítése */
   const handleLoginResponse = (response: Awaited<ReturnType<typeof authApi.login>>) => {
-    // Szerver (full mód) whitelist: csak főértéktáros / belső ellenőr / ügyvezető
+    // Szerver (full mód) whitelist: a kozponti admin/felugyeleti role-ok kozos allowlistaja.
     const effectiveRole = response.activeRole ?? response.worker.role
     const serverAllowed = isRoleSelectableForAppMode(effectiveRole, 'full')
 
@@ -151,11 +151,11 @@ export default function LoginPage() {
     }
 
     if (response.roleSelectionRequired) {
-      if (!response.roles || response.roles.length < 2) {
+      if (!response.roles || response.roles.length < 1) {
         setError('A bejelentkezés szerepkör-választást kér, de a szerver nem adott választható szerepköröket.')
         return
       }
-      const selectableRoles = response.roles.filter((role) => isRoleSelectableForAppMode(role, appMode))
+      const selectableRoles = response.roles
       if (selectableRoles.length === 0) {
         setError(`Hozzáférés megtagadva. Egyik választható szerepkör sem használható ebben a programban: ${appModeLabel(appMode)}.`)
         return
@@ -190,10 +190,6 @@ export default function LoginPage() {
     setError('')
 
     try {
-      if (!isRoleSelectableForAppMode(selectedRole, appMode)) {
-        setError(`Ez a szerepkör nem használható ebben a programban: ${appModeLabel(appMode)}.`)
-        return
-      }
       const response = await authApi.selectRole({
         token: pendingLoginResponse.token,
         roleCode: selectedRole,
@@ -354,7 +350,7 @@ export default function LoginPage() {
 
   // V57: Role-választó modal
   if (showRoleSelector && pendingLoginResponse) {
-    const selectableRoles = pendingLoginResponse.roles?.filter((role) => isRoleSelectableForAppMode(role, appMode)) ?? []
+    const selectableRoles = pendingLoginResponse.roles ?? []
     return (
       <div className="w-[340px]">
         <div className="bg-form-bg border border-form-border shadow-lg">
