@@ -327,19 +327,14 @@ export async function performGoogleOAuthFlow(config: {
  * <p>Plusz: 3-szor probalja a backend POST-ot (1s, 3s, 5s wait) ha network-level error tortenik.
  *
  * @param config Desktop OAuth client + backend URL
- * @returns Backend `/auth/google-login` response (accessToken + refreshToken + user)
+ * @returns Backend `/auth/google-login` response JSON, plus the decoded Google email for diagnostics.
  */
 export async function performGoogleOAuthFlowWithBackendLogin(config: {
   clientId: string;
   clientSecret: string;
   apiBaseUrl: string;          // pl. https://excvaluta.com/api/v1
   timeoutMs?: number;
-}): Promise<{
-  accessToken: string;
-  refreshToken?: string;
-  user?: { email?: string; companyId?: number; role?: string; [k: string]: unknown };
-  email?: string;
-}> {
+}): Promise<{ response: unknown; email?: string }> {
   // 1. RFC 8252 OAuth Flow -> idToken
   const oauthResult = await performGoogleOAuthFlow({
     clientId: config.clientId,
@@ -360,11 +355,7 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
       const responseJson = await postJsonViaElectronNet(url, reqBody, 30_000);
       log.info('[google-oauth] Backend google-login sikeres (attempt ' + (attempt + 1) + '/' + MAX_RETRIES + ')');
       return {
-        ...(responseJson as {
-          accessToken: string;
-          refreshToken?: string;
-          user?: Record<string, unknown>;
-        }),
+        response: responseJson,
         email: oauthResult.email,
       };
     } catch (err) {

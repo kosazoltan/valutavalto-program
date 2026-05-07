@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * Plusz: 3-szor probalja a backend POST-ot (1s, 3s, 5s wait) ha network-level error.
    */
   googleOAuthFlowWithBackend: (): Promise<
-    { ok: true; accessToken: string; refreshToken?: string; user?: { email?: string; companyId?: number; role?: string } & Record<string, unknown>; email?: string }
+    { ok: true; response: unknown; email?: string }
     | { ok: false; code: string; message: string }
   > => ipcRenderer.invoke('auth:google-oauth-flow-with-backend'),
 

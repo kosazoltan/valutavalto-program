@@ -301,10 +301,9 @@ export default function LoginPage() {
           }
           return
         }
-        // A backend `/auth/google-login` JSON-t passthrough-zuk a main process IPC-n keresztul,
-        // a strukturaja LoginResponse-szal kompatibilis (token, tokenType, expiresAt, worker, ...).
-        // Cast `unknown`-on keresztul, mert az IPC payload tipus-strukturaja loose.
-        handleLoginResponse(result as unknown as Awaited<ReturnType<typeof authApi.googleLogin>>)
+        // A backend `/auth/google-login` JSON-t explicit `response` mezoben adjuk at,
+        // hogy az IPC ok/email boritek ne keveredjen a LoginResponse mezoi koze.
+        handleLoginResponse(result.response as Awaited<ReturnType<typeof authApi.googleLogin>>)
         return
       }
       if (!window.electronAPI?.googleOAuthFlow) {

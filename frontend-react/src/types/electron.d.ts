@@ -9,9 +9,7 @@ export interface ElectronAPI {
   googleOAuthFlowWithBackend(): Promise<
     | {
         ok: true;
-        accessToken: string;
-        refreshToken?: string;
-        user?: { email?: string; companyId?: number; role?: string } & Record<string, unknown>;
+        response: unknown;
         email?: string;
       }
     | { ok: false; code: string; message: string }

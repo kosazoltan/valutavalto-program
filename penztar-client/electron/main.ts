@@ -872,7 +872,7 @@ app.whenReady().then(async () => {
         apiBaseUrl,
       });
       log.info('[main] Google OAuth + backend login OK for:', result.email ?? '(unknown)');
-      return { ok: true, ...result };
+      return { ok: true, response: result.response, email: result.email };
     } catch (err) {
       if (err instanceof GoogleOAuthFailedException) {
         log.warn('[main] Google OAuth + backend login failed:', err.code, err.message);
