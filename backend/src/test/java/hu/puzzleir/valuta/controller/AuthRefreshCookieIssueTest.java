@@ -17,10 +17,13 @@ import hu.puzzleir.valuta.service.WorkerFirstTimeSetupService;
 import hu.puzzleir.valuta.service.WorkerRoleService;
 import hu.puzzleir.valuta.service.WorkerService;
 import hu.puzzleir.valuta.util.ClientIpResolver;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -30,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class AuthRefreshCookieIssueFailureTest {
+class AuthRefreshCookieIssueTest {
 
     private final WorkerService workerService = mock(WorkerService.class);
     private final JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
@@ -66,12 +69,7 @@ class AuthRefreshCookieIssueFailureTest {
         when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
         when(refreshTokenService.issue(worker, request)).thenThrow(new IllegalStateException("database unavailable"));
 
-        assertThatThrownBy(() -> controller.login(requestDto, request, response))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> {
-                    BusinessException businessException = (BusinessException) ex;
-                    assertThat(businessException.getErrorCode()).isEqualTo("LOGIN_SESSION_ISSUE_FAILED");
-                    assertThat(businessException.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-                });
+        assertLoginSessionIssueFailed(() -> controller.login(requestDto, request, response));
     }
 
     @Test
@@ -89,12 +87,19 @@ class AuthRefreshCookieIssueFailureTest {
         when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
         when(refreshTokenService.issue(worker, request)).thenThrow(new IllegalStateException("database unavailable"));
 
-        assertThatThrownBy(() -> controller.googleLogin(requestDto, request, response))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> {
-                    BusinessException businessException = (BusinessException) ex;
-                    assertThat(businessException.getErrorCode()).isEqualTo("LOGIN_SESSION_ISSUE_FAILED");
-                    assertThat(businessException.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-                });
+        assertLoginSessionIssueFailed(() -> controller.googleLogin(requestDto, request, response));
+    }
+
+    @Test
+    void loginEndpointsAreTransactionalToRollBackSessionSideEffectsOnCookieFailure() throws NoSuchMethodException {
+        assertThat(AuthController.class
+                .getMethod("login", LoginRequestDto.class, HttpServletRequest.class, HttpServletResponse.class)
+                .getAnnotation(Transactional.class))
+                .isNotNull();
+        assertThat(GoogleAuthController.class
+                .getMethod("googleLogin", GoogleLoginRequestDto.class, HttpServletRequest.class, HttpServletResponse.class)
+                .getAnnotation(Transactional.class))
+                .isNotNull();
     }
 
     @Test
@@ -134,7 +139,7 @@ class AuthRefreshCookieIssueFailureTest {
     }
 
     @Test
-    void firstTimeWorkerSetupFailsWhenRefreshCookieCannotBeIssued() {
+    void firstTimeWorkerSetupReturnsCommittedSuccessWhenRefreshCookieCannotBeIssued() {
         AuthController controller = new AuthController(
                 workerService,
                 jwtTokenProvider,
@@ -151,21 +156,24 @@ class AuthRefreshCookieIssueFailureTest {
         Worker worker = worker();
         hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupRequestDto requestDto =
                 new hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupRequestDto();
-        when(workerFirstTimeSetupService.setupWorkerPassword(requestDto))
-                .thenReturn(hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto.builder()
+        hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto setupResponse =
+                hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto.builder()
                         .success(true)
+                        .message("Jelszo sikeresen beallitva.")
                         .workerId(42L)
                         .token("access-token")
-                        .build());
+                        .build();
+        when(workerFirstTimeSetupService.setupWorkerPassword(requestDto)).thenReturn(setupResponse);
         when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
         when(refreshTokenService.issue(worker, request)).thenThrow(new IllegalStateException("database unavailable"));
 
-        assertThatThrownBy(() -> controller.firstTimeWorkerSetup(requestDto, request, response))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> {
-                    BusinessException businessException = (BusinessException) ex;
-                    assertThat(businessException.getErrorCode()).isEqualTo("LOGIN_SESSION_ISSUE_FAILED");
-                    assertThat(businessException.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-                });
+        org.springframework.http.ResponseEntity<hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto> result =
+                controller.firstTimeWorkerSetup(requestDto, request, response);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isSameAs(setupResponse);
+        assertThat(result.getBody().getMessage()).contains("tartós bejelentkezési cookie nem jött létre");
+        assertThat(response.getHeader("Set-Cookie")).isNull();
     }
 
     private LoginResponseDto loginResponse() {
@@ -179,5 +187,14 @@ class AuthRefreshCookieIssueFailureTest {
         Worker worker = new Worker();
         worker.setId(42L);
         return worker;
+    }
+
+    private static void assertLoginSessionIssueFailed(
+            org.assertj.core.api.ThrowableAssert.ThrowingCallable action) {
+        assertThatThrownBy(action)
+                .isInstanceOfSatisfying(BusinessException.class, ex -> {
+                    assertThat(ex.getErrorCode()).isEqualTo("LOGIN_SESSION_ISSUE_FAILED");
+                    assertThat(ex.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+                });
     }
 }
