@@ -59,6 +59,13 @@ public class RefreshTokenService {
         return issue(worker, request, null);
     }
 
+    /**
+     * Uj refresh token kibocsatasa egy veglegesitett aktiv role-lal.
+     *
+     * <p>Login/role-select/google-login vegleges session flow-kban ezt az overloadot
+     * hasznald, hogy a silent refresh ne essen vissza masik role-ra. A role nelkuli
+     * overload csak legacy vagy role-nelkuli sessionokhoz marad.</p>
+     */
     @Transactional
     public IssuedToken issue(Worker worker, HttpServletRequest request, String activeRole) {
         String selector = randomUrlSafe(SELECTOR_BYTES);
@@ -134,6 +141,10 @@ public class RefreshTokenService {
         return rotate(oldToken, worker, request, oldToken.getActiveRole());
     }
 
+    /**
+     * Token rotation explicit aktiv role-lal. Refresh-cookie flow-ban ezt hasznald,
+     * miutan a controller ujraellenorizte, hogy a tarolt role meg a workerhez tartozik.
+     */
     @Transactional
     public IssuedToken rotate(RefreshToken oldToken, Worker worker, HttpServletRequest request, String activeRole) {
         IssuedToken newIssued = issue(worker, request, activeRole);
@@ -175,7 +186,7 @@ public class RefreshTokenService {
         return s.length() > max ? s.substring(0, max) : s;
     }
 
-    private static String normalizeActiveRole(String activeRole) {
+    public static String normalizeActiveRole(String activeRole) {
         if (activeRole == null || activeRole.isBlank()) {
             return null;
         }
