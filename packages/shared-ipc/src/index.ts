@@ -30,6 +30,7 @@ export interface SetupSaveRequest {
   adminUsername: string
   adminPassword: string
   bootstrapUsername: string
+  workerCurrentPassword?: string
   bootstrapPassword: string
   offlineMode: boolean
   appMode: 'penztar' | 'ertektar' | 'ertekszallito'

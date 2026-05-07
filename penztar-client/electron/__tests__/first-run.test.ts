@@ -31,7 +31,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-import { isFirstRun } from '../first-run';
+import { isFirstRun, resolveSetupPasswords } from '../first-run';
 
 function writeEnv(content: string): void {
   fs.mkdirSync(mockState.userDataDir, { recursive: true });
@@ -94,6 +94,29 @@ describe('isFirstRun', () => {
 
     expect(isFirstRun()).toMatchObject({
       isFirstRun: false,
+    });
+  });
+});
+
+describe('resolveSetupPasswords', () => {
+  it('nem perzisztalja a worker jelenlegi/seed jelszavat bootstrap credentialkent', () => {
+    expect(resolveSetupPasswords({
+      adminPassword: 'UjGlobalisJelszo123!',
+      bootstrapPassword: 'UjGlobalisJelszo123!',
+      workerCurrentPassword: 'seed-1234',
+    })).toEqual({
+      workerCurrentPassword: 'seed-1234',
+      persistedBootstrapPassword: 'UjGlobalisJelszo123!',
+    });
+  });
+
+  it('regi renderer payloadnal is csak atmeneti currentPasswordkent hasznalja a bootstrapPassword mezot', () => {
+    expect(resolveSetupPasswords({
+      adminPassword: 'UjGlobalisJelszo123!',
+      bootstrapPassword: 'seed-1234',
+    })).toEqual({
+      workerCurrentPassword: 'seed-1234',
+      persistedBootstrapPassword: 'UjGlobalisJelszo123!',
     });
   });
 });

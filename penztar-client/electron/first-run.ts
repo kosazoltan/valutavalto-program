@@ -48,7 +48,8 @@ export interface SetupSavePayload {
   adminUsername: string;
   adminPassword: string;         // új admin jelszó (min 8 kar.)
   bootstrapUsername?: string;    // wizardbeli teszt-felhasználó (opcionális, csak offline módban üres)
-  bootstrapPassword?: string;
+  workerCurrentPassword?: string; // átmeneti jelenlegi/seed dolgozói jelszó, nem perzisztáljuk
+  bootstrapPassword?: string;     // perzisztált bootstrap/login jelszó; új kliensnél az adminPassword
   offlineMode: boolean;          // ha true, a szerver kapcsolatot kihagyjuk a wizardban
   appMode?: 'penztar' | 'ertektar' | 'ertekszallito';  // v2.1.4: program-tipus
   // v2.3.0: a telepito dolgozoi dropdown-bol kivalasztott worker identity.
@@ -198,6 +199,23 @@ function buildEnvFileContent(params: {
     `SETUP_OFFLINE_MODE=${params.offlineMode ? '1' : '0'}`,
     ``,
   ].join('\n');
+}
+
+export function resolveSetupPasswords(payload: Pick<
+  SetupSavePayload,
+  'adminPassword' | 'bootstrapPassword' | 'workerCurrentPassword'
+>): {
+  workerCurrentPassword?: string;
+  persistedBootstrapPassword: string;
+} {
+  const workerCurrentPassword = payload.workerCurrentPassword !== undefined
+    ? payload.workerCurrentPassword.trim() || undefined
+    : payload.bootstrapPassword?.trim() || undefined;
+
+  return {
+    workerCurrentPassword,
+    persistedBootstrapPassword: payload.adminPassword,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -843,6 +861,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     log.info(`[Setup] Backend felhúzva ${health.attempts} próbálkozás után.`);
 
     const normalizedCompanyCode = (payload.companyCode || 'EBC').trim().toUpperCase();
+    const passwordPlan = resolveSetupPasswords(payload);
 
     // v2.3.0: Eldontes — worker first-time setup vagy legacy admin bootstrap?
     // Ha a wizard-ban kivalasztott worker (selectedWorkerCode), az uj flow-t
@@ -862,7 +881,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
         companyCode: normalizedCompanyCode,
         workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
         newPassword: payload.adminPassword,
-        currentPassword: payload.bootstrapPassword?.trim() || undefined,
+        currentPassword: passwordPlan.workerCurrentPassword,
       });
       if (!workerSetup.success) {
         const bootstrapCompleted = await getBootstrapCompleted(resolvedApiUrl);
@@ -926,7 +945,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       apiUrl: resolvedApiUrl,
       companyCode: normalizedCompanyCode,
       bootstrapUsername: payload.bootstrapUsername ?? '',
-      bootstrapPassword: payload.bootstrapPassword ?? '',
+      bootstrapPassword: passwordPlan.persistedBootstrapPassword,
       jwtSecret,
       sqlCipherKey,
       offlineLicenseSecret,
@@ -983,25 +1002,22 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     }
 
     // V100: Online-modban regisztraljuk a penztar-eszkozt a backend-en
-    if (!payload.offlineMode && payload.bootstrapUsername && payload.bootstrapPassword) {
+    if (!payload.offlineMode && payload.bootstrapUsername && passwordPlan.persistedBootstrapPassword) {
       try {
-        // v2.3.1 Codex P2 fix #217 first-run.ts:926: ha a workerFirstTimeSetup
-        // utat vettuk (selectedWorkerCode), akkor most mar az ADMIN-PASSWORD
-        // ervenyes, NEM a bootstrapPassword (amit felulirtunk).
-        // A bootstrapUsername = selectedWorkerCode eseten az uj jelszoval loginolunk,
-        // egyebkent a legacy bootstrap credentials-szel.
+        // A setup utan mindig az uj admin/login jelszo az ervenyes
+        // bootstrap credential; a workerCurrentPassword csak atmeneti seed/current
+        // ellenorzesre valo, nem kerul .env-be es nem loginolunk vele.
         const bootstrapUsernameUpper = payload.bootstrapUsername.trim().toUpperCase();
         const selectedWorkerUpper = payload.selectedWorkerCode?.trim().toUpperCase() ?? "";
         const usedWorkerSetup = selectedWorkerUpper.length > 0
           && bootstrapUsernameUpper === selectedWorkerUpper;
-        const loginPassword = usedWorkerSetup ? payload.adminPassword : payload.bootstrapPassword;
         if (usedWorkerSetup) {
           log.info('[Setup] V100 device-reg: a selectedWorker uj (adminPassword) jelszaval loginolunk.');
         }
         const login = await bootstrapLogin(resolvedApiUrl, {
           companyCode: normalizedCompanyCode,
           workerCode: payload.bootstrapUsername.trim(),
-          password: loginPassword,
+          password: passwordPlan.persistedBootstrapPassword,
         });
         if (login.success && login.token) {
           const deviceCode = `${payload.branchCode}-${payload.appMode ?? 'penztar'}-${installUuid.slice(0, 8)}`;
