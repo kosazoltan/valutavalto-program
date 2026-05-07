@@ -45,9 +45,16 @@ A repo tartalmaz commit-olt backup telepítőt és systemd timer-t:
 
 **P0 javasolt akció:** SSH-val verifikálni, hogy `sudo systemctl list-timers valuta-backup.timer` aktív, és a legutóbbi backup sikeresen feltöltődött off-site tárhelyre.
 
-### 2.2 Javasolt backup eljárás (iparági standard)
+### 2.2 Commitolt systemd-alapú backup eljárás
 
-#### Daily logical dump
+#### Napi logikai dump systemd timerrel
+
+A production hoston a támogatott út a repo-ban commitolt telepítő és systemd timer:
+`deploy/hetzner/scripts/setup-backup.sh` telepíti a
+`/opt/valutavalto/scripts/backup-pg.sh` scriptet, valamint a
+`valuta-backup.service` / `valuta-backup.timer` unitokat. Új cron jobot és
+historikus `/usr/local/bin/valuta-pg-backup.sh` scriptnevet ne használj ehhez a
+mentési folyamathoz.
 
 ```bash
 # Commitolt systemd-alapú megoldás telepítése / ellenőrzése (Hetzner VPS)
@@ -57,23 +64,25 @@ sudo systemctl start valuta-backup.service
 sudo journalctl -u valuta-backup -n 50 --no-pager
 ```
 
-`deploy/hetzner/scripts/backup-pg.sh` végzi a napi logikai mentést:
+`deploy/hetzner/scripts/backup-pg.sh` végzi a napi logikai mentést a systemd
+service részeként:
 
 ```bash
 # A script a repo-ból kerül /opt/valutavalto/scripts alá.
-# Kimenet: /var/backups/valutavalto vagy a setup scriptben konfigurált backup dir.
-# Off-site feltöltés: deploy/hetzner/backup/install-b2-backup.sh vagy a konfigurált WebDAV/B2 út.
+# Kimenet: /opt/valutavalto/backups ideiglenes/staging könyvtár.
+# Off-site feltöltés: a .backup.env-ben konfigurált Nextcloud WebDAV út,
+# vagy külön telepített B2 útvonal a deploy/hetzner/backup/install-b2-backup.sh alapján.
 sudo /opt/valutavalto/scripts/backup-pg.sh
 ```
 
-#### Retention policy (javasolt — iparági standard, GFS)
+#### Retention policy (repo-állapot + production cél)
 
 | Szint | Retention | Tárhely | Cél |
 |---|---|---|---|
-| Daily | 7 nap | Hetzner local disk | gyors RPO |
-| Weekly | 4 hét | Hetzner Storage Box (off-site) | hosszabb távú visszaállítás |
-| Monthly | 12 hónap | Hetzner Storage Box | NGM/GDPR audit |
-| Yearly | 8 év | Storage Box + Glacier-szerű kompatibilis tier | `application.properties:123` `retention.financial-transactions.years=8` üzleti retention-nel összhangban |
+| Local staging / hibatűrés | sikeres feltöltésig, hibánál `BACKUP_RETENTION_DAYS` szerint | `/opt/valutavalto/backups` | sikertelen off-site feltöltés után maradjon mentés a hoston |
+| Daily off-site | `BACKUP_RETENTION_DAYS` default 30 nap | Nextcloud WebDAV (`.backup.env`) | napi restore pont |
+| Weekly / Monthly | production üzemeltetési cél, off-site tárhelyen ellenőrizendő | Nextcloud/B2/Storage Box | hosszabb távú visszaállítás és audit |
+| Yearly | 8 év pénzügyi retentionnel összhangban | B2/Storage Box/archív tier | `application.properties:123` `retention.financial-transactions.years=8` üzleti retention támogatása |
 
 **8 év** azért, mert a `retention.financial-transactions.years=8` (`application.properties:123`) a tranzakciókra üzleti retention. Az archív backup nem helyettesíti az élő DB retention logikáját, de fedezet katasztrófa esetén.
 
