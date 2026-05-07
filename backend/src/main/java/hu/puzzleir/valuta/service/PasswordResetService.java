@@ -12,7 +12,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.net.URLEncoder;
+import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.nio.charset.StandardCharsets;
@@ -27,8 +30,9 @@ import java.util.Locale;
 /**
  * Elfelejtett-jelszo flow — persistent reset token storage.
  *
- * <p>The raw token only travels in email. The database stores a SHA-256 hash,
- * so a backend restart does not break an already issued reset link.</p>
+ * <p>Production-ban a raw token email-ben utazik; dev/test kornyezetben
+ * diagnosztikai response-kent is visszaterhet. Az adatbazis SHA-256 hash-t
+ * tarol, ezert backend restart utan sem torik el a kiadott reset link.</p>
  *
  * <p>Token elettartam: 15 perc. Anti-enumeration: ha az email nem
  * regisztralt, akkor is success-t ad vissza a requestForgot.</p>
@@ -54,9 +58,13 @@ public class PasswordResetService {
     @Value("${app.frontend.base-url:https://excvaluta.com}")
     private String frontendBaseUrl;
 
+    @Value("${app.security.log-hash-secret:${jwt.secret:}}")
+    private String logHashSecret;
+
     /**
-     * Kerelem forgot-password flow-ra. A nyers token csak emailben megy ki,
-     * az adatbazisba a token SHA-256 hash-e kerul.
+     * Kerelem forgot-password flow-ra. Production-ban a nyers token csak
+     * email-ben megy ki; az adatbazisba a token SHA-256 hash-e kerul.
+     * Dev/test kornyezetben a hivo a tokent diagnosztikai celbol visszakaphatja.
      *
      * <p>Anti-enumeration: akkor is 200-at adunk vissza ha az email
      * nem letezik a DB-ben. Igy egy attacker nem tudja felderiteni
@@ -65,21 +73,23 @@ public class PasswordResetService {
      * @return a generalt token (TESZT celu — production-ban csak logolni
      *         vagy email-ben kikuldeni, NE returnolni a API valaszban)
      */
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class)
     public String requestForgotPassword(String email) {
         if (email == null || email.isBlank()) {
             return null;
         }
 
-        Optional<Worker> workerOpt = workerRepository.findByEmail(email.trim().toLowerCase());
+        String normalizedEmail = normalizeEmail(email);
+        Optional<Worker> workerOpt = workerRepository.findByEmail(normalizedEmail);
         if (workerOpt.isEmpty()) {
-            log.info("Forgot password: ismeretlen email (anti-enumeration silent): emailHash={}", logHash(email));
+            log.info("Forgot password: ismeretlen email (anti-enumeration silent): emailHash={}",
+                    logHash(normalizedEmail));
             return null;
         }
 
         Worker worker = workerOpt.get();
         if (!Boolean.TRUE.equals(worker.getActive())) {
-            log.warn("Forgot password: inaktiv worker: emailHash={}", logHash(email));
+            log.warn("Forgot password: inaktiv worker: emailHash={}", logHash(normalizedEmail));
             return null;
         }
 
@@ -96,6 +106,8 @@ public class PasswordResetService {
                 .expiresAt(now.plus(TOKEN_TTL))
                 .build());
 
+        cleanupExpiredTokens();
+
         // CodeQL java/sensitive-log fix: NEM logoljuk az emailt (PII/GDPR) es a tokent
         // (security-sensitive) - csak worker id-t es egy nem-rekonstrualhato hashet a tokenrol.
         log.info("Forgot password token generalva: worker id={}, tokenHash={}",
@@ -109,13 +121,11 @@ public class PasswordResetService {
         // a kuldes sikerult-e vagy sem).
         sendResetEmail(worker, token);
 
-        cleanupExpiredTokens();
-
         return token;
     }
 
     /**
-     * Reset link emailben kikuldese a workernek. Aszinkron — nem blokkolja a hivot.
+     * Reset link email-ben kikuldese a workernek. Aszinkron — nem blokkolja a hivot.
      *
      * <p>A link formatuma: {@code <frontendBaseUrl>/reset-password?token=<URL-encoded-token>}.</p>
      */
@@ -155,7 +165,7 @@ public class PasswordResetService {
         if (token == null || token.isBlank()) {
             throw new ValidationException("Ervenytelen vagy lejart token");
         }
-        PasswordResetToken resetToken = resetTokenRepository.findByTokenHashAndUsedAtIsNull(hashToken(token))
+        PasswordResetToken resetToken = resetTokenRepository.findUnusedByTokenHashForUpdate(hashToken(token))
                 .orElseThrow(() -> new ValidationException("Ervenytelen vagy lejart token"));
         Instant now = Instant.now();
         if (now.isAfter(resetToken.getExpiresAt())) {
@@ -165,7 +175,7 @@ public class PasswordResetService {
         resetTokenRepository.save(resetToken);
 
         Worker worker = workerRepository.findById(resetToken.getWorkerId())
-                .orElseThrow(() -> new ValidationException("Worker not found"));
+                .orElseThrow(() -> new ValidationException("Dolgozo nem talalhato"));
         worker.setPasswordHash(passwordEncoder.encode(newPassword));
         worker.setPasswordChangedAt(java.time.LocalDateTime.now());
         workerRepository.save(worker);
@@ -186,10 +196,24 @@ public class PasswordResetService {
         }
     }
 
-    private static String logHash(String value) {
+    private static String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String logHash(String value) {
         if (value == null) {
             return "(null)";
         }
-        return hashToken(value.trim().toLowerCase(Locale.ROOT)).substring(0, 12);
+        if (logHashSecret == null || logHashSecret.isBlank()) {
+            return "(log-hash-secret-missing)";
+        }
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(logHashSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] digest = mac.doFinal(value.trim().toLowerCase(Locale.ROOT).getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest, 0, 10);
+        } catch (GeneralSecurityException ex) {
+            return "(hmac-unavailable)";
+        }
     }
 }

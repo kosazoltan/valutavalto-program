@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveSelectedWorkerForSetup } from './SetupWizard'
+import { resolveSelectedWorkerForSetup, shouldLoadSetupWorkers } from './SetupWizard'
 
 describe('resolveSelectedWorkerForSetup', () => {
   const workers = [
@@ -29,5 +29,16 @@ describe('resolveSelectedWorkerForSetup', () => {
       workerCode: 'ADMIN',
       availableWorkers: workers,
     })).toBeNull()
+  })
+})
+
+describe('shouldLoadSetupWorkers', () => {
+  it('nem tolt worker-listat offline modban vagy ures branch kodnal', () => {
+    expect(shouldLoadSetupWorkers('BR001', true)).toBe(false)
+    expect(shouldLoadSetupWorkers('   ', false)).toBe(false)
+  })
+
+  it('csak online modban es valodi branch kodnal indit worker-lista betoltest', () => {
+    expect(shouldLoadSetupWorkers(' BR001 ', false)).toBe(true)
   })
 })

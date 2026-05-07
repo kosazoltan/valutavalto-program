@@ -5,9 +5,9 @@ CREATE TABLE IF NOT EXISTS password_reset_token (
     id BIGSERIAL PRIMARY KEY,
     token_hash VARCHAR(64) NOT NULL UNIQUE,
     worker_id BIGINT NOT NULL REFERENCES worker(id) ON DELETE CASCADE,
-    issued_at TIMESTAMP NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    used_at TIMESTAMP
+    issued_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    used_at TIMESTAMP WITH TIME ZONE
 );
 
 CREATE INDEX IF NOT EXISTS idx_password_reset_worker_active

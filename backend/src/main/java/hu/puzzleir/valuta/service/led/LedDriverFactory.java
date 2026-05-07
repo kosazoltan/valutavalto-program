@@ -49,7 +49,8 @@ public class LedDriverFactory {
             // Hálózati driverek — placeholder, élesben gyártó-specifikus protokoll
             case NOVASTAR, LINSN, COLORLIGHT, HUIDU, KYSTAR,
                  MAGNIMAGE, DBSTAR, XIXUN, ONBON -> {
-                log.debug("Hálózati driver: {} → fail-closed GenericSerialLedDriver", type);
+                log.debug("Hálózati driver: {} → GenericSerialLedDriver placeholder, simulatedSuccessEnabled={}",
+                        type, simulatedSuccessEnabled);
                 yield new GenericSerialLedDriver(simulatedSuccessEnabled);
             }
 
