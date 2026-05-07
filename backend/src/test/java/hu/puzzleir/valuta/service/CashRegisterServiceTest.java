@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterEventDto;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterReceiptRequest;
+import hu.puzzleir.valuta.dto.cashregister.CashRegisterStornoRequest;
 import hu.puzzleir.valuta.dto.nav.NavSendResult;
 import hu.puzzleir.valuta.entity.CashRegisterEvent;
 import hu.puzzleir.valuta.entity.CashRegisterEventType;
@@ -130,6 +131,69 @@ class CashRegisterServiceTest {
         assertThat(result.getCurrencyCode()).isEqualTo("EUR");
         assertThat(result.getAmount()).isEqualByComparingTo(new BigDecimal("500.00"));
         assertThat(result.getAmountHuf()).isEqualByComparingTo(new BigDecimal("195000"));
+    }
+
+    @Test
+    @DisplayName("printReceipt → sikertelen NAV válasznál nem tölt fallback nyugtaszámot")
+    void printReceiptDoesNotSetFallbackReceiptNumberWhenNavFails() {
+        Branch branch = createBranch();
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(navIntegrationService.sendTransaction(anyLong(), anyString())).thenReturn(
+                NavSendResult.builder().success(false).error("NAV bridge szimuláció tiltva").build());
+        when(cashRegisterEventRepository.save(any(CashRegisterEvent.class))).thenAnswer(inv -> {
+            CashRegisterEvent e = inv.getArgument(0);
+            if (e.getId() == null) e.setId(UUID.randomUUID());
+            return e;
+        });
+
+        CashRegisterReceiptRequest request = CashRegisterReceiptRequest.builder()
+                .branchId(BRANCH_ID)
+                .receiptNumber("R-LOCAL-0001")
+                .amount(new BigDecimal("500.00"))
+                .currencyCode("EUR")
+                .amountHuf(new BigDecimal("195000"))
+                .build();
+
+        CashRegisterEventDto result = service.printReceipt(request);
+
+        assertThat(result.getEventType()).isEqualTo("RECEIPT");
+        assertThat(result.getReceiptNumber()).isNull();
+        assertThat(result.getRawResponse()).contains("ERROR", "Bizonylat NAV továbbítás sikertelen");
+    }
+
+    @Test
+    @DisplayName("printStorno → sikertelen NAV válasznál nem tölt fallback sztornó nyugtaszámot")
+    void printStornoDoesNotSetFallbackReceiptNumberWhenNavFails() {
+        Branch branch = createBranch();
+        UUID originalId = UUID.randomUUID();
+        CashRegisterEvent original = CashRegisterEvent.builder()
+                .id(originalId)
+                .branch(branch)
+                .eventType(CashRegisterEventType.RECEIPT)
+                .receiptNumber("R-2026-0001")
+                .amount(new BigDecimal("500.00"))
+                .currencyCode("EUR")
+                .amountHuf(new BigDecimal("195000"))
+                .build();
+
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(cashRegisterEventRepository.findById(originalId)).thenReturn(Optional.of(original));
+        when(navIntegrationService.sendTransaction(anyLong(), anyString())).thenReturn(
+                NavSendResult.builder().success(false).error("NAV bridge szimuláció tiltva").build());
+        when(cashRegisterEventRepository.save(any(CashRegisterEvent.class))).thenAnswer(inv -> {
+            CashRegisterEvent e = inv.getArgument(0);
+            if (e.getId() == null) e.setId(UUID.randomUUID());
+            return e;
+        });
+
+        CashRegisterEventDto result = service.printStorno(CashRegisterStornoRequest.builder()
+                .branchId(BRANCH_ID)
+                .originalReceiptId(originalId)
+                .build());
+
+        assertThat(result.getEventType()).isEqualTo("STORNO");
+        assertThat(result.getReceiptNumber()).isNull();
+        assertThat(result.getRawResponse()).contains("ERROR", "Sztornó NAV továbbítás sikertelen");
     }
 
     @Test
