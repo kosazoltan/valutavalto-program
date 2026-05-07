@@ -15,7 +15,7 @@ import {
   BankOrderStatus,
   BankOrderUrgency,
 } from '../../services/api/bankOrders'
-import { api } from '../../services/api'
+import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
@@ -118,9 +118,13 @@ export default function BankOrderPage() {
 
   useEffect(() => {
     void load()
-    void loadWuLimit()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter])
+
+  useEffect(() => {
+    void loadWuLimit()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleApprove = async (id: string) => {
     if (!confirm('Biztosan jóváhagyja ezt a banki rendelést?')) return
@@ -209,8 +213,11 @@ export default function BankOrderPage() {
       })
       setShowCreate(false)
       setCreateForm(EMPTY_CREATE_FORM)
+      const shouldReloadDirectly = statusFilter === ''
       setStatusFilter('')
-      await load('')
+      if (shouldReloadDirectly) {
+        await load('')
+      }
     } catch (err) {
       logger.error('BankOrderPage', 'Létrehozási hiba:', err)
       setCreateError(getErrorMessage(err))
