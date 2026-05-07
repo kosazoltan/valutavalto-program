@@ -21,7 +21,7 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
     Optional<PasswordResetToken> findUnusedByTokenHashForUpdate(@Param("tokenHash") String tokenHash);
 
     @Modifying
-    @Transactional
+    @Transactional(readOnly = false)
     @Query("DELETE FROM PasswordResetToken t WHERE t.expiresAt < :cutoff OR t.usedAt IS NOT NULL")
     int deleteExpiredOrUsed(@Param("cutoff") Instant cutoff);
 }

@@ -30,9 +30,10 @@ import java.util.Locale;
 /**
  * Elfelejtett-jelszo flow — persistent reset token storage.
  *
- * <p>Production-ban a raw token email-ben utazik; dev/test kornyezetben
- * diagnosztikai response-kent is visszaterhet. Az adatbazis SHA-256 hash-t
- * tarol, ezert backend restart utan sem torik el a kiadott reset link.</p>
+ * <p>Production-ban a nyers token csak email-ben megy ki. Dev/test
+ * kornyezetben a hivo diagnosztikai celbol visszakaphatja. Az adatbazis csak
+ * SHA-256 hash-t tarol, igy egy backend restart nem tori el a mar kikuldott
+ * reset linket.</p>
  *
  * <p>Token elettartam: 15 perc. Anti-enumeration: ha az email nem
  * regisztralt, akkor is success-t ad vissza a requestForgot.</p>
@@ -73,7 +74,7 @@ public class PasswordResetService {
      * @return a generalt token (TESZT celu — production-ban csak logolni
      *         vagy email-ben kikuldeni, NE returnolni a API valaszban)
      */
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(readOnly = false, rollbackFor = Exception.class)
     public String requestForgotPassword(String email) {
         if (email == null || email.isBlank()) {
             return null;
@@ -210,7 +211,7 @@ public class PasswordResetService {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(logHashSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            byte[] digest = mac.doFinal(value.trim().toLowerCase(Locale.ROOT).getBytes(StandardCharsets.UTF_8));
+            byte[] digest = mac.doFinal(normalizeEmail(value).getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(digest, 0, 10);
         } catch (GeneralSecurityException ex) {
             return "(hmac-unavailable)";

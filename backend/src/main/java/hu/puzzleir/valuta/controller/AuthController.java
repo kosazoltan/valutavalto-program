@@ -392,7 +392,7 @@ public class AuthController {
 
     /**
      * Elfelejtett jelszo — reset tokent general, hash-kent perzisztensen tarol.
-     * Production-ban email-ben kuldi ki a nyers tokent; dev/test profilban
+     * Production-ban email-ben kuldi ki a nyers tokent; dev profilban
      * diagnosztikai celbol a response is tartalmazhatja.
      *
      * <p>POST /api/v1/auth/forgot-password</p>
@@ -404,10 +404,10 @@ public class AuthController {
     public ResponseEntity<Map<String, Object>> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequestDto dto) {
         String token = passwordResetService.requestForgotPassword(dto.getEmail());
-        // Dev/test celu response — production-ban a token csak email-ben megy
+        // Dev celu response — production-ban a token csak email-ben megy
         Map<String, Object> response = new java.util.HashMap<>();
         response.put("message", "Ha az email regisztralt, a reset tokent kikuldtuk.");
-        // A token csak dev/test celra jelenik meg a response-ban
+        // A token csak dev celra jelenik meg a response-ban
         if (token != null && isDevProfile()) {
             response.put("token", token);
         }
