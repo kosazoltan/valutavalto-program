@@ -192,7 +192,7 @@ class HandlingFeeTransactionServiceTest {
 
         when(repository.findByBranchAndPeriod(eq(branchId), any(), any()))
                 .thenReturn(List.of(cashFee, cardFee));
-        when(repository.findPaymentMethodsByTransactionIds(any()))
+        when(repository.findPaymentMethodsByBranchAndTransactionIds(eq(branchId), any()))
                 .thenReturn(List.of(
                         paymentMethodProjection(10L, PaymentMethod.CASH),
                         paymentMethodProjection(11L, PaymentMethod.CARD)));
@@ -207,6 +207,8 @@ class HandlingFeeTransactionServiceTest {
         assertThat(report.getItems())
                 .extracting(HandlingFeeTransactionDto::getPaymentMethod)
                 .containsExactly("CASH", "CARD");
+        verify(repository).findPaymentMethodsByBranchAndTransactionIds(eq(branchId), argThat(ids ->
+                ids != null && ids.size() == 2 && ids.containsAll(List.of(10L, 11L))));
     }
 
     private static HandlingFeeTransactionRepository.TransactionPaymentMethodProjection paymentMethodProjection(

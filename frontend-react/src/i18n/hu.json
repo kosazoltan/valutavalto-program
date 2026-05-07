@@ -1272,11 +1272,13 @@
         "transactions": "Tranzakciók",
         "cashCount": "Készpénz db",
         "cardCount": "Kártya db",
+        "unknownPaymentCount": "Ismeretlen db",
         "grossFee": "Bruttó díj",
         "discount": "Kedvezmény",
         "netFee": "Nettó díj",
         "cashNetFee": "Készpénz nettó",
         "cardNetFee": "Kártya nettó",
+        "unknownPaymentNetFee": "Ismeretlen nettó",
         "noData": "Nincs adat a kiválasztott időszakra."
       },
       "emptyState": "Adja meg a szűrőfeltételeket és nyomja meg a Lekérdezés gombot.",

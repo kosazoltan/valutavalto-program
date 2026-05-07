@@ -49,8 +49,10 @@ interface DecadeRow {
   discount: number
   cashCount: number
   cardCount: number
+  unknownPaymentCount: number
   cashNetFee: number
   cardNetFee: number
+  unknownPaymentNetFee: number
 }
 
 function toNum(v: number | string | null | undefined): number {
@@ -63,8 +65,18 @@ function formatHuf(n: number): string {
   return n.toLocaleString('hu-HU') + ' Ft'
 }
 
-function isCardPayment(paymentMethod: string | null | undefined): boolean {
-  return paymentMethod?.toUpperCase() === 'CARD'
+const PAYMENT_METHOD = {
+  CASH: 'CASH',
+  CARD: 'CARD',
+} as const
+
+type PaymentMethodBucket = 'cash' | 'card' | 'unknown'
+
+function paymentMethodBucket(paymentMethod: string | null | undefined): PaymentMethodBucket {
+  const normalized = paymentMethod?.toUpperCase()
+  if (normalized === PAYMENT_METHOD.CASH) return 'cash'
+  if (normalized === PAYMENT_METHOD.CARD) return 'card'
+  return 'unknown'
 }
 
 function decadeOf(dateIso: string): { key: string; label: string } {
@@ -154,18 +166,21 @@ export default function HandlingFeeDecadePage() {
       const gross = toNum(item.amount)
       const net = toNum(item.netFee)
       const discount = item.discountPercent ? gross - net : 0
-      const cardPayment = isCardPayment(item.paymentMethod)
+      const paymentBucket = paymentMethodBucket(item.paymentMethod)
       if (existing) {
         existing.count += 1
         existing.grossFee += gross
         existing.netFee += net
         existing.discount += discount
-        if (cardPayment) {
+        if (paymentBucket === 'card') {
           existing.cardCount += 1
           existing.cardNetFee += net
-        } else {
+        } else if (paymentBucket === 'cash') {
           existing.cashCount += 1
           existing.cashNetFee += net
+        } else {
+          existing.unknownPaymentCount += 1
+          existing.unknownPaymentNetFee += net
         }
       } else {
         map.set(d.key, {
@@ -175,10 +190,12 @@ export default function HandlingFeeDecadePage() {
           grossFee: gross,
           netFee: net,
           discount,
-          cashCount: cardPayment ? 0 : 1,
-          cardCount: cardPayment ? 1 : 0,
-          cashNetFee: cardPayment ? 0 : net,
-          cardNetFee: cardPayment ? net : 0,
+          cashCount: paymentBucket === 'cash' ? 1 : 0,
+          cardCount: paymentBucket === 'card' ? 1 : 0,
+          unknownPaymentCount: paymentBucket === 'unknown' ? 1 : 0,
+          cashNetFee: paymentBucket === 'cash' ? net : 0,
+          cardNetFee: paymentBucket === 'card' ? net : 0,
+          unknownPaymentNetFee: paymentBucket === 'unknown' ? net : 0,
         })
       }
     }
@@ -330,17 +347,19 @@ export default function HandlingFeeDecadePage() {
                     <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.transactions')}</th>
                     <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.cashCount')}</th>
                     <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.cardCount')}</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.unknownPaymentCount')}</th>
                     <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.grossFee')}</th>
                     <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.discount')}</th>
                     <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.netFee')}</th>
                     <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.cashNetFee')}</th>
                     <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.cardNetFee')}</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.unknownPaymentNetFee')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {decadeRows.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-4 py-4 text-center text-sm text-gray-500">
+                      <td colSpan={11} className="px-4 py-4 text-center text-sm text-gray-500">
                         {t('reports.handlingFeeDecade.table.noData')}
                       </td>
                     </tr>
@@ -351,6 +370,7 @@ export default function HandlingFeeDecadePage() {
                       <td className="px-4 py-2 text-right text-sm font-mono">{r.count}</td>
                       <td className="px-4 py-2 text-right text-sm font-mono">{r.cashCount}</td>
                       <td className="px-4 py-2 text-right text-sm font-mono">{r.cardCount}</td>
+                      <td className="px-4 py-2 text-right text-sm font-mono">{r.unknownPaymentCount}</td>
                       <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">{formatHuf(r.grossFee)}</td>
                       <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">{formatHuf(r.discount)}</td>
                       <td className="px-4 py-2 text-right text-sm font-mono font-semibold text-green-700 whitespace-nowrap">
@@ -358,6 +378,7 @@ export default function HandlingFeeDecadePage() {
                       </td>
                       <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">{formatHuf(r.cashNetFee)}</td>
                       <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">{formatHuf(r.cardNetFee)}</td>
+                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">{formatHuf(r.unknownPaymentNetFee)}</td>
                     </tr>
                   ))}
                 </tbody>
