@@ -4,28 +4,21 @@ import hu.puzzleir.valuta.dto.auth.GoogleLoginRequestDto;
 import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.AuthenticationException;
-import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.service.GoogleLoginService;
-import hu.puzzleir.valuta.service.RefreshTokenService;
+import hu.puzzleir.valuta.service.RefreshCookieService;
 import hu.puzzleir.valuta.util.AppModeRoleConstants;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.time.Duration;
 
 /**
  * Google OAuth dolgozoi belepes controller (refaktor V178/V179, 2026-05-03).
@@ -54,11 +47,10 @@ import java.time.Duration;
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 @PreAuthorize("permitAll()")
-@Slf4j
 public class GoogleAuthController {
 
     private final GoogleLoginService googleLoginService;
-    private final RefreshTokenService refreshTokenService;
+    private final RefreshCookieService refreshCookieService;
     private final WorkerRepository workerRepository;
 
     @PostMapping("/google-login")
@@ -85,35 +77,15 @@ public class GoogleAuthController {
         if (!Boolean.TRUE.equals(response.getRoleSelectionRequired())) {
             Worker worker = workerRepository.findById(response.getWorker().getId())
                     .orElseThrow(() -> new AuthenticationException("Worker nem talalhato login utan."));
-            try {
-                RefreshTokenService.IssuedToken issued = refreshTokenService.issue(
-                        worker,
-                        httpRequest,
-                        response.getActiveRole());
-                ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
-                        .httpOnly(true)
-                        .secure(httpRequest.isSecure())
-                        .sameSite("Strict")
-                        .path("/api/v1/auth")
-                        .maxAge(Duration.ofDays(7))
-                        .build();
-                httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-            } catch (Exception ex) {
-                log.error("HttpOnly refresh cookie kiadas Google login utan bukott: {}", ex.getMessage(), ex);
-                throw new BusinessException(
-                        "Google belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.",
-                        "LOGIN_SESSION_ISSUE_FAILED",
-                        HttpStatus.SERVICE_UNAVAILABLE);
-            }
+            refreshCookieService.issueOrThrow(
+                    worker,
+                    httpRequest,
+                    httpResponse,
+                    response.getActiveRole(),
+                    "HttpOnly refresh cookie kiadas Google login utan bukott",
+                    "Google belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.");
         } else {
-            ResponseCookie clearCookie = ResponseCookie.from("refreshToken", "")
-                    .httpOnly(true)
-                    .secure(httpRequest.isSecure())
-                    .sameSite("Strict")
-                    .path("/api/v1/auth")
-                    .maxAge(0)
-                    .build();
-            httpResponse.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
+            refreshCookieService.clearCookie(httpRequest, httpResponse);
         }
 
         return ResponseEntity.ok(response);

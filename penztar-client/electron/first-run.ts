@@ -15,6 +15,9 @@ import log from 'electron-log/main';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import type { SetupWorkerOption } from '@valuta/shared-ipc';
+
+export type { SetupWorkerOption } from '@valuta/shared-ipc';
 
 // ---------------------------------------------------------------------------
 // Típusok
@@ -26,12 +29,6 @@ export interface Branch {
   city: string;
   address?: string;
   isVault?: boolean;
-}
-
-export interface SetupWorkerOption {
-  code: string;
-  name: string;
-  region?: string;
 }
 
 export interface SetupCheckResult {
@@ -550,13 +547,21 @@ export async function getWorkers(
   companyCode?: string,
   branchCode?: string,
 ): Promise<SetupWorkerOption[]> {
-  if (!apiUrl || !branchCode) {
-    log.info('[Setup] getWorkers: nincs apiUrl/branchCode, ures lista.');
+  const normalizedApiUrl = apiUrl?.trim() ?? '';
+  const normalizedCompanyCode = companyCode?.trim() ?? '';
+  const normalizedBranchCode = branchCode?.trim() ?? '';
+
+  if (!normalizedApiUrl || !normalizedCompanyCode || !normalizedBranchCode) {
+    log.info('[Setup] getWorkers: nincs apiUrl/companyCode/branchCode, ures lista.');
     return [];
   }
 
   try {
-    const fetched = await fetchWorkersFromBackend(apiUrl, companyCode, branchCode);
+    const fetched = await fetchWorkersFromBackend(
+      normalizedApiUrl,
+      normalizedCompanyCode,
+      normalizedBranchCode,
+    );
     if (fetched && fetched.length > 0) {
       log.info(`[Setup] getWorkers: backend adott ${fetched.length} dolgozot.`);
       return fetched;
@@ -572,15 +577,21 @@ export async function getWorkers(
 
 export async function fetchWorkersFromBackend(
   apiUrl: string,
-  companyCode: string | undefined,
+  companyCode: string,
   branchCode: string,
   timeoutMs = 6000,
 ): Promise<SetupWorkerOption[] | null> {
-  const base = normalizeApiBase(apiUrl);
-  const params = new URLSearchParams({ branchCode });
-  if (companyCode?.trim()) {
-    params.set('companyCode', companyCode.trim());
+  const normalizedCompanyCode = companyCode.trim();
+  const normalizedBranchCode = branchCode.trim();
+  if (!normalizedCompanyCode || !normalizedBranchCode) {
+    log.info('[Setup] fetchWorkersFromBackend: nincs companyCode/branchCode, nincs backend hivas.');
+    return null;
   }
+  const base = normalizeApiBase(apiUrl);
+  const params = new URLSearchParams({
+    branchCode: normalizedBranchCode,
+    companyCode: normalizedCompanyCode,
+  });
   const url = `${base}/public/workers?${params.toString()}`;
   const response = await httpJsonWithRetry<Array<{ code: string; name: string; region?: string }>>(
     url,
