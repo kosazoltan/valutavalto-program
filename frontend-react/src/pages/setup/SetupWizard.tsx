@@ -845,7 +845,10 @@ function ServerStep(props: ServerStepProps) {
         }
       })
       .finally(() => { if (!cancelled) setWorkerListLoading(false) })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      setWorkerListLoading(false)
+    }
   }, [selectedBranchCode, offlineMode, onWorkerListChange])
 
   return (

@@ -930,8 +930,8 @@ app.whenReady().then(async () => {
     if (!params || !params.url || !params.method) {
       return { ok: false, status: 0, statusText: 'BAD_REQUEST', headers: {}, body: '{"error":"url and method required"}' };
     }
-    const apiBaseUrl = resolveConfiguredApiUrl();
-    const fullUrl = params.url.startsWith('http') ? params.url : `${apiBaseUrl}${params.url}`;
+    const configuredApiBaseUrl = resolveConfiguredApiUrl();
+    const fullUrl = params.url.startsWith('http') ? params.url : `${configuredApiBaseUrl}${params.url}`;
 
     const MAX_RETRIES = 3;
     const RETRY_DELAYS = [1000, 3000, 5000];
@@ -942,6 +942,8 @@ app.whenReady().then(async () => {
         const response = await fetchViaElectronNet({
           ...params,
           url: fullUrl,
+        }, {
+          configuredBaseUrl: configuredApiBaseUrl,
         });
         return response;
       } catch (err) {
