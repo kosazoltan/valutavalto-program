@@ -12,6 +12,7 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.repository.WorkerSessionRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
+import hu.puzzleir.valuta.util.ClientIpResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,7 @@ class GoogleLoginServiceTest {
     private WorkerRoleService workerRoleService;
     private JwtTokenProvider jwtTokenProvider;
     private BranchRepository branchRepository;
+    private ClientIpResolver clientIpResolver;
     private GoogleLoginService service;
 
     @BeforeEach
@@ -63,10 +65,12 @@ class GoogleLoginServiceTest {
         workerRoleService = Mockito.mock(WorkerRoleService.class);
         jwtTokenProvider = Mockito.mock(JwtTokenProvider.class);
         branchRepository = Mockito.mock(BranchRepository.class);
+        clientIpResolver = Mockito.mock(ClientIpResolver.class);
+        when(clientIpResolver.resolveClientIp(any())).thenReturn("127.0.0.1");
 
         service = new GoogleLoginService(
                 googleIdTokenService, workerRepository, sessionRepository,
-                workerRoleService, jwtTokenProvider, branchRepository);
+                workerRoleService, jwtTokenProvider, branchRepository, clientIpResolver);
         ReflectionTestUtils.setField(service, "bindSubOnFirstLogin", true);
     }
 
@@ -232,6 +236,7 @@ class GoogleLoginServiceTest {
         when(jwtTokenProvider.getTokenIdFromToken("jwt-token")).thenReturn("token-id-1");
         when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(sessionRepository.save(any(WorkerSession.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(clientIpResolver.resolveClientIp(any())).thenReturn("198.51.100.25");
 
         LoginResponseDto response = service.loginWithGoogle("ok", new MockHttpServletRequest());
 
@@ -246,6 +251,8 @@ class GoogleLoginServiceTest {
         ArgumentCaptor<WorkerSession> sessionCaptor = ArgumentCaptor.forClass(WorkerSession.class);
         verify(sessionRepository).save(sessionCaptor.capture());
         assertThat(sessionCaptor.getValue().getTokenId()).isEqualTo("token-id-1");
+        assertThat(sessionCaptor.getValue().getIpAddress()).isEqualTo("198.51.100.25");
+        verify(clientIpResolver).resolveClientIp(any());
     }
 
     @Test

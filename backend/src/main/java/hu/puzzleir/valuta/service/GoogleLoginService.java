@@ -12,6 +12,7 @@ import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.repository.WorkerSessionRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
 import hu.puzzleir.valuta.util.AppModeRoleConstants;
+import hu.puzzleir.valuta.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,6 +66,7 @@ public class GoogleLoginService {
     private final WorkerRoleService workerRoleService;
     private final JwtTokenProvider jwtTokenProvider;
     private final BranchRepository branchRepository;
+    private final ClientIpResolver clientIpResolver;
 
     @Value("${google.login.bind-sub-on-first-login:true}")
     private boolean bindSubOnFirstLogin;
@@ -168,6 +170,7 @@ public class GoogleLoginService {
         // 6. JWT + Session
         String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
         String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
+        String clientIp = clientIpResolver.resolveClientIp(httpRequest);
 
         // Codex P1 PR #361 follow-up: legacy worker eseten `worker.getBranch()` lehet null,
         // de a `worker_session.branch_id` non-nullable. Ugyanaz a fallback minta mint
@@ -191,7 +194,7 @@ public class GoogleLoginService {
                 .worker(worker)
                 .branch(sessionBranch)
                 .loginAt(LocalDateTime.now())
-                .ipAddress(httpRequest.getRemoteAddr())
+                .ipAddress(clientIp)
                 .userAgent(httpRequest.getHeader("User-Agent"))
                 .tokenId(tokenId)
                 .build();
@@ -204,7 +207,7 @@ public class GoogleLoginService {
         log.info("GOOGLE_LOGIN_SUCCESS workerCode={} subjectHash={} ip={}",
                 worker.getCode(),
                 safeLogHash(googleSubject),
-                httpRequest.getRemoteAddr());
+                clientIp);
 
         // 7. validAppModes szamitas — egyezo logika a WorkerService.login-nal
         long expiresInMs = 86400000L;
