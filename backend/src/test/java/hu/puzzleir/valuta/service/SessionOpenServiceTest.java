@@ -129,9 +129,13 @@ class SessionOpenServiceTest {
             when(cashBalanceService.initializeBranchBalances(BRANCH_ID))
                     .thenThrow(new RuntimeException("currency master missing"));
 
-            assertThatThrownBy(() -> service.openSession(WORKER_ID, BRANCH_ID))
+            Throwable thrown = catchThrowable(() -> service.openSession(WORKER_ID, BRANCH_ID));
+
+            assertThat(thrown)
                     .isInstanceOf(ValidationException.class)
-                    .hasMessageContaining("Kasszaegyenlegek inicializálása sikertelen");
+                    .hasMessage("Kasszaegyenlegek inicializálása sikertelen. Nyitás nem folytatható.")
+                    .hasCauseInstanceOf(RuntimeException.class);
+            assertThat(thrown.getMessage()).doesNotContain("currency master missing");
             verify(dailySessionRepository, never()).save(any(DailySession.class));
         }
     }

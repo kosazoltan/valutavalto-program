@@ -75,8 +75,8 @@ public class SessionOpenService {
                 log.error("Branch {} cash_balance lazy-init FAILED — munkamenet nyitás tiltva",
                         branchId, e);
                 throw new ValidationException(
-                        "Kasszaegyenlegek inicializálása sikertelen. Nyitás nem folytatható: "
-                                + e.getMessage());
+                        "Kasszaegyenlegek inicializálása sikertelen. Nyitás nem folytatható.",
+                        e);
             }
         }
 
