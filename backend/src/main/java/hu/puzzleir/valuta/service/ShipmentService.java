@@ -127,11 +127,14 @@ public class ShipmentService {
     }
 
     private void validateCreateRequest(ShipmentRequest request) {
-        validateEditableRequest(request);
-        validateRequiredItems(request.getItems());
+        validateEditableRequest(request, true);
     }
 
     private void validateEditableRequest(ShipmentRequest request) {
+        validateEditableRequest(request, false);
+    }
+
+    private void validateEditableRequest(ShipmentRequest request, boolean requireItems) {
         if (request == null) {
             throw new ValidationException("Szállítmánykérés adatai kötelezőek!");
         }
@@ -144,8 +147,9 @@ public class ShipmentService {
         if (request.getDeliveryDate() != null && request.getDeliveryDate().isBefore(LocalDate.now())) {
             throw new ValidationException("A kézbesítési dátum nem lehet múltbeli!");
         }
-        if (request.getItems() != null) {
-            validateRequiredItems(request.getItems());
+        List<ShipmentRequestItem> items = request.getItems();
+        if (requireItems || items != null) {
+            validateRequiredItems(items);
         }
     }
 
