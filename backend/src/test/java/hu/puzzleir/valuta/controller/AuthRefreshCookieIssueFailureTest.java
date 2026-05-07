@@ -5,17 +5,15 @@ import hu.puzzleir.valuta.dto.auth.LoginRequestDto;
 import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
 import hu.puzzleir.valuta.dto.auth.SelectRoleRequestDto;
 import hu.puzzleir.valuta.dto.worker.WorkerDto;
-import hu.puzzleir.valuta.entity.Branch;
-import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.RefreshToken;
 import hu.puzzleir.valuta.entity.Worker;
-import hu.puzzleir.valuta.entity.WorkerRole;
 import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
 import hu.puzzleir.valuta.service.AdminBootstrapService;
 import hu.puzzleir.valuta.service.GoogleLoginService;
 import hu.puzzleir.valuta.service.PasswordResetService;
+import hu.puzzleir.valuta.service.RefreshCookieService;
 import hu.puzzleir.valuta.service.RefreshTokenService;
 import hu.puzzleir.valuta.service.TokenBlacklistService;
 import hu.puzzleir.valuta.service.WorkerFirstTimeSetupService;
@@ -31,7 +29,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -41,6 +38,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static hu.puzzleir.valuta.test.WorkerTestFixtures.worker;
 
 class AuthRefreshCookieIssueFailureTest {
 
@@ -53,6 +51,7 @@ class AuthRefreshCookieIssueFailureTest {
     private final WorkerFirstTimeSetupService workerFirstTimeSetupService = mock(WorkerFirstTimeSetupService.class);
     private final PasswordResetService passwordResetService = mock(PasswordResetService.class);
     private final RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
+    private final RefreshCookieService refreshCookieService = new RefreshCookieService(refreshTokenService);
     private final ClientIpResolver clientIpResolver = mock(ClientIpResolver.class);
     private final GoogleLoginService googleLoginService = mock(GoogleLoginService.class);
 
@@ -68,6 +67,7 @@ class AuthRefreshCookieIssueFailureTest {
                 workerFirstTimeSetupService,
                 passwordResetService,
                 refreshTokenService,
+                refreshCookieService,
                 clientIpResolver);
         LoginRequestDto requestDto = new LoginRequestDto();
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -98,6 +98,7 @@ class AuthRefreshCookieIssueFailureTest {
                 workerFirstTimeSetupService,
                 passwordResetService,
                 refreshTokenService,
+                refreshCookieService,
                 clientIpResolver);
         LoginRequestDto requestDto = new LoginRequestDto();
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -134,6 +135,7 @@ class AuthRefreshCookieIssueFailureTest {
                 workerFirstTimeSetupService,
                 passwordResetService,
                 refreshTokenService,
+                refreshCookieService,
                 clientIpResolver);
         LoginRequestDto requestDto = new LoginRequestDto();
         requestDto.setAppMode("penztar");
@@ -169,6 +171,7 @@ class AuthRefreshCookieIssueFailureTest {
                 workerFirstTimeSetupService,
                 passwordResetService,
                 refreshTokenService,
+                refreshCookieService,
                 clientIpResolver);
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -204,6 +207,7 @@ class AuthRefreshCookieIssueFailureTest {
                 workerFirstTimeSetupService,
                 passwordResetService,
                 refreshTokenService,
+                refreshCookieService,
                 clientIpResolver);
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -238,6 +242,7 @@ class AuthRefreshCookieIssueFailureTest {
                 workerFirstTimeSetupService,
                 passwordResetService,
                 refreshTokenService,
+                refreshCookieService,
                 clientIpResolver);
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -258,6 +263,7 @@ class AuthRefreshCookieIssueFailureTest {
                     assertThat(businessException.getErrorCode()).isEqualTo("LOGIN_SESSION_ISSUE_FAILED");
                     assertThat(businessException.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
                 });
+        verify(tokenBlacklistService, never()).blacklistToken(any(), any(), any(), any());
     }
 
     @Test
@@ -272,6 +278,7 @@ class AuthRefreshCookieIssueFailureTest {
                 workerFirstTimeSetupService,
                 passwordResetService,
                 refreshTokenService,
+                refreshCookieService,
                 clientIpResolver);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer access-token");
@@ -310,6 +317,7 @@ class AuthRefreshCookieIssueFailureTest {
                 workerFirstTimeSetupService,
                 passwordResetService,
                 refreshTokenService,
+                refreshCookieService,
                 clientIpResolver);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer access-token");
@@ -342,7 +350,7 @@ class AuthRefreshCookieIssueFailureTest {
     void googleLoginFailsWhenRefreshCookieCannotBeIssued() {
         GoogleAuthController controller = new GoogleAuthController(
                 googleLoginService,
-                refreshTokenService,
+                refreshCookieService,
                 workerRepository);
         GoogleLoginRequestDto requestDto = new GoogleLoginRequestDto();
         requestDto.setIdToken("id-token");
@@ -365,7 +373,7 @@ class AuthRefreshCookieIssueFailureTest {
     void googleLoginDoesNotIssueRefreshCookieBeforeRoleSelection() {
         GoogleAuthController controller = new GoogleAuthController(
                 googleLoginService,
-                refreshTokenService,
+                refreshCookieService,
                 workerRepository);
         GoogleLoginRequestDto requestDto = new GoogleLoginRequestDto();
         requestDto.setIdToken("id-token");
@@ -394,7 +402,7 @@ class AuthRefreshCookieIssueFailureTest {
     void googleLoginRejectsSingleRoleThatDoesNotBelongToRequestedAppModeBeforeCookie() {
         GoogleAuthController controller = new GoogleAuthController(
                 googleLoginService,
-                refreshTokenService,
+                refreshCookieService,
                 workerRepository);
         GoogleLoginRequestDto requestDto = new GoogleLoginRequestDto();
         requestDto.setIdToken("id-token");
@@ -430,6 +438,7 @@ class AuthRefreshCookieIssueFailureTest {
                 workerFirstTimeSetupService,
                 passwordResetService,
                 refreshTokenService,
+                refreshCookieService,
                 clientIpResolver);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setCookies(new jakarta.servlet.http.Cookie("refreshToken", "selector.verifier"));
@@ -437,7 +446,7 @@ class AuthRefreshCookieIssueFailureTest {
         Worker worker = worker();
         RefreshToken oldRefresh = RefreshToken.builder()
                 .workerId(42L)
-                .activeRole("ertektar")
+                .activeRole(" ertektar ")
                 .build();
         when(refreshTokenService.findActiveBySelectorAndVerifier("selector.verifier"))
                 .thenReturn(Optional.of(oldRefresh));
@@ -466,6 +475,7 @@ class AuthRefreshCookieIssueFailureTest {
                 workerFirstTimeSetupService,
                 passwordResetService,
                 refreshTokenService,
+                refreshCookieService,
                 clientIpResolver);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setCookies(new jakarta.servlet.http.Cookie("refreshToken", "selector.verifier"));
@@ -504,6 +514,7 @@ class AuthRefreshCookieIssueFailureTest {
                 workerFirstTimeSetupService,
                 passwordResetService,
                 refreshTokenService,
+                refreshCookieService,
                 clientIpResolver);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setCookies(new jakarta.servlet.http.Cookie("refreshToken", "selector.verifier"));
@@ -541,6 +552,7 @@ class AuthRefreshCookieIssueFailureTest {
                 workerFirstTimeSetupService,
                 passwordResetService,
                 refreshTokenService,
+                refreshCookieService,
                 clientIpResolver);
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -578,6 +590,7 @@ class AuthRefreshCookieIssueFailureTest {
                 workerFirstTimeSetupService,
                 passwordResetService,
                 refreshTokenService,
+                refreshCookieService,
                 clientIpResolver);
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -609,28 +622,4 @@ class AuthRefreshCookieIssueFailureTest {
                 .build();
     }
 
-    private Worker worker() {
-        Company company = Company.builder()
-                .id(UUID.fromString("10000000-0000-0000-0000-000000000001"))
-                .code("EBC")
-                .name("Exchange Best Change")
-                .build();
-        Branch branch = Branch.builder()
-                .id(UUID.fromString("20000000-0000-0000-0000-000000000001"))
-                .company(company)
-                .code("KORUT")
-                .name("Korut")
-                .city("Szeged")
-                .address("Teszt utca 1")
-                .build();
-        Worker worker = new Worker();
-        worker.setId(42L);
-        worker.setCompany(company);
-        worker.setBranch(branch);
-        worker.setCode("BORSI");
-        worker.setName("Borsi Tamas");
-        worker.setRole(WorkerRole.CASHIER);
-        worker.setActive(true);
-        return worker;
-    }
 }
