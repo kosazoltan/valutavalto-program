@@ -66,6 +66,7 @@ class NbReportGeneratorTest {
         LocalDate end = LocalDate.of(2026, 5, 7);
         Currency eur = Currency.builder().code("EUR").name("Euró").build();
         Currency usd = Currency.builder().code("USD").name("Amerikai dollár").build();
+        Currency huf = Currency.builder().code("HUF").name("Forint").build();
 
         when(workerRepository.findByIdAndCompanyId(workerId, companyId))
                 .thenReturn(Optional.of(Worker.builder()
@@ -75,21 +76,22 @@ class NbReportGeneratorTest {
                         .build()));
         when(transactionRepository.findByCompanyIdAndWorkerIdAndTransactionDateBetween(companyId, workerId, start, end))
                 .thenReturn(List.of(
-                        transaction(TransactionType.BUY, eur, "100", "39000", "500"),
                         transaction(TransactionType.SELL, usd, "50", "18000", "700"),
-                        transaction(TransactionType.REVERSAL, eur, "0", "0", "0")));
+                        transaction(TransactionType.BUY, eur, "100", "39000", "500"),
+                        transaction(TransactionType.REVERSAL, huf, "0", "0", "0")));
 
         ReportService.WorkerPerformanceReport report =
                 generator.generateWorkerPerformanceReport(workerId, start, end);
 
-        assertThat(report.getTotalTransactionCount()).isEqualTo(3);
-        assertThat(report.getTotalTransactions()).isEqualTo(3);
+        assertThat(report.getTotalTransactionCount()).isEqualTo(2);
+        assertThat(report.getTotalTransactions()).isEqualTo(2);
         assertThat(report.getTotalBuyCount()).isEqualTo(1);
         assertThat(report.getBuyTransactions()).isEqualTo(1);
         assertThat(report.getTotalSellCount()).isEqualTo(1);
         assertThat(report.getSellTransactions()).isEqualTo(1);
+        assertThat(report.getReversalCount()).isEqualTo(1);
         assertThat(report.getTotalHandlingFees()).isEqualByComparingTo("1200");
-        assertThat(report.getAverageDailyTransactions()).isEqualByComparingTo("0.43");
+        assertThat(report.getAverageDailyTransactions()).isEqualByComparingTo("0.29");
         assertThat(report.getCurrencyTurnovers())
                 .extracting(ReportService.CurrencyTurnover::getCurrencyCode)
                 .containsExactly("EUR", "USD");

@@ -50,21 +50,27 @@ public class NbReportGenerator {
         List<Transaction> transactions = transactionRepository
                 .findByCompanyIdAndWorkerIdAndTransactionDateBetween(companyId, workerId, startDate, endDate);
 
-        int buyCount = (int) transactions.stream()
-                .filter(t -> t.getTransactionType() == TransactionType.BUY && t.isActive())
+        List<Transaction> activeTradeTransactions = transactions.stream()
+                .filter(t -> t.isActive()
+                        && (t.getTransactionType() == TransactionType.BUY
+                        || t.getTransactionType() == TransactionType.SELL))
+                .toList();
+
+        int buyCount = (int) activeTradeTransactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.BUY)
                 .count();
 
-        int sellCount = (int) transactions.stream()
-                .filter(t -> t.getTransactionType() == TransactionType.SELL && t.isActive())
+        int sellCount = (int) activeTradeTransactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.SELL)
                 .count();
 
-        BigDecimal totalBuy = transactions.stream()
-                .filter(t -> t.getTransactionType() == TransactionType.BUY && t.isActive())
+        BigDecimal totalBuy = activeTradeTransactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.BUY)
                 .map(Transaction::getHufAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalSell = transactions.stream()
-                .filter(t -> t.getTransactionType() == TransactionType.SELL && t.isActive())
+        BigDecimal totalSell = activeTradeTransactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.SELL)
                 .map(Transaction::getHufAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -72,8 +78,7 @@ public class NbReportGenerator {
                 .filter(t -> t.getTransactionType() == TransactionType.REVERSAL)
                 .count();
 
-        BigDecimal totalHandlingFees = transactions.stream()
-                .filter(Transaction::isActive)
+        BigDecimal totalHandlingFees = activeTradeTransactions.stream()
                 .map(Transaction::getHandlingFee)
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -83,10 +88,13 @@ public class NbReportGenerator {
         BigDecimal averageTransactionValue = turnoverTransactionCount == 0 ? BigDecimal.ZERO :
                 totalTurnover.divide(BigDecimal.valueOf(turnoverTransactionCount), 0, RoundingMode.HALF_UP);
         long dayCount = Math.max(1, ChronoUnit.DAYS.between(startDate, endDate) + 1);
-        BigDecimal averageDailyTransactions = BigDecimal.valueOf(transactions.size())
+        BigDecimal averageDailyTransactions = BigDecimal.valueOf(turnoverTransactionCount)
                 .divide(BigDecimal.valueOf(dayCount), 2, RoundingMode.HALF_UP);
         List<ReportService.CurrencyTurnover> currencyTurnovers =
-                new ArrayList<>(ReportService.calculateCurrencyTurnovers(transactions).values());
+                ReportService.calculateCurrencyTurnovers(activeTradeTransactions).values().stream()
+                        .sorted(Comparator.comparing(ReportService.CurrencyTurnover::getCurrencyCode,
+                                Comparator.nullsLast(String::compareTo)))
+                        .toList();
 
         return ReportService.WorkerPerformanceReport.builder()
                 .workerId(workerId)
@@ -95,11 +103,11 @@ public class NbReportGenerator {
                 .startDate(startDate)
                 .endDate(endDate)
                 .generatedAt(LocalDateTime.now())
-                .totalTransactions(transactions.size())
+                .totalTransactions(turnoverTransactionCount)
                 .buyTransactions(buyCount)
                 .sellTransactions(sellCount)
                 .reversalCount((int) reversals)
-                .totalTransactionCount(transactions.size())
+                .totalTransactionCount(turnoverTransactionCount)
                 .totalBuyCount(buyCount)
                 .totalSellCount(sellCount)
                 .totalBuyHuf(totalBuy)

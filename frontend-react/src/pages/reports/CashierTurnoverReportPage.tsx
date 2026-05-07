@@ -311,7 +311,7 @@ export default function CashierTurnoverReportPage() {
                   const isOpen = expanded.has(row.worker.id)
                   return (
                     <Fragment key={row.worker.id}>
-                      <tr key={`row-${row.worker.id}`} className="hover:bg-gray-50">
+                      <tr className="hover:bg-gray-50">
                         <td className="px-3 py-2">
                           <button
                             type="button"
@@ -349,7 +349,7 @@ export default function CashierTurnoverReportPage() {
                         </td>
                       </tr>
                       {isOpen && (
-                        <tr key={`detail-${row.worker.id}`}>
+                        <tr>
                           <td colSpan={7} className="px-6 py-3 bg-gray-50 text-xs">
                             {row.error ? (
                               <div className="text-red-700">{t('reports.cashierTurnover.details.errorPrefix', { error: row.error })}</div>
