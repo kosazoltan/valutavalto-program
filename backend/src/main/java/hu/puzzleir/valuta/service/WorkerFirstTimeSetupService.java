@@ -2,9 +2,11 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupRequestDto;
 import hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto;
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
@@ -47,6 +49,7 @@ public class WorkerFirstTimeSetupService {
     private final JwtTokenProvider jwtTokenProvider;
     private final AdminBootstrapService adminBootstrapService;
     private final WorkerRoleService workerRoleService;
+    private final BranchRepository branchRepository;
 
     /**
      * Worker elso jelszavanak beallitasa / reset.
@@ -78,9 +81,9 @@ public class WorkerFirstTimeSetupService {
         }
 
         List<String> roleCodes = workerRoleService.getRoleCodesForWorker(worker.getId());
-        if (roleCodes.isEmpty()
-                && !AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(worker.getRole(), dto.getAppMode())) {
-            throw new ValidationException("Nincs ebben a programban használható szerepköre.");
+        if (AppModeRoleConstants.isLegacyWorkerRoleDeniedForAppMode(
+                roleCodes, worker.getRole(), dto.getAppMode())) {
+            throw new ValidationException(AppModeRoleConstants.legacyWorkerRoleDeniedMessage(worker.getRole()));
         }
         String activeRole = resolveActiveRoleForSetup(roleCodes, dto.getAppMode());
         List<String> permissions = activeRole == null
@@ -133,6 +136,8 @@ public class WorkerFirstTimeSetupService {
         // Ha worker.passwordHash == null es bootstrap meg nincs lezarva, friss elso
         // telepiteskent engedjuk az uj jelszo beallitasat.
 
+        ensureBranchBeforeAutoLogin(worker, company);
+
         // 4) Uj jelszo beallitasa + BCrypt hash + timestamp
         worker.setPasswordHash(passwordEncoder.encode(dto.getNewPassword()));
         worker.setPasswordChangedAt(LocalDateTime.now());
@@ -167,6 +172,20 @@ public class WorkerFirstTimeSetupService {
 
     private static String normalize(String value) {
         return value == null ? "" : value.trim().toUpperCase();
+    }
+
+    private void ensureBranchBeforeAutoLogin(Worker worker, Company company) {
+        if (worker.getBranch() != null) {
+            return;
+        }
+
+        Branch fallbackBranch = branchRepository.findByCompanyIdAndIsActiveTrue(company.getId()).stream()
+                .findFirst()
+                .orElseGet(() -> branchRepository.findByCompanyId(company.getId()).stream().findFirst().orElse(null));
+        if (fallbackBranch == null) {
+            throw new ValidationException("Nincs elérhető iroda a bejelentkezéshez!");
+        }
+        worker.setBranch(fallbackBranch);
     }
 
     private static String resolveActiveRoleForSetup(List<String> roleCodes, String appMode) {

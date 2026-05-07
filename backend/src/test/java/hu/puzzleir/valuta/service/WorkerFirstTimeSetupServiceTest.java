@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
@@ -41,6 +42,7 @@ class WorkerFirstTimeSetupServiceTest {
     @Mock private JwtTokenProvider jwtTokenProvider;
     @Mock private AdminBootstrapService adminBootstrapService;
     @Mock private WorkerRoleService workerRoleService;
+    @Mock private BranchRepository branchRepository;
 
     @InjectMocks private WorkerFirstTimeSetupService service;
 
@@ -127,6 +129,33 @@ class WorkerFirstTimeSetupServiceTest {
         assertThat(response.getToken()).isEqualTo("jwt-ertektar");
         assertThat(response.getActiveRole()).isEqualTo("ertektar");
         assertThat(response.getRoles()).containsExactly("penztar", "ertektar");
+    }
+
+    @Test
+    @DisplayName("Legacy branch nelkuli worker setup auto-login elott cegszintu aktiv fiokot kap")
+    void assignsFallbackBranchBeforeJwtForLegacyBranchlessWorker() {
+        Worker worker = seedWorker("$2b$10$seed");
+        worker.setBranch(null);
+        WorkerFirstTimeSetupRequestDto dto = request("1234");
+        dto.setAppMode("penztar");
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of());
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
+        when(passwordEncoder.matches("1234", "$2b$10$seed")).thenReturn(true);
+        when(passwordEncoder.encode("UjGlobalisJelszo123!")).thenReturn("$2b$10$new");
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(company.getId())).thenReturn(List.of(branch));
+        when(workerRepository.save(any(Worker.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(jwtTokenProvider.generateToken(any(Worker.class))).thenReturn("jwt-token");
+
+        WorkerFirstTimeSetupResponseDto response = service.setupWorkerPassword(dto);
+
+        ArgumentCaptor<Worker> tokenWorker = ArgumentCaptor.forClass(Worker.class);
+        verify(jwtTokenProvider).generateToken(tokenWorker.capture());
+        assertThat(tokenWorker.getValue().getBranch()).isSameAs(branch);
+        assertThat(response.getBranchCode()).isEqualTo("TISZA");
+        assertThat(response.getToken()).isEqualTo("jwt-token");
     }
 
     @Test

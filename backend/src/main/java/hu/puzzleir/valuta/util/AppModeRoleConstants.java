@@ -56,7 +56,7 @@ public final class AppModeRoleConstants {
      *   <li>{@link #KAMERA_CANONICAL_ROLES} barmelyike -> "kamera" appMode (kameraszoftver, NEM browser)</li>
      *   <li>{@link #SERVER_CANONICAL_ROLES} barmelyike -> "full" appMode (browser admin)</li>
      *   <li>WorkerRole legacy fallback csak role assignment nelkuli regi dolgozokhoz:
-     *       CASHIER -> "penztar", SUPERVISOR/MANAGER/ADMIN -> "full"</li>
+     *       CASHIER -> "penztar", SUPERVISOR/MANAGER/ADMIN -> local supervisory modes + "full"</li>
      * </ul>
      * </p>
      */
@@ -84,6 +84,9 @@ public final class AppModeRoleConstants {
                 addIfAbsent(validAppModes, "penztar");
             }
             if (isLegacyServerWorkerRole(workerRoleEnum)) {
+                addIfAbsent(validAppModes, "penztar");
+                addIfAbsent(validAppModes, "ertektar");
+                addIfAbsent(validAppModes, "ertekszallito");
                 addIfAbsent(validAppModes, "full");
             }
         } else if (workerRoleEnum == WorkerRole.ADMIN) {
@@ -157,6 +160,22 @@ public final class AppModeRoleConstants {
             case "kamera" -> false;
             default -> false;
         };
+    }
+
+    public static boolean isLegacyWorkerRoleDeniedForAppMode(
+            List<String> roleCodes,
+            WorkerRole workerRole,
+            String appMode
+    ) {
+        return normalizeRoleCodes(roleCodes).isEmpty()
+                && !isLegacyWorkerRoleSelectableForAppMode(workerRole, appMode);
+    }
+
+    public static String legacyWorkerRoleDeniedMessage(WorkerRole workerRole) {
+        if (workerRole == null) {
+            return "Nincs ebben a programban használható szerepköre.";
+        }
+        return "Ez a szerepkör nem használható ebben a programban: " + workerRole;
     }
 
     private static boolean isServerRole(String normalizedRole) {

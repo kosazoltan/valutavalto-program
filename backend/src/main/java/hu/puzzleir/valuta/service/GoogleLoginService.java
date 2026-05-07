@@ -160,9 +160,9 @@ public class GoogleLoginService {
 
         // 5. Operativ szerepkor (V57) — egyezo logika a WorkerService.login-nal
         List<String> roleCodes = workerRoleService.getRoleCodesForWorker(worker.getId());
-        if (roleCodes.isEmpty()
-                && !AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(worker.getRole(), appMode)) {
-            throw new AuthenticationException("Ez a szerepkör nem használható ebben a programban: " + worker.getRole());
+        if (AppModeRoleConstants.isLegacyWorkerRoleDeniedForAppMode(
+                roleCodes, worker.getRole(), appMode)) {
+            throw new AuthenticationException(AppModeRoleConstants.legacyWorkerRoleDeniedMessage(worker.getRole()));
         }
 
         String activeRole = null;

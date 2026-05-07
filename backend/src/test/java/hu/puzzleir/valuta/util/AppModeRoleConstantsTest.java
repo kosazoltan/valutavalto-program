@@ -38,11 +38,11 @@ class AppModeRoleConstantsTest {
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.CASHIER))
                 .containsExactly("penztar");
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.SUPERVISOR))
-                .containsExactly("full");
+                .containsExactly("penztar", "ertektar", "ertekszallito", "full");
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.MANAGER))
-                .containsExactly("full");
+                .containsExactly("penztar", "ertektar", "ertekszallito", "full");
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.ADMIN))
-                .containsExactly("full");
+                .containsExactly("penztar", "ertektar", "ertekszallito", "full");
     }
 
     @Test
@@ -82,6 +82,8 @@ class AppModeRoleConstantsTest {
                 .isTrue();
         assertThat(AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(WorkerRole.MANAGER, "ertektar"))
                 .isTrue();
+        assertThat(AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(WorkerRole.MANAGER, "ertekszallito"))
+                .isTrue();
         assertThat(AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(WorkerRole.MANAGER, "kamera"))
                 .isFalse();
     }
@@ -93,8 +95,18 @@ class AppModeRoleConstantsTest {
     }
 
     @Test
-    void legacyAdminKeepsFullAppModeFallback() {
+    void legacyAdminFallbackMatchesSelectableAppModes() {
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.ADMIN))
-                .containsExactly("full");
+                .containsExactly("penztar", "ertektar", "ertekszallito", "full");
+    }
+
+    @Test
+    void legacyWorkerRoleDeniedHelperOnlyAppliesWhenAssignmentsAreMissing() {
+        assertThat(AppModeRoleConstants.isLegacyWorkerRoleDeniedForAppMode(
+                List.of(), WorkerRole.CASHIER, "ertektar"))
+                .isTrue();
+        assertThat(AppModeRoleConstants.isLegacyWorkerRoleDeniedForAppMode(
+                List.of("ertektar"), WorkerRole.CASHIER, "ertektar"))
+                .isFalse();
     }
 }

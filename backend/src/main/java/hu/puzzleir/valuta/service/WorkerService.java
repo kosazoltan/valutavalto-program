@@ -384,9 +384,9 @@ public class WorkerService {
                 .map(ra -> ra.getRoleDef().getCode())
                 .collect(Collectors.toList());
 
-        if (roleCodes.isEmpty()
-                && !AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(worker.getRole(), dto.getAppMode())) {
-            throw new AuthenticationException("Ez a szerepkör nem használható ebben a programban: " + worker.getRole());
+        if (AppModeRoleConstants.isLegacyWorkerRoleDeniedForAppMode(
+                roleCodes, worker.getRole(), dto.getAppMode())) {
+            throw new AuthenticationException(AppModeRoleConstants.legacyWorkerRoleDeniedMessage(worker.getRole()));
         }
 
         // Ha 0 vagy 1 role van → automatikus belépés azzal
