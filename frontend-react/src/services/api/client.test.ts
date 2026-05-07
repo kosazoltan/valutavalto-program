@@ -55,6 +55,8 @@ function unsignedJwtWithExp(exp: number): string {
   return `${encode({ alg: 'none', typ: 'JWT' })}.${encode({ exp })}.sig`
 }
 
+const VALID_ELECTRON_TOKEN = unsignedJwtWithExp(4102444800)
+
 describe('persistToken / clearPersistedToken / loadPersistedToken / hasPersistedToken (Audit P1.3)', () => {
   beforeEach(async () => {
     if ('electronAPI' in window) {
@@ -180,7 +182,7 @@ describe('persistToken / clearPersistedToken / loadPersistedToken / hasPersisted
       (window as any).electronAPI = {
         setConfig: vi.fn().mockResolvedValue(undefined),
         deleteConfig: vi.fn().mockResolvedValue(undefined),
-        getConfig: vi.fn().mockResolvedValue('electron-token'),
+        getConfig: vi.fn().mockResolvedValue(VALID_ELECTRON_TOKEN),
       }
     })
 
@@ -201,7 +203,7 @@ describe('persistToken / clearPersistedToken / loadPersistedToken / hasPersisted
     it('loadPersistedToken uses getConfig in Electron', async () => {
       const result = await loadPersistedToken()
       expect(window.electronAPI?.getConfig).toHaveBeenCalledWith('auth_token')
-      expect(result).toBe('electron-token')
+      expect(result).toBe(VALID_ELECTRON_TOKEN)
     })
 
     it('hasPersistedToken returns true when getConfig capability exists', () => {
@@ -231,6 +233,31 @@ describe('persistToken / clearPersistedToken / loadPersistedToken / hasPersisted
       expect(result).toBeNull()
       expect(window.electronAPI?.deleteConfig).toHaveBeenCalledWith('auth_token')
       expect(hasPersistedToken()).toBe(false)
+    })
+
+    it('treats a corrupted Electron access token as expired and refreshes fail-closed', async () => {
+      ;(window as any).electronAPI.getConfig = vi.fn().mockResolvedValue('corrupted-token')
+      mockPost.mockResolvedValueOnce({ data: { token: 'fresh-token-after-corruption' } })
+
+      const result = await loadPersistedToken()
+
+      expect(mockPost).toHaveBeenCalledWith(REFRESH_ENDPOINT, undefined, { withCredentials: true })
+      expect(window.electronAPI?.setConfig).toHaveBeenCalledWith('auth_token', 'fresh-token-after-corruption')
+      expect(result).toBe('fresh-token-after-corruption')
+      expect(hasPersistedToken()).toBe(true)
+    })
+
+    it('returns the refreshed Electron token even when secure persistence fails', async () => {
+      const expiredToken = unsignedJwtWithExp(Math.floor(Date.now() / 1000) - 60)
+      ;(window as any).electronAPI.getConfig = vi.fn().mockResolvedValue(expiredToken)
+      ;(window as any).electronAPI.setConfig = vi.fn().mockRejectedValue(new Error('DPAPI unavailable'))
+      mockPost.mockResolvedValueOnce({ data: { token: 'fresh-in-memory-token' } })
+
+      const result = await loadPersistedToken()
+
+      expect(window.electronAPI?.setConfig).toHaveBeenCalledWith('auth_token', 'fresh-in-memory-token')
+      expect(result).toBe('fresh-in-memory-token')
+      expect(hasPersistedToken()).toBe(true)
     })
 
     it('hasPersistedToken returns false after clearPersistedToken', async () => {
