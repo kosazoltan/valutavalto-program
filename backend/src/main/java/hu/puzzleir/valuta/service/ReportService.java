@@ -198,10 +198,16 @@ public class ReportService {
         private int buyTransactions;
         private int sellTransactions;
         private int reversalCount;
+        private int totalTransactionCount;
+        private int totalBuyCount;
+        private int totalSellCount;
         private BigDecimal totalBuyHuf;
         private BigDecimal totalSellHuf;
         private BigDecimal totalTurnoverHuf;
+        private BigDecimal totalHandlingFees;
         private BigDecimal averageTransactionValue;
+        private BigDecimal averageDailyTransactions;
+        private List<CurrencyTurnover> currencyTurnovers;
     }
 
     @lombok.Data

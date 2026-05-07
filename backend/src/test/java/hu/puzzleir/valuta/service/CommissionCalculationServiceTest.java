@@ -79,12 +79,13 @@ class CommissionCalculationServiceTest {
                 .build();
     }
 
-        /**
-         * Közös mock: havi range query eredménye.
-         */
-        private void mockTransactionsForMonth(List<Transaction> transactions) {
-                when(transactionRepository.findByWorkerIdAndTransactionDateBetween(eq(WORKER_ID), any(LocalDate.class), any(LocalDate.class)))
-                                .thenReturn(transactions);
+    /**
+     * Közös mock: havi range query eredménye.
+     */
+    private void mockTransactionsForMonth(List<Transaction> transactions) {
+        when(transactionRepository.findByCompanyIdAndWorkerIdAndTransactionDateBetween(
+                eq(COMPANY_ID), eq(WORKER_ID), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(transactions);
     }
 
     /**

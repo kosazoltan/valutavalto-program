@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,11 +42,21 @@ public class NbReportGenerator {
      * Penztaros teljesitmeny riport
      */
     public ReportService.WorkerPerformanceReport generateWorkerPerformanceReport(Long workerId, LocalDate startDate, LocalDate endDate) {
-        Worker worker = workerRepository.findById(workerId)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        Worker worker = workerRepository.findByIdAndCompanyId(workerId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
 
         List<Transaction> transactions = transactionRepository
-                .findByWorkerIdAndTransactionDateBetween(workerId, startDate, endDate);
+                .findByCompanyIdAndWorkerIdAndTransactionDateBetween(companyId, workerId, startDate, endDate);
+
+        int buyCount = (int) transactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.BUY && t.isActive())
+                .count();
+
+        int sellCount = (int) transactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.SELL && t.isActive())
+                .count();
 
         BigDecimal totalBuy = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.BUY && t.isActive())
@@ -61,6 +72,22 @@ public class NbReportGenerator {
                 .filter(t -> t.getTransactionType() == TransactionType.REVERSAL)
                 .count();
 
+        BigDecimal totalHandlingFees = transactions.stream()
+                .filter(Transaction::isActive)
+                .map(Transaction::getHandlingFee)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalTurnover = totalBuy.add(totalSell);
+        int turnoverTransactionCount = buyCount + sellCount;
+        BigDecimal averageTransactionValue = turnoverTransactionCount == 0 ? BigDecimal.ZERO :
+                totalTurnover.divide(BigDecimal.valueOf(turnoverTransactionCount), 0, RoundingMode.HALF_UP);
+        long dayCount = Math.max(1, ChronoUnit.DAYS.between(startDate, endDate) + 1);
+        BigDecimal averageDailyTransactions = BigDecimal.valueOf(transactions.size())
+                .divide(BigDecimal.valueOf(dayCount), 2, RoundingMode.HALF_UP);
+        List<ReportService.CurrencyTurnover> currencyTurnovers =
+                new ArrayList<>(ReportService.calculateCurrencyTurnovers(transactions).values());
+
         return ReportService.WorkerPerformanceReport.builder()
                 .workerId(workerId)
                 .workerCode(worker.getCode())
@@ -69,14 +96,19 @@ public class NbReportGenerator {
                 .endDate(endDate)
                 .generatedAt(LocalDateTime.now())
                 .totalTransactions(transactions.size())
-                .buyTransactions((int) transactions.stream().filter(t -> t.getTransactionType() == TransactionType.BUY).count())
-                .sellTransactions((int) transactions.stream().filter(t -> t.getTransactionType() == TransactionType.SELL).count())
+                .buyTransactions(buyCount)
+                .sellTransactions(sellCount)
                 .reversalCount((int) reversals)
+                .totalTransactionCount(transactions.size())
+                .totalBuyCount(buyCount)
+                .totalSellCount(sellCount)
                 .totalBuyHuf(totalBuy)
                 .totalSellHuf(totalSell)
-                .totalTurnoverHuf(totalBuy.add(totalSell))
-                .averageTransactionValue(transactions.isEmpty() ? BigDecimal.ZERO :
-                        totalBuy.add(totalSell).divide(BigDecimal.valueOf(transactions.size()), 0, RoundingMode.HALF_UP))
+                .totalTurnoverHuf(totalTurnover)
+                .totalHandlingFees(totalHandlingFees)
+                .averageTransactionValue(averageTransactionValue)
+                .averageDailyTransactions(averageDailyTransactions)
+                .currencyTurnovers(currencyTurnovers)
                 .build();
     }
 

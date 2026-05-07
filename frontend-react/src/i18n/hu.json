@@ -1325,7 +1325,6 @@
     },
     "cashierTurnover": {
       "title": "Pénztáros forgalmi riport",
-      "warning": "A valuta-bontás (vétel / eladás per valuta per pénztáros) jelenleg nem szerepel a backend WorkerPerformanceReport DTO-ban. Az aggregát adatok láthatók (összes vétel / eladás HUF). TODO(backend): worker x currency aggregátor endpoint.",
       "from": "Tól",
       "to": "Ig",
       "workerLabel": "Pénztáros (üres = mind)",
@@ -1356,9 +1355,21 @@
         "buyCount": "Vétel db",
         "sellCount": "Eladás db",
         "averageDailyTransactions": "Átlag napi tranz.",
+        "averageTransactionValue": "Átlag tranzakcióérték",
+        "currencyBreakdown": "Valutánkénti vétel / eladás",
         "period": "Időszak",
         "noData": "Nincs adat.",
         "errorPrefix": "Hiba a lekérdezésnél: {{error}}"
+      },
+      "currencyTable": {
+        "currency": "Valuta",
+        "buyCount": "Vétel db",
+        "buyAmount": "Vétel összeg",
+        "buyHuf": "Vétel HUF",
+        "sellCount": "Eladás db",
+        "sellAmount": "Eladás összeg",
+        "sellHuf": "Eladás HUF",
+        "noData": "Nincs valuta-bontás a kiválasztott időszakra."
       },
       "emptyState": "Adja meg a szűrőfeltételeket és nyomja meg a Lekérdezés gombot.",
       "errors": {

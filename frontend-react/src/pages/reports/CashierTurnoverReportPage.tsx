@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Fragment, useState, useEffect, useCallback, useMemo } from 'react'
 import { Users, AlertTriangle, Search, ChevronDown, ChevronRight, Download } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api, reportApi } from '../../services/api/index'
@@ -10,18 +10,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
  * Pénztáros forgalmi riport — kiadott / eladott valuták worker bontásban.
  *
  * Backend végpont: GET /api/v1/reports/worker/{workerId}?startDate=...&endDate=...
- *   -> ReportService.WorkerPerformanceReport (aggregát, NEM tartalmaz valuta-bontást).
- *
- * A backend WorkerPerformanceReport tartalmazza:
- *   workerId, workerCode, workerName, totalTransactions, buyTransactions, sellTransactions,
- *   reversalCount, totalBuyHuf, totalSellHuf, totalTurnoverHuf, averageTransactionValue
- *
- * A "valuta-bontás per pénztáros" jelenleg NEM elérhető a backenden — TODO(backend):
- * dedikált aggregátor endpoint vagy worker × currency report.
- *
- * Aggregát-endpoint hiányában: a frontend lehúzza az aktív workerek listáját
- * (/workers/active), majd párhuzamosan minden workerre meghívja a /reports/worker/{id}-t.
- * Ha egy worker filter ki van választva, csak arra hív.
+ * A frontend az aktív workerek listáját lekéri, majd worker-filter szerint hívja a riportot.
  */
 
 interface RowState {
@@ -38,6 +27,18 @@ function toNum(v: number | string | null | undefined): number {
 
 function formatHuf(n: number): string {
   return n.toLocaleString('hu-HU') + ' Ft'
+}
+
+function totalTransactionCount(report: WorkerPerformanceReport): number {
+  return report.totalTransactionCount ?? report.totalTransactions ?? 0
+}
+
+function totalBuyCount(report: WorkerPerformanceReport): number {
+  return report.totalBuyCount ?? report.buyTransactions ?? 0
+}
+
+function totalSellCount(report: WorkerPerformanceReport): number {
+  return report.totalSellCount ?? report.sellTransactions ?? 0
 }
 
 function isoDate(d: Date): string {
@@ -124,9 +125,9 @@ export default function CashierTurnoverReportPage() {
     let totalHandlingFees = 0
     for (const r of rows) {
       if (!r.report) continue
-      totalTransactions += r.report.totalTransactionCount ?? 0
-      buyCount += r.report.totalBuyCount ?? 0
-      sellCount += r.report.totalSellCount ?? 0
+      totalTransactions += totalTransactionCount(r.report)
+      buyCount += totalBuyCount(r.report)
+      sellCount += totalSellCount(r.report)
       totalBuyHuf += toNum(r.report.totalBuyHuf)
       totalSellHuf += toNum(r.report.totalSellHuf)
       totalHandlingFees += toNum(r.report.totalHandlingFees)
@@ -184,11 +185,6 @@ export default function CashierTurnoverReportPage() {
           <Users className="h-6 w-6" />
           {t('reports.cashierTurnover.title')}
         </h1>
-      </div>
-
-      <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-yellow-800 text-xs flex items-start gap-2">
-        <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-        <span>{t('reports.cashierTurnover.warning')}</span>
       </div>
 
       {error && (
@@ -314,7 +310,7 @@ export default function CashierTurnoverReportPage() {
                 {rows.map((row) => {
                   const isOpen = expanded.has(row.worker.id)
                   return (
-                    <>
+                    <Fragment key={row.worker.id}>
                       <tr key={`row-${row.worker.id}`} className="hover:bg-gray-50">
                         <td className="px-3 py-2">
                           <button
@@ -335,7 +331,7 @@ export default function CashierTurnoverReportPage() {
                           </div>
                         </td>
                         <td className="px-3 py-2 text-right text-sm font-mono">
-                          {row.report?.totalTransactionCount ?? '-'}
+                          {row.report ? totalTransactionCount(row.report) : '-'}
                         </td>
                         <td className="px-3 py-2 text-right text-sm font-mono">
                           {row.report ? formatHuf(toNum(row.report.totalBuyHuf)) : '-'}
@@ -358,35 +354,84 @@ export default function CashierTurnoverReportPage() {
                             {row.error ? (
                               <div className="text-red-700">{t('reports.cashierTurnover.details.errorPrefix', { error: row.error })}</div>
                             ) : row.report ? (
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <div>
-                                  <div className="text-gray-500">{t('reports.cashierTurnover.details.buyCount')}</div>
-                                  <div className="font-mono">{row.report.totalBuyCount}</div>
-                                </div>
-                                <div>
-                                  <div className="text-gray-500">{t('reports.cashierTurnover.details.sellCount')}</div>
-                                  <div className="font-mono">{row.report.totalSellCount}</div>
-                                </div>
-                                <div>
-                                  <div className="text-gray-500">{t('reports.cashierTurnover.details.averageDailyTransactions')}</div>
-                                  <div className="font-mono">
-                                    {row.report.averageDailyTransactions?.toFixed(2) ?? '-'}
+                              <>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                  <div>
+                                    <div className="text-gray-500">{t('reports.cashierTurnover.details.buyCount')}</div>
+                                    <div className="font-mono">{totalBuyCount(row.report)}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-gray-500">{t('reports.cashierTurnover.details.sellCount')}</div>
+                                    <div className="font-mono">{totalSellCount(row.report)}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-gray-500">{t('reports.cashierTurnover.details.averageDailyTransactions')}</div>
+                                    <div className="font-mono">
+                                      {row.report.averageDailyTransactions?.toFixed(2) ?? '-'}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-gray-500">{t('reports.cashierTurnover.details.period')}</div>
+                                    <div className="font-mono">
+                                      {row.report.startDate} - {row.report.endDate}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-gray-500">{t('reports.cashierTurnover.details.averageTransactionValue')}</div>
+                                    <div className="font-mono">
+                                      {formatHuf(toNum(row.report.averageTransactionValue))}
+                                    </div>
                                   </div>
                                 </div>
-                                <div>
-                                  <div className="text-gray-500">{t('reports.cashierTurnover.details.period')}</div>
-                                  <div className="font-mono">
-                                    {row.report.startDate} - {row.report.endDate}
+
+                                <div className="mt-3 overflow-x-auto">
+                                  <div className="font-semibold text-gray-700 mb-2">
+                                    {t('reports.cashierTurnover.details.currencyBreakdown')}
                                   </div>
+                                  <table className="min-w-full divide-y divide-gray-200 bg-white">
+                                    <thead className="bg-gray-100">
+                                      <tr>
+                                        <th className="px-3 py-2 text-left font-medium text-gray-500">{t('reports.cashierTurnover.currencyTable.currency')}</th>
+                                        <th className="px-3 py-2 text-right font-medium text-gray-500">{t('reports.cashierTurnover.currencyTable.buyCount')}</th>
+                                        <th className="px-3 py-2 text-right font-medium text-gray-500">{t('reports.cashierTurnover.currencyTable.buyAmount')}</th>
+                                        <th className="px-3 py-2 text-right font-medium text-gray-500">{t('reports.cashierTurnover.currencyTable.buyHuf')}</th>
+                                        <th className="px-3 py-2 text-right font-medium text-gray-500">{t('reports.cashierTurnover.currencyTable.sellCount')}</th>
+                                        <th className="px-3 py-2 text-right font-medium text-gray-500">{t('reports.cashierTurnover.currencyTable.sellAmount')}</th>
+                                        <th className="px-3 py-2 text-right font-medium text-gray-500">{t('reports.cashierTurnover.currencyTable.sellHuf')}</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                      {(row.report.currencyTurnovers ?? []).length === 0 && (
+                                        <tr>
+                                          <td colSpan={7} className="px-3 py-3 text-center text-gray-500">
+                                            {t('reports.cashierTurnover.currencyTable.noData')}
+                                          </td>
+                                        </tr>
+                                      )}
+                                      {(row.report.currencyTurnovers ?? []).map((currency) => (
+                                        <tr key={currency.currencyCode}>
+                                          <td className="px-3 py-2 whitespace-nowrap">
+                                            {currency.currencyCode} - {currency.currencyName}
+                                          </td>
+                                          <td className="px-3 py-2 text-right font-mono">{currency.buyCount}</td>
+                                          <td className="px-3 py-2 text-right font-mono">{toNum(currency.buyAmount).toLocaleString('hu-HU')}</td>
+                                          <td className="px-3 py-2 text-right font-mono whitespace-nowrap">{formatHuf(toNum(currency.buyHuf))}</td>
+                                          <td className="px-3 py-2 text-right font-mono">{currency.sellCount}</td>
+                                          <td className="px-3 py-2 text-right font-mono">{toNum(currency.sellAmount).toLocaleString('hu-HU')}</td>
+                                          <td className="px-3 py-2 text-right font-mono whitespace-nowrap">{formatHuf(toNum(currency.sellHuf))}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
                                 </div>
-                              </div>
+                              </>
                             ) : (
                               <div className="text-gray-500">{t('reports.cashierTurnover.details.noData')}</div>
                             )}
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   )
                 })}
                 <tr className="bg-gray-100 font-semibold">
