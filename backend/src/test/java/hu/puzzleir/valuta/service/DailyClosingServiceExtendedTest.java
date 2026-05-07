@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.config.NavBridgeProperties;
 import hu.puzzleir.valuta.dto.decade.DecadeReportDto;
 import hu.puzzleir.valuta.dto.eveningclosing.DailyDataPackage;
 import hu.puzzleir.valuta.dto.eveningclosing.DataSyncResult;
@@ -15,7 +16,6 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -56,6 +56,7 @@ class DailyClosingServiceExtendedTest {
     @Mock private PosTerminalRepository posTerminalRepository;
     @Mock private EveningClosingService eveningClosingService;
     @Mock private DailyClosingArchiveService dailyClosingArchiveService;
+    @Mock private NavBridgeProperties navBridgeProperties;
 
     // Új függőségek
     @Mock private MonthlyArchiveService monthlyArchiveService;
@@ -99,6 +100,7 @@ class DailyClosingServiceExtendedTest {
             .thenReturn(BigDecimal.ZERO);
         when(transactionRepository.countUnreportedTransactions(any(), any())).thenReturn(0L);
         when(systemParameterService.getValue(anyString())).thenReturn("false");
+        when(navBridgeProperties.isSimulatedSuccessEnabled()).thenReturn(false);
 
         // executeClosing belső hívások
         when(exchangeRateRepository.findActiveRatesByDate(any(), any()))
@@ -264,7 +266,7 @@ class DailyClosingServiceExtendedTest {
     @DisplayName("NAV kontroll csak explicit bridge-szimuláció mellett használja a régi printed=false számlálót")
     void navStepUsesLegacyCounterOnlyWhenBridgeSimulationEnabled() {
         LocalDate closingDate = LocalDate.of(2026, 3, 15);
-        ReflectionTestUtils.setField(dailyClosingService, "navBridgeSimulatedSuccessEnabled", true);
+        when(navBridgeProperties.isSimulatedSuccessEnabled()).thenReturn(true);
         when(systemParameterService.getValue("FEATURE_NAV_INTEGRATION")).thenReturn("true");
         when(transactionRepository.countUnreportedTransactions(BRANCH_ID, closingDate)).thenReturn(0L);
 
