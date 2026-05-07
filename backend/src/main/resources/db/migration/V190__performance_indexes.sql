@@ -33,9 +33,13 @@ CREATE INDEX IF NOT EXISTS idx_branch_company_active_vault
 
 -- Bonus: SupervisorPinAttempt cleanup index — a régi rekordok periodikus
 -- törléséhez (lockout window 5 perc, tartós tárolás 30 nap).
+--
+-- KRITIKUS POSTGRES SZABÁLY: partial index WHERE predicate-ben tilos NOW(),
+-- CURRENT_DATE stb. mutable függvényt használni — ezért NEM partial index,
+-- hanem teljes index. A periodikus cleanup query a (attempt_at) order-en
+-- futhat hatékonyan így is.
 CREATE INDEX IF NOT EXISTS idx_supervisor_pin_attempt_cleanup
-    ON supervisor_pin_attempt (attempt_at)
-    WHERE attempt_at < NOW() - INTERVAL '30 days';
+    ON supervisor_pin_attempt (attempt_at);
 
 COMMENT ON INDEX idx_tx_receipt_number_trgm IS
     'V190 (2026-05-06): pg_trgm GIN index a ReceiptSearchService LIKE search-höz. '
