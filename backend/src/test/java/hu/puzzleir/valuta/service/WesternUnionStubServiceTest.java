@@ -64,6 +64,25 @@ class WesternUnionStubServiceTest {
     }
 
     @Test
+    @DisplayName("provider konfiguráció nélkül fail-closed INACTIVE mód aktív")
+    void send_missingProviderConfigurationFailsClosed() {
+        when(internalAdapter.providerCode()).thenReturn("INTERNAL");
+        when(inactiveAdapter.providerCode()).thenReturn("INACTIVE");
+        when(systemParameterRepository.findByParameterKey("WU_PROVIDER_MODE"))
+                .thenReturn(Optional.empty());
+        when(inactiveAdapter.send(any()))
+                .thenThrow(new BusinessException("inactive", "WU_PROVIDER_INACTIVE", HttpStatus.CONFLICT));
+
+        assertThatThrownBy(() -> service.send(baseRequest()))
+                .isInstanceOfSatisfying(BusinessException.class, ex -> {
+                    assertThat(ex.getErrorCode()).isEqualTo("WU_PROVIDER_INACTIVE");
+                    assertThat(ex.getHttpStatus()).isEqualTo(HttpStatus.CONFLICT);
+                });
+
+        verify(inactiveAdapter).send(any());
+    }
+
+    @Test
     @DisplayName("provider inaktív esetén adapterből kontrollált üzleti hiba jön")
     void rates_inactiveProvider() {
         when(internalAdapter.providerCode()).thenReturn("INTERNAL");
