@@ -26,6 +26,15 @@ class GenericSerialLedDriverTest {
     }
 
     @Test
+    @DisplayName("elutasított kapcsolat után nem marad eltárolt kapcsolat string")
+    void failedConnectDoesNotRetainConnectionString() throws ReflectiveOperationException {
+        GenericSerialLedDriver driver = new GenericSerialLedDriver();
+
+        assertThat(driver.connect("COM3:9600")).isFalse();
+        assertThat(readConnectionString(driver)).isNull();
+    }
+
+    @Test
     @DisplayName("szimulált LED siker csak explicit kapcsolóval engedélyezett")
     void simulatedDriverCanReturnSuccessWhenExplicitlyEnabled() {
         GenericSerialLedDriver driver = new GenericSerialLedDriver(true);
@@ -45,5 +54,11 @@ class GenericSerialLedDriverTest {
                 new BigDecimal("390.00"),
                 new BigDecimal("392.00"),
                 1));
+    }
+
+    private static String readConnectionString(GenericSerialLedDriver driver) throws ReflectiveOperationException {
+        var field = GenericSerialLedDriver.class.getDeclaredField("connectionString");
+        field.setAccessible(true);
+        return (String) field.get(driver);
     }
 }
