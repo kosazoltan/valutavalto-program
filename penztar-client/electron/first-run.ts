@@ -223,6 +223,33 @@ function encryptConfigSecret(value: string): string | null {
   }
 }
 
+export function persistBootstrapPasswordConfig(
+  bootstrapPassword: string,
+  setConfig: (key: string, value: string) => void,
+  deleteConfig: (key: string) => void,
+): void {
+  if (!bootstrapPassword) {
+    deleteConfig('bootstrap_password');
+    deleteConfig('bootstrap_password_encrypted');
+    return;
+  }
+
+  const encryptedBootstrapPassword = encryptConfigSecret(bootstrapPassword);
+  if (encryptedBootstrapPassword) {
+    setConfig('bootstrap_password_encrypted', encryptedBootstrapPassword);
+    deleteConfig('bootstrap_password');
+    return;
+  }
+
+  try {
+    setConfig('bootstrap_password', bootstrapPassword);
+    deleteConfig('bootstrap_password_encrypted');
+    log.warn('[Setup] safeStorage nem elerheto, bootstrap jelszo ideiglenesen plaintext SQLite configban marad; sikeres bootstrap login utan torlodik.');
+  } catch (err) {
+    log.warn('[Setup] bootstrap jelszo fallback mentese sikertelen; meglevo bootstrap titok erintetlen marad:', err);
+  }
+}
+
 export function resolveEffectiveBootstrapCredentials(
   payload: Pick<SetupSavePayload, 'adminUsername' | 'adminPassword' | 'bootstrapUsername'>,
   resolvedWorkerIdentity: { workerCode?: string } | null,
@@ -1147,14 +1174,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       if (effectiveBootstrapCredentials.bootstrapUsername) {
         setConfig('bootstrap_worker_code', effectiveBootstrapCredentials.bootstrapUsername);
       }
-      deleteConfig('bootstrap_password');
-      deleteConfig('bootstrap_password_encrypted');
-      const encryptedBootstrapPassword = encryptConfigSecret(effectiveBootstrapCredentials.bootstrapPassword);
-      if (encryptedBootstrapPassword) {
-        setConfig('bootstrap_password_encrypted', encryptedBootstrapPassword);
-      } else if (effectiveBootstrapCredentials.bootstrapPassword) {
-        log.warn('[Setup] safeStorage nem elerheto, bootstrap jelszo nincs perzisztalva plaintext-ben.');
-      }
+      persistBootstrapPasswordConfig(effectiveBootstrapCredentials.bootstrapPassword, setConfig, deleteConfig);
       setConfig('bootstrap_role_code', bootstrapRoleCode);
       // v2.3.0: a telepito-ban kivalasztott (es jelszot beallitott) dolgozo identity
       // tarolasa — ezt olvassa a LoginPage prefill-hez es UI displayhez.

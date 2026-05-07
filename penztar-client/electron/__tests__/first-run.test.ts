@@ -35,8 +35,10 @@ vi.mock('electron', () => ({
   },
 }));
 
+import { safeStorage } from 'electron';
 import {
   isFirstRun,
+  persistBootstrapPasswordConfig,
   resolveBootstrapRoleCodeForAppMode,
   resolveEffectiveBootstrapCredentials,
   selectBootstrapLoginRoleCode,
@@ -148,6 +150,50 @@ describe('resolveEffectiveBootstrapCredentials', () => {
       bootstrapUsername: 'ADMIN',
       bootstrapPassword: 'NewGlobalPass123',
     });
+  });
+});
+
+describe('persistBootstrapPasswordConfig', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(safeStorage.isEncryptionAvailable).mockReturnValue(true);
+    vi.mocked(safeStorage.encryptString).mockImplementation((value: string) => Buffer.from(`enc:${value}`));
+  });
+
+  it('encrypted configba menti a bootstrap jelszot es torli a plaintext fallbackot', () => {
+    const setConfig = vi.fn();
+    const deleteConfig = vi.fn();
+
+    persistBootstrapPasswordConfig('NewGlobalPass123', setConfig, deleteConfig);
+
+    expect(setConfig).toHaveBeenCalledWith(
+      'bootstrap_password_encrypted',
+      Buffer.from('enc:NewGlobalPass123').toString('base64'),
+    );
+    expect(deleteConfig).toHaveBeenCalledWith('bootstrap_password');
+  });
+
+  it('safeStorage hianyaban ideiglenes plaintext fallbackot ment a sync bootstraphoz', () => {
+    const setConfig = vi.fn();
+    const deleteConfig = vi.fn();
+    vi.mocked(safeStorage.isEncryptionAvailable).mockReturnValue(false);
+
+    persistBootstrapPasswordConfig('NewGlobalPass123', setConfig, deleteConfig);
+
+    expect(setConfig).toHaveBeenCalledWith('bootstrap_password', 'NewGlobalPass123');
+    expect(deleteConfig).toHaveBeenCalledWith('bootstrap_password_encrypted');
+  });
+
+  it('fallback mentesi hiba eseten nem torli a korabbi encrypted bootstrap titkot', () => {
+    const setConfig = vi.fn(() => {
+      throw new Error('sqlite locked');
+    });
+    const deleteConfig = vi.fn();
+    vi.mocked(safeStorage.isEncryptionAvailable).mockReturnValue(false);
+
+    persistBootstrapPasswordConfig('NewGlobalPass123', setConfig, deleteConfig);
+
+    expect(deleteConfig).not.toHaveBeenCalledWith('bootstrap_password_encrypted');
   });
 });
 
