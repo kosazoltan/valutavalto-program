@@ -47,7 +47,7 @@ export interface SetupSavePayload {
   companyCode: string;
   adminUsername: string;
   adminPassword: string;         // új admin jelszó (min 8 kar.)
-  bootstrapUsername?: string;    // wizardbeli teszt-felhasználó (opcionális, csak offline módban üres)
+  bootstrapUsername?: string;    // wizardbeli teszt-felhasználó; üres értéknél admin/selected worker fallback kerül mentésre
   bootstrapPassword?: string;
   offlineMode: boolean;          // ha true, a szerver kapcsolatot kihagyjuk a wizardban
   appMode?: 'penztar' | 'ertektar' | 'ertekszallito';  // v2.1.4: program-tipus
@@ -961,6 +961,13 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     const offlineLicenseSecret = generateSecretHex(32);    // 256 bit
 
     const effectiveBootstrapCredentials = resolveEffectiveBootstrapCredentials(payload, resolvedWorkerIdentity);
+    if (!effectiveBootstrapCredentials.username.trim() || !effectiveBootstrapCredentials.password.trim()) {
+      return {
+        success: false,
+        envPath,
+        errorMessage: 'Hiányzó bootstrap dolgozói kód vagy jelszó.',
+      };
+    }
 
     // --- .env írás (atomikus: .env.tmp → rename) ---
     if (!fs.existsSync(envDir)) {
