@@ -200,6 +200,21 @@ function buildEnvFileContent(params: {
   ].join('\n');
 }
 
+export function resolveEffectiveBootstrapCredentials(
+  payload: Pick<SetupSavePayload, 'adminUsername' | 'adminPassword' | 'bootstrapUsername'>,
+  resolvedWorkerIdentity: { workerCode?: string } | null,
+): { bootstrapUsername: string; bootstrapPassword: string } {
+  const workerCode = [
+    resolvedWorkerIdentity?.workerCode,
+    payload.bootstrapUsername,
+    payload.adminUsername,
+  ].find((value) => value != null && value.trim().length > 0)?.trim().toUpperCase() ?? '';
+  return {
+    bootstrapUsername: workerCode,
+    bootstrapPassword: payload.adminPassword,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // HTTP helper (Electron net.request alapú, timeout + JSON parse)
 // ---------------------------------------------------------------------------
@@ -911,6 +926,9 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       };
     }
 
+    const effectiveBootstrapCredentials =
+      resolveEffectiveBootstrapCredentials(payload, resolvedWorkerIdentity);
+
     // --- Kulcs generálás ---
     const jwtSecret = generateSecretHex(32);               // 256 bit
     const sqlCipherKey = generateSecretHex(32);            // 256 bit
@@ -925,8 +943,8 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       branchName: payload.branchName,
       apiUrl: resolvedApiUrl,
       companyCode: normalizedCompanyCode,
-      bootstrapUsername: payload.bootstrapUsername ?? '',
-      bootstrapPassword: payload.bootstrapPassword ?? '',
+      bootstrapUsername: effectiveBootstrapCredentials.bootstrapUsername,
+      bootstrapPassword: effectiveBootstrapCredentials.bootstrapPassword,
       jwtSecret,
       sqlCipherKey,
       offlineLicenseSecret,
@@ -953,8 +971,8 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
         log.info('[Setup] SQLite app_mode elmentve:', payload.appMode);
       }
       setConfig('bootstrap_company_code', normalizedCompanyCode);
-      if (payload.bootstrapUsername) {
-        setConfig('bootstrap_worker_code', payload.bootstrapUsername.trim());
+      if (effectiveBootstrapCredentials.bootstrapUsername) {
+        setConfig('bootstrap_worker_code', effectiveBootstrapCredentials.bootstrapUsername);
       }
       // v2.3.0: a telepito-ban kivalasztott (es jelszot beallitott) dolgozo identity
       // tarolasa — ezt olvassa a LoginPage prefill-hez es UI displayhez.
@@ -983,25 +1001,15 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     }
 
     // V100: Online-modban regisztraljuk a penztar-eszkozt a backend-en
-    if (!payload.offlineMode && payload.bootstrapUsername && payload.bootstrapPassword) {
+    if (!payload.offlineMode
+        && effectiveBootstrapCredentials.bootstrapUsername
+        && effectiveBootstrapCredentials.bootstrapPassword) {
       try {
-        // v2.3.1 Codex P2 fix #217 first-run.ts:926: ha a workerFirstTimeSetup
-        // utat vettuk (selectedWorkerCode), akkor most mar az ADMIN-PASSWORD
-        // ervenyes, NEM a bootstrapPassword (amit felulirtunk).
-        // A bootstrapUsername = selectedWorkerCode eseten az uj jelszoval loginolunk,
-        // egyebkent a legacy bootstrap credentials-szel.
-        const bootstrapUsernameUpper = payload.bootstrapUsername.trim().toUpperCase();
-        const selectedWorkerUpper = payload.selectedWorkerCode?.trim().toUpperCase() ?? "";
-        const usedWorkerSetup = selectedWorkerUpper.length > 0
-          && bootstrapUsernameUpper === selectedWorkerUpper;
-        const loginPassword = usedWorkerSetup ? payload.adminPassword : payload.bootstrapPassword;
-        if (usedWorkerSetup) {
-          log.info('[Setup] V100 device-reg: a selectedWorker uj (adminPassword) jelszaval loginolunk.');
-        }
+        log.info('[Setup] V100 device-reg: az effektív bootstrap worker/jelszó párossal loginolunk.');
         const login = await bootstrapLogin(resolvedApiUrl, {
           companyCode: normalizedCompanyCode,
-          workerCode: payload.bootstrapUsername.trim(),
-          password: loginPassword,
+          workerCode: effectiveBootstrapCredentials.bootstrapUsername,
+          password: effectiveBootstrapCredentials.bootstrapPassword,
         });
         if (login.success && login.token) {
           const deviceCode = `${payload.branchCode}-${payload.appMode ?? 'penztar'}-${installUuid.slice(0, 8)}`;

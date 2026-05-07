@@ -31,7 +31,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-import { isFirstRun } from '../first-run';
+import { isFirstRun, resolveEffectiveBootstrapCredentials, type SetupSavePayload } from '../first-run';
 
 function writeEnv(content: string): void {
   fs.mkdirSync(mockState.userDataDir, { recursive: true });
@@ -94,6 +94,48 @@ describe('isFirstRun', () => {
 
     expect(isFirstRun()).toMatchObject({
       isFirstRun: false,
+    });
+  });
+});
+
+function setupPayload(overrides: Partial<SetupSavePayload> = {}): SetupSavePayload {
+  return {
+    branchCode: 'KORUT',
+    branchName: 'Korut',
+    apiUrl: 'https://excvaluta.com/api/v1',
+    companyCode: 'EBC',
+    adminUsername: 'ADMIN',
+    adminPassword: 'NewGlobalPass123',
+    bootstrapUsername: 'BORSI',
+    bootstrapPassword: 'seed-1234',
+    offlineMode: false,
+    appMode: 'penztar',
+    ...overrides,
+  };
+}
+
+describe('resolveEffectiveBootstrapCredentials', () => {
+  it('worker-first-time setup után az új globális jelszót perzisztálja, nem a kezdő jelszót', () => {
+    const result = resolveEffectiveBootstrapCredentials(
+      setupPayload({ selectedWorkerCode: 'BORSI' }),
+      { workerCode: 'BORSI' },
+    );
+
+    expect(result).toEqual({
+      bootstrapUsername: 'BORSI',
+      bootstrapPassword: 'NewGlobalPass123',
+    });
+  });
+
+  it('legacy bootstrap-admin úton az admin user új jelszavát perzisztálja', () => {
+    const result = resolveEffectiveBootstrapCredentials(
+      setupPayload({ bootstrapUsername: '', bootstrapPassword: '' }),
+      { workerCode: 'ADMIN' },
+    );
+
+    expect(result).toEqual({
+      bootstrapUsername: 'ADMIN',
+      bootstrapPassword: 'NewGlobalPass123',
     });
   });
 });
