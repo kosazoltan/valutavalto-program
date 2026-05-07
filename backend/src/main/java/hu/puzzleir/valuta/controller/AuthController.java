@@ -20,6 +20,7 @@ import hu.puzzleir.valuta.service.WorkerRoleService;
 import hu.puzzleir.valuta.service.WorkerService;
 import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.util.AppModeRoleConstants;
 import hu.puzzleir.valuta.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -85,6 +86,7 @@ public class AuthController {
         String userAgent = request.getHeader("User-Agent");
 
         LoginResponseDto response = workerService.login(dto, ipAddress, userAgent);
+        enforceAppModeForLoginResponse(response, dto.getAppMode());
 
         // HttpOnly refresh cookie csak végleges, activeRole-lal rendelkező sessionhöz jár.
         // Több szerepkörös login esetén a token ideiglenes; a role-select endpoint adja ki
@@ -251,6 +253,23 @@ public class AuthController {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
     }
+
+    private static void enforceAppModeForLoginResponse(LoginResponseDto response, String appMode) {
+        if (appMode == null || appMode.isBlank()) {
+            return;
+        }
+        if (Boolean.TRUE.equals(response.getRoleSelectionRequired())) {
+            if (!AppModeRoleConstants.hasAnySelectableRoleForAppMode(response.getRoles(), appMode)) {
+                throw new ValidationException("Nincs ebben a programban használható szerepköre.");
+            }
+            return;
+        }
+        String activeRole = response.getActiveRole();
+        if (activeRole != null && !activeRole.isBlank()
+                && !AppModeRoleConstants.isRoleSelectableForAppMode(activeRole, appMode)) {
+            throw new ValidationException("Ez a szerepkör nem használható ebben a programban: " + activeRole);
+        }
+    }
     
     /**
      * Role selection endpoint (V57)
@@ -296,6 +315,10 @@ public class AuthController {
         if (!roleCodes.contains(dto.getRoleCode())) {
             throw new ValidationException("Nincs ilyen szerepköre: " + dto.getRoleCode());
         }
+
+        if (!AppModeRoleConstants.isRoleSelectableForAppMode(dto.getRoleCode(), dto.getAppMode())) {
+            throw new ValidationException("Ez a szerepkör nem használható ebben a programban: " + dto.getRoleCode());
+        }
         
         // Permission kódok az aktív role-hoz
         List<String> permissions = workerRoleService.getPermissionCodesForRole(dto.getRoleCode());
@@ -326,6 +349,7 @@ public class AuthController {
                 .activeRole(dto.getRoleCode())
                 .permissions(permissions)
                 .roleSelectionRequired(false)
+                .validAppModes(AppModeRoleConstants.computeValidAppModes(roleCodes, worker.getRole()))
                 .build());
     }
 

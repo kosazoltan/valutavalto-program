@@ -21,6 +21,10 @@ public final class AppModeRoleConstants {
 
     private AppModeRoleConstants() {}
 
+    private static final List<String> LEGACY_PENZTAR_ROLES = List.of("cashier");
+    private static final List<String> LEGACY_ERTEKTAR_ROLES = List.of("manager", "treasury_manager");
+    private static final List<String> LEGACY_SERVER_ROLES = List.of("supervisor", "manager", "admin");
+
     /**
      * Browser/szerver hozzaferesere jogosult canonical role-ok.
      * V181 (2026-05-03): teruleti_vezeto + biztonsagi_vezeto KIVEVE -> {@link #KAMERA_CANONICAL_ROLES}.
@@ -66,5 +70,56 @@ public final class AppModeRoleConstants {
             validAppModes.add("full");
         }
         return validAppModes;
+    }
+
+    /**
+     * Role-valasztas fail-closed appMode vedelme.
+     *
+     * <p>A login valasz aggregalt {@code validAppModes} listaja azt mondja meg, hogy
+     * a dolgozo barmely szerepkorevel milyen appokba lephet be. A role-select viszont
+     * konkret aktiv role-t veglegesit, ezert itt mar role-szinten kell ellenorizni.
+     * A szerver/admin role-ok a lokalis penztar/ertektar appokba is belephetnek
+     * felugyeleti celra, de lokalis role (pl. {@code ertektar}) nem valaszthato
+     * rossz lokalis appMode-ban vagy browser {@code full} feluleten.</p>
+     */
+    public static boolean isRoleSelectableForAppMode(String roleCode, String appMode) {
+        if (appMode == null || appMode.isBlank()) {
+            return true;
+        }
+
+        String normalizedAppMode = appMode.trim().toLowerCase();
+        String normalizedRole = roleCode == null ? "" : roleCode.trim().toLowerCase();
+        if (normalizedRole.isBlank()) {
+            return false;
+        }
+
+        boolean serverRole = isServerRole(normalizedRole);
+        return switch (normalizedAppMode) {
+            case "full" -> serverRole;
+            case "penztar" -> serverRole
+                    || "penztar".equals(normalizedRole)
+                    || LEGACY_PENZTAR_ROLES.contains(normalizedRole);
+            case "ertektar" -> serverRole
+                    || "ertektar".equals(normalizedRole)
+                    || LEGACY_ERTEKTAR_ROLES.contains(normalizedRole);
+            case "ertekszallito" -> serverRole || "ertekszallito".equals(normalizedRole);
+            case "kamera" -> KAMERA_CANONICAL_ROLES.contains(normalizedRole);
+            default -> false;
+        };
+    }
+
+    public static boolean hasAnySelectableRoleForAppMode(List<String> roleCodes, String appMode) {
+        if (appMode == null || appMode.isBlank()) {
+            return true;
+        }
+        if (roleCodes == null || roleCodes.isEmpty()) {
+            return false;
+        }
+        return roleCodes.stream().anyMatch(roleCode -> isRoleSelectableForAppMode(roleCode, appMode));
+    }
+
+    private static boolean isServerRole(String normalizedRole) {
+        return SERVER_CANONICAL_ROLES.contains(normalizedRole)
+                || LEGACY_SERVER_ROLES.contains(normalizedRole);
     }
 }

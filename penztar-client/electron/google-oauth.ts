@@ -333,6 +333,7 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
   clientId: string;
   clientSecret: string;
   apiBaseUrl: string;          // pl. https://excvaluta.com/api/v1
+  appMode?: string;
   timeoutMs?: number;
 }): Promise<{ response: unknown; email?: string }> {
   // 1. RFC 8252 OAuth Flow -> idToken
@@ -345,7 +346,7 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
   // 2. Backend POST /auth/google-login main-process net.request-tel + retry
   const apiBase = config.apiBaseUrl.replace(/\/+$/, '');
   const url = `${apiBase}/auth/google-login`;
-  const reqBody = JSON.stringify({ idToken: oauthResult.idToken });
+  const reqBody = JSON.stringify({ idToken: oauthResult.idToken, appMode: config.appMode });
 
   const MAX_RETRIES = 3;
   const RETRY_DELAYS = [1000, 3000, 5000];

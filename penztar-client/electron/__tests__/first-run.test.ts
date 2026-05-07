@@ -35,6 +35,7 @@ import {
   isFirstRun,
   resolveBootstrapRoleCodeForAppMode,
   resolveEffectiveBootstrapCredentials,
+  selectBootstrapLoginRoleCode,
   shouldUseWorkerFirstTimeSetup,
   type SetupSavePayload,
 } from '../first-run';
@@ -155,6 +156,22 @@ describe('resolveBootstrapRoleCodeForAppMode', () => {
 
   it('hianyzo appMode eseten penztar role-ra esik vissza', () => {
     expect(resolveBootstrapRoleCodeForAppMode(undefined)).toBe('penztar');
+  });
+});
+
+describe('selectBootstrapLoginRoleCode', () => {
+  it('tobb role eseten az appMode-hoz illo role-t valasztja setup loginhoz', () => {
+    expect(selectBootstrapLoginRoleCode('penztar', ['ertektar', 'penztar'])).toBe('penztar');
+    expect(selectBootstrapLoginRoleCode('ertektar', ['penztar', 'ertektar'])).toBe('ertektar');
+  });
+
+  it('lokalis appban server role-lal is tud setup device regisztraciot folytatni', () => {
+    expect(selectBootstrapLoginRoleCode('penztar', ['foertektar'])).toBe('foertektar');
+    expect(selectBootstrapLoginRoleCode('ertektar', ['ADMIN'])).toBe('ADMIN');
+  });
+
+  it('nem valaszt masik lokalis apphoz tartozo role-t', () => {
+    expect(selectBootstrapLoginRoleCode('penztar', ['ertektar'])).toBeNull();
   });
 });
 

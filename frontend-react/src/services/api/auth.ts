@@ -6,10 +6,12 @@ export interface LoginRequest {
   companyCode: string
   workerCode: string
   password: string
+  appMode?: string
 }
 
 export interface GoogleLoginRequest {
   idToken: string
+  appMode?: string
 }
 
 export interface LoginResponse {
@@ -56,7 +58,7 @@ export const authApi = {
   },
   refreshCookie,
   refreshToken: refreshCookie,
-  selectRole: async (data: { token: string; roleCode: string }): Promise<LoginResponse> => {
+  selectRole: async (data: { token: string; roleCode: string; appMode?: string }): Promise<LoginResponse> => {
     const response = await api.post<LoginResponse>('/auth/login/select-role', data)
     return response.data
   },

@@ -19,4 +19,16 @@ public class SelectRoleRequestDto {
 
     @NotBlank(message = "Szerepkör kód kötelező")
     private String roleCode;
+
+    /**
+     * Opcionális kliens appMode (penztar, ertektar, ertekszallito, full).
+     * Ha meg van adva, a backend role-szinten ellenőrzi, hogy a kiválasztott
+     * role használható-e abban a programban.
+     */
+    private String appMode;
+
+    public SelectRoleRequestDto(String token, String roleCode) {
+        this.token = token;
+        this.roleCode = roleCode;
+    }
 }

@@ -401,6 +401,15 @@ public class WorkerService {
         }
         // Ha 0 role → legacy mode, nincs operatív role (backward compat)
 
+        if (roleSelectionRequired
+                && !AppModeRoleConstants.hasAnySelectableRoleForAppMode(roleCodes, dto.getAppMode())) {
+            throw new AuthenticationException("Nincs ebben a programban használható szerepköre.");
+        }
+        if (activeRole != null
+                && !AppModeRoleConstants.isRoleSelectableForAppMode(activeRole, dto.getAppMode())) {
+            throw new AuthenticationException("Ez a szerepkör nem használható ebben a programban: " + activeRole);
+        }
+
         // JWT token generálás
         String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
         String tokenId = jwtTokenProvider.getTokenIdFromToken(token);

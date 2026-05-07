@@ -5,9 +5,11 @@ import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.AuthenticationException;
 import hu.puzzleir.valuta.exception.BusinessException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.service.GoogleLoginService;
 import hu.puzzleir.valuta.service.RefreshTokenService;
+import hu.puzzleir.valuta.util.AppModeRoleConstants;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -67,7 +69,11 @@ public class GoogleAuthController {
 
         // 1. Login flow — a service dob AuthenticationException-t / ConflictException-t,
         //    a GlobalExceptionHandler 401/409-re mappolja.
-        LoginResponseDto response = googleLoginService.loginWithGoogle(requestDto.getIdToken(), httpRequest);
+        LoginResponseDto response = googleLoginService.loginWithGoogle(
+                requestDto.getIdToken(),
+                httpRequest,
+                requestDto.getAppMode());
+        enforceAppModeForLoginResponse(response, requestDto.getAppMode());
 
         // 2. HttpOnly refresh cookie — ugyanaz a 7-napos `refreshToken` mint AuthController.login.
         //    Audit P0.2 kovetelmeny: production-ben `Secure` flag aktiv (a `forward-headers-strategy=framework`
@@ -111,5 +117,22 @@ public class GoogleAuthController {
         }
 
         return ResponseEntity.ok(response);
+    }
+
+    private static void enforceAppModeForLoginResponse(LoginResponseDto response, String appMode) {
+        if (appMode == null || appMode.isBlank()) {
+            return;
+        }
+        if (Boolean.TRUE.equals(response.getRoleSelectionRequired())) {
+            if (!AppModeRoleConstants.hasAnySelectableRoleForAppMode(response.getRoles(), appMode)) {
+                throw new ValidationException("Nincs ebben a programban használható szerepköre.");
+            }
+            return;
+        }
+        String activeRole = response.getActiveRole();
+        if (activeRole != null && !activeRole.isBlank()
+                && !AppModeRoleConstants.isRoleSelectableForAppMode(activeRole, appMode)) {
+            throw new ValidationException("Ez a szerepkör nem használható ebben a programban: " + activeRole);
+        }
     }
 }

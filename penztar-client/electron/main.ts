@@ -860,7 +860,7 @@ app.whenReady().then(async () => {
   // a TLS handshake utan leejti. A main-process electron.net.request megbizhatobb
   // (Windows certificate store + Chromium switches mind alkalmazva, NEM renderer fetch).
   // Plus: 3-szor probalja a backend POST-ot (1s, 3s, 5s wait) ha network-level error.
-  ipcMain.handle('auth:google-oauth-flow-with-backend', async () => {
+  ipcMain.handle('auth:google-oauth-flow-with-backend', async (_evt, payload?: { appMode?: string }) => {
     const clientId = process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID
         ?? process.env.GOOGLE_DESKTOP_CLIENT_ID
         ?? '';
@@ -878,6 +878,7 @@ app.whenReady().then(async () => {
         clientId,
         clientSecret,
         apiBaseUrl,
+        appMode: payload?.appMode,
       });
       log.info('[main] Google OAuth + backend login OK for:', result.email ?? '(unknown)');
       return { ok: true, response: result.response, email: result.email };

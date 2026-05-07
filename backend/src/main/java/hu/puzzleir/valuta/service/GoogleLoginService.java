@@ -82,6 +82,10 @@ public class GoogleLoginService {
      *                                  (admin konfiguracios hiba)
      */
     public LoginResponseDto loginWithGoogle(String idToken, HttpServletRequest httpRequest) {
+        return loginWithGoogle(idToken, httpRequest, null);
+    }
+
+    public LoginResponseDto loginWithGoogle(String idToken, HttpServletRequest httpRequest, String appMode) {
         // 1. Google ID token validacio
         GoogleIdTokenService.VerifiedGoogleIdentity identity;
         try {
@@ -165,6 +169,15 @@ public class GoogleLoginService {
             permissions = workerRoleService.getPermissionCodesForRole(activeRole);
         } else if (roleCodes.size() > 1) {
             roleSelectionRequired = true;
+        }
+
+        if (roleSelectionRequired
+                && !AppModeRoleConstants.hasAnySelectableRoleForAppMode(roleCodes, appMode)) {
+            throw new AuthenticationException("Nincs ebben a programban használható szerepköre.");
+        }
+        if (activeRole != null
+                && !AppModeRoleConstants.isRoleSelectableForAppMode(activeRole, appMode)) {
+            throw new AuthenticationException("Ez a szerepkör nem használható ebben a programban: " + activeRole);
         }
 
         // 6. JWT + Session

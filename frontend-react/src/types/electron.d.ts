@@ -6,7 +6,7 @@ export interface ElectronAPI {
   >;
 
   // --- v2.5.20: Google OAuth + backend `/auth/google-login` POST EGY main-process hivasban ---
-  googleOAuthFlowWithBackend(): Promise<
+  googleOAuthFlowWithBackend(appMode?: string): Promise<
     | {
         ok: true;
         response: unknown;

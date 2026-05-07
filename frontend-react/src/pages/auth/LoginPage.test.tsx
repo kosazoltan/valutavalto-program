@@ -107,6 +107,7 @@ describe('LoginPage', () => {
         companyCode: 'EBC',
         workerCode: 'AB12',
         password: 'secret',
+        appMode: 'penztar',
       })
     })
 
@@ -156,6 +157,7 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Bejelentkezés' }))
 
     expect(await screen.findByText('penztar')).toBeInTheDocument()
+    expect(screen.queryByText('ertektar')).not.toBeInTheDocument()
     expect(mocks.loginStore).not.toHaveBeenCalled()
     expect(mocks.navigate).not.toHaveBeenCalled()
 
@@ -166,6 +168,7 @@ describe('LoginPage', () => {
       expect(mocks.authSelectRole).toHaveBeenCalledWith({
         token: 'temp-token',
         roleCode: 'penztar',
+        appMode: 'penztar',
       })
     })
     expect(mocks.loginStore).toHaveBeenCalledWith(

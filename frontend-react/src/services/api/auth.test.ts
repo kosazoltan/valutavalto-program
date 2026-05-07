@@ -71,8 +71,11 @@ describe('authApi', () => {
       const responseData = { token: 'google-token', tokenType: 'Bearer', expiresAt: '', worker: {} }
       mockApi.post.mockResolvedValue({ data: responseData })
 
-      const result = await authApi.googleLogin({ idToken: 'id_tok' })
-      expect(mockApi.post).toHaveBeenCalledWith('/auth/google-login', { idToken: 'id_tok' })
+      const result = await authApi.googleLogin({ idToken: 'id_tok', appMode: 'penztar' })
+      expect(mockApi.post).toHaveBeenCalledWith('/auth/google-login', {
+        idToken: 'id_tok',
+        appMode: 'penztar',
+      })
       expect(result.token).toBe('google-token')
     })
   })
@@ -108,10 +111,11 @@ describe('authApi', () => {
       const responseData = { token: 'new-token', tokenType: 'Bearer', expiresAt: '', worker: {} }
       mockApi.post.mockResolvedValue({ data: responseData })
 
-      const result = await authApi.selectRole({ token: 'old-token', roleCode: 'MANAGER' })
+      const result = await authApi.selectRole({ token: 'old-token', roleCode: 'MANAGER', appMode: 'full' })
       expect(mockApi.post).toHaveBeenCalledWith('/auth/login/select-role', {
         token: 'old-token',
         roleCode: 'MANAGER',
+        appMode: 'full',
       })
       expect(result.token).toBe('new-token')
     })

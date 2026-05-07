@@ -6,7 +6,7 @@ import { authApi, publicApi, type PublicWorker } from '../../services/api/index'
 import { Eye, EyeOff, User, Lock, Building2, Shield, RefreshCw, ChevronDown } from 'lucide-react'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
-import { useAppMode } from '../../hooks/useAppMode'
+import { useAppMode, type AppMode } from '../../hooks/useAppMode'
 import { useTranslation } from 'react-i18next'
 
 /**
@@ -23,6 +23,34 @@ const SERVER_ALLOWED_CANONICAL_ROLES = [
 ]
 // Legacy enum fallback
 const SERVER_ALLOWED_LEGACY_ROLES = ['SUPERVISOR', 'MANAGER', 'ADMIN']
+const LEGACY_PENZTAR_ROLES = ['CASHIER']
+const LEGACY_ERTEKTAR_ROLES = ['MANAGER', 'TREASURY_MANAGER']
+
+function isServerRole(roleCode: string): boolean {
+  return SERVER_ALLOWED_CANONICAL_ROLES.includes(roleCode.toLowerCase())
+    || SERVER_ALLOWED_LEGACY_ROLES.includes(roleCode.toUpperCase())
+}
+
+function isRoleSelectableForAppMode(roleCode: string, appMode: AppMode): boolean {
+  const canonical = roleCode.toLowerCase()
+  const legacy = roleCode.toUpperCase()
+  const serverRole = isServerRole(roleCode)
+
+  if (appMode === 'full') return serverRole
+  if (appMode === 'penztar') {
+    return serverRole || canonical === 'penztar' || LEGACY_PENZTAR_ROLES.includes(legacy)
+  }
+  if (appMode === 'ertektar') {
+    return serverRole || canonical === 'ertektar' || LEGACY_ERTEKTAR_ROLES.includes(legacy)
+  }
+  return false
+}
+
+function appModeLabel(appMode: AppMode): string {
+  if (appMode === 'penztar') return 'Valutaváltó Pénztár'
+  if (appMode === 'ertektar') return 'Értéktár'
+  return 'Szerver'
+}
 
 /**
  * Setup wizard altal elmentett config (localStorage / Electron config).
@@ -99,7 +127,10 @@ export default function LoginPage() {
     setWorkersLoading(true)
     setWorkersError(null)
     try {
-      const list = await publicApi.getWorkersByBranch(configuredBranchCode)
+      const list = await publicApi.getWorkersByBranch(
+        configuredBranchCode,
+        companyCode.trim().toUpperCase(),
+      )
       setWorkers(list)
       if (list.length === 0) {
         setWorkersError(`Nincs aktiv dolgozo a ${configuredBranchCode} penztar regiojahoz rendelve.`)
@@ -115,7 +146,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (configuredBranchCode) fetchWorkers()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configuredBranchCode])
+  }, [configuredBranchCode, companyCode])
 
   /**
    * v2.1.4: EBCiroda kanonikus role-alapu default route.
@@ -141,7 +172,7 @@ export default function LoginPage() {
     }
   }
 
-  const { mode: appMode } = useAppMode()
+  const { mode: appMode, isLoading: appModeLoading } = useAppMode()
 
   /** Login eredmény feldolgozása — ha multi-role, role-választó megjelenítése */
   const handleLoginResponse = (response: Awaited<ReturnType<typeof authApi.login>>) => {
@@ -175,10 +206,16 @@ export default function LoginPage() {
         setError('A bejelentkezés szerepkör-választást kér, de a szerver nem adott választható szerepköröket.')
         return
       }
+      const selectableRoles = response.roles.filter((role) => isRoleSelectableForAppMode(role, appMode))
+      if (selectableRoles.length === 0) {
+        setError(`Hozzáférés megtagadva. Egyik választható szerepkör sem használható ebben a programban: ${appModeLabel(appMode)}.`)
+        return
+      }
       // Multi-role worker: a session itt meg ideiglenes. Nem mentjuk a tokent
       // es nem jeloljuk authenticated-nek, amig a /login/select-role nem ad
       // vegleges, activeRole-lal ellatott tokent es refresh cookie-t.
       setPendingLoginResponse(response)
+      setSelectedRole(selectableRoles.length === 1 ? selectableRoles[0]! : null)
       setShowRoleSelector(true)
       return
     }
@@ -204,9 +241,14 @@ export default function LoginPage() {
     setError('')
 
     try {
+      if (!isRoleSelectableForAppMode(selectedRole, appMode)) {
+        setError(`Ez a szerepkör nem használható ebben a programban: ${appModeLabel(appMode)}.`)
+        return
+      }
       const response = await authApi.selectRole({
         token: pendingLoginResponse.token,
         roleCode: selectedRole,
+        appMode,
       })
 
       // Új, végleges token a kiválasztott role-lal. Itt kezdődik a kliens oldali
@@ -234,17 +276,24 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    if (appModeLoading) {
+      setError('A program mód betöltése még folyamatban van. Próbáld újra pár másodperc múlva.')
+      return
+    }
     setLoading(true)
 
     try {
+      const normalizedCompanyCode = companyCode.trim().toUpperCase()
+      const normalizedWorkerCode = workerCode.trim().toUpperCase()
       // v2.5.21 ALTALANOS BEJELENTKEZESI FIX: ha az electron passwordLogin IPC elerheto,
       // azt hasznaljuk (main-process net.request, ESET MITM-tolerans, 3x retry).
       // Fallback: renderer axios (web modra es regi Penztar.exe-re).
       if (window.electronAPI?.passwordLogin) {
         const result = await window.electronAPI.passwordLogin({
-          companyCode,
-          workerCode,
+          companyCode: normalizedCompanyCode,
+          workerCode: normalizedWorkerCode,
           password,
+          appMode,
         })
         if (!result.ok) {
           // 4xx (rossz jelszo, blokk) -> a backend hibauzenete
@@ -259,9 +308,10 @@ export default function LoginPage() {
         return
       }
       const response = await authApi.login({
-        companyCode,
-        workerCode,
-        password
+        companyCode: normalizedCompanyCode,
+        workerCode: normalizedWorkerCode,
+        password,
+        appMode,
       })
       handleLoginResponse(response)
     } catch (err: unknown) {
@@ -276,13 +326,18 @@ export default function LoginPage() {
       setError('Google bejelentkezés sikertelen: hiányzó token')
       return
     }
+    if (appModeLoading) {
+      setError('A program mód betöltése még folyamatban van. Próbáld újra pár másodperc múlva.')
+      return
+    }
 
     setError('')
     setLoading(true)
 
     try {
       const response = await authApi.googleLogin({
-        idToken: credentialResponse.credential
+        idToken: credentialResponse.credential,
+        appMode,
       })
       handleLoginResponse(response)
     } catch (err: unknown) {
@@ -300,6 +355,10 @@ export default function LoginPage() {
    */
   const handleElectronGoogleLogin = async () => {
     setError('')
+    if (appModeLoading) {
+      setError('A program mód betöltése még folyamatban van. Próbáld újra pár másodperc múlva.')
+      return
+    }
     setGoogleLoadingElectron(true)
     setLoading(true)
     try {
@@ -307,7 +366,7 @@ export default function LoginPage() {
       // (megbizhatobb mint a renderer axios.post az ESET MITM-mel terhelt gepeken).
       // Fallback: regi 2-step flow (idToken IPC -> renderer axios.post backend).
       if (window.electronAPI?.googleOAuthFlowWithBackend) {
-        const result = await window.electronAPI.googleOAuthFlowWithBackend()
+        const result = await window.electronAPI.googleOAuthFlowWithBackend(appMode)
         if (!result.ok) {
           if (result.code === 'USER_CANCELLED') {
             // silent
@@ -334,7 +393,7 @@ export default function LoginPage() {
         }
         return
       }
-      const response = await authApi.googleLogin({ idToken: result.idToken })
+      const response = await authApi.googleLogin({ idToken: result.idToken, appMode })
       handleLoginResponse(response)
     } catch (err: unknown) {
       setError(getErrorMessage(err))
@@ -346,6 +405,7 @@ export default function LoginPage() {
 
   // V57: Role-választó modal
   if (showRoleSelector && pendingLoginResponse) {
+    const selectableRoles = pendingLoginResponse.roles?.filter((role) => isRoleSelectableForAppMode(role, appMode)) ?? []
     return (
       <div className="w-[340px]">
         <div className="bg-form-bg border border-form-border shadow-lg">
@@ -357,7 +417,6 @@ export default function LoginPage() {
             <p className="text-sm text-gray-600 mb-3">
               {t('auth.tobbSzerepkoreIsVanKerjukValasszaKiMelyikkelSzeretneBelepni')}
             </p>
-
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3">
                 {error}
@@ -365,7 +424,7 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-2 mb-4">
-              {pendingLoginResponse.roles?.map((role) => (
+              {selectableRoles.map((role) => (
                 <button
                   key={role}
                   onClick={() => setSelectedRole(role)}
@@ -436,7 +495,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={handleElectronGoogleLogin}
-                disabled={googleLoadingElectron || loading}
+                disabled={googleLoadingElectron || loading || appModeLoading}
                 className="w-full h-10 flex items-center justify-center gap-2 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 transition"
                 data-testid="login-google-electron"
               >
@@ -603,7 +662,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 className="form-button-primary px-6"
-                disabled={loading || !companyCode || !workerCode || !password}
+                disabled={loading || appModeLoading || !companyCode || !workerCode || !password}
                 data-testid="login-submit"
               >
                 {loading ? 'Bejelentkezés...' : 'Bejelentkezés'}

@@ -121,6 +121,41 @@ class AuthRefreshCookieIssueFailureTest {
     }
 
     @Test
+    void passwordLoginRejectsSingleRoleThatDoesNotBelongToRequestedAppModeBeforeCookie() {
+        AuthController controller = new AuthController(
+                workerService,
+                jwtTokenProvider,
+                workerRepository,
+                workerRoleService,
+                tokenBlacklistService,
+                adminBootstrapService,
+                workerFirstTimeSetupService,
+                passwordResetService,
+                refreshTokenService,
+                clientIpResolver);
+        LoginRequestDto requestDto = new LoginRequestDto();
+        requestDto.setAppMode("penztar");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        LoginResponseDto wrongAppModeResponse = LoginResponseDto.builder()
+                .token("access-token")
+                .worker(WorkerDto.builder().id(42L).build())
+                .roleSelectionRequired(false)
+                .roles(List.of("ertektar"))
+                .activeRole("ertektar")
+                .build();
+        when(clientIpResolver.resolveClientIp(request)).thenReturn("127.0.0.1");
+        when(workerService.login(requestDto, "127.0.0.1", null)).thenReturn(wrongAppModeResponse);
+
+        assertThatThrownBy(() -> controller.login(requestDto, request, response))
+                .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
+                .hasMessageContaining("nem használható");
+
+        verify(workerRepository, never()).findById(42L);
+        verify(refreshTokenService, never()).issue(any(), any(), any());
+    }
+
+    @Test
     void selectRoleIssuesRefreshCookieForFinalSession() {
         AuthController controller = new AuthController(
                 workerService,
@@ -153,6 +188,40 @@ class AuthRefreshCookieIssueFailureTest {
         assertThat(result.getBody().getToken()).isEqualTo("final-token");
         assertThat(result.getBody().getActiveRole()).isEqualTo("penztar");
         assertThat(response.getHeader("Set-Cookie")).contains("refreshToken=selector.verifier");
+    }
+
+    @Test
+    void selectRoleRejectsRoleThatDoesNotBelongToRequestedAppMode() {
+        AuthController controller = new AuthController(
+                workerService,
+                jwtTokenProvider,
+                workerRepository,
+                workerRoleService,
+                tokenBlacklistService,
+                adminBootstrapService,
+                workerFirstTimeSetupService,
+                passwordResetService,
+                refreshTokenService,
+                clientIpResolver);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        Worker worker = worker();
+        when(jwtTokenProvider.validateToken("temp-token")).thenReturn(true);
+        when(jwtTokenProvider.getTokenIdFromToken("temp-token")).thenReturn("old-token-id");
+        when(tokenBlacklistService.isBlacklisted("old-token-id")).thenReturn(false);
+        when(jwtTokenProvider.getWorkerIdFromToken("temp-token")).thenReturn(42L);
+        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "ertektar"));
+
+        assertThatThrownBy(() -> controller.selectRole(
+                new SelectRoleRequestDto("temp-token", "ertektar", "penztar"),
+                request,
+                response))
+                .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
+                .hasMessageContaining("nem használható");
+
+        verify(workerRoleService, never()).getPermissionCodesForRole("ertektar");
+        verify(refreshTokenService, never()).issue(any(), any(), any());
     }
 
     @Test
@@ -200,7 +269,7 @@ class AuthRefreshCookieIssueFailureTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         Worker worker = worker();
-        when(googleLoginService.loginWithGoogle("id-token", request)).thenReturn(loginResponse());
+        when(googleLoginService.loginWithGoogle("id-token", request, null)).thenReturn(loginResponse());
         when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
         when(refreshTokenService.issue(worker, request, null)).thenThrow(new IllegalStateException("database unavailable"));
 
@@ -229,7 +298,7 @@ class AuthRefreshCookieIssueFailureTest {
                 .roles(List.of("penztar", "ertektar"))
                 .activeRole(null)
                 .build();
-        when(googleLoginService.loginWithGoogle("id-token", request)).thenReturn(roleSelectionResponse);
+        when(googleLoginService.loginWithGoogle("id-token", request, null)).thenReturn(roleSelectionResponse);
 
         var result = controller.googleLogin(requestDto, request, response);
 
@@ -237,6 +306,34 @@ class AuthRefreshCookieIssueFailureTest {
         assertThat(response.getHeader("Set-Cookie"))
                 .contains("refreshToken=")
                 .contains("Max-Age=0");
+        verify(workerRepository, never()).findById(42L);
+        verify(refreshTokenService, never()).issue(any(), any(), any());
+    }
+
+    @Test
+    void googleLoginRejectsSingleRoleThatDoesNotBelongToRequestedAppModeBeforeCookie() {
+        GoogleAuthController controller = new GoogleAuthController(
+                googleLoginService,
+                refreshTokenService,
+                workerRepository);
+        GoogleLoginRequestDto requestDto = new GoogleLoginRequestDto();
+        requestDto.setIdToken("id-token");
+        requestDto.setAppMode("penztar");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        LoginResponseDto wrongAppModeResponse = LoginResponseDto.builder()
+                .token("access-token")
+                .worker(WorkerDto.builder().id(42L).build())
+                .roleSelectionRequired(false)
+                .roles(List.of("ertektar"))
+                .activeRole("ertektar")
+                .build();
+        when(googleLoginService.loginWithGoogle("id-token", request, "penztar")).thenReturn(wrongAppModeResponse);
+
+        assertThatThrownBy(() -> controller.googleLogin(requestDto, request, response))
+                .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
+                .hasMessageContaining("nem használható");
+
         verify(workerRepository, never()).findById(42L);
         verify(refreshTokenService, never()).issue(any(), any(), any());
     }

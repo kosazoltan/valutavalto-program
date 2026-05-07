@@ -17,10 +17,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * Megbizhatobb mint a renderer axios.post (electron.net.request, Windows cert store, Chromium switches).
    * Plusz: 3-szor probalja a backend POST-ot (1s, 3s, 5s wait) ha network-level error.
    */
-  googleOAuthFlowWithBackend: (): Promise<
+  googleOAuthFlowWithBackend: (appMode?: string): Promise<
     { ok: true; response: unknown; email?: string }
     | { ok: false; code: string; message: string }
-  > => ipcRenderer.invoke('auth:google-oauth-flow-with-backend'),
+  > => ipcRenderer.invoke('auth:google-oauth-flow-with-backend', { appMode }),
 
   /**
    * v2.5.21 ALTALANOS BEJELENTKEZESI FIX: a sima jelszavas /auth/login POST is main process-en

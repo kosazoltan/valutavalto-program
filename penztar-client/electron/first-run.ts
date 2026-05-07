@@ -237,6 +237,38 @@ export function resolveBootstrapRoleCodeForAppMode(appMode: SetupSavePayload['ap
   }
 }
 
+const BOOTSTRAP_SERVER_ROLE_CODES = new Set([
+  'ugyvezeto',
+  'foertektar',
+  'irodavezeto',
+  'belso_ellenor',
+  'berszamfejto',
+  'penzugyi_vezeto',
+  'irodai_dolgozo',
+  'csoportvezeto',
+  'arfolyam_nezo',
+  'SUPERVISOR',
+  'MANAGER',
+  'ADMIN',
+]);
+
+export function selectBootstrapLoginRoleCode(
+  appMode: SetupSavePayload['appMode'] | undefined,
+  roleCodes: string[],
+): string | null {
+  const normalizedRoleCodes = roleCodes
+    .map((roleCode) => roleCode.trim())
+    .filter((roleCode) => roleCode.length > 0);
+  const preferredRoleCode = resolveBootstrapRoleCodeForAppMode(appMode);
+
+  const preferred = normalizedRoleCodes.find((roleCode) => roleCode.toLowerCase() === preferredRoleCode);
+  if (preferred) return preferred;
+
+  const serverRole = normalizedRoleCodes.find((roleCode) =>
+    BOOTSTRAP_SERVER_ROLE_CODES.has(roleCode) || BOOTSTRAP_SERVER_ROLE_CODES.has(roleCode.toLowerCase()));
+  return serverRole ?? null;
+}
+
 export function shouldUseWorkerFirstTimeSetup(params: {
   offlineMode: boolean;
   selectedWorkerCode?: string;
@@ -797,12 +829,22 @@ export async function registerCashRegisterDevice(
  */
 export async function bootstrapLogin(
   apiUrl: string,
-  payload: { companyCode: string; workerCode: string; password: string },
+  payload: {
+    companyCode: string;
+    workerCode: string;
+    password: string;
+    appMode?: SetupSavePayload['appMode'];
+  },
   timeoutMs = 10000,
 ): Promise<{ success: boolean; token?: string; errorMessage?: string }> {
   const base = normalizeApiBase(apiUrl);
   try {
-    const resp = await httpJsonWithRetry<{ token?: string; roleSelectionRequired?: boolean; availableRoles?: Array<{ roleCode: string }> }>(
+    const resp = await httpJsonWithRetry<{
+      token?: string;
+      roleSelectionRequired?: boolean;
+      roles?: string[];
+      availableRoles?: Array<{ roleCode: string }>;
+    }>(
       `${base}/auth/login`,
       {
         method: 'POST',
@@ -810,6 +852,7 @@ export async function bootstrapLogin(
           companyCode: payload.companyCode,
           workerCode: payload.workerCode,
           password: payload.password,
+          appMode: payload.appMode,
         },
         timeoutMs,
       },
@@ -818,21 +861,30 @@ export async function bootstrapLogin(
       const msg = (resp.body as { message?: string } | undefined)?.message || resp.errorMessage || `HTTP ${resp.status}`;
       return { success: false, errorMessage: msg };
     }
-    // Ha role selection kell, vegyuk az elso rendelkezesre allot
+    // Ha role selection kell, az appMode-hoz illo role-t valasztjuk ki.
     let token = resp.body.token;
-    const firstRole = resp.body.availableRoles?.[0];
-    if (resp.body.roleSelectionRequired && firstRole) {
+    const roleCodes = [
+      ...(resp.body.roles ?? []),
+      ...(resp.body.availableRoles?.map((role) => role.roleCode) ?? []),
+    ];
+    const selectedRoleCode = selectBootstrapLoginRoleCode(payload.appMode, roleCodes);
+    if (resp.body.roleSelectionRequired && selectedRoleCode) {
       const selectedResp = await httpJsonWithRetry<{ token?: string }>(
         `${base}/auth/login/select-role`,
         {
           method: 'POST',
-          body: { token, roleCode: firstRole.roleCode },
+          body: { token, roleCode: selectedRoleCode, appMode: payload.appMode },
           timeoutMs,
         },
       );
       if (selectedResp.ok && selectedResp.body?.token) {
         token = selectedResp.body.token;
       }
+    } else if (resp.body.roleSelectionRequired) {
+      return {
+        success: false,
+        errorMessage: `Nincs a ${payload.appMode ?? 'penztar'} programhoz illeszkedo szerepkor a gyors setup loginhoz.`,
+      };
     }
     return { success: true, token };
   } catch (err: unknown) {
@@ -1117,6 +1169,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
           companyCode: normalizedCompanyCode,
           workerCode: effectiveBootstrapCredentials.bootstrapUsername,
           password: effectiveBootstrapCredentials.bootstrapPassword,
+          appMode: payload.appMode,
         });
         if (login.success && login.token) {
           const deviceCode = `${payload.branchCode}-${payload.appMode ?? 'penztar'}-${installUuid.slice(0, 8)}`;
