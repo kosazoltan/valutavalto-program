@@ -35,6 +35,7 @@ import {
   isFirstRun,
   resolveBootstrapRoleCodeForAppMode,
   resolveEffectiveBootstrapCredentials,
+  shouldUseWorkerFirstTimeSetup,
   type SetupSavePayload,
 } from '../first-run';
 
@@ -154,5 +155,40 @@ describe('resolveBootstrapRoleCodeForAppMode', () => {
 
   it('hianyzo appMode eseten penztar role-ra esik vissza', () => {
     expect(resolveBootstrapRoleCodeForAppMode(undefined)).toBe('penztar');
+  });
+});
+
+describe('shouldUseWorkerFirstTimeSetup', () => {
+  it('kivalasztott worker eseten mindig worker first-time setupot hasznal online modban', () => {
+    expect(shouldUseWorkerFirstTimeSetup({
+      offlineMode: false,
+      selectedWorkerCode: 'BORSI',
+      bootstrapUsername: 'BORSI',
+      bootstrapCompleted: false,
+    })).toBe(true);
+  });
+
+  it('lezart bootstrap es manualisan beirt worker kod eseten nem esik vissza legacy admin bootstrapra', () => {
+    expect(shouldUseWorkerFirstTimeSetup({
+      offlineMode: false,
+      bootstrapUsername: 'BORSI',
+      bootstrapCompleted: true,
+    })).toBe(true);
+  });
+
+  it('nyitott bootstrap es manualis kod eseten megtartja a legacy admin bootstrap utat', () => {
+    expect(shouldUseWorkerFirstTimeSetup({
+      offlineMode: false,
+      bootstrapUsername: 'ADMIN',
+      bootstrapCompleted: false,
+    })).toBe(false);
+  });
+
+  it('offline modban nem indit backend worker setupot', () => {
+    expect(shouldUseWorkerFirstTimeSetup({
+      offlineMode: true,
+      selectedWorkerCode: 'BORSI',
+      bootstrapCompleted: true,
+    })).toBe(false);
   });
 });

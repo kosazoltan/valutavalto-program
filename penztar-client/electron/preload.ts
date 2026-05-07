@@ -706,8 +706,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     name: string;
     city: string;
     address?: string;
+    isVault?: boolean;
   }>> =>
     ipcRenderer.invoke('setup:branches', params),
+
+  setupGetWorkers: (
+    params: IpcRequest<'setup:workers'>,
+  ): Promise<IpcResponse<'setup:workers'>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETUP_WORKERS, params),
 
   setupTestConnection: (
     params: IpcRequest<'setup:test-connection'>,

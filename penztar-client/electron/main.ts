@@ -98,6 +98,7 @@ import {
 
   isFirstRun,
   getBranches,
+  getWorkers,
   testConnection,
   saveSetupConfig,
   type SetupSavePayload,
@@ -387,6 +388,13 @@ ipcMain.handle('setup:branches', async (
   params?: { apiUrl?: string; companyCode?: string },
 ) => {
   return await getBranches(params?.apiUrl, params?.companyCode);
+});
+
+ipcMain.handle('setup:workers', async (
+  _event,
+  params?: { apiUrl?: string; companyCode?: string; branchCode?: string },
+) => {
+  return await getWorkers(params?.apiUrl, params?.companyCode, params?.branchCode);
 });
 
 ipcMain.handle('setup:test-connection', async (

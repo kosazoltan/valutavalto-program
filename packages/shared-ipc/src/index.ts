@@ -61,6 +61,18 @@ export interface SetupTestConnectionResponse {
   errorMessage?: string
 }
 
+export interface SetupWorkersRequest {
+  apiUrl: string
+  companyCode: string
+  branchCode: string
+}
+
+export interface SetupWorkerOption {
+  code: string
+  name: string
+  region?: string
+}
+
 // ---- Sync Engine IPC ----
 export interface SyncStatusResponse {
   lastSyncAt: string | null
@@ -80,6 +92,10 @@ export interface IpcRoutes {
     request: SetupTestConnectionRequest
     response: SetupTestConnectionResponse
   }
+  'setup:workers': {
+    request: SetupWorkersRequest
+    response: SetupWorkerOption[]
+  }
   'sync:status': {
     request: void
     response: SyncStatusResponse
@@ -94,5 +110,6 @@ export type IpcResponse<K extends keyof IpcRoutes> = IpcRoutes[K]['response']
 export const IPC_CHANNELS = {
   SETUP_SAVE: 'setup:save' as const,
   SETUP_TEST_CONNECTION: 'setup:test-connection' as const,
+  SETUP_WORKERS: 'setup:workers' as const,
   SYNC_STATUS: 'sync:status' as const,
 } satisfies Record<string, keyof IpcRoutes>

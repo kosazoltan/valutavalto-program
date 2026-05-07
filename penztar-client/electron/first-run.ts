@@ -25,6 +25,13 @@ export interface Branch {
   name: string;
   city: string;
   address?: string;
+  isVault?: boolean;
+}
+
+export interface SetupWorkerOption {
+  code: string;
+  name: string;
+  region?: string;
 }
 
 export interface SetupCheckResult {
@@ -228,6 +235,19 @@ export function resolveBootstrapRoleCodeForAppMode(appMode: SetupSavePayload['ap
     default:
       return 'penztar';
   }
+}
+
+export function shouldUseWorkerFirstTimeSetup(params: {
+  offlineMode: boolean;
+  selectedWorkerCode?: string;
+  bootstrapUsername?: string;
+  bootstrapCompleted?: boolean | null;
+}): boolean {
+  if (params.offlineMode) return false;
+  const selectedWorkerCode = params.selectedWorkerCode?.trim();
+  if (selectedWorkerCode) return true;
+  const bootstrapUsername = params.bootstrapUsername?.trim();
+  return Boolean(bootstrapUsername && params.bootstrapCompleted === true);
 }
 
 // ---------------------------------------------------------------------------
@@ -474,7 +494,7 @@ export async function fetchBranchesFromBackend(
 ): Promise<Branch[] | null> {
   const base = normalizeApiBase(apiUrl);
   const url = `${base}/public/branches?companyCode=${encodeURIComponent(companyCode)}`;
-  const response = await httpJsonWithRetry<Array<{ code: string; name: string; city?: string; address?: string }>>(
+  const response = await httpJsonWithRetry<Array<{ code: string; name: string; city?: string; address?: string; isVault?: boolean }>>(
     url,
     { method: 'GET', timeoutMs },
   );
@@ -486,6 +506,58 @@ export async function fetchBranchesFromBackend(
     name: b.name,
     city: b.city ?? '',
     address: b.address,
+    isVault: b.isVault,
+  }));
+}
+
+export async function getWorkers(
+  apiUrl?: string,
+  companyCode?: string,
+  branchCode?: string,
+): Promise<SetupWorkerOption[]> {
+  if (!apiUrl || !branchCode) {
+    log.info('[Setup] getWorkers: nincs apiUrl/branchCode, ures lista.');
+    return [];
+  }
+
+  try {
+    const fetched = await fetchWorkersFromBackend(apiUrl, companyCode, branchCode);
+    if (fetched && fetched.length > 0) {
+      log.info(`[Setup] getWorkers: backend adott ${fetched.length} dolgozot.`);
+      return fetched;
+    }
+    log.info('[Setup] getWorkers: backend 0 dolgozo.');
+    return [];
+  } catch (err: unknown) {
+    log.warn('[Setup] getWorkers: backend hiba:',
+      err instanceof Error ? err.message : String(err));
+    return [];
+  }
+}
+
+export async function fetchWorkersFromBackend(
+  apiUrl: string,
+  companyCode: string | undefined,
+  branchCode: string,
+  timeoutMs = 6000,
+): Promise<SetupWorkerOption[] | null> {
+  const base = normalizeApiBase(apiUrl);
+  const params = new URLSearchParams({ branchCode });
+  if (companyCode?.trim()) {
+    params.set('companyCode', companyCode.trim());
+  }
+  const url = `${base}/public/workers?${params.toString()}`;
+  const response = await httpJsonWithRetry<Array<{ code: string; name: string; region?: string }>>(
+    url,
+    { method: 'GET', timeoutMs },
+  );
+  if (!response.ok || !Array.isArray(response.body)) {
+    return null;
+  }
+  return response.body.map((worker) => ({
+    code: worker.code,
+    name: worker.name,
+    region: worker.region,
   }));
 }
 
@@ -884,13 +956,29 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       branchCode?: string;
     } | null = null;
 
-    if (payload.selectedWorkerCode && payload.selectedWorkerCode.trim().length > 0) {
-      log.info('[Setup] Worker first-time-setup uton (kivalasztott dolgozo):', payload.selectedWorkerCode);
+    let bootstrapCompletedBeforeSetup: boolean | null = null;
+    if (!payload.selectedWorkerCode && payload.bootstrapUsername?.trim()) {
+      bootstrapCompletedBeforeSetup = await getBootstrapCompleted(resolvedApiUrl);
+    }
+    const useWorkerFirstTimeSetup = shouldUseWorkerFirstTimeSetup({
+      offlineMode: payload.offlineMode,
+      selectedWorkerCode: payload.selectedWorkerCode,
+      bootstrapUsername: payload.bootstrapUsername,
+      bootstrapCompleted: bootstrapCompletedBeforeSetup,
+    });
+
+    if (useWorkerFirstTimeSetup) {
+      const setupWorkerCode = (
+        payload.selectedWorkerCode?.trim()
+        || payload.bootstrapUsername?.trim()
+        || payload.adminUsername.trim()
+      ).toUpperCase();
+      log.info('[Setup] Worker first-time-setup uton:', setupWorkerCode);
       // Lezart bootstrap utan a backend a jelenlegi/kezdo worker jelszot is
       // keri, hogy worker kod ismeretevel ne lehessen publikus fiokot atvenni.
       const workerSetup = await workerFirstTimeSetup(resolvedApiUrl, {
         companyCode: normalizedCompanyCode,
-        workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
+        workerCode: setupWorkerCode,
         newPassword: payload.adminPassword,
         currentPassword: payload.bootstrapPassword?.trim() || undefined,
       });
@@ -907,7 +995,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       }
       if (workerSetup.success) {
         resolvedWorkerIdentity = workerSetup.workerIdentity ?? {
-          workerCode: payload.selectedWorkerCode.trim().toUpperCase(),
+          workerCode: setupWorkerCode,
           workerName: payload.selectedWorkerName,
           workerRole: payload.selectedWorkerRole,
         };

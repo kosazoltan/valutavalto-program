@@ -389,6 +389,16 @@ export interface ElectronAPI {
     name: string;
     city: string;
     address?: string;
+    isVault?: boolean;
+  }>>;
+  setupGetWorkers?(params: {
+    apiUrl: string;
+    companyCode: string;
+    branchCode: string;
+  }): Promise<Array<{
+    code: string;
+    name: string;
+    region?: string;
   }>>;
   setupTestConnection?(params: {
     apiUrl: string;

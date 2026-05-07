@@ -343,7 +343,18 @@ export default function SetupWizard() {
         workerCode: selectedWorkerCode,
         availableWorkers,
       })
-      const useWorkerSetup = selectedWorker !== null
+      let bootstrapCompleted = false
+      try {
+        const statusResp = await fetch(`${normalized}/api/v1/auth/bootstrap-status`, {
+          method: 'GET',
+          credentials: 'include',
+        })
+        const statusBody = await statusResp.json().catch(() => ({} as { completed?: boolean }))
+        bootstrapCompleted = statusBody.completed === true
+      } catch {
+        bootstrapCompleted = false
+      }
+      const useWorkerSetup = selectedWorker !== null || (bootstrapCompleted && selectedWorkerCode.length > 0)
       let workerIdentity: { workerCode: string; workerName?: string; workerRole?: string; branchCode?: string } | null = null
 
       if (useWorkerSetup) {
@@ -824,7 +835,15 @@ function ServerStep(props: ServerStepProps) {
     }
     let cancelled = false
     setWorkerListLoading(true)
-    publicApi.getWorkersByBranch(selectedBranchCode)
+    const loadWorkers = window.electronAPI?.setupGetWorkers
+      ? window.electronAPI.setupGetWorkers({
+        apiUrl,
+        companyCode,
+        branchCode: selectedBranchCode,
+      })
+      : publicApi.getWorkersByBranch(selectedBranchCode, companyCode)
+
+    loadWorkers
       .then((list) => {
         if (cancelled) return
         const workers = list.map((w) => ({ code: w.code, name: w.name }))
@@ -839,7 +858,7 @@ function ServerStep(props: ServerStepProps) {
       })
       .finally(() => { if (!cancelled) setWorkerListLoading(false) })
     return () => { cancelled = true }
-  }, [selectedBranchCode, offlineMode, onWorkerListChange])
+  }, [apiUrl, companyCode, selectedBranchCode, offlineMode, onWorkerListChange])
 
   return (
     <div>
@@ -890,7 +909,7 @@ function ServerStep(props: ServerStepProps) {
               value={bootstrapUsername}
               onChange={(e) => onBootstrapUsernameChange(e.target.value)}
               disabled={offlineMode}
-              placeholder={workerListLoading ? "Pénztárosok betöltése..." : "Pénztáros kód (pl. ADMIN)"}
+              placeholder={workerListLoading ? "Pénztárosok betöltése..." : "Pénztáros kód"}
               className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100"
             />
           )}
@@ -906,11 +925,11 @@ function ServerStep(props: ServerStepProps) {
             onChange={(e) => onBootstrapPasswordChange(e.target.value)}
             disabled={offlineMode}
             autoComplete="current-password"
-            placeholder="Szükséges lezárt telepítésnél"
+            placeholder="Szükséges, ha már van kezdő jelszó"
             className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100 disabled:text-slate-500"
           />
           <span className="text-xs text-slate-500 mt-1 block">
-            Az új belépési jelszót a következő lépésen állítja be.
+            Ha a dolgozóhoz már tartozik kezdő vagy jelenlegi jelszó, itt adja meg. Az új belépési jelszót a következő lépésen állítja be.
           </span>
         </FieldLabel>
       </div>
