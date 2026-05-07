@@ -1,0 +1,1277 @@
+ingest_profile: repo-multilayer-memory
+generated_at: 2026-05-07T20:52:19.322Z
+kind: knowledge_bundle
+nodes:
+  - id: a54ff182c7e8acf5
+    type: short-term-core
+    title: AGENTS.md
+    source_path: AGENTS.md
+    summary: "# AGENTS.md - Modellfuggetlen AI coding agent szabalyzat > **Hatály:** MINDEN Anthropic + OpenAI + Gemini coding agent > **Source:** `docs/knowledge/memory/2026-04-23-multi-model-mandate-v2.qmd` + global memory `~/.claude/projects/.../memory/MULTIMODEL_GITHUB_QUALITY_MANDATE_V2.md` > **Mentesseg:** NINCS. Modellnev, vendor, tool mod, MCP, CLI NEM ad felmentest. > **Precedence:** AGENTS.md > CLAUDE.md / GEMINI.md / co"
+    tags: [agents, modellfuggetlen, coding, agent, szabalyzat, hataly, minden, anthropic, openai, gemini]
+  - id: 4105fb6c90109f86
+    type: short-term-core
+    title: "AI_CONSTITUTION.md — AI működési alkotmány"
+    source_path: AI_CONSTITUTION.md
+    summary: "# AI_CONSTITUTION.md — AI működési alkotmány > **Nem-alkuképes szabályok minden AI-ügynök számára**, ami ebben a repositoryban dolgozik. > Forrás: *Új AI működési alapelvek: implementációs kézikönyv* (Kósa Zoltán, 2026-04-24). > Tovább: `docs/knowledge/memory/2026-04-24-ai-operating-constitution.qmd` ## 10 kötelező működési szabály 1. **Mindig bontsd a célt kis, ellenőrizhető feladatokra.** 2. **Minden tartós döntést"
+    tags: [ai_constitution, mukodesi, alkotmany, nem, alkukepes, szabalyok, minden, ugynok, szamara, ami]
+  - id: 6ebdb617a8104a77
+    type: short-term-core
+    title: "Valutaváltó ERP — Claude Code kontextus"
+    source_path: CLAUDE.md
+    summary: "# Valutaváltó ERP — Claude Code kontextus > ## ⚠️ NULLADIK PRIORITAS — NEM-INFORMATIKUS VÉGFELHASZNÁLÓ ALAPELV (2026-05-05) > > **A KOLLÉGÁK NEM informatikusok ÉS NEM programozók.** Ez a teljes deliverable-pipeline alapelv, **MINDEN** más szabály felett. > > **TILOS** a kollégának küldeni: parancssort (`ipconfig`, `netsh`, `Stop-Process`), manuális mappa-törlést (`Win+R %APPDATA%`), `.env`/`hosts` fájl-szerkesztést, "
+    tags: [valutavalto, erp, claude, code, kontextus, nulladik, prioritas, nem, informatikus, vegfelhasznalo]
+  - id: 6b79823f80d04730
+    type: operational-receipt
+    title: ReceiptController.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/controller/ReceiptController.java
+    summary: "package hu.puzzleir.valuta.controller; import hu.puzzleir.valuta.entity.Receipt; import hu.puzzleir.valuta.service.ReceiptGeneratorService; import hu.puzzleir.valuta.service.ReceiptService; import lombok.RequiredArgsConstructor; import org.springframework.http.HttpHeaders; import org.springframework.http.MediaType; import org.springframework.http.ResponseEntity; import org.springframework.security.access.prepost.PreA"
+    tags: [receiptcontroller, java, package, puzzleir, valuta, controller, import, entity, receipt, service]
+  - id: 0424c4c7bcf71f89
+    type: operational-receipt
+    title: ReceiptSearchController.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/controller/ReceiptSearchController.java
+    summary: "package hu.puzzleir.valuta.controller; import hu.puzzleir.valuta.dto.receipt.*; import hu.puzzleir.valuta.service.ReceiptSearchService; import lombok.RequiredArgsConstructor; import org.springframework.security.access.prepost.PreAuthorize; import org.springframework.data.domain.Page; import org.springframework.data.domain.Pageable; import org.springframework.format.annotation.DateTimeFormat; import org.springframewor"
+    tags: [receiptsearchcontroller, java, package, puzzleir, valuta, controller, import, dto, receipt, service]
+  - id: 7e9c4e500e99cb10
+    type: operational-receipt
+    title: CashRegisterReceiptRequest.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/dto/cashregister/CashRegisterReceiptRequest.java
+    summary: "package hu.puzzleir.valuta.dto.cashregister; import jakarta.validation.constraints.NotBlank; import jakarta.validation.constraints.NotNull; import lombok.*; import java.math.BigDecimal; import java.util.UUID; /** * Bizonylat nyomtatás kérés a pénztárgépre. */ @Data @NoArgsConstructor @AllArgsConstructor @Builder public class CashRegisterReceiptRequest { @NotNull private UUID branchId; @NotBlank private String receipt"
+    tags: [cashregisterreceiptrequest, java, package, puzzleir, valuta, dto, cashregister, import, jakarta, validation]
+  - id: dad46fa08a196d54
+    type: operational-receipt
+    title: MaterialReceiptLineDto.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/dto/ertektar/MaterialReceiptLineDto.java
+    summary: "package hu.puzzleir.valuta.dto.ertektar; import jakarta.validation.constraints.DecimalMin; import jakarta.validation.constraints.NotBlank; import jakarta.validation.constraints.NotNull; import lombok.*; import java.math.BigDecimal; @Data @NoArgsConstructor @AllArgsConstructor @Builder public class MaterialReceiptLineDto { @NotBlank(message = \"Valutakód kötelező\") private String currencyCode; @NotNull(message = \"Össze"
+    tags: [materialreceiptlinedto, java, package, puzzleir, valuta, dto, ertektar, import, jakarta, validation]
+  - id: a72216ead258c655
+    type: operational-receipt
+    title: MaterialReceiptRequestDto.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/dto/ertektar/MaterialReceiptRequestDto.java
+    summary: "package hu.puzzleir.valuta.dto.ertektar; import jakarta.validation.Valid; import jakarta.validation.constraints.NotBlank; import jakarta.validation.constraints.NotEmpty; import jakarta.validation.constraints.Pattern; import lombok.*; import java.util.List; @Data @NoArgsConstructor @AllArgsConstructor @Builder public class MaterialReceiptRequestDto { @NotBlank(message = \"Bizonylat típus kötelező (B/K)\") @Pattern(regex"
+    tags: [materialreceiptrequestdto, java, package, puzzleir, valuta, dto, ertektar, import, jakarta, validation]
+  - id: f83fb66dbdfca610
+    type: operational-receipt
+    title: MaterialReceiptResponseDto.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/dto/ertektar/MaterialReceiptResponseDto.java
+    summary: "package hu.puzzleir.valuta.dto.ertektar; import lombok.*; import java.time.LocalDateTime; import java.util.List; @Data @NoArgsConstructor @AllArgsConstructor @Builder public class MaterialReceiptResponseDto { private Long id; private String receiptNumber; private String receiptType; private Integer vaultTerritoryId; private String vaultTerritoryName; private String branchCode; private String counterpartName; private "
+    tags: [materialreceiptresponsedto, java, package, puzzleir, valuta, dto, ertektar, import, lombok, time]
+  - id: 94d0e08c33dbc13a
+    type: operational-receipt
+    title: ReceiptData.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/dto/receipt/ReceiptData.java
+    summary: "package hu.puzzleir.valuta.dto.receipt; import lombok.*; import java.math.BigDecimal; import java.time.LocalDateTime; import java.util.ArrayList; import java.util.List; /** * Bizonylat adatstruktúra - nyomtatásra és PDF generálásra. * * Bizonylat számozási szabály: * - E-YYMMDD-XXXX: Eladási bizonylat (valuta eladás ügyfélnek) * - V-YYMMDD-XXXX: Vételi bizonylat (valuta vásárlás ügyféltől) * - A-YYMMDD-XXXX: Átvezeté"
+    tags: [receiptdata, java, package, puzzleir, valuta, dto, receipt, import, lombok, math]
+  - id: b3ad11a73474232b
+    type: operational-receipt
+    title: ReceiptDetailDto.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/dto/receipt/ReceiptDetailDto.java
+    summary: "package hu.puzzleir.valuta.dto.receipt; import lombok.AllArgsConstructor; import lombok.Builder; import lombok.Data; import lombok.NoArgsConstructor; import java.math.BigDecimal; import java.time.LocalDate; import java.time.LocalTime; import java.util.List; @Data @NoArgsConstructor @AllArgsConstructor @Builder public class ReceiptDetailDto { private Long id; private String receiptNumber; private LocalDate transaction"
+    tags: [receiptdetaildto, java, package, puzzleir, valuta, dto, receipt, import, lombok, allargsconstructor]
+  - id: 2d5569cd3d4e7c92
+    type: operational-receipt
+    title: ReceiptLineDto.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/dto/receipt/ReceiptLineDto.java
+    summary: "package hu.puzzleir.valuta.dto.receipt; import lombok.AllArgsConstructor; import lombok.Builder; import lombok.Data; import lombok.NoArgsConstructor; import java.math.BigDecimal; @Data @NoArgsConstructor @AllArgsConstructor @Builder public class ReceiptLineDto { private Integer lineNumber; private String currencyCode; private BigDecimal appliedRate; private BigDecimal banknoteCount; private BigDecimal hufValue; priva"
+    tags: [receiptlinedto, java, package, puzzleir, valuta, dto, receipt, import, lombok, allargsconstructor]
+  - id: e604e63265d1aa96
+    type: operational-receipt
+    title: ReceiptSearchCriteria.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/dto/receipt/ReceiptSearchCriteria.java
+    summary: "package hu.puzzleir.valuta.dto.receipt; import lombok.AllArgsConstructor; import lombok.Data; import lombok.NoArgsConstructor; import java.math.BigDecimal; import java.time.LocalDate; @Data @NoArgsConstructor @AllArgsConstructor public class ReceiptSearchCriteria { private String number; private LocalDate dateFrom; private LocalDate dateTo; private String type; private BigDecimal minAmount; private BigDecimal maxAmou"
+    tags: [receiptsearchcriteria, java, package, puzzleir, valuta, dto, receipt, import, lombok, allargsconstructor]
+  - id: a932a424958c0dba
+    type: operational-receipt
+    title: ReceiptSearchResultDto.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/dto/receipt/ReceiptSearchResultDto.java
+    summary: "package hu.puzzleir.valuta.dto.receipt; import lombok.AllArgsConstructor; import lombok.Builder; import lombok.Data; import lombok.NoArgsConstructor; import java.math.BigDecimal; import java.time.LocalDate; import java.time.LocalTime; @Data @NoArgsConstructor @AllArgsConstructor @Builder public class ReceiptSearchResultDto { private Long id; private String receiptNumber; private LocalDate transactionDate; private Loc"
+    tags: [receiptsearchresultdto, java, package, puzzleir, valuta, dto, receipt, import, lombok, allargsconstructor]
+  - id: a8e57c6453d51603
+    type: operational-receipt
+    title: MaterialReceipt.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/entity/MaterialReceipt.java
+    summary: "package hu.puzzleir.valuta.entity; import jakarta.persistence.*; import lombok.*; import java.time.LocalDateTime; import java.util.ArrayList; import java.util.List; import java.util.UUID; /** * Anyag bevételi / kiadási bizonylat. * Legacy MATBIZONYLAT megfelelő. * B = bevétel (készlet nő), K = kiadás (készlet csökken). */ @Entity @Table(name = \"material_receipt\") @Getter @Setter @NoArgsConstructor @AllArgsConstructor"
+    tags: [materialreceipt, java, package, puzzleir, valuta, entity, import, jakarta, persistence, lombok]
+  - id: fe0bf627bcdaef7f
+    type: operational-receipt
+    title: MaterialReceiptLine.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/entity/MaterialReceiptLine.java
+    summary: "package hu.puzzleir.valuta.entity; import jakarta.persistence.*; import lombok.*; import java.math.BigDecimal; /** * Bizonylat tételsor — egy valutanem és összeg a bizonylaton. */ @Entity @Table(name = \"material_receipt_line\") @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder public class MaterialReceiptLine { @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id; @ManyToOne(fetch = Fe"
+    tags: [materialreceiptline, java, package, puzzleir, valuta, entity, import, jakarta, persistence, lombok]
+  - id: eb9825f46e7011fa
+    type: operational-receipt
+    title: Receipt.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/entity/Receipt.java
+    summary: "package hu.puzzleir.valuta.entity; import jakarta.persistence.*; import lombok.*; import org.springframework.data.annotation.CreatedDate; import org.springframework.data.jpa.domain.support.AuditingEntityListener; import java.time.LocalDate; import java.time.LocalDateTime; import java.util.UUID; @Entity @Table(name = \"receipt\") @EntityListeners(AuditingEntityListener.class) @Getter @Setter @NoArgsConstructor @AllArgsC"
+    tags: [receipt, java, package, puzzleir, valuta, entity, import, jakarta, persistence, lombok]
+  - id: 9aacbdd911e83c86
+    type: operational-receipt
+    title: ReceiptSequence.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/entity/ReceiptSequence.java
+    summary: "package hu.puzzleir.valuta.entity; import jakarta.persistence.*; import lombok.*; import java.util.UUID; /** * Bizonylat sorszám szekvencia — UTOLSOBLOKKOK tábla. * * Legacy: UTOLSOBLOKKOK tábla a Delphi rendszerben. * Típusonként tárolja az utolsó kiadott bizonylat sorszámot. * A sorszámok 100000-tól indulnak és 999990 elérésekor wrap-olnak 100000-re. * * Formátum: PREFIX + pénztárkód(3) + sorszám(6) * Prefix-ek: E="
+    tags: [receiptsequence, java, package, puzzleir, valuta, entity, import, jakarta, persistence, lombok]
+  - id: da39b6a78c4bbe37
+    type: operational-receipt
+    title: MaterialReceiptRepository.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/repository/MaterialReceiptRepository.java
+    summary: "package hu.puzzleir.valuta.repository; import hu.puzzleir.valuta.entity.MaterialReceipt; import org.springframework.data.jpa.repository.JpaRepository; import org.springframework.data.jpa.repository.Query; import org.springframework.stereotype.Repository; import java.util.List; import java.util.UUID; @Repository public interface MaterialReceiptRepository extends JpaRepository<MaterialReceipt, Long> { List<MaterialRece"
+    tags: [materialreceiptrepository, java, package, puzzleir, valuta, repository, import, entity, materialreceipt, org]
+  - id: 85efa2a4c8a9d595
+    type: operational-receipt
+    title: ReceiptRepository.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/repository/ReceiptRepository.java
+    summary: "package hu.puzzleir.valuta.repository; import hu.puzzleir.valuta.entity.Receipt; import org.springframework.data.jpa.repository.JpaRepository; import org.springframework.stereotype.Repository; import java.util.List; import java.util.UUID; @Repository public interface ReceiptRepository extends JpaRepository<Receipt, UUID> { List<Receipt> findByTransactionId(UUID transactionId); List<Receipt> findAllByCompanyId(UUID co"
+    tags: [receiptrepository, java, package, puzzleir, valuta, repository, import, entity, receipt, org]
+  - id: a8e350feffa69ea6
+    type: operational-receipt
+    title: ReceiptSequenceRepository.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/repository/ReceiptSequenceRepository.java
+    summary: "package hu.puzzleir.valuta.repository; import hu.puzzleir.valuta.entity.ReceiptSequence; import jakarta.persistence.LockModeType; import org.springframework.data.jpa.repository.JpaRepository; import org.springframework.data.jpa.repository.Lock; import org.springframework.data.jpa.repository.Query; import org.springframework.data.repository.query.Param; import org.springframework.stereotype.Repository; import java.uti"
+    tags: [receiptsequencerepository, java, package, puzzleir, valuta, repository, import, entity, receiptsequence, jakarta]
+  - id: 167bd9cd2500658e
+    type: operational-receipt
+    title: EscPosReceiptService.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/service/EscPosReceiptService.java
+    summary: "package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.dto.receipt.ReceiptData; import hu.puzzleir.valuta.entity.Branch; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.entity.TransactionType; import lombok.RequiredArgsConstructor; import lombok.extern.slf4j.Slf4j; import org.springframework.stereotype.Service; import java.math.BigDecimal; import java.nio.charset.Charset; import java.ni"
+    tags: [escposreceiptservice, java, package, puzzleir, valuta, service, import, dto, receipt, receiptdata]
+  - id: e3e143c3b60f8ede
+    type: operational-receipt
+    title: MaterialReceiptService.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/service/MaterialReceiptService.java
+    summary: "package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.dto.ertektar.MaterialReceiptLineDto; import hu.puzzleir.valuta.dto.ertektar.MaterialReceiptRequestDto; import hu.puzzleir.valuta.dto.ertektar.MaterialReceiptResponseDto; import hu.puzzleir.valuta.entity.*; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.repository.CurrencyStockRepository; import hu.puzzleir.valuta.r"
+    tags: [materialreceiptservice, java, package, puzzleir, valuta, service, import, dto, ertektar, materialreceiptlinedto]
+  - id: 21afb25f1e4772e1
+    type: operational-receipt
+    title: ReceiptGeneratorService.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/service/ReceiptGeneratorService.java
+    summary: "package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.dto.receipt.ReceiptData; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.entity.Transfer; import hu.puzzleir.valuta.entity.TransactionType; import hu.puzzleir.valuta.entity.WuTransaction; import hu.puzzleir.valuta.repository.TransactionRepository; import lombok.RequiredA"
+    tags: [receiptgeneratorservice, java, package, puzzleir, valuta, service, import, exception, resourcenotfoundexception, dto]
+  - id: 4206163a2fdb755e
+    type: operational-receipt
+    title: ReceiptPdfService.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/service/ReceiptPdfService.java
+    summary: "package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.exception.BusinessException; import hu.puzzleir.valuta.dto.receipt.ReceiptData; import lombok.extern.slf4j.Slf4j; import org.apache.pdfbox.pdmodel.PDDocument; import org.apache.pdfbox.pdmodel.PDPage; import org.apache.pdfbox.pdmodel.PDPageContentStream; import org.apache.pdfbox.pdmodel.common.PDRectangle; import org.apache.pdfbox.pdmodel.font.PDType1Font; "
+    tags: [receiptpdfservice, java, package, puzzleir, valuta, service, import, exception, businessexception, dto]
+  - id: 26c2cc2d66eddaa4
+    type: operational-receipt
+    title: ReceiptSearchService.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/service/ReceiptSearchService.java
+    summary: "package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.dto.receipt.*; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.entity.TransactionLine; import hu.puzzleir.valuta.repository.TransactionRepository; import hu.puzzleir.valuta.security.SecurityUtils; import lombok.RequiredArgsConstructor; import lombok.extern.slf4j.Slf4j; i"
+    tags: [receiptsearchservice, java, package, puzzleir, valuta, service, import, exception, resourcenotfoundexception, dto]
+  - id: a56b3dd8c40c1c26
+    type: operational-receipt
+    title: ReceiptSequenceService.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/service/ReceiptSequenceService.java
+    summary: "package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.entity.Branch; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.repository.BranchRepository; import hu.puzzleir.valuta.entity.ReceiptSequence; import hu.puzzleir.valuta.entity.TransactionType; import hu.puzzleir.valuta.repository.ReceiptSequenceRepository; import hu.puzzl"
+    tags: [receiptsequenceservice, java, package, puzzleir, valuta, service, import, entity, branch, transaction]
+  - id: ff8e1c10fa1e16e0
+    type: operational-receipt
+    title: ReceiptService.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/service/ReceiptService.java
+    summary: "package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.entity.Receipt; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.repository.ReceiptRepository; import hu.puzzleir.valuta.repository.TransactionRepository; import hu.puzzleir.valuta.security.SecurityUtils; import lombok.RequiredArgsConstructor; import lombok.extern.slf4j.S"
+    tags: [receiptservice, java, package, puzzleir, valuta, service, import, entity, receipt, transaction]
+  - id: 206b8001077eb762
+    type: semantic-reference
+    title: LegacyCompanyIdentityCodec.java
+    source_path: backend/src/main/java/hu/puzzleir/valuta/util/LegacyCompanyIdentityCodec.java
+    summary: "package hu.puzzleir.valuta.util; import java.util.UUID; /** * UUID -> legacy Integer company identity bridge. * * Legacy modulok egy resze Integer companyId-t hasznal, * mig az uj multi-tenant modell UUID-t. A lekepzesnek stabilnak * es reprodukalhatonak kell lennie ugyanarra a UUID-re. */ public final class LegacyCompanyIdentityCodec { private LegacyCompanyIdentityCodec() { } public static Integer toLegacyInt(UUID c"
+    tags: [legacycompanyidentitycodec, java, package, puzzleir, valuta, util, import, uuid, legacy, integer]
+  - id: 0fd894067f1d6a9c
+    type: operational-receipt
+    title: ReceiptGeneratorServiceTest.java
+    source_path: backend/src/test/java/hu/puzzleir/valuta/service/ReceiptGeneratorServiceTest.java
+    summary: "package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.dto.receipt.ReceiptData; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.entity.TransactionType; import hu.puzzleir.valuta.repository.TransactionRepository; import org.junit.jupiter.api.BeforeEach; import org.junit.jupiter.api.DisplayName; import org.junit.jupiter.api.Test; import org.junit.jupiter.api.extension.ExtendWith; import o"
+    tags: [receiptgeneratorservicetest, java, package, puzzleir, valuta, service, import, dto, receipt, receiptdata]
+  - id: f8fd9523ccb1c891
+    type: operational-receipt
+    title: ReceiptPdfServiceTest.java
+    source_path: backend/src/test/java/hu/puzzleir/valuta/service/ReceiptPdfServiceTest.java
+    summary: "package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.dto.receipt.ReceiptData; import hu.puzzleir.valuta.entity.WuTransaction; import org.junit.jupiter.api.BeforeEach; import org.junit.jupiter.api.DisplayName; import org.junit.jupiter.api.Test; import java.math.BigDecimal; import java.time.LocalDateTime; import java.util.List; import static org.assertj.core.api.Assertions.*; /** * ReceiptPdfService UNIT teszt"
+    tags: [receiptpdfservicetest, java, package, puzzleir, valuta, service, import, dto, receipt, receiptdata]
+  - id: 5a1cc74fcf79fb6a
+    type: operational-receipt
+    title: ReceiptServiceB7Test.java
+    source_path: backend/src/test/java/hu/puzzleir/valuta/service/ReceiptServiceB7Test.java
+    summary: "package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.entity.Branch; import hu.puzzleir.valuta.entity.Company; import hu.puzzleir.valuta.entity.Receipt; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.entity.TransactionStatus; import hu.puzzleir.valuta.entity.TransactionType; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.repository.ReceiptRepo"
+    tags: [receiptserviceb7test, java, package, puzzleir, valuta, service, import, entity, branch, company]
+  - id: 8f45458cf67ea7c6
+    type: semantic-reference
+    title: LegacyCompanyIdentityCodecTest.java
+    source_path: backend/src/test/java/hu/puzzleir/valuta/util/LegacyCompanyIdentityCodecTest.java
+    summary: "package hu.puzzleir.valuta.util; import org.junit.jupiter.api.Test; import java.util.UUID; import static org.junit.jupiter.api.Assertions.*; class LegacyCompanyIdentityCodecTest { @Test void toLegacyInt_returnsNullForNull() { assertNull(LegacyCompanyIdentityCodec.toLegacyInt(null)); } @Test void toLegacyInt_isStableForSameUuid() { UUID companyId = UUID.fromString(\"123e4567-e89b-12d3-a456-426614174000\"); Integer first"
+    tags: [legacycompanyidentitycodectest, java, package, puzzleir, valuta, util, import, org, junit, jupiter]
+  - id: cb5fe55c8b32ed6b
+    type: operational-lessons
+    title: "Lessons Learned — Valutavalto ERP"
+    source_path: docs/LESSONS_LEARNED.md
+    summary: "# Lessons Learned — Valutavalto ERP > **KOTELEZO ERVENYU** minden agent-nek: programozas elott olvasd el. A listahoz minden uj hiba > hozzaadando, hogy soha tobbe ne ismetelodjon. Lista dokumentalva: 2026-04-21 session-tol kezdve. Kategoriak szerint. Minden tetel tartalmaz: **hiba**, **megoldas**, **gyors-check** (hogyan kerulod el legkozelebb). --- ## 1. PowerShell / Shell scripting ### 1.1 `$pid` read-only PowerShe"
+    tags: [lessons, learned, valutavalto, erp, kotelezo, ervenyu, minden, agent, nek, programozas]
+  - id: dd3c88abcfb2b500
+    type: semantic-reference
+    title: "Legacy vs Modern — Összehasonlítás és Gap Analízis"
+    source_path: docs/knowledge/analysis/gap-comparison-2026-04-07.md
+    summary: "# Legacy vs Modern — Összehasonlítás és Gap Analízis > Dátum: 2026-04-08 02:45 | Forrás: Junior legacy + modern elemzés --- ## 1. TELJES LEFEDETTSÉGI MÁTRIX | Legacy Modul | Legacy KB | Modern Service | Modern KB | Állapot | Gap | |-------------|----------|----------------|----------|---------|-----| | Adatgyűjtő (receptor) | 77 | DataCollectionService | 10 | MEGVAN | Receptor pattern nem kell (centralizált DB) | | F"
+    tags: [legacy, modern, osszehasonlitas, gap, analizis, datum, 2026, forras, junior, elemzes]
+  - id: da4615f2a6ea5868
+    type: semantic-reference
+    title: "Junior — Legacy SZERVER Részletes Elemzés (10K szegmensekben)"
+    source_path: docs/knowledge/analysis/junior-legacy-szerver-detailed-2026-04-07.md
+    summary: "# Junior — Legacy SZERVER Részletes Elemzés (10K szegmensekben) > Dátum: 2026-04-07 | Módszer: forráskód beolvasás 200 soronként, szegmensenként elemzés --- ## SZEGMENS 1: unit29.pas — TADATLEGYUJTES (Adatgyűjtő/Receptor) [0-400 sor] ### Funkció A **központi adatgyűjtő modul** — az összes iroda (pénztár) adatait összegyűjti a központi szerverre. ### Architektúra - **Receptor pattern:** Minden iroda saját Firebird DB-"
+    tags: [junior, legacy, szerver, reszletes, elemzes, 10k, szegmensekben, datum, 2026, modszer]
+  - id: 7993304c05d0c5b8
+    type: semantic-reference
+    title: "Modern Valutaváltó Részletes Elemzés (Tamás+Nóra helyett Junior)"
+    source_path: docs/knowledge/analysis/tamas-nora-modern-detailed-2026-04-07.md
+    summary: "# Modern Valutaváltó Részletes Elemzés (Tamás+Nóra helyett Junior) > Dátum: 2026-04-08 02:30 | 192 backend service, 209 frontend komponens --- ## SZEGMENS 1-5: TOP 30 BACKEND SERVICE-EK ### MnbReportService (51KB) — MNB jelentés generálás - NAV/MNB havi, negyedéves, éves riportok - Modern: teljes implementáció ### AmlService (49KB) — Pénzmosás elleni védelem - Göngyölés, küszöbérték, szankciólista, bejelentés - AML h"
+    tags: [modern, valutavalto, reszletes, elemzes, tamas, nora, helyett, junior, datum, 2026]
+  - id: ffe1a3e3344c2fc7
+    type: long-term-legacy
+    title: "Legacy Reverse Engineering — Index & Kereső"
+    source_path: docs/knowledge/legacy-reverse-engineering/INDEX.md
+    summary: "--- type: registry scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: \"Legacy Reverse Engineering — Index & Kereso\" load: on-demand --- # Legacy Reverse Engineering — Index & Kereső > **Keletkezés:** 2026-04-02 (eredeti elemzés), 2026-04-05 (vault archiválás + gap audit) > **Forrás:** `D:\\repo\\valutavalto-program\\Anti\\VALUTA\\` — Delphi 7 legacy rendszer > **Cél:** A moder"
+    tags: [legacy, reverse, engineering, index, kereso, type, registry, scope, vault, creating]
+  - id: f47e3376b88c656b
+    type: long-term-legacy
+    title: Anti Valutavalto - Egyesiitett Reverse Engineering Elemzes
+    source_path: docs/knowledge/legacy-reverse-engineering/RE-egyestitett-osszes-csapat-elemzes.md
+    summary: "--- type: analysis scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: \"Anti Valutavalto - Egyesiitett Reverse Engineering Elemzes\" load: on-demand --- # Anti Valutavalto - Egyesiitett Reverse Engineering Elemzes > **Datum:** 2026-04-02 > **Projekt:** Delphi 7 legacy -> Java + React + Electron > **Szerzok:** GPT-5.4, Junior, Eszter, Tamas, Gabor > **Modszer:** 5 parhuzamos"
+    tags: [anti, valutavalto, egyesiitett, reverse, engineering, elemzes, type, analysis, scope, vault]
+  - id: ba82445e557013bb
+    type: long-term-legacy
+    title: "Anti Valutaváltó — Üzleti Logika és Minőségi Elemzés"
+    source_path: docs/knowledge/legacy-reverse-engineering/RE-eszter-uzleti-logika-minoseg.md
+    summary: "--- type: session-log scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: \"Anti Valutavalto — Uzleti Logika es Minosegi Elemzes\" load: on-demand --- # Anti Valutaváltó — Üzleti Logika és Minőségi Elemzés ## S1 ESZTER_CONTROLLER_CHIEF_ELEMZESE > **Dátum:** 2026-04-02 > **Elemző:** Eszter — QA & Code Review Controller Chief > **Forrás:** `D:\\repo\\valutavalto-program\\Anti\\VAL"
+    tags: [anti, valutavalto, uzleti, logika, minosegi, elemzes, type, session, log, scope]
+  - id: 40f855129e4215f6
+    type: long-term-legacy
+    title: "Anti Valutaváltó — UI/UX Design Elemzés és Modern Migrációs Terv"
+    source_path: docs/knowledge/legacy-reverse-engineering/RE-gabor-uiux-design-wireframes.md
+    summary: "--- type: reference scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: \"Anti Valutavalto — UI/UX Design Elemzes es Modern Migracios Terv\" load: on-demand --- # Anti Valutaváltó — UI/UX Design Elemzés és Modern Migrációs Terv > **Szerző:** Gábor (Design & Graphics Chief) > **Dátum:** 2026-04-02 > **Forrás:** `antivaluta-junior.md` (rendszer áttekintés) + `anti-dfm-pack.md`"
+    tags: [anti, valutavalto, design, elemzes, modern, migracios, terv, type, reference, scope]
+  - id: 38f45a68b2b85d27
+    type: long-term-legacy
+    title: "Gap Analysis — Legacy vs Modern Implementáció"
+    source_path: docs/knowledge/legacy-reverse-engineering/RE-gap-analysis-legacy-vs-modern.md
+    summary: "--- type: analysis scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: \"Gap Analysis — Legacy vs Modern Implementacio\" load: on-demand --- # Gap Analysis — Legacy vs Modern Implementáció > **Dátum:** 2026-04-05 > **Cél:** Megtalálni, ami a legacy elemzésekben van, de a modern rendszerből hiányzik --- ## S1 IMPLEMENTALT_MODERN_RENDSZERBEN_MEGVAN | Legacy terület | Modern im"
+    tags: [gap, analysis, legacy, modern, implementacio, type, scope, vault, creating, version]
+  - id: d4ead73d36c81870
+    type: long-term-legacy
+    title: "Anti Valutaváltó — Teljes Reverse Engineering Elemzés"
+    source_path: docs/knowledge/legacy-reverse-engineering/RE-junior-teljes-rendszer-architektura.md
+    summary: "--- type: reference scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: \"Anti Valutavalto — Teljes Reverse Engineering Elemzes\" load: on-demand --- # Anti Valutaváltó — Teljes Reverse Engineering Elemzés ## S1 JUNIOR_SZOFTVERFEJLESZTO_AGENS_ELEMZESE > **Dátum:** 2026-04-02 > **Forrás:** `D:\\repo\\valutavalto-program\\Anti\\VALUTA\\` > **Technológia:** Delphi 7, Firebird/InterB"
+    tags: [anti, valutavalto, teljes, reverse, engineering, elemzes, type, reference, scope, vault]
+  - id: 40a348e47c5a74ab
+    type: long-term-legacy
+    title: "Anti Valutaváltó — Technikai Architektúra és Integrációs Elemzés"
+    source_path: docs/knowledge/legacy-reverse-engineering/RE-tamas-technikai-architektura.md
+    summary: "--- type: reference scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: \"Anti Valutavalto — Technikai Architektura es Integracios Elemzes\" load: on-demand --- # Anti Valutaváltó — Technikai Architektúra és Integrációs Elemzés ## S1 TAMAS_TESTOPS_CHIEF_MELYARCHITEKTURA_ELEMZES > **Dátum:** 2026-04-02 > **Elemző:** Tamás (testops/Claude Sonnet 4.6) > **Forrás:** `D:\\repo\\val"
+    tags: [anti, valutavalto, technikai, architektura, integracios, elemzes, type, reference, scope, vault]
+  - id: 665c0a8f0c57a312
+    type: long-term-legacy
+    title: AML and BIGCTRL Rule-Level Parity
+    source_path: docs/knowledge/legacy-reverse-engineering/aml-bigctrl-rule-parity.md
+    summary: "--- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: \"AML and BIGCTRL Rule-Level Parity\" load: on-demand --- # AML and BIGCTRL Rule-Level Parity > Cel: a `BIGCTRL.DLL` es a kapcsolodo AML/KYC szabalyok lebontasa konkret szabalyokra, modern hivaslanccal es teszt-bizonyitekkal. > Gepi matrix: `generated/aml-bigctrl-rule-parity-2026-04-09.csv` --- ## S1 LEGA"
+    tags: [aml, bigctrl, rule, level, parity, type, analysis, scope, vault, creating]
+  - id: 7a5a54f1608c2783
+    type: long-term-legacy
+    title: AML Wave 1 Source Reconciliation Backlog
+    source_path: docs/knowledge/legacy-reverse-engineering/aml-wave1-source-reconciliation-backlog.md
+    summary: "--- type: reconciliation-backlog scope: aml-wave1 version: 2026-04-11 format: structured-lookup encoding: utf-8 description: \"Single source reconciliation backlog for AML wave 1 closure, residual gaps, and stale-status cleanup\" load: on-demand --- # AML Wave 1 Source Reconciliation Backlog > Cel: az AML wave 1 allapotat egyetlen, forras-sorrenddel ellatott closure backlogba huzni, hogy a parity matrixok, gap dokument"
+    tags: [aml, wave, source, reconciliation, backlog, type, scope, wave1, version, 2026]
+  - id: 90675b499bfe23b3
+    type: long-term-legacy
+    title: Camera Endpoint and Test Gap List
+    source_path: docs/knowledge/legacy-reverse-engineering/camera-endpoint-test-gap-list.md
+    summary: "--- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: \"Camera Endpoint and Test Gap List\" load: on-demand --- # Camera Endpoint and Test Gap List > Cel: a kamera alrendszer kulon HTTP/IPC endpoint-matrixa es a hozza tartozo teszt-gap lista. > Gepi matrix: `generated/camera-endpoint-gap-list-2026-04-09.csv` --- ## S1 HTTP_ENDPOINT_MATRIX | Endpoint | Handle"
+    tags: [camera, endpoint, test, gap, list, type, analysis, scope, vault, creating]
+  - id: 92c7f0cb9b701c09
+    type: long-term-legacy
+    title: Camera Subsystem Knowledge Base and Rebuild Plan
+    source_path: docs/knowledge/legacy-reverse-engineering/camera-subsystem-knowledge-base.md
+    summary: "--- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: \"Camera Subsystem Knowledge Base and Rebuild Plan\" load: on-demand --- # Camera Subsystem Knowledge Base and Rebuild Plan > Cel: a kamera alrendszert kulon termekcsaladkent kezelni, nem pusztan egy admin oldalkent. --- ## S1 LEGACY_TERKEP | Terulet | Szerep | |---------|--------| | `Anti/camera` | telep"
+    tags: [camera, subsystem, knowledge, base, rebuild, plan, type, analysis, scope, vault]
+  - id: 8615e6301feb98a5
+    type: long-term-legacy
+    title: "Byte-Level Format Sheets for `ARFDATA.DAT` and `FOGLALO.DAT`"
+    source_path: docs/knowledge/legacy-reverse-engineering/dat-format-sheets.md
+    summary: "--- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: \"Byte-Level Format Sheets for ARFDATA.DAT and FOGLALO.DAT\" load: on-demand --- # Byte-Level Format Sheets for `ARFDATA.DAT` and `FOGLALO.DAT` > Fontos: ez a lap **bizonyitek-alapu formatumlap**, nem teljesen visszaellenorzott binaris parser-spec. Ahol nincs valos minta/hex dump, ott a sor `inferred` vag"
+    tags: [byte, level, format, sheets, arfdata, dat, foglalo, type, analysis, scope]
+  - id: 02a8cbb97839b012
+    type: long-term-legacy
+    title: "Felmérés Hang 002 — Strukturált Kézi Kivonat"
+    source_path: docs/knowledge/legacy-reverse-engineering/felmeres-hang-002-structured-summary.md
+    summary: "--- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: \"Felmérés Hang 002 — strukturált kézi kivonat\" load: on-demand --- # Felmérés Hang 002 — Strukturált Kézi Kivonat > Cél: a `Felmérés` hanganyagából olyan tudástári kivonat készítése, amely az ASR nyers szövegét üzleti és modernizációs szempontból használható szerkezetbe rendezi. > Primer transcript: `do"
+    tags: [felmeres, hang, 002, strukturalt, kezi, kivonat, type, analysis, scope, vault]
+  - id: 2d4d1c9c9c81d103
+    type: long-term-legacy
+    title: "Felmérés Hang 003 — Strukturált Kézi Kivonat"
+    source_path: docs/knowledge/legacy-reverse-engineering/felmeres-hang-003-structured-summary.md
+    summary: "--- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: \"Felmérés Hang 003 — strukturált kézi kivonat\" load: on-demand --- # Felmérés Hang 003 — Strukturált Kézi Kivonat > Cél: a `Felmérés` Hang 003 anyagából kinyerhető üzleti és technikai tudás strukturált rögzítése. > Primer transcript: `docs/knowledge/generated/asr-text/Hang_003_sd-aa6901b1ee.txt` > Dupli"
+    tags: [felmeres, hang, 003, strukturalt, kezi, kivonat, type, analysis, scope, vault]
+  - id: c733f3c0b28806f5
+    type: long-term-legacy
+    title: "Felmérés Hang 004 — Strukturált Kézi Kivonat"
+    source_path: docs/knowledge/legacy-reverse-engineering/felmeres-hang-004-structured-summary.md
+    summary: "--- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: \"Felmérés Hang 004 — strukturált kézi kivonat\" load: on-demand --- # Felmérés Hang 004 — Strukturált Kézi Kivonat > Cél: a `Felmérés` Hang 004 anyagából kinyerhető treasury, készlet, zárás és foglaló tudás strukturált rögzítése. > Primer transcript: `docs/knowledge/generated/asr-text/Hang_004_sd-a0fd043"
+    tags: [felmeres, hang, 004, strukturalt, kezi, kivonat, type, analysis, scope, vault]
+  - id: 91eaf61010e86b8d
+    type: long-term-legacy
+    title: "Felmérés Hang 005 — Strukturált Kézi Kivonat"
+    source_path: docs/knowledge/legacy-reverse-engineering/felmeres-hang-005-structured-summary.md
+    summary: "--- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: \"Felmérés Hang 005 — strukturált kézi kivonat\" load: on-demand --- # Felmérés Hang 005 — Strukturált Kézi Kivonat > Cél: a `Felmérés` Hang 005 anyagából kinyerhető technikai, integrációs és környezeti tudás strukturált rögzítése. > Primer transcript: `docs/knowledge/generated/asr-text/Hang_005_sd-568ae5"
+    tags: [felmeres, hang, 005, strukturalt, kezi, kivonat, type, analysis, scope, vault]
+  - id: ed048786958cb50d
+    type: long-term-legacy
+    title: Firebird Schema Reconstruction Index
+    source_path: docs/knowledge/legacy-reverse-engineering/firebird-schema-reconstruction-index.md
+    summary: "--- type: registry scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: \"Firebird Schema Reconstruction Index\" load: on-demand --- # Firebird Schema Reconstruction Index > Cel: a legacy Firebird/InterBase vilag adatbazisait, valoszinu szerepkoreit es a modern PostgreSQL/Flyway megfeleltetesi pontokat egy helyre gyujteni. > Gepi leltar: `generated/firebird-db-artifacts-2026-"
+    tags: [firebird, schema, reconstruction, index, type, registry, scope, vault, creating, version]
+  - id: 990558f8be570e77
+    type: long-term-legacy
+    title: Firebird Table to Modern Entity Matrix
+    source_path: docs/knowledge/legacy-reverse-engineering/firebird-table-to-modern-entity-matrix.md
+    summary: "--- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: \"Firebird Table to Modern Entity Matrix\" load: on-demand --- # Firebird Table to Modern Entity Matrix > Cel: a legacy Firebird tabla- es tablafamilia-nevek konkret modern PostgreSQL tablakhoz, entity-khez, migraciokhoz es service-ekhez kotese. > Gepi matrix: `generated/firebird-table-to-modern-entity-ma"
+    tags: [firebird, table, modern, entity, matrix, type, analysis, scope, vault, creating]
+  - id: ff4891f701a5d7ba
+    type: long-term-legacy
+    title: aml-bigctrl-rule-parity-2026-04-09.csv
+    source_path: docs/knowledge/legacy-reverse-engineering/generated/aml-bigctrl-rule-parity-2026-04-09.csv
+    summary: "rule_id,legacy_meaning,modern_implementation,endpoint_or_caller,test_evidence,status,risk R-300K,Identification required above 300000 HUF,AmlService.checkTransaction,transaction aml call chain,backend/src/test/java/hu/puzzleir/valuta/integration/AmlFlowTest.java,full,P0 R-1.5M,Detailed identification above 1500000 HUF,AmlService.checkTransaction,transaction aml call chain,backend/src/test/java/hu/puzzleir/valuta/inte"
+    tags: [aml, bigctrl, rule, parity, 2026, csv, rule_id, legacy_meaning, modern_implementation, endpoint_or_caller]
+  - id: e4f39c67baa2acb0
+    type: long-term-legacy
+    title: camera-endpoint-gap-list-2026-04-09.csv
+    source_path: docs/knowledge/legacy-reverse-engineering/generated/camera-endpoint-gap-list-2026-04-09.csv
+    summary: "endpoint,handler,auth,evidence,test_evidence,status GET /api/v1/camera/stream/{cameraId},CameraController.getLiveFrame,\"MANAGER|ADMIN\",CameraController.java,backend/src/test/java/hu/puzzleir/valuta/controller/CameraControllerSecurityTest.java,implemented GET /api/v1/camera/status,CameraController.getCameraStatus,\"MANAGER|ADMIN\",CameraController.java,backend/src/test/java/hu/puzzleir/valuta/controller/CameraController"
+    tags: [camera, endpoint, gap, list, 2026, csv, handler, auth, evidence, test_evidence]
+  - id: 959092e01b1d9608
+    type: long-term-legacy
+    title: firebird-db-artifacts-2026-04-09.csv
+    source_path: docs/knowledge/legacy-reverse-engineering/generated/firebird-db-artifacts-2026-04-09.csv
+    summary: "path,extension,size_bytes Anti\\SZERVER\\_extracted\\ERTEKTAR\\database\\engedely.fdb,.fdb,1064960 Anti\\SZERVER\\_extracted\\ERTEKTAR\\database\\hazihrk.fdb,.fdb,802816 Anti\\SZERVER\\_extracted\\ERTEKTAR\\database\\korlevel.fdb,.fdb,933888 Anti\\SZERVER\\_extracted\\ERTEKTAR\\database\\mentes\\engedely.fdb,.fdb,1064960 Anti\\SZERVER\\_extracted\\ERTEKTAR\\database\\mentes\\korlevel.fdb,.fdb,933888 Anti\\SZERVER\\_extracted\\ERTEKTAR\\database\\me"
+    tags: [firebird, artifacts, 2026, csv, path, extension, size_bytes, anti, szerver, _extracted]
+  - id: 1ef8b76ae3475db3
+    type: long-term-legacy
+    title: firebird-table-to-modern-entity-matrix-2026-04-09.csv
+    source_path: docs/knowledge/legacy-reverse-engineering/generated/firebird-table-to-modern-entity-matrix-2026-04-09.csv
+    summary: "legacy_table_family,legacy_role,modern_tables,entity_paths,migration_paths,primary_services,mapping_type,confidence IRODAK,Branch master data,branch,backend/src/main/java/hu/puzzleir/valuta/entity/Branch.java,\"backend/src/main/resources/db/migration/V0_1__base_tables.sql;backend/src/main/resources/db/migration/V95__branch_region_code.sql\",BranchService.java,\"1:1 core + enriched\",documented ARFOLYAM,Buy sell settlemen"
+    tags: [firebird, table, modern, entity, matrix, 2026, csv, legacy_table_family, legacy_role, modern_tables]
+  - id: dd39cb04575836f8
+    type: long-term-legacy
+    title: legacy-binary-inventory-2026-04-09.csv
+    source_path: docs/knowledge/legacy-reverse-engineering/generated/legacy-binary-inventory-2026-04-09.csv
+    summary: "relative_path,area,provenance,extension,filename,basename,size_bytes,cluster,inferred_function,source_hint Anti\\ARFOLYAM\\Arfolyam.exe,ARFOLYAM,original,.exe,Arfolyam.exe,Arfolyam,1170432,rates,Arfolyam kezeles es rates tooling,Anti\\ARFOLYAM\\ARFOLYAM\\Arfolyam.dpr Anti\\ARFOLYAM\\ARFOLYAM\\Arfolyam.exe,ARFOLYAM,original,.exe,Arfolyam.exe,Arfolyam,1170432,rates,Arfolyam kezeles es rates tooling,Anti\\ARFOLYAM\\ARFOLYAM\\Arfol"
+    tags: [legacy, binary, inventory, 2026, csv, relative_path, area, provenance, extension, filename]
+  - id: 1342bd3bc138bbe7
+    type: long-term-legacy
+    title: legacy-binary-summary-2026-04-09.json
+    source_path: docs/knowledge/legacy-reverse-engineering/generated/legacy-binary-summary-2026-04-09.json
+    summary: "{ \"generated_at\": \"2026-04-09\", \"inventory_path\": \"docs\\\\knowledge\\\\legacy-reverse-engineering\\\\generated\\\\legacy-binary-inventory-2026-04-09.csv\", \"total_binaries\": 2157, \"area_counts\": { \"ARFOLYAM\": { \"exe\": 2, \"dll\": 0 }, \"VALUTA\": { \"exe\": 155, \"dll\": 129 }, \"SZERVER\": { \"exe\": 430, \"dll\": 294 }, \"SZERVER_EXTRACTED_AUTO\": { \"exe\": 705, \"dll\": 406 }, \"CAMERA\": { \"exe\": 6, \"dll\": 0 }, \"CAMERA2\": { \"exe\": 2, \"dll\": "
+    tags: [legacy, binary, summary, 2026, json, generated_at, inventory_path, docs, knowledge, reverse]
+  - id: 3e13b7c2b472044f
+    type: long-term-legacy
+    title: legacy-dll-parity-matrix-2026-04-09.csv
+    source_path: docs/knowledge/legacy-reverse-engineering/generated/legacy-dll-parity-matrix-2026-04-09.csv
+    summary: "legacy_area,legacy_module,legacy_cluster,legacy_role,source_hint,modern_service,modern_controller,modern_ui,test_target,parity_status,risk,notes VALUTA,vasarlas,transaction-buy,valuta vetel,Anti\\VALUTA\\DLL\\VASARLAS\\MAKEDLL,TransactionService,TransactionController,frontend-react/src/pages/transactions/TransactionPage.tsx,backend/src/test/java/hu/puzzleir/valuta/integration/TransactionFlowTest.java,full,P0, VALUTA,elad"
+    tags: [legacy, dll, parity, matrix, 2026, csv, legacy_area, legacy_module, legacy_cluster, legacy_role]
+  - id: b156a853dffb9b42
+    type: long-term-legacy
+    title: szerver-dat-file-families-2026-04-09.csv
+    source_path: docs/knowledge/legacy-reverse-engineering/generated/szerver-dat-file-families-2026-04-09.csv
+    summary: "family,count,sample_path ARFDATA.DAT,48,Anti\\ARFOLYAM\\arfdata.dat DATA.DAT,8,Anti\\SZERVER\\_extracted_auto\\SZERVER\\_extracted\\SZERVER\\fejleszt\\makeszlt\\keszlex_unpacked\\DATA.DAT F1415_SETTINGS.DAT,2,Anti\\SZERVER\\_extracted_auto\\camera-20260306T145042Z-1-001_unpacked\\camera\\Data (2017_03_30 19_50_04 UTC)_unpacked\\F1415_settings.dat F1464_IDENTITY.DAT,2,Anti\\SZERVER\\_extracted_auto\\camera-20260306T145042Z-1-001_unpacked"
+    tags: [szerver, dat, file, families, 2026, csv, family, count, sample_path, arfdata]
+  - id: 4f791d36355b4369
+    type: long-term-legacy
+    title: Legacy Analysis and Rebuild Knowledge Base
+    source_path: docs/knowledge/legacy-reverse-engineering/legacy-analysis-rebuild-knowledge-base.md
+    summary: "--- type: registry scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: \"Legacy Analysis and Rebuild Knowledge Base\" load: on-demand --- # Legacy Analysis and Rebuild Knowledge Base > Cel: a teljes kibontott legacy anyaghoz egy olyan agent-kompatibilis tudasbazis letrehozasa, amely egyszerre tartalmaz elemzest, referenciautakat es ujraepitesi tervet. --- ## S1 TUDASBAZIS_RE"
+    tags: [legacy, analysis, rebuild, knowledge, base, type, registry, scope, vault, creating]
+  - id: 8deb5b76d43430eb
+    type: long-term-legacy
+    title: Legacy Binary Functional Index
+    source_path: docs/knowledge/legacy-reverse-engineering/legacy-binary-functional-index.md
+    summary: "--- type: registry scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: \"Legacy Binary Functional Index\" load: on-demand --- # Legacy Binary Functional Index > Elokeszites datum: 2026-04-09 > Forrasgyoker: `D:\\repo\\valutavalto-program\\Anti\\` > Geppel generalva: `generated/legacy-binary-inventory-2026-04-09.csv` > SQLite tabla: `docs/valuta-knowledge.sqlite -> legacy_binary_"
+    tags: [legacy, binary, functional, index, type, registry, scope, vault, creating, version]
+  - id: a4cb99a3ab75a9b8
+    type: long-term-legacy
+    title: Legacy DLL Parity Matrix
+    source_path: docs/knowledge/legacy-reverse-engineering/legacy-dll-parity-matrix.md
+    summary: "--- type: registry scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: \"Legacy DLL Parity Matrix\" load: on-demand --- # Legacy DLL Parity Matrix > Cel: `legacy modul -> modern service/page/test` megfeleltetesi reteget adni a VALUTA es ERTEKTAR vilaghoz. > Kiegeszito gepi forras: `generated/legacy-dll-parity-matrix-2026-04-09.csv` --- ## S1 AJANLOTT_OSZLOPOK | Oszlop | Jele"
+    tags: [legacy, dll, parity, matrix, type, registry, scope, vault, creating, version]
+  - id: fd6caa392f42d2c9
+    type: long-term-legacy
+    title: "Legacy Szerver Üzleti Logika"
+    source_path: docs/knowledge/legacy-reverse-engineering/szerver-business-logic.md
+    summary: "--- type: session-log scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: \"Legacy Szerver Uzleti Logika\" load: on-demand --- # Legacy Szerver Üzleti Logika > Agent-optimalizált — számítási szabályok, küszöbértékek, validációk --- ## S1 1_DEVIZANEM_RENDSZER ### Fix 27 + HUF - A modern rendszer dinamikus Currency entity-t használ → **OK, de a sorrend/indexelés nem garantált*"
+    tags: [legacy, szerver, uzleti, logika, type, session, log, scope, vault, creating]
+  - id: 200861da32afd78f
+    type: long-term-legacy
+    title: Legacy SZERVER Core Analysis
+    source_path: docs/knowledge/legacy-reverse-engineering/szerver-core-analysis.md
+    summary: "--- type: analysis scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: \"Legacy SZERVER Core Analysis\" load: on-demand --- # Legacy SZERVER Core Analysis > Forrás: `Anti\\SZERVER\\_extracted\\SZERVER\\fejleszt\\server\\` > 4 fő unit részletes elemzése --- ## S1 UNIT1PAS_37K_FO_SZERVER_FORM ### Fő Firebird táblák | Tábla | DB | Tartalom | |-------|-----|----------| | RENDSZER | RE"
+    tags: [legacy, szerver, core, analysis, type, scope, vault, creating, version, 2026]
+  - id: e3ee000c710f6d2a
+    type: long-term-legacy
+    title: SZERVER DAT Import Knowledge Base
+    source_path: docs/knowledge/legacy-reverse-engineering/szerver-dat-import-knowledge-base.md
+    summary: "--- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: \"SZERVER DAT Import Knowledge Base\" load: on-demand --- # SZERVER DAT Import Knowledge Base > Cel: a fajl-alapu legacy adatcseret egy agent-altal is bejarhato import- es adatfolyam-tudastarra bontani. > Gepi inventory: `generated/szerver-dat-file-families-2026-04-09.csv` --- ## S1 DAT_CSALADOK | Fajl / "
+    tags: [szerver, dat, import, knowledge, base, type, analysis, scope, vault, creating]
+  - id: 127fb8dff62df9b2
+    type: long-term-legacy
+    title: "Szerver Legacy vs Modern — Gap Elemzés"
+    source_path: docs/knowledge/legacy-reverse-engineering/szerver-gap-vs-modern.md
+    summary: "--- type: analysis scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: \"Szerver Legacy vs Modern — Gap Elemzes\" load: on-demand --- # Szerver Legacy vs Modern — Gap Elemzés > Utolsó frissítés: 2026-04-05 > A modern backend: `D:\\repo\\valutavalto-program\\backend\\` > Az Electron kliens: `D:\\repo\\valutavalto-program\\penztar-client\\` > A web frontend: `D:\\repo\\valutavalto-progr"
+    tags: [szerver, legacy, modern, gap, elemzes, type, analysis, scope, vault, creating]
+  - id: 309e6847fe92fadc
+    type: long-term-legacy
+    title: Legacy SZERVER Modul Index
+    source_path: docs/knowledge/legacy-reverse-engineering/szerver-modules-index.md
+    summary: "--- type: registry scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: \"Legacy SZERVER Modul Index\" load: on-demand --- # Legacy SZERVER Modul Index > Agent-optimalizált hivatkozás — keresés: `<!-- MODULE: név -->` > Forrás: `Anti\\SZERVER\\_extracted\\SZERVER\\fejleszt\\` > Utolsó frissítés: 2026-04-05 --- ## S1 SZERVER_ARCHITEKTURA_OSSZEFOGLALO ### Felépítés - **Nyelv**: Delp"
+    tags: [legacy, szerver, modul, index, type, registry, scope, vault, creating, version]
+  - id: d59d4569d34f53e8
+    type: long-term-historical
+    title: "2026-03-30 — Sprint 3 összefoglaló"
+    source_path: docs/knowledge/memory/2026-03-30-sprint3.md
+    summary: "# 2026-03-30 — Sprint 3 összefoglaló ## Leszállítva - **A)** AuthorizationSection — meghatalmazás UI (create/verify/suspend/resume/revoke) - **B)** BanknoteBreakdown — címletezés UI (IN/OUT, COMMON_DENOMINATIONS) - **C)** BanknoteInventory — backend domain (entity/repo/service/controller/DTO/Flyway V130) ## Pipeline - Eszter: APPROVED (3. kör — C1/C2/C3/M1 javítás után) - Tamás: 409 PASS / 0 FAIL (28 új teszt: Author"
+    tags: [2026, sprint, osszefoglalo, leszallitva, authorizationsection, meghatalmazas, create, verify, suspend, resume]
+  - id: afa6a728a9efa2c8
+    type: long-term-historical
+    title: "2026-04-01 — Electron Sprint 6: Helyi penztari alkalmazas"
+    source_path: docs/knowledge/memory/2026-04-01-electron-sprint6.md
+    summary: "# 2026-04-01 — Electron Sprint 6: Helyi penztari alkalmazas ## Architektura (Zoltan kotelező utasitas 2026-04-01) - Valutavaltas KIZAROLAG helyi Electron alkalmazasban tortenik - excvaluta.com weben NINCS React SPA, NINCS valutavaltas, NINCS ertektar - A szerver (Hetzner 95.216.191.162) szerepe: API backend + jovobeli riportok/statisztikak - Az Electron app a backend API-n keresztul kommunikal a szerverrel - excvalut"
+    tags: [2026, electron, sprint, helyi, penztari, alkalmazas, architektura, zoltan, kotelezo, utasitas]
+  - id: 77d7dd8384789fc4
+    type: long-term-historical
+    title: "2026-04-01 Sprint 5 — Architekturalis javitas"
+    source_path: docs/knowledge/memory/2026-04-01-sprint5-architecture-fix.md
+    summary: "# 2026-04-01 Sprint 5 — Architekturalis javitas ## KRITIKUS SZABALY (Zoltan utasitasa) - Valutavaltas kizarolag LOKALIS ELECTRON alkalmazasban tortenik - excvaluta.com weben NINCS React SPA, NINCS valutevaltas, NINCS ertektar - A szerver (Hetzner VPS) szerepe: API backend + jovobeli riportok/statisztikak/kimuatasok - Az Electron app a backend API-n keresztul kommunikal a szerverrel ## Elvegzett javitas - Nginx atirva"
+    tags: [2026, sprint, architekturalis, javitas, kritikus, szabaly, zoltan, utasitasa, valutavaltas, kizarolag]
+  - id: 85cabafbebca3774
+    type: long-term-historical
+    title: "Legacy Delphi 7 Forráskód Elemzés — Konszolidált Összesítő"
+    source_path: docs/knowledge/memory/2026-04-05-valutavalto-legacy-delphi-elemzes-osszesito.md
+    summary: "# Legacy Delphi 7 Forráskód Elemzés — Konszolidált Összesítő ## Dátum: 2026-04-05 ## Forrás: `Anti\\SZERVER\\_extracted\\` (1102 .pas, 1099 .dfm, 17 MB Delphi forráskód) ## Modern: `backend/` (1192 Java, 4.6 MB) + `frontend-react/` (209 fájl, 1.7 MB) + `penztar-client/` (28 fájl, 377 KB) --- ## 1. Az elemzések áttekintése | # | Szerző | Fókusz | Fájl | Méret | Főbb eredmény | |---|---|---|---|---|---| | 1 | **Junior** |"
+    tags: [legacy, delphi, forraskod, elemzes, konszolidalt, osszesito, datum, 2026, forras, anti]
+  - id: 425e4b0fc644681d
+    type: long-term-historical
+    title: 2026-04-11 AML Wave 1 Session Memory
+    source_path: docs/knowledge/memory/2026-04-11-aml-wave1-session.md
+    summary: "--- type: session-log scope: workspace-shared version: 2026-04-11 format: structured-lookup encoding: utf-8 description: \"Session memory for AML wave 1 parity closure and gate stabilization\" load: on-demand --- # 2026-04-11 AML Wave 1 Session Memory ## S1 SESSION_GOAL Cel: - az AML / BIGCTRL / KYC / sanctions parity elso hullamanak tenyleges lezarsa - a WU-specifikus AML bypassok megszuntetese - a parity bizonyitekok"
+    tags: [2026, aml, wave, session, memory, type, log, scope, workspace, shared]
+  - id: 3e49a9b140fd1f8b
+    type: long-term-historical
+    title: 2026-04-11 AML Wave 1 Session Snapshot
+    source_path: docs/knowledge/memory/2026-04-11-aml-wave1-session.qmd
+    summary: "--- title: \"2026-04-11 AML Wave 1 Session Snapshot\" format: gfm execute: false freeze: auto --- ## Session Scope - Goal: close AML wave 1 parity and restore trustworthy verification. - Result: AML wave 1 closed, WU AML hardened, security gate passed. ## Closed Rules | Rule | Outcome | Evidence | |---|---|---| | `R-type--1` | full | `AmlBigctrlC1C2C3Test`, `AmlControllerCheckAllThresholdsTest`, `WesternUnionServiceTes"
+    tags: [2026, aml, wave, session, snapshot, title, format, gfm, execute, freeze]
+  - id: 909d80d56f9b067e
+    type: long-term-historical
+    title: 2026-04-11-aml-wave1-session.yaml
+    source_path: docs/knowledge/memory/2026-04-11-aml-wave1-session.yaml
+    summary: "session_id: 2026-04-11-aml-wave1 scope: workspace-shared status: closed focus_area: aml-bigctrl-kyc-sanctions current_state: aml_wave1: closed security_gate: passed next_primary_wave: transactions-fee-rounding-storno completed_fixes: - id: aml-currency-propagation summary: currencyCode now reaches the transaction AML call chain evidence: - backend/src/main/java/hu/puzzleir/valuta/service/AmlService.java - backend/src"
+    tags: [2026, aml, wave1, session, yaml, session_id, scope, workspace, shared, status]
+  - id: 75c7ae7c097eca1a
+    type: long-term-historical
+    title: "2026-04-17 Hetzner backend deploy v2.1.1 — session memory"
+    source_path: docs/knowledge/memory/2026-04-17-hetzner-deploy-v2.1.1-session.qmd
+    summary: "--- title: \"2026-04-17 Hetzner backend deploy v2.1.1 — session memory\" date: 2026-04-17 tags: [hetzner, deploy, ssh, systemd, postgres, luks, flyway, v2.1.1, public-endpoints, backend, hotfix] status: captured supersedes: none relates_to: - docs/knowledge/memory/2026-04-17-pipeline-run-session.qmd - docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.qmd - docs/knowledge/memory/2026-04-17-hetzner-deploy"
+    tags: [2026, hetzner, backend, deploy, session, memory, title, date, tags, ssh]
+  - id: a601974f38b5ea89
+    type: long-term-historical
+    title: 2026-04-17-hetzner-deploy-v2.1.1-session.yaml
+    source_path: docs/knowledge/memory/2026-04-17-hetzner-deploy-v2.1.1-session.yaml
+    summary: "date: 2026-04-17 wave: hetzner-deploy-v2.1.1 session_type: direct-ssh-deploy-plus-postgres-resurrection-plus-flyway-bugfix previous_session_same_day: - docs/knowledge/memory/2026-04-17-pipeline-run-session.yaml - docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml resumed_from: post-v2.1.1-release-wave-user-frustrated-login-broken parent_agent_transcript: agent-transcripts/ac0bf5fb-6a32-4418-a5a1-f"
+    tags: [2026, hetzner, deploy, session, yaml, date, wave, session_type, direct, ssh]
+  - id: 1f5f2487a0e503e6
+    type: long-term-historical
+    title: "2026-04-17 installer release v2.1.0 — session memory"
+    source_path: docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.qmd
+    summary: "--- title: \"2026-04-17 installer release v2.1.0 — session memory\" date: 2026-04-17 tags: [installer, electron, nsis, first-run-wizard, release, v2.1.0, build-pipeline, postgres, jlink] status: captured supersedes: none relates_to: - docs/knowledge/memory/2026-04-17-pipeline-run-session.qmd (previous wave, same day, post-AML-wave1) --- ## Cel A user kerese: 1. \"Tehát akkor most akár tudunk egy telepítőfájlt készíteni,"
+    tags: [2026, installer, release, session, memory, title, date, tags, electron, nsis]
+  - id: fbbeced89008ab25
+    type: long-term-historical
+    title: 2026-04-17-installer-release-v2.1.0-session.yaml
+    source_path: docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml
+    summary: "date: 2026-04-17 wave: installer-release-v2.1.0 session_type: first-run-wizard-plus-standalone-eltavolito-build-plus-version-unification-plus-full-installer-pipeline previous_session_same_day: docs/knowledge/memory/2026-04-17-pipeline-run-session.yaml resumed_from: previous-session-wave-post-aml-wave1-followup-completed parent_agent_transcript: agent-transcripts/ac0bf5fb-6a32-4418-a5a1-fe9b337b2263 final_head: branch"
+    tags: [2026, installer, release, session, yaml, date, wave, session_type, first, run]
+  - id: 405be35a32f3bf71
+    type: long-term-historical
+    title: 2026-04-17 pipeline run - session memory
+    source_path: docs/knowledge/memory/2026-04-17-pipeline-run-session.qmd
+    summary: "--- title: \"2026-04-17 pipeline run - session memory\" date: 2026-04-17 tags: [pipeline, tests, parity, security-gate, db-preflight, aml, cb-018, cb-004] status: captured --- ## Cel A user kerese: `pull git`, sessionek/memoriak atnezese, teljes pipeline futtatasa, uzleti logikai hibak keresese a legacy programhoz viszonyitva, QMD/YAML/vector memoria hasznalata. A 09:15 kornyeken tortent gep-lefagyas utan a session fol"
+    tags: [2026, pipeline, run, session, memory, title, date, tags, tests, parity]
+  - id: 6a98c9271d31e044
+    type: long-term-historical
+    title: 2026-04-17-pipeline-run-session.yaml
+    source_path: docs/knowledge/memory/2026-04-17-pipeline-run-session.yaml
+    summary: "date: 2026-04-17 wave: post-aml-wave1-followup session_type: pipeline-run-and-audit-plus-parity-fix-plus-supply-chain-upgrade resumed_after_freeze: true business_tests: backend: framework: junit5 mode: h2-in-memory total: 957 failures: 0 errors: 0 skipped: 0 status: pass runtime_seconds: 28 note: \"+1 vs previous session (new CB-018/CB-004 regression test)\" frontend_react: framework: vitest test_files: 32 tests: 505 f"
+    tags: [2026, pipeline, run, session, yaml, date, wave, post, aml, wave1]
+  - id: ad10fa228b91c3f2
+    type: long-term-historical
+    title: 2026-04-20-installer-fix-v2.1.3-session.yaml
+    source_path: docs/knowledge/memory/2026-04-20-installer-fix-v2.1.3-session.yaml
+    summary: "date: 2026-04-20 wave: installer-fix-v2.1.3 session_type: dns-fallback-flyway-default-branches-fix previous_sessions: - docs/knowledge/memory/2026-04-17-hetzner-deploy-v2.1.1-session.yaml - docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml resumed_from: user-frustrated-installer-not-working trigger: user_quote_1: \"Nezd at a teljes repo-ban a teljes dokumentaciot, hogy mit orokoltunk\" user_quote_2"
+    tags: [2026, installer, fix, session, yaml, date, wave, session_type, dns, fallback]
+  - id: 1aa7bdc593231859
+    type: long-term-historical
+    title: 2026-04-21-c-wave-compliance-admin.yaml
+    source_path: docs/knowledge/memory/2026-04-21-c-wave-compliance-admin.yaml
+    summary: "--- session_date: 2026-04-21 session_type: c-wave author: Claude Sonnet 4.5 (Agent SDK) parent_session: 2026-04-21-session-wave2-continued.yaml tags: - compliance - aml-kyc - sanction-list - worker-attendance - permission-matrix - ai-review-automation - dependabot-cleanup summary: > C-wave 3 admin/compliance UI (C1 sanction, C2 attendance, C3 permission matrix) + teljes Dependabot PR triázs + AI Review Auto-Fix workf"
+    tags: [2026, wave, compliance, admin, yaml, session_date, session_type, author, claude, sonnet]
+  - id: 86c4266f3a1d4f0e
+    type: long-term-historical
+    title: "Valuta ERP session: 2026-04-21 — full day"
+    source_path: docs/knowledge/memory/2026-04-21-full-day-session.qmd
+    summary: "--- title: \"Valuta ERP session: 2026-04-21 — full day\" author: \"Claude Sonnet 4.5\" date: \"2026-04-21\" format: html toc: true --- # Osszefoglalas Ma merged: **25+ PR** ( 02fef02 -> \b26ca628). 4 uj alaptorveny szabaly. ## Waves 1. **A (Features):** B1 Audit, B2 Cashier KPI 2. **B (Security):** Multi-tenant fix (13/15) + AI review cycles 3. **C (Compliance):** Sanction (#92), Attendance (#93), Permission Matrix (#94) 4."
+    tags: [valuta, erp, session, 2026, full, day, title, author, claude, sonnet]
+  - id: c0df7b68de5f55b6
+    type: long-term-historical
+    title: 2026-04-21-full-day-session.yaml
+    source_path: docs/knowledge/memory/2026-04-21-full-day-session.yaml
+    summary: "--- session_date: 2026-04-21 session_type: full-day-multi-wave-plus-rules author: Claude Sonnet 4.5 (Agent SDK) parent_sessions: - 2026-04-21-ha-deploy-and-b-wave-session.yaml - 2026-04-21-session-wave2-continued.yaml - 2026-04-21-c-wave-compliance-admin.yaml tags: - b-wave - c-wave-compliance - ai-review-automation - ecosystem-alaptorveny - production-first - session-memory-workflow summary: > Mai osszesitett 25+ PR"
+    tags: [2026, full, day, session, yaml, session_date, session_type, multi, wave, plus]
+  - id: 472ac579f7abd98f
+    type: long-term-historical
+    title: 2026-04-21-ha-deploy-and-b-wave-session.yaml
+    source_path: docs/knowledge/memory/2026-04-21-ha-deploy-and-b-wave-session.yaml
+    summary: "--- session_date: 2026-04-21 session_type: multi-wave author: Claude Sonnet 4.5 (Agent SDK) tags: - high-availability - postgresql-streaming-replication - multi-provider-ha - scaleway - contabo-lemondas - b7-rate-workflow - b4-mnb-monthly-reports - b3-bank-trade-workflow summary: > Teljes HA (high availability) setup + 3 alkalmazasmodul (B7/B4/B3) merge-je egy napon. 3-regios warm-standby: Hetzner primary (NBG1, DE) "
+    tags: [2026, deploy, wave, session, yaml, session_date, session_type, multi, author, claude]
+  - id: d45e29bd60fe0df7
+    type: long-term-historical
+    title: "2026-04-21 Session - AI Review Automation + Production-First + Installer v2.1.7"
+    source_path: docs/knowledge/memory/2026-04-21-session-ai-review-v2.1.7.qmd
+    summary: "--- title: 2026-04-21 Session - AI Review Automation + Production-First + Installer v2.1.7 author: Claude Sonnet 4.5 + Kosa Zoltan date: 2026-04-21 format: html --- # Session osszefoglalo ## Kontextus - Idotartam: ~12 ora - Merged PR-ek: 10 darab - Main HEAD valtozas: b26ca628 -> 51a9c591 - Verzio valtozas: v2.1.5 -> v2.1.6 -> v2.1.7 ## 4 alaptorveny bevezetve (CLAUDE.md) 1. **Production-first**: TILOS lokalis diverg"
+    tags: [2026, session, review, automation, production, first, installer, title, author, claude]
+  - id: e9ac5b902dd42337
+    type: long-term-historical
+    title: 2026-04-21-session-ai-review-v2.1.7.yaml
+    source_path: docs/knowledge/memory/2026-04-21-session-ai-review-v2.1.7.yaml
+    summary: "session_meta: date: 2026-04-21 session_name: ai-review-automation + production-first + installer v2.1.7 duration_hours: 12 main_head_end: 51a9c591 merged_prs_count: 10 alaptorvenyek_4: production_first: TILOS divergens lokalis stack - Hetzner https://excvaluta.com ellen fejlesztunk session_memory_workflow: YAML + QMD + Cognee (TODO) + Obsidian (TODO) session-vegi mentes komplex_okoszisztema: teljes stack egyben indul"
+    tags: [2026, session, review, yaml, session_meta, date, session_name, automation, production, first]
+  - id: 523039a173ffd42a
+    type: long-term-historical
+    title: 2026-04-21-session-wave2-continued.yaml
+    source_path: docs/knowledge/memory/2026-04-21-session-wave2-continued.yaml
+    summary: "--- session_date: 2026-04-21 session_type: continuation-wave wave: 2 author: Claude Sonnet 4.5 (Agent SDK) parent_session: 2026-04-21-ha-deploy-and-b-wave-session.yaml tags: - cashier-kpi-dashboard - audit-trail-integration - multi-tenant-security-fix - repository-audit - gitignore-cleanup summary: > Az elso hullam (#72) utan folytatoldott 4 PR: B2 Penztaros KPI dashboard, B1 audit trail integracio (Rate+Storno), mul"
+    tags: [2026, session, wave2, continued, yaml, session_date, session_type, continuation, wave, author]
+  - id: ef5fed94730e55a6
+    type: long-term-historical
+    title: "Session: B-Wave + AI Review Automation"
+    source_path: docs/knowledge/memory/2026-04-22-session-b-wave-ai-automation.qmd
+    summary: "--- title: \"Session: B-Wave + AI Review Automation\" date: 2026-04-22 author: Claude Sonnet 4.5 (Agent SDK) tags: [b-wave, multi-tenant, openapi, ai-review, github-actions] format: html --- ## Session scope A 2026-04-21 parent sessions folytatasa 2026-04-22-ig. Ket nagy temakor: 1. **Alkalmazasmodul feilesztes** — B2 Penztaros KPI + B1 Audit trail integralas 2. **AI review automatizacio** — Sourcery + ChatGPT Codex + "
+    tags: [session, wave, review, automation, title, date, 2026, author, claude, sonnet]
+  - id: 9547027bce4e1c22
+    type: long-term-historical
+    title: 2026-04-22-session-b-wave-ai-automation.yaml
+    source_path: docs/knowledge/memory/2026-04-22-session-b-wave-ai-automation.yaml
+    summary: "--- session_date: 2026-04-22 session_type: multi-wave-continuation author: Claude Sonnet 4.5 (Agent SDK) parent_sessions: - 2026-04-21-ha-deploy-and-b-wave-session.yaml (wave 1) - 2026-04-21-session-wave2-continued.yaml (wave 2) tags: - b-wave-features - multi-tenant-security - openapi-regen - ai-review-automation - github-actions-claude-code - credentials-redact-p1 summary: > A 2026-04-21 session folytatasa 2026-04-"
+    tags: [2026, session, wave, automation, yaml, session_date, session_type, multi, continuation, author]
+  - id: f36fb8d8fb6f0212
+    type: long-term-historical
+    title: Multi-modell GitHub/PUSH minosegbiztositasi mandate v2
+    source_path: docs/knowledge/memory/2026-04-23-multi-model-mandate-v2.qmd
+    summary: "--- title: \"Multi-modell GitHub/PUSH minosegbiztositasi mandate v2\" subtitle: \"Anthropic + OpenAI + Gemini kotelezo utasitasrendszer\" date: \"2026-04-23\" author: \"Kosa Zoltan + Claude Opus 4.7 (1M context)\" format: html: toc: true toc-depth: 3 code-fold: true categories: [mandate, policy, github, ai-agent, multimodel] tags: - anthropic - openai - gemini - quality-gate - v2 status: ACTIVE supersedes: \"v1 (OPUS_GITHUB_Q"
+    tags: [multi, modell, github, push, minosegbiztositasi, mandate, title, subtitle, anthropic, openai]
+  - id: 97d0ff9c4c2b7691
+    type: long-term-historical
+    title: Multi-modell GitHub/PUSH minosegbiztositasi utasitasrendszer v2
+    source_path: docs/knowledge/memory/2026-04-23-multi-model-mandate-v2.yaml
+    summary: "# Multi-modell GitHub/PUSH minosegbiztositasi utasitasrendszer v2 # Session: 2026-04-23 (este, 20:54 utani direktiva) # User: Kosa Zoltan # Mandate forras: C:\\Users\\Kosa Zoltan\\Downloads\\opus-4-7-github-push-minosegbiztositas (1).md (53 KB) session: date: \"2026-04-23T20:54+02:00\" type: \"mandatory_policy_update\" trigger: \"user_directive_file_drop\" supersedes: \"v1 (OPUS_GITHUB_QUALITY_MANDATE.md, 2026-04-23T18:00+02:00"
+    tags: [multi, modell, github, push, minosegbiztositasi, utasitasrendszer, session, 2026, este, utani]
+  - id: ad6411e0934e5411
+    type: long-term-historical
+    title: 2026-04-23 Szerver teljes ellenorzes - v2.2.2 LIVE
+    source_path: docs/knowledge/memory/2026-04-23-szerver-live-test.qmd
+    summary: "--- title: \"2026-04-23 Szerver teljes ellenorzes - v2.2.2 LIVE\" author: Claude Opus 4.6 (1M) + Kosa Zoltan date: 2026-04-23 format: html --- # Valutavalto ERP v2.2.2 - TELJES ELES SZERVER ELLENORZES ## 1. Eredmeny osszefoglalo A mai session soran hosszu fejleszt-teszt-deploy-verify ciklus utan a rendszer **TELJES v2.2.2 allapotban van production-on**. **Backend:** `valuta-backend-2.2.2.jar` active a Hetzner VPS-en (`"
+    tags: [2026, szerver, teljes, ellenorzes, live, title, author, claude, opus, kosa]
+  - id: 0f68855bfa86ff8f
+    type: long-term-historical
+    title: "2026-04-23 Szerver teljes ellenorzes + Legacy vs Modern feltarás"
+    source_path: docs/knowledge/memory/2026-04-23-szerver-live-test.yaml
+    summary: "# 2026-04-23 Szerver teljes ellenorzes + Legacy vs Modern feltarás session_id: 2026-04-23-szerver-live-test date: 2026-04-23 claude_model: claude-opus-4.6-1m scope: live server verification + legacy inventory ## Osszefoglalas A v2.2.2 hotfix telepitese utan teljes szerveroldali ellenorzes: SSH root@95.216.191.162 (Hetzner HEL1), valuta-backend.service active, PostgreSQL V159 migration SUCCESS, frontend manualisan fri"
+    tags: [2026, szerver, teljes, ellenorzes, legacy, modern, feltaras, session_id, live, test]
+  - id: 62ced5835c990056
+    type: long-term-historical
+    title: "2026-04-24 AI Working Constitution + v2.2.3 Release"
+    source_path: docs/knowledge/memory/2026-04-24-ai-operating-constitution.qmd
+    summary: "--- title: \"2026-04-24 AI Working Constitution + v2.2.3 Release\" author: \"Claude Opus 4.7 (1M context)\" date: \"2026-04-24\" format: html: toc: true toc-depth: 3 code-fold: true theme: cosmo --- # 2026-04-24 AI working constitution + v2.2.3 release + shipment bug session_id: 2026-04-24-ai-operating-constitution date: 2026-04-24 claude_model: claude-opus-4.6-1m scope: AI mukodesi alapelvek implementacios kezikonyv befog"
+    tags: [2026, working, constitution, release, title, author, claude, opus, context, date]
+  - id: 82a3abbfa2647503
+    type: long-term-historical
+    title: "2026-04-24 AI working constitution + v2.2.3 release + shipment bug"
+    source_path: docs/knowledge/memory/2026-04-24-ai-operating-constitution.yaml
+    summary: "# 2026-04-24 AI working constitution + v2.2.3 release + shipment bug session_id: 2026-04-24-ai-operating-constitution date: 2026-04-24 claude_model: claude-opus-4.6-1m scope: AI mukodesi alapelvek implementacios kezikonyv befogadasa + v2.2.3 release cut + teljes kort teszt main_head_before: 6fd63cb8 main_head_current: adfd3cd5 ## Osszefoglalas Kosa Zoltan (felhasznalo) atadott egy komplex AI mukodesi alapelvek dokume"
+    tags: [2026, working, constitution, release, shipment, bug, session_id, operating, date, claude_model]
+  - id: 578b4f594a819a5f
+    type: long-term-historical
+    title: "2026-04-24 Session - Live verify + Issue #110 + V155 closure"
+    source_path: docs/knowledge/memory/2026-04-24-cash-balance-issue110-v155-closure.qmd
+    summary: "--- title: \"2026-04-24 Session - Live verify + Issue #110 + V155 closure\" author: \"Claude Opus 4.7 (1M context)\" date: \"2026-04-24\" format: html: toc: true toc-depth: 3 code-fold: true theme: cosmo --- # 2026-04-24 Session - Live verify + Issue #110 + V155 closure session_id: 2026-04-24-cash-balance-issue110-v155-closure date: 2026-04-24 claude_model: claude-opus-4.6-1m scope: live production verify + 2 P0 zaras + me"
+    tags: [2026, session, live, verify, issue, 110, v155, closure, title, author]
+  - id: 5f31596b679e7e8a
+    type: long-term-historical
+    title: "2026-04-24 Session - Live verify + Issue #110 + V155 closure"
+    source_path: docs/knowledge/memory/2026-04-24-cash-balance-issue110-v155-closure.yaml
+    summary: "# 2026-04-24 Session - Live verify + Issue #110 + V155 closure session_id: 2026-04-24-cash-balance-issue110-v155-closure date: 2026-04-24 claude_model: claude-opus-4.6-1m scope: live production verify + 2 P0 zaras + memory auto-save elokeszites main_head_start: 2697ddde main_head_end: 6b097fd3 ## Osszefoglalas Folytatas a 2026-04-23 szerver live verify session utan. Elso lepes: live production verify a PR #163 (Idemp"
+    tags: [2026, session, live, verify, issue, 110, v155, closure, session_id, cash]
+  - id: 73df1a29ba632871
+    type: long-term-historical
+    title: "2026-04-27 Session - Dependabot batch + housekeeping (issue #110 + memory)"
+    source_path: docs/knowledge/memory/2026-04-27-dependabot-batch-housekeeping.yaml
+    summary: "# 2026-04-27 Session - Dependabot batch + housekeeping (issue #110 + memory) session_id: 2026-04-27-dependabot-batch-housekeeping date: 2026-04-27 claude_model: claude-opus-4-7-1m scope: A) issue #110 zarasa, B) memoria + CLAUDE.md frissites, C) Dependabot 21 PR batch main_head_start: 60f6b913 main_head_end: da87e7d7 ## Osszefoglalas A 2026-04-25 -> 2026-04-27 audit-cycle (PR #229..#236, 8 PR) utan a 21 nyitott Depen"
+    tags: [2026, session, dependabot, batch, housekeeping, issue, 110, memory, session_id, date]
+  - id: 66d3f8d72bc421e4
+    type: long-term-historical
+    title: "Valutaváltó Pénztár - Installer Build Pipeline v2.3.5"
+    source_path: docs/knowledge/memory/2026-04-27-installer-build-pipeline-v2.3.5.qmd
+    summary: "--- title: \"Valutaváltó Pénztár - Installer Build Pipeline v2.3.5\" date: 2026-04-27 project: valutavalto-program topic: installer-build-pipeline version: \"2.3.5\" status: confirmed-working related_commits: - \"e1121a30\" - \"70753093\" --- # Áttekintés Ez a dokumentum a Valutaváltó Pénztár teljes Windows telepítő-build folyamatát írja le, ahogy az v2.3.5-re sikeresen lefutott. Tartalom: (1) build pipeline, (2) verzió-emel"
+    tags: [valutavalto, penztar, installer, build, pipeline, title, date, 2026, project, program]
+  - id: dda3f61264e2cd10
+    type: long-term-historical
+    title: 2026-04-27-installer-build-pipeline-v2.3.5.yaml
+    source_path: docs/knowledge/memory/2026-04-27-installer-build-pipeline-v2.3.5.yaml
+    summary: "--- schema: knowledge.session.v1 type: lessons-learned date: 2026-04-27 project: valutavalto-program topic: installer-build-pipeline version: 2.3.5 status: confirmed-working related_pr: [] related_issues: [] related_commits: - \"e1121a30\" # release(v2.3.5): 4-way version sync + dist/release artifact bundle - \"70753093\" # feat(installer): version-bump enforcement gate (auto-patch default) build_pipeline: steps: - order"
+    tags: [2026, installer, build, pipeline, yaml, schema, knowledge, session, type, lessons]
+  - id: 37721e99f46e2496
+    type: long-term-legacy
+    title: "Legacy Delphi 7 Forráskód Elemzés — Konszolidált Összesítő"
+    source_path: docs/legacy-analysis/README.md
+    summary: "# Legacy Delphi 7 Forráskód Elemzés — Konszolidált Összesítő ## Dátum: 2026-04-05 ## Forrás: `Anti\\SZERVER\\_extracted\\` (1102 .pas, 1099 .dfm, 17 MB Delphi forráskód) ## Modern: `backend/` (1192 Java, 4.6 MB) + `frontend-react/` (209 fájl, 1.7 MB) + `penztar-client/` (28 fájl, 377 KB) --- ## 1. Az elemzések áttekintése | # | Szerző | Fókusz | Fájl | Méret | Főbb eredmény | |---|---|---|---|---|---| | 1 | **Junior** |"
+    tags: [legacy, delphi, forraskod, elemzes, konszolidalt, osszesito, datum, 2026, forras, anti]
+  - id: 3b4f9ddac42b8ccf
+    type: long-term-legacy
+    title: "Bence — Legacy Delphi Biztonsági & Compliance Elemzés"
+    source_path: docs/legacy-analysis/bence-security-compliance-analysis.md
+    summary: "# Bence — Legacy Delphi Biztonsági & Compliance Elemzés ## Valutaváltó ERP: Delphi 7 → Java/React/Electron Migráció **Kelte:** 2026-04-05 **Elemző:** Bence (SecOps Chief) **Verzió:** 1.0 **Jogszabályi alap:** 2017. évi LIII. tv. (pénzmosás megelőzése), 2007. évi CXXXVI. tv., NAV-előírások, GDPR (2016/679/EU), 4AMLD/5AMLD, ENSZ/EU szankciós listák --- ## Tartalomjegyzék 1. [Összefoglaló](#1-összefoglaló) 2. [Elemzett "
+    tags: [bence, legacy, delphi, biztonsagi, compliance, elemzes, valutavalto, erp, java, react]
+  - id: 558c4ecc36e65f15
+    type: long-term-legacy
+    title: "Eszter — Kódminőség & Üzleti Teljesség Elemzés"
+    source_path: docs/legacy-analysis/eszter-code-quality-completeness-analysis.md
+    summary: "# Eszter — Kódminőség & Üzleti Teljesség Elemzés ## Dátum: 2026-04-05 --- ## 1. Feltárt Üzleti Szabályok (legacy) A legacy Delphi 7 forráskód elemzése alapján az alábbi 35 konkrét üzleti szabályt azonosítottam. ### 1.1 Tranzakciós alapszabályok | # | Üzleti szabály | Legacy forrás | Legacy eljárás | Modern megfelelő | Státusz | |---|---|---|---|---|---| | 1 | **Max 6 tételsor bizonylaton** — egyetlen tranzakcióban le"
+    tags: [eszter, kodminoseg, uzleti, teljesseg, elemzes, datum, 2026, feltart, szabalyok, legacy]
+  - id: b6774620f0c9265e
+    type: long-term-legacy
+    title: "Junior — Architektúra & Üzleti Logika Gap Elemzés"
+    source_path: docs/legacy-analysis/junior-architecture-gap-analysis.md
+    summary: "# Junior — Architektúra & Üzleti Logika Gap Elemzés ## Dátum: 2026-04-05 ## Szerző: Junior (main orchestrator) --- ## 1. Legacy Modul Térkép (üzleti funkció szerint) ### 1.1 SZERVER modul (482 .pas, 7.6 MB) — Központi szerver logika | Kategória | Könyvtár | Méret | Leírás | |---|---|---|---| | **Árfolyam** | `arfolyam/` (verzio20, verzio22) | 795 KB, 49 pas | Árfolyam-kezelés, több verzió, naponta frissítés | | **Árf"
+    tags: [junior, architektura, uzleti, logika, gap, elemzes, datum, 2026, szerzo, main]
+  - id: 7d28bf2bdec309a9
+    type: long-term-legacy
+    title: "Legacy Delphi — Pénztáros Napi Üzleti Folyamat & Felhasználói Élmény Elemzés"
+    source_path: docs/legacy-analysis/nora-business-workflow-ux-analysis.md
+    summary: "# Legacy Delphi — Pénztáros Napi Üzleti Folyamat & Felhasználói Élmény Elemzés ## 1. Pénztáros Napi Workflow Rekonstrukció (Legacy Delphi 7) **Tipikus napi folyamat:** 1. **Nap nyitás**: A pénztáros nap kezdetekor indítja a rendszert és végrehajtja a \"napi nyitás\" funkciót. - Fő DFM: VALUTA\\DLL\\NAPIKEZD\\MAKEDLL\\Unit2.dfm - Ellenőrzi a napzárások állapotát, bejelentkezés/jogosultság után aktiválható 2. **Árfolyam leké"
+    tags: [legacy, delphi, penztaros, napi, uzleti, folyamat, felhasznaloi, elmeny, elemzes, workflow]
+  - id: b3135935b4926ae1
+    type: long-term-legacy
+    title: "Tamás — Funkcionális Lefedettség & Tesztelhetőség Elemzés"
+    source_path: docs/legacy-analysis/tamas-functional-coverage-analysis.md
+    summary: "# Tamás — Funkcionális Lefedettség & Tesztelhetőség Elemzés ## Dátum: 2026-04-05 ## Készítette: Tamás (TestOps Chief — Anthropic Claude Sonnet 4.6) ## Scope: Delphi 7 legacy → Spring Boot + React + Electron modern stack --- ## Bevezetés Ez a dokumentum a `D:\\repo\\valutavalto-program\\Anti\\SZERVER\\_extracted\\` mappában lévő teljes Delphi 7 valutaváltó rendszer funkcionális elemzését tartalmazza, összevetve a modern Spr"
+    tags: [tamas, funkcionalis, lefedettseg, tesztelhetoseg, elemzes, datum, 2026, keszitette, testops, chief]
+  - id: 56a5f9c43522f740
+    type: operational-runbook
+    title: "Compliance Audit Checklist — NGM 23/2014 + AML (2017. évi LIII. tv.) + GDPR"
+    source_path: docs/operations/compliance-audit-checklist.md
+    summary: "# Compliance Audit Checklist — NGM 23/2014 + AML (2017. évi LIII. tv.) + GDPR > **Hatókör:** Valutaváltó ERP (`excvaluta.com`), EBC Zrt. üzemeltetés. > **Célközönség:** compliance officer, DPO, külső auditor, NAV/MNB ellenőrzésre felkészülés. > **Utolsó frissítés:** 2026-05-06. > **Felülvizsgálat:** éves teljes audit + negyedéves spot-check (lásd 5. szakasz). > **Eredmény-jelölés:** PASS / PARTIAL / FAIL / VERIFY / G"
+    tags: [compliance, audit, checklist, ngm, 2014, aml, 2017, evi, liii, gdpr]
+  - id: e8ca9428ce8010ae
+    type: operational-runbook
+    title: "Disaster Recovery & Backup runbook — Valutaváltó ERP"
+    source_path: docs/operations/dr-backup-runbook.md
+    summary: "# Disaster Recovery & Backup runbook — Valutaváltó ERP > **Hatókör:** Hetzner production környezet (`excvaluta.com`). > **Célközönség:** rendszergazdák, üzemeltetésért felelős fejlesztők, DPO. > **Utolsó frissítés:** 2026-05-06. > **NEM végfelhasználói dokumentum** (a kollégák számára a telepítő automatikusan kezel mindent — lásd `CLAUDE.md` \"nem-informatikus végfelhasználók alapelv\"). --- ## 1. Production architektú"
+    tags: [disaster, recovery, backup, runbook, valutavalto, erp, hatokor, hetzner, production, kornyezet]
+  - id: 81992dc61d3f87b4
+    type: operational-runbook
+    title: "Production Monitoring runbook — Valutaváltó ERP"
+    source_path: docs/operations/monitoring-runbook.md
+    summary: "# Production Monitoring runbook — Valutaváltó ERP > **Hatókör:** `excvaluta.com` (Hetzner production). > **Célközönség:** rendszergazdák, on-call fejlesztők, DPO. > **Utolsó frissítés:** 2026-05-06. > **Kapcsolódó:** `dr-backup-runbook.md` (DR), `compliance-audit-checklist.md` (compliance). --- ## 1. Mit kell monitorozni — KPI lista | KPI | Cél | Forrás | Alert szint | |---|---|---|---| | `bootstrap-status` HTTP 200 "
+    tags: [production, monitoring, runbook, valutavalto, erp, hatokor, excvaluta, com, hetzner, celkozonseg]
+  - id: 07c2090c72fefe16
+    type: long-term-user-doc
+    title: "Adminisztrátor / Ügyvezető kézikönyv — Valutaváltó program"
+    source_path: docs/user-manual/admin-kezikonyv.md
+    summary: "# Adminisztrátor / Ügyvezető kézikönyv — Valutaváltó program > Ez a kézikönyv az **iroda-** és **cégszintű vezetőknek** (ügyvezető, irodavezető, irodai dolgozó, főértéktáros) készült. A weboldali (böngészős) admin felületen érhető el — `https://excvaluta.com` címen. > Ha bármi nem úgy működik, ahogy itt le van írva, **forduljon az IT csapathoz** — ne nyúljon műszaki beállításokhoz, fájlokhoz, parancssorhoz. --- ## Ta"
+    tags: [adminisztrator, ugyvezeto, kezikonyv, valutavalto, program, iroda, cegszintu, vezetoknek, irodavezeto, irodai]
+  - id: c9a0a86559efbd62
+    type: long-term-user-doc
+    title: "Értéktáros kézikönyv — Valutaváltó program"
+    source_path: docs/user-manual/ertektaros-kezikonyv.md
+    summary: "# Értéktáros kézikönyv — Valutaváltó program > Ez a kézikönyv az **értéktáros** kollégáknak készült. Az értéktáros felelős az iroda összes pénztárának ellátásáért, a banki tranzakciókért és a napi/havi zárásokért az iroda szintjén. > Ha bármi nem úgy működik, ahogy itt le van írva, hívja a vezetőjét — **ne nyúljon műszaki beállításokhoz**. --- ## Tartalom 1. [Bejelentkezés értéktár módban](#1-bejelentkezés-értéktár-m"
+    tags: [ertektaros, kezikonyv, valutavalto, program, kollegaknak, keszult, felelos, iroda, osszes, penztaranak]
+  - id: fa24eab484331576
+    type: long-term-user-doc
+    title: "Pénztáros kézikönyv — Valutaváltó program"
+    source_path: docs/user-manual/penztaros-kezikonyv.md
+    summary: "# Pénztáros kézikönyv — Valutaváltó program > Ez a kézikönyv a **pénztárosoknak** (valutaváltó kollégáknak) készült. A program asztali változatát (telepített Pénztár kliens) használja. > Ha bármi nem úgy működik, ahogy itt le van írva, hívja a vezetőjét — **ne próbálkozzon parancssorral, fájl-szerkesztéssel vagy bármilyen műszaki beavatkozással**. --- ## Tartalom 1. [Bejelentkezés a programba](#1-bejelentkezés-a-prog"
+    tags: [penztaros, kezikonyv, valutavalto, program, penztarosoknak, kollegaknak, keszult, asztali, valtozatat, telepitett]
+  - id: f489fc555a27c420
+    type: operational-receipt
+    title: ReceiptPrint.tsx
+    source_path: frontend-react/src/components/ReceiptPrint.tsx
+    summary: "import { useRef, useEffect, useState } from 'react' import QRCode from 'qrcode' import { Printer, X } from 'lucide-react' import { Transaction } from '../services/api/index' import { formatDecimal, formatInteger } from '../utils/numberFormat' import { toast } from './ui/toaster' import { useTranslation } from 'react-i18next' interface ReceiptPrintProps { transaction: Transaction companyName: string companyFullName?: "
+    tags: [receiptprint, tsx, import, useref, useeffect, usestate, from, react, qrcode, printer]
+  - id: 419cb5231bd853d4
+    type: operational-receipt
+    title: ReceiptPreviewModal.tsx
+    source_path: frontend-react/src/components/electron/ReceiptPreviewModal.tsx
+    summary: "/** * ReceiptPreviewModal — Bizonylat előnézet és nyomtatás modal. * * Böngészőben is megjelenítható (előnézet), de a tényleges nyomtatás * (window.electronAPI.printReceipt) csak Electron-ban működik. * * FUNKCIÓK: * - Bizonylat előnézet (80mm hőnyomtató formátum) * - QR kód megjelenítés * - Nyomtatás megerősítés * - Újranyomtatás lehetőség */ import { useCallback, useEffect, useRef, useState } from 'react'; import t"
+    tags: [receiptpreviewmodal, tsx, bizonylat, elonezet, nyomtatas, modal, bongeszoben, megjelenithato, tenyleges, window]
+  - id: dc4f2735adac335d
+    type: operational-receipt
+    title: ReceiptPage.tsx
+    source_path: frontend-react/src/pages/receipts/ReceiptPage.tsx
+    summary: "import { useState, useEffect, useMemo, useCallback } from 'react' import { Receipt as ReceiptIcon, Search, Printer, Eye, Clock } from 'lucide-react' import { receiptApi, Receipt } from '../../services/api/index' import { getErrorMessage } from '../../utils/errorHandling' import { toast } from '../../components/ui/toaster' import { useAuthStore } from '../../stores/authStore' import ReceiptPreviewModal from '../../com"
+    tags: [receiptpage, tsx, import, usestate, useeffect, usememo, usecallback, from, react, receipt]
+  - id: 8649b8066423f842
+    type: semantic-reference
+    title: LegacyCustomerPanel.tsx
+    source_path: frontend-react/src/pages/transactions/components/LegacyCustomerPanel.tsx
+    summary: "import { useState, useRef } from 'react' import { User, Search, CheckCircle } from 'lucide-react' import type { IdentificationLevel } from '../hooks/useIdentificationLevel' import { useTranslation } from 'react-i18next' export interface Customer { id: string name: string documentType: string documentNumber: string nationality: string } interface CustomerPanelProps { customer: Customer | null onCustomerChange: (custom"
+    tags: [legacycustomerpanel, tsx, import, usestate, useref, from, react, user, search, checkcircle]
+  - id: 5d388c3d8901dc5f
+    type: operational-receipt
+    title: receipt.ts
+    source_path: frontend-react/src/types/receipt.ts
+    summary: "/** * Bizonylat-related shared types. * Portolva a penztar-client/src/types/index.ts fájlból. */ export type PrintJobType = | 'sell' | 'buy' | 'transfer' | 'storno' | 'conversion' | 'closing' | 'handling_fee' | 'cash_status' | 'vault_closing' | 'kktg_transfer'; export interface PrintReceiptData { type: PrintJobType; companyType: 'BEST_CHANGE' | 'EXPRESSZ'; receiptNumber: string; branchCode: string; cashierName: strin"
+    tags: [receipt, bizonylat, related, shared, types, portolva, penztar, client, src, index]
+  - id: 6fb699102104896e
+    type: operational-receipt
+    title: receipt.test.ts
+    source_path: frontend-react/src/utils/receipt.test.ts
+    summary: "import { describe, it, expect } from 'vitest' import { generateReceiptNumber, parseReceiptNumber } from './receipt' import type { TransactionType } from './receipt' // ─────────────────────────── generateReceiptNumber ─────────────────────────── describe('generateReceiptNumber', () => { it('SELL → E prefix', () => { expect(generateReceiptNumber('SELL', '001', 100001)).toBe('E001100001') }) it('BUY → V prefix', () => "
+    tags: [receipt, test, import, describe, expect, from, vitest, generatereceiptnumber, parsereceiptnumber, type]
+  - id: e3eb1c6b36d5d18d
+    type: operational-receipt
+    title: receipt.ts
+    source_path: frontend-react/src/utils/receipt.ts
+    summary: "/** * Bizonylat szám generálás — backend ReceiptSequenceService kompatibilis. * * Formátum: PREFIX + branchCode(3 számjegy, 0-paddelt) + sorszám(6 számjegy, 0-paddelt) * Példa: E001100001 (eladás, 001-es pénztár, 100001-es sorszám) * * Prefix-ek (backend getPrefix() alapján): * E = Eladás (SELL) * V = Vétel (BUY) * F = Átadás ki (TRANSFER_OUT) * U = Átvétel be (TRANSFER_IN) * K = Konverzió (CONVERSION) * W = Western "
+    tags: [receipt, bizonylat, szam, generalas, backend, receiptsequenceservice, kompatibilis, formatum, prefix, branchcode]
+  - id: efb3ff29a08872f2
+    type: short-term-preferences
+    title: "AI Review Zero-Tolerance Mandate (v2.3.18+)"
+    source_path: vault/feedback/ai-review-mandate-zero-tolerance.md
+    summary: "--- date: 2026-04-29 type: mandate priority: P0 — KÖTELEZŐ ÉRVÉNYŰ source: User direktíva (Kósa Zoltán) 2026-04-29 20:55 CEST --- # AI Review Zero-Tolerance Mandate (v2.3.18+) ## A szabály > **Addig nem léphetsz tovább, amíg a GitHub Codex + Sourcery AI Botok jelentéseit > le nem kérted a GitHub-ról, és nem javítottad azokat a jelzett hibákat.** > > **Minden PR / Merge után KÖTELEZŐ:** > 1. **Várni** a Sourcery + Cod"
+    tags: [review, zero, tolerance, mandate, date, 2026, type, priority, kotelezo, ervenyu]
+  - id: 9280082f77f749c6
+    type: short-term-preferences
+    title: "KÖTELEZŐ ÉRVÉNYŰ: nem-informatikus végfelhasználó alapelv"
+    source_path: vault/feedback/auto-installer-everything-mandatory.md
+    summary: "--- created: 2026-05-05 priority: NULLADIK (legmagasabb) hatály: minden conversation, minden Valutaváltó deliverable forrás: Kósa Zoltán direkt utasítás trigger-szituáció: Borsi-Helga-Tomi-Heni manual-debug-ciklus 2026-05-04 --- # KÖTELEZŐ ÉRVÉNYŰ: nem-informatikus végfelhasználó alapelv ## Az alapszabály **A kollégák NEM informatikusok ÉS NEM programozók.** Pénztárosok, főértéktárosok, irodai dolgozók, terül eti vez"
+    tags: [kotelezo, ervenyu, nem, informatikus, vegfelhasznalo, alapelv, created, 2026, priority, nulladik]
+  - id: 3468099bbc20e2b9
+    type: short-term-preferences
+    title: "Szabály"
+    source_path: vault/feedback/cash-register-architecture.md
+    summary: "--- name: Pénztár regisztrálás + offline/online mód különválasztása description: Penztar-client telepítés első dolga a szerver-regisztráció; offline módban a SyncEngine nem spamelhet type: feedback --- # Szabály A penztar-client telepítés időben **online módban kell**, hogy regisztrálja a pénztárat a szerveren. Később, ha offline módba kerül (vagy azon marad), a SyncEngine NE próbáljon tranzakciókat uploadolni — ez H"
+    tags: [szabaly, name, penztar, regisztralas, offline, online, mod, kulonvalasztasa, description, client]
+  - id: bae47327909280ed
+    type: short-term-preferences
+    title: "Folyamatos tesztelési protokoll (KÖTELEZŐ)"
+    source_path: vault/feedback/continuous-testing-protocol-mandatory.md
+    summary: "--- title: Folyamatos tesztelési protokoll (KÖTELEZŐ) date: 2026-05-04 author: Kósa Zoltán priority: critical applyTo: all-ai-agents status: active hatalyba_lepes: 2026-05-04 --- # Folyamatos tesztelési protokoll — KÖTELEZŐ > **2026-05-04 user-direktíva (Kósa Zoltán):** > > \"Ez az utasítás kötelező érvényű utasítás minden mesterséges intelligencia > ügynök számára. A repoban végzett fejlesztések során a fejlesztett p"
+    tags: [folyamatos, tesztelesi, protokoll, kotelezo, title, date, 2026, author, kosa, zoltan]
+  - id: 8dba4bf2ac880435
+    type: short-term-preferences
+    title: electron-architecture.md
+    source_path: vault/feedback/electron-architecture.md
+    summary: "--- name: electron-architecture-principle description: Az Electron csak lokális backend (SQLite, offline, nyomtatás) — a frontend-react a UI réteg mindkét platformon (web + Electron). Offline módban automatikusan lokális adatokra vált. type: feedback --- Az Electron alkalmazásban a frontend-react kódnak kell futnia, NEM külön penztar-client renderernek. **Why:** A felhasználó (CEO) kifejezetten kérte: \"Az elektronnak"
+    tags: [electron, architecture, name, principle, description, csak, lokalis, backend, sqlite, offline]
+  - id: 80f13b2543a002a8
+    type: short-term-preferences
+    title: "Hallucinációs Kör Megszüntetése — Iparági Standard Kötelező"
+    source_path: vault/feedback/hallucinacio-megszuntetese.md
+    summary: "--- date: 2026-04-29 type: mandate priority: P0 — KÖTELEZŐ ÉRVÉNYŰ source: User direktíva (Kósa Zoltán) 2026-04-29 21:25 CEST trigger: 9 sorozatos Sourcery P2 follow-up PR (v2.3.13 → v2.3.22) ugyanazon a fájlon --- # Hallucinációs Kör Megszüntetése — Iparági Standard Kötelező ## A probléma (mai tanulság) **v2.3.13 → v2.3.22 = 9 verzió 1 órán belül**, mind ugyanazon a heartbeat-config fájlon: - v2.3.13: `logger.info` "
+    tags: [hallucinacios, kor, megszuntetese, iparagi, standard, kotelezo, date, 2026, type, mandate]
+  - id: 62d6430a67fa1340
+    type: short-term-preferences
+    title: ignore-bence-openclaw-deprecated.md
+    source_path: vault/feedback/ignore-bence-openclaw-deprecated.md
+    summary: "--- name: Bence + OpenClaw zaj figyelmen kívül hagyandó description: Bence auto-review trigger bot és OpenClaw (Codex) GitHub-integration emailek nem érdemi feedback — ignore type: feedback originSessionId: 05049cfb-3194-4601-a138-e8cb1aca09cc --- A `kosazoltan/valutavalto-program` repón **Bence** (saját auto-review trigger bot, `github-actions[bot]`) és **OpenClaw** (Codex / `chatgpt-codex-connector[bot]`) értesítés"
+    tags: [ignore, bence, openclaw, deprecated, name, zaj, figyelmen, kivul, hagyando, description]
+  - id: 6802457a40ad0167
+    type: short-term-preferences
+    title: "Lint CI Codex Sourcery Copilot — minden PR-en kotelezo, automatikus"
+    source_path: vault/feedback/lint-ci-codex-sourcery-every-pr-mandatory.md
+    summary: "--- name: Lint CI Codex Sourcery Copilot — kotelezo MINDEN PR-en automatikusan description: User-direktiva 2026-05-03 21:50 + 21:53 CEST. Minden PR utan a lint CI + Codex + Sourcery + Copilot review-k AUTOMATIKUS lekerdezese + javitasa, lustasag/hazugsag/mellebeszeles nelkul. NEM kerdezni meg a usert, NEM defer-elni P3-ra hivatkozva, NEM \"majd kesobb\"-ra tenni. type: feedback priority: P0 — felulirja a defaultokat cr"
+    tags: [lint, codex, sourcery, copilot, minden, kotelezo, automatikus, name, automatikusan, description]
+  - id: b639a246e0db9a62
+    type: short-term-preferences
+    title: "Kötelező memóriaírás minden befejezett munkafolyamat után"
+    source_path: vault/feedback/mandatory-memory-after-each-workflow.md
+    summary: "--- title: Kötelező memóriaírás minden befejezett munkafolyamat után created: 2026-05-07 type: feedback priority: P0 status: active source: user directive 2026-05-07 21:37 CEST --- # Kötelező memóriaírás minden befejezett munkafolyamat után Minden Valutaváltó munkafolyamat lezárásakor kötelező a memória frissítése. Hatókör: - Valutaváltó örökölt/Anti programhoz kapcsolódó elemzés - feldolgozott bizonylatok / receipt "
+    tags: [kotelezo, memoriairas, minden, befejezett, munkafolyamat, utan, title, created, 2026, type]
+  - id: 2f571bb0a3d64034
+    type: short-term-preferences
+    title: "Memóriahasználati és tudáskarbantartási protokoll (KÖTELEZŐ)"
+    source_path: vault/feedback/memory-protocol-mandatory.md
+    summary: "--- title: Memóriahasználati és tudáskarbantartási protokoll (KÖTELEZŐ) date: 2026-05-04 author: Kósa Zoltán priority: critical applyTo: all-ai-agents status: active hatalyba_lepes: 2026-05-04 --- # Memóriahasználati és tudáskarbantartási protokoll — KÖTELEZŐ > **2026-05-04 user-direktíva (Kósa Zoltán):** > > \"Ez az utasítás kötelező érvényű minden mesterséges intelligencia ügynök számára. > A repoban végzett minden "
+    tags: [memoriahasznalati, tudaskarbantartasi, protokoll, kotelezo, title, date, 2026, author, kosa, zoltan]
+  - id: ab190cdf258f2b79
+    type: short-term-preferences
+    title: no-hallucination-lateral-thinking.md
+    source_path: vault/feedback/no-hallucination-lateral-thinking.md
+    summary: "--- name: KOTELEZO ERVENYU - nincs halucinacio + lateralis gondolkodas dead-end-en description: Tilos halucinacio (csak verifikalt allitas) + tilos ertelmetlen ongerjeszto hibakereso hook + dead-end-en kotelezo perspektivavaltas type: feedback originSessionId: 05049cfb-3194-4601-a138-e8cb1aca09cc --- **Kotelezo ervenyu munkamod (user-direktiva 2026-04-27, valutavalto-program repo, minden Claude/Opus session-re).** ##"
+    tags: [hallucination, lateral, thinking, name, kotelezo, ervenyu, nincs, halucinacio, lateralis, gondolkodas]
+  - id: d28f1563f9383906
+    type: short-term-preferences
+    title: "Saját céges szerver adathozzáférés — kötelező direktíva"
+    source_path: vault/feedback/own-server-data-access.md
+    summary: "--- title: \"Saját céges szerver adathozzáférés — kötelező direktíva\" date: 2026-04-30 type: feedback priority: P0 --- # Saját céges szerver adathozzáférés **User-direktíva (2026-04-30, Kósa Zoltán):** Az `excvaluta.com` (Hetzner HA) a felhasználó **saját céges production szervere** (EBC Zrt. tulajdon). A fejlesztési munkához szükséges minden adat (API hívások, DB lekérdezések, logok, konfigurációk) **jogosan hozzáfér"
+    tags: [sajat, ceges, szerver, adathozzaferes, kotelezo, direktiva, title, date, 2026, type]
+  - id: 42ca3b01bab30066
+    type: short-term-preferences
+    title: "Session-zárási és visszaellenőrzési protokoll (KÖTELEZŐ)"
+    source_path: vault/feedback/session-closing-protocol-mandatory.md
+    summary: "--- title: Session-zárási és visszaellenőrzési protokoll (KÖTELEZŐ) date: 2026-05-04 author: Kósa Zoltán priority: critical applyTo: all-ai-agents status: active hatalyba_lepes: 2026-05-04 --- # Session-zárási és visszaellenőrzési protokoll — KÖTELEZŐ > **2026-05-04 user-direktíva (Kósa Zoltán):** > > \"Az utasítás kötelező érvényű utasítás, kötelező végrehajtani, halucináció, > mellébeszélés, lustaság, halogatás, tév"
+    tags: [session, zarasi, visszaellenorzesi, protokoll, kotelezo, title, date, 2026, author, kosa]
+  - id: 3d57eb07c5c366c7
+    type: operational-procedure
+    title: "Push → Merge → Deploy ciklus minden PR-re"
+    source_path: vault/procedures/push-merge-cycle.md
+    summary: "--- title: Push → Merge → Deploy ciklus minden PR-re type: procedural-memory trigger: \"Új commit pushelve feature branch-re VAGY user 'merge' utasítást ad\" authority: KÖTELEZŐ (CLAUDE.md \"push = commit + merge + BRANCH DELETE\" v2 szigorítás) created: 2026-05-02 sources: - feedback/ai-review-mandate-zero-tolerance.md - CLAUDE.md \"push-merge folyamat\" szekció --- # Push → Merge → Deploy ciklus > **Szabály:** Minden pus"
+    tags: [push, merge, deploy, ciklus, minden, title, type, procedural, memory, trigger]
+  - id: f9b1c277f9bc7632
+    type: operational-procedure
+    title: "Research-first hibajavítás (NO trial-and-error)"
+    source_path: vault/procedures/research-first-fix.md
+    summary: "--- title: Research-first hibajavítás (NO trial-and-error) type: procedural-memory trigger: \"Hibát találsz vagy bugfix feladat érkezik\" authority: KÖTELEZŐ (Globális CLAUDE.md \"research-first\" + feedback/hallucinacio-megszuntetese.md) created: 2026-05-02 sources: - C:\\Users\\Kósa Zoltán\\.claude\\CLAUDE.md (Kötelező hibajavítási workflow) - feedback/hallucinacio-megszuntetese.md - feedback/no-hallucination-lateral-think"
+    tags: [research, first, hibajavitas, trial, error, title, type, procedural, memory, trigger]
+  - id: 9a76bb4104add98b
+    type: long-term-reference
+    title: "2026 AI Agent Memory Architecture — State of the Art"
+    source_path: vault/references/2026-memory-architecture-sota.md
+    summary: "--- title: 2026 AI Agent Memory Architecture — State of the Art type: reference created: 2026-05-02 sources: Zep arXiv 2501.13956, Letta docs.letta.com, Mem0 mem0.ai blog, Linkedin Cognitive Memory Agent (InfoQ 2026-04) --- # 2026 AI ügynök memória architektúra — Állapotjelentés > **Forrás user-direktíva (2026-05-02):** \"2026-ban a memória már nem csak az előző üzenetek betöltését jelenti. Három fő irány van.\" A jele"
+    tags: [2026, agent, memory, architecture, state, art, title, type, reference, created]
+  - id: 1b5cd8a737ae1658
+    type: long-term-reference
+    title: "B6 SetupWizard branch-mismatch — security-aware design proposal"
+    source_path: vault/references/b6-setupwizard-branch-mismatch-design.md
+    summary: "--- title: B6 SetupWizard branch-mismatch — security-aware design proposal status: design created: 2026-04-30 type: design-doc --- # B6 SetupWizard branch-mismatch — security-aware design ## Probléma (audit) > \"B6. Branch-mismatch: SetupWizard választás IGNORE-olva > Tünet: Wizard BR035 (Szeged Tisza Sarok), DE tranzakció-prefix V017 (BR017), > header 'Központi', Pénztár 101\" A pénztár-kliens SetupWizard-ban a felhas"
+    tags: [setupwizard, branch, mismatch, security, aware, design, proposal, title, status, created]
+  - id: c6aa6701bcc74950
+    type: long-term-reference
+    title: "Backend audit follow-up — multi-tenant + index sprint"
+    source_path: vault/references/backend-audit-followup-2026-05-06.md
+    summary: "--- title: Backend audit follow-up — multi-tenant + index sprint type: reference created: 2026-05-06 status: PARTIALLY_IMPLEMENTED (F2 done, F1+F3+F4+F5 deferred) --- # Backend audit follow-up — 2026-05-06 ## Forrás Háttér audit-agent eredménye (2026-05-06 22:25 CEST), tényalapú repo-olvasás után. A user-direktíva: minden hibát javítani. Egy session-be egyszerre nem fér bele mind, ezért a kritikus pénzügyi hatásút (F"
+    tags: [backend, audit, follow, multi, tenant, index, sprint, title, type, reference]
+  - id: 3c419d40b03cf6ad
+    type: long-term-reference
+    title: "EBC cég-adatai (2026-04-20, user-megerositett)"
+    source_path: vault/references/company-data-ebc-zrt.md
+    summary: "--- name: EBC cég-adatok (bizonylatfejlec) description: Exclusive Best Change Zrt. hivatalos adatai - bizonylat + szamla fejlec type: project --- # EBC cég-adatai (2026-04-20, user-megerositett) **Hivatalos név**: EXCLUSIVE BEST Change Zrt. **Szekhely**: 2023. 7621 Pécs, Citrom utca 2-6. földszint 26. ajtó. **Adószám**: 32313332-2-02 **Cégjegyzékszám**: 02 10 060505 **Hasznalat**: - Minden valutavalto bizonylat fejle"
+    tags: [ebc, ceg, adatai, 2026, user, megerositett, name, adatok, bizonylatfejlec, description]
+  - id: bee346f18185a527
+    type: long-term-reference
+    title: "Error-reporting architektúra (Sentry-style, in-house)"
+    source_path: vault/references/error-reporting-architecture.md
+    summary: "# Error-reporting architektúra (Sentry-style, in-house) > **Tárgy:** Valutaváltó Pénztár automatikus kliens-hibajelentés pipeline. > **Felépítés dátuma:** 2026-05-05. > **Iparági inspiráció:** Sentry data-ingest model (HTTP POST + persistence + alerting), de saját szervereinken (Hetzner + PostgreSQL). ## Miért nem külső SaaS (Sentry, Bugsnag, Rollbar)? 1. **Tokenek és PII saját kontroll alatt** — magyar valuta ERP-be"
+    tags: [error, reporting, architektura, sentry, style, house, targy, valutavalto, penztar, automatikus]
+  - id: 13784837974ec20f
+    type: long-term-reference
+    title: "F1, F4, F13 — backend audit findings DESIGN decision doc"
+    source_path: vault/references/f1-f13-decision-doc-2026-05-07.md
+    summary: "--- title: F1, F4, F13 — backend audit findings DESIGN decision doc type: reference created: 2026-05-07 status: WONT_FIX (with documented rationale) relates_to: backend-audit-followup-2026-05-06.md --- # F1, F4, F13 — DESIGN decision (WONT FIX with rationale) A `backend-audit-followup-2026-05-06.md` audit-agent által generált findingek közül 3 olyan tétel maradt, amelyik **NEM bug**, hanem **szándékolt design choice*"
+    tags: [f13, backend, audit, findings, design, decision, doc, title, type, reference]
+  - id: 2787932b52cacfbe
+    type: long-term-reference
+    title: integracio-vezerlokonyv.md
+    source_path: vault/references/integracio-vezerlokonyv.md
+    summary: "--- name: Integrációs vezérlőkönyv (Downloads/integracio-vezerlokonyv.md) description: Teljes 96k-tokenes útmutató React+Spring Boot+Electron+Hetzner komplex rendszerhez; 43 szekció, 6 playbook, 50-pontos integrációs ellenőrzőlista, 15 AI stop-feltétel type: reference --- **Path:** `C:\\Users\\Kósa Zoltán\\Downloads\\integracio-vezerlokonyv.md` (5777 sor, 96k token) **Verzió-célok:** React 19 / Vite 6 / Spring Boot 3.5 /"
+    tags: [integracio, vezerlokonyv, name, integracios, downloads, description, teljes, 96k, tokenes, utmutato]
+  - id: 0878c2c72f945586
+    type: long-term-reference
+    title: "Legacy Anti-Valutaváltó Rendszer — Forrás-igazság a moderntől szétcsúszott üzleti logikához"
+    source_path: vault/references/legacy-anti-system.md
+    summary: "--- type: reference date: 2026-04-29 source: D:\\repo\\valutavalto-program\\Anti\\ (Delphi 7 + Java legacy) priority: P0 — modern Pénztár Electron bug-ok forrásigazsága related_docs: - D:\\repo\\valutavalto-program\\Anti\\antivaluta.md (805 sor, top-level) - D:\\repo\\valutavalto-program\\Anti\\ANTI_MODERNIZATION_CAMERA_CASHDESK_MASTERPLAN.md - D:\\repo\\valutavalto-program\\docs\\knowledge\\legacy-reverse-engineering\\INDEX.md (27 fá"
+    tags: [legacy, anti, valutavalto, rendszer, forras, igazsag, moderntol, szetcsuszott, uzleti, logikahoz]
+  - id: 4fcdab5d4e09fd96
+    type: long-term-reference
+    title: "Zálog + Ékszer ERP — Bootstrap Guide"
+    source_path: vault/references/new-project-bootstrap-guide.md
+    summary: "# Zálog + Ékszer ERP — Bootstrap Guide > **Készült:** 2026-05-05 > **Forrás:** Valutavaltó Pénztár (https://github.com/kosazoltan/valutavalto-program) 2026-04 — 2026-05 tapasztalatok > **Cél:** új ERP projekt (zálog + ékszer kereskedelem) gyorsabb felépítése a már bizonyított architektúrával, az itt iterációkon át javított hibák nélkül --- ## 0. Bevezetés ### 0.1 Mi ez a dokumentum Ez egy **technikai bootstrap guide*"
+    tags: [zalog, ekszer, erp, bootstrap, guide, keszult, 2026, forras, valutavalto, penztar]
+  - id: fde2e904770ae7b2
+    type: long-term-reference
+    title: "NGM 23/2014 (VI.30.) — szigoru szamadasu bizonylatok"
+    source_path: vault/references/ngm-szamadas-23-2014.md
+    summary: "--- name: NGM 23/2014 szigoru szamadasu bizonylatok (Valuta) description: Magyar szamlazasi jogszabaly kulcstetelek - valutaválto penztar-kontextusra applikalva type: reference --- # NGM 23/2014 (VI.30.) — szigoru szamadasu bizonylatok ## Sorszam-szabalyok - Folyamatos, hezagok nelkuli, egyedi sorszam minden bizonylatra. - A sorszam az **adoigazgatasi azonositasra alkalmas**. - Sorszam-gap vagy duplikacio ado-birsago"
+    tags: [ngm, 2014, szigoru, szamadasu, bizonylatok, name, valuta, description, magyar, szamlazasi]
+  - id: a329f70673d66153
+    type: long-term-reference
+    title: "Valutavaltó Pénztár — Operációs Kézikönyv AI Ügynöknek"
+    source_path: vault/references/operational-handbook.md
+    summary: "# Valutavaltó Pénztár — Operációs Kézikönyv AI Ügynöknek > **Készült:** 2026-05-05 > **Forrás:** Valutavaltó Pénztár pipeline 2026-04-23 — 2026-05-05 közötti tapasztalatai > **Cél:** kötelező érvényű utasítás bármely AI Ügynök (Claude, GPT, Codex, Sonnet stb.) számára, hogy a Lint → Merge → Push → Deploy → Tesztkörnyezet → Hetzner kezelés → Installer EXE pipeline-t **professzionálisan, tényalapon, hallucináció nélkül"
+    tags: [valutavalto, penztar, operacios, kezikonyv, ugynoknek, keszult, 2026, forras, pipeline, kozotti]
+  - id: 351f93f17a28a6df
+    type: long-term-reference
+    title: "P2 polish features — design + skeleton (2026-05-06)"
+    source_path: vault/references/p2-features-design-2026-05-06.md
+    summary: "--- title: P2 polish features — design + skeleton (2026-05-06) type: reference created: 2026-05-06 status: PLANNED (külön sprint-ekben implementálandó) --- # P2 features — design + implementation skeleton ## P2-1 VFD (Vacuum Fluorescent Display) ügyfélkijelző **Cél**: Az Electron pénztár-kliens másodlagos ablakban megjeleníti az ügyfélnek a tranzakció menetét — összeget, valutát, árfolyamot, sztornó figyelmeztetést. "
+    tags: [polish, features, design, skeleton, 2026, title, type, reference, created, status]
+  - id: 2b410f23b248e5da
+    type: long-term-reference
+    title: Product Ready Roadmap - 2026-05-06 tenyalapu terv
+    source_path: vault/references/product-ready-roadmap-2026-05-06.md
+    summary: "--- title: Product Ready Roadmap - 2026-05-06 tenyalapu terv type: reference created: 2026-05-06 supersedes: - v2.4-sprint-roadmap.md (frissebb tenyek alapjan) status: ACTIVE author: Claude Opus 4.7 + Kosa Zoltan session --- # EXC Valutavalto ERP - Product Ready Roadmap (2026-05-06) ## TL;DR > **2026-05-06 22:00 KORREKCIO:** A korabbi \"~85% Product Ready\" becsles szubjektiv > talalgatas volt meresi alap nelkul - KIVE"
+    tags: [product, ready, roadmap, 2026, tenyalapu, terv, title, type, reference, created]
+  - id: 4df3091e85acd201
+    type: long-term-reference
+    title: Repo Memory Mirror
+    source_path: vault/references/repo-memory/repo-memory-mirror.md
+    summary: "--- title: Repo Memory Mirror generated: 2026-05-07T20:50:56.301Z --- # Repo Memory Mirror Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre. ## Layer Counts - sources: 193 - generated: 2026-05-07T20:50:56.301Z ## Sources - [[AGENTS.md]] — `AGENTS.md` (short-term-core) - [[AI_CONSTITUTION.md — AI működési alkotmány]] — `AI_CONSTITUTION.md` (short-term-core) - [[Valutaváltó ERP — Claude Code kontextus]] — `"
+    tags: [repo, memory, mirror, title, generated, 2026, 07t20, 301z, fajl, lokalis]
+  - id: f94f2362634e3313
+    type: long-term-reference
+    title: "v2.4 sprint roadmap — C/E/F major work plans"
+    source_path: vault/references/v2.4-sprint-roadmap.md
+    summary: "--- title: v2.4 sprint roadmap — C/E/F major work plans created: 2026-04-30 status: planning (felhasznaloi review szukseges) --- # v2.4 Sprint roadmap — major work plans A 2026-04-29/30 autonóm session lezárása után 3 lényegi feladat maradt, mind **felhasználói döntést igényel** és NEM auto-fixelhető: ## C) B6 SetupWizard branch-mismatch — security architecture **Kontextus**: a desktop pénztáros app SetupWizard-jában"
+    tags: [sprint, roadmap, major, work, plans, title, created, 2026, status, planning]
+  - id: cb4a8ddb378a69e3
+    type: long-term-reference
+    title: "Vault evolution — gap-analízis a 2026 SOTA-hoz képest"
+    source_path: vault/references/vault-evolution-gap-analysis.md
+    summary: "--- title: Vault evolution — gap-analízis a 2026 SOTA-hoz képest type: reference created: 2026-05-02 companion: 2026-memory-architecture-sota.md --- # Vault gap-analízis (2026-05-02) ## TL;DR A jelenlegi repo-local `D:\\repo\\valutavalto-program\\vault\\` egy egyszerű **fájlrendszeres fact-store**: `sessions/`, `feedback/`, `procedures/`, `references/`. Erős a kronologikus naplózásban (timestamping), de **3 SOTA képesség"
+    tags: [vault, evolution, gap, analizis, 2026, sota, hoz, kepest, title, type]
+  - id: 53eeefa5ffe5383a
+    type: medium-term-episodic
+    title: "2026-04-27 Session: Audit-NO-GO iter3 + memóriarendszer refaktor"
+    source_path: vault/sessions/2026-04-27-audit-NO-GO-iter3-and-memory-cleanup.md
+    summary: "--- date: 2026-04-27 session_type: audit-fix + memory-system-overhaul duration: ~3 hours (10:00 - 13:00 CEST) main_head_start: 60f6b913 main_head_end: 29c319f3 --- # 2026-04-27 Session: Audit-NO-GO iter3 + memóriarendszer refaktor ## Összefoglaló Két nagy munkafolyamat egy session-ben: 1. **GitHub Copilot 2026-04-27 11:05 NO-GO audit fixe** — PR #238, 7 commit, mergelve 2. **Memóriarendszer egyszerűsítése** — több pá"
+    tags: [2026, session, audit, iter3, memoriarendszer, refaktor, date, session_type, fix, memory]
+  - id: 0d5bb9aa6ab2e5f6
+    type: medium-term-episodic
+    title: "2026-04-27 Session - Dependabot batch + housekeeping (issue #110 + memory)"
+    source_path: vault/sessions/2026-04-27-dependabot-batch-housekeeping.yaml
+    summary: "# 2026-04-27 Session - Dependabot batch + housekeeping (issue #110 + memory) session_id: 2026-04-27-dependabot-batch-housekeeping date: 2026-04-27 claude_model: claude-opus-4-7-1m scope: A) issue #110 zarasa, B) memoria + CLAUDE.md frissites, C) Dependabot 21 PR batch main_head_start: 60f6b913 main_head_end: da87e7d7 ## Osszefoglalas A 2026-04-25 -> 2026-04-27 audit-cycle (PR #229..#236, 8 PR) utan a 21 nyitott Depen"
+    tags: [2026, session, dependabot, batch, housekeeping, issue, 110, memory, session_id, date]
+  - id: 1df2307480773f7b
+    type: medium-term-episodic
+    title: "2026-04-27 — Full-day 15 PR maraton"
+    source_path: vault/sessions/2026-04-27-full-day-15-PR-marathon.md
+    summary: "--- date: 2026-04-27 session_type: dependabot-batch + audit-cycle + SB4-attempt + emergency-hotfixes duration: ~6 hours (10:00 - 16:30 CEST) main_head_start: 60f6b913 main_head_end: 75cc33ae prs_merged: 15 hotfixes: 2 production_outages: 2 (mind ~3 perc, gyors revert-tel restore) --- # 2026-04-27 — Full-day 15 PR maraton ## Összefoglaló Egy nap alatt **15 PR + 2 hotfix mergelve**, ebből **2 production outage** (gyors"
+    tags: [2026, full, day, maraton, date, session_type, dependabot, batch, audit, cycle]
+  - id: e66bd86901bdbfde
+    type: medium-term-episodic
+    title: "Autonóm éjszakai session FINAL — v2.3.31 emergency → v2.3.59 (29 PR)"
+    source_path: vault/sessions/2026-04-29-autonom-night-session-FINAL.md
+    summary: "--- date: 2026-04-29 → 2026-04-30 title: Autonóm éjszakai session FINAL — v2.3.31 emergency → v2.3.59 (29 PR) type: session duration: 22:00 → 00:35 CEST (~2h 35 perc) status: closed total_prs: 29 closed_by: user-direktiva (\"beleragadtál a hurokba\") --- # Autonóm éjszakai session FINAL ## Lezárás oka **User-direktíva 00:30 CEST**: \"Te most mit javítesz ennyire szorgalmasan és hosszan, olyan mintha beleragadtál volna m"
+    tags: [autonom, ejszakai, session, final, emergency, date, 2026, title, type, duration]
+  - id: 0eccccd7a8ac1659
+    type: medium-term-episodic
+    title: "Autonóm éjszakai session — v2.3.31 emergency hotfix → v2.3.46 (16 PR)"
+    source_path: vault/sessions/2026-04-29-autonom-night-session-v2.3.31-46.md
+    summary: "--- date: 2026-04-29 title: Autonóm éjszakai session — v2.3.31 emergency hotfix → v2.3.46 (16 PR) type: session duration: ~22:00 → 23:42 CEST (1h 42 perc) status: in_progress total_prs: 16 --- # Autonóm éjszakai session — 2026-04-29 ## Eredmény (eddig) **16 PR** mergelve, **production HTTP 200** mind végig fenntartva, **7+ Hetzner deploy SUCCESS**. | PR | Verzió | Audit fix | Típus | |----|--------|-----------|------"
+    tags: [autonom, ejszakai, session, emergency, hotfix, date, 2026, title, type, duration]
+  - id: 28db8f9f7f67b43f
+    type: medium-term-episodic
+    title: "2026-04-29 — Értéktári mode (mode='ertektar') teljes audit"
+    source_path: vault/sessions/2026-04-29-ertektar-mode-audit.md
+    summary: "--- date: 2026-04-29 session_type: ertektar-mode-audit context: v2.3.9 reinstall után, user 2. teszt — ezúttal mode='ertektar' priority: P0 — éles érték-treasury teszt --- # 2026-04-29 — Értéktári mode (mode='ertektar') teljes audit ## Setup - App: Penztar.exe v2.3.9 (post-Setup-2.3.9) - App mode: **ertektar** (sidebar group: \"ÉRTÉKTÁR (LOKÁL)\" mutatva) - User: bootstrap admin (Pénztáros: \"Rendszer Admin\") - Branch ("
+    tags: [2026, ertektari, mode, ertektar, teljes, audit, date, session_type, context, reinstall]
+  - id: 6234106868a2d2fe
+    type: medium-term-episodic
+    title: "2026-04-29 — Főértéktáros teljes menüpont-audit (33/33 elemes)"
+    source_path: vault/sessions/2026-04-29-foertektar-teljes-audit.md
+    summary: "--- date: 2026-04-29 session_type: foertektar-teljes-audit context: 33 főértéktáros menüpont production audit (excvaluta.com v2.3.12) priority: P1 — UX bugok dokumentálása --- # 2026-04-29 — Főértéktáros teljes menüpont-audit (33/33 elemes) ## Setup - **URL:** https://excvaluta.com (Hetzner production v2.3.12) - **Tool:** `mcp__Claude_in_Chrome__*` (felhasználó saját Chrome browser, auto-login cookie) - **Mode:** `fu"
+    tags: [2026, foertektaros, teljes, menupont, audit, elemes, date, session_type, foertektar, context]
+  - id: 2366a36a97d532a2
+    type: medium-term-episodic
+    title: "2026-04-29 — Pénztár app TELJES KÖRŰ menü-audit (v2.3.8) — VÉGLEGES"
+    source_path: vault/sessions/2026-04-29-full-program-audit.md
+    summary: "--- date: 2026-04-29 session_type: end-to-end-program-audit context: v2.3.8 Setup OK, KOSA bejelentkezve (pénztáros, MANAGER role per V121) priority: P0 — éles teszt-elv elválasztó + v2.3.9 kódfix-blueprint --- # 2026-04-29 — Pénztár app TELJES KÖRŰ menü-audit (v2.3.8) — VÉGLEGES ## Setup - App version: Penztar.exe v2.3.8 (FileVersion 2.3.8.0) - Worker: KOSA (Kosa Zoltan), V121 promote_kosa_to_manager → MANAGER role "
+    tags: [2026, penztar, app, teljes, koru, menu, audit, vegleges, date, session_type]
+  - id: 92c914e41a93eff8
+    type: medium-term-episodic
+    title: "2026-04-29 Handoff — REBOOT pending"
+    source_path: vault/sessions/2026-04-29-handoff-reboot-pending.md
+    summary: "--- date: 2026-04-29 time: 23:00 CEST session_type: handoff-reboot-pending context: v2.3.7 reinstall fail (DLL memory-lock), REBOOT scheduled priority: P0 — éles pénztár tesztelése --- # 2026-04-29 Handoff — REBOOT pending ## Mi történt eddig A user a 17 PR mergelése + v2.3.7 installer build után indítani akarta a v2.3.7 reinstall + tesztelési flow-t: 1. ✅ Penztar-Eltavolito-2.3.7-20260429.exe (admin) — install dir c"
+    tags: [2026, handoff, reboot, pending, date, time, cest, session_type, context, reinstall]
+  - id: d2d7f52099a46706
+    type: medium-term-episodic
+    title: "2026-04-29 19:45 CEST — Handoff REBOOT előtt"
+    source_path: vault/sessions/2026-04-29-handoff-reboot-v2.3.12.md
+    summary: "--- date: 2026-04-29 session_type: handoff-reboot context: REBOOT-pending — 5 PR mergelve egy session alatt (v2.3.10 → v2.3.12) priority: P0 — handoff --- # 2026-04-29 19:45 CEST — Handoff REBOOT előtt ## Mai munkaütem összegzése **5 PR mergelve egy sessionben** (4 verzió + 1 hotfix), **45 bug megoldva** (a 46 audit-bug-ból, 1 defer): | PR | Idő | Verzió | Tartalom | Tests | |---|---|---|---|---| | #271 | 19:05 | v2."
+    tags: [2026, cest, handoff, reboot, elott, date, session_type, context, pending, mergelve]
+  - id: 569821ece1c5588f
+    type: medium-term-episodic
+    title: "2026-04-29 v2.3.7 Installer issues — debugging notes"
+    source_path: vault/sessions/2026-04-29-installer-issues.md
+    summary: "--- date: 2026-04-29 session_type: installer-debugging context: v2.3.7 reinstall — felhasználói teszt indítás Track 4 SB4 sprint után --- # 2026-04-29 v2.3.7 Installer issues — debugging notes ## Workflow context 17 PR mergelve a sessionben (#254-270), v2.3.7 installer kész: - `Penztar-Setup-2.3.7-20260429.exe` (280 MB, SHA-256 `230a4c54...e7c1f74dcecbf`) - User-direktíva: \"Indítsd az újratelepítést... ellenőrizd a r"
+    tags: [2026, installer, issues, debugging, notes, date, session_type, context, reinstall, felhasznaloi]
+  - id: 44de0e45070c3019
+    type: medium-term-episodic
+    title: "2026-04-29 — Legacy memória felépítése + TreasuryLayout role-filter bug fix"
+    source_path: vault/sessions/2026-04-29-legacy-memory-and-treasury-bug-fix.md
+    summary: "--- date: 2026-04-29 session_type: legacy-memory-build + bug-fix context: post-reboot Setup #3 SUCCESS után — user-direktíva: \"olvasd be Anti/-t és építs memóriát + javítsd a Pénztár UI bug-jait\" priority: P0 — éles teszthez kell --- # 2026-04-29 — Legacy memória felépítése + TreasuryLayout role-filter bug fix ## User-direktíva > \"D:\\repo\\valutavalto-program\\Anti — Akkor olvast be ebből a könyvtárból a régi szoftver "
+    tags: [2026, legacy, memoria, felepitese, treasurylayout, role, filter, bug, fix, date]
+  - id: aa6eeadebe352a44
+    type: medium-term-episodic
+    title: "2026-04-29 — Mandate-cycle Complete (PR #271 → #288, 18 PR egy session)"
+    source_path: vault/sessions/2026-04-29-mandate-cycle-complete.md
+    summary: "--- date: 2026-04-29 session_type: mandate-cycle-complete context: AI Review Zero-Tolerance + Hallucinációs Kör Megszüntetése — 18 PR session priority: P0 — final summary --- # 2026-04-29 — Mandate-cycle Complete (PR #271 → #288, 18 PR egy session) ## Mandate-évolúció a session során ### 1. AI Review Zero-Tolerance Mandate (21:00 CEST) **User-direktíva:** \"Addig nem léphetsz tovább, amíg a GitHub Codex + Sourcery AI "
+    tags: [2026, mandate, cycle, complete, 271, 288, egy, session, date, session_type]
+  - id: 8bf53d382ff5e3d9
+    type: medium-term-episodic
+    title: "2026-04-29 Multi-track A+B+C execution + AI review fix cycle"
+    source_path: vault/sessions/2026-04-29-multi-track-execution-A-B-C.md
+    summary: "--- date: 2026-04-29 session_type: multi-track-execution + AI-review-fix-cycle duration: ~5 hours (00:00 - 04:00 CEST) main_head_start: 0949a656 main_head_end: <pending mergelés> prs_opened: 4 (#254, #255, #256, #257) context: User direktíva \"tetszőleges sorrendben A+B+C\", ezalatt új feladat AI bot review olvasás + fix --- # 2026-04-29 Multi-track A+B+C execution + AI review fix cycle ## User-direktívák ezzel a sessi"
+    tags: [2026, multi, track, execution, review, fix, cycle, date, session_type, duration]
+  - id: 5db67f64f6dd8ce2
+    type: medium-term-episodic
+    title: "2026-04-29 — SetupWizard-stale-.env root-cause + manuális fix + v2.3.9 terv"
+    source_path: vault/sessions/2026-04-29-setupwizard-stale-env-rootcause.md
+    summary: "--- date: 2026-04-29 session_type: bug-rootcause + manual-fix + v2.3.9-codefix-plan context: v2.3.8 reinstall után a SetupWizard NEM jelent meg priority: P0 — éles teszt-blokk --- # 2026-04-29 — SetupWizard-stale-.env root-cause + manuális fix + v2.3.9 terv ## Tünet (user-jelentés) > \"A telepítő varázsló ismét nem futott le egyből belelépett, nélhetőleg a főértéktáros menübe, bár ott nincs átadásátvétel\" A v2.3.7 rei"
+    tags: [2026, setupwizard, stale, env, root, cause, manualis, fix, terv, date]
+  - id: 77773473b331feb4
+    type: medium-term-episodic
+    title: "2026-04-29 — Sourcery review követési ciklus (PR #276/#277/#278/#280/#281)"
+    source_path: vault/sessions/2026-04-29-sourcery-followup-cycle.md
+    summary: "--- date: 2026-04-29 session_type: sourcery-followup-cycle context: Sourcery 3 PR review-k követése + 2 follow-up PR (v2.3.16/17) priority: P0 — code review compliance --- # 2026-04-29 — Sourcery review követési ciklus (PR #276/#277/#278/#280/#281) ## Kontextus A felhasználó kérése: \"Sourcery review-k várása PR #276/#277/#278-on + esetleges follow-up fixek\" A 3 PR (v2.3.13/14/15) admin-merge után érkezett Sourcery fe"
+    tags: [2026, sourcery, review, kovetesi, ciklus, 276, 277, 278, 280, 281]
+  - id: 78702f50388b5293
+    type: medium-term-episodic
+    title: "2026-04-29 Track 4 — Spring Boot 4 sprint (PR #263)"
+    source_path: vault/sessions/2026-04-29-track-4-spring-boot-4-sprint.md
+    summary: "--- date: 2026-04-29 session_type: track-4-spring-boot-4-sprint duration: ~30 min (06:30 - 07:00 CEST) context: User direktíva \"most csináld meg!!!!!!\" (Track 4 + #205 + #196 unified) --- # 2026-04-29 Track 4 — Spring Boot 4 sprint (PR #263) ## User direktíva > \"Defer (külön sprint) Track 4 — Spring Boot 4 #205: 1-2 napos sprint, magas kockázat (04-27 outage tanulság). Master plan: docs/superpowers/plans/2026-04-28-m"
+    tags: [2026, track, spring, boot, sprint, 263, date, session_type, duration, min]
+  - id: 1fa66429909e777f
+    type: medium-term-episodic
+    title: "2026-04-29 — v2.3.11 sprint: E-B6 renderer fagyás prevenció + értéktári E-B bug-ok"
+    source_path: vault/sessions/2026-04-29-v2.3.11-eb6-fagyas-prevencio.md
+    summary: "--- date: 2026-04-29 session_type: v2.3.11-sprint context: PR #272 — E-B6 renderer fagyás 4-rétegű prevenció + 6 értéktári E-B bug priority: P0 — fagyás-prevenció --- # 2026-04-29 — v2.3.11 sprint: E-B6 renderer fagyás prevenció + értéktári E-B bug-ok ## Release info - **Verzió:** 2.3.10 → 2.3.11 (4 modul) - **PR:** #272 — admin-merged 19:25:28 CEST (CI 100% zöld 1 perc alatt) - **Main HEAD:** `bc24c5f2` - **Hetzner:"
+    tags: [2026, sprint, renderer, fagyas, prevencio, ertektari, bug, date, session_type, context]
+  - id: 5b33f31c3229fe59
+    type: medium-term-episodic
+    title: "2026-04-29 — v2.3.12 sprint: 4/5 defer-elt E-B bug megoldása"
+    source_path: vault/sessions/2026-04-29-v2.3.12-ertektar-audit-followup.md
+    summary: "--- date: 2026-04-29 session_type: v2.3.12-sprint context: PR #274 — defer-elt 5 értéktári E-B bug követőjavítása priority: P1 — sidebar coherence + audit nyomvonal --- # 2026-04-29 — v2.3.12 sprint: 4/5 defer-elt E-B bug megoldása ## Release info - **Verzió:** 2.3.11 → 2.3.12 (4 modul) - **PR:** #274 — auto-merge enabled (admin-bypass szükséges) - **Branch:** `fix/v2.3.12-ertektar-eb-bugs` (post-merge törölve) ## Me"
+    tags: [2026, sprint, defer, elt, bug, megoldasa, date, session_type, context, 274]
+  - id: b3b8f9ed830ecfc2
+    type: medium-term-episodic
+    title: "2026-04-29 — Hetzner v2.3.12 deploy smoke teszt eredménye"
+    source_path: vault/sessions/2026-04-29-v2.3.12-hetzner-smoke-verify.md
+    summary: "--- date: 2026-04-29 session_type: hetzner-smoke-verify context: v2.3.12 deploy verifikálása excvaluta.com production-on (Chrome MCP) priority: P0 — production verify --- # 2026-04-29 — Hetzner v2.3.12 deploy smoke teszt eredménye ## Setup - **URL:** https://excvaluta.com (Hetzner production) - **Tool:** `mcp__Claude_in_Chrome__*` (felhasználó saját Chrome browser-jén) - **User session:** auto-login (cookie aktív, mo"
+    tags: [2026, hetzner, deploy, smoke, teszt, eredmenye, date, session_type, verify, context]
+  - id: ea587dd056273482
+    type: medium-term-episodic
+    title: "v2.3.31 Flyway Emergency Incident — V168/V169 'active' → 'is_active' column mismatch"
+    source_path: vault/sessions/2026-04-29-v2.3.31-flyway-emergency-incident.md
+    summary: "--- date: 2026-04-29 title: v2.3.31 Flyway Emergency Incident — V168/V169 'active' → 'is_active' column mismatch type: incident severity: P0 status: resolved duration: ~50 perc (4 deploy fail + emergency hotfix + verify) --- # v2.3.31 Flyway Emergency Incident ## Tünet A Hetzner production HTTP **502** Bad Gateway 4 deploy-on keresztül: - v2.3.27 (PR #292) — első fail - v2.3.28 (PR #293) - v2.3.29 (PR #294) - v2.3.30"
+    tags: [flyway, emergency, incident, v168, v169, active, is_active, column, mismatch, date]
+  - id: fa5a796cb0ea78dd
+    type: medium-term-episodic
+    title: "2026-04-29 — v2.3.8 NSIS bug fix (PowerShell -like + ICACLS + backend timeout)"
+    source_path: vault/sessions/2026-04-29-v2.3.8-nsis-bug-fix.md
+    summary: "--- date: 2026-04-29 session_type: NSIS-bug-fix + version-bump context: v2.3.7 reinstall debugging session után — 3 fix v2.3.8 build-hez priority: P0 — éles teszt-blokk --- # 2026-04-29 — v2.3.8 NSIS bug fix (PowerShell -like + ICACLS + backend timeout) ## User-direktíva > \"v2.3.8 NSIS bug fix — PowerShell -like parser + ICACLS Hungarian locale (SID *S-1-5-32-544) + backend wait timeout 60s→90s\" ## Fix #1: PowerShell"
+    tags: [2026, nsis, bug, fix, powershell, like, icacls, backend, timeout, date]
+  - id: e34293963e8d9718
+    type: medium-term-episodic
+    title: "Főértéktáros Chrome MCP audit + v2.3.60 batch fix (37 ékezet hiba)"
+    source_path: vault/sessions/2026-04-30-foertektar-chrome-mcp-audit-v2.3.60.md
+    summary: "--- date: 2026-04-30 title: Főértéktáros Chrome MCP audit + v2.3.60 batch fix (37 ékezet hiba) type: session duration: 00:30 → 01:05 CEST (35 perc) status: closed --- # Főértéktáros Chrome MCP audit + v2.3.60 batch fix ## Felhasználói direktíva > \"Készítsd el elálló autonommódon a teszteket a főértéktárosi oldalon. Nem nekem kell screenshotokat csinálni, hanem te. Már csináltál ilyet, megoldottad, folyamatosan szépen"
+    tags: [foertektaros, chrome, mcp, audit, batch, fix, ekezet, hiba, date, 2026]
+  - id: 2e848a0cf7ec9d78
+    type: medium-term-episodic
+    title: "v2.3.60 release - Installer build + autonóm session FINAL"
+    source_path: vault/sessions/2026-04-30-v2.3.60-release-installer-FINAL.md
+    summary: "--- date: 2026-04-30 title: v2.3.60 release - Installer build + autonóm session FINAL type: release duration: 22:00 (2026-04-29) → 06:05 (2026-04-30) CEST = 8h 5min status: closed total_prs: 30 final_version: 2.3.60 --- # v2.3.60 release — Installer build + autonóm session FINAL ## Telepítő fájlok v2.3.60 (LEGFRISSEBB) `installer/build/` + másolva `%USERPROFILE%\\Downloads\\`-ba: - **`Penztar-Setup-2.3.60-20260430.exe`"
+    tags: [release, installer, build, autonom, session, final, date, 2026, title, type]
+  - id: e9c9ebd3d8ecd2e9
+    type: medium-term-episodic
+    title: "v2.3.X Penztar/Ertektar UI audit (computer-use, élő Penztar.exe)"
+    source_path: vault/sessions/2026-04-30-v2.3.X-penztar-ertektar-audit-computer-use.md
+    summary: "--- date: 2026-04-30 title: v2.3.X Penztar/Ertektar UI audit (computer-use, élő Penztar.exe) type: ui-audit duration: 06:50 → 07:10 CEST (~20 perc) status: documented-23-bugs related-pr: #326 (v2.4.0 foundation) --- # v2.3.X Pénztár/Értéktár UI audit — computer-use eredmények ## Összefoglaló A v2.3.X (jelenleg installálva: `Penztar-Setup-2.3.2-20260425.exe`) Electron alkalmazás teljes körű UI auditja `mcp__computer-u"
+    tags: [penztar, ertektar, audit, computer, use, elo, exe, date, 2026, title]
+  - id: 6e7a64d9000f92d6
+    type: medium-term-episodic
+    title: "v2.4.0 RELEASE — PR #326 admin-merge + telepítők build + Codex P1+P2 fix loop"
+    source_path: vault/sessions/2026-04-30-v2.4.0-merged-installer-builds.md
+    summary: "--- date: 2026-04-30 title: v2.4.0 RELEASE — PR #326 admin-merge + telepítők build + Codex P1+P2 fix loop type: release-merge duration: 06:30 → 07:42 CEST (~70 perc) status: COMPLETE related-pr: #326 (squash admin-merged main-re) main-head: cea183be --- # v2.4.0 release session — B6 multi-branch + i18next foundation ## TL;DR A v2.4.0 alapozó release sikeresen mergelve a main-re. Codex 2 inline finding (P1 tenant boun"
+    tags: [release, 326, admin, merge, telepitok, build, codex, fix, loop, date]
+  - id: 43377fa55daf70d0
+    type: medium-term-episodic
+    title: "v2.4.0 sprint kick-off — B6 multi-branch foundation + i18next setup"
+    source_path: vault/sessions/2026-04-30-v2.4.0-sprint-kickoff-foundation.md
+    summary: "--- date: 2026-04-30 title: v2.4.0 sprint kick-off — B6 multi-branch foundation + i18next setup type: sprint-kickoff duration: 06:30 → 06:45 CEST (15 perc setup) status: foundation-complete --- # v2.4.0 sprint kick-off (foundation) ## Felhasznáo-direktíva 2026-04-30 06:15 CEST User válasz a v2.4 sprint planning 6 kérdésére: | # | Kérdés | Válasz | |---|--------|--------| | C-1 | Multi-branch worker engedélyezett HR/b"
+    tags: [sprint, kick, off, multi, branch, foundation, i18next, setup, date, 2026]
+  - id: 808e5d3012a2acc3
+    type: medium-term-episodic
+    title: "v2.4.1 RELEASE — F8 TRB Export PSQLException production fix + telepítők"
+    source_path: vault/sessions/2026-04-30-v2.4.1-trb-export-pg-fix-FINAL.md
+    summary: "--- date: 2026-04-30 title: v2.4.1 RELEASE — F8 TRB Export PSQLException production fix + telepítők type: release-fix duration: 08:23 → 11:00 CEST (~2.5 óra inkl. vault sync) status: COMPLETE-PRODUCTION-VERIFIED related-pr: #327 (squash admin-merged main-re) main-head: c1e887dd --- # v2.4.1 release session — F8 TRB Export PostgreSQL type inference fix ## TL;DR A v2.3.X / v2.4.0-ban felfedezett **F8 TRB Export funkcio"
+    tags: [release, trb, export, psqlexception, production, fix, telepitok, date, 2026, title]
+  - id: 3fc2ce3076934fdc
+    type: medium-term-episodic
+    title: "v2.4.10 — Értéktári vs Pénztári készlet domain szétválasztás + F-tab módfilter"
+    source_path: vault/sessions/2026-04-30-v2.4.10-vault-vs-cashier-stocks-FINAL.md
+    summary: "--- date: 2026-04-30 title: v2.4.10 — Értéktári vs Pénztári készlet domain szétválasztás + F-tab módfilter type: feature-release duration: 19:55 → 22:25 CEST (~2.5 óra) status: MERGED-INSTALLED related-prs: \"#334 (v2.4.8), #335 (v2.4.9→v2.4.10)\" main-head: cebbf99f (v2.4.10) --- # v2.4.10 sprint — domain helyreállítás ## TL;DR Két iteráció ugyanazon a problémán: 1. **v2.4.8 (PR #334)**: a user feedback alapján 3 fájl"
+    tags: [ertektari, penztari, keszlet, domain, szetvalasztas, tab, modfilter, date, 2026, title]
+  - id: 8f810149b2521a0d
+    type: medium-term-episodic
+    title: "v2.4.2 → v2.4.6 autonóm batch execution — 5 PR merge, 0 production outage"
+    source_path: vault/sessions/2026-04-30-v2.4.2-2.4.6-autonomous-batch-execution.md
+    summary: "--- date: 2026-04-30 title: v2.4.2 → v2.4.6 autonóm batch execution — 5 PR merge, 0 production outage type: multi-pr-batch duration: 14:42 → 15:50 CEST (~1 óra 8 perc) status: ALL-MERGED-PRODUCTION-VERIFIED related-prs: \"#328, #329, #330, #331, #332\" main-head: 17407006 --- # v2.4.2 → v2.4.6 autonóm batch execution — sprint kickoff teljes hiánylista ## TL;DR User direktíva: *\"menj végig szépen sorban a teljes hiányli"
+    tags: [autonom, batch, execution, merge, production, outage, date, 2026, title, type]
+  - id: 69cc735f55c1f87c
+    type: medium-term-episodic
+    title: "v2.4.7 eles telepites + v2.4.8 Foertektar UI overhaul"
+    source_path: vault/sessions/2026-04-30-v2.4.7-install-and-v2.4.8-treasury-ui.md
+    summary: "--- date: 2026-04-30 title: v2.4.7 eles telepites + v2.4.8 Foertektar UI overhaul type: install-deploy + ui-refactor duration: 19:00 -> 20:00 CEST status: IN-PROGRESS (CI pending, installer build pending) related-prs: \"#334\" main-head: \"64352b16 (v2.4.7)\" --- # v2.4.7 telepites + v2.4.8 UI sprint ## TL;DR User uj session-t inditott a token-takarekossag miatt. Ket lepcso: 1. **v2.4.7 telepitve a fejlesztoi gepre** - u"
+    tags: [eles, telepites, foertektar, overhaul, date, 2026, title, type, install, deploy]
+  - id: 14d65c37589c6f03
+    type: medium-term-episodic
+    title: "v2.5.0 Hetzner production outage + atomic rollback (PR #336 → #337)"
+    source_path: vault/sessions/2026-05-01-v2.5.0-outage-rollback-FINAL.md
+    summary: "--- date: 2026-05-01 title: v2.5.0 Hetzner production outage + atomic rollback (PR #336 → #337) type: incident-postmortem + recovery duration: 02:00 → 08:37 CEST (~6.5 óra) status: PRODUCTION-RESTORED + v2.5.0-ATOMIC-PLAN-RECORDED related-prs: \"#336 (v2.5.0 sprint, MERGED → outage), #337 (rollback, MERGED)\" main-head: d7f9d59b (hotfix workflow) --- # v2.5.0 Production outage — incident postmortem ## TL;DR A v2.5.0 sp"
+    tags: [hetzner, production, outage, atomic, rollback, 336, 337, date, 2026, title]
+  - id: 1f03d97504505c48
+    type: medium-term-episodic
+    title: "Vault evolution — 2026 SOTA memory architecture adoption"
+    source_path: vault/sessions/2026-05-02-memory-architecture-sota-evolution.md
+    summary: "--- date: 2026-05-02 title: Vault evolution — 2026 SOTA memory architecture adoption type: meta-improvement (vault szerkezet) trigger: user-direktíva \"olvasd el az alábbi szöveget [3 SOTA trend], készíts memóriát, ellenőrizd a jelenlegi memória korszerűségét\" duration: ~30 perc related-prs: nincs (vault-only, nem érinti a repo-t) --- # Vault evolution — 2026-05-02 ## TL;DR User megosztott egy 2026-os state-of-the-art"
+    tags: [vault, evolution, 2026, sota, memory, architecture, adoption, date, title, type]
+  - id: 329a00a48a8bd8d8
+    type: medium-term-episodic
+    title: "9-task sprint — PR #379-385 (P1.3, P1.4, P1.7, P1.8 + i18n + inventory)"
+    source_path: vault/sessions/2026-05-03-9-task-sprint-pr-379-385.md
+    summary: "--- date: 2026-05-03 title: 9-task sprint — PR #379-385 (P1.3, P1.4, P1.7, P1.8 + i18n + inventory) status: in-progress --- # 2026-05-03 — 9-task sprint (Audit fix-loop) ## User direktíva > \"Mindet szépen sorban hajtsd végre, javítsd ki a tartozásokat, ne maradjanak hibák, > később csak halmozódni fog. Végezd el az összes feladatot egy hosszabb sprintben. > Hazugság mellébeszélés, lustaság, halasztás nélkül kizárólag"
+    tags: [task, sprint, 379, 385, i18n, inventory, date, 2026, title, status]
+  - id: d88d5a148563dfb6
+    type: medium-term-episodic
+    title: "2026-05-05 — Error-reporting pipeline E2E + valuta-error-monitor routine + v2.5.18 installer"
+    source_path: vault/sessions/2026-05-05-error-reporting-pipeline-complete-v2-5-18-installer.md
+    summary: "# 2026-05-05 — Error-reporting pipeline E2E + valuta-error-monitor routine + v2.5.18 installer ## Mit zárult le ### Backend reporter PR sorozat (mind merge-elve) - **#407** `feat(diagnostics): auto kliens-oldali hibajelentes (Sentry-style HTTP endpoint + PostgreSQL)` — V182 + DiagnosticsController + ErrorReportDto + ClientErrorLog entity - **#410** `feat(diagnostics): kritikus kliens hiba -> AUTO GitHub Issue auto-cr"
+    tags: [2026, error, reporting, pipeline, e2e, valuta, monitor, routine, installer, mit]
+  - id: 54b57983c29909b3
+    type: medium-term-episodic
+    title: "2026-05-06 hallucináció-korrekció — saját session-output felülvizsgálat"
+    source_path: vault/sessions/2026-05-06-hallucination-correction.md
+    summary: "--- title: 2026-05-06 hallucináció-korrekció — saját session-output felülvizsgálat type: session created: 2026-05-06 22:00 CEST trigger: Kósa Zoltán user-direktíva — \"kuna konverzió 2025-ben lezárult\" hallucináció felfedezése után --- # Hallucináció-korrekció — saját session-output felülvizsgálat ## Trigger A user 2026-05-06 22:00 körül kötelezően jelezte, hogy a saját Product-Ready Roadmap-omban hallucináltam: **\"HR"
+    tags: [2026, hallucinacio, korrekcio, sajat, session, output, felulvizsgalat, title, type, created]
+  - id: 5a962a6a83e6ed6c
+    type: medium-term-episodic
+    title: "2026-05-07 — Handoff dokumentum (v2.5.27 → v2.5.35 sprint sorozat)"
+    source_path: vault/sessions/2026-05-07-handoff-v2.5.35-comprehensive.md
+    summary: "--- title: 2026-05-07 — Handoff dokumentum (v2.5.27 → v2.5.35 sprint sorozat) type: session created: 2026-05-07 status: ACTIVE — handoff for next agent/session covers: 2026-05-06 napközben + éjszaka + 2026-05-07 hajnal production_version: 2.5.35 production_health: bootstrap 200 OK --- # Handoff: v2.5.27 → v2.5.35 sprint sorozat ## TL;DR (egyetlen képernyőn) | Mit | Érték | |---|---| | **Production verzió** | v2.5.35 "
+    tags: [2026, handoff, dokumentum, sprint, sorozat, title, type, session, created, status]
+  - id: f00769cf56b48f68
+    type: medium-term-episodic
+    title: "2026-05-07 — PR434 stack merge + repo-local memory consolidation"
+    source_path: vault/sessions/2026-05-07-pr434-stack-merge-memory-consolidation.md
+    summary: "--- title: 2026-05-07 — PR434 stack merge + repo-local memory consolidation type: session created: 2026-05-07 status: completed main_head: aaf0588c production_health: bootstrap 200 OK --- # 2026-05-07 — PR434 stack merge + repo-local memory consolidation ## Summary - Repo-local vault activated at `D:\\repo\\valutavalto-program\\vault\\`. - Old external `D:\\valutavalto-vault\\` deleted to prevent double read/write. - Multi"
+    tags: [2026, pr434, stack, merge, repo, local, memory, consolidation, title, type]
+edges:
+  - from: 53eeefa5ffe5383a
+    to: repo_project_state
+    relation: informs
+  - from: 0d5bb9aa6ab2e5f6
+    to: repo_project_state
+    relation: informs
+  - from: 1df2307480773f7b
+    to: repo_project_state
+    relation: informs
+  - from: e66bd86901bdbfde
+    to: repo_project_state
+    relation: informs
+  - from: 0eccccd7a8ac1659
+    to: repo_project_state
+    relation: informs
+  - from: 28db8f9f7f67b43f
+    to: repo_project_state
+    relation: informs
+  - from: 6234106868a2d2fe
+    to: repo_project_state
+    relation: informs
+  - from: 2366a36a97d532a2
+    to: repo_project_state
+    relation: informs
+  - from: 92c914e41a93eff8
+    to: repo_project_state
+    relation: informs
+  - from: d2d7f52099a46706
+    to: repo_project_state
+    relation: informs
+  - from: 569821ece1c5588f
+    to: repo_project_state
+    relation: informs
+  - from: 44de0e45070c3019
+    to: repo_project_state
+    relation: informs
+  - from: aa6eeadebe352a44
+    to: repo_project_state
+    relation: informs
+  - from: 8bf53d382ff5e3d9
+    to: repo_project_state
+    relation: informs
+  - from: 5db67f64f6dd8ce2
+    to: repo_project_state
+    relation: informs
+  - from: 77773473b331feb4
+    to: repo_project_state
+    relation: informs
+  - from: 78702f50388b5293
+    to: repo_project_state
+    relation: informs
+  - from: 1fa66429909e777f
+    to: repo_project_state
+    relation: informs
+  - from: 5b33f31c3229fe59
+    to: repo_project_state
+    relation: informs
+  - from: b3b8f9ed830ecfc2
+    to: repo_project_state
+    relation: informs
+  - from: ea587dd056273482
+    to: repo_project_state
+    relation: informs
+  - from: fa5a796cb0ea78dd
+    to: repo_project_state
+    relation: informs
+  - from: e34293963e8d9718
+    to: repo_project_state
+    relation: informs
+  - from: 2e848a0cf7ec9d78
+    to: repo_project_state
+    relation: informs
+  - from: e9c9ebd3d8ecd2e9
+    to: repo_project_state
+    relation: informs
+  - from: 6e7a64d9000f92d6
+    to: repo_project_state
+    relation: informs
+  - from: 43377fa55daf70d0
+    to: repo_project_state
+    relation: informs
+  - from: 808e5d3012a2acc3
+    to: repo_project_state
+    relation: informs
+  - from: 3fc2ce3076934fdc
+    to: repo_project_state
+    relation: informs
+  - from: 8f810149b2521a0d
+    to: repo_project_state
+    relation: informs
+  - from: 69cc735f55c1f87c
+    to: repo_project_state
+    relation: informs
+  - from: 14d65c37589c6f03
+    to: repo_project_state
+    relation: informs
+  - from: 1f03d97504505c48
+    to: repo_project_state
+    relation: informs
+  - from: 329a00a48a8bd8d8
+    to: repo_project_state
+    relation: informs
+  - from: d88d5a148563dfb6
+    to: repo_project_state
+    relation: informs
+  - from: 54b57983c29909b3
+    to: repo_project_state
+    relation: informs
+  - from: 5a962a6a83e6ed6c
+    to: repo_project_state
+    relation: informs
+  - from: f00769cf56b48f68
+    to: repo_project_state
+    relation: informs
