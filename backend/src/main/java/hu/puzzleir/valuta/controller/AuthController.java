@@ -25,12 +25,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import hu.puzzleir.valuta.service.RefreshTokenService;
 import hu.puzzleir.valuta.entity.RefreshToken;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
-import java.time.Duration;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +44,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
+@Slf4j
 @PreAuthorize("permitAll()")
 public class AuthController {
     
@@ -93,24 +92,12 @@ public class AuthController {
                     "Belépés nem véglegesíthető: a dolgozó rekord nem található.",
                     "LOGIN_SESSION_ISSUE_FAILED",
                     HttpStatus.SERVICE_UNAVAILABLE));
-        try {
-            RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, request);
-            ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
-                .httpOnly(true)
-                .secure(request.isSecure())
-                .sameSite("Strict")
-                .path("/api/v1/auth")
-                .maxAge(Duration.ofDays(7))
-                .build();
-            httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        } catch (Exception e) {
-            org.slf4j.LoggerFactory.getLogger(AuthController.class)
-                .error("HttpOnly refresh cookie kiadas bukott login utan: {}", e.getMessage(), e);
-            throw new BusinessException(
-                    "Belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.",
-                    "LOGIN_SESSION_ISSUE_FAILED",
-                    HttpStatus.SERVICE_UNAVAILABLE);
-        }
+        issueRefreshCookieOrThrow(
+                worker,
+                request,
+                httpResponse,
+                "login",
+                "Belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.");
 
         return ResponseEntity.ok(response);
     }
@@ -143,10 +130,7 @@ public class AuthController {
                 }
             } catch (Exception ignore) { /* logout ne bukjon el rajta */ }
         }
-        ResponseCookie clearCookie = ResponseCookie.from("refreshToken", "")
-            .httpOnly(true).secure(request.isSecure()).sameSite("Strict")
-            .path("/api/v1/auth").maxAge(0).build();
-        httpResponse.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
+        RefreshTokenCookies.clearRefreshToken(httpResponse, request);
 
         return ResponseEntity.noContent().build();
     }
@@ -180,11 +164,11 @@ public class AuthController {
         // Audit P0.3 (2026-05-03): O(1) selector lookup + EGYETLEN BCrypt verify.
         // Korabban `findAll().stream().filter(BCrypt.matches)` minden refresh-kor
         // futtatott BCrypt-et MINDEN aktiv tokenre — DoS-kockazat (~150ms/token).
-        java.util.Optional<hu.puzzleir.valuta.entity.RefreshToken> matched =
+        java.util.Optional<RefreshToken> matched =
             refreshTokenService.findActiveBySelectorAndVerifier(rawRefresh);
         if (matched.isEmpty()) return ResponseEntity.status(401).build();
 
-        hu.puzzleir.valuta.entity.RefreshToken oldRefresh = matched.get();
+        RefreshToken oldRefresh = matched.get();
         Worker worker = workerRepository.findById(oldRefresh.getWorkerId())
             .filter(w -> Boolean.TRUE.equals(w.getActive()))
             .orElse(null);
@@ -200,10 +184,7 @@ public class AuthController {
 
         // Token rotation - regi revoke + uj issue
         RefreshTokenService.IssuedToken newIssued = refreshTokenService.rotate(oldRefresh, worker, request);
-        ResponseCookie rotated = ResponseCookie.from("refreshToken", newIssued.rawUuid())
-            .httpOnly(true).secure(request.isSecure()).sameSite("Strict")
-            .path("/api/v1/auth").maxAge(Duration.ofDays(7)).build();
-        httpResponse.addHeader(HttpHeaders.SET_COOKIE, rotated.toString());
+        RefreshTokenCookies.addRefreshToken(httpResponse, request, newIssued.rawUuid());
 
         return ResponseEntity.ok(Map.of("token", newAccess));
     }
@@ -403,25 +384,57 @@ public class AuthController {
                     "Telepítés utáni belépés nem véglegesíthető: a dolgozó rekord nem található.",
                     "LOGIN_SESSION_ISSUE_FAILED",
                     HttpStatus.SERVICE_UNAVAILABLE));
+        if (!tryIssueRefreshCookie(worker, request, httpResponse, "first-time setup")) {
+            appendRefreshCookieWarning(response);
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    private void issueRefreshCookieOrThrow(
+            Worker worker,
+            HttpServletRequest request,
+            HttpServletResponse httpResponse,
+            String context,
+            String failureMessage) {
         try {
-            RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, request);
-            ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
-                .httpOnly(true)
-                .secure(request.isSecure())
-                .sameSite("Strict")
-                .path("/api/v1/auth")
-                .maxAge(Duration.ofDays(7))
-                .build();
-            httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        } catch (Exception e) {
-            org.slf4j.LoggerFactory.getLogger(AuthController.class)
-                .error("HttpOnly refresh cookie kiadas bukott first-time setup utan: {}", e.getMessage(), e);
+            issueRefreshCookie(worker, request, httpResponse);
+        } catch (RuntimeException e) {
+            log.error("HttpOnly refresh cookie kiadas bukott {} utan: {}", context, e.getMessage(), e);
             throw new BusinessException(
-                    "Telepítés utáni belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.",
+                    failureMessage,
                     "LOGIN_SESSION_ISSUE_FAILED",
                     HttpStatus.SERVICE_UNAVAILABLE);
         }
-        return ResponseEntity.ok(response);
+    }
+
+    private boolean tryIssueRefreshCookie(
+            Worker worker,
+            HttpServletRequest request,
+            HttpServletResponse httpResponse,
+            String context) {
+        try {
+            issueRefreshCookie(worker, request, httpResponse);
+            return true;
+        } catch (RuntimeException e) {
+            log.warn("HttpOnly refresh cookie kiadas bukott {} utan: {}", context, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    private void issueRefreshCookie(
+            Worker worker,
+            HttpServletRequest request,
+            HttpServletResponse httpResponse) {
+        RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, request);
+        RefreshTokenCookies.addRefreshToken(httpResponse, request, issued.rawUuid());
+    }
+
+    private static void appendRefreshCookieWarning(WorkerFirstTimeSetupResponseDto response) {
+        String warning = "A jelszó beállítása sikeres, de a tartós bejelentkezési cookie nem jött létre. "
+                + "Az aktuális belépési token érvényes; ha később kijelentkeztet a program, "
+                + "jelentkezz be újra az imént beállított jelszóval.";
+        String message = response.getMessage();
+        response.setMessage(message == null || message.isBlank() ? warning : message + " " + warning);
     }
 
     /**

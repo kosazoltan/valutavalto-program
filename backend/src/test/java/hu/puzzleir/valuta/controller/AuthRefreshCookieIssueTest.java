@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class AuthRefreshCookieIssueFailureTest {
+class AuthRefreshCookieIssueTest {
 
     private final WorkerService workerService = mock(WorkerService.class);
     private final JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
@@ -134,7 +134,7 @@ class AuthRefreshCookieIssueFailureTest {
     }
 
     @Test
-    void firstTimeWorkerSetupFailsWhenRefreshCookieCannotBeIssued() {
+    void firstTimeWorkerSetupReturnsCommittedSuccessWhenRefreshCookieCannotBeIssued() {
         AuthController controller = new AuthController(
                 workerService,
                 jwtTokenProvider,
@@ -151,21 +151,24 @@ class AuthRefreshCookieIssueFailureTest {
         Worker worker = worker();
         hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupRequestDto requestDto =
                 new hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupRequestDto();
-        when(workerFirstTimeSetupService.setupWorkerPassword(requestDto))
-                .thenReturn(hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto.builder()
+        hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto setupResponse =
+                hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto.builder()
                         .success(true)
+                        .message("Jelszo sikeresen beallitva.")
                         .workerId(42L)
                         .token("access-token")
-                        .build());
+                        .build();
+        when(workerFirstTimeSetupService.setupWorkerPassword(requestDto)).thenReturn(setupResponse);
         when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
         when(refreshTokenService.issue(worker, request)).thenThrow(new IllegalStateException("database unavailable"));
 
-        assertThatThrownBy(() -> controller.firstTimeWorkerSetup(requestDto, request, response))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> {
-                    BusinessException businessException = (BusinessException) ex;
-                    assertThat(businessException.getErrorCode()).isEqualTo("LOGIN_SESSION_ISSUE_FAILED");
-                    assertThat(businessException.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-                });
+        org.springframework.http.ResponseEntity<hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto> result =
+                controller.firstTimeWorkerSetup(requestDto, request, response);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isSameAs(setupResponse);
+        assertThat(result.getBody().getMessage()).contains("tartós bejelentkezési cookie nem jött létre");
+        assertThat(response.getHeader("Set-Cookie")).isNull();
     }
 
     private LoginResponseDto loginResponse() {
