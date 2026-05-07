@@ -20,6 +20,9 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 @Slf4j
 public class TokenBlacklistService {
+    public static final String REASON_REFRESH = "REFRESH";
+    public static final String REASON_ROLE_CHANGE = "ROLE_CHANGE";
+    public static final String REASON_ROLE_REVOKED = "ROLE_REVOKED";
 
     private final TokenBlacklistRepository tokenBlacklistRepository;
 

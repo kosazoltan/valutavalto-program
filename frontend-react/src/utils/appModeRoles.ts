@@ -8,7 +8,8 @@ const SERVER_ALLOWED_CANONICAL_ROLES = [
   'csoportvezeto', 'arfolyam_nezo',
 ]
 const SERVER_ALLOWED_LEGACY_ROLES = ['SUPERVISOR', 'MANAGER', 'ADMIN']
-const LEGACY_PENZTAR_ROLES = ['CASHIER']
+export const OFFLINE_RESTORE_ROLE = 'CASHIER'
+const LEGACY_PENZTAR_ROLES = [OFFLINE_RESTORE_ROLE]
 const LEGACY_ERTEKTAR_ROLES = ['MANAGER', 'TREASURY_MANAGER']
 const LEGACY_ERTEKSZALLITO_ROLES = ['COURIER']
 
@@ -34,7 +35,7 @@ export function canonicalizeRoleForAppMode(roleCode: string | null | undefined):
 
 export function isRoleSelectableForAppMode(
   roleCode: string | null | undefined,
-  appMode: LoginAppMode,
+  appMode: AppMode,
 ): boolean {
   if (!roleCode) return false
   const canonical = canonicalizeRoleForAppMode(roleCode)
@@ -53,7 +54,7 @@ export function isRoleSelectableForAppMode(
   return false
 }
 
-export function appModeLabel(appMode: LoginAppMode): string {
+export function appModeLabel(appMode: AppMode): string {
   if (appMode === 'penztar') return 'Valutaváltó Pénztár'
   if (appMode === 'ertektar') return 'Értéktár'
   if (appMode === 'ertekszallito') return 'Értékszállító'
