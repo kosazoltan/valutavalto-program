@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto;
 import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
 import hu.puzzleir.valuta.dto.auth.SelectRoleRequestDto;
 import hu.puzzleir.valuta.entity.Worker;
+import hu.puzzleir.valuta.exception.AuthenticationException;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
 import hu.puzzleir.valuta.service.AdminBootstrapService;
@@ -70,6 +71,7 @@ public class AuthController {
      * Body: { "companyCode": "BEST", "workerCode": "P001", "password": "1234" }
      */
     @PostMapping("/login")
+    @Transactional(rollbackFor = Exception.class)
     public ResponseEntity<LoginResponseDto> login(
             @Valid @RequestBody(required = false) LoginRequestDto dto,
             HttpServletRequest request,
