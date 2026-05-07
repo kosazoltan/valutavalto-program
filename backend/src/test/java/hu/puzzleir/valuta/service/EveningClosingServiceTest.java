@@ -262,7 +262,8 @@ class EveningClosingServiceTest {
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("HQ URL nincs konfigurálva");
-        assertThat(result.getMessage()).contains("branch-sync/evening-closing");
+        assertThat(result.getMessage()).contains("szinkron naplóban");
+        assertThat(result.getMessage()).doesNotContain("branch-sync/evening-closing");
         assertThat(result.getMessage()).doesNotContain("C:/");
         assertThat(result.getAttemptCount()).isEqualTo(1);
         verify(fileTransportService).writeJson(anyString(), eq("evening_daily_report"), any());

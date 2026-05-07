@@ -180,8 +180,7 @@ public class EveningClosingService {
                                 pkg.getChecksum(), artifactReference, ARTIFACT_PENDING_ERROR, false);
                         eveningSyncLogRepository.save(syncLog);
                         return DataSyncResult.failure(
-                                "HQ URL nincs konfigurálva; adatcsomag artifactba mentve (artifact: "
-                                        + artifactReference + ")",
+                                "HQ URL nincs konfigurálva; adatcsomag artifactba mentve, részletek a szinkron naplóban",
                                 attempt);
                     }
 
