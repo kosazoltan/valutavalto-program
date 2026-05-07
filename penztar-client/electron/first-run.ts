@@ -47,7 +47,7 @@ export interface SetupSavePayload {
   companyCode: string;
   adminUsername: string;
   adminPassword: string;         // új admin jelszó (min 8 kar.)
-  bootstrapUsername?: string;    // wizardbeli teszt-felhasználó (opcionális, csak offline módban üres)
+  bootstrapUsername?: string;    // wizardbeli teszt-felhasználó; üres értéknél admin/selected worker fallback kerül mentésre
   bootstrapPassword?: string;
   offlineMode: boolean;          // ha true, a szerver kapcsolatot kihagyjuk a wizardban
   appMode?: 'penztar' | 'ertektar' | 'ertekszallito';  // v2.1.4: program-tipus
@@ -139,7 +139,7 @@ function looksLikeValidApiUrl(value: string | undefined): boolean {
 }
 
 function looksLikeStaleOfflineSetup(values: Record<string, string>): boolean {
-  if (values.SETUP_OFFLINE_MODE !== '1') {
+  if (values.SETUP_COMPLETED !== '1' || values.SETUP_OFFLINE_MODE !== '1') {
     return false;
   }
 
@@ -149,7 +149,8 @@ function looksLikeStaleOfflineSetup(values: Record<string, string>): boolean {
   // is written for the selected worker.
   const workerCode = values.PENZTAR_BOOTSTRAP_WORKER_CODE?.trim() ?? '';
   const password = values.PENZTAR_BOOTSTRAP_PASSWORD?.trim() ?? '';
-  return workerCode.length === 0 && password.length === 0;
+  const legacyBrokenApiUrl = !looksLikeValidApiUrl(values.VITE_API_URL);
+  return legacyBrokenApiUrl && workerCode.length === 0 && password.length === 0;
 }
 
 export function resolveEffectiveBootstrapCredentials(
@@ -412,11 +413,11 @@ export function isFirstRun(): SetupCheckResult {
   if (!looksLikeValidSecret(values.JWT_SECRET)) {
     return { isFirstRun: true, envPath, reason: 'jwt-secret-invalid' };
   }
-  if (!looksLikeValidApiUrl(values.VITE_API_URL)) {
-    return { isFirstRun: true, envPath, reason: 'api-url-invalid' };
-  }
   if (looksLikeStaleOfflineSetup(values)) {
     return { isFirstRun: true, envPath, reason: 'stale-offline-setup' };
+  }
+  if (!looksLikeValidApiUrl(values.VITE_API_URL)) {
+    return { isFirstRun: true, envPath, reason: 'api-url-invalid' };
   }
   return { isFirstRun: false, envPath };
 }
@@ -961,6 +962,13 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     const offlineLicenseSecret = generateSecretHex(32);    // 256 bit
 
     const effectiveBootstrapCredentials = resolveEffectiveBootstrapCredentials(payload, resolvedWorkerIdentity);
+    if (!effectiveBootstrapCredentials.username.trim() || !effectiveBootstrapCredentials.password.trim()) {
+      return {
+        success: false,
+        envPath,
+        errorMessage: 'Hiányzó bootstrap dolgozói kód vagy jelszó.',
+      };
+    }
 
     // --- .env írás (atomikus: .env.tmp → rename) ---
     if (!fs.existsSync(envDir)) {
