@@ -1,5 +1,5 @@
-import type { AppMode } from '../hooks/useAppMode'
 import type { Worker } from '../stores/authStore'
+import type { AppMode } from '../types/appMode'
 
 export interface OfflineJwtPayload {
   workerId?: unknown

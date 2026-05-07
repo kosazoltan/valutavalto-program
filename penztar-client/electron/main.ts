@@ -44,6 +44,11 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
+  IPC_CHANNELS,
+  type SetupWorkerOption,
+  type SetupWorkersRequest,
+} from '@valuta/shared-ipc';
+import {
   initDatabase,
   getConfig,
   setConfig,
@@ -390,11 +395,24 @@ ipcMain.handle('setup:branches', async (
   return await getBranches(params?.apiUrl, params?.companyCode);
 });
 
-ipcMain.handle('setup:workers', async (
+ipcMain.handle(IPC_CHANNELS.SETUP_WORKERS, async (
   _event,
-  params?: { apiUrl?: string; companyCode?: string; branchCode?: string },
-) => {
-  return await getWorkers(params?.apiUrl, params?.companyCode, params?.branchCode);
+  params: SetupWorkersRequest,
+): Promise<SetupWorkerOption[]> => {
+  const apiUrl = params?.apiUrl?.trim() ?? '';
+  const companyCode = params?.companyCode?.trim() ?? '';
+  const branchCode = params?.branchCode?.trim() ?? '';
+
+  if (!apiUrl || !companyCode || !branchCode) {
+    log.warn('[IPC] setup:workers hianyos parameterek, ures dolgozoi lista.', {
+      hasApiUrl: Boolean(apiUrl),
+      hasCompanyCode: Boolean(companyCode),
+      hasBranchCode: Boolean(branchCode),
+    });
+    return [];
+  }
+
+  return await getWorkers(apiUrl, companyCode, branchCode);
 });
 
 ipcMain.handle('setup:test-connection', async (
