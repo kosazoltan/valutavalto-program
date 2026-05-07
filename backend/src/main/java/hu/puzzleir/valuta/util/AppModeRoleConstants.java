@@ -118,6 +118,18 @@ public final class AppModeRoleConstants {
         return roleCodes.stream().anyMatch(roleCode -> isRoleSelectableForAppMode(roleCode, appMode));
     }
 
+    public static String canonicalLocalRoleForAppMode(String appMode) {
+        if (appMode == null || appMode.isBlank()) {
+            return null;
+        }
+        return switch (appMode.trim().toLowerCase()) {
+            case "penztar" -> "penztar";
+            case "ertektar" -> "ertektar";
+            case "ertekszallito" -> "ertekszallito";
+            default -> null;
+        };
+    }
+
     private static boolean isServerRole(String normalizedRole) {
         return SERVER_CANONICAL_ROLES.contains(normalizedRole)
                 || LEGACY_SERVER_ROLES.contains(normalizedRole);
