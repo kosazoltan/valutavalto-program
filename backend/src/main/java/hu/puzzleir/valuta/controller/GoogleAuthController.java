@@ -120,19 +120,13 @@ public class GoogleAuthController {
     }
 
     private static void enforceAppModeForLoginResponse(LoginResponseDto response, String appMode) {
-        if (appMode == null || appMode.isBlank()) {
-            return;
-        }
-        if (Boolean.TRUE.equals(response.getRoleSelectionRequired())) {
-            if (!AppModeRoleConstants.hasAnySelectableRoleForAppMode(response.getRoles(), appMode)) {
-                throw new ValidationException("Nincs ebben a programban használható szerepköre.");
-            }
-            return;
-        }
-        String activeRole = response.getActiveRole();
-        if (activeRole != null && !activeRole.isBlank()
-                && !AppModeRoleConstants.isRoleSelectableForAppMode(activeRole, appMode)) {
-            throw new ValidationException("Ez a szerepkör nem használható ebben a programban: " + activeRole);
+        String appModeValidationError = AppModeRoleConstants.validateLoginRolesForAppMode(
+                response.getRoles(),
+                response.getActiveRole(),
+                Boolean.TRUE.equals(response.getRoleSelectionRequired()),
+                appMode);
+        if (appModeValidationError != null) {
+            throw new ValidationException(appModeValidationError);
         }
     }
 }

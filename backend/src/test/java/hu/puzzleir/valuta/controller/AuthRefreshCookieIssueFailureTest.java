@@ -256,6 +256,7 @@ class AuthRefreshCookieIssueFailureTest {
                     assertThat(businessException.getErrorCode()).isEqualTo("LOGIN_SESSION_ISSUE_FAILED");
                     assertThat(businessException.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
                 });
+        verify(tokenBlacklistService, never()).blacklistToken(any(), any(), any(), any());
     }
 
     @Test

@@ -255,19 +255,13 @@ public class AuthController {
     }
 
     private static void enforceAppModeForLoginResponse(LoginResponseDto response, String appMode) {
-        if (appMode == null || appMode.isBlank()) {
-            return;
-        }
-        if (Boolean.TRUE.equals(response.getRoleSelectionRequired())) {
-            if (!AppModeRoleConstants.hasAnySelectableRoleForAppMode(response.getRoles(), appMode)) {
-                throw new ValidationException("Nincs ebben a programban használható szerepköre.");
-            }
-            return;
-        }
-        String activeRole = response.getActiveRole();
-        if (activeRole != null && !activeRole.isBlank()
-                && !AppModeRoleConstants.isRoleSelectableForAppMode(activeRole, appMode)) {
-            throw new ValidationException("Ez a szerepkör nem használható ebben a programban: " + activeRole);
+        String appModeValidationError = AppModeRoleConstants.validateLoginRolesForAppMode(
+                response.getRoles(),
+                response.getActiveRole(),
+                Boolean.TRUE.equals(response.getRoleSelectionRequired()),
+                appMode);
+        if (appModeValidationError != null) {
+            throw new ValidationException(appModeValidationError);
         }
     }
     
@@ -326,9 +320,6 @@ public class AuthController {
         // Új JWT generálás az aktív role-lal
         String newToken = jwtTokenProvider.generateToken(worker, dto.getRoleCode(), permissions);
 
-        // 🔴 Régi token blacklistelése (role switch → token rotation)
-        tokenBlacklistService.blacklistToken(oldTokenId, workerId, "ROLE_CHANGE", LocalDateTime.now().plusHours(24));
-
         issueRefreshCookieOrThrow(
                 worker,
                 request,
@@ -336,6 +327,9 @@ public class AuthController {
                 dto.getRoleCode(),
                 "HttpOnly refresh cookie kiadas bukott role select utan: {}",
                 "Belépés nem véglegesíthető: a szerepkör-választás utáni biztonságos munkamenet cookie kiadása sikertelen.");
+
+        // Régi temp token blacklistelése csak sikeres finalizálás után, hogy cookie-hiba esetén újrapróbálható maradjon.
+        tokenBlacklistService.blacklistToken(oldTokenId, workerId, "ROLE_CHANGE", LocalDateTime.now().plusHours(24));
 
         long expiresInMs = 86400000L;
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(expiresInMs / 1000);

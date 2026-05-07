@@ -250,6 +250,9 @@ const BOOTSTRAP_SERVER_ROLE_CODES = new Set([
   'SUPERVISOR',
   'MANAGER',
   'ADMIN',
+  'supervisor',
+  'manager',
+  'admin',
 ]);
 
 export function selectBootstrapLoginRoleCode(

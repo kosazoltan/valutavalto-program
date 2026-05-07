@@ -168,6 +168,7 @@ describe('selectBootstrapLoginRoleCode', () => {
   it('lokalis appban server role-lal is tud setup device regisztraciot folytatni', () => {
     expect(selectBootstrapLoginRoleCode('penztar', ['foertektar'])).toBe('foertektar');
     expect(selectBootstrapLoginRoleCode('ertektar', ['ADMIN'])).toBe('ADMIN');
+    expect(selectBootstrapLoginRoleCode('penztar', ['admin'])).toBe('admin');
   });
 
   it('nem valaszt masik lokalis apphoz tartozo role-t', () => {
