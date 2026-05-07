@@ -54,6 +54,29 @@ function extractMatches(text, regex) {
   return set;
 }
 
+function extractObjectBodyAfterAssignment(content, exportName) {
+  const assignment = new RegExp(`export\\s+const\\s+${exportName}\\s*(?::[^=]+)?=\\s*\\{`, 'm').exec(content);
+  if (!assignment) {
+    return null;
+  }
+
+  let depth = 1;
+  const start = assignment.index + assignment[0].length;
+  for (let index = start; index < content.length; index += 1) {
+    const char = content[index];
+    if (char === '{') {
+      depth += 1;
+    } else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return content.slice(start, index);
+      }
+    }
+  }
+
+  return null;
+}
+
 function collectIpcChannelConstants(filePath) {
   if (!fs.existsSync(filePath)) {
     return new Map();
@@ -61,17 +84,26 @@ function collectIpcChannelConstants(filePath) {
 
   const constants = new Map();
   const content = readText(filePath);
-  const objectMatch = content.match(/export\s+const\s+IPC_CHANNELS\s*=\s*\{([\s\S]*?)\}\s*satisfies/);
+  const objectBody = extractObjectBodyAfterAssignment(content, 'IPC_CHANNELS');
 
-  if (!objectMatch) {
+  if (!objectBody) {
     return constants;
   }
 
-  for (const match of objectMatch[1].matchAll(/([A-Z0-9_]+)\s*:\s*['"`]([^'"`]+)['"`]/g)) {
+  for (const match of objectBody.matchAll(/([A-Z0-9_]+)\s*:\s*['"`]([^'"`]+)['"`](?:\s+as\s+const)?/g)) {
     constants.set(match[1], match[2]);
   }
 
   return constants;
+}
+
+function addChannelsReferencedByConstants(text, targetSet, constants, regex) {
+  for (const match of text.matchAll(regex)) {
+    const channel = constants.get(match[1]);
+    if (channel) {
+      targetSet.add(channel);
+    }
+  }
 }
 
 if (!fs.existsSync(preloadFile)) {
@@ -91,12 +123,17 @@ const invokedChannels = extractMatches(
 );
 const ipcChannelConstants = collectIpcChannelConstants(sharedIpcFile);
 
-for (const match of preloadContent.matchAll(/ipcRenderer\.invoke\(\s*IPC_CHANNELS\.([A-Z0-9_]+)/g)) {
-  const channel = ipcChannelConstants.get(match[1]);
-  if (channel) {
-    invokedChannels.add(channel);
-  }
+if (preloadContent.includes('IPC_CHANNELS.') && ipcChannelConstants.size === 0) {
+  logger.error('ERROR: preload.ts references IPC_CHANNELS, but no IPC_CHANNELS constants could be extracted.');
+  proc.exit(1);
 }
+
+addChannelsReferencedByConstants(
+  preloadContent,
+  invokedChannels,
+  ipcChannelConstants,
+  /ipcRenderer\.invoke\(\s*IPC_CHANNELS\.([A-Z0-9_]+)/g,
+);
 
 const electronFiles = collectTsFiles(electronDir);
 const handledChannels = new Set();
@@ -107,6 +144,12 @@ for (const filePath of electronFiles) {
   for (const channel of matches) {
     handledChannels.add(channel);
   }
+  addChannelsReferencedByConstants(
+    content,
+    handledChannels,
+    ipcChannelConstants,
+    /ipcMain\.handle(?:Once)?\(\s*IPC_CHANNELS\.([A-Z0-9_]+)/g,
+  );
 }
 
 const missingHandlers = [...invokedChannels].filter((channel) => !handledChannels.has(channel));

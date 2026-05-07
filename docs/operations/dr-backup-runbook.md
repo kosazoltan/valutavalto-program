@@ -43,58 +43,27 @@ A repo tartalmaz commit-olt backup telepítőt és systemd timer-t:
 | Neon DB sync (`app.neon-sync.enabled`) | konfigurált, de **kikapcsolt** | `application.properties:194` default `false` |
 | Backup integritás-ellenőrzés (test restore) | **VERIFY** | havi DR drillben kötelező |
 
-**P0 javasolt akció:** SSH-val verifikálni, hogy `systemctl list-timers valuta-backup.timer` aktív, és a legutóbbi backup sikeresen feltöltődött off-site tárhelyre.
+**P0 javasolt akció:** SSH-val verifikálni, hogy `sudo systemctl list-timers valuta-backup.timer` aktív, és a legutóbbi backup sikeresen feltöltődött off-site tárhelyre.
 
 ### 2.2 Javasolt backup eljárás (iparági standard)
 
 #### Daily logical dump
 
 ```bash
-# /etc/cron.d/valuta-pg-backup (Hetzner VPS, root)
-# Daily 02:30 UTC pg_dump, gzip, retention rotate
-30 2 * * *  postgres  /usr/local/bin/valuta-pg-backup.sh >> /var/log/valuta-backup.log 2>&1
+# Commitolt systemd-alapú megoldás telepítése / ellenőrzése (Hetzner VPS)
+sudo bash deploy/hetzner/scripts/setup-backup.sh
+sudo systemctl list-timers valuta-backup.timer
+sudo systemctl start valuta-backup.service
+sudo journalctl -u valuta-backup -n 50 --no-pager
 ```
 
-`/usr/local/bin/valuta-pg-backup.sh`:
+`deploy/hetzner/scripts/backup-pg.sh` végzi a napi logikai mentést:
 
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-BACKUP_DIR="/var/backups/valuta"
-TIMESTAMP=$(date -u +%Y%m%d-%H%M%S)
-DUMP_FILE="${BACKUP_DIR}/valuta-${TIMESTAMP}.sql.gz"
-
-mkdir -p "$BACKUP_DIR"
-
-# Custom format dump (pg_restore --clean -hez), gzip-pel
-pg_dump \
-  --host=localhost \
-  --username=valuta_user \
-  --dbname=valuta \
-  --format=custom \
-  --no-owner --no-privileges \
-  --file="${BACKUP_DIR}/valuta-${TIMESTAMP}.dump"
-
-# Egyidejűleg sima SQL dump (vész esetén szöveges helyreállításhoz)
-pg_dump \
-  --host=localhost \
-  --username=valuta_user \
-  --dbname=valuta \
-  --no-owner --no-privileges \
-  | gzip -9 > "$DUMP_FILE"
-
-# SHA-256 integritás-ellenőrzés
-sha256sum "${BACKUP_DIR}/valuta-${TIMESTAMP}.dump" "$DUMP_FILE" \
-  > "${BACKUP_DIR}/valuta-${TIMESTAMP}.sha256"
-
-# Off-site upload — Hetzner Storage Box (rsync over SSH)
-rsync -av --remove-source-files \
-  "${BACKUP_DIR}/valuta-${TIMESTAMP}".* \
-  storagebox.your-storagebox.de:/home/valuta-backup/
-
-# Retention rotate (lokális GFS): 7 napi + 4 heti + 12 havi
-find "$BACKUP_DIR" -name 'valuta-*.dump' -mtime +7 -delete
+# A script a repo-ból kerül /opt/valutavalto/scripts alá.
+# Kimenet: /var/backups/valutavalto vagy a setup scriptben konfigurált backup dir.
+# Off-site feltöltés: deploy/hetzner/backup/install-b2-backup.sh vagy a konfigurált WebDAV/B2 út.
+sudo /opt/valutavalto/scripts/backup-pg.sh
 ```
 
 #### Retention policy (javasolt — iparági standard, GFS)
@@ -317,7 +286,7 @@ Soron kívüli kérdés: kosa.zoltan.ebc@gmail.com
 
 | Gap | Prioritás | Javasolt fix |
 |---|---|---|
-| Backup timer production deploy verifikáció | P0 | `systemctl list-timers valuta-backup.timer` + legfrissebb off-site dump letöltési teszt |
+| Backup timer production deploy verifikáció | P0 | `sudo systemctl list-timers valuta-backup.timer` + legfrissebb off-site dump letöltési teszt |
 | Off-site credentialek productionben | P0 | Nextcloud/B2 env kitöltés + próba-feltöltés |
 | WAL archiválás (PITR) | P1 | PostgreSQL `archive_mode=on` + `archive_command` |
 | Failover automatika | P1 | Terraform + cloud-init template, Cloudflare API DNS-failover script |
