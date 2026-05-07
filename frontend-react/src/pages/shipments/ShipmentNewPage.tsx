@@ -1,71 +1,154 @@
-import { useNavigate, Link } from 'react-router-dom'
-import { Package, ArrowLeft, Info } from 'lucide-react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { AlertCircle, ArrowLeft, Package, Send } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { branchApi, currencyApi, shipmentRequestApi, type BranchInfo, type Currency } from '../../services/api/index'
+import { useAuthStore } from '../../stores/authStore'
+import { getErrorMessage } from '../../utils/errorHandling'
+import { logger } from '../../utils/logger'
 
-/**
- * v2.4.7 (Bug #1 — /shipments/new 404 fix):
- *
- * Az "Új szállítmányigény" Link a `ShipmentListPage`-en `/shipments/new`-re mutat,
- * de a router config + page komponens hiányzott → 404 ("Oldal nem található").
- *
- * Ez egy átmeneti placeholder: a teljes szállítmányigény-létrehozási flow
- * (multi-step wizard, AML check, branch source/target select, currency table)
- * a v2.5.0 sprintben érkezik a B9 LISTAK.dll funkciókkal együtt.
- *
- * A backend POST /api/v1/shipments endpoint MÁR létezik (ShipmentController.java:52),
- * a frontend API service is implementált (transactions.ts), csak a UI hiányzott.
- *
- * Ez a placeholder:
- * - 404 megszűnik (route registry-be regisztrálva App.tsx-ben)
- * - UX: világos üzenet a featuról
- * - Vissza a listára gomb
- * - NEM hozz létre tranzakciót, NEM modify-olja a backend-et
- */
+type FormState = {
+  fromBranchId: string
+  toBranchId: string
+  deliveryDate: string
+  currencyId: string
+  amount: string
+  notes: string
+}
+
 export default function ShipmentNewPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const worker = useAuthStore((state) => state.worker)
+  const [form, setForm] = useState<FormState>({
+    fromBranchId: worker?.branchId ?? '',
+    toBranchId: '',
+    deliveryDate: '',
+    currencyId: '',
+    amount: '',
+    notes: '',
+  })
+  const [branches, setBranches] = useState<BranchInfo[]>([])
+  const [currencies, setCurrencies] = useState<Currency[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const disabled = loading || saving
+
+  useEffect(() => {
+    setForm((current) => current.fromBranchId ? current : { ...current, fromBranchId: worker?.branchId ?? '' })
+  }, [worker?.branchId])
+
+  useEffect(() => {
+    let active = true
+    Promise.all([branchApi.listActive(), currencyApi.getActive()])
+      .then(([branchList, currencyList]) => {
+        if (!active) return
+        setBranches(branchList.filter((branch) => branch.isActive !== false))
+        setCurrencies(currencyList.filter((currency) => currency.active !== false))
+      })
+      .catch((err) => {
+        if (!active) return
+        logger.error('ShipmentNewPage', 'Referenciaadat betoltesi hiba:', err)
+        setError(getErrorMessage(err))
+      })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [])
+
+  const patch = (values: Partial<FormState>) => setForm((current) => ({ ...current, ...values }))
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setError(null)
+    const amount = Number(form.amount.replace(',', '.'))
+    if (!form.fromBranchId || !form.toBranchId || !form.currencyId || !Number.isFinite(amount) || amount <= 0) {
+      setError('Kérő iroda, cél iroda, valuta és pozitív összeg megadása kötelező.')
+      return
+    }
+    if (form.fromBranchId === form.toBranchId) {
+      setError('A kérő és a cél iroda nem lehet ugyanaz.')
+      return
+    }
+    setSaving(true)
+    try {
+      const created = await shipmentRequestApi.create({
+        fromBranchId: form.fromBranchId,
+        toBranchId: form.toBranchId,
+        deliveryDate: form.deliveryDate || undefined,
+        notes: form.notes,
+        items: [{ currencyId: form.currencyId, requestedAmount: amount }],
+      })
+      if (!created.id) throw new Error('A szerver nem adott szállítmány azonosítót.')
+      await shipmentRequestApi.submit(created.id)
+      navigate('/shipments', { replace: true })
+    } catch (err) {
+      logger.error('ShipmentNewPage', 'Szallitmanyigeny letrehozasi hiba:', err)
+      setError(getErrorMessage(err))
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <Package />
-          {t('shipments.ujSzallitmanyigeny')}
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="flex items-center gap-2 text-xl font-bold text-gray-800">
+          <Package />{t('shipments.ujSzallitmanyigeny')}
         </h1>
-        <button
-          onClick={() => navigate('/shipments')}
-          className="form-button flex items-center gap-2"
-        >
-          <ArrowLeft size={16} />
-          {t('shipments.visszaAListahoz')}
+        <button onClick={() => navigate('/shipments')} className="form-button flex items-center gap-2">
+          <ArrowLeft size={16} />{t('shipments.visszaAListahoz')}
         </button>
       </div>
 
-      <div className="form-panel">
-        <div className="flex gap-3 items-start p-4 bg-blue-50 border border-blue-200 rounded">
-          <Info className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
-          <div className="space-y-2">
-            <h2 className="font-semibold text-blue-900">{t('shipments.aFunkcioV250BanErkezik')}</h2>
-            <p className="text-sm text-blue-800">
-              {t('shipments.aTeljesSzallitmanyigenyLetrehozasiFlowForrasPenztarCelPenztar')}
-              {t('shipments.kivalasztasDevizanemekCimletezesAmlEllenorzesSupervisorJovahagyas')}
-              {t('shipments.fejlesztesAlattAllAV250Sprintben')}
-            </p>
-            <p className="text-sm text-blue-800">
-              <strong>{t('shipments.jelenlegElerheto')}</strong>{t('shipments.aMeglevoSzallitmanyigenyekListazasa')}
-              {t('shipments.jovahagyasaVagyElutasitasaA')}{' '}
-              <Link to="/shipments" className="underline text-blue-900 hover:text-blue-700">
-                {t('shipments.szallitmanyigenyekListajan')}
-              </Link>
-              .
-            </p>
-            <p className="text-xs text-blue-700 mt-3">
-              {t('shipments.haSurgosAtadasAtvetelSzuksegesAPenztarValutavaltoMenubenA')}
-              {t('shipments.megfeleloMuveletAtadasAtvetelPenztaraknakBankiAtadasElerheto')}
-            </p>
-          </div>
+      {error && (
+        <div className="form-panel bg-red-50 border-red-200">
+          <div className="flex items-center gap-2 text-red-700"><AlertCircle size={16} /><span>{error}</span></div>
         </div>
-      </div>
+      )}
+
+      <form onSubmit={submit} className="form-panel space-y-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <label className="block">
+            <span className="form-label">Kérő iroda</span>
+            <select className="form-input" value={form.fromBranchId} disabled={disabled} onChange={(e) => patch({ fromBranchId: e.target.value })}>
+              <option value="">Válasszon irodát</option>
+              {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} - {branch.name}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="form-label">Cél iroda</span>
+            <select className="form-input" value={form.toBranchId} disabled={disabled} onChange={(e) => patch({ toBranchId: e.target.value })}>
+              <option value="">Válasszon cél irodát</option>
+              {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} - {branch.name}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="form-label">Kért kézbesítési dátum</span>
+            <input type="date" className="form-input" value={form.deliveryDate} disabled={saving} onChange={(e) => patch({ deliveryDate: e.target.value })} />
+          </label>
+          <label className="block">
+            <span className="form-label">Valuta</span>
+            <select className="form-input" value={form.currencyId} disabled={disabled} onChange={(e) => patch({ currencyId: e.target.value })}>
+              <option value="">Válasszon valutát</option>
+              {currencies.map((currency) => <option key={currency.id} value={currency.id}>{currency.code} - {currency.name}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="form-label">Összeg</span>
+            <input type="number" min="0.01" step="0.01" className="form-input" value={form.amount} disabled={saving} onChange={(e) => patch({ amount: e.target.value })} />
+          </label>
+          <label className="block md:col-span-2">
+            <span className="form-label">Megjegyzés</span>
+            <textarea className="form-input min-h-24" value={form.notes} disabled={saving} onChange={(e) => patch({ notes: e.target.value })} />
+          </label>
+        </div>
+        <div className="flex justify-end">
+          <button type="submit" className="form-button-primary flex items-center gap-2" disabled={disabled}>
+            <Send size={16} />{saving ? 'Beküldés...' : 'Igény beküldése'}
+          </button>
+        </div>
+      </form>
     </div>
   )
 }
