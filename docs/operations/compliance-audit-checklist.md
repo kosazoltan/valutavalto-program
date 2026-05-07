@@ -153,7 +153,7 @@ A felhasználói tasklist említ "4 órás bejelentési határidő"-t. **A kódb
 | `customer.*` PII (név, igazolvány-szám, cím) | 8 év (NGM összhang) | "elfeledtetéshez való jog" ütközik az NGM kötelezettséggel | **PARTIAL** — jogszabályi alap (Pmt. 56-58.§) felülírja a GDPR 17.§-t (right to erasure), DE explicit írásbeli policy szükséges (DPO-nak elkészíteni) |
 | `transactions.*` üzleti adat | 8 év (`retention.financial-transactions.years=8`) | jogszabályi alap erősebb | **PASS** (legitim érdek + jogi kötelezettség) |
 | `audit_log.*` | indefinite (jelenlegi) | retention policy hiánya | **PARTIAL** — javasolt 8 év üzleti összhangra |
-| `client_error_log.*` | 90 nap (V182 COMMENT) | nincs PII-szabad design — `user_identifier` mező Google email/worker code | **PARTIAL** — a 90 napos retention OK, DE: a `user_identifier` PII; cron cleanup commit-olandó (lásd `monitoring-runbook.md` 5.) |
+| `client_error_log.*` | 90 nap (V182 COMMENT) | nincs PII-szabad design — `user_identifier` mező Google email/worker code | **PARTIAL / VERIFY DEPLOY** — a 90 napos cleanup timer commitolva (`deploy/hetzner/scripts/setup-client-error-cleanup.sh`), élő systemd timer státusz SSH-val ellenőrizendő |
 | Camera felvétel | 50 nap (`application.properties:112` `camera.retention-days=50`) | titkosított (AES-GCM) | **PASS** |
 | `worker.*` (munkavállalói adatok) | aktív foglalkoztatás + 5 év | **VERIFY** — explicit retention konfig nincs a kódban |
 
@@ -276,7 +276,7 @@ Teljes checklist (1-4 szakasz) — minden tétel PASS / dokumentált PARTIAL / 0
 | Munkavállalói GDPR review (entity-mezőlista) | 3.3 | P2 | DPO entity-szintű audit |
 | Hetzner / Cloudflare / Google DPA összegyűjtés | 3.5 | P0 | jogi feladat (auditor-által kérendő) |
 | Szankciós lista frissítési policy dokumentálás | 2.1 | P1 | `SanctionScreeningService` forrás + cadence |
-| `client_error_log` 90 napos cleanup cron | 3.1 | P1 | `monitoring-runbook.md` 5. szerint commit-olni |
+| `client_error_log` 90 napos cleanup timer élő verifikáció | 3.1 | P1 | `systemctl list-timers valuta-client-error-cleanup.timer` |
 
 ### 6.3 Acceptance
 
