@@ -7,7 +7,7 @@ import { Eye, EyeOff, User, Lock, Building2, Shield, RefreshCw, ChevronDown } fr
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useAppMode } from '../../hooks/useAppMode'
-import { appModeLabel, isRoleSelectableForAppMode } from '../../utils/appModeRoles'
+import { appModeLabel, canonicalizeRoleForAppMode, isRoleSelectableForAppMode } from '../../utils/appModeRoles'
 import { useTranslation } from 'react-i18next'
 
 /**
@@ -114,20 +114,11 @@ export default function LoginPage() {
    * - egyeb szerver role (ugyvezeto, foertektar, stb.) -> /dashboard
    */
   const getDefaultRouteForRole = (role?: string | null): string => {
-    const canonical = (role ?? '').toLowerCase()
+    const canonical = canonicalizeRoleForAppMode(role)
     if (canonical === 'penztar') return '/cashier'
     if (canonical === 'ertekszallito') return '/transfers'
     if (canonical === 'ertektar') return '/treasury'
-    // Legacy enum fallback (CASHIER/MANAGER/ADMIN)
-    switch (role) {
-      case 'MANAGER':
-      case 'TREASURY_MANAGER':
-        return '/treasury'
-      case 'CASHIER':
-        return '/cashier'
-      default:
-        return '/dashboard'
-    }
+    return '/dashboard'
   }
 
   const { mode: appMode, isLoading: appModeLoading } = useAppMode()
