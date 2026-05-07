@@ -396,9 +396,28 @@ public class AuthController {
             return ResponseEntity.status(401).build();
         }
 
-        // Aktív role és permissions megőrzése a régi tokenből
+        // Aktív role validálása DB-ből. A refresh nem viheti tovább vakon a JWT-ben
+        // lévő régi jogosultságokat, mert role-visszavonás után az privilege retention.
         String activeRole = jwtTokenProvider.getActiveRoleFromToken(token);
-        java.util.List<String> permissions = jwtTokenProvider.getPermissionsFromToken(token);
+        List<String> roleCodes = workerRoleService.getRoleCodesForWorker(workerId);
+        if (activeRole != null && !activeRole.isBlank()) {
+            if (!roleCodes.contains(activeRole)) {
+                tokenBlacklistService.blacklistToken(
+                        oldTokenId,
+                        workerId,
+                        "ROLE_REVOKED",
+                        LocalDateTime.now().plusHours(24));
+                return ResponseEntity.status(401).build();
+            }
+        } else if (roleCodes.size() == 1) {
+            activeRole = roleCodes.get(0);
+        } else {
+            activeRole = null;
+        }
+
+        List<String> permissions = activeRole != null && !activeRole.isBlank()
+                ? workerRoleService.getPermissionCodesForRole(activeRole)
+                : List.of();
 
         // Új token generálás az aktív role megtartásával
         String newToken = jwtTokenProvider.generateToken(worker, activeRole, permissions);

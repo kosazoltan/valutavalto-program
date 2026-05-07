@@ -35,6 +35,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -256,6 +257,80 @@ class AuthRefreshCookieIssueFailureTest {
                     assertThat(businessException.getErrorCode()).isEqualTo("LOGIN_SESSION_ISSUE_FAILED");
                     assertThat(businessException.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
                 });
+    }
+
+    @Test
+    void refreshTokenRejectsRevokedActiveRoleFromJwt() {
+        AuthController controller = new AuthController(
+                workerService,
+                jwtTokenProvider,
+                workerRepository,
+                workerRoleService,
+                tokenBlacklistService,
+                adminBootstrapService,
+                workerFirstTimeSetupService,
+                passwordResetService,
+                refreshTokenService,
+                clientIpResolver);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer access-token");
+        Worker worker = worker();
+        when(jwtTokenProvider.validateToken("access-token")).thenReturn(true);
+        when(jwtTokenProvider.getTokenIdFromToken("access-token")).thenReturn("old-token-id");
+        when(tokenBlacklistService.isBlacklisted("old-token-id")).thenReturn(false);
+        when(jwtTokenProvider.getWorkerIdFromToken("access-token")).thenReturn(42L);
+        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(jwtTokenProvider.getActiveRoleFromToken("access-token")).thenReturn("ertektar");
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar"));
+
+        var result = controller.refreshToken(request);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        verify(tokenBlacklistService).blacklistToken(
+                eq("old-token-id"),
+                eq(42L),
+                eq("ROLE_REVOKED"),
+                any(java.time.LocalDateTime.class));
+        verify(workerRoleService, never()).getPermissionCodesForRole("ertektar");
+        verify(jwtTokenProvider, never()).generateToken(any(), any(), any());
+    }
+
+    @Test
+    void refreshTokenRecomputesPermissionsFromCurrentRole() {
+        AuthController controller = new AuthController(
+                workerService,
+                jwtTokenProvider,
+                workerRepository,
+                workerRoleService,
+                tokenBlacklistService,
+                adminBootstrapService,
+                workerFirstTimeSetupService,
+                passwordResetService,
+                refreshTokenService,
+                clientIpResolver);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer access-token");
+        Worker worker = worker();
+        when(jwtTokenProvider.validateToken("access-token")).thenReturn(true);
+        when(jwtTokenProvider.getTokenIdFromToken("access-token")).thenReturn("old-token-id");
+        when(tokenBlacklistService.isBlacklisted("old-token-id")).thenReturn(false);
+        when(jwtTokenProvider.getWorkerIdFromToken("access-token")).thenReturn(42L);
+        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(jwtTokenProvider.getActiveRoleFromToken("access-token")).thenReturn("penztar");
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "ertektar"));
+        when(workerRoleService.getPermissionCodesForRole("penztar")).thenReturn(List.of("TRADE_EXECUTE"));
+        when(jwtTokenProvider.generateToken(worker, "penztar", List.of("TRADE_EXECUTE")))
+                .thenReturn("refreshed-token");
+
+        var result = controller.refreshToken(request);
+
+        assertThat(result.getBody()).containsEntry("token", "refreshed-token");
+        verify(jwtTokenProvider, never()).getPermissionsFromToken("access-token");
+        verify(tokenBlacklistService).blacklistToken(
+                eq("old-token-id"),
+                eq(42L),
+                eq("REFRESH"),
+                any(java.time.LocalDateTime.class));
     }
 
     @Test
