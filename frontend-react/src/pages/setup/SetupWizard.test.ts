@@ -96,6 +96,7 @@ describe('buildConnectionTestResetKey', () => {
     expect(buildConnectionTestResetKey({ ...base, bootstrapPassword: 'other-secret' })).not.toBe(original)
     expect(buildConnectionTestResetKey({ ...base, appMode: 'ertektar' })).not.toBe(original)
     expect(buildConnectionTestResetKey({ ...base, branchCode: 'VAULT' })).not.toBe(original)
+    expect(buildConnectionTestResetKey({ ...base, offlineMode: true })).not.toBe(original)
   })
 
   it('normalizes case and surrounding whitespace for stable identity fields', () => {

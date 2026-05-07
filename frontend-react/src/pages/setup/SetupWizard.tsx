@@ -230,6 +230,10 @@ export default function SetupWizard() {
     setConnectionTest({ state: 'idle' })
   }, [connectionTestResetKey])
 
+  const isCurrentConnectionTestRequest = useCallback((requestKey: string) => (
+    connectionTestResetKeyRef.current === requestKey
+  ), [])
+
   // --- Lépés-validáció: engedélyezett-e a tovább ---
   const canAdvance = useMemo(() => {
     switch (currentStep) {
@@ -272,7 +276,7 @@ export default function SetupWizard() {
           password: '',
         })
           .then((result) => {
-            if (connectionTestResetKeyRef.current !== requestKey) return
+            if (!isCurrentConnectionTestRequest(requestKey)) return
             if (result.success) {
               setConnectionTest({
                 state: 'ok',
@@ -285,7 +289,7 @@ export default function SetupWizard() {
             }
           })
           .catch((err: unknown) => {
-            if (connectionTestResetKeyRef.current !== requestKey) return
+            if (!isCurrentConnectionTestRequest(requestKey)) return
             setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
           })
         return
@@ -295,7 +299,7 @@ export default function SetupWizard() {
       const started = performance.now()
       fetch(url, { method: 'GET' })
         .then((resp) => {
-          if (connectionTestResetKeyRef.current !== requestKey) return
+          if (!isCurrentConnectionTestRequest(requestKey)) return
           const latency = Math.round(performance.now() - started)
           if (resp.ok) {
             setConnectionTest({ state: 'ok', message: `Kapcsolodva (HTTP ${resp.status}, ${latency} ms)` })
@@ -304,15 +308,16 @@ export default function SetupWizard() {
           }
       })
         .catch((err: unknown) => {
-          if (connectionTestResetKeyRef.current !== requestKey) return
+          if (!isCurrentConnectionTestRequest(requestKey)) return
           setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
         })
     }
-  }, [currentStep, apiUrl, companyCode, offlineMode, bootstrapUsername, bootstrapPassword, connectionTestResetKey])
+  }, [currentStep, apiUrl, companyCode, offlineMode, bootstrapUsername, bootstrapPassword, connectionTestResetKey, isCurrentConnectionTestRequest])
 
   // --- Kapcsolat teszt (kezi, retry gombnak) ---
   const runConnectionTest = useCallback(async () => {
-    const requestKey = connectionTestResetKeyRef.current
+    const requestKey = connectionTestResetKey
+    connectionTestResetKeyRef.current = requestKey
     setConnectionTest({ state: 'testing' })
     const started = performance.now()
     try {
@@ -323,7 +328,7 @@ export default function SetupWizard() {
           username: bootstrapUsername.trim(),
           password: bootstrapPassword,
         })
-        if (connectionTestResetKeyRef.current !== requestKey) return
+        if (!isCurrentConnectionTestRequest(requestKey)) return
         if (result.success) {
           setConnectionTest({
             state: 'ok',
@@ -339,7 +344,7 @@ export default function SetupWizard() {
       const normalized = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '')
       const url = `${normalized}/api/v1/auth/bootstrap-status`
       const resp = await fetch(url, { method: 'GET' })
-      if (connectionTestResetKeyRef.current !== requestKey) return
+      if (!isCurrentConnectionTestRequest(requestKey)) return
       const latency = Math.round(performance.now() - started)
       if (resp.ok) {
         setConnectionTest({ state: 'ok', message: `Sikeres (HTTP ${resp.status}, ${latency} ms)` })
@@ -347,10 +352,10 @@ export default function SetupWizard() {
         setConnectionTest({ state: 'fail', message: `Szerver hiba: HTTP ${resp.status}` })
       }
     } catch (err: unknown) {
-      if (connectionTestResetKeyRef.current !== requestKey) return
+      if (!isCurrentConnectionTestRequest(requestKey)) return
       setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
     }
-  }, [apiUrl, companyCode, bootstrapUsername, bootstrapPassword])
+  }, [apiUrl, companyCode, bootstrapUsername, bootstrapPassword, connectionTestResetKey, isCurrentConnectionTestRequest])
 
   // --- Telepítés befejezése ---
   const handleFinish = async () => {
