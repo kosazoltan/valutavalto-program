@@ -53,7 +53,7 @@ export interface GoogleOAuthResult {
 }
 
 export interface GoogleOAuthError {
-  /** Hibakod: USER_CANCELLED, NETWORK, TOKEN_EXCHANGE_FAILED, NO_ID_TOKEN, MISCONFIGURED, TIMEOUT. */
+  /** Hibakod: USER_CANCELLED, BROWSER_OPEN_FAILED, NETWORK, TOKEN_EXCHANGE_FAILED, NO_ID_TOKEN, MISCONFIGURED, TIMEOUT. */
   code: string;
   message: string;
 }
@@ -125,6 +125,7 @@ function createLoopbackAuthWaiter(params: {
 }): {
   promise: Promise<string>;
   cancel: () => void;
+  abort: (error: GoogleOAuthFailedException) => void;
   cleanup: () => void;
 } {
   let settled = false;
@@ -211,6 +212,7 @@ function createLoopbackAuthWaiter(params: {
     promise,
     cancel: () => fail(new GoogleOAuthFailedException('USER_CANCELLED',
         'Google bejelentkezes megszakitva az alkalmazasbol.')),
+    abort: fail,
     cleanup,
   };
 }
@@ -353,10 +355,17 @@ export async function performGoogleOAuthFlow(config: {
     try {
       await shell.openExternal(authUrl.toString());
     } catch (err) {
-      authWaiter.cleanup();
-      throw new GoogleOAuthFailedException('BROWSER_OPEN_FAILED',
+      const browserError = new GoogleOAuthFailedException('BROWSER_OPEN_FAILED',
           'Nem sikerult megnyitni a rendszer bongeszot a Google bejelentkezeshez: '
           + ((err as Error).message ?? String(err)));
+      authWaiter.abort(browserError);
+      try {
+        await authWaiter.promise;
+      } catch {
+        // Elvart: a browser-open hibat itt fogyasztjuk el, hogy ne maradjon
+        // rejectelt authPromise handler nelkul.
+      }
+      throw browserError;
     }
     authCode = await authWaiter.promise;
   } finally {

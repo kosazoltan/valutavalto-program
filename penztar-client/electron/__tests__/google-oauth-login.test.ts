@@ -109,7 +109,10 @@ describe('performGoogleOAuthFlow', () => {
       clientId: 'desktop-client-id',
       clientSecret: 'desktop-secret',
       timeoutMs: 1,
-    })).rejects.toMatchObject({ code: 'TIMEOUT' });
+    })).rejects.toMatchObject({
+      code: 'TIMEOUT',
+      message: expect.stringContaining('bezarhatta a bongeszot'),
+    });
 
     expect(shell.openExternal).toHaveBeenCalledWith(expect.stringContaining('https://accounts.google.com/o/oauth2/v2/auth'));
   });
