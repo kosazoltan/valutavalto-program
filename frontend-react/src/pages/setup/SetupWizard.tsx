@@ -350,6 +350,7 @@ export default function SetupWizard() {
         const setupUrl = `${normalized}/api/v1/auth/first-time-worker-setup`
         const setupResp = await fetch(setupUrl, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             companyCode: companyCode.trim(),
@@ -376,6 +377,7 @@ export default function SetupWizard() {
         const bootstrapUrl = `${normalized}/api/v1/auth/bootstrap-admin`
         const resp = await fetch(bootstrapUrl, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             companyCode: companyCode.trim(),
