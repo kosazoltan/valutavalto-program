@@ -113,7 +113,7 @@ public class HandlingFeeTransactionService {
             totalCommission = totalCommission.add(hft.getWorkerCommissionShare());
         }
 
-        Map<Long, String> paymentMethods = loadPaymentMethods(items);
+        Map<Long, String> paymentMethods = loadPaymentMethods(branchId, items);
 
         return HandlingFeeReportDto.builder()
             .dateFrom(from.toString())
@@ -130,7 +130,7 @@ public class HandlingFeeTransactionService {
     }
 
     private HandlingFeeTransactionDto toDto(HandlingFeeTransaction entity) {
-        return toDto(entity, loadPaymentMethod(entity.getTransactionId()));
+        return toDto(entity, null);
     }
 
     private HandlingFeeTransactionDto toDto(HandlingFeeTransaction entity, String paymentMethod) {
@@ -148,27 +148,16 @@ public class HandlingFeeTransactionService {
             .build();
     }
 
-    private String loadPaymentMethod(Long transactionId) {
-        if (transactionId == null) {
-            return null;
-        }
-        return repository.findPaymentMethodsByTransactionIds(List.of(transactionId)).stream()
-            .findFirst()
-            .map(HandlingFeeTransactionRepository.TransactionPaymentMethodProjection::getPaymentMethod)
-            .map(Enum::name)
-            .orElse(null);
-    }
-
-    private Map<Long, String> loadPaymentMethods(List<HandlingFeeTransaction> items) {
+    private Map<Long, String> loadPaymentMethods(UUID branchId, List<HandlingFeeTransaction> items) {
         List<Long> transactionIds = items.stream()
             .map(HandlingFeeTransaction::getTransactionId)
             .filter(Objects::nonNull)
             .distinct()
             .toList();
-        if (transactionIds.isEmpty()) {
+        if (branchId == null || transactionIds.isEmpty()) {
             return Map.of();
         }
-        return repository.findPaymentMethodsByTransactionIds(transactionIds).stream()
+        return repository.findPaymentMethodsByBranchAndTransactionIds(branchId, transactionIds).stream()
             .filter(projection -> projection.getPaymentMethod() != null)
             .collect(Collectors.toMap(
                 HandlingFeeTransactionRepository.TransactionPaymentMethodProjection::getTransactionId,
