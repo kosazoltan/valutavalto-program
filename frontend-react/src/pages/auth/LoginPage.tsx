@@ -23,27 +23,10 @@ const SERVER_ALLOWED_CANONICAL_ROLES = [
 ]
 // Legacy enum fallback
 const SERVER_ALLOWED_LEGACY_ROLES = ['SUPERVISOR', 'MANAGER', 'ADMIN']
-const LEGACY_PENZTAR_ROLES = ['CASHIER']
-const LEGACY_ERTEKTAR_ROLES = ['MANAGER', 'TREASURY_MANAGER']
 
 function isServerRole(roleCode: string): boolean {
   return SERVER_ALLOWED_CANONICAL_ROLES.includes(roleCode.toLowerCase())
     || SERVER_ALLOWED_LEGACY_ROLES.includes(roleCode.toUpperCase())
-}
-
-function isRoleSelectableForAppMode(roleCode: string, appMode: AppMode): boolean {
-  const canonical = roleCode.toLowerCase()
-  const legacy = roleCode.toUpperCase()
-  const serverRole = isServerRole(roleCode)
-
-  if (appMode === 'full') return serverRole
-  if (appMode === 'penztar') {
-    return serverRole || canonical === 'penztar' || LEGACY_PENZTAR_ROLES.includes(legacy)
-  }
-  if (appMode === 'ertektar') {
-    return serverRole || canonical === 'ertektar' || LEGACY_ERTEKTAR_ROLES.includes(legacy)
-  }
-  return false
 }
 
 function appModeLabel(appMode: AppMode): string {
@@ -178,8 +161,7 @@ export default function LoginPage() {
   const handleLoginResponse = (response: Awaited<ReturnType<typeof authApi.login>>) => {
     // Szerver (full mód) whitelist: csak főértéktáros / belső ellenőr / ügyvezető
     const effectiveRole = response.activeRole ?? response.worker.role
-    const canonicalAllowed = SERVER_ALLOWED_CANONICAL_ROLES.includes(effectiveRole.toLowerCase())
-    const legacyAllowed = SERVER_ALLOWED_LEGACY_ROLES.includes(effectiveRole)
+    const serverRoleAllowed = isServerRole(effectiveRole)
 
     // v2.1.4: Backend adta validAppModes ellenorzese (robusztusabb mint egyedi role-check)
     if (response.validAppModes && response.validAppModes.length > 0) {
@@ -196,17 +178,17 @@ export default function LoginPage() {
         setError('Hozzáférés megtagadva. A munkaköröd alapján ezekbe a programokba léphetsz be: ' + allowedProgs + '. Most "' + appMode + '" módban próbálsz belépni.')
         return
       }
-    } else if (appMode === 'full' && !canonicalAllowed && !legacyAllowed) {
+    } else if (appMode === 'full' && !serverRoleAllowed) {
       setError('Hozzáférés megtagadva. A szerverre csak főértéktáros, belső ellenőr, irodavezető, ügyvezető és egyéb szerver-oldali munkakörök léphetnek be. Pénztárosok és értéktárosok a lokál alkalmazást használják.')
       return
     }
 
     if (response.roleSelectionRequired) {
-      if (!response.roles || response.roles.length < 2) {
+      if (!response.roles || response.roles.length < 1) {
         setError('A bejelentkezés szerepkör-választást kér, de a szerver nem adott választható szerepköröket.')
         return
       }
-      const selectableRoles = response.roles.filter((role) => isRoleSelectableForAppMode(role, appMode))
+      const selectableRoles = response.roles
       if (selectableRoles.length === 0) {
         setError(`Hozzáférés megtagadva. Egyik választható szerepkör sem használható ebben a programban: ${appModeLabel(appMode)}.`)
         return
@@ -241,10 +223,6 @@ export default function LoginPage() {
     setError('')
 
     try {
-      if (!isRoleSelectableForAppMode(selectedRole, appMode)) {
-        setError(`Ez a szerepkör nem használható ebben a programban: ${appModeLabel(appMode)}.`)
-        return
-      }
       const response = await authApi.selectRole({
         token: pendingLoginResponse.token,
         roleCode: selectedRole,
@@ -405,7 +383,7 @@ export default function LoginPage() {
 
   // V57: Role-választó modal
   if (showRoleSelector && pendingLoginResponse) {
-    const selectableRoles = pendingLoginResponse.roles?.filter((role) => isRoleSelectableForAppMode(role, appMode)) ?? []
+    const selectableRoles = pendingLoginResponse.roles ?? []
     return (
       <div className="w-[340px]">
         <div className="bg-form-bg border border-form-border shadow-lg">

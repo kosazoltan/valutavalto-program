@@ -180,19 +180,12 @@ public class WorkerFirstTimeSetupService {
             return null;
         }
         if (appMode != null && !appMode.isBlank()) {
-            String preferredRole = AppModeRoleConstants.canonicalLocalRoleForAppMode(appMode);
+            String preferredRole = AppModeRoleConstants.preferredSelectableLocalRoleForAppMode(roleCodes, appMode);
             if (preferredRole != null) {
-                String exact = roleCodes.stream()
-                        .filter(roleCode -> preferredRole.equals(roleCode.trim().toLowerCase()))
-                        .findFirst()
-                        .orElse(null);
-                if (exact != null) {
-                    return exact;
-                }
+                return preferredRole;
             }
-            List<String> selectableRoles = roleCodes.stream()
-                    .filter(roleCode -> AppModeRoleConstants.isRoleSelectableForAppMode(roleCode, appMode))
-                    .toList();
+
+            List<String> selectableRoles = AppModeRoleConstants.selectableRolesForAppMode(roleCodes, appMode);
             if (selectableRoles.isEmpty()) {
                 throw new ValidationException("Nincs ebben a programban használható szerepköre.");
             }
@@ -206,6 +199,7 @@ public class WorkerFirstTimeSetupService {
         if (roleCodes.size() == 1) {
             return roleCodes.get(0);
         }
+        // Tobbszerepkoros setupnal appMode nelkul nem valasztunk sorrendfuggo aktiv role-t.
         throw new ValidationException("Tobb szerepkor eseten a programtipus megadasa kotelezo.");
     }
 }

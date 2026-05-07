@@ -31,7 +31,9 @@ vi.mock('electron', () => ({
   },
 }));
 
+import { net } from 'electron';
 import {
+  getWorkers,
   isFirstRun,
   resolveBootstrapRoleCodeForAppMode,
   resolveEffectiveBootstrapCredentials,
@@ -168,6 +170,7 @@ describe('selectBootstrapLoginRoleCode', () => {
   it('lokalis appban server role-lal is tud setup device regisztraciot folytatni', () => {
     expect(selectBootstrapLoginRoleCode('penztar', ['foertektar'])).toBe('foertektar');
     expect(selectBootstrapLoginRoleCode('ertektar', ['ADMIN'])).toBe('ADMIN');
+    expect(selectBootstrapLoginRoleCode('penztar', ['admin'])).toBe('admin');
   });
 
   it('nem valaszt masik lokalis apphoz tartozo role-t', () => {
@@ -207,5 +210,23 @@ describe('shouldUseWorkerFirstTimeSetup', () => {
       selectedWorkerCode: 'BORSI',
       bootstrapCompleted: true,
     })).toBe(false);
+  });
+});
+
+describe('getWorkers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('nem indit backend worker lekerest hianyzo cegkodnal', async () => {
+    await expect(getWorkers('https://excvaluta.com/api/v1', '   ', 'KORUT')).resolves.toEqual([]);
+
+    expect(net.request).not.toHaveBeenCalled();
+  });
+
+  it('nem indit backend worker lekerest hianyzo fiokkodnal', async () => {
+    await expect(getWorkers('https://excvaluta.com/api/v1', 'EBC', '   ')).resolves.toEqual([]);
+
+    expect(net.request).not.toHaveBeenCalled();
   });
 });
