@@ -48,6 +48,11 @@ import {
 } from './sqlite';
 import { safeStorage } from 'electron';
 import log from 'electron-log';
+import {
+  collectRoleCodes,
+  normalizeSetupAppMode,
+  preferredRoleCodesForAppMode,
+} from './setup-app-mode-roles';
 
 // --- Típusok ---
 
@@ -154,31 +159,11 @@ export function selectBootstrapRoleCode(
     return explicit;
   }
 
-  return roles.size === 1 ? [...roles][0] ?? null : null;
-}
-
-function collectRoleCodes(login: Pick<LoginResponse, 'roles' | 'availableRoles'>): Set<string> {
-  const values = [
-    ...(login.roles ?? []),
-    ...(login.availableRoles ?? []).flatMap((role) => [role.roleCode, role.code]),
-  ];
-  return new Set(values.filter((roleCode): roleCode is string =>
-    typeof roleCode === 'string' && roleCode.trim().length > 0));
-}
-
-function preferredRoleCodesForAppMode(appMode: string | null | undefined): string[] {
-  switch (appMode?.trim().toLowerCase()) {
-    case 'penztar':
-      return ['penztar', 'CASHIER'];
-    case 'ertektar':
-      return ['ertektar', 'VAULT_KEEPER', 'CHIEF_VAULT', 'foertektar'];
-    case 'ertekszallito':
-      return ['ertekszallito', 'COURIER'];
-    case 'full':
-      return ['ugyvezeto', 'foertektar', 'irodavezeto', 'belso_ellenor', 'ADMIN', 'MANAGER'];
-    default:
-      return [];
+  if (normalizeSetupAppMode(appMode) === 'full' && roles.size > 0) {
+    return [...roles][0] ?? null;
   }
+
+  return roles.size === 1 ? [...roles][0] ?? null : null;
 }
 
 class HttpStatusError extends Error {
@@ -441,7 +426,11 @@ export class SyncEngine {
       if (login.roleSelectionRequired) {
         const selectedRoleCode = selectBootstrapRoleCode(credentials.appMode, credentials.roleCode, login);
         if (!selectedRoleCode) {
-          log.warn('[SyncEngine] Role selection szukseges, de nincs appMode-hoz illeszkedo role.');
+          log.warn('[SyncEngine] Role selection szukseges, de nincs appMode-hoz illeszkedo role.', {
+            appMode: credentials.appMode,
+            explicitRoleCode: credentials.roleCode,
+            availableRoleCodes: [...collectRoleCodes(login)],
+          });
           return null;
         }
         const selected = await httpPost<LoginResponse>(

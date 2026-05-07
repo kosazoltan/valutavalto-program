@@ -16,8 +16,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import type { SetupWorkerOption } from '@valuta/shared-ipc';
+import { resolveBootstrapRoleCodeForAppMode } from './setup-app-mode-roles';
 
 export type { SetupWorkerOption } from '@valuta/shared-ipc';
+export { resolveBootstrapRoleCodeForAppMode } from './setup-app-mode-roles';
 
 // ---------------------------------------------------------------------------
 // Típusok
@@ -54,7 +56,7 @@ export interface SetupSavePayload {
   bootstrapUsername?: string;    // wizardbeli teszt-felhasználó (opcionális, csak offline módban üres)
   bootstrapPassword?: string;
   offlineMode: boolean;          // ha true, a szerver kapcsolatot kihagyjuk a wizardban
-  appMode?: 'penztar' | 'ertektar' | 'ertekszallito';  // v2.1.4: program-tipus
+  appMode?: 'penztar' | 'ertektar' | 'ertekszallito' | 'full';  // v2.1.4: program-tipus
   // v2.3.0: a telepito dolgozoi dropdown-bol kivalasztott worker identity.
   // Ha kitoltve -> /auth/first-time-worker-setup (meglevo worker jelszo beallitas,
   // megtartott role-lel), egyebkent /auth/bootstrap-admin (uj admin letrehozas).
@@ -248,30 +250,25 @@ export function persistBootstrapPasswordConfig(
 }
 
 export function resolveEffectiveBootstrapCredentials(
-  payload: Pick<SetupSavePayload, 'adminUsername' | 'adminPassword' | 'bootstrapUsername'>,
+  payload: Pick<SetupSavePayload, 'adminUsername' | 'adminPassword' | 'bootstrapUsername' | 'bootstrapPassword'>,
   resolvedWorkerIdentity: { workerCode?: string } | null,
+  options: { preserveExistingPassword?: boolean } = {},
 ): { bootstrapUsername: string; bootstrapPassword: string } {
+  // Worker code precedence follows the backend identity that actually owns the password:
+  // server-confirmed worker, then the login/test worker typed in the wizard, then admin fallback.
   const workerCode = [
     resolvedWorkerIdentity?.workerCode,
     payload.bootstrapUsername,
     payload.adminUsername,
   ].find((value) => value != null && value.trim().length > 0)?.trim().toUpperCase() ?? '';
+  const currentBootstrapPassword = payload.bootstrapPassword?.trim() ?? '';
+  const bootstrapPassword = options.preserveExistingPassword && currentBootstrapPassword
+    ? currentBootstrapPassword
+    : payload.adminPassword;
   return {
     bootstrapUsername: workerCode,
-    bootstrapPassword: payload.adminPassword,
+    bootstrapPassword,
   };
-}
-
-export function resolveBootstrapRoleCodeForAppMode(appMode: SetupSavePayload['appMode'] | undefined): string {
-  switch (appMode) {
-    case 'ertektar':
-      return 'ertektar';
-    case 'ertekszallito':
-      return 'ertekszallito';
-    case 'penztar':
-    default:
-      return 'penztar';
-  }
 }
 
 const BOOTSTRAP_SERVER_ROLE_CODES = new Set([
@@ -1062,6 +1059,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       workerRole?: string;
       branchCode?: string;
     } | null = null;
+    let preserveExistingBootstrapPassword = false;
 
     let bootstrapCompletedBeforeSetup: boolean | null = null;
     if (!payload.selectedWorkerCode && payload.bootstrapUsername?.trim()) {
@@ -1127,6 +1125,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       }
       if (bootstrap.alreadyDone) {
         log.info('[Setup] Bootstrap már lefutott ezen a rendszeren — folytatjuk.');
+        preserveExistingBootstrapPassword = true;
       } else {
         log.info('[Setup] Bootstrap admin sikeresen beállítva a backend-ben.');
       }
@@ -1138,7 +1137,11 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     }
 
     const effectiveBootstrapCredentials =
-      resolveEffectiveBootstrapCredentials(payload, resolvedWorkerIdentity);
+      resolveEffectiveBootstrapCredentials(
+        payload,
+        resolvedWorkerIdentity,
+        { preserveExistingPassword: preserveExistingBootstrapPassword },
+      );
     const bootstrapRoleCode = resolveBootstrapRoleCodeForAppMode(payload.appMode);
 
     // --- Kulcs generálás ---
@@ -1190,6 +1193,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       }
       persistBootstrapPasswordConfig(effectiveBootstrapCredentials.bootstrapPassword, setConfig, deleteConfig);
       setConfig('bootstrap_role_code', bootstrapRoleCode);
+      persistBootstrapPasswordConfig(effectiveBootstrapCredentials.bootstrapPassword, setConfig, deleteConfig);
       // v2.3.0: a telepito-ban kivalasztott (es jelszot beallitott) dolgozo identity
       // tarolasa — ezt olvassa a LoginPage prefill-hez es UI displayhez.
       if (resolvedWorkerIdentity) {
