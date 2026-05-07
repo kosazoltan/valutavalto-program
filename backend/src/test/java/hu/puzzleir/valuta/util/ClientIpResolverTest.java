@@ -130,4 +130,35 @@ class ClientIpResolverTest {
         when(req.getHeader("X-Forwarded-For")).thenReturn("  203.0.113.42  ,  10.0.0.1  ");
         assertThat(resolver.resolveClientIp(req)).isEqualTo("203.0.113.42");
     }
+
+    @Test
+    @DisplayName("Trusted proxy invalid XFF -> remoteAddr fallback")
+    void trustedProxy_invalidXffFallsBackToRemoteAddr() {
+        HttpServletRequest req = Mockito.mock(HttpServletRequest.class);
+        when(req.getRemoteAddr()).thenReturn("10.0.0.1");
+        when(req.getHeader("X-Forwarded-For")).thenReturn("not-an-ip-address-that-would-break-worker-session-storage");
+        when(req.getHeader("X-Real-IP")).thenReturn(null);
+
+        assertThat(resolver.resolveClientIp(req)).isEqualTo("10.0.0.1");
+    }
+
+    @Test
+    @DisplayName("Trusted proxy invalid X-Real-IP -> remoteAddr fallback")
+    void trustedProxy_invalidRealIpFallsBackToRemoteAddr() {
+        HttpServletRequest req = Mockito.mock(HttpServletRequest.class);
+        when(req.getRemoteAddr()).thenReturn("10.0.0.1");
+        when(req.getHeader("X-Forwarded-For")).thenReturn(null);
+        when(req.getHeader("X-Real-IP")).thenReturn("999.999.999.999");
+
+        assertThat(resolver.resolveClientIp(req)).isEqualTo("10.0.0.1");
+    }
+
+    @Test
+    @DisplayName("Invalid remoteAddr fallback never exceeds worker_session.ip_address length")
+    void invalidRemoteAddrFallbackIsBoundedToDatabaseLength() {
+        HttpServletRequest req = Mockito.mock(HttpServletRequest.class);
+        when(req.getRemoteAddr()).thenReturn("not-an-ip-address-that-is-longer-than-the-worker-session-ip-column");
+
+        assertThat(resolver.resolveClientIp(req)).hasSizeLessThanOrEqualTo(45);
+    }
 }

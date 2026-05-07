@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.net.InetAddress;
+import java.net.Inet6Address;
 import java.util.Collections;
 import java.util.List;
 
@@ -34,6 +35,9 @@ import java.util.List;
 @Slf4j
 public class ClientIpResolver {
 
+    private static final int MAX_IP_ADDRESS_LENGTH = 45;
+    private static final String UNKNOWN_IP = "0.0.0.0";
+
     /**
      * Trusted proxy CIDR ranges — only these sources may set X-Forwarded-For / X-Real-IP.
      * Default: localhost (v4 + v6) + RFC1918 magan-tartomanyok (Hetzner LB / nginx mogul).
@@ -52,14 +56,94 @@ public class ClientIpResolver {
         if (isTrustedProxy(remoteAddr)) {
             String xff = request.getHeader("X-Forwarded-For");
             if (xff != null && !xff.isBlank()) {
-                return xff.split(",")[0].trim();
+                String clientIp = normalizeIpLiteral(xff.split(",")[0]);
+                if (clientIp != null) {
+                    return clientIp;
+                }
+                log.debug("Ignoring invalid X-Forwarded-For client IP: {}", truncateForLog(xff));
             }
             String realIp = request.getHeader("X-Real-IP");
             if (realIp != null && !realIp.isBlank()) {
-                return realIp;
+                String clientIp = normalizeIpLiteral(realIp);
+                if (clientIp != null) {
+                    return clientIp;
+                }
+                log.debug("Ignoring invalid X-Real-IP client IP: {}", truncateForLog(realIp));
             }
         }
-        return remoteAddr;
+        return safeFallbackIp(remoteAddr);
+    }
+
+    private static String normalizeIpLiteral(String value) {
+        if (value == null) {
+            return null;
+        }
+        String candidate = value.trim();
+        if (candidate.isEmpty() || candidate.length() > MAX_IP_ADDRESS_LENGTH) {
+            return null;
+        }
+        if (isIpv4Literal(candidate) || isIpv6Literal(candidate)) {
+            return candidate;
+        }
+        return null;
+    }
+
+    private static boolean isIpv4Literal(String candidate) {
+        String[] parts = candidate.split("\\.", -1);
+        if (parts.length != 4) {
+            return false;
+        }
+        for (String part : parts) {
+            if (part.isEmpty() || part.length() > 3) {
+                return false;
+            }
+            for (int i = 0; i < part.length(); i += 1) {
+                if (!Character.isDigit(part.charAt(i))) {
+                    return false;
+                }
+            }
+            int value;
+            try {
+                value = Integer.parseInt(part);
+            } catch (NumberFormatException e) {
+                return false;
+            }
+            if (value < 0 || value > 255) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isIpv6Literal(String candidate) {
+        if (!candidate.contains(":")) {
+            return false;
+        }
+        try {
+            return InetAddress.getByName(candidate) instanceof Inet6Address;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static String safeFallbackIp(String value) {
+        String normalized = normalizeIpLiteral(value);
+        if (normalized != null) {
+            return normalized;
+        }
+        if (value == null || value.isBlank()) {
+            return UNKNOWN_IP;
+        }
+        String trimmed = value.trim();
+        return trimmed.substring(0, Math.min(trimmed.length(), MAX_IP_ADDRESS_LENGTH));
+    }
+
+    private static String truncateForLog(String value) {
+        if (value == null) {
+            return "(null)";
+        }
+        String trimmed = value.trim();
+        return trimmed.substring(0, Math.min(trimmed.length(), 80));
     }
 
     private List<CidrRange> getTrustedProxies() {
