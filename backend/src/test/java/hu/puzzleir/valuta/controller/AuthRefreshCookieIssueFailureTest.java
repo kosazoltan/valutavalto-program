@@ -28,6 +28,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -282,6 +283,8 @@ class AuthRefreshCookieIssueFailureTest {
         when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
         when(jwtTokenProvider.getActiveRoleFromToken("access-token")).thenReturn("ertektar");
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar"));
+        LocalDateTime tokenExpiresAt = LocalDateTime.of(2026, 5, 7, 15, 30);
+        when(jwtTokenProvider.getExpirationDateTimeFromToken("access-token")).thenReturn(tokenExpiresAt);
 
         var result = controller.refreshToken(request);
 
@@ -290,7 +293,7 @@ class AuthRefreshCookieIssueFailureTest {
                 eq("old-token-id"),
                 eq(42L),
                 eq("ROLE_REVOKED"),
-                any(java.time.LocalDateTime.class));
+                eq(tokenExpiresAt));
         verify(workerRoleService, never()).getPermissionCodesForRole("ertektar");
         verify(jwtTokenProvider, never()).generateToken(any(), any(), any());
     }
@@ -321,6 +324,8 @@ class AuthRefreshCookieIssueFailureTest {
         when(workerRoleService.getPermissionCodesForRole("penztar")).thenReturn(List.of("TRADE_EXECUTE"));
         when(jwtTokenProvider.generateToken(worker, "penztar", List.of("TRADE_EXECUTE")))
                 .thenReturn("refreshed-token");
+        LocalDateTime tokenExpiresAt = LocalDateTime.of(2026, 5, 7, 15, 30);
+        when(jwtTokenProvider.getExpirationDateTimeFromToken("access-token")).thenReturn(tokenExpiresAt);
 
         var result = controller.refreshToken(request);
 
@@ -330,7 +335,7 @@ class AuthRefreshCookieIssueFailureTest {
                 eq("old-token-id"),
                 eq(42L),
                 eq("REFRESH"),
-                any(java.time.LocalDateTime.class));
+                eq(tokenExpiresAt));
     }
 
     @Test

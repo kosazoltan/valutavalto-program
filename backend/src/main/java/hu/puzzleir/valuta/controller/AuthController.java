@@ -49,7 +49,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 @PreAuthorize("permitAll()")
 public class AuthController {
-    
     private final WorkerService workerService;
     private final JwtTokenProvider jwtTokenProvider;
     private final WorkerRepository workerRepository;
@@ -339,7 +338,11 @@ public class AuthController {
         String newToken = jwtTokenProvider.generateToken(worker, dto.getRoleCode(), permissions);
 
         // 🔴 Régi token blacklistelése (role switch → token rotation)
-        tokenBlacklistService.blacklistToken(oldTokenId, workerId, "ROLE_CHANGE", LocalDateTime.now().plusHours(24));
+        tokenBlacklistService.blacklistToken(
+                oldTokenId,
+                workerId,
+                TokenBlacklistService.REASON_ROLE_CHANGE,
+                blacklistExpiresAt(dto.getToken()));
 
         issueRefreshCookieOrThrow(
                 worker,
@@ -409,7 +412,8 @@ public class AuthController {
         }
 
         // Aktív role validálása DB-ből. A refresh nem viheti tovább vakon a JWT-ben
-        // lévő régi jogosultságokat, mert role-visszavonás után az privilege retention.
+        // lévő régi jogosultságokat, mert role-visszavonás után privilege retention keletkezne.
+        LocalDateTime blacklistExpiresAt = blacklistExpiresAt(token);
         String activeRole = jwtTokenProvider.getActiveRoleFromToken(token);
         List<String> roleCodes = workerRoleService.getRoleCodesForWorker(workerId);
         if (activeRole != null && !activeRole.isBlank()) {
@@ -417,8 +421,8 @@ public class AuthController {
                 tokenBlacklistService.blacklistToken(
                         oldTokenId,
                         workerId,
-                        "ROLE_REVOKED",
-                        LocalDateTime.now().plusHours(24));
+                        TokenBlacklistService.REASON_ROLE_REVOKED,
+                        blacklistExpiresAt);
                 return ResponseEntity.status(401).build();
             }
         } else if (roleCodes.size() == 1) {
@@ -435,9 +439,14 @@ public class AuthController {
         String newToken = jwtTokenProvider.generateToken(worker, activeRole, permissions);
 
         // 🔴 Régi token blacklistelése (token rotation)
-        tokenBlacklistService.blacklistToken(oldTokenId, workerId, "REFRESH", LocalDateTime.now().plusHours(24));
+        tokenBlacklistService.blacklistToken(oldTokenId, workerId, TokenBlacklistService.REASON_REFRESH, blacklistExpiresAt);
 
         return ResponseEntity.ok(Map.of("token", newToken));
+    }
+
+    private LocalDateTime blacklistExpiresAt(String token) {
+        LocalDateTime expiresAt = jwtTokenProvider.getExpirationDateTimeFromToken(token);
+        return expiresAt != null ? expiresAt : LocalDateTime.now().plusHours(24);
     }
 
     /**
