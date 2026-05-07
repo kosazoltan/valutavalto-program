@@ -129,4 +129,55 @@ describe('LoginPage', () => {
 
     expect(await screen.findByText('Hibás bejelentkezési adatok')).toBeInTheDocument()
   })
+
+  it('több szerepkörnél nem perzisztál ideiglenes tokent role-választás előtt', async () => {
+    mocks.authLogin.mockResolvedValue({
+      ...baseResponse,
+      token: 'temp-token',
+      activeRole: null,
+      roles: ['penztar', 'ertektar'],
+      roleSelectionRequired: true,
+    })
+    mocks.authSelectRole.mockResolvedValue({
+      ...baseResponse,
+      token: 'final-token',
+      activeRole: 'penztar',
+      roles: ['penztar', 'ertektar'],
+      roleSelectionRequired: false,
+    })
+    const user = userEvent.setup()
+
+    renderLoginPage()
+
+    const workerInput = screen.getAllByRole('textbox')[1]!
+    const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement
+    await user.type(workerInput, 'ab12')
+    await user.type(passwordInput, 'secret')
+    await user.click(screen.getByRole('button', { name: 'Bejelentkezés' }))
+
+    expect(await screen.findByText('penztar')).toBeInTheDocument()
+    expect(mocks.loginStore).not.toHaveBeenCalled()
+    expect(mocks.navigate).not.toHaveBeenCalled()
+
+    await user.click(screen.getByText('penztar'))
+    await user.click(screen.getByRole('button', { name: 'Belépés' }))
+
+    await waitFor(() => {
+      expect(mocks.authSelectRole).toHaveBeenCalledWith({
+        token: 'temp-token',
+        roleCode: 'penztar',
+      })
+    })
+    expect(mocks.loginStore).toHaveBeenCalledWith(
+      baseResponse.worker,
+      'final-token',
+      'Bearer',
+      baseResponse.expiresAt,
+      'penztar',
+      baseResponse.permissions,
+      ['penztar', 'ertektar'],
+      false,
+    )
+    expect(mocks.navigate).toHaveBeenCalledWith('/cashier')
+  })
 })

@@ -74,24 +74,37 @@ public class GoogleAuthController {
         //    miatt a `request.isSecure()` HTTPS proxy mogul jovo kerelemre true-t ad vissza).
         // Fail-closed: ha a refresh token/cookie nem hozhato letre, a login nem stabil.
         // Ilyenkor nincs felig sikeres belepes, ami az elso silent refreshnel varatlanul kidobna a usert.
-        Worker worker = workerRepository.findById(response.getWorker().getId())
-                .orElseThrow(() -> new AuthenticationException("Worker nem talalhato login utan."));
-        try {
-            RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, httpRequest);
-            ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
+        // Multi-role Google login eseten a valasz tokenje ideiglenes; a kozos
+        // /auth/login/select-role endpoint adja ki a tartos refresh cookie-t.
+        if (!Boolean.TRUE.equals(response.getRoleSelectionRequired())) {
+            Worker worker = workerRepository.findById(response.getWorker().getId())
+                    .orElseThrow(() -> new AuthenticationException("Worker nem talalhato login utan."));
+            try {
+                RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, httpRequest);
+                ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
+                        .httpOnly(true)
+                        .secure(httpRequest.isSecure())
+                        .sameSite("Strict")
+                        .path("/api/v1/auth")
+                        .maxAge(Duration.ofDays(7))
+                        .build();
+                httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+            } catch (Exception ex) {
+                log.error("HttpOnly refresh cookie kiadas Google login utan bukott: {}", ex.getMessage(), ex);
+                throw new BusinessException(
+                        "Google belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.",
+                        "LOGIN_SESSION_ISSUE_FAILED",
+                        HttpStatus.SERVICE_UNAVAILABLE);
+            }
+        } else {
+            ResponseCookie clearCookie = ResponseCookie.from("refreshToken", "")
                     .httpOnly(true)
                     .secure(httpRequest.isSecure())
                     .sameSite("Strict")
                     .path("/api/v1/auth")
-                    .maxAge(Duration.ofDays(7))
+                    .maxAge(0)
                     .build();
-            httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        } catch (Exception ex) {
-            log.error("HttpOnly refresh cookie kiadas Google login utan bukott: {}", ex.getMessage(), ex);
-            throw new BusinessException(
-                    "Google belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.",
-                    "LOGIN_SESSION_ISSUE_FAILED",
-                    HttpStatus.SERVICE_UNAVAILABLE);
+            httpResponse.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
         }
 
         return ResponseEntity.ok(response);

@@ -74,7 +74,6 @@ export default function LoginPage() {
   const [roleLoading, setRoleLoading] = useState(false)
 
   const login = useAuthStore((state) => state.login)
-  const selectRole = useAuthStore((state) => state.selectRole)
   const navigate = useNavigate()
   // V178/V179 Google OAuth audit (2026-05-03 + Electron Desktop OAuth refactor 2026-05-04):
   // - Web (browser): `<GoogleLogin>` Web SDK popup ID token flow. Mukodik `https://excvaluta.com` origin-en.
@@ -171,6 +170,19 @@ export default function LoginPage() {
       return
     }
 
+    if (response.roleSelectionRequired) {
+      if (!response.roles || response.roles.length < 2) {
+        setError('A bejelentkezés szerepkör-választást kér, de a szerver nem adott választható szerepköröket.')
+        return
+      }
+      // Multi-role worker: a session itt meg ideiglenes. Nem mentjuk a tokent
+      // es nem jeloljuk authenticated-nek, amig a /login/select-role nem ad
+      // vegleges, activeRole-lal ellatott tokent es refresh cookie-t.
+      setPendingLoginResponse(response)
+      setShowRoleSelector(true)
+      return
+    }
+
     login(
       response.worker,
       response.token,
@@ -179,16 +191,9 @@ export default function LoginPage() {
       response.activeRole,
       response.permissions,
       response.roles,
-      response.roleSelectionRequired,
+      false,
     )
-
-    if (response.roleSelectionRequired && response.roles && response.roles.length > 1) {
-      // Multi-role worker → role-választó modal megjelenítése
-      setPendingLoginResponse(response)
-      setShowRoleSelector(true)
-    } else {
-      navigate(getDefaultRouteForRole(response.activeRole ?? response.worker.role))
-    }
+    navigate(getDefaultRouteForRole(response.activeRole ?? response.worker.role))
   }
 
   /** Role kiválasztása a modalból */
@@ -204,8 +209,18 @@ export default function LoginPage() {
         roleCode: selectedRole,
       })
 
-      // Új token a kiválasztott role-lal
-      selectRole(response.token, response.activeRole!, response.permissions ?? [])
+      // Új, végleges token a kiválasztott role-lal. Itt kezdődik a kliens oldali
+      // authenticated session; a pre-role token nem kerül perzisztálásra.
+      login(
+        response.worker,
+        response.token,
+        response.tokenType,
+        response.expiresAt,
+        response.activeRole,
+        response.permissions,
+        response.roles,
+        false,
+      )
       setShowRoleSelector(false)
       setPendingLoginResponse(null)
       navigate(getDefaultRouteForRole(response.activeRole))

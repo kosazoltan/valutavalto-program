@@ -86,30 +86,23 @@ public class AuthController {
 
         LoginResponseDto response = workerService.login(dto, ipAddress, userAgent);
 
-        // HttpOnly refresh cookie (vezerlokonyv par.12.3)
-        // A raw UUID csak a cookie-ban utazik; a DB-ben BCrypt-hashelve van.
-        Worker worker = workerRepository.findById(response.getWorker().getId())
-            .orElseThrow(() -> new BusinessException(
-                    "Belépés nem véglegesíthető: a dolgozó rekord nem található.",
-                    "LOGIN_SESSION_ISSUE_FAILED",
-                    HttpStatus.SERVICE_UNAVAILABLE));
-        try {
-            RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, request);
-            ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
-                .httpOnly(true)
-                .secure(request.isSecure())
-                .sameSite("Strict")
-                .path("/api/v1/auth")
-                .maxAge(Duration.ofDays(7))
-                .build();
-            httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        } catch (Exception e) {
-            org.slf4j.LoggerFactory.getLogger(AuthController.class)
-                .error("HttpOnly refresh cookie kiadas bukott login utan: {}", e.getMessage(), e);
-            throw new BusinessException(
-                    "Belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.",
-                    "LOGIN_SESSION_ISSUE_FAILED",
-                    HttpStatus.SERVICE_UNAVAILABLE);
+        // HttpOnly refresh cookie csak végleges, activeRole-lal rendelkező sessionhöz jár.
+        // Több szerepkörös login esetén a token ideiglenes; a role-select endpoint adja ki
+        // a tartós refresh cookie-t a kiválasztott szerepkör után.
+        if (!Boolean.TRUE.equals(response.getRoleSelectionRequired())) {
+            Worker worker = workerRepository.findById(response.getWorker().getId())
+                .orElseThrow(() -> new BusinessException(
+                        "Belépés nem véglegesíthető: a dolgozó rekord nem található.",
+                        "LOGIN_SESSION_ISSUE_FAILED",
+                        HttpStatus.SERVICE_UNAVAILABLE));
+            issueRefreshCookieOrThrow(
+                    worker,
+                    request,
+                    httpResponse,
+                    "HttpOnly refresh cookie kiadas bukott login utan: {}",
+                    "Belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.");
+        } else {
+            clearRefreshCookie(request, httpResponse);
         }
 
         return ResponseEntity.ok(response);
@@ -216,6 +209,43 @@ public class AuthController {
         }
         return null;
     }
+
+    private void issueRefreshCookieOrThrow(
+            Worker worker,
+            HttpServletRequest request,
+            HttpServletResponse response,
+            String logMessage,
+            String userMessage) {
+        try {
+            RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, request);
+            ResponseCookie cookie = ResponseCookie.from("refreshToken", issued.rawUuid())
+                    .httpOnly(true)
+                    .secure(request.isSecure())
+                    .sameSite("Strict")
+                    .path("/api/v1/auth")
+                    .maxAge(Duration.ofDays(7))
+                    .build();
+            response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(AuthController.class)
+                    .error(logMessage, e.getMessage(), e);
+            throw new BusinessException(
+                    userMessage,
+                    "LOGIN_SESSION_ISSUE_FAILED",
+                    HttpStatus.SERVICE_UNAVAILABLE);
+        }
+    }
+
+    private static void clearRefreshCookie(HttpServletRequest request, HttpServletResponse response) {
+        ResponseCookie clearCookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(request.isSecure())
+                .sameSite("Strict")
+                .path("/api/v1/auth")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
+    }
     
     /**
      * Role selection endpoint (V57)
@@ -229,7 +259,9 @@ public class AuthController {
      */
     @PostMapping("/login/select-role")
     public ResponseEntity<LoginResponseDto> selectRole(
-            @Valid @RequestBody SelectRoleRequestDto dto) {
+            @Valid @RequestBody SelectRoleRequestDto dto,
+            HttpServletRequest request,
+            HttpServletResponse httpResponse) {
         
         // Token validálás
         if (!jwtTokenProvider.validateToken(dto.getToken())) {
@@ -268,6 +300,13 @@ public class AuthController {
 
         // 🔴 Régi token blacklistelése (role switch → token rotation)
         tokenBlacklistService.blacklistToken(oldTokenId, workerId, "ROLE_CHANGE", LocalDateTime.now().plusHours(24));
+
+        issueRefreshCookieOrThrow(
+                worker,
+                request,
+                httpResponse,
+                "HttpOnly refresh cookie kiadas bukott role select utan: {}",
+                "Belépés nem véglegesíthető: a szerepkör-választás utáni biztonságos munkamenet cookie kiadása sikertelen.");
 
         long expiresInMs = 86400000L;
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(expiresInMs / 1000);
