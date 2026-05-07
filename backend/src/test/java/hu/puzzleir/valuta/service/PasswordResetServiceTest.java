@@ -1,7 +1,9 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.PasswordResetToken;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.PasswordResetTokenRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -14,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Instant;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,6 +38,7 @@ import static org.mockito.Mockito.when;
 class PasswordResetServiceTest {
 
     @Mock private WorkerRepository workerRepository;
+    @Mock private PasswordResetTokenRepository resetTokenRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private EmailNotificationService emailNotificationService;
 
@@ -53,6 +57,7 @@ class PasswordResetServiceTest {
         String token = service.requestForgotPassword("unknown@example.com");
 
         assertThat(token).isNull();
+        verify(resetTokenRepository, never()).save(any(PasswordResetToken.class));
         verify(emailNotificationService, never()).sendEmail(anyString(), anyString(), anyString());
     }
 
@@ -65,6 +70,7 @@ class PasswordResetServiceTest {
         String token = service.requestForgotPassword("inactive@example.com");
 
         assertThat(token).isNull();
+        verify(resetTokenRepository, never()).save(any(PasswordResetToken.class));
         verify(emailNotificationService, never()).sendEmail(anyString(), anyString(), anyString());
     }
 
@@ -82,6 +88,7 @@ class PasswordResetServiceTest {
         String token = service.requestForgotPassword("test@example.com");
 
         assertThat(token).isNotBlank();
+        verify(resetTokenRepository).save(any(PasswordResetToken.class));
 
         ArgumentCaptor<String> toCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> subjectCaptor = ArgumentCaptor.forClass(String.class);
@@ -113,6 +120,7 @@ class PasswordResetServiceTest {
 
         // Token generalt (a flow folytatodik), de email NEM ment ki
         assertThat(token).isNotBlank();
+        verify(resetTokenRepository).save(any(PasswordResetToken.class));
         verify(emailNotificationService, never()).sendEmail(anyString(), anyString(), anyString());
     }
 
@@ -123,6 +131,7 @@ class PasswordResetServiceTest {
 
         assertThat(token).isNull();
         verify(workerRepository, never()).findByEmail(anyString());
+        verify(resetTokenRepository, never()).save(any(PasswordResetToken.class));
         verify(emailNotificationService, never()).sendEmail(anyString(), anyString(), anyString());
     }
 
@@ -133,6 +142,7 @@ class PasswordResetServiceTest {
 
         assertThat(token).isNull();
         verify(workerRepository, never()).findByEmail(anyString());
+        verify(resetTokenRepository, never()).save(any(PasswordResetToken.class));
         verify(emailNotificationService, never()).sendEmail(anyString(), anyString(), anyString());
     }
 
@@ -156,6 +166,8 @@ class PasswordResetServiceTest {
     @Test
     @DisplayName("resetPassword: ervenytelen token -> ValidationException")
     void invalidToken_throwsValidationException() {
+        when(resetTokenRepository.findByTokenHashAndUsedAtIsNull(anyString())).thenReturn(Optional.empty());
+
         assertThatThrownBy(() -> service.resetPassword("not-a-real-token", "newPass123"))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Ervenytelen");
@@ -171,15 +183,18 @@ class PasswordResetServiceTest {
                 .email("reset@example.com")
                 .active(true)
                 .build();
-        when(workerRepository.findByEmail("reset@example.com")).thenReturn(Optional.of(worker));
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .workerId(11L)
+                .expiresAt(Instant.now().plusSeconds(60))
+                .build();
+        when(resetTokenRepository.findByTokenHashAndUsedAtIsNull(anyString())).thenReturn(Optional.of(resetToken));
         when(workerRepository.findById(11L)).thenReturn(Optional.of(worker));
         when(passwordEncoder.encode("newPassword123")).thenReturn("$2a$encoded$");
 
-        String token = service.requestForgotPassword("reset@example.com");
-        assertThat(token).isNotBlank();
+        service.resetPassword("valid-reset-token", "newPassword123");
 
-        service.resetPassword(token, "newPassword123");
-
+        assertThat(resetToken.getUsedAt()).isNotNull();
+        verify(resetTokenRepository).save(resetToken);
         verify(passwordEncoder).encode("newPassword123");
         verify(workerRepository).save(worker);
         assertThat(worker.getPasswordHash()).isEqualTo("$2a$encoded$");
@@ -195,15 +210,19 @@ class PasswordResetServiceTest {
                 .email("consume@example.com")
                 .active(true)
                 .build();
-        when(workerRepository.findByEmail("consume@example.com")).thenReturn(Optional.of(worker));
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .workerId(13L)
+                .expiresAt(Instant.now().plusSeconds(60))
+                .build();
+        when(resetTokenRepository.findByTokenHashAndUsedAtIsNull(anyString()))
+                .thenReturn(Optional.of(resetToken))
+                .thenReturn(Optional.empty());
         when(workerRepository.findById(13L)).thenReturn(Optional.of(worker));
         when(passwordEncoder.encode(anyString())).thenReturn("$2a$x$");
 
-        String token = service.requestForgotPassword("consume@example.com");
-        service.resetPassword(token, "first123");
+        service.resetPassword("consume-token", "first123");
 
-        // Masodik hasznalatra a token mar nincs cache-ben -> ValidationException
-        assertThatThrownBy(() -> service.resetPassword(token, "second456"))
+        assertThatThrownBy(() -> service.resetPassword("consume-token", "second456"))
                 .isInstanceOf(ValidationException.class);
     }
 
