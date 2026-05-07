@@ -47,6 +47,10 @@ export function resolveSelectedWorkerForSetup(params: {
   return params.availableWorkers.find((worker) => worker.code.trim().toUpperCase() === normalizedWorkerCode) ?? null
 }
 
+export function shouldLoadSetupWorkers(selectedBranchCode: string, offlineMode: boolean): boolean {
+  return selectedBranchCode.trim().length > 0 && !offlineMode
+}
+
 type StepId = 'welcome' | 'branch' | 'program' | 'server' | 'admin'
 
 interface StepDef {
@@ -818,14 +822,16 @@ function ServerStep(props: ServerStepProps) {
   const [workerListLoading, setWorkerListLoading] = useState(false)
 
   useEffect(() => {
-    if (!selectedBranchCode || offlineMode) {
+    const branchCode = selectedBranchCode?.trim() ?? ''
+    if (!shouldLoadSetupWorkers(branchCode, offlineMode)) {
+      setWorkerListLoading(false)
       setWorkerList([])
       onWorkerListChange([])
       return
     }
     let cancelled = false
     setWorkerListLoading(true)
-    publicApi.getWorkersByBranch(selectedBranchCode)
+    publicApi.getWorkersByBranch(branchCode)
       .then((list) => {
         if (cancelled) return
         const workers = list.map((w) => ({ code: w.code, name: w.name }))

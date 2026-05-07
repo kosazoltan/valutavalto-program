@@ -50,6 +50,26 @@ describe('ShipmentNewPage', () => {
       notes: '',
       items: [{ currencyId: '4', requestedAmount: 1250 }],
     }))
-    expect(mocks.shipmentRequestApi.submit).toHaveBeenCalledWith('shipment-1')
+    await waitFor(() => expect(mocks.shipmentRequestApi.submit).toHaveBeenCalledWith('shipment-1'))
+  })
+
+  it('retries submit without creating a duplicate draft after submit failure', async () => {
+    mocks.shipmentRequestApi.submit
+      .mockRejectedValueOnce(new Error('submit failed'))
+      .mockResolvedValueOnce({ id: 'shipment-1', requestStatus: 'SUBMITTED' })
+    const user = userEvent.setup()
+    render(<MemoryRouter><ShipmentNewPage /></MemoryRouter>)
+
+    await waitFor(() => expect(screen.getByLabelText(/Cél iroda/i)).not.toBeDisabled())
+    await user.selectOptions(screen.getByLabelText(/Cél iroda/i), 'BR-B')
+    await user.selectOptions(screen.getByLabelText(/Valuta/i), '4')
+    await user.type(screen.getByLabelText(/Összeg/i), '1250')
+    await user.click(screen.getByRole('button', { name: /Igény beküldése/i }))
+
+    await waitFor(() => expect(mocks.shipmentRequestApi.submit).toHaveBeenCalledTimes(1))
+    await user.click(screen.getByRole('button', { name: /Igény beküldése/i }))
+
+    await waitFor(() => expect(mocks.shipmentRequestApi.submit).toHaveBeenCalledTimes(2))
+    expect(mocks.shipmentRequestApi.create).toHaveBeenCalledTimes(1)
   })
 })

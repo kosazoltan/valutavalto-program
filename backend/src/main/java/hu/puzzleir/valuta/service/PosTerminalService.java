@@ -6,7 +6,6 @@ import hu.puzzleir.valuta.entity.PosTerminal;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.PosTerminalRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -28,7 +27,6 @@ import java.util.*;
  * éles módban a megfelelő terminál protokollon kommunikál.
  */
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 @Slf4j
 public class PosTerminalService {
@@ -38,9 +36,22 @@ public class PosTerminalService {
     private final OtpTerminalProtocolService otpProtocol;
     private final IntegrationTransportProperties integrationTransportProperties;
     private final FileTransportService fileTransportService;
+    private final boolean bridgeSimulatedApprovalEnabled;
 
-    @Value("${pos.terminal.bridge.simulated-approval-enabled:false}")
-    private boolean bridgeSimulatedApprovalEnabled;
+    public PosTerminalService(PosTerminalRepository repository,
+                              SystemParameterService systemParameterService,
+                              OtpTerminalProtocolService otpProtocol,
+                              IntegrationTransportProperties integrationTransportProperties,
+                              FileTransportService fileTransportService,
+                              @Value("${pos.terminal.bridge.simulated-approval-enabled:false}")
+                              boolean bridgeSimulatedApprovalEnabled) {
+        this.repository = repository;
+        this.systemParameterService = systemParameterService;
+        this.otpProtocol = otpProtocol;
+        this.integrationTransportProperties = integrationTransportProperties;
+        this.fileTransportService = fileTransportService;
+        this.bridgeSimulatedApprovalEnabled = bridgeSimulatedApprovalEnabled;
+    }
 
     @jakarta.annotation.PostConstruct
     void warnBridgeDrivers() {
@@ -453,10 +464,9 @@ public class PosTerminalService {
                                                               BigDecimal amount,
                                                               String currency,
                                                               String terminalId) {
-        if (!bridgeSimulatedApprovalEnabled) {
-            log.warn("{} payment bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: terminalId={}",
-                    provider, terminalId);
-            return bridgeApprovalDisabled(provider, "payment");
+        Optional<PosTransactionResult> disabled = disabledBridgeTransaction(provider, "payment", terminalId);
+        if (disabled.isPresent()) {
+            return disabled.get();
         }
 
         try {
@@ -482,10 +492,9 @@ public class PosTerminalService {
     private PosTransactionResult executeProviderBridgeReversal(TerminalType provider,
                                                                String originalRef,
                                                                String terminalId) {
-        if (!bridgeSimulatedApprovalEnabled) {
-            log.warn("{} reversal bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: terminalId={}",
-                    provider, terminalId);
-            return bridgeApprovalDisabled(provider, "reversal");
+        Optional<PosTransactionResult> disabled = disabledBridgeTransaction(provider, "reversal", terminalId);
+        if (disabled.isPresent()) {
+            return disabled.get();
         }
 
         try {
@@ -508,10 +517,9 @@ public class PosTerminalService {
     }
 
     private PosClosingResult executeProviderBridgeDailyClose(TerminalType provider, String terminalId) {
-        if (!bridgeSimulatedApprovalEnabled) {
-            log.warn("{} daily-close bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: terminalId={}",
-                    provider, terminalId);
-            return PosClosingResult.failure(bridgeDisabledMessage(provider, "daily close"));
+        Optional<PosClosingResult> disabled = disabledBridgeClosing(provider, "daily close", terminalId);
+        if (disabled.isPresent()) {
+            return disabled.get();
         }
 
         try {
@@ -531,9 +539,7 @@ public class PosTerminalService {
     }
 
     private boolean emitBridgeHeartbeat(TerminalType provider, PosTerminal terminal) {
-        if (!bridgeSimulatedApprovalEnabled) {
-            log.warn("{} heartbeat bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: terminalId={}",
-                    provider, terminal.getTerminalId());
+        if (isBridgeSimulationDisabled(provider, "heartbeat", terminal.getTerminalId(), false)) {
             return false;
         }
 
@@ -560,6 +566,40 @@ public class PosTerminalService {
 
     private PosTransactionResult bridgeApprovalDisabled(TerminalType provider, String action) {
         return PosTransactionResult.error(bridgeDisabledMessage(provider, action));
+    }
+
+    private Optional<PosTransactionResult> disabledBridgeTransaction(TerminalType provider,
+                                                                    String action,
+                                                                    String terminalId) {
+        if (!isBridgeSimulationDisabled(provider, action, terminalId, true)) {
+            return Optional.empty();
+        }
+        return Optional.of(bridgeApprovalDisabled(provider, action));
+    }
+
+    private Optional<PosClosingResult> disabledBridgeClosing(TerminalType provider,
+                                                            String action,
+                                                            String terminalId) {
+        if (!isBridgeSimulationDisabled(provider, action, terminalId, true)) {
+            return Optional.empty();
+        }
+        return Optional.of(PosClosingResult.failure(bridgeDisabledMessage(provider, action)));
+    }
+
+    private boolean isBridgeSimulationDisabled(TerminalType provider,
+                                               String action,
+                                               String terminalId,
+                                               boolean warn) {
+        if (bridgeSimulatedApprovalEnabled) {
+            return false;
+        }
+        String message = "{} {} bridge tiltva, mert nincs éles driver és a szimuláció nincs engedélyezve: terminalId={}";
+        if (warn) {
+            log.warn(message, provider, action, terminalId);
+        } else {
+            log.debug(message, provider, action, terminalId);
+        }
+        return true;
     }
 
     private String bridgeDisabledMessage(TerminalType provider, String action) {
