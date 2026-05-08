@@ -1140,14 +1140,48 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       if (bootstrap.alreadyDone) {
         log.info('[Setup] Bootstrap már lefutott ezen a rendszeren — folytatjuk.');
         preserveExistingBootstrapPassword = true;
+
+        // v2.5.37 fix: ha a bootstrap mar lezart DE a user megadott jelszot a wizardban,
+        // meg kell probalni a workerFirstTimeSetup-ot, kulonben a jelszo soha nem kerul
+        // az adatbazisba es a user nem tud bejelentkezni.
+        const fallbackWorkerCode = (
+          payload.selectedWorkerCode?.trim()
+          || payload.bootstrapUsername?.trim()
+          || payload.adminUsername.trim()
+        ).toUpperCase();
+
+        if (fallbackWorkerCode && payload.adminPassword) {
+          log.info('[Setup] Bootstrap lezart, workerFirstTimeSetup fallback:', fallbackWorkerCode);
+          const fallbackSetup = await workerFirstTimeSetup(resolvedApiUrl, {
+            companyCode: normalizedCompanyCode,
+            workerCode: fallbackWorkerCode,
+            newPassword: payload.adminPassword,
+            currentPassword: payload.bootstrapPassword?.trim() || undefined,
+            appMode: payload.appMode,
+          });
+          if (fallbackSetup.success) {
+            log.info('[Setup] Worker jelszo fallback sikeres:', fallbackWorkerCode);
+            resolvedWorkerIdentity = fallbackSetup.workerIdentity ?? {
+              workerCode: fallbackWorkerCode,
+              workerName: payload.selectedWorkerName,
+              workerRole: payload.selectedWorkerRole,
+            };
+          } else {
+            log.warn('[Setup] Worker jelszo fallback sikertelen:', fallbackSetup.errorMessage);
+            // Nem blokkolunk — a legacy identity marad, a user majd login-nal
+            // eszreveszi es ujra futtathatja a wizard-ot.
+          }
+        }
       } else {
         log.info('[Setup] Bootstrap admin sikeresen beállítva a backend-ben.');
       }
-      resolvedWorkerIdentity = {
-        workerCode: payload.adminUsername.trim().toUpperCase(),
-        workerName: 'Rendszer Admin',
-        workerRole: 'ADMIN',
-      };
+      if (!resolvedWorkerIdentity) {
+        resolvedWorkerIdentity = {
+          workerCode: payload.adminUsername.trim().toUpperCase(),
+          workerName: 'Rendszer Admin',
+          workerRole: 'ADMIN',
+        };
+      }
     }
 
     const effectiveBootstrapCredentials =
