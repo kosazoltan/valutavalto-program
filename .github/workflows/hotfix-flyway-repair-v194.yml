@@ -1,8 +1,8 @@
 name: Hotfix - Flyway Repair V194 (manual)
 
 # V194 migration originally failed due to wrong column name ('created_at' instead of 'assigned_at').
-# The fixed V194 uses 'assigned_at'. If V194 failed, Flyway did NOT insert a checksum entry,
-# so a simple restart re-runs it. The DELETE step is a safety net for edge cases.
+# The fixed V194 uses 'assigned_at'. Flyway persists a success=false record on failure, which
+# blocks subsequent startup. The DELETE step removes that record so Flyway re-runs V194 cleanly.
 
 on:
   workflow_dispatch:
@@ -59,10 +59,10 @@ jobs:
               "SELECT installed_rank, version, description, success FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 5;"
 
             echo "=== Step 1: Delete failed V194 entry if exists ==="
-            DELETED=$(sudo -u postgres psql -d valuta -t -c \
+            DELETED=$(sudo -u postgres psql -d valuta -t -A -c \
               "DELETE FROM flyway_schema_history WHERE version = '194' AND success = false RETURNING version;")
-            if [ -n "$(echo "$DELETED" | xargs)" ]; then
-              echo "Deleted failed V194 entry"
+            if [ -n "$DELETED" ]; then
+              echo "Deleted failed V194 entry (version=$DELETED)"
             else
               echo "No failed V194 entry found (already clean or succeeded)"
             fi
