@@ -156,12 +156,12 @@ describe('LoginPage', () => {
     await user.type(passwordInput, 'secret')
     await user.click(screen.getByRole('button', { name: 'Bejelentkezés' }))
 
-    expect(await screen.findByText('penztar')).toBeInTheDocument()
-    expect(screen.queryByText('ertektar')).not.toBeInTheDocument()
+    expect(await screen.findByText('Pénztáros')).toBeInTheDocument()
+    expect(screen.queryByText('Értéktáros')).not.toBeInTheDocument()
     expect(mocks.loginStore).not.toHaveBeenCalled()
     expect(mocks.navigate).not.toHaveBeenCalled()
 
-    await user.click(screen.getByText('penztar'))
+    await user.click(screen.getByText('Pénztáros'))
     await user.click(screen.getByRole('button', { name: 'Belépés' }))
 
     await waitFor(() => {

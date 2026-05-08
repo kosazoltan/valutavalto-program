@@ -60,3 +60,22 @@ export function appModeLabel(appMode: AppMode): string {
   if (appMode === 'ertekszallito') return 'Értékszállító'
   return 'Szerver'
 }
+
+const ROLE_DISPLAY_NAMES: Record<string, string> = {
+  penztar: 'Pénztáros',
+  ertektar: 'Értéktáros',
+  foertektar: 'Főértéktáros',
+  ugyvezeto: 'Ügyvezető',
+  belso_ellenor: 'Belső ellenőr',
+  irodavezeto: 'Irodavezető',
+  berszamfejto: 'Bérszámfejtő',
+  penzugyi_vezeto: 'Pénzügyi vezető',
+  irodai_dolgozo: 'Irodai dolgozó',
+  csoportvezeto: 'Csoportvezető',
+  arfolyam_nezo: 'Árfolyam néző',
+  ertekszallito: 'Értékszállító',
+}
+
+export function roleDisplayName(roleCode: string): string {
+  return ROLE_DISPLAY_NAMES[roleCode.toLowerCase()] ?? roleCode
+}

@@ -24,6 +24,15 @@ interface RateRow {
   mnbRate: number
   lastUpdate: string
   currencyId: number
+  limit1Amount?: number
+  limit1BuyRate?: number
+  limit1SellRate?: number
+  limit2Amount?: number
+  limit2BuyRate?: number
+  limit2SellRate?: number
+  limit3Amount?: number
+  limit3BuyRate?: number
+  limit3SellRate?: number
 }
 
 function mapExchangeRateToRow(rate: ExchangeRate): RateRow {
@@ -38,7 +47,24 @@ function mapExchangeRateToRow(rate: ExchangeRate): RateRow {
       ? rate.validTime.substring(0, 5)
       : new Date(rate.createdAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }),
     currencyId: rate.currencyId,
+    limit1Amount: rate.limit1Amount ?? undefined,
+    limit1BuyRate: rate.limit1BuyRate ?? undefined,
+    limit1SellRate: rate.limit1SellRate ?? undefined,
+    limit2Amount: rate.limit2Amount ?? undefined,
+    limit2BuyRate: rate.limit2BuyRate ?? undefined,
+    limit2SellRate: rate.limit2SellRate ?? undefined,
+    limit3Amount: rate.limit3Amount ?? undefined,
+    limit3BuyRate: rate.limit3BuyRate ?? undefined,
+    limit3SellRate: rate.limit3SellRate ?? undefined,
   }
+}
+
+function hasLimits(rate: RateRow): boolean {
+  return !!(rate.limit1Amount || rate.limit2Amount || rate.limit3Amount)
+}
+
+function formatHuf(amount: number): string {
+  return amount.toLocaleString('hu-HU')
 }
 
 export default function RatesPage() {
@@ -141,11 +167,6 @@ export default function RatesPage() {
     setEditingCode(null)
   }
 
-  const getSpread = (buy: number, sell: number) => {
-    if (buy === 0) return '0.00'
-    return ((sell - buy) / buy * 100).toFixed(2)
-  }
-
   return (
     <div className="space-y-2">
       {/* Compact header — minden info egy sorban */}
@@ -194,30 +215,29 @@ export default function RatesPage() {
         </div>
       )}
 
-      {/* Compact dense table — minden valuta egy nézetben */}
+      {/* Compact dense table — minden valuta + sávok egy sorban */}
       {rates.length > 0 && (
         <div className="form-panel p-0 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr className="text-xs uppercase text-gray-500">
-                <th className="px-2 py-1.5 text-left w-14">{t('common.code')}</th>
-                <th className="px-2 py-1.5 text-left">{t('display.megnevezes')}</th>
-                <th className="px-2 py-1.5 text-right w-24">{t('rates.veteli')}</th>
-                <th className="px-2 py-1.5 text-right w-24">{t('rates.eladasi')}</th>
-                <th className="px-2 py-1.5 text-right w-24">MNB</th>
-                <th className="px-2 py-1.5 text-right w-20">{t('ratemanagement.spread2')}</th>
-                <th className="px-2 py-1.5 text-center w-16">{t('stockSnapshot.lastUpdated')}</th>
-                {canEdit && <th className="px-2 py-1.5 text-center w-20">{t('common.operation')}</th>}
+                <th className="px-1.5 py-1 text-left w-12">{t('common.code')}</th>
+                <th className="px-1 py-1 text-left">{t('display.megnevezes')}</th>
+                <th className="px-1 py-1 text-right">{t('rates.veteli')}</th>
+                <th className="px-1 py-1 text-right">{t('rates.eladasi')}</th>
+                <th className="px-1 py-1 text-right w-16">MNB</th>
+                <th className="px-1 py-1 text-center w-12">{t('stockSnapshot.lastUpdated')}</th>
+                {canEdit && <th className="px-1 py-1 text-center w-16">{t('common.operation')}</th>}
               </tr>
             </thead>
             <tbody>
               {rates.map((rate, idx) => (
                 <tr key={rate.id} className={`${idx % 2 === 1 ? 'bg-gray-50' : ''} hover:bg-blue-50 border-b border-gray-100 last:border-0`}>
-                  <td className="px-2 py-1">
-                    <span className="font-mono font-bold text-blue-600">{rate.code}</span>
+                  <td className="px-1.5 py-0.5">
+                    <span className="font-mono font-bold text-blue-600 text-xs">{rate.code}</span>
                   </td>
-                  <td className="px-2 py-1">{rate.name}</td>
-                  <td className="px-2 py-1 text-right">
+                  <td className="px-1 py-0.5 text-xs truncate max-w-[100px]">{rate.name}</td>
+                  <td className="px-1 py-0.5 text-right">
                     {editingCode === rate.code && canEdit ? (
                       <NumberInput
                         value={editValues.buyRate.toString().replace('.', ',')}
@@ -229,10 +249,31 @@ export default function RatesPage() {
                         disabled={!canEdit}
                       />
                     ) : (
-                      <span className="font-mono text-green-600">{formatDecimal(rate.buyRate, 2, 2)}</span>
+                      <div>
+                        <span className="font-mono text-green-600">{formatDecimal(rate.buyRate, 2, 2)}</span>
+                        {hasLimits(rate) && (
+                          <div className="flex gap-1.5 justify-end mt-0.5">
+                            {rate.limit1Amount != null && rate.limit1BuyRate != null && (
+                              <span className="text-[10px] font-mono text-green-500" title={`≥${formatHuf(rate.limit1Amount)} Ft`}>
+                                {formatHuf(rate.limit1Amount)}:{formatDecimal(rate.limit1BuyRate, 2, 2)}
+                              </span>
+                            )}
+                            {rate.limit2Amount != null && rate.limit2BuyRate != null && (
+                              <span className="text-[10px] font-mono text-green-500" title={`≥${formatHuf(rate.limit2Amount)} Ft`}>
+                                {formatHuf(rate.limit2Amount)}:{formatDecimal(rate.limit2BuyRate, 2, 2)}
+                              </span>
+                            )}
+                            {rate.limit3Amount != null && rate.limit3BuyRate != null && (
+                              <span className="text-[10px] font-mono text-green-500" title={`≥${formatHuf(rate.limit3Amount)} Ft`}>
+                                {formatHuf(rate.limit3Amount)}:{formatDecimal(rate.limit3BuyRate, 2, 2)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </td>
-                  <td className="px-2 py-1 text-right">
+                  <td className="px-1 py-0.5 text-right">
                     {editingCode === rate.code && canEdit ? (
                       <NumberInput
                         value={editValues.sellRate.toString().replace('.', ',')}
@@ -244,20 +285,36 @@ export default function RatesPage() {
                         disabled={!canEdit}
                       />
                     ) : (
-                      <span className="font-mono text-red-600">{formatDecimal(rate.sellRate, 2, 2)}</span>
+                      <div>
+                        <span className="font-mono text-red-600">{formatDecimal(rate.sellRate, 2, 2)}</span>
+                        {hasLimits(rate) && (
+                          <div className="flex gap-1.5 justify-end mt-0.5">
+                            {rate.limit1Amount != null && rate.limit1SellRate != null && (
+                              <span className="text-[10px] font-mono text-red-400" title={`≥${formatHuf(rate.limit1Amount)} Ft`}>
+                                {formatHuf(rate.limit1Amount)}:{formatDecimal(rate.limit1SellRate, 2, 2)}
+                              </span>
+                            )}
+                            {rate.limit2Amount != null && rate.limit2SellRate != null && (
+                              <span className="text-[10px] font-mono text-red-400" title={`≥${formatHuf(rate.limit2Amount)} Ft`}>
+                                {formatHuf(rate.limit2Amount)}:{formatDecimal(rate.limit2SellRate, 2, 2)}
+                              </span>
+                            )}
+                            {rate.limit3Amount != null && rate.limit3SellRate != null && (
+                              <span className="text-[10px] font-mono text-red-400" title={`≥${formatHuf(rate.limit3Amount)} Ft`}>
+                                {formatHuf(rate.limit3Amount)}:{formatDecimal(rate.limit3SellRate, 2, 2)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </td>
-                  <td className="px-2 py-1 text-right font-mono text-gray-600">
+                  <td className="px-1 py-0.5 text-right font-mono text-gray-600 text-xs">
                     {rate.mnbRate > 0 ? formatDecimal(rate.mnbRate, 2, 2) : '-'}
                   </td>
-                  <td className="px-2 py-1 text-right">
-                    <span className="text-xs font-mono text-gray-700">
-                      {formatDecimal(parseFloat(getSpread(rate.buyRate, rate.sellRate)), 2, 2)}%
-                    </span>
-                  </td>
-                  <td className="px-2 py-1 text-center text-xs text-gray-500">{rate.lastUpdate}</td>
+                  <td className="px-1 py-0.5 text-center text-[10px] text-gray-500">{rate.lastUpdate}</td>
                   {canEdit && (
-                    <td className="px-2 py-1">
+                    <td className="px-1 py-0.5">
                       {editingCode === rate.code ? (
                         <div className="flex gap-0.5 justify-center">
                           <button
