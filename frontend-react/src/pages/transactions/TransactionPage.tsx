@@ -97,10 +97,11 @@ export default function TransactionPage() {
     : 0
 
   const effectiveRate = customRate ?? (() => {
-    if (!rateObj || !hufAmount) return baseRate
-    const hufNum = parseFloat(hufAmount.replace(/\s/g, '').replace(',', '.')) || 0
-    if (hufNum <= 0) return baseRate
-    const band = getBandForAmount(rateObj, transactionType === 'BUY' ? 'buy' : 'sell', hufNum)
+    if (!rateObj) return baseRate
+    const foreignNum = parseFloat((foreignAmount || '0').replace(',', '.')) || 0
+    if (foreignNum <= 0) return baseRate
+    const baseAmountHuf = foreignNum * baseRate
+    const band = getBandForAmount(rateObj, transactionType === 'BUY' ? 'buy' : 'sell', baseAmountHuf)
     return band.tierRate
   })()
 
@@ -186,6 +187,8 @@ export default function TransactionPage() {
     const parsed = parseFloat(cleaned)
     if (!isNaN(parsed) && parsed > 0) {
       setCustomRate(parsed)
+    } else {
+      setCustomRate(null)
     }
   }
 
@@ -193,7 +196,8 @@ export default function TransactionPage() {
     setEditingRate(false)
     if (customRate == null || !rateObj) return
     const mode = transactionType === 'BUY' ? 'buy' as const : 'sell' as const
-    const hufNum = parseFloat(hufAmount.replace(/\s/g, '').replace(',', '.')) || 0
+    const foreignNum = parseFloat((foreignAmount || '0').replace(',', '.')) || 0
+    const baseAmountHuf = foreignNum * baseRate
 
     if (!isWithinHardLimit(customRate, rateObj.officialRate, mode)) {
       toast.error('Árfolyam meghaladja a hard limitet', getHardLimitMessage(mode, rateObj.officialRate!))
@@ -203,7 +207,7 @@ export default function TransactionPage() {
 
     if (rateAuthApprovedRef.current) return
 
-    if (!isWithinBand(rateObj, customRate, mode, hufNum)) {
+    if (!isWithinBand(rateObj, customRate, mode, baseAmountHuf)) {
       setRateAuthPendingRate(customRate)
       setShowRateAuth(true)
     }

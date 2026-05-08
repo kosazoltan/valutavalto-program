@@ -17,13 +17,13 @@ export function getBandForAmount(
   let tierRate = base
   let tierName = 'alap'
 
-  if (rate.limit3Amount && hufAmount >= rate.limit3Amount) {
+  if (rate.limit3Amount != null && hufAmount >= rate.limit3Amount) {
     const lr = mode === 'buy' ? rate.limit3BuyRate : rate.limit3SellRate
     if (lr != null) { tierRate = lr; tierName = 'limit3' }
-  } else if (rate.limit2Amount && hufAmount >= rate.limit2Amount) {
+  } else if (rate.limit2Amount != null && hufAmount >= rate.limit2Amount) {
     const lr = mode === 'buy' ? rate.limit2BuyRate : rate.limit2SellRate
     if (lr != null) { tierRate = lr; tierName = 'limit2' }
-  } else if (rate.limit1Amount && hufAmount >= rate.limit1Amount) {
+  } else if (rate.limit1Amount != null && hufAmount >= rate.limit1Amount) {
     const lr = mode === 'buy' ? rate.limit1BuyRate : rate.limit1SellRate
     if (lr != null) { tierRate = lr; tierName = 'limit1' }
   }
