@@ -575,6 +575,18 @@ export default function CashierTransactionPage() {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, rowIdx: number, field: 'currency' | 'rate' | 'quantity') => {
+      if (e.key === 'Tab' && e.shiftKey) {
+        e.preventDefault()
+        if (field === 'quantity') {
+          setActiveField('rate')
+        } else if (field === 'rate') {
+          setActiveField('currency')
+        } else if (field === 'currency' && rowIdx > 0) {
+          setActiveRow(rowIdx - 1)
+          setActiveField('quantity')
+        }
+        return
+      }
       if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault()
         if (field === 'currency') {

@@ -160,6 +160,7 @@ export default function DenominationPage() {
           <select
             id="currency-select"
             title="Válassz valutát"
+            aria-label={t('cashdesk.valutaKivalasztasa')}
             value={selectedCurrencyId ?? ''}
             onChange={(e) => setSelectedCurrencyId(e.target.value ? Number(e.target.value) : null)}
             className="form-input h-8 text-sm w-48"
