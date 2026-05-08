@@ -100,7 +100,8 @@ export default function TransactionPage() {
     if (!rateObj) return baseRate
     const foreignNum = parseFloat((foreignAmount || '0').replace(',', '.')) || 0
     if (foreignNum <= 0) return baseRate
-    const baseAmountHuf = foreignNum * baseRate
+    const unit = selectedCurrency?.unit || 1
+    const baseAmountHuf = (foreignNum / unit) * baseRate
     const band = getBandForAmount(rateObj, transactionType === 'BUY' ? 'buy' : 'sell', baseAmountHuf)
     return band.tierRate
   })()
@@ -197,7 +198,8 @@ export default function TransactionPage() {
     if (customRate == null || !rateObj) return
     const mode = transactionType === 'BUY' ? 'buy' as const : 'sell' as const
     const foreignNum = parseFloat((foreignAmount || '0').replace(',', '.')) || 0
-    const baseAmountHuf = foreignNum * baseRate
+    const unit = selectedCurrency?.unit || 1
+    const baseAmountHuf = (foreignNum / unit) * baseRate
 
     if (!isWithinHardLimit(customRate, rateObj.officialRate, mode)) {
       toast.error('Árfolyam meghaladja a hard limitet', getHardLimitMessage(mode, rateObj.officialRate!))
