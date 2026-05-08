@@ -89,7 +89,7 @@ export default function CashierStocksPage() {
   const totalNonZero = branchGroups.reduce((sum, g) => sum + g.nonZeroCount, 0)
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* Header + kereső */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="form-title flex items-center gap-2 text-lg">
@@ -120,28 +120,19 @@ export default function CashierStocksPage() {
         </div>
       )}
 
-      {/* Összesen — kiemelt nagy kártya legfelül */}
-      <div className="rounded-lg bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 p-5 shadow-sm">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-lg bg-primary-100 text-primary-700">
-              <Wallet className="h-6 w-6" />
-            </div>
-            <div>
-              <div className="text-sm text-primary-700 font-medium">{t('inventory.osszesenHufKeszlet')}</div>
-              <div className="text-3xl font-bold font-mono text-primary-900">
-                {grandTotalHuf.toLocaleString('hu-HU', { maximumFractionDigits: 0 })} {t('common.ft')}
-              </div>
-            </div>
+      {/* Összesen — kompakt sáv */}
+      <div className="rounded-lg bg-gradient-to-br from-primary-50 to-primary-100 border border-primary-200 px-4 py-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-primary-700" />
+            <span className="text-sm text-primary-700 font-medium">{t('inventory.osszesenHufKeszlet')}</span>
+            <span className="text-xl font-bold font-mono text-primary-900">
+              {grandTotalHuf.toLocaleString('hu-HU', { maximumFractionDigits: 0 })} {t('common.ft')}
+            </span>
           </div>
-          <div className="text-right">
-            <div className="text-sm text-primary-700">
-              <strong>{totalBranches}</strong>{t('inventory.penztar')}
-            </div>
-            <div className="text-xs text-primary-600">
-              {totalNonZero} {t('inventory.aktivTetel')} {filtered.length} {t('common.sor')}
-            </div>
-          </div>
+          <span className="text-xs text-primary-600">
+            <strong>{totalBranches}</strong> {t('inventory.penztar')} · {totalNonZero} {t('inventory.aktivTetel')}
+          </span>
         </div>
       </div>
 
@@ -151,7 +142,7 @@ export default function CashierStocksPage() {
       ) : branchGroups.length === 0 ? (
         <div className="form-panel text-center text-sm text-gray-500 py-8">{t('common.noData')}</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2">
           {branchGroups.map(group => (
             <BranchCard key={group.branchName} group={group} />
           ))}
@@ -164,23 +155,23 @@ export default function CashierStocksPage() {
 function BranchCard({ group }: { group: BranchGroup }) {
   const { t } = useTranslation()
   return (
-    <div className="form-panel p-3 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
-        <h3 className="font-bold text-secondary-900 truncate flex-1" title={group.branchName}>
+    <div className="form-panel p-2 hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-1 pb-1 border-b border-gray-200">
+        <h3 className="font-bold text-secondary-900 text-sm truncate flex-1" title={group.branchName}>
           {group.branchName}
         </h3>
-        <span className="text-xs text-gray-500 ml-2">
+        <span className="text-[10px] text-gray-500 ml-1">
           {group.items.length} {t('inventory.valuta')}
         </span>
       </div>
-      <table className="w-full text-sm">
+      <table className="w-full text-xs">
         <tbody>
           {group.items.map(item => {
             const isZero = !item.currentBalance || item.currentBalance === 0
             return (
               <tr key={`${item.id}`} className={isZero ? 'text-gray-400' : ''}>
-                <td className="py-0.5 font-mono font-semibold w-12">{item.currencyCode ?? '-'}</td>
-                <td className={`py-0.5 text-right font-mono ${isZero ? '' : 'text-secondary-900 font-semibold'}`}>
+                <td className="py-px font-mono font-semibold w-10">{item.currencyCode ?? '-'}</td>
+                <td className={`py-px text-right font-mono ${isZero ? '' : 'text-secondary-900 font-semibold'}`}>
                   {formatBalance(item.currentBalance, item.currencyCode)}
                 </td>
               </tr>

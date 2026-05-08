@@ -149,80 +149,64 @@ export default function DenominationPage() {
   const selectedCurrency = currencies.find(c => c.id === selectedCurrencyId)
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <Coins />
-          {t('cashdesk.penztarCimletezes')}
-        </h1>
+    <div className="space-y-2">
+      {/* Header + Currency Selector — egy sorban */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <Coins size={20} />
+            {t('cashdesk.penztarCimletezes')}
+          </h1>
+          <select
+            id="currency-select"
+            title="Válassz valutát"
+            aria-label={t('cashdesk.valutaKivalasztasa')}
+            value={selectedCurrencyId ?? ''}
+            onChange={(e) => setSelectedCurrencyId(e.target.value ? Number(e.target.value) : null)}
+            className="form-input h-8 text-sm w-48"
+          >
+            <option value="">{t('cashdesk.valasszValutat')}</option>
+            {currencies.map((curr) => (
+              <option key={curr.id} value={curr.id}>
+                {curr.code} - {curr.name}
+              </option>
+            ))}
+          </select>
+          {selectedCurrency && (
+            <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-lg">
+              <Calculator className="text-blue-600" size={14} />
+              <span className="text-sm text-gray-600">{t('cashdesk.osszesitettEgyenleg')}</span>
+              <span className="font-bold text-base font-mono text-green-600">
+                {formatDecimal(calculatedTotal, 2, 2)} {selectedCurrency.code}
+              </span>
+            </div>
+          )}
+        </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={loadDenominationBalances}
-            className="form-button flex items-center gap-1"
+            className="form-button flex items-center gap-1 h-8 text-sm"
             disabled={loading}
           >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             {t('common.refresh')}
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="form-button-primary flex items-center gap-1"
+            className="form-button-primary flex items-center gap-1 h-8 text-sm"
             disabled={!selectedCashDeskId}
           >
-            <Save size={16} />
+            <Save size={14} />
             {t('common.save')}
           </button>
         </div>
       </div>
 
-      {/* Currency Selector */}
-      <div className="form-panel">
-        <label htmlFor="currency-select" className="form-label">{t('cashdesk.valutaKivalasztasa')}</label>
-        <select
-          id="currency-select"
-          title="Válassz valutát"
-          value={selectedCurrencyId ?? ''}
-          onChange={(e) => setSelectedCurrencyId(e.target.value ? Number(e.target.value) : null)}
-          className="form-input"
-        >
-          <option value="">{t('cashdesk.valasszValutat')}</option>
-          {currencies.map((curr) => (
-            <option key={curr.id} value={curr.id}>
-              {curr.code} - {curr.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Info Banner */}
-      {selectedCurrency && (
-        <div className="form-panel bg-blue-50 border-blue-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Calculator className="text-blue-600" size={18} />
-            <span className="text-sm font-semibold text-blue-800">
-              {selectedCurrency.code} - {selectedCurrency.name}
-            </span>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-sm">
-              <span className="text-gray-600">{t('cashdesk.osszesitettEgyenleg')}</span>
-              <span className="ml-2 font-bold text-lg font-mono text-green-600">
-                {formatDecimal(calculatedTotal, 2, 2)} {selectedCurrency.code}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Denominations Table */}
       {selectedCurrencyId && (
         <div className="form-panel p-0">
-          <div className="p-3 border-b bg-gray-50">
-            <h3 className="font-semibold">{t('cashdesk.cimletekEsMennyisegek')}</h3>
-          </div>
           <div className="overflow-x-auto">
             <table className="data-grid w-full">
               <thead>
@@ -244,12 +228,12 @@ export default function DenominationPage() {
                     return (
                       <tr key={denomination.id}>
                         <td>
-                          <span className="font-mono font-bold text-lg">
+                          <span className="font-mono font-bold text-sm">
                             {formatInteger(denomination.faceValue)} {selectedCurrency?.code}
                           </span>
                         </td>
                         <td>
-                          <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                          <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">
                             {denomination.denominationType === 'BANKNOTE' ? 'Bankjegy' : 'Érme'}
                           </span>
                         </td>
@@ -278,7 +262,7 @@ export default function DenominationPage() {
                 <tr>
                   <td colSpan={3} className="text-right pr-4">{t('cashdesk.osszesen2')}</td>
                   <td className="text-right">
-                    <span className="font-mono text-lg text-blue-600">
+                    <span className="font-mono text-base text-blue-600">
                       {formatDecimal(calculatedTotal, 2, 2)} {selectedCurrency?.code}
                     </span>
                   </td>
