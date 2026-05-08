@@ -7,7 +7,7 @@ import { Eye, EyeOff, User, Lock, Building2, Shield, RefreshCw, ChevronDown } fr
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useAppMode } from '../../hooks/useAppMode'
-import { appModeLabel, canonicalizeRoleForAppMode, isRoleSelectableForAppMode } from '../../utils/appModeRoles'
+import { appModeLabel, canonicalizeRoleForAppMode, isRoleSelectableForAppMode, roleDisplayName } from '../../utils/appModeRoles'
 import { useTranslation } from 'react-i18next'
 
 /**
@@ -379,7 +379,7 @@ export default function LoginPage() {
                       : 'border-form-border hover:bg-gray-50'
                   }`}
                 >
-                  {role}
+                  {roleDisplayName(role)}
                 </button>
               ))}
             </div>
