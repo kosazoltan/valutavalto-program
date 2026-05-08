@@ -46,7 +46,7 @@
     "vite": "^8.0.10",
     "vite-plugin-electron": "^0.29.1",
     "vitest": "^4.1.5",
-    "globals": "^16.0.0"
+    "globals": "^17.6.0"
   },
   "overrides": {
     "rimraf": "^5.0.10",
