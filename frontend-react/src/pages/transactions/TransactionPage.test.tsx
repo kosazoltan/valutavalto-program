@@ -45,6 +45,10 @@ vi.mock('./hooks/useTransactionRates', () => ({
       { id: '1', code: 'EUR', name: 'Euró', buyRate: 391.50, sellRate: 398.50, unit: 1 },
       { id: '2', code: 'USD', name: 'US Dollár', buyRate: 358.20, sellRate: 365.80, unit: 1 },
     ],
+    rawExchangeRates: [
+      { currencyId: 1, currencyCode: 'EUR', currencyName: 'Euró', baseBuyRate: 391.50, baseSellRate: 398.50, active: true, officialRate: 395 },
+      { currencyId: 2, currencyCode: 'USD', currencyName: 'US Dollár', baseBuyRate: 358.20, baseSellRate: 365.80, active: true, officialRate: 362 },
+    ],
     electronQueueAvailable: false,
   }),
 }))

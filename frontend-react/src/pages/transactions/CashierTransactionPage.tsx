@@ -26,6 +26,8 @@ import { CurrencyAutocomplete } from '../../components/cashier/CurrencyAutocompl
 import { useIdentificationLevel } from './hooks/useIdentificationLevel'
 import type { AmlCheckResultDto } from '../../services/api/transactions'
 import { useTranslation } from 'react-i18next'
+import { getBandForAmount, isWithinBand, isWithinHardLimit, getHardLimitMessage } from '../../utils/rateBands'
+import RateAuthDialog from './components/RateAuthDialog'
 
 /**
  * Penztaros Eladas/Vetel kepernyoje — 6 soros valuta tabla.
@@ -68,8 +70,9 @@ const RateInput = forwardRef<HTMLInputElement, {
   onChange: (val: string) => void
   onKeyDown: (e: React.KeyboardEvent) => void
   onFocus: () => void
+  onRateBlur?: () => void
   disabled: boolean
-}>(({ rate, onChange, onKeyDown, onFocus, disabled }, ref) => {
+}>(({ rate, onChange, onKeyDown, onFocus, onRateBlur, disabled }, ref) => {
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
 
@@ -87,7 +90,7 @@ const RateInput = forwardRef<HTMLInputElement, {
         onFocus()
         e.target.select()
       }}
-      onBlur={() => setEditing(false)}
+      onBlur={() => { setEditing(false); onRateBlur?.() }}
       type="text"
       inputMode="decimal"
       className="w-28 h-8 text-right font-mono text-base font-semibold bg-transparent border-2 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:border-transparent"
@@ -162,6 +165,11 @@ export default function CashierTransactionPage() {
   const rateRefs = useRef<(HTMLInputElement | null)[]>([])
   const quantityRefs = useRef<(HTMLInputElement | null)[]>([])
 
+  // Rate auth dialog state
+  const [showRateAuth, setShowRateAuth] = useState(false)
+  const [rateAuthRow, setRateAuthRow] = useState(0)
+  const [rateAuthPendingRate, setRateAuthPendingRate] = useState(0)
+  const rateAuthApprovedRef = useRef<Set<string>>(new Set())
 
   // Calculated totals
   const subtotal = rows.reduce((sum, r) => sum + r.hufValue, 0)
@@ -269,13 +277,16 @@ export default function CashierTransactionPage() {
   const handleCurrencySelect = useCallback(
     (rowIdx: number, code: string, rate: ExchangeRate | null) => {
       if (rate) {
-        const appliedRate = mode === 'buy' ? rate.baseBuyRate : rate.baseSellRate
         setRows((prev) => {
           const next = [...prev]
+          const row = next[rowIdx]!
+          const qtyNum = parseFloat(row.quantity) || 0
+          const currentHuf = mode === 'buy' ? rate.baseBuyRate * qtyNum : rate.baseSellRate * qtyNum
+          const band = getBandForAmount(rate, mode, currentHuf)
           next[rowIdx] = {
-            ...next[rowIdx]!,
+            ...row,
             currencyCode: code,
-            exchangeRate: appliedRate,
+            exchangeRate: band.tierRate,
             currencyName: rate.currencyName || code,
           }
           return next
@@ -302,17 +313,50 @@ export default function CashierTransactionPage() {
   const handleRateInput = useCallback(
     (rowIdx: number, value: string) => {
       const cleaned = value.replace(/[^0-9.,]/g, '').replace(',', '.')
-      const rate = parseFloat(cleaned) || 0
+      const newRate = parseFloat(cleaned) || 0
       setRows((prev) => {
         const next = [...prev]
         const row = next[rowIdx]!
         const qtyNum = parseFloat(row.quantity) || 0
-        const hufValue = roundHuf(rate * qtyNum)
-        next[rowIdx] = { ...row, exchangeRate: rate, hufValue }
+        const hufValue = roundHuf(newRate * qtyNum)
+        next[rowIdx] = { ...row, exchangeRate: newRate, hufValue }
         return next
       })
     },
     []
+  )
+
+  const validateRateOnBlur = useCallback(
+    (rowIdx: number) => {
+      const row = rows[rowIdx]
+      if (!row || !row.currencyCode || row.exchangeRate <= 0) return
+
+      const rateObj = exchangeRates.find((r) => r.currencyCode === row.currencyCode)
+      if (!rateObj) return
+
+      const hufAmount = row.hufValue || 0
+
+      if (!isWithinHardLimit(row.exchangeRate, rateObj.officialRate, mode)) {
+        toast.error('Árfolyam meghaladja a hard limitet', getHardLimitMessage(mode, rateObj.officialRate!))
+        const band = getBandForAmount(rateObj, mode, hufAmount)
+        setRows((prev) => {
+          const next = [...prev]
+          next[rowIdx] = { ...next[rowIdx]!, exchangeRate: band.tierRate, hufValue: roundHuf(band.tierRate * (parseFloat(row.quantity) || 0)) }
+          return next
+        })
+        return
+      }
+
+      const rowKey = `${rowIdx}-${row.currencyCode}`
+      if (rateAuthApprovedRef.current.has(rowKey)) return
+
+      if (!isWithinBand(rateObj, row.exchangeRate, mode, hufAmount)) {
+        setRateAuthRow(rowIdx)
+        setRateAuthPendingRate(row.exchangeRate)
+        setShowRateAuth(true)
+      }
+    },
+    [rows, exchangeRates, mode]
   )
 
   const handleQuantityInput = useCallback(
@@ -323,14 +367,24 @@ export default function CashierTransactionPage() {
         const row = next[rowIdx]!
         const qtyNum = parseFloat(qty) || 0
 
-        // Arfolyam szamitas: rate * mennyiseg = HUF ertek (magyar 5 Ft kerekites)
-        const hufValue = roundHuf(row.exchangeRate * qtyNum)
+        const rateObj = exchangeRates.find((r) => r.currencyCode === row.currencyCode)
+        let appliedRate = row.exchangeRate
 
-        next[rowIdx] = { ...row, quantity: qty, hufValue }
+        if (rateObj) {
+          const estimatedHuf = appliedRate * qtyNum
+          const band = getBandForAmount(rateObj, mode, estimatedHuf)
+          const rowKey = `${rowIdx}-${row.currencyCode}`
+          if (!rateAuthApprovedRef.current.has(rowKey)) {
+            appliedRate = band.tierRate
+          }
+        }
+
+        const hufValue = roundHuf(appliedRate * qtyNum)
+        next[rowIdx] = { ...row, quantity: qty, exchangeRate: appliedRate, hufValue }
         return next
       })
     },
-    []
+    [exchangeRates, mode]
   )
 
   const handleSubmit = useCallback(async () => {
@@ -775,6 +829,7 @@ export default function CashierTransactionPage() {
                         onChange={(val) => handleRateInput(idx, val)}
                         onKeyDown={(e) => handleKeyDown(e, idx, 'rate')}
                         onFocus={() => { setActiveRow(idx); setActiveField('rate') }}
+                        onRateBlur={() => validateRateOnBlur(idx)}
                         disabled={!row.currencyCode}
                       />
                     </td>
@@ -857,6 +912,36 @@ export default function CashierTransactionPage() {
           </div>
         </div>
       </main>
+
+      {/* RATE AUTH DIALOG */}
+      <RateAuthDialog
+        isOpen={showRateAuth}
+        onSuccess={() => {
+          const row = rows[rateAuthRow]
+          if (row) {
+            rateAuthApprovedRef.current.add(`${rateAuthRow}-${row.currencyCode}`)
+          }
+          setShowRateAuth(false)
+        }}
+        onCancel={() => {
+          setShowRateAuth(false)
+          const row = rows[rateAuthRow]
+          if (row) {
+            const rateObj = exchangeRates.find((r) => r.currencyCode === row.currencyCode)
+            if (rateObj) {
+              const band = getBandForAmount(rateObj, mode, row.hufValue || 0)
+              setRows((prev) => {
+                const next = [...prev]
+                next[rateAuthRow] = { ...next[rateAuthRow]!, exchangeRate: band.tierRate, hufValue: roundHuf(band.tierRate * (parseFloat(row.quantity) || 0)) }
+                return next
+              })
+            }
+          }
+        }}
+        customRate={rateAuthPendingRate}
+        currencyCode={rows[rateAuthRow]?.currencyCode || ''}
+        mode={mode}
+      />
 
       {/* RECEIPT PREVIEW MODAL */}
       <ReceiptPreviewModal
