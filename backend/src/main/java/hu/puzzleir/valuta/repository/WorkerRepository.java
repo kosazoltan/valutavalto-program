@@ -125,6 +125,14 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
     List<Worker> findAllSupervisorsAndAbove();
 
     /**
+     * Worker betöltése company + branch eager fetch-csel (LAZY proxy-k nélkül).
+     * Az auth flow-kban (login, select-role, refresh, first-time-setup) használandó,
+     * ahol open-in-view=false miatt a session bezárul a repository hívás után.
+     */
+    @Query("SELECT w FROM Worker w JOIN FETCH w.company JOIN FETCH w.branch WHERE w.id = :id")
+    Optional<Worker> findByIdWithCompanyAndBranch(@Param("id") Long id);
+
+    /**
      * OTP enabled dolgozók
      */
     @Query("SELECT w FROM Worker w WHERE w.company.id = :companyId AND w.otpEnabled = true AND w.active = true")

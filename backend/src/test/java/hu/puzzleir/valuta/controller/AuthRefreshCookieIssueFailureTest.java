@@ -75,7 +75,7 @@ class AuthRefreshCookieIssueFailureTest {
         Worker worker = worker();
         when(clientIpResolver.resolveClientIp(request)).thenReturn("127.0.0.1");
         when(workerService.login(requestDto, "127.0.0.1", null)).thenReturn(loginResponse());
-        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(refreshTokenService.issue(worker, request, null)).thenThrow(new IllegalStateException("database unavailable"));
 
         assertThatThrownBy(() -> controller.login(requestDto, request, response))
@@ -180,7 +180,7 @@ class AuthRefreshCookieIssueFailureTest {
         when(jwtTokenProvider.getTokenIdFromToken("temp-token")).thenReturn("old-token-id");
         when(tokenBlacklistService.isBlacklisted("old-token-id")).thenReturn(false);
         when(jwtTokenProvider.getWorkerIdFromToken("temp-token")).thenReturn(42L);
-        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "ertektar"));
         when(workerRoleService.getPermissionCodesForRole("penztar")).thenReturn(List.of("TRADE_EXECUTE"));
         when(jwtTokenProvider.generateToken(worker, "penztar", List.of("TRADE_EXECUTE"))).thenReturn("final-token");
@@ -216,7 +216,7 @@ class AuthRefreshCookieIssueFailureTest {
         when(jwtTokenProvider.getTokenIdFromToken("temp-token")).thenReturn("old-token-id");
         when(tokenBlacklistService.isBlacklisted("old-token-id")).thenReturn(false);
         when(jwtTokenProvider.getWorkerIdFromToken("temp-token")).thenReturn(42L);
-        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "ertektar"));
 
         assertThatThrownBy(() -> controller.selectRole(
@@ -251,7 +251,7 @@ class AuthRefreshCookieIssueFailureTest {
         when(jwtTokenProvider.getTokenIdFromToken("temp-token")).thenReturn("old-token-id");
         when(tokenBlacklistService.isBlacklisted("old-token-id")).thenReturn(false);
         when(jwtTokenProvider.getWorkerIdFromToken("temp-token")).thenReturn(42L);
-        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar"));
         when(workerRoleService.getPermissionCodesForRole("penztar")).thenReturn(List.of("TRADE_EXECUTE"));
         when(jwtTokenProvider.generateToken(worker, "penztar", List.of("TRADE_EXECUTE"))).thenReturn("final-token");
@@ -287,7 +287,7 @@ class AuthRefreshCookieIssueFailureTest {
         when(jwtTokenProvider.getTokenIdFromToken("access-token")).thenReturn("old-token-id");
         when(tokenBlacklistService.isBlacklisted("old-token-id")).thenReturn(false);
         when(jwtTokenProvider.getWorkerIdFromToken("access-token")).thenReturn(42L);
-        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(jwtTokenProvider.getActiveRoleFromToken("access-token")).thenReturn("ertektar");
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar"));
         LocalDateTime tokenExpiresAt = LocalDateTime.of(2026, 5, 7, 15, 30);
@@ -327,7 +327,7 @@ class AuthRefreshCookieIssueFailureTest {
         when(jwtTokenProvider.getTokenIdFromToken("access-token")).thenReturn("old-token-id");
         when(tokenBlacklistService.isBlacklisted("old-token-id")).thenReturn(false);
         when(jwtTokenProvider.getWorkerIdFromToken("access-token")).thenReturn(42L);
-        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(jwtTokenProvider.getExpirationDateTimeFromToken("access-token")).thenReturn(null);
         when(jwtTokenProvider.getConfiguredExpirationDateTimeFromNow()).thenReturn(configuredExpiresAt);
         when(jwtTokenProvider.getActiveRoleFromToken("access-token")).thenReturn("ertektar");
@@ -364,7 +364,7 @@ class AuthRefreshCookieIssueFailureTest {
         when(jwtTokenProvider.getTokenIdFromToken("access-token")).thenReturn("old-token-id");
         when(tokenBlacklistService.isBlacklisted("old-token-id")).thenReturn(false);
         when(jwtTokenProvider.getWorkerIdFromToken("access-token")).thenReturn(42L);
-        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(jwtTokenProvider.getActiveRoleFromToken("access-token")).thenReturn("penztar");
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "ertektar"));
         when(workerRoleService.getPermissionCodesForRole("penztar")).thenReturn(List.of("TRADE_EXECUTE"));
@@ -396,7 +396,7 @@ class AuthRefreshCookieIssueFailureTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         Worker worker = worker();
         when(googleLoginService.loginWithGoogle("id-token", request, null)).thenReturn(loginResponse());
-        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(refreshTokenService.issue(worker, request, null)).thenThrow(new IllegalStateException("database unavailable"));
 
         assertThatThrownBy(() -> controller.googleLogin(requestDto, request, response))
@@ -488,7 +488,7 @@ class AuthRefreshCookieIssueFailureTest {
                 .build();
         when(refreshTokenService.findActiveBySelectorAndVerifier("selector.verifier"))
                 .thenReturn(Optional.of(oldRefresh));
-        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "ertektar"));
         when(workerRoleService.getPermissionCodesForRole("ertektar")).thenReturn(List.of("VAULT_READ"));
         when(jwtTokenProvider.generateToken(worker, "ertektar", List.of("VAULT_READ"))).thenReturn("refreshed-token");
@@ -525,7 +525,7 @@ class AuthRefreshCookieIssueFailureTest {
                 .build();
         when(refreshTokenService.findActiveBySelectorAndVerifier("selector.verifier"))
                 .thenReturn(Optional.of(oldRefresh));
-        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar"));
 
         var result = controller.refreshCookie(request, response);
@@ -564,7 +564,7 @@ class AuthRefreshCookieIssueFailureTest {
                 .build();
         when(refreshTokenService.findActiveBySelectorAndVerifier("selector.verifier"))
                 .thenReturn(Optional.of(oldRefresh));
-        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "ertektar"));
 
         var result = controller.refreshCookie(request, response);
@@ -605,7 +605,7 @@ class AuthRefreshCookieIssueFailureTest {
                         .token("access-token")
                         .build();
         when(workerFirstTimeSetupService.setupWorkerPassword(requestDto)).thenReturn(setupResponse);
-        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(refreshTokenService.issue(worker, request, "penztar"))
                 .thenReturn(new RefreshTokenService.IssuedToken("selector.verifier", "hash", Instant.now()));
 
@@ -642,7 +642,7 @@ class AuthRefreshCookieIssueFailureTest {
                         .activeRole("penztar")
                         .token("access-token")
                         .build());
-        when(workerRepository.findById(42L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(refreshTokenService.issue(worker, request, "penztar")).thenThrow(new IllegalStateException("database unavailable"));
 
         assertThatThrownBy(() -> controller.firstTimeWorkerSetup(requestDto, request, response))

@@ -75,7 +75,7 @@ public class GoogleAuthController {
         // Multi-role Google login eseten a valasz tokenje ideiglenes; a kozos
         // /auth/login/select-role endpoint adja ki a tartos refresh cookie-t.
         if (!Boolean.TRUE.equals(response.getRoleSelectionRequired())) {
-            Worker worker = workerRepository.findById(response.getWorker().getId())
+            Worker worker = workerRepository.findByIdWithCompanyAndBranch(response.getWorker().getId())
                     .orElseThrow(() -> new AuthenticationException("Worker nem talalhato login utan."));
             refreshCookieService.issueOrThrow(
                     worker,

@@ -90,7 +90,7 @@ public class AuthController {
         // Több szerepkörös login esetén a token ideiglenes; a role-select endpoint adja ki
         // a tartós refresh cookie-t a kiválasztott szerepkör után.
         if (!Boolean.TRUE.equals(response.getRoleSelectionRequired())) {
-            Worker worker = workerRepository.findById(response.getWorker().getId())
+            Worker worker = workerRepository.findByIdWithCompanyAndBranch(response.getWorker().getId())
                 .orElseThrow(() -> new BusinessException(
                         "Belépés nem véglegesíthető: a dolgozó rekord nem található.",
                         "LOGIN_SESSION_ISSUE_FAILED",
@@ -176,7 +176,7 @@ public class AuthController {
         if (matched.isEmpty()) return ResponseEntity.status(401).build();
 
         RefreshToken oldRefresh = matched.get();
-        Worker worker = workerRepository.findById(oldRefresh.getWorkerId())
+        Worker worker = workerRepository.findByIdWithCompanyAndBranch(oldRefresh.getWorkerId())
             .filter(w -> Boolean.TRUE.equals(w.getActive()))
             .orElse(null);
         if (worker == null) return ResponseEntity.status(401).build();
@@ -260,9 +260,9 @@ public class AuthController {
             throw new ValidationException("Érvénytelen token — nincs worker ID!");
         }
         
-        Worker worker = workerRepository.findById(workerId)
+        Worker worker = workerRepository.findByIdWithCompanyAndBranch(workerId)
                 .orElseThrow(() -> new ValidationException("Worker nem található!"));
-        
+
         if (!Boolean.TRUE.equals(worker.getActive())) {
             throw new ValidationException("Ez a pénztáros inaktív!");
         }
@@ -350,8 +350,7 @@ public class AuthController {
             return ResponseEntity.status(401).build();
         }
 
-        // Worker betöltése DB-ből (friss adatokkal)
-        Worker worker = workerRepository.findById(workerId)
+        Worker worker = workerRepository.findByIdWithCompanyAndBranch(workerId)
                 .orElse(null);
         if (worker == null || !Boolean.TRUE.equals(worker.getActive())) {
             return ResponseEntity.status(401).build();
@@ -453,7 +452,7 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse httpResponse) {
         WorkerFirstTimeSetupResponseDto response = workerFirstTimeSetupService.setupWorkerPassword(dto);
-        Worker worker = workerRepository.findById(response.getWorkerId())
+        Worker worker = workerRepository.findByIdWithCompanyAndBranch(response.getWorkerId())
             .orElseThrow(() -> new BusinessException(
                     "Telepítés utáni belépés nem véglegesíthető: a dolgozó rekord nem található.",
                     "LOGIN_SESSION_ISSUE_FAILED",
