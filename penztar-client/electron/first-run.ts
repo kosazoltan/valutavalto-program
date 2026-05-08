@@ -1147,29 +1147,42 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
         const fallbackWorkerCode = (
           payload.selectedWorkerCode?.trim()
           || payload.bootstrapUsername?.trim()
-          || payload.adminUsername.trim()
+          || payload.adminUsername?.trim()
+          || ''
         ).toUpperCase();
 
         if (fallbackWorkerCode && payload.adminPassword) {
           log.info('[Setup] Bootstrap lezart, workerFirstTimeSetup fallback:', fallbackWorkerCode);
-          const fallbackSetup = await workerFirstTimeSetup(resolvedApiUrl, {
-            companyCode: normalizedCompanyCode,
-            workerCode: fallbackWorkerCode,
-            newPassword: payload.adminPassword,
-            currentPassword: payload.bootstrapPassword?.trim() || undefined,
-            appMode: payload.appMode,
-          });
-          if (fallbackSetup.success) {
-            log.info('[Setup] Worker jelszo fallback sikeres:', fallbackWorkerCode);
-            resolvedWorkerIdentity = fallbackSetup.workerIdentity ?? {
+          try {
+            const fallbackSetup = await workerFirstTimeSetup(resolvedApiUrl, {
+              companyCode: normalizedCompanyCode,
               workerCode: fallbackWorkerCode,
-              workerName: payload.selectedWorkerName,
-              workerRole: payload.selectedWorkerRole,
-            };
-          } else {
-            log.warn('[Setup] Worker jelszo fallback sikertelen:', fallbackSetup.errorMessage);
-            // Nem blokkolunk — a legacy identity marad, a user majd login-nal
-            // eszreveszi es ujra futtathatja a wizard-ot.
+              newPassword: payload.adminPassword,
+              currentPassword: payload.bootstrapPassword?.trim() || undefined,
+              appMode: payload.appMode,
+            });
+            if (fallbackSetup.success) {
+              log.info('[Setup] Worker jelszo fallback sikeres:', fallbackWorkerCode);
+              resolvedWorkerIdentity = fallbackSetup.workerIdentity ?? {
+                workerCode: fallbackWorkerCode,
+                workerName: payload.selectedWorkerName,
+                workerRole: payload.selectedWorkerRole,
+              };
+            } else {
+              log.warn('[Setup] Worker jelszo fallback sikertelen:', {
+                workerCode: fallbackWorkerCode,
+                company: normalizedCompanyCode,
+                appMode: payload.appMode,
+                error: fallbackSetup.errorMessage,
+              });
+            }
+          } catch (err) {
+            log.warn('[Setup] Worker jelszo fallback kivetel:', {
+              workerCode: fallbackWorkerCode,
+              company: normalizedCompanyCode,
+              appMode: payload.appMode,
+              error: err instanceof Error ? err.message : String(err),
+            });
           }
         }
       } else {
