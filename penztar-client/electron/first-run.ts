@@ -1169,10 +1169,20 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
                 workerRole: payload.selectedWorkerRole,
               };
             } else {
-              log.warn('[Setup] Worker jelszo fallback sikertelen:', fallbackSetup.errorMessage);
+              log.warn('[Setup] Worker jelszo fallback sikertelen:', {
+                workerCode: fallbackWorkerCode,
+                company: normalizedCompanyCode,
+                appMode: payload.appMode,
+                error: fallbackSetup.errorMessage,
+              });
             }
           } catch (err) {
-            log.warn('[Setup] Worker jelszo fallback kivetel:', err);
+            log.warn('[Setup] Worker jelszo fallback kivetel:', {
+              workerCode: fallbackWorkerCode,
+              company: normalizedCompanyCode,
+              appMode: payload.appMode,
+              error: err instanceof Error ? err.message : String(err),
+            });
           }
         }
       } else {
