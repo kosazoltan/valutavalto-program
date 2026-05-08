@@ -24,6 +24,7 @@ function resolveUnit(rate: ExchangeRate): number {
 export function useTransactionRates() {
   const electronQueueAvailable = isElectronQueueAvailable()
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([])
+  const [rawExchangeRates, setRawExchangeRates] = useState<ExchangeRate[]>([])
 
   useEffect(() => {
     const loadRates = async () => {
@@ -52,13 +53,15 @@ export function useTransactionRates() {
             unit: resolveUnit(r),
           }))
         setCurrencyRates(mapped)
+        setRawExchangeRates(sourceRates)
       } catch {
         setCurrencyRates([])
+        setRawExchangeRates([])
       }
     }
 
     void loadRates()
   }, [electronQueueAvailable])
 
-  return { currencyRates, electronQueueAvailable }
+  return { currencyRates, rawExchangeRates, electronQueueAvailable }
 }

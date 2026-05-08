@@ -25,11 +25,13 @@ import CurrencySearchInput from './components/CurrencySearchInput'
 import CustomerPanel from './components/LegacyCustomerPanel'
 import type { Customer } from './components/LegacyCustomerPanel'
 import { useTranslation } from 'react-i18next'
+import { getBandForAmount, isWithinBand, isWithinHardLimit, getHardLimitMessage } from '../../utils/rateBands'
+import RateAuthDialog from './components/RateAuthDialog'
 
 export default function TransactionPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { currencyRates, electronQueueAvailable } = useTransactionRates()
+  const { currencyRates, rawExchangeRates, electronQueueAvailable } = useTransactionRates()
 
   // Refs for keyboard navigation
   const foreignAmountRef = useRef<HTMLInputElement>(null)
@@ -45,6 +47,17 @@ export default function TransactionPage() {
   // Customer state
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [customerAddress, setCustomerAddress] = useState('')
+
+  // Custom rate state
+  const [customRate, setCustomRate] = useState<number | null>(null)
+  const [editingRate, setEditingRate] = useState(false)
+  const [rateText, setRateText] = useState('')
+  const rateInputRef = useRef<HTMLInputElement>(null)
+
+  // Rate auth dialog state
+  const [showRateAuth, setShowRateAuth] = useState(false)
+  const [rateAuthPendingRate, setRateAuthPendingRate] = useState(0)
+  const rateAuthApprovedRef = useRef(false)
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -75,19 +88,34 @@ export default function TransactionPage() {
     return () => clearTimeout(timerId)
   }, [])
 
-  // Calculate amounts
-  useEffect(() => {
-    if (!selectedCurrency) return
+  const rateObj = selectedCurrency
+    ? rawExchangeRates.find((r) => r.currencyCode === selectedCurrency.code)
+    : undefined
 
-    const rate = transactionType === 'BUY'
-      ? selectedCurrency.buyRate
-      : selectedCurrency.sellRate
+  const baseRate = selectedCurrency
+    ? (transactionType === 'BUY' ? selectedCurrency.buyRate : selectedCurrency.sellRate)
+    : 0
+
+  const effectiveRate = customRate ?? (() => {
+    if (!rateObj || !hufAmount) return baseRate
+    const hufNum = parseFloat(hufAmount.replace(/\s/g, '').replace(',', '.')) || 0
+    if (hufNum <= 0) return baseRate
+    const band = getBandForAmount(rateObj, transactionType === 'BUY' ? 'buy' : 'sell', hufNum)
+    return band.tierRate
+  })()
+
+  const currentRate = effectiveRate
+
+  // Calculate amounts using the effective rate (custom or tier-based)
+  useEffect(() => {
+    if (!selectedCurrency || currentRate <= 0) return
+
     const unit = selectedCurrency.unit || 1
 
     if (lastEdited === 'foreign' && foreignAmount) {
       const amount = parseFloat(foreignAmount.replace(',', '.'))
       if (!isNaN(amount)) {
-        const nextHufAmount = roundHuf((amount / unit) * rate).toString()
+        const nextHufAmount = roundHuf((amount / unit) * currentRate).toString()
         if (hufAmount !== nextHufAmount) {
           setHufAmount(nextHufAmount)
         }
@@ -95,13 +123,13 @@ export default function TransactionPage() {
     } else if (lastEdited === 'huf' && hufAmount) {
       const amount = parseFloat(hufAmount.replace(',', '.').replace(/\s/g, ''))
       if (!isNaN(amount)) {
-        const result = ((amount / rate) * unit).toFixed(2).replace('.', ',')
+        const result = ((amount / currentRate) * unit).toFixed(2).replace('.', ',')
         if (foreignAmount !== result) {
           setForeignAmount(result)
         }
       }
     }
-  }, [foreignAmount, hufAmount, selectedCurrency, transactionType, lastEdited])
+  }, [foreignAmount, hufAmount, selectedCurrency, currentRate, lastEdited])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -122,8 +150,16 @@ export default function TransactionPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [currencyRates, navigate])
 
+  const switchTransactionType = (type: 'BUY' | 'SELL') => {
+    setTransactionType(type)
+    setCustomRate(null)
+    rateAuthApprovedRef.current = false
+  }
+
   const handleCurrencySelect = (currency: CurrencyRate) => {
     setSelectedCurrency(currency)
+    setCustomRate(null)
+    rateAuthApprovedRef.current = false
     setTimeout(() => foreignAmountRef.current?.focus(), 50)
   }
 
@@ -141,6 +177,35 @@ export default function TransactionPage() {
     if (e.key === 'Enter') {
       e.preventDefault()
       hufAmountRef.current?.focus()
+    }
+  }
+
+  const handleRateChange = (value: string) => {
+    setRateText(value)
+    const cleaned = value.replace(/[^0-9.,]/g, '').replace(',', '.')
+    const parsed = parseFloat(cleaned)
+    if (!isNaN(parsed) && parsed > 0) {
+      setCustomRate(parsed)
+    }
+  }
+
+  const handleRateBlur = () => {
+    setEditingRate(false)
+    if (customRate == null || !rateObj) return
+    const mode = transactionType === 'BUY' ? 'buy' as const : 'sell' as const
+    const hufNum = parseFloat(hufAmount.replace(/\s/g, '').replace(',', '.')) || 0
+
+    if (!isWithinHardLimit(customRate, rateObj.officialRate, mode)) {
+      toast.error('Árfolyam meghaladja a hard limitet', getHardLimitMessage(mode, rateObj.officialRate!))
+      setCustomRate(null)
+      return
+    }
+
+    if (rateAuthApprovedRef.current) return
+
+    if (!isWithinBand(rateObj, customRate, mode, hufNum)) {
+      setRateAuthPendingRate(customRate)
+      setShowRateAuth(true)
     }
   }
 
@@ -180,9 +245,7 @@ export default function TransactionPage() {
         customerNationality: customer.nationality,
       } : {}
 
-      const rate = transactionType === 'BUY'
-        ? selectedCurrency.buyRate
-        : selectedCurrency.sellRate
+      const rate = currentRate
 
       if (electronQueueAvailable) {
               const outcome = await saveAndSyncPendingBuySell([
@@ -263,10 +326,6 @@ export default function TransactionPage() {
     }
   }
 
-  const currentRate = selectedCurrency
-    ? (transactionType === 'BUY' ? selectedCurrency.buyRate : selectedCurrency.sellRate)
-    : 0
-
   return (
     <div className="space-y-3">
       {/* Page header */}
@@ -310,8 +369,8 @@ export default function TransactionPage() {
           {/* Transaction type toggle */}
           <div className="flex gap-1 mb-3">
             <button
-              onClick={() => setTransactionType('BUY')}
-              onKeyDown={(e) => { if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); setTransactionType('SELL') } }}
+              onClick={() => switchTransactionType('BUY')}
+              onKeyDown={(e) => { if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); switchTransactionType('SELL') } }}
               data-testid="tx-type-buy"
               className={`flex-1 py-2 text-center font-semibold border rounded-l focus:outline-none focus:ring-2 focus:ring-primary ${
                 transactionType === 'BUY' ? 'bg-green-600 text-white border-green-700' : 'bg-gray-100 border-form-border hover:bg-gray-200'
@@ -321,8 +380,8 @@ export default function TransactionPage() {
               <div className="text-xs font-normal">{t('transactions.ugyfelElad')}{selectedCurrency?.code || 'devizát'})</div>
             </button>
             <button
-              onClick={() => setTransactionType('SELL')}
-              onKeyDown={(e) => { if (e.key === 'ArrowLeft' || e.key === ' ') { e.preventDefault(); setTransactionType('BUY') } }}
+              onClick={() => switchTransactionType('SELL')}
+              onKeyDown={(e) => { if (e.key === 'ArrowLeft' || e.key === ' ') { e.preventDefault(); switchTransactionType('BUY') } }}
               data-testid="tx-type-sell"
               className={`flex-1 py-2 text-center font-semibold border rounded-r focus:outline-none focus:ring-2 focus:ring-primary ${
                 transactionType === 'SELL' ? 'bg-blue-600 text-white border-blue-700' : 'bg-gray-100 border-form-border hover:bg-gray-200'
@@ -339,12 +398,30 @@ export default function TransactionPage() {
             onSelect={handleCurrencySelect}
           />
 
-          {/* Current rate display */}
+          {/* Current rate display — editable */}
           <div className="form-group-box pt-4 mb-3">
             <span className="form-group-box-title">{t('transactions.alkalmazottArfolyam')}</span>
-            <div className="text-center">
-              <span className="text-3xl font-bold font-mono text-primary">{formatDecimal(currentRate, 2, 2)}</span>
-              <span className="ml-2 text-gray-500">{t('transactions.huf1')}{selectedCurrency?.code || ''}</span>
+            <div className="text-center flex items-center justify-center gap-2">
+              <input
+                ref={rateInputRef}
+                value={editingRate ? rateText : formatDecimal(currentRate, 2, 2)}
+                onChange={(e) => handleRateChange(e.target.value)}
+                onFocus={(e) => {
+                  setEditingRate(true)
+                  setRateText(formatDecimal(currentRate, 2, 2))
+                  e.target.select()
+                }}
+                onBlur={handleRateBlur}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); rateInputRef.current?.blur() }
+                  if (e.key === 'Escape') { setCustomRate(null); setEditingRate(false) }
+                }}
+                type="text"
+                inputMode="decimal"
+                className="w-40 text-center text-3xl font-bold font-mono bg-transparent border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:border-transparent h-12"
+                style={{ color: 'var(--primary)', '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
+              />
+              <span className="text-gray-500">{t('transactions.huf1')}{selectedCurrency?.code || ''}</span>
             </div>
           </div>
 
@@ -423,6 +500,22 @@ export default function TransactionPage() {
           onCustomerAddressChange={setCustomerAddress}
         />
       </div>
+
+      {/* Rate auth dialog */}
+      <RateAuthDialog
+        isOpen={showRateAuth}
+        onSuccess={() => {
+          rateAuthApprovedRef.current = true
+          setShowRateAuth(false)
+        }}
+        onCancel={() => {
+          setShowRateAuth(false)
+          setCustomRate(null)
+        }}
+        customRate={rateAuthPendingRate}
+        currencyCode={selectedCurrency?.code || ''}
+        mode={transactionType === 'BUY' ? 'buy' : 'sell'}
+      />
 
       {/* Receipt print modal */}
       {savedTransaction && (
