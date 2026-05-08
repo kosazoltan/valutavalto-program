@@ -48,7 +48,7 @@ public class SecurityConfig {
             // Authorization rules
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints (login)
-                .requestMatchers("/api/v1/auth/login", "/api/v1/auth/google-login", "/api/v1/auth/refresh", "/api/v1/auth/refresh-cookie").permitAll()
+                .requestMatchers("/api/v1/auth/login", "/api/v1/auth/google-login", "/api/v1/auth/login/select-role", "/api/v1/auth/refresh", "/api/v1/auth/refresh-cookie").permitAll()
                 .requestMatchers("/api/v1/auth/bootstrap-admin", "/api/v1/auth/bootstrap-status").permitAll()
                 // v2.3.0: uj auth endpoint-ok (worker first-time setup + forgot/reset password)
                 .requestMatchers("/api/v1/auth/first-time-worker-setup").permitAll()
