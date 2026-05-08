@@ -57,7 +57,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Trivy fs scan (backend pom.xml)
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0 (audit-iter3 P1: pinned to SHA, CodeQL actions/unpinned-tag fix)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0 (audit-iter3 P1: pinned to SHA, CodeQL actions/unpinned-tag fix)
         with:
           scan-type: 'fs'
           scan-ref: 'backend'
