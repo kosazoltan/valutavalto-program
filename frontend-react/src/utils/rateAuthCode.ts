@@ -11,9 +11,9 @@ function letterValue(ch: string): number {
 export function generateChallenge(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   const maxUnbiased = 256 - (256 % chars.length)
+  const buf = new Uint8Array(1)
   let code = ''
   while (code.length < 4) {
-    const buf = new Uint8Array(1)
     crypto.getRandomValues(buf)
     if (buf[0]! < maxUnbiased) {
       code += chars[buf[0]! % chars.length]

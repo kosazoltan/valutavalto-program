@@ -1,8 +1,8 @@
 name: Hotfix - Flyway Repair V194 (manual)
 
-# V194 migracio az eredeti deploy-ban FAILED (hibas oszlopnev: 'created_at' az 'assigned_at' helyett).
-# A javitott V194 mar 'assigned_at'-ot hasznal. V194 NINCS a flyway_schema_history-ban
-# (a failed run nem INSERT-elt entry-t), tehat sima restart utan Flyway ujra futtatja.
+# V194 migration originally failed due to wrong column name ('created_at' instead of 'assigned_at').
+# The fixed V194 uses 'assigned_at'. If V194 failed, Flyway did NOT insert a checksum entry,
+# so a simple restart re-runs it. The DELETE step is a safety net for edge cases.
 
 on:
   workflow_dispatch:
@@ -14,15 +14,20 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: flyway-repair-v194
+  cancel-in-progress: false
+
 jobs:
   repair:
     name: Restart service for fixed V194
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment: production
     steps:
       - name: Validate confirmation
         run: |
-          if [ "${{ inputs.confirm }}" != "REPAIR-V194" ]; then
+          if [ "${{ github.event.inputs.confirm }}" != "REPAIR-V194" ]; then
             echo "Confirmation string mismatch. Aborting."
             exit 1
           fi
@@ -32,11 +37,19 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          HOST_KEY="${{ secrets.VPS_SSH_HOST_KEY }}"
+          if [ -n "$HOST_KEY" ]; then
+            echo "$HOST_KEY" >> ~/.ssh/known_hosts
+            SSH_STRICT="yes"
+          else
+            SSH_STRICT="accept-new"
+          fi
+          echo "SSH_STRICT=$SSH_STRICT" >> "$GITHUB_ENV"
 
       - name: Check flyway state + restart service
         run: |
           ssh -i ~/.ssh/deploy_key \
-              -o StrictHostKeyChecking=accept-new \
+              -o StrictHostKeyChecking=${{ env.SSH_STRICT }} \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
               bash -s << 'ENDSSH'
             set -euo pipefail
@@ -45,9 +58,14 @@ jobs:
             sudo -u postgres psql -d valuta -c \
               "SELECT installed_rank, version, description, success FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 5;"
 
-            echo "=== Step 1: Delete any failed V194 entry (if exists) ==="
-            sudo -u postgres psql -d valuta -c \
-              "DELETE FROM flyway_schema_history WHERE version = '194' AND success = false;"
+            echo "=== Step 1: Delete failed V194 entry if exists ==="
+            DELETED=$(sudo -u postgres psql -d valuta -t -c \
+              "DELETE FROM flyway_schema_history WHERE version = '194' AND success = false RETURNING version;")
+            if [ -n "$(echo "$DELETED" | xargs)" ]; then
+              echo "Deleted failed V194 entry"
+            else
+              echo "No failed V194 entry found (already clean or succeeded)"
+            fi
 
             echo "=== Step 2: Restarting valuta-backend.service ==="
             systemctl restart valuta-backend.service
