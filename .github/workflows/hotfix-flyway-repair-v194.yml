@@ -1,9 +1,8 @@
 name: Hotfix - Flyway Repair V194 (manual)
 
-# V194 migracio a Hetzner-en FAILED (hibas oszlopnev: 'created_at' az 'assigned_at' helyett).
-# A repair torli a failed V194 bejegyzest a flyway_schema_history-bol.
-# A javitott JAR-ban V194 valtozatlan (checksum OK, de nem fog ujrafutni mert a SQL
-# hibas volt es semmit nem INSERT-elt), V195 tartalmazza a helyes INSERT-et.
+# V194 migracio az eredeti deploy-ban FAILED (hibas oszlopnev: 'created_at' az 'assigned_at' helyett).
+# A javitott V194 mar 'assigned_at'-ot hasznal. V194 NINCS a flyway_schema_history-ban
+# (a failed run nem INSERT-elt entry-t), tehat sima restart utan Flyway ujra futtatja.
 
 on:
   workflow_dispatch:
@@ -17,7 +16,7 @@ permissions:
 
 jobs:
   repair:
-    name: Repair flyway_schema_history V194 + restart
+    name: Restart service for fixed V194
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -34,7 +33,7 @@ jobs:
           echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
-      - name: Repair Flyway history + restart service
+      - name: Check flyway state + restart service
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=accept-new \
@@ -42,23 +41,23 @@ jobs:
               bash -s << 'ENDSSH'
             set -euo pipefail
 
-            echo "=== Pre-repair: flyway_schema_history V194 entry ==="
-            sudo -u postgres psql -d valuta -c \
-              "SELECT installed_rank, version, description, success, installed_on FROM flyway_schema_history WHERE version = '194';"
-
-            echo "=== Step 1: Marking failed V194 as success (skip re-run, V195 has the fix) ==="
-            sudo -u postgres psql -d valuta -c \
-              "UPDATE flyway_schema_history SET success = true WHERE version = '194' AND success = false;"
-
-            echo "=== Step 2: Post-delete check ==="
+            echo "=== Pre-check: flyway_schema_history (last 5 entries) ==="
             sudo -u postgres psql -d valuta -c \
               "SELECT installed_rank, version, description, success FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 5;"
 
-            echo "=== Step 3: Restarting valuta-backend.service ==="
+            echo "=== Step 1: Delete any failed V194 entry (if exists) ==="
+            sudo -u postgres psql -d valuta -c \
+              "DELETE FROM flyway_schema_history WHERE version = '194' AND success = false;"
+
+            echo "=== Step 2: Restarting valuta-backend.service ==="
             systemctl restart valuta-backend.service
-            sleep 25
-            systemctl is-active valuta-backend.service || { journalctl -u valuta-backend.service -n 50 --no-pager; exit 1; }
+            sleep 30
+            systemctl is-active valuta-backend.service || { journalctl -u valuta-backend.service -n 80 --no-pager; exit 1; }
             echo "=== Service is active ==="
+
+            echo "=== Post-check: V194 status ==="
+            sudo -u postgres psql -d valuta -c \
+              "SELECT installed_rank, version, description, success FROM flyway_schema_history WHERE version = '194';"
           ENDSSH
 
       - name: Health check
