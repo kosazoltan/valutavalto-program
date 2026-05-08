@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, forwardRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useFKeyHotkey } from '../../hooks/useFKeyHotkey'
@@ -63,6 +63,42 @@ const emptyRow = (): TransactionRow => ({
   hufValue: 0,
 })
 
+const RateInput = forwardRef<HTMLInputElement, {
+  rate: number
+  onChange: (val: string) => void
+  onKeyDown: (e: React.KeyboardEvent) => void
+  onFocus: () => void
+  disabled: boolean
+}>(({ rate, onChange, onKeyDown, onFocus, disabled }, ref) => {
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState('')
+
+  const display = rate ? rate.toFixed(2) : ''
+
+  return (
+    <input
+      ref={ref}
+      value={editing ? text : display}
+      onChange={(e) => { setText(e.target.value); onChange(e.target.value) }}
+      onKeyDown={onKeyDown}
+      onFocus={(e) => {
+        setEditing(true)
+        setText(display)
+        onFocus()
+        e.target.select()
+      }}
+      onBlur={() => setEditing(false)}
+      type="text"
+      inputMode="decimal"
+      className="w-28 h-8 text-right font-mono text-base font-semibold bg-transparent border-2 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:border-transparent"
+      style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
+      placeholder="-"
+      disabled={disabled}
+    />
+  )
+})
+RateInput.displayName = 'RateInput'
+
 export default function CashierTransactionPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -79,7 +115,7 @@ export default function CashierTransactionPage() {
     Array.from({ length: MAX_LINES }, emptyRow)
   )
   const [activeRow, setActiveRow] = useState(0)
-  const [activeField, setActiveField] = useState<'currency' | 'quantity'>('currency')
+  const [activeField, setActiveField] = useState<'currency' | 'rate' | 'quantity'>('currency')
 
   // Customer state (managed by CustomerPanel)
   const customerDataRef = useRef<CustomerPanelData | null>(null)
@@ -123,7 +159,9 @@ export default function CashierTransactionPage() {
 
   // Refs for keyboard navigation
   const currencyRefs = useRef<(HTMLInputElement | null)[]>([])
+  const rateRefs = useRef<(HTMLInputElement | null)[]>([])
   const quantityRefs = useRef<(HTMLInputElement | null)[]>([])
+
 
   // Calculated totals
   const subtotal = rows.reduce((sum, r) => sum + r.hufValue, 0)
@@ -137,6 +175,8 @@ export default function CashierTransactionPage() {
   useEffect(() => {
     if (activeField === 'currency') {
       currencyRefs.current[activeRow]?.focus()
+    } else if (activeField === 'rate') {
+      rateRefs.current[activeRow]?.focus()
     } else {
       quantityRefs.current[activeRow]?.focus()
     }
@@ -254,7 +294,23 @@ export default function CashierTransactionPage() {
   const handleCurrencyConfirm = useCallback(
     (rowIdx: number) => {
       setActiveRow(rowIdx)
-      setActiveField('quantity')
+      setActiveField('rate')
+    },
+    []
+  )
+
+  const handleRateInput = useCallback(
+    (rowIdx: number, value: string) => {
+      const cleaned = value.replace(/[^0-9.,]/g, '').replace(',', '.')
+      const rate = parseFloat(cleaned) || 0
+      setRows((prev) => {
+        const next = [...prev]
+        const row = next[rowIdx]!
+        const qtyNum = parseFloat(row.quantity) || 0
+        const hufValue = roundHuf(rate * qtyNum)
+        next[rowIdx] = { ...row, exchangeRate: rate, hufValue }
+        return next
+      })
     },
     []
   )
@@ -518,19 +574,18 @@ export default function CashierTransactionPage() {
   }, [rows, mode, total, handlingFee, discount, identificationLevel, sessionOpen, electronQueueAvailable, worker?.branchCode, worker?.companyCode, worker?.fullName, openReceiptModal])
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent, rowIdx: number, field: 'currency' | 'quantity') => {
+    (e: React.KeyboardEvent, rowIdx: number, field: 'currency' | 'rate' | 'quantity') => {
       if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault()
         if (field === 'currency') {
-          // Currency autocomplete kezeli az Enter/Tab-ot — itt csak fallback
+          setActiveField('rate')
+        } else if (field === 'rate') {
           setActiveField('quantity')
         } else if (field === 'quantity') {
-          // Kovetkezo sor
           if (rowIdx < MAX_LINES - 1) {
             setActiveRow(rowIdx + 1)
             setActiveField('currency')
           } else {
-            // Utolso sor utan: veglegestes
             handleSubmit()
           }
         }
@@ -702,9 +757,14 @@ export default function CashierTransactionPage() {
                       />
                     </td>
                     <td className="px-2 py-1 text-right">
-                      <span className="text-base font-mono font-semibold text-gray-900 dark:text-white">
-                        {row.exchangeRate ? row.exchangeRate.toFixed(2) : '-'}
-                      </span>
+                      <RateInput
+                        ref={(el) => { rateRefs.current[idx] = el }}
+                        rate={row.exchangeRate}
+                        onChange={(val) => handleRateInput(idx, val)}
+                        onKeyDown={(e) => handleKeyDown(e, idx, 'rate')}
+                        onFocus={() => { setActiveRow(idx); setActiveField('rate') }}
+                        disabled={!row.currencyCode}
+                      />
                     </td>
                     <td className="px-2 py-1 text-right">
                       <input
