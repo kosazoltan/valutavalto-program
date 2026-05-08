@@ -281,8 +281,9 @@ export default function CashierTransactionPage() {
           const next = [...prev]
           const row = next[rowIdx]!
           const qtyNum = parseFloat(row.quantity) || 0
-          const currentHuf = mode === 'buy' ? rate.baseBuyRate * qtyNum : rate.baseSellRate * qtyNum
-          const band = getBandForAmount(rate, mode, currentHuf)
+          const baseRate = mode === 'buy' ? rate.baseBuyRate : rate.baseSellRate
+          const baseAmountHuf = baseRate * qtyNum
+          const band = getBandForAmount(rate, mode, baseAmountHuf)
           next[rowIdx] = {
             ...row,
             currencyCode: code,
@@ -334,14 +335,16 @@ export default function CashierTransactionPage() {
       const rateObj = exchangeRates.find((r) => r.currencyCode === row.currencyCode)
       if (!rateObj) return
 
-      const hufAmount = row.hufValue || 0
+      const qtyNum = parseFloat(row.quantity) || 0
+      const baseRate = mode === 'buy' ? rateObj.baseBuyRate : rateObj.baseSellRate
+      const baseAmountHuf = qtyNum * baseRate
 
       if (!isWithinHardLimit(row.exchangeRate, rateObj.officialRate, mode)) {
         toast.error('Árfolyam meghaladja a hard limitet', getHardLimitMessage(mode, rateObj.officialRate!))
-        const band = getBandForAmount(rateObj, mode, hufAmount)
+        const band = getBandForAmount(rateObj, mode, baseAmountHuf)
         setRows((prev) => {
           const next = [...prev]
-          next[rowIdx] = { ...next[rowIdx]!, exchangeRate: band.tierRate, hufValue: roundHuf(band.tierRate * (parseFloat(row.quantity) || 0)) }
+          next[rowIdx] = { ...next[rowIdx]!, exchangeRate: band.tierRate, hufValue: roundHuf(band.tierRate * qtyNum) }
           return next
         })
         return
@@ -350,7 +353,7 @@ export default function CashierTransactionPage() {
       const rowKey = `${rowIdx}-${row.currencyCode}`
       if (rateAuthApprovedRef.current.has(rowKey)) return
 
-      if (!isWithinBand(rateObj, row.exchangeRate, mode, hufAmount)) {
+      if (!isWithinBand(rateObj, row.exchangeRate, mode, baseAmountHuf)) {
         setRateAuthRow(rowIdx)
         setRateAuthPendingRate(row.exchangeRate)
         setShowRateAuth(true)
@@ -371,8 +374,9 @@ export default function CashierTransactionPage() {
         let appliedRate = row.exchangeRate
 
         if (rateObj) {
-          const estimatedHuf = appliedRate * qtyNum
-          const band = getBandForAmount(rateObj, mode, estimatedHuf)
+          const baseRate = mode === 'buy' ? rateObj.baseBuyRate : rateObj.baseSellRate
+          const baseAmountHuf = baseRate * qtyNum
+          const band = getBandForAmount(rateObj, mode, baseAmountHuf)
           const rowKey = `${rowIdx}-${row.currencyCode}`
           if (!rateAuthApprovedRef.current.has(rowKey)) {
             appliedRate = band.tierRate
@@ -929,10 +933,13 @@ export default function CashierTransactionPage() {
           if (row) {
             const rateObj = exchangeRates.find((r) => r.currencyCode === row.currencyCode)
             if (rateObj) {
-              const band = getBandForAmount(rateObj, mode, row.hufValue || 0)
+              const qtyNum = parseFloat(row.quantity) || 0
+              const baseRate = mode === 'buy' ? rateObj.baseBuyRate : rateObj.baseSellRate
+              const baseAmountHuf = baseRate * qtyNum
+              const band = getBandForAmount(rateObj, mode, baseAmountHuf)
               setRows((prev) => {
                 const next = [...prev]
-                next[rateAuthRow] = { ...next[rateAuthRow]!, exchangeRate: band.tierRate, hufValue: roundHuf(band.tierRate * (parseFloat(row.quantity) || 0)) }
+                next[rateAuthRow] = { ...next[rateAuthRow]!, exchangeRate: band.tierRate, hufValue: roundHuf(band.tierRate * qtyNum) }
                 return next
               })
             }

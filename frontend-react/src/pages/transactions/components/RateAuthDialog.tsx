@@ -20,15 +20,22 @@ export default function RateAuthDialog({
   mode,
 }: RateAuthDialogProps) {
   const [challenge, setChallenge] = useState('')
+  const [challengeDate, setChallengeDate] = useState<Date>(new Date())
   const [response, setResponse] = useState('')
   const [error, setError] = useState('')
+  const [attempts, setAttempts] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const MAX_ATTEMPTS = 5
 
   useEffect(() => {
     if (isOpen) {
+      const now = new Date()
       setChallenge(generateChallenge())
+      setChallengeDate(now)
       setResponse('')
       setError('')
+      setAttempts(0)
       setTimeout(() => inputRef.current?.focus(), 100)
     }
   }, [isOpen])
@@ -36,15 +43,23 @@ export default function RateAuthDialog({
   if (!isOpen) return null
 
   const handleSubmit = () => {
+    if (attempts >= MAX_ATTEMPTS) {
+      setError(`Túl sok próbálkozás (${MAX_ATTEMPTS}). Zárja be és próbálja újra.`)
+      return
+    }
     const num = parseInt(response, 10)
     if (isNaN(num)) {
       setError('Kérem adjon meg egy számot!')
       return
     }
-    if (validateResponse(challenge, num)) {
+    if (validateResponse(challenge, num, challengeDate)) {
       onSuccess()
     } else {
-      setError('Hibás engedélyezési kód! Kérje újra az értéktárostól.')
+      const remaining = MAX_ATTEMPTS - attempts - 1
+      setAttempts(a => a + 1)
+      setError(remaining > 0
+        ? `Hibás engedélyezési kód! Még ${remaining} próbálkozás.`
+        : `Túl sok próbálkozás (${MAX_ATTEMPTS}). Zárja be és próbálja újra.`)
       setResponse('')
       inputRef.current?.focus()
     }
