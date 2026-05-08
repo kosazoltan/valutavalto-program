@@ -1,8 +1,9 @@
 name: Hotfix - Flyway Repair V194 (manual)
 
 # V194 migracio a Hetzner-en FAILED (hibas oszlopnev: 'created_at' az 'assigned_at' helyett).
-# A javitas utan a flyway_schema_history-bol torolni kell a failed bejegyzest,
-# majd ujrainditas => a javitott V194 lefut.
+# A repair torli a failed V194 bejegyzest a flyway_schema_history-bol.
+# A javitott JAR-ban V194 valtozatlan (checksum OK, de nem fog ujrafutni mert a SQL
+# hibas volt es semmit nem INSERT-elt), V195 tartalmazza a helyes INSERT-et.
 
 on:
   workflow_dispatch:
@@ -45,9 +46,9 @@ jobs:
             sudo -u postgres psql -d valuta -c \
               "SELECT installed_rank, version, description, success, installed_on FROM flyway_schema_history WHERE version = '194';"
 
-            echo "=== Step 1: Deleting failed V194 entry from flyway_schema_history ==="
+            echo "=== Step 1: Marking failed V194 as success (skip re-run, V195 has the fix) ==="
             sudo -u postgres psql -d valuta -c \
-              "DELETE FROM flyway_schema_history WHERE version = '194' AND success = false;"
+              "UPDATE flyway_schema_history SET success = true WHERE version = '194' AND success = false;"
 
             echo "=== Step 2: Post-delete check ==="
             sudo -u postgres psql -d valuta -c \
