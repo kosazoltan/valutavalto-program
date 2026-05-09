@@ -17,6 +17,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { publicApi } from '../../services/api/index'
+import { humanizeError } from '../../utils/errorHandling'
 import type { ElectronAppMode } from '../../types/appMode'
 
 // ---------------------------------------------------------------------------
@@ -295,7 +296,7 @@ export default function SetupWizard() {
           })
           .catch((err: unknown) => {
             if (!isCurrentConnectionTestRequest(requestKey)) return
-            setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
+            setConnectionTest({ state: 'fail', message: humanizeError(err) })
           })
         return
       }
@@ -314,7 +315,7 @@ export default function SetupWizard() {
       })
         .catch((err: unknown) => {
           if (!isCurrentConnectionTestRequest(requestKey)) return
-          setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
+          setConnectionTest({ state: 'fail', message: humanizeError(err) })
         })
     }
   }, [currentStep, apiUrl, companyCode, offlineMode, bootstrapUsername, bootstrapPassword, connectionTestResetKey, isCurrentConnectionTestRequest])
@@ -358,7 +359,7 @@ export default function SetupWizard() {
       }
     } catch (err: unknown) {
       if (!isCurrentConnectionTestRequest(requestKey)) return
-      setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
+      setConnectionTest({ state: 'fail', message: humanizeError(err) })
     }
   }, [apiUrl, companyCode, bootstrapUsername, bootstrapPassword, connectionTestResetKey, isCurrentConnectionTestRequest])
 
@@ -400,7 +401,7 @@ export default function SetupWizard() {
           } : {}),
         })
         if (!result.success) {
-          setSaveError(result.errorMessage || 'Ismeretlen hiba a telepites soran.')
+          setSaveError(result.errorMessage || 'Ismeretlen hiba a telepítés során. Ellenőrizze a szerver kapcsolatot.')
           setIsSaving(false)
         }
         return
@@ -448,7 +449,7 @@ export default function SetupWizard() {
         if (!setupResp.ok) {
           const body = await setupResp.json().catch(() => ({} as Record<string, unknown>))
           const msg = (body as { message?: string }).message || `HTTP ${setupResp.status}`
-          setSaveError(`Dolgozoi jelszo beallitas hiba: ${msg}`)
+          setSaveError(`A dolgozói jelszó beállítása nem sikerült: ${msg}`)
           setIsSaving(false)
           return
         }
@@ -477,7 +478,7 @@ export default function SetupWizard() {
           const body = await resp.json().catch(() => ({} as Record<string, unknown>))
           const msg = (body as { message?: string }).message || `HTTP ${resp.status}`
           if (resp.status !== 400 || !msg.toLowerCase().includes('lezajlott')) {
-            setSaveError(`Admin letrehozasi hiba: ${msg}`)
+            setSaveError(`Admin létrehozási hiba: ${msg}`)
             setIsSaving(false)
             return
           }
@@ -502,7 +503,7 @@ export default function SetupWizard() {
       }))
       window.location.href = '/login'
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err.message : String(err))
+      setSaveError(humanizeError(err))
       setIsSaving(false)
     }
   }

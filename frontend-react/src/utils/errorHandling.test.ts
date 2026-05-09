@@ -4,6 +4,7 @@ import {
   ApplicationError,
   handleApiError,
   getErrorMessage,
+  humanizeError,
   isNetworkError,
   isUnauthorizedError,
   isForbiddenError,
@@ -23,6 +24,11 @@ function makeAxiosError(
     // @ts-expect-error mocking private property
     err.response = { status, data: data ?? {} }
   }
+  return err
+}
+
+function makeAxiosNetworkError(message: string, code?: string): AxiosError {
+  const err = new AxiosError(message, code ?? 'ERR_NETWORK')
   return err
 }
 
@@ -101,6 +107,90 @@ describe('handleApiError', () => {
     const result = handleApiError(axErr)
     expect(result.code).toBe('VALIDATION_ERROR')
   })
+
+  // ─── Network error humanization ───
+
+  it('humanizes "Network Error" to Hungarian message', () => {
+    const axErr = makeAxiosNetworkError('Network Error')
+    const result = handleApiError(axErr)
+    expect(result.message).toBe('A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot.')
+  })
+
+  it('humanizes "Failed to fetch" to Hungarian message', () => {
+    const err = new Error('Failed to fetch')
+    const result = handleApiError(err)
+    expect(result.message).toBe('A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot.')
+  })
+
+  it('humanizes ECONNREFUSED to Hungarian message', () => {
+    const err = new Error('connect ECONNREFUSED 127.0.0.1:8080')
+    const result = handleApiError(err)
+    expect(result.message).toBe('A szerver nem fogadja a kapcsolatot.')
+  })
+
+  it('humanizes ENOTFOUND to Hungarian message', () => {
+    const err = new Error('getaddrinfo ENOTFOUND example.invalid')
+    const result = handleApiError(err)
+    expect(result.message).toBe('A szerver címe nem található.')
+  })
+
+  it('humanizes timeout to Hungarian message', () => {
+    const err = new Error('ETIMEDOUT connecting to server')
+    const result = handleApiError(err)
+    expect(result.message).toBe('A szerver nem válaszolt időben.')
+  })
+
+  it('humanizes SSL/certificate error to Hungarian message', () => {
+    const err = new Error('ERR_CERT_AUTHORITY_INVALID')
+    const result = handleApiError(err)
+    expect(result.message).toBe('Tanúsítvány hiba a szerver felé. Ellenőrizze a HTTPS beállításokat.')
+  })
+
+  it('humanizes CORS error to Hungarian message', () => {
+    const err = new Error('CORS policy: cross-origin request blocked')
+    const result = handleApiError(err)
+    expect(result.message).toBe('A szerver nem engedélyezi a hozzáférést (CORS). Forduljon a rendszergazdához.')
+  })
+
+  it('prefers server message over network error humanization', () => {
+    const axErr = makeAxiosError(400, { message: 'Nincs ebben a programban használható szerepköre.' })
+    const result = handleApiError(axErr)
+    expect(result.message).toBe('Nincs ebben a programban használható szerepköre.')
+  })
+
+  it('returns server ValidationException message as-is', () => {
+    const axErr = makeAxiosError(400, { message: 'Ismeretlen dolgozoi azonosito: BALI (ceg: EBC)' })
+    const result = handleApiError(axErr)
+    expect(result.message).toBe('Ismeretlen dolgozoi azonosito: BALI (ceg: EBC)')
+  })
+
+  it('returns server AuthenticationException message as-is', () => {
+    const axErr = makeAxiosError(401, { message: 'Hibás jelszó vagy dolgozói kód.' })
+    const result = handleApiError(axErr)
+    expect(result.status).toBe(401)
+    expect(result.message).toBe('Hibás jelszó vagy dolgozói kód.')
+  })
+
+  it('returns server 403 Forbidden message as-is', () => {
+    const axErr = makeAxiosError(403, { message: 'Nincs jogosultsága a művelet végrehajtásához' })
+    const result = handleApiError(axErr)
+    expect(result.status).toBe(403)
+    expect(result.message).toBe('Nincs jogosultsága a művelet végrehajtásához')
+  })
+
+  it('returns server 409 Conflict message as-is', () => {
+    const axErr = makeAxiosError(409, { message: 'Ez a Google fiók már egy másik dolgozóhoz van kötve.' })
+    const result = handleApiError(axErr)
+    expect(result.status).toBe(409)
+    expect(result.message).toBe('Ez a Google fiók már egy másik dolgozóhoz van kötve.')
+  })
+
+  it('returns server 500 catch-all message as-is', () => {
+    const axErr = makeAxiosError(500, { message: 'Belső szerverhiba történt. Kérjük, próbálja újra később.' })
+    const result = handleApiError(axErr)
+    expect(result.status).toBe(500)
+    expect(result.message).toBe('Belső szerverhiba történt. Kérjük, próbálja újra később.')
+  })
 })
 
 // ─────────────────────────── getErrorMessage ───────────────────────────
@@ -113,6 +203,16 @@ describe('getErrorMessage', () => {
 
   it('returns default for unknown', () => {
     expect(getErrorMessage(42)).toBe('Ismeretlen hiba történt')
+  })
+
+  it('humanizes Network Error for end user', () => {
+    const err = new Error('Network Error')
+    expect(getErrorMessage(err)).toBe('A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot.')
+  })
+
+  it('passes through server error messages', () => {
+    const axErr = makeAxiosError(400, { message: 'A telepites mar lezarult — a jelenlegi vagy kezdo dolgozoi jelszo kotelezo az uj jelszo beallitasahoz.' })
+    expect(getErrorMessage(axErr)).toBe('A telepites mar lezarult — a jelenlegi vagy kezdo dolgozoi jelszo kotelezo az uj jelszo beallitasahoz.')
   })
 })
 
@@ -191,5 +291,30 @@ describe('isNotFoundError', () => {
 
   it('returns false for plain Error', () => {
     expect(isNotFoundError(new Error('x'))).toBe(false)
+  })
+})
+
+// ─────────────────────────── humanizeError ───────────────────────────
+
+describe('humanizeError', () => {
+  it('humanizes Error with Network Error message', () => {
+    expect(humanizeError(new Error('Network Error'))).toBe('A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot.')
+  })
+
+  it('humanizes Error with ECONNREFUSED', () => {
+    expect(humanizeError(new Error('connect ECONNREFUSED 127.0.0.1:8080'))).toBe('A szerver nem fogadja a kapcsolatot.')
+  })
+
+  it('humanizes Error with SSL certificate issue', () => {
+    expect(humanizeError(new Error('ERR_CERT_AUTHORITY_INVALID'))).toBe('Tanúsítvány hiba a szerver felé. Ellenőrizze a HTTPS beállításokat.')
+  })
+
+  it('returns String(value) for non-Error input', () => {
+    expect(humanizeError(42)).toBe('42')
+    expect(humanizeError(null)).toBe('null')
+  })
+
+  it('passes through unknown error messages unchanged', () => {
+    expect(humanizeError(new Error('Something unexpected'))).toBe('Something unexpected')
   })
 })

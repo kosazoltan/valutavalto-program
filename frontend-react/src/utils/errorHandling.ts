@@ -22,6 +22,33 @@ export class ApplicationError extends Error {
   }
 }
 
+function humanizeRawMessage(msg: string): string {
+  if (msg === 'Network Error' || msg === 'Failed to fetch' || msg === 'Load failed') {
+    return 'A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot.';
+  }
+  if (msg.includes('ECONNREFUSED') || msg.includes('ERR_CONNECTION_REFUSED')) {
+    return 'A szerver nem fogadja a kapcsolatot.';
+  }
+  if (msg.includes('ENOTFOUND') || msg.includes('ERR_NAME_NOT_RESOLVED')) {
+    return 'A szerver címe nem található.';
+  }
+  if (msg.includes('ETIMEDOUT') || msg.includes('timeout')) {
+    return 'A szerver nem válaszolt időben.';
+  }
+  if (msg.includes('ERR_CERT') || msg.includes('SSL') || msg.includes('certificate')) {
+    return 'Tanúsítvány hiba a szerver felé. Ellenőrizze a HTTPS beállításokat.';
+  }
+  if (msg.includes('CORS') || msg.includes('cross-origin')) {
+    return 'A szerver nem engedélyezi a hozzáférést (CORS). Forduljon a rendszergazdához.';
+  }
+  return msg;
+}
+
+export function humanizeError(err: unknown): string {
+  if (err instanceof Error) return humanizeRawMessage(err.message);
+  return String(err);
+}
+
 export function handleApiError(error: unknown): ApplicationError {
   if (error instanceof ApplicationError) {
     return error;
@@ -29,8 +56,8 @@ export function handleApiError(error: unknown): ApplicationError {
 
   if (error instanceof AxiosError) {
     const status = error.response?.status;
-    const message =
-      error.response?.data?.message || error.message || 'Ismeretlen hiba történt';
+    const serverMessage = error.response?.data?.message;
+    const message = serverMessage || humanizeRawMessage(error.message || 'Ismeretlen hiba történt');
     const code = error.response?.data?.code || error.code;
     const details = error.response?.data;
 
@@ -38,7 +65,7 @@ export function handleApiError(error: unknown): ApplicationError {
   }
 
   if (error instanceof Error) {
-    return new ApplicationError(error.message);
+    return new ApplicationError(humanizeRawMessage(error.message));
   }
 
   return new ApplicationError('Ismeretlen hiba történt');
