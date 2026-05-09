@@ -19,6 +19,30 @@ import {
 import { publicApi } from '../../services/api/index'
 import type { ElectronAppMode } from '../../types/appMode'
 
+function humanizeError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err)
+  const msg = err.message
+  if (msg === 'Failed to fetch' || msg === 'Network Error' || msg === 'Load failed') {
+    return 'A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot és a szerver címet.'
+  }
+  if (msg.includes('ERR_CONNECTION_REFUSED') || msg.includes('ECONNREFUSED')) {
+    return 'A szerver nem fogadja a kapcsolatot. Ellenőrizze, hogy a szerver fut-e.'
+  }
+  if (msg.includes('ERR_NAME_NOT_RESOLVED') || msg.includes('ENOTFOUND')) {
+    return 'A szerver címe nem található. Ellenőrizze a megadott URL-t.'
+  }
+  if (msg.includes('TIMEOUT') || msg.includes('timeout') || msg.includes('ETIMEDOUT')) {
+    return 'A szerver nem válaszolt időben. Ellenőrizze a hálózati kapcsolatot.'
+  }
+  if (msg.includes('ERR_CERT') || msg.includes('SSL') || msg.includes('certificate')) {
+    return 'Tanúsítvány hiba a szerver felé. Ellenőrizze a HTTPS beállításokat.'
+  }
+  if (msg.includes('CORS') || msg.includes('cross-origin')) {
+    return 'A szerver nem engedélyezi a hozzáférést (CORS). Forduljon a rendszergazdához.'
+  }
+  return msg
+}
+
 // ---------------------------------------------------------------------------
 // Típusok
 // ---------------------------------------------------------------------------
@@ -295,7 +319,7 @@ export default function SetupWizard() {
           })
           .catch((err: unknown) => {
             if (!isCurrentConnectionTestRequest(requestKey)) return
-            setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
+            setConnectionTest({ state: 'fail', message: humanizeError(err) })
           })
         return
       }
@@ -400,7 +424,7 @@ export default function SetupWizard() {
           } : {}),
         })
         if (!result.success) {
-          setSaveError(result.errorMessage || 'Ismeretlen hiba a telepites soran.')
+          setSaveError(result.errorMessage || 'Ismeretlen hiba a telepítés során. Ellenőrizze a szerver kapcsolatot.')
           setIsSaving(false)
         }
         return
@@ -448,7 +472,7 @@ export default function SetupWizard() {
         if (!setupResp.ok) {
           const body = await setupResp.json().catch(() => ({} as Record<string, unknown>))
           const msg = (body as { message?: string }).message || `HTTP ${setupResp.status}`
-          setSaveError(`Dolgozoi jelszo beallitas hiba: ${msg}`)
+          setSaveError(`A dolgozói jelszó beállítása nem sikerült: ${msg}`)
           setIsSaving(false)
           return
         }
@@ -477,7 +501,7 @@ export default function SetupWizard() {
           const body = await resp.json().catch(() => ({} as Record<string, unknown>))
           const msg = (body as { message?: string }).message || `HTTP ${resp.status}`
           if (resp.status !== 400 || !msg.toLowerCase().includes('lezajlott')) {
-            setSaveError(`Admin letrehozasi hiba: ${msg}`)
+            setSaveError(`Admin létrehozási hiba: ${msg}`)
             setIsSaving(false)
             return
           }
@@ -502,7 +526,7 @@ export default function SetupWizard() {
       }))
       window.location.href = '/login'
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err.message : String(err))
+      setSaveError(humanizeError(err))
       setIsSaving(false)
     }
   }

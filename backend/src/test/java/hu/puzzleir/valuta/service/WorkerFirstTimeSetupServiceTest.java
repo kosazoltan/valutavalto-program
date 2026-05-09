@@ -297,6 +297,164 @@ class WorkerFirstTimeSetupServiceTest {
         verify(workerRepository).save(any(Worker.class));
     }
 
+    // ─── Hibauzenet-konzisztencia tesztek ───
+
+    @Test
+    @DisplayName("Ismeretlen cegkod pontos hibauzenettel ter vissza")
+    void unknownCompanyCodeReturnsExactMessage() {
+        when(companyRepository.findByCode("NEMLETEZIK")).thenReturn(Optional.empty());
+        when(companyRepository.findByCodeIgnoreCase("NEMLETEZIK")).thenReturn(Optional.empty());
+
+        WorkerFirstTimeSetupRequestDto dto = new WorkerFirstTimeSetupRequestDto(
+                "nemletezik", "borsi", "UjGlobalisJelszo123!", null);
+
+        assertThatThrownBy(() -> service.setupWorkerPassword(dto))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Ismeretlen cegkod: NEMLETEZIK");
+    }
+
+    @Test
+    @DisplayName("Ismeretlen dolgozoi azonosito pontos hibauzenettel ter vissza")
+    void unknownWorkerCodeReturnsExactMessage() {
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "NEMLETEZIK"))
+                .thenReturn(Optional.empty());
+
+        WorkerFirstTimeSetupRequestDto dto = new WorkerFirstTimeSetupRequestDto(
+                "ebc", "nemletezik", "UjGlobalisJelszo123!", null);
+
+        assertThatThrownBy(() -> service.setupWorkerPassword(dto))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Ismeretlen dolgozoi azonosito: NEMLETEZIK")
+                .hasMessageContaining("ceg: EBC");
+    }
+
+    @Test
+    @DisplayName("Inaktiv worker pontos hibauzenettel ter vissza")
+    void inactiveWorkerReturnsExactMessage() {
+        Worker worker = seedWorker("$2b$10$seed");
+        worker.setActive(false);
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+
+        assertThatThrownBy(() -> service.setupWorkerPassword(request(null)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("inaktiv");
+    }
+
+    @Test
+    @DisplayName("Aktiv jelszoval rendelkezo worker hibas jelenlegi jelszora pontos uzenetet ad")
+    void activePasswordMismatchReturnsExactMessage() {
+        Worker worker = seedWorker("$2b$10$active");
+        worker.setPasswordChangedAt(java.time.LocalDateTime.now());
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(passwordEncoder.matches("rossz", "$2b$10$active")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.setupWorkerPassword(request("rossz")))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("jelenlegi jelszo nem egyezik");
+    }
+
+    @Test
+    @DisplayName("Aktiv jelszoval rendelkezo worker jelenlegi jelszo nelkul pontos uzenetet ad")
+    void activePasswordRequiredReturnsExactMessage() {
+        Worker worker = seedWorker("$2b$10$active");
+        worker.setPasswordChangedAt(java.time.LocalDateTime.now());
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+
+        assertThatThrownBy(() -> service.setupWorkerPassword(request(null)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("mar beallitott jelszot")
+                .hasMessageContaining("jelenlegi jelszo is kotelezo");
+    }
+
+    @Test
+    @DisplayName("Ertektar-only role penztar appMode-ban pontos uzenetet ad")
+    void ertektarRoleInPenztarModeReturnsExactMessage() {
+        Worker worker = seedWorker("$2b$10$seed");
+        WorkerFirstTimeSetupRequestDto dto = request("1234");
+        dto.setAppMode("penztar");
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
+        when(passwordEncoder.matches("1234", "$2b$10$seed")).thenReturn(true);
+        when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of("ertektar"));
+
+        assertThatThrownBy(() -> service.setupWorkerPassword(dto))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Nincs ebben a programban használható szerepköre");
+    }
+
+    @Test
+    @DisplayName("Penztar role penztar appMode-ban sikeresen vegigmegy")
+    void penztarRoleInPenztarModeSucceeds() {
+        Worker worker = seedWorker("$2b$10$seed");
+        WorkerFirstTimeSetupRequestDto dto = request("1234");
+        dto.setAppMode("penztar");
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
+        when(passwordEncoder.matches("1234", "$2b$10$seed")).thenReturn(true);
+        when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of("penztar", "foertektar"));
+        when(workerRoleService.getPermissionCodesForRole("penztar")).thenReturn(List.of("TRANSACTION_BUY"));
+        when(passwordEncoder.encode("UjGlobalisJelszo123!")).thenReturn("$2b$10$new");
+        when(workerRepository.save(any(Worker.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(jwtTokenProvider.generateToken(any(Worker.class), any(String.class), any(List.class))).thenReturn("jwt");
+
+        WorkerFirstTimeSetupResponseDto response = service.setupWorkerPassword(dto);
+
+        assertThat(response.isSuccess()).isTrue();
+        assertThat(response.getActiveRole()).isEqualTo("penztar");
+    }
+
+    @Test
+    @DisplayName("Szerver role (ugyvezeto) penztar appMode-ban sikeresen vegigmegy")
+    void serverRoleInPenztarModeSucceeds() {
+        Worker worker = seedWorker("$2b$10$seed");
+        WorkerFirstTimeSetupRequestDto dto = request("1234");
+        dto.setAppMode("penztar");
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
+        when(passwordEncoder.matches("1234", "$2b$10$seed")).thenReturn(true);
+        when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of("ugyvezeto"));
+        when(workerRoleService.getPermissionCodesForRole("ugyvezeto")).thenReturn(List.of());
+        when(passwordEncoder.encode("UjGlobalisJelszo123!")).thenReturn("$2b$10$new");
+        when(workerRepository.save(any(Worker.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(jwtTokenProvider.generateToken(any(Worker.class), any(String.class), any(List.class))).thenReturn("jwt");
+
+        WorkerFirstTimeSetupResponseDto response = service.setupWorkerPassword(dto);
+
+        assertThat(response.isSuccess()).isTrue();
+        assertThat(response.getActiveRole()).isEqualTo("ugyvezeto");
+    }
+
+    @Test
+    @DisplayName("AppMode nelkul tobb role eseten pontos hibauzenet")
+    void multipleRolesWithoutAppModeReturnsExactMessage() {
+        Worker worker = seedWorker("$2b$10$seed");
+        WorkerFirstTimeSetupRequestDto dto = new WorkerFirstTimeSetupRequestDto(
+                "ebc", "borsi", "UjGlobalisJelszo123!", "1234");
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
+        when(passwordEncoder.matches("1234", "$2b$10$seed")).thenReturn(true);
+        when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of("penztar", "ertektar"));
+
+        assertThatThrownBy(() -> service.setupWorkerPassword(dto))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("programtipus megadasa kotelezo");
+    }
+
     private WorkerFirstTimeSetupRequestDto request(String currentPassword) {
         return new WorkerFirstTimeSetupRequestDto(
                 "ebc",
