@@ -4,6 +4,7 @@ import {
   ApplicationError,
   handleApiError,
   getErrorMessage,
+  humanizeError,
   isNetworkError,
   isUnauthorizedError,
   isForbiddenError,
@@ -137,6 +138,18 @@ describe('handleApiError', () => {
     const err = new Error('ETIMEDOUT connecting to server')
     const result = handleApiError(err)
     expect(result.message).toBe('A szerver nem válaszolt időben.')
+  })
+
+  it('humanizes SSL/certificate error to Hungarian message', () => {
+    const err = new Error('ERR_CERT_AUTHORITY_INVALID')
+    const result = handleApiError(err)
+    expect(result.message).toBe('Tanúsítvány hiba a szerver felé. Ellenőrizze a HTTPS beállításokat.')
+  })
+
+  it('humanizes CORS error to Hungarian message', () => {
+    const err = new Error('CORS policy: cross-origin request blocked')
+    const result = handleApiError(err)
+    expect(result.message).toBe('A szerver nem engedélyezi a hozzáférést (CORS). Forduljon a rendszergazdához.')
   })
 
   it('prefers server message over network error humanization', () => {
@@ -278,5 +291,30 @@ describe('isNotFoundError', () => {
 
   it('returns false for plain Error', () => {
     expect(isNotFoundError(new Error('x'))).toBe(false)
+  })
+})
+
+// ─────────────────────────── humanizeError ───────────────────────────
+
+describe('humanizeError', () => {
+  it('humanizes Error with Network Error message', () => {
+    expect(humanizeError(new Error('Network Error'))).toBe('A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot.')
+  })
+
+  it('humanizes Error with ECONNREFUSED', () => {
+    expect(humanizeError(new Error('connect ECONNREFUSED 127.0.0.1:8080'))).toBe('A szerver nem fogadja a kapcsolatot.')
+  })
+
+  it('humanizes Error with SSL certificate issue', () => {
+    expect(humanizeError(new Error('ERR_CERT_AUTHORITY_INVALID'))).toBe('Tanúsítvány hiba a szerver felé. Ellenőrizze a HTTPS beállításokat.')
+  })
+
+  it('returns String(value) for non-Error input', () => {
+    expect(humanizeError(42)).toBe('42')
+    expect(humanizeError(null)).toBe('null')
+  })
+
+  it('passes through unknown error messages unchanged', () => {
+    expect(humanizeError(new Error('Something unexpected'))).toBe('Something unexpected')
   })
 })

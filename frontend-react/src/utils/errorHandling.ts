@@ -35,7 +35,18 @@ function humanizeRawMessage(msg: string): string {
   if (msg.includes('ETIMEDOUT') || msg.includes('timeout')) {
     return 'A szerver nem válaszolt időben.';
   }
+  if (msg.includes('ERR_CERT') || msg.includes('SSL') || msg.includes('certificate')) {
+    return 'Tanúsítvány hiba a szerver felé. Ellenőrizze a HTTPS beállításokat.';
+  }
+  if (msg.includes('CORS') || msg.includes('cross-origin')) {
+    return 'A szerver nem engedélyezi a hozzáférést (CORS). Forduljon a rendszergazdához.';
+  }
   return msg;
+}
+
+export function humanizeError(err: unknown): string {
+  if (err instanceof Error) return humanizeRawMessage(err.message);
+  return String(err);
 }
 
 export function handleApiError(error: unknown): ApplicationError {

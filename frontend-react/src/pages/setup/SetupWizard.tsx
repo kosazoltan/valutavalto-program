@@ -17,31 +17,8 @@ import {
   XCircle,
 } from 'lucide-react'
 import { publicApi } from '../../services/api/index'
+import { humanizeError } from '../../utils/errorHandling'
 import type { ElectronAppMode } from '../../types/appMode'
-
-function humanizeError(err: unknown): string {
-  if (!(err instanceof Error)) return String(err)
-  const msg = err.message
-  if (msg === 'Failed to fetch' || msg === 'Network Error' || msg === 'Load failed') {
-    return 'A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot és a szerver címet.'
-  }
-  if (msg.includes('ERR_CONNECTION_REFUSED') || msg.includes('ECONNREFUSED')) {
-    return 'A szerver nem fogadja a kapcsolatot. Ellenőrizze, hogy a szerver fut-e.'
-  }
-  if (msg.includes('ERR_NAME_NOT_RESOLVED') || msg.includes('ENOTFOUND')) {
-    return 'A szerver címe nem található. Ellenőrizze a megadott URL-t.'
-  }
-  if (msg.includes('TIMEOUT') || msg.includes('timeout') || msg.includes('ETIMEDOUT')) {
-    return 'A szerver nem válaszolt időben. Ellenőrizze a hálózati kapcsolatot.'
-  }
-  if (msg.includes('ERR_CERT') || msg.includes('SSL') || msg.includes('certificate')) {
-    return 'Tanúsítvány hiba a szerver felé. Ellenőrizze a HTTPS beállításokat.'
-  }
-  if (msg.includes('CORS') || msg.includes('cross-origin')) {
-    return 'A szerver nem engedélyezi a hozzáférést (CORS). Forduljon a rendszergazdához.'
-  }
-  return msg
-}
 
 // ---------------------------------------------------------------------------
 // Típusok
@@ -338,7 +315,7 @@ export default function SetupWizard() {
       })
         .catch((err: unknown) => {
           if (!isCurrentConnectionTestRequest(requestKey)) return
-          setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
+          setConnectionTest({ state: 'fail', message: humanizeError(err) })
         })
     }
   }, [currentStep, apiUrl, companyCode, offlineMode, bootstrapUsername, bootstrapPassword, connectionTestResetKey, isCurrentConnectionTestRequest])
@@ -382,7 +359,7 @@ export default function SetupWizard() {
       }
     } catch (err: unknown) {
       if (!isCurrentConnectionTestRequest(requestKey)) return
-      setConnectionTest({ state: 'fail', message: err instanceof Error ? err.message : String(err) })
+      setConnectionTest({ state: 'fail', message: humanizeError(err) })
     }
   }, [apiUrl, companyCode, bootstrapUsername, bootstrapPassword, connectionTestResetKey, isCurrentConnectionTestRequest])
 
