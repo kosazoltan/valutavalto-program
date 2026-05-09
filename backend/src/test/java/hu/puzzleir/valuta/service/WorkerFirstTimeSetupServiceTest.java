@@ -182,8 +182,8 @@ class WorkerFirstTimeSetupServiceTest {
     }
 
     @Test
-    @DisplayName("AppMode fallbackban nem valaszt sorrendfuggoen tobb szerver role kozul")
-    void rejectsAmbiguousSelectableFallbackRoles() {
+    @DisplayName("AppMode fallbackban tobb szerver role kozul az elsot valasztja automatikusan")
+    void autoSelectsFirstSelectableRoleForSetup() {
         Worker worker = seedWorker("$2b$10$seed");
         WorkerFirstTimeSetupRequestDto dto = request("1234");
         dto.setAppMode("ertektar");
@@ -193,14 +193,15 @@ class WorkerFirstTimeSetupServiceTest {
         when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
         when(passwordEncoder.matches("1234", "$2b$10$seed")).thenReturn(true);
         when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of("ugyvezeto", "foertektar"));
+        when(passwordEncoder.encode("UjGlobalisJelszo123!")).thenReturn("$2b$10$new");
+        when(workerRepository.save(any(Worker.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(workerRoleService.getPermissionCodesForRole("ugyvezeto")).thenReturn(List.of());
+        when(jwtTokenProvider.generateToken(any(Worker.class), any(String.class), any(List.class))).thenReturn("jwt-token");
 
-        assertThatThrownBy(() -> service.setupWorkerPassword(dto))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("Tobb");
+        WorkerFirstTimeSetupResponseDto response = service.setupWorkerPassword(dto);
 
-        verify(passwordEncoder, never()).encode(any());
-        verify(workerRepository, never()).save(any(Worker.class));
-        verifyNoTokenGenerated();
+        assertThat(response.isSuccess()).isTrue();
+        assertThat(response.getActiveRole()).isEqualTo("ugyvezeto");
     }
 
     @Test

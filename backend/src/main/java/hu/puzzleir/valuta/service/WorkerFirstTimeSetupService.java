@@ -211,12 +211,7 @@ public class WorkerFirstTimeSetupService {
             if (selectableRoles.isEmpty()) {
                 throw new ValidationException("Nincs ebben a programban használható szerepköre.");
             }
-            if (selectableRoles.size() == 1) {
-                return selectableRoles.get(0);
-            }
-            throw new ValidationException(
-                    "Tobb használható szerepköre van ebben a programban. Valassz konkret szerepkort."
-            );
+            return selectableRoles.get(0);
         }
         if (roleCodes.size() == 1) {
             return roleCodes.get(0);
