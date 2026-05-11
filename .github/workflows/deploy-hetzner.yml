@@ -122,15 +122,17 @@ jobs:
       - name: Health check
         run: |
           echo "Waiting for service startup..."
-          sleep 10
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "${{ env.HEALTH_URL }}" || echo 000)
-          echo "Health check HTTP status: $STATUS"
-          if [[ "$STATUS" == "200" ]]; then
-            echo "Health check PASSED"
-          else
-            echo "Health check FAILED (status=$STATUS)"
-            exit 1
-          fi
+          for i in 1 2 3 4 5 6; do
+            sleep 15
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "${{ env.HEALTH_URL }}" || echo 000)
+            echo "Attempt $i: HTTP $STATUS"
+            if [[ "$STATUS" == "200" ]]; then
+              echo "Health check PASSED"
+              exit 0
+            fi
+          done
+          echo "Health check FAILED after 6 attempts"
+          exit 1
 
       - name: Deployment summary
         if: always()
