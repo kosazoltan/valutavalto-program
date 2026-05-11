@@ -7,59 +7,62 @@ import {
 } from './SetupWizard'
 
 describe('isBranchSelectableForAppMode', () => {
-  it('ertektar modban csak ertektari fiokot enged', () => {
+  it('barmely nem-null branch valaszthato barmely modban (vault preferencia a filterben)', () => {
+    // isBranchSelectableForAppMode alapszintu ellenorzes: van-e branch.
+    // Az ertektar vault-preferencia a filterBranchesForAppMode fallback-jeben van.
     expect(isBranchSelectableForAppMode({
-      code: 'VAULT',
-      name: 'Ertektar',
-      city: 'Szeged',
-      isVault: true,
+      code: 'VAULT', name: 'Ertektar', city: 'Szeged', isVault: true,
     }, 'ertektar')).toBe(true)
 
     expect(isBranchSelectableForAppMode({
-      code: 'KORUT',
-      name: 'Korut',
-      city: 'Szeged',
-      isVault: false,
-    }, 'ertektar')).toBe(false)
+      code: 'KORUT', name: 'Korut', city: 'Szeged', isVault: false,
+    }, 'ertektar')).toBe(true)
 
     expect(isBranchSelectableForAppMode({
-      code: 'LEGACY',
-      name: 'Legacy',
-      city: 'Szeged',
-    }, 'ertektar')).toBe(false)
+      code: 'LEGACY', name: 'Legacy', city: 'Szeged',
+    }, 'ertektar')).toBe(true)
+
+    expect(isBranchSelectableForAppMode(null, 'ertektar')).toBe(false)
+    expect(isBranchSelectableForAppMode(undefined, 'penztar')).toBe(false)
   })
 
   it('penztar modban a nem ertektari fiok is valaszthato', () => {
     expect(isBranchSelectableForAppMode({
-      code: 'KORUT',
-      name: 'Korut',
-      city: 'Szeged',
-      isVault: false,
+      code: 'KORUT', name: 'Korut', city: 'Szeged', isVault: false,
     }, 'penztar')).toBe(true)
   })
 
   it('ertekszallito modban a fizikai fiok valaszthato', () => {
     expect(isBranchSelectableForAppMode({
-      code: 'KORUT',
-      name: 'Korut',
-      city: 'Szeged',
-      isVault: false,
+      code: 'KORUT', name: 'Korut', city: 'Szeged', isVault: false,
     }, 'ertekszallito')).toBe(true)
   })
 
-  it('a listaszures ugyanazt az app-mode guardot hasznalja', () => {
+  it('filter: ertektar modban vault branch-eket preferalja', () => {
     const branches = [
       { code: 'VAULT', name: 'Ertektar', city: 'Szeged', isVault: true },
       { code: 'KORUT', name: 'Korut', city: 'Szeged', isVault: false },
       { code: 'LEGACY', name: 'Legacy', city: 'Szeged' },
     ]
 
-    expect(filterBranchesForAppMode(branches, 'ertektar').map((branch) => branch.code))
+    // Ha van vault branch → csak azokat mutatja
+    expect(filterBranchesForAppMode(branches, 'ertektar').map((b) => b.code))
       .toEqual(['VAULT'])
-    expect(filterBranchesForAppMode(branches, 'penztar').map((branch) => branch.code))
+    expect(filterBranchesForAppMode(branches, 'penztar').map((b) => b.code))
       .toEqual(['VAULT', 'KORUT', 'LEGACY'])
-    expect(filterBranchesForAppMode(branches, 'ertekszallito').map((branch) => branch.code))
+    expect(filterBranchesForAppMode(branches, 'ertekszallito').map((b) => b.code))
       .toEqual(['VAULT', 'KORUT', 'LEGACY'])
+  })
+
+  it('filter: ertektar fallback — ha nincs vault branch, mindent mutat', () => {
+    const branchesWithoutVault = [
+      { code: 'KORUT', name: 'Korut', city: 'Szeged', isVault: false },
+      { code: 'LEGACY', name: 'Legacy', city: 'Szeged' },
+    ]
+
+    // Fallback: admin meg nem jelolte meg a vault branch-eket → minden selectable
+    expect(filterBranchesForAppMode(branchesWithoutVault, 'ertektar').map((b) => b.code))
+      .toEqual(['KORUT', 'LEGACY'])
   })
 })
 

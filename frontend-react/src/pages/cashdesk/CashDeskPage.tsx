@@ -222,7 +222,7 @@ export default function CashDeskPage() {
                 <th className="px-3 py-1 text-left w-16">{t('common.currency')}</th>
                 <th className="px-2 py-1 text-right">{t('cashdesk.keszlet')}</th>
                 <th className="px-2 py-1 text-right text-gray-400 w-24">{t('cashdesk.minMax')}</th>
-                <th className="px-2 py-1 text-center w-10"></th>
+                <th className="px-2 py-1 text-center w-10"><span className="sr-only">{t('common.status')}</span></th>
               </tr>
             </thead>
             <tbody>
