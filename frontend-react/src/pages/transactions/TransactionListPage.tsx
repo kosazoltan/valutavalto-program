@@ -8,6 +8,8 @@ import { isElectron, getElectronAPI } from '../../utils/electron'
 import { useTranslation } from 'react-i18next'
 
 const PAGE_SIZE = 25
+const PENDING_TX_ID_OFFSET = 1_000_000
+const PENDING_CONVERSION_ID_OFFSET = 2_000_000
 
 /**
  * v2.3.37 (Sourcery #301 P3): Storno tooltip-szovegek + status-derivacio kiemelt
@@ -71,7 +73,7 @@ export default function TransactionListPage() {
           try {
             const rows = await api.getPendingTransactions()
             localPending = rows.map((r) => ({
-              id: -(1_000_000 + Number(r.id)),
+              id: -(PENDING_TX_ID_OFFSET + Number(r.id)),
               receiptNumber: (r as { local_reference_number?: string }).local_reference_number ?? `L-${String(r.id).padStart(8, '0')}`, // NGM helyi bizonylatszam (V/E/K/AA/AV prefix)
               transactionDate: (r as { created_at?: string }).created_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
               transactionTime: (r as { created_at?: string }).created_at?.slice(11, 19) ?? '',
@@ -103,8 +105,8 @@ export default function TransactionListPage() {
             const pendingConversions: Transaction[] = convRows
               .filter((c) => !c.synced)
               .map((c) => ({
-                id: -(2_000_000 + Number(c.id)),
-                receiptNumber: `K-${String(c.id).padStart(8, '0')}`,
+                id: -(PENDING_CONVERSION_ID_OFFSET + Number(c.id)),
+                receiptNumber: c.local_reference_number ?? `K-${String(c.id).padStart(8, '0')}`,
                 transactionDate: c.created_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
                 transactionTime: c.created_at?.slice(11, 19) ?? '',
                 transactionType: 'CONVERSION' as Transaction['transactionType'],
