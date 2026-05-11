@@ -11,12 +11,6 @@
 -- Biztonsag: Csak seed-allapotu fiokokat erint. Mar aktiv jelszoval rendelkezo
 -- dolgozok (password_changed_at IS NOT NULL) NEM modosulnak.
 
--- Eloszor a NOT NULL constraintet el kell tavolitani,
--- mert a worker.password_hash kollekcio @Column(nullable = false) volt,
--- es az eredeti V145 seed migracio NOT NULL-kent hozta letre.
-ALTER TABLE worker ALTER COLUMN password_hash DROP NOT NULL;
-
--- Ezutan biztonsagosan NULL-ra allithatjuk a seed jelszavakat.
 UPDATE worker
 SET password_hash = NULL
 WHERE password_changed_at IS NULL

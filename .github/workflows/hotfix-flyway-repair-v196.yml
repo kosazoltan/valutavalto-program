@@ -1,8 +1,9 @@
 name: Hotfix - Flyway Repair V196 (manual)
 
 # V196 migration failed because worker.password_hash had a NOT NULL constraint.
-# The fixed V196 adds ALTER TABLE ... DROP NOT NULL before the UPDATE SET NULL.
-# This workflow deletes the failed V196 entry so Flyway re-runs the fixed version.
+# V197 adds ALTER TABLE ... DROP NOT NULL, but Flyway won't reach V197 if V196 is stuck.
+# This workflow: (1) deletes failed V196, (2) runs DROP NOT NULL via psql,
+# (3) restarts service -> Flyway re-runs V196 (UPDATE now succeeds) + V197 (idempotent).
 
 on:
   workflow_dispatch:
@@ -46,7 +47,7 @@ jobs:
           fi
           echo "SSH_STRICT=$SSH_STRICT" >> "$GITHUB_ENV"
 
-      - name: Delete failed V196 entry + restart service
+      - name: Delete failed V196 + DROP NOT NULL + restart service
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=${{ env.SSH_STRICT }} \
@@ -67,15 +68,20 @@ jobs:
               echo "No failed V196 entry found (already clean or succeeded)"
             fi
 
-            echo "=== Step 2: Restarting valuta-backend.service ==="
+            echo "=== Step 2: DROP NOT NULL on worker.password_hash ==="
+            sudo -u postgres psql -d valuta -c \
+              "ALTER TABLE worker ALTER COLUMN password_hash DROP NOT NULL;"
+            echo "NOT NULL constraint removed"
+
+            echo "=== Step 3: Restarting valuta-backend.service ==="
             systemctl restart valuta-backend.service
             sleep 30
             systemctl is-active valuta-backend.service || { journalctl -u valuta-backend.service -n 80 --no-pager; exit 1; }
             echo "=== Service is active ==="
 
-            echo "=== Post-check: V196 status ==="
+            echo "=== Post-check: V196 + V197 status ==="
             sudo -u postgres psql -d valuta -c \
-              "SELECT installed_rank, version, description, success FROM flyway_schema_history WHERE version = '196';"
+              "SELECT installed_rank, version, description, success FROM flyway_schema_history WHERE version IN ('196', '197');"
           ENDSSH
 
       - name: Health check
