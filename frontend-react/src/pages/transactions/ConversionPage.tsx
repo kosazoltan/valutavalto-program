@@ -280,6 +280,31 @@ export default function ConversionPage() {
     }
   }
 
+  // Handle manual toAmount edit (inverse calculation: toAmount → fromAmount)
+  // Címletezéshez szükséges: a pénztáros kerekíthet az elérhető címletek szerint.
+  const handleToAmountChange = (value: string) => {
+    setToAmount(value)
+
+    if (!toCurrencyId || !fromCurrencyId) return
+
+    const toRate = getRate(toCurrencyId)
+    const fromRate = getRate(fromCurrencyId)
+    if (!toRate || !fromRate || fromRate.baseBuyRate <= 0) return
+
+    const toVal = parseFloat(value.replace(',', '.').replace(/\s/g, '')) || 0
+    if (toVal <= 0) return
+
+    // Inverse: toAmount * sellRate = HUF, HUF / buyRate = fromAmount
+    const huf = toVal * toRate.baseSellRate
+    setHufAmount(roundHuf(huf))
+    const from = huf / fromRate.baseBuyRate
+    setFromAmount(from.toFixed(2).replace('.', ','))
+
+    // Direct conversion rate unchanged
+    const directRate = fromRate.baseBuyRate / toRate.baseSellRate
+    setConversionRate(directRate)
+  }
+
   // Reset form
   const handleReset = () => {
     setStep(1)
@@ -543,9 +568,17 @@ export default function ConversionPage() {
 
             <div>
               <label htmlFor="to-amount" className="form-label">{t('transactions.kapottOsszeg')}{toCurrency?.code || 'valuta'})</label>
-              <div className="form-input w-full text-xl text-right bg-gray-50 font-mono font-bold text-blue-600">
-                {toAmount || '0,00'}
-              </div>
+              <NumberInput
+                id="to-amount"
+                value={toAmount}
+                onChange={handleToAmountChange}
+                className="form-input w-full text-xl text-right font-mono font-bold text-blue-600"
+                placeholder="0,00"
+                allowDecimals={true}
+                allowNegative={false}
+                disabled={step === 1 || !toCurrencyId}
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('transactions.cimletezeshezModosithatoToAmount', 'Címletezéshez módosítható')}</p>
             </div>
 
             {step === 2 && (
