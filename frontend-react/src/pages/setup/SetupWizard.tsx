@@ -160,7 +160,16 @@ export default function SetupWizard() {
   // a main process fallback-el a statikus DEFAULT_BRANCHES-re. Így a
   // wizard sosem akad el, és amint a user megadja a helyes URL + cégkódot,
   // a friss adat megjelenik (lásd reloadBranches hívást lejjebb).
+  const prevCompanyCodeRef = useRef(companyCode)
   useEffect(() => {
+    // Sourcery P2: companyCode valtozaskor toroljuk a regi (stale) branch-eket,
+    // hogy ne a korabbi ceg irodai maradjanak lathatoan.
+    if (prevCompanyCodeRef.current !== companyCode) {
+      prevCompanyCodeRef.current = companyCode
+      setBranches([])
+      setSelectedBranch(null)
+    }
+
     const load = async () => {
       if (window.electronAPI?.setupGetBranches) {
         try {
@@ -171,9 +180,8 @@ export default function SetupWizard() {
           if (Array.isArray(list) && list.length > 0) {
             setBranches(list)
           }
-          // Ha ures lista jott, megtartjuk a korabban betoltott branch-eket
         } catch {
-          // Hiba eseten NE toroljuk a korabban betoltott branch-eket
+          // Transiens hiba eseten NE toroljuk a korabban betoltott branch-eket
         }
       } else {
         // v2.1.4: Web mode (no Electron) — direct HTTP fetch via publicApi
@@ -183,7 +191,7 @@ export default function SetupWizard() {
             setBranches(list.map((b) => ({ code: b.code, name: b.name, city: b.city ?? '', address: b.address, isVault: b.isVault })))
           }
         } catch {
-          // Hiba eseten NE toroljuk a korabban betoltott branch-eket
+          // Transiens hiba eseten NE toroljuk a korabban betoltott branch-eket
         }
       }
     }
@@ -1131,9 +1139,15 @@ function AdminStep(props: AdminStepProps) {
             type="password"
             value={bootstrapPassword}
             onChange={(e) => onBootstrapPasswordChange(e.target.value)}
+            disabled={offlineMode}
             autoComplete="current-password"
             placeholder="Csak újratelepítéskor szükséges"
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+            className={[
+              'w-full px-3 py-2 rounded-lg border focus:ring-2 outline-none',
+              offlineMode
+                ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200',
+            ].join(' ')}
           />
           <span className="text-xs text-slate-500 mt-1 block">
             Csak akkor töltse ki, ha ennek a pénztárosnak már volt beállított jelszava (pl. újratelepítés esetén).
