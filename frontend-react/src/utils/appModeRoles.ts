@@ -46,7 +46,6 @@ export function isRoleSelectableForAppMode(
   appMode: AppMode,
 ): boolean {
   if (!roleCode) return false
-  const canonical = canonicalizeRoleForAppMode(roleCode)
   const serverRole = isServerRole(roleCode)
 
   const localRole = isLocalRole(roleCode)
