@@ -63,9 +63,11 @@ public class Worker {
     private String name;
     
     /**
-     * BCrypt jelszó hash
+     * BCrypt jelszó hash.
+     * Nullable: first-time-setup előtt a seed password törölhető (V196),
+     * ilyenkor a WorkerFirstTimeSetupService jelszó nélkül engedi az új jelszó beállítást.
      */
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String passwordHash;
     
     /**
