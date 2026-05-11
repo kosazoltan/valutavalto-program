@@ -1105,7 +1105,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       if (!workerSetup.success) {
         const bootstrapCompleted = await getBootstrapCompleted(resolvedApiUrl);
         const hint = bootstrapCompleted === true
-          ? ' Add meg a jelenlegi vagy kezdo dolgozoi jelszot a szerver lepesen.'
+          ? ' Add meg a jelenlegi vagy kezdo dolgozoi jelszot az admin jelszo lepesen.'
           : '';
         return {
           success: false,

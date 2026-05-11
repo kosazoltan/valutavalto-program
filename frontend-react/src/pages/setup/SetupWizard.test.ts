@@ -98,20 +98,14 @@ describe('buildConnectionTestResetKey', () => {
   const base = {
     apiUrl: 'https://excvaluta.com/api/v1',
     companyCode: 'EBC',
-    bootstrapUsername: 'BORSI',
-    bootstrapPassword: 'old-secret',
     offlineMode: false,
-    appMode: 'penztar' as const,
-    branchCode: 'KORUT',
   }
 
-  it('changes when setup credentials or app scope changes', () => {
+  it('changes when connection parameters change', () => {
     const original = buildConnectionTestResetKey(base)
 
-    expect(buildConnectionTestResetKey({ ...base, bootstrapUsername: 'KASZA' })).not.toBe(original)
-    expect(buildConnectionTestResetKey({ ...base, bootstrapPassword: 'other-secret' })).not.toBe(original)
-    expect(buildConnectionTestResetKey({ ...base, appMode: 'ertektar' })).not.toBe(original)
-    expect(buildConnectionTestResetKey({ ...base, branchCode: 'VAULT' })).not.toBe(original)
+    expect(buildConnectionTestResetKey({ ...base, apiUrl: 'https://other.com/api/v1' })).not.toBe(original)
+    expect(buildConnectionTestResetKey({ ...base, companyCode: 'OTHER' })).not.toBe(original)
     expect(buildConnectionTestResetKey({ ...base, offlineMode: true })).not.toBe(original)
   })
 
@@ -119,8 +113,6 @@ describe('buildConnectionTestResetKey', () => {
     expect(buildConnectionTestResetKey({
       ...base,
       companyCode: ' ebc ',
-      bootstrapUsername: ' borsi ',
-      branchCode: ' korut ',
     })).toBe(buildConnectionTestResetKey(base))
   })
 })
