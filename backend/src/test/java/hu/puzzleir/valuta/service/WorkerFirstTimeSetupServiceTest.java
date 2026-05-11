@@ -264,19 +264,23 @@ class WorkerFirstTimeSetupServiceTest {
     }
 
     @Test
-    @DisplayName("Lezart bootstrap utan hash nelkuli workerhez csak admin reset folyamat engedelyezett")
-    void rejectsMissingHashAfterBootstrap() {
+    @DisplayName("V198 fix: Lezart bootstrap utan hash + passwordChangedAt nelkuli worker szabadon allithat jelszot (ujratelepites use-case)")
+    void allowsMissingHashAfterBootstrapWhenFullyReset() {
+        // V198 migracio: password_hash = NULL, password_changed_at = NULL
+        // Ez az ujratelepites use-case — a dolgozo teljesen resetelt allapotban van.
         Worker worker = seedWorker(null);
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
                 .thenReturn(Optional.of(worker));
         when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
+        when(passwordEncoder.encode("UjGlobalisJelszo123!")).thenReturn("$2b$10$new");
+        when(workerRepository.save(any(Worker.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(jwtTokenProvider.generateToken(any(Worker.class))).thenReturn("jwt-token");
 
-        assertThatThrownBy(() -> service.setupWorkerPassword(request(null)))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("hitelesitett admin");
+        WorkerFirstTimeSetupResponseDto response = service.setupWorkerPassword(request(null));
 
-        verify(workerRepository, never()).save(any(Worker.class));
+        assertThat(response.isSuccess()).isTrue();
+        verify(workerRepository).save(any(Worker.class));
     }
 
     @Test

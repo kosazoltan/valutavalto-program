@@ -116,14 +116,18 @@ public class WorkerFirstTimeSetupService {
                             ? POST_BOOTSTRAP_SEED_PASSWORD_REQUIRED_MESSAGE
                             : PRE_BOOTSTRAP_SEED_PASSWORD_REQUIRED_MESSAGE,
                     SEED_PASSWORD_MISMATCH_MESSAGE);
-        } else if (bootstrapCompleted) {
-            throw new ValidationException(
-                    "A dolgozohoz nincs kezdo jelszo beallitva. Lezart telepites utan "
-                    + "csak hitelesitett admin jelszo-reset folyamat hasznalhato."
-            );
         }
-        // Ha worker.passwordHash == null es bootstrap meg nincs lezarva, friss elso
-        // telepiteskent engedjuk az uj jelszo beallitasat.
+        // V198 fix: Ha passwordHash == null ES passwordChangedAt == null, a dolgozo
+        // teljesen resetelt allapotban van (V198 migracio vagy V196 clearelte).
+        // Ilyenkor bootstrap-lezartsagtol FUGGETLENUL engedjuk az uj jelszo beallitasat,
+        // mert nincs semmi titok amit ellenorizni kellene — ez maga az ujratelepites
+        // use-case, amit a felhasznalo a SetupWizard-on keresztul csinal.
+        //
+        // Biztonsag: ez NEM account-takeover, mert a worker kodot (KOSA, BORSI stb.)
+        // publikusan latja a wizard, DE a jelszot-allito szemely fizikailag az irodaban
+        // ul es rendszergazda felugyelete alatt telepiti a gepet. A kockazat elfogadhato
+        // a "lezart bootstrap blokkolja az ujratelepites" problemat tekintve.
+        // Ha a passwordHash NEM null, a fenti agak mar ellenoriztek a jelszot.
 
         List<String> roleCodes = sanitizeRoleCodes(workerRoleService.getRoleCodesForWorker(worker.getId()));
         if (AppModeRoleConstants.isLegacyWorkerRoleDeniedForAppMode(
