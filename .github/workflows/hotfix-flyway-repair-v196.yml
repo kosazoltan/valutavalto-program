@@ -1,0 +1,92 @@
+name: Hotfix - Flyway Repair V196 (manual)
+
+# V196 migration failed because worker.password_hash had a NOT NULL constraint.
+# The fixed V196 adds ALTER TABLE ... DROP NOT NULL before the UPDATE SET NULL.
+# This workflow deletes the failed V196 entry so Flyway re-runs the fixed version.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "REPAIR-V196" to confirm execution'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flyway-repair-v196
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Repair V196 + restart service
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "REPAIR-V196" ]; then
+            echo "Confirmation string mismatch. Aborting."
+            exit 1
+          fi
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          HOST_KEY="${{ secrets.VPS_SSH_HOST_KEY }}"
+          if [ -n "$HOST_KEY" ]; then
+            echo "$HOST_KEY" >> ~/.ssh/known_hosts
+            SSH_STRICT="yes"
+          else
+            SSH_STRICT="accept-new"
+          fi
+          echo "SSH_STRICT=$SSH_STRICT" >> "$GITHUB_ENV"
+
+      - name: Delete failed V196 entry + restart service
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=${{ env.SSH_STRICT }} \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -euo pipefail
+
+            echo "=== Pre-check: flyway_schema_history (last 5 entries) ==="
+            sudo -u postgres psql -d valuta -c \
+              "SELECT installed_rank, version, description, success FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 5;"
+
+            echo "=== Step 1: Delete failed V196 entry ==="
+            DELETED=$(sudo -u postgres psql -d valuta -t -A -c \
+              "DELETE FROM flyway_schema_history WHERE version = '196' AND success = false RETURNING version;")
+            if [ -n "$DELETED" ]; then
+              echo "Deleted failed V196 entry (version=$DELETED)"
+            else
+              echo "No failed V196 entry found (already clean or succeeded)"
+            fi
+
+            echo "=== Step 2: Restarting valuta-backend.service ==="
+            systemctl restart valuta-backend.service
+            sleep 30
+            systemctl is-active valuta-backend.service || { journalctl -u valuta-backend.service -n 80 --no-pager; exit 1; }
+            echo "=== Service is active ==="
+
+            echo "=== Post-check: V196 status ==="
+            sudo -u postgres psql -d valuta -c \
+              "SELECT installed_rank, version, description, success FROM flyway_schema_history WHERE version = '196';"
+          ENDSSH
+
+      - name: Health check
+        run: |
+          echo "Waiting for service startup..."
+          sleep 10
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "https://excvaluta.com/api/v1/auth/bootstrap-status" || echo 000)
+          echo "Health check HTTP status: $STATUS"
+          if [[ "$STATUS" == "200" ]]; then
+            echo "Health check PASSED — production restored"
+          else
+            echo "Health check FAILED — manual intervention needed"
+            exit 1
+          fi
