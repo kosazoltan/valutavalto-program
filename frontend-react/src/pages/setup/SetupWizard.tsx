@@ -51,6 +51,14 @@ export function filterBranchesForAppMode(
   branches: Branch[],
   appMode: ElectronAppMode,
 ): Branch[] {
+  if (appMode === 'ertektar') {
+    // v2.5.2: Ha vannak is_vault=TRUE fióktelepek → csak azokat mutatjuk.
+    // Ha EGYETLEN vault-branch sincs (admin még nem jelölte meg) → az összes
+    // branch-et visszaadjuk, hogy a telepítés ne akadjon el 0 találattal.
+    const vaultOnly = branches.filter((b) => b.isVault === true)
+    if (vaultOnly.length > 0) return vaultOnly
+    return branches
+  }
   return branches.filter((branch) => isBranchSelectableForAppMode(branch, appMode))
 }
 
@@ -622,7 +630,7 @@ export default function SetupWizard() {
           </button>
 
           <div className="text-sm text-slate-500">
-            {t('setup.lepes')}{currentIndex + 1} / {STEPS.length}
+            {t('setup.lepes')} {currentIndex + 1} / {STEPS.length}
           </div>
 
           {currentIndex < STEPS.length - 1 ? (
@@ -783,7 +791,7 @@ function BranchStep(props: BranchStepProps) {
     <div>
       <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('setup.valasszaKiAzIrodat')}</h2>
       <p className="text-slate-600 mb-5">
-        {t('setup.ezAFiokIrodaAmelyikbenASzamitogepFizikailagTalalhatoOsszesen')}{totalFiltered} {t('setup.irodaKozul')}
+        {t('setup.ezAFiokIrodaAmelyikbenASzamitogepFizikailagTalalhatoOsszesen')} {totalFiltered} {t('setup.irodaKozul')}
       </p>
 
       <div className="relative mb-5">

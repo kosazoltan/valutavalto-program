@@ -65,7 +65,7 @@ export default function CustomerPanel({
 
   // Form fields
   const [customerName, setCustomerName] = useState('')
-  const [customerDocType, setCustomerDocType] = useState('Szemelyi igazolvany')
+  const [customerDocType, setCustomerDocType] = useState('ID_CARD')
   const [customerDocNumber, setCustomerDocNumber] = useState('')
   const [customerNationality, setCustomerNationality] = useState('Magyar')
   const [customerBirthPlace, setCustomerBirthPlace] = useState('')
@@ -135,7 +135,7 @@ export default function CustomerPanel({
     let data: CustomerPanelData = {
       id: customer.id,
       name: customer.name,
-      documentType: customer.documentType ?? 'Szemelyi igazolvany',
+      documentType: customer.documentType ?? 'ID_CARD',
       documentNumber: customer.documentNumber ?? '',
       nationality: customer.nationality ?? 'Magyar',
       birthPlace: customer.birthPlace,
@@ -233,7 +233,7 @@ export default function CustomerPanel({
   const handleClearCustomer = useCallback(() => {
     setSelectedCustomer(null)
     setCustomerName('')
-    setCustomerDocType('Szemelyi igazolvany')
+    setCustomerDocType('ID_CARD')
     setCustomerDocNumber('')
     setCustomerNationality('Magyar')
     setCustomerBirthPlace('')
@@ -553,10 +553,11 @@ export default function CustomerPanel({
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.okmanyTipus')}</label>
                 <select className={fieldClass} style={fieldStyle}
                   value={customerDocType} onChange={(e) => setCustomerDocType(e.target.value)}>
-                  <option>{t('transactions.szemelyiIgazolvany')}</option>
-                  <option>{t('transactions.utlevel')}</option>
-                  <option>{t('transactions.vezetoiEngedely')}</option>
-                  <option>{t('transactions.tartozkodasiEngedely')}</option>
+                  <option value="ID_CARD">{t('transactions.szemelyiIgazolvany')}</option>
+                  <option value="PASSPORT">{t('transactions.utlevel')}</option>
+                  <option value="DRIVING_LICENSE">{t('transactions.vezetoiEngedely')}</option>
+                  <option value="RESIDENCE_PERMIT">{t('transactions.tartozkodasiEngedely')}</option>
+                  <option value="OTHER">{t('transactions.egyeb')}</option>
                 </select>
               </div>
 

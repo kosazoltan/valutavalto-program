@@ -13,19 +13,23 @@ class AppModeRoleConstantsTest {
     void filtersSelectableRolesForRequestedAppMode() {
         List<String> roles = List.of("penztar", "ertektar", "foertektar", "admin");
 
+        // Lokalis modban: mindharom lokalis role + szerver role-ok
         assertThat(AppModeRoleConstants.selectableRolesForAppMode(roles, "penztar"))
-                .containsExactly("penztar", "foertektar", "admin");
+                .containsExactly("penztar", "ertektar", "foertektar", "admin");
+        // Full modban: csak szerver role-ok
         assertThat(AppModeRoleConstants.selectableRolesForAppMode(roles, "full"))
                 .containsExactly("foertektar", "admin");
     }
 
     @Test
     void returnsValidationMessageForWrongSingleRole() {
+        // ertektar role penztar modban most mar engedelyezett (lokalis cross-role),
+        // de full modban nem
         String error = AppModeRoleConstants.validateLoginRolesForAppMode(
                 List.of("ertektar"),
                 "ertektar",
                 false,
-                "penztar");
+                "full");
 
         assertThat(error).contains("nem használható");
     }
@@ -106,13 +110,15 @@ class AppModeRoleConstantsTest {
     }
 
     @Test
-    void ertekszallitoRoleIsSelectableOnlyInCourierAppMode() {
+    void ertekszallitoRoleIsSelectableInAnyLocalAppMode() {
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("ertekszallito", "ertekszallito"))
                 .isTrue();
+        // Lokalis cross-role: kis irodakban ertekszallito penztar/ertektar modban is dolgozhat
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("ertekszallito", "penztar"))
-                .isFalse();
+                .isTrue();
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("ertekszallito", "ertektar"))
-                .isFalse();
+                .isTrue();
+        // Kamera es full: nem
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("ertekszallito", "kamera"))
                 .isFalse();
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("ertekszallito", "full"))
@@ -120,13 +126,15 @@ class AppModeRoleConstantsTest {
     }
 
     @Test
-    void legacyCourierRoleIsSelectableOnlyInCourierAppMode() {
+    void legacyCourierRoleIsSelectableInAnyLocalAppMode() {
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("COURIER", "ertekszallito"))
                 .isTrue();
+        // Legacy COURIER = ertekszallito lokalis role, cross-modban is engedelyezett
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("COURIER", "penztar"))
-                .isFalse();
+                .isTrue();
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("COURIER", "ertektar"))
-                .isFalse();
+                .isTrue();
+        // Kamera es full: nem
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("COURIER", "kamera"))
                 .isFalse();
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("COURIER", "full"))
