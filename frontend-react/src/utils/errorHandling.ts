@@ -49,6 +49,22 @@ export function humanizeError(err: unknown): string {
   return String(err);
 }
 
+export function humanizeIpcError(code: string, message: string): string {
+  if (code.startsWith('HTTP_4')) return message;
+
+  const humanized = humanizeRawMessage(message);
+  if (humanized !== message) return humanized;
+
+  if (code === 'NETWORK') return 'A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot.';
+  if (code === 'TIMEOUT') return 'A szerver nem válaszolt időben. Próbálja újra.';
+  if (code === 'PARSE_ERROR') return 'A szerver válasza nem értelmezhető.';
+  if (code === 'UNEXPECTED') return 'Váratlan hiba történt a bejelentkezés során.';
+  if (code === 'MISCONFIGURED') return message;
+  if (code === 'BAD_REQUEST') return 'Hiányzó bejelentkezési adatok.';
+
+  return message;
+}
+
 export function handleApiError(error: unknown): ApplicationError {
   if (error instanceof ApplicationError) {
     return error;
