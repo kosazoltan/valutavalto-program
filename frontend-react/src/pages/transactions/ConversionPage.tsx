@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   RefreshCw,
@@ -64,6 +64,9 @@ export default function ConversionPage() {
   // Customer data (optional for conversion)
   const [customerName, setCustomerName] = useState('')
   const [notes, setNotes] = useState('')
+
+  // Track which field was last edited to prevent useEffect from overwriting manual toAmount edits
+  const lastEditedField = useRef<'from' | 'to'>('from')
 
   // Step tracking (like legacy 2-step process)
   const [step, setStep] = useState<1 | 2>(1)
@@ -155,28 +158,25 @@ export default function ConversionPage() {
     const huf = amount * fromRate.baseBuyRate
     setHufAmount(roundHuf(huf))
 
-    // Calculate to amount if target currency selected
-    // AI REVIEW FIX (PR #98 Codex P2): ha toRate.baseSellRate <= 0 vagy toRate missing,
-    // reseteljuk a toAmount es conversionRate-t, nehogy az elozo ertek megtevesszen.
-    if (toCurrencyId) {
+    // Only recalculate toAmount when the FROM field was last edited.
+    // When the TO field was edited (handleToAmountChange), fromAmount was set
+    // as a result — we must NOT overwrite the user's manual toAmount here.
+    if (toCurrencyId && lastEditedField.current === 'from') {
       const toRate = getRate(toCurrencyId)
       if (toRate && toRate.baseSellRate > 0) {
-        // Calculate target amount using sell rate (customer buys this currency)
         const result = huf / toRate.baseSellRate
         setToAmount(result.toFixed(2).replace('.', ','))
 
-        // Direct conversion rate
         const directRate = fromRate.baseBuyRate / toRate.baseSellRate
         setConversionRate(directRate)
       } else {
         setToAmount('')
         setConversionRate(0)
       }
-    } else {
+    } else if (!toCurrencyId) {
       setToAmount('')
       setConversionRate(0)
     }
-  // getRate and roundHuf are stable closures that only depend on `rates`, which is in the dep array
   // eslint-disable-next-line react-hooks/exhaustive-deps -- getRate/roundHuf are derived from `rates` already in deps
   }, [fromCurrencyId, toCurrencyId, fromAmount, rates])
 
@@ -280,33 +280,35 @@ export default function ConversionPage() {
     }
   }
 
-  // Handle manual toAmount edit (inverse calculation: toAmount → fromAmount)
-  // Címletezéshez szükséges: a pénztáros kerekíthet az elérhető címletek szerint.
   const handleToAmountChange = (value: string) => {
+    lastEditedField.current = 'to'
     setToAmount(value)
 
     if (!toCurrencyId || !fromCurrencyId) return
 
     const toRate = getRate(toCurrencyId)
     const fromRate = getRate(fromCurrencyId)
-    if (!toRate || !fromRate || fromRate.baseBuyRate <= 0) return
+    if (!toRate || !fromRate || fromRate.baseBuyRate <= 0 || toRate.baseSellRate <= 0) return
 
     const toVal = parseFloat(value.replace(',', '.').replace(/\s/g, '')) || 0
-    if (toVal <= 0) return
+    if (toVal <= 0) {
+      setFromAmount('')
+      setHufAmount(0)
+      setConversionRate(0)
+      return
+    }
 
-    // Inverse: toAmount * sellRate = HUF, HUF / buyRate = fromAmount
     const huf = toVal * toRate.baseSellRate
     setHufAmount(roundHuf(huf))
     const from = huf / fromRate.baseBuyRate
     setFromAmount(from.toFixed(2).replace('.', ','))
 
-    // Direct conversion rate unchanged
     const directRate = fromRate.baseBuyRate / toRate.baseSellRate
     setConversionRate(directRate)
   }
 
-  // Reset form
   const handleReset = () => {
+    lastEditedField.current = 'from'
     setStep(1)
     setFromAmount('')
     setToAmount('')
@@ -434,7 +436,7 @@ export default function ConversionPage() {
               <NumberInput
                 id="from-amount"
                 value={fromAmount}
-                onChange={setFromAmount}
+                onChange={(v) => { lastEditedField.current = 'from'; setFromAmount(v) }}
                 className="form-input w-full text-xl text-right"
                 placeholder="0,00"
                 allowDecimals={true}

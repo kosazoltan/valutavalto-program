@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Vault, Lock, Unlock, Plus, Minus, AlertTriangle, CheckCircle, Clock, FileCheck } from 'lucide-react'
 import { NumberInput } from '../../components/NumberInput'
@@ -7,6 +7,8 @@ import type { CashBalance, DailySession } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+
+const CASHDESK_REFRESH_INTERVAL_MS = 30_000
 
 interface CashDeskBalanceItem {
   currencyId: number
@@ -59,8 +61,11 @@ export default function CashDeskPage() {
   const [movementType, setMovementType] = useState<'in' | 'out'>('in')
   const [movementCurrency, setMovementCurrency] = useState('HUF')
   const [movementAmount, setMovementAmount] = useState('')
+  const loadingRef = useRef(false)
 
   const loadData = useCallback(async () => {
+    if (loadingRef.current) return
+    loadingRef.current = true
     setLoading(true)
     try {
       const [balances, session]: [CashBalance[], DailySession | null] = await Promise.all([
@@ -92,6 +97,7 @@ export default function CashDeskPage() {
       logger.error('CashDeskPage', 'Adatok betöltése sikertelen:', error)
       toast.error('Hiba', 'Pénztár adatok betöltése sikertelen')
     } finally {
+      loadingRef.current = false
       setLoading(false)
     }
   }, [])
@@ -116,8 +122,9 @@ export default function CashDeskPage() {
     const handleFocus = () => { void loadData() }
     window.addEventListener('focus', handleFocus)
 
-    // Periodikus polling: 30 másodperc — nem túl agresszív, de elég gyors
-    const interval = setInterval(() => { void loadData() }, 30_000)
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') void loadData()
+    }, CASHDESK_REFRESH_INTERVAL_MS)
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
