@@ -4,7 +4,7 @@ import { CredentialResponse, GoogleLogin, GoogleOAuthProvider } from '@react-oau
 import { useAuthStore } from '../../stores/authStore'
 import { authApi, publicApi, type PublicWorker } from '../../services/api/index'
 import { Eye, EyeOff, User, Lock, Building2, Shield, RefreshCw, ChevronDown } from 'lucide-react'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getErrorMessage, humanizeIpcError } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useAppMode } from '../../hooks/useAppMode'
 import { appModeLabel, canonicalizeRoleForAppMode, isRoleSelectableForAppMode, roleDisplayName } from '../../utils/appModeRoles'
@@ -241,12 +241,7 @@ export default function LoginPage() {
           appMode,
         })
         if (!result.ok) {
-          // 4xx (rossz jelszo, blokk) -> a backend hibauzenete
-          // network/timeout -> baratsagos uzenet
-          const msg = result.code.startsWith('HTTP_4')
-            ? result.message
-            : `A bejelentkezes nem sikerult (${result.code}). Probald meg ujra par masodperc mulva. (${result.message})`
-          setError(msg)
+          setError(humanizeIpcError(result.code, result.message))
           return
         }
         handleLoginResponse(result.response as Awaited<ReturnType<typeof authApi.login>>)
@@ -313,10 +308,8 @@ export default function LoginPage() {
       if (window.electronAPI?.googleOAuthFlowWithBackend) {
         const result = await window.electronAPI.googleOAuthFlowWithBackend(appMode)
         if (!result.ok) {
-          if (result.code === 'USER_CANCELLED') {
-            // silent
-          } else {
-            setError(`Google bejelentkezés sikertelen: ${result.message}`)
+          if (result.code !== 'USER_CANCELLED') {
+            setError(humanizeIpcError(result.code, result.message))
           }
           return
         }
@@ -331,10 +324,8 @@ export default function LoginPage() {
       }
       const result = await window.electronAPI.googleOAuthFlow()
       if (!result.ok) {
-        if (result.code === 'USER_CANCELLED') {
-          // silent
-        } else {
-          setError(`Google bejelentkezés sikertelen: ${result.message}`)
+        if (result.code !== 'USER_CANCELLED') {
+          setError(humanizeIpcError(result.code, result.message))
         }
         return
       }
