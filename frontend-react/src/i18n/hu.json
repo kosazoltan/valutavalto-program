@@ -249,7 +249,9 @@
     "vetelOsszesen": "Vétel összesen",
     "kotelezoPontMegNincs": "kötelező pont még nincs kész",
     "max": "| Max:",
-    "megjegyzes": "Megjegyzés:"
+    "megjegyzes": "Megjegyzés:",
+    "keszlet": "Készlet",
+    "minMax": "Min – Max"
   },
   "cashier": {
     "amount": "Összeg",
@@ -1178,7 +1180,14 @@
     "mod": "mod.",
     "pt": "pt",
     "irodaKivalasztva": "iroda kiválasztva",
-    "nezet": "(nézet)"
+    "nezet": "(nézet)",
+    "alap": "Alap",
+    "sav1": "1. sáv",
+    "sav2": "2. sáv",
+    "sav3": "3. sáv",
+    "vetel": "Vétel",
+    "eladas": "Eladás",
+    "kedvezmenySavokMinOsszeg": "Kedvezmény sávok (min. összeg):"
   },
   "receipts": {
     "bizonylatReszletek": "Bizonylat részletek",
@@ -1795,7 +1804,7 @@
     "datumTol": "Dátum -tól",
     "devizaValasztas": "Deviza választás",
     "e": "E:",
-    "egyeb": "Egyeb",
+    "egyeb": "Egyéb",
     "eladas": "ELADÁS",
     "eladasiArfolyam": "Eladási árfolyam:",
     "elozoNev": "Elozo nev",

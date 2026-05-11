@@ -110,8 +110,9 @@ describe('RatesPage', () => {
     await waitFor(() => {
       expect(screen.getByText('EUR')).toBeInTheDocument()
       expect(screen.getByText('USD')).toBeInTheDocument()
-      expect(screen.getByText('Euró')).toBeInTheDocument()
-      expect(screen.getByText('US Dollár')).toBeInTheDocument()
+      // Currency names are in tooltip (title attribute on both <tr> and <span>)
+      expect(screen.getAllByTitle(/Euró/).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByTitle(/US Dollár/).length).toBeGreaterThanOrEqual(1)
     })
   })
 

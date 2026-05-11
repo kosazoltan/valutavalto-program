@@ -135,55 +135,55 @@ export default function CashDeskPage() {
   }
 
   return (
-    <div className="space-y-3">
-      {/* Header */}
+    <div className="space-y-2">
+      {/* Compact header — title + actions in one row */}
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <Vault />
+        <h1 className="text-base font-bold text-gray-800 flex items-center gap-2">
+          <Vault size={18} />
           {t('branch.branch')}
         </h1>
-        <div className="flex gap-2">
+        <div className="flex gap-1.5">
           <button
             onClick={() => navigate('/closing/wizard')}
-            className="form-button-primary flex items-center gap-1"
+            className="form-button-primary flex items-center gap-1 h-7 text-xs px-2"
           >
-            <FileCheck size={16} />
+            <FileCheck size={14} />
             {t('misc.napiZaras')}
           </button>
           {status.isOpen ? (
-            <button className="form-button flex items-center gap-1 text-red-600">
-              <Lock size={16} />
+            <button className="form-button flex items-center gap-1 text-red-600 h-7 text-xs px-2">
+              <Lock size={14} />
               {t('cashdesk.penztarZaras')}
             </button>
           ) : (
-            <button className="form-button-primary flex items-center gap-1">
-              <Unlock size={16} />
+            <button className="form-button-primary flex items-center gap-1 h-7 text-xs px-2">
+              <Unlock size={14} />
               {t('cashdesk.penztarNyitas')}
             </button>
           )}
         </div>
       </div>
 
-      {/* Status Banner */}
-      <div className={`form-panel flex items-center justify-between ${
+      {/* Status Banner — compact */}
+      <div className={`form-panel flex items-center justify-between px-3 py-1.5 ${
         status.isOpen ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
       }`}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {status.isOpen ? (
             <>
-              <CheckCircle className="text-green-600" size={20} />
-              <span className="text-green-800 font-semibold">{t('cashdesk.penztarNyitva')}</span>
+              <CheckCircle className="text-green-600" size={16} />
+              <span className="text-green-800 font-semibold text-sm">{t('cashdesk.penztarNyitva')}</span>
             </>
           ) : (
             <>
-              <Lock className="text-red-600" size={20} />
-              <span className="text-red-800 font-semibold">{t('cashdesk.penztarZarva')}</span>
+              <Lock className="text-red-600" size={16} />
+              <span className="text-red-800 font-semibold text-sm">{t('cashdesk.penztarZarva')}</span>
             </>
           )}
         </div>
-        <div className="text-sm text-gray-600 flex items-center gap-4">
+        <div className="text-xs text-gray-600 flex items-center gap-3">
           <span className="flex items-center gap-1">
-            <Clock size={14} />
+            <Clock size={12} />
             {/* v2.3.38 (B12 audit fix): ISO timestamp -> hu-HU formatum (NEM raw "2026-04-29T11:43:07.623294") */}
             {t('cashdesk.nyitva')}{formatOpenedAtTimestamp(status.openedAt)}
           </span>
@@ -193,93 +193,99 @@ export default function CashDeskPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        {/* Cash Balances */}
-        <div className="col-span-2 form-panel">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="section-title">{t('cashdesk.penzkeszlet')}</h2>
-            <div className="flex gap-2">
-              <button 
+      <div className="grid grid-cols-3 gap-2">
+        {/* Cash Balances — compact table layout */}
+        <div className="col-span-2 form-panel p-0">
+          <div className="flex justify-between items-center px-3 py-1.5 border-b border-gray-200">
+            <h2 className="text-sm font-semibold text-gray-700">{t('cashdesk.penzkeszlet')}</h2>
+            <div className="flex gap-1.5">
+              <button
                 onClick={() => { setMovementType('in'); setShowMovementDialog(true); }}
-                className="form-button flex items-center gap-1"
+                className="form-button flex items-center gap-1 h-6 text-[11px] px-2"
               >
-                <Plus size={16} />
+                <Plus size={12} />
                 {t('cashdesk.bevet')}
               </button>
-              <button 
+              <button
                 onClick={() => { setMovementType('out'); setShowMovementDialog(true); }}
-                className="form-button flex items-center gap-1"
+                className="form-button flex items-center gap-1 h-6 text-[11px] px-2"
               >
-                <Minus size={16} />
+                <Minus size={12} />
                 {t('cashdesk.kivet')}
               </button>
             </div>
           </div>
-          
-          <div className="space-y-2">
-            {status.balances.map((item) => {
-              const balanceStatus = getBalanceStatus(item.balance, item.minBalance, item.maxBalance)
-              return (
-                <div 
-                  key={item.currency}
-                  className={`flex items-center justify-between p-3 rounded border ${
-                    balanceStatus === 'low' ? 'bg-orange-50 border-orange-200' :
-                    balanceStatus === 'high' ? 'bg-yellow-50 border-yellow-200' :
-                    'bg-gray-50 border-gray-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono font-bold text-lg w-12">{item.currency}</span>
-                    {balanceStatus === 'low' && (
-                      <span className="flex items-center gap-1 text-orange-600 text-sm">
-                        <AlertTriangle size={14} />
-                        {t('cashdesk.alacsonyKeszlet')}
+
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr className="text-[10px] uppercase text-gray-500">
+                <th className="px-3 py-1 text-left w-16">{t('common.currency')}</th>
+                <th className="px-2 py-1 text-right">{t('cashdesk.keszlet')}</th>
+                <th className="px-2 py-1 text-right text-gray-400 w-24">{t('cashdesk.minMax')}</th>
+                <th className="px-2 py-1 text-center w-10"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {status.balances.map((item, idx) => {
+                const balanceStatus = getBalanceStatus(item.balance, item.minBalance, item.maxBalance)
+                return (
+                  <tr
+                    key={item.currency}
+                    className={`border-b border-gray-100 last:border-0 ${
+                      balanceStatus === 'low' ? 'bg-orange-50' :
+                      balanceStatus === 'high' ? 'bg-yellow-50' :
+                      idx % 2 === 1 ? 'bg-gray-50/50' : ''
+                    }`}
+                  >
+                    <td className="px-3 py-1">
+                      <span className="font-mono font-bold text-sm">{item.currency}</span>
+                    </td>
+                    <td className="px-2 py-1 text-right">
+                      <span className="font-mono font-bold text-sm">
+                        {item.balance.toLocaleString('hu-HU')}
                       </span>
-                    )}
-                    {balanceStatus === 'high' && (
-                      <span className="flex items-center gap-1 text-yellow-600 text-sm">
-                        <AlertTriangle size={14} />
-                        {t('cashdesk.magasKeszlet')}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xl font-bold font-mono">
-                      {item.balance.toLocaleString('hu-HU')}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {t('cashdesk.min')}{item.minBalance.toLocaleString('hu-HU')} {t('cashdesk.max')} {item.maxBalance.toLocaleString('hu-HU')}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                    </td>
+                    <td className="px-2 py-1 text-right text-[10px] text-gray-400 font-mono">
+                      {item.minBalance.toLocaleString('hu-HU')} – {item.maxBalance.toLocaleString('hu-HU')}
+                    </td>
+                    <td className="px-2 py-1 text-center">
+                      {balanceStatus === 'low' && (
+                        <span title={t('cashdesk.alacsonyKeszlet')}><AlertTriangle size={12} className="text-orange-500 inline" /></span>
+                      )}
+                      {balanceStatus === 'high' && (
+                        <span title={t('cashdesk.magasKeszlet')}><AlertTriangle size={12} className="text-yellow-500 inline" /></span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
 
-        {/* Today's Stats */}
-        <div className="form-panel">
-          <h2 className="section-title">{t('cashdesk.maiStatisztika')}</h2>
-          <div className="space-y-3">
-            <div className="bg-blue-50 p-3 rounded">
-              <div className="text-sm text-blue-600">{t('archiving.tranzakciok')}</div>
-              <div className="text-lg font-bold text-blue-800">{status.todayStats.transactions}</div>
+        {/* Today's Stats — compact */}
+        <div className="form-panel p-2">
+          <h2 className="text-sm font-semibold text-gray-700 mb-1.5">{t('cashdesk.maiStatisztika')}</h2>
+          <div className="space-y-1.5">
+            <div className="bg-blue-50 px-2.5 py-1.5 rounded">
+              <div className="text-[10px] text-blue-600">{t('archiving.tranzakciok')}</div>
+              <div className="text-base font-bold text-blue-800">{status.todayStats.transactions}</div>
             </div>
-            <div className="bg-green-50 p-3 rounded">
-              <div className="text-sm text-green-600">{t('cashdesk.vetelOsszesen')}</div>
-              <div className="text-xl font-bold text-green-800">
+            <div className="bg-green-50 px-2.5 py-1.5 rounded">
+              <div className="text-[10px] text-green-600">{t('cashdesk.vetelOsszesen')}</div>
+              <div className="text-sm font-bold text-green-800">
                 {status.todayStats.buyTotal.toLocaleString('hu-HU')} {t('common.ft')}
               </div>
             </div>
-            <div className="bg-red-50 p-3 rounded">
-              <div className="text-sm text-red-600">{t('cashdesk.eladasOsszesen')}</div>
-              <div className="text-xl font-bold text-red-800">
+            <div className="bg-red-50 px-2.5 py-1.5 rounded">
+              <div className="text-[10px] text-red-600">{t('cashdesk.eladasOsszesen')}</div>
+              <div className="text-sm font-bold text-red-800">
                 {status.todayStats.sellTotal.toLocaleString('hu-HU')} {t('common.ft')}
               </div>
             </div>
-            <div className="bg-purple-50 p-3 rounded">
-              <div className="text-sm text-purple-600">{t('cashdesk.napiEredmeny')}</div>
-              <div className="text-xl font-bold text-purple-800">
+            <div className="bg-purple-50 px-2.5 py-1.5 rounded">
+              <div className="text-[10px] text-purple-600">{t('cashdesk.napiEredmeny')}</div>
+              <div className="text-sm font-bold text-purple-800">
                 {status.todayStats.profit.toLocaleString('hu-HU')} {t('common.ft')}
               </div>
             </div>
@@ -287,17 +293,17 @@ export default function CashDeskPage() {
         </div>
       </div>
 
-      {/* Denomination Panel */}
-      <div className="form-panel">
-        <h2 className="section-title">{t('cashdesk.cimletekHuf')}</h2>
-        <div className="grid grid-cols-8 gap-2">
+      {/* Denomination Panel — compact */}
+      <div className="form-panel p-2">
+        <h2 className="text-sm font-semibold text-gray-700 mb-1">{t('cashdesk.cimletekHuf')}</h2>
+        <div className="grid grid-cols-8 gap-1.5">
           {[20000, 10000, 5000, 2000, 1000, 500, 200, 100].map((denom) => (
-            <div key={denom} className="text-center p-2 bg-gray-50 rounded border">
-              <div className="text-sm font-semibold font-mono">{denom.toLocaleString('hu-HU')}</div>
-              <NumberInput 
+            <div key={denom} className="text-center p-1 bg-gray-50 rounded border">
+              <div className="text-xs font-semibold font-mono">{denom.toLocaleString('hu-HU')}</div>
+              <NumberInput
                 value="0,00"
                 onChange={() => {}}
-                className="form-input w-full text-center text-sm mt-1" 
+                className="form-input w-full text-center text-xs mt-0.5 py-0.5"
                 allowDecimals={true}
                 allowNegative={false}
                 min={0}
@@ -318,7 +324,7 @@ export default function CashDeskPage() {
             <div className="space-y-3">
               <div>
                 <label className="form-label">{t('common.currency')}</label>
-                <select 
+                <select
                   value={movementCurrency}
                   onChange={(e) => setMovementCurrency(e.target.value)}
                   className="form-input"
@@ -349,13 +355,13 @@ export default function CashDeskPage() {
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-4">
-              <button 
+              <button
                 onClick={() => setShowMovementDialog(false)}
                 className="form-button"
               >
                 {t('common.cancel')}
               </button>
-              <button 
+              <button
                 onClick={handleMovement}
                 className="form-button-primary"
               >
