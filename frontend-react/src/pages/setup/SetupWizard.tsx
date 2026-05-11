@@ -374,10 +374,6 @@ export default function SetupWizard() {
   // --- Telepítés befejezése ---
   const handleFinish = async () => {
     if (!selectedBranch) return
-    if (!isBranchSelectableForAppMode(selectedBranch, appModeChoice)) {
-      setSaveError('A kiválasztott fiók nem használható ehhez a programtípushoz. Válasszon másik fiókot.')
-      return
-    }
     setIsSaving(true)
     setSaveError(null)
     try {
