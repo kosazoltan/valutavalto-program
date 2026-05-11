@@ -188,7 +188,7 @@ export default function RatesPage() {
           )}
           {lastRefresh && (
             <span className="text-[10px] text-gray-500 font-normal flex items-center gap-0.5 ml-1">
-              <Clock size={10} />{t('rates.utolsoFrissites')}{lastRefresh}{rates.length > 0 && ` · ${rates.length} valuta`}
+              <Clock size={10} />{t('rates.utolsoFrissites')} {lastRefresh}{rates.length > 0 && ` · ${rates.length} valuta`}
             </span>
           )}
         </h1>

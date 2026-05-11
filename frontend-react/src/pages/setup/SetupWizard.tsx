@@ -40,10 +40,12 @@ interface SetupWorkerOption {
 
 export function isBranchSelectableForAppMode(
   branch: Branch | null | undefined,
-  appMode: ElectronAppMode,
+  _appMode: ElectronAppMode,
 ): boolean {
   if (!branch) return false
-  if (appMode === 'ertektar') return branch.isVault === true
+  // Az ertektar vault-preferencia a filterBranchesForAppMode() fallback-jeben van.
+  // canAdvance a branch step-nel ezt hasznalja — ha a filter megmutatta a branch-et,
+  // akkor a user kivalaszthatta, tehat ervenyes. (Copilot #552 P1 finding fix)
   return true
 }
 
