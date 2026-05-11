@@ -28,6 +28,24 @@ public final class AppModeRoleConstants {
     private static final List<String> LEGACY_SERVER_ROLES = List.of("supervisor", "manager", "admin");
 
     /**
+     * Lokalis Electron role-ok: kis irodakban egy dolgozo tobb modban is dolgozhat,
+     * ezert barmely lokalis modban (penztar/ertektar/ertekszallito) mindharom
+     * lokalis role valaszthato — a felhasznalo lathassa az "Ertektaros" role-t
+     * penztar modban is, es forditva.
+     */
+    private static final List<String> LOCAL_CANONICAL_ROLES = List.of(
+            "penztar", "ertektar", "ertekszallito"
+    );
+
+    /** True ha a normalized role lokalis (canonical VAGY legacy forma). */
+    private static boolean isLocalRole(String normalizedRole) {
+        return LOCAL_CANONICAL_ROLES.contains(normalizedRole)
+                || LEGACY_PENZTAR_ROLES.contains(normalizedRole)
+                || LEGACY_ERTEKTAR_ROLES.contains(normalizedRole)
+                || LEGACY_ERTEKSZALLITO_ROLES.contains(normalizedRole);
+    }
+
+    /**
      * Browser/szerver hozzaferesere jogosult canonical role-ok.
      * V181 (2026-05-03): teruleti_vezeto + biztonsagi_vezeto KIVEVE -> {@link #KAMERA_CANONICAL_ROLES}.
      */
@@ -117,17 +135,10 @@ public final class AppModeRoleConstants {
         }
 
         boolean serverRole = isServerRole(normalizedRole);
+        boolean localRole = isLocalRole(normalizedRole);
         return switch (normalizedAppMode) {
             case "full" -> serverRole;
-            case "penztar" -> serverRole
-                    || "penztar".equals(normalizedRole)
-                    || LEGACY_PENZTAR_ROLES.contains(normalizedRole);
-            case "ertektar" -> serverRole
-                    || "ertektar".equals(normalizedRole)
-                    || LEGACY_ERTEKTAR_ROLES.contains(normalizedRole);
-            case "ertekszallito" -> serverRole
-                    || "ertekszallito".equals(normalizedRole)
-                    || LEGACY_ERTEKSZALLITO_ROLES.contains(normalizedRole);
+            case "penztar", "ertektar", "ertekszallito" -> serverRole || localRole;
             case "kamera" -> KAMERA_CANONICAL_ROLES.contains(normalizedRole);
             default -> false;
         };

@@ -13,6 +13,14 @@ const LEGACY_PENZTAR_ROLES = [OFFLINE_RESTORE_ROLE]
 const LEGACY_ERTEKTAR_ROLES = ['MANAGER', 'TREASURY_MANAGER']
 const LEGACY_ERTEKSZALLITO_ROLES = ['COURIER']
 
+// Kis irodákban egy dolgozó több módban is dolgozhat (pl. értéktáros a pénztár
+// módban is belép), ezért bármely lokális módban mindhárom lokális role választható.
+const LOCAL_CANONICAL_ROLES = ['penztar', 'ertektar', 'ertekszallito']
+
+function isLocalRole(roleCode: string): boolean {
+  return LOCAL_CANONICAL_ROLES.includes(canonicalizeRoleForAppMode(roleCode))
+}
+
 function isServerRole(roleCode: string): boolean {
   const trimmed = roleCode.trim()
   if (!trimmed) return false
@@ -41,15 +49,17 @@ export function isRoleSelectableForAppMode(
   const canonical = canonicalizeRoleForAppMode(roleCode)
   const serverRole = isServerRole(roleCode)
 
+  const localRole = isLocalRole(roleCode)
+
   if (appMode === 'full') return serverRole
   if (appMode === 'penztar') {
-    return serverRole || canonical === 'penztar'
+    return serverRole || localRole
   }
   if (appMode === 'ertektar') {
-    return serverRole || canonical === 'ertektar'
+    return serverRole || localRole
   }
   if (appMode === 'ertekszallito') {
-    return serverRole || canonical === 'ertekszallito'
+    return serverRole || localRole
   }
   return false
 }
