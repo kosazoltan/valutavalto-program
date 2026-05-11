@@ -407,7 +407,7 @@ export default function ConversionPage() {
               <select
                 id="from-currency"
                 value={fromCurrencyId ?? ''}
-                onChange={(e) => setFromCurrencyId(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => { lastEditedField.current = 'from'; setFromCurrencyId(e.target.value ? Number(e.target.value) : null) }}
                 className="form-input w-full"
                 disabled={step === 2}
               >
@@ -544,7 +544,7 @@ export default function ConversionPage() {
               <select
                 id="to-currency"
                 value={toCurrencyId ?? ''}
-                onChange={(e) => setToCurrencyId(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => { lastEditedField.current = 'from'; setToCurrencyId(e.target.value ? Number(e.target.value) : null) }}
                 className="form-input w-full"
                 disabled={step === 1}
               >
