@@ -66,6 +66,7 @@ export default function TransactionListPage() {
       let localPending: Transaction[] = []
       if (isElectron() && page === 0) {
         const api = getElectronAPI()
+        // Pending buy/sell/reversal tranzakciok
         if (api?.getPendingTransactions) {
           try {
             const rows = await api.getPendingTransactions()
@@ -92,6 +93,39 @@ export default function TransactionListPage() {
               discountPercent: r.discount_percent != null ? Number(r.discount_percent) : 0,
               createdAt: (r as { created_at?: string }).created_at ?? new Date().toISOString(),
             } as Transaction))
+          } catch { /* SQLite nem elerheto */ }
+        }
+
+        // Pending konverziok (kulon tabla az Electron SQLite-ban)
+        if (api?.getPendingConversions) {
+          try {
+            const convRows = await api.getPendingConversions()
+            const pendingConversions: Transaction[] = convRows
+              .filter((c) => !c.synced)
+              .map((c) => ({
+                id: -(2_000_000 + Number(c.id)),
+                receiptNumber: `K-${String(c.id).padStart(8, '0')}`,
+                transactionDate: c.created_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+                transactionTime: c.created_at?.slice(11, 19) ?? '',
+                transactionType: 'CONVERSION' as Transaction['transactionType'],
+                currencyId: c.from_currency_id ?? 0,
+                currencyCode: c.from_currency_code,
+                currencyAmount: Number(c.from_amount),
+                exchangeRate: Number(c.conversion_rate),
+                hufAmount: Number(c.calculated_huf_amount),
+                roundedHufAmount: Number(c.calculated_huf_amount),
+                status: 'PENDING' as const,
+                customerName: c.customer_name ?? undefined,
+                workerName: undefined,
+                workerId: 0,
+                branchId: '',
+                printed: false,
+                handlingFee: c.handling_fee != null ? Number(c.handling_fee) : 0,
+                discountAmount: 0,
+                discountPercent: 0,
+                createdAt: c.created_at ?? new Date().toISOString(),
+              } as Transaction))
+            localPending = [...localPending, ...pendingConversions]
           } catch { /* SQLite nem elerheto */ }
         }
       }

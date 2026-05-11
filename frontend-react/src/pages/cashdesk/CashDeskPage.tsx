@@ -100,6 +100,32 @@ export default function CashDeskPage() {
     void loadData()
   }, [loadData])
 
+  // Pénzkészlet automatikus frissítése:
+  // 1. Amikor a felhasználó visszanavigál erre az oldalra (visibility change)
+  // 2. Periodikus polling (30 másodpercenként) — a tranzakciók backend-oldalon
+  //    frissítik a cash_balance-t, de a frontend erről nem kap push notifikációt.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void loadData()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // Focus event: a felhasználó visszakattint az ablakra (pl. Electron)
+    const handleFocus = () => { void loadData() }
+    window.addEventListener('focus', handleFocus)
+
+    // Periodikus polling: 30 másodperc — nem túl agresszív, de elég gyors
+    const interval = setInterval(() => { void loadData() }, 30_000)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+      clearInterval(interval)
+    }
+  }, [loadData])
+
   const getBalanceStatus = (balance: number, min: number, max: number) => {
     if (balance < min) return 'low'
     if (balance > max) return 'high'
