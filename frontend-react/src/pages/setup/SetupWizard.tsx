@@ -51,15 +51,17 @@ export function filterBranchesForAppMode(
   branches: Branch[],
   appMode: ElectronAppMode,
 ): Branch[] {
+  // Először mindig alkalmazzuk az alap szűrést (pl. inaktív/soft-deleted kizárása)
+  const selectable = branches.filter((branch) => isBranchSelectableForAppMode(branch, appMode))
   if (appMode === 'ertektar') {
     // v2.5.2: Ha vannak is_vault=TRUE fióktelepek → csak azokat mutatjuk.
     // Ha EGYETLEN vault-branch sincs (admin még nem jelölte meg) → az összes
-    // branch-et visszaadjuk, hogy a telepítés ne akadjon el 0 találattal.
-    const vaultOnly = branches.filter((b) => b.isVault === true)
+    // selectable branch-et visszaadjuk, hogy a telepítés ne akadjon el 0 találattal.
+    const vaultOnly = selectable.filter((b) => b.isVault === true)
     if (vaultOnly.length > 0) return vaultOnly
-    return branches
+    return selectable
   }
-  return branches.filter((branch) => isBranchSelectableForAppMode(branch, appMode))
+  return selectable
 }
 
 export function resolveSelectedWorkerForSetup(params: {
