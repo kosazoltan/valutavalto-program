@@ -293,7 +293,7 @@ export default function ReceiptPreviewModal({
             )}
 
             <p className="mt-1">Az ügyletet készpénzben teljesítjük</p>
-            <p>Deviza-státusz: {receiptData.foreignStatus === 'FOREIGN' ? 'Külföldi' : 'Belföldi'}</p>
+            <p>Deviza-státusz: {receiptData.foreignStatus == null ? '—' : (receiptData.foreignStatus === 'FOREIGN' ? 'Külföldi' : 'Belföldi')}</p>
 
             <div className="my-3 border-t border-gray-300" />
 

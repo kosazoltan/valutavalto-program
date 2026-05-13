@@ -270,7 +270,7 @@ public class TransactionService {
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
                 .cashierCustomRate(buyCashierCustomRate)
-                .foreignStatus(request.getForeignStatus())
+                .foreignStatus(ForeignStatus.parseOrNull(request.getForeignStatus()))
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
@@ -423,7 +423,7 @@ public class TransactionService {
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
                 .cashierCustomRate(sellCashierCustomRate)
-                .foreignStatus(request.getForeignStatus())
+                .foreignStatus(ForeignStatus.parseOrNull(request.getForeignStatus()))
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);

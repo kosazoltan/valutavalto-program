@@ -58,7 +58,7 @@ public class TransactionMapper {
                 .reversalReason(entity.getReversalReason())
                 .approvedBy(entity.getApprovedBy())
                 .notes(entity.getNotes())
-                .foreignStatus(entity.getForeignStatus())
+                .foreignStatus(entity.getForeignStatus() != null ? entity.getForeignStatus().name() : null)
                 .printed(entity.getPrinted())
                 .mtcn(entity.getMtcn())
                 .referenceNumber(entity.getReferenceNumber())
