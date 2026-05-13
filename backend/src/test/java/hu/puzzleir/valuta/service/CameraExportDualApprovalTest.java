@@ -161,11 +161,18 @@ class CameraExportDualApprovalTest {
     void reject_awaitingSecond_works() {
         baseRequest.setStatus(CameraExportStatus.AWAITING_SECOND_APPROVAL);
         baseRequest.setApprovedBy("WORKER_A");
+        baseRequest.setApprovedAt(LocalDateTime.of(2026, 5, 13, 10, 0));
         setCurrentWorker("WORKER_B");
 
         var result = exportService.rejectExport(REQUEST_ID, "indok");
 
         assertThat(result.getStatus()).isEqualTo(CameraExportStatus.REJECTED);
         assertThat(result.getRejectionReason()).isEqualTo("indok");
+        // Copilot P3 #578 follow-up: dual-approval flow-ban a reject NE írja felül az 1.
+        // approver audit-fieldjeit. ApprovedBy/At változatlan, rejectedBy/At új mezők.
+        assertThat(result.getApprovedBy()).as("1. approver audit data preserved").isEqualTo("WORKER_A");
+        assertThat(result.getApprovedAt()).as("1. approval timestamp preserved").isNotNull();
+        assertThat(result.getRejectedBy()).as("rejector recorded separately").isEqualTo("WORKER_B");
+        assertThat(result.getRejectedAt()).as("reject timestamp recorded").isNotNull();
     }
 }
