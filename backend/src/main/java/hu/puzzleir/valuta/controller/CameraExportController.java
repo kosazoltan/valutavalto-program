@@ -55,6 +55,16 @@ public class CameraExportController {
         return ResponseEntity.ok(exportService.approveExport(requestId));
     }
 
+    /**
+     * Második (4-eyes) jóváhagyás — Sprint 4 P2-C.
+     * Csak akkor használandó ha a request requiresDualApproval=true.
+     */
+    @PostMapping("/{requestId}/approve-second")
+    @PreAuthorize("hasAnyAuthority('VIDEO_EXPORT_APPROVE', 'MAIN_TREASURY', 'SYSTEM_ADMIN')")
+    public ResponseEntity<CameraExportRequest> approveSecond(@PathVariable UUID requestId) {
+        return ResponseEntity.ok(exportService.approveExportSecond(requestId));
+    }
+
     @PostMapping("/{requestId}/reject")
     @PreAuthorize("hasAnyAuthority('VIDEO_EXPORT_APPROVE', 'MAIN_TREASURY', 'SYSTEM_ADMIN')")
     public ResponseEntity<CameraExportRequest> reject(

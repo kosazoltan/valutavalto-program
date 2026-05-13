@@ -105,16 +105,71 @@ public class CameraExportService {
             throw new ValidationException("4-eyes: a jóváhagyó nem lehet ugyanaz, mint a kérelmező!");
         }
 
-        request.setStatus(CameraExportStatus.APPROVED);
         request.setApprovedBy(approver);
         request.setApprovedAt(LocalDateTime.now());
+
+        // Sprint 4 (P2-C): dual approval flow
+        if (Boolean.TRUE.equals(request.getRequiresDualApproval())) {
+            // 1. approver megvolt — most 2. szintű jóváhagyásra vár
+            request.setStatus(CameraExportStatus.AWAITING_SECOND_APPROVAL);
+            log.info("Export 1. szintű jóváhagyás: id={}, approvedBy={}, awaiting second approval",
+                    requestId, approver);
+        } else {
+            // Single-approval flow (régi viselkedés, ha kifejezetten letiltva a dual)
+            request.setStatus(CameraExportStatus.APPROVED);
+            log.info("Export jóváhagyva (single approval): id={}, approvedBy={}", requestId, approver);
+        }
         exportRepository.save(request);
 
         recordCustodyEvent(requestId, request.getBranchId(), request.getCameraId(),
             CustodyEventType.EXPORT_APPROVED, approver,
-            "Export jóváhagyva", request.getPeriodFrom(), request.getPeriodTo());
+            Boolean.TRUE.equals(request.getRequiresDualApproval())
+                ? "Export 1. szintű jóváhagyás (vár 2.-re)"
+                : "Export jóváhagyva (single)",
+            request.getPeriodFrom(), request.getPeriodTo());
 
-        log.info("Export jóváhagyva: id={}, approvedBy={}", requestId, approver);
+        return request;
+    }
+
+    /**
+     * Második (4-eyes) jóváhagyás — Sprint 4 P2-C.
+     *
+     * <p>A `requiresDualApproval=true` esetén szükséges. A 2. approver:
+     * <ul>
+     *   <li>NEM egyezhet a kérelmezővel (requestedBy)</li>
+     *   <li>NEM egyezhet az 1. jóváhagyóval (approvedBy)</li>
+     * </ul></p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public CameraExportRequest approveExportSecond(UUID requestId) {
+        CameraExportRequest request = findRequest(requestId);
+
+        if (request.getStatus() != CameraExportStatus.AWAITING_SECOND_APPROVAL) {
+            throw new ValidationException(
+                    "Második jóváhagyás csak AWAITING_SECOND_APPROVAL státuszra lehetséges (jelenlegi: "
+                            + request.getStatus() + ")");
+        }
+
+        String secondApprover = SecurityUtils.getCurrentWorkerCode();
+        if (secondApprover.equals(request.getRequestedBy())) {
+            throw new ValidationException("4-eyes: a 2. jóváhagyó nem lehet a kérelmező!");
+        }
+        if (secondApprover.equals(request.getApprovedBy())) {
+            throw new ValidationException("4-eyes: a 2. jóváhagyó nem lehet az 1. jóváhagyó!");
+        }
+
+        request.setSecondApprovedBy(secondApprover);
+        request.setSecondApprovedAt(LocalDateTime.now());
+        request.setStatus(CameraExportStatus.APPROVED);
+        exportRepository.save(request);
+
+        recordCustodyEvent(requestId, request.getBranchId(), request.getCameraId(),
+                CustodyEventType.EXPORT_APPROVED, secondApprover,
+                "Export 2. szintű jóváhagyás (dual approval kész)",
+                request.getPeriodFrom(), request.getPeriodTo());
+
+        log.info("Export DUAL APPROVAL kész: id={}, 1st={}, 2nd={}",
+                requestId, request.getApprovedBy(), secondApprover);
         return request;
     }
 
@@ -122,8 +177,10 @@ public class CameraExportService {
     public CameraExportRequest rejectExport(UUID requestId, String rejectionReason) {
         CameraExportRequest request = findRequest(requestId);
 
-        if (request.getStatus() != CameraExportStatus.REQUESTED) {
-            throw new ValidationException("Elutasítás csak REQUESTED státuszú kérelemre lehetséges!");
+        // Sprint 4 P2-C: AWAITING_SECOND_APPROVAL is rejectálható (a 2. approver visszadobja)
+        if (request.getStatus() != CameraExportStatus.REQUESTED
+                && request.getStatus() != CameraExportStatus.AWAITING_SECOND_APPROVAL) {
+            throw new ValidationException("Elutasítás csak REQUESTED vagy AWAITING_SECOND_APPROVAL státuszra lehetséges!");
         }
 
         String rejector = SecurityUtils.getCurrentWorkerCode();
