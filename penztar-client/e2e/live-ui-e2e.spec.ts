@@ -72,7 +72,7 @@ test.describe('Live UI E2E — Valutaváltó Pénztár', () => {
     console.log('[2] Bejelentkezés gombra kattintottam')
 
     // Vár a navigációra (dashboard betöltés)
-    await page.waitForURL('**/dashboard**', { timeout: 20000 })
+    await page.waitForURL('**/central-workstation**', { timeout: 20000 })
     console.log('[2] Dashboard URL-re navigált — PASS')
 
     // ── LÉPÉS 3: Dashboard screenshot ───────────────────────────────────────

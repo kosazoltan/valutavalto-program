@@ -25,6 +25,9 @@ public class ReceiptData {
     /** Bizonylat szám (E/V/A/S prefix + YYMMDD + sorszám) */
     private String receiptNumber;
 
+    /** NAV nyugtaszám (Nyugtaszám a bizonylaton) */
+    private String navReceiptNumber;
+
     /** Bizonylat típus: SELL, BUY, TRANSFER, STORNO, CLOSING */
     private String receiptType;
 
@@ -112,7 +115,7 @@ public class ReceiptData {
 
     /** ÁFA-mentességi szöveg (törvényi kötelező valutaváltásnál) */
     @Builder.Default
-    private String vatExemptionText = "Szj 67.13.10.0 — Az ÁFA alól mentes: 2007. évi CXVII tv. 85. § e)";
+    private String vatExemptionText = "Szj - 67.13.10.0\nAdómentes  a szolgáltatás nyújtása a 2007\nM.Á.A. evi CXVII tv. 86 § e) alapján\nmentes az adó alól";
 
     /** Bizonylat sorok (tetszőleges extra sorok) */
     @Builder.Default

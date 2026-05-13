@@ -109,6 +109,6 @@ test('sikeres login → redirect dashboard-ra', async ({ page }) => {
   await page.locator('input[type="password"]').fill('1234')
   await page.getByRole('button', { name: /Bejelentkezés/i }).click()
 
-  // ADMIN role → /dashboard
-  await expect(page).toHaveURL(/\/dashboard$/)
+  // ADMIN role → /central-workstation
+  await expect(page).toHaveURL(/\/central-workstation$/)
 })

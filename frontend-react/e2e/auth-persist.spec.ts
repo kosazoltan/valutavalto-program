@@ -95,7 +95,7 @@ test('a webes login reload utan is bent tartja a sessiont', async ({ page }) => 
   await page.locator('input[type="password"]').fill('1234')
   await page.getByRole('button', { name: 'Bejelentkezés' }).click()
 
-  await expect(page).toHaveURL(/\/dashboard$/)
+  await expect(page).toHaveURL(/\/central-workstation$/)
   await expect(page.locator('main, h1, h2, [role="heading"]').first()).toBeVisible()
 
   // Audit P1.3: a token NEM kerul localStorage-ba (XSS hardening) — verifikaljuk.
@@ -105,7 +105,7 @@ test('a webes login reload utan is bent tartja a sessiont', async ({ page }) => 
 
   await page.reload()
 
-  await expect(page).toHaveURL(/\/dashboard$/)
+  await expect(page).toHaveURL(/\/central-workstation$/)
   await expect(page.locator('main, h1, h2, [role="heading"]').first()).toBeVisible()
   // Audit P1.3: a reload a refresh-cookie endpointot triggereli, ami uj tokent ad,
   // amivel a `/workers/me` lekerdezes sikeres (Authorization: Bearer <token>).

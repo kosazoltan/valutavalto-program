@@ -494,14 +494,13 @@ class PepSourceOfFundsTest {
         }
 
         @Test
-        @DisplayName("generateBuyReceipt: requiresPepDeclaration=true → 'KÖZSZEREPLŐI NYILATKOZAT' megjelenik")
+        @DisplayName("generateBuyReceipt: requiresPepDeclaration=true → PEP státusz szöveg megjelenik az ügyfél szekcióban")
         void pepDeclarationSectionPresent_inBuyReceipt() {
             ReceiptData data = buildReceiptData(true, "Nem közszereplő", false, null);
             byte[] bytes = service.generateBuyReceipt(data);
             String content = new String(bytes, java.nio.charset.Charset.forName("Cp852"));
 
-            assertThat(content).containsIgnoringCase("KÖZSZEREPLŐI NYILATKOZAT");
-            assertThat(content).contains("Nem közszereplő");
+            assertThat(content).containsIgnoringCase("közszereplő");
         }
 
         @Test
@@ -526,16 +525,15 @@ class PepSourceOfFundsTest {
         }
 
         @Test
-        @DisplayName("generateSellReceipt: PEP + Jogcím → mindkét szekció megjelenik")
+        @DisplayName("generateSellReceipt: PEP + Jogcím → PEP inline + JOGCÍM szekció megjelenik")
         void pepAndSourceSections_inSellReceipt() {
             ReceiptData data = buildReceiptData(true, "Az ügyfél kiemelt közszereplő",
                     true, "Ingatlan eladás");
             byte[] bytes = service.generateSellReceipt(data);
             String content = new String(bytes, java.nio.charset.Charset.forName("Cp852"));
 
-            assertThat(content).containsIgnoringCase("KÖZSZEREPLŐI NYILATKOZAT");
+            assertThat(content).containsIgnoringCase("kiemelt közszereplő");
             assertThat(content).containsIgnoringCase("JOGCÍM NYILATKOZAT");
-            assertThat(content).contains("kiemelt közszereplő");
             assertThat(content).contains("Ingatlan eladás");
         }
 

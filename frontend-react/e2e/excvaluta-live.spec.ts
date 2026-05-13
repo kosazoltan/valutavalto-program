@@ -237,10 +237,10 @@ test('T06 — /transactions: lista oldal válaszol', async ({ page }) => {
 // ─────────────────────────────────────────────
 // TEST 7 — Dashboard betöltés (unauthenticated)
 // ─────────────────────────────────────────────
-test('T07 — /dashboard: auth wall vagy redirect login-ra', async ({ page }) => {
-  const response = await page.goto(BASE + '/dashboard', { waitUntil: 'domcontentloaded', timeout: 20000 })
+test('T07 — /central-workstation: auth wall vagy redirect login-ra', async ({ page }) => {
+  const response = await page.goto(BASE + '/central-workstation', { waitUntil: 'domcontentloaded', timeout: 20000 })
 
-  const ss = screenshotPath('T07-dashboard-auth')
+  const ss = screenshotPath('T07-central-workstation-auth')
   await page.screenshot({ path: ss, fullPage: true })
 
   const status = response?.status() ?? 0
@@ -250,8 +250,8 @@ test('T07 — /dashboard: auth wall vagy redirect login-ra', async ({ page }) =>
   console.log(`URL: ${finalUrl}, Status: ${status}`)
   console.log(`Screenshot: ${ss}`)
 
-  expect(status, `Server error on /dashboard: ${status}`).toBeLessThan(500)
-  expect(bodyText.length, 'Empty body on /dashboard').toBeGreaterThan(0)
+  expect(status, `Server error on /central-workstation: ${status}`).toBeLessThan(500)
+  expect(bodyText.length, 'Empty body on /central-workstation').toBeGreaterThan(0)
 })
 
 // ─────────────────────────────────────────────

@@ -108,7 +108,7 @@ async function loginForTransaction(page: Page) {
   await page.locator('input[type="password"]').fill('1234')
   await page.getByRole('button', { name: /Bejelentkezés/i }).click()
 
-  await expect(page).toHaveURL(/\/dashboard$/)
+  await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
 test('tranzakciós oldal betöltődik', async ({ page }) => {

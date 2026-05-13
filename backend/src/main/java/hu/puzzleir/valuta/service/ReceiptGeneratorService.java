@@ -315,6 +315,7 @@ public class ReceiptGeneratorService {
 
         ReceiptData.ReceiptDataBuilder builder = ReceiptData.builder()
                 .receiptNumber(receiptNumber)
+                .navReceiptNumber(tx.getLinkedReceiptNumber())
                 .receiptType(type)
                 .date(LocalDateTime.now())
                 .currencyCode(tx.getCurrency() != null ? tx.getCurrency().getCode() : "")

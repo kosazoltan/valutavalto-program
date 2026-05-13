@@ -47,7 +47,7 @@ async function login(page: Page) {
     await page.locator('button[type="submit"]').click()
   }
 
-  await page.waitForURL('**/dashboard**', { timeout: 20000 })
+  await page.waitForURL('**/central-workstation**', { timeout: 20000 })
   await waitNoSpinner(page)
 }
 
@@ -83,15 +83,15 @@ test('01 — Login + Dashboard', async ({ page }) => {
     await submitBtn.click()
   }
 
-  console.log('[LOGIN] Gombra kattintottam, várok dashboard URL-re...')
-  await page.waitForURL('**/dashboard**', { timeout: 20000 })
+  console.log('[LOGIN] Gombra kattintottam, várok central-workstation URL-re...')
+  await page.waitForURL('**/central-workstation**', { timeout: 20000 })
   await waitNoSpinner(page)
   await ss(page, '01-dashboard.png')
 
   const url = page.url()
   console.log(`[LOGIN] Aktuális URL: ${url}`)
-  expect(url).toContain('/dashboard')
-  console.log('[LOGIN] PASS — Dashboard betöltve')
+  expect(url).toContain('/central-workstation')
+  console.log('[LOGIN] PASS — Central Workstation betöltve')
 })
 
 // ─────────────────────────────────────────────────────────────
@@ -397,7 +397,7 @@ test('06 — Sidebar menüpontok bejárása', async ({ page }) => {
   await login(page)
 
   const routes = [
-    { path: '/dashboard', name: 'Irányítópult', file: '06-dashboard.png' },
+    { path: '/central-workstation', name: 'Irányítópult', file: '06-dashboard.png' },
     { path: '/transactions', name: 'Tranzakciólista', file: '06-transactions.png' },
     { path: '/customers', name: 'Ügyfelek', file: '06-customers.png' },
     { path: '/rates', name: 'Árfolyamok', file: '06-rates.png' },

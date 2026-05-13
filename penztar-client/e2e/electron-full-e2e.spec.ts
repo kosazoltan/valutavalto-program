@@ -101,11 +101,11 @@ test.describe.serial('Electron E2E — teljes rendszerteszt (beépített fronten
 
     await page.locator('[data-testid="login-submit"]').click()
 
-    await page.waitForURL(/dashboard/, { timeout: 15_000 })
+    await page.waitForURL(/central-workstation/, { timeout: 15_000 })
     await waitForNoSpinner()
     await screenshot('dashboard')
 
-    await expect(page).toHaveURL(/dashboard/)
+    await expect(page).toHaveURL(/central-workstation/)
   })
 
   test('02 — EUR VÉTEL', async () => {
@@ -248,7 +248,7 @@ test.describe.serial('Electron E2E — teljes rendszerteszt (beépített fronten
 
   test('13 — Sidebar teljes bejárás', async () => {
     const routes = [
-      '/dashboard',
+      '/central-workstation',
       '/transactions',
       '/transactions/new',
       '/customers',

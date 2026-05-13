@@ -174,7 +174,7 @@ export default function TransferPage() {
   })()
 
   // Create new transfer
-  const handleCreateTransfer = async () => {
+  const handleCreateTransfer = async (pinVerified = false) => {
     if (!toBranchId || !currencyId || !amount) {
       setError('Minden mező kitöltése kötelező!')
       return
@@ -186,7 +186,7 @@ export default function TransferPage() {
       return
     }
 
-    if (isTargetTH && !pendingTransferAfterPin) {
+    if (isTargetTH && !pinVerified && !pendingTransferAfterPin) {
       setShowSupervisorPin(true)
       return
     }
@@ -673,7 +673,7 @@ export default function TransferPage() {
                     const workerBranch = branches.find(b => b.id === worker?.branchId)
                     const workerRegion = workerBranch?.region
                     return branches
-                      .filter(b => b.id !== worker?.branchId)
+                      .filter(b => transferDirection === 'out' ? b.id !== worker?.branchId : true)
                       .filter(b => {
                         const isTH = b.branchTypeCode === 'TH' || /\bTH\b/i.test(b.code) || /\bTH\b/i.test(b.name)
                         const isVault = b.isVault === true
@@ -782,7 +782,7 @@ export default function TransferPage() {
               </button>
               <button
                 type="button"
-                onClick={handleCreateTransfer}
+                onClick={() => void handleCreateTransfer()}
                 className="form-button-primary"
                 disabled={loading}
               >
@@ -885,7 +885,7 @@ export default function TransferPage() {
         onSuccess={() => {
           setShowSupervisorPin(false)
           setPendingTransferAfterPin(true)
-          void handleCreateTransfer()
+          void handleCreateTransfer(true)
         }}
         onCancel={() => setShowSupervisorPin(false)}
       />

@@ -85,7 +85,7 @@ const MENU_ITEMS: Array<{ group: string; label: string; path: string }> = [
   { group: 'Kamera', label: 'Allapot', path: '/camera/status' },
 
   // Altalanos navigacio
-  { group: 'Navigacio', label: 'Iranyitopult', path: '/dashboard' },
+  { group: 'Navigacio', label: 'Iranyitopult', path: '/central-workstation' },
   { group: 'Navigacio', label: 'Tranzakciolista', path: '/transactions' },
   { group: 'Navigacio', label: 'Szallitmanyigenyek (FIX PR #180)', path: '/shipments' },
   { group: 'Navigacio', label: 'Atadas-atvetel (ertektar)', path: '/transfers' },
