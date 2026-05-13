@@ -208,6 +208,9 @@ export default function ReceiptPrint({
 
             {/* === TRANZAKCIÓ RÉSZLETEK === */}
             <div className="row"><span>{t('components.valuta')}</span><span className="bold">{transaction.currencyCode}</span></div>
+            {transaction.foreignStatus && (
+              <div className="row"><span>Devizastátusz</span><span className="bold">{transaction.foreignStatus === 'FOREIGN' ? 'Külföldi' : 'Belföldi'}</span></div>
+            )}
             <div className="row">
               <span>{t('components.osszeg')}</span>
               <span className="bold">{formatDecimal(transaction.currencyAmount, 2, 2)} {transaction.currencyCode}</span>

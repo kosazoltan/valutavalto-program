@@ -63,6 +63,9 @@ public class TransactionDto {
     private String reversalReason;
     private String approvedBy;
 
+    // Devizastatusz
+    private String foreignStatus;
+
     // Egyéb
     private String notes;
     private Boolean printed;

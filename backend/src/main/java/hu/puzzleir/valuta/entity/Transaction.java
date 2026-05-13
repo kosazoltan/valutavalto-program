@@ -309,6 +309,13 @@ public class Transaction {
     @Column(name = "pos_terminal_id", length = 50)
     private String posTerminalId;
 
+    /**
+     * Devizastatusz: DOMESTIC (belfoldi) / FOREIGN (kulfoldi).
+     * V207 migracio — bizonylatra nyomtatott mezo.
+     */
+    @Column(name = "foreign_status", length = 10)
+    private String foreignStatus;
+
     @Version
     private Long version;
 

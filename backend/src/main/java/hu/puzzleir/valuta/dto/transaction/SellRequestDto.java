@@ -56,6 +56,9 @@ public class SellRequestDto {
 
     private String notes;
 
+    /** Devizastatusz: DOMESTIC (belfoldi) / FOREIGN (kulfoldi) */
+    private String foreignStatus;
+
     /**
      * Multi-line bizonylat tetelsorai (max 6 sor).
      * Ha megadva, a currencyId/currencyCode/currencyAmount mezok figyelmen kivul maradnak

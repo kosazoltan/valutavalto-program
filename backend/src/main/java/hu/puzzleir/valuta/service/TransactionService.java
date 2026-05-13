@@ -263,6 +263,7 @@ public class TransactionService {
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
+                .foreignStatus(request.getForeignStatus())
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
@@ -410,6 +411,7 @@ public class TransactionService {
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
+                .foreignStatus(request.getForeignStatus())
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
@@ -714,6 +716,7 @@ public class TransactionService {
         private String sourceOfFunds;
         private Boolean customerIsPep;
         private String notes;
+        private String foreignStatus;
         /** Fizetési mód: CASH (alapértelmezett) vagy CARD (bankkártya) */
         private PaymentMethod paymentMethod;
         /** POS terminál azonosító (csak CARD fizetésnél kötelező) */
@@ -741,6 +744,7 @@ public class TransactionService {
         private String sourceOfFunds;
         private Boolean customerIsPep;
         private String notes;
+        private String foreignStatus;
         /** Fizetési mód: CASH (alapértelmezett) vagy CARD (bankkártya) */
         private PaymentMethod paymentMethod;
         /** POS terminál azonosító (csak CARD fizetésnél kötelező) */

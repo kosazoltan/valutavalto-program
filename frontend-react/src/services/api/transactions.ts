@@ -148,6 +148,7 @@ export interface Transaction {
   // G3-G4: PEP + Jogcím nyilatkozat (Legacy Gap Fix)
   customerIsPep?: boolean
   sourceOfFunds?: string
+  foreignStatus?: 'DOMESTIC' | 'FOREIGN'
   // Legacy compatibility aliases
   transactionNumber?: string // Same as receiptNumber
   type?: 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION' // Same as transactionType
@@ -178,6 +179,7 @@ export interface BuyRequest {
   sourceOfFunds?: string
   customerIsPep?: boolean
   notes?: string
+  foreignStatus?: 'DOMESTIC' | 'FOREIGN'
 }
 
 export interface SellRequest {
@@ -199,6 +201,7 @@ export interface SellRequest {
   sourceOfFunds?: string
   customerIsPep?: boolean
   notes?: string
+  foreignStatus?: 'DOMESTIC' | 'FOREIGN'
 }
 
 export interface ReversalRequest {
@@ -1119,6 +1122,8 @@ export interface Transfer {
   receivedAmount?: number
   difference?: number
   notes?: string
+  carrierName?: string
+  sealNumber?: string
   handoverPrinted: boolean
   receiptPrinted: boolean
   createdAt: string
@@ -1133,7 +1138,10 @@ export interface CreateTransferRequest {
   amount: number
   hufValue?: number
   transferType: 'CURRENCY' | 'CASH' | 'HANDLING_FEE' | 'VAULT_DEPOSIT' | 'VAULT_WITHDRAW' | 'CORRECTION' | 'OTHER'
+  direction?: 'F' | 'U' | 'UF' | 'FF'
   notes?: string
+  carrierName?: string
+  sealNumber?: string
 }
 
 export interface ReceiveTransferRequest {

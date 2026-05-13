@@ -46,6 +46,9 @@ public class ReceiptData {
     /** Deviza összeg */
     private BigDecimal foreignAmount;
 
+    /** Devizastatusz: DOMESTIC (belfoldi) / FOREIGN (kulfoldi) */
+    private String foreignStatus;
+
     /** Alkalmazott árfolyam */
     private BigDecimal rate;
 

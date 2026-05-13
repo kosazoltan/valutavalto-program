@@ -16,6 +16,7 @@ import {
   transferApi,
   currencyApi,
   branchApi,
+  cashBalanceApi,
   Transfer,
   CreateTransferRequest,
   Currency
@@ -31,6 +32,7 @@ import {
 } from '../../utils/electronTransactions'
 import { getLocalPendingTransfers } from '../../utils/localQueue'
 import { useTranslation } from 'react-i18next'
+import SupervisorPinModal from '../../components/auth/SupervisorPinModal'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -102,20 +104,27 @@ export default function TransferPage() {
   // Form state for new transfer
   const [showNewTransfer, setShowNewTransfer] = useState(false)
   const [currencies, setCurrencies] = useState<Currency[]>([])
-  const [branches, setBranches] = useState<{ id: string; code: string; name: string }[]>([])
+  const [branches, setBranches] = useState<{ id: string; code: string; name: string; isVault?: boolean; branchTypeCode?: string; region?: string; vaultTerritoryId?: number | null }[]>([])
 
   // New transfer form
+  const [transferDirection, setTransferDirection] = useState<'out' | 'in'>('out')
   const [toBranchId, setToBranchId] = useState('')
   const [currencyId, setCurrencyId] = useState<number | null>(null)
   const [amount, setAmount] = useState('')
   const [transferType, setTransferType] = useState<CreateTransferRequest['transferType']>('CURRENCY')
   const [notes, setNotes] = useState('')
+  const [carrierName, setCarrierName] = useState('')
+  const [sealNumber, setSealNumber] = useState('')
 
   // Receive modal
   const [showReceiveModal, setShowReceiveModal] = useState(false)
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null)
   const [receivedAmount, setReceivedAmount] = useState('')
   const [receiveNotes, setReceiveNotes] = useState('')
+
+  // Supervisor PIN for TH transfers
+  const [showSupervisorPin, setShowSupervisorPin] = useState(false)
+  const [pendingTransferAfterPin, setPendingTransferAfterPin] = useState(false)
 
   // Loading & Error
   const [loading, setLoading] = useState(false)
@@ -142,7 +151,11 @@ export default function TransferPage() {
       setCurrencies(currencyData)
 
       const branchData = await branchApi.listActive()
-      setBranches(branchData.map(b => ({ id: b.id, code: b.code, name: b.name })))
+      setBranches(branchData.map(b => ({
+        id: b.id, code: b.code, name: b.name,
+        isVault: b.isVault, branchTypeCode: b.branchTypeCode,
+        region: b.region, vaultTerritoryId: b.vaultTerritoryId,
+      })))
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -153,6 +166,12 @@ export default function TransferPage() {
   useEffect(() => {
     void loadData()
   }, [loadData])
+
+  const isTargetTH = (() => {
+    const target = branches.find(b => b.id === toBranchId)
+    if (!target) return false
+    return target.branchTypeCode === 'TH' || /\bTH\b/i.test(target.code) || /\bTH\b/i.test(target.name)
+  })()
 
   // Create new transfer
   const handleCreateTransfer = async () => {
@@ -167,6 +186,31 @@ export default function TransferPage() {
       return
     }
 
+    if (isTargetTH && !pendingTransferAfterPin) {
+      setShowSupervisorPin(true)
+      return
+    }
+    setPendingTransferAfterPin(false)
+
+    // Készlet-ellenőrzés: van-e elég a kasszában az átadáshoz? (csak kimenő átadásnál)
+    if (transferDirection === 'out' && transferType !== 'VAULT_DEPOSIT') {
+      try {
+        const balances = await cashBalanceApi.list()
+        const selectedCurrency = currencies.find(c => c.id === currencyId)
+        if (selectedCurrency) {
+          const bal = balances.find((b: { currencyCode: string }) => b.currencyCode === selectedCurrency.code)
+          const available = bal?.currentBalance ?? 0
+          if (amountValue > available) {
+            setError(`Nincs ennyi készlet! ${selectedCurrency.code}: elérhető ${available.toLocaleString('hu-HU')}, kért ${amountValue.toLocaleString('hu-HU')}`)
+            return
+          }
+        }
+      } catch {
+        setError('Készlet-ellenőrzés sikertelen. Próbálja újra!')
+        return
+      }
+    }
+
     try {
       setLoading(true)
       setError(null)
@@ -176,7 +220,10 @@ export default function TransferPage() {
         currencyId,
         amount: amountValue,
         transferType,
-        notes: notes || undefined
+        direction: transferDirection === 'in' ? 'U' : 'F',
+        notes: notes || undefined,
+        carrierName: carrierName.trim() || undefined,
+        sealNumber: sealNumber.trim() || undefined,
       }
 
       if (electronQueueAvailable) {
@@ -199,22 +246,26 @@ export default function TransferPage() {
           note: notes || null,
         })
 
+        const label = transferDirection === 'out' ? 'Átadás' : 'Átvétel'
         setSuccess(
           outcome.allSavedSynced
-            ? 'Átadás helyileg rögzítve és azonnal szinkronizálva'
-            : 'Átadás helyileg rögzítve. A feltöltés az Electron queue-ból folytatódik.',
+            ? `${label} helyileg rögzítve és azonnal szinkronizálva`
+            : `${label} helyileg rögzítve. A feltöltés az Electron queue-ból folytatódik.`,
         )
       } else {
         const result = await transferApi.create(request)
-        setSuccess(`Átadás létrehozva: ${result.transferNumber}`)
+        setSuccess(`${transferDirection === 'out' ? 'Átadás' : 'Átvétel'} létrehozva: ${result.transferNumber}`)
       }
       setShowNewTransfer(false)
 
       // Reset form
+      setTransferDirection('out')
       setToBranchId('')
       setCurrencyId(null)
       setAmount('')
       setNotes('')
+      setCarrierName('')
+      setSealNumber('')
 
       // Reload
       await loadData()
@@ -576,13 +627,41 @@ export default function TransferPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-4">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Send />
-              {t('transfers.ujAtadasLetrehozasa')}
+              {transferDirection === 'out' ? <Send /> : <Download />}
+              {transferDirection === 'out' ? 'Új átadás létrehozása' : 'Új átvétel igénylése'}
             </h2>
 
             <div className="space-y-4">
+              {/* Irány választó */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTransferDirection('out')}
+                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold border-2 transition-all flex items-center justify-center gap-2 ${
+                    transferDirection === 'out'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
+                  }`}
+                >
+                  <Send size={16} /> Átadás (kimenő)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTransferDirection('in')}
+                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold border-2 transition-all flex items-center justify-center gap-2 ${
+                    transferDirection === 'in'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-green-300'
+                  }`}
+                >
+                  <Download size={16} /> Átvétel (bejövő)
+                </button>
+              </div>
+
               <div>
-                <label htmlFor="to-branch" className="form-label">{t('transfers.celIroda')}</label>
+                <label htmlFor="to-branch" className="form-label">
+                  {transferDirection === 'out' ? 'Cél iroda' : 'Forrás iroda (ahonnan érkezik)'}
+                </label>
                 <select
                   id="to-branch"
                   value={toBranchId}
@@ -590,11 +669,23 @@ export default function TransferPage() {
                   className="form-input w-full"
                 >
                   <option value="">{t('transfers.valasszonIrodat')}</option>
-                  {branches
-                    .filter(b => b.id !== worker?.branchId)
-                    .map(b => (
-                      <option key={b.id} value={b.id}>{b.code} - {b.name}</option>
-                    ))}
+                  {(() => {
+                    const workerBranch = branches.find(b => b.id === worker?.branchId)
+                    const workerRegion = workerBranch?.region
+                    return branches
+                      .filter(b => b.id !== worker?.branchId)
+                      .filter(b => {
+                        const isTH = b.branchTypeCode === 'TH' || /\bTH\b/i.test(b.code) || /\bTH\b/i.test(b.name)
+                        const isVault = b.isVault === true
+                        const sameRegion = !workerRegion || b.region === workerRegion
+                        return (isVault || isTH) && sameRegion
+                      })
+                      .map(b => (
+                        <option key={b.id} value={b.id}>
+                          {b.code} - {b.name}{b.isVault ? ' (értéktár)' : ''}{b.branchTypeCode === 'TH' || /\bTH\b/i.test(b.code) ? ' (TH)' : ''}
+                        </option>
+                      ))
+                  })()}
                 </select>
               </div>
 
@@ -636,10 +727,36 @@ export default function TransferPage() {
                   value={amount}
                   onChange={setAmount}
                   className="form-input w-full"
-                  placeholder="0,00"
+                  placeholder="0"
                   allowDecimals={true}
                   allowNegative={false}
+                  thousandSeparator={true}
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="carrier-name" className="form-label">Szállító neve</label>
+                  <input
+                    id="carrier-name"
+                    type="text"
+                    value={carrierName}
+                    onChange={(e) => setCarrierName(e.target.value)}
+                    className="form-input w-full"
+                    placeholder="Szállító neve..."
+                  />
+                </div>
+                <div>
+                  <label htmlFor="seal-number" className="form-label">Plombaszám</label>
+                  <input
+                    id="seal-number"
+                    type="text"
+                    value={sealNumber}
+                    onChange={(e) => setSealNumber(e.target.value)}
+                    className="form-input w-full"
+                    placeholder="Plombaszám..."
+                  />
+                </div>
               </div>
 
               <div>
@@ -669,8 +786,8 @@ export default function TransferPage() {
                 className="form-button-primary"
                 disabled={loading}
               >
-                {loading ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
-                {t('transfers.atadasLetrehozasa')}
+                {loading ? <RefreshCw size={16} className="animate-spin" /> : transferDirection === 'out' ? <Send size={16} /> : <Download size={16} />}
+                {transferDirection === 'out' ? 'Átadás létrehozása' : 'Átvétel igénylése'}
               </button>
             </div>
           </div>
@@ -759,6 +876,19 @@ export default function TransferPage() {
           </div>
         </div>
       )}
+
+      {/* Supervisor PIN for TH transfers */}
+      <SupervisorPinModal
+        open={showSupervisorPin}
+        workerId={worker?.id ?? 0}
+        workerLabel={`${worker?.firstName ?? ''} ${worker?.lastName ?? ''}`}
+        onSuccess={() => {
+          setShowSupervisorPin(false)
+          setPendingTransferAfterPin(true)
+          void handleCreateTransfer()
+        }}
+        onCancel={() => setShowSupervisorPin(false)}
+      />
     </div>
   )
 }

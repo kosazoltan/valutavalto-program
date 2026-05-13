@@ -9,6 +9,10 @@ export interface BranchInfo {
   companyId?: string
   city?: string
   isActive?: boolean
+  isVault?: boolean
+  vaultTerritoryId?: number | null
+  branchTypeCode?: string
+  region?: string
 }
 
 export const branchApi = {

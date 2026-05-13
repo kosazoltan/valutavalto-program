@@ -11,6 +11,7 @@ interface NumberInputProps {
   step?: number | string
   allowDecimals?: boolean
   allowNegative?: boolean
+  thousandSeparator?: boolean
   autoFocus?: boolean
   title?: string
   id?: string
@@ -36,6 +37,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       step,
       allowDecimals = false,
       allowNegative = false,
+      thousandSeparator = false,
       autoFocus,
       title,
       id,
@@ -57,8 +59,13 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       // Csak számokat, tizedesvesszőt/vesszőt és mínuszt engedünk
       // Az 'e', 'E', '+' karaktereket eltávolítjuk
       let cleaned = inputValue
-        .replace(/[^0-9,.-]/g, '') // Csak számok, tizedesvessző, mínusz
+        .replace(/[^0-9,.\- ]/g, '') // Csak számok, tizedesvessző, mínusz, szóköz
         .replace(/[eE+]/g, '') // Az 'e', 'E', '+' eltávolítása
+
+      // Ezres elválasztók eltávolítása a belső értékből
+      if (thousandSeparator) {
+        cleaned = cleaned.replace(/\./g, '').replace(/\s/g, '')
+      }
 
       // Negatív számok kezelése
       if (!allowNegative) {
@@ -137,9 +144,16 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
     }
 
     // Az érték megjelenítésekor tizedesvesszőt vesszőre cseréljük magyar formátumhoz
-    const displayValue = typeof value === 'number' 
+    let displayValue = typeof value === 'number'
       ? value.toString().replace('.', ',')
       : value.toString()
+
+    // Ezres elválasztó megjelenítés (magyar: pont)
+    if (thousandSeparator && displayValue) {
+      const parts = displayValue.split(',')
+      parts[0] = (parts[0] ?? '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+      displayValue = parts.join(',')
+    }
 
     return (
       <input

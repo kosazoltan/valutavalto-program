@@ -35,6 +35,8 @@ public class TransferDto {
     private BigDecimal receivedAmount;
     private BigDecimal difference;
     private String notes;
+    private String carrierName;
+    private String sealNumber;
     private Boolean handoverPrinted;
     private Boolean receiptPrinted;
     private String createdAt;
