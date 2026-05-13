@@ -148,6 +148,20 @@ class DiscountApprovalServiceTest {
     }
 
     @Test
+    @DisplayName("mapRoleToLevel — RAW operational codes (Copilot P2 #580)")
+    void mapRoleToLevel_rawOperationalCodes() {
+        // Copilot P2 #580: a WorkerAuthenticationDetails.activeRole RAW operational code-ot tárol,
+        // NEM normalized canonical. Mind a 2 csatorna lefedve a switch-ben.
+        assertThat(service.mapRoleToLevel("CHIEF_VAULT")).isEqualTo(ApprovalLevel.DIRECTOR);
+        assertThat(service.mapRoleToLevel("OFFICE_MGR")).isEqualTo(ApprovalLevel.MANAGER);
+        assertThat(service.mapRoleToLevel("AUDITOR")).isEqualTo(ApprovalLevel.SUPERVISOR);
+        // Normalized canonical egyaránt működik:
+        assertThat(service.mapRoleToLevel("FOERTEKTAR")).isEqualTo(ApprovalLevel.DIRECTOR);
+        assertThat(service.mapRoleToLevel("IRODAVEZETO")).isEqualTo(ApprovalLevel.MANAGER);
+        assertThat(service.mapRoleToLevel("BELSO_ELLENOR")).isEqualTo(ApprovalLevel.SUPERVISOR);
+    }
+
+    @Test
     @DisplayName("ApprovalLevel.satisfies — CASHIER < SUPERVISOR")
     void approvalLevel_satisfies() {
         assertThat(ApprovalLevel.CASHIER.satisfies(ApprovalLevel.SUPERVISOR)).isFalse();

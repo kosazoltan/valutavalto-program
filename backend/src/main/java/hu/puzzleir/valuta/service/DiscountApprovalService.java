@@ -88,14 +88,27 @@ public class DiscountApprovalService {
      */
     public ApprovalLevel mapRoleToLevel(String role) {
         if (role == null) return ApprovalLevel.CASHIER;
-        // Codex P2 #571 fix: a valós operational role code REGIONAL_MGR (NEM REGIONAL_MANAGER),
-        // lásd JwtAuthenticationFilter.normalizeOperationalRoleForAuthority. Mindkét alak elfogadva
-        // (REGIONAL_MGR a JWT activeRole-ból, REGIONAL_MANAGER a legacy worker.role mezőből vagy
-        // hosszabb forma). Hasonlóan OFFICE_MGR vs OFFICE_MANAGER.
+        // Háttér (JwtAuthenticationFilter.normalizeOperationalRoleForAuthority):
+        // a WorkerAuthenticationDetails.activeRole RAW operational code-ot tárol
+        // (CHIEF_VAULT, OFFICE_MGR, REGIONAL_MGR, VAULT_KEEPER, COURIER, AUDITOR,
+        // SECURITY, CASHIER, DIRECTOR). A JWT authority normalized canonical
+        // (FOERTEKTAR, IRODAVEZETO, TERULETI_VEZETO, ERTEKTAR, ERTEKSZALLITO,
+        // BELSO_ELLENOR, BIZTONSAGI_VEZETO, PENZTAR, UGYVEZETO).
+        // Copilot P2 #580 fix: ha a hívó a RAW activeRole-t adja át, NE fall through-
+        // jon CASHIER-re. Mindkét csatorna explicit lefedve.
         return switch (role.toUpperCase(Locale.ROOT)) {
-            case "DIRECTOR", "MAIN_TREASURY", "ADMIN", "SYSTEM_ADMIN", "UGYVEZETO", "FOERTEKTAR" -> ApprovalLevel.DIRECTOR;
-            case "MANAGER", "REGIONAL_MANAGER", "REGIONAL_MGR", "TREASURY_MANAGER", "OFFICE_MGR", "OFFICE_MANAGER", "TERULETI_VEZETO", "IRODAVEZETO" -> ApprovalLevel.MANAGER;
-            case "SUPERVISOR", "CASHIER_SUPERVISOR", "BELSO_ELLENOR" -> ApprovalLevel.SUPERVISOR;
+            // Director-level: raw + normalized + legacy
+            case "DIRECTOR", "MAIN_TREASURY", "ADMIN", "SYSTEM_ADMIN",
+                 "CHIEF_VAULT",
+                 "UGYVEZETO", "FOERTEKTAR" -> ApprovalLevel.DIRECTOR;
+            // Manager-level: raw + normalized + legacy
+            case "MANAGER", "REGIONAL_MANAGER", "TREASURY_MANAGER", "OFFICE_MANAGER",
+                 "REGIONAL_MGR", "OFFICE_MGR",
+                 "TERULETI_VEZETO", "IRODAVEZETO" -> ApprovalLevel.MANAGER;
+            // Supervisor-level: raw + normalized + legacy
+            case "SUPERVISOR", "CASHIER_SUPERVISOR",
+                 "AUDITOR",
+                 "BELSO_ELLENOR" -> ApprovalLevel.SUPERVISOR;
             default -> ApprovalLevel.CASHIER;
         };
     }
