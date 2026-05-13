@@ -18,7 +18,12 @@ import java.time.LocalDate;
 @RequestMapping("/api/v1/central/received-data")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("isAuthenticated()")
+// Codex P1 #560 fix: NEM isAuthenticated(), mert akkor cashier szintű account-ok is
+// olvashatnák a company-wide turnover/branch riportokat. A CentralModuleManifest-ben
+// a "received-data" canonical role-jai: foertektar, ugyvezeto, belso_ellenor,
+// teruleti_vezeto — ezek legacy mapping-je: SUPERVISOR + MANAGER + ADMIN (kizárja
+// a CASHIER-t, ami a security concern lényege).
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 public class CentralReceivedDataController {
 
     private final CentralReceivedDataService centralReceivedDataService;
