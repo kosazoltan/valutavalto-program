@@ -94,6 +94,7 @@ const BranchGroupPage = lazy(() => import('./pages/branches/BranchGroupPage'))
 const AuditLogPage = lazy(() => import('./pages/audit/AuditLogPage'))
 const CircularPage = lazy(() => import('./pages/circulars/CircularPage'))
 const FeePackagePage = lazy(() => import('./pages/fees/FeePackagePage'))
+const HandlingFeeConfigPage = lazy(() => import('./pages/fees/HandlingFeeConfigPage'))
 const PepPage = lazy(() => import('./pages/pep/PepPage'))
 const RateGroupPage = lazy(() => import('./pages/rates/RateGroupPage'))
 const ReservationPage = lazy(() => import('./pages/reservations/ReservationPage'))
@@ -573,6 +574,7 @@ export default function App() {
 
           {/* Fee Packages */}
           <Route path="/fee-packages" element={<FeePackagePage />} />
+          <Route path="/handling-fee-config" element={<HandlingFeeConfigPage />} />
 
           {/* PEP (Politically Exposed Persons) */}
           <Route path="/pep" element={<PepPage />} />

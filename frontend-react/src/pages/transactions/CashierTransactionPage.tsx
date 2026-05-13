@@ -6,7 +6,7 @@ import { AlertTriangle } from 'lucide-react'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
 import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi } from '../../services/api/index'
-import type { BuyRequest, SellRequest, ExchangeRate } from '../../services/api/index'
+import type { BuyRequest, SellRequest, ExchangeRate, CashierCustomRateQuota } from '../../services/api/index'
 import { roundHuf } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
 import {
@@ -171,6 +171,10 @@ export default function CashierTransactionPage() {
   const [rateAuthPendingRate, setRateAuthPendingRate] = useState(0)
   const rateAuthApprovedRef = useRef<Set<string>>(new Set())
 
+  // Penztarosi sav (cashier custom rate) kvota
+  const [cashierRateQuota, setCashierRateQuota] = useState<CashierCustomRateQuota | null>(null)
+  const cashierCustomRateRowsRef = useRef<Set<string>>(new Set())
+
   // Calculated totals
   const subtotal = rows.reduce((sum, r) => sum + r.hufValue, 0)
   const discountAmount = discount > 0 ? Math.round(subtotal * discount / 100) : 0
@@ -251,6 +255,21 @@ export default function CashierTransactionPage() {
       cancelled = true
     }
   }, [electronQueueAvailable])
+
+  // Penztarosi sav kvota betoltes
+  useEffect(() => {
+    let cancelled = false
+    const loadQuota = async () => {
+      try {
+        const quota = await transactionApi.getCashierRateQuota()
+        if (!cancelled) setCashierRateQuota(quota)
+      } catch {
+        // Non-blocking: kvota lekerdezesi hiba nem akadalyozza a tranzakciot
+      }
+    }
+    void loadQuota()
+    return () => { cancelled = true }
+  }, [])
 
   // Auto focus first row on mount
   useEffect(() => {
@@ -354,12 +373,30 @@ export default function CashierTransactionPage() {
       if (rateAuthApprovedRef.current.has(rowKey)) return
 
       if (!isWithinBand(rateObj, row.exchangeRate, mode, baseAmountHuf)) {
+        const hufAmount = row.exchangeRate * qtyNum
+        const minAmount = cashierRateQuota?.minAmountHuf ?? 400000
+        const remaining = cashierRateQuota?.remaining ?? 0
+
+        if (hufAmount >= minAmount && remaining > 0) {
+          cashierCustomRateRowsRef.current.add(rowKey)
+          rateAuthApprovedRef.current.add(rowKey)
+          toast.success(
+            'Pénztárosi sáv',
+            `Egyedi árfolyam engedélyezve (${cashierRateQuota!.limit - remaining + 1}/${cashierRateQuota!.limit} ma)`,
+          )
+          return
+        }
+
+        if (hufAmount >= minAmount && remaining <= 0) {
+          toast.warning('Pénztárosi sáv limit', `Napi ${cashierRateQuota?.limit ?? 5} egyedi árfolyam felhasználva!`)
+        }
+
         setRateAuthRow(rowIdx)
         setRateAuthPendingRate(row.exchangeRate)
         setShowRateAuth(true)
       }
     },
-    [rows, exchangeRates, mode]
+    [rows, exchangeRates, mode, cashierRateQuota]
   )
 
   const handleQuantityInput = useCallback(
@@ -558,7 +595,10 @@ export default function CashierTransactionPage() {
       } else {
         const receiptNumbers: string[] = []
 
-        for (const row of filledRows) {
+        for (let ri = 0; ri < filledRows.length; ri++) {
+          const row = filledRows[ri]!
+          const rowKey = `${ri}-${row.currencyCode}`
+          const isCashierCustom = cashierCustomRateRowsRef.current.has(rowKey) || undefined
           if (mode === 'buy') {
             const request: BuyRequest = {
               currencyCode: row.currencyCode,
@@ -566,6 +606,7 @@ export default function CashierTransactionPage() {
               customExchangeRate: row.exchangeRate,
               handlingFee: handlingFee > 0 ? handlingFee : undefined,
               discountPercent: discount > 0 ? discount : undefined,
+              cashierCustomRate: isCashierCustom,
               ...customerData,
             }
             const result = await transactionApi.buy(request)
@@ -577,6 +618,7 @@ export default function CashierTransactionPage() {
               customExchangeRate: row.exchangeRate,
               handlingFee: handlingFee > 0 ? handlingFee : undefined,
               discountPercent: discount > 0 ? discount : undefined,
+              cashierCustomRate: isCashierCustom,
               ...customerData,
             }
             const result = await transactionApi.sell(request)
@@ -861,6 +903,52 @@ export default function CashierTransactionPage() {
                 ))}
               </tbody>
             </table>
+
+            {/* SAVOS ARFOLYAM INFO */}
+            {(() => {
+              const activeRowData = rows[activeRow]
+              if (!activeRowData?.currencyCode) return null
+              const rateObj = exchangeRates.find((r) => r.currencyCode === activeRowData.currencyCode)
+              if (!rateObj) return null
+              const qtyNum = parseFloat(activeRowData.quantity) || 0
+              const baseRate = mode === 'buy' ? rateObj.baseBuyRate : rateObj.baseSellRate
+              const baseHuf = baseRate * qtyNum
+              const band = getBandForAmount(rateObj, mode, baseHuf)
+              const tiers: { name: string; rate: number; minHuf: number }[] = [
+                { name: 'Alap', rate: mode === 'buy' ? rateObj.baseBuyRate : rateObj.baseSellRate, minHuf: 0 },
+              ]
+              if (rateObj.limit1Amount != null && (mode === 'buy' ? rateObj.limit1BuyRate : rateObj.limit1SellRate) != null) {
+                tiers.push({ name: 'Limit 1', rate: (mode === 'buy' ? rateObj.limit1BuyRate : rateObj.limit1SellRate)!, minHuf: rateObj.limit1Amount })
+              }
+              if (rateObj.limit2Amount != null && (mode === 'buy' ? rateObj.limit2BuyRate : rateObj.limit2SellRate) != null) {
+                tiers.push({ name: 'Limit 2', rate: (mode === 'buy' ? rateObj.limit2BuyRate : rateObj.limit2SellRate)!, minHuf: rateObj.limit2Amount })
+              }
+              if (rateObj.limit3Amount != null && (mode === 'buy' ? rateObj.limit3BuyRate : rateObj.limit3SellRate) != null) {
+                tiers.push({ name: 'Limit 3', rate: (mode === 'buy' ? rateObj.limit3BuyRate : rateObj.limit3SellRate)!, minHuf: rateObj.limit3Amount })
+              }
+              return (
+                <div className="bg-blue-50 dark:bg-blue-950/30 p-2 text-xs border-t border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <span className="font-semibold text-blue-700 dark:text-blue-300">{activeRowData.currencyCode} sávok:</span>
+                    {tiers.map((tier) => (
+                      <span key={tier.name} className={`px-1.5 py-0.5 rounded ${band.tierName === tier.name.toLowerCase().replace(' ', '') || (tier.name === 'Alap' && band.tierName === 'alap') ? 'bg-blue-600 text-white font-bold' : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'}`}>
+                        {tier.name}: {tier.rate.toFixed(2)} {tier.minHuf > 0 ? `(${(tier.minHuf / 1000).toFixed(0)}k+)` : ''}
+                      </span>
+                    ))}
+                    {cashierRateQuota && cashierRateQuota.remaining > 0 && (
+                      <span className="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                        Pénztárosi sáv: {cashierRateQuota.remaining}/{cashierRateQuota.limit} ({(cashierRateQuota.minAmountHuf / 1000).toFixed(0)}k+ Ft)
+                      </span>
+                    )}
+                    {cashierRateQuota && cashierRateQuota.remaining <= 0 && (
+                      <span className="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">
+                        Pénztárosi sáv: elfogyott ({cashierRateQuota.used}/{cashierRateQuota.limit})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* OSSZEGZO */}
             <div className="bg-gray-50 dark:bg-gray-800/80 p-2 space-y-1 border-t border-gray-200 dark:border-gray-700">

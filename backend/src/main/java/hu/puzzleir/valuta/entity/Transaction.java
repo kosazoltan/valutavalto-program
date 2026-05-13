@@ -158,6 +158,13 @@ public class Transaction {
     @Builder.Default
     private BigDecimal discountPercent = BigDecimal.ZERO;
 
+    /**
+     * Penztarosi sav: egyedi arfolyam hasznalva (napi 5x limit)
+     */
+    @Column(name = "cashier_custom_rate")
+    @Builder.Default
+    private Boolean cashierCustomRate = false;
+
     // ============ ÜGYFÉL ADATOK ============
 
     /**

@@ -179,6 +179,7 @@ export interface BuyRequest {
   sourceOfFunds?: string
   customerIsPep?: boolean
   notes?: string
+  cashierCustomRate?: boolean
   foreignStatus?: 'DOMESTIC' | 'FOREIGN'
 }
 
@@ -201,7 +202,15 @@ export interface SellRequest {
   sourceOfFunds?: string
   customerIsPep?: boolean
   notes?: string
+  cashierCustomRate?: boolean
   foreignStatus?: 'DOMESTIC' | 'FOREIGN'
+}
+
+export interface CashierCustomRateQuota {
+  used: number
+  limit: number
+  remaining: number
+  minAmountHuf: number
 }
 
 export interface ReversalRequest {
@@ -259,6 +268,10 @@ export const transactionApi = {
   getDailyTurnover: async (date?: string): Promise<DailyTurnoverSummary> => {
     const params = date ? { date } : {}
     const response = await api.get<DailyTurnoverSummary>('/transactions/daily-turnover', { params })
+    return response.data
+  },
+  getCashierRateQuota: async (): Promise<CashierCustomRateQuota> => {
+    const response = await api.get<CashierCustomRateQuota>('/transactions/cashier-rate-quota')
     return response.data
   },
   buy: async (data: BuyRequest): Promise<Transaction> => {

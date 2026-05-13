@@ -56,6 +56,17 @@ public class SystemParameterService {
     }
 
     @Transactional(rollbackFor = Exception.class)
+    public SystemParameter upsert(String key, String value, String category, String description) {
+        return repo.findByParameterKey(key)
+                .map(p -> {
+                    p.setParameterValue(value);
+                    if (description != null) p.setDescription(description);
+                    return repo.save(p);
+                })
+                .orElseGet(() -> create(key, value, "STRING", category, description));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public SystemParameter create(String key, String value, String type, String category, String description) {
         SystemParameter p = SystemParameter.builder()
                 .parameterKey(key).parameterValue(value).parameterType(type)
