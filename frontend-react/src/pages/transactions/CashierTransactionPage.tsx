@@ -375,19 +375,28 @@ export default function CashierTransactionPage() {
       if (!isWithinBand(rateObj, row.exchangeRate, mode, baseAmountHuf)) {
         const hufAmount = row.exchangeRate * qtyNum
         const minAmount = cashierRateQuota?.minAmountHuf ?? 400000
-        const remaining = cashierRateQuota?.remaining ?? 0
+        // Codex P1 #562 fix: a backend `remaining` érték statikus snapshot (page-load),
+        // többszöri auto-approve ugyanazon session-ben sem decrementálná. Ezért lokálisan
+        // is számoljuk a már jóváhagyott rowKey-eket (cashierCustomRateRowsRef), és az
+        // effektív remaining = backend_remaining - local_approved_count. Így a limit
+        // (pl. 5) NEM léphető át same-session multi-row auto-approve-pal.
+        const baseRemaining = cashierRateQuota?.remaining ?? 0
+        const approvedLocally = cashierCustomRateRowsRef.current.size
+        const effectiveRemaining = Math.max(0, baseRemaining - approvedLocally)
 
-        if (hufAmount >= minAmount && remaining > 0) {
+        if (hufAmount >= minAmount && effectiveRemaining > 0) {
           cashierCustomRateRowsRef.current.add(rowKey)
           rateAuthApprovedRef.current.add(rowKey)
+          // Aktuális felhasználás after this approval = (limit - baseRemaining) + local_approved (most már +1).
+          const totalUsedAfterThis = cashierRateQuota!.limit - baseRemaining + cashierCustomRateRowsRef.current.size
           toast.success(
             'Pénztárosi sáv',
-            `Egyedi árfolyam engedélyezve (${cashierRateQuota!.limit - remaining + 1}/${cashierRateQuota!.limit} ma)`,
+            `Egyedi árfolyam engedélyezve (${totalUsedAfterThis}/${cashierRateQuota!.limit} ma)`,
           )
           return
         }
 
-        if (hufAmount >= minAmount && remaining <= 0) {
+        if (hufAmount >= minAmount && effectiveRemaining <= 0) {
           toast.warning('Pénztárosi sáv limit', `Napi ${cashierRateQuota?.limit ?? 5} egyedi árfolyam felhasználva!`)
         }
 
