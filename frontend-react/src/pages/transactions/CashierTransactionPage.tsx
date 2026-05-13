@@ -369,30 +369,44 @@ export default function CashierTransactionPage() {
         return
       }
 
+      // Codex P1 #562 + #579 iter-3 + iter-4 fix:
+      // A cashierCustomRateRowsRef Set lokálisan számon tartja az auto-approved
+      // sorokat (rowKey = `${idx}-${currency}`). Pruning ELŐSZÖR fut, MINDEN
+      // mező-változásra (rate edit / currency change). Két stale eset:
+      //   (1) #579 iter-3: rowKey-currency már NEM egyezik a current row currency-jével
+      //       (user EUR→USD switch ugyanazon a soron) → key benne ragadna
+      //   (2) #579 iter-4: a rate VISSZA-szerkesztett in-band-be ugyanazon a row+currency-n
+      //       (user 305 EUR off-band → 300 EUR in-band) → backend quota nem fogyasztott,
+      //       de a key továbbra is foglalja a local effectiveRemaining slot-ot
+      // A pruning mindkét scenarioban a megfelelő entry-t törli.
+      for (const k of Array.from(cashierCustomRateRowsRef.current)) {
+        const dashIdx = k.indexOf('-')
+        if (dashIdx <= 0) continue
+        const trackedIdx = Number.parseInt(k.slice(0, dashIdx), 10)
+        const trackedCurrency = k.slice(dashIdx + 1)
+        const trackedRow = rows[trackedIdx]
+        // (1) Stale: row removed or currency changed
+        if (!trackedRow || trackedRow.currencyCode !== trackedCurrency) {
+          cashierCustomRateRowsRef.current.delete(k)
+          rateAuthApprovedRef.current.delete(k)
+          continue
+        }
+        // (2) Stale: rate now IN-band → no quota slot needed
+        const trackedRateObj = exchangeRates.find(r => r.currencyCode === trackedCurrency)
+        const trackedQty = Number.parseFloat(trackedRow.quantity.replace(/[\s,]/g, '.')) || 0
+        const trackedHuf = trackedRow.exchangeRate * trackedQty
+        if (trackedRateObj && isWithinBand(trackedRateObj, trackedRow.exchangeRate, mode, trackedHuf)) {
+          cashierCustomRateRowsRef.current.delete(k)
+          rateAuthApprovedRef.current.delete(k)
+        }
+      }
+
       const rowKey = `${rowIdx}-${row.currencyCode}`
       if (rateAuthApprovedRef.current.has(rowKey)) return
 
       if (!isWithinBand(rateObj, row.exchangeRate, mode, baseAmountHuf)) {
         const hufAmount = row.exchangeRate * qtyNum
         const minAmount = cashierRateQuota?.minAmountHuf ?? 400000
-        // Codex P1 #562 fix: a backend `remaining` érték statikus snapshot (page-load),
-        // többszöri auto-approve ugyanazon session-ben sem decrementálná. Ezért lokálisan
-        // is számoljuk a már jóváhagyott rowKey-eket (cashierCustomRateRowsRef), és az
-        // effektív remaining = backend_remaining - local_approved_count.
-        // Codex P1 #579 iter-3 fix: prune stale keys ELŐSZÖR. A rowKey `${rowIdx}-${currency}`
-        // formátumú; ha a user EUR-ról USD-re vált egy auto-approved sorban, a régi "0-EUR"
-        // kulcs benne ragad → false-block "Pénztárosi sáv limit elérve" üzenettel. A pruning
-        // a current rows-listán alapul: csak azokat tartjuk amelyek matchel-nek egy aktív
-        // (currencyCode != '') sorral.
-        const validKeys = new Set(
-          rows.map((r, i) => (r.currencyCode ? `${i}-${r.currencyCode}` : null)).filter(Boolean) as string[]
-        )
-        for (const k of Array.from(cashierCustomRateRowsRef.current)) {
-          if (!validKeys.has(k)) {
-            cashierCustomRateRowsRef.current.delete(k)
-            rateAuthApprovedRef.current.delete(k)
-          }
-        }
         const baseRemaining = cashierRateQuota?.remaining ?? 0
         const approvedLocally = cashierCustomRateRowsRef.current.size
         const effectiveRemaining = Math.max(0, baseRemaining - approvedLocally)
@@ -692,13 +706,14 @@ export default function CashierTransactionPage() {
       // effectiveRemaining-be.
       cashierCustomRateRowsRef.current.clear()
       rateAuthApprovedRef.current.clear()
-      // Friss quota lekérés (backend most már látja az új flagged tranzakciókat)
-      try {
-        const quota = await transactionApi.getCashierRateQuota()
-        setCashierRateQuota(quota)
-      } catch (e) {
-        logger.error('CashierTx', 'Quota refresh failed after submit', e)
-      }
+      // Codex P2 #579 iter-4 fix: NE blokkoljuk az isSubmitting felszabadulását a
+      // post-save quota refresh-szel. Offline/Electron flow-ban a backend
+      // unreachable → submit stuck az API timeout-ig. Helyette fire-and-forget
+      // a quota refetch: setCashierRateQuota async, a felhasználó már új tranzakciót
+      // kezdhet a régi-de-rendezett kvótával (mivel a ref-eket lokálisan tisztítottuk).
+      transactionApi.getCashierRateQuota()
+        .then(quota => setCashierRateQuota(quota))
+        .catch(e => logger.error('CashierTx', 'Quota refresh failed after submit (non-blocking)', e))
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Ismeretlen hiba'
       const axiosError = error as { response?: { data?: { message?: string } } }
