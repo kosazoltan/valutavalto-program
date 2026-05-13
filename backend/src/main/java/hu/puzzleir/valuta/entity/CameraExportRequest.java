@@ -70,7 +70,7 @@ public class CameraExportRequest {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    // === Jóváhagyó (4-eyes) ===
+    // === Jóváhagyó (4-eyes — 1. szint) ===
     @Column(name = "approved_by", length = 100)
     private String approvedBy;
 
@@ -79,6 +79,19 @@ public class CameraExportRequest {
 
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
+
+    // === Sprint 4 (P2-C): 2. szintű jóváhagyás (dual approval) ===
+    /** Igényel-e 2. jóváhagyót (default true a hatósági export-hoz). */
+    @Column(name = "requires_dual_approval", nullable = false)
+    @Builder.Default
+    private Boolean requiresDualApproval = true;
+
+    /** 2. jóváhagyó worker code (NEM egyezhet sem requestedBy-val, sem approvedBy-val). */
+    @Column(name = "second_approved_by", length = 100)
+    private String secondApprovedBy;
+
+    @Column(name = "second_approved_at")
+    private LocalDateTime secondApprovedAt;
 
     // === Export eredmény ===
     @Column(name = "export_path", length = 500)
