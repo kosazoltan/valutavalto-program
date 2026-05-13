@@ -42,22 +42,31 @@ public class BankIntegrationStatusController {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         LocalDate today = LocalDate.now();
 
-        // MNB
+        // MNB cache friss-ség: a legutóbbi cache-elt rateDate alapján (Codex P1 #567)
+        LocalDate mnbLatestRateDate = mnbCacheRepository.findAll().stream()
+                .map(c -> c.getRateDate())
+                .filter(d -> d != null)
+                .max(java.util.Comparator.naturalOrder())
+                .orElse(null);
         long mnbCacheCount = mnbCacheRepository.count();
+        // Sikeres ha van cache ÉS a legutolsó rateDate >= today-3 (üzleti nap puffer)
+        boolean mnbFresh = mnbLatestRateDate != null
+                && !mnbLatestRateDate.isBefore(today.minusDays(3));
 
-        // Darius (current month)
+        // Darius — csak az AKTUÁLIS hónapra (Codex P1 #567)
         LocalDate monthStart = today.withDayOfMonth(1);
         LocalDate monthEnd = today.withDayOfMonth(today.lengthOfMonth());
         long pendingCount = dariusReportRepository
-                .findByCompanyIdAndStatusOrderByReportDateDesc(companyId, DariusReportStatus.GENERATED)
+                .findByCompanyIdAndStatusAndReportDateBetween(companyId, DariusReportStatus.GENERATED, monthStart, monthEnd)
                 .size();
         long failedCount = dariusReportRepository
-                .findByCompanyIdAndStatusOrderByReportDateDesc(companyId, DariusReportStatus.FAILED)
+                .findByCompanyIdAndStatusAndReportDateBetween(companyId, DariusReportStatus.FAILED, monthStart, monthEnd)
                 .size();
-        long submittedCount = dariusReportRepository
-                .findByCompanyIdAndStatusOrderByReportDateDesc(companyId, DariusReportStatus.SUBMITTED)
-                .size();
+        var submittedThisMonth = dariusReportRepository
+                .findByCompanyIdAndStatusAndReportDateBetween(companyId, DariusReportStatus.SUBMITTED, monthStart, monthEnd);
+        long submittedCount = submittedThisMonth.size();
 
+        // Last submitted — ez ALL TIME, nemcsak hónap
         LocalDateTime lastSubmitted = dariusReportRepository
                 .findByCompanyIdAndStatusOrderByReportDateDesc(companyId, DariusReportStatus.SUBMITTED)
                 .stream()
@@ -68,8 +77,8 @@ public class BankIntegrationStatusController {
         return BankIntegrationStatusResponse.builder()
                 .mnb(MnbStatus.builder()
                         .rateCount((int) mnbCacheCount)
-                        .lastFetchSuccess(mnbCacheCount > 0)
-                        .lastFetchDate(today) // a cache léte = mai napi friss
+                        .lastFetchSuccess(mnbFresh)
+                        .lastFetchDate(mnbLatestRateDate)
                         .schedulerActive(true)
                         .build())
                 .raiffeisen(RaiffeisenStatus.builder()

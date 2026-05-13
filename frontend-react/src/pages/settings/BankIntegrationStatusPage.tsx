@@ -45,14 +45,17 @@ export default function BankIntegrationStatusPage() {
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
-  const loadStatus = useCallback(async () => {
+  // Returns true ha sikeres a lekérdezés (Codex P2 #567)
+  const loadStatus = useCallback(async (): Promise<boolean> => {
     setLoading(true)
     try {
       const response = await api.get<BankIntegrationStatusResponse>('/admin/bank-integration/status')
       setStatus(response.data)
+      return true
     } catch (err) {
       logger.error('BankIntegrationStatus', 'Status betöltési hiba:', err)
       toast.error('Hiba', 'Bank integráció állapot lekérdezése sikertelen')
+      return false
     } finally {
       setLoading(false)
     }
@@ -64,9 +67,12 @@ export default function BankIntegrationStatusPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await loadStatus()
+    const ok = await loadStatus()
     setRefreshing(false)
-    toast.success('Frissítve', 'Bank integráció állapot újraolvasva')
+    if (ok) {
+      toast.success('Frissítve', 'Bank integráció állapot újraolvasva')
+    }
+    // Hiba esetén a loadStatus már mutatott egy error toast-ot — ne mondj contradictory success-t
   }
 
   if (loading && !status) {
