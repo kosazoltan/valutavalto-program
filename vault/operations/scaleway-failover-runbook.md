@@ -72,14 +72,26 @@ A script automatikusan:
 
 ### 2.3 DNS átkapcsolás (Cloudflare)
 
+**FONTOS — a `excvaluta.com` A record proxied=True** (Cloudflare proxy aktív):
+- TTL manuális állítása nem hatékony (CF mindig "Auto" / 300s-t használ)
+- A failover során CSAK az origin IP-t változtatjuk; a CF cache propagáció ~30-60 mp
+- A DDoS védelem, SSL termination, caching mind megmarad failover után is
+- A `scaleway.excvaluta.com` (proxied=False, TTL=60s) közvetlen elérést biztosít
+
+**Credentials (verifikálva 2026-05-13):**
+
+| Érték | Tárolás |
+|---|---|
+| `CF_API_TOKEN` (DNS:Edit jogosult cfut_ token) | `D:\repo\valutavalto-program\.env` |
+| `CF_ZONE_ID` (excvaluta.com) | `de1ba622a4a79728302443f801da0af9` |
+| `CF_DNS_RECORD_ID_EXCVALUTA` (A record, proxied=True) | `81945bd09d978b316d68409e6cfdb5d4` |
+| `CF_DNS_RECORD_ID_SCALEWAY` (proxied=False, TTL=60s) | `37fb1d31eec4cb221c83046e176cf6a5` |
+
 A failover script kiírja, de saját géped is csinálhatod:
 
 ```bash
-# Cloudflare credentials helye: D:\openclaw\.openclaw\.env (CONTEXT7 alatt)
-# vagy 1Password "Cloudflare API Token"
-
-export CF_API_TOKEN="<token>"
-export CF_ZONE_ID="<zone>"   # excvaluta.com zone ID
+# Tokent és record ID-ket a .env-ből töltsük be:
+set -a; source D:/repo/valutavalto-program/.env; set +a
 export STANDBY_IP="163.172.152.234"
 
 # Lekérdezés: aktuális A record
