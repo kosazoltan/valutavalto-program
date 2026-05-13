@@ -391,13 +391,21 @@ export default function CashierTransactionPage() {
           rateAuthApprovedRef.current.delete(k)
           continue
         }
-        // (2) Stale: rate now IN-band → no quota slot needed
+        // (2) Stale: rate now IN-band → no quota slot needed.
+        // Codex P1 #579 iter-5 fix: isWithinBand BASE-rate-based HUF-fal hivando
+        // (a tier selection a baseRate * qty alapjan tortenik MINDENHOL a fajlban,
+        // lasd lines 303-305, 358-363, 450-452). Ha a custom rate * qty-val hivnank,
+        // egy magas custom rate-tel atugorhatnank tier-t es false in-band classification
+        // → silent freed slot. Ezert tracked baseRate * trackedQty hasznalando.
         const trackedRateObj = exchangeRates.find(r => r.currencyCode === trackedCurrency)
         const trackedQty = Number.parseFloat(trackedRow.quantity.replace(/[\s,]/g, '.')) || 0
-        const trackedHuf = trackedRow.exchangeRate * trackedQty
-        if (trackedRateObj && isWithinBand(trackedRateObj, trackedRow.exchangeRate, mode, trackedHuf)) {
-          cashierCustomRateRowsRef.current.delete(k)
-          rateAuthApprovedRef.current.delete(k)
+        if (trackedRateObj) {
+          const trackedBaseRate = mode === 'buy' ? trackedRateObj.baseBuyRate : trackedRateObj.baseSellRate
+          const trackedBaseHuf = trackedBaseRate * trackedQty
+          if (isWithinBand(trackedRateObj, trackedRow.exchangeRate, mode, trackedBaseHuf)) {
+            cashierCustomRateRowsRef.current.delete(k)
+            rateAuthApprovedRef.current.delete(k)
+          }
         }
       }
 
