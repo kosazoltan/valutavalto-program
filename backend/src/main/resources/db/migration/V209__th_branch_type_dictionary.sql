@@ -1,4 +1,4 @@
--- V209: TH (tobblet-hiany) penztartipus dictionary bejegyzes
+-- V206: TH (tobblet-hiany) penztartipus dictionary bejegyzes
 -- A TransferPage branch dropdown szureshez szukseges: csak ertektar + TH valaszthato
 
 INSERT INTO dictionary (id, category, code, name, description, sort_order, is_active, created_at)
