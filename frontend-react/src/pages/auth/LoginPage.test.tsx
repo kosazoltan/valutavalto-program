@@ -180,6 +180,7 @@ describe('LoginPage', () => {
       baseResponse.permissions,
       ['penztar', 'ertektar'],
       false,
+      null,
     )
     expect(mocks.navigate).toHaveBeenCalledWith('/cashier')
   })

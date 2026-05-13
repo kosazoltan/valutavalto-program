@@ -19,6 +19,7 @@ import {
 import { publicApi } from '../../services/api/index'
 import { humanizeError } from '../../utils/errorHandling'
 import type { ElectronAppMode } from '../../types/appMode'
+import { appModeLabel } from '../../utils/appModeRoles'
 
 // ---------------------------------------------------------------------------
 // Típusok
@@ -36,6 +37,39 @@ export interface Branch {
 interface SetupWorkerOption {
   code: string
   name: string
+}
+
+interface SetupGoogleWorker {
+  code: string
+  name: string
+  role?: string | null
+  roles?: string[]
+  validAppModes?: string[]
+}
+
+interface SetupGoogleBranch {
+  code: string
+  name: string
+  city?: string
+  address?: string
+  isVault?: boolean
+}
+
+interface SetupGoogleIdentifyResponse {
+  matchType: 'WORKER_EMAIL' | 'HQ_EMAIL' | 'BRANCH_SHARED_EMAIL'
+  requiresWorkerSelection: boolean
+  message?: string
+  googleIdentity: {
+    email: string
+    googleSub: string
+    name?: string | null
+    picture?: string | null
+  }
+  branch?: SetupGoogleBranch | null
+  worker?: SetupGoogleWorker | null
+  workerOptions?: SetupGoogleWorker[]
+  validAppModes?: string[]
+  requestedAppModeAllowed?: boolean
 }
 
 export function isBranchSelectableForAppMode(
@@ -115,6 +149,63 @@ const STEPS: readonly StepDef[] = [
 const DEFAULT_API_URL = 'https://excvaluta.com/api/v1'
 const DEFAULT_COMPANY_CODE = 'EBC'
 
+function normalizeApiBase(apiUrl: string): string {
+  let normalized = apiUrl.trim().replace(/\/+$/, '')
+  if (!normalized.endsWith('/api/v1')) {
+    normalized = `${normalized}/api/v1`
+  }
+  return normalized
+}
+
+function branchFromGoogleSetup(branch: SetupGoogleBranch | null | undefined): Branch | null {
+  if (!branch) return null
+  return {
+    code: branch.code,
+    name: branch.name,
+    city: branch.city ?? '',
+    address: branch.address,
+    isVault: branch.isVault,
+  }
+}
+
+function preferredAppModeFromGoogleSetup(response: SetupGoogleIdentifyResponse, fallback: ElectronAppMode): ElectronAppMode {
+  const modes = response.validAppModes ?? response.worker?.validAppModes ?? []
+  if (modes.includes(fallback)) return fallback
+  if (modes.includes('rate-maker')) return 'rate-maker'
+  if (modes.includes('ertektar')) return 'ertektar'
+  if (modes.includes('ertekszallito')) return 'ertekszallito'
+  return 'penztar'
+}
+
+function isCashierPasswordSetup(response: SetupGoogleIdentifyResponse | null): boolean {
+  const roles = (response?.worker?.roles ?? [])
+    .map((role) => role.trim().toLowerCase())
+    .filter(Boolean)
+  if (roles.length === 0 && response?.worker?.role) {
+    roles.push(response.worker.role.trim().toLowerCase())
+  }
+  const cashierRole = roles.includes('penztar') || roles.includes('cashier')
+  const nonCashierRole = roles.some((role) => [
+    'ertektar',
+    'ertekszallito',
+    'foertektar',
+    'ugyvezeto',
+    'irodavezeto',
+    'belso_ellenor',
+    'teruleti_vezeto',
+    'biztonsagi_vezeto',
+    'berszamfejto',
+    'penzugyi_vezeto',
+    'irodai_dolgozo',
+    'csoportvezeto',
+    'arfolyam_nezo',
+    'manager',
+    'supervisor',
+    'admin',
+  ].includes(role))
+  return cashierRole && !nonCashierRole
+}
+
 // ---------------------------------------------------------------------------
 // SetupWizard
 // ---------------------------------------------------------------------------
@@ -135,6 +226,11 @@ export default function SetupWizard() {
   const [bootstrapUsername, setBootstrapUsername] = useState('')
   const [bootstrapPassword, setBootstrapPassword] = useState('')
   const [availableWorkers, setAvailableWorkers] = useState<SetupWorkerOption[]>([])
+  const [googleIdToken, setGoogleIdToken] = useState<string | null>(null)
+  const [googleSetup, setGoogleSetup] = useState<SetupGoogleIdentifyResponse | null>(null)
+  const [googleSetupLoading, setGoogleSetupLoading] = useState(false)
+  const [googleSetupError, setGoogleSetupError] = useState<string | null>(null)
+  const [selectedSharedWorkerCode, setSelectedSharedWorkerCode] = useState('')
   const [offlineMode, setOfflineMode] = useState(false)
   const [appModeChoice, setAppModeChoice] = useState<ElectronAppMode>('penztar')
   const [connectionTest, setConnectionTest] = useState<
@@ -243,6 +339,119 @@ export default function SetupWizard() {
     }
   }, [appModeChoice, selectedBranch])
 
+  const postSetupGoogleIdentify = useCallback(async (payload: {
+    idToken: string
+    selectedWorkerCode?: string
+    bindGoogleSubject?: boolean
+  }): Promise<SetupGoogleIdentifyResponse> => {
+    const url = `${normalizeApiBase(apiUrl)}/public/setup/google-identify`
+    const body = JSON.stringify({
+      idToken: payload.idToken,
+      companyCode: companyCode.trim(),
+      appMode: appModeChoice,
+      selectedWorkerCode: payload.selectedWorkerCode,
+      bindGoogleSubject: payload.bindGoogleSubject === true,
+    })
+
+    if (window.electronAPI?.apiRequest) {
+      const result = await window.electronAPI.apiRequest({
+        method: 'POST',
+        url,
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body,
+        timeoutMs: 15000,
+      })
+      const parsed = result.body ? JSON.parse(result.body) as SetupGoogleIdentifyResponse & { message?: string } : null
+      if (!result.ok || !parsed) {
+        throw new Error(parsed?.message || `HTTP ${result.status}`)
+      }
+      return parsed
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body,
+    })
+    const parsed = await response.json().catch(() => null) as (SetupGoogleIdentifyResponse & { message?: string }) | null
+    if (!response.ok || !parsed) {
+      throw new Error(parsed?.message || `HTTP ${response.status}`)
+    }
+    return parsed
+  }, [apiUrl, appModeChoice, companyCode])
+
+  const applyGoogleSetup = useCallback((response: SetupGoogleIdentifyResponse) => {
+    setGoogleSetup(response)
+    setGoogleSetupError(null)
+    const branch = branchFromGoogleSetup(response.branch)
+    if (branch) {
+      setSelectedBranch(branch)
+      setBranches((existing) => (
+        existing.some((item) => item.code === branch.code) ? existing : [branch, ...existing]
+      ))
+    }
+    if (response.workerOptions && response.workerOptions.length > 0) {
+      setAvailableWorkers(response.workerOptions.map((worker) => ({
+        code: worker.code,
+        name: worker.name,
+      })))
+    }
+    if (response.worker) {
+      setBootstrapUsername(response.worker.code)
+      setAdminUsername(response.worker.code)
+      setAvailableWorkers((existing) => (
+        existing.some((worker) => worker.code === response.worker?.code)
+          ? existing
+          : [{ code: response.worker!.code, name: response.worker!.name }, ...existing]
+      ))
+      if (!isCashierPasswordSetup(response)) {
+        setAdminPassword('')
+        setAdminPasswordConfirm('')
+        setBootstrapPassword('')
+      }
+      setCurrentStep('server')
+    }
+    setAppModeChoice(preferredAppModeFromGoogleSetup(response, appModeChoice))
+  }, [appModeChoice])
+
+  const handleGoogleSetupLogin = useCallback(async () => {
+    setGoogleSetupLoading(true)
+    setGoogleSetupError(null)
+    try {
+      if (!window.electronAPI?.googleOAuthFlow) {
+        throw new Error('A Google OAuth csak az Electron telepítőben érhető el.')
+      }
+      const oauth = await window.electronAPI.googleOAuthFlow()
+      if (!oauth.ok) {
+        throw new Error(oauth.message)
+      }
+      setGoogleIdToken(oauth.idToken)
+      const response = await postSetupGoogleIdentify({ idToken: oauth.idToken })
+      applyGoogleSetup(response)
+    } catch (err: unknown) {
+      setGoogleSetupError(humanizeError(err))
+    } finally {
+      setGoogleSetupLoading(false)
+    }
+  }, [applyGoogleSetup, postSetupGoogleIdentify])
+
+  const handleSharedWorkerConfirm = useCallback(async () => {
+    if (!googleIdToken || !selectedSharedWorkerCode.trim()) return
+    setGoogleSetupLoading(true)
+    setGoogleSetupError(null)
+    try {
+      const response = await postSetupGoogleIdentify({
+        idToken: googleIdToken,
+        selectedWorkerCode: selectedSharedWorkerCode.trim(),
+      })
+      applyGoogleSetup(response)
+    } catch (err: unknown) {
+      setGoogleSetupError(humanizeError(err))
+    } finally {
+      setGoogleSetupLoading(false)
+    }
+  }, [applyGoogleSetup, googleIdToken, postSetupGoogleIdentify, selectedSharedWorkerCode])
+
   useEffect(() => {
     connectionTestResetKeyRef.current = connectionTestResetKey
     autoConnectionTestKeyRef.current = null
@@ -252,6 +461,9 @@ export default function SetupWizard() {
   const isCurrentConnectionTestRequest = useCallback((requestKey: string) => (
     connectionTestResetKeyRef.current === requestKey
   ), [])
+
+  const googlePasswordSetupRequired = isCashierPasswordSetup(googleSetup)
+  const googleAuthSetupReady = Boolean(googleSetup?.worker && !googlePasswordSetupRequired)
 
   // --- Lépés-validáció: engedélyezett-e a tovább ---
   const canAdvance = useMemo(() => {
@@ -266,11 +478,12 @@ export default function SetupWizard() {
         if (offlineMode) return true
         return connectionTest.state === 'ok'
       case 'admin':
+        if (googleAuthSetupReady) return true
         return adminPassword.length >= 8 && adminPassword === adminPasswordConfirm && adminUsername.length > 0
       default:
         return false
     }
-  }, [currentStep, selectedBranch, offlineMode, connectionTest.state, adminPassword, adminPasswordConfirm, adminUsername, appModeChoice])
+  }, [currentStep, selectedBranch, offlineMode, connectionTest.state, googleAuthSetupReady, adminPassword, adminPasswordConfirm, adminUsername, appModeChoice])
 
   // --- v2.5.41: Auto connection test a server step belepeskor ---
   // AUTOMATIKUSAN fut a bootstrap-status teszt amikor a user a server step-re lep.
@@ -377,6 +590,20 @@ export default function SetupWizard() {
     setIsSaving(true)
     setSaveError(null)
     try {
+      let finalizedGoogleSetup = googleSetup
+      if (googleAuthSetupReady) {
+        if (!googleIdToken || !googleSetup?.worker) {
+          setSaveError('A Google azonosítás nem véglegesíthető. Jelentkezzen be újra Google-lel.')
+          setIsSaving(false)
+          return
+        }
+        finalizedGoogleSetup = await postSetupGoogleIdentify({
+          idToken: googleIdToken,
+          selectedWorkerCode: googleSetup.worker.code,
+          bindGoogleSubject: true,
+        })
+        applyGoogleSetup(finalizedGoogleSetup)
+      }
       if (window.electronAPI?.setupSave) {
         // v2.3.0: kereses a worker listaban a kivalasztott dolgozo neve + role szerint
         // A ServerStep-bol a bootstrapUsername = a workerCode (pl. BORSI).
@@ -392,14 +619,29 @@ export default function SetupWizard() {
           branchName: selectedBranch.name,
           apiUrl: apiUrl.trim(),
           companyCode: companyCode.trim(),
-          adminUsername: adminUsername.trim(),
-          adminPassword,
-          bootstrapUsername: bootstrapUsername.trim(),
-          bootstrapPassword,
+          authMode: googleAuthSetupReady ? 'google' : 'password',
+          adminUsername: googleAuthSetupReady
+            ? (finalizedGoogleSetup?.worker?.code ?? bootstrapUsername).trim()
+            : adminUsername.trim(),
+          adminPassword: googleAuthSetupReady ? '' : adminPassword,
+          bootstrapUsername: googleAuthSetupReady
+            ? (finalizedGoogleSetup?.worker?.code ?? bootstrapUsername).trim()
+            : bootstrapUsername.trim(),
+          bootstrapPassword: googleAuthSetupReady ? '' : bootstrapPassword,
           offlineMode,
           appMode: appModeChoice,
+          ...(googleAuthSetupReady && finalizedGoogleSetup?.googleIdentity ? {
+            googleEmail: finalizedGoogleSetup.googleIdentity.email,
+            googleSub: finalizedGoogleSetup.googleIdentity.googleSub,
+            googleName: finalizedGoogleSetup.googleIdentity.name ?? undefined,
+            googlePicture: finalizedGoogleSetup.googleIdentity.picture ?? undefined,
+          } : {}),
           // v2.3.0: worker identity atadasa az electron-nak ha van kivalasztott dolgozo
-          ...(selectedWorker ? {
+          ...(googleAuthSetupReady && finalizedGoogleSetup?.worker ? {
+            selectedWorkerCode: finalizedGoogleSetup.worker.code.trim().toUpperCase(),
+            selectedWorkerName: finalizedGoogleSetup.worker.name,
+            selectedWorkerRole: finalizedGoogleSetup.worker.roles?.[0] ?? finalizedGoogleSetup.worker.role ?? undefined,
+          } : selectedWorker ? {
             selectedWorkerCode: selectedWorker.code.trim().toUpperCase(),
             selectedWorkerName: selectedWorker.name,
           } : {}),
@@ -411,6 +653,25 @@ export default function SetupWizard() {
         return
       }
       const normalized = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '')
+
+      if (googleAuthSetupReady && finalizedGoogleSetup?.worker) {
+        localStorage.setItem('valuta-setup-config', JSON.stringify({
+          branchCode: selectedBranch.code,
+          branchName: selectedBranch.name,
+          apiUrl: apiUrl.trim(),
+          companyCode: companyCode.trim(),
+          appMode: appModeChoice,
+          authMode: 'google',
+          googleEmail: finalizedGoogleSetup.googleIdentity.email,
+          googleSub: finalizedGoogleSetup.googleIdentity.googleSub,
+          workerCode: finalizedGoogleSetup.worker.code,
+          workerName: finalizedGoogleSetup.worker.name,
+          workerRole: finalizedGoogleSetup.worker.roles?.[0] ?? finalizedGoogleSetup.worker.role,
+          installedAt: new Date().toISOString(),
+        }))
+        window.location.href = '/login'
+        return
+      }
 
       // Eldontes: csak akkor megyunk worker-first-time setup uton, ha a kod
       // a szerverrol betoltott worker-listaban szerepel. Igy a wizardban beallitott
@@ -515,6 +776,10 @@ export default function SetupWizard() {
   // --- Lépés navigáció ---
   const goNext = () => {
     if (!canAdvance) return
+    if (googleSetup?.worker && (currentStep === 'welcome' || currentStep === 'program' || currentStep === 'branch')) {
+      setCurrentStep('server')
+      return
+    }
     const next = STEPS[currentIndex + 1]
     if (next) setCurrentStep(next.id)
   }
@@ -533,7 +798,17 @@ export default function SetupWizard() {
 
         {/* Tartalom — scroll-os, hogy a nav footer mindig lathato maradjon */}
         <div className="flex-1 overflow-y-auto px-10 py-8">
-          {currentStep === 'welcome' && <WelcomeStep />}
+          {currentStep === 'welcome' && (
+            <WelcomeStep
+              googleSetup={googleSetup}
+              googleSetupLoading={googleSetupLoading}
+              googleSetupError={googleSetupError}
+              selectedSharedWorkerCode={selectedSharedWorkerCode}
+              onSelectedSharedWorkerCodeChange={setSelectedSharedWorkerCode}
+              onGoogleLogin={handleGoogleSetupLogin}
+              onSharedWorkerConfirm={handleSharedWorkerConfirm}
+            />
+          )}
           {currentStep === 'branch' && (
             <BranchStep
               branches={pageBranches}
@@ -565,6 +840,11 @@ export default function SetupWizard() {
                     id: 'ertektar' as const,
                     title: 'Értéktár',
                     desc: 'Értéktáros munka: pénztárak ellátása / átadás-átvétel bank és más értéktárak felé, napi + havi + dekádzárás. Local-first.',
+                  },
+                  {
+                    id: 'rate-maker' as const,
+                    title: 'Árfolyamkészítő',
+                    desc: 'Főértéktárosi árfolyamkészítés: helyi Electron alkalmazásból publikálás a központi szerveren keresztül.',
                   },
                 ]).map((opt) => (
                   <button
@@ -600,7 +880,13 @@ export default function SetupWizard() {
               onWorkerListChange={setAvailableWorkers}
             />
           )}
-          {currentStep === 'admin' && (
+          {currentStep === 'admin' && googleAuthSetupReady && googleSetup?.worker ? (
+            <GoogleAdminStep
+              googleSetup={googleSetup}
+              selectedBranch={selectedBranch}
+              appMode={appModeChoice}
+            />
+          ) : currentStep === 'admin' && (
             <AdminStep
               adminUsername={adminUsername}
               onAdminUsernameChange={setAdminUsername}
@@ -721,38 +1007,106 @@ function SetupHeader({ currentIndex }: { currentIndex: number }) {
 // 1. Üdvözlő lépés
 // ---------------------------------------------------------------------------
 
-function WelcomeStep() {
-  const { t } = useTranslation()
+function WelcomeStep(props: {
+  googleSetup: SetupGoogleIdentifyResponse | null
+  googleSetupLoading: boolean
+  googleSetupError: string | null
+  selectedSharedWorkerCode: string
+  onSelectedSharedWorkerCodeChange: (value: string) => void
+  onGoogleLogin: () => void
+  onSharedWorkerConfirm: () => void
+}) {
+  const {
+    googleSetup,
+    googleSetupLoading,
+    googleSetupError,
+    selectedSharedWorkerCode,
+    onSelectedSharedWorkerCodeChange,
+    onGoogleLogin,
+    onSharedWorkerConfirm,
+  } = props
+  const sharedWorkerOptions = googleSetup?.requiresWorkerSelection ? (googleSetup.workerOptions ?? []) : []
   return (
     <div className="max-w-2xl mx-auto text-center py-8">
       <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 text-blue-600 mb-6">
         <Rocket className="w-10 h-10" />
       </div>
-      <h2 className="text-3xl font-bold text-slate-900 mb-3">{t('setup.udvozoljukAValutaPenztarban')}</h2>
-      <p className="text-slate-600 mb-8">
-        {t('setup.ezAVarazsloVegigvezetiAzElsoInditasBeallitasain4RovidLepesben')}
-        {t('setup.elkeszitjukATelepitestUtanaAProgramAzonnalHasznalatraKeszLesz')}
+      <h2 className="text-3xl font-bold text-slate-900 mb-3">Üdvözöljük az EXZ rendszerben</h2>
+      <p className="text-slate-600 mb-6">
+        Jelentkezzen be Google fiókkal. A rendszer az email alapján azonosítja a fiókot,
+        a szerepkört és a telepítendő működési módot.
       </p>
+
+      <button
+        type="button"
+        onClick={onGoogleLogin}
+        disabled={googleSetupLoading}
+        className="mx-auto mb-5 inline-flex items-center justify-center gap-3 rounded-lg bg-blue-600 px-6 py-3 text-base font-semibold text-white hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition"
+      >
+        {googleSetupLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="text-lg font-bold">G</span>}
+        Bejelentkezés Google-lel
+      </button>
+
+      {googleSetupError && (
+        <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700">
+          {googleSetupError}
+        </div>
+      )}
+
+      {googleSetup?.worker && (
+        <div className="mb-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-left text-sm text-green-800">
+          <div className="font-semibold">Azonosítva: {googleSetup.worker.name}</div>
+          <div>{googleSetup.branch?.code} - {googleSetup.branch?.name} · {googleSetup.worker.roles?.[0] ?? googleSetup.worker.role}</div>
+        </div>
+      )}
+
+      {sharedWorkerOptions.length > 0 && (
+        <div className="mb-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-4 text-left">
+          <div className="mb-3 text-sm font-semibold text-slate-800">Megosztott fiók-email. Ki ön?</div>
+          <select
+            value={selectedSharedWorkerCode}
+            onChange={(event) => onSelectedSharedWorkerCodeChange(event.target.value)}
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+          >
+            <option value="">Válasszon dolgozót...</option>
+            {sharedWorkerOptions.map((worker) => (
+              <option key={worker.code} value={worker.code}>
+                {worker.name} ({worker.code})
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={onSharedWorkerConfirm}
+            disabled={!selectedSharedWorkerCode || googleSetupLoading}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+          >
+            {googleSetupLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+            Ez vagyok, tovább
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
         <InfoTile
           icon={<Building2 className="w-5 h-5" />}
-          title="1. Fiók kiválasztása"
-          description="A pénztáros iroda, amelyikben ez a számítógép működik."
+          title="1. Automatikus fiók"
+          description="A dolgozói törzs email mezői alapján áll be."
         />
         <InfoTile
           icon={<Server className="w-5 h-5" />}
-          title="2. Szerver beállítás"
-          description="A központi backend elérése — online módban szinkronizálunk."
+          title="2. Szerver kapcsolat"
+          description="A központi backend elérését ellenőrizzük."
         />
         <InfoTile
           icon={<KeyRound className="w-5 h-5" />}
-          title="3. Admin jelszó"
-          description="Az első belépéshez szükséges biztonságos jelszó."
+          title="3. Jelszó csak pénztárnál"
+          description="Vezetői és központi szerepköröknél Google-belépés marad."
         />
         <InfoTile
           icon={<ShieldCheck className="w-5 h-5" />}
-          title="4. Telepítés"
-          description="Kriptográfiai kulcsokat generálunk és konfigurálunk mindent."
+          title="4. Biztonságos telepítés"
+          description="Egyedi kulcsok, helyi konfiguráció és szinkron."
         />
       </div>
     </div>
@@ -1093,6 +1447,52 @@ function FieldLabel({
 // ---------------------------------------------------------------------------
 // 4. Admin jelszó + összefoglaló
 // ---------------------------------------------------------------------------
+
+function GoogleAdminStep(props: {
+  googleSetup: SetupGoogleIdentifyResponse
+  selectedBranch: Branch | null
+  appMode: ElectronAppMode
+}) {
+  const { googleSetup, selectedBranch, appMode } = props
+  const worker = googleSetup.worker
+  return (
+    <div>
+      <h2 className="text-2xl font-bold text-slate-900 mb-2">Google-belépés véglegesítése</h2>
+      <p className="text-slate-600 mb-6">
+        Ehhez a telepítéshez nem készítünk helyi admin jelszót. A dolgozó Google fiókja
+        lesz a vezetői belépés alapja, a pénztárosi jelszavas ág pedig változatlanul megmarad.
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs uppercase text-slate-500 mb-1">Dolgozó</div>
+          <div className="font-semibold text-slate-900">{worker?.name}</div>
+          <div className="text-sm text-slate-600">{worker?.code} · {worker?.roles?.[0] ?? worker?.role}</div>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs uppercase text-slate-500 mb-1">Google email</div>
+          <div className="font-semibold text-slate-900 break-all">{googleSetup.googleIdentity.email}</div>
+          <div className="text-sm text-slate-600">{googleSetup.matchType}</div>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs uppercase text-slate-500 mb-1">Fiók</div>
+          <div className="font-semibold text-slate-900">{selectedBranch?.code} - {selectedBranch?.name}</div>
+          <div className="text-sm text-slate-600">{selectedBranch?.city}</div>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs uppercase text-slate-500 mb-1">Program</div>
+          <div className="font-semibold text-slate-900">{appModeLabel(appMode)}</div>
+          <div className="text-sm text-slate-600">Automatikusan beállítva</div>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+        A befejezéskor a telepítő egyedi JWT és SQLCipher kulcsokat generál, elmenti a Google
+        azonosítást, és a helyi kliens a szerveren keresztül fog szinkronizálni.
+      </div>
+    </div>
+  )
+}
 
 interface AdminStepProps {
   adminUsername: string

@@ -155,6 +155,21 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     Optional<Branch> findByCompanyIdAndCode(@Param("companyId") UUID companyId, @Param("code") String code);
 
     /**
+     * Megosztott fiok-email setup azonositasahoz. Csak aktiv branch-eket ad vissza,
+     * mert a first-run wizard nem kothet gepet lezart irodahoz.
+     */
+    @Query("""
+        SELECT b FROM Branch b
+        WHERE b.company.id = :companyId
+          AND b.isActive = true
+          AND b.email IS NOT NULL
+          AND LOWER(b.email) = LOWER(:email)
+    """)
+    List<Branch> findActiveByCompanyIdAndEmailIgnoreCase(
+            @Param("companyId") UUID companyId,
+            @Param("email") String email);
+
+    /**
      * Rekurzív lekérdezés: összes leszármazott
      * PostgreSQL WITH RECURSIVE használata
      */

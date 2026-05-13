@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { BookOpen, Printer, Calendar, RefreshCw } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
@@ -40,10 +41,12 @@ interface DailyReportData {
 
 export default function DaybookPage() {
   const { t } = useTranslation()
+  const [searchParams] = useSearchParams()
   const worker = useAuthStore((state) => state.worker)
-  const branchId = worker?.branchId || ''
+  const branchId = searchParams.get('branchId') || worker?.branchId || ''
+  const initialDate = searchParams.get('date') || new Date().toISOString().slice(0, 10)
 
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(initialDate)
   const [report, setReport] = useState<DailyReportData | null>(null)
   const [loading, setLoading] = useState(false)
   const [generating, setGenerating] = useState(false)

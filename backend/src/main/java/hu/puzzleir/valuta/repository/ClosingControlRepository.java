@@ -14,5 +14,9 @@ public interface ClosingControlRepository extends JpaRepository<ClosingControl, 
 
     List<ClosingControl> findByControlDate(LocalDate controlDate);
 
+    List<ClosingControl> findByCompanyIdAndControlDate(UUID companyId, LocalDate controlDate);
+
     Optional<ClosingControl> findByBranchIdAndControlDate(UUID branchId, LocalDate controlDate);
+
+    Optional<ClosingControl> findByCompanyIdAndBranchIdAndControlDate(UUID companyId, UUID branchId, LocalDate controlDate);
 }

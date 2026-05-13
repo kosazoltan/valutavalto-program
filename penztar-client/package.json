@@ -1,6 +1,6 @@
 {
   "name": "valuta-penztar",
-  "version": "2.5.41",
+  "version": "2.5.48",
   "description": "Valutavalto Penztar Kliens - Electron",
   "private": true,
   "main": "dist-electron/main.js",
@@ -12,8 +12,8 @@
     "build:frontend": "cd ../frontend-react && npm run build",
     "copy:frontend": "shx rm -rf dist && shx cp -r ../frontend-react/dist dist",
     "build": "npm run build:electron && npm run build:frontend && npm run copy:frontend",
-    "package": "npm run build && electron-builder --win",
-    "package:unsigned": "npm run build && set ALLOW_UNSIGNED_BUILD=1&& electron-builder --win",
+    "package": "node ../scripts/check-four-area-alignment.mjs && npm run build && electron-builder --win",
+    "package:unsigned": "node ../scripts/check-four-area-alignment.mjs && npm run build && set ALLOW_UNSIGNED_BUILD=1&& electron-builder --win",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "check:ipc": "node scripts/check-ipc-contract.mjs",
     "lint": "eslint electron vite.config.ts vitest.config.ts",

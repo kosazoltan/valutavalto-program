@@ -11,10 +11,9 @@ import java.util.Locale;
  * role->appMode mapping kozos pontba kerul, hogy NE legyen drift `WorkerService` es
  * `GoogleLoginService` kozott.
  *
- * <p>V181 (PR #363, 2026-05-03): a `teruleti_vezeto` es `biztonsagi_vezeto` canonical
- * role-ok ATKERULTEK a {@link #SERVER_CANONICAL_ROLES} listarol a
- * {@link #KAMERA_CANONICAL_ROLES} listara. Ok NEM ferhetnek hozza a szerver-admin
- * felulethez, csak a helyi penztar modul kameraszoftverehez ("kamera" appMode).</p>
+ * <p>V247 (2026-05-12): a kozponti helyi munkaallomas miatt a `teruleti_vezeto`
+ * es `biztonsagi_vezeto` role-ok ujra jogosultak a `full` appMode-ra is, mikozben
+ * a kamera appMode tovabbra is megmarad nekik.</p>
  *
  * <p>Egyetlen helyen a forras-igazsag — modositaskor a hivatkozok automatikusan kovetik.</p>
  */
@@ -26,6 +25,8 @@ public final class AppModeRoleConstants {
     private static final List<String> LEGACY_ERTEKTAR_ROLES = List.of("manager", "treasury_manager");
     private static final List<String> LEGACY_ERTEKSZALLITO_ROLES = List.of("courier");
     private static final List<String> LEGACY_SERVER_ROLES = List.of("supervisor", "manager", "admin");
+    private static final List<String> RATE_MAKER_CANONICAL_ROLES = List.of("foertektar", "ugyvezeto");
+    private static final List<String> RATE_MAKER_LEGACY_ROLES = List.of("admin");
 
     /**
      * Lokalis Electron role-ok: kis irodakban egy dolgozo tobb modban is dolgozhat,
@@ -46,18 +47,18 @@ public final class AppModeRoleConstants {
     }
 
     /**
-     * Browser/szerver hozzaferesere jogosult canonical role-ok.
-     * V181 (2026-05-03): teruleti_vezeto + biztonsagi_vezeto KIVEVE -> {@link #KAMERA_CANONICAL_ROLES}.
+     * Browser/szerver/kozponti munkaallomas hozzaferesere jogosult canonical role-ok.
      */
     public static final List<String> SERVER_CANONICAL_ROLES = List.of(
             "ugyvezeto", "foertektar", "irodavezeto", "belso_ellenor",
+            "teruleti_vezeto", "biztonsagi_vezeto",
             "berszamfejto", "penzugyi_vezeto", "irodai_dolgozo",
             "csoportvezeto", "arfolyam_nezo"
     );
 
     /**
-     * V181 (2026-05-03): Kamera-only role-ok. A teruleti vezetok es biztonsagi vezeto
-     * csak a helyi penztar modul kameraszoftverehez ferhetnek hozza, NEM a szerverhez.
+     * Kamera appMode role-ok. Ezek a role-ok a kozponti full appMode mellett
+     * a helyi penztar modul kameraszoftverehez is hozzaferhetnek.
      */
     public static final List<String> KAMERA_CANONICAL_ROLES = List.of(
             "teruleti_vezeto", "biztonsagi_vezeto"
@@ -97,6 +98,10 @@ public final class AppModeRoleConstants {
                 || hasAny(normalizedRoleCodes, LEGACY_SERVER_ROLES)) {
             addIfAbsent(validAppModes, "full");
         }
+        if (hasAny(normalizedRoleCodes, RATE_MAKER_CANONICAL_ROLES)
+                || hasAny(normalizedRoleCodes, RATE_MAKER_LEGACY_ROLES)) {
+            addIfAbsent(validAppModes, "rate-maker");
+        }
         if (normalizedRoleCodes.isEmpty()) {
             if (workerRoleEnum == WorkerRole.CASHIER) {
                 addIfAbsent(validAppModes, "penztar");
@@ -106,9 +111,13 @@ public final class AppModeRoleConstants {
                 addIfAbsent(validAppModes, "ertektar");
                 addIfAbsent(validAppModes, "ertekszallito");
                 addIfAbsent(validAppModes, "full");
+                if (workerRoleEnum == WorkerRole.ADMIN) {
+                    addIfAbsent(validAppModes, "rate-maker");
+                }
             }
         } else if (workerRoleEnum == WorkerRole.ADMIN) {
             addIfAbsent(validAppModes, "full");
+            addIfAbsent(validAppModes, "rate-maker");
         }
         return validAppModes;
     }
@@ -136,9 +145,12 @@ public final class AppModeRoleConstants {
 
         boolean serverRole = isServerRole(normalizedRole);
         boolean localRole = isLocalRole(normalizedRole);
+        boolean rateMakerRole = RATE_MAKER_CANONICAL_ROLES.contains(normalizedRole)
+                || RATE_MAKER_LEGACY_ROLES.contains(normalizedRole);
         return switch (normalizedAppMode) {
             case "full" -> serverRole;
             case "penztar", "ertektar", "ertekszallito" -> serverRole || localRole;
+            case "rate-maker" -> rateMakerRole;
             case "kamera" -> KAMERA_CANONICAL_ROLES.contains(normalizedRole);
             default -> false;
         };
@@ -226,6 +238,7 @@ public final class AppModeRoleConstants {
             case "full" -> serverRole;
             case "penztar" -> serverRole || workerRole == WorkerRole.CASHIER;
             case "ertektar", "ertekszallito" -> serverRole;
+            case "rate-maker" -> workerRole == WorkerRole.ADMIN;
             case "kamera" -> false;
             default -> false;
         };

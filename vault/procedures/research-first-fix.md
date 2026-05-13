@@ -26,7 +26,7 @@ A workflow indul ha:
 ## Prerequisites
 
 - [ ] Hibás kód lokalizálva (file:line)
-- [ ] Hibaüzenet teljes formában rendelkezésre áll
+- [ ] Hibaüzenet teljes blokkban rendelkezésre áll (`npm run ci:errors -- --pr <PR>` ha CI/review eredetű)
 - [ ] Reprodukciós lépések ismertek
 
 ## Steps
@@ -71,6 +71,7 @@ Ha a fix bug-ot fix-el: `superpowers:test-driven-development` skill — write fa
 ### 5. Minimális célzott módosítás
 
 - Csak az érintett fájl(ok)
+- Nem kiragadott sorokat javítunk: a teljes érintett logikai blokkot kell megérteni és konzisztensen módosítani
 - Egy logikai változás per commit
 - 300 LOC plafon az új kódra (AI_CONTRACT.md)
 

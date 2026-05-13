@@ -1,8 +1,11 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.ClosingControlDto;
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.ClosingControl;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.ClosingControlRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -22,6 +27,7 @@ import java.util.stream.Collectors;
 public class ClosingControlService {
 
     private final ClosingControlRepository closingControlRepository;
+    private final BranchRepository branchRepository;
     private final NotificationService notificationService;
 
     /**
@@ -29,10 +35,18 @@ public class ClosingControlService {
      */
     @Transactional(readOnly = true)
     public List<ClosingControlDto> checkAllBranches(LocalDate date) {
-        log.info("Zárás kontroll — összes iroda lekérése: {}", date);
-        return closingControlRepository.findByControlDate(date)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        log.info("Zárás kontroll — összes aktív iroda lekérése: company={}, date={}", companyId, date);
+
+        Map<UUID, ClosingControl> controlsByBranch = closingControlRepository
+                .findByCompanyIdAndControlDate(companyId, date)
                 .stream()
-                .map(this::toDto)
+                .collect(Collectors.toMap(ClosingControl::getBranchId, control -> control, (left, right) -> left));
+
+        return branchRepository.findByCompanyIdAndIsActiveTrue(companyId)
+                .stream()
+                .sorted(Comparator.comparing(Branch::getCode, Comparator.nullsLast(String::compareToIgnoreCase)))
+                .map(branch -> toDto(controlsByBranch.get(branch.getId()), branch, date))
                 .collect(Collectors.toList());
     }
 
@@ -41,10 +55,12 @@ public class ClosingControlService {
      */
     @Transactional(readOnly = true)
     public ClosingControlDto getBranchStatus(UUID branchId, LocalDate date) {
-        ClosingControl control = closingControlRepository.findByBranchIdAndControlDate(branchId, date)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Zárás kontroll nem található: branch=" + branchId + ", dátum=" + date));
-        return toDto(control);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Branch branch = requireBranchInCurrentCompany(branchId, companyId);
+        ClosingControl control = closingControlRepository
+                .findByCompanyIdAndBranchIdAndControlDate(companyId, branchId, date)
+                .orElse(null);
+        return toDto(control, branch, date);
     }
 
     /**
@@ -53,12 +69,14 @@ public class ClosingControlService {
     public void sendAlert(UUID branchId, String message) {
         log.warn("ZÁRÁS FIGYELMEZTETÉS — branch: {}, üzenet: {}", branchId, message);
 
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        requireBranchInCurrentCompany(branchId, companyId);
         LocalDate today = LocalDate.now();
-        ClosingControl control = closingControlRepository.findByBranchIdAndControlDate(branchId, today)
+        ClosingControl control = closingControlRepository.findByCompanyIdAndBranchIdAndControlDate(companyId, branchId, today)
                 .orElseGet(() -> {
                     ClosingControl newControl = ClosingControl.builder()
                             .branchId(branchId)
-                            .companyId(SecurityUtils.getCurrentCompanyId())
+                            .companyId(companyId)
                             .controlDate(today)
                             .dailyClosingDone(false)
                             .eveningClosingDone(false)
@@ -86,17 +104,65 @@ public class ClosingControlService {
 
     // --- Helper ---
 
-    private ClosingControlDto toDto(ClosingControl entity) {
+    private ClosingControlDto toDto(ClosingControl entity, Branch branch, LocalDate date) {
+        boolean missingRecord = entity == null;
+        boolean dailyDone = entity != null && Boolean.TRUE.equals(entity.getDailyClosingDone());
+        boolean eveningDone = entity != null && Boolean.TRUE.equals(entity.getEveningClosingDone());
+        boolean navDone = entity != null && Boolean.TRUE.equals(entity.getNavClosingDone());
+        int completed = countDone(dailyDone, eveningDone, navDone);
+        int required = 3;
+
         return ClosingControlDto.builder()
-                .id(entity.getId())
-                .branchId(entity.getBranchId())
-                .controlDate(entity.getControlDate())
-                .dailyClosingDone(entity.getDailyClosingDone())
-                .eveningClosingDone(entity.getEveningClosingDone())
-                .navClosingDone(entity.getNavClosingDone())
-                .lastTransactionAt(entity.getLastTransactionAt())
-                .alertLevel(entity.getAlertLevel())
-                .notes(entity.getNotes())
+                .id(entity != null ? entity.getId() : null)
+                .branchId(branch.getId())
+                .branchCode(branch.getCode())
+                .branchName(branch.getName())
+                .branchCity(branch.getCity())
+                .controlDate(entity != null ? entity.getControlDate() : date)
+                .dailyClosingDone(dailyDone)
+                .eveningClosingDone(eveningDone)
+                .navClosingDone(navDone)
+                .lastTransactionAt(entity != null ? entity.getLastTransactionAt() : null)
+                .alertLevel(resolveAlertLevel(entity, date, completed, required))
+                .notes(entity != null ? entity.getNotes() : null)
+                .completedCount(completed)
+                .requiredCount(required)
+                .missingRecord(missingRecord)
                 .build();
+    }
+
+    private Branch requireBranchInCurrentCompany(UUID branchId, UUID companyId) {
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+        if (branch.getCompany() == null || !companyId.equals(branch.getCompany().getId())) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+        if (!Boolean.TRUE.equals(branch.getIsActive())) {
+            throw new ValidationException("Inaktív irodának nem küldhető zárási figyelmeztetés: " + branchId);
+        }
+        return branch;
+    }
+
+    private String resolveAlertLevel(ClosingControl entity, LocalDate date, int completed, int required) {
+        if (entity != null && entity.getAlertLevel() != null && !"NONE".equalsIgnoreCase(entity.getAlertLevel())) {
+            return entity.getAlertLevel();
+        }
+        if (completed >= required) {
+            return "NONE";
+        }
+        if (date.isBefore(LocalDate.now())) {
+            return "CRITICAL";
+        }
+        return "WARNING";
+    }
+
+    private int countDone(boolean... values) {
+        int count = 0;
+        for (boolean value : values) {
+            if (value) {
+                count++;
+            }
+        }
+        return count;
     }
 }

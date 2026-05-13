@@ -15,6 +15,9 @@ Hatály: GitHub Copilot, Copilot Chat, Copilot Workspace, Copilot Coding Agent
 - NEM javasol hard-coded secret-et
 - NEM javasol --no-verify-t
 - NEM javasol PR-t 300 LOC / 5 fajl felett bontas nelkul
+- Hiba es CI failure eseten teljes hiba-blokkot kell olvasni, nem kiragadott sorokat
+- Javitasnal logikai blokkokat kell rendbe tenni, nem soronként toldozni
+- Lint, merge, push es deploy elott kotelezo az onellenorzes
 
 ## Required checks
 
@@ -22,3 +25,4 @@ Az alabbi check-eknek ZOLDNEK kell lennie merge elott:
 - lint, typecheck, unit-tests, integration-tests, build
 - codeql, dependency-review, secret-scan
 - codex-review-gate, sourcery-review-gate, scorecard
+- automatikus CI digest: `npm run ci:errors -- --pr <PR>`

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-07T20:52:19.893Z",
+  "generated_at": "2026-05-12T20:06:35.409Z",
   "checks": [
     {
       "name": "memoryRoot",
@@ -38,13 +38,8 @@
     },
     {
       "name": "obsidian:https://127.0.0.1:27124/",
-      "ok": false,
-      "error": "fetch failed"
-    },
-    {
-      "name": "obsidian:http://127.0.0.1:27123/",
-      "ok": false,
-      "error": "fetch failed"
+      "ok": true,
+      "status": 200
     }
   ]
 }

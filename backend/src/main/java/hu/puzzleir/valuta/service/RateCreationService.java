@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.ratecreation.BankRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.BranchListDTO;
 import hu.puzzleir.valuta.dto.ratecreation.CompetitorRateDTO;
@@ -7,11 +9,15 @@ import hu.puzzleir.valuta.dto.ratecreation.GroupRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.RateCreationResponseDTO;
 import hu.puzzleir.valuta.dto.ratecreation.RateOverviewDTO;
 import hu.puzzleir.valuta.dto.ratecreation.WorkgroupDetailDTO;
+import hu.puzzleir.valuta.dto.ratemaker.LocalRateMakerBootstrapDto;
+import hu.puzzleir.valuta.dto.ratemaker.LocalRatePackageDto;
+import hu.puzzleir.valuta.dto.ratemaker.LocalRatePublishResponseDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.CompetitorRate;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.ExchangeRate;
+import hu.puzzleir.valuta.entity.RatePublication;
 import hu.puzzleir.valuta.entity.RateTemplate;
 import hu.puzzleir.valuta.entity.RateWorkgroup;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -20,6 +26,7 @@ import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.CompetitorRateRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.ExchangeRateRepository;
+import hu.puzzleir.valuta.repository.RatePublicationRepository;
 import hu.puzzleir.valuta.repository.RateTemplateRepository;
 import hu.puzzleir.valuta.repository.RateWorkgroupRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -30,9 +37,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.HexFormat;
 import java.util.stream.Collectors;
 
 /**
@@ -55,7 +66,9 @@ public class RateCreationService {
     private final CompanyRepository companyRepository;
     private final RateTemplateRepository rateTemplateRepository;
     private final RateWorkgroupRepository rateWorkgroupRepository;
+    private final RatePublicationRepository ratePublicationRepository;
     private final RatePublishService ratePublishService;
+    private final ObjectMapper objectMapper;
 
     /**
      * Bank árfolyamok lekérése az aktuális rátákból.
@@ -414,6 +427,71 @@ public class RateCreationService {
      * ÉS outbox event-et hoz létre a WebSocket push-hoz.
      */
     public void publishGroupRate(GroupRateDTO groupRateDTO) {
+        publishGroupRateAndReturnPublication(groupRateDTO);
+    }
+
+    public RatePublication publishGroupRateAndReturnPublication(GroupRateDTO groupRateDTO) {
+        return publishGroupRateInternal(groupRateDTO, "Árfolyam rögzítés publikálás", null);
+    }
+
+    public LocalRateMakerBootstrapDto getLocalRateMakerBootstrap() {
+        return LocalRateMakerBootstrapDto.builder()
+                .generatedAt(LocalDateTime.now())
+                .mode("LOCAL_RATE_MAKER")
+                .publishEndpoint("/api/v1/local-rate-maker/packages/publish")
+                .idempotencyRequired(true)
+                .overview(getRateOverview())
+                .workgroups(getWorkgroupDetails())
+                .build();
+    }
+
+    public LocalRatePublishResponseDto publishLocalRatePackage(LocalRatePackageDto packageDto) {
+        if (packageDto.getGroupId() == null) {
+            throw new ValidationException("Helyi árfolyamcsomag csak explicit munkacsoporttal publikálható.");
+        }
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (ratePublicationRepository.existsByCompanyIdAndClientPackageId(companyId, packageDto.getClientPackageId())) {
+            throw new ValidationException("Ez az árfolyamcsomag már beérkezett: " + packageDto.getClientPackageId());
+        }
+
+        String serverPackageHash = computeServerPackageHash(packageDto);
+        GroupRateDTO groupRateDTO = GroupRateDTO.builder()
+                .groupId(packageDto.getGroupId())
+                .rates(packageDto.getRates())
+                .build();
+
+        String notes = buildLocalPackageNotes(packageDto, serverPackageHash);
+        RatePublishService.PublicationMetadata metadata = new RatePublishService.PublicationMetadata(
+                "LOCAL_RATE_MAKER",
+                packageDto.getClientPackageId(),
+                serverPackageHash,
+                packageDto.getClientVersion(),
+                packageDto.getClientDeviceId());
+
+        RatePublication publication = publishGroupRateInternal(groupRateDTO, notes, metadata);
+        RateWorkgroup workgroup = rateWorkgroupRepository.findById(packageDto.getGroupId())
+                .orElseThrow(() -> new ValidationException("Munkacsoport nem található: " + packageDto.getGroupId()));
+
+        List<String> branchCodes = workgroup.getBranches().stream()
+                .map(Branch::getCode)
+                .sorted()
+                .toList();
+
+        return LocalRatePublishResponseDto.builder()
+                .publicationId(publication.getId())
+                .workgroupId(publication.getWorkgroupId())
+                .publishedAt(publication.getPublishedAt())
+                .acceptedRates(packageDto.getRates().size())
+                .affectedBranches(publication.getAffectedBranches() != null ? publication.getAffectedBranches() : 0)
+                .status("ACCEPTED_AND_DISTRIBUTION_QUEUED")
+                .serverPackageHash(serverPackageHash)
+                .branchCodes(branchCodes)
+                .build();
+    }
+
+    private RatePublication publishGroupRateInternal(GroupRateDTO groupRateDTO,
+                                                    String publicationNotes,
+                                                    RatePublishService.PublicationMetadata metadata) {
         if (groupRateDTO.getRates() == null || groupRateDTO.getRates().isEmpty()) {
             throw new ValidationException("Nincs publikálandó árfolyam!");
         }
@@ -484,9 +562,54 @@ public class RateCreationService {
         }
 
         // Publish: exchange_rate INSERT + outbox event → WebSocket push a pénztáraknak
-        ratePublishService.publish(workgroupId, templateIds, "Árfolyam rögzítés publikálás");
+        RatePublication publication = ratePublishService.publish(workgroupId, templateIds, publicationNotes, metadata);
 
         log.info("Csoportos árfolyam publikálva pipeline-on: {} sablon → exchange_rate + WebSocket push", templateIds.size());
+        return publication;
+    }
+
+    private String buildLocalPackageNotes(LocalRatePackageDto packageDto, String serverPackageHash) {
+        List<String> parts = new ArrayList<>();
+        parts.add("LOCAL_RATE_MAKER");
+        parts.add("packageId=" + safeAuditValue(packageDto.getClientPackageId()));
+        parts.add("clientVersion=" + safeAuditValue(packageDto.getClientVersion()));
+        parts.add("deviceId=" + safeAuditValue(packageDto.getClientDeviceId()));
+        parts.add("serverHash=" + serverPackageHash);
+        if (packageDto.getClientPackageHash() != null && !packageDto.getClientPackageHash().isBlank()) {
+            parts.add("clientHash=" + safeAuditValue(packageDto.getClientPackageHash()));
+        }
+        if (packageDto.getCreatedAt() != null) {
+            parts.add("clientCreatedAt=" + packageDto.getCreatedAt());
+        }
+        if (packageDto.getOperatorNote() != null && !packageDto.getOperatorNote().isBlank()) {
+            parts.add("note=" + safeAuditValue(packageDto.getOperatorNote()));
+        }
+        if (packageDto.getSignature() != null && !packageDto.getSignature().isBlank()) {
+            parts.add("signaturePresent=true");
+        }
+        return String.join("; ", parts);
+    }
+
+    private String safeAuditValue(String value) {
+        return value == null ? "" : value.trim().replace('\n', ' ').replace('\r', ' ');
+    }
+
+    private String computeServerPackageHash(LocalRatePackageDto packageDto) {
+        try {
+            Map<String, Object> canonical = new LinkedHashMap<>();
+            canonical.put("clientPackageId", packageDto.getClientPackageId());
+            canonical.put("clientDeviceId", packageDto.getClientDeviceId());
+            canonical.put("clientVersion", packageDto.getClientVersion());
+            canonical.put("createdAt", packageDto.getCreatedAt());
+            canonical.put("groupId", packageDto.getGroupId());
+            canonical.put("rates", packageDto.getRates());
+
+            byte[] json = objectMapper.writeValueAsString(canonical).getBytes(StandardCharsets.UTF_8);
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(json));
+        } catch (JsonProcessingException | NoSuchAlgorithmException e) {
+            throw new IllegalStateException("Árfolyamcsomag hash számítás sikertelen", e);
+        }
     }
 
     // ====== BRANCH MANAGEMENT ======

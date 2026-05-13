@@ -21,8 +21,13 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/rate-management")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
 public class RateManagementController {
+
+    private static final String RATE_MANAGEMENT_WRITE_ROLES =
+            "hasAnyRole('MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')";
+    private static final String RATE_MANAGEMENT_ADMIN_ROLES =
+            "hasAnyRole('ADMIN', 'FOERTEKTAR', 'UGYVEZETO')";
 
     private final RateTemplateService templateService;
     private final RateWorkgroupService workgroupService;
@@ -47,17 +52,20 @@ public class RateManagementController {
     }
 
     @PostMapping("/templates")
+    @PreAuthorize(RATE_MANAGEMENT_WRITE_ROLES)
     public ResponseEntity<RateTemplate> createTemplate(@Valid @RequestBody RateTemplate template) {
         return ResponseEntity.status(HttpStatus.CREATED).body(templateService.createTemplate(template));
     }
 
     @PutMapping("/templates/{id}")
+    @PreAuthorize(RATE_MANAGEMENT_WRITE_ROLES)
     public ResponseEntity<RateTemplate> updateTemplate(
             @PathVariable UUID id, @Valid @RequestBody RateTemplate template) {
         return ResponseEntity.ok(templateService.updateTemplate(id, template));
     }
 
     @DeleteMapping("/templates/{id}")
+    @PreAuthorize(RATE_MANAGEMENT_WRITE_ROLES)
     public ResponseEntity<Void> deleteTemplate(@PathVariable UUID id) {
         templateService.deleteTemplate(id);
         return ResponseEntity.noContent().build();
@@ -66,11 +74,13 @@ public class RateManagementController {
     // ============ WORKFLOW ============
 
     @PostMapping("/templates/{id}/approve")
+    @PreAuthorize(RATE_MANAGEMENT_WRITE_ROLES)
     public ResponseEntity<RateTemplate> approveTemplate(@PathVariable UUID id) {
         return ResponseEntity.ok(approvalService.approve(id));
     }
 
     @PostMapping("/templates/{id}/publish")
+    @PreAuthorize(RATE_MANAGEMENT_WRITE_ROLES)
     public ResponseEntity<RatePublication> publishTemplate(@PathVariable UUID id) {
         return ResponseEntity.ok(publishService.publish(
                 templateService.getTemplate(id).getWorkgroupId(),
@@ -78,11 +88,13 @@ public class RateManagementController {
     }
 
     @PostMapping("/templates/{id}/revoke")
+    @PreAuthorize(RATE_MANAGEMENT_WRITE_ROLES)
     public ResponseEntity<RateTemplate> revokeTemplate(@PathVariable UUID id) {
         return ResponseEntity.ok(approvalService.revoke(id));
     }
 
     @PostMapping("/publish")
+    @PreAuthorize(RATE_MANAGEMENT_WRITE_ROLES)
     public ResponseEntity<RatePublication> publishBatch(@Valid @RequestBody RatePublishRequestDto dto) {
         return ResponseEntity.ok(publishService.publish(dto.getWorkgroupId(), dto.getTemplateIds(), dto.getNotes()));
     }
@@ -95,13 +107,13 @@ public class RateManagementController {
     }
 
     @PostMapping("/workgroups")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(RATE_MANAGEMENT_ADMIN_ROLES)
     public ResponseEntity<RateWorkgroup> createWorkgroup(@Valid @RequestBody RateWorkgroup workgroup) {
         return ResponseEntity.status(HttpStatus.CREATED).body(workgroupService.create(workgroup));
     }
 
     @PutMapping("/workgroups/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(RATE_MANAGEMENT_ADMIN_ROLES)
     public ResponseEntity<RateWorkgroup> updateWorkgroup(
             @PathVariable UUID id, @Valid @RequestBody RateWorkgroup workgroup) {
         return ResponseEntity.ok(workgroupService.update(id, workgroup));
@@ -116,13 +128,13 @@ public class RateManagementController {
     }
 
     @PostMapping("/discounts")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(RATE_MANAGEMENT_ADMIN_ROLES)
     public ResponseEntity<RateDiscount> createDiscount(@Valid @RequestBody RateDiscount discount) {
         return ResponseEntity.status(HttpStatus.CREATED).body(discountRepository.save(discount));
     }
 
     @PutMapping("/discounts/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(RATE_MANAGEMENT_ADMIN_ROLES)
     public ResponseEntity<RateDiscount> updateDiscount(
             @PathVariable UUID id, @Valid @RequestBody RateDiscount discount) {
         discount.setId(id);

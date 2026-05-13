@@ -34,6 +34,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ExchangeRateController {
 
+    private static final String RATE_READ_ROLES =
+            "hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'PENZTAR', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')";
+    private static final String RATE_WRITE_ROLES =
+            "hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')";
+
     private final ExchangeRateService exchangeRateService;
     private final ExchangeRateMapper exchangeRateMapper;
     private final RateFileParserService rateFileParserService;
@@ -45,7 +50,7 @@ public class ExchangeRateController {
      * GET /api/v1/exchange-rates/current
      */
     @GetMapping({"", "/current"})
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize(RATE_READ_ROLES)
     public ResponseEntity<List<ExchangeRateDto>> getAllCurrentRates() {
         List<ExchangeRate> rates = exchangeRateService.getAllCurrentRates();
         List<ExchangeRateDto> dtos = rates.stream()
@@ -60,7 +65,7 @@ public class ExchangeRateController {
      * GET /api/v1/exchange-rates/pos-current
      */
     @GetMapping("/pos-current")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize(RATE_READ_ROLES)
     public ResponseEntity<List<CurrentRateDto>> getCurrentRatesForPos() {
         List<ExchangeRate> rates = exchangeRateService.getAllCurrentRates();
         List<CurrentRateDto> dtos = rates.stream()
@@ -75,7 +80,7 @@ public class ExchangeRateController {
      * GET /api/v1/exchange-rates/currency/{currencyId}
      */
     @GetMapping("/currency/{currencyId}")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize(RATE_READ_ROLES)
     public ResponseEntity<ExchangeRateDto> getRateByCurrencyId(@PathVariable Long currencyId) {
         ExchangeRate rate = exchangeRateService.getCurrentRate(currencyId);
         return ResponseEntity.ok(exchangeRateMapper.toDto(rate));
@@ -87,7 +92,7 @@ public class ExchangeRateController {
      * GET /api/v1/exchange-rates/code/{currencyCode}
      */
     @GetMapping("/code/{currencyCode}")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize(RATE_READ_ROLES)
     public ResponseEntity<ExchangeRateDto> getRateByCurrencyCode(@PathVariable String currencyCode) {
         ExchangeRate rate = exchangeRateService.getCurrentRateByCode(currencyCode);
         return ResponseEntity.ok(exchangeRateMapper.toDto(rate));
@@ -99,7 +104,7 @@ public class ExchangeRateController {
      * GET /api/v1/exchange-rates/buy-rate?currencyId=...&hufAmount=...
      */
     @GetMapping("/buy-rate")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize(RATE_READ_ROLES)
     public ResponseEntity<BigDecimal> getBuyRateForAmount(
             @RequestParam Long currencyId,
             @RequestParam BigDecimal hufAmount) {
@@ -113,7 +118,7 @@ public class ExchangeRateController {
      * GET /api/v1/exchange-rates/sell-rate?currencyId=...&hufAmount=...
      */
     @GetMapping("/sell-rate")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize(RATE_READ_ROLES)
     public ResponseEntity<BigDecimal> getSellRateForAmount(
             @RequestParam Long currencyId,
             @RequestParam BigDecimal hufAmount) {
@@ -129,7 +134,7 @@ public class ExchangeRateController {
      * Csak SUPERVISOR, MANAGER, ADMIN
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize(RATE_WRITE_ROLES)
     public ResponseEntity<ExchangeRateDto> createExchangeRate(@Valid @RequestBody CreateExchangeRateDto dto) {
         ExchangeRate rate = exchangeRateService.createExchangeRate(exchangeRateMapper.toServiceRequest(dto));
         return ResponseEntity.status(HttpStatus.CREATED).body(exchangeRateMapper.toDto(rate));
@@ -141,7 +146,7 @@ public class ExchangeRateController {
      * GET /api/v1/exchange-rates/history?currencyId=...&startDate=...&endDate=...
      */
     @GetMapping("/history")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize(RATE_WRITE_ROLES)
     public ResponseEntity<List<ExchangeRateDto>> getRateHistory(
             @RequestParam(required = false) Long currencyId,
             @RequestParam(required = false) String currencyCode,
@@ -179,7 +184,7 @@ public class ExchangeRateController {
      * POST /api/v1/exchange-rates/upload-rate-file
      */
     @PostMapping("/upload-rate-file")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize(RATE_WRITE_ROLES)
     public ResponseEntity<ParsedRateFile> uploadRateFile(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             throw new ValidationException("Az árfolyamfájl nem lehet üres!");
@@ -207,7 +212,7 @@ public class ExchangeRateController {
      * POST /api/v1/exchange-rates/import-rate-file
      */
     @PostMapping("/import-rate-file")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize(RATE_WRITE_ROLES)
     public ResponseEntity<List<ExchangeRateDto>> importRateFile(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             throw new ValidationException("Az árfolyamfájl nem lehet üres!");

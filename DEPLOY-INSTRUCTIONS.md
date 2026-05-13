@@ -15,12 +15,15 @@
 ```
 PORT=8080
 SPRING_PROFILES_ACTIVE=production
-JDBC_DATABASE_URL=jdbc:postgresql://ep-polished-morning-altxohe7.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require&user=neondb_owner&password=npg_eyAoB2ZpJO9Y
-JWT_SECRET=valutavalto-jwt-secret-2026-ebc-exclusive-change
+JDBC_DATABASE_URL=jdbc:postgresql://<db-host>/<db-name>?sslmode=require&user=<db-user>&password=<DATABASE_PASSWORD_FROM_SECRET_STORE>
+JWT_SECRET=<GENERATE_32_PLUS_CHAR_RANDOM_SECRET>
 JWT_EXPIRATION=86400000
 CORS_ALLOWED_ORIGINS=http://localhost:5173,https://valutavalto.vercel.app
 LOG_LEVEL=INFO
 ```
+
+Ha a korabbi konkret JDBC/JWT pelda valaha eles kornyezetben is hasznalva volt,
+azonnal rotalni kell a titkot, majd kotelezo redeploy es verifikacio kovetkezik.
 
 ### 3. Health Check Path
 ```

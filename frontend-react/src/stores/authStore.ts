@@ -28,10 +28,11 @@ interface AuthState {
   permissions: string[]
   roles: string[]
   roleSelectionRequired: boolean
+  centralModules: string[] | null
   login: (worker: Worker, token: string, tokenType: string, expiresAt: string,
           activeRole?: string | null, permissions?: string[], roles?: string[],
-          roleSelectionRequired?: boolean) => void
-  selectRole: (token: string, activeRole: string, permissions: string[]) => void
+          roleSelectionRequired?: boolean, centralModules?: string[] | null) => void
+  selectRole: (token: string, activeRole: string, permissions: string[], centralModules?: string[] | null) => void
   logout: () => void
   hasRole: (role: string) => boolean
   hasCanonicalRole: (canonicalRoles: string | string[]) => boolean
@@ -53,10 +54,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   permissions: [],
   roles: [],
   roleSelectionRequired: false,
+  centralModules: null,
 
   login: (worker: Worker, token: string, tokenType: string, expiresAt: string,
           activeRole?: string | null, permissions?: string[], roles?: string[],
-          roleSelectionRequired?: boolean) => {
+          roleSelectionRequired?: boolean, centralModules?: string[] | null) => {
     set({
       worker,
       // 2026-05-01 fix: a `user` field legacy compat — eddig SOSE volt set,
@@ -72,17 +74,19 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       permissions: permissions ?? [],
       roles: roles ?? [],
       roleSelectionRequired: roleSelectionRequired ?? false,
+      centralModules: centralModules ?? null,
     })
     // Electron: token mentése SQLite-ba (offline login restore-hoz)
     void persistToken(token)
   },
 
-  selectRole: (token: string, activeRole: string, permissions: string[]) => {
+  selectRole: (token: string, activeRole: string, permissions: string[], centralModules?: string[] | null) => {
     set({
       token,
       activeRole,
       permissions,
       roleSelectionRequired: false,
+      centralModules: centralModules ?? null,
     })
     // Electron: új token mentése
     void persistToken(token)
@@ -100,6 +104,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       permissions: [],
       roles: [],
       roleSelectionRequired: false,
+      centralModules: null,
     })
     // Electron: token törlése SQLite-ból
     void clearPersistedToken()

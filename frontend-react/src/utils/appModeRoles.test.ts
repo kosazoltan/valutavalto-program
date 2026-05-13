@@ -22,9 +22,19 @@ describe('isRoleSelectableForAppMode', () => {
 
   it('server role-t full es lokalis felugyeleti belepeshez is enged', () => {
     expect(isRoleSelectableForAppMode('foertektar', 'full')).toBe(true)
+    expect(isRoleSelectableForAppMode('teruleti_vezeto', 'full')).toBe(true)
+    expect(isRoleSelectableForAppMode('biztonsagi_vezeto', 'full')).toBe(true)
     expect(isRoleSelectableForAppMode('foertektar', 'penztar')).toBe(true)
     expect(isRoleSelectableForAppMode('ADMIN', 'ertektar')).toBe(true)
     expect(isRoleSelectableForAppMode('ugyvezeto', 'ertekszallito')).toBe(true)
+  })
+
+  it('rate-maker modban csak foertektar, ugyvezeto es admin lephet be', () => {
+    expect(isRoleSelectableForAppMode('foertektar', 'rate-maker')).toBe(true)
+    expect(isRoleSelectableForAppMode('ugyvezeto', 'rate-maker')).toBe(true)
+    expect(isRoleSelectableForAppMode('ADMIN', 'rate-maker')).toBe(true)
+    expect(isRoleSelectableForAppMode('irodavezeto', 'rate-maker')).toBe(false)
+    expect(isRoleSelectableForAppMode('penztar', 'rate-maker')).toBe(false)
   })
 
   it('legacy courier role-t barmely lokalis modban enged', () => {

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.bestchange.arfolyamkeszito",
+  "productName": "Valutavalto Arfolyamkeszito",
+  "directories": {
+    "output": "release"
+  },
+  "asar": true,
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*",
+    "package.json"
+  ],
+  "win": {
+    "icon": "../penztar-client/build/icons/app-icon-bestchange.ico",
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ],
+    "artifactName": "Arfolyamkeszito-Setup-${version}.exe"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "deleteAppDataOnUninstall": false,
+    "language": "1038",
+    "installerIcon": "../penztar-client/build/icons/app-icon-bestchange.ico",
+    "uninstallerIcon": "../penztar-client/build/icons/app-icon-bestchange.ico",
+    "installerHeader": "../penztar-client/build/installer-header.png"
+  },
+  "extraResources": [
+    {
+      "from": "../config/production-urls.json",
+      "to": "production-urls.json"
+    }
+  ],
+  "npmRebuild": false
+}

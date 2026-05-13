@@ -55,6 +55,8 @@ public class GoogleIdTokenService {
      * @param hostedDomain  Workspace `hd` claim (NULL ha personal Gmail)
      * @param audience      a token `aud` claim — biztosan == sajat client ID
      * @param issuer        Google issuer (accounts.google.com vagy https://accounts.google.com)
+     * @param name          Google profile display name, ha a token tartalmazza
+     * @param picture       Google profile picture URL, ha a token tartalmazza
      */
     public record VerifiedGoogleIdentity(
             String subject,
@@ -62,7 +64,9 @@ public class GoogleIdTokenService {
             boolean emailVerified,
             String hostedDomain,
             String audience,
-            String issuer
+            String issuer,
+            String name,
+            String picture
     ) {
     }
 
@@ -110,6 +114,8 @@ public class GoogleIdTokenService {
         Boolean emailVerifiedClaim = payload.getEmailVerified();
         String hostedDomain = payload.getHostedDomain();
         String audience = audienceAsString(payload.getAudience());
+        String name = optionalClaimAsString(payload, "name");
+        String picture = optionalClaimAsString(payload, "picture");
         JsonWebSignature.Header header = googleIdToken.getHeader();
         String issuer = String.valueOf(payload.getIssuer());
 
@@ -146,8 +152,17 @@ public class GoogleIdTokenService {
                 true,
                 hostedDomain,
                 audience,
-                issuer
+                issuer,
+                name,
+                picture
         );
+    }
+
+    private String optionalClaimAsString(GoogleIdToken.Payload payload, String claimName) {
+        Object raw = payload.get(claimName);
+        if (raw == null) return null;
+        String value = String.valueOf(raw).trim();
+        return value.isEmpty() ? null : value;
     }
 
     /**

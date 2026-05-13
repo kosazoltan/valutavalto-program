@@ -1,0 +1,37 @@
+{
+  "name": "valuta-kozponti-client",
+  "version": "2.5.48",
+  "private": true,
+  "author": "Exclusive Best Change Zrt.",
+  "description": "Kozponti helyi iranyitokozpont - Electron GUI a szerver/DLL legacy funkciok modern moduljaihoz",
+  "type": "commonjs",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k -n renderer,electron -c green,blue \"npm:dev:renderer\" \"npm:dev:main\"",
+    "dev:renderer": "powershell -NoProfile -Command \"$env:VITE_APP_FLAVOR='central-workstation'; $env:VITE_PROXY_TARGET='https://excvaluta.com'; npm --prefix ../frontend-react run dev -- --host 0.0.0.0 --port 3020\"",
+    "dev:main": "vite",
+    "build:electron": "vite build",
+    "build:frontend": "powershell -NoProfile -Command \"$env:VITE_APP_FLAVOR='central-workstation'; npm --prefix ../frontend-react run build\"",
+    "copy:frontend": "shx rm -rf dist && shx cp -r ../frontend-react/dist dist",
+    "build": "npm run build:electron && npm run build:frontend && npm run copy:frontend",
+    "package": "node ../scripts/check-four-area-alignment.mjs && npm run build && electron-builder --win",
+    "package:unsigned": "node ../scripts/check-four-area-alignment.mjs && npm run build && set ALLOW_UNSIGNED_BUILD=1&& electron-builder --win",
+    "typecheck": "node ../frontend-react/node_modules/typescript/bin/tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "electron-log": "^5.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.20",
+    "concurrently": "^9.2.1",
+    "electron": "^42.0.1",
+    "electron-builder": "^26.8.1",
+    "shx": "^0.4.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.12",
+    "vite-plugin-electron": "^0.29.1"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

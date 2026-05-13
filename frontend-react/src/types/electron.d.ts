@@ -416,17 +416,22 @@ export interface ElectronAPI {
     branchName: string;
     apiUrl: string;
     companyCode: string;
-    adminUsername: string;
-    adminPassword: string;
+    authMode?: "password" | "google";
+    adminUsername?: string;
+    adminPassword?: string;
     bootstrapUsername?: string;
     bootstrapPassword?: string;
     offlineMode: boolean;
-    appMode?: "penztar" | "ertektar" | "ertekszallito";
+    appMode?: "penztar" | "ertektar" | "ertekszallito" | "full" | "rate-maker";
     // v2.3.0: a telepito dolgozoi dropdown-bol kivalasztott worker identity.
     // Ha ez kitoltve -> /auth/first-time-worker-setup. Egyebkent bootstrap-admin.
     selectedWorkerCode?: string;
     selectedWorkerName?: string;
     selectedWorkerRole?: string;
+    googleEmail?: string;
+    googleSub?: string;
+    googleName?: string;
+    googlePicture?: string;
   }): Promise<{
     success: boolean;
     envPath: string;

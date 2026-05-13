@@ -54,8 +54,24 @@ public class RatePublishService {
      */
     @Transactional(rollbackFor = Exception.class)
     public RatePublication publish(UUID workgroupId, List<UUID> templateIds, String notes) {
+        return publish(workgroupId, templateIds, notes, null);
+    }
+
+    /**
+     * Publish approved rate templates for a workgroup with external client audit metadata.
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public RatePublication publish(UUID workgroupId,
+                                   List<UUID> templateIds,
+                                   String notes,
+                                   PublicationMetadata metadata) {
         RateWorkgroup workgroup = workgroupRepository.findById(workgroupId)
                 .orElseThrow(() -> new ValidationException("Munkacsoport nem található: " + workgroupId));
+
+        if (workgroup.getBranches() == null || workgroup.getBranches().isEmpty()) {
+            throw new ValidationException(
+                    "A munkacsoporthoz nincs aktív iroda rendelve, ezért az árfolyam nem küldhető ki.");
+        }
 
         List<RateTemplate> templates = new ArrayList<>();
         for (UUID templateId : templateIds) {
@@ -74,7 +90,7 @@ public class RatePublishService {
         }
 
         // Create publication record
-        int affectedBranches = workgroup.getBranches() != null ? workgroup.getBranches().size() : 0;
+        int affectedBranches = workgroup.getBranches().size();
         RatePublication publication = RatePublication.builder()
                 .companyId(SecurityUtils.getCurrentCompanyId())
                 .workgroupId(workgroupId)
@@ -82,6 +98,7 @@ public class RatePublishService {
                 .affectedBranches(affectedBranches)
                 .notes(notes)
                 .build();
+        applyPublicationMetadata(publication, metadata);
 
         if (!templateIds.isEmpty()) {
             publication.setTemplateId(templateIds.get(0));
@@ -97,6 +114,34 @@ public class RatePublishService {
                 workgroup.getCode(), templates.size(), affectedBranches, publishedRateCount);
 
         return publication;
+    }
+
+    public record PublicationMetadata(
+            String source,
+            String clientPackageId,
+            String clientPackageHash,
+            String clientVersion,
+            String clientDeviceId) {
+    }
+
+    private void applyPublicationMetadata(RatePublication publication, PublicationMetadata metadata) {
+        if (metadata == null) {
+            return;
+        }
+
+        publication.setSource(blankToDefault(metadata.source(), "LOCAL_RATE_MAKER"));
+        publication.setClientPackageId(blankToNull(metadata.clientPackageId()));
+        publication.setClientPackageHash(blankToNull(metadata.clientPackageHash()));
+        publication.setClientVersion(blankToNull(metadata.clientVersion()));
+        publication.setClientDeviceId(blankToNull(metadata.clientDeviceId()));
+    }
+
+    private String blankToDefault(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private void enqueueRateUpdateOutboxEvent(UUID publicationId,
@@ -193,7 +238,12 @@ public class RatePublishService {
                         branch.getId());
 
                 ExchangeRate latestRate = currentRates.isEmpty() ? null : currentRates.get(0);
-                for (ExchangeRate currentRate : currentRates) {
+
+                List<ExchangeRate> branchRates = exchangeRateRepository.findActiveBranchRates(
+                        branch.getCompany().getId(),
+                        currency.getId(),
+                        branch.getId());
+                for (ExchangeRate currentRate : branchRates) {
                     currentRate.setActive(false);
                     exchangeRateRepository.save(currentRate);
                 }

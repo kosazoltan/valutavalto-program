@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -139,6 +140,7 @@ class RatePublishServiceTest {
         when(templateRepository.save(any(RateTemplate.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(currencyRepository.findAllById(anyList())).thenReturn(List.of(eur));
         when(exchangeRateRepository.findCurrentRate(companyId, 1L, branchId)).thenReturn(List.of());
+        when(exchangeRateRepository.findActiveBranchRates(companyId, 1L, branchId)).thenReturn(List.of());
         when(exchangeRateRepository.save(any(ExchangeRate.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(publicationRepository.save(any(RatePublication.class))).thenAnswer(invocation -> {
             RatePublication p = invocation.getArgument(0);
@@ -171,7 +173,88 @@ class RatePublishServiceTest {
         assertEquals("EUR", payload.get("rates").get(0).get("currencyCode").asText());
 
         verify(exchangeRateRepository, times(1)).findCurrentRate(companyId, 1L, branchId);
+        verify(exchangeRateRepository, times(1)).findActiveBranchRates(companyId, 1L, branchId);
         verify(exchangeRateRepository, times(1)).save(any(ExchangeRate.class));
         verify(templateRepository, times(1)).save(eq(template));
+    }
+
+    @Test
+    @DisplayName("publish keeps global fallback rate active when writing branch-specific rate")
+    void publish_keepsGlobalFallbackActive() {
+        UUID workgroupId = UUID.randomUUID();
+        UUID templateId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+
+        Company company = Company.builder()
+                .id(companyId)
+                .code("BEST")
+                .name("Best Change")
+                .build();
+
+        Branch branch = Branch.builder()
+                .id(branchId)
+                .code("BORSI")
+                .company(company)
+                .build();
+
+        RateWorkgroup workgroup = RateWorkgroup.builder()
+                .id(workgroupId)
+                .name("Main WG")
+                .code("WG-1")
+                .branches(Set.of(branch))
+                .build();
+
+        RateTemplate template = RateTemplate.builder()
+                .id(templateId)
+                .workgroupId(workgroupId)
+                .currencyId(1L)
+                .baseBuyRate(new BigDecimal("395.1000"))
+                .baseSellRate(new BigDecimal("398.1000"))
+                .buySpread(new BigDecimal("0.2000"))
+                .sellSpread(new BigDecimal("0.3000"))
+                .roundingRule(1)
+                .status(RateTemplate.RateTemplateStatus.APPROVED)
+                .build();
+
+        Currency eur = Currency.builder()
+                .id(1L)
+                .code("EUR")
+                .name("Euro")
+                .build();
+
+        ExchangeRate globalFallback = ExchangeRate.builder()
+                .company(company)
+                .branch(null)
+                .currency(eur)
+                .officialRate(new BigDecimal("396.5000"))
+                .active(true)
+                .build();
+
+        when(workgroupRepository.findById(workgroupId)).thenReturn(Optional.of(workgroup));
+        when(templateRepository.findById(templateId)).thenReturn(Optional.of(template));
+        when(templateRepository.save(any(RateTemplate.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(eur));
+        when(exchangeRateRepository.findCurrentRate(companyId, 1L, branchId)).thenReturn(List.of(globalFallback));
+        when(exchangeRateRepository.findActiveBranchRates(companyId, 1L, branchId)).thenReturn(List.of());
+        when(exchangeRateRepository.save(any(ExchangeRate.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(publicationRepository.save(any(RatePublication.class))).thenAnswer(invocation -> {
+            RatePublication p = invocation.getArgument(0);
+            if (p.getId() == null) {
+                p.setId(UUID.randomUUID());
+            }
+            return p;
+        });
+        when(syncOutboxRepository.save(any(SyncOutboxEvent.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.publish(workgroupId, List.of(templateId), "daily publish");
+
+        assertTrue(globalFallback.getActive());
+
+        ArgumentCaptor<ExchangeRate> rateCaptor = ArgumentCaptor.forClass(ExchangeRate.class);
+        verify(exchangeRateRepository, times(1)).save(rateCaptor.capture());
+        ExchangeRate savedRate = rateCaptor.getValue();
+        assertEquals(branchId, savedRate.getBranch().getId());
+        assertFalse(savedRate == globalFallback);
     }
 }

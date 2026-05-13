@@ -12,6 +12,7 @@ import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.repository.WorkerSessionRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
 import hu.puzzleir.valuta.util.AppModeRoleConstants;
+import hu.puzzleir.valuta.util.CentralModuleManifest;
 import hu.puzzleir.valuta.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -239,6 +240,7 @@ public class GoogleLoginService {
         // A "kamera" appMode logika is itt — a teruleti_vezeto + biztonsagi_vezeto canonical
         // role-ok "kamera" appMode-ot kapnak (NEM "full") — NEM ferhetnek a szerver-adminhoz.
         List<String> validAppModes = AppModeRoleConstants.computeValidAppModes(roleCodes, worker.getRole());
+        List<String> centralModules = CentralModuleManifest.allowedModules(roleCodes, activeRole, worker.getRole());
 
         return LoginResponseDto.builder()
                 .token(token)
@@ -251,6 +253,7 @@ public class GoogleLoginService {
                 .roleSelectionRequired(roleSelectionRequired)
                 .passwordChangeRequired(false)  // Google loginban nincs jelszo-policy
                 .validAppModes(validAppModes)
+                .centralModules(centralModules)
                 .build();
     }
 

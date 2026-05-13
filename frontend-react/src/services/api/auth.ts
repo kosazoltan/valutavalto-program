@@ -37,6 +37,7 @@ export interface LoginResponse {
   permissions?: string[]
   roleSelectionRequired?: boolean
   validAppModes?: string[]
+  centralModules?: string[]
 }
 
 const refreshCookie = async (): Promise<{ token: string }> => {

@@ -28,11 +28,44 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
            "AND er.currency.id = :currencyId " +
            "AND er.active = true " +
            "AND (er.branch.id = :branchId OR er.branch IS NULL) " +
-           "ORDER BY er.validDate DESC, er.validTime DESC")
+           "ORDER BY CASE WHEN er.branch.id = :branchId THEN 0 ELSE 1 END, " +
+           "er.validDate DESC, er.validTime DESC")
     List<ExchangeRate> findCurrentRate(
         @Param("companyId") UUID companyId,
         @Param("currencyId") Long currencyId,
         @Param("branchId") UUID branchId
+    );
+
+    /**
+     * Aktív, kifejezetten egy fiókra publikált árfolyamok.
+     * Nem tartalmazza a globális fallback rekordokat.
+     */
+    @Query("SELECT er FROM ExchangeRate er " +
+           "JOIN FETCH er.currency " +
+           "WHERE er.company.id = :companyId " +
+           "AND er.currency.id = :currencyId " +
+           "AND er.branch.id = :branchId " +
+           "AND er.active = true " +
+           "ORDER BY er.validDate DESC, er.validTime DESC")
+    List<ExchangeRate> findActiveBranchRates(
+        @Param("companyId") UUID companyId,
+        @Param("currencyId") Long currencyId,
+        @Param("branchId") UUID branchId
+    );
+
+    /**
+     * Aktív, cégszintű fallback árfolyamok.
+     */
+    @Query("SELECT er FROM ExchangeRate er " +
+           "JOIN FETCH er.currency " +
+           "WHERE er.company.id = :companyId " +
+           "AND er.currency.id = :currencyId " +
+           "AND er.branch IS NULL " +
+           "AND er.active = true " +
+           "ORDER BY er.validDate DESC, er.validTime DESC")
+    List<ExchangeRate> findActiveGlobalRates(
+        @Param("companyId") UUID companyId,
+        @Param("currencyId") Long currencyId
     );
 
     /**
@@ -91,7 +124,9 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
            "WHERE er.company.id = :companyId " +
            "AND er.active = true " +
            "AND (er.branch.id = :branchId OR er.branch IS NULL) " +
-           "ORDER BY er.currency.displayOrder, er.validDate DESC, er.validTime DESC")
+           "ORDER BY er.currency.displayOrder, " +
+           "CASE WHEN er.branch.id = :branchId THEN 0 ELSE 1 END, " +
+           "er.validDate DESC, er.validTime DESC")
     List<ExchangeRate> findAllActiveRates(
         @Param("companyId") UUID companyId,
         @Param("branchId") UUID branchId

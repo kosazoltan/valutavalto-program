@@ -4,6 +4,7 @@ import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
 
 interface WuTransaction {
@@ -27,6 +28,13 @@ interface WuTransaction {
 }
 
 type ModalType = 'send' | 'receive' | 'ic-in' | 'ic-out' | null
+
+interface BranchOption {
+  id: string
+  code?: string
+  name: string
+  isActive?: boolean
+}
 
 const TX_TYPE_LABELS: Record<string, string> = {
   SEND: 'Küldés',
@@ -56,7 +64,10 @@ const emptyForm = {
 
 export default function WesternUnionPage() {
   const { t } = useTranslation()
+  const workerBranchId = useAuthStore((state) => state.worker?.branchId ?? '')
   const [items, setItems] = useState<WuTransaction[]>([])
+  const [branches, setBranches] = useState<BranchOption[]>([])
+  const [branchId, setBranchId] = useState(workerBranchId)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -66,29 +77,39 @@ export default function WesternUnionPage() {
   const [submitting, setSubmitting] = useState(false)
 
   const loadData = useCallback(async () => {
+    if (!branchId) {
+      setItems([])
+      setLoading(false)
+      return
+    }
     try {
       setLoading(true)
       setError(null)
-      // Use transactions endpoint with current branch
       const response = await api.get<{ content: WuTransaction[] }>('/western-union/transactions', {
-        params: { branchId: localStorage.getItem('branchId') || '', page: 0, size: 50 }
+        params: { branchId, page: 0, size: 50 }
       })
       setItems(safeArray<WuTransaction>(response.data?.content ?? response.data))
-    } catch {
-      // Fallback to list endpoint
-      try {
-        const response = await api.get<WuTransaction[]>('/western-union')
-        setItems(safeArray<WuTransaction>(response.data))
-      } catch (err2) {
-        const msg = getErrorMessage(err2)
-        logger.error('WesternUnionPage', 'Betöltési hiba:', err2)
-        setError(msg)
-      }
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('WesternUnionPage', 'Betöltési hiba:', err)
+      setError(msg)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [branchId])
 
+  const loadBranches = useCallback(async () => {
+    try {
+      const response = await api.get<BranchOption[]>('/branches')
+      const activeBranches = safeArray<BranchOption>(response.data).filter((branch) => branch.isActive !== false)
+      setBranches(activeBranches)
+      setBranchId((current) => current || workerBranchId || activeBranches[0]?.id || '')
+    } catch (err) {
+      logger.warn('WesternUnionPage', 'Fióklista betöltési hiba:', err)
+    }
+  }, [workerBranchId])
+
+  useEffect(() => { void loadBranches() }, [loadBranches])
   useEffect(() => { void loadData() }, [loadData])
 
   const filtered = items.filter(item => {
@@ -111,7 +132,7 @@ export default function WesternUnionPage() {
     setError(null)
     try {
       const body = {
-        branchId: form.branchId || localStorage.getItem('branchId') || '',
+        branchId: form.branchId || branchId,
         mtcn: form.mtcn || undefined,
         amountUsd: form.amountUsd ? parseFloat(form.amountUsd) : undefined,
         amountHuf: form.amountHuf ? parseFloat(form.amountHuf) : undefined,
@@ -180,6 +201,16 @@ export default function WesternUnionPage() {
 
       {/* Search */}
       <div className="flex items-center gap-2">
+        <select
+          value={branchId}
+          onChange={(event) => { setBranchId(event.target.value); setItems([]) }}
+          className="form-input w-72"
+        >
+          <option value="">{t('export.valassz')}</option>
+          {branches.map((branch) => (
+            <option key={branch.id} value={branch.id}>{branch.name}{branch.code ? ` (${branch.code})` : ''}</option>
+          ))}
+        </select>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input type="text" placeholder="Keresés (MTCN, név, ország)..."

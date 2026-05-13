@@ -212,6 +212,26 @@ export interface PublishGroupRateRequest {
   rates: GroupRateEntryDTO[]
 }
 
+export interface LocalRatePublishResponse {
+  publicationId: string
+  workgroupId: string
+  publishedAt: string
+  acceptedRates: number
+  affectedBranches: number
+  status: 'ACCEPTED_AND_DISTRIBUTION_QUEUED'
+  serverPackageHash: string
+  branchCodes: string[]
+}
+
+export interface LocalRateMakerBootstrapDTO {
+  generatedAt: string
+  mode: 'LOCAL_RATE_MAKER' | string
+  publishEndpoint: string
+  idempotencyRequired: boolean
+  overview: RateOverviewDTO
+  workgroups: WorkgroupDetailDTO[]
+}
+
 export interface RateOverviewDTO {
   generatedAt: string
   currencies: RateOverviewItem[]
@@ -268,7 +288,60 @@ export interface BranchListItem {
   assignedToCurrentWorkgroup: boolean
 }
 
+async function getRateMakerDeviceId(): Promise<string> {
+  const key = 'rate_maker_device_id'
+  const electronApi = typeof window !== 'undefined' ? window.electronAPI : undefined
+  if (electronApi?.getConfig && electronApi.setConfig) {
+    const existing = await electronApi.getConfig(key)
+    if (existing?.trim()) return existing.trim()
+    const generated = `rate-maker-${crypto.randomUUID()}`
+    await electronApi.setConfig(key, generated)
+    return generated
+  }
+
+  const existing = window.localStorage.getItem(key)
+  if (existing?.trim()) return existing.trim()
+  const generated = `rate-maker-web-${crypto.randomUUID()}`
+  window.localStorage.setItem(key, generated)
+  return generated
+}
+
+async function sha256Hex(text: string): Promise<string> {
+  if (!crypto.subtle) return ''
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+async function buildLocalRatePackage(data: PublishGroupRateRequest) {
+  const clientPackageId = crypto.randomUUID()
+  const createdAt = new Date().toISOString()
+  const clientVersion = typeof window !== 'undefined' && window.electronAPI?.getAppVersion
+    ? await window.electronAPI.getAppVersion()
+    : (import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__)
+
+  const packageWithoutHash = {
+    clientPackageId,
+    clientDeviceId: await getRateMakerDeviceId(),
+    clientVersion,
+    createdAt,
+    groupId: data.groupId,
+    operatorNote: 'Helyi főértéktárosi árfolyamkészítő',
+    rates: data.rates,
+  }
+
+  return {
+    ...packageWithoutHash,
+    clientPackageHash: await sha256Hex(JSON.stringify(packageWithoutHash)),
+  }
+}
+
 export const rateCreationApi = {
+  getLocalRateMakerBootstrap: async (): Promise<LocalRateMakerBootstrapDTO> => {
+    const response = await api.get<LocalRateMakerBootstrapDTO>('/local-rate-maker/bootstrap')
+    return response.data
+  },
   getOverview: async (): Promise<RateOverviewDTO> => {
     const response = await api.get<RateOverviewDTO>('/rate-creation/overview')
     return response.data
@@ -306,7 +379,16 @@ export const rateCreationApi = {
     const response = await api.post<BankRateDTO>('/rate-creation/bank-rates', data)
     return response.data
   },
-  publishGroupRate: async (data: PublishGroupRateRequest): Promise<void> => {
+  publishGroupRate: async (data: PublishGroupRateRequest): Promise<void | LocalRatePublishResponse> => {
+    if (import.meta.env.VITE_APP_FLAVOR === 'rate-maker') {
+      const ratePackage = await buildLocalRatePackage(data)
+      const response = await api.post<LocalRatePublishResponse>(
+        '/local-rate-maker/packages/publish',
+        ratePackage,
+        { headers: { 'Idempotency-Key': ratePackage.clientPackageId } },
+      )
+      return response.data
+    }
     await api.post('/rate-creation/publish-group-rate', data)
   },
   getBranches: async (workgroupId: string): Promise<BranchListItem[]> => {

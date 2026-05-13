@@ -8,6 +8,8 @@
 # Helyette: a `.env.production.example` placeholder-szel commit-olt (lasd `.env.production.example`),
 # a `build-installer.ps1` runtime-ban generalja a `.env.production`-t a repo-gyokeri `.env`-bol
 # (gitignore-olt — minden valodi titkot tartalmazza).
+client_secret*.json
+*client_secret*.json
 
 # SSH Keys (KRITIKUS - ne commitold!)
 ssh-keys/
@@ -187,5 +189,11 @@ packages/*/node_modules/
 .remember/
 penztar-client/.env.bak-localhost
 
+# CI digest nyers logok - lokalis, potencialisan erzekeny futasi informaciok
+.agent/ci/
+
 # Context7 MCP API kulcs (NEM commit) — 2026-04-29 user-direktíva
 .env.context7
+
+# Obsidian lokalis vault runtime/config (Local REST API plugin titkot tartalmazhat)
+vault/.obsidian/

@@ -36,6 +36,22 @@ public class RatePublication {
     @Builder.Default
     private Integer affectedBranches = 0;
 
+    @Column(name = "source", length = 32)
+    @Builder.Default
+    private String source = "SERVER_UI";
+
+    @Column(name = "client_package_id", length = 80)
+    private String clientPackageId;
+
+    @Column(name = "client_package_hash", length = 128)
+    private String clientPackageHash;
+
+    @Column(name = "client_version", length = 40)
+    private String clientVersion;
+
+    @Column(name = "client_device_id", length = 80)
+    private String clientDeviceId;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 }

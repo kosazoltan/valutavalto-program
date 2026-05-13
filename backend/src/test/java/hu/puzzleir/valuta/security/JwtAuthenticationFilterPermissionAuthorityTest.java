@@ -80,9 +80,10 @@ class JwtAuthenticationFilterPermissionAuthorityTest {
                 .map(GrantedAuthority::getAuthority)
                 .toList();
         assertThat(authorityNames)
-            .as("ROLE_ADMIN + permission kodok mindegyike authority")
+            .as("ROLE_ADMIN + ROLE_PENZTAR (canonical activeRole) + permission kodok mindegyike authority")
             .containsExactlyInAnyOrder(
                 "ROLE_ADMIN",
+                "ROLE_PENZTAR",
                 "VIDEO_EXPORT",
                 "DARIUS_REPORT_RUN",
                 "SYSTEM_ADMIN"

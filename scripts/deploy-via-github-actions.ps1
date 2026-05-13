@@ -19,6 +19,13 @@ Write-Host "- HETZNER_SERVER_IP" -ForegroundColor Gray
 Write-Host "- HETZNER_SSH_USER" -ForegroundColor Gray
 Write-Host ""
 
+Write-Host "Kotelezo self-check deploy elott..." -ForegroundColor Yellow
+& npm run self-check:before-deploy
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Self-check failed. Deployment inditas blokkolva." -ForegroundColor Red
+    exit 1
+}
+
 $confirm = Read-Host "Biztosan elindítod a deployment workflow-t? (y/n)"
 if ($confirm -ne "y" -and $confirm -ne "Y") {
     Write-Host "Mégse." -ForegroundColor Yellow

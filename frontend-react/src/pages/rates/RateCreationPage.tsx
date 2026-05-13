@@ -20,7 +20,10 @@ import { useTranslation } from 'react-i18next'
 
 export default function RateCreationPage() {
   const { t } = useTranslation()
-  const canWriteRateCreation = useAuthStore((state) => state.isSupervisorOrAbove())
+  const isLocalRateMakerApp = import.meta.env.VITE_APP_FLAVOR === 'rate-maker'
+  const canWriteRateCreation = useAuthStore((state) =>
+    isLocalRateMakerApp && (state.hasRole('ADMIN') || state.hasCanonicalRole(['foertektar', 'ugyvezeto', 'admin'])),
+  )
   const [overview, setOverview] = useState<RateOverviewDTO | null>(null)
   const [workgroups, setWorkgroups] = useState<WorkgroupDetailDTO[]>([])
   const [rates, setRates] = useState<EditableRate[]>([])
@@ -63,12 +66,25 @@ export default function RateCreationPage() {
     setLoading(true)
     setError(null)
     try {
-      const [overviewData, wgData] = await Promise.all([
-        rateCreationApi.getOverview(),
-        rateCreationApi.getWorkgroupDetails()
-      ])
+      let overviewData: RateOverviewDTO
+      let wgData: WorkgroupDetailDTO[]
+
+      if (isLocalRateMakerApp) {
+        const bootstrap = await rateCreationApi.getLocalRateMakerBootstrap()
+        overviewData = bootstrap.overview
+        wgData = bootstrap.workgroups
+      } else {
+        const [overviewResponse, workgroupResponse] = await Promise.all([
+          rateCreationApi.getOverview(),
+          rateCreationApi.getWorkgroupDetails(),
+        ])
+        overviewData = overviewResponse
+        wgData = workgroupResponse
+      }
+
       setOverview(overviewData)
       setWorkgroups(wgData)
+      setSelectedWgIndex((current) => (wgData[current] ? current : 0))
 
       const editableRates: EditableRate[] = overviewData.currencies.map((c: RateOverviewItem) => ({
         currencyId: c.currencyId,
@@ -93,7 +109,7 @@ export default function RateCreationPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isLocalRateMakerApp])
 
   useEffect(() => { void loadData() }, [loadData])
 
@@ -146,7 +162,7 @@ export default function RateCreationPage() {
   const handleSaveLimits = async () => {
     if (!selectedWg) return
     if (!canWriteRateCreation) {
-      toast.error('Nincs jogosultság', 'A határok mentéséhez supervisor vagy magasabb szerepkör kell')
+      toast.error('Nincs jogosultság', 'A határok mentéséhez főértéktáros vagy ügyvezető szerepkör kell')
       return
     }
     setSavingLimits(true)
@@ -161,7 +177,7 @@ export default function RateCreationPage() {
       void loadData()
     } catch (err) {
       if (err instanceof AxiosError && err.response?.status === 403) {
-        toast.error('Nincs jogosultság', 'A határok mentéséhez supervisor vagy magasabb szerepkör kell')
+        toast.error('Nincs jogosultság', 'A határok mentéséhez főértéktáros vagy ügyvezető szerepkör kell')
       } else {
         toast.error('Hiba', 'Nem sikerült a határok mentése')
       }
@@ -193,7 +209,7 @@ export default function RateCreationPage() {
   const handleSaveBranches = async () => {
     if (!selectedWg) return
     if (!canWriteRateCreation) {
-      toast.error('Nincs jogosultság', 'Irodák mentéséhez supervisor vagy magasabb szerepkör kell')
+      toast.error('Nincs jogosultság', 'Irodák mentéséhez főértéktáros vagy ügyvezető szerepkör kell')
       return
     }
     setSavingBranches(true)
@@ -204,7 +220,7 @@ export default function RateCreationPage() {
       void loadData()
     } catch (err) {
       if (err instanceof AxiosError && err.response?.status === 403) {
-        toast.error('Nincs jogosultság', 'Irodák mentéséhez supervisor vagy magasabb szerepkör kell')
+        toast.error('Nincs jogosultság', 'Irodák mentéséhez főértéktáros vagy ügyvezető szerepkör kell')
       } else {
         toast.error('Hiba', 'Nem sikerült az irodák mentése')
       }
@@ -216,7 +232,7 @@ export default function RateCreationPage() {
   const removeBranch = async (branchId: string) => {
     if (!selectedWg) return
     if (!canWriteRateCreation) {
-      toast.error('Nincs jogosultság', 'Iroda eltávolításához supervisor vagy magasabb szerepkör kell')
+      toast.error('Nincs jogosultság', 'Iroda eltávolításához főértéktáros vagy ügyvezető szerepkör kell')
       return
     }
     const newIds = selectedWg.branches.filter(b => b.id !== branchId).map(b => b.id)
@@ -226,7 +242,7 @@ export default function RateCreationPage() {
       void loadData()
     } catch (err) {
       if (err instanceof AxiosError && err.response?.status === 403) {
-        toast.error('Nincs jogosultság', 'Iroda eltávolításához supervisor vagy magasabb szerepkör kell')
+        toast.error('Nincs jogosultság', 'Iroda eltávolításához főértéktáros vagy ügyvezető szerepkör kell')
       } else {
         toast.error('Hiba', 'Nem sikerült az iroda eltávolítása')
       }
@@ -250,7 +266,7 @@ export default function RateCreationPage() {
       return
     }
     if (!canWriteRateCreation) {
-      toast.error('Nincs jogosultság', 'Publikáláshoz supervisor vagy magasabb szerepkör kell')
+      toast.error('Nincs jogosultság', 'Publikáláshoz főértéktáros vagy ügyvezető szerepkör kell')
       return
     }
 
@@ -289,7 +305,7 @@ export default function RateCreationPage() {
 
     setPublishing(true)
     try {
-      await rateCreationApi.publishGroupRate({
+      const publishResult = await rateCreationApi.publishGroupRate({
         groupId: selectedWg.id,
         rates: validRates.map(r => ({
           currencyId: r.currencyId,
@@ -307,7 +323,14 @@ export default function RateCreationPage() {
           limit3SellRate: parseNum(r.limit3SellRate) || null,
         }))
       })
-      toast.success('Publikálva!', `${validRates.length} árfolyam kiküldve: ${selectedWg.name} (${selectedWg.branches.length} iroda)`)
+      if (publishResult && 'publicationId' in publishResult) {
+        toast.success(
+          'Publikálva!',
+          `${publishResult.acceptedRates} árfolyam kiküldve: ${selectedWg.name} (${publishResult.affectedBranches} iroda)`
+        )
+      } else {
+        toast.success('Publikálva!', `${validRates.length} árfolyam kiküldve: ${selectedWg.name} (${selectedWg.branches.length} iroda)`)
+      }
       void loadData()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Hiba a publikálás során'
@@ -449,7 +472,7 @@ export default function RateCreationPage() {
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-1">
                 <Building2 size={10} />
-                {t('rates.irodak')}{selectedWg?.branches.length ?? 0})
+                {t('rates.irodak')} ({selectedWg?.branches.length ?? 0})
               </span>
               <button onClick={() => void openBranchPicker()}
                 disabled={!canWriteRateCreation}

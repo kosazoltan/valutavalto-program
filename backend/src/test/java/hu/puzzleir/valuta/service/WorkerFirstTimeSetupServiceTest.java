@@ -160,7 +160,7 @@ class WorkerFirstTimeSetupServiceTest {
     }
 
     @Test
-    @DisplayName("Kamera-only role penztar appMode-ban nem ir uj jelszohash-t")
+    @DisplayName("Nem szelektalhato role penztar appMode-ban nem ir uj jelszohash-t")
     void rejectsSetupWhenNoRoleMatchesAppMode() {
         Worker worker = seedWorker("$2b$10$seed");
         WorkerFirstTimeSetupRequestDto dto = request("1234");
@@ -168,7 +168,7 @@ class WorkerFirstTimeSetupServiceTest {
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
                 .thenReturn(Optional.of(worker));
-        when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of("teruleti_vezeto"));
+        when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of("audit_only_test"));
         when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
         when(passwordEncoder.matches("1234", "$2b$10$seed")).thenReturn(true);
 
@@ -378,8 +378,8 @@ class WorkerFirstTimeSetupServiceTest {
     }
 
     @Test
-    @DisplayName("Kamera-only role penztar appMode-ban pontos uzenetet ad")
-    void kameraRoleInPenztarModeReturnsExactMessage() {
+    @DisplayName("Nem szelektalhato role penztar appMode-ban pontos uzenetet ad")
+    void nonSelectableRoleInPenztarModeReturnsExactMessage() {
         Worker worker = seedWorker("$2b$10$seed");
         WorkerFirstTimeSetupRequestDto dto = request("1234");
         dto.setAppMode("penztar");
@@ -388,7 +388,7 @@ class WorkerFirstTimeSetupServiceTest {
                 .thenReturn(Optional.of(worker));
         when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
         when(passwordEncoder.matches("1234", "$2b$10$seed")).thenReturn(true);
-        when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of("teruleti_vezeto"));
+        when(workerRoleService.getRoleCodesForWorker(10L)).thenReturn(List.of("audit_only_test"));
 
         assertThatThrownBy(() -> service.setupWorkerPassword(dto))
                 .isInstanceOf(ValidationException.class)

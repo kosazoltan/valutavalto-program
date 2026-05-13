@@ -1,325 +1,292 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { api } from '@/services/api/index';
-import { safeArray } from '@/utils/safeArray';
-import { useTranslation } from 'react-i18next'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { CheckCircle2, Megaphone, Plus, Search, X } from 'lucide-react'
+import { api } from '@/services/api/index'
+import { safeArray } from '@/utils/safeArray'
+import { toast } from '../../components/ui/toaster'
+import { getErrorMessage } from '../../utils/errorHandling'
 
 interface Circular {
-  id: number;
-  circularNumber: string;
-  title: string;
-  circularType: string;
-  category: string;
-  content: string;
-  version: number;
-  status: string;
-  effectiveDate: string;
-  expiryDate?: string;
-  createdBy: string;
-  publishedAt?: string;
-  acknowledgedCount: number;
-  totalWorkerCount: number;
-  createdAt: string;
+  id: number
+  title: string
+  content: string
+  createdByName?: string
+  urgent?: boolean
+  acknowledged?: boolean
+  createdAt?: string
+  circularType?: string
+  circularTypeDescription?: string
+  target?: string
+  priority?: string
+  registrationNumber?: string
+  attachmentFilename?: string
+  validFrom?: string
+  validTo?: string
+  category?: string
+  archived?: boolean
+  archiveYear?: number
+  attachmentSize?: number
+  acknowledgmentCount?: number
 }
 
-const statusColors: Record<string, string> = {
-  DRAFT: 'bg-gray-500',
-  PUBLISHED: 'bg-green-500',
-  ARCHIVED: 'bg-yellow-500',
-  SUPERSEDED: 'bg-blue-500',
-};
+type CircularTab = 'active' | 'archived' | 'GENERAL' | 'REGULATION' | 'SECURITY_ALERT' | 'INVENTORY'
 
-const statusLabels: Record<string, string> = {
-  DRAFT: 'Piszkozat',
-  PUBLISHED: 'Közzétéve',
-  ARCHIVED: 'Archivált',
-  SUPERSEDED: 'Felülírt',
-};
+const tabs: Array<{ id: CircularTab; label: string }> = [
+  { id: 'active', label: 'Aktív' },
+  { id: 'GENERAL', label: 'Általános' },
+  { id: 'REGULATION', label: 'Szabályzat' },
+  { id: 'SECURITY_ALERT', label: 'Biztonság' },
+  { id: 'INVENTORY', label: 'Készlet' },
+  { id: 'archived', label: 'Archivált' },
+]
 
 const typeLabels: Record<string, string> = {
-  CIRCULAR: 'Körlevél',
+  GENERAL: 'Általános',
   REGULATION: 'Szabályzat',
-  GUIDELINE: 'Irányelv',
-  NOTIFICATION: 'Értesítés',
-};
-
-const categoryLabels: Record<string, string> = {
-  COMPLIANCE: 'Megfelelőség',
-  OPERATIONAL: 'Működési',
+  RATE_POLICY: 'Árfolyam-politika',
+  SECURITY_ALERT: 'Biztonsági figyelmeztetés',
+  INVENTORY: 'Készlet utasítás',
   HR: 'HR',
-  SECURITY: 'Biztonság',
-  TECHNICAL: 'Technikai',
-  OTHER: 'Egyéb',
-};
+  TECHNICAL: 'Műszaki',
+  BEST_CHANGE: 'Best Change',
+  ZALOG: 'Zálog',
+  MANAGEMENT: 'Központi',
+  APPOINTMENT: 'Kinevezés',
+  NEW_YEAR: 'Újévi',
+  YEAR_END: 'Éves zárás',
+  MONTHLY_SUMMARY: 'Havi összesítő',
+  VIP_NOTICE: 'VIP',
+  AUDIT_NOTICE: 'Audit',
+  TRAINING: 'Oktatás',
+}
+
+const priorityClass: Record<string, string> = {
+  LOW: 'border-slate-200 bg-slate-50 text-slate-600',
+  NORMAL: 'border-blue-200 bg-blue-50 text-blue-700',
+  HIGH: 'border-amber-200 bg-amber-50 text-amber-700',
+  URGENT: 'border-red-200 bg-red-50 text-red-700',
+}
+
+const emptyForm = {
+  title: '',
+  circularType: 'GENERAL',
+  category: 'GENERAL',
+  content: '',
+  urgent: false,
+}
+
+function documentNumber(circular: Circular): string {
+  return circular.registrationNumber || `KOR-${String(circular.id).padStart(4, '0')}`
+}
+
+function formatDate(value?: string): string {
+  return value ? new Date(value).toLocaleDateString('hu-HU') : '-'
+}
 
 export default function CircularPage() {
-  const { t } = useTranslation()
-  const [circulars, setCirculars] = useState<Circular[]>([]);
-  const [unacknowledged, setUnacknowledged] = useState<Circular[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('active');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [selectedCircular, setSelectedCircular] = useState<Circular | null>(null);
-  const [showViewDialog, setShowViewDialog] = useState(false);
+  const [circulars, setCirculars] = useState<Circular[]>([])
+  const [unacknowledged, setUnacknowledged] = useState<Circular[]>([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<CircularTab>('active')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [selectedCircular, setSelectedCircular] = useState<Circular | null>(null)
+  const [showViewDialog, setShowViewDialog] = useState(false)
+  const [formData, setFormData] = useState(emptyForm)
 
   const loadCirculars = useCallback(async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      let response;
-      if (activeTab === 'active') {
-        response = await api.get('/circulars/active');
-      } else if (activeTab === 'archived') {
-        response = await api.get('/circulars/archived');
-      } else {
-        response = await api.get(`/circulars/type/${activeTab.toUpperCase()}`);
-      }
-      setCirculars(response?.data || []);
-    } catch {
-      setCirculars([]);
+      const path = activeTab === 'active'
+        ? '/circulars/active'
+        : activeTab === 'archived'
+        ? '/circulars/archived'
+        : `/circulars/by-type/${activeTab}`
+      const response = await api.get<Circular[]>(path)
+      setCirculars(safeArray<Circular>(response.data))
+    } catch (err) {
+      toast.error('Körlevél betöltési hiba', getErrorMessage(err))
+      setCirculars([])
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [activeTab]);
+  }, [activeTab])
 
   const loadUnacknowledged = useCallback(async () => {
     try {
-      // Per-worker: saját nem nyugtázott körlevelek (legacy paritás)
-      const response = await api.get('/circulars/my-unacknowledged');
-      setUnacknowledged(response?.data || []);
+      const response = await api.get<Circular[]>('/circulars/my-unacknowledged')
+      setUnacknowledged(safeArray<Circular>(response.data))
     } catch {
-      // Fallback: régi endpoint
-      try {
-        const response = await api.get('/circulars/unacknowledged');
-        setUnacknowledged(response?.data || []);
-      } catch {
-        setUnacknowledged([]);
-      }
+      setUnacknowledged([])
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    void loadCirculars();
-    void loadUnacknowledged();
-  }, [loadCirculars, loadUnacknowledged]);
+    void loadCirculars()
+    void loadUnacknowledged()
+  }, [loadCirculars, loadUnacknowledged])
 
-  const handlePublish = useCallback(async (id: number) => {
-    if (window.confirm('Biztosan közzéteszi a dokumentumot?')) {
-      try {
-        await api.post(`/circulars/${id}/publish`);
-        void loadCirculars();
-      } catch {
-        // Intentional noop: page reload keeps UX consistent.
-      }
-    }
-  }, [loadCirculars]);
+  const filteredCirculars = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+    if (!term) return circulars
+    return circulars.filter((circular) =>
+      [documentNumber(circular), circular.title, circular.circularType, circular.category, circular.createdByName]
+        .some((value) => value && value.toLowerCase().includes(term)),
+    )
+  }, [circulars, searchTerm])
 
   const handleArchive = useCallback(async (id: number) => {
-    if (window.confirm('Biztosan archiválja a dokumentumot?')) {
-      try {
-        await api.post(`/circulars/${id}/archive`);
-        void loadCirculars();
-      } catch {
-        // Intentional noop: page reload keeps UX consistent.
-      }
+    if (!window.confirm('Biztosan archiválja a dokumentumot?')) return
+    try {
+      await api.post(`/circulars/${id}/archive`)
+      await loadCirculars()
+      toast.success('Körlevél archiválva')
+    } catch (err) {
+      toast.error('Archiválási hiba', getErrorMessage(err))
     }
-  }, [loadCirculars]);
+  }, [loadCirculars])
 
   const handleAcknowledge = useCallback(async (id: number) => {
     try {
-      // Per-worker nyugtázás (legacy AT.xxx fájl megfelelő)
-      await api.post(`/circulars/${id}/acknowledge-worker`);
-      void loadCirculars();
-      void loadUnacknowledged();
-    } catch {
-      // Fallback: régi acknowledge endpoint
-      try {
-        await api.post(`/circulars/${id}/acknowledge`);
-        void loadCirculars();
-        void loadUnacknowledged();
-      } catch {
-        // Intentional noop
-      }
+      await api.post(`/circulars/${id}/acknowledge-worker`)
+      await loadCirculars()
+      await loadUnacknowledged()
+      toast.success('Körlevél nyugtázva')
+    } catch (err) {
+      toast.error('Nyugtázási hiba', getErrorMessage(err))
     }
-  }, [loadCirculars, loadUnacknowledged]);
+  }, [loadCirculars, loadUnacknowledged])
 
-  const filteredCirculars = safeArray<Circular>(circulars).filter(c =>
-    c.circularNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.title?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleCreateSubmit = useCallback(async (formData: {
-    title: string;
-    circularType: string;
-    category: string;
-    content: string;
-    effectiveDate: string;
-    expiryDate: string;
-  }) => {
+  const handleCreateSubmit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
     try {
-      await api.post('/circulars', {
-        ...formData,
-        effectiveDate: formData.effectiveDate + 'T00:00:00',
-        expiryDate: formData.expiryDate ? formData.expiryDate + 'T23:59:59' : null,
-      });
-      setShowCreateDialog(false);
-      void loadCirculars();
-    } catch {
-      // Intentional noop: page reload keeps UX consistent.
+      await api.post('/circulars/typed', {
+        title: formData.title,
+        content: formData.content,
+        urgent: formData.urgent,
+        circularType: formData.circularType,
+        target: 'ALL_BRANCHES',
+        priority: formData.urgent ? 'URGENT' : 'NORMAL',
+        registrationNumber: null,
+      })
+      setShowCreateDialog(false)
+      setFormData(emptyForm)
+      await loadCirculars()
+      toast.success('Körlevél létrehozva')
+    } catch (err) {
+      toast.error('Létrehozási hiba', getErrorMessage(err))
     }
-  }, [loadCirculars]);
+  }, [formData, loadCirculars])
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-3">
-        <div>
-          <h1 className="text-lg font-bold">{t('circulars.korlevelekEsSzabalyzatok')}</h1>
-          <p className="text-gray-500">{t('circulars.vallalatiDokumentumokKezelese')}</p>
+    <div className="h-full min-h-0 overflow-y-auto bg-slate-100">
+      <div className="border-b border-slate-200 bg-white px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Megaphone className="h-5 w-5 text-slate-700" />
+            <div>
+              <h1 className="text-lg font-semibold text-slate-900">Körlevelek és szabályzatok</h1>
+              <div className="text-xs text-slate-500">Központi dokumentumok, nyugtázás és archiválás</div>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowCreateDialog(true)}
+            className="inline-flex items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            <Plus size={15} />
+            Új dokumentum
+          </button>
         </div>
-        <button
-          onClick={() => setShowCreateDialog(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          {t('circulars.ujDokumentum')}
-        </button>
       </div>
 
-      {unacknowledged.length > 0 && (
-        <div className="mb-3 p-4 border border-orange-500 rounded bg-orange-50">
-          <h3 className="font-semibold text-orange-700 mb-2">
-            {t('circulars.elolvasasraVaroDokumentumok')}{unacknowledged.length})
-          </h3>
-          <div className="space-y-2">
-            {unacknowledged.map((circular) => (
-              <div
-                key={circular.id}
-                className="flex items-center justify-between p-3 bg-white rounded border"
+      <div className="space-y-4 p-4">
+        {unacknowledged.length > 0 && (
+          <section className="rounded-md border border-amber-200 bg-amber-50 p-3">
+            <div className="mb-2 text-sm font-semibold text-amber-800">Elolvasásra vár: {unacknowledged.length}</div>
+            <div className="space-y-2">
+              {unacknowledged.map((circular) => (
+                <div key={circular.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-100 bg-white px-3 py-2">
+                  <div>
+                    <span className="font-mono text-xs text-slate-500">{documentNumber(circular)}</span>
+                    <span className="ml-2 text-sm font-semibold text-slate-900">{circular.title}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setSelectedCircular(circular); setShowViewDialog(true) }} className="rounded border px-2 py-1 text-xs hover:bg-slate-50">Megnyitás</button>
+                    <button onClick={() => void handleAcknowledge(circular.id)} className="rounded bg-green-600 px-2 py-1 text-xs font-semibold text-white hover:bg-green-700">Értettem</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`rounded border px-3 py-1.5 text-xs font-semibold ${
+                  activeTab === tab.id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
               >
-                <div>
-                  <span className="font-mono text-sm mr-2">{circular.circularNumber}</span>
-                  <span className="font-medium">{circular.title}</span>
-                  <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 rounded">
-                    {typeLabels[circular.circularType]}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setSelectedCircular(circular);
-                      setShowViewDialog(true);
-                    }}
-                    className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
-                  >
-                    {t('circulars.megnyitas')}
-                  </button>
-                  <button
-                    onClick={() => handleAcknowledge(circular.id)}
-                    className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
-                  >
-                    {t('circulars.ertettem')}
-                  </button>
-                </div>
-              </div>
+                {tab.label}
+              </button>
             ))}
           </div>
-        </div>
-      )}
+          <label className="mt-3 flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            <Search size={16} />
+            <input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+              placeholder="Keresés iktatószám, cím, típus vagy készítő alapján"
+            />
+          </label>
+        </section>
 
-      <div className="mb-3">
-        <input
-          type="text"
-          placeholder="Keresés szám vagy cím alapján..."
-          value={searchTerm}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-          className="w-full p-2 border rounded"
-        />
-      </div>
-
-      <div className="mb-4 flex gap-2">
-        {['active', 'circular', 'regulation', 'archived'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded ${
-              activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'
-            }`}
-          >
-            {tab === 'active' ? 'Aktív' : tab === 'circular' ? 'Körlevelek' : tab === 'regulation' ? 'Szabályzatok' : 'Archivált'}
-          </button>
-        ))}
-      </div>
-
-      <div className="bg-white rounded border">
-        {loading ? (
-          <div className="text-center py-8">Betöltés...</div>
-        ) : filteredCirculars.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            {t('circulars.nincsenekDokumentumokEbbenAKategoriaban')}
-          </div>
-        ) : (
-          <table className="w-full">
-            <thead className="bg-gray-50">
+        <section className="overflow-x-auto rounded-md border border-slate-200 bg-white shadow-sm">
+          <table className="min-w-[1040px] w-full text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase text-slate-500">
               <tr>
-                <th className="p-3 text-left">{t('circulars.szam')}</th>
-                <th className="p-3 text-left">{t('common.address')}</th>
-                <th className="p-3 text-left">{t('common.type')}</th>
-                <th className="p-3 text-left">{t('common.category')}</th>
-                <th className="p-3 text-left">{t('circulars.verzio')}</th>
-                <th className="p-3 text-left">{t('circulars.hatalyos')}</th>
-                <th className="p-3 text-left">{t('circulars.visszaigazolas')}</th>
-                <th className="p-3 text-left">{t('common.status')}</th>
-                <th className="p-3 text-left">{t('common.actions')}</th>
+                <th className="px-3 py-2 text-left">Szám</th>
+                <th className="px-3 py-2 text-left">Cím</th>
+                <th className="px-3 py-2 text-left">Típus</th>
+                <th className="px-3 py-2 text-left">Prioritás</th>
+                <th className="px-3 py-2 text-left">Készítő</th>
+                <th className="px-3 py-2 text-left">Dátum</th>
+                <th className="px-3 py-2 text-right">Nyugtázás</th>
+                <th className="px-3 py-2 text-right">Művelet</th>
               </tr>
             </thead>
-            <tbody>
-              {filteredCirculars.map((circular) => (
-                <tr key={circular.id} className="border-t hover:bg-gray-50">
-                  <td className="p-3 font-mono">{circular.circularNumber}</td>
-                  <td className="p-3">{circular.title}</td>
-                  <td className="p-3">{typeLabels[circular.circularType] || circular.circularType}</td>
-                  <td className="p-3">{categoryLabels[circular.category] || circular.category}</td>
-                  {/* eslint-disable-next-line i18next/no-literal-string */}
-                  <td className="p-3">v{circular.version}</td>
-                  <td className="p-3">
-                    {new Date(circular.effectiveDate).toLocaleDateString('hu-HU')}
-                    {circular.expiryDate && (
-                      <span className="text-gray-500">
-                        {' - '}{new Date(circular.expiryDate).toLocaleDateString('hu-HU')}
-                      </span>
-                    )}
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-slate-500">Betöltés...</td></tr>
+              ) : filteredCirculars.length === 0 ? (
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-slate-500">Nincs dokumentum ebben a nézetben</td></tr>
+              ) : filteredCirculars.map((circular) => (
+                <tr key={circular.id} className="hover:bg-slate-50">
+                  <td className="px-3 py-2 font-mono text-xs text-slate-600">{documentNumber(circular)}</td>
+                  <td className="px-3 py-2">
+                    <div className="font-semibold text-slate-900">{circular.title}</div>
+                    {circular.attachmentFilename && <div className="text-xs text-slate-500">{circular.attachmentFilename}</div>}
                   </td>
-                  <td className="p-3">
-                    {circular.acknowledgedCount}/{circular.totalWorkerCount}
-                  </td>
-                  <td className="p-3">
-                    <span className={`px-2 py-1 text-xs text-white rounded ${statusColors[circular.status]}`}>
-                      {statusLabels[circular.status] || circular.status}
+                  <td className="px-3 py-2">{typeLabels[circular.circularType ?? ''] ?? circular.circularType ?? '-'}</td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded border px-2 py-1 text-xs font-semibold ${priorityClass[circular.priority ?? 'NORMAL'] ?? priorityClass.NORMAL}`}>
+                      {circular.priority ?? 'NORMAL'}
                     </span>
                   </td>
-                  <td className="p-3">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedCircular(circular);
-                          setShowViewDialog(true);
-                        }}
-                        className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-                      >
-                        {t('circulars.megtekint')}
+                  <td className="px-3 py-2">{circular.createdByName ?? '-'}</td>
+                  <td className="px-3 py-2">{formatDate(circular.validFrom ?? circular.createdAt)}</td>
+                  <td className="px-3 py-2 text-right">{circular.acknowledgmentCount ?? 0}</td>
+                  <td className="px-3 py-2 text-right">
+                    <div className="flex justify-end gap-1">
+                      <button onClick={() => { setSelectedCircular(circular); setShowViewDialog(true) }} className="rounded border px-2 py-1 text-xs hover:bg-slate-50">
+                        Megtekint
                       </button>
-                      {circular.status === 'DRAFT' && (
-                        <button
-                          onClick={() => handlePublish(circular.id)}
-                          className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                        >
-                          {t('circulars.kozzetetel')}
-                        </button>
-                      )}
-                      {circular.status === 'PUBLISHED' && (
-                        <button
-                          onClick={() => handleArchive(circular.id)}
-                          className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-                        >
-                          {t('archiving.archivalas')}
+                      {!circular.archived && (
+                        <button onClick={() => void handleArchive(circular.id)} className="rounded border px-2 py-1 text-xs hover:bg-slate-50">
+                          Archivál
                         </button>
                       )}
                     </div>
@@ -328,222 +295,87 @@ export default function CircularPage() {
               ))}
             </tbody>
           </table>
-        )}
+        </section>
       </div>
 
       {showCreateDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">{t('circulars.ujDokumentumLetrehozasa')}</h2>
-            <CreateCircularForm
-              onSubmit={handleCreateSubmit}
-              onCancel={() => setShowCreateDialog(false)}
-            />
-          </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <form onSubmit={handleCreateSubmit} className="w-full max-w-3xl rounded-md bg-white p-4 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Új körlevél</h2>
+              <button type="button" onClick={() => setShowCreateDialog(false)}><X size={20} /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="mb-1 block text-xs font-semibold text-slate-600">Cím</label>
+                <input className="w-full rounded border px-3 py-2 text-sm" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-600">Típus</label>
+                <select className="w-full rounded border px-3 py-2 text-sm" value={formData.circularType} onChange={(e) => setFormData({ ...formData, circularType: e.target.value })}>
+                  {Object.entries(typeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-600">Sürgős</label>
+                <label className="flex h-[38px] items-center gap-2 rounded border px-3 text-sm">
+                  <input type="checkbox" checked={formData.urgent} onChange={(e) => setFormData({ ...formData, urgent: e.target.checked })} />
+                  Azonnali nyugtázás
+                </label>
+              </div>
+              <div className="col-span-2">
+                <label className="mb-1 block text-xs font-semibold text-slate-600">Tartalom</label>
+                <textarea className="h-56 w-full rounded border px-3 py-2 text-sm" value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} required />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowCreateDialog(false)} className="rounded border px-4 py-2 text-sm hover:bg-slate-50">Mégse</button>
+              <button type="submit" className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Létrehozás</button>
+            </div>
+          </form>
         </div>
       )}
 
       {showViewDialog && selectedCircular && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">{selectedCircular.title}</h2>
-            <CircularView
-              circular={selectedCircular}
-              onAcknowledge={() => {
-                handleAcknowledge(selectedCircular.id);
-                setShowViewDialog(false);
-              }}
-              onClose={() => setShowViewDialog(false)}
-            />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-4xl rounded-md bg-white p-4 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <div className="font-mono text-xs text-slate-500">{documentNumber(selectedCircular)}</div>
+                <h2 className="text-lg font-semibold">{selectedCircular.title}</h2>
+              </div>
+              <button onClick={() => setShowViewDialog(false)}><X size={20} /></button>
+            </div>
+            <div className="mb-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
+              <InfoBlock label="Típus" value={typeLabels[selectedCircular.circularType ?? ''] ?? selectedCircular.circularType ?? '-'} />
+              <InfoBlock label="Prioritás" value={selectedCircular.priority ?? 'NORMAL'} />
+              <InfoBlock label="Készítő" value={selectedCircular.createdByName ?? '-'} />
+              <InfoBlock label="Dátum" value={formatDate(selectedCircular.validFrom ?? selectedCircular.createdAt)} />
+            </div>
+            <div className="max-h-[46vh] overflow-y-auto whitespace-pre-wrap rounded border border-slate-200 bg-slate-50 p-3 text-sm leading-6">
+              {selectedCircular.content}
+            </div>
+            <div className="mt-4 flex justify-between gap-2">
+              <button onClick={() => setShowViewDialog(false)} className="rounded border px-4 py-2 text-sm hover:bg-slate-50">Bezárás</button>
+              {!selectedCircular.acknowledged && !selectedCircular.archived && (
+                <button onClick={() => { void handleAcknowledge(selectedCircular.id); setShowViewDialog(false) }} className="inline-flex items-center gap-1 rounded bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700">
+                  <CheckCircle2 size={16} />
+                  Elolvastam és megértettem
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
     </div>
-  );
+  )
 }
 
-function CreateCircularForm({
-  onSubmit,
-  onCancel,
-}: {
-  onSubmit: (data: {
-    title: string;
-    circularType: string;
-    category: string;
-    content: string;
-    effectiveDate: string;
-    expiryDate: string;
-  }) => void;
-  onCancel: () => void;
-}) {
-  const { t } = useTranslation()
-  const [formData, setFormData] = useState({
-    title: '',
-    circularType: 'CIRCULAR',
-    category: 'OPERATIONAL',
-    content: '',
-    effectiveDate: new Date().toISOString().split('T')[0] || '',
-    expiryDate: '',
-  });
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    onSubmit(formData);
-  };
-
+function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-2">
-          <label className="block text-sm font-medium mb-1">{t('circulars.cim')}</label>
-          <input
-            type="text"
-            value={formData.title}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full p-2 border rounded"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">{t('circulars.tipus')}</label>
-          <select
-            value={formData.circularType}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, circularType: e.target.value })}
-            className="w-full p-2 border rounded"
-          >
-            <option value="CIRCULAR">{t('circulars.korlevel')}</option>
-            <option value="REGULATION">{t('circulars.szabalyzat')}</option>
-            <option value="GUIDELINE">{t('circulars.iranyelv')}</option>
-            <option value="NOTIFICATION">{t('circulars.ertesites')}</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">{t('circulars.kategoria')}</label>
-          <select
-            value={formData.category}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, category: e.target.value })}
-            className="w-full p-2 border rounded"
-          >
-            <option value="COMPLIANCE">{t('circulars.megfeleloseg')}</option>
-            <option value="OPERATIONAL">{t('circulars.mukodesi')}</option>
-            <option value="HR">HR</option>
-            <option value="SECURITY">{t('circulars.biztonsag')}</option>
-            <option value="TECHNICAL">{t('circulars.technikai')}</option>
-            <option value="OTHER">{t('common.other')}</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">{t('circulars.hatalybaLepes')}</label>
-          <input
-            type="date"
-            value={formData.effectiveDate}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, effectiveDate: e.target.value })}
-            className="w-full p-2 border rounded"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">{t('circulars.lejaratOpcionalis')}</label>
-          <input
-            type="date"
-            value={formData.expiryDate}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, expiryDate: e.target.value })}
-            className="w-full p-2 border rounded"
-          />
-        </div>
-        <div className="col-span-2">
-          <label className="block text-sm font-medium mb-1">{t('circulars.tartalom')}</label>
-          <textarea
-            value={formData.content}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, content: e.target.value })}
-            placeholder="A dokumentum szövege..."
-            rows={10}
-            className="w-full p-2 border rounded"
-            required
-          />
-        </div>
-      </div>
-      <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 border rounded hover:bg-gray-50"
-        >
-          {t('common.cancel')}
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          {t('common.create')}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-function CircularView({
-  circular,
-  onAcknowledge,
-  onClose,
-}: {
-  circular: Circular;
-  onAcknowledge: () => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation()
-  return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-4 text-sm">
-        <div>
-          <label className="text-gray-500">{t('circulars.dokumentumSzam')}</label>
-          <p className="font-mono">{circular.circularNumber}</p>
-        </div>
-        <div>
-          <label className="text-gray-500">{t('cashier.receiptType')}</label>
-          <p>{typeLabels[circular.circularType]}</p>
-        </div>
-        <div>
-          <label className="text-gray-500">{t('circulars.verzio')}</label>
-          {/* eslint-disable-next-line i18next/no-literal-string */}
-          <p>v{circular.version}</p>
-        </div>
-        <div>
-          <label className="text-gray-500">{t('common.category')}</label>
-          <p>{categoryLabels[circular.category]}</p>
-        </div>
-        <div>
-          <label className="text-gray-500">{t('circulars.hatalyos')}</label>
-          <p>{new Date(circular.effectiveDate).toLocaleDateString('hu-HU')}</p>
-        </div>
-        <div>
-          <label className="text-gray-500">{t('common.status')}</label>
-          <span className={`px-2 py-1 text-xs text-white rounded ${statusColors[circular.status]}`}>
-            {statusLabels[circular.status]}
-          </span>
-        </div>
-      </div>
-
-      <div className="border-t pt-4">
-        <div className="whitespace-pre-wrap">{circular.content}</div>
-      </div>
-
-      <div className="border-t pt-4 flex justify-between">
-        <button
-          onClick={onClose}
-          className="px-4 py-2 border rounded hover:bg-gray-50"
-        >
-          {t('common.close')}
-        </button>
-        {circular.status === 'PUBLISHED' && (
-          <button
-            onClick={onAcknowledge}
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-          >
-            {t('circulars.elolvastamEsMegertettem')}
-          </button>
-        )}
-      </div>
+    <div className="rounded border border-slate-200 bg-slate-50 p-2">
+      <div className="text-[11px] font-semibold uppercase text-slate-500">{label}</div>
+      <div className="mt-1 text-sm font-medium text-slate-900">{value}</div>
     </div>
-  );
+  )
 }

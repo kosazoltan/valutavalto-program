@@ -19,6 +19,9 @@ class AppModeRoleConstantsTest {
         // Full modban: csak szerver role-ok
         assertThat(AppModeRoleConstants.selectableRolesForAppMode(roles, "full"))
                 .containsExactly("foertektar", "admin");
+        // Arfolyamkeszito modban: csak foertektar/ugyvezeto/admin
+        assertThat(AppModeRoleConstants.selectableRolesForAppMode(roles, "rate-maker"))
+                .containsExactly("foertektar", "admin");
     }
 
     @Test
@@ -39,6 +42,15 @@ class AppModeRoleConstantsTest {
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("admin", "penztar")).isTrue();
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("manager", "full")).isTrue();
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("supervisor", "ertektar")).isTrue();
+    }
+
+    @Test
+    void centralLeadershipRolesAreSelectableInFullMode() {
+        assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("teruleti_vezeto", "full")).isTrue();
+        assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("biztonsagi_vezeto", "full")).isTrue();
+        assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("teruleti_vezeto", "rate-maker")).isFalse();
+        assertThat(AppModeRoleConstants.computeValidAppModes(List.of("teruleti_vezeto"), null))
+                .containsExactly("kamera", "full");
     }
 
     @Test
@@ -90,7 +102,7 @@ class AppModeRoleConstantsTest {
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.MANAGER))
                 .containsExactly("penztar", "ertektar", "ertekszallito", "full");
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.ADMIN))
-                .containsExactly("penztar", "ertektar", "ertekszallito", "full");
+                .containsExactly("penztar", "ertektar", "ertekszallito", "full", "rate-maker");
     }
 
     @Test
@@ -106,7 +118,7 @@ class AppModeRoleConstantsTest {
         assertThat(AppModeRoleConstants.computeValidAppModes(
                 List.of("ertekszallito", "penztar", "ertektar", "teruleti_vezeto", "foertektar"),
                 null))
-                .containsExactly("penztar", "ertektar", "ertekszallito", "kamera", "full");
+                .containsExactly("penztar", "ertektar", "ertekszallito", "kamera", "full", "rate-maker");
     }
 
     @Test
@@ -160,6 +172,10 @@ class AppModeRoleConstantsTest {
                 .isTrue();
         assertThat(AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(WorkerRole.MANAGER, "kamera"))
                 .isFalse();
+        assertThat(AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(WorkerRole.MANAGER, "rate-maker"))
+                .isFalse();
+        assertThat(AppModeRoleConstants.isLegacyWorkerRoleSelectableForAppMode(WorkerRole.ADMIN, "rate-maker"))
+                .isTrue();
     }
 
     @Test
@@ -171,7 +187,7 @@ class AppModeRoleConstantsTest {
     @Test
     void legacyAdminFallbackMatchesSelectableAppModes() {
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.ADMIN))
-                .containsExactly("penztar", "ertektar", "ertekszallito", "full");
+                .containsExactly("penztar", "ertektar", "ertekszallito", "full", "rate-maker");
     }
 
     @Test
