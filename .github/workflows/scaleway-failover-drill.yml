@@ -115,7 +115,7 @@ jobs:
     name: 'Drill végrehajtás (level ${{ inputs.drill_level }})'
     runs-on: ubuntu-24.04
     needs: preflight
-    if: ${{ needs.preflight.outputs.ready == 'true' && inputs.dry_run != true }}
+    if: ${{ needs.preflight.outputs.ready == 'true' && inputs.dry_run != 'true' }}
     timeout-minutes: 20
     steps:
       - name: Set up SSH (Scaleway + Hetzner)
@@ -286,7 +286,7 @@ jobs:
     name: 'Dry-run summary'
     runs-on: ubuntu-24.04
     needs: preflight
-    if: ${{ needs.preflight.outputs.ready == 'true' && inputs.dry_run == true }}
+    if: ${{ needs.preflight.outputs.ready == 'true' && inputs.dry_run == 'true' }}
     steps:
       - name: Summary
         run: |
