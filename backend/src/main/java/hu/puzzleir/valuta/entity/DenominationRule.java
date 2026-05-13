@@ -64,8 +64,12 @@ public class DenominationRule {
     @Column(name = "branch_id")
     private UUID branchId;
 
-    /** Használandó optimalizációs stratégia (FK DenominationOptimization-ra). */
-    @ManyToOne(fetch = FetchType.LAZY)
+    /**
+     * Használandó optimalizációs stratégia (FK DenominationOptimization-ra).
+     * EAGER fetch: a `optimization` mindig szükséges (rule-matching + JSON serialization).
+     * (2026-05-13 Codex P1 #566: LazyInitializationException elkerülése.)
+     */
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "optimization_id", nullable = false)
     private DenominationOptimization optimization;
 
