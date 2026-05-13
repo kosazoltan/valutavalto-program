@@ -17,4 +17,6 @@ public class CreateTransferDto {
     @Pattern(regexp = "^(F|U|UF|FF)$", message = "Az irány csak F, U, UF vagy FF lehet!")
     private String direction;
     private String notes;
+    private String carrierName;
+    private String sealNumber;
 }

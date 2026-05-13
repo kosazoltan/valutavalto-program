@@ -58,6 +58,7 @@ public class TransactionMapper {
                 .reversalReason(entity.getReversalReason())
                 .approvedBy(entity.getApprovedBy())
                 .notes(entity.getNotes())
+                .foreignStatus(entity.getForeignStatus())
                 .printed(entity.getPrinted())
                 .mtcn(entity.getMtcn())
                 .referenceNumber(entity.getReferenceNumber())
@@ -102,6 +103,8 @@ public class TransactionMapper {
                 .sourceOfFunds(dto.getSourceOfFunds())
                 .customerIsPep(dto.getCustomerIsPep())
                 .notes(dto.getNotes())
+                .cashierCustomRate(dto.getCashierCustomRate())
+                .foreignStatus(dto.getForeignStatus())
                 .lines(toLineRequests(dto.getLines()))
                 .build();
     }
@@ -122,6 +125,8 @@ public class TransactionMapper {
                 .sourceOfFunds(dto.getSourceOfFunds())
                 .customerIsPep(dto.getCustomerIsPep())
                 .notes(dto.getNotes())
+                .cashierCustomRate(dto.getCashierCustomRate())
+                .foreignStatus(dto.getForeignStatus())
                 .lines(toLineRequests(dto.getLines()))
                 .build();
     }

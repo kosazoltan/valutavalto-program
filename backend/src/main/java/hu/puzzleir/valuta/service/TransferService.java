@@ -85,6 +85,8 @@ public class TransferService {
                 .handoverPrinted(false)
                 .receiptPrinted(false)
                 .notes(dto.getNotes())
+                .carrierName(dto.getCarrierName())
+                .sealNumber(dto.getSealNumber())
                 .build();
 
         transfer = transferRepository.save(transfer);
@@ -494,6 +496,8 @@ public class TransferService {
                 .receivedAmount(t.getReceivedAmount())
                 .difference(t.getDifference())
                 .notes(t.getNotes())
+                .carrierName(t.getCarrierName())
+                .sealNumber(t.getSealNumber())
                 .handoverPrinted(t.getHandoverPrinted())
                 .receiptPrinted(t.getReceiptPrinted())
                 .createdAt(t.getCreatedAt() != null ? t.getCreatedAt().toString() : null)

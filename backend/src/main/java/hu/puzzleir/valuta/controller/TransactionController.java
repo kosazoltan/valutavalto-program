@@ -222,6 +222,18 @@ public class TransactionController {
         return ResponseEntity.ok(summary);
     }
 
+    /**
+     * Penztarosi egyedi arfolyam kvota lekerdezes
+     *
+     * GET /api/v1/transactions/cashier-rate-quota
+     */
+    @GetMapping("/cashier-rate-quota")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<CashierCustomRateQuotaDto> getCashierRateQuota() {
+        CashierCustomRateQuotaDto quota = transactionService.getCashierCustomRateQuota();
+        return ResponseEntity.ok(quota);
+    }
+
     private String resolveIdempotencyKey(HttpServletRequest request) {
         String key = request.getHeader("Idempotency-Key");
         if (StringUtils.hasText(key)) {

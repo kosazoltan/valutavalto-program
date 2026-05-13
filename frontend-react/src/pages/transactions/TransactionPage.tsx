@@ -48,6 +48,9 @@ export default function TransactionPage() {
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [customerAddress, setCustomerAddress] = useState('')
 
+  // Devizastátusz
+  const [foreignStatus, setForeignStatus] = useState<'DOMESTIC' | 'FOREIGN'>('FOREIGN')
+
   // Custom rate state
   const [customRate, setCustomRate] = useState<number | null>(null)
   const [editingRate, setEditingRate] = useState(false)
@@ -288,6 +291,7 @@ export default function TransactionPage() {
                   currencyId: parseInt(selectedCurrency.id),
                   currencyAmount: foreignNum,
                   customExchangeRate: rate,
+                  foreignStatus,
                   ...customerData,
                 }
                 const result = await transactionApi.buy(request)
@@ -299,6 +303,7 @@ export default function TransactionPage() {
                   currencyId: parseInt(selectedCurrency.id),
                   currencyAmount: foreignNum,
                   customExchangeRate: rate,
+                  foreignStatus,
                   ...customerData,
                 }
                 const result = await transactionApi.sell(request)
@@ -467,6 +472,35 @@ export default function TransactionPage() {
                 step="0.01"
                 data-testid="tx-huf-amount"
               />
+            </div>
+          </div>
+
+          {/* Devizastátusz választó */}
+          <div className="form-group-box pt-4">
+            <span className="form-group-box-title">Devizastátusz</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setForeignStatus('FOREIGN')}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold border-2 transition-all ${
+                  foreignStatus === 'FOREIGN'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
+                }`}
+              >
+                Külföldi
+              </button>
+              <button
+                type="button"
+                onClick={() => setForeignStatus('DOMESTIC')}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold border-2 transition-all ${
+                  foreignStatus === 'DOMESTIC'
+                    ? 'border-green-500 bg-green-50 text-green-700'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-green-300'
+                }`}
+              >
+                Belföldi
+              </button>
             </div>
           </div>
 

@@ -56,6 +56,12 @@ public class SellRequestDto {
 
     private String notes;
 
+    /** Penztarosi sav: egyedi arfolyam 400k+ Ft felett (napi 5x limit) */
+    private Boolean cashierCustomRate;
+
+    /** Devizastatusz: DOMESTIC (belfoldi) / FOREIGN (kulfoldi) */
+    private String foreignStatus;
+
     /**
      * Multi-line bizonylat tetelsorai (max 6 sor).
      * Ha megadva, a currencyId/currencyCode/currencyAmount mezok figyelmen kivul maradnak

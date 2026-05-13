@@ -86,6 +86,12 @@ public class Transfer {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Column(name = "carrier_name", length = 200)
+    private String carrierName;
+
+    @Column(name = "seal_number", length = 100)
+    private String sealNumber;
+
     @Column(name = "handover_printed")
     @Builder.Default
     private Boolean handoverPrinted = false;

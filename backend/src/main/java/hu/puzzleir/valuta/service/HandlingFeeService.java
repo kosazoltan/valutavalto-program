@@ -141,8 +141,17 @@ public class HandlingFeeService {
         try {
             String perMilleStr = systemParameterService.getValue("HANDLING_FEE_PER_MILLE");
             BigDecimal perMille = new BigDecimal(perMilleStr);
-            return hufAmount.multiply(perMille)
+            BigDecimal fee = hufAmount.multiply(perMille)
                     .divide(BigDecimal.valueOf(1000), 0, RoundingMode.HALF_UP);
+
+            String maxStr = systemParameterService.getValue("HANDLING_FEE_PER_MILLE_MAX", "0");
+            BigDecimal maxAmount = new BigDecimal(maxStr);
+            if (maxAmount.compareTo(BigDecimal.ZERO) > 0 && fee.compareTo(maxAmount) > 0) {
+                log.debug("PER_MILLE díj {} Ft meghaladja a maximumot {} Ft — sapkázva", fee, maxAmount);
+                fee = maxAmount;
+            }
+
+            return fee;
         } catch (Exception e) {
             log.error("PER_MILLE díjszámítás hiba: {}", e.getMessage());
             return BigDecimal.ZERO;

@@ -171,6 +171,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/settings/permission-matrix", label: "Jogosultság mátrix", icon: Shield, canonicalRoles: ["ugyvezeto"] },
       { path: "/scheduler", label: "Ütemező", icon: FileText, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
       { path: "/email-settings", label: "E-mail beállítások", icon: Settings, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
+      { path: "/handling-fee-config", label: "Kezelési költség beállítás", icon: Wallet, canonicalRoles: ["ugyvezeto", "irodavezeto", "belso_ellenor"] },
     ],
   },
   {

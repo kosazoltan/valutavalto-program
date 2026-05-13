@@ -37,6 +37,7 @@ export interface PrintReceiptData {
   customerBirthPlace?: string;
   customerBirthDate?: string;
   customerNationality?: string;
+  foreignStatus?: 'DOMESTIC' | 'FOREIGN';
   sealNumber?: string;
   vatExemptionText?: string;
   companyPhone?: string;

@@ -319,6 +319,7 @@ public class ReceiptGeneratorService {
                 .date(LocalDateTime.now())
                 .currencyCode(tx.getCurrency() != null ? tx.getCurrency().getCode() : "")
                 .foreignAmount(tx.getCurrencyAmount())
+                .foreignStatus(tx.getForeignStatus())
                 .rate(tx.getExchangeRate())
                 .hufAmount(tx.getHufAmount())
                 .handlingFee(tx.getHandlingFee())

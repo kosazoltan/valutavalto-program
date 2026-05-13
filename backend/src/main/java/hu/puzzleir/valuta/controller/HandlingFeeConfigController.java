@@ -1,0 +1,135 @@
+package hu.puzzleir.valuta.controller;
+
+import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeBracketDto;
+import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeConfigDto;
+import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.HandlingFeeBracket;
+import hu.puzzleir.valuta.entity.HandlingFeeType;
+import hu.puzzleir.valuta.repository.CompanyRepository;
+import hu.puzzleir.valuta.repository.HandlingFeeBracketRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.SystemParameterService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/handling-fee-config")
+@RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('MANAGER','ADMIN')")
+@Slf4j
+public class HandlingFeeConfigController {
+
+    private final SystemParameterService systemParameterService;
+    private final HandlingFeeBracketRepository bracketRepository;
+    private final CompanyRepository companyRepository;
+
+    @GetMapping
+    public ResponseEntity<HandlingFeeConfigDto> getConfig() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        String feeType;
+        try {
+            feeType = systemParameterService.getValue("HANDLING_FEE_TYPE");
+        } catch (Exception e) {
+            feeType = "BRACKET";
+        }
+
+        BigDecimal perMilleRate = BigDecimal.ZERO;
+        try {
+            perMilleRate = new BigDecimal(systemParameterService.getValue("HANDLING_FEE_PER_MILLE"));
+        } catch (Exception ignored) { }
+
+        BigDecimal perMilleMax = null;
+        try {
+            perMilleMax = new BigDecimal(systemParameterService.getValue("HANDLING_FEE_PER_MILLE_MAX"));
+        } catch (Exception ignored) { }
+
+        List<HandlingFeeBracket> brackets = bracketRepository
+                .findByCompanyIdAndActiveOrderByBracketOrder(companyId, true);
+
+        List<HandlingFeeBracketDto> bracketDtos = brackets.stream()
+                .map(b -> HandlingFeeBracketDto.builder()
+                        .id(b.getId())
+                        .bracketOrder(b.getBracketOrder())
+                        .upperLimit(b.getUpperLimit())
+                        .feeAmount(b.getFeeAmount())
+                        .active(b.getActive())
+                        .build())
+                .toList();
+
+        return ResponseEntity.ok(HandlingFeeConfigDto.builder()
+                .feeType(feeType)
+                .perMilleRate(perMilleRate)
+                .perMilleMaxAmount(perMilleMax)
+                .brackets(bracketDtos)
+                .build());
+    }
+
+    @PutMapping
+    @Transactional
+    public ResponseEntity<HandlingFeeConfigDto> updateConfig(@Valid @RequestBody HandlingFeeConfigDto dto) {
+        try {
+            HandlingFeeType.valueOf(dto.getFeeType().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        systemParameterService.upsert("HANDLING_FEE_TYPE", dto.getFeeType().toUpperCase(), "HANDLING_FEE", "Kezelési díj típusa");
+        if (dto.getPerMilleRate() != null) {
+            systemParameterService.upsert("HANDLING_FEE_PER_MILLE", dto.getPerMilleRate().toPlainString(), "HANDLING_FEE", "Ezrelék mértéke");
+        }
+        if (dto.getPerMilleMaxAmount() != null) {
+            systemParameterService.upsert("HANDLING_FEE_PER_MILLE_MAX", dto.getPerMilleMaxAmount().toPlainString(), "HANDLING_FEE", "Ezrelékes maximum összeg");
+        }
+
+        if (dto.getBrackets() != null) {
+            saveBrackets(dto.getBrackets());
+        }
+
+        log.info("Kezelési díj konfiguráció frissítve: type={}, perMille={}, maxAmount={}",
+                dto.getFeeType(), dto.getPerMilleRate(), dto.getPerMilleMaxAmount());
+
+        return getConfig();
+    }
+
+    @PostMapping("/brackets")
+    @Transactional
+    public ResponseEntity<List<HandlingFeeBracketDto>> saveBracketsEndpoint(@RequestBody List<HandlingFeeBracketDto> dtos) {
+        saveBrackets(dtos);
+        return ResponseEntity.ok(dtos);
+    }
+
+    private void saveBrackets(List<HandlingFeeBracketDto> dtos) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalStateException("Company not found: " + companyId));
+
+        List<HandlingFeeBracket> existing = bracketRepository
+                .findByCompanyIdAndActiveOrderByBracketOrder(companyId, true);
+        for (HandlingFeeBracket b : existing) {
+            b.setActive(false);
+        }
+        bracketRepository.saveAll(existing);
+
+        int order = 1;
+        for (HandlingFeeBracketDto dto : dtos) {
+            HandlingFeeBracket bracket = HandlingFeeBracket.builder()
+                    .company(company)
+                    .bracketOrder(order++)
+                    .upperLimit(dto.getUpperLimit())
+                    .feeAmount(dto.getFeeAmount())
+                    .active(true)
+                    .build();
+            bracketRepository.save(bracket);
+        }
+    }
+}

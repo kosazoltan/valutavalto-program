@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.dto.transaction.CashierCustomRateQuotaDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
@@ -72,6 +73,7 @@ public class TransactionService {
     private final @org.springframework.context.annotation.Lazy TransactionConversionService conversionService;
     private final @org.springframework.context.annotation.Lazy TransactionMultiLineService multiLineService;
     private final LicenseService licenseService;
+    private final SystemParameterService systemParameterService;
 
     // Sztornó limit supervisor nélkül (3 db/nap)
     private static final int DAILY_REVERSAL_LIMIT = 3;
@@ -263,6 +265,8 @@ public class TransactionService {
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
+                .cashierCustomRate(Boolean.TRUE.equals(request.getCashierCustomRate()))
+                .foreignStatus(request.getForeignStatus())
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
@@ -410,6 +414,8 @@ public class TransactionService {
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
+                .cashierCustomRate(Boolean.TRUE.equals(request.getCashierCustomRate()))
+                .foreignStatus(request.getForeignStatus())
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
@@ -714,6 +720,8 @@ public class TransactionService {
         private String sourceOfFunds;
         private Boolean customerIsPep;
         private String notes;
+        private Boolean cashierCustomRate;
+        private String foreignStatus;
         /** Fizetési mód: CASH (alapértelmezett) vagy CARD (bankkártya) */
         private PaymentMethod paymentMethod;
         /** POS terminál azonosító (csak CARD fizetésnél kötelező) */
@@ -741,6 +749,8 @@ public class TransactionService {
         private String sourceOfFunds;
         private Boolean customerIsPep;
         private String notes;
+        private Boolean cashierCustomRate;
+        private String foreignStatus;
         /** Fizetési mód: CASH (alapértelmezett) vagy CARD (bankkártya) */
         private PaymentMethod paymentMethod;
         /** POS terminál azonosító (csak CARD fizetésnél kötelező) */
@@ -811,6 +821,19 @@ public class TransactionService {
         private BigDecimal customExchangeRate;
         /** Sor kedvezmeny tipus (0=nincs, 4=VIP, stb.) */
         private Integer discountType;
+    }
+
+    public CashierCustomRateQuotaDto getCashierCustomRateQuota() {
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        long used = transactionRepository.countDailyCashierCustomRatesByWorker(workerId, LocalDate.now());
+        long limit = Long.parseLong(systemParameterService.getValue("CASHIER_CUSTOM_RATE_DAILY_LIMIT", "5"));
+        long minAmount = Long.parseLong(systemParameterService.getValue("CASHIER_CUSTOM_RATE_MIN_AMOUNT", "400000"));
+        return CashierCustomRateQuotaDto.builder()
+                .used(used)
+                .limit(limit)
+                .remaining(Math.max(0, limit - used))
+                .minAmountHuf(minAmount)
+                .build();
     }
 
     @lombok.Data

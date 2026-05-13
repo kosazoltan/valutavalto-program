@@ -148,6 +148,7 @@ export interface Transaction {
   // G3-G4: PEP + Jogcím nyilatkozat (Legacy Gap Fix)
   customerIsPep?: boolean
   sourceOfFunds?: string
+  foreignStatus?: 'DOMESTIC' | 'FOREIGN'
   // Legacy compatibility aliases
   transactionNumber?: string // Same as receiptNumber
   type?: 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION' // Same as transactionType
@@ -178,6 +179,8 @@ export interface BuyRequest {
   sourceOfFunds?: string
   customerIsPep?: boolean
   notes?: string
+  cashierCustomRate?: boolean
+  foreignStatus?: 'DOMESTIC' | 'FOREIGN'
 }
 
 export interface SellRequest {
@@ -199,6 +202,15 @@ export interface SellRequest {
   sourceOfFunds?: string
   customerIsPep?: boolean
   notes?: string
+  cashierCustomRate?: boolean
+  foreignStatus?: 'DOMESTIC' | 'FOREIGN'
+}
+
+export interface CashierCustomRateQuota {
+  used: number
+  limit: number
+  remaining: number
+  minAmountHuf: number
 }
 
 export interface ReversalRequest {
@@ -256,6 +268,10 @@ export const transactionApi = {
   getDailyTurnover: async (date?: string): Promise<DailyTurnoverSummary> => {
     const params = date ? { date } : {}
     const response = await api.get<DailyTurnoverSummary>('/transactions/daily-turnover', { params })
+    return response.data
+  },
+  getCashierRateQuota: async (): Promise<CashierCustomRateQuota> => {
+    const response = await api.get<CashierCustomRateQuota>('/transactions/cashier-rate-quota')
     return response.data
   },
   buy: async (data: BuyRequest): Promise<Transaction> => {
@@ -1119,6 +1135,8 @@ export interface Transfer {
   receivedAmount?: number
   difference?: number
   notes?: string
+  carrierName?: string
+  sealNumber?: string
   handoverPrinted: boolean
   receiptPrinted: boolean
   createdAt: string
@@ -1133,7 +1151,10 @@ export interface CreateTransferRequest {
   amount: number
   hufValue?: number
   transferType: 'CURRENCY' | 'CASH' | 'HANDLING_FEE' | 'VAULT_DEPOSIT' | 'VAULT_WITHDRAW' | 'CORRECTION' | 'OTHER'
+  direction?: 'F' | 'U' | 'UF' | 'FF'
   notes?: string
+  carrierName?: string
+  sealNumber?: string
 }
 
 export interface ReceiveTransferRequest {

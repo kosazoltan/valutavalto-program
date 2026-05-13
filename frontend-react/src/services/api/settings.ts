@@ -9,6 +9,10 @@ export interface BranchInfo {
   companyId?: string
   city?: string
   isActive?: boolean
+  isVault?: boolean
+  vaultTerritoryId?: number | null
+  branchTypeCode?: string
+  region?: string
 }
 
 export const branchApi = {
@@ -499,6 +503,14 @@ export const feeApi = {
   createDiscount: async (data: Partial<FeeDiscount>): Promise<FeeDiscount> => (await api.post<FeeDiscount>('/fees/discounts', data)).data,
   updateDiscount: async (id: string, data: Partial<FeeDiscount>): Promise<FeeDiscount> => (await api.put<FeeDiscount>(`/fees/discounts/${id}`, data)).data,
   deleteDiscount: async (id: string): Promise<void> => { await api.delete(`/fees/discounts/${id}`) },
+}
+
+export interface HandlingFeeBracketConfig { id?: number; bracketOrder: number; upperLimit: number; feeAmount: number; active?: boolean }
+export interface HandlingFeeConfig { feeType: 'NONE' | 'PER_MILLE' | 'BRACKET'; perMilleRate: number; perMilleMaxAmount: number | null; brackets: HandlingFeeBracketConfig[] }
+
+export const handlingFeeConfigApi = {
+  get: async (): Promise<HandlingFeeConfig> => (await api.get<HandlingFeeConfig>('/handling-fee-config')).data,
+  update: async (data: HandlingFeeConfig): Promise<HandlingFeeConfig> => (await api.put<HandlingFeeConfig>('/handling-fee-config', data)).data,
 }
 
 export interface ProhibitedPerson { id: string; fullName: string; documentNumber?: string; identityNumber?: string; passportNumber?: string; dateOfBirth?: string; nationality?: string; listType: string; listSource: string; reason?: string; isActive: boolean }

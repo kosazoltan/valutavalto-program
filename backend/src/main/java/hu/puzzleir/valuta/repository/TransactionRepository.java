@@ -647,6 +647,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("date") LocalDate date
     );
 
+    /**
+     * Penztaros napi egyedi arfolyam hasznalatok szama (penztarosi sav).
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.worker.id = :workerId " +
+           "AND t.transactionDate = :date " +
+           "AND t.cashierCustomRate = true " +
+           "AND t.status = 'COMPLETED'")
+    long countDailyCashierCustomRatesByWorker(
+        @Param("workerId") Long workerId,
+        @Param("date") LocalDate date
+    );
+
     // ============ NAPZARAS QUERY-K ============
 
     /**

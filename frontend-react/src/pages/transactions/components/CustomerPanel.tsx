@@ -213,13 +213,13 @@ export default function CustomerPanel({
       if (savedCustomer?.id && hufTotal > 0) {
         data = await runAmlCheck(savedCustomer.id, data)
       } else if (hufTotal >= 100_000) {
-        const blockedResult: AmlCheckResultDto = {
+        const warnResult: AmlCheckResultDto = {
           transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
-          requiresId: true, requiresEnhanced: false, blocked: true,
-          warnings: ['Ugyfel mentese nem sikerult — AML ellenorzes nem lehetseges, tranzakcio blokkolt'],
+          requiresId: true, requiresEnhanced: false, blocked: false,
+          warnings: ['Ugyfel mentese nem sikerult — AML ellenorzes korlátozott, az adatok kézi rögzítéssel kerülnek a tranzakcióba'],
         }
-        setAmlResult(blockedResult)
-        onAmlResult?.(blockedResult)
+        setAmlResult(warnResult)
+        onAmlResult?.(warnResult)
       }
 
       onCustomerReady(data)
@@ -250,17 +250,35 @@ export default function CustomerPanel({
     onAmlResult?.(null)
   }, [onCustomerReady, onAmlResult])
 
-  // SIMPLE mode: auto-propagate nationality (no save button needed under 100K)
+  // Auto-propagate form data so the transaction can proceed even without explicit save.
+  // SIMPLE mode: only nationality; SIMPLIFIED/FULL: all filled fields.
   useEffect(() => {
-    if (identificationLevel === 'SIMPLE' && !selectedCustomer) {
+    if (selectedCustomer) return
+    if (identificationLevel === 'SIMPLE') {
       onCustomerReady({
         name: '',
         documentType: '',
         documentNumber: '',
         nationality: customerNationality,
       })
+    } else {
+      onCustomerReady({
+        name: customerName.trim(),
+        documentType: customerDocType,
+        documentNumber: customerDocNumber.trim(),
+        nationality: customerNationality,
+        birthPlace: customerBirthPlace.trim() || undefined,
+        birthDate: customerBirthDate || undefined,
+        birthName: customerBirthName.trim() || undefined,
+        motherName: customerMotherName.trim() || undefined,
+        address: customerAddress.trim() || undefined,
+        residence: customerResidence.trim() || undefined,
+        addressCardNumber: customerAddressCardNumber.trim() || undefined,
+      })
     }
-  }, [identificationLevel, customerNationality, selectedCustomer, onCustomerReady])
+  }, [identificationLevel, customerNationality, customerName, customerDocType, customerDocNumber,
+    customerBirthPlace, customerBirthDate, customerBirthName, customerMotherName,
+    customerAddress, customerResidence, customerAddressCardNumber, selectedCustomer, onCustomerReady])
 
   // Re-run AML when hufTotal changes
   useEffect(() => {

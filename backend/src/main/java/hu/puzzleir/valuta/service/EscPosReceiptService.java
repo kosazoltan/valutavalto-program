@@ -567,6 +567,9 @@ public class EscPosReceiptService {
 
         if (data.getCurrencyCode() != null) {
             b.line("Valuta:    " + data.getCurrencyCode());
+            if (data.getForeignStatus() != null) {
+                b.line("Státusz:   " + ("FOREIGN".equals(data.getForeignStatus()) ? "Külföldi" : "Belföldi"));
+            }
             b.line("Összeg:    " + (data.getForeignAmount() != null ? data.getForeignAmount().toPlainString() : ""));
             b.line("Árfolyam:  " + (data.getRate() != null ? data.getRate().toPlainString() : ""));
             b.boldLine("HUF:       " + (data.getHufAmount() != null ? data.getHufAmount().toPlainString() : "") + " Ft");
