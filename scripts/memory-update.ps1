@@ -46,6 +46,25 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "QMD: $qmdVersion" -ForegroundColor Green
 
+# ----- Windows HOME fallback patch verify -----
+# 2026-05-13: a QMD store.js eredeti `HOME = process.env.HOME || "/tmp"` Windows-on
+# duplikált indexet eredményezhet, ha üres HOME-mal indul. A patch USERPROFILE +
+# os.homedir() fallback-et tesz be, biztosítva egyetlen stabil indexet.
+$qmdStoreJs = Join-Path $env:APPDATA "npm\node_modules\@tobilu\qmd\dist\store.js"
+if (Test-Path $qmdStoreJs) {
+    $content = Get-Content -Path $qmdStoreJs -Raw -ErrorAction SilentlyContinue
+    if ($content -notmatch 'process\.env\.USERPROFILE.*_qmdHomedir') {
+        Write-Host "QMD store.js Windows HOME fix HIÁNYZIK — patchelés..." -ForegroundColor Yellow
+        $patched = $content -replace `
+            'const HOME = process\.env\.HOME \|\| "/tmp";', `
+            "// QMD index helye: HOME env > USERPROFILE (Windows) > os.homedir() > /tmp`r`n// 2026-05-13 javitas: Windows-on a npm/node kornyezet gyakran ures HOME-mal indul.`r`nimport { homedir as _qmdHomedir } from `"node:os`";`r`nconst HOME = process.env.HOME || process.env.USERPROFILE || _qmdHomedir() || `"/tmp`";"
+        Set-Content -Path $qmdStoreJs -Value $patched -NoNewline
+        Write-Host "QMD store.js patchelve." -ForegroundColor Green
+    } else {
+        Write-Host "QMD store.js Windows HOME fix: OK" -ForegroundColor Green
+    }
+}
+
 # ----- Status only -----
 if ($Status) {
     Write-Section "2. QMD ÁLLAPOT"
