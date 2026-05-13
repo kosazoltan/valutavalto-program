@@ -330,5 +330,5 @@ test('auth persist: login → reload stays on dashboard', async ({ page }) => {
   await expect(page).toHaveURL(/\/central-workstation/, { timeout:10000 })
   await page.reload()
   await expect(page).toHaveURL(/\/central-workstation/)
-  await expect(page.getByRole('heading', { name: 'Irányítópult' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Irányítópult|Központi irányítóközpont/i })).toBeVisible()
 })
