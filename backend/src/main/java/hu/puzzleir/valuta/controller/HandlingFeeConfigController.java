@@ -77,6 +77,9 @@ public class HandlingFeeConfigController {
     @PutMapping
     @Transactional
     public ResponseEntity<HandlingFeeConfigDto> updateConfig(@Valid @RequestBody HandlingFeeConfigDto dto) {
+        if (dto.getFeeType() == null || dto.getFeeType().isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
         try {
             HandlingFeeType.valueOf(dto.getFeeType().toUpperCase());
         } catch (IllegalArgumentException e) {
