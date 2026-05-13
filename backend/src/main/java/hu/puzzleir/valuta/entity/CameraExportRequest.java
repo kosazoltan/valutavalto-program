@@ -57,8 +57,11 @@ public class CameraExportRequest {
     private String referenceNumber;
 
     /** Állapot */
+    // Codex P1 #570 fix: V220 bevezette az AWAITING_SECOND_APPROVAL (24 chars) enum
+    // értéket, de a length=20 túl rövid volt → production value-too-long crash.
+    // V223 a DB oszlopot VARCHAR(30)-ra szélesíti, entity length=30 ehhez igazítva.
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 30)
     @Builder.Default
     private CameraExportStatus status = CameraExportStatus.REQUESTED;
 
@@ -79,6 +82,15 @@ public class CameraExportRequest {
 
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
+
+    // Codex P2 #570 fix (V223): külön rejectedBy/rejectedAt audit oszlopok, hogy a
+    // dual-approval flow-ban (1. approver már megvolt) a reject NE írja felül az
+    // approved_by/approved_at audit data-t.
+    @Column(name = "rejected_by", length = 100)
+    private String rejectedBy;
+
+    @Column(name = "rejected_at")
+    private LocalDateTime rejectedAt;
 
     // === Sprint 4 (P2-C): 2. szintű jóváhagyás (dual approval) ===
     /** Igényel-e 2. jóváhagyót (default true a hatósági export-hoz). */

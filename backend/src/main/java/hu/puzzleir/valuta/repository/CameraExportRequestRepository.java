@@ -15,5 +15,8 @@ public interface CameraExportRequestRepository extends JpaRepository<CameraExpor
 
     List<CameraExportRequest> findByStatusOrderByCreatedAtAsc(CameraExportStatus status);
 
+    // Codex P2 #570 fix: dual-approval pending list — REQUESTED + AWAITING_SECOND_APPROVAL.
+    List<CameraExportRequest> findByStatusInOrderByCreatedAtAsc(List<CameraExportStatus> statuses);
+
     List<CameraExportRequest> findByRequestedByOrderByCreatedAtDesc(String requestedBy);
 }
