@@ -41,6 +41,8 @@ import java.util.Map;
 @Slf4j
 public class EscPosReceiptService {
 
+    private final SystemParameterService systemParameterService;
+
     private static final int LINE_WIDTH = 40;
     private static final int WIDE_LINE_WIDTH = 20;
     private static final Charset CHARSET = Charset.forName("Cp852"); // Magyar karakterek
@@ -666,17 +668,21 @@ public class EscPosReceiptService {
         BigDecimal absHuf = data.getHufAmount() != null ? data.getHufAmount().abs() : BigDecimal.ZERO;
         boolean isHighValue = absHuf.compareTo(HIGH_THRESHOLD) >= 0;
 
-        // 300k+ felett: bankpartner + marketing szöveg
+        // 300k+ felett: bankpartner + marketing szöveg (SystemParameter-ből)
         if (isHighValue) {
+            String bankName = getReceiptText("RECEIPT_BANK_PARTNER_NAME", "Raiffeisen Bank Zrt.");
+            String bankSub = getReceiptText("RECEIPT_BANK_PARTNER_SUBTITLE", "KIEMELT KÖZVETÍTŐJE");
             b.center();
-            b.line("Raiffeisen Bank Zrt.");
-            b.line("KIEMELT KÖZVETÍTŐJE");
+            b.line(bankName);
+            b.line(bankSub);
             b.separator();
+            String marketingTitle = getReceiptText("RECEIPT_MARKETING_TITLE", "EXCLUSIVE CHANGE");
+            String marketingSlogan = getReceiptText("RECEIPT_MARKETING_SLOGAN", "KEDVEZŐBB,\nGYORSABB,\nBIZTONSÁGOSABB");
             b.center();
-            b.boldLine("EXCLUSIVE CHANGE");
-            b.line("KEDVEZŐBB,");
-            b.line("GYORSABB,");
-            b.line("BIZTONSÁGOSABB");
+            b.boldLine(marketingTitle);
+            for (String sloganLine : marketingSlogan.split("\\n")) {
+                b.line(sloganLine.trim());
+            }
             b.separator();
         }
 
@@ -723,13 +729,39 @@ public class EscPosReceiptService {
 
         b.emptyLine();
         b.center();
-        b.line("Köszönjük, hogy minket választott!");
+        String footerThanks = getReceiptText("RECEIPT_FOOTER_THANKS", "Köszönjük, hogy minket választott!");
+        b.line(footerThanks);
         b.emptyLine();
         b.left();
-        b.line("A bizonylat a pénzmosás elleni");
-        b.line("törvény alapján nem helyettesíti");
-        b.line("a számlát.");
+        String footerLegal = getReceiptText("RECEIPT_FOOTER_LEGAL",
+                "A bizonylat a pénzmosás elleni törvény alapján nem helyettesíti a számlát.");
+        for (String legalLine : wrapText(footerLegal, LINE_WIDTH)) {
+            b.line(legalLine);
+        }
         b.feedAndCut();
+    }
+
+    private String getReceiptText(String key, String defaultValue) {
+        try {
+            return systemParameterService.getValue(key, defaultValue);
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
+
+    private List<String> wrapText(String text, int maxWidth) {
+        List<String> lines = new java.util.ArrayList<>();
+        for (String paragraph : text.split("\\n")) {
+            String remaining = paragraph.trim();
+            while (remaining.length() > maxWidth) {
+                int breakAt = remaining.lastIndexOf(' ', maxWidth);
+                if (breakAt <= 0) breakAt = maxWidth;
+                lines.add(remaining.substring(0, breakAt));
+                remaining = remaining.substring(breakAt).trim();
+            }
+            if (!remaining.isEmpty()) lines.add(remaining);
+        }
+        return lines;
     }
 
     private String getLineValue(ReceiptData data, String label) {

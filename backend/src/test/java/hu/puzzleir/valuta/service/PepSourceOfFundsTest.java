@@ -470,7 +470,10 @@ class PepSourceOfFundsTest {
 
         @BeforeEach
         void setUp() {
-            service = new EscPosReceiptService();
+            SystemParameterService mockSps = Mockito.mock(SystemParameterService.class);
+            Mockito.lenient().when(mockSps.getValue(Mockito.anyString(), Mockito.anyString()))
+                    .thenAnswer(inv -> inv.getArgument(1));
+            service = new EscPosReceiptService(mockSps);
         }
 
         private ReceiptData buildReceiptData(boolean requiresPep, String pepText,

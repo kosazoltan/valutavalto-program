@@ -38,6 +38,7 @@ public class ReceiptGeneratorService {
     private final TransactionRepository transactionRepository;
     private final ReceiptPdfService receiptPdfService;
     private final EscPosReceiptService escPosReceiptService;
+    private final SystemParameterService systemParameterService;
 
     /** 300.000 Ft — jogszabályi küszöb PEP és Jogcím nyilatkozathoz */
     private static final BigDecimal HIGH_VALUE_THRESHOLD = new BigDecimal("300000");
@@ -368,7 +369,14 @@ public class ReceiptGeneratorService {
                    .roundedHufAmount(roundedAmount);
         }
 
-        // ÁFA-mentesség — alapértelmezett a @Builder.Default-ból jön
+        // ÁFA-mentesség — SystemParameter-ből (admin UI-ból szerkeszthető)
+        try {
+            String vatText = systemParameterService.getValue("RECEIPT_VAT_EXEMPTION",
+                    "Szj - 67.13.10.0\nAdómentes  a szolgáltatás nyújtása a 2007\nM.Á.A. evi CXVII tv. 86 § e) alapján\nmentes az adó alól");
+            builder.vatExemptionText(vatText);
+        } catch (Exception e) {
+            log.debug("VAT exemption text SystemParameter olvasás sikertelen, default marad");
+        }
 
         // Kiegészítő blokkok aktiválása
         applyRuByDeclarationIfNeeded(builder, tx.getCustomerNationality());
