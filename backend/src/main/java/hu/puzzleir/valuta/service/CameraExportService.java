@@ -185,8 +185,11 @@ public class CameraExportService {
 
         String rejector = SecurityUtils.getCurrentWorkerCode();
         request.setStatus(CameraExportStatus.REJECTED);
-        request.setApprovedBy(rejector);
-        request.setApprovedAt(LocalDateTime.now());
+        // Codex P2 #570 fix: NE írjuk felül az approved_by/approved_at-ot (ha dual-approval
+        // flow-ban az 1. approver már jóváhagyta, az audit-data megmarad). Helyette külön
+        // rejected_by + rejected_at oszlopokba (V223 migration).
+        request.setRejectedBy(rejector);
+        request.setRejectedAt(LocalDateTime.now());
         request.setRejectionReason(rejectionReason);
         exportRepository.save(request);
 
@@ -333,7 +336,11 @@ public class CameraExportService {
 
     @Transactional(readOnly = true)
     public List<CameraExportRequest> getPendingRequests() {
-        return exportRepository.findByStatusOrderByCreatedAtAsc(CameraExportStatus.REQUESTED);
+        // Codex P2 #570 fix: dual-approval flow-ban a 2. approver-nek látnia kell a
+        // AWAITING_SECOND_APPROVAL state-ű kérelmeket is a pending listán.
+        // (Korábban csak REQUESTED-eket adott vissza → 2. approver nem találta a feladatát.)
+        return exportRepository.findByStatusInOrderByCreatedAtAsc(
+                List.of(CameraExportStatus.REQUESTED, CameraExportStatus.AWAITING_SECOND_APPROVAL));
     }
 
     @Transactional(readOnly = true)
