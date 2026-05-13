@@ -146,7 +146,7 @@ public class TransferService {
         // KIVÉVE: F mód esetén a fogadó oldal tranzakciója a receive-nél jön létre
         if (direction == Transfer.TransferDirection.F) {
             // F mód: receive-nél a fogadó oldali TRANSFER_IN tranzakció
-            createTransferInTransaction(transfer, toWorker);
+            createTransferInTransaction(transfer, toWorker, transfer.getToBranch());
             log.info("TRANSFER_IN tranzakció létrehozva receive-nél (F mód): {}", transfer.getTransferNumber());
         }
 
@@ -258,17 +258,17 @@ public class TransferService {
                         transfer.getTransferNumber(), transfer.getAmount(), transfer.getCurrency().getCode());
             }
             case U -> {
-                // Csak TRANSFER_IN a fogadó fióknál (fogadó-indított átadás)
-                // Fogadó fiók worker-je nincs még beállítva, fromWorker-t használjuk mint indító
-                createTransferInTransaction(transfer, fromWorker);
-                increaseCashBalance(transfer.getToBranch(), transfer.getCurrency(), transfer.getAmount());
-                log.info("U mód — TRANSFER_IN létrehozva: {} ({} {})",
+                // Fogadó-indított: fromBranch (az initiátor/fogadó) kapja a pénzt a toBranch-től
+                createTransferInTransaction(transfer, fromWorker, transfer.getFromBranch());
+                increaseCashBalance(transfer.getFromBranch(), transfer.getCurrency(), transfer.getAmount());
+                log.info("U mód — TRANSFER_IN létrehozva (fogadó: {}): {} ({} {})",
+                        transfer.getFromBranch().getCode(),
                         transfer.getTransferNumber(), transfer.getAmount(), transfer.getCurrency().getCode());
             }
             case UF -> {
                 // Mindkét tranzakció egyszerre
                 createTransferOutTransaction(transfer, fromWorker);
-                createTransferInTransaction(transfer, fromWorker);
+                createTransferInTransaction(transfer, fromWorker, transfer.getToBranch());
                 decreaseCashBalance(transfer.getFromBranch(), transfer.getCurrency(), transfer.getAmount());
                 increaseCashBalance(transfer.getToBranch(), transfer.getCurrency(), transfer.getAmount());
                 // UF módban az átadás azonnal COMPLETED
@@ -327,16 +327,17 @@ public class TransferService {
     }
 
     /**
-     * TRANSFER_IN tranzakció létrehozása a fogadó fióknál.
+     * TRANSFER_IN tranzakció létrehozása a megadott fióknál.
      */
-    private Transaction createTransferInTransaction(Transfer transfer, Worker worker) {
-        Branch toBranch = transfer.getToBranch();
+    private Transaction createTransferInTransaction(Transfer transfer, Worker worker, Branch atBranch) {
+        Branch sourceBranch = atBranch.getId().equals(transfer.getToBranch().getId())
+                ? transfer.getFromBranch() : transfer.getToBranch();
         String receiptNumber = receiptSequenceService.generateReceiptNumber(
-                toBranch.getId(), TransactionType.TRANSFER_IN);
+                atBranch.getId(), TransactionType.TRANSFER_IN);
 
         Transaction tx = Transaction.builder()
-                .company(toBranch.getCompany())
-                .branch(toBranch)
+                .company(atBranch.getCompany())
+                .branch(atBranch)
                 .worker(worker)
                 .receiptNumber(receiptNumber)
                 .transactionType(TransactionType.TRANSFER_IN)
@@ -345,13 +346,13 @@ public class TransferService {
                 .transactionTime(LocalTime.now())
                 .currency(transfer.getCurrency())
                 .currencyAmount(transfer.getAmount())
-                .exchangeRate(BigDecimal.ONE) // Átadásnál nincs árfolyam
+                .exchangeRate(BigDecimal.ONE)
                 .hufAmount(transfer.getHufValue() != null ? transfer.getHufValue() : BigDecimal.ZERO)
                 .referenceNumber(transfer.getTransferNumber())
                 .notes(String.format("Átvétel (%s): %s <- %s [%s]",
                         transfer.getDirection(),
-                        toBranch.getCode(),
-                        transfer.getFromBranch().getCode(),
+                        atBranch.getCode(),
+                        sourceBranch.getCode(),
                         transfer.getTransferNumber()))
                 .build();
 

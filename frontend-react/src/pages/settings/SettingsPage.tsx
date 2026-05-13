@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Settings, Building, Users, Printer, Database, Bell, Shield, Palette, Sliders, Loader2 } from 'lucide-react'
+import { Settings, Building, Users, Printer, Database, Bell, Shield, Palette, Sliders, Loader2, FileText } from 'lucide-react'
 import SystemParameterPage from './SystemParameterPage'
 import PermissionPage from './PermissionPage'
 import RolePage from './RolePage'
 import UserPage from './UserPage'
+import ReceiptTextSettingsPage from './ReceiptTextSettingsPage'
 import { ownCompanyApi, type OwnCompany } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
@@ -88,6 +89,7 @@ export default function SettingsPage() {
     { id: 'permissions', name: 'Jogosultságok', icon: Shield },
     { id: 'roles', name: 'Szerepkörök', icon: Users },
     { id: 'printing', name: 'Nyomtatás', icon: Printer },
+    { id: 'receipt-texts', name: 'Bizonylat szövegek', icon: FileText },
     { id: 'database', name: 'Adatbázis', icon: Database },
     { id: 'notifications', name: 'Értesítések', icon: Bell },
     { id: 'security', name: 'Biztonság', icon: Shield },
@@ -279,6 +281,10 @@ export default function SettingsPage() {
                 <button className="form-button-primary">{t('common.save')}</button>
               </div>
             </div>
+          )}
+
+          {activeTab === 'receipt-texts' && (
+            <ReceiptTextSettingsPage />
           )}
 
           {activeTab === 'database' && (

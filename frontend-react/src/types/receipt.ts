@@ -38,6 +38,10 @@ export interface PrintReceiptData {
   customerBirthDate?: string;
   customerNationality?: string;
   foreignStatus?: 'DOMESTIC' | 'FOREIGN';
+  handlingFee?: number;
+  customerIsPep?: boolean;
+  sourceOfFunds?: string;
+  navReceiptNumber?: string;
   sealNumber?: string;
   vatExemptionText?: string;
   companyPhone?: string;

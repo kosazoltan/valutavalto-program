@@ -56,7 +56,7 @@ async function login(page: Page) {
   await loginBtn.click()
   
   // Wait for navigation to dashboard (or role selector)
-  await page.waitForURL('**/dashboard**', { timeout: 15000 }).catch(async () => {
+  await page.waitForURL('**/central-workstation**', { timeout: 15000 }).catch(async () => {
     // Role selection might be needed — pick first role
     const roleBtn = page.locator('button').filter({ hasText: /CASHIER|PENZTAR|Manager|Admin/i }).first()
     if (await roleBtn.isVisible().catch(() => false)) {
@@ -64,7 +64,7 @@ async function login(page: Page) {
       await page.waitForTimeout(500)
       const confirmBtn = page.locator('button:has-text("Belépés"), button:has-text("OK")').first()
       if (await confirmBtn.isVisible().catch(() => false)) await confirmBtn.click()
-      await page.waitForURL('**/dashboard**', { timeout: 10000 }).catch(() => {})
+      await page.waitForURL('**/central-workstation**', { timeout: 10000 }).catch(() => {})
     }
   })
 }
@@ -115,13 +115,13 @@ test.describe('Full User Journey — Emberi viselkedés szimuláció', () => {
     
     // Should be on dashboard or role selector
     const url = page.url()
-    expect(url).toMatch(/dashboard|role|cashier/i)
+    expect(url).toMatch(/central-workstation|role|cashier/i)
     console.log(`✓ Logged in, current URL: ${url}`)
   })
 
   // ─── 2. Dashboard ───
   test('2. Dashboard betöltődik — napi összesítő', async () => {
-    await checkPageLoads(page, '/dashboard', 'Dashboard')
+    await checkPageLoads(page, '/central-workstation', 'Dashboard')
     
     // Dashboard should have some widgets/cards
     const cards = await page.locator('[class*="card"], [class*="Card"], [class*="widget"]').count()
@@ -329,7 +329,7 @@ test.describe('Full User Journey — Emberi viselkedés szimuláció', () => {
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
     
-    await page.goto(`${FRONTEND_URL}/dashboard`)
+    await page.goto(`${FRONTEND_URL}/central-workstation`)
     await page.waitForLoadState('networkidle')
     
     // Click all visible buttons on dashboard

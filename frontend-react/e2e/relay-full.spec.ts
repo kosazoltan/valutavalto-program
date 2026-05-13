@@ -145,7 +145,7 @@ async function probeRoute(page: Page, route: string): Promise<RouteResult> {
 
 // ─── routes ───────────────────────────────────────────────────────────────────
 const ROUTES = [
-  '/dashboard',
+  '/central-workstation',
   '/transactions/new',
   '/transactions',
   '/transactions/conversion',
@@ -327,8 +327,8 @@ test('auth persist: login → reload stays on dashboard', async ({ page }) => {
   await page.locator('input').nth(1).fill('BORSI')
   await page.locator('input[type="password"]').fill('1234')
   await page.getByRole('button', { name: 'Bejelentkezés' }).click()
-  await expect(page).toHaveURL(/\/dashboard/, { timeout:10000 })
+  await expect(page).toHaveURL(/\/central-workstation/, { timeout:10000 })
   await page.reload()
-  await expect(page).toHaveURL(/\/dashboard/)
-  await expect(page.getByRole('heading', { name: 'Irányítópult' })).toBeVisible()
+  await expect(page).toHaveURL(/\/central-workstation/)
+  await expect(page.getByRole('heading', { name: /Irányítópult|Központi irányítóközpont/i })).toBeVisible()
 })

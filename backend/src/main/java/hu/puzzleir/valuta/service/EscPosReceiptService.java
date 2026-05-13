@@ -41,6 +41,8 @@ import java.util.Map;
 @Slf4j
 public class EscPosReceiptService {
 
+    private final SystemParameterService systemParameterService;
+
     private static final int LINE_WIDTH = 40;
     private static final int WIDE_LINE_WIDTH = 20;
     private static final Charset CHARSET = Charset.forName("Cp852"); // Magyar karakterek
@@ -60,19 +62,23 @@ public class EscPosReceiptService {
     private static final byte[] CMD_FEED_3   = {0x1B, 0x64, 0x03};              // 3 sor feed
     private static final byte[] CMD_LF       = {0x0A};                          // Új sor
 
+    private static final BigDecimal MEDIUM_THRESHOLD = new BigDecimal("100000");
+    private static final BigDecimal HIGH_THRESHOLD = new BigDecimal("300000");
+
     private static final DateTimeFormatter DT_FORMAT = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss");
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy.MM.dd");
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     // ============ BIZONYLAT TÍPUSOK ============
 
     /**
-     * Vételi számla nyomtatás.
+     * Vételi nyugta nyomtatás.
      * Legacy: VetelSzamlaNyomtatas — ügyfél elad nekünk valutát, mi fizetünk HUF-ot.
      */
     public byte[] generateBuyReceipt(ReceiptData data) {
         EscPosBuilder b = new EscPosBuilder();
         b.init();
-        printReceiptHeader(b, data, "VÉTELI BIZONYLAT");
+        printReceiptHeader(b, data, "Valuta vétel", "EXCHANGE (PURCHASE)");
         printTransactionBody(b, data);
         printCustomerSection(b, data);
         printReceiptFooter(b, data);
@@ -80,13 +86,13 @@ public class EscPosReceiptService {
     }
 
     /**
-     * Eladási számla nyomtatás.
+     * Eladási nyugta nyomtatás.
      * Legacy: EladasSzamlaNyomtatas — mi eladunk valutát az ügyfélnek, ő fizet HUF-ot.
      */
     public byte[] generateSellReceipt(ReceiptData data) {
         EscPosBuilder b = new EscPosBuilder();
         b.init();
-        printReceiptHeader(b, data, "ELADÁSI BIZONYLAT");
+        printReceiptHeader(b, data, "Valuta eladás", "EXCHANGE (SELLING)");
         printTransactionBody(b, data);
         printCustomerSection(b, data);
         printReceiptFooter(b, data);
@@ -100,7 +106,7 @@ public class EscPosReceiptService {
     public byte[] generateTransferOutReceipt(ReceiptData data) {
         EscPosBuilder b = new EscPosBuilder();
         b.init();
-        printReceiptHeader(b, data, "ÁTADÁSI BIZONYLAT");
+        printReceiptHeader(b, data, "Átadási bizonylat", "TRANSFER OUT");
         printTransactionBody(b, data);
         b.left();
         b.line("Cél pénztár: " + getLineValue(data, "Cél iroda"));
@@ -116,7 +122,7 @@ public class EscPosReceiptService {
     public byte[] generateTransferInReceipt(ReceiptData data) {
         EscPosBuilder b = new EscPosBuilder();
         b.init();
-        printReceiptHeader(b, data, "ÁTVÉTELI BIZONYLAT");
+        printReceiptHeader(b, data, "Átvételi bizonylat", "TRANSFER IN");
         printTransactionBody(b, data);
         b.left();
         b.line("Forrás pénztár: " + getLineValue(data, "Forrás iroda"));
@@ -132,7 +138,7 @@ public class EscPosReceiptService {
     public byte[] generateStornoReceipt(ReceiptData data) {
         EscPosBuilder b = new EscPosBuilder();
         b.init();
-        printReceiptHeader(b, data, "*** SZTORNÓ ***");
+        printReceiptHeader(b, data, "*** Sztornó ***", "*** REVERSAL ***");
         printTransactionBody(b, data);
         b.left();
         b.line("Eredeti bizonylat: " + getLineValue(data, "Eredeti bizonylat"));
@@ -153,7 +159,7 @@ public class EscPosReceiptService {
     public byte[] generateConversionReceipt(ReceiptData data) {
         EscPosBuilder b = new EscPosBuilder();
         b.init();
-        printReceiptHeader(b, data, "KONVERZIÓS BIZONYLAT");
+        printReceiptHeader(b, data, "Konverziós bizonylat", "CONVERSION");
         printTransactionBody(b, data);
         // Konverzió-specifikus extra sorok (forrás/cél valuta)
         if (data.getLines() != null) {
@@ -259,7 +265,7 @@ public class EscPosReceiptService {
     public byte[] generateHandlingFeeReceipt(ReceiptData data) {
         EscPosBuilder b = new EscPosBuilder();
         b.init();
-        printReceiptHeader(b, data, "KEZELÉSI DÍJAK BIZONYLATA");
+        printReceiptHeader(b, data, "Kezelési díjak bizonylata", "HANDLING FEE RECEIPT");
         b.left();
         b.line("Bizonylat: " + data.getReceiptNumber());
         b.line("Dátum:     " + (data.getDate() != null ? data.getDate().format(DT_FORMAT) : ""));
@@ -295,7 +301,7 @@ public class EscPosReceiptService {
                                              Map<String, BigDecimal> currencyHufValues) {
         EscPosBuilder b = new EscPosBuilder();
         b.init();
-        printReceiptHeader(b, data, "PÉNZTÁR ÁLLÁS");
+        printReceiptHeader(b, data, "Pénztár állás", "CASH STATUS");
         b.left();
         b.line("Dátum: " + (data.getDate() != null ? data.getDate().format(DT_FORMAT) : ""));
         b.line("Pénztáros: " + (data.getWorkerName() != null ? data.getWorkerName() : ""));
@@ -335,7 +341,7 @@ public class EscPosReceiptService {
                                                Map<String, BigDecimal> currencyBalances) {
         EscPosBuilder b = new EscPosBuilder();
         b.init();
-        printReceiptHeader(b, data, "ÉRTÉKTÁRI ZÁRÁS");
+        printReceiptHeader(b, data, "Értéktári zárás", "VAULT CLOSING");
         b.left();
         b.line("Dátum:     " + (data.getDate() != null ? data.getDate().format(DT_FORMAT) : ""));
         b.line("Értéktáros:" + (data.getWorkerName() != null ? data.getWorkerName() : ""));
@@ -381,7 +387,7 @@ public class EscPosReceiptService {
     public byte[] generateKktgTransferReceipt(ReceiptData data) {
         EscPosBuilder b = new EscPosBuilder();
         b.init();
-        printReceiptHeader(b, data, "KKTG ÁTADÁS-ÁTVÉTEL");
+        printReceiptHeader(b, data, "KKTG átadás-átvétel", "KKTG TRANSFER");
         b.left();
         b.line("Bizonylat: " + data.getReceiptNumber());
         b.line("Dátum:     " + (data.getDate() != null ? data.getDate().format(DT_FORMAT) : ""));
@@ -530,127 +536,158 @@ public class EscPosReceiptService {
 
     // ============ SEGÉD METÓDUSOK ============
 
-    private void printReceiptHeader(EscPosBuilder b, ReceiptData data, String title) {
+    private void printReceiptHeader(EscPosBuilder b, ReceiptData data, String subtitleHu, String subtitleEn) {
         b.center();
         b.wideOn();
+        b.boldLine("NYUGTA");
+        b.wideOff();
         b.line(data.getCompanyFullName() != null ? data.getCompanyFullName()
                 : (data.getCompanyName() != null ? data.getCompanyName() : ""));
-        b.wideOff();
         if (data.getBranchName() != null && !data.getBranchName().isBlank()) {
             b.line(data.getBranchName());
         }
         if (data.getBranchAddress() != null && !data.getBranchAddress().isBlank()) {
             b.line(data.getBranchAddress());
         }
-        if (data.getBranchPhone() != null && !data.getBranchPhone().isBlank()) {
-            b.line("Tel: " + data.getBranchPhone());
-        } else if (data.getCompanyPhone() != null && !data.getCompanyPhone().isBlank()) {
-            b.line("Tel: " + data.getCompanyPhone());
+        String phone = data.getBranchPhone() != null && !data.getBranchPhone().isBlank()
+                ? data.getBranchPhone()
+                : data.getCompanyPhone();
+        if (phone != null && !phone.isBlank()) {
+            b.line("Telefon: " + phone);
         }
         if (data.getCompanyTaxNumber() != null && !data.getCompanyTaxNumber().isBlank()) {
             b.line("Adószám: " + data.getCompanyTaxNumber());
         }
-        if (data.getBranchCode() != null && !data.getBranchCode().isBlank()) {
-            b.line("Pénztár: " + data.getBranchCode());
-        }
-        b.separator();
-        b.boldLine(title);
+        b.boldLine(subtitleHu);
+        b.line(subtitleEn);
         b.separator();
     }
 
     private void printTransactionBody(EscPosBuilder b, ReceiptData data) {
         b.left();
-        b.line("Bizonylat: " + data.getReceiptNumber());
-        b.line("Dátum:     " + (data.getDate() != null ? data.getDate().format(DT_FORMAT) : ""));
-        b.line("Pénztáros: " + (data.getWorkerName() != null ? data.getWorkerName() : ""));
+        b.line(padRight("Sorszám (INVOICE NR)", 22) + ": " + data.getReceiptNumber());
+        if (data.getDate() != null) {
+            b.line(padRight("Dátum   (DATE)", 22) + ": " + data.getDate().format(DATE_FORMAT));
+            b.line(padRight("Idő     (TIME)", 22) + ": " + data.getDate().format(TIME_FORMAT));
+        }
+        if (data.getNavReceiptNumber() != null && !data.getNavReceiptNumber().isBlank()) {
+            b.line("(Nyugtaszám: " + data.getNavReceiptNumber() + ")");
+        }
         b.separator();
 
-        if (data.getCurrencyCode() != null) {
-            b.line("Valuta:    " + data.getCurrencyCode());
-            if (data.getForeignStatus() != null) {
-                b.line("Státusz:   " + ("FOREIGN".equals(data.getForeignStatus()) ? "Külföldi" : "Belföldi"));
+        // ÁFA-mentességi szöveg (a PDF mintákon a valutatáblázat ELŐTT van)
+        if (data.getVatExemptionText() != null && !data.getVatExemptionText().isBlank()) {
+            for (String vatLine : data.getVatExemptionText().split("\n")) {
+                b.line(vatLine);
             }
-            b.line("Összeg:    " + (data.getForeignAmount() != null ? data.getForeignAmount().toPlainString() : ""));
-            b.line("Árfolyam:  " + (data.getRate() != null ? data.getRate().toPlainString() : ""));
-            b.boldLine("HUF:       " + (data.getHufAmount() != null ? data.getHufAmount().toPlainString() : "") + " Ft");
+        }
+        b.separator();
+
+        // Valutatáblázat fejléc
+        if (data.getCurrencyCode() != null) {
+            b.line(padRight("V.nem", 7) + padRight("Árfolyam", 10) + padRight("B.jegy", 10) + padLeft("Forint", 10));
+            b.line(padRight("CURR.", 7) + padRight("RATE", 10) + padRight("CASH", 10) + padLeft("VALUE", 10));
+            b.separator();
+
+            String curr = data.getCurrencyCode() != null ? data.getCurrencyCode() : "";
+            String rate = data.getRate() != null ? data.getRate().toPlainString() : "";
+            String amount = data.getForeignAmount() != null ? data.getForeignAmount().toPlainString() : "";
+            String huf = data.getHufAmount() != null ? data.getHufAmount().toPlainString() : "";
+            b.line(padRight(curr, 7) + padRight(rate, 10) + padRight(amount, 10) + padLeft(huf, 10));
+            b.separator();
         }
 
-        // Kerekítés és fizetendő összeg
-        if (data.getRoundedHufAmount() != null && data.getRoundingDiff() != null
-                && data.getRoundingDiff().compareTo(BigDecimal.ZERO) != 0) {
-            b.line("Kerekítés: " + data.getRoundingDiff().toPlainString() + " Ft");
-            b.boldLine("FIZETENDŐ: " + data.getRoundedHufAmount().toPlainString() + " Ft");
-        }
+        // Kerekítés + Nettó + Kezelési költség + Kifizetve
+        BigDecimal roundingDiff = data.getRoundingDiff();
+        String roundingStr = roundingDiff != null ? roundingDiff.toPlainString() : "0";
+        b.line(padRight("Kerekítés (ROUNDING)", 25) + ": " + padLeft(roundingStr, 10));
 
-        if (data.getHandlingFee() != null && data.getHandlingFee().compareTo(BigDecimal.ZERO) > 0) {
-            b.line("Kez. díj:  " + data.getHandlingFee().toPlainString() + " Ft");
-        }
+        BigDecimal netTotal = data.getRoundedHufAmount() != null ? data.getRoundedHufAmount()
+                : (data.getHufAmount() != null ? data.getHufAmount() : BigDecimal.ZERO);
+        b.line(padRight("Nettó Ft  (SUM TOTAL)", 25) + ": " + padLeft(netTotal.toPlainString(), 10));
+
+        BigDecimal fee = data.getHandlingFee() != null ? data.getHandlingFee() : BigDecimal.ZERO;
+        b.line(padRight("Kez. kltsg (HANDLING FEE)", 25) + ": " + padLeft(fee.toPlainString(), 10));
+
+        BigDecimal paid = netTotal.add(fee);
+        b.boldLine(padRight("Kifizetve:(PAID):", 25) + "  " + padLeft(paid.toPlainString(), 10));
         b.separator();
     }
 
     private void printCustomerSection(EscPosBuilder b, ReceiptData data) {
-        if (data.getCustomerName() != null && !data.getCustomerName().isBlank()) {
-            b.left();
-            b.boldLine("ÜGYFÉL ADATOK:");
-            b.line("Név:        " + data.getCustomerName());
-            if (data.getCustomerBirthPlace() != null && !data.getCustomerBirthPlace().isBlank()) {
-                b.line("Szül.hely:  " + data.getCustomerBirthPlace());
-            }
-            if (data.getCustomerBirthDate() != null && !data.getCustomerBirthDate().isBlank()) {
-                b.line("Szül.idő:   " + data.getCustomerBirthDate());
+        BigDecimal absHuf = data.getHufAmount() != null ? data.getHufAmount().abs() : BigDecimal.ZERO;
+
+        b.left();
+        b.center();
+        b.line("--- ügyfél adatai ---");
+        b.left();
+
+        if (absHuf.compareTo(MEDIUM_THRESHOLD) >= 0) {
+            // 100k+ : alap ügyfél adatok
+            if (data.getCustomerName() != null && !data.getCustomerName().isBlank()) {
+                b.line("Neve: " + data.getCustomerName());
             }
             if (data.getCustomerMotherName() != null && !data.getCustomerMotherName().isBlank()) {
                 b.line("Anyja neve: " + data.getCustomerMotherName());
             }
-            if (data.getCustomerAddress() != null && !data.getCustomerAddress().isBlank()) {
-                b.line("Lakcím:     " + data.getCustomerAddress());
+            if (data.getCustomerBirthPlace() != null && !data.getCustomerBirthPlace().isBlank()) {
+                b.line("Szül-i hely: " + data.getCustomerBirthPlace());
             }
-            if (data.getCustomerDocType() != null && !data.getCustomerDocType().isBlank()) {
-                b.line("Okmány:     " + data.getCustomerDocType());
+            if (data.getCustomerBirthDate() != null && !data.getCustomerBirthDate().isBlank()) {
+                b.line("Szül-i idő: " + data.getCustomerBirthDate());
             }
-            if (data.getCustomerIdNumber() != null && !data.getCustomerIdNumber().isBlank()) {
-                b.line("Okmányszám: " + data.getCustomerIdNumber());
+
+            if (absHuf.compareTo(HIGH_THRESHOLD) >= 0) {
+                // 300k+ : teljes ügyfél adatok
+                if (data.getCustomerAddress() != null && !data.getCustomerAddress().isBlank()) {
+                    b.line("Lakcím(ADDRESS): " + data.getCustomerAddress());
+                }
+                if (data.getCustomerDocType() != null && !data.getCustomerDocType().isBlank()) {
+                    b.line("DOC TYPE: " + data.getCustomerDocType());
+                }
+                if (data.getCustomerIdNumber() != null && !data.getCustomerIdNumber().isBlank()) {
+                    b.line("NR.: " + data.getCustomerIdNumber());
+                }
+                // PEP státusz
+                if (Boolean.TRUE.equals(data.getRequiresPepDeclaration())) {
+                    b.line(data.getPepStatusText() != null ? data.getPepStatusText() : "Az ügyfél nem közszereplő");
+                }
             }
-            if (data.getCustomerNationality() != null && !data.getCustomerNationality().isBlank()) {
-                b.line("Államp.:    " + data.getCustomerNationality());
-            }
-            b.separator();
         }
+        // < 100k: nincs ügyfél adat, csak a fejléc
+
+        b.emptyLine();
+        b.line("Az ügyletet készpénzben teljesítjük");
+        String statusText = data.getForeignStatus() != null && "FOREIGN".equals(data.getForeignStatus())
+                ? "Külföldi" : "Belföldi";
+        b.line("Deviza-státusz: " + statusText);
+        b.separator();
     }
 
     private void printReceiptFooter(EscPosBuilder b, ReceiptData data) {
-        // ÁFA-mentességi szöveg (törvényi kötelező)
-        if (data.getVatExemptionText() != null && !data.getVatExemptionText().isBlank()) {
-            b.left();
-            b.emptyLine();
-            // Szj szám és törvényi hivatkozás külön sorban a 40 karakter/sor limit miatt
-            String vat = data.getVatExemptionText();
-            int dashIdx = vat.indexOf(" — ");
-            if (dashIdx > 0) {
-                b.line(vat.substring(0, dashIdx));
-                b.line(vat.substring(dashIdx + 3));
-            } else {
-                b.line(vat);
-            }
-        }
-        b.separator();
+        BigDecimal absHuf = data.getHufAmount() != null ? data.getHufAmount().abs() : BigDecimal.ZERO;
+        boolean isHighValue = absHuf.compareTo(HIGH_THRESHOLD) >= 0;
 
-        // PEP (közszereplő) nyilatkozat — 300k+ Ft tranzakciónál kötelező
-        // Legacy: BLOKNYOM/KozszerepNyilatkozat
-        if (Boolean.TRUE.equals(data.getRequiresPepDeclaration())) {
-            b.emptyLine();
-            b.left();
-            b.boldLine("KÖZSZEREPLŐI NYILATKOZAT");
-            b.line(data.getPepStatusText() != null
-                ? data.getPepStatusText()
-                : "Nem közszereplő");
-            b.emptyLine();
+        // 300k+ felett: bankpartner + marketing szöveg (SystemParameter-ből)
+        if (isHighValue) {
+            String bankName = getReceiptText("RECEIPT_BANK_PARTNER_NAME", "Raiffeisen Bank Zrt.");
+            String bankSub = getReceiptText("RECEIPT_BANK_PARTNER_SUBTITLE", "KIEMELT KÖZVETÍTŐJE");
+            b.center();
+            b.line(bankName);
+            b.line(bankSub);
+            b.separator();
+            String marketingTitle = getReceiptText("RECEIPT_MARKETING_TITLE", "EXCLUSIVE CHANGE");
+            String marketingSlogan = getReceiptText("RECEIPT_MARKETING_SLOGAN", "KEDVEZŐBB,\nGYORSABB,\nBIZTONSÁGOSABB");
+            b.center();
+            b.boldLine(marketingTitle);
+            for (String sloganLine : marketingSlogan.split("\\n")) {
+                b.line(sloganLine.trim());
+            }
+            b.separator();
         }
 
         // Jogcím nyilatkozat — 300k+ Ft tranzakciónál kötelező
-        // Legacy: BLOKNYOM/Jogcimnyilatkozat
-        if (Boolean.TRUE.equals(data.getRequiresSourceDeclaration())) {
-            b.emptyLine();
+        if (isHighValue && Boolean.TRUE.equals(data.getRequiresSourceDeclaration())) {
             b.left();
             b.boldLine("JOGCÍM NYILATKOZAT");
             b.line("Büntetőjogi felelősségem tudatá-");
@@ -665,19 +702,21 @@ public class EscPosReceiptService {
             }
             if (data.getSourceOfFunds() != null && !data.getSourceOfFunds().isBlank()) {
                 b.line("Pénzeszközöm forrása:");
-                // Word-wrap sourceOfFunds to LINE_WIDTH - 2 (indent)
                 String src = data.getSourceOfFunds().trim();
                 int maxLen = LINE_WIDTH - 2;
                 for (int i = 0; i < src.length(); i += maxLen) {
                     b.line("  " + src.substring(i, Math.min(i + maxLen, src.length())));
                 }
             }
-            b.emptyLine();
+            b.separator();
         }
 
-        // Két aláírás sor: pénztáros (bal) + ügyfél (jobb)
-        b.emptyLine();
+        // Pénztáros + aláírás sorok
         b.left();
+        if (data.getWorkerName() != null && !data.getWorkerName().isBlank()) {
+            b.line("Pénztáros: " + data.getWorkerName());
+        }
+        b.emptyLine();
         b.line(padRight("...............", 20) + padRight("...............", 20));
         b.line(padRight("  Pénztáros", 20) + padRight("    Ügyfél", 20));
         b.emptyLine();
@@ -690,14 +729,39 @@ public class EscPosReceiptService {
 
         b.emptyLine();
         b.center();
-        b.line("Köszönjük, hogy minket választott!");
+        String footerThanks = getReceiptText("RECEIPT_FOOTER_THANKS", "Köszönjük, hogy minket választott!");
+        b.line(footerThanks);
         b.emptyLine();
         b.left();
-        String footerNote = "A bizonylat a pénzmosás elleni";
-        b.line(footerNote);
-        b.line("törvény alapján nem helyettesíti");
-        b.line("a számlát.");
+        String footerLegal = getReceiptText("RECEIPT_FOOTER_LEGAL",
+                "A bizonylat a pénzmosás elleni törvény alapján nem helyettesíti a számlát.");
+        for (String legalLine : wrapText(footerLegal, LINE_WIDTH)) {
+            b.line(legalLine);
+        }
         b.feedAndCut();
+    }
+
+    private String getReceiptText(String key, String defaultValue) {
+        try {
+            return systemParameterService.getValue(key, defaultValue);
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
+
+    private List<String> wrapText(String text, int maxWidth) {
+        List<String> lines = new java.util.ArrayList<>();
+        for (String paragraph : text.split("\\n")) {
+            String remaining = paragraph.trim();
+            while (remaining.length() > maxWidth) {
+                int breakAt = remaining.lastIndexOf(' ', maxWidth);
+                if (breakAt <= 0) breakAt = maxWidth;
+                lines.add(remaining.substring(0, breakAt));
+                remaining = remaining.substring(breakAt).trim();
+            }
+            if (!remaining.isEmpty()) lines.add(remaining);
+        }
+        return lines;
     }
 
     private String getLineValue(ReceiptData data, String label) {

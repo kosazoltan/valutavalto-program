@@ -185,12 +185,14 @@ class TransferCounterTransactionTest {
     // === U mód tesztek ===
 
     @Test
-    @DisplayName("U mód: create létrehozza a TRANSFER_IN tranzakciót és növeli a fogadó kassza egyenlegét")
-    void uMode_createShouldCreateTransferInAndIncreaseToBalance() {
+    @DisplayName("U mód: create létrehozza a TRANSFER_IN tranzakciót a fogadó (fromBranch) irodánál és növeli annak kasszáját")
+    void uMode_createShouldCreateTransferInAndIncreaseFromBalance() {
         // Given
         CreateTransferDto dto = createDto("U");
         setupCommonMocks();
-        setupCashBalanceMock(TO_BRANCH_ID, toBalance);
+        setupCashBalanceMock(FROM_BRANCH_ID, fromBalance);
+        lenient().when(receiptSequenceService.generateReceiptNumber(eq(FROM_BRANCH_ID), eq(TransactionType.TRANSFER_IN)))
+                .thenReturn("U001000001");
 
         // When
         TransferDto result = transferService.create(dto, FROM_WORKER_ID);
@@ -199,20 +201,20 @@ class TransferCounterTransactionTest {
         assertThat(result).isNotNull();
         assertThat(result.getDirection()).isEqualTo("U");
 
-        // TRANSFER_IN tranzakció létrejött
+        // TRANSFER_IN tranzakció a fogadó (fromBranch) irodánál jött létre
         verify(transactionRepository, times(1)).save(argThat(tx ->
                 tx.getTransactionType() == TransactionType.TRANSFER_IN
-                        && tx.getBranch().getId().equals(TO_BRANCH_ID)));
+                        && tx.getBranch().getId().equals(FROM_BRANCH_ID)));
 
         // TRANSFER_OUT NEM jött létre
         verify(transactionRepository, never()).save(argThat(tx ->
                 tx.getTransactionType() == TransactionType.TRANSFER_OUT));
 
-        // Fogadó kassza növekedett
-        assertThat(toBalance.getCurrentBalance()).isEqualByComparingTo(new BigDecimal("5500.00"));
+        // Fogadó (fromBranch) kassza növekedett
+        assertThat(fromBalance.getCurrentBalance()).isEqualByComparingTo(new BigDecimal("10500.00"));
 
-        // Küldő kassza NEM módosult
-        verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdForUpdate(eq(FROM_BRANCH_ID), anyLong());
+        // Küldő (toBranch) kassza NEM módosult
+        verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdForUpdate(eq(TO_BRANCH_ID), anyLong());
     }
 
     // === UF mód tesztek ===

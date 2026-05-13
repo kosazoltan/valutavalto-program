@@ -76,12 +76,12 @@ async function loginAndSetupMocks(page: Page) {
   await page.locator('input[type="password"]').fill('1234')
   await page.getByRole('button', { name: /Bejelentkezés/i }).click()
 
-  await expect(page).toHaveURL(/\/dashboard$/)
+  await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
 test('dashboard elérhető bejelentkezés után', async ({ page }) => {
   await loginAndSetupMocks(page)
-  await expect(page.getByRole('heading', { name: /Irányítópult/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Irányítópult|Központi irányítóközpont/i })).toBeVisible()
 })
 
 test('menü linkek navigálhatók', async ({ page }) => {
@@ -105,7 +105,7 @@ test('menü linkek navigálhatók', async ({ page }) => {
 test('logout elérhető', async ({ page }) => {
   await loginAndSetupMocks(page)
 
-  await expect(page.getByRole('heading', { name: /Irányítópult/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Irányítópult|Központi irányítóközpont/i })).toBeVisible()
 
   const logoutButton = page.getByRole('button', { name: /kijelentkezés|logout|kilépés/i })
   const userMenu = page.getByRole('button', { name: /admin|menü|user|profil/i })
