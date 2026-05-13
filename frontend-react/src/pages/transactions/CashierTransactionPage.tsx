@@ -736,24 +736,26 @@ export default function CashierTransactionPage() {
         }
       } else if (e.key === 'Escape') {
         e.preventDefault()
-        // Sor torlese
-        const targetRow = rows[rowIdx]
-        const oldRowKey = targetRow ? `${rowIdx}-${targetRow.currencyCode}` : null
+        // Sor torlese — setRows callback form-ben olvassuk a current prev-et, NE
+        // a closure-bol (kulonben rows-t kellene useCallback dep-nek megadni, ami
+        // minden billentyunyomasra recreate-elne a handler-t).
+        // Codex P2 + Copilot P2 #579 follow-up: ha a torolt sornak volt rowKey-je
+        // a cashierCustomRate/rateAuth ref-ekben (auto-approved volt korabban),
+        // toroljuk onnan is — kulonben abandoned-row fogyasztana a local quota-t.
         setRows((prev) => {
+          const targetRow = prev[rowIdx]
+          const oldRowKey = targetRow ? `${rowIdx}-${targetRow.currencyCode}` : null
+          if (oldRowKey) {
+            cashierCustomRateRowsRef.current.delete(oldRowKey)
+            rateAuthApprovedRef.current.delete(oldRowKey)
+          }
           const next = [...prev]
           next[rowIdx] = emptyRow()
           return next
         })
-        // Codex P2 + Copilot P2 #579 follow-up: ha a törölt sornak volt rowKey-je
-        // a cashierCustomRate/rateAuth ref-ekben (auto-approved volt korábban),
-        // töröljük onnan is — különben abandoned-row fogyasztaná a local quota-t.
-        if (oldRowKey) {
-          cashierCustomRateRowsRef.current.delete(oldRowKey)
-          rateAuthApprovedRef.current.delete(oldRowKey)
-        }
       }
     },
-    [handleSubmit, rows]
+    [handleSubmit]
   )
 
   const handleCancel = useCallback(() => {
