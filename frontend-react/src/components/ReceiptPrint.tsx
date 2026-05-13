@@ -285,7 +285,7 @@ export default function ReceiptPrint({
               )}
 
               <div style={{ marginTop: '4px' }}>Az ügyletet készpénzben teljesítjük</div>
-              <div>Deviza-státusz: {transaction.foreignStatus === 'FOREIGN' ? 'Külföldi' : 'Belföldi'}</div>
+              <div>Deviza-státusz: {transaction.foreignStatus == null ? '—' : (transaction.foreignStatus === 'FOREIGN' ? 'Külföldi' : 'Belföldi')}</div>
             </div>
 
             <div className="separator" />

@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.dto.transaction;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -59,7 +60,12 @@ public class BuyRequestDto {
     /** Penztarosi sav: egyedi arfolyam 400k+ Ft felett (napi 5x limit) */
     private Boolean cashierCustomRate;
 
-    /** Devizastatusz: DOMESTIC (belfoldi) / FOREIGN (kulfoldi) */
+    /**
+     * Devizastatusz: DOMESTIC (belfoldi) / FOREIGN (kulfoldi).
+     * Case-insensitive, a service normalizalja uppercase-re mentes elott.
+     */
+    @Pattern(regexp = "^(?i)(DOMESTIC|FOREIGN)?$",
+            message = "Érvénytelen devizastátusz — csak DOMESTIC vagy FOREIGN engedélyezett")
     private String foreignStatus;
 
     /**

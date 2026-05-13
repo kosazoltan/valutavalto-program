@@ -658,8 +658,15 @@ public class EscPosReceiptService {
 
         b.emptyLine();
         b.line("Az ügyletet készpénzben teljesítjük");
-        String statusText = data.getForeignStatus() != null && "FOREIGN".equals(data.getForeignStatus())
-                ? "Külföldi" : "Belföldi";
+        // Devizastátusz megjelenítés: NULL → "—" (ismeretlen, régi adatokra), FOREIGN/DOMESTIC explicit
+        String statusText;
+        if (data.getForeignStatus() == null) {
+            statusText = "—";
+        } else if ("FOREIGN".equalsIgnoreCase(data.getForeignStatus())) {
+            statusText = "Külföldi";
+        } else {
+            statusText = "Belföldi";
+        }
         b.line("Deviza-státusz: " + statusText);
         b.separator();
     }

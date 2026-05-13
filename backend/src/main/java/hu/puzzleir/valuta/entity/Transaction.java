@@ -318,10 +318,12 @@ public class Transaction {
 
     /**
      * Devizastatusz: DOMESTIC (belfoldi) / FOREIGN (kulfoldi).
-     * V207 migracio — bizonylatra nyomtatott mezo.
+     * V210 migracio — bizonylatra nyomtatott mezo.
+     * V214 migracio (2026-05-13 v2.5.50): DB-szintu CHECK constraint + Enum tipus.
      */
+    @Enumerated(jakarta.persistence.EnumType.STRING)
     @Column(name = "foreign_status", length = 10)
-    private String foreignStatus;
+    private ForeignStatus foreignStatus;
 
     @Version
     private Long version;
