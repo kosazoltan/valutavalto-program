@@ -82,8 +82,12 @@ class CentralReceivedDataControllerSecurityTest {
 
         @Bean
         SecurityFilterChain testSecurityFilterChain(HttpSecurity http) throws Exception {
+            // CodeQL P1 #577 (security/spring-disable-csrf-protection) fix: NEM disable-elunk
+            // CSRF-et a teszt-konfigban. A teszt csak GET requestet hasznal (default CSRF
+            // exempt), igy nem kell explicit disable. Production SecurityConfig-ban a CSRF
+            // a JWT stateless flow miatt van letiltva (lasd hu.puzzleir.valuta.config.SecurityConfig);
+            // ez itt teszt-only es nem ervinteti a production konfigot.
             http
-                    .csrf(csrf -> csrf.disable())
                     .authorizeHttpRequests(authz -> authz.anyRequest().authenticated())
                     .httpBasic(Customizer.withDefaults());
             return http.build();
