@@ -7,9 +7,10 @@ import type { AppMode } from '../types/appMode';
 /**
  * App mód típus — kiterjesztve a frontend-react 'full' móddal.
  *
- * - 'full':      böngészőben futó admin felület (teljes hozzáférés)
+ * - 'full':      böngészőben futó admin felület és központi helyi munkaállomás
  * - 'penztar':   Electron pénztáros mód (F1-F12 menü)
  * - 'ertektar':  Electron értéktár / regionális központ mód
+ * - 'rate-maker': Electron főértéktárosi árfolyamkészítő
  * - 'ertekszallito': Electron értékszállító mód
  */
 export type { AppMode } from '../types/appMode';
@@ -26,11 +27,18 @@ async function loadAppMode(): Promise<AppMode> {
 
   try {
     const stored = await window.electronAPI?.getConfig('app_mode');
-    if (isAppMode(stored) && stored !== 'full') {
+    if (isAppMode(stored)) {
       return stored;
     }
   } catch (err) {
     logger.error('useAppMode', 'Config betöltési hiba:', err);
+  }
+
+  if (import.meta.env.VITE_APP_FLAVOR === 'rate-maker') {
+    return 'rate-maker';
+  }
+  if (import.meta.env.VITE_APP_FLAVOR === 'central-workstation') {
+    return 'full';
   }
 
   // Electron default: penztar
@@ -46,8 +54,12 @@ async function loadAppMode(): Promise<AppMode> {
  * @returns { mode, isLoading }
  */
 export function useAppMode(): { mode: AppMode; isLoading: boolean } {
-  // Böngészőben rögtön 'full', Electronban 'penztar' az átmeneti állapot
-  const [mode, setMode] = useState<AppMode>(() => (isElectron() ? 'penztar' : 'full'));
+  // Böngészőben rögtön 'full', Electronban az adott telepített kliens módja az átmeneti állapot
+  const [mode, setMode] = useState<AppMode>(() => {
+    if (!isElectron()) return 'full';
+    if (import.meta.env.VITE_APP_FLAVOR === 'central-workstation') return 'full';
+    return import.meta.env.VITE_APP_FLAVOR === 'rate-maker' ? 'rate-maker' : 'penztar';
+  });
   const [isLoading, setIsLoading] = useState(() => isElectron());
 
   useEffect(() => {

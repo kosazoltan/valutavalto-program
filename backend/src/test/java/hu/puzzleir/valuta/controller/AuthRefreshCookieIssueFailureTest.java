@@ -141,13 +141,12 @@ class AuthRefreshCookieIssueFailureTest {
         requestDto.setAppMode("penztar");
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
-        // teruleti_vezeto = kamera-only role, NEM selectable penztar modban
         LoginResponseDto wrongAppModeResponse = LoginResponseDto.builder()
                 .token("access-token")
                 .worker(WorkerDto.builder().id(42L).build())
                 .roleSelectionRequired(false)
-                .roles(List.of("teruleti_vezeto"))
-                .activeRole("teruleti_vezeto")
+                .roles(List.of("audit_only_test"))
+                .activeRole("audit_only_test")
                 .build();
         when(clientIpResolver.resolveClientIp(request)).thenReturn("127.0.0.1");
         when(workerService.login(requestDto, "127.0.0.1", null)).thenReturn(wrongAppModeResponse);
@@ -218,17 +217,16 @@ class AuthRefreshCookieIssueFailureTest {
         when(tokenBlacklistService.isBlacklisted("old-token-id")).thenReturn(false);
         when(jwtTokenProvider.getWorkerIdFromToken("temp-token")).thenReturn(42L);
         when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
-        // teruleti_vezeto = kamera-only, NEM selectable penztar modban
-        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "teruleti_vezeto"));
+        when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "audit_only_test"));
 
         assertThatThrownBy(() -> controller.selectRole(
-                new SelectRoleRequestDto("temp-token", "teruleti_vezeto", "penztar"),
+                new SelectRoleRequestDto("temp-token", "audit_only_test", "penztar"),
                 request,
                 response))
                 .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
                 .hasMessageContaining("nem használható");
 
-        verify(workerRoleService, never()).getPermissionCodesForRole("teruleti_vezeto");
+        verify(workerRoleService, never()).getPermissionCodesForRole("audit_only_test");
         verify(refreshTokenService, never()).issue(any(), any(), any());
     }
 
@@ -449,13 +447,13 @@ class AuthRefreshCookieIssueFailureTest {
         requestDto.setAppMode("penztar");
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
-        // teruleti_vezeto = kamera-only, NEM selectable penztar modban
+        // audit_only_test = NEM selectable penztar modban
         LoginResponseDto wrongAppModeResponse = LoginResponseDto.builder()
                 .token("access-token")
                 .worker(WorkerDto.builder().id(42L).build())
                 .roleSelectionRequired(false)
-                .roles(List.of("teruleti_vezeto"))
-                .activeRole("teruleti_vezeto")
+                .roles(List.of("audit_only_test"))
+                .activeRole("audit_only_test")
                 .build();
         when(googleLoginService.loginWithGoogle("id-token", request, "penztar")).thenReturn(wrongAppModeResponse);
 

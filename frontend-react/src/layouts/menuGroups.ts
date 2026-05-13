@@ -1,4 +1,4 @@
-import { Send, Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, ShieldAlert, LayoutDashboard, PlusCircle, Download, Camera, Package, ClipboardCheck, Building2 } from "lucide-react"
+import { Send, Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, ShieldAlert, LayoutDashboard, PlusCircle, Download, Camera, Package, ClipboardCheck, Building2, MonitorCheck } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { canonicalizeRoleForAppMode } from "../utils/appModeRoles"
 import type { AppMode } from "../types/appMode"
@@ -33,6 +33,17 @@ export interface MenuGroup {
 
 export const menuGroups: MenuGroup[] = [
   {
+    label: "Központ",
+    canonicalRoles: SZERVER_ROLES,
+    modes: ["full"],
+    items: [
+      { path: "/central-workstation", label: "Irányítóközpont", icon: MonitorCheck },
+      { path: "/central/sprint", label: "Központi sprint", icon: ClipboardCheck },
+      { path: "/central/closing-control", label: "Zárás beérkezés", icon: ClipboardCheck },
+      { path: "/central/received-data", label: "Beérkezett adatok", icon: FileText },
+    ],
+  },
+  {
     label: "Főértéktár",
     canonicalRoles: ["foertektar", "ugyvezeto"],
     modes: ["full"],
@@ -43,7 +54,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/rate-management/workflow", label: "Árfolyam publikálás", icon: Send },
       { path: "/mnb/reports", label: "MNB jelentések", icon: FileText },
       { path: "/statistics/cashier-kpi", label: "Pénztáros KPI", icon: Users },
-      { path: "/inventory", label: "Országos készlet", icon: Wallet },
+      { path: "/cashier-stocks", label: "Országos készlet", icon: Wallet },
       { path: "/stock-snapshot", label: "Készlet-snapshot", icon: FileText },
       { path: "/vault-stocktake", label: "Értéktár leltár", icon: Package },
       // 2026-04-29 v2.3.15 (E-B8 banki workflow skeleton — teljes impl v2.4.0)

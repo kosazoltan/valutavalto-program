@@ -24,6 +24,10 @@ const WorkerPage = lazy(() => import('./pages/workers/WorkerPage'))
 const TransitPage = lazy(() => import('./pages/transit/TransitPage'))
 const NotFoundPage = lazy(() => import('./pages/common/NotFoundPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const CentralWorkstationPage = lazy(() => import('./pages/central/CentralWorkstationPage'))
+const CentralSprintPage = lazy(() => import('./pages/central/CentralSprintPage'))
+const ClosingControlPage = lazy(() => import('./pages/central/ClosingControlPage'))
+const ReceivedDataOverviewPage = lazy(() => import('./pages/central/ReceivedDataOverviewPage'))
 const CentralVaultDashboard = lazy(() => import('./pages/foertektar/CentralVaultDashboard'))
 const RateMasterWorkflowPage = lazy(() => import('./pages/rate-management/RateMasterWorkflowPage'))
 const MnbReportsPage = lazy(() => import('./pages/mnb/MnbReportsPage'))
@@ -225,6 +229,13 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
 export default function App() {
   const { mode: appMode, isLoading: appModeLoading } = useAppMode()
   const [isRestoring, setIsRestoring] = useState(() => hasPersistedToken() || appModeLoading)
+  const defaultProtectedRoute = import.meta.env.VITE_APP_FLAVOR === 'central-workstation'
+    ? '/central-workstation'
+    : import.meta.env.VITE_APP_FLAVOR === 'rate-maker'
+    ? '/rates/creation'
+    : appMode === 'full'
+    ? '/central-workstation'
+    : '/dashboard'
 
   // Desktopon és weben is megpróbáljuk visszatölteni a tárolt JWT-t.
   useEffect(() => {
@@ -418,7 +429,11 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to={defaultProtectedRoute} replace />} />
+            <Route path="/central-workstation" element={<CentralWorkstationPage />} />
+            <Route path="/central/sprint" element={<CentralSprintPage />} />
+            <Route path="/central/closing-control" element={<ClosingControlPage />} />
+            <Route path="/central/received-data" element={<ReceivedDataOverviewPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/foertektar" element={<CentralVaultDashboard />} />
             <Route path="/rate-management/workflow" element={<RateMasterWorkflowPage />} />

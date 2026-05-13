@@ -70,11 +70,14 @@ export default function LoginPage() {
   //   `/api/v1/auth/google-login` endpointja validal (a backend audience-listanak mind a Web mind a Desktop
   //   client ID-t fogadnia kell — `GoogleLoginConfig.googleIdTokenVerifier`).
   const rawGoogleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-  const googleClientId = rawGoogleClientId && rawGoogleClientId !== 'none' && rawGoogleClientId.trim().length > 0
+  const googleOAuthDisabled = import.meta.env.VITE_DISABLE_GOOGLE_OAUTH === '1'
+  const googleClientId = !googleOAuthDisabled && rawGoogleClientId && rawGoogleClientId !== 'none' && rawGoogleClientId.trim().length > 0
     ? rawGoogleClientId.trim()
     : null
 
-  const isElectron = typeof window !== 'undefined' && Boolean(window.electronAPI?.googleOAuthFlow)
+  const isElectron = typeof window !== 'undefined'
+    && Boolean(window.electronAPI?.googleOAuthFlow)
+    && !googleOAuthDisabled
   const [googleLoadingElectron, setGoogleLoadingElectron] = useState(false)
 
   /**
@@ -114,6 +117,9 @@ export default function LoginPage() {
    * - egyeb szerver role (ugyvezeto, foertektar, stb.) -> /dashboard
    */
   const getDefaultRouteForRole = (role?: string | null): string => {
+    if (import.meta.env.VITE_APP_FLAVOR === 'central-workstation') return '/central-workstation'
+    if (appMode === 'rate-maker' || import.meta.env.VITE_APP_FLAVOR === 'rate-maker') return '/rates/creation'
+    if (appMode === 'full') return '/central-workstation'
     const canonical = canonicalizeRoleForAppMode(role)
     if (canonical === 'penztar') return '/cashier'
     if (canonical === 'ertekszallito') return '/transfers'
@@ -131,14 +137,14 @@ export default function LoginPage() {
 
     // v2.1.4: Backend adta validAppModes ellenorzese (robusztusabb mint egyedi role-check)
     if (response.validAppModes && response.validAppModes.length > 0) {
-      // A 'full' szerver/felugyeleti allowlistaja (ugyvezeto, foertektar,
-      // irodavezeto, belso_ellenor, berszamfejto stb.) minden appMode-ba belep.
       const hasFullAccess = response.validAppModes.includes('full')
-      if (!hasFullAccess && !response.validAppModes.includes(appMode)) {
+      const hasRequestedAppAccess = response.validAppModes.includes(appMode)
+      if (!hasRequestedAppAccess && !(appMode !== 'rate-maker' && hasFullAccess)) {
         const allowedProgs = response.validAppModes.map((m) => {
           if (m === 'penztar') return 'Valutaváltó Pénztár (lokál)'
           if (m === 'ertektar') return 'Értéktár (lokál)'
           if (m === 'ertekszallito') return 'Értékszállító (lokál)'
+          if (m === 'rate-maker') return 'Árfolyamkészítő (lokál)'
           if (m === 'full') return 'Szerver (böngésző)'
           return m
         }).join(', ')
@@ -178,6 +184,7 @@ export default function LoginPage() {
       response.permissions,
       response.roles,
       false,
+      response.centralModules ?? null,
     )
     navigate(getDefaultRouteForRole(response.activeRole ?? response.worker.role))
   }
@@ -207,6 +214,7 @@ export default function LoginPage() {
         response.permissions,
         response.roles,
         false,
+        response.centralModules ?? null,
       )
       setShowRoleSelector(false)
       setPendingLoginResponse(null)

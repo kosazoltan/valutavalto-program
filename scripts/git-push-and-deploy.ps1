@@ -20,6 +20,13 @@ if (-not (Test-Path ".git")) {
     exit 1
 }
 
+Write-Host "Mandatory self-check before push/deploy..." -ForegroundColor Yellow
+& powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/pre-push-quality-gate.ps1"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Self-check failed. Push/deploy blocked." -ForegroundColor Red
+    exit 1
+}
+
 # Check git status
 $status = git status --porcelain
 if ([string]::IsNullOrEmpty($status) -and -not $SkipCommit) {

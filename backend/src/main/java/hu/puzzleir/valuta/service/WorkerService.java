@@ -22,6 +22,7 @@ import hu.puzzleir.valuta.repository.WorkerSessionRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.util.AppModeRoleConstants;
+import hu.puzzleir.valuta.util.CentralModuleManifest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -460,6 +461,7 @@ public class WorkerService {
         // v2.1.4 + V181: kozos AppModeRoleConstants util — "kamera" appMode is benne
         // (teruleti_vezeto + biztonsagi_vezeto -> kamera, NEM full)
         List<String> validAppModes = AppModeRoleConstants.computeValidAppModes(roleCodes, worker.getRole());
+        List<String> centralModules = CentralModuleManifest.allowedModules(roleCodes, activeRole, worker.getRole());
 
         return LoginResponseDto.builder()
                 .token(token)
@@ -472,6 +474,7 @@ public class WorkerService {
                 .roleSelectionRequired(roleSelectionRequired)
                 .passwordChangeRequired(worker.getPasswordChangedAt() == null)
                 .validAppModes(validAppModes)
+                .centralModules(centralModules)
                 .build();
     }
     

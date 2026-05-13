@@ -181,8 +181,9 @@ public class ExchangeRateService {
                     .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));
         }
 
-        // Régi árfolyamok inaktiválása
-        deactivateOldRates(companyId, currency.getId());
+        // Régi árfolyamok inaktiválása ugyanazon a publikációs szinten:
+        // iroda-specifikus árfolyam nem kapcsolhatja ki a cégszintű fallback sort.
+        deactivateOldRates(companyId, currency.getId(), branch != null ? branch.getId() : null);
 
         ExchangeRate rate = ExchangeRate.builder()
                 .company(company)
@@ -354,9 +355,10 @@ public class ExchangeRateService {
     /**
      * Régi árfolyamok inaktiválása
      */
-    private void deactivateOldRates(UUID companyId, Long currencyId) {
-        UUID branchId = SecurityUtils.getCurrentBranchId();
-        List<ExchangeRate> oldRates = exchangeRateRepository.findCurrentRate(companyId, currencyId, branchId);
+    private void deactivateOldRates(UUID companyId, Long currencyId, UUID branchId) {
+        List<ExchangeRate> oldRates = branchId != null
+                ? exchangeRateRepository.findActiveBranchRates(companyId, currencyId, branchId)
+                : exchangeRateRepository.findActiveGlobalRates(companyId, currencyId);
         for (ExchangeRate oldRate : oldRates) {
             oldRate.setActive(false);
             exchangeRateRepository.save(oldRate);
@@ -421,8 +423,8 @@ public class ExchangeRateService {
                     continue;
                 }
 
-                // Régi árfolyamok inaktiválása
-                deactivateOldRates(companyId, currency.getId());
+                // Régi árfolyamok inaktiválása ugyanazon a publikációs szinten
+                deactivateOldRates(companyId, currency.getId(), branch != null ? branch.getId() : null);
 
                 ExchangeRate rate = ExchangeRate.builder()
                         .company(company)

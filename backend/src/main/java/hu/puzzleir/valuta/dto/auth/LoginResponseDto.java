@@ -74,4 +74,11 @@ public class LoginResponseDto {
      *   full          - ha a worker barmely szerver role-lal rendelkezik
      */
     private List<String> validAppModes;
+
+    /**
+     * Kozponti iranyitokozpont modulmanifest.
+     * A frontend nem talalgat role-okbol: a szerver kuldi, hogy az aktiv
+     * szerepkor mely kozponti modulokat jelenitheti meg.
+     */
+    private List<String> centralModules;
 }

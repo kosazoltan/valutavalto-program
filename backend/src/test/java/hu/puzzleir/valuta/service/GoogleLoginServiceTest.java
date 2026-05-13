@@ -77,7 +77,8 @@ class GoogleLoginServiceTest {
     private GoogleIdTokenService.VerifiedGoogleIdentity identity(String sub, String email) {
         return new GoogleIdTokenService.VerifiedGoogleIdentity(
                 sub, email, true, null,
-                "test-client-id", "https://accounts.google.com");
+                "test-client-id", "https://accounts.google.com",
+                "Test Worker", "https://example.test/avatar.png");
     }
 
     private Worker worker(String code, String email, boolean active, String googleSub) {
@@ -307,7 +308,7 @@ class GoogleLoginServiceTest {
     }
 
     @Test
-    @DisplayName("happy path foertektar canonical role -> validAppModes tartalmazza 'full'-t")
+    @DisplayName("happy path foertektar canonical role -> validAppModes tartalmazza 'full' es 'rate-maker' modot")
     void happyPath_foertektarRole_setsFullAppMode() throws Exception {
         when(googleIdTokenService.verify("ok"))
                 .thenReturn(identity("g-sub-1", "helga@gmail.com"));
@@ -322,14 +323,17 @@ class GoogleLoginServiceTest {
 
         LoginResponseDto response = service.loginWithGoogle("ok", new MockHttpServletRequest());
 
-        // foertektar in SERVER_CANONICAL_ROLES -> "full" appMode
-        assertThat(response.getValidAppModes()).containsExactly("full");
+        // foertektar in SERVER_CANONICAL_ROLES + RATE_MAKER_CANONICAL_ROLES.
+        assertThat(response.getValidAppModes()).containsExactly("full", "rate-maker");
+        assertThat(response.getCentralModules())
+                .contains("rate-maker", "rate-publication", "national-stock", "vault-stocktake")
+                .doesNotContain("permission-matrix");
         assertThat(response.getActiveRole()).isEqualTo("foertektar");
         assertThat(response.getPermissions()).containsExactly("VAULT_RECEIVE", "RATE_CREATE");
     }
 
     @Test
-    @DisplayName("V181: teruleti_vezeto canonical role -> 'kamera' appMode (NEM 'full')")
+    @DisplayName("V247: teruleti_vezeto canonical role -> 'kamera' + 'full' appMode")
     void happyPath_teruletiVezetoRole_setsKameraAppMode() throws Exception {
         when(googleIdTokenService.verify("ok"))
                 .thenReturn(identity("g-sub-tv", "tv@gmail.com"));
@@ -344,17 +348,15 @@ class GoogleLoginServiceTest {
 
         LoginResponseDto response = service.loginWithGoogle("ok", new MockHttpServletRequest());
 
-        // V181: teruleti_vezeto a KAMERA_CANONICAL_ROLES-ban van -> "kamera" appMode
-        // EZUTAN NEM "full" — NEM ferhetnek hozza a szerver-admin felulethez.
+        // V247: teruleti_vezeto a kamera mellett a kozponti helyi munkaallomasba is belephet.
         assertThat(response.getValidAppModes())
-                .as("teruleti_vezeto -> 'kamera' appMode V181 ota (NEM 'full')")
-                .containsExactly("kamera");
-        assertThat(response.getValidAppModes()).doesNotContain("full");
+                .as("teruleti_vezeto -> kamera + full appMode")
+                .containsExactly("kamera", "full");
         assertThat(response.getActiveRole()).isEqualTo("teruleti_vezeto");
     }
 
     @Test
-    @DisplayName("V181: biztonsagi_vezeto canonical role -> 'kamera' appMode")
+    @DisplayName("V247: biztonsagi_vezeto canonical role -> 'kamera' + 'full' appMode")
     void happyPath_biztonsagiVezetoRole_setsKameraAppMode() throws Exception {
         when(googleIdTokenService.verify("ok"))
                 .thenReturn(identity("g-sub-sec", "sec@gmail.com"));
@@ -370,8 +372,7 @@ class GoogleLoginServiceTest {
         LoginResponseDto response = service.loginWithGoogle("ok", new MockHttpServletRequest());
 
         assertThat(response.getValidAppModes())
-                .as("biztonsagi_vezeto -> 'kamera' appMode V181 ota (NEM 'full')")
-                .containsExactly("kamera");
-        assertThat(response.getValidAppModes()).doesNotContain("full");
+                .as("biztonsagi_vezeto -> kamera + full appMode")
+                .containsExactly("kamera", "full");
     }
 }

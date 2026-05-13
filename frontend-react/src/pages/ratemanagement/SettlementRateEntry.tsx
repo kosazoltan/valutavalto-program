@@ -129,7 +129,7 @@ export default function SettlementRateEntry() {
   useEffect(() => {
     Promise.all([
       api.get<CurrencyInfo[]>('/currencies'),
-      api.get<WorkgroupInfo[]>('/rate-management/workgroups'),
+      api.get<WorkgroupInfo[]>('/rate-creation/workgroups'),
     ])
       .then(([currRes, wgRes]) => {
         const currenciesData = safeArray<CurrencyInfo>(currRes?.data)

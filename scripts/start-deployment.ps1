@@ -3,6 +3,13 @@
 Write-Host "=== Deployment Inditasa ===" -ForegroundColor Green
 Write-Host ""
 
+Write-Host "Kotelezo self-check deploy elott..." -ForegroundColor Yellow
+& npm run self-check:before-deploy
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Self-check failed. Deployment oldal megnyitasa blokkolva." -ForegroundColor Red
+    exit 1
+}
+
 $actionsUrl = "https://github.com/kosazoltan/valutavalto-program/actions/workflows/deploy-to-vps.yml"
 
 Write-Host "GitHub Actions Deployment" -ForegroundColor Cyan

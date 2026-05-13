@@ -51,18 +51,23 @@ export interface SetupSavePayload {
   branchName: string;
   apiUrl: string;                // pl. https://valuta.example.com/api/v1
   companyCode: string;
-  adminUsername: string;
-  adminPassword: string;         // új admin jelszó (min 8 kar.)
+  authMode?: 'password' | 'google';
+  adminUsername?: string;
+  adminPassword?: string;        // új admin jelszó (min 8 kar.) jelszavas pénztáros setupnál
   bootstrapUsername?: string;    // wizardbeli teszt-felhasználó (opcionális, csak offline módban üres)
   bootstrapPassword?: string;
   offlineMode: boolean;          // ha true, a szerver kapcsolatot kihagyjuk a wizardban
-  appMode?: 'penztar' | 'ertektar' | 'ertekszallito' | 'full';  // v2.1.4: program-tipus
+  appMode?: 'penztar' | 'ertektar' | 'ertekszallito' | 'full' | 'rate-maker';  // v2.1.4: program-tipus
   // v2.3.0: a telepito dolgozoi dropdown-bol kivalasztott worker identity.
   // Ha kitoltve -> /auth/first-time-worker-setup (meglevo worker jelszo beallitas,
   // megtartott role-lel), egyebkent /auth/bootstrap-admin (uj admin letrehozas).
   selectedWorkerCode?: string;
   selectedWorkerName?: string;
   selectedWorkerRole?: string;
+  googleEmail?: string;
+  googleSub?: string;
+  googleName?: string;
+  googlePicture?: string;
 }
 
 export interface SetupSaveResult {
@@ -172,10 +177,14 @@ function buildEnvFileContent(params: {
   branchName: string;
   apiUrl: string;
   companyCode: string;
+  authMode?: string;
   appMode?: string;
   bootstrapUsername: string;
   bootstrapPassword: string;
   bootstrapRoleCode: string;
+  googleOAuthClientId?: string;
+  googleEmail?: string;
+  googleSub?: string;
   jwtSecret: string;
   sqlCipherKey: string;
   offlineLicenseSecret: string;
@@ -191,11 +200,15 @@ function buildEnvFileContent(params: {
     `VITE_BRANCH_NAME=${escapeEnvValue(params.branchName)}`,
     `VITE_COMPANY_CODE=${escapeEnvValue(params.companyCode)}`,
     ``,
+    `PENZTAR_AUTH_MODE=${escapeEnvValue(params.authMode ?? 'password')}`,
     `PENZTAR_APP_MODE=${escapeEnvValue(params.appMode ?? 'penztar')}`,
     `PENZTAR_BOOTSTRAP_COMPANY_CODE=${escapeEnvValue(params.companyCode)}`,
     `PENZTAR_BOOTSTRAP_WORKER_CODE=${escapeEnvValue(params.bootstrapUsername)}`,
     `PENZTAR_BOOTSTRAP_PASSWORD=""`,
     `PENZTAR_BOOTSTRAP_ROLE_CODE=${escapeEnvValue(params.bootstrapRoleCode)}`,
+    `GOOGLE_OAUTH_CLIENT_ID=${escapeEnvValue(params.googleOAuthClientId ?? '')}`,
+    `GOOGLE_LOGIN_EMAIL=${escapeEnvValue(params.googleEmail ?? '')}`,
+    `GOOGLE_LOGIN_SUB=${escapeEnvValue(params.googleSub ?? '')}`,
     ``,
     `# Kriptográfiai titkok — a wizard generálta, minden telepítésen egyedi.`,
     `JWT_SECRET=${escapeEnvValue(params.jwtSecret)}`,
@@ -264,7 +277,7 @@ export function resolveEffectiveBootstrapCredentials(
   const currentBootstrapPassword = payload.bootstrapPassword?.trim() ?? '';
   const bootstrapPassword = options.preserveExistingPassword && currentBootstrapPassword
     ? currentBootstrapPassword
-    : payload.adminPassword;
+    : (payload.adminPassword ?? '');
   return {
     bootstrapUsername: workerCode,
     bootstrapPassword,
@@ -1015,6 +1028,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
   const envDir = path.dirname(envPath);
 
   try {
+    const isGoogleAuthSetup = payload.authMode === 'google';
     // --- Validáció ---
     if (!payload.branchCode || !payload.branchName) {
       return { success: false, envPath, errorMessage: 'Hiányzó iroda.' };
@@ -1027,10 +1041,18 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
         return { success: false, envPath, errorMessage: 'Hiányzó cégkód.' };
       }
     }
-    if (!payload.adminPassword || payload.adminPassword.length < 8) {
+    if (isGoogleAuthSetup) {
+      if (!payload.googleEmail || !payload.googleSub) {
+        return { success: false, envPath, errorMessage: 'Hiányzó Google azonosítási adat.' };
+      }
+      if (!payload.selectedWorkerCode && !payload.adminUsername) {
+        return { success: false, envPath, errorMessage: 'Hiányzó dolgozói azonosító a Google setuphoz.' };
+      }
+    }
+    if (!isGoogleAuthSetup && (!payload.adminPassword || payload.adminPassword.length < 8)) {
       return { success: false, envPath, errorMessage: 'Az admin jelszónak legalább 8 karakteresnek kell lennie.' };
     }
-    if (!payload.adminUsername || payload.adminUsername.trim().length === 0) {
+    if (!isGoogleAuthSetup && (!payload.adminUsername || payload.adminUsername.trim().length === 0)) {
       return { success: false, envPath, errorMessage: 'Hiányzó admin felhasználói kód.' };
     }
 
@@ -1064,9 +1086,6 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
 
     const normalizedCompanyCode = (payload.companyCode || 'EBC').trim().toUpperCase();
 
-    // v2.3.0: Eldontes — worker first-time setup vagy legacy admin bootstrap?
-    // Ha a wizard-ban kivalasztott worker (selectedWorkerCode), az uj flow-t
-    // hasznaljuk. Ha nincs, fallback a legacy bootstrap-admin-ra.
     let resolvedWorkerIdentity: {
       workerCode: string;
       workerName?: string;
@@ -1075,22 +1094,44 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     } | null = null;
     let preserveExistingBootstrapPassword = false;
 
-    let bootstrapCompletedBeforeSetup: boolean | null = null;
-    if (!payload.selectedWorkerCode && payload.bootstrapUsername?.trim()) {
-      bootstrapCompletedBeforeSetup = await getBootstrapCompleted(resolvedApiUrl);
-    }
-    const useWorkerFirstTimeSetup = shouldUseWorkerFirstTimeSetup({
-      offlineMode: payload.offlineMode,
-      selectedWorkerCode: payload.selectedWorkerCode,
-      bootstrapUsername: payload.bootstrapUsername,
-      bootstrapCompleted: bootstrapCompletedBeforeSetup,
-    });
+    if (isGoogleAuthSetup) {
+      resolvedWorkerIdentity = {
+        workerCode: (
+          payload.selectedWorkerCode?.trim()
+          || payload.bootstrapUsername?.trim()
+          || payload.adminUsername?.trim()
+          || ''
+        ).toUpperCase(),
+        workerName: payload.selectedWorkerName || payload.googleName,
+        workerRole: payload.selectedWorkerRole,
+        branchCode: payload.branchCode,
+      };
+      log.info('[Setup] Google-auth setup: nincs lokalis/admin jelszo bootstrap, worker identity:', {
+        workerCode: resolvedWorkerIdentity.workerCode,
+        workerRole: resolvedWorkerIdentity.workerRole,
+        googleEmail: payload.googleEmail,
+      });
+    } else {
+      // v2.3.0: Eldontes — worker first-time setup vagy legacy admin bootstrap?
+      // Ha a wizard-ban kivalasztott worker (selectedWorkerCode), az uj flow-t
+      // hasznaljuk. Ha nincs, fallback a legacy bootstrap-admin-ra.
+      let bootstrapCompletedBeforeSetup: boolean | null = null;
+      if (!payload.selectedWorkerCode && payload.bootstrapUsername?.trim()) {
+        bootstrapCompletedBeforeSetup = await getBootstrapCompleted(resolvedApiUrl);
+      }
+      const useWorkerFirstTimeSetup = shouldUseWorkerFirstTimeSetup({
+        offlineMode: payload.offlineMode,
+        selectedWorkerCode: payload.selectedWorkerCode,
+        bootstrapUsername: payload.bootstrapUsername,
+        bootstrapCompleted: bootstrapCompletedBeforeSetup,
+      });
 
-    if (useWorkerFirstTimeSetup) {
+      if (useWorkerFirstTimeSetup) {
       const setupWorkerCode = (
         payload.selectedWorkerCode?.trim()
         || payload.bootstrapUsername?.trim()
-        || payload.adminUsername.trim()
+        || payload.adminUsername?.trim()
+        || ''
       ).toUpperCase();
       log.info('[Setup] Worker first-time-setup uton:', setupWorkerCode);
       // Lezart bootstrap utan a backend a jelenlegi/kezdo worker jelszot is
@@ -1098,7 +1139,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       const workerSetup = await workerFirstTimeSetup(resolvedApiUrl, {
         companyCode: normalizedCompanyCode,
         workerCode: setupWorkerCode,
-        newPassword: payload.adminPassword,
+        newPassword: payload.adminPassword ?? '',
         currentPassword: payload.bootstrapPassword?.trim() || undefined,
         appMode: payload.appMode,
       });
@@ -1121,14 +1162,14 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
         };
         log.info('[Setup] Worker first-time setup sikeres:', resolvedWorkerIdentity);
       }
-    } else {
+      } else {
       // Legacy: bootstrap-admin (uj admin worker + rendszer-flag)
       const bootstrap = await bootstrapAdmin(resolvedApiUrl, {
         companyCode: normalizedCompanyCode,
-        workerCode: payload.adminUsername.trim().toUpperCase(),
-        workerName: payload.adminUsername.trim(),
+        workerCode: (payload.adminUsername ?? '').trim().toUpperCase(),
+        workerName: (payload.adminUsername ?? '').trim(),
         email: undefined,
-        newPassword: payload.adminPassword,
+        newPassword: payload.adminPassword ?? '',
       });
       if (!bootstrap.success) {
         return {
@@ -1157,7 +1198,7 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
             const fallbackSetup = await workerFirstTimeSetup(resolvedApiUrl, {
               companyCode: normalizedCompanyCode,
               workerCode: fallbackWorkerCode,
-              newPassword: payload.adminPassword,
+              newPassword: payload.adminPassword ?? '',
               currentPassword: payload.bootstrapPassword?.trim() || undefined,
               appMode: payload.appMode,
             });
@@ -1190,10 +1231,11 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       }
       if (!resolvedWorkerIdentity) {
         resolvedWorkerIdentity = {
-          workerCode: payload.adminUsername.trim().toUpperCase(),
+          workerCode: (payload.adminUsername ?? '').trim().toUpperCase(),
           workerName: 'Rendszer Admin',
           workerRole: 'ADMIN',
         };
+      }
       }
     }
 
@@ -1209,6 +1251,10 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     const jwtSecret = generateSecretHex(32);               // 256 bit
     const sqlCipherKey = generateSecretHex(32);            // 256 bit
     const offlineLicenseSecret = generateSecretHex(32);    // 256 bit
+    const googleOAuthClientId = process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID
+      || process.env.VITE_GOOGLE_CLIENT_ID
+      || process.env.GOOGLE_CLIENT_ID
+      || '';
 
     // --- .env írás (atomikus: .env.tmp → rename) ---
     if (!fs.existsSync(envDir)) {
@@ -1219,10 +1265,14 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       branchName: payload.branchName,
       apiUrl: resolvedApiUrl,
       companyCode: normalizedCompanyCode,
+      authMode: isGoogleAuthSetup ? 'google' : 'password',
       appMode: payload.appMode,
       bootstrapUsername: effectiveBootstrapCredentials.bootstrapUsername,
       bootstrapPassword: effectiveBootstrapCredentials.bootstrapPassword,
       bootstrapRoleCode,
+      googleOAuthClientId,
+      googleEmail: payload.googleEmail,
+      googleSub: payload.googleSub,
       jwtSecret,
       sqlCipherKey,
       offlineLicenseSecret,
@@ -1248,13 +1298,22 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
         setConfig('app_mode', payload.appMode);
         log.info('[Setup] SQLite app_mode elmentve:', payload.appMode);
       }
+      setConfig('auth_mode', isGoogleAuthSetup ? 'google' : 'password');
+      if (payload.googleEmail) {
+        setConfig('google_email', payload.googleEmail);
+      }
+      if (payload.googleSub) {
+        setConfig('google_sub', payload.googleSub);
+      }
+      if (payload.googlePicture) {
+        setConfig('google_picture', payload.googlePicture);
+      }
       setConfig('bootstrap_company_code', normalizedCompanyCode);
       if (effectiveBootstrapCredentials.bootstrapUsername) {
         setConfig('bootstrap_worker_code', effectiveBootstrapCredentials.bootstrapUsername);
       }
       persistBootstrapPasswordConfig(effectiveBootstrapCredentials.bootstrapPassword, setConfig, deleteConfig);
       setConfig('bootstrap_role_code', bootstrapRoleCode);
-      persistBootstrapPasswordConfig(effectiveBootstrapCredentials.bootstrapPassword, setConfig, deleteConfig);
       // v2.3.0: a telepito-ban kivalasztott (es jelszot beallitott) dolgozo identity
       // tarolasa — ezt olvassa a LoginPage prefill-hez es UI displayhez.
       if (resolvedWorkerIdentity) {

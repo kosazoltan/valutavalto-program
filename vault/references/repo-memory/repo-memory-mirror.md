@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-05-07T20:52:19.322Z
+generated: 2026-05-12T20:06:26.116Z
 ---
 
 # Repo Memory Mirror
@@ -8,8 +8,8 @@ generated: 2026-05-07T20:52:19.322Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 193
-- generated: 2026-05-07T20:52:19.322Z
+- sources: 224
+- generated: 2026-05-12T20:06:26.116Z
 
 ## Sources
 - [[AGENTS.md]] — `AGENTS.md` (short-term-core)
@@ -136,19 +136,27 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[receipt.ts]] — `frontend-react/src/types/receipt.ts` (operational-receipt)
 - [[receipt.test.ts]] — `frontend-react/src/utils/receipt.test.ts` (operational-receipt)
 - [[receipt.ts]] — `frontend-react/src/utils/receipt.ts` (operational-receipt)
+- [[Agent Permanent Intelligence Archive]] — `vault/agent-archive/README.md` (operational-archive)
+- [[decision-log.jsonl]] — `vault/agent-archive/decision-log.jsonl` (operational-archive)
 - [[AI Review Zero-Tolerance Mandate (v2.3.18+)]] — `vault/feedback/ai-review-mandate-zero-tolerance.md` (short-term-preferences)
 - [[KÖTELEZŐ ÉRVÉNYŰ: nem-informatikus végfelhasználó alapelv]] — `vault/feedback/auto-installer-everything-mandatory.md` (short-term-preferences)
 - [[Szabály]] — `vault/feedback/cash-register-architecture.md` (short-term-preferences)
 - [[Folyamatos tesztelési protokoll (KÖTELEZŐ)]] — `vault/feedback/continuous-testing-protocol-mandatory.md` (short-term-preferences)
 - [[electron-architecture.md]] — `vault/feedback/electron-architecture.md` (short-term-preferences)
+- [[Flyway migration RAISE NOTICE — PII maszkolás kötelező]] — `vault/feedback/flyway-migration-raise-notice-pii.md` (short-term-preferences)
 - [[Hallucinációs Kör Megszüntetése — Iparági Standard Kötelező]] — `vault/feedback/hallucinacio-megszuntetese.md` (short-term-preferences)
 - [[ignore-bence-openclaw-deprecated.md]] — `vault/feedback/ignore-bence-openclaw-deprecated.md` (short-term-preferences)
 - [[Lint CI Codex Sourcery Copilot — minden PR-en kotelezo, automatikus]] — `vault/feedback/lint-ci-codex-sourcery-every-pr-mandatory.md` (short-term-preferences)
+- [[Helyi árfolyamkészítő architektúra döntés]] — `vault/feedback/local-rate-maker-architecture-decision.md` (short-term-preferences)
 - [[Kötelező memóriaírás minden befejezett munkafolyamat után]] — `vault/feedback/mandatory-memory-after-each-workflow.md` (short-term-preferences)
 - [[Memóriahasználati és tudáskarbantartási protokoll (KÖTELEZŐ)]] — `vault/feedback/memory-protocol-mandatory.md` (short-term-preferences)
 - [[no-hallucination-lateral-thinking.md]] — `vault/feedback/no-hallucination-lateral-thinking.md` (short-term-preferences)
 - [[Saját céges szerver adathozzáférés — kötelező direktíva]] — `vault/feedback/own-server-data-access.md` (short-term-preferences)
 - [[Session-zárási és visszaellenőrzési protokoll (KÖTELEZŐ)]] — `vault/feedback/session-closing-protocol-mandatory.md` (short-term-preferences)
+- [[CI hibauzenet beolvasas es blokk-szintu javitas]] — `vault/procedures/ci-error-intake-and-block-fix.md` (operational-procedure)
+- [[Telepítők kötelező kimenete és verziózása]] — `vault/procedures/installer-output-rule.md` (operational-procedure)
+- [[Helyi árfolyamkészítő publikálási eljárás]] — `vault/procedures/local-rate-maker-publication.md` (operational-procedure)
+- [[Parallax AgentWard repo-protokoll]] — `vault/procedures/parallax-agentward-protocol.md` (operational-procedure)
 - [[Push → Merge → Deploy ciklus minden PR-re]] — `vault/procedures/push-merge-cycle.md` (operational-procedure)
 - [[Research-first hibajavítás (NO trial-and-error)]] — `vault/procedures/research-first-fix.md` (operational-procedure)
 - [[2026 AI Agent Memory Architecture — State of the Art]] — `vault/references/2026-memory-architecture-sota.md` (long-term-reference)
@@ -157,6 +165,8 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[EBC cég-adatai (2026-04-20, user-megerositett)]] — `vault/references/company-data-ebc-zrt.md` (long-term-reference)
 - [[Error-reporting architektúra (Sentry-style, in-house)]] — `vault/references/error-reporting-architecture.md` (long-term-reference)
 - [[F1, F4, F13 — backend audit findings DESIGN decision doc]] — `vault/references/f1-f13-decision-doc-2026-05-07.md` (long-term-reference)
+- [[Felmeres es Anti legacy tudaslefedettsegi audit]] — `vault/references/felmeres-anti-knowledge-coverage-audit-2026-05-12.md` (long-term-reference)
+- [[Google OAuth Auto-Detection Setup]] — `vault/references/google-oauth-auto-detection-setup.md` (long-term-reference)
 - [[integracio-vezerlokonyv.md]] — `vault/references/integracio-vezerlokonyv.md` (long-term-reference)
 - [[Legacy Anti-Valutaváltó Rendszer — Forrás-igazság a moderntől szétcsúszott üzleti logikához]] — `vault/references/legacy-anti-system.md` (long-term-reference)
 - [[Zálog + Ékszer ERP — Bootstrap Guide]] — `vault/references/new-project-bootstrap-guide.md` (long-term-reference)
@@ -165,6 +175,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[P2 polish features — design + skeleton (2026-05-06)]] — `vault/references/p2-features-design-2026-05-06.md` (long-term-reference)
 - [[Product Ready Roadmap - 2026-05-06 tenyalapu terv]] — `vault/references/product-ready-roadmap-2026-05-06.md` (long-term-reference)
 - [[Repo Memory Mirror]] — `vault/references/repo-memory/repo-memory-mirror.md` (long-term-reference)
+- [[EBC Zrt. csapattagok]] — `vault/references/team-members.md` (long-term-reference)
 - [[v2.4 sprint roadmap — C/E/F major work plans]] — `vault/references/v2.4-sprint-roadmap.md` (long-term-reference)
 - [[Vault evolution — gap-analízis a 2026 SOTA-hoz képest]] — `vault/references/vault-evolution-gap-analysis.md` (long-term-reference)
 - [[2026-04-27 Session: Audit-NO-GO iter3 + memóriarendszer refaktor]] — `vault/sessions/2026-04-27-audit-NO-GO-iter3-and-memory-cleanup.md` (medium-term-episodic)
@@ -181,14 +192,3 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[2026-04-29 — Legacy memória felépítése + TreasuryLayout role-filter bug fix]] — `vault/sessions/2026-04-29-legacy-memory-and-treasury-bug-fix.md` (medium-term-episodic)
 - [[2026-04-29 — Mandate-cycle Complete (PR #271 → #288, 18 PR egy session)]] — `vault/sessions/2026-04-29-mandate-cycle-complete.md` (medium-term-episodic)
 - [[2026-04-29 Multi-track A+B+C execution + AI review fix cycle]] — `vault/sessions/2026-04-29-multi-track-execution-A-B-C.md` (medium-term-episodic)
-- [[2026-04-29 — SetupWizard-stale-.env root-cause + manuális fix + v2.3.9 terv]] — `vault/sessions/2026-04-29-setupwizard-stale-env-rootcause.md` (medium-term-episodic)
-- [[2026-04-29 — Sourcery review követési ciklus (PR #276/#277/#278/#280/#281)]] — `vault/sessions/2026-04-29-sourcery-followup-cycle.md` (medium-term-episodic)
-- [[2026-04-29 Track 4 — Spring Boot 4 sprint (PR #263)]] — `vault/sessions/2026-04-29-track-4-spring-boot-4-sprint.md` (medium-term-episodic)
-- [[2026-04-29 — v2.3.11 sprint: E-B6 renderer fagyás prevenció + értéktári E-B bug-ok]] — `vault/sessions/2026-04-29-v2.3.11-eb6-fagyas-prevencio.md` (medium-term-episodic)
-- [[2026-04-29 — v2.3.12 sprint: 4/5 defer-elt E-B bug megoldása]] — `vault/sessions/2026-04-29-v2.3.12-ertektar-audit-followup.md` (medium-term-episodic)
-- [[2026-04-29 — Hetzner v2.3.12 deploy smoke teszt eredménye]] — `vault/sessions/2026-04-29-v2.3.12-hetzner-smoke-verify.md` (medium-term-episodic)
-- [[v2.3.31 Flyway Emergency Incident — V168/V169 'active' → 'is_active' column mismatch]] — `vault/sessions/2026-04-29-v2.3.31-flyway-emergency-incident.md` (medium-term-episodic)
-- [[2026-04-29 — v2.3.8 NSIS bug fix (PowerShell -like + ICACLS + backend timeout)]] — `vault/sessions/2026-04-29-v2.3.8-nsis-bug-fix.md` (medium-term-episodic)
-- [[Főértéktáros Chrome MCP audit + v2.3.60 batch fix (37 ékezet hiba)]] — `vault/sessions/2026-04-30-foertektar-chrome-mcp-audit-v2.3.60.md` (medium-term-episodic)
-- [[v2.3.60 release - Installer build + autonóm session FINAL]] — `vault/sessions/2026-04-30-v2.3.60-release-installer-FINAL.md` (medium-term-episodic)
-- [[v2.3.X Penztar/Ertektar UI audit (computer-use, élő Penztar.exe)]] — `vault/sessions/2026-04-30-v2.3.X-penztar-ertektar-audit-computer-use.md` (medium-term-episodic)

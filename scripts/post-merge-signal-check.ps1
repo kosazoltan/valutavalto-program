@@ -4,12 +4,12 @@
 
 .DESCRIPTION
     A 2026-04-24 protokoll-violation utan (3 kumulalt mulasztas) kotelezo
-    script. A Sourcery es Codex tipusu bot-ok reszletes review-t 5-25 perccel
+    script. A Sourcery, Codex es Copilot tipusu bot-ok reszletes review-t 5-25 perccel
     a commit utan is kuldhetnek (high-level suggestions, reviewers-guide,
     kesoi inline comments). A 90s wait NEM elegseges.
 
     Ez a script egy adott PR-re 15 percig figyel, 2 percenkent polling-gol,
-    listaz minden Sourcery + Codex reviewot es inline commentet.
+    listaz minden Sourcery + Codex + Copilot reviewot es inline commentet.
 
 .PARAMETER PR
     PR szam (kotelezo)
@@ -57,8 +57,8 @@ while ((Get-Date) -lt $deadline) {
     $elapsed = [math]::Round(((Get-Date) - ($deadline.AddMinutes(-$MaxMinutes))).TotalMinutes, 1)
 
     # Paginated lekerdezes
-    $reviews = gh api --paginate "repos/$repoSlug/pulls/$PR/reviews" --jq '.[] | select((.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("codex"))) | {user:.user.login, state, body}' 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue -Depth 5
-    $comments = gh api --paginate "repos/$repoSlug/pulls/$PR/comments" --jq '.[] | select((.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("codex"))) | {user:.user.login, path, line, body}' 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue -Depth 5
+    $reviews = gh api --paginate "repos/$repoSlug/pulls/$PR/reviews" --jq '.[] | select((.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("copilot"))) | {user:.user.login, state, body}' 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue -Depth 5
+    $comments = gh api --paginate "repos/$repoSlug/pulls/$PR/comments" --jq '.[] | select((.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("copilot"))) | {user:.user.login, path, line, body}' 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue -Depth 5
 
     $reviewCount = if ($reviews) { (@($reviews)).Count } else { 0 }
     $commentCount = if ($comments) { (@($comments)).Count } else { 0 }

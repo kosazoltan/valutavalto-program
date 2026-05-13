@@ -4,10 +4,13 @@ export type LoginAppMode = AppMode
 
 const SERVER_ALLOWED_CANONICAL_ROLES = [
   'ugyvezeto', 'foertektar', 'irodavezeto', 'belso_ellenor',
+  'teruleti_vezeto', 'biztonsagi_vezeto',
   'berszamfejto', 'penzugyi_vezeto', 'irodai_dolgozo',
   'csoportvezeto', 'arfolyam_nezo',
 ]
 const SERVER_ALLOWED_LEGACY_ROLES = ['SUPERVISOR', 'MANAGER', 'ADMIN']
+const RATE_MAKER_ALLOWED_CANONICAL_ROLES = ['foertektar', 'ugyvezeto']
+const RATE_MAKER_ALLOWED_LEGACY_ROLES = ['ADMIN']
 export const OFFLINE_RESTORE_ROLE = 'CASHIER'
 const LEGACY_PENZTAR_ROLES = [OFFLINE_RESTORE_ROLE]
 const LEGACY_ERTEKTAR_ROLES = ['MANAGER', 'TREASURY_MANAGER']
@@ -26,6 +29,13 @@ function isServerRole(roleCode: string): boolean {
   if (!trimmed) return false
   return SERVER_ALLOWED_CANONICAL_ROLES.includes(trimmed.toLowerCase())
     || SERVER_ALLOWED_LEGACY_ROLES.includes(trimmed.toUpperCase())
+}
+
+function isRateMakerRole(roleCode: string): boolean {
+  const trimmed = roleCode.trim()
+  if (!trimmed) return false
+  return RATE_MAKER_ALLOWED_CANONICAL_ROLES.includes(trimmed.toLowerCase())
+    || RATE_MAKER_ALLOWED_LEGACY_ROLES.includes(trimmed.toUpperCase())
 }
 
 export function canonicalizeRoleForAppMode(roleCode: string | null | undefined): string {
@@ -60,6 +70,9 @@ export function isRoleSelectableForAppMode(
   if (appMode === 'ertekszallito') {
     return serverRole || localRole
   }
+  if (appMode === 'rate-maker') {
+    return isRateMakerRole(roleCode)
+  }
   return false
 }
 
@@ -67,6 +80,7 @@ export function appModeLabel(appMode: AppMode): string {
   if (appMode === 'penztar') return 'Valutaváltó Pénztár'
   if (appMode === 'ertektar') return 'Értéktár'
   if (appMode === 'ertekszallito') return 'Értékszállító'
+  if (appMode === 'rate-maker') return 'Árfolyamkészítő'
   return 'Szerver'
 }
 
@@ -77,6 +91,8 @@ const ROLE_DISPLAY_NAMES: Record<string, string> = {
   ugyvezeto: 'Ügyvezető',
   belso_ellenor: 'Belső ellenőr',
   irodavezeto: 'Irodavezető',
+  teruleti_vezeto: 'Területi vezető',
+  biztonsagi_vezeto: 'Biztonsági vezető',
   berszamfejto: 'Bérszámfejtő',
   penzugyi_vezeto: 'Pénzügyi vezető',
   irodai_dolgozo: 'Irodai dolgozó',

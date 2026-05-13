@@ -111,6 +111,20 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
           AND LOWER(w.email) = LOWER(:email)
     """)
     List<Worker> findGoogleLoginCandidatesByEmail(@Param("email") String email);
+
+    /**
+     * Company-szurt Google setup/login lookup. A first-run wizard mindig tud companyCode-ot,
+     * ezert itt nem engedunk cross-company disambiguationt.
+     */
+    @Query("""
+        SELECT w FROM Worker w
+        WHERE w.company.id = :companyId
+          AND w.googleLoginEnabled = true
+          AND LOWER(w.email) = LOWER(:email)
+    """)
+    List<Worker> findGoogleLoginCandidatesByCompanyIdAndEmail(
+            @Param("companyId") UUID companyId,
+            @Param("email") String email);
     
     /**
      * Supervisor és felsőbb jogosultságú dolgozók

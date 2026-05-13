@@ -127,3 +127,43 @@ Email-bol AI review bemasolgatas MEGSZUNTETVE.
 - `REVIEW.md` - push elotti self-review checklist
 - `docs/obsidian-vault/MANDATE_V2.md` - Obsidian vault
 - `docs/knowledge/memory/2026-04-23-multi-model-mandate-v2.{yaml,qmd}` - session memory
+
+## 9. Parallax / AgentWard repo-adaptacio
+
+**Forras:** user direktiva 2026-05-12: PARALLAX-UGYNOKHALOZATI RENDSZERUTASITAS.
+
+Ez repo-szintu, kikenyszeritheto adaptacio. Nem allitja, hogy a lokalis
+futtatokornyezetben eBPF vagy kulso OIDC gateway automatikusan letezik; ezek
+platformszintu kovetelmenyek. Ami a repo-ban kikenyszeritheto, azt scriptek
+ellenorzik.
+
+Kotelezo elvek:
+
+- Zero-trust adatcsere: auth, OAuth, env es agent-memoria valtozas elott
+  determinisztikus ellenorzes fut.
+- Ketlepcsos verifikacio: local verifier = script/type/lint/test; global
+  verifier = AGENTS.md + vault memoria + CI/GitHub/Sourcery/Codex digest.
+- Ismetelheto mechanikai muveletet scriptbe kell tenni; az AI feladata az
+  intent, parameterezes es blokk-szintu javitas.
+- Minden env/titok alapbol sensitive. Repo-ba csak placeholder mehet.
+- Google OAuth client secret JSON fajl nem commitolhato.
+- Blokkolt OAuth client ID a repo minden nem engedelyezett fajljaban tilos:
+  `110671459871-30f1spbu0hptbs60cb4vsmv79i7bbvqj.apps.googleusercontent.com`
+- Dontesi pontot hash-lancolt archivumba kell rogziteni, ha workflow- vagy
+  biztonsagi szabaly valtozik.
+
+Kotelezo parancsok:
+
+- `npm run agent:guard`
+- `npm run agent:archive -- --summary "..."`
+- `npm run self-check:before-lint`
+- `npm run self-check:before-push`
+- `npm run self-check:before-merge`
+- `npm run self-check:before-deploy`
+
+Kapcsolt fajlok:
+
+- `scripts/agentward-guard.mjs`
+- `scripts/agent-decision-log.mjs`
+- `vault/procedures/parallax-agentward-protocol.md`
+- `vault/agent-archive/decision-log.jsonl`

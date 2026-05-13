@@ -25,9 +25,9 @@ cat ~/.ssh/id_rsa
 ```
 
 **Fontos:**
-- ⚠️ A TELJES tartalmat másold be (beleértve a `-----BEGIN RSA PRIVATE KEY-----` és `-----END RSA PRIVATE KEY-----` sorokat)
-- ⚠️ SOHA ne commitold ezt a fájlt!
-- ⚠️ Csak GitHub Secrets-ben tárold!
+- A TELJES tartalmat masold be a private key BEGIN/END jelolo soraival egyutt.
+- SOHA ne commitold ezt a fajlt.
+- Csak GitHub Secrets-ben tarold.
 
 ### 2. HETZNER_SERVER_IP
 
@@ -70,10 +70,7 @@ valuta.example.com
 
 **Secret 1: HETZNER_SSH_PRIVATE_KEY**
 ```
------BEGIN RSA PRIVATE KEY-----
-MIIEpAIBAAKCAQEA6qqmXp2mEPu6qrGQmVigv9zDeu2gTkGIFXFK2eajeSDaV1C/
-... (a teljes private key tartalma) ...
------END RSA PRIVATE KEY-----
+<paste the full private key from the secure local source, including BEGIN/END lines>
 ```
 
 **Secret 2: HETZNER_SERVER_IP**

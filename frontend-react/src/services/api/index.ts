@@ -6,6 +6,8 @@ export * from './users'
 export * from './settings'
 export * from './exchange-rates'
 export * from './decade-reports'
+export * from './closing-control'
+export * from './central-received-data'
 
 export { publicApi } from "./public"
 export type { PublicWorker, PublicBranch } from "./public"

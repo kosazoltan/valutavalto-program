@@ -19,6 +19,7 @@ import io.jsonwebtoken.UnsupportedJwtException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -80,6 +81,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 List<SimpleGrantedAuthority> authorities = new ArrayList<>();
                 authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
 
+                String activeRole = jwtTokenProvider.getActiveRoleFromToken(jwt);
+                String activeRoleAuthority = normalizeOperationalRoleForAuthority(activeRole);
+                if (activeRoleAuthority != null && !activeRoleAuthority.equals(role)) {
+                    authorities.add(new SimpleGrantedAuthority("ROLE_" + activeRoleAuthority));
+                }
+
                 List<String> permissions = jwtTokenProvider.getPermissionsFromToken(jwt);
                 if (permissions != null) {
                     for (String perm : permissions) {
@@ -98,8 +105,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         null,
                         authorities
                     );
-                
-                String activeRole = jwtTokenProvider.getActiveRoleFromToken(jwt);
 
                 WorkerAuthenticationDetails details = new WorkerAuthenticationDetails(
                     workerId, companyId, branchId, role, activeRole
@@ -120,6 +125,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.clearContext();
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication failed");
         }
+    }
+
+    private String normalizeOperationalRoleForAuthority(String activeRole) {
+        if (activeRole == null || activeRole.isBlank()) {
+            return null;
+        }
+
+        String normalized = activeRole.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "CHIEF_VAULT" -> "FOERTEKTAR";
+            case "DIRECTOR" -> "UGYVEZETO";
+            case "CASHIER" -> "PENZTAR";
+            case "VAULT_KEEPER" -> "ERTEKTAR";
+            case "COURIER" -> "ERTEKSZALLITO";
+            case "OFFICE_MGR" -> "IRODAVEZETO";
+            case "REGIONAL_MGR" -> "TERULETI_VEZETO";
+            case "AUDITOR" -> "BELSO_ELLENOR";
+            case "SECURITY" -> "BIZTONSAGI_VEZETO";
+            default -> normalized;
+        };
     }
     
     /**

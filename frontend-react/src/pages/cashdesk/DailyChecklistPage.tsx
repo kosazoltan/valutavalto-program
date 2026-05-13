@@ -1,10 +1,10 @@
-import { useState, useCallback } from 'react'
-import { ClipboardCheck, Calendar, CheckCircle, Circle, AlertTriangle, Send } from 'lucide-react'
+import { useState, useCallback, useEffect } from 'react'
+import { ClipboardCheck, Calendar, CheckCircle, Circle, AlertTriangle, Send, MonitorCheck } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useAuthStore } from '../../stores/authStore'
-import { dailyChecklistApi } from '../../services/api/index'
+import { api, dailyChecklistApi } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
 
 interface ChecklistItem {
@@ -32,26 +32,118 @@ interface DailyChecklist {
   completedBy?: string
 }
 
+interface BackendChecklistItem {
+  itemNumber: number
+  itemTitle: string
+  itemDescription: string
+  checked: boolean
+  checkedAt?: string
+  checkedByWorkerId?: number
+  notes?: string
+}
+
+interface BackendDailyChecklist {
+  id: string
+  branchId: string
+  checklistDate: string
+  status: DailyChecklist['status']
+  completedAt?: string
+  items: BackendChecklistItem[]
+}
+
+interface BranchOption {
+  id: string
+  code?: string
+  name: string
+  isActive?: boolean
+}
+
+interface BranchChecklistStatus {
+  branchId: string
+  date: string
+  completed: boolean
+}
+
 export default function DailyChecklistPage() {
   const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
-  const branchId = worker?.branchId || ''
-  const workerId = worker?.id ? String(worker.id) : ''
 
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [branchId, setBranchId] = useState(worker?.branchId || '')
+  const [branches, setBranches] = useState<BranchOption[]>([])
+  const [branchStatuses, setBranchStatuses] = useState<Record<string, BranchChecklistStatus>>({})
   const [checklist, setChecklist] = useState<DailyChecklist | null>(null)
   const [loading, setLoading] = useState(false)
+  const [overviewLoading, setOverviewLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [editingNote, setEditingNote] = useState<number | null>(null)
   const [noteText, setNoteText] = useState('')
+
+  const mapChecklist = useCallback((data: BackendDailyChecklist): DailyChecklist => {
+    const branch = branches.find((b) => b.id === data.branchId)
+    const items: ChecklistItem[] = (data.items ?? []).map((item) => ({
+      itemNumber: item.itemNumber,
+      title: item.itemTitle,
+      description: item.itemDescription,
+      category: 'Napi ellenőrzés',
+      isCompleted: item.checked,
+      completedAt: item.checkedAt,
+      completedBy: item.checkedByWorkerId ? String(item.checkedByWorkerId) : undefined,
+      note: item.notes,
+      isMandatory: true,
+    }))
+    return {
+      id: data.id,
+      branchId: data.branchId,
+      branchName: branch?.name ?? worker?.branchName ?? data.branchId,
+      date: data.checklistDate,
+      status: data.status,
+      items,
+      completedCount: items.filter((item) => item.isCompleted).length,
+      totalCount: items.length,
+      completedAt: data.completedAt,
+    }
+  }, [branches, worker?.branchName])
+
+  const loadBranches = useCallback(async () => {
+    try {
+      const response = await api.get<BranchOption[]>('/branches')
+      const activeBranches = Array.isArray(response.data) ? response.data.filter((branch) => branch.isActive !== false) : []
+      setBranches(activeBranches)
+      setBranchId((current) => current || worker?.branchId || activeBranches[0]?.id || '')
+    } catch (err) {
+      logger.warn('DailyChecklistPage', 'Branch lista betöltési hiba:', err)
+    }
+  }, [worker?.branchId])
+
+  const loadOverview = useCallback(async () => {
+    if (branches.length === 0) return
+    try {
+      setOverviewLoading(true)
+      const pairs = await Promise.all(
+        branches.map(async (branch) => {
+          try {
+            const status = await dailyChecklistApi.status(branch.id, date) as BranchChecklistStatus
+            return [branch.id, status] as const
+          } catch {
+            return [branch.id, { branchId: branch.id, date, completed: false }] as const
+          }
+        }),
+      )
+      setBranchStatuses(Object.fromEntries(pairs))
+    } finally {
+      setOverviewLoading(false)
+    }
+  }, [branches, date])
 
   const loadChecklist = useCallback(async () => {
     if (!branchId) { toast.warning('Fiók szükséges'); return }
     try {
       setLoading(true)
       setError(null)
-      const data = await dailyChecklistApi.get(branchId, date)
-      setChecklist(data as DailyChecklist)
+      const data = await dailyChecklistApi.get(branchId, date) as BackendDailyChecklist
+      setChecklist(mapChecklist(data))
+      await loadOverview()
     } catch (err) {
       logger.error('DailyChecklistPage', 'Checklist betöltési hiba:', err)
       setError(getErrorMessage(err))
@@ -59,16 +151,18 @@ export default function DailyChecklistPage() {
     } finally {
       setLoading(false)
     }
-  }, [branchId, date])
+  }, [branchId, date, loadOverview, mapChecklist])
+
+  useEffect(() => { void loadBranches() }, [loadBranches])
+  useEffect(() => { void loadOverview() }, [loadOverview])
 
   const handleToggleItem = async (itemNumber: number, completed: boolean) => {
     if (!checklist) return
     try {
       setError(null)
       await dailyChecklistApi.updateItem(checklist.id, itemNumber, {
-        isCompleted: completed,
-        completedBy: workerId,
-        note: noteText || undefined,
+        checked: completed,
+        notes: noteText || undefined,
       })
       await loadChecklist()
     } catch (err) {
@@ -90,6 +184,7 @@ export default function DailyChecklistPage() {
       await dailyChecklistApi.complete(checklist.id)
       toast.success('Ellenőrzési lista lezárva')
       await loadChecklist()
+      await loadOverview()
     } catch (err) {
       setError(getErrorMessage(err))
     }
@@ -123,8 +218,57 @@ export default function DailyChecklistPage() {
         )}
       </div>
 
+      {branches.length > 0 && (
+        <div className="form-panel">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+              <MonitorCheck size={16} />
+              Központi státusz
+            </div>
+            <button onClick={() => void loadOverview()} disabled={overviewLoading} className="form-button text-xs">
+              {overviewLoading ? 'Frissítés...' : 'Státusz frissítés'}
+            </button>
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+            {branches.map((branch) => {
+              const status = branchStatuses[branch.id]
+              const selected = branch.id === branchId
+              return (
+                <button
+                  key={branch.id}
+                  type="button"
+                  onClick={() => { setBranchId(branch.id); setChecklist(null) }}
+                  className={`rounded border p-2 text-left text-xs transition ${
+                    selected ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-gray-900">{branch.name}</span>
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                      status?.completed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {status?.completed ? 'kész' : 'hiányzik'}
+                    </span>
+                  </div>
+                  {branch.code && <div className="mt-1 text-gray-500">{branch.code}</div>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Dátum és betöltés */}
       <div className="form-panel flex gap-3 items-end">
+        <div>
+          <label className="form-label">Fiók</label>
+          <select className="form-input min-w-[260px]" value={branchId} onChange={e => { setBranchId(e.target.value); setChecklist(null) }}>
+            <option value="">{t('export.valassz')}</option>
+            {branches.map(branch => (
+              <option key={branch.id} value={branch.id}>{branch.name}{branch.code ? ` (${branch.code})` : ''}</option>
+            ))}
+          </select>
+        </div>
         <div>
           <label className="form-label">{t('common.date')}</label>
           <div className="flex items-center gap-1">

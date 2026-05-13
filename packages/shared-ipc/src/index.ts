@@ -27,18 +27,23 @@ export interface SetupSaveRequest {
   branchName: string
   apiUrl: string
   companyCode: string
-  adminUsername: string
-  adminPassword: string
-  bootstrapUsername: string
-  bootstrapPassword: string
+  authMode?: 'password' | 'google'
+  adminUsername?: string
+  adminPassword?: string
+  bootstrapUsername?: string
+  bootstrapPassword?: string
   offlineMode: boolean
-  appMode: 'penztar' | 'ertektar' | 'ertekszallito'
+  appMode: 'penztar' | 'ertektar' | 'ertekszallito' | 'rate-maker'
   // v2.3.0: a telepito dolgozoi dropdown-bol kivalasztott worker identity.
   // Ha kitoltve -> /auth/first-time-worker-setup (meglevo worker jelszo
   // beallitas, sajat role-vel). Egyebkent bootstrap-admin (uj admin user).
   selectedWorkerCode?: string
   selectedWorkerName?: string
   selectedWorkerRole?: string
+  googleEmail?: string
+  googleSub?: string
+  googleName?: string
+  googlePicture?: string
 }
 
 export interface SetupSaveResponse {

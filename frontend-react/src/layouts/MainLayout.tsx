@@ -14,10 +14,12 @@ import {
   Building2,
   Sun,
   Loader2,
+  ShieldAlert,
 } from 'lucide-react'
 import { useAppMode } from '../hooks/useAppMode'
 import { CASHIER_APP_MODE } from '../types/appMode'
 import type { AppMode } from '../types/appMode'
+import { isElectron as isElectronRuntime } from '../utils/electron'
 
 import { menuGroups, SZERVER_ROLES } from "./menuGroups"
 import { useFeatureFlags } from "../hooks/useFeatureFlags"
@@ -43,6 +45,7 @@ export default function MainLayout() {
   const hasSupervisoryAccess = SZERVER_ROLES.some((r) => hasCanonicalRole(r))
   const { mode: appMode, isLoading: appModeLoading } = useAppMode()
   const navigate = useNavigate()
+  const isBrowserFallback = !isElectronRuntime() && appMode === 'full'
 
   const markSessionReadyWithoutDailyGate = useCallback(() => {
     setSessionInfo(null)
@@ -295,6 +298,18 @@ export default function MainLayout() {
             </div>
           </div>
         </header>
+
+        {isBrowserFallback && (
+          <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+            <div className="flex flex-wrap items-center gap-2">
+              <ShieldAlert size={14} className="shrink-0 text-amber-700" />
+              <span className="font-semibold">Tartalék webes szerverfelület</span>
+              <span className="text-amber-800">
+                Elsődleges napi munkára a telepített pénztár, értéktár, RFM készítő és központi kliens használandó.
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Page content */}
         <div className="flex-1 p-3 overflow-auto min-h-0">

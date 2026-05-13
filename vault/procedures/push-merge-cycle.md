@@ -16,6 +16,7 @@ sources:
 ## Prerequisites
 
 - [ ] Feature branch létezik
+- [ ] Kötelező önellenőrzés lefutott: `npm run self-check:before-push`
 - [ ] `git push -u origin <branch>` lefutott
 - [ ] PR megnyitva (`gh pr create`)
 - [ ] Auto-merge bekapcsolva (`gh pr merge N --squash --auto --delete-branch`)
@@ -40,27 +41,35 @@ until [ "$(gh pr view <PR> --repo <owner>/<repo> --json state --jq .state)" = "M
 done
 ```
 
-### 2. AI review fix (Sourcery + Codex)
+### 2. CI/review digest és AI review fix (Sourcery + Codex + Copilot)
 
 > **Zero-Tolerance Mandate**: minden P0/P1/**P2** finding kötelezően javítva.
 
 ```bash
-# Reviews (top-level, Codex auto-review + Sourcery)
+npm run ci:errors -- --pr <PR> --fail-on-findings
+```
+
+A digest automatikusan kiolvassa a GitHub Actions bukott logblokkokat, check-run annotationokat, valamint Sourcery/Codex/Copilot review és inline comment jelzéseket. Nem kérünk kézi bemásolást a felhasználótól.
+
+```bash
+# Reviews (top-level, Codex auto-review + Sourcery + Copilot)
 gh api "repos/<owner>/<repo>/pulls/<PR>/reviews" \
-  --jq '.[] | select(((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery"))) and ((.body // "") | (contains("create a Codex account") | not)) and ((.body // "") | (contains("weekly rate limit") | not))) | {reviewer:.user.login, state, body}'
+  --jq '.[] | select(((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("copilot"))) and ((.body // "") | (contains("create a Codex account") | not)) and ((.body // "") | (contains("weekly rate limit") | not))) | {reviewer:.user.login, state, body}'
 
 # Inline comments (file:line specific)
 gh api "repos/<owner>/<repo>/pulls/<PR>/comments" \
-  --jq '.[] | select((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery"))) | {user:.user.login, path, line, body}'
+  --jq '.[] | select((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("copilot"))) | {user:.user.login, path, line, body}'
 ```
 
 ### 3. Follow-up PR ha finding van
 
 - Ha **bármilyen** P0/P1/P2 finding maradt: új branch `fix/<verzió>-<finding-tag>`, javítás, új PR.
+- Javítás előtt a teljes hiba-blokkot kell értelmezni, nem csak egy kiragadott sort.
 - A ciklus újraindul a step 1-től.
 - Csak akkor lépsz a következő feladatra, ha:
   - Sourcery: "looks great!" (vagy minden finding kezelve / dismiss-elt indoklással)
   - Codex: csak boilerplate (vagy minden P0/P1/P2 fixed)
+  - Copilot: nincs blokkoló review/comment
 
 ### 4. Lokális branch törlés
 
@@ -86,7 +95,8 @@ curl -s -o /dev/null -w "HTTP %{http_code}\n" https://excvaluta.com/api/v1/auth/
 - [ ] `gh pr list --state open` = 0 (vagy csak nem-érintő nyitott PR-ek)
 - [ ] Hetzner deploy completed/success
 - [ ] Production HTTP 200
-- [ ] AI review: 0 nyitott P0/P1/P2 finding
+- [ ] AI review: 0 nyitott P0/P1/P2 finding Sourcery/Codex/Copilot oldalon
+- [ ] CI digest: 0 blokkolo finding
 
 ## Failure recovery
 
@@ -106,4 +116,6 @@ curl -s -o /dev/null -w "HTTP %{http_code}\n" https://excvaluta.com/api/v1/auth/
 - ❌ `--no-verify` flag
 - ❌ "P2 minor → defer" indoklás nélkül
 - ❌ AI review email → bemásolás → javítás (megszüntetve 2026-04-23)
+- ❌ CI hiba kézi bemásoltatása a felhasználóval
+- ❌ Kiragadott sor javítása a teljes blokk megértése nélkül
 - ❌ "Sikeres a fordítás" ≠ "deploy-ready"

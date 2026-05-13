@@ -14,6 +14,13 @@ $ErrorActionPreference = "Stop"
 Write-Host "=== GitHub Actions Workflow Indítása ===" -ForegroundColor Cyan
 Write-Host ""
 
+Write-Host "Kotelezo self-check deploy workflow inditasa elott..." -ForegroundColor Yellow
+& npm run self-check:before-deploy
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Self-check failed. Workflow dispatch blokkolva." -ForegroundColor Red
+    exit 1
+}
+
 $apiUrl = "https://api.github.com/repos/$Owner/$Repo/actions/workflows/$WorkflowFile/dispatches"
 
 $headers = @{

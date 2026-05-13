@@ -2,14 +2,84 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import http from 'node:http'
+import https from 'node:https'
 
 const root = process.cwd()
 const memoryRoot = path.join(root, '.agent', 'memory')
 const layers = ['qmd', 'yaml', 'cognee', 'vector', 'obsidian', 'reports']
 const now = new Date().toISOString()
 
+loadLocalEnv(path.join(root, '.env'))
+
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true })
+}
+
+function loadLocalEnv(file) {
+  if (!fs.existsSync(file)) return
+  const content = fs.readFileSync(file, 'utf8')
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim()
+    if (!line || line.startsWith('#')) continue
+    const eq = line.indexOf('=')
+    if (eq <= 0) continue
+    const key = line.slice(0, eq).trim()
+    const repoScopedOverride = key.startsWith('OBSIDIAN_')
+    if (process.env[key] && !repoScopedOverride) continue
+    let value = line.slice(eq + 1).trim()
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1)
+    }
+    process.env[key] = value
+  }
+}
+
+function obsidianTokenFromEnv() {
+  return process.env.OBSIDIAN_API_KEY || process.env.OBSIDIAN_SYNC_TOKEN || process.env.OBSIDIAN_KEY || ''
+}
+
+function obsidianBasesFromEnv() {
+  const host = process.env.OBSIDIAN_HOST || '127.0.0.1'
+  const protocol = process.env.OBSIDIAN_PROTOCOL || 'https'
+  const port = process.env.OBSIDIAN_PORT || (protocol === 'http' ? '27123' : '27124')
+  const primary = `${protocol}://${host}:${port}`
+  return [...new Set([primary, 'https://127.0.0.1:27124', 'http://127.0.0.1:27123'])]
+}
+
+function requestLocalObsidian(urlString, options = {}) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(urlString)
+    const client = url.protocol === 'https:' ? https : http
+    const body = options.body ?? ''
+    const headers = { ...(options.headers || {}) }
+    if (body && headers['Content-Length'] === undefined) {
+      headers['Content-Length'] = Buffer.byteLength(body)
+    }
+    const req = client.request(
+      url,
+      {
+        method: options.method || 'GET',
+        headers,
+        rejectUnauthorized: false
+      },
+      res => {
+        const chunks = []
+        res.on('data', chunk => chunks.push(chunk))
+        res.on('end', () => {
+          const text = Buffer.concat(chunks).toString('utf8')
+          resolve({
+            ok: res.statusCode >= 200 && res.statusCode < 300,
+            status: res.statusCode,
+            text: async () => text
+          })
+        })
+      }
+    )
+    req.on('error', reject)
+    if (body) req.write(body)
+    req.end()
+  })
 }
 
 function readText(file) {
@@ -73,7 +143,7 @@ function tokenize(text) {
 
 function summarize(text, max = 420) {
   const clean = text.replace(/```[\s\S]*?```/g, ' ').replace(/\s+/g, ' ').trim()
-  return clean.slice(0, max)
+  return clean.slice(0, max).trimEnd()
 }
 
 function classify(file, fm, title, text) {
@@ -81,6 +151,7 @@ function classify(file, fm, title, text) {
   const lower = r.toLowerCase()
   if (r.includes('/feedback/')) return 'short-term-preferences'
   if (r.includes('/procedures/')) return 'operational-procedure'
+  if (r.includes('/agent-archive/')) return 'operational-archive'
   if (r.includes('/references/')) return 'long-term-reference'
   if (r.includes('/sessions/')) return 'medium-term-episodic'
   if (lower.includes('legacy-reverse-engineering') || lower.includes('legacy-analysis') || lower.includes('legacy_parity') || lower.includes('anti_legacy')) return 'long-term-legacy'
@@ -115,11 +186,12 @@ function collectSources() {
     path.join(root, 'docs', 'legacy-analysis'),
     path.join(root, 'docs', 'knowledge', 'analysis'),
     path.join(vault, 'sessions'),
+    path.join(vault, 'agent-archive'),
     path.join(vault, 'feedback'),
     path.join(vault, 'procedures'),
     path.join(vault, 'references'),
   ]) {
-    candidates.push(...listFiles(dir, ['.md', '.qmd', '.yaml', '.yml', '.csv', '.json']))
+    candidates.push(...listFiles(dir, ['.md', '.qmd', '.yaml', '.yml', '.csv', '.json', '.jsonl']))
   }
   for (const dir of [path.join(root, 'backend', 'src'), path.join(root, 'frontend-react', 'src')]) {
     candidates.push(...listFiles(dir, ['.java', '.ts', '.tsx'])
@@ -288,6 +360,34 @@ function copyObsidianMirrorToVault(obsMirror) {
   return { synced: true, mode: 'filesystem', path: rel(target) }
 }
 
+function detectOpenObsidianVaults() {
+  const appData = process.env.APPDATA
+  if (!appData) return []
+  const obsidianConfig = path.join(appData, 'obsidian', 'obsidian.json')
+  if (!exists(obsidianConfig)) return []
+  try {
+    const parsed = JSON.parse(fs.readFileSync(obsidianConfig, 'utf8'))
+    const vaults = parsed?.vaults && typeof parsed.vaults === 'object' ? parsed.vaults : {}
+    return Object.values(vaults)
+      .filter(vault => vault?.open === true && typeof vault.path === 'string' && exists(vault.path))
+      .map(vault => vault.path)
+  } catch {
+    return []
+  }
+}
+
+function copyObsidianMirrorToOpenVaults(obsMirror) {
+  const results = []
+  for (const vaultRoot of detectOpenObsidianVaults()) {
+    const targetDir = path.join(vaultRoot, 'Repo Memory')
+    ensureDir(targetDir)
+    const target = path.join(targetDir, 'repo-memory-mirror.md')
+    fs.copyFileSync(obsMirror, target)
+    results.push({ synced: true, mode: 'filesystem', path: target })
+  }
+  return results
+}
+
 async function syncCogneeBundle(cogneeBundle) {
   const base = process.env.COGNEE_URL || 'http://localhost:8098'
   try {
@@ -347,10 +447,11 @@ async function status() {
     const res = await fetch('http://localhost:8098/health')
     report.checks.push({ name: 'cognee', ok: res.ok, status: res.status, detail: await res.text() })
   } catch (err) { report.checks.push({ name: 'cognee', ok: false, error: err.message }) }
-  for (const url of ['https://127.0.0.1:27124/', 'http://127.0.0.1:27123/']) {
+  for (const base of obsidianBasesFromEnv()) {
+    const url = `${base}/`
     try {
-      const obsidianToken = process.env.OBSIDIAN_API_KEY || process.env.OBSIDIAN_SYNC_TOKEN
-      const res = await fetch(url, { headers: obsidianToken ? { Authorization: `Bearer ${obsidianToken}` } : {} })
+      const obsidianToken = obsidianTokenFromEnv()
+      const res = await requestLocalObsidian(url, { headers: obsidianToken ? { Authorization: `Bearer ${obsidianToken}` } : {} })
       const ok = res.ok || res.status === 401
       report.checks.push({ name: `obsidian:${url}`, ok, status: res.status })
       if (ok) break
@@ -381,14 +482,15 @@ async function sync() {
   const result = { generated_at: now, cognee: null, obsidian: null }
   result.cognee = await syncCogneeBundle(cogneeBundle)
   result.obsidian_filesystem = copyObsidianMirrorToVault(obsMirror)
-  const obsKey = process.env.OBSIDIAN_API_KEY || process.env.OBSIDIAN_SYNC_TOKEN
+  result.obsidian_open_vaults = copyObsidianMirrorToOpenVaults(obsMirror)
+  const obsKey = obsidianTokenFromEnv()
   if (!obsKey) {
     result.obsidian = { synced: false, reason: 'OBSIDIAN_API_KEY missing', mirror: rel(obsMirror) }
   } else {
     let synced = false
-    for (const base of ['https://127.0.0.1:27124', 'http://127.0.0.1:27123']) {
+    for (const base of obsidianBasesFromEnv()) {
       try {
-        const res = await fetch(`${base}/vault/Repo%20Memory/repo-memory-mirror.md`, {
+        const res = await requestLocalObsidian(`${base}/vault/Repo%20Memory/repo-memory-mirror.md`, {
           method: 'PUT',
           headers: { Authorization: `Bearer ${obsKey}`, 'Content-Type': 'text/markdown; charset=utf-8' },
           body: fs.readFileSync(obsMirror),

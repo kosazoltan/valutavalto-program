@@ -105,9 +105,9 @@ describe('LoginPage RBAC Whitelist', () => {
 
   describe('szerver módban (full) — engedélyezett role-ok', () => {
     it.each([
-      ['SUPERVISOR', '/dashboard'],
-      ['MANAGER', '/treasury'],
-      ['ADMIN', '/dashboard'],
+      ['SUPERVISOR', '/central-workstation'],
+      ['MANAGER', '/central-workstation'],
+      ['ADMIN', '/central-workstation'],
     ])('%s role sikeresen belép és %s-ra navigál', async (role, expectedRoute) => {
       mocks.authLogin.mockResolvedValue(makeLoginResponse(role))
       const user = userEvent.setup()
@@ -159,7 +159,7 @@ describe('LoginPage RBAC Whitelist', () => {
       })
 
       expect(mocks.loginStore).toHaveBeenCalled()
-      expect(mocks.navigate).toHaveBeenCalledWith('/dashboard')
+      expect(mocks.navigate).toHaveBeenCalledWith('/central-workstation')
     })
 
     it('activeRole CASHIER worker.role ADMIN-nal → blokkolva (activeRole dominál)', async () => {

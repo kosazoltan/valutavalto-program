@@ -13,4 +13,5 @@ public interface RatePublicationRepository extends JpaRepository<RatePublication
     List<RatePublication> findTop20ByOrderByPublishedAtDesc();
     List<RatePublication> findByCompanyIdOrderByPublishedAtDesc(UUID companyId);
     List<RatePublication> findTop20ByCompanyIdOrderByPublishedAtDesc(UUID companyId);
+    boolean existsByCompanyIdAndClientPackageId(UUID companyId, String clientPackageId);
 }

@@ -46,6 +46,7 @@ describe('authStore', () => {
       const state = useAuthStore.getState()
       expect(state.permissions).toEqual([])
       expect(state.roles).toEqual([])
+      expect(state.centralModules).toBeNull()
     })
   })
 
@@ -80,6 +81,18 @@ describe('authStore', () => {
       })
       expect(useAuthStore.getState().activeRole).toBeNull()
     })
+
+    it('stores central workstation module manifest when provided', () => {
+      act(() => {
+        useAuthStore.getState().login(
+          mockWorker, 'tok', 'Bearer', '',
+          'foertektar', ['RATE_CREATE'], ['foertektar'],
+          false, ['rate-maker', 'rate-publication']
+        )
+      })
+
+      expect(useAuthStore.getState().centralModules).toEqual(['rate-maker', 'rate-publication'])
+    })
   })
 
   describe('logout', () => {
@@ -95,6 +108,7 @@ describe('authStore', () => {
       expect(state.worker).toBeNull()
       expect(state.token).toBeNull()
       expect(state.permissions).toEqual([])
+      expect(state.centralModules).toBeNull()
     })
   })
 
@@ -102,13 +116,14 @@ describe('authStore', () => {
     it('updates token and role', () => {
       act(() => {
         useAuthStore.getState().login(mockWorker, 'old-tok', 'Bearer', '')
-        useAuthStore.getState().selectRole('new-tok', 'MANAGER', ['READ'])
+        useAuthStore.getState().selectRole('new-tok', 'MANAGER', ['READ'], ['central-sprint'])
       })
       const state = useAuthStore.getState()
       expect(state.token).toBe('new-tok')
       expect(state.activeRole).toBe('MANAGER')
       expect(state.permissions).toContain('READ')
       expect(state.roleSelectionRequired).toBe(false)
+      expect(state.centralModules).toEqual(['central-sprint'])
     })
   })
 

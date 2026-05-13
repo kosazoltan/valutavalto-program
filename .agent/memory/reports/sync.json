@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-07T20:52:19.322Z",
+  "generated_at": "2026-05-12T20:06:26.116Z",
   "cognee": {
     "reachable": true,
     "status": 200,
@@ -7,13 +7,20 @@
     "bundle": ".agent/memory/cognee/knowledge-bundle.yaml"
   },
   "obsidian": {
-    "synced": false,
-    "url": "http://127.0.0.1:27123",
-    "error": "fetch failed"
+    "synced": true,
+    "status": 204,
+    "url": "https://127.0.0.1:27124"
   },
   "obsidian_filesystem": {
     "synced": true,
     "mode": "filesystem",
     "path": "vault/references/repo-memory/repo-memory-mirror.md"
-  }
+  },
+  "obsidian_open_vaults": [
+    {
+      "synced": true,
+      "mode": "filesystem",
+      "path": "D:\\repo\\valutavalto-program\\vault\\Repo Memory\\repo-memory-mirror.md"
+    }
+  ]
 }

@@ -43,6 +43,22 @@ Write-Step "Opus 4.7 pre-push quality gate (2026-04-23+)"
 Write-Host "Repo: $RepoRoot"
 if ($SkipTests) { Write-Warn "SkipTests=true - HOTFIX mod, tilos sima push-hoz" }
 
+# 0. ONELLENORZES - kommunikacios osszhang + CI/review digest
+Write-Step "0a. Negy mukodesi terulet osszhang"
+& node (Join-Path $PSScriptRoot 'check-four-area-alignment.mjs')
+if ($LASTEXITCODE -eq 0) { Write-OK "penztar / ertektar / RFM keszito / kozponti osszhang OK" }
+else { Write-Err "negy terulet osszhang FAIL"; $failed += "four-area alignment" }
+
+Write-Step "0b. Automatikus CI/Sourcery/Copilot/Codex digest (report-only)"
+& node (Join-Path $PSScriptRoot 'ci-error-digest.mjs') --report-only
+if ($LASTEXITCODE -eq 0) { Write-OK "ci-error-digest lefutott" }
+else { Write-Warn "ci-error-digest nem futott tisztan"; $warnings += "ci-error-digest" }
+
+Write-Step "0c. Parallax/AgentWard guard"
+& node (Join-Path $PSScriptRoot 'agentward-guard.mjs')
+if ($LASTEXITCODE -eq 0) { Write-OK "agentward guard OK" }
+else { Write-Err "agentward guard FAIL"; $failed += "agentward guard" }
+
 # 1. FRONTEND
 $feDir = Join-Path $RepoRoot "frontend-react"
 if ($SkipFrontend) {

@@ -1,4 +1,4 @@
-export type SetupAppMode = 'penztar' | 'ertektar' | 'ertekszallito' | 'full';
+export type SetupAppMode = 'penztar' | 'ertektar' | 'ertekszallito' | 'full' | 'rate-maker';
 
 export interface RoleSelectionSource {
   roles?: string[];
@@ -11,6 +11,7 @@ const APP_MODE_ROLE_PREFERENCES: Record<SetupAppMode, string[]> = {
   penztar: ['penztar', 'CASHIER'],
   ertektar: ['ertektar', 'VAULT_KEEPER', 'CHIEF_VAULT', 'foertektar'],
   ertekszallito: ['ertekszallito', 'COURIER'],
+  'rate-maker': ['foertektar', 'ugyvezeto', 'ADMIN'],
   full: [
     'ugyvezeto',
     'foertektar',

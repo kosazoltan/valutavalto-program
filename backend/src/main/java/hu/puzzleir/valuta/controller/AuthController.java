@@ -22,6 +22,7 @@ import hu.puzzleir.valuta.service.WorkerService;
 import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.util.AppModeRoleConstants;
+import hu.puzzleir.valuta.util.CentralModuleManifest;
 import hu.puzzleir.valuta.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -311,6 +312,7 @@ public class AuthController {
                 .permissions(permissions)
                 .roleSelectionRequired(false)
                 .validAppModes(AppModeRoleConstants.computeValidAppModes(roleCodes, worker.getRole()))
+                .centralModules(CentralModuleManifest.allowedModules(roleCodes, dto.getRoleCode(), worker.getRole()))
                 .build());
     }
 

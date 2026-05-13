@@ -345,7 +345,7 @@ public class ExchangeRateMasterService {
             ExchangeRateMaster master, hu.puzzleir.valuta.entity.Currency currency, Company company, Branch branch) {
 
         // Korábbi árfolyamok inaktiválása ennél a pénztárnál
-        List<ExchangeRate> oldRates = exchangeRateRepository.findCurrentRate(
+        List<ExchangeRate> oldRates = exchangeRateRepository.findActiveBranchRates(
                 company.getId(), currency.getId(), branch.getId());
         for (ExchangeRate oldRate : oldRates) {
             oldRate.setActive(false);

@@ -21,6 +21,7 @@ param(
     [Parameter(Mandatory=$true)][int]$PrNumber
 )
 
+$RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $OWNER = "kosazoltan"
 $REPO  = "valutavalto-program"
 $PR    = $PrNumber.ToString()
@@ -65,6 +66,15 @@ Write-Host "  Merge state: $($prInfo.mergeStateStatus)"
 Write-Host "  Head SHA: $($prInfo.headRefOid)"
 $HEAD_SHA = $prInfo.headRefOid
 if ($prInfo.reviewDecision -eq "CHANGES_REQUESTED") { $blockers += "reviewDecision=CHANGES_REQUESTED" }
+
+# 0. Automatikus CI hiba digest - teljes blokkok, nem kezi bemasolas
+Write-Section "0. Automatikus CI/Sourcery/Copilot/Codex hiba digest"
+$digestPath = Join-Path $RepoRoot ".agent\ci\latest-pr-$PR.md"
+& node (Join-Path $PSScriptRoot 'ci-error-digest.mjs') --pr $PR --output $digestPath --fail-on-findings
+if ($LASTEXITCODE -ne 0) {
+    $blockers += "Automatikus CI hiba digest blokkolot talalt: $digestPath"
+}
+Write-Host "  Digest: $digestPath"
 
 # 2. Required checks
 Write-Section "2. Required checks"
@@ -134,6 +144,27 @@ if ($sourceryComments.Count -gt 0) {
         $snippet = if ($c.body.Length -gt 120) { $c.body.Substring(0, 120) + "..." } else { $c.body }
         Write-Host "    $($c.path):$($c.line) - $snippet" -ForegroundColor DarkCyan
         if ($c.body -match 'bug_risk|security|complexity') { $blockers += "Sourcery blocking: $($c.path):$($c.line)" }
+    }
+}
+
+# 5b. Copilot review
+Write-Section "5b. Copilot review"
+$copilotReviews = Invoke-GhApi -Path "/repos/$OWNER/$REPO/pulls/$PR/reviews?per_page=100" -JqFilter '.[] | select(.user.login | ascii_downcase | contains("copilot")) | {reviewer:.user.login,state,submitted_at,body:(.body[:200])}'
+if ($copilotReviews.Count -gt 0) {
+    foreach ($r in $copilotReviews) {
+        Write-Host "  [$($r.state)] $($r.reviewer) @ $($r.submitted_at)" -ForegroundColor Blue
+        if ($r.state -eq "CHANGES_REQUESTED") { $blockers += "Copilot CHANGES_REQUESTED" }
+        if ($r.body -match 'P[01]|bug_risk|security|blocking|must fix') { $blockers += "Copilot blocking review" }
+    }
+} else { Write-Host "  (nincs Copilot review)" -ForegroundColor DarkGray }
+
+$copilotComments = Invoke-GhApi -Path "/repos/$OWNER/$REPO/pulls/$PR/comments?per_page=100" -JqFilter '.[] | select(.user.login | ascii_downcase | contains("copilot")) | {user:.user.login,path,line:(.line // 0),body:(.body[:200])}'
+if ($copilotComments.Count -gt 0) {
+    Write-Host "  INLINE COMMENTEK:" -ForegroundColor Blue
+    foreach ($c in $copilotComments) {
+        $snippet = if ($c.body.Length -gt 120) { $c.body.Substring(0, 120) + "..." } else { $c.body }
+        Write-Host "    $($c.path):$($c.line) - $snippet" -ForegroundColor DarkBlue
+        if ($c.body -match 'P[01]|bug_risk|security|blocking|must fix') { $blockers += "Copilot blocking: $($c.path):$($c.line)" }
     }
 }
 
