@@ -60,6 +60,15 @@ public class TotpService {
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Worker nem található: " + workerId));
 
+        // Codex P1 #568: ha már enrolled+enabled, NE írjuk felül a meglévő secret-et
+        // (a worker véletlenül lock-olná ki magát). Csak ha még nincs aktív MFA, vagy
+        // explicit admin disable után engedjük az új enrollment-et.
+        Optional<WorkerMfa> existing = mfaRepository.findByWorkerId(workerId);
+        if (existing.isPresent() && existing.get().getIsEnrolled() && existing.get().getIsEnabled()) {
+            throw new ValidationException(
+                    "Az MFA már aktív enrollment állapotban van. Először tiltsd le (admin disable), majd indítsd újra.");
+        }
+
         GoogleAuthenticatorKey key = gAuth.createCredentials();
         String secret = key.getKey();
 
@@ -71,7 +80,6 @@ public class TotpService {
         String qrPng = generateQrPng(otpAuthUrl);
 
         // Mentés a DB-be — enrolled=false, enabled=false
-        Optional<WorkerMfa> existing = mfaRepository.findByWorkerId(workerId);
         WorkerMfa mfa = existing.orElseGet(() -> WorkerMfa.builder().workerId(workerId).build());
         mfa.setSecret(secret);
         mfa.setType("TOTP");

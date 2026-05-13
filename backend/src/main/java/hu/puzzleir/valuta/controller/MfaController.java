@@ -1,11 +1,14 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.entity.Worker;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.TotpService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -30,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 public class MfaController {
 
     private final TotpService totpService;
+    private final WorkerRepository workerRepository;
 
     // ==========================================================================
     // Self-enrollment (a bejelentkezett worker saját MFA-ja)
@@ -45,7 +49,7 @@ public class MfaController {
     public TotpService.EnrollmentCompleteResponse completeEnrollment(
             @Valid @RequestBody VerifyRequest req) {
         Long workerId = SecurityUtils.getCurrentWorkerId();
-        return totpService.completeEnrollment(workerId, req.getCode());
+        return totpService.completeEnrollment(workerId, Integer.parseInt(req.getCode()));
     }
 
     @GetMapping("/status")
@@ -63,6 +67,15 @@ public class MfaController {
     @PostMapping("/admin/{workerId}/disable")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','MAIN_TREASURY')")
     public DisableResponse adminDisable(@PathVariable Long workerId) {
+        // Cross-tenant IDOR védelem (Copilot finding #568):
+        // ellenőrizzük, hogy a target worker a hívó company-jához tartozik
+        Worker target = workerRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Worker nem található: " + workerId));
+        java.util.UUID callerCompanyId = SecurityUtils.getCurrentCompanyId();
+        if (target.getCompany() == null || !callerCompanyId.equals(target.getCompany().getId())) {
+            throw new ValidationException("Forbidden: a worker más cég alá tartozik");
+        }
+
         totpService.disable(workerId);
         return DisableResponse.builder()
                 .workerId(workerId)
@@ -77,9 +90,8 @@ public class MfaController {
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class VerifyRequest {
         @NotNull
-        @Min(value = 0, message = "TOTP kód 6 számjegyű kell legyen")
-        @Max(value = 999999, message = "TOTP kód 6 számjegyű kell legyen")
-        private Integer code;
+        @Pattern(regexp = "^[0-9]{6}$", message = "A TOTP kód pontosan 6 számjegyű kell legyen")
+        private String code;
     }
 
     @Data
