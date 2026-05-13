@@ -38,6 +38,8 @@ class DiscountApprovalServiceTest {
         when(systemParameterService.getValue("DISCOUNT_SUPERVISOR_THRESHOLD_PCT", "2.0")).thenReturn("2.0");
         when(systemParameterService.getValue("DISCOUNT_MANAGER_THRESHOLD_PCT", "5.0")).thenReturn("5.0");
         when(systemParameterService.getValue("DISCOUNT_DIRECTOR_THRESHOLD_PCT", "10.0")).thenReturn("10.0");
+        // Codex P2 #571 fix: DISCOUNT_MAX_PCT új system parameter
+        when(systemParameterService.getValue("DISCOUNT_MAX_PCT", "15.0")).thenReturn("15.0");
     }
 
     @ParameterizedTest
@@ -126,6 +128,23 @@ class DiscountApprovalServiceTest {
     void validateApprovalLevel_director15pct_ok() {
         assertThatCode(() -> service.validateApprovalLevel(new BigDecimal("15.0"), "DIRECTOR"))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("validateApprovalLevel — DIRECTOR 16% → ValidationException (cap=15)")
+    void validateApprovalLevel_director16pct_throws_atMaxCap() {
+        // Codex P2 #571: 15%+ nem engedélyezett senkinek (üzleti policy max).
+        assertThatThrownBy(() -> service.validateApprovalLevel(new BigDecimal("16.0"), "DIRECTOR"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("meghaladja a rendszer-szintű maximum");
+    }
+
+    @Test
+    @DisplayName("mapRoleToLevel — REGIONAL_MGR (operational code) → MANAGER")
+    void mapRoleToLevel_regionalMgr_isManager() {
+        // Codex P2 #571: a JWT activeRole-ban REGIONAL_MGR (NEM REGIONAL_MANAGER) érkezhet.
+        assertThat(service.mapRoleToLevel("REGIONAL_MGR")).isEqualTo(ApprovalLevel.MANAGER);
+        assertThat(service.mapRoleToLevel("TERULETI_VEZETO")).isEqualTo(ApprovalLevel.MANAGER);
     }
 
     @Test
