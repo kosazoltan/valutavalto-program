@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.entity;
 
+import java.util.Locale;
+
 /**
  * Devizastátusz — egy tranzakció ügyfelének állampolgársági/devizahatósági besorolása.
  *
@@ -43,7 +45,8 @@ public enum ForeignStatus {
         if (value == null) {
             return null;
         }
-        String normalized = value.trim().toUpperCase();
+        // Locale.ROOT a locale-független normalizáláshoz (Turkish locale `i` → `İ` hibát elkerüli — Codex P2)
+        String normalized = value.trim().toUpperCase(Locale.ROOT);
         if (normalized.isEmpty()) {
             return null;
         }

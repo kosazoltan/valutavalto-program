@@ -99,8 +99,11 @@ export default function CashierBandSettingsPage() {
   }
 
   const handleSave = async () => {
-    // Validation
+    // Validation — csak a meglévő paramétereket (Codex P2 finding #565)
     for (const field of CASHIER_FIELDS) {
+      if (!params.has(field.key)) {
+        continue
+      }
       const value = editValues.get(field.key) ?? ''
       const error = validateValue(field, value)
       if (error) {
@@ -186,8 +189,8 @@ export default function CashierBandSettingsPage() {
 
       <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
         <strong>Üzleti szabály:</strong> A pénztáros maximum a napi limitig alkalmazhat egyedi
-        árfolyamot a minimum összeg feletti tranzakciókhoz. A backend (v2.5.49 óta) élesen
-        enforce-olja: a kvóta felett a tranzakció elutasítva HTTP 400 hibával.
+        árfolyamot a minimum összeg feletti tranzakciókhoz. A backend (v2.5.50 / PR #564 óta)
+        élesen enforce-olja: a kvóta felett a tranzakció elutasítva HTTP 400 hibával.
         Vezetői jóváhagyás (supervisor PIN) felüljárhatja a limitet egy adott tranzakcióhoz.
       </div>
 
@@ -209,7 +212,7 @@ export default function CashierBandSettingsPage() {
               <p className="text-xs text-gray-500 mb-2">{field.description}</p>
               {!param ? (
                 <div className="text-sm text-red-600">
-                  Hiányzó rendszerparaméter: {field.key} (V211 migráció szükséges)
+                  Hiányzó rendszerparaméter: {field.key} (V213 migráció szükséges — V211 hibás volt, V213 javítja)
                 </div>
               ) : (
                 <>
@@ -217,7 +220,7 @@ export default function CashierBandSettingsPage() {
                     <input
                       type="text"
                       inputMode="numeric"
-                      pattern="\d*"
+                      pattern="[0-9]*"
                       className={`form-input flex-1 ${validationError ? 'border-red-300' : ''}`}
                       value={value}
                       onChange={e => handleChange(field.key, e.target.value)}
