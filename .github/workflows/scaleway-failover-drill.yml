@@ -55,6 +55,7 @@ jobs:
       ready: ${{ steps.assess.outputs.ready }}
     steps:
       - name: Public HTTP health checks
+        id: assess
         run: |
           echo "## Pre-flight HTTP health" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
