@@ -65,10 +65,19 @@ jobs:
           if [ -n "$MODIFIED" ]; then
             # Whitelist: a .flyway-lint-allowed-modifications fájl tartalmazhat olyan filename-eket
             # amelyek dokumentált production-repair eljárással módosíthatóak (lásd a fájl tetején).
+            #
+            # Codex P1 #574 fix: az allowlist a PR base revision-ből (a target branch tip
+            # commit-ja, `github.event.pull_request.base.sha`) olvasandó, NEM a PR workspace-ből.
+            # (NEM feltétlenül main HEAD: lehet feature → release branch target is, vagy nem-friss
+            # HEAD ha az alap branch közben tovább haladt.)
+            # Különben egy PR ugyanabban a commit-ban módosíthatna egy V<n>__ migration-t ÉS
+            # hozzáadhatná a filename-et az allowlist-hez → F15 átengedi (self-bypass). A védelem
+            # értelmét vesztené.
+            #
+            # Helyes: csak akkor allowed, ha a PR base revision ALREADY contained az entryt
+            # — vagyis egy korábbi (külön) PR dokumentált eljárással bevezette.
             ALLOWED_LIST=""
-            if [ -f "$ALLOWLIST" ]; then
-              ALLOWED_LIST=$(grep -vE '^\s*#|^\s*$' "$ALLOWLIST" | awk '{print $1}')
-            fi
+            ALLOWED_LIST=$(git show "${BASE_SHA}:${ALLOWLIST}" 2>/dev/null | grep -vE '^\s*#|^\s*$' | awk '{print $1}' || true)
             # Copilot P2 #574: a regi `printf "$BLOCKED"` format-string interpolaciot csinalt,
             # `%` karakteres filename hibazna. Helyette array-alapu akkumulacio + per-file
             # printf '%s\n' "$f" (literal print, nincs format expansion).
