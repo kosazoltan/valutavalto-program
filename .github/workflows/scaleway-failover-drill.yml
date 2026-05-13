@@ -88,7 +88,7 @@ jobs:
             root@${{ secrets.SCALEWAY_SERVER_IP }} \
             "sudo -u postgres psql -tA -c \"SELECT status FROM pg_stat_wal_receiver;\" && \
              sudo -u postgres psql -tA -c \"SELECT pg_is_in_recovery();\" && \
-             sudo -u postgres psql -tA -c \"SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - last_msg_receipt_time))::int, 999);\" -d valuta")
+             sudo -u postgres psql -tA -c \"SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - last_msg_receipt_time))::int, 999) FROM pg_stat_wal_receiver;\"")
 
           STATUS=$(echo "$OUTPUT" | sed -n '1p')
           IN_RECOVERY=$(echo "$OUTPUT" | sed -n '2p')
@@ -256,7 +256,7 @@ jobs:
           sleep 60
           OUTPUT=$(ssh -i ~/.ssh/scaleway_key root@${{ secrets.SCALEWAY_SERVER_IP }} \
             "sudo -u postgres psql -tA -c \"SELECT status FROM pg_stat_wal_receiver;\" && \
-             sudo -u postgres psql -tA -c \"SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - last_msg_receipt_time))::int, 999);\" -d valuta")
+             sudo -u postgres psql -tA -c \"SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - last_msg_receipt_time))::int, 999) FROM pg_stat_wal_receiver;\"")
           echo "$OUTPUT"
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Replikáció catchup" >> $GITHUB_STEP_SUMMARY
