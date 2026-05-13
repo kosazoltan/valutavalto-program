@@ -672,6 +672,20 @@ export default function CashierTransactionPage() {
       setActiveField('currency')
       customerDataRef.current = null
       amlResultRef.current = null
+      // Codex P2 + Copilot P2 #579 follow-up: a tranzakció lezárult, a backend
+      // most már perzisztens cashierCustomRate-flagű sorokat számol. Lokális
+      // ref-eket tisztítjuk, hogy a következő tranzakció a friss backend-quota
+      // baseline-ról induljon, és az abandoned-rowKey-k NE számítsanak a local
+      // effectiveRemaining-be.
+      cashierCustomRateRowsRef.current.clear()
+      rateAuthApprovedRef.current.clear()
+      // Friss quota lekérés (backend most már látja az új flagged tranzakciókat)
+      try {
+        const quota = await transactionApi.getCashierRateQuota()
+        setCashierRateQuota(quota)
+      } catch (e) {
+        logger.error('CashierTx', 'Quota refresh failed after submit', e)
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Ismeretlen hiba'
       const axiosError = error as { response?: { data?: { message?: string } } }
@@ -723,14 +737,23 @@ export default function CashierTransactionPage() {
       } else if (e.key === 'Escape') {
         e.preventDefault()
         // Sor torlese
+        const targetRow = rows[rowIdx]
+        const oldRowKey = targetRow ? `${rowIdx}-${targetRow.currencyCode}` : null
         setRows((prev) => {
           const next = [...prev]
           next[rowIdx] = emptyRow()
           return next
         })
+        // Codex P2 + Copilot P2 #579 follow-up: ha a törölt sornak volt rowKey-je
+        // a cashierCustomRate/rateAuth ref-ekben (auto-approved volt korábban),
+        // töröljük onnan is — különben abandoned-row fogyasztaná a local quota-t.
+        if (oldRowKey) {
+          cashierCustomRateRowsRef.current.delete(oldRowKey)
+          rateAuthApprovedRef.current.delete(oldRowKey)
+        }
       }
     },
-    [handleSubmit]
+    [handleSubmit, rows]
   )
 
   const handleCancel = useCallback(() => {
@@ -740,6 +763,11 @@ export default function CashierTransactionPage() {
     setRows(Array.from({ length: MAX_LINES }, emptyRow))
     setActiveRow(0)
     setActiveField('currency')
+    // Codex P2 + Copilot P2 #579 follow-up: cancel-elt tranzakcio → ref-ek tisztítás
+    // (abandoned rows NE számítsanak a local effectiveRemaining-be a kovetkezo
+    // tranzakcio során).
+    cashierCustomRateRowsRef.current.clear()
+    rateAuthApprovedRef.current.clear()
   }, [rows])
 
   // ====== FORMAT ======
