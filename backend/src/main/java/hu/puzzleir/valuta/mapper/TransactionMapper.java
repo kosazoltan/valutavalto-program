@@ -104,6 +104,7 @@ public class TransactionMapper {
                 .customerIsPep(dto.getCustomerIsPep())
                 .notes(dto.getNotes())
                 .cashierCustomRate(dto.getCashierCustomRate())
+                .foreignStatus(dto.getForeignStatus())
                 .lines(toLineRequests(dto.getLines()))
                 .build();
     }
@@ -125,6 +126,7 @@ public class TransactionMapper {
                 .customerIsPep(dto.getCustomerIsPep())
                 .notes(dto.getNotes())
                 .cashierCustomRate(dto.getCashierCustomRate())
+                .foreignStatus(dto.getForeignStatus())
                 .lines(toLineRequests(dto.getLines()))
                 .build();
     }
