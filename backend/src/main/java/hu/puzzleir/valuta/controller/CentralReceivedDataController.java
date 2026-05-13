@@ -21,9 +21,13 @@ import java.time.LocalDate;
 // Codex P1 #560 fix: NEM isAuthenticated(), mert akkor cashier szintű account-ok is
 // olvashatnák a company-wide turnover/branch riportokat. A CentralModuleManifest-ben
 // a "received-data" canonical role-jai: foertektar, ugyvezeto, belso_ellenor,
-// teruleti_vezeto — ezek legacy mapping-je: SUPERVISOR + MANAGER + ADMIN (kizárja
-// a CASHIER-t, ami a security concern lényege).
-@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+// teruleti_vezeto.
+// Codex P1 #577 follow-up: a canonical role-ok JWT-ben ROLE_FOERTEKTAR /
+// ROLE_UGYVEZETO / ROLE_BELSO_ELLENOR / ROLE_TERULETI_VEZETO authority-ként
+// érkeznek (JwtAuthenticationFilter.normalizeOperationalRoleForAuthority).
+// Ezért a guard BOTH legacy + canonical role-okat felismeri, hogy a canonical-only
+// worker-ek (pl. CASHIER legacy + foertektar canonical) NE kapjanak hamis 403-at.
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'BELSO_ELLENOR', 'TERULETI_VEZETO')")
 public class CentralReceivedDataController {
 
     private final CentralReceivedDataService centralReceivedDataService;
