@@ -202,6 +202,9 @@ public class TransactionService {
         // 300K+ tranzakcio eseten ugyfelazonositas kotelezo.
         validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
 
+        // 2026-05-13 v2.5.49+ (Codex P1 #562): pénztárosi sáv napi kvóta backend enforcement
+        validateCashierCustomRateQuota(Boolean.TRUE.equals(request.getCashierCustomRate()), payableAmount);
+
         // AML ellenőrzés (Pmt. 2017. évi LIII. tv.) — flagek a Transaction-be CB-018 szerint
         AmlService.AmlBasicCheckResult amlResult = performAmlCheck(
                 payableAmount, request.getCustomerId(), request.getCustomerName(),
@@ -350,6 +353,9 @@ public class TransactionService {
 
         // 300K+ tranzakció esetén ügyfél-azonosítás kötelező (NAV jogi követelmény).
         validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
+
+        // 2026-05-13 v2.5.49+ (Codex P1 #562): pénztárosi sáv napi kvóta backend enforcement
+        validateCashierCustomRateQuota(Boolean.TRUE.equals(request.getCashierCustomRate()), payableAmount);
 
         // AML ellenőrzés (Pmt. 2017. évi LIII. tv.) — flagek a Transaction-be CB-018 szerint
         AmlService.AmlBasicCheckResult amlResult = performAmlCheck(
@@ -834,6 +840,33 @@ public class TransactionService {
                 .remaining(Math.max(0, limit - used))
                 .minAmountHuf(minAmount)
                 .build();
+    }
+
+    /**
+     * Pénztárosi sáv (cashier custom rate) kvóta enforce-olas.
+     * Ha a flag true és a HUF összeg eléri a minimumot (`CASHIER_CUSTOM_RATE_MIN_AMOUNT`),
+     * ellenőrzi a napi limitet (`CASHIER_CUSTOM_RATE_DAILY_LIMIT`). Ha túl van, dob.
+     *
+     * <p>2026-05-13 v2.5.49+ (Codex P1 #562): a frontend tracking-only volt, így 6. tranzakció
+     * is sikeresen átment, ha a frontend nem stoppolta. Mostantól a backend validál.</p>
+     */
+    private void validateCashierCustomRateQuota(boolean cashierCustomRate, BigDecimal hufAmount) {
+        if (!cashierCustomRate) {
+            return;
+        }
+        long minAmount = Long.parseLong(systemParameterService.getValue("CASHIER_CUSTOM_RATE_MIN_AMOUNT", "400000"));
+        if (hufAmount == null || hufAmount.compareTo(BigDecimal.valueOf(minAmount)) < 0) {
+            // A flag csak min összeg felett értelmezett — kis összegnél engedjük át (a frontend ne bedside-load-oljon flag-et)
+            return;
+        }
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        long used = transactionRepository.countDailyCashierCustomRatesByWorker(workerId, LocalDate.now());
+        long limit = Long.parseLong(systemParameterService.getValue("CASHIER_CUSTOM_RATE_DAILY_LIMIT", "5"));
+        if (used >= limit) {
+            throw new ValidationException(
+                    String.format("Pénztárosi sáv napi limit elérve (%d/%d). Egyedi árfolyam ma már nem alkalmazható, kérjen vezetői jóváhagyást.",
+                            used, limit));
+        }
     }
 
     @lombok.Data
