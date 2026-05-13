@@ -10,14 +10,7 @@
   "theme_color": "#1e40af",
   "background_color": "#ffffff",
   "lang": "hu",
-  "icons": [
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    }
-  ],
+  "icons": [],
   "categories": ["business", "finance", "productivity"],
   "screenshots": []
 }
