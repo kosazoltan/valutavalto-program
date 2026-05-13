@@ -1,0 +1,73 @@
+name: Auto Codex Trigger
+
+# CÉL: Minden új PR opened/synchronize event-re posztoljon `@codex review` comment-et
+# OWNER_PAT (kosazoltan classic PAT) identitással, hogy a ChatGPT Codex Connector
+# helyesen feldolgozza a kérést.
+#
+# HÁTTÉR (2026-05-13 user diagnosis):
+# - github-actions[bot] identity NEM csatlakoztatott a Codex Connector-hoz
+# - Ha github-actions[bot] posztol `@codex review`-t → Codex válasz: "connect GitHub"
+# - Az OWNER_PAT (kosazoltan user) IGEN csatlakoztatott → Codex feldolgozza
+# - Manuális @codex review (a user által vagy gh CLI-vel) eddig is működött
+# - Ez a workflow automatikusan kiváltja a Codex review-t MINDEN PR-en (auto-trigger
+#   nélkül is, amikor Codex backend csendben volt PR #574-en 19 percig)
+#
+# TRIGGER:
+#   - pull_request opened    → első review trigger
+#   - pull_request synchronize → ha új commit jön, újra trigger (re-review)
+#   - pull_request ready_for_review → ha draft → ready
+#
+# IDEMPOTENCIA: Egy adott commit-ra max 1 @codex review comment
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write   # ezt amúgy a OWNER_PAT-tal hívjuk, NEM a GITHUB_TOKEN-nel
+
+concurrency:
+  group: auto-codex-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  trigger-codex:
+    # Skip drafts (csak ha ready_for_review explicit nem)
+    if: github.event.pull_request.draft == false || github.event.action == 'ready_for_review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check if already triggered for this commit
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.OWNER_PAT }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # Check if any @codex review comment already exists for this HEAD SHA
+          # (idempotencia: 1 trigger / commit, NEM duplikál)
+          EXISTING=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            --jq "[.[] | select(.user.login == \"kosazoltan\" and (.body | contains(\"@codex review\")) and (.body | contains(\"${HEAD_SHA}\")))] | length" 2>/dev/null || echo "0")
+          if [ "$EXISTING" -gt 0 ]; then
+            echo "Already triggered for $HEAD_SHA — skip"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post @codex review trigger as OWNER_PAT
+        if: steps.check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.OWNER_PAT }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # The HEAD_SHA-t commit-ot is megjelöljük a comment-ben, hogy az idempotencia-check
+          # tudja: ezt a specifikus commit-ot mar trigger-eltük.
+          gh pr comment "${PR_NUMBER}" --body "@codex review
+
+<!-- auto-trigger: head_sha=${HEAD_SHA} -->"
+          echo "✅ @codex review trigger sent for PR #${PR_NUMBER} (commit ${HEAD_SHA:0:8})"
