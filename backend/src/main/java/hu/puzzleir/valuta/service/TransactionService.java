@@ -202,8 +202,9 @@ public class TransactionService {
         // 300K+ tranzakcio eseten ugyfelazonositas kotelezo.
         validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
 
-        // 2026-05-13 v2.5.49+ (Codex P1 #562): pénztárosi sáv napi kvóta backend enforcement
-        validateCashierCustomRateQuota(Boolean.TRUE.equals(request.getCashierCustomRate()), payableAmount);
+        // 2026-05-13 v2.5.49+ (Codex P1 #562/#564): pénztárosi sáv napi kvóta backend enforcement + normalizálás
+        boolean buyCashierCustomRate = validateAndNormalizeCashierCustomRateQuota(
+                Boolean.TRUE.equals(request.getCashierCustomRate()), payableAmount);
 
         // AML ellenőrzés (Pmt. 2017. évi LIII. tv.) — flagek a Transaction-be CB-018 szerint
         AmlService.AmlBasicCheckResult amlResult = performAmlCheck(
@@ -268,7 +269,7 @@ public class TransactionService {
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
-                .cashierCustomRate(Boolean.TRUE.equals(request.getCashierCustomRate()))
+                .cashierCustomRate(buyCashierCustomRate)
                 .foreignStatus(request.getForeignStatus())
                 .build();
 
@@ -354,8 +355,9 @@ public class TransactionService {
         // 300K+ tranzakció esetén ügyfél-azonosítás kötelező (NAV jogi követelmény).
         validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
 
-        // 2026-05-13 v2.5.49+ (Codex P1 #562): pénztárosi sáv napi kvóta backend enforcement
-        validateCashierCustomRateQuota(Boolean.TRUE.equals(request.getCashierCustomRate()), payableAmount);
+        // 2026-05-13 v2.5.49+ (Codex P1 #562/#564): pénztárosi sáv napi kvóta backend enforcement + normalizálás
+        boolean sellCashierCustomRate = validateAndNormalizeCashierCustomRateQuota(
+                Boolean.TRUE.equals(request.getCashierCustomRate()), payableAmount);
 
         // AML ellenőrzés (Pmt. 2017. évi LIII. tv.) — flagek a Transaction-be CB-018 szerint
         AmlService.AmlBasicCheckResult amlResult = performAmlCheck(
@@ -420,7 +422,7 @@ public class TransactionService {
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
-                .cashierCustomRate(Boolean.TRUE.equals(request.getCashierCustomRate()))
+                .cashierCustomRate(sellCashierCustomRate)
                 .foreignStatus(request.getForeignStatus())
                 .build();
 
@@ -843,29 +845,68 @@ public class TransactionService {
     }
 
     /**
-     * Pénztárosi sáv (cashier custom rate) kvóta enforce-olas.
-     * Ha a flag true és a HUF összeg eléri a minimumot (`CASHIER_CUSTOM_RATE_MIN_AMOUNT`),
-     * ellenőrzi a napi limitet (`CASHIER_CUSTOM_RATE_DAILY_LIMIT`). Ha túl van, dob.
+     * Pénztárosi sáv (cashier custom rate) kvóta enforce-olás.
+     * Visszaadja a normalizált flag-et, hogy a sub-threshold tranzakciók ne fogyasszanak kvótát.
+     *
+     * <p>Logika:
+     * <ul>
+     *   <li>flag=false → visszaadja false (no-op)</li>
+     *   <li>flag=true + hufAmount &lt; CASHIER_CUSTOM_RATE_MIN_AMOUNT → visszaadja FALSE (normalizál!)
+     *       — ezzel a kis összegnél is bejelölt flag NEM kerül mentésre, nem fogyasztja a kvótát</li>
+     *   <li>flag=true + hufAmount &gt;= min → kvóta-ellenőrzés:
+     *       <ul>
+     *         <li>used &lt; limit → visszaadja true (engedi, mentésre kerül a flag)</li>
+     *         <li>used &gt;= limit → dob ValidationException-t</li>
+     *       </ul>
+     *   </li>
+     * </ul></p>
      *
      * <p>2026-05-13 v2.5.49+ (Codex P1 #562): a frontend tracking-only volt, így 6. tranzakció
      * is sikeresen átment, ha a frontend nem stoppolta. Mostantól a backend validál.</p>
+     *
+     * <p>2026-05-13 v2.5.50+ (Codex P1 #564 follow-up): sub-threshold normalization +
+     * NumberFormatException védelem.</p>
+     *
+     * <p><b>Ismert korlátozás (P3 future sprint):</b> a read-check-write nem atomikus.
+     * Két párhuzamos tranzakció elméletben túlfuttathatja a kvótát 1-gyel. Real-world
+     * pénztári környezetben 1 pénztáros/gép, így a verseny nehéz. Megoldás később:
+     * pessimistic lock a worker-day count-on, vagy SERIALIZABLE isolation level.</p>
+     *
+     * @return a normalizált flag (false ha sub-threshold, egyébként az eredeti)
      */
-    private void validateCashierCustomRateQuota(boolean cashierCustomRate, BigDecimal hufAmount) {
+    private boolean validateAndNormalizeCashierCustomRateQuota(boolean cashierCustomRate, BigDecimal hufAmount) {
         if (!cashierCustomRate) {
-            return;
+            return false;
         }
-        long minAmount = Long.parseLong(systemParameterService.getValue("CASHIER_CUSTOM_RATE_MIN_AMOUNT", "400000"));
+        long minAmount = parseSystemParameterLong("CASHIER_CUSTOM_RATE_MIN_AMOUNT", "400000");
         if (hufAmount == null || hufAmount.compareTo(BigDecimal.valueOf(minAmount)) < 0) {
-            // A flag csak min összeg felett értelmezett — kis összegnél engedjük át (a frontend ne bedside-load-oljon flag-et)
-            return;
+            // Sub-threshold tranzakció: a flag nem értelmezett, normalizáljuk FALSE-ra
+            // (különben a countDailyCashierCustomRatesByWorker felülszámolná)
+            return false;
         }
         Long workerId = SecurityUtils.getCurrentWorkerId();
         long used = transactionRepository.countDailyCashierCustomRatesByWorker(workerId, LocalDate.now());
-        long limit = Long.parseLong(systemParameterService.getValue("CASHIER_CUSTOM_RATE_DAILY_LIMIT", "5"));
+        long limit = parseSystemParameterLong("CASHIER_CUSTOM_RATE_DAILY_LIMIT", "5");
         if (used >= limit) {
             throw new ValidationException(
                     String.format("Pénztárosi sáv napi limit elérve (%d/%d). Egyedi árfolyam ma már nem alkalmazható, kérjen vezetői jóváhagyást.",
                             used, limit));
+        }
+        return true;
+    }
+
+    /**
+     * SystemParameter érték biztonságos parseolása long-ra. NumberFormatException
+     * esetén loggol és a default értékkel tér vissza — egy elgépelt admin UI ne
+     * okozzon 500-as hibát az élesi tranzakciós folyamatban.
+     */
+    private long parseSystemParameterLong(String key, String defaultValue) {
+        String value = systemParameterService.getValue(key, defaultValue);
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException e) {
+            log.warn("SystemParameter '{}' nem numerikus érték: '{}' — default '{}' használata", key, value, defaultValue);
+            return Long.parseLong(defaultValue);
         }
     }
 

@@ -178,10 +178,11 @@ class TransactionServiceCashierQuotaTest {
 
     // ==========================================================================
     // 2. flag=true + összeg < 400k → engedi át (kicsi tranzakciónál a flag irreleváns)
+    //    + NORMALIZÁLÁS: a mentett Transaction.cashierCustomRate=false legyen (Codex P1 #564)
     // ==========================================================================
     @Test
-    @DisplayName("flag=true, összeg < 400k → kvóta nem érdekes, engedi át")
-    void cashierCustomRateTrue_belowMinAmount_doesNotValidate() {
+    @DisplayName("flag=true, összeg < 400k → normalizál false-ra, ne fogyasszon kvótát")
+    void cashierCustomRateTrue_belowMinAmount_normalizesFalse() {
         when(transactionRepository.countDailyCashierCustomRatesByWorker(eq(WORKER_ID), any(LocalDate.class)))
                 .thenReturn(99L); // limit elérve, de összeg < min
 
@@ -189,6 +190,11 @@ class TransactionServiceCashierQuotaTest {
         TransactionService.BuyRequest request = buildBuy(new BigDecimal("100"), true, null, null);
 
         assertThatCode(() -> transactionService.executeBuy(request)).doesNotThrowAnyException();
+
+        // Verify: a Transaction.cashierCustomRate=false-ra normalizálódott (a flag nem került mentésre)
+        org.mockito.ArgumentCaptor<Transaction> captor = org.mockito.ArgumentCaptor.forClass(Transaction.class);
+        org.mockito.Mockito.verify(transactionRepository).save(captor.capture());
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().getCashierCustomRate()).isFalse();
     }
 
     // ==========================================================================
