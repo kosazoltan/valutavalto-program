@@ -69,7 +69,10 @@ jobs:
             if [ -f "$ALLOWLIST" ]; then
               ALLOWED_LIST=$(grep -vE '^\s*#|^\s*$' "$ALLOWLIST" | awk '{print $1}')
             fi
-            BLOCKED=""
+            # Copilot P2 #574: a regi `printf "$BLOCKED"` format-string interpolaciot csinalt,
+            # `%` karakteres filename hibazna. Helyette array-alapu akkumulacio + per-file
+            # printf '%s\n' "$f" (literal print, nincs format expansion).
+            BLOCKED_FILES=()
             while IFS= read -r f; do
               [ -z "$f" ] && continue
               basename_f=$(basename "$f")
@@ -78,15 +81,17 @@ jobs:
                 continue
               fi
               if echo "$ALLOWED_LIST" | grep -Fxq "$basename_f"; then
-                echo "  (allowed, see .flyway-lint-allowed-modifications): $f"
+                printf '  (allowed, see .flyway-lint-allowed-modifications): %s\n' "$f"
               else
-                BLOCKED="$BLOCKED$f\n"
+                BLOCKED_FILES+=("$f")
               fi
             done <<< "$MODIFIED"
-            if [ -n "$BLOCKED" ]; then
+            if [ "${#BLOCKED_FILES[@]}" -gt 0 ]; then
               echo "::error::F15 — Already-merged migration file MODIFIED. Flyway checksum mismatch will cause production outage on next deploy. Create a new V<n+1>__ instead OR add the file to .flyway-lint-allowed-modifications with a documented production-repair plan."
               echo "Blocked files:"
-              printf "$BLOCKED"
+              for f in "${BLOCKED_FILES[@]}"; do
+                printf '%s\n' "$f"
+              done
               exit 1
             fi
           fi
