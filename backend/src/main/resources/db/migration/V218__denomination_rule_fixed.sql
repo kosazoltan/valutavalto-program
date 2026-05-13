@@ -1,5 +1,7 @@
--- V216: Címletezési szabályok (Sprint 1 P1-B)
--- v2.0 specifikáció 07_cimletkezeles.md alapján
+-- V218: Címletezési szabályok — V216 hotfix (production deploy crash 2026-05-13 16:40)
+-- A V216 a "do" PostgreSQL reserved word-öt használta alias-ként
+-- (FROM denomination_optimization do), ami syntax error-t okozott. Ez a fájl
+-- ugyanazt a táblát + seedet hozza létre "o" aliasszal.
 
 CREATE TABLE IF NOT EXISTS denomination_rule (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -30,9 +32,9 @@ CREATE INDEX IF NOT EXISTS idx_denom_rule_type ON denomination_rule(rule_type);
 CREATE INDEX IF NOT EXISTS idx_denom_rule_currency ON denomination_rule(currency_id);
 CREATE INDEX IF NOT EXISTS idx_denom_rule_active_priority ON denomination_rule(is_active, priority);
 
--- Seed: rendszerszintű FIXED alapszabály (GREEDY-vel)
+-- Seed: rendszerszintű FIXED alapszabály (GREEDY-vel) — "o" alias a "do" helyett
 INSERT INTO denomination_rule (id, rule_name, rule_type, optimization_id, priority, is_active)
-SELECT gen_random_uuid(), 'Rendszer alapértelmezett (FIXED + GREEDY)', 'FIXED', do.id, 999, true
-FROM denomination_optimization do
-WHERE do.name = 'GREEDY default' AND do.is_default = true
+SELECT gen_random_uuid(), 'Rendszer alapértelmezett (FIXED + GREEDY)', 'FIXED', o.id, 999, true
+FROM denomination_optimization o
+WHERE o.name = 'GREEDY default' AND o.is_default = true
 ON CONFLICT (rule_name) DO NOTHING;
