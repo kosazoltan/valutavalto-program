@@ -369,25 +369,69 @@ export default function CashierTransactionPage() {
         return
       }
 
+      // Codex P1 #562 + #579 iter-3 + iter-4 fix:
+      // A cashierCustomRateRowsRef Set lokálisan számon tartja az auto-approved
+      // sorokat (rowKey = `${idx}-${currency}`). Pruning ELŐSZÖR fut, MINDEN
+      // mező-változásra (rate edit / currency change). Két stale eset:
+      //   (1) #579 iter-3: rowKey-currency már NEM egyezik a current row currency-jével
+      //       (user EUR→USD switch ugyanazon a soron) → key benne ragadna
+      //   (2) #579 iter-4: a rate VISSZA-szerkesztett in-band-be ugyanazon a row+currency-n
+      //       (user 305 EUR off-band → 300 EUR in-band) → backend quota nem fogyasztott,
+      //       de a key továbbra is foglalja a local effectiveRemaining slot-ot
+      // A pruning mindkét scenarioban a megfelelő entry-t törli.
+      for (const k of Array.from(cashierCustomRateRowsRef.current)) {
+        const dashIdx = k.indexOf('-')
+        if (dashIdx <= 0) continue
+        const trackedIdx = Number.parseInt(k.slice(0, dashIdx), 10)
+        const trackedCurrency = k.slice(dashIdx + 1)
+        const trackedRow = rows[trackedIdx]
+        // (1) Stale: row removed or currency changed
+        if (!trackedRow || trackedRow.currencyCode !== trackedCurrency) {
+          cashierCustomRateRowsRef.current.delete(k)
+          rateAuthApprovedRef.current.delete(k)
+          continue
+        }
+        // (2) Stale: rate now IN-band → no quota slot needed.
+        // Codex P1 #579 iter-5 fix: isWithinBand BASE-rate-based HUF-fal hivando
+        // (a tier selection a baseRate * qty alapjan tortenik MINDENHOL a fajlban,
+        // lasd lines 303-305, 358-363, 450-452). Ha a custom rate * qty-val hivnank,
+        // egy magas custom rate-tel atugorhatnank tier-t es false in-band classification
+        // → silent freed slot. Ezert tracked baseRate * trackedQty hasznalando.
+        const trackedRateObj = exchangeRates.find(r => r.currencyCode === trackedCurrency)
+        const trackedQty = Number.parseFloat(trackedRow.quantity.replace(/[\s,]/g, '.')) || 0
+        if (trackedRateObj) {
+          const trackedBaseRate = mode === 'buy' ? trackedRateObj.baseBuyRate : trackedRateObj.baseSellRate
+          const trackedBaseHuf = trackedBaseRate * trackedQty
+          if (isWithinBand(trackedRateObj, trackedRow.exchangeRate, mode, trackedBaseHuf)) {
+            cashierCustomRateRowsRef.current.delete(k)
+            rateAuthApprovedRef.current.delete(k)
+          }
+        }
+      }
+
       const rowKey = `${rowIdx}-${row.currencyCode}`
       if (rateAuthApprovedRef.current.has(rowKey)) return
 
       if (!isWithinBand(rateObj, row.exchangeRate, mode, baseAmountHuf)) {
         const hufAmount = row.exchangeRate * qtyNum
         const minAmount = cashierRateQuota?.minAmountHuf ?? 400000
-        const remaining = cashierRateQuota?.remaining ?? 0
+        const baseRemaining = cashierRateQuota?.remaining ?? 0
+        const approvedLocally = cashierCustomRateRowsRef.current.size
+        const effectiveRemaining = Math.max(0, baseRemaining - approvedLocally)
 
-        if (hufAmount >= minAmount && remaining > 0) {
+        if (hufAmount >= minAmount && effectiveRemaining > 0) {
           cashierCustomRateRowsRef.current.add(rowKey)
           rateAuthApprovedRef.current.add(rowKey)
+          // Aktuális felhasználás after this approval = (limit - baseRemaining) + local_approved (most már +1).
+          const totalUsedAfterThis = cashierRateQuota!.limit - baseRemaining + cashierCustomRateRowsRef.current.size
           toast.success(
             'Pénztárosi sáv',
-            `Egyedi árfolyam engedélyezve (${cashierRateQuota!.limit - remaining + 1}/${cashierRateQuota!.limit} ma)`,
+            `Egyedi árfolyam engedélyezve (${totalUsedAfterThis}/${cashierRateQuota!.limit} ma)`,
           )
           return
         }
 
-        if (hufAmount >= minAmount && remaining <= 0) {
+        if (hufAmount >= minAmount && effectiveRemaining <= 0) {
           toast.warning('Pénztárosi sáv limit', `Napi ${cashierRateQuota?.limit ?? 5} egyedi árfolyam felhasználva!`)
         }
 
@@ -663,6 +707,21 @@ export default function CashierTransactionPage() {
       setActiveField('currency')
       customerDataRef.current = null
       amlResultRef.current = null
+      // Codex P2 + Copilot P2 #579 follow-up: a tranzakció lezárult, a backend
+      // most már perzisztens cashierCustomRate-flagű sorokat számol. Lokális
+      // ref-eket tisztítjuk, hogy a következő tranzakció a friss backend-quota
+      // baseline-ról induljon, és az abandoned-rowKey-k NE számítsanak a local
+      // effectiveRemaining-be.
+      cashierCustomRateRowsRef.current.clear()
+      rateAuthApprovedRef.current.clear()
+      // Codex P2 #579 iter-4 fix: NE blokkoljuk az isSubmitting felszabadulását a
+      // post-save quota refresh-szel. Offline/Electron flow-ban a backend
+      // unreachable → submit stuck az API timeout-ig. Helyette fire-and-forget
+      // a quota refetch: setCashierRateQuota async, a felhasználó már új tranzakciót
+      // kezdhet a régi-de-rendezett kvótával (mivel a ref-eket lokálisan tisztítottuk).
+      transactionApi.getCashierRateQuota()
+        .then(quota => setCashierRateQuota(quota))
+        .catch(e => logger.error('CashierTx', 'Quota refresh failed after submit (non-blocking)', e))
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Ismeretlen hiba'
       const axiosError = error as { response?: { data?: { message?: string } } }
@@ -713,8 +772,19 @@ export default function CashierTransactionPage() {
         }
       } else if (e.key === 'Escape') {
         e.preventDefault()
-        // Sor torlese
+        // Sor torlese — setRows callback form-ben olvassuk a current prev-et, NE
+        // a closure-bol (kulonben rows-t kellene useCallback dep-nek megadni, ami
+        // minden billentyunyomasra recreate-elne a handler-t).
+        // Codex P2 + Copilot P2 #579 follow-up: ha a torolt sornak volt rowKey-je
+        // a cashierCustomRate/rateAuth ref-ekben (auto-approved volt korabban),
+        // toroljuk onnan is — kulonben abandoned-row fogyasztana a local quota-t.
         setRows((prev) => {
+          const targetRow = prev[rowIdx]
+          const oldRowKey = targetRow ? `${rowIdx}-${targetRow.currencyCode}` : null
+          if (oldRowKey) {
+            cashierCustomRateRowsRef.current.delete(oldRowKey)
+            rateAuthApprovedRef.current.delete(oldRowKey)
+          }
           const next = [...prev]
           next[rowIdx] = emptyRow()
           return next
@@ -731,6 +801,11 @@ export default function CashierTransactionPage() {
     setRows(Array.from({ length: MAX_LINES }, emptyRow))
     setActiveRow(0)
     setActiveField('currency')
+    // Codex P2 + Copilot P2 #579 follow-up: cancel-elt tranzakcio → ref-ek tisztítás
+    // (abandoned rows NE számítsanak a local effectiveRemaining-be a kovetkezo
+    // tranzakcio során).
+    cashierCustomRateRowsRef.current.clear()
+    rateAuthApprovedRef.current.clear()
   }, [rows])
 
   // ====== FORMAT ======
