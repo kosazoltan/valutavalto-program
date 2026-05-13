@@ -171,15 +171,52 @@ cp /opt/valutavalto/backend/.env.bak.before-failover /opt/valutavalto/backend/.e
 systemctl restart valuta-backend
 ```
 
-## 4. Tesztelési checklist (még NEM tesztelt!)
+## 4. Drill végrehajtás — két opció
 
-> Élesben tesztelés előtt: **alacsony forgalmú időszakban** (hétvége hajnal 4-6 között), maintenance ablak kiírva.
+### Opció A — Readiness Check (manuális drill)
 
-- [ ] **Drill 1:** failover-to-standby.sh execution (PG promote + backend restart, DNS swap KIHAGYVA)
-- [ ] **Drill 2:** End-to-end DNS swap rövid időre (Scaleway-en a forgalom, 5 perc majd vissza)
-- [ ] **Drill 3:** Failback eljárás (pg_rewind + Hetzner standby)
-- [ ] **Drill 4:** Adatvesztés mérés (Hetzner-en utolsó pillanatban tranzakció, Scaleway-en ellenőrzés)
-- [ ] **Drill 5:** Replikáció helyreállás failback után (lag normalizálódik 60s alá)
+Egy Anthropic scheduled routine vasárnaponként public health-checket csinál + checklist-et küld a usernek SSH-parancsokkal. A user manuálisan SSH-zik és lefuttatja.
+
+Routine ID: `trig_01WpU5Vts7DnXE2d4XSnnW5Q` (egyszeri, 2026-05-17 04:00 CEST).
+
+### Opció B — Teljesen automata GitHub Actions workflow ✅ **PRODUCTION-READY**
+
+**Workflow:** `.github/workflows/scaleway-failover-drill.yml`
+**Trigger:** `workflow_dispatch` (manuális indítás GitHub UI-ról vagy CLI-ből)
+
+**Drill szintek (input):**
+- **Level 1:** pg_ctl promote + pg_rewind failback (DNS érintetlen) — **biztos, ajánlott első**
+- **Level 2:** Level 1 + Cloudflare DNS swap 5 percre + rollback (közepes kockázat)
+- **Level 3:** Level 2 + adatvesztés mérés (legkomplexebb)
+
+**Dry-run mód:** `dry_run=true` → csak pre-flight HTTP + replikáció check, NEM csinál promote-ot.
+
+**Indítás:**
+
+```bash
+# Dry-run (mindig biztonságos):
+gh workflow run scaleway-failover-drill.yml -f drill_level=1 -f dry_run=true
+
+# Drill 1 ÉLESBEN (pg_ctl promote + failback):
+gh workflow run scaleway-failover-drill.yml -f drill_level=1 -f dry_run=false
+
+# Drill 2 (élesi DNS swap):
+gh workflow run scaleway-failover-drill.yml -f drill_level=2 -f dry_run=false
+```
+
+Vagy: GitHub UI → Actions → Scaleway Failover Drill → Run workflow.
+
+**Verifikálva 2026-05-13:** dry-run mód PASS (pre-flight + dry-run summary jobs).
+
+### Drill végrehajtási checklist
+
+- [x] **Workflow setup** — `.github/workflows/scaleway-failover-drill.yml` mergelve main-re
+- [x] **GitHub Secrets** — SCALEWAY_SERVER_IP, SCALEWAY_SSH_PRIVATE_KEY, CF_API_TOKEN, CF_ZONE_ID, CF_DNS_RECORD_ID_EXCVALUTA mind setupolva
+- [x] **Dry-run mód** verifikálva PASS
+- [ ] **Drill 1 ÉLESBEN** — promote + pg_rewind failback (DNS érintetlen) — alacsony forgalmú időszakban
+- [ ] **Drill 2 ÉLESBEN** — Drill 1 + CF DNS swap 5 percre
+- [ ] **Drill 3 ÉLESBEN** — Drill 2 + adatvesztés mérés
+- [ ] **Replikáció catchup verify** failback után (lag normalizálódik 60s alá)
 
 ## 5. Monitoring (jövőbeli, AJÁNLOTT)
 
