@@ -562,7 +562,7 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 - Kapcsolat: `application.properties` → `spring.datasource.*`
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.3.7** (2026-04-29 SB4 sprint óta — minor bump, mert Spring Boot 4 + Tomcat 11 major framework upgrade).
+- **Verzió:** **v2.5.49** (2026-05-13 — bizonylat szöveg admin + receipt format + transfer P1 fix + V211 production crash javítás).
 - **Backend stack (2026-04-29 SB4 sprint óta):** **Spring Boot 4.0.6** + **Tomcat 11.0.21** (Servlet 6.1) + **Jackson 2 stop-gap** (`spring-boot-jackson2` modul + `JacksonConfig.java` programmatic `@Primary @Bean ObjectMapper` `Jackson2ObjectMapperBuilder.json().modulesToInstall(...)` mintával) + **springdoc 3.0.3** + **flyway-database-postgresql 12.4.0** (flyway-core 12.x SB4 BOM-ból). 1009/1009 mvn test PASS, Hetzner production deploy SUCCESS (3× verifikálva).
 - **Main HEAD:** `1217cf08` (PR #266: modulesToInstall extend mode, 2026-04-29).
 - **Production:** Hetzner deploy SUCCESS minden mergelt PR után, bootstrap-status 200, V155..V167 applied.
@@ -587,11 +587,22 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 - **AI review automation:** `.github/workflows/ai-review-auto-fix.yml` minden PR merge után triggerel. Sourcery weekly rate-limit (1.5M diff char) — nem blokkoló. A Bence-féle `.github/workflows/auto-review.yml` 2026-04-27 óta törölve.
 - **Production URL SSOT (BEFEJEZVE):** `config/production-urls.json` + `backend/.../config/ProductionUrls.java` + `scripts/_production-urls.ps1` + Electron `penztar-client/electron/main.ts` `loadProductionUrls()` + `electron-builder.json` extraResources. Lazy-load minden komponensben.
 - **Jackson 3 future migration**: a `spring-boot-jackson2` stop-gap modul + `JacksonConfig.java` programmatic ObjectMapper csak átmeneti megoldás. Egy nagyobb refaktor PR-ben (külön sprint) a 39 fájl `com.fasterxml.jackson.*` → `tools.jackson.*` import-migráció OpenRewrite recipe-pal, ObjectMapper API breaking changes javítás. Akkor: a `spring.jackson.use-jackson2-defaults=true` + a `JacksonConfig.java` törölhető.
-- **Nyitott következő feladatok (2026-05-01 állapot):**
-  - **P0 (éles pénztár frissítés):** user reinstall az éles gépen **v2.5.2**-vel. Telepítő kész: `installer/build/Penztar-Setup-2.5.2-*.exe` + `Penztar-Eltavolito-2.5.2-*.exe`. Lépések: 1) Eltávolító admin joggal, 2) Setup admin joggal, 3) SetupWizard 5 lépés (Iroda → Program típus → Szerver **Kapcsolat tesztelése** kötelező → Admin jelszó → Telepítés), 4) bootstrap admin login, 5) új VÉTEL teszt → bizonylat formátum: `V<3-jegyű-numerikus-kód>000001`.
-  - **P1:** happy path teszt dev módban (Fejlesztői mód INDÍTÁS shortcut) — SetupWizard 4. lépésnél **Kapcsolat tesztelése gombot** kell nyomni (connectionTest.state=ok kötelező a Továbbhoz). Új v2.5.1 fícsör: vault-only filter (értéktár telepítés módban) + admin UI checkbox a branch szerkesztőn.
-  - **P2:** Installer acceptance test friss Windows VM-en az `installer/tests/installer-validation-suite.ps1` szkripttel.
-  - **P2 (long-term):** teljes Jackson 3 migráció — 39 fájl `com.fasterxml.jackson.*` → `tools.jackson.*` import-csere (OpenRewrite recipe). Akkor a stop-gap modul + JacksonConfig.java törölhető.
+- **Nyitott következő feladatok (2026-05-13 állapot):**
+  - **P0.1 (éles pénztár frissítés v2.5.49):** user reinstall a pénztáros gépeken. Telepítő: `C:\Users\Kósa Zoltán\Downloads\Penztar-Setup-2.5.49-20260513.exe` (281 MB). Eltávolító: `Penztar-Eltavolito-2.5.40-20260511.exe` (verzió-független). Lépések: lásd `docs/user-deployment-guide.md`.
+  - **P0.2 (központi munkaállomás első telepítése):** **ÚJ** kliens! `Kozponti-Iranyitokozpont-Setup-2.5.49.exe` (98 MB) — főértéktáros gépén kerül telepítésre először. appMode=`full`, route=`/central-workstation`, heading "Központi irányítóközpont".
+  - **P0.3 (RFM kliens első telepítése):** **ÚJ** kliens! `Arfolyamkeszito-Setup-2.5.49.exe` (98 MB) — főértéktárosi gépen kerül telepítésre. appMode=`rate-maker`, route=`/rates/creation`.
+  - **P1.1 (Drill 1 live):** Vasárnap 2026-05-17 04:00 CEST scheduled routine (trig_01WpU5Vts7DnXE2d4XSnnW5Q) readiness check-et csinál + checklist. Vagy manuálisan: `gh workflow run scaleway-failover-drill.yml -f drill_level=1 -f dry_run=false`.
+  - **P1.2 (happy path teszt v2.5.49):** Fejlesztői mód INDÍTÁS shortcut → SetupWizard 4. lépés Kapcsolat tesztelése gomb (`connectionTest.state=ok`) → új VÉTEL → bizonylat `V<3-jegyű>000001`.
+  - **P2.1 (Cashier custom-rate kvóta backend enforcement):** Codex P1 finding a PR #562-ből. Most tracking-only (a `cashierCustomRate` flag mentődik, de NEM blokkolja a 6. tranzakciót). Kell: backend POST /transactions ellenőrzés + 429 ha kvóta elfogyott.
+  - **P2.2 (foreignStatus String → Enum):** Copilot finding a PR #562-ből. Most szabad szöveg, kell: Enum + `@Pattern` validáció + normalizálás mentés előtt.
+  - **P2.3 (Drill 2 + Drill 3):** Drill 1 sikeres után, alacsony forgalmú időszakban. DNS swap 5 percre + adatvesztés mérés.
+  - **P2.4 (Cloudflare Load Balancer):** Auto-DNS failover (~14 USD/hó). CF Load Balancer beállítás Hetzner-Scaleway origin pool-lal.
+  - **P2.5 (UptimeRobot monitoring):** 5 percenként health-check + email/SMS riasztás 5xx esetén.
+  - **P3.1 (Jackson 3 migráció — long-term):** 39 fájl `com.fasterxml.jackson.*` → `tools.jackson.*` import csere OpenRewrite-tal. A `spring-boot-jackson2` stop-gap + `JacksonConfig.java` törölhető utána.
+  - **P3.2 (Penztar-Eltavolito v2.5.49 build):** Most v2.5.40 használjuk (verzió-független), de a "current" verzió jobb lenne.
+  - **P3.3 (Installer acceptance test friss VM-en):** `installer/tests/installer-validation-suite-v2.5.49.ps1` szkript futtatása mind a 3 új installer-re friss Windows VM-en.
+
+**LEZÁRVA 2026-05-13-i sessionben:** ✅ v2.5.48 → v2.5.49 release (PR #562, V211 production crash fix + bizonylat admin UI + transfer P1 + Playwright redirect), ✅ Scaleway DEV1-S → DEV1-M resize (2 GB → 4 GB), ✅ Scaleway v2.5.49 JAR rebuild + Google OAuth env vars, ✅ 3 telepítő build (Penztar + Kozponti + Arfolyamkeszito mind 2.5.49), ✅ Scaleway failover runbook 8 fejezet + GitHub Actions workflow (Drill 1/2/3 szintekkel), ✅ Cloudflare DNS:Edit token + 5 GitHub Secret setup, ✅ Redis Scaleway-en telepítve (warm), ✅ 4 memóriarendszer rendrehozás (QMD 5 valutavalto kollekció + YAML + Cognee + Vector), ✅ Windows QMD shim + HOME=USERPROFILE fix patch-package-szerű auto-apply-jel.
 
 **LEZÁRVA 2026-05-01-i sessionben:** ✅ v2.5.0 outage rollback + atomi v2.5.1 re-do (5 PR #338-#343 mind production-on), ✅ v2.5.2 installer build, ✅ Stale remote branch cleanup (3 db törölve, 0 maradt), ✅ CodeQL Actions hardening (PR #242 már 04-27-én lezárta — listáról törölve), ✅ Utolsó nyitott CodeQL alert dismissed (#188 java/log-injection PublicBranchController:98 → false positive, logback %replace pattern globálisan stripeli a CRLF-et).
 
