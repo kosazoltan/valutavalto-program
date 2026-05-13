@@ -1,0 +1,16 @@
+{
+  "name": "Valuta Pénztári Rendszer — Best Change",
+  "short_name": "Valuta Pénztár",
+  "description": "Multi-tenant valutaváltó ERP — Sprint 5 (PWA mobile)",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#1e40af",
+  "background_color": "#ffffff",
+  "lang": "hu",
+  "icons": [],
+  "categories": ["business", "finance", "productivity"],
+  "screenshots": []
+}
