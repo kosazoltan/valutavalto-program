@@ -100,6 +100,7 @@ class HandlingFeeServiceTest {
         void shouldCalculatePerMille() {
             when(systemParameterService.getValue("HANDLING_FEE_TYPE")).thenReturn("PER_MILLE");
             when(systemParameterService.getValue("HANDLING_FEE_PER_MILLE")).thenReturn("5");
+            when(systemParameterService.getValue("HANDLING_FEE_PER_MILLE_MAX", "0")).thenReturn("0");
             when(discountThresholdService.resolveDiscount(any()))
                     .thenReturn(java.util.Optional.empty());
 
@@ -112,11 +113,25 @@ class HandlingFeeServiceTest {
         void shouldCalculateLargePerMille() {
             when(systemParameterService.getValue("HANDLING_FEE_TYPE")).thenReturn("PER_MILLE");
             when(systemParameterService.getValue("HANDLING_FEE_PER_MILLE")).thenReturn("3");
+            when(systemParameterService.getValue("HANDLING_FEE_PER_MILLE_MAX", "0")).thenReturn("0");
             when(discountThresholdService.resolveDiscount(any()))
                     .thenReturn(java.util.Optional.empty());
 
             BigDecimal fee = handlingFeeService.calculateHandlingFee(new BigDecimal("1000000"));
             assertThat(fee).isEqualByComparingTo("3000");
+        }
+
+        @Test
+        @DisplayName("PER_MILLE_MAX cap: 1.000.000 Ft × 5‰ = 5.000 → cap 2.000 Ft")
+        void shouldCapPerMilleAtMax() {
+            when(systemParameterService.getValue("HANDLING_FEE_TYPE")).thenReturn("PER_MILLE");
+            when(systemParameterService.getValue("HANDLING_FEE_PER_MILLE")).thenReturn("5");
+            when(systemParameterService.getValue("HANDLING_FEE_PER_MILLE_MAX", "0")).thenReturn("2000");
+            when(discountThresholdService.resolveDiscount(any()))
+                    .thenReturn(java.util.Optional.empty());
+
+            BigDecimal fee = handlingFeeService.calculateHandlingFee(new BigDecimal("1000000"));
+            assertThat(fee).isEqualByComparingTo("2000");
         }
     }
 
