@@ -58,16 +58,39 @@ jobs:
         run: |
           set -e
           MIGR_DIR="backend/src/main/resources/db/migration"
+          ALLOWLIST="$MIGR_DIR/.flyway-lint-allowed-modifications"
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           # Files modified (NOT added) under migration dir
           MODIFIED=$(git diff --name-only --diff-filter=M "$BASE_SHA" -- "$MIGR_DIR")
           if [ -n "$MODIFIED" ]; then
-            echo "::error::F15 — Already-merged migration file MODIFIED. Flyway checksum mismatch will cause production outage on next deploy. Create a new V<n+1>__ instead."
-            echo "Modified files:"
-            echo "$MODIFIED"
-            exit 1
+            # Whitelist: a .flyway-lint-allowed-modifications fájl tartalmazhat olyan filename-eket
+            # amelyek dokumentált production-repair eljárással módosíthatóak (lásd a fájl tetején).
+            ALLOWED_LIST=""
+            if [ -f "$ALLOWLIST" ]; then
+              ALLOWED_LIST=$(grep -vE '^\s*#|^\s*$' "$ALLOWLIST" | awk '{print $1}')
+            fi
+            BLOCKED=""
+            while IFS= read -r f; do
+              [ -z "$f" ] && continue
+              basename_f=$(basename "$f")
+              # Skip the allowlist file itself
+              if [ "$basename_f" = ".flyway-lint-allowed-modifications" ]; then
+                continue
+              fi
+              if echo "$ALLOWED_LIST" | grep -Fxq "$basename_f"; then
+                echo "  (allowed, see .flyway-lint-allowed-modifications): $f"
+              else
+                BLOCKED="$BLOCKED$f\n"
+              fi
+            done <<< "$MODIFIED"
+            if [ -n "$BLOCKED" ]; then
+              echo "::error::F15 — Already-merged migration file MODIFIED. Flyway checksum mismatch will cause production outage on next deploy. Create a new V<n+1>__ instead OR add the file to .flyway-lint-allowed-modifications with a documented production-repair plan."
+              echo "Blocked files:"
+              printf "$BLOCKED"
+              exit 1
+            fi
           fi
-          echo "F15 lint OK — only additions in $MIGR_DIR."
+          echo "F15 lint OK — only additions or whitelisted modifications in $MIGR_DIR."
 
       - name: F14b — Detect duplicate version prefixes
         run: |

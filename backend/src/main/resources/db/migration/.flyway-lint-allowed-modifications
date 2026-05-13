@@ -1,0 +1,13 @@
+# F15 lint kivételek: olyan migration-fájlok amelyek MÓDOSÍTHATÓK
+# Csak fresh-deploy bug-fix esetén, dokumentált production-flyway-repair eljárással.
+#
+# Formátum:  <filename>  # <ok+production-folyamat-leírás>
+#
+# Minden bejegyzéshez KÖTELEZŐ:
+# 1. Production-on `flyway repair` (manuálisan vagy FLYWAY_REPAIR_ON_MIGRATE=true a következő deploy-ra)
+# 2. Vault-jegyzet a feedback/ vagy operations/ mappában
+# 3. PR description-ben hivatkozás a vault-jegyzetre
+#
+# A nem-whitelistelt fájl módosítása F15-tel blokkolva. Új V<n+1>__ legyen.
+
+V211__cashier_custom_rate_tracking.sql  # 2026-05-13: V211 hibás 'key/value' INSERT oszlopneveket használt (helyett 'parameter_key/parameter_value') → fresh-deploy crash. Production-on V211 már success=t (manual flyway repair + V213 INSERT-elte az adatot). Fix: V211 SQL javítása helyes oszlopnevekre + FLYWAY_REPAIR_ON_MIGRATE=true egyszer Hetzner-en a következő deploy-on (a checksum mismatch frissítéséhez). Operations runbook: vault/operations/v211-fresh-deploy-fix.md.
