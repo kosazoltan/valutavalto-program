@@ -19,14 +19,19 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 @Slf4j
 // Codex P1 #560 fix: NEM isAuthenticated(), mert akkor cashier szintű account-ok is
-// olvashatnák a company-wide turnover/branch riportokat. A CentralModuleManifest-ben
-// a "received-data" canonical role-jai: foertektar, ugyvezeto, belso_ellenor,
-// teruleti_vezeto.
-// Codex P1 #577 follow-up: a canonical role-ok JWT-ben ROLE_FOERTEKTAR /
-// ROLE_UGYVEZETO / ROLE_BELSO_ELLENOR / ROLE_TERULETI_VEZETO authority-ként
-// érkeznek (JwtAuthenticationFilter.normalizeOperationalRoleForAuthority).
-// Ezért a guard BOTH legacy + canonical role-okat felismeri, hogy a canonical-only
-// worker-ek (pl. CASHIER legacy + foertektar canonical) NE kapjanak hamis 403-at.
+// olvashatnák a company-wide turnover/branch riportokat.
+//
+// Authority-források (JwtAuthenticationFilter):
+// - Legacy WorkerRole (CASHIER/SUPERVISOR/MANAGER/ADMIN) → ROLE_<UPPER> authority
+// - Active canonical role → ROLE_<NORMALIZED> authority (normalizeOperationalRoleForAuthority)
+//   Pl. activeRole "REGIONAL_MGR" → ROLE_TERULETI_VEZETO, "CHIEF_VAULT" → ROLE_FOERTEKTAR
+//
+// A CentralModuleManifest a frontend menüt szűri canonical role kódokkal (foertektar,
+// ugyvezeto, belso_ellenor, teruleti_vezeto a "received-data" modulhoz), de a backend
+// @PreAuthorize közvetlenül a Spring Security authority-kből dolgozik.
+// Ezért a guard mindkét csatornát lefedi: legacy SUPERVISOR/MANAGER/ADMIN (CASHIER-t kizárja)
+// + 4 canonical received-data role (Copilot P1 #577 follow-up — canonical-only worker,
+// pl. CASHIER legacy + foertektar canonical, ne kapjon hamis 403-at).
 @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'BELSO_ELLENOR', 'TERULETI_VEZETO')")
 public class CentralReceivedDataController {
 
