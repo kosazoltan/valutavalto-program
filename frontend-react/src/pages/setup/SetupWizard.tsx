@@ -1031,7 +1031,7 @@ function WelcomeStep(props: {
       <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 text-blue-600 mb-6">
         <Rocket className="w-10 h-10" />
       </div>
-      <h2 className="text-3xl font-bold text-slate-900 mb-3">Üdvözöljük az EXZ rendszerben</h2>
+      <h2 className="text-3xl font-bold text-slate-900 mb-3">Üdvözöljük a Valuta Pénzváltó Rendszerben</h2>
       <p className="text-slate-600 mb-6">
         Jelentkezzen be Google fiókkal. A rendszer az email alapján azonosítja a fiókot,
         a szerepkört és a telepítendő működési módot.
