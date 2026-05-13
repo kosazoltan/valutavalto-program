@@ -378,8 +378,21 @@ export default function CashierTransactionPage() {
         // Codex P1 #562 fix: a backend `remaining` érték statikus snapshot (page-load),
         // többszöri auto-approve ugyanazon session-ben sem decrementálná. Ezért lokálisan
         // is számoljuk a már jóváhagyott rowKey-eket (cashierCustomRateRowsRef), és az
-        // effektív remaining = backend_remaining - local_approved_count. Így a limit
-        // (pl. 5) NEM léphető át same-session multi-row auto-approve-pal.
+        // effektív remaining = backend_remaining - local_approved_count.
+        // Codex P1 #579 iter-3 fix: prune stale keys ELŐSZÖR. A rowKey `${rowIdx}-${currency}`
+        // formátumú; ha a user EUR-ról USD-re vált egy auto-approved sorban, a régi "0-EUR"
+        // kulcs benne ragad → false-block "Pénztárosi sáv limit elérve" üzenettel. A pruning
+        // a current rows-listán alapul: csak azokat tartjuk amelyek matchel-nek egy aktív
+        // (currencyCode != '') sorral.
+        const validKeys = new Set(
+          rows.map((r, i) => (r.currencyCode ? `${i}-${r.currencyCode}` : null)).filter(Boolean) as string[]
+        )
+        for (const k of Array.from(cashierCustomRateRowsRef.current)) {
+          if (!validKeys.has(k)) {
+            cashierCustomRateRowsRef.current.delete(k)
+            rateAuthApprovedRef.current.delete(k)
+          }
+        }
         const baseRemaining = cashierRateQuota?.remaining ?? 0
         const approvedLocally = cashierCustomRateRowsRef.current.size
         const effectiveRemaining = Math.max(0, baseRemaining - approvedLocally)
