@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Settings, Building, Users, Printer, Database, Bell, Shield, Palette, Sliders, Loader2, FileText, AlertTriangle } from 'lucide-react'
+import { Settings, Building, Users, Printer, Database, Bell, Shield, Palette, Sliders, Loader2, FileText, AlertTriangle, Landmark } from 'lucide-react'
 import SystemParameterPage from './SystemParameterPage'
 import PermissionPage from './PermissionPage'
 import RolePage from './RolePage'
 import UserPage from './UserPage'
 import ReceiptTextSettingsPage from './ReceiptTextSettingsPage'
 import CashierBandSettingsPage from './CashierBandSettingsPage'
+import BankIntegrationStatusPage from './BankIntegrationStatusPage'
 import { ownCompanyApi, type OwnCompany } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
@@ -92,6 +93,7 @@ export default function SettingsPage() {
     { id: 'printing', name: 'Nyomtatás', icon: Printer },
     { id: 'receipt-texts', name: 'Bizonylat szövegek', icon: FileText },
     { id: 'cashier-band', name: 'Pénztárosi sáv', icon: AlertTriangle },
+    { id: 'bank-integration', name: 'Bank integráció', icon: Landmark },
     { id: 'database', name: 'Adatbázis', icon: Database },
     { id: 'notifications', name: 'Értesítések', icon: Bell },
     { id: 'security', name: 'Biztonság', icon: Shield },
@@ -291,6 +293,10 @@ export default function SettingsPage() {
 
           {activeTab === 'cashier-band' && (
             <CashierBandSettingsPage />
+          )}
+
+          {activeTab === 'bank-integration' && (
+            <BankIntegrationStatusPage />
           )}
 
           {activeTab === 'database' && (
