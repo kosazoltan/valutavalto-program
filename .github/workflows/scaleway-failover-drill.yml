@@ -1,0 +1,295 @@
+# =============================================================================
+# Scaleway Failover Drill — automatikus végrehajtás
+# =============================================================================
+# Drill 1: pg_ctl promote + pg_rewind failback (DNS érintetlen) — biztonságos
+# Drill 2: Drill 1 + Cloudflare DNS swap rövid időre (élesi forgalom Scaleway-re)
+# Drill 3: Drill 1 + Drill 2 + adatvesztés mérés + monitoring
+#
+# Trigger:
+# - workflow_dispatch (manuális indítás GitHub UI-ról)
+# - schedule: NINCS auto-cron (élesen futtatott drill, manuális kell)
+#
+# Secrets szükséges:
+# - SCALEWAY_SSH_PRIVATE_KEY: SSH kulcs Scaleway root-hoz (a hetzner_ed25519 tartalma)
+# - HETZNER_SSH_PRIVATE_KEY: SSH kulcs Hetzner root-hoz (pg_rewind source-hoz, ugyanaz)
+# - SCALEWAY_SERVER_IP: 163.172.152.234
+# - HETZNER_SERVER_IP: 95.216.191.162
+# - CF_API_TOKEN: Cloudflare API token DNS:Edit (Drill 2/3-hoz)
+# - CF_ZONE_ID: de1ba622a4a79728302443f801da0af9
+# - CF_DNS_RECORD_ID_EXCVALUTA: 81945bd09d978b316d68409e6cfdb5d4
+# =============================================================================
+
+name: Scaleway Failover Drill
+
+on:
+  workflow_dispatch:
+    inputs:
+      drill_level:
+        description: 'Drill szint: 1=promote+failback (biztos), 2=+DNS swap (közepes), 3=teljes + adatvesztés mérés'
+        required: true
+        type: choice
+        default: '1'
+        options:
+          - '1'
+          - '2'
+          - '3'
+      dry_run:
+        description: 'Dry run: csak pre-flight, NEM csinál promote-ot'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scaleway-failover-drill
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: 'Pre-flight (HTTP + replikáció)'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.assess.outputs.ready }}
+    steps:
+      - name: Public HTTP health checks
+        run: |
+          echo "## Pre-flight HTTP health" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          HETZNER=$(curl -s -o /dev/null -w '%{http_code}' https://excvaluta.com/api/v1/auth/bootstrap-status)
+          SCALEWAY=$(curl -s -o /dev/null -w '%{http_code}' https://scaleway.excvaluta.com/api/v1/auth/bootstrap-status)
+
+          echo "| Endpoint | HTTP |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Hetzner (excvaluta.com) | $HETZNER |" >> $GITHUB_STEP_SUMMARY
+          echo "| Scaleway (scaleway.excvaluta.com) | $SCALEWAY |" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$HETZNER" != "200" ] || [ "$SCALEWAY" != "200" ]; then
+            echo "❌ ABORT: nem minden endpoint 200" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "ready=true" >> $GITHUB_OUTPUT
+
+      - name: Set up SSH (Scaleway)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SCALEWAY_SSH_PRIVATE_KEY }}" > ~/.ssh/scaleway_key
+          chmod 600 ~/.ssh/scaleway_key
+          ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Replikáció lag check
+        id: replag
+        run: |
+          set -e
+          OUTPUT=$(ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
+            root@${{ secrets.SCALEWAY_SERVER_IP }} \
+            "sudo -u postgres psql -tA -c \"SELECT status FROM pg_stat_wal_receiver;\" && \
+             sudo -u postgres psql -tA -c \"SELECT pg_is_in_recovery();\" && \
+             sudo -u postgres psql -tA -c \"SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - last_msg_receipt_time))::int, 999);\" -d valuta")
+
+          STATUS=$(echo "$OUTPUT" | sed -n '1p')
+          IN_RECOVERY=$(echo "$OUTPUT" | sed -n '2p')
+          HEARTBEAT_AGE=$(echo "$OUTPUT" | sed -n '3p')
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Replikáció állapot" >> $GITHUB_STEP_SUMMARY
+          echo "| Metrika | Érték |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Streaming status | $STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| In recovery | $IN_RECOVERY |" >> $GITHUB_STEP_SUMMARY
+          echo "| Heartbeat age (sec) | $HEARTBEAT_AGE |" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$STATUS" != "streaming" ] || [ "$IN_RECOVERY" != "t" ]; then
+            echo "❌ ABORT: replikáció nem streaming, vagy nem standby" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          if [ "$HEARTBEAT_AGE" -gt "60" ]; then
+            echo "⚠️ FIGYELEM: heartbeat age $HEARTBEAT_AGE > 60s — replikáció lassú" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "✅ Pre-flight PASS" >> $GITHUB_STEP_SUMMARY
+
+  drill:
+    name: 'Drill végrehajtás (level ${{ inputs.drill_level }})'
+    runs-on: ubuntu-24.04
+    needs: preflight
+    if: ${{ needs.preflight.outputs.ready == 'true' && inputs.dry_run != true }}
+    timeout-minutes: 20
+    steps:
+      - name: Set up SSH (Scaleway + Hetzner)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SCALEWAY_SSH_PRIVATE_KEY }}" > ~/.ssh/scaleway_key
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/hetzner_key
+          chmod 600 ~/.ssh/scaleway_key ~/.ssh/hetzner_key
+          ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: 'Drill 1.A — pg_ctl promote on Scaleway'
+        id: promote
+        run: |
+          set -e
+          echo "T0_PROMOTE=$(date -u +%s)" >> $GITHUB_ENV
+          echo "## Drill 1.A — Promote" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
+            root@${{ secrets.SCALEWAY_SERVER_IP }} \
+            'set -e; echo "=== T0: pg_ctl promote ==="; sudo -u postgres pg_ctlcluster 16 main promote; sleep 3; echo "=== Verify: recovery mode kikapcsolva ==="; RECOVERY=$(sudo -u postgres psql -tA -c "SELECT pg_is_in_recovery();"); if [ "$RECOVERY" != "f" ]; then echo "PROMOTE FAILED: still in recovery"; exit 1; fi; echo "=== Smoke test: DB irhato ==="; sudo -u postgres psql -d valuta -c "CREATE TEMP TABLE drill_test_$(date +%s) (id int); SELECT '"'"'OK'"'"' AS write_test;"; echo "PROMOTE OK"' \
+            | tee -a $GITHUB_STEP_SUMMARY
+
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: 'Drill 1.B — Backend HTTP a most-irható DB-vel'
+        run: |
+          sleep 5
+          HTTP=$(ssh -i ~/.ssh/scaleway_key root@${{ secrets.SCALEWAY_SERVER_IP }} \
+            "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/v1/auth/bootstrap-status")
+          echo "Backend HTTP after promote: $HTTP"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Drill 1.B — Backend health" >> $GITHUB_STEP_SUMMARY
+          echo "Backend HTTP: **$HTTP**" >> $GITHUB_STEP_SUMMARY
+          if [ "$HTTP" != "200" ]; then
+            echo "⚠️ Backend nem 200 promote után" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 'Drill 2.A — Cloudflare DNS swap → Scaleway'
+        if: ${{ inputs.drill_level == '2' || inputs.drill_level == '3' }}
+        run: |
+          echo "T1_DNS_SWAP=$(date -u +%s)" >> $GITHUB_ENV
+          RESULT=$(curl -s -X PATCH \
+            "https://api.cloudflare.com/client/v4/zones/${{ secrets.CF_ZONE_ID }}/dns_records/${{ secrets.CF_DNS_RECORD_ID_EXCVALUTA }}" \
+            -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"content":"${{ secrets.SCALEWAY_SERVER_IP }}","ttl":60}')
+          echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print('DNS swap success:', d.get('success')); print('New IP:', d.get('result',{}).get('content'))"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Drill 2.A — DNS swap → Scaleway" >> $GITHUB_STEP_SUMMARY
+          echo "DNS A record set to Scaleway IP. Waiting 5 minutes for cache propagation + live traffic test..." >> $GITHUB_STEP_SUMMARY
+
+      - name: 'Drill 2.B — Live traffic test (5 perc)'
+        if: ${{ inputs.drill_level == '2' || inputs.drill_level == '3' }}
+        run: |
+          echo "Waiting 60s for CF cache propagation..."
+          sleep 60
+          for i in 1 2 3 4 5; do
+            HTTP=$(curl -s -o /dev/null -w '%{http_code}' https://excvaluta.com/api/v1/auth/bootstrap-status)
+            echo "Probe $i: HTTP $HTTP (timestamp: $(date -u +%T))"
+            sleep 60
+          done
+
+      - name: 'Drill 2.C — DNS visszaállítás Hetzner-re'
+        if: ${{ always() && (inputs.drill_level == '2' || inputs.drill_level == '3') }}
+        run: |
+          RESULT=$(curl -s -X PATCH \
+            "https://api.cloudflare.com/client/v4/zones/${{ secrets.CF_ZONE_ID }}/dns_records/${{ secrets.CF_DNS_RECORD_ID_EXCVALUTA }}" \
+            -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"content":"${{ secrets.VPS_SERVER_IP }}","ttl":60}')
+          echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print('DNS rollback success:', d.get('success')); print('IP back to:', d.get('result',{}).get('content'))"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Drill 2.C — DNS rollback → Hetzner" >> $GITHUB_STEP_SUMMARY
+
+      - name: 'Failback 1 — Scaleway: PG + backend stop'
+        if: ${{ always() && steps.promote.outcome == 'success' }}
+        run: |
+          echo "T2_FAILBACK=$(date -u +%s)" >> $GITHUB_ENV
+          ssh -i ~/.ssh/scaleway_key root@${{ secrets.SCALEWAY_SERVER_IP }} \
+            "systemctl stop valuta-backend && systemctl stop postgresql && echo 'Services stopped'"
+
+      - name: 'Failback 2 — pg_rewind from Hetzner'
+        if: ${{ always() && steps.promote.outcome == 'success' }}
+        env:
+          HETZNER_IP: ${{ secrets.VPS_SERVER_IP }}
+        run: |
+          # Script tartalmát egy fájlba írjuk és scp-zzük, hogy ne kelljen
+          # bonyolult quote-escape-elést végezni a YAML-ben.
+          cat > /tmp/pg_rewind_failback.sh << 'SCRIPT_EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          HETZNER_IP="$1"
+          REPLICATOR_PWD=$(grep -oE "password=[^ ]+" /var/lib/postgresql/16/main/postgresql.auto.conf | head -1 | cut -d= -f2)
+          if [ -z "$REPLICATOR_PWD" ]; then
+            echo "ERROR: replicator password nem található a postgresql.auto.conf-ban"
+            exit 1
+          fi
+          echo "=== T2: pg_rewind from Hetzner ($HETZNER_IP) ==="
+          sudo -u postgres pg_rewind \
+            --target-pgdata=/var/lib/postgresql/16/main \
+            --source-server="host=$HETZNER_IP port=5432 user=replicator password=$REPLICATOR_PWD dbname=postgres" \
+            --progress
+          echo "=== T3: standby.signal létrehozás ==="
+          sudo -u postgres touch /var/lib/postgresql/16/main/standby.signal
+          echo "=== T4: postgresql start ==="
+          systemctl start postgresql
+          sleep 5
+          echo "=== T5: Verify standby restored ==="
+          sudo -u postgres psql -c "SELECT pg_is_in_recovery();"
+          sudo -u postgres psql -c "SELECT status, sender_host FROM pg_stat_wal_receiver;"
+          SCRIPT_EOF
+          chmod +x /tmp/pg_rewind_failback.sh
+          scp -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
+            /tmp/pg_rewind_failback.sh \
+            root@${{ secrets.SCALEWAY_SERVER_IP }}:/tmp/pg_rewind_failback.sh
+          ssh -i ~/.ssh/scaleway_key root@${{ secrets.SCALEWAY_SERVER_IP }} \
+            "bash /tmp/pg_rewind_failback.sh $HETZNER_IP"
+
+      - name: 'Failback 3 — backend restart'
+        if: ${{ always() && steps.promote.outcome == 'success' }}
+        run: |
+          ssh -i ~/.ssh/scaleway_key root@${{ secrets.SCALEWAY_SERVER_IP }} \
+            "systemctl start valuta-backend"
+          sleep 30
+          HTTP=$(ssh -i ~/.ssh/scaleway_key root@${{ secrets.SCALEWAY_SERVER_IP }} \
+            "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/v1/auth/bootstrap-status")
+          echo "Backend HTTP after failback: $HTTP"
+          if [ "$HTTP" != "200" ]; then
+            echo "⚠️ Backend nem 200 failback után — manuális helyreállítás kell"
+            exit 1
+          fi
+
+      - name: 'Replikáció catchup verify (60s)'
+        if: ${{ always() && steps.promote.outcome == 'success' }}
+        run: |
+          sleep 60
+          OUTPUT=$(ssh -i ~/.ssh/scaleway_key root@${{ secrets.SCALEWAY_SERVER_IP }} \
+            "sudo -u postgres psql -tA -c \"SELECT status FROM pg_stat_wal_receiver;\" && \
+             sudo -u postgres psql -tA -c \"SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - last_msg_receipt_time))::int, 999);\" -d valuta")
+          echo "$OUTPUT"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Replikáció catchup" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: 'Timing report'
+        if: ${{ always() }}
+        run: |
+          T0=${T0_PROMOTE:-0}
+          T1=${T1_DNS_SWAP:-0}
+          T2=${T2_FAILBACK:-0}
+          T_END=$(date -u +%s)
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Időszámítás" >> $GITHUB_STEP_SUMMARY
+          echo "| Esemény | UTC timestamp |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| T0 Promote | $(date -u -d @$T0 +%T) |" >> $GITHUB_STEP_SUMMARY
+          [ "$T1" != "0" ] && echo "| T1 DNS swap | $(date -u -d @$T1 +%T) |" >> $GITHUB_STEP_SUMMARY
+          echo "| T2 Failback start | $(date -u -d @$T2 +%T) |" >> $GITHUB_STEP_SUMMARY
+          echo "| T_end | $(date -u -d @$T_END +%T) |" >> $GITHUB_STEP_SUMMARY
+          DURATION=$((T_END - T0))
+          echo "| **Teljes idő** | ${DURATION}s |" >> $GITHUB_STEP_SUMMARY
+
+  dry_run_summary:
+    name: 'Dry-run summary'
+    runs-on: ubuntu-24.04
+    needs: preflight
+    if: ${{ needs.preflight.outputs.ready == 'true' && inputs.dry_run == true }}
+    steps:
+      - name: Summary
+        run: |
+          echo "## Dry-run KÉSZ" >> $GITHUB_STEP_SUMMARY
+          echo "Pre-flight PASS. Tényleges drill kihagyva (dry_run=true)." >> $GITHUB_STEP_SUMMARY
+          echo "Manuális futtatás: GitHub Actions UI → Re-run workflow with dry_run=false" >> $GITHUB_STEP_SUMMARY
