@@ -18,8 +18,16 @@ import { getErrorMessage } from '../../utils/errorHandling'
 
 type StatusFilter = 'all' | 'missing' | 'warning' | 'critical' | 'done'
 
+// Codex P2 #560 fix: NEM toISOString().slice(0, 10), mert az UTC zónát ad vissza.
+// Magyar éjszaka 00:00-01:00 körül a UTC dátum még az előző napot mutathatja
+// (téli idő: UTC+1, nyári idő: UTC+2) → riport defaults az előző üzleti napra.
+// Helyette helyi (Europe/Budapest) dátum lokálisan komponálva.
 function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function isDone(row: ClosingControlStatus) {
