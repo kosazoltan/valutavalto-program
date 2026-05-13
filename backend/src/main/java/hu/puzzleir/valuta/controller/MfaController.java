@@ -60,6 +60,30 @@ public class MfaController {
                 .build();
     }
 
+    /**
+     * Login flow 2nd step (Sprint 3.B): a TOTP kódot ellenőrzi.
+     * A frontend hívja ezt az endpoint-ot, ha a login response {@code mfaRequired=true}.
+     *
+     * <p>A JWT bearer-ből a worker_id, és a TOTP kódot a body-ban várjuk.
+     * Sikeres validation után a frontend "MFA-verified" állapotot tárolja a session-ben.</p>
+     *
+     * <p>FONTOS: most még NEM ad ki upgrade JWT-t (token signature unchanged).
+     * A teljes JWT-claim upgrade (mfa_verified=true) Sprint 3.C feladata,
+     * a Spring Security filter konfig-ot is érinti.</p>
+     */
+    @PostMapping("/verify")
+    public VerifyResponse verifyLogin(@Valid @RequestBody VerifyRequest req) {
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        boolean ok = totpService.verify(workerId, Integer.parseInt(req.getCode()));
+        if (!ok) {
+            throw new ValidationException("Érvénytelen TOTP kód (vagy replay attempt)");
+        }
+        return VerifyResponse.builder()
+                .verified(true)
+                .message("MFA verification sikeres. Folytasd a navigáció-ban.")
+                .build();
+    }
+
     // ==========================================================================
     // Admin endpoint-ok
     // ==========================================================================
@@ -106,6 +130,14 @@ public class MfaController {
     @AllArgsConstructor
     public static class DisableResponse {
         private Long workerId;
+        private String message;
+    }
+
+    @Data
+    @lombok.Builder
+    @AllArgsConstructor
+    public static class VerifyResponse {
+        private Boolean verified;
         private String message;
     }
 }
