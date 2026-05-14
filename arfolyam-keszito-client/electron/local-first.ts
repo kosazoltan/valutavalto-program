@@ -25,6 +25,7 @@
 import { app, ipcMain, safeStorage } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import log from 'electron-log';
 import type { Database } from 'sql.js';
 import {
@@ -249,16 +250,16 @@ export function registerLocalFirstIpcHandlers(): void {
 
   ipcMain.handle('lf:save-rate-draft', (_event, draft: Record<string, unknown>) => {
     const db = getDb();
-    const entityId = String(draft.id ?? draft.currencyCode ?? '');
-    const mutationId = outbox.enqueue(db, 'rate_draft', 'CREATE', draft, entityId);
-    cachedEntities.upsertCached(db, 'rate_draft', entityId, draft, 1);
+    const entityId = String(draft.id ?? randomUUID());
+    const mutationId = outbox.enqueue(db, 'rate_draft', 'CREATE', { ...draft, id: entityId }, entityId);
+    cachedEntities.upsertCached(db, 'rate_draft', entityId, { ...draft, id: entityId }, 1);
     saveDatabase();
     return { ok: true, mutationId };
   });
 
   ipcMain.handle('lf:update-rate-draft', (_event, draft: Record<string, unknown>) => {
     const db = getDb();
-    const entityId = String(draft.id ?? draft.currencyCode ?? '');
+    const entityId = String(draft.id ?? '');
     outbox.enqueue(db, 'rate_draft', 'UPDATE', draft, entityId);
     cachedEntities.upsertCached(db, 'rate_draft', entityId, draft, 1);
     saveDatabase();

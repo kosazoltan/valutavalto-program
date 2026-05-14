@@ -34,6 +34,7 @@
 import { app, ipcMain, safeStorage } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import log from 'electron-log';
 import type { Database } from 'sql.js';
 import {
@@ -314,7 +315,7 @@ export function registerLocalFirstIpcHandlers(): void {
   // --- Treasury operations ---
   ipcMain.handle('lf:save-treasury-operation', (_event, op: Record<string, unknown>) => {
     const db = getDb();
-    const entityId = String(op.id ?? crypto.randomUUID());
+    const entityId = String(op.id ?? randomUUID());
     const mutationId = outbox.enqueue(db, 'treasury_operation', 'CREATE', { ...op, id: entityId }, entityId);
     cachedEntities.upsertCached(db, 'treasury_operation', entityId, { ...op, id: entityId }, 1);
     saveDatabase();
@@ -337,7 +338,7 @@ export function registerLocalFirstIpcHandlers(): void {
   // --- Distributions ---
   ipcMain.handle('lf:save-distribution', (_event, dist: Record<string, unknown>) => {
     const db = getDb();
-    const entityId = String(dist.id ?? crypto.randomUUID());
+    const entityId = String(dist.id ?? randomUUID());
     const mutationId = outbox.enqueue(db, 'distribution', 'CREATE', { ...dist, id: entityId }, entityId);
     cachedEntities.upsertCached(db, 'distribution', entityId, { ...dist, id: entityId }, 1);
     saveDatabase();
@@ -351,7 +352,7 @@ export function registerLocalFirstIpcHandlers(): void {
   // --- Transfers ---
   ipcMain.handle('lf:save-transfer', (_event, xfer: Record<string, unknown>) => {
     const db = getDb();
-    const entityId = String(xfer.id ?? crypto.randomUUID());
+    const entityId = String(xfer.id ?? randomUUID());
     const mutationId = outbox.enqueue(db, 'transfer', 'CREATE', { ...xfer, id: entityId }, entityId);
     cachedEntities.upsertCached(db, 'transfer', entityId, { ...xfer, id: entityId }, 1);
     saveDatabase();

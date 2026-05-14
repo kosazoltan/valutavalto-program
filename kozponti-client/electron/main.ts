@@ -263,6 +263,7 @@ function registerIpcHandlers(): void {
     }
     fs.mkdirSync(app.getPath('userData'), { recursive: true })
     fs.writeFileSync(tokenPath(), safeStorage.encryptString(token), { mode: 0o600 })
+    setAuthToken(token)
     return true
   })
 
@@ -282,6 +283,7 @@ function registerIpcHandlers(): void {
     } catch (err) {
       log.warn('[Security] token törlés sikertelen:', err)
     }
+    setAuthToken(null)
   })
 
   ipcMain.handle('get-app-version', () => app.getVersion())
