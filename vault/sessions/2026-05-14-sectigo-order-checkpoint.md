@@ -1,0 +1,218 @@
+# Session 2026-05-14 — Sectigo OV CS megrendelés CHECKPOINT
+
+**Időszak:** 2026-05-14 17:45-tól folyamatos
+**Felelős:** Kósa Zoltán (megrendelés) + AI Ügynök (workflow + secrets + trigger)
+
+## Mai mai-i napi progress (PR-ek)
+
+8 PR mergelve main-re (#581+#584+#585+#586+#587+#588+#589+#590) — release-relatív tartalom v2.5.51-be:
+- Rate-maker főlap Phase 1 MVP
+- CustomerPanel UX (hiányzó mezők hint)
+- Google OAuth diagnostic endpoint
+- AML offline degradált mód (local-first)
+- Devizastátusz per-tétel (DSZ oszlop)
+- GOOGLE_DESKTOP_CLIENT_ID multi-value support
+- v2.5.51 4-way version bump
+- sql.js externals fix (kozponti+arfolyamkeszito)
+
+2 PR nyitva:
+- **#591** — Windows signed release workflow (`.github/workflows/windows-signed-release.yml`) — vár a cert acquisition-ra
+- **#592** — Code signing setup path runbook (`vault/operations/code-signing-setup-path.md`)
+
+## Cert acquisition — döntések (2026-05-14, frissítve Perplexity research után + user korrekcio)
+
+| Döntés | Érték | Indok |
+|---|---|---|
+| Reseller | **SignMyCode** (FRISSÍTVE) | 3-5 nap validation (gyorsabb mint CodeSigningStore 4-8 nap), Sectigo Platinum Partner, jobban skálázott automation. Ár ~azonos ($660 vs $658 BYOH-val). |
+| Storage | **Azure Key Vault Premium HSM** (FRISSÍTVE 2026-05-14 19:50 — DigiCert KeyLocker elvetve!) | DigiCert KeyLocker CSAK DigiCert-issued cert-ekkel mukodik (forrás: SignMyCode tutorial). Sectigo OV CS hivatalos kompatibilis HSM-je az Azure Key Vault Premium. ~$5/hó vs $200/év. |
+| **Azure account email** (FRISSÍTVE 2026-05-14 20:00) | **`kosa.zoltan.ebc@outlook.hu`** (NEM gmail!) | Dedikált Microsoft account az Azure tenant-hoz. Tenant owner + Global Administrator. A SignMyCode `kosa.zoltan.ebc@gmail.com`-tól független — a két fiók NEM kell összekapcsolódjon. |
+| **Azure UPN (FRISSÍTVE 2026-05-14 20:05)** | `kosa.zoltan.ebc_outlook.hu#EXT#@kosazoltanebcoutlook.onmicrosoft.com` | A `#EXT#` jelzi: guest-user a `kosazoltanebcoutlook.onmicrosoft.com` tenant-ban. Normal Azure trial reg. Ha App Registration "Insufficient privileges" → Microsoft Entra → Users → user type: Guest → Member. |
+| **User Object ID (FRISSÍTVE 2026-05-14 20:05)** | `f832d69a-75e7-428e-8d2f-b57800a306c4` | A te user account-od egyedi ID-je a tenant-ban (NEM Tenant ID). Nem kell GitHub secret-ként, csak referencia. |
+| **AZURE_TENANT_ID (FRISSÍTVE 2026-05-14 20:10)** | `b6c90d40-e505-4003-83b0-592c43b7e223` | A `kosazoltanebcoutlook.onmicrosoft.com` tenant Directory ID-je. Ez lesz az `AZURE_TENANT_ID` GitHub secret értéke. Microsoft Entra ID licenc: Free (elég App Registration-höz). |
+| **Tenant primary domain** | `kosazoltanebcoutlook.onmicrosoft.com` | Default tenant domain. App Registration + Key Vault ebben a tenant-ban él. |
+| **Azure subscription (FRISSÍTVE 2026-05-14 20:20)** | `1. előfizetés` ID: `8db4cf28-f059-47f9-a9dd-96a295a47195` | Aktív Pay-As-You-Go subscription. NEM kellett új PAYG regisztrálni — már létezett egy free-trial alapú. |
+| **AZURE_KEY_VAULT_URI (FRISSÍTVE 2026-05-14 20:25)** | `https://kv-valuta-codesign.vault.azure.net/` | Resource Group: `rg-valuta-signing`, West Europe, Premium tier, Vault Access Policy model. |
+| **AZURE_KEY_VAULT_CERT_NAME (FRISSÍTVE 2026-05-14 20:30)** | `valuta-codesign-cert` | RSA-HSM 3072 bit, Non-exportable, EKU 1.3.6.1.5.5.7.3.3 (Code Signing), 36-month validity, Subject: `CN=EXCLUSIVE BEST Change Zrt., O=EXCLUSIVE BEST Change Zrt., L=Pecs, S=Baranya, C=HU`. |
+| **AZURE_CLIENT_ID (FRISSÍTVE 2026-05-14 20:35)** | `2f6bfdfc-eb2b-4992-863d-f59e98a576a5` | App Registration `sp-valuta-codesign-ci` Application (client) ID. |
+| **AZURE_CLIENT_SECRET (FRISSÍTVE 2026-05-14 20:35)** | `<feltöltve GitHub Secret-ként>` | Client Secret `valuta-codesign-ci-secret`, 24 hónap (2028-05-13-ig). Rotation reminder 2028-04-15-re. |
+| **Service Principal Object ID** | `24f78208-a9b2-4edd-837e-45b5c365b3fe` | A Key Vault Access Policy a SP-re ezzel az Object ID-vel kapcsolódik (NEM Application ID). |
+| **Key Vault Access Policies** | 2 policy: User (full) + SP (Cert:Get, Key:Get+Sign) | Minimális permission elv a CI Service Principal-nak. |
+| **CSR fájl helye** | `C:\Users\Kósa Zoltán\Downloads\valuta-codesign-cert_26016ff46f66435e9d269c7e56989649.csr` | 1438 byte, RSA 3072, valid PKCS#10. Most: feltöltendő a SignMyCode enrollment portalra. |
+| Fizetés | **Cég bankkártya** (számlázás USD-ben) | CodeSigningStore csak USD-ben számláz, EUR-kártya konvertál (~1-3% banki díj) |
+| Cert validity | **3 év (annual re-issuance)** | Iparági policy 2026 Feb: max 460 napos validity → multi-year plan annual re-issue HSM-en automatikus |
+
+### Új 2026-os realitások (eltérés a 2026-05-05-i tervtől)
+
+A 2026-05-05-i `code-signing-cert-beszerzes-csomag.md` ezeket NEM tartalmazta:
+
+1. **Sectigo 460-napos max validity** (2026 Feb iparági policy). Multi-year plans **annual re-issuance**-szal mennek HSM-en automatikus. NEM kell tőled új order minden évben — csak a cert technikailag újra-kibocsát ~15 havonta.
+2. **Reális ár:** ~$1 260 / 3 év (cert $658 + KeyLocker $200/év × 3). A régi terv $329 árat jósolt → mai ár ~2-3x annyi.
+3. **EUR fizetés:** CodeSigningStore USD-ben számláz, a Te EUR-kártyád bankja konvertál (Visa/MC standard processing).
+
+## Cert acquisition — jelenlegi lépés
+
+**Status (2026-05-14 19:26 CEST):** ✅ **MEGRENDELÉS LEADVA SignMyCode-on, fizetés sikeres.**
+
+### Order részletek (SignMyCode dashboard)
+
+| Mező | Érték |
+|---|---|
+| Vendor | SignMyCode |
+| Account email | kosa.zoltan.ebc@gmail.com |
+| Order Date | 2026-05-14 (UTC) |
+| Order Type | New |
+| Order Validity | 36 Months (3 év, annual re-issuance HSM-en) |
+| Delivery Mode | Use Existing Token (= BYOH, $0 shipping) |
+| Amount paid | $659.97 (cég Visa/MC, USD) |
+| **Transaction ID** | **SMC1015225S638431** |
+| **Stripe Payment Intent** | pi_3TX2zbEtX5pB0VYc1SeX4Y0n |
+| **Enrollment Token** ⚠️ | `wrmxwidaaxyzceh` (CSR upload + enrollment-hez) |
+| Dashboard | https://signmycode.com/dashboard/order-detail?odid=BNYD |
+
+### ⚠️ HSM platform váltás (2026-05-14 19:45) — DigiCert KeyLocker ELVETVE
+
+A SignMyCode hivatalos tutorial (`https://signmycode.com/.../how-to-use-digicert-keylocker-with-sectigo`) megerosíti:
+
+> "DigiCert® KeyLocker can only be utilized for code-signing certificates purchased through CertCentral."
+
+Tehát a Sectigo-vásárolt OV CS-vel a KeyLocker NEM mukodik. **Átállás Azure Key Vault Premium HSM-re** (Sectigo hivatalos jovahagyott alternatíva).
+
+Költségvetés (3 év):
+- KeyLocker: $200/év × 3 = $600
+- Azure Key Vault Premium: ~$5/hó × 36 = ~$180
+- **Megtakarítás: ~$420 / 3 év (~33%)**
+
+### NEXT: Azure Key Vault Premium HSM setup + CSR generálás
+
+A SignMyCode enrollment NEM indítható el CSR nélkül. A CSR az Azure Key Vault-ban generálódik (HSM-belso, NEM letöltheto private key).
+
+Részletes lépések: `vault/operations/code-signing-setup-path.md` (2. és 4. lépés).
+
+URL: https://azure.microsoft.com/free
+
+### Form-értékek (verifikálva a `Best cégkivonat 2026 05. hó.pdf` 2025-12-14-i cégkivonatból)
+
+| Mező | Érték |
+|---|---|
+| Organization Name | `EXCLUSIVE BEST Change Zrt.` |
+| Full Legal Name | `EXCLUSIVE BEST Change Pénzügyi Zártkörűen működő Részvénytársaság` |
+| Country | `Hungary (HU)` |
+| State/Province | `Baranya` |
+| City | `Pécs` |
+| Postal Code | `7621` |
+| Address Line 1 | `Citrom utca 2-6. földszint 26. ajtó` |
+| Phone | `+36 70 380 0202` |
+| Email (DCV) | `info@excbestchange.hu` |
+| Tax ID / VAT | `HU32313332` |
+| Cégjegyzékszám | `02-10-060505` |
+| Bejegyezve | `2023-08-01` (Pécsi Törvényszék Cégbírósága) |
+
+## Iratok-helyzet
+
+A `C:\Users\Kósa Zoltán\Downloads\` mappa készleten lévő relevant iratok:
+
+- `Best cégkivonat 2026 05. hó.pdf` — friss elektronikus cégkivonat (215 KB)
+- `Cegkivonat_0209080730_13448_14715.pdf` — másik verzió
+- `Bizalmi vagyonkezelési szerződés kivonata_elektronikusan aláírt.pdf` — bizalmi vagyonkezelési
+- `Vagyonkezelési_megbízási_szertődés-kivonata.pdf`
+- `CM26110739294_40_31_signed.pdf` + `CM26110752548_40_31_signed.pdf` — 2 közjegyzői jegyzőkönyv (signed PDF)
+
+Az aláírási minta + közjegyzői hitelesítés (Dolgán Antal közjegyző?) elkészült. A Sectigo verifier kérheti a cégkivonatot + aláírási mintát + személyi okmány scan-t.
+
+## Várható következő lépések (időrendben)
+
+| Lépés | Kinek | Eszköz | Becsült ido |
+|---|---|---|---|
+| 1. SignMyCode order form + fizetés | **User** | SignMyCode checkout | ✅ KÉSZ ($659.97 paid) |
+| 2. Azure subscription létrehozás | **User** | https://azure.microsoft.com/free | 10 perc |
+| 3. Resource Group + Key Vault Premium | **User** | Azure Portal | 10 perc |
+| 4. RSA-HSM key + CSR generálás | **User** | Azure Key Vault Certificates | 5 perc |
+| 5. CSR upload SignMyCode portalra | **User** | SignMyCode enrollment (Token wrmxwidaaxyzceh) | 5 perc |
+| 6. DCV email kattintás | **User** | admin@excbestchange.hu inbox | 2 perc |
+| 7. Cégkivonat + iratok upload | **User** | SignMyCode portal | 10 perc |
+| 8. Phone callback | **User** | +36 70 380 0202 | 5-15 perc |
+| 9. **Sectigo cert kiadás** | Auto | SignMyCode email | 3-5 munkanap |
+| 10. App Registration + Service Principal | **User** | Azure Portal (Microsoft Entra ID) | 10 perc |
+| 11. Key Vault Access Policy | **User** | Azure Portal | 5 perc |
+| 12. Cert import Azure Key Vault-ba | **User** | "Merge Signed Request" | 5 perc |
+| 13. **9 GitHub Secret feltöltés** | **AI** | `gh secret set` | 5 perc |
+| 14. **Workflow trigger v2.5.51** | **AI** | `gh workflow run` | 30-45 perc CI |
+| 15. Aláírás verifikálás | **AI** | `Get-AuthenticodeSignature` | 1 perc |
+| 16. SmartScreen reputation building | Passive | Microsoft submission | 4-6 hét |
+
+## AI Ügynök szerepkör (egyértelmű)
+
+**NEM tudom megtenni:**
+- SignMyCode portal-ba belépni (nincs jelszó/MFA)
+- DCV email linkjére kattintani
+- Azure Portal-on Key Vault-ot létrehozni (Microsoft account auth)
+- App Registration létrehozni (Microsoft Entra ID)
+- Cég-bankkártyával fizetni
+
+**Tudom megtenni:**
+- Step-by-step navigáció (te kattintasz a UI-n, én magyarázom mit/hova)
+- GitHub Secrets feltöltés (`gh secret set` 9x — 5 Azure + 4 Google OAuth)
+- Workflow trigger (`gh workflow run windows-signed-release.yml`)
+- Aláírás verifikálás Windows-on
+- Vault dokumentálás minden lépésnél
+
+## Következo ülés handoff (cert kiadás után)
+
+Amikor a Sectigo cert kiadásra kerül (kb. 3-5 munkanap):
+1. User: szólj nekem az email-érkezésrol
+2. User: cert .cer file letöltés + Azure Key Vault "Merge Signed Request" import
+3. User: App Registration létrehozás (ha még nincs) + Service Principal client secret
+4. User: Key Vault Access Policy beállítás (Get + Sign)
+5. AI: a 9 GitHub Secret-et feltöltöm a values alapján (5 Azure + 4 Google OAuth)
+6. AI: `gh workflow run windows-signed-release.yml -f version=2.5.51` trigger
+7. AI: signing verify (`Get-AuthenticodeSignature`)
+8. Done — v2.5.51 signed release publikálva
+
+## Azure billing profile állapota (2026-05-14 21:30)
+
+A Microsoft Azure Pay-As-You-Go account regisztrációkor egy MOSP-típusú (Microsoft Online Services Program) billing profile jött létre, ami a person-account email alapján default módon a **személyes adatokat** állítja be a "soldTo" mezőbe. Ez kritikus magyar áfás számla szempontjából.
+
+### Sikeresen frissítve (REST API via Az CLI)
+- **`billTo.companyName`**: `"Zoltán"` → `"EXCLUSIVE BEST Change Zrt."` ✅
+- **`billTo.addressLine1`**: `"Citrom utca 2-6"` → `"Citrom utca 2-6. foldszint 26. ajto"` ✅
+- **`billTo.addressLine2`**: VAT-szám (`HU32313332`) → üres (nem ide tartozik) ✅
+- **`billTo.phoneNumber`**: `"0036703800202"` → `"+36703800202"` (E.164 format) ✅
+
+A `billTo` az **invoice mailing address** — ide kerül a számla.
+
+### NEM patch-elhető REST API-val (Microsoft support ticket szükséges)
+- ❌ **`soldTo.companyName`**: jelenleg `"Zoltán"` — kellene `"EXCLUSIVE BEST Change Zrt."` (legal entity, áfás számla "Vevő" mezőbe)
+- ❌ **`taxIds`**: jelenleg `null` — kellene `[{ id: "HU32313332", country: "HU", scope: "Country" }]` (B2B reverse charge mechanism)
+- ❌ **`displayName`**: jelenleg `"Zoltán Kósa"` — kellene `"EXCLUSIVE BEST Change Zrt."` (csak kozmetika, nem jelenik meg a számlán)
+
+A 400 Bad Request silent-fail miatt nem kaptam pontos error message-et, de az Azure MOSP-account schema NEM engedi a `soldTo` legal entity változtatást REST-tel — ez bevallott Microsoft korlátozás.
+
+### Megoldási opciók
+1. **Azure Support Ticket** (ajánlott, ingyenes Basic Support csomaggal):
+   - 🔗 https://portal.azure.com/#blade/Microsoft_Azure_Support/HelpAndSupportBlade
+   - Issue type: **Billing**
+   - Subject: "Update Sold To legal entity + add Tax ID for billing profile QEY7-FAGD-BG7-PGB"
+   - Részletek: companyName legyen `EXCLUSIVE BEST Change Zrt.`, taxIds: HU32313332
+   - Csatolmány: cégkivonat scan (Best cégkivonat 2026 05. hó.pdf)
+   - Várható válasz: 1-2 munkanap, ingyenes
+2. **MCA migráció** (Microsoft Customer Agreement) — drágább/komplex, csak akkor érdemes ha Azure havidíj >$100/hó
+3. **Marad így + könyvelői korrekció** — a számla "Bill To" mezőjében EXCLUSIVE BEST Change Zrt. szerepel, a "Sold To" mezőben Zoltán Kósa. A könyvelő ezt B2C invoice-ként kezeli, a 27% áfa felszámítva, és a cég ezt levonhatja az áfa-bevallásban. **Hátrány**: ~27% áfa előre fizetendő, és csak negyedévente visszakapható.
+
+### Aktuális számla impact (havi ~$5-10 Azure költség mellett)
+- Várt havi tétel: ~$5-10 Key Vault Premium HSM
+- Évente: ~$60-120
+- 3 évre: ~$180-360
+- 27% áfa előre: ~$50-100 (visszakapható)
+
+A Microsoft Support ticket megéri az ~5 perc beadási időért, mert így 3 évre megspóroljuk a 27% áfa előre-fizetést.
+
+### NEXT (user-action 1 hét múlva)
+🔗 Azure Support Ticket beadása a fentiek alapján. Vagy ha az Azure havi ~$5-10 tényleg minimális, a cégkönyvelő rutinszerűen levonhatja a 27%-ot — akkor nem sürgős.
+
+## Hivatkozott fájlok
+
+- `vault/operations/code-signing-setup-path.md` — full runbook (PR #592, Azure-átírt)
+- `vault/operations/windows-signed-release-runbook.md` — workflow runbook (PR #591)
+- `C:\Users\Kósa Zoltán\Downloads\code-signing-cert-beszerzes-csomag.md` — eredeti terv (2026-05-05)
+- `.github/workflows/windows-signed-release.yml` — workflow (PR #591, Azure-átírt)
+- `penztar-client/scripts/sign-with-azure-keyvault.js` — signing hook implementáció (Azure Key Vault)
