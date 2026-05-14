@@ -63,8 +63,9 @@ export async function initDatabase(): Promise<void> {
 
     // --- PRAGMA user_version schema versioning (local-first mandate) ---
     const versionResult = db.exec('PRAGMA user_version');
-    const currentVersion = versionResult.length > 0 && versionResult[0].values.length > 0
-      ? Number(versionResult[0].values[0][0])
+    const firstRow = versionResult[0];
+    const currentVersion = firstRow?.values?.[0]?.[0] != null
+      ? Number(firstRow.values[0]![0])
       : 0;
 
     // --- Local-first tombstone tracking ---
@@ -2241,5 +2242,6 @@ export function logConflict(
 export function getSchemaVersion(): number {
   if (!db) return 0;
   const result = db.exec('PRAGMA user_version');
-  return result.length > 0 && result[0].values.length > 0 ? Number(result[0].values[0][0]) : 0;
+  const firstRow = result[0];
+  return firstRow?.values?.[0]?.[0] != null ? Number(firstRow.values[0]![0]) : 0;
 }
