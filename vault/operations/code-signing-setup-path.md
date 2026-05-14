@@ -1,165 +1,265 @@
 ---
-title: Code Signing Setup Path — Cert → CI → Signed Release
+title: Code Signing Setup Path — Cert → CI → Signed Release (Azure Key Vault Premium HSM)
 type: runbook
 project: Valutavalto-program (BEC ERP)
 created_at: 2026-05-14
+updated_at: 2026-05-14
 valid_until: cert kiadás után 3 év (~2029-05)
 status: ACTIVE — végrehajtás alatt
+hsm_platform: Azure Key Vault Premium HSM (NEM DigiCert KeyLocker — kompatibilitási ok)
 ---
 
 # Code Signing Setup Path — Cert → CI → Signed Release
 
-A windows-signed-release.yml workflow CSAK akkor mukodokepes, ha a teljes 4 lepeses lanc fut:
+A `windows-signed-release.yml` workflow CSAK akkor mukodokepes, ha a teljes **4 lepeses lanc** fut:
 
-1. **Cert acquisition** (Sectigo / DigiCert OV CS — 5-10 nap validation + 4-6 hét reputation)
-2. **KeyLocker bind** (DigiCert KeyLocker activation + .p12 client cert + smctl install)
-3. **GitHub Secrets setup** (10 db — 6 KeyLocker + 4 Google OAuth)
+1. **Cert acquisition** (Sectigo OV CS via SignMyCode — 3-5 nap validation + 4-6 hét reputation building)
+2. **Azure Key Vault Premium HSM setup** (Resource Group + Key Vault + RSA-HSM key + CSR + cert import)
+3. **GitHub Secrets setup** (9 db — 5 Azure + 4 Google OAuth)
 4. **Workflow trigger** (`gh workflow run windows-signed-release.yml`)
 
-A jelenlegi állapot (2026-05-14): **0/4 lépés komplett**. Az alábbi runbook a teljes utat dokumentálja.
+## ⚠️ HSM platform váltás (2026-05-14)
+
+A korábbi terv **DigiCert KeyLocker** volt — ezt elvetettük, mert csak DigiCert-issued cert-ekkel mukodik (forrás: SignMyCode official tutorial). Sectigo OV CS-vel a Microsoft **Azure Key Vault Premium HSM** a hivatalos, Sectigo-jovahagyott alternativa.
+
+| Tétel | DigiCert KeyLocker (elvetve) | Azure Key Vault Premium (új) |
+|---|---|---|
+| Sectigo OV CS (3 év) | $659.97 | $659.97 (változatlan) |
+| HSM platform | $600 / 3 év | ~$180 / 3 év |
+| Tooling | smctl (proprietary) | AzureSignTool (open-source, vcsjones) |
+| **Összesen** | **~$1260** | **~$840** |
 
 ## Audit eredmény (2026-05-14)
 
 | Komponens | Állapot | Forrás |
 |---|---|---|
-| Sectigo OV CS megrendelés | NINCS leadva | `code-signing-cert-beszerzes-csomag.md` csak terv |
-| DigiCert KeyLocker activation | NINCS | nincs `.p12` fájl sehol |
-| Windows cert store CodeSigning EKU | 0 cert | `Get-ChildItem Cert:\CurrentUser\My` üres CodeSigning szűrőre |
-| Lokál PFX/P12 fájlok | 0 darab | Documents/Downloads/OneDrive/Desktop full keresés |
-| smctl.exe telepítve | NINCS | `Get-Command smctl` üres, `C:\Program Files\DigiCert*` nem létezik |
-| GitHub Repo Secrets (signing) | 0/6 | `gh api repos/.../actions/secrets` nincs SM_* |
-| GitHub Repo Secrets (Google OAuth) | 0/4 | nincs GOOGLE_* |
-| GitHub Environment "production" secrets | 0/10 | environment létezik, üres |
-| Workflow file (`.github/workflows/windows-signed-release.yml`) | Implementálva | PR #591 (nyitva) |
+| Sectigo OV CS megrendelés | ✅ **LEADVA** | SignMyCode order SMC1015225S638431, $659.97 paid |
+| Order Token | ✅ `wrmxwidaaxyzceh` | Email visszaigazolás |
+| Azure subscription | ⏳ Folyamatban | User: Azure free tier (~$200 credit, NEM kötelezo) |
+| Azure Key Vault Premium | ⏳ Folyamatban | `kv-valuta-codesign` névvel, West Europe |
+| RSA-HSM key + CSR | ⏳ Folyamatban | Certificate Policy alapján generálandó |
+| CSR upload a SignMyCode portalra | ⏳ Folyamatban | Token wrmxwidaaxyzceh-vel |
+| Sectigo DCV + validation | ⏳ Folyamatban | 3-5 nap (SignMyCode SLA) |
+| App Registration + Access Policy | ⏳ Pending | Service Principal a CI-hez |
+| Cert import Azure-ba | ⏳ Pending | A Sectigo .cer kiadás után |
+| GitHub Repo Secrets (signing) | 0/5 | `AZURE_*` még feltöltendo |
+| GitHub Repo Secrets (Google OAuth) | 0/4 | `GOOGLE_*` még feltöltendo |
+| Workflow file | ✅ Implementálva | PR #591 (Azure-átírás 2026-05-14) |
+| Sign hook | ✅ `sign-with-azure-keyvault.js` | PR #591 (electron-builder hook) |
 
-## 1. Lépés — Sectigo OV Code Signing megrendelés
+## 1. Lépés — Sectigo OV Code Signing megrendelés ✅ KÉSZ
 
-Forrás: `C:\Users\Kósa Zoltán\Downloads\code-signing-cert-beszerzes-csomag.md` (Kósa Zoltán, 2026-05-05)
+**Megrendelés:** SignMyCode (Sectigo Platinum Partner reseller).
 
-### 1.1 Cégadatok bekészítés (Sectigo OV form-hoz)
+- **Order ID:** SMC1015225S638431
+- **Token:** wrmxwidaaxyzceh
+- **Termék:** Sectigo OV Code Signing, 3 év (36 hónap)
+- **Ár:** $659.97 (cégkártyával fizetve, 2026-05-14)
+- **Delivery method:** "Use Existing Token" / BYOH (Bring Your Own HSM) — a kulcs az Azure Key Vault-ban marad
 
-A `code-signing-cert-beszerzes-csomag.md` tartalmazza:
-- Hivatalos cégnév: **EXCLUSIVE BEST Change Zrt.**
-- Cégjegyzékszám: **02-10-060505**
-- Adószám: **32313332-2-02**
-- EU VAT: **HU32313332**
-- Székhely: 7621 Pécs, Citrom utca 2-6. földszint 26. ajtó
-- D-U-N-S szám: TBD (Dun & Bradstreet lookup vagy kérelem)
+A SignMyCode email tartalmazza:
+- Validation team email cím
+- Enrollment portal link (CSR feltöltéshez)
+- DCV email választás link
+- Document upload portal
 
-### 1.2 Hiányzó adatok beszerzése (CSAK ezek után rendelhető)
+## 2. Lépés — Azure Key Vault Premium HSM setup
 
-- [ ] Friss elektronikus cégkivonat (30 napnál nem régebbi, e-Cégjegyzék)
-- [ ] Statisztikai számjel
-- [ ] Vezérigazgató / igazgatóság aláírási joga (cégkivonatból)
-- [ ] D-U-N-S szám (Dun & Bradstreet)
-- [ ] Vezérigazgató személyi igazoló okmány színes scan
-- [ ] DCV email előkészítés (admin@excbestchange.hu vagy hasonló)
+### 2.1 Azure subscription (egyszeri)
 
-### 1.3 Megrendelés platformja
+🔗 https://azure.microsoft.com/free
 
-**Ajánlott:** [Sectigo CodeSigningStore](https://codesigningstore.com/) reseller — olcsóbb mint közvetlenül Sectigo-tól.
+- **Start free** → bejelentkezés Microsoft account-tal (vagy új account a `kosa.zoltan.ebc@gmail.com`-mal)
+- Cégadatok kitöltése (EXCLUSIVE BEST Change Zrt.)
+- Cégkártya hozzáadása (verifikációs ~1 USD lefoglalás, visszaadja)
+- 12 hónap **$200 credit** kap automatikusan + 12 hónap ingyenes szolgáltatások
 
-- Sectigo OV Code Signing — 3 év: $649 (acquireSSL ~$580)
-- DigiCert KeyLocker (cloud HSM) — add-on, ~$80/év
+**Megjegyzés:** A Key Vault Premium tier ~$5/hó. A $200 credit kb. 36 hónapra elég.
 
-Alternatíva: SSL.com OV Code Signing — gyorsabb (3-5 nap), de drágább.
+### 2.2 Resource Group létrehozás
 
-### 1.4 Validation folyamat (5-10 munkanap)
+Azure Portal → **Resource groups** → **+ Create**:
 
-A CA visszaigazol:
-1. **Domain validation** — DCV email a `info@excbestchange.hu`-ra (vagy alternatíva)
-2. **Phone verification** — a cég weboldalán szereplő telefonra hívnak
-3. **Document verification** — cégkivonat, aláírási jog, személyi okmány
-4. **CN review** — `EXCLUSIVE BEST Change Zrt.` mint Subject Common Name
+- **Subscription:** Az imént létrehozott
+- **Resource group:** `rg-valuta-signing`
+- **Region:** `West Europe` (közeli, GDPR-kompatibilis)
+- **Tags:** `purpose=code-signing`, `owner=kosa.zoltan`
 
-### 1.5 Kiadás után
+### 2.3 Key Vault Premium létrehozás
 
-- Sectigo emailben küldi a CSR-aláírási linket
-- DigiCert KeyLocker portal-on a kulcs generálódik (NEM letöltődik — HSM-ben marad)
-- Letöltődik egy `.p12` **kliens authentication** fájl (NEM a signing kulcs!)
-- E-mail tartalmazza a `SM_API_KEY` + `SM_KEYPAIR_ALIAS` értékeket
+Azure Portal → **Create a resource** → **Key Vault**:
 
-## 2. Lépés — DigiCert KeyLocker activation + tools install
+- **Resource group:** `rg-valuta-signing`
+- **Key vault name:** `kv-valuta-codesign` (globálisan egyedi)
+- **Region:** `West Europe`
+- **Pricing tier:** **Premium** ← **KÖTELEZO** (HSM-backed kulcshoz)
+- **Soft delete:** Enabled (90 napos retention)
+- **Purge protection:** Enabled (rendszerszintu biztonság)
 
-### 2.1 KeyLocker portal-on aktiváló lépések
+### 2.4 RSA-HSM kulcs + CSR generálás (Certificate Policy alapján)
 
-1. https://one.digicert.com/keylocker bejelentkezés
-2. **Generate Keypair** → ECDSA P-256 vagy RSA 3072 (Sectigo OV CS-vel kompatibilis)
-3. **Keypair Alias**: `valuta-penztar-sign` (vagy egyéb stabil név)
-4. **Activate Certificate** — Sectigo CSR feltöltés vagy keypair-import
-5. **Generate Client Certificate** → letöltődik `.p12` (kliens auth)
-   - Megjegyzendő jelszót kérdez — ez lesz `SM_CLIENT_CERT_PASSWORD`
+A Sectigo OV CS-hez egy **Certificate signing request (CSR)**-t kell elokészíteni a Key Vault-ban.
 
-### 2.2 Lokális KeyLocker Tools install
+Azure Portal → `kv-valuta-codesign` → **Certificates** → **+ Generate/Import**:
 
-DigiCert ONE → KeyLocker → Downloads → **Windows x64 MSI** letöltés.
+- **Method of Certificate Creation:** **Generate**
+- **Certificate Name:** `valuta-codesign-cert`
+- **Type of Certificate Authority (CA):** **Certificate issued by a non-integrated CA**
+- **Subject:** `CN=EXCLUSIVE BEST Change Zrt., O=EXCLUSIVE BEST Change Zrt., L=Pécs, S=Baranya, C=HU`
+- **DNS Names:** (üres — code signing cert NEM domain-specifikus)
+- **Validity Period (months):** **36** (3 év — de Sectigo automatikusan 460 napra korlátozza)
+- **Content Type:** **PKCS #12**
+- **Lifetime Action Type:** Email all contacts at 80% expiry
+- **Advanced Policy Configuration:**
+  - **Subject Alternative Name (SAN):** üres
+  - **Key Type:** **RSA-HSM** ← **KÖTELEZO** (Sectigo OV CS minimum követelmény)
+  - **Key Size:** **3072** (Sectigo 2026 minimum; 4096 is OK, de lassabb signing)
+  - **Exportable Private Key:** **No** ← **KÖTELEZO** (HSM = nem-exportálható)
+  - **Reuse Key on Renewal:** No
+  - **Enhanced Key Usages (EKU):** `1.3.6.1.5.5.7.3.3` (Code Signing)
 
-```powershell
-# Lokálisan (egyszeri):
-$msi = "$env:USERPROFILE\Downloads\Keylockertools-windows-x64.msi"
-Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /quiet /norestart" -Wait
+**Create** → 30-60 sec.
 
-# Verifikáció
-& "C:\Program Files\DigiCert\DigiCert Keylocker Tools\smctl.exe" healthcheck
-# OK: KeyLocker server reachable
-```
+### 2.5 CSR letöltés
 
-### 2.3 MSI URL kinyerés (CI workflow-hoz)
+Azure Portal → `kv-valuta-codesign` → **Certificates** → `valuta-codesign-cert` → **Certificate Operation** → **Download CSR**.
 
-A DigiCert ONE Downloads oldalon **jobb-klikk → Copy link** a Windows x64 MSI letöltési URL-jén. Ez lesz a `SM_CLIENT_TOOLS_MSI_URL` secret értéke. A URL időnként cserélődik (verzió-upgrade); a runbook utolsó frissítését ellenőrizni.
+Letöltés: `valuta-codesign-cert.csr` (PEM-formátumú szöveges fájl).
 
-## 3. Lépés — GitHub Secrets feltöltés (10 db)
+## 3. Lépés — SignMyCode enrollment + Sectigo validation
 
-### 3.1 Signing secrets (DigiCert KeyLocker — 6 db)
+### 3.1 CSR feltöltés a SignMyCode portalra
+
+A SignMyCode email-ben kapott "Enrollment Link" megnyitása, vagy:
+
+🔗 https://signmycode.com/enrollment-portal/order/SMC1015225S638431
+
+- **Order Token:** `wrmxwidaaxyzceh`
+- **CSR upload:** a 2.5 lépésben letöltött `valuta-codesign-cert.csr` fájlt feltölteni
+- **Validation Type:** OV (Organization Validation)
+- **Common Name:** EXCLUSIVE BEST Change Zrt. (automatikusan kitöltodik a CSR-bol)
+
+### 3.2 DCV (Domain Control Validation)
+
+Választható módok:
+- **Email DCV** (gyors, 5 perc): `admin@excbestchange.hu` (vagy `info@`, `webmaster@`, `postmaster@`, `hostmaster@`) — Sectigo kuld egy email-t verification linkkel
+- **HTTP DCV** (10-30 perc): egy `.txt` fájlt elhelyezni a `https://excbestchange.hu/.well-known/pki-validation/<hash>.txt` URL-en
+- **DNS DCV** (5-30 perc DNS propagation): TXT record a `_sectigo-validation.excbestchange.hu`-ra
+
+**Ajánlott:** Email DCV (ha az `admin@` postafiók muködik).
+
+### 3.3 Document upload
+
+A SignMyCode portal-on a következo iratokat kérik (a 2026-05-05-i csomag alapján már elokészítve):
+
+- ✅ Friss cégkivonat (e-Cégjegyzék, 30 napnál nem régebbi)
+- ✅ Statisztikai számjel (cégkivonatból)
+- ✅ Vezérigazgató aláírási joga (cégkivonatból, képviseleti jogcím)
+- ✅ Vezérigazgató személyi okmány színes scan
+- D-U-N-S szám: TBD (Dun & Bradstreet lookup, ha még nincs)
+
+### 3.4 Phone callback
+
+Sectigo a cég weboldalán szereplo telefonra hív (+36 70 380 0202 — a `valuta.tracker` szerint a cég official phone-ja). Az ügyintézo verifikálja:
+- Cégnév
+- Címet
+- A rendelés szándékát
+
+### 3.5 Cert kiadás (3-5 nap SignMyCode SLA)
+
+A Sectigo email-ben küldi a kiadott cert-et:
+- `valuta-codesign-cert.cer` (PEM-encoded X.509 certificate)
+- Vagy a portal-on letöltheto bundle (a Sectigo intermediate chain-nel)
+
+### 3.6 Cert import az Azure Key Vault-ba
+
+Azure Portal → `kv-valuta-codesign` → **Certificates** → `valuta-codesign-cert` → **Certificate Operation** → **Merge Signed Request**:
+
+- **Certificate file:** a Sectigo-tól kapott `.cer` (vagy `.crt`, `.pem`) fájlt feltölteni
+- **Merge** → 5-10 sec
+
+Most a Key Vault-ban van egy teljes cert-private key pair, ahol a private key **soha nem hagyja el a HSM-et**.
+
+## 4. Lépés — App Registration (Service Principal) + Access Policy
+
+A CI workflow nem human-account-tal autentikál, hanem Service Principal-lal.
+
+### 4.1 App Registration létrehozás
+
+Azure Portal → **Microsoft Entra ID** → **App registrations** → **+ New registration**:
+
+- **Name:** `sp-valuta-codesign-ci`
+- **Supported account types:** "Accounts in this organizational directory only"
+- **Redirect URI:** (üres)
+- **Register**
+
+A regisztráció után az "Overview" oldalon:
+- **Application (client) ID** → ez lesz az `AZURE_CLIENT_ID` secret
+- **Directory (tenant) ID** → ez lesz az `AZURE_TENANT_ID` secret
+
+### 4.2 Client secret létrehozás
+
+App Registration → **Certificates & secrets** → **Client secrets** → **+ New client secret**:
+
+- **Description:** `valuta-codesign-ci-secret`
+- **Expires:** **24 months** (max 2028-05-14)
+- **Add** → MÁSOLD KI azonnal a **Value** mezot (csak egyszer látszik!)
+
+A **Value** lesz az `AZURE_CLIENT_SECRET` secret. A **Secret ID** NEM kell.
+
+### 4.3 Access Policy a Key Vault-ban
+
+Azure Portal → `kv-valuta-codesign` → **Access policies** → **+ Create**:
+
+- **Permissions:**
+  - **Certificate Permissions:** `Get`
+  - **Key Permissions:** `Sign`, `Get`
+- **Principal:** `sp-valuta-codesign-ci` (a Service Principal nevét beírni, kiválasztani a dropdown-ból)
+- **Application:** (üres, nem kell)
+- **Next** → **Create**
+
+⚠️ A **Sign** key permission KÖTELEZO — enélkül az `azuresigntool` 403 Forbidden-t kap.
+
+## 5. Lépés — GitHub Secrets feltöltés (9 db)
+
+### 5.1 Signing secrets (Azure Key Vault — 5 db)
 
 ```bash
-# A .p12 fájlt base64-elj sd:
-$p12Path = "$env:USERPROFILE\Downloads\valuta-keylocker-client.p12"
-$b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($p12Path))
-
-# CLI feltöltés
-gh secret set SM_HOST --body "https://clientauth.one.digicert.com"
-gh secret set SM_API_KEY --body "<KeyLocker portal-ról kapott API key>"
-gh secret set SM_CLIENT_CERT_FILE_B64 --body "$b64"
-gh secret set SM_CLIENT_CERT_PASSWORD --body "<.p12 jelszó>"
-gh secret set SM_KEYPAIR_ALIAS --body "valuta-penztar-sign"
-gh secret set SM_CLIENT_TOOLS_MSI_URL --body "<DigiCert MSI letöltési URL>"
+# Az AI agent (Claude) feltölti, a user-nek nem kell.
+gh secret set AZURE_KEY_VAULT_URI --body "https://kv-valuta-codesign.vault.azure.net/"
+gh secret set AZURE_KEY_VAULT_CERT_NAME --body "valuta-codesign-cert"
+gh secret set AZURE_TENANT_ID --body "<Microsoft Entra Tenant ID — App Registration overview-ról>"
+gh secret set AZURE_CLIENT_ID --body "<Application (client) ID — App Registration overview-ról>"
+gh secret set AZURE_CLIENT_SECRET --body "<Client secret Value — az 4.2-bol kimásolt>"
 ```
 
-### 3.2 Google OAuth secrets (production secret gate — 4 db)
+### 5.2 Google OAuth secrets (production secret gate — 4 db)
 
 ```bash
 # A .env fájlból:
-$env = Get-Content "D:\repo\valutavalto-program\.env"
-$webClientId    = ($env | Where-Object { $_ -match '^GOOGLE_CLIENT_ID=' }) -replace '^GOOGLE_CLIENT_ID=',''
-$webClientSecret    = ($env | Where-Object { $_ -match '^GOOGLE_CLIENT_SECRET=' }) -replace '^GOOGLE_CLIENT_SECRET=',''
-$desktopClientId    = ($env | Where-Object { $_ -match '^GOOGLE_DESKTOP_CLIENT_ID=' }) -replace '^GOOGLE_DESKTOP_CLIENT_ID=',''
-$desktopClientSecret    = ($env | Where-Object { $_ -match '^GOOGLE_DESKTOP_CLIENT_SECRET=' }) -replace '^GOOGLE_DESKTOP_CLIENT_SECRET=',''
-
-gh secret set GOOGLE_CLIENT_ID --body "$webClientId"
-gh secret set GOOGLE_CLIENT_SECRET --body "$webClientSecret"
-gh secret set GOOGLE_DESKTOP_CLIENT_ID --body "$desktopClientId"
-gh secret set GOOGLE_DESKTOP_CLIENT_SECRET --body "$desktopClientSecret"
+gh secret set GOOGLE_CLIENT_ID --body "$(grep '^GOOGLE_CLIENT_ID=' .env | cut -d= -f2-)"
+gh secret set GOOGLE_CLIENT_SECRET --body "$(grep '^GOOGLE_CLIENT_SECRET=' .env | cut -d= -f2-)"
+gh secret set GOOGLE_DESKTOP_CLIENT_ID --body "$(grep '^GOOGLE_DESKTOP_CLIENT_ID=' .env | cut -d= -f2-)"
+gh secret set GOOGLE_DESKTOP_CLIENT_SECRET --body "$(grep '^GOOGLE_DESKTOP_CLIENT_SECRET=' .env | cut -d= -f2-)"
 ```
 
-### 3.3 Verifikáció
+### 5.3 Verifikáció
 
 ```bash
 gh secret list --json name --jq '.[] | .name' | Sort-Object
-# Várt 10 új secret a meglévő 20 mellett (összesen 30):
-#  SM_HOST, SM_API_KEY, SM_CLIENT_CERT_FILE_B64, SM_CLIENT_CERT_PASSWORD,
-#  SM_KEYPAIR_ALIAS, SM_CLIENT_TOOLS_MSI_URL,
+# Várt 9 új secret a meglévo X mellett:
+#  AZURE_KEY_VAULT_URI, AZURE_KEY_VAULT_CERT_NAME, AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET
 #  GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_DESKTOP_CLIENT_ID, GOOGLE_DESKTOP_CLIENT_SECRET
 ```
 
-## 4. Lépés — Workflow trigger + verifikáció
+## 6. Lépés — Workflow trigger + verifikáció
 
-### 4.1 Trigger
+### 6.1 Trigger
 
 ```bash
 gh workflow run windows-signed-release.yml \
   -f version=2.5.51 \
-  -f release_notes="v2.5.51 — first signed production release after cert acquisition" \
+  -f release_notes="v2.5.51 — first signed production release (Sectigo OV CS + Azure Key Vault Premium HSM)" \
   -f publish_release=true
 
 # Watch progress
@@ -168,7 +268,7 @@ gh run watch
 
 Várható runtime: **30-45 perc** (4 párhuzamos build job + signing + upload).
 
-### 4.2 Sikeres lefutás után
+### 6.2 Sikeres lefutás után
 
 ```bash
 # Letöltés
@@ -183,50 +283,50 @@ Get-AuthenticodeSignature .\Penztar-Setup-2.5.51-*.exe
 # TimeStamperCertificate    : (timestamp.digicert.com)
 ```
 
-### 4.3 Distribution
+### 6.3 Distribution
 
-A 4 EXE-t terjesztheted a felhasználóknak (Windows Defender SmartScreen 4-6 hét reputation building után csendes):
+A 4 EXE-t terjesztheted a felhasználóknak:
 - `Penztar-Setup-2.5.51-20260514.exe` (pénztáros klienssel)
 - `Penztar-Eltavolito-2.5.51-20260514.exe` (uninstaller)
-- `Kozponti-Iranyitokozpont-Setup-2.5.51.exe` (irodavezetői munkaállomás)
-- `Arfolyamkeszito-Setup-2.5.51.exe` (RFM főértéktáros)
+- `Kozponti-Iranyitokozpont-Setup-2.5.51.exe` (irodavezetoi munkaállomás)
+- `Arfolyamkeszito-Setup-2.5.51.exe` (RFM foértéktáros)
 
-A `windows-signed-release-sha256.txt` manifestet adj át a kollégáknak verifikálásra (`Get-FileHash` + összehasonlítás).
+A `windows-signed-release-sha256.txt` manifestet add át a kollégáknak verifikálásra (`Get-FileHash` + összehasonlítás).
 
 ## Smart-Screen Reputation Building (4-6 hét)
 
-A first signed releaseből Windows Defender SmartScreen "Unrecognized Publisher" warning-ot ad **a reputation building időszak alatt** (~4-6 hét + min 1000 letöltés). Stratégia:
+A first signed release-bol Windows Defender SmartScreen "Unrecognized Publisher" warning-ot ad **a reputation building idoszak alatt** (~4-6 hét + min 1000 letöltés). Stratégia:
 
-1. **Belső használat** — kollégák gépein telepítés azonnal (User Account Control "Igen" elég, SmartScreen "Run anyway" gomb)
-2. **Microsoft submit** — `https://www.microsoft.com/en-us/wdsi/filesubmission` formon submit-eld minden új installer-t Microsoft-nak felülvizsgálatra (24-48 órán belül whitelistelik OV CS alapján)
+1. **Belso használat** — kollégák gépein telepítés azonnal (UAC "Igen" elég, SmartScreen "Run anyway" gomb)
+2. **Microsoft submit** — `https://www.microsoft.com/en-us/wdsi/filesubmission` form-on submit-eld minden új installer-t (24-48 órán belül whitelistelik OV CS alapján)
 3. **EV CS upgrade** (~$300/év extra) — ha azonnali SmartScreen jó kell, EV (Extended Validation) CS azonnal reputation-os, de drágább
 
 ## Tiltások
 
-- ❌ `ALLOW_UNSIGNED_BUILD=1` használata production release-ként — CSAK fejlesztői debug-hoz.
+- ❌ `ALLOW_UNSIGNED_BUILD=1` használata production release-ként — CSAK fejlesztoi debug-hoz.
 - ❌ Lokálisan készített installer terjesztése felhasználóknak.
-- ❌ `SM_CLIENT_CERT_FILE` (lokális path) — NEM működik CI-en, csak `SM_CLIENT_CERT_FILE_B64` (base64-elt tartalom).
-- ❌ A `.p12` fájl commit-olása a repo-ba (SOHA — gitignore-olva van `*.p12` extension).
-- ❌ A `SM_API_KEY` / `SM_CLIENT_CERT_PASSWORD` log-olása CI-en (a `set -x` típusú parancsok elkerülendők).
+- ❌ A `.p12` / `.pfx` fájl commit-olása a repo-ba (SOHA — gitignore-olva van `*.p12`, `*.pfx` extension).
+- ❌ `AZURE_CLIENT_SECRET` log-olása CI-en (a `set -x` típusú parancsok elkerülendok).
+- ❌ Service Principal-nak felesleges Key Vault permissions (Delete, Update — NEM kell, csak Get + Sign).
+- ❌ Exportable Private Key-vel létrehozott kulcs Key Vault-ban (a HSM-tier értelmét veszti).
+- ❌ DigiCert KeyLocker telepítés — **inkompatibilis** a Sectigo cert-tel, idoveszteség.
 
 ## Aktuális helyzet (2026-05-14)
 
-A workflow infrastruktúra (PR #591) **HASZNÁLHATATLAN**, amíg a 4-lépéses lánc nincs komplett:
-
-| Lépés | Eseménytípus | Becsült idő | Felelős |
+| Lépés | Állapot | Felelos | Várható ido |
 |---|---|---|---|
-| 1. Sectigo OV CS rendelés | User-action | 5-10 munkanap | Kósa Zoltán |
-| 2. KeyLocker activation + tools | User-action | 30 perc | Kósa Zoltán |
-| 3. GitHub Secrets feltöltés | User-action | 15 perc | Kósa Zoltán |
-| 4. Workflow trigger | CI-task | 30-45 perc | Bárki (gh workflow run) |
-
-**Megjegyzés:** A workflow PR (#591) merge-elése előtt vagy után is végrehajtható a cert acquisition. A merge nem blokkolja a használhatóságot, de a `preflight` job a 10 secret hiánya miatt early-exit-elne, ha jelenleg trigger-elnénk.
+| 1. Sectigo OV CS rendelés | ✅ KÉSZ | Kósa Zoltán | — |
+| 2. Azure Key Vault Premium setup | ⏳ User-action | Kósa Zoltán | 30 perc |
+| 3. SignMyCode enrollment + validation | ⏳ User-action + waiting | Kósa Zoltán + Sectigo | 3-5 munkanap |
+| 4. App Registration + Access Policy | ⏳ User-action | Kósa Zoltán | 15 perc |
+| 5. GitHub Secrets feltöltés | ⏳ AI-action | Claude (autonóm) | 5 perc |
+| 6. Workflow trigger | ⏳ AI-action | Claude (autonóm) | 30-45 perc CI |
 
 ## Referencia fájlok
 
-- `C:\Users\Kósa Zoltán\Downloads\code-signing-cert-beszerzes-csomag.md` — cégadat csomag (1. lépéshez)
-- `.github/workflows/windows-signed-release.yml` — workflow definíció (PR #591)
-- `vault/operations/windows-signed-release-runbook.md` — workflow runbook (PR #591)
-- `penztar-client/scripts/sign-with-keylocker.js` — signing hook implementáció
+- `.github/workflows/windows-signed-release.yml` — workflow definíció (PR #591, Azure-átírt)
+- `penztar-client/scripts/sign-with-azure-keyvault.js` — signing hook (AzureSignTool)
 - `penztar-client/electron-builder.json` — signtoolOptions + sign hook reference
 - `installer/build-installer.ps1` — Penztar NSIS build (production secret gate)
+- `vault/operations/windows-signed-release-runbook.md` — workflow runbook
+- `vault/sessions/2026-05-14-sectigo-order-checkpoint.md` — order details + HSM döntés
