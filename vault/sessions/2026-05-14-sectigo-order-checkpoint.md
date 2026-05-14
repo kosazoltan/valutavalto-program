@@ -24,7 +24,7 @@
 | Döntés | Érték | Indok |
 |---|---|---|
 | Reseller | **SignMyCode** (FRISSÍTVE) | 3-5 nap validation (gyorsabb mint CodeSigningStore 4-8 nap), Sectigo Platinum Partner, jobban skálázott automation. Ár ~azonos ($660 vs $658 BYOH-val). |
-| Storage | **DigiCert KeyLocker** (cloud HSM) | CI workflow-kompatibilis, NEM USB token, BYOH = no shipping fee |
+| Storage | **Azure Key Vault Premium HSM** (FRISSÍTVE 2026-05-14 19:50 — DigiCert KeyLocker elvetve!) | DigiCert KeyLocker CSAK DigiCert-issued cert-ekkel mukodik (forrás: SignMyCode tutorial). Sectigo OV CS hivatalos kompatibilis HSM-je az Azure Key Vault Premium. ~$5/hó vs $200/év. |
 | Fizetés | **Cég bankkártya** (számlázás USD-ben) | CodeSigningStore csak USD-ben számláz, EUR-kártya konvertál (~1-3% banki díj) |
 | Cert validity | **3 év (annual re-issuance)** | Iparági policy 2026 Feb: max 460 napos validity → multi-year plan annual re-issue HSM-en automatikus |
 
@@ -56,11 +56,26 @@ A 2026-05-05-i `code-signing-cert-beszerzes-csomag.md` ezeket NEM tartalmazta:
 | **Enrollment Token** ⚠️ | `wrmxwidaaxyzceh` (CSR upload + enrollment-hez) |
 | Dashboard | https://signmycode.com/dashboard/order-detail?odid=BNYD |
 
-### NEXT: DigiCert KeyLocker activation
+### ⚠️ HSM platform váltás (2026-05-14 19:45) — DigiCert KeyLocker ELVETVE
 
-A SignMyCode enrollment NEM indítható el CSR nélkül. A CSR a DigiCert KeyLocker-ben generálódik (HSM-belső, NEM letölthető private key).
+A SignMyCode hivatalos tutorial (`https://signmycode.com/.../how-to-use-digicert-keylocker-with-sectigo`) megerosíti:
 
-URL: https://codesigningstore.com/sectigo-code-signing
+> "DigiCert® KeyLocker can only be utilized for code-signing certificates purchased through CertCentral."
+
+Tehát a Sectigo-vásárolt OV CS-vel a KeyLocker NEM mukodik. **Átállás Azure Key Vault Premium HSM-re** (Sectigo hivatalos jovahagyott alternatíva).
+
+Költségvetés (3 év):
+- KeyLocker: $200/év × 3 = $600
+- Azure Key Vault Premium: ~$5/hó × 36 = ~$180
+- **Megtakarítás: ~$420 / 3 év (~33%)**
+
+### NEXT: Azure Key Vault Premium HSM setup + CSR generálás
+
+A SignMyCode enrollment NEM indítható el CSR nélkül. A CSR az Azure Key Vault-ban generálódik (HSM-belso, NEM letöltheto private key).
+
+Részletes lépések: `vault/operations/code-signing-setup-path.md` (2. és 4. lépés).
+
+URL: https://azure.microsoft.com/free
 
 ### Form-értékek (verifikálva a `Best cégkivonat 2026 05. hó.pdf` 2025-12-14-i cégkivonatból)
 
@@ -93,55 +108,57 @@ Az aláírási minta + közjegyzői hitelesítés (Dolgán Antal közjegyző?) e
 
 ## Várható következő lépések (időrendben)
 
-| Lépés | Kinek | Eszköz | Becsült idő |
+| Lépés | Kinek | Eszköz | Becsült ido |
 |---|---|---|---|
-| 1. Order form kitöltés + fizetés | **User** | CodeSigningStore checkout | 15 perc |
-| 2. DCV email kattintás | **User** | info@excbestchange.hu inbox | 2 perc |
-| 3. Cégkivonat + aláírási minta upload | **User** | Sectigo verifier portal | 10 perc |
-| 4. Phone callback | **User** | +36 70 380 0202 | 5-15 perc |
-| 5. **Sectigo cert kiadás** | Auto | email | 3-5 munkanap |
-| 6. DigiCert KeyLocker megrendelés (külön ~$200/év) | **User + AI** | DigiCert ONE | 30 perc |
-| 7. KeyLocker keypair generálás | **User + AI** | DigiCert portal | 5 perc |
-| 8. CSR átadás Sectigo-nak | **User + AI** | Sectigo "Re-Key" form | 10 perc |
-| 9. Cert importálás KeyLocker-be | Auto | DigiCert + Sectigo | 1 nap |
-| 10. .p12 client cert letöltés | **User** | DigiCert portal | 5 perc |
-| 11. Smctl tools install lokálisan | **User** | MSI install | 5 perc |
-| 12. **10 GitHub Secret feltöltés** | **AI** | `gh secret set` | 5 perc |
-| 13. **Workflow trigger v2.5.51** | **AI** | `gh workflow run` | 30-45 perc CI |
-| 14. Aláírás verifikálás | **AI** | `Get-AuthenticodeSignature` | 1 perc |
-| 15. SmartScreen reputation building | Passive | Microsoft submission | 4-6 hét |
+| 1. SignMyCode order form + fizetés | **User** | SignMyCode checkout | ✅ KÉSZ ($659.97 paid) |
+| 2. Azure subscription létrehozás | **User** | https://azure.microsoft.com/free | 10 perc |
+| 3. Resource Group + Key Vault Premium | **User** | Azure Portal | 10 perc |
+| 4. RSA-HSM key + CSR generálás | **User** | Azure Key Vault Certificates | 5 perc |
+| 5. CSR upload SignMyCode portalra | **User** | SignMyCode enrollment (Token wrmxwidaaxyzceh) | 5 perc |
+| 6. DCV email kattintás | **User** | admin@excbestchange.hu inbox | 2 perc |
+| 7. Cégkivonat + iratok upload | **User** | SignMyCode portal | 10 perc |
+| 8. Phone callback | **User** | +36 70 380 0202 | 5-15 perc |
+| 9. **Sectigo cert kiadás** | Auto | SignMyCode email | 3-5 munkanap |
+| 10. App Registration + Service Principal | **User** | Azure Portal (Microsoft Entra ID) | 10 perc |
+| 11. Key Vault Access Policy | **User** | Azure Portal | 5 perc |
+| 12. Cert import Azure Key Vault-ba | **User** | "Merge Signed Request" | 5 perc |
+| 13. **9 GitHub Secret feltöltés** | **AI** | `gh secret set` | 5 perc |
+| 14. **Workflow trigger v2.5.51** | **AI** | `gh workflow run` | 30-45 perc CI |
+| 15. Aláírás verifikálás | **AI** | `Get-AuthenticodeSignature` | 1 perc |
+| 16. SmartScreen reputation building | Passive | Microsoft submission | 4-6 hét |
 
 ## AI Ügynök szerepkör (egyértelmű)
 
 **NEM tudom megtenni:**
-- Sectigo/CodeSigningStore portal-ba belépni (nincs jelszó/MFA)
+- SignMyCode portal-ba belépni (nincs jelszó/MFA)
 - DCV email linkjére kattintani
-- DigiCert portal-on keypair-t generálni
-- .p12 cert-et letölteni
+- Azure Portal-on Key Vault-ot létrehozni (Microsoft account auth)
+- App Registration létrehozni (Microsoft Entra ID)
 - Cég-bankkártyával fizetni
 
 **Tudom megtenni:**
 - Step-by-step navigáció (te kattintasz a UI-n, én magyarázom mit/hova)
-- GitHub Secrets feltöltés (`gh secret set` 10x)
+- GitHub Secrets feltöltés (`gh secret set` 9x — 5 Azure + 4 Google OAuth)
 - Workflow trigger (`gh workflow run windows-signed-release.yml`)
 - Aláírás verifikálás Windows-on
 - Vault dokumentálás minden lépésnél
 
-## Következő ülés handoff (cert kiadás után)
+## Következo ülés handoff (cert kiadás után)
 
 Amikor a Sectigo cert kiadásra kerül (kb. 3-5 munkanap):
-1. User: szólj nekem az email-érkezésről
-2. AI: vezetem a DigiCert KeyLocker activation flow-t
-3. User: a portal-ban kattint (én vezetlek)
-4. AI: a 10 GitHub Secret-et feltöltöm a values alapján
-5. AI: `gh workflow run` trigger
-6. AI: signing verify
-7. Done — v2.5.51 signed release publikálva
+1. User: szólj nekem az email-érkezésrol
+2. User: cert .cer file letöltés + Azure Key Vault "Merge Signed Request" import
+3. User: App Registration létrehozás (ha még nincs) + Service Principal client secret
+4. User: Key Vault Access Policy beállítás (Get + Sign)
+5. AI: a 9 GitHub Secret-et feltöltöm a values alapján (5 Azure + 4 Google OAuth)
+6. AI: `gh workflow run windows-signed-release.yml -f version=2.5.51` trigger
+7. AI: signing verify (`Get-AuthenticodeSignature`)
+8. Done — v2.5.51 signed release publikálva
 
 ## Hivatkozott fájlok
 
-- `vault/operations/code-signing-setup-path.md` — full runbook (PR #592)
+- `vault/operations/code-signing-setup-path.md` — full runbook (PR #592, Azure-átírt)
 - `vault/operations/windows-signed-release-runbook.md` — workflow runbook (PR #591)
 - `C:\Users\Kósa Zoltán\Downloads\code-signing-cert-beszerzes-csomag.md` — eredeti terv (2026-05-05)
-- `.github/workflows/windows-signed-release.yml` — workflow (PR #591)
-- `penztar-client/scripts/sign-with-keylocker.js` — signing hook implementáció
+- `.github/workflows/windows-signed-release.yml` — workflow (PR #591, Azure-átírt)
+- `penztar-client/scripts/sign-with-azure-keyvault.js` — signing hook implementáció (Azure Key Vault)
