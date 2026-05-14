@@ -63,6 +63,10 @@ jobs:
       build_date: ${{ steps.resolve.outputs.build_date }}
       has_signing_secrets: ${{ steps.secrets.outputs.has_signing }}
     steps:
+      - name: Enable git longpaths (Windows MAX_PATH workaround)
+        shell: pwsh
+        run: git config --global core.longpaths true
+
       - name: Checkout
         uses: actions/checkout@v5
 
@@ -125,6 +129,10 @@ jobs:
     outputs:
       jar_name: ${{ steps.mvn.outputs.jar_name }}
     steps:
+      - name: Enable git longpaths (Windows MAX_PATH workaround)
+        shell: pwsh
+        run: git config --global core.longpaths true
+
       - name: Checkout
         uses: actions/checkout@v5
 
@@ -159,6 +167,10 @@ jobs:
     needs: [preflight, build-backend]
     timeout-minutes: 60
     steps:
+      - name: Enable git longpaths (Windows MAX_PATH workaround)
+        shell: pwsh
+        run: git config --global core.longpaths true
+
       - name: Checkout
         uses: actions/checkout@v5
 
@@ -300,6 +312,10 @@ jobs:
     needs: preflight
     timeout-minutes: 45
     steps:
+      - name: Enable git longpaths (Windows MAX_PATH workaround)
+        shell: pwsh
+        run: git config --global core.longpaths true
+
       - name: Checkout
         uses: actions/checkout@v5
 
@@ -376,6 +392,10 @@ jobs:
     needs: preflight
     timeout-minutes: 45
     steps:
+      - name: Enable git longpaths (Windows MAX_PATH workaround)
+        shell: pwsh
+        run: git config --global core.longpaths true
+
       - name: Checkout
         uses: actions/checkout@v5
 
@@ -452,6 +472,10 @@ jobs:
     needs: [preflight, build-penztar, build-kozponti, build-arfolyamkeszito]
     if: github.event.inputs.publish_release == 'true'
     steps:
+      - name: Enable git longpaths (Windows MAX_PATH workaround)
+        shell: pwsh
+        run: git config --global core.longpaths true
+
       - name: Checkout
         uses: actions/checkout@v5
 
