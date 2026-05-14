@@ -27,7 +27,7 @@
     ],
     "artifactName": "Penztar-Setup-${version}.exe",
     "signtoolOptions": {
-      "sign": "scripts/sign-with-keylocker.js",
+      "sign": "scripts/sign-with-azure-keyvault.js",
       "signingHashAlgorithms": [
         "sha256"
       ],

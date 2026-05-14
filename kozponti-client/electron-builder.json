@@ -19,7 +19,13 @@
         "arch": ["x64"]
       }
     ],
-    "artifactName": "Kozponti-Iranyitokozpont-Setup-${version}.exe"
+    "artifactName": "Kozponti-Iranyitokozpont-Setup-${version}.exe",
+    "signtoolOptions": {
+      "sign": "../penztar-client/scripts/sign-with-azure-keyvault.js",
+      "signingHashAlgorithms": ["sha256"],
+      "rfc3161TimeStampServer": "http://timestamp.digicert.com"
+    },
+    "verifyUpdateCodeSignature": true
   },
   "nsis": {
     "oneClick": false,

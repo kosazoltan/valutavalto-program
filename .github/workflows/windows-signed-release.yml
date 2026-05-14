@@ -1,0 +1,534 @@
+name: Windows Signed Release (v2.x)
+
+# Production-grade signed installer build a Valutavalto Penztar Rendszerhez.
+#
+# Eredmenyek (GitHub Release artifact-okkent):
+#   - Penztar-Setup-<version>-<date>.exe           (NSIS, ~280 MB, kod-alairva)
+#   - Penztar-Eltavolito-<version>-<date>.exe      (NSIS uninstaller, ~60 KB)
+#   - Kozponti-Iranyitokozpont-Setup-<version>.exe (~100 MB, kod-alairva)
+#   - Arfolyamkeszito-Setup-<version>.exe          (~100 MB, kod-alairva)
+#   - SHA-256 manifest (windows-signed-release-sha256.txt)
+#
+# Alairas: Sectigo OV CS via Azure Key Vault Premium HSM, az AzureSignTool (vcsjones) eszkozzel.
+# Forras: penztar-client/scripts/sign-with-azure-keyvault.js (electron-builder signtoolOptions hook).
+#
+# A 2026-05-14-i felulvizsgalat: a DigiCert KeyLocker NEM kompatibilis a Sectigo cert-tel
+# (csak DigiCert-issued cert-ekkel). Az Azure Key Vault Premium HSM a hivatalos Sectigo-jovahagyott
+# alternativa (~$80/3 ev vs ~$600/3 ev KeyLocker).
+#
+# Hivatkozas:
+#   - https://docs.sectigo.com/scm/scm-administrator/configuring-azure-key-vault.html
+#   - https://github.com/vcsjones/azuresigntool
+#   - vault/operations/code-signing-setup-path.md
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Verzio (uresen marad -> package.json-bol olvas)'
+        required: false
+        default: ''
+      release_notes:
+        description: 'Release notes (markdown, opcionalis)'
+        required: false
+        default: 'Production signed release.'
+      publish_release:
+        description: 'GitHub Release-be felluploadolja? (false = csak artifact)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+permissions:
+  contents: write  # GitHub Release-hez
+  id-token: write  # SLSA attestation-hoz (jovoben)
+
+concurrency:
+  group: windows-signed-release
+  cancel-in-progress: false  # release build SOHA nem cancel-eli onmagat
+
+env:
+  NODE_VERSION: '20'
+  JAVA_VERSION: '21'
+  DOTNET_VERSION: '8.0'
+
+jobs:
+  preflight:
+    name: Preflight — secret + workspace check
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      build_date: ${{ steps.resolve.outputs.build_date }}
+      has_signing_secrets: ${{ steps.secrets.outputs.has_signing }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve version + build date
+        id: resolve
+        shell: pwsh
+        run: |
+          $version = "${{ github.event.inputs.version }}"
+          if (-not $version) {
+            $pkg = Get-Content package.json | ConvertFrom-Json
+            $version = $pkg.version
+          }
+          $buildDate = Get-Date -Format "yyyyMMdd"
+          Write-Host "version=$version, build_date=$buildDate"
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "build_date=$buildDate" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Verify signing + production secrets present
+        id: secrets
+        shell: pwsh
+        env:
+          AZURE_KEY_VAULT_URI_PRESENT: ${{ secrets.AZURE_KEY_VAULT_URI != '' }}
+          AZURE_KEY_VAULT_CERT_NAME_PRESENT: ${{ secrets.AZURE_KEY_VAULT_CERT_NAME != '' }}
+          AZURE_TENANT_ID_PRESENT: ${{ secrets.AZURE_TENANT_ID != '' }}
+          AZURE_CLIENT_ID_PRESENT: ${{ secrets.AZURE_CLIENT_ID != '' }}
+          AZURE_CLIENT_SECRET_PRESENT: ${{ secrets.AZURE_CLIENT_SECRET != '' }}
+          GOOGLE_CLIENT_ID_PRESENT: ${{ secrets.GOOGLE_CLIENT_ID != '' }}
+          GOOGLE_CLIENT_SECRET_PRESENT: ${{ secrets.GOOGLE_CLIENT_SECRET != '' }}
+          GOOGLE_DESKTOP_CLIENT_ID_PRESENT: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID != '' }}
+          GOOGLE_DESKTOP_CLIENT_SECRET_PRESENT: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET != '' }}
+        run: |
+          # 9 secret-et ellenorzunk:
+          #   5 Azure Key Vault (signing): URI, CERT_NAME, TENANT_ID, CLIENT_ID, CLIENT_SECRET
+          #   4 Google OAuth (build-installer.ps1 production secret gate): WEB + DESKTOP client + secret
+          # Hianyzo secret early-exit -> NEM teszti a felhasznalo a 30 perces build-et fail-elni.
+          $missing = @()
+          if ($env:AZURE_KEY_VAULT_URI_PRESENT -ne 'true') { $missing += 'AZURE_KEY_VAULT_URI' }
+          if ($env:AZURE_KEY_VAULT_CERT_NAME_PRESENT -ne 'true') { $missing += 'AZURE_KEY_VAULT_CERT_NAME' }
+          if ($env:AZURE_TENANT_ID_PRESENT -ne 'true') { $missing += 'AZURE_TENANT_ID' }
+          if ($env:AZURE_CLIENT_ID_PRESENT -ne 'true') { $missing += 'AZURE_CLIENT_ID' }
+          if ($env:AZURE_CLIENT_SECRET_PRESENT -ne 'true') { $missing += 'AZURE_CLIENT_SECRET' }
+          if ($env:GOOGLE_CLIENT_ID_PRESENT -ne 'true') { $missing += 'GOOGLE_CLIENT_ID' }
+          if ($env:GOOGLE_CLIENT_SECRET_PRESENT -ne 'true') { $missing += 'GOOGLE_CLIENT_SECRET' }
+          if ($env:GOOGLE_DESKTOP_CLIENT_ID_PRESENT -ne 'true') { $missing += 'GOOGLE_DESKTOP_CLIENT_ID' }
+          if ($env:GOOGLE_DESKTOP_CLIENT_SECRET_PRESENT -ne 'true') { $missing += 'GOOGLE_DESKTOP_CLIENT_SECRET' }
+          if ($missing.Count -gt 0) {
+            Write-Host "::error::Hianyzo GitHub Secret(ek) ($($missing.Count) db). Beallitando: Settings > Secrets > Actions:"
+            foreach ($s in $missing) { Write-Host "::error::  - $s" }
+            Write-Host "::error::Reszletek: vault/operations/code-signing-setup-path.md"
+            "has_signing=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            exit 1
+          }
+          Write-Host "All 9 required secrets present (Azure Key Vault 5 + Google OAuth 4)."
+          "has_signing=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+  build-backend:
+    name: Build Backend JAR (Maven)
+    runs-on: windows-latest
+    needs: preflight
+    outputs:
+      jar_name: ${{ steps.mvn.outputs.jar_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Maven package (skip tests — separate CI runs them)
+        id: mvn
+        working-directory: backend
+        shell: pwsh
+        run: |
+          ./mvnw -B package -DskipTests --no-transfer-progress
+          $jar = Get-ChildItem target/valuta-backend-*.jar | Where-Object { $_.Name -notlike "*SNAPSHOT*" } | Select-Object -Last 1
+          Write-Host "Built: $($jar.FullName) ($($jar.Length) bytes)"
+          "jar_name=$($jar.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Upload backend JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar-${{ needs.preflight.outputs.version }}
+          path: backend/target/valuta-backend-*.jar
+          if-no-files-found: error
+          retention-days: 14
+
+  build-penztar:
+    name: Build Penztar Installer (NSIS + signed Electron via Azure Key Vault)
+    runs-on: windows-latest
+    needs: [preflight, build-backend]
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            penztar-client/package-lock.json
+            frontend-react/package-lock.json
+
+      - name: Set up .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install AzureSignTool (vcsjones)
+        shell: pwsh
+        run: |
+          # AzureSignTool: dotnet global tool, Azure Key Vault Premium HSM signing-hez.
+          # https://github.com/vcsjones/azuresigntool
+          dotnet tool install --global AzureSignTool
+          # Verifikacio
+          azuresigntool --version
+
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis -y --version=3.10
+          "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Construct .env from GitHub Secrets (production secret gate)
+        shell: pwsh
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
+          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
+        run: |
+          # build-installer.ps1 production secret gate .env file-bol olvas:
+          # GOOGLE_CLIENT_ID, GOOGLE_DESKTOP_CLIENT_ID, GOOGLE_DESKTOP_CLIENT_SECRET.
+          # Hianyzo .env -> throw 'PRODUCTION SECRET GATE'.
+          # CI-en a .env file-t a GitHub Secrets-bol szerkesztjuk ossze.
+          $envContent = @(
+            "GOOGLE_CLIENT_ID=$env:GOOGLE_CLIENT_ID",
+            "GOOGLE_CLIENT_SECRET=$env:GOOGLE_CLIENT_SECRET",
+            "GOOGLE_DESKTOP_CLIENT_ID=$env:GOOGLE_DESKTOP_CLIENT_ID",
+            "GOOGLE_DESKTOP_CLIENT_SECRET=$env:GOOGLE_DESKTOP_CLIENT_SECRET"
+          ) -join "`n"
+          $envContent | Out-File -FilePath ".env" -Encoding utf8 -NoNewline
+          Write-Host ".env constructed from secrets (values not logged)"
+
+      - name: Download backend JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar-${{ needs.preflight.outputs.version }}
+          path: backend/target/
+
+      - name: Stage backend JAR (manualisan, mert build-installer.ps1 -SkipBackendBuild)
+        shell: pwsh
+        run: |
+          $stageBackend = "installer/build/stage/backend"
+          New-Item -ItemType Directory -Force -Path $stageBackend | Out-Null
+          $jar = Get-ChildItem backend/target/valuta-backend-*.jar |
+                 Where-Object { $_.Name -notlike "*sources*" -and $_.Name -notlike "*javadoc*" } |
+                 Sort-Object LastWriteTime | Select-Object -Last 1
+          if (-not $jar) {
+            Write-Host "::error::Backend JAR nem talalhato"
+            exit 1
+          }
+          Copy-Item -Path $jar.FullName -Destination "$stageBackend/valuta-backend.jar" -Force
+          Write-Host "Backend JAR staged: $($jar.Name)"
+
+      - name: Install dependencies (root + penztar-client + frontend-react)
+        shell: pwsh
+        run: |
+          npm ci --no-audit --no-fund
+          Push-Location penztar-client
+          npm ci --no-audit --no-fund
+          Pop-Location
+          Push-Location frontend-react
+          npm ci --legacy-peer-deps --no-audit --no-fund
+          Pop-Location
+
+      - name: Build Penztar installer (signed via Azure Key Vault)
+        shell: pwsh
+        env:
+          CODE_SIGN_ENABLED: '1'
+          AZURE_KEY_VAULT_URI: ${{ secrets.AZURE_KEY_VAULT_URI }}
+          AZURE_KEY_VAULT_CERT_NAME: ${{ secrets.AZURE_KEY_VAULT_CERT_NAME }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: |
+          Push-Location installer
+          ./build-installer.ps1 -SkipDownloads -SkipBackendBuild
+          Pop-Location
+
+      - name: Build Eltavolito (NSIS uninstaller, no signing for NSIS-only)
+        shell: pwsh
+        run: |
+          Push-Location installer
+          ./build-cleanup.ps1
+          Pop-Location
+
+      - name: Verify Penztar installer signature
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem installer/build/Penztar-Setup-*.exe |
+                       Sort-Object LastWriteTime | Select-Object -Last 1
+          if (-not $installer) {
+            Write-Host "::error::Penztar installer nem talalhato"
+            exit 1
+          }
+          Write-Host "Verifying: $($installer.FullName)"
+          $sig = Get-AuthenticodeSignature -FilePath $installer.FullName
+          Write-Host "Signature status: $($sig.Status)"
+          Write-Host "Signer: $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne 'Valid') {
+            Write-Host "::error::Penztar installer NEM valid alairas — Status=$($sig.Status)"
+            exit 1
+          }
+
+      - name: Upload Penztar artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: penztar-signed-${{ needs.preflight.outputs.version }}
+          path: |
+            installer/build/Penztar-Setup-*.exe
+            installer/build/Penztar-Eltavolito-*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  build-kozponti:
+    name: Build Kozponti Iranyitokozpont (signed via Azure Key Vault)
+    runs-on: windows-latest
+    needs: preflight
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            kozponti-client/package-lock.json
+            frontend-react/package-lock.json
+
+      - name: Set up .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install AzureSignTool
+        shell: pwsh
+        run: dotnet tool install --global AzureSignTool
+
+      - name: Install dependencies (kozponti + frontend-react)
+        shell: pwsh
+        run: |
+          npm ci --no-audit --no-fund
+          Push-Location kozponti-client
+          npm ci --no-audit --no-fund
+          Pop-Location
+          Push-Location frontend-react
+          npm ci --legacy-peer-deps --no-audit --no-fund
+          Pop-Location
+
+      - name: Build Kozponti installer (signed via Azure Key Vault)
+        shell: pwsh
+        env:
+          CODE_SIGN_ENABLED: '1'
+          AZURE_KEY_VAULT_URI: ${{ secrets.AZURE_KEY_VAULT_URI }}
+          AZURE_KEY_VAULT_CERT_NAME: ${{ secrets.AZURE_KEY_VAULT_CERT_NAME }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        working-directory: kozponti-client
+        run: npm run package
+
+      - name: Verify Kozponti signature
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem kozponti-client/release/Kozponti-Iranyitokozpont-Setup-*.exe |
+                       Sort-Object LastWriteTime | Select-Object -Last 1
+          if (-not $installer) {
+            Write-Host "::error::Kozponti installer nem talalhato"
+            exit 1
+          }
+          Write-Host "Verifying: $($installer.FullName)"
+          $sig = Get-AuthenticodeSignature -FilePath $installer.FullName
+          Write-Host "Signature status: $($sig.Status)"
+          if ($sig.Status -ne 'Valid') {
+            Write-Host "::error::Kozponti installer NEM valid alairas — Status=$($sig.Status)"
+            exit 1
+          }
+
+      - name: Upload Kozponti artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kozponti-signed-${{ needs.preflight.outputs.version }}
+          path: kozponti-client/release/Kozponti-Iranyitokozpont-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  build-arfolyamkeszito:
+    name: Build Arfolyamkeszito (signed via Azure Key Vault)
+    runs-on: windows-latest
+    needs: preflight
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            arfolyam-keszito-client/package-lock.json
+            frontend-react/package-lock.json
+
+      - name: Set up .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install AzureSignTool
+        shell: pwsh
+        run: dotnet tool install --global AzureSignTool
+
+      - name: Install dependencies (arfolyamkeszito + frontend-react)
+        shell: pwsh
+        run: |
+          npm ci --no-audit --no-fund
+          Push-Location arfolyam-keszito-client
+          npm ci --no-audit --no-fund
+          Pop-Location
+          Push-Location frontend-react
+          npm ci --legacy-peer-deps --no-audit --no-fund
+          Pop-Location
+
+      - name: Build Arfolyamkeszito installer (signed via Azure Key Vault)
+        shell: pwsh
+        env:
+          CODE_SIGN_ENABLED: '1'
+          AZURE_KEY_VAULT_URI: ${{ secrets.AZURE_KEY_VAULT_URI }}
+          AZURE_KEY_VAULT_CERT_NAME: ${{ secrets.AZURE_KEY_VAULT_CERT_NAME }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        working-directory: arfolyam-keszito-client
+        run: npm run package
+
+      - name: Verify Arfolyamkeszito signature
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem arfolyam-keszito-client/release/Arfolyamkeszito-Setup-*.exe |
+                       Sort-Object LastWriteTime | Select-Object -Last 1
+          if (-not $installer) {
+            Write-Host "::error::Arfolyamkeszito installer nem talalhato"
+            exit 1
+          }
+          Write-Host "Verifying: $($installer.FullName)"
+          $sig = Get-AuthenticodeSignature -FilePath $installer.FullName
+          Write-Host "Signature status: $($sig.Status)"
+          if ($sig.Status -ne 'Valid') {
+            Write-Host "::error::Arfolyamkeszito installer NEM valid alairas — Status=$($sig.Status)"
+            exit 1
+          }
+
+      - name: Upload Arfolyamkeszito artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: arfolyamkeszito-signed-${{ needs.preflight.outputs.version }}
+          path: arfolyam-keszito-client/release/Arfolyamkeszito-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-release:
+    name: Publish GitHub Release + SHA-256 manifest
+    runs-on: windows-latest
+    needs: [preflight, build-penztar, build-kozponti, build-arfolyamkeszito]
+    if: github.event.inputs.publish_release == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts/
+
+      - name: Flatten artifacts + generate SHA-256 manifest
+        shell: pwsh
+        run: |
+          $flatDir = "release-flat"
+          New-Item -ItemType Directory -Force -Path $flatDir | Out-Null
+          Get-ChildItem release-artifacts -Recurse -Filter "*.exe" | ForEach-Object {
+            Copy-Item $_.FullName -Destination $flatDir -Force
+          }
+          Get-ChildItem release-artifacts -Recurse -Filter "*.jar" | ForEach-Object {
+            Copy-Item $_.FullName -Destination $flatDir -Force
+          }
+          $manifest = "$flatDir/windows-signed-release-sha256.txt"
+          "# Valutavalto v${{ needs.preflight.outputs.version }} signed release SHA-256" | Out-File $manifest
+          "# Build date: ${{ needs.preflight.outputs.build_date }}" | Out-File $manifest -Append
+          "# Git SHA: ${{ github.sha }}" | Out-File $manifest -Append
+          "# Signing: Sectigo OV CS via Azure Key Vault Premium HSM (AzureSignTool)" | Out-File $manifest -Append
+          "" | Out-File $manifest -Append
+          Get-ChildItem $flatDir -Include "*.exe","*.jar" -File | Sort-Object Name | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "${hash}  $($_.Name)" | Out-File $manifest -Append
+          }
+          Write-Host "=== Manifest ==="
+          Get-Content $manifest
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.preflight.outputs.version }}
+          name: 'v${{ needs.preflight.outputs.version }} — Production signed release'
+          body: |
+            ${{ github.event.inputs.release_notes }}
+
+            ## Artifacts (mind Sectigo OV CS-szel alairva, Azure Key Vault Premium HSM)
+
+            - `Penztar-Setup-${{ needs.preflight.outputs.version }}-${{ needs.preflight.outputs.build_date }}.exe` — penztaros kliens
+            - `Penztar-Eltavolito-${{ needs.preflight.outputs.version }}-${{ needs.preflight.outputs.build_date }}.exe` — uninstaller
+            - `Kozponti-Iranyitokozpont-Setup-${{ needs.preflight.outputs.version }}.exe` — kozponti irodavezetoi munkaallomas
+            - `Arfolyamkeszito-Setup-${{ needs.preflight.outputs.version }}.exe` — RFM-keszito (foertektaros)
+
+            ## Verifikalas
+            ```powershell
+            Get-AuthenticodeSignature .\Penztar-Setup-*.exe
+            # Status: Valid
+            # SignerCertificate.Subject: CN=EXCLUSIVE BEST Change Zrt., ...
+            ```
+
+            SHA-256 hash-ek a `windows-signed-release-sha256.txt`-ben.
+
+            Git SHA: ${{ github.sha }}
+          files: |
+            release-flat/*.exe
+            release-flat/*.jar
+            release-flat/windows-signed-release-sha256.txt
+          draft: false
+          prerelease: false
+
+  summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [preflight, build-penztar, build-kozponti, build-arfolyamkeszito]
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## Windows Signed Release — v${{ needs.preflight.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build date:** ${{ needs.preflight.outputs.build_date }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Git SHA:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Signing:** Sectigo OV CS via Azure Key Vault Premium HSM (AzureSignTool)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Penztar:** ${{ needs.build-penztar.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Kozponti:** ${{ needs.build-kozponti.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Arfolyamkeszito:** ${{ needs.build-arfolyamkeszito.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **GitHub Release:** ${{ github.event.inputs.publish_release }}" >> $GITHUB_STEP_SUMMARY
