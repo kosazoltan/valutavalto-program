@@ -474,6 +474,14 @@ export default function CashierTransactionPage() {
   )
 
   const handleSubmit = useCallback(async () => {
+    // Codex P1 #586 iter-5: double-submit guard — ha mar fut egy submit (pl. degradalt AML
+    // audit write in flight), a masodik kattintas/Enter NEM indithat parhuzamos submit-et.
+    // A button.disabled mar megakadalyozza, de hotkey/Enter bypass-olhatja.
+    if (isSubmitting) {
+      logger.warn('CashierTransactionPage', 'Duplicate handleSubmit ignored (already submitting)')
+      return
+    }
+
     // Collect rows with any input (currency code typed)
     const touchedRows = rows.filter((r) => r.currencyCode.length > 0)
     if (touchedRows.length === 0) return
@@ -584,11 +592,11 @@ export default function CashierTransactionPage() {
         toast.info('Tranzakció megszakítva', 'Várj amíg helyreáll a hálózat, vagy próbáld újra később.')
         return
       }
-      // Codex P1 #586 iter-3 fix: audit log persistence MUST succeed before allowing submit.
-      // Korabban a `void recordLocalAuditEvent(...)` fire-and-forget volt — ha az audit
-      // mentes nem sikerul (electronAPI hibajat, disk full, sql error), a tranzakcio megis
-      // folytatodik audit nyom nelkul. Ez compliance-szabalysertes (degradalt mod nyomtalan).
-      // Megoldas: await + ha null/exception, fail-closed.
+      // Codex P1 #586 iter-5 fix: setIsSubmitting(true) ELŐTT az audit write await, hogy a
+      // ket-katintas / duplikalt-keyboard NE indithasson parhuzamos handleSubmit-et amig
+      // az audit write fut. A handleSubmit elejen az isSubmitting guard mar visszater
+      // ha mar fut egy submit. Itt explicit setIsSubmitting(true) az audit write elott.
+      setIsSubmitting(true)
       try {
         const auditId = await recordLocalAuditEvent({
           entityType: 'aml_check',
@@ -606,7 +614,7 @@ export default function CashierTransactionPage() {
         })
         if (auditId == null) {
           // Electron API NEM elerheto (NEM Electron, vagy bridge nincs feltoltve).
-          // Browser-szal fail-closed: degradalt mod NEM audit-elheto, NEM folytatjuk.
+          setIsSubmitting(false)
           toast.error(
             'Audit napló nem érhető el',
             'Degradált AML módban a tranzakció CSAK Electron klienssel folytathatható (audit naplóhoz). Kérjük indítsa el a pénztár klienst.',
@@ -614,6 +622,7 @@ export default function CashierTransactionPage() {
           return
         }
       } catch (auditErr) {
+        setIsSubmitting(false)
         logger.error('CashierTransactionPage', 'AML degradalt audit log persist FAILED — tranzakcio blokkolva', auditErr)
         toast.error(
           'Audit napló mentés sikertelen',
@@ -621,9 +630,10 @@ export default function CashierTransactionPage() {
         )
         return
       }
+    } else {
+      // Non-degraded path: setIsSubmitting itt (mint korabban).
+      setIsSubmitting(true)
     }
-
-    setIsSubmitting(true)
 
     try {
       const customerData = cd ? {
