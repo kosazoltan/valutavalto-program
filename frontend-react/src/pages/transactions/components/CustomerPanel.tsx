@@ -47,6 +47,41 @@ const LEVEL_DESCRIPTIONS: Record<IdentificationLevel, string> = {
   FULL: 'Teljes szemelyes adatok',
 }
 
+/**
+ * Codex P1 #586 iter-4 fix: a degradalt-mod kvalifikalo helper.
+ *
+ * <p>Visszater TRUE ha az axios error halozati / szerver-elerhetetlen hibara utal:
+ * <ul>
+ *   <li>NINCS response (fail-no-response) ES NEM canceled/client-error: network down, timeout, dns.</li>
+ *   <li>5xx response: 500-599 — intermittens backend hibak, ujraprobalhatok.</li>
+ * </ul>
+ * Auth (401/403), validation (4xx) -> fail-closed.
+ * Cancellation (ERR_CANCELED, AbortController) -> fail-closed (NEM tenyleges halozati hiba).</p>
+ */
+// Codex P2 #586 iter-5: whitelist approach (volt: blacklist).
+// Csak az ismert tranziens halozati hibakod-ok kapnak degradalt modot. Ismeretlen
+// vagy uj axios error code (pl. ERR_INVALID_URL, adapter/config errors) -> fail-closed.
+const RETRYABLE_AXIOS_CODES = new Set([
+  'ERR_NETWORK',       // network unavailable (offline, dns)
+  'ECONNREFUSED',      // server not running on port
+  'ECONNABORTED',      // axios timeout
+  'ECONNRESET',        // connection dropped
+  'ETIMEDOUT',         // os-level timeout
+  'ENOTFOUND',         // dns resolution failed
+  'EAI_AGAIN',         // dns temporary failure
+])
+
+function isRetryableAmlError(err: unknown): boolean {
+  const axErr = err as { response?: { status?: number }; code?: string; isAxiosError?: boolean }
+  if (!axErr?.response && axErr?.code !== undefined) {
+    // fail-no-response: CSAK ismert network/timeout code-ok engedhetok degradalt modba
+    return RETRYABLE_AXIOS_CODES.has(axErr.code)
+  }
+  const status = axErr?.response?.status
+  if (status === undefined) return false
+  return status >= 500 && status <= 599  // 5xx: server-side fail (intermittens) -> degradalt
+}
+
 export default function CustomerPanel({
   identificationLevel,
   minimumLevel,
@@ -114,15 +149,33 @@ export default function CustomerPanel({
       onAmlResult?.(result)
       return { ...data, amlVerified: true }
     } catch (err) {
-      logger.warn('CustomerPanel', 'AML check failed — fail-closed', err)
-      const blockedResult: AmlCheckResultDto = {
-        transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
-        requiresId: true, requiresEnhanced: false, blocked: true,
-        warnings: ['AML ellenorzes nem sikerult — tranzakcio blokkolt biztonsagi okbol'],
+      // Codex P1 #586 iter-3 fix: HTTP 500 (intermittens backend hiba) is degradalt mod-kepes,
+      // mint az 502/503/504. Az isRetryableAmlError helper egyseges 5xx + no-response logika.
+      if (!isRetryableAmlError(err)) {
+        // Auth (401/403), validation (4xx) — fail-closed.
+        logger.warn('CustomerPanel', 'AML check failed with non-retryable error — fail-closed', err)
+        const blockedResult: AmlCheckResultDto = {
+          transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
+          requiresId: true, requiresEnhanced: false, blocked: true,
+          warnings: ['AML ellenőrzés szerver-oldali hibával elutasitva (auth / validation). A tranzakció blokkolt.'],
+        }
+        setAmlResult(blockedResult)
+        onAmlResult?.(blockedResult)
+        return data
       }
-      setAmlResult(blockedResult)
-      onAmlResult?.(blockedResult)
-      return data
+      // Local-first: network/5xx -> degradalt mod a CashierTransactionPage confirm-javal.
+      logger.warn('CustomerPanel', 'AML check failed — degraded mode (network/5xx)', err)
+      const degradedResult: AmlCheckResultDto = {
+        transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
+        requiresId: true, requiresEnhanced: false, blocked: false,
+        warnings: [
+          '[OFFLINE_DEGRADED] AML ellenőrzés nem sikerült (hálózati/szerver hiba).',
+          'A tranzakció folytatható megerősítéssel, de utólagos központi ellenőrzésre kerül.',
+        ],
+      }
+      setAmlResult(degradedResult)
+      onAmlResult?.(degradedResult)
+      return { ...data, amlVerified: false }
     } finally {
       setAmlChecking(false)
     }
@@ -296,7 +349,8 @@ export default function CustomerPanel({
     customerBirthPlace, customerBirthDate, customerBirthName, customerMotherName,
     customerAddress, customerResidence, customerAddressCardNumber, selectedCustomer, onCustomerReady])
 
-  // Re-run AML when hufTotal changes
+  // Re-run AML when hufTotal changes. Codex P1 #586 fix: isRetryableAmlError helper
+  // egyseges no-response + 5xx kvalifikalas (HTTP 500 is degradalt mod-kepes).
   useEffect(() => {
     if (selectedCustomer?.id && hufTotal > 0) {
       const timer = setTimeout(async () => {
@@ -304,14 +358,27 @@ export default function CustomerPanel({
           const result = await amlApi.checkAllThresholds(String(selectedCustomer.id), hufTotal)
           setAmlResult(result)
           onAmlResult?.(result)
-        } catch {
-          const blockedResult: AmlCheckResultDto = {
-            transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
-            requiresId: true, requiresEnhanced: false, blocked: true,
-            warnings: ['AML ujraellenorzes nem sikerult — tranzakcio blokkolt biztonsagi okbol'],
+        } catch (err) {
+          if (!isRetryableAmlError(err)) {
+            const blockedResult: AmlCheckResultDto = {
+              transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
+              requiresId: true, requiresEnhanced: false, blocked: true,
+              warnings: ['AML újraellenőrzés szerver-oldali hibával elutasitva. A tranzakció blokkolt.'],
+            }
+            setAmlResult(blockedResult)
+            onAmlResult?.(blockedResult)
+            return
           }
-          setAmlResult(blockedResult)
-          onAmlResult?.(blockedResult)
+          const degradedResult: AmlCheckResultDto = {
+            transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
+            requiresId: true, requiresEnhanced: false, blocked: false,
+            warnings: [
+              '[OFFLINE_DEGRADED] AML újraellenőrzés nem sikerült (hálózati/szerver hiba).',
+              'A tranzakció folytatható megerősítéssel, de utólagos központi ellenőrzésre kerül.',
+            ],
+          }
+          setAmlResult(degradedResult)
+          onAmlResult?.(degradedResult)
         }
       }, 1000)
       return () => clearTimeout(timer)

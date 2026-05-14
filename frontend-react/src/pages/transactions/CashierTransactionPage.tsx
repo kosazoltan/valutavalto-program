@@ -13,6 +13,7 @@ import {
   getElectronCachedRates,
   isElectronQueueAvailable,
   mapCachedRatesToExchangeRates,
+  recordLocalAuditEvent,
   saveAndSyncPendingBuySell,
 } from '../../utils/electronTransactions'
 import { logger } from '../../utils/logger'
@@ -144,8 +145,17 @@ export default function CashierTransactionPage() {
   const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([])
   const ratesLoadedAtRef = useRef<number>(0)
 
-  // Submission state
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  // Submission state. Codex P1 #586 iter-6: a `isSubmitting` state PLUS `isSubmittingRef`
+  // tukrozve. A handleSubmit useCallback NEM memo-zi az `isSubmitting`-et a deps-be (egyebkent
+  // minden submit-nel re-create-ne a fuggvenyt, ami a child re-render-cascade-et okoz).
+  // A ref-bol olvasva mindig a friss erteket latjuk a guard-ban.
+  const [isSubmitting, setIsSubmittingState] = useState(false)
+  const isSubmittingRef = useRef(false)
+  // Helper: state + ref atomi sync. MINDEN setIsSubmitting hivas ezt hasznalja.
+  const setIsSubmitting = useCallback((value: boolean) => {
+    isSubmittingRef.current = value
+    setIsSubmittingState(value)
+  }, [])
 
   // Receipt print state — queue for multi-line transactions
   const [showReceiptModal, setShowReceiptModal] = useState(false)
@@ -482,6 +492,14 @@ export default function CashierTransactionPage() {
   )
 
   const handleSubmit = useCallback(async () => {
+    // Codex P1 #586 iter-6: double-submit guard a REF-en olvas (NEM a state-en), igy az
+    // useCallback memoizalt closure-ja is friss erteket lat. setIsSubmitting state-tukor
+    // a button.disabled UI-hoz, isSubmittingRef.current az atomikus guard a logikahoz.
+    if (isSubmittingRef.current) {
+      logger.warn('CashierTransactionPage', 'Duplicate handleSubmit ignored (already submitting)')
+      return
+    }
+
     // Collect rows with any input (currency code typed)
     const touchedRows = rows.filter((r) => r.currencyCode.length > 0)
     if (touchedRows.length === 0) return
@@ -574,7 +592,66 @@ export default function CashierTransactionPage() {
       return
     }
 
-    setIsSubmitting(true)
+    // Local-first degradált AML mód (2026-05-14 user-direktíva): ha az AML ellenőrzés
+    // hálózati/szerver hiba miatt nem futott le, a warnings tömb `[OFFLINE_DEGRADED]`
+    // prefix-szel jelzi. Ilyenkor a pénztáros KÉNYTELEN megerősíteni hogy folytatja —
+    // audit log rögzíti, központi szerver utólag újra-ellenőriz.
+    const amlDegraded = aml?.warnings?.some((w) => w.startsWith('[OFFLINE_DEGRADED]')) ?? false
+    if (amlDegraded && identificationLevel !== 'SIMPLE') {
+      const confirmed = window.confirm(
+        'FIGYELEM: Az AML ellenőrzés nem futott le (hálózati hiba).\n\n' +
+        'A tranzakció FOLYTATHATÓ, de:\n' +
+        '• Audit naplóba degradált módként kerül\n' +
+        '• A központi szerver utólag újra-ellenőrzi\n' +
+        '• Ha az utólagos ellenőrzés gyanút talál, a pénztárost értesítjük\n\n' +
+        'Biztosan folytatja?',
+      )
+      if (!confirmed) {
+        toast.info('Tranzakció megszakítva', 'Várj amíg helyreáll a hálózat, vagy próbáld újra később.')
+        return
+      }
+      // Codex P1 #586 iter-5 fix: setIsSubmitting(true) ELŐTT az audit write await, hogy a
+      // ket-katintas / duplikalt-keyboard NE indithasson parhuzamos handleSubmit-et amig
+      // az audit write fut. A handleSubmit elejen az isSubmitting guard mar visszater
+      // ha mar fut egy submit. Itt explicit setIsSubmitting(true) az audit write elott.
+      setIsSubmitting(true)
+      try {
+        const auditId = await recordLocalAuditEvent({
+          entityType: 'aml_check',
+          eventType: 'AML_DEGRADED_PROCEED',
+          payload: {
+            workerCode: useAuthStore.getState().worker?.workerCode ?? 'unknown',
+            hufTotal: total,
+            identificationLevel,
+            customerId: cd?.id ?? null,
+            customerDocNumber: cd?.documentNumber ?? null,
+            confirmedAt: new Date().toISOString(),
+            reason: 'AML check failed (offline/server error), pénztáros explicit megerősítéssel folytatta',
+          },
+          status: 'degraded',
+        })
+        if (auditId == null) {
+          // Electron API NEM elerheto (NEM Electron, vagy bridge nincs feltoltve).
+          setIsSubmitting(false)
+          toast.error(
+            'Audit napló nem érhető el',
+            'Degradált AML módban a tranzakció CSAK Electron klienssel folytathatható (audit naplóhoz). Kérjük indítsa el a pénztár klienst.',
+          )
+          return
+        }
+      } catch (auditErr) {
+        setIsSubmitting(false)
+        logger.error('CashierTransactionPage', 'AML degradalt audit log persist FAILED — tranzakcio blokkolva', auditErr)
+        toast.error(
+          'Audit napló mentés sikertelen',
+          'A degradált AML mód audit naplójának mentése nem sikerült. A tranzakció biztonsági okokból nem folytatható. Próbáld újra.',
+        )
+        return
+      }
+    } else {
+      // Non-degraded path: setIsSubmitting itt (mint korabban).
+      setIsSubmitting(true)
+    }
 
     try {
       const customerData = cd ? {
