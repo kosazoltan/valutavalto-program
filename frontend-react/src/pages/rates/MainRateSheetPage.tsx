@@ -245,18 +245,21 @@ export default function MainRateSheetPage() {
     return rows
   }, [activeCell, canEdit, rows, computeCellCommit, editBuffer])
 
-  const saveLocally = useCallback(() => {
-    // Codex P1 #581 iter-4: a flushActiveCell sync visszaadja a "rows to save"-et,
-    // ami biztosan tartalmazza az aktív cella épp commitált értékét (NEM az async state).
+  // Codex P2 #581 iter-6 fix: saveLocally visszaadja boolean-t (true=success, false=fail).
+  // Caller (CSOPORTOK navigate) csak success esetén navigáljon, hogy pending edit ne vesszen el
+  // low-storage / private-browser környezetben.
+  const saveLocally = useCallback((): boolean => {
     const rowsToSave = flushActiveCell()
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(rowsToSave))
       lastSavedAt.current = new Date().toISOString()
       setDirty(false)
       toast.success('Mentve', 'Főlap helyileg mentve (localStorage)')
+      return true
     } catch (e) {
       logger.error('MainRateSheetPage', 'Storage save failed', e)
-      toast.error('Hiba', 'Helyi mentés sikertelen')
+      toast.error('Hiba', 'Helyi mentés sikertelen (privát böngészés / quota?)')
+      return false
     }
   }, [flushActiveCell])
 
@@ -287,20 +290,17 @@ export default function MainRateSheetPage() {
     setPublishing(true)
     try {
       // Phase 2: backend POST /api/v1/rates/main-sheet/publish a rowsToDispatch-csel.
-      // Phase 1 MVP: helyi mentés a flushActiveCell-tal kapott sync next-rows-ból
-      // (NEM a saveLocally-t hívjuk, mert az újra flushelne — itt már flushelve van).
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(rowsToDispatch))
-        lastSavedAt.current = new Date().toISOString()
-        setDirty(false)
-      } catch (e) {
-        logger.error('MainRateSheetPage', 'Pre-dispatch storage save failed', e)
-      }
+      // Phase 1 MVP: helyi mentés a flushActiveCell-tal kapott sync next-rows-ból.
+      // Codex P2 #581 iter-6 fix: ha a pre-dispatch localStorage.setItem dob, NEM csak loggol —
+      // re-throw-ol, hogy a success toast NE jelenjen meg, helyette error path fusson.
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rowsToDispatch))
+      lastSavedAt.current = new Date().toISOString()
+      setDirty(false)
       await new Promise(r => setTimeout(r, 800))
       toast.success('Szétküldve', `Főlap árfolyamok szétküldve (${rowsToDispatch.length} valuta, Phase 1: lokális mentés)`)
     } catch (e) {
-      logger.error('MainRateSheetPage', 'Dispatch failed', e)
-      toast.error('Hiba', 'Szerverre küldés sikertelen')
+      logger.error('MainRateSheetPage', 'Dispatch failed (storage or network)', e)
+      toast.error('Hiba', 'Szétküldés sikertelen (lokális mentés vagy hálózat)')
     } finally {
       setPublishing(false)
     }
@@ -345,9 +345,12 @@ export default function MainRateSheetPage() {
         <button
           onClick={() => {
             // Codex P1 #581 iter-5: navigate előtt flush + persist aktív cella editBuffer-ét.
-            // (saveLocally is hív flushActiveCell-t.)
-            saveLocally()
-            navigate('/rates/creation')
+            // Codex P2 #581 iter-6: csak sikeres save után navigate-eljünk, hogy a pending
+            // edit ne vesszen el low-storage / private-browser környezetben.
+            if (saveLocally()) {
+              navigate('/rates/creation')
+            }
+            // Ha save fail → user a Mentés Hiba toast-ot látja, marad a főlapon, megoldhatja.
           }}
           className="px-3 py-1 text-xs font-medium bg-white border border-slate-400 rounded hover:bg-slate-50 flex items-center gap-1"
         >
