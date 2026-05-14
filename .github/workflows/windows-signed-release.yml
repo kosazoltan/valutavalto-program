@@ -1,0 +1,425 @@
+name: Windows Signed Release (v2.x)
+
+# Production-grade signed installer build a Valutavalto Penztar Rendszerhez.
+#
+# Eredmenyek (GitHub Release artifact-okkent):
+#   - Penztar-Setup-<version>-<date>.exe           (NSIS, ~280 MB, kod-alairva)
+#   - Penztar-Eltavolito-<version>-<date>.exe      (NSIS uninstaller, ~60 KB)
+#   - Kozponti-Iranyitokozpont-Setup-<version>.exe (~100 MB, kod-alairva)
+#   - Arfolyamkeszito-Setup-<version>.exe          (~100 MB, kod-alairva)
+#   - SHA-256 manifest (windows-signed-release-sha256.txt)
+#
+# Alairas: DigiCert KeyLocker via penztar-client/scripts/sign-with-keylocker.js.
+# Az ALAIRAS CSAK akkor fut, ha minden SM_* secret be van allitva ES
+# CODE_SIGN_ENABLED=1. Hianyzo secret -> a workflow EARLY EXIT-tel kilep.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Verzio (uresen marad -> package.json-bol olvas)'
+        required: false
+        default: ''
+      release_notes:
+        description: 'Release notes (markdown, opcionalis)'
+        required: false
+        default: 'Production signed release.'
+      publish_release:
+        description: 'GitHub Release-be felluploadolja? (false = csak artifact)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+permissions:
+  contents: write  # GitHub Release-hez
+  id-token: write  # SLSA attestation-hoz (jovoben)
+
+concurrency:
+  group: windows-signed-release
+  cancel-in-progress: false  # release build SOHA nem cancel-eli onmagat
+
+env:
+  NODE_VERSION: '20'
+  JAVA_VERSION: '21'
+
+jobs:
+  preflight:
+    name: Preflight — secret + workspace check
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      build_date: ${{ steps.resolve.outputs.build_date }}
+      has_signing_secrets: ${{ steps.secrets.outputs.has_signing }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve version + build date
+        id: resolve
+        shell: pwsh
+        run: |
+          $version = "${{ github.event.inputs.version }}"
+          if (-not $version) {
+            $pkg = Get-Content package.json | ConvertFrom-Json
+            $version = $pkg.version
+          }
+          $buildDate = Get-Date -Format "yyyyMMdd"
+          Write-Host "version=$version, build_date=$buildDate"
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "build_date=$buildDate" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Verify signing secrets present
+        id: secrets
+        shell: pwsh
+        env:
+          SM_HOST_PRESENT: ${{ secrets.SM_HOST != '' }}
+          SM_API_KEY_PRESENT: ${{ secrets.SM_API_KEY != '' }}
+          SM_CLIENT_CERT_PASSWORD_PRESENT: ${{ secrets.SM_CLIENT_CERT_PASSWORD != '' }}
+          SM_KEYPAIR_ALIAS_PRESENT: ${{ secrets.SM_KEYPAIR_ALIAS != '' }}
+        run: |
+          $allPresent = (
+            $env:SM_HOST_PRESENT -eq 'true' -and
+            $env:SM_API_KEY_PRESENT -eq 'true' -and
+            $env:SM_CLIENT_CERT_PASSWORD_PRESENT -eq 'true' -and
+            $env:SM_KEYPAIR_ALIAS_PRESENT -eq 'true'
+          )
+          if (-not $allPresent) {
+            Write-Host "::error::Hianyzo DigiCert KeyLocker secret(ek). Beallitando GitHub repo Settings > Secrets > Actions:"
+            Write-Host "::error::  - SM_HOST (https://clientauth.one.digicert.com)"
+            Write-Host "::error::  - SM_API_KEY"
+            Write-Host "::error::  - SM_CLIENT_CERT_PASSWORD"
+            Write-Host "::error::  - SM_KEYPAIR_ALIAS"
+            Write-Host "::error::Production release CSAK alairt installerrel terjesztheto."
+            "has_signing=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            exit 1
+          }
+          Write-Host "All DigiCert KeyLocker secrets present (redacted)."
+          "has_signing=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+  build-backend:
+    name: Build Backend JAR (Maven)
+    runs-on: windows-latest
+    needs: preflight
+    outputs:
+      jar_name: ${{ steps.mvn.outputs.jar_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Maven package (skip tests — separate CI runs them)
+        id: mvn
+        working-directory: backend
+        shell: pwsh
+        run: |
+          ./mvnw -B package -DskipTests --no-transfer-progress
+          $jar = Get-ChildItem target/valuta-backend-*.jar | Where-Object { $_.Name -notlike "*SNAPSHOT*" } | Select-Object -Last 1
+          Write-Host "Built: $($jar.FullName) ($($jar.Length) bytes)"
+          "jar_name=$($jar.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Upload backend JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar-${{ needs.preflight.outputs.version }}
+          path: backend/target/valuta-backend-*.jar
+          if-no-files-found: error
+          retention-days: 14
+
+  build-penztar:
+    name: Build Penztar Installer (NSIS + signed Electron)
+    runs-on: windows-latest
+    needs: [preflight, build-backend]
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            penztar-client/package-lock.json
+            frontend-react/package-lock.json
+
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis -y --version=3.10
+          $env:Path += ";C:\Program Files (x86)\NSIS"
+          "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Download backend JAR
+        uses: actions/download-artifact@v8
+        with:
+          name: backend-jar-${{ needs.preflight.outputs.version }}
+          path: backend/target/
+
+      - name: Install dependencies (root + penztar-client + frontend-react)
+        shell: pwsh
+        run: |
+          npm ci --no-audit --no-fund
+          Push-Location penztar-client
+          npm ci --no-audit --no-fund
+          Pop-Location
+          Push-Location frontend-react
+          npm ci --legacy-peer-deps --no-audit --no-fund
+          Pop-Location
+
+      - name: Build Penztar installer (signed via KeyLocker)
+        shell: pwsh
+        env:
+          CODE_SIGN_ENABLED: '1'
+          SM_HOST: ${{ secrets.SM_HOST }}
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+          SM_KEYPAIR_ALIAS: ${{ secrets.SM_KEYPAIR_ALIAS }}
+        run: |
+          Push-Location installer
+          ./build-installer.ps1 -SkipDownloads -SkipBackendBuild
+          Pop-Location
+
+      - name: Build Eltavolito (NSIS uninstaller, no signing needed for NSIS-only)
+        shell: pwsh
+        run: |
+          Push-Location installer
+          ./build-cleanup.ps1
+          Pop-Location
+
+      - name: Verify Penztar installer signature
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem installer/build/Penztar-Setup-*.exe | Select-Object -Last 1
+          $sig = Get-AuthenticodeSignature -FilePath $installer.FullName
+          Write-Host "Signature status: $($sig.Status)"
+          Write-Host "Signer: $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne 'Valid') {
+            Write-Host "::error::Penztar installer NEM valid alairas — Status=$($sig.Status)"
+            exit 1
+          }
+
+      - name: Upload Penztar artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: penztar-signed-${{ needs.preflight.outputs.version }}
+          path: |
+            installer/build/Penztar-Setup-*.exe
+            installer/build/Penztar-Eltavolito-*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  build-kozponti:
+    name: Build Kozponti Iranyitokozpont (signed Electron)
+    runs-on: windows-latest
+    needs: preflight
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            kozponti-client/package-lock.json
+            frontend-react/package-lock.json
+
+      - name: Install dependencies (kozponti + frontend-react)
+        shell: pwsh
+        run: |
+          npm ci --no-audit --no-fund
+          Push-Location kozponti-client
+          npm ci --no-audit --no-fund
+          Pop-Location
+          Push-Location frontend-react
+          npm ci --legacy-peer-deps --no-audit --no-fund
+          Pop-Location
+
+      - name: Build Kozponti installer (signed via KeyLocker)
+        shell: pwsh
+        env:
+          CODE_SIGN_ENABLED: '1'
+          SM_HOST: ${{ secrets.SM_HOST }}
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+          SM_KEYPAIR_ALIAS: ${{ secrets.SM_KEYPAIR_ALIAS }}
+        working-directory: kozponti-client
+        run: npm run package
+
+      - name: Verify Kozponti signature
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem kozponti-client/release/Kozponti-Iranyitokozpont-Setup-*.exe | Select-Object -Last 1
+          $sig = Get-AuthenticodeSignature -FilePath $installer.FullName
+          Write-Host "Signature status: $($sig.Status)"
+          if ($sig.Status -ne 'Valid') {
+            Write-Host "::error::Kozponti installer NEM valid alairas — Status=$($sig.Status)"
+            exit 1
+          }
+
+      - name: Upload Kozponti artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kozponti-signed-${{ needs.preflight.outputs.version }}
+          path: kozponti-client/release/Kozponti-Iranyitokozpont-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  build-arfolyamkeszito:
+    name: Build Arfolyamkeszito (signed Electron)
+    runs-on: windows-latest
+    needs: preflight
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            arfolyam-keszito-client/package-lock.json
+            frontend-react/package-lock.json
+
+      - name: Install dependencies (arfolyamkeszito + frontend-react)
+        shell: pwsh
+        run: |
+          npm ci --no-audit --no-fund
+          Push-Location arfolyam-keszito-client
+          npm ci --no-audit --no-fund
+          Pop-Location
+          Push-Location frontend-react
+          npm ci --legacy-peer-deps --no-audit --no-fund
+          Pop-Location
+
+      - name: Build Arfolyamkeszito installer (signed via KeyLocker)
+        shell: pwsh
+        env:
+          CODE_SIGN_ENABLED: '1'
+          SM_HOST: ${{ secrets.SM_HOST }}
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+          SM_KEYPAIR_ALIAS: ${{ secrets.SM_KEYPAIR_ALIAS }}
+        working-directory: arfolyam-keszito-client
+        run: npm run package
+
+      - name: Verify Arfolyamkeszito signature
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem arfolyam-keszito-client/release/Arfolyamkeszito-Setup-*.exe | Select-Object -Last 1
+          $sig = Get-AuthenticodeSignature -FilePath $installer.FullName
+          Write-Host "Signature status: $($sig.Status)"
+          if ($sig.Status -ne 'Valid') {
+            Write-Host "::error::Arfolyamkeszito installer NEM valid alairas — Status=$($sig.Status)"
+            exit 1
+          }
+
+      - name: Upload Arfolyamkeszito artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: arfolyamkeszito-signed-${{ needs.preflight.outputs.version }}
+          path: arfolyam-keszito-client/release/Arfolyamkeszito-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-release:
+    name: Publish GitHub Release + SHA-256 manifest
+    runs-on: windows-latest
+    needs: [preflight, build-penztar, build-kozponti, build-arfolyamkeszito]
+    if: github.event.inputs.publish_release == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: release-artifacts/
+
+      - name: Flatten artifacts + generate SHA-256 manifest
+        shell: pwsh
+        run: |
+          $flatDir = "release-flat"
+          New-Item -ItemType Directory -Force -Path $flatDir | Out-Null
+          Get-ChildItem release-artifacts -Recurse -Filter "*.exe" | ForEach-Object {
+            Copy-Item $_.FullName -Destination $flatDir -Force
+          }
+          Get-ChildItem release-artifacts -Recurse -Filter "*.jar" | ForEach-Object {
+            Copy-Item $_.FullName -Destination $flatDir -Force
+          }
+          $manifest = "$flatDir/windows-signed-release-sha256.txt"
+          "# Valutavalto v${{ needs.preflight.outputs.version }} signed release SHA-256" | Out-File $manifest
+          "# Build date: ${{ needs.preflight.outputs.build_date }}" | Out-File $manifest -Append
+          "# Git SHA: ${{ github.sha }}" | Out-File $manifest -Append
+          "" | Out-File $manifest -Append
+          Get-ChildItem $flatDir -Filter "*.exe" | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "${hash}  $($_.Name)" | Out-File $manifest -Append
+          }
+          Write-Host "=== Manifest ==="
+          Get-Content $manifest
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.preflight.outputs.version }}
+          name: 'v${{ needs.preflight.outputs.version }} — Production signed release'
+          body: |
+            ${{ github.event.inputs.release_notes }}
+
+            ## Artifacts (mind DigiCert KeyLocker alairva)
+
+            - `Penztar-Setup-${{ needs.preflight.outputs.version }}-${{ needs.preflight.outputs.build_date }}.exe` — penztaros kliens
+            - `Penztar-Eltavolito-${{ needs.preflight.outputs.version }}-${{ needs.preflight.outputs.build_date }}.exe` — uninstaller
+            - `Kozponti-Iranyitokozpont-Setup-${{ needs.preflight.outputs.version }}.exe` — kozponti irodavezetoi munkaallomas
+            - `Arfolyamkeszito-Setup-${{ needs.preflight.outputs.version }}.exe` — RFM-keszito (foertektaros)
+
+            ## Verifikalas
+            ```powershell
+            Get-AuthenticodeSignature .\Penztar-Setup-*.exe
+            # Status: Valid
+            # SignerCertificate.Subject: CN=<BestChange entity>
+            ```
+
+            SHA-256 hash-ek a `windows-signed-release-sha256.txt`-ben.
+
+            Git SHA: ${{ github.sha }}
+          files: |
+            release-flat/*.exe
+            release-flat/*.jar
+            release-flat/windows-signed-release-sha256.txt
+          draft: false
+          prerelease: false
+
+  summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [preflight, build-penztar, build-kozponti, build-arfolyamkeszito]
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## Windows Signed Release — v${{ needs.preflight.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build date:** ${{ needs.preflight.outputs.build_date }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Git SHA:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Penztar:** ${{ needs.build-penztar.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Kozponti:** ${{ needs.build-kozponti.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Arfolyamkeszito:** ${{ needs.build-arfolyamkeszito.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **GitHub Release:** ${{ github.event.inputs.publish_release }}" >> $GITHUB_STEP_SUMMARY
