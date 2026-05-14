@@ -26,6 +26,8 @@
 | Reseller | **SignMyCode** (FRISSÍTVE) | 3-5 nap validation (gyorsabb mint CodeSigningStore 4-8 nap), Sectigo Platinum Partner, jobban skálázott automation. Ár ~azonos ($660 vs $658 BYOH-val). |
 | Storage | **Azure Key Vault Premium HSM** (FRISSÍTVE 2026-05-14 19:50 — DigiCert KeyLocker elvetve!) | DigiCert KeyLocker CSAK DigiCert-issued cert-ekkel mukodik (forrás: SignMyCode tutorial). Sectigo OV CS hivatalos kompatibilis HSM-je az Azure Key Vault Premium. ~$5/hó vs $200/év. |
 | **Azure account email** (FRISSÍTVE 2026-05-14 20:00) | **`kosa.zoltan.ebc@outlook.hu`** (NEM gmail!) | Dedikált Microsoft account az Azure tenant-hoz. Tenant owner + Global Administrator. A SignMyCode `kosa.zoltan.ebc@gmail.com`-tól független — a két fiók NEM kell összekapcsolódjon. |
+| **Azure UPN (FRISSÍTVE 2026-05-14 20:05)** | `kosa.zoltan.ebc_outlook.hu#EXT#@kosazoltanebcoutlook.onmicrosoft.com` | A `#EXT#` jelzi: guest-user a `kosazoltanebcoutlook.onmicrosoft.com` tenant-ban. Normal Azure trial reg. Ha App Registration "Insufficient privileges" → Microsoft Entra → Users → user type: Guest → Member. |
+| **Azure GUID (FRISSÍTVE 2026-05-14 20:05)** | `f832d69a-75e7-428e-8d2f-b57800a306c4` | Verifikálandó: Tenant ID vagy User Object ID? Azure Portal → Microsoft Entra ID → Overview → Tenant ID összehasonlítás. Ha egyezik = `AZURE_TENANT_ID` secret értéke. |
 | Fizetés | **Cég bankkártya** (számlázás USD-ben) | CodeSigningStore csak USD-ben számláz, EUR-kártya konvertál (~1-3% banki díj) |
 | Cert validity | **3 év (annual re-issuance)** | Iparági policy 2026 Feb: max 460 napos validity → multi-year plan annual re-issue HSM-en automatikus |
 
