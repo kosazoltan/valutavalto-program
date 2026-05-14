@@ -263,6 +263,45 @@ describe('CustomerPanel — AML degradált mód (local-first 2026-05-14)', () =>
     expect(amlResult.warnings[0]).toMatch(/szerver-oldali hibával/)
   })
 
+  it('Codex P1 #586 iter-4: AML ERR_CANCELED (AbortController) → fail-closed (NEM degradált)', async () => {
+    const user = userEvent.setup()
+    const onAmlResult = vi.fn()
+    mocks.customerApiCreate.mockResolvedValue({ id: 103, name: 'Cancel Test' })
+    mocks.amlApiCheckAllThresholds.mockRejectedValue(
+      Object.assign(new Error('Request canceled'), {
+        code: 'ERR_CANCELED',
+        isAxiosError: true,
+      }),
+    )
+
+    render(
+      <CustomerPanel
+        identificationLevel="SIMPLIFIED"
+        minimumLevel="SIMPLIFIED"
+        onLevelChange={() => {}}
+        requiresSourceVerification={false}
+        hufTotal={200000}
+        onCustomerReady={() => {}}
+        onAmlResult={onAmlResult}
+      />,
+    )
+
+    await user.type(screen.getByTestId('customer-name-input'), 'Cancel Test')
+    await user.type(screen.getByTestId('customer-birth-place-input'), 'Miskolc')
+    await user.type(screen.getByTestId('customer-doc-number-input'), 'CN001001')
+    await user.type(screen.getByTestId('customer-birth-date-input'), '1985-03-15')
+
+    await user.click(screen.getByRole('button', { name: /Ügyfél rögzítése/i }))
+
+    await vi.waitFor(() => {
+      expect(onAmlResult).toHaveBeenCalled()
+    })
+
+    const amlResult = onAmlResult.mock.calls.at(-1)![0]
+    expect(amlResult.blocked).toBe(true)
+    expect(amlResult.warnings.some((w: string) => w.startsWith('[OFFLINE_DEGRADED]'))).toBe(false)
+  })
+
   it('Codex P1 #586 iter-3: AML 500 internal server error → degradált (5xx intermittens)', async () => {
     const user = userEvent.setup()
     const onAmlResult = vi.fn()

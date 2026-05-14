@@ -48,18 +48,26 @@ const LEVEL_DESCRIPTIONS: Record<IdentificationLevel, string> = {
 }
 
 /**
- * Codex P1 #586 iter-3 fix: a degradalt-mod kvalifikalo helper.
+ * Codex P1 #586 iter-4 fix: a degradalt-mod kvalifikalo helper.
  *
  * <p>Visszater TRUE ha az axios error halozati / szerver-elerhetetlen hibara utal:
  * <ul>
- *   <li>NINCS response (fail-no-response): network down, timeout, dns, cors, etc.</li>
- *   <li>5xx response: 500, 502, 503, 504 — intermittens backend hibak, ujraprobalhatok</li>
+ *   <li>NINCS response (fail-no-response) ES NEM canceled/client-error: network down, timeout, dns.</li>
+ *   <li>5xx response: 500-599 — intermittens backend hibak, ujraprobalhatok.</li>
  * </ul>
- * Ezekre degradalt modot adunk. Auth (401/403), validation (4xx) -> fail-closed.</p>
+ * Auth (401/403), validation (4xx) -> fail-closed.
+ * Cancellation (ERR_CANCELED, AbortController) -> fail-closed (NEM tenyleges halozati hiba).</p>
  */
+// Codex P1 #586 iter-4: ERR_CANCELED (AbortController) + client-side bad-request kodok
+// NEM halozati hibak — exclude a retryable listabol.
+const NON_RETRYABLE_AXIOS_CODES = new Set(['ERR_CANCELED', 'ERR_BAD_REQUEST', 'ERR_BAD_OPTION'])
+
 function isRetryableAmlError(err: unknown): boolean {
   const axErr = err as { response?: { status?: number }; code?: string; isAxiosError?: boolean }
-  if (!axErr?.response && axErr?.code !== undefined) return true  // fail-no-response (network/timeout)
+  if (!axErr?.response && axErr?.code !== undefined) {
+    // fail-no-response (network/timeout) — DE NEM cancel/bad-request
+    return !NON_RETRYABLE_AXIOS_CODES.has(axErr.code)
+  }
   const status = axErr?.response?.status
   if (status === undefined) return false
   return status >= 500 && status <= 599  // 5xx: server-side fail (intermittens) -> degradalt
