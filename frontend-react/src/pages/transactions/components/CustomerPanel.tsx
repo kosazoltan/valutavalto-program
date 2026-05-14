@@ -1,9 +1,10 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { User, Search, CheckCircle, Loader2, AlertTriangle, X, Shield, ShieldCheck, ShieldAlert } from 'lucide-react'
 import type { IdentificationLevel } from '../hooks/useIdentificationLevel'
 import { customerApi, amlApi } from '../../../services/api/index'
 import type { Customer as ApiCustomer, CustomerCreateRequest, AmlCheckResultDto } from '../../../services/api/transactions'
 import { logger } from '../../../utils/logger'
+import { toast } from '../../../components/ui/toaster'
 import { useTranslation } from 'react-i18next'
 
 export interface CustomerPanelData {
@@ -154,16 +155,31 @@ export default function CustomerPanel({
     onCustomerReady(data)
   }, [hufTotal, onCustomerReady, runAmlCheck])
 
+  // Collect missing required fields per identification level. Empty array = form OK.
+  const missingRequiredFields = useMemo<string[]>(() => {
+    if (identificationLevel === 'SIMPLE') return []
+    const missing: string[] = []
+    if (!customerName.trim()) missing.push('Név')
+    if (!customerDocNumber.trim()) missing.push('Okmányszám')
+    if (!customerBirthPlace.trim()) missing.push('Születési hely')
+    if (!customerBirthDate) missing.push('Születési idő')
+    if (identificationLevel === 'FULL') {
+      if (!customerMotherName.trim()) missing.push('Anyja neve')
+      if (!customerAddress.trim()) missing.push('Lakcím')
+    }
+    return missing
+  }, [identificationLevel, customerName, customerDocNumber, customerBirthPlace, customerBirthDate, customerMotherName, customerAddress])
+
   const handleSaveManualCustomer = useCallback(async () => {
-    if (identificationLevel === 'SIMPLIFIED' && (
-      !customerName.trim() || !customerDocNumber.trim() ||
-      !customerBirthDate || !customerBirthPlace.trim()
-    )) return
-    if (identificationLevel === 'FULL' && (
-      !customerName.trim() || !customerDocNumber.trim() ||
-      !customerBirthPlace.trim() || !customerBirthDate ||
-      !customerMotherName.trim() || !customerAddress.trim()
-    )) return
+    // Replace silent `return` with explicit toast — user-visible feedback per #581 bug report
+    // (user reported "100k HUF felett nem lehet ügyfelet regisztrálni").
+    if (missingRequiredFields.length > 0) {
+      toast.warning(
+        'Hiányzó kötelező mezők',
+        `${missingRequiredFields.join(', ')} kitöltése kötelező a ${identificationLevel === 'FULL' ? 'teljes' : 'egyszerűsített'} azonosításhoz.`,
+      )
+      return
+    }
 
     setIsSaving(true)
     try {
@@ -228,7 +244,7 @@ export default function CustomerPanel({
     } finally {
       setIsSaving(false)
     }
-  }, [customerName, customerDocType, customerDocNumber, customerNationality, customerBirthPlace, customerBirthDate, customerBirthName, customerMotherName, customerAddress, customerResidence, customerAddressCardNumber, hufTotal, identificationLevel, onCustomerReady, onAmlResult, runAmlCheck])
+  }, [missingRequiredFields, customerName, customerDocType, customerDocNumber, customerNationality, customerBirthPlace, customerBirthDate, customerBirthName, customerMotherName, customerAddress, customerResidence, customerAddressCardNumber, hufTotal, identificationLevel, onCustomerReady, onAmlResult, runAmlCheck])
 
   const handleClearCustomer = useCallback(() => {
     setSelectedCustomer(null)
@@ -303,14 +319,7 @@ export default function CustomerPanel({
   }, [hufTotal, selectedCustomer?.id, onAmlResult])
 
   const showFull = identificationLevel === 'FULL'
-
-  const isFormValid = () => {
-    if (identificationLevel === 'SIMPLE') return true
-    if (identificationLevel === 'SIMPLIFIED') return !!(customerName.trim() && customerDocNumber.trim() && customerBirthDate && customerBirthPlace.trim())
-    // FULL
-    return !!(customerName.trim() && customerDocNumber.trim() &&
-      customerBirthPlace.trim() && customerBirthDate && customerMotherName.trim() && customerAddress.trim())
-  }
+  const isFormValid = missingRequiredFields.length === 0
 
   const fieldClass = "w-full h-9 px-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
   const fieldStyle = { '--tw-ring-color': 'var(--primary)' } as React.CSSProperties
@@ -542,18 +551,18 @@ export default function CustomerPanel({
               {/* --- Always shown for SIMPLIFIED+ --- */}
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.nev')}</label>
-                <input type="text" className={fieldClass} style={fieldStyle}
+                <input type="text" className={fieldClass} style={fieldStyle} data-testid="customer-name-input"
                   value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.szuletesiIdo2')}</label>
-                <input type="date" className={fieldClass} style={fieldStyle}
+                <input type="date" className={fieldClass} style={fieldStyle} data-testid="customer-birth-date-input"
                   value={customerBirthDate} onChange={(e) => setCustomerBirthDate(e.target.value)} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.szuletesiHely2')}</label>
-                <input type="text" className={fieldClass} style={fieldStyle}
+                <input type="text" className={fieldClass} style={fieldStyle} data-testid="customer-birth-place-input"
                   value={customerBirthPlace} onChange={(e) => setCustomerBirthPlace(e.target.value)} />
               </div>
 
@@ -581,7 +590,7 @@ export default function CustomerPanel({
 
               <div className={showFull ? '' : 'col-span-2'}>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.okmanyszam')}</label>
-                <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle}
+                <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle} data-testid="customer-doc-number-input"
                   value={customerDocNumber} onChange={(e) => setCustomerDocNumber(e.target.value)} />
               </div>
 
@@ -595,12 +604,12 @@ export default function CustomerPanel({
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.anyjaNeve')}</label>
-                    <input type="text" className={fieldClass} style={fieldStyle}
+                    <input type="text" className={fieldClass} style={fieldStyle} data-testid="customer-mother-name-input"
                       value={customerMotherName} onChange={(e) => setCustomerMotherName(e.target.value)} />
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.lakcimEsIranyitoszam')}</label>
-                    <input type="text" className={fieldClass} style={fieldStyle}
+                    <input type="text" className={fieldClass} style={fieldStyle} data-testid="customer-address-input"
                       value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)}
                       placeholder="pl. 1234 Budapest, Fo utca 1." />
                   </div>
@@ -620,13 +629,26 @@ export default function CustomerPanel({
 
             <button
               onClick={() => void handleSaveManualCustomer()}
-              disabled={isSaving || !isFormValid()}
-              className="w-full py-2 rounded-lg text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: 'var(--primary)' }}
+              disabled={isSaving}
+              className={`w-full py-2 rounded-lg text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                isFormValid ? '' : 'bg-slate-400 opacity-70'
+              }`}
+              style={isFormValid ? { backgroundColor: 'var(--primary)' } : undefined}
               data-action="save-customer"
             >
-              {isSaving ? 'Mentes...' : 'Ugyfel rogzitese'}
+              {isSaving ? 'Mentés...' : 'Ügyfél rögzítése'}
             </button>
+            {!isFormValid && (
+              <div
+                className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 rounded-md px-2 py-1.5 flex items-start gap-1.5"
+                data-testid="customer-missing-fields-hint"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>
+                  <strong>Hiányzó mezők:</strong> {missingRequiredFields.join(', ')}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}

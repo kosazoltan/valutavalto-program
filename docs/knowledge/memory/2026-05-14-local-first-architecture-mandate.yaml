@@ -1,0 +1,115 @@
+session_id: "2026-05-14-local-first-mandate"
+date: "2026-05-14"
+status: verified
+type: architecture-mandate
+priority: P0
+
+summary: >
+  Local-first arhitektura mandate a teljes valutavalto ERP rendszerre.
+  Minden Electron kliens (penztar, ertektar, arfolyamkeszito, kozponti)
+  local-first modellel mukodik: SQLite a primary adattarolo, szerver
+  csak sync/backup/auth. Keszlet NEM kozponti, hanem penztar/ertektar
+  onallo SUM(bejovo)-SUM(kimeno) szamitasbol.
+
+local_first_principles:
+  - name: "Nincs spinner alapmuveleteknel"
+    requirement: "UI lokalis DB-bol olvas/ir, halozat hatterben"
+  - name: "Halozat opcionalis"
+    requirement: "Offline is teljes erteku mukodes"
+  - name: "Adat a felhasznaloe"
+    requirement: "Export, backup, migracio biztositva"
+
+inventory_model:
+  type: "decentralized_per_register"
+  description: >
+    NINCS kozponti keszlet. Minden penztar es ertektar SAJAT keszlettel
+    rendelkezik. Keszlet = SUM(bejovo) - SUM(kimeno) devizankent.
+  cash_register:
+    increases: ["vetel_ugyfel", "atvetel_ertektartol"]
+    decreases: ["eladas_ugyfelnek", "atadas_ertektarnak"]
+  vault_register:
+    increases: ["bank_beszerzes", "visszavetel_penztartol"]
+    decreases: ["bank_eladas", "kiadas_penztarnak"]
+  transfer_model: "paired_event"
+  transfer_description: >
+    Mindket fel sajat esemenyt rogzit lokalisan.
+    A szerver parosit (transfer_out <-> transfer_in).
+
+mandatory_components:
+  local_store: "SQLite (Electron Main process, better-sqlite3)"
+  outbox_table:
+    columns: ["id", "mutationId", "entity", "payload", "status", "retryCount", "createdAt"]
+  tombstone: "_deleted flag + deleted_at timestamp + 30 nap retention"
+  schema_version: "PRAGMA user_version + verziozott migracios fajlok"
+  sync_states: ["saved_local", "pending_sync", "syncing", "synced", "conflicted", "sync_failed", "blocked"]
+
+conflict_policies:
+  - entity: "transactions"
+    policy: "append_only_server_authority"
+    reason: "penzugyi, nem felulirhato"
+  - entity: "inventory"
+    policy: "calculated_no_conflict"
+    reason: "SUM tranzakciokbol, nincs kozvetlen iras"
+  - entity: "transfers"
+    policy: "paired_event_server_validates"
+    reason: "ket fel, szerver rendel ossze"
+  - entity: "rate_drafts"
+    policy: "field_level_merge"
+    reason: "szerkesztheto, nem kritikus"
+  - entity: "published_rates"
+    policy: "server_authority_immutable"
+    reason: "egyszer publikalva, nem modosithato"
+  - entity: "settings"
+    policy: "last_write_wins"
+    reason: "nem vesz el kritikus adat"
+  - entity: "daily_closing"
+    policy: "optimistic_local_server_finalizes"
+    reason: "audit trail kotelezo"
+
+invariants:
+  - "keszlet >= 0 devizankent (lokalis validacio)"
+  - "buy_rate < sell_rate"
+  - "spread >= 0"
+  - "arfolyam TTL 24h (lejart rataval nem tranzaktalhat)"
+  - "AML limit betartasa"
+  - "napzaras utan nem sztorozhat"
+  - "transzfer ketoldali parositas (szerveren)"
+
+forbidden_patterns:
+  - "cache-t local-firstnek nevezni"
+  - "vakon LWW penzugyi adatoknal"
+  - "tombstone nelkul torolni replikalt entitast"
+  - "API secret kliensnek adni"
+  - "Renderer kozvetlen DB/fajlrendszer hozzaferes"
+  - "kozponti keszletet feltetelezni"
+  - "kliensorara epiteni globalis sorrendhez"
+  - "kesznek jelolni offline teszt nelkul"
+
+testing_matrix:
+  - "offline_crud"
+  - "reconnect_sync"
+  - "concurrent_edit_same_field"
+  - "concurrent_edit_different_fields"
+  - "duplicate_sync_payload"
+  - "out_of_order_delivery"
+  - "tombstone_propagation"
+  - "large_local_dataset"
+  - "multi_instance"
+  - "unauthorized_data_replication_blocked"
+  - "app_restart_state_preserved"
+  - "post_conflict_invariant_check"
+
+electron_security:
+  renderer: "sandboxolt, contextIsolation=true"
+  main_process: "validalt IPC csatornakon keresztul DB/fajl/OS muveletek"
+  ipc_channels: "nevesitett, whitelist-elt"
+  logout: "teljes lokalis adat torles user valtas utan"
+
+source_documents:
+  - "C:\\Users\\Kosa Zoltan\\Downloads\\# Local-first adatszinkronizacio, k.txt"
+  - "C:\\Users\\Kosa Zoltan\\Downloads\\local-first-ai-system-prompt.md"
+  - "C:\\Users\\Kosa Zoltan\\Downloads\\local-first-ai-fejlesztesi-utasitas.md"
+
+vault_references:
+  - "vault/references/local-first-architecture-mandate.md"
+  - "vault/feedback/local-first-mandatory-directive.md"

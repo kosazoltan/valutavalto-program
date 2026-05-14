@@ -1,0 +1,74 @@
+---
+title: "Local-first architektúra mandate — Valutaváltó ERP"
+date: "2026-05-14"
+categories: [architecture, local-first, mandate, electron, sync]
+status: verified
+priority: P0
+---
+
+# Local-first architektúra mandate
+
+## Összefoglaló
+
+2026-05-14-től minden Electron kliens (pénztár, értéktár, árfolyamkészítő, központi) **local-first** architektúrával működik. A kliens az elsődleges adattároló (SQLite), a szerver sync/backup/auth infrastruktúra.
+
+## Készletmodell
+
+**NINCS központi készlet.** Minden pénztár és értéktár saját készlettel rendelkezik.
+
+- Készlet = `SUM(bejövő) - SUM(kimenő)` devizánként
+- Pénztár bejövő: vétel ügyféltől + átvétel értéktártól
+- Pénztár kimenő: eladás ügyfélnek + átadás értéktárnak
+- Értéktár bejövő: bank-beszerzés + visszavétel pénztártól
+- Értéktár kimenő: bank-eladás + kiadás pénztárnak
+
+Transzferek: **párosított esemény minta** — mindkét fél lokálisan rögzít, szerver párosít.
+
+## Kötelező komponensek
+
+| Komponens | Megvalósítás |
+|---|---|
+| Lokális tároló | SQLite (Electron Main, better-sqlite3) |
+| Outbox | mutationId-vel, retry-vel |
+| Törlés | Tombstone (_deleted + deleted_at + 30 nap) |
+| Séma | PRAGMA user_version + migrációs fájlok |
+| Sync állapotok | saved_local → pending_sync → syncing → synced/conflicted/sync_failed/blocked |
+
+## Konfliktuspolitikák
+
+- **Tranzakciók**: append-only, szerverhatóság (pénzügyi)
+- **Készlet**: számított, nincs conflict
+- **Transzferek**: párosított esemény, szerver validál
+- **Árfolyam draft**: mezőszintű merge
+- **Publikált árfolyam**: szerverhatóság, immutable
+- **Beállítások**: LWW elfogadható
+- **Napzárás**: optimista lokális + szerver véglegesít
+
+## Invariánsok
+
+- készlet ≥ 0 devizánként
+- buy_rate < sell_rate, spread ≥ 0
+- árfolyam TTL 24h
+- AML limit
+- napzárás után nem sztornózható
+- transzfer kétoldali párosítás
+
+## Tesztelési mátrix (12 kötelező)
+
+1. Offline CRUD
+2. Reconnect sync
+3. Concurrent edit (azonos/különböző mező)
+4. Duplikált sync payload
+5. Out-of-order delivery
+6. Tombstone propagáció
+7. Nagy lokális dataset
+8. Multi-instance
+9. Jogosulatlan replikáció tiltása
+10. App restart állapotmegőrzés
+11. Konfliktusfeloldás utáni invariáns-ellenőrzés
+
+## Electron biztonság
+
+- Renderer: sandboxolt, contextIsolation=true
+- Main: validált IPC, nevesített channel-ek
+- Logout: teljes lokális adat törlés
