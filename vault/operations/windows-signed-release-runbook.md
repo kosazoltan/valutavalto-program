@@ -23,10 +23,11 @@ Műveletvégzők:
 - `valuta-backend-<version>.jar` — backend (Hetzner deploy-hoz)
 - `windows-signed-release-sha256.txt` — SHA-256 hash manifest
 
-## Required GitHub Secrets
+## Required GitHub Secrets (10 db)
 
 A workflow `preflight` job előbb leáll, ha bármi hiányzik. Beállítandó: **GitHub Repo → Settings → Secrets and variables → Actions → Repository secrets**.
 
+### DigiCert KeyLocker (signing — 6 db)
 ```text
 SM_HOST                    https://clientauth.one.digicert.com (DigiCert KeyLocker endpoint)
 SM_API_KEY                 KeyLocker API kulcs
@@ -34,11 +35,25 @@ SM_CLIENT_CERT_FILE_B64    A kliens authentication .p12 fájl tartalma base64-el
                            (PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes('client.p12')))
 SM_CLIENT_CERT_PASSWORD    Kliens .p12 cert jelszava
 SM_KEYPAIR_ALIAS           KeyLocker keypair alias (pl. valuta-penztar-sign)
+SM_CLIENT_TOOLS_MSI_URL    DigiCert KeyLocker Client Tools MSI URL
+                           (DigiCert ONE → KeyLocker → Downloads → Windows x64 MSI direct link)
 ```
 
-Ezek a `penztar-client/scripts/sign-with-keylocker.js` electron-builder signtoolOptions hook-on át kerülnek az aláíráshoz. `CODE_SIGN_ENABLED=1` a workflow lépéseiben explicit.
+### Google OAuth (production secret gate a build-installer.ps1-ben — 4 db)
+```text
+GOOGLE_CLIENT_ID                   Web OAuth Client ID (819982945323-...apps.googleusercontent.com)
+GOOGLE_CLIENT_SECRET               Web OAuth Client Secret
+GOOGLE_DESKTOP_CLIENT_ID           Desktop OAuth Client ID (Electron apps)
+GOOGLE_DESKTOP_CLIENT_SECRET       Desktop OAuth Client Secret
+```
+
+A `SM_*` 5 secret a `penztar-client/scripts/sign-with-keylocker.js` electron-builder signtoolOptions hook-on át kerül az aláíráshoz. `CODE_SIGN_ENABLED=1` a workflow lépéseiben explicit.
 
 A `SM_CLIENT_CERT_FILE_B64` szükséges mert CI-en nincs fájlrendszer (a sign hook base64-ből egy temp .p12-t dekódol). Lokálisan: `SM_CLIENT_CERT_FILE` pontosan a .p12 fájl path-ja.
+
+A `SM_CLIENT_TOOLS_MSI_URL` a DigiCert Keylocker Tools MSI letöltési URL-je — a workflow `Install DigiCert KeyLocker Client Tools (smctl)` lépése letölti és csendesen telepíti (`msiexec /i /quiet /norestart`). Az `smctl.exe` a `C:\Program Files\DigiCert\DigiCert Keylocker Tools\` path-ra települ, ami `$GITHUB_PATH`-ba kerül.
+
+A `GOOGLE_*` 4 secret a workflow `Construct .env from GitHub Secrets` lépésében szerkesztődik össze egy `.env` fájllá a repo root-ban, ahogy a `build-installer.ps1` production secret gate-je elvárja. Helyileg: a `.env` fájl gitignore-olt és manuálisan kerül kitöltésre.
 
 ## Production gate
 

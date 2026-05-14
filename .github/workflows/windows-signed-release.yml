@@ -166,11 +166,66 @@ jobs:
           $env:Path += ";C:\Program Files (x86)\NSIS"
           "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Append
 
+      - name: Install DigiCert KeyLocker Client Tools (smctl)
+        shell: pwsh
+        env:
+          SM_CLIENT_TOOLS_MSI_URL: ${{ secrets.SM_CLIENT_TOOLS_MSI_URL }}
+        run: |
+          # Codex P1 #591 iter-3: sign-with-keylocker.js execFileSync('smctl', ...) -t hiv,
+          # ami a DigiCert KeyLocker Client Tools (Windows-x64 MSI) telepiteset igenyli.
+          # A MSI letoltesi URL DigiCert ONE -> KeyLocker -> Downloads-bol szerezheto. A repo
+          # GitHub Secret-bol kapja az URL-t (SM_CLIENT_TOOLS_MSI_URL), igy a kiadas valtoztathato
+          # MSI verzio-frissiteskor anelkul, hogy a workflow code change-elne.
+          if (-not $env:SM_CLIENT_TOOLS_MSI_URL) {
+            Write-Host "::error::Hianyzik SM_CLIENT_TOOLS_MSI_URL secret. Beallitando GitHub Secrets-ben:"
+            Write-Host "::error::  SM_CLIENT_TOOLS_MSI_URL = (DigiCert ONE -> KeyLocker -> Downloads MSI URL)"
+            exit 1
+          }
+          $msi = "$env:TEMP\keylocker-tools.msi"
+          Invoke-WebRequest -Uri $env:SM_CLIENT_TOOLS_MSI_URL -OutFile $msi -UseBasicParsing
+          Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /quiet /norestart" -Wait
+          $smctlPath = "C:\Program Files\DigiCert\DigiCert Keylocker Tools"
+          if (-not (Test-Path "$smctlPath\smctl.exe")) {
+            Write-Host "::error::smctl.exe nem talalhato $smctlPath utan a telepites kovetkezeben."
+            exit 1
+          }
+          $smctlPath | Out-File -FilePath $env:GITHUB_PATH -Append
+          Write-Host "smctl installed: $smctlPath\smctl.exe"
+
       - name: Download backend JAR
         uses: actions/download-artifact@v4
         with:
           name: backend-jar-${{ needs.preflight.outputs.version }}
           path: backend/target/
+
+      - name: Construct .env from GitHub Secrets (production secret gate)
+        shell: pwsh
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
+          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
+        run: |
+          # Codex P1 #591 iter-3 line 216: build-installer.ps1 production secret gate-je
+          # .env file-bol olvas (GOOGLE_CLIENT_ID, GOOGLE_DESKTOP_CLIENT_ID, GOOGLE_DESKTOP_CLIENT_SECRET).
+          # Hianyzo .env -> throw 'PRODUCTION SECRET GATE'.
+          # CI-en a .env file-t a GitHub Secrets-bol szerkesztjuk ossze.
+          $missing = @()
+          if (-not $env:GOOGLE_CLIENT_ID) { $missing += 'GOOGLE_CLIENT_ID' }
+          if (-not $env:GOOGLE_DESKTOP_CLIENT_ID) { $missing += 'GOOGLE_DESKTOP_CLIENT_ID' }
+          if (-not $env:GOOGLE_DESKTOP_CLIENT_SECRET) { $missing += 'GOOGLE_DESKTOP_CLIENT_SECRET' }
+          if ($missing.Count -gt 0) {
+            Write-Host "::error::Hianyzo GitHub Secrets: $($missing -join ', '). Production installer Google login nelkul nem adhato ki."
+            exit 1
+          }
+          $envContent = @(
+            "GOOGLE_CLIENT_ID=$env:GOOGLE_CLIENT_ID",
+            "GOOGLE_CLIENT_SECRET=$env:GOOGLE_CLIENT_SECRET",
+            "GOOGLE_DESKTOP_CLIENT_ID=$env:GOOGLE_DESKTOP_CLIENT_ID",
+            "GOOGLE_DESKTOP_CLIENT_SECRET=$env:GOOGLE_DESKTOP_CLIENT_SECRET"
+          ) -join "`n"
+          $envContent | Out-File -FilePath ".env" -Encoding utf8 -NoNewline
+          Write-Host ".env constructed from secrets (redacted values not logged)"
 
       - name: Stage backend JAR (manualisan, mert build-installer.ps1 -SkipBackendBuild)
         shell: pwsh
@@ -272,6 +327,25 @@ jobs:
             kozponti-client/package-lock.json
             frontend-react/package-lock.json
 
+      - name: Install DigiCert KeyLocker Client Tools (smctl)
+        shell: pwsh
+        env:
+          SM_CLIENT_TOOLS_MSI_URL: ${{ secrets.SM_CLIENT_TOOLS_MSI_URL }}
+        run: |
+          if (-not $env:SM_CLIENT_TOOLS_MSI_URL) {
+            Write-Host "::error::Hianyzik SM_CLIENT_TOOLS_MSI_URL secret."
+            exit 1
+          }
+          $msi = "$env:TEMP\keylocker-tools.msi"
+          Invoke-WebRequest -Uri $env:SM_CLIENT_TOOLS_MSI_URL -OutFile $msi -UseBasicParsing
+          Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /quiet /norestart" -Wait
+          $smctlPath = "C:\Program Files\DigiCert\DigiCert Keylocker Tools"
+          if (-not (Test-Path "$smctlPath\smctl.exe")) {
+            Write-Host "::error::smctl.exe nem talalhato $smctlPath utan."
+            exit 1
+          }
+          $smctlPath | Out-File -FilePath $env:GITHUB_PATH -Append
+
       - name: Install dependencies (kozponti + frontend-react)
         shell: pwsh
         run: |
@@ -338,6 +412,25 @@ jobs:
             package-lock.json
             arfolyam-keszito-client/package-lock.json
             frontend-react/package-lock.json
+
+      - name: Install DigiCert KeyLocker Client Tools (smctl)
+        shell: pwsh
+        env:
+          SM_CLIENT_TOOLS_MSI_URL: ${{ secrets.SM_CLIENT_TOOLS_MSI_URL }}
+        run: |
+          if (-not $env:SM_CLIENT_TOOLS_MSI_URL) {
+            Write-Host "::error::Hianyzik SM_CLIENT_TOOLS_MSI_URL secret."
+            exit 1
+          }
+          $msi = "$env:TEMP\keylocker-tools.msi"
+          Invoke-WebRequest -Uri $env:SM_CLIENT_TOOLS_MSI_URL -OutFile $msi -UseBasicParsing
+          Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /quiet /norestart" -Wait
+          $smctlPath = "C:\Program Files\DigiCert\DigiCert Keylocker Tools"
+          if (-not (Test-Path "$smctlPath\smctl.exe")) {
+            Write-Host "::error::smctl.exe nem talalhato $smctlPath utan."
+            exit 1
+          }
+          $smctlPath | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Install dependencies (arfolyamkeszito + frontend-react)
         shell: pwsh
