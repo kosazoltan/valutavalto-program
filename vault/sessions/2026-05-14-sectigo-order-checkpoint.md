@@ -168,6 +168,47 @@ Amikor a Sectigo cert kiadásra kerül (kb. 3-5 munkanap):
 7. AI: signing verify (`Get-AuthenticodeSignature`)
 8. Done — v2.5.51 signed release publikálva
 
+## Azure billing profile állapota (2026-05-14 21:30)
+
+A Microsoft Azure Pay-As-You-Go account regisztrációkor egy MOSP-típusú (Microsoft Online Services Program) billing profile jött létre, ami a person-account email alapján default módon a **személyes adatokat** állítja be a "soldTo" mezőbe. Ez kritikus magyar áfás számla szempontjából.
+
+### Sikeresen frissítve (REST API via Az CLI)
+- **`billTo.companyName`**: `"Zoltán"` → `"EXCLUSIVE BEST Change Zrt."` ✅
+- **`billTo.addressLine1`**: `"Citrom utca 2-6"` → `"Citrom utca 2-6. foldszint 26. ajto"` ✅
+- **`billTo.addressLine2`**: VAT-szám (`HU32313332`) → üres (nem ide tartozik) ✅
+- **`billTo.phoneNumber`**: `"0036703800202"` → `"+36703800202"` (E.164 format) ✅
+
+A `billTo` az **invoice mailing address** — ide kerül a számla.
+
+### NEM patch-elhető REST API-val (Microsoft support ticket szükséges)
+- ❌ **`soldTo.companyName`**: jelenleg `"Zoltán"` — kellene `"EXCLUSIVE BEST Change Zrt."` (legal entity, áfás számla "Vevő" mezőbe)
+- ❌ **`taxIds`**: jelenleg `null` — kellene `[{ id: "HU32313332", country: "HU", scope: "Country" }]` (B2B reverse charge mechanism)
+- ❌ **`displayName`**: jelenleg `"Zoltán Kósa"` — kellene `"EXCLUSIVE BEST Change Zrt."` (csak kozmetika, nem jelenik meg a számlán)
+
+A 400 Bad Request silent-fail miatt nem kaptam pontos error message-et, de az Azure MOSP-account schema NEM engedi a `soldTo` legal entity változtatást REST-tel — ez bevallott Microsoft korlátozás.
+
+### Megoldási opciók
+1. **Azure Support Ticket** (ajánlott, ingyenes Basic Support csomaggal):
+   - 🔗 https://portal.azure.com/#blade/Microsoft_Azure_Support/HelpAndSupportBlade
+   - Issue type: **Billing**
+   - Subject: "Update Sold To legal entity + add Tax ID for billing profile QEY7-FAGD-BG7-PGB"
+   - Részletek: companyName legyen `EXCLUSIVE BEST Change Zrt.`, taxIds: HU32313332
+   - Csatolmány: cégkivonat scan (Best cégkivonat 2026 05. hó.pdf)
+   - Várható válasz: 1-2 munkanap, ingyenes
+2. **MCA migráció** (Microsoft Customer Agreement) — drágább/komplex, csak akkor érdemes ha Azure havidíj >$100/hó
+3. **Marad így + könyvelői korrekció** — a számla "Bill To" mezőjében EXCLUSIVE BEST Change Zrt. szerepel, a "Sold To" mezőben Zoltán Kósa. A könyvelő ezt B2C invoice-ként kezeli, a 27% áfa felszámítva, és a cég ezt levonhatja az áfa-bevallásban. **Hátrány**: ~27% áfa előre fizetendő, és csak negyedévente visszakapható.
+
+### Aktuális számla impact (havi ~$5-10 Azure költség mellett)
+- Várt havi tétel: ~$5-10 Key Vault Premium HSM
+- Évente: ~$60-120
+- 3 évre: ~$180-360
+- 27% áfa előre: ~$50-100 (visszakapható)
+
+A Microsoft Support ticket megéri az ~5 perc beadási időért, mert így 3 évre megspóroljuk a 27% áfa előre-fizetést.
+
+### NEXT (user-action 1 hét múlva)
+🔗 Azure Support Ticket beadása a fentiek alapján. Vagy ha az Azure havi ~$5-10 tényleg minimális, a cégkönyvelő rutinszerűen levonhatja a 27%-ot — akkor nem sürgős.
+
 ## Hivatkozott fájlok
 
 - `vault/operations/code-signing-setup-path.md` — full runbook (PR #592, Azure-átírt)
