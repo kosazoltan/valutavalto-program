@@ -102,4 +102,19 @@ class PublicGoogleConfigStatusControllerTest {
                 .andExpect(jsonPath("$.desktopPrefixes[0]").value("31650448***"))
                 .andExpect(jsonPath("$.desktopPrefixes[1]").value("28369624***"));
     }
+
+    @Test
+    @DisplayName("Codex P2 #588: csak vesszo / whitespace ertek -> desktopConfigured=false (parsed-listabol szarmazik)")
+    void onlyCommasOrWhitespace_returnsDesktopConfiguredFalse() throws Exception {
+        ReflectionTestUtils.setField(controller, "googleClientId",
+                "819982945323-5tve3fr5a9cstso6o3db6p838lo2v6sn.apps.googleusercontent.com");
+        ReflectionTestUtils.setField(controller, "googleDesktopClientId", " , , ");
+
+        mockMvc.perform(get("/api/v1/public/auth/google-config-status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.webConfigured").value(true))
+                .andExpect(jsonPath("$.desktopConfigured").value(false))
+                .andExpect(jsonPath("$.desktopPrefix").value(""))
+                .andExpect(jsonPath("$.desktopPrefixes.length()").value(0));
+    }
 }

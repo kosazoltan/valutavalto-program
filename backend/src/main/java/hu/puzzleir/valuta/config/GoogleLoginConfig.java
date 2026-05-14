@@ -93,10 +93,11 @@ public class GoogleLoginConfig {
         // Audience-lista: Web client ID kotelezo, Desktop client ID(k) opcionalis(ak) — vesszovel
         // elvalasztva tobb is megadhato. 2026-05-14: tobb desktop client ID tamogatasa felhasznaloi
         // bejelentes alapjan (Bali/Fabulya Google login fail, regi+uj installer egyutt mukodese).
+        // Sourcery/Codex P2 #588: parse + filter -> empty list-szel ugyanaz mint nincs konfiguralva.
         java.util.List<String> audiences = new java.util.ArrayList<>();
         audiences.add(googleClientId);
+        java.util.List<String> desktopIds = new java.util.ArrayList<>();
         if (googleDesktopClientId != null && !googleDesktopClientId.isBlank()) {
-            java.util.List<String> desktopIds = new java.util.ArrayList<>();
             for (String id : googleDesktopClientId.split(",")) {
                 String trimmed = id.trim();
                 if (!trimmed.isEmpty()) {
@@ -104,6 +105,8 @@ public class GoogleLoginConfig {
                     audiences.add(trimmed);
                 }
             }
+        }
+        if (!desktopIds.isEmpty()) {
             StringBuilder prefixes = new StringBuilder();
             for (String id : desktopIds) {
                 if (prefixes.length() > 0) prefixes.append(", ");

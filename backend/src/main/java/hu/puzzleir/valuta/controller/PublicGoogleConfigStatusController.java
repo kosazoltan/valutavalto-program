@@ -51,10 +51,13 @@ public class PublicGoogleConfigStatusController {
     @GetMapping("/google-config-status")
     public ResponseEntity<Map<String, Object>> getGoogleConfigStatus() {
         boolean webConfigured = googleClientId != null && !googleClientId.isBlank();
-        boolean desktopConfigured = googleDesktopClientId != null && !googleDesktopClientId.isBlank();
         String webPrefix = webConfigured ? maskPrefix(googleClientId) : null;
+
+        // Codex P2 #588 fix: a desktopConfigured CSAK akkor true ha tenylegesen
+        // van valid (nem-ures, trim utani) desktop client ID. Igy a ',' vagy
+        // ' , ' (csak whitespace + delimiter) ertekek NEM tunnek configurated-nek.
         java.util.List<String> desktopPrefixes = new java.util.ArrayList<>();
-        if (desktopConfigured) {
+        if (googleDesktopClientId != null && !googleDesktopClientId.isBlank()) {
             for (String id : googleDesktopClientId.split(",")) {
                 String trimmed = id.trim();
                 if (!trimmed.isEmpty()) {
@@ -62,6 +65,7 @@ public class PublicGoogleConfigStatusController {
                 }
             }
         }
+        boolean desktopConfigured = !desktopPrefixes.isEmpty();
         String activeProfile = String.join(",", Arrays.asList(environment.getActiveProfiles()));
 
         Map<String, Object> response = new java.util.HashMap<>();
