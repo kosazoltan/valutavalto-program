@@ -38,7 +38,27 @@ A 2026-05-05-i `code-signing-cert-beszerzes-csomag.md` ezeket NEM tartalmazta:
 
 ## Cert acquisition — jelenlegi lépés
 
-**Status (2026-05-14 17:50):** User a CodeSigningStore-on rendelt — order form kitöltése folyamatban.
+**Status (2026-05-14 19:26 CEST):** ✅ **MEGRENDELÉS LEADVA SignMyCode-on, fizetés sikeres.**
+
+### Order részletek (SignMyCode dashboard)
+
+| Mező | Érték |
+|---|---|
+| Vendor | SignMyCode |
+| Account email | kosa.zoltan.ebc@gmail.com |
+| Order Date | 2026-05-14 (UTC) |
+| Order Type | New |
+| Order Validity | 36 Months (3 év, annual re-issuance HSM-en) |
+| Delivery Mode | Use Existing Token (= BYOH, $0 shipping) |
+| Amount paid | $659.97 (cég Visa/MC, USD) |
+| **Transaction ID** | **SMC1015225S638431** |
+| **Stripe Payment Intent** | pi_3TX2zbEtX5pB0VYc1SeX4Y0n |
+| **Enrollment Token** ⚠️ | `wrmxwidaaxyzceh` (CSR upload + enrollment-hez) |
+| Dashboard | https://signmycode.com/dashboard/order-detail?odid=BNYD |
+
+### NEXT: DigiCert KeyLocker activation
+
+A SignMyCode enrollment NEM indítható el CSR nélkül. A CSR a DigiCert KeyLocker-ben generálódik (HSM-belső, NEM letölthető private key).
 
 URL: https://codesigningstore.com/sectigo-code-signing
 
