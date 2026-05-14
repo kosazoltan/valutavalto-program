@@ -114,15 +114,22 @@ export default function CustomerPanel({
       onAmlResult?.(result)
       return { ...data, amlVerified: true }
     } catch (err) {
-      logger.warn('CustomerPanel', 'AML check failed — fail-closed', err)
-      const blockedResult: AmlCheckResultDto = {
+      // Local-first mandate (2026-05-14): a halozat opcionalis, nem mukodesi feltetel.
+      // AML check fail eseten degradalt modot adunk — a transzakcio FOLYTATHATO felhasznaloi
+      // megerositessel, audit log rogziti, kozponti szerver utolag ujra-ellenoriz.
+      // A `[OFFLINE_DEGRADED]` prefix kulcs a CashierTransactionPage.handleSubmit detekcio-jahoz.
+      logger.warn('CustomerPanel', 'AML check failed — degraded mode (offline-tolerant)', err)
+      const degradedResult: AmlCheckResultDto = {
         transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
-        requiresId: true, requiresEnhanced: false, blocked: true,
-        warnings: ['AML ellenorzes nem sikerult — tranzakcio blokkolt biztonsagi okbol'],
+        requiresId: true, requiresEnhanced: false, blocked: false,
+        warnings: [
+          '[OFFLINE_DEGRADED] AML ellenőrzés nem sikerült (hálózati/szerver hiba).',
+          'A tranzakció folytatható megerősítéssel, de utólagos központi ellenőrzésre kerül.',
+        ],
       }
-      setAmlResult(blockedResult)
-      onAmlResult?.(blockedResult)
-      return data
+      setAmlResult(degradedResult)
+      onAmlResult?.(degradedResult)
+      return { ...data, amlVerified: false }
     } finally {
       setAmlChecking(false)
     }
@@ -296,7 +303,8 @@ export default function CustomerPanel({
     customerBirthPlace, customerBirthDate, customerBirthName, customerMotherName,
     customerAddress, customerResidence, customerAddressCardNumber, selectedCustomer, onCustomerReady])
 
-  // Re-run AML when hufTotal changes
+  // Re-run AML when hufTotal changes. Local-first: a degradalt mod ugyanaz mint a runAmlCheck-ben —
+  // hibanal NEM blokkolunk hard, hanem warning-ot adunk vissza `[OFFLINE_DEGRADED]` prefix-szel.
   useEffect(() => {
     if (selectedCustomer?.id && hufTotal > 0) {
       const timer = setTimeout(async () => {
@@ -305,13 +313,16 @@ export default function CustomerPanel({
           setAmlResult(result)
           onAmlResult?.(result)
         } catch {
-          const blockedResult: AmlCheckResultDto = {
+          const degradedResult: AmlCheckResultDto = {
             transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
-            requiresId: true, requiresEnhanced: false, blocked: true,
-            warnings: ['AML ujraellenorzes nem sikerult — tranzakcio blokkolt biztonsagi okbol'],
+            requiresId: true, requiresEnhanced: false, blocked: false,
+            warnings: [
+              '[OFFLINE_DEGRADED] AML újraellenőrzés nem sikerült (hálózati/szerver hiba).',
+              'A tranzakció folytatható megerősítéssel, de utólagos központi ellenőrzésre kerül.',
+            ],
           }
-          setAmlResult(blockedResult)
-          onAmlResult?.(blockedResult)
+          setAmlResult(degradedResult)
+          onAmlResult?.(degradedResult)
         }
       }, 1000)
       return () => clearTimeout(timer)

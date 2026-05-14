@@ -180,3 +180,46 @@ describe('CustomerPanel — missing required fields UX (bug #2 fix)', () => {
     expect(mocks.customerApiCreate).toHaveBeenCalled()
   })
 })
+
+describe('CustomerPanel — AML degradált mód (local-first 2026-05-14)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('AML check hálózati hiba → blocked=false + [OFFLINE_DEGRADED] warning prefix', async () => {
+    const user = userEvent.setup()
+    const onAmlResult = vi.fn()
+    mocks.customerApiCreate.mockResolvedValue({ id: 99, name: 'Test User' })
+    mocks.amlApiCheckAllThresholds.mockRejectedValue(new Error('Network error'))
+
+    render(
+      <CustomerPanel
+        identificationLevel="SIMPLIFIED"
+        minimumLevel="SIMPLIFIED"
+        onLevelChange={() => {}}
+        requiresSourceVerification={false}
+        hufTotal={200000}
+        onCustomerReady={() => {}}
+        onAmlResult={onAmlResult}
+      />,
+    )
+
+    await user.type(screen.getByTestId('customer-name-input'), 'Bali Henrietta')
+    await user.type(screen.getByTestId('customer-birth-place-input'), 'Szeged')
+    await user.type(screen.getByTestId('customer-doc-number-input'), 'CD789012')
+    await user.type(screen.getByTestId('customer-birth-date-input'), '1985-06-20')
+
+    await user.click(screen.getByRole('button', { name: /Ügyfél rögzítése/i }))
+
+    // Várunk az AML check async lefutására (rejected promise)
+    await vi.waitFor(() => {
+      expect(onAmlResult).toHaveBeenCalled()
+    })
+
+    const lastCall = onAmlResult.mock.calls.at(-1)
+    expect(lastCall).toBeDefined()
+    const amlResult = lastCall![0]
+    expect(amlResult.blocked).toBe(false)
+    expect(amlResult.warnings.some((w: string) => w.startsWith('[OFFLINE_DEGRADED]'))).toBe(true)
+  })
+})

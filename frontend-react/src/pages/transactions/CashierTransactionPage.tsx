@@ -13,6 +13,7 @@ import {
   getElectronCachedRates,
   isElectronQueueAvailable,
   mapCachedRatesToExchangeRates,
+  recordLocalAuditEvent,
   saveAndSyncPendingBuySell,
 } from '../../utils/electronTransactions'
 import { logger } from '../../utils/logger'
@@ -563,6 +564,41 @@ export default function CashierTransactionPage() {
     if (aml?.blocked) {
       toast.error('Tranzakcio blokkolt', 'AML szabalysertes — a tranzakcio nem rogzitheto!')
       return
+    }
+
+    // Local-first degradált AML mód (2026-05-14 user-direktíva): ha az AML ellenőrzés
+    // hálózati/szerver hiba miatt nem futott le, a warnings tömb `[OFFLINE_DEGRADED]`
+    // prefix-szel jelzi. Ilyenkor a pénztáros KÉNYTELEN megerősíteni hogy folytatja —
+    // audit log rögzíti, központi szerver utólag újra-ellenőriz.
+    const amlDegraded = aml?.warnings?.some((w) => w.startsWith('[OFFLINE_DEGRADED]')) ?? false
+    if (amlDegraded && identificationLevel !== 'SIMPLE') {
+      const confirmed = window.confirm(
+        'FIGYELEM: Az AML ellenőrzés nem futott le (hálózati hiba).\n\n' +
+        'A tranzakció FOLYTATHATÓ, de:\n' +
+        '• Audit naplóba degradált módként kerül\n' +
+        '• A központi szerver utólag újra-ellenőrzi\n' +
+        '• Ha az utólagos ellenőrzés gyanút talál, a pénztárost értesítjük\n\n' +
+        'Biztosan folytatja?',
+      )
+      if (!confirmed) {
+        toast.info('Tranzakció megszakítva', 'Várj amíg helyreáll a hálózat, vagy próbáld újra később.')
+        return
+      }
+      // Audit log a degradált eljárásról (best-effort, lokális SQLite + sync ha hálózat helyreáll)
+      void recordLocalAuditEvent({
+        entityType: 'aml_check',
+        eventType: 'AML_DEGRADED_PROCEED',
+        payload: {
+          workerCode: useAuthStore.getState().worker?.workerCode ?? 'unknown',
+          hufTotal: total,
+          identificationLevel,
+          customerId: cd?.id ?? null,
+          customerDocNumber: cd?.documentNumber ?? null,
+          confirmedAt: new Date().toISOString(),
+          reason: 'AML check failed (offline/server error), pénztáros explicit megerősítéssel folytatta',
+        },
+        status: 'degraded',
+      })
     }
 
     setIsSubmitting(true)
