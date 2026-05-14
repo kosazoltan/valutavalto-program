@@ -82,4 +82,24 @@ class PublicGoogleConfigStatusControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.webPrefix").value("***"));
     }
+
+    @Test
+    @DisplayName("Tobb Desktop client ID (vesszovel elvalasztott) -> desktopPrefixes lista mind a kettot tartalmazza")
+    void multipleDesktopClientIds_returnsListOfPrefixes() throws Exception {
+        String webId = "819982945323-5tve3fr5a9cstso6o3db6p838lo2v6sn.apps.googleusercontent.com";
+        String multiDesktop =
+                "316504483942-abc.apps.googleusercontent.com,"
+                + "28369624592-3cf88hndlq4eru6ht15f3ikt5e8gs8te.apps.googleusercontent.com";
+        ReflectionTestUtils.setField(controller, "googleClientId", webId);
+        ReflectionTestUtils.setField(controller, "googleDesktopClientId", multiDesktop);
+
+        mockMvc.perform(get("/api/v1/public/auth/google-config-status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.webConfigured").value(true))
+                .andExpect(jsonPath("$.desktopConfigured").value(true))
+                .andExpect(jsonPath("$.desktopPrefix").value("31650448***"))
+                .andExpect(jsonPath("$.desktopPrefixes.length()").value(2))
+                .andExpect(jsonPath("$.desktopPrefixes[0]").value("31650448***"))
+                .andExpect(jsonPath("$.desktopPrefixes[1]").value("28369624***"));
+    }
 }
