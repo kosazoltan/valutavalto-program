@@ -30,6 +30,14 @@
 | **User Object ID (FRISSÍTVE 2026-05-14 20:05)** | `f832d69a-75e7-428e-8d2f-b57800a306c4` | A te user account-od egyedi ID-je a tenant-ban (NEM Tenant ID). Nem kell GitHub secret-ként, csak referencia. |
 | **AZURE_TENANT_ID (FRISSÍTVE 2026-05-14 20:10)** | `b6c90d40-e505-4003-83b0-592c43b7e223` | A `kosazoltanebcoutlook.onmicrosoft.com` tenant Directory ID-je. Ez lesz az `AZURE_TENANT_ID` GitHub secret értéke. Microsoft Entra ID licenc: Free (elég App Registration-höz). |
 | **Tenant primary domain** | `kosazoltanebcoutlook.onmicrosoft.com` | Default tenant domain. App Registration + Key Vault ebben a tenant-ban él. |
+| **Azure subscription (FRISSÍTVE 2026-05-14 20:20)** | `1. előfizetés` ID: `8db4cf28-f059-47f9-a9dd-96a295a47195` | Aktív Pay-As-You-Go subscription. NEM kellett új PAYG regisztrálni — már létezett egy free-trial alapú. |
+| **AZURE_KEY_VAULT_URI (FRISSÍTVE 2026-05-14 20:25)** | `https://kv-valuta-codesign.vault.azure.net/` | Resource Group: `rg-valuta-signing`, West Europe, Premium tier, Vault Access Policy model. |
+| **AZURE_KEY_VAULT_CERT_NAME (FRISSÍTVE 2026-05-14 20:30)** | `valuta-codesign-cert` | RSA-HSM 3072 bit, Non-exportable, EKU 1.3.6.1.5.5.7.3.3 (Code Signing), 36-month validity, Subject: `CN=EXCLUSIVE BEST Change Zrt., O=EXCLUSIVE BEST Change Zrt., L=Pecs, S=Baranya, C=HU`. |
+| **AZURE_CLIENT_ID (FRISSÍTVE 2026-05-14 20:35)** | `2f6bfdfc-eb2b-4992-863d-f59e98a576a5` | App Registration `sp-valuta-codesign-ci` Application (client) ID. |
+| **AZURE_CLIENT_SECRET (FRISSÍTVE 2026-05-14 20:35)** | `<feltöltve GitHub Secret-ként>` | Client Secret `valuta-codesign-ci-secret`, 24 hónap (2028-05-13-ig). Rotation reminder 2028-04-15-re. |
+| **Service Principal Object ID** | `24f78208-a9b2-4edd-837e-45b5c365b3fe` | A Key Vault Access Policy a SP-re ezzel az Object ID-vel kapcsolódik (NEM Application ID). |
+| **Key Vault Access Policies** | 2 policy: User (full) + SP (Cert:Get, Key:Get+Sign) | Minimális permission elv a CI Service Principal-nak. |
+| **CSR fájl helye** | `C:\Users\Kósa Zoltán\Downloads\valuta-codesign-cert_26016ff46f66435e9d269c7e56989649.csr` | 1438 byte, RSA 3072, valid PKCS#10. Most: feltöltendő a SignMyCode enrollment portalra. |
 | Fizetés | **Cég bankkártya** (számlázás USD-ben) | CodeSigningStore csak USD-ben számláz, EUR-kártya konvertál (~1-3% banki díj) |
 | Cert validity | **3 év (annual re-issuance)** | Iparági policy 2026 Feb: max 460 napos validity → multi-year plan annual re-issue HSM-en automatikus |
 
