@@ -551,18 +551,18 @@ export default function CustomerPanel({
               {/* --- Always shown for SIMPLIFIED+ --- */}
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.nev')}</label>
-                <input type="text" className={fieldClass} style={fieldStyle}
+                <input type="text" className={fieldClass} style={fieldStyle} data-testid="customer-name-input"
                   value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.szuletesiIdo2')}</label>
-                <input type="date" className={fieldClass} style={fieldStyle}
+                <input type="date" className={fieldClass} style={fieldStyle} data-testid="customer-birth-date-input"
                   value={customerBirthDate} onChange={(e) => setCustomerBirthDate(e.target.value)} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.szuletesiHely2')}</label>
-                <input type="text" className={fieldClass} style={fieldStyle}
+                <input type="text" className={fieldClass} style={fieldStyle} data-testid="customer-birth-place-input"
                   value={customerBirthPlace} onChange={(e) => setCustomerBirthPlace(e.target.value)} />
               </div>
 
@@ -590,7 +590,7 @@ export default function CustomerPanel({
 
               <div className={showFull ? '' : 'col-span-2'}>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.okmanyszam')}</label>
-                <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle}
+                <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle} data-testid="customer-doc-number-input"
                   value={customerDocNumber} onChange={(e) => setCustomerDocNumber(e.target.value)} />
               </div>
 
@@ -604,12 +604,12 @@ export default function CustomerPanel({
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.anyjaNeve')}</label>
-                    <input type="text" className={fieldClass} style={fieldStyle}
+                    <input type="text" className={fieldClass} style={fieldStyle} data-testid="customer-mother-name-input"
                       value={customerMotherName} onChange={(e) => setCustomerMotherName(e.target.value)} />
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.lakcimEsIranyitoszam')}</label>
-                    <input type="text" className={fieldClass} style={fieldStyle}
+                    <input type="text" className={fieldClass} style={fieldStyle} data-testid="customer-address-input"
                       value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)}
                       placeholder="pl. 1234 Budapest, Fo utca 1." />
                   </div>
@@ -631,9 +631,9 @@ export default function CustomerPanel({
               onClick={() => void handleSaveManualCustomer()}
               disabled={isSaving}
               className={`w-full py-2 rounded-lg text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                isFormValid ? '' : 'opacity-70'
+                isFormValid ? '' : 'bg-slate-400 opacity-70'
               }`}
-              style={{ backgroundColor: isFormValid ? 'var(--primary)' : '#94a3b8' }}
+              style={isFormValid ? { backgroundColor: 'var(--primary)' } : undefined}
               data-action="save-customer"
             >
               {isSaving ? 'Mentés...' : 'Ügyfél rögzítése'}

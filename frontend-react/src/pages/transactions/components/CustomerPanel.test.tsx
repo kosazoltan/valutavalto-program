@@ -90,9 +90,7 @@ describe('CustomerPanel — missing required fields UX (bug #2 fix)', () => {
       />,
     )
 
-    const nameInputs = screen.getAllByRole('textbox')
-    // First textbox is the search input, second is the name input
-    await user.type(nameInputs[1]!, 'Kiss János')
+    await user.type(screen.getByTestId('customer-name-input'), 'Kiss János')
 
     const hint = screen.getByTestId('customer-missing-fields-hint')
     expect(hint).not.toHaveTextContent('Név,')
@@ -170,14 +168,10 @@ describe('CustomerPanel — missing required fields UX (bug #2 fix)', () => {
       />,
     )
 
-    const textboxes = screen.getAllByRole('textbox')
-    // [0]=search, [1]=name, [2]=birthPlace, [3]=docNumber
-    await user.type(textboxes[1]!, 'Kiss János')
-    await user.type(textboxes[2]!, 'Budapest')
-    await user.type(textboxes[3]!, 'AB123456')
-    // Date input (HTML5 type=date — userEvent.type works with ISO format)
-    const dateInput = document.querySelector<HTMLInputElement>('input[type="date"]')!
-    await user.type(dateInput, '1990-01-15')
+    await user.type(screen.getByTestId('customer-name-input'), 'Kiss János')
+    await user.type(screen.getByTestId('customer-birth-place-input'), 'Budapest')
+    await user.type(screen.getByTestId('customer-doc-number-input'), 'AB123456')
+    await user.type(screen.getByTestId('customer-birth-date-input'), '1990-01-15')
 
     const saveButton = screen.getByRole('button', { name: /Ügyfél rögzítése/i })
     await user.click(saveButton)
