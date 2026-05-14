@@ -162,13 +162,9 @@ public class TransactionMultiLineService {
                 : BigDecimal.ZERO;
 
         // Tranzakcio fejlec letrehozasa.
-        // V226 (2026-05-14): foreignStatus tranzakcio-szinten — request explicit erteke vagy az
-        // elso tetel devizastatusza (default: parent request szinten). Ha minden line null,
-        // a Transaction.foreignStatus is null marad (Hibernate enum-null OK).
-        ForeignStatus txForeignStatus = resolveForeignStatus(null, request.getForeignStatus());
-        if (txForeignStatus == null && !transactionLines.isEmpty()) {
-            txForeignStatus = transactionLines.get(0).getForeignStatus();
-        }
+        // V226 (2026-05-14): foreignStatus tranzakcio-szinten — Sourcery P3 #587 DRY:
+        // resolveTransactionForeignStatus helper egyseges request+lines feloldas.
+        ForeignStatus txForeignStatus = resolveTransactionForeignStatus(request.getForeignStatus(), transactionLines);
 
         Transaction transaction = Transaction.builder()
                 .company(company)
@@ -443,7 +439,7 @@ public class TransactionMultiLineService {
      *
      * <p>V226 (2026-05-14): tetelenkent kulonbozo devizastatusz lehet egy bizonylaton belul.
      * Ha a tetel-szintu ertek NULL, a parent request foreignStatus orokitt at. Case-insensitive
-     * normalizalas (DOMESTIC/FOREIGN), invalid ertek -> NULL.</p>
+     * normalizalas (DOMESTIC/FOREIGN), invalid ertek -> NULL + warning log.</p>
      */
     private static ForeignStatus resolveForeignStatus(String lineLevel, String parentLevel) {
         String effective = (lineLevel != null && !lineLevel.isBlank()) ? lineLevel : parentLevel;
@@ -451,7 +447,35 @@ public class TransactionMultiLineService {
         try {
             return ForeignStatus.valueOf(effective.toUpperCase(java.util.Locale.ROOT));
         } catch (IllegalArgumentException ex) {
+            // Sourcery P3 #587: invalid ertek loggolva (DTO @Pattern validacionak elobb meg kell
+            // fognia, de defenziven jelezzuk legacy kliens / manualis DB edit eseten).
+            log.warn("Invalid foreignStatus value '{}' encountered, normalized to NULL", effective);
             return null;
         }
+    }
+
+    /**
+     * Tranzakcio-szintu foreignStatus feloldas (Sourcery P3 #587 DRY helper).
+     *
+     * <p>Logika:
+     * <ol>
+     *   <li>Request explicit erteke (ha nem ures es valid)</li>
+     *   <li>Else: elso tetel devizastatusza</li>
+     *   <li>Else: NULL (Hibernate enum-null OK, Transaction.foreignStatus nullable)</li>
+     * </ol></p>
+     *
+     * @param requestLevel a parent BuyRequest/SellRequest foreignStatus String erteke
+     * @param transactionLines a feldolgozott tetel-listai (mar resolveForeignStatus-szal feltoltve)
+     * @return effektiv tranzakcio-szintu ForeignStatus, vagy NULL
+     */
+    private static ForeignStatus resolveTransactionForeignStatus(
+            String requestLevel,
+            List<TransactionLine> transactionLines) {
+        ForeignStatus fromRequest = resolveForeignStatus(null, requestLevel);
+        if (fromRequest != null) return fromRequest;
+        if (transactionLines != null && !transactionLines.isEmpty()) {
+            return transactionLines.get(0).getForeignStatus();
+        }
+        return null;
     }
 }
