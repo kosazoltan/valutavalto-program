@@ -61,6 +61,57 @@ export async function initDatabase(): Promise<void> {
 
     db.run('PRAGMA foreign_keys = ON;');
 
+    // --- PRAGMA user_version schema versioning (local-first mandate) ---
+    const versionResult = db.exec('PRAGMA user_version');
+    const currentVersion = versionResult.length > 0 && versionResult[0].values.length > 0
+      ? Number(versionResult[0].values[0][0])
+      : 0;
+
+    // --- Local-first tombstone tracking ---
+    db.run(`
+      CREATE TABLE IF NOT EXISTS lf_tombstone (
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
+        synced INTEGER NOT NULL DEFAULT 0,
+        retention_until TEXT NOT NULL,
+        PRIMARY KEY (entity_type, entity_id)
+      );
+    `);
+
+    // --- Local-first sync state ---
+    db.run(`
+      CREATE TABLE IF NOT EXISTS lf_sync_state (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        status TEXT NOT NULL DEFAULT 'idle',
+        last_pull_at TEXT,
+        last_push_at TEXT,
+        last_pull_checkpoint TEXT,
+        error_message TEXT,
+        consecutive_failures INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+    db.run(`INSERT OR IGNORE INTO lf_sync_state (id, status) VALUES (1, 'idle')`);
+
+    // --- Local-first conflict log ---
+    db.run(`
+      CREATE TABLE IF NOT EXISTS lf_conflict_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        local_version TEXT,
+        server_version TEXT,
+        resolution TEXT NOT NULL,
+        resolved_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+
+    // Bump schema version if tables were just created (first run with local-first)
+    if (currentVersion < 1) {
+      db.run('PRAGMA user_version = 1');
+    }
+
     db.run(`
       CREATE TABLE IF NOT EXISTS config (
         key TEXT PRIMARY KEY,
@@ -2067,4 +2118,128 @@ export function getCachedRates(): CachedRateRow[] {
   }
   stmt.free();
   return results;
+}
+
+// --- Local-first: Tombstone API ---
+
+export function markTombstone(entityType: string, entityId: string, retentionDays: number = 30): void {
+  if (!db) return;
+  const retentionUntil = new Date();
+  retentionUntil.setDate(retentionUntil.getDate() + retentionDays);
+  db.run(
+    `INSERT OR REPLACE INTO lf_tombstone (entity_type, entity_id, deleted_at, synced, retention_until)
+     VALUES (?, ?, datetime('now'), 0, ?)`,
+    [entityType, entityId, retentionUntil.toISOString()],
+  );
+  saveDatabase();
+}
+
+export function isTombstoned(entityType: string, entityId: string): boolean {
+  if (!db) return false;
+  const stmt = db.prepare('SELECT 1 FROM lf_tombstone WHERE entity_type = ? AND entity_id = ?');
+  stmt.bind([entityType, entityId]);
+  const exists = stmt.step();
+  stmt.free();
+  return exists;
+}
+
+export function getUnsyncedTombstones(): Array<{ entity_type: string; entity_id: string; deleted_at: string }> {
+  if (!db) return [];
+  const results: Array<{ entity_type: string; entity_id: string; deleted_at: string }> = [];
+  const stmt = db.prepare('SELECT entity_type, entity_id, deleted_at FROM lf_tombstone WHERE synced = 0');
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as { entity_type: string; entity_id: string; deleted_at: string });
+  }
+  stmt.free();
+  return results;
+}
+
+export function markTombstoneSynced(entityType: string, entityId: string): void {
+  if (!db) return;
+  db.run('UPDATE lf_tombstone SET synced = 1 WHERE entity_type = ? AND entity_id = ?', [entityType, entityId]);
+  saveDatabase();
+}
+
+export function cleanupExpiredTombstones(): void {
+  if (!db) return;
+  db.run(`DELETE FROM lf_tombstone WHERE synced = 1 AND datetime(retention_until) < datetime('now')`);
+  saveDatabase();
+}
+
+// --- Local-first: Sync State API ---
+
+export interface LfSyncState {
+  status: string;
+  lastPullAt: string | null;
+  lastPushAt: string | null;
+  lastPullCheckpoint: string | null;
+  errorMessage: string | null;
+  consecutiveFailures: number;
+}
+
+export function getLfSyncState(): LfSyncState {
+  if (!db) return { status: 'idle', lastPullAt: null, lastPushAt: null, lastPullCheckpoint: null, errorMessage: null, consecutiveFailures: 0 };
+  const stmt = db.prepare('SELECT * FROM lf_sync_state WHERE id = 1');
+  if (!stmt.step()) {
+    stmt.free();
+    return { status: 'idle', lastPullAt: null, lastPushAt: null, lastPullCheckpoint: null, errorMessage: null, consecutiveFailures: 0 };
+  }
+  const row = stmt.getAsObject() as Record<string, unknown>;
+  stmt.free();
+  return {
+    status: String(row['status'] ?? 'idle'),
+    lastPullAt: row['last_pull_at'] as string | null,
+    lastPushAt: row['last_push_at'] as string | null,
+    lastPullCheckpoint: row['last_pull_checkpoint'] as string | null,
+    errorMessage: row['error_message'] as string | null,
+    consecutiveFailures: Number(row['consecutive_failures'] ?? 0),
+  };
+}
+
+export function updateLfSyncStatus(status: string, errorMessage?: string): void {
+  if (!db) return;
+  db.run(
+    `UPDATE lf_sync_state SET status = ?, error_message = ?, updated_at = datetime('now'),
+     consecutive_failures = CASE WHEN ? = 'error' THEN consecutive_failures + 1 ELSE 0 END
+     WHERE id = 1`,
+    [status, errorMessage ?? null, status],
+  );
+}
+
+export function updateLfPullCheckpoint(checkpoint: string): void {
+  if (!db) return;
+  db.run(
+    `UPDATE lf_sync_state SET last_pull_checkpoint = ?, last_pull_at = datetime('now'), updated_at = datetime('now') WHERE id = 1`,
+    [checkpoint],
+  );
+  saveDatabase();
+}
+
+export function updateLfPushTimestamp(): void {
+  if (!db) return;
+  db.run(`UPDATE lf_sync_state SET last_push_at = datetime('now'), updated_at = datetime('now') WHERE id = 1`);
+}
+
+// --- Local-first: Conflict Log API ---
+
+export function logConflict(
+  entityType: string,
+  entityId: string,
+  localVersion: string | null,
+  serverVersion: string | null,
+  resolution: string,
+): void {
+  if (!db) return;
+  db.run(
+    `INSERT INTO lf_conflict_log (entity_type, entity_id, local_version, server_version, resolution)
+     VALUES (?, ?, ?, ?, ?)`,
+    [entityType, entityId, localVersion, serverVersion, resolution],
+  );
+  saveDatabase();
+}
+
+export function getSchemaVersion(): number {
+  if (!db) return 0;
+  const result = db.exec('PRAGMA user_version');
+  return result.length > 0 && result[0].values.length > 0 ? Number(result[0].values[0][0]) : 0;
 }
