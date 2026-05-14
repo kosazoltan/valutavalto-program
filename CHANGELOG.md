@@ -5,6 +5,48 @@ A `valutavalto-program` monorepo verzió-történet.
 Formátum: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 verziószám: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.50] — 2026-05-13 (13 PR marathon + 24 Codex finding visszamenőleges audit)
+
+### Released — 4 új migration + security + camera_export 4-eyes + discount granular
+
+#### Sprint 1-5 features (PR #566-#572, korábbi nap-szakaszban)
+- **PR #566 Sprint 1** — Címletezés v2 (DenominationOptimization strategies + rules + log)
+- **PR #567 Sprint 2** — Bank API integráció status + admin UI
+- **PR #568 Sprint 3.A** — MFA / TOTP (RFC 6238, Google Authenticator-kompat)
+- **PR #569 Sprint 3.B+C** — MFA verify endpoint + frontend self-enrollment UI
+- **PR #570 Sprint 4.A** — Hatósági kamera export 4-eyes dual approval
+- **PR #571 Sprint 4.B** — VIP discount granular approval (P2-D)
+- **PR #572 Sprint 5** — Mobile/PWA alapok (P3-A) — manifest + service-worker
+
+#### Hotfix + production fix
+- **PR #573 hotfix v2.5.49** — SetupWizard EXZ→"Valuta Pénzváltó" + **V222** W-S011 over-permissive role cleanup (security incident: pénztáros kódból minden modulba bejutott)
+- **PR #574** — V211 fresh-deploy time bomb javítás + F15 lint whitelist mechanizmus (FLYWAY_REPAIR_ON_MIGRATE=true egyszeri Hetzner deploy)
+- **PR #575** — F15 allowlist BASE revision-ből olvasás (Codex P1 #574 follow-up: self-bypass elhárítás)
+
+#### Codex backlog audit — 24 finding visszamenőleg
+- **PR #577 security** — `CentralReceivedDataController` `@PreAuthorize` legacy + canonical roles (CASHIER kizárva) + 12 új security teszt + CodeQL CSRF fix
+- **PR #578 camera_export 4-eyes** — **V223** status VARCHAR(20)→VARCHAR(30) + rejected_by/at oszlopok + **V224** CHECK constraint a status enum-okra + getPendingRequests AWAITING_SECOND_APPROVAL + rejectExport audit-preserve
+- **PR #579 cashier-tx** — 5-iter Codex P1 konvergencia: per-session quota counter + handleSubmit/Cancel/Esc ref-clear + stale rowKey prune + in-band edit prune + non-blocking quota refetch + BASE-rate HUF isWithinBand
+- **PR #580 discount + UTC** — **V225** DISCOUNT_MAX_PCT seed (15.0 default) + 15% upper cap reject + REGIONAL_MGR + raw operational codes (CHIEF_VAULT, OFFICE_MGR, AUDITOR) + ClosingControlPage UTC date → local
+
+### Migration (4 új V222-V225 production-on)
+- **V222** — Bali Henriett (W-S011) 14 role → 2 (penztar+foertektar); G_SZEGED_ET → ertektar; BALI inaktív cleanup. Production security incident lezárva.
+- **V211** — repair-on-migrate via FLYWAY_REPAIR_ON_MIGRATE=true (checksum 1782720344 → 180166643)
+- **V223** — camera_export_request.status VARCHAR(30) + rejected_by + rejected_at
+- **V224** — CHECK constraint a status oszlopon (7 enum value)
+- **V225** — DISCOUNT_MAX_PCT system_parameter seed (15.0 default)
+
+### Tech
+- Backend mvn test: 1329-1341 PASS minden CI run-en
+- Frontend tsc + eslint: 0 errors
+- CodeQL: pass (CSRF disable a teszt SecurityFilterChain-ből kivéve)
+- Production health: bootstrap-status completed=true, 66 branches API válasz
+- 4-way version sync: package.json + frontend-react + penztar-client + backend/pom.xml 2.5.49 → 2.5.50
+
+### Telepítő fájlok
+- `Penztar-Setup-2.5.50-20260514.exe` — **280.9 MB** (294,550,275 byte), SHA256: `2C95C8D6AD9C5711642801A69E400B23AC75A815E5E9652EF22B2ACDE521196C`
+- `Penztar-Eltavolito-2.5.50-20260514.exe` — **60 KB** (60,856 byte), SHA256: `1D09354016015FF5B95E7B76A79F98BC6B6E572399C533ED719552E1D3597044`
+
 ## [2.3.0] — 2026-04-25 (8 PR session audit + tisztaság-iteráció — installer P1 data-loss fix!)
 
 ### CRITICAL — Installer P1 data-loss fix (MEGKÖTELEZŐ frissítés!)
