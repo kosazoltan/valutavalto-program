@@ -25,6 +25,7 @@
 |---|---|---|
 | Reseller | **SignMyCode** (FRISSÍTVE) | 3-5 nap validation (gyorsabb mint CodeSigningStore 4-8 nap), Sectigo Platinum Partner, jobban skálázott automation. Ár ~azonos ($660 vs $658 BYOH-val). |
 | Storage | **Azure Key Vault Premium HSM** (FRISSÍTVE 2026-05-14 19:50 — DigiCert KeyLocker elvetve!) | DigiCert KeyLocker CSAK DigiCert-issued cert-ekkel mukodik (forrás: SignMyCode tutorial). Sectigo OV CS hivatalos kompatibilis HSM-je az Azure Key Vault Premium. ~$5/hó vs $200/év. |
+| **Azure account email** (FRISSÍTVE 2026-05-14 20:00) | **`kosa.zoltan.ebc@outlook.hu`** (NEM gmail!) | Dedikált Microsoft account az Azure tenant-hoz. Tenant owner + Global Administrator. A SignMyCode `kosa.zoltan.ebc@gmail.com`-tól független — a két fiók NEM kell összekapcsolódjon. |
 | Fizetés | **Cég bankkártya** (számlázás USD-ben) | CodeSigningStore csak USD-ben számláz, EUR-kártya konvertál (~1-3% banki díj) |
 | Cert validity | **3 év (annual re-issuance)** | Iparági policy 2026 Feb: max 460 napos validity → multi-year plan annual re-issue HSM-en automatikus |
 
