@@ -234,7 +234,7 @@ if (Test-Path "$jreOut\bin\java.exe") {
     & $jlinkExe --module-path "$javaHome\jmods" `
         --add-modules $modules `
         --output $jreOut `
-        --strip-debug --compress zip-6 --no-header-files --no-man-pages
+        --strip-debug --compress 2 --no-header-files --no-man-pages
 
     if ($LASTEXITCODE -ne 0) { throw "jlink failed" }
     $jreSize = (Get-ChildItem $jreOut -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
