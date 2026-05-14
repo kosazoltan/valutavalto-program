@@ -47,5 +47,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   restartApp: () => ipcRenderer.invoke('restart-app'),
 
+  // --- Local-first API ---
+  localFirst: {
+    getSyncStatus: () => ipcRenderer.invoke('lf:sync-status'),
+    getOutboxStats: () => ipcRenderer.invoke('lf:outbox-stats'),
+    triggerSync: () => ipcRenderer.invoke('lf:trigger-sync'),
+    saveRateDraft: (draft: Record<string, unknown>) => ipcRenderer.invoke('lf:save-rate-draft', draft),
+    updateRateDraft: (draft: Record<string, unknown>) => ipcRenderer.invoke('lf:update-rate-draft', draft),
+    deleteRateDraft: (entityId: string) => ipcRenderer.invoke('lf:delete-rate-draft', entityId),
+    getRateDrafts: () => ipcRenderer.invoke('lf:get-rate-drafts'),
+    getPublishedRates: () => ipcRenderer.invoke('lf:get-published-rates'),
+    getCurrencyPairs: () => ipcRenderer.invoke('lf:get-currency-pairs'),
+  },
+
   platform: process.platform,
 })

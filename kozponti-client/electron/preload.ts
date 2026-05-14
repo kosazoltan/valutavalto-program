@@ -47,5 +47,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   restartApp: () => ipcRenderer.invoke('restart-app'),
 
+  // --- Local-first API ---
+  localFirst: {
+    getSyncStatus: () => ipcRenderer.invoke('lf:sync-status'),
+    getOutboxStats: () => ipcRenderer.invoke('lf:outbox-stats'),
+    triggerSync: () => ipcRenderer.invoke('lf:trigger-sync'),
+    saveTreasuryOperation: (op: Record<string, unknown>) => ipcRenderer.invoke('lf:save-treasury-operation', op),
+    updateTreasuryOperation: (op: Record<string, unknown>) => ipcRenderer.invoke('lf:update-treasury-operation', op),
+    getTreasuryOperations: () => ipcRenderer.invoke('lf:get-treasury-operations'),
+    saveDistribution: (dist: Record<string, unknown>) => ipcRenderer.invoke('lf:save-distribution', dist),
+    getDistributions: () => ipcRenderer.invoke('lf:get-distributions'),
+    saveTransfer: (xfer: Record<string, unknown>) => ipcRenderer.invoke('lf:save-transfer', xfer),
+    getTransfers: () => ipcRenderer.invoke('lf:get-transfers'),
+    getDailyClosings: () => ipcRenderer.invoke('lf:get-daily-closings'),
+    getBranchStatuses: () => ipcRenderer.invoke('lf:get-branch-statuses'),
+    getBranchBalances: () => ipcRenderer.invoke('lf:get-branch-balances'),
+  },
+
   platform: process.platform,
 })

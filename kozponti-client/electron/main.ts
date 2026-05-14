@@ -10,6 +10,12 @@ import {
   performGoogleOAuthFlow,
   performGoogleOAuthFlowWithBackendLogin,
 } from './google-oauth'
+import {
+  initLocalFirst,
+  shutdownLocalFirst,
+  setAuthToken,
+  registerLocalFirstIpcHandlers,
+} from './local-first'
 
 const osBuild = Number.parseInt(getOsRelease().split('.')[2] || '0', 10)
 if (osBuild >= 26200) {
@@ -257,6 +263,7 @@ function registerIpcHandlers(): void {
     }
     fs.mkdirSync(app.getPath('userData'), { recursive: true })
     fs.writeFileSync(tokenPath(), safeStorage.encryptString(token), { mode: 0o600 })
+    setAuthToken(token)
     return true
   })
 
@@ -276,6 +283,7 @@ function registerIpcHandlers(): void {
     } catch (err) {
       log.warn('[Security] token törlés sikertelen:', err)
     }
+    setAuthToken(null)
   })
 
   ipcMain.handle('get-app-version', () => app.getVersion())
@@ -435,10 +443,20 @@ app.on('second-instance', () => {
 process.on('uncaughtException', (err) => log.error('[Process] uncaughtException', err))
 process.on('unhandledRejection', (reason) => log.error('[Process] unhandledRejection', reason))
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   ensureInitialConfig()
   registerIpcHandlers()
+  registerLocalFirstIpcHandlers()
   registerProtocol()
+
+  // Local-first: SQLite + sync engine initialization
+  try {
+    await initLocalFirst(resolveConfiguredApiUrl())
+    log.info('[App] Local-first infrastructure ready')
+  } catch (err) {
+    log.error('[App] Local-first init failed (continuing online-only):', err)
+  }
+
   createWindow()
 }).catch((err) => {
   log.error('[App] startup failed:', err)
@@ -447,6 +465,7 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  shutdownLocalFirst()
   app.quit()
 })
 
