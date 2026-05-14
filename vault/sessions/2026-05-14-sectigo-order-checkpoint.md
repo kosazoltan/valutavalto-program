@@ -19,11 +19,11 @@
 - **#591** — Windows signed release workflow (`.github/workflows/windows-signed-release.yml`) — vár a cert acquisition-ra
 - **#592** — Code signing setup path runbook (`vault/operations/code-signing-setup-path.md`)
 
-## Cert acquisition — döntések (2026-05-14, frissítve Perplexity research után)
+## Cert acquisition — döntések (2026-05-14, frissítve Perplexity research után + user korrekcio)
 
 | Döntés | Érték | Indok |
 |---|---|---|
-| Reseller | **CodeSigningStore** | US-based phone support, ár ~azonos SignMyCode-dal ($658 vs $660 BYOH-val) |
+| Reseller | **SignMyCode** (FRISSÍTVE) | 3-5 nap validation (gyorsabb mint CodeSigningStore 4-8 nap), Sectigo Platinum Partner, jobban skálázott automation. Ár ~azonos ($660 vs $658 BYOH-val). |
 | Storage | **DigiCert KeyLocker** (cloud HSM) | CI workflow-kompatibilis, NEM USB token, BYOH = no shipping fee |
 | Fizetés | **Cég bankkártya** (számlázás USD-ben) | CodeSigningStore csak USD-ben számláz, EUR-kártya konvertál (~1-3% banki díj) |
 | Cert validity | **3 év (annual re-issuance)** | Iparági policy 2026 Feb: max 460 napos validity → multi-year plan annual re-issue HSM-en automatikus |
@@ -53,7 +53,7 @@ URL: https://codesigningstore.com/sectigo-code-signing
 | City | `Pécs` |
 | Postal Code | `7621` |
 | Address Line 1 | `Citrom utca 2-6. földszint 26. ajtó` |
-| Phone | `+36 70 380 0203` |
+| Phone | `+36 70 380 0202` |
 | Email (DCV) | `info@excbestchange.hu` |
 | Tax ID / VAT | `HU32313332` |
 | Cégjegyzékszám | `02-10-060505` |
@@ -78,7 +78,7 @@ Az aláírási minta + közjegyzői hitelesítés (Dolgán Antal közjegyző?) e
 | 1. Order form kitöltés + fizetés | **User** | CodeSigningStore checkout | 15 perc |
 | 2. DCV email kattintás | **User** | info@excbestchange.hu inbox | 2 perc |
 | 3. Cégkivonat + aláírási minta upload | **User** | Sectigo verifier portal | 10 perc |
-| 4. Phone callback | **User** | +36 70 380 0203 | 5-15 perc |
+| 4. Phone callback | **User** | +36 70 380 0202 | 5-15 perc |
 | 5. **Sectigo cert kiadás** | Auto | email | 3-5 munkanap |
 | 6. DigiCert KeyLocker megrendelés (külön ~$200/év) | **User + AI** | DigiCert ONE | 30 perc |
 | 7. KeyLocker keypair generálás | **User + AI** | DigiCert portal | 5 perc |
