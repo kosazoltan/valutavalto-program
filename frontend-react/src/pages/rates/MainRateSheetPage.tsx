@@ -142,6 +142,10 @@ export default function MainRateSheetPage() {
   const [rows, setRows] = useState<MainRateRow[]>(() => loadFromStorage())
   const [dirty, setDirty] = useState(false)
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; col: keyof MainRateRow } | null>(null)
+  // Codex P1 #581 fix: editBuffer őrzi a felhasználó RAW input-ját az aktív cella szerkesztésekor.
+  // Anélkül a parseFloat minden billentyűzéskor felülírná a megjelenített értéket — pl. nem tudna
+  // beírni "3." vagy "3,5"-öt, mert parsed=3 vs raw="3." különbözik. Csak blur-on commitálunk.
+  const [editBuffer, setEditBuffer] = useState<string>('')
   const [showHelp, setShowHelp] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const lastSavedAt = useRef<string | null>(null)
@@ -152,23 +156,44 @@ export default function MainRateSheetPage() {
   const eurSettlement = eurRow?.settlement ?? 0
   const usdSettlement = usdRow?.settlement ?? 0
 
+  // Codex P1 #581 fix: A oszlop érték crossBase-row-okra automatikusan a G oszlopból
+  // (computeCrossSettlement) — spec szerint "A többi valuta elszámoló árfolyama a 'G'
+  // oszlopban szereplő érték (képletes számítással)". A user által beállított settlement
+  // értéket figyelmen kívül hagyjuk crossBase row esetén.
   const enrichedRows = useMemo<MainRateRow[]>(() => {
-    return rows.map((r) => ({
-      ...r,
-      crossSettlement: r.crossBase ? computeCrossSettlement(r, eurSettlement, usdSettlement) : 0,
-    }))
+    return rows.map((r) => {
+      const computedG = r.crossBase ? computeCrossSettlement(r, eurSettlement, usdSettlement) : 0
+      return {
+        ...r,
+        crossSettlement: computedG,
+        // A column auto-derive cross-base row-okra (spec §3 "G oszlop értékei módosítás nélkül A-ba kerülnek")
+        settlement: r.crossBase ? computedG : r.settlement,
+      }
+    })
   }, [rows, eurSettlement, usdSettlement])
 
-  const updateCell = useCallback((rowIdx: number, col: keyof MainRateRow, value: string) => {
-    if (!canEdit) {
-      toast.warning('Olvasás-csak', 'Az árfolyamkészítéshez admin / főértéktáros / ügyvezető szerepkör szükséges')
+  // Codex P1 #581 fix: A column for crossBase rows is DERIVED, NOT user-editable.
+  // Spec: "A többi valuta elszámoló árfolyama a 'G' oszlopban szereplő érték (képletes számítással)."
+  // → Settlement column read-only ha crossBase != null. A renderelés `aIsAuto = !!row.crossBase`
+  //   alapján dönt span vs. input között a render-loop-ban.
+
+  // Codex P1 #581 fix: commit only on blur with parsed value (preserve raw input while typing).
+  const commitCell = useCallback((rowIdx: number, col: keyof MainRateRow, raw: string) => {
+    if (!canEdit) return
+    if (col === 'currency' || col === 'crossBase' || col === 'crossSettlement') return
+    // crossBase row settlement: read-only (auto-derived from G column)
+    if (col === 'settlement' && rows[rowIdx]?.crossBase) return
+    const trimmed = raw.trim()
+    if (trimmed === '') {
+      setRows(prev => {
+        const next = [...prev]
+        next[rowIdx] = { ...next[rowIdx]!, [col]: 0 }
+        return next
+      })
+      setDirty(true)
       return
     }
-    if (col === 'currency' || col === 'crossBase' || col === 'crossSettlement') {
-      // VÉDETT vagy számolt oszlopok
-      return
-    }
-    const numeric = Number.parseFloat(value.replace(/\s/g, '').replace(',', '.'))
+    const numeric = Number.parseFloat(trimmed.replace(/\s/g, '').replace(',', '.'))
     if (Number.isNaN(numeric)) return
     setRows(prev => {
       const next = [...prev]
@@ -176,7 +201,19 @@ export default function MainRateSheetPage() {
       return next
     })
     setDirty(true)
-  }, [canEdit])
+  }, [canEdit, rows])
+
+  const focusCell = useCallback((rowIdx: number, col: keyof MainRateRow, currentValue: number, decimals: number) => {
+    setActiveCell({ rowIdx, col })
+    // Edit-buffer init: helper display értékéből (decimal-controlled), ne a raw float-ból.
+    setEditBuffer(currentValue ? currentValue.toFixed(decimals) : '')
+  }, [])
+
+  const blurCell = useCallback((rowIdx: number, col: keyof MainRateRow) => {
+    commitCell(rowIdx, col, editBuffer)
+    setActiveCell(null)
+    setEditBuffer('')
+  }, [commitCell, editBuffer])
 
   const saveLocally = useCallback(() => {
     try {
@@ -309,46 +346,42 @@ export default function MainRateSheetPage() {
           </thead>
           <tbody>
             {enrichedRows.map((row, idx) => {
-              const cellClass = (col: keyof MainRateRow, baseClass: string) =>
-                `${baseClass} ${activeCell?.rowIdx === idx && activeCell.col === col ? 'ring-2 ring-blue-500' : ''}`
               const decimals = isJpy(row.currency) ? 3 : 2
+              const aIsAuto = !!row.crossBase
+              const isActive = (col: keyof MainRateRow) => activeCell?.rowIdx === idx && activeCell.col === col
+              const cellClass = (col: keyof MainRateRow, baseClass: string) =>
+                `${baseClass} ${isActive(col) ? 'ring-2 ring-blue-500' : ''}`
+              // EditableInput closure: while focused, show editBuffer (raw user input);
+              // when blurred, parse + commit. Codex P1 #581 fix.
+              const renderInput = (col: keyof MainRateRow, currentVal: number, decimalsFor: number, classes: string, placeholder?: string) => (
+                <input
+                  type="text"
+                  value={isActive(col) ? editBuffer : (currentVal ? currentVal.toFixed(decimalsFor) : '0')}
+                  onChange={(e) => setEditBuffer(e.target.value)}
+                  onFocus={() => focusCell(idx, col, currentVal, decimalsFor)}
+                  onBlur={() => blurCell(idx, col)}
+                  className={classes}
+                  disabled={!canEdit}
+                  placeholder={placeholder}
+                />
+              )
               return (
                 <tr key={row.currency} className="hover:bg-slate-50">
-                  {/* A — Elszámoló (piros, módosítható) */}
-                  <td className={cellClass('settlement', 'border border-slate-300 px-2 py-1 text-right font-mono font-bold text-red-700 bg-orange-50/50')}>
-                    <input
-                      type="text"
-                      value={formatCell(row.settlement, decimals)}
-                      onChange={(e) => updateCell(idx, 'settlement', e.target.value)}
-                      onFocus={() => setActiveCell({ rowIdx: idx, col: 'settlement' })}
-                      onBlur={() => setActiveCell(null)}
-                      className="w-full bg-transparent text-right font-mono font-bold text-red-700 focus:outline-none"
-                      disabled={!canEdit}
-                    />
+                  {/* A — Elszámoló (piros, módosítható HA NEM cross-base) */}
+                  <td className={cellClass('settlement', `border border-slate-300 px-2 py-1 text-right font-mono font-bold ${aIsAuto ? 'text-amber-700 bg-amber-50/40 italic' : 'text-red-700 bg-orange-50/50'}`)}>
+                    {aIsAuto ? (
+                      <span title="Auto-derived from G column (cross calculation)">
+                        {formatCell(row.settlement, decimals)}
+                      </span>
+                    ) : renderInput('settlement', row.settlement, decimals, 'w-full bg-transparent text-right font-mono font-bold text-red-700 focus:outline-none')}
                   </td>
                   {/* B — OTP (kék segéd) */}
                   <td className={cellClass('otp', 'border border-slate-300 px-2 py-1 text-right font-mono text-blue-800 bg-blue-50/30')}>
-                    <input
-                      type="text"
-                      value={formatCell(row.otp, decimals)}
-                      onChange={(e) => updateCell(idx, 'otp', e.target.value)}
-                      onFocus={() => setActiveCell({ rowIdx: idx, col: 'otp' })}
-                      onBlur={() => setActiveCell(null)}
-                      className="w-full bg-transparent text-right font-mono text-blue-800 focus:outline-none"
-                      disabled={!canEdit}
-                    />
+                    {renderInput('otp', row.otp, decimals, 'w-full bg-transparent text-right font-mono text-blue-800 focus:outline-none')}
                   </td>
                   {/* C — Segéd (kék) */}
                   <td className={cellClass('helper', 'border border-slate-300 px-2 py-1 text-right font-mono text-blue-700 bg-blue-50/20')}>
-                    <input
-                      type="text"
-                      value={formatCell(row.helper, decimals)}
-                      onChange={(e) => updateCell(idx, 'helper', e.target.value)}
-                      onFocus={() => setActiveCell({ rowIdx: idx, col: 'helper' })}
-                      onBlur={() => setActiveCell(null)}
-                      className="w-full bg-transparent text-right font-mono text-blue-700 focus:outline-none"
-                      disabled={!canEdit}
-                    />
+                    {renderInput('helper', row.helper, decimals, 'w-full bg-transparent text-right font-mono text-blue-700 focus:outline-none')}
                   </td>
                   {/* D — Valuta (VÉDETT, fekete bold) */}
                   <td className="border border-slate-300 px-2 py-1 text-center font-mono font-bold text-slate-900 bg-slate-100">
@@ -356,60 +389,25 @@ export default function MainRateSheetPage() {
                   </td>
                   {/* E — Gyenge multis vétel (sárga) */}
                   <td className={cellClass('weakMultiBuy', 'border border-slate-300 px-2 py-1 text-right font-mono text-amber-900 bg-yellow-50')}>
-                    <input
-                      type="text"
-                      value={formatCell(row.weakMultiBuy, decimals)}
-                      onChange={(e) => updateCell(idx, 'weakMultiBuy', e.target.value)}
-                      onFocus={() => setActiveCell({ rowIdx: idx, col: 'weakMultiBuy' })}
-                      onBlur={() => setActiveCell(null)}
-                      className="w-full bg-transparent text-right font-mono text-amber-900 focus:outline-none"
-                      disabled={!canEdit}
-                    />
+                    {renderInput('weakMultiBuy', row.weakMultiBuy, decimals, 'w-full bg-transparent text-right font-mono text-amber-900 focus:outline-none')}
                   </td>
                   {/* F — Gyenge multis eladás (sárga) */}
                   <td className={cellClass('weakMultiSell', 'border border-slate-300 px-2 py-1 text-right font-mono text-amber-900 bg-yellow-50')}>
-                    <input
-                      type="text"
-                      value={formatCell(row.weakMultiSell, decimals)}
-                      onChange={(e) => updateCell(idx, 'weakMultiSell', e.target.value)}
-                      onFocus={() => setActiveCell({ rowIdx: idx, col: 'weakMultiSell' })}
-                      onBlur={() => setActiveCell(null)}
-                      className="w-full bg-transparent text-right font-mono text-amber-900 focus:outline-none"
-                      disabled={!canEdit}
-                    />
+                    {renderInput('weakMultiSell', row.weakMultiSell, decimals, 'w-full bg-transparent text-right font-mono text-amber-900 focus:outline-none')}
                   </td>
                   {/* G — Kereszt számolt (read-only, barna) */}
                   <td className="border border-slate-300 px-2 py-1 text-right font-mono text-amber-700 bg-amber-50/40 italic">
                     {row.crossBase ? formatCell(row.crossSettlement, decimals) : '—'}
                   </td>
-                  {/* H — Kereszt forrás (rózsa, 6 tizedes) */}
+                  {/* H — Kereszt forrás (rózsa, 6 tizedes) — csak crossBase row */}
                   <td className={cellClass('crossRate', 'border border-slate-300 px-2 py-1 text-right font-mono text-pink-800 bg-pink-50/40')}>
-                    {row.crossBase ? (
-                      <input
-                        type="text"
-                        value={formatCell(row.crossRate, 6)}
-                        onChange={(e) => updateCell(idx, 'crossRate', e.target.value)}
-                        onFocus={() => setActiveCell({ rowIdx: idx, col: 'crossRate' })}
-                        onBlur={() => setActiveCell(null)}
-                        className="w-full bg-transparent text-right font-mono text-pink-800 focus:outline-none"
-                        disabled={!canEdit}
-                        placeholder={`${row.crossBase}/${row.currency}`}
-                      />
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
+                    {row.crossBase
+                      ? renderInput('crossRate', row.crossRate, 6, 'w-full bg-transparent text-right font-mono text-pink-800 focus:outline-none', `${row.crossBase}/${row.currency}`)
+                      : <span className="text-slate-400">—</span>}
                   </td>
                   {/* I — Nagybani (szürke, opcionális) */}
                   <td className={cellClass('wholesale', 'border border-slate-300 px-2 py-1 text-right font-mono text-slate-600 bg-slate-50')}>
-                    <input
-                      type="text"
-                      value={formatCell(row.wholesale, decimals)}
-                      onChange={(e) => updateCell(idx, 'wholesale', e.target.value)}
-                      onFocus={() => setActiveCell({ rowIdx: idx, col: 'wholesale' })}
-                      onBlur={() => setActiveCell(null)}
-                      className="w-full bg-transparent text-right font-mono text-slate-600 focus:outline-none"
-                      disabled={!canEdit}
-                    />
+                    {renderInput('wholesale', row.wholesale, decimals, 'w-full bg-transparent text-right font-mono text-slate-600 focus:outline-none')}
                   </td>
                 </tr>
               )

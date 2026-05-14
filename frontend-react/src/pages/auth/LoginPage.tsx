@@ -118,7 +118,9 @@ export default function LoginPage() {
    */
   const getDefaultRouteForRole = (role?: string | null): string => {
     if (import.meta.env.VITE_APP_FLAVOR === 'central-workstation') return '/central-workstation'
-    if (appMode === 'rate-maker' || import.meta.env.VITE_APP_FLAVOR === 'rate-maker') return '/rates/creation'
+    // Codex/Copilot #581 fix: rate-maker app default landing /rates/main (Főlap, 0-s lap)
+    // — konzisztens az App.tsx-ben definiált defaultProtectedRoute-tal.
+    if (appMode === 'rate-maker' || import.meta.env.VITE_APP_FLAVOR === 'rate-maker') return '/rates/main'
     if (appMode === 'full') return '/central-workstation'
     const canonical = canonicalizeRoleForAppMode(role)
     if (canonical === 'penztar') return '/cashier'
