@@ -19,14 +19,22 @@
 - **#591** — Windows signed release workflow (`.github/workflows/windows-signed-release.yml`) — vár a cert acquisition-ra
 - **#592** — Code signing setup path runbook (`vault/operations/code-signing-setup-path.md`)
 
-## Cert acquisition — döntések (2026-05-14)
+## Cert acquisition — döntések (2026-05-14, frissítve Perplexity research után)
 
 | Döntés | Érték | Indok |
 |---|---|---|
-| Reseller | **CodeSigningStore** | jobb support magyar cég OV validation-höz |
-| Storage | **DigiCert KeyLocker** (cloud HSM) | CI workflow-kompatibilis, NEM USB token |
-| Fizetés | **Cég bankkártya EUR** | egyszerűbb a magyar számvitelben mint USD |
-| Cert validity | **3 év** | reseller best price |
+| Reseller | **CodeSigningStore** | US-based phone support, ár ~azonos SignMyCode-dal ($658 vs $660 BYOH-val) |
+| Storage | **DigiCert KeyLocker** (cloud HSM) | CI workflow-kompatibilis, NEM USB token, BYOH = no shipping fee |
+| Fizetés | **Cég bankkártya** (számlázás USD-ben) | CodeSigningStore csak USD-ben számláz, EUR-kártya konvertál (~1-3% banki díj) |
+| Cert validity | **3 év (annual re-issuance)** | Iparági policy 2026 Feb: max 460 napos validity → multi-year plan annual re-issue HSM-en automatikus |
+
+### Új 2026-os realitások (eltérés a 2026-05-05-i tervtől)
+
+A 2026-05-05-i `code-signing-cert-beszerzes-csomag.md` ezeket NEM tartalmazta:
+
+1. **Sectigo 460-napos max validity** (2026 Feb iparági policy). Multi-year plans **annual re-issuance**-szal mennek HSM-en automatikus. NEM kell tőled új order minden évben — csak a cert technikailag újra-kibocsát ~15 havonta.
+2. **Reális ár:** ~$1 260 / 3 év (cert $658 + KeyLocker $200/év × 3). A régi terv $329 árat jósolt → mai ár ~2-3x annyi.
+3. **EUR fizetés:** CodeSigningStore USD-ben számláz, a Te EUR-kártyád bankja konvertál (Visa/MC standard processing).
 
 ## Cert acquisition — jelenlegi lépés
 
