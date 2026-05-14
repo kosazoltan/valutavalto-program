@@ -178,26 +178,28 @@ export default function MainRateSheetPage() {
   //   alapján dönt span vs. input között a render-loop-ban.
 
   // Codex P1 #581 fix: commit only on blur with parsed value (preserve raw input while typing).
+  // Codex P2 #581 iter-3 fix: skip marking dirty if value unchanged (no-op).
   const commitCell = useCallback((rowIdx: number, col: keyof MainRateRow, raw: string) => {
     if (!canEdit) return
     if (col === 'currency' || col === 'crossBase' || col === 'crossSettlement') return
-    // crossBase row settlement: read-only (auto-derived from G column)
     if (col === 'settlement' && rows[rowIdx]?.crossBase) return
     const trimmed = raw.trim()
+    let nextValue: number
     if (trimmed === '') {
-      setRows(prev => {
-        const next = [...prev]
-        next[rowIdx] = { ...next[rowIdx]!, [col]: 0 }
-        return next
-      })
-      setDirty(true)
+      nextValue = 0
+    } else {
+      const parsed = Number.parseFloat(trimmed.replace(/\s/g, '').replace(',', '.'))
+      if (Number.isNaN(parsed)) return
+      nextValue = parsed
+    }
+    const currentValue = rows[rowIdx]?.[col]
+    if (typeof currentValue === 'number' && currentValue === nextValue) {
+      // Codex P2 #581: no-op — value unchanged, NE marka dirty-nek.
       return
     }
-    const numeric = Number.parseFloat(trimmed.replace(/\s/g, '').replace(',', '.'))
-    if (Number.isNaN(numeric)) return
     setRows(prev => {
       const next = [...prev]
-      next[rowIdx] = { ...next[rowIdx]!, [col]: numeric }
+      next[rowIdx] = { ...next[rowIdx]!, [col]: nextValue }
       return next
     })
     setDirty(true)
@@ -205,7 +207,6 @@ export default function MainRateSheetPage() {
 
   const focusCell = useCallback((rowIdx: number, col: keyof MainRateRow, currentValue: number, decimals: number) => {
     setActiveCell({ rowIdx, col })
-    // Edit-buffer init: helper display értékéből (decimal-controlled), ne a raw float-ból.
     setEditBuffer(currentValue ? currentValue.toFixed(decimals) : '')
   }, [])
 
@@ -215,7 +216,20 @@ export default function MainRateSheetPage() {
     setEditBuffer('')
   }, [commitCell, editBuffer])
 
+  // Codex P1 #581 iter-3 fix: ha a user beír egy cellába és AZONNAL kattint a Mentés/Szétküldés
+  // gombra (mielőtt blur futna), az editBuffer még NEM commitált. Ezért minden olyan akció előtt
+  // ami a rows-t mentésre küldi, először a aktív cella editBuffer-ét commitálni kell.
+  const flushActiveCell = useCallback(() => {
+    if (activeCell) {
+      commitCell(activeCell.rowIdx, activeCell.col, editBuffer)
+      setActiveCell(null)
+      setEditBuffer('')
+    }
+  }, [activeCell, commitCell, editBuffer])
+
   const saveLocally = useCallback(() => {
+    // Codex P1 #581 iter-3: aktív cella editBuffer-ét commitalni mentés előtt.
+    flushActiveCell()
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(rows))
       lastSavedAt.current = new Date().toISOString()
@@ -225,7 +239,7 @@ export default function MainRateSheetPage() {
       logger.error('MainRateSheetPage', 'Storage save failed', e)
       toast.error('Hiba', 'Helyi mentés sikertelen')
     }
-  }, [rows])
+  }, [rows, flushActiveCell])
 
   // Auto-save on dirty + 1 sec debounce
   useEffect(() => {
@@ -247,6 +261,8 @@ export default function MainRateSheetPage() {
       toast.warning('Olvasás-csak', 'Csak főértéktáros / ügyvezető küldhet ki árfolyamot')
       return
     }
+    // Codex P1 #581 iter-3: aktív cella editBuffer-ét commitalni szétküldés előtt.
+    flushActiveCell()
     setPublishing(true)
     try {
       // Phase 2: backend POST /api/v1/rates/main-sheet/publish
@@ -260,7 +276,7 @@ export default function MainRateSheetPage() {
     } finally {
       setPublishing(false)
     }
-  }, [canEdit, saveLocally])
+  }, [canEdit, saveLocally, flushActiveCell])
 
   const formatCell = (val: number, decimals = 2): string => {
     if (!val || val === 0) return '0'
