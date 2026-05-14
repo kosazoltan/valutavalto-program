@@ -186,11 +186,14 @@ describe('CustomerPanel — AML degradált mód (local-first 2026-05-14)', () =>
     vi.clearAllMocks()
   })
 
-  it('AML check hálózati hiba → blocked=false + [OFFLINE_DEGRADED] warning prefix', async () => {
+  it('AML check hálózati hiba (no response) → blocked=false + [OFFLINE_DEGRADED] prefix', async () => {
     const user = userEvent.setup()
     const onAmlResult = vi.fn()
     mocks.customerApiCreate.mockResolvedValue({ id: 99, name: 'Test User' })
-    mocks.amlApiCheckAllThresholds.mockRejectedValue(new Error('Network error'))
+    // Axios network error pattern: response=undefined, code='ERR_NETWORK'
+    mocks.amlApiCheckAllThresholds.mockRejectedValue(
+      Object.assign(new Error('Network Error'), { code: 'ERR_NETWORK', isAxiosError: true }),
+    )
 
     render(
       <CustomerPanel
@@ -211,14 +214,90 @@ describe('CustomerPanel — AML degradált mód (local-first 2026-05-14)', () =>
 
     await user.click(screen.getByRole('button', { name: /Ügyfél rögzítése/i }))
 
-    // Várunk az AML check async lefutására (rejected promise)
     await vi.waitFor(() => {
       expect(onAmlResult).toHaveBeenCalled()
     })
 
-    const lastCall = onAmlResult.mock.calls.at(-1)
-    expect(lastCall).toBeDefined()
-    const amlResult = lastCall![0]
+    const amlResult = onAmlResult.mock.calls.at(-1)![0]
+    expect(amlResult.blocked).toBe(false)
+    expect(amlResult.warnings.some((w: string) => w.startsWith('[OFFLINE_DEGRADED]'))).toBe(true)
+  })
+
+  it('Codex P1 #586: AML 401 auth hiba → fail-closed (blocked=true), NEM degradált', async () => {
+    const user = userEvent.setup()
+    const onAmlResult = vi.fn()
+    mocks.customerApiCreate.mockResolvedValue({ id: 100, name: 'Auth Test' })
+    mocks.amlApiCheckAllThresholds.mockRejectedValue(
+      Object.assign(new Error('Request failed with status code 401'), {
+        response: { status: 401, data: { message: 'Unauthorized' } },
+        isAxiosError: true,
+      }),
+    )
+
+    render(
+      <CustomerPanel
+        identificationLevel="SIMPLIFIED"
+        minimumLevel="SIMPLIFIED"
+        onLevelChange={() => {}}
+        requiresSourceVerification={false}
+        hufTotal={200000}
+        onCustomerReady={() => {}}
+        onAmlResult={onAmlResult}
+      />,
+    )
+
+    await user.type(screen.getByTestId('customer-name-input'), 'Auth Test')
+    await user.type(screen.getByTestId('customer-birth-place-input'), 'Budapest')
+    await user.type(screen.getByTestId('customer-doc-number-input'), 'AU401001')
+    await user.type(screen.getByTestId('customer-birth-date-input'), '1990-01-01')
+
+    await user.click(screen.getByRole('button', { name: /Ügyfél rögzítése/i }))
+
+    await vi.waitFor(() => {
+      expect(onAmlResult).toHaveBeenCalled()
+    })
+
+    const amlResult = onAmlResult.mock.calls.at(-1)![0]
+    expect(amlResult.blocked).toBe(true)
+    expect(amlResult.warnings.some((w: string) => w.startsWith('[OFFLINE_DEGRADED]'))).toBe(false)
+    expect(amlResult.warnings[0]).toMatch(/szerver-oldali hibával/)
+  })
+
+  it('Codex P1 #586: AML 503 service-unavailable → degradált (network-class hiba)', async () => {
+    const user = userEvent.setup()
+    const onAmlResult = vi.fn()
+    mocks.customerApiCreate.mockResolvedValue({ id: 101, name: '503 Test' })
+    mocks.amlApiCheckAllThresholds.mockRejectedValue(
+      Object.assign(new Error('Service Unavailable'), {
+        response: { status: 503 },
+        isAxiosError: true,
+      }),
+    )
+
+    render(
+      <CustomerPanel
+        identificationLevel="SIMPLIFIED"
+        minimumLevel="SIMPLIFIED"
+        onLevelChange={() => {}}
+        requiresSourceVerification={false}
+        hufTotal={200000}
+        onCustomerReady={() => {}}
+        onAmlResult={onAmlResult}
+      />,
+    )
+
+    await user.type(screen.getByTestId('customer-name-input'), '503 Test')
+    await user.type(screen.getByTestId('customer-birth-place-input'), 'Debrecen')
+    await user.type(screen.getByTestId('customer-doc-number-input'), 'SV503001')
+    await user.type(screen.getByTestId('customer-birth-date-input'), '1995-05-05')
+
+    await user.click(screen.getByRole('button', { name: /Ügyfél rögzítése/i }))
+
+    await vi.waitFor(() => {
+      expect(onAmlResult).toHaveBeenCalled()
+    })
+
+    const amlResult = onAmlResult.mock.calls.at(-1)![0]
     expect(amlResult.blocked).toBe(false)
     expect(amlResult.warnings.some((w: string) => w.startsWith('[OFFLINE_DEGRADED]'))).toBe(true)
   })

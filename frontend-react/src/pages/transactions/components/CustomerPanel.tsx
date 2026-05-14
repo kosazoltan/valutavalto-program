@@ -114,11 +114,35 @@ export default function CustomerPanel({
       onAmlResult?.(result)
       return { ...data, amlVerified: true }
     } catch (err) {
+      // Codex P1 #586 fix: a degradalt mod CSAK halozati/szerver-elerhetetlen hibakra
+      // alkalmazando, NEM auth (401/403) vagy validation (4xx) hibakra. Az axios error
+      // .response NULL/undefined ha nincs valasz (network/timeout/dns); explicit van
+      // ha a szerver valasz adott (de NEM 2xx). Csak az ELOBBI nyit degradalt utat.
+      const axErr = err as { response?: { status?: number }; code?: string; isAxiosError?: boolean }
+      const isNetworkOrServerUnavailable =
+        !axErr?.response && axErr?.code !== undefined  // axios fail-no-response
+        || axErr?.response?.status === 502  // bad gateway
+        || axErr?.response?.status === 503  // service unavailable
+        || axErr?.response?.status === 504  // gateway timeout
+      if (!isNetworkOrServerUnavailable) {
+        // Auth (401/403), validation (4xx), or other server-side rejection — fail-closed.
+        // NEM degradalt; a felhasznalo nem haladhat tovabb (audit-blocking).
+        logger.warn('CustomerPanel', 'AML check failed with server-side error — fail-closed', err)
+        const blockedResult: AmlCheckResultDto = {
+          transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
+          requiresId: true, requiresEnhanced: false, blocked: true,
+          warnings: ['AML ellenőrzés szerver-oldali hibával elutasitva (auth / validation). A tranzakció blokkolt.'],
+        }
+        setAmlResult(blockedResult)
+        onAmlResult?.(blockedResult)
+        return data
+      }
       // Local-first mandate (2026-05-14): a halozat opcionalis, nem mukodesi feltetel.
-      // AML check fail eseten degradalt modot adunk — a transzakcio FOLYTATHATO felhasznaloi
-      // megerositessel, audit log rogziti, kozponti szerver utolag ujra-ellenoriz.
-      // A `[OFFLINE_DEGRADED]` prefix kulcs a CashierTransactionPage.handleSubmit detekcio-jahoz.
-      logger.warn('CustomerPanel', 'AML check failed — degraded mode (offline-tolerant)', err)
+      // Csak HALOZATI/szerver-elerhetetlen hibara megyunk degradalt modba — a transzakcio
+      // folytathato felhasznaloi megerositessel, audit log rogziti, kozponti szerver
+      // utolag ujra-ellenoriz. A `[OFFLINE_DEGRADED]` prefix kulcs a CashierTransactionPage
+      // handleSubmit detekcio-jahoz.
+      logger.warn('CustomerPanel', 'AML check failed — degraded mode (network/server unavailable)', err)
       const degradedResult: AmlCheckResultDto = {
         transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
         requiresId: true, requiresEnhanced: false, blocked: false,
@@ -303,8 +327,8 @@ export default function CustomerPanel({
     customerBirthPlace, customerBirthDate, customerBirthName, customerMotherName,
     customerAddress, customerResidence, customerAddressCardNumber, selectedCustomer, onCustomerReady])
 
-  // Re-run AML when hufTotal changes. Local-first: a degradalt mod ugyanaz mint a runAmlCheck-ben —
-  // hibanal NEM blokkolunk hard, hanem warning-ot adunk vissza `[OFFLINE_DEGRADED]` prefix-szel.
+  // Re-run AML when hufTotal changes. Codex P1 #586 fix: csak halozati/szerver-elerhetetlen hibara
+  // degradalt mod — auth/validation hiba fail-closed marad.
   useEffect(() => {
     if (selectedCustomer?.id && hufTotal > 0) {
       const timer = setTimeout(async () => {
@@ -312,7 +336,23 @@ export default function CustomerPanel({
           const result = await amlApi.checkAllThresholds(String(selectedCustomer.id), hufTotal)
           setAmlResult(result)
           onAmlResult?.(result)
-        } catch {
+        } catch (err) {
+          const axErr = err as { response?: { status?: number }; code?: string }
+          const isNetworkOrServerUnavailable =
+            !axErr?.response && axErr?.code !== undefined
+            || axErr?.response?.status === 502
+            || axErr?.response?.status === 503
+            || axErr?.response?.status === 504
+          if (!isNetworkOrServerUnavailable) {
+            const blockedResult: AmlCheckResultDto = {
+              transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
+              requiresId: true, requiresEnhanced: false, blocked: true,
+              warnings: ['AML újraellenőrzés szerver-oldali hibával elutasitva. A tranzakció blokkolt.'],
+            }
+            setAmlResult(blockedResult)
+            onAmlResult?.(blockedResult)
+            return
+          }
           const degradedResult: AmlCheckResultDto = {
             transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
             requiresId: true, requiresEnhanced: false, blocked: false,
