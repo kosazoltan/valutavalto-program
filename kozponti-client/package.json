@@ -19,7 +19,8 @@
     "typecheck": "node ../frontend-react/node_modules/typescript/bin/tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "electron-log": "^5.4.3"
+    "electron-log": "^5.4.3",
+    "sql.js": "^1.11.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.20",

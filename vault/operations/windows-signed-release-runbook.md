@@ -30,11 +30,15 @@ A workflow `preflight` job előbb leáll, ha bármi hiányzik. Beállítandó: *
 ```text
 SM_HOST                    https://clientauth.one.digicert.com (DigiCert KeyLocker endpoint)
 SM_API_KEY                 KeyLocker API kulcs
-SM_CLIENT_CERT_PASSWORD    Kliens cert jelszó
-SM_KEYPAIR_ALIAS           KeyLocker keypair alias
+SM_CLIENT_CERT_FILE_B64    A kliens authentication .p12 fájl tartalma base64-elve
+                           (PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes('client.p12')))
+SM_CLIENT_CERT_PASSWORD    Kliens .p12 cert jelszava
+SM_KEYPAIR_ALIAS           KeyLocker keypair alias (pl. valuta-penztar-sign)
 ```
 
 Ezek a `penztar-client/scripts/sign-with-keylocker.js` electron-builder signtoolOptions hook-on át kerülnek az aláíráshoz. `CODE_SIGN_ENABLED=1` a workflow lépéseiben explicit.
+
+A `SM_CLIENT_CERT_FILE_B64` szükséges mert CI-en nincs fájlrendszer (a sign hook base64-ből egy temp .p12-t dekódol). Lokálisan: `SM_CLIENT_CERT_FILE` pontosan a .p12 fájl path-ja.
 
 ## Production gate
 
