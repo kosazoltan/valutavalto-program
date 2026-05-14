@@ -136,8 +136,17 @@ export default function CashierTransactionPage() {
   const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([])
   const ratesLoadedAtRef = useRef<number>(0)
 
-  // Submission state
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  // Submission state. Codex P1 #586 iter-6: a `isSubmitting` state PLUS `isSubmittingRef`
+  // tukrozve. A handleSubmit useCallback NEM memo-zi az `isSubmitting`-et a deps-be (egyebkent
+  // minden submit-nel re-create-ne a fuggvenyt, ami a child re-render-cascade-et okoz).
+  // A ref-bol olvasva mindig a friss erteket latjuk a guard-ban.
+  const [isSubmitting, setIsSubmittingState] = useState(false)
+  const isSubmittingRef = useRef(false)
+  // Helper: state + ref atomi sync. MINDEN setIsSubmitting hivas ezt hasznalja.
+  const setIsSubmitting = useCallback((value: boolean) => {
+    isSubmittingRef.current = value
+    setIsSubmittingState(value)
+  }, [])
 
   // Receipt print state — queue for multi-line transactions
   const [showReceiptModal, setShowReceiptModal] = useState(false)
@@ -474,10 +483,10 @@ export default function CashierTransactionPage() {
   )
 
   const handleSubmit = useCallback(async () => {
-    // Codex P1 #586 iter-5: double-submit guard — ha mar fut egy submit (pl. degradalt AML
-    // audit write in flight), a masodik kattintas/Enter NEM indithat parhuzamos submit-et.
-    // A button.disabled mar megakadalyozza, de hotkey/Enter bypass-olhatja.
-    if (isSubmitting) {
+    // Codex P1 #586 iter-6: double-submit guard a REF-en olvas (NEM a state-en), igy az
+    // useCallback memoizalt closure-ja is friss erteket lat. setIsSubmitting state-tukor
+    // a button.disabled UI-hoz, isSubmittingRef.current az atomikus guard a logikahoz.
+    if (isSubmittingRef.current) {
       logger.warn('CashierTransactionPage', 'Duplicate handleSubmit ignored (already submitting)')
       return
     }
