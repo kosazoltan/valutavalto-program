@@ -3,10 +3,19 @@ import electron from 'vite-plugin-electron'
 import { builtinModules } from 'node:module'
 import path from 'node:path'
 
+// 2026-05-14 (#586 follow-up): local-first-core package sql.js-t es electron-* dep-eket
+// hasznal — ezek mind external-be kell, mert a vite/rolldown nem bundle-elheti ezeket
+// a main process build-ben (nativ Node modulok). Penztar-client vite.config.ts azonos mintaja.
 const nodeExternals = [
   'electron',
   'electron-log',
   'electron-log/main',
+  'electron-updater',
+  'sql.js',
+  'better-sqlite3',
+  'dotenv',
+  'dotenv/config',
+  'graceful-fs',
   ...builtinModules,
   ...builtinModules.map((moduleName) => `node:${moduleName}`),
 ]
