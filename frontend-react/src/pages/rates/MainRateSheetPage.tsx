@@ -177,33 +177,44 @@ export default function MainRateSheetPage() {
   // → Settlement column read-only ha crossBase != null. A renderelés `aIsAuto = !!row.crossBase`
   //   alapján dönt span vs. input között a render-loop-ban.
 
-  // Codex P1 #581 fix: commit only on blur with parsed value (preserve raw input while typing).
-  // Codex P2 #581 iter-3 fix: skip marking dirty if value unchanged (no-op).
-  const commitCell = useCallback((rowIdx: number, col: keyof MainRateRow, raw: string) => {
-    if (!canEdit) return
-    if (col === 'currency' || col === 'crossBase' || col === 'crossSettlement') return
-    if (col === 'settlement' && rows[rowIdx]?.crossBase) return
+  // Codex P1 #581 iter-4 fix: PURE függvény ami sync visszaadja a next rows array-t
+  // (vagy null ha no-op). Ezáltal a save/dispatch szinkronoun tud serializálni
+  // anélkül, hogy React state batching race-elne (a setRows async, ezért a
+  // következő JSON.stringify(rows) még a régi snapshot-ot látja).
+  const computeCellCommit = useCallback((
+    currentRows: MainRateRow[],
+    rowIdx: number,
+    col: keyof MainRateRow,
+    raw: string,
+  ): MainRateRow[] | null => {
+    if (col === 'currency' || col === 'crossBase' || col === 'crossSettlement') return null
+    if (col === 'settlement' && currentRows[rowIdx]?.crossBase) return null
     const trimmed = raw.trim()
     let nextValue: number
     if (trimmed === '') {
       nextValue = 0
     } else {
       const parsed = Number.parseFloat(trimmed.replace(/\s/g, '').replace(',', '.'))
-      if (Number.isNaN(parsed)) return
+      if (Number.isNaN(parsed)) return null
       nextValue = parsed
     }
-    const currentValue = rows[rowIdx]?.[col]
-    if (typeof currentValue === 'number' && currentValue === nextValue) {
-      // Codex P2 #581: no-op — value unchanged, NE marka dirty-nek.
-      return
+    const currentValue = currentRows[rowIdx]?.[col]
+    // Codex P2 #581 iter-3: no-op ha érték nem változott
+    if (typeof currentValue === 'number' && currentValue === nextValue) return null
+    const next = [...currentRows]
+    next[rowIdx] = { ...next[rowIdx]!, [col]: nextValue }
+    return next
+  }, [])
+
+  // Side-effect wrapper: aszinkron állapotfrissítés (NEM használható azonnali serialization-höz).
+  const commitCell = useCallback((rowIdx: number, col: keyof MainRateRow, raw: string) => {
+    if (!canEdit) return
+    const next = computeCellCommit(rows, rowIdx, col, raw)
+    if (next) {
+      setRows(next)
+      setDirty(true)
     }
-    setRows(prev => {
-      const next = [...prev]
-      next[rowIdx] = { ...next[rowIdx]!, [col]: nextValue }
-      return next
-    })
-    setDirty(true)
-  }, [canEdit, rows])
+  }, [canEdit, rows, computeCellCommit])
 
   const focusCell = useCallback((rowIdx: number, col: keyof MainRateRow, currentValue: number, decimals: number) => {
     setActiveCell({ rowIdx, col })
@@ -216,22 +227,30 @@ export default function MainRateSheetPage() {
     setEditBuffer('')
   }, [commitCell, editBuffer])
 
-  // Codex P1 #581 iter-3 fix: ha a user beír egy cellába és AZONNAL kattint a Mentés/Szétküldés
-  // gombra (mielőtt blur futna), az editBuffer még NEM commitált. Ezért minden olyan akció előtt
-  // ami a rows-t mentésre küldi, először a aktív cella editBuffer-ét commitálni kell.
-  const flushActiveCell = useCallback(() => {
-    if (activeCell) {
-      commitCell(activeCell.rowIdx, activeCell.col, editBuffer)
-      setActiveCell(null)
-      setEditBuffer('')
+  // Codex P1 #581 iter-4 fix: flushActiveCell SYNC visszaadja a "rows to save"-et.
+  // Ha aktív cella van → computeCellCommit-tal kalkulálja a next-et, setRows-t hív
+  // (state update aszinkron), és VISSZAADJA a next array-t azonnal.
+  // Ha nincs aktív cella vagy no-op → a current rows-t adja vissza.
+  // A caller (saveLocally, dispatchToServer) ezzel azonnal tud serializálni.
+  const flushActiveCell = useCallback((): MainRateRow[] => {
+    if (!activeCell || !canEdit) return rows
+    const next = computeCellCommit(rows, activeCell.rowIdx, activeCell.col, editBuffer)
+    setActiveCell(null)
+    setEditBuffer('')
+    if (next) {
+      setRows(next)
+      setDirty(true)
+      return next  // SYNC return — caller serializes the just-committed value
     }
-  }, [activeCell, commitCell, editBuffer])
+    return rows
+  }, [activeCell, canEdit, rows, computeCellCommit, editBuffer])
 
   const saveLocally = useCallback(() => {
-    // Codex P1 #581 iter-3: aktív cella editBuffer-ét commitalni mentés előtt.
-    flushActiveCell()
+    // Codex P1 #581 iter-4: a flushActiveCell sync visszaadja a "rows to save"-et,
+    // ami biztosan tartalmazza az aktív cella épp commitált értékét (NEM az async state).
+    const rowsToSave = flushActiveCell()
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rowsToSave))
       lastSavedAt.current = new Date().toISOString()
       setDirty(false)
       toast.success('Mentve', 'Főlap helyileg mentve (localStorage)')
@@ -239,7 +258,7 @@ export default function MainRateSheetPage() {
       logger.error('MainRateSheetPage', 'Storage save failed', e)
       toast.error('Hiba', 'Helyi mentés sikertelen')
     }
-  }, [rows, flushActiveCell])
+  }, [flushActiveCell])
 
   // Auto-save on dirty + 1 sec debounce
   useEffect(() => {
@@ -261,22 +280,31 @@ export default function MainRateSheetPage() {
       toast.warning('Olvasás-csak', 'Csak főértéktáros / ügyvezető küldhet ki árfolyamot')
       return
     }
-    // Codex P1 #581 iter-3: aktív cella editBuffer-ét commitalni szétküldés előtt.
-    flushActiveCell()
+    // Codex P1 #581 iter-4: aktív cella sync commit + serialization.
+    // A flushActiveCell visszaadott rowsToDispatch tartalmazza az épp commitált értéket
+    // (NEM a React state aszinkron snapshot-ja). Phase 2-ben ezt küldjük a backend API-nak.
+    const rowsToDispatch = flushActiveCell()
     setPublishing(true)
     try {
-      // Phase 2: backend POST /api/v1/rates/main-sheet/publish
-      // Most csak helyileg mentünk + szimulált siker
-      saveLocally()
+      // Phase 2: backend POST /api/v1/rates/main-sheet/publish a rowsToDispatch-csel.
+      // Phase 1 MVP: helyi mentés a flushActiveCell-tal kapott sync next-rows-ból
+      // (NEM a saveLocally-t hívjuk, mert az újra flushelne — itt már flushelve van).
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(rowsToDispatch))
+        lastSavedAt.current = new Date().toISOString()
+        setDirty(false)
+      } catch (e) {
+        logger.error('MainRateSheetPage', 'Pre-dispatch storage save failed', e)
+      }
       await new Promise(r => setTimeout(r, 800))
-      toast.success('Szétküldve', 'Főlap árfolyamok szétküldve (Phase 1: lokális mentés)')
+      toast.success('Szétküldve', `Főlap árfolyamok szétküldve (${rowsToDispatch.length} valuta, Phase 1: lokális mentés)`)
     } catch (e) {
       logger.error('MainRateSheetPage', 'Dispatch failed', e)
       toast.error('Hiba', 'Szerverre küldés sikertelen')
     } finally {
       setPublishing(false)
     }
-  }, [canEdit, saveLocally, flushActiveCell])
+  }, [canEdit, flushActiveCell])
 
   const formatCell = (val: number, decimals = 2): string => {
     if (!val || val === 0) return '0'
