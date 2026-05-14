@@ -53,6 +53,7 @@ const CustomerDetailPage = lazy(() => import('./pages/customers/CustomerDetailPa
 const CustomerCreatePage = lazy(() => import('./pages/customers/CustomerCreatePage'))
 const RatesPage = lazy(() => import('./pages/rates/RatesPage'))
 const RateCreationPage = lazy(() => import('./pages/rates/RateCreationPage'))
+const MainRateSheetPage = lazy(() => import('./pages/rates/MainRateSheetPage'))
 const CashDeskPage = lazy(() => import('./pages/cashdesk/CashDeskPage'))
 const DenominationPage = lazy(() => import('./pages/cashdesk/DenominationPage'))
 const DayOpenPage = lazy(() => import('./pages/cashdesk/DayOpenPage'))
@@ -233,7 +234,7 @@ export default function App() {
   const defaultProtectedRoute = import.meta.env.VITE_APP_FLAVOR === 'central-workstation'
     ? '/central-workstation'
     : import.meta.env.VITE_APP_FLAVOR === 'rate-maker'
-    ? '/rates/creation'
+    ? '/rates/main'
     : appMode === 'full'
     ? '/central-workstation'
     : '/dashboard'
@@ -466,6 +467,7 @@ export default function App() {
           
           {/* Rates */}
           <Route path="/rates" element={<RatesPage />} />
+          <Route path="/rates/main" element={<MainRateSheetPage />} />
           <Route path="/rates/creation" element={<RateCreationPage />} />
           
           {/* Cash desk */}

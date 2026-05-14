@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AxiosError } from 'axios'
-import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock, Undo2, Redo2 } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock, Undo2, Redo2, Home } from 'lucide-react'
 import {
   rateCreationApi,
   RateOverviewDTO,
@@ -20,6 +21,7 @@ import { useTranslation } from 'react-i18next'
 
 export default function RateCreationPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const isLocalRateMakerApp = import.meta.env.VITE_APP_FLAVOR === 'rate-maker'
   const canWriteRateCreation = useAuthStore((state) =>
     isLocalRateMakerApp && (state.hasRole('ADMIN') || state.hasCanonicalRole(['foertektar', 'ugyvezeto', 'admin'])),
@@ -410,7 +412,17 @@ export default function RateCreationPage() {
 
       {/* === HEADER BAR === */}
       <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded shadow-sm border mb-1">
-        <h1 className="text-sm font-bold text-gray-800">{t('rates.arfolyamkeszites')}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-sm font-bold text-gray-800">{t('rates.arfolyamkeszites')}</h1>
+          {/* Spec szerint: Munkacsoport felület felső menü → MÁSIK MUNKACSOPORT (visszalépés a 0-s lapra/csoport-választóra) */}
+          <button
+            onClick={() => navigate('/rates/main')}
+            className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium border border-orange-400 bg-orange-50 hover:bg-orange-100 text-orange-800 rounded"
+            title="Vissza a Főlap (0-s lap) elszámoló árfolyamokhoz"
+          >
+            <Home size={11} /> FŐLAP
+          </button>
+        </div>
         <div className="flex items-center gap-3 text-xs">
           {overview && (
             <span className="text-gray-400 flex items-center gap-1">
