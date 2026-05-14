@@ -16,27 +16,24 @@ A production Windows release path:
 
 Műveletvégzők:
 
-- `Penztar-Setup-<version>-<date>.exe` — pénztáros kliens (NSIS, ~281 MB, DigiCert KeyLocker aláírva)
+- `Penztar-Setup-<version>-<date>.exe` — pénztáros kliens (NSIS, ~281 MB, Sectigo OV CS via Azure Key Vault Premium HSM aláírva)
 - `Penztar-Eltavolito-<version>-<date>.exe` — uninstaller (NSIS, ~60 KB)
 - `Kozponti-Iranyitokozpont-Setup-<version>.exe` — központi irányítóközpont (~100 MB, aláírva)
 - `Arfolyamkeszito-Setup-<version>.exe` — RFM (rate-maker) főértéktáros (~100 MB, aláírva)
 - `valuta-backend-<version>.jar` — backend (Hetzner deploy-hoz)
 - `windows-signed-release-sha256.txt` — SHA-256 hash manifest
 
-## Required GitHub Secrets (10 db)
+## Required GitHub Secrets (9 db)
 
-A workflow `preflight` job előbb leáll, ha bármi hiányzik. Beállítandó: **GitHub Repo → Settings → Secrets and variables → Actions → Repository secrets**.
+A workflow `preflight` job elobb leáll, ha bármi hiányzik. Beállítandó: **GitHub Repo → Settings → Secrets and variables → Actions → Repository secrets**.
 
-### DigiCert KeyLocker (signing — 6 db)
+### Azure Key Vault Premium HSM (signing — 5 db)
 ```text
-SM_HOST                    https://clientauth.one.digicert.com (DigiCert KeyLocker endpoint)
-SM_API_KEY                 KeyLocker API kulcs
-SM_CLIENT_CERT_FILE_B64    A kliens authentication .p12 fájl tartalma base64-elve
-                           (PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes('client.p12')))
-SM_CLIENT_CERT_PASSWORD    Kliens .p12 cert jelszava
-SM_KEYPAIR_ALIAS           KeyLocker keypair alias (pl. valuta-penztar-sign)
-SM_CLIENT_TOOLS_MSI_URL    DigiCert KeyLocker Client Tools MSI URL
-                           (DigiCert ONE → KeyLocker → Downloads → Windows x64 MSI direct link)
+AZURE_KEY_VAULT_URI         https://kv-valuta-codesign.vault.azure.net/
+AZURE_KEY_VAULT_CERT_NAME   valuta-codesign-cert (NEM key name!)
+AZURE_TENANT_ID             Microsoft Entra Tenant ID (App Registration overview-ról)
+AZURE_CLIENT_ID             Application (client) ID — Service Principal (sp-valuta-codesign-ci)
+AZURE_CLIENT_SECRET         Client secret Value (max 24 hónap, rotálandó 2028-05-14-ig)
 ```
 
 ### Google OAuth (production secret gate a build-installer.ps1-ben — 4 db)
@@ -47,19 +44,17 @@ GOOGLE_DESKTOP_CLIENT_ID           Desktop OAuth Client ID (Electron apps)
 GOOGLE_DESKTOP_CLIENT_SECRET       Desktop OAuth Client Secret
 ```
 
-A `SM_*` 5 secret a `penztar-client/scripts/sign-with-keylocker.js` electron-builder signtoolOptions hook-on át kerül az aláíráshoz. `CODE_SIGN_ENABLED=1` a workflow lépéseiben explicit.
+Az `AZURE_*` 5 secret a `penztar-client/scripts/sign-with-azure-keyvault.js` electron-builder signtoolOptions hook-on át kerül az aláíráshoz. A hook az `azuresigntool` (vcsjones/azuresigntool, dotnet global tool) parancsot hívja, ami az Azure Key Vault-ban élo private key-jel ír alá — **a private key SOHA nem hagyja el a HSM-et**. `CODE_SIGN_ENABLED=1` a workflow lépéseiben explicit.
 
-A `SM_CLIENT_CERT_FILE_B64` szükséges mert CI-en nincs fájlrendszer (a sign hook base64-ből egy temp .p12-t dekódol). Lokálisan: `SM_CLIENT_CERT_FILE` pontosan a .p12 fájl path-ja.
+A Service Principal-hoz szükséges Key Vault Access Policy: **Certificate: Get** + **Key: Sign, Get**. A workflow `Install AzureSignTool` lépésében (`dotnet tool install --global AzureSignTool`) települ a tooling, ami minden GitHub Actions runner-en új. A `.NET SDK 8.0` előfeltétel az `actions/setup-dotnet@v4` step-ben kerül beállításra.
 
-A `SM_CLIENT_TOOLS_MSI_URL` a DigiCert Keylocker Tools MSI letöltési URL-je — a workflow `Install DigiCert KeyLocker Client Tools (smctl)` lépése letölti és csendesen telepíti (`msiexec /i /quiet /norestart`). Az `smctl.exe` a `C:\Program Files\DigiCert\DigiCert Keylocker Tools\` path-ra települ, ami `$GITHUB_PATH`-ba kerül.
-
-A `GOOGLE_*` 4 secret a workflow `Construct .env from GitHub Secrets` lépésében szerkesztődik össze egy `.env` fájllá a repo root-ban, ahogy a `build-installer.ps1` production secret gate-je elvárja. Helyileg: a `.env` fájl gitignore-olt és manuálisan kerül kitöltésre.
+A `GOOGLE_*` 4 secret a workflow `Construct .env from GitHub Secrets` lépésében szerkesztodik össze egy `.env` fájllá a repo root-ban, ahogy a `build-installer.ps1` production secret gate-je elvárja. Helyileg: a `.env` fájl gitignore-olt és manuálisan kerül kitöltésre.
 
 ## Production gate
 
 A release CSAK akkor signed production, ha a workflow minden lépése ZÖLD:
 
-- **preflight** — minden SM_* secret jelen + verzió felodva
+- **preflight** — minden AZURE_* (5) + GOOGLE_* (4) secret jelen + verzió felodva
 - **build-backend** — Maven `mvn -B package -DskipTests` SUCCESS
 - **build-penztar** — `installer/build-installer.ps1` + Eltavolito NSIS, aláírás `Status=Valid`
 - **build-kozponti** — `npm run package` (electron-builder), aláírás `Status=Valid`
@@ -109,7 +104,7 @@ Get-AuthenticodeSignature .\Arfolyamkeszito-Setup-2.5.51.exe
 
 # Várt eredmény:
 # Status        : Valid
-# SignerCertificate.Subject : CN=<BestChange entity-name>, ...
+# SignerCertificate.Subject : CN=EXCLUSIVE BEST Change Zrt., O=EXCLUSIVE BEST Change Zrt., L=Pécs, S=Baranya, C=HU
 # TimeStamperCertificate    : (timestamp.digicert.com)
 ```
 
@@ -138,7 +133,7 @@ Előfeltételek (BEFORE workflow run):
    - `kozponti-client/package.json`
    - `arfolyam-keszito-client/package.json`
    - `backend/pom.xml`
-3. GitHub Secrets (4 db SM_*) be vannak állítva — `gh api repos/kosazoltan/valutavalto-program/actions/secrets` ellenőrizhetőek
+3. GitHub Secrets (5 db AZURE_* + 4 db GOOGLE_*) be vannak állítva — `gh api repos/kosazoltan/valutavalto-program/actions/secrets` ellenőrizhetőek
 4. PR #590 mergelve (`fix(build): kozponti + arfolyamkeszito vite externals — sql.js + electron deps`)
 
 Workflow trigger:
@@ -193,16 +188,20 @@ Nélküle a régi Electron telepítés (28369...) Google bejelentkezése **tová
 ## Hivatkozott fájlok
 
 - `.github/workflows/windows-signed-release.yml` — a workflow
-- `penztar-client/scripts/sign-with-keylocker.js` — signing hook
+- `penztar-client/scripts/sign-with-azure-keyvault.js` — signing hook (AzureSignTool + Azure Key Vault)
 - `penztar-client/electron-builder.json` — Penztar electron-builder config
 - `kozponti-client/electron-builder.json` — Kozponti electron-builder config
 - `arfolyam-keszito-client/electron-builder.json` — Arfolyamkeszito electron-builder config
 - `installer/build-installer.ps1` — Penztar NSIS wrapper (backend JAR + Electron + JBR)
 - `installer/build-cleanup.ps1` — Eltavolito NSIS
+- `vault/operations/code-signing-setup-path.md` — cert acquisition + Azure Key Vault setup runbook
+- `vault/sessions/2026-05-14-sectigo-order-checkpoint.md` — Sectigo order details + HSM döntés
 
 ## Operations TODO (jövőbeli sprintek)
 
 - **Smoke tests**: EXZ runbook mintájára `npm run smoke:packaged -- -RequireCodeSignature` parancsok hozzáadása a workflow-hoz (currently csak `Get-AuthenticodeSignature` Status=Valid check)
 - **SLSA attestation**: `gh attestation` provenance + verification az artifact-okra
 - **Blockmap / latest.yml**: auto-update support a Penztar-Eltavolito-ban (electron-updater)
-- **Renovate / Dependabot**: SM_* rotation reminder havonta
+- **Renovate / Dependabot**: `AZURE_CLIENT_SECRET` rotation reminder 22 hónaponta (max 24 hónap Microsoft Entra policy)
+- **Jackson 3 future**: lásd projekt CLAUDE.md, NEM ehhez a runbook-hoz tartozik
+- **Sectigo cert renewal**: ~15 havonta automatikus re-issuance HSM-en (BYOH model)
