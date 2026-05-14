@@ -101,6 +101,7 @@ public class TransactionMultiLineService {
                     .settlementRate(lineRate.getBaseBuyRate())
                     .banknoteCount(lineReq.getBanknoteCount())
                     .discountType(lineReq.getDiscountType() != null ? lineReq.getDiscountType() : 0)
+                    .foreignStatus(resolveForeignStatus(lineReq.getForeignStatus(), request.getForeignStatus()))
                     .build();
 
             // Forint ertek szamitas (calculateHufValue hasznalja a currency entity-t)
@@ -160,7 +161,15 @@ public class TransactionMultiLineService {
                 ? totalHuf.divide(totalCurrencyAmount, 4, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
-        // Tranzakcio fejlec letrehozasa
+        // Tranzakcio fejlec letrehozasa.
+        // V226 (2026-05-14): foreignStatus tranzakcio-szinten — request explicit erteke vagy az
+        // elso tetel devizastatusza (default: parent request szinten). Ha minden line null,
+        // a Transaction.foreignStatus is null marad (Hibernate enum-null OK).
+        ForeignStatus txForeignStatus = resolveForeignStatus(null, request.getForeignStatus());
+        if (txForeignStatus == null && !transactionLines.isEmpty()) {
+            txForeignStatus = transactionLines.get(0).getForeignStatus();
+        }
+
         Transaction transaction = Transaction.builder()
                 .company(company)
                 .branch(branch)
@@ -191,6 +200,7 @@ public class TransactionMultiLineService {
                 .customerAddress(request.getCustomerAddress())
                 .customerDocumentNumber(request.getCustomerDocumentNumber())
                 .customerNationality(request.getCustomerNationality())
+                .foreignStatus(txForeignStatus)
                 .notes(request.getNotes())
                 .build();
 
@@ -273,6 +283,7 @@ public class TransactionMultiLineService {
                     .settlementRate(lineRate.getBaseSellRate())
                     .banknoteCount(lineReq.getBanknoteCount())
                     .discountType(lineReq.getDiscountType() != null ? lineReq.getDiscountType() : 0)
+                    .foreignStatus(resolveForeignStatus(lineReq.getForeignStatus(), request.getForeignStatus()))
                     .build();
 
             BigDecimal lineHuf = line.calculateHufValue();
@@ -328,6 +339,13 @@ public class TransactionMultiLineService {
                 ? totalHuf.divide(totalCurrencyAmount, 4, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
+        // V226 (2026-05-14): foreignStatus tranzakcio-szinten — request explicit erteke vagy az
+        // elso tetel devizastatusza. Lasd processBuy ugyanazon logika.
+        ForeignStatus txForeignStatus = resolveForeignStatus(null, request.getForeignStatus());
+        if (txForeignStatus == null && !transactionLines.isEmpty()) {
+            txForeignStatus = transactionLines.get(0).getForeignStatus();
+        }
+
         Transaction transaction = Transaction.builder()
                 .company(company)
                 .branch(branch)
@@ -358,6 +376,7 @@ public class TransactionMultiLineService {
                 .customerAddress(request.getCustomerAddress())
                 .customerDocumentNumber(request.getCustomerDocumentNumber())
                 .customerNationality(request.getCustomerNationality())
+                .foreignStatus(txForeignStatus)
                 .notes(request.getNotes())
                 .build();
 
@@ -417,5 +436,22 @@ public class TransactionMultiLineService {
     @Transactional(readOnly = true)
     public java.util.List<TransactionLine> getTransactionLines(Long transactionId) {
         return transactionLineRepository.findByTransactionIdOrderByLineNumber(transactionId);
+    }
+
+    /**
+     * Devizastatusz feloldas: tetel-szintu ertek -> parent request ertek -> NULL (default).
+     *
+     * <p>V226 (2026-05-14): tetelenkent kulonbozo devizastatusz lehet egy bizonylaton belul.
+     * Ha a tetel-szintu ertek NULL, a parent request foreignStatus orokitt at. Case-insensitive
+     * normalizalas (DOMESTIC/FOREIGN), invalid ertek -> NULL.</p>
+     */
+    private static ForeignStatus resolveForeignStatus(String lineLevel, String parentLevel) {
+        String effective = (lineLevel != null && !lineLevel.isBlank()) ? lineLevel : parentLevel;
+        if (effective == null || effective.isBlank()) return null;
+        try {
+            return ForeignStatus.valueOf(effective.toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 }

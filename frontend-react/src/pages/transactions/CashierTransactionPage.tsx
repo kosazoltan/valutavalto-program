@@ -47,6 +47,8 @@ const RATE_STALE_MS = 5 * 60 * 1000 // 5 perc
 
 let _rowIdSeq = 0
 
+type ForeignStatus = 'DOMESTIC' | 'FOREIGN'
+
 interface TransactionRow {
   id: string
   currencyCode: string
@@ -54,6 +56,12 @@ interface TransactionRow {
   exchangeRate: number
   quantity: string
   hufValue: number
+  /**
+   * Devizastatusz tetel-szinten (V226, 2026-05-14):
+   * 'FOREIGN' = kulfoldi (default), 'DOMESTIC' = belfoldi.
+   * Tetel-szinten valaszthato, bizonylaton tetelenkent megjelenik.
+   */
+  foreignStatus: ForeignStatus
 }
 
 const emptyRow = (): TransactionRow => ({
@@ -63,6 +71,7 @@ const emptyRow = (): TransactionRow => ({
   exchangeRate: 0,
   quantity: '',
   hufValue: 0,
+  foreignStatus: 'FOREIGN',  // Default: kulfoldi (penzvalto-bran a leggyakoribb)
 })
 
 const RateInput = forwardRef<HTMLInputElement, {
@@ -596,6 +605,7 @@ export default function CashierTransactionPage() {
             customerDocumentNumber: cd?.documentNumber || null,
             customerAddress: cd?.address || null,
             denominations: null,
+            foreignStatus: row.foreignStatus,
           })),
         )
 
@@ -651,6 +661,7 @@ export default function CashierTransactionPage() {
               handlingFee: handlingFee > 0 ? handlingFee : undefined,
               discountPercent: discount > 0 ? discount : undefined,
               cashierCustomRate: isCashierCustom,
+              foreignStatus: row.foreignStatus,
               ...customerData,
             }
             const result = await transactionApi.buy(request)
@@ -663,6 +674,7 @@ export default function CashierTransactionPage() {
               handlingFee: handlingFee > 0 ? handlingFee : undefined,
               discountPercent: discount > 0 ? discount : undefined,
               cashierCustomRate: isCashierCustom,
+              foreignStatus: row.foreignStatus,
               ...customerData,
             }
             const result = await transactionApi.sell(request)
@@ -917,6 +929,7 @@ export default function CashierTransactionPage() {
                   <th className="px-2 py-1.5 text-left w-28">VALUTA</th>
                   <th className="px-2 py-1.5 text-right w-28">{t('transactions.arfolyam')}</th>
                   <th className="px-2 py-1.5 text-right w-32">{t('transactions.bankjegyDb')}</th>
+                  <th className="px-2 py-1.5 text-center w-16" title="Devizastátusz: K=külföldi, B=belföldi (bizonylaton megjelenik)">DSZ</th>
                   <th className="px-2 py-1.5 text-right">{t('transactions.forintErtek')}</th>
                 </tr>
               </thead>
@@ -968,6 +981,22 @@ export default function CashierTransactionPage() {
                         placeholder="0"
                         disabled={!row.currencyCode}
                       />
+                    </td>
+                    <td className="px-2 py-1 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setRows(prev => prev.map((r, i) => i === idx ? { ...r, foreignStatus: r.foreignStatus === 'FOREIGN' ? 'DOMESTIC' : 'FOREIGN' } : r))}
+                        disabled={!row.currencyCode}
+                        className={`w-10 h-8 rounded font-mono font-bold text-sm border-2 transition-colors ${
+                          row.foreignStatus === 'FOREIGN'
+                            ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border-blue-400 dark:border-blue-700'
+                            : 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-400 dark:border-green-700'
+                        } disabled:opacity-40 disabled:cursor-not-allowed`}
+                        title={row.foreignStatus === 'FOREIGN' ? 'Külföldi (kattints: belföldire váltás)' : 'Belföldi (kattints: külföldire váltás)'}
+                        data-testid={`foreign-status-toggle-${idx}`}
+                      >
+                        {row.foreignStatus === 'FOREIGN' ? 'K' : 'B'}
+                      </button>
                     </td>
                     <td className="px-2 py-1 text-right">
                       <span className="text-lg font-mono font-bold text-gray-900 dark:text-white">

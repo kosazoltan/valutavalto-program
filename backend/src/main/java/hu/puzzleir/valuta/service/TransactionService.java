@@ -829,6 +829,11 @@ public class TransactionService {
         private BigDecimal customExchangeRate;
         /** Sor kedvezmeny tipus (0=nincs, 4=VIP, stb.) */
         private Integer discountType;
+        /**
+         * Devizastatusz tetel-szinten (V226, 2026-05-14): DOMESTIC / FOREIGN.
+         * Ha NULL, a parent request foreignStatus-a orokitt at.
+         */
+        private String foreignStatus;
     }
 
     public CashierCustomRateQuotaDto getCashierCustomRateQuota() {

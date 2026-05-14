@@ -23,6 +23,11 @@ export interface PendingBuySellInput {
   customerDocumentNumber: string | null
   customerAddress: string | null
   denominations: string | null
+  /**
+   * Devizastatusz tetel-szinten (V226, 2026-05-14). Ha hianyzik, a backend
+   * a tranzakcio-szintu erteket hasznalja (default: FOREIGN).
+   */
+  foreignStatus?: 'DOMESTIC' | 'FOREIGN'
 }
 
 export interface PendingConversionInput {
@@ -250,6 +255,9 @@ export async function saveAndSyncPendingBuySell(
         normalizeOptionalText(entry.customerDocumentNumber),
         normalizeOptionalText(entry.customerAddress),
         entry.denominations,
+        null,  // sourceOfFunds
+        null,  // customerIsPep
+        entry.foreignStatus ?? null,  // V226 per-line foreignStatus
       )
       savedIds.push(savedId)
     }

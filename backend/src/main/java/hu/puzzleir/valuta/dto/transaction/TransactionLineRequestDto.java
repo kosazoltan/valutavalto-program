@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.dto.transaction;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -36,4 +37,15 @@ public class TransactionLineRequestDto {
 
     /** Sor kedvezmeny tipus (0=nincs, 4=VIP, stb.) */
     private Integer discountType;
+
+    /**
+     * Devizastatusz tetel-szinten (V226, 2026-05-14):
+     * DOMESTIC (belfoldi) / FOREIGN (kulfoldi). Case-insensitive.
+     *
+     * <p>Ha NULL, a parent BuyRequest/SellRequest foreignStatus erteke orokitt at.
+     * Igy a regi kliens (ami csak fejlec-szintu erteket kuld) ne tornek meg.</p>
+     */
+    @Pattern(regexp = "^(?i)(DOMESTIC|FOREIGN)?$",
+            message = "Érvénytelen tetel-szintu devizastátusz — csak DOMESTIC vagy FOREIGN engedélyezett")
+    private String foreignStatus;
 }

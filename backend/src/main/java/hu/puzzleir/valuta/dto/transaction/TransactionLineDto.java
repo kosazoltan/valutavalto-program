@@ -48,4 +48,10 @@ public class TransactionLineDto {
 
     /** Kedvezmeny tipus (0=nincs, 4=VIP, stb.) */
     private Integer discountType;
+
+    /**
+     * Devizastatusz tetel-szinten (V226, 2026-05-14): DOMESTIC (belfoldi) / FOREIGN (kulfoldi).
+     * NULL ha nincs megadva. A bizonylat sablon tetelenkent jeleniti meg.
+     */
+    private String foreignStatus;
 }

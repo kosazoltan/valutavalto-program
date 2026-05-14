@@ -93,7 +93,7 @@ function makeTx(
     customer_name: null,
     customer_document_number: null,
     customer_address: null,
-    denominations: null, source_of_funds: null, customer_is_pep: null, local_reference_number: `LS-${id}`,
+    denominations: null, source_of_funds: null, customer_is_pep: null, foreign_status: null, local_reference_number: `LS-${id}`,
     idempotency_key: `ikey-${id}`,
     created_at: '2026-04-03 10:00:00',    synced: 0,
     ...overrides,

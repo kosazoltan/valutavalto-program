@@ -81,6 +81,9 @@ export interface ElectronAPI {
     customerDocumentNumber: string | null,
     customerAddress: string | null,
     denominations: string | null,
+    sourceOfFunds?: string | null,
+    customerIsPep?: boolean | null,
+    foreignStatus?: 'DOMESTIC' | 'FOREIGN' | null,
   ): Promise<number>;
   savePendingConversion(
     fromCurrencyId: number | null,

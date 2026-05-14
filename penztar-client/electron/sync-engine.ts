@@ -1062,6 +1062,12 @@ export class SyncEngine {
       body['customerIsPep'] = tx.customer_is_pep === 1;
     }
 
+    // V226 (2026-05-14): per-line devizastatusz — DOMESTIC vagy FOREIGN.
+    // Ha hianyzik (regi pending sor), a backend defaultolja a tranzakcio-szintu erteket.
+    if (tx.foreign_status && (tx.foreign_status === 'DOMESTIC' || tx.foreign_status === 'FOREIGN')) {
+      body['foreignStatus'] = tx.foreign_status;
+    }
+
     // A tárolt idempotency_key-t használjuk — retry-nál is ugyanazt küldjük
     await httpPost(endpoint, body, token, tx.idempotency_key ?? undefined);
   }

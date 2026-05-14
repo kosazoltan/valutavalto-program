@@ -84,6 +84,7 @@ public class TransactionMapper {
                 .hufValue(line.getHufValue())
                 .lineDiscount(line.getLineDiscount())
                 .discountType(line.getDiscountType())
+                .foreignStatus(line.getForeignStatus() != null ? line.getForeignStatus().name() : null)
                 .build();
     }
 
@@ -142,6 +143,7 @@ public class TransactionMapper {
                         .banknoteCount(d.getBanknoteCount())
                         .customExchangeRate(d.getCustomExchangeRate())
                         .discountType(d.getDiscountType())
+                        .foreignStatus(d.getForeignStatus())
                         .build())
                 .collect(Collectors.toList());
     }

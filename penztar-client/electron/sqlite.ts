@@ -191,6 +191,13 @@ export async function initDatabase(): Promise<void> {
       }
     }
 
+    // V226 (2026-05-14): foreign_status tetel-szinten oszlop
+    try {
+      db.run(`ALTER TABLE pending_transactions ADD COLUMN foreign_status TEXT;`);
+    } catch {
+      // Column already exists — expected on fresh installs or repeat migration
+    }
+
     db.run(`
       CREATE TABLE IF NOT EXISTS pending_conversions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -893,6 +900,8 @@ export interface PendingTransactionRow {
   denominations: string | null;
   source_of_funds: string | null;
   customer_is_pep: number | null;
+  /** V226 (2026-05-14): per-line devizastatusz — 'DOMESTIC' / 'FOREIGN' / null. */
+  foreign_status: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
   created_at: string;
@@ -989,6 +998,7 @@ export function savePendingTransaction(
   denominations: string | null,
   sourceOfFunds: string | null = null,
   customerIsPep: boolean | null = null,
+  foreignStatus: 'DOMESTIC' | 'FOREIGN' | null = null,
 ): number {
   if (!db) throw new Error('Database not initialized');
 
@@ -1025,10 +1035,11 @@ export function savePendingTransaction(
       denominations,
       source_of_funds,
       customer_is_pep,
+      foreign_status,
       local_reference_number,
       idempotency_key
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       type,
       currencyCode,
@@ -1046,6 +1057,7 @@ export function savePendingTransaction(
       denominations,
       normalizedSourceOfFunds,
       customerIsPep === null ? null : (customerIsPep ? 1 : 0),
+      foreignStatus,
       localReferenceNumber,
       idempotencyKey,
     ],
