@@ -47,6 +47,24 @@ const LEVEL_DESCRIPTIONS: Record<IdentificationLevel, string> = {
   FULL: 'Teljes szemelyes adatok',
 }
 
+/**
+ * Codex P1 #586 iter-3 fix: a degradalt-mod kvalifikalo helper.
+ *
+ * <p>Visszater TRUE ha az axios error halozati / szerver-elerhetetlen hibara utal:
+ * <ul>
+ *   <li>NINCS response (fail-no-response): network down, timeout, dns, cors, etc.</li>
+ *   <li>5xx response: 500, 502, 503, 504 — intermittens backend hibak, ujraprobalhatok</li>
+ * </ul>
+ * Ezekre degradalt modot adunk. Auth (401/403), validation (4xx) -> fail-closed.</p>
+ */
+function isRetryableAmlError(err: unknown): boolean {
+  const axErr = err as { response?: { status?: number }; code?: string; isAxiosError?: boolean }
+  if (!axErr?.response && axErr?.code !== undefined) return true  // fail-no-response (network/timeout)
+  const status = axErr?.response?.status
+  if (status === undefined) return false
+  return status >= 500 && status <= 599  // 5xx: server-side fail (intermittens) -> degradalt
+}
+
 export default function CustomerPanel({
   identificationLevel,
   minimumLevel,
@@ -114,20 +132,11 @@ export default function CustomerPanel({
       onAmlResult?.(result)
       return { ...data, amlVerified: true }
     } catch (err) {
-      // Codex P1 #586 fix: a degradalt mod CSAK halozati/szerver-elerhetetlen hibakra
-      // alkalmazando, NEM auth (401/403) vagy validation (4xx) hibakra. Az axios error
-      // .response NULL/undefined ha nincs valasz (network/timeout/dns); explicit van
-      // ha a szerver valasz adott (de NEM 2xx). Csak az ELOBBI nyit degradalt utat.
-      const axErr = err as { response?: { status?: number }; code?: string; isAxiosError?: boolean }
-      const isNetworkOrServerUnavailable =
-        !axErr?.response && axErr?.code !== undefined  // axios fail-no-response
-        || axErr?.response?.status === 502  // bad gateway
-        || axErr?.response?.status === 503  // service unavailable
-        || axErr?.response?.status === 504  // gateway timeout
-      if (!isNetworkOrServerUnavailable) {
-        // Auth (401/403), validation (4xx), or other server-side rejection — fail-closed.
-        // NEM degradalt; a felhasznalo nem haladhat tovabb (audit-blocking).
-        logger.warn('CustomerPanel', 'AML check failed with server-side error — fail-closed', err)
+      // Codex P1 #586 iter-3 fix: HTTP 500 (intermittens backend hiba) is degradalt mod-kepes,
+      // mint az 502/503/504. Az isRetryableAmlError helper egyseges 5xx + no-response logika.
+      if (!isRetryableAmlError(err)) {
+        // Auth (401/403), validation (4xx) — fail-closed.
+        logger.warn('CustomerPanel', 'AML check failed with non-retryable error — fail-closed', err)
         const blockedResult: AmlCheckResultDto = {
           transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
           requiresId: true, requiresEnhanced: false, blocked: true,
@@ -137,12 +146,8 @@ export default function CustomerPanel({
         onAmlResult?.(blockedResult)
         return data
       }
-      // Local-first mandate (2026-05-14): a halozat opcionalis, nem mukodesi feltetel.
-      // Csak HALOZATI/szerver-elerhetetlen hibara megyunk degradalt modba — a transzakcio
-      // folytathato felhasznaloi megerositessel, audit log rogziti, kozponti szerver
-      // utolag ujra-ellenoriz. A `[OFFLINE_DEGRADED]` prefix kulcs a CashierTransactionPage
-      // handleSubmit detekcio-jahoz.
-      logger.warn('CustomerPanel', 'AML check failed — degraded mode (network/server unavailable)', err)
+      // Local-first: network/5xx -> degradalt mod a CashierTransactionPage confirm-javal.
+      logger.warn('CustomerPanel', 'AML check failed — degraded mode (network/5xx)', err)
       const degradedResult: AmlCheckResultDto = {
         transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
         requiresId: true, requiresEnhanced: false, blocked: false,
@@ -327,8 +332,8 @@ export default function CustomerPanel({
     customerBirthPlace, customerBirthDate, customerBirthName, customerMotherName,
     customerAddress, customerResidence, customerAddressCardNumber, selectedCustomer, onCustomerReady])
 
-  // Re-run AML when hufTotal changes. Codex P1 #586 fix: csak halozati/szerver-elerhetetlen hibara
-  // degradalt mod — auth/validation hiba fail-closed marad.
+  // Re-run AML when hufTotal changes. Codex P1 #586 fix: isRetryableAmlError helper
+  // egyseges no-response + 5xx kvalifikalas (HTTP 500 is degradalt mod-kepes).
   useEffect(() => {
     if (selectedCustomer?.id && hufTotal > 0) {
       const timer = setTimeout(async () => {
@@ -337,13 +342,7 @@ export default function CustomerPanel({
           setAmlResult(result)
           onAmlResult?.(result)
         } catch (err) {
-          const axErr = err as { response?: { status?: number }; code?: string }
-          const isNetworkOrServerUnavailable =
-            !axErr?.response && axErr?.code !== undefined
-            || axErr?.response?.status === 502
-            || axErr?.response?.status === 503
-            || axErr?.response?.status === 504
-          if (!isNetworkOrServerUnavailable) {
+          if (!isRetryableAmlError(err)) {
             const blockedResult: AmlCheckResultDto = {
               transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
               requiresId: true, requiresEnhanced: false, blocked: true,

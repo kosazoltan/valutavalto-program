@@ -263,6 +263,45 @@ describe('CustomerPanel — AML degradált mód (local-first 2026-05-14)', () =>
     expect(amlResult.warnings[0]).toMatch(/szerver-oldali hibával/)
   })
 
+  it('Codex P1 #586 iter-3: AML 500 internal server error → degradált (5xx intermittens)', async () => {
+    const user = userEvent.setup()
+    const onAmlResult = vi.fn()
+    mocks.customerApiCreate.mockResolvedValue({ id: 102, name: '500 Test' })
+    mocks.amlApiCheckAllThresholds.mockRejectedValue(
+      Object.assign(new Error('Internal Server Error'), {
+        response: { status: 500 },
+        isAxiosError: true,
+      }),
+    )
+
+    render(
+      <CustomerPanel
+        identificationLevel="SIMPLIFIED"
+        minimumLevel="SIMPLIFIED"
+        onLevelChange={() => {}}
+        requiresSourceVerification={false}
+        hufTotal={200000}
+        onCustomerReady={() => {}}
+        onAmlResult={onAmlResult}
+      />,
+    )
+
+    await user.type(screen.getByTestId('customer-name-input'), '500 Test')
+    await user.type(screen.getByTestId('customer-birth-place-input'), 'Pécs')
+    await user.type(screen.getByTestId('customer-doc-number-input'), 'IS500001')
+    await user.type(screen.getByTestId('customer-birth-date-input'), '1998-08-08')
+
+    await user.click(screen.getByRole('button', { name: /Ügyfél rögzítése/i }))
+
+    await vi.waitFor(() => {
+      expect(onAmlResult).toHaveBeenCalled()
+    })
+
+    const amlResult = onAmlResult.mock.calls.at(-1)![0]
+    expect(amlResult.blocked).toBe(false)
+    expect(amlResult.warnings.some((w: string) => w.startsWith('[OFFLINE_DEGRADED]'))).toBe(true)
+  })
+
   it('Codex P1 #586: AML 503 service-unavailable → degradált (network-class hiba)', async () => {
     const user = userEvent.setup()
     const onAmlResult = vi.fn()

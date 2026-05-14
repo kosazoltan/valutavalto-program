@@ -584,21 +584,43 @@ export default function CashierTransactionPage() {
         toast.info('Tranzakció megszakítva', 'Várj amíg helyreáll a hálózat, vagy próbáld újra később.')
         return
       }
-      // Audit log a degradált eljárásról (best-effort, lokális SQLite + sync ha hálózat helyreáll)
-      void recordLocalAuditEvent({
-        entityType: 'aml_check',
-        eventType: 'AML_DEGRADED_PROCEED',
-        payload: {
-          workerCode: useAuthStore.getState().worker?.workerCode ?? 'unknown',
-          hufTotal: total,
-          identificationLevel,
-          customerId: cd?.id ?? null,
-          customerDocNumber: cd?.documentNumber ?? null,
-          confirmedAt: new Date().toISOString(),
-          reason: 'AML check failed (offline/server error), pénztáros explicit megerősítéssel folytatta',
-        },
-        status: 'degraded',
-      })
+      // Codex P1 #586 iter-3 fix: audit log persistence MUST succeed before allowing submit.
+      // Korabban a `void recordLocalAuditEvent(...)` fire-and-forget volt — ha az audit
+      // mentes nem sikerul (electronAPI hibajat, disk full, sql error), a tranzakcio megis
+      // folytatodik audit nyom nelkul. Ez compliance-szabalysertes (degradalt mod nyomtalan).
+      // Megoldas: await + ha null/exception, fail-closed.
+      try {
+        const auditId = await recordLocalAuditEvent({
+          entityType: 'aml_check',
+          eventType: 'AML_DEGRADED_PROCEED',
+          payload: {
+            workerCode: useAuthStore.getState().worker?.workerCode ?? 'unknown',
+            hufTotal: total,
+            identificationLevel,
+            customerId: cd?.id ?? null,
+            customerDocNumber: cd?.documentNumber ?? null,
+            confirmedAt: new Date().toISOString(),
+            reason: 'AML check failed (offline/server error), pénztáros explicit megerősítéssel folytatta',
+          },
+          status: 'degraded',
+        })
+        if (auditId == null) {
+          // Electron API NEM elerheto (NEM Electron, vagy bridge nincs feltoltve).
+          // Browser-szal fail-closed: degradalt mod NEM audit-elheto, NEM folytatjuk.
+          toast.error(
+            'Audit napló nem érhető el',
+            'Degradált AML módban a tranzakció CSAK Electron klienssel folytathatható (audit naplóhoz). Kérjük indítsa el a pénztár klienst.',
+          )
+          return
+        }
+      } catch (auditErr) {
+        logger.error('CashierTransactionPage', 'AML degradalt audit log persist FAILED — tranzakcio blokkolva', auditErr)
+        toast.error(
+          'Audit napló mentés sikertelen',
+          'A degradált AML mód audit naplójának mentése nem sikerült. A tranzakció biztonsági okokból nem folytatható. Próbáld újra.',
+        )
+        return
+      }
     }
 
     setIsSubmitting(true)
