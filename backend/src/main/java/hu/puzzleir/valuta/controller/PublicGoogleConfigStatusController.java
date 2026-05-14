@@ -44,24 +44,39 @@ public class PublicGoogleConfigStatusController {
     /**
      * Visszaadja a Google OAuth konfiguracio allapotat redaktalva.
      *
-     * @return JSON: webConfigured, desktopConfigured (boolean), webPrefix, desktopPrefix
-     *         (csak az elso 8 karakter + "***"), activeProfile (Spring profil neve).
+     * <p>2026-05-14: desktopPrefixes lista — backend tamogatja a vesszovel elvalasztott
+     * tobb desktop client ID-t (regi+uj installer egyutt mukodese). A desktopPrefix
+     * legacy mezo az elso erteket mutatja (backwards compat).</p>
      */
     @GetMapping("/google-config-status")
     public ResponseEntity<Map<String, Object>> getGoogleConfigStatus() {
         boolean webConfigured = googleClientId != null && !googleClientId.isBlank();
-        boolean desktopConfigured = googleDesktopClientId != null && !googleDesktopClientId.isBlank();
         String webPrefix = webConfigured ? maskPrefix(googleClientId) : null;
-        String desktopPrefix = desktopConfigured ? maskPrefix(googleDesktopClientId) : null;
+
+        // Codex P2 #588 fix: a desktopConfigured CSAK akkor true ha tenylegesen
+        // van valid (nem-ures, trim utani) desktop client ID. Igy a ',' vagy
+        // ' , ' (csak whitespace + delimiter) ertekek NEM tunnek configurated-nek.
+        java.util.List<String> desktopPrefixes = new java.util.ArrayList<>();
+        if (googleDesktopClientId != null && !googleDesktopClientId.isBlank()) {
+            for (String id : googleDesktopClientId.split(",")) {
+                String trimmed = id.trim();
+                if (!trimmed.isEmpty()) {
+                    desktopPrefixes.add(maskPrefix(trimmed));
+                }
+            }
+        }
+        boolean desktopConfigured = !desktopPrefixes.isEmpty();
         String activeProfile = String.join(",", Arrays.asList(environment.getActiveProfiles()));
 
-        return ResponseEntity.ok(Map.of(
-                "webConfigured", webConfigured,
-                "desktopConfigured", desktopConfigured,
-                "webPrefix", webPrefix == null ? "" : webPrefix,
-                "desktopPrefix", desktopPrefix == null ? "" : desktopPrefix,
-                "activeProfile", activeProfile
-        ));
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("webConfigured", webConfigured);
+        response.put("desktopConfigured", desktopConfigured);
+        response.put("webPrefix", webPrefix == null ? "" : webPrefix);
+        // Backwards compat: desktopPrefix elso elem + uj desktopPrefixes lista
+        response.put("desktopPrefix", desktopPrefixes.isEmpty() ? "" : desktopPrefixes.get(0));
+        response.put("desktopPrefixes", desktopPrefixes);
+        response.put("activeProfile", activeProfile);
+        return ResponseEntity.ok(response);
     }
 
     private static String maskPrefix(String value) {

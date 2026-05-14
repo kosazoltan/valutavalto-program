@@ -47,6 +47,10 @@ public class GoogleLoginConfig {
      * Ez egy MASIK Google Cloud OAuth client ID (Application type: Desktop), igy a backend
      * audience-listanak mind a Web (browser/excvaluta.com) mind a Desktop (Electron) ID-t
      * el kell fogadnia ugyanazon `/api/v1/auth/google-login` endpointon.
+     *
+     * <p>2026-05-14 enhancement (felhasznalo bejelentes #11/#13/#14 Bali/Fabulya Google login):
+     * vesszovel elvalasztva tobb desktop client ID is megadhato — pl. credentials rotacio,
+     * regi+uj Electron build egyutt mukodese, multi-tenancy. Ha csak EGY ID van, az is OK.</p>
      */
     @Value("${google.desktop.client.id:}")
     private String googleDesktopClientId;
@@ -86,14 +90,32 @@ public class GoogleLoginConfig {
                     .build();
         }
 
-        // Audience-lista: Web client ID kotelezo, Desktop client ID opcionalis.
+        // Audience-lista: Web client ID kotelezo, Desktop client ID(k) opcionalis(ak) — vesszovel
+        // elvalasztva tobb is megadhato. 2026-05-14: tobb desktop client ID tamogatasa felhasznaloi
+        // bejelentes alapjan (Bali/Fabulya Google login fail, regi+uj installer egyutt mukodese).
+        // Sourcery/Codex P2 #588: parse + filter -> empty list-szel ugyanaz mint nincs konfiguralva.
         java.util.List<String> audiences = new java.util.ArrayList<>();
         audiences.add(googleClientId);
+        java.util.List<String> desktopIds = new java.util.ArrayList<>();
         if (googleDesktopClientId != null && !googleDesktopClientId.isBlank()) {
-            audiences.add(googleDesktopClientId);
-            log.info("Google login config: GoogleIdTokenVerifier aktiv ket audience-szel — Web prefix: {}***, Desktop prefix: {}***.",
+            for (String id : googleDesktopClientId.split(",")) {
+                String trimmed = id.trim();
+                if (!trimmed.isEmpty()) {
+                    desktopIds.add(trimmed);
+                    audiences.add(trimmed);
+                }
+            }
+        }
+        if (!desktopIds.isEmpty()) {
+            StringBuilder prefixes = new StringBuilder();
+            for (String id : desktopIds) {
+                if (prefixes.length() > 0) prefixes.append(", ");
+                prefixes.append(id.substring(0, Math.min(8, id.length()))).append("***");
+            }
+            log.info("Google login config: GoogleIdTokenVerifier aktiv {} audience-szel — Web prefix: {}***, Desktop prefix(ek): {}.",
+                    1 + desktopIds.size(),
                     googleClientId.substring(0, Math.min(8, googleClientId.length())),
-                    googleDesktopClientId.substring(0, Math.min(8, googleDesktopClientId.length())));
+                    prefixes);
         } else {
             log.info("Google login config: GoogleIdTokenVerifier aktiv csak Web audience-szel (prefix: {}***). Desktop client ID nincs konfiguralva — Electron-bol Google login NEM mukodik.",
                     googleClientId.substring(0, Math.min(8, googleClientId.length())));
