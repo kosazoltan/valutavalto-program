@@ -343,7 +343,12 @@ export default function MainRateSheetPage() {
       {/* === MENU BAR (felső sor menüpontok) === */}
       <div className="flex items-center gap-1 bg-slate-200 border-b border-slate-300 px-2 py-1">
         <button
-          onClick={() => navigate('/rates/groups')}
+          onClick={() => {
+            // Codex P1 #581 iter-5: navigate előtt flush + persist aktív cella editBuffer-ét.
+            // (saveLocally is hív flushActiveCell-t.)
+            saveLocally()
+            navigate('/rates/creation')
+          }}
           className="px-3 py-1 text-xs font-medium bg-white border border-slate-400 rounded hover:bg-slate-50 flex items-center gap-1"
         >
           <ArrowRight size={12} /> CSOPORTOK KARBANTARTÁSA
@@ -364,8 +369,12 @@ export default function MainRateSheetPage() {
         <div className="flex-1" />
         <button
           onClick={() => {
-            if (dirty && !confirm('Vannak nem mentett módosítások. Biztosan kilépsz?')) return
-            window.close()
+            // Codex P2 #581 iter-5: window.close() modern browser-ekben ignored ha NEM a user
+            // nyitotta a tab-ot. Helyette: dirty-check + flush + logout + navigate login-re.
+            if (dirty && !confirm('Vannak nem mentett módosítások. Biztosan kilépsz mentés nélkül?')) return
+            flushActiveCell()
+            useAuthStore.getState().logout()
+            navigate('/login')
           }}
           className="px-3 py-1 text-xs font-medium bg-white border border-slate-400 rounded hover:bg-red-50 hover:border-red-300 flex items-center gap-1"
         >
