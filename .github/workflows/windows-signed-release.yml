@@ -71,7 +71,7 @@ jobs:
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "build_date=$buildDate" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      - name: Verify signing secrets present
+      - name: Verify signing + production secrets present
         id: secrets
         shell: pwsh
         env:
@@ -80,29 +80,34 @@ jobs:
           SM_CLIENT_CERT_FILE_B64_PRESENT: ${{ secrets.SM_CLIENT_CERT_FILE_B64 != '' }}
           SM_CLIENT_CERT_PASSWORD_PRESENT: ${{ secrets.SM_CLIENT_CERT_PASSWORD != '' }}
           SM_KEYPAIR_ALIAS_PRESENT: ${{ secrets.SM_KEYPAIR_ALIAS != '' }}
+          SM_CLIENT_TOOLS_MSI_URL_PRESENT: ${{ secrets.SM_CLIENT_TOOLS_MSI_URL != '' }}
+          GOOGLE_CLIENT_ID_PRESENT: ${{ secrets.GOOGLE_CLIENT_ID != '' }}
+          GOOGLE_CLIENT_SECRET_PRESENT: ${{ secrets.GOOGLE_CLIENT_SECRET != '' }}
+          GOOGLE_DESKTOP_CLIENT_ID_PRESENT: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID != '' }}
+          GOOGLE_DESKTOP_CLIENT_SECRET_PRESENT: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET != '' }}
         run: |
-          # 5 secret-et ellenorzunk: SM_HOST, SM_API_KEY, SM_CLIENT_CERT_FILE_B64,
-          # SM_CLIENT_CERT_PASSWORD, SM_KEYPAIR_ALIAS. A sign-with-keylocker.js a CI-en
-          # SM_CLIENT_CERT_FILE_B64-bol dekodol egy temp .p12 fajlt (NEM SM_CLIENT_CERT_FILE-t hasznal).
-          $allPresent = (
-            $env:SM_HOST_PRESENT -eq 'true' -and
-            $env:SM_API_KEY_PRESENT -eq 'true' -and
-            $env:SM_CLIENT_CERT_FILE_B64_PRESENT -eq 'true' -and
-            $env:SM_CLIENT_CERT_PASSWORD_PRESENT -eq 'true' -and
-            $env:SM_KEYPAIR_ALIAS_PRESENT -eq 'true'
-          )
-          if (-not $allPresent) {
-            Write-Host "::error::Hianyzo DigiCert KeyLocker secret(ek). Beallitando GitHub repo Settings > Secrets > Actions:"
-            Write-Host "::error::  - SM_HOST (https://clientauth.one.digicert.com)"
-            Write-Host "::error::  - SM_API_KEY"
-            Write-Host "::error::  - SM_CLIENT_CERT_FILE_B64 (kliens .p12 fajl base64-elve)"
-            Write-Host "::error::  - SM_CLIENT_CERT_PASSWORD"
-            Write-Host "::error::  - SM_KEYPAIR_ALIAS"
-            Write-Host "::error::Production release CSAK alairt installerrel terjesztheto."
+          # Codex P2 #591 iter-4: minden secret-et a preflight-ban ellenorzunk, NEM csak az SM_*-okat.
+          # SM_CLIENT_TOOLS_MSI_URL + 4 GOOGLE_* mind kotelezo a workflow lefutasahoz, hianyzo
+          # secret early-exit -> NEM teszti a felhasznalo a 30 perces build-et fail-elni.
+          $missing = @()
+          if ($env:SM_HOST_PRESENT -ne 'true') { $missing += 'SM_HOST' }
+          if ($env:SM_API_KEY_PRESENT -ne 'true') { $missing += 'SM_API_KEY' }
+          if ($env:SM_CLIENT_CERT_FILE_B64_PRESENT -ne 'true') { $missing += 'SM_CLIENT_CERT_FILE_B64' }
+          if ($env:SM_CLIENT_CERT_PASSWORD_PRESENT -ne 'true') { $missing += 'SM_CLIENT_CERT_PASSWORD' }
+          if ($env:SM_KEYPAIR_ALIAS_PRESENT -ne 'true') { $missing += 'SM_KEYPAIR_ALIAS' }
+          if ($env:SM_CLIENT_TOOLS_MSI_URL_PRESENT -ne 'true') { $missing += 'SM_CLIENT_TOOLS_MSI_URL' }
+          if ($env:GOOGLE_CLIENT_ID_PRESENT -ne 'true') { $missing += 'GOOGLE_CLIENT_ID' }
+          if ($env:GOOGLE_CLIENT_SECRET_PRESENT -ne 'true') { $missing += 'GOOGLE_CLIENT_SECRET' }
+          if ($env:GOOGLE_DESKTOP_CLIENT_ID_PRESENT -ne 'true') { $missing += 'GOOGLE_DESKTOP_CLIENT_ID' }
+          if ($env:GOOGLE_DESKTOP_CLIENT_SECRET_PRESENT -ne 'true') { $missing += 'GOOGLE_DESKTOP_CLIENT_SECRET' }
+          if ($missing.Count -gt 0) {
+            Write-Host "::error::Hianyzo GitHub Secret(ek) ($($missing.Count) db). Beallitando GitHub repo Settings > Secrets > Actions:"
+            foreach ($s in $missing) { Write-Host "::error::  - $s" }
+            Write-Host "::error::Reszletek: vault/operations/windows-signed-release-runbook.md"
             "has_signing=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
             exit 1
           }
-          Write-Host "All 5 DigiCert KeyLocker secrets present (redacted)."
+          Write-Host "All 10 required secrets present (signing 6 + Google OAuth 4)."
           "has_signing=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
   build-backend:
