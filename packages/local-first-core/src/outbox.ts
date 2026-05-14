@@ -43,15 +43,14 @@ export function enqueue(
 }
 
 export function getPending(db: Database, limit = 50): OutboxEntry[] {
-  const now = new Date().toISOString();
   const stmt = db.prepare(
     `SELECT * FROM lf_outbox
      WHERE status IN ('pending', 'failed')
-       AND (next_retry_at IS NULL OR next_retry_at <= ?)
+       AND (next_retry_at IS NULL OR next_retry_at <= datetime('now'))
      ORDER BY created_at ASC
      LIMIT ?`,
   );
-  stmt.bind([now, limit]);
+  stmt.bind([limit]);
 
   const results: OutboxEntry[] = [];
   while (stmt.step()) {
