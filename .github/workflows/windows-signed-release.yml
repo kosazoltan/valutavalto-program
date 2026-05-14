@@ -172,6 +172,25 @@ jobs:
           name: backend-jar-${{ needs.preflight.outputs.version }}
           path: backend/target/
 
+      - name: Stage backend JAR (manualisan, mert build-installer.ps1 -SkipBackendBuild)
+        shell: pwsh
+        run: |
+          # Codex P1 #591 iter-2: a build-installer.ps1 -SkipBackendBuild flag-gel SKIP-eli
+          # a JAR Copy-Item lepest is (a Maven block-ban van). NSIS Penztar-Setup.nsi `File`
+          # direktivaja FAIL-el ha hianyzik installer/build/stage/backend/valuta-backend.jar.
+          # Megoldas: manualisan a download-artifact utan, helyere masoljuk.
+          $stageBackend = "installer/build/stage/backend"
+          New-Item -ItemType Directory -Force -Path $stageBackend | Out-Null
+          $jar = Get-ChildItem backend/target/valuta-backend-*.jar |
+                 Where-Object { $_.Name -notlike "*sources*" -and $_.Name -notlike "*javadoc*" } |
+                 Sort-Object LastWriteTime | Select-Object -Last 1
+          if (-not $jar) {
+            Write-Host "::error::Backend JAR nem talalhato backend/target/valuta-backend-*.jar"
+            exit 1
+          }
+          Copy-Item -Path $jar.FullName -Destination "$stageBackend/valuta-backend.jar" -Force
+          Write-Host "Backend JAR staged: $($jar.Name) -> $stageBackend/valuta-backend.jar"
+
       - name: Install dependencies (root + penztar-client + frontend-react)
         shell: pwsh
         run: |
