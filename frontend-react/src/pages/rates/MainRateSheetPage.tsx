@@ -372,10 +372,14 @@ export default function MainRateSheetPage() {
         <div className="flex-1" />
         <button
           onClick={() => {
-            // Codex P2 #581 iter-5: window.close() modern browser-ekben ignored ha NEM a user
-            // nyitotta a tab-ot. Helyette: dirty-check + flush + logout + navigate login-re.
-            if (dirty && !confirm('Vannak nem mentett módosítások. Biztosan kilépsz mentés nélkül?')) return
+            // Codex P2 #581 iter-5: window.close() modern browser-ekben ignored.
+            // Codex P2 #581 iter-7 fix: dirty-check ELŐTT flush+detect, mert egy focused cell
+            // még NEM commitált (blur sem futott) → dirty=false félrevezetne, confirm dialog
+            // NEM jönne elő, user veszít pending edit-et.
+            const hadPendingBuffer = activeCell !== null
             flushActiveCell()
+            const hasUnsavedChanges = dirty || hadPendingBuffer
+            if (hasUnsavedChanges && !confirm('Vannak nem mentett módosítások. Biztosan kilépsz mentés nélkül?')) return
             useAuthStore.getState().logout()
             navigate('/login')
           }}
