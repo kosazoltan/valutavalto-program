@@ -443,6 +443,7 @@ ipcMain.handle('save-pending-transaction', async (
   denominations: string | null,
   sourceOfFunds: string | null,
   customerIsPep: boolean | null,
+  foreignStatus: 'DOMESTIC' | 'FOREIGN' | null,
 ): Promise<number> => {
   return savePendingTransaction(
     type,
@@ -460,6 +461,7 @@ ipcMain.handle('save-pending-transaction', async (
     denominations,
     sourceOfFunds,
     customerIsPep,
+    foreignStatus,
   );
 });
 

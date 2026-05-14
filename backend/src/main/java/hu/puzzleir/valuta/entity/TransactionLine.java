@@ -111,6 +111,20 @@ public class TransactionLine {
     @Builder.Default
     private Integer discountType = 0;
 
+    /**
+     * Devizastatusz tetel-szinten (V226 migracio, 2026-05-14):
+     * DOMESTIC (belfoldi) / FOREIGN (kulfoldi).
+     *
+     * <p>User-direktiva: egy bizonylaton tetelenkent kulonbozo statusz lehet
+     * (pl. 2 EUR FOREIGN + 1 USD DOMESTIC). A bizonylat generator (Receipt) tetelsoronkent
+     * jelenit meg.</p>
+     *
+     * <p>Backfill: parent Transaction.foreignStatus erteke.</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "foreign_status", length = 10)
+    private ForeignStatus foreignStatus;
+
     // ============ HELPER METHODS ============
 
     /**
