@@ -444,6 +444,26 @@ process.on('uncaughtException', (err) => log.error('[Process] uncaughtException'
 process.on('unhandledRejection', (reason) => log.error('[Process] unhandledRejection', reason))
 
 app.whenReady().then(async () => {
+  // 2026-05-15 user-direktiva (Google OAuth fix, analog penztar-client): production
+  // buildben a dotenv NEM tolti be a userData/.env-et, ezert promotaljuk most.
+  try {
+    const envPath = path.join(app.getPath('userData'), '.env')
+    if (fs.existsSync(envPath)) {
+      const raw = fs.readFileSync(envPath, 'utf8')
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const dotenv = require('dotenv') as { parse: (input: string | Buffer) => Record<string, string> }
+      const parsed = dotenv.parse(raw)
+      for (const [k, v] of Object.entries(parsed)) {
+        if (!process.env[k]) process.env[k] = v
+      }
+      log.info(`[App] userData/.env betoltve a process.env-be (${Object.keys(parsed).length} kulcs)`)
+    } else {
+      log.warn('[App] userData/.env nem letezik — Google OAuth lehet sikertelen.')
+    }
+  } catch (err) {
+    log.error('[App] userData/.env betoltesi hiba:', err)
+  }
+
   ensureInitialConfig()
   registerIpcHandlers()
   registerLocalFirstIpcHandlers()
