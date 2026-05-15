@@ -29,6 +29,10 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 
     private static final List<String> EXCLUDED_PREFIXES = List.of(
             "/api/v1/auth/",
+            // 2026-05-15: SetupWizard public endpointok (google-identify, setup-status, etc.)
+            // — egyszeri belepesi flow, NEM kell idempotency, es a kliens nem tud
+            // header-t kuldeni a publikus context-ben (no JWT, no apiClient interceptor).
+            "/api/v1/public/",
             "/api/v1/email/accounts/callback",
             "/api/v1/health",
             "/api/v1/error-report",
