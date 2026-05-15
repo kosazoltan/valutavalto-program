@@ -592,9 +592,9 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
   - **P0.2 (központi munkaállomás első telepítése v2.5.53 — NON-SIGNED):** **ÚJ** kliens! `Kozponti-Iranyitokozpont-Setup-2.5.53.exe` (101 MB, SHA-256 `3284e2d2cd34ed537dc8babc4ef6f892ca795c3e452585cb32a96997c9e42b0e`) — főértéktáros gépén kerül telepítésre először. appMode=`full`, route=`/central-workstation`, heading "Központi irányítóközpont".
   - **P0.3 (RFM kliens első telepítése v2.5.53 — NON-SIGNED):** **ÚJ** kliens! `Arfolyamkeszito-Setup-2.5.53.exe` (101 MB, SHA-256 `91dd1c6ba0f38179f156bace36e98c0339fbb8a755001127dd37848363d5a1e4`) — főértéktárosi gépen kerül telepítésre. appMode=`rate-maker`, route=`/rates/creation`.
   - **P1.1 (Drill 1 live):** Vasárnap 2026-05-17 04:00 CEST scheduled routine (trig_01WpU5Vts7DnXE2d4XSnnW5Q) readiness check-et csinál + checklist. Vagy manuálisan: `gh workflow run scaleway-failover-drill.yml -f drill_level=1 -f dry_run=false`.
-  - **P1.2 (happy path teszt v2.5.51):** Fejlesztői mód INDÍTÁS shortcut → SetupWizard 4. lépés Kapcsolat tesztelése gomb (`connectionTest.state=ok`) → új VÉTEL → bizonylat `V<3-jegyű>000001`.
+  - **P1.2 (happy path teszt v2.5.53):** Fejlesztői mód INDÍTÁS shortcut → SetupWizard 4. lépés Kapcsolat tesztelése gomb (`connectionTest.state=ok`) → új VÉTEL → bizonylat `V<3-jegyű>000001`. Plus: 100k+ tranzakció → ellenőrizni hogy a bizonylaton szül.hely/szül.idő/anyja neve megjelenik; 300k+ → PEP/saját-név kérdés panel megjelenik.
   - **P1.3 (DigiCert EV CS validation):** vár phone callback (+36 70 380 0202) + cégkivonat/aláírási minta + video verif call. 3-5 nap. Részletek: `vault/sessions/2026-05-15-digicert-hsm-approval.md`.
-  - **P1.4 (cert kiadás utáni signed v2.5.52 release):** `az keyvault certificate pending merge --vault-name kv-valuta-codesign --name valuta-codesign-cert --file <cer>` + `gh workflow run windows-signed-release.yml -f version=2.5.52 -f publish_release=true`.
+  - **P1.4 (cert kiadás utáni signed v2.5.54 release):** `az keyvault certificate pending merge --vault-name kv-valuta-codesign --name valuta-codesign-cert --file <cer>` + `gh workflow run windows-signed-release.yml -f version=2.5.54 -f publish_release=true`.
   - **P2.3 (Drill 2 + Drill 3):** Drill 1 sikeres után, alacsony forgalmú időszakban. DNS swap 5 percre + adatvesztés mérés.
   - **P2.4 (Cloudflare Load Balancer):** Auto-DNS failover (~14 USD/hó). CF Load Balancer beállítás Hetzner-Scaleway origin pool-lal.
   - **P2.5 (UptimeRobot monitoring):** 5 percenként health-check + email/SMS riasztás 5xx esetén.
@@ -608,7 +608,7 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 - HIBA #1 (transfer dropdown üres) → PR #606
 - HIBA #2 (BranchPage admin értéktár/TH/főpénztár) → PR #611 (DictionaryController + form bővítés)
 - HIBA #3 (negatív készlet vételhez) → PR #605
-- HIBA #4 (foreignStatus K/B) → kód már a main-en, csak verify v2.5.51+ telepítés után
+- HIBA #4 (foreignStatus K/B) → kód már a main-en, csak verify v2.5.53+ telepítés után
 - HIBA #5 (100-300k bizonylat hiányzó szül.hely/idő) → PR #612+#613+#614
 - HIBA #6 (SIMPLIFIED ID-nél okmány) → PR #605
 - HIBA #7 (300k+ bizonylat hiányos) → PR #612+#613+#614
