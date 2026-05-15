@@ -562,7 +562,7 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 - Kapcsolat: `application.properties` → `spring.datasource.*`
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.51** (2026-05-14 — rate-maker főlap MVP #581 + CustomerPanel UX #584 + AML local-first degradált mód #586 + per-item devizastátusz #587 + GOOGLE_DESKTOP_CLIENT_ID multi #588, v2.5.51 4-way version bump #589/cca7ba6da).
+- **Verzió:** **v2.5.53** (2026-05-15 — 10 felhasználói bug + production hotfix-ek + BALI/W-S011/Google OAuth lezárva, mind admin-merged a main-be).
 - **Backend stack (2026-04-29 SB4 sprint óta):** **Spring Boot 4.0.6** + **Tomcat 11.0.21** (Servlet 6.1) + **Jackson 2 stop-gap** (`spring-boot-jackson2` modul + `JacksonConfig.java` programmatic `@Primary @Bean ObjectMapper` `Jackson2ObjectMapperBuilder.json().modulesToInstall(...)` mintával) + **springdoc 3.0.3** + **flyway-database-postgresql 12.4.0** (flyway-core 12.x SB4 BOM-ból). 1009/1009 mvn test PASS, Hetzner production deploy SUCCESS (3× verifikálva).
 - **Main HEAD:** `1217cf08` (PR #266: modulesToInstall extend mode, 2026-04-29).
 - **Production:** Hetzner deploy SUCCESS minden mergelt PR után, bootstrap-status 200, V155..V167 applied.
@@ -588,9 +588,9 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 - **Production URL SSOT (BEFEJEZVE):** `config/production-urls.json` + `backend/.../config/ProductionUrls.java` + `scripts/_production-urls.ps1` + Electron `penztar-client/electron/main.ts` `loadProductionUrls()` + `electron-builder.json` extraResources. Lazy-load minden komponensben.
 - **Jackson 3 future migration**: a `spring-boot-jackson2` stop-gap modul + `JacksonConfig.java` programmatic ObjectMapper csak átmeneti megoldás. Egy nagyobb refaktor PR-ben (külön sprint) a 39 fájl `com.fasterxml.jackson.*` → `tools.jackson.*` import-migráció OpenRewrite recipe-pal, ObjectMapper API breaking changes javítás. Akkor: a `spring.jackson.use-jackson2-defaults=true` + a `JacksonConfig.java` törölhető.
 - **Nyitott következő feladatok (2026-05-15 állapot):**
-  - **P0.1 (éles pénztár frissítés v2.5.51 — NON-SIGNED):** user reinstall a pénztáros gépeken. Telepítő: `C:\Users\Kósa Zoltán\Downloads\Penztar-Setup-2.5.51-20260515.exe` (281 MB, **unsigned** — SmartScreen "További információ" → "Futtatás mindenképp"). SHA-256: `ad09d72387e9ff2698303d3aa5c183fcf5c7bfc35dca746be36ca68ad6bf9e98`. Eltávolító: `Penztar-Eltavolito-2.5.51-20260515.exe` (60 KB, SHA-256 `15f10ffe21d61915c4e2336372d7b4185d3e0df52be07e0299c61524e0e90533`).
-  - **P0.2 (központi munkaállomás első telepítése v2.5.51 — NON-SIGNED):** **ÚJ** kliens! `Kozponti-Iranyitokozpont-Setup-2.5.51.exe` (101 MB, SHA-256 `cc909f6d115b56c89f2b44563daba2010dc0960ce8e0f573ec48f9d39528c649`) — főértéktáros gépén kerül telepítésre először. appMode=`full`, route=`/central-workstation`, heading "Központi irányítóközpont".
-  - **P0.3 (RFM kliens első telepítése v2.5.51 — NON-SIGNED):** **ÚJ** kliens! `Arfolyamkeszito-Setup-2.5.51.exe` (101 MB, SHA-256 `cdb02c56b25bf177c3e65c280f613cc8d8df9005d516c5d66051531bbe4b5a1b`) — főértéktárosi gépen kerül telepítésre. appMode=`rate-maker`, route=`/rates/creation`.
+  - **P0.1 (éles pénztár frissítés v2.5.53 — NON-SIGNED):** user reinstall a pénztáros gépeken. Telepítő: `C:\Users\Kósa Zoltán\Downloads\Penztar-Setup-2.5.53-20260515.exe` (281 MB, **unsigned** — SmartScreen "További információ" → "Futtatás mindenképp"). SHA-256: `7e358a265d630ec875a22bfaa57b033aec4d136a18a96316529856a5b0ae868f`. Eltávolító: `Penztar-Eltavolito-2.5.53-20260515.exe` (60 KB, SHA-256 `f9143d49c97a5cca1e6eae55030cec56cc37b85fbc96ebb3003d017e6918d253`).
+  - **P0.2 (központi munkaállomás első telepítése v2.5.53 — NON-SIGNED):** **ÚJ** kliens! `Kozponti-Iranyitokozpont-Setup-2.5.53.exe` (101 MB, SHA-256 `3284e2d2cd34ed537dc8babc4ef6f892ca795c3e452585cb32a96997c9e42b0e`) — főértéktáros gépén kerül telepítésre először. appMode=`full`, route=`/central-workstation`, heading "Központi irányítóközpont".
+  - **P0.3 (RFM kliens első telepítése v2.5.53 — NON-SIGNED):** **ÚJ** kliens! `Arfolyamkeszito-Setup-2.5.53.exe` (101 MB, SHA-256 `91dd1c6ba0f38179f156bace36e98c0339fbb8a755001127dd37848363d5a1e4`) — főértéktárosi gépen kerül telepítésre. appMode=`rate-maker`, route=`/rates/creation`.
   - **P1.1 (Drill 1 live):** Vasárnap 2026-05-17 04:00 CEST scheduled routine (trig_01WpU5Vts7DnXE2d4XSnnW5Q) readiness check-et csinál + checklist. Vagy manuálisan: `gh workflow run scaleway-failover-drill.yml -f drill_level=1 -f dry_run=false`.
   - **P1.2 (happy path teszt v2.5.51):** Fejlesztői mód INDÍTÁS shortcut → SetupWizard 4. lépés Kapcsolat tesztelése gomb (`connectionTest.state=ok`) → új VÉTEL → bizonylat `V<3-jegyű>000001`.
   - **P1.3 (DigiCert EV CS validation):** vár phone callback (+36 70 380 0202) + cégkivonat/aláírási minta + video verif call. 3-5 nap. Részletek: `vault/sessions/2026-05-15-digicert-hsm-approval.md`.
@@ -602,7 +602,27 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 
 **LEZÁRVA 2026-05-14-i sessionben:** ✅ PR #564 P2.1 cashier custom-rate kvóta backend enforcement (Codex P1 #562) + PR #565 P2.2 foreignStatus String→Enum (Copilot finding) + PR #579 per-session quota decrement, ✅ PR #581 rate-maker főlap MVP (28 valuta, A-I oszlopok, kereszt-árfolyam) + PR #584 CustomerPanel UX (100k HUF hint), ✅ PR #586 AML local-first degradált mód + PR #587 per-item devizastátusz + V226 + PR #588 GOOGLE_DESKTOP_CLIENT_ID multi-érték, ✅ v2.5.51 4-way version bump (#589 + cca7ba6da), ✅ PR #582-#583 local-first shared core + outbox retry fix, ✅ 8-PR autonomous mode Azure Key Vault Premium HSM signing infra (#591-#600: workflow YAML, sign hook, EXZ integráció, jlink --compress 2 fix, longpaths checkout fix).
 
-**LEZÁRVA 2026-05-15-i sessionben:** ✅ Sectigo OV CS cancel + store credit $659.97 (NEM Azure-kompat — Microsoft Q&A: KV HSM nincs key attestation) → DigiCert EV CS Azure-native order ($559.99, store credit fedezi, $99.98 maradó), ✅ DigiCert HSM Approval form SUBMITTED 09:55 CEST (Azure Key Vault Premium HSM elfogadva — "audited cloud (e.g., Azure or AWS)"), ✅ vault sessions #601 + #602 + auto-memory project_codesigning_pivot_digicert_ev_2026_05_15.md + QMD/YAML memory (PR #603), ✅ **3 unsigned installer build v2.5.51** (Penztar-Setup 281 MB + Kozponti 101 MB + Arfolyamkeszito 101 MB + Eltavolito 60 KB, mind Downloads/-ban SHA-256-tal), ✅ installer-validation-suite-v2.5.51.ps1 acceptance test script + non-invazív smoke-test 4 fájlra (file version metadata + size OK), ✅ CLAUDE.md "Nyitott feladatok" frissítés (P2.1+P2.2 lezárt status, P1.3+P1.4 új DigiCert validation track).
+**LEZÁRVA 2026-05-15-i hosszú sessionben (14 PR, 10 felhasználói bug + 4 infra hotfix):**
+
+🐛 **User-jelentett 10 bug fix:**
+- HIBA #1 (transfer dropdown üres) → PR #606
+- HIBA #2 (BranchPage admin értéktár/TH/főpénztár) → PR #611 (DictionaryController + form bővítés)
+- HIBA #3 (negatív készlet vételhez) → PR #605
+- HIBA #4 (foreignStatus K/B) → kód már a main-en, csak verify v2.5.51+ telepítés után
+- HIBA #5 (100-300k bizonylat hiányzó szül.hely/idő) → PR #612+#613+#614
+- HIBA #6 (SIMPLIFIED ID-nél okmány) → PR #605
+- HIBA #7 (300k+ bizonylat hiányos) → PR #612+#613+#614
+- HIBA #8 (PEP/saját-név kérdés tranzakció közben) → PR #614 (300k+ panel)
+- HIBA #9 (ügyfél nem rögzíthető) → PR #607 (idempotens upsert + valódi error toast)
+- HIBA #10 KIEMELT (kezelési költség nem rögzíthető — 2 napos hamis "kész") → PR #605 V227 + PR #610 hotfix sync_active_columns()
+
+🚨 **Production OUTAGE + recovery + infrastruktúra:**
+- V228 (BALI worker reaktiválás + 7 role mind BALI-ra mind W-S011-re) → PR #608
+- Google OAuth userData/.env betöltés mindhárom Electron kliensben (penztar + kozponti + arfolyam) → PR #608
+- V227 production deploy fail: sync_active_columns() function nem létezett → PR #610 defensive CREATE OR REPLACE + Flyway repair step a deploy workflow-ba
+- Backend HTTP 502 outage → recovered HTTP 200
+
+🔐 **Code Signing track (track 4):** Sectigo OV CS cancel + store credit $659.97 (NEM Azure-kompat — Microsoft Q&A: KV HSM nincs key attestation) → DigiCert EV CS Azure-native order ($559.99, store credit fedezi, $99.98 maradó), ✅ DigiCert HSM Approval form SUBMITTED 09:55 CEST (Azure Key Vault Premium HSM elfogadva — "audited cloud (e.g., Azure or AWS)"), ✅ vault sessions #601 + #602 + auto-memory project_codesigning_pivot_digicert_ev_2026_05_15.md + QMD/YAML memory (PR #603), ✅ **3 unsigned installer build v2.5.51** (Penztar-Setup 281 MB + Kozponti 101 MB + Arfolyamkeszito 101 MB + Eltavolito 60 KB, mind Downloads/-ban SHA-256-tal), ✅ installer-validation-suite-v2.5.51.ps1 acceptance test script + non-invazív smoke-test 4 fájlra (file version metadata + size OK), ✅ CLAUDE.md "Nyitott feladatok" frissítés (P2.1+P2.2 lezárt status, P1.3+P1.4 új DigiCert validation track).
 
 **LEZÁRVA 2026-05-13-i sessionben:** ✅ v2.5.48 → v2.5.49 release (PR #562, V211 production crash fix + bizonylat admin UI + transfer P1 + Playwright redirect), ✅ Scaleway DEV1-S → DEV1-M resize (2 GB → 4 GB), ✅ Scaleway v2.5.49 JAR rebuild + Google OAuth env vars, ✅ 3 telepítő build (Penztar + Kozponti + Arfolyamkeszito mind 2.5.49), ✅ Scaleway failover runbook 8 fejezet + GitHub Actions workflow (Drill 1/2/3 szintekkel), ✅ Cloudflare DNS:Edit token + 5 GitHub Secret setup, ✅ Redis Scaleway-en telepítve (warm), ✅ 4 memóriarendszer rendrehozás (QMD 5 valutavalto kollekció + YAML + Cognee + Vector), ✅ Windows QMD shim + HOME=USERPROFILE fix patch-package-szerű auto-apply-jel.
 
