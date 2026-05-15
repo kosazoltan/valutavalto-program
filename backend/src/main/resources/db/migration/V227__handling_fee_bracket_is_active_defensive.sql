@@ -17,6 +17,22 @@
 --
 -- TESZT: BackendIntegrationTest HandlingFeeConfigControllerIT a V227-tel együtt
 --   próbálja a save + get cikust végrehajtani.
+--
+-- 2026-05-15 HOTFIX: production-on a sync_active_columns() function NEM letezik
+-- (V109 valami miatt nem hagyta hatra, vagy droppolva lett). Ezert defenziven
+-- ujra letrehozzuk itt CREATE OR REPLACE-vel, MIELOTT a trigger ra hivatkozna.
+
+-- 0. Function defenziv ujra-letrehozasa (idempotens, V109 mintaja szerint)
+CREATE OR REPLACE FUNCTION sync_active_columns()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $func$
+BEGIN
+    NEW.active := COALESCE(NEW.active, NEW.is_active, TRUE);
+    NEW.is_active := COALESCE(NEW.is_active, NEW.active, TRUE);
+    RETURN NEW;
+END;
+$func$;
 
 DO $$
 BEGIN
