@@ -213,6 +213,17 @@ public class ReceiptData {
     private String legalEntityName;
 
     /**
+     * V229 (2026-05-15 HIBA #8): JOGCÍM NYILATKOZAT — saját nevében jár-e az ügyfél?
+     * NULL = nem keruelt megkerdezesre (regi tranzakciok / kkasszas munkajogosultsag-emelo előtt).
+     * TRUE = saját nevben → "saját nevemben bonyolítom".
+     * FALSE = más nevben → "{customerActorName} nevében bonyolítom".
+     */
+    private Boolean customerOnOwnBehalf;
+
+    /** V229: A képviselt fél neve, ha customerOnOwnBehalf=FALSE. */
+    private String customerActorName;
+
+    /**
      * Bizonylat sor adat
      */
     @Data

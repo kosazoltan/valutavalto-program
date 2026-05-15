@@ -132,13 +132,38 @@ public class ReceiptPdfService {
             y -= 8;
 
             // ── Ügyfél ────────────────────────────────────────────────────────
+            // V229 (2026-05-15 HIBA #5+#7+#8): teljes Pmt. azonositasi blokk
             if (data.getCustomerName() != null && !data.getCustomerName().isBlank()) {
                 y = drawLabelValue(cs, fontBold, fontNormal, 10,
                         "Ügyfél:", data.getCustomerName(), y);
             }
+            if (data.getCustomerBirthPlace() != null && !data.getCustomerBirthPlace().isBlank()) {
+                y = drawLabelValue(cs, fontBold, fontNormal, 10,
+                        "Szül. hely:", data.getCustomerBirthPlace(), y);
+            }
+            if (data.getCustomerBirthDate() != null && !data.getCustomerBirthDate().isBlank()) {
+                y = drawLabelValue(cs, fontBold, fontNormal, 10,
+                        "Szül. idő:", data.getCustomerBirthDate(), y);
+            }
+            if (data.getCustomerMotherName() != null && !data.getCustomerMotherName().isBlank()) {
+                y = drawLabelValue(cs, fontBold, fontNormal, 10,
+                        "Anyja neve:", data.getCustomerMotherName(), y);
+            }
+            if (data.getCustomerNationality() != null && !data.getCustomerNationality().isBlank()) {
+                y = drawLabelValue(cs, fontBold, fontNormal, 10,
+                        "Állampolg.:", data.getCustomerNationality(), y);
+            }
+            if (data.getCustomerAddress() != null && !data.getCustomerAddress().isBlank()) {
+                y = drawLabelValue(cs, fontBold, fontNormal, 10,
+                        "Lakcím:", data.getCustomerAddress(), y);
+            }
+            if (data.getCustomerDocType() != null && !data.getCustomerDocType().isBlank()) {
+                y = drawLabelValue(cs, fontBold, fontNormal, 10,
+                        "Okm. típus:", data.getCustomerDocType(), y);
+            }
             if (data.getCustomerIdNumber() != null && !data.getCustomerIdNumber().isBlank()) {
                 y = drawLabelValue(cs, fontBold, fontNormal, 10,
-                        "Okmány:", data.getCustomerIdNumber(), y);
+                        "Okmány sz.:", data.getCustomerIdNumber(), y);
             }
 
             // ── Extra sorok ───────────────────────────────────────────────────
