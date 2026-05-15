@@ -1,0 +1,202 @@
+---
+schema_version: 1
+session_id: 2026-05-15-codesigning-digicert-ev-pivot
+date: 2026-05-15
+status: verified
+operator: kosa.zoltan
+ai_agent: claude-opus-4.7-1m
+project: valutavalto-program
+topic: code-signing-certificate-pivot
+tags:
+  - code-signing
+  - azure-key-vault
+  - digicert-ev-cs
+  - sectigo-cancelled
+  - signmycode
+  - ci-cd
+  - workflow-windows-signed-release
+
+decision:
+  from: Sectigo OV CS (3 év, $659.97)
+  to: DigiCert EV CS Azure Key Vault native (1 év, $559.99)
+  reason: |
+    Sectigo OV CS NEM kompatibilis az Azure Key Vault Premium HSM-mel
+    (Microsoft Q&A megerősítés: Azure HSM nincs key attestation funkció).
+    DigiCert hivatalosan elfogadja az Azure-t a HSM Approval form-on:
+    "audited cloud (e.g., Azure or AWS)".
+  evidence_url: https://learn.microsoft.com/en-us/answers/questions/1487290
+
+financials:
+  sectigo_paid: -659.97
+  sectigo_refund_store_credit: 659.97
+  digicert_ev_cs: -559.99
+  net_cash: 0.00
+  remaining_credit: 99.98
+  remaining_credit_use: "2027 EV CS renewal"
+
+orders:
+  sectigo:
+    signmycode_order_id: CS-BNYD
+    transaction_id: SMC1015225S638431
+    status: cancelled
+    cancel_reason: "I Want to Upgrade Certificate"
+    cancel_status: "Pending billing review (Douglas chat confirmed store credit immediately)"
+  digicert:
+    signmycode_order_id: CS-BNYK
+    transaction_id: SMC1015225S262925
+    vendor_order_id: 1524362467
+    digicert_account_id: 1663074
+    vendor_token: hdnhnd0xjs20u4u
+    product: "Azure Key Vault EV Code Signing"
+    validity_months: 12
+    price_usd: 559.99
+    payable_usd: 0.00
+    payment_method: "Store Credit"
+    delivery_mode: "Azure KeyVault HSM"
+    vendor_status: pending
+
+hsm_approval:
+  submitted_at: 2026-05-15T09:55:00+02:00
+  form_url: "https://www.digicert.com/link/hsm-approval.php?token=nk5fx32pffcm62jgdc11rzq7chc2"
+  fields_submitted:
+    company_name: "EXCLUSIVE BEST Change Zrt."
+    first_name: Zoltan
+    last_name: Kosa
+    email: kosa.zoltan.ebc@gmail.com
+    title: CEO
+    agree_checkbox: true
+  commitments:
+    - "Private key non-exportable from HSM"
+    - "HSM remains in sole control / audited cloud (Azure)"
+    - "No reason to believe key has been used outside HSM"
+    - "Private key protected in FIPS 140-2 Level 2+ (Azure = Level 3)"
+    - "Only suitable Hardware Crypto Module used for Key Pair generation"
+  digicert_response: "Thank you! We will continue to work on your order and notify you about further updates."
+
+azure_infrastructure:
+  subscription_id: 8db4cf28-f059-47f9-a9dd-96a295a47195
+  subscription_name: "1. előfizetés"
+  tenant_id: b6c90d40-e505-4003-83b0-592c43b7e223
+  tenant_domain: kosazoltanebcoutlook.onmicrosoft.com
+  resource_group: rg-valuta-signing
+  region: West Europe
+  key_vault_name: kv-valuta-codesign
+  key_vault_uri: https://kv-valuta-codesign.vault.azure.net/
+  key_vault_tier: Premium
+  cert_name: valuta-codesign-cert
+  cert_state: pending
+  cert_key_type: RSA-HSM
+  cert_key_size: 3072
+  cert_exportable: false
+  cert_eku_oid: "1.3.6.1.5.5.7.3.3 (Code Signing)"
+  csr_file: "C:\\Users\\Kósa Zoltán\\Downloads\\valuta-codesign-cert_26016ff46f66435e9d269c7e56989649.csr"
+  app_registration:
+    name: sp-valuta-codesign-ci
+    client_id: 2f6bfdfc-eb2b-4992-863d-f59e98a576a5
+    client_secrets:
+      v3:
+        display_name: valuta-codesign-ci-secret-v3
+        use: "CI (kosazoltan/valutavalto-program GitHub Secret AZURE_CLIENT_SECRET)"
+        expires: 2028-05-14
+      v4:
+        display_name: exz-codesign-local-v4
+        use: "EXZ CI (kosazoltan/EXZ AZURE_CODESIGN_CLIENT_SECRET) + EXZ local (Downloads/azure-codesign-config.json)"
+        expires: 2028-05-14
+  access_policy:
+    principal: "sp-valuta-codesign-ci"
+    cert_permissions: [Get]
+    key_permissions: [Get, Sign]
+
+github_secrets:
+  valutavalto:
+    repo: kosazoltan/valutavalto-program
+    azure:
+      - AZURE_TENANT_ID
+      - AZURE_CLIENT_ID
+      - AZURE_CLIENT_SECRET
+      - AZURE_KEY_VAULT_URI
+      - AZURE_KEY_VAULT_CERT_NAME
+    google_oauth:
+      - GOOGLE_CLIENT_ID
+      - GOOGLE_CLIENT_SECRET
+      - GOOGLE_DESKTOP_CLIENT_ID
+      - GOOGLE_DESKTOP_CLIENT_SECRET
+  exz:
+    repo: kosazoltan/EXZ
+    azure_codesign:
+      - AZURE_CODESIGN_TENANT_ID
+      - AZURE_CODESIGN_CLIENT_ID
+      - AZURE_CODESIGN_CLIENT_SECRET
+      - AZURE_CODESIGN_KEY_VAULT_URI
+      - AZURE_CODESIGN_CERT_NAME
+      - AZURE_CODESIGN_TIMESTAMP_URL
+
+pending_steps:
+  - description: DigiCert phone callback
+    expected_within_days: 1-2
+    contact: "+36 70 380 0202"
+    user_action: "Take the call when DigiCert validator phones"
+  - description: Document verification
+    expected_within_days: 1-3
+    documents_required:
+      - "Cégkivonat (Best cégkivonat 2026 05. hó.pdf)"
+      - "Aláírási címpéldány (Aláírási címpéldány Zrt.pdf)"
+      - "Vezérigazgatói okmány (személyi igazolvány scan)"
+  - description: Video verification call (EV mandatory 2024+)
+    expected_within_days: 1-3
+    user_action: "Live video call with DigiCert validator for identity confirmation"
+  - description: Cert .cer issuance
+    expected_total_days: 3-5
+    delivery: "email link + SignMyCode dashboard download"
+
+post_issuance_workflow:
+  - step: 1
+    command: |
+      $cer = "$env:USERPROFILE\Downloads\valuta-codesign-cert.cer"
+      $env:Path = "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin;$env:Path"
+      az keyvault certificate pending merge --vault-name kv-valuta-codesign --name valuta-codesign-cert --file $cer
+  - step: 2
+    command: |
+      gh workflow run windows-signed-release.yml \
+          -f version=2.5.51 \
+          -f release_notes="v2.5.51 — first DigiCert EV signed release" \
+          -f publish_release=true
+  - step: 3
+    command: |
+      gh workflow run branch-release.yml -R kosazoltan/EXZ
+
+interim_directive:
+  source: "Kósa Zoltán user-direktíva 2026-05-15"
+  text: "Egyelőre nem certifikált telepítőket készítünk, amíg meg nem érkezik a certifikáció, de folytassuk a munkát, most emiatt ne álljon."
+  implication:
+    - "Non-signed installer build engedélyezett ALLOW_UNSIGNED_BUILD=1 flag-gel"
+    - "Production signed release várhat DigiCert cert kiadására"
+    - "Fejlesztés folytatható (patch-ek, új feature-ök, v2.5.52+)"
+    - "v2.5.51-es nem signed installer build sürgős a felhasználói tesztelésre"
+
+verification:
+  vault_pr_merged:
+    - 591  # windows-signed-release workflow
+    - 594  # code-signing-setup-path
+    - 595  # sectigo-order-checkpoint
+    - 596  # actions/checkout v6 -> v5
+    - 597  # autonomous-mode session log
+    - 598  # Windows MAX_PATH longpaths
+    - 599  # jlink compress fix
+    - 600  # FINAL STATUS doc
+    - 601  # sectigo-cancel-digicert-ev-pivot
+    - 602  # digicert-hsm-approval-submitted
+
+related_files:
+  - vault/sessions/2026-05-14-sectigo-order-checkpoint.md
+  - vault/sessions/2026-05-14-autonomous-azure-signing-mode.md
+  - vault/sessions/2026-05-14-autonomous-final-status.md
+  - vault/sessions/2026-05-15-sectigo-cancel-digicert-ev-pivot.md
+  - vault/sessions/2026-05-15-digicert-hsm-approval.md
+  - vault/operations/code-signing-setup-path.md
+  - vault/operations/windows-signed-release-runbook.md
+  - .github/workflows/windows-signed-release.yml
+  - penztar-client/scripts/sign-with-azure-keyvault.js
+  - installer/build-installer.ps1
+  - C:\Users\Kósa Zoltán\Downloads\azure-codesign-config.json
+  - C:\Users\Kósa Zoltán\Downloads\valuta-codesign-cert_26016ff46f66435e9d269c7e56989649.csr

@@ -1,0 +1,110 @@
+---
+title: "2026-05-15 Code Signing: Sectigo → DigiCert EV CS Pivot (Azure Key Vault native)"
+date: 2026-05-15
+author: "Claude Opus 4.7 (1M context)"
+tags: [code-signing, azure-key-vault, digicert, sectigo, signmycode, certificate, ev-cs, hsm, ci-cd, workflow]
+status: in-progress
+operator: kosa.zoltan
+project: valutavalto-program
+related:
+  - vault/sessions/2026-05-14-sectigo-order-checkpoint.md
+  - vault/sessions/2026-05-14-autonomous-azure-signing-mode.md
+  - vault/sessions/2026-05-14-autonomous-final-status.md
+  - vault/sessions/2026-05-15-sectigo-cancel-digicert-ev-pivot.md
+  - vault/sessions/2026-05-15-digicert-hsm-approval.md
+  - .github/workflows/windows-signed-release.yml
+  - penztar-client/scripts/sign-with-azure-keyvault.js
+---
+
+# Code Signing Certifikációs Pivot — Sectigo → DigiCert EV CS
+
+## Összegzés
+
+A 2026-05-14-i autonomous mode-ban felépítettem a teljes Sectigo OV CS + Azure Key Vault Premium HSM signing infrastruktúrát (8 PR mergelve, $659.97 paid).
+2026-05-15-i kutatás kiderítette: **Sectigo NEM Azure-kompatibilis** (Microsoft Q&A megerősítés: Azure Key Vault HSM nincs key attestation, Sectigo csak Luna/YubiKey-t fogad).
+
+**Pivot:** Sectigo cancel → store credit ($659.97) → DigiCert EV CS Azure-native ($559.99) order.
+
+## Tényleges költségvégeredmény
+
+| Tétel | Összeg |
+|---|---|
+| Sectigo OV CS 3y (cancelled) | -$659.97 |
+| Store credit refund | +$659.97 |
+| DigiCert EV CS 1y (új) | -$559.99 |
+| **Net cash** | **$0.00** |
+| Maradó credit (2027 renewal) | +$99.98 |
+
+**Plusz előny:** EV validation → AZONNALI Microsoft SmartScreen elfogadás (vs OV 4-6 hét reputation building).
+
+## Időbeli kronológia
+
+```
+2026-05-14 17:24 — Sectigo OV CS order (SignMyCode SMC1015225S638431)
+2026-05-14 17:24-22:45 — Teljes Azure infra (rg-valuta-signing, kv-valuta-codesign, sp + 9 GitHub Secret)
+2026-05-15 ~04:00 — Felfedezés: Sectigo NEM Azure-kompat (Microsoft Q&A)
+2026-05-15 06:30 — Sectigo Cancel ("I Want to Upgrade Certificate" → store credit)
+2026-05-15 06:45 — DigiCert EV CS order (SMC1015225S262925, $559.99, Payable $0.00)
+2026-05-15 06:50 — SignMyCode Enrollment submit (CSR + Org + Contact)
+2026-05-15 06:55 — DigiCert HSM Approval email
+2026-05-15 09:55 — DigiCert HSM Approval form SUBMITTED (Azure Key Vault explicit elfogadva)
+```
+
+## DigiCert form text (Azure-kompatibilitás megerősítés)
+
+> "The HSM is and will remain in your sole control or configured for your sole use through an audited cloud (**e.g., Azure or AWS**)."
+
+Tehát DigiCert hivatalosan elfogadja az Azure Key Vault Premium HSM-et BYOH-ként.
+
+## Mit jelent a fejlesztés folytatása szempontjából
+
+- ✅ **Azure infrastruktúra változatlan** — a 2026-05-14-i autonomous mode munka 100%-ban használható
+- ✅ **GitHub Actions workflow YAML változatlan** — sign-with-azure-keyvault.js + 9 secret + AzureSignTool stack
+- ✅ **EXZ projekt integráció változatlan** — 6 AZURE_CODESIGN_* secret kosazoltan/EXZ-en
+- ⏳ **3-5 nap várakozás** — phone callback + dokumentum upload + video verification call (EV-specific)
+- ⏳ **CSAK non-signed installer-eket terjesszünk** addig (user direktíva 2026-05-15)
+
+## Pending DigiCert validation lépések
+
+1. Phone callback (+36 70 380 0202) — 1-2 nap
+2. Document verification (cégkivonat + aláírási minta + vezérigazgatói okmány) — 1-3 nap
+3. Video verification call (EV-mandatory 2024+) — 1-3 nap
+4. Cert issuance + email link — 3-5 nap total
+
+## Cert kiadása utáni AI-action
+
+```powershell
+# 1. Letöltés
+$cer = "$env:USERPROFILE\Downloads\valuta-codesign-cert.cer"
+
+# 2. Merge Azure Key Vault-ba
+$env:Path = "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin;$env:Path"
+az keyvault certificate pending merge `
+    --vault-name kv-valuta-codesign `
+    --name valuta-codesign-cert `
+    --file $cer
+
+# 3. Workflow trigger (valutaváltó)
+gh workflow run windows-signed-release.yml `
+    -f version=2.5.51 `
+    -f release_notes="v2.5.51 — first DigiCert EV signed release" `
+    -f publish_release=true
+
+# 4. EXZ trigger
+gh workflow run branch-release.yml -R kosazoltan/EXZ
+```
+
+## Kulcs azonosítók (gyors-recall)
+
+| Mező | Érték |
+|---|---|
+| SignMyCode Order ID | CS-BNYK |
+| Transaction ID | SMC1015225S262925 |
+| DigiCert Order ID | 1524362467 |
+| DigiCert Account ID | 1663074 |
+| Token | hdnhnd0xjs20u4u |
+| Azure Tenant ID | b6c90d40-e505-4003-83b0-592c43b7e223 |
+| Azure Subscription | 8db4cf28-f059-47f9-a9dd-96a295a47195 |
+| Key Vault URI | https://kv-valuta-codesign.vault.azure.net/ |
+| Cert name | valuta-codesign-cert |
+| SP Application ID | 2f6bfdfc-eb2b-4992-863d-f59e98a576a5 |
