@@ -55,6 +55,15 @@ public class BuyRequestDto {
     /** Ügyfél PEP (kiemelt közszereplő) státusza */
     private Boolean customerIsPep;
 
+    // ============ V229: Pmt. azonositasi snapshot mezok (HIBA #5+#7+#8 2026-05-15) ============
+    @Size(max = 255) private String customerBirthPlace;
+    private java.time.LocalDate customerBirthDate;
+    @Size(max = 255) private String customerMotherName;
+    @Size(max = 50)  private String customerDocumentType;
+    /** 300k+ JOGCIM nyilatkozat: TRUE=sajat, FALSE=mas nevben (akkor customerActorName kotelezo) */
+    private Boolean customerOnOwnBehalf;
+    @Size(max = 255) private String customerActorName;
+
     private String notes;
 
     /** Penztarosi sav: egyedi arfolyam 400k+ Ft felett (napi 5x limit) */

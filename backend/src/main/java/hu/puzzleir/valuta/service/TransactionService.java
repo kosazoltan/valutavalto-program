@@ -272,6 +272,13 @@ public class TransactionService {
                 .customerNationality(request.getCustomerNationality())
                 .sourceOfFunds(request.getSourceOfFunds())
                 .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
+                // V229 Pmt. snapshot (HIBA #5+#7+#8)
+                .customerBirthPlace(request.getCustomerBirthPlace())
+                .customerBirthDate(request.getCustomerBirthDate())
+                .customerMotherName(request.getCustomerMotherName())
+                .customerDocumentType(request.getCustomerDocumentType())
+                .customerOnOwnBehalf(request.getCustomerOnOwnBehalf())
+                .customerActorName(request.getCustomerActorName())
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
@@ -425,6 +432,13 @@ public class TransactionService {
                 .customerNationality(request.getCustomerNationality())
                 .sourceOfFunds(request.getSourceOfFunds())
                 .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
+                // V229 Pmt. snapshot (HIBA #5+#7+#8)
+                .customerBirthPlace(request.getCustomerBirthPlace())
+                .customerBirthDate(request.getCustomerBirthDate())
+                .customerMotherName(request.getCustomerMotherName())
+                .customerDocumentType(request.getCustomerDocumentType())
+                .customerOnOwnBehalf(request.getCustomerOnOwnBehalf())
+                .customerActorName(request.getCustomerActorName())
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
@@ -733,6 +747,13 @@ public class TransactionService {
         private String customerNationality;
         private String sourceOfFunds;
         private Boolean customerIsPep;
+        // V229 Pmt. snapshot (HIBA #5+#7+#8 2026-05-15)
+        private String customerBirthPlace;
+        private java.time.LocalDate customerBirthDate;
+        private String customerMotherName;
+        private String customerDocumentType;
+        private Boolean customerOnOwnBehalf;
+        private String customerActorName;
         private String notes;
         private Boolean cashierCustomRate;
         private String foreignStatus;
@@ -762,6 +783,13 @@ public class TransactionService {
         private String customerNationality;
         private String sourceOfFunds;
         private Boolean customerIsPep;
+        // V229 Pmt. snapshot (HIBA #5+#7+#8 2026-05-15)
+        private String customerBirthPlace;
+        private java.time.LocalDate customerBirthDate;
+        private String customerMotherName;
+        private String customerDocumentType;
+        private Boolean customerOnOwnBehalf;
+        private String customerActorName;
         private String notes;
         private Boolean cashierCustomRate;
         private String foreignStatus;
