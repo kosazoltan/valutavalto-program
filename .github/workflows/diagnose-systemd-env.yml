@@ -1,0 +1,65 @@
+name: Diagnose systemd Environment for valuta-backend
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: hetzner-env-diag
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SERVICE_NAME: valuta-backend.service
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Dump systemd config
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -uo pipefail
+            echo "==== systemctl cat valuta-backend.service ===="
+            systemctl cat valuta-backend.service || true
+
+            echo ""
+            echo "==== Drop-in dir contents ===="
+            ls -la /etc/systemd/system/valuta-backend.service.d/ || true
+            for f in /etc/systemd/system/valuta-backend.service.d/*.conf; do
+              if [ -f "$f" ]; then
+                echo "----- $f -----"
+                cat "$f"
+              fi
+            done
+
+            echo ""
+            echo "==== systemctl show --property=Environment ===="
+            systemctl show valuta-backend.service --property=Environment
+
+            echo ""
+            echo "==== systemctl show --property=EnvironmentFiles ===="
+            systemctl show valuta-backend.service --property=EnvironmentFiles
+
+            echo ""
+            echo "==== Running process env (filtered to GOOGLE_*) ===="
+            PID=$(systemctl show valuta-backend.service --property=MainPID --value)
+            if [ -n "$PID" ] && [ "$PID" != "0" ]; then
+              tr '\0' '\n' < /proc/$PID/environ | grep -iE "GOOGLE|DATABASE" | sed 's/=.*/=<REDACTED>/' || true
+              # The full GOOGLE_DESKTOP_CLIENT_ID is fine to show — public OAuth client id
+              tr '\0' '\n' < /proc/$PID/environ | grep -E "^GOOGLE_(DESKTOP_)?CLIENT_ID=" || true
+            else
+              echo "(no running process)"
+            fi
+          ENDSSH
