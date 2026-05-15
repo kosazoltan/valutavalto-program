@@ -99,7 +99,12 @@ public class WorkerFirstTimeSetupService {
         //    publikus fiokatvetel lenne.
         boolean bootstrapCompleted = adminBootstrapService.isBootstrapAlreadyCompleted();
 
-        if (worker.getPasswordChangedAt() != null) {
+        // 2026-05-15 user-direktiva (V230/V231 utan): Ha a passwordHash NULL (akar
+        // V196/V198/V230/V231 clearelte, akar most reset-elt allapot), CSAK akkor
+        // ELLENORZUNK current-password-et, ha mar van hash. Igy a SetupWizard
+        // "Jelenlegi jelszo (opcionalis)" mezo nem-ures bevitelet is "ignoraljuk"
+        // (a felhasznalo nem emlekezhet a regi hash-ra ha NULL-ra van allitva).
+        if (worker.getPasswordChangedAt() != null && hasPasswordHash(worker)) {
             // Mar aktiv user-jelszo van -> csak a regi jelszoval engedjuk cserelni
             validateCurrentPassword(
                     worker,
