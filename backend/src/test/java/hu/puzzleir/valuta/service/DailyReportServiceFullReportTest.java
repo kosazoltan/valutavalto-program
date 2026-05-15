@@ -201,6 +201,10 @@ class DailyReportServiceFullReportTest {
         vatSnap.setClosingBalance(new BigDecimal("35000"));
         DailySubledgerSnapshot ecomSnap = new DailySubledgerSnapshot();
         ecomSnap.setClosingBalance(new BigDecimal("125000"));
+        DailySubledgerSnapshot handlingFeeSnap = new DailySubledgerSnapshot();
+        handlingFeeSnap.setOpeningBalance(new BigDecimal("12000"));
+        handlingFeeSnap.setIncome(new BigDecimal("8500"));
+        handlingFeeSnap.setExpense(new BigDecimal("3000"));
 
         when(subledgerSnapshotRepository.findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(
                 BRANCH_ID, DATE, "WU_USD", "USD")).thenReturn(Optional.of(wuUsdSnap));
@@ -210,6 +214,8 @@ class DailyReportServiceFullReportTest {
                 BRANCH_ID, DATE, "WU_VAT", "HUF")).thenReturn(Optional.of(vatSnap));
         when(subledgerSnapshotRepository.findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(
                 BRANCH_ID, DATE, "ECOMMERCE", "HUF")).thenReturn(Optional.of(ecomSnap));
+        when(subledgerSnapshotRepository.findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(
+                BRANCH_ID, DATE, "HANDLING_FEE", "HUF")).thenReturn(Optional.of(handlingFeeSnap));
 
         DailyReportFullDto result = service.generateFullReport(BRANCH_ID, DATE);
 
@@ -217,6 +223,9 @@ class DailyReportServiceFullReportTest {
         assertThat(result.getWuHufBalance()).isEqualByComparingTo("500000");
         assertThat(result.getAfaBalance()).isEqualByComparingTo("35000");
         assertThat(result.getEcommerceBalanceHuf()).isEqualByComparingTo("125000");
+        assertThat(result.getHandlingFeeOpening()).isEqualByComparingTo("12000");
+        assertThat(result.getHandlingFeeIncome()).isEqualByComparingTo("8500");
+        assertThat(result.getHandlingFeeExpense()).isEqualByComparingTo("3000");
     }
 
     @Test
