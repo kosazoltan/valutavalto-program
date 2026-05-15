@@ -21,6 +21,14 @@ interface Branch {
   /** v2.5.1-E B6: ÉRTÉKTÁRI fiók-e (admin/foertektar állítja be). */
   isVault?: boolean
   vaultTerritoryId?: number | null
+  // 2026-05-15 HIBA #2: kotelezo szervezeti mezok
+  bankCode?: string
+  zipCode?: string
+  branchTypeId?: string
+  branchTypeCode?: string
+  countryId?: string
+  branchStatusId?: string
+  openingDate?: string
 }
 
 interface BranchForm {
@@ -30,9 +38,22 @@ interface BranchForm {
   address: string
   phone: string
   email: string
+  // 2026-05-15 HIBA #2: a CreateBranchDto kotelezo mezoi a frontend-form-bol hianyoztak
+  bankCode: string
+  zipCode: string
+  branchTypeId: string
+  countryId: string
+  branchStatusId: string
+  openingDate: string
 }
 
-const emptyForm: BranchForm = { code: '', name: '', city: '', address: '', phone: '', email: '' }
+interface DictionaryEntry { id: string; code: string; name: string; nameHu?: string }
+
+const emptyForm: BranchForm = {
+  code: '', name: '', city: '', address: '', phone: '', email: '',
+  bankCode: '', zipCode: '', branchTypeId: '', countryId: '', branchStatusId: '',
+  openingDate: new Date().toISOString().slice(0, 10),
+}
 
 export default function BranchPage() {
   const { t } = useTranslation()
@@ -44,6 +65,10 @@ export default function BranchPage() {
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null)
   const [form, setForm] = useState<BranchForm>(emptyForm)
   const [saving, setSaving] = useState(false)
+  // 2026-05-15 HIBA #2: dictionary dropdownok a DictionaryController-bol
+  const [branchTypes, setBranchTypes] = useState<DictionaryEntry[]>([])
+  const [countries, setCountries] = useState<DictionaryEntry[]>([])
+  const [branchStatuses, setBranchStatuses] = useState<DictionaryEntry[]>([])
 
   const filtered = useMemo(() => {
     if (!searchTerm) return branches
@@ -72,6 +97,21 @@ export default function BranchPage() {
 
   useEffect(() => {
     void load()
+    // Dictionary dropdownok eloltese (HIBA #2 fix, 2026-05-15)
+    void (async () => {
+      try {
+        const [types, ctry, status] = await Promise.all([
+          api.get('/dictionaries/BRANCH_TYPE'),
+          api.get('/dictionaries/COUNTRY'),
+          api.get('/dictionaries/BRANCH_STATUS'),
+        ])
+        setBranchTypes(safeArray<DictionaryEntry>(types.data))
+        setCountries(safeArray<DictionaryEntry>(ctry.data))
+        setBranchStatuses(safeArray<DictionaryEntry>(status.data))
+      } catch (err) {
+        logger.warn('BranchPage', 'Dictionary load failed (form dropdowns may be empty)', err)
+      }
+    })()
   }, [])
 
   const openCreate = () => {
@@ -89,13 +129,31 @@ export default function BranchPage() {
       address: b.address ?? '',
       phone: b.phone ?? '',
       email: b.email ?? '',
+      bankCode: b.bankCode ?? '',
+      zipCode: b.zipCode ?? '',
+      branchTypeId: b.branchTypeId ?? '',
+      countryId: b.countryId ?? '',
+      branchStatusId: b.branchStatusId ?? '',
+      openingDate: b.openingDate ?? new Date().toISOString().slice(0, 10),
     })
     setShowForm(true)
   }
 
   const handleSave = async () => {
-    if (!form.code.trim() || !form.name.trim()) {
-      toast.warning('Hiányzó adat', 'Kód és név kötelező!')
+    // 2026-05-15 HIBA #2: kotelezo mezok validalasa a CreateBranchDto szerint
+    const missing: string[] = []
+    if (!form.code.trim()) missing.push('Kód')
+    if (!form.name.trim()) missing.push('Név')
+    if (!form.bankCode.trim()) missing.push('Banki kód')
+    if (!form.address.trim()) missing.push('Cím')
+    if (!form.city.trim()) missing.push('Város')
+    if (!/^\d{4}$/.test(form.zipCode)) missing.push('Irányítószám (4 számjegy)')
+    if (!form.branchTypeId) missing.push('Iroda típusa')
+    if (!form.countryId) missing.push('Ország')
+    if (!form.branchStatusId) missing.push('Státusz')
+    if (!form.openingDate) missing.push('Nyitás dátuma')
+    if (missing.length > 0) {
+      toast.warning('Hiányzó kötelező mezők', missing.join(', '))
       return
     }
     try {
@@ -228,6 +286,81 @@ export default function BranchPage() {
                   value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">Irányítószám *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={form.zipCode}
+                    pattern="\d{4}"
+                    maxLength={4}
+                    onChange={(e) => setForm({ ...form, zipCode: e.target.value.replace(/\D/g, '') })}
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Banki kód *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={form.bankCode}
+                    onChange={(e) => setForm({ ...form, bankCode: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">Iroda típusa *</label>
+                  <select
+                    className="form-input"
+                    value={form.branchTypeId}
+                    onChange={(e) => setForm({ ...form, branchTypeId: e.target.value })}
+                  >
+                    <option value="">— válassz —</option>
+                    {branchTypes.map(t => (
+                      <option key={t.id} value={t.id}>{t.nameHu || t.name} ({t.code})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Ország *</label>
+                  <select
+                    className="form-input"
+                    value={form.countryId}
+                    onChange={(e) => setForm({ ...form, countryId: e.target.value })}
+                  >
+                    <option value="">— válassz —</option>
+                    {countries.map(c => (
+                      <option key={c.id} value={c.id}>{c.nameHu || c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">Státusz *</label>
+                  <select
+                    className="form-input"
+                    value={form.branchStatusId}
+                    onChange={(e) => setForm({ ...form, branchStatusId: e.target.value })}
+                  >
+                    <option value="">— válassz —</option>
+                    {branchStatuses.map(s => (
+                      <option key={s.id} value={s.id}>{s.nameHu || s.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Nyitás dátuma *</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={form.openingDate}
+                    max={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => setForm({ ...form, openingDate: e.target.value })}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
