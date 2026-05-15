@@ -417,6 +417,30 @@ public class Transaction {
     @Builder.Default
     private Boolean customerIsPep = false;
 
+    // ============ V229: Pmt. azonosítási snapshot mezok (HIBA #5+#7+#8 2026-05-15) ============
+
+    @Column(name = "customer_birth_place", length = 255)
+    private String customerBirthPlace;
+
+    @Column(name = "customer_birth_date")
+    private java.time.LocalDate customerBirthDate;
+
+    @Column(name = "customer_mother_name", length = 255)
+    private String customerMotherName;
+
+    @Column(name = "customer_document_type", length = 50)
+    private String customerDocumentType;
+
+    /**
+     * 300k+ Pmt. JOGCIM nyilatkozat: saját nevében jár-e az ügyfél?
+     * NULL = nem keruelt megkerdezesre. TRUE = saját nevben. FALSE = mas nevben (akkor actorName).
+     */
+    @Column(name = "customer_on_own_behalf")
+    private Boolean customerOnOwnBehalf;
+
+    @Column(name = "customer_actor_name", length = 255)
+    private String customerActorName;
+
     // ============ HELPER METHODS ============
 
     /**
