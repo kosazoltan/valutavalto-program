@@ -789,6 +789,30 @@ ipcMain.handle('secure-clear-token', async (): Promise<void> => {
 // --- App Lifecycle ---
 
 app.whenReady().then(async () => {
+  // 2026-05-15 user-direktiva (Google OAuth fix): production buildben a
+  // `import('dotenv/config')` (main.ts:3) NEM tolti be a userData/.env-et,
+  // ezert a Google OAuth IPC handlers `process.env.VITE_GOOGLE_DESKTOP_*`
+  // UNDEFINED-ra olvasnak es "Google Desktop OAuth client nincs konfiguralva"
+  // hibat dobnak. Itt minel hamarabb promotaljuk a userData/.env ertekeit a
+  // process.env-be, hogy a kesobbi handlers `process.env`-en talaljak meg.
+  try {
+    const envPath = path.join(app.getPath('userData'), '.env');
+    if (fs.existsSync(envPath)) {
+      const raw = fs.readFileSync(envPath, 'utf8');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const dotenv = require('dotenv') as { parse: (input: string | Buffer) => Record<string, string> };
+      const parsed = dotenv.parse(raw);
+      for (const [k, v] of Object.entries(parsed)) {
+        if (!process.env[k]) process.env[k] = v;
+      }
+      log.info(`[App] userData/.env betoltve a process.env-be (${Object.keys(parsed).length} kulcs)`);
+    } else {
+      log.warn('[App] userData/.env nem letezik — Google OAuth lehet sikertelen amig a SetupWizard be nem allitja.');
+    }
+  } catch (err) {
+    log.error('[App] userData/.env betoltesi hiba:', err);
+  }
+
   if (isDev) {
     const devCsp = [
       "default-src 'self' app: data: blob: http: https:",
