@@ -304,6 +304,10 @@ public class DailyReportService {
         Optional<DailySubledgerSnapshot> ecomSnap = subledgerSnapshotRepository
                 .findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(branchId, date, "ECOMMERCE", "HUF");
 
+        // 5b. Kezelési díj — DailySubledgerSnapshot (Delphi KEZDIJDATA → KDAT)
+        Optional<DailySubledgerSnapshot> handlingFeeSnap = subledgerSnapshotRepository
+                .findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(branchId, date, "HANDLING_FEE", "HUF");
+
         // 6. Pénztáros nevek — a nap első és második műszakjának dolgozója
         String morningCashier = null;
         String afternoonCashier = null;
@@ -360,10 +364,10 @@ public class DailyReportService {
                 .afaExpense(afaSnap.map(DailySubledgerSnapshot::getExpense).orElse(BigDecimal.ZERO))
                 .afaBalance(afaSnap.map(DailySubledgerSnapshot::getClosingBalance).orElse(BigDecimal.ZERO))
                 .discountLines(discountLines.size() > 10 ? discountLines.subList(0, 10) : discountLines)
-                // B3 fix: kezelési díj nyitó/átvett/átadott/záró
-                .handlingFeeOpening(BigDecimal.ZERO) // TODO: kezelési díj subledger snapshot-ból
-                .handlingFeeIncome(BigDecimal.ZERO)
-                .handlingFeeExpense(BigDecimal.ZERO)
+                // B3 fix: kezelési díj nyitó/átvett/átadott/záró — DailySubledgerSnapshot HANDLING_FEE
+                .handlingFeeOpening(handlingFeeSnap.map(DailySubledgerSnapshot::getOpeningBalance).orElse(BigDecimal.ZERO))
+                .handlingFeeIncome(handlingFeeSnap.map(DailySubledgerSnapshot::getIncome).orElse(BigDecimal.ZERO))
+                .handlingFeeExpense(handlingFeeSnap.map(DailySubledgerSnapshot::getExpense).orElse(BigDecimal.ZERO))
                 .dailyHandlingFee(totalHandlingFee)
                 // B3 fix: e-kereskedelem nyitó/átvett/átadott/záró
                 .ecommerceOpening(ecomSnap.map(DailySubledgerSnapshot::getOpeningBalance).orElse(BigDecimal.ZERO))

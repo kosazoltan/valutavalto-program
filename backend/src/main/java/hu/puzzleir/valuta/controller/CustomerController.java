@@ -239,7 +239,6 @@ public class CustomerController {
             @PathVariable Long id,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        // TODO(enhancement): dátum szűrést a service rétegbe mozgatni a teljesítmény javításáért
         return ResponseEntity.ok(customerStatisticsService.getCustomerStats(id, from, to));
     }
 
