@@ -5,6 +5,7 @@ import { customerApi, amlApi } from '../../../services/api/index'
 import type { Customer as ApiCustomer, CustomerCreateRequest, AmlCheckResultDto } from '../../../services/api/transactions'
 import { logger } from '../../../utils/logger'
 import { toast } from '../../../components/ui/toaster'
+import { getErrorMessage } from '../../../utils/errorHandling'
 import { useTranslation } from 'react-i18next'
 
 export interface CustomerPanelData {
@@ -251,15 +252,26 @@ export default function CustomerPanel({
       }
 
       let savedCustomer: ApiCustomer | null = null
+      let createError: unknown = null
       try {
         savedCustomer = await customerApi.create(createData)
       } catch (err) {
+        createError = err
         logger.warn('CustomerPanel', 'Customer create failed, trying doc number lookup', err)
         try {
           if (customerDocNumber.trim()) {
             savedCustomer = await customerApi.getByDocumentNumber(customerDocNumber.trim())
           }
         } catch { /* proceed without ID */ }
+      }
+
+      // 2026-05-15 user-direktíva (HIBA #9): ha a create + fallback IS sikertelen,
+      // a tényleges backend hibát mutassuk meg a felhasználónak, NE megtévesztő
+      // AML-warningot. A pénztáros tudja meg, hogy duplikált doc# / validáció /
+      // 500 hiba volt.
+      if (!savedCustomer?.id && createError) {
+        const msg = getErrorMessage(createError)
+        toast.error('Ügyfél rögzítése sikertelen', msg)
       }
 
       let data: CustomerPanelData = {

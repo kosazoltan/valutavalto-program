@@ -61,14 +61,14 @@ class CustomerServiceTest {
     }
 
     @Test
-    @DisplayName("createCustomer — duplikalt dokumentum szam")
-    void testCreateCustomer_duplicateDocument() {
+    @DisplayName("createCustomer — duplikalt dokumentum szam: IDEMPOTENS upsert visszaadja a letezot (HIBA #9 2026-05-15)")
+    void testCreateCustomer_duplicateDocumentIdempotent() {
         Company company = Company.builder().id(COMPANY_ID).build();
         CustomerService.CreateCustomerRequest request = new CustomerService.CreateCustomerRequest();
         request.setName("Masik Ugyfel");
         request.setDocumentNumber("DUPLICATE");
 
-        Customer existing = Customer.builder().id(99L).documentNumber("DUPLICATE").build();
+        Customer existing = Customer.builder().id(99L).customerCode("EXISTING").documentNumber("DUPLICATE").build();
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -76,9 +76,12 @@ class CustomerServiceTest {
             when(customerRepository.findByDocumentNumberAndCompanyId("DUPLICATE", COMPANY_ID))
                     .thenReturn(Optional.of(existing));
 
-            assertThatThrownBy(() -> service.createCustomer(request))
-                    .isInstanceOf(ValidationException.class)
-                    .hasMessageContaining("már regisztrálva");
+            Customer result = service.createCustomer(request);
+
+            assertThat(result)
+                    .as("duplikalt doc# eseten a letezo customer-t kell visszaadni, NEM exception")
+                    .isNotNull()
+                    .extracting(Customer::getId).isEqualTo(99L);
         }
     }
 

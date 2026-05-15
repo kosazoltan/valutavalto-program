@@ -44,12 +44,18 @@ public class CustomerService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Company nem található"));
 
-        // Dokumentum szám egyediség ellenőrzése
+        // 2026-05-15 user-direktíva (HIBA #9): a régi duplikáció-hiba megtévesztő
+        // volt — a pénztáros nem tudja, hogy ez ugyanaz a customer-e már, ezért
+        // a duplikációkor IDEMPOTENS upsert: visszaadja a létező customer-t (HTTP 200).
+        // A "rögzítés" műveletet sikeresnek tekintjük, ha végén van customer ID.
         if (request.getDocumentNumber() != null && !request.getDocumentNumber().isBlank()) {
-            customerRepository.findByDocumentNumberAndCompanyId(request.getDocumentNumber(), companyId)
-                    .ifPresent(c -> {
-                        throw new ValidationException("Ez a dokumentum szám már regisztrálva van: " + request.getDocumentNumber());
-                    });
+            Optional<Customer> existing = customerRepository
+                    .findByDocumentNumberAndCompanyId(request.getDocumentNumber(), companyId);
+            if (existing.isPresent()) {
+                log.info("Customer reuse (idempotens upsert): docNum={}, customerCode={}",
+                        request.getDocumentNumber(), existing.get().getCustomerCode());
+                return existing.get();
+            }
         }
 
         Customer customer = Customer.builder()
