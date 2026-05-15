@@ -45,54 +45,68 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Append client_id + restart service
+      - name: Append client_id to EnvironmentFile + restart service
         env:
           NEW_CLIENT_ID: ${{ github.event.inputs.additional_client_id }}
           RESTART: ${{ github.event.inputs.restart_backend }}
         run: |
+          # 2026-05-15: Tobb forrasbol jovo env-conflict megoldas — UPDATE az
+          # EnvironmentFile-ban (/opt/valutavalto/backend/.env), NEM drop-in
+          # conf-ban. A korabbi drop-in megszunik (clean fresh single source).
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=accept-new \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
-              bash -s << ENDSSH
+              "NEW_CLIENT_ID='$NEW_CLIENT_ID' RESTART='$RESTART' bash -s" << 'ENDSSH'
             set -euo pipefail
-            NEW_ID="$NEW_CLIENT_ID"
-            DROPIN_DIR=/etc/systemd/system/valuta-backend.service.d
-            DROPIN_FILE=\$DROPIN_DIR/google-clients.conf
-            mkdir -p \$DROPIN_DIR
+            ENV_FILE=/opt/valutavalto/backend/.env
+            OLD_DROPIN=/etc/systemd/system/valuta-backend.service.d/google-clients.conf
 
-            # Read current value (from systemctl show, NOT from cat — env-eredetiben mehet
-            # multi-source: drop-in conf, /etc/default, EnvironmentFile)
-            CURRENT=\$(systemctl show ${{ env.SERVICE_NAME }} --property=Environment 2>/dev/null | tr ' ' '\n' | grep -oP '(?<=^GOOGLE_DESKTOP_CLIENT_ID=).+' | head -1 || true)
-            echo "=== Current GOOGLE_DESKTOP_CLIENT_ID: \${CURRENT:-<empty>}"
-
-            if [ -z "\$CURRENT" ]; then
-              MERGED="\$NEW_ID"
-            elif echo "\$CURRENT" | tr ',' '\n' | grep -qFx "\$NEW_ID"; then
-              echo "=== Client ID mar bent van, skip"
-              MERGED="\$CURRENT"
-            else
-              MERGED="\$CURRENT,\$NEW_ID"
+            # 0. Cleanup: regi drop-in conf eltavolitasa (single-source-of-truth)
+            if [ -f "$OLD_DROPIN" ]; then
+              rm -f "$OLD_DROPIN"
+              echo "=== Removed stale drop-in: $OLD_DROPIN"
             fi
-            echo "=== Merged: \$MERGED"
 
-            # Write systemd drop-in
-            cat > \$DROPIN_FILE << EOF
-          [Service]
-          Environment="GOOGLE_DESKTOP_CLIENT_ID=\$MERGED"
-          EOF
-            chmod 644 \$DROPIN_FILE
+            if [ ! -f "$ENV_FILE" ]; then
+              echo "FATAL: $ENV_FILE missing"
+              exit 1
+            fi
 
+            # 1. Read current value from EnvironmentFile
+            CURRENT=$(grep -oP '(?<=^GOOGLE_DESKTOP_CLIENT_ID=).+' "$ENV_FILE" || true)
+            echo "=== Current in $ENV_FILE: ${CURRENT:-<empty>}"
+
+            if [ -z "$CURRENT" ]; then
+              MERGED="$NEW_CLIENT_ID"
+            elif echo "$CURRENT" | tr ',' '\n' | grep -qFx "$NEW_CLIENT_ID"; then
+              echo "=== Client ID mar bent van a .env-ben, skip"
+              MERGED="$CURRENT"
+            else
+              MERGED="$CURRENT,$NEW_CLIENT_ID"
+            fi
+            echo "=== Merged: $MERGED"
+
+            # 2. Update env file (sed: replace existing line; if absent, append)
+            if grep -q '^GOOGLE_DESKTOP_CLIENT_ID=' "$ENV_FILE"; then
+              sed -i "s|^GOOGLE_DESKTOP_CLIENT_ID=.*|GOOGLE_DESKTOP_CLIENT_ID=$MERGED|" "$ENV_FILE"
+            else
+              echo "GOOGLE_DESKTOP_CLIENT_ID=$MERGED" >> "$ENV_FILE"
+            fi
+            echo "=== Updated $ENV_FILE:"
+            grep '^GOOGLE_DESKTOP_CLIENT_ID=' "$ENV_FILE"
+
+            # 3. daemon-reload + restart
             systemctl daemon-reload
             echo "=== systemd daemon-reload done"
 
             if [ "$RESTART" = "true" ]; then
-              echo "=== Restarting ${{ env.SERVICE_NAME }}"
-              systemctl restart ${{ env.SERVICE_NAME }}
-              sleep 10
-              systemctl is-active ${{ env.SERVICE_NAME }} || { journalctl -u ${{ env.SERVICE_NAME }} -n 20 --no-pager; exit 1; }
+              echo "=== Restarting valuta-backend.service"
+              systemctl restart valuta-backend.service
+              sleep 12
+              systemctl is-active valuta-backend.service || { journalctl -u valuta-backend.service -n 20 --no-pager; exit 1; }
               echo "=== Backend UP"
             else
-              echo "=== Restart skipped (will apply on next deploy)"
+              echo "=== Restart skipped"
             fi
           ENDSSH
 
