@@ -2,7 +2,7 @@
 schema_version: 1
 session_id: 2026-05-15-codesigning-digicert-ev-pivot
 date: 2026-05-15
-status: verified
+status: in-progress  # cert NOT yet issued; HSM Approval submitted, vendor_status=pending
 operator: kosa.zoltan
 ai_agent: claude-opus-4.7-1m
 project: valutavalto-program
