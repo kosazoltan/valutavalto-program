@@ -664,6 +664,11 @@ export default function CashierTransactionPage() {
         customerBirthDate: cd.birthDate || undefined,
         customerMotherName: cd.motherName || undefined,
         customerAddress: cd.address || undefined,
+        // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat
+        customerIsPep: cd.isPep,
+        sourceOfFunds: cd.sourceOfFunds,
+        customerOnOwnBehalf: cd.onOwnBehalf,
+        customerActorName: cd.actorName,
       } : {}
 
       if (electronQueueAvailable) {

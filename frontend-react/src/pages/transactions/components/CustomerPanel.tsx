@@ -22,6 +22,11 @@ export interface CustomerPanelData {
   residence?: string
   addressCardNumber?: string
   amlVerified?: boolean
+  // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat mezok
+  isPep?: boolean
+  sourceOfFunds?: string
+  onOwnBehalf?: boolean
+  actorName?: string
 }
 
 interface CustomerPanelProps {
@@ -112,6 +117,11 @@ export default function CustomerPanel({
   const [customerAddress, setCustomerAddress] = useState('')
   const [customerResidence, setCustomerResidence] = useState('')
   const [customerAddressCardNumber, setCustomerAddressCardNumber] = useState('')
+  // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat mezok
+  const [isPep, setIsPep] = useState<boolean>(false)
+  const [sourceOfFunds, setSourceOfFunds] = useState<string>('')
+  const [onOwnBehalf, setOnOwnBehalf] = useState<boolean>(true)
+  const [actorName, setActorName] = useState<string>('')
 
   const [amlResult, setAmlResult] = useState<AmlCheckResultDto | null>(null)
   const [amlChecking, setAmlChecking] = useState(false)
@@ -201,13 +211,18 @@ export default function CustomerPanel({
       residence: customer.residence,
       addressCardNumber: customer.addressCardNumber,
       amlVerified: false,
+      // V229 (HIBA #8): 300k+ JOGCIM nyilatkozat mezok a state-bol
+      isPep,
+      sourceOfFunds: sourceOfFunds.trim() || undefined,
+      onOwnBehalf,
+      actorName: actorName.trim() || undefined,
     }
 
     if (customer.id && hufTotal > 0) {
       data = await runAmlCheck(customer.id, data)
     }
     onCustomerReady(data)
-  }, [hufTotal, onCustomerReady, runAmlCheck])
+  }, [hufTotal, onCustomerReady, runAmlCheck, isPep, sourceOfFunds, onOwnBehalf, actorName])
 
   // Collect missing required fields per identification level. Empty array = form OK.
   // 2026-05-15 user-direktíva: SIMPLIFIED (100-300k) szinthez Pmt. 2017. évi LIII. tv.
@@ -291,6 +306,11 @@ export default function CustomerPanel({
         residence: customerResidence.trim() || undefined,
         addressCardNumber: customerAddressCardNumber.trim() || undefined,
         amlVerified: false,
+        // V229 (HIBA #8): 300k+ JOGCIM nyilatkozat
+        isPep,
+        sourceOfFunds: sourceOfFunds.trim() || undefined,
+        onOwnBehalf,
+        actorName: actorName.trim() || undefined,
       }
       setSelectedCustomer(savedCustomer)
 
@@ -708,6 +728,57 @@ export default function CustomerPanel({
                 </>
               )}
             </div>
+
+            {/* V229 (2026-05-15 HIBA #8): 300k+ Pmt. JOGCIM nyilatkozat block */}
+            {hufTotal >= 300_000 && (
+              <div className="mt-3 p-3 rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-950/20 space-y-2">
+                <div className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                  Pmt. JOGCÍM nyilatkozat (300.000 Ft felett kötelező)
+                </div>
+                <div className="flex items-center gap-4">
+                  <label className="text-xs flex items-center gap-1.5">
+                    <span>Közszereplő (PEP)?</span>
+                    <label className="inline-flex items-center gap-1">
+                      <input type="radio" name="pep" checked={!isPep} onChange={() => setIsPep(false)} />
+                      <span>Nem</span>
+                    </label>
+                    <label className="inline-flex items-center gap-1">
+                      <input type="radio" name="pep" checked={isPep} onChange={() => setIsPep(true)} />
+                      <span>Igen</span>
+                    </label>
+                  </label>
+                </div>
+                <div className="flex items-center gap-4">
+                  <label className="text-xs flex items-center gap-1.5">
+                    <span>Saját nevében jár el?</span>
+                    <label className="inline-flex items-center gap-1">
+                      <input type="radio" name="onOwnBehalf" checked={onOwnBehalf} onChange={() => setOnOwnBehalf(true)} />
+                      <span>Igen</span>
+                    </label>
+                    <label className="inline-flex items-center gap-1">
+                      <input type="radio" name="onOwnBehalf" checked={!onOwnBehalf} onChange={() => setOnOwnBehalf(false)} />
+                      <span>Nem</span>
+                    </label>
+                  </label>
+                </div>
+                {!onOwnBehalf && (
+                  <div className="ml-4">
+                    <label className="text-xs block">Kinek a nevében? *</label>
+                    <input type="text" className={fieldClass} style={fieldStyle}
+                      value={actorName}
+                      onChange={(e) => setActorName(e.target.value)}
+                      placeholder="A képviselt fél neve" />
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs block">Pénzeszközök forrása *</label>
+                  <input type="text" className={fieldClass} style={fieldStyle}
+                    value={sourceOfFunds}
+                    onChange={(e) => setSourceOfFunds(e.target.value)}
+                    placeholder="pl. munkabér, megtakarítás, vállalkozási bevétel" />
+                </div>
+              </div>
+            )}
 
             <button
               onClick={() => void handleSaveManualCustomer()}

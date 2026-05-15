@@ -178,6 +178,9 @@ export interface BuyRequest {
   customerMotherName?: string
   sourceOfFunds?: string
   customerIsPep?: boolean
+  // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat
+  customerOnOwnBehalf?: boolean
+  customerActorName?: string
   notes?: string
   cashierCustomRate?: boolean
   foreignStatus?: 'DOMESTIC' | 'FOREIGN'
@@ -201,6 +204,9 @@ export interface SellRequest {
   customerMotherName?: string
   sourceOfFunds?: string
   customerIsPep?: boolean
+  // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat
+  customerOnOwnBehalf?: boolean
+  customerActorName?: string
   notes?: string
   cashierCustomRate?: boolean
   foreignStatus?: 'DOMESTIC' | 'FOREIGN'
