@@ -98,6 +98,29 @@ jobs:
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}:${{ env.VPS_DEPLOY_PATH }}/target/$JAR_NAME"
           echo "jar_name=$JAR_NAME" >> $GITHUB_ENV
 
+      - name: Repair Flyway failed migrations (auto)
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -euo pipefail
+            # 2026-05-15 hotfix: ha egy korabbi deploy soran egy migracio FAILED-elt,
+            # Flyway refuses to proceed. Itt tisztitjuk a failed sorokat a schema_history-bol
+            # (csak success=false sorokat) MIELOTT a backend ujrainduljon es Flyway megint
+            # probalja. A migration-tartalmat addig javitottuk a kovetkezo deploy-ban.
+            DB_NAME=$(systemctl show ${{ env.SERVICE_NAME }} --property=Environment 2>/dev/null | grep -oP 'DATABASE_URL=[^ ]+' | head -1 | sed -E 's|.*/([^?]+).*|\1|' || echo valuta)
+            DB_USER=$(systemctl show ${{ env.SERVICE_NAME }} --property=Environment 2>/dev/null | grep -oP 'DATABASE_USERNAME=\S+' | head -1 | cut -d= -f2 || echo valuta_user)
+            DB_NAME=${DB_NAME:-valuta}
+            DB_USER=${DB_USER:-valuta_user}
+            echo "=== Flyway repair: DELETE failed rows from schema_history ==="
+            echo "DB: $DB_NAME (user $DB_USER)"
+            # PostgreSQL postgres OS user has peer auth, can connect to any DB
+            sudo -u postgres psql -d "$DB_NAME" -c "SELECT version, success FROM flyway_schema_history WHERE success = false ORDER BY installed_rank DESC LIMIT 10;" || true
+            sudo -u postgres psql -d "$DB_NAME" -c "DELETE FROM flyway_schema_history WHERE success = false;" || true
+            echo "=== Repair done ==="
+          ENDSSH
+
       - name: Symlink + chown + restart service
         run: |
           ssh -i ~/.ssh/deploy_key \
