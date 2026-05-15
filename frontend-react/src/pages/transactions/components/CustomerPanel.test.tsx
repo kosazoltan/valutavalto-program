@@ -57,7 +57,7 @@ describe('CustomerPanel — missing required fields UX (bug #2 fix)', () => {
     })
   })
 
-  it('SIMPLIFIED — összes szükséges mező hiányzik → hint látszik a 4 mezővel', () => {
+  it('SIMPLIFIED — összes szükséges mező hiányzik → hint látszik a 3 mezővel (Pmt. szerint okmány NEM kötelező)', () => {
     render(
       <CustomerPanel
         identificationLevel="SIMPLIFIED"
@@ -72,12 +72,13 @@ describe('CustomerPanel — missing required fields UX (bug #2 fix)', () => {
     const hint = screen.getByTestId('customer-missing-fields-hint')
     expect(hint).toHaveTextContent('Hiányzó mezők:')
     expect(hint).toHaveTextContent('Név')
-    expect(hint).toHaveTextContent('Okmányszám')
     expect(hint).toHaveTextContent('Születési hely')
     expect(hint).toHaveTextContent('Születési idő')
+    // 2026-05-15 user-direktíva: Okmányszám SIMPLIFIED-en NEM kötelező
+    expect(hint).not.toHaveTextContent('Okmányszám')
   })
 
-  it('SIMPLIFIED — csak Név kitöltve → hint a maradék 3 mezőt mutatja', async () => {
+  it('SIMPLIFIED — csak Név kitöltve → hint a maradék 2 mezőt mutatja (szül.hely + szül.idő)', async () => {
     const user = userEvent.setup()
     render(
       <CustomerPanel
@@ -94,9 +95,9 @@ describe('CustomerPanel — missing required fields UX (bug #2 fix)', () => {
 
     const hint = screen.getByTestId('customer-missing-fields-hint')
     expect(hint).not.toHaveTextContent('Név,')
-    expect(hint).toHaveTextContent('Okmányszám')
     expect(hint).toHaveTextContent('Születési hely')
     expect(hint).toHaveTextContent('Születési idő')
+    expect(hint).not.toHaveTextContent('Okmányszám')
   })
 
   it('SIMPLE — soha nincs hint (csak állampolgárság kell)', () => {
@@ -114,7 +115,7 @@ describe('CustomerPanel — missing required fields UX (bug #2 fix)', () => {
     expect(screen.queryByTestId('customer-missing-fields-hint')).not.toBeInTheDocument()
   })
 
-  it('FULL — Anyja neve + Lakcím extra-kötelező a SIMPLIFIED mezőkön túl', () => {
+  it('FULL — Okmányszám + Anyja neve + Lakcím extra-kötelező a SIMPLIFIED mezőkön túl', () => {
     render(
       <CustomerPanel
         identificationLevel="FULL"
@@ -127,6 +128,7 @@ describe('CustomerPanel — missing required fields UX (bug #2 fix)', () => {
     )
 
     const hint = screen.getByTestId('customer-missing-fields-hint')
+    expect(hint).toHaveTextContent('Okmányszám')
     expect(hint).toHaveTextContent('Anyja neve')
     expect(hint).toHaveTextContent('Lakcím')
   })

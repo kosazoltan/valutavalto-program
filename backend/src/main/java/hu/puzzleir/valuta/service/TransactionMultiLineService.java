@@ -132,6 +132,11 @@ public class TransactionMultiLineService {
         helper.performAmlCheck(payableAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), firstCurrency.getCode());
 
+        // 2026-05-15 user-direktíva: BUY ágon a pénztár HUF készletet ellenőrizni KELL.
+        // Multi-line vétel végén egyetlen HUF kifizetés a payableAmount-ra — ezt
+        // kassza-egyenleg fedezi-e? Tilos negatív HUF készletre tranzakciót engedni.
+        helper.validateCurrencyStock(branchId, helper.getHufCurrencyId(), payableAmount);
+
         // Bizonylat szam generalas
         String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.BUY);
 
