@@ -670,21 +670,25 @@ export default function TransferPage() {
                 >
                   <option value="">{t('transfers.valasszonIrodat')}</option>
                   {(() => {
-                    const workerBranch = branches.find(b => b.id === worker?.branchId)
-                    const workerRegion = workerBranch?.region
+                    // 2026-05-15 user-direktíva: a régi szűrő ((TH || VAULT) && sameRegion)
+                    // production-on üres dropdown-ot adott, mert a BranchPage admin UI nem
+                    // engedi a típus-állítást → a fiókok döntő része PENZTAR isVault=false.
+                    // Új viselkedés: minden aktív fiók látszik (kivéve a saját), TH/VAULT
+                    // badge továbbra is, de NEM kemény filter.
+                    // branchApi.listActive() már csak aktív fiókokat ad vissza,
+                    // ezért nincs külön isActive szűrő itt.
                     return branches
                       .filter(b => transferDirection === 'out' ? b.id !== worker?.branchId : true)
-                      .filter(b => {
+                      .map(b => {
                         const isTH = b.branchTypeCode === 'TH' || /\bTH\b/i.test(b.code) || /\bTH\b/i.test(b.name)
                         const isVault = b.isVault === true
-                        const sameRegion = !workerRegion || b.region === workerRegion
-                        return (isVault || isTH) && sameRegion
+                        const badge = isVault ? ' (értéktár)' : isTH ? ' (TH)' : ''
+                        return (
+                          <option key={b.id} value={b.id}>
+                            {b.code} - {b.name}{badge}
+                          </option>
+                        )
                       })
-                      .map(b => (
-                        <option key={b.id} value={b.id}>
-                          {b.code} - {b.name}{b.isVault ? ' (értéktár)' : ''}{b.branchTypeCode === 'TH' || /\bTH\b/i.test(b.code) ? ' (TH)' : ''}
-                        </option>
-                      ))
                   })()}
                 </select>
               </div>
