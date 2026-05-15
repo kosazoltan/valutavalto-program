@@ -352,13 +352,17 @@ public class ReceiptGeneratorService {
         }
 
         // Ügyfél részletes adatok (300K felett kötelező a bizonylaton)
-        // Transaction entity-n elérhető: customerAddress, customerNationality
+        // V229 (2026-05-15 HIBA #5+#7+#8): customer snapshot mezok mar leteznek a Transaction entity-n
         builder.customerAddress(tx.getCustomerAddress())
-               .customerNationality(tx.getCustomerNationality());
-        // Megjegyzés: customerMotherName, customerBirthPlace, customerBirthDate, customerDocType
-        // jelenleg nem léteznek a Transaction entity-n — ezek a Customer entity-n vagy
-        // a jövőbeli AML adatbővítés részeként lesznek elérhetők.
-        // A ReceiptData DTO-ban opcionálisak, null-safe.
+               .customerNationality(tx.getCustomerNationality())
+               .customerMotherName(tx.getCustomerMotherName())
+               .customerBirthPlace(tx.getCustomerBirthPlace())
+               .customerBirthDate(tx.getCustomerBirthDate() != null
+                       ? tx.getCustomerBirthDate().format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd."))
+                       : null)
+               .customerDocType(tx.getCustomerDocumentType())
+               .customerOnOwnBehalf(tx.getCustomerOnOwnBehalf())
+               .customerActorName(tx.getCustomerActorName());
 
         // Kerekítés — Transaction entity: roundingAmount
         if (tx.getRoundingAmount() != null && tx.getRoundingAmount().compareTo(BigDecimal.ZERO) != 0) {

@@ -700,7 +700,16 @@ public class EscPosReceiptService {
             b.line("Büntetőjogi felelősségem tudatá-");
             b.line("ban nyilatkozom, hogy a fenti");
             b.line("tranzakciót");
-            if (Boolean.TRUE.equals(data.getIsLegalEntityCustomer())
+            // V229 (HIBA #8): elsobbseg a customerOnOwnBehalf flag-en (uj rendszer)
+            // Fallback a regi isLegalEntityCustomer + legalEntityName-re.
+            boolean isOnOwnBehalfSet = data.getCustomerOnOwnBehalf() != null;
+            if (isOnOwnBehalfSet && Boolean.FALSE.equals(data.getCustomerOnOwnBehalf())
+                    && data.getCustomerActorName() != null && !data.getCustomerActorName().isBlank()) {
+                b.line(data.getCustomerActorName());
+                b.line("nevében bonyolítom,");
+            } else if (isOnOwnBehalfSet && Boolean.TRUE.equals(data.getCustomerOnOwnBehalf())) {
+                b.line("saját nevemben bonyolítom,");
+            } else if (Boolean.TRUE.equals(data.getIsLegalEntityCustomer())
                     && data.getLegalEntityName() != null) {
                 b.line(data.getLegalEntityName());
                 b.line("nevében bonyolítom,");
