@@ -202,6 +202,12 @@ public class TransactionService {
         // 300K+ tranzakcio eseten ugyfelazonositas kotelezo.
         validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
 
+        // 2026-05-15 user-direktíva: BUY ágon a pénztár HUF készletet ellenőrizni KELL
+        // (vételnél a cég HUF-ot fizet ki az ügyfélnek). Korábban csak SELL ágon volt
+        // készlet-ellenőrzés (foreign currency), ezért negatív HUF egyenlegre is
+        // engedett tranzakciót — ez TILOS mind a pénztárban, mind az értéktárban.
+        validateCurrencyStock(branchId, getHufCurrencyId(), payableAmount);
+
         // 2026-05-13 v2.5.49+ (Codex P1 #562/#564): pénztárosi sáv napi kvóta backend enforcement + normalizálás
         boolean buyCashierCustomRate = validateAndNormalizeCashierCustomRateQuota(
                 Boolean.TRUE.equals(request.getCashierCustomRate()), payableAmount);

@@ -209,14 +209,17 @@ export default function CustomerPanel({
   }, [hufTotal, onCustomerReady, runAmlCheck])
 
   // Collect missing required fields per identification level. Empty array = form OK.
+  // 2026-05-15 user-direktíva: SIMPLIFIED (100-300k) szinthez Pmt. 2017. évi LIII. tv.
+  // szerint név + szül.hely + szül.idő elég — okmány NEM kötelező. FULL (300k+) szinthez
+  // jön az okmány + anyja neve + lakcím.
   const missingRequiredFields = useMemo<string[]>(() => {
     if (identificationLevel === 'SIMPLE') return []
     const missing: string[] = []
     if (!customerName.trim()) missing.push('Név')
-    if (!customerDocNumber.trim()) missing.push('Okmányszám')
     if (!customerBirthPlace.trim()) missing.push('Születési hely')
     if (!customerBirthDate) missing.push('Születési idő')
     if (identificationLevel === 'FULL') {
+      if (!customerDocNumber.trim()) missing.push('Okmányszám')
       if (!customerMotherName.trim()) missing.push('Anyja neve')
       if (!customerAddress.trim()) missing.push('Lakcím')
     }
