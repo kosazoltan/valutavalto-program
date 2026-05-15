@@ -1,0 +1,104 @@
+name: Update GOOGLE_DESKTOP_CLIENT_ID env on Hetzner (multi-client support)
+
+# Manualis workflow_dispatch — a Hetzner systemd valuta-backend.service GOOGLE_DESKTOP_CLIENT_ID
+# env valtozojahoz egy uj client_id-t fuz hozza, vesszovel elvalasztva. A PR #588 alapjan a
+# backend tamogatja a comma-separated client_id-ket az audience lista hianyaban.
+#
+# Hasznalat: gh workflow run update-google-desktop-client-id.yml \
+#              -f additional_client_id="<full-google-desktop-client-id>" \
+#              -f restart_backend=true
+
+on:
+  workflow_dispatch:
+    inputs:
+      additional_client_id:
+        description: 'A hozzaadandi Google Desktop client_id (teljes string, NEM csak prefix)'
+        required: true
+        type: string
+      restart_backend:
+        description: 'Backend ujraindittasa az env update utan?'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+concurrency:
+  group: hetzner-env-update
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SERVICE_NAME: valuta-backend.service
+
+jobs:
+  update-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Append client_id + restart service
+        env:
+          NEW_CLIENT_ID: ${{ github.event.inputs.additional_client_id }}
+          RESTART: ${{ github.event.inputs.restart_backend }}
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << ENDSSH
+            set -euo pipefail
+            NEW_ID="$NEW_CLIENT_ID"
+            DROPIN_DIR=/etc/systemd/system/valuta-backend.service.d
+            DROPIN_FILE=\$DROPIN_DIR/google-clients.conf
+            mkdir -p \$DROPIN_DIR
+
+            # Read current value (from systemctl show, NOT from cat — env-eredetiben mehet
+            # multi-source: drop-in conf, /etc/default, EnvironmentFile)
+            CURRENT=\$(systemctl show ${{ env.SERVICE_NAME }} --property=Environment 2>/dev/null | tr ' ' '\n' | grep -oP '(?<=^GOOGLE_DESKTOP_CLIENT_ID=).+' | head -1 || true)
+            echo "=== Current GOOGLE_DESKTOP_CLIENT_ID: \${CURRENT:-<empty>}"
+
+            if [ -z "\$CURRENT" ]; then
+              MERGED="\$NEW_ID"
+            elif echo "\$CURRENT" | tr ',' '\n' | grep -qFx "\$NEW_ID"; then
+              echo "=== Client ID mar bent van, skip"
+              MERGED="\$CURRENT"
+            else
+              MERGED="\$CURRENT,\$NEW_ID"
+            fi
+            echo "=== Merged: \$MERGED"
+
+            # Write systemd drop-in
+            cat > \$DROPIN_FILE << EOF
+          [Service]
+          Environment="GOOGLE_DESKTOP_CLIENT_ID=\$MERGED"
+          EOF
+            chmod 644 \$DROPIN_FILE
+
+            systemctl daemon-reload
+            echo "=== systemd daemon-reload done"
+
+            if [ "$RESTART" = "true" ]; then
+              echo "=== Restarting ${{ env.SERVICE_NAME }}"
+              systemctl restart ${{ env.SERVICE_NAME }}
+              sleep 10
+              systemctl is-active ${{ env.SERVICE_NAME }} || { journalctl -u ${{ env.SERVICE_NAME }} -n 20 --no-pager; exit 1; }
+              echo "=== Backend UP"
+            else
+              echo "=== Restart skipped (will apply on next deploy)"
+            fi
+          ENDSSH
+
+      - name: Verify via public config-status endpoint
+        run: |
+          sleep 5
+          echo "=== Public Google config status ==="
+          curl -s --max-time 8 https://excvaluta.com/api/v1/public/auth/google-config-status | tee /tmp/cfg.json
+          echo ""
