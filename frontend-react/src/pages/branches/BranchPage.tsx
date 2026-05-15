@@ -134,7 +134,9 @@ export default function BranchPage() {
       branchTypeId: b.branchTypeId ?? '',
       countryId: b.countryId ?? '',
       branchStatusId: b.branchStatusId ?? '',
-      openingDate: b.openingDate ?? new Date().toISOString().slice(0, 10),
+      // Sourcery #611: NE alapertelmezzunk ma-i datumra szerkesztesnel, ha eredetileg
+      // ures volt — kulonben silently felulirjuk a legacy/null DB-adatot.
+      openingDate: b.openingDate ?? '',
     })
     setShowForm(true)
   }

@@ -202,6 +202,9 @@ public class TransactionService {
         // 300K+ tranzakcio eseten ugyfelazonositas kotelezo.
         validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
 
+        // Sourcery #612: JOGCIM nyilatkozat validacio (FALSE -> actorName kotelezo)
+        validateJogcimDeclaration(request.getCustomerOnOwnBehalf(), request.getCustomerActorName());
+
         // 2026-05-15 user-direktíva: BUY ágon a pénztár HUF készletet ellenőrizni KELL
         // (vételnél a cég HUF-ot fizet ki az ügyfélnek). Korábban csak SELL ágon volt
         // készlet-ellenőrzés (foreign currency), ezért negatív HUF egyenlegre is
@@ -367,6 +370,9 @@ public class TransactionService {
 
         // 300K+ tranzakció esetén ügyfél-azonosítás kötelező (NAV jogi követelmény).
         validateIdentification(payableAmount, request.getCustomerName(), request.getCustomerDocumentNumber());
+
+        // Sourcery #612: JOGCIM nyilatkozat validacio (FALSE -> actorName kotelezo)
+        validateJogcimDeclaration(request.getCustomerOnOwnBehalf(), request.getCustomerActorName());
 
         // 2026-05-13 v2.5.49+ (Codex P1 #562/#564): pénztárosi sáv napi kvóta backend enforcement + normalizálás
         boolean sellCashierCustomRate = validateAndNormalizeCashierCustomRateQuota(
@@ -662,6 +668,18 @@ public class TransactionService {
                     String.format("%s Ft feletti tranzakcióhoz igazolvány szám kötelező!",
                         IDENTIFICATION_LIMIT.toPlainString()));
             }
+        }
+    }
+
+    /**
+     * Sourcery #612 (2026-05-15): a customerOnOwnBehalf=FALSE eseten kotelezo
+     * a customerActorName (a kepviselt fel neve). Pmt. JOGCIM nyilatkozat.
+     */
+    private void validateJogcimDeclaration(Boolean onOwnBehalf, String actorName) {
+        if (Boolean.FALSE.equals(onOwnBehalf) && (actorName == null || actorName.isBlank())) {
+            throw new ValidationException(
+                "JOGCÍM nyilatkozat: ha az ügyfél NEM saját nevében jár el, "
+                + "a képviselt fél nevét kötelező megadni (customerActorName).");
         }
     }
 

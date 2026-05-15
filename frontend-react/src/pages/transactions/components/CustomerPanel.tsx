@@ -239,8 +239,13 @@ export default function CustomerPanel({
       if (!customerMotherName.trim()) missing.push('Anyja neve')
       if (!customerAddress.trim()) missing.push('Lakcím')
     }
+    // Sourcery #614: 300k+ JOGCIM nyilatkozat kotelezo mezok
+    if (hufTotal >= 300_000) {
+      if (!sourceOfFunds.trim()) missing.push('Pénzeszközök forrása')
+      if (!onOwnBehalf && !actorName.trim()) missing.push('Képviselt fél neve')
+    }
     return missing
-  }, [identificationLevel, customerName, customerDocNumber, customerBirthPlace, customerBirthDate, customerMotherName, customerAddress])
+  }, [identificationLevel, customerName, customerDocNumber, customerBirthPlace, customerBirthDate, customerMotherName, customerAddress, hufTotal, sourceOfFunds, onOwnBehalf, actorName])
 
   const handleSaveManualCustomer = useCallback(async () => {
     // Replace silent `return` with explicit toast — user-visible feedback per #581 bug report
