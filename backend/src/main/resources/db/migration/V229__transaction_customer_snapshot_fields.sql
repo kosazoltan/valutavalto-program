@@ -14,7 +14,7 @@
 -- mert az ugyfel mestere kesobb modosulhat (pl. cimkartya csere), es a regi
 -- bizonylaton meg kell maradni az AKKORI allapotnak (NAV audit, Pmt. compliance).
 
-ALTER TABLE transactions
+ALTER TABLE transaction
     ADD COLUMN IF NOT EXISTS customer_birth_place      VARCHAR(255),
     ADD COLUMN IF NOT EXISTS customer_birth_date       DATE,
     ADD COLUMN IF NOT EXISTS customer_mother_name      VARCHAR(255),
@@ -26,15 +26,15 @@ ALTER TABLE transactions
     ADD COLUMN IF NOT EXISTS customer_on_own_behalf    BOOLEAN,
     ADD COLUMN IF NOT EXISTS customer_actor_name       VARCHAR(255);
 
-COMMENT ON COLUMN transactions.customer_birth_place IS
+COMMENT ON COLUMN transaction.customer_birth_place IS
     'V229: Snapshot a Pmt. azonositashoz - 100k+ tranzakcional kotelezo';
-COMMENT ON COLUMN transactions.customer_birth_date IS
+COMMENT ON COLUMN transaction.customer_birth_date IS
     'V229: Snapshot a Pmt. azonositashoz - 100k+ tranzakcional kotelezo';
-COMMENT ON COLUMN transactions.customer_mother_name IS
+COMMENT ON COLUMN transaction.customer_mother_name IS
     'V229: Snapshot a Pmt. azonositashoz - 300k+ tranzakcional kotelezo';
-COMMENT ON COLUMN transactions.customer_document_type IS
+COMMENT ON COLUMN transaction.customer_document_type IS
     'V229: ID_CARD/PASSPORT/etc snapshot a bizonylathoz';
-COMMENT ON COLUMN transactions.customer_on_own_behalf IS
+COMMENT ON COLUMN transaction.customer_on_own_behalf IS
     'V229: 300k+ JOGCIM nyilatkozat - TRUE=sajat, FALSE=mas nevben (akkor actor_name)';
-COMMENT ON COLUMN transactions.customer_actor_name IS
+COMMENT ON COLUMN transaction.customer_actor_name IS
     'V229: Ha customer_on_own_behalf=FALSE, itt a kepviselt fel neve';
