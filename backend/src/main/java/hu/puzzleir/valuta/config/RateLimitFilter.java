@@ -105,12 +105,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         String clientIp = clientIpResolver.resolveClientIp(request);
+        // CodeQL log-injection mitigation: clientIp is user-controlled (X-Forwarded-For
+        // can come from a header); strip CRLF + tab before logging to prevent log
+        // forging. The global logback %replace pattern also strips, but doing it at the
+        // source removes the CodeQL false-positive on java/log-injection.
+        String safeClientIp = sanitizeForLog(clientIp);
 
         // First-time-worker-setup endpoint — public permitAll, szigorú per-IP limit
         // a brute force / account-takeover ellen (Codex P1 mitigation V230/V231 utan).
         if (path.startsWith("/api/v1/auth/first-time-worker-setup")) {
             if (isRateLimited(clientIp, firstTimeSetupLimits, firstTimeSetupMaxRequests, firstTimeSetupWindowMs)) {
-                log.warn("Rate limit elérve: first-time-worker-setup — IP: {}", clientIp);
+                log.warn("Rate limit elérve: first-time-worker-setup — IP: {}", safeClientIp);
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json");
                 response.getWriter().write(
@@ -122,7 +127,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         // Login endpoint — szigorúbb limit
         if (path.startsWith("/api/v1/auth/login")) {
             if (isRateLimited(clientIp, loginLimits, loginMaxRequests, loginWindowMs)) {
-                log.warn("Rate limit elérve: login — IP: {}", clientIp);
+                log.warn("Rate limit elérve: login — IP: {}", safeClientIp);
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json");
                 response.getWriter().write(
@@ -134,7 +139,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         // POS fizetés endpoint — magasabb limit (kártyás fizetésekhez)
         if (path.startsWith("/api/v1/pos-terminal/process-transaction")) {
             if (isRateLimited(clientIp, paymentLimits, paymentMaxRequests, paymentWindowMs)) {
-                log.warn("Rate limit elérve: fizetés — IP: {}", clientIp);
+                log.warn("Rate limit elérve: fizetés — IP: {}", safeClientIp);
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json");
                 response.getWriter().write(
@@ -149,7 +154,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 || path.startsWith("/api/v1/transactions/conversion")
                 || path.startsWith("/api/v1/transactions/reversal")) {
             if (isRateLimited(clientIp, transactionLimits, transactionMaxRequests, transactionWindowMs)) {
-                log.warn("Rate limit elérve: tranzakció — IP: {}", clientIp);
+                log.warn("Rate limit elérve: tranzakció — IP: {}", safeClientIp);
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json");
                 response.getWriter().write(
@@ -159,6 +164,18 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Sanitize a user-controlled value before logging — strip CRLF/tab to prevent
+     * log forging (CodeQL java/log-injection). Truncate to 64 chars to bound output.
+     */
+    private static String sanitizeForLog(String value) {
+        if (value == null) {
+            return "<null>";
+        }
+        String stripped = value.replaceAll("[\\r\\n\\t]", "_");
+        return stripped.length() > 64 ? stripped.substring(0, 64) + "..." : stripped;
     }
 
     private boolean isRateLimited(String key, Map<String, RateLimitEntry> limits,
