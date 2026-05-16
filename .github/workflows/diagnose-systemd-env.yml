@@ -1,10 +1,15 @@
 name: Diagnose systemd Environment for valuta-backend
 
+# Manualis workflow_dispatch - diagnosztikai output a Hetzner production-rol.
+# A teljes ertekek REDAKTALVA - csak key-nevek + EnvironmentFile path-ok
+# kerulnek a workflow log-ba. A GOOGLE_DESKTOP_CLIENT_ID (publikus OAuth
+# client id) teljes ertekevel jelenik meg.
+
 on:
   workflow_dispatch:
 
 concurrency:
-  group: hetzner-env-diag
+  group: hetzner-production-mutate
   cancel-in-progress: false
 
 permissions:
@@ -16,50 +21,99 @@ env:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
     steps:
-      - name: Setup SSH
+      - name: Setup SSH (pin host key if available)
+        env:
+          HOST_KEY: ${{ secrets.VPS_SSH_HOST_KEY }}
+          SERVER_IP: ${{ secrets.VPS_SERVER_IP }}
+          PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          printf '%s\n' "$PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+          if [ -n "$HOST_KEY" ]; then
+            printf '%s\n' "$HOST_KEY" > ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts 2>/dev/null
+            echo "WARN: VPS_SSH_HOST_KEY secret not set, using TOFU keyscan."
+          fi
 
-      - name: Dump systemd config
+      - name: Dump systemd config (REDACTED)
+        env:
+          STRICT_HOST: ${{ secrets.VPS_SSH_HOST_KEY != '' && 'yes' || 'accept-new' }}
         run: |
           ssh -i ~/.ssh/deploy_key \
-              -o StrictHostKeyChecking=accept-new \
+              -o "StrictHostKeyChecking=${STRICT_HOST}" \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
-              bash -s << 'ENDSSH'
-            set -uo pipefail
-            echo "==== systemctl cat valuta-backend.service ===="
-            systemctl cat valuta-backend.service || true
+              bash -s -- "${SERVICE_NAME}" <<'ENDSSH'
+          set -uo pipefail
+          SERVICE_NAME="$1"
+          DROPIN_DIR="/etc/systemd/system/${SERVICE_NAME}.d"
+          REDACTOR=$(mktemp)
+          trap 'rm -f "$REDACTOR"' EXIT
 
-            echo ""
-            echo "==== Drop-in dir contents ===="
-            ls -la /etc/systemd/system/valuta-backend.service.d/ || true
-            for f in /etc/systemd/system/valuta-backend.service.d/*.conf; do
-              if [ -f "$f" ]; then
-                echo "----- $f -----"
-                cat "$f"
-              fi
-            done
+          # Python redactor reading stdin -> redacted stdout
+          # PUBLIC_KEYS_RE: GOOGLE_*CLIENT_ID kept full (public OAuth id),
+          # everything else: KEY=<REDACTED>
+          cat >"$REDACTOR" <<'PYEOF'
+          import re, sys
+          PUBLIC = re.compile(r'^GOOGLE_(DESKTOP_)?CLIENT_ID$')
+          for raw in sys.stdin:
+              line = raw.rstrip('\n')
+              if line.startswith('Environment='):
+                  prefix = 'Environment='
+                  rest = line[len(prefix):]
+              else:
+                  prefix = ''
+                  rest = line
+              tokens = rest.split(' ')
+              out = []
+              for t in tokens:
+                  if '=' in t:
+                      k = t.split('=', 1)[0]
+                      if PUBLIC.match(k):
+                          out.append(t)
+                      else:
+                          out.append(k + '=<REDACTED>')
+                  else:
+                      out.append(t)
+              print(prefix + ' '.join(out))
+          PYEOF
 
-            echo ""
-            echo "==== systemctl show --property=Environment ===="
-            systemctl show valuta-backend.service --property=Environment
+          redact() { python3 "$REDACTOR"; }
 
-            echo ""
-            echo "==== systemctl show --property=EnvironmentFiles ===="
-            systemctl show valuta-backend.service --property=EnvironmentFiles
+          echo "==== systemctl cat $SERVICE_NAME (Environment= lines REDACTED) ===="
+          systemctl cat "$SERVICE_NAME" 2>/dev/null | redact || echo "(no unit found)"
 
-            echo ""
-            echo "==== Running process env (filtered to GOOGLE_*) ===="
-            PID=$(systemctl show valuta-backend.service --property=MainPID --value)
-            if [ -n "$PID" ] && [ "$PID" != "0" ]; then
-              tr '\0' '\n' < /proc/$PID/environ | grep -iE "GOOGLE|DATABASE" | sed 's/=.*/=<REDACTED>/' || true
-              # The full GOOGLE_DESKTOP_CLIENT_ID is fine to show — public OAuth client id
-              tr '\0' '\n' < /proc/$PID/environ | grep -E "^GOOGLE_(DESKTOP_)?CLIENT_ID=" || true
-            else
-              echo "(no running process)"
-            fi
+          echo ""
+          echo "==== Drop-in dir contents (Environment= REDACTED) ===="
+          ls -la "$DROPIN_DIR/" 2>/dev/null || true
+          if [ -d "$DROPIN_DIR" ]; then
+              for f in "$DROPIN_DIR"/*.conf; do
+                  if [ -f "$f" ]; then
+                      echo "----- $f -----"
+                      redact <"$f"
+                  fi
+              done
+          fi
+
+          echo ""
+          echo "==== systemctl show --property=EnvironmentFiles (paths only) ===="
+          systemctl show "$SERVICE_NAME" --property=EnvironmentFiles 2>/dev/null
+
+          echo ""
+          echo "==== systemctl show --property=Environment (REDACTED) ===="
+          systemctl show "$SERVICE_NAME" --property=Environment 2>/dev/null | redact
+
+          echo ""
+          echo "==== Running process env (REDACTED, GOOGLE_*CLIENT_ID visible) ===="
+          PID=$(systemctl show "$SERVICE_NAME" --property=MainPID --value 2>/dev/null)
+          if [ -n "$PID" ] && [ "$PID" != "0" ] && [ -r "/proc/$PID/environ" ]; then
+              tr '\0' '\n' < "/proc/$PID/environ" | redact
+          else
+              echo "(no running process or /proc/$PID/environ unreadable)"
+          fi
           ENDSSH

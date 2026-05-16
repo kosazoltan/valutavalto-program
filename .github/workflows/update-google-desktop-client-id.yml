@@ -1,8 +1,8 @@
 name: Update GOOGLE_DESKTOP_CLIENT_ID env on Hetzner (multi-client support)
 
-# Manualis workflow_dispatch — a Hetzner systemd valuta-backend.service GOOGLE_DESKTOP_CLIENT_ID
-# env valtozojahoz egy uj client_id-t fuz hozza, vesszovel elvalasztva. A PR #588 alapjan a
-# backend tamogatja a comma-separated client_id-ket az audience lista hianyaban.
+# Manualis workflow_dispatch - a Hetzner systemd valuta-backend.service GOOGLE_DESKTOP_CLIENT_ID
+# env valtozojahoz egy uj client_id-t fuz hozza, vesszovel elvalasztva.
+# A backend (PR #588) tamogatja a vesszovel elvalasztott client_id-ket az audience listaban.
 #
 # Hasznalat: gh workflow run update-google-desktop-client-id.yml \
 #              -f additional_client_id="<full-google-desktop-client-id>" \
@@ -12,11 +12,11 @@ on:
   workflow_dispatch:
     inputs:
       additional_client_id:
-        description: 'A hozzaadandi Google Desktop client_id (teljes string, NEM csak prefix)'
+        description: 'A hozzaadando Google Desktop client_id (teljes string, NEM csak prefix)'
         required: true
         type: string
       restart_backend:
-        description: 'Backend ujraindittasa az env update utan?'
+        description: 'Backend ujraindítása az env update utan?'
         required: false
         default: 'true'
         type: choice
@@ -25,7 +25,7 @@ on:
           - 'false'
 
 concurrency:
-  group: hetzner-env-update
+  group: hetzner-production-mutate
   cancel-in-progress: false
 
 permissions:
@@ -33,86 +33,156 @@ permissions:
 
 env:
   SERVICE_NAME: valuta-backend.service
+  ENV_FILE: /opt/valutavalto/backend/.env
+  OLD_DROPIN: /etc/systemd/system/valuta-backend.service.d/google-clients.conf
 
 jobs:
   update-env:
     runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
     steps:
-      - name: Setup SSH
+      - name: Validate input format
+        env:
+          NEW_CLIENT_ID: ${{ github.event.inputs.additional_client_id }}
+        run: |
+          if ! printf '%s' "$NEW_CLIENT_ID" | grep -Eq '^[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$'; then
+            echo "ERROR: additional_client_id does not match Google OAuth client_id format."
+            echo "Expected: <digits>-<alnum_-_>.apps.googleusercontent.com"
+            exit 1
+          fi
+
+      - name: Setup SSH (pin host key if available)
+        env:
+          HOST_KEY: ${{ secrets.VPS_SSH_HOST_KEY }}
+          SERVER_IP: ${{ secrets.VPS_SERVER_IP }}
+          PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          printf '%s\n' "$PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+          if [ -n "$HOST_KEY" ]; then
+            printf '%s\n' "$HOST_KEY" > ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts 2>/dev/null
+            echo "WARN: VPS_SSH_HOST_KEY secret not set, using TOFU keyscan."
+          fi
 
       - name: Append client_id to EnvironmentFile + restart service
         env:
           NEW_CLIENT_ID: ${{ github.event.inputs.additional_client_id }}
           RESTART: ${{ github.event.inputs.restart_backend }}
+          STRICT_HOST: ${{ secrets.VPS_SSH_HOST_KEY != '' && 'yes' || 'accept-new' }}
         run: |
-          # 2026-05-15: Tobb forrasbol jovo env-conflict megoldas — UPDATE az
-          # EnvironmentFile-ban (/opt/valutavalto/backend/.env), NEM drop-in
-          # conf-ban. A korabbi drop-in megszunik (clean fresh single source).
+          # Validated as Google OAuth client_id format above. Pass via base64 so the
+          # remote process command line never shows the literal value (even though it
+          # is a public identifier, this keeps the workflow pattern consistent).
+          NEW_CLIENT_ID_B64=$(printf '%s' "$NEW_CLIENT_ID" | base64 -w0)
+
           ssh -i ~/.ssh/deploy_key \
-              -o StrictHostKeyChecking=accept-new \
+              -o "StrictHostKeyChecking=${STRICT_HOST}" \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
-              "NEW_CLIENT_ID='$NEW_CLIENT_ID' RESTART='$RESTART' bash -s" << 'ENDSSH'
-            set -euo pipefail
-            ENV_FILE=/opt/valutavalto/backend/.env
-            OLD_DROPIN=/etc/systemd/system/valuta-backend.service.d/google-clients.conf
+              bash -s -- "${NEW_CLIENT_ID_B64}" "${RESTART}" "${SERVICE_NAME}" "${ENV_FILE}" "${OLD_DROPIN}" <<'ENDSSH'
+          set -euo pipefail
+          NEW_CLIENT_ID="$(printf '%s' "$1" | base64 -d)"
+          RESTART="$2"
+          SERVICE_NAME="$3"
+          ENV_FILE="$4"
+          OLD_DROPIN="$5"
 
-            # 0. Cleanup: regi drop-in conf eltavolitasa (single-source-of-truth)
-            if [ -f "$OLD_DROPIN" ]; then
-              rm -f "$OLD_DROPIN"
-              echo "=== Removed stale drop-in: $OLD_DROPIN"
+          if [ ! -f "$ENV_FILE" ]; then
+            echo "FATAL: $ENV_FILE missing - aborting before any destructive change"
+            exit 1
+          fi
+          if ! [ -w "$ENV_FILE" ]; then
+            echo "FATAL: $ENV_FILE not writable by $(whoami)"
+            exit 1
+          fi
+
+          # Read current value (portable awk, no PCRE)
+          CURRENT=$(awk -F= '/^GOOGLE_DESKTOP_CLIENT_ID=/ { sub(/^GOOGLE_DESKTOP_CLIENT_ID=/,""); print; exit }' "$ENV_FILE" || true)
+          CURRENT=$(printf '%s' "$CURRENT" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          NEW_CLIENT_ID=$(printf '%s' "$NEW_CLIENT_ID" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          echo "=== Current in $ENV_FILE: ${CURRENT:-<empty>}"
+
+          if [ -z "$CURRENT" ]; then
+            MERGED="$NEW_CLIENT_ID"
+          elif printf '%s' "$CURRENT" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -qFx "$NEW_CLIENT_ID"; then
+            echo "=== Client ID mar bent van a .env-ben, skip"
+            MERGED="$CURRENT"
+          else
+            MERGED="$CURRENT,$NEW_CLIENT_ID"
+          fi
+          echo "=== Merged: $MERGED"
+
+          # Backup, then update via python (no sed escape pitfalls)
+          BAK="$ENV_FILE.bak.$(date -u +%Y%m%dT%H%M%SZ)"
+          cp "$ENV_FILE" "$BAK"
+          chmod 600 "$BAK"
+
+          ENV_FILE="$ENV_FILE" MERGED="$MERGED" python3 <<'PYEOF'
+          import os
+          path = os.environ['ENV_FILE']
+          value = os.environ['MERGED']
+          key = 'GOOGLE_DESKTOP_CLIENT_ID'
+          with open(path, 'r', encoding='utf-8') as f:
+              lines = f.readlines()
+          prefix = key + '='
+          found = False
+          for i, line in enumerate(lines):
+              if line.startswith(prefix):
+                  lines[i] = prefix + value + '\n'
+                  found = True
+                  break
+          if not found:
+              if lines and not lines[-1].endswith('\n'):
+                  lines[-1] += '\n'
+              lines.append(prefix + value + '\n')
+          tmp = path + '.tmp'
+          with open(tmp, 'w', encoding='utf-8') as f:
+              f.writelines(lines)
+          os.chmod(tmp, 0o600)
+          os.replace(tmp, path)
+          PYEOF
+          echo "=== Updated $ENV_FILE (value redacted):"
+          grep '^GOOGLE_DESKTOP_CLIENT_ID=' "$ENV_FILE" | sed 's/=.*/=<REDACTED>/'
+
+          # Remove stale drop-in ONLY AFTER successful update
+          if [ -f "$OLD_DROPIN" ]; then
+            rm -f "$OLD_DROPIN"
+            echo "=== Removed stale drop-in: $OLD_DROPIN"
+          fi
+
+          systemctl daemon-reload
+          echo "=== systemd daemon-reload done"
+
+          if [ "$RESTART" = "true" ]; then
+            echo "=== Restarting $SERVICE_NAME"
+            systemctl restart "$SERVICE_NAME"
+            sleep 12
+            if ! systemctl is-active "$SERVICE_NAME" >/dev/null; then
+              echo "=== Restart failed - rolling back env file"
+              journalctl -u "$SERVICE_NAME" -n 30 --no-pager
+              cp "$BAK" "$ENV_FILE"
+              systemctl daemon-reload || true
+              systemctl restart "$SERVICE_NAME" || true
+              exit 2
             fi
-
-            if [ ! -f "$ENV_FILE" ]; then
-              echo "FATAL: $ENV_FILE missing"
-              exit 1
-            fi
-
-            # 1. Read current value from EnvironmentFile
-            CURRENT=$(grep -oP '(?<=^GOOGLE_DESKTOP_CLIENT_ID=).+' "$ENV_FILE" || true)
-            echo "=== Current in $ENV_FILE: ${CURRENT:-<empty>}"
-
-            if [ -z "$CURRENT" ]; then
-              MERGED="$NEW_CLIENT_ID"
-            elif echo "$CURRENT" | tr ',' '\n' | grep -qFx "$NEW_CLIENT_ID"; then
-              echo "=== Client ID mar bent van a .env-ben, skip"
-              MERGED="$CURRENT"
-            else
-              MERGED="$CURRENT,$NEW_CLIENT_ID"
-            fi
-            echo "=== Merged: $MERGED"
-
-            # 2. Update env file (sed: replace existing line; if absent, append)
-            if grep -q '^GOOGLE_DESKTOP_CLIENT_ID=' "$ENV_FILE"; then
-              sed -i "s|^GOOGLE_DESKTOP_CLIENT_ID=.*|GOOGLE_DESKTOP_CLIENT_ID=$MERGED|" "$ENV_FILE"
-            else
-              echo "GOOGLE_DESKTOP_CLIENT_ID=$MERGED" >> "$ENV_FILE"
-            fi
-            echo "=== Updated $ENV_FILE:"
-            grep '^GOOGLE_DESKTOP_CLIENT_ID=' "$ENV_FILE"
-
-            # 3. daemon-reload + restart
-            systemctl daemon-reload
-            echo "=== systemd daemon-reload done"
-
-            if [ "$RESTART" = "true" ]; then
-              echo "=== Restarting valuta-backend.service"
-              systemctl restart valuta-backend.service
-              sleep 12
-              systemctl is-active valuta-backend.service || { journalctl -u valuta-backend.service -n 20 --no-pager; exit 1; }
-              echo "=== Backend UP"
-            else
-              echo "=== Restart skipped"
-            fi
+            echo "=== Backend UP"
+          else
+            echo "=== Restart skipped"
+          fi
           ENDSSH
 
       - name: Verify via public config-status endpoint
+        if: ${{ github.event.inputs.restart_backend == 'true' }}
         run: |
           sleep 5
           echo "=== Public Google config status ==="
           curl -s --max-time 8 https://excvaluta.com/api/v1/public/auth/google-config-status | tee /tmp/cfg.json
           echo ""
+
+      - name: Skip verify (no restart requested)
+        if: ${{ github.event.inputs.restart_backend != 'true' }}
+        run: echo "Restart skipped - public config-status endpoint would not reflect the new value yet."

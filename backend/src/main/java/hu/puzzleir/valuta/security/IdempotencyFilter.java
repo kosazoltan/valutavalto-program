@@ -17,7 +17,25 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Enforces Idempotency-Key header on protected write endpoints.
+ * Enforces Idempotency-Key header on protected write endpoints (POST/PUT/PATCH/DELETE).
+ *
+ * <p>Excluded endpoint families (intentionally NOT requiring an Idempotency-Key):
+ * <ul>
+ *   <li><b>/api/v1/auth/</b> - login/logout flows; not write-replays-by-nature.</li>
+ *   <li><b>/api/v1/public/</b> - SetupWizard one-time flows reachable WITHOUT JWT.
+ *       The frontend interceptor that auto-attaches Idempotency-Key only runs for
+ *       authenticated context, so public callers (incl. Google identify, setup-status)
+ *       cannot send the header.</li>
+ *   <li><b>/api/v1/email/accounts/callback</b> - OAuth callback, single-use.</li>
+ *   <li><b>/api/v1/health</b>, <b>/actuator/</b> - liveness/health probes.</li>
+ *   <li><b>/api/v1/error-report</b>, <b>/api/v1/error-log</b>,
+ *       <b>/api/v1/diagnostics/</b> - best-effort client telemetry.</li>
+ *   <li><b>/swagger-ui/</b>, <b>/v3/api-docs</b>, <b>/api-docs/</b> - OpenAPI tooling.</li>
+ *   <li><b>/ws/</b> - WebSocket upgrade requests.</li>
+ * </ul>
+ *
+ * <p>All other write endpoints MUST include the {@code Idempotency-Key} (or legacy
+ * {@code X-Idempotency-Key}) header; missing/invalid keys return 400.
  */
 @Component
 public class IdempotencyFilter extends OncePerRequestFilter {
