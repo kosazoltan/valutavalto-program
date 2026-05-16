@@ -4,7 +4,7 @@ type: session-log
 project: Valutavalto-program (BEC ERP)
 created_at: 2026-05-16
 operator: Claude Opus 4.7 (1M context)
-status: BLOCKED on user — phone callback scheduling needed
+status: SCHEDULED — DigiCert authenticity call booked for 2026-05-18 16:30-17:00 CEST
 ---
 
 # DigiCert EV CS — current status (2026-05-16)
