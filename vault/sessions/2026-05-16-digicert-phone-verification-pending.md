@@ -33,6 +33,8 @@ status: BLOCKED on user — phone callback scheduling needed
 | 2026-05-15 13:08 | DigiCert Scheduling: appointment canceled | DigiCert scheduling |
 | 2026-05-15 13:20 | User forwarded cancelation to self | (sent) |
 | 2026-05-16 00:54 | SignMyCode follow-up: still waiting for callback scheduling | SignMyCode support |
+| 2026-05-16 11:09 | User booked DigiCert call scheduler slot (2026-05-18 16:30 CEST); SignMyCode ticket created; DigiCert acknowledged with case numbers | SignMyCode ticket + DigiCert auto-reply |
+| 2026-05-18 16:30 | **DigiCert authenticity call SCHEDULED** at company office line | (pending) |
 
 ## What's done
 
@@ -41,7 +43,8 @@ status: BLOCKED on user — phone callback scheduling needed
 
 ## What's pending
 
-- ⏳ **Phone verification ONLY** — user must schedule callback via the DigiCert Call Scheduler link in the most recent SignMyCode email, and ensure someone answers the verified company phone in English at the scheduled time.
+- ⏳ **Phone verification SCHEDULED** — DigiCert callback booked for **Monday 2026-05-18 16:30-17:00 CEST** (during Hungarian office hours, so the registered office line will answer). Booking confirmed via SignMyCode ticket and DigiCert case (IDs in private ops store).
+- Previous booking attempt failed because slot was outside Hungarian office hours (23:00 Budapest local).
 
 ## After phone verification (auto)
 
