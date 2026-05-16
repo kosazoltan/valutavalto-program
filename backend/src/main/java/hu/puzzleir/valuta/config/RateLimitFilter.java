@@ -58,6 +58,19 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private long paymentWindowMs;
 
     /**
+     * First-time-worker-setup: szigorú limit a public endpoint (permitAll) ellen.
+     * Védi a Codex P1 (PR #619/#620) finding-et: V230/V231 utáni hash=NULL allapotban
+     * brute-force a workerCode-on (BORSI, BALI, KASZA stb.) account-takeover-t okozhatna.
+     * Egy legitim install flow egy IP-ről egyszer próbálkozik — 5 attempt / 5 min bőven elég.
+     */
+    @Value("${rate-limit.first-time-setup.max-requests:5}")
+    private int firstTimeSetupMaxRequests;
+
+    /** First-time-worker-setup: időablak ms-ban (alapértelmezett: 5 perc) */
+    @Value("${rate-limit.first-time-setup.window-ms:300000}")
+    private long firstTimeSetupWindowMs;
+
+    /**
      * Audit P1.4 SSOT: kliens IP feloldas a kozos {@link ClientIpResolver} util-on keresztul.
      * Korabban ide volt epitve a trusted proxy CIDR check + `resolveClientIp` logika,
      * de a {@code RefreshTokenService}, {@code AuthController}, {@code WorkerAttendanceController},
@@ -76,6 +89,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final Map<String, RateLimitEntry> loginLimits = new ConcurrentHashMap<>();
     private final Map<String, RateLimitEntry> transactionLimits = new ConcurrentHashMap<>();
     private final Map<String, RateLimitEntry> paymentLimits = new ConcurrentHashMap<>();
+    private final Map<String, RateLimitEntry> firstTimeSetupLimits = new ConcurrentHashMap<>();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -91,11 +105,29 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         String clientIp = clientIpResolver.resolveClientIp(request);
+        // CodeQL log-injection mitigation: clientIp is user-controlled (X-Forwarded-For
+        // can come from a header); strip CRLF + tab before logging to prevent log
+        // forging. The global logback %replace pattern also strips, but doing it at the
+        // source removes the CodeQL false-positive on java/log-injection.
+        String safeClientIp = sanitizeForLog(clientIp);
+
+        // First-time-worker-setup endpoint — public permitAll, szigorú per-IP limit
+        // a brute force / account-takeover ellen (Codex P1 mitigation V230/V231 utan).
+        if (path.startsWith("/api/v1/auth/first-time-worker-setup")) {
+            if (isRateLimited(clientIp, firstTimeSetupLimits, firstTimeSetupMaxRequests, firstTimeSetupWindowMs)) {
+                log.warn("Rate limit elérve: first-time-worker-setup — IP: {}", safeClientIp);
+                response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+                response.setContentType("application/json");
+                response.getWriter().write(
+                        "{\"error\":\"Tul sok beallitasi probalkozas. Kerjuk probald ujra par perc mulva.\"}");
+                return;
+            }
+        }
 
         // Login endpoint — szigorúbb limit
         if (path.startsWith("/api/v1/auth/login")) {
             if (isRateLimited(clientIp, loginLimits, loginMaxRequests, loginWindowMs)) {
-                log.warn("Rate limit elérve: login — IP: {}", clientIp);
+                log.warn("Rate limit elérve: login — IP: {}", safeClientIp);
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json");
                 response.getWriter().write(
@@ -107,7 +139,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         // POS fizetés endpoint — magasabb limit (kártyás fizetésekhez)
         if (path.startsWith("/api/v1/pos-terminal/process-transaction")) {
             if (isRateLimited(clientIp, paymentLimits, paymentMaxRequests, paymentWindowMs)) {
-                log.warn("Rate limit elérve: fizetés — IP: {}", clientIp);
+                log.warn("Rate limit elérve: fizetés — IP: {}", safeClientIp);
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json");
                 response.getWriter().write(
@@ -122,7 +154,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 || path.startsWith("/api/v1/transactions/conversion")
                 || path.startsWith("/api/v1/transactions/reversal")) {
             if (isRateLimited(clientIp, transactionLimits, transactionMaxRequests, transactionWindowMs)) {
-                log.warn("Rate limit elérve: tranzakció — IP: {}", clientIp);
+                log.warn("Rate limit elérve: tranzakció — IP: {}", safeClientIp);
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json");
                 response.getWriter().write(
@@ -132,6 +164,35 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Compute a short, log-safe fingerprint of a user-controlled value (e.g. clientIp).
+     *
+     * <p>The raw IP is never written to the log: instead we emit a 16-hex-char
+     * SHA-256 prefix. This is:</p>
+     * <ul>
+     *   <li><b>log-injection-immune</b>: only hex chars, no CR/LF/tab can appear</li>
+     *   <li><b>privacy-preserving</b>: the IP itself is not persisted in plaintext logs</li>
+     *   <li><b>operationally useful</b>: same IP -&gt; same fingerprint, so rate-limit
+     *       hits can still be correlated across log lines</li>
+     * </ul>
+     */
+    private static String sanitizeForLog(String value) {
+        if (value == null || value.isBlank()) {
+            return "ip-<null>";
+        }
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder("ip-");
+            for (int i = 0; i < 8; i++) {
+                sb.append(String.format("%02x", digest[i]));
+            }
+            return sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            return "ip-<err>";
+        }
     }
 
     private boolean isRateLimited(String key, Map<String, RateLimitEntry> limits,
@@ -156,11 +217,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         int loginRemoved = removeExpired(loginLimits, now);
         int txRemoved = removeExpired(transactionLimits, now);
         int paymentRemoved = removeExpired(paymentLimits, now);
-        if (loginRemoved > 0 || txRemoved > 0 || paymentRemoved > 0) {
-            log.debug("Rate limit cleanup: {} login + {} tranzakció + {} fizetés bejegyzés törölve. " +
-                            "Aktív: {} login, {} tranzakció, {} fizetés",
-                    loginRemoved, txRemoved, paymentRemoved,
-                    loginLimits.size(), transactionLimits.size(), paymentLimits.size());
+        int setupRemoved = removeExpired(firstTimeSetupLimits, now);
+        if (loginRemoved > 0 || txRemoved > 0 || paymentRemoved > 0 || setupRemoved > 0) {
+            log.debug("Rate limit cleanup: {} login + {} tranzakció + {} fizetés + {} setup bejegyzés törölve. " +
+                            "Aktív: {} login, {} tranzakció, {} fizetés, {} setup",
+                    loginRemoved, txRemoved, paymentRemoved, setupRemoved,
+                    loginLimits.size(), transactionLimits.size(), paymentLimits.size(), firstTimeSetupLimits.size());
         }
     }
 
