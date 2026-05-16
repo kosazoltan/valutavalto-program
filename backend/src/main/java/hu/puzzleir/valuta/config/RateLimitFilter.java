@@ -167,15 +167,32 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Sanitize a user-controlled value before logging — strip CRLF/tab to prevent
-     * log forging (CodeQL java/log-injection). Truncate to 64 chars to bound output.
+     * Compute a short, log-safe fingerprint of a user-controlled value (e.g. clientIp).
+     *
+     * <p>The raw IP is never written to the log: instead we emit a 16-hex-char
+     * SHA-256 prefix. This is:</p>
+     * <ul>
+     *   <li><b>log-injection-immune</b>: only hex chars, no CR/LF/tab can appear</li>
+     *   <li><b>privacy-preserving</b>: the IP itself is not persisted in plaintext logs</li>
+     *   <li><b>operationally useful</b>: same IP -&gt; same fingerprint, so rate-limit
+     *       hits can still be correlated across log lines</li>
+     * </ul>
      */
     private static String sanitizeForLog(String value) {
-        if (value == null) {
-            return "<null>";
+        if (value == null || value.isBlank()) {
+            return "ip-<null>";
         }
-        String stripped = value.replaceAll("[\\r\\n\\t]", "_");
-        return stripped.length() > 64 ? stripped.substring(0, 64) + "..." : stripped;
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder("ip-");
+            for (int i = 0; i < 8; i++) {
+                sb.append(String.format("%02x", digest[i]));
+            }
+            return sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            return "ip-<err>";
+        }
     }
 
     private boolean isRateLimited(String key, Map<String, RateLimitEntry> limits,
