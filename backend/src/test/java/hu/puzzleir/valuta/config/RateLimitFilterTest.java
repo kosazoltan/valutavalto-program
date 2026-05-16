@@ -34,6 +34,8 @@ class RateLimitFilterTest {
         ReflectionTestUtils.setField(filter, "transactionWindowMs", 60_000L);
         ReflectionTestUtils.setField(filter, "paymentMaxRequests", 3);
         ReflectionTestUtils.setField(filter, "paymentWindowMs", 60_000L);
+        ReflectionTestUtils.setField(filter, "firstTimeSetupMaxRequests", 2);
+        ReflectionTestUtils.setField(filter, "firstTimeSetupWindowMs", 60_000L);
     }
 
     @Test
@@ -54,6 +56,16 @@ class RateLimitFilterTest {
 
         ResponseResult blocked = post("/api/v1/transactions/buy");
         assertBlocked(blocked, "Túl sok tranzakciós kérés");
+    }
+
+    @Test
+    @DisplayName("First-time-worker-setup endpoint enforces strict per-IP limit (Codex P1 mitigation)")
+    void firstTimeWorkerSetupEndpoint_enforcesStrictLimit() throws Exception {
+        assertPassed(post("/api/v1/auth/first-time-worker-setup"));
+        assertPassed(post("/api/v1/auth/first-time-worker-setup"));
+
+        ResponseResult blocked = post("/api/v1/auth/first-time-worker-setup");
+        assertBlocked(blocked, "Tul sok beallitasi probalkozas");
     }
 
     private ResponseResult post(String path) throws Exception {
