@@ -23,9 +23,11 @@ import java.util.Set;
  * <ul>
  *   <li><b>/api/v1/auth/</b> - login/logout flows; not write-replays-by-nature.</li>
  *   <li><b>/api/v1/public/</b> - SetupWizard one-time flows reachable WITHOUT JWT.
- *       The frontend interceptor that auto-attaches Idempotency-Key only runs for
- *       authenticated context, so public callers (incl. Google identify, setup-status)
- *       cannot send the header.</li>
+ *       The frontend axios interceptor that normally auto-attaches Idempotency-Key
+ *       does not attach it in the public (no-auth) context, so SetupWizard requests
+ *       (Google identify, setup-status, etc.) arrive without the header. The endpoint
+ *       could still receive the header from an arbitrary HTTP client, but enforcing
+ *       it here would break the legitimate first-install flow.</li>
  *   <li><b>/api/v1/email/accounts/callback</b> - OAuth callback, single-use.</li>
  *   <li><b>/api/v1/health</b>, <b>/actuator/</b> - liveness/health probes.</li>
  *   <li><b>/api/v1/error-report</b>, <b>/api/v1/error-log</b>,

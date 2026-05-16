@@ -148,30 +148,49 @@ jobs:
           echo "=== Updated $ENV_FILE (value redacted):"
           grep '^GOOGLE_DESKTOP_CLIENT_ID=' "$ENV_FILE" | sed 's/=.*/=<REDACTED>/'
 
-          # Remove stale drop-in ONLY AFTER successful update
+          # Back up stale drop-in (don't delete yet — defer until restart healthy)
+          DROPIN_BAK=""
           if [ -f "$OLD_DROPIN" ]; then
-            rm -f "$OLD_DROPIN"
-            echo "=== Removed stale drop-in: $OLD_DROPIN"
+            DROPIN_BAK="$OLD_DROPIN.bak.$(date -u +%Y%m%dT%H%M%SZ)"
+            cp "$OLD_DROPIN" "$DROPIN_BAK"
+            chmod 644 "$DROPIN_BAK"
+            # Move the active drop-in out of effect (rename, do NOT delete yet)
+            mv "$OLD_DROPIN" "$OLD_DROPIN.pending-delete"
+            echo "=== Deactivated drop-in (backup at $DROPIN_BAK)"
           fi
 
           systemctl daemon-reload
           echo "=== systemd daemon-reload done"
+
+          ROLLBACK_ALL() {
+            echo "=== ROLLBACK: restoring $BAK -> $ENV_FILE"
+            cp "$BAK" "$ENV_FILE" || true
+            if [ -f "$OLD_DROPIN.pending-delete" ]; then
+              echo "=== ROLLBACK: restoring drop-in $OLD_DROPIN.pending-delete -> $OLD_DROPIN"
+              mv "$OLD_DROPIN.pending-delete" "$OLD_DROPIN"
+            fi
+            systemctl daemon-reload || true
+            systemctl restart "$SERVICE_NAME" || true
+          }
 
           if [ "$RESTART" = "true" ]; then
             echo "=== Restarting $SERVICE_NAME"
             systemctl restart "$SERVICE_NAME"
             sleep 12
             if ! systemctl is-active "$SERVICE_NAME" >/dev/null; then
-              echo "=== Restart failed - rolling back env file"
+              echo "=== Restart failed - rolling back env + drop-in"
               journalctl -u "$SERVICE_NAME" -n 30 --no-pager
-              cp "$BAK" "$ENV_FILE"
-              systemctl daemon-reload || true
-              systemctl restart "$SERVICE_NAME" || true
+              ROLLBACK_ALL
               exit 2
             fi
             echo "=== Backend UP"
+            # Healthy restart confirmed -> safe to finalize drop-in removal
+            if [ -f "$OLD_DROPIN.pending-delete" ]; then
+              rm -f "$OLD_DROPIN.pending-delete"
+              echo "=== Finalized: removed deactivated drop-in"
+            fi
           else
-            echo "=== Restart skipped"
+            echo "=== Restart skipped (drop-in left as $OLD_DROPIN.pending-delete for next deploy)"
           fi
           ENDSSH
 

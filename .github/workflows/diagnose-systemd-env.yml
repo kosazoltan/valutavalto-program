@@ -55,12 +55,15 @@ jobs:
           REDACTOR=$(mktemp)
           trap 'rm -f "$REDACTOR"' EXIT
 
-          # Python redactor reading stdin -> redacted stdout
-          # PUBLIC_KEYS_RE: GOOGLE_*CLIENT_ID kept full (public OAuth id),
-          # everything else: KEY=<REDACTED>
+          # Python redactor reading stdin -> redacted stdout.
+          # PUBLIC: only the full key=value of GOOGLE_*CLIENT_ID is emitted verbatim
+          # (public OAuth identifier). For ANY other token sequence, only emit
+          # KEY=<REDACTED> per K=V pair detected; never preserve a trailing token
+          # without '=' (which may be value-continuation past a space).
           cat >"$REDACTOR" <<'PYEOF'
           import re, sys
           PUBLIC = re.compile(r'^GOOGLE_(DESKTOP_)?CLIENT_ID$')
+          KV = re.compile(r'\b([A-Za-z_][A-Za-z0-9_]*)=([^\s]*)')
           for raw in sys.stdin:
               line = raw.rstrip('\n')
               if line.startswith('Environment='):
@@ -69,18 +72,21 @@ jobs:
               else:
                   prefix = ''
                   rest = line
-              tokens = rest.split(' ')
+              # Find all KEY=value tokens; redact non-public values; drop
+              # anything between them (which would be value-continuation past
+              # a space and could leak data).
               out = []
-              for t in tokens:
-                  if '=' in t:
-                      k = t.split('=', 1)[0]
-                      if PUBLIC.match(k):
-                          out.append(t)
-                      else:
-                          out.append(k + '=<REDACTED>')
+              for m in KV.finditer(rest):
+                  k, v = m.group(1), m.group(2)
+                  if PUBLIC.match(k):
+                      out.append(k + '=' + v)
                   else:
-                      out.append(t)
-              print(prefix + ' '.join(out))
+                      out.append(k + '=<REDACTED>')
+              # If no KEY=VAL tokens at all (e.g. comment line, blank, '['stanza), emit as-is
+              if not out and rest.strip():
+                  print(prefix + rest)
+              else:
+                  print(prefix + ' '.join(out))
           PYEOF
 
           redact() { python3 "$REDACTOR"; }

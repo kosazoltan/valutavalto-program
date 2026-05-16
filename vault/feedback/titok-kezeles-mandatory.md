@@ -1,6 +1,6 @@
 # Titkos kulcsok kezelése — kötelező érvényű mandate (2026-05-16)
 
-**Forrás:** Kósa Zoltán user-direktíva, 2026-05-16. A mandate dokumentum: `C:\Users\Kósa Zoltán\Downloads\AI_titok_kezeles_utasitas.md` (verzió 1.0). **Hatály:** minden beszélgetés, minden program, minden fájl-művelet.
+**Forrás:** repo-tulajdonos user-direktíva, 2026-05-16. A mandate forrás-dokumentum off-repo, az operátor lokális Downloads mappájában tárolt (verzió 1.0). **Hatály:** minden beszélgetés, minden program, minden fájl-művelet.
 
 **Why:** 2026-05-16 incidens — az AI agent (Claude Opus 4.7) kompromittálta a Backblaze master key-t + bucket-scoped key-t + Tailscale authkey-t azzal, hogy a credentials-eket sima szövegként beírta a chatbe és a `Downloads/` mappa MD fájljaiba. Az AI alapelvei szerint is tilos, de a user explicit direktívával is megerősítette mandate-szerűen.
 
@@ -86,7 +86,7 @@ Ha mégis felbukkan egy titok a beszélgetésben (akár user-input, akár fájl-
 - Read tool egy fájl titok-tartalmával: oké, de a kimenet NE menjen sima szövegként chatre / Bash output-ba
 - Bash használatkor: `B2_KEY_ID=$VAR && curl -u "$B2_KEY_ID:$B2_APP_KEY"` — NE echo-zd vissza a `$B2_KEY_ID` / `$B2_APP_KEY` értéket
 - MD-fájl írásánál: a credentials placeholderrel hivatkozottak legyenek; a user SEPARATE channel-en kapja a tényleges értéket
-- Bash output redact: ha API válasz tartalmaz secret-et, ne print-eld; menteed file-ba, és a következő lépés ne echo-zza
+- Bash output redact: ha API válasz tartalmaz secret-et, ne print-eld; mentsd file-ba, és a következő lépés ne echo-zza
 
 ## 7. KIVÉTEL — NINCS
 
