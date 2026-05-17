@@ -211,4 +211,111 @@ class TransactionReversalServiceTest {
                     .hasMessageContaining("iroda");
         }
     }
+
+    // === Audit P2.7 (2026-05-17) — VV-ELVI 5.6 negatív tesztek ===
+
+    @Test
+    @DisplayName("Sztorno (audit P2.7) - regi napi tranzakcio supervisor nelkul -> ValidationException")
+    void testStornoFlow_olderTransactionWithoutSupervisor() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(false);
+
+            Transaction olderTx = Transaction.builder()
+                    .id(100L)
+                    .branch(branch)
+                    .status(TransactionStatus.COMPLETED)
+                    .transactionType(TransactionType.SELL)
+                    .transactionDate(LocalDate.now().minusDays(1))
+                    .build();
+
+            when(transactionRepository.findById(100L)).thenReturn(Optional.of(olderTx));
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L)
+                    .reason("Tegnapi teves rogzites")
+                    .build();
+
+            assertThatThrownBy(() -> reversalService.executeReversal(request))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("supervisor");
+        }
+    }
+
+    @Test
+    @DisplayName("Sztorno (audit P2.7) - regi napi tranzakcio SUPERVISOR jovahagyassal -> success")
+    void testStornoFlow_olderTransactionWithSupervisor() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(true);
+
+            when(dailySessionService.getDailyReversalCount()).thenReturn(0);
+
+            Transaction olderTx = Transaction.builder()
+                    .id(100L)
+                    .company(company)
+                    .branch(branch)
+                    .worker(worker)
+                    .receiptNumber("E030600002")
+                    .transactionType(TransactionType.SELL)
+                    .status(TransactionStatus.COMPLETED)
+                    .transactionDate(LocalDate.now().minusDays(1))
+                    .transactionTime(LocalTime.now())
+                    .currency(eurCurrency)
+                    .currencyAmount(new BigDecimal("100"))
+                    .exchangeRate(new BigDecimal("400.00"))
+                    .hufAmount(new BigDecimal("40000"))
+                    .handlingFee(BigDecimal.ZERO)
+                    .discountPercent(BigDecimal.ZERO)
+                    .discountAmount(BigDecimal.ZERO)
+                    .build();
+
+            when(transactionRepository.findById(100L)).thenReturn(Optional.of(olderTx));
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+            when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
+                Transaction t = inv.getArgument(0);
+                if (t.getId() == null) t.setId(201L);
+                return t;
+            });
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L)
+                    .reason("SUPERVISOR override")
+                    .approvedBy("SUPERVISOR")
+                    .build();
+
+            Transaction reversal = reversalService.executeReversal(request);
+
+            assertThat(reversal).isNotNull();
+            assertThat(reversal.getTransactionType()).isEqualTo(TransactionType.REVERSAL);
+        }
+    }
+
+    @Test
+    @DisplayName("Sztorno (audit P2.7) - nincs nyitott session (napzaras utan) -> ValidationException")
+    void testStornoFlow_noOpenSession() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+
+            doThrow(new ValidationException("Nincs nyitott napi session — napzaras utan sztorno nem lehetseges!"))
+                    .when(helper).validateOpenSession();
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L)
+                    .reason("Teszt")
+                    .build();
+
+            assertThatThrownBy(() -> reversalService.executeReversal(request))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("session");
+        }
+    }
 }
