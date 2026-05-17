@@ -184,7 +184,7 @@ export default function ReceivedDataOverviewPage() {
             <ClipboardList className="h-5 w-5 text-slate-700" />
             <div>
               <h1 className="text-lg font-semibold text-slate-900">Beérkezett adatok áttekintése</h1>
-              <div className="text-xs text-slate-500">beerk.dll, datadisp.dll és getdisp.dll modern központi nézete</div>
+              <div className="text-xs text-slate-500">Pénztári adatcsomagok beérkezésének áttekintése</div>
             </div>
           </div>
           <div className="flex gap-2">

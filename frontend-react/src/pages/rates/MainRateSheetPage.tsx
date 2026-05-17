@@ -364,8 +364,10 @@ export default function MainRateSheetPage() {
           <Send size={12} /> ÁRFOLYAMOK SZÉTKÜLDÉSE
         </button>
         <button
-          onClick={() => toast.info('Internet címek', 'Phase 2: Internet linkek karbantartása')}
-          className="px-3 py-1 text-xs font-medium bg-white border border-slate-400 rounded hover:bg-slate-50 flex items-center gap-1"
+          onClick={() => toast.info('Internet címek', 'Hamarosan elérhető funkció.')}
+          disabled
+          title="Hamarosan elérhető funkció"
+          className="px-3 py-1 text-xs font-medium bg-white border border-slate-300 rounded text-slate-400 cursor-not-allowed flex items-center gap-1"
         >
           <Globe size={12} /> INTERNET CÍMEK KARBANTARTÁSA
         </button>

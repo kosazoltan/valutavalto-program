@@ -16,9 +16,7 @@ import {
   MonitorCheck,
   PackageCheck,
   Search,
-  Send,
   Shield,
-  TrendingUp,
   Users,
   Wallet,
 } from 'lucide-react'
@@ -30,7 +28,7 @@ type ModuleStatus = 'ready' | 'partial' | 'server'
 interface CentralModule {
   id: string
   title: string
-  legacy: string
+  description: string
   route: string
   status: ModuleStatus
   icon: LucideIcon
@@ -44,44 +42,12 @@ interface CentralModuleGroup {
 
 const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
   {
-    title: 'Sprint és irányítás',
+    title: 'Főértéktári felügyelet',
     modules: [
-      {
-        id: 'central-sprint',
-        title: 'Központi sprint',
-        legacy: 'server legacy module inventory, repo memória',
-        route: '/central/sprint',
-        status: 'ready',
-        icon: ClipboardCheck,
-        roles: ['foertektar', 'ugyvezeto', 'belso_ellenor', 'teruleti_vezeto', 'penzugyi_vezeto', 'biztonsagi_vezeto'],
-      },
-    ],
-  },
-  {
-    title: 'Árfolyam és főértéktár',
-    modules: [
-      {
-        id: 'rate-maker',
-        title: 'Árfolyamkészítő',
-        legacy: 'ARFOLYAM.exe, arftmk.dll',
-        route: '/rates/creation',
-        status: 'ready',
-        icon: TrendingUp,
-        roles: ['foertektar', 'ugyvezeto'],
-      },
-      {
-        id: 'rate-publication',
-        title: 'Árfolyam publikálás',
-        legacy: 'arftmk.dll, RM*.ARF kiküldés',
-        route: '/rate-management/workflow',
-        status: 'ready',
-        icon: Send,
-        roles: ['foertektar', 'ugyvezeto'],
-      },
       {
         id: 'national-stock',
         title: 'Országos készlet',
-        legacy: 'keszdisp.dll, makeszlt',
+        description: 'Pénztári készletek áttekintése irodánként',
         route: '/cashier-stocks',
         status: 'ready',
         icon: Wallet,
@@ -90,7 +56,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'vault-stocktake',
         title: 'Értéktári leltár',
-        legacy: 'értéktár, készlet ellenőrzés',
+        description: 'Címletenkénti országos értéktár ellenőrzés',
         route: '/vault-stocktake',
         status: 'ready',
         icon: PackageCheck,
@@ -104,7 +70,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'closing-control',
         title: 'Zárás beérkezés',
-        legacy: 'zarasctrl.dll, beerk.dll',
+        description: 'Napi zárások beérkezésének valós idejű állapota',
         route: '/central/closing-control',
         status: 'ready',
         icon: MonitorCheck,
@@ -113,7 +79,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'daily-checklist',
         title: 'Napi ellenőrző lista',
-        legacy: 'missctrl.dll, daybook.fdb logika',
+        description: 'Napi ellenőrzési feladatok és jelentések',
         route: '/daily-checklist',
         status: 'ready',
         icon: ClipboardCheck,
@@ -122,7 +88,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'received-data',
         title: 'Beérkezett adatok',
-        legacy: 'datadisp.dll, getdisp.dll',
+        description: 'Pénztári adatcsomagok áttekintése',
         route: '/central/received-data',
         status: 'ready',
         icon: FileText,
@@ -131,7 +97,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'daily-turnover',
         title: 'Napi forgalom',
-        legacy: 'forgdisp.dll, datadisp.dll',
+        description: 'Összesítő napi forgalmi riport',
         route: '/daily-turnover',
         status: 'ready',
         icon: FileSpreadsheet,
@@ -145,7 +111,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'mnb-reports',
         title: 'MNB jelentések',
-        legacy: 'gyujto.dll, mnbhibak.dll',
+        description: 'Havi MNB jelentés generálása és beküldése',
         route: '/reports/mnb',
         status: 'ready',
         icon: Landmark,
@@ -154,7 +120,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'bank-orders',
         title: 'Banki rendelések',
-        legacy: 'import.dll, banki import file',
+        description: 'Banki utánrendelés-kezelés',
         route: '/bank-orders',
         status: 'ready',
         icon: Banknote,
@@ -163,7 +129,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'bank-transactions',
         title: 'Banki tranzakció riport',
-        legacy: 'bankdisp.dll, westforg.dll',
+        description: 'Banki tranzakciók összesítője',
         route: '/reports/bank-transactions',
         status: 'ready',
         icon: FileSpreadsheet,
@@ -172,7 +138,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'booking-export',
         title: 'Könyvelés export',
-        legacy: 'Raiffeisen, Darius, NAV export toolok',
+        description: 'Raiffeisen, Darius, NAV export',
         route: '/booking-export',
         status: 'ready',
         icon: FileArchive,
@@ -186,7 +152,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'compliance-dashboard',
         title: 'Compliance dashboard',
-        legacy: 'belső ellenőri összesítő',
+        description: 'Belső ellenőri összesítő',
         route: '/compliance',
         status: 'ready',
         icon: BadgeCheck,
@@ -195,7 +161,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'sanction-list',
         title: 'Szankciós lista',
-        legacy: 'terrlist.dll, AML kontroll',
+        description: 'AML kontroll, szankciós lista karbantartása',
         route: '/sanction',
         status: 'ready',
         icon: Shield,
@@ -203,8 +169,8 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       },
       {
         id: 'transaction-audit',
-        title: 'TRB és stornó audit',
-        legacy: 'trbdisp.dll, stornodisp.dll',
+        title: 'Tranzakció és sztornó audit',
+        description: 'Tranzakciók és sztornók ellenőrzése',
         route: '/transactions',
         status: 'ready',
         icon: AlertTriangle,
@@ -213,7 +179,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'wu-vat-control',
         title: 'WU és ÁFA ellenőrzés',
-        legacy: 'wudisp.dll, sumwuafa.dll, wuwadvet.dll',
+        description: 'Western Union és ÁFA elszámolás',
         route: '/western-union',
         status: 'ready',
         icon: BookOpenCheck,
@@ -227,7 +193,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'worker-registry',
         title: 'Dolgozói nyilvántartás',
-        legacy: 'dolgozok.dll',
+        description: 'Munkavállalók adatainak kezelése',
         route: '/workers',
         status: 'ready',
         icon: Users,
@@ -236,7 +202,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'commission-rates',
         title: 'Jutalék beállítás',
-        legacy: 'dolgjutalek.dll, jutszaz.dll',
+        description: 'Dolgozói jutalékok és százalékok',
         route: '/commission-rates',
         status: 'ready',
         icon: FileSpreadsheet,
@@ -245,7 +211,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'branch-groups',
         title: 'Irodák és körzetek',
-        legacy: 'irtmk.dll, getegyseg.dll',
+        description: 'Irodák és területi körzetek karbantartása',
         route: '/branch-groups',
         status: 'ready',
         icon: Building2,
@@ -254,7 +220,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'permission-matrix',
         title: 'Jogosultság mátrix',
-        legacy: 'userin.dll kiváltása',
+        description: 'Szerepkörök és jogosultságok beállítása',
         route: '/settings/permission-matrix',
         status: 'ready',
         icon: Shield,
@@ -268,7 +234,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'customer-control',
         title: 'Ügyfél-ellenőrzés',
-        legacy: 'ugyfctrl.exe, jogiszem.exe',
+        description: 'Ügyfelek és jogi szervezetek nyilvántartása',
         route: '/customers',
         status: 'ready',
         icon: Search,
@@ -277,7 +243,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'document-vault',
         title: 'Dokumentumtár',
-        legacy: 'okmctrl.exe, hiányzó okmányok',
+        description: 'Okmányok és hiányzó dokumentumok',
         route: '/documents',
         status: 'ready',
         icon: FileText,
@@ -286,7 +252,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'police-requests',
         title: 'Rendőrségi megkeresések',
-        legacy: 'police tool család',
+        description: 'Hatósági megkeresések kezelése',
         route: '/police-requests',
         status: 'ready',
         icon: Shield,
@@ -295,7 +261,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'circulars',
         title: 'Körlevél',
-        legacy: 'korlevel.exe',
+        description: 'Belső körlevelek és értesítések',
         route: '/circulars',
         status: 'ready',
         icon: Megaphone,
@@ -356,7 +322,7 @@ export default function CentralWorkstationPage() {
             <LayoutDashboard className="h-5 w-5 text-slate-700" />
             <div>
               <h1 className="text-lg font-semibold text-slate-900">Központi irányítóközpont</h1>
-              <div className="text-xs text-slate-500">Szerver-mappából kijelölt legacy funkciók modern munkaállomása</div>
+              <div className="text-xs text-slate-500">Felügyelet, riportok és törzsadat-kezelés</div>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs">
@@ -376,7 +342,7 @@ export default function CentralWorkstationPage() {
                   key={module.id}
                   type="button"
                   onClick={() => navigate(module.route)}
-                  className="min-h-[116px] rounded-md border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="min-h-[100px] rounded-md border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -389,8 +355,7 @@ export default function CentralWorkstationPage() {
                       {statusLabel[module.status]}
                     </span>
                   </div>
-                  <div className="mt-3 text-[11px] leading-4 text-slate-500">{module.legacy}</div>
-                  <div className="mt-2 text-[11px] font-medium text-blue-700">{module.route}</div>
+                  <div className="mt-2 text-[11px] leading-4 text-slate-500">{module.description}</div>
                 </button>
               ))}
             </div>
