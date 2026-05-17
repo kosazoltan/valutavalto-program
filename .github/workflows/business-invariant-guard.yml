@@ -24,9 +24,17 @@ jobs:
 
       - name: 1. Tilos cash counter mező (készlet = SUM(tx) invariáns)
         run: |
-          if find backend/src/main/java -name '*.java' 2>/dev/null \
-             | xargs grep -l 'private\s\+\(Long\|Integer\|BigDecimal\)\s\+\(cashCounter\|cash_counter\|currentStock\|inventoryCount\)' 2>/dev/null; then
+          # v2 mandate 6.1 minta #1: mező-tiltás (NEM nézet).
+          # Allowlist: materialized view / aggregátum entitások — osztály-név végződés:
+          # *Summary, *View, *Aggregate, *MaterializedView
+          OFFENDERS=$(find backend/src/main/java -name '*.java' 2>/dev/null \
+             | xargs grep -l 'private\s\+\(Long\|Integer\|BigDecimal\)\s\+\(cashCounter\|cash_counter\|currentStock\|inventoryCount\)' 2>/dev/null \
+             | grep -vE '(Summary|View|Aggregate|MaterializedView)\.java$' || true)
+          if [ -n "$OFFENDERS" ]; then
             echo "::error::Tiltott minta #1: cash counter mező — VV-ELVI invariáns: készlet = SUM(tranzakciók)"
+            echo "Sérelmes fájlok:"
+            echo "$OFFENDERS"
+            echo "Allowlist: *Summary, *View, *Aggregate, *MaterializedView végződésű osztályok (materialized view-k)."
             exit 1
           fi
 

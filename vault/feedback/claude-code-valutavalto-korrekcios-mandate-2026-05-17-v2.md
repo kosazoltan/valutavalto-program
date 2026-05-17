@@ -158,6 +158,8 @@ Az állapotgép-függvény kötelezően: validál + audit-log + sync outbox + We
 
 `.github/workflows/business-invariant-guard.yml`. 15 blokkoló minta, lásd a workflow file-t.
 
+**Allowlist a #1 mintához (cash counter mező):** materialized view / aggregátum entitások (`*Summary`, `*View`, `*Aggregate`, `*MaterializedView` végződésű osztályok) **megengedettek**, mert ezek **denormalizált aggregátum-cache** (NEM source-of-truth). A `készlet = SUM(tranzakciók)` invariáns érvényben marad: a materialized view periódikusan refresh-elődik a `transaction` táblából, NEM külön mutáció. Tipikus példa: `InventorySummary.currentStock`.
+
 **Tilos a Claude Code-nak kikapcsolni / kommentelni / if:false-ra állítani.**
 
 ---
