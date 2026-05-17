@@ -40,7 +40,7 @@
 | Multi-tenant izoláció | 3. | IMPLEMENTED | `*Repository.java` (companyId minden query-n) | `CrossTenantTest` (TERVEZETT) | teszt-coverage |
 | TransactionStatus enum | v2 5.1 | MISSING | — | — | enum + state machine |
 | RateStatus enum | v2 5.2 | MISSING | — | — | enum + state machine |
-| `business-invariant-guard.yml` | v2 6. | MISSING (jelen PR-ben létrehozva!) | `.github/workflows/business-invariant-guard.yml` | — | 15 tiltott minta CI step |
+| `business-invariant-guard.yml` | v2 6. | PARTIAL (jelen PR-ben elindítva) | `.github/workflows/business-invariant-guard.yml` | — | 1/15 minta blocking (cash counter mező), 6/15 warning-only. Pontosabb regex/AST kell a többi blocking-ra konvertálásához. |
 
 ## Hivatkozott külső doksik
 
