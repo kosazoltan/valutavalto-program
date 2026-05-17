@@ -1,17 +1,19 @@
 # Valutaváltó ERP — Claude Code kontextus
 
-## SESSION-START KÖTELEZŐ OLVASMÁNY (sorrendben)
+## SESSION-START KÖTELEZŐ OLVASMÁNY (sorrendben, ELVI elsőbbség)
 
 Minden új session-kezdéskor az alábbi fájlokat **kötelező** beolvasni ebben a sorrendben:
 
-1. **`vault/feedback/_active_mandates.md`** — aktív mandate-szabályok indexe (rövid táblázat)
-2. **`vault/feedback/claude-code-korrekcios-mandate-2026-05-17.md`** — üzleti / szabályozási dimenziók (Pmt., pénzügyi adatintegritás, multi-tenant, sztornó, code-signing, önminősítés)
-3. **`vault/feedback/ai-agent-push-ci-doctrine-2026-05-17.md`** — Push/CI/Deploy/Merge 10-fázisú doctrine
-4. **`CLAUDE.md`** (jelen fájl) — fejlesztői workflow
-5. **`~/.claude/projects/<project-hash>/memory/MEMORY.md`** — auto-memory index (a `<project-hash>` gép-/user-specifikus; jelen gépen `D--repo-valutavalto-program`)
-6. **`vault/sessions/`** — legfrissebb session-jegyzet (előző tanulság)
+1. **`vault/elvi/vv-elvi-mirror.md`** — VV-ELVI rövid kanonikus tükre (mindig **első**!)
+2. **`vault/feedback/_active_mandates.md`** — aktív mandate-index
+3. **`vault/feedback/claude-code-korrekcios-mandate-2026-05-17.md`** — VV-KORR-v1 (üzleti dimenziók)
+4. **`vault/feedback/claude-code-valutavalto-korrekcios-mandate-2026-05-17-v2.md`** — VV-KORR-v2 (EXZ-tanulságok: ELVI-MÓD, capability map, debt-scan, üzleti review)
+5. **`CLAUDE.md`** (jelen fájl) — VV-MÓD (mérnöki workflow)
+6. **`~/.claude/projects/<project-hash>/memory/MEMORY.md`** — auto-memory index
+7. **`docs/CAPABILITIES.md`** — capability map státusz (min. heti egyszer kötelező)
+8. **`vault/sessions/`** — legfrissebb session-jegyzet (előző tanulság)
 
-A `_active_mandates.md` index → konkrét mandate-fájl irány a navigáció. **Ne indulj el a feladaton, amíg ezt a 6 fájlt át nem olvastad.**
+A `_active_mandates.md` index → konkrét mandate-fájl irány a navigáció. **Ne indulj el a feladaton, amíg ezt a 8 fájlt át nem olvastad.**
 
 **WHEN IN DOUBT:** a repo-tény (kód, Flyway-migráció, AI_CONSTITUTION.md) **erősebb** mint az AI emlékezet.
 
