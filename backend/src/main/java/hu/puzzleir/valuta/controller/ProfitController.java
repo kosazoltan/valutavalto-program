@@ -21,7 +21,8 @@ import java.util.UUID;
  * Endpointok (hagyományos):
  * - GET /daily?branchId=&date=               → napi haszon
  * - GET /monthly?branchId=&month=            → havi haszon
- * - GET /company?companyId=&month=           → cég szintű haszon
+ * - GET /company?month=                      → cég szintű haszon (companyId
+ *                                              SecurityUtils-ből, audit P0.1 2026-05-17)
  *
  * WAC-alapú endpointok:
  * - GET /branch/{branchId}?from=&to=         → pénztár WAC haszon
