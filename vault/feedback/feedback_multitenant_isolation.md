@@ -11,27 +11,31 @@
 
 ## Implementációs pattern
 
+> **Megjegyzés (2026-05-17 audit):** A backend-ben a `companyId` típusa **`UUID`**, NEM `Long`. A `SecurityUtils.getCurrentCompanyId()` `UUID`-ot ad vissza. A példa-kód ennek megfelelően:
+
 ```java
 @Service
 public class TransactionService {
     public List<Transaction> findAll() {
-        Long companyId = SecurityUtils.getCurrentCompanyId();  // SecurityContextHolder
+        UUID companyId = SecurityUtils.getCurrentCompanyId();  // SecurityContextHolder
         return transactionRepository.findByCompanyId(companyId);
     }
 }
 
 @Repository
-public interface TransactionRepository extends JpaRepository<Transaction, Long> {
-    List<Transaction> findByCompanyId(Long companyId);  // EVERY query has it
+public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
+    List<Transaction> findByCompanyId(UUID companyId);  // EVERY query has it
 }
 ```
 
-## CI guard
+## CI guard (TERVEZETT, business-invariant-guard.yml v2 PR-ben)
 
-A `business-invariant-guard.yml` workflow ellenőrzi:
+A `business-invariant-guard.yml` workflow még NEM létezik — a v2 mandate PR-ben (`claude-code-valutavalto-korrekcios-mandate-2026-05-17-v2.md`) készül el. Tervezett bash (helyes glob-pattern-nel):
+
 ```bash
-grep -rn 'company_id\|companyId' src/main/java/.*Repository.java
-# Minden repository-fájlban legalább 1 találat kötelező
+# Minden repository-fájlban legalább 1 'companyId' / 'company_id' találat kötelező
+find backend/src/main/java -name '*Repository.java' -print0 \
+  | xargs -0 -I {} sh -c 'grep -q "companyId\|company_id" "{}" || { echo "::error::Multi-tenant guard sérül: {}"; exit 1; }'
 ```
 
 ## 9-fázisú zárási protokoll 2. lépésében

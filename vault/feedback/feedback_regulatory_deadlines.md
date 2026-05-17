@@ -12,15 +12,19 @@
 | NAV NPG online pénztárgép | NAV | real-time | **P0**, fallback off-line bizonylat |
 | SAR (gyanús ügylet) | Pénzügyi Hírszerző Egység | 5 munkanap | **P0**, manager review kötelező |
 
-## Kötelező scriptek (`scripts/regulatory/`)
+## TERVEZETT scriptek (`scripts/regulatory/`)
+
+**Jelenleg NEM létezik a `scripts/regulatory/` mappa a repo-ban.** Ezek terv-tételek, későbbi PR-ben létrehozandók:
 
 ```
-scripts/regulatory/mnb-publish.sh         # cron 14:00-kor
-scripts/regulatory/ngm-monthly-export.sh  # cron hó 14-én 06:00-kor
-scripts/regulatory/sar-notify.sh          # webhook trigger AML hit-re
+scripts/regulatory/mnb-publish.sh         # cron 14:00-kor  — TERVEZETT
+scripts/regulatory/ngm-monthly-export.sh  # cron hó 14-én 06:00-kor — TERVEZETT
+scripts/regulatory/sar-notify.sh          # webhook trigger AML hit-re — TERVEZETT
 ```
 
-Sikertelen futás → email + Slack alert.
+Sikertelen futás → email + Slack alert (TERVEZETT monitoring).
+
+**Status:** MISSING (capability map szerint). A jelen állapotban a szabályozási kimenetek nincsenek automatizálva — manuális process.
 
 ## Backend health endpoint
 

@@ -32,6 +32,14 @@ Ha bármelyik P0/P1 finding ezt a területet érinti, **automatikus escalation a
 
 > "Pmt. invariáns sértetlen — `AmlThresholdTest` + 4 további zöld."
 
-## Implementációs hivatkozás
+## Implementációs hivatkozás (jelen állapot vs. cél)
 
-A backend kódban a küszöbök `@Value` config-érték (NEM hard-coded szám), defaults: `aml.identification.threshold=100000`, `aml.pep.threshold=300000`. A frontend csak UI-hint, a backend mindig revalidál.
+**Jelenlegi állapot (2026-05-17, audit findings alapján):**
+- A backend `AmlService.java`-ban a küszöbök **konstansok** (`SIMPLIFIED_IDENTIFICATION_LIMIT = 100000`, `IDENTIFICATION_LIMIT = ...`), NEM `@Value` config.
+- A frontend csak UI-hint, a backend mindig revalidál — **ez már teljesül**.
+
+**Cél (jövő iteráció):**
+- A konstansokat `@Value`-vé alakítani (`aml.identification.threshold=100000`, `aml.pep.threshold=300000`) hogy env-szinten override-olható legyen test scenarios + jövőbeli jogszabály-változás miatt.
+- **Status:** PARTIAL — a backend-szintű enforcement IMPLEMENTED, a config-szintű paraméterizálás MISSING.
+
+A jelen mandate **NEM** a `@Value` migrációt kéri P0-ként — a hard-coded konstans backend-szinten enforced, ami megfelel a Pmt. követelménynek. A `@Value` migráció P2 (kényelmi javítás), külön PR-ben.

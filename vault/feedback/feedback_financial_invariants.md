@@ -22,12 +22,18 @@
 - [ ] `Rate.validTo` check a tranzakció elején
 - [ ] Minden új write service `@Transactional`-os
 
-## Regressziós tesztek
+## Regressziós tesztek (TERVEZETT)
+
+A `business-invariant-guard.yml` workflow + az alábbi tesztek **jelen állapotban NEM léteznek** — terv-tételek, későbbi PR-ben létrehozandók:
 
 ```
-backend/.../CashInventorySumInvariantTest.java
-backend/.../IdempotencyCoverageTest.java
-backend/.../ReceiptSequenceTest.java
-backend/.../RoundHufTest.java
-backend/.../RateValidityTest.java
+backend/.../CashInventorySumInvariantTest.java  — TERVEZETT
+backend/.../IdempotencyCoverageTest.java        — TERVEZETT
+backend/.../ReceiptSequenceTest.java            — TERVEZETT
+backend/.../RoundHufTest.java                    — TERVEZETT
+backend/.../RateValidityTest.java                — TERVEZETT
 ```
+
+A `RoundHuf` util viszont **MÁR LÉTEZIK** és használatban van — a teszt-coverage bővítése a TERVEZETT.
+
+**Status:** A 7 invariáns **viselkedés-szinten IMPLEMENTED** (a kód ennek megfelelően működik), de **explicit regressziós tesztekkel PARTIAL** (a tesztek többsége még írandó).

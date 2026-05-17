@@ -8,7 +8,7 @@ Minden új session-kezdéskor az alábbi fájlokat **kötelező** beolvasni ebbe
 2. **`vault/feedback/claude-code-korrekcios-mandate-2026-05-17.md`** — üzleti / szabályozási dimenziók (Pmt., pénzügyi adatintegritás, multi-tenant, sztornó, code-signing, önminősítés)
 3. **`vault/feedback/ai-agent-push-ci-doctrine-2026-05-17.md`** — Push/CI/Deploy/Merge 10-fázisú doctrine
 4. **`CLAUDE.md`** (jelen fájl) — fejlesztői workflow
-5. **`~/.claude/projects/D--repo-valutavalto-program/memory/MEMORY.md`** — auto-memory index
+5. **`~/.claude/projects/<project-hash>/memory/MEMORY.md`** — auto-memory index (a `<project-hash>` gép-/user-specifikus; jelen gépen `D--repo-valutavalto-program`)
 6. **`vault/sessions/`** — legfrissebb session-jegyzet (előző tanulság)
 
 A `_active_mandates.md` index → konkrét mandate-fájl irány a navigáció. **Ne indulj el a feladaton, amíg ezt a 6 fájlt át nem olvastad.**

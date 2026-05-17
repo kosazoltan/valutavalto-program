@@ -15,19 +15,23 @@
    - Idempotency-key alapján duplikáció nélkül
 5. **Konfliktus-feloldás:** last-write-wins **csak** ha az időbélyegek 5s-en belül vannak; egyébként manual review queue (admin felület).
 
-## Implementációs hivatkozás
+## Implementációs hivatkozás (jelen állapot — verify in code)
 
-- Local SQLite: `penztar-client/electron/db.ts` — `better-sqlite3`
-- Outbox: `penztar-client/electron/sync-engine.ts` — `outbox` tábla
-- Heartbeat config: `penztar-client/src/config/heartbeat.ts` — Zod schema `z.coerce.number().int().min(10_000).max(600_000)`
+A konkrét path-ok ellenőrzendők a `penztar-client/` aktuális struktúrája szerint. **A pontos fájlnevek jelen állapotban eltérhetnek** — az alábbiak iránymutatók, NEM kanonikus path-ok:
 
-## CI guard
+- Local SQLite: `penztar-client/electron/...` — `better-sqlite3` integráció (verify pontos path)
+- Outbox: `penztar-client/electron/sync-engine.ts` vagy hasonló — outbox-tábla létezése verify-elendő
+- Heartbeat config: `penztar-client/src/config/heartbeat.ts` — Zod schema `z.coerce.number().int().min(10_000).max(600_000)` (verify)
+
+**Status:** IMPLEMENTED a viselkedés szintjén (local-first runtime, outbox retry, Zod heartbeat), de a pontos fájlszervezés ellenőrzendő a v2 capability-map elkészítésekor.
+
+## CI guard (TERVEZETT, v2 PR-ben)
 
 ```bash
 # Zod validation present
 grep -rn 'z\.coerce\.number\|z\.object' penztar-client/src/config/
-# Outbox table migration present
-ls penztar-client/electron/db-migrations/*outbox*
+# Outbox table migration present (verify the actual migration filename)
+find penztar-client -path '*/db-migrations/*outbox*' -o -name '*outbox*sql'
 ```
 
 ## Release-előtti smoke test

@@ -13,8 +13,8 @@
 | C.1 | Nem-informatikus végfelhasználó alapelv | CLAUDE.md (2026-05-05) | always | P0 |
 | C.2 | Folyamatos tesztelési protokoll | CLAUDE.md (2026-05-04) | always | P0 |
 | C.3 | AI Review Zero-Tolerance Mandate (v2.3.18+) | CLAUDE.md (2026-04-29) | always | P0 |
-| C.4 | Auto-pull AI reviews (NEM email-másolás) | `feedback_auto_pull_reviews_no_email_copy.md` (2026-05-16) | always | P0 |
-| C.5 | Titkos kulcsok kezelése | `feedback_titok_kezeles_mandatory.md` (2026-05-16) | always | P0 |
+| C.4 | Auto-pull AI reviews (NEM email-másolás) | **auto-memory:** `~/.claude/projects/<hash>/memory/feedback_auto_pull_reviews_no_email_copy.md` (2026-05-16) | always | P0 |
+| C.5 | Titkos kulcsok kezelése | `vault/feedback/titok-kezeles-mandatory.md` + **auto-memory:** `feedback_titok_kezeles_mandatory.md` (2026-05-16) | always | P0 |
 | C.6 | Push = commit + merge + branch delete (v2) | CLAUDE.md (2026-04-23) | always | P1 |
 | C.7 | Memóriahasználati és tudáskarbantartási protokoll | CLAUDE.md (2026-05-04) | always | P1 |
 | C.8 | Security gate (always-on) | `mandatory-security-gate.mdc` | always | P0 |

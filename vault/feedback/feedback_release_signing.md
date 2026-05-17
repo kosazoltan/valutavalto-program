@@ -13,12 +13,14 @@ A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21):
 3. Engedélyezett: pre-release tagben, `internal-test` mappába, **kizárólag a fejlesztő gépén** futtatva.
 4. Az `internal-test` belső osztogatás **kollégáknak TILOS** (SmartScreen prompt + nem-informatikus user mandate, C.1).
 
-## CI guard
+## CI guard (TERVEZETT, v2.5.54 release-től)
 
-A `windows-signed-release.yml` workflow tartalmaz `require-signed: true` flag-et:
+**A jelenlegi `windows-signed-release.yml` workflow még NEM tartalmaz** `require-signed` flag-et és `signtool verify` lépést. Ezek TERVEZETT bővítések a DigiCert HSM cert kiadása után (várható 2026-05-21 körül).
+
+Tervezett YAML kiegészítés:
 
 ```yaml
-- name: Verify signature
+- name: Verify signature (TERVEZETT v2.5.54+)
   if: ${{ inputs.publish_release == 'true' }}
   run: |
     if [ "$REQUIRE_SIGNED" = "true" ]; then
@@ -26,7 +28,7 @@ A `windows-signed-release.yml` workflow tartalmaz `require-signed: true` flag-et
     fi
 ```
 
-Kikapcsolása → P0 reject.
+Kikapcsolása → P0 reject (mihelyt élesedik).
 
 ## v2.5.54+ verziók
 

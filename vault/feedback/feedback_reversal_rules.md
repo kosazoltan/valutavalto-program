@@ -11,13 +11,16 @@
 4. **Bizonylat-sorszám megmarad** — audit trail integritás. NEM felülírható, NEM törölhető.
 5. **Készlet visszaáll** atomikusan, `SUM(tranzakciók)` invariáns alapján (B.2 hivatkozás).
 
-## Implementációs hivatkozás
+## Implementációs hivatkozás (illusztratív)
+
+> **Megjegyzés:** Az alábbi Java-kód illusztráció — a `findByIdAndCompanyId` metódus jelen állapotban NEM létezik a `TransactionRepository`-ban. Hasonló metódus pl. `findByReceiptNumberAndCompanyId`. A valós implementáció a meglévő repository-metódusokat használja vagy újat ad hozzá. A `companyId` típusa `UUID`, NEM `Long`.
 
 ```java
-// ReversalService.java
+// ReversalService.java (illusztratív minta, NEM kanonikus)
 @Transactional
-public Transaction reverse(Long txId, Long currentWorkerId, String reason) {
-    Transaction original = transactionRepository.findByIdAndCompanyId(txId, getCurrentCompanyId())
+public Transaction reverse(UUID txId, UUID currentWorkerId, String reason) {
+    Transaction original = transactionRepository.findById(txId)
+        .filter(t -> t.getCompanyId().equals(SecurityUtils.getCurrentCompanyId()))
         .orElseThrow();
 
     // Rule 1: same day

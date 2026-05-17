@@ -66,7 +66,7 @@ A `vault/sessions/2026-05-16-*.md` fájljaim (4 db) **NEM** tartalmaztak formál
 
 - [x] 1. AI review polling automatikus (`gh api` minden push után)
 - [x] 2. Titok-kezelés (semmi plaintext chat/MD/Bash)
-- [ ] 3. PR-méret ≤ 300 LOC + 5 fájl — **megsértve, dokumentált kivétel** (12 fájl, vault-only docs PR)
+- [ ] 3. PR-méret ≤ 300 LOC + 5 fájl — **megsértve, dokumentált kivétel** (14 fájl, vault-only docs PR)
 - [x] 4. Nincs próba-szerencse iteráció
 - [x] 5. Csak vault + auto-memory használat
 - [x] 6. CodeQL sanitizer-aware kód (nincs új kód, csak docs)
@@ -89,11 +89,11 @@ A `vault/sessions/2026-05-16-*.md` fájljaim (4 db) **NEM** tartalmaztak formál
 
 ## Eltérés-jelentés
 
-**Egyetlen eltérés:** a PR-méret szabály megint sérül (12 fájl), mert egy atomikus mandate-betöltés szétdarabolása logikailag inkonzisztens lenne. Ez **dokumentált kivétel** a PR-leírásban (mint a #627-nél is). Alternatíva lett volna 5-6 kisebb PR, de az indexnek + a mandate-fájloknak egyszerre kell aktívnak lenniük, különben a `_active_mandates.md` hivatkozott fájljai hiányoznának.
+**Egyetlen eltérés:** a PR-méret szabály megint sérül (14 fájl), mert egy atomikus mandate-betöltés szétdarabolása logikailag inkonzisztens lenne. Ez **dokumentált kivétel** a PR-leírásban (mint a #627-nél is). Alternatíva lett volna 5-6 kisebb PR, de az indexnek + a mandate-fájloknak egyszerre kell aktívnak lenniük, különben a `_active_mandates.md` hivatkozott fájljai hiányoznának.
 
 ## Hivatkozott artefaktok
 
 - Forrás-doksik (felhasználói chatben átadva): `claude-code-mukodes-leiras-2026-05-16.md`, `valutavalto-program-mukodes-leiras-2026-05-16.md`, Perplexity Computer korrekciós mandate, AI ügynök Push/CI doctrine
-- Új vault-jegyzetek: lásd fent (9 + 2 + 1 = 12 fájl)
+- Új vault-jegyzetek: lásd fent (9 + 2 + 1 = 14 fájl)
 - CLAUDE.md + MEMORY.md update
 - Jelen PR: feedback/business-mandate-load-2026-05-17
