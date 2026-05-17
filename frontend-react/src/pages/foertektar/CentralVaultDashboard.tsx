@@ -179,7 +179,7 @@ export default function CentralVaultDashboard() {
 
     // Group by region for display
     const byRegion = rows.reduce<Record<string, BranchSummary[]>>((acc, r) => {
-        const reg = r.branch.region || '(Ismeretlen)'
+        const reg = r.branch.region || 'Régió nincs beállítva'
         if (!acc[reg]) acc[reg] = []
         acc[reg].push(r)
         return acc

@@ -1576,7 +1576,7 @@
   },
   "setup": {
     "aBejelentkezettDolgozoMunkakoreAlapjanASzerverEllenorziHogyJogosultEErreAProgramTipusra": "A bejelentkezett dolgozó munkaköre alapján a szerver ellenőrzi, hogy jogosult-e erre a program-típusra.",
-    "aTelepites4LepesbenElkeszul": "A telepítés 4 lépésben elkészül.",
+    "aTelepites4LepesbenElkeszul": "A telepítés 5 lépésben elkészül.",
     "aTelepitesBefejezeseGombMegnyomasakorAProgramKriptografiaiKulcsokatGeneral": "A „Telepítés befejezése” gomb megnyomásakor a program kriptográfiai kulcsokat generál,",
     "aValasztasATelepitesUtanIsModosithatoABeallitasokban": "A választás a telepítés után is módosítható a Beállításokban.",
     "adjaMegAKozpontiBackendUrlJetEsATesztelesHitelesitoAdatait": "Adja meg a központi backend URL-jét és a tesztelés hitelesítő adatait.",
@@ -1587,7 +1587,7 @@
     "elkeszitjukATelepitestUtanaAProgramAzonnalHasznalatraKeszLesz": "elkészítjük a telepítést, utána a program azonnal használatra kész lesz.",
     "elmentiAKonfiguraciotAHelyiEnvFajlbaMajdAutomatikusanUjraindul": "elmenti a konfigurációt a helyi .env fájlba, majd automatikusan újraindul.",
     "ezAFiokIrodaAmelyikbenASzamitogepFizikailagTalalhatoOsszesen": "Ez a fiók / iroda, amelyikben a számítógép fizikailag található. Összesen",
-    "ezAVarazsloVegigvezetiAzElsoInditasBeallitasain4RovidLepesben": "Ez a varázsló végigvezeti az első indítás beállításain. 4 rövid lépésben",
+    "ezAVarazsloVegigvezetiAzElsoInditasBeallitasain4RovidLepesben": "Ez a varázsló végigvezeti az első indítás beállításain. 5 rövid lépésben",
     "eztAKodotKellBeirniaABejelentkezesnelIs": "Ezt a kódot kell beírnia a bejelentkezésnél is.",
     "haNemHibauzenetetKapALoginNal": "Ha nem, hibaüzenetet kap a login-nal.",
     "jelszoAzIttMegadottUjJelszo": "Jelszó: az itt megadott új jelszó.",
@@ -2107,7 +2107,7 @@
   "vaultStocktake": {
     "aktivLeltarak": "Aktív leltárak",
     "cimlet": "Cimlet",
-    "cimletenkentiErtektarEllenorzesLegacyLeltarDllParity": "Címletenkénti értéktár ellenőrzés (legacy: LELTAR.DLL parity)",
+    "cimletenkentiErtektarEllenorzesLegacyLeltarDllParity": "Címletenkénti értéktár ellenőrzés",
     "ellenorzesreVar": "Ellenőrzésre vár",
     "elteres": "Elteres",
     "elteresHuf": "Elteres HUF",

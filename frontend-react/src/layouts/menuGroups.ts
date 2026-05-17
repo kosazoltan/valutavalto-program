@@ -1,4 +1,4 @@
-import { Send, Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, ShieldAlert, LayoutDashboard, PlusCircle, Download, Camera, Package, ClipboardCheck, Building2, MonitorCheck } from "lucide-react"
+import { Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, ShieldAlert, LayoutDashboard, Download, Camera, Package, ClipboardCheck, Building2, MonitorCheck } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { canonicalizeRoleForAppMode } from "../utils/appModeRoles"
 import type { AppMode } from "../types/appMode"
@@ -38,7 +38,6 @@ export const menuGroups: MenuGroup[] = [
     modes: ["full"],
     items: [
       { path: "/central-workstation", label: "Irányítóközpont", icon: MonitorCheck },
-      { path: "/central/sprint", label: "Központi sprint", icon: ClipboardCheck },
       { path: "/central/closing-control", label: "Zárás beérkezés", icon: ClipboardCheck },
       { path: "/central/received-data", label: "Beérkezett adatok", icon: FileText },
     ],
@@ -49,15 +48,11 @@ export const menuGroups: MenuGroup[] = [
     modes: ["full"],
     items: [
       { path: "/foertektar", label: "Országos dashboard", icon: LayoutDashboard },
-      { path: "/rate-management", label: "Árfolyam kezelés", icon: TrendingUp },
-      { path: "/rates/creation", label: "Árfolyam készítés", icon: PlusCircle },
-      { path: "/rate-management/workflow", label: "Árfolyam publikálás", icon: Send },
       { path: "/mnb/reports", label: "MNB jelentések", icon: FileText },
       { path: "/statistics/cashier-kpi", label: "Pénztáros KPI", icon: Users },
       { path: "/cashier-stocks", label: "Országos készlet", icon: Wallet },
       { path: "/stock-snapshot", label: "Készlet-snapshot", icon: FileText },
       { path: "/vault-stocktake", label: "Értéktár leltár", icon: Package },
-      // 2026-04-29 v2.3.15 (E-B8 banki workflow skeleton — teljes impl v2.4.0)
       { path: "/bank-orders", label: "Banki rendelések", icon: Building2 },
     ],
   },
@@ -109,13 +104,11 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "Árfolyamok",
+    label: "Árfolyamok (nézet)",
     canonicalRoles: ["foertektar", "arfolyam_nezo", "ugyvezeto"],
     modes: ["full"],
     items: [
-      { path: "/rate-management", label: "Árfolyam dashboard", icon: LayoutDashboard },
-      { path: "/rates/creation", label: "Árfolyam készítés", icon: PlusCircle, canonicalRoles: ["foertektar", "ugyvezeto"] },
-      { path: "/rates", label: "Árfolyamok", icon: TrendingUp },
+      { path: "/rates", label: "Aktuális árfolyamok", icon: TrendingUp },
       { path: "/rates/history", label: "Árfolyam történet", icon: FileText },
       { path: "/rates/categories", label: "Árfolyam kategóriák", icon: FileText, canonicalRoles: ["foertektar", "ugyvezeto"] },
     ],

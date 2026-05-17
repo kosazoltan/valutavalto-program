@@ -162,7 +162,7 @@ export default function ClosingControlPage() {
             <Clock className="h-5 w-5 text-slate-700" />
             <div>
               <h1 className="text-lg font-semibold text-slate-900">Zárás beérkezés felügyelet</h1>
-              <div className="text-xs text-slate-500">zarasctrl.dll, beerk.dll és missctrl.dll modern központi monitor</div>
+              <div className="text-xs text-slate-500">Napi zárások és nyitások beérkezésének valós idejű állapota</div>
             </div>
           </div>
           <button
