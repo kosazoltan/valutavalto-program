@@ -74,7 +74,7 @@ A pénztáros NEM veszíthet adatot. Kötelező:
 | NAV NPG online pénztárgép | NAV | real-time | P0, fallback off-line bizonylat |
 | SAR (gyanús ügylet) | Pénzügyi Hírszerző Egység | 5 munkanap | P0, manager review kötelező |
 
-`scripts/regulatory/` mappa kötelezően tartalmazza: `mnb-publish.sh` (cron 14:00), `ngm-monthly-export.sh` (hó 14-én 06:00), `sar-notify.sh` (webhook AML hit-re). Sikertelen futás email/Slack alert.
+**TERVEZETT** `scripts/regulatory/` mappa (későbbi PR-ben létrehozandó): `mnb-publish.sh` (cron 14:00), `ngm-monthly-export.sh` (hó 14-én 06:00), `sar-notify.sh` (webhook AML hit-re). Sikertelen futás → tervezett email/Slack alert. **Jelenleg manuális process** — capability map: MISSING.
 
 ### 1.6 Sztornó szabály invariáns — `feedback_reversal_rules.md`
 
@@ -149,9 +149,9 @@ Záró jelentés kötelező mondata:
 
 ## 3. AI bot review-loop kiegészítése
 
-### 3.1 Üzleti invariáns regex-ellenőrzés workflow (`business-invariant-guard.yml`)
+### 3.1 Üzleti invariáns regex-ellenőrzés workflow (`business-invariant-guard.yml` — TERVEZETT)
 
-Trigger: minden PR. Lépések:
+**Status:** TERVEZETT (v2 PR-ben létrehozandó). Trigger: minden PR. Lépések:
 1. `grep -rn 'cashCounter\|cash_counter\|inventoryCount'` → találat = P0.
 2. `grep -rn 'amlThreshold = [0-9]'` → magic number ellenőrzés.
 3. `grep -rn '\.skip()\|@Disabled\|@Ignore' src/test/` → találat = P0 (test-skip tilos).

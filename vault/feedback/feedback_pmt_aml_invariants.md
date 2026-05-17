@@ -6,7 +6,7 @@
 
 ## Tartalom
 
-A Pmt. küszöbértékei **kódban hard-coded, backend-szinten enforced** invariánsok. Soha NEM szabad:
+A Pmt. küszöbértékei **backend-szinten enforced** invariánsok (jelenleg `AmlService.java` konstansokként, jövőben `@Value`-ként — lásd "Implementációs hivatkozás" lent). Soha NEM szabad:
 
 1. A **100 000 HUF** identifikáció-küszöböt frontend-only validációvá gyengíteni.
 2. A **300 000 HUF** PEP + saját-név küszöböt opcionálissá tenni.
