@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
@@ -55,7 +56,7 @@ class RateApprovalServiceTenantTest {
     @InjectMocks private RateApprovalService rateApprovalService;
 
     @Test
-    @DisplayName("approveRateChange — Company A user EM approve-ol Company B approval-t")
+    @DisplayName("approveRateChange — Company A user NEM approve-ol Company B approval-t")
     void approveRateChange_otherCompany_throws() {
         try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
             secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_A);
@@ -86,6 +87,52 @@ class RateApprovalServiceTenantTest {
                     .isInstanceOf(ResourceNotFoundException.class);
 
             verify(rateApprovalRepository, never()).findById(APPROVAL_ID);
+        }
+    }
+
+    @Test
+    @DisplayName("getPendingApprovals — csak a saját cég approval-ait adja vissza")
+    void getPendingApprovals_tenantFiltered() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_A);
+
+            // A tenant-safe metódus üres listát ad vissza (Company A-nak nincs pending)
+            when(rateApprovalRepository.findByStatusAndBranch_Company_IdOrderByRequestedAtDesc(
+                    RateApprovalStatus.PENDING, COMPANY_A))
+                    .thenReturn(java.util.Collections.emptyList());
+
+            java.util.List<hu.puzzleir.valuta.dto.rateapproval.RateApprovalDto> result =
+                    rateApprovalService.getPendingApprovals();
+
+            assertThat(result).isEmpty();
+
+            // Verify hogy a deprecated cross-tenant metódus NEM hívódott
+            verify(rateApprovalRepository, never())
+                    .findByStatusOrderByRequestedAtDesc(RateApprovalStatus.PENDING);
+            // Verify hogy a tenant-safe variánst hívtuk
+            verify(rateApprovalRepository).findByStatusAndBranch_Company_IdOrderByRequestedAtDesc(
+                    RateApprovalStatus.PENDING, COMPANY_A);
+        }
+    }
+
+    @Test
+    @DisplayName("getApprovalHistory(null) — NEM findAll(), tenant-szűrt company history")
+    void getApprovalHistory_nullBranchId_tenantFiltered() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_A);
+
+            when(rateApprovalRepository.findByBranch_Company_IdOrderByRequestedAtDesc(COMPANY_A))
+                    .thenReturn(java.util.Collections.emptyList());
+
+            java.util.List<hu.puzzleir.valuta.dto.rateapproval.RateApprovalDto> result =
+                    rateApprovalService.getApprovalHistory(null);
+
+            assertThat(result).isEmpty();
+
+            // KRITIKUS: a régi findAll() NEM hívódott — ez volt a total data leak
+            verify(rateApprovalRepository, never()).findAll();
+            verify(rateApprovalRepository, never()).findAll(org.mockito.ArgumentMatchers.any(org.springframework.data.domain.Sort.class));
+            verify(rateApprovalRepository).findByBranch_Company_IdOrderByRequestedAtDesc(COMPANY_A);
         }
     }
 
