@@ -11,6 +11,7 @@ import hu.puzzleir.valuta.dto.rateapproval.RequestRateChangeDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.RateApprovalRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,8 +45,13 @@ public class RateApprovalService {
      */
     @Transactional(rollbackFor = Exception.class)
     public RateApprovalDto requestRateChange(RequestRateChangeDto dto, Long requestedById) {
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
         Branch branch = branchRepository.findById(dto.getBranchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + dto.getBranchId()));
+        // Audit P0.2 tenant guard: a branch csak a saját cég tulajdona lehet
+        if (!branch.getCompany().getId().equals(currentCompanyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + dto.getBranchId());
+        }
 
         Worker requester = workerRepository.findById(requestedById)
                 .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található: " + requestedById));
@@ -79,7 +85,9 @@ public class RateApprovalService {
      */
     @Transactional(rollbackFor = Exception.class)
     public RateApprovalDto approveRateChange(UUID approvalId, Long approvedById) {
-        RateApproval approval = rateApprovalRepository.findById(approvalId)
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        // Audit P0.2 tenant-safe lookup — cross-tenant approve blokkolt
+        RateApproval approval = rateApprovalRepository.findByIdAndBranch_Company_Id(approvalId, currentCompanyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Jóváhagyás nem található: " + approvalId));
 
         if (approval.getStatus() != RateApprovalStatus.PENDING) {
@@ -134,7 +142,9 @@ public class RateApprovalService {
      */
     @Transactional(rollbackFor = Exception.class)
     public RateApprovalDto rejectRateChange(UUID approvalId, String reason) {
-        RateApproval approval = rateApprovalRepository.findById(approvalId)
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        // Audit P0.2 tenant-safe lookup — cross-tenant reject blokkolt
+        RateApproval approval = rateApprovalRepository.findByIdAndBranch_Company_Id(approvalId, currentCompanyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Jóváhagyás nem található: " + approvalId));
 
         if (approval.getStatus() != RateApprovalStatus.PENDING) {
@@ -159,7 +169,10 @@ public class RateApprovalService {
      */
     @Transactional(readOnly = true)
     public List<RateApprovalDto> getPendingApprovals() {
-        return rateApprovalRepository.findByStatusOrderByRequestedAtDesc(RateApprovalStatus.PENDING)
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        // Audit P0.2 tenant-safe — csak a saját cég pending kérelmei
+        return rateApprovalRepository
+                .findByStatusAndBranch_Company_IdOrderByRequestedAtDesc(RateApprovalStatus.PENDING, currentCompanyId)
                 .stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -170,15 +183,18 @@ public class RateApprovalService {
      */
     @Transactional(readOnly = true)
     public List<RateApprovalDto> getApprovalHistory(UUID branchId) {
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
         if (branchId == null) {
-            return rateApprovalRepository.findAll(
-                    org.springframework.data.domain.Sort.by(
-                            org.springframework.data.domain.Sort.Direction.DESC, "requestedAt"))
+            // Audit P0.2 tenant-safe — minden saját-cég approval, NEM findAll()!
+            // A findAll() korábbi hívás CROSS-TENANT DATA LEAK volt.
+            return rateApprovalRepository
+                    .findByBranch_Company_IdOrderByRequestedAtDesc(currentCompanyId)
                     .stream()
                     .map(this::toDto)
                     .collect(Collectors.toList());
         }
-        return rateApprovalRepository.findByBranchIdOrderByRequestedAtDesc(branchId)
+        return rateApprovalRepository
+                .findByBranchIdAndBranch_Company_IdOrderByRequestedAtDesc(branchId, currentCompanyId)
                 .stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
