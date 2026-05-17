@@ -97,7 +97,7 @@ public class SetupGoogleIdentificationService {
             return buildSharedEmailSelectedResponse(identity, branch, selectedWorker, requestedAppMode);
         }
 
-        throw new AuthenticationException("Ez a Google email nincs engedelyezve az EXZ rendszerben.");
+        throw new AuthenticationException("Ez a Google email nincs engedelyezve a rendszerben.");
     }
 
     private GoogleIdTokenService.VerifiedGoogleIdentity verifyIdentity(String idToken) {
