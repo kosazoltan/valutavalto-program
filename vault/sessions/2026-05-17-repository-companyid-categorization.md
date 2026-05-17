@@ -98,17 +98,22 @@ Cég-érzékeny adatok, **kritikus** hogy a Repository szintjén legyen companyI
 | `DenominationBalanceRepository`, `DenominationCountRepository`, `DenominationRuleRepository`, `DenominationOptimizationRepository`, `DenominationTransactionLogRepository` | Címletezés-rendszer |
 | `CollectedInventoryRepository`, `CollectedTransactionRepository` | Begyűjtés |
 | `ClosingWizardRepository` | Zárás-wizard |
-| `AmlThresholdRepository` | AML küszöb (cég-specifikus override) |
+
+> **Copilot review (2026-05-17) korrekció:** `AmlThresholdRepository` áthelyezve a **GLOBAL** listára (a meglévő entity globális statutory threshold, NEM cég-override). `OrganizationalSystemParameterRepository` szintén marad **GLOBAL** (rendszerszintű parameter). `CommissionRateRepository` jelenleg jogosan **TENANT** (cég-szintű jutalék-tábla).
 
 **~ 30 TENANT-érzékeny + ~25 valószínűleg-TENANT** = nagyjából 55 fájl ahol explicit verify kell.
 
-### 🟡 BIZONYTALAN — manuális kategorizálás kell (~10 db)
+### 🟡 BIZONYTALAN — manuális kategorizálás kell (~5-7 db a Copilot deduplikáció után)
 
-Nem egyértelmű fájlnévből:
-- `OrganizationalSystemParameterRepository` (organizational = company-szintű?)
-- `AmlThresholdRepository` (lehet globális, lehet cég-override-os)
-- `CommissionRateRepository` (cég-szintű jutalék-tábla?)
-- ...
+> **Copilot review korrekció (2026-05-17):** Az alábbi 3 elem **deduplikálva** — egyértelmű kategóriába kerültek:
+> - `OrganizationalSystemParameterRepository` → **GLOBAL** (rendszerszintű parameter)
+> - `AmlThresholdRepository` → **GLOBAL** (statutory threshold, NEM cég-override a jelen entity szerint)
+> - `CommissionRateRepository` → **TENANT** (cég-szintű jutalék-tábla)
+
+A maradék ~5-7 BIZONYTALAN fájl konkrét üzleti döntést igényel (sprint-tervezett). Minden ilyen fájlhoz manuálisan kell ellenőrizni:
+1. Az entity-ben van-e direkt `companyId` vagy `company` mező?
+2. Az entity branch-en vagy worker-en keresztül kapcsolódik egy companyId-hez?
+3. Vagy globálisan közös minden cégnek?
 
 ## Megállapítás
 
@@ -178,3 +183,79 @@ A user felelőssége eldönteni:
 - [x] TOP-10 priorizálás
 - [ ] Sprint 1 (TOP-10 fix) — **user decision**
 - [ ] Cross-tenant test (P0.3) — **következő PR**
+
+## Appendix: teljes 116-os lista (Copilot review #3 finding — auditable forrás)
+
+A `grep -c "companyId\|company_id"` parancs eredménye `backend/src/main/java/hu/puzzleir/valuta/repository/*Repository.java`-n (2026-05-17 állapot szerint, 116 fájl `companyId`/`company_id` referencia nélkül):
+
+```
+AmlThresholdRepository                ArchiveTaskRepository
+ArchivedMonthlyTransactionRepository  ArchivedTransactionRepository
+AuthorizationLogRepository            AuthorizationRepository
+BackupRecordRepository                BanknoteInventoryRepository
+BranchGroupRepository                 BranchStatusRepository
+CameraAccessLogRepository             CameraConfigRepository
+CameraExportRequestRepository         CameraRecordingRepository
+CameraSegmentHashRepository           CameraTransactionLinkRepository
+CashRegisterEventRepository           ChainOfCustodyRepository
+CircularAcknowledgmentRepository      ClientErrorLogRepository
+ClosingWizardRepository               CollectedInventoryRepository
+CollectedTransactionRepository        CommissionCalculationRepository
+CommissionRateRepository              CompanyRepository
+CompetitorRateRepository              CompetitorRepository
+ContributionRepository                CurrencyGroupRepository
+CustomerRestrictionRepository         CustomerScreeningLogRepository
+DailyBalanceRepository                DailyChecklistItemRepository
+DailyDenominationSnapshotRepository   DailySubledgerSnapshotRepository
+DailyWuAfaTransactionRepository       DariusReportLineRepository
+DataCollectionRepository              DataImportJobRepository
+DecadeReportRepository                DenominationBalanceRepository
+DenominationCountRepository           DenominationOptimizationRepository
+DenominationRuleRepository            DenominationTransactionLogRepository
+DictionaryRepository                  EmailAccountRepository
+EmailCacheRepository                  EmployeeAddressRepository
+EmployeeBankAccountRepository         EveningClosingRepository
+EveningSyncLogRepository              ExchangeRateDisplayRepository
+ExchangeRateDistributionRepository    ExchangeRateSourceRepository
+FeeRateRepository                     FeeTypeRepository
+FeorCodeRepository                    FtpSyncLogRepository
+HandlingFeeDecadeReportRepository     HandlingFeeTransactionRepository
+HrkTransactionRepository              InventoryRegenerationRepository
+InventorySummaryRepository            LedDisplayConfigRepository
+LedDisplayRepository                  MnbExchangeRateCacheRepository
+MnbReportLineRepository               MnbReportRepository
+MonthlyClosingSummaryRepository       NavClosingLineRepository
+NeonSyncLogRepository                 NotificationRepository
+OrganizationalSystemParameterRepository PackagingRecordRepository
+PasswordResetTokenRepository          PermissionRepository
+PoliceRequestRepository               PosTerminalRepository
+RateApprovalRepository                RateCategoryRepository
+ReceiptSequenceRepository             RefreshTokenRepository
+RoleRepository                        RoundingRuleRepository
+SanctionEntryRepository               SanctionScreeningLogRepository
+ScannedDocumentRepository             ScheduledTaskRepository
+SealNumberRepository                  ShipmentRequestItemRepository
+ShipmentRequestRepository             StornoApprovalRepository
+SupervisorPinAttemptRepository        SyncInboxRepository
+SyncLogRepository                     SyncOutboxRepository
+SystemParameterRepository             TokenBlacklistRepository
+TradeRepository                       TransactionBanknoteRepository
+TransactionLineRepository             TranslationRepository
+VaultStocktakeItemRepository          WorkerAttendanceRepository
+WorkerBranchAccessRepository          WorkerBreakRepository
+WorkerCommissionRepository            WorkerCompetitionEntryRepository
+WorkerCompetitionRepository           WorkerMfaRepository
+WorkerRoleAssignmentRepository        WorkerRoleDefinitionRepository
+WorkerRolePermissionRepository        WorkstationRepository
+```
+
+**Reprodukálás:**
+```bash
+find backend/src/main/java/hu/puzzleir/valuta/repository -name '*Repository.java' \
+  | while read f; do
+      count=$(grep -c "companyId\|company_id" "$f")
+      if [ "$count" = "0" ]; then
+        echo "$(basename $f .java)"
+      fi
+    done | sort
+```
