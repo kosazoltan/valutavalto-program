@@ -116,15 +116,38 @@ BEGIN
           WHERE company_id = v_ebc_id AND code = 'G_PECS_RAKOCZI'
      );
 
-    RAISE NOTICE 'V233: Whitelist korrekciok (Kiss Kornel +, Pecs Rakoczi -) lefutottak.';
+    -- ============================================================
+    -- 3. BORSI TAMAS FOERTEKTAR ROLE HOZZAADAS
+    -- ============================================================
+    -- User-direktiva 2026-05-17 23:00: Borsi Tamas foertektar (V179-ben csak
+    -- CASHIER role-ral szerepelt, role assignment nelkul).
+    -- Eredmenyben: ertektar + foertektar canonical role, primary=ertektar.
+    INSERT INTO worker_role_assignment (worker_id, role_def_id, is_primary)
+    SELECT w.id, r.id, true
+      FROM worker w, worker_role_def r
+     WHERE w.code = 'BORSI'
+       AND w.company_id = v_ebc_id
+       AND r.code = 'ertektar'
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO worker_role_assignment (worker_id, role_def_id, is_primary)
+    SELECT w.id, r.id, false
+      FROM worker w, worker_role_def r
+     WHERE w.code = 'BORSI'
+       AND w.company_id = v_ebc_id
+       AND r.code = 'foertektar'
+    ON CONFLICT DO NOTHING;
+
+    RAISE NOTICE 'V233: Whitelist korrekciok (Kiss Kornel +, Pecs Rakoczi -, Borsi foertektar +) lefutottak.';
 END
 $$;
 
--- Assertion: Kiss Kornel aktiv, Pecs Rakoczi inaktiv
+-- Assertion: Kiss Kornel aktiv, Pecs Rakoczi inaktiv, Borsi foertektar
 DO $$
 DECLARE
     v_kiss_active INT;
     v_rakoczi_active INT;
+    v_borsi_foertektar INT;
 BEGIN
     SELECT COUNT(*) INTO v_kiss_active
       FROM worker w
@@ -141,6 +164,15 @@ BEGIN
        AND w.code = 'G_PECS_RAKOCZI'
        AND w.is_active = true;
 
+    SELECT COUNT(*) INTO v_borsi_foertektar
+      FROM worker w
+      JOIN worker_role_assignment wra ON wra.worker_id = w.id
+      JOIN worker_role_def r ON r.id = wra.role_def_id
+      JOIN company c ON c.id = w.company_id
+     WHERE c.code = 'EBC'
+       AND w.code = 'BORSI'
+       AND r.code = 'foertektar';
+
     IF v_kiss_active = 0 THEN
         RAISE EXCEPTION 'V233: Kiss Kornel NEM aktiv az EBC alatt!';
     END IF;
@@ -149,6 +181,10 @@ BEGIN
         RAISE EXCEPTION 'V233: Pecs Rakoczi meg mindig aktiv!';
     END IF;
 
-    RAISE NOTICE 'V233: Verifikalva - Kiss Kornel aktiv, Pecs Rakoczi inaktiv.';
+    IF v_borsi_foertektar = 0 THEN
+        RAISE EXCEPTION 'V233: BORSI nem kapott foertektar role-t!';
+    END IF;
+
+    RAISE NOTICE 'V233: Verifikalva - Kiss Kornel aktiv, Pecs Rakoczi inaktiv, Borsi foertektar.';
 END
 $$;
