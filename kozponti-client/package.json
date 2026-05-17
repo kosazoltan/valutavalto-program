@@ -1,6 +1,6 @@
 {
   "name": "valuta-kozponti-client",
-  "version": "2.5.54",
+  "version": "2.5.55",
   "private": true,
   "author": "Exclusive Best Change Zrt.",
   "description": "Kozponti helyi iranyitokozpont - Electron GUI a szerver/DLL legacy funkciok modern moduljaihoz",
