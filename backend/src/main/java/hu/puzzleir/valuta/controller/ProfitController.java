@@ -60,9 +60,11 @@ public class ProfitController {
     @GetMapping("/company")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProfitCalculationService.ProfitReport> company(
-            @RequestParam UUID companyId,
             @RequestParam String month) {
-        // IDOR védelem: csak saját cég adatai lekérhetők
+        // IDOR-fix (audit 2026-05-17): a companyId SecurityUtils-ből, SOHA
+        // nem kliens-küldött @RequestParam-ból. A korábbi companyId-paraméter
+        // törölve (a service már SecurityUtils-t használt, de a paraméter
+        // jelenléte félrevezető volt).
         UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
         return ResponseEntity.ok(service.calculateCompanyProfit(currentCompanyId, month));
     }

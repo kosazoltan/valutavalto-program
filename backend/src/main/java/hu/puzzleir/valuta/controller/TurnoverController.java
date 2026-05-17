@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.turnover.TurnoverReportDto;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.TurnoverService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -54,9 +55,11 @@ public class TurnoverController {
 
     @GetMapping("/company")
     public ResponseEntity<TurnoverReportDto> company(
-            @RequestParam UUID companyId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(turnoverService.getCompanyTurnover(companyId, from, to));
+        // IDOR-fix (audit 2026-05-17): a companyId SecurityUtils-ből,
+        // SOHA nem kliens-küldött @RequestParam-ból
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        return ResponseEntity.ok(turnoverService.getCompanyTurnover(currentCompanyId, from, to));
     }
 }
