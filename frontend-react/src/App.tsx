@@ -25,7 +25,6 @@ const TransitPage = lazy(() => import('./pages/transit/TransitPage'))
 const NotFoundPage = lazy(() => import('./pages/common/NotFoundPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const CentralWorkstationPage = lazy(() => import('./pages/central/CentralWorkstationPage'))
-const CentralSprintPage = lazy(() => import('./pages/central/CentralSprintPage'))
 const ClosingControlPage = lazy(() => import('./pages/central/ClosingControlPage'))
 const ReceivedDataOverviewPage = lazy(() => import('./pages/central/ReceivedDataOverviewPage'))
 const CentralVaultDashboard = lazy(() => import('./pages/foertektar/CentralVaultDashboard'))
@@ -433,7 +432,6 @@ export default function App() {
           >
             <Route path="/" element={<Navigate to={defaultProtectedRoute} replace />} />
             <Route path="/central-workstation" element={<CentralWorkstationPage />} />
-            <Route path="/central/sprint" element={<CentralSprintPage />} />
             <Route path="/central/closing-control" element={<ClosingControlPage />} />
             <Route path="/central/received-data" element={<ReceivedDataOverviewPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
