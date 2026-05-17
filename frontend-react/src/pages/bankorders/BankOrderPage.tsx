@@ -96,7 +96,7 @@ export default function BankOrderPage() {
     try {
       const effectiveStatus = statusOverride ?? statusFilter
       const result = await bankOrdersApi.list(effectiveStatus || undefined, 0, 100)
-      setOrders(result.content)
+      setOrders(result?.content ?? [])
     } catch (err) {
       logger.error('BankOrderPage', 'Lista hiba:', err)
       setError(err instanceof Error ? err.message : 'Ismeretlen hiba')
