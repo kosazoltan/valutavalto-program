@@ -28,14 +28,14 @@ A felhasználó (Kósa Zoltán) kérte: "nézd végig a teljes programkódot az 
 
 | Capability | Status | Fájl + sor |
 |---|---|---|
-| 100k / 300k küszöb backend-enforced | IMPLEMENTED | `service/AmlService.java:62-74` (`SIMPLIFIED_IDENTIFICATION_LIMIT`, `IDENTIFICATION_LIMIT`, `ANNUAL_ROLLING_LIMIT`) |
-| Sanction-list fuzzy match (Levenshtein ≤2) | IMPLEMENTED | `service/SanctionScreeningService.java` |
-| Cyclic customer (structuring) | IMPLEMENTED | `service/AmlService.java:925-947` (`isStructuring()`) |
-| PEP-jelölés + 6-szintű kockázat | IMPLEMENTED | `entity/Customer.java:249` (`isPep`) + `AmlService.java:412-446` |
-| SAR auto-flag + 2 nap deadline | IMPLEMENTED | `entity/AmlReport.java:110-111` + `controller/AmlController.java:79-82` |
-| Sanction-list napi 06:00 refresh | IMPLEMENTED | `config/SanctionListScheduler.java:49-68` (UN + EU) |
+| 100k / 300k küszöb backend-enforced | IMPLEMENTED | `backend/src/main/java/hu/puzzleir/valuta/service/AmlService.java:62-74` (`SIMPLIFIED_IDENTIFICATION_LIMIT`, `IDENTIFICATION_LIMIT`, `ANNUAL_ROLLING_LIMIT`) |
+| Sanction-list fuzzy match (Levenshtein ≤2) | IMPLEMENTED | `backend/src/main/java/hu/puzzleir/valuta/service/SanctionScreeningService.java` |
+| Cyclic customer (structuring) | IMPLEMENTED | `backend/src/main/java/hu/puzzleir/valuta/service/AmlService.java:925-947` (`isStructuring()`) |
+| PEP-jelölés + 6-szintű kockázat | IMPLEMENTED | `backend/src/main/java/hu/puzzleir/valuta/entity/Customer.java:249` (`isPep`) + `backend/src/main/java/hu/puzzleir/valuta/service/AmlService.java:412-446` |
+| SAR auto-flag + 2 nap deadline | IMPLEMENTED | `backend/src/main/java/hu/puzzleir/valuta/entity/AmlReport.java:110-111` + `backend/src/main/java/hu/puzzleir/valuta/controller/AmlController.java:79-82` |
+| Sanction-list napi 06:00 refresh | IMPLEMENTED | `backend/src/main/java/hu/puzzleir/valuta/config/SanctionListScheduler.java:49-68` (UN + EU) |
 
-**Konklúzió:** A Pmt. compliance **teljes mértékben implementálva** backend-enforced REST endpointokkal (`/api/v1/aml/*`) és multi-tenant isolation-nal.
+**Konklúzió:** A Pmt. compliance **AML-területen** teljes mértékben implementálva backend-enforced REST endpointokkal (`/api/v1/aml/*`). Az AML endpoint-ok tenant-szűrést végeznek (companyId). **NB:** ez a kijelentés csak az AML területre vonatkozik — az általános multi-tenant izoláció státusza külön (B.3 **PARTIAL** — IDOR finding-ekkel).
 
 ---
 
@@ -131,7 +131,7 @@ A jelen ülés nem fixálja ezeket — escalation Kósa Zoltánnak.
 
 | Capability | Status | Hivatkozás |
 |---|---|---|
-| Local SQLite (sql.js, WASM) | IMPLEMENTED | `electron/sqlite.ts` — `~/.valuta/local.db` |
+| Local SQLite (sql.js, WASM) | IMPLEMENTED | `penztar-client/electron/sqlite.ts` — `~/.valuta/local.db` |
 | 9 pending_* outbox tábla | IMPLEMENTED | `pending_transactions`, `pending_conversions`, `pending_bank_transactions`, `pending_stornos`, `pending_handover_operations`, `pending_transfers`, `pending_distributions`, `pending_collections`, `pending_stocktake_items` |
 | Idempotency key (UUID) | IMPLEMENTED | minden pending táblán `idempotency_key TEXT` |
 | 3× retry max threshold | **PARTIAL** | `retry_count INTEGER` mező + increment logika, **DE max threshold (3) NEM hardcoded** — verify needed |
@@ -143,7 +143,7 @@ A jelen ülés nem fixálja ezeket — escalation Kósa Zoltánnak.
 | Offline képesség | IMPLEMENTED | pending táblák szinkron write OK |
 
 **P2 follow-up:**
-- Heartbeat 30s → 60s konfigváltás (vagy v2 mandate updatel 30s-ra)
+- Heartbeat 30s → 60s konfigváltás (vagy v2 mandate frissítse 30s-ra)
 - Zod schema explicit definíció verify
 - 5s konfliktus-window algoritmus verify
 - 3× retry max threshold hardcode verify
@@ -172,7 +172,7 @@ A jelen ülés nem fixálja ezeket — escalation Kósa Zoltánnak.
 ### NO ACTION (IMPLEMENTED)
 - Pmt./AML 6/6 (B.1) ✅
 - Bizonylat-sorszám, IdempotencyFilter, roundHuf (B.2 részben) ✅
-- Sztornó 5 invariáns (B.6) ✅
+- Sztornó (B.6) — **4/5 invariáns IMPLEMENTED**, a #3 (before-closing explicit time-window) **PARTIAL** ⚠️ (lásd B.6 részlet — `@Transactional` rollback függő, explicit `dailyClosing.status != 'CLOSED'` ellenőrzés a sztornó flow-ban hiányzik)
 - Napzárás 4/5 invariáns ✅
 - Local SQLite + outbox tábla (B.4) ✅
 
@@ -199,4 +199,4 @@ A user feladata eldönteni:
 2. Az enum-refaktor (E.4/E.5) **mikor** induljon külön sprint-ként?
 3. A 43 missing companyId Repository — automatikus fix-szel javítható-e (Agent-tel), vagy kézi review szükséges üzleti döntéssel (mely globális, mely tenant)?
 
-Az audit-jelentés ezeket nem fixáli — csak dokumentálja. A jelen PR megnyitásával a finding-ek auditálhatóvá válnak.
+Az audit-jelentés ezeket nem fixálja — csak dokumentálja. A jelen PR megnyitásával a finding-ek auditálhatóvá válnak.
