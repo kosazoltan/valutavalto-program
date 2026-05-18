@@ -465,22 +465,29 @@ app.whenReady().then(async () => {
     log.error('[App] userData/.env betoltesi hiba:', err)
   }
 
-  // EBC Hangsegéd Phase 9.5 — mikrofon engedély a renderer-ben futo
-  // VoiceAssistantPanel WebRTC szessziohoz (OpenAI Realtime API).
-  // Csak a sajat origin-eink kapnak `media` engedelyt.
+  // EBC Hangsegéd Phase 9.5 — mikrofon engedély (lasd penztar-client/electron/main.ts).
+  // Security: URL parse + exact hostname/protocol compare (Codex P1 + CodeQL + Copilot fix).
+  // Non-media permission: az Electron alapertelmezett viselkedeset (allow) megtartjuk (Sourcery P2 fix).
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
-    if (permission === 'media') {
-      const requesting = String(details?.requestingUrl ?? '')
-      const isOurOrigin =
-        requesting.startsWith('app://localhost') ||
-        requesting.startsWith('http://localhost:') ||
-        requesting.startsWith('https://excvaluta.com')
-      if (isOurOrigin) {
-        log.info('[VoiceAssistant] media (mic) engedely megadva:', requesting)
+    if (permission !== 'media') {
+      callback(true)
+      return
+    }
+    let requestingOrigin = ''
+    try {
+      const url = new URL(String(details?.requestingUrl ?? ''))
+      requestingOrigin = url.origin
+      const isLocalApp = url.protocol === 'app:' && url.hostname === 'localhost'
+      const isLocalHttp = url.protocol === 'http:' && url.hostname === 'localhost'
+      const isProduction = url.protocol === 'https:' && url.hostname === 'excvaluta.com'
+      if (isLocalApp || isLocalHttp || isProduction) {
+        log.info('[VoiceAssistant] media (mic) engedely megadva:', requestingOrigin)
         callback(true)
         return
       }
-      log.warn('[VoiceAssistant] media (mic) engedely elutasitva (idegen origin):', requesting)
+      log.warn('[VoiceAssistant] media (mic) engedely elutasitva (idegen origin):', requestingOrigin)
+    } catch (err) {
+      log.warn('[VoiceAssistant] media (mic) URL parse hiba — elutasitva:', err)
     }
     callback(false)
   })
