@@ -12,13 +12,14 @@ import { TOOLS } from './toolDefinitions'
  * fuggvenyeket.
  */
 
-vi.mock('../store/issueStore', () => ({
-  createIssue: vi.fn(async (input: { mode: string; title: string }) => ({
+const mocks = vi.hoisted(() => ({
+  createIssue: vi.fn(async (input: { mode: string; title: string; category?: string }) => ({
     id: 'mock-id-' + input.title,
     createdAt: '2026-05-18T00:00:00.000Z',
     updatedAt: '2026-05-18T00:00:00.000Z',
     mode: input.mode,
     status: 'draft',
+    category: input.category ?? 'bug',
     title: input.title,
     description: '',
     severity: 'medium',
@@ -31,6 +32,10 @@ vi.mock('../store/issueStore', () => ({
     attachments: [],
     quickNotes: [],
   })),
+}))
+
+vi.mock('../store/issueStore', () => ({
+  createIssue: mocks.createIssue,
   appendQuickNote: vi.fn(async () => undefined),
   finalizeIssue: vi.fn(async () => undefined),
 }))
@@ -67,6 +72,42 @@ describe('dispatchToolCall', () => {
     )
     expect(result).toMatchObject({ success: true })
     expect(result.issue_id).toBeDefined()
+  })
+
+  it('report_issue: a category mező perzisztalt (Codex PR #664 regression check)', async () => {
+    mocks.createIssue.mockClear()
+    await dispatchToolCall(
+      'report_issue',
+      {
+        category: 'feature_request',
+        severity: 'medium',
+        title: 'Uj ablak',
+        description: 'kellene egy uj funkcio',
+        affected_module: 'arfolyam',
+      },
+      ctx
+    )
+    expect(mocks.createIssue).toHaveBeenCalledWith(
+      expect.objectContaining({ category: 'feature_request' })
+    )
+  })
+
+  it('report_issue: ervenytelen category default-ra (bug) esik', async () => {
+    mocks.createIssue.mockClear()
+    await dispatchToolCall(
+      'report_issue',
+      {
+        category: 'invalid-cat',
+        severity: 'medium',
+        title: 'X',
+        description: 'y',
+        affected_module: 'm',
+      },
+      ctx
+    )
+    expect(mocks.createIssue).toHaveBeenCalledWith(
+      expect.objectContaining({ category: 'bug' })
+    )
   })
 
   it('set_user_info eltarolja az infot, getUserInfo visszaadja', () => {

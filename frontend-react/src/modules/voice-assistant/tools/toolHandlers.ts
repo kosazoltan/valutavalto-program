@@ -7,6 +7,7 @@ import type {
   IssueRecord,
   IssueMode,
   IssueSeverity,
+  IssueCategory,
   IssueReporter,
 } from '../store/issueTypes'
 import type { ToolName } from './toolDefinitions'
@@ -72,7 +73,9 @@ export function createDefaultToolContext(mode: IssueMode): ToolContext {
     setUserInfo: (info) => {
       currentUser = info
     },
-    nextInstallStep: (current, success) => ({
+    // Copilot PR #664: a `note` parameter explicit ki van vezetve a
+    // signaturaban, hogy implementorok lassak — a default stub eldobja.
+    nextInstallStep: (current, success, _note) => ({
       step_number: success ? current + 1 : current,
       instructions: 'A kovetkezo lepes meg nincs konfiguralva (Phase 9 Electron integraciot var).',
     }),
@@ -99,6 +102,11 @@ function severityFromString(value: unknown): IssueSeverity {
   return allowed.includes(value as IssueSeverity) ? (value as IssueSeverity) : 'medium'
 }
 
+function categoryFromString(value: unknown): IssueCategory {
+  const allowed: IssueCategory[] = ['bug', 'feature_request', 'usability', 'question']
+  return allowed.includes(value as IssueCategory) ? (value as IssueCategory) : 'bug'
+}
+
 /**
  * Egyetlen entrypoint a Realtime API function-call eseményeire.
  *
@@ -114,8 +122,10 @@ export async function dispatchToolCall(
 ): Promise<Record<string, unknown>> {
   switch (name) {
     case 'report_issue': {
+      // Codex+Copilot PR #664: category mező persistalva (korabban dropolt)
       const issue = await createIssue({
         mode: ctx.mode,
+        category: categoryFromString(args.category),
         title: String(args.title ?? '').slice(0, 80),
         description: String(args.description ?? ''),
         severity: severityFromString(args.severity),
@@ -131,10 +141,13 @@ export async function dispatchToolCall(
     }
 
     case 'add_quick_note': {
+      // Copilot PR #664: NEM duplikaljuk a body-t description-be ÉS quickNote-ba.
+      // A description ures, csak a quickNote-ban tarolodik a szoveg.
       const issue = await createIssue({
         mode: ctx.mode,
+        category: 'usability',
         title: String(args.title ?? '').slice(0, 80),
-        description: String(args.body ?? ''),
+        description: '',
         severity: 'medium',
         module: typeof args.affected_module === 'string' ? args.affected_module : 'altalanos',
         reporter: buildReporter(ctx.getUserInfo()),
@@ -166,8 +179,11 @@ export async function dispatchToolCall(
       return { success: true }
     }
 
-    case 'lookup_module_info':
-      return ctx.lookupModule(String(args.module_id ?? '')) as unknown as Record<string, unknown>
+    case 'lookup_module_info': {
+      // Copilot PR #664: explicit await + spread, NEM double-cast
+      const result = await ctx.lookupModule(String(args.module_id ?? ''))
+      return { ...result }
+    }
 
     case 'search_knowledge': {
       const top = Math.min(5, Math.max(1, Number(args.top_k ?? 3)))
