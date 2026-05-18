@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.dto.eveningclosing.DailyDataPackage;
 import hu.puzzleir.valuta.dto.eveningclosing.DataSyncResult;
 import hu.puzzleir.valuta.dto.pos.PosClosingResult;
 import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.logging.VVLogger;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +51,9 @@ import java.util.*;
 @Transactional(rollbackFor = Exception.class)
 @Slf4j
 public class DailyClosingService {
+
+    // V234 strukturalt error code log (PR #682 phase 2)
+    private static final VVLogger VV_LOG = VVLogger.of(DailyClosingService.class);
 
     private final DailySessionService dailySessionService;
     private final TransactionRepository transactionRepository;
@@ -163,7 +167,8 @@ public class DailyClosingService {
                 .skipped(checkResult.isSkipped())
                 .build();
         } catch (Exception e) {
-            log.error("Napzaras lepes {} hiba: {}", stepNumber, e.getMessage(), e);
+            VV_LOG.error("VV-BIZ-006", "daily_closing.step_failed", e,
+                    java.util.Map.of("step_number", stepNumber));
             return ClosingStepResult.builder()
                 .stepNumber(stepNumber)
                 .stepName(stepName)
@@ -445,8 +450,10 @@ public class DailyClosingService {
                     closingDate, branchId, gaps.size());
             }
         } catch (Exception e) {
-            log.error("Bizonylat gap check hiba: datum={}, iroda={}, hiba={}",
-                closingDate, branchId, e.getMessage(), e);
+            VV_LOG.error("VV-BIZ-006", "daily_closing.receipt_gap_check_failed", e,
+                    java.util.Map.of("closing_date", closingDate,
+                            "branch_id", branchId,
+                            "step", "receipt_gap_check"));
             // NEM dobunk kivételt — ne akadjon meg a zárás
         }
 
@@ -461,8 +468,10 @@ public class DailyClosingService {
             dailyBalanceService.calculateAllCurrenciesForDay(branchId, closingDate);
             log.info("Napi mérleg számítás sikeres: datum={}, iroda={}", closingDate, branchId);
         } catch (Exception e) {
-            log.error("Napi mérleg számítás hiba: datum={}, iroda={}, hiba={}",
-                closingDate, branchId, e.getMessage(), e);
+            VV_LOG.error("VV-BIZ-006", "daily_closing.balance_calc_failed", e,
+                    java.util.Map.of("closing_date", closingDate,
+                            "branch_id", branchId,
+                            "step", "balance_calc"));
             // NEM dobunk kivételt — ne akadjon meg a zárás, csak logoljuk
         }
 
@@ -477,8 +486,10 @@ public class DailyClosingService {
             int archivedCount = monthlyArchiveService.archiveDailyTransactions(branchId, closingDate);
             log.info("Napi archiválás kész: datum={}, iroda={}, archivált={}", closingDate, branchId, archivedCount);
         } catch (Exception e) {
-            log.error("Napi archiválás hiba: datum={}, iroda={}, hiba={}",
-                closingDate, branchId, e.getMessage(), e);
+            VV_LOG.error("VV-BIZ-010", "daily_closing.archive_failed", e,
+                    java.util.Map.of("closing_date", closingDate,
+                            "branch_id", branchId,
+                            "phase", "daily_archive"));
             // NEM dobunk kivételt — ne akadjon meg a zárás
         }
 
@@ -487,8 +498,10 @@ public class DailyClosingService {
             String archiveSummary = dailyClosingArchiveService.executeFullDailyArchive(branchId, closingDate);
             log.info("S1-02 napi archiválás kész: datum={}, iroda={}, summary={}", closingDate, branchId, archiveSummary);
         } catch (Exception e) {
-            log.error("S1-02 napi archiválás hiba: datum={}, iroda={}, hiba={}",
-                closingDate, branchId, e.getMessage(), e);
+            VV_LOG.error("VV-BIZ-010", "daily_closing.s1_02_archive_failed", e,
+                    java.util.Map.of("closing_date", closingDate,
+                            "branch_id", branchId,
+                            "phase", "s1_02_archive"));
             // NEM dobunk kivételt — ne akadjon meg a zárás
         }
 
@@ -497,8 +510,10 @@ public class DailyClosingService {
             amlService.resetDailyCache();
             log.info("AML napi cache reset kész: datum={}, iroda={}", closingDate, branchId);
         } catch (Exception e) {
-            log.error("AML napi cache reset hiba: datum={}, iroda={}, hiba={}",
-                closingDate, branchId, e.getMessage(), e);
+            VV_LOG.error("VV-BIZ-006", "daily_closing.aml_cache_reset_failed", e,
+                    java.util.Map.of("closing_date", closingDate,
+                            "branch_id", branchId,
+                            "step", "aml_cache_reset"));
             // NEM dobunk kivételt — ne akadjon meg a zárás
         }
 
@@ -563,14 +578,15 @@ public class DailyClosingService {
                                 terminal.getTerminalId(), result.errorMessage());
                     }
                 } catch (Exception e) {
-                    log.error("POS terminál napi zárás hiba: terminál={}, hiba={}",
-                            terminal.getTerminalId(), e.getMessage(), e);
+                    VV_LOG.error("VV-BIZ-007", "daily_closing.pos_terminal_failed", e,
+                            java.util.Map.of("terminal_id", terminal.getTerminalId()));
                     // NEM dobunk kivételt — ne akadjon meg a zárás
                 }
             }
         } catch (Exception e) {
-            log.error("POS terminál napi zárás általános hiba: branchId={}, hiba={}",
-                    branchId, e.getMessage(), e);
+            VV_LOG.error("VV-BIZ-007", "daily_closing.pos_terminal_general_failed", e,
+                    java.util.Map.of("branch_id", branchId,
+                            "scope", "all_terminals"));
         }
     }
 
@@ -595,8 +611,9 @@ public class DailyClosingService {
         } catch (ValidationException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Esti zárás adatcsomag küldés hiba: branchId={}, datum={}, hiba={}",
-                    branchId, closingDate, e.getMessage(), e);
+            VV_LOG.error("VV-BIZ-008", "daily_closing.evening_send_failed", e,
+                    java.util.Map.of("branch_id", branchId,
+                            "closing_date", closingDate));
             if (e instanceof RuntimeException runtimeException) {
                 throw runtimeException;
             }
@@ -636,8 +653,10 @@ public class DailyClosingService {
                 decadeReportService.generateDecadeReport(branchId, date.getYear(), globalDecade);
                 log.info("Dekadjelentes generálva: branchId={}, ev={}, dekad={}", branchId, date.getYear(), globalDecade);
             } catch (Exception e) {
-                log.error("Dekadjelentes generálás hiba: branchId={}, ev={}, dekad={}, hiba={}",
-                    branchId, date.getYear(), globalDecade, e.getMessage(), e);
+                VV_LOG.error("VV-BIZ-009", "daily_closing.decade_report_failed", e,
+                        java.util.Map.of("branch_id", branchId,
+                                "year", date.getYear(),
+                                "decade", globalDecade));
                 // NEM dobunk kivételt — ne akadjon meg a zárás
             }
 

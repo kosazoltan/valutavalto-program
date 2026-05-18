@@ -8,7 +8,7 @@
 
 version: 1
 last_updated: "2026-05-18"
-total_codes: 36
+total_codes: 41
 
 codes:
 
@@ -86,6 +86,55 @@ codes:
     ai_fix_hint: |
       V227 hotfix-ben CREATE OR REPLACE function. Ha hianyzik:
       Flyway repair + a hotfix migrate ujra.
+
+  VV-BIZ-006:
+    name: "Napzaras lepes hiba (DailyClosingService)"
+    category: BUSINESS
+    level: ERROR
+    user_impact: "A napzaras kotelezo lepese elhasalt - manualis korrekcio + ujraindas szukseges"
+    ai_fix_hint: |
+      DailyClosingService.executeStep(branchId, step). A `step_number` attr
+      mutatja melyik lepes (1..10). Lasd: docs/operations/napzaras-runbook.md.
+      Tipikus okok: bizonylat-gap, mérleg-elteres, POS-terminal offline.
+
+  VV-BIZ-007:
+    name: "POS terminal napzaras hiba"
+    category: BUSINESS
+    level: ERROR
+    user_impact: "A POS terminal nem zart le - manualis zaras kell a terminál UI-jan"
+    ai_fix_hint: |
+      DailyClosingService.runPosTerminalClosing(). A terminal_id attr azonositja
+      a problemás eszkozt. Tipikus: hálózati problema, terminal offline, vagy
+      a POS terminal valasza error code. Kovetkezo napzaras elott manualis
+      terminal-zaras a terminal UI-jan.
+
+  VV-BIZ-008:
+    name: "Esti zaras adatcsomag kuldes hiba (központ felé)"
+    category: BUSINESS
+    level: ERROR
+    user_impact: "A nap zart, DE a kozponti rendszer nem kapta meg az adatokat - retry kell"
+    ai_fix_hint: |
+      DailyClosingService.sendEveningDataPackage(). SFTP / HTTP transzfer fail.
+      Retry: SyncController.retrySync(branchId) vagy manualis push.
+
+  VV-BIZ-009:
+    name: "Dekadjelentes generalas hiba (MNB)"
+    category: BUSINESS
+    level: ERROR
+    user_impact: "A 10 napos MNB jelentés nem keszult el - manualis ujragyartas elott"
+    ai_fix_hint: |
+      DailyClosingService.generateDecadeReport(). Az ev / dekad attr mutatja a
+      problemás idoszakot. Tipikus: hianyzo bizonylat, AML adat hianyos.
+
+  VV-BIZ-010:
+    name: "Napi archivalas hiba (D-1 ledger snapshot)"
+    category: BUSINESS
+    level: ERROR
+    user_impact: "Az aznapi ledger snapshot NEM mentődott - audit-szempontbol potolni kell"
+    ai_fix_hint: |
+      DailyClosingService.archiveDaily() / S1-02 archive. A ledger-state
+      visszateritheto a tranzakcio-tablabol, de a snapshot manualis ujragyart-ast
+      ig enyel: scripts/operations/recreate-ledger-snapshot.sh <branch> <date>.
 
   # =====================================================
   # VV-RATE — arfolyam (RFM)
