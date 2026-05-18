@@ -23,18 +23,18 @@
  *   - `dotnet tool install --global AzureSignTool`
  *   - PATH-on legyen az `azuresigntool`
  *
+ * A script generic: a Key Vault-on lévő cert-tel működik (bármilyen CA-tól), nem
+ * hardcoded a vendor. Csak az env var-okat kell beállítani:
+ *   - AZURE_KEY_VAULT_URI
+ *   - AZURE_KEY_VAULT_CERT_NAME
+ *   - AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET
+ *   - AZURE_TIMESTAMP_URL (opcionalis, default: http://timestamp.digicert.com)
+ *
+ * Aktualis cert vendor + audit-status + migracio-historia:
+ *   -> vault/operations/code-signing-setup-path.md
+ *
  * Hivatkozás:
  *   - https://github.com/vcsjones/azuresigntool
- *   - https://docs.sectigo.com/scm/scm-administrator/configuring-azure-key-vault.html
- *   - https://www.sectigo.com/uploads/resources/Sectigo_Azure-Key-Vault-Use-Case-V3_2021-05-07-133627.pdf
- *
- * Migráció: korábban a `sign-with-keylocker.js` DigiCert KeyLocker-rel volt tervezve, de
- * azt csak DigiCert-issued cert-ekkel lehet használni. A Sectigo OV CS-vel
- * Azure Key Vault Premium HSM-et használunk (hivatalos Sectigo support, sokkal olcsóbb
- * tooling: ~$80/3 év vs $600/3 év DigiCert KeyLocker).
- *
- * Készült: 2026-05-14 (Sectigo SignMyCode order SMC1015225S638431 után, KeyLocker
- * inkompatibilitás felismerése után).
  */
 
 'use strict';

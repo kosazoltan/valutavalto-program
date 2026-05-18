@@ -9,17 +9,19 @@ name: Windows Signed Release (v2.x)
 #   - Arfolyamkeszito-Setup-<version>.exe          (~100 MB, kod-alairva)
 #   - SHA-256 manifest (windows-signed-release-sha256.txt)
 #
-# Alairas: Sectigo OV CS via Azure Key Vault Premium HSM, az AzureSignTool (vcsjones) eszkozzel.
-# Forras: penztar-client/scripts/sign-with-azure-keyvault.js (electron-builder signtoolOptions hook).
+# Alairas: Azure Key Vault Premium HSM-en tarolt cert + AzureSignTool (vcsjones).
+# A workflow VENDOR-AGNOSTIC — az AzureSignTool a Key Vault-on lévő cert-tel mukodik,
+# fuggetlenul attol hogy melyik CA bocsatotta ki (DigiCert, Sectigo, GlobalSign, stb.).
+# Csak az env-var-ok kotik a konkret kornyezethez.
 #
-# A 2026-05-14-i felulvizsgalat: a DigiCert KeyLocker NEM kompatibilis a Sectigo cert-tel
-# (csak DigiCert-issued cert-ekkel). Az Azure Key Vault Premium HSM a hivatalos Sectigo-jovahagyott
-# alternativa (~$80/3 ev vs ~$600/3 ev KeyLocker).
+# Sign hook: penztar-client/scripts/sign-with-azure-keyvault.js (electron-builder signtoolOptions).
+# Timestamp: RFC 3161, default `http://timestamp.digicert.com` (env-overide-olhato).
 #
-# Hivatkozas:
-#   - https://docs.sectigo.com/scm/scm-administrator/configuring-azure-key-vault.html
+# Aktualis cert vendor + folyamat-historia + reszletes audit-status:
+#   -> vault/operations/code-signing-setup-path.md
+#
+# Tooling refs:
 #   - https://github.com/vcsjones/azuresigntool
-#   - vault/operations/code-signing-setup-path.md
 
 on:
   workflow_dispatch:
