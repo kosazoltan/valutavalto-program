@@ -109,6 +109,21 @@ public final class VVLogger {
         log("DEBUG", eventType, null, null, null, attrs);
     }
 
+    /**
+     * Foglalt MDC kulcsok, amelyeket az `attrs` nem irhat felul.
+     *
+     * <p>Copilot+Codex PR #681 P1 finding: a kliens-attrs.keySet() omlesztese
+     * az MDC-be felulirhatna a Micrometer Tracing trace_id-jat / span_id-jat,
+     * a Logstash encoder strukturalt fieldjeit (level, logger, thread), vagy
+     * a sajat reserved kulcsainkat (event_type, error_code, error_category).
+     */
+    private static final java.util.Set<String> RESERVED_MDC_KEYS = java.util.Set.of(
+            "event_type", "error_code", "error_category",
+            "trace_id", "traceId", "span_id", "spanId",
+            "level", "logger", "thread", "ts", "message",
+            "error.stack", "schema_version", "service", "service_version", "env"
+    );
+
     private void log(
             String level,
             String eventType,
@@ -116,16 +131,28 @@ public final class VVLogger {
             String errorCategory,
             Throwable cause,
             Map<String, Object> attrs) {
+        java.util.Set<String> appliedAttrKeys = new java.util.HashSet<>();
         try {
             MDC.put("event_type", eventType);
             if (errorCode != null) MDC.put("error_code", errorCode);
             if (errorCategory != null) MDC.put("error_category", errorCategory);
             if (attrs != null) {
                 attrs.forEach((k, v) -> {
-                    if (v != null) MDC.put(k, String.valueOf(v));
+                    if (k == null || k.isBlank() || v == null) return;
+                    // Copilot+Codex PR #681 P1: NE foglaljuk MDC reserved kulcsot
+                    if (RESERVED_MDC_KEYS.contains(k)) return;
+                    // Namespace prefix: `attrs.<key>` - igy NEM utkozik a strukturalt
+                    // top-level fielddel + Loki query-ban konnyen szurheto
+                    String prefixedKey = k.startsWith("attrs.") || k.startsWith("client.")
+                            ? k : "attrs." + k;
+                    // Defense-in-depth: a redactor a value-stringen is fut
+                    MDC.put(prefixedKey, RedactingPatternConverter.redact(String.valueOf(v)));
+                    appliedAttrKeys.add(prefixedKey);
                 });
             }
-            String message = "event=" + eventType;
+            // PR #681 P0 defense-in-depth: a redactor a message-en SOURCE-szinten is fut
+            String rawMessage = "event=" + eventType;
+            String message = RedactingPatternConverter.redact(rawMessage);
             switch (level) {
                 case "ERROR" -> {
                     if (cause != null) delegate.error(message, cause);
@@ -137,14 +164,12 @@ public final class VVLogger {
                 default -> delegate.info(message);
             }
         } finally {
-            // takarits MDC-bol minden kulcsot amit beraktunk (NE az osszeset,
+            // takarits MDC-bol csak amit beraktunk (NE az osszeset,
             // mert a trace_id-t Micrometer Tracing manage-eli)
             MDC.remove("event_type");
             MDC.remove("error_code");
             MDC.remove("error_category");
-            if (attrs != null) {
-                attrs.keySet().forEach(MDC::remove);
-            }
+            appliedAttrKeys.forEach(MDC::remove);
         }
     }
 

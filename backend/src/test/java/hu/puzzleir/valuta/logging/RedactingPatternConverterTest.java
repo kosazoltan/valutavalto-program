@@ -61,12 +61,64 @@ class RedactingPatternConverterTest {
     }
 
     @Test
-    @DisplayName("Kartyaszam (16 jegy) redact-olva [PAN]-re")
-    void redact_cardPan_isMasked() {
-        String input = "Kartyaszam: 4111 1111 1111 1111";
+    @DisplayName("Kartyaszam Visa 16 jegy IIN prefix-szel redact-olva [PAN]-re")
+    void redact_cardPan_visa_isMasked() {
+        // Visa IIN: 4xxxxxxx... (16 jegy total)
+        String input = "Kartyaszam: 4111111111111111";
         String output = RedactingPatternConverter.redact(input);
-        assertThat(output).doesNotContain("4111 1111 1111 1111");
+        assertThat(output).doesNotContain("4111111111111111");
         assertThat(output).contains("[PAN]");
+    }
+
+    @Test
+    @DisplayName("Copilot PR #681 P1: W3C trace ID 16-32 hex NEM redact-olva [PAN]-kent")
+    void redact_traceId_notMaskedAsPan() {
+        // W3C trace ID format: 32 hex chars (NEM 13-19 digit kartya pattern)
+        String input = "trace=4bf92f3577b34da6a3ce929d0e0e4736";
+        String output = RedactingPatternConverter.redact(input);
+        assertThat(output).contains("4bf92f3577b34da6a3ce929d0e0e4736");
+        assertThat(output).doesNotContain("[PAN]");
+    }
+
+    @Test
+    @DisplayName("Copilot PR #681 P1: NAV bizonylat (V123456789, 9-10 jegy) NEM redact-olva [PAN]-kent")
+    void redact_navReceipt_notMaskedAsPan() {
+        // Tipikus bizonylat: 13 jegy random number-rel, NEM kezdodik 4/5/3/6-tal IIN-modra
+        String input = "bizonylat=V234567000001";
+        String output = RedactingPatternConverter.redact(input);
+        assertThat(output).contains("V234567000001");
+        assertThat(output).doesNotContain("[PAN]");
+    }
+
+    @Test
+    @DisplayName("Copilot PR #681 P1: hu_tax_id csak kontextus-fuggo (adoszam kulcsszo)")
+    void redact_huTaxId_onlyWithContext() {
+        // Kontextus nelkul: NEM redact-olja a 10 jegyu szamot (lehet sequence ID)
+        String inputNoCtx = "kezel_id=1234567890";
+        String outputNoCtx = RedactingPatternConverter.redact(inputNoCtx);
+        assertThat(outputNoCtx).contains("1234567890");
+
+        // Kontextusban: redact (a kulcsszo megmarad, az ertek elveszik)
+        String inputCtx = "adoszam: 1234567890 tovabbi adat";
+        String outputCtx = RedactingPatternConverter.redact(inputCtx);
+        assertThat(outputCtx).contains("adoszam");
+        assertThat(outputCtx).contains("[TAXID]");
+        assertThat(outputCtx).doesNotContain("1234567890");
+    }
+
+    @Test
+    @DisplayName("Copilot PR #681 P1: hu_id_card csak kontextus-fuggo (szigszam kulcsszo)")
+    void redact_huIdCard_onlyWithContext() {
+        // Kontextus nelkul: a 6 digit + 2 letter pattern NEM redact
+        String inputNoCtx = "receipt=123456AB";
+        String outputNoCtx = RedactingPatternConverter.redact(inputNoCtx);
+        assertThat(outputNoCtx).contains("123456AB");
+
+        // Kontextusban: redact
+        String inputCtx = "szig.szam: 123456AB megjegyzes";
+        String outputCtx = RedactingPatternConverter.redact(inputCtx);
+        assertThat(outputCtx).contains("[IDCARD]");
+        assertThat(outputCtx).doesNotContain("123456AB");
     }
 
     @Test

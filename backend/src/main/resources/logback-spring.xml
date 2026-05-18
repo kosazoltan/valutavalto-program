@@ -22,26 +22,54 @@
   <conversionRule conversionWord="redact"
                   converterClass="hu.puzzleir.valuta.logging.RedactingPatternConverter"/>
 
-  <!-- 1. PROD profile: JSON output + redactor -->
+  <!-- 1. PROD profile: JSON output + redactor.
+
+       Codex+Copilot PR #681 P0 fix: a LogstashEncoder NEM fut a PatternLayout-on,
+       ezert a `%redact(%msg)` conversionRule sosem futott a JSON output-ra.
+       A megoldas: LoggingEventCompositeJsonEncoder + custom Redacting*JsonProvider
+       a `message` es `stackTrace` mezok serialize-eleseben.
+       Plusz: a MaskingJsonGeneratorDecorator a `customer.name`/`taxId` JSON path-okra
+       (defense-in-depth ha valaki struct attribute-kent logolna PII-t).
+  -->
   <springProfile name="production,prod">
 
     <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-        <customFields>{"service":"backend","service_version":"${APP_VERSION:-2.5.57}","env":"${SPRING_PROFILES_ACTIVE:-prod}"}</customFields>
-        <includeMdc>true</includeMdc>
-        <includeCallerData>false</includeCallerData>
-        <fieldNames>
-          <timestamp>ts</timestamp>
-          <level>level</level>
-          <thread>thread</thread>
-          <logger>logger</logger>
-          <message>message</message>
-          <stackTrace>error.stack</stackTrace>
-        </fieldNames>
-        <!-- A redactor a JSON payload encode-olas ELOTT futtatja a regex-eket -->
-        <jsonGeneratorDecorator class="net.logstash.logback.decorate.MaskingJsonGeneratorDecorator">
-          <defaultMaskPattern>"((?:password|pwd|token|secret|apiKey|authorization|customer.name|idNumber|taxId|pan)\b[^,}]*?)"</defaultMaskPattern>
+      <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+        <providers>
+          <timestamp>
+            <fieldName>ts</fieldName>
+            <pattern>yyyy-MM-dd'T'HH:mm:ss.SSSXXX</pattern>
+          </timestamp>
+          <version><fieldName>schema_version</fieldName></version>
+          <pattern>
+            <pattern>
+              {"service":"backend","service_version":"${APP_VERSION:-2.5.57}","env":"${SPRING_PROFILES_ACTIVE:-prod}"}
+            </pattern>
+          </pattern>
+          <logLevel><fieldName>level</fieldName></logLevel>
+          <loggerName><fieldName>logger</fieldName></loggerName>
+          <threadName><fieldName>thread</fieldName></threadName>
+          <provider class="hu.puzzleir.valuta.logging.RedactingMessageJsonProvider">
+            <fieldName>message</fieldName>
+          </provider>
+          <provider class="hu.puzzleir.valuta.logging.RedactingStackTraceJsonProvider">
+            <fieldName>error.stack</fieldName>
+          </provider>
+          <mdc/>
+        </providers>
+        <jsonGeneratorDecorator class="net.logstash.logback.mask.MaskingJsonGeneratorDecorator">
           <defaultMask>[REDACTED]</defaultMask>
+          <path>/password</path>
+          <path>/pwd</path>
+          <path>/token</path>
+          <path>/secret</path>
+          <path>/apiKey</path>
+          <path>/authorization</path>
+          <path>/customerName</path>
+          <path>/customer_name</path>
+          <path>/idNumber</path>
+          <path>/taxId</path>
+          <path>/pan</path>
         </jsonGeneratorDecorator>
       </encoder>
     </appender>
@@ -54,15 +82,42 @@
         <maxHistory>90</maxHistory>
         <totalSizeCap>10GB</totalSizeCap>
       </rollingPolicy>
-      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-        <customFields>{"service":"backend","service_version":"${APP_VERSION:-2.5.57}","env":"${SPRING_PROFILES_ACTIVE:-prod}"}</customFields>
-        <includeMdc>true</includeMdc>
-        <fieldNames>
-          <timestamp>ts</timestamp>
-          <level>level</level>
-          <message>message</message>
-          <stackTrace>error.stack</stackTrace>
-        </fieldNames>
+      <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+        <providers>
+          <timestamp>
+            <fieldName>ts</fieldName>
+            <pattern>yyyy-MM-dd'T'HH:mm:ss.SSSXXX</pattern>
+          </timestamp>
+          <version><fieldName>schema_version</fieldName></version>
+          <pattern>
+            <pattern>
+              {"service":"backend","service_version":"${APP_VERSION:-2.5.57}","env":"${SPRING_PROFILES_ACTIVE:-prod}"}
+            </pattern>
+          </pattern>
+          <logLevel><fieldName>level</fieldName></logLevel>
+          <loggerName><fieldName>logger</fieldName></loggerName>
+          <provider class="hu.puzzleir.valuta.logging.RedactingMessageJsonProvider">
+            <fieldName>message</fieldName>
+          </provider>
+          <provider class="hu.puzzleir.valuta.logging.RedactingStackTraceJsonProvider">
+            <fieldName>error.stack</fieldName>
+          </provider>
+          <mdc/>
+        </providers>
+        <jsonGeneratorDecorator class="net.logstash.logback.mask.MaskingJsonGeneratorDecorator">
+          <defaultMask>[REDACTED]</defaultMask>
+          <path>/password</path>
+          <path>/pwd</path>
+          <path>/token</path>
+          <path>/secret</path>
+          <path>/apiKey</path>
+          <path>/authorization</path>
+          <path>/customerName</path>
+          <path>/customer_name</path>
+          <path>/idNumber</path>
+          <path>/taxId</path>
+          <path>/pan</path>
+        </jsonGeneratorDecorator>
       </encoder>
     </appender>
 

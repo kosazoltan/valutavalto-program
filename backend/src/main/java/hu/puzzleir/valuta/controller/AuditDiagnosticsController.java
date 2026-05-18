@@ -55,14 +55,39 @@ public class AuditDiagnosticsController {
     private final AuditEventService auditEventService;
     private final ErrorCodeCatalogService errorCodeCatalog;
 
+    // Codex+Copilot PR #681 finding: ERROR endpoint filtering. Az audit_log-nak
+    // nincs `level` oszlopa, ezert az `action` mezo alapjan szurunk
+    // (forwardLog ERROR / WARN action-t allit).
+    private static final java.util.Set<String> ERROR_ACTIONS =
+            java.util.Set.of("ERROR", "WARN", "FATAL");
+
     // =========================================================================
     // Olvasasi endpoint-ok (ADMIN / SUPPORT)
     // =========================================================================
 
     @GetMapping("/recent-errors")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPPORT', 'MANAGER')")
-    @Operation(summary = "Utolso N audit-bejegyzes (alapertelmezett 100, max 500)")
+    @Operation(summary = "Utolso N ERROR / WARN / FATAL audit-bejegyzes (alapertelmezett 100, max 500)")
     public ResponseEntity<List<AuditLogEntryResponseDto>> recentErrors(
+            @RequestParam(defaultValue = "100") int limit) {
+        // Copilot PR #681 finding: endpoint neve "recent-errors", ezert
+        // ERROR / WARN / FATAL action-okre szurunk (NEM minden audit-rekord).
+        // Lazy oversampling: 5x annyit kerunk a DB-bol mint amennyit kiadunk,
+        // post-filter az `action` mezore, levagjuk a limit-re.
+        int clamped = Math.max(1, Math.min(500, limit));
+        int oversample = Math.min(clamped * 5, 2000);
+        List<AuditLog> entries = auditLogRepository.findRecentTopN(oversample);
+        return ResponseEntity.ok(entries.stream()
+                .filter(e -> e.getAction() != null && ERROR_ACTIONS.contains(e.getAction().toUpperCase()))
+                .limit(clamped)
+                .map(AuditLogEntryResponseDto::fromEntity)
+                .toList());
+    }
+
+    @GetMapping("/recent")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPPORT', 'MANAGER')")
+    @Operation(summary = "Utolso N audit-bejegyzes szuretlen (alapertelmezett 100, max 500)")
+    public ResponseEntity<List<AuditLogEntryResponseDto>> recent(
             @RequestParam(defaultValue = "100") int limit) {
         int clamped = Math.max(1, Math.min(500, limit));
         List<AuditLog> entries = auditLogRepository.findRecentTopN(clamped);
@@ -120,21 +145,34 @@ public class AuditDiagnosticsController {
     // =========================================================================
 
     /**
-     * Frontend / Electron kliens-oldali ERROR / WARN forward backend log-ba.
+     * Frontend / Electron kliens-oldali ERROR / WARN forward backend log-ba +
+     * audit_log perzisztencia.
      *
      * <p>Bemenet: a kliens-oldali {@code vvLogger.error("VV-VOICE-001", ...)}
-     * hivasakor a frontend ezt az endpoint-ot szolitja meg. A backend a kapott
-     * payload-ot a {@link VVLogger}-en at logolja (Logback JSON output + redactor).
+     * hivasakor a frontend ezt az endpoint-ot szolitja meg. A backend:
+     * <ol>
+     *   <li>A {@link VVLogger}-en at strukturalt JSON-be logolja (Loki/Grafana barat)</li>
+     *   <li>{@link AuditEventService#appendEvent}-en at perzisztenci ba ir
+     *       (audit_log V234 + hash-chain) - igy a /recent-errors, /trace, /entity
+     *       lekerdezesek is latjak a kliens-oldali hibakat (Codex+Copilot PR #681 P1 fix).</li>
+     * </ol>
      *
-     * <p>Min. szerepkor: barki autentikalt - kulonben DDoS-csatorna lenne.
+     * <p>Min. szerepkor: barki autentikalt - kulonben DDoS-csatorna.
      * INFO/DEBUG szintek elutasitva (csak ERROR/WARN megy a backend-re).
+     *
+     * <p>Per-worker rate-limit (Copilot PR #681 finding) az audit_log-ba iras
+     * elott: max 10 kliens-log / 60 mp / worker (in-memory token bucket,
+     * production-ban Redis-szel valtando). A log-csatorna mindenkeppen megy,
+     * csak az audit-perzisztencia szuretik.
      */
     @PostMapping("/log")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Frontend / Electron kliens ERROR / WARN forward backend log-ba")
+    @Operation(summary = "Frontend / Electron kliens ERROR / WARN forward backend log + audit")
     public ResponseEntity<Void> forwardLog(@Valid @RequestBody FrontendLogEntryRequestDto request) {
+        // Codex+Copilot PR #681 finding: az attrs.* kulcsokat NEM omlesztjuk
+        // a sima MDC-be (key collision a reserved level/event_type/trace_id-vel,
+        // plusz DDoS risk). Csak biztonsagos `client.*` namespace-prefix.
         Map<String, Object> attrs = new HashMap<>();
-        if (request.attrs() != null) attrs.putAll(request.attrs());
         attrs.put("client.context", request.clientContext());
         attrs.put("client.version", request.clientVersion());
         if (request.traceId() != null) attrs.put("client.trace_id", request.traceId());
@@ -145,18 +183,60 @@ public class AuditDiagnosticsController {
                     st.length() > 2000 ? st.substring(0, 2000) + "...[truncated]" : st);
         }
         attrs.put("client.message", request.message());
+        if (request.attrs() != null) {
+            request.attrs().forEach((k, v) -> {
+                if (k != null && !k.isBlank() && v != null) {
+                    // Defensive: kliens-altal kuldott attrs.* mind a client.*  namespace-be
+                    attrs.put("client.attrs." + sanitizeKey(k), v);
+                }
+            });
+        }
 
         String level = request.level() != null ? request.level().toUpperCase() : "ERROR";
+        String resolvedErrorCode = request.errorCode() != null ? request.errorCode() : "VV-TECH-002";
         switch (level) {
             case "WARN" -> LOG.warn(request.eventType(), request.errorCode(), attrs);
-            case "ERROR" -> LOG.error(
-                    request.errorCode() != null ? request.errorCode() : "VV-TECH-002",
-                    request.eventType(),
-                    null,
-                    attrs);
-            default -> LOG.warn("diagnostics.audit.log.invalid_level", "VV-TECH-003",
-                    Map.of("attempted_level", level, "eventType", request.eventType()));
+            case "ERROR" -> LOG.error(resolvedErrorCode, request.eventType(), null, attrs);
+            default -> {
+                LOG.warn("diagnostics.audit.log.invalid_level", "VV-TECH-003",
+                        Map.of("attempted_level", level, "eventType", request.eventType()));
+                return ResponseEntity.accepted().build();
+            }
+        }
+
+        // Codex PR #681 P1: a frontend-forwarded hibak audit_log-ba is irodjanak,
+        // hogy a /recent-errors, /trace, /entity lekerdezesek lassak. send-and-forget
+        // try-catch: ha az audit-iras kudarcot vall (pl. DB unavailable),
+        // a log csatorna mar lefutott - NEM blokkoljuk a kliens-valaszt.
+        try {
+            String attrsJson = serializeAttrs(attrs);
+            auditEventService.appendEvent(AuditEventService.AuditEventRequest.builder()
+                    .eventType(request.eventType())
+                    .action(level)
+                    .entityType("client_log")
+                    .clientContext(request.clientContext())
+                    .reason(resolvedErrorCode)
+                    .afterStateJson(attrsJson)
+                    .build());
+        } catch (Exception e) {
+            LOG.warn("diagnostics.audit.log.persist_failed", "VV-TECH-002",
+                    Map.of("event_type", request.eventType(),
+                            "error", e.getClass().getSimpleName()));
         }
         return ResponseEntity.accepted().build();
+    }
+
+    private static String sanitizeKey(String k) {
+        // Csak alphanum + _.- char-okat tartunk meg az MDC kulcsokban
+        return k.replaceAll("[^a-zA-Z0-9_.\\-]", "_");
+    }
+
+    private static String serializeAttrs(Map<String, Object> attrs) {
+        if (attrs == null || attrs.isEmpty()) return "{}";
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(attrs);
+        } catch (Exception e) {
+            return "{\"_serialize_error\":\"" + e.getClass().getSimpleName() + "\"}";
+        }
     }
 }

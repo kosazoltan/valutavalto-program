@@ -88,8 +88,14 @@ public class AuditLog {
     // V234 (2026-05-18) - belso log+audit modul - AI-olvashato mezok
     // =========================================================================
 
-    /** Globalisan egyedi UUID, kliens-szinten generalt (idempotency). */
-    @Column(name = "event_id", unique = true)
+    /**
+     * Globalisan egyedi UUID, kliens-szinten generalt (idempotency).
+     *
+     * <p>Copilot PR #681 P2: a UNIQUE constraint a Flyway V234-ben
+     * `audit_log_event_id_unique` neven mar letre van hozva. NEM duplazzuk
+     * @Column unique=true-val (Hibernate auto-gen nev kollizio ddl-auto=validate-nel).
+     */
+    @Column(name = "event_id")
     private UUID eventId;
 
     /** Idozona-tudatos timestamp (UTC). A regi `created_at` LocalDateTime backward-compat marad. */

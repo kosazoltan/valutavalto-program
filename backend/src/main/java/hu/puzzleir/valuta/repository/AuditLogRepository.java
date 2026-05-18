@@ -148,9 +148,9 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     // =========================================================================
     // V234 (2026-05-18) - belso log+audit modul (AuditEventService hash-chain)
     // =========================================================================
-
-    /** Utolso bejegyzes (idorendben) - prev_hash lekerdezesehez. */
-    Optional<AuditLog> findTopByOrderByCreatedAtDesc();
+    //
+    // A hash-chain prev_hash lekerdezeshez a meglevo `findLastEntryHashForUpdate`
+    // metodust hasznaljuk (FOR UPDATE row-lock) - lasd Codex+Copilot PR #681 P1.
 
     /** Utolso N bejegyzes idorendben csokken - hash-chain integritas-ellenorzes. */
     @Query(value = "SELECT * FROM audit_log ORDER BY created_at DESC LIMIT :n", nativeQuery = true)

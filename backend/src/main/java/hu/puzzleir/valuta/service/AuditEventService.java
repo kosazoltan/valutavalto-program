@@ -68,9 +68,11 @@ public class AuditEventService {
         // 1. Trace context kiolvasasa (Micrometer Tracing automatikus)
         String traceId = currentTraceId();
 
-        // 2. Elozo sor `entry_hash`-e a hash chain-bol (backward-compat: H11 entry_hash mezo)
-        String prevHash = auditLogRepository.findTopByOrderByCreatedAtDesc()
-                .map(AuditLog::getEntryHash)
+        // 2. Elozo sor `entry_hash`-e a hash chain-bol (FOR UPDATE row-lock)
+        // Codex+Copilot PR #681 P1 fix: a concurrent appendEvent() hivasok
+        // ne forkoljak a hash lancot. A legacy AuditLogService is ezt a metodust
+        // hasznalja (`findLastEntryHashForUpdate`), igy serialize-elunk a 2 utvonal kozott.
+        String prevHash = auditLogRepository.findLastEntryHashForUpdate()
                 .filter(s -> s != null && !s.isBlank())
                 .orElse(GENESIS_PREV_HASH);
 

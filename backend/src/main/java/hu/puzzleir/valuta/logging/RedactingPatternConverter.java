@@ -33,14 +33,25 @@ public final class RedactingPatternConverter extends ClassicConverter {
     private static final Pattern JWT_PATTERN = Pattern.compile(
             "eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}");
     private static final Pattern BEARER = Pattern.compile("(?i)Bearer\\s+[A-Za-z0-9._\\-+/=]{20,}");
-    private static final Pattern IBAN = Pattern.compile("\\b[A-Z]{2}\\d{2}[A-Z0-9]{4,30}\\b");
-    private static final Pattern CARD_PAN = Pattern.compile("\\b(?:\\d[ -]*?){13,19}\\b");
-    private static final Pattern HU_ID_CARD = Pattern.compile("\\b\\d{6}[A-Z]{2}\\b");
+    // IBAN: szigorubb hossz-korlat (HU 28 char tipikus), 11..30 az alanumeric body
+    private static final Pattern IBAN = Pattern.compile("\\b[A-Z]{2}\\d{2}[A-Z0-9]{11,30}\\b");
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
             "\\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}\\b");
-    // A magyar adoszam regex (10 jegyu) extremul agresszivnek tunhet (sok tranzakcio-szam
-    // is 10 jegyu lenne), ezert csak akkor mosogep, ha a kontextusban `taxId|adoszam|tax_id`
-    // szo van a 30 char-on belul. Egyelore csak password-szeruen mukodik.
+
+    // Copilot PR #681 P1: a sima 13-19 digit pattern false-positive-okra szuretik
+    // (W3C trace ID, UUID hex, NAV bizonylat, transaction ID). IIN prefix-szel
+    // kezdje: Visa(4), MasterCard(51..55), Amex(34/37), Discover(6011/65xx).
+    private static final Pattern CARD_PAN = Pattern.compile(
+            "\\b(?:4\\d{12}(?:\\d{3})?|5[1-5]\\d{14}|3[47]\\d{13}|6(?:011|5\\d{2})\\d{12})\\b");
+
+    // Copilot PR #681 P1: magyar szig.szam (6+2) es adoszam (10 jegy) NEM
+    // szabad kontextus nelkul redact-elni. Csak akkor moss, ha a kornyezetben
+    // a megfelelo kulcsszo van (~5 char keret-en belul). A {2} capture group a
+    // tenyleges szam, az {1} a kulcsszo - mindketto megmarad.
+    private static final Pattern HU_ID_CARD_CTX = Pattern.compile(
+            "(?i)(szig\\.?szam|szemelyi\\.?ig\\.?|id[_-]?card|identity[_-]?card)([^A-Za-z0-9]{0,5})(\\d{6}[A-Z]{2})");
+    private static final Pattern HU_TAX_ID_CTX = Pattern.compile(
+            "(?i)(adoszam|tax[_-]?id)([^A-Za-z0-9]{0,5})(\\d{10})");
 
     @Override
     public String convert(ILoggingEvent event) {
@@ -63,7 +74,10 @@ public final class RedactingPatternConverter extends ClassicConverter {
         out = EMAIL_PATTERN.matcher(out).replaceAll("[EMAIL]");
         out = IBAN.matcher(out).replaceAll("[IBAN]");
         out = CARD_PAN.matcher(out).replaceAll("[PAN]");
-        out = HU_ID_CARD.matcher(out).replaceAll("[IDCARD]");
+        // Kontextus-fuggo: a kulcsszo + szeparator megmarad, csak a tenyleges
+        // ertek redact-olodik (group 1 = kulcsszo, 2 = separator, 3 = ertek)
+        out = HU_ID_CARD_CTX.matcher(out).replaceAll("$1$2[IDCARD]");
+        out = HU_TAX_ID_CTX.matcher(out).replaceAll("$1$2[TAXID]");
         return out;
     }
 }

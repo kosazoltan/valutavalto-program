@@ -24,10 +24,14 @@
 
 import { app, net } from 'electron';
 import log from 'electron-log/main';
-import { release as getOsRelease } from 'node:os';
+import { release as getOsRelease, type as getOsType } from 'node:os';
 
 const ENDPOINT_PATH = '/api/v1/diagnostics/audit/log';
-const ANTI_SPAM_MIN_INTERVAL_MS = 2_000;  // 2 mp ket forward kozott (min)
+// Copilot PR #681: token-bucket helyett egyszeru "drop counter + summary" minta.
+// Az anti-spam fix interval-on belul a forward-okat skip-eljuk, de
+// szamoljuk a `droppedSinceLastForward` countert, es a kovetkezo forward-on
+// hozzaadjuk az attrs.drop_count mezohoz - igy NEM tunik el nyomtalanul a signal.
+const ANTI_SPAM_MIN_INTERVAL_MS = 2_000;
 const MAX_MESSAGE_LEN = 500;
 const MAX_STACK_LEN = 4000;
 
@@ -37,6 +41,7 @@ let backendBaseUrl = 'https://excvaluta.com';
 let authBearerToken: string | null = null;
 let clientContext: ClientContext = 'TREASURY_HQ';
 let lastForwardMs = 0;
+let droppedSinceLastForward = 0;
 
 /**
  * Konfiguracio - a main.ts hivja meg inditaskor.
@@ -97,7 +102,8 @@ function buildPayload(
     clientVersion: app.getVersion(),
     attrs: {
       ...attrs,
-      'electron.os': `Windows ${getOsRelease()}`,
+      // Copilot PR #681 P1: dynamic OS label (NEM hardcoded Windows)
+      'electron.os': `${getOsType()} ${getOsRelease()}`,
     },
     stackTrace: truncate(stack, MAX_STACK_LEN),
   };
@@ -114,9 +120,17 @@ function forwardToBackend(payload: VvLogPayload): void {
   }
   const now = Date.now();
   if (now - lastForwardMs < ANTI_SPAM_MIN_INTERVAL_MS) {
-    return;  // anti-spam
+    // Copilot PR #681 P1: dropolt event-eket szamoljuk, NEM dobjuk el silently
+    droppedSinceLastForward += 1;
+    return;
   }
   lastForwardMs = now;
+
+  // Hozzaadjuk a drop_count-ot az attrs-hoz hogy a backend lassa a missing signalt
+  const enrichedPayload: VvLogPayload = droppedSinceLastForward > 0
+    ? { ...payload, attrs: { ...payload.attrs, 'vv.dropped_since_last': droppedSinceLastForward } }
+    : payload;
+  droppedSinceLastForward = 0;
 
   try {
     const req = net.request({ method: 'POST', url: `${backendBaseUrl}${ENDPOINT_PATH}` });
@@ -128,7 +142,7 @@ function forwardToBackend(payload: VvLogPayload): void {
       res.on('data', () => { /* drain */ });
       res.on('end', () => { /* finished */ });
     });
-    req.write(JSON.stringify(payload));
+    req.write(JSON.stringify(enrichedPayload));
     req.end();
   } catch {
     /* csendben */

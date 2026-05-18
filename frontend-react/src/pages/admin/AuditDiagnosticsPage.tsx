@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   auditDiagnosticsApi,
   type AuditLogEntry,
@@ -255,32 +255,61 @@ export default function AuditDiagnosticsPage() {
         </section>
       )}
 
-      {/* Selected entry modal */}
-      {selectedEntry && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          onClick={() => setSelectedEntry(null)}
-        >
-          <div
-            className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[80vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+      {selectedEntry && <AuditEntryModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} />}
+    </div>
+  )
+}
+
+/**
+ * Copilot PR #681 P2 a11y: role=dialog + aria-modal + Escape-to-close + focus.
+ */
+function AuditEntryModal({
+  entry,
+  onClose,
+}: {
+  entry: AuditLogEntry
+  onClose: () => void
+}) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    closeButtonRef.current?.focus()
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="audit-modal-title"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[80vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 id="audit-modal-title" className="text-lg font-bold mb-2">
+          Audit-esemeny reszletei
+        </h3>
+        <pre className="bg-gray-100 p-3 rounded text-xs overflow-x-auto">
+          {JSON.stringify(entry, null, 2)}
+        </pre>
+        <div className="mt-4 text-right">
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded"
           >
-            <h3 className="text-lg font-bold mb-2">Audit-esemeny reszletei</h3>
-            <pre className="bg-gray-100 p-3 rounded text-xs overflow-x-auto">
-              {JSON.stringify(selectedEntry, null, 2)}
-            </pre>
-            <div className="mt-4 text-right">
-              <button
-                type="button"
-                onClick={() => setSelectedEntry(null)}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded"
-              >
-                Bezaras
-              </button>
-            </div>
-          </div>
+            Bezaras (Esc)
+          </button>
         </div>
-      )}
+      </div>
     </div>
   )
 }

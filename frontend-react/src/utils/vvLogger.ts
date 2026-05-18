@@ -47,19 +47,36 @@ const CLIENT_CONTEXT = detectClientContext()
 const CLIENT_VERSION = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? 'unknown'
 const IS_PROD = import.meta.env.PROD === true
 
+// Copilot PR #681 P2 re-entrancy guard: ha az axios interceptor a 5xx valaszt
+// vvLogger.error()-ra fordtja, infinite loop ert keletkezne (vvLogger.error ->
+// forwardLog -> 5xx -> interceptor.vvLogger.error -> forwardLog ...). A flag
+// megakadalyozza a recursive forward-ot.
+let isCurrentlyForwarding = false
+
 /**
  * Defensive: csak ERROR/WARN szintet kuldunk a backend-re.
  * INFO/DEBUG silently elesik (a backend automatikusan elutasitana).
  */
 async function forwardToBackend(entry: FrontendLogEntry): Promise<void> {
+  if (isCurrentlyForwarding) {
+    // Re-entrant hivas (pl. axios interceptor a 5xx valaszbol indit vvLogger.error-t)
+    // Csak lokalisan loggoljuk, NEM kuldunk ujabb backend forward-ot.
+    if (!IS_PROD) {
+      // eslint-disable-next-line no-console
+      console.warn('[vvLogger] Skipping re-entrant forward:', entry.eventType)
+    }
+    return
+  }
+  isCurrentlyForwarding = true
   try {
     await auditDiagnosticsApi.forwardLog(entry)
   } catch (err) {
-    // Backend forward sikertelen - csak lokalisan logoljuk (ne dobaljon infinite loop-ot)
     if (!IS_PROD) {
       // eslint-disable-next-line no-console
       console.warn('[vvLogger] Backend forward failed:', err)
     }
+  } finally {
+    isCurrentlyForwarding = false
   }
 }
 

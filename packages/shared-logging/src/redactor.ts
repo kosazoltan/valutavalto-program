@@ -8,15 +8,20 @@
  * vagy a network-en a backend-re.
  */
 
+// Copilot PR #681 P1: a hu_tax_id (10 jegy) es hu_id_card (6+2) NEM standalone,
+// hanem kontextus-fuggo (kulcsszo melle). A card_pan IIN prefix-szel gateolt.
+// Az iban hossz tightened (11..30 az alphanumeric body).
 const PATTERNS = {
   email: /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/g,
-  hu_tax_id: /\b\d{10}\b/g,                  // adoszam (10 jegyu)
-  hu_id_card: /\b\d{6}[A-Z]{2}\b/g,          // szemelyi szam
-  iban: /\b[A-Z]{2}\d{2}[A-Z0-9]{4,30}\b/g,  // bankszamla
+  iban: /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g,
   jwt: /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,
   bearer: /Bearer\s+[A-Za-z0-9._\-+/=]{20,}/gi,
-  card_pan: /\b(?:\d[ -]*?){13,19}\b/g,
-  openai_sk: /sk-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}/g,  // OpenAI API key
+  // IIN prefix-szel: Visa(4), MasterCard(51..55), Amex(34/37), Discover(6011|65xx)
+  card_pan: /\b(?:4\d{12}(?:\d{3})?|5[1-5]\d{14}|3[47]\d{13}|6(?:011|5\d{2})\d{12})\b/g,
+  openai_sk: /sk-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}/g,
+  // Kontextus-fuggo: kulcsszo + 5char + ertek - csak az erteket cserelni
+  hu_id_card_ctx: /(szig\.?szam|szemelyi\.?ig\.?|id[_-]?card|identity[_-]?card)([^A-Za-z0-9]{0,5})(\d{6}[A-Z]{2})/gi,
+  hu_tax_id_ctx: /(adoszam|tax[_-]?id)([^A-Za-z0-9]{0,5})(\d{10})/gi,
 }
 
 const FIELD_REDACT = new Set<string>([
@@ -56,8 +61,9 @@ function redactString(s: string): string {
     .replace(PATTERNS.email, '[EMAIL]')
     .replace(PATTERNS.iban, '[IBAN]')
     .replace(PATTERNS.card_pan, '[PAN]')
-    .replace(PATTERNS.hu_id_card, '[IDCARD]')
-    .replace(PATTERNS.hu_tax_id, '[TAXID]')
+    // Kontextus-fuggo: a kulcsszo + separator megmarad, csak az ertek redact
+    .replace(PATTERNS.hu_id_card_ctx, '$1$2[IDCARD]')
+    .replace(PATTERNS.hu_tax_id_ctx, '$1$2[TAXID]')
 }
 
 /**
