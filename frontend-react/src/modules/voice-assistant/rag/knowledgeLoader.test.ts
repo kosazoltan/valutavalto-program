@@ -57,6 +57,20 @@ describe('loadKnowledgeBase smoke', () => {
     expect(m).toBeNull()
   })
 
+  it('Codex PR #675 P1: lookupModuleById elfogadja a prefixed id-t is (NEM double-prefix)', () => {
+    // A korabbi bug: search-result `module:penztar.fomenu` -> lookup `module:module:penztar.fomenu`
+    // most a prefixed format-ot is elfogadjuk - mindkettre ugyanazt a payload-ot adja
+    const rawResult = lookupModuleById('penztar.fomenu')
+    const prefixedResult = lookupModuleById('module:penztar.fomenu')
+    expect(rawResult).not.toBeNull()
+    expect(prefixedResult).not.toBeNull()
+    expect(prefixedResult).toEqual(rawResult)
+  })
+
+  it('lookupModuleById ures inputra null', () => {
+    expect(lookupModuleById('')).toBeNull()
+  })
+
   it('error-code dokumentumok error: prefixszel + kanonikus id', () => {
     const { docs } = loadKnowledgeBase()
     const errorDocs = docs.filter((d) => d.sourceType === 'error-code')

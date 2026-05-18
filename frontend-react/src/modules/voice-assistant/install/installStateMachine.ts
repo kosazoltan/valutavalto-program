@@ -61,6 +61,19 @@ export function createInstallStateMachine(
         return stepAt(currentIdx)
       }
 
+      // Codex PR #676 P1 replay-idempotency fix:
+      // Az LLM/tool-call retry-elhet (network glitch, partial response, stb.) es
+      // ujra elkuldheti a SAME success=true hivast ugyanarra a step-re. Korabban
+      // ez `currentIdx`-et ELOREVITTE minden hivasnal, amiKovetkezmenye:
+      // 1. hivas (step 1, success=true) -> currentIdx=2; 2. hivas (step 1, success=true,
+      // replay) -> currentIdx=3 — kihagytuk a 2. lepest. Most az `currentStep !==
+      // currentIdx` esetet rejectaljuk: NEM lepunk, csak warn-olunk, igy a replay
+      // nem mozdit allapotot.
+      if (currentStep !== currentIdx) {
+        // out-of-sync / replay — NE lepunk
+        return stepAt(currentIdx)
+      }
+
       if (currentIdx <= TOTAL_INSTALL_STEPS) {
         currentIdx = currentIdx + 1
       }
