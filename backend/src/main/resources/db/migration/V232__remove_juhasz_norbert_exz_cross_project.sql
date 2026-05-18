@@ -14,7 +14,7 @@
 DO $$
 DECLARE
     v_ebc_id UUID;
-    v_juhasz_id UUID;
+    v_juhasz_id BIGINT;  -- HOTFIX: worker.id BIGSERIAL/BIGINT, NEM UUID
 BEGIN
     SELECT id INTO v_ebc_id FROM company WHERE code = 'EBC' LIMIT 1;
     IF v_ebc_id IS NULL THEN
