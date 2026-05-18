@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.dto.voice.VoiceAssistantMode;
 import hu.puzzleir.valuta.dto.voice.VoiceTokenResponseDto;
 import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.logging.VVLogger;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 @Slf4j
 public class VoiceTokenService {
+
+    // V234 belso log+audit modul - AI-olvashato strukturalt hibakod-szintu log
+    private static final VVLogger VV_LOG = VVLogger.of(VoiceTokenService.class);
 
     private static final String OPENAI_SESSIONS_URL = "https://api.openai.com/v1/realtime/sessions";
     private static final String MODEL = "gpt-realtime-2";
@@ -110,7 +114,8 @@ public class VoiceTokenService {
             );
         }
         if (openAiApiKey == null || openAiApiKey.isBlank()) {
-            log.error("VoiceTokenService: voice.openai.api-key nincs konfigurálva!");
+            VV_LOG.error("VV-VOICE-001", "voice.token.misconfigured", null,
+                    java.util.Map.of("reason", "api_key_missing"));
             throw new BusinessException(
                     "A hangsegéd backend hibás konfigurációval rendelkezik.",
                     "VOICE_ASSISTANT_MISCONFIGURED"
@@ -146,7 +151,9 @@ public class VoiceTokenService {
             JsonNode clientSecret = json.get("client_secret");
 
             if (clientSecret == null || clientSecret.get("value") == null) {
-                log.error("VoiceTokenService: hibás OpenAI válasz, hiányzó client_secret: {}", response);
+                VV_LOG.error("VV-VOICE-004", "voice.token.invalid_response", null,
+                        java.util.Map.of("mode", parsedMode.getWireName(),
+                                "response_length", response != null ? response.length() : 0));
                 throw new BusinessException(
                         "Az OpenAI nem adott vissza érvényes ephemeral token-t.",
                         "VOICE_ASSISTANT_API_ERROR"
@@ -164,7 +171,9 @@ public class VoiceTokenService {
                     .mode(parsedMode.getWireName())
                     .build();
         } catch (HttpClientErrorException ex) {
-            log.error("VoiceTokenService: OpenAI HTTP {} válasz: {}", ex.getStatusCode(), ex.getResponseBodyAsString());
+            VV_LOG.error("VV-VOICE-001", "voice.token.openai_http_error", ex,
+                    java.util.Map.of("status_code", ex.getStatusCode().value(),
+                            "mode", parsedMode.getWireName()));
             if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
                 throw new BusinessException(
                         "A hangsegéd backend API-kulcsa érvénytelen.",
@@ -176,13 +185,15 @@ public class VoiceTokenService {
                     "VOICE_ASSISTANT_UPSTREAM_ERROR"
             );
         } catch (RestClientException ex) {
-            log.error("VoiceTokenService: OpenAI API hiba (RestClientException)", ex);
+            VV_LOG.error("VV-VOICE-001", "voice.token.openai_network_error", ex,
+                    java.util.Map.of("mode", parsedMode.getWireName()));
             throw new BusinessException(
                     "Az OpenAI Realtime API jelenleg nem elérhető. Próbáld újra perceken belül.",
                     "VOICE_ASSISTANT_UPSTREAM_ERROR"
             );
         } catch (IOException ex) {
-            log.error("VoiceTokenService: OpenAI válasz JSON-parser hiba", ex);
+            VV_LOG.error("VV-VOICE-005", "voice.token.json_parse_error", ex,
+                    java.util.Map.of("mode", parsedMode.getWireName()));
             throw new BusinessException(
                     "Az OpenAI válasza nem értelmezhető JSON.",
                     "VOICE_ASSISTANT_API_ERROR"
@@ -212,8 +223,10 @@ public class VoiceTokenService {
                 bucket.pollFirst();
             }
             if (bucket.size() >= rateLimitMaxPerHour) {
-                log.warn("VoiceTokenService: rate-limit lépve worker={} (max {}/{}s)",
-                        key, rateLimitMaxPerHour, rateLimitWindowSeconds);
+                VV_LOG.warn("voice.token.rate_limit_hit", "VV-VOICE-002",
+                        java.util.Map.of("worker_id", key,
+                                "max_per_hour", rateLimitMaxPerHour,
+                                "window_seconds", rateLimitWindowSeconds));
                 throw new BusinessException(
                         "Túl sok hangsegéd-token kérés rövid idő alatt. Próbáld újra később.",
                         "VOICE_ASSISTANT_RATE_LIMIT"

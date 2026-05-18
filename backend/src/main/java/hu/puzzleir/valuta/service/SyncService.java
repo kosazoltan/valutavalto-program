@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.logging.VVLogger;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.DailySessionRepository;
@@ -34,6 +35,9 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 @Slf4j
 public class SyncService {
+
+    // V234 belso log+audit modul - strukturalt error code log
+    private static final VVLogger VV_LOG = VVLogger.of(SyncService.class);
 
     private final SyncLogRepository syncLogRepository;
     private final BranchRepository branchRepository;
@@ -114,7 +118,10 @@ public class SyncService {
             syncLog.setStatus(SyncLog.SyncStatus.FAILED);
             syncLog.setCompletedAt(LocalDateTime.now());
             syncLog.setErrorMessage(e.getMessage());
-            log.error("Szinkronizáció sikertelen: branch={}, type={}", branch.getCode(), syncType, e);
+            VV_LOG.error("VV-SYNC-004", "branch.sync_failed", e,
+                    java.util.Map.of("branch_code", branch.getCode(),
+                            "sync_type", syncType,
+                            "branch_id", branch.getId()));
         }
 
         syncLog = syncLogRepository.save(syncLog);

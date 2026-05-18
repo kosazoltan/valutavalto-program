@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.logging.VVLogger;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.dto.pos.PosResultStatus;
@@ -50,6 +51,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class TransactionService {
+
+    // V234 belso log+audit modul - strukturalt error code-szintu log
+    private static final VVLogger VV_LOG = VVLogger.of(TransactionService.class);
 
     private final TransactionRepository transactionRepository;
     private final TransactionLineRepository transactionLineRepository;
@@ -110,7 +114,8 @@ public class TransactionService {
                 log.warn("HUF currency not found in DB - cash balance operations may fail until seeded");
             }
         } catch (Exception e) {
-            log.error("Failed to cache HUF currency ID (DB type mismatch?): {}", e.getMessage());
+            VV_LOG.error("VV-TECH-003", "currency.huf.cache_failed", e,
+                    java.util.Map.of("startup_phase", "PostConstruct"));
             cachedHufCurrencyId = null;
         }
     }
@@ -139,8 +144,10 @@ public class TransactionService {
                     txDate.atTime(txTime),
                     transaction.getReceiptNumber());
         } catch (Exception e) {
-            log.error("Kamera-tranzakcio linkeles sikertelen: tx={}, receipt={}",
-                    transaction.getId(), transaction.getReceiptNumber(), e);
+            VV_LOG.error("VV-TECH-004", "transaction.camera_link_failed", e,
+                    java.util.Map.of("tx_id", transaction.getId(),
+                            "receipt_number", transaction.getReceiptNumber(),
+                            "branch_id", transaction.getBranch().getId()));
         }
     }
 
@@ -623,7 +630,8 @@ public class TransactionService {
                 hufAmount, customerId, customerName, documentNumber, currencyCode);
 
         if (basicResult == null) {
-            log.error("AML checkTransaction null eredmenyt adott, tranzakcio blokkolva");
+            VV_LOG.error("VV-AML-004", "aml.service_unavailable_tx_blocked", null,
+                    java.util.Map.of("policy", "FAIL_CLOSED"));
             throw new ValidationException("AML ellenőrzés nem elérhető, a tranzakció nem hajtható végre!");
         }
 
