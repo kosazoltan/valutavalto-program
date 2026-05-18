@@ -82,6 +82,26 @@ export default tseslint.config(
     files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
+      // Teszt-fixture szovegek (pl. "Custom error fallback") NEM felhasznalo-felé
+      // jelennek meg, nincs ertelme i18n-elni. False-positive warning-ok elhagyasa.
+      'i18next/no-literal-string': 'off',
+    },
+  },
+  {
+    // NAV-szabvanyu adomentes valutavalto bizonylat:
+    // a 2007. evi CXVII. tv. 86. § e) szakasz jogszabaly-idezet KOTELEZO
+    // magyarul, plus bilingual (HU/EN) "Sorszam (INVOICE NR)", "Datum (DATE)",
+    // stb. cimke-mintaszeruseg az MNB pmt.-előirassal egyezo. Ezek NEM
+    // fordithatok i18n-be, mert a magyar nyelv jogszabalyi kotelezettseg.
+    //
+    // A `ReceiptPreviewModal` ugyanazokat a szovegeket mutatja preview-kent
+    // Electron print-dialog-elott.
+    files: [
+      'src/components/ReceiptPrint.tsx',
+      'src/components/electron/ReceiptPreviewModal.tsx',
+    ],
+    rules: {
+      'i18next/no-literal-string': 'off',
     },
   }
 );
