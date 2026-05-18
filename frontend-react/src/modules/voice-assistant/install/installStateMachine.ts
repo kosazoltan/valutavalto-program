@@ -1,14 +1,23 @@
 import { INSTALL_STEPS, TOTAL_INSTALL_STEPS, type InstallStep } from './installSteps'
+import { logger } from '../../../utils/logger'
 
 /**
  * EBC Hangsegéd telepítő-állapot-gép — Phase 7 ToolContext.nextInstallStep
  * default helyettesítése.
  *
- * <p>Forrás: EBC_Hangseged_Claude_Code_Implementacios_Utasitas.md §6.3
+ * Forrás: EBC_Hangseged_Claude_Code_Implementacios_Utasitas.md §6.3
  *
- * <p>Az `next(currentStep, success)` a Realtime API `next_install_step` tool
- * hívásakor lép előre / marad. Az `onCompleted` callback a 7. lépés után
- * fut le (Phase 9.5 Electron integráció esetén bezárja a Setup Wizard panelt).
+ * Az `next(currentStep, success)` a Realtime API `next_install_step` tool
+ * hívásakor lép előre / marad.
+ *
+ * Az `onCompleted` callback a 7. lépés után FUT LE EGYSZER
+ * (Copilot+Codex PR #666: one-shot completion — retry/replay esetén NEM
+ * tüzel újra a callback, hogy ne duplázzunk finalize-műveletet).
+ *
+ * A `next()` az LLM által megadott `currentStep`-et FIGYELMEZTETŐ csak —
+ * a tényleges leptetés a BELSŐ `currentIdx`-en történik (Codex PR #666 P1
+ * security: az LLM nem küldhet `current_step: 6` értéket, hogy átugorjon
+ * a telepítés lépésein).
  */
 
 export interface InstallStateMachine {
@@ -22,6 +31,7 @@ export function createInstallStateMachine(
   onCompleted?: (notes: string[]) => void
 ): InstallStateMachine {
   let currentIdx = 1
+  let completedFired = false
   const collectedNotes: string[] = []
 
   function stepAt(idx: number): InstallStep {
@@ -35,19 +45,39 @@ export function createInstallStateMachine(
     },
     next(currentStep, success, note) {
       if (note && note.trim()) collectedNotes.push(note.trim())
-      if (!success) {
-        return stepAt(currentStep)
+
+      // Codex PR #666 P1: a leptetes a BELSO currentIdx-en, NEM az LLM altal
+      // kuldott currentStep-en. Ha az LLM out-of-sync (pl. current_step: 6,
+      // miközben a user meg az 1. lepesnel van), figyelmezteto log-ot ir,
+      // de NEM ugor at lepest. A teljes lepessor mindenkeppen vegigfut.
+      if (currentStep !== currentIdx) {
+        logger.warn(
+          'VoiceAssistant',
+          `installStateMachine: LLM currentStep=${currentStep} !== internal=${currentIdx}, internal a kanonikus`
+        )
       }
-      const nextIdx = Math.min(currentStep + 1, TOTAL_INSTALL_STEPS + 1)
-      currentIdx = nextIdx
+
+      if (!success) {
+        return stepAt(currentIdx)
+      }
+
+      if (currentIdx <= TOTAL_INSTALL_STEPS) {
+        currentIdx = currentIdx + 1
+      }
+
       if (currentIdx > TOTAL_INSTALL_STEPS) {
-        if (onCompleted) onCompleted([...collectedNotes])
+        // Copilot+Codex PR #666 P2: one-shot completion — retry-/replay-szafe
+        if (onCompleted && !completedFired) {
+          completedFired = true
+          onCompleted([...collectedNotes])
+        }
         return stepAt(TOTAL_INSTALL_STEPS)
       }
       return stepAt(currentIdx)
     },
     reset() {
       currentIdx = 1
+      completedFired = false
       collectedNotes.length = 0
     },
     isCompleted() {

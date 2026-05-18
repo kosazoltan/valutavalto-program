@@ -1,16 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 /**
  * EBC Hangsegéd első-futtatás detektálás.
  *
- * <p>Forrás: EBC_Hangseged_Claude_Code_Implementacios_Utasitas.md §6.1
+ * Forrás: EBC_Hangseged_Claude_Code_Implementacios_Utasitas.md §6.1
  *
- * <p>localStorage flag — egy gépen csak az ELSO indításnál igaz. Az Electron
+ * localStorage flag — egy gépen csak az ELSO indításnál igaz. Az Electron
  * userData-flow miatt minden új telepítés (userData migráció után) első
  * indulásakor `null` és újra `true` lesz.
  *
- * <p>Phase 9.5 Electron integráció: a `useFirstRun()` `true` esetén a
+ * Phase 9.5 Electron integráció: a `useFirstRun()` `true` esetén a
  * `<VoiceAssistantPanel>` autostarts `install` módban. Egyébként `idle`.
+ *
+ * (Copilot PR #666: a korabbi useless useEffect torolve. JSDoc-bol a
+ * Javadoc-stilus <p> tagek eltavolitva, TSDoc-konvencio: blank * line.)
  */
 
 const FLAG_KEY = 'ebc_voice_assistant_first_run_done'
@@ -23,13 +26,6 @@ export function useFirstRun(): { isFirstRun: boolean; markCompleted: () => void 
       return false
     }
   })
-
-  useEffect(() => {
-    if (!isFirstRun) return
-    return () => {
-      /* no cleanup needed */
-    }
-  }, [isFirstRun])
 
   const markCompleted = () => {
     try {
