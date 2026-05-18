@@ -6,7 +6,8 @@ created_at: 2026-05-15
 updated_at: 2026-05-18
 operator: Claude Opus 4.7 (1M context, autonomous mode)
 status: PROGRESS — HSM Approval submitted, váró DigiCert next steps
-pii_status: Redacted (2026-05-18) — Sourcery PR #670 feedback alapjan
+pii_status: redacted
+pii_status_updated_at: 2026-05-18
 ---
 
 # 2026-05-15 DigiCert HSM Approval — Azure Key Vault elfogadva
@@ -41,9 +42,9 @@ Ez megerősíti a 2026-05-15-i pivot helyességét: a DigiCert EV CS hivatalosan
 ### Submitted form data
 
 - **Company name:** EXCLUSIVE BEST Change Zrt.
-- **First name:** redacted (BEC IT-vezeto)
-- **Last name:** redacted (BEC IT-vezeto)
-- **Email:** redacted (BEC IT-vezeto cég-email)
+- **First name:** `<first-name-redacted>` (BEC IT-vezeto)
+- **Last name:** `<last-name-redacted>` (BEC IT-vezeto)
+- **Email:** `<email-redacted>` (BEC IT-vezeto ceg-email)
 - **Title:** CEO
 - **Agree checkbox:** ✅ (You agree that you are only using a suitable Hardware Crypto Module to generate Key Pairs to be associated with your EV Code Signing Certificates)
 - **Submitted at:** 2026-05-15 ~09:55 CEST
