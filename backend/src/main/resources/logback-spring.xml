@@ -84,7 +84,8 @@
            (a JAR is itt), igy a valuta user maga letre tudja hozni.
            Override: LOG_PATH env var (production esetleg /var/log/* + chown). -->
       <file>${LOG_PATH:-/opt/valutavalto/backend/logs}/valuta-backend.json.log</file>
-      <!-- Auto-create parent dir ha hianyzik. Logback 1.5.x feature. -->
+      <!-- A parent dir-t a deploy workflow hozza letre (mkdir -p + chown valuta).
+           Logback FileAppender NEM kreal parent dir-t (Sourcery PR #683 finding). -->
       <append>true</append>
       <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
         <fileNamePattern>${LOG_PATH:-/opt/valutavalto/backend/logs}/valuta-backend.json.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>

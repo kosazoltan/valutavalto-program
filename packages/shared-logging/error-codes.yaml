@@ -8,7 +8,7 @@
 
 version: 1
 last_updated: "2026-05-18"
-total_codes: 30
+total_codes: 36
 
 codes:
 
@@ -160,6 +160,18 @@ codes:
     level: ERROR
     ai_fix_hint: |
       penztar-client/electron/sqlite.ts - .db fajl serult.
+
+  VV-SYNC-004:
+    name: "Backend branch-to-branch szinkronizacio sikertelen"
+    category: TECHNICAL
+    level: ERROR
+    user_impact: "Egy iroda tranzakciok/rates/sessions adatai nem szinkronizalodtak. Manualis retry vagy heartbeat-alapu auto-recovery szukseges."
+    ai_fix_hint: |
+      SyncService.runSync(branch, type) catch. Lehet:
+      - integration_transport.outbox SFTP/HTTP unavailable
+      - branch.code helytelen
+      - sync_log status='FAILED' bejegyzes
+      Retry: SyncController.retrySync(branchId).
       Megoldas: telepito uninstall + new install.
 
   # =====================================================
@@ -266,6 +278,29 @@ codes:
       Halozati problema az OpenAI Realtime API-val. realtimeClient.ts
       AbortController-rel mar implementalja.
 
+  VV-VOICE-004:
+    name: "OpenAI Realtime API hibas valasz (hianyzik client_secret)"
+    category: INTEGRATION
+    level: ERROR
+    user_impact: "Hangsegéd nem aktivalhato — backend nem tudott ephemeral tokent atvenni"
+    ai_fix_hint: |
+      Az OpenAI valasz JSON nem tartalmaz `client_secret.value` mezot.
+      Lehet model-deprecation (gpt-realtime-2 -> gpt-realtime-X), vagy
+      OpenAI Realtime API breaking change. Lasd:
+      https://platform.openai.com/docs/guides/realtime
+
+  VV-VOICE-005:
+    name: "OpenAI Realtime API valasz JSON-parser hiba"
+    category: INTEGRATION
+    level: ERROR
+    user_impact: "Hangsegéd nem aktivalhato — szerver-szintu valasz-parser hiba"
+    ai_fix_hint: |
+      Az OpenAI HTTP 200 valasz nem ervenyes JSON. TILOS a raw body
+      logolasa (tartalmazhat ephemeral tokent / API kulcsot!). Csak
+      response.length() es egy SHA-256 hash logolando, plus a
+      Content-Type / Content-Length fejlecek. A raw body csak fejlesztoi
+      console-ban (NEM a structured log-ban) jelenitheto meg DEBUG modban.
+
   # =====================================================
   # VV-TECH — technikai (db, infra)
   # =====================================================
@@ -292,4 +327,35 @@ codes:
     level: FATAL
     ai_fix_hint: |
       Generikus catch-all. A stack trace-ben latszik a tenyleges hely.
+
+  VV-TECH-003:
+    name: "HUF currency lookup failure at startup (cache_huf_currency_id)"
+    category: TECHNICAL
+    level: ERROR
+    user_impact: "Penztari kapcsolatos muveletek a HUF cache-elt ID hianyaban nem mukodnek (cash_balance)"
+    ai_fix_hint: |
+      TransactionService.@PostConstruct initHufCurrencyId() metodus catch-block.
+      A currencies tabla tipusa lehet UUID vs Long mismatch. Ellenorizd a
+      CurrencyRepository tipus-definiciot + a V31 migrationt.
+
+  VV-TECH-004:
+    name: "Camera-tranzakcio link sikertelen (CameraTransactionLinker)"
+    category: TECHNICAL
+    level: ERROR
+    user_impact: "A tranzakcio rogzitve, de a kamerakep nem koto a bizonylathoz - utolagos osszekapcsolas kell"
+    ai_fix_hint: |
+      CameraTransactionLinker.linkTransaction() catch-all. Camera service offline?
+      AML/audit ellenorzeshez kotelezo a kamerakep, manualis fix:
+      - CameraExportController.linkManually(txId, branchId, timestamp, receiptNo)
+
+  VV-AML-004:
+    name: "AML service unavailable - tranzakcio blokkolva"
+    category: AML
+    level: FATAL
+    user_impact: "Tranzakcio NEM hajthato vegre AML-szolgaltatas hibaja miatt"
+    ai_fix_hint: |
+      AmlService.checkTransaction() null-t adott vissza. Lasd:
+      - Sanction-list cache lejart?
+      - Customer-screening-service down?
+      Tranzakciot soha NE engedj uregess AML-eredmenyt.
       Mindig nezz at egy konkretabb error_code-ra is.
