@@ -142,12 +142,21 @@ export function loadKnowledgeBase(): { docs: SearchableDoc[]; raw: Record<string
 
 /**
  * Egy konkret modul-info lekerese a modules.yaml-bol.
- * Pl: lookupModule('penztar.fomenu') vagy 'kozponti.napzaras'.
+ *
+ * Codex PR #675 P1 fix: kezeli MIND a raw ID-t ('penztar.fomenu'),
+ * MIND a prefixed ID-t ('module:penztar.fomenu'). A korabbi
+ * `module:${moduleId}` strict-formacio double-prefix bug-ot okozott a
+ * `searchKnowledgeBase` -> `lookupModule` chaining flow-ban, ahol a
+ * search-result mar `module:<id>` formaban erkezett, es a lookup
+ * `module:module:<id>`-t hasonlitott, NEM talalt es false negativ-et adott.
  */
 export function lookupModuleById(moduleId: string): unknown | null {
+  if (!moduleId) return null
   const kb = loadKnowledgeBase()
+  // Normalizálás: ha a caller mar átadta a 'module:' prefixet, NE duplázzuk.
+  const canonicalId = moduleId.startsWith('module:') ? moduleId : `module:${moduleId}`
   const hit = kb.docs.find(
-    (d) => d.sourceType === 'module' && d.id === `module:${moduleId}`
+    (d) => d.sourceType === 'module' && d.id === canonicalId
   )
   return hit?.payload ?? null
 }
