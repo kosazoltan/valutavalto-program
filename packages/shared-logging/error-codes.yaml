@@ -295,8 +295,11 @@ codes:
     level: ERROR
     user_impact: "Hangsegéd nem aktivalhato — szerver-szintu valasz-parser hiba"
     ai_fix_hint: |
-      Az OpenAI HTTP 200 valasz nem ervenyes JSON. Logoljuk a raw body-t
-      a stack-ben es ellenorizzuk a Content-Type fejlecet.
+      Az OpenAI HTTP 200 valasz nem ervenyes JSON. TILOS a raw body
+      logolasa (tartalmazhat ephemeral tokent / API kulcsot!). Csak
+      response.length() es egy SHA-256 hash logolando, plus a
+      Content-Type / Content-Length fejlecek. A raw body csak fejlesztoi
+      console-ban (NEM a structured log-ban) jelenitheto meg DEBUG modban.
 
   # =====================================================
   # VV-TECH — technikai (db, infra)
@@ -331,9 +334,9 @@ codes:
     level: ERROR
     user_impact: "Penztari kapcsolatos muveletek a HUF cache-elt ID hianyaban nem mukodnek (cash_balance)"
     ai_fix_hint: |
-      TransactionService.@PostConstruct cacheHufCurrencyId(). A currencies tabla
-      tipusa lehet UUID vs Long mismatch. Ellenorizd a CurrencyRepository
-      tipus-definiciot + a V31 migrationt.
+      TransactionService.@PostConstruct initHufCurrencyId() metodus catch-block.
+      A currencies tabla tipusa lehet UUID vs Long mismatch. Ellenorizd a
+      CurrencyRepository tipus-definiciot + a V31 migrationt.
 
   VV-TECH-004:
     name: "Camera-tranzakcio link sikertelen (CameraTransactionLinker)"

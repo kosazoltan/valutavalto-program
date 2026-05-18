@@ -630,7 +630,10 @@ public class TransactionService {
                 hufAmount, customerId, customerName, documentNumber, currencyCode);
 
         if (basicResult == null) {
-            VV_LOG.error("VV-AML-004", "aml.service_unavailable_tx_blocked", null,
+            // Codex+Copilot PR #682 finding: VV-AML-004 a katalogusban FATAL.
+            // VV_LOG.fatal() szukseges hogy a level_severity=FATAL MDC marker
+            // is bekeruljon a strukturalt log-ba (Loki/Grafana alerting szempontjabol).
+            VV_LOG.fatal("VV-AML-004", "aml.service_unavailable_tx_blocked", null,
                     java.util.Map.of("policy", "FAIL_CLOSED"));
             throw new ValidationException("AML ellenőrzés nem elérhető, a tranzakció nem hajtható végre!");
         }
