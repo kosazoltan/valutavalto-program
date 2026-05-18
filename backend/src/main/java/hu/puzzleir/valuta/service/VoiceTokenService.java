@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.voice.VoiceTokenResponseDto;
 import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +17,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 
+import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -51,6 +53,25 @@ public class VoiceTokenService {
     private boolean voiceEnabled;
 
     /**
+     * Thread-safe, egyetlen példányban tartott RestClient — connection-pool
+     * újrahasználás miatt {@link PostConstruct}-ben építjük fel.
+     */
+    private RestClient restClient;
+
+    @PostConstruct
+    void initRestClient() {
+        if (openAiApiKey == null || openAiApiKey.isBlank()) {
+            log.warn("VoiceTokenService: voice.openai.api-key üres — RestClient lazy módon épül később.");
+            return;
+        }
+        this.restClient = RestClient.builder()
+                .baseUrl(OPENAI_SESSIONS_URL)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + openAiApiKey)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+    }
+
+    /**
      * Ephemeral token kérése az OpenAI-tól.
      *
      * @param mode 'install' | 'test' | 'support'
@@ -83,14 +104,12 @@ public class VoiceTokenService {
                 "reasoning", Map.of("effort", mode.equals("test") ? "medium" : "low")
         );
 
-        try {
-            RestClient client = RestClient.builder()
-                    .baseUrl(OPENAI_SESSIONS_URL)
-                    .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + openAiApiKey)
-                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                    .build();
+        if (restClient == null) {
+            initRestClient();
+        }
 
-            String response = client.post()
+        try {
+            String response = restClient.post()
                     .body(requestBody)
                     .retrieve()
                     .body(String.class);
@@ -134,11 +153,11 @@ public class VoiceTokenService {
                     "Az OpenAI Realtime API jelenleg nem elérhető. Próbáld újra perceken belül.",
                     "VOICE_ASSISTANT_UPSTREAM_ERROR"
             );
-        } catch (Exception ex) {
-            log.error("VoiceTokenService: váratlan hiba a token-kéréskor", ex);
+        } catch (IOException ex) {
+            log.error("VoiceTokenService: OpenAI válasz JSON-parser hiba", ex);
             throw new BusinessException(
-                    "A hangsegéd-token előállítása sikertelen.",
-                    "VOICE_ASSISTANT_FAILURE"
+                    "Az OpenAI válasza nem értelmezhető JSON.",
+                    "VOICE_ASSISTANT_API_ERROR"
             );
         }
     }
