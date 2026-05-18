@@ -15,7 +15,7 @@ name: Windows Signed Release (v2.x)
 # 2026-05-15-i pivot: Sectigo OV CS cancel + store credit ($659.97) -> DigiCert EV CS
 # ($559.99/ev) az Azure-native uton. Indok: a Microsoft Q&A megerositette, hogy a Sectigo
 # Azure Key Vault Premium HSM-mel mukodik, DE nincs key attestation, ami az EV CS Cloud HSM
-# requirement-jet sertik. A DigiCert EV CS explicit elfogadja az "audited cloud (e.g.,
+# requirement-jet serti. A DigiCert EV CS explicit elfogadja az "audited cloud (e.g.,
 # Azure or AWS)" tarolot. A DigiCert HSM Approval form SUBMITTED 2026-05-15.
 #
 # A workflow logikaja generic - az AzureSignTool a Key Vault-on tarolt CERT-et hasznalja,
