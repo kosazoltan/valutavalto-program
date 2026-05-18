@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.voice.VoiceAssistantMode;
 import hu.puzzleir.valuta.dto.voice.VoiceTokenResponseDto;
 import hu.puzzleir.valuta.exception.BusinessException;
-import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.logging.VVLogger;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -102,11 +101,11 @@ public class VoiceTokenService {
     /**
      * Ephemeral token kérése az OpenAI-tól.
      *
-     * @param mode 'install' | 'test' | 'support'
+     * @param mode VoiceAssistantMode (install / test / support / unified)
      * @param workerCode rate-limit kulcsa (Copilot PR #659)
      * @return ephemeral client_secret + lejárati idő
      */
-    public VoiceTokenResponseDto requestEphemeralToken(String mode, String workerCode) {
+    public VoiceTokenResponseDto requestEphemeralToken(VoiceAssistantMode mode, String workerCode) {
         if (!voiceEnabled) {
             throw new BusinessException(
                     "A hangsegéd szolgáltatás jelenleg nincs engedélyezve.",
@@ -121,9 +120,10 @@ public class VoiceTokenService {
                     "VOICE_ASSISTANT_MISCONFIGURED"
             );
         }
-        // Copilot PR #659: egyetlen forrás a megengedett módokra (VoiceAssistantMode enum)
-        VoiceAssistantMode parsedMode = VoiceAssistantMode.tryParse(mode).orElseThrow(() ->
-                new ValidationException("Érvénytelen mód: " + mode + ". Megengedett: install, test, support."));
+        // Copilot PR #689 P2 finding: a mode-validacio mar a Jackson @JsonCreator
+        // (VoiceAssistantMode.fromWireName) szinten megtortenik a DTO bind-koron.
+        // Itt csak az enum-ot hasznaljuk.
+        VoiceAssistantMode parsedMode = mode;
 
         // Copilot PR #659: per-worker rate-limit — védi a master OPENAI_API_KEY-t
         checkRateLimit(workerCode);

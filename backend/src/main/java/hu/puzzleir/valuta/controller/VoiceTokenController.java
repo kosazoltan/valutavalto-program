@@ -47,7 +47,7 @@ public class VoiceTokenController {
 
         String workerCode = SecurityUtils.getCurrentWorkerCode();
         log.info("VoiceTokenController: ephemeral token kérés, worker={}, mode={}",
-                workerCode, request.getMode());
+                workerCode, request.getMode().getWireName());
 
         VoiceTokenResponseDto response = voiceTokenService.requestEphemeralToken(request.getMode(), workerCode);
 

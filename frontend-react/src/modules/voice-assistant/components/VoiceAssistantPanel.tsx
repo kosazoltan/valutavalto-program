@@ -1,4 +1,19 @@
 import { useVoiceAssistant } from '../context/VoiceAssistantProvider'
+import type { VoiceMode } from '../hooks/useVoiceMode'
+
+/**
+ * Felhasználói label a belso `VoiceMode` enum-hoz.
+ *
+ * <p>Copilot PR #689 P2 finding: korábban `Aktív (${mode})` formátum a
+ * felhasználónak a technikai "unified" stringet jelenítette meg. Ehelyett
+ * az aktiv mod neve magyar, beszedes szoveg.
+ */
+const VOICE_MODE_LABEL: Record<Exclude<VoiceMode, 'idle'>, string> = {
+  unified: 'Beszélgetés',
+  install: 'Telepítés',
+  test: 'Tesztelés',
+  support: 'Hibajelzés',
+}
 
 /**
  * EBC Hangsegéd lebegő panel a jobb alsó sarokban.
@@ -41,7 +56,7 @@ export function VoiceAssistantPanel() {
         {isConnecting
           ? 'Kapcsolódás…'
           : isActive
-            ? `Aktív (${mode})`
+            ? `Aktív — ${mode !== 'idle' ? VOICE_MODE_LABEL[mode] : 'Beszélgetés'}`
             : 'Indítsd a beszélgetést.'}
       </div>
 
