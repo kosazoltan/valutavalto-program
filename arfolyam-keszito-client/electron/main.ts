@@ -473,19 +473,17 @@ app.whenReady().then(async () => {
       callback(true)
       return
     }
-    let requestingOrigin = ''
     try {
       const url = new URL(String(details?.requestingUrl ?? ''))
-      requestingOrigin = url.origin
       const isLocalApp = url.protocol === 'app:' && url.hostname === 'localhost'
       const isLocalHttp = url.protocol === 'http:' && url.hostname === 'localhost'
       const isProduction = url.protocol === 'https:' && url.hostname === 'excvaluta.com'
       if (isLocalApp || isLocalHttp || isProduction) {
-        log.info('[VoiceAssistant] media (mic) engedely megadva:', requestingOrigin)
+        log.info('[VoiceAssistant] media (mic) engedely megadva:', url.origin)
         callback(true)
         return
       }
-      log.warn('[VoiceAssistant] media (mic) engedely elutasitva (idegen origin):', requestingOrigin)
+      log.warn('[VoiceAssistant] media (mic) engedely elutasitva (idegen origin):', url.origin)
     } catch (err) {
       log.warn('[VoiceAssistant] media (mic) URL parse hiba — elutasitva:', err)
     }
