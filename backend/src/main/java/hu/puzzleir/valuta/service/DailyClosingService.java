@@ -578,8 +578,18 @@ public class DailyClosingService {
                                 terminal.getTerminalId(), result.errorMessage());
                     }
                 } catch (Exception e) {
-                    VV_LOG.error("VV-BIZ-007", "daily_closing.pos_terminal_failed", e,
-                            java.util.Map.of("terminal_id", terminal.getTerminalId()));
+                    // Codex PR #685 P2: Map.of() reject null-okat. Ha az inkonzisztens
+                    // DB-rekord miatt a terminal.getTerminalId() null, az Map.of() NPE-t
+                    // dobna a catch-ben es megszakitana a loopot. Defensive: csak nem-null
+                    // attr-okat raknak HashMap-be, igy mindenkeppen folytatodik a loop.
+                    java.util.Map<String, Object> attrs = new java.util.HashMap<>();
+                    String terminalId = terminal.getTerminalId();
+                    if (terminalId != null) {
+                        attrs.put("terminal_id", terminalId);
+                    } else {
+                        attrs.put("terminal_id", "<null - inkonzisztens DB-rekord>");
+                    }
+                    VV_LOG.error("VV-BIZ-007", "daily_closing.pos_terminal_failed", e, attrs);
                     // NEM dobunk kivételt — ne akadjon meg a zárás
                 }
             }

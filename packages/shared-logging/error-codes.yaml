@@ -93,20 +93,25 @@ codes:
     level: ERROR
     user_impact: "A napzaras kotelezo lepese elhasalt - manualis korrekcio + ujraindas szukseges"
     ai_fix_hint: |
-      DailyClosingService.executeStep(branchId, step). A `step_number` attr
-      mutatja melyik lepes (1..10). Lasd: docs/operations/napzaras-runbook.md.
-      Tipikus okok: bizonylat-gap, mérleg-elteres, POS-terminal offline.
+      DailyClosingService.runStep(stepNumber, name, check) belso catch.
+      A `step_number` attr mutatja melyik lepes (1..9, TOTAL_STEPS=9):
+      1=MTCN, 2=Esti cimletezes, 3=Kezelesi dij, 4=WU, 5=AFA, 6=Foglalo,
+      7=E-kereskedelem, 8=Egyeb (AXA/MoneyGram), 9=NAV kontroll. A public
+      executeStepCheck(stepNumber, branchId, closingDate) az atugorhato
+      hibadiagnosztikai endpoint. Tipikus okok: bizonylat-gap, merleg-elteres,
+      POS-terminal offline.
 
   VV-BIZ-007:
     name: "POS terminal napzaras hiba"
     category: BUSINESS
     level: ERROR
-    user_impact: "A POS terminal nem zart le - manualis zaras kell a terminál UI-jan"
+    user_impact: "A POS terminal nem zart le - manualis zaras kell a terminal UI-jan"
     ai_fix_hint: |
-      DailyClosingService.runPosTerminalClosing(). A terminal_id attr azonositja
-      a problemás eszkozt. Tipikus: hálózati problema, terminal offline, vagy
-      a POS terminal valasza error code. Kovetkezo napzaras elott manualis
-      terminal-zaras a terminal UI-jan.
+      DailyClosingService POS-terminal closing loop catch (PosTerminalService.executeDailyClosing).
+      A terminal_id attr azonositja a problemas eszkozt - LEHET NULL ha az
+      inkonzisztens DB-rekordnal nincs id (a Map defensive copy null-szuressel keszul).
+      Tipikus: halozati problema, terminal offline, vagy a POS terminal valasza
+      error code. Kovetkezo napzaras elott manualis terminal-zaras a terminal UI-jan.
 
   VV-BIZ-008:
     name: "Esti zaras adatcsomag kuldes hiba (központ felé)"
@@ -114,27 +119,32 @@ codes:
     level: ERROR
     user_impact: "A nap zart, DE a kozponti rendszer nem kapta meg az adatokat - retry kell"
     ai_fix_hint: |
-      DailyClosingService.sendEveningDataPackage(). SFTP / HTTP transzfer fail.
-      Retry: SyncController.retrySync(branchId) vagy manualis push.
+      EveningClosingService.sendDailyPackage(branchId, date) catch a
+      DailyClosingService-bol. SFTP / HTTP transzfer fail.
+      Retry: SyncController.runSync(branchId) vagy manualis push.
 
   VV-BIZ-009:
     name: "Dekadjelentes generalas hiba (MNB)"
     category: BUSINESS
     level: ERROR
-    user_impact: "A 10 napos MNB jelentés nem keszult el - manualis ujragyartas elott"
+    user_impact: "A 10 napos MNB jelentés nem keszult el - manualis ujragyartas szukseges"
     ai_fix_hint: |
-      DailyClosingService.generateDecadeReport(). Az ev / dekad attr mutatja a
-      problemás idoszakot. Tipikus: hianyzo bizonylat, AML adat hianyos.
+      DecadeReportService.generateForBranch(branchId, year, decade) catch a
+      DailyClosingService-bol. Az year / decade attr mutatja a problemas
+      idoszakot. Tipikus: hianyzo bizonylat, AML adat hianyos.
 
   VV-BIZ-010:
     name: "Napi archivalas hiba (D-1 ledger snapshot)"
     category: BUSINESS
     level: ERROR
-    user_impact: "Az aznapi ledger snapshot NEM mentődott - audit-szempontbol potolni kell"
+    user_impact: "Az aznapi ledger snapshot NEM mentődött - audit-szempontbol potolni kell"
     ai_fix_hint: |
-      DailyClosingService.archiveDaily() / S1-02 archive. A ledger-state
-      visszateritheto a tranzakcio-tablabol, de a snapshot manualis ujragyart-ast
-      ig enyel: scripts/operations/recreate-ledger-snapshot.sh <branch> <date>.
+      MonthlyArchiveService.archiveDailyTransactions(branchId, date) vagy
+      DailyClosingArchiveService.executeFullDailyArchive(branchId, date) catch.
+      A ledger-state visszateritheto a tranzakcio-tablabol, de a snapshot
+      manualis ujragyartast igenyel - admin felulet POST
+      /api/v1/admin/closing/rebuild-snapshot endpoint-jan, branch+date
+      query-parameterekkel.
 
   # =====================================================
   # VV-RATE — arfolyam (RFM)
