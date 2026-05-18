@@ -1,0 +1,163 @@
+name: Set Voice Assistant env on Hetzner (OPENAI_API_KEY + VOICE_OPENAI_ENABLED)
+
+# Manualis workflow_dispatch a Hetzner systemd valuta-backend.service-hez:
+# az `/opt/valutavalto/backend/.env` EnvironmentFile-ba beírja
+#   - OPENAI_API_KEY = secrets.OPENAI_API_KEY
+#   - VOICE_OPENAI_ENABLED = (true | false, default false)
+# es ujraindítja a backend service-t (opcionalis).
+#
+# Hasznalat:
+#   gh workflow run set-voice-assistant-env.yml -f enable=true
+#
+# A workflow IDEMPOTENS: ha mar letezik a kulcs az .env-ben, frissiti; ha nem,
+# hozza adja a vegere.
+
+on:
+  workflow_dispatch:
+    inputs:
+      enable:
+        description: 'VOICE_OPENAI_ENABLED ertek (true engedelyezi a Hangsegedet)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      restart_backend:
+        description: 'Backend ujraindítása az env update utan?'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+concurrency:
+  group: hetzner-production-mutate
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SERVICE_NAME: valuta-backend.service
+  ENV_FILE: /opt/valutavalto/backend/.env
+
+jobs:
+  update-env:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    steps:
+      - name: Validate OPENAI_API_KEY secret present
+        env:
+          KEY_LEN: ${{ secrets.OPENAI_API_KEY != '' && '32+' || 'EMPTY' }}
+        run: |
+          if [ "$KEY_LEN" = "EMPTY" ]; then
+            echo "ERROR: OPENAI_API_KEY secret is not set. Use 'gh secret set OPENAI_API_KEY' first."
+            exit 1
+          fi
+          echo "OPENAI_API_KEY secret present, length category: $KEY_LEN"
+
+      - name: Setup SSH (pin host key if available)
+        env:
+          HOST_KEY: ${{ secrets.VPS_SSH_HOST_KEY }}
+          SERVER_IP: ${{ secrets.VPS_SERVER_IP }}
+          PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "$HOST_KEY" ]; then
+            printf '%s\n' "$HOST_KEY" > ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts 2>/dev/null
+            echo "WARN: VPS_SSH_HOST_KEY secret not set, using TOFU keyscan."
+          fi
+
+      - name: Write OPENAI_API_KEY + VOICE_OPENAI_ENABLED to EnvironmentFile
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          VOICE_OPENAI_ENABLED: ${{ github.event.inputs.enable }}
+          RESTART: ${{ github.event.inputs.restart_backend }}
+          STRICT_HOST: ${{ secrets.VPS_SSH_HOST_KEY != '' && 'yes' || 'accept-new' }}
+        run: |
+          # Base64-encode the secret to avoid the literal value appearing in
+          # the SSH command line (process list could leak it otherwise).
+          OPENAI_API_KEY_B64=$(printf '%s' "$OPENAI_API_KEY" | base64 -w 0)
+
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=$STRICT_HOST \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              "OPENAI_API_KEY_B64='$OPENAI_API_KEY_B64' VOICE_OPENAI_ENABLED='$VOICE_OPENAI_ENABLED' RESTART='$RESTART' ENV_FILE='${{ env.ENV_FILE }}' SERVICE_NAME='${{ env.SERVICE_NAME }}' bash -s" <<'REMOTE'
+          set -euo pipefail
+          OPENAI_API_KEY=$(printf '%s' "$OPENAI_API_KEY_B64" | base64 -d)
+
+          # 1. Ensure .env exists with secure perms
+          if [ ! -f "$ENV_FILE" ]; then
+            echo "Creating new EnvironmentFile: $ENV_FILE"
+            sudo install -o root -g root -m 0640 /dev/null "$ENV_FILE"
+          fi
+
+          # 2. Backup
+          BACKUP="${ENV_FILE}.bak.$(date -u +%Y%m%dT%H%M%SZ)"
+          sudo cp -a "$ENV_FILE" "$BACKUP"
+          echo "Backup created: $BACKUP"
+
+          # 3. Update OPENAI_API_KEY (replace or append)
+          if sudo grep -q '^OPENAI_API_KEY=' "$ENV_FILE"; then
+            sudo sed -i "s|^OPENAI_API_KEY=.*|OPENAI_API_KEY=${OPENAI_API_KEY}|" "$ENV_FILE"
+            echo "OPENAI_API_KEY: UPDATED in $ENV_FILE"
+          else
+            echo "OPENAI_API_KEY=${OPENAI_API_KEY}" | sudo tee -a "$ENV_FILE" >/dev/null
+            echo "OPENAI_API_KEY: APPENDED to $ENV_FILE"
+          fi
+
+          # 4. Update VOICE_OPENAI_ENABLED (replace or append)
+          if sudo grep -q '^VOICE_OPENAI_ENABLED=' "$ENV_FILE"; then
+            sudo sed -i "s|^VOICE_OPENAI_ENABLED=.*|VOICE_OPENAI_ENABLED=${VOICE_OPENAI_ENABLED}|" "$ENV_FILE"
+            echo "VOICE_OPENAI_ENABLED: UPDATED to $VOICE_OPENAI_ENABLED"
+          else
+            echo "VOICE_OPENAI_ENABLED=${VOICE_OPENAI_ENABLED}" | sudo tee -a "$ENV_FILE" >/dev/null
+            echo "VOICE_OPENAI_ENABLED: APPENDED ($VOICE_OPENAI_ENABLED)"
+          fi
+
+          # 5. Verify final state (key NOT logged in full — only first/last 4 chars)
+          KEY_PRESENT=$(sudo grep -c '^OPENAI_API_KEY=' "$ENV_FILE" || echo 0)
+          FLAG_VALUE=$(sudo grep '^VOICE_OPENAI_ENABLED=' "$ENV_FILE" | head -1 | cut -d= -f2)
+          KEY_PREVIEW=$(sudo grep '^OPENAI_API_KEY=' "$ENV_FILE" | head -1 | cut -d= -f2 | awk '{ print substr($0,1,7) "..." substr($0,length($0)-3) }')
+          echo "----"
+          echo "Final state:"
+          echo "  OPENAI_API_KEY entries: $KEY_PRESENT (preview: $KEY_PREVIEW)"
+          echo "  VOICE_OPENAI_ENABLED: $FLAG_VALUE"
+
+          # 6. Reload systemd + restart service (idempotens)
+          if [ "$RESTART" = "true" ]; then
+            sudo systemctl daemon-reload
+            sudo systemctl restart "$SERVICE_NAME"
+            sleep 5
+            sudo systemctl is-active "$SERVICE_NAME" || {
+              echo "ERROR: $SERVICE_NAME not active after restart."
+              sudo journalctl -u "$SERVICE_NAME" -n 30 --no-pager
+              exit 1
+            }
+            echo "$SERVICE_NAME restarted and active."
+          else
+            echo "SKIPPED service restart (restart_backend=false)."
+          fi
+          REMOTE
+
+      - name: Verify backend bootstrap-status
+        if: ${{ github.event.inputs.restart_backend == 'true' }}
+        run: |
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' https://excvaluta.com/api/v1/auth/bootstrap-status || echo 000)
+            if [ "$STATUS" = "200" ]; then
+              echo "bootstrap-status OK (HTTP 200, attempt $i/5)"
+              exit 0
+            fi
+            echo "Attempt $i/5: HTTP $STATUS — retry in 10s"
+            sleep 10
+          done
+          echo "ERROR: bootstrap-status did NOT reach 200 in 5 attempts."
+          exit 1
