@@ -3,6 +3,7 @@ import modulesYamlRaw from '../knowledge/modules.yaml?raw'
 import faqYamlRaw from '../knowledge/faq.yaml?raw'
 import workflowsYamlRaw from '../knowledge/workflows.yaml?raw'
 import errorCodesYamlRaw from '../knowledge/error-codes.yaml?raw'
+import { logger } from '../../../utils/logger'
 import type { SearchableDoc } from './textSearch'
 
 /**
@@ -14,6 +15,14 @@ import type { SearchableDoc } from './textSearch'
  * bundle-be kerül (Vite `?raw` import). A `loadKnowledgeBase()` egyszer
  * parse-olja és cache-eli a memóriában — a kollégai session során a
  * `search_knowledge` és `lookup_module_info` ezeket használja.
+ *
+ * <p>YAML sema (lasd a Phase 1 PR #654 fajlokat):
+ * <ul>
+ *   <li>modules.yaml: top-level `modules:` lista, minden entry `id` + `name` + ...</li>
+ *   <li>faq.yaml: top-level `faq:` lista, minden entry `id` + `q` + `a`</li>
+ *   <li>workflows.yaml: top-level `workflows:` lista, `id` + `name` + steps</li>
+ *   <li>error-codes.yaml: top-level `errors:` lista, `code` + `title`</li>
+ * </ul>
  */
 
 interface ParsedYaml {
@@ -22,11 +31,13 @@ interface ParsedYaml {
 
 let cache: { docs: SearchableDoc[]; raw: Record<string, ParsedYaml> } | null = null
 
-function parseYaml(raw: string): ParsedYaml {
+function parseYaml(raw: string, label: string): ParsedYaml {
   try {
     const parsed = yaml.load(raw)
     return (parsed && typeof parsed === 'object' ? parsed : {}) as ParsedYaml
-  } catch {
+  } catch (err) {
+    // Copilot PR #665: NE csendben swallow-oljuk a YAML hibakat — log-oljuk
+    logger.warn('VoiceAssistant', `knowledgeLoader: ${label} YAML parse hiba: ${String(err)}`)
     return {}
   }
 }
@@ -48,11 +59,13 @@ function joinValuesForBody(value: unknown, depth = 0): string {
 }
 
 function flattenFaq(parsed: ParsedYaml): SearchableDoc[] {
-  const entries = (parsed.faqs ?? parsed.entries ?? []) as Array<Record<string, unknown>>
+  // Codex PR #665 P1: a YAML schema `faq:` (singular) — nem `faqs`/`entries`
+  const entries = (parsed.faq ?? parsed.faqs ?? parsed.entries ?? []) as Array<Record<string, unknown>>
   if (!Array.isArray(entries)) return []
   return entries.map((entry, idx) => {
     const id = String(entry.id ?? `faq-${idx}`)
-    const title = String(entry.question ?? entry.title ?? id)
+    // Codex PR #665 P2: FAQ entries hasznaljak a `q` mezot a kerdesnek
+    const title = String(entry.q ?? entry.question ?? entry.title ?? id)
     const body = joinValuesForBody(entry)
     return { id: `faq:${id}`, sourceType: 'faq', title, body, payload: entry }
   })
@@ -70,36 +83,41 @@ function flattenWorkflows(parsed: ParsedYaml): SearchableDoc[] {
 }
 
 function flattenErrorCodes(parsed: ParsedYaml): SearchableDoc[] {
-  const entries = (parsed.error_codes ?? parsed.errors ?? []) as Array<Record<string, unknown>>
+  const entries = (parsed.errors ?? parsed.error_codes ?? []) as Array<Record<string, unknown>>
   if (!Array.isArray(entries)) return []
   return entries.map((entry, idx) => {
     const id = String(entry.code ?? `err-${idx}`)
-    const title = `${id} — ${String(entry.title ?? entry.description ?? '')}`
+    // Copilot PR #665: a trailing em-dash csak akkor jelenjen meg ha van title-szoveg
+    const subtitle = entry.title ?? entry.description ?? null
+    const title = subtitle ? `${id} — ${String(subtitle)}` : id
     const body = joinValuesForBody(entry)
+    // Copilot PR #665: az `err:` (test docs) vs `error:` (loader) inconzisztencia
+    // megoldva — itt `error:` a kanonikus prefix.
     return { id: `error:${id}`, sourceType: 'error-code', title, body, payload: entry }
   })
 }
 
 function flattenModules(parsed: ParsedYaml): SearchableDoc[] {
+  // Codex PR #665 P1: a modules.yaml top-level `modules:` lista (NEM clients[].menu[])
   const docs: SearchableDoc[] = []
-  const clients = (parsed.clients ?? []) as Array<Record<string, unknown>>
-  if (Array.isArray(clients)) {
-    for (const client of clients) {
-      const cid = String(client.id ?? client.name ?? '')
-      const menu = (client.menu ?? client.modules ?? []) as Array<Record<string, unknown>>
-      if (Array.isArray(menu)) {
-        for (const m of menu) {
-          const id = `${cid}.${String(m.id ?? m.key ?? '')}`
-          docs.push({
-            id: `module:${id}`,
-            sourceType: 'module',
-            title: String(m.title ?? m.name ?? id),
-            body: joinValuesForBody(m),
-            payload: m,
-          })
-        }
-      }
+  const modules = (parsed.modules ?? []) as Array<Record<string, unknown>>
+  if (!Array.isArray(modules)) return docs
+
+  for (const m of modules) {
+    const rawId = m.id ?? m.key ?? null
+    if (!rawId) {
+      // Copilot PR #665: ne hagyjunk degenarate `module:.` id-t
+      logger.warn('VoiceAssistant', 'knowledgeLoader: modules.yaml entry id nelkul, atugorva')
+      continue
     }
+    const id = String(rawId)
+    docs.push({
+      id: `module:${id}`,
+      sourceType: 'module',
+      title: String(m.name ?? m.title ?? id),
+      body: joinValuesForBody(m),
+      payload: m,
+    })
   }
   return docs
 }
@@ -107,10 +125,10 @@ function flattenModules(parsed: ParsedYaml): SearchableDoc[] {
 export function loadKnowledgeBase(): { docs: SearchableDoc[]; raw: Record<string, ParsedYaml> } {
   if (cache) return cache
   const raw: Record<string, ParsedYaml> = {
-    modules: parseYaml(modulesYamlRaw),
-    faq: parseYaml(faqYamlRaw),
-    workflows: parseYaml(workflowsYamlRaw),
-    errorCodes: parseYaml(errorCodesYamlRaw),
+    modules: parseYaml(modulesYamlRaw, 'modules.yaml'),
+    faq: parseYaml(faqYamlRaw, 'faq.yaml'),
+    workflows: parseYaml(workflowsYamlRaw, 'workflows.yaml'),
+    errorCodes: parseYaml(errorCodesYamlRaw, 'error-codes.yaml'),
   }
   const docs: SearchableDoc[] = [
     ...flattenFaq(raw.faq ?? {}),
@@ -124,7 +142,7 @@ export function loadKnowledgeBase(): { docs: SearchableDoc[]; raw: Record<string
 
 /**
  * Egy konkret modul-info lekerese a modules.yaml-bol.
- * Pl: lookupModule('penztar1') vagy 'kozponti.napzaras'.
+ * Pl: lookupModule('penztar.fomenu') vagy 'kozponti.napzaras'.
  */
 export function lookupModuleById(moduleId: string): unknown | null {
   const kb = loadKnowledgeBase()

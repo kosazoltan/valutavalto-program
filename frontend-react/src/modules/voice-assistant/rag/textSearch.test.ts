@@ -42,7 +42,8 @@ describe('searchDocs', () => {
       body: 'A vetel-tranzakcio rogzitese a Penztar / Vetel oldalon tortenik.',
     },
     {
-      id: 'err:EBC-021',
+      // Copilot PR #665: a kanonikus prefix `error:` (NEM `err:`)
+      id: 'error:EBC-021',
       sourceType: 'error-code',
       title: 'EBC-021 — Arfolyam lejart',
       body: 'A rata 24 oras TTL-en tul van.',
@@ -55,10 +56,10 @@ describe('searchDocs', () => {
     expect(results[0]?.id).toBe('faq:napzaras')
   })
 
-  it('arfolyam kerdesre az err:EBC-021-et talalja', () => {
+  it('arfolyam kerdesre az error:EBC-021-et talalja', () => {
     const results = searchDocs('arfolyam lejart', docs)
     expect(results.length).toBeGreaterThan(0)
-    expect(results[0]?.id).toBe('err:EBC-021')
+    expect(results[0]?.id).toBe('error:EBC-021')
   })
 
   it('ures query ures eredmenyt ad', () => {

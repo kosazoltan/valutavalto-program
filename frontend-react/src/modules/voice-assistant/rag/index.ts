@@ -12,7 +12,7 @@ import type { SearchResult } from './textSearch'
  * ToolContext-jébe kerül beadásra a Phase 9 Electron integraciónál.
  */
 
-export type { SearchableDoc, SearchResult } from './textSearch'
+export type { SearchableDoc, SearchResult, SourceType } from './textSearch'
 export { normalizeText, tokenize, scoreDoc, searchDocs } from './textSearch'
 
 export {
@@ -30,6 +30,13 @@ export function searchKnowledgeBase(query: string, topK = 3): SearchResult[] {
   return searchDocs(query, docs, { topK })
 }
 
+/**
+ * Megjegyzés: a visszadott objektum `module_id` snake_case mezőt használ,
+ * ami a TS konvencióval (camelCase) szembemegy. SZÁNDÉKOS: a Phase 7
+ * `ToolContext.lookupModule` LLM-tool-JSON contract reszét képezi, amit
+ * az OpenAI Realtime API direktként kap meg, és az OpenAI tool I/O
+ * konvenciója a snake_case. (Copilot PR #665 megjegyzes)
+ */
 export function lookupModule(moduleId: string): {
   module_id: string
   found: boolean
