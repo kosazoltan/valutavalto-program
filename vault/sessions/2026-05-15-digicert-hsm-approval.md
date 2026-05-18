@@ -3,27 +3,34 @@ title: 2026-05-15 DigiCert HSM Approval submitted (Azure Key Vault Premium)
 type: session-log
 project: Valutavalto-program (BEC ERP) + EXZ (Zalog)
 created_at: 2026-05-15
+updated_at: 2026-05-18
 operator: Claude Opus 4.7 (1M context, autonomous mode)
 status: PROGRESS — HSM Approval submitted, váró DigiCert next steps
+pii_status: Redacted (2026-05-18) — Sourcery PR #670 feedback alapjan
 ---
 
 # 2026-05-15 DigiCert HSM Approval — Azure Key Vault elfogadva
 
-A 2026-05-15 hajnali pivot után (Sectigo → DigiCert EV CS), 6:55 CEST-kor DigiCert email érkezett a `kosa.zoltan.ebc@gmail.com`-ra:
+> **PII redaction note (2026-05-18):** Az alabbi tartalom mar redactalt. A konkret
+> DigiCert Account ID + Order ID, HSM Approval token, email, telefon, szemely-nevek
+> lokalisan tarolva — public repo-ban generic placeholderek szerepelnek. A 2026-05-15-i
+> eredeti session-snapshot a Claude memory-jaban van.
 
-> **Subject:** [Action Required] Private key protection requirements for DigiCert Order # 1524362467
+A 2026-05-15 hajnali pivot után (Sectigo → DigiCert EV CS), 6:55 CEST-kor DigiCert email érkezett a BEC IT-vezeto cimere:
+
+> **Subject:** [Action Required] Private key protection requirements for DigiCert Order # `<order-id-redacted>`
 > **From:** DigiCert <admin@digicert.com>
 > 
 > "We've received your EV Code Signing request using the Install on an HSM provisioning method.
-> Account ID: 1663074
-> Order ID: 1524362467
+> Account ID: `<account-id-redacted>`
+> Order ID: `<order-id-redacted>`
 > Organization: EXCLUSIVE BEST Change Zrt.
 > ...
 > Before we issue your certificate, you must agree to the private key protection requirements on your hardware security module (HSM)."
 
 ## HSM Approval form
 
-A link: `https://www.digicert.com/link/hsm-approval.php?token=nk5fx32pffcm62jgdc11rzq7chc2`
+A link: `https://www.digicert.com/link/hsm-approval.php?token=<one-time-token-redacted>` (egyszer hasznalhato token, sensitive)
 
 A DigiCert form **explicit elfogadja az Azure Key Vault-ot**:
 
@@ -34,16 +41,16 @@ Ez megerősíti a 2026-05-15-i pivot helyességét: a DigiCert EV CS hivatalosan
 ### Submitted form data
 
 - **Company name:** EXCLUSIVE BEST Change Zrt.
-- **First name:** Zoltan
-- **Last name:** Kosa
-- **Email:** kosa.zoltan.ebc@gmail.com
+- **First name:** redacted (BEC IT-vezeto)
+- **Last name:** redacted (BEC IT-vezeto)
+- **Email:** redacted (BEC IT-vezeto cég-email)
 - **Title:** CEO
 - **Agree checkbox:** ✅ (You agree that you are only using a suitable Hardware Crypto Module to generate Key Pairs to be associated with your EV Code Signing Certificates)
 - **Submitted at:** 2026-05-15 ~09:55 CEST
 
 ### Aláírt nyilatkozat tartalma (DigiCert legal commitment)
 
-A felhasználó (Zoltan Kosa, EXCLUSIVE BEST Change Zrt. képviselője) megerősítette:
+A felhasználó (BEC IT-vezeto, EXCLUSIVE BEST Change Zrt. képviselője) megerősítette:
 
 1. ✅ A privát kulcs(ok) biztonságos tárolása HSM-ben, amely megakadályozza a privát kulcs(ok) eltávolítását
 2. ✅ A HSM az ügyfél kizárólagos kontrollja alatt marad, audited cloud-on (Azure) keresztül
@@ -58,7 +65,7 @@ DigiCert response: "Thank you! We will continue to work on your order and notify
 | Lépés | Várható | Mit kell tenni |
 |---|---|---|
 | 1. ✅ HSM Approval (Private Key Protection commitment) | Done 2026-05-15 09:55 | — |
-| 2. ⏳ Phone callback verification | Általában 1-2 nap | Felveszi cég publikus telefonját (+36 70 380 0202) |
+| 2. ⏳ Phone callback verification | Általában 1-2 nap | Felveszi cég publikus telefonját (a cégadatlapon szereplo szam) |
 | 3. ⏳ Document verification | 1-3 nap | Cégkivonat scan + aláírási minta + vezérigazgatói okmány feltöltése (DigiCert portal-on) |
 | 4. ⏳ Video verification call (EV mandatory 2024+) | 1-3 nap | Live video call DigiCert validator-ral, ügyfélé személyazonosság megerősítés |
 | 5. ⏳ Cert issuance | 3-5 nap a teljes folyamatból | .cer link emailben |
