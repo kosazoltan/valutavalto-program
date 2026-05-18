@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.repository.AuditLogRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import io.micrometer.tracing.Tracer;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,7 +56,12 @@ public class AuditEventService {
     private static final String GENESIS_PREV_HASH = "0".repeat(64);
 
     private final AuditLogRepository auditLogRepository;
-    private final Tracer tracer;
+    /**
+     * Hotfix 2026-05-18: a `Tracer` opcionalis - prod NEM tartalmaz OpenTelemetry SDK-t,
+     * igy a Spring nem tudja injektalni. Az `ObjectProvider`-rel a `getIfAvailable()`
+     * null-t ad vissza, es a `currentTraceId()` skip-eli a trace_id-t.
+     */
+    private final ObjectProvider<Tracer> tracerProvider;
 
     /**
      * Egy uj audit-esemeny rogzitese hash-chain-be kotelezo modon.
@@ -194,6 +200,7 @@ public class AuditEventService {
     // ------------------- private helpers -------------------
 
     private String currentTraceId() {
+        Tracer tracer = tracerProvider != null ? tracerProvider.getIfAvailable() : null;
         if (tracer == null) return null;
         var span = tracer.currentSpan();
         if (span == null) return null;
