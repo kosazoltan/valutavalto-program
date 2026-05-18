@@ -579,7 +579,22 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 - Kapcsolat: `application.properties` → `spring.datasource.*`
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.53** (2026-05-15 — 10 felhasználói bug + production hotfix-ek + BALI/W-S011/Google OAuth lezárva, mind admin-merged a main-be).
+- **Verzió:** **v2.5.57** (2026-05-18 — Hangsegéd (Voice Assistant) feature complete rollout: 15 PR + 4 UNSIGNED telepítő + Hetzner OPENAI_API_KEY + VOICE_OPENAI_ENABLED=true).
+- **Korábbi verzió:** v2.5.53 (2026-05-15, 10 user-bug fix). A v2.5.54+v2.5.55+v2.5.56 verziók GitHub PR-merge során auto-bumpoltak, de v2.5.56 build accidentally előz volt → check-version-bump.ps1 auto v2.5.57-re emelte.
+- **Hangsegéd (Voice Assistant) feature rollout (2026-05-18 session):**
+  - **15 PR mergelve a main-be:** Phase 1 [#654], Phase 2 [#659], Phase 3 [#660], Phase 4 [#661], Phase 5 [#672], Phase 6 [#673], Phase 7 [#674], Phase 8 [#675], Phase 9 [#676], Phase 9.5a [#668], Phase 9.5b [#677], Phase 10 [#667], + #669 (lint scope), #670 (code-signing docs Sectigo→DigiCert pivot), #671 (vault PII redact).
+  - **Hetzner backend env:** `OPENAI_API_KEY` + `VOICE_OPENAI_ENABLED=true` beállítva a `set-voice-assistant-env.yml` workflow-val. Backend restartolt, bootstrap-status 200.
+  - **Frontend build-flag:** `VITE_VOICE_ASSISTANT_ENABLED=true` beépítve a v2.5.57 buildek-be. A lebegő Hangsegéd Panel jobb-alsó sarokban jelenik meg.
+  - **OpenAI Realtime API:** `gpt-realtime-2` (~$0.06-0.08/min audio, shimmer voice, gpt-realtime-whisper transcription).
+  - **Költségvédelem:** per-worker rate-limit 10 ephemeral-token-keres / ora (configurálható env-flag).
+  - **Adatvédelem:** issueStore IndexedDB lokálisan, master OPENAI_API_KEY csak backend-en, ~60s ephemeral client_secret WebRTC-hez.
+- **Telepítő fájlok v2.5.57 (LEGFRISSEBB, 2026-05-18 UNSIGNED build)** — `installer/build/` + másolva `%USERPROFILE%\Downloads\`-ba:
+  - `Penztar-Setup-2.5.57-20260518.exe` — **280.94 MB** (294,583,435 byte), SHA-256 `E55E2D390688FE2B1F3CB947253D89B7D59203E63B3E7E72F24EA93198F13600`
+  - `Kozponti-Iranyitokozpont-Setup-2.5.57.exe` — **100.93 MB** (105,841,795 byte), SHA-256 `7C1CBB4546A061EDD14B3A2544CF69D797DD8319B354E1721D412B883C658CC0`
+  - `Arfolyamkeszito-Setup-2.5.57.exe` — **100.93 MB**, SHA-256 `BB86BA566754BB2C60846A99B2DDBC70632AEB79FE968D6317BA030BE43603D0`
+  - `Penztar-Eltavolito-2.5.57-20260518.exe` — **60.86 KB** (62,329 byte), SHA-256 `AB97665C134EF1DBB67CB1DE59582191E3678B2441BC4A572AB7154E961ED597`
+  - **UNSIGNED build** — DigiCert EV CS cert kiadásig (~2026-05-21) a SmartScreen "További információ" → "Futtatás mindenképp" lépés szükséges. A v2.5.58+ SIGNED release a cert kiadás után.
+- **Verzió:** v2.5.53 [előző] (2026-05-15 — 10 felhasználói bug + production hotfix-ek + BALI/W-S011/Google OAuth lezárva, mind admin-merged a main-be).
 - **Backend stack (2026-04-29 SB4 sprint óta):** **Spring Boot 4.0.6** + **Tomcat 11.0.21** (Servlet 6.1) + **Jackson 2 stop-gap** (`spring-boot-jackson2` modul + `JacksonConfig.java` programmatic `@Primary @Bean ObjectMapper` `Jackson2ObjectMapperBuilder.json().modulesToInstall(...)` mintával) + **springdoc 3.0.3** + **flyway-database-postgresql 12.4.0** (flyway-core 12.x SB4 BOM-ból). 1009/1009 mvn test PASS, Hetzner production deploy SUCCESS (3× verifikálva).
 - **Main HEAD:** `1217cf08` (PR #266: modulesToInstall extend mode, 2026-04-29).
 - **Production:** Hetzner deploy SUCCESS minden mergelt PR után, bootstrap-status 200, V155..V167 applied.
