@@ -1,0 +1,163 @@
+# EBC Valutaváltó - Hibakód-katalógus
+# Forrás: vault/sessions/ + recent PR commit messages
+# Verzió 1 — 2026-05-18
+
+version: 1
+last_updated: "2026-05-18"
+
+errors:
+
+  # =====================================================
+  # AUTH / GOOGLE LOGIN
+  # =====================================================
+
+  - code: "EBC-001"
+    title: "Google bejelentkezés sikertelen (HTTP 401)"
+    cause: "Régi v2.5.53 telepítő, VAGY a Google fiók nincs a backend whitelist-en, VAGY a backend `worker_google_login_whitelist` táblában rossz email"
+    solution: |
+      1. Verifikáld a verzió-számot a bejelentkező ablakon (kell v2.5.55+)
+      2. Ha régi: eltávolító + új v2.5.55 telepítő
+      3. Ha v2.5.55-tel sem megy: küldj Zoltánnak: hibaüzenet screenshot + Google email + szerepkör amellyel próbáltál belépni
+    related_pr: "PR #639 (EXZ leak fix), V232 (Juhász Norbert deakt), V233 (Kiss Kornél + BORSI foertektar), V228 (BALI reactivate)"
+
+  - code: "EBC-002"
+    title: "Több aktív dolgozó ugyanazzal a Google email-lel"
+    cause: "ConflictException — a worker táblában 2+ aktív worker ugyanazzal az emaillel"
+    solution: |
+      Backend admin (Zoltán) deaktiválja a duplikációkat. SQL ellenőrzés:
+      `SELECT email, COUNT(*) FROM worker WHERE is_active=true AND email IS NOT NULL GROUP BY email HAVING COUNT(*)>1;`
+
+  - code: "EBC-003"
+    title: "EXZ rendszerben nincs engedélyezve"
+    cause: "Régi PR #639 előtti hibaüzenet — cross-project text leak (EXZ = Zálogház másik projekt)"
+    solution: "v2.5.55 telepítő tartalmazza a fix-et (PR #639). Eltávolító + új telepítő."
+    related_pr: "PR #639"
+
+  # =====================================================
+  # ÁLTALÁNOS FRONTEND
+  # =====================================================
+
+  - code: "EBC-004"
+    title: "Várt hiba — Banki rendelések oldal CRASH"
+    cause: "Frontend null-safety bug: `Cannot read properties of undefined (reading 'length')` — a backend null content-tel válaszolt"
+    solution: "v2.5.55 + PR #642 tartalmazza a `setOrders(result?.content ?? [])` fix-et"
+    related_pr: "PR #642"
+
+  - code: "EBC-005"
+    title: "Nyomtatási hiba — nem nyomtat blokkot"
+    cause: "Windows nyomtató nem található vagy nem alapértelmezett"
+    solution: |
+      1. Windows → Beállítások → Eszközök → Nyomtatók
+      2. Ellenőrizd, hogy az EBC blokknyomtató alapértelmezettként van-e beállítva
+      3. Teszt-nyomtatás Windows nyomtató beállításokból
+      4. Ha Windows OK, de program NEM: jelentsd hibajegyként
+
+  - code: "EBC-006"
+    title: "Nincs elég pénz a kasszában (vételnél is)"
+    cause: "Negatív készlet ellenőrzés — vételnél is kell HUF ellátmány"
+    solution: "Készíts napnyitást rendesen, vagy kérj ellátmány-feltöltést a főpénztárostól. PR #605 javítva."
+    related_pr: "PR #605"
+
+  - code: "EBC-007"
+    title: "Ügyfél nem rögzíthető (duplikált okmányszám)"
+    cause: "A megadott okmányszám már egy másik ügyfélnél létezik"
+    solution: "PR #607 óta idempotent upsert — ha létező okmányszámot adsz meg, frissíti az adatokat, NEM dobja a hibát. Ha v2.5.55-ben mégis fennáll, hibajegy."
+    related_pr: "PR #607"
+
+  - code: "EBC-008"
+    title: "300k+ tranzakciónál hiányzó adat a bizonylaton"
+    cause: "PR #612 + #613 + #614 előtti bug — a teljes azonosítás mezői nem renderelődtek"
+    solution: "v2.5.55-ben javítva: lakcím + szül.hely + szül.idő + anyja neve + okmányszám + PEP-nyilatkozat + saját-név mind szerepel."
+    related_pr: "PR #612, #613, #614"
+
+  - code: "EBC-009"
+    title: "Setup Wizard 4 vs 5 lépés"
+    cause: "hu.json bug — a felirat 4-et mondott, de 5 lépés volt"
+    solution: "PR #640 javította — most már 5 lépés"
+    related_pr: "PR #640"
+
+  # =====================================================
+  # BACKEND / DEPLOY
+  # =====================================================
+
+  - code: "EBC-010"
+    title: "Telepítő nem indul (UAC blokk)"
+    cause: "Penztar telepítő rendszergazdai jogot igényel (HKLM)"
+    solution: "Jobb-klikk a telepítőre → 'Futtatás rendszergazdaként'"
+
+  - code: "EBC-011"
+    title: "invalid input syntax for type uuid"
+    cause: "V232 migration bug — `v_juhasz_id UUID` deklarálva, de worker.id BIGINT. Hetzner deploy fail."
+    solution: "PR #645 hotfix BIGINT-re. Most már sikeresen deploy-ol."
+    related_pr: "PR #645 (V232 BIGINT hotfix)"
+
+  - code: "EBC-012"
+    title: "checksum mismatch (Flyway)"
+    cause: "Already-merged migration módosítva."
+    solution: |
+      A deploy workflow `DELETE FROM flyway_schema_history WHERE success=false` minden deploy elején fut. Plusz a `.flyway-lint-allowed-modifications` allowlist dokumentálja a megengedett módosításokat.
+
+  - code: "EBC-013"
+    title: "Egy iroda 2 munkacsoportban — UNIQUE constraint violation"
+    cause: "Régen lehetett: V234 előtt NEM volt UNIQUE constraint a `rate_workgroup_branch.branch_id`-n."
+    solution: "V234 + service move-strategy (PR #649): ha branch már másik workgroupban, automatikusan áthelyezi."
+    related_pr: "PR #649 (V234)"
+
+  # =====================================================
+  # ÜZLETI / AML
+  # =====================================================
+
+  - code: "EBC-014"
+    title: "NAV jelentés generálás hibás"
+    cause: "Hiányzó AML adatok az adott időszakban (pl. 300k+ tranzakció ügyfél-adat nélkül)"
+    solution: "Ellenőrizd, hogy minden 300k+ Ft tranzakcióhoz teljes ügyfél-azonosítás történt-e. Központi Modul → Beérkezett adatok."
+
+  - code: "EBC-015"
+    title: "Árfolyam-frissítés sikertelen (MNB API)"
+    cause: "MNB API nem elérhető vagy internet kapcsolat megszakadt"
+    solution: |
+      1. Internet kapcsolat ellenőrzése
+      2. Próbáld újratölteni az árfolyam-modult (F5)
+      3. Ha 5 percen belül sem jön be: jelentsd
+
+  - code: "EBC-016"
+    title: "PEP/saját-név kérdés nem jelenik meg 300k+ tranzakciónál"
+    cause: "v2.5.53 előtti bug — az auto-szöveg ráment a bizonylatra, de a kérdés nem jelent meg"
+    solution: "PR #614 javította — most már a tranzakció közben kérdezi"
+    related_pr: "PR #614"
+
+  - code: "EBC-017"
+    title: "Devizastátusz (Külföldi/Belföldi) nem rögzíthető"
+    cause: "v2.5.53 előtti bug — összeghatártól függetlenül elérhető kell legyen"
+    solution: "v2.5.55-ben minden összeghatáron rögzíthető. Ha v2.5.55-tel sem megy: hibajegy."
+
+  - code: "EBC-018"
+    title: "Kezelési költség mértéke nem rögzíthető"
+    cause: "V227 előtti hiány — nem volt központi konfigurációs mód"
+    solution: "PR #605 V227 + PR #610 hotfix (sync_active_columns()) → most már Központi Modul → Adminisztráció → Kezelési költség beállítás"
+    related_pr: "PR #605, PR #610"
+
+  - code: "EBC-019"
+    title: "Átadás-átvételnél cél iroda üres dropdown"
+    cause: "v2.5.53 előtti bug — szűrő túl szigorú"
+    solution: "PR #606 javította — most már látható minden átvevő iroda"
+    related_pr: "PR #606"
+
+  - code: "EBC-020"
+    title: "100-300k bizonylaton hiányzó szül.hely/idő"
+    cause: "v2.5.53 előtti bug — egyszerűsített azonosítás mezői nem renderelődtek"
+    solution: "V229 customer snapshot + PR #613 receipt rendering javítva"
+    related_pr: "PR #612, #613"
+
+  # =====================================================
+  # GENERIKUS
+  # =====================================================
+
+  - code: "EBC-099"
+    title: "Lefagyott a program / nem reagál"
+    cause: "Renderer holtpont, hálózati timeout, vagy memóriaszivárgás"
+    solution: |
+      1. Várj 30 másodpercet
+      2. Ha továbbra is fagy: bezárás (X) + újraindítás (Start Menu)
+      3. Bejelentkezés újra
+      4. Ha többször előfordul: jegyezzünk fel hibajegyet részletes leírással

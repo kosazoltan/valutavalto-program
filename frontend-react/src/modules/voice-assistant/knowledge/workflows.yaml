@@ -1,0 +1,232 @@
+# EBC Valutaváltó - Tipikus munkafolyamatok (workflows)
+# Forrás: CLAUDE.md + vault/sessions/ + felmérés
+# Verzió 1 — 2026-05-18
+
+version: 1
+last_updated: "2026-05-18"
+
+workflows:
+
+  - id: telepites
+    name: "Telepítés (első futtatás)"
+    related_module: clients
+    description: "Új gépen, vagy v2.5.54 régi verzió frissítésénél."
+    steps:
+      - number: 1
+        action: "Eltávolító futtatás"
+        details: "Penztar-Eltavolito-2.5.53-…exe a Letöltések mappából. Dupla-klikk. UAC: Igen. Ha kérdezi 'adatok megtartása': Nem (tisztára telepítjük)."
+      - number: 2
+        action: "Megfelelő telepítő kiválasztása"
+        details: "Pénztáros/Értéktáros: Penztar-Setup. Főértéktáros: Kozponti és/vagy Arfolyamkeszito."
+      - number: 3
+        action: "Telepítő futtatás"
+        details: "Dupla-klikk, jobb-klikk → Futtatás rendszergazdaként (csak Penztar!). UAC: Igen. NSIS Setup Wizard automatikusan végrehajtja a telepítést."
+      - number: 4
+        action: "Első indítás — Setup Wizard"
+        details: "5 lépés: Üdvözlés → Program típus → Fiók kiválasztása → Szerver kapcsolat → Admin jelszó. A varázsló végigvezet."
+      - number: 5
+        action: "Bejelentkezés"
+        details: "Pénztáros: kód + jelszó. Főértéktár / vezetők: Google fiók (`.ebc@gmail.com`)."
+
+  - id: napnyitas
+    name: "Napnyitás (pénztáros)"
+    related_module: penztar.napnyitas
+    description: "A munkanap kezdetén."
+    steps:
+      - number: 1
+        action: "Bejelentkezés"
+        details: "Pénztáros kód + jelszó. A Pénztár kliens fő dashboardja megjelenik. Státusz: 'Nap zárva'."
+      - number: 2
+        action: "Napnyitás menüpont"
+        details: "Bal oldalon: Napnyitás. Megjelenik a nyitó-készlet űrlap."
+      - number: 3
+        action: "Nyitó-készlet rögzítése"
+        details: "Valutánként (HUF, EUR, USD stb.) beírni a kezdő mennyiséget. Egyezni kell a fizikai pénzkészlettel."
+      - number: 4
+        action: "Címletezés (HUF)"
+        details: "Részletes címletezés HUF-ra (20000, 10000, 5000, 2000, 1000 bankjegy + 500, 200, 100, 50, 20, 10, 5 érme)."
+      - number: 5
+        action: "Mentés"
+        details: "Mentés gomb. Státusz: 'Nap nyitva' (zöld a fejlécben)."
+
+  - id: vetel
+    name: "Vétel (ügyfél eladja a devizát)"
+    related_module: penztar.vetel_eladas
+    description: "A leggyakoribb tranzakció. Az ügyfél hozza a devizát, kapja a HUF-ot."
+    steps:
+      - number: 1
+        action: "Új tranzakció"
+        details: "Pénztáros főmenü → 'Új tranzakció' gomb (vagy F1 = Vétel). 3-paneles UI nyílik."
+      - number: 2
+        action: "Deviza választás (bal panel)"
+        details: "28 valuta közül választás (billentyű 1-9 + scroll). A kiválasztott valuta árfolyama megjelenik a középső panelen."
+      - number: 3
+        action: "VÉTEL toggle (zöld)"
+        details: "Az 'Ügyfél eladja' = VÉTEL alapértelmezett zöld."
+      - number: 4
+        action: "Összeg beírása"
+        details: "A valuta-összeg mezőbe (pl. 100 EUR). Auto HUF-számítás: 100 × 407 = 40 700 Ft."
+      - number: 5
+        action: "Devizastátusz"
+        details: "Külföldi / Belföldi gombra kattint. KÖTELEZŐ minden összegen!"
+      - number: 6
+        action: "Ügyfél azonosítás (jobb panel)"
+        details: |
+          Összeghatár szerint:
+          - < 100k Ft: csak állampolgárság (Magyar)
+          - 100-300k Ft: Egyszerűsített — név + szül.hely/idő + állampolgárság
+          - 300k+ Ft: Teljes — minden adat + PEP-nyilatkozat + saját-név
+      - number: 7
+        action: "Mentés és nyomtatás"
+        details: "Piros gomb fent. Bizonylat (V-prefixű, pl. V125100045) nyomtatódik."
+
+  - id: eladas
+    name: "Eladás (ügyfél veszi a devizát)"
+    related_module: penztar.vetel_eladas
+    description: "Az ügyfél viszi a devizát, fizet HUF-ban."
+    steps:
+      - number: 1
+        action: "Új tranzakció + ELADÁS"
+        details: "F2 vagy a 'ELADÁS' toggle. Az 'Ügyfél veszi' = ELADÁS."
+      - number: 2
+        action: "Készlet-ellenőrzés"
+        details: "A backend ellenőrzi, hogy van-e elég valutakészlet. Ha NINCS: 'Nincs elég [VALUTA] a kasszában' hibaüzenet (PR #605 óta)."
+      - number: 3
+        action: "Többi lépés mint vétel"
+        details: "Összeg, devizastátusz, ügyfél-azonosítás, mentés és nyomtatás. Bizonylat E-prefixű (pl. E125100024)."
+
+  - id: konverzio
+    name: "Konverzió (deviza-deviza)"
+    related_module: penztar.konverzio
+    description: "Egyik devizából a másikba (pl. USD → EUR)."
+    steps:
+      - number: 1
+        action: "Konverzió menüpont"
+      - number: 2
+        action: "Forrás valuta (1. lépés)"
+        details: "Ügyfél elad — válaszd ki forrás devizát + összeg."
+      - number: 3
+        action: "Köztes HUF érték (Számítás panel)"
+        details: "A program kiszámolja a HUF köztes értéket: összeg × vételi árfolyam."
+      - number: 4
+        action: "Cél valuta (2. lépés)"
+        details: "Ügyfél vesz — válaszd ki cél devizát. Auto kapott összeg: HUF / eladási árfolyam."
+      - number: 5
+        action: "Mentés"
+        details: "Bizonylat K-prefixű (pl. K125100003)."
+
+  - id: napzaras
+    name: "Napzárás (9-lépéses Wizard)"
+    related_module: penztar.napzaras
+    description: "Munkanap végén, kötelező 9 lépés."
+    steps:
+      - number: 1
+        action: "MTCN szám ellenőrzés (Western Union)"
+      - number: 2
+        action: "Esti pénztár címletezése"
+      - number: 3
+        action: "Kezelési díj címletezés"
+      - number: 4
+        action: "Western Union címletezés"
+      - number: 5
+        action: "ÁFA címletezés"
+      - number: 6
+        action: "Foglaló címletezés"
+      - number: 7
+        action: "E-kereskedelem címletezés"
+      - number: 8
+        action: "Egyéb címletezések (AXA / MoneyGram)"
+      - number: 9
+        action: "NAV kontroll és napi jelentés"
+    completion: "Backend végrehajtja a napi zárást, küldi a Központi Modulnak."
+
+  - id: arfolyam_szetkuldes
+    name: "Árfolyam szétküldés (Árfolyamkészítő, főértéktáros)"
+    related_module: arfolyamkeszito.arfolyamok_szetkuldese
+    description: "Naponta egyszer (vagy szükség szerint). Csak főértéktáros."
+    steps:
+      - number: 1
+        action: "Bejelentkezés az Árfolyamkészítőbe"
+        details: "Google fiók: `bali.henriett.ebc@gmail.com` vagy `kasza.helga.ebc@gmail.com`. Szerepkör-választás: Főértéktáros."
+      - number: 2
+        action: "Főlap — Elszámoló árfolyamok"
+        details: "28 valuta x 9 oszlop (A-I). Az A oszlop az elszámoló, manuálisan írod be EUR/USD/GBP/CHF-et; a többi (CZK, PLN, RON stb.) auto-számolódik a Kereszt forrás-ból."
+      - number: 3
+        action: "Sávos árak (E-F, 1. sáv, 2. sáv)"
+        details: "Gyenge multis vétel/eladás, kereszt számolt — automatikusan számolódik a beállítások alapján."
+      - number: 4
+        action: "Mentés (helyileg)"
+        details: "Mentés gomb (Save) — localStorage-ben tárolja a Főlapot."
+      - number: 5
+        action: "Csoportok karbantartása (opcionális)"
+        details: "Ha új workgroup kell, vagy iroda-hozzárendelést módosítasz — BranchPickerModal-lal."
+      - number: 6
+        action: "ÁRFOLYAMOK SZÉTKÜLDÉSE (zöld gomb)"
+        details: "Idempotens publikálás Hetzner-re. Toast: 'Publikálva! N árfolyam kiküldve: <workgroup> (X iroda)'."
+      - number: 7
+        action: "Verifikáció"
+        details: "A pénztárakban 30s-en belül megjelenik az új árfolyam (auto-pull `/exchange-rates/pos-current`)."
+
+  - id: google_login
+    name: "Google bejelentkezés (összes kliensben)"
+    related_module: workers
+    description: "OAuth flow lépésről lépésre."
+    steps:
+      - number: 1
+        action: "Bejelentkező ablakon 'Belépés Google fiókkal'"
+        details: "A kliens Electron OAuth-ot indít (RFC 8252 PKCE flow)."
+      - number: 2
+        action: "Google fiók választás"
+        details: "Egy böngésző-ablak nyílik a Google login-ra. Válaszd a céges fiókodat. Ha nem látod: 'Másik fiók használata'."
+      - number: 3
+        action: "Engedélyezés"
+        details: "Először Google: 'Engedélyezed a Valutaváltó-nak?'. → Engedélyezem."
+      - number: 4
+        action: "Backend authentikáció"
+        details: "A kliens elküldi a Google id_token-t a backend-nek. A backend ellenőrzi a `worker_google_login_whitelist` táblát."
+      - number: 5
+        action: "Szerepkör kiválasztása (ha több role)"
+        details: "Ha több szerepköröd van (pl. ügyvezető + főértéktár + területi vezető + belső ellenőr + biztonsági vezető): 'Szerepkör kiválasztása' dialóg. Válaszd ki, melyikkel dolgozni akarsz."
+      - number: 6
+        action: "Belépés sikeres"
+        details: "A kliens fő dashboardja megjelenik. A 'F' (felhasználó-ikon) jobb felül mutatja: 'Név, ID: W-XXXX'."
+
+  - id: bali_heni_helyettesites
+    name: "Bali Heni helyettesítő flow (3 különböző munkakör)"
+    related_module: workers
+    description: "Bali Heni két Google fiókkal + egy BCrypt-jelszavas munkakörrel."
+    steps:
+      - number: 1
+        action: "Pénztárosi munka (helyettesítéskor)"
+        details: "Penztar kliens → BCrypt bejelentkezés: kód = BALI + jelszó. NEM Google login!"
+      - number: 2
+        action: "Szegedi értéktárosi munka"
+        details: "Penztar (értéktár mód) vagy Központi Modul → Google login: `szeged.ebc@gmail.com`."
+      - number: 3
+        action: "Főértéktárosi munka / helyettesítés"
+        details: "Kozponti Modul vagy Árfolyamkészítő → Google login: `bali.henriett.ebc@gmail.com` → Szerepkör-választó: Főértéktáros (vagy más a 7 role közül)."
+
+  - id: hibajelentes
+    name: "Hibajelentés a hangsegéddel"
+    description: "Ha valami nem stimmel a programmal, hangsegéddel hibajegyet készítünk."
+    steps:
+      - number: 1
+        action: "Hangsegéd indítása"
+        details: "Jobb alsó sarokban a mikrofon-ikon vagy 'Indítsd el a hangsegédet' gomb."
+      - number: 2
+        action: "Probléma elmondása"
+        details: |
+          Trigger szavakkal: 'jegyezd fel', 'írd ezt le', 'rögzítsd', 'készíts hibajegyet'.
+          Példa: 'Készíts hibajegyet: a Banki rendelések oldal lefagyott, amikor rákattintottam.'
+      - number: 3
+        action: "Asszisztens kérdezi"
+        details: "Az asszisztens kérdezi: 'Mi a súlyossága? Hol történt? Mit vártál volna? Mit láttál?'."
+      - number: 4
+        action: "Hibajegy mentve"
+        details: "Az asszisztens: 'Rendben, rögzítettem. Más problémát is találtál?'"
+      - number: 5
+        action: "Jelentés letöltése"
+        details: "Munkamenet végén: 'Jelentés letöltése' gomb. EBC_hibajelentes_YYYY-MM-DD_nev.md letöltődik."
+      - number: 6
+        action: "Elküldés Zoltánnak"
+        details: "Email: `kosa.zoltan.ebc@gmail.com`. Az MD fájlt csatolva küld."

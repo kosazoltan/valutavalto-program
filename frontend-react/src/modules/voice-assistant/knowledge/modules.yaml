@@ -1,0 +1,404 @@
+# EBC Valutaváltó - Modulok strukturált tudásbázisa
+# Forrás: CLAUDE.md + vault/sessions/ + Anti/ARFOLYAM legacy audit
+# Verzió 1 — 2026-05-18
+
+version: 1
+last_updated: "2026-05-18"
+company:
+  code: EBC
+  full_name: "Exclusive Best Change Zrt."
+  domain: "ebciroda.com"
+  branches: 66
+  regions: 8
+
+regions:
+  - id: BEKESCSABA
+    name: "Békéscsaba"
+  - id: DEBRECEN
+    name: "Debrecen"
+  - id: NYIREGYHAZA
+    name: "Nyíregyháza"
+  - id: KECSKEMET
+    name: "Kecskemét"
+  - id: SZEGED
+    name: "Szeged"
+  - id: KAPOSVAR
+    name: "Kaposvár"
+  - id: PECS
+    name: "Pécs"
+  - id: SZEKSZARD
+    name: "Szekszárd"
+
+clients:
+  - id: penztar
+    name: "Pénztár kliens"
+    description: "Pénztáros és értéktáros napi munkájához. HKLM telepítés (gépszintű)."
+    app_modes:
+      - pos
+      - vault
+    install_location: "C:/Program Files/Valutavalto Penztar/"
+    user_data: "%APPDATA%/valuta-penztar/"
+
+  - id: kozponti
+    name: "Központi Modul"
+    description: "Főértéktárosi és vezetői felügyelet, riportok, audit. HKCU telepítés (per-user)."
+    app_modes:
+      - full
+    install_location: "%LOCALAPPDATA%/Programs/Valutavalto Kozponti Iranyitokozpont/"
+    user_data: "%APPDATA%/valutavalto-kozponti-iranyitokozpont/"
+
+  - id: arfolyamkeszito
+    name: "Árfolyamkészítő (RFM)"
+    description: "Dedikált árfolyam-szerkesztő alkalmazás a főértéktárosnak. A legacy Arfolyam.exe modernizált utódja."
+    app_modes:
+      - rate-maker
+    install_location: "%LOCALAPPDATA%/Programs/Valutavalto Arfolyamkeszito/"
+    user_data: "%APPDATA%/valutavalto-arfolyamkeszito/"
+
+modules:
+
+  # ============================================
+  # PÉNZTÁR (POS) — 11 menüpont
+  # ============================================
+  - id: penztar.fomenu
+    client: penztar
+    app_mode: pos
+    name: "Pénztáros főmenü"
+    icon: "🏠"
+    description: "Irányítópult: mai forgalom, gyorsműveletek, aktuális árfolyamok, legutóbbi tranzakciók."
+    cards:
+      - "Mai tranzakciók"
+      - "Mai forgalom (Ft)"
+      - "Aktív ügyfelek"
+      - "Függő foglalók"
+    quick_actions:
+      - "Új tranzakció"
+      - "Új ügyfél"
+      - "Árfolyamok megtekintése"
+      - "Napi zárás"
+
+  - id: penztar.napnyitas
+    client: penztar
+    app_mode: pos
+    name: "Napnyitás"
+    icon: "🌅"
+    description: "A pénztáros megnyitja a munkanapot, rögzíti a nyitó-készletet."
+    workflow:
+      - "Pénztáros bejelentkezik kódjával és jelszavával"
+      - "Napnyitás menüpont kiválasztása"
+      - "Nyitó-készlet rögzítése valutánként"
+      - "Mentés → státusz: 'Nap nyitva'"
+
+  - id: penztar.vetel_eladas
+    client: penztar
+    app_mode: pos
+    name: "Valuta vétel / eladás"
+    icon: "💱"
+    description: "Új tranzakció rögzítése 3-paneles UI-ban (Deviza választás / Tranzakció adatok / Ügyfél adatok). 28 valuta közül választhat, élő MNB+vétel+eladás árfolyammal."
+    workflow:
+      - "Új tranzakció gomb (vagy F1=Vétel, F2=Eladás)"
+      - "Deviza választás (AUD, CAD, CHF, CNY, CZK, DKK, EUR, GBP, HUF stb. — billentyű 1-9)"
+      - "VÉTEL vagy ELADÁS toggle"
+      - "Összeg beírása (auto HUF-számítás árfolyam × összeg)"
+      - "Devizastátusz: Külföldi / Belföldi (KÖTELEZŐ ROGZÍTÉS minden összeghatáron)"
+      - "Ügyfél azonosítás összeghatár szerint (lásd customer_identification)"
+      - "Mentés és nyomtatás → bizonylat V<3-jegyű kód><6-jegyű sorszám>"
+    rules:
+      buy_min_amount: 0
+      max_per_row: 6  # legacy 6-soros tábla, modern UI 1 sor
+    customer_identification:
+      - threshold: 100000
+        level: "Nem azonosít"
+        required: ["állampolgárság"]
+      - threshold: 300000
+        level: "Egyszerűsített"
+        required: ["név", "állampolgárság", "születési hely", "születési idő"]
+        optional: ["okmányszám", "okmány típus"]
+      - threshold: 999999999
+        level: "Teljes azonosítás"
+        required: ["név", "állampolgárság", "születési hely", "születési idő", "anyja neve", "lakcím", "okmányszám", "okmány típus", "PEP-nyilatkozat", "saját nevében végzi"]
+
+  - id: penztar.konverzio
+    client: penztar
+    app_mode: pos
+    name: "Konverzió"
+    icon: "🔁"
+    description: "Két valuta közötti átváltás (pl. USD → EUR). Kétlépéses workflow: Forrás valuta (ügyfél elad) → Cél valuta (ügyfél vesz)."
+    workflow:
+      - "Konverzió menüpont"
+      - "Forrás valuta kiválasztása + összeg"
+      - "Számítás (köztes HUF érték)"
+      - "Cél valuta kiválasztása (auto kapott összeg)"
+
+  - id: penztar.kassza
+    client: penztar
+    app_mode: pos
+    name: "Kassza / készlet"
+    icon: "💰"
+    description: "Pénztári készlet áttekintés valutánként, MIN-MAX határokkal."
+    common_issues:
+      - "HUF készlet a MIN alatt → ⚠️ riasztás"
+      - "Egyéb valuták MIN-MAX = 0-999.999.999 → konfigurálatlan, beállítás szükséges"
+
+  - id: penztar.cimletezes
+    client: penztar
+    app_mode: pos
+    name: "Címletezés"
+    icon: "🧾"
+    description: "HUF címletek (12 darab: 5 bankjegy + 7 érme)."
+    denominations:
+      bankjegyek: [20000, 10000, 5000, 2000, 1000]
+      ermek: [500, 200, 100, 50, 20, 10, 5]
+
+  - id: penztar.ugyfelek
+    client: penztar
+    app_mode: pos
+    name: "Ügyfelek"
+    icon: "👤"
+    description: "AML-azonosított ügyfelek listája (100k+ tranzakciókhoz)."
+    operations: ["keresés név/okmányszám alapján", "új ügyfél felvétele"]
+
+  - id: penztar.uton_levo_csomagok
+    client: penztar
+    app_mode: pos
+    name: "Úton lévő csomagok"
+    icon: "📦"
+    description: "Pénztárak közötti átadás-átvétel követése, 30s autosync."
+    tabs: ["Bejövő (érkező)", "Kimenő (saját küldés)"]
+
+  - id: penztar.napzaras
+    client: penztar
+    app_mode: pos
+    name: "Napzárás"
+    icon: "🌙"
+    description: "9-lépéses Wizard a nap lezárásához."
+    wizard_steps:
+      - "MTCN szám ellenőrzés (Western Union)"
+      - "Esti pénztár címletezése"
+      - "Kezelési díj címletezés"
+      - "Western Union címletezés"
+      - "ÁFA címletezés"
+      - "Foglaló címletezés"
+      - "E-kereskedelem címletezés"
+      - "Egyéb címletezések (AXA/MoneyGram)"
+      - "NAV kontroll és napi jelentés"
+
+  - id: penztar.arfolyamok_nezet
+    client: penztar
+    app_mode: pos
+    name: "Árfolyamok (nézet)"
+    icon: "📊"
+    description: "Olvasásra-csak árfolyamok — 'csak főértéktár szerkesztheti'."
+    columns: ["ALAP (V/E)", "1. SÁV (V/E)", "2. SÁV (V/E)", "MNB"]
+
+  - id: penztar.tranzakciolista
+    client: penztar
+    app_mode: pos
+    name: "Tranzakciólista"
+    icon: "📋"
+    description: "V/E/K bizonylatok (Vétel/Eladás/Konverzió). Dátum-szűrő, típus szűrő. Művelet ikonok: szem (megnéz), nyomtató (újranyomtat), piros X (sztornó)."
+    receipt_prefixes:
+      V: "Vétel"
+      E: "Eladás"
+      K: "Konverzió (átváltás)"
+
+  # ============================================
+  # KÖZPONTI MODUL — 13 menüpont (v2.5.55 cleanup után)
+  # ============================================
+  - id: kozponti.iranyitokozpont
+    client: kozponti
+    app_mode: full
+    name: "Központi irányítóközpont"
+    icon: "📡"
+    description: "Felügyelet, riportok és törzsadat-kezelés. 16 modul kártya."
+    subtitle: "Felügyelet, riportok és törzsadat-kezelés"
+    note: "v2.5.55 óta NINCS Árfolyamkészítő/Pénztár-funkció (csak az Árfolyamkészítő külön kliensben). PR #640 cleanup."
+
+  - id: kozponti.zaras_beerkezes
+    client: kozponti
+    app_mode: full
+    name: "Zárás beérkezés"
+    icon: "🌅"
+    description: "Napi zárások és nyitások beérkezésének valós idejű állapota."
+    metrics: ["Iroda összesen", "Rendben", "Kritikus", "Figyelmeztetés", "Hiányzó rekord"]
+
+  - id: kozponti.beerkezett_adatok
+    client: kozponti
+    app_mode: full
+    name: "Beérkezett adatok"
+    icon: "📥"
+    description: "Pénztári adatcsomagok beérkezésének áttekintése."
+    metrics: ["Iroda", "Beérkezett", "Beküldött", "Hiányzik", "Kritikus zárás", "Tranzakció", "Vétel", "Eladás"]
+
+  - id: kozponti.orszagos_dashboard
+    client: kozponti
+    app_mode: full
+    name: "Országos dashboard"
+    icon: "📊"
+    description: "66 pénztár áttekintés: heartbeat, készlet, riasztások."
+
+  - id: kozponti.mnb_jelentesek
+    client: kozponti
+    app_mode: full
+    name: "MNB jelentések"
+    icon: "🏛️"
+    description: "Havi pénzváltó forgalmi jelentés az MNB-nek."
+
+  - id: kozponti.penztaros_kpi
+    client: kozponti
+    app_mode: full
+    name: "Pénztáros KPI"
+    icon: "📈"
+    description: "Forgalom, tranzakciószám, sztornó arány pénztárosonként. Dátum-szűrő (Ma / Utolsó 7 nap / Ez a hónap / Egyéni)."
+
+  - id: kozponti.orszagos_keszlet
+    client: kozponti
+    app_mode: full
+    name: "Országos készlet"
+    icon: "💼"
+    description: "Pénztári készletek áttekintése irodánként, valutánként."
+
+  - id: kozponti.keszlet_snapshot
+    client: kozponti
+    app_mode: full
+    name: "Készlet-snapshot"
+    icon: "📸"
+    description: "Pillanatkép a cég szintű készletekről, 27 devizanem, Excel export."
+
+  - id: kozponti.ertektari_leltar
+    client: kozponti
+    app_mode: full
+    name: "Értéktári leltár"
+    icon: "📦"
+    description: "Címletenkénti országos értéktár ellenőrzés."
+
+  - id: kozponti.banki_rendelesek
+    client: kozponti
+    app_mode: full
+    name: "Banki rendelések"
+    icon: "🏦"
+    description: "Banki utánrendelés-kezelés. Western Union napi keret 10.000 USD."
+
+  - id: kozponti.aktualis_arfolyamok
+    client: kozponti
+    app_mode: full
+    name: "Aktuális árfolyamok (csak nézet)"
+    icon: "📊"
+    description: "Read-only nézet a publikált árfolyamokra. Szerkesztés: Árfolyamkészítő kliens."
+
+  - id: kozponti.arfolyam_tortenet
+    client: kozponti
+    app_mode: full
+    name: "Árfolyam történet"
+    icon: "📅"
+    description: "Korábbi árfolyam-publikációk listája."
+
+  - id: kozponti.arfolyam_kategoriak
+    client: kozponti
+    app_mode: full
+    name: "Árfolyam kategóriák"
+    icon: "🗂️"
+    description: "Árfolyam-kategóriák karbantartása (adminisztráció)."
+
+  # ============================================
+  # ÁRFOLYAMKÉSZÍTŐ (RFM) — dedikált UI
+  # ============================================
+  - id: arfolyamkeszito.folap
+    client: arfolyamkeszito
+    app_mode: rate-maker
+    name: "Főlap — Elszámoló árfolyamok (0-s lap)"
+    icon: "📝"
+    description: "28 valuta × 9 oszlop (A-I) árfolyam-mátrix. A főértéktáros itt állítja be a napi elszámoló árfolyamokat."
+    columns:
+      A: "Elszámoló (manuál EUR/USD/GBP/CHF + képletes többi)"
+      B: "OTP segéd (vételi)"
+      C: "Segéd"
+      D: "Valuta kód (VÉDETT)"
+      E: "Gyenge multis vétel"
+      F: "Gyenge multis eladás"
+      G: "Kereszt számolt (auto)"
+      H: "Kereszt forrás (6 tizedes)"
+      I: "Nagybani"
+    main_currencies: ["EUR", "USD", "GBP", "CHF"]
+    cross_base_eur: ["CZK", "PLN", "RON", "RSD", "BGN", "BAM", "TRY"]
+    cross_base_usd: ["ILS", "UAH", "RUB", "CNY", "THB", "BRL", "MXN", "NZD"]
+
+  - id: arfolyamkeszito.csoportok_karbantartasa
+    client: arfolyamkeszito
+    app_mode: rate-maker
+    name: "Csoportok karbantartása"
+    icon: "👥"
+    description: "Munkacsoportok (workgroups) létrehozása + iroda-hozzárendelés. Anti legacy MunkacsoportEditor modern verziója."
+    legacy_parity: "MunkacsoportEditor, IRODAVALASZTOGOMB, BranchPickerModal"
+    branch_picker:
+      ui: "BranchPickerModal — város szerinti csoportosítás, élő keresés"
+      api: "GET /api/v1/rate-creation/branches?workgroupId=<uuid>"
+    workgroup_branch_exclusivity: "1 iroda CSAK 1 workgroupban (V234 UNIQUE constraint + move-strategy a backend service-ben)"
+    limit_boundaries:
+      - "Alsó (Ft)"
+      - "Középső (Ft)"
+      - "Felső (Ft)"
+
+  - id: arfolyamkeszito.arfolyamok_szetkuldese
+    client: arfolyamkeszito
+    app_mode: rate-maker
+    name: "Árfolyamok szétküldése (publikálás)"
+    icon: "📤"
+    description: "Idempotens publikálás Hetzner backend-re HTTPS-en. Legacy Anti TAdatSzetkuldes modern verziója."
+    legacy_parity: "TAdatSzetkuldes, SZETKULDOGOMB, ARFDATA.DAT FTP-vel"
+    api: "POST /api/v1/local-rate-maker/packages/publish"
+    headers: ["Idempotency-Key", "Authorization (Bearer JWT)"]
+    payload_fields: ["clientPackageId", "clientDeviceId", "clientVersion", "createdAt", "groupId", "clientPackageHash", "rates[]"]
+    audit: "Backend rate_publication SQL tábla"
+
+  - id: arfolyamkeszito.internet_cimek
+    client: arfolyamkeszito
+    app_mode: rate-maker
+    name: "Internet címek karbantartása"
+    icon: "🌐"
+    description: "Hamarosan elérhető funkció (gomb DISABLED v2.5.55 óta). PR #640: 'Phase 2' string-leak törölve."
+    status: "DISABLED"
+
+# ============================================
+# Külön: BEÁLLÍTÁSOK / Adminisztráció (Kozponti)
+# ============================================
+admin_settings:
+  - id: admin.branches
+    name: "Irodák"
+    description: "Pénztárak/irodák karbantartása. Branch típus (értéktár / többlet-hiány / 1. sz. főpénztár), címlet, kerületi/regionális hozzárendelés."
+  - id: admin.workers
+    name: "Dolgozók"
+    description: "Munkavállalók nyilvántartása. Adatok: név, kód, email, jogosultság (role), Google bejelentkezés engedélyezett-e."
+  - id: admin.handling_fee
+    name: "Kezelési költség beállítás"
+    description: "Központi és irodaspecifikus kezelési költség mérték (V227 óta). PR #605 + #610 hotfix."
+  - id: admin.permission_matrix
+    name: "Jogosultság mátrix"
+    description: "Role-okhoz funkciók hozzárendelése."
+
+# Szerepkörök
+roles:
+  - id: penztaros
+    canonical: penztar
+    description: "Pénztáros: vétel/eladás/sztornó. Penztar POS módban dolgozik."
+  - id: ertektaros
+    canonical: ertektar
+    description: "Értéktáros: pénztári készlet kezelés, átadás-átvétel. Penztar Vault módban."
+  - id: foertektaros
+    canonical: foertektar
+    description: "Főértéktáros: országos készlet, árfolyam, banki rendelés. Központi Modul + Árfolyamkészítő."
+  - id: irodavezeto
+    canonical: irodavezeto
+    description: "Iroda vezetője: beosztás, dolgozók, jutalmak. Központi Modul."
+  - id: teruleti_vezeto
+    canonical: teruleti_vezeto
+    description: "Területi (regionális) vezető: régió-szintű felügyelet."
+  - id: ugyvezeto
+    canonical: ugyvezeto
+    description: "Ügyvezető: minden funkció. Cégszintű admin."
+  - id: belso_ellenor
+    canonical: belso_ellenor
+    description: "Belső ellenőr: audit + AML. CSAK Központi Modul, NEM pénztári."
+  - id: biztonsagi_vezeto
+    canonical: biztonsagi_vezeto
+    description: "Biztonsági vezető: audit, kamera, AML."
