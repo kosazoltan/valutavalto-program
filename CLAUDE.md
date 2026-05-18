@@ -613,8 +613,12 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.57** (2026-05-18 — Hangsegéd (Voice Assistant) feature complete rollout: 15 PR + 4 UNSIGNED telepítő + Hetzner OPENAI_API_KEY + VOICE_OPENAI_ENABLED=true).
-- **Korábbi verzió:** v2.5.53 (2026-05-15, 10 user-bug fix). A v2.5.54+v2.5.55+v2.5.56 verziók GitHub PR-merge során auto-bumpoltak, de v2.5.56 build accidentally előz volt → check-version-bump.ps1 auto v2.5.57-re emelte.
+- **Verzió:** **v2.5.58** (2026-05-18 — 3 PR feature/fix-set: V234 DailyClosingService logger phase 2 [#685] + SetupWizard értéktáros Google OAuth [#686] + Rate-Maker EXE central server connection [#687]).
+- **Korábbi verzió:** v2.5.57 (2026-05-18, Hangsegéd Voice Assistant feature complete rollout: 15 PR + 4 UNSIGNED telepítő + Hetzner OPENAI_API_KEY + VOICE_OPENAI_ENABLED=true).
+- **v2.5.58 PR-ek (admin-merged main-be 2026-05-18):**
+  - **PR #685** (V234 audit phase 2): DailyClosingService 10× `log.error()` → `VV_LOG.error()` migráció (VV-BIZ-006..010 hibakódok), HashMap null-guard pattern terminal_id-re (Codex P2 NPE fix), 30 → 41 error code error-codes.yaml-ben (VV-VOICE-004/005, VV-TECH-003/004, VV-AML-004, VV-SYNC-004, VV-BIZ-006..010).
+  - **PR #686** (SetupWizard értéktár Google OAuth): Step 4 ServerStep új props (appMode, googleAuthSetupReady, googleSetupWorker), 3-way conditional render (pénztáros dropdown / Google OAuth info card / Back-to-Step-1 hint). Bug fix: értéktár alkalmazottak Google email-ükkel léphetnek be NEM pénztáros-dropdown via.
+  - **PR #687** (Rate-Maker thin client architecture, Kósa Zoltán directive): Árfolyamkészítő EXE NEM standalone hanem `central server` thin client. `serverSnapshotRef` pattern diff-based publishing-hez (csak változott sorok push-olva, threshold 0.0001), in-flight edit preservation (dirty flag → mount-sync overwrite-elkerülés), `exchangeRateMasterApi.create()` endpoint, V234 8 review finding fix egy commitban (1c5e0849e: Sourcery offline fallback, Sourcery localStorage vs network 2-try, Copilot all-row anti-pattern).
 - **Hangsegéd (Voice Assistant) feature rollout (2026-05-18 session):**
   - **15 PR mergelve a main-be:** Phase 1 [#654], Phase 2 [#659], Phase 3 [#660], Phase 4 [#661], Phase 5 [#672], Phase 6 [#673], Phase 7 [#674], Phase 8 [#675], Phase 9 [#676], Phase 9.5a [#668], Phase 9.5b [#677], Phase 10 [#667], + #669 (lint scope), #670 (code-signing docs Sectigo→DigiCert pivot), #671 (vault PII redact).
   - **Hetzner backend env:** `OPENAI_API_KEY` + `VOICE_OPENAI_ENABLED=true` beállítva a `set-voice-assistant-env.yml` workflow-val. Backend restartolt, bootstrap-status 200.
@@ -622,12 +626,17 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
   - **OpenAI Realtime API:** `gpt-realtime-2` (~$0.06-0.08/min audio, shimmer voice, gpt-realtime-whisper transcription).
   - **Költségvédelem:** per-worker rate-limit 10 ephemeral-token-keres / ora (configurálható env-flag).
   - **Adatvédelem:** issueStore IndexedDB lokálisan, master OPENAI_API_KEY csak backend-en, ~60s ephemeral client_secret WebRTC-hez.
-- **Telepítő fájlok v2.5.57 (LEGFRISSEBB, 2026-05-18 UNSIGNED build)** — `installer/build/` + másolva `%USERPROFILE%\Downloads\`-ba:
-  - `Penztar-Setup-2.5.57-20260518.exe` — **280.94 MB** (294,583,435 byte), SHA-256 `E55E2D390688FE2B1F3CB947253D89B7D59203E63B3E7E72F24EA93198F13600`
-  - `Kozponti-Iranyitokozpont-Setup-2.5.57.exe` — **100.93 MB** (105,841,795 byte), SHA-256 `7C1CBB4546A061EDD14B3A2544CF69D797DD8319B354E1721D412B883C658CC0`
-  - `Arfolyamkeszito-Setup-2.5.57.exe` — **100.93 MB**, SHA-256 `BB86BA566754BB2C60846A99B2DDBC70632AEB79FE968D6317BA030BE43603D0`
-  - `Penztar-Eltavolito-2.5.57-20260518.exe` — **60.86 KB** (62,329 byte), SHA-256 `AB97665C134EF1DBB67CB1DE59582191E3678B2441BC4A572AB7154E961ED597`
-  - **UNSIGNED build** — DigiCert EV CS cert kiadásig (~2026-05-21) a SmartScreen "További információ" → "Futtatás mindenképp" lépés szükséges. A v2.5.58+ SIGNED release a cert kiadás után.
+- **Telepítő fájlok v2.5.58 (LEGFRISSEBB, 2026-05-18 UNSIGNED build)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba:
+  - `Penztar-Setup-2.5.58-20260518.exe` — **282.57 MB** (296,292,965 byte), SHA-256 `1B4F8A6ECD447FFC93C8D6C675D88724F5ED4981EB71699821545D164A468998`
+  - `Kozponti-Iranyitokozpont-Setup-2.5.58.exe` — **100.93 MB** (105,836,792 byte), SHA-256 `163B79F1CD0045141E3AFF7A9F3ECD28EFC7C942DE843F1AD0C20792B8BECD28`
+  - `Arfolyamkeszito-Setup-2.5.58.exe` — **100.93 MB** (105,836,199 byte), SHA-256 `F0BE00BE1061064F1CC608A6828B9647D1D6DD6E9BCBEC9B4BDF5FF3361B09B0`
+  - `Penztar-Eltavolito-2.5.58-20260518.exe` — **59.43 KB** (60,857 byte), SHA-256 `F4DA648B0D1A8B3BE6C333E1B1546D2547E5ED9FFBB9A1AF012F81E2EFF28270`
+  - **UNSIGNED build** — DigiCert EV CS cert kiadásig (kedd 2026-05-19 13:00 CEST verifikációs call) a SmartScreen "További információ" → "Futtatás mindenképp" lépés szükséges. A v2.5.59+ SIGNED release a cert kiadás után.
+- **Telepítő fájlok v2.5.57 (előző UNSIGNED build, 2026-05-18)** — Hangsegéd MVP rollout:
+  - `Penztar-Setup-2.5.57-20260518.exe` — 280.94 MB, SHA-256 `E55E2D390688FE2B1F3CB947253D89B7D59203E63B3E7E72F24EA93198F13600`
+  - `Kozponti-Iranyitokozpont-Setup-2.5.57.exe` — 100.93 MB, SHA-256 `7C1CBB4546A061EDD14B3A2544CF69D797DD8319B354E1721D412B883C658CC0`
+  - `Arfolyamkeszito-Setup-2.5.57.exe` — 100.93 MB, SHA-256 `BB86BA566754BB2C60846A99B2DDBC70632AEB79FE968D6317BA030BE43603D0`
+  - `Penztar-Eltavolito-2.5.57-20260518.exe` — 60.86 KB, SHA-256 `AB97665C134EF1DBB67CB1DE59582191E3678B2441BC4A572AB7154E961ED597`
 - **Verzió:** v2.5.53 [előző] (2026-05-15 — 10 felhasználói bug + production hotfix-ek + BALI/W-S011/Google OAuth lezárva, mind admin-merged a main-be).
 - **Backend stack (2026-04-29 SB4 sprint óta):** **Spring Boot 4.0.6** + **Tomcat 11.0.21** (Servlet 6.1) + **Jackson 2 stop-gap** (`spring-boot-jackson2` modul + `JacksonConfig.java` programmatic `@Primary @Bean ObjectMapper` `Jackson2ObjectMapperBuilder.json().modulesToInstall(...)` mintával) + **springdoc 3.0.3** + **flyway-database-postgresql 12.4.0** (flyway-core 12.x SB4 BOM-ból). 1009/1009 mvn test PASS, Hetzner production deploy SUCCESS (3× verifikálva).
 - **Main HEAD:** `1217cf08` (PR #266: modulesToInstall extend mode, 2026-04-29).
