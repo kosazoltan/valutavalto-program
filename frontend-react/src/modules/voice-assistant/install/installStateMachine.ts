@@ -14,10 +14,20 @@ import { logger } from '../../../utils/logger'
  * (Copilot+Codex PR #666: one-shot completion — retry/replay esetén NEM
  * tüzel újra a callback, hogy ne duplázzunk finalize-műveletet).
  *
- * A `next()` az LLM által megadott `currentStep`-et FIGYELMEZTETŐ csak —
- * a tényleges leptetés a BELSŐ `currentIdx`-en történik (Codex PR #666 P1
- * security: az LLM nem küldhet `current_step: 6` értéket, hogy átugorjon
- * a telepítés lépésein).
+ * Az LLM által megadott `currentStep` SEM nem hitelesíti a leptetést,
+ * SEM nem blokkolja: figyelmeztető log csak (Codex PR #666 P1 security —
+ * az LLM nem küldhet `current_step: 6` értéket, hogy átugorjon lépéseket).
+ *
+ * Replay-idempotency (Codex+Copilot PR #679 P1 — corrected from #676):
+ * - True replay (ugyanaz a tool-call ujra a SAME currentStep ertekkel
+ *   success=true-val) → no-op, mert `lastAppliedCurrentStep` egyezik.
+ * - LLM out-of-sync (pl. dispatchToolCall a missing `current_step`-et
+ *   `?? 0`-ra coercolja) → tovabbra is leptetunk a BELSO idx-en,
+ *   nem trap-elunk.
+ * - Tradeoff: ha az LLM ugyanazt a hibás `currentStep` erteket sokszor
+ *   kuldi sorban (pl. mindig 0), akkor a 2. hivastol no-op lesz → a
+ *   user beragadhat. Ezert a tool-schema description-jenek kotelezo
+ *   a current_step-et 1..7 koze megkotni (Realtime API parameter spec).
  */
 
 export interface InstallStateMachine {
@@ -32,6 +42,11 @@ export function createInstallStateMachine(
 ): InstallStateMachine {
   let currentIdx = 1
   let completedFired = false
+  // Codex+Copilot PR #679 P1 (corrected from #676): a true-replay marker
+  // az LLM altal kuldott currentStep ertekkel asszocialodik, NEM a belso
+  // idx-szel — igy az LLM `current_step ?? 0` coercolt 0-jat NEM trap-eljuk
+  // be (csak igaz duplikatumokat).
+  let lastAppliedCurrentStep: number | null = null
   const collectedNotes: string[] = []
 
   function stepAt(idx: number): InstallStep {
@@ -49,7 +64,7 @@ export function createInstallStateMachine(
       // Codex PR #666 P1: a leptetes a BELSO currentIdx-en, NEM az LLM altal
       // kuldott currentStep-en. Ha az LLM out-of-sync (pl. current_step: 6,
       // miközben a user meg az 1. lepesnel van), figyelmezteto log-ot ir,
-      // de NEM ugor at lepest. A teljes lepessor mindenkeppen vegigfut.
+      // de NEM ugor at lepest, NEM trap-el be (Codex PR #679 P1).
       if (currentStep !== currentIdx) {
         logger.warn(
           'VoiceAssistant',
@@ -61,18 +76,15 @@ export function createInstallStateMachine(
         return stepAt(currentIdx)
       }
 
-      // Codex PR #676 P1 replay-idempotency fix:
-      // Az LLM/tool-call retry-elhet (network glitch, partial response, stb.) es
-      // ujra elkuldheti a SAME success=true hivast ugyanarra a step-re. Korabban
-      // ez `currentIdx`-et ELOREVITTE minden hivasnal, amiKovetkezmenye:
-      // 1. hivas (step 1, success=true) -> currentIdx=2; 2. hivas (step 1, success=true,
-      // replay) -> currentIdx=3 — kihagytuk a 2. lepest. Most az `currentStep !==
-      // currentIdx` esetet rejectaljuk: NEM lepunk, csak warn-olunk, igy a replay
-      // nem mozdit allapotot.
-      if (currentStep !== currentIdx) {
-        // out-of-sync / replay — NE lepunk
+      // Codex+Copilot PR #679 P1 replay-idempotency (corrected from #676):
+      // Ha ugyanazzal a currentStep ertekkel masodszor jon success=true (network
+      // glitch / LLM retry / partial response replay), NEM leptetunk megegyszer.
+      // A gate az LLM altal kuldott `currentStep`-en alapul (NEM a belso idx-en),
+      // hogy az out-of-sync stale `current_step: 0` ne trap-elje be a folyamatot.
+      if (lastAppliedCurrentStep !== null && currentStep === lastAppliedCurrentStep) {
         return stepAt(currentIdx)
       }
+      lastAppliedCurrentStep = currentStep
 
       if (currentIdx <= TOTAL_INSTALL_STEPS) {
         currentIdx = currentIdx + 1
@@ -91,6 +103,7 @@ export function createInstallStateMachine(
     reset() {
       currentIdx = 1
       completedFired = false
+      lastAppliedCurrentStep = null
       collectedNotes.length = 0
     },
     isCompleted() {
