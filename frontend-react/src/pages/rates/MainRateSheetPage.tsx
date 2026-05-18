@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, LogOut, Globe, Save, ArrowRight, Info } from 'lucide-react'
+import { Send, LogOut, Globe, Save, ArrowRight, Info, Wifi, WifiOff } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
+import { exchangeRateMasterApi, type ExchangeRateMaster, type CreateMasterRateRequest } from '../../services/api/exchangeRateMaster'
+import { currencyApi } from '../../services/api/exchange-rates'
 
 /**
  * Főlap (0-s lap) — Árfolyamkészítő program ALAP felülete.
@@ -143,12 +145,16 @@ export default function MainRateSheetPage() {
   const [dirty, setDirty] = useState(false)
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; col: keyof MainRateRow } | null>(null)
   // Codex P1 #581 fix: editBuffer őrzi a felhasználó RAW input-ját az aktív cella szerkesztésekor.
-  // Anélkül a parseFloat minden billentyűzéskor felülírná a megjelenített értéket — pl. nem tudna
-  // beírni "3." vagy "3,5"-öt, mert parsed=3 vs raw="3." különbözik. Csak blur-on commitálunk.
   const [editBuffer, setEditBuffer] = useState<string>('')
   const [showHelp, setShowHelp] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const lastSavedAt = useRef<string | null>(null)
+  // Phase 2 wiring (Kosa Zoltan 2026-05-18 directive): a foertektaros által az
+  // EXE-ben végzett árfolyam-szerkesztés a KÖZPONTI szerveren tárolt
+  // ExchangeRateMaster állományt írja/olvassa. Az EXE thin client.
+  const [serverSyncState, setServerSyncState] = useState<'loading' | 'online' | 'offline' | 'idle'>('idle')
+  const [serverLastSyncAt, setServerLastSyncAt] = useState<string | null>(null)
+  const currencyIdMapRef = useRef<Map<string, number>>(new Map())
 
   // Computed cross settlement for G column
   const eurRow = useMemo(() => rows.find(r => r.currency === 'EUR'), [rows])
@@ -263,6 +269,69 @@ export default function MainRateSheetPage() {
     }
   }, [flushActiveCell])
 
+  // Phase 2 wiring (Kosa Zoltan 2026-05-18): a komponens MOUNT-jakor letoltjuk a
+  // legujabb publikalt arfolyamokat a szerverrol (Aktiv ExchangeRateMaster
+  // rekordok) es feltoltjuk a localStorage cache-t. Igy a tabla NEM ures - a
+  // foertektaros mindig a kozponti legutolso adatot latja, NEM csak localStorage
+  // snapshot-ot. Ez teszi az EXE-bol thin client-et a kozponti rate-engine ele.
+  useEffect(() => {
+    let cancelled = false
+    setServerSyncState('loading')
+    const loadServerData = async () => {
+      try {
+        // 1. Lehúzzuk a currencies tablat (currencyCode -> currencyId mapping)
+        const currencies = await currencyApi.list()
+        if (cancelled) return
+        const codeToId = new Map<string, number>()
+        for (const c of currencies) {
+          codeToId.set(c.code, c.id)
+        }
+        currencyIdMapRef.current = codeToId
+
+        // 2. Lehuzzuk az aktiv (publikalt) torzs arfolyamokat
+        const serverRates = await exchangeRateMasterApi.listActivePublished()
+        if (cancelled) return
+
+        // 3. Merge: szerver-ratek a MainRateRow oszlopaiba (currencyCode alapjan)
+        const cachedRows = loadFromStorage()
+        const codeToServerRate = new Map<string, ExchangeRateMaster>()
+        for (const sr of serverRates) {
+          // currencyCode lehet hianyzo a backendben - keressuk vissza a mapbol
+          let code = sr.currencyCode
+          if (!code) {
+            const codeMatch = Array.from(codeToId.entries()).find(([_c, id]) => id === sr.currencyId)
+            code = codeMatch?.[0]
+          }
+          if (code) codeToServerRate.set(code, sr)
+        }
+
+        const mergedRows = cachedRows.map((row) => {
+          const sr = codeToServerRate.get(row.currency)
+          if (!sr) return row // nincs szerver-rekord erre a valutara
+          // Backend mapping: baseBuyRate -> E (weakMultiBuy), baseSellRate -> F,
+          // officialRate -> A (settlement)
+          return {
+            ...row,
+            settlement: Number(sr.officialRate) || row.settlement,
+            weakMultiBuy: Number(sr.baseBuyRate) || row.weakMultiBuy,
+            weakMultiSell: Number(sr.baseSellRate) || row.weakMultiSell,
+          }
+        })
+        setRows(mergedRows)
+        setServerSyncState('online')
+        setServerLastSyncAt(new Date().toISOString())
+        logger.info('MainRateSheetPage', `Server sync: ${serverRates.length} aktiv arfolyam betoltve`)
+      } catch (err) {
+        if (cancelled) return
+        logger.error('MainRateSheetPage', 'Server sync failed - fallback localStorage cache', err)
+        setServerSyncState('offline')
+        toast.warning('Offline', 'Szerver nem elérhető — helyi cache betöltve')
+      }
+    }
+    void loadServerData()
+    return () => { cancelled = true }
+  }, [])
+
   // Auto-save on dirty + 1 sec debounce
   useEffect(() => {
     if (!dirty) return
@@ -283,24 +352,85 @@ export default function MainRateSheetPage() {
       toast.warning('Olvasás-csak', 'Csak főértéktáros / ügyvezető küldhet ki árfolyamot')
       return
     }
-    // Codex P1 #581 iter-4: aktív cella sync commit + serialization.
-    // A flushActiveCell visszaadott rowsToDispatch tartalmazza az épp commitált értéket
-    // (NEM a React state aszinkron snapshot-ja). Phase 2-ben ezt küldjük a backend API-nak.
+    // Phase 2 (Kosa Zoltan 2026-05-18 directive): a thin client minden módosított
+    // valutára egy-egy backend POST /exchange-rate-master DRAFT-ot hoz létre, majd
+    // a központi RateCreationService logikája szerint publikálja (approve + publish),
+    // ami szétküldi az összes pénztárnak (exchange_rate_distribution-on át).
     const rowsToDispatch = flushActiveCell()
     setPublishing(true)
     try {
-      // Phase 2: backend POST /api/v1/rates/main-sheet/publish a rowsToDispatch-csel.
-      // Phase 1 MVP: helyi mentés a flushActiveCell-tal kapott sync next-rows-ból.
-      // Codex P2 #581 iter-6 fix: ha a pre-dispatch localStorage.setItem dob, NEM csak loggol —
-      // re-throw-ol, hogy a success toast NE jelenjen meg, helyette error path fusson.
+      // 1. Mentes localStorage cache-be (offline fallback)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(rowsToDispatch))
       lastSavedAt.current = new Date().toISOString()
+
+      // 2. Csak azokat a valutákat küldjük szerverre, amelyek nem-nulla rates-tel rendelkeznek
+      const modifiedRows = rowsToDispatch.filter(
+        (r) => r.weakMultiBuy > 0 && r.weakMultiSell > 0,
+      )
+      if (modifiedRows.length === 0) {
+        toast.warning('Üres', 'Egyetlen valuta sincs kitöltve — nincs mit szétküldeni.')
+        setPublishing(false)
+        return
+      }
+
+      const codeToId = currencyIdMapRef.current
+      let createdCount = 0
+      let publishedCount = 0
+      const errors: string[] = []
+
+      for (const row of modifiedRows) {
+        const currencyId = codeToId.get(row.currency)
+        if (!currencyId) {
+          errors.push(`${row.currency}: nincs ID a currencies táblában`)
+          continue
+        }
+        const payload: CreateMasterRateRequest = {
+          currencyId,
+          baseBuyRate: row.weakMultiBuy,
+          baseSellRate: row.weakMultiSell,
+          officialRate: row.settlement || undefined,
+          notes: `Főlap szétküldés (foertektaros: ${new Date().toISOString()})`,
+        }
+        try {
+          // Create DRAFT
+          const draft = await exchangeRateMasterApi.create(payload)
+          createdCount += 1
+          // Approve + Publish
+          await exchangeRateMasterApi.approve(draft.id)
+          await exchangeRateMasterApi.publish(draft.id)
+          publishedCount += 1
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e)
+          errors.push(`${row.currency}: ${msg}`)
+          logger.error('MainRateSheetPage', `Publish failed for ${row.currency}`, e)
+        }
+      }
+
       setDirty(false)
-      await new Promise(r => setTimeout(r, 800))
-      toast.success('Szétküldve', `Főlap árfolyamok szétküldve (${rowsToDispatch.length} valuta, Phase 1: lokális mentés)`)
+      setServerSyncState('online')
+      setServerLastSyncAt(new Date().toISOString())
+
+      if (errors.length === 0) {
+        toast.success(
+          'Szétküldve',
+          `${publishedCount}/${modifiedRows.length} valuta publikálva a központi szerveren és szétküldve a pénztáraknak.`,
+        )
+      } else if (publishedCount > 0) {
+        toast.warning(
+          'Részben sikeres',
+          `${publishedCount}/${modifiedRows.length} publikálva. Hibák: ${errors.slice(0, 3).join('; ')}`,
+        )
+      } else {
+        toast.error(
+          'Sikertelen',
+          `Egyetlen valuta sem ment ki. Első hiba: ${errors[0] ?? 'ismeretlen'}`,
+        )
+        setServerSyncState('offline')
+      }
     } catch (e) {
-      logger.error('MainRateSheetPage', 'Dispatch failed (storage or network)', e)
-      toast.error('Hiba', 'Szétküldés sikertelen (lokális mentés vagy hálózat)')
+      logger.error('MainRateSheetPage', 'Dispatch failed (network/storage)', e)
+      toast.error('Hiba', 'Szétküldés sikertelen — szerver nem elérhető?')
+      setServerSyncState('offline')
     } finally {
       setPublishing(false)
     }
@@ -321,6 +451,22 @@ export default function MainRateSheetPage() {
           <h1 className="text-base font-bold text-slate-900">Főlap — Elszámoló árfolyamok</h1>
           <span className="text-xs text-slate-500 px-2 py-0.5 bg-slate-100 rounded">0-s lap (Alap)</span>
           {dirty && <span className="text-xs text-orange-600 font-medium">● módosítva</span>}
+          {/* Phase 2: kozponti szerver szinkron-allapot indikator */}
+          {serverSyncState === 'loading' && (
+            <span className="text-xs text-blue-600 flex items-center gap-1">
+              <Wifi size={12} className="animate-pulse" /> Szerver szinkron…
+            </span>
+          )}
+          {serverSyncState === 'online' && (
+            <span className="text-xs text-green-700 flex items-center gap-1" title={serverLastSyncAt ?? ''}>
+              <Wifi size={12} /> Online (kp. szerver)
+            </span>
+          )}
+          {serverSyncState === 'offline' && (
+            <span className="text-xs text-red-600 flex items-center gap-1">
+              <WifiOff size={12} /> Offline — helyi cache
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
