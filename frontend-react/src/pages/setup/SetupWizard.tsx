@@ -1268,10 +1268,11 @@ function ServerStep(props: ServerStepProps) {
   } = props
 
   // PR #686 (kosa@bestchange.hu bug): a "Penztaros kivalasztasa" mezo CSAK
-  // a `penztar` modnal jeleneik meg ES csak ha a Step 1 Google OAuth nem
-  // azonositotta meg a worker-t. Ertektarosok / arfolyamkesziton / admin
+  // a `penztar` modnal jelenik meg ES csak ha a Step 1 Google OAuth nem
+  // azonositotta meg a worker-t. Ertektarosok / arfolyamkeszito / admin
   // mar a Step 1 Google OAuth-on at azonositva van - itt nincs dolguk.
   const showCashierDropdown = appMode === 'penztar' && !googleAuthSetupReady
+  const hasGoogleIdentity = googleAuthSetupReady && googleSetupWorker !== null
 
   const [workerList, setWorkerList] = useState<SetupWorkerOption[]>([])
   const [workerListLoading, setWorkerListLoading] = useState(false)
@@ -1370,22 +1371,23 @@ function ServerStep(props: ServerStepProps) {
               {t('setup.azIttKivalasztottPenztarosKodjahozAz5LepesenAllitjaBeAzUjJelszot')}
             </span>
           </FieldLabel>
-        ) : googleAuthSetupReady && googleSetupWorker ? (
-          // PR #686: Google OAuth mar azonositott. Csak informacios kartya,
-          // NEM enged 2. pentarosvalasztast (ertektaros/foertektaros/admin).
-          <FieldLabel label="Azonositott dolgozo (Google OAuth)">
+        ) : hasGoogleIdentity && googleSetupWorker ? (
+          // PR #686: Google OAuth mar azonositott - csak informacios kartya,
+          // NEM enged tovabbi penztaros-valasztast (ertektaros / arfolyamkeszito / admin).
+          <FieldLabel label="Azonosított dolgozó (Google OAuth)">
             <div className="w-full px-3 py-2 rounded-lg border border-green-200 bg-green-50 text-green-900">
               <div className="font-semibold">{googleSetupWorker.name}</div>
               <div className="text-xs text-green-700">Kód: {googleSetupWorker.code}</div>
             </div>
             <span className="text-xs text-slate-500 mt-1 block">
               {appMode === 'ertektar'
-                ? 'Értéktárosként a Google OAuth már bejelentkeztette — nincs pénztáros-kód/jelszó szükséges.'
-                : 'A Google OAuth már azonosította Önt — nincs további pénztáros-kód/jelszó szükséges.'}
+                ? 'Értéktárosként a Google OAuth már bejelentkeztette — nincs pénztáros-kódra vagy jelszóra szükség.'
+                : 'A Google OAuth már azonosította Önt — nincs további pénztáros-kódra vagy jelszóra szükség.'}
             </span>
           </FieldLabel>
         ) : (
-          // Penztar mod, de nincs meg Google OAuth — figyelmezteto
+          // Nincs meg Google OAuth — figyelmezteto, BARMELY non-penztar mode-nal
+          // (illetve penztar mod-ban ha valami miatt a Step 1 nem futott le).
           <FieldLabel label="Bejelentkezés">
             <div className="w-full px-3 py-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-900 text-sm">
               Térjen vissza az 1. lépésre (Üdvözöljük) és lépjen be a Google fiókjával.
