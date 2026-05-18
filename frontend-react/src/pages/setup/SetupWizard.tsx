@@ -878,6 +878,11 @@ export default function SetupWizard() {
               onTestConnection={runConnectionTest}
               selectedBranchCode={selectedBranch?.code ?? null}
               onWorkerListChange={setAvailableWorkers}
+              appMode={appModeChoice}
+              googleAuthSetupReady={googleAuthSetupReady}
+              googleSetupWorker={googleSetup?.worker
+                ? { code: googleSetup.worker.code ?? '', name: googleSetup.worker.name ?? '' }
+                : null}
             />
           )}
           {currentStep === 'admin' && googleAuthSetupReady && googleSetup?.worker ? (
@@ -1241,6 +1246,12 @@ interface ServerStepProps {
   onTestConnection: () => void
   selectedBranchCode: string | null
   onWorkerListChange: (workers: SetupWorkerOption[]) => void
+  // PR #686: appMode + googleAuthSetupReady, hogy az ertektar/foertektar/admin
+  // modu telepiteseknel a "Penztaros kivalasztasa" dropdown elrejtodjon -
+  // ertektaroknak a Step 1 Google OAuth mar azonositotta a worker-t.
+  appMode: ElectronAppMode
+  googleAuthSetupReady: boolean
+  googleSetupWorker: SetupWorkerOption | null
 }
 
 function ServerStep(props: ServerStepProps) {
@@ -1253,7 +1264,14 @@ function ServerStep(props: ServerStepProps) {
     connectionTest, onTestConnection,
     selectedBranchCode,
     onWorkerListChange,
+    appMode, googleAuthSetupReady, googleSetupWorker,
   } = props
+
+  // PR #686 (kosa@bestchange.hu bug): a "Penztaros kivalasztasa" mezo CSAK
+  // a `penztar` modnal jeleneik meg ES csak ha a Step 1 Google OAuth nem
+  // azonositotta meg a worker-t. Ertektarosok / arfolyamkesziton / admin
+  // mar a Step 1 Google OAuth-on at azonositva van - itt nincs dolguk.
+  const showCashierDropdown = appMode === 'penztar' && !googleAuthSetupReady
 
   const [workerList, setWorkerList] = useState<SetupWorkerOption[]>([])
   const [workerListLoading, setWorkerListLoading] = useState(false)
@@ -1324,33 +1342,57 @@ function ServerStep(props: ServerStepProps) {
           />
         </FieldLabel>
 
-        <FieldLabel label="Pénztáros kiválasztása">
-          {workerList.length > 0 ? (
-            <select
-              value={bootstrapUsername}
-              onChange={(e) => onBootstrapUsernameChange(e.target.value)}
-              disabled={offlineMode || workerListLoading}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100 bg-white"
-            >
-              <option value="">{t('auth.valasszonPenztarost')}</option>
-              {workerList.map((w) => (
-                <option key={w.code} value={w.code}>{w.name} ({w.code})</option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type="text"
-              value={bootstrapUsername}
-              onChange={(e) => onBootstrapUsernameChange(e.target.value)}
-              disabled={offlineMode}
-              placeholder={workerListLoading ? "Pénztárosok betöltése..." : "Pénztáros kód"}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100"
-            />
-          )}
-          <span className="text-xs text-slate-500 mt-1 block">
-            {t('setup.azIttKivalasztottPenztarosKodjahozAz5LepesenAllitjaBeAzUjJelszot')}
-          </span>
-        </FieldLabel>
+        {showCashierDropdown ? (
+          <FieldLabel label="Pénztáros kiválasztása">
+            {workerList.length > 0 ? (
+              <select
+                value={bootstrapUsername}
+                onChange={(e) => onBootstrapUsernameChange(e.target.value)}
+                disabled={offlineMode || workerListLoading}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100 bg-white"
+              >
+                <option value="">{t('auth.valasszonPenztarost')}</option>
+                {workerList.map((w) => (
+                  <option key={w.code} value={w.code}>{w.name} ({w.code})</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={bootstrapUsername}
+                onChange={(e) => onBootstrapUsernameChange(e.target.value)}
+                disabled={offlineMode}
+                placeholder={workerListLoading ? "Pénztárosok betöltése..." : "Pénztáros kód"}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100"
+              />
+            )}
+            <span className="text-xs text-slate-500 mt-1 block">
+              {t('setup.azIttKivalasztottPenztarosKodjahozAz5LepesenAllitjaBeAzUjJelszot')}
+            </span>
+          </FieldLabel>
+        ) : googleAuthSetupReady && googleSetupWorker ? (
+          // PR #686: Google OAuth mar azonositott. Csak informacios kartya,
+          // NEM enged 2. pentarosvalasztast (ertektaros/foertektaros/admin).
+          <FieldLabel label="Azonositott dolgozo (Google OAuth)">
+            <div className="w-full px-3 py-2 rounded-lg border border-green-200 bg-green-50 text-green-900">
+              <div className="font-semibold">{googleSetupWorker.name}</div>
+              <div className="text-xs text-green-700">Kód: {googleSetupWorker.code}</div>
+            </div>
+            <span className="text-xs text-slate-500 mt-1 block">
+              {appMode === 'ertektar'
+                ? 'Értéktárosként a Google OAuth már bejelentkeztette — nincs pénztáros-kód/jelszó szükséges.'
+                : 'A Google OAuth már azonosította Önt — nincs további pénztáros-kód/jelszó szükséges.'}
+            </span>
+          </FieldLabel>
+        ) : (
+          // Penztar mod, de nincs meg Google OAuth — figyelmezteto
+          <FieldLabel label="Bejelentkezés">
+            <div className="w-full px-3 py-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-900 text-sm">
+              Térjen vissza az 1. lépésre (Üdvözöljük) és lépjen be a Google fiókjával.
+              {appMode === 'ertektar' && ' Értéktárosként ezzel azonosul.'}
+            </div>
+          </FieldLabel>
+        )}
 
         <div /> {/* spacer — a jelszo mezo az Admin lepesre kerult */}
       </div>
