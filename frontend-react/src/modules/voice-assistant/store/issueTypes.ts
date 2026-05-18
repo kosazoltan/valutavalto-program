@@ -10,6 +10,14 @@ export type IssueStatus = 'draft' | 'finalized' | 'exported'
 
 export type IssueSeverity = 'low' | 'medium' | 'high' | 'critical'
 
+/**
+ * Hibajegy kategoria — a Phase 7 report_issue tool kotelezo mezoje.
+ * Copilot+Codex PR #664 finding alapjan vezettuk be: korabban a tool
+ * schema-ja kerte (required), de a handler dobta — minden mentett
+ * record indistinguishable maradt downstream triage-hoz.
+ */
+export type IssueCategory = 'bug' | 'feature_request' | 'usability' | 'question'
+
 export interface IssueAttachment {
   /** rövid leíró (pl. "képernyőkép a hiba pillanatában") */
   description: string
@@ -35,6 +43,8 @@ export interface IssueRecord {
   updatedAt: string
   mode: IssueMode
   status: IssueStatus
+  /** Triage-kategoria (Copilot+Codex PR #664). Default 'bug'. */
+  category: IssueCategory
   /** rövid cím (~80 char) */
   title: string
   /** részletes leírás markdown formátumban */

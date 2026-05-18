@@ -124,7 +124,7 @@ export const TOOLS: OpenAiTool[] = [
     type: 'function',
     name: 'search_knowledge',
     description:
-      'Termeszetes nyelvu kereses a vektoros memoriaban (Phase 8 RAG Layer 2). Hasznald, amikor a kollega olyan kerdest tesz fel, ami nem koturthet egy modulhoz, vagy GYIK jellegu.',
+      'Termeszetes nyelvu kereses a vektoros memoriaban (Phase 8 RAG Layer 2). Hasznald, amikor a kollega olyan kerdest tesz fel, ami nem kotheto egy modulhoz, vagy GYIK jellegu.',
     parameters: {
       type: 'object',
       required: ['query'],
