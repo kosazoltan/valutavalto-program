@@ -18,16 +18,20 @@ import { logger } from '../../../utils/logger'
  * SEM nem blokkolja: figyelmeztető log csak (Codex PR #666 P1 security —
  * az LLM nem küldhet `current_step: 6` értéket, hogy átugorjon lépéseket).
  *
- * Replay-idempotency (Codex+Copilot PR #679 P1 — corrected from #676):
- * - True replay (ugyanaz a tool-call ujra a SAME currentStep ertekkel
- *   success=true-val) → no-op, mert `lastAppliedCurrentStep` egyezik.
- * - LLM out-of-sync (pl. dispatchToolCall a missing `current_step`-et
- *   `?? 0`-ra coercolja) → tovabbra is leptetunk a BELSO idx-en,
- *   nem trap-elunk.
- * - Tradeoff: ha az LLM ugyanazt a hibás `currentStep` erteket sokszor
- *   kuldi sorban (pl. mindig 0), akkor a 2. hivastol no-op lesz → a
- *   user beragadhat. Ezert a tool-schema description-jenek kotelezo
- *   a current_step-et 1..7 koze megkotni (Realtime API parameter spec).
+ * Replay-idempotency (Codex+Copilot PR #680 P1 — corrected from #676 + #679):
+ * - A {@code appliedCurrentSteps} **Set** tarolja az osszes `currentStep`
+ *   erteket, amire mar applied success=true-t. Igy:
+ *   - Consecutive replay (`next(1,true)` -> `next(1,true)`) → no-op.
+ *   - Out-of-order delayed replay (`next(1,true), next(2,true), next(1,true)`)
+ *     → 3. hivas `currentStep=1` MAR a Set-ben → no-op (NEM ugrik 3->4).
+ *   - `success=false` ag NEM iratkozik fel a Set-be (`if (!success) return`
+ *     elotte fut), igy retry pattern (`next(1,false)` aztan `next(1,true)`)
+ *     legitim modon halad tovabb.
+ *   - Stale `current_step: 0` (LLM coerce) → elso hivas 0 a Set-be,
+ *     belso idx 1->2. Replay (0 ujra) → no-op. NEM trap.
+ * - Tool-schema constraint (PR #680 Copilot finding): a Realtime API
+ *   `next_install_step` tool sema-ja `current_step: integer, minimum 1,
+ *   maximum {TOTAL_INSTALL_STEPS}` — lasd tools/toolDefinitions.ts.
  */
 
 export interface InstallStateMachine {
@@ -42,11 +46,14 @@ export function createInstallStateMachine(
 ): InstallStateMachine {
   let currentIdx = 1
   let completedFired = false
-  // Codex+Copilot PR #679 P1 (corrected from #676): a true-replay marker
-  // az LLM altal kuldott currentStep ertekkel asszocialodik, NEM a belso
-  // idx-szel — igy az LLM `current_step ?? 0` coercolt 0-jat NEM trap-eljuk
-  // be (csak igaz duplikatumokat).
-  let lastAppliedCurrentStep: number | null = null
+  // Codex+Copilot PR #680 P1 (corrected from #676 + #679):
+  // A Set tarolja az osszes mar successfully applied `currentStep` erteket,
+  // hogy az out-of-order delayed replay-eket is elkapjuk (NEM csak a
+  // consecutive duplikatumokat). Pelda:
+  //   next(1,true) → applied={1}, idx 1->2
+  //   next(2,true) → applied={1,2}, idx 2->3
+  //   delayed next(1,true) → 1 IN applied → no-op (NEM ugrik 3->4)
+  const appliedCurrentSteps = new Set<number>()
   const collectedNotes: string[] = []
 
   function stepAt(idx: number): InstallStep {
@@ -76,15 +83,14 @@ export function createInstallStateMachine(
         return stepAt(currentIdx)
       }
 
-      // Codex+Copilot PR #679 P1 replay-idempotency (corrected from #676):
-      // Ha ugyanazzal a currentStep ertekkel masodszor jon success=true (network
-      // glitch / LLM retry / partial response replay), NEM leptetunk megegyszer.
-      // A gate az LLM altal kuldott `currentStep`-en alapul (NEM a belso idx-en),
-      // hogy az out-of-sync stale `current_step: 0` ne trap-elje be a folyamatot.
-      if (lastAppliedCurrentStep !== null && currentStep === lastAppliedCurrentStep) {
+      // Codex+Copilot PR #680 P1 replay-idempotency (Set-based, corrected
+      // from #676 single-scalar + #679 consecutive-only):
+      // Ha ezt a `currentStep` erteket mar success=true-val applied
+      // (akar koretkezo hivas, akar delayed out-of-order replay), no-op.
+      if (appliedCurrentSteps.has(currentStep)) {
         return stepAt(currentIdx)
       }
-      lastAppliedCurrentStep = currentStep
+      appliedCurrentSteps.add(currentStep)
 
       if (currentIdx <= TOTAL_INSTALL_STEPS) {
         currentIdx = currentIdx + 1
@@ -103,7 +109,7 @@ export function createInstallStateMachine(
     reset() {
       currentIdx = 1
       completedFired = false
-      lastAppliedCurrentStep = null
+      appliedCurrentSteps.clear()
       collectedNotes.length = 0
     },
     isCompleted() {

@@ -40,6 +40,35 @@ describe('InstallStateMachine', () => {
     expect(sm.isCompleted()).toBe(false)
   })
 
+  it('Codex PR #680 P1: out-of-order delayed replay NEM ugorja at a lepest (Set-based gate)', () => {
+    const sm = createInstallStateMachine()
+    // Normalis flow: 1->2->3
+    const s1 = sm.next(1, true)
+    expect(s1.step_number).toBe(2)
+    const s2 = sm.next(2, true)
+    expect(s2.step_number).toBe(3)
+
+    // DELAYED OUT-OF-ORDER replay (network glitch elobb erkezo elozo csomag):
+    // next(1, true) erkezik a 2. lepes utan. Egy single-scalar tracker (lastApplied=2)
+    // azt latna hogy 1!==2 es teves modon elorelepne 4-re. A Set-based gate elkapja.
+    const s3 = sm.next(1, true)
+    expect(s3.step_number).toBe(3)
+    expect(sm.current()).toBe(3)
+  })
+
+  it('Copilot PR #680: success=false utani success=true legitim retry (NEM minosul replay-nek)', () => {
+    const sm = createInstallStateMachine()
+    // success=false eseten NEM kerul a Set-be (early return success-guard elott)
+    const s1 = sm.next(1, false)
+    expect(s1.step_number).toBe(1)
+    expect(sm.current()).toBe(1)
+
+    // Most a legitim retry success=true-val MEG halad
+    const s2 = sm.next(1, true)
+    expect(s2.step_number).toBe(2)
+    expect(sm.current()).toBe(2)
+  })
+
   it('Codex+Copilot PR #679 P1: stale current_step:0 (LLM coerced ?? 0) NEM trap-eli a folyamatot', () => {
     const sm = createInstallStateMachine()
     // dispatchToolCall a missing args.current_step-et Number(args.current_step ?? 0)-ra
