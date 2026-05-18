@@ -135,6 +135,11 @@ jobs:
             ln -sf "$JAR" "$SYMLINK"
             chown -h ${{ env.VPS_USER_OWNER }}:${{ env.VPS_USER_OWNER }} "$SYMLINK" || true
             chown ${{ env.VPS_USER_OWNER }}:${{ env.VPS_USER_OWNER }} "$JAR"
+            # V234 hotfix 2026-05-18: a backend logback-spring.xml a /opt/valutavalto/backend/logs
+            # mappaba ir. Biztositani kell hogy letezzen + a `valuta` user-nek joga legyen.
+            # Az elozo deploy fail-elt: FileNotFoundException /var/log/valuta-backend/...
+            mkdir -p $DEPLOY/logs
+            chown -R ${{ env.VPS_USER_OWNER }}:${{ env.VPS_USER_OWNER }} $DEPLOY/logs
             echo "=== Restarting ${{ env.SERVICE_NAME }} ==="
             systemctl restart ${{ env.SERVICE_NAME }}
             sleep 15
