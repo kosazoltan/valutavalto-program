@@ -23,22 +23,18 @@
  *   - `dotnet tool install --global AzureSignTool`
  *   - PATH-on legyen az `azuresigntool`
  *
+ * A script generic: a Key Vault-on lévő cert-tel működik (bármilyen CA-tól), nem
+ * hardcoded a vendor. Csak az env var-okat kell beállítani:
+ *   - AZURE_KEY_VAULT_URI
+ *   - AZURE_KEY_VAULT_CERT_NAME
+ *   - AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET
+ *   - AZURE_TIMESTAMP_URL (opcionalis, default: http://timestamp.digicert.com)
+ *
+ * Aktualis cert vendor + audit-status + migracio-historia:
+ *   -> vault/operations/code-signing-setup-path.md
+ *
  * Hivatkozás:
  *   - https://github.com/vcsjones/azuresigntool
- *   - vault/operations/code-signing-setup-path.md
- *
- * Migráció történet:
- *   - 2026-05-14: korábban a `sign-with-keylocker.js` DigiCert KeyLocker-rel volt tervezve, de
- *     azt csak DigiCert-issued cert-ekkel lehet használni. Sectigo OV CS rendelve
- *     (SMC1015225S638431) Azure Key Vault Premium HSM-mel ($80/3 év vs $600/3 év KeyLocker).
- *   - 2026-05-15: Sectigo OV CS CANCELLED (Microsoft Q&A: KV HSM nincs key attestation,
- *     ami az EV CS Cloud HSM requirement-jet sérti). PIVOT → DigiCert EV CS ($559.99/év)
- *     Azure-native, ami EXPLICIT elfogadja az "audited cloud (Azure/AWS)" tárolót.
- *     HSM Approval form SUBMITTED 2026-05-15. Cert kiadás várhatóan 2026-05-21 körül.
- *
- * A script logikája generic: a Key Vault-on lévő cert-tel működik (DigiCert EV vagy
- * bármi más), nem hardcoded a vendor. Csak az env var-okat (AZURE_KEY_VAULT_URI +
- * CERT_NAME) kell beállítani.
  */
 
 'use strict';

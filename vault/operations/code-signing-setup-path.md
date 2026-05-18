@@ -19,8 +19,7 @@ cert_vendor_history:
 > jeleniti meg HISTORICAL RECORD-kent. A **2026-05-15-i pivot** alapjan a tenyleges
 > jelenleg aktiv terv: **DigiCert EV CS Azure-native**.
 >
-> A pivot reszletei: `vault/sessions/2026-05-15-digicert-hsm-approval.md` +
-> `~/.claude/projects/<hash>/memory/project_codesigning_pivot_digicert_ev_2026_05_15.md`.
+> A pivot reszletei: `vault/sessions/2026-05-15-digicert-hsm-approval.md`.
 
 A `windows-signed-release.yml` workflow CSAK akkor mukodokepes, ha a teljes **4 lepeses lanc** fut:
 
@@ -33,7 +32,7 @@ A `windows-signed-release.yml` workflow CSAK akkor mukodokepes, ha a teljes **4 
 
 | Lepes | Datum | Esemeny |
 |---|---|---|
-| Sectigo OV CS rendeles | 2026-05-14 | SignMyCode SMC1015225S638431, $659.97 paid, BYOH Azure KV-ra tervezve |
+| Sectigo OV CS rendeles | 2026-05-14 | SignMyCode <redacted-order-id>, $659.97 paid, BYOH Azure KV-ra tervezve |
 | **PIVOT** | **2026-05-15** | Microsoft Q&A: Sectigo Azure KV mukodik, **DE nincs key attestation** — az EV CS Cloud HSM requirement-jet serti |
 | Sectigo cancel | 2026-05-15 | SignMyCode store credit $659.97 megtartva |
 | DigiCert EV CS uj rendeles | 2026-05-15 | $559.99 (store credit fedezi, $99.98 maradt) |
@@ -56,11 +55,11 @@ A korabbi 2026-05-13-i terv **DigiCert KeyLocker** volt — ezt elvetettuk, mert
 
 | Komponens | Állapot | Forrás |
 |---|---|---|
-| ~~Sectigo OV CS megrendelés~~ | ❌ **CANCELLED 2026-05-15** | SignMyCode order SMC1015225S638431, $659.97 store credit megtartva |
-| **DigiCert EV CS megrendelés** | ✅ **LEADVA 2026-05-15** | Order 1524362467 ($559.99/ev, store credit fedezi) |
+| ~~Sectigo OV CS megrendelés~~ | ❌ **CANCELLED 2026-05-15** | SignMyCode order <redacted-order-id>, $659.97 store credit megtartva |
+| **DigiCert EV CS megrendelés** | ✅ **LEADVA 2026-05-15** | Order azonosito lokalisan tarolva ($559.99/ev, store credit fedezi) |
 | DigiCert HSM Approval form | ✅ **SUBMITTED 2026-05-15** | Azure KV Premium HSM elfogadva (audited cloud) |
-| **DigiCert validation csomag** | ✅ **ELKULDVE 2026-05-18** | ID + selfie + questionnaire + Case 04953796, SignMyCode Ticket 68206 |
-| **Phone callback verification** | ⏳ **2026-05-18 16:30 CEST** | +36 70 380 0202 mobile, written verification request elkuldve |
+| **DigiCert validation csomag** | ✅ **ELKULDVE 2026-05-18** | ID + selfie + questionnaire (Case/Ticket azonositok lokalisan tarolva) |
+| **Phone callback verification** | ⏳ **2026-05-18 16:30 CEST** | Business mobil-on egyeztetve, written verification request elkuldve |
 | Azure Key Vault Premium | ⏳ Folyamatban | `kv-valuta-codesign` névvel, West Europe |
 | RSA-HSM key + CSR | ⏳ Folyamatban | DigiCert HSM Approval utan kerul generalasra |
 | Cert import Azure-ba | ⏳ Pending | DigiCert .cer kiadás után (varhato 2026-05-21 korul) |
@@ -73,11 +72,12 @@ A korabbi 2026-05-13-i terv **DigiCert KeyLocker** volt — ezt elvetettuk, mert
 
 **Megrendelés:** SignMyCode (Sectigo Platinum Partner reseller).
 
-- **Order ID:** SMC1015225S638431
-- **Token:** wrmxwidaaxyzceh
+- **Order ID:** lokalisan tarolva (SignMyCode order azonosito)
+- **Enrollment Token:** lokalisan tarolva (NEM commit-olando, ID-validation eszkoz)
 - **Termék:** Sectigo OV Code Signing, 3 év (36 hónap)
 - **Ár:** $659.97 (cégkártyával fizetve, 2026-05-14)
 - **Delivery method:** "Use Existing Token" / BYOH (Bring Your Own HSM) — a kulcs az Azure Key Vault-ban marad
+- **Megj.:** A 2026-05-15-i pivot utan ez az order CANCELLED, a store credit a DigiCert EV CS megrendelesre fordult.
 
 A SignMyCode email tartalmazza:
 - Validation team email cím
@@ -91,7 +91,7 @@ A SignMyCode email tartalmazza:
 
 🔗 https://azure.microsoft.com/free
 
-- **Start free** → bejelentkezés Microsoft account-tal (vagy új account a `kosa.zoltan.ebc@gmail.com`-mal)
+- **Start free** → bejelentkezés Microsoft account-tal (BEC ceges email-jel)
 - Cégadatok kitöltése (EXCLUSIVE BEST Change Zrt.)
 - Cégkártya hozzáadása (verifikációs ~1 USD lefoglalás, visszaadja)
 - 12 hónap **$200 credit** kap automatikusan + 12 hónap ingyenes szolgáltatások
@@ -105,7 +105,7 @@ Azure Portal → **Resource groups** → **+ Create**:
 - **Subscription:** Az imént létrehozott
 - **Resource group:** `rg-valuta-signing`
 - **Region:** `West Europe` (közeli, GDPR-kompatibilis)
-- **Tags:** `purpose=code-signing`, `owner=kosa.zoltan`
+- **Tags:** `purpose=code-signing`, `owner=ebc-it`
 
 ### 2.3 Key Vault Premium létrehozás
 
@@ -154,9 +154,9 @@ Letöltés: `valuta-codesign-cert.csr` (PEM-formátumú szöveges fájl).
 
 A SignMyCode email-ben kapott "Enrollment Link" megnyitása, vagy:
 
-🔗 https://signmycode.com/enrollment-portal/order/SMC1015225S638431
+🔗 https://signmycode.com/enrollment-portal/order/<redacted-order-id>
 
-- **Order Token:** `wrmxwidaaxyzceh`
+- **Order Token:** lokalisan tarolva (NEM commit-olando)
 - **CSR upload:** a 2.5 lépésben letöltött `valuta-codesign-cert.csr` fájlt feltölteni
 - **Validation Type:** OV (Organization Validation)
 - **Common Name:** EXCLUSIVE BEST Change Zrt. (automatikusan kitöltodik a CSR-bol)
@@ -182,7 +182,7 @@ A SignMyCode portal-on a következo iratokat kérik (a 2026-05-05-i csomag alapj
 
 ### 3.4 Phone callback
 
-Sectigo a cég weboldalán szereplo telefonra hív (+36 70 380 0202 — a `valuta.tracker` szerint a cég official phone-ja). Az ügyintézo verifikálja:
+Sectigo a cég weboldalán szereplo official phone-ra hív. Az ügyintézo verifikálja:
 - Cégnév
 - Címet
 - A rendelés szándékát
