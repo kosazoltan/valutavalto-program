@@ -3,6 +3,10 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import { useAuthStore } from './stores/authStore'
 import { Toaster } from './components/ui/toaster'
 import ErrorBoundary from './components/ErrorBoundary'
+// EBC Hangsegéd Phase 9.5b — VoiceAssistantProvider + Panel mount (env-flag gated)
+import { VoiceAssistantProvider, VoiceAssistantPanel } from './modules/voice-assistant'
+
+const VOICE_ASSISTANT_ENABLED = import.meta.env.VITE_VOICE_ASSISTANT_ENABLED === 'true'
 import { api, clearPersistedToken, hasPersistedToken, loadPersistedToken } from './services/api/index'
 import { HEARTBEAT_INTERVAL_MS } from './config/heartbeat'
 import { useAppMode } from './hooks/useAppMode'
@@ -401,6 +405,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <VoiceAssistantProvider>
       <Suspense fallback={<RouteLoadingFallback />}>
       <SetupGuard>
         <Routes>
@@ -664,6 +669,8 @@ export default function App() {
       </SetupGuard>
       </Suspense>
       <Toaster />
+      {VOICE_ASSISTANT_ENABLED && <VoiceAssistantPanel />}
+      </VoiceAssistantProvider>
     </ErrorBoundary>
   )
 }
