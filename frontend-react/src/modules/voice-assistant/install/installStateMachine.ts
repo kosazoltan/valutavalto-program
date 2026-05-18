@@ -68,14 +68,24 @@ export function createInstallStateMachine(
     next(currentStep, success, note) {
       if (note && note.trim()) collectedNotes.push(note.trim())
 
+      // Copilot PR #680 followup: NaN/Infinity guard. A dispatchToolCall a
+      // `Number(args.current_step ?? 0)`-bol NaN-t kaphat (pl. ha az LLM
+      // string-et kuld `current_step: "abc"`), vagy Infinity-t. Mindketto
+      // szennyezne a Set-et. Sanitizaljuk: a `current_step` invalid esetben
+      // -1-re mappel (NEM 0 - hogy ne utkozzon az LLM-szerinti valid 0-val
+      // a stale-coerce miatt).
+      const sanitizedStep = Number.isFinite(currentStep)
+        ? Math.trunc(currentStep)
+        : -1
+
       // Codex PR #666 P1: a leptetes a BELSO currentIdx-en, NEM az LLM altal
       // kuldott currentStep-en. Ha az LLM out-of-sync (pl. current_step: 6,
       // miközben a user meg az 1. lepesnel van), figyelmezteto log-ot ir,
       // de NEM ugor at lepest, NEM trap-el be (Codex PR #679 P1).
-      if (currentStep !== currentIdx) {
+      if (sanitizedStep !== currentIdx) {
         logger.warn(
           'VoiceAssistant',
-          `installStateMachine: LLM currentStep=${currentStep} !== internal=${currentIdx}, internal a kanonikus`
+          `installStateMachine: LLM currentStep=${currentStep} (sanitized=${sanitizedStep}) !== internal=${currentIdx}, internal a kanonikus`
         )
       }
 
@@ -85,12 +95,14 @@ export function createInstallStateMachine(
 
       // Codex+Copilot PR #680 P1 replay-idempotency (Set-based, corrected
       // from #676 single-scalar + #679 consecutive-only):
-      // Ha ezt a `currentStep` erteket mar success=true-val applied
+      // Ha ezt a `sanitizedStep` erteket mar success=true-val applied
       // (akar koretkezo hivas, akar delayed out-of-order replay), no-op.
-      if (appliedCurrentSteps.has(currentStep)) {
+      // Megj: Set.has(NaN) === true a SameValueZero algoritmus miatt, de
+      // a fenti `Number.isFinite` guard utan NaN -> -1, igy ez nem rontja a logikat.
+      if (appliedCurrentSteps.has(sanitizedStep)) {
         return stepAt(currentIdx)
       }
-      appliedCurrentSteps.add(currentStep)
+      appliedCurrentSteps.add(sanitizedStep)
 
       if (currentIdx <= TOTAL_INSTALL_STEPS) {
         currentIdx = currentIdx + 1

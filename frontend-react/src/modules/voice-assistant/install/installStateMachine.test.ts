@@ -40,6 +40,24 @@ describe('InstallStateMachine', () => {
     expect(sm.isCompleted()).toBe(false)
   })
 
+  it('Copilot PR #680 followup: NaN/Infinity currentStep sanitizalva (-1-re mappel)', () => {
+    const sm = createInstallStateMachine()
+    // dispatchToolCall a `Number("abc")`-bol NaN-t kaphat
+    const s1 = sm.next(Number.NaN, true)
+    expect(s1.step_number).toBe(2)
+    expect(sm.current()).toBe(2)
+
+    // Replay (megint NaN) - mindketto -1-re mappel a sanitization utan, igy idempotens
+    const s2 = sm.next(Number.NaN, true)
+    expect(s2.step_number).toBe(2)
+    expect(sm.current()).toBe(2)
+
+    // Infinity is sanitizalva
+    const s3 = sm.next(Number.POSITIVE_INFINITY, true)
+    expect(s3.step_number).toBe(2)
+    expect(sm.current()).toBe(2)
+  })
+
   it('Codex PR #680 P1: out-of-order delayed replay NEM ugorja at a lepest (Set-based gate)', () => {
     const sm = createInstallStateMachine()
     // Normalis flow: 1->2->3
