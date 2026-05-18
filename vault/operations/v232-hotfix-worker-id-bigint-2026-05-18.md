@@ -1,9 +1,17 @@
+---
+title: V232 hotfix runbook — worker.id UUID → BIGINT
+date: 2026-05-18
+tags: [operations, flyway, migration, hetzner, hotfix, worker]
+status: resolved
+---
+
 # V232 Hotfix Runbook — worker.id UUID → BIGINT
 
 **Dátum:** 2026-05-18 03:00 — 05:15 CEST
 **Érintett migration:** `V232__remove_juhasz_norbert_exz_cross_project.sql`
 **Hotfix PR:** [#645](https://github.com/kosazoltan/valutavalto-program/pull/645)
 **Allowlist PR:** [#647](https://github.com/kosazoltan/valutavalto-program/pull/647)
+**Production status:** ✅ V232 + V233 alkalmazva, backend HTTP 200
 
 ---
 
@@ -38,10 +46,16 @@ Hetzner deploy 2026-05-17 20:55:52 — `valuta-backend.service` Main process exi
 ```bash
 # Bizonyítás (manuálisan futtatva a Hetzner-en):
 sudo -u postgres psql -d valuta -c "SELECT version, success, installed_on FROM flyway_schema_history WHERE version='232';"
-# Várt eredmény: success=false, ÉS a deploy workflow DELETE-zte minden deploy elején.
 ```
 
-**Tény: a V232 SOHA NEM completed=true állapotban volt production-on**, mert minden próbálkozás failed-szel végződött + a deploy workflow `DELETE FROM flyway_schema_history WHERE success=false` lépés (`.github/workflows/deploy-hetzner.yml:120`) automatikusan törölte a failed bejegyzéseket minden deploy elején.
+**Várt eredmény (időszaktól függően):**
+- **Hotfix előtt, közvetlenül egy failed deploy után**: `success=false` egy sorral
+- **Hotfix előtt, következő deploy elején**: 0 sor (a deploy workflow `DELETE FROM flyway_schema_history WHERE success=false` lépés törli)
+- **Hotfix után (most, 2026-05-18 03:15+)**: 1 sor `success=true`-val (a JAVÍTOTT V232 SQL sikeresen lefutott)
+
+**Tény: a V232 SOHA NEM `success=true` állapotban volt production-on a hotfix előtt**, mert minden próbálkozás failed-szel végződött. A deploy workflow `.github/workflows/deploy-hetzner.yml:120` lépése automatikusan törölte a failed bejegyzéseket minden deploy elején.
+
+> **Terminológia megjegyzés**: a `flyway_schema_history` tábla `success` mezőjét használjuk, NEM `completed`. A `completed=true` egy MÁS koncepció (lásd a `/api/v1/auth/bootstrap-status` endpoint válaszát), ne keverjük össze.
 
 ## Repair eljárás
 
