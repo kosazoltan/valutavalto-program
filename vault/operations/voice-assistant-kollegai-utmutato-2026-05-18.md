@@ -1,7 +1,17 @@
+---
+title: "EBC Hangsegéd — Kollégai útmutató (1 oldal)"
+date: 2026-05-18
+type: operations
+audience: ebc-kollegak
+status: draft
+deployment: "Csak a Phase 9.5 integration PR mergelése után válik elérhetővé a kollégák számára."
+---
+
 # EBC Hangsegéd — Kollégai útmutató (1 oldal)
 
 > **Verzió:** 2026-05-18 · v0.1 — első release · **Nyomtatható**: A4, álló
 > **Cél:** Minden EBC kolléga 5 perc alatt megtanulhatja, hogyan használja a Hangsegédet a programon belül.
+> **Állapot:** ELŐZETES — a Hangsegéd csak a Phase 9.5 integráció telepítője után jelenik meg a kliensben (v2.5.55+).
 
 ---
 
@@ -9,7 +19,7 @@
 
 Az **EBC Hangsegéd** egy magyar nyelvű hangasszisztens, amely a programon belül él. Nem kell semmilyen különálló alkalmazás. Beszélsz vele magyarul, ő válaszol, és lejegyzi neked, amit kérsz.
 
-A jobb alsó sarokban találod a kis lebegő panelt. Három gomb van rajta:
+A jobb alsó sarokban találod a kis lebegő panelt (csak v2.5.55+ telepítőben). Három gomb van rajta:
 
 | Gomb | Mikor használd |
 |---|---|
@@ -50,10 +60,23 @@ A Tesztelés gombra kattintva a Hangsegéd 6 dolgot kérdez minden hibára:
 
 A végén a **"Jelentés letöltése"** gombbal egy `.md` fájlt kapsz a gépedre — ezt küldd el e-mailben a fejlesztőnek (Kósa Zoltán).
 
-## Mit NEM csinál a Hangsegéd?
+## Adatvédelem — Mi marad helyileg, mi megy az OpenAI-hoz?
 
-- ❌ Nem kér tőled jelszót vagy ügyfél-adatot (csak a saját nevedet + irodát).
-- ❌ Nem küld semmit az interneten kívülre (csak a beszéd-szöveg konverzió fut OpenAI-on, de az ügyfeles adatok lokálisak maradnak).
+A Hangsegéd egy **OpenAI Realtime API**-t használ a háttérben, ezért fontos tudni:
+
+**MARAD a gépeden:**
+- A `.md` hibajegyzet, amit letöltöttél
+- A program belső naplója (IndexedDB) a saját gépeden
+- Az ügyféltranzakció-adatok (a Hangsegéd EZEKET NEM kérdezi és NEM kapja meg)
+
+**AZ OPENAI-HOZ MEGY (a beszélgetés alatt):**
+- A mikrofonos audió-stream (amit elmondasz)
+- Az audió-szöveg konvertálás eredménye (transcript)
+- A Hangsegéd válasza, amit visszahallasz
+
+**A Hangsegéd EZT NEM csinálja:**
+- ❌ Nem kér tőled jelszót vagy ügyfél-adatot (csak a saját nevedet + irodát kérdezi a Telepítés módban).
+- ❌ Nem küld semmit a backend-szerverre az ügyfél-tranzakciókról.
 - ❌ Nem helyettesít téged — csak segít naplózni és emlékezni.
 
 ## Ha nem működik
