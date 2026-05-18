@@ -1,0 +1,14 @@
+{
+  "name": "@valuta/shared-logging",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EBC Valutavalto belso log+audit modul - kozos schema + PII redactor (frontend + Electron 3 kliens)",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

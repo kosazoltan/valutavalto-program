@@ -308,9 +308,46 @@
             <artifactId>javase</artifactId>
             <version>3.5.3</version>
         </dependency>
+
+        <!-- ===================================================================
+             EBC belso log+audit modul (V234 + VVLogger + DiagnosticsController)
+             Forras: vault/feedback/valutavalto-belso-log-audit-modul-tervezet-2026-05-18.md
+             ================================================================ -->
+
+        <!-- Strukturalt JSON log encoder a Logback-hoz -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>8.0</version>
+        </dependency>
+
+        <!-- Micrometer Tracing - trace_id / span_id MDC-be propagal -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
+        </dependency>
     </dependencies>
     
     <build>
+        <resources>
+            <!-- Default classpath:resources tartalom -->
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- V234 belso log+audit modul: a shared-logging packages/-bol bevont
+                 error-codes.yaml a classpath gyokere ala kerul (DiagnosticsService
+                 a `classpath:error-codes.yaml`-bol olvassa). -->
+            <resource>
+                <directory>${project.basedir}/../packages/shared-logging</directory>
+                <includes>
+                    <include>error-codes.yaml</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

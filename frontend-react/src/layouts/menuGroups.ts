@@ -138,6 +138,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/police-requests", label: "Rendőrségi megkeresések", icon: Shield },
       { path: "/audit-log", label: "Audit napló", icon: Shield },
       { path: "/admin/error-monitor", label: "Hiba-monitor", icon: ShieldAlert, canonicalRoles: ["ugyvezeto", "belso_ellenor", "biztonsagi_vezeto"] },
+      { path: "/admin/audit-diagnostics", label: "Audit-diagnosztika (V234)", icon: ShieldAlert, canonicalRoles: ["ugyvezeto", "belso_ellenor", "biztonsagi_vezeto"] },
       { path: "/sanction", label: "Szankciós lista (AML)", icon: ShieldAlert },
       { path: "/seal-tracking", label: "Plomba nyilvántartás", icon: Shield },
       { path: "/compliance", label: "Compliance Dashboard", icon: ClipboardCheck },

@@ -144,4 +144,32 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
      */
     @Query(value = "SELECT a.entry_hash FROM audit_log a WHERE a.entry_hash IS NOT NULL ORDER BY a.created_at DESC LIMIT 1 FOR UPDATE", nativeQuery = true)
     Optional<String> findLastEntryHashForUpdate();
+
+    // =========================================================================
+    // V234 (2026-05-18) - belso log+audit modul (AuditEventService hash-chain)
+    // =========================================================================
+
+    /** Utolso bejegyzes (idorendben) - prev_hash lekerdezesehez. */
+    Optional<AuditLog> findTopByOrderByCreatedAtDesc();
+
+    /** Utolso N bejegyzes idorendben csokken - hash-chain integritas-ellenorzes. */
+    @Query(value = "SELECT * FROM audit_log ORDER BY created_at DESC LIMIT :n", nativeQuery = true)
+    List<AuditLog> findTopNByOrderByCreatedAtDesc(@Param("n") int n);
+
+    /** Egy entitas audit-lancanak lekerdezese idorendben novekvo. */
+    @Query(value = "SELECT * FROM audit_log WHERE entity_type = :entityType AND entity_id = :entityId "
+            + "ORDER BY COALESCE(ts, created_at AT TIME ZONE 'UTC') ASC", nativeQuery = true)
+    List<AuditLog> findByEntityTypeAndEntityIdOrderByTsAsc(
+            @Param("entityType") String entityType,
+            @Param("entityId") String entityId);
+
+    /** Trace_id-szerint korrelacios lekerdezes - 1 user-flow osszes audit eseme. */
+    @Query(value = "SELECT * FROM audit_log WHERE trace_id = :traceId "
+            + "ORDER BY COALESCE(ts, created_at AT TIME ZONE 'UTC') ASC", nativeQuery = true)
+    List<AuditLog> findByTraceIdOrderByTsAsc(@Param("traceId") String traceId);
+
+    /** Legfrissebb N audit-esemeny - admin diagnostics page. */
+    @Query(value = "SELECT * FROM audit_log ORDER BY COALESCE(ts, created_at AT TIME ZONE 'UTC') DESC LIMIT :n",
+            nativeQuery = true)
+    List<AuditLog> findRecentTopN(@Param("n") int n);
 }
