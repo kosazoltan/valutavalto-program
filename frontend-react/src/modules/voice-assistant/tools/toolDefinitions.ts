@@ -55,7 +55,10 @@ export const TOOLS: OpenAiTool[] = [
       type: 'object',
       required: ['current_step', 'success'],
       properties: {
-        current_step: { type: 'number' },
+        // Copilot PR #680 finding: a state machine replay-idempotency
+        // (Set-based) megkoveteli, hogy az LLM ervenyes current_step-et
+        // kuldjon. A min/max=1..7 a TOTAL_INSTALL_STEPS hatara.
+        current_step: { type: 'integer', minimum: 1, maximum: 7 },
         success: { type: 'boolean' },
         note: { type: 'string', description: 'Opcionalis megjegyzes.' },
       },
