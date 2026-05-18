@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage, session } from 'electron'
 import log from 'electron-log/main'
 import { release as getOsRelease } from 'node:os'
 import fs from 'node:fs'
@@ -463,6 +463,31 @@ app.whenReady().then(async () => {
   } catch (err) {
     log.error('[App] userData/.env betoltesi hiba:', err)
   }
+
+  // EBC Hangsegéd Phase 9.5 — mikrofon engedély (lasd penztar-client/electron/main.ts).
+  // Security: URL parse + exact hostname/protocol compare (Codex P1 + CodeQL + Copilot fix).
+  // Non-media permission: az Electron alapertelmezett viselkedeset (allow) megtartjuk (Sourcery P2 fix).
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+    if (permission !== 'media') {
+      callback(true)
+      return
+    }
+    try {
+      const url = new URL(String(details?.requestingUrl ?? ''))
+      const isLocalApp = url.protocol === 'app:' && url.hostname === 'localhost'
+      const isLocalHttp = url.protocol === 'http:' && url.hostname === 'localhost'
+      const isProduction = url.protocol === 'https:' && url.hostname === 'excvaluta.com'
+      if (isLocalApp || isLocalHttp || isProduction) {
+        log.info('[VoiceAssistant] media (mic) engedely megadva:', url.origin)
+        callback(true)
+        return
+      }
+      log.warn('[VoiceAssistant] media (mic) engedely elutasitva (idegen origin):', url.origin)
+    } catch (err) {
+      log.warn('[VoiceAssistant] media (mic) URL parse hiba — elutasitva:', err)
+    }
+    callback(false)
+  })
 
   ensureInitialConfig()
   registerIpcHandlers()

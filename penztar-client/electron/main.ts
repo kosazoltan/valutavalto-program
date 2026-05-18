@@ -838,6 +838,39 @@ app.whenReady().then(async () => {
     });
   }
 
+  // EBC Hangsegéd Phase 9.5 — mikrofon engedély a renderer-ben futo
+  // VoiceAssistantPanel WebRTC szessziohoz (OpenAI Realtime API).
+  //
+  // Security finding-ek (PR #668 review round, mind 3 bot):
+  //   1. Codex P1 + CodeQL + Copilot: NE startsWith()-tel ellenorizzuk az origin-t —
+  //      `https://excvaluta.com.attacker.example/...` atmenne. `new URL()` parse +
+  //      exact `hostname` + `protocol` compare.
+  //   2. Sourcery P2: a `setPermissionRequestHandler` session-global; a non-media
+  //      permission-okra (notifications, geolocation, midi, ...) NEM dontunk —
+  //      az Electron eredeti viselkedeset (default-allow) megtartjuk.
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+    if (permission !== 'media') {
+      // Non-media permission — meghagyjuk az Electron alapertelmezett viselkedeset (allow)
+      callback(true);
+      return;
+    }
+    try {
+      const url = new URL(String(details?.requestingUrl ?? ''));
+      const isLocalApp = url.protocol === 'app:' && url.hostname === 'localhost';
+      const isLocalHttp = url.protocol === 'http:' && url.hostname === 'localhost';
+      const isProduction = url.protocol === 'https:' && url.hostname === 'excvaluta.com';
+      if (isLocalApp || isLocalHttp || isProduction) {
+        log.info('[VoiceAssistant] media (mic) engedely megadva:', url.origin);
+        callback(true);
+        return;
+      }
+      log.warn('[VoiceAssistant] media (mic) engedely elutasitva (idegen origin):', url.origin);
+    } catch (err) {
+      log.warn('[VoiceAssistant] media (mic) URL parse hiba — elutasitva:', err);
+    }
+    callback(false);
+  });
+
   // IPC handlers regisztráció (app.whenReady() UTÁN, hogy ipcMain elérhető legyen)
   registerCameraHandlers();
   registerVideoManagerHandlers();
