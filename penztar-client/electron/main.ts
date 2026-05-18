@@ -838,6 +838,28 @@ app.whenReady().then(async () => {
     });
   }
 
+  // EBC Hangsegéd Phase 9.5 — mikrofon engedély a renderer-ben futo
+  // VoiceAssistantPanel WebRTC szessziohoz (OpenAI Realtime API).
+  // A kollegai utmutatoban ez "Mikrofon engedély" 1. lepes.
+  // Csak a sajat origin-eink (`app://localhost` produktum + `http://localhost:*` dev)
+  // kapnak `media` engedelyt — minden mas elutasitva.
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+    if (permission === 'media') {
+      const requesting = String(details?.requestingUrl ?? '');
+      const isOurOrigin =
+        requesting.startsWith('app://localhost') ||
+        requesting.startsWith('http://localhost:') ||
+        requesting.startsWith('https://excvaluta.com');
+      if (isOurOrigin) {
+        log.info('[VoiceAssistant] media (mic) engedely megadva:', requesting);
+        callback(true);
+        return;
+      }
+      log.warn('[VoiceAssistant] media (mic) engedely elutasitva (idegen origin):', requesting);
+    }
+    callback(false);
+  });
+
   // IPC handlers regisztráció (app.whenReady() UTÁN, hogy ipcMain elérhető legyen)
   registerCameraHandlers();
   registerVideoManagerHandlers();

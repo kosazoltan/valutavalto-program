@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage, session } from 'electron'
 import log from 'electron-log/main'
 import { release as getOsRelease } from 'node:os'
 import fs from 'node:fs'
@@ -464,6 +464,26 @@ app.whenReady().then(async () => {
   } catch (err) {
     log.error('[App] userData/.env betoltesi hiba:', err)
   }
+
+  // EBC Hangsegéd Phase 9.5 — mikrofon engedély a renderer-ben futo
+  // VoiceAssistantPanel WebRTC szessziohoz (OpenAI Realtime API).
+  // Csak a sajat origin-eink kapnak `media` engedelyt.
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+    if (permission === 'media') {
+      const requesting = String(details?.requestingUrl ?? '')
+      const isOurOrigin =
+        requesting.startsWith('app://localhost') ||
+        requesting.startsWith('http://localhost:') ||
+        requesting.startsWith('https://excvaluta.com')
+      if (isOurOrigin) {
+        log.info('[VoiceAssistant] media (mic) engedely megadva:', requesting)
+        callback(true)
+        return
+      }
+      log.warn('[VoiceAssistant] media (mic) engedely elutasitva (idegen origin):', requesting)
+    }
+    callback(false)
+  })
 
   ensureInitialConfig()
   registerIpcHandlers()

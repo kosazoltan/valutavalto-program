@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly VITE_APP_VERSION?: string
   readonly VITE_APP_FLAVOR?: string
   readonly VITE_DISABLE_GOOGLE_OAUTH?: string
+  /** EBC Hangsegéd Phase 9.5 — feature flag (default: false) */
+  readonly VITE_VOICE_ASSISTANT_ENABLED?: string
 }
 
 interface ImportMeta {
