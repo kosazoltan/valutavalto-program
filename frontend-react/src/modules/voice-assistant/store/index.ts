@@ -11,8 +11,11 @@ export type {
   IssueAttachment,
 } from './issueTypes'
 
-export { getIssueDb, __resetIssueDbForTesting } from './issueDb'
-export type { VectorCacheEntry } from './issueDb'
+// Copilot #661: a __resetIssueDbForTesting / setIssueDbForTesting NEM kerul
+// a publikus index-be — adatvesztes-veszely production hasznalat eseten.
+// Test-only funkciot direkt a `./issueDb` modulbol kell importalni.
+export { getIssueDb } from './issueDb'
+export type { VectorCacheEntry, IssueDatabase } from './issueDb'
 
 export {
   createIssue,

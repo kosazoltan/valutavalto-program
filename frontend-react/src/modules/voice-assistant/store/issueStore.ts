@@ -70,17 +70,24 @@ export async function updateIssue(
   return merged
 }
 
+/**
+ * Atomi quickNote append — Dexie rw transaction-on belul, hogy parhuzamos
+ * hivasok ne irjak felul egymast (Copilot + Codex #661 finding).
+ */
 export async function appendQuickNote(id: string, note: string): Promise<void> {
   const db = getIssueDb()
-  const existing = await db.issues.get(id)
-  if (!existing) return
-  existing.quickNotes = [...existing.quickNotes, note]
-  existing.updatedAt = nowIso()
-  await db.issues.put(existing)
+  await db.transaction('rw', db.issues, async () => {
+    const existing = await db.issues.get(id)
+    if (!existing) return
+    existing.quickNotes = [...existing.quickNotes, note]
+    existing.updatedAt = nowIso()
+    await db.issues.put(existing)
+  })
 }
 
 export async function finalizeIssue(id: string): Promise<IssueRecord | undefined> {
-  return updateIssue(id, { status: 'finalized' as IssueStatus })
+  // Copilot #661: az 'as IssueStatus' cast felesleges, a literal eleve illeszkedik
+  return updateIssue(id, { status: 'finalized' })
 }
 
 export async function listIssues(filter?: {
@@ -96,7 +103,8 @@ export async function listIssues(filter?: {
     collection = collection.filter((r) => r.status === filter.status)
   }
   const rows = await collection.toArray()
-  return filter?.limit ? rows.slice(0, filter.limit) : rows
+  // Codex #661: filter.limit === 0 valid (ures eredmenyt jelent), NEM truthy check
+  return filter?.limit !== undefined ? rows.slice(0, filter.limit) : rows
 }
 
 export async function deleteIssue(id: string): Promise<void> {

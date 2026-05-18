@@ -38,7 +38,13 @@ export interface VectorCacheEntry {
   updatedAt: string
 }
 
-/** Lazy-init singleton — testekben sandbox-olhato fakeDb-vel felulirhato. */
+/**
+ * Lazy-init singleton + explicit injection-pont teszteleshez.
+ *
+ * <p>Copilot #661: a komment-eredeti "fakeDb-vel felulirhato" igeret most
+ * tenylegesen kovetheto: `setIssueDbForTesting(fakeDb)` hivassal a teszt
+ * be tudja injektalni a sajat instance-jat (pl. fake-indexeddb-vel).
+ */
 let dbInstance: IssueDatabase | null = null
 
 export function getIssueDb(): IssueDatabase {
@@ -48,7 +54,18 @@ export function getIssueDb(): IssueDatabase {
   return dbInstance
 }
 
-/** Csak tesztekben — reseteli a singleton-t. */
+/**
+ * Test-only: explicit DB injektalas.
+ * NEM exportalva a public store/index.ts-bol — csak `issueDb.ts`-bol direkt.
+ */
+export function setIssueDbForTesting(db: IssueDatabase | null): void {
+  if (dbInstance && dbInstance !== db) {
+    dbInstance.close()
+  }
+  dbInstance = db
+}
+
+/** Test-only: reseteli a singleton-t. */
 export function __resetIssueDbForTesting(): void {
   if (dbInstance) {
     dbInstance.close()
