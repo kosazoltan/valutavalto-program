@@ -49,7 +49,7 @@ public class VoiceTokenController {
         log.info("VoiceTokenController: ephemeral token kérés, worker={}, mode={}",
                 workerCode, request.getMode());
 
-        VoiceTokenResponseDto response = voiceTokenService.requestEphemeralToken(request.getMode());
+        VoiceTokenResponseDto response = voiceTokenService.requestEphemeralToken(request.getMode(), workerCode);
 
         log.info("VoiceTokenController: ephemeral token sikeresen kiadva worker={} számára", workerCode);
         return ResponseEntity.ok(response);
