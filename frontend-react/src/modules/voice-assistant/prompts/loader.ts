@@ -9,8 +9,13 @@ import supportPromptRaw from './systemPrompt.support.md?raw'
  * <p>Forrás: EBC_Hangseged_Claude_Code_Implementacios_Utasitas.md §4.1-4.3
  *
  * <p>A három üzemmódhoz a `*.md?raw` Vite plugin-import segítségével olvassuk
- * be a markdown szöveget — így a build-time bundling automatikus, runtime
- * fetch nem kell. A Phase 9 Electron csomag a `dist/`-ben tartja a md-eket.
+ * be a markdown szöveget. Build-time **inline** a JS bundle-be — runtime
+ * fetch nincs, a .md fajlok NEM kerulnek kulon assetkent a dist/-be.
+ * Electron csomagban a prompt-szoveg a renderer JS-ben el.
+ *
+ * <p>Megjegyzes: a promptok ekezet-mentes magyar nyelven irodtak — ez
+ * SZANDEKOS, a forras-direktiva tukrozesee (encoding-biztos), es az LLM
+ * a kollegai audio outputban automatikusan ekezetekkel beszel magyarul.
  */
 
 type ActiveMode = Exclude<VoiceMode, 'idle'>
