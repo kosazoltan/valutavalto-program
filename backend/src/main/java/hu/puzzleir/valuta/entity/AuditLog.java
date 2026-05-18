@@ -6,6 +6,8 @@ import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -81,4 +83,59 @@ public class AuditLog {
      */
     @Column(name = "previous_hash", length = 64)
     private String previousHash;
+
+    // =========================================================================
+    // V234 (2026-05-18) - belso log+audit modul - AI-olvashato mezok
+    // =========================================================================
+
+    /**
+     * Globalisan egyedi UUID, kliens-szinten generalt (idempotency).
+     *
+     * <p>Copilot PR #681 P2: a UNIQUE constraint a Flyway V234-ben
+     * `audit_log_event_id_unique` neven mar letre van hozva. NEM duplazzuk
+     * @Column unique=true-val (Hibernate auto-gen nev kollizio ddl-auto=validate-nel).
+     */
+    @Column(name = "event_id")
+    private UUID eventId;
+
+    /** Idozona-tudatos timestamp (UTC). A regi `created_at` LocalDateTime backward-compat marad. */
+    @Column(name = "ts")
+    private Instant ts;
+
+    /** Esemeny tipusa kanonikus formaban (pl. "transaction.committed", "rate.published"). */
+    @Column(name = "event_type", length = 80)
+    private String eventType;
+
+    /** JSONB - elozo allapot UPDATE-nel. */
+    @Column(name = "before_state", columnDefinition = "jsonb")
+    private String beforeState;
+
+    /** JSONB - uj allapot CREATE/UPDATE-nel. */
+    @Column(name = "after_state", columnDefinition = "jsonb")
+    private String afterState;
+
+    /** Penzugyi-szintu osszeg (sztorno/tranzakcio audit). */
+    @Column(name = "amount", precision = 18, scale = 2)
+    private BigDecimal amount;
+
+    @Column(name = "currency", length = 3)
+    private String currency;
+
+    @Column(name = "receipt_number", length = 20)
+    private String receiptNumber;
+
+    /** W3C TraceContext 32-hex - kliens-backend korrelacio. */
+    @Column(name = "trace_id", length = 32)
+    private String traceId;
+
+    /** Kliens kontextus: CASHIER | TREASURY_HQ | RFM | ADMIN. */
+    @Column(name = "client_context", length = 20)
+    private String clientContext;
+
+    /** Manager-approval audit (ha valaki jovahagyta a sztornot/etc). */
+    @Column(name = "signed_by", length = 80)
+    private String signedBy;
+
+    @Column(name = "worker_role", length = 40)
+    private String workerRole;
 }

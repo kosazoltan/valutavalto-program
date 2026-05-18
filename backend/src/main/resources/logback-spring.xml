@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EBC Valutavalto - Logback config + strukturalt JSON output.
+
+  Forras: vault/feedback/valutavalto-belso-log-audit-modul-tervezet-2026-05-18.md (5.1)
+
+  Ket profile:
+    - dev/test: human-readable console (Spring Boot default)
+    - prod: JSON-structured output a file-ra (/var/log/valuta-backend.log)
+            + console (systemd journal-ban olvashato)
+
+  PII redaktor: a `RedactingPatternConverter` (Logback custom converter)
+  futtatja a `Redactor.redact(...)` regex-mintakat a uzeneten + a stack-en.
+  Igy a jelszo/IBAN/JWT/Bearer/OpenAI-kulcs SOHA NEM keruil a log-fajlba.
+-->
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+  <!-- Audit-iter3 P1 (CodeQL java/log-injection defense-in-depth, 2026-04-27):
+       a %replace(%msg){'[\r\n]', '_'} mar a application.properties-ben
+       konfiguralt. A `%redact` conversionRule eltavolitva (Codex+Copilot
+       PR #681 P0): a LogstashEncoder NEM fut a PatternLayout-on, ezert
+       sosem futott. Helyette: RedactingMessageJsonProvider + RedactingStackTraceJsonProvider
+       (LoggingEventCompositeJsonEncoder provider-ekkent fent). A statikus
+       redact() metodus a VVLogger source-szinten is fut (defense-in-depth). -->
+  <!-- conversionRule eltavolitva: NEM futott a JSON output-ra (lasd fent). -->
+
+  <!-- 1. PROD profile: JSON output + redactor.
+
+       Codex+Copilot PR #681 P0 fix: a LogstashEncoder NEM fut a PatternLayout-on,
+       ezert a `%redact(%msg)` conversionRule sosem futott a JSON output-ra.
+       A megoldas: LoggingEventCompositeJsonEncoder + custom Redacting*JsonProvider
+       a `message` es `stackTrace` mezok serialize-eleseben.
+       Plusz: a MaskingJsonGeneratorDecorator a `customer.name`/`taxId` JSON path-okra
+       (defense-in-depth ha valaki struct attribute-kent logolna PII-t).
+  -->
+  <springProfile name="production,prod">
+
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+        <providers>
+          <timestamp>
+            <fieldName>ts</fieldName>
+            <pattern>yyyy-MM-dd'T'HH:mm:ss.SSSXXX</pattern>
+          </timestamp>
+          <version><fieldName>schema_version</fieldName></version>
+          <pattern>
+            <pattern>
+              {"service":"backend","service_version":"${APP_VERSION:-2.5.57}","env":"${SPRING_PROFILES_ACTIVE:-prod}"}
+            </pattern>
+          </pattern>
+          <logLevel><fieldName>level</fieldName></logLevel>
+          <loggerName><fieldName>logger</fieldName></loggerName>
+          <threadName><fieldName>thread</fieldName></threadName>
+          <provider class="hu.puzzleir.valuta.logging.RedactingMessageJsonProvider">
+            <fieldName>message</fieldName>
+          </provider>
+          <provider class="hu.puzzleir.valuta.logging.RedactingStackTraceJsonProvider">
+            <fieldName>error.stack</fieldName>
+          </provider>
+          <mdc/>
+        </providers>
+        <jsonGeneratorDecorator class="net.logstash.logback.mask.MaskingJsonGeneratorDecorator">
+          <defaultMask>[REDACTED]</defaultMask>
+          <path>/password</path>
+          <path>/pwd</path>
+          <path>/token</path>
+          <path>/secret</path>
+          <path>/apiKey</path>
+          <path>/authorization</path>
+          <path>/customerName</path>
+          <path>/customer_name</path>
+          <path>/idNumber</path>
+          <path>/taxId</path>
+          <path>/pan</path>
+        </jsonGeneratorDecorator>
+      </encoder>
+    </appender>
+
+    <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+      <file>${LOG_PATH:-/var/log/valuta-backend}/valuta-backend.json.log</file>
+      <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+        <fileNamePattern>${LOG_PATH:-/var/log/valuta-backend}/valuta-backend.json.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+        <maxFileSize>100MB</maxFileSize>
+        <maxHistory>90</maxHistory>
+        <totalSizeCap>10GB</totalSizeCap>
+      </rollingPolicy>
+      <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+        <providers>
+          <timestamp>
+            <fieldName>ts</fieldName>
+            <pattern>yyyy-MM-dd'T'HH:mm:ss.SSSXXX</pattern>
+          </timestamp>
+          <version><fieldName>schema_version</fieldName></version>
+          <pattern>
+            <pattern>
+              {"service":"backend","service_version":"${APP_VERSION:-2.5.57}","env":"${SPRING_PROFILES_ACTIVE:-prod}"}
+            </pattern>
+          </pattern>
+          <logLevel><fieldName>level</fieldName></logLevel>
+          <loggerName><fieldName>logger</fieldName></loggerName>
+          <provider class="hu.puzzleir.valuta.logging.RedactingMessageJsonProvider">
+            <fieldName>message</fieldName>
+          </provider>
+          <provider class="hu.puzzleir.valuta.logging.RedactingStackTraceJsonProvider">
+            <fieldName>error.stack</fieldName>
+          </provider>
+          <mdc/>
+        </providers>
+        <jsonGeneratorDecorator class="net.logstash.logback.mask.MaskingJsonGeneratorDecorator">
+          <defaultMask>[REDACTED]</defaultMask>
+          <path>/password</path>
+          <path>/pwd</path>
+          <path>/token</path>
+          <path>/secret</path>
+          <path>/apiKey</path>
+          <path>/authorization</path>
+          <path>/customerName</path>
+          <path>/customer_name</path>
+          <path>/idNumber</path>
+          <path>/taxId</path>
+          <path>/pan</path>
+        </jsonGeneratorDecorator>
+      </encoder>
+    </appender>
+
+    <root level="INFO">
+      <appender-ref ref="JSON_CONSOLE"/>
+      <appender-ref ref="JSON_FILE"/>
+    </root>
+    <logger name="hu.puzzleir.valuta" level="DEBUG"/>
+  </springProfile>
+
+  <!-- 2. DEV / TEST profile: human-readable (a Spring Boot default config) -->
+  <springProfile name="!production &amp; !prod">
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+    <logger name="hu.puzzleir.valuta" level="DEBUG"/>
+  </springProfile>
+
+</configuration>

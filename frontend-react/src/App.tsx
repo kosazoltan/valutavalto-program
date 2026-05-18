@@ -51,6 +51,8 @@ const TransferPage = lazy(() => import('./pages/transfers/TransferPage'))
 // 2026-04-29 v2.3.15 (E-B8 banki workflow skeleton — teljes impl v2.4.0)
 const BankOrderPage = lazy(() => import('./pages/bankorders/BankOrderPage'))
 const ErrorMonitorPage = lazy(() => import('./pages/admin/ErrorMonitorPage'))
+// V234 belso log+audit modul (2026-05-18)
+const AuditDiagnosticsPage = lazy(() => import('./pages/admin/AuditDiagnosticsPage'))
 const CustomerListPage = lazy(() => import('./pages/customers/CustomerListPage'))
 const CustomerDetailPage = lazy(() => import('./pages/customers/CustomerDetailPage'))
 const CustomerCreatePage = lazy(() => import('./pages/customers/CustomerCreatePage'))
@@ -573,6 +575,9 @@ export default function App() {
 
           {/* Hiba-monitor (admin/manager/supervisor) */}
           <Route path="/admin/error-monitor" element={<ErrorMonitorPage />} />
+
+          {/* V234 Audit-diagnosztika (admin/support/manager) - belso log+audit modul */}
+          <Route path="/admin/audit-diagnostics" element={<AuditDiagnosticsPage />} />
 
           {/* Circulars (Körlevelek) */}
           <Route path="/circulars" element={<CircularPage />} />

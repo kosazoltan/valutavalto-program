@@ -578,6 +578,40 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 - Flyway migrációk: `backend/src/main/resources/db/migration/`
 - Kapcsolat: `application.properties` → `spring.datasource.*`
 
+## KÖTELEZŐ ÉRVÉNYŰ: V234 Belső log+audit modul (2026-05-18 user-direktíva)
+
+> **Hatálybalépés:** 2026-05-18 (Kósa Zoltán direkt utasítása: "a saját programunkon belül, a saját kódjainkon és a saját exe-fájlainkon belül futó logolást szeretnék")
+> **Vault session-jegyzet:** [vault/sessions/2026-05-18-internal-log-audit-module-build.md](vault/sessions/2026-05-18-internal-log-audit-module-build.md)
+> **Hibakod-katalógus:** [packages/shared-logging/error-codes.yaml](packages/shared-logging/error-codes.yaml)
+
+**A szabály:**
+
+> MINDEN backend `LOG.error()` / frontend `vvLogger.error()` / Electron `vvLogger.error()` hívásban
+> **KÖTELEZŐ** `error_code` paraméter (formátum: `VV-<KATEGORIA>-<3-jegyű>` — pl. `VV-AML-001`).
+>
+> Ha új hibatípust találsz a kódban → ELŐSZÖR add hozzá a hibakódot az
+> `packages/shared-logging/error-codes.yaml`-hez `ai_fix_hint`-tel + `user_impact`-tel,
+> CSAK UTÁNA írj `vvLogger.error("UJ-KOD", ...)` hívást.
+
+**Architektúra:**
+- **Logging:** `VVLogger` (backend) / `vvLogger` (frontend + 3 Electron kliens) — strukturált JSON output (Logstash encoder), MDC trace_id automatikus
+- **Audit:** `AuditEventService.appendEvent()` — hash-chain SHA-256 (tamper-evidence), V234 audit_log tabla immutable trigger-rel
+- **PII redactor:** Logback `%redact(%msg)` custom converter + frontend `redact()` recursive object scrubber — 7 pattern: OpenAI key, JWT, Bearer, email, IBAN, kártyaszám, magyar szig.szám
+- **Diagnostics API:** `/api/v1/diagnostics/audit/{recent-errors,trace,entity,error-codes,hash-chain-verify,log}` — ADMIN/SUPPORT/MANAGER role
+- **Admin UI:** `/admin/audit-diagnostics` route (frontend-react)
+
+**Session-start kötelező olvasmány az AI-nak:**
+- `packages/shared-logging/error-codes.yaml` (30 jelenlegi hibakód + AI fix hint)
+- `vault/feedback/valutavalto-belso-log-audit-modul-tervezet-2026-05-18.md` (tervezet)
+
+**Tilos:**
+- ❌ `logger.error('hiba történt')` error_code nélkül (jelenlegi `logger.ts` legacy — fokozatosan migrálandó)
+- ❌ Új error_code-ot kitalálni az error-codes.yaml-be való felvétel nélkül
+- ❌ PII (jelszó, JWT, kártyaszám, magyar szig.szám) sima logba — a Logback redactor mindent moz, DE strukturált `attrs.*`-ban se logoljunk PII-t (defense-in-depth)
+- ❌ audit_log UPDATE/DELETE — az immutable trigger doblja az exception-t (compliance: Pmt./NAV)
+
+---
+
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
 - **Verzió:** **v2.5.57** (2026-05-18 — Hangsegéd (Voice Assistant) feature complete rollout: 15 PR + 4 UNSIGNED telepítő + Hetzner OPENAI_API_KEY + VOICE_OPENAI_ENABLED=true).
 - **Korábbi verzió:** v2.5.53 (2026-05-15, 10 user-bug fix). A v2.5.54+v2.5.55+v2.5.56 verziók GitHub PR-merge során auto-bumpoltak, de v2.5.56 build accidentally előz volt → check-version-bump.ps1 auto v2.5.57-re emelte.

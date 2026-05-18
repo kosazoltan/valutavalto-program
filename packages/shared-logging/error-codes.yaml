@@ -1,0 +1,295 @@
+# EBC Valutavalto belso log+audit modul — AI-olvashato hibakod-katalogus
+#
+# Formatum: VV-<KATEGORIA>-<3-jegyu sorszam>
+# Session-start kotelezo olvasmany az AI Javito Programnak (Claude Code).
+#
+# Bovites: ha uj hibatipust talalsz a kodban, add hozza ide + irj `ai_fix_hint`-et.
+# A `VVLogger.error(error_code, ...)` minden hivasakor a kodnak SZEREPELNIE KELL itt.
+
+version: 1
+last_updated: "2026-05-18"
+total_codes: 30
+
+codes:
+
+  # =====================================================
+  # VV-AML — penzmosas elleni (Pmt. 2017. evi LIII. tv.)
+  # =====================================================
+
+  VV-AML-001:
+    name: "AML 100k HUF identifikacios kuszob atlepve, identifikacio hianyzik"
+    category: AML
+    level: ERROR
+    user_impact: "Tranzakcio elutasitva, ugyfel ertesitve identifikacio szuksegerol"
+    ai_fix_hint: |
+      AmlService.checkIdentification() KOTELEZO a tranzakcio commit ELOTT.
+      NEM szabad commit utan ellenorizni. Lasd: backend AmlServiceTest.
+
+  VV-AML-002:
+    name: "PEP nyilatkozat hianyzik 300k HUF felett"
+    category: AML
+    level: ERROR
+    user_impact: "Tranzakcio elutasitva, PEP form kotelezo"
+    ai_fix_hint: |
+      AmlService.checkPepDeclaration() hivas kotelezo 300k HUF felett,
+      a checkIdentification() UTAN, commit ELOTT.
+
+  VV-AML-003:
+    name: "Sanction-list talalat (EU/OFAC/ENSZ)"
+    category: AML
+    level: FATAL
+    user_impact: "Tranzakcio azonnal felfuggesztve, SAR auto-trigger"
+    ai_fix_hint: |
+      SOHA ne lazitsd. Ha cache-only-ra valtasz, a backend revalidate
+      KOTELEZO commit elott.
+
+  # =====================================================
+  # VV-BIZ — uzleti szabaly (NAV/MNB/szamviteli)
+  # =====================================================
+
+  VV-BIZ-001:
+    name: "Bizonylat-sorszam-ugras detektalva (V<iroda><seq> nem monoton)"
+    category: BUSINESS
+    level: FATAL
+    ai_fix_hint: |
+      ReceiptSequenceService.next() SELECT FOR UPDATE-tel mukodik?
+      Ellenorizd a tranzakcio-izolaciot (REPEATABLE_READ minimum).
+
+  VV-BIZ-002:
+    name: "Sztorno probalkozas napzaras UTAN"
+    category: BUSINESS
+    level: ERROR
+    ai_fix_hint: |
+      ReversalService 5 szabalya kozul a 3. (csak napzaras elott) serul.
+      Frontend gombnak disabled-nek kell lennie, ha dailyClosing.status=CLOSED.
+
+  VV-BIZ-003:
+    name: "Keszlet elteres: SUM(tranzakciok) != cache ertek"
+    category: BUSINESS
+    level: FATAL
+    ai_fix_hint: |
+      Kulon currentStock counter mezot vezettek be? Ez TILOS.
+      A keszletet MINDIG rekonstrualni kell ledger-bol.
+
+  VV-BIZ-004:
+    name: "Sztorno indoklas hianyzik (kotelezo mezo)"
+    category: BUSINESS
+    level: ERROR
+    ai_fix_hint: |
+      ReversalDto.reason validacio @NotBlank. Frontend form-validacio
+      is kell, mert szervergyenge.
+
+  VV-BIZ-005:
+    name: "Kezelesi koltseg nem rogzitheto (V227 sync_active_columns function)"
+    category: BUSINESS
+    level: ERROR
+    ai_fix_hint: |
+      V227 hotfix-ben CREATE OR REPLACE function. Ha hianyzik:
+      Flyway repair + a hotfix migrate ujra.
+
+  # =====================================================
+  # VV-RATE — arfolyam (RFM)
+  # =====================================================
+
+  VV-RATE-001:
+    name: "Lejart arfolyammal probaltak tranzakciot inditani"
+    category: BUSINESS
+    level: ERROR
+    ai_fix_hint: |
+      Rate.validTo > now() ellenorzes a tranzakcio BELEPESEKOR,
+      NEM a vegen. RateValidityFilter kell.
+
+  VV-RATE-002:
+    name: "RFM publish konfliktus (optimistic locking version mismatch)"
+    category: BUSINESS
+    level: WARN
+    ai_fix_hint: |
+      Masodik RFM operator probalt publikalni. Frontend hibauzenet:
+      'Egy masik operator idokozben frissitette az arfolyamokat'.
+
+  VV-RATE-003:
+    name: "Branch-iroda exclusivity violation (V234 - egy worker csak egy iroda)"
+    category: BUSINESS
+    level: ERROR
+    ai_fix_hint: |
+      V234 migration biztositja a constraint-et. Ha violation:
+      rate_creator_branch.unique(workerId, ts_range).
+
+  # =====================================================
+  # VV-MT — multi-tenant biztonsag
+  # =====================================================
+
+  VV-MT-001:
+    name: "Cross-tenant lekerdezes detektalva (companyId mismatch)"
+    category: SECURITY
+    level: FATAL
+    ai_fix_hint: |
+      Repository-ban nincs companyId szures vagy a JWT-ben rossz ceg.
+      Azonnal allitsd le, es nezd meg, hogy nem szivarogtak-e adatok.
+      Lasd audit-iter5 P0.1 (IDOR fix TurnoverController).
+
+  VV-MT-002:
+    name: "RateApproval tenant izolacio violation"
+    category: SECURITY
+    level: FATAL
+    ai_fix_hint: |
+      PR #636-ban javitva. Ha ujra megjelenik: a 4 metod (approve/reject/
+      list/get) mind companyId-szurest hasznaljon-e.
+
+  # =====================================================
+  # VV-SYNC — local-first / offline sync
+  # =====================================================
+
+  VV-SYNC-001:
+    name: "Outbox replay duplikacio (Idempotency-Key egyezes)"
+    category: TECHNICAL
+    level: INFO
+    ai_fix_hint: |
+      Ez NEM hiba — az IdempotencyFilter helyesen kiszurte. Csak audit.
+
+  VV-SYNC-002:
+    name: "Offline outbox > 100 elem (sync hiba?)"
+    category: TECHNICAL
+    level: WARN
+    ai_fix_hint: |
+      Halozat? Heartbeat? Backend leallt? Ellenorizd a /api/v1/health-et.
+
+  VV-SYNC-003:
+    name: "Local SQLite outbox corrupted (better-sqlite3 IO error)"
+    category: TECHNICAL
+    level: ERROR
+    ai_fix_hint: |
+      penztar-client/electron/sqlite.ts - .db fajl serult.
+      Megoldas: telepito uninstall + new install.
+
+  # =====================================================
+  # VV-NET — halozati problemak
+  # =====================================================
+
+  VV-NET-001:
+    name: "ESET TLS proxy MITM detektalva"
+    category: NETWORK
+    level: WARN
+    ai_fix_hint: |
+      NEM hiba, csak informacio. Az outbox 3x retry mintat kell kovetni.
+      penztar-client/electron/api-proxy.ts mar implementalja.
+
+  VV-NET-002:
+    name: "Backend bootstrap-status HTTP 502 (deploy elott)"
+    category: NETWORK
+    level: WARN
+    ai_fix_hint: |
+      Hetzner deploy folyamatban (systemd restart). 30-60s utan
+      bootstrap-status 200 lesz. Retry pattern kell.
+
+  # =====================================================
+  # VV-REG — szabalyozasi (MNB/NAV/NGM)
+  # =====================================================
+
+  VV-REG-001:
+    name: "MNB napi arfolyam-feltoltes sikertelen 14:30 elott"
+    category: INTEGRATION
+    level: FATAL
+    ai_fix_hint: |
+      scripts/regulatory/mnb-publish.sh hibakimenet? Probald manualisan.
+      HATARIDO: 14:30, P0 escalation.
+
+  VV-REG-002:
+    name: "NAV NPG offline > 5 perc"
+    category: INTEGRATION
+    level: ERROR
+    ai_fix_hint: |
+      Fallback offline bizonylat aktivalodott. Ellenorizd, hogy az
+      NavService.fallbackMode = true es audit-log irja.
+
+  VV-REG-003:
+    name: "NGM SZJA 67.13.10.0 - adomentesseg-zaradek hianyzik a bizonylaton"
+    category: INTEGRATION
+    level: FATAL
+    ai_fix_hint: |
+      ReceiptPrint.tsx + ReceiptPreviewModal.tsx KOTELEZOEN tartalmaz
+      '2007. evi CXVII. tv. 86 § e) alapjan mentes az ado alol' szovegblokkot.
+
+  # =====================================================
+  # VV-SEC — biztonsagi incidens
+  # =====================================================
+
+  VV-SEC-001:
+    name: "Jelszo/secret/PII detektalva log payloadban"
+    category: SECURITY
+    level: FATAL
+    ai_fix_hint: |
+      A PII masking layer ELOTT logoltak nyersen. AZONNAL torolni
+      a logot (admin), es fixalni a redactor regex-et.
+
+  VV-SEC-002:
+    name: "Google OAuth backend signature mismatch"
+    category: SECURITY
+    level: ERROR
+    ai_fix_hint: |
+      worker_google_login_whitelist tablaban rossz email VAGY
+      GOOGLE_DESKTOP_CLIENT_ID multi-ertekes config hibas.
+
+  VV-SEC-003:
+    name: "SetupWizard auth bypass attempt (BALI password NULL)"
+    category: SECURITY
+    level: WARN
+    ai_fix_hint: |
+      V230+V231 hotfix kezeli. NEM-NULL password_hash kell, NEM
+      kerdezzunk current_password-ot uj telepiteskor.
+
+  # =====================================================
+  # VV-VOICE — Hangseged (voice-assistant) integracio
+  # =====================================================
+
+  VV-VOICE-001:
+    name: "OpenAI Realtime API ephemeral token kerese sikertelen"
+    category: INTEGRATION
+    level: ERROR
+    ai_fix_hint: |
+      Backend OPENAI_API_KEY env var hianyzik vagy VOICE_OPENAI_ENABLED=false.
+      Lasd: VoiceTokenService.requestEphemeralToken().
+
+  VV-VOICE-002:
+    name: "Per-worker rate-limit lepve (>10 token-keres/ora)"
+    category: TECHNICAL
+    level: WARN
+    ai_fix_hint: |
+      Kompromittalt JWT vagy bug-os UI? VOICE_OPENAI_RATE_LIMIT_PER_HOUR
+      env var emelheto, de elobb root-cause vizsgalat.
+
+  VV-VOICE-003:
+    name: "WebRTC SDP exchange timeout (>15s)"
+    category: NETWORK
+    level: WARN
+    ai_fix_hint: |
+      Halozati problema az OpenAI Realtime API-val. realtimeClient.ts
+      AbortController-rel mar implementalja.
+
+  # =====================================================
+  # VV-TECH — technikai (db, infra)
+  # =====================================================
+
+  VV-TECH-001:
+    name: "Flyway checksum mismatch (V<n> migration changed)"
+    category: TECHNICAL
+    level: FATAL
+    ai_fix_hint: |
+      KOTELEZO debug: melyik migration? Soha NEM repair-rel megoldani
+      production-ben enable.
+
+  VV-TECH-002:
+    name: "Database connection pool exhausted (HikariCP)"
+    category: TECHNICAL
+    level: FATAL
+    ai_fix_hint: |
+      maxLifetime / leakDetectionThreshold beallitas?
+      spring.datasource.hikari.* property-k vizsgalata.
+
+  VV-TECH-FATAL:
+    name: "Uncaught exception / unhandled rejection"
+    category: TECHNICAL
+    level: FATAL
+    ai_fix_hint: |
+      Generikus catch-all. A stack trace-ben latszik a tenyleges hely.
+      Mindig nezz at egy konkretabb error_code-ra is.
