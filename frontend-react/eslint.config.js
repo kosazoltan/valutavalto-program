@@ -82,6 +82,26 @@ export default tseslint.config(
     files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
+      // Teszt-fixture szovegek (pl. "Custom error fallback") NEM felhasznalo-felé
+      // jelennek meg, nincs ertelme i18n-elni. False-positive warning-ok elhagyasa.
+      'i18next/no-literal-string': 'off',
+    },
+  },
+  {
+    // NAV bizonylat sablon — a fajlokban minden literal jogszabalyi vagy NAV
+    // mintaszerusegbol KOTELEZO (2007. evi CXVII. tv. 86. § e), MNB Pmt. cimke-
+    // mintaszeruseg). A fajlok JSDoc-jaban reszletes indoklas.
+    //
+    // Sourcery PR #669 inline-disable javaslat: a `/* eslint-disable */` direktiva
+    // a jelenlegi ESLint flat-config + eslint-plugin-i18next verzioval NEM aktivalodik
+    // (a direktiva "Unused"-kent flag-elodik, mig a warning-ok megis kiirodnak).
+    // Ezert config-szintu override + in-file JSDoc dokumentacio a kompromisszum.
+    files: [
+      'src/components/ReceiptPrint.tsx',
+      'src/components/electron/ReceiptPreviewModal.tsx',
+    ],
+    rules: {
+      'i18next/no-literal-string': 'off',
     },
   }
 );

@@ -12,6 +12,23 @@
  * - JOGCÍM NYILATKOZAT 300k+ felett
  */
 
+/**
+ * NAV-szabvanyu adomentes valutavalto bizonylat preview modal.
+ *
+ * I18N EXEMPTION: a `eslint.config.js`-ben kifejezetten ki van veve a
+ * `i18next/no-literal-string` rule alol (lasd ReceiptPrint.tsx JSDoc-jat
+ * a teljes indoklasrol).
+ *
+ * Minden JSX literal jogszabalyi vagy NAV mintaszerusegbol KOTELEZO:
+ *   - "ÁFA-mentesség a 2007. évi CXVII. tv. 86. § e) alapján"
+ *     -> pontos jogszabaly-idezet, NEM forditano
+ *   - "Sorszám (INVOICE NR)", "Dátum (DATE)" stb.
+ *     -> bilingual (HU/EN) NAV mintaszeruseg
+ *   - "Bankpartner", "JOGCÍM NYILATKOZAT", "Ügyfél adatok"
+ *     -> Pmt. (2017. évi LIII. tv.) 100k/300k szintes ugyfelidentitas-blokk
+ *       cimke (kotelezo szoveg az adott osszeg-savnal)
+ */
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PrintReceiptData } from '@/types/receipt';
 import { logger } from '../../utils/logger';
