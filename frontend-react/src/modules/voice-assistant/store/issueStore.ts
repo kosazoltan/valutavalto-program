@@ -29,6 +29,7 @@ export async function createIssue(input: IssueDraftInput & { mode: IssueMode }):
     updatedAt: now,
     mode: input.mode,
     status: input.status ?? 'draft',
+    category: input.category ?? 'bug',
     title: input.title ?? '',
     description: input.description ?? '',
     severity: input.severity ?? 'medium',
