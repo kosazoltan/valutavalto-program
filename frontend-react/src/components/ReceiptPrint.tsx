@@ -1,3 +1,29 @@
+/**
+ * NAV-szabvanyu adomentes valutavalto bizonylat sablon.
+ *
+ * I18N EXEMPTION: a `eslint.config.js`-ben kifejezetten ki van veve a
+ * `i18next/no-literal-string` rule alol (lasd ott a "NAV bizonylat" override
+ * blokkot). Az alabbi JSDoc dokumentalja MIERT:
+ *
+ * Minden JSX literal a fajlban jogszabalyi vagy NAV mintaszerusegbol KOTELEZO:
+ *   - "Adomentes a szolgaltatas nyujtasa a 2007. evi CXVII. tv. 86 § e) alapjan"
+ *     -> pontos jogszabaly-idezet, NEM forditano, NEM modosithato
+ *   - "Sorszam (INVOICE NR)", "Datum (DATE)", "Ido (TIME)", "Arfolyam", "Forint"
+ *     -> bilingual (HU/EN) cimke-mintaszeruseg az MNB Pmt. eloiraval egyezo
+ *   - "V.nem", "B.jegy", "CURR.", "Kerekites (ROUNDING)", "Netto Ft (SUM TOTAL)"
+ *     -> rovidites + bilingual, NAV bizonylat-sablon
+ *
+ * Sourcery PR #669 javaslat: inline disable per literal. Lokalisan ez ~50+ inline
+ * komment lenne, plus a in-file `/* eslint-disable * /` directive a jelenlegi
+ * ESLint flat-config + i18next plugin verzioval NEM aktivalodik (a directive
+ * "Unused"-kent flag-elodik, de a warning-ok megis kiirodnak). Ezert config-szintu
+ * override-ot hasznalunk, plus EZ a JSDoc a fajlban tartja a dokumentaciot.
+ *
+ * Ha barki ide nem-jogszabalyi literal-t adna (pl. debug-szoveg, dev-only komment
+ * a renderelt outputban), az inkabb a fajl scope-jat serti, NEM csak i18n-igent.
+ * Code-review-n kell elkapni, NEM csak ESLint-tel.
+ */
+
 import { useRef, useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { Printer, X } from 'lucide-react'

@@ -88,14 +88,14 @@ export default tseslint.config(
     },
   },
   {
-    // NAV-szabvanyu adomentes valutavalto bizonylat:
-    // a 2007. evi CXVII. tv. 86. § e) szakasz jogszabaly-idezet KOTELEZO
-    // magyarul, plus bilingual (HU/EN) "Sorszam (INVOICE NR)", "Datum (DATE)",
-    // stb. cimke-mintaszeruseg az MNB pmt.-előirassal egyezo. Ezek NEM
-    // fordithatok i18n-be, mert a magyar nyelv jogszabalyi kotelezettseg.
+    // NAV bizonylat sablon — a fajlokban minden literal jogszabalyi vagy NAV
+    // mintaszerusegbol KOTELEZO (2007. evi CXVII. tv. 86. § e), MNB Pmt. cimke-
+    // mintaszeruseg). A fajlok JSDoc-jaban reszletes indoklas.
     //
-    // A `ReceiptPreviewModal` ugyanazokat a szovegeket mutatja preview-kent
-    // Electron print-dialog-elott.
+    // Sourcery PR #669 inline-disable javaslat: a `/* eslint-disable */` direktiva
+    // a jelenlegi ESLint flat-config + eslint-plugin-i18next verzioval NEM aktivalodik
+    // (a direktiva "Unused"-kent flag-elodik, mig a warning-ok megis kiirodnak).
+    // Ezert config-szintu override + in-file JSDoc dokumentacio a kompromisszum.
     files: [
       'src/components/ReceiptPrint.tsx',
       'src/components/electron/ReceiptPreviewModal.tsx',
