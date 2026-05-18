@@ -39,14 +39,54 @@ export interface RealtimeSession {
 const OPENAI_REALTIME_URL = 'https://api.openai.com/v1/realtime'
 const DEFAULT_SDP_TIMEOUT_MS = 15_000
 
+/**
+ * Backend hibakód → Magyar felhasználói üzenet.
+ *
+ * <p>A backend a `VoiceTokenService` BusinessException-jeit HTTP 422-vel
+ * dobja: { error: 'VOICE_ASSISTANT_DISABLED', message: '...' }. A nyers
+ * axios 'Request failed with status code 422' szöveg helyett kontextus-
+ * függő, akciókra ösztönző üzenetet adunk.
+ */
+const VOICE_ERROR_MESSAGES: Record<string, string> = {
+  VOICE_ASSISTANT_DISABLED: 'A hangsegéd jelenleg nincs bekapcsolva. Szólj a rendszergazdának (VOICE_OPENAI_ENABLED=true).',
+  VOICE_ASSISTANT_MISCONFIGURED: 'A hangsegéd backend hibás konfigurációval rendelkezik (hiányzó OPENAI_API_KEY).',
+  VOICE_ASSISTANT_RATE_LIMIT: 'Túl sok hangsegéd-kérés rövid idő alatt. Próbáld újra később.',
+  VOICE_ASSISTANT_UPSTREAM_ERROR: 'Az OpenAI Realtime API jelenleg nem elérhető. Próbáld újra perceken belül.',
+  VOICE_ASSISTANT_UNAUTHORIZED: 'A hangsegéd backend API-kulcsa érvénytelen. Szólj a rendszergazdának.',
+  VOICE_ASSISTANT_API_ERROR: 'Az OpenAI nem adott vissza érvényes hangsegéd-választ. Próbáld újra.',
+}
+
+export class VoiceTokenError extends Error {
+  readonly code: string
+  readonly httpStatus: number | null
+  constructor(code: string, message: string, httpStatus: number | null) {
+    super(message)
+    this.code = code
+    this.httpStatus = httpStatus
+    this.name = 'VoiceTokenError'
+  }
+}
+
 export async function requestEphemeralToken(
-  mode: 'install' | 'test' | 'support'
+  mode: 'install' | 'test' | 'support' | 'unified'
 ): Promise<EphemeralTokenResponse> {
-  const { data } = await api.post<EphemeralTokenResponse>(
-    '/voice/token',
-    { mode }
-  )
-  return data
+  try {
+    const { data } = await api.post<EphemeralTokenResponse>(
+      '/voice/token',
+      { mode }
+    )
+    return data
+  } catch (err) {
+    // Axios error: probald a backend ErrorResponse.error / .message-bol kinyerni
+    // a felhasznalo-barat magyar uzenetet.
+    const anyErr = err as { response?: { status?: number; data?: { error?: string; message?: string } }; message?: string }
+    const status = anyErr?.response?.status ?? null
+    const code = anyErr?.response?.data?.error ?? ''
+    const friendly = (code && VOICE_ERROR_MESSAGES[code])
+      || anyErr?.response?.data?.message
+      || (status ? `A hangsegéd backend hibát adott (HTTP ${status}).` : (anyErr?.message ?? 'Ismeretlen hangsegéd-hiba.'))
+    throw new VoiceTokenError(code || 'UNKNOWN', friendly, status)
+  }
 }
 
 export interface OpenSessionOptions {
@@ -73,7 +113,7 @@ function cleanupPartial(
 }
 
 export async function openRealtimeSession(
-  mode: 'install' | 'test' | 'support',
+  mode: 'install' | 'test' | 'support' | 'unified',
   onEvent: (event: unknown) => void,
   options: OpenSessionOptions = {}
 ): Promise<RealtimeSession> {

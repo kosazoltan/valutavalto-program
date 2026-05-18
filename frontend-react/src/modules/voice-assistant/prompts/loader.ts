@@ -20,10 +20,14 @@ import supportPromptRaw from './systemPrompt.support.md?raw'
 
 type ActiveMode = Exclude<VoiceMode, 'idle'>
 
+// Kósa Zoltán direktíva 2026-05-18: a `unified` mód a `support` promptot
+// használja, mert az a legszélesebb scope-ú (Q&A + walkthrough + hibajegy
+// rögzítés). Ha később külön `systemPrompt.unified.md` készül, itt cserélődik.
 const PROMPTS: Record<ActiveMode, string> = {
   install: installPromptRaw,
   test: testPromptRaw,
   support: supportPromptRaw,
+  unified: supportPromptRaw,
 }
 
 /**

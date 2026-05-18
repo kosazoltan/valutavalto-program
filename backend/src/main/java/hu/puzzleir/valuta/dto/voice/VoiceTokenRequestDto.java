@@ -23,16 +23,18 @@ import lombok.AllArgsConstructor;
 public class VoiceTokenRequestDto {
 
     /**
-     * Asszisztens mód: install / test / support.
+     * Asszisztens mód: install / test / support / unified.
      *
      * <p>A backend a mód alapján állítja be a reasoning effort-et:
      * - install: low (latency-kritikus, telepítés)
      * - test: medium (strukturált hibajegy)
      * - support: low (gyors válaszok)
+     * - unified: medium (egyesített mód — Kósa Zoltán direktíva 2026-05-18,
+     *   minden korábbi módot lefed egy gombbal: telepítés, tesztelés, hibajelentés).
      */
     @NotNull
-    @Pattern(regexp = "^(install|test|support)$",
-             message = "A mód érvényes értékei: install, test, support.")
+    @Pattern(regexp = "^(install|test|support|unified)$",
+             message = "A mód érvényes értékei: install, test, support, unified.")
     @JsonProperty("mode")
     private String mode;
 }

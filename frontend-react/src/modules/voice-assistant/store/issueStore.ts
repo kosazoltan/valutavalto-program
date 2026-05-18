@@ -14,6 +14,20 @@ function nowIso(): string {
   return new Date().toISOString()
 }
 
+/**
+ * Monoton timestamp generator: garantáltan szigorúan nagyobb, mint a megadott
+ * `previousIso`. Race-conditiont kerül el (lásd: issueStore.test.ts updatedAt
+ * mező ugyanabban a ms-ben futott a createIssue és updateIssue között).
+ *
+ * <p>Modern gyors gépeken `new Date()` ms-felbontása nem elég, ezért ha a friss
+ * érték nem nagyobb, +1 ms-mel lépünk előre.
+ */
+function nowIsoAfter(previousIso: string): string {
+  const next = nowIso()
+  if (next > previousIso) return next
+  return new Date(new Date(previousIso).getTime() + 1).toISOString()
+}
+
 function randomId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
@@ -65,7 +79,7 @@ export async function updateIssue(
     quickNotes: patch.quickNotes ?? existing.quickNotes,
     id: existing.id,
     createdAt: existing.createdAt,
-    updatedAt: nowIso(),
+    updatedAt: nowIsoAfter(existing.updatedAt),
   }
   await db.issues.put(merged)
   return merged
@@ -81,7 +95,7 @@ export async function appendQuickNote(id: string, note: string): Promise<void> {
     const existing = await db.issues.get(id)
     if (!existing) return
     existing.quickNotes = [...existing.quickNotes, note]
-    existing.updatedAt = nowIso()
+    existing.updatedAt = nowIsoAfter(existing.updatedAt)
     await db.issues.put(existing)
   })
 }

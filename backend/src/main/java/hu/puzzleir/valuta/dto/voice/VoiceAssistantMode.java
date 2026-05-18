@@ -16,7 +16,8 @@ import java.util.Optional;
 public enum VoiceAssistantMode {
     INSTALL("install"),
     TEST("test"),
-    SUPPORT("support");
+    SUPPORT("support"),
+    UNIFIED("unified");
 
     private final String wireName;
 
@@ -49,6 +50,6 @@ public enum VoiceAssistantMode {
     }
 
     public boolean usesMediumReasoning() {
-        return this == TEST;
+        return this == TEST || this == UNIFIED;
     }
 }
