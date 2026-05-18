@@ -1,0 +1,28 @@
+release(v2.5.57): voice-assistant production rollout (4 telepito + Hetzner env)
+
+A v2.5.56-bol auto-bump v2.5.57-re a check-version-bump.ps1 altal (mert a
+build/-ben mar voltak v2.5.56 artifact-ok az elozo iteraciobol).
+
+Mit ad ez a release a kollegaknak:
+- A 15 voice-assistant PR (Fazis 1-10 + 9.5a + 9.5b) integralt feature
+- Frontend VITE_VOICE_ASSISTANT_ENABLED='true' beepitve a buildbe
+- Backend OPENAI_API_KEY + VOICE_OPENAI_ENABLED=true beallitva Hetzner-en
+  (automatizalt workflow: .github/workflows/set-voice-assistant-env.yml)
+- Hetzner bootstrap-status: HTTP 200 a deploy + restart utan
+
+4 UNSIGNED telepito (NSIS + Electron, SHA-256 manifest):
+- Penztar-Setup-2.5.57-20260518.exe (280.94 MB, HKLM)
+- Kozponti-Iranyitokozpont-Setup-2.5.57.exe (100.93 MB, HKCU)
+- Arfolyamkeszito-Setup-2.5.57.exe (100.93 MB, HKCU)
+- Penztar-Eltavolito-2.5.57-20260518.exe (60 KB)
+
+Eredmeny:
+- 11 fajl 4-way version sync (5 package.json + 5 lock + backend pom.xml)
+- 4 telepito Downloads-ban + SHA-256 manifest
+- Hetzner backend mar fogadja a /api/v1/voice/token endpoint-ot
+- Penztar/Kozponti/Arfolyamkeszito Electron kliensek tartalmazzak a
+  Hangseged Panel-t (lebego panel jobb also sarokban)
+
+NOTE: UNSIGNED build - DigiCert EV CS cert kiadasaig (~2026-05-21) a
+SmartScreen warning megmarad (kollegak 'Tovabbi informacio' -> 'Futtatas
+mindenkeppen'). A v2.5.58+ SIGNED release-re a cert kiadas utan keresheto.
