@@ -5,7 +5,8 @@
 ## Cég
 - **EBC** (Exclusive Best Change Zrt.) — magyar valutaváltó cégcsoport
 - 66 iroda, 8 régió: Békéscsaba, Debrecen, Nyíregyháza, Kecskemét, Szeged, Kaposvár, Pécs, Szekszárd
-- Felhasználók: ~30 kolléga (pénztáros, értéktáros, főértéktáros, vezetők)
+- Backend: `https://excvaluta.com` (Hetzner)
+- Felhasználók száma változó (~30-50 kolléga); ne hivatkozz pontos számra, a backend a hivatalos forrás (modules.yaml).
 
 ## 3 különálló kliens-program
 1. **Pénztár (Penztar)** — Pénztáros és értéktáros napi munkájához. Gépszintű telepítés (HKLM).
@@ -30,7 +31,7 @@ Csak a megfelelő klienst telepítse a kolléga a munkaköréhez.
 - **Napnyitás-napzárás**: pénztáros napnyitás (nyitó-készlet) + 9-lépéses napzárás Wizard.
 - **Ügyfél azonosítás (AML, Pmt.)**: 100k / 300k Ft küszöbök. Nem azonosít / Egyszerűsített / Teljes.
 - **Készletkezelés**: kassza, címletezés, készlet-snapshot, országos készlet áttekintés.
-- **Árfolyamkészítés**: 28 valuta x 9 oszlop (A-I) tábla, sávos kerekek, idempotens publikálás.
+- **Árfolyamkészítés**: 28 valuta x 9 oszlop (A-I) tábla, sávos kerekítés, idempotens publikálás.
 - **Riportok**: MNB jelentések, NAV kontroll, banki tranzakciók, könyvelés export.
 - **Audit / Compliance**: szankciós lista, AML kontroll, dokumentumtár.
 

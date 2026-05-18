@@ -66,18 +66,17 @@ faq:
       2. Ha régi verzió: eltávolító + új telepítő (v2.5.55)
       3. Ha v2.5.55 mégis nem megy: küldj Zoltánnak (a) hibaüzenet screenshot, (b) a Google email, (c) milyen szerepkörrel próbáltál belépni
 
-  - id: bali_heni_belepes
-    q: "Bali Heni miért nem tud Google-lel belépni?"
+  - id: tobb_munkakor_google_login
+    q: "Mit tegyek, ha több munkakörben dolgozom és Google-lel próbálok belépni?"
     related_module: workers
-    keywords: ["bali", "heni", "henriett", "szeged", "értéktár"]
+    keywords: ["munkakör", "helyettesítés", "google", "több szerepkör", "értéktár", "főértéktár"]
     a: |
-      Bali Heninek 2 különálló Google fiókja van a 2 munkaköréhez:
-      - `bali.henriett.ebc@gmail.com` → **Főértéktárosi** szerepkör (W-S011 worker, 7 role)
-      - `szeged.ebc@gmail.com` → **Szegedi Értéktárosi** szerepkör (G_SZEGED_ET worker, ertektar role)
+      Ha egy kolléga több munkakörben dolgozik (pl. saját értéktárosi pozíció + főértéktárosi helyettesítés + pénztáros-helyettesítés), akkor általában külön Google fiókja van mindegyikhez (vagy egy fiók 7 szerepkörrel):
+      1. **Pénztárosi munka helyettesítéskor**: BCrypt jelszó + pénztáros kód (NEM Google) — a Pénztár kliensbe.
+      2. **Saját értéktárosi munka**: a saját értéktárosi céges email-lel Google-lel.
+      3. **Főértéktárosi munka / helyettesítés**: a főértéktárosi email-lel — a "Szerepkör kiválasztása" dialógus megjelenik, kiválaszthatod a szerepkört.
 
-      Pénztárosi módban (helyettesítéskor) BCrypt jelszó + BALI kód, NEM Google.
-
-      Ha mégsem megy a Google: ellenőrizd, hogy v2.5.55 telepítő van-e, ne v2.5.53.
+      Ha nem megy a bejelentkezés: ellenőrizd a v2.5.55 telepítőt. Ha tovább sem: küldj a fejlesztőnek (a) hibaüzenet screenshot, (b) melyik céges Google fiókkal próbáltál, (c) melyik szerepkörrel akartál belépni.
 
   # =====================================================
   # PÉNZTÁRI MŰKÖDÉS
@@ -110,10 +109,12 @@ faq:
     related_module: penztar.vetel_eladas
     keywords: ["AML", "azonosítás", "100000", "300000", "PEP"]
     a: |
-      3 küszöbérték a Pmt. (2017. évi LIII. törvény) szerint:
-      - **100.000 Ft alatt**: NEM kell azonosítani (csak állampolgárság).
-      - **100.000 — 300.000 Ft**: Egyszerűsített azonosítás. Kötelező: név, állampolgárság, születési hely, idő. NEM kötelező okmányszám.
-      - **300.000 Ft felett**: Teljes azonosítás. Kötelező MINDEN: név, anyja neve, lakcím, születési adatok, okmányszám, okmánytípus, PEP-nyilatkozat, saját nevében végzi-e.
+      3 sáv a Pmt. (2017. évi LIII. törvény) szerint, zárt-nyitott intervallumokkal:
+      - **100.000 Ft alatt** (< 100.000): NEM kell azonosítani (csak állampolgárság).
+      - **100.000 Ft-tól 300.000 Ft-ig** (>= 100.000 és < 300.000): Egyszerűsített azonosítás. Kötelező: név, állampolgárság, születési hely, születési idő. NEM kötelező az okmányszám és okmánytípus (de a kollégánál lehet rögzíteni).
+      - **300.000 Ft-tól felfelé** (>= 300.000): Teljes azonosítás. Kötelező MINDEN: név, anyja neve, lakcím, születési adatok, okmányszám, okmánytípus, PEP-nyilatkozat, saját nevében végzi-e.
+
+      Példa: 100.000 Ft = már Egyszerűsített (a határ alsó zárva). 300.000 Ft = már Teljes.
 
   - id: pep_nyilatkozat
     q: "Mi az a PEP-nyilatkozat?"
@@ -154,7 +155,7 @@ faq:
     a: |
       Az Árfolyamkészítő KÜLÖN kliensben fut (`Arfolyamkeszito-Setup-2.5.55.exe`), CSAK főértéktáros tudja használni.
 
-      1. Bejelentkezel a `bali.henriett.ebc@gmail.com` vagy `kasza.helga.ebc@gmail.com` Google fiókkal
+      1. Bejelentkezel a saját főértéktárosi Google fiókoddal
       2. Főlap — Elszámoló árfolyamok (0-s lap) megjelenik
       3. A oszlop = elszámoló (manuálisan EUR/USD/GBP/CHF, többi auto-számolódik a Kereszt forrásból)
       4. "CSOPORTOK KARBANTARTÁSA" → munkacsoport + iroda hozzárendelés

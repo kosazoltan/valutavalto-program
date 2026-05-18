@@ -147,7 +147,7 @@ workflows:
     steps:
       - number: 1
         action: "Bejelentkezés az Árfolyamkészítőbe"
-        details: "Google fiók: `bali.henriett.ebc@gmail.com` vagy `kasza.helga.ebc@gmail.com`. Szerepkör-választás: Főértéktáros."
+        details: "Saját főértéktárosi céges Google fiókoddal. Szerepkör-választás: Főértéktáros (ha több szerepköröd van)."
       - number: 2
         action: "Főlap — Elszámoló árfolyamok"
         details: "28 valuta x 9 oszlop (A-I). Az A oszlop az elszámoló, manuálisan írod be EUR/USD/GBP/CHF-et; a többi (CZK, PLN, RON stb.) auto-számolódik a Kereszt forrás-ból."
@@ -191,20 +191,20 @@ workflows:
         action: "Belépés sikeres"
         details: "A kliens fő dashboardja megjelenik. A 'F' (felhasználó-ikon) jobb felül mutatja: 'Név, ID: W-XXXX'."
 
-  - id: bali_heni_helyettesites
-    name: "Bali Heni helyettesítő flow (3 különböző munkakör)"
+  - id: tobb_munkakor_helyettesites
+    name: "Több munkaköres helyettesítő flow"
     related_module: workers
-    description: "Bali Heni két Google fiókkal + egy BCrypt-jelszavas munkakörrel."
+    description: "Ha egy kolléga több munkakört (pl. saját értéktárosi pozíció + főértéktáros helyettesítés + pénztáros helyettesítés) tölt be, három különböző belépési mód lehet."
     steps:
       - number: 1
         action: "Pénztárosi munka (helyettesítéskor)"
-        details: "Penztar kliens → BCrypt bejelentkezés: kód = BALI + jelszó. NEM Google login!"
+        details: "Penztar kliens → BCrypt bejelentkezés: a kollegára kiosztott pénztáros kód + jelszó. NEM Google login. A pénztáros kódot a backend admin (Zoltán) adja meg."
       - number: 2
-        action: "Szegedi értéktárosi munka"
-        details: "Penztar (értéktár mód) vagy Központi Modul → Google login: `szeged.ebc@gmail.com`."
+        action: "Saját értéktárosi munka"
+        details: "Penztar (értéktár mód) vagy Központi Modul → Google login a saját értéktárosi céges email-lel."
       - number: 3
         action: "Főértéktárosi munka / helyettesítés"
-        details: "Kozponti Modul vagy Árfolyamkészítő → Google login: `bali.henriett.ebc@gmail.com` → Szerepkör-választó: Főértéktáros (vagy más a 7 role közül)."
+        details: "Kozponti Modul vagy Árfolyamkészítő → Google login a főértéktárosi céges email-lel → Szerepkör-választó dialógus (ha több szerepkör van) → válaszd Főértéktárost (vagy a megfelelő szerepkört)."
 
   - id: hibajelentes
     name: "Hibajelentés a hangsegéddel"

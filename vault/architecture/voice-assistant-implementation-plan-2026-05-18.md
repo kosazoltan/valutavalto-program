@@ -146,24 +146,21 @@ A `knowledge/*.yaml`-okba a következőket viszem át:
 - Q: "Miért nem tud Bali Heni Google-lel belépni?"
 - Q: "Eltávolító kötelező-e a telepítés előtt?"
 - Q: "Melyik telepítőt használjam?"
-- Q: "Mi az EBC, EBC, EBC, EXZ közötti különbség?"
+- Q: "Mi az EBC, EEC, EPC, EXZ közötti különbség?" (lásd faq.yaml#ebc_vs_eec_vs_exz_vs_epc)
 - Q: "Hogyan rögzítek 100k+ ügyfelet?"
 - Q: "300k+ tranzakciónál mi a PEP-nyilatkozat?"
 - Q: "Hogyan zárom le a napot? (9-lépéses Wizard)"
 - Q: "Mit csinálok ha lefagy a program?"
 - Q: "Hogyan készítek árfolyamot?"
 
-**error-codes.yaml** (a session-jegyzetekből):
-- EBC-001: "Backend HTTP 401 — Google bejelentkezés sikertelen" → ok: whitelist hiány / régi cache, megoldás: új v2.5.55 telepítő + új whitelist
-- EBC-002: "Cannot read properties of undefined (reading 'length')" → ok: backend null válasz, megoldás: PR #642
-- EBC-003: "EXZ rendszerben nincs engedélyezve" → ok: cross-project leak, megoldás: PR #639 + V232
-- EBC-004: "Várt hiba — Banki rendelések" → PR #642 javítva
-- EBC-005: "invalid input syntax for type uuid" → ok: V232 BIGINT hotfix, megoldás: V645
-- EBC-006: "Nincs elég pénz a kasszában" → ok: HIBA #3 javítás, vételnél is ellenőrzés
-- EBC-007: "Customer save error" → ok: PR #607 idempotent upsert
-- EBC-008: "Nem nyomtat blokkot" → ok: nyomtató kapcsolat, megoldás: Windows Default Printer beállítás
-- EBC-009: "Setup Wizard 4 vs 5 lépés" → ok: hu.json bug, megoldás: PR #640
-- EBC-010: "Telepítő nem indul (UAC blokk)" → megoldás: jobb-klikk Run as Administrator
+**error-codes.yaml** (a session-jegyzetekből) — az AUTHORITATIVE számozás az `error-codes.yaml` fájl. Itt csak vezetői áttekintés a témákról:
+- EBC-001..003: Auth / Google login (HTTP 401, duplikált worker, EXZ leak)
+- EBC-004..009: Frontend (Banki rendelések crash, nyomtató, negatív készlet, ügyfél rögzítés, 300k+ adat, Setup Wizard 4→5)
+- EBC-010..013: Backend / Deploy (UAC, UUID/BIGINT, Flyway checksum, workgroup exclusivity)
+- EBC-014..020: Üzleti / AML (NAV jelentés, MNB API, PEP kérdés, devizastátusz, kezelési költség, átadás-átvétel, 100-300k bizonylat)
+- EBC-099: Generikus (lefagyás)
+
+A részletes mappinghez lásd: `frontend-react/src/modules/voice-assistant/knowledge/error-codes.yaml`.
 
 **workflows.yaml**:
 - workflow.telepites — 5 lépéses Setup Wizard

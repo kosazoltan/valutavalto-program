@@ -7,7 +7,7 @@ last_updated: "2026-05-18"
 company:
   code: EBC
   full_name: "Exclusive Best Change Zrt."
-  domain: "ebciroda.com"
+  backend_url: "https://excvaluta.com"
   branches: 66
   regions: 8
 
@@ -100,22 +100,27 @@ modules:
       - "Deviza választás (AUD, CAD, CHF, CNY, CZK, DKK, EUR, GBP, HUF stb. — billentyű 1-9)"
       - "VÉTEL vagy ELADÁS toggle"
       - "Összeg beírása (auto HUF-számítás árfolyam × összeg)"
-      - "Devizastátusz: Külföldi / Belföldi (KÖTELEZŐ ROGZÍTÉS minden összeghatáron)"
+      - "Devizastátusz: Külföldi / Belföldi (KÖTELEZŐ RÖGZÍTÉS minden összeghatáron)"
       - "Ügyfél azonosítás összeghatár szerint (lásd customer_identification)"
       - "Mentés és nyomtatás → bizonylat V<3-jegyű kód><6-jegyű sorszám>"
     rules:
       buy_min_amount: 0
       max_per_row: 6  # legacy 6-soros tábla, modern UI 1 sor
     customer_identification:
-      - threshold: 100000
-        level: "Nem azonosít"
+      # Pmt. 2017. évi LIII. tv. szerint. Intervallumok zárt-nyitott szabályok:
+      # min_huf <= összeg < max_huf. A null = nincs felső határ.
+      - level: "Nem azonosít"
+        min_huf: 0
+        max_huf: 100000          # 100k Ft alatt (< 100.000)
         required: ["állampolgárság"]
-      - threshold: 300000
-        level: "Egyszerűsített"
+      - level: "Egyszerűsített"
+        min_huf: 100000          # 100k Ft-tól (>= 100.000)
+        max_huf: 300000          # 300k Ft alatt (< 300.000)
         required: ["név", "állampolgárság", "születési hely", "születési idő"]
         optional: ["okmányszám", "okmány típus"]
-      - threshold: 999999999
-        level: "Teljes azonosítás"
+      - level: "Teljes azonosítás"
+        min_huf: 300000          # 300k Ft-tól (>= 300.000) felfelé minden összegen
+        max_huf: null             # nincs felső határ
         required: ["név", "állampolgárság", "születési hely", "születési idő", "anyja neve", "lakcím", "okmányszám", "okmány típus", "PEP-nyilatkozat", "saját nevében végzi"]
 
   - id: penztar.konverzio
