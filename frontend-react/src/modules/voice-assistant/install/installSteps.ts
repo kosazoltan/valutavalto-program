@@ -42,7 +42,7 @@ export const INSTALL_STEPS: InstallStep[] = [
     step_number: 3,
     title: 'Backend kapcsolat ellenorzes',
     instructions:
-      'Egy pillanat, megnezem hogy a kozponti szerverrel van-e kapcsolat. Ez auto- matikus.',
+      'Egy pillanat, megnezem hogy a kozponti szerverrel van-e kapcsolat. Ez automatikus.',
   },
   {
     step_number: 4,

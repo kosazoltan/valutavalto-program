@@ -21,10 +21,21 @@ describe('InstallStateMachine', () => {
     expect(s3.step_number).toBe(3)
   })
 
-  it('success=false eseten ugyanazon a lepesen marad', () => {
+  it('success=false eseten ugyanazon a (belso) lepesen marad', () => {
     const sm = createInstallStateMachine()
-    const s = sm.next(3, false)
-    expect(s.step_number).toBe(3)
+    // belso allapot: 1. lepesen — a sikertelen jelzes is ott tart
+    const s = sm.next(1, false)
+    expect(s.step_number).toBe(1)
+    expect(sm.current()).toBe(1)
+  })
+
+  it('Codex PR #666 P1: az LLM out-of-sync currentStep NEM ugor at lepest', () => {
+    const sm = createInstallStateMachine()
+    // belso allapot = 1, de az LLM hibasan 6-ot kuld
+    const s = sm.next(6, true)
+    expect(s.step_number).toBe(2) // BELSO leptetes: 1 -> 2, NEM 6 -> 7
+    expect(sm.current()).toBe(2)
+    expect(sm.isCompleted()).toBe(false)
   })
 
   it('az utolso lepes utan completed', () => {
@@ -34,7 +45,20 @@ describe('InstallStateMachine', () => {
       sm.next(i, true)
     }
     expect(sm.isCompleted()).toBe(true)
-    expect(onCompleted).toHaveBeenCalled()
+    expect(onCompleted).toHaveBeenCalledTimes(1)
+  })
+
+  it('Codex PR #666 P2: onCompleted CSAK EGYSZER fut le, replay nem duplazza', () => {
+    const onCompleted = vi.fn()
+    const sm = createInstallStateMachine(onCompleted)
+    for (let i = 1; i <= TOTAL_INSTALL_STEPS; i++) {
+      sm.next(i, true)
+    }
+    expect(onCompleted).toHaveBeenCalledTimes(1)
+    // tovabbi replay-hivasok NEM tuzelnek
+    sm.next(TOTAL_INSTALL_STEPS, true)
+    sm.next(TOTAL_INSTALL_STEPS, true)
+    expect(onCompleted).toHaveBeenCalledTimes(1)
   })
 
   it('reset visszaviszi az 1. lepesre', () => {
