@@ -9,17 +9,25 @@ name: Windows Signed Release (v2.x)
 #   - Arfolyamkeszito-Setup-<version>.exe          (~100 MB, kod-alairva)
 #   - SHA-256 manifest (windows-signed-release-sha256.txt)
 #
-# Alairas: Sectigo OV CS via Azure Key Vault Premium HSM, az AzureSignTool (vcsjones) eszkozzel.
+# Alairas: DigiCert EV CS via Azure Key Vault Premium HSM, az AzureSignTool (vcsjones) eszkozzel.
 # Forras: penztar-client/scripts/sign-with-azure-keyvault.js (electron-builder signtoolOptions hook).
 #
-# A 2026-05-14-i felulvizsgalat: a DigiCert KeyLocker NEM kompatibilis a Sectigo cert-tel
-# (csak DigiCert-issued cert-ekkel). Az Azure Key Vault Premium HSM a hivatalos Sectigo-jovahagyott
-# alternativa (~$80/3 ev vs ~$600/3 ev KeyLocker).
+# 2026-05-15-i pivot: Sectigo OV CS cancel + store credit ($659.97) -> DigiCert EV CS
+# ($559.99/ev) az Azure-native uton. Indok: a Microsoft Q&A megerositette, hogy a Sectigo
+# Azure Key Vault Premium HSM-mel mukodik, DE nincs key attestation, ami az EV CS Cloud HSM
+# requirement-jet sertik. A DigiCert EV CS explicit elfogadja az "audited cloud (e.g.,
+# Azure or AWS)" tarolot. A DigiCert HSM Approval form SUBMITTED 2026-05-15.
+#
+# A workflow logikaja generic - az AzureSignTool a Key Vault-on tarolt CERT-et hasznalja,
+# fuggetlenul attol hogy DigiCert vagy Sectigo issued. Csak a cert merge utan (a kiadast
+# kovetoen) frissul a tenyleges cert tartalom.
+#
+# Timestamp: `http://timestamp.digicert.com` (RFC 3161, default a sign scriptben).
 #
 # Hivatkozas:
-#   - https://docs.sectigo.com/scm/scm-administrator/configuring-azure-key-vault.html
 #   - https://github.com/vcsjones/azuresigntool
 #   - vault/operations/code-signing-setup-path.md
+#   - CLAUDE.md "LEZARVA 2026-05-15-i hosszu sessionben" - DigiCert EV pivot
 
 on:
   workflow_dispatch:

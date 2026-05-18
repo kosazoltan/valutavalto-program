@@ -25,16 +25,20 @@
  *
  * Hivatkozás:
  *   - https://github.com/vcsjones/azuresigntool
- *   - https://docs.sectigo.com/scm/scm-administrator/configuring-azure-key-vault.html
- *   - https://www.sectigo.com/uploads/resources/Sectigo_Azure-Key-Vault-Use-Case-V3_2021-05-07-133627.pdf
+ *   - vault/operations/code-signing-setup-path.md
  *
- * Migráció: korábban a `sign-with-keylocker.js` DigiCert KeyLocker-rel volt tervezve, de
- * azt csak DigiCert-issued cert-ekkel lehet használni. A Sectigo OV CS-vel
- * Azure Key Vault Premium HSM-et használunk (hivatalos Sectigo support, sokkal olcsóbb
- * tooling: ~$80/3 év vs $600/3 év DigiCert KeyLocker).
+ * Migráció történet:
+ *   - 2026-05-14: korábban a `sign-with-keylocker.js` DigiCert KeyLocker-rel volt tervezve, de
+ *     azt csak DigiCert-issued cert-ekkel lehet használni. Sectigo OV CS rendelve
+ *     (SMC1015225S638431) Azure Key Vault Premium HSM-mel ($80/3 év vs $600/3 év KeyLocker).
+ *   - 2026-05-15: Sectigo OV CS CANCELLED (Microsoft Q&A: KV HSM nincs key attestation,
+ *     ami az EV CS Cloud HSM requirement-jet sérti). PIVOT → DigiCert EV CS ($559.99/év)
+ *     Azure-native, ami EXPLICIT elfogadja az "audited cloud (Azure/AWS)" tárolót.
+ *     HSM Approval form SUBMITTED 2026-05-15. Cert kiadás várhatóan 2026-05-21 körül.
  *
- * Készült: 2026-05-14 (Sectigo SignMyCode order SMC1015225S638431 után, KeyLocker
- * inkompatibilitás felismerése után).
+ * A script logikája generic: a Key Vault-on lévő cert-tel működik (DigiCert EV vagy
+ * bármi más), nem hardcoded a vendor. Csak az env var-okat (AZURE_KEY_VAULT_URI +
+ * CERT_NAME) kell beállítani.
  */
 
 'use strict';
