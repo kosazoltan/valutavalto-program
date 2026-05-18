@@ -45,6 +45,33 @@ export interface ExchangeRateDistribution {
   errorMessage?: string
 }
 
+/**
+ * DRAFT torzs arfolyam letrehozas payload (egy valuta, A-I oszlopok mapping):
+ * - currencyId      = backend currencyId
+ * - baseBuyRate     = E oszlop (Gyenge multis vetel)
+ * - baseSellRate    = F oszlop (Gyenge multis eladas)
+ * - officialRate    = A oszlop (Elszamolo)
+ * - limit1Amount + limit1BuyRate + limit1SellRate = 0..50k sav
+ * - limit2Amount + limit2BuyRate + limit2SellRate = 50k..300k sav
+ * - limit3Amount + limit3BuyRate + limit3SellRate = 300k..1M sav
+ */
+export interface CreateMasterRateRequest {
+  currencyId: number
+  baseBuyRate: number
+  baseSellRate: number
+  officialRate?: number
+  limit1Amount?: number
+  limit1BuyRate?: number
+  limit1SellRate?: number
+  limit2Amount?: number
+  limit2BuyRate?: number
+  limit2SellRate?: number
+  limit3Amount?: number
+  limit3BuyRate?: number
+  limit3SellRate?: number
+  notes?: string
+}
+
 export const exchangeRateMasterApi = {
   /** Osszes torzs arfolyam - opcionalisan status szerint szurve. */
   list: async (status?: MasterRateStatus): Promise<ExchangeRateMaster[]> => {
@@ -57,6 +84,12 @@ export const exchangeRateMasterApi = {
   listActivePublished: async (): Promise<ExchangeRateMaster[]> => {
     const response = await api.get<ExchangeRateMaster[]>('/exchange-rate-master/active')
     return response.data ?? []
+  },
+
+  /** Uj torzs arfolyam letrehozas (DRAFT statusban). */
+  create: async (payload: CreateMasterRateRequest): Promise<ExchangeRateMaster> => {
+    const response = await api.post<ExchangeRateMaster>('/exchange-rate-master', payload)
+    return response.data
   },
 
   /** DRAFT -> APPROVED. */

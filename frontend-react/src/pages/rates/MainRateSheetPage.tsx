@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, LogOut, Globe, Save, ArrowRight, Info } from 'lucide-react'
+import { Send, LogOut, Globe, Save, ArrowRight, Info, Wifi, WifiOff } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
+import { exchangeRateMasterApi, type ExchangeRateMaster, type CreateMasterRateRequest } from '../../services/api/exchangeRateMaster'
+import { currencyApi } from '../../services/api/exchange-rates'
 
 /**
  * Főlap (0-s lap) — Árfolyamkészítő program ALAP felülete.
@@ -143,12 +145,20 @@ export default function MainRateSheetPage() {
   const [dirty, setDirty] = useState(false)
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; col: keyof MainRateRow } | null>(null)
   // Codex P1 #581 fix: editBuffer őrzi a felhasználó RAW input-ját az aktív cella szerkesztésekor.
-  // Anélkül a parseFloat minden billentyűzéskor felülírná a megjelenített értéket — pl. nem tudna
-  // beírni "3." vagy "3,5"-öt, mert parsed=3 vs raw="3." különbözik. Csak blur-on commitálunk.
   const [editBuffer, setEditBuffer] = useState<string>('')
   const [showHelp, setShowHelp] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const lastSavedAt = useRef<string | null>(null)
+  // Phase 2 wiring (Kosa Zoltan 2026-05-18 directive): a foertektaros által az
+  // EXE-ben végzett árfolyam-szerkesztés a KÖZPONTI szerveren tárolt
+  // ExchangeRateMaster állományt írja/olvassa. Az EXE thin client.
+  const [serverSyncState, setServerSyncState] = useState<'loading' | 'online' | 'offline' | 'idle'>('idle')
+  const [serverLastSyncAt, setServerLastSyncAt] = useState<string | null>(null)
+  const currencyIdMapRef = useRef<Map<string, number>>(new Map())
+  // Codex+Copilot PR #687: a szerver utolso szinkron snapshot-ja - csak ennek
+  // alapján döntheti el a dispatch hogy egy row tényleg módosult-e a szinkron óta.
+  // Map<currencyCode, { weakMultiBuy, weakMultiSell, settlement }>
+  const serverSnapshotRef = useRef<Map<string, { weakMultiBuy: number; weakMultiSell: number; settlement: number }>>(new Map())
 
   // Computed cross settlement for G column
   const eurRow = useMemo(() => rows.find(r => r.currency === 'EUR'), [rows])
@@ -263,6 +273,104 @@ export default function MainRateSheetPage() {
     }
   }, [flushActiveCell])
 
+  // Phase 2 wiring (Kosa Zoltan 2026-05-18): a komponens MOUNT-jakor letoltjuk a
+  // legujabb publikalt arfolyamokat a szerverrol (Aktiv ExchangeRateMaster
+  // rekordok) es feltoltjuk a localStorage cache-t. Igy a tabla NEM ures - a
+  // foertektaros mindig a kozponti legutolso adatot latja, NEM csak localStorage
+  // snapshot-ot. Ez teszi az EXE-bol thin client-et a kozponti rate-engine ele.
+  useEffect(() => {
+    let cancelled = false
+    setServerSyncState('loading')
+    const loadServerData = async () => {
+      try {
+        // 1. Lehúzzuk a currencies tablat (currencyCode -> currencyId mapping)
+        const currencies = await currencyApi.list()
+        if (cancelled) return
+        const codeToId = new Map<string, number>()
+        for (const c of currencies) {
+          codeToId.set(c.code, c.id)
+        }
+        currencyIdMapRef.current = codeToId
+
+        // 2. Lehuzzuk az aktiv (publikalt) torzs arfolyamokat
+        const serverRates = await exchangeRateMasterApi.listActivePublished()
+        if (cancelled) return
+
+        // 3. Merge: szerver-ratek a MainRateRow oszlopaiba (currencyCode alapjan)
+        const cachedRows = loadFromStorage()
+        const codeToServerRate = new Map<string, ExchangeRateMaster>()
+        for (const sr of serverRates) {
+          // currencyCode lehet hianyzo a backendben - keressuk vissza a mapbol
+          let code = sr.currencyCode
+          if (!code) {
+            const codeMatch = Array.from(codeToId.entries()).find(([_c, id]) => id === sr.currencyId)
+            code = codeMatch?.[0]
+          }
+          if (code) codeToServerRate.set(code, sr)
+        }
+
+        // Codex+Copilot PR #687: ne irjuk felul a user altal in-flight szerkesztett
+        // row-okat. Ha a `dirty` flag mar igaz mire a szerver-resp visszater, a user
+        // mar editelt - csak a snapshot-ot rogzitjuk, a row-okat erintetlen hagyjuk.
+        const snapshot = new Map<string, { weakMultiBuy: number; weakMultiSell: number; settlement: number }>()
+        for (const [code, sr] of codeToServerRate.entries()) {
+          snapshot.set(code, {
+            weakMultiBuy: Number(sr.baseBuyRate) || 0,
+            weakMultiSell: Number(sr.baseSellRate) || 0,
+            settlement: Number(sr.officialRate) || 0,
+          })
+        }
+        serverSnapshotRef.current = snapshot
+
+        if (dirty) {
+          // User mar editelt - csak a snapshot kerul, a rows erintetlen marad
+          setServerSyncState('online')
+          setServerLastSyncAt(new Date().toISOString())
+          logger.info('MainRateSheetPage', `Server sync (user editing - rows preserved): ${serverRates.length} aktiv arfolyam`)
+          return
+        }
+
+        const mergedRows = cachedRows.map((row) => {
+          const sr = codeToServerRate.get(row.currency)
+          if (!sr) return row // nincs szerver-rekord erre a valutara
+          // Backend mapping: baseBuyRate -> E (weakMultiBuy), baseSellRate -> F,
+          // officialRate -> A (settlement)
+          return {
+            ...row,
+            settlement: Number(sr.officialRate) || row.settlement,
+            weakMultiBuy: Number(sr.baseBuyRate) || row.weakMultiBuy,
+            weakMultiSell: Number(sr.baseSellRate) || row.weakMultiSell,
+          }
+        })
+        setRows(mergedRows)
+        setServerSyncState('online')
+        setServerLastSyncAt(new Date().toISOString())
+
+        // Copilot PR #687: persist merged rows to localStorage for true offline fallback
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedRows))
+        } catch (storageErr) {
+          logger.error('MainRateSheetPage', 'Failed to persist server-merged rows to localStorage', storageErr)
+          // NEM doblunk - a memoriaban levo state-tel mukodunk tovabb
+        }
+
+        logger.info('MainRateSheetPage', `Server sync: ${serverRates.length} aktiv arfolyam betoltve + cached`)
+      } catch (err) {
+        if (cancelled) return
+        logger.error('MainRateSheetPage', 'Server sync failed - fallback localStorage cache', err)
+        // Sourcery PR #687: explicit reload localStorage cache, ne fugjunk a kezdeti hydratation-tol
+        setRows(loadFromStorage())
+        setServerSyncState('offline')
+        toast.warning('Offline', 'Szerver nem elérhető — helyi cache betöltve')
+      }
+    }
+    void loadServerData()
+    return () => { cancelled = true }
+    // dirty intentional kihagyva a dep-listabol - csak az elso mount-on syncolunk,
+    // a dirty-t a runtime-ban olvasunk be a useEffect inside-ban
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Auto-save on dirty + 1 sec debounce
   useEffect(() => {
     if (!dirty) return
@@ -283,28 +391,143 @@ export default function MainRateSheetPage() {
       toast.warning('Olvasás-csak', 'Csak főértéktáros / ügyvezető küldhet ki árfolyamot')
       return
     }
-    // Codex P1 #581 iter-4: aktív cella sync commit + serialization.
-    // A flushActiveCell visszaadott rowsToDispatch tartalmazza az épp commitált értéket
-    // (NEM a React state aszinkron snapshot-ja). Phase 2-ben ezt küldjük a backend API-nak.
+
+    // Sourcery PR #687: short-circuit ha nincs szerver-szinkron - kulonben az osszes
+    // valutara "nincs ID" hibat generalna a publish loop.
+    if (serverSyncState !== 'online' || currencyIdMapRef.current.size === 0) {
+      toast.warning(
+        'Szerver nem elérhető',
+        'Ne küldje ki, amíg a kezdeti szerver-szinkron nem fejeződött be (Online indikátor).',
+      )
+      return
+    }
+
+    // Phase 2 (Kosa Zoltan 2026-05-18 directive): a thin client a szerveren levo
+    // ExchangeRateMaster aktiv arfolyamokhoz kepest CSAK A MODOSITOTT valutakat
+    // kuldi (diff-alapu). Ezzel elkeruljuk a "ujra-publish all" anti-pattern-t.
     const rowsToDispatch = flushActiveCell()
     setPublishing(true)
+
+    // 1. Mentes localStorage cache-be - kulon try-block (Sourcery PR #687)
+    // hogy a quota/private-browsing hiba NE legyen szerver-network hibanak jelolt
     try {
-      // Phase 2: backend POST /api/v1/rates/main-sheet/publish a rowsToDispatch-csel.
-      // Phase 1 MVP: helyi mentés a flushActiveCell-tal kapott sync next-rows-ból.
-      // Codex P2 #581 iter-6 fix: ha a pre-dispatch localStorage.setItem dob, NEM csak loggol —
-      // re-throw-ol, hogy a success toast NE jelenjen meg, helyette error path fusson.
       localStorage.setItem(STORAGE_KEY, JSON.stringify(rowsToDispatch))
       lastSavedAt.current = new Date().toISOString()
+    } catch (storageErr) {
+      logger.error('MainRateSheetPage', 'localStorage cache write failed', storageErr)
+      toast.error(
+        'Tárolási hiba',
+        'A helyi gyorsítótár mentése nem sikerült (böngésző tárhely / privát mód). A szerver-publikálás MÉG meg fog történni.',
+      )
+      // NEM dobunk, folytatjuk a szerver-publikalast
+    }
+
+    // 2. Codex+Copilot PR #687: csak az aktualisan MODOSITOTT row-okat kuldjuk
+    // (a serverSnapshotRef diff-jevel), NEM az osszes nem-nulla rate-eu valutat.
+    // Ezzel elkeruljuk a duplikalt szerver-publish-eket.
+    // Plus: cross-rate (crossBase != null) sorokra a `settlement` szamitott ertek
+    // a `crossSettlement` mezobol jon (enrichedRows logika replikalva itt).
+    const snapshot = serverSnapshotRef.current
+    const eurRowD = rowsToDispatch.find((r) => r.currency === 'EUR')
+    const usdRowD = rowsToDispatch.find((r) => r.currency === 'USD')
+    const eurS = eurRowD?.settlement ?? 0
+    const usdS = usdRowD?.settlement ?? 0
+
+    const modifiedRows = rowsToDispatch.flatMap((r) => {
+      if (r.weakMultiBuy <= 0 || r.weakMultiSell <= 0) return []
+      // Cross-rate row: settlement a G oszlop szamitott ertekebol jon
+      const effectiveSettlement = r.crossBase
+        ? computeCrossSettlement(r, eurS, usdS)
+        : r.settlement
+      const snap = snapshot.get(r.currency)
+      // Ha nincs szerver-snapshot, MINDIG kuldjuk (uj valuta)
+      // Ha van, csak akkor kuldjuk ha mod-detected (abs delta > 0.0001)
+      if (snap) {
+        const dB = Math.abs(r.weakMultiBuy - snap.weakMultiBuy)
+        const dS = Math.abs(r.weakMultiSell - snap.weakMultiSell)
+        const dE = Math.abs(effectiveSettlement - snap.settlement)
+        if (dB < 0.0001 && dS < 0.0001 && dE < 0.0001) return []
+      }
+      return [{ row: r, effectiveSettlement }]
+    })
+
+    if (modifiedRows.length === 0) {
+      toast.warning(
+        'Nincs változás',
+        'A táblázat azonos a központi szerver utolsó publikált állapotával — nincs mit szétküldeni.',
+      )
+      setPublishing(false)
+      return
+    }
+
+    // 3. Szerver-publikalas - kulon try-block (Sourcery PR #687)
+    try {
+      const codeToId = currencyIdMapRef.current
+      const errors: string[] = []
+      let publishedCount = 0
+
+      for (const { row, effectiveSettlement } of modifiedRows) {
+        const currencyId = codeToId.get(row.currency)
+        if (!currencyId) {
+          errors.push(`${row.currency}: nincs ID a currencies táblában`)
+          continue
+        }
+        const payload: CreateMasterRateRequest = {
+          currencyId,
+          baseBuyRate: row.weakMultiBuy,
+          baseSellRate: row.weakMultiSell,
+          officialRate: effectiveSettlement || undefined,
+          notes: `Főlap szétküldés (${new Date().toISOString()})`,
+        }
+        try {
+          // Create DRAFT -> Approve -> Publish + automatikus elosztas
+          const draft = await exchangeRateMasterApi.create(payload)
+          await exchangeRateMasterApi.approve(draft.id)
+          await exchangeRateMasterApi.publish(draft.id)
+          publishedCount += 1
+          // Snapshot frissites: a sikeres publikalas utan a snap === aktualis
+          snapshot.set(row.currency, {
+            weakMultiBuy: row.weakMultiBuy,
+            weakMultiSell: row.weakMultiSell,
+            settlement: effectiveSettlement,
+          })
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e)
+          errors.push(`${row.currency}: ${msg}`)
+          logger.error('MainRateSheetPage', `Publish failed for ${row.currency}`, e)
+        }
+      }
+
       setDirty(false)
-      await new Promise(r => setTimeout(r, 800))
-      toast.success('Szétküldve', `Főlap árfolyamok szétküldve (${rowsToDispatch.length} valuta, Phase 1: lokális mentés)`)
+      setServerSyncState('online')
+      setServerLastSyncAt(new Date().toISOString())
+
+      if (errors.length === 0) {
+        toast.success(
+          'Szétküldve',
+          `${publishedCount}/${modifiedRows.length} módosított valuta publikálva és szétküldve a pénztáraknak.`,
+        )
+      } else if (publishedCount > 0) {
+        toast.warning(
+          'Részben sikeres',
+          `${publishedCount}/${modifiedRows.length} publikálva. Hibák: ${errors.slice(0, 3).join('; ')}`,
+        )
+      } else {
+        toast.error(
+          'Sikertelen',
+          `Egyetlen valuta sem ment ki. Első hiba: ${errors[0] ?? 'ismeretlen'}`,
+        )
+        setServerSyncState('offline')
+      }
     } catch (e) {
-      logger.error('MainRateSheetPage', 'Dispatch failed (storage or network)', e)
-      toast.error('Hiba', 'Szétküldés sikertelen (lokális mentés vagy hálózat)')
+      // Csak szerver/network hiba - localStorage mar a kulon try-block-on tul vagyunk
+      logger.error('MainRateSheetPage', 'Server dispatch failed', e)
+      toast.error('Hálózati hiba', 'Szerver nem elérhető — kérlek próbáld újra.')
+      setServerSyncState('offline')
     } finally {
       setPublishing(false)
     }
-  }, [canEdit, flushActiveCell])
+  }, [canEdit, flushActiveCell, serverSyncState])
 
   const formatCell = (val: number, decimals = 2): string => {
     if (!val || val === 0) return '0'
@@ -321,6 +544,22 @@ export default function MainRateSheetPage() {
           <h1 className="text-base font-bold text-slate-900">Főlap — Elszámoló árfolyamok</h1>
           <span className="text-xs text-slate-500 px-2 py-0.5 bg-slate-100 rounded">0-s lap (Alap)</span>
           {dirty && <span className="text-xs text-orange-600 font-medium">● módosítva</span>}
+          {/* Phase 2: kozponti szerver szinkron-allapot indikator */}
+          {serverSyncState === 'loading' && (
+            <span className="text-xs text-blue-600 flex items-center gap-1">
+              <Wifi size={12} className="animate-pulse" /> Szerver szinkron…
+            </span>
+          )}
+          {serverSyncState === 'online' && (
+            <span className="text-xs text-green-700 flex items-center gap-1" title={serverLastSyncAt ?? ''}>
+              <Wifi size={12} /> Online (kp. szerver)
+            </span>
+          )}
+          {serverSyncState === 'offline' && (
+            <span className="text-xs text-red-600 flex items-center gap-1">
+              <WifiOff size={12} /> Offline — helyi cache
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
