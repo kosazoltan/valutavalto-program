@@ -152,24 +152,39 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     // A hash-chain prev_hash lekerdezeshez a meglevo `findLastEntryHashForUpdate`
     // metodust hasznaljuk (FOR UPDATE row-lock) - lasd Codex+Copilot PR #681 P1.
 
-    /** Utolso N bejegyzes idorendben csokken - hash-chain integritas-ellenorzes. */
-    @Query(value = "SELECT * FROM audit_log ORDER BY created_at DESC LIMIT :n", nativeQuery = true)
-    List<AuditLog> findTopNByOrderByCreatedAtDesc(@Param("n") int n);
+    /** Utolso N bejegyzes idorendben csokken - hash-chain integritas-ellenorzes (multi-tenant!). */
+    @Query(value = "SELECT * FROM audit_log WHERE company_id = :companyId "
+            + "ORDER BY created_at DESC LIMIT :n", nativeQuery = true)
+    List<AuditLog> findTopNByCompanyOrderByCreatedAtDesc(
+            @Param("companyId") UUID companyId,
+            @Param("n") int n);
 
-    /** Egy entitas audit-lancanak lekerdezese idorendben novekvo. */
-    @Query(value = "SELECT * FROM audit_log WHERE entity_type = :entityType AND entity_id = :entityId "
+    /**
+     * Egy entitas audit-lancanak lekerdezese idorendben novekvo - **company-scoped**.
+     *
+     * <p>Codex PR #681 P1: multi-tenant izolacio. ENGEDETLEN companyId
+     * cross-tenant data exposure-t okozna (`/api/v1/diagnostics/audit/entity/...`).
+     */
+    @Query(value = "SELECT * FROM audit_log WHERE company_id = :companyId AND "
+            + "entity_type = :entityType AND entity_id = :entityId "
             + "ORDER BY COALESCE(ts, created_at AT TIME ZONE 'UTC') ASC", nativeQuery = true)
-    List<AuditLog> findByEntityTypeAndEntityIdOrderByTsAsc(
+    List<AuditLog> findByCompanyAndEntityTypeAndEntityIdOrderByTsAsc(
+            @Param("companyId") UUID companyId,
             @Param("entityType") String entityType,
             @Param("entityId") String entityId);
 
-    /** Trace_id-szerint korrelacios lekerdezes - 1 user-flow osszes audit eseme. */
-    @Query(value = "SELECT * FROM audit_log WHERE trace_id = :traceId "
+    /** Trace_id-szerint korrelacios lekerdezes - **company-scoped** (Codex PR #681 P1). */
+    @Query(value = "SELECT * FROM audit_log WHERE company_id = :companyId AND trace_id = :traceId "
             + "ORDER BY COALESCE(ts, created_at AT TIME ZONE 'UTC') ASC", nativeQuery = true)
-    List<AuditLog> findByTraceIdOrderByTsAsc(@Param("traceId") String traceId);
+    List<AuditLog> findByCompanyAndTraceIdOrderByTsAsc(
+            @Param("companyId") UUID companyId,
+            @Param("traceId") String traceId);
 
-    /** Legfrissebb N audit-esemeny - admin diagnostics page. */
-    @Query(value = "SELECT * FROM audit_log ORDER BY COALESCE(ts, created_at AT TIME ZONE 'UTC') DESC LIMIT :n",
+    /** Legfrissebb N audit-esemeny - admin diagnostics page **company-scoped**. */
+    @Query(value = "SELECT * FROM audit_log WHERE company_id = :companyId "
+            + "ORDER BY COALESCE(ts, created_at AT TIME ZONE 'UTC') DESC LIMIT :n",
             nativeQuery = true)
-    List<AuditLog> findRecentTopN(@Param("n") int n);
+    List<AuditLog> findRecentTopNByCompany(
+            @Param("companyId") UUID companyId,
+            @Param("n") int n);
 }

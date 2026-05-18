@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.dto.diagnostics.HashChainIntegrityResponseDto;
 import hu.puzzleir.valuta.entity.AuditLog;
 import hu.puzzleir.valuta.logging.VVLogger;
 import hu.puzzleir.valuta.repository.AuditLogRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.AuditEventService;
 import hu.puzzleir.valuta.service.ErrorCodeCatalogService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -67,16 +68,15 @@ public class AuditDiagnosticsController {
 
     @GetMapping("/recent-errors")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPPORT', 'MANAGER')")
-    @Operation(summary = "Utolso N ERROR / WARN / FATAL audit-bejegyzes (alapertelmezett 100, max 500)")
+    @Operation(summary = "Utolso N ERROR / WARN / FATAL audit-bejegyzes (alapertelmezett 100, max 500) - company-scoped")
     public ResponseEntity<List<AuditLogEntryResponseDto>> recentErrors(
             @RequestParam(defaultValue = "100") int limit) {
-        // Copilot PR #681 finding: endpoint neve "recent-errors", ezert
-        // ERROR / WARN / FATAL action-okre szurunk (NEM minden audit-rekord).
-        // Lazy oversampling: 5x annyit kerunk a DB-bol mint amennyit kiadunk,
-        // post-filter az `action` mezore, levagjuk a limit-re.
+        // Codex PR #681 P1: multi-tenant izolacio - company_id-vel szurunk.
+        // Copilot finding: endpoint "recent-errors", ERROR/WARN/FATAL action-okre szur.
+        java.util.UUID companyId = SecurityUtils.getCurrentCompanyId();
         int clamped = Math.max(1, Math.min(500, limit));
         int oversample = Math.min(clamped * 5, 2000);
-        List<AuditLog> entries = auditLogRepository.findRecentTopN(oversample);
+        List<AuditLog> entries = auditLogRepository.findRecentTopNByCompany(companyId, oversample);
         return ResponseEntity.ok(entries.stream()
                 .filter(e -> e.getAction() != null && ERROR_ACTIONS.contains(e.getAction().toUpperCase()))
                 .limit(clamped)
@@ -86,11 +86,12 @@ public class AuditDiagnosticsController {
 
     @GetMapping("/recent")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPPORT', 'MANAGER')")
-    @Operation(summary = "Utolso N audit-bejegyzes szuretlen (alapertelmezett 100, max 500)")
+    @Operation(summary = "Utolso N audit-bejegyzes szuretlen (alapertelmezett 100, max 500) - company-scoped")
     public ResponseEntity<List<AuditLogEntryResponseDto>> recent(
             @RequestParam(defaultValue = "100") int limit) {
+        java.util.UUID companyId = SecurityUtils.getCurrentCompanyId();
         int clamped = Math.max(1, Math.min(500, limit));
-        List<AuditLog> entries = auditLogRepository.findRecentTopN(clamped);
+        List<AuditLog> entries = auditLogRepository.findRecentTopNByCompany(companyId, clamped);
         return ResponseEntity.ok(entries.stream()
                 .map(AuditLogEntryResponseDto::fromEntity)
                 .toList());
@@ -98,12 +99,13 @@ public class AuditDiagnosticsController {
 
     @GetMapping("/trace/{traceId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPPORT', 'MANAGER')")
-    @Operation(summary = "Egy trace_id-hez tartozo osszes audit-esemeny (kliens-backend korrelacio)")
+    @Operation(summary = "Egy trace_id-hez tartozo osszes audit-esemeny (kliens-backend korrelacio) - company-scoped")
     public ResponseEntity<List<AuditLogEntryResponseDto>> byTrace(@PathVariable String traceId) {
         if (traceId == null || !traceId.matches("[a-fA-F0-9]{16,32}")) {
             return ResponseEntity.badRequest().build();
         }
-        List<AuditLog> entries = auditLogRepository.findByTraceIdOrderByTsAsc(traceId);
+        java.util.UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<AuditLog> entries = auditLogRepository.findByCompanyAndTraceIdOrderByTsAsc(companyId, traceId);
         return ResponseEntity.ok(entries.stream()
                 .map(AuditLogEntryResponseDto::fromEntity)
                 .toList());
@@ -111,11 +113,12 @@ public class AuditDiagnosticsController {
 
     @GetMapping("/entity/{entityType}/{entityId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPPORT', 'MANAGER')")
-    @Operation(summary = "Egy entity audit-lancanak idorendi lekerdezese")
+    @Operation(summary = "Egy entity audit-lancanak idorendi lekerdezese - company-scoped")
     public ResponseEntity<List<AuditLogEntryResponseDto>> auditChain(
             @PathVariable String entityType,
             @PathVariable String entityId) {
-        List<AuditLog> entries = auditEventService.findAuditChain(entityType, entityId);
+        java.util.UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<AuditLog> entries = auditEventService.findAuditChain(companyId, entityType, entityId);
         return ResponseEntity.ok(entries.stream()
                 .map(AuditLogEntryResponseDto::fromEntity)
                 .toList());
@@ -130,11 +133,12 @@ public class AuditDiagnosticsController {
 
     @GetMapping("/hash-chain-verify")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Audit hash-chain integritas-ellenorzes (utolso N esemeny)")
+    @Operation(summary = "Audit hash-chain integritas-ellenorzes (utolso N esemeny) - company-scoped")
     public ResponseEntity<HashChainIntegrityResponseDto> verifyHashChain(
             @RequestParam(defaultValue = "100") int lastN) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         int clamped = Math.max(2, Math.min(1000, lastN));
-        Optional<UUID> brokenId = auditEventService.verifyHashChainIntegrity(clamped);
+        Optional<UUID> brokenId = auditEventService.verifyHashChainIntegrity(companyId, clamped);
         return ResponseEntity.ok(brokenId
                 .map(id -> HashChainIntegrityResponseDto.broken(clamped, id))
                 .orElseGet(() -> HashChainIntegrityResponseDto.ok(clamped)));

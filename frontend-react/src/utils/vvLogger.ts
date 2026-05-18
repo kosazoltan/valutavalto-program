@@ -23,19 +23,22 @@ type ClientContext = 'CASHIER' | 'TREASURY_HQ' | 'RFM' | 'ADMIN'
 
 /**
  * A kliens-tipus a build-time env-bol jon (Vite). NULL ha nem feliterted.
+ *
+ * Copilot PR #681 fix: a mapping most a kanonikus AppModeRoleConstants
+ * appMode-okat hasznalja (penztar/ertektar/ertekszallito/full/rate-maker).
+ * Lasd: frontend-react/src/types/electron.d.ts:428 + auth.test.ts.
  */
 function detectClientContext(): ClientContext | undefined {
   const env = import.meta.env
   const mode = env.VITE_APP_MODE as string | undefined
   switch (mode) {
-    case 'cashier':
+    case 'penztar':
       return 'CASHIER'
-    case 'treasury':
-    case 'central':
+    case 'ertektar':
+    case 'ertekszallito':
       return 'TREASURY_HQ'
     case 'rate-maker':
       return 'RFM'
-    case 'admin':
     case 'full':
       return 'ADMIN'
     default:

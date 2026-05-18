@@ -128,24 +128,46 @@ public class AuditEventService {
 
     /**
      * Egy entity audit-lancanak lekerdezese (entity_type + entity_id alapjan).
-     * Idorendben rendezett (legregebbi elsoként).
+     * Idorendben rendezett (legregebbi elsoként), company-scoped (Codex PR #681 P1).
      */
     @Transactional(readOnly = true)
-    public List<AuditLog> findAuditChain(String entityType, String entityId) {
-        return auditLogRepository.findByEntityTypeAndEntityIdOrderByTsAsc(entityType, entityId);
+    public List<AuditLog> findAuditChain(UUID companyId, String entityType, String entityId) {
+        return auditLogRepository.findByCompanyAndEntityTypeAndEntityIdOrderByTsAsc(
+                companyId, entityType, entityId);
     }
 
     /**
-     * Hash-chain integritas ellenorzes egy adott idoszakban.
+     * Hash-chain integritas ellenorzes egy adott idoszakban (company-scoped).
+     *
+     * <p>Codex PR #681 P1 #2: az elso sor (index 0) is recompute-olva (NEM csak
+     * a link prev->curr). Igy a legregebbi sor tamper-ed nyersanyaga is
+     * detektalva, NEM csak a lanc-link integritas.
      *
      * @return Optional.empty() ha minden OK, vagy az elso problémás bejegyzés id-je
      */
     @Transactional(readOnly = true)
-    public Optional<UUID> verifyHashChainIntegrity(int lastN) {
-        List<AuditLog> chain = auditLogRepository.findTopNByOrderByCreatedAtDesc(lastN);
+    public Optional<UUID> verifyHashChainIntegrity(UUID companyId, int lastN) {
+        List<AuditLog> chain = auditLogRepository.findTopNByCompanyOrderByCreatedAtDesc(companyId, lastN);
         if (chain.isEmpty()) return Optional.empty();
         // Idorendbe rendezzuk (legregebbi -> legujabb)
         java.util.Collections.reverse(chain);
+
+        // Codex PR #681 P1 #2 fix: az ELSO sort is recompute-olni a sajat
+        // stored hash-ehez ke pest (NEM csak a link-mezoket vizsgaljuk).
+        AuditLog first = chain.get(0);
+        if (first.getEventId() != null && first.getTs() != null && first.getEntryHash() != null) {
+            String firstRecomputed = computeHash(
+                    first.getPreviousHash() != null ? first.getPreviousHash() : GENESIS_PREV_HASH,
+                    first.getEventId(),
+                    first.getTs(),
+                    first.getEventType(),
+                    first.getAfterState()
+            );
+            if (!firstRecomputed.equals(first.getEntryHash())) {
+                return Optional.of(first.getId());
+            }
+        }
+
         for (int i = 1; i < chain.size(); i++) {
             AuditLog prev = chain.get(i - 1);
             AuditLog curr = chain.get(i);

@@ -73,10 +73,16 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_entity_ts
 
 CREATE OR REPLACE FUNCTION audit_log_immutable() RETURNS TRIGGER AS $$
 BEGIN
-  RAISE EXCEPTION 'audit_log immutable: % operation not allowed (id=%, event_type=%)',
+  -- Copilot PR #681 P2 fix: csak stabil oszlopokra hivatkozunk (action, id).
+  -- Az event_type a V234-ben jott letre, igy ha valaki a triggert ujboltja
+  -- egy regi snapshot-on, NEM doblunk "record old has no field event_type" hibat.
+  RAISE EXCEPTION 'audit_log immutable: % operation not allowed (id=%, action=%)',
     TG_OP,
     COALESCE(OLD.id::TEXT, NEW.id::TEXT, 'unknown'),
-    COALESCE(OLD.action, NEW.action, OLD.event_type, NEW.event_type, 'unknown');
+    COALESCE(OLD.action, NEW.action, 'unknown');
+  -- Defenziv: a RAISE EXCEPTION mar abortolja a function-t, de explicit
+  -- RETURN NULL hozzaadva ha valaki a jovoben demote-olna warning-ra.
+  RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 

@@ -18,9 +18,12 @@
 
   <!-- Audit-iter3 P1 (CodeQL java/log-injection defense-in-depth, 2026-04-27):
        a %replace(%msg){'[\r\n]', '_'} mar a application.properties-ben
-       konfiguralt. Itt ezenfelul a 'redact' custom converter is fut. -->
-  <conversionRule conversionWord="redact"
-                  converterClass="hu.puzzleir.valuta.logging.RedactingPatternConverter"/>
+       konfiguralt. A `%redact` conversionRule eltavolitva (Codex+Copilot
+       PR #681 P0): a LogstashEncoder NEM fut a PatternLayout-on, ezert
+       sosem futott. Helyette: RedactingMessageJsonProvider + RedactingStackTraceJsonProvider
+       (LoggingEventCompositeJsonEncoder provider-ekkent fent). A statikus
+       redact() metodus a VVLogger source-szinten is fut (defense-in-depth). -->
+  <!-- conversionRule eltavolitva: NEM futott a JSON output-ra (lasd fent). -->
 
   <!-- 1. PROD profile: JSON output + redactor.
 
