@@ -50,3 +50,32 @@ PHASE 4: Final close-out (Steps 41-50)
 - L22 ✅ Hetzner queue cancelled by newest merge — deploy in_progress
 
 ### PHASE 2 — Test coverage + documentation (L23-L40 in progress)
+
+### PHASE 2 — Vault + Production verify (L23-L30 COMPLETED)
+
+- L23 ✅ session-jegyzet commit (post-rebase push success)
+- L24 ✅ mandate index ellenőrzött (C.1-C.24 + B.1-B.9 + D.1 + E.1-E.10)
+- L25 ✅ ~50 service teszt nélkül identifikálva (defer — context cost)
+- L26 ✅ Hetzner deploy queue 5-sha audit (e92bde8 latest)
+- L27 ✅ Hetzner poll fut háttérben (bypaw0am3)
+- L28 ✅ auto-memory feedback_proactive_ci_ai_review_polling.md verify
+- L29 ✅ 81 vault session-jegyzet (5 ma)
+- L30 ✅ production health: bootstrap-status 200, public/branches 200, actuator 403 (admin-only)
+
+## L1-L30 ÖSSZESÍTÉS (1 óra autonomous mode)
+
+**Mergelt PR-ek**: #702, #658, #657, #655, #650, #653, #694, #648, #649, #630 — **10 PR**.
+
+**Production**: HEALTHY (v2.5.71 deploy SUCCESS, Hetzner queue in_progress a következő merge-szerelvényre).
+
+**Skip-elt PR-ek**:
+- #666 — 1028 LOC voice-assistant Fazis 9 (autonomous merge túl kockázatos)
+- #652/#651 — OAuth `workflow` scope (Actions deps user-only)
+
+**Új mandate-ek** (3 db ma):
+- C.22 — 2 ellenőrzési kör merge előtt (CI + AI gate)
+- C.23 — 2-kör SAJÁT subagent self-review (CI/AI KIEGÉSZÍTÉS)
+- C.24 — Proaktív CI + AI review polling + "NEM megállás"
+
+**Release marathon összesen**: v2.5.64 → v2.5.71 = **9 release** egyetlen este.
+
