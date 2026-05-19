@@ -776,8 +776,12 @@ public class TransactionService {
         // PMT_STRICT_ENFORCEMENT=false (default) -> WARN-szintu naplozas (kompatibilitas
         // a v2.5.59 kliensekhez). v2.5.61+ release-ben a default 'true' lesz, miutan
         // minden penztaros gepen lefutott a v2.5.60 telepito.
-        boolean strictMode = "true".equalsIgnoreCase(
-            systemParameterService.getValue("PMT_STRICT_ENFORCEMENT", "false"));
+        //
+        // PR #695 CI fix: defensive null-check a `systemParameterService`-re,
+        // mert a PepSourceOfFundsTest mockolt TransactionService-be nem injectalja
+        // a system-parameter szervizt. Ha null -> default strictMode=false.
+        boolean strictMode = systemParameterService != null
+            && "true".equalsIgnoreCase(systemParameterService.getValue("PMT_STRICT_ENFORCEMENT", "false"));
 
         // PEP minoseg kotelezo, ha isPep=true
         if (Boolean.TRUE.equals(customerIsPep) && (customerPepKind == null || customerPepKind.isBlank())) {
