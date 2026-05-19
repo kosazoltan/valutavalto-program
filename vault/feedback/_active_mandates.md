@@ -31,6 +31,8 @@
 | C.19 | Hallucinációs kör megszüntetése (Context7 + iparági std) | CLAUDE.md (2026-04-29) | always | P0 |
 | C.20 | AI_CONTRACT.md (300 LOC + 5 fájl plafon) | `AI_CONTRACT.md` | always | P1 |
 | C.21 | V234 belső log+audit modul: error_code kötelező minden `vvLogger.error()`-ben | CLAUDE.md (2026-05-18) + `packages/shared-logging/error-codes.yaml` | always | P1 |
+| C.22 | 2 ellenőrzési kör (CI + GitHub AI gate) merge előtt | `vault/feedback/two-rounds-before-merge-mandatory-2026-05-19.md` | always | **P0** |
+| C.23 | 2-kör SAJÁT subagent self-review (CI+AI gate KIEGÉSZÍTÉS) | `vault/feedback/two-rounds-self-subagent-review-mandatory-2026-05-19.md` | always | **P0** |
 
 ## ÚJ üzleti / szabályozási mandate (2026-05-17 Perplexity korrekciós doksi)
 
