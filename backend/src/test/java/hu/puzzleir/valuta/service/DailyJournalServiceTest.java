@@ -1,11 +1,14 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionStatus;
 import hu.puzzleir.valuta.entity.TransactionType;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -31,10 +35,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 /**
- * Sprint A P2.4 (v2.5.68) — DailyJournalService unit tesztek (legacy NAPKONYV).
+ * Sprint A P2.4 (v2.5.68) + v2.5.69 Copilot P0 #705 follow-up — DailyJournalService unit tesztek.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -48,6 +53,7 @@ class DailyJournalServiceTest {
     private DailyJournalService service;
 
     private final UUID branchId = UUID.randomUUID();
+    private final UUID companyId = UUID.randomUUID();
     private final LocalDate testDate = LocalDate.of(2026, 5, 19);
 
     @BeforeEach
@@ -87,23 +93,61 @@ class DailyJournalServiceTest {
     }
 
     @Test
-    @DisplayName("Üres tranzakció lista → PDF generálódik (csak fejléc + 0 db tranz)")
-    void emptyTransactions_pdfWithHeader() throws IOException {
-        Branch branch = createBranch();
-        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
-        when(typedQuery.getResultList()).thenReturn(List.of());
+    @DisplayName("Copilot P0 #705: cross-tenant branch → ValidationException (IDOR védelem)")
+    void crossTenantBranch_throws() {
+        UUID otherCompanyId = UUID.randomUUID();
+        Branch otherBranch = createBranch(otherCompanyId);
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(otherBranch));
 
-        byte[] pdf = service.generatePdf(branchId, testDate);
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);  // ELTÉRŐ
 
-        assertThat(pdf).isNotEmpty();
-        // PDF magic: %PDF-
-        assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
+            assertThatThrownBy(() -> service.generatePdf(branchId, testDate))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("cross-tenant access blocked");
+        }
     }
 
     @Test
-    @DisplayName("3 tranzakció (BUY+SELL+CONVERSION) → PDF generálódik + összesítés")
-    void threeTxs_pdfGenerated() throws IOException {
-        Branch branch = createBranch();
+    @DisplayName("Branch.company NULL → ValidationException (cross-tenant blokk)")
+    void branchWithoutCompany_throws() {
+        Branch branchNoCompany = new Branch();
+        branchNoCompany.setId(branchId);
+        branchNoCompany.setCode("BR001");
+        branchNoCompany.setName("Test");
+        branchNoCompany.setCompany(null);
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branchNoCompany));
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            assertThatThrownBy(() -> service.generatePdf(branchId, testDate))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("cross-tenant access blocked");
+        }
+    }
+
+    @Test
+    @DisplayName("Üres tranzakció lista (saját cég branch) → PDF generálódik")
+    void emptyTransactions_ownCompany_pdfWithHeader() throws IOException {
+        Branch branch = createBranch(companyId);
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(typedQuery.getResultList()).thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            byte[] pdf = service.generatePdf(branchId, testDate);
+
+            assertThat(pdf).isNotEmpty();
+            assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
+        }
+    }
+
+    @Test
+    @DisplayName("3 tranzakció (saját cég) → PDF + összesítés")
+    void threeTxs_ownCompany_pdfGenerated() throws IOException {
+        Branch branch = createBranch(companyId);
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
 
         Currency eur = new Currency();
@@ -115,42 +159,91 @@ class DailyJournalServiceTest {
 
         when(typedQuery.getResultList()).thenReturn(List.of(buy, sell, conv));
 
-        byte[] pdf = service.generatePdf(branchId, testDate);
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
 
-        assertThat(pdf).isNotEmpty();
-        assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
-        // PDF size > 1KB legalább (fejléc + 3 tranzakció + összesítés)
-        assertThat(pdf.length).isGreaterThan(1000);
+            byte[] pdf = service.generatePdf(branchId, testDate);
+
+            assertThat(pdf).isNotEmpty();
+            assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
+            assertThat(pdf.length).isGreaterThan(1000);
+        }
     }
 
     @Test
-    @DisplayName("JPQL query a financialEffective=TRUE szűrőt tartalmazza (parent CONVERSION kizárás)")
-    void query_filtersFinancialEffective() throws IOException {
-        Branch branch = createBranch();
+    @DisplayName("Copilot P3 #706: 100 tranzakció → render cap + 'tovabbi tranzakcio' marker (no exception)")
+    void manyTransactions_truncationMarker() throws IOException {
+        Branch branch = createBranch(companyId);
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+
+        Currency eur = new Currency();
+        eur.setCode("EUR");
+
+        java.util.List<Transaction> manyTxs = new java.util.ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            manyTxs.add(createTx("V2026" + String.format("%06d", i + 1),
+                    TransactionType.BUY, eur, "100", "36500",
+                    LocalTime.of(8 + i / 60, i % 60)));
+        }
+        when(typedQuery.getResultList()).thenReturn(manyTxs);
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            byte[] pdf = service.generatePdf(branchId, testDate);
+
+            assertThat(pdf).isNotEmpty();
+            assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
+
+            // PDFBox text extraction a render cap verifikálásához
+            try (var doc = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+                String text = new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
+                // Truncation marker megjelenik a PDF szövegben
+                assertThat(text).contains("tovabbi tranzakcio");
+                // A fejléc szöveg is benne van
+                assertThat(text).contains("NAPKONYV");
+                // Tranzakciok szama: 100 a header-ben
+                assertThat(text).contains("Tranzakciok szama: 100");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("JPQL financialEffective=TRUE + status=COMPLETED")
+    void query_filtersFinancialEffectiveAndStatus() throws IOException {
+        Branch branch = createBranch(companyId);
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         when(typedQuery.getResultList()).thenReturn(List.of());
 
-        service.generatePdf(branchId, testDate);
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
 
-        org.mockito.ArgumentCaptor<String> jpqlCaptor =
-                org.mockito.ArgumentCaptor.forClass(String.class);
-        org.mockito.Mockito.verify(entityManager).createQuery(jpqlCaptor.capture(), eq(Transaction.class));
-        String jpql = jpqlCaptor.getValue();
-        assertThat(jpql).contains("financialEffective");
-        assertThat(jpql).contains("TRUE");
-        // Status szűrés is
-        assertThat(jpql).contains("status");
+            service.generatePdf(branchId, testDate);
+
+            org.mockito.ArgumentCaptor<String> jpqlCaptor =
+                    org.mockito.ArgumentCaptor.forClass(String.class);
+            org.mockito.Mockito.verify(entityManager).createQuery(jpqlCaptor.capture(), eq(Transaction.class));
+            String jpql = jpqlCaptor.getValue();
+            assertThat(jpql).contains("financialEffective");
+            assertThat(jpql).contains("TRUE");
+            assertThat(jpql).contains("status");
+        }
     }
 
     // ==========================================================================
     // Helpers
     // ==========================================================================
 
-    private Branch createBranch() {
+    private Branch createBranch(UUID branchCompanyId) {
+        Company c = new Company();
+        c.setId(branchCompanyId);
+        c.setCode("EBC");
+
         Branch b = new Branch();
         b.setId(branchId);
         b.setCode("BR001");
         b.setName("Teszt iroda");
+        b.setCompany(c);
         return b;
     }
 
