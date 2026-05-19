@@ -1,0 +1,81 @@
+package hu.puzzleir.valuta.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+/**
+ * V238 (2026-05-19) — Currency modositasok immutable audit log.
+ *
+ * <p>Kosa Zoltan user-direktiva: az Arfolyamkeszitoben minden valuta-modositast
+ * rgzítsunk, az adatbazisbol soha nem torolunk (Pmt./NAV 8-eves megorzes).</p>
+ *
+ * <p>A `currency_audit_log` table-en immutable trigger (UPDATE+DELETE tiltott).
+ * V234 audit_log-hoz hasonlo tamper-evidence, de NEM hash-chain (nem szukseges
+ * itt, mert a Currency modositasok ritkak).</p>
+ */
+@Entity
+@Table(name = "currency_audit_log")
+@EntityListeners(AuditingEntityListener.class)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class CurrencyAuditLog {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "currency_id", nullable = false)
+    private Long currencyId;
+
+    @Column(name = "currency_code", nullable = false, length = 10)
+    private String currencyCode;
+
+    /**
+     * CREATE / ACTIVATE / DEACTIVATE / UPDATE.
+     */
+    @Column(nullable = false, length = 20)
+    private String action;
+
+    /** Az allapot a muvelet ELOTT (JSONB), CREATE eseten NULL. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "old_value", columnDefinition = "jsonb")
+    private String oldValue;
+
+    /** Az allapot a muvelet UTAN (JSONB). */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "new_value", columnDefinition = "jsonb", nullable = false)
+    private String newValue;
+
+    @Column(name = "worker_id")
+    private Long workerId;
+
+    @Column(name = "company_id")
+    private UUID companyId;
+
+    @Column(name = "ip_address", length = 45)
+    private String ipAddress;
+
+    @Column(name = "user_agent", length = 500)
+    private String userAgent;
+
+    @Column(columnDefinition = "TEXT")
+    private String note;
+
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+}

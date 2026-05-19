@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, LogOut, Globe, Save, ArrowRight, Info, Wifi, WifiOff } from 'lucide-react'
+import { Send, LogOut, Globe, Save, ArrowRight, Info, Wifi, WifiOff, Settings } from 'lucide-react'
+import { HyperFormula } from 'hyperformula'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
 import { exchangeRateMasterApi, type ExchangeRateMaster, type CreateMasterRateRequest } from '../../services/api/exchangeRateMaster'
 import { currencyApi } from '../../services/api/exchange-rates'
+import CurrencyManagerModal from './components/CurrencyManagerModal'
 
 /**
  * Főlap (0-s lap) — Árfolyamkészítő program ALAP felülete.
@@ -53,7 +55,10 @@ interface MainRateRow {
   crossBase: 'EUR' | 'USD' | null  // melyik főváluta a kereszt alapja (NULL ha nem kereszt)
 }
 
-// Default 19 valuta + EUA (eurázsiai egyezmény) per spec screenshot
+// v2.5.61 (2026-05-19 user-direktíva): 6 valuta törölve a Főlapról
+// (DKK, NOK, SEK, HRK, BGN, RCH) — alacsony forgalmúak / már nem aktuálisak
+// (HRK 2023-tól EUR; BGN belátható időn belül; skandináv koronák nem váltottak
+// kollégánál; RCH custom volt). 22 valuta marad.
 const DEFAULT_CURRENCIES: Array<Pick<MainRateRow, 'currency' | 'crossBase'>> = [
   { currency: 'EUR', crossBase: null }, // főváluta
   { currency: 'USD', crossBase: null }, // főváluta
@@ -61,16 +66,11 @@ const DEFAULT_CURRENCIES: Array<Pick<MainRateRow, 'currency' | 'crossBase'>> = [
   { currency: 'CHF', crossBase: null }, // főváluta
   { currency: 'AUD', crossBase: null }, // OTP-ből (B oszlop)
   { currency: 'CAD', crossBase: null }, // OTP-ből (B oszlop)
-  { currency: 'DKK', crossBase: null },
   { currency: 'JPY', crossBase: null }, // 3 tizedes
-  { currency: 'NOK', crossBase: null },
-  { currency: 'SEK', crossBase: null },
   { currency: 'CZK', crossBase: 'EUR' },
-  { currency: 'HRK', crossBase: null },
   { currency: 'PLN', crossBase: 'EUR' },
   { currency: 'RON', crossBase: 'EUR' },
   { currency: 'RSD', crossBase: 'EUR' },
-  { currency: 'BGN', crossBase: 'EUR' },
   { currency: 'ILS', crossBase: 'USD' },
   { currency: 'UAH', crossBase: 'USD' },
   { currency: 'RUB', crossBase: 'USD' },
@@ -82,8 +82,11 @@ const DEFAULT_CURRENCIES: Array<Pick<MainRateRow, 'currency' | 'crossBase'>> = [
   { currency: 'BRL', crossBase: 'USD' },
   { currency: 'MXN', crossBase: 'USD' },
   { currency: 'NZD', crossBase: 'USD' },
-  { currency: 'RCH', crossBase: null },
 ]
+
+// v2.5.61: a régi localStorage cache-eket szűrjük, hogy a 6 törölt valuta
+// ne maradjon a UI-on (defenzív, ha a user már elindította a régi v2.5.60-at).
+const REMOVED_CURRENCIES = new Set(['DKK', 'NOK', 'SEK', 'HRK', 'BGN', 'RCH'])
 
 const STORAGE_KEY = 'arfolyamkeszito.mainSheet.v1'
 
@@ -105,17 +108,50 @@ function loadFromStorage(): MainRateRow[] {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return DEFAULT_CURRENCIES.map(c => emptyRow(c.currency, c.crossBase))
     const parsed = JSON.parse(raw) as MainRateRow[]
+    // v2.5.61: szűrjük a törölt valutákat — a régi localStorage-ban még benne
+    // lehetnek (DKK/NOK/SEK/HRK/BGN/RCH). Defensive cleanup mounton.
+    const filtered = parsed.filter(r => !REMOVED_CURRENCIES.has(r.currency))
     // Defensive: ha új valuta jött a default listába, hozzáadjuk
-    const existingCurrencies = new Set(parsed.map(r => r.currency))
+    const existingCurrencies = new Set(filtered.map(r => r.currency))
     for (const def of DEFAULT_CURRENCIES) {
       if (!existingCurrencies.has(def.currency)) {
-        parsed.push(emptyRow(def.currency, def.crossBase))
+        filtered.push(emptyRow(def.currency, def.crossBase))
       }
     }
-    return parsed
+    return filtered
   } catch (e) {
     logger.error('MainRateSheetPage', 'Storage load failed', e)
     return DEFAULT_CURRENCIES.map(c => emptyRow(c.currency, c.crossBase))
+  }
+}
+
+// v2.5.61: HyperFormula oszlop-mapping. A spreadsheet sheet 9 oszlop:
+// A=settlement, B=otp, C=helper, D=currency (CSAK label), E=weakMultiBuy,
+// F=weakMultiSell, G=crossSettlement (computed), H=crossRate, I=wholesale.
+// D oszlop VÉDETT — nem accept formula, csak text label.
+const FORMULA_COLUMNS = ['settlement', 'otp', 'helper', 'weakMultiBuy', 'weakMultiSell', 'wholesale'] as const
+type FormulaColumn = typeof FORMULA_COLUMNS[number]
+// Humanreadable oszlop-nevek a user-facing hibajelzéshez (Copilot P2 #4 fix).
+const COL_NAMES: Record<FormulaColumn, string> = {
+  settlement: 'A — Elszámoló',
+  otp: 'B — OTP',
+  helper: 'C — Segéd',
+  weakMultiBuy: 'E — Gyenge multis vétel',
+  weakMultiSell: 'F — Gyenge multis eladás',
+  wholesale: 'I — Nagybani',
+}
+
+/** HyperFormula formula key = `${rowIdx}.${col}`. Csak felhasználói képletek tárolódnak. */
+type FormulaMap = Record<string, string>
+const FORMULA_STORAGE_KEY = 'arfolyamkeszito.mainSheet.formulas.v1'
+
+function loadFormulasFromStorage(): FormulaMap {
+  try {
+    const raw = localStorage.getItem(FORMULA_STORAGE_KEY)
+    if (!raw) return {}
+    return JSON.parse(raw) as FormulaMap
+  } catch {
+    return {}
   }
 }
 
@@ -144,10 +180,18 @@ export default function MainRateSheetPage() {
   const [rows, setRows] = useState<MainRateRow[]>(() => loadFromStorage())
   const [dirty, setDirty] = useState(false)
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; col: keyof MainRateRow } | null>(null)
+  // v2.5.61 (HyperFormula): képletek per cella, kulcs = `${rowIdx}.${col}`. Csak
+  // a felhasználói képletek vannak itt — fix számérték NEM kerül ide.
+  const [formulas, setFormulas] = useState<FormulaMap>(() => loadFormulasFromStorage())
+  // HyperFormula instance — Excel-szerű cell-formula motor 380+ függvénnyel +
+  // dependency-graph + auto-recalc. License: GPL v3 (internal company use OK).
+  const hfRef = useRef<HyperFormula | null>(null)
   // Codex P1 #581 fix: editBuffer őrzi a felhasználó RAW input-ját az aktív cella szerkesztésekor.
   const [editBuffer, setEditBuffer] = useState<string>('')
   const [showHelp, setShowHelp] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  // V238 (2026-05-19): Valutakezelő modal — uj valuta hozzaadasa / aktivalas / deaktivalas
+  const [showCurrencyManager, setShowCurrencyManager] = useState(false)
   const lastSavedAt = useRef<string | null>(null)
   // Phase 2 wiring (Kosa Zoltan 2026-05-18 directive): a foertektaros által az
   // EXE-ben végzett árfolyam-szerkesztés a KÖZPONTI szerveren tárolt
@@ -187,10 +231,108 @@ export default function MainRateSheetPage() {
   // → Settlement column read-only ha crossBase != null. A renderelés `aIsAuto = !!row.crossBase`
   //   alapján dönt span vs. input között a render-loop-ban.
 
-  // Codex P1 #581 iter-4 fix: PURE függvény ami sync visszaadja a next rows array-t
-  // (vagy null ha no-op). Ezáltal a save/dispatch szinkronoun tud serializálni
-  // anélkül, hogy React state batching race-elne (a setRows async, ezért a
-  // következő JSON.stringify(rows) még a régi snapshot-ot látja).
+  // v2.5.61 (2026-05-19 user-direktíva): HyperFormula instance létrehozása mount-kor.
+  // A spreadsheet 9 oszlopa: A=settlement, B=otp, C=helper, D=currency (label,
+  // VÉDETT), E=weakMultiBuy, F=weakMultiSell, G=crossSettlement (számolt JS-ben),
+  // H=crossRate, I=wholesale. A user az E-F-I-A-B-C-be írhat képletet "=" prefix-szel.
+  useEffect(() => {
+    if (hfRef.current) return // Csak egyszer
+    const hf = HyperFormula.buildEmpty({ licenseKey: 'gpl-v3' })
+    hf.addSheet('main')
+    hfRef.current = hf
+    return () => {
+      hf.destroy()
+      hfRef.current = null
+    }
+  }, [])
+
+  // Reaktív szinkronizáció: amikor a `rows` vagy `formulas` állapot változik,
+  // frissítjük a HyperFormula sheet tartalmát, majd újra olvassuk a kalkulált
+  // értékeket. A loop megakadályozására useRef compare-rel ellenőrizzük, hogy
+  // tényleg változott-e a recomputed érték.
+  const hfRecomputeRef = useRef<boolean>(false)
+  useEffect(() => {
+    const hf = hfRef.current
+    if (!hf) return
+    if (hfRecomputeRef.current) {
+      hfRecomputeRef.current = false
+      return
+    }
+    const sheetId = hf.getSheetId('main')
+    if (sheetId === undefined) return
+    // Build full sheet data (9 col × N row). Cells with formulas use the formula
+    // string ("=A1+B1"); cells without formulas use the raw numeric value.
+    // Copilot P2 #697 #3: cross-base row-okra (CZK, PLN, RON, RSD, BAM, TRY,
+    // ILS, UAH, RUB, CNY, THB, BRL, MXN, NZD) az A-oszlop settlement érték
+    // JS-ben származtatott (enrichedRows.settlement = computeCrossSettlement).
+    // Az `enrichedRows`-t használjuk a HF feltöltéshez, NEM a raw `rows`-t,
+    // különben a `=A8*...` képletek 0-t számolnának keresztarány-row referencia
+    // esetén.
+    const sourceRows = rows.map((r) => {
+      if (!r.crossBase) return r
+      const derivedSettlement = computeCrossSettlement(r, eurSettlement, usdSettlement)
+      return { ...r, settlement: derivedSettlement, crossSettlement: derivedSettlement }
+    })
+    const data: (string | number | null)[][] = sourceRows.map((row, idx) => {
+      const formulaCell = (col: FormulaColumn, fallback: number): string | number =>
+        formulas[`${idx}.${col}`] ?? fallback
+      return [
+        formulaCell('settlement', row.settlement),       // A
+        formulaCell('otp', row.otp),                      // B
+        formulaCell('helper', row.helper),                // C
+        row.currency,                                     // D (label)
+        formulaCell('weakMultiBuy', row.weakMultiBuy),    // E
+        formulaCell('weakMultiSell', row.weakMultiSell),  // F
+        row.crossSettlement,                              // G (JS-számolt, cross-base esetén = settlement)
+        row.crossRate,                                    // H
+        formulaCell('wholesale', row.wholesale),          // I
+      ]
+    })
+    try {
+      hf.setSheetContent(sheetId, data)
+    } catch (e) {
+      logger.warn('MainRateSheetPage', 'HyperFormula setSheetContent failed', e)
+      return
+    }
+    // Olvassuk vissza a számolt értékeket. Ha bármi képlet-cella eltér a rows
+    // jelenlegi értékétől, frissítjük (egyszeri batch update).
+    const numericOrZero = (v: unknown): number => {
+      if (typeof v === 'number' && Number.isFinite(v)) return v
+      return 0
+    }
+    let mutated = false
+    const nextRows = rows.map((row, idx) => {
+      const newRow = { ...row }
+      const cols: Array<[FormulaColumn, keyof MainRateRow, number]> = [
+        ['settlement', 'settlement', 0],
+        ['otp', 'otp', 1],
+        ['helper', 'helper', 2],
+        ['weakMultiBuy', 'weakMultiBuy', 4],
+        ['weakMultiSell', 'weakMultiSell', 5],
+        ['wholesale', 'wholesale', 8],
+      ]
+      for (const [formulaCol, rowKey, hfCol] of cols) {
+        if (!formulas[`${idx}.${formulaCol}`]) continue
+        const cellVal = hf.getCellValue({ sheet: sheetId, row: idx, col: hfCol })
+        const num = numericOrZero(cellVal)
+        if (newRow[rowKey] !== num) {
+          ;(newRow as Record<string, unknown>)[rowKey] = num
+          mutated = true
+        }
+      }
+      return newRow
+    })
+    if (mutated) {
+      hfRecomputeRef.current = true
+      setRows(nextRows)
+    }
+  }, [rows, formulas, eurSettlement, usdSettlement])
+
+  // Codex P1 #581 iter-4 (eredeti) + v2.5.61 (HyperFormula): sync visszaadja
+  // a next rows snapshot-ot a save/dispatch caller-nek. NEM tisztán pure —
+  // setFormulas() side-effect-et hív, ha "=" képletet/képlet-törlést detektál
+  // (Copilot P2 #697). De a returned snapshot a save/dispatch szempontjából
+  // VALÓDI tartalmat hordoz (HF synchronous evaluation, NEM placeholder 0).
   const computeCellCommit = useCallback((
     currentRows: MainRateRow[],
     rowIdx: number,
@@ -200,6 +342,57 @@ export default function MainRateSheetPage() {
     if (col === 'currency' || col === 'crossBase' || col === 'crossSettlement') return null
     if (col === 'settlement' && currentRows[rowIdx]?.crossBase) return null
     const trimmed = raw.trim()
+
+    // v2.5.61 (HyperFormula): "=" prefix-szel kezdődő input → képlet.
+    const formulaKey = `${rowIdx}.${col}`
+    const isFormulaCol = FORMULA_COLUMNS.includes(col as FormulaColumn)
+    if (isFormulaCol && trimmed.startsWith('=')) {
+      // Codex P1 (PR #697): a save/dispatch path szinkron snapshot-ra
+      // bizalmas — ha placeholder 0-t adunk vissza, a publikálás VAGY
+      // skip-eli a row-t (weakMultiBuy<=0 guard a dispatch-ben) VAGY
+      // 0-t küld a szervernek. SYNC formula evaluation: HyperFormula
+      // `calculateFormula` aktuális sheet state-en, az eredmény azonnal
+      // a `next[rowIdx][col]`-ba kerül. Az async useEffect később verify-ol
+      // (idempotens).
+      setFormulas(prev => ({ ...prev, [formulaKey]: trimmed }))
+      const hf = hfRef.current
+      let evaluated = 0
+      if (hf) {
+        try {
+          const sheetId = hf.getSheetId('main')
+          if (sheetId !== undefined) {
+            const result = hf.calculateFormula(trimmed, sheetId)
+            if (typeof result === 'number' && Number.isFinite(result)) {
+              evaluated = result
+            } else if (result && typeof result === 'object' && 'type' in result) {
+              // Copilot P2 #697 #4: DetailedCellError (DIV/0, VALUE, REF, ...)
+              // — NEM némán 0-ra konvertálunk, hanem warn-olunk + toast-tal
+              // user-facing error indicator. Az érték a régi marad (rollback).
+              const errType = String((result as { type: unknown }).type ?? 'UNKNOWN')
+              logger.warn('MainRateSheetPage', `Formula error in cell ${formulaKey}: ${errType}`, trimmed)
+              toast.warning('Képlet hiba', `${COL_NAMES[col as FormulaColumn] ?? col} cellában: ${errType} (${trimmed})`)
+              const currentValue = currentRows[rowIdx]?.[col]
+              evaluated = typeof currentValue === 'number' ? currentValue : 0
+            }
+          }
+        } catch (e) {
+          logger.warn('MainRateSheetPage', 'sync formula eval failed', e)
+        }
+      }
+      const next = [...currentRows]
+      next[rowIdx] = { ...next[rowIdx]!, [col]: evaluated }
+      return next
+    }
+    // Ha korábban képlet volt itt, de most fix számot ad meg a user, töröljük
+    // a képletet a map-ből.
+    if (isFormulaCol && formulas[formulaKey]) {
+      setFormulas(prev => {
+        const copy = { ...prev }
+        delete copy[formulaKey]
+        return copy
+      })
+    }
+
     let nextValue: number
     if (trimmed === '') {
       nextValue = 0
@@ -214,7 +407,7 @@ export default function MainRateSheetPage() {
     const next = [...currentRows]
     next[rowIdx] = { ...next[rowIdx]!, [col]: nextValue }
     return next
-  }, [])
+  }, [formulas])
 
   // Side-effect wrapper: aszinkron állapotfrissítés (NEM használható azonnali serialization-höz).
   const commitCell = useCallback((rowIdx: number, col: keyof MainRateRow, raw: string) => {
@@ -228,8 +421,17 @@ export default function MainRateSheetPage() {
 
   const focusCell = useCallback((rowIdx: number, col: keyof MainRateRow, currentValue: number, decimals: number) => {
     setActiveCell({ rowIdx, col })
-    setEditBuffer(currentValue ? currentValue.toFixed(decimals) : '')
-  }, [])
+    // v2.5.61: ha a cellához tartozik képlet, azt mutatjuk az input-ban (NEM
+    // a számolt értéket), így a user szerkeszteni tudja. A blurCell után újra
+    // kalkulálódik a HyperFormula-val.
+    const formulaKey = `${rowIdx}.${col as string}`
+    const formula = formulas[formulaKey]
+    if (formula) {
+      setEditBuffer(formula)
+    } else {
+      setEditBuffer(currentValue ? currentValue.toFixed(decimals) : '')
+    }
+  }, [formulas])
 
   const blurCell = useCallback((rowIdx: number, col: keyof MainRateRow) => {
     commitCell(rowIdx, col, editBuffer)
@@ -262,6 +464,11 @@ export default function MainRateSheetPage() {
     const rowsToSave = flushActiveCell()
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(rowsToSave))
+      // v2.5.61: a képletek is perzisztálódnak külön kulccsal, hogy a következő
+      // mount-kor a focusCell ugyanazt a képlet-kifejezést tudja megmutatni.
+      // Copilot P2 #697 #2: `formulas` a deps list-ben (lent) — különben a closure
+      // stale {} snapshot-ot mentene, és a frissen rögzített képletek elvesznének.
+      localStorage.setItem(FORMULA_STORAGE_KEY, JSON.stringify(formulas))
       lastSavedAt.current = new Date().toISOString()
       setDirty(false)
       toast.success('Mentve', 'Főlap helyileg mentve (localStorage)')
@@ -271,7 +478,7 @@ export default function MainRateSheetPage() {
       toast.error('Hiba', 'Helyi mentés sikertelen (privát böngészés / quota?)')
       return false
     }
-  }, [flushActiveCell])
+  }, [flushActiveCell, formulas])
 
   // Phase 2 wiring (Kosa Zoltan 2026-05-18): a komponens MOUNT-jakor letoltjuk a
   // legujabb publikalt arfolyamokat a szerverrol (Aktiv ExchangeRateMaster
@@ -610,6 +817,17 @@ export default function MainRateSheetPage() {
         >
           <Globe size={12} /> INTERNET CÍMEK KARBANTARTÁSA
         </button>
+        {/* V238 (2026-05-19) Valutakezelő — admin only (foertekitaros / ugyvezeto) */}
+        {canEdit && (
+          <button
+            onClick={() => setShowCurrencyManager(true)}
+            className="px-3 py-1 text-xs font-medium bg-white border border-slate-400 rounded hover:bg-slate-50 flex items-center gap-1"
+            data-testid="open-currency-manager"
+            title="Valutakezelő — új valuta hozzáadása / inaktiválás (audit log)"
+          >
+            <Settings size={12} /> VALUTAKEZELŐ
+          </button>
+        )}
         <div className="flex-1" />
         <button
           onClick={() => {
@@ -763,6 +981,21 @@ export default function MainRateSheetPage() {
           </div>
         </div>
       )}
+
+      {/* V238 (2026-05-19) — Valutakezelő modal: új valuta hozzáadása, aktiválás/deaktiválás. */}
+      <CurrencyManagerModal
+        isOpen={showCurrencyManager}
+        onClose={() => setShowCurrencyManager(false)}
+        onCurrencyChanged={() => {
+          // A backend Currency tabla változott → értesítjük a felhasználót hogy
+          // a Főlap új-betöltést igényel (page reload vagy app restart). MVP:
+          // simán toast, dinamikus row-frissítés v2.5.62-be jön.
+          toast.info(
+            'Valutakezelő',
+            'Egy valuta módosult. A változás a Főlapon a következő app-indítás után jelenik meg.',
+          )
+        }}
+      />
     </div>
   )
 }
