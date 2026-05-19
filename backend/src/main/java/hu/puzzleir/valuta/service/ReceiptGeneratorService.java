@@ -362,7 +362,17 @@ public class ReceiptGeneratorService {
                        : null)
                .customerDocType(tx.getCustomerDocumentType())
                .customerOnOwnBehalf(tx.getCustomerOnOwnBehalf())
-               .customerActorName(tx.getCustomerActorName());
+               .customerActorName(tx.getCustomerActorName())
+               // V235 (HIBA #17): actor teljes azonositasa, ha mas neveben jar el
+               .customerActorBirthPlace(tx.getCustomerActorBirthPlace())
+               .customerActorBirthDate(tx.getCustomerActorBirthDate() != null
+                       ? tx.getCustomerActorBirthDate().format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd."))
+                       : null)
+               .customerActorMotherName(tx.getCustomerActorMotherName())
+               .customerActorNationality(tx.getCustomerActorNationality())
+               .customerActorDocumentType(tx.getCustomerActorDocumentType())
+               .customerActorDocumentNumber(tx.getCustomerActorDocumentNumber())
+               .customerActorAddress(tx.getCustomerActorAddress());
 
         // Kerekítés — Transaction entity: roundingAmount
         if (tx.getRoundingAmount() != null && tx.getRoundingAmount().compareTo(BigDecimal.ZERO) != 0) {
@@ -464,12 +474,33 @@ public class ReceiptGeneratorService {
 
         if (isHighValue) {
             boolean isPep = Boolean.TRUE.equals(tx.getCustomerIsPep());
+            String pepStatusText = isPep
+                ? buildPepStatusText(tx.getCustomerPepKind())
+                : "Nem közszereplő";
             builder.requiresPepDeclaration(true)
-                   .pepStatusText(isPep
-                       ? "Az ügyfél kiemelt közszereplő"
-                       : "Nem közszereplő");
-            log.debug("PEP nyilatkozat blokk aktiválva, isPep={}", isPep);
+                   .pepStatusText(pepStatusText);
+            log.debug("PEP nyilatkozat blokk aktiválva, isPep={}, pepKind={}", isPep, tx.getCustomerPepKind());
         }
+    }
+
+    /**
+     * V235 (2026-05-19 HIBA #15): a PEP minoseg szovege a bizonylatra.
+     * Ha customerIsPep=TRUE de a pepKind null (regi tranzakcio, vagy a
+     * frontend nem kuldte at), generikus "kiemelt kozszereplo" string.
+     */
+    private static String buildPepStatusText(String pepKind) {
+        if (pepKind == null || pepKind.isBlank()) {
+            return "Az ügyfél kiemelt közszereplő";
+        }
+        return switch (pepKind) {
+            case "CSALADTAG"        -> "Az ügyfél kiemelt közszereplő családtagja";
+            case "KOZELI_MUNKATARS" -> "Az ügyfél kiemelt közszereplő közeli munkatársa";
+            case "KORMANYFO"        -> "Az ügyfél kiemelt közszereplő — kormányfő / miniszter / államtitkár";
+            case "PARLAMENTI"       -> "Az ügyfél kiemelt közszereplő — országgyűlési / önkormányzati képviselő";
+            case "NAV_VEZETO"       -> "Az ügyfél kiemelt közszereplő — NAV / állami vállalat felsővezetés";
+            case "EGYEB"            -> "Az ügyfél kiemelt közszereplő — egyéb minőségben";
+            default                 -> "Az ügyfél kiemelt közszereplő";
+        };
     }
 
     /**

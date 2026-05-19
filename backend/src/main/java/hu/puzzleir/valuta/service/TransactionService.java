@@ -212,6 +212,22 @@ public class TransactionService {
         // Sourcery #612: JOGCIM nyilatkozat validacio (FALSE -> actorName kotelezo)
         validateJogcimDeclaration(request.getCustomerOnOwnBehalf(), request.getCustomerActorName());
 
+        // Codex P1 (PR #695): Pmt. compliance WARN-szintu naplozas 300k+ tranzakcional,
+        // ha PEP minoseg vagy actor teljes azonositas hianyzik. v2.5.61+ exception lesz.
+        validatePmtComplianceFields(
+            payableAmount,
+            request.getCustomerIsPep(),
+            request.getCustomerPepKind(),
+            request.getCustomerOnOwnBehalf(),
+            request.getCustomerActorName(),
+            request.getCustomerActorBirthPlace(),
+            request.getCustomerActorBirthDate() != null ? request.getCustomerActorBirthDate().toString() : null,
+            request.getCustomerActorMotherName(),
+            request.getCustomerActorDocumentNumber(),
+            request.getCustomerActorAddress(),
+            "BUY"
+        );
+
         // 2026-05-15 user-direktíva: BUY ágon a pénztár HUF készletet ellenőrizni KELL
         // (vételnél a cég HUF-ot fizet ki az ügyfélnek). Korábban csak SELL ágon volt
         // készlet-ellenőrzés (foreign currency), ezért negatív HUF egyenlegre is
@@ -289,6 +305,15 @@ public class TransactionService {
                 .customerDocumentType(request.getCustomerDocumentType())
                 .customerOnOwnBehalf(request.getCustomerOnOwnBehalf())
                 .customerActorName(request.getCustomerActorName())
+                // V235 PEP minoseg + actor teljes azonositasa (HIBA #15 + #17 2026-05-19)
+                .customerPepKind(request.getCustomerPepKind())
+                .customerActorBirthPlace(request.getCustomerActorBirthPlace())
+                .customerActorBirthDate(request.getCustomerActorBirthDate())
+                .customerActorMotherName(request.getCustomerActorMotherName())
+                .customerActorNationality(request.getCustomerActorNationality())
+                .customerActorDocumentType(request.getCustomerActorDocumentType())
+                .customerActorDocumentNumber(request.getCustomerActorDocumentNumber())
+                .customerActorAddress(request.getCustomerActorAddress())
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
@@ -381,6 +406,22 @@ public class TransactionService {
         // Sourcery #612: JOGCIM nyilatkozat validacio (FALSE -> actorName kotelezo)
         validateJogcimDeclaration(request.getCustomerOnOwnBehalf(), request.getCustomerActorName());
 
+        // Codex P1 (PR #695): Pmt. compliance WARN naplozas 300k+ tranzakcional, ha
+        // PEP minoseg vagy actor teljes azonositas hianyzik. v2.5.61+ exception lesz.
+        validatePmtComplianceFields(
+            payableAmount,
+            request.getCustomerIsPep(),
+            request.getCustomerPepKind(),
+            request.getCustomerOnOwnBehalf(),
+            request.getCustomerActorName(),
+            request.getCustomerActorBirthPlace(),
+            request.getCustomerActorBirthDate() != null ? request.getCustomerActorBirthDate().toString() : null,
+            request.getCustomerActorMotherName(),
+            request.getCustomerActorDocumentNumber(),
+            request.getCustomerActorAddress(),
+            "SELL"
+        );
+
         // 2026-05-13 v2.5.49+ (Codex P1 #562/#564): pénztárosi sáv napi kvóta backend enforcement + normalizálás
         boolean sellCashierCustomRate = validateAndNormalizeCashierCustomRateQuota(
                 Boolean.TRUE.equals(request.getCashierCustomRate()), payableAmount);
@@ -452,6 +493,15 @@ public class TransactionService {
                 .customerDocumentType(request.getCustomerDocumentType())
                 .customerOnOwnBehalf(request.getCustomerOnOwnBehalf())
                 .customerActorName(request.getCustomerActorName())
+                // V235 PEP minoseg + actor teljes azonositasa (HIBA #15 + #17 2026-05-19)
+                .customerPepKind(request.getCustomerPepKind())
+                .customerActorBirthPlace(request.getCustomerActorBirthPlace())
+                .customerActorBirthDate(request.getCustomerActorBirthDate())
+                .customerActorMotherName(request.getCustomerActorMotherName())
+                .customerActorNationality(request.getCustomerActorNationality())
+                .customerActorDocumentType(request.getCustomerActorDocumentType())
+                .customerActorDocumentNumber(request.getCustomerActorDocumentNumber())
+                .customerActorAddress(request.getCustomerActorAddress())
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
@@ -694,6 +744,77 @@ public class TransactionService {
         }
     }
 
+    /**
+     * Codex P1 (PR #695): a v2.5.60 V235 mezok (customerPepKind + actor teljes
+     * azonositasa) nincs server-oldali enforcement-tel a TransactionService
+     * mentes elott. Egy regi vagy hibas kliens (vagy direkt API hivas) 300k+
+     * tranzakciot tudna mentem nem-compliance allapotban: customerIsPep=true
+     * de pepKind null, vagy customerOnOwnBehalf=false de actor mezok hianyoznak.
+     *
+     * <p>A v2.5.60 release-ben WARN-szintu naplozas. A v2.5.61+ release-ben a
+     * VALIDATION_ENABLED rendszerparameter alapjan exception-t fog dobni
+     * (feature-flag kontrollalt strict enforcement). Igy a meglevo v2.5.59-es
+     * kliensek azonnal nem blokkolodnak meg, de a hianyok auditalva vannak.</p>
+     */
+    private void validatePmtComplianceFields(
+            BigDecimal hufAmount,
+            Boolean customerIsPep,
+            String customerPepKind,
+            Boolean customerOnOwnBehalf,
+            String customerActorName,
+            String customerActorBirthPlace,
+            String customerActorBirthDate,
+            String customerActorMotherName,
+            String customerActorDocumentNumber,
+            String customerActorAddress,
+            String operation) {
+        if (hufAmount == null || hufAmount.compareTo(BigDecimal.valueOf(300_000)) < 0) {
+            return; // < 300k: Pmt. szerint nem kotelezo
+        }
+        // Codex P1 (PR #695) follow-up: feature-flag alapu strict enforcement.
+        // PMT_STRICT_ENFORCEMENT=true -> ValidationException (Pmt. compliance KOTELEZO).
+        // PMT_STRICT_ENFORCEMENT=false (default) -> WARN-szintu naplozas (kompatibilitas
+        // a v2.5.59 kliensekhez). v2.5.61+ release-ben a default 'true' lesz, miutan
+        // minden penztaros gepen lefutott a v2.5.60 telepito.
+        //
+        // PR #695 CI fix: defensive null-check a `systemParameterService`-re,
+        // mert a PepSourceOfFundsTest mockolt TransactionService-be nem injectalja
+        // a system-parameter szervizt. Ha null -> default strictMode=false.
+        boolean strictMode = systemParameterService != null
+            && "true".equalsIgnoreCase(systemParameterService.getValue("PMT_STRICT_ENFORCEMENT", "false"));
+
+        // PEP minoseg kotelezo, ha isPep=true
+        if (Boolean.TRUE.equals(customerIsPep) && (customerPepKind == null || customerPepKind.isBlank())) {
+            String msg = String.format(
+                "Pmt. compliance (%s, %s HUF): customerIsPep=true de customerPepKind hianyzik. "
+                + "Pmt. tv. 6.§ szerint kotelezo megjelolni a PEP minoseget.", operation, hufAmount);
+            if (strictMode) {
+                throw new ValidationException(msg);
+            }
+            log.warn("{} (WARN-only, PMT_STRICT_ENFORCEMENT=false). v2.5.61+ release: exception.", msg);
+        }
+        // Actor teljes azonositasa kotelezo, ha onOwnBehalf=false
+        if (Boolean.FALSE.equals(customerOnOwnBehalf)) {
+            java.util.List<String> missing = new java.util.ArrayList<>();
+            if (customerActorName == null          || customerActorName.isBlank())          missing.add("actorName");
+            if (customerActorBirthPlace == null    || customerActorBirthPlace.isBlank())    missing.add("actorBirthPlace");
+            if (customerActorBirthDate == null     || customerActorBirthDate.isBlank())     missing.add("actorBirthDate");
+            if (customerActorMotherName == null    || customerActorMotherName.isBlank())    missing.add("actorMotherName");
+            if (customerActorDocumentNumber == null|| customerActorDocumentNumber.isBlank()) missing.add("actorDocumentNumber");
+            if (customerActorAddress == null       || customerActorAddress.isBlank())       missing.add("actorAddress");
+            if (!missing.isEmpty()) {
+                String msg = String.format(
+                    "Pmt. compliance (%s, %s HUF): customerOnOwnBehalf=false de actor mezok hianyoznak: %s. "
+                    + "Pmt. tv. 6.§ (2) szerint a kepviselt felre is teljes azonositast kell vegezni.",
+                    operation, hufAmount, missing);
+                if (strictMode) {
+                    throw new ValidationException(msg);
+                }
+                log.warn("{} (WARN-only, PMT_STRICT_ENFORCEMENT=false). v2.5.61+ release: exception.", msg);
+            }
+        }
+    }
+
     private void validateCurrencyStock(UUID branchId, Long currencyId, BigDecimal amount) {
         CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, currencyId)
                 .orElse(null);
@@ -783,6 +904,15 @@ public class TransactionService {
         private String customerDocumentType;
         private Boolean customerOnOwnBehalf;
         private String customerActorName;
+        // V235 PEP minoseg + actor teljes azonositasa (HIBA #15 + #17 2026-05-19)
+        private String customerPepKind;
+        private String customerActorBirthPlace;
+        private java.time.LocalDate customerActorBirthDate;
+        private String customerActorMotherName;
+        private String customerActorNationality;
+        private String customerActorDocumentType;
+        private String customerActorDocumentNumber;
+        private String customerActorAddress;
         private String notes;
         private Boolean cashierCustomRate;
         private String foreignStatus;
@@ -819,6 +949,15 @@ public class TransactionService {
         private String customerDocumentType;
         private Boolean customerOnOwnBehalf;
         private String customerActorName;
+        // V235 PEP minoseg + actor teljes azonositasa (HIBA #15 + #17 2026-05-19)
+        private String customerPepKind;
+        private String customerActorBirthPlace;
+        private java.time.LocalDate customerActorBirthDate;
+        private String customerActorMotherName;
+        private String customerActorNationality;
+        private String customerActorDocumentType;
+        private String customerActorDocumentNumber;
+        private String customerActorAddress;
         private String notes;
         private Boolean cashierCustomRate;
         private String foreignStatus;
@@ -874,6 +1013,21 @@ public class TransactionService {
         private String customerNationality;
         private String sourceOfFunds;
         private Boolean customerIsPep;
+        // V235 + V236 Konverzio Pmt. azonositas (HIBA #19 2026-05-19)
+        private String customerBirthPlace;
+        private java.time.LocalDate customerBirthDate;
+        private String customerMotherName;
+        private String customerDocumentType;
+        private Boolean customerOnOwnBehalf;
+        private String customerActorName;
+        private String customerPepKind;
+        private String customerActorBirthPlace;
+        private java.time.LocalDate customerActorBirthDate;
+        private String customerActorMotherName;
+        private String customerActorNationality;
+        private String customerActorDocumentType;
+        private String customerActorDocumentNumber;
+        private String customerActorAddress;
     }
 
     /**

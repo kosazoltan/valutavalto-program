@@ -64,6 +64,28 @@ public class BuyRequestDto {
     private Boolean customerOnOwnBehalf;
     @Size(max = 255) private String customerActorName;
 
+    // ============ V235: PEP minoseg + actor teljes azonositasa (HIBA #15 + #17 2026-05-19) ============
+
+    /**
+     * HIBA #15: PEP minoseg. Ha customerIsPep=TRUE kotelezo. Ervenyes ertekek:
+     * CSALADTAG, KOZELI_MUNKATARS, KORMANYFO, PARLAMENTI, NAV_VEZETO, EGYEB.
+     */
+    // Copilot P2 (PR #695): a `?$` (üres group) miatt üres string is átment a
+    // validáción, de a V235 DB CHECK csak NULL-t vagy ervenyes enumot fogad el
+    // → runtime DB constraint violation. Most: NEM-üres karakter → muszáj enum.
+    @Pattern(regexp = "^(CSALADTAG|KOZELI_MUNKATARS|KORMANYFO|PARLAMENTI|NAV_VEZETO|EGYEB)$",
+            message = "Érvénytelen PEP minőség — csak CSALADTAG/KOZELI_MUNKATARS/KORMANYFO/PARLAMENTI/NAV_VEZETO/EGYEB engedélyezett")
+    private String customerPepKind;
+
+    /** HIBA #17: actor (kepviselt fel) teljes azonositasa, ha customerOnOwnBehalf=FALSE. */
+    @Size(max = 255) private String customerActorBirthPlace;
+    private java.time.LocalDate customerActorBirthDate;
+    @Size(max = 255) private String customerActorMotherName;
+    @Size(max = 100) private String customerActorNationality;
+    @Size(max = 50)  private String customerActorDocumentType;
+    @Size(max = 100) private String customerActorDocumentNumber;
+    @Size(max = 500) private String customerActorAddress;
+
     private String notes;
 
     /** Penztarosi sav: egyedi arfolyam 400k+ Ft felett (napi 5x limit) */

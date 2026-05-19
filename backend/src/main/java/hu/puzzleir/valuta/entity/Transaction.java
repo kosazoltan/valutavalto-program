@@ -197,7 +197,10 @@ public class Transaction {
     /**
      * Ügyfél nemzetisége
      */
-    @Column(name = "customer_nationality", length = 3)
+    // V236 (2026-05-19 HIBA #13): VARCHAR(3) -> VARCHAR(100). A frontend
+    // humanreadable szoveget kuld ("Magyar" / "EU-allampolgarsag" / "Egyeb"),
+    // nem ISO3 kodot.
+    @Column(name = "customer_nationality", length = 100)
     private String customerNationality;
 
     // ============ SZTORNÓ / VISSZATÉRÍTÉS KAPCSOLAT ============
@@ -440,6 +443,44 @@ public class Transaction {
 
     @Column(name = "customer_actor_name", length = 255)
     private String customerActorName;
+
+    // ============ V235: Pmt. PEP minoseg + actor teljes azonositasa (HIBA #15 + #17 2026-05-19) ============
+
+    /**
+     * HIBA #15: PEP minoseg. Ha customerIsPep=TRUE, kotelezo megjelolni MILYEN
+     * minosegben kiemelt kozszereplo. NULL ha nem PEP vagy &lt;300k tranzakcio.
+     * Ervenyes ertekek: CSALADTAG, KOZELI_MUNKATARS, KORMANYFO, PARLAMENTI,
+     * NAV_VEZETO, EGYEB. (CHECK constraint a DB-ben — V235.)
+     */
+    @Column(name = "customer_pep_kind", length = 50)
+    private String customerPepKind;
+
+    /**
+     * HIBA #17: actor (kepviselt fel) teljes azonositasa. A Pmt. tv. 6.§ (2)
+     * szerint ha az ugyfel mas neveben jar el (customerOnOwnBehalf=FALSE),
+     * akkor a kepviselt felre is teljes azonositast kell vegezni. A bizony-
+     * laton mindkettonek meg kell jelennie.
+     */
+    @Column(name = "customer_actor_birth_place", length = 255)
+    private String customerActorBirthPlace;
+
+    @Column(name = "customer_actor_birth_date")
+    private java.time.LocalDate customerActorBirthDate;
+
+    @Column(name = "customer_actor_mother_name", length = 255)
+    private String customerActorMotherName;
+
+    @Column(name = "customer_actor_nationality", length = 100)
+    private String customerActorNationality;
+
+    @Column(name = "customer_actor_document_type", length = 50)
+    private String customerActorDocumentType;
+
+    @Column(name = "customer_actor_document_number", length = 100)
+    private String customerActorDocumentNumber;
+
+    @Column(name = "customer_actor_address", length = 500)
+    private String customerActorAddress;
 
     // ============ HELPER METHODS ============
 

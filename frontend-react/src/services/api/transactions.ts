@@ -181,6 +181,15 @@ export interface BuyRequest {
   // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat
   customerOnOwnBehalf?: boolean
   customerActorName?: string
+  // V235 (2026-05-19 HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
+  customerPepKind?: 'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+  customerActorBirthPlace?: string
+  customerActorBirthDate?: string
+  customerActorMotherName?: string
+  customerActorNationality?: string
+  customerActorDocumentType?: string
+  customerActorDocumentNumber?: string
+  customerActorAddress?: string
   notes?: string
   cashierCustomRate?: boolean
   foreignStatus?: 'DOMESTIC' | 'FOREIGN'
@@ -207,6 +216,15 @@ export interface SellRequest {
   // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat
   customerOnOwnBehalf?: boolean
   customerActorName?: string
+  // V235 (2026-05-19 HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
+  customerPepKind?: 'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+  customerActorBirthPlace?: string
+  customerActorBirthDate?: string
+  customerActorMotherName?: string
+  customerActorNationality?: string
+  customerActorDocumentType?: string
+  customerActorDocumentNumber?: string
+  customerActorAddress?: string
   notes?: string
   cashierCustomRate?: boolean
   foreignStatus?: 'DOMESTIC' | 'FOREIGN'
@@ -231,10 +249,30 @@ export interface ConversionRequest {
   toCurrencyId?: number
   toCurrencyCode?: string
   fromAmount: number
+  handlingFee?: number
   customerId?: string
   customerName?: string
+  customerAddress?: string
   customerDocumentNumber?: string
+  customerNationality?: string
+  sourceOfFunds?: string
+  customerIsPep?: boolean
   notes?: string
+  // V235 + V236 (2026-05-19 HIBA #19): Konverzio Pmt. azonositas
+  customerBirthPlace?: string
+  customerBirthDate?: string
+  customerMotherName?: string
+  customerDocumentType?: string
+  customerOnOwnBehalf?: boolean
+  customerActorName?: string
+  customerPepKind?: 'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+  customerActorBirthPlace?: string
+  customerActorBirthDate?: string
+  customerActorMotherName?: string
+  customerActorNationality?: string
+  customerActorDocumentType?: string
+  customerActorDocumentNumber?: string
+  customerActorAddress?: string
 }
 
 export interface DailyTurnoverSummary {

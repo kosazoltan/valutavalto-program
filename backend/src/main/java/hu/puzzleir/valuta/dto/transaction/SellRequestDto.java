@@ -64,6 +64,26 @@ public class SellRequestDto {
     private Boolean customerOnOwnBehalf;
     @Size(max = 255) private String customerActorName;
 
+    // ============ V235: PEP minoseg + actor teljes azonositasa (HIBA #15 + #17 2026-05-19) ============
+
+    /**
+     * HIBA #15: PEP minoseg. Ha customerIsPep=TRUE kotelezo. Ervenyes ertekek:
+     * CSALADTAG, KOZELI_MUNKATARS, KORMANYFO, PARLAMENTI, NAV_VEZETO, EGYEB.
+     */
+    // Copilot P2 (PR #695): üres-string DB CHECK violation fix — l. BuyRequestDto.
+    @jakarta.validation.constraints.Pattern(regexp = "^(CSALADTAG|KOZELI_MUNKATARS|KORMANYFO|PARLAMENTI|NAV_VEZETO|EGYEB)$",
+            message = "Érvénytelen PEP minőség — csak CSALADTAG/KOZELI_MUNKATARS/KORMANYFO/PARLAMENTI/NAV_VEZETO/EGYEB engedélyezett")
+    private String customerPepKind;
+
+    /** HIBA #17: actor (kepviselt fel) teljes azonositasa, ha customerOnOwnBehalf=FALSE. */
+    @Size(max = 255) private String customerActorBirthPlace;
+    private java.time.LocalDate customerActorBirthDate;
+    @Size(max = 255) private String customerActorMotherName;
+    @Size(max = 100) private String customerActorNationality;
+    @Size(max = 50)  private String customerActorDocumentType;
+    @Size(max = 100) private String customerActorDocumentNumber;
+    @Size(max = 500) private String customerActorAddress;
+
     private String notes;
 
     /** Penztarosi sav: egyedi arfolyam 400k+ Ft felett (napi 5x limit) */

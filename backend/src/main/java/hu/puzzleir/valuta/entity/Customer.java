@@ -87,9 +87,13 @@ public class Customer {
     private String birthPlace;
 
     /**
-     * Nemzetiség (ISO 3166-1 alpha-3)
+     * Allampolgarsag — humanreadable szoveg (NEM csak ISO3 kod).
+     *
+     * <p>V236 (2026-05-19 HIBA #13): VARCHAR(3) -> VARCHAR(100). A frontend
+     * "Magyar" / "EU-allampolgarsag" / "Egyeb" szoveget kuldte, ami a V3-as
+     * VARCHAR(3)-ba nem fert bele -> HTTP 500 "Belso szerverhiba".</p>
      */
-    @Column(length = 3)
+    @Column(length = 100)
     private String nationality;
 
     /**

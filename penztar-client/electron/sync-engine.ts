@@ -1068,6 +1068,41 @@ export class SyncEngine {
       body['foreignStatus'] = tx.foreign_status;
     }
 
+    // V229 + V235 (2026-05-19 HIBA #14 + #17 + #18): teljes Pmt. customer-snapshot
+    // a backend felé. A korábbi sync csak 4 alapmezőt küldött át, így a bizonylaton
+    // hiányzott a szül.hely / szül.idő / anyja neve / állampolgárság / okmány típus
+    // / "más nevében" flag és az actor (képviselt fél) teljes azonosítása.
+    const addOptionalText = (key: string, value: string | null | undefined): void => {
+      if (value && value.trim().length > 0) {
+        body[key] = value;
+      }
+    };
+    addOptionalText('customerBirthPlace', tx.customer_birth_place);
+    addOptionalText('customerBirthDate', tx.customer_birth_date);
+    addOptionalText('customerMotherName', tx.customer_mother_name);
+    addOptionalText('customerNationality', tx.customer_nationality);
+    addOptionalText('customerDocumentType', tx.customer_document_type);
+    addOptionalText('customerPepKind', tx.customer_pep_kind);
+    // 300k+ JOGCÍM nyilatkozat: NULL = nem kérdezett (régi pending sor); TRUE/FALSE = válasz
+    if (tx.customer_on_own_behalf !== null && tx.customer_on_own_behalf !== undefined) {
+      body['customerOnOwnBehalf'] = tx.customer_on_own_behalf === 1;
+    }
+    // V235 actor (képviselt fél) teljes azonosítása — csak ha onOwnBehalf=false.
+    // Copilot P2 (PR #695): a korábbi pathon a sync-engine MIND a customer_actor_*
+    // mezőt MINDIG átküldte, akkor is ha customer_on_own_behalf=1 volt. Stale data
+    // veszély (régi pending sor, vagy user visszakapcsolta a flaget). Most:
+    // explicit guard, csak customer_on_own_behalf=0 (FALSE) esetén megy fel.
+    if (tx.customer_on_own_behalf === 0) {
+      addOptionalText('customerActorName', tx.customer_actor_name);
+      addOptionalText('customerActorBirthPlace', tx.customer_actor_birth_place);
+      addOptionalText('customerActorBirthDate', tx.customer_actor_birth_date);
+      addOptionalText('customerActorMotherName', tx.customer_actor_mother_name);
+      addOptionalText('customerActorNationality', tx.customer_actor_nationality);
+      addOptionalText('customerActorDocumentType', tx.customer_actor_document_type);
+      addOptionalText('customerActorDocumentNumber', tx.customer_actor_document_number);
+      addOptionalText('customerActorAddress', tx.customer_actor_address);
+    }
+
     // A tárolt idempotency_key-t használjuk — retry-nál is ugyanazt küldjük
     await httpPost(endpoint, body, token, tx.idempotency_key ?? undefined);
   }
@@ -1107,6 +1142,40 @@ export class SyncEngine {
 
     if (conversion.customer_document_number && conversion.customer_document_number.trim().length > 0) {
       body['customerDocumentNumber'] = conversion.customer_document_number;
+    }
+
+    // V235 + V236 (2026-05-19 Codex P1 #695): teljes Pmt. customer-snapshot a
+    // Konverzio sync payload-ba. A korabbi sync csak 3 customer mezot kuldott,
+    // igy a 100k+/300k+ konverzio bizonylatok hianyosak voltak (Pmt. tv. 6.§).
+    const addOptionalConvText = (key: string, value: string | null | undefined): void => {
+      if (value && value.trim().length > 0) {
+        body[key] = value;
+      }
+    };
+    addOptionalConvText('customerAddress', conversion.customer_address);
+    addOptionalConvText('customerNationality', conversion.customer_nationality);
+    addOptionalConvText('customerBirthPlace', conversion.customer_birth_place);
+    addOptionalConvText('customerBirthDate', conversion.customer_birth_date);
+    addOptionalConvText('customerMotherName', conversion.customer_mother_name);
+    addOptionalConvText('customerDocumentType', conversion.customer_document_type);
+    addOptionalConvText('sourceOfFunds', conversion.source_of_funds);
+    addOptionalConvText('customerPepKind', conversion.customer_pep_kind);
+    if (conversion.customer_is_pep !== null && conversion.customer_is_pep !== undefined) {
+      body['customerIsPep'] = conversion.customer_is_pep === 1;
+    }
+    if (conversion.customer_on_own_behalf !== null && conversion.customer_on_own_behalf !== undefined) {
+      body['customerOnOwnBehalf'] = conversion.customer_on_own_behalf === 1;
+    }
+    // Actor mezok csak akkor mennek fel, ha onOwnBehalf=0 (FALSE) — Copilot P2 mintaja
+    if (conversion.customer_on_own_behalf === 0) {
+      addOptionalConvText('customerActorName', conversion.customer_actor_name);
+      addOptionalConvText('customerActorBirthPlace', conversion.customer_actor_birth_place);
+      addOptionalConvText('customerActorBirthDate', conversion.customer_actor_birth_date);
+      addOptionalConvText('customerActorMotherName', conversion.customer_actor_mother_name);
+      addOptionalConvText('customerActorNationality', conversion.customer_actor_nationality);
+      addOptionalConvText('customerActorDocumentType', conversion.customer_actor_document_type);
+      addOptionalConvText('customerActorDocumentNumber', conversion.customer_actor_document_number);
+      addOptionalConvText('customerActorAddress', conversion.customer_actor_address);
     }
 
     await httpPost(

@@ -54,7 +54,11 @@ import {
   setConfig,
   deleteConfig,
   savePendingTransaction,
+  savePendingTransactionV2,
+  type PendingTransactionInputV2,
   savePendingConversion,
+  savePendingConversionV2,
+  type PendingConversionInputV2,
   savePendingBankTransaction,
   savePendingStorno,
   getPendingTransactions,
@@ -465,6 +469,15 @@ ipcMain.handle('save-pending-transaction', async (
   );
 });
 
+// V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): bővített IPC channel
+// objektum-paraméterrel a teljes Pmt. customer-snapshot mentéséhez.
+ipcMain.handle('save-pending-transaction-v2', async (
+  _event,
+  input: PendingTransactionInputV2,
+): Promise<number> => {
+  return savePendingTransactionV2(input);
+});
+
 ipcMain.handle('get-pending-transactions', async (): Promise<ReturnType<typeof getPendingTransactions>> => {
   return getPendingTransactions();
 });
@@ -500,6 +513,15 @@ ipcMain.handle('save-pending-conversion', async (
     customerDocumentNumber,
     note,
   );
+});
+
+// V235 + V236 (2026-05-19 Codex P1 #695): bővített Konverzio IPC channel
+// objektum-paraméterrel, teljes Pmt. customer-snapshot mentéséhez.
+ipcMain.handle('save-pending-conversion-v2', async (
+  _event,
+  input: PendingConversionInputV2,
+): Promise<number> => {
+  return savePendingConversionV2(input);
 });
 
 ipcMain.handle('get-pending-conversions', async (): Promise<ReturnType<typeof getPendingConversions>> => {

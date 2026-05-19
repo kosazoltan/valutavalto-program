@@ -521,18 +521,45 @@ export default function CashierTransactionPage() {
     }
 
     // Sell-mode stock check — verify branch has enough currency to sell
-    if (mode === 'sell') {
+    // V235 (2026-05-19 HIBA #10): Buy-mode is ellenorzi a HUF keszletet — a vetel
+    // soran a penztar HUF-ot fizet ki, ami CSOKKENTI a HUF keszletet. Ha nincs
+    // eleg HUF a kasszaban, fail-closed (nem engedjuk az Electron offline queue-ba,
+    // mert ott a hiba csak sync-kor derulne ki).
+    if (mode === 'sell' || mode === 'buy') {
       try {
         const balances = await cashBalanceApi.list()
         const insufficientRows: string[] = []
-        for (const row of touchedRows) {
-          if (row.currencyCode.length !== 3) continue
-          const qty = parseFloat(row.quantity) || 0
-          if (qty <= 0) continue
-          const bal = balances.find(b => b.currencyCode === row.currencyCode)
-          const available = bal?.currentBalance ?? 0
-          if (qty > available) {
-            insufficientRows.push(`${row.currencyCode}: ${qty} kert, ${available} elerheto`)
+        if (mode === 'sell') {
+          for (const row of touchedRows) {
+            if (row.currencyCode.length !== 3) continue
+            const qty = parseFloat(row.quantity) || 0
+            if (qty <= 0) continue
+            const bal = balances.find(b => b.currencyCode === row.currencyCode)
+            const available = bal?.currentBalance ?? 0
+            if (qty > available) {
+              insufficientRows.push(`${row.currencyCode}: ${qty} kert, ${available} elerheto`)
+            }
+          }
+        } else {
+          // BUY: a tetelek hufValue-jat osszegezzuk, level kell vonni a kezelesi
+          // dijat es a 5 Ft kerekitest, mert a backend a payable-bol vonja le a
+          // fee-t mielott kifizet (TransactionService.processBuyTransaction). A
+          // korabbi naiv summing-fee felulmero volt es indokolatlan blokkolast
+          // okozhatott. Copilot P2 (PR #695) fix.
+          const grossHuf = touchedRows.reduce((sum, row) => {
+            if (row.currencyCode.length !== 3) return sum
+            const qty = parseFloat(row.quantity) || 0
+            if (qty <= 0) return sum
+            return sum + Math.max(0, row.hufValue)
+          }, 0)
+          // Penztaros kifizetes ~= bruttó − handlingFee, 5 Ft-os rounding-toleranciaval
+          const totalHufPayable = roundHuf(Math.max(0, grossHuf - (handlingFee > 0 ? handlingFee : 0)))
+          const hufBal = balances.find(b => b.currencyCode === 'HUF')
+          const hufAvailable = hufBal?.currentBalance ?? 0
+          if (totalHufPayable > hufAvailable) {
+            insufficientRows.push(
+              `HUF: ${totalHufPayable.toLocaleString('hu-HU')} Ft kifizetes kerne, csak ${hufAvailable.toLocaleString('hu-HU')} Ft elerheto a kasszaban`,
+            )
           }
         }
         if (insufficientRows.length > 0) {
@@ -669,9 +696,24 @@ export default function CashierTransactionPage() {
         sourceOfFunds: cd.sourceOfFunds,
         customerOnOwnBehalf: cd.onOwnBehalf,
         customerActorName: cd.actorName,
+        // V235 (2026-05-19 HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
+        customerPepKind: cd.pepKind ?? undefined,
+        customerActorBirthPlace: cd.actorIdentity?.birthPlace,
+        customerActorBirthDate: cd.actorIdentity?.birthDate,
+        customerActorMotherName: cd.actorIdentity?.motherName,
+        customerActorNationality: cd.actorIdentity?.nationality,
+        customerActorDocumentType: cd.actorIdentity?.documentType,
+        customerActorDocumentNumber: cd.actorIdentity?.documentNumber,
+        customerActorAddress: cd.actorIdentity?.address,
       } : {}
 
       if (electronQueueAvailable) {
+        // V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): a teljes Pmt. customer-
+        // snapshot atadasa az Electron pending-queue fele. A korabbi payload csak
+        // 4 alapmezot kuldott (name, docNumber, address, foreignStatus), igy a
+        // bizonylaton hianyzott a szul.hely / szul.ido / anyja neve / allampolgar-
+        // sag / okmany tipus / "mas neveben" flag es az actor teljes azonositasa.
+        const actorIdentity = cd?.actorIdentity ?? null
         const outcome = await saveAndSyncPendingBuySell(
           filledRows.map((row) => ({
             type: mode === 'buy' ? 'BUY' : 'SELL',
@@ -688,6 +730,27 @@ export default function CashierTransactionPage() {
             customerAddress: cd?.address || null,
             denominations: null,
             foreignStatus: row.foreignStatus,
+            // V229 100k+ alapmezok
+            customerBirthPlace: cd?.birthPlace ?? null,
+            customerBirthDate: cd?.birthDate ?? null,
+            customerMotherName: cd?.motherName ?? null,
+            customerNationality: cd?.nationality ?? null,
+            customerDocumentType: cd?.documentType ?? null,
+            // V229 300k+ JOGCIM nyilatkozat
+            sourceOfFunds: cd?.sourceOfFunds ?? null,
+            customerIsPep: cd?.isPep ?? null,
+            customerOnOwnBehalf: cd?.onOwnBehalf ?? null,
+            customerActorName: cd?.actorName ?? null,
+            // V235 PEP minoseg (HIBA #15)
+            customerPepKind: cd?.pepKind ?? null,
+            // V235 actor teljes azonositasa (HIBA #17)
+            customerActorBirthPlace: actorIdentity?.birthPlace ?? null,
+            customerActorBirthDate: actorIdentity?.birthDate ?? null,
+            customerActorMotherName: actorIdentity?.motherName ?? null,
+            customerActorNationality: actorIdentity?.nationality ?? null,
+            customerActorDocumentType: actorIdentity?.documentType ?? null,
+            customerActorDocumentNumber: actorIdentity?.documentNumber ?? null,
+            customerActorAddress: actorIdentity?.address ?? null,
           })),
         )
 

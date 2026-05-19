@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import CustomerPanel from './components/CustomerPanel'
+import type { CustomerPanelData } from './components/CustomerPanel'
+import { useIdentificationLevel } from './hooks/useIdentificationLevel'
 import {
   RefreshCw,
   ArrowRightLeft,
@@ -64,6 +67,12 @@ export default function ConversionPage() {
   // Customer data (optional for conversion)
   const [customerName, setCustomerName] = useState('')
   const [notes, setNotes] = useState('')
+
+  // V235 + V236 (2026-05-19 HIBA #19): Pmt. azonositas a Konverzioba is.
+  // 100k+ HUF aggregalt -> SIMPLIFIED, 300k+ -> FULL azonositas (Pmt. tv. 6.§).
+  const customerDataRef = useRef<CustomerPanelData | null>(null)
+  const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } =
+    useIdentificationLevel(String(hufAmount))
 
   // Track which field was last edited to prevent useEffect from overwriting manual toAmount edits
   const lastEditedField = useRef<'from' | 'to'>('from')
@@ -232,7 +241,21 @@ export default function ConversionPage() {
         return
       }
 
+      // V235 + V236 (2026-05-19 HIBA #19): a Pmt. azonositas-adatok atadasa
+      // a Konverzio backend-nek. 100k+ HUF -> SIMPLIFIED, 300k+ -> FULL.
+      const cd = customerDataRef.current
+      // 100k+ HUF eseten ha nincs customer panel-bol adat, blokkoljuk
+      if (hufAmount >= 100_000 && !cd) {
+        setError('100.000 Ft feletti konverzióhoz kötelező az ügyfél azonosítása (Pmt. tv. 6.§)')
+        return
+      }
+      const effectiveCustomerName = cd?.name?.trim() || customerName.trim() || null
+
       if (electronQueueAvailable) {
+        // V235 + V236 (Codex P1 #695): teljes Pmt. customer-snapshot atadasa
+        // az Electron offline outbox-nak — onOwnBehalf=false eseten az actor
+        // identity-vel egyutt. A korabbi payload csak 3 customer mezot kuldott.
+        const actorIdentity = cd?.actorIdentity ?? null
         const outcome = await saveAndSyncPendingConversion({
           fromCurrencyId,
           fromCurrencyCode: fromCurrency.code,
@@ -243,10 +266,32 @@ export default function ConversionPage() {
           calculatedToAmount: parseFloat(toAmount.replace(',', '.').replace(/\s/g, '')) || 0,
           conversionRate,
           handlingFee: null,
-          customerId: null,
-          customerName: customerName || null,
-          customerDocumentNumber: null,
+          customerId: cd?.id ? String(cd.id) : null,
+          customerName: effectiveCustomerName,
+          customerDocumentNumber: cd?.documentNumber ?? null,
           note: notes || null,
+          // V229 100k+ alapmezok
+          customerAddress: cd?.address ?? null,
+          customerNationality: cd?.nationality ?? null,
+          customerBirthPlace: cd?.birthPlace ?? null,
+          customerBirthDate: cd?.birthDate ?? null,
+          customerMotherName: cd?.motherName ?? null,
+          customerDocumentType: cd?.documentType ?? null,
+          // V229 300k+ JOGCIM
+          sourceOfFunds: cd?.sourceOfFunds ?? null,
+          customerIsPep: cd?.isPep ?? null,
+          customerOnOwnBehalf: cd?.onOwnBehalf ?? null,
+          customerActorName: cd?.actorName ?? null,
+          // V235 PEP minoseg (HIBA #15)
+          customerPepKind: cd?.pepKind ?? null,
+          // V235 actor teljes azonositasa (HIBA #17)
+          customerActorBirthPlace: actorIdentity?.birthPlace ?? null,
+          customerActorBirthDate: actorIdentity?.birthDate ?? null,
+          customerActorMotherName: actorIdentity?.motherName ?? null,
+          customerActorNationality: actorIdentity?.nationality ?? null,
+          customerActorDocumentType: actorIdentity?.documentType ?? null,
+          customerActorDocumentNumber: actorIdentity?.documentNumber ?? null,
+          customerActorAddress: actorIdentity?.address ?? null,
         })
 
         if (outcome.allSavedSynced) {
@@ -255,15 +300,40 @@ export default function ConversionPage() {
           setSuccess('Konverzió helyben mentve. A szinkron a háttérben folytatódik.')
         }
       } else {
-        const request: ConversionRequest = buildConversionRequestFromSelection({
+        const baseRequest: ConversionRequest = buildConversionRequestFromSelection({
           fromCurrencyId,
           fromCurrencyCode: fromCurrency.code,
           toCurrencyId,
           toCurrencyCode: toCurrency.code,
           fromAmount: amount,
-          customerName: customerName || undefined,
+          customerName: effectiveCustomerName || undefined,
           notes: notes || undefined,
         })
+
+        // V235 + V236 a teljes Pmt. customer-snapshot atadasa a backendnek
+        const request: ConversionRequest = cd ? {
+          ...baseRequest,
+          customerId: cd.id ? String(cd.id) : undefined,
+          customerAddress: cd.address || undefined,
+          customerDocumentNumber: cd.documentNumber || undefined,
+          customerNationality: cd.nationality || undefined,
+          customerBirthPlace: cd.birthPlace || undefined,
+          customerBirthDate: cd.birthDate || undefined,
+          customerMotherName: cd.motherName || undefined,
+          customerDocumentType: cd.documentType || undefined,
+          sourceOfFunds: cd.sourceOfFunds || undefined,
+          customerIsPep: cd.isPep,
+          customerOnOwnBehalf: cd.onOwnBehalf,
+          customerActorName: cd.actorName || undefined,
+          customerPepKind: cd.pepKind ?? undefined,
+          customerActorBirthPlace: cd.actorIdentity?.birthPlace,
+          customerActorBirthDate: cd.actorIdentity?.birthDate,
+          customerActorMotherName: cd.actorIdentity?.motherName,
+          customerActorNationality: cd.actorIdentity?.nationality,
+          customerActorDocumentType: cd.actorIdentity?.documentType,
+          customerActorDocumentNumber: cd.actorIdentity?.documentNumber,
+          customerActorAddress: cd.actorIdentity?.address,
+        } : baseRequest
 
         const result = await transactionApi.conversion(request)
         setSuccess(`Konverzió sikeres! Bizonylat: ${result.receiptNumber}`)
@@ -585,6 +655,21 @@ export default function ConversionPage() {
 
             {step === 2 && (
               <div className="space-y-2">
+                {/* V235 + V236 (2026-05-19 HIBA #19): Pmt. azonositas a Konverziohoz.
+                    100k+ HUF -> SIMPLIFIED (nev + szul.hely/ido + allampolgarsag),
+                    300k+ -> FULL (+ okmany + anyja neve + lakcim + PEP + saját nevben). */}
+                {hufAmount >= 100_000 && (
+                  <div className="rounded-md border border-gray-200 dark:border-gray-700 p-2 bg-white dark:bg-gray-800">
+                    <CustomerPanel
+                      identificationLevel={identificationLevel}
+                      minimumLevel={minimumLevel}
+                      onLevelChange={setIdentificationLevel}
+                      requiresSourceVerification={requiresSourceVerification}
+                      hufTotal={hufAmount}
+                      onCustomerReady={(data) => { customerDataRef.current = data }}
+                    />
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => setStep(1)}

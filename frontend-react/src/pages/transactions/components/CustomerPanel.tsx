@@ -8,6 +8,35 @@ import { toast } from '../../../components/ui/toaster'
 import { getErrorMessage } from '../../../utils/errorHandling'
 import { useTranslation } from 'react-i18next'
 
+/**
+ * V235 (2026-05-19 HIBA #15): a Pmt. szerinti "kiemelt kozszereplo" 6 minoseg-
+ * kategoriaja. Ha az ugyfel PEP, kotelezo megjelolni hogy MILYEN minosegben.
+ *
+ * - CSALADTAG          — kozszereplo csaladtagja (hazastars, gyermek, szulo, testver)
+ * - KOZELI_MUNKATARS   — kozszereplo kozeli munkatarsa, uzleti partnere
+ * - KORMANYFO          — miniszterelnok, miniszter, allamtitkar
+ * - PARLAMENTI         — orszaggyulesi kepviselo, helyi onkormanyzati kepviselo
+ * - NAV_VEZETO         — NAV felsovezetes, allami-tulajdonu vallalat felsovezetes
+ * - EGYEB              — egyeb kiemelt kozszereploi minoseg
+ */
+export type PepKind = 'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+
+/**
+ * V235 (2026-05-19 HIBA #17): actor (kepviselt fel) teljes azonositasi adatai.
+ * Pmt. tv. 6.§ (2): ha az ugyfel mas neveben jar el, a kepviselt felre is
+ * teljes azonositast kell vegezni. A bizonylaton mindkettonek meg kell jelennie.
+ */
+export interface ActorIdentity {
+  name: string
+  birthPlace?: string
+  birthDate?: string
+  motherName?: string
+  nationality?: string
+  documentType?: string
+  documentNumber?: string
+  address?: string
+}
+
 export interface CustomerPanelData {
   id?: number
   name: string
@@ -27,6 +56,10 @@ export interface CustomerPanelData {
   sourceOfFunds?: string
   onOwnBehalf?: boolean
   actorName?: string
+  // V235 NEW (HIBA #15): PEP minoseg, ha isPep=true
+  pepKind?: PepKind | null
+  // V235 NEW (HIBA #17): actor teljes azonositas, ha onOwnBehalf=false
+  actorIdentity?: ActorIdentity | null
 }
 
 interface CustomerPanelProps {
@@ -122,6 +155,16 @@ export default function CustomerPanel({
   const [sourceOfFunds, setSourceOfFunds] = useState<string>('')
   const [onOwnBehalf, setOnOwnBehalf] = useState<boolean>(true)
   const [actorName, setActorName] = useState<string>('')
+  // V235 NEW (2026-05-19 HIBA #15): PEP minoseg — csak ha isPep=true
+  const [pepKind, setPepKind] = useState<PepKind | ''>('')
+  // V235 NEW (2026-05-19 HIBA #17): actor teljes azonositasa — csak ha !onOwnBehalf
+  const [actorBirthPlace, setActorBirthPlace] = useState<string>('')
+  const [actorBirthDate, setActorBirthDate] = useState<string>('')
+  const [actorMotherName, setActorMotherName] = useState<string>('')
+  const [actorNationality, setActorNationality] = useState<string>('Magyar')
+  const [actorDocumentType, setActorDocumentType] = useState<string>('ID_CARD')
+  const [actorDocumentNumber, setActorDocumentNumber] = useState<string>('')
+  const [actorAddress, setActorAddress] = useState<string>('')
 
   const [amlResult, setAmlResult] = useState<AmlCheckResultDto | null>(null)
   const [amlChecking, setAmlChecking] = useState(false)
@@ -216,13 +259,27 @@ export default function CustomerPanel({
       sourceOfFunds: sourceOfFunds.trim() || undefined,
       onOwnBehalf,
       actorName: actorName.trim() || undefined,
+      // V235 (HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
+      pepKind: isPep && pepKind ? (pepKind as PepKind) : null,
+      actorIdentity: !onOwnBehalf ? {
+        name: actorName.trim(),
+        birthPlace: actorBirthPlace.trim() || undefined,
+        birthDate: actorBirthDate || undefined,
+        motherName: actorMotherName.trim() || undefined,
+        nationality: actorNationality.trim() || undefined,
+        documentType: actorDocumentType,
+        documentNumber: actorDocumentNumber.trim() || undefined,
+        address: actorAddress.trim() || undefined,
+      } : null,
     }
 
     if (customer.id && hufTotal > 0) {
       data = await runAmlCheck(customer.id, data)
     }
     onCustomerReady(data)
-  }, [hufTotal, onCustomerReady, runAmlCheck, isPep, sourceOfFunds, onOwnBehalf, actorName])
+  }, [hufTotal, onCustomerReady, runAmlCheck, isPep, sourceOfFunds, onOwnBehalf, actorName,
+      pepKind, actorBirthPlace, actorBirthDate, actorMotherName, actorNationality,
+      actorDocumentType, actorDocumentNumber, actorAddress])
 
   // Collect missing required fields per identification level. Empty array = form OK.
   // 2026-05-15 user-direktíva: SIMPLIFIED (100-300k) szinthez Pmt. 2017. évi LIII. tv.
@@ -242,10 +299,22 @@ export default function CustomerPanel({
     // Sourcery #614: 300k+ JOGCIM nyilatkozat kotelezo mezok
     if (hufTotal >= 300_000) {
       if (!sourceOfFunds.trim()) missing.push('Pénzeszközök forrása')
-      if (!onOwnBehalf && !actorName.trim()) missing.push('Képviselt fél neve')
+      // V235 (HIBA #17 2026-05-19): ha mas neveben jar el, az actor teljes
+      // azonositasa is kotelezo (Pmt. tv. 6.§ (2)). NEM eleg csak a nev!
+      if (!onOwnBehalf) {
+        if (!actorName.trim())          missing.push('Képviselt fél neve')
+        if (!actorBirthPlace.trim())    missing.push('Képviselt fél szül. helye')
+        if (!actorBirthDate)            missing.push('Képviselt fél szül. ideje')
+        if (!actorMotherName.trim())    missing.push('Képviselt fél anyja neve')
+        if (!actorDocumentNumber.trim()) missing.push('Képviselt fél okmányszáma')
+        if (!actorAddress.trim())       missing.push('Képviselt fél lakcíme')
+      }
+      // V235 (HIBA #15 2026-05-19): ha PEP, a minoseget is meg kell jelolni
+      if (isPep && !pepKind) missing.push('PEP minőség')
     }
     return missing
-  }, [identificationLevel, customerName, customerDocNumber, customerBirthPlace, customerBirthDate, customerMotherName, customerAddress, hufTotal, sourceOfFunds, onOwnBehalf, actorName])
+  }, [identificationLevel, customerName, customerDocNumber, customerBirthPlace, customerBirthDate, customerMotherName, customerAddress, hufTotal, sourceOfFunds, onOwnBehalf, actorName,
+      isPep, pepKind, actorBirthPlace, actorBirthDate, actorMotherName, actorDocumentNumber, actorAddress])
 
   const handleSaveManualCustomer = useCallback(async () => {
     // Replace silent `return` with explicit toast — user-visible feedback per #581 bug report
@@ -315,7 +384,23 @@ export default function CustomerPanel({
         isPep,
         sourceOfFunds: sourceOfFunds.trim() || undefined,
         onOwnBehalf,
-        actorName: actorName.trim() || undefined,
+        // Copilot P2 (PR #695): csak akkor adjuk at az actorName-et ha
+        // tenyleg "mas neveben" jar el — egyebkent stale data maradhatna
+        // a kliensben (user kitoltotte, majd visszakapcsolt "Sajat nevben"-re).
+        actorName: !onOwnBehalf ? (actorName.trim() || undefined) : undefined,
+        // V235 (HIBA #15): PEP minoseg, ha isPep=true
+        pepKind: isPep && pepKind ? (pepKind as PepKind) : null,
+        // V235 (HIBA #17): actor teljes azonositasa, ha !onOwnBehalf
+        actorIdentity: !onOwnBehalf ? {
+          name: actorName.trim(),
+          birthPlace: actorBirthPlace.trim() || undefined,
+          birthDate: actorBirthDate || undefined,
+          motherName: actorMotherName.trim() || undefined,
+          nationality: actorNationality.trim() || undefined,
+          documentType: actorDocumentType,
+          documentNumber: actorDocumentNumber.trim() || undefined,
+          address: actorAddress.trim() || undefined,
+        } : null,
       }
       setSelectedCustomer(savedCustomer)
 
@@ -683,23 +768,31 @@ export default function CustomerPanel({
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.okmanyTipus')}</label>
-                <select className={fieldClass} style={fieldStyle}
-                  value={customerDocType} onChange={(e) => setCustomerDocType(e.target.value)}>
-                  <option value="ID_CARD">{t('transactions.szemelyiIgazolvany')}</option>
-                  <option value="PASSPORT">{t('transactions.utlevel')}</option>
-                  <option value="DRIVING_LICENSE">{t('transactions.vezetoiEngedely')}</option>
-                  <option value="RESIDENCE_PERMIT">{t('transactions.tartozkodasiEngedely')}</option>
-                  <option value="OTHER">{t('transactions.egyeb')}</option>
-                </select>
-              </div>
+              {/* HIBA #12 (2026-05-19): Pmt. szerint SIMPLIFIED (100-300k) szinten az
+                  okmány típus + szám NEM kötelező — csak FULL (300k+) szinten. A
+                  korábbi UI mindkettőt mutatta SIMPLIFIED-nél is, ami megzavarta a
+                  pénztárosokat. Most csak FULL módban jelennek meg. */}
+              {showFull && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.okmanyTipus')}</label>
+                    <select className={fieldClass} style={fieldStyle}
+                      value={customerDocType} onChange={(e) => setCustomerDocType(e.target.value)}>
+                      <option value="ID_CARD">{t('transactions.szemelyiIgazolvany')}</option>
+                      <option value="PASSPORT">{t('transactions.utlevel')}</option>
+                      <option value="DRIVING_LICENSE">{t('transactions.vezetoiEngedely')}</option>
+                      <option value="RESIDENCE_PERMIT">{t('transactions.tartozkodasiEngedely')}</option>
+                      <option value="OTHER">{t('transactions.egyeb')}</option>
+                    </select>
+                  </div>
 
-              <div className={showFull ? '' : 'col-span-2'}>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.okmanyszam')}</label>
-                <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle} data-testid="customer-doc-number-input"
-                  value={customerDocNumber} onChange={(e) => setCustomerDocNumber(e.target.value)} />
-              </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.okmanyszam')}</label>
+                    <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle} data-testid="customer-doc-number-input"
+                      value={customerDocNumber} onChange={(e) => setCustomerDocNumber(e.target.value)} />
+                  </div>
+                </>
+              )}
 
               {/* --- FULL only fields --- */}
               {showFull && (
@@ -734,24 +827,40 @@ export default function CustomerPanel({
               )}
             </div>
 
-            {/* V229 (2026-05-15 HIBA #8): 300k+ Pmt. JOGCIM nyilatkozat block */}
+            {/* V229 + V235 (2026-05-15/-19 HIBA #8 + #15 + #17): 300k+ Pmt. JOGCIM nyilatkozat block */}
             {hufTotal >= 300_000 && (
               <div className="mt-3 p-3 rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-950/20 space-y-2">
                 <div className="text-xs font-semibold text-amber-900 dark:text-amber-200">
                   Pmt. JOGCÍM nyilatkozat (300.000 Ft felett kötelező)
                 </div>
-                <div className="flex items-center gap-4">
-                  <label className="text-xs flex items-center gap-1.5">
-                    <span>Közszereplő (PEP)?</span>
-                    <label className="inline-flex items-center gap-1">
-                      <input type="radio" name="pep" checked={!isPep} onChange={() => setIsPep(false)} />
-                      <span>Nem</span>
-                    </label>
-                    <label className="inline-flex items-center gap-1">
-                      <input type="radio" name="pep" checked={isPep} onChange={() => setIsPep(true)} />
-                      <span>Igen</span>
-                    </label>
-                  </label>
+                {/* HIBA #15 (2026-05-19): a PEP minoseg 7-utas dropdown — nem csak Igen/Nem.
+                    A bizonylaton kotelezo megjelolni MILYEN minosegben kiemelt kozszereplo. */}
+                <div>
+                  <label className="text-xs block mb-0.5">Kiemelt közszereplő (PEP)?</label>
+                  <select
+                    className={fieldClass}
+                    style={fieldStyle}
+                    data-testid="customer-pep-kind-select"
+                    value={isPep ? (pepKind || 'EGYEB') : 'NEM'}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v === 'NEM') {
+                        setIsPep(false)
+                        setPepKind('')
+                      } else {
+                        setIsPep(true)
+                        setPepKind(v as PepKind)
+                      }
+                    }}
+                  >
+                    <option value="NEM">Nem közszereplő</option>
+                    <option value="CSALADTAG">Igen — kiemelt közszereplő családtagja</option>
+                    <option value="KOZELI_MUNKATARS">Igen — közeli munkatárs / üzleti partner</option>
+                    <option value="KORMANYFO">Igen — miniszter / államtitkár / kormányfő</option>
+                    <option value="PARLAMENTI">Igen — országgyűlési / önkormányzati képviselő</option>
+                    <option value="NAV_VEZETO">Igen — NAV / állami vállalat felsővezetés</option>
+                    <option value="EGYEB">Igen — egyéb kiemelt közszereplő</option>
+                  </select>
                 </div>
                 <div className="flex items-center gap-4">
                   <label className="text-xs flex items-center gap-1.5">
@@ -766,13 +875,82 @@ export default function CustomerPanel({
                     </label>
                   </label>
                 </div>
+                {/* HIBA #17 (2026-05-19): ha mas neveben jar el, a kepviselt felre is
+                    teljes azonositast kell vegezni (Pmt. tv. 6.§ (2)). A bizonylaton
+                    mindkettonek meg kell jelennie. */}
                 {!onOwnBehalf && (
-                  <div className="ml-4">
-                    <label className="text-xs block">Kinek a nevében? *</label>
-                    <input type="text" className={fieldClass} style={fieldStyle}
-                      value={actorName}
-                      onChange={(e) => setActorName(e.target.value)}
-                      placeholder="A képviselt fél neve" />
+                  <div className="ml-4 p-2 rounded border border-amber-400 dark:border-amber-600 bg-amber-100/50 dark:bg-amber-900/30 space-y-2">
+                    <div className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                      Képviselt fél teljes azonosítása (kötelező)
+                    </div>
+                    <div>
+                      <label className="text-xs block">Név *</label>
+                      <input type="text" className={fieldClass} style={fieldStyle}
+                        data-testid="actor-name-input"
+                        value={actorName}
+                        onChange={(e) => setActorName(e.target.value)}
+                        placeholder="A képviselt fél teljes neve" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs block">Születési hely *</label>
+                        <input type="text" className={fieldClass} style={fieldStyle}
+                          data-testid="actor-birth-place-input"
+                          value={actorBirthPlace}
+                          onChange={(e) => setActorBirthPlace(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-xs block">Születési idő *</label>
+                        <input type="date" className={fieldClass} style={fieldStyle}
+                          data-testid="actor-birth-date-input"
+                          value={actorBirthDate}
+                          onChange={(e) => setActorBirthDate(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-xs block">Anyja neve *</label>
+                        <input type="text" className={fieldClass} style={fieldStyle}
+                          data-testid="actor-mother-name-input"
+                          value={actorMotherName}
+                          onChange={(e) => setActorMotherName(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-xs block">Állampolgárság</label>
+                        <select className={fieldClass} style={fieldStyle}
+                          value={actorNationality}
+                          onChange={(e) => setActorNationality(e.target.value)}>
+                          <option>Magyar</option>
+                          <option>EU-állampolgárság</option>
+                          <option>Egyéb</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs block">Okmány típus</label>
+                        <select className={fieldClass} style={fieldStyle}
+                          value={actorDocumentType}
+                          onChange={(e) => setActorDocumentType(e.target.value)}>
+                          <option value="ID_CARD">Személyi igazolvány</option>
+                          <option value="PASSPORT">Útlevél</option>
+                          <option value="DRIVING_LICENSE">Vezetői engedély</option>
+                          <option value="RESIDENCE_PERMIT">Tartózkodási engedély</option>
+                          <option value="OTHER">Egyéb</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs block">Okmányszám *</label>
+                        <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle}
+                          data-testid="actor-doc-number-input"
+                          value={actorDocumentNumber}
+                          onChange={(e) => setActorDocumentNumber(e.target.value)} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs block">Lakcím *</label>
+                      <input type="text" className={fieldClass} style={fieldStyle}
+                        data-testid="actor-address-input"
+                        value={actorAddress}
+                        onChange={(e) => setActorAddress(e.target.value)}
+                        placeholder="pl. 1234 Budapest, Fo utca 1." />
+                    </div>
                   </div>
                 )}
                 <div>
