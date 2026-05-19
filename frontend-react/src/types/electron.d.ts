@@ -85,6 +85,43 @@ export interface ElectronAPI {
     customerIsPep?: boolean | null,
     foreignStatus?: 'DOMESTIC' | 'FOREIGN' | null,
   ): Promise<number>;
+
+  // V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): bővített API teljes
+  // Pmt. customer-snapshot-tal (szül.hely/idő, anyja neve, állampolgárság,
+  // PEP minőség, "más nevében" flag + actor teljes azonosítása).
+  savePendingTransactionV2?: (input: {
+    type: 'SELL' | 'BUY'
+    currencyCode: string
+    foreignAmount: number
+    hufAmount: number
+    roundedHufAmount: number
+    rate: number
+    handlingFee: number | null
+    discountPercent: number | null
+    customerIdentifier: string | null
+    customerName: string | null
+    customerDocumentNumber: string | null
+    customerAddress: string | null
+    denominations: string | null
+    foreignStatus: 'DOMESTIC' | 'FOREIGN' | null
+    customerBirthPlace: string | null
+    customerBirthDate: string | null
+    customerMotherName: string | null
+    customerNationality: string | null
+    customerDocumentType: string | null
+    sourceOfFunds: string | null
+    customerIsPep: boolean | null
+    customerOnOwnBehalf: boolean | null
+    customerActorName: string | null
+    customerPepKind: string | null
+    customerActorBirthPlace: string | null
+    customerActorBirthDate: string | null
+    customerActorMotherName: string | null
+    customerActorNationality: string | null
+    customerActorDocumentType: string | null
+    customerActorDocumentNumber: string | null
+    customerActorAddress: string | null
+  }) => Promise<number>;
   savePendingConversion(
     fromCurrencyId: number | null,
     fromCurrencyCode: string,

@@ -181,6 +181,15 @@ export interface BuyRequest {
   // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat
   customerOnOwnBehalf?: boolean
   customerActorName?: string
+  // V235 (2026-05-19 HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
+  customerPepKind?: 'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+  customerActorBirthPlace?: string
+  customerActorBirthDate?: string
+  customerActorMotherName?: string
+  customerActorNationality?: string
+  customerActorDocumentType?: string
+  customerActorDocumentNumber?: string
+  customerActorAddress?: string
   notes?: string
   cashierCustomRate?: boolean
   foreignStatus?: 'DOMESTIC' | 'FOREIGN'
@@ -207,6 +216,15 @@ export interface SellRequest {
   // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat
   customerOnOwnBehalf?: boolean
   customerActorName?: string
+  // V235 (2026-05-19 HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
+  customerPepKind?: 'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+  customerActorBirthPlace?: string
+  customerActorBirthDate?: string
+  customerActorMotherName?: string
+  customerActorNationality?: string
+  customerActorDocumentType?: string
+  customerActorDocumentNumber?: string
+  customerActorAddress?: string
   notes?: string
   cashierCustomRate?: boolean
   foreignStatus?: 'DOMESTIC' | 'FOREIGN'

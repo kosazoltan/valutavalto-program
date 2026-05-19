@@ -28,6 +28,28 @@ export interface PendingBuySellInput {
    * a tranzakcio-szintu erteket hasznalja (default: FOREIGN).
    */
   foreignStatus?: 'DOMESTIC' | 'FOREIGN'
+  // V229 + V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): teljes Pmt.
+  // customer-snapshot. Mind opcionalis — ha nincs kitoltve a UI-on (pl. 100k
+  // alatti tranzakcio), null/undefined erteket adunk.
+  customerBirthPlace?: string | null
+  customerBirthDate?: string | null
+  customerMotherName?: string | null
+  customerNationality?: string | null
+  customerDocumentType?: string | null
+  sourceOfFunds?: string | null
+  customerIsPep?: boolean | null
+  customerOnOwnBehalf?: boolean | null
+  customerActorName?: string | null
+  /** V235 NEW (HIBA #15): PEP minoseg — CSALADTAG / KOZELI_MUNKATARS / KORMANYFO / PARLAMENTI / NAV_VEZETO / EGYEB / null. */
+  customerPepKind?: string | null
+  /** V235 NEW (HIBA #17): actor (kepviselt fel) teljes azonositasa, ha onOwnBehalf=false. */
+  customerActorBirthPlace?: string | null
+  customerActorBirthDate?: string | null
+  customerActorMotherName?: string | null
+  customerActorNationality?: string | null
+  customerActorDocumentType?: string | null
+  customerActorDocumentNumber?: string | null
+  customerActorAddress?: string | null
 }
 
 export interface PendingConversionInput {
@@ -235,30 +257,75 @@ export async function saveAndSyncPendingBuySell(
 ): Promise<ElectronQueueSyncOutcome> {
   return safeElectronOp('saveAndSyncPendingBuySell', async () => {
     const electronAPI = getElectronAPI()
-    if (!electronAPI?.savePendingTransaction || !electronAPI.getPendingTransactions) {
+    if (!electronAPI?.getPendingTransactions) {
+      throw new Error('Electron pending tranzakciós bridge nem érhető el')
+    }
+    // V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): preferaljuk a V2 API-t a
+    // teljes Pmt. customer-snapshot mentesehez. Ha a futtatott Electron build
+    // meg nem ismeri (regi telepito), legacy fallback a regi pozicionalis API-ra.
+    const hasV2 = typeof electronAPI.savePendingTransactionV2 === 'function'
+    if (!hasV2 && !electronAPI.savePendingTransaction) {
       throw new Error('Electron pending tranzakciós bridge nem érhető el')
     }
 
     const savedIds: number[] = []
     for (const entry of entries) {
-      const savedId = await electronAPI.savePendingTransaction(
-        entry.type,
-        entry.currencyCode,
-        entry.foreignAmount,
-        entry.hufAmount,
-        entry.roundedHufAmount,
-        entry.rate,
-        entry.handlingFee,
-        entry.discountPercent,
-        normalizeOptionalText(entry.customerIdentifier),
-        normalizeOptionalText(entry.customerName),
-        normalizeOptionalText(entry.customerDocumentNumber),
-        normalizeOptionalText(entry.customerAddress),
-        entry.denominations,
-        null,  // sourceOfFunds
-        null,  // customerIsPep
-        entry.foreignStatus ?? null,  // V226 per-line foreignStatus
-      )
+      let savedId: number
+      if (hasV2) {
+        savedId = await electronAPI.savePendingTransactionV2!({
+          type: entry.type,
+          currencyCode: entry.currencyCode,
+          foreignAmount: entry.foreignAmount,
+          hufAmount: entry.hufAmount,
+          roundedHufAmount: entry.roundedHufAmount,
+          rate: entry.rate,
+          handlingFee: entry.handlingFee,
+          discountPercent: entry.discountPercent,
+          customerIdentifier: normalizeOptionalText(entry.customerIdentifier),
+          customerName: normalizeOptionalText(entry.customerName),
+          customerDocumentNumber: normalizeOptionalText(entry.customerDocumentNumber),
+          customerAddress: normalizeOptionalText(entry.customerAddress),
+          denominations: entry.denominations,
+          foreignStatus: entry.foreignStatus ?? null,
+          customerBirthPlace: normalizeOptionalText(entry.customerBirthPlace),
+          customerBirthDate: normalizeOptionalText(entry.customerBirthDate),
+          customerMotherName: normalizeOptionalText(entry.customerMotherName),
+          customerNationality: normalizeOptionalText(entry.customerNationality),
+          customerDocumentType: normalizeOptionalText(entry.customerDocumentType),
+          sourceOfFunds: normalizeOptionalText(entry.sourceOfFunds),
+          customerIsPep: entry.customerIsPep ?? null,
+          customerOnOwnBehalf: entry.customerOnOwnBehalf ?? null,
+          customerActorName: normalizeOptionalText(entry.customerActorName),
+          customerPepKind: normalizeOptionalText(entry.customerPepKind),
+          customerActorBirthPlace: normalizeOptionalText(entry.customerActorBirthPlace),
+          customerActorBirthDate: normalizeOptionalText(entry.customerActorBirthDate),
+          customerActorMotherName: normalizeOptionalText(entry.customerActorMotherName),
+          customerActorNationality: normalizeOptionalText(entry.customerActorNationality),
+          customerActorDocumentType: normalizeOptionalText(entry.customerActorDocumentType),
+          customerActorDocumentNumber: normalizeOptionalText(entry.customerActorDocumentNumber),
+          customerActorAddress: normalizeOptionalText(entry.customerActorAddress),
+        })
+      } else {
+        // Legacy pozicionalis API — csak az alapmezok mennek at.
+        savedId = await electronAPI.savePendingTransaction(
+          entry.type,
+          entry.currencyCode,
+          entry.foreignAmount,
+          entry.hufAmount,
+          entry.roundedHufAmount,
+          entry.rate,
+          entry.handlingFee,
+          entry.discountPercent,
+          normalizeOptionalText(entry.customerIdentifier),
+          normalizeOptionalText(entry.customerName),
+          normalizeOptionalText(entry.customerDocumentNumber),
+          normalizeOptionalText(entry.customerAddress),
+          entry.denominations,
+          normalizeOptionalText(entry.sourceOfFunds),
+          entry.customerIsPep ?? null,
+          entry.foreignStatus ?? null,
+        )
+      }
       savedIds.push(savedId)
     }
 

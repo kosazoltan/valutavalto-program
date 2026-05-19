@@ -54,6 +54,8 @@ import {
   setConfig,
   deleteConfig,
   savePendingTransaction,
+  savePendingTransactionV2,
+  type PendingTransactionInputV2,
   savePendingConversion,
   savePendingBankTransaction,
   savePendingStorno,
@@ -463,6 +465,15 @@ ipcMain.handle('save-pending-transaction', async (
     customerIsPep,
     foreignStatus,
   );
+});
+
+// V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): bővített IPC channel
+// objektum-paraméterrel a teljes Pmt. customer-snapshot mentéséhez.
+ipcMain.handle('save-pending-transaction-v2', async (
+  _event,
+  input: PendingTransactionInputV2,
+): Promise<number> => {
+  return savePendingTransactionV2(input);
 });
 
 ipcMain.handle('get-pending-transactions', async (): Promise<ReturnType<typeof getPendingTransactions>> => {

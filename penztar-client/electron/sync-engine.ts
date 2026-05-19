@@ -1068,6 +1068,35 @@ export class SyncEngine {
       body['foreignStatus'] = tx.foreign_status;
     }
 
+    // V229 + V235 (2026-05-19 HIBA #14 + #17 + #18): teljes Pmt. customer-snapshot
+    // a backend felé. A korábbi sync csak 4 alapmezőt küldött át, így a bizonylaton
+    // hiányzott a szül.hely / szül.idő / anyja neve / állampolgárság / okmány típus
+    // / "más nevében" flag és az actor (képviselt fél) teljes azonosítása.
+    const addOptionalText = (key: string, value: string | null | undefined): void => {
+      if (value && value.trim().length > 0) {
+        body[key] = value;
+      }
+    };
+    addOptionalText('customerBirthPlace', tx.customer_birth_place);
+    addOptionalText('customerBirthDate', tx.customer_birth_date);
+    addOptionalText('customerMotherName', tx.customer_mother_name);
+    addOptionalText('customerNationality', tx.customer_nationality);
+    addOptionalText('customerDocumentType', tx.customer_document_type);
+    addOptionalText('customerActorName', tx.customer_actor_name);
+    addOptionalText('customerPepKind', tx.customer_pep_kind);
+    // 300k+ JOGCÍM nyilatkozat: NULL = nem kérdezett (régi pending sor); TRUE/FALSE = válasz
+    if (tx.customer_on_own_behalf !== null && tx.customer_on_own_behalf !== undefined) {
+      body['customerOnOwnBehalf'] = tx.customer_on_own_behalf === 1;
+    }
+    // V235 actor (képviselt fél) teljes azonosítása — csak ha onOwnBehalf=false
+    addOptionalText('customerActorBirthPlace', tx.customer_actor_birth_place);
+    addOptionalText('customerActorBirthDate', tx.customer_actor_birth_date);
+    addOptionalText('customerActorMotherName', tx.customer_actor_mother_name);
+    addOptionalText('customerActorNationality', tx.customer_actor_nationality);
+    addOptionalText('customerActorDocumentType', tx.customer_actor_document_type);
+    addOptionalText('customerActorDocumentNumber', tx.customer_actor_document_number);
+    addOptionalText('customerActorAddress', tx.customer_actor_address);
+
     // A tárolt idempotency_key-t használjuk — retry-nál is ugyanazt küldjük
     await httpPost(endpoint, body, token, tx.idempotency_key ?? undefined);
   }

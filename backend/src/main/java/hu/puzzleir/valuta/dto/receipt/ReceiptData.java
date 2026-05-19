@@ -223,6 +223,22 @@ public class ReceiptData {
     /** V229: A képviselt fél neve, ha customerOnOwnBehalf=FALSE. */
     private String customerActorName;
 
+    // ============ V235: PEP minoseg + actor teljes azonositasa (HIBA #15 + #17 2026-05-19) ============
+
+    /**
+     * V235 (HIBA #17): Actor (kepviselt fel) teljes azonositasi adatai a
+     * bizonylaton. Pmt. tv. 6.§ (2) szerint ha az ugyfel mas neveben jar el,
+     * a kepviselt fel adatainak is meg kell jelennie a bizonylaton.
+     * Csak akkor kell rendereluni, ha customerOnOwnBehalf=FALSE.
+     */
+    private String customerActorBirthPlace;
+    private String customerActorBirthDate;
+    private String customerActorMotherName;
+    private String customerActorNationality;
+    private String customerActorDocumentType;
+    private String customerActorDocumentNumber;
+    private String customerActorAddress;
+
     /**
      * Bizonylat sor adat
      */

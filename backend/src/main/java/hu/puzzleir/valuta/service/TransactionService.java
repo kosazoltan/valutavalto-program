@@ -289,6 +289,15 @@ public class TransactionService {
                 .customerDocumentType(request.getCustomerDocumentType())
                 .customerOnOwnBehalf(request.getCustomerOnOwnBehalf())
                 .customerActorName(request.getCustomerActorName())
+                // V235 PEP minoseg + actor teljes azonositasa (HIBA #15 + #17 2026-05-19)
+                .customerPepKind(request.getCustomerPepKind())
+                .customerActorBirthPlace(request.getCustomerActorBirthPlace())
+                .customerActorBirthDate(request.getCustomerActorBirthDate())
+                .customerActorMotherName(request.getCustomerActorMotherName())
+                .customerActorNationality(request.getCustomerActorNationality())
+                .customerActorDocumentType(request.getCustomerActorDocumentType())
+                .customerActorDocumentNumber(request.getCustomerActorDocumentNumber())
+                .customerActorAddress(request.getCustomerActorAddress())
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
@@ -452,6 +461,15 @@ public class TransactionService {
                 .customerDocumentType(request.getCustomerDocumentType())
                 .customerOnOwnBehalf(request.getCustomerOnOwnBehalf())
                 .customerActorName(request.getCustomerActorName())
+                // V235 PEP minoseg + actor teljes azonositasa (HIBA #15 + #17 2026-05-19)
+                .customerPepKind(request.getCustomerPepKind())
+                .customerActorBirthPlace(request.getCustomerActorBirthPlace())
+                .customerActorBirthDate(request.getCustomerActorBirthDate())
+                .customerActorMotherName(request.getCustomerActorMotherName())
+                .customerActorNationality(request.getCustomerActorNationality())
+                .customerActorDocumentType(request.getCustomerActorDocumentType())
+                .customerActorDocumentNumber(request.getCustomerActorDocumentNumber())
+                .customerActorAddress(request.getCustomerActorAddress())
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
@@ -783,6 +801,15 @@ public class TransactionService {
         private String customerDocumentType;
         private Boolean customerOnOwnBehalf;
         private String customerActorName;
+        // V235 PEP minoseg + actor teljes azonositasa (HIBA #15 + #17 2026-05-19)
+        private String customerPepKind;
+        private String customerActorBirthPlace;
+        private java.time.LocalDate customerActorBirthDate;
+        private String customerActorMotherName;
+        private String customerActorNationality;
+        private String customerActorDocumentType;
+        private String customerActorDocumentNumber;
+        private String customerActorAddress;
         private String notes;
         private Boolean cashierCustomRate;
         private String foreignStatus;
@@ -819,6 +846,15 @@ public class TransactionService {
         private String customerDocumentType;
         private Boolean customerOnOwnBehalf;
         private String customerActorName;
+        // V235 PEP minoseg + actor teljes azonositasa (HIBA #15 + #17 2026-05-19)
+        private String customerPepKind;
+        private String customerActorBirthPlace;
+        private java.time.LocalDate customerActorBirthDate;
+        private String customerActorMotherName;
+        private String customerActorNationality;
+        private String customerActorDocumentType;
+        private String customerActorDocumentNumber;
+        private String customerActorAddress;
         private String notes;
         private Boolean cashierCustomRate;
         private String foreignStatus;
