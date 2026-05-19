@@ -1,7 +1,11 @@
 package hu.puzzleir.valuta.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.entity.Denomination;
 import hu.puzzleir.valuta.entity.DenominationType;
+import hu.puzzleir.valuta.entity.OptimizationStrategy;
 import hu.puzzleir.valuta.repository.DenominationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,14 +14,23 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.UUID;
 
 /**
- * Címletezés optimalizáció service.
- * Stratégiák: GREEDY, MIN_BANKNOTES, MIN_TOTAL, DYNAMIC.
+ * Címletezés optimalizáció service — v2.0 spec 07_cimletkezeles.md alapján.
  *
- * Feladata: adott összeg kifizetéséhez a rendelkezésre álló címletekből
- * az optimális összeállítás kiszámítása.
+ * <p>7 stratégia (lásd {@link OptimizationStrategy}):
+ * <ul>
+ *   <li>GREEDY — mohó, nagytól kicsiig</li>
+ *   <li>DYNAMIC — bounded knapsack DP, minimum darabszám</li>
+ *   <li>MIN_COINS — bankjegyeket preferál, érméket csak ha kell</li>
+ *   <li>MIN_BANKNOTES — egyenértékű a GREEDY-vel (nagytól kicsiig)</li>
+ *   <li>MIN_TOTAL — kicsi címleteket preferál (max darabszám, ellentétes greedy)</li>
+ *   <li>CUSTOM — priorityOrderJson alapján definiált sorrend</li>
+ *   <li>BRANCH_SPECIFIC — készlet-aware: nagy készletű címleteket preferál (kiegyenlít)</li>
+ * </ul></p>
+ *
+ * <p>v2.5.65+ Sprint A close-out: 7 strategy mind valós impl (CUSTOM + BRANCH_SPECIFIC
+ * korábban fallback greedy volt).</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -26,35 +39,61 @@ import java.util.UUID;
 public class DenominationOptimizationService {
 
     private final DenominationRepository denominationRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * Optimális címletezés kiszámítása.
+     * Optimális címletezés a megadott stratégia szerint.
      *
-     * @param branchId    fiók ID (UUID)
-     * @param currencyId  valuta ID
+     * @param branchId    fiók
+     * @param currencyId  valuta
      * @param amount      kifizetendő összeg
-     * @param strategy    optimalizálási stratégia
-     * @return címlet → darabszám mapping
+     * @param strategy    optimalizálási stratégia (lásd {@link OptimizationStrategy})
+     * @return címlet → darabszám mapping (LinkedHashMap, csökkenő/növekvő sorrend a stratégia szerint)
      */
-    public Map<BigDecimal, Integer> optimize(UUID branchId, Long currencyId, BigDecimal amount, Strategy strategy) {
-        List<Denomination> available = denominationRepository.findByBranchAndCurrency(branchId, currencyId);
-        // already sorted DESC by the query
-
-        return switch (strategy) {
-            case GREEDY -> greedy(available, amount);
-            case MIN_BANKNOTES -> minBanknotes(available, amount);
-            case MIN_TOTAL -> minTotal(available, amount);
-            case DYNAMIC -> dynamic(available, amount);
-            case MIN_COINS -> minCoins(available, amount);
-            case CUSTOM -> greedy(available, amount); // Custom = alapértelmezetten greedy, de felülírható
-            case BRANCH_SPECIFIC -> greedy(available, amount); // Branch-specifikus = branch config-ból jön, fallback greedy
-        };
+    public Map<BigDecimal, Integer> optimize(UUID branchId, Long currencyId, BigDecimal amount,
+                                              OptimizationStrategy strategy) {
+        return optimize(branchId, currencyId, amount, strategy, null);
     }
 
     /**
-     * GREEDY: legnagyobb címlettől indul, amennyit tud kiad.
-     * Gyors, de nem mindig optimális.
+     * Optimális címletezés stratégiával + opcionális CUSTOM priority order JSON.
+     *
+     * @param priorityOrderJson  CUSTOM strategy esetén: JSON tömb a faceValue-k preferenciasorrendjével,
+     *                           pl. {@code ["20000", "10000", "5000", "1000", "500", "200", "100"]}
      */
+    public Map<BigDecimal, Integer> optimize(UUID branchId, Long currencyId, BigDecimal amount,
+                                              OptimizationStrategy strategy, String priorityOrderJson) {
+        if (strategy == null) {
+            throw new IllegalArgumentException("strategy must not be null");
+        }
+        if (amount == null || amount.signum() < 0) {
+            throw new IllegalArgumentException("amount must be non-null and non-negative");
+        }
+        if (amount.signum() == 0) {
+            return new LinkedHashMap<>();
+        }
+
+        // TODO Sprint A P0.3 (companyId audit): a findByBranchAndCurrency lekérdezés
+        // jelenleg NEM szűr company-ra (defense-in-depth hiányzik). A controller-szintű
+        // @PreAuthorize + branch.company FK gondoskodik a tenant-elszigetelésről, de a
+        // companyId formalis multi-tenant audit során ide is bekerül a szűrés.
+        List<Denomination> available = denominationRepository.findByBranchAndCurrency(branchId, currencyId);
+
+        return switch (strategy) {
+            case GREEDY, MIN_BANKNOTES -> greedy(available, amount);
+            case MIN_TOTAL -> minTotal(available, amount);
+            case DYNAMIC -> dynamic(available, amount);
+            case MIN_COINS -> minCoins(available, amount);
+            case CUSTOM -> custom(available, amount, priorityOrderJson);
+            case BRANCH_SPECIFIC -> branchSpecific(available, amount);
+        };
+    }
+
+    // ==========================================================================
+    // Stratégia implementációk
+    // ==========================================================================
+
+    /** GREEDY: legnagyobb címlettől indul, amennyit tud kiad. Gyors, de nem mindig optimális. */
     private Map<BigDecimal, Integer> greedy(List<Denomination> available, BigDecimal remaining) {
         Map<BigDecimal, Integer> result = new LinkedHashMap<>();
         BigDecimal left = remaining;
@@ -79,34 +118,15 @@ public class DenominationOptimizationService {
         return result;
     }
 
-    /**
-     * MIN_BANKNOTES: a legkevesebb bankjegy felhasználásával.
-     * Lényegében greedy, de preferálja a nagy címleteket.
-     */
-    private Map<BigDecimal, Integer> minBanknotes(List<Denomination> available, BigDecimal amount) {
-        // Nagytól kicsiig → greedy egyébként is ezt csinálja
-        return greedy(available, amount);
-    }
-
-    /**
-     * MIN_TOTAL: a legkisebb összegű bankjegyekből áll össze.
-     * Kis címleteket preferálja (ellentétes a greedy-vel).
-     */
+    /** MIN_TOTAL: kicsi címleteket preferál (max darabszám). */
     private Map<BigDecimal, Integer> minTotal(List<Denomination> available, BigDecimal amount) {
         List<Denomination> reversed = new ArrayList<>(available);
-        reversed.sort(Comparator.comparing(Denomination::getFaceValue)); // asc
+        reversed.sort(Comparator.comparing(Denomination::getFaceValue));
         return greedy(reversed, amount);
     }
 
-    /**
-     * DYNAMIC: bounded knapsack DP készletkorláttal.
-     *
-     * Tizedes összegek kezelése: a legkisebb címlet decimális helyei alapján
-     * skálázunk egészre (pl. 0.50 → *100 → 50). Fallback: greedy ha az összeg
-     * túl nagy a DP-hez (>500K skálázott egység) vagy nincs egész címlet.
-     */
+    /** DYNAMIC: bounded knapsack DP készletkorláttal — minimum darabszám. */
     private Map<BigDecimal, Integer> dynamic(List<Denomination> available, BigDecimal amount) {
-        // Csak aktív, készletes címletek
         List<Denomination> usable = available.stream()
                 .filter(d -> d.getQuantity() > 0)
                 .toList();
@@ -115,11 +135,13 @@ public class DenominationOptimizationService {
             return new LinkedHashMap<>();
         }
 
-        // Skálázási faktor: a legkisebb tizedes jegy alapján (pl. 0.50 → scale=2 → mult=100)
         int maxScale = usable.stream()
                 .map(d -> d.getFaceValue().stripTrailingZeros().scale())
                 .reduce(0, Math::max);
         maxScale = Math.max(maxScale, amount.stripTrailingZeros().scale());
+        // Negatív scale (pl. 1000 → stripTrailingZeros scale = -3) clamp 0-ra,
+        // különben BigDecimal.TEN.pow(negative) ArithmeticException.
+        maxScale = Math.max(0, maxScale);
         BigDecimal multiplier = BigDecimal.TEN.pow(maxScale);
 
         long target;
@@ -135,10 +157,8 @@ public class DenominationOptimizationService {
         }
         int t = (int) target;
 
-        // Készlet-korlátozott DP (bounded knapsack)
-        // dp[i] = minimum bankjegy szám i egységhez, -1 = elérhetetlen
         int[] dp = new int[t + 1];
-        int[][] used = new int[usable.size()][t + 1]; // used[denomIdx][amount] = hány db ebből
+        int[][] used = new int[usable.size()][t + 1];
         Arrays.fill(dp, Integer.MAX_VALUE);
         dp[0] = 0;
 
@@ -154,7 +174,6 @@ public class DenominationOptimizationService {
             int fv = (int) fvScaled;
             int maxQty = denom.getQuantity();
 
-            // Backward pass: az adott címlettel max maxQty-ot használhatunk
             for (int i = t; i >= fv; i--) {
                 for (int q = 1; q <= maxQty && (long) q * fv <= i; q++) {
                     int prev = i - q * fv;
@@ -171,7 +190,6 @@ public class DenominationOptimizationService {
             return greedy(available, amount);
         }
 
-        // Backtrack
         Map<BigDecimal, Integer> result = new LinkedHashMap<>();
         int pos = t;
         for (int di = usable.size() - 1; di >= 0 && pos > 0; di--) {
@@ -186,24 +204,17 @@ public class DenominationOptimizationService {
         return result;
     }
 
-    /**
-     * MIN_COINS: a legkevesebb érme felhasználásával.
-     * Bankjegyeket preferálja, érméket csak ha szükséges.
-     * Felmérés: 07_cimletkezeles.md követelmény.
-     */
+    /** MIN_COINS: bankjegyeket preferál, érméket csak ha kell. */
     private Map<BigDecimal, Integer> minCoins(List<Denomination> available, BigDecimal amount) {
-        // Szétválogatjuk bankjegyekre és érmékre a denominationType alapján
         List<Denomination> banknotes = available.stream()
                 .filter(d -> d.getDenominationType() == DenominationType.BANKNOTE)
-                .collect(java.util.stream.Collectors.toList());
+                .toList();
         List<Denomination> coins = available.stream()
                 .filter(d -> d.getDenominationType() == DenominationType.COIN)
-                .collect(java.util.stream.Collectors.toList());
+                .toList();
 
-        // Először bankjegyekkel fedünk amennyit lehet
-        Map<BigDecimal, Integer> result = greedy(banknotes, amount);
+        Map<BigDecimal, Integer> result = new LinkedHashMap<>(greedy(banknotes, amount));
 
-        // Maradékot érmékkel
         BigDecimal covered = result.entrySet().stream()
                 .map(e -> e.getKey().multiply(BigDecimal.valueOf(e.getValue())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -213,7 +224,6 @@ public class DenominationOptimizationService {
             Map<BigDecimal, Integer> coinResult = greedy(coins, remaining);
             coinResult.forEach((k, v) -> result.merge(k, v, Integer::sum));
 
-            // Ellenőrzés: a teljes összeg lefedve?
             BigDecimal totalCovered = result.entrySet().stream()
                     .map(e -> e.getKey().multiply(BigDecimal.valueOf(e.getValue())))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -226,16 +236,70 @@ public class DenominationOptimizationService {
         return result;
     }
 
-    public enum Strategy {
-        GREEDY,
-        MIN_BANKNOTES,
-        MIN_TOTAL,
-        DYNAMIC,
-        /** Minimum érme kiadása — bankjegyeket preferálja */
-        MIN_COINS,
-        /** Egyedi algoritmus — alapértelmezetten greedy, felülírható */
-        CUSTOM,
-        /** Fiókspecifikus optimalizálás — branch konfigból jön */
-        BRANCH_SPECIFIC
+    /**
+     * CUSTOM: priorityOrderJson alapján definiált sorrendben greedy.
+     *
+     * <p>A JSON tömb minden eleme egy faceValue (BigDecimal-szöveg). Az algoritmus ebben
+     * a sorrendben próbálja a címleteket. Olyan címletek, amik a JSON-ban nincsenek
+     * felsorolva, a végén kerülnek sorra (csökkenő érték szerint), greedy fallback.</p>
+     */
+    private Map<BigDecimal, Integer> custom(List<Denomination> available, BigDecimal amount, String priorityOrderJson) {
+        if (priorityOrderJson == null || priorityOrderJson.isBlank()) {
+            log.info("CUSTOM: priorityOrderJson hiányzik, fallback GREEDY");
+            return greedy(available, amount);
+        }
+
+        List<BigDecimal> priorityFaceValues;
+        try {
+            List<String> raw = objectMapper.readValue(priorityOrderJson, new TypeReference<>() {});
+            priorityFaceValues = raw.stream().map(BigDecimal::new).toList();
+        } catch (JsonProcessingException | NumberFormatException e) {
+            log.warn("CUSTOM: priorityOrderJson parse hiba, fallback GREEDY. Hiba: {}", e.getMessage());
+            return greedy(available, amount);
+        }
+
+        // BigDecimal scale-független matching: stripTrailingZeros() normalizál
+        // ("1000.00" ↔ "1000" ↔ "1E+3" mind ugyanaz logikailag).
+        Set<BigDecimal> priorityNormalized = new HashSet<>();
+        for (BigDecimal fv : priorityFaceValues) {
+            priorityNormalized.add(fv.stripTrailingZeros());
+        }
+        Map<BigDecimal, Denomination> byFvNormalized = new HashMap<>();
+        for (Denomination d : available) {
+            if (d.getFaceValue() == null) continue;
+            byFvNormalized.put(d.getFaceValue().stripTrailingZeros(), d);
+        }
+
+        List<Denomination> ordered = new ArrayList<>();
+        for (BigDecimal fv : priorityFaceValues) {
+            Denomination d = byFvNormalized.get(fv.stripTrailingZeros());
+            if (d != null) ordered.add(d);
+        }
+        // A priority-ben nem szereplő címletek a végén, greedy (descending)
+        available.stream()
+                .filter(d -> d.getFaceValue() != null
+                        && !priorityNormalized.contains(d.getFaceValue().stripTrailingZeros()))
+                .forEach(ordered::add);
+
+        return greedy(ordered, amount);
+    }
+
+    /**
+     * BRANCH_SPECIFIC: készlet-aware optimalizálás.
+     *
+     * <p>Készletkiegyenlítés: a magas készletű címleteket preferálja, alacsony készletet
+     * megőriz. A címleteket descending quantity szerint rendezi (egyenlő mennyiségnél
+     * descending faceValue), majd greedy a megfordított sorrendben.</p>
+     *
+     * <p>Cél: a pénztáros gyakran adja ki a "bőven van" címleteket, és tartogatja a
+     * "kifogyóban" címleteket, hogy a kasszában mindig vegyes maradjon a készlet.</p>
+     */
+    private Map<BigDecimal, Integer> branchSpecific(List<Denomination> available, BigDecimal amount) {
+        List<Denomination> byStockDescThenFvDesc = new ArrayList<>(available);
+        byStockDescThenFvDesc.sort(
+                Comparator.comparingInt(Denomination::getQuantity).reversed()
+                        .thenComparing(Comparator.comparing(Denomination::getFaceValue).reversed())
+        );
+        return greedy(byStockDescThenFvDesc, amount);
     }
 }
