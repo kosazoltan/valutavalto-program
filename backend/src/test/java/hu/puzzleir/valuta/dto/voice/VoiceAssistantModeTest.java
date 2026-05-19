@@ -65,11 +65,25 @@ class VoiceAssistantModeTest {
     }
 
     @Test
-    void jackson_deserialization_ismeretlen_wire_name_dob_exceptiont() {
+    void jackson_deserialization_ismeretlen_wire_name_dob_konkret_jackson_exceptiont() {
+        // Copilot PR #692 P2: a korabbi `isInstanceOf(Exception.class)` mindig
+        // igaz volt - tul gyenge. Konkret Jackson tipust + root-cause-t asserteljuk:
+        //  - tipus: ValueInstantiationException (a @JsonCreator factory IAE-jet ebbe csomagolja Jackson)
+        //  - root cause: IllegalArgumentException + uzenet tartalmazza a wire-name-et
         // Ezt a GlobalExceptionHandler@HttpMessageNotReadableException kapja el es
         // alakit a felhasznalo-barat "INVALID_ENUM_VALUE" 400 valassza.
         assertThatThrownBy(() -> MAPPER.readValue("\"unknown\"", VoiceAssistantMode.class))
-                .isInstanceOf(Exception.class)
-                .hasMessageContaining("VoiceAssistantMode");
+                .isInstanceOf(com.fasterxml.jackson.databind.exc.ValueInstantiationException.class)
+                .hasMessageContaining("VoiceAssistantMode")
+                .satisfies(ex -> {
+                    Throwable root = ex;
+                    while (root.getCause() != null) root = root.getCause();
+                    assertThat(root)
+                            .as("root cause = a @JsonCreator factory altal dobott IllegalArgumentException")
+                            .isInstanceOf(IllegalArgumentException.class);
+                    assertThat(root.getMessage())
+                            .as("root cause uzenete tartalmazza a beadott wire-name-et")
+                            .contains("unknown");
+                });
     }
 }

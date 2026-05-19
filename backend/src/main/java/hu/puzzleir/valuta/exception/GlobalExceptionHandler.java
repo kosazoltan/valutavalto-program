@@ -145,35 +145,48 @@ public class GlobalExceptionHandler {
     }
 
     // --- 400 Bad Request (missing/unreadable body) ---
-    // Copilot PR #691 P1 finding: ha a Jackson enum-deserializaciot dob (pl.
-    // VoiceAssistantMode wire-name nem letezo), az "Hiányzó vagy érvénytelen
-    // request body" generikus szoveg helyett actionable feedback kell.
-    // A cause-lancban benne van az InvalidFormatException, amibol kinyerheto
-    // a megengedett enum-ertekek listaja.
+    // Copilot PR #691 P1 finding + Codex PR #692 P1 finding:
+    // Ha a Jackson enum-deserializaciot dob (pl. VoiceAssistantMode wire-name
+    // nem letezo), az "Hiányzó vagy érvénytelen request body" generikus szoveg
+    // helyett actionable feedback kell.
+    //
+    // HARMAS DETEKCIO a cause-lancban:
+    //  (a) InvalidFormatException - csak az enum bind generikus path-en
+    //  (b) ValueInstantiationException - @JsonCreator factory (pl.
+    //      VoiceAssistantMode.fromWireName) dobott IllegalArgumentException-t
+    //  (c) MismatchedInputException + IllegalArgumentException root cause
+    //
+    // Az enum wire-name lista @JsonValue annotation methodbol jon (ha letezik),
+    // egyebkent name().lowercase(Locale.ROOT). A Locale.ROOT fix a tor lokal-bugot.
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
         log.warn("Request body not readable: {}", ex.getMessage());
 
-        // Mély-keresés: van-e InvalidFormatException a cause-láncban? (enum bind failure)
         Throwable cur = ex.getCause();
         while (cur != null) {
+            // (a) Klasszikus InvalidFormatException — Jackson default enum bind failure
             if (cur instanceof com.fasterxml.jackson.databind.exc.InvalidFormatException ife) {
                 Class<?> targetType = ife.getTargetType();
                 if (targetType != null && targetType.isEnum()) {
-                    String fieldName = ife.getPath().isEmpty()
-                            ? "<unknown>"
-                            : ife.getPath().get(ife.getPath().size() - 1).getFieldName();
-                    String allowed = java.util.Arrays.stream(targetType.getEnumConstants())
-                            .map(Object::toString)
-                            .reduce((a, b) -> a + ", " + b)
-                            .orElse("<none>");
-                    String message = String.format(
-                            "Érvénytelen érték a '%s' mezőben: '%s'. Megengedett értékek: %s.",
-                            fieldName,
-                            String.valueOf(ife.getValue()),
-                            allowed.toLowerCase()
-                    );
-                    return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_ENUM_VALUE", message);
+                    return buildEnumBindError(targetType, ife.getValue(), extractFieldName(ife.getPath()));
+                }
+            }
+            // (b) ValueInstantiationException — @JsonCreator factory dobott IAE-t
+            // (pl. VoiceAssistantMode.fromWireName("unknown") → IllegalArgumentException)
+            if (cur instanceof com.fasterxml.jackson.databind.exc.ValueInstantiationException vie) {
+                Class<?> targetType = vie.getType() != null ? vie.getType().getRawClass() : null;
+                if (targetType != null && targetType.isEnum()) {
+                    Throwable rootCause = vie.getCause();
+                    Object value = extractEnumValueFromCauseAndProcessor(rootCause, vie);
+                    return buildEnumBindError(targetType, value, extractFieldName(vie.getPath()));
+                }
+            }
+            // (c) MismatchedInputException — egyeb Jackson bind failure path-ek
+            if (cur instanceof com.fasterxml.jackson.databind.exc.MismatchedInputException mie) {
+                Class<?> targetType = mie.getTargetType();
+                if (targetType != null && targetType.isEnum()) {
+                    Object value = extractEnumValueFromCauseAndProcessor(mie.getCause(), mie);
+                    return buildEnumBindError(targetType, value, extractFieldName(mie.getPath()));
                 }
             }
             cur = cur.getCause();
@@ -181,6 +194,75 @@ public class GlobalExceptionHandler {
 
         return buildResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST",
                 "Hiányzó vagy érvénytelen request body");
+    }
+
+    /**
+     * Visszaadja az enum wire-name-jeit. Elsobbsegben a @JsonValue method
+     * (pl. VoiceAssistantMode.getWireName()), egyebkent name().toLowerCase(ROOT).
+     */
+    private String collectEnumValues(Class<?> enumType) {
+        java.lang.reflect.Method jsonValueMethod = null;
+        for (java.lang.reflect.Method m : enumType.getMethods()) {
+            if (m.isAnnotationPresent(com.fasterxml.jackson.annotation.JsonValue.class) && m.getParameterCount() == 0) {
+                jsonValueMethod = m;
+                break;
+            }
+        }
+        final java.lang.reflect.Method finalMethod = jsonValueMethod;
+        return java.util.Arrays.stream(enumType.getEnumConstants())
+                .map(c -> {
+                    if (finalMethod != null) {
+                        try { return String.valueOf(finalMethod.invoke(c)); }
+                        catch (IllegalAccessException | java.lang.reflect.InvocationTargetException ignored) { /* fallthrough */ }
+                    }
+                    return ((Enum<?>) c).name().toLowerCase(java.util.Locale.ROOT);
+                })
+                .collect(java.util.stream.Collectors.joining(", "));
+    }
+
+    private ResponseEntity<ErrorResponse> buildEnumBindError(Class<?> enumType, Object value, String fieldName) {
+        String allowed = collectEnumValues(enumType);
+        String message = String.format(
+                "Érvénytelen érték a '%s' mezőben: '%s'. Megengedett értékek: %s.",
+                fieldName,
+                String.valueOf(value),
+                allowed
+        );
+        return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_ENUM_VALUE", message);
+    }
+
+    private String extractFieldName(java.util.List<com.fasterxml.jackson.databind.JsonMappingException.Reference> path) {
+        return (path == null || path.isEmpty())
+                ? "<unknown>"
+                : path.get(path.size() - 1).getFieldName();
+    }
+
+    /**
+     * Probal kinyerni a beadott wire-name-et kettos forrasbol:
+     *  1. cause IllegalArgumentException message vegerol (": foobar")
+     *  2. ha az nem mukodik, a Jackson parser current token text-jebol
+     */
+    private Object extractEnumValueFromCauseAndProcessor(Throwable rootCause,
+                                                         com.fasterxml.jackson.databind.JsonMappingException jme) {
+        // (1) IAE message tail: "VoiceAssistantMode ismeretlen: foobar"
+        if (rootCause != null) {
+            String message = rootCause.getMessage();
+            if (message != null) {
+                int colon = message.lastIndexOf(':');
+                if (colon >= 0 && colon < message.length() - 1) {
+                    return message.substring(colon + 1).trim();
+                }
+            }
+        }
+        // (2) JsonParser current token text
+        Object processor = jme.getProcessor();
+        if (processor instanceof com.fasterxml.jackson.core.JsonParser parser) {
+            try {
+                String currentText = parser.getText();
+                if (currentText != null && !currentText.isBlank()) return currentText;
+            } catch (java.io.IOException ignored) { /* fallthrough */ }
+        }
+        return rootCause != null ? rootCause.getMessage() : null;
     }
 
     // --- 400 Bad Request (custom validation) ---

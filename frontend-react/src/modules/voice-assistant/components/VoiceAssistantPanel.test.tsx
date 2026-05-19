@@ -6,7 +6,7 @@ import type { VoiceAssistantContextValue } from '../context/VoiceAssistantProvid
 /**
  * VoiceAssistantPanel UI-label tesztek.
  *
- * <p>Copilot PR #691 P2 finding: a felhasznalo-baart status-sor regression
+ * <p>Copilot PR #691 P2 finding: a felhasználó-barát status-sor regression
  * (technikai `unified` string a UI-ban) nincs RTL coverage-szel vedve.
  *
  * <p>Mockoljuk a `useVoiceAssistant` hookot dinamikus mode/isActive/etc.
