@@ -613,7 +613,19 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.67** (2026-05-19 — Sprint A autonomous: Címletezés v2 + Átlag árfolyam riport + MIN_TOTAL/MIN_COINS fix [#701, #703, #704]).
+- **Verzió:** **v2.5.69** (2026-05-19 — Sprint A autonomous mode: 7 release egyetlen este).
+  - **v2.5.70 PR (open):** PR #707 — ShipmentRequest multi-tenant P0 fix (P0.3 audit follow-up)
+  - **v2.5.69 (admin-merged `e87c04816`):** PR #706 — Multi-tenant IDOR fix DailyJournalService + multi-page PDF render fix + 4-way version sync
+  - **v2.5.68 (admin-merged `b5e738b26`):** PR #705 — Napkönyv PDF (legacy NAPKONYV parity)
+  - **v2.5.67 (admin-merged `f533314c4`):** PR #704 — MIN_TOTAL/MIN_COINS Copilot #701 follow-up
+  - **v2.5.66 (admin-merged `c05ceb16f`):** PR #703 — Átlag árfolyam riport (legacy ATLAGARF parity)
+  - **v2.5.65 (admin-merged `dcfb97124`):** PR #701 — Címletezés v2 7 stratégia teljes impl + companyId audit doc
+  - **v2.5.64 (admin-merged `727d08079`):** PR #700 — V240 BR026 sync + 9 branch bank_code fix
+
+### Új P0 mandate (2026-05-19 21:30 user-direktíva)
+**C.24** — Proaktív CI + AI review polling minden push után, T+60/120/180/300s cadence + "NEM megállás" szabály. Vault: `vault/feedback/proactive-ai-review-polling-mandatory-2026-05-19.md`. Auto-memory: `feedback_proactive_ci_ai_review_polling.md`. Indok: "A határozott utasítás ellenére is megint megálltál" → MIND a 6 stop-feltétel (CI green + AI fixed + admin-merge + 4 build + Downloads + vault session) szükséges a megálláshoz.
+
+- **Korábbi verzió:** v2.5.67 (2026-05-19 — Sprint A autonomous: Címletezés v2 + Átlag árfolyam riport + MIN_TOTAL/MIN_COINS fix [#701, #703, #704]).
 - **v2.5.67 PR (admin-merged main-be ~21:00 CEST):** PR #704 (`f533314c4`) — Copilot #701 follow-up: MIN_TOTAL P0 (delegál DYNAMIC-ra a minimum darabszámért) + MIN_COINS P1 (3-fázisú DP, 500B+3×200C/600 adversarial teszt zöld). Plus `dynamicExact` quiet helper (Copilot P2 #704 log-zaj fix).
 - **v2.5.66 PR (admin-merged ~20:50 CEST):** PR #703 (`c05ceb16f`) — Átlag árfolyam riport service (`AverageRateReportService` + Controller + V241 partial index `(company_id, transaction_date, currency_id) WHERE status='COMPLETED' AND financial_effective=TRUE`). 12 unit teszt. Copilot P0 (financial_effective TRUE szűrés) + CodeQL log-injection + 4 további finding mind javítva.
 - **v2.5.65 PR (admin-merged ~20:10 CEST):** PR #701 (`dcfb97124`) — Címletezés v2 7 stratégia (GREEDY, MIN_BANKNOTES, MIN_TOTAL, DYNAMIC, MIN_COINS, CUSTOM, BRANCH_SPECIFIC) valós impl + 17 unit teszt. Plus `docs/companyId-coverage-2026-05-19.md` audit (185 repo kategorizálás, 1 valódi bug: ShipmentRequestRepository — külön P0 follow-up PR).
