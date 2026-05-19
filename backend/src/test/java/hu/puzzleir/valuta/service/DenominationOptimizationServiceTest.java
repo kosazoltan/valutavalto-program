@@ -94,15 +94,17 @@ class DenominationOptimizationServiceTest {
     }
 
     @Test
-    @DisplayName("MIN_TOTAL: 100 Ft → 20×5 (kis címleteket preferál)")
-    void minTotal_should_pickSmallestFirst() {
+    @DisplayName("MIN_TOTAL Copilot P0 #701 fix: 100 Ft → 1×100 (minimum darabszám, NEM 20×5)")
+    void minTotal_minimumPieceCount() {
         when(denominationRepository.findByBranchAndCurrency(any(), any())).thenReturn(hufDenoms);
 
         Map<BigDecimal, Integer> result = service.optimize(branchId, currencyId,
                 new BigDecimal("100"), OptimizationStrategy.MIN_TOTAL);
 
-        // 5-ös érmét keresi először (legkisebb), 20×5=100 — DE max 100 db elérhető
-        assertThat(result).containsEntry(new BigDecimal("5"), 20);
+        // Korábban (v2.5.65 bug) 20×5=100 → most a v2.5.67 fix után 1×100 (DYNAMIC delegate)
+        int totalCount = result.values().stream().mapToInt(Integer::intValue).sum();
+        assertThat(totalCount).isEqualTo(1);
+        assertThat(result).containsEntry(new BigDecimal("100"), 1);
         assertThat(sum(result)).isEqualByComparingTo("100");
     }
 
@@ -117,6 +119,26 @@ class DenominationOptimizationServiceTest {
         int totalCount = result.values().stream().mapToInt(Integer::intValue).sum();
         assertThat(totalCount).isLessThanOrEqualTo(3);
         assertThat(sum(result)).isEqualByComparingTo("17000");
+    }
+
+    @Test
+    @DisplayName("MIN_COINS Copilot P1 #701 fix: 500 banknote + 3×200 coin, amount=600 → 3×200 (egzakt)")
+    void minCoins_adversarial_banknoteGreedyTrap() {
+        // Bug-eset: a v2.5.65 banknote-greedy ELŐSZÖR vette a 500-ast, maradék 100,
+        // amit érmével nem tudott fedni (200 > 100, és nincs 100-as érme itt).
+        // A v2.5.67 fix: 3-fázisú DP (banknote-only fail, mixed DP egzakt 3×200 érmét talál).
+        List<Denomination> stock = List.of(
+                makeDenom("500", 1, DenominationType.BANKNOTE),
+                makeDenom("200", 3, DenominationType.COIN)
+        );
+        when(denominationRepository.findByBranchAndCurrency(any(), any())).thenReturn(stock);
+
+        Map<BigDecimal, Integer> result = service.optimize(branchId, currencyId,
+                new BigDecimal("600"), OptimizationStrategy.MIN_COINS);
+
+        // EGZAKT fedés: 3×200 = 600
+        assertThat(sum(result)).isEqualByComparingTo("600");
+        assertThat(result.getOrDefault(new BigDecimal("200"), 0)).isEqualTo(3);
     }
 
     @Test

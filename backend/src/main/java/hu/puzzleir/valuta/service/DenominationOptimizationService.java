@@ -24,7 +24,7 @@ import java.util.*;
  *   <li>DYNAMIC — bounded knapsack DP, minimum darabszám</li>
  *   <li>MIN_COINS — bankjegyeket preferál, érméket csak ha kell</li>
  *   <li>MIN_BANKNOTES — egyenértékű a GREEDY-vel (nagytól kicsiig)</li>
- *   <li>MIN_TOTAL — kicsi címleteket preferál (max darabszám, ellentétes greedy)</li>
+ *   <li>MIN_TOTAL — **minimum** összes darabszám (DYNAMIC-ra delegál, v2.5.67 fix #701/#704)</li>
  *   <li>CUSTOM — priorityOrderJson alapján definiált sorrend</li>
  *   <li>BRANCH_SPECIFIC — készlet-aware: nagy készletű címleteket preferál (kiegyenlít)</li>
  * </ul></p>
@@ -118,21 +118,58 @@ public class DenominationOptimizationService {
         return result;
     }
 
-    /** MIN_TOTAL: kicsi címleteket preferál (max darabszám). */
-    private Map<BigDecimal, Integer> minTotal(List<Denomination> available, BigDecimal amount) {
-        List<Denomination> reversed = new ArrayList<>(available);
-        reversed.sort(Comparator.comparing(Denomination::getFaceValue));
-        return greedy(reversed, amount);
+    /** Helper: a result Map összegét számolja (faceValue × count összegzés). */
+    private static BigDecimal sumOf(Map<BigDecimal, Integer> result) {
+        return result.entrySet().stream()
+                .map(e -> e.getKey().multiply(BigDecimal.valueOf(e.getValue())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    /** DYNAMIC: bounded knapsack DP készletkorláttal — minimum darabszám. */
+    /**
+     * MIN_TOTAL: **minimum** összes darabszám — Copilot P0 #701 fix.
+     *
+     * <p>A v2.0 spec (OptimizationStrategy.MIN_TOTAL "Minimum összes darabszám") a
+     * minimális darabszámú összeállítást kéri. Korábban (v2.5.65) tévesen ascending
+     * greedy-vel hívtuk, ami a **maximális** darabszámot adta volna (pl. 100 Ft →
+     * 20×5 Ft helyett 1×100 Ft a helyes). Most delegáljuk a DYNAMIC-ra (bounded
+     * knapsack DP), ami egzakt minimum darabszámot ad. A DYNAMIC-on belül fallback
+     * GREEDY van, ha a DP nem alkalmazható (>500K skálázott egység vagy infeasible).</p>
+     */
+    private Map<BigDecimal, Integer> minTotal(List<Denomination> available, BigDecimal amount) {
+        return dynamic(available, amount);
+    }
+
+    /**
+     * DYNAMIC: bounded knapsack DP készletkorláttal — minimum darabszám.
+     *
+     * <p>Public dispatch: ha az egzakt DP nem alkalmazható, fallback GREEDY + WARN log.</p>
+     */
     private Map<BigDecimal, Integer> dynamic(List<Denomination> available, BigDecimal amount) {
+        Map<BigDecimal, Integer> exact = dynamicExact(available, amount);
+        if (exact != null) {
+            return exact;
+        }
+        // Nem volt egzakt megoldás vagy a DP nem alkalmazható → fallback greedy WARN-nal.
+        log.warn("Dynamic: nem találtam egzakt megoldást, fallback greedy (amount={})", amount);
+        return greedy(available, amount);
+    }
+
+    /**
+     * Quiet DP: bounded knapsack egzakt megoldás VAGY null. NEM logol WARN-t.
+     *
+     * <p>Copilot P2 #704 fix: a {@link #minCoins} Phase 1 banknote-only DP-je
+     * EXPECTED-ly fail-elhet (ha bankjeggyel pontosan nem fizethető); ekkor NE
+     * generáljon zajos WARN log-ot, mert utána Phase 2 mixed DP egzakt fedést ad.</p>
+     *
+     * @return egzakt DP-megoldás vagy {@code null} ha (1) usable üres, (2) skálázás
+     *         nem int, (3) target kívül DP-tartományon, (4) nincs egzakt fedés.
+     */
+    private Map<BigDecimal, Integer> dynamicExact(List<Denomination> available, BigDecimal amount) {
         List<Denomination> usable = available.stream()
                 .filter(d -> d.getQuantity() > 0)
                 .toList();
         if (usable.isEmpty()) {
-            log.warn("Dynamic: nincs elérhető címlet, üres eredmény");
-            return new LinkedHashMap<>();
+            return null;
         }
 
         int maxScale = usable.stream()
@@ -148,12 +185,10 @@ public class DenominationOptimizationService {
         try {
             target = amount.multiply(multiplier).longValueExact();
         } catch (ArithmeticException e) {
-            log.info("Dynamic: összeg nem konvertálható egészre, fallback greedy");
-            return greedy(available, amount);
+            return null;  // DP nem alkalmazható, dispatch greedy-re bízza
         }
         if (target <= 0 || target > 500_000L) {
-            log.info("Dynamic: target={} kívül esik a DP tartományon, fallback greedy", target);
-            return greedy(available, amount);
+            return null;  // DP nem alkalmazható, dispatch greedy-re bízza
         }
         int t = (int) target;
 
@@ -186,8 +221,7 @@ public class DenominationOptimizationService {
         }
 
         if (dp[t] == Integer.MAX_VALUE) {
-            log.warn("Dynamic: nem találtam egzakt megoldást, fallback greedy");
-            return greedy(available, amount);
+            return null;  // Nincs egzakt megoldás, dispatch greedy-re bízza
         }
 
         Map<BigDecimal, Integer> result = new LinkedHashMap<>();
@@ -204,30 +238,65 @@ public class DenominationOptimizationService {
         return result;
     }
 
-    /** MIN_COINS: bankjegyeket preferál, érméket csak ha kell. */
+    /**
+     * MIN_COINS: bankjegyeket preferál, érméket csak akkor használ ha kell — Copilot P1 #701 fix.
+     *
+     * <p>Korábban (v2.5.65): banknote-greedy → coin-greedy. Bug: ha a banknote-greedy
+     * irrevocable választása után a maradék érmével nem fedhető (pl. 500 banknote + 3×200
+     * coin, amount=600 → greedy 500-at vesz, maradék 100, érme nincs erre → részleges).
+     * Pedig 3×200=600 EGZAKT lett volna érmével.</p>
+     *
+     * <p>Most 3-fázisú megoldás (Sourcery #704 fix — JavaDoc-implementation match):
+     * 1. **Banknote-only DP** (egzakt): ha bankjeggyel pontosan kifizethető → 0 érme.
+     * 2. **Full mixed DP** (banknote + coin): ha 1. fázis nem sikerült, ez minimum
+     *    DARABSZÁMRA optimalizál (NEM külön coin-súly: ha 2 megoldás van azonos darabszámmal,
+     *    egyik banknote-heavy, másik coin-heavy, akkor a DP választása nem garantált a
+     *    banknote-heavy-re. Cél: EGZAKT fedés. A pénzügyi szabályozás szerint amíg
+     *    az összeg teljesen kifizetésre kerül, az aránylag elfogadható.).
+     * 3. **Greedy fallback** (banknote-greedy + coin-greedy): ha még DP-vel sem fedhető
+     *    (pl. 500+ DP-méret-cap kívül), részleges fedés warning-gal.</p>
+     *
+     * <p>A 3-fázisú megoldás biztosítja:
+     * - Ha tisztán bankjeggyel lehetséges → 0 érme (legjobb eset).
+     * - Ha nem (bug-eset, lásd 500B+3×200C/600 adversarial teszt) → mixed DP egzakt fedéssel.
+     * - Ha még az sem megy → partial coverage warning-gal.</p>
+     *
+     * <p>Megjegyzés: a "banknote-bias DP" (külön súlyozás vagy constrained states) elméleti
+     * tovább-optimalizáció — a jelenlegi mixed DP a darabszámot minimalizálja, NEM az érme-
+     * count-ot direkt. Üzleti policy szerint az egzakt fedés a fő kritérium, az érme-minimalizálás
+     * másodlagos. Jövőbeli sprint-ben megfontolandó (Sourcery overall feedback #704).</p>
+     */
     private Map<BigDecimal, Integer> minCoins(List<Denomination> available, BigDecimal amount) {
         List<Denomination> banknotes = available.stream()
                 .filter(d -> d.getDenominationType() == DenominationType.BANKNOTE)
                 .toList();
+
+        // Phase 1: csak bankjegyek (DP egzakt) — QUIET (Copilot P2 #704: ne logoljon WARN-t
+        // expected failure-en, mert Phase 2 sikeres lehet)
+        Map<BigDecimal, Integer> banknoteOnly = dynamicExact(banknotes, amount);
+        if (banknoteOnly != null && sumOf(banknoteOnly).compareTo(amount) == 0) {
+            return banknoteOnly;
+        }
+
+        // Phase 2: full mixed DP — egzakt fedés ha lehetséges (QUIET)
+        Map<BigDecimal, Integer> mixed = dynamicExact(available, amount);
+        if (mixed != null && sumOf(mixed).compareTo(amount) == 0) {
+            return mixed;
+        }
+
+        // Phase 3: utolsó esély — banknote-greedy + coin-greedy (eredeti logika, de csak fallback)
         List<Denomination> coins = available.stream()
                 .filter(d -> d.getDenominationType() == DenominationType.COIN)
                 .toList();
-
         Map<BigDecimal, Integer> result = new LinkedHashMap<>(greedy(banknotes, amount));
-
-        BigDecimal covered = result.entrySet().stream()
-                .map(e -> e.getKey().multiply(BigDecimal.valueOf(e.getValue())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal covered = sumOf(result);
         BigDecimal remaining = amount.subtract(covered);
 
         if (remaining.compareTo(BigDecimal.ZERO) > 0) {
             Map<BigDecimal, Integer> coinResult = greedy(coins, remaining);
             coinResult.forEach((k, v) -> result.merge(k, v, Integer::sum));
 
-            BigDecimal totalCovered = result.entrySet().stream()
-                    .map(e -> e.getKey().multiply(BigDecimal.valueOf(e.getValue())))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal finalRemaining = amount.subtract(totalCovered);
+            BigDecimal finalRemaining = amount.subtract(sumOf(result));
             if (finalRemaining.compareTo(BigDecimal.ZERO) > 0) {
                 log.warn("MIN_COINS: nem sikerült teljesen lefedni az összeget. Maradék: {}", finalRemaining);
             }
