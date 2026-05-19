@@ -1,9 +1,6 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.report.AverageRateReportDto;
-import hu.puzzleir.valuta.entity.Currency;
-import hu.puzzleir.valuta.repository.CurrencyRepository;
-import hu.puzzleir.valuta.repository.TransactionRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
@@ -28,15 +25,16 @@ import java.util.UUID;
  * ugyanúgy számítanának). A HUF-súlyozott a valódi pénzügyi átlagárfolyam.</p>
  *
  * <p>Multi-tenant biztonság: minden lekérdezés `company.id = :companyId`-ra szűr.</p>
+ *
+ * <p>FONTOS: a query KIZÁRJA a parent CONVERSION sorokat (`financial_effective = FALSE`),
+ * mert azok metadata-csak rekordok és duplikálnák a child convBuy/convSell sorok forgalmát.
+ * Lásd Transaction.financialEffective JavaDoc + Copilot P0 #703 finding.</p>
  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 @Slf4j
 public class AverageRateReportService {
-
-    private final TransactionRepository transactionRepository;
-    private final CurrencyRepository currencyRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -47,10 +45,11 @@ public class AverageRateReportService {
      * @param companyId       cég (kötelező — multi-tenant)
      * @param from            időszak kezdete
      * @param to              időszak vége (inclusive)
-     * @param branchId        iroda (null = összes iroda aggregálva)
-     * @param currencyId      valuta (null = összes valuta per row)
-     * @param transactionType "BUY" / "SELL" / null=mind
-     * @return sorok valuta szerint (és iroda szerint, ha branchId=null nem aggregál csak szűr)
+     * @param branchId        opcionális iroda-szűrő (null = irodák között aggregálva)
+     * @param currencyId      opcionális valuta-szűrő (null = minden valuta külön sorban)
+     * @param transactionType "BUY" / "SELL" / "CONVERSION" / null = minden típus
+     * @return riport sorok valuta szerint (egy sor per valuta; ha branchId NEM null,
+     *         az ehhez az irodához tartozó tranzakciók, egyébként az összes irodáé aggregálva)
      */
     public List<AverageRateReportDto> generate(UUID companyId, LocalDate from, LocalDate to,
                                                 UUID branchId, Long currencyId, String transactionType) {
@@ -64,7 +63,8 @@ public class AverageRateReportService {
             throw new IllegalArgumentException("from > to érvénytelen időszak");
         }
 
-        // JPQL aggregálás GROUP BY currency-vel (és opcionálisan transactionType-pal)
+        // JPQL aggregálás GROUP BY currency-vel (és opcionálisan transactionType-pal).
+        // Copilot P0 #703: financialEffective = TRUE — parent CONVERSION kizárás (NEM duplikál).
         StringBuilder jpql = new StringBuilder();
         jpql.append("SELECT t.currency.id, t.currency.code, ")
             .append("COUNT(t), ")
@@ -73,7 +73,8 @@ public class AverageRateReportService {
             .append("FROM Transaction t ")
             .append("WHERE t.company.id = :companyId ")
             .append("AND t.transactionDate BETWEEN :from AND :to ")
-            .append("AND t.status = hu.puzzleir.valuta.entity.TransactionStatus.COMPLETED ");
+            .append("AND t.status = hu.puzzleir.valuta.entity.TransactionStatus.COMPLETED ")
+            .append("AND t.financialEffective = TRUE ");
 
         if (branchId != null) {
             jpql.append("AND t.branch.id = :branchId ");
@@ -98,12 +99,14 @@ public class AverageRateReportService {
         if (currencyId != null) {
             query.setParameter("currencyId", currencyId);
         }
+        // Sanitize transactionType BEFORE try-block, hogy a parse + log-szövegben is jó legyen
+        String safeTransactionType = sanitizeForLog(transactionType);
         if (transactionType != null && !transactionType.isBlank()) {
             try {
                 query.setParameter("transactionType",
                         hu.puzzleir.valuta.entity.TransactionType.valueOf(transactionType.toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Érvénytelen transactionType: " + transactionType
+                throw new IllegalArgumentException("Érvénytelen transactionType: " + safeTransactionType
                         + " (BUY/SELL/CONVERSION/...)");
             }
         }
@@ -140,9 +143,18 @@ public class AverageRateReportService {
                     .build());
         }
 
+        // CodeQL log-injection #703 fix: transactionType user-controlled String, sanitize előbb
         log.debug("AverageRateReport: company={}, period={}..{}, branch={}, currency={}, type={} → {} sor",
-                companyId, from, to, branchId, currencyId, transactionType, result.size());
+                companyId, from, to, branchId, currencyId, safeTransactionType, result.size());
 
         return result;
+    }
+
+    /**
+     * CRLF + control karakter strip a log-injection elleni védelemhez.
+     */
+    private static String sanitizeForLog(String input) {
+        if (input == null) return null;
+        return input.replaceAll("[\\r\\n\\t]", "_").replaceAll("[\\p{Cntrl}]", "?");
     }
 }

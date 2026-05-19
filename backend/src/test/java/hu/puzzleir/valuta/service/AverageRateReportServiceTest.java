@@ -190,8 +190,8 @@ class AverageRateReportServiceTest {
     }
 
     @Test
-    @DisplayName("JPQL query a status=COMPLETED feltételt tartalmazza (sztornózott kizárva)")
-    void query_filtersOnCompletedStatus() {
+    @DisplayName("JPQL query a status=COMPLETED + financialEffective=TRUE feltételeket tartalmazza")
+    void query_filtersOnCompletedAndFinancialEffective() {
         when(query.getResultList()).thenReturn(List.of());
 
         service.generate(companyId, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31),
@@ -199,7 +199,11 @@ class AverageRateReportServiceTest {
 
         org.mockito.ArgumentCaptor<String> jpqlCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
         org.mockito.Mockito.verify(entityManager).createQuery(jpqlCaptor.capture());
-        assertThat(jpqlCaptor.getValue()).contains("COMPLETED");
+        String jpql = jpqlCaptor.getValue();
+        assertThat(jpql).contains("COMPLETED");
+        // Copilot P0 #703 regression-guard: parent CONVERSION kizárás
+        assertThat(jpql).contains("financialEffective");
+        assertThat(jpql).contains("TRUE");
     }
 
     @Test

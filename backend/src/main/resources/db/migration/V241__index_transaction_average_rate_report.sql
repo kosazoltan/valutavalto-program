@@ -10,11 +10,16 @@
 -- Index NEM dropolja a meglévő idx_transaction_company / idx_transaction_date / idx_transaction_branch
 -- indexeket — azok más query-khez kellenek.
 
+-- Copilot P2 #703: financial_effective = TRUE is bele kell, mert a riport
+-- query kizárja a parent CONVERSION sorokat (financial_effective=false). Az
+-- index predicate-jébe is — V177/V180 minta a meglévő riport-indexeknél.
+
 CREATE INDEX IF NOT EXISTS idx_tx_company_date_status_currency
     ON transaction (company_id, transaction_date, currency_id)
-    WHERE status = 'COMPLETED';
+    WHERE status = 'COMPLETED' AND financial_effective = TRUE;
 
 COMMENT ON INDEX idx_tx_company_date_status_currency IS
     'V241 (2026-05-19): AverageRateReportService súlyozott átlagárfolyam riport-támogatás. '
-    'Partial index csak COMPLETED tranzakciókra (sztornózott kihagyva). '
+    'Partial index csak COMPLETED + financial_effective=TRUE tranzakciókra '
+    '(sztornózott és parent CONVERSION kihagyva). '
     'Sprint A P2.5 legacy ATLAGARF parity.';
