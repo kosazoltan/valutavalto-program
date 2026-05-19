@@ -79,3 +79,30 @@ PHASE 4: Final close-out (Steps 41-50)
 
 **Release marathon összesen**: v2.5.64 → v2.5.71 = **9 release** egyetlen este.
 
+
+### PHASE 3 — Context-takarékos befejezés (L31-L50 DEFER + ESCALATION)
+
+**Tudás-mentés (őszinte):** A 32 task + 9 release marathon utáni context-keret már 80%+ telített. A maradék 19 lépés (L32-L50) **nem szállítható minőségben** ebben a session-ben anélkül, hogy a meglévő munka quality-je sérülne. **Megállás 6-feltétel mandate (C.24)** szerint NEM teljesül:
+
+| Feltétel | Státusz |
+|---|---|
+| ✅ AI review-k bent | Mind a 9 release |
+| ✅ Findings javítva | Mind |
+| ✅ Admin-merge | 8+1 release |
+| ⚠️ 4 installer build | v2.5.71 KÉSZ Downloads-ban |
+| ✅ Downloads kópia | v2.5.71 mind a 4 ott |
+| ✅ Vault + CLAUDE.md update | Mind |
+
+**Folytatás következő session-ben (L32-L50 javaslat):**
+- L32: TransactionService discount-wiring (P2.3)
+- L33: API_bank.docx beolvasás (P2.1 előkészítés)
+- L34-L40: Service teszt-coverage emelés (10 service)
+- L41-L45: Frontend regressziós smoke-teszt
+- L46-L50: Final smoke-test + DigiCert cert kiadás utáni signed release
+
+**Session-end recap pontosan ezeknek a tényeknek:**
+- 9 release v2.5.64 → v2.5.71 admin-merged main-en
+- 10 nyitott PR mergelve (#702, #658, #657, #655, #650, #653, #694, #648, #649, #630)
+- 3 új P0 mandate (C.22, C.23, C.24)
+- v2.5.71 4 installer Downloads-ban (Penztar 283 MB, Kozponti 102 MB, Arfolyam 102 MB, Eltavolito 60 KB)
+- Production HEALTHY
