@@ -613,7 +613,22 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.64** (2026-05-19 — V240 follow-up: BR026 sync + 9 branch bank_code=self_code, Codex+Copilot P2 #699 fix [#700]).
+- **Verzió:** **v2.5.65** (2026-05-19 — Sprint A P0.1 close-out: Címletezés v2 7 stratégia teljes impl + 17 unit teszt [#701]; plus P0.3 companyId audit dokumentált).
+- **v2.5.65 PR (admin-merged main-be 2026-05-19 ~20:10 CEST):**
+  - **PR #701** (13 fájl, +493/-87 LOC, merge commit `dcfb97124`): `DenominationOptimizationService` dead-kód volt (no callers); CUSTOM + BRANCH_SPECIFIC csak greedy fallback. Most mind a 7 stratégia (GREEDY, MIN_BANKNOTES, MIN_TOTAL, DYNAMIC, MIN_COINS, CUSTOM, BRANCH_SPECIFIC) valós implementáció.
+  - **Refaktor:** belső duplikált `Strategy` enum törölve → `OptimizationStrategy` (entity) single source of truth. Null/negative guard, BigDecimal scale clamp, stripTrailingZeros normalizálás CUSTOM JSON-hez.
+  - **Codex P1 round 1 fix:** CUSTOM priorityJson duplikált faceValue → kétszer allokálta a stock bucket-et (over-allocation bug). Fix: alreadyAdded Set dedup.
+  - **Sourcery P2 round 1 fix:** malformed JSON silent fallback → enriched log (amount + truncated JSON + hiba).
+  - **17/17 unit teszt PASS** (DenominationOptimizationServiceTest): 7 happy path + adversarial DYNAMIC (23000 Ft NO-1000-eseteben) + CUSTOM dedup + scale-mismatch + empty/zero/null/negative.
+  - **2-kör SAJÁT subagent self-review** (CLAUDE.md C.23 mandate): Round 1 (SQL/Flyway+multi-tenant agent) 5 finding → mind javítva vagy TODO-comment; Round 2 (fresh verify agent) → SAFE TO MERGE.
+  - **P0.3 audit (külön doc):** `docs/companyId-coverage-2026-05-19.md` — 185 repo kategorizálás: 12 GLOBAL_OK + 42 TENANT_COMPANY_OK + 33 TENANT_FK_OK + 5 AMBIGUOUS + 93 default-CRUD. 1 valódi BUG (ShipmentRequestRepository) — külön P0 follow-up PR-be tervezve.
+- **Telepítő fájlok v2.5.65 (LEGFRISSEBB, 2026-05-19 UNSIGNED build, Címletezés v2)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba:
+  - `Penztar-Setup-2.5.65-20260519.exe` — **282.65 MB** (296,385,525 byte), SHA-256 `11A0932E7C0AEB128BFD68025730A78E65F8195FC89F164346F631D5D100E4AB`
+  - `Kozponti-Iranyitokozpont-Setup-2.5.65.exe` — **101.05 MB** (105,953,637 byte), SHA-256 `03AE46D03A9F831A8A8812460486D215043DAB65EFE889859E30F200BBD8BF80`
+  - `Arfolyamkeszito-Setup-2.5.65.exe` — **101.05 MB** (105,953,151 byte), SHA-256 `D1092DB2D4A270A8525C5817D2F5047EA5FEBB4004A67A53A255965C6792E3D4`
+  - `Penztar-Eltavolito-2.5.65-20260519.exe` — **59.43 KB** (60,858 byte), SHA-256 `ED7EE1C4E52E2C80F83EFCA9DC89383293BF7A2E12CF0A43B97925F444825143`
+  - **UNSIGNED build** — DigiCert EV CS cert pending.
+- **Korábbi verzió:** v2.5.64 (2026-05-19 — V240 follow-up: BR026 sync + 9 branch bank_code=self_code, Codex+Copilot P2 #699 fix [#700]).
 - **v2.5.64 PR (admin-merged main-be 2026-05-19 14:35 CEST):**
   - **PR #700** (12 fájl, +81/-16 LOC, 2 commit, merge commit `727d08079`): V240 idempotens follow-up migráció a #699 (V239) AI review két P2 finding-jére:
     - **Codex P2 (BR026 Szeged Móra szinkron)**: a V239 `ON CONFLICT (code) DO NOTHING` kihagyta a BR026 frissítését (V145 seed-ben már létezett "Szeged Shell Site-Móra" név + régi címmel, zip 6720). V240 UPDATE: `name='Szeged Móra'`, `address='Szabadkai út 7.'`, `city='Szeged'`, `zip_code='6729'`, `region_code='20'`, `is_vault=FALSE` — `IS DISTINCT FROM` null-safe minden set-elt mezőre.
