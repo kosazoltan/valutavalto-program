@@ -116,6 +116,15 @@ export const currencyApi = {
     const response = await api.get<Currency>(`/currencies/${id}`)
     return response.data
   },
+  // V238 (2026-05-19): admin endpoints — uj valuta + aktivalas/deaktivalas auditalva
+  create: async (data: { code: string; name: string; symbol?: string; decimalPlaces?: number; displayOrder?: number }): Promise<Currency> => {
+    const response = await api.post<Currency>('/currencies', data)
+    return response.data
+  },
+  setActive: async (id: number, active: boolean, note?: string): Promise<Currency> => {
+    const response = await api.patch<Currency>(`/currencies/${id}/active`, { active, note })
+    return response.data
+  },
   search: async (query: string): Promise<Currency[]> => {
     const response = await api.get<Currency[]>('/currencies/search', { params: { q: query } })
     return response.data

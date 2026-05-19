@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, LogOut, Globe, Save, ArrowRight, Info, Wifi, WifiOff } from 'lucide-react'
+import { Send, LogOut, Globe, Save, ArrowRight, Info, Wifi, WifiOff, Settings } from 'lucide-react'
 import { HyperFormula } from 'hyperformula'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
 import { exchangeRateMasterApi, type ExchangeRateMaster, type CreateMasterRateRequest } from '../../services/api/exchangeRateMaster'
 import { currencyApi } from '../../services/api/exchange-rates'
+import CurrencyManagerModal from './components/CurrencyManagerModal'
 
 /**
  * Főlap (0-s lap) — Árfolyamkészítő program ALAP felülete.
@@ -180,6 +181,8 @@ export default function MainRateSheetPage() {
   const [editBuffer, setEditBuffer] = useState<string>('')
   const [showHelp, setShowHelp] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  // V238 (2026-05-19): Valutakezelő modal — uj valuta hozzaadasa / aktivalas / deaktivalas
+  const [showCurrencyManager, setShowCurrencyManager] = useState(false)
   const lastSavedAt = useRef<string | null>(null)
   // Phase 2 wiring (Kosa Zoltan 2026-05-18 directive): a foertektaros által az
   // EXE-ben végzett árfolyam-szerkesztés a KÖZPONTI szerveren tárolt
@@ -764,6 +767,17 @@ export default function MainRateSheetPage() {
         >
           <Globe size={12} /> INTERNET CÍMEK KARBANTARTÁSA
         </button>
+        {/* V238 (2026-05-19) Valutakezelő — admin only (foertekitaros / ugyvezeto) */}
+        {canEdit && (
+          <button
+            onClick={() => setShowCurrencyManager(true)}
+            className="px-3 py-1 text-xs font-medium bg-white border border-slate-400 rounded hover:bg-slate-50 flex items-center gap-1"
+            data-testid="open-currency-manager"
+            title="Valutakezelő — új valuta hozzáadása / inaktiválás (audit log)"
+          >
+            <Settings size={12} /> VALUTAKEZELŐ
+          </button>
+        )}
         <div className="flex-1" />
         <button
           onClick={() => {
@@ -917,6 +931,21 @@ export default function MainRateSheetPage() {
           </div>
         </div>
       )}
+
+      {/* V238 (2026-05-19) — Valutakezelő modal: új valuta hozzáadása, aktiválás/deaktiválás. */}
+      <CurrencyManagerModal
+        isOpen={showCurrencyManager}
+        onClose={() => setShowCurrencyManager(false)}
+        onCurrencyChanged={() => {
+          // A backend Currency tabla változott → értesítjük a felhasználót hogy
+          // a Főlap új-betöltést igényel (page reload vagy app restart). MVP:
+          // simán toast, dinamikus row-frissítés v2.5.62-be jön.
+          toast.info(
+            'Valutakezelő',
+            'Egy valuta módosult. A változás a Főlapon a következő app-indítás után jelenik meg.',
+          )
+        }}
+      />
     </div>
   )
 }
