@@ -613,8 +613,8 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.69** (2026-05-19 — Sprint A autonomous mode: 7 release egyetlen este).
-  - **v2.5.70 PR (open):** PR #707 — ShipmentRequest multi-tenant P0 fix (P0.3 audit follow-up)
+- **Verzió:** **v2.5.70** (2026-05-19 — Sprint A autonomous mode: 8 release egyetlen este).
+  - **v2.5.70 (admin-merged `a8a2db130`):** PR #707 — ShipmentRequest multi-tenant P0 fix (P0.3 audit follow-up) — `findByStatusAndCompanyId` + `findAllOrderedByCompanyId` Branch.company FK JOIN subquery + service cross-tenant IDOR guard. Régi globális queries @Deprecated jelöléssel.
   - **v2.5.69 (admin-merged `e87c04816`):** PR #706 — Multi-tenant IDOR fix DailyJournalService + multi-page PDF render fix + 4-way version sync
   - **v2.5.68 (admin-merged `b5e738b26`):** PR #705 — Napkönyv PDF (legacy NAPKONYV parity)
   - **v2.5.67 (admin-merged `f533314c4`):** PR #704 — MIN_TOTAL/MIN_COINS Copilot #701 follow-up
