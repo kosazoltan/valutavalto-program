@@ -55,6 +55,21 @@
 |---|---|---|---|---|
 | **D.1** | AI ügynök Push/CI/Deploy/Merge doctrine (10 fázis) | `ai-agent-push-ci-doctrine-2026-05-17.md` | always | P0 |
 
+## v2 ÚJ mandate (EXZ-tanulságok átültetése, 2026-05-17)
+
+| # | Mandate | Fájl | Hatály | P-szint |
+|---|---|---|---|---|
+| **E.1** | ELVI-MÓD szétválasztás (VV-ELVI erősebb mint VV-MÓD) | `claude-code-valutavalto-korrekcios-mandate-2026-05-17-v2.md` 1. | always | P0 |
+| **E.2** | ELVI-compliance gate (PR-leírás 16-pontos checklist) | v2 3. | always | P0 |
+| **E.3** | VV-ELVI tükör memóriafájl session-start | `vault/elvi/vv-elvi-mirror.md` | always | P0 |
+| **E.4** | Kanonikus TransactionStatus + RateStatus enum | v2 5.1, 5.2 | always | P0 |
+| **E.5** | Állapotgép-megkerülés tilalom (no raw UPDATE) | v2 5.3 | always | P0 |
+| **E.6** | Tiltott minták debt-scan workflow | `.github/workflows/business-invariant-guard.yml` | always | P0 |
+| **E.7** | Capability map fenntartás | `docs/CAPABILITIES.md` | always | P1 |
+| **E.8** | `business-review-required` címke + üzleti approve | v2 8. | always | P0 |
+| **E.9** | "AI review NEM garantál üzleti helyességet" záró figyelmeztetés | v2 9. | always | P1 |
+| **E.10** | Mérnöki vs. üzleti product-ready különválasztás | v2 10. | always | P1 |
+
 ---
 
 ## Index-karbantartás
