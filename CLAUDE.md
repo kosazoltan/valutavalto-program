@@ -613,7 +613,22 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.59** (2026-05-19 — overnight PR marathon 4 PR: Hangsegéd unified mode UI + 422 friendly errors + flaky test [#689] + SetupWizard integration test rate-limit defensive [#690] + Copilot DTO enum follow-up [#691] + Codex P1 cause-chain bug iter2 [#692]).
+- **Verzió:** **v2.5.60** (2026-05-19 — Fabulya Zsuzsanna 18+1 user-bug B-kategória atomikus fix-batch [#695]).
+- **v2.5.60 PR (admin-merged main-be 2026-05-19 12:52 CEST):**
+  - **PR #695** (37 fájl, +2066 / -120 LOC, 7 commit, merge commit `28d7c70d`): a Fabulya Zsuzsanna kollégánő által 2026-05-19-én jelentett B-kategória **8 hibájának atomikus javítása** + 2 Codex P1 + 12 Copilot P2 finding fix:
+    - **HIBA #10** (BUY HUF készlet): `CashierTransactionPage.tsx` client-side prevalidation BUY módban is fut (mode==='buy' || 'sell' guard) + a fee és kerekítés levonva a backend-egyenértékű totalHufPayable-ből.
+    - **HIBA #12** (SIMPLIFIED okmány): `CustomerPanel.tsx` `{showFull && ...}` guard a okmány típus + szám mezőkre — csak FULL módban (300k+) mutatja, SIMPLIFIED-nél (100-300k) eltűnik.
+    - **HIBA #13** (Ügyfél nem rögzíthető — "Belső szerverhiba"): **V236 Flyway migration** — `customer.nationality` és `transaction.customer_nationality` VARCHAR(3) → VARCHAR(100), mert a frontend "Magyar" / "EU-állampolgárság" / "Egyéb" humanreadable szöveget küld, ami a V3-as VARCHAR(3)-ba nem fért bele → HTTP 500 `value too long`. Customer + Transaction entity `length=100`.
+    - **HIBA #14** (bizonylet hiányos szül.hely/idő/anyja neve): teljes Electron data-flow refaktor — `penztar-client/electron/sqlite.ts` schema bővítve 16 customer-snapshot oszloppal, új `savePendingTransactionV2` objektum-paraméteres API + `save-pending-transaction-v2` IPC channel + `sync-engine.ts` POST body bővítés.
+    - **HIBA #15** (PEP minőség): új `PepKind` enum (6 érték: CSALADTAG/KOZELI_MUNKATARS/KORMANYFO/PARLAMENTI/NAV_VEZETO/EGYEB) + **V235 Flyway migration** `customer_pep_kind VARCHAR(50)` + CHECK constraint + ReceiptGeneratorService `buildPepStatusText()` kategória-specifikus szöveg + CustomerPanel 7-utas dropdown.
+    - **HIBA #17** (más nevében actor azonosítás): V235 7 új actor mező (`customer_actor_birth_place/birth_date/mother_name/nationality/document_type/document_number/address`) + ActorPanel inline UI a CustomerPanel-ben + validáció (`!onOwnBehalf` → mind a 6 mező + actorName kötelező) + `EscPosReceiptService` rendereli az actor adatokat a bizonylatra.
+    - **HIBA #18** (bizonylet "saját nevében" hibás): `customer_on_own_behalf` flag plumbing az Electron pathon — a sync-engine actor-guard csak `customer_on_own_behalf === 0` esetén küldi át.
+    - **HIBA #19** (Konverzió Pmt. — új user-direktíva): `ConversionRequestDto` + `TransactionConversionService.executeConversion` bővítve 14 új customer-snapshot mezővel + `ConversionPage.tsx` CustomerPanel integráció `hufAmount >= 100k` esetén + Electron offline plumbing teljes szinten: `pending_conversions` schema 18 új oszlop + `savePendingConversionV2` + `save-pending-conversion-v2` IPC + `syncConversion` POST body + ConversionPage Electron path payload (17 mező + actor identity).
+    - **Codex P1 #1** (PEP enforcement): `validatePmtComplianceFields()` 300k+ tranzakcióknál + új `PMT_STRICT_ENFORCEMENT` SystemParameter feature-flag (default `false` v2.5.59 kompat, v2.5.61+ default `true` → `ValidationException`).
+    - **Codex P1 #2** (Conversion Electron Pmt. plumbing): 5-layer fix (sqlite + savePendingConversionV2 + IPC + saveAndSync + sync-engine + ConversionPage Electron path).
+    - **Copilot P2 (12 finding):** @Pattern regex empty string fix (3 DTO), BUY HUF check handling fee subtract, sync-engine actor guard, CustomerPanel actorName guard, 4-way version sync (kozponti + arfolyam + 5 lockfile packages[""] entry), ReceiptPdfService actor render (EscPosReceiptService extend), CashierTransactionPage actor stale data.
+    - **CI fix**: `PepSourceOfFundsTest` NPE — defensive null-check a `systemParameterService`-re a `validatePmtComplianceFields`-ben (mockolt teszt-kontextus).
+- **Korábbi verzió:** v2.5.59 (2026-05-19 — overnight PR marathon 4 PR: Hangsegéd unified mode UI + 422 friendly errors + flaky test [#689] + SetupWizard integration test rate-limit defensive [#690] + Copilot DTO enum follow-up [#691] + Codex P1 cause-chain bug iter2 [#692]).
 - **Korábbi verzió:** v2.5.58 (2026-05-18, 3 PR: V234 DailyClosingService logger phase 2 [#685] + SetupWizard értéktáros Google OAuth [#686] + Rate-Maker EXE central server connection [#687]).
 - **v2.5.59 PR-ek (admin-merged main-be 2026-05-19 overnight session):**
   - **PR #689** Hangsegéd unified mode + size reduction + 422 friendly errors + flaky test fix: a Kósa Zoltán direktíva alapján a 3 mode-gomb (Telepítés/Tesztelés/Hibajelzés) helyett egyetlen "Beszélgetés indítása" gomb, panel w-72 → w-56, VoiceTokenError + VOICE_ERROR_MESSAGES map. Plus issueStore race-condition fix.
@@ -631,7 +646,13 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
   - **OpenAI Realtime API:** `gpt-realtime-2` (~$0.06-0.08/min audio, shimmer voice, gpt-realtime-whisper transcription).
   - **Költségvédelem:** per-worker rate-limit 10 ephemeral-token-keres / ora (configurálható env-flag).
   - **Adatvédelem:** issueStore IndexedDB lokálisan, master OPENAI_API_KEY csak backend-en, ~60s ephemeral client_secret WebRTC-hez.
-- **Telepítő fájlok v2.5.59 (LEGFRISSEBB, 2026-05-19 UNSIGNED build, overnight session)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba:
+- **Telepítő fájlok v2.5.60 (LEGFRISSEBB, 2026-05-19 UNSIGNED build, B-kategória fix-batch)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba:
+  - `Penztar-Setup-2.5.60-20260519.exe` — **282.49 MB** (296,209,523 byte), SHA-256 `73FB0C895CA32039E18CF54A5C99A56BD9824B422AD3FCB6B899D795ADCB9E41`
+  - `Kozponti-Iranyitokozpont-Setup-2.5.60.exe` — **100.94 MB** (105,838,732 byte), SHA-256 `BABDA2014630BA23E48FFC0407F4F0553C981F8661F57A6F59FFC0C4F8A9D5A8`
+  - `Arfolyamkeszito-Setup-2.5.60.exe` — **100.94 MB** (105,838,352 byte), SHA-256 `CBBFB876C3078C8489234BAA00046C1FA16E70B9521D59475BB87234A9335D31`
+  - `Penztar-Eltavolito-2.5.60-20260519.exe` — **59.43 KB** (60,859 byte), SHA-256 `F4D64FDFF13CFD8AFA13868D5199C7E146A931C4D420A9A0031036198896950F`
+  - **UNSIGNED build** — DigiCert EV CS cert kiadásig (vár Q&A validation 2026-05-19 13:00+) a SmartScreen "További információ" → "Futtatás mindenképp" lépés szükséges.
+- **Telepítő fájlok v2.5.59 (előző UNSIGNED build, 2026-05-19 overnight)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba:
   - `Penztar-Setup-2.5.59-20260519.exe` — **282.51 MB** (296,232,003 byte), SHA-256 `F43F22C5CB6142A784690FF6E722D18CF52BEA4E7C9224E54BE68E8EF0CB59F6`
   - `Kozponti-Iranyitokozpont-Setup-2.5.59.exe` — **100.93 MB** (105,836,915 byte), SHA-256 `D4BD4294D273F2D16E2B83A606BE24AC7B970742F522D9AFA504E733D08797AE`
   - `Arfolyamkeszito-Setup-2.5.59.exe` — **100.93 MB** (105,836,844 byte), SHA-256 `9448829F1EF3DF73F925B9E0A76CAAAD3C885F3C5CB95B92FFE3A5505AA53C65`
