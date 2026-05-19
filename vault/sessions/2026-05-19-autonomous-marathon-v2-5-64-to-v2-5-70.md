@@ -26,7 +26,7 @@ session_zar: 2026-05-19 21:45 (ongoing)
 > mappába, Hogy lássam, hogy hogyan fejlődik a program. Holnap reggelig önállóan,
 > megállás nélkül"
 
-## 7 release összegzés
+## 9 release összegzés (frissítve)
 
 | Verzió | PR | SHA | Funkció |
 |---|---|---|---|
@@ -36,7 +36,16 @@ session_zar: 2026-05-19 21:45 (ongoing)
 | v2.5.67 | #704 | `f533314c4` | MIN_TOTAL/MIN_COINS Copilot #701 follow-up fix |
 | v2.5.68 | #705 | `b5e738b26` | Napkönyv PDF (legacy NAPKONYV parity, P2.4) |
 | v2.5.69 | #706 | `e87c04816` | Multi-tenant IDOR fix DailyJournalService (Copilot P0 #705) |
-| v2.5.70 | #707 | open | ShipmentRequest multi-tenant P0 fix (P0.3 audit follow-up) |
+| v2.5.70 | #707 | `a8a2db130` | ShipmentRequest multi-tenant P0 fix (P0.3 audit follow-up) |
+| v2.5.71 | #708 | open | CompetitorRate multi-tenant P0 fix (P0.3 audit follow-up) |
+
+## P0.2 NAV decision (formális N/A)
+
+Külön vault-jegyzet: `vault/feedback/nav-decision-formal-na-2026-05-19.md`
+Indok: valutaváltás Pmt. hatálya alá tartozik (NEM ÁFA tv.), NAV Online Számla
+NEM kötelező. NavClosingService (ÁNYK XML) megmarad működőképesen.
+
+Felülbírálható ha üzleti környezet változik.
 
 ## Új mandate-ek
 
