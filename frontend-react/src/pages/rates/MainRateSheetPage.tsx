@@ -131,6 +131,15 @@ function loadFromStorage(): MainRateRow[] {
 // D oszlop VÉDETT — nem accept formula, csak text label.
 const FORMULA_COLUMNS = ['settlement', 'otp', 'helper', 'weakMultiBuy', 'weakMultiSell', 'wholesale'] as const
 type FormulaColumn = typeof FORMULA_COLUMNS[number]
+// Humanreadable oszlop-nevek a user-facing hibajelzéshez (Copilot P2 #4 fix).
+const COL_NAMES: Record<FormulaColumn, string> = {
+  settlement: 'A — Elszámoló',
+  otp: 'B — OTP',
+  helper: 'C — Segéd',
+  weakMultiBuy: 'E — Gyenge multis vétel',
+  weakMultiSell: 'F — Gyenge multis eladás',
+  wholesale: 'I — Nagybani',
+}
 
 /** HyperFormula formula key = `${rowIdx}.${col}`. Csak felhasználói képletek tárolódnak. */
 type FormulaMap = Record<string, string>
@@ -253,7 +262,18 @@ export default function MainRateSheetPage() {
     if (sheetId === undefined) return
     // Build full sheet data (9 col × N row). Cells with formulas use the formula
     // string ("=A1+B1"); cells without formulas use the raw numeric value.
-    const data: (string | number | null)[][] = rows.map((row, idx) => {
+    // Copilot P2 #697 #3: cross-base row-okra (CZK, PLN, RON, RSD, BAM, TRY,
+    // ILS, UAH, RUB, CNY, THB, BRL, MXN, NZD) az A-oszlop settlement érték
+    // JS-ben származtatott (enrichedRows.settlement = computeCrossSettlement).
+    // Az `enrichedRows`-t használjuk a HF feltöltéshez, NEM a raw `rows`-t,
+    // különben a `=A8*...` képletek 0-t számolnának keresztarány-row referencia
+    // esetén.
+    const sourceRows = rows.map((r) => {
+      if (!r.crossBase) return r
+      const derivedSettlement = computeCrossSettlement(r, eurSettlement, usdSettlement)
+      return { ...r, settlement: derivedSettlement, crossSettlement: derivedSettlement }
+    })
+    const data: (string | number | null)[][] = sourceRows.map((row, idx) => {
       const formulaCell = (col: FormulaColumn, fallback: number): string | number =>
         formulas[`${idx}.${col}`] ?? fallback
       return [
@@ -263,7 +283,7 @@ export default function MainRateSheetPage() {
         row.currency,                                     // D (label)
         formulaCell('weakMultiBuy', row.weakMultiBuy),    // E
         formulaCell('weakMultiSell', row.weakMultiSell),  // F
-        row.crossSettlement,                              // G (JS-számolt)
+        row.crossSettlement,                              // G (JS-számolt, cross-base esetén = settlement)
         row.crossRate,                                    // H
         formulaCell('wholesale', row.wholesale),          // I
       ]
@@ -306,12 +326,13 @@ export default function MainRateSheetPage() {
       hfRecomputeRef.current = true
       setRows(nextRows)
     }
-  }, [rows, formulas])
+  }, [rows, formulas, eurSettlement, usdSettlement])
 
-  // Codex P1 #581 iter-4 fix: PURE függvény ami sync visszaadja a next rows array-t
-  // (vagy null ha no-op). Ezáltal a save/dispatch szinkronoun tud serializálni
-  // anélkül, hogy React state batching race-elne (a setRows async, ezért a
-  // következő JSON.stringify(rows) még a régi snapshot-ot látja).
+  // Codex P1 #581 iter-4 (eredeti) + v2.5.61 (HyperFormula): sync visszaadja
+  // a next rows snapshot-ot a save/dispatch caller-nek. NEM tisztán pure —
+  // setFormulas() side-effect-et hív, ha "=" képletet/képlet-törlést detektál
+  // (Copilot P2 #697). De a returned snapshot a save/dispatch szempontjából
+  // VALÓDI tartalmat hordoz (HF synchronous evaluation, NEM placeholder 0).
   const computeCellCommit = useCallback((
     currentRows: MainRateRow[],
     rowIdx: number,
@@ -322,17 +343,44 @@ export default function MainRateSheetPage() {
     if (col === 'settlement' && currentRows[rowIdx]?.crossBase) return null
     const trimmed = raw.trim()
 
-    // v2.5.61 (HyperFormula): "=" prefix-szel kezdődő input → képlet. Tároljuk
-    // a képletet a `formulas` map-be, és a `rows`[col] értéket egyelőre 0-ra
-    // állítjuk — a HyperFormula re-evaluation effect majd kitölti.
+    // v2.5.61 (HyperFormula): "=" prefix-szel kezdődő input → képlet.
     const formulaKey = `${rowIdx}.${col}`
     const isFormulaCol = FORMULA_COLUMNS.includes(col as FormulaColumn)
     if (isFormulaCol && trimmed.startsWith('=')) {
-      // Képlet rögzítés — async setFormulas + setRows(0) ami triggereli a
-      // HyperFormula useEffect-et, ami visszaolvassa a számolt értéket.
+      // Codex P1 (PR #697): a save/dispatch path szinkron snapshot-ra
+      // bizalmas — ha placeholder 0-t adunk vissza, a publikálás VAGY
+      // skip-eli a row-t (weakMultiBuy<=0 guard a dispatch-ben) VAGY
+      // 0-t küld a szervernek. SYNC formula evaluation: HyperFormula
+      // `calculateFormula` aktuális sheet state-en, az eredmény azonnal
+      // a `next[rowIdx][col]`-ba kerül. Az async useEffect később verify-ol
+      // (idempotens).
       setFormulas(prev => ({ ...prev, [formulaKey]: trimmed }))
+      const hf = hfRef.current
+      let evaluated = 0
+      if (hf) {
+        try {
+          const sheetId = hf.getSheetId('main')
+          if (sheetId !== undefined) {
+            const result = hf.calculateFormula(trimmed, sheetId)
+            if (typeof result === 'number' && Number.isFinite(result)) {
+              evaluated = result
+            } else if (result && typeof result === 'object' && 'type' in result) {
+              // Copilot P2 #697 #4: DetailedCellError (DIV/0, VALUE, REF, ...)
+              // — NEM némán 0-ra konvertálunk, hanem warn-olunk + toast-tal
+              // user-facing error indicator. Az érték a régi marad (rollback).
+              const errType = String((result as { type: unknown }).type ?? 'UNKNOWN')
+              logger.warn('MainRateSheetPage', `Formula error in cell ${formulaKey}: ${errType}`, trimmed)
+              toast.warning('Képlet hiba', `${COL_NAMES[col as FormulaColumn] ?? col} cellában: ${errType} (${trimmed})`)
+              const currentValue = currentRows[rowIdx]?.[col]
+              evaluated = typeof currentValue === 'number' ? currentValue : 0
+            }
+          }
+        } catch (e) {
+          logger.warn('MainRateSheetPage', 'sync formula eval failed', e)
+        }
+      }
       const next = [...currentRows]
-      next[rowIdx] = { ...next[rowIdx]!, [col]: 0 } // placeholder, HF újraszámolja
+      next[rowIdx] = { ...next[rowIdx]!, [col]: evaluated }
       return next
     }
     // Ha korábban képlet volt itt, de most fix számot ad meg a user, töröljük
@@ -418,6 +466,8 @@ export default function MainRateSheetPage() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(rowsToSave))
       // v2.5.61: a képletek is perzisztálódnak külön kulccsal, hogy a következő
       // mount-kor a focusCell ugyanazt a képlet-kifejezést tudja megmutatni.
+      // Copilot P2 #697 #2: `formulas` a deps list-ben (lent) — különben a closure
+      // stale {} snapshot-ot mentene, és a frissen rögzített képletek elvesznének.
       localStorage.setItem(FORMULA_STORAGE_KEY, JSON.stringify(formulas))
       lastSavedAt.current = new Date().toISOString()
       setDirty(false)
@@ -428,7 +478,7 @@ export default function MainRateSheetPage() {
       toast.error('Hiba', 'Helyi mentés sikertelen (privát böngészés / quota?)')
       return false
     }
-  }, [flushActiveCell])
+  }, [flushActiveCell, formulas])
 
   // Phase 2 wiring (Kosa Zoltan 2026-05-18): a komponens MOUNT-jakor letoltjuk a
   // legujabb publikalt arfolyamokat a szerverrol (Aktiv ExchangeRateMaster

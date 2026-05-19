@@ -14,18 +14,19 @@
 -- TERMESZETESEN reverzibilis. A "RCH" valuta ha letezett egyaltalan a
 -- production-on (V70 alapseed-ben NEM szerepelt), is_active=false-re kerul.
 
-UPDATE currency SET is_active = false, updated_at = NOW()
-WHERE code IN ('DKK', 'NOK', 'SEK', 'HRK', 'BGN', 'RCH')
-  AND is_active = true;
-
--- Audit log: rogzitjuk hogy melyik valutat deaktivaltuk
+-- Copilot P2 #697 #5 fix: GET DIAGNOSTICS ROW_COUNT pontosan a CURRENT
+-- futasban deaktivalt sorok szamat adja meg (V160 mintajara). A regi
+-- COUNT(*) az osszes inaktiv sort tartalmazta volna, ami felrevezeto volt
+-- (pl. HRK mar V160-ban inaktivalva).
 DO $$
 DECLARE
     deactivated_count INT;
 BEGIN
-    SELECT COUNT(*) INTO deactivated_count
-    FROM currency
-    WHERE code IN ('DKK', 'NOK', 'SEK', 'HRK', 'BGN', 'RCH')
-      AND is_active = false;
-    RAISE NOTICE 'V237: % valuta deaktivalva (cel: 6 valuta)', deactivated_count;
+    UPDATE currency
+       SET is_active = false,
+           updated_at = NOW()
+     WHERE code IN ('DKK', 'NOK', 'SEK', 'HRK', 'BGN', 'RCH')
+       AND is_active = true;
+    GET DIAGNOSTICS deactivated_count = ROW_COUNT;
+    RAISE NOTICE 'V237: % valuta deaktivalva ebben a futasban (cel max 6 valuta — egyesek mar elozoleg inaktivak voltak)', deactivated_count;
 END $$;
