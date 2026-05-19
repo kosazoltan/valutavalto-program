@@ -46,9 +46,17 @@ public class BankOrderService {
 
     @Transactional
     public BankOrderDto create(CreateBankOrderRequest req) {
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
         Worker currentWorker = currentWorker();
         Branch branch = branchRepository.findById(req.getBranchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Branch nem található: " + req.getBranchId()));
+        // Audit P0 tenant guard: a branch csak a saját cég tulajdona lehet.
+        // Cross-tenant create blokkolva (404 hogy létezést se szivárogtassuk).
+        if (currentCompanyId == null
+                || branch.getCompany() == null
+                || !currentCompanyId.equals(branch.getCompany().getId())) {
+            throw new ResourceNotFoundException("Branch nem található: " + req.getBranchId());
+        }
         Currency currency = currencyRepository.findById(req.getCurrencyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: " + req.getCurrencyId()));
 
@@ -125,9 +133,14 @@ public class BankOrderService {
     @Transactional(readOnly = true)
     public Page<BankOrderDto> list(BankOrder.Status status, int page, int size) {
         int safeSize = Math.min(Math.max(size, 1), 200);
-        Page<BankOrder> result = (status == null)
-                ? bankOrderRepository.findAll(PageRequest.of(page, safeSize))
-                : bankOrderRepository.findByStatusOrderByRequestedAtDesc(status, PageRequest.of(page, safeSize));
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        if (currentCompanyId == null) {
+            throw new ValidationException("Bejelentkezett felhasználó nincs cégbe rendelve");
+        }
+        // Audit P0 tenant-safe — NEM findAll() / findByStatus(), mert azok cross-tenant
+        // data leak-et okoztak (Company A SUPERVISOR látta Company B bank order-jeit).
+        Page<BankOrder> result = bankOrderRepository.findByCompanyAndOptionalStatus(
+                currentCompanyId, status, PageRequest.of(page, safeSize));
         return result.map(BankOrderDto::from);
     }
 
@@ -137,7 +150,15 @@ public class BankOrderService {
     }
 
     private BankOrder findOrThrow(UUID id) {
-        return bankOrderRepository.findById(id)
+        // Audit P0 tenant-safe lookup — cross-tenant approve/execute/cancel/get blokkolt.
+        // A korábbi findById() IDOR-t okozott: ismert UUID-vel Company A SUPERVISOR
+        // approve-olhatta Company B bank order-jét (BankOrderController + @PreAuthorize
+        // role-check önmagában NEM elég, a company_id szűrés is kötelező).
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        if (currentCompanyId == null) {
+            throw new ResourceNotFoundException("Bank order nem található: " + id);
+        }
+        return bankOrderRepository.findByIdAndBranch_Company_Id(id, currentCompanyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bank order nem található: " + id));
     }
 
