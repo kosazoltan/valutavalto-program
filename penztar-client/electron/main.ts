@@ -57,6 +57,8 @@ import {
   savePendingTransactionV2,
   type PendingTransactionInputV2,
   savePendingConversion,
+  savePendingConversionV2,
+  type PendingConversionInputV2,
   savePendingBankTransaction,
   savePendingStorno,
   getPendingTransactions,
@@ -511,6 +513,15 @@ ipcMain.handle('save-pending-conversion', async (
     customerDocumentNumber,
     note,
   );
+});
+
+// V235 + V236 (2026-05-19 Codex P1 #695): bővített Konverzio IPC channel
+// objektum-paraméterrel, teljes Pmt. customer-snapshot mentéséhez.
+ipcMain.handle('save-pending-conversion-v2', async (
+  _event,
+  input: PendingConversionInputV2,
+): Promise<number> => {
+  return savePendingConversionV2(input);
 });
 
 ipcMain.handle('get-pending-conversions', async (): Promise<ReturnType<typeof getPendingConversions>> => {

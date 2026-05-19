@@ -252,6 +252,10 @@ export default function ConversionPage() {
       const effectiveCustomerName = cd?.name?.trim() || customerName.trim() || null
 
       if (electronQueueAvailable) {
+        // V235 + V236 (Codex P1 #695): teljes Pmt. customer-snapshot atadasa
+        // az Electron offline outbox-nak — onOwnBehalf=false eseten az actor
+        // identity-vel egyutt. A korabbi payload csak 3 customer mezot kuldott.
+        const actorIdentity = cd?.actorIdentity ?? null
         const outcome = await saveAndSyncPendingConversion({
           fromCurrencyId,
           fromCurrencyCode: fromCurrency.code,
@@ -266,6 +270,28 @@ export default function ConversionPage() {
           customerName: effectiveCustomerName,
           customerDocumentNumber: cd?.documentNumber ?? null,
           note: notes || null,
+          // V229 100k+ alapmezok
+          customerAddress: cd?.address ?? null,
+          customerNationality: cd?.nationality ?? null,
+          customerBirthPlace: cd?.birthPlace ?? null,
+          customerBirthDate: cd?.birthDate ?? null,
+          customerMotherName: cd?.motherName ?? null,
+          customerDocumentType: cd?.documentType ?? null,
+          // V229 300k+ JOGCIM
+          sourceOfFunds: cd?.sourceOfFunds ?? null,
+          customerIsPep: cd?.isPep ?? null,
+          customerOnOwnBehalf: cd?.onOwnBehalf ?? null,
+          customerActorName: cd?.actorName ?? null,
+          // V235 PEP minoseg (HIBA #15)
+          customerPepKind: cd?.pepKind ?? null,
+          // V235 actor teljes azonositasa (HIBA #17)
+          customerActorBirthPlace: actorIdentity?.birthPlace ?? null,
+          customerActorBirthDate: actorIdentity?.birthDate ?? null,
+          customerActorMotherName: actorIdentity?.motherName ?? null,
+          customerActorNationality: actorIdentity?.nationality ?? null,
+          customerActorDocumentType: actorIdentity?.documentType ?? null,
+          customerActorDocumentNumber: actorIdentity?.documentNumber ?? null,
+          customerActorAddress: actorIdentity?.address ?? null,
         })
 
         if (outcome.allSavedSynced) {

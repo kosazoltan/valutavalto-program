@@ -1144,6 +1144,40 @@ export class SyncEngine {
       body['customerDocumentNumber'] = conversion.customer_document_number;
     }
 
+    // V235 + V236 (2026-05-19 Codex P1 #695): teljes Pmt. customer-snapshot a
+    // Konverzio sync payload-ba. A korabbi sync csak 3 customer mezot kuldott,
+    // igy a 100k+/300k+ konverzio bizonylatok hianyosak voltak (Pmt. tv. 6.§).
+    const addOptionalConvText = (key: string, value: string | null | undefined): void => {
+      if (value && value.trim().length > 0) {
+        body[key] = value;
+      }
+    };
+    addOptionalConvText('customerAddress', conversion.customer_address);
+    addOptionalConvText('customerNationality', conversion.customer_nationality);
+    addOptionalConvText('customerBirthPlace', conversion.customer_birth_place);
+    addOptionalConvText('customerBirthDate', conversion.customer_birth_date);
+    addOptionalConvText('customerMotherName', conversion.customer_mother_name);
+    addOptionalConvText('customerDocumentType', conversion.customer_document_type);
+    addOptionalConvText('sourceOfFunds', conversion.source_of_funds);
+    addOptionalConvText('customerPepKind', conversion.customer_pep_kind);
+    if (conversion.customer_is_pep !== null && conversion.customer_is_pep !== undefined) {
+      body['customerIsPep'] = conversion.customer_is_pep === 1;
+    }
+    if (conversion.customer_on_own_behalf !== null && conversion.customer_on_own_behalf !== undefined) {
+      body['customerOnOwnBehalf'] = conversion.customer_on_own_behalf === 1;
+    }
+    // Actor mezok csak akkor mennek fel, ha onOwnBehalf=0 (FALSE) — Copilot P2 mintaja
+    if (conversion.customer_on_own_behalf === 0) {
+      addOptionalConvText('customerActorName', conversion.customer_actor_name);
+      addOptionalConvText('customerActorBirthPlace', conversion.customer_actor_birth_place);
+      addOptionalConvText('customerActorBirthDate', conversion.customer_actor_birth_date);
+      addOptionalConvText('customerActorMotherName', conversion.customer_actor_mother_name);
+      addOptionalConvText('customerActorNationality', conversion.customer_actor_nationality);
+      addOptionalConvText('customerActorDocumentType', conversion.customer_actor_document_type);
+      addOptionalConvText('customerActorDocumentNumber', conversion.customer_actor_document_number);
+      addOptionalConvText('customerActorAddress', conversion.customer_actor_address);
+    }
+
     await httpPost(
       `${serverUrl}/transactions/conversion`,
       body,

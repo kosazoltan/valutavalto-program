@@ -66,6 +66,26 @@ export interface PendingConversionInput {
   customerName: string | null
   customerDocumentNumber: string | null
   note: string | null
+  // V235 + V236 (2026-05-19 Codex P1 #695): teljes Pmt. customer-snapshot
+  // a Konverzio offline outbox-ban. Mind opcionalis (100k alatti tx esete).
+  customerAddress?: string | null
+  customerNationality?: string | null
+  customerBirthPlace?: string | null
+  customerBirthDate?: string | null
+  customerMotherName?: string | null
+  customerDocumentType?: string | null
+  sourceOfFunds?: string | null
+  customerIsPep?: boolean | null
+  customerOnOwnBehalf?: boolean | null
+  customerActorName?: string | null
+  customerPepKind?: string | null
+  customerActorBirthPlace?: string | null
+  customerActorBirthDate?: string | null
+  customerActorMotherName?: string | null
+  customerActorNationality?: string | null
+  customerActorDocumentType?: string | null
+  customerActorDocumentNumber?: string | null
+  customerActorAddress?: string | null
 }
 
 export interface PendingTransferInput {
@@ -341,25 +361,70 @@ export async function saveAndSyncPendingConversion(
 ): Promise<ElectronQueueSyncOutcome> {
   return safeElectronOp('saveAndSyncPendingConversion', async () => {
     const electronAPI = getElectronAPI()
-    if (!electronAPI?.savePendingConversion || !electronAPI.getPendingConversions) {
+    if (!electronAPI?.getPendingConversions) {
+      throw new Error('Electron pending konverziós bridge nem érhető el')
+    }
+    // V235 + V236 (2026-05-19 Codex P1 #695): preferaljuk a V2 API-t a teljes
+    // Pmt. customer-snapshot mentesehez. Ha a futtatott Electron build meg nem
+    // ismeri (regi telepito), legacy fallback a regi pozicionalis API-ra.
+    const hasV2 = typeof electronAPI.savePendingConversionV2 === 'function'
+    if (!hasV2 && !electronAPI.savePendingConversion) {
       throw new Error('Electron pending konverziós bridge nem érhető el')
     }
 
-    const savedId = await electronAPI.savePendingConversion(
-      entry.fromCurrencyId,
-      entry.fromCurrencyCode,
-      entry.toCurrencyId,
-      entry.toCurrencyCode,
-      entry.fromAmount,
-      entry.calculatedHufAmount,
-      entry.calculatedToAmount,
-      entry.conversionRate,
-      entry.handlingFee,
-      normalizeOptionalText(entry.customerId),
-      normalizeOptionalText(entry.customerName),
-      normalizeOptionalText(entry.customerDocumentNumber),
-      normalizeOptionalText(entry.note),
-    )
+    let savedId: number
+    if (hasV2) {
+      savedId = await electronAPI.savePendingConversionV2!({
+        fromCurrencyId: entry.fromCurrencyId,
+        fromCurrencyCode: entry.fromCurrencyCode,
+        toCurrencyId: entry.toCurrencyId,
+        toCurrencyCode: entry.toCurrencyCode,
+        fromAmount: entry.fromAmount,
+        calculatedHufAmount: entry.calculatedHufAmount,
+        calculatedToAmount: entry.calculatedToAmount,
+        conversionRate: entry.conversionRate,
+        handlingFee: entry.handlingFee,
+        customerId: normalizeOptionalText(entry.customerId),
+        customerName: normalizeOptionalText(entry.customerName),
+        customerDocumentNumber: normalizeOptionalText(entry.customerDocumentNumber),
+        customerAddress: normalizeOptionalText(entry.customerAddress),
+        customerNationality: normalizeOptionalText(entry.customerNationality),
+        customerBirthPlace: normalizeOptionalText(entry.customerBirthPlace),
+        customerBirthDate: normalizeOptionalText(entry.customerBirthDate),
+        customerMotherName: normalizeOptionalText(entry.customerMotherName),
+        customerDocumentType: normalizeOptionalText(entry.customerDocumentType),
+        sourceOfFunds: normalizeOptionalText(entry.sourceOfFunds),
+        customerIsPep: entry.customerIsPep ?? null,
+        customerOnOwnBehalf: entry.customerOnOwnBehalf ?? null,
+        customerActorName: normalizeOptionalText(entry.customerActorName),
+        customerPepKind: normalizeOptionalText(entry.customerPepKind),
+        customerActorBirthPlace: normalizeOptionalText(entry.customerActorBirthPlace),
+        customerActorBirthDate: normalizeOptionalText(entry.customerActorBirthDate),
+        customerActorMotherName: normalizeOptionalText(entry.customerActorMotherName),
+        customerActorNationality: normalizeOptionalText(entry.customerActorNationality),
+        customerActorDocumentType: normalizeOptionalText(entry.customerActorDocumentType),
+        customerActorDocumentNumber: normalizeOptionalText(entry.customerActorDocumentNumber),
+        customerActorAddress: normalizeOptionalText(entry.customerActorAddress),
+        note: normalizeOptionalText(entry.note),
+      })
+    } else {
+      // Legacy positional API — csak alapmezok.
+      savedId = await electronAPI.savePendingConversion(
+        entry.fromCurrencyId,
+        entry.fromCurrencyCode,
+        entry.toCurrencyId,
+        entry.toCurrencyCode,
+        entry.fromAmount,
+        entry.calculatedHufAmount,
+        entry.calculatedToAmount,
+        entry.conversionRate,
+        entry.handlingFee,
+        normalizeOptionalText(entry.customerId),
+        normalizeOptionalText(entry.customerName),
+        normalizeOptionalText(entry.customerDocumentNumber),
+        normalizeOptionalText(entry.note),
+      )
+    }
 
     return finalizeSyncOutcome([savedId], async () => {
       const pending = await electronAPI.getPendingConversions()

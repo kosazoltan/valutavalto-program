@@ -255,6 +255,39 @@ export async function initDatabase(): Promise<void> {
       );
     `);
 
+    // V235 + V236 (2026-05-19 HIBA #19 + Codex P1 #695): teljes Pmt. customer-
+    // snapshot a Konverzio offline outbox-ban is. A korabbi pending_conversions
+    // csak 3 customer mezot tartalmazott (id, name, docNumber), igy az offline
+    // sync-elt konverzio bizonylatok nem tartalmazhattak a 100k+/300k+ szuk-
+    // seges azonositasi adatokat (Pmt. tv. 6.§).
+    const conversionSnapshotColumns: Array<{ name: string; type: string }> = [
+      { name: 'customer_address', type: 'TEXT' },
+      { name: 'customer_nationality', type: 'TEXT' },
+      { name: 'customer_birth_place', type: 'TEXT' },
+      { name: 'customer_birth_date', type: 'TEXT' },
+      { name: 'customer_mother_name', type: 'TEXT' },
+      { name: 'customer_document_type', type: 'TEXT' },
+      { name: 'source_of_funds', type: 'TEXT' },
+      { name: 'customer_is_pep', type: 'INTEGER' },
+      { name: 'customer_on_own_behalf', type: 'INTEGER' },
+      { name: 'customer_actor_name', type: 'TEXT' },
+      { name: 'customer_pep_kind', type: 'TEXT' },
+      { name: 'customer_actor_birth_place', type: 'TEXT' },
+      { name: 'customer_actor_birth_date', type: 'TEXT' },
+      { name: 'customer_actor_mother_name', type: 'TEXT' },
+      { name: 'customer_actor_nationality', type: 'TEXT' },
+      { name: 'customer_actor_document_type', type: 'TEXT' },
+      { name: 'customer_actor_document_number', type: 'TEXT' },
+      { name: 'customer_actor_address', type: 'TEXT' },
+    ];
+    for (const col of conversionSnapshotColumns) {
+      try {
+        db.run(`ALTER TABLE pending_conversions ADD COLUMN ${col.name} ${col.type};`);
+      } catch {
+        // Column already exists — expected on fresh installs or repeat migration
+      }
+    }
+
     db.run(`
       CREATE TABLE IF NOT EXISTS pending_bank_transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1016,11 +1049,70 @@ export interface PendingConversionRow {
   customer_id: string | null;
   customer_name: string | null;
   customer_document_number: string | null;
+  // V235 + V236 (2026-05-19 Codex P1 #695): teljes Pmt. customer-snapshot
+  customer_address: string | null;
+  customer_nationality: string | null;
+  customer_birth_place: string | null;
+  customer_birth_date: string | null;
+  customer_mother_name: string | null;
+  customer_document_type: string | null;
+  source_of_funds: string | null;
+  customer_is_pep: number | null;
+  customer_on_own_behalf: number | null;
+  customer_actor_name: string | null;
+  customer_pep_kind: string | null;
+  customer_actor_birth_place: string | null;
+  customer_actor_birth_date: string | null;
+  customer_actor_mother_name: string | null;
+  customer_actor_nationality: string | null;
+  customer_actor_document_type: string | null;
+  customer_actor_document_number: string | null;
+  customer_actor_address: string | null;
   note: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
   created_at: string;
   synced: number;
+}
+
+/**
+ * V235 + V236 (2026-05-19 Codex P1 #695): bővített input objektum a
+ * Konverzio offline outbox-hoz, teljes Pmt. customer-snapshot mentéséhez.
+ * A pozicionális {@link savePendingConversion} megmarad backward compat
+ * miatt — új helyek a `savePendingConversionV2`-t használják.
+ */
+export interface PendingConversionInputV2 {
+  fromCurrencyId: number | null;
+  fromCurrencyCode: string;
+  toCurrencyId: number | null;
+  toCurrencyCode: string;
+  fromAmount: number;
+  calculatedHufAmount: number;
+  calculatedToAmount: number;
+  conversionRate: number;
+  handlingFee: number | null;
+  customerId: string | null;
+  customerName: string | null;
+  customerDocumentNumber: string | null;
+  customerAddress: string | null;
+  customerNationality: string | null;
+  customerBirthPlace: string | null;
+  customerBirthDate: string | null;
+  customerMotherName: string | null;
+  customerDocumentType: string | null;
+  sourceOfFunds: string | null;
+  customerIsPep: boolean | null;
+  customerOnOwnBehalf: boolean | null;
+  customerActorName: string | null;
+  customerPepKind: string | null;
+  customerActorBirthPlace: string | null;
+  customerActorBirthDate: string | null;
+  customerActorMotherName: string | null;
+  customerActorNationality: string | null;
+  customerActorDocumentType: string | null;
+  customerActorDocumentNumber: string | null;
+  customerActorAddress: string | null;
+  note: string | null;
 }
 
 export interface PendingBankTransactionRow {
@@ -1488,6 +1580,128 @@ export function savePendingConversion(
       conversionRate,
       calculatedHufAmount,
       calculatedToAmount,
+    },
+    status: 'PENDING_UPLOAD',
+  });
+
+  return insertedId;
+}
+
+/**
+ * V235 + V236 (2026-05-19 Codex P1 #695): bővített Konverzio pending-mentés
+ * objektum-paraméterrel. A teljes Pmt. customer-snapshot (szül.hely, szül.idő,
+ * anyja neve, állampolgárság, okmány típus, PEP minőség, "más nevében" flag
+ * + actor teljes azonosítása) bekerül a kliens-oldali outbox-ba.
+ */
+export function savePendingConversionV2(input: PendingConversionInputV2): number {
+  if (!db) throw new Error('Database not initialized');
+
+  const idempotencyKey = crypto.randomUUID();
+  const branchCodeForReceipt = getConfig('branch_code');
+  if (!branchCodeForReceipt) {
+    throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
+  }
+  const localReferenceNumber = generateStrictReceiptNumber('K', branchCodeForReceipt);
+
+  const trimOrNull = (v: string | null | undefined): string | null => {
+    const t = v?.trim();
+    return t && t.length > 0 ? t : null;
+  };
+  const boolToInt = (v: boolean | null | undefined): number | null =>
+    v === null || v === undefined ? null : (v ? 1 : 0);
+
+  db.run(
+    `INSERT INTO pending_conversions (
+      from_currency_id, from_currency_code, to_currency_id, to_currency_code,
+      from_amount, calculated_huf_amount, calculated_to_amount, conversion_rate,
+      handling_fee,
+      customer_id, customer_name, customer_document_number,
+      customer_address, customer_nationality, customer_birth_place, customer_birth_date,
+      customer_mother_name, customer_document_type,
+      source_of_funds, customer_is_pep, customer_on_own_behalf, customer_actor_name,
+      customer_pep_kind,
+      customer_actor_birth_place, customer_actor_birth_date, customer_actor_mother_name,
+      customer_actor_nationality, customer_actor_document_type,
+      customer_actor_document_number, customer_actor_address,
+      note, local_reference_number, idempotency_key
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      input.fromCurrencyId, input.fromCurrencyCode, input.toCurrencyId, input.toCurrencyCode,
+      input.fromAmount, input.calculatedHufAmount, input.calculatedToAmount, input.conversionRate,
+      input.handlingFee,
+      trimOrNull(input.customerId), trimOrNull(input.customerName), trimOrNull(input.customerDocumentNumber),
+      trimOrNull(input.customerAddress), trimOrNull(input.customerNationality),
+      trimOrNull(input.customerBirthPlace), trimOrNull(input.customerBirthDate),
+      trimOrNull(input.customerMotherName), trimOrNull(input.customerDocumentType),
+      trimOrNull(input.sourceOfFunds), boolToInt(input.customerIsPep),
+      boolToInt(input.customerOnOwnBehalf), trimOrNull(input.customerActorName),
+      trimOrNull(input.customerPepKind),
+      trimOrNull(input.customerActorBirthPlace), trimOrNull(input.customerActorBirthDate),
+      trimOrNull(input.customerActorMotherName), trimOrNull(input.customerActorNationality),
+      trimOrNull(input.customerActorDocumentType),
+      trimOrNull(input.customerActorDocumentNumber), trimOrNull(input.customerActorAddress),
+      trimOrNull(input.note), localReferenceNumber, idempotencyKey,
+    ],
+  );
+  saveDatabase();
+
+  const stmt = db.prepare('SELECT last_insert_rowid() as id');
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  const insertedId = (row['id'] as number) ?? 0;
+
+  saveLocalAuditEvent({
+    entityType: 'CONVERSION',
+    eventType: 'CREATE',
+    referenceNumber: localReferenceNumber,
+    entityId: String(insertedId),
+    payload: {
+      fromCurrencyId: input.fromCurrencyId,
+      fromCurrencyCode: input.fromCurrencyCode,
+      toCurrencyId: input.toCurrencyId,
+      toCurrencyCode: input.toCurrencyCode,
+      fromAmount: input.fromAmount,
+      calculatedHufAmount: input.calculatedHufAmount,
+      calculatedToAmount: input.calculatedToAmount,
+      conversionRate: input.conversionRate,
+      handlingFee: input.handlingFee,
+      note: trimOrNull(input.note),
+      idempotencyKey,
+    },
+    customerSnapshot: {
+      customerId: trimOrNull(input.customerId),
+      customerName: trimOrNull(input.customerName),
+      customerDocumentNumber: trimOrNull(input.customerDocumentNumber),
+      customerBirthPlace: trimOrNull(input.customerBirthPlace),
+      customerBirthDate: trimOrNull(input.customerBirthDate),
+      customerMotherName: trimOrNull(input.customerMotherName),
+      customerNationality: trimOrNull(input.customerNationality),
+      customerDocumentType: trimOrNull(input.customerDocumentType),
+      customerIsPep: input.customerIsPep,
+      customerPepKind: trimOrNull(input.customerPepKind),
+      customerOnOwnBehalf: input.customerOnOwnBehalf,
+      customerActorName: input.customerOnOwnBehalf === false ? trimOrNull(input.customerActorName) : null,
+      actorIdentity: input.customerOnOwnBehalf === false ? {
+        birthPlace: trimOrNull(input.customerActorBirthPlace),
+        birthDate: trimOrNull(input.customerActorBirthDate),
+        motherName: trimOrNull(input.customerActorMotherName),
+        nationality: trimOrNull(input.customerActorNationality),
+        documentType: trimOrNull(input.customerActorDocumentType),
+        documentNumber: trimOrNull(input.customerActorDocumentNumber),
+        address: trimOrNull(input.customerActorAddress),
+      } : null,
+    },
+    identificationSnapshot: {
+      customerId: trimOrNull(input.customerId),
+      customerDocumentNumber: trimOrNull(input.customerDocumentNumber),
+    },
+    rateSnapshot: {
+      fromCurrencyCode: input.fromCurrencyCode,
+      toCurrencyCode: input.toCurrencyCode,
+      conversionRate: input.conversionRate,
+      calculatedHufAmount: input.calculatedHufAmount,
+      calculatedToAmount: input.calculatedToAmount,
     },
     status: 'PENDING_UPLOAD',
   });

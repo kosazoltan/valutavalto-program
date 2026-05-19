@@ -157,6 +157,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
       note,
     ),
 
+  // V235 + V236 (2026-05-19 Codex P1 #695): bővített Konverzio API teljes
+  // Pmt. customer-snapshot-tal.
+  savePendingConversionV2: (input: unknown): Promise<number> =>
+    ipcRenderer.invoke('save-pending-conversion-v2', input),
+
   savePendingBankTransaction: (
     transactionType: 'BUY' | 'SELL',
     currencyCode: string,

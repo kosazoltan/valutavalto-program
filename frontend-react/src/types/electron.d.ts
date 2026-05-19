@@ -137,6 +137,42 @@ export interface ElectronAPI {
     customerDocumentNumber: string | null,
     note: string | null,
   ): Promise<number>;
+
+  // V235 + V236 (2026-05-19 Codex P1 #695): bővített Konverzio API teljes
+  // Pmt. customer-snapshot-tal.
+  savePendingConversionV2?: (input: {
+    fromCurrencyId: number | null
+    fromCurrencyCode: string
+    toCurrencyId: number | null
+    toCurrencyCode: string
+    fromAmount: number
+    calculatedHufAmount: number
+    calculatedToAmount: number
+    conversionRate: number
+    handlingFee: number | null
+    customerId: string | null
+    customerName: string | null
+    customerDocumentNumber: string | null
+    customerAddress: string | null
+    customerNationality: string | null
+    customerBirthPlace: string | null
+    customerBirthDate: string | null
+    customerMotherName: string | null
+    customerDocumentType: string | null
+    sourceOfFunds: string | null
+    customerIsPep: boolean | null
+    customerOnOwnBehalf: boolean | null
+    customerActorName: string | null
+    customerPepKind: string | null
+    customerActorBirthPlace: string | null
+    customerActorBirthDate: string | null
+    customerActorMotherName: string | null
+    customerActorNationality: string | null
+    customerActorDocumentType: string | null
+    customerActorDocumentNumber: string | null
+    customerActorAddress: string | null
+    note: string | null
+  }) => Promise<number>;
   savePendingBankTransaction(
     transactionType: 'BUY' | 'SELL',
     currencyCode: string,
