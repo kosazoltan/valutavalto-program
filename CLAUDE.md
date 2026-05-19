@@ -613,7 +613,20 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.62** (2026-05-19 — NSIS Penztar.exe explicit + IfFileExists verify + magyar magazó MessageBox [#698] — ESET silent-deny hot-fix).
+- **Verzió:** **v2.5.63** (2026-05-19 — V239 Branch/Vault sync: 8 értéktár + 1 Szeged Móra branch INSERT a Google Sheets alapján [#699]).
+- **v2.5.63 PR (admin-merged main-be 2026-05-19 13:46 CEST):**
+  - **PR #699** (1 commit, merge commit `f84a31d4ea`): Kósa Zoltán user-direktíva (Google Sheets `1zfaFAYb1gL9OKG8sc-eWgqPaZ7LLjB2LaSmIHwTtOSY` 73 iroda listájával): "Ennek kellene lenni a pénztár adatbázisban is, itt jól azonosíthatóak az értéktárak, az értéktári program csak értéktárra lehessen telepíteni, ne hozzon föl pénztárakat."
+  - DIAGNÓZIS: production 66 iroda + 0 isVault=true. Sheet 73 iroda + 8 értéktár. 9 hiány (8 értéktár + 1 Szeged Móra). Frontend `filterBranchesForAppMode` MÁR HELYES (graceful fallback ha 0 vault), tehát csak data-INSERT kell.
+  - V239 Flyway migration: DO $$ ... $$ PL/pgSQL block — idempotens INSERT 9 új Branch rekord, FK-mezők (company_id, bank_code, branch_type_did, country_did, branch_status_did) CLONE-olva a BR009 (Dombóvár Tesco) rekordból. `ON CONFLICT (code) DO NOTHING`. Defenzív UPDATE: is_vault=TRUE a 8 értéktár-kódra (akkor is ha már létezett).
+  - **8 értéktár (region_code, is_vault=TRUE) production-on verifikálva:** BR010 Szekszárd, BR020 Szeged, BR040 Kecskemét, BR050 Debrecen, BR063 Nyíregyháza, BR075 Békéscsaba, BR120 Pécs, BR145 Kaposvár.
+  - **Production verify (Hetzner deploy completed/success):** `/api/v1/public/branches?companyCode=EBC` → 74 iroda (66+8 új, BR026 Szeged Móra már létezett és ON CONFLICT skip), **8 db isVault=true** ✅
+  - **Következmény:** a Setup Wizard értéktáros módja (`appMode=ertektar`: Penztar + Arfolyamkeszito) CSAK a 8 értéktárt mutatja (NEM mind a 74-et).
+- **Telepítő fájlok v2.5.63 (LEGFRISSEBB, 2026-05-19 UNSIGNED build, Branch/Vault sync)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba:
+  - `Penztar-Setup-2.5.63-20260519.exe` — **282.66 MB** (296,390,231 byte), SHA-256 `BF8108C19574CCE376B3F31E8339F0DFE902A3CB4E949EDC4B5311F1E0E227EA`
+  - `Kozponti-Iranyitokozpont-Setup-2.5.63.exe` — **101.05 MB** (105,953,491 byte), SHA-256 `F6850AEAA5B74BC51A8EE69FE3BD9EE55D6D40E45D0C999BFE8E574D650D4665`
+  - `Arfolyamkeszito-Setup-2.5.63.exe` — **101.04 MB** (105,953,310 byte), SHA-256 `2157DBB6AAA4CCADDE4AF0BA8977B0E4C8504EFA948DE401B3245ED5FD4592C3`
+  - `Penztar-Eltavolito-2.5.63-20260519.exe` — **59.43 KB** (60,856 byte), SHA-256 `E17906ED8D1E37E6B08091B886DF423478EC5901EF256CC806B79889D0EAB6AC`
+- **Korábbi verzió:** v2.5.62 (2026-05-19 — NSIS Penztar.exe explicit + IfFileExists verify + magyar magazó MessageBox [#698] — ESET silent-deny hot-fix).
 - **v2.5.62 PR (admin-merged main-be 2026-05-19 13:20 CEST):**
   - **PR #698** (3 commit, merge commit `3847c65236`): a v2.5.61 Penztar-Setup NSIS install Kósa Zoltán tesztgépen `Penztar.exe` (212 MB UNSIGNED Electron exe) silent-skip miatt brokent telepített (pak/dll mind ott, csak Penztar.exe + LICENSE-ek hiányoztak). Valószínű ok: ESET ekrn.exe silent-deny (NEM karantén). FIX:
     - NSIS `File /r ... /x "Penztar.exe"` (exclude) + explicit `File "${STAGE_DIR}\electron\Penztar.exe"` direktíva (másik execution path, talán áthalad az AV deny-en) — duplikáció nélkül (Sourcery+Codex P2 review fix)
