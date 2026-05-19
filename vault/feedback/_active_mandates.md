@@ -33,6 +33,7 @@
 | C.21 | V234 belső log+audit modul: error_code kötelező minden `vvLogger.error()`-ben | CLAUDE.md (2026-05-18) + `packages/shared-logging/error-codes.yaml` | always | P1 |
 | C.22 | 2 ellenőrzési kör (CI + GitHub AI gate) merge előtt | `vault/feedback/two-rounds-before-merge-mandatory-2026-05-19.md` | always | **P0** |
 | C.23 | 2-kör SAJÁT subagent self-review (CI+AI gate KIEGÉSZÍTÉS) | `vault/feedback/two-rounds-self-subagent-review-mandatory-2026-05-19.md` | always | **P0** |
+| C.24 | Proaktív CI + AI review polling (T+60/120/180/300s cadence, NEM passzív email-várás) | `vault/feedback/proactive-ai-review-polling-mandatory-2026-05-19.md` | always | **P0** |
 
 ## ÚJ üzleti / szabályozási mandate (2026-05-17 Perplexity korrekciós doksi)
 
