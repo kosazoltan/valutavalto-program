@@ -613,7 +613,20 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.63** (2026-05-19 — V239 Branch/Vault sync: 8 értéktár + 1 Szeged Móra branch INSERT a Google Sheets alapján [#699]).
+- **Verzió:** **v2.5.64** (2026-05-19 — V240 follow-up: BR026 sync + 9 branch bank_code=self_code, Codex+Copilot P2 #699 fix [#700]).
+- **v2.5.64 PR (admin-merged main-be 2026-05-19 14:35 CEST):**
+  - **PR #700** (12 fájl, +81/-16 LOC, 2 commit, merge commit `727d08079`): V240 idempotens follow-up migráció a #699 (V239) AI review két P2 finding-jére:
+    - **Codex P2 (BR026 Szeged Móra szinkron)**: a V239 `ON CONFLICT (code) DO NOTHING` kihagyta a BR026 frissítését (V145 seed-ben már létezett "Szeged Shell Site-Móra" név + régi címmel, zip 6720). V240 UPDATE: `name='Szeged Móra'`, `address='Szabadkai út 7.'`, `city='Szeged'`, `zip_code='6729'`, `region_code='20'`, `is_vault=FALSE` — `IS DISTINCT FROM` null-safe minden set-elt mezőre.
+    - **Copilot P2 (9 branch bank_code self.code)**: V239 a BR009 template-ből CLONE-olta a `bank_code`-ot → 9 új branch (8 értéktár + új-install path-on BR026) mind `bank_code='BR009'`-t kapott. V145 konvenció: `bank_code = self.code`. V240 UPDATE: `SET bank_code = code WHERE code IN ('BR010','BR020','BR026','BR040','BR050','BR063','BR075','BR120','BR145') AND bank_code IS DISTINCT FROM code`.
+    - **2 ellenőrzési kör mandate (P0 #697 óta) + 2-kör SAJÁT subagent self-review:** CI gate (14 PASS + 2 skipping mindkét körön) + GitHub AI gate (round 1: Codex P2 BR026 bank_code + Copilot 3× P2 IS DISTINCT FROM/GET DIAGNOSTICS/BIGINT → mind javítva → round 2). Plus general-purpose ügynökök párhuzamosan (SQL/Flyway + multi-tenant/safety) — mindkettő SAFE TO MERGE; round 2 ügynök verifikálta `branch.updated_at` V0_1:57 column-létezést.
+    - **Production verify (Hetzner deploy SUCCESS):** `/api/v1/public/branches?companyCode=EBC` → 74 iroda + **8 db isVault=true** ✅, BR026 name=`Szeged Móra` ✅.
+- **Telepítő fájlok v2.5.64 (LEGFRISSEBB, 2026-05-19 UNSIGNED build, V240 follow-up)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba:
+  - `Penztar-Setup-2.5.64-20260519.exe` — **282.66 MB** (296,460,854 byte), SHA-256 `ADE0455FCB21861905ADABECC434AAAE0B5773853A94227F4FC1A1657DC97956`
+  - `Kozponti-Iranyitokozpont-Setup-2.5.64.exe` — **101.05 MB** (105,953,567 byte), SHA-256 `A18BF6C40BEF48D3B9A5D3CE44EEEEDB6D236883E84C5F98A45D2638A6760AB9`
+  - `Arfolyamkeszito-Setup-2.5.64.exe` — **101.05 MB** (105,953,274 byte), SHA-256 `DFC24DAA08D95D8CD2971CDA191D8A46A22D093D33D25126508E4CFB8D22EEC3`
+  - `Penztar-Eltavolito-2.5.64-20260519.exe` — **59.43 KB** (60,859 byte), SHA-256 `79717D8C9549F4A04BE2EC2BBEBAD6E38A5581558A1D62AC2E3C24FF0B9DD8ED`
+  - **UNSIGNED build** — DigiCert EV CS cert pending (Isabella org-domain email proof + phone verification callback). SmartScreen "További információ" → "Futtatás mindenképp".
+- **Korábbi verzió:** v2.5.63 (2026-05-19 — V239 Branch/Vault sync: 8 értéktár + 1 Szeged Móra branch INSERT a Google Sheets alapján [#699]).
 - **v2.5.63 PR (admin-merged main-be 2026-05-19 13:46 CEST):**
   - **PR #699** (1 commit, merge commit `f84a31d4ea`): Kósa Zoltán user-direktíva (Google Sheets `1zfaFAYb1gL9OKG8sc-eWgqPaZ7LLjB2LaSmIHwTtOSY` 73 iroda listájával): "Ennek kellene lenni a pénztár adatbázisban is, itt jól azonosíthatóak az értéktárak, az értéktári program csak értéktárra lehessen telepíteni, ne hozzon föl pénztárakat."
   - DIAGNÓZIS: production 66 iroda + 0 isVault=true. Sheet 73 iroda + 8 értéktár. 9 hiány (8 értéktár + 1 Szeged Móra). Frontend `filterBranchesForAppMode` MÁR HELYES (graceful fallback ha 0 vault), tehát csak data-INSERT kell.
