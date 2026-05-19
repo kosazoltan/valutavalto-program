@@ -207,6 +207,28 @@ class DenominationOptimizationServiceTest {
     }
 
     @Test
+    @DisplayName("CUSTOM Codex P1 #701: duplikált faceValue NEM allokál többet mint amennyi a készletben van")
+    void custom_duplicatedPriorityFaceValue_doesNotOverAllocate() {
+        // Készlet: csak 3 db 1000-es. Ha a JSON ["1000", "1000"]-t tartalmaz,
+        // a NAÍV implementáció 6 db 1000-est próbálna kiadni (2× stock). A fix után
+        // a dedup csak 3 db-ot ad ki, a maradékot a fallback címletek fedik.
+        List<Denomination> scarce = List.of(
+                makeDenom("10000", 10, DenominationType.BANKNOTE),
+                makeDenom("1000", 3, DenominationType.BANKNOTE),
+                makeDenom("500", 10, DenominationType.BANKNOTE)
+        );
+        when(denominationRepository.findByBranchAndCurrency(any(), any())).thenReturn(scarce);
+
+        String priorityJson = "[\"1000\", \"1000\", \"500\"]";
+        Map<BigDecimal, Integer> result = service.optimize(branchId, currencyId,
+                new BigDecimal("4000"), OptimizationStrategy.CUSTOM, priorityJson);
+
+        // Max 3 db 1000-es lehet (készlet-korlát), a többi 500-as
+        assertThat(result.getOrDefault(new BigDecimal("1000"), 0)).isLessThanOrEqualTo(3);
+        assertThat(sum(result)).isEqualByComparingTo("4000");
+    }
+
+    @Test
     @DisplayName("CUSTOM scale-mismatch: priorityJson 1000.00 ↔ stored 1000 (BigDecimal scale-independent)")
     void custom_scaleMismatch_normalized() {
         when(denominationRepository.findByBranchAndCurrency(any(), any())).thenReturn(hufDenoms);

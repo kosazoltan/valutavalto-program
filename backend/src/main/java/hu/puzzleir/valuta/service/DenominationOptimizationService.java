@@ -245,7 +245,7 @@ public class DenominationOptimizationService {
      */
     private Map<BigDecimal, Integer> custom(List<Denomination> available, BigDecimal amount, String priorityOrderJson) {
         if (priorityOrderJson == null || priorityOrderJson.isBlank()) {
-            log.info("CUSTOM: priorityOrderJson hiányzik, fallback GREEDY");
+            log.info("CUSTOM: priorityOrderJson hiányzik, fallback GREEDY (amount={})", amount);
             return greedy(available, amount);
         }
 
@@ -254,13 +254,21 @@ public class DenominationOptimizationService {
             List<String> raw = objectMapper.readValue(priorityOrderJson, new TypeReference<>() {});
             priorityFaceValues = raw.stream().map(BigDecimal::new).toList();
         } catch (JsonProcessingException | NumberFormatException e) {
-            log.warn("CUSTOM: priorityOrderJson parse hiba, fallback GREEDY. Hiba: {}", e.getMessage());
+            String truncatedJson = priorityOrderJson.length() > 200
+                    ? priorityOrderJson.substring(0, 200) + "…"
+                    : priorityOrderJson;
+            log.warn("CUSTOM: priorityOrderJson parse hiba, fallback GREEDY. amount={}, priorityOrderJson_truncated='{}'. Hiba: {}",
+                    amount, truncatedJson, e.getMessage());
             return greedy(available, amount);
         }
 
         // BigDecimal scale-független matching: stripTrailingZeros() normalizál
         // ("1000.00" ↔ "1000" ↔ "1E+3" mind ugyanaz logikailag).
-        Set<BigDecimal> priorityNormalized = new HashSet<>();
+        // Codex P1 #701: de-duplikálás kötelező — ha a JSON kétszer tartalmaz ugyanazt
+        // a faceValue-t, NEM szabad kétszer hozzáadni a denominationhez (különben a
+        // greedy() ugyanazt a stock bucket-et kétszer használja, többet allokál mint
+        // amennyi a készletben van).
+        Set<BigDecimal> priorityNormalized = new LinkedHashSet<>();
         for (BigDecimal fv : priorityFaceValues) {
             priorityNormalized.add(fv.stripTrailingZeros());
         }
@@ -271,9 +279,18 @@ public class DenominationOptimizationService {
         }
 
         List<Denomination> ordered = new ArrayList<>();
+        // priorityNormalized már de-dup (LinkedHashSet → első előfordulás sorrendje
+        // megőrzött); de iterálni a priorityFaceValues-on kell hogy megtartsuk a
+        // raw JSON-beli sorrendet, és külön Set-tel követjük már hozzáadott fv-ket.
+        Set<BigDecimal> alreadyAdded = new HashSet<>();
         for (BigDecimal fv : priorityFaceValues) {
-            Denomination d = byFvNormalized.get(fv.stripTrailingZeros());
-            if (d != null) ordered.add(d);
+            BigDecimal normalized = fv.stripTrailingZeros();
+            if (alreadyAdded.contains(normalized)) continue;
+            Denomination d = byFvNormalized.get(normalized);
+            if (d != null) {
+                ordered.add(d);
+                alreadyAdded.add(normalized);
+            }
         }
         // A priority-ben nem szereplő címletek a végén, greedy (descending)
         available.stream()
