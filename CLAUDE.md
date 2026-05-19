@@ -613,7 +613,21 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.60** (2026-05-19 — Fabulya Zsuzsanna 18+1 user-bug B-kategória atomikus fix-batch [#695]).
+- **Verzió:** **v2.5.61** (2026-05-19 — Árfolyamkészítő HyperFormula cell engine + 6 valuta törlés + Currency Manager UI V238 audit-log [#697]).
+- **v2.5.61 PR (admin-merged main-be 2026-05-19 12:05 CEST):**
+  - **PR #697** (5 commit, merge commit `0660ff46c`): a Kósa Zoltán user-direktíva alapján az Árfolyamkészítő (arfolyam-keszito-client) Főlapját bővítjük 2 feature-rel + Currency Manager UI + audit-log:
+    - **HyperFormula cell-engine (HIBA v2.5.61 #1):** A D oszlop kivételével minden cella formula-képes (`=A1*1.02`, `=A1+B1` típusú Excel-szerű képletek). HyperFormula v3.2.0 library (GPL v3, internal-use justification a `frontend-react/NOTICE.md`-ben). 6 user-editable oszlop képletes: A=settlement, B=otp, C=helper, E=weakMultiBuy, F=weakMultiSell, I=wholesale. Reaktív recompute (dependency-graph). FormulaMap state + localStorage persistencia.
+    - **6 valuta törlés (HIBA v2.5.61 #2):** DKK, NOK, SEK, HRK, BGN, RCH eltávolítva a DEFAULT_CURRENCIES-ből (28 → 22 valuta). V237 Flyway: `UPDATE currency SET is_active=false WHERE code IN(...)` (NEM DELETE — Pmt./NAV 8-év megőrzés).
+    - **Currency Manager UI (HIBA v2.5.61 #3):** Új admin modal a Rate-Maker Főlapról ("Valutakezelő" gomb, csak főértéktáros / ügyvezető / admin szerepkörnek). POST `/api/v1/currencies` (új valuta) + PATCH `/api/v1/currencies/{id}/active` (aktivál/deaktivál + indoklás). SOHA NEM DELETE — `is_active` flag váltás. V238 Flyway: `currency_audit_log` immutable tábla (UPDATE+DELETE trigger-tiltva, JSONB old/new snapshot, worker_id + ip_address + note). AdminCurrencyService + CurrencyAuditLogRepository + CurrencyManagerModal komponens.
+    - **AI review fix-batch:** Codex P1 sync formula eval (a save/dispatch path placeholder 0 helyett `hf.calculateFormula` szinkron eval) + 5 Copilot P2 (PURE comment + saveLocally formulas deps + HF enrichedRows for cross-base + DetailedCellError → warn+toast keep-last + V237 GET DIAGNOSTICS ROW_COUNT) + CodeQL log-injection sanitize (`sanitizeForLog` helper az AdminCurrencyService.java-ban) + NOTICE.md GPL v3 internal-use justification.
+- **v2.5.61 új P0 mandate:** **két ellenőrzési kör merge előtt** (vault/feedback/two-rounds-before-merge-mandatory-2026-05-19.md). CI gate + AI gate, mind zöld + 0 új P0/P1/P2 finding. PR #697 ezt **3 körön** végigvitte (P1 fix → CodeQL alert → CodeQL fix → minden zöld → merge).
+- **Telepítő fájlok v2.5.61 (LEGFRISSEBB, 2026-05-19 UNSIGNED build)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba:
+  - `Penztar-Setup-2.5.61-20260519.exe` — **282.66 MB** (296,391,264 byte), SHA-256 `18CF54A4F03D7762922731AE3FE31A850B5E4534DC5F63F27E67278CBC29AB1C`
+  - `Kozponti-Iranyitokozpont-Setup-2.5.61.exe` — **101.05 MB** (105,953,515 byte), SHA-256 `ABA896563B70CC062C4EF5F80B3300FC98E6A3ADE4582256B9C2C3F2BDB5C533`
+  - `Arfolyamkeszito-Setup-2.5.61.exe` — **101.04 MB** (105,953,283 byte), SHA-256 `8E8545DBAFF25FBAF8BC474902CF58E0EA823AEA3B1B786419B072D762CF803D`
+  - `Penztar-Eltavolito-2.5.61-20260519.exe` — **59.43 KB** (60,858 byte), SHA-256 `D5BF7315BCEF2AC21BB32C1F7E3BF31E45B5D3A18766BBD728937709354C9B6C`
+  - **UNSIGNED build** — DigiCert EV CS cert kiadásig SmartScreen "További információ" → "Futtatás mindenképp" szükséges.
+- **Korábbi verzió:** v2.5.60 (2026-05-19 — Fabulya Zsuzsanna 18+1 user-bug B-kategória atomikus fix-batch [#695]).
 - **v2.5.60 PR (admin-merged main-be 2026-05-19 12:52 CEST):**
   - **PR #695** (37 fájl, +2066 / -120 LOC, 7 commit, merge commit `28d7c70d`): a Fabulya Zsuzsanna kollégánő által 2026-05-19-én jelentett B-kategória **8 hibájának atomikus javítása** + 2 Codex P1 + 12 Copilot P2 finding fix:
     - **HIBA #10** (BUY HUF készlet): `CashierTransactionPage.tsx` client-side prevalidation BUY módban is fut (mode==='buy' || 'sell' guard) + a fee és kerekítés levonva a backend-egyenértékű totalHufPayable-ből.
