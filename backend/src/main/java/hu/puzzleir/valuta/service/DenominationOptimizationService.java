@@ -24,7 +24,7 @@ import java.util.*;
  *   <li>DYNAMIC — bounded knapsack DP, minimum darabszám</li>
  *   <li>MIN_COINS — bankjegyeket preferál, érméket csak ha kell</li>
  *   <li>MIN_BANKNOTES — egyenértékű a GREEDY-vel (nagytól kicsiig)</li>
- *   <li>MIN_TOTAL — kicsi címleteket preferál (max darabszám, ellentétes greedy)</li>
+ *   <li>MIN_TOTAL — **minimum** összes darabszám (DYNAMIC-ra delegál, v2.5.67 fix #701/#704)</li>
  *   <li>CUSTOM — priorityOrderJson alapján definiált sorrend</li>
  *   <li>BRANCH_SPECIFIC — készlet-aware: nagy készletű címleteket preferál (kiegyenlít)</li>
  * </ul></p>
@@ -139,14 +139,37 @@ public class DenominationOptimizationService {
         return dynamic(available, amount);
     }
 
-    /** DYNAMIC: bounded knapsack DP készletkorláttal — minimum darabszám. */
+    /**
+     * DYNAMIC: bounded knapsack DP készletkorláttal — minimum darabszám.
+     *
+     * <p>Public dispatch: ha az egzakt DP nem alkalmazható, fallback GREEDY + WARN log.</p>
+     */
     private Map<BigDecimal, Integer> dynamic(List<Denomination> available, BigDecimal amount) {
+        Map<BigDecimal, Integer> exact = dynamicExact(available, amount);
+        if (exact != null) {
+            return exact;
+        }
+        // Nem volt egzakt megoldás vagy a DP nem alkalmazható → fallback greedy WARN-nal.
+        log.warn("Dynamic: nem találtam egzakt megoldást, fallback greedy (amount={})", amount);
+        return greedy(available, amount);
+    }
+
+    /**
+     * Quiet DP: bounded knapsack egzakt megoldás VAGY null. NEM logol WARN-t.
+     *
+     * <p>Copilot P2 #704 fix: a {@link #minCoins} Phase 1 banknote-only DP-je
+     * EXPECTED-ly fail-elhet (ha bankjeggyel pontosan nem fizethető); ekkor NE
+     * generáljon zajos WARN log-ot, mert utána Phase 2 mixed DP egzakt fedést ad.</p>
+     *
+     * @return egzakt DP-megoldás vagy {@code null} ha (1) usable üres, (2) skálázás
+     *         nem int, (3) target kívül DP-tartományon, (4) nincs egzakt fedés.
+     */
+    private Map<BigDecimal, Integer> dynamicExact(List<Denomination> available, BigDecimal amount) {
         List<Denomination> usable = available.stream()
                 .filter(d -> d.getQuantity() > 0)
                 .toList();
         if (usable.isEmpty()) {
-            log.warn("Dynamic: nincs elérhető címlet, üres eredmény");
-            return new LinkedHashMap<>();
+            return null;
         }
 
         int maxScale = usable.stream()
@@ -162,12 +185,10 @@ public class DenominationOptimizationService {
         try {
             target = amount.multiply(multiplier).longValueExact();
         } catch (ArithmeticException e) {
-            log.info("Dynamic: összeg nem konvertálható egészre, fallback greedy");
-            return greedy(available, amount);
+            return null;  // DP nem alkalmazható, dispatch greedy-re bízza
         }
         if (target <= 0 || target > 500_000L) {
-            log.info("Dynamic: target={} kívül esik a DP tartományon, fallback greedy", target);
-            return greedy(available, amount);
+            return null;  // DP nem alkalmazható, dispatch greedy-re bízza
         }
         int t = (int) target;
 
@@ -200,8 +221,7 @@ public class DenominationOptimizationService {
         }
 
         if (dp[t] == Integer.MAX_VALUE) {
-            log.warn("Dynamic: nem találtam egzakt megoldást, fallback greedy");
-            return greedy(available, amount);
+            return null;  // Nincs egzakt megoldás, dispatch greedy-re bízza
         }
 
         Map<BigDecimal, Integer> result = new LinkedHashMap<>();
@@ -251,15 +271,16 @@ public class DenominationOptimizationService {
                 .filter(d -> d.getDenominationType() == DenominationType.BANKNOTE)
                 .toList();
 
-        // Phase 1: csak bankjegyek (DP egzakt)
-        Map<BigDecimal, Integer> banknoteOnly = dynamic(banknotes, amount);
-        if (sumOf(banknoteOnly).compareTo(amount) == 0) {
+        // Phase 1: csak bankjegyek (DP egzakt) — QUIET (Copilot P2 #704: ne logoljon WARN-t
+        // expected failure-en, mert Phase 2 sikeres lehet)
+        Map<BigDecimal, Integer> banknoteOnly = dynamicExact(banknotes, amount);
+        if (banknoteOnly != null && sumOf(banknoteOnly).compareTo(amount) == 0) {
             return banknoteOnly;
         }
 
-        // Phase 2: full mixed DP — egzakt fedés ha lehetséges
-        Map<BigDecimal, Integer> mixed = dynamic(available, amount);
-        if (sumOf(mixed).compareTo(amount) == 0) {
+        // Phase 2: full mixed DP — egzakt fedés ha lehetséges (QUIET)
+        Map<BigDecimal, Integer> mixed = dynamicExact(available, amount);
+        if (mixed != null && sumOf(mixed).compareTo(amount) == 0) {
             return mixed;
         }
 
