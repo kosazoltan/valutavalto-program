@@ -398,6 +398,22 @@ Section "Telepites" SecInstall
     ; RE-hardening: strip source maps, test/dev files, git metadata from Electron bundle
     File /r /x "*.map" /x "*.test.js" /x "*.spec.js" /x "jest.config.*" /x ".gitattributes" /x ".gitignore" /x ".gitmodules" /x "*.test.ts" /x "*.spec.ts" /x "*.stories.*" "${STAGE_DIR}\electron\*.*"
 
+    ; v2.5.62 hot-fix: explicit File direktiva a kritikus Penztar.exe-re
+    ; (Kosa Zoltan tesztgepen, 2026-05-19: az ESET ekrn.exe silent-deny-jolta a
+    ; UNSIGNED 212 MB Electron exe-t a wildcard `*.*` rekurziv masolas soran,
+    ; karantenba SEM tette, csak file-write-blokkolta. Az explicit File direktiva
+    ; mas execution path-ot hasznal, talan athaladhat a deny-on.)
+    File "${STAGE_DIR}\electron\Penztar.exe"
+
+    ; v2.5.62 hot-fix: post-install verify hogy a kritikus Penztar.exe valoban
+    ; tenyleg a Program Files-ban van. Ha hianyzik (AV silent-deny, disk-full,
+    ; permission stb.), abort+MessageBox a user-nek hogy mit tegyen.
+    IfFileExists "$INSTDIR\Penztar.exe" penztar_exe_ok 0
+        MessageBox MB_OK|MB_ICONSTOP "TELEPITES SIKERTELEN!$\r$\n$\r$\nA Penztar.exe (212 MB) hianyzik a kovetkezo helyrol:$\r$\n$INSTDIR\Penztar.exe$\r$\n$\r$\nValoszinu ok: az AV (ESET, Windows Defender) blokkolta. Megoldas:$\r$\n1. Kapcsold ki az ESET-et 10 percre (Setup > Pause protection)$\r$\n2. Inditsd ujra a Penztar-Setup-2.5.62-20260519.exe-t$\r$\n3. Indítsd vissza az ESET-et$\r$\n$\r$\nKerlek jelezd a fejlesztőnek (Kosa Zoltan)."
+        Abort "Penztar.exe missing — install aborted"
+    penztar_exe_ok:
+        DetailPrint "Penztar.exe verified at $INSTDIR\Penztar.exe"
+
     ; v2.5.9: Diagnosztikai szkript bemasolasa az INSTDIR-be (mindenkinek)
     DetailPrint "Diagnosztikai eszkoz telepitese..."
     SetOutPath $INSTDIR
