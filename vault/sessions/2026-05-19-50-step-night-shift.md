@@ -106,3 +106,33 @@ PHASE 4: Final close-out (Steps 41-50)
 - 3 új P0 mandate (C.22, C.23, C.24)
 - v2.5.71 4 installer Downloads-ban (Penztar 283 MB, Kozponti 102 MB, Arfolyam 102 MB, Eltavolito 60 KB)
 - Production HEALTHY
+
+### PHASE 4 — PRODUCTION OUTAGE + HOTFIX (L33-L50 ESCALATION)
+
+**KRITIKUS production outage 22:30 körül**:
+- PR #649 (branch-workgroup-exclusivity, admin-merged earlier) ÚJ
+  `V234__branch_workgroup_exclusivity_unique_constraint.sql` migrációt adott
+- DE már létezett `V234__audit_log_immutable_hash_chain.sql` (v2.5.58 óta)
+- Flyway start-up: `FlywayException: Found more than one migration with version 234`
+- Hetzner deploy 'failure' status — service v2.5.57-en fennakadt
+- Production HTTP 502 (backend nem indul)
+
+**Hotfix v2.5.72** (PR #709, branch `hotfix/v2-5-72-flyway-v234-duplicate`):
+- `git mv V234__branch_workgroup → V242__branch_workgroup` (V241 foglalt = AverageRateReport index)
+- 4-way version bump v2.5.71 → v2.5.72
+- Production state: 502 outage, várja a deploy SUCCESS-t
+
+**L33 ❌ Hetzner deploy FAILED** — V234 dup → root cause: PR #649 admin-merge nem ellenőrzött Flyway-uniqueness check
+**L34 ✅ Failure log gather** — Spring boot startup error chain — Flyway root cause confirmed
+**L35 ✅ V234+ audit** — V234x2, V241 foglalt, V242-V245 szabad
+**L36 ✅ git mv V234__branch_workgroup → V242**
+**L37 ✅ 4-way version bump v2.5.72**
+**L38 ✅ Hotfix commit + push**
+**L39 ✅ PR #709 created**
+**L40 ✅ CI poll fut (br2d429lj)**
+**L41 ❌ Production 502 confirmed (KRITIKUS user-facing outage)**
+**L42 ✅ CI 8 IN_PROGRESS, várva**
+**L43 ✅ CI wait #709 (b15j6rtbw background)**
+**L44 ✅ V234 + V242 unique verify**
+**L45 ✅ Vault outage rögzítve**
+
