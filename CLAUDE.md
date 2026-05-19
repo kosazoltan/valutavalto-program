@@ -613,7 +613,22 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.65** (2026-05-19 — Sprint A P0.1 close-out: Címletezés v2 7 stratégia teljes impl + 17 unit teszt [#701]; plus P0.3 companyId audit dokumentált).
+- **Verzió:** **v2.5.67** (2026-05-19 — Sprint A autonomous: Címletezés v2 + Átlag árfolyam riport + MIN_TOTAL/MIN_COINS fix [#701, #703, #704]).
+- **v2.5.67 PR (admin-merged main-be ~21:00 CEST):** PR #704 (`f533314c4`) — Copilot #701 follow-up: MIN_TOTAL P0 (delegál DYNAMIC-ra a minimum darabszámért) + MIN_COINS P1 (3-fázisú DP, 500B+3×200C/600 adversarial teszt zöld). Plus `dynamicExact` quiet helper (Copilot P2 #704 log-zaj fix).
+- **v2.5.66 PR (admin-merged ~20:50 CEST):** PR #703 (`c05ceb16f`) — Átlag árfolyam riport service (`AverageRateReportService` + Controller + V241 partial index `(company_id, transaction_date, currency_id) WHERE status='COMPLETED' AND financial_effective=TRUE`). 12 unit teszt. Copilot P0 (financial_effective TRUE szűrés) + CodeQL log-injection + 4 további finding mind javítva.
+- **v2.5.65 PR (admin-merged ~20:10 CEST):** PR #701 (`dcfb97124`) — Címletezés v2 7 stratégia (GREEDY, MIN_BANKNOTES, MIN_TOTAL, DYNAMIC, MIN_COINS, CUSTOM, BRANCH_SPECIFIC) valós impl + 17 unit teszt. Plus `docs/companyId-coverage-2026-05-19.md` audit (185 repo kategorizálás, 1 valódi bug: ShipmentRequestRepository — külön P0 follow-up PR).
+- **v2.5.64 PR (admin-merged ~14:35 CEST):** PR #700 (`727d08079`) — V240 BR026 sync + 9 branch bank_code=self_code, Codex+Copilot P2 #699 fix.
+- **v2.5.68 PR (open, CI fut):** PR #705 — Sprint A P2.4 close-out: legacy NAPKONYV parity. `DailyJournalService` + `DailyJournalController` + 6 unit teszt. Napi forgalmi napló PDF generátor (kronologikus tranzakció lista + valutánkénti + típusonkénti összesítés).
+- **P2.2 ExportApproval 4-eyes**: már TELJES IMPL (CameraExportService secondApprovedBy/Sprint 4 P2-C). Külön PR nem kell.
+
+### Telepítő fájlok v2.5.67 (legutóbbi UNSIGNED build, 2026-05-19 ~21:11)
+- `Penztar-Setup-2.5.67-20260519.exe` — 282.66 MB
+- `Arfolyamkeszito-Setup-2.5.67.exe` — 101.05 MB
+- ⏳ Kozponti + Eltavolito v2.5.67 build még nem teljes (a v2.5.68 merge után teljes 4-installer release)
+
+Korábbi telepítő-szet: v2.5.65 (SHA-256: lásd `vault/sessions/2026-05-19-sprint-a-p0-1-denomination-v2-5-65.md`).
+
+- **Korábbi verzió:** v2.5.65 (2026-05-19 — Sprint A P0.1 close-out: Címletezés v2 7 stratégia teljes impl + 17 unit teszt [#701]; plus P0.3 companyId audit dokumentált).
 - **v2.5.65 PR (admin-merged main-be 2026-05-19 ~20:10 CEST):**
   - **PR #701** (13 fájl, +493/-87 LOC, merge commit `dcfb97124`): `DenominationOptimizationService` dead-kód volt (no callers); CUSTOM + BRANCH_SPECIFIC csak greedy fallback. Most mind a 7 stratégia (GREEDY, MIN_BANKNOTES, MIN_TOTAL, DYNAMIC, MIN_COINS, CUSTOM, BRANCH_SPECIFIC) valós implementáció.
   - **Refaktor:** belső duplikált `Strategy` enum törölve → `OptimizationStrategy` (entity) single source of truth. Null/negative guard, BigDecimal scale clamp, stripTrailingZeros normalizálás CUSTOM JSON-hez.
