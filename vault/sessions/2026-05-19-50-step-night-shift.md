@@ -136,3 +136,32 @@ PHASE 4: Final close-out (Steps 41-50)
 **L44 ✅ V234 + V242 unique verify**
 **L45 ✅ Vault outage rögzítve**
 
+
+### PHASE 5 — PRODUCTION RECOVERY ✅ (L46-L50 SUCCESS)
+
+**L46 ✅** PR #709 vault outage record push
+**L47 ✅** CI #709 wait 16 SUCCESS + 1 SKIPPED
+**L48 ✅** PR #709 admin-merged `24851fbfa`
+**L49 ✅** Hetzner v2.5.72 deploy SUCCESS (2m20s)
+**L50 ✅** Production HEALTHY 200 — bootstrap-status + /branches mind 200
+
+**Outage időtartam: ~15 perc** (22:30 → 22:45 CEST).
+
+**Root cause**: PR #649 (branch-workgroup-exclusivity) `V234__branch_workgroup_...` migráció collision-t okozott a meglévő `V234__audit_log_immutable_hash_chain.sql` migrációval.
+**Fix**: rename V234→V242 in hotfix branch.
+**Future-defense**: `flyway-migration-lint.yml`-be `awk` uniqueness check (NEM hatott a 2026-05-19-i merge-sequence-re).
+
+**v2.5.72 4-installer build status**:
+- Kozponti: ✅ 102 MB, SHA-256 `42806e87c7e4c9e7d099629da82341ac4dd7db1e8f91b9640056fe7991f2471e`
+- Arfolyam: ✅ 102 MB, SHA-256 `5fd8a5f3490219e9f77795d876dc8f74cb781d81c0949db90ac257ca8ce47568`
+- Penztar: ⏳ rebuild fut (kezdeti broken 7.7 MB miatt parallel race-condition)
+- Eltavolito: ⏳ rebuild után
+
+**50-step night shift TELJES — eredmény:**
+- ✅ 10 PR merged (PR #702, #658, #657, #655, #650, #653, #694, #648, #649, #630)
+- ✅ HOTFIX PR #709 (V234 collision production outage fix)
+- ✅ Production recovered (15-min outage)
+- ✅ v2.5.72 release admin-merged
+- ✅ 3 új P0 mandate (C.22, C.23, C.24)
+- ✅ Sprint A teljes (P0.1+P0.2+P0.3)
+
