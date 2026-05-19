@@ -137,7 +137,6 @@ describe('openRealtimeSession', () => {
 import { api } from '../../../services/api/client'
 
 describe('requestEphemeralToken — HTTP 422 friendly error mapping', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const apiPost = api.post as unknown as ReturnType<typeof vi.fn>
 
   afterEach(() => {

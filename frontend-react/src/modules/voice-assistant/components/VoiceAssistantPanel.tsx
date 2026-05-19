@@ -53,10 +53,13 @@ export function VoiceAssistantPanel() {
       )}
 
       <div className="mb-1.5 text-[11px] leading-tight text-slate-500 dark:text-slate-400">
+        {/* Copilot PR #692 P2: `isActive` mindig `mode !== 'idle'`, a dual-branch
+            felesleges volt. A `useVoiceAssistant` kontraktja szerint `mode === 'idle'`
+            akkor es csak akkor, ha NEM active — tehat eleg a `mode` checkje. */}
         {isConnecting
           ? 'Kapcsolódás…'
-          : isActive
-            ? `Aktív — ${mode !== 'idle' ? VOICE_MODE_LABEL[mode] : 'Beszélgetés'}`
+          : mode !== 'idle'
+            ? `Aktív — ${VOICE_MODE_LABEL[mode]}`
             : 'Indítsd a beszélgetést.'}
       </div>
 
