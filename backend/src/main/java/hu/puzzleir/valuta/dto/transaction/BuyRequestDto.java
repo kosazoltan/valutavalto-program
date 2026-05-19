@@ -70,7 +70,10 @@ public class BuyRequestDto {
      * HIBA #15: PEP minoseg. Ha customerIsPep=TRUE kotelezo. Ervenyes ertekek:
      * CSALADTAG, KOZELI_MUNKATARS, KORMANYFO, PARLAMENTI, NAV_VEZETO, EGYEB.
      */
-    @Pattern(regexp = "^(CSALADTAG|KOZELI_MUNKATARS|KORMANYFO|PARLAMENTI|NAV_VEZETO|EGYEB)?$",
+    // Copilot P2 (PR #695): a `?$` (üres group) miatt üres string is átment a
+    // validáción, de a V235 DB CHECK csak NULL-t vagy ervenyes enumot fogad el
+    // → runtime DB constraint violation. Most: NEM-üres karakter → muszáj enum.
+    @Pattern(regexp = "^(CSALADTAG|KOZELI_MUNKATARS|KORMANYFO|PARLAMENTI|NAV_VEZETO|EGYEB)$",
             message = "Érvénytelen PEP minőség — csak CSALADTAG/KOZELI_MUNKATARS/KORMANYFO/PARLAMENTI/NAV_VEZETO/EGYEB engedélyezett")
     private String customerPepKind;
 

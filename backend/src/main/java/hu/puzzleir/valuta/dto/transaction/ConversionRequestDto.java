@@ -58,7 +58,8 @@ public class ConversionRequestDto {
     private Boolean customerOnOwnBehalf;
     @Size(max = 255) private String customerActorName;
 
-    @Pattern(regexp = "^(CSALADTAG|KOZELI_MUNKATARS|KORMANYFO|PARLAMENTI|NAV_VEZETO|EGYEB)?$",
+    // Copilot P2 (PR #695): üres-string DB CHECK violation fix.
+    @Pattern(regexp = "^(CSALADTAG|KOZELI_MUNKATARS|KORMANYFO|PARLAMENTI|NAV_VEZETO|EGYEB)$",
             message = "Érvénytelen PEP minőség")
     private String customerPepKind;
 

@@ -1082,20 +1082,26 @@ export class SyncEngine {
     addOptionalText('customerMotherName', tx.customer_mother_name);
     addOptionalText('customerNationality', tx.customer_nationality);
     addOptionalText('customerDocumentType', tx.customer_document_type);
-    addOptionalText('customerActorName', tx.customer_actor_name);
     addOptionalText('customerPepKind', tx.customer_pep_kind);
     // 300k+ JOGCÍM nyilatkozat: NULL = nem kérdezett (régi pending sor); TRUE/FALSE = válasz
     if (tx.customer_on_own_behalf !== null && tx.customer_on_own_behalf !== undefined) {
       body['customerOnOwnBehalf'] = tx.customer_on_own_behalf === 1;
     }
-    // V235 actor (képviselt fél) teljes azonosítása — csak ha onOwnBehalf=false
-    addOptionalText('customerActorBirthPlace', tx.customer_actor_birth_place);
-    addOptionalText('customerActorBirthDate', tx.customer_actor_birth_date);
-    addOptionalText('customerActorMotherName', tx.customer_actor_mother_name);
-    addOptionalText('customerActorNationality', tx.customer_actor_nationality);
-    addOptionalText('customerActorDocumentType', tx.customer_actor_document_type);
-    addOptionalText('customerActorDocumentNumber', tx.customer_actor_document_number);
-    addOptionalText('customerActorAddress', tx.customer_actor_address);
+    // V235 actor (képviselt fél) teljes azonosítása — csak ha onOwnBehalf=false.
+    // Copilot P2 (PR #695): a korábbi pathon a sync-engine MIND a customer_actor_*
+    // mezőt MINDIG átküldte, akkor is ha customer_on_own_behalf=1 volt. Stale data
+    // veszély (régi pending sor, vagy user visszakapcsolta a flaget). Most:
+    // explicit guard, csak customer_on_own_behalf=0 (FALSE) esetén megy fel.
+    if (tx.customer_on_own_behalf === 0) {
+      addOptionalText('customerActorName', tx.customer_actor_name);
+      addOptionalText('customerActorBirthPlace', tx.customer_actor_birth_place);
+      addOptionalText('customerActorBirthDate', tx.customer_actor_birth_date);
+      addOptionalText('customerActorMotherName', tx.customer_actor_mother_name);
+      addOptionalText('customerActorNationality', tx.customer_actor_nationality);
+      addOptionalText('customerActorDocumentType', tx.customer_actor_document_type);
+      addOptionalText('customerActorDocumentNumber', tx.customer_actor_document_number);
+      addOptionalText('customerActorAddress', tx.customer_actor_address);
+    }
 
     // A tárolt idempotency_key-t használjuk — retry-nál is ugyanazt küldjük
     await httpPost(endpoint, body, token, tx.idempotency_key ?? undefined);

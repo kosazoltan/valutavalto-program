@@ -70,7 +70,8 @@ public class SellRequestDto {
      * HIBA #15: PEP minoseg. Ha customerIsPep=TRUE kotelezo. Ervenyes ertekek:
      * CSALADTAG, KOZELI_MUNKATARS, KORMANYFO, PARLAMENTI, NAV_VEZETO, EGYEB.
      */
-    @jakarta.validation.constraints.Pattern(regexp = "^(CSALADTAG|KOZELI_MUNKATARS|KORMANYFO|PARLAMENTI|NAV_VEZETO|EGYEB)?$",
+    // Copilot P2 (PR #695): üres-string DB CHECK violation fix — l. BuyRequestDto.
+    @jakarta.validation.constraints.Pattern(regexp = "^(CSALADTAG|KOZELI_MUNKATARS|KORMANYFO|PARLAMENTI|NAV_VEZETO|EGYEB)$",
             message = "Érvénytelen PEP minőség — csak CSALADTAG/KOZELI_MUNKATARS/KORMANYFO/PARLAMENTI/NAV_VEZETO/EGYEB engedélyezett")
     private String customerPepKind;
 

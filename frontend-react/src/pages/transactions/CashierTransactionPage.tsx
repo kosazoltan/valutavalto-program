@@ -541,15 +541,19 @@ export default function CashierTransactionPage() {
             }
           }
         } else {
-          // BUY: a tetelek hufValue-jat osszegezzuk, levonjuk a kezelesi dijat
-          // (a fee a payable-bol levonva — netto kifizetes), es nezzuk hogy van-e
-          // ennyi HUF a kasszaban.
-          const totalHufPayable = touchedRows.reduce((sum, row) => {
+          // BUY: a tetelek hufValue-jat osszegezzuk, level kell vonni a kezelesi
+          // dijat es a 5 Ft kerekitest, mert a backend a payable-bol vonja le a
+          // fee-t mielott kifizet (TransactionService.processBuyTransaction). A
+          // korabbi naiv summing-fee felulmero volt es indokolatlan blokkolast
+          // okozhatott. Copilot P2 (PR #695) fix.
+          const grossHuf = touchedRows.reduce((sum, row) => {
             if (row.currencyCode.length !== 3) return sum
             const qty = parseFloat(row.quantity) || 0
             if (qty <= 0) return sum
             return sum + Math.max(0, row.hufValue)
           }, 0)
+          // Penztaros kifizetes ~= bruttó − handlingFee, 5 Ft-os rounding-toleranciaval
+          const totalHufPayable = roundHuf(Math.max(0, grossHuf - (handlingFee > 0 ? handlingFee : 0)))
           const hufBal = balances.find(b => b.currencyCode === 'HUF')
           const hufAvailable = hufBal?.currentBalance ?? 0
           if (totalHufPayable > hufAvailable) {

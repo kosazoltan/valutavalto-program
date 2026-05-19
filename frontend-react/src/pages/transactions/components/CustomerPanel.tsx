@@ -384,7 +384,10 @@ export default function CustomerPanel({
         isPep,
         sourceOfFunds: sourceOfFunds.trim() || undefined,
         onOwnBehalf,
-        actorName: actorName.trim() || undefined,
+        // Copilot P2 (PR #695): csak akkor adjuk at az actorName-et ha
+        // tenyleg "mas neveben" jar el — egyebkent stale data maradhatna
+        // a kliensben (user kitoltotte, majd visszakapcsolt "Sajat nevben"-re).
+        actorName: !onOwnBehalf ? (actorName.trim() || undefined) : undefined,
         // V235 (HIBA #15): PEP minoseg, ha isPep=true
         pepKind: isPep && pepKind ? (pepKind as PepKind) : null,
         // V235 (HIBA #17): actor teljes azonositasa, ha !onOwnBehalf
