@@ -55,9 +55,11 @@ export function VoiceAssistantPanel() {
       <div className="mb-1.5 text-[11px] leading-tight text-slate-500 dark:text-slate-400">
         {isConnecting
           ? 'Kapcsolódás…'
-          : isActive
-            ? `Aktív — ${mode !== 'idle' ? VOICE_MODE_LABEL[mode] : 'Beszélgetés'}`
-            : 'Indítsd a beszélgetést.'}
+          : isActive && mode !== 'idle'
+            ? `Aktív — ${VOICE_MODE_LABEL[mode]}`
+            : isActive
+              ? `Aktív — ${VOICE_MODE_LABEL.unified}`
+              : 'Indítsd a beszélgetést.'}
       </div>
 
       {!isActive ? (

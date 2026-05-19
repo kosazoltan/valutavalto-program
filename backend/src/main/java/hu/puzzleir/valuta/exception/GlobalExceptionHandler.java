@@ -145,9 +145,40 @@ public class GlobalExceptionHandler {
     }
 
     // --- 400 Bad Request (missing/unreadable body) ---
+    // Copilot PR #691 P1 finding: ha a Jackson enum-deserializaciot dob (pl.
+    // VoiceAssistantMode wire-name nem letezo), az "Hiányzó vagy érvénytelen
+    // request body" generikus szoveg helyett actionable feedback kell.
+    // A cause-lancban benne van az InvalidFormatException, amibol kinyerheto
+    // a megengedett enum-ertekek listaja.
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
         log.warn("Request body not readable: {}", ex.getMessage());
+
+        // Mély-keresés: van-e InvalidFormatException a cause-láncban? (enum bind failure)
+        Throwable cur = ex.getCause();
+        while (cur != null) {
+            if (cur instanceof com.fasterxml.jackson.databind.exc.InvalidFormatException ife) {
+                Class<?> targetType = ife.getTargetType();
+                if (targetType != null && targetType.isEnum()) {
+                    String fieldName = ife.getPath().isEmpty()
+                            ? "<unknown>"
+                            : ife.getPath().get(ife.getPath().size() - 1).getFieldName();
+                    String allowed = java.util.Arrays.stream(targetType.getEnumConstants())
+                            .map(Object::toString)
+                            .reduce((a, b) -> a + ", " + b)
+                            .orElse("<none>");
+                    String message = String.format(
+                            "Érvénytelen érték a '%s' mezőben: '%s'. Megengedett értékek: %s.",
+                            fieldName,
+                            String.valueOf(ife.getValue()),
+                            allowed.toLowerCase()
+                    );
+                    return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_ENUM_VALUE", message);
+                }
+            }
+            cur = cur.getCause();
+        }
+
         return buildResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST",
                 "Hiányzó vagy érvénytelen request body");
     }
