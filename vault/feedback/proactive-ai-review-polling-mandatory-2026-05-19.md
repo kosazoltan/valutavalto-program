@@ -82,6 +82,30 @@ A 2 poll **párhuzamosan** indítható `run_in_background: true` Bash hívással
 - ❌ Passzív várakozás amíg a user forward-olja az emailt
 - ❌ "Csak CI-re várok, AI review-t majd később megnézem" — proaktívan kell már T+60s-től
 - ❌ "Várom a notifikációt" — a notifikáció CSAK CI completion-re fire-ol, az AI review-ra NEM külön
+- ❌ **MEGÁLLÁS a háttér-poll után** (user 2026-05-19 21:30 direktíva: "A határozott utasítás
+  ellenére is megint megálltál, és nem látni, hogy várakoznál a kiolvasásra"). A poll fut a
+  háttérben, de az ügynök NEM áll meg — MINDIG új feladaton dolgozik közben.
+
+## "Stop = stop" kritérium (user 2026-05-19 21:30)
+
+Csak akkor megáll, ha **MIND a 6** teljesül:
+1. AI review-k beérkeztek (Codex + Copilot, vagy `T+300s` timeout)
+2. Minden P0/P1/P2 finding javítva
+3. Admin-merge megtörtént
+4. 4 installer build kész
+5. Downloads-ba másolva
+6. Vault session-jegyzet update + CLAUDE.md release-block update
+
+Ha bármelyik nem teljesül → folytatás más feladaton, NEM "várom a notifikációt" zárás.
+
+**Példa: ha CI poll fut a háttérben (5 perc), AZONNAL más feladat:**
+- Vault session-jegyzet update
+- CLAUDE.md release-block update
+- Next feature work (új branch)
+- companyId audit follow-up (ShipmentRequestRepository fix)
+- Mandate review / cleanup
+- Auto-memory update
+- 4 installer build elindítás párhuzamosan
 
 ## Engedélyezett
 

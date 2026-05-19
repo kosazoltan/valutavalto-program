@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -28,19 +29,38 @@ import java.util.UUID;
 public class ShipmentService {
 
     private final ShipmentRequestRepository shipmentRequestRepository;
+    private final BranchRepository branchRepository;
 
+    /**
+     * v2.5.70 P0 multi-tenant fix (companyId audit follow-up): a régi findByStatus /
+     * findAllOrdered globális queries voltak (NEM cég-szintű szűréssel), helyettük a
+     * tenant-aware *ByCompanyId variánsokat hívjuk SecurityUtils.getCurrentCompanyId()-val.
+     */
     @Transactional(readOnly = true)
     public Page<ShipmentRequest> findAll(ShipmentRequestStatus status, Pageable pageable) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (status != null) {
-            return shipmentRequestRepository.findByStatus(status, pageable);
+            return shipmentRequestRepository.findByStatusAndCompanyId(status, companyId, pageable);
         }
-        return shipmentRequestRepository.findAllOrdered(pageable);
+        return shipmentRequestRepository.findAllOrderedByCompanyId(companyId, pageable);
     }
 
     @Transactional(readOnly = true)
     public ShipmentRequest findById(UUID id) {
-        return shipmentRequestRepository.findById(id)
+        ShipmentRequest sr = shipmentRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Szállítmánykérés nem található: " + id));
+        // v2.5.70 P0 fix: cross-tenant IDOR guard — fromBranchId-n keresztül kérdezzük le
+        // a Branch.company.id-t és összevetjük a jelenlegi user company-jával.
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        UUID branchCompanyId = branchRepository.findById(sr.getFromBranchId())
+                .map(b -> b.getCompany() != null ? b.getCompany().getId() : null)
+                .orElse(null);
+        if (branchCompanyId == null || !currentCompanyId.equals(branchCompanyId)) {
+            log.warn("Cross-tenant access blocked: shipmentRequest={}, fromBranch={}, branchCompany={}, currentCompany={}",
+                    id, sr.getFromBranchId(), branchCompanyId, currentCompanyId);
+            throw new ValidationException("A szállítmánykérés nem tartozik a jelenlegi céghez (cross-tenant access blocked)");
+        }
+        return sr;
     }
 
     public ShipmentRequest create(ShipmentRequest request) {
