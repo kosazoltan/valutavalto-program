@@ -197,7 +197,10 @@ public class Transaction {
     /**
      * Ügyfél nemzetisége
      */
-    @Column(name = "customer_nationality", length = 3)
+    // V236 (2026-05-19 HIBA #13): VARCHAR(3) -> VARCHAR(100). A frontend
+    // humanreadable szoveget kuld ("Magyar" / "EU-allampolgarsag" / "Egyeb"),
+    // nem ISO3 kodot.
+    @Column(name = "customer_nationality", length = 100)
     private String customerNationality;
 
     // ============ SZTORNÓ / VISSZATÉRÍTÉS KAPCSOLAT ============

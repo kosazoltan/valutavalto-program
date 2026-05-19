@@ -203,6 +203,21 @@ public class TransactionMapper {
                 .customerNationality(dto.getCustomerNationality())
                 .sourceOfFunds(dto.getSourceOfFunds())
                 .customerIsPep(dto.getCustomerIsPep())
+                // V235 + V236 Konverzio Pmt. azonositas (HIBA #19 2026-05-19)
+                .customerBirthPlace(dto.getCustomerBirthPlace())
+                .customerBirthDate(dto.getCustomerBirthDate())
+                .customerMotherName(dto.getCustomerMotherName())
+                .customerDocumentType(dto.getCustomerDocumentType())
+                .customerOnOwnBehalf(dto.getCustomerOnOwnBehalf())
+                .customerActorName(dto.getCustomerActorName())
+                .customerPepKind(dto.getCustomerPepKind())
+                .customerActorBirthPlace(dto.getCustomerActorBirthPlace())
+                .customerActorBirthDate(dto.getCustomerActorBirthDate())
+                .customerActorMotherName(dto.getCustomerActorMotherName())
+                .customerActorNationality(dto.getCustomerActorNationality())
+                .customerActorDocumentType(dto.getCustomerActorDocumentType())
+                .customerActorDocumentNumber(dto.getCustomerActorDocumentNumber())
+                .customerActorAddress(dto.getCustomerActorAddress())
                 .build();
     }
 }

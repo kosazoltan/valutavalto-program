@@ -910,6 +910,21 @@ public class TransactionService {
         private String customerNationality;
         private String sourceOfFunds;
         private Boolean customerIsPep;
+        // V235 + V236 Konverzio Pmt. azonositas (HIBA #19 2026-05-19)
+        private String customerBirthPlace;
+        private java.time.LocalDate customerBirthDate;
+        private String customerMotherName;
+        private String customerDocumentType;
+        private Boolean customerOnOwnBehalf;
+        private String customerActorName;
+        private String customerPepKind;
+        private String customerActorBirthPlace;
+        private java.time.LocalDate customerActorBirthDate;
+        private String customerActorMotherName;
+        private String customerActorNationality;
+        private String customerActorDocumentType;
+        private String customerActorDocumentNumber;
+        private String customerActorAddress;
     }
 
     /**

@@ -249,10 +249,30 @@ export interface ConversionRequest {
   toCurrencyId?: number
   toCurrencyCode?: string
   fromAmount: number
+  handlingFee?: number
   customerId?: string
   customerName?: string
+  customerAddress?: string
   customerDocumentNumber?: string
+  customerNationality?: string
+  sourceOfFunds?: string
+  customerIsPep?: boolean
   notes?: string
+  // V235 + V236 (2026-05-19 HIBA #19): Konverzio Pmt. azonositas
+  customerBirthPlace?: string
+  customerBirthDate?: string
+  customerMotherName?: string
+  customerDocumentType?: string
+  customerOnOwnBehalf?: boolean
+  customerActorName?: string
+  customerPepKind?: 'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+  customerActorBirthPlace?: string
+  customerActorBirthDate?: string
+  customerActorMotherName?: string
+  customerActorNationality?: string
+  customerActorDocumentType?: string
+  customerActorDocumentNumber?: string
+  customerActorAddress?: string
 }
 
 export interface DailyTurnoverSummary {
