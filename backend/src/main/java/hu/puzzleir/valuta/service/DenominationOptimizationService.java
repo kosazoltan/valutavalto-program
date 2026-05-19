@@ -226,16 +226,25 @@ public class DenominationOptimizationService {
      * coin, amount=600 → greedy 500-at vesz, maradék 100, érme nincs erre → részleges).
      * Pedig 3×200=600 EGZAKT lett volna érmével.</p>
      *
-     * <p>Most 3-fázisú megoldás:
-     * 1. Banknote-only DP (egzakt). Ha sikerül → érmék nélküli megoldás.
-     * 2. Coin-only DP (egzakt). Ha sikerül → preferált, ha a banknote-only failed.
-     *    Wait: érmék nélkül NEM preferált (érme nincs nagy összegre). Skip.
-     * 3. Full mixed DP (banknote + coin). Minimum darabszám-optimum.</p>
+     * <p>Most 3-fázisú megoldás (Sourcery #704 fix — JavaDoc-implementation match):
+     * 1. **Banknote-only DP** (egzakt): ha bankjeggyel pontosan kifizethető → 0 érme.
+     * 2. **Full mixed DP** (banknote + coin): ha 1. fázis nem sikerült, ez minimum
+     *    DARABSZÁMRA optimalizál (NEM külön coin-súly: ha 2 megoldás van azonos darabszámmal,
+     *    egyik banknote-heavy, másik coin-heavy, akkor a DP választása nem garantált a
+     *    banknote-heavy-re. Cél: EGZAKT fedés. A pénzügyi szabályozás szerint amíg
+     *    az összeg teljesen kifizetésre kerül, az aránylag elfogadható.).
+     * 3. **Greedy fallback** (banknote-greedy + coin-greedy): ha még DP-vel sem fedhető
+     *    (pl. 500+ DP-méret-cap kívül), részleges fedés warning-gal.</p>
      *
      * <p>A 3-fázisú megoldás biztosítja:
-     * - Ha tisztán bankjeggyel lehetséges → 0 érme.
-     * - Ha nem (bug-eset) → mixed DP, ami nem feltétlenül 0 érmé, de EGZAKT fedés.
+     * - Ha tisztán bankjeggyel lehetséges → 0 érme (legjobb eset).
+     * - Ha nem (bug-eset, lásd 500B+3×200C/600 adversarial teszt) → mixed DP egzakt fedéssel.
      * - Ha még az sem megy → partial coverage warning-gal.</p>
+     *
+     * <p>Megjegyzés: a "banknote-bias DP" (külön súlyozás vagy constrained states) elméleti
+     * tovább-optimalizáció — a jelenlegi mixed DP a darabszámot minimalizálja, NEM az érme-
+     * count-ot direkt. Üzleti policy szerint az egzakt fedés a fő kritérium, az érme-minimalizálás
+     * másodlagos. Jövőbeli sprint-ben megfontolandó (Sourcery overall feedback #704).</p>
      */
     private Map<BigDecimal, Integer> minCoins(List<Denomination> available, BigDecimal amount) {
         List<Denomination> banknotes = available.stream()
