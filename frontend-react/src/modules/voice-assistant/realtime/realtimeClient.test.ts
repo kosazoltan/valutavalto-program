@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { openRealtimeSession } from './realtimeClient'
+import { openRealtimeSession, requestEphemeralToken, VoiceTokenError } from './realtimeClient'
 
 /**
  * EBC Hangsegéd realtimeClient egységtesztek (Copilot finding #660 lefedés).
@@ -127,5 +127,70 @@ describe('openRealtimeSession', () => {
     await expect(
       openRealtimeSession('test', vi.fn(), { signal: ctrl.signal })
     ).rejects.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// requestEphemeralToken: HTTP 422 → felhasznalo-barat magyar uzenet mapping
+// (Copilot PR #689 P2 finding: a 422 error mapping nincs tesztelve)
+// ---------------------------------------------------------------------------
+import { api } from '../../../services/api/client'
+
+describe('requestEphemeralToken — HTTP 422 friendly error mapping', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const apiPost = api.post as unknown as ReturnType<typeof vi.fn>
+
+  afterEach(() => {
+    apiPost.mockReset()
+    // sikeres default visszallitas (a tobbi teszt szamara)
+    apiPost.mockImplementation(async () => ({
+      data: {
+        client_secret: { value: 'sk-ephemeral-test', expires_at: null },
+        model: 'gpt-realtime-2',
+        mode: 'test',
+      },
+    }))
+  })
+
+  it('422 + ismert VOICE_ASSISTANT_DISABLED code → mapelt magyar uzenet', async () => {
+    apiPost.mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: { error: 'VOICE_ASSISTANT_DISABLED', message: 'A hangsegéd jelenleg nincs engedélyezve.' },
+      },
+    })
+
+    await expect(requestEphemeralToken('unified')).rejects.toMatchObject({
+      name: 'VoiceTokenError',
+      code: 'VOICE_ASSISTANT_DISABLED',
+      httpStatus: 422,
+      message: 'A hangsegéd jelenleg nincs bekapcsolva. Szólj a rendszergazdának (VOICE_OPENAI_ENABLED=true).',
+    })
+  })
+
+  it('422 + ismeretlen code → backend message fallback', async () => {
+    apiPost.mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: { error: 'UNKNOWN_FUTURE_CODE', message: 'Specifikus hibauzenet a backendtol.' },
+      },
+    })
+
+    await expect(requestEphemeralToken('unified')).rejects.toMatchObject({
+      name: 'VoiceTokenError',
+      code: 'UNKNOWN_FUTURE_CODE',
+      httpStatus: 422,
+      message: 'Specifikus hibauzenet a backendtol.',
+    })
+  })
+
+  it('response nelkuli hiba (network down) → generikus fallback', async () => {
+    apiPost.mockRejectedValueOnce(new Error('Network Error'))
+
+    const err = await requestEphemeralToken('unified').catch((e) => e)
+    expect(err).toBeInstanceOf(VoiceTokenError)
+    expect(err.code).toBe('UNKNOWN')
+    expect(err.httpStatus).toBeNull()
+    expect(err.message).toBe('Network Error')
   })
 })
