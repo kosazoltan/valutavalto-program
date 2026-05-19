@@ -613,7 +613,21 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.61** (2026-05-19 — Árfolyamkészítő HyperFormula cell engine + 6 valuta törlés + Currency Manager UI V238 audit-log [#697]).
+- **Verzió:** **v2.5.62** (2026-05-19 — NSIS Penztar.exe explicit + IfFileExists verify + magyar magazó MessageBox [#698] — ESET silent-deny hot-fix).
+- **v2.5.62 PR (admin-merged main-be 2026-05-19 13:20 CEST):**
+  - **PR #698** (3 commit, merge commit `3847c65236`): a v2.5.61 Penztar-Setup NSIS install Kósa Zoltán tesztgépen `Penztar.exe` (212 MB UNSIGNED Electron exe) silent-skip miatt brokent telepített (pak/dll mind ott, csak Penztar.exe + LICENSE-ek hiányoztak). Valószínű ok: ESET ekrn.exe silent-deny (NEM karantén). FIX:
+    - NSIS `File /r ... /x "Penztar.exe"` (exclude) + explicit `File "${STAGE_DIR}\electron\Penztar.exe"` direktíva (másik execution path, talán áthalad az AV deny-en) — duplikáció nélkül (Sourcery+Codex P2 review fix)
+    - Post-install `IfFileExists $INSTDIR\Penztar.exe` verify → ha hiányzik, `Abort` + magyar magazó MessageBox (`Kapcsolja ki az ESET-et 10 percre / Indítsa újra a telepítőt ($EXEFILE) / Indítsa újra az ESET-et`) — CLAUDE.md NULLADIK PRIORITAS mandate
+    - `$EXEFILE` macro a hardcoded telepítő-név helyett (Sourcery P3 fix)
+    - `IfSilent +2` silent-install guard (Copilot P2 fix) — `/S` flag esetén nincs interaktív UI
+    - **2 ellenőrzési kör mandate teljesítve 3 körön** (NSIS fix → P2+P3 duplikáció/EXEFILE → Copilot P2 IfSilent + magazás) → CI 12 PASS + 0 CodeQL alert
+- **Telepítő fájlok v2.5.62 (LEGFRISSEBB, 2026-05-19 UNSIGNED build, NSIS hot-fix)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba:
+  - `Penztar-Setup-2.5.62-20260519.exe` — **282.68 MB** (296,413,854 byte), SHA-256 `39D75BE06B270D844102AF2367A65E93D408FE4A188A3E482AD16EB9FBD8B525`
+  - `Kozponti-Iranyitokozpont-Setup-2.5.62.exe` — **101.05 MB** (105,953,633 byte), SHA-256 `D040520E5EF48E62B32115B6EC52DCE3873696E5F5B2F69B91438C214D973A07`
+  - `Arfolyamkeszito-Setup-2.5.62.exe` — **101.04 MB** (105,953,357 byte), SHA-256 `9903EC2B54C8BD9336EE284406B0D250E1AAADF289F2228EC72C7A9B08D1A6CF`
+  - `Penztar-Eltavolito-2.5.62-20260519.exe` — **59.43 KB** (60,858 byte), SHA-256 `328149F7B1ABB5285DA031A8F1759582D887C6EE561E0D098269EDA3B60E1D8A`
+  - **UNSIGNED build** — DigiCert EV CS cert kiadásig SmartScreen "További információ" → "Futtatás mindenképp" + ha az ESET silent-deny-jolná a 212 MB Penztar.exe-t, akkor a v2.5.62 új post-install verify MAGYAR MAGAZÓ üzenettel jelzi, hogy ESET-et 10 percre ki kell kapcsolni.
+- **Korábbi verzió:** v2.5.61 (2026-05-19 — Árfolyamkészítő HyperFormula cell engine + 6 valuta törlés + Currency Manager UI V238 audit-log [#697]).
 - **v2.5.61 PR (admin-merged main-be 2026-05-19 12:05 CEST):**
   - **PR #697** (5 commit, merge commit `0660ff46c`): a Kósa Zoltán user-direktíva alapján az Árfolyamkészítő (arfolyam-keszito-client) Főlapját bővítjük 2 feature-rel + Currency Manager UI + audit-log:
     - **HyperFormula cell-engine (HIBA v2.5.61 #1):** A D oszlop kivételével minden cella formula-képes (`=A1*1.02`, `=A1+B1` típusú Excel-szerű képletek). HyperFormula v3.2.0 library (GPL v3, internal-use justification a `frontend-react/NOTICE.md`-ben). 6 user-editable oszlop képletes: A=settlement, B=otp, C=helper, E=weakMultiBuy, F=weakMultiSell, I=wholesale. Reaktív recompute (dependency-graph). FormulaMap state + localStorage persistencia.
