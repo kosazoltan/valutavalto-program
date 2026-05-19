@@ -89,7 +89,10 @@ public class DailyJournalService {
         // role-szinten véd, de a branchId URL paraméter user-controlled. Itt verifikáljuk,
         // hogy a branch a jelenlegi cég-hez tartozik (defense-in-depth).
         UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
-        if (branch.getCompany() == null || !branch.getCompany().getId().equals(currentCompanyId)) {
+        // Copilot P2 #706 fix: null-safe equals minta (currentCompanyId.equals(...))
+        // — ha a branch.company.id valamiért null (partial test entity), a régi
+        // `branch.getCompany().getId().equals(...)` NPE-zett volna.
+        if (branch.getCompany() == null || !currentCompanyId.equals(branch.getCompany().getId())) {
             log.warn("Cross-tenant access blocked: branchId={}, currentCompanyId={}, branchCompanyId={}",
                     branchId, currentCompanyId,
                     branch.getCompany() != null ? branch.getCompany().getId() : null);
@@ -208,7 +211,9 @@ public class DailyJournalService {
                     content.beginText();
                     content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA_OBLIQUE), FONT_SIZE_BODY);
                     content.newLineAtOffset(MARGIN, y);
-                    content.showText("...es meg " + remaining + " tranzakcio (multi-page render TODO)");
+                    // Copilot P3 #706 fix: a "(multi-page render TODO)" rész a felhasználói
+                    // PDF-ben félrevezető lehet; a TODO csak a kódkommentben marad (lásd fent).
+                    content.showText("...es meg " + remaining + " tovabbi tranzakcio (NEM jelenitett meg)");
                     content.endText();
                     y -= LINE_HEIGHT;
                 }

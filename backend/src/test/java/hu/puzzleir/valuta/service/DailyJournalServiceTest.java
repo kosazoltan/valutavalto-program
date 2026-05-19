@@ -171,6 +171,44 @@ class DailyJournalServiceTest {
     }
 
     @Test
+    @DisplayName("Copilot P3 #706: 100 tranzakció → render cap + 'tovabbi tranzakcio' marker (no exception)")
+    void manyTransactions_truncationMarker() throws IOException {
+        Branch branch = createBranch(companyId);
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+
+        Currency eur = new Currency();
+        eur.setCode("EUR");
+
+        java.util.List<Transaction> manyTxs = new java.util.ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            manyTxs.add(createTx("V2026" + String.format("%06d", i + 1),
+                    TransactionType.BUY, eur, "100", "36500",
+                    LocalTime.of(8 + i / 60, i % 60)));
+        }
+        when(typedQuery.getResultList()).thenReturn(manyTxs);
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            byte[] pdf = service.generatePdf(branchId, testDate);
+
+            assertThat(pdf).isNotEmpty();
+            assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
+
+            // PDFBox text extraction a render cap verifikálásához
+            try (var doc = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+                String text = new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
+                // Truncation marker megjelenik a PDF szövegben
+                assertThat(text).contains("tovabbi tranzakcio");
+                // A fejléc szöveg is benne van
+                assertThat(text).contains("NAPKONYV");
+                // Tranzakciok szama: 100 a header-ben
+                assertThat(text).contains("Tranzakciok szama: 100");
+            }
+        }
+    }
+
+    @Test
     @DisplayName("JPQL financialEffective=TRUE + status=COMPLETED")
     void query_filtersFinancialEffectiveAndStatus() throws IOException {
         Branch branch = createBranch(companyId);
