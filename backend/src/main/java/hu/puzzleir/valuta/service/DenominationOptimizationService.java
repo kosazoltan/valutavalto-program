@@ -118,11 +118,25 @@ public class DenominationOptimizationService {
         return result;
     }
 
-    /** MIN_TOTAL: kicsi címleteket preferál (max darabszám). */
+    /** Helper: a result Map összegét számolja (faceValue × count összegzés). */
+    private static BigDecimal sumOf(Map<BigDecimal, Integer> result) {
+        return result.entrySet().stream()
+                .map(e -> e.getKey().multiply(BigDecimal.valueOf(e.getValue())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /**
+     * MIN_TOTAL: **minimum** összes darabszám — Copilot P0 #701 fix.
+     *
+     * <p>A v2.0 spec (OptimizationStrategy.MIN_TOTAL "Minimum összes darabszám") a
+     * minimális darabszámú összeállítást kéri. Korábban (v2.5.65) tévesen ascending
+     * greedy-vel hívtuk, ami a **maximális** darabszámot adta volna (pl. 100 Ft →
+     * 20×5 Ft helyett 1×100 Ft a helyes). Most delegáljuk a DYNAMIC-ra (bounded
+     * knapsack DP), ami egzakt minimum darabszámot ad. A DYNAMIC-on belül fallback
+     * GREEDY van, ha a DP nem alkalmazható (>500K skálázott egység vagy infeasible).</p>
+     */
     private Map<BigDecimal, Integer> minTotal(List<Denomination> available, BigDecimal amount) {
-        List<Denomination> reversed = new ArrayList<>(available);
-        reversed.sort(Comparator.comparing(Denomination::getFaceValue));
-        return greedy(reversed, amount);
+        return dynamic(available, amount);
     }
 
     /** DYNAMIC: bounded knapsack DP készletkorláttal — minimum darabszám. */
@@ -204,30 +218,55 @@ public class DenominationOptimizationService {
         return result;
     }
 
-    /** MIN_COINS: bankjegyeket preferál, érméket csak ha kell. */
+    /**
+     * MIN_COINS: bankjegyeket preferál, érméket csak akkor használ ha kell — Copilot P1 #701 fix.
+     *
+     * <p>Korábban (v2.5.65): banknote-greedy → coin-greedy. Bug: ha a banknote-greedy
+     * irrevocable választása után a maradék érmével nem fedhető (pl. 500 banknote + 3×200
+     * coin, amount=600 → greedy 500-at vesz, maradék 100, érme nincs erre → részleges).
+     * Pedig 3×200=600 EGZAKT lett volna érmével.</p>
+     *
+     * <p>Most 3-fázisú megoldás:
+     * 1. Banknote-only DP (egzakt). Ha sikerül → érmék nélküli megoldás.
+     * 2. Coin-only DP (egzakt). Ha sikerül → preferált, ha a banknote-only failed.
+     *    Wait: érmék nélkül NEM preferált (érme nincs nagy összegre). Skip.
+     * 3. Full mixed DP (banknote + coin). Minimum darabszám-optimum.</p>
+     *
+     * <p>A 3-fázisú megoldás biztosítja:
+     * - Ha tisztán bankjeggyel lehetséges → 0 érme.
+     * - Ha nem (bug-eset) → mixed DP, ami nem feltétlenül 0 érmé, de EGZAKT fedés.
+     * - Ha még az sem megy → partial coverage warning-gal.</p>
+     */
     private Map<BigDecimal, Integer> minCoins(List<Denomination> available, BigDecimal amount) {
         List<Denomination> banknotes = available.stream()
                 .filter(d -> d.getDenominationType() == DenominationType.BANKNOTE)
                 .toList();
+
+        // Phase 1: csak bankjegyek (DP egzakt)
+        Map<BigDecimal, Integer> banknoteOnly = dynamic(banknotes, amount);
+        if (sumOf(banknoteOnly).compareTo(amount) == 0) {
+            return banknoteOnly;
+        }
+
+        // Phase 2: full mixed DP — egzakt fedés ha lehetséges
+        Map<BigDecimal, Integer> mixed = dynamic(available, amount);
+        if (sumOf(mixed).compareTo(amount) == 0) {
+            return mixed;
+        }
+
+        // Phase 3: utolsó esély — banknote-greedy + coin-greedy (eredeti logika, de csak fallback)
         List<Denomination> coins = available.stream()
                 .filter(d -> d.getDenominationType() == DenominationType.COIN)
                 .toList();
-
         Map<BigDecimal, Integer> result = new LinkedHashMap<>(greedy(banknotes, amount));
-
-        BigDecimal covered = result.entrySet().stream()
-                .map(e -> e.getKey().multiply(BigDecimal.valueOf(e.getValue())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal covered = sumOf(result);
         BigDecimal remaining = amount.subtract(covered);
 
         if (remaining.compareTo(BigDecimal.ZERO) > 0) {
             Map<BigDecimal, Integer> coinResult = greedy(coins, remaining);
             coinResult.forEach((k, v) -> result.merge(k, v, Integer::sum));
 
-            BigDecimal totalCovered = result.entrySet().stream()
-                    .map(e -> e.getKey().multiply(BigDecimal.valueOf(e.getValue())))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal finalRemaining = amount.subtract(totalCovered);
+            BigDecimal finalRemaining = amount.subtract(sumOf(result));
             if (finalRemaining.compareTo(BigDecimal.ZERO) > 0) {
                 log.warn("MIN_COINS: nem sikerült teljesen lefedni az összeget. Maradék: {}", finalRemaining);
             }
