@@ -4,7 +4,9 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionStatus;
 import hu.puzzleir.valuta.entity.TransactionType;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
@@ -82,6 +84,17 @@ public class DailyJournalService {
 
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new IllegalArgumentException("Nem létező branch: " + branchId));
+
+        // Copilot P0 #705 fix: multi-tenant IDOR védelem — a controller @PreAuthorize
+        // role-szinten véd, de a branchId URL paraméter user-controlled. Itt verifikáljuk,
+        // hogy a branch a jelenlegi cég-hez tartozik (defense-in-depth).
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        if (branch.getCompany() == null || !branch.getCompany().getId().equals(currentCompanyId)) {
+            log.warn("Cross-tenant access blocked: branchId={}, currentCompanyId={}, branchCompanyId={}",
+                    branchId, currentCompanyId,
+                    branch.getCompany() != null ? branch.getCompany().getId() : null);
+            throw new ValidationException("A megadott branch nem tartozik a jelenlegi céghez (cross-tenant access blocked)");
+        }
 
         List<Transaction> transactions = fetchTransactions(branchId, date);
         Map<String, BigDecimal> currencySummary = aggregateByCurrency(transactions);
@@ -177,22 +190,26 @@ public class DailyJournalService {
                 y -= LINE_HEIGHT;
 
                 // === Tranzakciók ===
+                // Egy A4 lapra ~50-60 tranzakció fér. Ha több → "...és X további tranzakció"
+                // sor + az összesítés ugyanezen oldalon marad. (Copilot #705 fix: a régi
+                // try-with-resources break-pattern bugos volt — page-flow korrekt: explicit
+                // cap, NEM félbeszakítás.)
                 content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), FONT_SIZE_BODY);
+                final float MIN_Y_FOR_TX = MARGIN + 120f;  // Hely a footer-aggregátorra
+                int rendered = 0;
                 for (Transaction t : txs) {
-                    if (y < MARGIN + 80) {
-                        // Új oldal (egyszerű, header-mentes folytatás)
-                        content.close();
-                        page = new PDPage(PDRectangle.A4);
-                        doc.addPage(page);
-                        try (PDPageContentStream cont2 = new PDPageContentStream(doc, page)) {
-                            y = PAGE_HEIGHT - MARGIN;
-                            renderTransactionRow(cont2, t, y);
-                        }
-                        // Mivel try-with-resources, NEW content stream nyitása nehézkes — alapesetben
-                        // a tranzakciók egy oldalra ráférnek (~50 tx/lap). Ha több → következő release.
-                        break;
-                    }
+                    if (y < MIN_Y_FOR_TX) break;
                     renderTransactionRow(content, t, y);
+                    y -= LINE_HEIGHT;
+                    rendered++;
+                }
+                if (rendered < txs.size()) {
+                    int remaining = txs.size() - rendered;
+                    content.beginText();
+                    content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA_OBLIQUE), FONT_SIZE_BODY);
+                    content.newLineAtOffset(MARGIN, y);
+                    content.showText("...es meg " + remaining + " tranzakcio (multi-page render TODO)");
+                    content.endText();
                     y -= LINE_HEIGHT;
                 }
 
