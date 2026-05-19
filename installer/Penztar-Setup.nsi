@@ -416,8 +416,15 @@ Section "Telepites" SecInstall
     ; permission stb.), abort+MessageBox a user-nek hogy mit tegyen.
     ; Sourcery P3 PR #698 fix: $EXEFILE-t használunk a hardcoded telepítő-név
     ; helyett, így a v2.5.63+ release-eknél is helyes lesz az utasítás.
+    ; Copilot P3 PR #698 fix: a felhasználó-felé MAGÁZÓ hangnem (CLAUDE.md
+    ; NULLADIK PRIORITAS: nem-informatikus végfelhasználó alapelv — magázó
+    ; kommunikáció, NEM tegezés).
+    ; Copilot P2 PR #698 fix: silent install (`/S` flag) esetén NE jelenjen
+    ; meg interaktív MessageBox — `IfSilent +2` átugorja a MessageBox-ot,
+    ; csak a `Abort` fut le. A script-ben már van minta erre (generate-secrets).
     IfFileExists "$INSTDIR\Penztar.exe" penztar_exe_ok 0
-        MessageBox MB_OK|MB_ICONSTOP "TELEPITES SIKERTELEN!$\r$\n$\r$\nA Penztar.exe (212 MB) hianyzik a kovetkezo helyrol:$\r$\n$INSTDIR\Penztar.exe$\r$\n$\r$\nValoszinu ok: az AV (ESET, Windows Defender) blokkolta. Megoldas:$\r$\n1. Kapcsold ki az ESET-et 10 percre (Setup > Pause protection)$\r$\n2. Inditsd ujra a telepitot ($EXEFILE)$\r$\n3. Indítsd vissza az ESET-et$\r$\n$\r$\nKerlek jelezd a fejlesztőnek (Kosa Zoltan)."
+        IfSilent +2 0
+        MessageBox MB_OK|MB_ICONSTOP "TELEPITÉS SIKERTELEN!$\r$\n$\r$\nA Penztar.exe (212 MB) hiányzik a következő helyről:$\r$\n$INSTDIR\Penztar.exe$\r$\n$\r$\nValószínű ok: az AV (ESET, Windows Defender) blokkolta. Megoldás:$\r$\n1. Kapcsolja ki az ESET-et 10 percre (Setup > Pause protection)$\r$\n2. Indítsa újra a telepítőt ($EXEFILE)$\r$\n3. Indítsa újra az ESET-et$\r$\n$\r$\nKérem jelezze a fejlesztőnek (Kósa Zoltán)."
         Abort "Penztar.exe missing — install aborted"
     penztar_exe_ok:
         DetailPrint "Penztar.exe verified at $INSTDIR\Penztar.exe"
