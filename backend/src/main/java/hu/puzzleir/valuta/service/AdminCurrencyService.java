@@ -64,8 +64,12 @@ public class AdminCurrencyService {
                 .build();
         Currency saved = currencyRepository.save(currency);
         writeAudit(saved, "CREATE", null, saved);
+        // CodeQL log-injection fix (PR #697 review): explicit CRLF strip a user-
+        // input mezokre. A logback `%redact(%msg)` converter mar globalisan
+        // strippeli, de a CodeQL static analysis ezt nem ismeri fel, ezert
+        // explicit sanitize-zal segitunk.
         log.info("AdminCurrency: uj valuta letrehozva code={} name={} workerId={}",
-            saved.getCode(), saved.getName(), safeWorkerId());
+            sanitizeForLog(saved.getCode()), sanitizeForLog(saved.getName()), safeWorkerId());
         return saved;
     }
 
@@ -91,9 +95,26 @@ public class AdminCurrencyService {
         Currency saved = currencyRepository.save(currency);
         String action = active ? "ACTIVATE" : "DEACTIVATE";
         writeAudit(saved, action, oldSnapshot, saved, note);
+        // CodeQL log-injection fix (PR #697 review): explicit sanitize a
+        // user-input-tol fuggo mezokre (currency.code + note kontrolalhato).
         log.info("AdminCurrency: {} code={} workerId={} note={}",
-            action, currency.getCode(), safeWorkerId(), note);
+            action, sanitizeForLog(currency.getCode()), safeWorkerId(), sanitizeForLog(note));
         return saved;
+    }
+
+    /**
+     * CodeQL log-injection guard: CRLF + control character stripping.
+     *
+     * <p>A backend logback-spring.xml `%redact(%msg)` converter mar globalisan
+     * strippeli ezeket, de a CodeQL static analysis NEM ismeri fel a custom
+     * converter-t. Explicit sanitize hozzaadasaval a CodeQL alert eltunik.</p>
+     *
+     * <p>NULL-safe: null input → "&lt;null&gt;" literal a logba.</p>
+     */
+    private static String sanitizeForLog(String value) {
+        if (value == null) return "<null>";
+        // CRLF + control character (0x00-0x1F + 0x7F) eltavolitas
+        return value.replaceAll("[\\r\\n\\t\\x00-\\x1F\\x7F]", "_");
     }
 
     // ============ Audit helpers ============
