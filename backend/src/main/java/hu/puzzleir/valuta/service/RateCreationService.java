@@ -112,7 +112,10 @@ public class RateCreationService {
      */
     @Transactional(readOnly = true)
     public List<CompetitorRateDTO> getCompetitorRates() {
-        List<CompetitorRate> rates = competitorRateRepository.findLatestRatesWithDetails();
+        // v2.5.71 P0 multi-tenant fix: a régi findLatestRatesWithDetails GLOBÁLIS volt;
+        // most company-scope-olt query Competitor.branchId → Branch.company.id-n keresztül.
+        java.util.UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        List<CompetitorRate> rates = competitorRateRepository.findLatestRatesByCompanyId(companyId);
 
         return rates.stream().map(cr -> buildCompetitorRateDTO(cr)).collect(Collectors.toList());
     }
@@ -159,9 +162,12 @@ public class RateCreationService {
                     .build();
         }).collect(Collectors.toList());
 
-        // Versenytárs ráták
+        // Versenytárs ráták — v2.5.71 P0 multi-tenant fix: company-scope-olt query.
+        java.util.UUID currentCompanyIdForCompetitor =
+                hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
         List<CompetitorRate> competitorRateEntities =
-                competitorRateRepository.findLatestRatesByCurrencyId(currencyId);
+                competitorRateRepository.findLatestRatesByCurrencyIdAndCompanyId(
+                        currencyId, currentCompanyIdForCompetitor);
         List<CompetitorRateDTO> competitorRates = competitorRateEntities.stream()
                 .map(this::buildCompetitorRateDTO)
                 .collect(Collectors.toList());
