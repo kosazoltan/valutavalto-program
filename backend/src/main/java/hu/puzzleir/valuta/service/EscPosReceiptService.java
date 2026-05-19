@@ -707,6 +707,30 @@ public class EscPosReceiptService {
                     && data.getCustomerActorName() != null && !data.getCustomerActorName().isBlank()) {
                 b.line(data.getCustomerActorName());
                 b.line("nevében bonyolítom,");
+                // V235 (Codex P2 PR #695): Pmt. tv. 6.§ (2) — a kepviselt felre is
+                // teljes azonositast kell vegezni. A bizonylatra az actor szul.helyet,
+                // szul.idejet, anyja nevet, okmany szamat es lakcimet is ki kell irni.
+                b.line("Kepviselt fel adatai:");
+                if (data.getCustomerActorBirthPlace() != null && !data.getCustomerActorBirthPlace().isBlank()) {
+                    b.line("  szul.hely: " + data.getCustomerActorBirthPlace());
+                }
+                if (data.getCustomerActorBirthDate() != null && !data.getCustomerActorBirthDate().isBlank()) {
+                    b.line("  szul.ido: " + data.getCustomerActorBirthDate());
+                }
+                if (data.getCustomerActorMotherName() != null && !data.getCustomerActorMotherName().isBlank()) {
+                    b.line("  anyja: " + data.getCustomerActorMotherName());
+                }
+                if (data.getCustomerActorNationality() != null && !data.getCustomerActorNationality().isBlank()) {
+                    b.line("  allampolg.: " + data.getCustomerActorNationality());
+                }
+                if (data.getCustomerActorDocumentNumber() != null && !data.getCustomerActorDocumentNumber().isBlank()) {
+                    String docType = data.getCustomerActorDocumentType() != null
+                            ? data.getCustomerActorDocumentType() : "okmany";
+                    b.line("  " + docType + ": " + data.getCustomerActorDocumentNumber());
+                }
+                if (data.getCustomerActorAddress() != null && !data.getCustomerActorAddress().isBlank()) {
+                    b.line("  lakcim: " + data.getCustomerActorAddress());
+                }
             } else if (isOnOwnBehalfSet && Boolean.TRUE.equals(data.getCustomerOnOwnBehalf())) {
                 b.line("saját nevemben bonyolítom,");
             } else if (Boolean.TRUE.equals(data.getIsLegalEntityCustomer())

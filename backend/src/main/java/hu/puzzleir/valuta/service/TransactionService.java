@@ -771,10 +771,23 @@ public class TransactionService {
         if (hufAmount == null || hufAmount.compareTo(BigDecimal.valueOf(300_000)) < 0) {
             return; // < 300k: Pmt. szerint nem kotelezo
         }
+        // Codex P1 (PR #695) follow-up: feature-flag alapu strict enforcement.
+        // PMT_STRICT_ENFORCEMENT=true -> ValidationException (Pmt. compliance KOTELEZO).
+        // PMT_STRICT_ENFORCEMENT=false (default) -> WARN-szintu naplozas (kompatibilitas
+        // a v2.5.59 kliensekhez). v2.5.61+ release-ben a default 'true' lesz, miutan
+        // minden penztaros gepen lefutott a v2.5.60 telepito.
+        boolean strictMode = "true".equalsIgnoreCase(
+            systemParameterService.getValue("PMT_STRICT_ENFORCEMENT", "false"));
+
         // PEP minoseg kotelezo, ha isPep=true
         if (Boolean.TRUE.equals(customerIsPep) && (customerPepKind == null || customerPepKind.isBlank())) {
-            log.warn("Pmt. compliance warning ({}, {} HUF): customerIsPep=true de customerPepKind hianyzik. "
-                + "v2.5.61+ release-ben ez exception lesz.", operation, hufAmount);
+            String msg = String.format(
+                "Pmt. compliance (%s, %s HUF): customerIsPep=true de customerPepKind hianyzik. "
+                + "Pmt. tv. 6.§ szerint kotelezo megjelolni a PEP minoseget.", operation, hufAmount);
+            if (strictMode) {
+                throw new ValidationException(msg);
+            }
+            log.warn("{} (WARN-only, PMT_STRICT_ENFORCEMENT=false). v2.5.61+ release: exception.", msg);
         }
         // Actor teljes azonositasa kotelezo, ha onOwnBehalf=false
         if (Boolean.FALSE.equals(customerOnOwnBehalf)) {
@@ -786,8 +799,14 @@ public class TransactionService {
             if (customerActorDocumentNumber == null|| customerActorDocumentNumber.isBlank()) missing.add("actorDocumentNumber");
             if (customerActorAddress == null       || customerActorAddress.isBlank())       missing.add("actorAddress");
             if (!missing.isEmpty()) {
-                log.warn("Pmt. compliance warning ({}, {} HUF): customerOnOwnBehalf=false de actor mezok hianyoznak: {}. "
-                    + "v2.5.61+ release-ben ez exception lesz.", operation, hufAmount, missing);
+                String msg = String.format(
+                    "Pmt. compliance (%s, %s HUF): customerOnOwnBehalf=false de actor mezok hianyoznak: %s. "
+                    + "Pmt. tv. 6.§ (2) szerint a kepviselt felre is teljes azonositast kell vegezni.",
+                    operation, hufAmount, missing);
+                if (strictMode) {
+                    throw new ValidationException(msg);
+                }
+                log.warn("{} (WARN-only, PMT_STRICT_ENFORCEMENT=false). v2.5.61+ release: exception.", msg);
             }
         }
     }
