@@ -613,7 +613,8 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.70** (2026-05-19 — Sprint A autonomous mode: 8 release egyetlen este).
+- **Verzió:** **v2.5.71** (2026-05-19 — Sprint A autonomous mode: 9 release egyetlen este).
+  - **v2.5.71 (admin-merged `1cade982f`):** PR #708 — CompetitorRate multi-tenant P0 fix (P0.3 audit follow-up). 3 régi globális query @Deprecated, 3 új company-scoped variáns Branch FK JOIN-nal. SHA-256: `b70f5fc742371f0e9dbedb8fb4430715a16f81c6e8751589627e7e1d54ceaf05` (Penztar), `767d82bc811c22264c793ab35a8af2127b2af85318563da49533ee134fbf271f` (Kozponti), `1d0643622993efbe4e22775983e6c9644d14a1dca939891ee1ce5b348b89f845` (Arfolyam), `3b9907fd36618e078a9a53f609796fd2ff0c99c5240f3a3d273c84eea928ce70` (Eltavolito).
   - **v2.5.70 (admin-merged `a8a2db130`):** PR #707 — ShipmentRequest multi-tenant P0 fix (P0.3 audit follow-up) — `findByStatusAndCompanyId` + `findAllOrderedByCompanyId` Branch.company FK JOIN subquery + service cross-tenant IDOR guard. Régi globális queries @Deprecated jelöléssel.
   - **v2.5.69 (admin-merged `e87c04816`):** PR #706 — Multi-tenant IDOR fix DailyJournalService + multi-page PDF render fix + 4-way version sync
   - **v2.5.68 (admin-merged `b5e738b26`):** PR #705 — Napkönyv PDF (legacy NAPKONYV parity)
