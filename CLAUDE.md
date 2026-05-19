@@ -613,8 +613,13 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.58** (2026-05-18 — 3 PR feature/fix-set: V234 DailyClosingService logger phase 2 [#685] + SetupWizard értéktáros Google OAuth [#686] + Rate-Maker EXE central server connection [#687]).
-- **Korábbi verzió:** v2.5.57 (2026-05-18, Hangsegéd Voice Assistant feature complete rollout: 15 PR + 4 UNSIGNED telepítő + Hetzner OPENAI_API_KEY + VOICE_OPENAI_ENABLED=true).
+- **Verzió:** **v2.5.59** (2026-05-19 — overnight PR marathon 4 PR: Hangsegéd unified mode UI + 422 friendly errors + flaky test [#689] + SetupWizard integration test rate-limit defensive [#690] + Copilot DTO enum follow-up [#691] + Codex P1 cause-chain bug iter2 [#692]).
+- **Korábbi verzió:** v2.5.58 (2026-05-18, 3 PR: V234 DailyClosingService logger phase 2 [#685] + SetupWizard értéktáros Google OAuth [#686] + Rate-Maker EXE central server connection [#687]).
+- **v2.5.59 PR-ek (admin-merged main-be 2026-05-19 overnight session):**
+  - **PR #689** Hangsegéd unified mode + size reduction + 422 friendly errors + flaky test fix: a Kósa Zoltán direktíva alapján a 3 mode-gomb (Telepítés/Tesztelés/Hibajelzés) helyett egyetlen "Beszélgetés indítása" gomb, panel w-72 → w-56, VoiceTokenError + VOICE_ERROR_MESSAGES map. Plus issueStore race-condition fix.
+  - **PR #690** SetupWizard integration test rate-limit defensive: HTTP 429 elfogadás 400 mellett (production bot-protection).
+  - **PR #691** Copilot #689 follow-up: DTO `String mode` + `@Pattern` → `VoiceAssistantMode` direkt típus, VOICE_MODE_LABEL map, 3 új 422-mapping unit teszt.
+  - **PR #692** Codex P1 cause-chain bug fix + iter2: a `VoiceAssistantMode.fromWireName()` IllegalArgumentException → Jackson `ValueInstantiationException` (NEM InvalidFormatException) — hármas cause-chain detekció a GlobalExceptionHandler-ben. `@JsonValue` reflection + `Locale.ROOT` az enum-wire-name lista képzéséhez. 9 új RTL teszt + 3 új handler-bizonyíték teszt + 7 új enum-kontrakt teszt. Backend 1400/1400 PASS, frontend voice 72/72 PASS.
 - **v2.5.58 PR-ek (admin-merged main-be 2026-05-18):**
   - **PR #685** (V234 audit phase 2): DailyClosingService 10× `log.error()` → `VV_LOG.error()` migráció (VV-BIZ-006..010 hibakódok), HashMap null-guard pattern terminal_id-re (Codex P2 NPE fix), 30 → 41 error code error-codes.yaml-ben (VV-VOICE-004/005, VV-TECH-003/004, VV-AML-004, VV-SYNC-004, VV-BIZ-006..010).
   - **PR #686** (SetupWizard értéktár Google OAuth): Step 4 ServerStep új props (appMode, googleAuthSetupReady, googleSetupWorker), 3-way conditional render (pénztáros dropdown / Google OAuth info card / Back-to-Step-1 hint). Bug fix: értéktár alkalmazottak Google email-ükkel léphetnek be NEM pénztáros-dropdown via.
@@ -626,12 +631,17 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
   - **OpenAI Realtime API:** `gpt-realtime-2` (~$0.06-0.08/min audio, shimmer voice, gpt-realtime-whisper transcription).
   - **Költségvédelem:** per-worker rate-limit 10 ephemeral-token-keres / ora (configurálható env-flag).
   - **Adatvédelem:** issueStore IndexedDB lokálisan, master OPENAI_API_KEY csak backend-en, ~60s ephemeral client_secret WebRTC-hez.
-- **Telepítő fájlok v2.5.58 (LEGFRISSEBB, 2026-05-18 UNSIGNED build)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba:
-  - `Penztar-Setup-2.5.58-20260518.exe` — **282.57 MB** (296,292,965 byte), SHA-256 `1B4F8A6ECD447FFC93C8D6C675D88724F5ED4981EB71699821545D164A468998`
-  - `Kozponti-Iranyitokozpont-Setup-2.5.58.exe` — **100.93 MB** (105,836,792 byte), SHA-256 `163B79F1CD0045141E3AFF7A9F3ECD28EFC7C942DE843F1AD0C20792B8BECD28`
-  - `Arfolyamkeszito-Setup-2.5.58.exe` — **100.93 MB** (105,836,199 byte), SHA-256 `F0BE00BE1061064F1CC608A6828B9647D1D6DD6E9BCBEC9B4BDF5FF3361B09B0`
-  - `Penztar-Eltavolito-2.5.58-20260518.exe` — **59.43 KB** (60,857 byte), SHA-256 `F4DA648B0D1A8B3BE6C333E1B1546D2547E5ED9FFBB9A1AF012F81E2EFF28270`
-  - **UNSIGNED build** — DigiCert EV CS cert kiadásig (kedd 2026-05-19 13:00 CEST verifikációs call) a SmartScreen "További információ" → "Futtatás mindenképp" lépés szükséges. A v2.5.59+ SIGNED release a cert kiadás után.
+- **Telepítő fájlok v2.5.59 (LEGFRISSEBB, 2026-05-19 UNSIGNED build, overnight session)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba:
+  - `Penztar-Setup-2.5.59-20260519.exe` — **282.51 MB** (296,232,003 byte), SHA-256 `F43F22C5CB6142A784690FF6E722D18CF52BEA4E7C9224E54BE68E8EF0CB59F6`
+  - `Kozponti-Iranyitokozpont-Setup-2.5.59.exe` — **100.93 MB** (105,836,915 byte), SHA-256 `D4BD4294D273F2D16E2B83A606BE24AC7B970742F522D9AFA504E733D08797AE`
+  - `Arfolyamkeszito-Setup-2.5.59.exe` — **100.93 MB** (105,836,844 byte), SHA-256 `9448829F1EF3DF73F925B9E0A76CAAAD3C885F3C5CB95B92FFE3A5505AA53C65`
+  - `Penztar-Eltavolito-2.5.59-20260519.exe` — **59.43 KB** (60,856 byte), SHA-256 `2975720118FD92D3975A68464DE8851A9FA485D206D9D326AFC78095D147903C`
+  - **UNSIGNED build** — DigiCert EV CS cert kiadásig (kedd 2026-05-19 13:00 CEST verifikációs call) a SmartScreen "További információ" → "Futtatás mindenképp" lépés szükséges. A v2.5.60+ SIGNED release a cert kiadás után.
+- **Telepítő fájlok v2.5.58 (előző UNSIGNED build, 2026-05-18)** — 3 PR feature/fix-set:
+  - `Penztar-Setup-2.5.58-20260518.exe` — 282.57 MB, SHA-256 `1B4F8A6ECD447FFC93C8D6C675D88724F5ED4981EB71699821545D164A468998`
+  - `Kozponti-Iranyitokozpont-Setup-2.5.58.exe` — 100.93 MB, SHA-256 `163B79F1CD0045141E3AFF7A9F3ECD28EFC7C942DE843F1AD0C20792B8BECD28`
+  - `Arfolyamkeszito-Setup-2.5.58.exe` — 100.93 MB, SHA-256 `F0BE00BE1061064F1CC608A6828B9647D1D6DD6E9BCBEC9B4BDF5FF3361B09B0`
+  - `Penztar-Eltavolito-2.5.58-20260518.exe` — 59.43 KB, SHA-256 `F4DA648B0D1A8B3BE6C333E1B1546D2547E5ED9FFBB9A1AF012F81E2EFF28270`
 - **Telepítő fájlok v2.5.57 (előző UNSIGNED build, 2026-05-18)** — Hangsegéd MVP rollout:
   - `Penztar-Setup-2.5.57-20260518.exe` — 280.94 MB, SHA-256 `E55E2D390688FE2B1F3CB947253D89B7D59203E63B3E7E72F24EA93198F13600`
   - `Kozponti-Iranyitokozpont-Setup-2.5.57.exe` — 100.93 MB, SHA-256 `7C1CBB4546A061EDD14B3A2544CF69D797DD8319B354E1721D412B883C658CC0`
