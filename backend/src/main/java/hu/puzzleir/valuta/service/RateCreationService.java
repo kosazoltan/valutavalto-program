@@ -652,7 +652,14 @@ public class RateCreationService {
     }
 
     /**
-     * Munkacsoport iroda-hozzárendelések frissítése (teljes csere).
+     * Munkacsoport iroda-hozzárendelések frissítése (teljes csere) + Anti legacy
+     * parity exclusivity.
+     *
+     * <p>Anti/ARFOLYAM legacy "AZ IRODA MAR BENN VAN EGY MUNKACSOPORTBAN!" check
+     * modern megfelelője. A V234 migration UNIQUE constraint-tel DB-szinten
+     * enforce-olja az exclusivitást, de a service-szintű **move-strategy**
+     * eltávolítja az ütköző asszociációkat a többi workgroupból, hogy a UI
+     * (BranchPickerModal) ne kapjon constraint violation hibát.
      */
     public void updateWorkgroupBranches(UUID workgroupId, List<UUID> branchIds) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
@@ -664,8 +671,13 @@ public class RateCreationService {
             throw new ValidationException("Munkacsoport nem tartozik az aktuális céghez");
         }
 
-        // Meglévő hozzárendelések törlése
+        // Meglévő hozzárendelések törlése (az aktuális workgroupból)
         workgroup.getBranches().clear();
+        // Flush, hogy a JOIN tábla DELETE-jei a következő INSERT előtt
+        // végrehajtódjanak — különben a UNIQUE (branch_id) constraint
+        // pillanatnyilag konfliktusra futhatna ha ugyanazt a branch-et
+        // tartjuk benne (re-add semelyik move-strategy nélkül).
+        rateWorkgroupRepository.saveAndFlush(workgroup);
 
         // Új hozzárendelések
         if (branchIds != null && !branchIds.isEmpty()) {
@@ -678,6 +690,25 @@ public class RateCreationService {
                 }
                 if (!Boolean.TRUE.equals(branch.getIsActive())) {
                     throw new ValidationException("Inaktív iroda nem rendelhető hozzá: " + branch.getCode());
+                }
+            }
+
+            // Anti legacy parity: MOVE STRATEGY
+            // Ha bármelyik branch már egy MÁSIK workgroupban van, eltávolítjuk
+            // onnan, mielőtt hozzáadjuk az aktuálishoz.
+            // (A V234 UNIQUE (branch_id) DB constraint enforce-olja a 1:N kapcsolatot,
+            // ez a logika a UI/API szintjén biztosítja hogy a felhasználó NE kapjon
+            // constraint violation hibát, hanem egy implicit "áthelyezés" történjen.)
+            List<RateWorkgroup> otherWorkgroups = rateWorkgroupRepository.findByCompanyIdAndActiveTrue(companyId);
+            for (RateWorkgroup other : otherWorkgroups) {
+                if (other.getId().equals(workgroupId)) {
+                    continue;
+                }
+                boolean removed = other.getBranches().removeIf(b -> branchIds.contains(b.getId()));
+                if (removed) {
+                    rateWorkgroupRepository.saveAndFlush(other);
+                    log.info("Anti legacy parity move-strategy: iroda(k) áthelyezve workgroupId={} -> workgroupId={}",
+                            other.getId(), workgroupId);
                 }
             }
 
