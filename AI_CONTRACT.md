@@ -9,7 +9,20 @@
 - **Max 5 fajl** per PR
 - **Ha tobb:** bontani kell kisebb PR-ekbe. Ez NEM ajanlas, ez kovetelmeny.
 
-Kivetel: generated files (lockfile, snapshot.json), csak ha egyertelműen dokumentalt.
+### Kivetelek (NEM szamitanak bele az 5-fajl plafonba)
+
+1. **Generated files** (lockfile, snapshot.json) — csak ha egyertelműen dokumentalt.
+2. **4-way (4+1) verziószinkron** — a release-folyamat KÖTELEZŐEN atomikus: minden funkcionalis
+   PR egyutt bumpolja a verziot mind az 5 helyen + a backend pom-ban (lasd `docs/CAPABILITIES.md`
+   release-process es a `check-four-area-alignment.mjs` gate). Ezek a fajlok **mindig megengedettek**
+   a funkcionalis valtozasok mellett, es NEM bonthatok kulon PR-be (kulonben a `main` inkonzisztens
+   verzio-allapotba kerul). A szamitando "funkcionalis fajl" plafon: **max 5**, a kovetkezok NÉLKÜL:
+   - `package.json` (root) + `frontend-react/package.json` + `penztar-client/package.json`
+     + `kozponti-client/package.json` + `arfolyam-keszito-client/package.json`
+   - `backend/pom.xml` (`<version>` sor)
+
+   AI reviewer (Copilot/Codex/Sourcery): a fenti 6 verzio-fajl jelenlete miatt NE jelezz 5-fajl-limit
+   sertest, ha a funkcionalis fajlok szama <= 5.
 
 ## 2. Teszt-integritas TILTASOK
 
