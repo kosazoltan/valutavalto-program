@@ -21,4 +21,14 @@ public class SanctionScreeningResult {
 
     /** Kockázati szint: CLEAR, POSSIBLE, CONFIRMED */
     private String riskLevel;
+
+    /**
+     * Offline cache fallback jelző (#4): true, ha a szűrés ELAVULT/ÜRES helyi szankciós
+     * listán futott (online frissítés nem érhető el, lista &gt; N napos vagy üres). A szűrés
+     * ekkor is lefut a cache-ből (NEM áll le), de a hívó/UI explicit jelzést kap a degradált módról.
+     */
+    private boolean staleData;
+
+    /** A helyi szankciós lista kora napokban (null, ha még sosem importálták). */
+    private Integer listAgeDays;
 }
