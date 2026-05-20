@@ -226,6 +226,7 @@ public class TreasuryDashboardService {
                         BigDecimal fee = BigDecimal.ZERO;
                         BigDecimal profit = BigDecimal.ZERO;
                         int txCount = 0;
+                        LocalDateTime groupLatest = null;
 
                         for (DailyReport report : reports) {
                                 UUID branchId = report.getBranch().getId();
@@ -239,12 +240,8 @@ public class TreasuryDashboardService {
                                 fee = fee.add(nz(report.getTotalFeeHuf()));
                                 profit = profit.add(nz(report.getTotalProfit()));
                                 txCount += report.getTransactionCount() != null ? report.getTransactionCount() : 0;
+                                groupLatest = maxTimestamp(groupLatest, reportTimestamp(report));
                         }
-
-                        List<DailyReport> scopedReports = reports.stream()
-                                        .filter(r -> r.getBranch() != null
-                                                        && scopedBranchIds.contains(r.getBranch().getId()))
-                                        .toList();
 
                         builder.branchCount(scopedBranchIds.size())
                                         .totalBuyHuf(buy.setScale(2, RoundingMode.HALF_UP))
@@ -252,7 +249,7 @@ public class TreasuryDashboardService {
                                         .totalFeeHuf(fee.setScale(2, RoundingMode.HALF_UP))
                                         .totalProfit(profit.setScale(2, RoundingMode.HALF_UP))
                                         .transactionCount(txCount)
-                                        .lastSyncedAt(latestReportTimestamp(scopedReports));
+                                        .lastSyncedAt(groupLatest);
                 }
 
                 // Nem csoportosított irodák külön bucketben
@@ -262,7 +259,7 @@ public class TreasuryDashboardService {
                 BigDecimal ungroupedProfit = BigDecimal.ZERO;
                 int ungroupedTx = 0;
                 int ungroupedBranchCount = 0;
-                List<DailyReport> ungroupedReports = new ArrayList<>();
+                LocalDateTime ungroupedLatest = null;
 
                 for (DailyReport report : reports) {
                         UUID branchId = report.getBranch().getId();
@@ -270,12 +267,12 @@ public class TreasuryDashboardService {
                                 continue;
                         }
                         ungroupedBranchCount++;
-                        ungroupedReports.add(report);
                         ungroupedBuy = ungroupedBuy.add(nz(report.getTotalBuyHuf()));
                         ungroupedSell = ungroupedSell.add(nz(report.getTotalSellHuf()));
                         ungroupedFee = ungroupedFee.add(nz(report.getTotalFeeHuf()));
                         ungroupedProfit = ungroupedProfit.add(nz(report.getTotalProfit()));
                         ungroupedTx += report.getTransactionCount() != null ? report.getTransactionCount() : 0;
+                        ungroupedLatest = maxTimestamp(ungroupedLatest, reportTimestamp(report));
                 }
 
                 List<TreasuryAggregateDto> result = aggregates.values().stream()
@@ -294,7 +291,7 @@ public class TreasuryDashboardService {
                                         .totalProfit(ungroupedProfit.setScale(2, RoundingMode.HALF_UP))
                                         .transactionCount(ungroupedTx)
                                         .branchCount(ungroupedBranchCount)
-                                        .lastSyncedAt(latestReportTimestamp(ungroupedReports))
+                                        .lastSyncedAt(ungroupedLatest)
                                         .build());
                 }
 
@@ -312,6 +309,7 @@ public class TreasuryDashboardService {
 
                 Map<UUID, TreasuryAggregateDto.TreasuryAggregateDtoBuilder> builders = new LinkedHashMap<>();
                 Map<UUID, Set<UUID>> branchSets = new HashMap<>();
+                Map<UUID, LocalDateTime> latestByCompany = new HashMap<>();
 
                 for (DailyReport report : reports) {
                         Branch branch = report.getBranch();
@@ -339,16 +337,15 @@ public class TreasuryDashboardService {
 
                         branchSets.computeIfAbsent(reportCompanyId, k -> new HashSet<>()).add(branch.getId());
                         builder.branchCount(branchSets.get(reportCompanyId).size());
-                }
 
-                // Per-cég lastSyncedAt: a céghez tartozó riportok legfrissebb időbélyege.
-                Map<UUID, List<DailyReport>> reportsByCompany = reports.stream()
-                                .filter(r -> r.getBranch() != null && r.getBranch().getCompany() != null)
-                                .collect(Collectors.groupingBy(r -> r.getBranch().getCompany().getId()));
+                        // Per-cég lastSyncedAt inline akkumuláció (külön stream/lista nélkül).
+                        latestByCompany.merge(reportCompanyId, reportTimestamp(report),
+                                        TreasuryDashboardService::maxTimestamp);
+                }
 
                 return builders.entrySet().stream()
                                 .map(e -> e.getValue()
-                                                .lastSyncedAt(latestReportTimestamp(reportsByCompany.get(e.getKey())))
+                                                .lastSyncedAt(latestByCompany.get(e.getKey()))
                                                 .build())
                                 .sorted(Comparator.comparing(TreasuryAggregateDto::getName, String.CASE_INSENSITIVE_ORDER))
                                 .collect(Collectors.toList());
@@ -474,18 +471,17 @@ public class TreasuryDashboardService {
         }
 
         /**
-         * Egy aggregátum lastSyncedAt értéke = a hozzá tartozó napi-riportok
-         * {@link #reportTimestamp(DailyReport)} értékeinek maximuma (null-okat kihagyva).
-         * Üres lista / csupa-null → null (még nincs friss riport).
+         * Két időbélyeg közül a későbbit adja vissza, a {@code null} értékeket
+         * kihagyva (mindkettő null → null). Inline lastSyncedAt-akkumulációhoz,
+         * köztes lista/stream allokáció nélkül.
          */
-        static LocalDateTime latestReportTimestamp(Collection<DailyReport> reports) {
-                if (reports == null) {
-                        return null;
+        static LocalDateTime maxTimestamp(LocalDateTime a, LocalDateTime b) {
+                if (a == null) {
+                        return b;
                 }
-                return reports.stream()
-                                .map(TreasuryDashboardService::reportTimestamp)
-                                .filter(Objects::nonNull)
-                                .max(LocalDateTime::compareTo)
-                                .orElse(null);
+                if (b == null) {
+                        return a;
+                }
+                return a.isAfter(b) ? a : b;
         }
 }
