@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.service.MnbReportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -56,6 +57,11 @@ public class MnbDailyReportScheduler {
      *
      * @return a futás összesítője (generált / kihagyott / hibás darabszámok)
      */
+    // SZÁNDÉKOSAN cross-tenant rendszer-batch: az MNB napi adatszolgáltatás minden cég
+    // minden aktív irodájára kötelező, ezért a GLOBÁLIS findByIsActiveTrue() a helyes
+    // (nem egy user-kérés tenant-szűrt lekérdezése). Ez NEM IDOR/tenant-leak. A metódus
+    // @Deprecated ("multi-tenant kontextusban NE használd") — itt a használat tudatos.
+    @SuppressWarnings("deprecation")
     MnbDraftRunResult generateDailyDrafts(LocalDate date) {
         List<Branch> branches = branchRepository.findByIsActiveTrue();
         int generated = 0;
@@ -66,8 +72,11 @@ public class MnbDailyReportScheduler {
             try {
                 mnbReportService.generateDailyReport(branch.getId(), date);
                 generated++;
-            } catch (ValidationException alreadyExists) {
-                // Az adott napra már létezik riport ehhez az irodához — kihagyás (nem hiba).
+            } catch (ValidationException | DataIntegrityViolationException alreadyExists) {
+                // Már létezik riport erre az irodára+napra — vagy a service check-then-insert
+                // ValidationException-je, vagy konkurens futásnál a DB unique constraint
+                // (uq_mnb_report_branch_type_date) DataIntegrityViolationException-je.
+                // Mindkettő szemantikailag "már létezik" → kihagyás (nem hiba).
                 skipped++;
             } catch (Exception e) {
                 failed++;
