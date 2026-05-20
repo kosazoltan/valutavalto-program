@@ -86,6 +86,7 @@ const CashierTurnoverReportPage = lazy(() => import('./pages/reports/CashierTurn
 const RecurringCustomerReportPage = lazy(() => import('./pages/reports/RecurringCustomerReportPage'))
 const AverageRateReportPage = lazy(() => import('./pages/reports/AverageRateReportPage'))
 const DailyJournalPage = lazy(() => import('./pages/reports/DailyJournalPage'))
+const CentralReportsPage = lazy(() => import('./pages/reports/CentralReportsPage'))
 const FeePage = lazy(() => import('./pages/fees/FeePage'))
 const BlacklistPage = lazy(() => import('./pages/blacklist/BlacklistPage'))
 const AnonymousReportPage = lazy(() => import('./pages/reports/AnonymousReportPage'))
@@ -510,6 +511,7 @@ export default function App() {
           <Route path="/reports/recurring-customers" element={<RecurringCustomerReportPage />} />
           <Route path="/reports/average-rate" element={<AverageRateReportPage />} />
           <Route path="/reports/daily-journal" element={<DailyJournalPage />} />
+          <Route path="/reports/central" element={<CentralReportsPage />} />
           
           {/* Receipts */}
           <Route path="/receipts" element={<ReceiptPage />} />

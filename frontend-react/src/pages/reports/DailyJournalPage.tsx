@@ -5,38 +5,13 @@ import { dailyJournalApi, branchApi } from '../../services/api/index'
 import type { BranchInfo } from '../../services/api/index'
 import { localIsoDate } from '../../utils/dateFormat'
 import { logger } from '../../utils/logger'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getBlobErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Napkönyv (napi forgalmi napló) PDF letöltő oldal — legacy NAPKONYV parity.
  *
  * Backend végpont: GET /api/v1/reports/daily-journal?branchId&date → application/pdf
  */
-
-/**
- * Hibaüzenet kinyerése blob-válaszú kérésből. `responseType: 'blob'` esetén a
- * NEM-2xx hibatest is Blob, ezért a `getErrorMessage` nem látná a szerver magyar
- * üzenetét — itt kiolvassuk és JSON-ként megpróbáljuk parse-olni.
- */
-async function extractBlobError(err: unknown): Promise<string> {
-  const data = (err as { response?: { data?: unknown } })?.response?.data
-  if (data instanceof Blob) {
-    try {
-      const text = await data.text()
-      try {
-        const json = JSON.parse(text) as { message?: unknown }
-        if (typeof json?.message === 'string') return json.message
-      } catch {
-        // nem JSON — a nyers szöveggel térünk vissza, ha van
-      }
-      if (text) return text
-    } catch {
-      // blob-olvasás sikertelen — esünk a general handlerre
-    }
-  }
-  return getErrorMessage(err)
-}
-
 export default function DailyJournalPage() {
   const { t } = useTranslation()
 
@@ -82,7 +57,7 @@ export default function DailyJournalPage() {
       URL.revokeObjectURL(url)
     } catch (err) {
       logger.error('DailyJournalPage', 'Napkönyv letöltés hiba:', err)
-      setError(await extractBlobError(err))
+      setError(await getBlobErrorMessage(err))
     } finally {
       setLoading(false)
     }

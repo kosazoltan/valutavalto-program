@@ -1332,6 +1332,23 @@
         "atadott": "ATADOTT"
       }
     },
+    "centralReports": {
+      "title": "Központi konszolidált riportok",
+      "subtitle": "Cég-szintű napi / heti / havi összesítő CSV (vezetői)",
+      "reportType": "Riport típus",
+      "typeDaily": "Napi",
+      "typeWeekly": "Heti",
+      "typeMonthly": "Havi",
+      "date": "Dátum",
+      "weekStart": "Hét kezdete (hétfő)",
+      "month": "Hónap",
+      "download": "CSV letöltése",
+      "downloading": "Letöltés...",
+      "hint": "Válasszon riport-típust és időszakot, majd töltse le a konszolidált CSV-t.",
+      "errors": {
+        "noDate": "Adja meg az időszakot."
+      }
+    },
     "dailyJournal": {
       "title": "Napkönyv (napi forgalmi napló)",
       "subtitle": "Napi tranzakció-napló PDF — legacy NAPKONYV",
