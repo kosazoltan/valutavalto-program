@@ -95,6 +95,7 @@ public class StockSnapshotService {
                     .regionName(entry.getValue())
                     .branches(regionBranches)
                     .totals(aggregateTotals(regionBranches))
+                    .lastSyncedAt(latestLastUpdated(regionBranches))
                     .build());
         }
 
@@ -212,6 +213,22 @@ public class StockSnapshotService {
                         .map(e -> ReservationSummaryDto.builder().currencyCode(e.getKey()).totalAmount(e.getValue()).build())
                         .sorted(Comparator.comparing(ReservationSummaryDto::getCurrencyCode)).collect(Collectors.toList()))
                 .build();
+    }
+
+    /**
+     * Egy körzet legfrissebb készlet-frissítése = a hozzá tartozó branch-ek
+     * {@code lastUpdated} mezőinek maximuma (a null értékeket figyelmen kívül hagyva).
+     * Üres lista vagy csupa-null esetén {@code null} (még sosem szinkronizált körzet).
+     */
+    static LocalDateTime latestLastUpdated(List<BranchSnapshotDto> branches) {
+        if (branches == null) {
+            return null;
+        }
+        return branches.stream()
+                .map(BranchSnapshotDto::getLastUpdated)
+                .filter(Objects::nonNull)
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
     }
 
     private BranchStockTotalsDto createEmptyTotals() {
