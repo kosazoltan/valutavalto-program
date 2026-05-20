@@ -140,6 +140,7 @@ class RecurringCustomerReportServiceTest {
         assertThat(jpql).contains("financialEffective");  // CONVERSION parent kizárás
         assertThat(jpql).contains("COMPLETED");            // sztornózott kizárás
         assertThat(jpql).contains("customerId IS NOT NULL"); // anonim kihagyás
+        assertThat(jpql).contains("customerId <> ''");       // üres-string ID kizárás (fals csoport ellen)
         assertThat(jpql).contains("HAVING");               // küszöb
     }
 

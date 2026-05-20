@@ -59,7 +59,8 @@ public class RecurringCustomerReportService {
 
         // GROUP BY customerId, HAVING COUNT >= minTransactions.
         // financial_effective=TRUE: parent CONVERSION kizárás (NEM duplikál).
-        // customerId IS NOT NULL: anonim (azonosítás nélküli kis összegű) tranzakciók kihagyva.
+        // customerId IS NOT NULL AND <> '': anonim (azonosítás nélküli) ÉS üres-string
+        // customerId-jú tranzakciók kihagyva — különben az üres ID-k egy fals csoportba aggregálódnának.
         // MAX(customerName): lexikografikusan legnagyobb név (NEM idő szerinti utolsó) —
         // az AML-monitoring szempontjából az azonosítható név a lényeg.
         var query = entityManager.createQuery(
@@ -70,6 +71,7 @@ public class RecurringCustomerReportService {
                         "AND t.status = hu.puzzleir.valuta.entity.TransactionStatus.COMPLETED " +
                         "AND t.financialEffective = TRUE " +
                         "AND t.customerId IS NOT NULL " +
+                        "AND t.customerId <> '' " +
                         "GROUP BY t.customerId " +
                         "HAVING COUNT(t) >= :minTx " +
                         "ORDER BY COUNT(t) DESC, SUM(t.hufAmount) DESC");
