@@ -89,6 +89,21 @@ public class TransferService {
                 .sealNumber(dto.getSealNumber())
                 .build();
 
+        // #6: több-valutás átadólap — a sorokat a transfer-hez csatoljuk (cascade ALL menti).
+        if (dto.getLines() != null && !dto.getLines().isEmpty()) {
+            int lineNo = 1;
+            for (var lineDto : dto.getLines()) {
+                Currency lineCurrency = currencyRepository.findById(lineDto.getCurrencyId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: " + lineDto.getCurrencyId()));
+                transfer.getLines().add(TransferLine.builder()
+                        .transfer(transfer)
+                        .currency(lineCurrency)
+                        .amount(lineDto.getAmount())
+                        .lineNo(lineNo++)
+                        .build());
+            }
+        }
+
         transfer = transferRepository.save(transfer);
 
         // Counter-tranzakciók létrehozása a direction alapján
@@ -249,53 +264,73 @@ public class TransferService {
      */
     private void createCounterTransactions(Transfer transfer, Worker fromWorker,
                                             Transfer.TransferDirection direction) {
+        // #6: soronként könyvelünk (egy-valutás átadásnál egyetlen szintetikus sor a headerből).
+        final java.util.List<TransferLine> bookLines = effectiveLines(transfer);
         switch (direction) {
             case F -> {
-                // Csak TRANSFER_OUT a küldő fióknál
-                createTransferOutTransaction(transfer, fromWorker);
-                decreaseCashBalance(transfer.getFromBranch(), transfer.getCurrency(), transfer.getAmount());
-                log.info("F mód — TRANSFER_OUT létrehozva: {} ({} {})",
-                        transfer.getTransferNumber(), transfer.getAmount(), transfer.getCurrency().getCode());
+                for (TransferLine ln : bookLines) {
+                    createTransferOutTransaction(transfer, fromWorker, ln.getCurrency(), ln.getAmount());
+                    decreaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
+                }
+                log.info("F mód — {} sor TRANSFER_OUT: {}", bookLines.size(), transfer.getTransferNumber());
             }
             case U -> {
-                // Fogadó-indított: fromBranch (az initiátor/fogadó) kapja a pénzt a toBranch-től
-                createTransferInTransaction(transfer, fromWorker, transfer.getFromBranch());
-                increaseCashBalance(transfer.getFromBranch(), transfer.getCurrency(), transfer.getAmount());
-                log.info("U mód — TRANSFER_IN létrehozva (fogadó: {}): {} ({} {})",
-                        transfer.getFromBranch().getCode(),
-                        transfer.getTransferNumber(), transfer.getAmount(), transfer.getCurrency().getCode());
+                for (TransferLine ln : bookLines) {
+                    createTransferInTransaction(transfer, fromWorker, transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
+                    increaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
+                }
+                log.info("U mód — {} sor TRANSFER_IN (fogadó: {}): {}",
+                        bookLines.size(), transfer.getFromBranch().getCode(), transfer.getTransferNumber());
             }
             case UF -> {
-                // Mindkét tranzakció egyszerre
-                createTransferOutTransaction(transfer, fromWorker);
-                createTransferInTransaction(transfer, fromWorker, transfer.getToBranch());
-                decreaseCashBalance(transfer.getFromBranch(), transfer.getCurrency(), transfer.getAmount());
-                increaseCashBalance(transfer.getToBranch(), transfer.getCurrency(), transfer.getAmount());
+                for (TransferLine ln : bookLines) {
+                    createTransferOutTransaction(transfer, fromWorker, ln.getCurrency(), ln.getAmount());
+                    createTransferInTransaction(transfer, fromWorker, transfer.getToBranch(), ln.getCurrency(), ln.getAmount());
+                    decreaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
+                    increaseCashBalance(transfer.getToBranch(), ln.getCurrency(), ln.getAmount());
+                }
                 // UF módban az átadás azonnal COMPLETED
                 transfer.setStatus(Transfer.TransferStatus.COMPLETED);
                 transfer.setReceivedAmount(transfer.getAmount());
                 transfer.setReceivedDate(LocalDate.now());
                 transfer.setReceivedTime(LocalTime.now());
                 transfer.setDifference(BigDecimal.ZERO);
-                log.info("UF mód — TRANSFER_OUT + TRANSFER_IN létrehozva: {} ({} {})",
-                        transfer.getTransferNumber(), transfer.getAmount(), transfer.getCurrency().getCode());
+                log.info("UF mód — {} sor TRANSFER_OUT+IN: {}", bookLines.size(), transfer.getTransferNumber());
             }
             case FF -> {
-                // Két TRANSFER_OUT (korrekciós — mindkét fióknál csökken)
-                createTransferOutTransaction(transfer, fromWorker);
+                for (TransferLine ln : bookLines) {
+                    createTransferOutTransaction(transfer, fromWorker, ln.getCurrency(), ln.getAmount());
+                    decreaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
+                    decreaseCashBalance(transfer.getToBranch(), ln.getCurrency(), ln.getAmount());
+                }
                 createCorrectionTransferOutTransaction(transfer, fromWorker);
-                decreaseCashBalance(transfer.getFromBranch(), transfer.getCurrency(), transfer.getAmount());
-                decreaseCashBalance(transfer.getToBranch(), transfer.getCurrency(), transfer.getAmount());
-                log.info("FF mód — 2x TRANSFER_OUT létrehozva: {} ({} {})",
-                        transfer.getTransferNumber(), transfer.getAmount(), transfer.getCurrency().getCode());
+                log.info("FF mód — {} sor 2x TRANSFER_OUT: {}", bookLines.size(), transfer.getTransferNumber());
             }
         }
+    }
+
+    /**
+     * Könyvelendő sorok: ha a transfernek vannak valuta-sorai (#6 multi-line), azokat;
+     * különben egyetlen szintetikus sor a header currency+amount-ból (egy-valutás kompat).
+     */
+    private java.util.List<TransferLine> effectiveLines(Transfer transfer) {
+        if (transfer.getLines() != null && !transfer.getLines().isEmpty()) {
+            return transfer.getLines();
+        }
+        return java.util.List.of(TransferLine.builder()
+                .currency(transfer.getCurrency())
+                .amount(transfer.getAmount())
+                .build());
     }
 
     /**
      * TRANSFER_OUT tranzakció létrehozása a küldő fióknál.
      */
     private Transaction createTransferOutTransaction(Transfer transfer, Worker worker) {
+        return createTransferOutTransaction(transfer, worker, transfer.getCurrency(), transfer.getAmount());
+    }
+
+    private Transaction createTransferOutTransaction(Transfer transfer, Worker worker, Currency currency, BigDecimal amount) {
         Branch fromBranch = transfer.getFromBranch();
         String receiptNumber = receiptSequenceService.generateReceiptNumber(
                 fromBranch.getId(), TransactionType.TRANSFER_OUT);
@@ -309,8 +344,8 @@ public class TransferService {
                 .status(TransactionStatus.COMPLETED)
                 .transactionDate(LocalDate.now())
                 .transactionTime(LocalTime.now())
-                .currency(transfer.getCurrency())
-                .currencyAmount(transfer.getAmount())
+                .currency(currency)
+                .currencyAmount(amount)
                 .exchangeRate(BigDecimal.ONE) // Átadásnál nincs árfolyam
                 .hufAmount(transfer.getHufValue() != null ? transfer.getHufValue() : BigDecimal.ZERO)
                 .referenceNumber(transfer.getTransferNumber())
@@ -330,6 +365,10 @@ public class TransferService {
      * TRANSFER_IN tranzakció létrehozása a megadott fióknál.
      */
     private Transaction createTransferInTransaction(Transfer transfer, Worker worker, Branch atBranch) {
+        return createTransferInTransaction(transfer, worker, atBranch, transfer.getCurrency(), transfer.getAmount());
+    }
+
+    private Transaction createTransferInTransaction(Transfer transfer, Worker worker, Branch atBranch, Currency currency, BigDecimal amount) {
         Branch sourceBranch = atBranch.getId().equals(transfer.getToBranch().getId())
                 ? transfer.getFromBranch() : transfer.getToBranch();
         String receiptNumber = receiptSequenceService.generateReceiptNumber(
@@ -344,8 +383,8 @@ public class TransferService {
                 .status(TransactionStatus.COMPLETED)
                 .transactionDate(LocalDate.now())
                 .transactionTime(LocalTime.now())
-                .currency(transfer.getCurrency())
-                .currencyAmount(transfer.getAmount())
+                .currency(currency)
+                .currencyAmount(amount)
                 .exchangeRate(BigDecimal.ONE)
                 .hufAmount(transfer.getHufValue() != null ? transfer.getHufValue() : BigDecimal.ZERO)
                 .referenceNumber(transfer.getTransferNumber())
@@ -441,8 +480,17 @@ public class TransferService {
                                               Transfer.TransferDirection direction) {
         switch (direction) {
             case F -> {
-                // F mód: a küldő oldal a create-nál már csökkent, itt a fogadó oldal növekszik
-                increaseCashBalance(transfer.getToBranch(), transfer.getCurrency(), receivedAmount);
+                // F mód: a küldő oldal a create-nál már csökkent, itt a fogadó oldal növekszik.
+                if (transfer.getLines() != null && !transfer.getLines().isEmpty()) {
+                    // #6 multi-line: minden valuta-sor a saját összegével a fogadó kasszájába.
+                    for (TransferLine ln : transfer.getLines()) {
+                        increaseCashBalance(transfer.getToBranch(), ln.getCurrency(), ln.getAmount());
+                        ln.setReceivedAmount(ln.getAmount());
+                        ln.setDifference(BigDecimal.ZERO);
+                    }
+                } else {
+                    increaseCashBalance(transfer.getToBranch(), transfer.getCurrency(), receivedAmount);
+                }
             }
             case U, UF, FF -> {
                 // U/UF/FF: a create-nál már mindkét oldal kassza frissült, receive-nél nincs kassza módosítás
@@ -505,7 +553,26 @@ public class TransferService {
                 .hasDifference(t.getDifference() != null && t.getDifference().compareTo(BigDecimal.ZERO) != 0)
                 .isCompleted(t.getStatus() == Transfer.TransferStatus.COMPLETED)
                 .isPending(t.getStatus() == Transfer.TransferStatus.PENDING)
+                .lines(mapLines(t))
                 .build();
+    }
+
+    private java.util.List<hu.puzzleir.valuta.dto.transfer.TransferLineDto> mapLines(Transfer t) {
+        if (t.getLines() == null || t.getLines().isEmpty()) {
+            return null; // egy-valutás átadás → nincs sor (NON_NULL inclusion miatt kimarad a JSON-ból)
+        }
+        return t.getLines().stream()
+                .sorted(java.util.Comparator.comparing(l -> l.getLineNo() != null ? l.getLineNo() : 0))
+                .map(l -> hu.puzzleir.valuta.dto.transfer.TransferLineDto.builder()
+                        .currencyId(l.getCurrency().getId())
+                        .currencyCode(l.getCurrency().getCode())
+                        .currencyName(l.getCurrency().getName())
+                        .amount(l.getAmount())
+                        .receivedAmount(l.getReceivedAmount())
+                        .difference(l.getDifference())
+                        .lineNo(l.getLineNo())
+                        .build())
+                .toList();
     }
 
     private String getTransferTypeDisplay(Transfer.TransferType type) {

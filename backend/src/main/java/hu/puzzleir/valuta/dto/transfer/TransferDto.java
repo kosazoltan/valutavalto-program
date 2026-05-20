@@ -2,9 +2,12 @@ package hu.puzzleir.valuta.dto.transfer;
 
 import lombok.*;
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class TransferDto {
+    /** #6: több-valutás átadólap sorai (üres a hagyományos egy-valutás átadásnál). */
+    private List<TransferLineDto> lines;
     private Long id;
     private String transferNumber;
     private String fromBranchId;

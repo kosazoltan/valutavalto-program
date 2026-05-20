@@ -72,6 +72,15 @@ public class Transfer {
     @Column(name = "huf_value", precision = 18, scale = 2)
     private BigDecimal hufValue;
 
+    /**
+     * Több-valutás átadólap sorai (#6). ÜRES a hagyományos egy-valutás átadásnál
+     * (akkor a fenti currency+amount a forrás). Ha van sor, a header currency/amount
+     * az ELSŐ sort tükrözi, a cash-balance pedig soronként könyvel.
+     */
+    @OneToMany(mappedBy = "transfer", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private java.util.List<TransferLine> lines = new java.util.ArrayList<>();
+
     @Column(name = "received_amount", precision = 18, scale = 4)
     private BigDecimal receivedAmount;
 
