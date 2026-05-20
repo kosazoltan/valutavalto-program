@@ -18,7 +18,7 @@
 |---|---|---|---|---|---|
 | AML 100k identifikáció | 9.1 | IMPLEMENTED | `service/AmlService.java:SIMPLIFIED_IDENTIFICATION_LIMIT` | `AmlThresholdTest` (TERVEZETT) | teszt-coverage |
 | AML 300k PEP | 9.1 | IMPLEMENTED | `service/AmlService.java:IDENTIFICATION_LIMIT` | `PepDeclarationTest` (TERVEZETT) | teszt-coverage |
-| Sanction-list valós idejű | 9.1 | PARTIAL | `service/SanctionService.java` | `SanctionListTest` (TERVEZETT) | offline cache fallback hiányos |
+| Sanction-list valós idejű | 9.1 | IMPLEMENTED | `service/SanctionScreeningService.java` (DB-cache + napi scheduler import) | `SanctionOfflineFallbackTest` (5 eset) | offline cache fallback KÉSZ (v2.5.91): `staleData`+`listAgeDays`, >7 nap/üres → degradált-jelzés + warning |
 | SAR auto-flag | 9.1 | IMPLEMENTED | `service/AmlService.java` (4. szekció, `DAILY_SUSPICIOUS_LIMIT` 900k) | `SarAutoFlagTest` (5 eset) | napi göngyölt >= 900k → `suspiciousFlag`; blank customerId hardening |
 | HUF kerekítés | 14.1 | IMPLEMENTED | `util/RoundHuf.java` | `RoundHufTest` (TERVEZETT bővítés) | — |
 | Bizonylet-sorszám atomic | 14.2 | IMPLEMENTED | `service/ReceiptSequenceService.java` | `ReceiptSequenceTest` (TERVEZETT) | teszt-coverage |
@@ -28,9 +28,9 @@
 | Outbox replay idempotens | 5.8 | IMPLEMENTED | `backend/.../IdempotencyFilter.java` | `IdempotencyTest` (TERVEZETT) | teszt-coverage |
 | Heartbeat Zod-validált | 5.8 | IMPLEMENTED | `penztar-client/src/config/heartbeat.ts` | `HeartbeatConfigTest` (TERVEZETT) | teszt-coverage |
 | RFM optimistic locking | 7.3 | MISSING | — | — | RateStateMachine + version + test |
-| RFM spread-kapu (5%) | 7.2/4 | MISSING | — | — | invariáns-teszt |
+| RFM spread-kapu (5%) | 7.2/4 | IMPLEMENTED | `service/RateSpreadGate.java` (egzakt kereszt-szorzás, bekötve `RateCreationService.publishGroupRateInternal`) | `RateSpreadGateTest` (8 eset) | v2.5.81: (sell−buy)/reference ≤ 5%, official/mid fallback |
 | Központ aggregál, nem vezérel | 6. | PARTIAL | `kozponti-client/controller/*` (verify) | — | debt-scan szabály kell |
-| `lastSyncedAt` minden aggregáción | 6. | MISSING | — | — | DTO + UI badge |
+| `lastSyncedAt` minden aggregáción | 6. | PARTIAL | `CentralReceivedDataOverviewDto.lastSyncedAt` + `ReceivedDataOverviewPage` badge | `CentralReceivedDataServiceTest` | v2.5.80: ELSŐ surface (központi átvett-adat) kész; további aggregációk (Treasury, Region) hátravan |
 | MNB 14:30 cron | 9.3 | MISSING | — | manuális | `mnb-publish.sh` script |
 | NGM havi export | 9.2 | MISSING | — | manuális | `ngm-monthly-export.sh` script |
 | NAV NPG real-time | 9.4 | PARTIAL | `service/NavService.java` (verify) | — | fallback offline bizonylat |
