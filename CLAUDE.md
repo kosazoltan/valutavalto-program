@@ -615,8 +615,14 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.88** (2026-05-20 — capability-features + teljes átadás-átvétel csomag + Főlap A-oszlop + multi-valuta átadólap).
-  - **v2.5.88 (admin-merged `0f773c9a8`):** PR #726 — Több valuta egy átadólapon **user-látható**: TransferPage multi-row UI (soronkénti valuta+összeg, per-line készlet-check) + `buildTransferLines` helper (17 teszt) + Electron lines-perzisztencia (PendingTransferInput.lines JSON → IPC → preload → sqlite `pending_transfers.lines` oszlop → sync-engine POST). Ezzel a #6 TELJES (backend #724 + FE/Electron #726).
+- **Verzió:** **v2.5.93** (2026-05-20 — átadás-átvétel teljes csomag + Főlap + multi-valuta + #1 branch-szűrés + Főpénztár-PIN + #4 sanction fallback + FK-001/FK-002).
+  - **v2.5.93 (admin-merged `3c58c2cda`):** PR #731 — FK-001 duplikált "Tisza Sarok" guarded soft-delete (V244): cég-scope + egyértelműség-védelem + nem-nulla-egyenleg guard (élő egyenleg esetén NOTICE, nincs törlés → előbb átadás-átvétel-átvezetés kell). NEM hard DELETE.
+  - **v2.5.92 (admin-merged `bcb4206ad`):** PR #730 — FK-002 Országos készlet (`/cashier-stocks`) területi csoportosítás (region szerint, szekciófejléc + értéktár neve, branchApi region-map, üres-fallback).
+  - **v2.5.91 (admin-merged `828eb9da7`):** PR #729 — #4 szankciós lista offline cache fallback: `SanctionScreeningResult.staleData`+`listAgeDays`, `isSanctionListStale` (üres/null/>7 nap), warning + API-n kimegy. 5 teszt.
+  - **v2.5.90 (admin-merged `86d22e770`):** PR #728 — supervisor PIN az 1.sz Főpénztár célnál is (hiány/többlet visszapótlás), `requiresSupervisorPin = isTargetTH || isTargetMainCashier`.
+  - **v2.5.89 (admin-merged `2954cbf5d`):** PR #727 — #1 átadás-átvétel cél-fiók szűrés (terület értéktára + TH kód-prefix + "Egyes számú pénztár"=1.sz Főpénztár), üres-fallback, 20 teszt.
+  - **v2.5.88 (admin-merged `0f773c9a8`):** PR #726 — Több valuta egy átadólapon **user-látható**: TransferPage multi-row UI + `buildTransferLines` (17 teszt) + Electron lines-perzisztencia. #6 TELJES (backend #724 + FE/Electron #726).
+  - **HÁTRALÉVŐ követőfeladat:** #6 multi-line ÁTVÉTEL per-soros tényleges összeg (jelenleg a tervezett összeget könyveli; egy-valutás változatlan). FK-001 operatív: a "Tisza Sarok" élő egyenlegét a főértéktárosnak át kell vezetnie átadás-átvétellel, utána a V244 deaktiválja.
   - **v2.5.87 (admin-merged `b1f54e801`):** PR #725 — #721 review zárás: HUF-kötelező típusnál nincs üres valuta-opció (nem törölhető null-ra) + currency-sync useEffect deps rendezve (eslint-disable törölve).
   - **v2.5.86 (admin-merged `74e9e6cbe`):** PR #724 — Több valuta egy átadólapon, backend-alap (DORMANT): V243 `transfer_lines` (FK `currency(id)` — KRITIKUS Copilot-fix, eredetileg `currencies` → outage elhárítva), TransferLine entity, soronkénti könyvelés (effectiveLines, FF/UF/receive per-line, dup-valuta validáció), 6 teszt.
   - **v2.5.85 (admin-merged `d064cb2ce`):** PR #723 — Electron-úton carrier/seal perzisztencia + direction (sqlite/main/preload/sync-engine + FE). A #7 (kötelező szállító/plomba) + #8 (átvétel→készlet F-mód) most a pénztárgépen is működik.
