@@ -72,12 +72,22 @@ public class MnbDailyReportScheduler {
             try {
                 mnbReportService.generateDailyReport(branch.getId(), date);
                 generated++;
-            } catch (ValidationException | DataIntegrityViolationException alreadyExists) {
-                // Már létezik riport erre az irodára+napra — vagy a service check-then-insert
-                // ValidationException-je, vagy konkurens futásnál a DB unique constraint
-                // (uq_mnb_report_branch_type_date) DataIntegrityViolationException-je.
-                // Mindkettő szemantikailag "már létezik" → kihagyás (nem hiba).
+            } catch (ValidationException alreadyExists) {
+                // A service check-then-insert ellenőrzése: erre az irodára+napra már van riport.
                 skipped++;
+            } catch (DataIntegrityViolationException dive) {
+                // Konkurens/több-instance futásnál a check és az insert között beékelődő
+                // duplikátum a DB unique indexen (uq_mnb_report_branch_type_date) bukik el.
+                // CSAK ezt a konkrét constraint-sértést kezeljük "már létezik" kihagyásként —
+                // minden más integritás-hiba (FK / NOT NULL / egyéb) VALÓDI hiba → failed + ERROR log
+                // (Codex/Copilot P1 #744: ne maszkoljuk a valós adat-hibákat skipként).
+                if (isDuplicateMnbReportViolation(dive)) {
+                    skipped++;
+                } else {
+                    failed++;
+                    log.error("MNB napi DRAFT-generálás integritás-hiba (NEM duplikátum): branchId={}, date={}, ok: {}",
+                            branch.getId(), date, dive.getMessage(), dive);
+                }
             } catch (Exception e) {
                 failed++;
                 log.error("MNB napi DRAFT-generálás hiba: branchId={}, date={}, ok: {}",
@@ -85,6 +95,26 @@ public class MnbDailyReportScheduler {
             }
         }
         return new MnbDraftRunResult(generated, skipped, failed);
+    }
+
+    /** Az MNB napi riport branch+típus+dátum unique indexének neve (V6 migráció). */
+    static final String MNB_REPORT_UNIQUE_CONSTRAINT = "uq_mnb_report_branch_type_date";
+
+    /**
+     * Igaz, ha a kivétel ok-láncában megjelenik a konkrét MNB-riport unique constraint neve
+     * — azaz a hiba valóban "már létezik" duplikátum, nem más integritás-sértés.
+     */
+    static boolean isDuplicateMnbReportViolation(Throwable ex) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            String msg = t.getMessage();
+            if (msg != null && msg.toLowerCase().contains(MNB_REPORT_UNIQUE_CONSTRAINT)) {
+                return true;
+            }
+            if (t.getCause() == t) {
+                break;
+            }
+        }
+        return false;
     }
 
     /** Egy ütemezett futás eredmény-összesítője. */
