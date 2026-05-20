@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches } from './transferRules'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isMainCashierBranch } from './transferRules'
 
 const currencies = [
   { id: 1, code: 'HUF', name: 'Forint' },
@@ -113,16 +113,21 @@ describe('transferRules — átadás-átvétel üzleti szabályok', () => {
       { id: 'p2', code: 'BR125', name: 'Pécs Árkád', region: 'PECS', isVault: false },        // sima pénztár, kizárva
       { id: 'v1', code: 'VAULT-PECS', name: 'Pécs Értéktár', region: 'PECS', isVault: true },  // saját terület értéktára → benne
       { id: 'v2', code: 'VAULT-BP', name: 'Budapest Értéktár', region: 'BUDAPEST', isVault: true }, // más terület → kizárva
-      { id: 'th', code: 'TH01', name: 'TH pénztár', region: 'PECS', isVault: false, branchTypeCode: 'TH' }, // TH → benne
+      { id: 'th', code: 'TH01', name: 'Többlet-hiány', region: 'PECS', isVault: false }, // TH KÓD-PREFIX (nincs branchTypeCode) → benne
       { id: 'fp', code: 'BR001', name: 'Egyes számú pénztár', region: 'PECS', isVault: false }, // 1.sz Főpénztár → benne
     ]
-    it('csak: saját terület értéktára + TH + Egyes számú pénztár', () => {
+    it('csak: saját terület értéktára + TH (kód-prefix) + Egyes számú pénztár', () => {
       const ids = filterTransferTargetBranches(branches, own).map(b => b.id)
       expect(ids).toContain('v1')   // saját terület értéktár
-      expect(ids).toContain('th')   // TH
+      expect(ids).toContain('th')   // TH kód-prefix (TH01)
       expect(ids).toContain('fp')   // Egyes számú pénztár
       expect(ids).not.toContain('p2') // sima pénztár
       expect(ids).not.toContain('v2') // más terület értéktára
+    })
+    it('isMainCashierBranch SZŰK: nem match-el general nevet', () => {
+      expect(isMainCashierBranch({ id: 'x', code: 'BR500', name: 'Pécs Plaza pénztár' })).toBe(false)
+      expect(isMainCashierBranch({ id: 'f', code: 'BR001', name: 'Egyes számú pénztár' })).toBe(true)
+      expect(isMainCashierBranch({ id: 'f2', code: 'BR002', name: '1.sz Főpénztár' })).toBe(true)
     })
     it('üres-fallback: ha a szűrő 0 fiókot adna, MINDET visszaadja', () => {
       const onlyPlain = [{ id: 'x', code: 'BR999', name: 'Sima Pénztár', region: 'PECS', isVault: false }]

@@ -68,12 +68,24 @@ export interface TransferTargetBranch {
 }
 
 export function isTHBranch(b: TransferTargetBranch): boolean {
-  return b.branchTypeCode === 'TH' || /\bTH\b/i.test(b.code) || /\bTH\b/i.test(b.name)
+  const code = (b.code ?? '').toUpperCase()
+  return b.branchTypeCode === 'TH'
+    || code === 'TH'
+    || /^TH[\d\-_ ]/.test(code)   // kód-prefix: "TH01", "TH-1", "TH_3" ... (Codex P1 #727)
+    || /\bTH\b/i.test(b.code)
+    || /\bTH\b/i.test(b.name)
 }
 
-/** "Egyes számú pénztár" / "1. számú pénztár" / "1.sz Főpénztár" (központi készpénzpénztár). */
+/**
+ * Az "1.sz Főpénztár" = a Pécsi Iroda "Egyes számú pénztár" központi készpénzpénztára.
+ * SZŰK minta (Codex P2 #727): a névnek az 1.sz / egyes számú megjelöléssel KELL kezdődnie,
+ * hogy ne match-eljen véletlen "főpénztár" előfordulást más fióknévben.
+ */
 export function isMainCashierBranch(b: TransferTargetBranch): boolean {
-  return /egyes\s*sz[aá]m|(^|\b)1\.?\s*sz[aá]m|f[őo]\s*p[eé]nzt[aá]r/i.test(b.name)
+  const n = (b.name ?? '').trim().toLowerCase()
+  return /^egyes\s+sz[aá]m[uú]\s+(f[őo])?p[eé]nzt[aá]r/.test(n)        // "Egyes számú (fő)pénztár"
+    || /^1\.?\s*sz[aá]m[uú]\s+(f[őo])?p[eé]nzt[aá]r/.test(n)          // "1. számú (fő)pénztár"
+    || /^1\.?\s*sz\.?\s*(f[őo])?p[eé]nzt[aá]r/.test(n)                // "1.sz Főpénztár" / "1. sz. pénztár"
 }
 
 export function filterTransferTargetBranches<T extends TransferTargetBranch>(
