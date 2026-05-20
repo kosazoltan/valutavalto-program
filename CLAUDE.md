@@ -615,8 +615,10 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.71** (2026-05-19 — Sprint A autonomous mode: 9 release egyetlen este).
-  - **v2.5.71 (admin-merged `1cade982f`):** PR #708 — CompetitorRate multi-tenant P0 fix (P0.3 audit follow-up). 3 régi globális query @Deprecated, 3 új company-scoped variáns Branch FK JOIN-nal. SHA-256: `b70f5fc742371f0e9dbedb8fb4430715a16f81c6e8751589627e7e1d54ceaf05` (Penztar), `767d82bc811c22264c793ab35a8af2127b2af85318563da49533ee134fbf271f` (Kozponti), `1d0643622993efbe4e22775983e6c9644d14a1dca939891ee1ce5b348b89f845` (Arfolyam), `3b9907fd36618e078a9a53f609796fd2ff0c99c5240f3a3d273c84eea928ce70` (Eltavolito).
+- **Verzió:** **v2.5.72** (2026-05-19/20 — Sprint A autonomous mode + V234 outage hotfix).
+  - **🚨 v2.5.72 HOTFIX (admin-merged `24851fbfa`):** PR #709 — KRITIKUS production outage fix. PR #649 (branch-workgroup-exclusivity) `V234__branch_workgroup_...sql` collision-t okozott a meglévő `V234__audit_log_immutable_hash_chain.sql`-lel → Flyway `Found more than one migration with version 234` → Hetzner deploy FAIL → production HTTP 502 (~15 perc outage 22:30→22:45 CEST). Fix: rename V234→V242. Production recovered HEALTHY 200. v2.5.72 4 installer Downloads-ban: Penztar SHA-256 `6cc681ea6735bc7611d445d36e0e3fc1e9554433dd6bf9287a886e0f06a84d60`, Kozponti `42806e87c7e4c9e7d099629da82341ac4dd7db1e8f91b9640056fe7991f2471e`, Arfolyam `5fd8a5f3490219e9f77795d876dc8f74cb781d81c0949db90ac257ca8ce47568`.
+  - **⚠️ TANULSÁG**: a `flyway-migration-lint.yml` CI workflow NEM fogta ki a V234 collision-t, mert PR #649 a párhuzamos branch-en a V234 már-mergelt cél-után készült. Future-defense: migration-lint-be `find V*__*.sql | awk dup-version` check.
+  - **v2.5.71 (admin-merged `1cade982f`):** PR #708 — CompetitorRate multi-tenant P0 fix (P0.3 audit follow-up). 3 régi globális query @Deprecated, 3 új company-scoped variáns Branch FK JOIN-nal.
   - **v2.5.70 (admin-merged `a8a2db130`):** PR #707 — ShipmentRequest multi-tenant P0 fix (P0.3 audit follow-up) — `findByStatusAndCompanyId` + `findAllOrderedByCompanyId` Branch.company FK JOIN subquery + service cross-tenant IDOR guard. Régi globális queries @Deprecated jelöléssel.
   - **v2.5.69 (admin-merged `e87c04816`):** PR #706 — Multi-tenant IDOR fix DailyJournalService + multi-page PDF render fix + 4-way version sync
   - **v2.5.68 (admin-merged `b5e738b26`):** PR #705 — Napkönyv PDF (legacy NAPKONYV parity)
