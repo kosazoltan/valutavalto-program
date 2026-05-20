@@ -71,8 +71,22 @@ public class CentralReceivedDataService {
                 .totalFeeHuf(sum(rows, CentralReceivedDataRowDto::getTotalFeeHuf))
                 .totalProfit(sum(rows, CentralReceivedDataRowDto::getTotalProfit))
                 .generatedAt(LocalDateTime.now())
+                .lastSyncedAt(computeLastSyncedAt(rows))
                 .rows(rows)
                 .build();
+    }
+
+    /**
+     * A legfrissebb átvett branch-adat időpontja: soronként submittedAt elsőbbség, fallback
+     * reportCreatedAt; csak az átvett (reportReceived) sorok számítanak. null, ha egyik sem érkezett.
+     */
+    private LocalDateTime computeLastSyncedAt(List<CentralReceivedDataRowDto> rows) {
+        return rows.stream()
+                .filter(row -> Boolean.TRUE.equals(row.getReportReceived()))
+                .map(row -> row.getSubmittedAt() != null ? row.getSubmittedAt() : row.getReportCreatedAt())
+                .filter(java.util.Objects::nonNull)
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
     }
 
     private CentralReceivedDataRowDto toRow(Branch branch, DailyReport report, ClosingControl control, LocalDate reportDate) {

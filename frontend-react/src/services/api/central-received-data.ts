@@ -42,6 +42,11 @@ export interface CentralReceivedDataOverview {
   totalFeeHuf: number
   totalProfit: number
   generatedAt: string
+  /**
+   * A legfrissebb átvett branch-adat ideje. A backend NON_NULL Jackson-inclusion miatt a mező
+   * HIÁNYZIK a JSON-ból (undefined), ha még egyik branch sem küldött adatot — ezért opcionális.
+   */
+  lastSyncedAt?: string | null
   rows: CentralReceivedDataRow[]
 }
 
