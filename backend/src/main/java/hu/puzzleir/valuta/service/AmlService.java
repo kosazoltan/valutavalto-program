@@ -187,7 +187,9 @@ public class AmlService {
         }
 
         // 4. Napi gyanusagi ellenorzes (tobb kis tranzakcio ugyanattol az ugyfeltol)
-        if (customerId != null) {
+        // HARDENING: .isBlank() guard a 3./5. szekcióval konzisztensen — üres customerId
+        // ("") nem indít értelmetlen napi-göngyölés lekérdezést.
+        if (customerId != null && !customerId.isBlank()) {
             BigDecimal dailyTotal = getDailyCustomerTotal(customerId);
             if (dailyTotal.add(hufAmount).compareTo(DAILY_SUSPICIOUS_LIMIT) >= 0) {
                 result.suspiciousFlag(true);

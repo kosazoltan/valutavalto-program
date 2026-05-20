@@ -19,7 +19,7 @@
 | AML 100k identifikáció | 9.1 | IMPLEMENTED | `service/AmlService.java:SIMPLIFIED_IDENTIFICATION_LIMIT` | `AmlThresholdTest` (TERVEZETT) | teszt-coverage |
 | AML 300k PEP | 9.1 | IMPLEMENTED | `service/AmlService.java:IDENTIFICATION_LIMIT` | `PepDeclarationTest` (TERVEZETT) | teszt-coverage |
 | Sanction-list valós idejű | 9.1 | PARTIAL | `service/SanctionService.java` | `SanctionListTest` (TERVEZETT) | offline cache fallback hiányos |
-| SAR auto-flag | 9.1 | PARTIAL | `service/SarService.java` | — | hiányzik `SarAutoFlagTest` |
+| SAR auto-flag | 9.1 | IMPLEMENTED | `service/AmlService.java` (4. szekció, `DAILY_SUSPICIOUS_LIMIT` 900k) | `SarAutoFlagTest` (5 eset) | napi göngyölt >= 900k → `suspiciousFlag`; blank customerId hardening |
 | HUF kerekítés | 14.1 | IMPLEMENTED | `util/RoundHuf.java` | `RoundHufTest` (TERVEZETT bővítés) | — |
 | Bizonylet-sorszám atomic | 14.2 | IMPLEMENTED | `service/ReceiptSequenceService.java` | `ReceiptSequenceTest` (TERVEZETT) | teszt-coverage |
 | Sztornó szabályok (5) | 5.6 | IMPLEMENTED | `service/ReversalService.java` | `ReversalRulesTest` (TERVEZETT) | teszt-coverage |
