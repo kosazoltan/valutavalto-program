@@ -33,7 +33,7 @@ import {
 import { getLocalPendingTransfers } from '../../utils/localQueue'
 import { useTranslation } from 'react-i18next'
 import SupervisorPinModal from '../../components/auth/SupervisorPinModal'
-import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, type CurrencyLineInput } from './transferRules'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isTHBranch, isMainCashierBranch, type CurrencyLineInput } from './transferRules'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -171,11 +171,12 @@ export default function TransferPage() {
     void loadData()
   }, [loadData])
 
-  const isTargetTH = (() => {
-    const target = branches.find(b => b.id === toBranchId)
-    if (!target) return false
-    return target.branchTypeCode === 'TH' || /\bTH\b/i.test(target.code) || /\bTH\b/i.test(target.name)
-  })()
+  // Belső ellenőri (supervisor) PIN kell, ha a cél TH (többlet/hiány könyvelés) VAGY az
+  // 1.sz Főpénztár (hó végi visszapótlás) — Kósa Zoltán 2026-05-20 üzleti szabály.
+  const targetBranch = branches.find(b => b.id === toBranchId)
+  const isTargetTH = targetBranch ? isTHBranch(targetBranch) : false
+  const isTargetMainCashier = targetBranch ? isMainCashierBranch(targetBranch) : false
+  const requiresSupervisorPin = isTargetTH || isTargetMainCashier
 
   // === Átadás-átvétel üzleti szabályok (Kósa Zoltán tesztelői kérés) ===
   // A bejelentkezett felhasználó saját fiókja — ez dönti el, hogy pénztár vagy értéktár.
@@ -266,7 +267,7 @@ export default function TransferPage() {
       return
     }
 
-    if (isTargetTH && !pinVerified && !pendingTransferAfterPin) {
+    if (requiresSupervisorPin && !pinVerified && !pendingTransferAfterPin) {
       setShowSupervisorPin(true)
       return
     }
