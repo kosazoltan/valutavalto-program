@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getAvailableTransferTypes, isHufOnlyTransferType, filterCurrenciesForType } from './transferRules'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType } from './transferRules'
 
 const currencies = [
   { id: 1, code: 'HUF', name: 'Forint' },
@@ -58,6 +58,21 @@ describe('transferRules — átadás-átvétel üzleti szabályok', () => {
     it('értéktári feltöltés → minden valuta', () => {
       const result = filterCurrenciesForType(currencies, 'VAULT_DEPOSIT').map(c => c.code)
       expect(result).toEqual(['HUF', 'EUR', 'USD'])
+    })
+  })
+
+  describe('getAllowedTransferTypeValues (DRY — single source of truth)', () => {
+    it('pénztár: csak CASH/CURRENCY/HANDLING_FEE', () => {
+      expect(getAllowedTransferTypeValues(false)).toEqual(['CASH', 'CURRENCY', 'HANDLING_FEE'])
+    })
+    it('értéktár: VAULT_* is benne', () => {
+      expect(getAllowedTransferTypeValues(true)).toContain('VAULT_DEPOSIT')
+    })
+    it('konzisztens a getAvailableTransferTypes value-listájával (nincs drift)', () => {
+      for (const vault of [true, false]) {
+        expect(getAllowedTransferTypeValues(vault))
+          .toEqual(getAvailableTransferTypes(vault, 'in').map(o => o.value))
+      }
     })
   })
 

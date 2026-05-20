@@ -34,6 +34,14 @@ export function getAvailableTransferTypes(isVaultUser: boolean, direction: 'out'
   return base
 }
 
+/**
+ * A felhasználó számára engedélyezett típus-értékek (irány-független halmaz) — a
+ * `getAvailableTransferTypes` single source of truth-ból származtatva (DRY, nincs drift).
+ */
+export function getAllowedTransferTypeValues(isVaultUser: boolean): TransferType[] {
+  return getAvailableTransferTypes(isVaultUser, 'out').map(o => o.value)
+}
+
 /** FT és kezelési költség típus → kizárólag HUF (forint) érintett. */
 export function isHufOnlyTransferType(type: TransferType): boolean {
   return type === 'CASH' || type === 'HANDLING_FEE'

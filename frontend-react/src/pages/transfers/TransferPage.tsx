@@ -33,7 +33,7 @@ import {
 import { getLocalPendingTransfers } from '../../utils/localQueue'
 import { useTranslation } from 'react-i18next'
 import SupervisorPinModal from '../../components/auth/SupervisorPinModal'
-import { getAvailableTransferTypes, isHufOnlyTransferType, filterCurrenciesForType } from './transferRules'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType } from './transferRules'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -187,10 +187,7 @@ export default function TransferPage() {
 
   // Ha a felhasználóhoz nem elérhető típus van kiválasztva (pl. pénztár + VAULT_*), visszaállítjuk.
   useEffect(() => {
-    const allowed: CreateTransferRequest['transferType'][] = isVaultUser
-      ? ['CASH', 'CURRENCY', 'HANDLING_FEE', 'VAULT_DEPOSIT', 'VAULT_WITHDRAW']
-      : ['CASH', 'CURRENCY', 'HANDLING_FEE']
-    if (!allowed.includes(transferType)) {
+    if (!getAllowedTransferTypeValues(isVaultUser).includes(transferType)) {
       setTransferType('CURRENCY')
     }
   }, [isVaultUser, transferType])
