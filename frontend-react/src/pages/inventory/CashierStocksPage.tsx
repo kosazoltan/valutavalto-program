@@ -42,21 +42,6 @@ export default function CashierStocksPage() {
       setError(null)
       const response = await api.get<InventoryItem[]>('/inventory/stock')
       setItems(safeArray<InventoryItem>(response.data))
-      // FK-002: terület-besoroláshoz a fiók-törzsadat region mezője (név → régió).
-      try {
-        const branches = await branchApi.listActive()
-        const meta = new Map<string, { region: string; isVault: boolean }>()
-        const vaults = new Map<string, string>()
-        for (const b of branches) {
-          meta.set(b.name, { region: b.region ?? '', isVault: b.isVault === true })
-          if (b.isVault === true && b.region && !vaults.has(b.region)) vaults.set(b.region, b.name)
-        }
-        setBranchMeta(meta)
-        setVaultByRegion(vaults)
-      } catch (branchErr) {
-        // A területi besorolás csak kiegészítés — ha nincs branch-adat, marad az egy-szekciós nézet.
-        logger.warn('CashierStocksPage', 'Branch törzsadat betöltése sikertelen (területi csoportosítás kihagyva)', branchErr)
-      }
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('CashierStocksPage', 'Betöltési hiba:', err)
@@ -66,9 +51,31 @@ export default function CashierStocksPage() {
     }
   }, [])
 
+  // FK-002: a terület-besorolás (branch-törzsadat) betöltése KÜLÖN a fő készlet-loadtól
+  // (Copilot #730) — ne tartsa loading-ban az oldalt, és hiba esetén üríti a map-eket,
+  // hogy determinisztikusan visszaálljon a sima egy-grides nézet.
+  const loadBranchMeta = useCallback(async () => {
+    try {
+      const branches = await branchApi.listActive()
+      const meta = new Map<string, { region: string; isVault: boolean }>()
+      const vaults = new Map<string, string>()
+      for (const b of branches) {
+        meta.set(b.name, { region: b.region ?? '', isVault: b.isVault === true })
+        if (b.isVault === true && b.region && !vaults.has(b.region)) vaults.set(b.region, b.name)
+      }
+      setBranchMeta(meta)
+      setVaultByRegion(vaults)
+    } catch (branchErr) {
+      logger.warn('CashierStocksPage', 'Branch törzsadat betöltése sikertelen (területi csoportosítás kihagyva)', branchErr)
+      setBranchMeta(new Map())
+      setVaultByRegion(new Map())
+    }
+  }, [])
+
   useEffect(() => {
     void loadData()
-  }, [loadData])
+    void loadBranchMeta()
+  }, [loadData, loadBranchMeta])
 
   const filtered = useMemo(() => {
     if (!searchTerm) return items
@@ -145,7 +152,7 @@ export default function CashierStocksPage() {
               className="form-input w-full pl-10 h-8 text-sm"
             />
           </div>
-          <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
+          <button onClick={() => { void loadData(); void loadBranchMeta() }} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>

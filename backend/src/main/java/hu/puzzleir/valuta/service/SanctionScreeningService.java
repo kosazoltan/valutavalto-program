@@ -98,12 +98,14 @@ public class SanctionScreeningService {
 
         // #4 offline cache fallback: ha a helyi lista elavult/üres, a szűrés akkor is lefut
         // (cache-ből), de explicit jelezzük a degradált módot (a hívó/UI figyelmeztethet).
+        // Az aktív bejegyzések számát EGYSZER kérdezzük le (nem dupla count-query) — Copilot #729.
+        long activeCount = getActiveCount();
         Integer listAgeDays = computeSanctionListAgeDays();
-        boolean stale = isSanctionListStale(listAgeDays);
+        boolean stale = isSanctionListStale(listAgeDays, activeCount);
         if (stale) {
             log.warn("[SanctionScreening] DEGRADÁLT MÓD: a helyi szankciós lista elavult/üres "
                     + "(kor={} nap, aktív bejegyzés={}). A szűrés a cache-ből futott — frissítés szükséges!",
-                    listAgeDays, getActiveCount());
+                    listAgeDays, activeCount);
         }
 
         return SanctionScreeningResult.builder()
@@ -351,8 +353,8 @@ public class SanctionScreeningService {
      * #4: a helyi szankciós lista elavult/degradált-e — ha üres (sosem importált),
      * vagy a kora meghaladja a {@value #MAX_SANCTION_LIST_AGE_DAYS} napot.
      */
-    private boolean isSanctionListStale(Integer ageDays) {
-        if (getActiveCount() == 0) return true;
+    private boolean isSanctionListStale(Integer ageDays, long activeCount) {
+        if (activeCount == 0) return true;
         if (ageDays == null) return true;
         return ageDays > MAX_SANCTION_LIST_AGE_DAYS;
     }
