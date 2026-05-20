@@ -97,10 +97,18 @@ jobs:
             echo "$MATCHES"
           fi
 
+      - name: 14. (BLOCKING) 4-way (4+1) verzió-szinkron — release atomikusság
+        run: |
+          # VV-ELVI 11.1 / AI_CONTRACT 1.kivétel: a release KÖTELEZŐEN atomikus —
+          # az 5 package.json + backend/pom.xml verziójának egyeznie kell.
+          # A check-four-area-alignment.mjs eltérésnél exit 1 (BLOCKING).
+          # A Node a GitHub ubuntu-latest runner-en előtelepített.
+          node scripts/check-four-area-alignment.mjs
+
       - name: Sum-up
         if: success()
         run: |
-          echo "✅ Üzleti invariáns guard: blocking pattern (#1 cash counter mező) zöld."
+          echo "✅ Üzleti invariáns guard: blocking pattern (#1 cash counter mező, #14 4-way verzió-szinkron) zöld."
           echo "Warning-only minták: #2 AML magic, #3 Java test-skip, #4 multi-tenant, #5/6 state UPDATE, #7 DELETE érzékeny."
           echo ""
           echo "Roadmap (precízebb regex / AST):"
@@ -111,4 +119,4 @@ jobs:
           echo "  - #7: VOID workflow implementáció után aktívra"
           echo ""
           echo "Még implementálandó minták: #8 (központ vezérel), #9 (last-write-wins), #10 (random receipt),"
-          echo "  #11 (businessUnit), #12 (OAuth-only), #13 (secret log), #14 (4-way version drift), #15 (aggregated POST/PUT/DELETE)."
+          echo "  #11 (businessUnit), #12 (OAuth-only), #13 (secret log), #15 (aggregated POST/PUT/DELETE)."
