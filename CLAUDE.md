@@ -615,7 +615,8 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.78** (2026-05-20 — riport-suite frontend parity: 5 PR #712–#716).
+- **Verzió:** **v2.5.79** (2026-05-20 — riport-suite frontend parity: 6 PR #712–#717).
+  - **v2.5.79 (admin-merged `078e57a80`):** PR #717 — NAV adatszolgáltatás riport oldal (`NavReportPage`, 2M+ Ft NAV_THRESHOLD jelenthető tranzakciók, `navReportApi.getDaily`+`exportCsv`, route `/reports/nav`, menü "NAV adatszolgáltatás", 19 i18n kulcs). Backend `NavReportController` parity (SUPERVISOR/MANAGER/ADMIN, company-scoped). **C.24/C.25 gate:** 3 Copilot finding feldolgozva — #1 menü role-szűrés (sibling-consistent a 4 testvér riporttal, group-szintű, backend `@PreAuthorize` érvényesít → nincs változás), #2 stale report üres dátumnál (✅ javítva `67b34a73b`: `setReport(null)`), #3 5-fájl limit (dokumentált 4-way version-sync kivétel). 14/14 CI zöld. Hetzner deploy success, prod HTTP 200 HEALTHY.
   - **v2.5.78 (admin-merged `3917b5bce`):** PR #716 — Központi konszolidált riportok CSV oldal (CentralReportController daily/weekly/monthly, MANAGER/ADMIN, company-scoped) + `getBlobErrorMessage` közös util (DRY, DailyJournal migrálva). 0 inline finding.
   - **v2.5.77 (admin-merged `d8bfb6863`):** PR #715 — Napkönyv PDF letöltő oldal (DailyJournalController, NAPKONYV parity) + blob-error extract. 0 inline finding.
   - **v2.5.76 (admin-merged `57e01be68`):** PR #714 — `localIsoDate` közös util + UTC dátum off-by-one fix 7 riport-oldalon (DRY) + 4 unit teszt.
