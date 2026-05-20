@@ -94,7 +94,30 @@ public class RateTemplate {
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
+    /**
+     * Árfolyam-sablon életciklus + megengedett állapotátmenetek (state machine, VV-ELVI v2 5.2).
+     *
+     * <p>DRAFT → APPROVED | REVOKED · APPROVED → PUBLISHED | DRAFT | REVOKED ·
+     * PUBLISHED → REVOKED · REVOKED → (terminális).
+     */
     public enum RateTemplateStatus {
-        DRAFT, APPROVED, PUBLISHED, REVOKED
+        DRAFT, APPROVED, PUBLISHED, REVOKED;
+
+        public java.util.Set<RateTemplateStatus> allowedTransitions() {
+            return switch (this) {
+                case DRAFT -> java.util.EnumSet.of(APPROVED, REVOKED);
+                case APPROVED -> java.util.EnumSet.of(PUBLISHED, DRAFT, REVOKED);
+                case PUBLISHED -> java.util.EnumSet.of(REVOKED);
+                case REVOKED -> java.util.EnumSet.noneOf(RateTemplateStatus.class);
+            };
+        }
+
+        public boolean canTransitionTo(RateTemplateStatus target) {
+            return target != null && allowedTransitions().contains(target);
+        }
+
+        public boolean isTerminal() {
+            return allowedTransitions().isEmpty();
+        }
     }
 }
