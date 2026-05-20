@@ -615,7 +615,20 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.74** (2026-05-20 — P3.3 visszatérő ügyfél AML monitoring riport, backend + frontend).
+- **Verzió:** **v2.5.78** (2026-05-20 — riport-suite frontend parity: 5 PR #712–#716).
+  - **v2.5.78 (admin-merged `3917b5bce`):** PR #716 — Központi konszolidált riportok CSV oldal (CentralReportController daily/weekly/monthly, MANAGER/ADMIN, company-scoped) + `getBlobErrorMessage` közös util (DRY, DailyJournal migrálva). 0 inline finding.
+  - **v2.5.77 (admin-merged `d8bfb6863`):** PR #715 — Napkönyv PDF letöltő oldal (DailyJournalController, NAPKONYV parity) + blob-error extract. 0 inline finding.
+  - **v2.5.76 (admin-merged `57e01be68`):** PR #714 — `localIsoDate` közös util + UTC dátum off-by-one fix 7 riport-oldalon (DRY) + 4 unit teszt.
+  - **v2.5.75 (admin-merged `b665fe085`):** PR #713 — Átlag árfolyam riport frontend (ATLAGARF parity, backend PR #703) + TransactionDirection union.
+  - **v2.5.74 (admin-merged `acf8d435f`):** PR #712 — Visszatérő ügyfél AML monitoring riport (backend RecurringCustomerReportService + controller + DTO + 10 teszt + frontend). Pmt. 16. §. **C.25 gate első éles demó.**
+  - **C.25 gate eredmény:** a finding/PR arány ~3-4-ről **0-1-re** csökkent (#715, #716: 0 inline finding). Új mandate-ek: C.25 bővítés (query-sibling grep + version-sync teljes set + nem-dismiss sibling-consistency), C.26 (autonómia=belső törvény), readback condition-based.
+- **Telepítő fájlok v2.5.78 (LEGFRISSEBB, 2026-05-20 UNSIGNED build, riport-suite)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba:
+  - `Penztar-Setup-2.5.78-20260520.exe` — **282.67 MB**, SHA-256 `BA30BEC035BA1E2EDAC57C9445ADF78632D002EB6ABCFF6C05256EE46C4A52B8`
+  - `Kozponti-Iranyitokozpont-Setup-2.5.78.exe` — **101.05 MB**, SHA-256 `DC629AB5F22F212A417886D151DD779E960624850FD06F9C248AA4978FCAB2B7`
+  - `Arfolyamkeszito-Setup-2.5.78.exe` — **101.05 MB**, SHA-256 `110FE859E87FB0F4103EEFAFB384DEA911397AADD10A3569AA802D9D2A6F46B7`
+  - `Penztar-Eltavolito-2.5.73-20260520.exe` — **0.06 MB** (verzió-független NSIS uninstaller — a 2.5.73-as build az aktuális, minden verzióhoz jó)
+  - **UNSIGNED build** — DigiCert EV CS cert kiadásig SmartScreen "További információ" → "Futtatás mindenképp". A 5 új riport-feature production-on (excvaluta.com) MÁR tesztelhető (Hetzner auto-deploy minden merge után).
+- **Korábbi verzió-horgony:** v2.5.74 (PR #712) — lásd fent.
   - **v2.5.74 (admin-merged `acf8d435f`):** PR #712 — legacy `ugyfelcontrol/idoszakos` parity. `RecurringCustomerReportService` (JPQL GROUP BY customerId HAVING COUNT >= minTx, multi-tenant `company.id`, `financial_effective=TRUE`, COMPLETED, `customerId IS NOT NULL AND <> ''`) + `RecurringCustomerReportController` (`GET /api/v1/reports/recurring-customers`, @PreAuthorize compliance/vezetői, companyId SecurityUtils-ből) + `RecurringCustomerDto` + frontend `RecurringCustomerReportPage` (route `/reports/recurring-customers`, menü "Visszatérő ügyfél (AML)", 18 i18n kulcs) + 11 unit teszt. Pmt. 16. § fokozott ügyfél-átvilágítás. **C.25 gate első éles demó** (2-kör subagent review). 3 AI finding PR-en belül javítva (üres customerId `<> ''`, version-sync teljes set, AI_CONTRACT doc-kivétel). ⚠️ A C.25 subagent NEM fogta ki előre a version-sync (root+pom) hiányt és a query-szintű `<> ''`-t → C.25 checklist bővítve mindkettővel.
   - **v2.5.73 (admin-merged `e2be4d72e`):** PR #711 — DiscountApprovalController (P2-D dead-code exponálás): `GET /required-level` + `POST /validate`, null-role fallback `resolveRole()`, 15% hard-cap `exceedsMaxCap`.
   - **🚨 v2.5.72 HOTFIX (admin-merged `24851fbfa`):** PR #709 — KRITIKUS production outage fix. PR #649 `V234__branch_workgroup_...sql` collision a meglévő `V234__audit_log_immutable_hash_chain.sql`-lel → Flyway dup-version → Hetzner deploy FAIL → HTTP 502 (~15 perc). Fix: rename V234→V242. Future-defense PR #710: deploy pre-flight Flyway dup-version guard.
