@@ -26,5 +26,11 @@ public class CentralReceivedDataOverviewDto {
     private BigDecimal totalFeeHuf;
     private BigDecimal totalProfit;
     private LocalDateTime generatedAt;
+    /**
+     * A legfrissebb átvett branch-adat időpontja (submittedAt elsőbbség, fallback reportCreatedAt).
+     * null, ha egyetlen branch sem küldött még adatot az adott napra. A frontend frissesség-badge
+     * forrása (VV-ELVI 6. — "központ aggregál, nem vezérel": az adat frissessége explicit látható).
+     */
+    private LocalDateTime lastSyncedAt;
     private List<CentralReceivedDataRowDto> rows;
 }

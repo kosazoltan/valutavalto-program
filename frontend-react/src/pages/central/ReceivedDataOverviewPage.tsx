@@ -185,6 +185,20 @@ export default function ReceivedDataOverviewPage() {
             <div>
               <h1 className="text-lg font-semibold text-slate-900">Beérkezett adatok áttekintése</h1>
               <div className="text-xs text-slate-500">Pénztári adatcsomagok beérkezésének áttekintése</div>
+              {overview?.lastSyncedAt ? (
+                <div
+                  className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"
+                  title="A legfrissebb átvett pénztári adat időpontja"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+                  Utolsó adatfrissülés: {formatDateTime(overview.lastSyncedAt)}
+                </div>
+              ) : (
+                <div className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden />
+                  Nincs még beérkezett adat
+                </div>
+              )}
             </div>
           </div>
           <div className="flex gap-2">

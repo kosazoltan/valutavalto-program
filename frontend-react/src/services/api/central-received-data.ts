@@ -42,6 +42,8 @@ export interface CentralReceivedDataOverview {
   totalFeeHuf: number
   totalProfit: number
   generatedAt: string
+  /** A legfrissebb átvett branch-adat ideje (null, ha még egyik branch sem küldött adatot). */
+  lastSyncedAt: string | null
   rows: CentralReceivedDataRow[]
 }
 

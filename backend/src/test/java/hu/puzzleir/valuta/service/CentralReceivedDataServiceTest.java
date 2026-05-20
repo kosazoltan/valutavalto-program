@@ -111,6 +111,50 @@ class CentralReceivedDataServiceTest {
         assertTrue(missingRow.getClosingControlMissing());
     }
 
+    @Test
+    @DisplayName("overview lastSyncedAt = legfrissebb átvett report ideje (submittedAt elsőbbség, fallback createdAt)")
+    void overview_computesLastSyncedAtFromMostRecentReport() {
+        LocalDate date = LocalDate.now().minusDays(1);
+        Branch b1 = branch(UUID.randomUUID(), "BP01", "Budapest 01");
+        Branch b2 = branch(UUID.randomUUID(), "BP02", "Budapest 02");
+        Branch b3 = branch(UUID.randomUUID(), "BP03", "Budapest 03");
+
+        java.time.LocalDateTime older = date.atTime(9, 0);
+        java.time.LocalDateTime newest = date.atTime(17, 30);
+
+        // b1: submittedAt = older
+        DailyReport r1 = DailyReport.builder().id(1L).branch(b1).reportDate(date)
+                .submitted(true).submittedAt(older).createdAt(date.atTime(8, 0)).build();
+        // b2: nem submittelt, csak createdAt = newest (fallback ág)
+        DailyReport r2 = DailyReport.builder().id(2L).branch(b2).reportDate(date)
+                .submitted(false).submittedAt(null).createdAt(newest).build();
+        // b3: nincs report (missing) → nem számít bele
+
+        when(dailyReportRepository.findByCompanyIdAndReportDate(companyId, date)).thenReturn(List.of(r1, r2));
+        when(closingControlRepository.findByCompanyIdAndControlDate(companyId, date)).thenReturn(List.of());
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(companyId)).thenReturn(List.of(b1, b2, b3));
+
+        CentralReceivedDataOverviewDto overview = service.getOverview(date);
+
+        assertEquals(newest, overview.getLastSyncedAt(),
+                "lastSyncedAt a legfrissebb átvett adat ideje (b2 createdAt fallback = 17:30)");
+    }
+
+    @Test
+    @DisplayName("overview lastSyncedAt = null ha egyetlen branch sem küldött adatot")
+    void overview_lastSyncedAtNullWhenNoReports() {
+        LocalDate date = LocalDate.now().minusDays(1);
+        Branch b1 = branch(UUID.randomUUID(), "BP01", "Budapest 01");
+
+        when(dailyReportRepository.findByCompanyIdAndReportDate(companyId, date)).thenReturn(List.of());
+        when(closingControlRepository.findByCompanyIdAndControlDate(companyId, date)).thenReturn(List.of());
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(companyId)).thenReturn(List.of(b1));
+
+        CentralReceivedDataOverviewDto overview = service.getOverview(date);
+
+        org.junit.jupiter.api.Assertions.assertNull(overview.getLastSyncedAt());
+    }
+
     private Branch branch(UUID id, String code, String name) {
         return Branch.builder()
                 .id(id)
