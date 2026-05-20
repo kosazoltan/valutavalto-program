@@ -40,6 +40,7 @@ export default function NavReportPage() {
   const handleQuery = useCallback(async () => {
     if (!date) {
       setError(t('reports.navReport.errors.noDate'))
+      setReport(null)
       return
     }
     setLoading(true)
