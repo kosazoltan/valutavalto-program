@@ -36,7 +36,7 @@
 | NAV NPG real-time | 9.4 | PARTIAL | `service/NavService.java` (verify) | — | fallback offline bizonylat |
 | SAR webhook | 9.1 | BLOCKED | `service/AmlService.java` (`suspiciousFlag` kész) | — | nincs definiált értesítési cél-URL/auth és a kódban semmilyen webhook/HTTP-notify infra — **üzleti input kell** (cél-endpoint + hitelesítés) mielőtt értelmesen megépíthető |
 | Code-signing signed-only | 11. | BLOCKED | `windows-signed-release.yml` | smoke (TERVEZETT) | DigiCert HSM cert kiadás ~2026-05-21 |
-| 4-way version sync | 11.1 | MISSING | — | — | `business-invariant-guard.yml` CI step |
+| 4-way version sync | 11.1 | IMPLEMENTED | `business-invariant-guard.yml` #14 (BLOCKING) → `scripts/check-four-area-alignment.mjs` | CI gate (PR-en fut) | release-atomikusság: 5 package.json + pom.xml verzió eltérésnél exit 1 |
 | Multi-tenant izoláció | 3. | IMPLEMENTED | `*Repository.java` (companyId minden query-n) | `CrossTenantTest` (TERVEZETT) | teszt-coverage |
 | TransactionStatus enum | v2 5.1 | MISSING | — | — | enum + state machine |
 | RateStatus enum | v2 5.2 | MISSING | — | — | enum + state machine |
