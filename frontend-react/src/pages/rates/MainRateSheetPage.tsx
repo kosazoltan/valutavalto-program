@@ -8,6 +8,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { exchangeRateMasterApi, type ExchangeRateMaster, type CreateMasterRateRequest } from '../../services/api/exchangeRateMaster'
 import { currencyApi } from '../../services/api/exchange-rates'
 import CurrencyManagerModal from './components/CurrencyManagerModal'
+import { computeCrossSettlement, resolveSettlement } from './mainSheetRules'
 
 /**
  * Főlap (0-s lap) — Árfolyamkészítő program ALAP felülete.
@@ -53,6 +54,7 @@ interface MainRateRow {
   crossRate: number        // H oszlop (kereszt forrás, 6 tizedes)
   wholesale: number        // I oszlop (Nagybani)
   crossBase: 'EUR' | 'USD' | null  // melyik főváluta a kereszt alapja (NULL ha nem kereszt)
+  settlementManual?: boolean // 2026-05-20: kereszt-valutánál is kézzel felülírható az A (true=kézi, A=G auto ha false)
 }
 
 // v2.5.61 (2026-05-19 user-direktíva): 6 valuta törölve a Főlapról
@@ -155,21 +157,7 @@ function loadFormulasFromStorage(): FormulaMap {
   }
 }
 
-/**
- * G oszlop számítás: kereszt árfolyam alapú elszámoló.
- *
- * <p>Példa CZK: H oszlop / EUR A oszlop értéke (ezzel ha az EUR elszámoló változik,
- * a CZK G oszlopa követi a változást, és onnan az A-ba kerül).</p>
- */
-function computeCrossSettlement(row: MainRateRow, eurSettlement: number, usdSettlement: number): number {
-  if (!row.crossBase || !row.crossRate) return 0
-  const base = row.crossBase === 'EUR' ? eurSettlement : usdSettlement
-  if (!base) return 0
-  // Spec: A oszlop = H oszlop / A oszlop EUR (vagy USD) értéke
-  // Pontosabban: a base elszámoló * 1 egység más-valuta = base / crossRate
-  // Pl. EUR=400, EUR/CZK kereszt = 24.5 → CZK A = 400/24.5 = 16.32
-  return base / row.crossRate
-}
+// G oszlop kereszt-számítás + A oszlop feloldás → ./mainSheetRules (pure, tesztelt).
 
 export default function MainRateSheetPage() {
   const navigate = useNavigate()
@@ -210,18 +198,16 @@ export default function MainRateSheetPage() {
   const eurSettlement = eurRow?.settlement ?? 0
   const usdSettlement = usdRow?.settlement ?? 0
 
-  // Codex P1 #581 fix: A oszlop érték crossBase-row-okra automatikusan a G oszlopból
-  // (computeCrossSettlement) — spec szerint "A többi valuta elszámoló árfolyama a 'G'
-  // oszlopban szereplő érték (képletes számítással)". A user által beállított settlement
-  // értéket figyelmen kívül hagyjuk crossBase row esetén.
+  // 2026-05-20 (Kósa Zoltán): a G (kereszt-számolt) MARAD auto (kézzel nem felülírható),
+  // az A (settlement) viszont kézzel felülírható kereszt-valutánál is — resolveSettlement
+  // dönti el: kézi felülírás → a beírt érték, egyébként → a G auto-érték.
   const enrichedRows = useMemo<MainRateRow[]>(() => {
     return rows.map((r) => {
       const computedG = r.crossBase ? computeCrossSettlement(r, eurSettlement, usdSettlement) : 0
       return {
         ...r,
         crossSettlement: computedG,
-        // A column auto-derive cross-base row-okra (spec §3 "G oszlop értékei módosítás nélkül A-ba kerülnek")
-        settlement: r.crossBase ? computedG : r.settlement,
+        settlement: resolveSettlement(r, eurSettlement, usdSettlement),
       }
     })
   }, [rows, eurSettlement, usdSettlement])
@@ -270,8 +256,9 @@ export default function MainRateSheetPage() {
     // esetén.
     const sourceRows = rows.map((r) => {
       if (!r.crossBase) return r
-      const derivedSettlement = computeCrossSettlement(r, eurSettlement, usdSettlement)
-      return { ...r, settlement: derivedSettlement, crossSettlement: derivedSettlement }
+      // G mindig a kereszt-számolt érték; A a resolveSettlement (kézi felülírás vagy auto=G).
+      const crossG = computeCrossSettlement(r, eurSettlement, usdSettlement)
+      return { ...r, settlement: resolveSettlement(r, eurSettlement, usdSettlement), crossSettlement: crossG }
     })
     const data: (string | number | null)[][] = sourceRows.map((row, idx) => {
       const formulaCell = (col: FormulaColumn, fallback: number): string | number =>
@@ -340,8 +327,9 @@ export default function MainRateSheetPage() {
     raw: string,
   ): MainRateRow[] | null => {
     if (col === 'currency' || col === 'crossBase' || col === 'crossSettlement') return null
-    if (col === 'settlement' && currentRows[rowIdx]?.crossBase) return null
+    // 2026-05-20: az A (settlement) kereszt-valutánál is szerkeszthető (settlementManual jelöléssel).
     const trimmed = raw.trim()
+    const isCrossSettlement = col === 'settlement' && !!currentRows[rowIdx]?.crossBase
 
     // v2.5.61 (HyperFormula): "=" prefix-szel kezdődő input → képlet.
     const formulaKey = `${rowIdx}.${col}`
@@ -380,7 +368,7 @@ export default function MainRateSheetPage() {
         }
       }
       const next = [...currentRows]
-      next[rowIdx] = { ...next[rowIdx]!, [col]: evaluated }
+      next[rowIdx] = { ...next[rowIdx]!, [col]: evaluated, ...(isCrossSettlement ? { settlementManual: true } : {}) }
       return next
     }
     // Ha korábban képlet volt itt, de most fix számot ad meg a user, töröljük
@@ -394,6 +382,12 @@ export default function MainRateSheetPage() {
     }
 
     let nextValue: number
+    // Kereszt-valuta A oszlop: üres beírás → vissza auto módba (settlementManual=false, A=G).
+    if (isCrossSettlement && trimmed === '') {
+      const next = [...currentRows]
+      next[rowIdx] = { ...next[rowIdx]!, settlementManual: false }
+      return next
+    }
     if (trimmed === '') {
       nextValue = 0
     } else {
@@ -402,10 +396,10 @@ export default function MainRateSheetPage() {
       nextValue = parsed
     }
     const currentValue = currentRows[rowIdx]?.[col]
-    // Codex P2 #581 iter-3: no-op ha érték nem változott
-    if (typeof currentValue === 'number' && currentValue === nextValue) return null
+    // Codex P2 #581 iter-3: no-op ha érték nem változott (kereszt-A-nál a manual-flag flip miatt nem skippelünk).
+    if (!isCrossSettlement && typeof currentValue === 'number' && currentValue === nextValue) return null
     const next = [...currentRows]
-    next[rowIdx] = { ...next[rowIdx]!, [col]: nextValue }
+    next[rowIdx] = { ...next[rowIdx]!, [col]: nextValue, ...(isCrossSettlement ? { settlementManual: true } : {}) }
     return next
   }, [formulas])
 
@@ -642,10 +636,8 @@ export default function MainRateSheetPage() {
 
     const modifiedRows = rowsToDispatch.flatMap((r) => {
       if (r.weakMultiBuy <= 0 || r.weakMultiSell <= 0) return []
-      // Cross-rate row: settlement a G oszlop szamitott ertekebol jon
-      const effectiveSettlement = r.crossBase
-        ? computeCrossSettlement(r, eurS, usdS)
-        : r.settlement
+      // A oszlop tényleges értéke: kézi felülírás → beírt érték, egyébként a G auto-érték.
+      const effectiveSettlement = resolveSettlement(r, eurS, usdS)
       const snap = snapshot.get(r.currency)
       // Ha nincs szerver-snapshot, MINDIG kuldjuk (uj valuta)
       // Ha van, csak akkor kuldjuk ha mod-detected (abs delta > 0.0001)
@@ -866,7 +858,9 @@ export default function MainRateSheetPage() {
           <tbody>
             {enrichedRows.map((row, idx) => {
               const decimals = isJpy(row.currency) ? 3 : 2
-              const aIsAuto = !!row.crossBase
+              // 2026-05-20: kereszt-valuta A oszlopa AUTO (G-ből), amíg kézzel nem írják felül.
+              // Az A MINDIG szerkeszthető; az auto-állapot csak vizuális jelzés.
+              const aIsAutoCross = !!row.crossBase && !row.settlementManual
               const isActive = (col: keyof MainRateRow) => activeCell?.rowIdx === idx && activeCell.col === col
               const cellClass = (col: keyof MainRateRow, baseClass: string) =>
                 `${baseClass} ${isActive(col) ? 'ring-2 ring-blue-500' : ''}`
@@ -886,13 +880,12 @@ export default function MainRateSheetPage() {
               )
               return (
                 <tr key={row.currency} className="hover:bg-slate-50">
-                  {/* A — Elszámoló (piros, módosítható HA NEM cross-base) */}
-                  <td className={cellClass('settlement', `border border-slate-300 px-2 py-1 text-right font-mono font-bold ${aIsAuto ? 'text-amber-700 bg-amber-50/40 italic' : 'text-red-700 bg-orange-50/50'}`)}>
-                    {aIsAuto ? (
-                      <span title="Auto-derived from G column (cross calculation)">
-                        {formatCell(row.settlement, decimals)}
-                      </span>
-                    ) : renderInput('settlement', row.settlement, decimals, 'w-full bg-transparent text-right font-mono font-bold text-red-700 focus:outline-none')}
+                  {/* A — Elszámoló (MINDIG szerkeszthető; kereszt-valutánál auto=G amíg nem írják felül) */}
+                  <td
+                    className={cellClass('settlement', `border border-slate-300 px-2 py-1 text-right font-mono font-bold ${aIsAutoCross ? 'text-amber-700 bg-amber-50/40' : 'text-red-700 bg-orange-50/50'}`)}
+                    title={aIsAutoCross ? 'Auto (G kereszt-számolt). Írj be értéket a kézi felülíráshoz; üres = vissza auto.' : undefined}
+                  >
+                    {renderInput('settlement', row.settlement, decimals, `w-full bg-transparent text-right font-mono font-bold focus:outline-none ${aIsAutoCross ? 'text-amber-700 italic' : 'text-red-700'}`)}
                   </td>
                   {/* B — OTP (kék segéd) */}
                   <td className={cellClass('otp', 'border border-slate-300 px-2 py-1 text-right font-mono text-blue-800 bg-blue-50/30')}>
