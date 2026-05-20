@@ -46,11 +46,12 @@ talált hibák alapján) — MINDEN ÚJ metódus/endpoint/query-nél ellenőrizn
 
 - [ ] **Null-safety**: minden új paraméter null-check VAGY dokumentált non-null garancia
 - [ ] **Multi-tenant**: minden új query company-scope-olt (B.3 mandate) — `SecurityUtils.getCurrentCompanyId()` vagy Branch FK
-- [ ] **Sibling-konzisztencia**: ha 2+ kapcsolódó metódus/endpoint van (pl. required-level + validate), MINDEGYIK ugyanazt a szabályt alkalmazza (cap, threshold, role-mapping)
+- [ ] **Sibling-konzisztencia (metódus)**: ha 2+ kapcsolódó metódus/endpoint van (pl. required-level + validate), MINDEGYIK ugyanazt a szabályt alkalmazza (cap, threshold, role-mapping)
+- [ ] **Sibling-konzisztencia (QUERY)** ⭐ÚJ (PR #712): MINDEN új JPQL/SQL query-nél `grep` a meglévő hasonló query-kre (pl. AML/riport query-k a `TransactionRepository`-ban) — keresd az EXTRA szűrőket amiket ott alkalmaznak (`customerId <> ''`, `status = COMPLETED`, `financialEffective = TRUE`). A `IS NOT NULL` ÖNMAGÁBAN nem elég, ha a sibling `<> ''`-t is tesz.
 - [ ] **Hard cap / threshold**: ha van rendszer-szintű limit (pl. 15% discount cap), MINDEN releváns út enforce-olja
 - [ ] **Test coverage**: MINDEN új code-branch (if/else, switch-ág, exception path) van teszttel fedve
 - [ ] **BigDecimal**: scale/null/precision (HUF 5 Ft kerekítés)
-- [ ] **Version sync**: 4-way (5 package.json + 5 lockfile + backend pom) ha release
+- [ ] **Version sync (TELJES set)** ⭐ÚJ (PR #712): NEM csak a 4 kliens! A `check-four-area-alignment.mjs` a **ROOT `package.json`**-t is olvassa. Bumpold: ROOT package.json + ROOT package-lock.json + backend/pom.xml (artifact `<version>` a ~20. sor) + 4 kliens package.json + 4 kliens lockfile. Majd `node scripts/check-four-area-alignment.mjs` LOKÁLISAN (exit 0 kell) MIELŐTT pusholsz.
 - [ ] **Flyway**: új migration version UNIQUE (a V234-collision outage után!)
 - [ ] **CodeQL log-injection**: user-input a logban → sanitizeForLog
 - [ ] **financial_effective**: riport/aggregáció query-ben `financialEffective=TRUE` (CONVERSION parent kizárás)

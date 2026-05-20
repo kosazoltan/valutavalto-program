@@ -1332,6 +1332,33 @@
         "atadott": "ATADOTT"
       }
     },
+    "recurringCustomer": {
+      "title": "Visszatérő ügyfél monitoring (AML)",
+      "subtitle": "Pmt. 16. § — fokozott ügyfél-átvilágítás jelölthöz",
+      "from": "Tól",
+      "to": "Ig",
+      "minTransactions": "Min. tranzakció",
+      "submit": "Lekérdezés",
+      "loading": "Betöltés...",
+      "emptyState": "Adja meg az időszakot és a küszöböt, majd kattintson a Lekérdezésre.",
+      "noResult": "Az időszakban senki nem érte el a {{count}} tranzakciós küszöböt.",
+      "errors": {
+        "noDateRange": "Adja meg az időszak kezdő- és záró dátumát.",
+        "minTooLow": "A küszöb legalább 2 kell legyen (visszatérő = 2+ alkalom)."
+      },
+      "summary": {
+        "customers": "Visszatérő ügyfél",
+        "totalTransactions": "Összes tranzakció",
+        "totalHuf": "Összes HUF forgalom"
+      },
+      "table": {
+        "customerId": "Ügyfél-azonosító",
+        "customerName": "Név",
+        "transactionCount": "Tranzakció",
+        "totalHuf": "HUF forgalom",
+        "period": "Időszak"
+      }
+    },
     "cashierTurnover": {
       "title": "Pénztáros forgalmi riport",
       "from": "Tól",
