@@ -1332,6 +1332,34 @@
         "atadott": "ATADOTT"
       }
     },
+    "navReport": {
+      "title": "NAV adatszolgáltatás (2M+ Ft)",
+      "subtitle": "Jelenthető tranzakciók a NAV felé — fokozott küszöb feletti",
+      "date": "Dátum",
+      "submit": "Lekérdezés",
+      "loading": "Betöltés...",
+      "exportCsv": "CSV export",
+      "exporting": "Exportálás...",
+      "emptyState": "Adja meg a dátumot, majd kattintson a Lekérdezésre.",
+      "noResult": "Ezen a napon nincs NAV-jelenthető (2M+ Ft) tranzakció.",
+      "errors": {
+        "noDate": "Adja meg a dátumot."
+      },
+      "summary": {
+        "count": "Jelenthető tranzakció",
+        "totalHuf": "Összes HUF érték"
+      },
+      "table": {
+        "receipt": "Bizonylat",
+        "time": "Idő",
+        "type": "Típus",
+        "currency": "Valuta",
+        "amount": "Összeg",
+        "huf": "HUF",
+        "customer": "Ügyfél",
+        "document": "Okmányszám"
+      }
+    },
     "centralReports": {
       "title": "Központi konszolidált riportok",
       "subtitle": "Cég-szintű napi / heti / havi összesítő CSV (vezetői)",
