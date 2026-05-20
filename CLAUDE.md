@@ -638,12 +638,12 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
   - **v2.5.75 (admin-merged `b665fe085`):** PR #713 — Átlag árfolyam riport frontend (ATLAGARF parity, backend PR #703) + TransactionDirection union.
   - **v2.5.74 (admin-merged `acf8d435f`):** PR #712 — Visszatérő ügyfél AML monitoring riport (backend RecurringCustomerReportService + controller + DTO + 10 teszt + frontend). Pmt. 16. §. **C.25 gate első éles demó.**
   - **C.25 gate eredmény:** a finding/PR arány ~3-4-ről **0-1-re** csökkent (#715, #716: 0 inline finding). Új mandate-ek: C.25 bővítés (query-sibling grep + version-sync teljes set + nem-dismiss sibling-consistency), C.26 (autonómia=belső törvény), readback condition-based.
-- **Telepítő fájlok v2.5.83 (LEGFRISSEBB, 2026-05-20 UNSIGNED build, átadás-átvétel fix + capability-features)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba. **Ezt kapja a tesztelő** (a "nincs javulás" oka a régi v2.5.53 telepített verzió volt):
-  - `Penztar-Setup-2.5.83-20260520.exe` — **282.66 MB**, SHA-256 `19BB6FFD94AD66D343C3F660E7F1035165537F28E6A570D0BF252466106BD2FE`
-  - `Kozponti-Iranyitokozpont-Setup-2.5.83.exe` — **101.05 MB**, SHA-256 `49F880472E566BD19C12DDE86EE3985E9B2F7201F7F1DCC27789366707B13DDE`
-  - `Arfolyamkeszito-Setup-2.5.83.exe` — **101.05 MB**, SHA-256 `A7F8C7FE4C0CDDCB3B4C9C18D0E72BCB196FC1034B0A9317621AD567B4F0289C`
+- **Telepítő fájlok v2.5.94 (LEGFRISSEBB, 2026-05-20 UNSIGNED build, teljes átadás-átvétel + hiány/többlet PIN + multi-valuta + Főlap A-oszlop + Országos készlet)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba. **Ezt kapja a tesztelő** (a "nincs javulás" oka a régi v2.5.53 telepített verzió volt):
+  - `Penztar-Setup-2.5.94-20260520.exe` — **282.71 MB**, SHA-256 `3CA4CB01C623FFB16E373EB60712A33CA2A58A244AEA64F9CBE238DEF30FCE04`
+  - `Kozponti-Iranyitokozpont-Setup-2.5.94.exe` — **101.05 MB**, SHA-256 `B3D67C679C64DD21BA287E8AB0633D0CC038E07FEEE4F3B07256560BA3CF89C5`
+  - `Arfolyamkeszito-Setup-2.5.94.exe` — **101.05 MB**, SHA-256 `DF943C2F3B2479F41D706C460ABB1AB1EC56D0C0E59621F85813A94A8A2B232C`
   - `Penztar-Eltavolito-2.5.73-20260520.exe` — **0.06 MB** (verzió-független NSIS uninstaller), SHA-256 `768CE79C93DC0CB06A2D47FEDCDBCED2DC8742221AA06FA828170C70DA5158E2`
-  - Korábbi szet v2.5.79: Penztar `97D6153A…E44D97`, Kozponti `99B2582A…CE6B5`, Arfolyam `D9312DB2…2480D6`.
+  - Korábbi szet v2.5.83: Penztar `19BB6FFD…06BD2FE`, Kozponti `49F88047…07B13DDE`, Arfolyam `A7F8C7FE…B4F0289C`.
   - **UNSIGNED build** (`ALLOW_UNSIGNED_BUILD=1`) — DigiCert EV CS cert kiadásig SmartScreen "További információ" → "Futtatás mindenképp". A NAV riport + 5 korábbi riport-feature production-on (excvaluta.com) MÁR tesztelhető (Hetzner auto-deploy minden merge után).
 - **Korábbi telepítő-szet v2.5.78 (2026-05-20):** Penztar SHA-256 `BA30BEC035BA1E2EDAC57C9445ADF78632D002EB6ABCFF6C05256EE46C4A52B8`, Kozponti `DC629AB5F22F212A417886D151DD779E960624850FD06F9C248AA4978FCAB2B7`, Arfolyam `110FE859E87FB0F4103EEFAFB384DEA911397AADD10A3569AA802D9D2A6F46B7`.
 - **Korábbi verzió-horgony:** v2.5.74 (PR #712) — lásd fent.
