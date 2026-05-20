@@ -31,10 +31,10 @@
 | RFM spread-kapu (5%) | 7.2/4 | IMPLEMENTED | `service/RateSpreadGate.java` (egzakt kereszt-szorzás, bekötve `RateCreationService.publishGroupRateInternal`) | `RateSpreadGateTest` (8 eset) | v2.5.81: (sell−buy)/reference ≤ 5%, official/mid fallback |
 | Központ aggregál, nem vezérel | 6. | PARTIAL | `kozponti-client/controller/*` (verify) | — | debt-scan szabály kell |
 | `lastSyncedAt` minden aggregáción | 6. | PARTIAL | `CentralReceivedDataOverviewDto.lastSyncedAt` + `ReceivedDataOverviewPage` badge | `CentralReceivedDataServiceTest` | v2.5.80: ELSŐ surface (központi átvett-adat) kész; további aggregációk (Treasury, Region) hátravan |
-| MNB 14:30 cron | 9.3 | MISSING | — | manuális | `mnb-publish.sh` script |
-| NGM havi export | 9.2 | MISSING | — | manuális | `ngm-monthly-export.sh` script |
+| MNB 14:30 cron | 9.3 | IMPLEMENTED | `config/MnbDailyReportScheduler.java` (in-app `@Scheduled` 14:30 MON-FRI) | `MnbDailyReportSchedulerTest` (2 eset) | munkanapokon 14:30 generál napi DRAFT-ot minden aktív irodához (skip-if-exists); beküldés marad emberi (`/submit`) |
+| NGM havi export | 9.2 | BLOCKED | — | manuális | a havi PTGSZLAH XML on-demand kész (`NavClosingController /ptgszlah/monthly`); automatizáláshoz **kézbesítési cél hiányzik** (hova/hogyan, auth) — üzleti input kell |
 | NAV NPG real-time | 9.4 | PARTIAL | `service/NavService.java` (verify) | — | fallback offline bizonylat |
-| SAR webhook | 9.1 | MISSING | — | — | `sar-notify.sh` webhook |
+| SAR webhook | 9.1 | BLOCKED | `service/AmlService.java` (`suspiciousFlag` kész) | — | nincs definiált értesítési cél-URL/auth és a kódban semmilyen webhook/HTTP-notify infra — **üzleti input kell** (cél-endpoint + hitelesítés) mielőtt értelmesen megépíthető |
 | Code-signing signed-only | 11. | BLOCKED | `windows-signed-release.yml` | smoke (TERVEZETT) | DigiCert HSM cert kiadás ~2026-05-21 |
 | 4-way version sync | 11.1 | MISSING | — | — | `business-invariant-guard.yml` CI step |
 | Multi-tenant izoláció | 3. | IMPLEMENTED | `*Repository.java` (companyId minden query-n) | `CrossTenantTest` (TERVEZETT) | teszt-coverage |
