@@ -1,10 +1,12 @@
 package hu.puzzleir.valuta.dto.transfer;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class CreateTransferDto {
@@ -13,6 +15,13 @@ public class CreateTransferDto {
     @NotNull @Positive private BigDecimal amount;
     private BigDecimal hufValue;
     @NotNull private String transferType;
+    /**
+     * Több-valutás átadólap sorai (#6). Ha kitöltött (≥1 sor), az átadás multi-line:
+     * a fenti currencyId/amount az ELSŐ sort tükrözi, a cash-balance soronként könyvel.
+     * Üres/null esetén a hagyományos egy-valutás viselkedés.
+     */
+    @Valid
+    private List<TransferLineDto> lines;
     /** Átadás iránya: F, U, UF, FF (default: UF) */
     @Pattern(regexp = "^(F|U|UF|FF)$", message = "Az irány csak F, U, UF vagy FF lehet!")
     private String direction;
