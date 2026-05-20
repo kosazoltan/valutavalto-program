@@ -615,7 +615,11 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.79** (2026-05-20 — riport-suite frontend parity: 6 PR #712–#717).
+- **Verzió:** **v2.5.83** (2026-05-20 — capability-features [#718–#720] + átadás-átvétel fix [#721]).
+  - **v2.5.83 (admin-merged `ab33e5d31`):** PR #721 — Átadás-átvétel tesztelői fix (pénztár+értéktár): típus-label iránynak megfelelően (átadás/átvétel), pénztárnál csak FT/valuta/kez.ktg (nincs értéktári feltöltés), FT→csak HUF, valuta→nincs HUF, kötelező szállító+plomba. `transferRules.ts` helper + 12 teszt. ⚠️ HÁTRALÉVŐ: #1 branch-szűrés (azonosítási szabály kell), #6 multi-valuta, #8 átvétel→készlet + Electron carrier/seal perzisztencia (a saveAndSyncPendingTransfer nem viszi tovább — natív+DB követő-PR).
+  - **v2.5.82 (admin-merged `c897b42d4`):** PR #720 — SAR auto-flag invariáns-teszt (`SarAutoFlagTest`, napi 900k küszöb) + AmlService customerId isBlank hardening + CAPABILITIES.md sync.
+  - **v2.5.81 (admin-merged `1e60d9679`):** PR #719 — RFM spread-kapu (5%) üzleti invariáns (`RateSpreadGate`, egzakt kereszt-szorzás) + `SpreadGateTest` 8 eset.
+  - **v2.5.80 (admin-merged `9343942b0`):** PR #718 — `lastSyncedAt` adatfrissesség-badge a központi átvett-adat nézeten (DTO+service+badge+teszt).
   - **v2.5.79 (admin-merged `078e57a80`):** PR #717 — NAV adatszolgáltatás riport oldal (`NavReportPage`, 2M+ Ft NAV_THRESHOLD jelenthető tranzakciók, `navReportApi.getDaily`+`exportCsv`, route `/reports/nav`, menü "NAV adatszolgáltatás", 19 i18n kulcs). Backend `NavReportController` parity (SUPERVISOR/MANAGER/ADMIN, company-scoped). **C.24/C.25 gate:** 3 Copilot finding feldolgozva — #1 menü role-szűrés (sibling-consistent a 4 testvér riporttal, group-szintű, backend `@PreAuthorize` érvényesít → nincs változás), #2 stale report üres dátumnál (✅ javítva `67b34a73b`: `setReport(null)`), #3 5-fájl limit (dokumentált 4-way version-sync kivétel). 14/14 CI zöld. Hetzner deploy success, prod HTTP 200 HEALTHY.
   - **v2.5.78 (admin-merged `3917b5bce`):** PR #716 — Központi konszolidált riportok CSV oldal (CentralReportController daily/weekly/monthly, MANAGER/ADMIN, company-scoped) + `getBlobErrorMessage` közös util (DRY, DailyJournal migrálva). 0 inline finding.
   - **v2.5.77 (admin-merged `d8bfb6863`):** PR #715 — Napkönyv PDF letöltő oldal (DailyJournalController, NAPKONYV parity) + blob-error extract. 0 inline finding.
@@ -623,11 +627,12 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
   - **v2.5.75 (admin-merged `b665fe085`):** PR #713 — Átlag árfolyam riport frontend (ATLAGARF parity, backend PR #703) + TransactionDirection union.
   - **v2.5.74 (admin-merged `acf8d435f`):** PR #712 — Visszatérő ügyfél AML monitoring riport (backend RecurringCustomerReportService + controller + DTO + 10 teszt + frontend). Pmt. 16. §. **C.25 gate első éles demó.**
   - **C.25 gate eredmény:** a finding/PR arány ~3-4-ről **0-1-re** csökkent (#715, #716: 0 inline finding). Új mandate-ek: C.25 bővítés (query-sibling grep + version-sync teljes set + nem-dismiss sibling-consistency), C.26 (autonómia=belső törvény), readback condition-based.
-- **Telepítő fájlok v2.5.79 (LEGFRISSEBB, 2026-05-20 UNSIGNED build, NAV riport + riport-suite)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba:
-  - `Penztar-Setup-2.5.79-20260520.exe` — **282.64 MB**, SHA-256 `97D6153A1E047DF53ED35D909FD9F4445FBB08B0F8494CE505671F5BAFE44D97`
-  - `Kozponti-Iranyitokozpont-Setup-2.5.79.exe` — **101.05 MB**, SHA-256 `99B2582A9BB6CC82E83C2C9A787A9CB2A41CB3D885320CAEAC260D7B2DFCE6B5`
-  - `Arfolyamkeszito-Setup-2.5.79.exe` — **101.05 MB**, SHA-256 `D9312DB234BF21F4CEC006B0E0A19049F2628F7000BE6710A60AF8F15C2480D6`
-  - `Penztar-Eltavolito-2.5.73-20260520.exe` — **0.06 MB** (verzió-független NSIS uninstaller — a 2.5.73-as build az aktuális, minden verzióhoz jó), SHA-256 `768CE79C93DC0CB06A2D47FEDCDBCED2DC8742221AA06FA828170C70DA5158E2`
+- **Telepítő fájlok v2.5.83 (LEGFRISSEBB, 2026-05-20 UNSIGNED build, átadás-átvétel fix + capability-features)** — `installer/build/` + `kozponti-client/release/` + `arfolyam-keszito-client/release/` + másolva `%USERPROFILE%\Downloads\`-ba. **Ezt kapja a tesztelő** (a "nincs javulás" oka a régi v2.5.53 telepített verzió volt):
+  - `Penztar-Setup-2.5.83-20260520.exe` — **282.66 MB**, SHA-256 `19BB6FFD94AD66D343C3F660E7F1035165537F28E6A570D0BF252466106BD2FE`
+  - `Kozponti-Iranyitokozpont-Setup-2.5.83.exe` — **101.05 MB**, SHA-256 `49F880472E566BD19C12DDE86EE3985E9B2F7201F7F1DCC27789366707B13DDE`
+  - `Arfolyamkeszito-Setup-2.5.83.exe` — **101.05 MB**, SHA-256 `A7F8C7FE4C0CDDCB3B4C9C18D0E72BCB196FC1034B0A9317621AD567B4F0289C`
+  - `Penztar-Eltavolito-2.5.73-20260520.exe` — **0.06 MB** (verzió-független NSIS uninstaller), SHA-256 `768CE79C93DC0CB06A2D47FEDCDBCED2DC8742221AA06FA828170C70DA5158E2`
+  - Korábbi szet v2.5.79: Penztar `97D6153A…E44D97`, Kozponti `99B2582A…CE6B5`, Arfolyam `D9312DB2…2480D6`.
   - **UNSIGNED build** (`ALLOW_UNSIGNED_BUILD=1`) — DigiCert EV CS cert kiadásig SmartScreen "További információ" → "Futtatás mindenképp". A NAV riport + 5 korábbi riport-feature production-on (excvaluta.com) MÁR tesztelhető (Hetzner auto-deploy minden merge után).
 - **Korábbi telepítő-szet v2.5.78 (2026-05-20):** Penztar SHA-256 `BA30BEC035BA1E2EDAC57C9445ADF78632D002EB6ABCFF6C05256EE46C4A52B8`, Kozponti `DC629AB5F22F212A417886D151DD779E960624850FD06F9C248AA4978FCAB2B7`, Arfolyam `110FE859E87FB0F4103EEFAFB384DEA911397AADD10A3569AA802D9D2A6F46B7`.
 - **Korábbi verzió-horgony:** v2.5.74 (PR #712) — lásd fent.
