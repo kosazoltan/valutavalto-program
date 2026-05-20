@@ -46,3 +46,18 @@ export function resolveSettlement(
   if (row.settlementManual) return row.settlement
   return computeCrossSettlement(row, eurSettlement, usdSettlement)
 }
+
+/**
+ * Kereszt-valuta A oszlop: a beírt érték MARAD auto módban (nem billen kézire), ha a cella
+ * jelenleg auto (nem kézi) ÉS a beírt érték a G auto-értékkel egyezik a megadott tizedesre.
+ * Így a puszta fókusz/blur (változatlan érték) nem zárja le a kereszt-követést (P1 #722).
+ */
+export function crossSettlementStaysAuto(
+  enteredValue: number,
+  autoG: number,
+  decimals: number,
+  wasManual: boolean,
+): boolean {
+  if (wasManual) return false
+  return Number(enteredValue.toFixed(decimals)) === Number(autoG.toFixed(decimals))
+}

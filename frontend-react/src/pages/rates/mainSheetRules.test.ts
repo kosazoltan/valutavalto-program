@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeCrossSettlement, resolveSettlement } from './mainSheetRules'
+import { computeCrossSettlement, resolveSettlement, crossSettlementStaysAuto } from './mainSheetRules'
 
 describe('mainSheetRules — Főlap A/G cella-feloldás', () => {
   describe('computeCrossSettlement (G oszlop)', () => {
@@ -29,6 +29,19 @@ describe('mainSheetRules — Főlap A/G cella-feloldás', () => {
     it('kereszt-valuta, KÉZI felülírás → a beírt settlement (G-t felülírja)', () => {
       const row = { settlement: 17.25, crossRate: 24.5, crossBase: 'EUR' as const, settlementManual: true }
       expect(resolveSettlement(row, 400, 360)).toBe(17.25)
+    })
+  })
+
+  describe('crossSettlementStaysAuto (P1 #722 — fókusz/blur ne zárja le az auto-t)', () => {
+    const autoG = 400 / 24.5 // ≈ 16.3265
+    it('auto cella + változatlan érték (2 tizedes egyezik) → marad auto (true)', () => {
+      expect(crossSettlementStaysAuto(16.33, autoG, 2, false)).toBe(true)
+    })
+    it('auto cella + ténylegesen eltérő érték → kézire vált (false)', () => {
+      expect(crossSettlementStaysAuto(17.50, autoG, 2, false)).toBe(false)
+    })
+    it('már kézi cella → mindig false (nem releváns a no-op)', () => {
+      expect(crossSettlementStaysAuto(16.33, autoG, 2, true)).toBe(false)
     })
   })
 })

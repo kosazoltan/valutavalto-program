@@ -8,7 +8,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { exchangeRateMasterApi, type ExchangeRateMaster, type CreateMasterRateRequest } from '../../services/api/exchangeRateMaster'
 import { currencyApi } from '../../services/api/exchange-rates'
 import CurrencyManagerModal from './components/CurrencyManagerModal'
-import { computeCrossSettlement, resolveSettlement } from './mainSheetRules'
+import { computeCrossSettlement, resolveSettlement, crossSettlementStaysAuto } from './mainSheetRules'
 
 /**
  * Főlap (0-s lap) — Árfolyamkészítő program ALAP felülete.
@@ -395,13 +395,25 @@ export default function MainRateSheetPage() {
       if (Number.isNaN(parsed)) return null
       nextValue = parsed
     }
+    // Kereszt-valuta A oszlop: csak akkor billentünk KÉZI módba, ha az érték TÉNYLEG eltér
+    // a G auto-értéktől. Ha a felhasználó csak rákattint és kilép (változatlan érték), MARAD
+    // auto — különben a puszta fókusz/blur lezárná a kereszt-követést (Codex/Copilot P1 #722).
+    if (isCrossSettlement) {
+      const cur = currentRows[rowIdx]!
+      const autoG = computeCrossSettlement(cur, eurSettlement, usdSettlement)
+      const dec = cur.currency === 'JPY' ? 3 : 2
+      if (crossSettlementStaysAuto(nextValue, autoG, dec, !!cur.settlementManual)) return null // változatlan → marad auto
+      const next = [...currentRows]
+      next[rowIdx] = { ...cur, settlement: nextValue, settlementManual: true }
+      return next
+    }
     const currentValue = currentRows[rowIdx]?.[col]
-    // Codex P2 #581 iter-3: no-op ha érték nem változott (kereszt-A-nál a manual-flag flip miatt nem skippelünk).
-    if (!isCrossSettlement && typeof currentValue === 'number' && currentValue === nextValue) return null
+    // Codex P2 #581 iter-3: no-op ha érték nem változott
+    if (typeof currentValue === 'number' && currentValue === nextValue) return null
     const next = [...currentRows]
-    next[rowIdx] = { ...next[rowIdx]!, [col]: nextValue, ...(isCrossSettlement ? { settlementManual: true } : {}) }
+    next[rowIdx] = { ...next[rowIdx]!, [col]: nextValue }
     return next
-  }, [formulas])
+  }, [formulas, eurSettlement, usdSettlement])
 
   // Side-effect wrapper: aszinkron állapotfrissítés (NEM használható azonnali serialization-höz).
   const commitCell = useCallback((rowIdx: number, col: keyof MainRateRow, raw: string) => {
