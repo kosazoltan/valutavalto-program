@@ -49,6 +49,8 @@ export function isHufOnlyTransferType(type: TransferType): boolean {
 
 /** (#6) Egy szerkesztő-sor a több-valutás átadólapon. */
 export interface CurrencyLineInput {
+  /** Stabil React-kulcs a sorhoz (a buildTransferLines figyelmen kívül hagyja). */
+  id?: number
   currencyId: number | null
   amount: string
 }
@@ -69,7 +71,14 @@ export function buildTransferLines(rows: CurrencyLineInput[]): BuiltTransferLine
   const lines: Array<{ currencyId: number; amount: number }> = []
   const seen = new Set<number>()
   for (const r of rows) {
-    if (r.currencyId == null) continue
+    const amountFilled = String(r.amount).trim() !== ''
+    if (r.currencyId == null) {
+      // Teljesen üres sor → kihagyjuk; de ha összeg van valuta nélkül → hiba (részben kitöltött, Codex #726).
+      if (amountFilled) {
+        return { lines: [], error: 'Válasszon valutát minden kitöltött sorhoz (vagy törölje az üres sort)!' }
+      }
+      continue
+    }
     const amt = Number.parseFloat(String(r.amount).replace(/\s/g, '').replace(',', '.'))
     if (!Number.isFinite(amt) || amt <= 0) {
       return { lines: [], error: 'Minden megadott valuta-sorhoz pozitív összeg szükséges!' }

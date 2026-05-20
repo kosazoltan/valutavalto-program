@@ -99,6 +99,11 @@ describe('transferRules — átadás-átvétel üzleti szabályok', () => {
       const r = buildTransferLines([{ currencyId: null, amount: '' }])
       expect(r.error).toContain('Legalább egy')
     })
+    it('részben kitöltött sor (összeg valuta nélkül) → hiba (Codex #726)', () => {
+      const r = buildTransferLines([{ currencyId: 2, amount: '100' }, { currencyId: null, amount: '50' }])
+      expect(r.error).toContain('Válasszon valutát')
+      expect(r.lines).toEqual([])
+    })
   })
 
   describe('isHufOnlyTransferType', () => {

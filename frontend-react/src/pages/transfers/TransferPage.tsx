@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   ArrowRightLeft,
@@ -113,7 +113,8 @@ export default function TransferPage() {
   const [currencyId, setCurrencyId] = useState<number | null>(null)
   const [amount, setAmount] = useState('')
   // #6: több-valutás átadólap sorai (CSAK valuta-típusnál aktív). Az első sor a header.
-  const [currencyLines, setCurrencyLines] = useState<CurrencyLineInput[]>([{ currencyId: null, amount: '' }])
+  const lineIdRef = useRef(1)
+  const [currencyLines, setCurrencyLines] = useState<CurrencyLineInput[]>([{ id: 0, currencyId: null, amount: '' }])
   const [transferType, setTransferType] = useState<CreateTransferRequest['transferType']>('CURRENCY')
   const [notes, setNotes] = useState('')
   const [carrierName, setCarrierName] = useState('')
@@ -196,7 +197,7 @@ export default function TransferPage() {
       : row))
   }, [])
   const addCurrencyLine = useCallback(() => {
-    setCurrencyLines(prev => [...prev, { currencyId: null, amount: '' }])
+    setCurrencyLines(prev => [...prev, { id: lineIdRef.current++, currencyId: null, amount: '' }])
   }, [])
   const removeCurrencyLine = useCallback((idx: number) => {
     setCurrencyLines(prev => prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx))
@@ -233,7 +234,7 @@ export default function TransferPage() {
     // #6: valuta-típusnál a sorokból építünk (több valuta), egyébként a single mezőkből.
     let effLines: Array<{ currencyId: number; amount: number }> | undefined
     let effCurrencyId: number | null = currencyId
-    let effAmountValue = 0
+    let effAmountValue: number
     if (isMultiCurrency) {
       const built = buildTransferLines(currencyLines)
       if (built.error) {
@@ -350,7 +351,7 @@ export default function TransferPage() {
       setToBranchId('')
       setCurrencyId(null)
       setAmount('')
-      setCurrencyLines([{ currencyId: null, amount: '' }])
+      setCurrencyLines([{ id: lineIdRef.current++, currencyId: null, amount: '' }])
       setNotes('')
       setCarrierName('')
       setSealNumber('')
@@ -801,7 +802,7 @@ export default function TransferPage() {
                   <label className="form-label">Valuták és összegek (több is megadható)</label>
                   <div className="space-y-2">
                     {currencyLines.map((line, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
+                      <div key={line.id ?? idx} className="flex items-center gap-2">
                         <select
                           value={line.currencyId ?? ''}
                           onChange={(e) => updateCurrencyLine(idx, 'currencyId', e.target.value)}

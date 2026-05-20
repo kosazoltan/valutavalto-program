@@ -1946,6 +1946,10 @@ export function savePendingTransfer(
       transferType,
       denominations,
       note,
+      carrierName,
+      sealNumber,
+      direction,
+      lines,
       idempotencyKey,
     },
     rateSnapshot: {
