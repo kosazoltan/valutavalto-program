@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { TrendingUp, AlertTriangle, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { averageRateApi, currencyApi, branchApi } from '../../services/api/index'
-import type { AverageRateReport, Currency, BranchInfo } from '../../services/api/index'
+import type { AverageRateReport, TransactionDirection, Currency, BranchInfo } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 
@@ -32,7 +32,11 @@ function formatRate(n: number): string {
 }
 
 function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10)
+  // Lokális dátum (NEM toISOString UTC) — CEST éjfél körül ne csússzon előző napra.
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 export default function AverageRateReportPage() {
@@ -49,7 +53,7 @@ export default function AverageRateReportPage() {
   const [to, setTo] = useState<string>(isoDate(today))
   const [branchId, setBranchId] = useState<string>('')
   const [currencyId, setCurrencyId] = useState<string>('')
-  const [transactionType, setTransactionType] = useState<string>('')
+  const [transactionType, setTransactionType] = useState<'' | TransactionDirection>('')
   const [currencies, setCurrencies] = useState<Currency[]>([])
   const [branches, setBranches] = useState<BranchInfo[]>([])
   const [rows, setRows] = useState<AverageRateReport[]>([])
@@ -151,7 +155,7 @@ export default function AverageRateReportPage() {
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1" htmlFor="ar-type">{t('reports.averageRate.type')}</label>
-          <select id="ar-type" value={transactionType} onChange={(e) => setTransactionType(e.target.value)} className="form-input w-full text-sm">
+          <select id="ar-type" value={transactionType} onChange={(e) => setTransactionType(e.target.value as '' | TransactionDirection)} className="form-input w-full text-sm">
             <option value="">{t('reports.averageRate.typeAll')}</option>
             <option value="BUY">{t('reports.averageRate.typeBuy')}</option>
             <option value="SELL">{t('reports.averageRate.typeSell')}</option>

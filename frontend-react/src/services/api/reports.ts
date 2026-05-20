@@ -130,6 +130,9 @@ export const reportApi = {
 
 // ================== AVERAGE RATE REPORT API ==================
 
+/** Tranzakció-típus szűrő: vétel / eladás. */
+export type TransactionDirection = 'BUY' | 'SELL'
+
 /** Súlyozott átlag árfolyam riport sor — legacy ATLAGARF parity. */
 export interface AverageRateReport {
   periodStart: string
@@ -138,7 +141,8 @@ export interface AverageRateReport {
   branchCode: string | null
   currencyId: number
   currencyCode: string
-  transactionType: string | null
+  /** null = mind (aggregált sor), különben BUY / SELL. */
+  transactionType: TransactionDirection | null
   transactionCount: number
   totalCurrencyAmount: number
   totalHufAmount: number
@@ -155,7 +159,7 @@ export const averageRateApi = {
     to: string,
     branchId?: string,
     currencyId?: number,
-    transactionType?: string,
+    transactionType?: TransactionDirection,
   ): Promise<AverageRateReport[]> => {
     const params: Record<string, string | number> = { from, to }
     if (branchId) params.branchId = branchId
