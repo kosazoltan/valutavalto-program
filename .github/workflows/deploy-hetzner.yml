@@ -44,6 +44,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # 2026-05-20 V234 outage hotfix: deploy pre-flight Flyway dup-version guard.
+      # A flyway-migration-lint.yml F14b a PR-branch-en fut, de a collision csak
+      # merge UTÁN áll elő main-en (két külön branch ugyanazt a Vnnn-t adja). Ez a
+      # pre-flight a tényleges deploy-jar forrásán fut, így FAIL-loud a deploy ELŐTT,
+      # NEM production startup-on (ami 502 outage-ot okozott).
+      - name: Pre-flight — Flyway duplicate version guard (BLOCKING)
+        run: |
+          set -e
+          MIGR_DIR="backend/src/main/resources/db/migration"
+          DUPS=$(ls "$MIGR_DIR" 2>/dev/null | awk -F'__' '{print $1}' | sort | uniq -c | awk '$1 > 1 {print $2}')
+          if [ -n "$DUPS" ]; then
+            echo "::error::DEPLOY BLOCKED — Duplicate Flyway version prefix on main (production startup would fail with 'Found more than one migration with version'):"
+            echo "$DUPS"
+            echo "Fix: rename one of the colliding V<n>__ migrations to the next free version, push hotfix."
+            exit 1
+          fi
+          echo "Pre-flight OK — no duplicate Flyway versions."
+
       - name: Set up Java ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v5
         with:
