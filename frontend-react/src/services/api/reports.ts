@@ -128,6 +128,46 @@ export const reportApi = {
   }
 }
 
+// ================== NAV REPORT API ==================
+
+/** NAV-jelenthető tranzakció sor (2M+ Ft). */
+export interface NavReportableTransaction {
+  transactionId: number
+  receiptNumber: string
+  transactionType: string
+  transactionDate: string
+  transactionTime: string
+  currencyCode: string
+  currencyAmount: number
+  exchangeRate: number
+  hufAmount: number
+  customerId: string | null
+  customerName: string | null
+  customerAddress: string | null
+  customerDocumentNumber: string | null
+}
+
+/** Napi NAV adatszolgáltatás riport. */
+export interface NavReport {
+  date: string
+  reportableTransactionCount: number
+  totalAmountHuf: number
+  transactions: NavReportableTransaction[]
+}
+
+export const navReportApi = {
+  /** Napi NAV riport (összesítő + jelenthető tranzakciók). Backend: GET /api/v1/nav-reports/daily?date */
+  getDaily: async (date: string): Promise<NavReport> => {
+    const response = await api.get<NavReport>('/nav-reports/daily', { params: { date } })
+    return response.data
+  },
+  /** NAV CSV export. Backend: GET /api/v1/nav-reports/csv?date → text/csv. */
+  exportCsv: async (date: string): Promise<Blob> => {
+    const response = await api.get('/nav-reports/csv', { params: { date }, responseType: 'blob' })
+    return response.data as Blob
+  },
+}
+
 // ================== CENTRAL CONSOLIDATED REPORTS (CSV) API ==================
 
 export const centralReportApi = {

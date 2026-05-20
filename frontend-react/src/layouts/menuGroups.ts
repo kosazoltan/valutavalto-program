@@ -128,6 +128,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/reports/average-rate", label: "Átlag árfolyam", icon: TrendingUp },
       { path: "/reports/daily-journal", label: "Napkönyv (PDF)", icon: FileText },
       { path: "/reports/central", label: "Központi riportok (CSV)", icon: Building2 },
+      { path: "/reports/nav", label: "NAV adatszolgáltatás", icon: ShieldAlert },
       { path: "/daily-turnover", label: "Napi forgalom", icon: TrendingUp },
       { path: "/profit", label: "Nyereség (haszon)", icon: TrendingUp },
       { path: "/stock-snapshot", label: "Készlet pillanatképek", icon: FileText },
