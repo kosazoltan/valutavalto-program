@@ -125,7 +125,7 @@ class CentralReceivedDataServiceTest {
         // b1: submittedAt = older
         DailyReport r1 = DailyReport.builder().id(1L).branch(b1).reportDate(date)
                 .submitted(true).submittedAt(older).createdAt(date.atTime(8, 0)).build();
-        // b2: nem submittelt, csak createdAt = newest (fallback ág)
+        // b2: nincs beküldés (submitted=false), csak createdAt = newest (fallback ág)
         DailyReport r2 = DailyReport.builder().id(2L).branch(b2).reportDate(date)
                 .submitted(false).submittedAt(null).createdAt(newest).build();
         // b3: nincs report (missing) → nem számít bele

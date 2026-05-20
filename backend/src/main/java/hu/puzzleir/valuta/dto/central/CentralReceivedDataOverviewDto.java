@@ -28,8 +28,10 @@ public class CentralReceivedDataOverviewDto {
     private LocalDateTime generatedAt;
     /**
      * A legfrissebb átvett branch-adat időpontja (submittedAt elsőbbség, fallback reportCreatedAt).
-     * null, ha egyetlen branch sem küldött még adatot az adott napra. A frontend frissesség-badge
-     * forrása (VV-ELVI 6. — "központ aggregál, nem vezérel": az adat frissessége explicit látható).
+     * null, ha egyetlen branch sem küldött még adatot az adott napra — ekkor a globális NON_NULL
+     * Jackson-inclusion (JacksonConfig) miatt a mező KIMARAD a JSON-ból (a frontend opcionálisként
+     * kezeli). A frontend frissesség-badge forrása (VV-ELVI 6. — "központ aggregál, nem vezérel":
+     * az adat frissessége explicit látható).
      */
     private LocalDateTime lastSyncedAt;
     private List<CentralReceivedDataRowDto> rows;
