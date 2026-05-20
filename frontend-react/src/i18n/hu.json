@@ -1332,6 +1332,36 @@
         "atadott": "ATADOTT"
       }
     },
+    "averageRate": {
+      "title": "Átlag árfolyam riport",
+      "subtitle": "Súlyozott átlagárfolyam (HUF-súlyozott) — legacy ATLAGARF",
+      "from": "Tól",
+      "to": "Ig",
+      "branch": "Iroda",
+      "branchAll": "— Összes iroda —",
+      "currency": "Valuta",
+      "currencyAll": "— Összes valuta —",
+      "type": "Típus",
+      "typeAll": "— Mind —",
+      "typeBuy": "Vétel",
+      "typeSell": "Eladás",
+      "submit": "Lekérdezés",
+      "loading": "Betöltés...",
+      "emptyState": "Adja meg az időszakot, majd kattintson a Lekérdezésre.",
+      "noResult": "Nincs adat a megadott szűrőkre az időszakban.",
+      "errors": {
+        "noDateRange": "Adja meg az időszak kezdő- és záró dátumát."
+      },
+      "table": {
+        "branch": "Iroda",
+        "currency": "Valuta",
+        "type": "Típus",
+        "transactionCount": "Tranzakció",
+        "totalCurrency": "Deviza össz.",
+        "totalHuf": "HUF össz.",
+        "weightedAverage": "Súlyozott átlagárf."
+      }
+    },
     "recurringCustomer": {
       "title": "Visszatérő ügyfél monitoring (AML)",
       "subtitle": "Pmt. 16. § — fokozott ügyfél-átvilágítás jelölthöz",
