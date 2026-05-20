@@ -92,6 +92,33 @@ export function getErrorMessage(error: unknown): string {
   return appError.message;
 }
 
+/**
+ * Hibaüzenet kinyerése blob-válaszú (`responseType: 'blob'`) kérésből.
+ *
+ * Ilyenkor a NEM-2xx hibatest is `Blob`, ezért a sima {@link getErrorMessage}
+ * nem látja a szerver (magyar) üzenetét. Itt kiolvassuk a blob szövegét, és ha
+ * JSON, a `message` mezőt adjuk vissza; különben a nyers szöveget; ha nincs, a
+ * standard handlerre esünk vissza.
+ */
+export async function getBlobErrorMessage(error: unknown): Promise<string> {
+  const data = (error as { response?: { data?: unknown } })?.response?.data;
+  if (data instanceof Blob) {
+    try {
+      const text = await data.text();
+      try {
+        const json = JSON.parse(text) as { message?: unknown };
+        if (typeof json?.message === 'string') return json.message;
+      } catch {
+        // nem JSON — a nyers szöveggel térünk vissza, ha van
+      }
+      if (text) return text;
+    } catch {
+      // blob-olvasás sikertelen — esünk a general handlerre
+    }
+  }
+  return getErrorMessage(error);
+}
+
 export function isNetworkError(error: unknown): boolean {
   if (error instanceof AxiosError) {
     return !error.response && error.code === 'ERR_NETWORK';

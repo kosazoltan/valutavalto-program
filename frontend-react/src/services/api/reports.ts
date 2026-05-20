@@ -128,6 +128,26 @@ export const reportApi = {
   }
 }
 
+// ================== CENTRAL CONSOLIDATED REPORTS (CSV) API ==================
+
+export const centralReportApi = {
+  /** Napi konszolidált riport CSV. Backend: GET /api/v1/central-reports/daily?date=YYYY-MM-DD */
+  daily: async (date: string): Promise<Blob> => {
+    const response = await api.get('/central-reports/daily', { params: { date }, responseType: 'blob' })
+    return response.data as Blob
+  },
+  /** Heti riport CSV. Backend: GET /api/v1/central-reports/weekly?weekStart=YYYY-MM-DD */
+  weekly: async (weekStart: string): Promise<Blob> => {
+    const response = await api.get('/central-reports/weekly', { params: { weekStart }, responseType: 'blob' })
+    return response.data as Blob
+  },
+  /** Havi riport CSV. Backend: GET /api/v1/central-reports/monthly?month=YYYY-MM */
+  monthly: async (month: string): Promise<Blob> => {
+    const response = await api.get('/central-reports/monthly', { params: { month }, responseType: 'blob' })
+    return response.data as Blob
+  },
+}
+
 // ================== DAILY JOURNAL (NAPKÖNYV) PDF API ==================
 
 export const dailyJournalApi = {
