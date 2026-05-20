@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.entity.RatePublication;
 import hu.puzzleir.valuta.entity.RateTemplate;
 import hu.puzzleir.valuta.entity.RateWorkgroup;
 import hu.puzzleir.valuta.entity.SyncOutboxEvent;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.repository.RatePublicationRepository;
@@ -39,6 +40,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -256,5 +258,36 @@ class RatePublishServiceTest {
         ExchangeRate savedRate = rateCaptor.getValue();
         assertEquals(branchId, savedRate.getBranch().getId());
         assertFalse(savedRate == globalFallback);
+    }
+
+    @Test
+    @DisplayName("publish NULL státuszú sablonra ValidationException-t dob (NPE helyett) — nullable status guard")
+    void publish_nullStatusTemplate_throwsValidationNotNpe() {
+        UUID workgroupId = UUID.randomUUID();
+        UUID templateId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+
+        Company company = Company.builder().id(UUID.randomUUID()).code("BEST").name("Best Change").build();
+        Branch branch = Branch.builder().id(branchId).code("BORSI").company(company).build();
+        RateWorkgroup workgroup = RateWorkgroup.builder()
+                .id(workgroupId).name("Main WG").code("WG-1").branches(Set.of(branch)).build();
+
+        // status szándékosan NULL (nullable oszlop, csak DEFAULT 'DRAFT' van)
+        RateTemplate template = RateTemplate.builder()
+                .id(templateId)
+                .workgroupId(workgroupId)
+                .currencyId(1L)
+                .baseBuyRate(new BigDecimal("395.1000"))
+                .baseSellRate(new BigDecimal("398.1000"))
+                .status(null)
+                .build();
+
+        when(workgroupRepository.findById(workgroupId)).thenReturn(Optional.of(workgroup));
+        when(templateRepository.findById(templateId)).thenReturn(Optional.of(template));
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> service.publish(workgroupId, List.of(templateId), "publish null"));
+        assertTrue(ex.getMessage().contains("publikálható"),
+                "A hibaüzenetnek a publikálhatóságra kell utalnia, üzenet: " + ex.getMessage());
     }
 }
