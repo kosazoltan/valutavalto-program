@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Package, Search, RefreshCw, AlertTriangle, Wallet } from 'lucide-react'
-import { api } from '../../services/api/index'
+import { Package, Search, RefreshCw, AlertTriangle, Wallet, MapPin } from 'lucide-react'
+import { api, branchApi } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
@@ -30,6 +30,8 @@ function formatBalance(value: number | undefined, currencyCode: string | undefin
 export default function CashierStocksPage() {
   const { t } = useTranslation()
   const [items, setItems] = useState<InventoryItem[]>([])
+  const [branchMeta, setBranchMeta] = useState<Map<string, { region: string; isVault: boolean }>>(new Map())
+  const [vaultByRegion, setVaultByRegion] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -40,6 +42,21 @@ export default function CashierStocksPage() {
       setError(null)
       const response = await api.get<InventoryItem[]>('/inventory/stock')
       setItems(safeArray<InventoryItem>(response.data))
+      // FK-002: terület-besoroláshoz a fiók-törzsadat region mezője (név → régió).
+      try {
+        const branches = await branchApi.listActive()
+        const meta = new Map<string, { region: string; isVault: boolean }>()
+        const vaults = new Map<string, string>()
+        for (const b of branches) {
+          meta.set(b.name, { region: b.region ?? '', isVault: b.isVault === true })
+          if (b.isVault === true && b.region && !vaults.has(b.region)) vaults.set(b.region, b.name)
+        }
+        setBranchMeta(meta)
+        setVaultByRegion(vaults)
+      } catch (branchErr) {
+        // A területi besorolás csak kiegészítés — ha nincs branch-adat, marad az egy-szekciós nézet.
+        logger.warn('CashierStocksPage', 'Branch törzsadat betöltése sikertelen (területi csoportosítás kihagyva)', branchErr)
+      }
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('CashierStocksPage', 'Betöltési hiba:', err)
@@ -87,6 +104,27 @@ export default function CashierStocksPage() {
   const grandTotalHuf = branchGroups.reduce((sum, g) => sum + g.hufTotal, 0)
   const totalBranches = branchGroups.length
   const totalNonZero = branchGroups.reduce((sum, g) => sum + g.nonZeroCount, 0)
+
+  // FK-002: területenként csoportosítás (8 terület = 1 értéktár + pénztárai).
+  const territories = useMemo(() => {
+    const map = new Map<string, { regionKey: string; vaultName: string; groups: BranchGroup[]; hufTotal: number }>()
+    for (const group of branchGroups) {
+      const region = branchMeta.get(group.branchName)?.region || 'BESOROLATLAN'
+      let terr = map.get(region)
+      if (!terr) {
+        terr = { regionKey: region, vaultName: vaultByRegion.get(region) ?? '', groups: [], hufTotal: 0 }
+        map.set(region, terr)
+      }
+      terr.groups.push(group)
+      terr.hufTotal += group.hufTotal
+    }
+    return Array.from(map.values()).sort((a, b) => b.hufTotal - a.hufTotal)
+  }, [branchGroups, branchMeta, vaultByRegion])
+
+  // Akkor csoportosítunk terület szerint, ha van értelmes besorolás (van branch-meta és
+  // nem csak a "BESOROLATLAN" szekció létezik). Különben marad a sima, egy-grides nézet.
+  const groupByTerritory = branchMeta.size > 0
+    && !(territories.length === 1 && territories[0]?.regionKey === 'BESOROLATLAN')
 
   return (
     <div className="space-y-2">
@@ -141,6 +179,30 @@ export default function CashierStocksPage() {
         <div className="form-panel text-center text-sm text-gray-500 py-8">Betöltés...</div>
       ) : branchGroups.length === 0 ? (
         <div className="form-panel text-center text-sm text-gray-500 py-8">{t('common.noData')}</div>
+      ) : groupByTerritory ? (
+        /* FK-002: területi szekciók (terület / értéktár neve fejléccel) */
+        <div className="space-y-4">
+          {territories.map(terr => (
+            <section key={terr.regionKey}>
+              <div className="flex items-center gap-2 mb-1 px-1 py-1 border-b-2 border-primary-200">
+                <MapPin className="h-4 w-4 text-primary-700" />
+                <h2 className="font-bold text-secondary-900 text-sm">
+                  {terr.regionKey}
+                  {terr.vaultName && <span className="font-normal text-gray-500"> · {terr.vaultName}</span>}
+                </h2>
+                <span className="ml-auto text-xs text-primary-700 font-mono">
+                  {terr.hufTotal.toLocaleString('hu-HU', { maximumFractionDigits: 0 })} {t('common.ft')}
+                  <span className="text-gray-400"> · {terr.groups.length} {t('inventory.penztar')}</span>
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2">
+                {terr.groups.map(group => (
+                  <BranchCard key={group.branchName} group={group} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2">
           {branchGroups.map(group => (
