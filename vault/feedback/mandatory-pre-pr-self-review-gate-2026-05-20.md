@@ -63,6 +63,13 @@ talált hibák alapján) — MINDEN ÚJ metódus/endpoint/query-nél ellenőrizn
 - **Round 2**: fresh subagent — Round 1 findingek verify + új issue keresés
 - **CSAK ha mindkettő SAFE TO MERGE** → push + PR
 
+⭐ÚJ (PR #713 tanulság): **NE utasítsd el a subagent findingjét "sibling-consistency"
+vagy "informational" ürüggyel, ha az VALÓS (akár apró) korrektségi hiba.** A #713-nál
+a Round 1 subagent flag-elte az `isoDate()` UTC-bug-ot, de én "minden sibling így
+csinálja" alapon hagytam → Codex P2 + Copilot IS flag-elte a PR-en. Ha valós bug:
+javítsd PR ELŐTT (és ha a sibling-ök is hibásak, azt külön follow-up-ban). A
+"konzisztencia" NEM mentség egy reprodukálható hibára.
+
 ### 4. fázis — push + PR + GitHub AI gate (C.22)
 
 ## A kulcs-szabály
