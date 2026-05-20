@@ -11,7 +11,7 @@
 CREATE TABLE IF NOT EXISTS transfer_lines (
     id               BIGSERIAL PRIMARY KEY,
     transfer_id      BIGINT  NOT NULL REFERENCES transfer(id) ON DELETE CASCADE,
-    currency_id      BIGINT  NOT NULL REFERENCES currencies(id),
+    currency_id      BIGINT  NOT NULL REFERENCES currency(id),
     amount           NUMERIC(18, 2) NOT NULL,
     received_amount  NUMERIC(18, 2),
     difference       NUMERIC(18, 2),

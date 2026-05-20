@@ -91,6 +91,13 @@ public class TransferService {
 
         // #6: több-valutás átadólap — a sorokat a transfer-hez csatoljuk (cascade ALL menti).
         if (dto.getLines() != null && !dto.getLines().isEmpty()) {
+            // Korai duplikált-valuta védelem (a DB unique index csak később dobna).
+            java.util.Set<Long> seenCurrencies = new java.util.HashSet<>();
+            for (var l : dto.getLines()) {
+                if (!seenCurrencies.add(l.getCurrencyId())) {
+                    throw new ValidationException("Egy átadólapon egy valuta csak egyszer szerepelhet! currencyId=" + l.getCurrencyId());
+                }
+            }
             int lineNo = 1;
             for (var lineDto : dto.getLines()) {
                 Currency lineCurrency = currencyRepository.findById(lineDto.getCurrencyId())
@@ -160,9 +167,11 @@ public class TransferService {
         // Valójában: receive-nél nincs új tranzakció, a create-nál már minden létrejött direction szerint
         // KIVÉVE: F mód esetén a fogadó oldal tranzakciója a receive-nél jön létre
         if (direction == Transfer.TransferDirection.F) {
-            // F mód: receive-nél a fogadó oldali TRANSFER_IN tranzakció
-            createTransferInTransaction(transfer, toWorker, transfer.getToBranch());
-            log.info("TRANSFER_IN tranzakció létrehozva receive-nél (F mód): {}", transfer.getTransferNumber());
+            // F mód: receive-nél a fogadó oldali TRANSFER_IN tranzakció — multi-line esetén soronként.
+            for (TransferLine ln : effectiveLines(transfer)) {
+                createTransferInTransaction(transfer, toWorker, transfer.getToBranch(), ln.getCurrency(), ln.getAmount());
+            }
+            log.info("TRANSFER_IN tranzakció(k) létrehozva receive-nél (F mód): {}", transfer.getTransferNumber());
         }
 
         transfer = transferRepository.save(transfer);
@@ -289,7 +298,8 @@ public class TransferService {
                     decreaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
                     increaseCashBalance(transfer.getToBranch(), ln.getCurrency(), ln.getAmount());
                 }
-                // UF módban az átadás azonnal COMPLETED
+                // UF módban az átadás azonnal COMPLETED — multi-line sorok is fogadottnak jelölve.
+                markLinesReceived(transfer);
                 transfer.setStatus(Transfer.TransferStatus.COMPLETED);
                 transfer.setReceivedAmount(transfer.getAmount());
                 transfer.setReceivedDate(LocalDate.now());
@@ -300,10 +310,10 @@ public class TransferService {
             case FF -> {
                 for (TransferLine ln : bookLines) {
                     createTransferOutTransaction(transfer, fromWorker, ln.getCurrency(), ln.getAmount());
+                    createCorrectionTransferOutTransaction(transfer, fromWorker, ln.getCurrency(), ln.getAmount());
                     decreaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
                     decreaseCashBalance(transfer.getToBranch(), ln.getCurrency(), ln.getAmount());
                 }
-                createCorrectionTransferOutTransaction(transfer, fromWorker);
                 log.info("FF mód — {} sor 2x TRANSFER_OUT: {}", bookLines.size(), transfer.getTransferNumber());
             }
         }
@@ -321,6 +331,16 @@ public class TransferService {
                 .currency(transfer.getCurrency())
                 .amount(transfer.getAmount())
                 .build());
+    }
+
+    /** Multi-line sorok fogadottnak jelölése (received = amount, difference = 0). */
+    private void markLinesReceived(Transfer transfer) {
+        if (transfer.getLines() != null) {
+            for (TransferLine ln : transfer.getLines()) {
+                ln.setReceivedAmount(ln.getAmount());
+                ln.setDifference(BigDecimal.ZERO);
+            }
+        }
     }
 
     /**
@@ -404,6 +424,10 @@ public class TransferService {
      * FF korrekciós TRANSFER_OUT a fogadó fióknál (második kimenő tranzakció).
      */
     private Transaction createCorrectionTransferOutTransaction(Transfer transfer, Worker worker) {
+        return createCorrectionTransferOutTransaction(transfer, worker, transfer.getCurrency(), transfer.getAmount());
+    }
+
+    private Transaction createCorrectionTransferOutTransaction(Transfer transfer, Worker worker, Currency currency, BigDecimal amount) {
         Branch toBranch = transfer.getToBranch();
         String receiptNumber = receiptSequenceService.generateReceiptNumber(
                 toBranch.getId(), TransactionType.TRANSFER_OUT);
@@ -417,8 +441,8 @@ public class TransferService {
                 .status(TransactionStatus.COMPLETED)
                 .transactionDate(LocalDate.now())
                 .transactionTime(LocalTime.now())
-                .currency(transfer.getCurrency())
-                .currencyAmount(transfer.getAmount())
+                .currency(currency)
+                .currencyAmount(amount)
                 .exchangeRate(BigDecimal.ONE)
                 .hufAmount(transfer.getHufValue() != null ? transfer.getHufValue() : BigDecimal.ZERO)
                 .referenceNumber(transfer.getTransferNumber())

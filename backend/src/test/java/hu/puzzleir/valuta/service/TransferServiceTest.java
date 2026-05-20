@@ -96,9 +96,45 @@ class TransferServiceTest {
         TransferDto result = service.create(dto, 1L);
 
         assertThat(result.getLines()).hasSize(2);
+        // Per-line összegek és valuta-kódok helyesen visszaadva
+        assertThat(result.getLines()).extracting(l -> l.getCurrencyCode()).containsExactlyInAnyOrder("EUR", "USD");
+        assertThat(result.getLines()).extracting(l -> l.getAmount())
+                .containsExactlyInAnyOrder(new BigDecimal("100"), new BigDecimal("200"));
         // F mód: minden valuta-sor csökkenti a feladó kasszáját → per-currency lock-lekérés
         verify(cashBalanceRepository).findByBranchIdAndCurrencyIdForUpdate(fromId, 4L);
         verify(cashBalanceRepository).findByBranchIdAndCurrencyIdForUpdate(fromId, 5L);
+        // EUR-ra NEM a fogadó (toId) kasszáját mozgatjuk create-kor F módban
+        verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdForUpdate(toId, 4L);
+    }
+
+    @Test
+    @DisplayName("create — multi-line duplikált valuta → ValidationException (korai védelem, #6)")
+    void testCreate_multiLine_duplicateCurrency_throws() {
+        UUID fromId = UUID.randomUUID();
+        UUID toId = UUID.randomUUID();
+        Branch fromBranch = Branch.builder().id(fromId).code("B1").build();
+        Branch toBranch = Branch.builder().id(toId).code("B2").build();
+        Worker worker = Worker.builder().id(1L).branch(fromBranch).build();
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
+
+        when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
+        when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
+        when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
+
+        CreateTransferDto dto = new CreateTransferDto();
+        dto.setToBranchId(toId.toString());
+        dto.setCurrencyId(4L);
+        dto.setAmount(new BigDecimal("100"));
+        dto.setTransferType("CURRENCY");
+        dto.setDirection("F");
+        dto.setLines(List.of(
+                TransferLineDto.builder().currencyId(4L).amount(new BigDecimal("100")).build(),
+                TransferLineDto.builder().currencyId(4L).amount(new BigDecimal("50")).build()
+        ));
+
+        assertThatThrownBy(() -> service.create(dto, 1L))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("egyszer");
     }
 
     @Test
