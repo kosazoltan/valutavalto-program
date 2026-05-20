@@ -5,14 +5,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * TreasuryDashboardService lastSyncedAt pure-helper tesztek (VV-ELVI frissesség).
- * reportTimestamp = submittedAt ?? createdAt; latestReportTimestamp = max (null-kihagyással).
+ * reportTimestamp = submittedAt ?? createdAt; maxTimestamp = a későbbi, null-kihagyással.
  */
 class TreasuryDashboardServiceLastSyncedTest {
 
@@ -32,22 +30,36 @@ class TreasuryDashboardServiceLastSyncedTest {
     }
 
     @Test
-    @DisplayName("latestReportTimestamp: a riportok közül a legkésőbbi (submittedAt/createdAt) időbélyeg")
-    void latestAcrossReports() {
+    @DisplayName("maxTimestamp: a későbbi időbélyeget adja vissza")
+    void maxReturnsLater() {
+        LocalDateTime early = LocalDateTime.of(2026, 5, 20, 9, 0);
+        LocalDateTime late = LocalDateTime.of(2026, 5, 20, 18, 0);
+
+        assertThat(TreasuryDashboardService.maxTimestamp(early, late)).isEqualTo(late);
+        assertThat(TreasuryDashboardService.maxTimestamp(late, early)).isEqualTo(late);
+    }
+
+    @Test
+    @DisplayName("maxTimestamp: null-okat kihagyja; mindkettő null → null")
+    void maxHandlesNull() {
+        LocalDateTime t = LocalDateTime.of(2026, 5, 20, 12, 0);
+
+        assertThat(TreasuryDashboardService.maxTimestamp(null, t)).isEqualTo(t);
+        assertThat(TreasuryDashboardService.maxTimestamp(t, null)).isEqualTo(t);
+        assertThat(TreasuryDashboardService.maxTimestamp(null, null)).isNull();
+    }
+
+    @Test
+    @DisplayName("maxTimestamp asszociatív akkumuláció: riportok időbélyegeinek maximuma reportTimestamp-pel")
+    void maxAccumulationOverReports() {
         DailyReport r1 = report(LocalDateTime.of(2026, 5, 20, 9, 0), LocalDateTime.of(2026, 5, 20, 7, 0));
         DailyReport r2 = report(null, LocalDateTime.of(2026, 5, 20, 18, 0)); // createdAt fallback, legkésőbbi
         DailyReport r3 = report(LocalDateTime.of(2026, 5, 20, 12, 0), LocalDateTime.of(2026, 5, 20, 6, 0));
 
-        assertThat(TreasuryDashboardService.latestReportTimestamp(List.of(r1, r2, r3)))
-                .isEqualTo(LocalDateTime.of(2026, 5, 20, 18, 0));
-    }
-
-    @Test
-    @DisplayName("latestReportTimestamp: üres/null/csupa-null → null")
-    void latestEmptyOrNull() {
-        assertThat(TreasuryDashboardService.latestReportTimestamp(List.of())).isNull();
-        assertThat(TreasuryDashboardService.latestReportTimestamp(null)).isNull();
-        assertThat(TreasuryDashboardService.latestReportTimestamp(
-                Arrays.asList(report(null, null), report(null, null)))).isNull();
+        LocalDateTime acc = null;
+        for (DailyReport r : new DailyReport[]{r1, r2, r3}) {
+            acc = TreasuryDashboardService.maxTimestamp(acc, TreasuryDashboardService.reportTimestamp(r));
+        }
+        assertThat(acc).isEqualTo(LocalDateTime.of(2026, 5, 20, 18, 0));
     }
 }
