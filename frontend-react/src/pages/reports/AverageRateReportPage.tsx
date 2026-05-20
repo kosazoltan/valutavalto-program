@@ -5,6 +5,7 @@ import { averageRateApi, currencyApi, branchApi } from '../../services/api/index
 import type { AverageRateReport, TransactionDirection, Currency, BranchInfo } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { localIsoDate } from '../../utils/dateFormat'
 
 /**
  * Átlag árfolyam riport (legacy ATLAGARF parity) — súlyozott (HUF-súlyozott) átlagárfolyam
@@ -31,14 +32,6 @@ function formatRate(n: number): string {
   return n.toLocaleString('hu-HU', { minimumFractionDigits: 4, maximumFractionDigits: 4 })
 }
 
-function isoDate(d: Date): string {
-  // Lokális dátum (NEM toISOString UTC) — CEST éjfél körül ne csússzon előző napra.
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
 export default function AverageRateReportPage() {
   const { t } = useTranslation()
 
@@ -49,8 +42,8 @@ export default function AverageRateReportPage() {
     return d
   }, [today])
 
-  const [from, setFrom] = useState<string>(isoDate(monthStart))
-  const [to, setTo] = useState<string>(isoDate(today))
+  const [from, setFrom] = useState<string>(localIsoDate(monthStart))
+  const [to, setTo] = useState<string>(localIsoDate(today))
   const [branchId, setBranchId] = useState<string>('')
   const [currencyId, setCurrencyId] = useState<string>('')
   const [transactionType, setTransactionType] = useState<'' | TransactionDirection>('')

@@ -5,6 +5,7 @@ import { api, branchApi } from '../../services/api/index'
 import type { BranchInfo } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { localIsoDate } from '../../utils/dateFormat'
 
 /**
  * Kezelési díj dekád riport.
@@ -79,10 +80,6 @@ function decadeOf(dateIso: string): { key: string; label: string } {
   return { key, label }
 }
 
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10)
-}
-
 export default function HandlingFeeDecadePage() {
   const { t } = useTranslation()
 
@@ -93,8 +90,8 @@ export default function HandlingFeeDecadePage() {
     return d
   }, [today])
 
-  const [from, setFrom] = useState<string>(isoDate(monthStart))
-  const [to, setTo] = useState<string>(isoDate(today))
+  const [from, setFrom] = useState<string>(localIsoDate(monthStart))
+  const [to, setTo] = useState<string>(localIsoDate(today))
   const [branchId, setBranchId] = useState<string>('')
   const [branches, setBranches] = useState<BranchInfo[]>([])
   const [report, setReport] = useState<HandlingFeeReport | null>(null)

@@ -6,6 +6,7 @@ import { ertektarApi, branchApi } from '../../services/api/index'
 import type { BranchInfo, BankTransaction } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { localIsoDate } from '../../utils/dateFormat'
 
 /**
  * Banki tranzakciók riport (ATVETT bank → értéktár, ATADOTT értéktár → bank).
@@ -54,10 +55,6 @@ function formatDateTime(s: string | null | undefined): string {
   }
 }
 
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10)
-}
-
 export default function BankTransactionReportPage() {
   const { t } = useTranslation()
 
@@ -78,8 +75,8 @@ export default function BankTransactionReportPage() {
     return d
   }, [today])
 
-  const [from, setFrom] = useState<string>(searchParams.get('from') ?? isoDate(monthStart))
-  const [to, setTo] = useState<string>(searchParams.get('to') ?? isoDate(today))
+  const [from, setFrom] = useState<string>(searchParams.get('from') ?? localIsoDate(monthStart))
+  const [to, setTo] = useState<string>(searchParams.get('to') ?? localIsoDate(today))
   const [direction, setDirection] = useState<'all' | 'in' | 'out'>(
     (searchParams.get('direction') as 'all' | 'in' | 'out') ?? 'all'
   )

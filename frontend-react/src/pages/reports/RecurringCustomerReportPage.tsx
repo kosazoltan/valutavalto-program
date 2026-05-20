@@ -5,6 +5,7 @@ import { recurringCustomerApi } from '../../services/api/index'
 import type { RecurringCustomer } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { localIsoDate } from '../../utils/dateFormat'
 
 /**
  * Visszatérő ügyfél monitoring riport (AML) — legacy ugyfelcontrol/idoszakos parity.
@@ -23,10 +24,6 @@ function formatHuf(n: number): string {
   return n.toLocaleString('hu-HU') + ' Ft'
 }
 
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10)
-}
-
 export default function RecurringCustomerReportPage() {
   const { t } = useTranslation()
 
@@ -37,8 +34,8 @@ export default function RecurringCustomerReportPage() {
     return d
   }, [today])
 
-  const [from, setFrom] = useState<string>(isoDate(monthStart))
-  const [to, setTo] = useState<string>(isoDate(today))
+  const [from, setFrom] = useState<string>(localIsoDate(monthStart))
+  const [to, setTo] = useState<string>(localIsoDate(today))
   const [minTransactions, setMinTransactions] = useState<number>(3)
   const [rows, setRows] = useState<RecurringCustomer[]>([])
   const [queried, setQueried] = useState(false)

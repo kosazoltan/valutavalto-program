@@ -5,6 +5,7 @@ import { BookOpen, Printer, Calendar, RefreshCw } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { localIsoDate } from '../../utils/dateFormat'
 import { useAuthStore } from '../../stores/authStore'
 import { dailyReportApi } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
@@ -44,7 +45,7 @@ export default function DaybookPage() {
   const [searchParams] = useSearchParams()
   const worker = useAuthStore((state) => state.worker)
   const branchId = searchParams.get('branchId') || worker?.branchId || ''
-  const initialDate = searchParams.get('date') || new Date().toISOString().slice(0, 10)
+  const initialDate = searchParams.get('date') || localIsoDate()
 
   const [date, setDate] = useState(initialDate)
   const [report, setReport] = useState<DailyReportData | null>(null)
