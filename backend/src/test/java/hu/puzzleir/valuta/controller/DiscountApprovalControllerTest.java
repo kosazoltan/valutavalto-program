@@ -41,6 +41,7 @@ class DiscountApprovalControllerTest {
         when(discountApprovalService.getRequiredLevel(new BigDecimal("3.0")))
                 .thenReturn(ApprovalLevel.SUPERVISOR);
         when(discountApprovalService.mapRoleToLevel("MANAGER")).thenReturn(ApprovalLevel.MANAGER);
+        when(discountApprovalService.getMaxAllowedPercent()).thenReturn(new BigDecimal("15.0"));
 
         try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getActiveOperationalRole).thenReturn("MANAGER");
@@ -62,6 +63,7 @@ class DiscountApprovalControllerTest {
         when(discountApprovalService.getRequiredLevel(new BigDecimal("7.0")))
                 .thenReturn(ApprovalLevel.MANAGER);
         when(discountApprovalService.mapRoleToLevel("CASHIER")).thenReturn(ApprovalLevel.CASHIER);
+        when(discountApprovalService.getMaxAllowedPercent()).thenReturn(new BigDecimal("15.0"));
 
         try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getActiveOperationalRole).thenReturn("CASHIER");
@@ -71,6 +73,47 @@ class DiscountApprovalControllerTest {
             Map<String, Object> body = resp.getBody();
             assertThat(body).isNotNull();
             assertThat(body.get("canApprove")).isEqualTo(false);
+        }
+    }
+
+    @Test
+    @DisplayName("Copilot P2 #711: required-level 20% (>15% cap) → exceedsMaxCap=true, canApprove=false DIRECTOR-nak is")
+    void requiredLevel_exceedsMaxCap() {
+        when(discountApprovalService.getRequiredLevel(new BigDecimal("20.0")))
+                .thenReturn(ApprovalLevel.DIRECTOR);
+        when(discountApprovalService.mapRoleToLevel("DIRECTOR")).thenReturn(ApprovalLevel.DIRECTOR);
+        when(discountApprovalService.getMaxAllowedPercent()).thenReturn(new BigDecimal("15.0"));
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getActiveOperationalRole).thenReturn("DIRECTOR");
+
+            ResponseEntity<Map<String, Object>> resp = controller.requiredLevel(new BigDecimal("20.0"));
+
+            Map<String, Object> body = resp.getBody();
+            assertThat(body).isNotNull();
+            assertThat(body.get("exceedsMaxCap")).isEqualTo(true);
+            assertThat(body.get("canApprove")).isEqualTo(false);
+        }
+    }
+
+    @Test
+    @DisplayName("Copilot P2 #711: null operational role → getCurrentRole fallback (NEM néma CASHIER)")
+    void requiredLevel_nullOperationalRole_fallsBackToCurrentRole() {
+        when(discountApprovalService.getRequiredLevel(new BigDecimal("3.0")))
+                .thenReturn(ApprovalLevel.SUPERVISOR);
+        when(discountApprovalService.mapRoleToLevel("MANAGER")).thenReturn(ApprovalLevel.MANAGER);
+        when(discountApprovalService.getMaxAllowedPercent()).thenReturn(new BigDecimal("15.0"));
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getActiveOperationalRole).thenReturn(null);
+            sec.when(SecurityUtils::getCurrentRole).thenReturn("MANAGER");
+
+            ResponseEntity<Map<String, Object>> resp = controller.requiredLevel(new BigDecimal("3.0"));
+
+            Map<String, Object> body = resp.getBody();
+            assertThat(body).isNotNull();
+            assertThat(body.get("workerLevel")).isEqualTo("MANAGER");
+            assertThat(body.get("canApprove")).isEqualTo(true);
         }
     }
 

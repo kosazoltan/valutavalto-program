@@ -113,6 +113,16 @@ public class DiscountApprovalService {
         };
     }
 
+    /**
+     * A rendszer-szintű maximum kedvezmény % (DISCOUNT_MAX_PCT, default 15.0).
+     * E fölött senki NEM alkalmazhat kedvezményt (Copilot P2 #571 hard cap).
+     * Copilot P2 #711: a controller required-level endpoint is ezt használja a
+     * canApprove + exceedsMaxCap konzisztenciához.
+     */
+    public BigDecimal getMaxAllowedPercent() {
+        return parseParam("DISCOUNT_MAX_PCT", "15.0");
+    }
+
     private BigDecimal parseParam(String key, String defaultValue) {
         String value = systemParameterService.getValue(key, defaultValue);
         // Codex P2 #571 follow-up: null-defense, ha a mock vagy üres rendszerből null jön vissza

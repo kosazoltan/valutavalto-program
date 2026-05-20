@@ -43,16 +43,35 @@ public class DiscountApprovalController {
     public ResponseEntity<Map<String, Object>> requiredLevel(@RequestParam BigDecimal discountPercent) {
         ApprovalLevel required = discountApprovalService.getRequiredLevel(discountPercent);
 
-        String currentRole = SecurityUtils.getActiveOperationalRole();
+        String currentRole = resolveRole();
         ApprovalLevel workerLevel = discountApprovalService.mapRoleToLevel(currentRole);
-        boolean canApprove = workerLevel.satisfies(required);
+
+        // Copilot P2 #711: a 15% hard cap (DISCOUNT_MAX_PCT) konzisztens a /validate-tel.
+        // E fölött SENKI nem alkalmazhat kedvezményt → canApprove=false + exceedsMaxCap=true.
+        BigDecimal maxAllowed = discountApprovalService.getMaxAllowedPercent();
+        boolean exceedsMaxCap = discountPercent != null && discountPercent.compareTo(maxAllowed) > 0;
+        boolean canApprove = !exceedsMaxCap && workerLevel.satisfies(required);
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("discountPercent", discountPercent);
         body.put("requiredLevel", required.name());
         body.put("workerLevel", workerLevel.name());
+        body.put("maxAllowedPercent", maxAllowed);
+        body.put("exceedsMaxCap", exceedsMaxCap);
         body.put("canApprove", canApprove);
         return ResponseEntity.ok(body);
+    }
+
+    /**
+     * Copilot P2 #711: getActiveOperationalRole() lehet null (backward-compat ctor
+     * activeRole=null). Fallback a getCurrentRole()-ra, NEM néma CASHIER-degradálás.
+     */
+    private String resolveRole() {
+        String operational = SecurityUtils.getActiveOperationalRole();
+        if (operational != null && !operational.isBlank()) {
+            return operational;
+        }
+        return SecurityUtils.getCurrentRole();
     }
 
     /**
@@ -64,7 +83,7 @@ public class DiscountApprovalController {
             + "'TREASURY_MANAGER','MAIN_TREASURY','REGIONAL_MANAGER','ADMIN')")
     @Operation(summary = "Kedvezmény validálása a jelenlegi worker szerepkörével (400 ha nem engedélyezett)")
     public ResponseEntity<Map<String, Object>> validate(@RequestParam BigDecimal discountPercent) {
-        String currentRole = SecurityUtils.getActiveOperationalRole();
+        String currentRole = resolveRole();
         // Dobhat ValidationException-t → GlobalExceptionHandler 400-at ad vissza.
         discountApprovalService.validateApprovalLevel(discountPercent, currentRole);
 
