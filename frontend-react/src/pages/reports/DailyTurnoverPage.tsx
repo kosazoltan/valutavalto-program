@@ -3,6 +3,7 @@ import { BarChart3, Calendar, RefreshCw, TrendingUp, TrendingDown, ArrowRightLef
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { localIsoDate } from '../../utils/dateFormat'
 import { useAuthStore } from '../../stores/authStore'
 import { turnoverApi } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
@@ -38,7 +39,7 @@ export default function DailyTurnoverPage() {
   const worker = useAuthStore((state) => state.worker)
   const branchId = worker?.branchId || ''
 
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(localIsoDate())
   const [period, setPeriod] = useState<Period>('daily')
   const [data, setData] = useState<TurnoverData | null>(null)
   const [loading, setLoading] = useState(false)

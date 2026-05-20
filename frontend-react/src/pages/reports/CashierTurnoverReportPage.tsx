@@ -5,6 +5,7 @@ import { api, reportApi } from '../../services/api/index'
 import type { WorkerMaster, WorkerPerformanceReport } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { localIsoDate } from '../../utils/dateFormat'
 
 /**
  * Pénztáros forgalmi riport — kiadott / eladott valuták worker bontásban.
@@ -41,10 +42,6 @@ function totalSellCount(report: WorkerPerformanceReport): number {
   return report.totalSellCount ?? report.sellTransactions ?? 0
 }
 
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10)
-}
-
 export default function CashierTurnoverReportPage() {
   const { t } = useTranslation()
 
@@ -55,8 +52,8 @@ export default function CashierTurnoverReportPage() {
     return d
   }, [today])
 
-  const [from, setFrom] = useState<string>(isoDate(monthStart))
-  const [to, setTo] = useState<string>(isoDate(today))
+  const [from, setFrom] = useState<string>(localIsoDate(monthStart))
+  const [to, setTo] = useState<string>(localIsoDate(today))
   const [workerFilter, setWorkerFilter] = useState<number | ''>('')
   const [workers, setWorkers] = useState<WorkerMaster[]>([])
   const [rows, setRows] = useState<RowState[]>([])
