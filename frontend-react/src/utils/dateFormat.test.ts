@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { localIsoDate } from './dateFormat'
 
 describe('localIsoDate', () => {
@@ -20,9 +20,15 @@ describe('localIsoDate', () => {
     expect(localIsoDate(new Date(2026, 4, 20, 0, 30))).toBe('2026-05-20')
   })
 
-  it('defaults to now when no argument is given', () => {
-    const expected = localIsoDate(new Date())
-    expect(localIsoDate()).toBe(expected)
-    expect(localIsoDate()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  it('defaults to now when no argument is given (determinisztikus, fake timer)', () => {
+    // Fix rendszeridő → nincs éjfél-átlépés-flakeyness a két hívás közt.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 4, 20, 12, 0, 0))
+    expect(localIsoDate()).toBe('2026-05-20')
+    expect(localIsoDate()).toBe(localIsoDate(new Date()))
   })
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
