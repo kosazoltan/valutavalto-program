@@ -1199,6 +1199,8 @@ export interface CreateTransferRequest {
   notes?: string
   carrierName?: string
   sealNumber?: string
+  /** #6: több-valutás átadólap sorai. Ha kitöltött, a currencyId/amount az ELSŐ sort tükrözi. */
+  lines?: Array<{ currencyId: number; amount: number }>
 }
 
 export interface ReceiveTransferRequest {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType } from './transferRules'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines } from './transferRules'
 
 const currencies = [
   { id: 1, code: 'HUF', name: 'Forint' },
@@ -73,6 +73,31 @@ describe('transferRules — átadás-átvétel üzleti szabályok', () => {
         expect(getAllowedTransferTypeValues(vault))
           .toEqual(getAvailableTransferTypes(vault, 'in').map(o => o.value))
       }
+    })
+  })
+
+  describe('buildTransferLines (#6 több-valutás átadólap)', () => {
+    it('érvényes sorok → lines tömb, nincs hiba; üres sor kihagyva', () => {
+      const r = buildTransferLines([
+        { currencyId: 2, amount: '100' },
+        { currencyId: 3, amount: '200,5' },
+        { currencyId: null, amount: '' },
+      ])
+      expect(r.error).toBeNull()
+      expect(r.lines).toEqual([{ currencyId: 2, amount: 100 }, { currencyId: 3, amount: 200.5 }])
+    })
+    it('duplikált valuta → hiba', () => {
+      const r = buildTransferLines([{ currencyId: 2, amount: '100' }, { currencyId: 2, amount: '50' }])
+      expect(r.error).toContain('egyszer')
+      expect(r.lines).toEqual([])
+    })
+    it('nem pozitív összeg → hiba', () => {
+      const r = buildTransferLines([{ currencyId: 2, amount: '0' }])
+      expect(r.error).toContain('pozitív')
+    })
+    it('nincs érvényes sor → hiba', () => {
+      const r = buildTransferLines([{ currencyId: null, amount: '' }])
+      expect(r.error).toContain('Legalább egy')
     })
   })
 

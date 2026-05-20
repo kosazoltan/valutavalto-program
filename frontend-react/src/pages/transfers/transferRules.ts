@@ -47,6 +47,45 @@ export function isHufOnlyTransferType(type: TransferType): boolean {
   return type === 'CASH' || type === 'HANDLING_FEE'
 }
 
+/** (#6) Egy szerkesztő-sor a több-valutás átadólapon. */
+export interface CurrencyLineInput {
+  currencyId: number | null
+  amount: string
+}
+
+export interface BuiltTransferLines {
+  lines: Array<{ currencyId: number; amount: number }>
+  error: string | null
+}
+
+/**
+ * (#6) A több-valutás szerkesztő-sorokból validált `lines` tömb építése:
+ *  - üres (currencyId=null) sor kihagyva,
+ *  - minden megadott sorhoz pozitív összeg kell,
+ *  - egy valuta csak egyszer szerepelhet,
+ *  - legalább egy érvényes sor kell.
+ */
+export function buildTransferLines(rows: CurrencyLineInput[]): BuiltTransferLines {
+  const lines: Array<{ currencyId: number; amount: number }> = []
+  const seen = new Set<number>()
+  for (const r of rows) {
+    if (r.currencyId == null) continue
+    const amt = Number.parseFloat(String(r.amount).replace(/\s/g, '').replace(',', '.'))
+    if (!Number.isFinite(amt) || amt <= 0) {
+      return { lines: [], error: 'Minden megadott valuta-sorhoz pozitív összeg szükséges!' }
+    }
+    if (seen.has(r.currencyId)) {
+      return { lines: [], error: 'Egy átadólapon egy valuta csak egyszer szerepelhet!' }
+    }
+    seen.add(r.currencyId)
+    lines.push({ currencyId: r.currencyId, amount: amt })
+  }
+  if (lines.length === 0) {
+    return { lines: [], error: 'Legalább egy valuta-sort meg kell adni!' }
+  }
+  return { lines, error: null }
+}
+
 /**
  * (Req #4 + #5) Valuta-szűrés a típus szerint:
  *  - FT / kezelési költség → CSAK HUF,

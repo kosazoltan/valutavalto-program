@@ -416,6 +416,7 @@ export async function initDatabase(): Promise<void> {
         carrier_name TEXT,
         seal_number TEXT,
         direction TEXT,
+        lines TEXT,
         local_reference_number TEXT,
         idempotency_key TEXT,
         created_at TEXT DEFAULT (datetime('now')),
@@ -535,6 +536,7 @@ export async function initDatabase(): Promise<void> {
       'carrier_name TEXT',
       'seal_number TEXT',
       'direction TEXT',
+      'lines TEXT',
       'local_reference_number TEXT',
       'idempotency_key TEXT',
     ];
@@ -1852,6 +1854,7 @@ export interface PendingTransferRow {
   carrier_name: string | null;
   seal_number: string | null;
   direction: string | null;
+  lines: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
   created_at: string;
@@ -1871,6 +1874,7 @@ export function savePendingTransfer(
   carrierName: string | null = null,
   sealNumber: string | null = null,
   direction: string | null = null,
+  lines: string | null = null,
 ): number {
   if (!db) throw new Error('Database not initialized');
   // v2.3.52 B30: Átadólap-szám AT<branch>NNNNNN (legacy parity), LT-fallback ha config hiányzik.
@@ -1897,9 +1901,10 @@ export function savePendingTransfer(
       carrier_name,
       seal_number,
       direction,
+      lines,
       local_reference_number,
       idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       targetBranchId,
       targetBranchCode,
@@ -1913,6 +1918,7 @@ export function savePendingTransfer(
       carrierName,
       sealNumber,
       direction,
+      lines,
       localReferenceNumber,
       idempotencyKey,
     ],
