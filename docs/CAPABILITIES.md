@@ -16,7 +16,7 @@
 
 | Capability | VV-ELVI ref | Státusz | Kódbeli hely (irányadó) | Teszt | Gap |
 |---|---|---|---|---|---|
-| AML 100k identifikáció | 9.1 | IMPLEMENTED | `service/AmlService.java:SIMPLIFIED_IDENTIFICATION_LIMIT` | `AmlThresholdTest` (TERVEZETT) | teszt-coverage |
+| AML 100k identifikáció | 9.1 | IMPLEMENTED | `service/AmlService.java:SIMPLIFIED_IDENTIFICATION_LIMIT` | `AmlThresholdTest` (7 eset) | küszöb-coverage: <100k / 100-300k azonosítással és nélkül / ≥300k / ≥1.5M / érvénytelen összeg |
 | AML 300k PEP | 9.1 | IMPLEMENTED | `service/AmlService.java:IDENTIFICATION_LIMIT` | `PepDeclarationTest` (TERVEZETT) | teszt-coverage |
 | Sanction-list valós idejű | 9.1 | IMPLEMENTED | `service/SanctionScreeningService.java` (DB-cache + napi scheduler import) | `SanctionOfflineFallbackTest` (5 eset) | offline cache fallback KÉSZ (v2.5.91): `staleData`+`listAgeDays`, >7 nap/üres → degradált-jelzés + warning |
 | SAR auto-flag | 9.1 | IMPLEMENTED | `service/AmlService.java` (4. szekció, `DAILY_SUSPICIOUS_LIMIT` 900k) | `SarAutoFlagTest` (5 eset) | napi göngyölt >= 900k → `suspiciousFlag`; blank customerId hardening |
