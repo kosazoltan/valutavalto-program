@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -67,6 +68,27 @@ class MnbDailyReportSchedulerTest {
         assertThat(result.skipped()).isEqualTo(1);
         assertThat(result.failed()).isEqualTo(1);
         verify(mnbReportService, times(3)).generateDailyReport(any(), eq(date));
+    }
+
+    @Test
+    @DisplayName("Konkurens insert: DataIntegrityViolationException is kihagyásnak számít (nem hiba)")
+    void concurrentInsertCountsAsSkipped() {
+        UUID ok = UUID.randomUUID();
+        UUID race = UUID.randomUUID();
+        LocalDate date = LocalDate.of(2026, 5, 20);
+
+        when(branchRepository.findByIsActiveTrue()).thenReturn(List.of(branch(ok), branch(race)));
+        when(mnbReportService.generateDailyReport(eq(ok), any()))
+                .thenReturn(MnbReport.builder().build());
+        when(mnbReportService.generateDailyReport(eq(race), any()))
+                .thenThrow(new DataIntegrityViolationException(
+                        "duplicate key value violates unique constraint \"uq_mnb_report_branch_type_date\""));
+
+        var result = scheduler.generateDailyDrafts(date);
+
+        assertThat(result.generated()).isEqualTo(1);
+        assertThat(result.skipped()).isEqualTo(1);
+        assertThat(result.failed()).isZero();
     }
 
     @Test
