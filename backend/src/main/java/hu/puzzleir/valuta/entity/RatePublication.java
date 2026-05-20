@@ -54,4 +54,8 @@ public class RatePublication {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    /** Optimista zárolás (RFM concurrent szerkesztés-védelem, VV-ELVI 7.3). */
+    @Version
+    private Long version;
 }

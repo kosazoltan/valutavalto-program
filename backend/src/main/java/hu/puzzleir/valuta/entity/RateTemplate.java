@@ -94,6 +94,10 @@ public class RateTemplate {
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
+    /** Optimista zárolás (RFM concurrent szerkesztés-védelem, VV-ELVI 7.3). */
+    @Version
+    private Long version;
+
     /**
      * Árfolyam-sablon életciklus + megengedett állapotátmenetek (state machine, VV-ELVI v2 5.2).
      *
