@@ -59,6 +59,15 @@ class RateSpreadGateTest {
     }
 
     @Test
+    @DisplayName("épp csak 5% FÖLÖTT (kerekítés-csapda) → dob (egzakt összehasonlítás, Copilot/Codex #719)")
+    void justAboveLimit_noRoundingEscape_throws() {
+        // reference=250, sell-buy=12.5001 → 12.5001/250 = 0.05000040 (>5%, de 6 tizedesre 0.050000-ra
+        // kerekedne). Egzakt kereszt-szorzás: 12.5001 > 250*0.05=12.5 → dobnia KELL.
+        assertThrows(ValidationException.class, () ->
+                RateSpreadGate.enforce(new BigDecimal("100.0000"), new BigDecimal("112.5001"), new BigDecimal("250"), 9L));
+    }
+
+    @Test
     @DisplayName("hiányzó (null) buy/sell → no-op (a hiányzó-érték check a hívóé)")
     void nullRates_noOp() {
         assertDoesNotThrow(() -> RateSpreadGate.enforce(null, new BigDecimal("100"), null, 1L));

@@ -43,9 +43,15 @@ public final class RateSpreadGate {
             // Nem értelmezhető referencia — a vételi<eladási sanity-check már véd.
             return;
         }
-        BigDecimal spreadRatio = sellRate.subtract(buyRate).divide(reference, 6, RoundingMode.HALF_UP);
-        if (spreadRatio.compareTo(MAX_RELATIVE_SPREAD) > 0) {
-            BigDecimal pct = spreadRatio.movePointRight(2).setScale(2, RoundingMode.HALF_UP);
+        // Egzakt összehasonlítás kereszt-szorzással: (sell − buy) > reference × 0.05.
+        // NEM osztunk a döntés előtt, hogy a kerekítés (pl. 0.0500004 → 0.050000) ne
+        // engedjen át ténylegesen 5% fölötti spreadet (Copilot/Codex #719 finding).
+        BigDecimal actualSpread = sellRate.subtract(buyRate);
+        BigDecimal maxAllowedSpread = reference.multiply(MAX_RELATIVE_SPREAD);
+        if (actualSpread.compareTo(maxAllowedSpread) > 0) {
+            // A százalék CSAK megjelenítéshez számolódik (kerekítés itt megengedett).
+            BigDecimal pct = actualSpread.divide(reference, 6, RoundingMode.HALF_UP)
+                    .movePointRight(2).setScale(2, RoundingMode.HALF_UP);
             throw new ValidationException(String.format(
                     "A vételi/eladási spread (%s%%) meghaladja a megengedett %d%%-ot! currencyId=%s",
                     pct.toPlainString(), MAX_RELATIVE_SPREAD_PERCENT, currencyId));
