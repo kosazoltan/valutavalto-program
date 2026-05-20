@@ -1281,6 +1281,9 @@ export class SyncEngine {
     if (tx.note) {
       body['notes'] = tx.note;
     }
+    if (tx.carrier_name) body['carrierName'] = tx.carrier_name;
+    if (tx.seal_number) body['sealNumber'] = tx.seal_number;
+    if (tx.direction) body['direction'] = tx.direction;
     await httpPost(`${serverUrl}/transfers`, body, token, tx.idempotency_key ?? undefined);
   }
 
@@ -1527,6 +1530,9 @@ export class SyncEngine {
             try { body['denominations'] = JSON.parse(tx.denominations); } catch { /* skip */ }
           }
           if (tx.note) body['notes'] = tx.note;
+          if (tx.carrier_name) body['carrierName'] = tx.carrier_name;
+          if (tx.seal_number) body['sealNumber'] = tx.seal_number;
+          if (tx.direction) body['direction'] = tx.direction;
 
           await httpPost(`${serverUrl}/transfers`, body, token, tx.idempotency_key ?? undefined);
           markTransferSynced(tx.id);

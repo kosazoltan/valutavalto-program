@@ -286,6 +286,9 @@ export default function TransferPage() {
           transferType,
           denominations: null,
           note: notes || null,
+          carrierName: carrierName.trim() || null,
+          sealNumber: sealNumber.trim() || null,
+          direction: transferDirection === 'in' ? 'U' : 'F',
         })
 
         const label = transferDirection === 'out' ? 'Átadás' : 'Átvétel'

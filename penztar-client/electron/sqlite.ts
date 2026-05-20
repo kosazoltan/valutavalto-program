@@ -413,6 +413,9 @@ export async function initDatabase(): Promise<void> {
         transfer_type TEXT,
         denominations TEXT,
         note TEXT,
+        carrier_name TEXT,
+        seal_number TEXT,
+        direction TEXT,
         local_reference_number TEXT,
         idempotency_key TEXT,
         created_at TEXT DEFAULT (datetime('now')),
@@ -529,6 +532,9 @@ export async function initDatabase(): Promise<void> {
       'currency_id INTEGER',
       'huf_value REAL',
       'transfer_type TEXT',
+      'carrier_name TEXT',
+      'seal_number TEXT',
+      'direction TEXT',
       'local_reference_number TEXT',
       'idempotency_key TEXT',
     ];
@@ -1843,6 +1849,9 @@ export interface PendingTransferRow {
   transfer_type: string | null;
   denominations: string | null;
   note: string | null;
+  carrier_name: string | null;
+  seal_number: string | null;
+  direction: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
   created_at: string;
@@ -1859,6 +1868,9 @@ export function savePendingTransfer(
   transferType: string | null,
   denominations: string | null,
   note: string | null,
+  carrierName: string | null = null,
+  sealNumber: string | null = null,
+  direction: string | null = null,
 ): number {
   if (!db) throw new Error('Database not initialized');
   // v2.3.52 B30: Átadólap-szám AT<branch>NNNNNN (legacy parity), LT-fallback ha config hiányzik.
@@ -1882,9 +1894,12 @@ export function savePendingTransfer(
       transfer_type,
       denominations,
       note,
+      carrier_name,
+      seal_number,
+      direction,
       local_reference_number,
       idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       targetBranchId,
       targetBranchCode,
@@ -1895,6 +1910,9 @@ export function savePendingTransfer(
       transferType,
       denominations,
       note,
+      carrierName,
+      sealNumber,
+      direction,
       localReferenceNumber,
       idempotencyKey,
     ],

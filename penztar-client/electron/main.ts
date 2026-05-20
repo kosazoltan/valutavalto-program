@@ -655,8 +655,11 @@ ipcMain.handle('save-pending-transfer', async (
   transferType: string | null,
   denominations: string | null,
   note: string | null,
+  carrierName: string | null = null,
+  sealNumber: string | null = null,
+  direction: string | null = null,
 ): Promise<number> => {
-  return savePendingTransfer(targetBranchId, targetBranchCode, currencyId, currencyCode, amount, hufValue, transferType, denominations, note);
+  return savePendingTransfer(targetBranchId, targetBranchCode, currencyId, currencyCode, amount, hufValue, transferType, denominations, note, carrierName, sealNumber, direction);
 });
 
 ipcMain.handle('get-pending-transfers', async (): Promise<ReturnType<typeof getPendingTransfers>> => {
