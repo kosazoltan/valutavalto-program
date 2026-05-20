@@ -63,14 +63,24 @@ public class DiscountApprovalController {
     }
 
     /**
-     * Copilot P2 #711: getActiveOperationalRole() lehet null (backward-compat ctor
-     * activeRole=null). Fallback a getCurrentRole()-ra, NEM néma CASHIER-degradálás.
+     * Worker szerepkör feloldása a kedvezmény-jóváhagyáshoz.
+     *
+     * <p>Copilot P2 #711: a {@code getActiveOperationalRole()} lehet null (backward-compat
+     * ctor activeRole=null) — ekkor a {@code getCurrentRole()}-ra fallback-elünk, hogy NE
+     * némán CASHIER-re degradáljon (ami téves canApprove=false-t adna egy MANAGER-nek).</p>
+     *
+     * <p>MEGJEGYZÉS (C.25 subagent review): ha SEM operational SEM canonical role nincs
+     * (azaz nincs bejelentkezett user), a {@code getCurrentRole()} <b>ValidationException-t
+     * dob</b> ("Nincs bejelentkezett felhasználó!") → HTTP 400, NEM néma CASHIER. Ez
+     * elfogadható, mert mindkét endpoint {@code @PreAuthorize}-gated, így auth nélkül
+     * nem is érhető el.</p>
      */
     private String resolveRole() {
         String operational = SecurityUtils.getActiveOperationalRole();
         if (operational != null && !operational.isBlank()) {
             return operational;
         }
+        // getCurrentRole() ValidationException-t dob ha nincs auth (gated endpoint → 400, OK)
         return SecurityUtils.getCurrentRole();
     }
 
