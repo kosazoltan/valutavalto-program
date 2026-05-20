@@ -33,7 +33,7 @@ import {
 import { getLocalPendingTransfers } from '../../utils/localQueue'
 import { useTranslation } from 'react-i18next'
 import SupervisorPinModal from '../../components/auth/SupervisorPinModal'
-import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, type CurrencyLineInput } from './transferRules'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, type CurrencyLineInput } from './transferRules'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -759,15 +759,12 @@ export default function TransferPage() {
                 >
                   <option value="">{t('transfers.valasszonIrodat')}</option>
                   {(() => {
-                    // 2026-05-15 user-direktíva: a régi szűrő ((TH || VAULT) && sameRegion)
-                    // production-on üres dropdown-ot adott, mert a BranchPage admin UI nem
-                    // engedi a típus-állítást → a fiókok döntő része PENZTAR isVault=false.
-                    // Új viselkedés: minden aktív fiók látszik (kivéve a saját), TH/VAULT
-                    // badge továbbra is, de NEM kemény filter.
-                    // branchApi.listActive() már csak aktív fiókokat ad vissza,
-                    // ezért nincs külön isActive szűrő itt.
-                    return branches
-                      .filter(b => transferDirection === 'out' ? b.id !== worker?.branchId : true)
+                    // #1 (Kósa Zoltán 2026-05-20): a cél-lista CSAK a saját terület értéktára +
+                    // TH + "Egyes számú pénztár" (1.sz Főpénztár). filterTransferTargetBranches
+                    // üres-fallbackkel (ha a törzsadat hiányos → mindet mutatja, nehogy üres
+                    // legyen a dropdown, mint 2026-05-15-én).
+                    const candidates = branches.filter(b => transferDirection === 'out' ? b.id !== worker?.branchId : true)
+                    return filterTransferTargetBranches(candidates, ownBranch)
                       .map(b => {
                         const isTH = b.branchTypeCode === 'TH' || /\bTH\b/i.test(b.code) || /\bTH\b/i.test(b.name)
                         const isVault = b.isVault === true
