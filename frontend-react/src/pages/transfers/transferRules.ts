@@ -47,6 +47,53 @@ export function isHufOnlyTransferType(type: TransferType): boolean {
   return type === 'CASH' || type === 'HANDLING_FEE'
 }
 
+/**
+ * (#1) Átadás-átvétel cél-fiók szűrés (Kósa Zoltán 2026-05-20): csak
+ *  - az adott pénztár TERÜLETÉHEZ tartozó értéktár (isVault + azonos vaultTerritoryId/region),
+ *  - TH (Többlet-hiány) pénztár,
+ *  - az "1.sz Főpénztár" = a Pécsi Iroda "Egyes számú pénztár" központi készpénzpénztára
+ *    (ide mennek a készpénz-átadások/átvételek és a hiány/többlet könyvelés).
+ *
+ * ÜRES-FALLBACK: ha a szűrő 0 fiókot adna (hibás/hiányos törzsadat), MINDET visszaadjuk —
+ * nehogy megismétlődjön a 2026-05-15-i üres-dropdown production hiba.
+ */
+export interface TransferTargetBranch {
+  id: string
+  code: string
+  name: string
+  isVault?: boolean
+  branchTypeCode?: string
+  region?: string
+  vaultTerritoryId?: number | null
+}
+
+export function isTHBranch(b: TransferTargetBranch): boolean {
+  return b.branchTypeCode === 'TH' || /\bTH\b/i.test(b.code) || /\bTH\b/i.test(b.name)
+}
+
+/** "Egyes számú pénztár" / "1. számú pénztár" / "1.sz Főpénztár" (központi készpénzpénztár). */
+export function isMainCashierBranch(b: TransferTargetBranch): boolean {
+  return /egyes\s*sz[aá]m|(^|\b)1\.?\s*sz[aá]m|f[őo]\s*p[eé]nzt[aá]r/i.test(b.name)
+}
+
+export function filterTransferTargetBranches<T extends TransferTargetBranch>(
+  branches: T[],
+  ownBranch?: T | null,
+): T[] {
+  const filtered = branches.filter(b => {
+    if (isTHBranch(b)) return true
+    if (isMainCashierBranch(b)) return true
+    if (b.isVault === true && ownBranch) {
+      const sameTerritory =
+        (ownBranch.vaultTerritoryId != null && b.vaultTerritoryId === ownBranch.vaultTerritoryId) ||
+        (!!ownBranch.region && b.region === ownBranch.region)
+      if (sameTerritory) return true
+    }
+    return false
+  })
+  return filtered.length > 0 ? filtered : branches
+}
+
 /** (#6) Egy szerkesztő-sor a több-valutás átadólapon. */
 export interface CurrencyLineInput {
   /** Stabil React-kulcs a sorhoz (a buildTransferLines figyelmen kívül hagyja). */
