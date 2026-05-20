@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.entity;
 
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -32,13 +33,23 @@ public enum TransactionStatus {
         return displayName;
     }
 
+    /** Előre kiszámolt, módosíthatatlan átmenethalmazok (allokáció-mentes, immutable). */
+    private static final Set<TransactionStatus> PENDING_TARGETS =
+            Collections.unmodifiableSet(EnumSet.of(COMPLETED, FAILED, CANCELLED));
+    private static final Set<TransactionStatus> COMPLETED_TARGETS =
+            Collections.unmodifiableSet(EnumSet.of(REVERSED, ARCHIVED));
+    private static final Set<TransactionStatus> REVERSED_TARGETS =
+            Collections.unmodifiableSet(EnumSet.of(ARCHIVED));
+    private static final Set<TransactionStatus> NO_TARGETS =
+            Collections.unmodifiableSet(EnumSet.noneOf(TransactionStatus.class));
+
     /** Az adott állapotból megengedett cél-állapotok (state machine). */
     public Set<TransactionStatus> allowedTransitions() {
         return switch (this) {
-            case PENDING -> EnumSet.of(COMPLETED, FAILED, CANCELLED);
-            case COMPLETED -> EnumSet.of(REVERSED, ARCHIVED);
-            case REVERSED -> EnumSet.of(ARCHIVED);
-            case FAILED, CANCELLED, ARCHIVED -> EnumSet.noneOf(TransactionStatus.class);
+            case PENDING -> PENDING_TARGETS;
+            case COMPLETED -> COMPLETED_TARGETS;
+            case REVERSED -> REVERSED_TARGETS;
+            case FAILED, CANCELLED, ARCHIVED -> NO_TARGETS;
         };
     }
 
