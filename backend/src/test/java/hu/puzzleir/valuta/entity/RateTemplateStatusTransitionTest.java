@@ -4,46 +4,57 @@ import hu.puzzleir.valuta.entity.RateTemplate.RateTemplateStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * RateTemplateStatus state machine (VV-ELVI v2 5.2) — megengedett átmenetek tesztje.
+ *
+ * <p>Az átmenettábla a tényleges service-logikát tükrözi (egyetlen igazságforrás):
+ * approve = DRAFT→APPROVED, publish = DRAFT|APPROVED→PUBLISHED, revoke = APPROVED|PUBLISHED→REVOKED.
  */
 class RateTemplateStatusTransitionTest {
 
     @Test
-    @DisplayName("DRAFT → APPROVED/REVOKED; DRAFT → PUBLISHED tiltott (jóváhagyás kihagyása)")
+    @DisplayName("DRAFT → APPROVED/PUBLISHED megengedett; DRAFT → REVOKED tiltott (DRAFT nem vonható vissza)")
     void draftTransitions() {
-        assertTrue(RateTemplateStatus.DRAFT.canTransitionTo(RateTemplateStatus.APPROVED));
-        assertTrue(RateTemplateStatus.DRAFT.canTransitionTo(RateTemplateStatus.REVOKED));
-        assertFalse(RateTemplateStatus.DRAFT.canTransitionTo(RateTemplateStatus.PUBLISHED));
+        assertThat(RateTemplateStatus.DRAFT.canTransitionTo(RateTemplateStatus.APPROVED)).isTrue();
+        assertThat(RateTemplateStatus.DRAFT.canTransitionTo(RateTemplateStatus.PUBLISHED)).isTrue();
+        assertThat(RateTemplateStatus.DRAFT.canTransitionTo(RateTemplateStatus.REVOKED)).isFalse();
     }
 
     @Test
-    @DisplayName("APPROVED → PUBLISHED/DRAFT/REVOKED megengedett")
+    @DisplayName("APPROVED → PUBLISHED/REVOKED megengedett; APPROVED → DRAFT tiltott")
     void approvedTransitions() {
-        assertTrue(RateTemplateStatus.APPROVED.canTransitionTo(RateTemplateStatus.PUBLISHED));
-        assertTrue(RateTemplateStatus.APPROVED.canTransitionTo(RateTemplateStatus.DRAFT));
-        assertTrue(RateTemplateStatus.APPROVED.canTransitionTo(RateTemplateStatus.REVOKED));
+        assertThat(RateTemplateStatus.APPROVED.canTransitionTo(RateTemplateStatus.PUBLISHED)).isTrue();
+        assertThat(RateTemplateStatus.APPROVED.canTransitionTo(RateTemplateStatus.REVOKED)).isTrue();
+        assertThat(RateTemplateStatus.APPROVED.canTransitionTo(RateTemplateStatus.DRAFT)).isFalse();
     }
 
     @Test
     @DisplayName("PUBLISHED → REVOKED megengedett; PUBLISHED → DRAFT/APPROVED tiltott")
     void publishedTransitions() {
-        assertTrue(RateTemplateStatus.PUBLISHED.canTransitionTo(RateTemplateStatus.REVOKED));
-        assertFalse(RateTemplateStatus.PUBLISHED.canTransitionTo(RateTemplateStatus.DRAFT));
-        assertFalse(RateTemplateStatus.PUBLISHED.canTransitionTo(RateTemplateStatus.APPROVED));
+        assertThat(RateTemplateStatus.PUBLISHED.canTransitionTo(RateTemplateStatus.REVOKED)).isTrue();
+        assertThat(RateTemplateStatus.PUBLISHED.canTransitionTo(RateTemplateStatus.DRAFT)).isFalse();
+        assertThat(RateTemplateStatus.PUBLISHED.canTransitionTo(RateTemplateStatus.APPROVED)).isFalse();
     }
 
     @Test
     @DisplayName("REVOKED terminális; null/önmaga nincs átmenet")
     void revokedTerminalAndNull() {
-        assertTrue(RateTemplateStatus.REVOKED.isTerminal());
+        assertThat(RateTemplateStatus.REVOKED.isTerminal()).isTrue();
         for (RateTemplateStatus t : RateTemplateStatus.values()) {
-            assertFalse(RateTemplateStatus.REVOKED.canTransitionTo(t));
+            assertThat(RateTemplateStatus.REVOKED.canTransitionTo(t)).isFalse();
         }
-        assertFalse(RateTemplateStatus.DRAFT.canTransitionTo(null));
-        assertFalse(RateTemplateStatus.DRAFT.canTransitionTo(RateTemplateStatus.DRAFT));
+        assertThat(RateTemplateStatus.DRAFT.canTransitionTo(null)).isFalse();
+        assertThat(RateTemplateStatus.DRAFT.canTransitionTo(RateTemplateStatus.DRAFT)).isFalse();
+    }
+
+    @Test
+    @DisplayName("DRAFT/APPROVED/PUBLISHED nem-terminális (van kimenő átmenetük)")
+    void nonTerminalStates() {
+        for (RateTemplateStatus s : new RateTemplateStatus[]{
+                RateTemplateStatus.DRAFT, RateTemplateStatus.APPROVED, RateTemplateStatus.PUBLISHED}) {
+            assertThat(s.isTerminal()).as("%s nem terminális", s).isFalse();
+        }
     }
 }

@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -97,25 +100,45 @@ public class RateTemplate {
     /**
      * Árfolyam-sablon életciklus + megengedett állapotátmenetek (state machine, VV-ELVI v2 5.2).
      *
-     * <p>DRAFT → APPROVED | REVOKED · APPROVED → PUBLISHED | DRAFT | REVOKED ·
-     * PUBLISHED → REVOKED · REVOKED → (terminális).
+     * <p>Az átmenettábla a tényleges service-logikát tükrözi (egyetlen igazságforrás):
+     * <ul>
+     *   <li>{@code DRAFT → APPROVED} — {@code RateTemplateApprovalService.approve} (csak DRAFT hagyható jóvá)</li>
+     *   <li>{@code DRAFT → PUBLISHED} — {@code RatePublishService.publish} (DRAFT vagy APPROVED publikálható)</li>
+     *   <li>{@code APPROVED → PUBLISHED} — {@code RatePublishService.publish}</li>
+     *   <li>{@code APPROVED → REVOKED} — {@code RateTemplateApprovalService.revoke} (DRAFT NEM vonható vissza)</li>
+     *   <li>{@code PUBLISHED → REVOKED} — {@code RateTemplateApprovalService.revoke}</li>
+     *   <li>{@code REVOKED} → (terminális, nincs továbblépés)</li>
+     * </ul>
      */
     public enum RateTemplateStatus {
         DRAFT, APPROVED, PUBLISHED, REVOKED;
 
-        public java.util.Set<RateTemplateStatus> allowedTransitions() {
+        /** Előre kiszámolt, módosíthatatlan átmenethalmazok (allokáció-mentes, immutable). */
+        private static final Set<RateTemplateStatus> DRAFT_TARGETS =
+                Collections.unmodifiableSet(EnumSet.of(APPROVED, PUBLISHED));
+        private static final Set<RateTemplateStatus> APPROVED_TARGETS =
+                Collections.unmodifiableSet(EnumSet.of(PUBLISHED, REVOKED));
+        private static final Set<RateTemplateStatus> PUBLISHED_TARGETS =
+                Collections.unmodifiableSet(EnumSet.of(REVOKED));
+        private static final Set<RateTemplateStatus> NO_TARGETS =
+                Collections.unmodifiableSet(EnumSet.noneOf(RateTemplateStatus.class));
+
+        /** Az adott állapotból megengedett cél-állapotok (state machine). */
+        public Set<RateTemplateStatus> allowedTransitions() {
             return switch (this) {
-                case DRAFT -> java.util.EnumSet.of(APPROVED, REVOKED);
-                case APPROVED -> java.util.EnumSet.of(PUBLISHED, DRAFT, REVOKED);
-                case PUBLISHED -> java.util.EnumSet.of(REVOKED);
-                case REVOKED -> java.util.EnumSet.noneOf(RateTemplateStatus.class);
+                case DRAFT -> DRAFT_TARGETS;
+                case APPROVED -> APPROVED_TARGETS;
+                case PUBLISHED -> PUBLISHED_TARGETS;
+                case REVOKED -> NO_TARGETS;
             };
         }
 
+        /** Megengedett-e az átmenet a megadott cél-állapotba (önmagába = no-op, nem engedett). */
         public boolean canTransitionTo(RateTemplateStatus target) {
             return target != null && allowedTransitions().contains(target);
         }
 
+        /** Terminális állapot-e (nincs további megengedett átmenet). */
         public boolean isTerminal() {
             return allowedTransitions().isEmpty();
         }

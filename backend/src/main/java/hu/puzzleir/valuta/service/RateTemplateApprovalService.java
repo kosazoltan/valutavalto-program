@@ -24,8 +24,10 @@ public class RateTemplateApprovalService {
         RateTemplate template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new ValidationException("Sablon nem található: " + templateId));
 
-        if (template.getStatus() != RateTemplate.RateTemplateStatus.DRAFT) {
-            throw new ValidationException("Csak DRAFT státuszú sablon hagyható jóvá!");
+        // State machine = egyetlen igazságforrás (VV-ELVI v2 5.2): jóváhagyás csak DRAFT→APPROVED.
+        if (!template.getStatus().canTransitionTo(RateTemplate.RateTemplateStatus.APPROVED)) {
+            throw new ValidationException("Csak DRAFT státuszú sablon hagyható jóvá! Jelenlegi állapot: "
+                    + template.getStatus());
         }
 
         template.setStatus(RateTemplate.RateTemplateStatus.APPROVED);
@@ -42,8 +44,11 @@ public class RateTemplateApprovalService {
         RateTemplate template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new ValidationException("Sablon nem található: " + templateId));
 
-        if (template.getStatus() == RateTemplate.RateTemplateStatus.DRAFT) {
-            throw new ValidationException("DRAFT státuszú sablon nem vonható vissza!");
+        // State machine = egyetlen igazságforrás (VV-ELVI v2 5.2): DRAFT nem vonható vissza,
+        // a REVOKED terminális — visszavonás csak APPROVED/PUBLISHED→REVOKED.
+        if (!template.getStatus().canTransitionTo(RateTemplate.RateTemplateStatus.REVOKED)) {
+            throw new ValidationException("Ez az állapot nem vonható vissza! Jelenlegi állapot: "
+                    + template.getStatus());
         }
 
         template.setStatus(RateTemplate.RateTemplateStatus.REVOKED);
