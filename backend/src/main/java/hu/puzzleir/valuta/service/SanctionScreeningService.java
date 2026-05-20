@@ -41,6 +41,8 @@ public class SanctionScreeningService {
     private static final double EXACT_MATCH_SCORE = 1.0;
     private static final double PARTIAL_MATCH_SCORE = 0.7;
     private static final double ALIAS_MATCH_SCORE = 0.5;
+    /** #4: e fölött a helyi szankciós lista elavultnak (degradált) minősül. */
+    private static final int MAX_SANCTION_LIST_AGE_DAYS = 7;
 
     private final SanctionEntryRepository sanctionEntryRepository;
     private final SanctionScreeningLogRepository screeningLogRepository;
@@ -94,10 +96,22 @@ public class SanctionScreeningService {
         log.info("[SanctionScreening] Szűrés: név='{}', okmány='{}', eredmény={}, találatok={}",
                 name, documentNumber, riskLevel, allMatches.size());
 
+        // #4 offline cache fallback: ha a helyi lista elavult/üres, a szűrés akkor is lefut
+        // (cache-ből), de explicit jelezzük a degradált módot (a hívó/UI figyelmeztethet).
+        Integer listAgeDays = computeSanctionListAgeDays();
+        boolean stale = isSanctionListStale(listAgeDays);
+        if (stale) {
+            log.warn("[SanctionScreening] DEGRADÁLT MÓD: a helyi szankciós lista elavult/üres "
+                    + "(kor={} nap, aktív bejegyzés={}). A szűrés a cache-ből futott — frissítés szükséges!",
+                    listAgeDays, getActiveCount());
+        }
+
         return SanctionScreeningResult.builder()
                 .matched(matched)
                 .matches(allMatches)
                 .riskLevel(riskLevel)
+                .staleData(stale)
+                .listAgeDays(listAgeDays)
                 .build();
     }
 
@@ -325,6 +339,23 @@ public class SanctionScreeningService {
     }
 
     // ── Belső segédmetódusok ─────────────────────────────────────────────
+
+    /** #4: a helyi szankciós lista kora napokban (null, ha még sosem importálták). */
+    private Integer computeSanctionListAgeDays() {
+        LocalDate last = getLastUpdateDate();
+        if (last == null) return null;
+        return (int) java.time.temporal.ChronoUnit.DAYS.between(last, LocalDate.now());
+    }
+
+    /**
+     * #4: a helyi szankciós lista elavult/degradált-e — ha üres (sosem importált),
+     * vagy a kora meghaladja a {@value #MAX_SANCTION_LIST_AGE_DAYS} napot.
+     */
+    private boolean isSanctionListStale(Integer ageDays) {
+        if (getActiveCount() == 0) return true;
+        if (ageDays == null) return true;
+        return ageDays > MAX_SANCTION_LIST_AGE_DAYS;
+    }
 
     private String determineRiskLevel(List<SanctionMatch> matches) {
         if (matches.isEmpty()) return "CLEAR";
