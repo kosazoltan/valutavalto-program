@@ -34,6 +34,7 @@
 | C.22 | 2 ellenőrzési kör (CI + GitHub AI gate) merge előtt | `vault/feedback/two-rounds-before-merge-mandatory-2026-05-19.md` | always | **P0** |
 | C.23 | 2-kör SAJÁT subagent self-review (CI+AI gate KIEGÉSZÍTÉS) | `vault/feedback/two-rounds-self-subagent-review-mandatory-2026-05-19.md` | always | **P0** |
 | C.24 | Proaktív CI + AI review polling (T+60/120/180/300s cadence, NEM passzív email-várás) | `vault/feedback/proactive-ai-review-polling-mandatory-2026-05-19.md` | always | **P0** |
+| C.25 | KÖTELEZŐ pre-PR önellenőrzési gate (4 fázis: lokális gate + checklist + 2-kör subagent + GitHub AI, NINCS gyors-PR kivétel) | `vault/feedback/mandatory-pre-pr-self-review-gate-2026-05-20.md` | always | **P0** |
 
 ## ÚJ üzleti / szabályozási mandate (2026-05-17 Perplexity korrekciós doksi)
 
