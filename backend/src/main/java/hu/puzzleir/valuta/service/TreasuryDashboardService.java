@@ -15,6 +15,7 @@ import hu.puzzleir.valuta.security.SecurityUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -240,12 +241,18 @@ public class TreasuryDashboardService {
                                 txCount += report.getTransactionCount() != null ? report.getTransactionCount() : 0;
                         }
 
+                        List<DailyReport> scopedReports = reports.stream()
+                                        .filter(r -> r.getBranch() != null
+                                                        && scopedBranchIds.contains(r.getBranch().getId()))
+                                        .toList();
+
                         builder.branchCount(scopedBranchIds.size())
                                         .totalBuyHuf(buy.setScale(2, RoundingMode.HALF_UP))
                                         .totalSellHuf(sell.setScale(2, RoundingMode.HALF_UP))
                                         .totalFeeHuf(fee.setScale(2, RoundingMode.HALF_UP))
                                         .totalProfit(profit.setScale(2, RoundingMode.HALF_UP))
-                                        .transactionCount(txCount);
+                                        .transactionCount(txCount)
+                                        .lastSyncedAt(latestReportTimestamp(scopedReports));
                 }
 
                 // Nem csoportosított irodák külön bucketben
@@ -255,6 +262,7 @@ public class TreasuryDashboardService {
                 BigDecimal ungroupedProfit = BigDecimal.ZERO;
                 int ungroupedTx = 0;
                 int ungroupedBranchCount = 0;
+                List<DailyReport> ungroupedReports = new ArrayList<>();
 
                 for (DailyReport report : reports) {
                         UUID branchId = report.getBranch().getId();
@@ -262,6 +270,7 @@ public class TreasuryDashboardService {
                                 continue;
                         }
                         ungroupedBranchCount++;
+                        ungroupedReports.add(report);
                         ungroupedBuy = ungroupedBuy.add(nz(report.getTotalBuyHuf()));
                         ungroupedSell = ungroupedSell.add(nz(report.getTotalSellHuf()));
                         ungroupedFee = ungroupedFee.add(nz(report.getTotalFeeHuf()));
@@ -285,6 +294,7 @@ public class TreasuryDashboardService {
                                         .totalProfit(ungroupedProfit.setScale(2, RoundingMode.HALF_UP))
                                         .transactionCount(ungroupedTx)
                                         .branchCount(ungroupedBranchCount)
+                                        .lastSyncedAt(latestReportTimestamp(ungroupedReports))
                                         .build());
                 }
 
@@ -331,8 +341,15 @@ public class TreasuryDashboardService {
                         builder.branchCount(branchSets.get(reportCompanyId).size());
                 }
 
-                return builders.values().stream()
-                                .map(TreasuryAggregateDto.TreasuryAggregateDtoBuilder::build)
+                // Per-cég lastSyncedAt: a céghez tartozó riportok legfrissebb időbélyege.
+                Map<UUID, List<DailyReport>> reportsByCompany = reports.stream()
+                                .filter(r -> r.getBranch() != null && r.getBranch().getCompany() != null)
+                                .collect(Collectors.groupingBy(r -> r.getBranch().getCompany().getId()));
+
+                return builders.entrySet().stream()
+                                .map(e -> e.getValue()
+                                                .lastSyncedAt(latestReportTimestamp(reportsByCompany.get(e.getKey())))
+                                                .build())
                                 .sorted(Comparator.comparing(TreasuryAggregateDto::getName, String.CASE_INSENSITIVE_ORDER))
                                 .collect(Collectors.toList());
         }
@@ -443,5 +460,32 @@ public class TreasuryDashboardService {
 
         private BigDecimal nz(BigDecimal value) {
                 return value != null ? value : BigDecimal.ZERO;
+        }
+
+        /**
+         * Egy napi-riport "frissesség" időbélyege: a beküldés ideje, ha van,
+         * különben a létrehozás ideje (a submitted_at nullable, a created_at nem).
+         */
+        static LocalDateTime reportTimestamp(DailyReport report) {
+                if (report == null) {
+                        return null;
+                }
+                return report.getSubmittedAt() != null ? report.getSubmittedAt() : report.getCreatedAt();
+        }
+
+        /**
+         * Egy aggregátum lastSyncedAt értéke = a hozzá tartozó napi-riportok
+         * {@link #reportTimestamp(DailyReport)} értékeinek maximuma (null-okat kihagyva).
+         * Üres lista / csupa-null → null (még nincs friss riport).
+         */
+        static LocalDateTime latestReportTimestamp(Collection<DailyReport> reports) {
+                if (reports == null) {
+                        return null;
+                }
+                return reports.stream()
+                                .map(TreasuryDashboardService::reportTimestamp)
+                                .filter(Objects::nonNull)
+                                .max(LocalDateTime::compareTo)
+                                .orElse(null);
         }
 }

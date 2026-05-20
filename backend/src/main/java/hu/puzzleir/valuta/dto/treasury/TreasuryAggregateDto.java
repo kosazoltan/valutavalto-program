@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * Altalanos aggregacios DTO treasury osszesitesekhez.
@@ -24,4 +25,6 @@ public class TreasuryAggregateDto {
     private BigDecimal totalProfit;
     private int transactionCount;
     private int branchCount;
+    /** Az aggregátum legfrissebb napi-riport időbélyege (max submittedAt ?? createdAt), VV-ELVI lastSyncedAt. */
+    private LocalDateTime lastSyncedAt;
 }
