@@ -26,6 +26,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -69,6 +71,10 @@ class SarAutoFlagTest {
         // Éves göngyölés alacsony — ne triggereljen éves limitet.
         when(transactionRepository.sumCustomerAnnualTotal(any(), eq(CUSTOMER), any(), any()))
                 .thenReturn(new BigDecimal("100000"));
+        // BIGCTRL (5. szekció) classifyTransaction → customerRepository: explicit "nincs ügyfél"
+        // válasz, hogy a teszt ne unmocked-null viselkedésre támaszkodjon (Copilot #720).
+        when(customerRepository.findByCustomerCodeAndCompanyId(any(), any()))
+                .thenReturn(Optional.empty());
     }
 
     @AfterEach
@@ -117,6 +123,8 @@ class SarAutoFlagTest {
         AmlService.AmlBasicCheckResult result =
                 amlService.checkTransaction(new BigDecimal("50000"), "   ", null, null);
         assertThat(result.isSuspiciousFlag()).isFalse();
+        // Bizonyítja a hardeninget: üres customerId-nél a napi göngyölés NEM fut le.
+        verify(transactionRepository, never()).sumCustomerDailyTotal(any(), any(), any());
     }
 
     @Test
@@ -125,5 +133,7 @@ class SarAutoFlagTest {
         AmlService.AmlBasicCheckResult result =
                 amlService.checkTransaction(new BigDecimal("50000"), null, null, null);
         assertThat(result.isSuspiciousFlag()).isFalse();
+        // Bizonyítja a guardot: null customerId-nél a napi göngyölés NEM fut le.
+        verify(transactionRepository, never()).sumCustomerDailyTotal(any(), any(), any());
     }
 }
