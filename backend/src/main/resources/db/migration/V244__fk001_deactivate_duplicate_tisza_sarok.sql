@@ -15,20 +15,33 @@
 
 DO $$
 DECLARE
-    v_dup_id  UUID;
-    v_keep_id UUID;
-    v_nonzero INT;
+    v_dup_id    UUID;
+    v_keep_id   UUID;
+    v_company   UUID;
+    v_dup_count INT;
+    v_nonzero   INT;
 BEGIN
-    SELECT id INTO v_dup_id  FROM branch WHERE name = 'Tisza Sarok'        AND is_active = true LIMIT 1;
-    SELECT id INTO v_keep_id FROM branch WHERE name = 'Szeged Tisza Sarok'                      LIMIT 1;
-
-    IF v_dup_id IS NULL THEN
+    -- MULTI-TENANT BIZTONSÁG (Codex/Copilot P1 #731): csak EGYÉRTELMŰ eset — pontosan egy
+    -- aktív "Tisza Sarok"; több (több cég) esetén kézi ellenőrzés, nincs automatikus művelet.
+    SELECT COUNT(*) INTO v_dup_count FROM branch WHERE name = 'Tisza Sarok' AND is_active = true;
+    IF v_dup_count = 0 THEN
         RAISE NOTICE 'FK-001: nincs aktív "Tisza Sarok" fiók — nincs teendő (idempotens).';
         RETURN;
     END IF;
+    IF v_dup_count > 1 THEN
+        RAISE NOTICE 'FK-001: % aktív "Tisza Sarok" létezik (több cég?) — KÉTÉRTELMŰ, nincs automatikus deaktiválás, kézi ellenőrzés szükséges.', v_dup_count;
+        RETURN;
+    END IF;
+
+    SELECT id, company_id INTO v_dup_id, v_company FROM branch WHERE name = 'Tisza Sarok' AND is_active = true;
+
+    -- A megtartandó AZONOS cégen belül és AKTÍV (Copilot #731: ne inaktív rekordot találjon).
+    SELECT id INTO v_keep_id FROM branch
+    WHERE name = 'Szeged Tisza Sarok' AND company_id = v_company AND is_active = true
+    LIMIT 1;
 
     IF v_keep_id IS NULL THEN
-        RAISE NOTICE 'FK-001: nincs "Szeged Tisza Sarok" (megtartandó) fiók — a duplikátum NEM lett deaktiválva, kézi ellenőrzés szükséges.';
+        RAISE NOTICE 'FK-001: nincs azonos cégen belüli AKTÍV "Szeged Tisza Sarok" (megtartandó) — a duplikátum NEM lett deaktiválva, kézi ellenőrzés szükséges.';
         RETURN;
     END IF;
 
