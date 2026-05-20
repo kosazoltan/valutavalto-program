@@ -33,6 +33,7 @@ import {
 import { getLocalPendingTransfers } from '../../utils/localQueue'
 import { useTranslation } from 'react-i18next'
 import SupervisorPinModal from '../../components/auth/SupervisorPinModal'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType } from './transferRules'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -173,10 +174,51 @@ export default function TransferPage() {
     return target.branchTypeCode === 'TH' || /\bTH\b/i.test(target.code) || /\bTH\b/i.test(target.name)
   })()
 
+  // === Átadás-átvétel üzleti szabályok (Kósa Zoltán tesztelői kérés) ===
+  // A bejelentkezett felhasználó saját fiókja — ez dönti el, hogy pénztár vagy értéktár.
+  const ownBranch = branches.find(b => b.id === worker?.branchId)
+  const isVaultUser = ownBranch?.isVault === true
+
+  // (Req #2/#3) Iránytól + felhasználó-típustól függő választható átadás-típusok.
+  const availableTransferTypes = getAvailableTransferTypes(isVaultUser, transferDirection)
+  // (Req #4/#5) Valuta-szűrés a típus szerint.
+  const isHufOnlyType = isHufOnlyTransferType(transferType)
+  const filteredCurrencies = filterCurrenciesForType(currencies, transferType)
+
+  // Ha a felhasználóhoz nem elérhető típus van kiválasztva (pl. pénztár + VAULT_*), visszaállítjuk.
+  useEffect(() => {
+    if (!getAllowedTransferTypeValues(isVaultUser).includes(transferType)) {
+      setTransferType('CURRENCY')
+    }
+  }, [isVaultUser, transferType])
+
+  // A valuta-választás szinkronban tartása a típussal: FT/kez.ktg → HUF auto, valuta → HUF törlés.
+  useEffect(() => {
+    if (currencies.length === 0) return
+    if (isHufOnlyType) {
+      const huf = currencies.find(c => c.code === 'HUF')
+      if (huf && currencyId !== huf.id) setCurrencyId(huf.id)
+    } else if (transferType === 'CURRENCY') {
+      const selected = currencies.find(c => c.id === currencyId)
+      if (selected?.code === 'HUF') setCurrencyId(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transferType, currencies])
+
   // Create new transfer
   const handleCreateTransfer = async (pinVerified = false) => {
     if (!toBranchId || !currencyId || !amount) {
       setError('Minden mező kitöltése kötelező!')
+      return
+    }
+
+    // (Req #7) Szállító és plombaszám kitöltése KÖTELEZŐ.
+    if (!carrierName.trim()) {
+      setError('A szállító nevének megadása kötelező!')
+      return
+    }
+    if (!sealNumber.trim()) {
+      setError('A plombaszám megadása kötelező!')
       return
     }
 
@@ -701,11 +743,9 @@ export default function TransferPage() {
                   onChange={(e) => setTransferType(e.target.value as CreateTransferRequest['transferType'])}
                   className="form-input w-full"
                 >
-                  <option value="CURRENCY">{t('transfers.valutaAtadas')}</option>
-                  <option value="CASH">{t('transfers.keszpenzHufAtadas')}</option>
-                  <option value="HANDLING_FEE">{t('transfers.kezelesiDijAtadas')}</option>
-                  <option value="VAULT_DEPOSIT">{t('transfers.ertektarFeltoltes')}</option>
-                  <option value="VAULT_WITHDRAW">{t('transfers.ertektarLeszedes')}</option>
+                  {availableTransferTypes.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
 
@@ -718,7 +758,7 @@ export default function TransferPage() {
                   className="form-input w-full"
                 >
                   <option value="">{t('transfers.valasszonValutat')}</option>
-                  {currencies.map(c => (
+                  {filteredCurrencies.map(c => (
                     <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
                   ))}
                 </select>
@@ -740,7 +780,7 @@ export default function TransferPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="carrier-name" className="form-label">Szállító neve</label>
+                  <label htmlFor="carrier-name" className="form-label">Szállító neve <span className="text-red-500">*</span></label>
                   <input
                     id="carrier-name"
                     type="text"
@@ -751,7 +791,7 @@ export default function TransferPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="seal-number" className="form-label">Plombaszám</label>
+                  <label htmlFor="seal-number" className="form-label">Plombaszám <span className="text-red-500">*</span></label>
                   <input
                     id="seal-number"
                     type="text"
