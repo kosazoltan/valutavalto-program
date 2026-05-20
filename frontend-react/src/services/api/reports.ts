@@ -128,6 +128,31 @@ export const reportApi = {
   }
 }
 
+// ================== RECURRING CUSTOMER (AML) REPORT API ==================
+
+/** Visszatérő ügyfél riport sor — Pmt. 16. § fokozott ügyfél-átvilágítás. */
+export interface RecurringCustomer {
+  customerId: string
+  customerName: string
+  transactionCount: number
+  totalHufAmount: number
+  periodStart: string
+  periodEnd: string
+}
+
+export const recurringCustomerApi = {
+  /**
+   * Visszatérő ügyfelek (>= minTransactions tranzakció az időszakban).
+   * Backend: GET /api/v1/reports/recurring-customers?from&to&minTransactions
+   */
+  getRecurring: async (from: string, to: string, minTransactions = 3): Promise<RecurringCustomer[]> => {
+    const response = await api.get<RecurringCustomer[]>('/reports/recurring-customers', {
+      params: { from, to, minTransactions },
+    })
+    return response.data
+  },
+}
+
 // ================== REPORT EXTENDED API ==================
 
 export interface ReportSummary {

@@ -124,6 +124,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/reports/handling-fee-decade", label: "Kezelési díj — dekád", icon: FileText },
       { path: "/reports/bank-transactions", label: "Banki tranzakciók", icon: FileText },
       { path: "/reports/cashier-turnover", label: "Pénztáros forgalom", icon: FileText },
+      { path: "/reports/recurring-customers", label: "Visszatérő ügyfél (AML)", icon: FileText },
       { path: "/daily-turnover", label: "Napi forgalom", icon: TrendingUp },
       { path: "/profit", label: "Nyereség (haszon)", icon: TrendingUp },
       { path: "/stock-snapshot", label: "Készlet pillanatképek", icon: FileText },
