@@ -192,7 +192,9 @@ export default function TransferPage() {
     }
   }, [isVaultUser, transferType])
 
-  // A valuta-választás szinkronban tartása a típussal: FT/kez.ktg → HUF auto, valuta → HUF törlés.
+  // A valuta-választás szinkronban tartása a típussal: FT/kez.ktg → HUF auto (és ha a
+  // felhasználó kitörli, AZONNAL visszaáll HUF-ra), valuta → HUF nem maradhat.
+  // currencyId a dep-listában → önjavító, nincs szükség eslint-disable-re (Sourcery/Copilot #721).
   useEffect(() => {
     if (currencies.length === 0) return
     if (isHufOnlyType) {
@@ -202,8 +204,7 @@ export default function TransferPage() {
       const selected = currencies.find(c => c.id === currencyId)
       if (selected?.code === 'HUF') setCurrencyId(null)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transferType, currencies])
+  }, [transferType, currencies, currencyId, isHufOnlyType])
 
   // Create new transfer
   const handleCreateTransfer = async (pinVerified = false) => {
@@ -760,7 +761,8 @@ export default function TransferPage() {
                   onChange={(e) => setCurrencyId(e.target.value ? Number(e.target.value) : null)}
                   className="form-input w-full"
                 >
-                  <option value="">{t('transfers.valasszonValutat')}</option>
+                  {/* FT/kez.ktg típusnál nincs üres opció — a HUF kötelezően kiválasztva marad. */}
+                  {!isHufOnlyType && <option value="">{t('transfers.valasszonValutat')}</option>}
                   {filteredCurrencies.map(c => (
                     <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
                   ))}
