@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   ArrowRightLeft,
@@ -33,7 +33,7 @@ import {
 import { getLocalPendingTransfers } from '../../utils/localQueue'
 import { useTranslation } from 'react-i18next'
 import SupervisorPinModal from '../../components/auth/SupervisorPinModal'
-import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType } from './transferRules'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, type CurrencyLineInput } from './transferRules'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -112,6 +112,9 @@ export default function TransferPage() {
   const [toBranchId, setToBranchId] = useState('')
   const [currencyId, setCurrencyId] = useState<number | null>(null)
   const [amount, setAmount] = useState('')
+  // #6: több-valutás átadólap sorai (CSAK valuta-típusnál aktív). Az első sor a header.
+  const lineIdRef = useRef(1)
+  const [currencyLines, setCurrencyLines] = useState<CurrencyLineInput[]>([{ id: 0, currencyId: null, amount: '' }])
   const [transferType, setTransferType] = useState<CreateTransferRequest['transferType']>('CURRENCY')
   const [notes, setNotes] = useState('')
   const [carrierName, setCarrierName] = useState('')
@@ -184,6 +187,21 @@ export default function TransferPage() {
   // (Req #4/#5) Valuta-szűrés a típus szerint.
   const isHufOnlyType = isHufOnlyTransferType(transferType)
   const filteredCurrencies = filterCurrenciesForType(currencies, transferType)
+  // (#6) Több-valutás átadólap CSAK valuta-típusnál. Egyéb típus → egy-soros (HUF/egy valuta).
+  const isMultiCurrency = transferType === 'CURRENCY'
+
+  // #6 sor-kezelők
+  const updateCurrencyLine = useCallback((idx: number, field: 'currencyId' | 'amount', value: string) => {
+    setCurrencyLines(prev => prev.map((row, i) => i === idx
+      ? { ...row, [field]: field === 'currencyId' ? (value ? Number(value) : null) : value }
+      : row))
+  }, [])
+  const addCurrencyLine = useCallback(() => {
+    setCurrencyLines(prev => [...prev, { id: lineIdRef.current++, currencyId: null, amount: '' }])
+  }, [])
+  const removeCurrencyLine = useCallback((idx: number) => {
+    setCurrencyLines(prev => prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx))
+  }, [])
 
   // Ha a felhasználóhoz nem elérhető típus van kiválasztva (pl. pénztár + VAULT_*), visszaállítjuk.
   useEffect(() => {
@@ -208,9 +226,34 @@ export default function TransferPage() {
 
   // Create new transfer
   const handleCreateTransfer = async (pinVerified = false) => {
-    if (!toBranchId || !currencyId || !amount) {
-      setError('Minden mező kitöltése kötelező!')
+    if (!toBranchId) {
+      setError('Válasszon cél irodát!')
       return
+    }
+
+    // #6: valuta-típusnál a sorokból építünk (több valuta), egyébként a single mezőkből.
+    let effLines: Array<{ currencyId: number; amount: number }> | undefined
+    let effCurrencyId: number | null = currencyId
+    let effAmountValue: number
+    if (isMultiCurrency) {
+      const built = buildTransferLines(currencyLines)
+      if (built.error) {
+        setError(built.error)
+        return
+      }
+      effLines = built.lines
+      effCurrencyId = built.lines[0]!.currencyId
+      effAmountValue = built.lines[0]!.amount
+    } else {
+      if (!currencyId || !amount) {
+        setError('Minden mező kitöltése kötelező!')
+        return
+      }
+      effAmountValue = parseFloat(amount.replace(',', '.').replace(/\s/g, ''))
+      if (!Number.isFinite(effAmountValue) || effAmountValue <= 0) {
+        setError('Adjon meg pozitív összeget!')
+        return
+      }
     }
 
     // (Req #7) Szállító és plombaszám kitöltése KÖTELEZŐ.
@@ -223,28 +266,24 @@ export default function TransferPage() {
       return
     }
 
-    const amountValue = parseFloat(amount.replace(',', '.').replace(/\s/g, ''))
-    if (amountValue <= 0) {
-      setError('Adjon meg pozitív összeget!')
-      return
-    }
-
     if (isTargetTH && !pinVerified && !pendingTransferAfterPin) {
       setShowSupervisorPin(true)
       return
     }
     setPendingTransferAfterPin(false)
 
-    // Készlet-ellenőrzés: van-e elég a kasszában az átadáshoz? (csak kimenő átadásnál)
+    // Készlet-ellenőrzés SORONKÉNT (csak kimenő átadásnál, nem VAULT_DEPOSIT-nál).
     if (transferDirection === 'out' && transferType !== 'VAULT_DEPOSIT') {
       try {
         const balances = await cashBalanceApi.list()
-        const selectedCurrency = currencies.find(c => c.id === currencyId)
-        if (selectedCurrency) {
-          const bal = balances.find((b: { currencyCode: string }) => b.currencyCode === selectedCurrency.code)
+        const linesToCheck = effLines ?? [{ currencyId: effCurrencyId!, amount: effAmountValue }]
+        for (const ln of linesToCheck) {
+          const cur = currencies.find(c => c.id === ln.currencyId)
+          if (!cur) continue
+          const bal = balances.find((b: { currencyCode: string }) => b.currencyCode === cur.code)
           const available = bal?.currentBalance ?? 0
-          if (amountValue > available) {
-            setError(`Nincs ennyi készlet! ${selectedCurrency.code}: elérhető ${available.toLocaleString('hu-HU')}, kért ${amountValue.toLocaleString('hu-HU')}`)
+          if (ln.amount > available) {
+            setError(`Nincs ennyi készlet! ${cur.code}: elérhető ${available.toLocaleString('hu-HU')}, kért ${ln.amount.toLocaleString('hu-HU')}`)
             return
           }
         }
@@ -260,18 +299,19 @@ export default function TransferPage() {
 
       const request: CreateTransferRequest = {
         toBranchId,
-        currencyId,
-        amount: amountValue,
+        currencyId: effCurrencyId!,
+        amount: effAmountValue,
         transferType,
         direction: transferDirection === 'in' ? 'U' : 'F',
         notes: notes || undefined,
         carrierName: carrierName.trim() || undefined,
         sealNumber: sealNumber.trim() || undefined,
+        lines: effLines,
       }
 
       if (electronQueueAvailable) {
         const branch = branches.find((item) => item.id === toBranchId)
-        const currency = currencies.find((item) => item.id === currencyId)
+        const currency = currencies.find((item) => item.id === effCurrencyId)
         if (!branch || !currency) {
           setError('Az átadáshoz érvényes cél iroda és valuta szükséges!')
           return
@@ -280,9 +320,9 @@ export default function TransferPage() {
         const outcome = await saveAndSyncPendingTransfer({
           targetBranchId: toBranchId,
           targetBranchCode: branch.code,
-          currencyId,
+          currencyId: effCurrencyId,
           currencyCode: currency.code,
-          amount: amountValue,
+          amount: effAmountValue,
           hufValue: null,
           transferType,
           denominations: null,
@@ -290,6 +330,8 @@ export default function TransferPage() {
           carrierName: carrierName.trim() || null,
           sealNumber: sealNumber.trim() || null,
           direction: transferDirection === 'in' ? 'U' : 'F',
+          // #6: a teljes valuta-sor lista JSON-ként (az Electron-úton is megmarad).
+          lines: effLines ? JSON.stringify(effLines) : null,
         })
 
         const label = transferDirection === 'out' ? 'Átadás' : 'Átvétel'
@@ -309,6 +351,7 @@ export default function TransferPage() {
       setToBranchId('')
       setCurrencyId(null)
       setAmount('')
+      setCurrencyLines([{ id: lineIdRef.current++, currencyId: null, amount: '' }])
       setNotes('')
       setCarrierName('')
       setSealNumber('')
@@ -753,35 +796,87 @@ export default function TransferPage() {
                 </select>
               </div>
 
-              <div>
-                <label htmlFor="currency" className="form-label">{t('transfers.valuta')}</label>
-                <select
-                  id="currency"
-                  value={currencyId ?? ''}
-                  onChange={(e) => setCurrencyId(e.target.value ? Number(e.target.value) : null)}
-                  className="form-input w-full"
-                >
-                  {/* FT/kez.ktg típusnál nincs üres opció — a HUF kötelezően kiválasztva marad. */}
-                  {!isHufOnlyType && <option value="">{t('transfers.valasszonValutat')}</option>}
-                  {filteredCurrencies.map(c => (
-                    <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
-                  ))}
-                </select>
-              </div>
+              {isMultiCurrency ? (
+                /* #6: több valuta egy átadólapon — soronként valuta + összeg */
+                <div>
+                  <label className="form-label">Valuták és összegek (több is megadható)</label>
+                  <div className="space-y-2">
+                    {currencyLines.map((line, idx) => (
+                      <div key={line.id ?? idx} className="flex items-center gap-2">
+                        <select
+                          value={line.currencyId ?? ''}
+                          onChange={(e) => updateCurrencyLine(idx, 'currencyId', e.target.value)}
+                          className="form-input flex-1"
+                          aria-label={`Valuta ${idx + 1}`}
+                        >
+                          <option value="">{t('transfers.valasszonValutat')}</option>
+                          {filteredCurrencies.map(c => (
+                            <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
+                          ))}
+                        </select>
+                        <NumberInput
+                          value={line.amount}
+                          onChange={(v) => updateCurrencyLine(idx, 'amount', v)}
+                          className="form-input w-32"
+                          placeholder="0"
+                          allowDecimals={true}
+                          allowNegative={false}
+                          thousandSeparator={true}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeCurrencyLine(idx)}
+                          disabled={currencyLines.length <= 1}
+                          className="toolbar-button text-red-600 disabled:opacity-30"
+                          title="Sor törlése"
+                          aria-label="Sor törlése"
+                        >
+                          <XCircle size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addCurrencyLine}
+                    className="mt-2 text-sm text-blue-600 hover:underline"
+                  >
+                    + Valuta hozzáadása
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label htmlFor="currency" className="form-label">{t('transfers.valuta')}</label>
+                    <select
+                      id="currency"
+                      value={currencyId ?? ''}
+                      onChange={(e) => setCurrencyId(e.target.value ? Number(e.target.value) : null)}
+                      className="form-input w-full"
+                    >
+                      {/* FT/kez.ktg típusnál nincs üres opció — a HUF kötelezően kiválasztva marad. */}
+                      {!isHufOnlyType && <option value="">{t('transfers.valasszonValutat')}</option>}
+                      {filteredCurrencies.map(c => (
+                        <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div>
-                <label htmlFor="amount" className="form-label">{t('transfers.osszeg')}</label>
-                <NumberInput
-                  id="amount"
-                  value={amount}
-                  onChange={setAmount}
-                  className="form-input w-full"
-                  placeholder="0"
-                  allowDecimals={true}
-                  allowNegative={false}
-                  thousandSeparator={true}
-                />
-              </div>
+                  <div>
+                    <label htmlFor="amount" className="form-label">{t('transfers.osszeg')}</label>
+                    <NumberInput
+                      id="amount"
+                      value={amount}
+                      onChange={setAmount}
+                      className="form-input w-full"
+                      placeholder="0"
+                      allowDecimals={true}
+                      allowNegative={false}
+                      thousandSeparator={true}
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

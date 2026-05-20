@@ -306,6 +306,7 @@ export interface ElectronAPI {
     carrierName?: string | null,
     sealNumber?: string | null,
     direction?: string | null,
+    lines?: string | null,
   ): Promise<number>;
   getPendingTransfers(): Promise<Array<{
     id: number;

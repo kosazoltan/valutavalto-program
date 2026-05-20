@@ -101,6 +101,8 @@ export interface PendingTransferInput {
   carrierName?: string | null
   sealNumber?: string | null
   direction?: string | null
+  /** #6: több-valutás átadólap sorai JSON-stringként ([{currencyId, amount}]). */
+  lines?: string | null
 }
 
 export interface PendingBankTransactionInput {
@@ -458,6 +460,7 @@ export async function saveAndSyncPendingTransfer(
       normalizeOptionalText(entry.carrierName ?? null),
       normalizeOptionalText(entry.sealNumber ?? null),
       entry.direction ?? null,
+      entry.lines ?? null,
     )
 
     return finalizeSyncOutcome([savedId], async () => {
