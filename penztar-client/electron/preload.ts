@@ -344,10 +344,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     transferType: string | null,
     denominations: string | null,
     note: string | null,
+    carrierName: string | null = null,
+    sealNumber: string | null = null,
+    direction: string | null = null,
   ): Promise<number> =>
     ipcRenderer.invoke(
       'save-pending-transfer',
-      targetBranchId, targetBranchCode, currencyId, currencyCode, amount, hufValue, transferType, denominations, note,
+      targetBranchId, targetBranchCode, currencyId, currencyCode, amount, hufValue, transferType, denominations, note, carrierName, sealNumber, direction,
     ),
 
   getPendingTransfers: (): Promise<Array<{

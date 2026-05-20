@@ -98,6 +98,9 @@ export interface PendingTransferInput {
   transferType: string | null
   denominations: string | null
   note: string | null
+  carrierName?: string | null
+  sealNumber?: string | null
+  direction?: string | null
 }
 
 export interface PendingBankTransactionInput {
@@ -452,6 +455,9 @@ export async function saveAndSyncPendingTransfer(
       entry.transferType,
       entry.denominations,
       normalizeOptionalText(entry.note),
+      normalizeOptionalText(entry.carrierName ?? null),
+      normalizeOptionalText(entry.sealNumber ?? null),
+      entry.direction ?? null,
     )
 
     return finalizeSyncOutcome([savedId], async () => {
