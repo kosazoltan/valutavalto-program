@@ -128,6 +128,22 @@ export const reportApi = {
   }
 }
 
+// ================== DAILY JOURNAL (NAPKÖNYV) PDF API ==================
+
+export const dailyJournalApi = {
+  /**
+   * Napkönyv PDF letöltés (legacy NAPKONYV parity).
+   * Backend: GET /api/v1/reports/daily-journal?branchId&date → application/pdf blob.
+   */
+  downloadPdf: async (branchId: string, date: string): Promise<Blob> => {
+    const response = await api.get('/reports/daily-journal', {
+      params: { branchId, date },
+      responseType: 'blob',
+    })
+    return response.data as Blob
+  },
+}
+
 // ================== AVERAGE RATE REPORT API ==================
 
 /** Tranzakció-típus szűrő: vétel / eladás. */

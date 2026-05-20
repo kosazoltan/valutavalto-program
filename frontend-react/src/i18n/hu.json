@@ -1332,6 +1332,20 @@
         "atadott": "ATADOTT"
       }
     },
+    "dailyJournal": {
+      "title": "Napkönyv (napi forgalmi napló)",
+      "subtitle": "Napi tranzakció-napló PDF — legacy NAPKONYV",
+      "branch": "Iroda",
+      "branchPlaceholder": "— Válasszon irodát —",
+      "date": "Dátum",
+      "download": "Napkönyv letöltése (PDF)",
+      "downloading": "Letöltés...",
+      "hint": "Válasszon irodát és dátumot, majd töltse le a napi forgalmi naplót PDF formátumban.",
+      "errors": {
+        "noBranch": "Válasszon irodát.",
+        "noDate": "Adja meg a dátumot."
+      }
+    },
     "averageRate": {
       "title": "Átlag árfolyam riport",
       "subtitle": "Súlyozott átlagárfolyam (HUF-súlyozott) — legacy ATLAGARF",

@@ -126,6 +126,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/reports/cashier-turnover", label: "Pénztáros forgalom", icon: FileText },
       { path: "/reports/recurring-customers", label: "Visszatérő ügyfél (AML)", icon: FileText },
       { path: "/reports/average-rate", label: "Átlag árfolyam", icon: TrendingUp },
+      { path: "/reports/daily-journal", label: "Napkönyv (PDF)", icon: FileText },
       { path: "/daily-turnover", label: "Napi forgalom", icon: TrendingUp },
       { path: "/profit", label: "Nyereség (haszon)", icon: TrendingUp },
       { path: "/stock-snapshot", label: "Készlet pillanatképek", icon: FileText },
