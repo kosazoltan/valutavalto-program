@@ -534,6 +534,9 @@ public class RateCreationService {
                         "Eladási árfolyam nagyobb kell legyen a vételinél! currencyId=" + entry.getCurrencyId());
             }
 
+            // RFM spread-kapu (VV-ELVI 7.2/7.4): a relatív spread nem lépheti túl az 5%-ot.
+            RateSpreadGate.enforce(entry.getBuyRate(), entry.getSellRate(), entry.getOfficialRate(), entry.getCurrencyId());
+
             RateTemplate template = RateTemplate.builder()
                     .company(company)
                     .currencyId(entry.getCurrencyId())
