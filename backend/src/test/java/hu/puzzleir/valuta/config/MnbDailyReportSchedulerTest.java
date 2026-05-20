@@ -92,6 +92,36 @@ class MnbDailyReportSchedulerTest {
     }
 
     @Test
+    @DisplayName("Nem-duplikátum integritás-hiba (pl. FK/NOT NULL) → failed, NEM skipped (nem maszkoljuk)")
+    void nonDuplicateIntegrityErrorCountsAsFailed() {
+        UUID fkViolation = UUID.randomUUID();
+        LocalDate date = LocalDate.of(2026, 5, 20);
+
+        when(branchRepository.findByIsActiveTrue()).thenReturn(List.of(branch(fkViolation)));
+        when(mnbReportService.generateDailyReport(eq(fkViolation), any()))
+                .thenThrow(new DataIntegrityViolationException(
+                        "ERROR: null value in column \"report_date\" violates not-null constraint"));
+
+        var result = scheduler.generateDailyDrafts(date);
+
+        assertThat(result.generated()).isZero();
+        assertThat(result.skipped()).isZero();
+        assertThat(result.failed()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("isDuplicateMnbReportViolation: ok-láncban felismeri a konkrét constraint nevet")
+    void recognizesConstraintInCauseChain() {
+        var wrapped = new DataIntegrityViolationException("could not execute statement",
+                new RuntimeException("ERROR: duplicate key value violates unique constraint "
+                        + "\"uq_mnb_report_branch_type_date\""));
+        assertThat(MnbDailyReportScheduler.isDuplicateMnbReportViolation(wrapped)).isTrue();
+
+        var unrelated = new DataIntegrityViolationException("fk_branch_company violation");
+        assertThat(MnbDailyReportScheduler.isDuplicateMnbReportViolation(unrelated)).isFalse();
+    }
+
+    @Test
     @DisplayName("Nincs aktív iroda → minden számláló 0, nincs service-hívás")
     void noActiveBranches() {
         when(branchRepository.findByIsActiveTrue()).thenReturn(List.of());
