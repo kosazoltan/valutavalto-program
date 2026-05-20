@@ -79,9 +79,11 @@ public class RatePublishService {
                     .orElseThrow(() -> new ValidationException("Sablon nem található: " + templateId));
 
             // State machine = egyetlen igazságforrás (VV-ELVI v2 5.2): publikálás DRAFT vagy APPROVED→PUBLISHED.
-            if (!template.getStatus().canTransitionTo(RateTemplate.RateTemplateStatus.PUBLISHED)) {
+            // A status oszlop nullable (DEFAULT 'DRAFT'), ezért NULL-t is kezelünk (nem publikálható).
+            RateTemplate.RateTemplateStatus currentStatus = template.getStatus();
+            if (currentStatus == null || !currentStatus.canTransitionTo(RateTemplate.RateTemplateStatus.PUBLISHED)) {
                 throw new ValidationException("Csak DRAFT vagy APPROVED sablon publikálható: " + templateId
-                        + " (jelenlegi állapot: " + template.getStatus() + ")");
+                        + " (jelenlegi állapot: " + currentStatus + ")");
             }
 
             template.setStatus(RateTemplate.RateTemplateStatus.PUBLISHED);
