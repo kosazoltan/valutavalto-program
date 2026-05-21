@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  AlertTriangle,
   Calendar,
   CheckCircle2,
   Clock,
@@ -15,13 +14,16 @@ import { closingControlApi, type ClosingControlStatus } from '../../services/api
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
-
-type StatusFilter = 'all' | 'missing' | 'warning' | 'critical' | 'done'
+import {
+  type ClosingViewFilter,
+  isClosingDone,
+  computeClosingSummary,
+  sortByBranchCode,
+  matchesClosingFilter,
+} from './closingControlView'
 
 // Codex P2 #560 fix: NEM toISOString().slice(0, 10), mert az UTC zónát ad vissza.
-// Magyar éjszaka 00:00-01:00 körül a UTC dátum még az előző napot mutathatja
-// (téli idő: UTC+1, nyári idő: UTC+2) → riport defaults az előző üzleti napra.
-// Helyette helyi (Europe/Budapest) dátum lokálisan komponálva.
+// Helyi (Europe/Budapest) dátum lokálisan komponálva.
 function todayIso() {
   const now = new Date()
   const year = now.getFullYear()
@@ -30,63 +32,12 @@ function todayIso() {
   return `${year}-${month}-${day}`
 }
 
-function isDone(row: ClosingControlStatus) {
-  const required = row.requiredCount ?? 3
-  const completed = row.completedCount ?? Number(row.dailyClosingDone) + Number(row.eveningClosingDone) + Number(row.navClosingDone)
-  return completed >= required
-}
-
-function alertLabel(level: string) {
-  switch (level) {
-    case 'CRITICAL':
-      return 'kritikus'
-    case 'WARNING':
-      return 'figyelmeztetés'
-    case 'NONE':
-      return 'rendben'
-    default:
-      return level || 'ismeretlen'
-  }
-}
-
-function alertClass(level: string) {
-  switch (level) {
-    case 'CRITICAL':
-      return 'border-red-200 bg-red-50 text-red-700'
-    case 'WARNING':
-      return 'border-amber-200 bg-amber-50 text-amber-700'
-    case 'NONE':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-700'
-    default:
-      return 'border-slate-200 bg-slate-50 text-slate-700'
-  }
-}
-
-function formatDateTime(value?: string | null) {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('hu-HU', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function checkCell(done: boolean, label: string) {
-  return (
-    <span className={`inline-flex min-w-[92px] items-center gap-1 rounded border px-2 py-1 text-xs font-medium ${done ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500'}`}>
-      {done ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-      {label}
-    </span>
-  )
-}
-
 export default function ClosingControlPage() {
   const navigate = useNavigate()
   const [date, setDate] = useState(todayIso())
   const [rows, setRows] = useState<ClosingControlStatus[]>([])
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<StatusFilter>('all')
+  const [filter, setFilter] = useState<ClosingViewFilter>('all')
   const [loading, setLoading] = useState(false)
   const [alertingBranchId, setAlertingBranchId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -110,34 +61,14 @@ export default function ClosingControlPage() {
     void load()
   }, [load])
 
-  const summary = useMemo(() => {
-    const total = rows.length
-    const done = rows.filter(isDone).length
-    const critical = rows.filter((row) => row.alertLevel === 'CRITICAL').length
-    const warning = rows.filter((row) => row.alertLevel === 'WARNING').length
-    const missing = rows.filter((row) => row.missingRecord).length
-    return { total, done, critical, warning, missing }
-  }, [rows])
+  // FK-003 1. pont: 3-kockás összesítő (Iroda / Rendben / Hiányzó rekord).
+  const summary = useMemo(() => computeClosingSummary(rows), [rows])
 
-  const filteredRows = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase()
-    return rows.filter((row) => {
-      const matchesQuery = !normalizedQuery || [
-        row.branchCode,
-        row.branchName,
-        row.branchCity,
-        row.notes,
-      ].some((value) => value?.toLowerCase().includes(normalizedQuery))
-
-      if (!matchesQuery) return false
-      if (filter === 'all') return true
-      if (filter === 'missing') return Boolean(row.missingRecord)
-      if (filter === 'warning') return row.alertLevel === 'WARNING'
-      if (filter === 'critical') return row.alertLevel === 'CRITICAL'
-      if (filter === 'done') return isDone(row)
-      return true
-    })
-  }, [filter, query, rows])
+  // FK-003 2. pont: pénztárszám szerint rendezett, szűrt kártyák.
+  const cards = useMemo(
+    () => sortByBranchCode(rows.filter((row) => matchesClosingFilter(row, filter, query))),
+    [rows, filter, query],
+  )
 
   const handleAlert = async (row: ClosingControlStatus) => {
     const branchLabel = row.branchCode ? `${row.branchCode} - ${row.branchName ?? row.branchId}` : row.branchName ?? row.branchId
@@ -178,29 +109,23 @@ export default function ClosingControlPage() {
       </div>
 
       <div className="space-y-4 p-4">
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+        {/* FK-003 1. pont: 3 kocka — Iroda / Rendben / Hiányzó rekord */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <div className="rounded-md border border-slate-200 bg-white p-3">
             <div className="text-xs text-slate-500">Iroda</div>
-            <div className="text-xl font-semibold text-slate-900">{summary.total}</div>
+            <div className="text-2xl font-semibold text-slate-900">{summary.total}</div>
           </div>
           <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3">
             <div className="text-xs text-emerald-700">Rendben</div>
-            <div className="text-xl font-semibold text-emerald-800">{summary.done}</div>
+            <div className="text-2xl font-semibold text-emerald-800">{summary.done}</div>
           </div>
           <div className="rounded-md border border-red-200 bg-red-50 p-3">
-            <div className="text-xs text-red-700">Kritikus</div>
-            <div className="text-xl font-semibold text-red-800">{summary.critical}</div>
-          </div>
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
-            <div className="text-xs text-amber-700">Figyelmeztetés</div>
-            <div className="text-xl font-semibold text-amber-800">{summary.warning}</div>
-          </div>
-          <div className="rounded-md border border-slate-200 bg-white p-3">
-            <div className="text-xs text-slate-500">Hiányzó rekord</div>
-            <div className="text-xl font-semibold text-slate-900">{summary.missing}</div>
+            <div className="text-xs text-red-700">Hiányzó rekord</div>
+            <div className="text-2xl font-semibold text-red-800">{summary.notArrived}</div>
           </div>
         </div>
 
+        {/* Megtartandó: dátum + keresés + szűrő */}
         <div className="rounded-md border border-slate-200 bg-white p-3">
           <div className="flex flex-wrap items-end gap-3">
             <div>
@@ -231,14 +156,12 @@ export default function ClosingControlPage() {
               <label className="mb-1 block text-xs font-medium text-slate-600">Szűrő</label>
               <select
                 value={filter}
-                onChange={(event) => setFilter(event.target.value as StatusFilter)}
+                onChange={(event) => setFilter(event.target.value as ClosingViewFilter)}
                 className="rounded border border-slate-300 bg-white px-2 py-2 text-sm"
               >
                 <option value="all">Összes</option>
-                <option value="critical">Kritikus</option>
-                <option value="warning">Figyelmeztetés</option>
-                <option value="missing">Hiányzó rekord</option>
                 <option value="done">Rendben</option>
+                <option value="notArrived">Hiányzó rekord</option>
               </select>
             </div>
           </div>
@@ -250,86 +173,64 @@ export default function ClosingControlPage() {
           </div>
         )}
 
-        <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-3 py-2 text-left">Iroda</th>
-                  <th className="px-3 py-2 text-left">Állapot</th>
-                  <th className="px-3 py-2 text-left">Zárások</th>
-                  <th className="px-3 py-2 text-left">Utolsó tranzakció</th>
-                  <th className="px-3 py-2 text-left">Megjegyzés</th>
-                  <th className="px-3 py-2 text-right">Művelet</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredRows.map((row) => (
-                  <tr key={row.branchId} className={row.alertLevel === 'CRITICAL' ? 'bg-red-50/40' : undefined}>
-                    <td className="px-3 py-2">
-                      <div className="font-semibold text-slate-900">{row.branchCode ?? row.branchId.slice(0, 8)}</div>
-                      <div className="text-xs text-slate-500">{row.branchName ?? 'Névtelen iroda'}{row.branchCity ? `, ${row.branchCity}` : ''}</div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-xs font-semibold ${alertClass(row.alertLevel)}`}>
-                        {row.alertLevel === 'CRITICAL' ? <AlertTriangle size={14} /> : row.alertLevel === 'NONE' ? <CheckCircle2 size={14} /> : <Clock size={14} />}
-                        {alertLabel(row.alertLevel)}
-                      </span>
-                      {row.missingRecord && (
-                        <span className="ml-2 inline-flex items-center rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600">
-                          nincs rekord
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex flex-wrap gap-1">
-                        {checkCell(row.dailyClosingDone, 'napi')}
-                        {checkCell(row.eveningClosingDone, 'esti')}
-                        {checkCell(row.navClosingDone, 'NAV')}
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500">{row.completedCount ?? 0}/{row.requiredCount ?? 3}</div>
-                    </td>
-                    <td className="px-3 py-2 text-slate-700">{formatDateTime(row.lastTransactionAt)}</td>
-                    <td className="max-w-[280px] px-3 py-2 text-xs text-slate-600">
-                      {row.notes || '-'}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/daybook?branchId=${encodeURIComponent(row.branchId)}&date=${encodeURIComponent(date)}`)}
-                          className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                        >
-                          <Eye size={14} />
-                          Napló
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleAlert(row)}
-                          disabled={isDone(row) || alertingBranchId === row.branchId}
-                          className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <Send size={14} />
-                          {alertingBranchId === row.branchId ? 'Küldés' : 'Figyelmeztet'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {!loading && filteredRows.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-3 py-8 text-center text-sm text-slate-500">
-                      Nincs megjeleníthető záráskontroll sor.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+        {/* FK-003 2. pont: kártyás/rácsos nézet — pénztárszám + név + összesített státusz */}
+        {!loading && cards.length === 0 ? (
+          <div className="rounded-md border border-slate-200 bg-white px-3 py-8 text-center text-sm text-slate-500">
+            Nincs megjeleníthető iroda.
           </div>
-          {loading && (
-            <div className="border-t border-slate-100 px-3 py-3 text-sm text-slate-500">Betöltés...</div>
-          )}
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            {cards.map((row) => {
+              const done = isClosingDone(row)
+              return (
+                <div
+                  key={row.branchId}
+                  className={`rounded-md border bg-white p-3 ${done ? 'border-emerald-200' : 'border-red-200'}`}
+                >
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-slate-900">{row.branchCode ?? row.branchId.slice(0, 8)}</div>
+                      <div className="truncate text-xs text-slate-500" title={row.branchName ?? ''}>
+                        {row.branchName ?? 'Névtelen iroda'}{row.branchCity ? `, ${row.branchCity}` : ''}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      <button
+                        type="button"
+                        title="Napló"
+                        onClick={() => navigate(`/daybook?branchId=${encodeURIComponent(row.branchId)}&date=${encodeURIComponent(date)}`)}
+                        className="rounded border border-slate-300 bg-white p-1.5 text-slate-600 hover:bg-slate-50"
+                      >
+                        <Eye size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        title="Figyelmeztet"
+                        onClick={() => void handleAlert(row)}
+                        disabled={done || alertingBranchId === row.branchId}
+                        className="rounded border border-amber-300 bg-amber-50 p-1.5 text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Send size={14} />
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    className={`flex items-center gap-1.5 rounded px-2 py-1.5 text-xs font-semibold ${
+                      done ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                    }`}
+                  >
+                    {done ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                    {done ? 'Zárás bejött' : 'Zárás nem érkezett be'}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {loading && (
+          <div className="rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-slate-500">Betöltés...</div>
+        )}
       </div>
     </div>
   )
