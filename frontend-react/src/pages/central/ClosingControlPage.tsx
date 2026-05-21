@@ -198,6 +198,7 @@ export default function ClosingControlPage() {
                       <button
                         type="button"
                         title="Napló"
+                        aria-label={`Napló megnyitása — ${row.branchCode ?? row.branchName ?? row.branchId}`}
                         onClick={() => navigate(`/daybook?branchId=${encodeURIComponent(row.branchId)}&date=${encodeURIComponent(date)}`)}
                         className="rounded border border-slate-300 bg-white p-1.5 text-slate-600 hover:bg-slate-50"
                       >
@@ -206,6 +207,7 @@ export default function ClosingControlPage() {
                       <button
                         type="button"
                         title="Figyelmeztet"
+                        aria-label={`Figyelmeztetés küldése — ${row.branchCode ?? row.branchName ?? row.branchId}`}
                         onClick={() => void handleAlert(row)}
                         disabled={done || alertingBranchId === row.branchId}
                         className="rounded border border-amber-300 bg-amber-50 p-1.5 text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
