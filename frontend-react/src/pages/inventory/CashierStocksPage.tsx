@@ -133,8 +133,13 @@ export default function CashierStocksPage() {
         terr.groups.push({ branchName: terr.vaultName, items: [], hufTotal: 0, nonZeroCount: 0 })
       }
       terr.groups.sort((a, b) => {
-        if (a.branchName === terr.vaultName) return -1
-        if (b.branchName === terr.vaultName) return 1
+        // Copilot #763: komparátor-szerződés (antiszimmetria) — ha mindkettő a vault
+        // (self-compare), 0-t kell adni, NEM -1-et.
+        const av = a.branchName === terr.vaultName
+        const bv = b.branchName === terr.vaultName
+        if (av && bv) return 0
+        if (av) return -1
+        if (bv) return 1
         return b.hufTotal - a.hufTotal
       })
     }

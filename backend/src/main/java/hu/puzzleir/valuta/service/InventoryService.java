@@ -410,6 +410,9 @@ public class InventoryService {
         // mutatja — a deaktivált pénztárak (pl. KORUT/TISZA, V246 soft-delete) ne
         // jelenjenek meg "BESOROLATLAN" tételként. A historikus cash_balance megmarad,
         // csak a nézetből szűrjük (Pmt./NAV megőrzés sértetlen).
+        // Copilot #763 (perf): a findByCompanyId már JOIN FETCH-eli a branch-et (nincs N+1);
+        // a memóriabeli szűrés néhány ezer már-betöltött soron elhanyagolható, és konzisztens
+        // a meglévő (szintén in-memory) területi szűréssel — DB-oldali WHERE marginális nyereség.
         java.util.function.Predicate<CashBalance> activeBranch =
                 cb -> cb.getBranch() != null && Boolean.TRUE.equals(cb.getBranch().getIsActive());
         if (territoryFilter == null) {
