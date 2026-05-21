@@ -57,6 +57,10 @@ public class BranchDto {
     // v2.5.1: értéktári terület + értéktár-e
     private Integer vaultTerritoryId;
     private Boolean isVault;
+
+    // FK-002: területi besorolás neve (SZEGED, DEBRECEN, BEKESCSABA, ... IRODA) —
+    // az Országos készlet nézet területi csoportosításához (régió-szekciófejlécek).
+    private String region;
     
     // Timestamps
     private LocalDateTime createdAt;
