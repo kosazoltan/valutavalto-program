@@ -197,3 +197,7 @@ penztar-client/.env.bak-localhost
 
 # Obsidian lokalis vault runtime/config (Local REST API plugin titkot tartalmazhat)
 vault/.obsidian/
+
+# Dolgozói import runtime artefaktok (PII: nevek+munkakör) — NEM commitolandó
+import_work/
+scripts/import-employees/*.sql
