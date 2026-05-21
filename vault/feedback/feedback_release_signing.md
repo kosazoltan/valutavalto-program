@@ -50,3 +50,23 @@ A mandate hatálya 2026-05-21 után megszűnik (vagy ahogy a DigiCert cert kiad�
 - Phone verification: scheduled 2026-05-18 16:30 CEST
 - Cert kiadás várható: 2026-05-19 / 21
 - Workflow trigger cert után: `gh workflow run windows-signed-release.yml -f version=2.5.54 -f publish_release=true`
+
+## DigiCert státusz frissítés (2026-05-21 — a mandate lejárati napja)
+
+**A cert MÉG NINCS kiadva.** Azure Key Vault ellenőrzés (`az keyvault certificate ...`):
+- `kv-valuta-codesign` / `valuta-codesign-cert` → `attributes.enabled = false`
+- `az keyvault certificate pending show` → `status = "inProgress"`,
+  `statusDetails = "Pending certificate created. Please Perform Merge to complete the request."`
+  (requestId `26016ff46f66435e9d269c7e56989649`)
+
+**Következmény:** a B.7 hatály lejárati napja (2026-05-21) elérkezett, DE a kiváltó ok
+(unsigned bináris → SmartScreen prompt a nem-informatikus kollégáknak, C.1) **továbbra is
+fennáll**. A re-evaluation záradék szerint a mandate "2026-05-21 után VAGY a cert kiadásakor"
+szűnik meg — mivel a cert nincs kiadva, a védelem **fennmarad**.
+
+**Teendő (külső, fejlesztői/admin — NEM AI):**
+1. DigiCert CertCentral portál / e-mail: lezárult-e a validáció, kiadták-e a certet (.cer/.p7b)?
+2. Ha igen: `az keyvault certificate pending merge --vault-name kv-valuta-codesign --name valuta-codesign-cert --file <cer>`
+3. Majd: `gh workflow run windows-signed-release.yml -f version=<ver> -f publish_release=true`
+4. **User-döntés szükséges:** a B.7 hatályt explicit meghosszabbítani (új dátum) a cert
+   kiadásig — az AI nem írja át a P0 mandate határidőt önállóan.
