@@ -181,6 +181,10 @@ export default function MainRateSheetPage() {
   // nyíl-navigáció) vs. szerkesztés (editing=true, gépelés). Enter belép szerkesztésbe,
   // Enter jóváhagy + lefelé lép; Escape elvet. Lásd ./sheetNavigation.
   const [editing, setEditing] = useState(false)
+  // Sourcery #762: a fókusz-effekt CSAK billentyűzetes navigáció/Enter-edit után
+  // lopjon fókuszt a cellára — különben a rácson kívüli elemekre (gombok) nem
+  // lehetne fókuszálni, mert a blurCell már nem nullázza az activeCell-t.
+  const pendingFocusRef = useRef(false)
   const [showHelp, setShowHelp] = useState(false)
   const [publishing, setPublishing] = useState(false)
   // V238 (2026-05-19): Valutakezelő modal — uj valuta hozzaadasa / aktivalas / deaktivalas
@@ -466,14 +470,18 @@ export default function MainRateSheetPage() {
   // Szerkesztésbe lépés (Enter / dupla-katt / kattintás): buffer seed + editing=true.
   const startEdit = useCallback((rowIdx: number, col: keyof MainRateRow) => {
     if (!canEdit || !EDITABLE_ORDER.includes(col as EditableCol)) return
+    pendingFocusRef.current = true // szöveg-kijelölés/fókusz az aktív input-ra
     setActiveCell({ rowIdx, col })
     setEditBuffer(seedBuffer(rowIdx, col))
     setEditing(true)
   }, [canEdit, seedBuffer])
 
-  // Fókusz-kezelés: az aktív cella input-ját fókuszáljuk; szerkesztéskor kijelöljük a szöveget.
+  // Fókusz-kezelés: CSAK akkor fókuszálunk programatikusan, ha billentyűzetes
+  // navigáció/Enter-edit kérte (pendingFocusRef) — így a rácson kívülre is lehet
+  // fókuszálni (Sourcery #762). Egérkattintás esetén a böngésző maga fókuszál.
   useEffect(() => {
-    if (!activeCell) return
+    if (!activeCell || !pendingFocusRef.current) return
+    pendingFocusRef.current = false
     const el = document.getElementById(`cell-${activeCell.rowIdx}-${String(activeCell.col)}`) as HTMLInputElement | null
     if (!el) return
     if (document.activeElement !== el) el.focus()
@@ -494,6 +502,7 @@ export default function MainRateSheetPage() {
         setEditBuffer('')
         setEditing(false)
         const nxt = nextEditableCell({ rowIdx, col: col as EditableCol }, 'ArrowDown', enrichedRows)
+        pendingFocusRef.current = true
         setActiveCell({ rowIdx: nxt.rowIdx, col: nxt.col })
       } else if (e.key === 'Escape') {
         e.preventDefault()
@@ -507,6 +516,7 @@ export default function MainRateSheetPage() {
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       e.preventDefault()
       const nxt = nextEditableCell({ rowIdx, col: col as EditableCol }, e.key as NavKey, enrichedRows)
+      pendingFocusRef.current = true
       selectCell(nxt.rowIdx, nxt.col)
     } else if (e.key === 'Enter' || e.key === 'F2') {
       e.preventDefault()
