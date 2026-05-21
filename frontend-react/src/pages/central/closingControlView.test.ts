@@ -7,9 +7,10 @@ import {
   matchesClosingFilter,
 } from './closingControlView'
 
+let branchIdSeq = 0
 function row(partial: Partial<ClosingControlStatus>): ClosingControlStatus {
   return {
-    branchId: partial.branchId ?? Math.random().toString(36).slice(2),
+    branchId: partial.branchId ?? `branch-${++branchIdSeq}`,
     controlDate: '2026-05-21',
     dailyClosingDone: false,
     eveningClosingDone: false,
