@@ -437,13 +437,15 @@ export default function MainRateSheetPage() {
   const blurCell = useCallback((rowIdx: number, col: keyof MainRateRow) => {
     // CSAK akkor commitolunk, ha tényleg szerkesztés volt — különben a kijelölt
     // (nem-szerkesztés) cellából kilépve üres editBuffer-rel adatvesztés lenne.
-    // Az activeCell-t NEM nulláznuk itt: a nyíl-navigáció fókusz-mozgásakor a régi
+    // Az activeCell-t NEM nullázzuk itt: a nyíl-navigáció fókusz-mozgásakor a régi
     // cella blur-je nem törölheti az új aktív cellát (fókusz-race elkerülés).
     if (editing) {
       commitCell(rowIdx, col, editBuffer)
-      setEditBuffer('')
-      setEditing(false)
     }
+    // Copilot #762: az edit-állapotot MINDIG visszaállítjuk (nincs stale editing/buffer
+    // ugyanabban az event-timingban), de az activeCell-t a fókusz-race miatt nem bántjuk.
+    setEditBuffer('')
+    setEditing(false)
   }, [editing, commitCell, editBuffer])
 
   // ===== 2026-05-21: Excel-szerű billentyűzetes navigáció + Enter-edit =====
@@ -532,7 +534,15 @@ export default function MainRateSheetPage() {
   const flushActiveCell = useCallback((): MainRateRow[] => {
     // Csak ténylegesen szerkesztett (editing) cellát flush-olunk; a pusztán kijelölt
     // cella nem hordoz beíratlan értéket (a readOnly miatt), így nincs mit commitolni.
-    if (!activeCell || !canEdit || !editing) return rows
+    // Copilot #762: nem-szerkesztés esetén is nullázzuk az activeCell-t (highlight),
+    // hogy a flush ("kész, kijelölés vége") szemantika konzisztens legyen.
+    if (!activeCell || !canEdit || !editing) {
+      if (activeCell) {
+        setActiveCell(null)
+        setEditBuffer('')
+      }
+      return rows
+    }
     const next = computeCellCommit(rows, activeCell.rowIdx, activeCell.col, editBuffer)
     setActiveCell(null)
     setEditBuffer('')
