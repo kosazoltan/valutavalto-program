@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Send, LogOut, Globe, Save, ArrowRight, Info, Wifi, WifiOff, Settings } from 'lucide-react'
 import { HyperFormula } from 'hyperformula'
+import { nextEditableCell, EDITABLE_ORDER, type EditableCol, type NavKey } from './sheetNavigation'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
@@ -176,6 +177,14 @@ export default function MainRateSheetPage() {
   const hfRef = useRef<HyperFormula | null>(null)
   // Codex P1 #581 fix: editBuffer őrzi a felhasználó RAW input-ját az aktív cella szerkesztésekor.
   const [editBuffer, setEditBuffer] = useState<string>('')
+  // 2026-05-21 (Kósa Zoltán): Excel-szerű kétállapotú cella — kijelölt (editing=false,
+  // nyíl-navigáció) vs. szerkesztés (editing=true, gépelés). Enter belép szerkesztésbe,
+  // Enter jóváhagy + lefelé lép; Escape elvet. Lásd ./sheetNavigation.
+  const [editing, setEditing] = useState(false)
+  // Sourcery #762: a fókusz-effekt CSAK billentyűzetes navigáció/Enter-edit után
+  // lopjon fókuszt a cellára — különben a rácson kívüli elemekre (gombok) nem
+  // lehetne fókuszálni, mert a blurCell már nem nullázza az activeCell-t.
+  const pendingFocusRef = useRef(false)
   const [showHelp, setShowHelp] = useState(false)
   const [publishing, setPublishing] = useState(false)
   // V238 (2026-05-19): Valutakezelő modal — uj valuta hozzaadasa / aktivalas / deaktivalas
@@ -425,25 +434,97 @@ export default function MainRateSheetPage() {
     }
   }, [canEdit, rows, computeCellCommit])
 
-  const focusCell = useCallback((rowIdx: number, col: keyof MainRateRow, currentValue: number, decimals: number) => {
-    setActiveCell({ rowIdx, col })
-    // v2.5.61: ha a cellához tartozik képlet, azt mutatjuk az input-ban (NEM
-    // a számolt értéket), így a user szerkeszteni tudja. A blurCell után újra
-    // kalkulálódik a HyperFormula-val.
-    const formulaKey = `${rowIdx}.${col as string}`
-    const formula = formulas[formulaKey]
-    if (formula) {
-      setEditBuffer(formula)
-    } else {
-      setEditBuffer(currentValue ? currentValue.toFixed(decimals) : '')
-    }
-  }, [formulas])
-
   const blurCell = useCallback((rowIdx: number, col: keyof MainRateRow) => {
-    commitCell(rowIdx, col, editBuffer)
-    setActiveCell(null)
+    // CSAK akkor commitolunk, ha tényleg szerkesztés volt — különben a kijelölt
+    // (nem-szerkesztés) cellából kilépve üres editBuffer-rel adatvesztés lenne.
+    // Az activeCell-t NEM nullázzuk itt: a nyíl-navigáció fókusz-mozgásakor a régi
+    // cella blur-je nem törölheti az új aktív cellát (fókusz-race elkerülés).
+    if (editing) {
+      commitCell(rowIdx, col, editBuffer)
+    }
+    // Copilot #762: az edit-állapotot MINDIG visszaállítjuk (nincs stale editing/buffer
+    // ugyanabban az event-timingban), de az activeCell-t a fókusz-race miatt nem bántjuk.
     setEditBuffer('')
-  }, [commitCell, editBuffer])
+    setEditing(false)
+  }, [editing, commitCell, editBuffer])
+
+  // ===== 2026-05-21: Excel-szerű billentyűzetes navigáció + Enter-edit =====
+  const decimalsForCol = useCallback((rowIdx: number, col: keyof MainRateRow): number => {
+    if (col === 'crossRate') return 6
+    const r = enrichedRows[rowIdx]
+    return r && isJpy(r.currency) ? 3 : 2
+  }, [enrichedRows])
+
+  const seedBuffer = useCallback((rowIdx: number, col: keyof MainRateRow): string => {
+    const formula = formulas[`${rowIdx}.${String(col)}`]
+    if (formula) return formula
+    const v = enrichedRows[rowIdx]?.[col]
+    return typeof v === 'number' && v ? v.toFixed(decimalsForCol(rowIdx, col)) : ''
+  }, [formulas, enrichedRows, decimalsForCol])
+
+  // Kijelölés (nyíl-navigáció után): aktív cella, DE nem szerkesztés.
+  const selectCell = useCallback((rowIdx: number, col: EditableCol) => {
+    setActiveCell({ rowIdx, col })
+    setEditBuffer('')
+    setEditing(false)
+  }, [])
+
+  // Szerkesztésbe lépés (Enter / dupla-katt / kattintás): buffer seed + editing=true.
+  const startEdit = useCallback((rowIdx: number, col: keyof MainRateRow) => {
+    if (!canEdit || !EDITABLE_ORDER.includes(col as EditableCol)) return
+    pendingFocusRef.current = true // szöveg-kijelölés/fókusz az aktív input-ra
+    setActiveCell({ rowIdx, col })
+    setEditBuffer(seedBuffer(rowIdx, col))
+    setEditing(true)
+  }, [canEdit, seedBuffer])
+
+  // Fókusz-kezelés: CSAK akkor fókuszálunk programatikusan, ha billentyűzetes
+  // navigáció/Enter-edit kérte (pendingFocusRef) — így a rácson kívülre is lehet
+  // fókuszálni (Sourcery #762). Egérkattintás esetén a böngésző maga fókuszál.
+  useEffect(() => {
+    if (!activeCell || !pendingFocusRef.current) return
+    pendingFocusRef.current = false
+    const el = document.getElementById(`cell-${activeCell.rowIdx}-${String(activeCell.col)}`) as HTMLInputElement | null
+    if (!el) return
+    if (document.activeElement !== el) el.focus()
+    if (editing) el.select()
+  }, [activeCell, editing])
+
+  const handleCellKeyDown = useCallback((
+    e: KeyboardEvent<HTMLInputElement>,
+    rowIdx: number,
+    col: keyof MainRateRow,
+  ) => {
+    if (!canEdit || !EDITABLE_ORDER.includes(col as EditableCol)) return
+    const isEditingThis = activeCell?.rowIdx === rowIdx && activeCell.col === col && editing
+    if (isEditingThis) {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        commitCell(rowIdx, col, editBuffer)
+        setEditBuffer('')
+        setEditing(false)
+        const nxt = nextEditableCell({ rowIdx, col: col as EditableCol }, 'ArrowDown', enrichedRows)
+        pendingFocusRef.current = true
+        setActiveCell({ rowIdx: nxt.rowIdx, col: nxt.col })
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        setEditBuffer('')
+        setEditing(false)
+      }
+      // nyilak szerkesztés közben: alapértelmezett kurzor-mozgás
+      return
+    }
+    // Kijelölt (nem-szerkesztés) mód:
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault()
+      const nxt = nextEditableCell({ rowIdx, col: col as EditableCol }, e.key as NavKey, enrichedRows)
+      pendingFocusRef.current = true
+      selectCell(nxt.rowIdx, nxt.col)
+    } else if (e.key === 'Enter' || e.key === 'F2') {
+      e.preventDefault()
+      startEdit(rowIdx, col)
+    }
+  }, [canEdit, activeCell, editing, editBuffer, enrichedRows, commitCell, selectCell, startEdit])
 
   // Codex P1 #581 iter-4 fix: flushActiveCell SYNC visszaadja a "rows to save"-et.
   // Ha aktív cella van → computeCellCommit-tal kalkulálja a next-et, setRows-t hív
@@ -451,17 +532,28 @@ export default function MainRateSheetPage() {
   // Ha nincs aktív cella vagy no-op → a current rows-t adja vissza.
   // A caller (saveLocally, dispatchToServer) ezzel azonnal tud serializálni.
   const flushActiveCell = useCallback((): MainRateRow[] => {
-    if (!activeCell || !canEdit) return rows
+    // Csak ténylegesen szerkesztett (editing) cellát flush-olunk; a pusztán kijelölt
+    // cella nem hordoz beíratlan értéket (a readOnly miatt), így nincs mit commitolni.
+    // Copilot #762: nem-szerkesztés esetén is nullázzuk az activeCell-t (highlight),
+    // hogy a flush ("kész, kijelölés vége") szemantika konzisztens legyen.
+    if (!activeCell || !canEdit || !editing) {
+      if (activeCell) {
+        setActiveCell(null)
+        setEditBuffer('')
+      }
+      return rows
+    }
     const next = computeCellCommit(rows, activeCell.rowIdx, activeCell.col, editBuffer)
     setActiveCell(null)
     setEditBuffer('')
+    setEditing(false)
     if (next) {
       setRows(next)
       setDirty(true)
       return next  // SYNC return — caller serializes the just-committed value
     }
     return rows
-  }, [activeCell, canEdit, rows, computeCellCommit, editBuffer])
+  }, [activeCell, canEdit, editing, rows, computeCellCommit, editBuffer])
 
   // Codex P2 #581 iter-6 fix: saveLocally visszaadja boolean-t (true=success, false=fail).
   // Caller (CSOPORTOK navigate) csak success esetén navigáljon, hogy pending edit ne vesszen el
@@ -878,18 +970,27 @@ export default function MainRateSheetPage() {
                 `${baseClass} ${isActive(col) ? 'ring-2 ring-blue-500' : ''}`
               // EditableInput closure: while focused, show editBuffer (raw user input);
               // when blurred, parse + commit. Codex P1 #581 fix.
-              const renderInput = (col: keyof MainRateRow, currentVal: number, decimalsFor: number, classes: string, placeholder?: string) => (
-                <input
-                  type="text"
-                  value={isActive(col) ? editBuffer : (currentVal ? currentVal.toFixed(decimalsFor) : '0')}
-                  onChange={(e) => setEditBuffer(e.target.value)}
-                  onFocus={() => focusCell(idx, col, currentVal, decimalsFor)}
-                  onBlur={() => blurCell(idx, col)}
-                  className={classes}
-                  disabled={!canEdit}
-                  placeholder={placeholder}
-                />
-              )
+              const renderInput = (col: keyof MainRateRow, currentVal: number, decimalsFor: number, classes: string, placeholder?: string) => {
+                const activeThis = isActive(col)
+                const editingThis = activeThis && editing
+                return (
+                  <input
+                    id={`cell-${idx}-${String(col)}`}
+                    type="text"
+                    // Szerkesztéskor a RAW buffer, egyébként a formázott érték (readOnly).
+                    value={editingThis ? editBuffer : (currentVal ? currentVal.toFixed(decimalsFor) : '0')}
+                    readOnly={!canEdit || !editingThis}
+                    onChange={(e) => setEditBuffer(e.target.value)}
+                    onClick={() => startEdit(idx, col)}
+                    onFocus={() => { if (!editingThis) selectCell(idx, col as EditableCol) }}
+                    onKeyDown={(e) => handleCellKeyDown(e, idx, col)}
+                    onBlur={() => blurCell(idx, col)}
+                    className={`${classes} ${activeThis && !editing ? 'cursor-pointer' : ''}`}
+                    disabled={!canEdit}
+                    placeholder={placeholder}
+                  />
+                )
+              }
               return (
                 <tr key={row.currency} className="hover:bg-slate-50">
                   {/* A — Elszámoló (MINDIG szerkeszthető; kereszt-valutánál auto=G amíg nem írják felül) */}
