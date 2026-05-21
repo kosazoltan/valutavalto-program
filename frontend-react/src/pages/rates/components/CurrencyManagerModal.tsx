@@ -44,6 +44,12 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
   const [newDisplayOrder, setNewDisplayOrder] = useState<number>(99)
   const [submitting, setSubmitting] = useState(false)
 
+  // Aktivál/inaktivál megerősítés — Electron-kompatibilis (NEM window.prompt, ami
+  // Electron rendererben nem támogatott és null-t ad → a kérés sosem ment el).
+  const [pendingToggle, setPendingToggle] = useState<{ currency: Currency; active: boolean } | null>(null)
+  const [toggleNote, setToggleNote] = useState('')
+  const [togglingActive, setTogglingActive] = useState(false)
+
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
@@ -65,28 +71,41 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
   useEffect(() => {
     if (isOpen) {
       void refresh()
+    } else {
+      // Copilot #761: a megerősítő-panel state-jét töröljük záráskor, hogy
+      // újranyitáskor ne maradjon stale pending-toggle.
+      setPendingToggle(null)
+      setToggleNote('')
+      setTogglingActive(false)
     }
   }, [isOpen, refresh])
 
-  const handleSetActive = useCallback(async (currency: Currency, active: boolean) => {
+  // Gomb-klikk: megerősítő-panel megnyitása (NEM azonnali API-hívás).
+  const handleSetActive = useCallback((currency: Currency, active: boolean) => {
+    setToggleNote('')
+    setPendingToggle({ currency, active })
+  }, [])
+
+  // Megerősítés után: tényleges PATCH /currencies/{id}/active.
+  const confirmToggle = useCallback(async () => {
+    if (!pendingToggle || togglingActive) return // Copilot #761: dupla-kattintás védelem
+    const { currency, active } = pendingToggle
     const action = active ? 'aktiválni' : 'inaktiválni'
-    const note = window.prompt(
-      `Megerősíted hogy ${active ? 'aktiválod' : 'inaktiválod'} a ${currency.code} (${currency.name}) valutát?\n`
-        + `Inaktiválás esetén az adatbázisban MARAD (Pmt./NAV 8-éves megőrzés), csak nem jelenik meg a Főlapon.\n\n`
-        + `Indoklás (opcionális, audit-log-ba kerül):`,
-      '',
-    )
-    if (note === null) return // Mégse
+    setTogglingActive(true)
     try {
-      await currencyApi.setActive(currency.id, active, note || undefined)
+      await currencyApi.setActive(currency.id, active, toggleNote.trim() || undefined)
       toast.success('Sikeres', `${currency.code} ${active ? 'aktiválva' : 'inaktiválva'}`)
+      setPendingToggle(null)
+      setToggleNote('')
       await refresh()
       onCurrencyChanged?.()
     } catch (err) {
       logger.error('CurrencyManagerModal', `setActive ${action} failed`, err)
       toast.error('Hiba', getErrorMessage(err))
+    } finally {
+      setTogglingActive(false)
     }
-  }, [refresh, onCurrencyChanged])
+  }, [pendingToggle, togglingActive, toggleNote, refresh, onCurrencyChanged])
 
   const handleAdd = useCallback(async () => {
     const code = newCode.trim().toUpperCase()
@@ -250,6 +269,45 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                   data-testid="new-currency-submit"
                 >
                   {submitting ? 'Mentés...' : 'Hozzáadás'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {pendingToggle && (
+            <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-950/20 p-3 space-y-2" data-testid="currency-toggle-confirm">
+              <div className="text-sm font-semibold">
+                {pendingToggle.active ? 'Aktiválás' : 'Inaktiválás'} megerősítése — {pendingToggle.currency.code} ({pendingToggle.currency.name})
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                {pendingToggle.active
+                  ? 'A valuta újra megjelenik a Főlapon.'
+                  : 'Az adatbázisban MARAD (Pmt./NAV 8-éves megőrzés), csak nem jelenik meg a Főlapon.'}
+              </p>
+              <div>
+                <label className="text-xs block mb-0.5">Indoklás (opcionális, audit-log-ba kerül)</label>
+                <input
+                  type="text"
+                  value={toggleNote}
+                  onChange={(e) => setToggleNote(e.target.value)}
+                  className="form-input w-full"
+                  placeholder="pl. nincs rá kereslet"
+                  data-testid="currency-toggle-note"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button type="button" onClick={() => { setPendingToggle(null); setToggleNote('') }} disabled={togglingActive} className="form-button disabled:opacity-50">
+                  Mégse
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void confirmToggle()}
+                  disabled={togglingActive}
+                  className="form-button-primary disabled:opacity-50"
+                  data-testid="currency-toggle-confirm-btn"
+                >
+                  {togglingActive ? 'Mentés...' : (pendingToggle.active ? 'Aktiválás' : 'Inaktiválás')}
                 </button>
               </div>
             </div>

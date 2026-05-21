@@ -11,7 +11,7 @@ import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -75,7 +75,12 @@ public class CurrencyAuditLog {
     @Column(columnDefinition = "TEXT")
     private String note;
 
+    // VV-FIX (2026-05-21): OffsetDateTime -> LocalDateTime. A @EnableJpaAuditing default
+    // DateTimeProvider LocalDateTime-ot ad (a kódbázis konvenció, pl. AuditLog.createdAt is
+    // LocalDateTime + timestamp). Az OffsetDateTime/timestamptz kilógott → az auditing
+    // LocalDateTime-ja nem volt köthető → audit save dobott → @Transactional rollback-only
+    // → a createCurrency/setActive 500-azott. A V253 migráció a DB-oszlopot is timestamp-ra állítja.
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
+    private LocalDateTime createdAt;
 }
