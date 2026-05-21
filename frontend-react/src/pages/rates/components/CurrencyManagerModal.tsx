@@ -48,6 +48,7 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
   // Electron rendererben nem támogatott és null-t ad → a kérés sosem ment el).
   const [pendingToggle, setPendingToggle] = useState<{ currency: Currency; active: boolean } | null>(null)
   const [toggleNote, setToggleNote] = useState('')
+  const [togglingActive, setTogglingActive] = useState(false)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -70,6 +71,12 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
   useEffect(() => {
     if (isOpen) {
       void refresh()
+    } else {
+      // Copilot #761: a megerősítő-panel state-jét töröljük záráskor, hogy
+      // újranyitáskor ne maradjon stale pending-toggle.
+      setPendingToggle(null)
+      setToggleNote('')
+      setTogglingActive(false)
     }
   }, [isOpen, refresh])
 
@@ -81,9 +88,10 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
 
   // Megerősítés után: tényleges PATCH /currencies/{id}/active.
   const confirmToggle = useCallback(async () => {
-    if (!pendingToggle) return
+    if (!pendingToggle || togglingActive) return // Copilot #761: dupla-kattintás védelem
     const { currency, active } = pendingToggle
     const action = active ? 'aktiválni' : 'inaktiválni'
+    setTogglingActive(true)
     try {
       await currencyApi.setActive(currency.id, active, toggleNote.trim() || undefined)
       toast.success('Sikeres', `${currency.code} ${active ? 'aktiválva' : 'inaktiválva'}`)
@@ -94,8 +102,10 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
     } catch (err) {
       logger.error('CurrencyManagerModal', `setActive ${action} failed`, err)
       toast.error('Hiba', getErrorMessage(err))
+    } finally {
+      setTogglingActive(false)
     }
-  }, [pendingToggle, toggleNote, refresh, onCurrencyChanged])
+  }, [pendingToggle, togglingActive, toggleNote, refresh, onCurrencyChanged])
 
   const handleAdd = useCallback(async () => {
     const code = newCode.trim().toUpperCase()
@@ -287,16 +297,17 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                 />
               </div>
               <div className="flex gap-2 justify-end">
-                <button type="button" onClick={() => { setPendingToggle(null); setToggleNote('') }} className="form-button">
+                <button type="button" onClick={() => { setPendingToggle(null); setToggleNote('') }} disabled={togglingActive} className="form-button disabled:opacity-50">
                   Mégse
                 </button>
                 <button
                   type="button"
                   onClick={() => void confirmToggle()}
-                  className="form-button-primary"
+                  disabled={togglingActive}
+                  className="form-button-primary disabled:opacity-50"
                   data-testid="currency-toggle-confirm-btn"
                 >
-                  {pendingToggle.active ? 'Aktiválás' : 'Inaktiválás'}
+                  {togglingActive ? 'Mentés...' : (pendingToggle.active ? 'Aktiválás' : 'Inaktiválás')}
                 </button>
               </div>
             </div>
