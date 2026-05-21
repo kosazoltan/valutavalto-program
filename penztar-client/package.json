@@ -1,6 +1,6 @@
 {
   "name": "valuta-penztar",
-  "version": "2.26.8",
+  "version": "2.26.9",
   "description": "Valutavalto Penztar Kliens - Electron",
   "private": true,
   "main": "dist-electron/main.js",
@@ -19,8 +19,7 @@
     "lint": "eslint electron vite.config.ts vitest.config.ts",
     "test": "vitest --config vitest.config.ts --run",
     "test:e2e": "playwright test --config playwright.config.ts",
-    "test:e2e:list": "playwright test --config playwright.config.ts --list",
-    "postinstall": "electron-builder install-app-deps"
+    "test:e2e:list": "playwright test --config playwright.config.ts --list"
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",
