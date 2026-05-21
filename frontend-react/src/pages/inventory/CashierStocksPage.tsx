@@ -125,6 +125,19 @@ export default function CashierStocksPage() {
       terr.groups.push(group)
       terr.hufTotal += group.hufTotal
     }
+    // FK-003: minden területi szekció ELEJÉN az értéktár kártyája. Ha a vaultnak nincs
+    // készlet-csoportja (0 tétel), üres kártyát injektálunk, hogy mindig megjelenjen.
+    for (const terr of map.values()) {
+      if (!terr.vaultName) continue
+      if (!terr.groups.some(g => g.branchName === terr.vaultName)) {
+        terr.groups.push({ branchName: terr.vaultName, items: [], hufTotal: 0, nonZeroCount: 0 })
+      }
+      terr.groups.sort((a, b) => {
+        if (a.branchName === terr.vaultName) return -1
+        if (b.branchName === terr.vaultName) return 1
+        return b.hufTotal - a.hufTotal
+      })
+    }
     return Array.from(map.values()).sort((a, b) => b.hufTotal - a.hufTotal)
   }, [branchGroups, branchMeta, vaultByRegion])
 
@@ -204,7 +217,7 @@ export default function CashierStocksPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2">
                 {terr.groups.map(group => (
-                  <BranchCard key={group.branchName} group={group} />
+                  <BranchCard key={group.branchName} group={group} isVault={!!terr.vaultName && group.branchName === terr.vaultName} />
                 ))}
               </div>
             </section>
@@ -221,15 +234,17 @@ export default function CashierStocksPage() {
   )
 }
 
-function BranchCard({ group }: { group: BranchGroup }) {
+function BranchCard({ group, isVault = false }: { group: BranchGroup; isVault?: boolean }) {
   const { t } = useTranslation()
+  // FK-003: az értéktár kártya vizuálisan elkülönül a pénztárkártyáktól (borostyán keret + háttér + ÉRTÉKTÁR jelvény).
   return (
-    <div className="form-panel p-2 hover:shadow-md transition-shadow">
+    <div className={`form-panel p-2 hover:shadow-md transition-shadow ${isVault ? 'ring-2 ring-amber-400 bg-amber-50/60' : ''}`}>
       <div className="flex items-center justify-between mb-1 pb-1 border-b border-gray-200">
-        <h3 className="font-bold text-secondary-900 text-sm truncate flex-1" title={group.branchName}>
-          {group.branchName}
+        <h3 className="font-bold text-secondary-900 text-sm truncate flex-1 flex items-center gap-1" title={group.branchName}>
+          {isVault && <span className="text-[9px] font-bold uppercase bg-amber-500 text-white rounded px-1 py-px shrink-0">Értéktár</span>}
+          <span className="truncate">{group.branchName}</span>
         </h3>
-        <span className="text-[10px] text-gray-500 ml-1">
+        <span className="text-[10px] text-gray-500 ml-1 shrink-0">
           {group.items.length} {t('inventory.valuta')}
         </span>
       </div>

@@ -406,13 +406,22 @@ public class InventoryService {
     public List<CashBalance> getAllStock() {
         UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
         Integer territoryFilter = getCurrentTerritoryFilterOrNull();
+        // FK-004 (2026-05-21): az Országos készlet nézet CSAK aktív branch-ek készletét
+        // mutatja — a deaktivált pénztárak (pl. KORUT/TISZA, V246 soft-delete) ne
+        // jelenjenek meg "BESOROLATLAN" tételként. A historikus cash_balance megmarad,
+        // csak a nézetből szűrjük (Pmt./NAV megőrzés sértetlen).
+        java.util.function.Predicate<CashBalance> activeBranch =
+                cb -> cb.getBranch() != null && Boolean.TRUE.equals(cb.getBranch().getIsActive());
         if (territoryFilter == null) {
-            return cashBalanceRepository.findByCompanyId(companyId);
+            return cashBalanceRepository.findByCompanyId(companyId).stream()
+                    .filter(activeBranch)
+                    .toList();
         }
         var territoryBranchIds = branchRepository.findByCompanyIdAndVaultTerritoryId(companyId, territoryFilter)
                 .stream().map(Branch::getId).collect(java.util.stream.Collectors.toSet());
         return cashBalanceRepository.findByCompanyId(companyId).stream()
-                .filter(cb -> cb.getBranch() != null && territoryBranchIds.contains(cb.getBranch().getId()))
+                .filter(activeBranch)
+                .filter(cb -> territoryBranchIds.contains(cb.getBranch().getId()))
                 .toList();
     }
 
