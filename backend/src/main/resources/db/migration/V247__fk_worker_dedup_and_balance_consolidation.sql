@@ -1,9 +1,9 @@
--- V247: FK törzsadat-revízió folytatása (Kasza Helga + Kósa Zoltán explicit kérése, TESZT-adat).
+-- V247: FK törzsadat-revízió — egyenleg-konszolidáció (Kósa Zoltán explicit kérése, TESZT-adat).
 --
---   A) Dolgozói dedup: a legacy rövid kódú duplikátumok deaktiválása (a kanonikus W-kód marad)
---        - BORSI  (Borsi Tamas)     → kanonikus: W-S012 (Borsi Tamás)
---        - BALI   (Bali Henrietta)  → kanonikus: W-S011 (Borossebesiné Bali Henriett Anita)
---      SOFT-DELETE (is_active=false): a tranzakció-/audit-történet megőrizve.
+--   A) Dolgozói dedup (BORSI/BALI) — SZÁNDÉKOSAN KIVÉVE ebből a migrációból.
+--      Borsi (főértéktáros) és Bali (főértéktárhelyettes/értéktáros) BELÉPNEK a programba;
+--      a GoogleLoginService a worker is_active-ját ellenőrzi (inaktív → belépés megtagadva).
+--      Ezért a dedup csak login-tudatosan végezhető (login-hordozó rekord marad), külön migrációban.
 --
 --   B) Egyenleg-konszolidáció a (V246-ban) deaktivált pénztárakról a területi cél-egységbe:
 --        - KORUT → BR020 (Szeged Értéktár)        [FK-002 területi modell: pénztár → területe értéktára]
@@ -22,11 +22,14 @@ DECLARE
     v_korut UUID; v_tisza UUID; v_br020 UUID; v_br035 UUID;
     v_cnt INT;
 BEGIN
-    -- ===== A) Dolgozói dedup =====
-    UPDATE worker SET is_active = false, updated_at = NOW()
-     WHERE code IN ('BORSI', 'BALI') AND is_active = true;
-    GET DIAGNOSTICS v_cnt = ROW_COUNT;
-    RAISE NOTICE 'FK worker-dedup: % legacy dolgozó (BORSI/BALI) deaktiválva (kanonikus W-S012/W-S011 marad).', v_cnt;
+    -- ===== A) Dolgozói dedup — KIVÉVE (login-biztonsági ok) =====
+    -- FONTOS: Borsi (főértéktáros) és Bali (főértéktárhelyettes/értéktáros) BELÉPNEK a programba.
+    -- A GoogleLoginService a worker is_active-ját ELLENŐRZI (inaktív → belépés megtagadva), és a
+    -- whitelist e-mail + google_login_enabled EGYIK rekordhoz (legacy BORSI/BALI VAGY kanonikus
+    -- W-S012/W-S011) van kötve. Ha a login a legacy kódon van, annak deaktiválása KIZÁRNÁ őket.
+    -- Ezért a worker-dedup CSAK login-tudatosan végezhető (a login-hordozó rekord marad aktív,
+    -- a login NÉLKÜLI duplikátum deaktiválandó) — ez külön, guarded migrációban történik, miután
+    -- igazoltuk, melyik rekord viseli a Google-bejelentkezést. ITT NEM nyúlunk a worker-ekhez.
 
     -- ===== B) Egyenleg-konszolidáció =====
     SELECT id INTO v_korut FROM branch WHERE code = 'KORUT' LIMIT 1;
