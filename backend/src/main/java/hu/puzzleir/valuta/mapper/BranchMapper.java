@@ -62,6 +62,9 @@ public class BranchMapper {
                 .vaultTerritoryId(entity.getVaultTerritoryId())
                 .isVault(entity.getIsVault())
 
+                // FK-002: területi besorolás (Országos készlet területi csoportosításához)
+                .region(entity.getRegion())
+
                 // Timestamps
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
