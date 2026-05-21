@@ -10,7 +10,10 @@
 -- whitelistet nézi. A kötést ATOMIKUSAN, a unique-indexeket tiszteletben tartva mozgatjuk:
 --   uq_worker_google_subject (WHERE subject IS NOT NULL)         → előbb W-S011.google_subject = NULL
 --   uq_worker_company_google_email_lower (WHERE login_enabled)   → előbb W-S011.google_login_enabled = false
+--   uk_worker_email (FELTÉTEL NÉLKÜLI unique az email-en!)        → előbb W-S011.email = NULL
 -- Csak EZUTÁN állítjuk be a BALI-t → így Bali a művelet után BALI-val tud Google-belépni.
+-- FONTOS: az uk_worker_email NEM partial index (mindig érvényes), ezért az email-t MÁR a
+-- felszabadító lépésben le KELL nullázni a W-S011-en, különben az email-átvitel ütközne.
 --
 -- GUARDED: csak akkor fut, ha W-S011 a login-hordozó (aktív + google_login_enabled + van subject)
 -- ÉS a megtartandó BALI aktív ÉS BALI-nak MÉG NINCS saját google_subject (nem írunk felül létezőt).
@@ -60,9 +63,12 @@ BEGIN
         RETURN;
     END IF;
 
-    -- 1) W-S011 kötés felszabadítása (unique-indexek), login letiltása
+    -- 1) W-S011 kötés felszabadítása (unique-indexek), login letiltása.
+    --    Az email-t is NULL-ra állítjuk: az uk_worker_email FELTÉTEL NÉLKÜLI unique,
+    --    ezért az email-átvitel BALI-ra csak akkor megy, ha W-S011 előbb elengedi.
     UPDATE worker
-       SET google_subject = NULL, google_login_enabled = false, google_linked_at = NULL, google_last_login_at = NULL,
+       SET google_subject = NULL, email = NULL, google_login_enabled = false,
+           google_linked_at = NULL, google_last_login_at = NULL,
            updated_at = NOW()
      WHERE id = v_ws011;
 
