@@ -52,6 +52,7 @@ public class SanctionScreeningController {
                 request.getName(),
                 request.getDocumentNumber(),
                 request.getDateOfBirth(),
+                request.getNationality(),  // G4: FATF ország-kockázat
                 workerId,
                 workerId,
                 null // branchCode a SecurityContext-ből jön majd

@@ -6,10 +6,17 @@ export type SanctionListType = 'UN' | 'EU' | 'OFAC'
 export type SanctionMatchType = 'EXACT' | 'PARTIAL' | 'ALIAS'
 export type SanctionRiskLevel = 'CLEAR' | 'POSSIBLE' | 'CONFIRMED'
 
+export type FatfTier =
+    | 'TIER_1A_COUNTERMEASURE'
+    | 'TIER_1B_ENHANCED_DD'
+    | 'TIER_2_INCREASED_MONITORING'
+    | 'NONE'
+
 export interface SanctionScreeningRequest {
     name: string
     documentNumber?: string
     dateOfBirth?: string  // YYYY-MM-DD
+    nationality?: string  // G4: FATF ország-kockázat
 }
 
 export interface SanctionMatch {
@@ -29,6 +36,10 @@ export interface SanctionScreeningResult {
     matched: boolean
     matches: SanctionMatch[]
     riskLevel: SanctionRiskLevel
+    staleData?: boolean
+    listAgeDays?: number | null
+    fatfTier?: FatfTier  // G4: FATF ország-kockázati besorolás
+    fatfRiskCountry?: string | null
 }
 
 export interface SanctionEntry {

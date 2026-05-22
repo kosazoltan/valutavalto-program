@@ -31,4 +31,14 @@ public class SanctionScreeningResult {
 
     /** A helyi szankciós lista kora napokban (null, ha még sosem importálták). */
     private Integer listAgeDays;
+
+    /**
+     * FATF ország-kockázati besorolás (G4): a FatfCountryRiskService.FatfTier neve
+     * (TIER_1A_COUNTERMEASURE / TIER_1B_ENHANCED_DD / TIER_2_INCREASED_MONITORING / NONE).
+     * Az ügyfél állampolgársága/országa alapján; magas kockázatnál fokozott átvilágítás kötelező.
+     */
+    private String fatfTier;
+
+    /** A FATF-listán szereplő ország megnevezése (ahogy az ügyfélnél megadták), ha van találat. */
+    private String fatfRiskCountry;
 }

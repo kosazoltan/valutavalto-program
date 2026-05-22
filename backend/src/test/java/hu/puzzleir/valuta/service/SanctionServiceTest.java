@@ -42,6 +42,9 @@ class SanctionServiceTest {
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
+    @Spy
+    private FatfCountryRiskService fatfCountryRiskService = new FatfCountryRiskService();
+
     /**
      * Segéd: SanctionEntry létrehozása.
      */
@@ -344,5 +347,36 @@ class SanctionServiceTest {
         verify(sanctionEntryRepository, times(2)).save(captor.capture());
         assertThat(captor.getAllValues())
                 .anyMatch(e -> "Al-Qaida Network".equals(e.getFullName()));
+    }
+
+    // =====================================================================
+    // G4: FATF ország-kockázat integráció a szűrésbe
+    // =====================================================================
+    @Test
+    @DisplayName("G4: FATF ország-kockázat — Észak-Korea állampolgár → fatfTier TIER_1A")
+    void testScreen_fatfCountryHighRisk() {
+        when(sanctionEntryRepository.findByActiveTrue()).thenReturn(Collections.emptyList());
+        when(sanctionEntryRepository.findByDocumentNumber(any())).thenReturn(Collections.emptyList());
+
+        SanctionScreeningResult result = service.screenCustomer(
+                "Kim Test", null, null, "Észak-Korea",
+                "W001", "Teszt Pénztáros", "BP01");
+
+        assertThat(result.getFatfTier()).isEqualTo("TIER_1A_COUNTERMEASURE");
+        assertThat(result.getFatfRiskCountry()).isEqualTo("Észak-Korea");
+    }
+
+    @Test
+    @DisplayName("G4: nem-listás ország → fatfTier NONE, nincs risk-country")
+    void testScreen_fatfCountryNone() {
+        when(sanctionEntryRepository.findByActiveTrue()).thenReturn(Collections.emptyList());
+        when(sanctionEntryRepository.findByDocumentNumber(any())).thenReturn(Collections.emptyList());
+
+        SanctionScreeningResult result = service.screenCustomer(
+                "Kiss János", null, null, "Magyarország",
+                "W001", "Teszt Pénztáros", "BP01");
+
+        assertThat(result.getFatfTier()).isEqualTo("NONE");
+        assertThat(result.getFatfRiskCountry()).isNull();
     }
 }

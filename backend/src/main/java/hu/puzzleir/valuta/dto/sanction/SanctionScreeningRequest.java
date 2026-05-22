@@ -18,4 +18,7 @@ public class SanctionScreeningRequest {
     private String documentNumber;
 
     private String dateOfBirth;
+
+    /** Állampolgárság / ország (G4 FATF ország-kockázat szűréshez) — opcionális. */
+    private String nationality;
 }

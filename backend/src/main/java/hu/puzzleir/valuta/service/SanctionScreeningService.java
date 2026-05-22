@@ -47,11 +47,12 @@ public class SanctionScreeningService {
     private final SanctionEntryRepository sanctionEntryRepository;
     private final SanctionScreeningLogRepository screeningLogRepository;
     private final ObjectMapper objectMapper;
+    private final FatfCountryRiskService fatfCountryRiskService;
 
     /**
-     * Ügyfél szűrés — név + okmányszám + születési dátum alapján.
+     * Ügyfél szűrés — név + okmányszám + születési dátum alapján (FATF ország-kockázat nélkül).
+     * Backward-compat overload (pl. tranzakció-idejű AML hívás, ahol az ország nem áll rendelkezésre).
      */
-    @Transactional(rollbackFor = Exception.class)
     public SanctionScreeningResult screenCustomer(
             String name,
             String documentNumber,
@@ -60,11 +61,31 @@ public class SanctionScreeningService {
             String workerName,
             String branchCode
     ) {
+        return screenCustomer(name, documentNumber, dateOfBirth, null, workerId, workerName, branchCode);
+    }
+
+    /**
+     * Ügyfél szűrés — név + okmányszám + születési dátum + FATF ország-kockázat (G4) alapján.
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public SanctionScreeningResult screenCustomer(
+            String name,
+            String documentNumber,
+            String dateOfBirth,
+            String country,
+            String workerId,
+            String workerName,
+            String branchCode
+    ) {
+        FatfCountryRiskService.FatfTier fatfTier = fatfCountryRiskService.classify(country);
+        String fatfRiskCountry = fatfTier == FatfCountryRiskService.FatfTier.NONE ? null : country;
         if (name == null || name.isBlank()) {
             return SanctionScreeningResult.builder()
                     .matched(false)
                     .matches(Collections.emptyList())
                     .riskLevel("CLEAR")
+                    .fatfTier(fatfTier.name())
+                    .fatfRiskCountry(fatfRiskCountry)
                     .build();
         }
 
@@ -114,6 +135,8 @@ public class SanctionScreeningService {
                 .riskLevel(riskLevel)
                 .staleData(stale)
                 .listAgeDays(listAgeDays)
+                .fatfTier(fatfTier.name())
+                .fatfRiskCountry(fatfRiskCountry)
                 .build();
     }
 

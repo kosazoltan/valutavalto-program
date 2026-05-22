@@ -17,6 +17,7 @@ import {
     type SanctionStatusResponse,
     type SanctionImportResult,
     type SanctionRiskLevel,
+    type FatfTier,
 } from '../../services/api/sanction'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
@@ -33,6 +34,13 @@ const RISK_LABEL: Record<SanctionRiskLevel, string> = {
     CLEAR: 'TISZTA',
     POSSIBLE: 'LEHETSEGES EGYEZES',
     CONFIRMED: 'MEGEROSITETT EGYEZES',
+}
+
+const FATF_LABEL: Record<FatfTier, string> = {
+    TIER_1A_COUNTERMEASURE: '1/a — ellenintézkedéssel érintett ország',
+    TIER_1B_ENHANCED_DD: '1/b — fokozott átvilágítás szükséges',
+    TIER_2_INCREASED_MONITORING: '2. csoport — fokozott monitoring',
+    NONE: '—',
 }
 
 export default function SanctionPage() {
@@ -114,6 +122,7 @@ function ScreeningTab() {
     const [name, setName] = useState('')
     const [documentNumber, setDocumentNumber] = useState('')
     const [dateOfBirth, setDateOfBirth] = useState('')
+    const [nationality, setNationality] = useState('')
     const [loading, setLoading] = useState(false)
     const [result, setResult] = useState<SanctionScreeningResult | null>(null)
     const [err, setErr] = useState<string | null>(null)
@@ -129,6 +138,7 @@ function ScreeningTab() {
                 name: name.trim(),
                 documentNumber: documentNumber.trim() || undefined,
                 dateOfBirth: dateOfBirth || undefined,
+                nationality: nationality.trim() || undefined,
             })
             setResult(r)
         } catch (e) {
@@ -175,6 +185,16 @@ function ScreeningTab() {
                         />
                     </div>
                 </div>
+                <div>
+                    <label className="form-label">Állampolgárság / ország (FATF) — opcionális</label>
+                    <input
+                        type="text"
+                        className="form-input w-full"
+                        value={nationality}
+                        onChange={e => setNationality(e.target.value)}
+                        placeholder="pl. Törökország, Irán, Magyarország"
+                    />
+                </div>
                 <button type="submit" className="form-button-primary" disabled={loading || !name.trim()}>
                     <Search size={16} />
                     <span>{loading ? 'Szűrés...' : 'Szűrés indítása'}</span>
@@ -206,6 +226,26 @@ function ScreeningTab() {
                             {result.matches.length} {t('common.talalat')}
                         </div>
                     </div>
+                    {result.fatfTier && result.fatfTier !== 'NONE' && (
+                        <div className={`mt-2 mb-1 p-3 rounded border-2 ${
+                            result.fatfTier === 'TIER_2_INCREASED_MONITORING'
+                                ? 'bg-amber-50 border-amber-300 text-amber-800'
+                                : 'bg-red-50 border-red-300 text-red-800'
+                        }`}>
+                            <div className="flex items-center gap-2 font-semibold">
+                                <AlertTriangle size={16} />
+                                <span>FATF ország-kockázat: {FATF_LABEL[result.fatfTier]}</span>
+                            </div>
+                            {result.fatfRiskCountry && (
+                                <div className="text-sm mt-1">
+                                    Ország: <strong>{result.fatfRiskCountry}</strong>
+                                    {(result.fatfTier === 'TIER_1A_COUNTERMEASURE'
+                                        || result.fatfTier === 'TIER_1B_ENHANCED_DD')
+                                        && ' — fokozott ügyfél-átvilágítás kötelező!'}
+                                </div>
+                            )}
+                        </div>
+                    )}
                     {result.matches.length > 0 && (
                         <div className="mt-3 space-y-2">
                             {result.matches.map(m => (
