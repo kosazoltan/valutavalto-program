@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface EmployeeVacationRepository extends JpaRepository<EmployeeVacation, Long> {
     List<EmployeeVacation> findByEmployeeIdOrderByYearDesc(Long employeeId);
+
+    boolean existsByEmployeeIdAndYear(Long employeeId, Integer year);
 }

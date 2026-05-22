@@ -103,7 +103,7 @@ class EmployeeSubRecordServiceTest {
     }
 
     @Test
-    @DisplayName("addVacation — hiányzó év → ValidationException")
+    @DisplayName("addVacation — hiányzó/érvénytelen év → ValidationException")
     void addVacation_missingYear() {
         when(employeeRepository.findById(EMPLOYEE_ID)).thenReturn(Optional.of(employeeInCompany(companyId)));
         try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
@@ -111,6 +111,24 @@ class EmployeeSubRecordServiceTest {
             assertThatThrownBy(() -> service.addVacation(EMPLOYEE_ID,
                     new EmployeeVacationDto(null, null, 0, 0, 0, 0, 0, 0, 0)))
                     .isInstanceOf(ValidationException.class);
+            // év=0 (frontend Number("") → 0) is elutasítva
+            assertThatThrownBy(() -> service.addVacation(EMPLOYEE_ID,
+                    new EmployeeVacationDto(null, 0, 0, 0, 0, 0, 0, 0, 0)))
+                    .isInstanceOf(ValidationException.class);
+        }
+    }
+
+    @Test
+    @DisplayName("addVacation — duplikált év → ValidationException (uq constraint védelem)")
+    void addVacation_duplicateYear() {
+        when(employeeRepository.findById(EMPLOYEE_ID)).thenReturn(Optional.of(employeeInCompany(companyId)));
+        when(vacationRepository.existsByEmployeeIdAndYear(EMPLOYEE_ID, 2026)).thenReturn(true);
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            assertThatThrownBy(() -> service.addVacation(EMPLOYEE_ID,
+                    new EmployeeVacationDto(null, 2026, 0, 0, 0, 0, 0, 0, 0)))
+                    .isInstanceOf(ValidationException.class);
+            verify(vacationRepository, never()).save(any());
         }
     }
 

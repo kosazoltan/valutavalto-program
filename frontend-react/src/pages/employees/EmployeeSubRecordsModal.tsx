@@ -60,6 +60,10 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
     } catch (err) { setError(getErrorMessage(err)) }
   }
   const addVac = async () => {
+    if (!Number.isInteger(newVac.year) || newVac.year < 1900 || newVac.year > 2200) {
+      setError('Érvényes évet adjon meg (1900–2200).')
+      return
+    }
     try {
       await api.post(`${base}/vacations`, { year: newVac.year, vacationDays: newVac.vacationDays })
       await load()
@@ -96,7 +100,7 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
             </tr></thead>
             <tbody>
               {occHealth.length === 0 ? (
-                <tr><td colSpan={4} className="p-2 text-center text-gray-500">Nincs megjeleníthető okmány!</td></tr>
+                <tr><td colSpan={4} className="p-2 text-center text-gray-500">Nincs üzemorvosi rekord.</td></tr>
               ) : occHealth.map(o => (
                 <tr key={o.id} className="border-t">
                   <td className="p-1">{o.status ?? '-'}</td><td className="p-1">{o.examDate ?? '-'}</td>

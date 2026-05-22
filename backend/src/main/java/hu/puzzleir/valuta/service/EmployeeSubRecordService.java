@@ -41,10 +41,10 @@ public class EmployeeSubRecordService {
     /** Betölti az employee-t és ellenőrzi, hogy az aktuális céghez tartozik. */
     private Employee loadScoped(Long employeeId) {
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Munkavállaló nem található: " + employeeId));
+                .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található: " + employeeId));
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (employee.getCompany() == null || !employee.getCompany().getId().equals(companyId)) {
-            throw new ResourceNotFoundException("Munkavállaló nem található: " + employeeId);
+            throw new ResourceNotFoundException("Dolgozó nem található: " + employeeId);
         }
         return employee;
     }
@@ -97,8 +97,13 @@ public class EmployeeSubRecordService {
 
     public EmployeeVacationDto addVacation(Long employeeId, EmployeeVacationDto dto) {
         Employee employee = loadScoped(employeeId);
-        if (dto.year() == null) {
-            throw new ValidationException("A szabadság-sorhoz az év kötelező!");
+        if (dto.year() == null || dto.year() < 1900 || dto.year() > 2200) {
+            throw new ValidationException("A szabadság-sorhoz érvényes év kötelező (1900–2200)!");
+        }
+        // Copilot/Sourcery #789: a uq_employee_vacation_year constraint duplikált
+        // év esetén DataIntegrityViolation-t dobna — előzetes, érthető hibaüzenet.
+        if (vacationRepository.existsByEmployeeIdAndYear(employeeId, dto.year())) {
+            throw new ValidationException("Ehhez az évhez (" + dto.year() + ") már van szabadság-sor!");
         }
         EmployeeVacation e = EmployeeVacation.builder()
                 .employee(employee)
