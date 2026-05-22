@@ -241,13 +241,13 @@ public class CircularService {
      * @return szerepkör → nyugtázások száma
      */
     @Transactional(readOnly = true)
-    public java.util.Map<String, Long> getAcknowledgmentBreakdownByRole(Long circularId) {
+    public Map<String, Long> getAcknowledgmentBreakdownByRole(Long circularId) {
         findOrThrow(circularId); // 404, ha nincs ilyen körlevél
         return acknowledgmentRepository.findByCircularId(circularId).stream()
-                .collect(java.util.stream.Collectors.groupingBy(
+                .collect(Collectors.groupingBy(
                         a -> (a.getAcknowledgerRole() == null || a.getAcknowledgerRole().isBlank())
                                 ? "ISMERETLEN" : a.getAcknowledgerRole(),
-                        java.util.stream.Collectors.counting()));
+                        Collectors.counting()));
     }
 
     /**
