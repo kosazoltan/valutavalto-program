@@ -34,6 +34,10 @@ public class MonthlyReportFullDto {
     @Builder.Default private BigDecimal totalBuyHuf = BigDecimal.ZERO;
     @Builder.Default private BigDecimal totalSellHuf = BigDecimal.ZERO;
 
+    // --- Fizetesi mod szerinti bontas (G18, Delphi: keszpenzes vs bankkartyas forgalom) ---
+    @Builder.Default private BigDecimal cashTurnoverHuf = BigDecimal.ZERO;
+    @Builder.Default private BigDecimal cardTurnoverHuf = BigDecimal.ZERO;
+
     // --- Tranzakciok ---
     private int transactionCount;
     private int buyCount;
