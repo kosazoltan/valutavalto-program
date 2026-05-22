@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -34,6 +35,7 @@ class SanctionOfflineFallbackTest {
     @Mock private SanctionEntryRepository sanctionEntryRepository;
     @Mock private SanctionScreeningLogRepository screeningLogRepository;
     @Mock private ObjectMapper objectMapper;
+    @Spy private FatfCountryRiskService fatfCountryRiskService = new FatfCountryRiskService();
     @InjectMocks private SanctionScreeningService service;
 
     private SanctionScreeningResult screenClean(LocalDate lastUpdate, long activeCount) {
