@@ -61,7 +61,7 @@ export default function TransactionListPage() {
         size: PAGE_SIZE,
         startDate: dateFrom || undefined,
         endDate: dateTo || undefined,
-        type: (typeFilter as 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION') || undefined,
+        type: (typeFilter as 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION' | 'TRANSFER_OUT' | 'TRANSFER_IN') || undefined,
       })
 
       // Electron: a helyi SQLite pending (meg fel nem kuldott) bizonylatai is latszodjanak
@@ -239,6 +239,8 @@ export default function TransactionListPage() {
               <option value="SELL">{t('cashier.sell')}</option>
               <option value="REVERSAL">{t('cashier.storno')}</option>
               <option value="CONVERSION">{t('transactions.atvaltas')}</option>
+              <option value="TRANSFER_OUT">{t('transactions.atadasi')}</option>
+              <option value="TRANSFER_IN">{t('transactions.atveteli')}</option>
             </select>
           </div>
         </div>

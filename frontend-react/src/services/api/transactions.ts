@@ -151,7 +151,7 @@ export interface Transaction {
   foreignStatus?: 'DOMESTIC' | 'FOREIGN'
   // Legacy compatibility aliases
   transactionNumber?: string // Same as receiptNumber
-  type?: 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION' // Same as transactionType
+  type?: 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION' | 'TRANSFER_OUT' | 'TRANSFER_IN' // Same as transactionType
   foreignAmount?: number // Same as currencyAmount
   fee?: number // Same as handlingFee
   total?: number // Same as hufAmount
@@ -289,7 +289,7 @@ export const transactionApi = {
     branchId?: string
     startDate?: string
     endDate?: string
-    type?: 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION'
+    type?: 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION' | 'TRANSFER_OUT' | 'TRANSFER_IN'
     page?: number
     size?: number
   }): Promise<PagedResponse<Transaction>> => {
