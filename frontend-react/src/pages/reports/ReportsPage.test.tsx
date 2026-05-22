@@ -130,9 +130,9 @@ describe('ReportsPage', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/anonymous-reports')
   })
 
-  it('12 riport kártya szerepel összesen (G9: pillanatnyi pénztárállás hozzáadva)', () => {
+  it('13 riport kártya szerepel összesen (G9 + G17)', () => {
     render(<ReportsPage />)
     const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBe(12)
+    expect(buttons.length).toBe(13)
   })
 })
