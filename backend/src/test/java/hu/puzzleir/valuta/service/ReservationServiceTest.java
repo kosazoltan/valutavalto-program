@@ -106,6 +106,13 @@ class ReservationServiceTest {
         return cb;
     }
 
+    /** Általános kassza-egyenleg (valutától független), olvashatóbb néven. */
+    private CashBalance cashBalanceWith(BigDecimal amount) {
+        CashBalance cb = new CashBalance();
+        cb.setCurrentBalance(amount);
+        return cb;
+    }
+
     /** Alap aktív Reservation builder */
     private Reservation activeReservation(Long id, String currencyCode,
                                            BigDecimal reservedAmount, BigDecimal rate,
@@ -377,5 +384,57 @@ class ReservationServiceTest {
 
         // save nem hívódott (nincs foglalás)
         verify(notificationRepository, never()).save(any());
+    }
+
+    // ========== T10: createReservation — 5% letét (G8, FR-9) ==========
+
+    @Test
+    @DisplayName("T10: createReservation — a letét a ft-érték 5%-a (100 EUR @ 400 = 40000 → 2000)")
+    void t10_createReservation_fivePercentDeposit() {
+        Long customerId = 10L;
+        BigDecimal amount = new BigDecimal("100");
+        BigDecimal rate = new BigDecimal("400");
+
+        Company company = new Company();
+        company.setId(COMPANY_ID);
+        company.setName("Teszt Kft.");
+
+        Currency eur = new Currency();
+        eur.setId(200L);
+        eur.setCode("EUR");
+        eur.setActive(true);
+
+        when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch(BRANCH_ID)));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker(WORKER_ID)));
+        when(customerRepository.findById(customerId)).thenReturn(Optional.of(customer(customerId)));
+        when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eur));
+        when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(hufCurrency()));
+        // EUR készlet (van elég: 1000 >= 100)
+        CashBalance eurBalance = cashBalanceWith(new BigDecimal("1000"));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, 200L))
+                .thenReturn(Optional.of(eurBalance));
+        // HUF kassza (addHufBalance — ide kerül a befizetett 5% letét)
+        CashBalance hufKassza = cashBalanceWith(new BigDecimal("0"));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, 100L))
+                .thenReturn(Optional.of(hufKassza));
+        // save: id beállítása + visszaadás (az audit log getId()-t hív)
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> {
+            Reservation r = inv.getArgument(0);
+            r.setId(999L);
+            return r;
+        });
+
+        Reservation result = service.createReservation(
+                customerId, "EUR", amount, rate,
+                LocalDateTime.now().plusDays(2), "teszt foglaló");
+
+        // ft-érték = 100 × 400 = 40000; 5% = 2000; round5(2000) = 2000
+        assertThat(result.getDepositAmount()).isEqualByComparingTo("2000");
+        assertThat(result.getReservedAmount()).isEqualByComparingTo("100");
+        assertThat(result.getStatus()).isEqualTo(ReservationStatus.ACTIVE);
+        // Pénzmozgás: a lefoglalt 100 EUR kivonva (1000 → 900), a HUF kasszába a 5% letét (0 → 2000)
+        assertThat(eurBalance.getCurrentBalance()).isEqualByComparingTo("900");
+        assertThat(hufKassza.getCurrentBalance()).isEqualByComparingTo("2000");
     }
 }
