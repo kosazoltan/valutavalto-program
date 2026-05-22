@@ -23,8 +23,12 @@ import hu.puzzleir.valuta.entity.Dictionary;
 import hu.puzzleir.valuta.repository.DictionaryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -51,6 +55,7 @@ public class StornoService {
     private final DictionaryRepository dictionaryRepository;
     private final ExchangeRateRepository exchangeRateRepository;
     private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // Napi sztornó limit supervisor jóváhagyás nélkül — iroda szinten
     private static final int DAILY_STORNO_LIMIT_BRANCH = 3;
@@ -231,16 +236,14 @@ public class StornoService {
 
         // G12: aktív értesítés az iroda dolgozóinak (köztük a jóváhagyásra jogosult
         // supervisoroknak) — eddig csak log volt, a kérés némán elveszhetett.
-        // Best-effort: az értesítés (DB/e-mail) hibája NEM görgetheti vissza a már
-        // mentett jóváhagyás-kérést (Copilot #770) — ezért külön try-catch.
+        // AFTER_COMMIT eseménnyel küldjük (Copilot/Sourcery #770/#772): így az értesítés
+        // (DB/e-mail) hibája SEMMIKÉPP nem görgetheti vissza a már mentett jóváhagyás-kérést
+        // (a try-catch önmagában nem véd a tranzakció rollback-only jelölése ellen).
         String notifMessage = String.format(
                 "Sztornó jóváhagyás kérés — bizonylat: %s, pénztáros: %s, ok: %s (mai sztornó: %d)",
                 transaction.getReceiptNumber(), worker.getName(), reason, dailyCount);
-        try {
-            notificationService.sendToBranch(branchId, "Sztornó jóváhagyás kérés", notifMessage);
-        } catch (Exception e) {
-            log.warn("Sztornó jóváhagyás-kérés értesítés sikertelen (a kérés mentve maradt): {}", e.getMessage());
-        }
+        eventPublisher.publishEvent(
+                new StornoApprovalNotificationEvent(branchId, "Sztornó jóváhagyás kérés", notifMessage));
 
         return toApprovalDto(saved);
     }
@@ -519,5 +522,27 @@ public class StornoService {
                 .approvedByWorkerId(entity.getApprovedByWorker() != null ? String.valueOf(entity.getApprovedByWorker().getId()) : null)
                 .approvedAt(entity.getApprovedAt())
                 .build();
+    }
+
+    /**
+     * G12: sztornó jóváhagyás-kérés értesítési esemény (AFTER_COMMIT-on dolgozzuk fel).
+     */
+    public record StornoApprovalNotificationEvent(UUID branchId, String title, String message) {}
+
+    /**
+     * G12: az értesítést a jóváhagyás-kérés tranzakciójának COMMITJA UTÁN küldjük, külön
+     * (REQUIRES_NEW) tranzakcióban — így az értesítés (DB/e-mail) hibája nem görgetheti
+     * vissza a már mentett jóváhagyás-kérést (Copilot/Sourcery #770/#772). A hibát teljes
+     * stacktrace-szel naplózzuk, de elnyeljük (best-effort).
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onStornoApprovalNotification(StornoApprovalNotificationEvent ev) {
+        try {
+            notificationService.sendToBranch(ev.branchId(), ev.title(), ev.message());
+        } catch (Exception e) {
+            log.warn("Sztornó jóváhagyás-kérés értesítés sikertelen (a kérés mentve maradt): {}",
+                    e.getMessage(), e);
+        }
     }
 }
