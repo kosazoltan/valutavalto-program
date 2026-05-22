@@ -52,6 +52,8 @@ export default function ClosingWizardPage() {
   const [steps, setSteps] = useState<ClosingStep[]>(INITIAL_STEPS)
   const [isRunning, setIsRunning] = useState(false)
   const [wizardId, setWizardId] = useState<string | null>(null)
+  // G10: zárás-típus választó (a backend ClosingWizardSteps DAILY/DECADE/MONTHLY/POS-t támogat)
+  const [closingType, setClosingType] = useState<'DAILY' | 'DECADE' | 'MONTHLY' | 'POS'>('DAILY')
 
   // Denomination input state
   const [denomQuantities, setDenomQuantities] = useState<Record<number, number>>(
@@ -142,7 +144,7 @@ export default function ClosingWizardPage() {
       const wizard = await closingWizardApi.start(
         worker.branchId,
         undefined,
-        'DAILY',
+        closingType,
         String(worker.id),
       )
       logger.info('ClosingWizardPage', 'wizard started, id=', wizard.id)
@@ -167,7 +169,7 @@ export default function ClosingWizardPage() {
       toast.error('Napzárás hiba', errorMsg)
       setIsRunning(false)
     }
-  }, [worker, runSteps])
+  }, [worker, runSteps, closingType])
 
   /** Phase 2: user submitted denomination → persist to backend, then continue steps 2-9 */
   const continueAfterDenom = useCallback(async () => {
@@ -375,6 +377,23 @@ export default function ClosingWizardPage() {
                 </span>
               </div>
             )}
+          </div>
+        )}
+
+        {/* G10: ZÁRÁS TÍPUS VÁLASZTÓ (csak indítás előtt) */}
+        {!wizardId && !isRunning && completedCount === 0 && !waitingForDenom && (
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <label className="text-sm font-medium">{t('closing.zarasTipusa')}</label>
+            <select
+              value={closingType}
+              onChange={(e) => setClosingType(e.target.value as 'DAILY' | 'DECADE' | 'MONTHLY' | 'POS')}
+              className="p-2 border rounded"
+            >
+              <option value="DAILY">{t('closing.napiZaras')}</option>
+              <option value="DECADE">{t('closing.dekadzaras')}</option>
+              <option value="MONTHLY">{t('closing.haviZaras')}</option>
+              <option value="POS">{t('closing.posZaras')}</option>
+            </select>
           </div>
         )}
 
