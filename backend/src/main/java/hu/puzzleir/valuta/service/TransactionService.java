@@ -96,6 +96,11 @@ public class TransactionService {
     // Azonosítás nélküli limit HUF-ban (300.000 Ft - NAV szabályozás)
     private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
 
+    /** G11: a 10M+ vezetői-jóváhagyás enforcement feature-flag SystemParameter kulcsa. */
+    static final String AML_HIGH_VALUE_APPROVAL_PARAM = "AML_HIGH_VALUE_APPROVAL_ENFORCEMENT";
+    /** G11: a feature-flag alapértéke (false = WARN-only, kompatibilis a meglévő kliensekkel). */
+    static final String AML_HIGH_VALUE_APPROVAL_DEFAULT = "false";
+
     // Max tetelsorok szama bizonylaton (Legacy: BLOKKTETEL limit)
     private static final int MAX_TRANSACTION_LINES = 6;
 
@@ -708,6 +713,28 @@ public class TransactionService {
                         : "AML szabály alapján blokkolva";
                 throw new ValidationException(warnings);
             }
+            // G11 (EXCMD b5-kezeles FR-KC-11): 10M+ / fokozott (TranzTipus>=4) tranzakció
+            // kötelező vezetői jóváhagyása. A besorolás eddig csak flag/warning volt; most
+            // feature-flag mögött enforce-olható (AML_HIGH_VALUE_APPROVAL_ENFORCEMENT).
+            // Default false → WARN-only naplózás (a meglévő kliensek nem törnek meg, és
+            // nincs supervisor-jóváhagyó UI a Buy/Sell képernyőn); true → ValidationException.
+            // A bekapcsolás a pénztáros supervisor-jóváhagyó útvonalával együtt aktiválható.
+            // Megjegyzés: bekapcsolt enforcement esetén MINDEN szerepkörre (a pénztáros
+            // supervisor/manager is) blokkol — a jóváhagyásnak explicitnek és
+            // auditálhatónak kell lennie (4-szem-elv), nincs implicit self-approval kiskapu.
+            if (thresholdResult != null && thresholdResult.isRequiresManagerApproval()) {
+                boolean enforce = systemParameterService != null
+                        && "true".equalsIgnoreCase(
+                                systemParameterService.getValue(
+                                        AML_HIGH_VALUE_APPROVAL_PARAM, AML_HIGH_VALUE_APPROVAL_DEFAULT));
+                String blockReason = highValueApprovalBlockReason(thresholdResult, enforce);
+                if (blockReason != null) {
+                    throw new ValidationException(blockReason);
+                }
+                log.warn("AML magas-értékű jóváhagyás szükséges (WARN-only, enforcement kikapcsolva): "
+                        + "{} (ügyfél: {}, összeg: {} Ft)",
+                        thresholdResult.getManagerApprovalReason(), customerId, hufAmount);
+            }
         }
 
         if (basicResult.isRequiresDetailedId()) {
@@ -715,6 +742,32 @@ public class TransactionService {
         }
 
         return basicResult;
+    }
+
+    /**
+     * G11 (EXCMD b5-kezeles FR-KC-11): eldönti, hogy a magas-értékű / fokozott
+     * tranzakciót blokkolni kell-e vezetői jóváhagyás hiányában.
+     *
+     * <p>Csomag-privát, függőség-mentes (statikus) a tesztelhetőségért: a
+     * {@code performAmlCheck} a SystemParameter feature-flag aktuális értékét adja át
+     * {@code enforcementEnabled}-ként.</p>
+     *
+     * @return a blokkoló indok szövege, ha (jóváhagyás-köteles ÉS enforce bekapcsolva);
+     *         {@code null}, ha nincs blokk (a hívó WARN-only naplózást végez)
+     */
+    static String highValueApprovalBlockReason(
+            hu.puzzleir.valuta.dto.aml.AmlCheckResult thresholdResult, boolean enforcementEnabled) {
+        if (thresholdResult == null || !thresholdResult.isRequiresManagerApproval()) {
+            return null;
+        }
+        if (!enforcementEnabled) {
+            return null;
+        }
+        String reason = thresholdResult.getManagerApprovalReason();
+        // Copilot #786: üres/blank indok esetén is értelmes hibaüzenet (ne dobjon üres ValidationException-t).
+        return (reason != null && !reason.isBlank())
+                ? reason
+                : "Magas értékű / fokozott tranzakció — vezetői (SUPERVISOR/MANAGER) jóváhagyás szükséges";
     }
 
     private void validateIdentification(BigDecimal hufAmount, String customerName, String documentNumber) {
