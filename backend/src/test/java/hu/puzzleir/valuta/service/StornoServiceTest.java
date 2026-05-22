@@ -230,7 +230,7 @@ class StornoServiceTest {
 
     // ─── G12: sztornó jóváhagyás-kérés aktív értesítés ───
     @Test
-    @DisplayName("G12: requestApproval aktív értesítést küld az iroda supervisorainak")
+    @DisplayName("G12: requestApproval aktív értesítést küld az irodának (sendToBranch)")
     void requestApproval_sendsBranchNotification() {
         Worker worker = new Worker();
         worker.setId(WORKER_ID);
