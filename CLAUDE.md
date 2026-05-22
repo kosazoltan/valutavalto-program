@@ -615,7 +615,19 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.21** (2026-05-22 — EXCMD gap-sprint 3. batch: G10 zárás-típus választó + G17 havi tabló FE + G15 bizonylat-szűrés átadási/átvételi + G16 forgalmi grafikon + G23 körzet-szintű forgalmi riport + G14 foglaló-bizonylat; mind admin-merged + auto-deploy, production HEALTHY).
+- **Verzió:** **v2.26.22** (2026-05-22 — EXCMD gap-sprint 4. batch: G13 EU ENTITY szankció (verifikáció) + G8 foglaló 5% letét + G11 10M engedély feature-flag + G7 RFM árfolyam-irány validáció; mind admin-merged + auto-deploy, production HEALTHY). **Gap-backlog: 19/23 KÉSZ (+G11 részben).**
+  - **G13 (verifikáció):** az `importEuSanctionList` (EU FSF `sanctionEntity` = személy+szervezet) + `SanctionListScheduler` naponta UN+EU import + screening minden bejegyzésre MÁR működik (12/12 teszt). A személy/szervezet típus-megkülönböztetést a spec maga TBD-nek jelöli → nem kellett új kód.
+  - **G8 (PR #785):** foglaló-letét = round5(ft-érték × 5%) a 100% helyett (FR-9). A pénzmozgás többi része már részleges letétre volt tervezve (fulfill 95%, cancelByCustomer 5% bukás, cancelByCompany 5%×2). ReservationServiceTest 10/10.
+  - **G11 (PR #786):** 10M+/fokozott (`requiresManagerApproval`) enforcement az `AML_HIGH_VALUE_APPROVAL_ENFORCEMENT` SystemParameter mögött (default false → WARN-only; true → ValidationException). Statikus `highValueApprovalBlockReason()` helper, 6/6 teszt. Nincs migráció. A hard-block tényleges bekapcsolása a pénztáros supervisor-approval UI-jával külön kör.
+  - **G7 (PR #787):** RFM árfolyam-irány validáció kiküldés előtt (FR-RFM-25: eladási ≥ elszámoló ÉS vételi ≤ elszámoló). Tiszta `rateDirectionRules.ts` (11 teszt) + `MainRateSheetPage` publish-confirm figyelmeztetés.
+  - **Telepítő-szet v2.26.22 (UNSIGNED, Downloads-ban):**
+    - `Penztar-Setup-2.26.22-20260522.exe` — 283.86 MB, SHA-256 `0E5869FF5961FD40F7AC4DD13D68E0F4B7888F342333C348C76792971C800C6F`
+    - `Kozponti-Iranyitokozpont-Setup-2.26.22.exe` — 101.06 MB, SHA-256 `D5BAFC6FE6974160374E4C98D7C4B6194E222455077BCC69F38E0E5FB8528417`
+    - `Arfolyamkeszito-Setup-2.26.22.exe` — 101.06 MB, SHA-256 `4E74837037E06243CABEA27F7A435C97065729629FC5F4C47590C8963857F98D`
+    - `Penztar-Eltavolito-2.26.22-20260522.exe` — verzió-független, SHA-256 `5D84BE6AA024D9543B5B13F9E846255A6E05F700D8AE4750007E97539B5BDFB4`
+  - Vault: `vault/sessions/2026-05-22-excmd-gap-sprint-batch4-v2.26.22.md`. **Hátralévő (dedikált sprintbe halasztva):** G3 (⛔ wizard↔NavClosing architektúra-link), G19 (munkavállaló al-nyilvántartások), G20 (beállítás-képernyők), G22 (teljes RFM-rács újraépítés). Mind futó-app verifikációt / nagy migrációt igényel.
+
+- **Verzió [előző]:** **v2.26.21** (2026-05-22 — EXCMD gap-sprint 3. batch: G10 zárás-típus választó + G17 havi tabló FE + G15 bizonylat-szűrés átadási/átvételi + G16 forgalmi grafikon + G23 körzet-szintű forgalmi riport + G14 foglaló-bizonylat; mind admin-merged + auto-deploy, production HEALTHY).
   - **G10 (PR #778):** ClosingWizard zárás-típus választó (DAILY/DECADE/MONTHLY/POS), `ClosingWizard['closingType']` típus, label htmlFor.
   - **G17 (PR #779):** `MonthlyTabloPage` FE oldal (`GET /closing/monthly/{branchId}/{yearMonth}/full`) — valuta-sorok + összesítők + készpénz/kártya + WU/ÁFA/kez.díj + mozgások. Helyi-dátum hónap (nem UTC).
   - **G15 (PR #780):** kanonikus `TransactionTypeName` union (Transaction.transactionType + legacy `type` + list() szűrő egy forrásból) + TRANSFER_OUT/TRANSFER_IN (Átadás/Átvétel) szűrő + típus-címke.
