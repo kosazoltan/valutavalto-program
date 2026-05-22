@@ -16,7 +16,7 @@ A régi (dekanySoft / Exclusive Best Change ZRT.) Delphi valutaváltó program 0
 ## 3. Szakteruleti szereplok
 | Szerep | Jogosultsag | RBAC ertek |
 |---|---|---|
-| Pénztáros | Bejelentkezett felhasználó (a fej-panelen "Bejelentkezett pénztáros: 07505-SARKADI TÜNDE") — alapfunkciók, főmenü-navigáció | TBD (forrásból a konkrét RBAC nem olvasható) |
+| Pénztáros | Bejelentkezett felhasználó (a fej-panelen "Bejelentkezett pénztáros: <WORKER_KOD>-<NEV>") — alapfunkciók, főmenü-navigáció | TBD (forrásból a konkrét RBAC nem olvasható) |
 | Értéktáros / egyéb | TBD — a forrás csak a bejelentkezett pénztárost mutatja | TBD |
 
 ## 4. Funkcionalis kovetelmenyef (FR)
@@ -25,8 +25,8 @@ A régi (dekanySoft / Exclusive Best Change ZRT.) Delphi valutaváltó program 0
 | FR-FM-01 | A főmenü fejléce megjeleníti a verziószámot ("04.00"). | Főmenü.JPG (bal felül: "Verziószám 04.00") | M | penztar-client |
 | FR-FM-02 | A fejléc megjeleníti a munkanap dátumát ("2024 MÁRCIUS 12 KEDD"). | Főmenü.JPG ("Munkanap dátuma") | M | penztar-client |
 | FR-FM-03 | A fejléc megjeleníti a pontos időt ("11:51"). | Főmenü.JPG ("Pontos idő 11:51") | S | penztar-client |
-| FR-FM-04 | A fejléc megjeleníti az egység-azonosítót ("75") és telefont ("06/66-448-500"). | Főmenü.JPG (piros "75" + "Telefon") | S | penztar-client |
-| FR-FM-05 | A fejléc megjeleníti a bejelentkezett pénztárost és az egységet/címet ("07505-SARKADI TÜNDE", "BÉKÉSCSABA", "ANDRÁSSY UT 24-28"). | Főmenü.JPG | M | penztar-client |
+| FR-FM-04 | A fejléc megjeleníti az egység-azonosítót ("75") és telefont ("06/XX-XXX-XXXX"). | Főmenü.JPG (piros "75" + "Telefon") | S | penztar-client |
+| FR-FM-05 | A fejléc megjeleníti a bejelentkezett pénztárost és az egységet/címet ("<WORKER_KOD>-<NEV>", "<VAROS>", "<CIM>"). | Főmenü.JPG | M | penztar-client |
 | FR-FM-06 | A főmenü háttérképe felett kiemelten megjelenik az egység neve/típusa ("BÉKÉSCSABA ÉRTÉKTÁR"). | Főmenü.JPG, Főmenü 2.JPG | C | penztar-client |
 | FR-FM-07 | Főmenüpont: "PÉNZTÁRAK KÖZÖTTI ÁTADÁS - ÁTVÉTEL". | Főmenü.JPG (1. sor) | M | penztar-client, kozponti-client |
 | FR-FM-08 | Főmenüpont: "MAI BIZONYLAT SZTORNÓJA". | Főmenü.JPG (2. sor) | M | penztar-client |

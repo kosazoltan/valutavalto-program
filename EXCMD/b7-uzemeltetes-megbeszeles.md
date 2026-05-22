@@ -61,7 +61,7 @@ A jelenlegi (Delphi + Firebird) valutavalto rendszer uzemeltetesi mukodesenek, k
 ## 6. Adatmodell-erintettseg
 - Postgres entitas-jeloltek: árfolyam (pénztáronként egyedi), tiltólista (globális, változás-alapú szinkron), nyitás/zárás bizonylat, kasszaállapot + címletezés, pénzszállítás-mozgás, NAV-lejelentés-rekord (status: beküldve/megszakítva/gyűjtésben), DB-mentés metaadat.
 - SQLite mirror: IGEN (a jelenlegi rendszer is gépenként lokális Firebird DB-vel működik; offline NAV-gyűjtés + árfolyam-fallback megköveteli). Indok: net-kiesés és kötelező lokális megőrzés (FR-47, FR-50).
-- Migracio szukseges: TBD (régi Firebird C-mappa adat migrációja külön feladat; a programozó/Fabulya Zsuzsa adja a forráskódot — 02.12 interjú 392).
+- Migracio szukseges: TBD (régi Firebird C-mappa adat migrációja külön feladat; a programozó/korábbi fejlesztő adja a forráskódot — 02.12 interjú 392).
 
 ## 7. Fuggosegek
 - Külső API: NAV pénztárgép (kliensenként kötelező, XML), ÁNYK (kézi/területi vezetői fallback), Raiffeisen bank (változás-jelentés — köre TBD).
@@ -97,7 +97,7 @@ A jelenlegi (Delphi + Firebird) valutavalto rendszer uzemeltetesi mukodesenek, k
 | TBD-13 | NAV API kommunikációs protokoll részletei | NAV-integráció | "Erről van egy dokumentáció" — a dok nincs csatolva (597-598). |
 | TBD-14 | Központi szerveres tárolás megvalósíthatósága (számla ott jön létre, ahol az adatbázis) | architektúra-döntés | "még beszélünk róla" — nyitott (605-606). |
 | TBD-15 | Kamerás program (Java) technológiai továbbvitele | kamera-integráció | "szóba kerülhet" — nincs döntés (602). |
-| TBD-16 | Régi Firebird C-mappa adatmigráció módja | migráció | Forráskódot Fabulya Zsuzsa adja (02.12 interjú), de migrációs terv nincs. |
+| TBD-16 | Régi Firebird C-mappa adatmigráció módja | migráció | Forráskódot a korábbi fejlesztő adja (02.12 interjú), de migrációs terv nincs. |
 | TBD-17 | Blokknyomtató párhuzamos-port / PCEA kártya kiváltása | hardver | Beszerzési nehézség említve, megoldás nincs (583, 601). |
 
 ## 11. Verifikacios checklist

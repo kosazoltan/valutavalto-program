@@ -13,18 +13,18 @@ Egy tranzakció felettesi engedélyezéséhez bemutatott engedélykérő adatlap
 ## 3. Szakteruleti szereplok
 | Szerep | Jogosultsag | RBAC ertek |
 |---|---|---|
-| Engedélyező (a forrásban „engedelyezo: KOSA ZOLTAN", felettesi jóváhagyó) | Tranzakció engedélyezése | TBD (a forrás nem ad RBAC-értéket) |
+| Engedélyező (a forrásban „engedelyezo: <NEV>", felettesi jóváhagyó) | Tranzakció engedélyezése | TBD (a forrás nem ad RBAC-értéket) |
 | Pénztáros (a tranzakciót kezdeményező, pénztár 105) | Engedélyt kér | TBD |
 
 ## 4. Funkcionalis kovetelmenyef (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
-| FR-1 | Engedélykérő adatlap pénztár-azonosítással: pénztár száma + pénztár neve. | „Penztar szama: 105", „Penztar neve: BEKESCSABA BELVAROS II." | TBD | TBD |
-| FR-2 | Bizonylatszám megjelenítése az engedélykérőn. | „Bizonylatszam: V105007798" | TBD | TBD |
+| FR-1 | Engedélykérő adatlap pénztár-azonosítással: pénztár száma + pénztár neve. | „Penztar szama: 105", „Penztar neve: <FIOK_NEV>" | TBD | TBD |
+| FR-2 | Bizonylatszám megjelenítése az engedélykérőn. | „Bizonylatszam: <BIZONYLAT_SZAM>" | TBD | TBD |
 | FR-3 | Tranzakció teljes összege (HUF) megjelenítése. | „Tranz.osszege: 10088410" | TBD | TBD |
 | FR-4 | Valuta-soronkénti bontás: valuta összege + valutanem, árfolyam, forintérték. | „1. valuta: 26,000 EUR / 1. arfoly: 38840 / 1. ertek: 10,098,400 Ft" | TBD | TBD |
 | FR-5 | Ügyfél-azonosító adatok az engedélykérőn: név, anyja neve, születési idő, születési hely, lakcím, okmány típus, okmány szám, állampolgárság, tartózkodási hely. | „Ugyfel adatai: neve / anyja / szul.ido / szul.hely / lakcime / okmany tip. / okm. szama / allampolgar / tart-i hely" | TBD | TBD |
-| FR-6 | Engedélyező személy rögzítése. | „engedelyezo: KOSA ZOLTAN" | TBD | TBD |
+| FR-6 | Engedélyező személy rögzítése. | „engedelyezo: <NEV>" | TBD | TBD |
 
 ## 5. Nem-funkcionalis kovetelmenyef (NFR)
 | ID | Leiras | Merheto kriterium |
@@ -32,7 +32,7 @@ Egy tranzakció felettesi engedélyezéséhez bemutatott engedélykérő adatlap
 | NFR-1 | Az engedélykérő bizonylat formátuma/megjelenítése | TBD — a forrás csak szöveges listát ad |
 
 ## 6. Adatmodell-erintettseg
-A mezők egy tranzakcióra + ügyfélre mutatnak (bizonylatszám V105007798, pénztár 105, valuta-sorok, ügyfél-azonosító mezők). A konkrét Postgres-entitás / SQLite-mirror / migráció a forrásból NEM derül ki → TBD. (Megjegyzés: a forrás csak az adatlap-mintát adja, nem adatbázis-sémát.)
+A mezők egy tranzakcióra + ügyfélre mutatnak (bizonylatszám <BIZONYLAT_SZAM>, pénztár 105, valuta-sorok, ügyfél-azonosító mezők). A konkrét Postgres-entitás / SQLite-mirror / migráció a forrásból NEM derül ki → TBD. (Megjegyzés: a forrás csak az adatlap-mintát adja, nem adatbázis-sémát.)
 
 ## 7. Fuggosegek
 - Belső modul: tranzakció-kezelés (bizonylat, valuta-sor, árfolyam) + ügyfél-nyilvántartás. Pontos modulnév: TBD.
@@ -42,7 +42,7 @@ A mezők egy tranzakcióra + ügyfélre mutatnak (bizonylatszám V105007798, pé
 | Fogalom | Magyarazat |
 |---|---|
 | Engedélyezés (egy tranzakcióhoz) | Felettesi jóváhagyás egy konkrét tranzakcióra; a forrás egy kitöltött engedélykérő mintát mutat. |
-| Bizonylatszám | A tranzakció azonosítója (minta: V105007798). |
+| Bizonylatszám | A tranzakció azonosítója (minta: <BIZONYLAT_SZAM>). |
 | Valuta-sor | Egy tranzakción belüli valutatétel: összeg + valutanem + árfolyam + forintérték. |
 
 ## 9. Vegrehajtasi utasitas az AI-ugynoknek
@@ -51,7 +51,7 @@ A mezők egy tranzakcióra + ügyfélre mutatnak (bizonylatszám V105007798, pé
 ### 9.2 Fazisok (acceptance criteria-val)
 - Fázis 1: engedélykérő adatlap a felsorolt mezőkkel. AC: a megjelenített/nyomtatott adatlap tartalmazza FR-1..FR-6 minden mezőjét a minta szerint.
 ### 9.3 Tesztes
-- AC-teszt a minta-rekorddal (pénztár 105, V105007798, 26 000 EUR @ 38840 = 10 098 400 Ft, ügyfél ANDRASI ROLAND, engedélyező KOSA ZOLTAN) — minden mező megjelenik. Üzleti küszöb-tesztek: TBD.
+- AC-teszt a minta-rekorddal (pénztár 105, <BIZONYLAT_SZAM>, 26 000 EUR @ 38840 = 10 098 400 Ft, ügyfél <NEV>, engedélyező <NEV>) — minden mező megjelenik. Üzleti küszöb-tesztek: TBD.
 
 ## 10. Kockazatok / Nyitott kerdesek (TBD)
 | # | Kerdes | Miert fontos | Mit kell tudni |

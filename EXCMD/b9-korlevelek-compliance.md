@@ -5,13 +5,13 @@ Ket belso korlevel (7. sz. bankkartyas csalas-figyelmeztetes; 9. sz. FATF tobbsz
 
 ## 2. Scope
 ### IN
-- 7. sz. korlevel ("32 sz Korlevel esetleges bankkartyas csalasokrol", iktato: FZS-35/2023, hatalyos 2024.02.09., keszitette: Fabulya Zsuzsanna, Bekescsaba):
+- 7. sz. korlevel ("32 sz Korlevel esetleges bankkartyas csalasokrol", iktato: FZS-35/2023, hatalyos 2024.02.09., keszitette: <NEV>, <VAROS>):
   - Figyelmeztetes: gondatlan ugyfelek hamis webes oldalakon megadtak banki belepo kodjaikat -> csalok atutaltak az osszegeket; strofuman-szamlakrol felvettek vagy bankkartyas vasarlassal elkoltottek.
   - Elofordul, hogy bankkartyaval valutat valtanak akar tobb alkalommal, tobb penztarban is.
   - Gyanu eseten: telefonon jelezni a teruleti vezeto/keszito fele, megbeszelni hogy a tranzakcio elvegezheto-e, es a tovabbi teendot.
   - Gyanus ismertetojegyek: naponta tobbszor jon valtani es bankkartyaval fizet; nem tudja fejbol, csak papirrol a PIN-kodjat; telefonrol (uzenetbol) nezi mennyi valutat kell valtania.
   - Szereponkenti teendo: Teruleti Vezeto elolvassa; Belso ellenorzes ellenorzeskor meggyozodik a betartasrol/ismeretrol; Penztaros/Ertektaros elolvassa, ertelmezi, betartja.
-- 9. sz. korlevel ("Korlevel a FATF tobbszintu listajanak valtozasarol javitott", iktato: FZS-9/2024, hatalyos 2024.02.27., keszitette: Fabulya Zsuzsanna, Bekescsaba):
+- 9. sz. korlevel ("Korlevel a FATF tobbszintu listajanak valtozasarol javitott", iktato: FZS-9/2024, hatalyos 2024.02.27., keszitette: <NEV>, <VAROS>):
   - A Penzmosasi szabalyzat alapjan a FATF tobbszintu listat alkot a penzmosas/terrorizmus-finanszirozas szempontjabol kockazatos orszagokrol; "public statement"-ekkel modositja.
   - 1/a Csoport (ellenintezkedesekkel erintett): Eszak-Korea, Iran.
   - 1/b Csoport (kockazatokkal aranyos atvilagitas szukseges): Myanmar.
@@ -30,7 +30,7 @@ Ket belso korlevel (7. sz. bankkartyas csalas-figyelmeztetes; 9. sz. FATF tobbsz
 | Penztaros / Ertektaros | Korlevel elolvasasa + visszaigazolas; gyanu jelzese | TBD |
 | Teruleti vezeto | Korlevel elolvasas/ertelmezes; betartas figyelemmel kovetese | TBD |
 | Belso ellenor | Ellenorzeskor a betartas/ismeret meggyozodese | TBD |
-| Compliance/keszito (pl. Fabulya Zsuzsanna szerepkor) | Korlevel kiadasa, gyanu-jelzes fogadasa telefonon | TBD |
+| Compliance/keszito (szerepkor) | Korlevel kiadasa, gyanu-jelzes fogadasa telefonon | TBD |
 
 ## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |

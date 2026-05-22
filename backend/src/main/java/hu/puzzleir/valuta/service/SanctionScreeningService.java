@@ -468,9 +468,12 @@ public class SanctionScreeningService {
         // (š, ž, č, ć, ā, ł részben stb.), nem kézzel sorolt halmaz — false-negative AML
         // találatok elkerülése (pl. "Milošević" → "milosevic").
         String decomposed = java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFD);
-        return decomposed.toLowerCase()
-                .replaceAll("\\p{M}+", "")       // kombináló diakritikus jelek
-                .replaceAll("[^a-z0-9\\s]", "")  // nem-latin betű / írásjel
+        return decomposed.toLowerCase(java.util.Locale.ROOT)  // determinisztikus (török I/İ ellen)
+                .replaceAll("\\p{M}+", "")              // kombináló diakritikus jelek
+                .replaceAll("[^\\p{L}\\p{Nd}\\s]", "")  // csak írásjel törlése; a nem-latin
+                                                        // betűket MEGTARTJUK → azonos
+                                                        // írásrendszerű (cirill/görög) egyezés
+                                                        // is működik, nincs üres-string esés
                 .replaceAll("\\s+", " ")
                 .trim();
     }

@@ -27,8 +27,8 @@ A regi penztaros program "Beallitasok" (jelszoval vedett) konfiguracios kepernyo
 | FR-02 | ALAPFUNKCIO ful: 3 egymast kizaro radiogomb a gep szerepehez — "PENZTARI GEP" (alapertelmezetten kivalasztva a kepen), "ERTEKTARI GEP", "AFAS GEP". | Alapfunkciók.jpeg / csak jelszóval_ alapfunkció.jpeg | M | penztar-client |
 | FR-03 | ALKALMAZASOK ful: tobbszoros valasztasu (checkbox) lista — "VALUTAVALTAS" (a kepen bepipalva), "WESTERN UNION", "TESCO AFA", "METRO AFA", "E-KERESKEDELEM". | Alkalmazások .jpeg | S | penztar-client |
 | FR-04 | KIJELZES SZINE ful ("AZ ARFOLYAM KIJELZO SZINE"): 3 radiogomb — "ZOLD", "SARGA", "PIROS" (a kepen PIROS kivalasztva); a panelen elo elonezet az arfolyam-kijelzo tablazatrol (VETEL/ELADAS oszlop a valasztott szinnel). | Árfolyam kijelző beállításai.jpeg | S | penztar-client |
-| FR-05 | IP-CIM BEALLITASA ful ("A SZERVER ELERES IP-CIME"): 4 kulon oktett-beviteli mezo (a kepen 185 / 43 / 207 / 99); gombok: "IP-CIM RENDBEN", "MEGSEM". | IP cím beállítás.jpeg | M | penztar-client |
-| FR-06 | JELSZO BEALLITAS ful ("NAPI JELENTES JELSZAVA"): jelenlegi jelszo kijelzese (a kepen "MAG") + "JELSZO MODOSITAS" gomb; "AZ ERTEKTAR E-MAIL CIME" szovegmezo (a kepen bekescsaba.ebc@gmail.com); "SZOMBATI NYITVATARTAS" radio: "SZOMBATON NYITVA" / "SZOMBATON ZARVA" (a kepen ZARVA). | Jelszó beállítások napi jelentéshez.jpg | M | penztar-client |
+| FR-05 | IP-CIM BEALLITASA ful ("A SZERVER ELERES IP-CIME"): 4 kulon oktett-beviteli mezo (a kepen <IP_OKTETT_1> / <IP_OKTETT_2> / <IP_OKTETT_3> / <IP_OKTETT_4>); gombok: "IP-CIM RENDBEN", "MEGSEM". | IP cím beállítás.jpeg | M | penztar-client |
+| FR-06 | JELSZO BEALLITAS ful ("NAPI JELENTES JELSZAVA"): jelenlegi jelszo kijelzese (a kepen "<JELSZO>") + "JELSZO MODOSITAS" gomb; "AZ ERTEKTAR E-MAIL CIME" szovegmezo (a kepen <EMAIL>); "SZOMBATI NYITVATARTAS" radio: "SZOMBATON NYITVA" / "SZOMBATON ZARVA" (a kepen ZARVA). | Jelszó beállítások napi jelentéshez.jpg | M | penztar-client |
 | FR-07 | KESZLETEK BEKULDESE ful ("ADATOK BEKULDESE A SZERVERRE"): "Adatok bekuldesenek gyakorisaga: N percenkent" — csuszka 0–25 skalan (a kepen 2 perc). | adatok beküldése a szerverre.jpeg | M | penztar-client |
 | FR-08 | NYOMTATO ful ("NYOMTATO TIPUSA"): 2 radiogomb — "LPT1 PORTRA CSATLAKOZTATVA" (a kepen kivalasztva), "USB PORTRA CSATLAKOZTATVA". | nyomtató beállítás.jpeg | S | penztar-client |
 | FR-09 | SCANNER BEALLITASA ful ("A SCANNER BEALLITASA"): "Az alkalmazott driver:" radio-lista a rendszeren elerheto szkenner-driverekrol (a kepen: "CanoScan Lide 120", "WIA-CanoScan Lide 120" — utobbi kivalasztva). | szkenner beállítás.jpeg | S | penztar-client |
@@ -63,7 +63,7 @@ A regi penztaros program "Beallitasok" (jelszoval vedett) konfiguracios kepernyo
 | Futofeny | Kulso LED futofeny-tabla(k) soros (COM) porton, arfolyam vagy szoveg kijelzesere. |
 | Comport | A futofenytabla(k) soros portja (kepen 1 es 2). |
 | Kezelesi koltseg | Tranzakcios dij: nincs / ezrelekes (pl. 3 ezrelek, max 9990 Ft) / savos. |
-| Napi jelentes jelszava | A napi zaras/jelentes funkciot vedo kulon jelszo (kepen "MAG"). |
+| Napi jelentes jelszava | A napi zaras/jelentes funkciot vedo kulon jelszo (kepen "<JELSZO>"). |
 | Keszletek bekuldese | Adatok periodikus felkuldese a szerverre (kepen 2 percenkent). |
 | Kijelzes szine | A (masodik) arfolyam-kijelzo szinsemaja: zold/sarga/piros. |
 
@@ -90,7 +90,7 @@ A regi penztaros program "Beallitasok" (jelszoval vedett) konfiguracios kepernyo
 | 4 | "Szoveg szerkesztese" (futofeny) szerkeszto-felulet | FR-11 teljesseg | Nincs kepe. |
 | 5 | "Savos kezelesi koltseg" parameter-panel tartalma | FR-10 teljesseg | Csak az "ezrelekes" panel lathato (3 ezrelek, max 9990 Ft). |
 | 6 | Bankkartya "ENGEDELYEZVE" eseten megjeleno tovabbi mezok/terminal-protokoll | FR-12 teljesseg | A kepen csak a radio + "Adatok rendben" gomb. |
-| 7 | Szerver-IP adatkuldes pontos protokollja/portja | FR-05/FR-07 | A kepen csak az IP-oktettek (185.43.207.99) lathatok. |
+| 7 | Szerver-IP adatkuldes pontos protokollja/portja | FR-05/FR-07 | A kepen csak az IP-oktettek (<SZERVER_IP>) lathatok. |
 | 8 | Az ertek-tarolas helye (gep-szintu vs telephely-szintu, lokalis SQLite vs szerver) | Adatmodell | Architekturalis dontes a kovetkezo fazisban. |
 
 ## 11. Verifikacios checklist
