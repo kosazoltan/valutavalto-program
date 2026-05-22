@@ -47,20 +47,24 @@ export default function PenztarSettingsPage() {
       toast.error('Érvénytelen IP', 'Mind a 4 oktett 0–255 közötti egész legyen.')
       return
     }
-    savePenztarSettings(s)
+    const ok = savePenztarSettings(s)
+    if (!ok) {
+      toast.error('Mentési hiba', 'A beállítások mentése nem sikerült (böngésző tárhely / privát mód).')
+      return
+    }
     toast.success('Mentve', 'A beállítások rögzítve.')
     navigate(-1)
   }
 
   const radioGroup = <T extends string>(
-    label: string, value: T, options: Array<{ v: T; label: string }>, onChange: (v: T) => void,
+    name: string, label: string, value: T, options: Array<{ v: T; label: string }>, onChange: (v: T) => void,
   ) => (
     <div>
       <div className="form-label">{label}</div>
       <div className="flex flex-wrap gap-3">
         {options.map((o) => (
           <label key={o.v} className="flex items-center gap-1 text-sm">
-            <input type="radio" checked={value === o.v} onChange={() => onChange(o.v)} />
+            <input type="radio" name={name} checked={value === o.v} onChange={() => onChange(o.v)} />
             {o.label}
           </label>
         ))}
@@ -74,7 +78,7 @@ export default function PenztarSettingsPage() {
 
       <div className="form-panel space-y-3">
         <h2 className="section-title">Alapfunkció</h2>
-        {radioGroup<MachineRole>('A gép szerepe', s.machineRole, [
+        {radioGroup<MachineRole>('machineRole', 'A gép szerepe', s.machineRole, [
           { v: 'PENZTARI', label: 'Pénztári gép' },
           { v: 'ERTEKTARI', label: 'Értéktári gép' },
           { v: 'AFAS', label: 'ÁFÁS gép' },
@@ -95,7 +99,7 @@ export default function PenztarSettingsPage() {
 
       <div className="form-panel space-y-3">
         <h2 className="section-title">Kijelző és reklám</h2>
-        {radioGroup<DisplayColor>('Árfolyam-kijelző színe', s.displayColor, [
+        {radioGroup<DisplayColor>('displayColor', 'Árfolyam-kijelző színe', s.displayColor, [
           { v: 'ZOLD', label: 'Zöld' }, { v: 'SARGA', label: 'Sárga' }, { v: 'PIROS', label: 'Piros' },
         ], (v) => set('displayColor', v))}
         <label className="flex items-center gap-2 text-sm">
@@ -137,14 +141,14 @@ export default function PenztarSettingsPage() {
           <input id="email" type="email" className="form-input w-full"
             value={s.dailyReportEmail} onChange={(e) => set('dailyReportEmail', e.target.value)} />
         </div>
-        {radioGroup<string>('Szombati nyitvatartás', s.saturdayOpen ? 'OPEN' : 'CLOSED', [
+        {radioGroup<string>('saturday', 'Szombati nyitvatartás', s.saturdayOpen ? 'OPEN' : 'CLOSED', [
           { v: 'OPEN', label: 'Szombaton nyitva' }, { v: 'CLOSED', label: 'Szombaton zárva' },
         ], (v) => set('saturdayOpen', v === 'OPEN'))}
       </div>
 
       <div className="form-panel space-y-3">
         <h2 className="section-title">Eszközök és fizetés</h2>
-        {radioGroup<PrinterPort>('Nyomtató típusa', s.printerPort, [
+        {radioGroup<PrinterPort>('printerPort', 'Nyomtató típusa', s.printerPort, [
           { v: 'LPT1', label: 'LPT1 portra csatlakoztatva' }, { v: 'USB', label: 'USB portra csatlakoztatva' },
         ], (v) => set('printerPort', v))}
         <div>
@@ -152,7 +156,7 @@ export default function PenztarSettingsPage() {
           <input id="scanner" className="form-input w-full" placeholder="pl. WIA-CanoScan Lide 120"
             value={s.scannerDriver} onChange={(e) => set('scannerDriver', e.target.value)} />
         </div>
-        {radioGroup<HandlingFeeMode>('Kezelési költség', s.handlingFeeMode, [
+        {radioGroup<HandlingFeeMode>('handlingFee', 'Kezelési költség', s.handlingFeeMode, [
           { v: 'NINCS', label: 'Nincs' }, { v: 'EZRELEKES', label: 'Ezrelékes' }, { v: 'SAVOS', label: 'Sávos' },
         ], (v) => set('handlingFeeMode', v))}
         <label className="flex items-center gap-2 text-sm">

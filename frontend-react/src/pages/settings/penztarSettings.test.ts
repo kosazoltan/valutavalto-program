@@ -59,4 +59,21 @@ describe('penztarSettings (G20)', () => {
     expect(n.applications).toEqual(DEFAULT_PENZTAR_SETTINGS.applications)
     expect(n.printerPort).toBe(DEFAULT_PENZTAR_SETTINGS.printerPort)
   })
+
+  it('normalize: érvénytelen union-érték → default (Copilot #790)', () => {
+    const n = normalize({
+      machineRole: 'HACKER' as never,
+      displayColor: 'KEK' as never,
+      printerPort: 'COM7' as never,
+      handlingFeeMode: 'XYZ' as never,
+    })
+    expect(n.machineRole).toBe(DEFAULT_PENZTAR_SETTINGS.machineRole)
+    expect(n.displayColor).toBe(DEFAULT_PENZTAR_SETTINGS.displayColor)
+    expect(n.printerPort).toBe(DEFAULT_PENZTAR_SETTINGS.printerPort)
+    expect(n.handlingFeeMode).toBe(DEFAULT_PENZTAR_SETTINGS.handlingFeeMode)
+  })
+
+  it('savePenztarSettings: sikeres mentésnél true', () => {
+    expect(savePenztarSettings(DEFAULT_PENZTAR_SETTINGS)).toBe(true)
+  })
 })

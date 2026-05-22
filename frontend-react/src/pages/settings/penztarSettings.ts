@@ -80,28 +80,47 @@ export function loadPenztarSettings(): PenztarSettings {
   }
 }
 
-/** Beállítások mentése (normalizálva + validálva). */
-export function savePenztarSettings(settings: PenztarSettings): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(normalize(settings)))
+/**
+ * Beállítások mentése (normalizálva + validálva).
+ * @returns true, ha a mentés sikerült; false, ha a localStorage írás meghiúsult
+ *          (private mode / quota) — Copilot #790: a save NEM dob, a hívó kezeli.
+ */
+export function savePenztarSettings(settings: PenztarSettings): boolean {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalize(settings)))
+    return true
+  } catch {
+    return false
+  }
 }
 
-/** Hiányzó mezők kitöltése default-tal + tartomány-szorítás. */
+/** Union-érték validálás: ha nincs a megengedettek között, a default. */
+function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return allowed.includes(value as T) ? (value as T) : fallback
+}
+
+const MACHINE_ROLES: readonly MachineRole[] = ['PENZTARI', 'ERTEKTARI', 'AFAS']
+const DISPLAY_COLORS: readonly DisplayColor[] = ['ZOLD', 'SARGA', 'PIROS']
+const PRINTER_PORTS: readonly PrinterPort[] = ['LPT1', 'USB']
+const HANDLING_FEE_MODES: readonly HandlingFeeMode[] = ['NINCS', 'EZRELEKES', 'SAVOS']
+
+/** Hiányzó mezők kitöltése default-tal + tartomány-/union-validáció. */
 export function normalize(s: Partial<PenztarSettings>): PenztarSettings {
   const d = DEFAULT_PENZTAR_SETTINGS
   const ip = Array.isArray(s.serverIp) && s.serverIp.length === 4
     ? (s.serverIp.map((o) => (isValidOctet(o as number) ? o : 0)) as [number, number, number, number])
     : [...d.serverIp] as [number, number, number, number]
   return {
-    machineRole: s.machineRole ?? d.machineRole,
-    applications: Array.isArray(s.applications) ? s.applications : [...d.applications],
-    displayColor: s.displayColor ?? d.displayColor,
+    machineRole: oneOf(s.machineRole, MACHINE_ROLES, d.machineRole),
+    applications: Array.isArray(s.applications) ? s.applications.filter((a) => typeof a === 'string') : [...d.applications],
+    displayColor: oneOf(s.displayColor, DISPLAY_COLORS, d.displayColor),
     serverIp: ip,
     dailyReportEmail: typeof s.dailyReportEmail === 'string' ? s.dailyReportEmail : d.dailyReportEmail,
     saturdayOpen: typeof s.saturdayOpen === 'boolean' ? s.saturdayOpen : d.saturdayOpen,
     dataSendFrequencyMin: clampFrequency(s.dataSendFrequencyMin ?? d.dataSendFrequencyMin),
-    printerPort: s.printerPort ?? d.printerPort,
+    printerPort: oneOf(s.printerPort, PRINTER_PORTS, d.printerPort),
     scannerDriver: typeof s.scannerDriver === 'string' ? s.scannerDriver : d.scannerDriver,
-    handlingFeeMode: s.handlingFeeMode ?? d.handlingFeeMode,
+    handlingFeeMode: oneOf(s.handlingFeeMode, HANDLING_FEE_MODES, d.handlingFeeMode),
     cardPaymentEnabled: typeof s.cardPaymentEnabled === 'boolean' ? s.cardPaymentEnabled : d.cardPaymentEnabled,
     adOnDisplay: typeof s.adOnDisplay === 'boolean' ? s.adOnDisplay : d.adOnDisplay,
   }
