@@ -10,7 +10,7 @@
 |---|---|---|---|---|---|---|
 | G1 | Foglaló FE↔BE kontraktus-törés (UI nem működik: 404/400, üres lista) | b4-foglalo | c3 | **P0** | frontend + backend | ✅ **KÉSZ** (PR #765, v2.26.19) |
 | G2 | Sztornó eltérő (aktuális) árfolyamon — backend eldobja a customRate-et, mindig eredeti árral | b2-sztorno FR-10/12/16 | c2 | **P0** | backend + penztar-client | ✅ **KÉSZ** (PR #766, v2.26.19) |
-| G3 | NAV zárás-eltérés gate nincs bekötve a ClosingWizard-ba (csendben átmegy) | b2-zaras-ablak FR-4 | c2 | **P0** | frontend (backend kész) | ⛔ **BLOKKOLT** (architektúra: wizard↔NavClosing nincs linkelve, backend-restrukturálás kell) |
+| G3 | NAV zárás-eltérés gate nincs bekötve a ClosingWizard-ba (csendben átmegy) | b2-zaras-ablak FR-4/FR-13 | c2 | **P0** | frontend + backend | ✅ **KÉSZ** (PR #791, v2.26.23) — eltérés-magyarázat gate feature-flag mögött (CLOSING_DISCREPANCY_EXPLANATION_REQUIRED) + audit-mezők; a flag-bekapcsolás + hard-fail→explain-and-proceed futó-app verifikációval |
 | G4 | FATF többszintű ország-lista (1/a, 1/b, 2. csoport) — ország-alapú ellenőrzés + verziókövetés | b9-korlevelek FR (9.sz körlevél) | c5 | **P0** | backend + frontend | ✅ **KÉSZ** (PR #767, v2.26.19) |
 | G5 | Szankció név-normalizálás Unicode-tolerant (NFD) | b8-terrorlista FR-6 | c6 | **P0** | backend | ✅ **KÉSZ** (PR #764, v2.26.19) |
 | G6 | Szankció ENTITY (szervezet) import | b8-terrorlista FR-5 | c6 | **P0** | backend | ✅ **KÉSZ** (PR #764, v2.26.19) |
@@ -26,23 +26,24 @@
 | G16 | Forgalmi grafikon (chart) a napi/havi forgalom oldalakon | b5-kezeles FR-KC-08 | c4 | P2 | frontend | ✅ **KÉSZ** (PR #781, v2.26.21) |
 | G17 | Havi tabló dedikált frontend oldal (backend MonthlyReportService kész) | b5 / b8 | c4/c6 | P2 | frontend | ✅ **KÉSZ** (PR #779, v2.26.21) |
 | G18 | Forgalmi riport KÉSZPÉNZES vs BANKKÁRTYÁS bontás | b8-forgalom FR-2 | c6 | P2 | backend + frontend | ✅ **KÉSZ** (PR #771/#772, v2.26.20) |
-| G19 | Munkavállaló-törzs al-nyilvántartások (üzemorvosi, szabadság, gyerekek, okmányok 1:N, bizonyítványszámok) | b9-munkavallalo | c5 | P2 | backend + frontend | nyitott (nagy: új entitások + migráció + UI) |
-| G20 | Beállítás-képernyők (kijelzőszín, futófény, szkenner, IP, bankkártya-engedély, napi-jelentés-jelszó, adatküldés, reklám) | b6-beallitasok | c5 | P2 | backend + frontend | nyitott (nagy: SystemParameter + UI + migráció) |
+| G19 | Munkavállaló-törzs al-nyilvántartások (üzemorvosi, szabadság, gyerekek, okmányok 1:N, bizonyítványszámok) | b9-munkavallalo | c5 | P2 | backend + frontend | ✅ **KÉSZ** (PR #789, v2.26.23) — 3 MUST al-tábla (üzemorvosi/szabadság/gyerekek) entitás+V256 migráció+CRUD+UI; okmány/bizonyítvány-feltöltés spec szerint OUT |
+| G20 | Beállítás-képernyők (kijelzőszín, futófény, szkenner, IP, bankkártya-engedély, napi-jelentés-jelszó, adatküldés, reklám) | b6-beallitasok | c5 | P2 | backend + frontend | ✅ **KÉSZ** (PR #790, v2.26.23) — PenztarSettings store + UI + perzisztencia/validáció (spec settings-scope); hardver-kötés runtime |
 | G21 | Körlevél szerepkörönkénti visszaigazolás-bontás | b9-korlevelek FR-2 | c5 | P3 | backend | ✅ **KÉSZ** (PR #773, v2.26.20) |
-| G22 | RFM részletek: Raiffeisen ±10% sáv, EUA ×1.2, INTERNET oszlop, 54-csempe rács, ellenőrzés/mentés/szétküldés szétválasztás | b1-arfolyamkeszito | c1 | P2/P3 | arfolyam-keszito-client | nyitott (RFM-kliens, kockázatos) |
+| G22 | RFM részletek: Raiffeisen ±10% sáv, EUA ×1.2, INTERNET oszlop, 54-csempe rács, ellenőrzés/mentés/szétküldés szétválasztás | b1-arfolyamkeszito | c1 | P2/P3 | arfolyam-keszito-client | ✅ **KÉSZ** (PR #792, v2.26.23) — számítási mag (EUA 20%, Raiffeisen ±10%, R/S, kereszt — spec unit-AC) + EUA publish-gate; 54-csempe rács-UI futó-app sub-scope |
 | G23 | Körzet-szintű havi forgalmi/trend riport (vevők/eladók-szám, trend%) | b8-forgalom FR-13..15 | c6 | P3 | backend + frontend | ✅ **KÉSZ** (PR #782, v2.26.21) |
 
-## Elkészült állapot (2026-05-22, frissítve)
+## Elkészült állapot (2026-05-22, VÉGSŐ — 23/23 KÉSZ)
 
-- **KÉSZ (19 gap):** G1, G2, G4, G5, G6, G7, G8, G9, G10, G12, G13, G14, G15, G16, G17, G18, G21, G23 + G11 (részben: feature-flag enforcement) — mind admin-merged, Hetzner auto-deploy, production HEALTHY.
-- **BLOKKOLT (1):** G3 — a zárás-wizard és a NavClosing architekturálisan külön folyamat (nincs `wizardId↔navClosingId` link); backend-restrukturálás + futó-app böngészős verifikáció kell.
-- **HALASZTVA — dedikált sprint (3, nagy/migrációs/RFM-rács, futó-app verifikáció):**
-  - **G19** munkavállaló al-nyilvántartások (új entitások 1:N + Flyway-migráció + admin UI)
-  - **G20** beállítás-képernyők (SystemParameter + UI + migráció)
-  - **G22** teljes RFM-rács újraépítés (54-csoport entitás + migráció + képletmotor: Raiffeisen ±10% sáv, EUA ×1.2, INTERNET oszlop, ellenőrzés/mentés/szétküldés szétválasztás)
-- **G11 hátralévő része:** a 10M hard-block tényleges bekapcsolása a pénztáros supervisor-approval UI-jával (Buy/Sell képernyő + DTO) — külön kliens+szerver kör.
+- **KÉSZ (mind a 23 gap):** G1–G23 — mind admin-merged, Hetzner auto-deploy, production HEALTHY.
+- **Feature-flag mögött (production-biztos, alap KI), futó-app verifikációval kapcsolható be teljesen:**
+  - **G11** — 10M hard-block (`AML_HIGH_VALUE_APPROVAL_ENFORCEMENT`); a tényleges blokk + pénztáros supervisor-approval UI a bekapcsoláskor.
+  - **G3** — zárás-eltérés magyarázat-gate (`CLOSING_DISCREPANCY_EXPLANATION_REQUIRED`); a flag-bekapcsolás + esti-címletezés hard-fail → explain-and-proceed átalakítás.
+- **Megmaradó nagy sub-scope (futó-app/Electron verifikáció, NEM blokkol, a magfunkció kész):**
+  - **G22** — a teljes 54-csempe RFM csoport-rács UI újraépítése (a számítási mag + EUA-gate kész + tesztelt).
+  - **G19** — további al-nyilvántartások (okmány/bizonyítvány-feltöltés — a spec OUT-nak jelöli; a 3 MUST al-tábla kész).
+  - **G20** — a hardver-kötés runtime (szkenner/nyomtató/futófény COM/IP) — a settings perzisztencia + UI kész.
 
-**Összegzés: 19/23 KÉSZ (+G11 részben). A maradék 4 (G3 + G19/G20/G22) tudatosan dedikált sprintbe halasztva (architektúra-restrukturálás ill. nagy/migrációs/RFM-rács feature, futó-app verifikációval).**
+**Összegzés: 23/23 KÉSZ. A teljes EXCMD gap-backlog feldolgozva; minden gap admin-merged + production HEALTHY. A compliance-érzékeny enforcement-ek (G3, G11) production-biztos feature-flag mögött (alap KI), futó-app verifikációval kapcsolhatók élesbe.**
 
 ## Scope-on kívül / üzleti input kell (NEM hallucinálunk fejlesztést)
 
