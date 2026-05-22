@@ -979,6 +979,8 @@ public class TransactionService {
         private String approvedBy;
         /** Ha true, az aktuális árfolyammal sztornózunk (eltérő árfolyam kezelés) */
         private Boolean useCurrentRate;
+        /** Az aktuális (eltérő) árfolyam értéke, ha useCurrentRate=true (G2). */
+        private java.math.BigDecimal customExchangeRate;
     }
 
     @lombok.Data

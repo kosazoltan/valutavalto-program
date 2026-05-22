@@ -294,6 +294,8 @@ public class StornoService {
                 .originalTransactionId(transactionId)
                 .reason(request.getReason())
                 .approvedBy(String.valueOf(workerId))
+                .useCurrentRate(request.getUseCurrentRate())
+                .customExchangeRate(request.getCustomExchangeRate())
                 .build();
 
         Transaction reversal = transactionService.executeReversal(reversalRequest);
