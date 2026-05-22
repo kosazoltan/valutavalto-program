@@ -60,6 +60,13 @@ public class ReservationService {
     /** 5-re kerekítés (legacy Kerekito) */
     private static final BigDecimal FIVE = new BigDecimal("5");
 
+    /**
+     * Foglaló-letét aránya: a megbízási (ft-)érték 5%-a (b4-foglalo FR-9, jogi szöveg:
+     * "öt százalékának (5%) megfelelő összeget foglalóként"). A maradék 95% a
+     * teljesítéskor (fulfillReservation) kerül beszedésre.
+     */
+    private static final BigDecimal DEPOSIT_RATE = new BigDecimal("0.05");
+
     // ============ FOGLALÓ BEVÉTELEZÉS ============
 
     /**
@@ -68,9 +75,9 @@ public class ReservationService {
      * Üzleti logika:
      * 1. Ügyfél ellenőrzés
      * 2. Valuta ellenőrzés + készlet ellenőrzés
-     * 3. Letét számítás: deposit = amount × rate, 5-re kerekítve
+     * 3. Letét számítás: deposit = round5(ft-érték × 5%) — a megbízási összeg 5%-a (FR-9)
      * 4. Készlet elkülönítés (CashBalance csökkentés a lefoglalt valuta összegével)
-     * 5. HUF készlet növelés (letét beérkezése)
+     * 5. HUF készlet növelés (5% letét beérkezése; a 95% a teljesítéskor)
      * 6. AuditLog bejegyzés
      *
      * @param customerId   ügyfél ID
@@ -110,8 +117,11 @@ public class ReservationService {
             throw new ValidationException("Inaktív valuta: " + currencyCode);
         }
 
-        // Letét számítás: deposit = amount × rate, 5-re kerekítve
-        BigDecimal rawDeposit = amount.multiply(exchangeRate).setScale(2, RoundingMode.HALF_UP);
+        // Letét számítás (G8, b4-foglalo FR-9): a foglaló a megbízási összeg (teljes
+        // ft-érték) 5%-a, 5 Ft-ra kerekítve. A maradék 95%-ot a teljesítéskor
+        // (fulfillReservation: fullPrice - deposit) szedi be a pénztáros.
+        BigDecimal ftValue = amount.multiply(exchangeRate);
+        BigDecimal rawDeposit = ftValue.multiply(DEPOSIT_RATE).setScale(2, RoundingMode.HALF_UP);
         BigDecimal depositAmount = roundToFive(rawDeposit);
 
         // CRITICAL FIX #2: PESSIMISTIC_WRITE lock — párhuzamos készletmódosítás megakadályozása
