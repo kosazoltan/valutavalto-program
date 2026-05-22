@@ -126,30 +126,39 @@ public class SanctionScreeningService {
         }
 
         String normalizedInput = normalizeName(name);
+        // Üres normalizált input (pl. tisztán nem-latin írásrendszerű név) esetén tilos
+        // szűrni: az üres-string contains() MINDEN bejegyzésre igaz lenne → false-positive
+        // robbanás. Ilyenkor a név-alapú szűrés nem értelmezhető → üres találatlista.
+        if (normalizedInput.isBlank()) {
+            return Collections.emptyList();
+        }
         List<SanctionEntry> activeEntries = sanctionEntryRepository.findByActiveTrue();
         List<SanctionMatch> matches = new ArrayList<>();
 
         for (SanctionEntry entry : activeEntries) {
             String normalizedEntry = normalizeName(entry.getFullName());
 
-            // Exact match
-            if (normalizedInput.equals(normalizedEntry)) {
-                matches.add(toMatch(entry, "EXACT", EXACT_MATCH_SCORE));
-                continue;
-            }
+            // Csak nem-üres entry-nevet hasonlítunk (üres contains() false-positive véd).
+            if (!normalizedEntry.isBlank()) {
+                // Exact match
+                if (normalizedInput.equals(normalizedEntry)) {
+                    matches.add(toMatch(entry, "EXACT", EXACT_MATCH_SCORE));
+                    continue;
+                }
 
-            // Contains match
-            if (normalizedEntry.contains(normalizedInput) || normalizedInput.contains(normalizedEntry)) {
-                matches.add(toMatch(entry, "PARTIAL", PARTIAL_MATCH_SCORE));
-                continue;
-            }
+                // Contains match
+                if (normalizedEntry.contains(normalizedInput) || normalizedInput.contains(normalizedEntry)) {
+                    matches.add(toMatch(entry, "PARTIAL", PARTIAL_MATCH_SCORE));
+                    continue;
+                }
 
-            // Levenshtein fuzzy match
-            int distance = levenshteinDistance(normalizedInput, normalizedEntry);
-            if (distance <= MAX_LEVENSHTEIN_DISTANCE) {
-                double score = 1.0 - ((double) distance / Math.max(normalizedInput.length(), normalizedEntry.length()));
-                matches.add(toMatch(entry, "PARTIAL", Math.max(score, 0.3)));
-                continue;
+                // Levenshtein fuzzy match
+                int distance = levenshteinDistance(normalizedInput, normalizedEntry);
+                if (distance <= MAX_LEVENSHTEIN_DISTANCE) {
+                    double score = 1.0 - ((double) distance / Math.max(normalizedInput.length(), normalizedEntry.length()));
+                    matches.add(toMatch(entry, "PARTIAL", Math.max(score, 0.3)));
+                    continue;
+                }
             }
 
             // Alias match
@@ -158,6 +167,7 @@ public class SanctionScreeningService {
                     List<String> aliases = objectMapper.readValue(entry.getAliases(), new TypeReference<>() {});
                     for (String alias : aliases) {
                         String normalizedAlias = normalizeName(alias);
+                        if (normalizedAlias.isBlank()) continue;
                         if (normalizedInput.equals(normalizedAlias) ||
                             normalizedAlias.contains(normalizedInput) ||
                             normalizedInput.contains(normalizedAlias) ||
@@ -225,6 +235,43 @@ public class SanctionScreeningService {
                         .aliases(aliasesJson)
                         .dateOfBirth(dateOfBirth.isBlank() ? null : dateOfBirth)
                         .nationality(nationality.isBlank() ? null : nationality)
+                        .listType("UN")
+                        .listReference(reference.isBlank() ? null : reference)
+                        .addedDate(LocalDate.now())
+                        .lastUpdated(LocalDate.now())
+                        .active(true)
+                        .build();
+
+                sanctionEntryRepository.save(entry);
+                importedCount++;
+            }
+
+            // Szankcionált SZERVEZETEK (ENTITY) — a terror-szervezetek / cégek eddig kimaradtak.
+            NodeList entities = doc.getElementsByTagName("ENTITY");
+            for (int i = 0; i < entities.getLength(); i++) {
+                Element entityEl = (Element) entities.item(i);
+
+                String firstName = getElementText(entityEl, "FIRST_NAME");
+                String secondName = getElementText(entityEl, "SECOND_NAME");
+                String thirdName = getElementText(entityEl, "THIRD_NAME");
+
+                String fullName = buildFullName(firstName, secondName, thirdName);
+                if (fullName.isBlank()) continue;
+
+                String reference = getElementText(entityEl, "REFERENCE_NUMBER");
+
+                List<String> aliases = new ArrayList<>();
+                NodeList aliasNodes = entityEl.getElementsByTagName("ENTITY_ALIAS");
+                for (int j = 0; j < aliasNodes.getLength(); j++) {
+                    Element aliasEl = (Element) aliasNodes.item(j);
+                    String aliasName = getElementText(aliasEl, "ALIAS_NAME");
+                    if (!aliasName.isBlank()) aliases.add(aliasName);
+                }
+                String aliasesJson = aliases.isEmpty() ? null : objectMapper.writeValueAsString(aliases);
+
+                SanctionEntry entry = SanctionEntry.builder()
+                        .fullName(fullName)
+                        .aliases(aliasesJson)
                         .listType("UN")
                         .listReference(reference.isBlank() ? null : reference)
                         .addedDate(LocalDate.now())
@@ -417,15 +464,16 @@ public class SanctionScreeningService {
      */
     private String normalizeName(String name) {
         if (name == null) return "";
-        return name.toLowerCase()
-                .replaceAll("[áàâäã]", "a")
-                .replaceAll("[éèêë]", "e")
-                .replaceAll("[íìîï]", "i")
-                .replaceAll("[óòôöõő]", "o")
-                .replaceAll("[úùûüű]", "u")
-                .replaceAll("[ñ]", "n")
-                .replaceAll("[ç]", "c")
-                .replaceAll("[^a-z0-9\\s]", "")
+        // Unicode NFD dekompozíció: minden latin diakritikus jel általánosan kezelt
+        // (š, ž, č, ć, ā, ł részben stb.), nem kézzel sorolt halmaz — false-negative AML
+        // találatok elkerülése (pl. "Milošević" → "milosevic").
+        String decomposed = java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFD);
+        return decomposed.toLowerCase(java.util.Locale.ROOT)  // determinisztikus (török I/İ ellen)
+                .replaceAll("\\p{M}+", "")              // kombináló diakritikus jelek
+                .replaceAll("[^\\p{L}\\p{Nd}\\s]", "")  // csak írásjel törlése; a nem-latin
+                                                        // betűket MEGTARTJUK → azonos
+                                                        // írásrendszerű (cirill/görög) egyezés
+                                                        // is működik, nincs üres-string esés
                 .replaceAll("\\s+", " ")
                 .trim();
     }

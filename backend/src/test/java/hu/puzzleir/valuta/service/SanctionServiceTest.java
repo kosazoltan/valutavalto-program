@@ -263,4 +263,86 @@ class SanctionServiceTest {
         verify(sanctionEntryRepository).save(captor.capture());
         assertThat(captor.getValue().getDateOfBirth()).isEqualTo("1965");
     }
+
+    // =====================================================================
+    // NFD diakritika-normalizálás: "Milošević" (š,ć) == "Milosevic" (ASCII)
+    // A régi kézzel sorolt lista nem tartalmazta š/ć/ž-t → false-negative volt.
+    // =====================================================================
+    @Test
+    @DisplayName("Szűrés: NFD-normalizálás — diakritikus szankciós név egyezik ASCII-vel")
+    void testScreen_diacriticNormalization_match() {
+        SanctionEntry entry = createEntry("Slobodan Milošević", null);
+        when(sanctionEntryRepository.findByActiveTrue()).thenReturn(List.of(entry));
+
+        SanctionScreeningResult result = service.screenCustomer(
+                "Slobodan Milosevic", null, null,
+                "W001", "Teszt Pénztáros", "BP01"
+        );
+
+        assertThat(result.isMatched()).isTrue();
+        assertThat(result.getMatches()).isNotEmpty();
+        assertThat(result.getMatches().get(0).getMatchType()).isEqualTo("EXACT");
+    }
+
+    // =====================================================================
+    // Üres-név false-positive guard: tisztán cirill/nem-latin név NEM
+    // egyezhet minden bejegyzéssel (a régi contains("") MINDENRE igaz volt).
+    // =====================================================================
+    @Test
+    @DisplayName("Szűrés: tisztán nem-latin (cirill) név → nincs false-positive találat")
+    void testScreen_nonLatinName_noFalsePositive() {
+        SanctionEntry entry = createEntry("John Smith", null);
+        when(sanctionEntryRepository.findByActiveTrue()).thenReturn(List.of(entry));
+
+        SanctionScreeningResult result = service.screenCustomer(
+                "Иванов Иван", null, null,
+                "W001", "Teszt Pénztáros", "BP01"
+        );
+
+        assertThat(result.isMatched()).isFalse();
+        assertThat(result.getMatches()).isEmpty();
+        assertThat(result.getRiskLevel()).isEqualTo("CLEAR");
+    }
+
+    // =====================================================================
+    // ENTITY import: szankcionált szervezetek is bekerülnek az ENSZ listából.
+    // =====================================================================
+    @Test
+    @DisplayName("XML import: ENSZ lista INDIVIDUAL + ENTITY (szervezet) együtt")
+    void testImportXml_entityImported() {
+        String xml = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <CONSOLIDATED_LIST>
+                    <INDIVIDUALS>
+                        <INDIVIDUAL>
+                            <FIRST_NAME>Ahmed</FIRST_NAME>
+                            <SECOND_NAME>Ali</SECOND_NAME>
+                            <REFERENCE_NUMBER>QDi.001</REFERENCE_NUMBER>
+                        </INDIVIDUAL>
+                    </INDIVIDUALS>
+                    <ENTITIES>
+                        <ENTITY>
+                            <FIRST_NAME>Al-Qaida Network</FIRST_NAME>
+                            <REFERENCE_NUMBER>QDe.001</REFERENCE_NUMBER>
+                            <ENTITY_ALIAS>
+                                <ALIAS_NAME>AQ Network</ALIAS_NAME>
+                            </ENTITY_ALIAS>
+                        </ENTITY>
+                    </ENTITIES>
+                </CONSOLIDATED_LIST>
+                """;
+
+        InputStream xmlStream = new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8));
+        when(sanctionEntryRepository.save(any(SanctionEntry.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        int importedCount = service.importSanctionList(xmlStream);
+
+        // 1 INDIVIDUAL + 1 ENTITY = 2
+        assertThat(importedCount).isEqualTo(2);
+        ArgumentCaptor<SanctionEntry> captor = ArgumentCaptor.forClass(SanctionEntry.class);
+        verify(sanctionEntryRepository, times(2)).save(captor.capture());
+        assertThat(captor.getAllValues())
+                .anyMatch(e -> "Al-Qaida Network".equals(e.getFullName()));
+    }
 }
