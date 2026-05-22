@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.report.RegionTurnoverReportDto;
 import hu.puzzleir.valuta.dto.report.RegionTurnoverReportDto.RegionLineDto;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -13,9 +14,12 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -43,22 +47,29 @@ public class RegionTurnoverReportService {
      */
     public RegionTurnoverReportDto getRegionTurnover(String yearMonth) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        YearMonth ym = YearMonth.parse(yearMonth);
+        YearMonth ym = parseYearMonth(yearMonth);
         YearMonth prev = ym.minusMonths(1);
 
         List<RegionAggregate> current = aggregate(companyId, ym);
         List<RegionAggregate> previous = aggregate(companyId, prev);
 
+        // Copilot/Sourcery #782: az előző hó forgalmát régiókód → összeg map-be
+        // indexeljük (O(1) lookup az O(n²) stream-filter helyett).
+        Map<String, BigDecimal> prevTurnoverByRegion = new LinkedHashMap<>();
+        BigDecimal grandPrevTotal = BigDecimal.ZERO;
+        for (RegionAggregate p : previous) {
+            BigDecimal pt = p.buyHuf.add(p.sellHuf);
+            prevTurnoverByRegion.put(p.regionCode, pt);
+            // A teljes előző-havi forgalom MINDEN régiót tartalmaz (azokat is,
+            // amelyeknek a jelenlegi hónapban nincs forgalma) — Copilot #782 fix.
+            grandPrevTotal = grandPrevTotal.add(pt);
+        }
+
         List<RegionLineDto> lines = new ArrayList<>();
         BigDecimal grandTotal = BigDecimal.ZERO;
-        BigDecimal grandPrevTotal = BigDecimal.ZERO;
 
         for (RegionAggregate cur : current) {
-            BigDecimal prevTurnover = previous.stream()
-                .filter(p -> p.regionCode.equals(cur.regionCode))
-                .map(p -> p.buyHuf.add(p.sellHuf))
-                .findFirst()
-                .orElse(BigDecimal.ZERO);
+            BigDecimal prevTurnover = prevTurnoverByRegion.getOrDefault(cur.regionCode, BigDecimal.ZERO);
 
             BigDecimal total = cur.buyHuf.add(cur.sellHuf);
             BigDecimal avgDaily = cur.activeDays > 0
@@ -66,7 +77,6 @@ public class RegionTurnoverReportService {
                 : BigDecimal.ZERO;
 
             grandTotal = grandTotal.add(total);
-            grandPrevTotal = grandPrevTotal.add(prevTurnover);
 
             lines.add(RegionLineDto.builder()
                 .regionCode(cur.regionCode)
@@ -93,6 +103,19 @@ public class RegionTurnoverReportService {
             .previousTotalTurnoverHuf(grandPrevTotal)
             .totalTrendPercent(trendPercent(grandTotal, grandPrevTotal))
             .build();
+    }
+
+    /**
+     * "YYYY-MM" parse. Hibás formátum → ValidationException (HTTP 400),
+     * nem nyers DateTimeParseException (ami 500-at adna) — Copilot #782.
+     */
+    private YearMonth parseYearMonth(String yearMonth) {
+        try {
+            return YearMonth.parse(yearMonth);
+        } catch (DateTimeParseException | NullPointerException e) {
+            throw new ValidationException(
+                "Érvénytelen hónap formátum (várt: YYYY-MM): " + yearMonth);
+        }
     }
 
     /**
@@ -136,8 +159,11 @@ public class RegionTurnoverReportService {
     }
 
     private BigDecimal toBigDecimal(Object o) {
+        // A query SUM(hufAmount) BigDecimal-t ad; a Number-fallback csak
+        // védelmi ág — ott is string-konstruktor a double-kerekítés ellen
+        // (Copilot #782 pontosságvesztés-figyelmeztetés).
         return o instanceof BigDecimal b ? b
-            : o instanceof Number n ? BigDecimal.valueOf(n.doubleValue())
+            : o instanceof Number n ? new BigDecimal(n.toString())
             : BigDecimal.ZERO;
     }
 
