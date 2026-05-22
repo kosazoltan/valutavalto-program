@@ -96,6 +96,11 @@ public class TransactionService {
     // Azonosítás nélküli limit HUF-ban (300.000 Ft - NAV szabályozás)
     private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
 
+    /** G11: a 10M+ vezetői-jóváhagyás enforcement feature-flag SystemParameter kulcsa. */
+    static final String AML_HIGH_VALUE_APPROVAL_PARAM = "AML_HIGH_VALUE_APPROVAL_ENFORCEMENT";
+    /** G11: a feature-flag alapértéke (false = WARN-only, kompatibilis a meglévő kliensekkel). */
+    static final String AML_HIGH_VALUE_APPROVAL_DEFAULT = "false";
+
     // Max tetelsorok szama bizonylaton (Legacy: BLOKKTETEL limit)
     private static final int MAX_TRANSACTION_LINES = 6;
 
@@ -714,16 +719,20 @@ public class TransactionService {
             // Default false → WARN-only naplózás (a meglévő kliensek nem törnek meg, és
             // nincs supervisor-jóváhagyó UI a Buy/Sell képernyőn); true → ValidationException.
             // A bekapcsolás a pénztáros supervisor-jóváhagyó útvonalával együtt aktiválható.
+            // Megjegyzés: bekapcsolt enforcement esetén MINDEN szerepkörre (a pénztáros
+            // supervisor/manager is) blokkol — a jóváhagyásnak explicitnek és
+            // auditálhatónak kell lennie (4-szem-elv), nincs implicit self-approval kiskapu.
             if (thresholdResult != null && thresholdResult.isRequiresManagerApproval()) {
                 boolean enforce = systemParameterService != null
                         && "true".equalsIgnoreCase(
-                                systemParameterService.getValue("AML_HIGH_VALUE_APPROVAL_ENFORCEMENT", "false"));
+                                systemParameterService.getValue(
+                                        AML_HIGH_VALUE_APPROVAL_PARAM, AML_HIGH_VALUE_APPROVAL_DEFAULT));
                 String blockReason = highValueApprovalBlockReason(thresholdResult, enforce);
                 if (blockReason != null) {
                     throw new ValidationException(blockReason);
                 }
-                log.warn("AML magas-értékű jóváhagyás szükséges (WARN-only, "
-                        + "AML_HIGH_VALUE_APPROVAL_ENFORCEMENT=false): {} (ügyfél: {}, összeg: {} Ft)",
+                log.warn("AML magas-értékű jóváhagyás szükséges (WARN-only, enforcement kikapcsolva): "
+                        + "{} (ügyfél: {}, összeg: {} Ft)",
                         thresholdResult.getManagerApprovalReason(), customerId, hufAmount);
             }
         }
@@ -754,8 +763,10 @@ public class TransactionService {
         if (!enforcementEnabled) {
             return null;
         }
-        return thresholdResult.getManagerApprovalReason() != null
-                ? thresholdResult.getManagerApprovalReason()
+        String reason = thresholdResult.getManagerApprovalReason();
+        // Copilot #786: üres/blank indok esetén is értelmes hibaüzenet (ne dobjon üres ValidationException-t).
+        return (reason != null && !reason.isBlank())
+                ? reason
                 : "Magas értékű / fokozott tranzakció — vezetői (SUPERVISOR/MANAGER) jóváhagyás szükséges";
     }
 

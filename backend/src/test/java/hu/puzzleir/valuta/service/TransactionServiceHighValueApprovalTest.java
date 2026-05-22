@@ -38,6 +38,13 @@ class TransactionServiceHighValueApprovalTest {
     }
 
     @Test
+    @DisplayName("enforce=true + üres/blank indok → default indok (nem üres üzenet)")
+    void enforceOn_blankReason_usesDefault() {
+        String reason = TransactionService.highValueApprovalBlockReason(result(true, "   "), true);
+        assertThat(reason).isNotBlank().contains("vezetői");
+    }
+
+    @Test
     @DisplayName("enforce=false (default) + jóváhagyás-köteles → NEM blokkol (WARN-only)")
     void enforceOff_requiresApproval_noBlock() {
         String reason = TransactionService.highValueApprovalBlockReason(
