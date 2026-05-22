@@ -52,7 +52,10 @@ public class SanctionScreeningService {
     /**
      * Ügyfél szűrés — név + okmányszám + születési dátum alapján (FATF ország-kockázat nélkül).
      * Backward-compat overload (pl. tranzakció-idejű AML hívás, ahol az ország nem áll rendelkezésre).
+     * Saját @Transactional, hogy külső hívónál (proxy) a tranzakció-kezelés ne vesszen el a
+     * 7-arg metódusba történő self-invocation miatt (Copilot #767).
      */
+    @Transactional(rollbackFor = Exception.class)
     public SanctionScreeningResult screenCustomer(
             String name,
             String documentNumber,

@@ -63,9 +63,9 @@ class SanctionControllerTest {
                 .riskLevel("CLEAR")
                 .build();
 
-        // Principal null → workerId = "unknown"
+        // Principal null → workerId = "unknown"; nationality null (7-arg overload, G4)
         when(screeningService.screenCustomer(
-                eq("Kiss János"), eq("123456AB"), isNull(),
+                eq("Kiss János"), eq("123456AB"), isNull(), isNull(),
                 eq("unknown"), eq("unknown"), isNull()
         )).thenReturn(clearResult);
 

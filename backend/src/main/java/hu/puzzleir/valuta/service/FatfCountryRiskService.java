@@ -87,7 +87,13 @@ public class FatfCountryRiskService {
 
     private static void putAll(Map<String, FatfTier> m, FatfTier tier, String... aliases) {
         for (String a : aliases) {
-            m.put(a, tier);
+            FatfTier prev = m.put(a, tier);
+            // Fail-fast: ne fedjen el konfigurációs hibát egy eltérő tier-rel duplikált alias
+            // (Sourcery #767). Azonos tier-re ismétlés ártalmatlan.
+            if (prev != null && prev != tier) {
+                throw new IllegalStateException(
+                        "FATF duplikált ország-alias eltérő tier-rel: '" + a + "' (" + prev + " vs " + tier + ")");
+            }
         }
     }
 
