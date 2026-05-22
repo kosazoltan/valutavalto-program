@@ -621,7 +621,7 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
   - **G15 (PR #780):** kanonikus `TransactionTypeName` union (Transaction.transactionType + legacy `type` + list() szűrő egy forrásból) + TRANSFER_OUT/TRANSFER_IN (Átadás/Átvétel) szűrő + típus-címke.
   - **G16 (PR #781):** függőség-mentes inline `HorizontalBarChart` (NEM új npm chart-lib) — profit + tranzakciószám valutánként a DailyTurnoverPage-en. 7 unit teszt.
   - **G23 (PR #782):** `RegionTurnoverReportService` (régió GROUP BY `branch.regionCode`, COMPLETED+financial_effective, multi-tenant) + előző-hó trend% + `GET /reports/region-turnover?yearMonth=` + FE `RegionTurnoverReportPage`. 5 teszt.
-  - **G14 (PR #783):** `ReceiptGeneratorService.generateReservationReceipt` (FOGLALÓ ÁTVÉTELE/VISSZAFIZETÉSE + ügyfél-pillanatkép) + `GET /reservations/{id}/receipt?refund=` PDF + FE letöltő gomb. 3 teszt (ReceiptGeneratorServiceTest 8/8).
+  - **G14 (PR #783):** `ReceiptGeneratorService.generateReservationReceipt` (FOGLALÓ ÁTVÉTELE/VISSZAFIZETÉSE + ügyfél-pillanatkép) + `GET /reservations/{id}/receipt?refund=` PDF + FE letöltő gomb. 3 új foglaló-bizonylat teszt (a ReceiptGeneratorServiceTest így összesen 8/8).
   - **Telepítő-szet v2.26.21 (UNSIGNED, Downloads-ban):**
     - `Penztar-Setup-2.26.21-20260522.exe` — 283.83 MB, SHA-256 `2B0A85E4B648E99491ACB56479C3705E915280BBC2E0555BB06D8F58E312DED2`
     - `Kozponti-Iranyitokozpont-Setup-2.26.21.exe` — 101.06 MB, SHA-256 `AA1F60C67224559AA6C9C7D851C5AE3869793F5D9349719279A5B345DEB9AC26`
