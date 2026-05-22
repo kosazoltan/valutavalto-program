@@ -13,7 +13,7 @@ interface CurrencyLine {
   totalSellHuf: number;
   avgBuyRate: number;
   avgSellRate: number;
-  mnbRate: number;
+  mnbRate?: number;
 }
 
 interface TransferLine {
@@ -49,8 +49,14 @@ interface MonthlyReportFull {
   closedDays: number;
 }
 
-const fmt = (n: number) => (n ?? 0).toLocaleString('hu-HU');
-const currentMonth = () => new Date().toISOString().slice(0, 7);
+const fmt = (n: number) => n.toLocaleString('hu-HU');
+
+// Helyi (nem UTC) dátumból képzett YYYY-MM, hogy a hónap első óráiban
+// időzóna miatt ne az előző hónapot adja vissza (Sourcery/Copilot bug_risk).
+const currentMonth = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
 
 export default function MonthlyTabloPage() {
   const [yearMonth, setYearMonth] = useState(currentMonth());
@@ -95,9 +101,6 @@ export default function MonthlyTabloPage() {
             onChange={(e) => setYearMonth(e.target.value)}
             className="p-2 border rounded"
           />
-          <button onClick={() => void load()} className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">
-            Lekérdezés
-          </button>
           <button onClick={() => window.print()} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
             Nyomtatás
           </button>
