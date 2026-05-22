@@ -38,4 +38,4 @@ A v2.26.21 (G10/G14/G15/G16/G17/G23) batch után a felhasználóval egyeztetett 
 Részletes backlog: `EXCMD/_compare/00-KONSZOLIDALT-GAPS.md`.
 
 ## Build-megjegyzés
-A Penztar-Setup makensis lzma-tömörítése után a build-installer.ps1 "BUILD COMPLETE" markere / a háttér-task befejezési értesítése nem flush-ölt (hosszú background task), de az exe 33 percig stabil maradt (297.6 MB, a 2.26.21-gyel azonos méretosztály, +22 KB a kódváltozásokból), nincs makensis/powershell-build process → a build érvényes és teljes.
+A Penztar-Setup makensis lzma-tömörítése után a build-installer.ps1 "BUILD COMPLETE" markere / a háttér-task befejezési értesítése nem flush-ölt (hosszú background task), de az exe 33 percig stabil maradt (283.86 MB = 297 644 426 byte, a 2.26.21-gyel azonos méretosztály, +22 KB a kódváltozásokból), nincs makensis/powershell-build process → a build érvényes és teljes.
