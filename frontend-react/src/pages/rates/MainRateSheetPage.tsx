@@ -11,6 +11,7 @@ import { currencyApi } from '../../services/api/exchange-rates'
 import CurrencyManagerModal from './components/CurrencyManagerModal'
 import { computeCrossSettlement, resolveSettlement, crossSettlementStaysAuto } from './mainSheetRules'
 import { validateRateDirection } from './rateDirectionRules'
+import { euaDeviationExceeds, computeEuaRate } from './rfmRules'
 
 /**
  * Főlap (0-s lap) — Árfolyamkészítő program ALAP felülete.
@@ -775,15 +776,26 @@ export default function MainRateSheetPage() {
         sellRate: row.weakMultiSell,
       })),
     )
-    if (directionViolations.length > 0) {
-      const list = directionViolations.map((v) => `• ${v.message}`).join('\n')
+    const warnings: string[] = directionViolations.map((v) => `• ${v.message}`)
+
+    // G22 (FR-RFM-09): EUA (euró-érme) árfolyam max 20% eltérés a gyenge euró
+    // eladás × 1.2 képzett értéktől; ennél nagyobb eltérésnél ki kell írni.
+    const eurSell = rowsToDispatch.find((r) => r.currency === 'EUR')?.weakMultiSell ?? 0
+    const euaSell = rowsToDispatch.find((r) => r.currency === 'EUA')?.weakMultiSell ?? 0
+    if (euaSell > 0 && eurSell > 0 && euaDeviationExceeds(euaSell, eurSell)) {
+      warnings.push(
+        `• EUA: az euró-érme árfolyam (${euaSell}) több mint 20%-kal eltér a képzett ` +
+        `értéktől (${computeEuaRate(eurSell).toFixed(2)} = gyenge euró eladás × 1.2)`,
+      )
+    }
+
+    if (warnings.length > 0) {
       // window.confirm: szándékos, függőség-mentes választás, konzisztens a meglévő
       // mintával (ReservationPage). Egyedi modal-dialógusra cserélése külön UX-kör,
       // a futó-app (Electron) verifikációval együtt (Sourcery #787).
       const proceed = window.confirm(
-        'Árfolyam-irány figyelmeztetés (FR-RFM-25):\n\n' + list +
-        '\n\nAz eladási árfolyam nem lehet kisebb, a vételi nem lehet magasabb az elszámolónál. ' +
-        'Biztosan kiküldi így az árfolyamot?',
+        'Árfolyam-figyelmeztetés (FR-RFM-25 / FR-RFM-09):\n\n' + warnings.join('\n') +
+        '\n\nBiztosan kiküldi így az árfolyamot?',
       )
       if (!proceed) {
         setPublishing(false)
