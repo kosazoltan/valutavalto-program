@@ -45,6 +45,7 @@ class StornoServiceTest {
     @Mock private TransactionService transactionService;
     @Mock private DictionaryRepository dictionaryRepository;
     @Mock private NotificationService notificationService;
+    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
     private static final UUID COMPANY_ID = UUID.randomUUID();
@@ -230,8 +231,8 @@ class StornoServiceTest {
 
     // ─── G12: sztornó jóváhagyás-kérés aktív értesítés ───
     @Test
-    @DisplayName("G12: requestApproval aktív értesítést küld az irodának (sendToBranch)")
-    void requestApproval_sendsBranchNotification() {
+    @DisplayName("G12: requestApproval AFTER_COMMIT értesítési eseményt publikál (nem közvetlen sendToBranch)")
+    void requestApproval_publishesNotificationEvent() {
         Worker worker = new Worker();
         worker.setId(WORKER_ID);
         worker.setName("Teszt Penztaros");
@@ -251,7 +252,35 @@ class StornoServiceTest {
 
         stornoService.requestApproval(TRANSACTION_ID, WORKER_ID, "Teves rogzites");
 
-        verify(notificationService, times(1))
-                .sendToBranch(eq(BRANCH_ID), eq("Sztornó jóváhagyás kérés"), anyString());
+        // A jóváhagyás-kérés tranzakcióján belül NEM hívunk közvetlen sendToBranch-et
+        // (a rollback-only kockázat miatt), hanem AFTER_COMMIT eseményt publikálunk.
+        verify(notificationService, never()).sendToBranch(any(), any(), any());
+        ArgumentCaptor<StornoService.StornoApprovalNotificationEvent> cap =
+                ArgumentCaptor.forClass(StornoService.StornoApprovalNotificationEvent.class);
+        verify(eventPublisher, times(1)).publishEvent(cap.capture());
+        assertThat(cap.getValue().branchId()).isEqualTo(BRANCH_ID);
+        assertThat(cap.getValue().title()).isEqualTo("Sztornó jóváhagyás kérés");
+    }
+
+    @Test
+    @DisplayName("G12: az AFTER_COMMIT listener elküldi az értesítést (sendToBranch)")
+    void onStornoApprovalNotification_sendsToBranch() {
+        stornoService.onStornoApprovalNotification(
+                new StornoService.StornoApprovalNotificationEvent(BRANCH_ID, "Cim", "Uzenet"));
+
+        verify(notificationService, times(1)).sendToBranch(BRANCH_ID, "Cim", "Uzenet");
+    }
+
+    @Test
+    @DisplayName("G12: a listener elnyeli az értesítési hibát (best-effort)")
+    void onStornoApprovalNotification_swallowsException() {
+        org.mockito.Mockito.doThrow(new RuntimeException("email down"))
+                .when(notificationService).sendToBranch(any(), any(), any());
+
+        // Nem dob — a hiba elnyelve (best-effort), a jóváhagyás-kérés érintetlen.
+        stornoService.onStornoApprovalNotification(
+                new StornoService.StornoApprovalNotificationEvent(BRANCH_ID, "Cim", "Uzenet"));
+
+        verify(notificationService, times(1)).sendToBranch(BRANCH_ID, "Cim", "Uzenet");
     }
 }
