@@ -60,7 +60,7 @@ export default function LiveCashPositionPage() {
       </div>
 
       {data?.date && (
-        <div className="mb-2 text-sm text-gray-600">Dátum: {new Date(data.date).toLocaleDateString('hu-HU')}</div>
+        <div className="mb-2 text-sm text-gray-600">Dátum: {data.date}</div>
       )}
 
       {loading ? (
