@@ -615,7 +615,21 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.20** (2026-05-22 — EXCMD gap-sprint 2. batch: G9 pillanatnyi pénztárállás + G12 sztornó AFTER_COMMIT értesítés + G18 forgalmi riport készpénz/kártya bontás + G21 körlevél role-ack; mind admin-merged + auto-deploy, production HEALTHY).
+- **Verzió:** **v2.26.21** (2026-05-22 — EXCMD gap-sprint 3. batch: G10 zárás-típus választó + G17 havi tabló FE + G15 bizonylat-szűrés átadási/átvételi + G16 forgalmi grafikon + G23 körzet-szintű forgalmi riport + G14 foglaló-bizonylat; mind admin-merged + auto-deploy, production HEALTHY).
+  - **G10 (PR #778):** ClosingWizard zárás-típus választó (DAILY/DECADE/MONTHLY/POS), `ClosingWizard['closingType']` típus, label htmlFor.
+  - **G17 (PR #779):** `MonthlyTabloPage` FE oldal (`GET /closing/monthly/{branchId}/{yearMonth}/full`) — valuta-sorok + összesítők + készpénz/kártya + WU/ÁFA/kez.díj + mozgások. Helyi-dátum hónap (nem UTC).
+  - **G15 (PR #780):** kanonikus `TransactionTypeName` union (Transaction.transactionType + legacy `type` + list() szűrő egy forrásból) + TRANSFER_OUT/TRANSFER_IN (Átadás/Átvétel) szűrő + típus-címke.
+  - **G16 (PR #781):** függőség-mentes inline `HorizontalBarChart` (NEM új npm chart-lib) — profit + tranzakciószám valutánként a DailyTurnoverPage-en. 7 unit teszt.
+  - **G23 (PR #782):** `RegionTurnoverReportService` (régió GROUP BY `branch.regionCode`, COMPLETED+financial_effective, multi-tenant) + előző-hó trend% + `GET /reports/region-turnover?yearMonth=` + FE `RegionTurnoverReportPage`. 5 teszt.
+  - **G14 (PR #783):** `ReceiptGeneratorService.generateReservationReceipt` (FOGLALÓ ÁTVÉTELE/VISSZAFIZETÉSE + ügyfél-pillanatkép) + `GET /reservations/{id}/receipt?refund=` PDF + FE letöltő gomb. 3 teszt (ReceiptGeneratorServiceTest 8/8).
+  - **Telepítő-szet v2.26.21 (UNSIGNED, Downloads-ban):**
+    - `Penztar-Setup-2.26.21-20260522.exe` — 283.83 MB, SHA-256 `2B0A85E4B648E99491ACB56479C3705E915280BBC2E0555BB06D8F58E312DED2`
+    - `Kozponti-Iranyitokozpont-Setup-2.26.21.exe` — 101.06 MB, SHA-256 `AA1F60C67224559AA6C9C7D851C5AE3869793F5D9349719279A5B345DEB9AC26`
+    - `Arfolyamkeszito-Setup-2.26.21.exe` — 101.06 MB, SHA-256 `CF83B1D1741BAC54241C49BBCF4C20DDA5C0ACB5E1FDB135119AA96DE3616E91`
+    - `Penztar-Eltavolito-2.26.21-20260522.exe` — verzió-független, SHA-256 `5D84BE6AA024D9543B5B13F9E846255A6E05F700D8AE4750007E97539B5BDFB4`
+  - Vault: `vault/sessions/2026-05-22-excmd-gap-sprint-batch3-v2.26.21.md`. **Gap-backlog: 15/23 KÉSZ** (`EXCMD/_compare/00-KONSZOLIDALT-GAPS.md`). Hátralévő: G3 (⛔ wizard↔NavClosing architektúra-link), G8/G11 (üzleti+kliens döntés), G7/G22 (RFM-kliens, futó-app verifikáció), G19/G20 (nagy: új entitás/migráció+UI), G13 (EU ENTITY bővítés).
+
+- **Verzió [előző]:** **v2.26.20** (2026-05-22 — EXCMD gap-sprint 2. batch: G9 pillanatnyi pénztárállás + G12 sztornó AFTER_COMMIT értesítés + G18 forgalmi riport készpénz/kártya bontás + G21 körlevél role-ack; mind admin-merged + auto-deploy, production HEALTHY).
   - **G9 (PR #775):** `LiveCashPositionService`/Controller `GET /reports/live-cash-position` (valutánként NYITÓ/BEVÉTEL/KIADÁS/ZÁRÓ + kez.díj a DailyBalance + HANDLING_FEE subledgerből) + FE `LiveCashPositionPage` + ReportsPage link. Teszt 2/2.
   - **G12 (PR #774):** sztornó jóváhagyás-kérés AFTER_COMMIT esemény (`StornoApprovalNotificationEvent` + `@TransactionalEventListener(AFTER_COMMIT)`+`REQUIRES_NEW`) — a notification-hiba NEM görgeti vissza a kérést. StornoServiceTest 10/10.
   - **G18 (PR #771):** `MonthlyReportFullDto.cashTurnoverHuf`/`cardTurnoverHuf` (PaymentMethod szerinti bontás). MonthlyReportServiceTest 6/6.
