@@ -177,9 +177,11 @@ public class ClosingWizardController {
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> finalizeClosing(
             @PathVariable UUID wizardId,
-            @RequestParam(required = false) String discrepancyExplanation) {
+            @RequestBody(required = false) Map<String, String> body) {
         Long workerId = SecurityUtils.getCurrentWorkerId();
-        // G3 (FR-13): opcionális eltérés-magyarázat átadása az eltérés-gate-hez.
+        // G3 (FR-13): opcionális eltérés-magyarázat a body-ban (akár 1000 karakter,
+        // ezért NEM query param — Sourcery #791).
+        String discrepancyExplanation = body != null ? body.get("discrepancyExplanation") : null;
         boolean success = closingWizardService.finalizeClosing(wizardId, workerId, discrepancyExplanation);
         return ResponseEntity.ok(Map.of("success", success, "message",
                 success ? "Napzárás véglegesítve!" : "Napzárás sikertelen!"));

@@ -730,10 +730,12 @@ export const closingWizardApi = {
     return response.data
   },
   finalize: async (wizardId: string, workerId: string, discrepancyExplanation?: string): Promise<{ success: boolean; message: string }> => {
-    const response = await api.post<{ success: boolean; message: string }>(`/closing-wizard/${wizardId}/finalize`, null, {
-      // G3 (FR-13): opcionális eltérés-magyarázat az eltérés-gate-hez.
-      params: { workerId, ...(discrepancyExplanation ? { discrepancyExplanation } : {}) }
-    })
+    // G3 (FR-13): az eltérés-magyarázat a body-ban (akár 1000 karakter) — Sourcery #791.
+    const response = await api.post<{ success: boolean; message: string }>(
+      `/closing-wizard/${wizardId}/finalize`,
+      discrepancyExplanation ? { discrepancyExplanation } : {},
+      { params: { workerId } },
+    )
     return response.data
   },
   /** Submit denomination counts — body: { "HUF": { 500: 3, 1000: 5, ... } } */

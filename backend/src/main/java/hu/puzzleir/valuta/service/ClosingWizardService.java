@@ -527,7 +527,8 @@ public class ClosingWizardService {
 
     /**
      * G3 (FR-13): a pénzügyi eltérés (címletezett − várt készlet) kiszámítása a
-     * zárás napjára. {@code null}, ha hiányoznak az adatok (nem dönthető el).
+     * zárás napjára. {@code null} csak akkor, ha a branchId null; a repó query-k
+     * COALESCE-olnak 0-ra, így hiányzó adatnál az eltérés 0 (toleranciaon belül).
      */
     private java.math.BigDecimal computeCashDiscrepancy(UUID branchId, LocalDate date) {
         if (branchId == null) {

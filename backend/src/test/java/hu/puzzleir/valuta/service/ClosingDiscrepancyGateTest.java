@@ -23,7 +23,7 @@ class ClosingDiscrepancyGateTest {
     }
 
     @Test
-    @DisplayName("toleranciaon belüli eltérés → nincs blokk")
+    @DisplayName("tolerancián belüli eltérés → nincs blokk")
     void withinTolerance() {
         assertThat(ClosingWizardService.closingDiscrepancyBlockReason(new BigDecimal("1"), null, TOL)).isNull();
         assertThat(ClosingWizardService.closingDiscrepancyBlockReason(new BigDecimal("-1"), null, TOL)).isNull();
