@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Lock, Check, X, Loader2, Minus, ChevronLeft, Coins } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import { closingWizardApi } from '../../services/api/index'
+import type { ClosingWizard } from '../../services/api/transactions'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
@@ -52,8 +53,9 @@ export default function ClosingWizardPage() {
   const [steps, setSteps] = useState<ClosingStep[]>(INITIAL_STEPS)
   const [isRunning, setIsRunning] = useState(false)
   const [wizardId, setWizardId] = useState<string | null>(null)
-  // G10: zárás-típus választó (a backend ClosingWizardSteps DAILY/DECADE/MONTHLY/POS-t támogat)
-  const [closingType, setClosingType] = useState<'DAILY' | 'DECADE' | 'MONTHLY' | 'POS'>('DAILY')
+  // G10: zárás-típus választó (a backend ClosingWizardSteps DAILY/DECADE/MONTHLY/POS-t támogat).
+  // A típust a backend/API által definiált ClosingWizard['closingType']-ból vesszük (nincs duplikáció).
+  const [closingType, setClosingType] = useState<ClosingWizard['closingType']>('DAILY')
 
   // Denomination input state
   const [denomQuantities, setDenomQuantities] = useState<Record<number, number>>(
@@ -383,14 +385,15 @@ export default function ClosingWizardPage() {
         {/* G10: ZÁRÁS TÍPUS VÁLASZTÓ (csak indítás előtt) */}
         {!wizardId && !isRunning && completedCount === 0 && !waitingForDenom && (
           <div className="flex items-center justify-center gap-2 mb-2">
-            <label className="text-sm font-medium">{t('closing.zarasTipusa')}</label>
+            <label htmlFor="closing-type-select" className="text-sm font-medium">{t('closing.zarasTipusa')}</label>
             <select
+              id="closing-type-select"
               value={closingType}
-              onChange={(e) => setClosingType(e.target.value as 'DAILY' | 'DECADE' | 'MONTHLY' | 'POS')}
+              onChange={(e) => setClosingType(e.target.value as ClosingWizard['closingType'])}
               className="p-2 border rounded"
             >
               <option value="DAILY">{t('closing.napiZaras')}</option>
-              <option value="DECADE">{t('closing.dekadzaras')}</option>
+              <option value="DECADE">{t('closing.dekadZaras')}</option>
               <option value="MONTHLY">{t('closing.haviZaras')}</option>
               <option value="POS">{t('closing.posZaras')}</option>
             </select>

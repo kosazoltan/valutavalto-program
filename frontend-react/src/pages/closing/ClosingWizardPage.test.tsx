@@ -119,6 +119,22 @@ describe('ClosingWizardPage', () => {
     expect(screen.getByText('NAPZÁRÁS WIZARD')).toBeInTheDocument()
   })
 
+  it('G10: a kiválasztott zárás-típus átmegy a start() hívásba', async () => {
+    mocks.closingWizardApiNavigate.mockResolvedValue({
+      steps: [{ stepNumber: 1, completed: true, stepDescription: 'OK' }],
+    })
+    renderClosingWizardPage()
+    const user = userEvent.setup()
+
+    await user.selectOptions(screen.getByRole('combobox'), 'DECADE')
+    await user.click(screen.getByRole('button', { name: /ELLENŐRZÉS INDÍTÁSA/i }))
+
+    await waitFor(() => expect(mocks.closingWizardApiStart).toHaveBeenCalled())
+    // start(branchId, cashDeskId, closingType, workerId) → 3. argumentum a típus
+    const firstCall = mocks.closingWizardApiStart.mock.calls[0]
+    expect(firstCall?.[2]).toBe('DECADE')
+  })
+
   it('NEM rendereli a saját CashierHeader-t (v2.5.3 PR #345 — MainLayout headere helyettesíti)', () => {
     renderClosingWizardPage()
     expect(screen.queryByTestId('cashier-header')).not.toBeInTheDocument()
