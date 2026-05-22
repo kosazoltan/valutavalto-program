@@ -88,6 +88,7 @@ const AverageRateReportPage = lazy(() => import('./pages/reports/AverageRateRepo
 const DailyJournalPage = lazy(() => import('./pages/reports/DailyJournalPage'))
 const CentralReportsPage = lazy(() => import('./pages/reports/CentralReportsPage'))
 const NavReportPage = lazy(() => import('./pages/reports/NavReportPage'))
+const LiveCashPositionPage = lazy(() => import('./pages/reports/LiveCashPositionPage'))
 const FeePage = lazy(() => import('./pages/fees/FeePage'))
 const BlacklistPage = lazy(() => import('./pages/blacklist/BlacklistPage'))
 const AnonymousReportPage = lazy(() => import('./pages/reports/AnonymousReportPage'))
@@ -514,6 +515,7 @@ export default function App() {
           <Route path="/reports/daily-journal" element={<DailyJournalPage />} />
           <Route path="/reports/central" element={<CentralReportsPage />} />
           <Route path="/reports/nav" element={<NavReportPage />} />
+          <Route path="/reports/live-cash-position" element={<LiveCashPositionPage />} />
           
           {/* Receipts */}
           <Route path="/receipts" element={<ReceiptPage />} />
