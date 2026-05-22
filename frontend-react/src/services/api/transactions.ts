@@ -108,10 +108,23 @@ export const customerApi = {
 
 // ================== TRANSACTIONS API ==================
 
+/**
+ * A tranzakció-típusok kanonikus union-ja (a backend TransactionType enum-jával
+ * összhangban). Egyetlen forrás, hogy a Transaction.transactionType, a legacy
+ * `type` alias és a list() szűrő ne driftelhessen szét (Sourcery/Copilot #780).
+ */
+export type TransactionTypeName =
+  | 'BUY'
+  | 'SELL'
+  | 'REVERSAL'
+  | 'CONVERSION'
+  | 'TRANSFER_OUT'
+  | 'TRANSFER_IN'
+
 export interface Transaction {
   id: number
   receiptNumber: string
-  transactionType: 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION'
+  transactionType: TransactionTypeName
   status: 'PENDING' | 'COMPLETED' | 'REVERSED'
   transactionDate: string
   transactionTime: string
@@ -151,7 +164,7 @@ export interface Transaction {
   foreignStatus?: 'DOMESTIC' | 'FOREIGN'
   // Legacy compatibility aliases
   transactionNumber?: string // Same as receiptNumber
-  type?: 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION' // Same as transactionType
+  type?: TransactionTypeName // Same as transactionType
   foreignAmount?: number // Same as currencyAmount
   fee?: number // Same as handlingFee
   total?: number // Same as hufAmount
@@ -289,7 +302,7 @@ export const transactionApi = {
     branchId?: string
     startDate?: string
     endDate?: string
-    type?: 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION'
+    type?: TransactionTypeName
     page?: number
     size?: number
   }): Promise<PagedResponse<Transaction>> => {

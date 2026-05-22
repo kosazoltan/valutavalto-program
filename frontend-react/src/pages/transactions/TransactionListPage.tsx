@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Search, Plus, FileText, Printer, Eye, XCircle, ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react'
-import { transactionApi, type Transaction } from '../../services/api/transactions'
+import { transactionApi, type Transaction, type TransactionTypeName } from '../../services/api/transactions'
 import type { PagedResponse } from '../../services/api/client'
 import { toast } from '../../components/ui/toaster'
 import { isElectron, getElectronAPI } from '../../utils/electron'
@@ -45,7 +45,7 @@ export default function TransactionListPage() {
   const [search, setSearch] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [typeFilter, setTypeFilter] = useState<string>('')
+  const [typeFilter, setTypeFilter] = useState<TransactionTypeName | ''>('')
 
   const [page, setPage] = useState(0)
   const [data, setData] = useState<PagedResponse<Transaction> | null>(null)
@@ -61,7 +61,7 @@ export default function TransactionListPage() {
         size: PAGE_SIZE,
         startDate: dateFrom || undefined,
         endDate: dateTo || undefined,
-        type: (typeFilter as 'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION') || undefined,
+        type: typeFilter || undefined,
       })
 
       // Electron: a helyi SQLite pending (meg fel nem kuldott) bizonylatai is latszodjanak
@@ -231,7 +231,7 @@ export default function TransactionListPage() {
             <label className="form-label">{t('common.type')}</label>
             <select
               value={typeFilter}
-              onChange={(e) => { setTypeFilter(e.target.value); setPage(0) }}
+              onChange={(e) => { setTypeFilter(e.target.value as TransactionTypeName | ''); setPage(0) }}
               className="form-input"
             >
               <option value="">{t('common.all')}</option>
@@ -239,6 +239,8 @@ export default function TransactionListPage() {
               <option value="SELL">{t('cashier.sell')}</option>
               <option value="REVERSAL">{t('cashier.storno')}</option>
               <option value="CONVERSION">{t('transactions.atvaltas')}</option>
+              <option value="TRANSFER_OUT">{t('transactions.atadasi')}</option>
+              <option value="TRANSFER_IN">{t('transactions.atveteli')}</option>
             </select>
           </div>
         </div>
@@ -301,7 +303,9 @@ export default function TransactionListPage() {
                         {tx.transactionType === 'BUY' ? 'Vétel'
                           : tx.transactionType === 'SELL' ? 'Eladás'
                             : tx.transactionType === 'REVERSAL' ? 'Sztornó'
-                              : 'Átváltás'}
+                              : tx.transactionType === 'TRANSFER_OUT' ? 'Átadás'
+                                : tx.transactionType === 'TRANSFER_IN' ? 'Átvétel'
+                                  : 'Átváltás'}
                       </span>
                     </td>
                     <td className="font-bold">{tx.currencyCode}</td>
