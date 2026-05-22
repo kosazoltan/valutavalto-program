@@ -54,6 +54,12 @@ public class ClosingWizardService {
     private final DenominationRepository denominationRepository;
     private final DenominationBalanceRepository denominationBalanceRepository;
     private final CurrencyRepository currencyRepository;
+    private final SystemParameterService systemParameterService;
+
+    /** G3: a zárás-eltérés magyarázat-kötelezettség feature-flag SystemParameter kulcsa. */
+    static final String CLOSING_DISCREPANCY_PARAM = "CLOSING_DISCREPANCY_EXPLANATION_REQUIRED";
+    /** G3: az eltérés-tolerancia (Ft) — ezalatt nincs magyarázat-kötelezettség (kerekítés). */
+    private static final java.math.BigDecimal DISCREPANCY_TOLERANCE_HUF = java.math.BigDecimal.ONE;
 
     /**
      * Zárási varázsló indítása
@@ -442,6 +448,20 @@ public class ClosingWizardService {
      * 3. Lezárja a wizard-ot
      */
     public boolean finalizeClosing(UUID wizardId, Long workerId) {
+        return finalizeClosing(wizardId, workerId, null);
+    }
+
+    /**
+     * G3 (EXCMD b2-zaras-ablak FR-13): zárás véglegesítése eltérés-magyarázat gate-tel.
+     *
+     * <p>A wizard véglegesítése előtt kiszámítja a pénzügyi eltérést (címletezett vs.
+     * várt készlet). Ha a {@code CLOSING_DISCREPANCY_EXPLANATION_REQUIRED} feature-flag
+     * be van kapcsolva ÉS az eltérés meghaladja a toleranciát, akkor magyarázat
+     * nélkül a zárás NEM véglegesíthető (FR-13 eltérés-magyarázat). Az eltérés-összeg
+     * és a magyarázat auditálható módon a wizardra kerül. Default (flag KI): a
+     * korábbi viselkedés változatlan, a magyarázat csak rögzítésre kerül, ha megadták.</p>
+     */
+    public boolean finalizeClosing(UUID wizardId, Long workerId, String discrepancyExplanation) {
         ClosingWizard wizard = closingWizardRepository.findByIdWithSteps(wizardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Varázsló nem található: " + wizardId));
 
@@ -467,6 +487,22 @@ public class ClosingWizardService {
 
         // Valódi napzárás végrehajtása a DailyClosingService-en keresztül
         LocalDate closingDate = wizard.getClosingDate() != null ? wizard.getClosingDate() : LocalDate.now();
+
+        // G3 (FR-13): eltérés-magyarázat gate a véglegesítés előtt.
+        java.math.BigDecimal discrepancy = computeCashDiscrepancy(wizard.getBranch() != null ? wizard.getBranch().getId() : null, closingDate);
+        wizard.setDiscrepancyAmount(discrepancy);
+        if (discrepancyExplanation != null && !discrepancyExplanation.isBlank()) {
+            wizard.setDiscrepancyExplanation(discrepancyExplanation.trim());
+        }
+        boolean enforce = systemParameterService != null
+                && "true".equalsIgnoreCase(systemParameterService.getValue(CLOSING_DISCREPANCY_PARAM, "false"));
+        if (enforce) {
+            String blockReason = closingDiscrepancyBlockReason(
+                    discrepancy, wizard.getDiscrepancyExplanation(), DISCREPANCY_TOLERANCE_HUF);
+            if (blockReason != null) {
+                throw new ValidationException(blockReason);
+            }
+        }
         ClosingWizardResult closingResult = dailyClosingService.startDailyClosing(closingDate);
 
         if (!closingResult.isAllPassed()) {
@@ -487,6 +523,46 @@ public class ClosingWizardService {
         log.info("Zárás véglegesítve: wizard={}, closingDate={}", wizardId, closingDate);
 
         return true;
+    }
+
+    /**
+     * G3 (FR-13): a pénzügyi eltérés (címletezett − várt készlet) kiszámítása a
+     * zárás napjára. {@code null} csak akkor, ha a branchId null; a repó query-k
+     * COALESCE-olnak 0-ra, így hiányzó adatnál az eltérés 0 (toleranciaon belül).
+     */
+    private java.math.BigDecimal computeCashDiscrepancy(UUID branchId, LocalDate date) {
+        if (branchId == null) {
+            return null;
+        }
+        java.math.BigDecimal denominated = denominationBalanceRepository.sumDenominatedAmount(branchId, date, "EVENING");
+        java.math.BigDecimal expected = cashBalanceRepository.sumCurrentBalanceHuf(branchId);
+        if (denominated == null || expected == null) {
+            return null;
+        }
+        return denominated.subtract(expected);
+    }
+
+    /**
+     * G3 (FR-13) eltérés-gate döntés — statikus, függőség-mentes (tesztelhető).
+     *
+     * @return blokkoló indok, ha (az eltérés meghaladja a toleranciát ÉS nincs
+     *         magyarázat); {@code null}, ha nincs eltérés / toleranciaon belül /
+     *         van magyarázat / nem dönthető el (null eltérés)
+     */
+    static String closingDiscrepancyBlockReason(
+            java.math.BigDecimal discrepancyHuf, String explanation, java.math.BigDecimal toleranceHuf) {
+        if (discrepancyHuf == null) {
+            return null;
+        }
+        if (discrepancyHuf.abs().compareTo(toleranceHuf) <= 0) {
+            return null;
+        }
+        if (explanation != null && !explanation.isBlank()) {
+            return null;
+        }
+        return String.format(
+                "Pénzügyi eltérés (%s Ft) — a zárás véglegesítéséhez eltérés-magyarázat kötelező (FR-13).",
+                discrepancyHuf.toPlainString());
     }
 
     // ============ HELPER METHODS ============

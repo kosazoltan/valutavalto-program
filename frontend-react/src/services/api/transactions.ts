@@ -729,10 +729,13 @@ export const closingWizardApi = {
     const response = await api.post<ClosingWizard>(`/closing-wizard/${wizardId}/cancel`)
     return response.data
   },
-  finalize: async (wizardId: string, workerId: string): Promise<{ success: boolean; message: string }> => {
-    const response = await api.post<{ success: boolean; message: string }>(`/closing-wizard/${wizardId}/finalize`, null, {
-      params: { workerId }
-    })
+  finalize: async (wizardId: string, workerId: string, discrepancyExplanation?: string): Promise<{ success: boolean; message: string }> => {
+    // G3 (FR-13): az eltérés-magyarázat a body-ban (akár 1000 karakter) — Sourcery #791.
+    const response = await api.post<{ success: boolean; message: string }>(
+      `/closing-wizard/${wizardId}/finalize`,
+      discrepancyExplanation ? { discrepancyExplanation } : {},
+      { params: { workerId } },
+    )
     return response.data
   },
   /** Submit denomination counts — body: { "HUF": { 500: 3, 1000: 5, ... } } */

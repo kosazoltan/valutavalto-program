@@ -6,6 +6,7 @@ import { closingWizardApi } from '../../services/api/index'
 import type { ClosingWizard } from '../../services/api/transactions'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
+import { getErrorMessage } from '../../utils/errorHandling'
 import { useTranslation } from 'react-i18next'
 
 /** HUF cimletek — csökkeno sorrendben */
@@ -209,7 +210,24 @@ export default function ClosingWizardPage() {
       toast.success('Napzárás végrehajtva', 'A nap lezárva.')
       navigate('/')
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Napzárás véglegesítés sikertelen'
+      // getErrorMessage a backend response.data.message-t adja (AxiosError-nál az
+      // err.message csak "Request failed with status code 400" lenne) — Sourcery/Copilot #791.
+      const errorMsg = getErrorMessage(err)
+      // G3 (FR-13): ha az eltérés-gate magyarázatot kér, bekérjük és újrapróbáljuk.
+      if (/eltérés/i.test(errorMsg) && /magyarázat/i.test(errorMsg)) {
+        const explanation = window.prompt(`${errorMsg}\n\nAdja meg az eltérés magyarázatát:`)
+        if (explanation && explanation.trim()) {
+          try {
+            await closingWizardApi.finalize(wizardId, String(worker.id), explanation.trim())
+            toast.success('Napzárás végrehajtva', 'A nap lezárva (eltérés-magyarázattal).')
+            navigate('/')
+            return
+          } catch (retryErr) {
+            toast.error('Hiba', getErrorMessage(retryErr))
+            return
+          }
+        }
+      }
       toast.error('Hiba', errorMsg)
     }
   }, [canFinalize, wizardId, worker, navigate])

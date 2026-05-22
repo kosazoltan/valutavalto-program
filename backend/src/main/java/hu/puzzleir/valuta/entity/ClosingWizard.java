@@ -114,6 +114,18 @@ public class ClosingWizard {
     private String notes;
 
     /**
+     * G3 (FR-13): a zárásnál mért pénzügyi eltérés (címletezett − várt készlet, Ft).
+     */
+    @Column(name = "discrepancy_amount", precision = 15, scale = 2)
+    private java.math.BigDecimal discrepancyAmount;
+
+    /**
+     * G3 (FR-13): az eltéréshez megadott magyarázat (eltérés-gate).
+     */
+    @Column(name = "discrepancy_explanation", length = 1000)
+    private String discrepancyExplanation;
+
+    /**
      * Lépések
      */
     @OneToMany(mappedBy = "wizard", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
