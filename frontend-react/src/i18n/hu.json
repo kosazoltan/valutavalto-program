@@ -1538,7 +1538,10 @@
     "teljesit": "Teljesít",
     "tranzakcioTipusa": "Tranzakció típusa",
     "ujFoglalo": "+ Új foglaló",
-    "ujFoglaloLetrehozasa": "Új foglaló létrehozása"
+    "ujFoglaloLetrehozasa": "Új foglaló létrehozása",
+    "ugyfelLemondas": "Ügyfél lemondás",
+    "ebcLemondas": "EBC lemondás",
+    "megjegyzes": "Megjegyzés"
   },
   "resetPassword": {
     "cancel": "Mégse",

@@ -1,47 +1,57 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api/index';
+import { customerApi, type Customer } from '@/services/api/transactions';
 import { safeArray } from '@/utils/safeArray';
 import { useTranslation } from 'react-i18next'
 
+// A backend ReservationDto részleges leképezése (a UI által használt mezők) —
+// backend/.../dto/reservation/ReservationDto.java.
 interface Reservation {
   id: number;
-  reservationNumber: string;
-  customerName: string;
-  transactionType: string;
-  sourceCurrencyCode: string;
-  targetCurrencyCode: string;
-  sourceAmount: number;
-  targetAmount: number;
-  guaranteedRate: number;
+  customerId: number | null;
+  customerName: string | null;
+  branchId: string;
+  branchName: string | null;
+  currencyCode: string;
+  reservedAmount: number;
+  exchangeRate: number;
   depositAmount: number;
   status: string;
-  expiryDate: string;
+  expiresAt: string;
   createdAt: string;
+  fulfilledAt: string | null;
+  cancelledAt: string | null;
+  receiptNumber: string | null;
+  cancellationReason: string | null;
+  refundAmount: number | null;
+  notes: string | null;
+  expired: boolean;
 }
 
+// Backend ReservationStatus enum értékei.
 const statusColors: Record<string, string> = {
-  PENDING: 'bg-yellow-500',
-  CONFIRMED: 'bg-blue-500',
+  ACTIVE: 'bg-blue-500',
   FULFILLED: 'bg-green-500',
-  CANCELLED: 'bg-red-500',
+  CANCELLED_BY_CUSTOMER: 'bg-red-500',
+  CANCELLED_BY_COMPANY: 'bg-orange-500',
   EXPIRED: 'bg-gray-500',
-  REFUNDED: 'bg-purple-500',
 };
 
 const statusLabels: Record<string, string> = {
-  PENDING: 'Függőben',
-  CONFIRMED: 'Megerősítve',
+  ACTIVE: 'Aktív',
   FULFILLED: 'Teljesítve',
-  CANCELLED: 'Lemondva',
+  CANCELLED_BY_CUSTOMER: 'Ügyfél lemondta',
+  CANCELLED_BY_COMPANY: 'EBC lemondta',
   EXPIRED: 'Lejárt',
-  REFUNDED: 'Visszafizetve',
 };
+
+const EXPIRING_SOON_HOURS = 4;
 
 export default function ReservationPage() {
   const { t } = useTranslation()
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'expiring' | 'expired'>('active');
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
@@ -49,15 +59,27 @@ export default function ReservationPage() {
     setLoading(true);
     try {
       const branchId = localStorage.getItem('branchId') || '';
-      let response;
-      if (activeTab === 'active') {
-        response = await api.get(`/reservations/branch/${branchId}/active`);
-      } else if (activeTab === 'today') {
-        response = await api.get(`/reservations/branch/${branchId}/today`);
-      } else if (activeTab === 'expiring') {
-        response = await api.get(`/reservations/branch/${branchId}/expiring?hoursAhead=4`);
+      let data: Reservation[] = [];
+      if (activeTab === 'expired') {
+        const response = await api.get('/reservations/expired');
+        data = response?.data || [];
+      } else {
+        // A backend UUID branchId-t vár; üres érték → 400. Ilyenkor üres lista (nincs hívás).
+        if (!branchId) {
+          setReservations([]);
+          return;
+        }
+        // active + expiring egyaránt az aktív listából (a backend nem ad külön végpontot)
+        const response = await api.get('/reservations/active', { params: { branchId } });
+        data = response?.data || [];
+        if (activeTab === 'expiring') {
+          const limit = Date.now() + EXPIRING_SOON_HOURS * 3600 * 1000;
+          data = safeArray<Reservation>(data).filter(
+            (r) => new Date(r.expiresAt).getTime() <= limit
+          );
+        }
       }
-      setReservations(response?.data || []);
+      setReservations(data);
     } catch {
       setReservations([]);
     } finally {
@@ -69,40 +91,51 @@ export default function ReservationPage() {
     void loadReservations();
   }, [loadReservations]);
 
-  const handleConfirm = useCallback(async (id: number) => {
-    try {
-      await api.post(`/reservations/${id}/confirm`);
-      void loadReservations();
-    } catch {
-      // Intentional noop: list remains visible.
-    }
-  }, [loadReservations]);
-
-  const handleCancel = useCallback(async (id: number) => {
-    const reason = prompt('Lemondás oka:');
-    if (reason) {
-      try {
-        await api.post(`/reservations/${id}/cancel?reason=${encodeURIComponent(reason)}`);
-        void loadReservations();
-      } catch {
-        // Intentional noop: list remains visible.
-      }
-    }
-  }, [loadReservations]);
-
   const handleFulfill = useCallback(async (id: number) => {
     try {
       await api.post(`/reservations/${id}/fulfill`);
       void loadReservations();
     } catch {
-      // Intentional noop: list remains visible.
+      // A lista látható marad; a hiba-visszajelzést a backend toast adja.
     }
   }, [loadReservations]);
 
-  const filteredReservations = safeArray<Reservation>(reservations).filter(r =>
-    r.reservationNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.customerName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleCancelByCustomer = useCallback(async (id: number) => {
+    const reason = prompt('Lemondás oka (ügyfél miatt — a letét nem jár vissza):');
+    if (reason === null || !reason.trim()) return;
+    try {
+      await api.post(`/reservations/${id}/cancel-by-customer`, { reason: reason.trim() });
+      void loadReservations();
+    } catch {
+      // noop
+    }
+  }, [loadReservations]);
+
+  const handleCancelByCompany = useCallback(async (id: number) => {
+    const reason = prompt('Lemondás oka (EBC miatt — dupla letét-visszafizetés, supervisor jóváhagyás):');
+    if (reason === null || !reason.trim()) return;
+    const supervisorWorkerId = Number(localStorage.getItem('workerId')) || undefined;
+    if (!supervisorWorkerId) {
+      // A backend kötelezővé teszi a supervisorWorkerId-t az EBC-stornóhoz.
+      alert('Hiányzó supervisor azonosító — jelentkezzen be újra a jóváhagyáshoz.');
+      return;
+    }
+    try {
+      await api.post(`/reservations/${id}/cancel-by-company`, { reason: reason.trim(), supervisorWorkerId });
+      void loadReservations();
+    } catch {
+      // noop
+    }
+  }, [loadReservations]);
+
+  const filteredReservations = safeArray<Reservation>(reservations).filter((r) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      (r.receiptNumber || '').toLowerCase().includes(term) ||
+      (r.customerName || '').toLowerCase().includes(term) ||
+      String(r.id).includes(term)
+    );
+  });
 
   return (
     <div className="container mx-auto p-4">
@@ -128,9 +161,9 @@ export default function ReservationPage() {
 
       <div className="mb-4 flex gap-2">
         {[
-          { key: 'active', label: 'Aktív foglalók' },
-          { key: 'today', label: 'Mai foglalók' },
-          { key: 'expiring', label: 'Hamarosan lejáró' },
+          { key: 'active' as const, label: 'Aktív foglalók' },
+          { key: 'expiring' as const, label: `Hamarosan lejáró (${EXPIRING_SOON_HOURS}h)` },
+          { key: 'expired' as const, label: 'Lejárt foglalók' },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -157,7 +190,6 @@ export default function ReservationPage() {
               <tr>
                 <th className="p-3 text-left">{t('reservations.foglaloSzam')}</th>
                 <th className="p-3 text-left">{t('common.customer')}</th>
-                <th className="p-3 text-left">{t('common.type')}</th>
                 <th className="p-3 text-left">{t('common.amount')}</th>
                 <th className="p-3 text-left">{t('cashier.exchangeRate')}</th>
                 <th className="p-3 text-left">{t('reservations.letet')}</th>
@@ -169,50 +201,44 @@ export default function ReservationPage() {
             <tbody>
               {filteredReservations.map((reservation) => (
                 <tr key={reservation.id} className="border-t hover:bg-gray-50">
-                  <td className="p-3 font-mono">{reservation.reservationNumber}</td>
+                  <td className="p-3 font-mono">{reservation.receiptNumber || `#${reservation.id}`}</td>
                   <td className="p-3">{reservation.customerName || '-'}</td>
-                  <td className="p-3">{reservation.transactionType === 'BUY' ? 'Vétel' : 'Eladás'}</td>
                   <td className="p-3">
-                    {reservation.sourceAmount} {reservation.sourceCurrencyCode} →{' '}
-                    {reservation.targetAmount} {reservation.targetCurrencyCode}
+                    {reservation.reservedAmount?.toLocaleString('hu-HU')} {reservation.currencyCode}
                   </td>
-                  <td className="p-3">{reservation.guaranteedRate?.toFixed(4)}</td>
-                  <td className="p-3">{reservation.depositAmount?.toLocaleString()} {t('components.ft')}</td>
+                  <td className="p-3">{reservation.exchangeRate?.toFixed(4)}</td>
+                  <td className="p-3">{reservation.depositAmount?.toLocaleString('hu-HU')} {t('components.ft')}</td>
                   <td className="p-3">
-                    {new Date(reservation.expiryDate).toLocaleString('hu-HU')}
+                    {reservation.expiresAt ? new Date(reservation.expiresAt).toLocaleString('hu-HU') : '-'}
                   </td>
                   <td className="p-3">
-                    <span className={`px-2 py-1 text-xs text-white rounded ${statusColors[reservation.status]}`}>
+                    <span className={`px-2 py-1 text-xs text-white rounded ${statusColors[reservation.status] || 'bg-gray-400'}`}>
                       {statusLabels[reservation.status] || reservation.status}
                     </span>
                   </td>
                   <td className="p-3">
-                    <div className="flex gap-2">
-                      {reservation.status === 'PENDING' && (
-                        <>
-                          <button
-                            onClick={() => handleConfirm(reservation.id)}
-                            className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                          >
-                            {t('reservations.megerosit')}
-                          </button>
-                          <button
-                            onClick={() => handleCancel(reservation.id)}
-                            className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                          >
-                            {t('reservations.lemond')}
-                          </button>
-                        </>
-                      )}
-                      {reservation.status === 'CONFIRMED' && (
+                    {reservation.status === 'ACTIVE' && (
+                      <div className="flex gap-2">
                         <button
                           onClick={() => handleFulfill(reservation.id)}
-                          className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+                          className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
                         >
                           {t('reservations.teljesit')}
                         </button>
-                      )}
-                    </div>
+                        <button
+                          onClick={() => handleCancelByCustomer(reservation.id)}
+                          className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                        >
+                          {t('reservations.ugyfelLemondas')}
+                        </button>
+                        <button
+                          onClick={() => handleCancelByCompany(reservation.id)}
+                          className="px-2 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700"
+                        >
+                          {t('reservations.ebcLemondas')}
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -228,7 +254,7 @@ export default function ReservationPage() {
             <CreateReservationForm
               onSuccess={() => {
                 setShowCreateDialog(false);
-                loadReservations();
+                void loadReservations();
               }}
               onCancel={() => setShowCreateDialog(false)}
             />
@@ -239,6 +265,12 @@ export default function ReservationPage() {
   );
 }
 
+interface CurrencyOption {
+  code?: string;
+  currencyCode?: string;
+  name?: string;
+}
+
 function CreateReservationForm({
   onSuccess,
   onCancel,
@@ -247,59 +279,137 @@ function CreateReservationForm({
   onCancel: () => void;
 }) {
   const { t } = useTranslation()
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [currencies, setCurrencies] = useState<CurrencyOption[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    customerName: '',
-    transactionType: 'BUY',
-    sourceCurrencyId: '',
-    targetCurrencyId: '',
-    sourceAmount: '',
-    guaranteedRate: '',
-    depositAmount: '',
+    currencyCode: '',
+    amount: '',
+    exchangeRate: '',
     validityHours: '24',
+    notes: '',
   });
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const response = await api.get('/currencies');
+        setCurrencies(safeArray<CurrencyOption>(response?.data));
+      } catch {
+        setCurrencies([]);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!customerSearch.trim()) {
+      setCustomerResults([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const results = await customerApi.search(customerSearch.trim());
+          setCustomerResults(safeArray<Customer>(results));
+        } catch {
+          setCustomerResults([]);
+        }
+      })();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [customerSearch]);
+
+  const toLocalDateTime = (hoursAhead: number): string => {
+    const d = new Date(Date.now() + hoursAhead * 3600 * 1000);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null);
+    if (!selectedCustomer) {
+      setError('Válasszon ügyfelet a keresőből!');
+      return;
+    }
+    setSubmitting(true);
     try {
       await api.post('/reservations', {
-        ...formData,
-        sourceAmount: parseFloat(formData.sourceAmount),
-        guaranteedRate: parseFloat(formData.guaranteedRate),
-        depositAmount: parseFloat(formData.depositAmount),
-        validityHours: parseInt(formData.validityHours),
+        customerId: selectedCustomer.id,
+        currencyCode: formData.currencyCode,
+        amount: parseFloat(formData.amount),
+        exchangeRate: parseFloat(formData.exchangeRate),
+        expiresAt: toLocalDateTime(parseInt(formData.validityHours, 10)),
+        notes: formData.notes || undefined,
       });
       onSuccess();
     } catch {
-      // Intentional noop: form remains visible for correction.
+      setError('A foglaló létrehozása sikertelen. Ellenőrizze az adatokat.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {error && <div className="p-2 bg-red-100 text-red-700 rounded text-sm">{error}</div>}
+
+      <div>
+        <label className="block text-sm font-medium mb-1">{t('pep.ugyfelNeve')}</label>
+        {selectedCustomer ? (
+          <div className="flex items-center justify-between p-2 border rounded bg-green-50">
+            <span>{selectedCustomer.name} {selectedCustomer.customerCode ? `(${selectedCustomer.customerCode})` : ''}</span>
+            <button type="button" onClick={() => setSelectedCustomer(null)} className="text-xs text-red-600">
+              {t('common.cancel')}
+            </button>
+          </div>
+        ) : (
+          <>
+            <input
+              type="text"
+              value={customerSearch}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomerSearch(e.target.value)}
+              placeholder="Ügyfél keresése név alapján..."
+              className="w-full p-2 border rounded"
+            />
+            {customerResults.length > 0 && (
+              <ul className="border rounded mt-1 max-h-40 overflow-y-auto">
+                {customerResults.map((c) => (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedCustomer(c); setCustomerResults([]); setCustomerSearch(''); }}
+                      className="w-full text-left p-2 hover:bg-gray-100"
+                    >
+                      {c.name} {c.customerCode ? `(${c.customerCode})` : ''}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">{t('pep.ugyfelNeve')}</label>
-          <input
-            type="text"
-            value={formData.customerName}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setFormData({ ...formData, customerName: e.target.value })
+          <label className="block text-sm font-medium mb-1">{t('common.currency')}</label>
+          <select
+            value={formData.currencyCode}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setFormData({ ...formData, currencyCode: e.target.value })
             }
             className="w-full p-2 border rounded"
             required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">{t('reservations.tranzakcioTipusa')}</label>
-          <select
-            value={formData.transactionType}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-              setFormData({ ...formData, transactionType: e.target.value })
-            }
-            className="w-full p-2 border rounded"
           >
-            <option value="BUY">{t('cashier.buy')}</option>
-            <option value="SELL">{t('cashier.sell')}</option>
+            <option value="">—</option>
+            {currencies.map((c) => {
+              const code = c.code || c.currencyCode || '';
+              return code ? <option key={code} value={code}>{code}{c.name ? ` – ${c.name}` : ''}</option> : null;
+            })}
           </select>
         </div>
         <div>
@@ -307,9 +417,9 @@ function CreateReservationForm({
           <input
             type="number"
             step="0.01"
-            value={formData.sourceAmount}
+            value={formData.amount}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setFormData({ ...formData, sourceAmount: e.target.value })
+              setFormData({ ...formData, amount: e.target.value })
             }
             className="w-full p-2 border rounded"
             required
@@ -320,21 +430,9 @@ function CreateReservationForm({
           <input
             type="number"
             step="0.0001"
-            value={formData.guaranteedRate}
+            value={formData.exchangeRate}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setFormData({ ...formData, guaranteedRate: e.target.value })
-            }
-            className="w-full p-2 border rounded"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">{t('reservations.letetOsszegeFt')}</label>
-          <input
-            type="number"
-            value={formData.depositAmount}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setFormData({ ...formData, depositAmount: e.target.value })
+              setFormData({ ...formData, exchangeRate: e.target.value })
             }
             className="w-full p-2 border rounded"
             required
@@ -356,17 +454,27 @@ function CreateReservationForm({
           </select>
         </div>
       </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">{t('reservations.megjegyzes')}</label>
+        <input
+          type="text"
+          value={formData.notes}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setFormData({ ...formData, notes: e.target.value })
+          }
+          className="w-full p-2 border rounded"
+        />
+      </div>
+
       <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 border rounded hover:bg-gray-50"
-        >
+        <button type="button" onClick={onCancel} className="px-4 py-2 border rounded hover:bg-gray-50">
           {t('common.cancel')}
         </button>
         <button
           type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          disabled={submitting}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
         >
           {t('common.create')}
         </button>
