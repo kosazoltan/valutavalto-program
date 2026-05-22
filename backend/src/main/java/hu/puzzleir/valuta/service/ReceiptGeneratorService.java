@@ -43,6 +43,9 @@ public class ReceiptGeneratorService {
     /** 300.000 Ft — jogszabályi küszöb PEP és Jogcím nyilatkozathoz */
     private static final BigDecimal HIGH_VALUE_THRESHOLD = new BigDecimal("300000");
     private static final DateTimeFormatter RECEIPT_DATE_FORMAT = DateTimeFormatter.ofPattern("yyMMdd");
+    /** Megjelenítendő dátum/időpont formátum a bizonylatokon (Sourcery #783 konzisztencia). */
+    private static final DateTimeFormatter DISPLAY_DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DISPLAY_DATETIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     /**
      * Bizonylat sorszám — a nap + milliszekundum + AtomicLong kombináció biztosítja
      * az egyediséget újraindítás után is: System.currentTimeMillis() % 10000 az alap,
@@ -166,6 +169,12 @@ public class ReceiptGeneratorService {
         var customer = reservation.getCustomer();
         var branch = reservation.getBranch();
 
+        // Sourcery #783: a bizonylat dátuma a tényleges domain-eseményből (létrehozás
+        // ill. lemondás), nem nyers now() — auditálható, konzisztens.
+        LocalDateTime receiptDate = isRefund
+            ? (reservation.getCancelledAt() != null ? reservation.getCancelledAt() : LocalDateTime.now())
+            : (reservation.getCreatedAt() != null ? reservation.getCreatedAt() : LocalDateTime.now());
+
         List<ReceiptData.ReceiptLineData> lines = new ArrayList<>();
         lines.add(ReceiptData.ReceiptLineData.builder()
                 .label(isRefund ? "FOGLALÓ VISSZAFIZETÉSE" : "FOGLALÓ ÁTVÉTELE")
@@ -183,12 +192,13 @@ public class ReceiptGeneratorService {
                 .value(reservation.getDepositAmount() != null ? reservation.getDepositAmount().toPlainString() + " Ft" : "—").build());
         if (reservation.getExpiresAt() != null) {
             lines.add(ReceiptData.ReceiptLineData.builder()
-                    .label("Érvényesség").value(reservation.getExpiresAt().toString()).build());
+                    .label("Érvényesség").value(reservation.getExpiresAt().format(DISPLAY_DATETIME)).build());
         }
         if (isRefund) {
             lines.add(ReceiptData.ReceiptLineData.builder()
                     .label("Visszafizetett összeg")
-                    .value(reservation.getRefundAmount() != null ? reservation.getRefundAmount().toPlainString() + " Ft" : "0 Ft").build());
+                    // Sourcery #783: null → "—" (ismeretlen), nem félrevezető "0 Ft".
+                    .value(reservation.getRefundAmount() != null ? reservation.getRefundAmount().toPlainString() + " Ft" : "—").build());
             if (reservation.getCancellationReason() != null && !reservation.getCancellationReason().isBlank()) {
                 lines.add(ReceiptData.ReceiptLineData.builder()
                         .label("Lemondás oka").value(reservation.getCancellationReason()).build());
@@ -202,7 +212,7 @@ public class ReceiptGeneratorService {
                 .branchName(branch != null ? branch.getName() : "")
                 .branchAddress(branch != null ? branch.getAddress() : "")
                 .workerName(reservation.getWorker() != null ? reservation.getWorker().getName() : "")
-                .date(LocalDateTime.now())
+                .date(receiptDate)
                 .currencyCode(reservation.getCurrencyCode())
                 .foreignAmount(reservation.getReservedAmount())
                 .rate(reservation.getExchangeRate())
@@ -216,7 +226,7 @@ public class ReceiptGeneratorService {
                 .customerMotherName(customer != null ? customer.getMotherName() : null)
                 .customerBirthPlace(customer != null ? customer.getBirthPlace() : null)
                 .customerBirthDate(customer != null && customer.getBirthDate() != null
-                        ? customer.getBirthDate().toString() : null)
+                        ? customer.getBirthDate().format(DISPLAY_DATE) : null)
                 .customerNationality(customer != null ? customer.getNationality() : null)
                 .lines(lines)
                 .qrCode(receiptNumber)
