@@ -1267,4 +1267,35 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findReceiptListByCompanyId(
         @Param("companyId") UUID companyId,
         Pageable pageable);
+
+    /**
+     * G23 (EXCMD b8-forgalom FR-13..15): körzet-szintű havi forgalmi összesítő.
+     *
+     * <p>Régiónként (branch.regionCode) aggregálja a COMPLETED, pénzügyileg
+     * effektív tranzakciókat egy dátum-tartományban: vétel-darab, eladás-darab,
+     * vétel-HUF, eladás-HUF, egyedi ügyfelek száma, aktív (forgalmas) napok száma.
+     * A NULL régiókódot a hívó "EGYÉB"-ként kezeli. Multi-tenant: company.id szűrt.</p>
+     *
+     * <p>Visszatérés: {@code Object[]} sorok — [0]=regionCode (String, lehet null),
+     * [1]=buyCount (Long), [2]=sellCount (Long), [3]=buyHuf (BigDecimal),
+     * [4]=sellHuf (BigDecimal), [5]=distinctCustomers (Long),
+     * [6]=activeDays (Long).</p>
+     */
+    @Query("SELECT t.branch.regionCode, " +
+           "SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.BUY THEN 1L ELSE 0L END), " +
+           "SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.SELL THEN 1L ELSE 0L END), " +
+           "COALESCE(SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.BUY THEN t.hufAmount ELSE 0 END), 0), " +
+           "COALESCE(SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.SELL THEN t.hufAmount ELSE 0 END), 0), " +
+           "COUNT(DISTINCT t.customerId), " +
+           "COUNT(DISTINCT t.transactionDate) " +
+           "FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.status = hu.puzzleir.valuta.entity.TransactionStatus.COMPLETED " +
+           "AND t.financialEffective = true " +
+           "AND t.transactionDate BETWEEN :startDate AND :endDate " +
+           "GROUP BY t.branch.regionCode")
+    List<Object[]> aggregateRegionTurnover(
+        @Param("companyId") UUID companyId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate);
 }

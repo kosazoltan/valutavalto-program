@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import {
   FileText, Calendar, BarChart3, PieChart, TrendingUp,
-  FileSpreadsheet, BookOpen, Sun, Moon, Clock,
+  FileSpreadsheet, BookOpen, Sun, Moon, Clock, Map as MapIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -17,6 +17,7 @@ const reportLinks: ReportLink[] = [
   { id: 'live-cash', name: 'Pillanatnyi pénztárállás', icon: BarChart3, description: 'Valutánkénti nyitó/bevétel/kiadás/záró + kezelési díj', path: '/reports/live-cash-position' },
   { id: 'monthly-tablo', name: 'Havi tabló', icon: PieChart, description: 'Teljes havi forgalmi tabló (valuta, készpénz/kártya, WU/ÁFA, mozgások)', path: '/reports/monthly-tablo' },
   { id: 'daily-turnover', name: 'Napi forgalom', icon: Calendar, description: 'Napi tranzakciók és forgalom összesítése', path: '/daily-turnover' },
+  { id: 'region-turnover', name: 'Körzeti forgalom', icon: MapIcon, description: 'Körzet-szintű havi forgalmi/trend összesítő', path: '/reports/region-turnover' },
   { id: 'daybook', name: 'Napló (DayBook)', icon: BookOpen, description: 'Napi bizonylatok kronológikus listája', path: '/daybook' },
   { id: 'decade', name: 'Dekádzárás', icon: Clock, description: 'Dekádos forgalmi összesítő', path: '/decade' },
   { id: 'profit', name: 'Eredmény kimutatás', icon: TrendingUp, description: 'Profit és veszteség számítás', path: '/profit' },
