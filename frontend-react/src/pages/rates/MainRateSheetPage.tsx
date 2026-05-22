@@ -10,6 +10,7 @@ import { exchangeRateMasterApi, type ExchangeRateMaster, type CreateMasterRateRe
 import { currencyApi } from '../../services/api/exchange-rates'
 import CurrencyManagerModal from './components/CurrencyManagerModal'
 import { computeCrossSettlement, resolveSettlement, crossSettlementStaysAuto } from './mainSheetRules'
+import { validateRateDirection } from './rateDirectionRules'
 
 /**
  * Főlap (0-s lap) — Árfolyamkészítő program ALAP felülete.
@@ -761,6 +762,33 @@ export default function MainRateSheetPage() {
       )
       setPublishing(false)
       return
+    }
+
+    // G7 (EXCMD b1-arfolyamkeszito FR-RFM-25): kiküldés előtti irány-validáció —
+    // az eladási (weakMultiSell) nem lehet kisebb az elszámolónál, a vételi
+    // (weakMultiBuy) nem lehet magasabb. Sértés esetén figyelmeztetés + megerősítés.
+    const directionViolations = validateRateDirection(
+      modifiedRows.map(({ row, effectiveSettlement }) => ({
+        currencyCode: row.currency,
+        settlement: effectiveSettlement,
+        buyRate: row.weakMultiBuy,
+        sellRate: row.weakMultiSell,
+      })),
+    )
+    if (directionViolations.length > 0) {
+      const list = directionViolations.map((v) => `• ${v.message}`).join('\n')
+      // window.confirm: szándékos, függőség-mentes választás, konzisztens a meglévő
+      // mintával (ReservationPage). Egyedi modal-dialógusra cserélése külön UX-kör,
+      // a futó-app (Electron) verifikációval együtt (Sourcery #787).
+      const proceed = window.confirm(
+        'Árfolyam-irány figyelmeztetés (FR-RFM-25):\n\n' + list +
+        '\n\nAz eladási árfolyam nem lehet kisebb, a vételi nem lehet magasabb az elszámolónál. ' +
+        'Biztosan kiküldi így az árfolyamot?',
+      )
+      if (!proceed) {
+        setPublishing(false)
+        return
+      }
     }
 
     // 3. Szerver-publikalas - kulon try-block (Sourcery PR #687)
