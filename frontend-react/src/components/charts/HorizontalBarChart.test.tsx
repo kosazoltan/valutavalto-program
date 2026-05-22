@@ -9,19 +9,42 @@ describe('HorizontalBarChart', () => {
   })
 
   it('minden adatpont feliratát és értékét megjeleníti', () => {
+    // Egyéni formázó → locale-független assertion (Copilot #781).
     render(
       <HorizontalBarChart
         data={[
           { label: 'EUR', value: 1000 },
           { label: 'USD', value: 500 },
         ]}
+        formatValue={(n) => `#${n}`}
       />,
     )
     expect(screen.getByText('EUR')).toBeInTheDocument()
     expect(screen.getByText('USD')).toBeInTheDocument()
-    // 1000 hu-HU formázva
-    expect(screen.getByText('1000')).toBeInTheDocument()
-    expect(screen.getByText('500')).toBeInTheDocument()
+    expect(screen.getByText('#1000')).toBeInTheDocument()
+    expect(screen.getByText('#500')).toBeInTheDocument()
+  })
+
+  it('az aria-label konfigurálható', () => {
+    render(
+      <HorizontalBarChart data={[{ label: 'EUR', value: 1 }]} ariaLabel="Profit valutánként" />,
+    )
+    expect(screen.getByRole('img', { name: 'Profit valutánként' })).toBeInTheDocument()
+  })
+
+  it('duplikált label esetén nincs key-ütközés (mindkét sor renderel)', () => {
+    const { container } = render(
+      <HorizontalBarChart
+        data={[
+          { label: 'EUR', value: 10 },
+          { label: 'EUR', value: 20 },
+        ]}
+        formatValue={(n) => `#${n}`}
+      />,
+    )
+    expect(container.querySelectorAll('div[style]').length).toBe(2)
+    expect(screen.getByText('#10')).toBeInTheDocument()
+    expect(screen.getByText('#20')).toBeInTheDocument()
   })
 
   it('a legnagyobb abszolút értékhez skáláz (100% szélesség)', () => {

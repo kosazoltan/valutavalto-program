@@ -198,6 +198,7 @@ export default function DailyTurnoverPage() {
                     barClassName="bg-yellow-500"
                     formatValue={fmtHuf}
                     emptyText={t('reports.nincsForgalmiAdat')}
+                    ariaLabel={t('reports.grafikonProfit')}
                   />
                 </div>
                 <div>
@@ -210,6 +211,7 @@ export default function DailyTurnoverPage() {
                     barClassName="bg-blue-500"
                     formatValue={(n) => n.toLocaleString('hu-HU')}
                     emptyText={t('reports.nincsForgalmiAdat')}
+                    ariaLabel={t('reports.grafikonTranzakcio')}
                   />
                 </div>
               </div>
