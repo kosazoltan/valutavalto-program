@@ -14,6 +14,7 @@ interface ReportLink {
 }
 
 const reportLinks: ReportLink[] = [
+  { id: 'live-cash', name: 'Pillanatnyi pénztárállás', icon: BarChart3, description: 'Valutánkénti nyitó/bevétel/kiadás/záró + kezelési díj', path: '/reports/live-cash-position' },
   { id: 'daily-turnover', name: 'Napi forgalom', icon: Calendar, description: 'Napi tranzakciók és forgalom összesítése', path: '/daily-turnover' },
   { id: 'daybook', name: 'Napló (DayBook)', icon: BookOpen, description: 'Napi bizonylatok kronológikus listája', path: '/daybook' },
   { id: 'decade', name: 'Dekádzárás', icon: Clock, description: 'Dekádos forgalmi összesítő', path: '/decade' },
