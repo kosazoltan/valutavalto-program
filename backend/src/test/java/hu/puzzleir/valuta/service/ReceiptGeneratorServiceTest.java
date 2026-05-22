@@ -173,4 +173,73 @@ class ReceiptGeneratorServiceTest {
         assertThat(result.getReceiptType()).isEqualTo("CLOSING");
         assertThat(result.getHufAmount()).isEqualByComparingTo(new BigDecimal("5000000"));
     }
+
+    private hu.puzzleir.valuta.entity.Reservation buildReservation() {
+        var company = hu.puzzleir.valuta.entity.Company.builder().name("Teszt Kft.").build();
+        var branch = hu.puzzleir.valuta.entity.Branch.builder()
+                .name("Központi iroda").address("Fő utca 1.").company(company).build();
+        var customer = hu.puzzleir.valuta.entity.Customer.builder()
+                .name("Teszt Ügyfél")
+                .documentNumber("AB123456")
+                .birthPlace("Budapest")
+                .birthDate(java.time.LocalDate.of(1990, 1, 15))
+                .motherName("Anya Anna")
+                .address("Lakcím 2.")
+                .nationality("HU")
+                .build();
+        return hu.puzzleir.valuta.entity.Reservation.builder()
+                .id(77L)
+                .company(company)
+                .branch(branch)
+                .customer(customer)
+                .currencyCode("EUR")
+                .reservedAmount(new BigDecimal("1000.00"))
+                .exchangeRate(new BigDecimal("400.0000"))
+                .depositAmount(new BigDecimal("20000.00"))
+                .expiresAt(java.time.LocalDateTime.of(2026, 6, 1, 12, 0))
+                .receiptNumber("F-260522-0001")
+                .build();
+    }
+
+    @Test
+    @DisplayName("generateReservationReceipt (átvétel) → RESERVATION típus + ügyfél-pillanatkép")
+    void testReservationReceiptTaken() {
+        ReceiptData result = service.generateReservationReceipt(buildReservation(), false);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getReceiptType()).isEqualTo("RESERVATION");
+        assertThat(result.getReceiptNumber()).isEqualTo("F-260522-0001");
+        assertThat(result.getCurrencyCode()).isEqualTo("EUR");
+        assertThat(result.getForeignAmount()).isEqualByComparingTo("1000.00");
+        assertThat(result.getRate()).isEqualByComparingTo("400.0000");
+        assertThat(result.getHufAmount()).isEqualByComparingTo("20000.00");
+        assertThat(result.getCustomerName()).isEqualTo("Teszt Ügyfél");
+        assertThat(result.getCustomerIdNumber()).isEqualTo("AB123456");
+        assertThat(result.getCustomerBirthPlace()).isEqualTo("Budapest");
+        assertThat(result.getCustomerMotherName()).isEqualTo("Anya Anna");
+        assertThat(result.getLines()).anyMatch(l -> "FOGLALÓ ÁTVÉTELE".equals(l.getLabel()));
+    }
+
+    @Test
+    @DisplayName("generateReservationReceipt (visszafizetés) → VISSZAFIZETÉSE címsor + ok")
+    void testReservationReceiptRefund() {
+        var reservation = buildReservation();
+        reservation.setCancellationReceiptNumber("F-260522-0002");
+        reservation.setCancellationReason("Ügyfél elállt");
+        reservation.setRefundAmount(new BigDecimal("20000.00"));
+
+        ReceiptData result = service.generateReservationReceipt(reservation, true);
+
+        assertThat(result.getReceiptType()).isEqualTo("RESERVATION");
+        assertThat(result.getReceiptNumber()).isEqualTo("F-260522-0002");
+        assertThat(result.getLines()).anyMatch(l -> "FOGLALÓ VISSZAFIZETÉSE".equals(l.getLabel()));
+        assertThat(result.getLines()).anyMatch(l -> "Ügyfél elállt".equals(l.getValue()));
+    }
+
+    @Test
+    @DisplayName("generateReservationReceipt null foglaló → ResourceNotFoundException")
+    void testReservationReceiptNull() {
+        assertThatThrownBy(() -> service.generateReservationReceipt(null, false))
+                .isInstanceOf(hu.puzzleir.valuta.exception.ResourceNotFoundException.class);
+    }
 }
