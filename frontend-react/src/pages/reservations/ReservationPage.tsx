@@ -4,7 +4,8 @@ import { customerApi, type Customer } from '@/services/api/transactions';
 import { safeArray } from '@/utils/safeArray';
 import { useTranslation } from 'react-i18next'
 
-// A backend ReservationDto-jával egyező alak (backend/.../dto/reservation/ReservationDto.java).
+// A backend ReservationDto részleges leképezése (a UI által használt mezők) —
+// backend/.../dto/reservation/ReservationDto.java.
 interface Reservation {
   id: number;
   customerId: number | null;
@@ -63,6 +64,11 @@ export default function ReservationPage() {
         const response = await api.get('/reservations/expired');
         data = response?.data || [];
       } else {
+        // A backend UUID branchId-t vár; üres érték → 400. Ilyenkor üres lista (nincs hívás).
+        if (!branchId) {
+          setReservations([]);
+          return;
+        }
         // active + expiring egyaránt az aktív listából (a backend nem ad külön végpontot)
         const response = await api.get('/reservations/active', { params: { branchId } });
         data = response?.data || [];
@@ -96,9 +102,9 @@ export default function ReservationPage() {
 
   const handleCancelByCustomer = useCallback(async (id: number) => {
     const reason = prompt('Lemondás oka (ügyfél miatt — a letét nem jár vissza):');
-    if (reason === null) return;
+    if (reason === null || !reason.trim()) return;
     try {
-      await api.post(`/reservations/${id}/cancel-by-customer`, { reason });
+      await api.post(`/reservations/${id}/cancel-by-customer`, { reason: reason.trim() });
       void loadReservations();
     } catch {
       // noop
@@ -107,10 +113,15 @@ export default function ReservationPage() {
 
   const handleCancelByCompany = useCallback(async (id: number) => {
     const reason = prompt('Lemondás oka (EBC miatt — dupla letét-visszafizetés, supervisor jóváhagyás):');
-    if (reason === null) return;
+    if (reason === null || !reason.trim()) return;
     const supervisorWorkerId = Number(localStorage.getItem('workerId')) || undefined;
+    if (!supervisorWorkerId) {
+      // A backend kötelezővé teszi a supervisorWorkerId-t az EBC-stornóhoz.
+      alert('Hiányzó supervisor azonosító — jelentkezzen be újra a jóváhagyáshoz.');
+      return;
+    }
     try {
-      await api.post(`/reservations/${id}/cancel-by-company`, { reason, supervisorWorkerId });
+      await api.post(`/reservations/${id}/cancel-by-company`, { reason: reason.trim(), supervisorWorkerId });
       void loadReservations();
     } catch {
       // noop

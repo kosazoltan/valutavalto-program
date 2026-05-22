@@ -70,8 +70,11 @@ describe('ReservationPage — backend kontraktus', () => {
       </MemoryRouter>
     )
     await waitFor(() => expect(mocks.get).toHaveBeenCalled())
-    const calledUrls = mocks.get.mock.calls.map((c) => String(c[0]))
-    expect(calledUrls.some((u) => u.includes('/branch/'))).toBe(false)
-    expect(calledUrls.some((u) => u.includes('/today'))).toBe(false)
+    const getUrls = mocks.get.mock.calls.map((c) => String(c[0]))
+    expect(getUrls.some((u) => u.includes('/branch/'))).toBe(false)
+    expect(getUrls.some((u) => u.includes('/today'))).toBe(false)
+    // a megszűnt /confirm végpontot sem GET, sem POST úton nem hívjuk
+    const postUrls = mocks.post.mock.calls.map((c) => String(c[0]))
+    expect([...getUrls, ...postUrls].some((u) => u.includes('/confirm'))).toBe(false)
   })
 })
