@@ -210,6 +210,21 @@ export default function ClosingWizardPage() {
       navigate('/')
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Napzárás véglegesítés sikertelen'
+      // G3 (FR-13): ha az eltérés-gate magyarázatot kér, bekérjük és újrapróbáljuk.
+      if (/eltérés/i.test(errorMsg) && /magyarázat/i.test(errorMsg)) {
+        const explanation = window.prompt(`${errorMsg}\n\nAdja meg az eltérés magyarázatát:`)
+        if (explanation && explanation.trim()) {
+          try {
+            await closingWizardApi.finalize(wizardId, String(worker.id), explanation.trim())
+            toast.success('Napzárás végrehajtva', 'A nap lezárva (eltérés-magyarázattal).')
+            navigate('/')
+            return
+          } catch (retryErr) {
+            toast.error('Hiba', retryErr instanceof Error ? retryErr.message : errorMsg)
+            return
+          }
+        }
+      }
       toast.error('Hiba', errorMsg)
     }
   }, [canFinalize, wizardId, worker, navigate])

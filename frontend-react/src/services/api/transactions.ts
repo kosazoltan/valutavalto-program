@@ -729,9 +729,10 @@ export const closingWizardApi = {
     const response = await api.post<ClosingWizard>(`/closing-wizard/${wizardId}/cancel`)
     return response.data
   },
-  finalize: async (wizardId: string, workerId: string): Promise<{ success: boolean; message: string }> => {
+  finalize: async (wizardId: string, workerId: string, discrepancyExplanation?: string): Promise<{ success: boolean; message: string }> => {
     const response = await api.post<{ success: boolean; message: string }>(`/closing-wizard/${wizardId}/finalize`, null, {
-      params: { workerId }
+      // G3 (FR-13): opcionális eltérés-magyarázat az eltérés-gate-hez.
+      params: { workerId, ...(discrepancyExplanation ? { discrepancyExplanation } : {}) }
     })
     return response.data
   },
