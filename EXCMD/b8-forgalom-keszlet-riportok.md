@@ -23,7 +23,7 @@ A régi program havi/napi forgalmi és készlet riportjainak STRUKTÚRÁJÁT (la
 | Ügyvezető / Belsőellenőr | Cég-szintű havi összesítő, körzet trend | EXECUTIVE / INTERNAL_AUDITOR |
 | admin | Minden riport | ADMIN |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-1 | Havi forgalmi riport fejléc cég + hónap megnevezéssel (pl. "EXCLUSIVE BEST CHANGE KFT 2024 SZEPTEMBER HAVI FORGALMA") | `Forgalom 2024.09.xlsx` R0 sharedStrings | M | frontend-react, kozponti-client |
@@ -44,7 +44,7 @@ A régi program havi/napi forgalmi és készlet riportjainak STRUKTÚRÁJÁT (la
 | FR-16 | Forint-összegek formátuma "X.XXX.XXX.- Ft" (napi jelentés) ill. szóköz-ezres "X XXX XXX" (körzet riport) | `Napi pénztár jelentés.jpg`, `Havi forgalom Békéscsaba körzet összesen.jpg` | S | penztar-client, frontend-react |
 | FR-17 | Éves (több éves, 2015–2024) forgalmi trend riport | `Forgalmak 2015-2024.ods` (csak fájlnév + felépítés ismert) | C | kozponti-client |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-1 | Multi-tenant: cég-szintű szűrés (Best/East/Pannon/Expressz) | minden lekérdezés companyId-ra szűr |

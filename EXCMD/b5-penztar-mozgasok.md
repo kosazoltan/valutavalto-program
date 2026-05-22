@@ -21,7 +21,7 @@ A régi valutaprogram pénztárak/egységek közötti pénzmozgás-funkciói (t�
 | Értéktáros / Főértéktáros | Értéktár felé/től történő mozgás (a listában "ÉRTÉKTÁR" célok) | TBD |
 | Adminisztrátor (pénztár-karbantartás) | Pénztár adatainak módosítása, új pénztár felvétele, pénztár törlése | TBD (vélhetően supervisor/jelszavas) |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-PM-01 | Társpénztár-választó dialógus címe "VÁLASSZA KI A TÁRSPÉNZTÁRT", oszlopai: SZÁM, MEGNEVEZÉS; gombok: "EZT VÁLASZTOM", "NEM VÁLASZTOK", "ÚJ PÉNZTÁR FELVÉTELE". | Pénztár választása.JPG | M | penztar-client, kozponti-client |
@@ -37,7 +37,7 @@ A régi valutaprogram pénztárak/egységek közötti pénzmozgás-funkciói (t�
 | FR-PM-11 | A szállítás-űrlap a társpénztár adatát előre kitöltve mutatja a kiválasztott egység alapján. | Szállítás pénztárak között menü.jpeg (TÁRSPÉNZTÁR: 75 BÉKÉSCSABA ÉRTÉKTÁR előkitöltve) | S | penztar-client |
 | FR-PM-12 | A "PÉNZTÁRAK KARBANTARTÁSA" képernyő alsó funkcióbillentyű-sora azonos a főmenüével (F1 ÁRFOLYAM ... Esc KILÉPÉS), és tartalmaz "FUTÓFÉNY", "KÖRLEVELEK", "PÉNZTÁR SZÜNET", "NÉVTELEN BEJELENTÉS", "Napi stornózott bizonylat darab" elemeket. | Pénztárak karbantartása .jpeg/2.jpeg | C | penztar-client |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-PM-01 | A társpénztár-lista hosszú is lehet (görgethető), keresés/lapozás szükséges. | Görgetősáv jelen van a listán |

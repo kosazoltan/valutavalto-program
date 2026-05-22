@@ -22,7 +22,7 @@ Egy Zárás Ablak, amely lépésenkénti (16 lépéses) wizardon vezeti végig a
 |---|---|---|
 | Felhasználó (pénztáros) | Zárás indítása, összesítések ellenőrzése/jóváhagyása, eltérés-magyarázat megadása, bizonylat-nyomtatás, riport-küldés beállítása, zárás véglegesítése (forrás: 1–7. szakasz) | TBD-2 (forrás nem nevez RBAC értéket) |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-1 | Zárás Ablak: korábbi zárások megtekintése | zaras_ablak.docx bevezető | Magas | penztar-client |
@@ -49,7 +49,7 @@ Egy Zárás Ablak, amely lépésenkénti (16 lépéses) wizardon vezeti végig a
 | FR-22 | Lépés 16: zárási folyamat véglegesítése "Megerősítés" gombbal; a rendszer lezárja a napi vagy dekád/havi zárást és elkészíti a végleges jelentéseket | zaras_ablak.docx 7. szakasz | Magas | penztar-client / backend |
 | FR-23 | Minden wizard-lépésen "Tovább" és "Vissza" navigáció | zaras_ablak.docx 2–6. szakasz | Magas | penztar-client |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-1 | Lépés-sorrend és kétirányú navigáció | Minden lépésen "Tovább"/"Vissza" elérhető; a 16. lépés a "Megerősítés" (forrás: 2–7. szakasz) |

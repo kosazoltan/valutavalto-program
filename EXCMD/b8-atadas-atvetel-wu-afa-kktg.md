@@ -25,7 +25,7 @@ A régi program "egyéb havi adatai" riportjának STRUKTÚRÁJÁT leírni: napi 
 | Ügyvezető / Belsőellenőr | ÁFA, haszon, cég-szintű egyéb-adatok | EXECUTIVE / INTERNAL_AUDITOR |
 | admin | Minden | ADMIN |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-1 | "EGYÉB HAVI ADATAI" riport fejléc cég + hónap (pl. "EXCLUSIVE BEST CHANGE KFT 2024 FEBRUAR EGYÉB HAVI ADATAI", "EXPRESSZ ÉKSZERHÁZ ...") | `WU e ker kktg áfa 2024 02 hó.xlsx` R0 + SS | M | kozponti-client, frontend-react |
@@ -45,7 +45,7 @@ A régi program "egyéb havi adatai" riportjának STRUKTÚRÁJÁT leírni: napi 
 | FR-15 | ÁFA + kezelési költség havi összesítő riport | `Áfa, kktg 2024 10 09 hó.xlsx` (csak fájl + cím ismert) | C | kozponti-client |
 | FR-16 | Haszon riport pénztáranként | `EXZ haszon pt 202409 hó.xlsx` (csak fájlnév ismert) | C | kozponti-client |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-1 | WU/elektromos záró-egyenleg napi folytonosság (előző nap záró = következő nap nyitó) | invariáns-teszt nem bukik |

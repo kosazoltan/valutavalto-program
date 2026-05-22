@@ -24,7 +24,7 @@ Korábbi valuta vétel/eladás (és kártyás POS) tranzakció szabályozott vis
 | Pénztáros ("felhasználó") | Sztornó kezdeményezése, eredeti tranzakció azonosítása, sztornó végrehajtása napi 3 sztornóig (forrás: 1–2. szakasz) | TBD-3 (forrás nem nevez RBAC értéket) |
 | Pénzügyi vezető | A 3. utáni sztornó jóváhagyása vagy elutasítása a rendszerben (forrás: 2. szakasz) | TBD-3 |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-1 | Sztornó kezdeményezhető a rendszerben és a POS terminálon | sztorno.docx 1. szakasz | Magas | penztar-client |
@@ -46,7 +46,7 @@ Korábbi valuta vétel/eladás (és kártyás POS) tranzakció szabályozott vis
 | FR-17 | Sztornó bizonylat nyomtatása a visszatérítés pontos összegével | sztorno.docx 5. szakasz | Magas | penztar-client |
 | FR-18 | Sztornó bizonylatok sorszám alapú archiválása | sztorno.docx 5. szakasz | Magas | backend |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-1 | Napi sztornó-számláló pontossága | A számláló az adott nap végrehajtott sztornóit követi; a 4. sztornótól engedélykötelesség lép életbe (forrás: 2. szakasz) |

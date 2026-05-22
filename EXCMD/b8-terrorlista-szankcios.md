@@ -20,7 +20,7 @@ A régi program szankciós/terror-lista állományának STRUKTÚRÁJÁT leírni 
 | Belsőellenőr | Lista karbantartás, találat-felülvizsgálat | INTERNAL_AUDITOR |
 | admin | Lista import/csere | ADMIN |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-1 | A lista plain-text állomány, fejléccel: "Exclusive Cégcsoport 2008" + jogi hivatkozás "Az Európai Unió által elrendelt pénzügyi és vagyoni korlátozó intézkedések alá vont személyek, szervezetek." | `Terrorlista2008.txt` 2–4. sor | M | backend, penztar-client |
@@ -33,7 +33,7 @@ A régi program szankciós/terror-lista állományának STRUKTÚRÁJÁT leírni 
 | FR-8 | Vezető szóköz/behúzás a sorok elején (formázási zaj, trim szükséges) | `Terrorlista2008.txt` (behúzott sorok) | S | backend |
 | FR-9 | A lista mint AML-szűrő bemenet az ügyfél-átvilágításnál (találat → figyelmeztetés/blokkolás) | a fájl szerepe (terror/szankciós lista) | M | backend, penztar-client |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-1 | Karakterkódolás-tolerancia (latin/görög/cirill/ékezet) | név-egyezés Unicode-normalizálással (NFC + diakritika-strip) |

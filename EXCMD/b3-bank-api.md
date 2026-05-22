@@ -16,13 +16,13 @@ Külső banki/jegybanki webszolgáltatások (MNB árfolyam-webservice, Raiffeise
 |---|---|---|
 | TBD (a forrás nem nevez meg szereplőt az API-kezeléshez) | TBD | TBD |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-1 | MNB árfolyam-webservice integráció a hivatalos jegybanki árfolyamok lekérésére (a forrás csak a működés-tájékoztató linket adja meg: MNB sajtóközlemény 2015). | API_bank.docx „mnb" sor + URL | TBD | TBD (vélhetően backend + arfolyam-keszito-client, de a forrás nem mondja → TBD) |
 | FR-2 | Raiffeisen Bank API integráció a megadott api-categories végpont szerint (`provider=raiffeisenbank-zrt`). A konkrét kategória/művelet a forrásból nem derül ki. | API_bank.docx „raffeisen" sor + URL | TBD | TBD |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-1 | Auth/hitelesítés a banki API-khoz (token/kulcs/OAuth) | TBD — a forrás nem ír auth-módot |

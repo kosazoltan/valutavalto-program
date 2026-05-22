@@ -19,7 +19,7 @@ A régi (dekanySoft / Exclusive Best Change ZRT.) Delphi valutaváltó program 0
 | Pénztáros | Bejelentkezett felhasználó (a fej-panelen "Bejelentkezett pénztáros: <WORKER_KOD>-<NEV>") — alapfunkciók, főmenü-navigáció | TBD (forrásból a konkrét RBAC nem olvasható) |
 | Értéktáros / egyéb | TBD — a forrás csak a bejelentkezett pénztárost mutatja | TBD |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-FM-01 | A főmenü fejléce megjeleníti a verziószámot ("04.00"). | Főmenü.JPG (bal felül: "Verziószám 04.00") | M | penztar-client |
@@ -44,7 +44,7 @@ A régi (dekanySoft / Exclusive Best Change ZRT.) Delphi valutaváltó program 0
 | FR-FM-20 | Alsó középső gombsor (a háttérkép felett): "NAPI JELENTÉS", "ÁTADÓLAP", "KÖRLEVELEK", "HAVI TABLÓK", "KÉSZLETEK", "ENGEDMÉNYEK", "PÉNZTÁRAK", "KILÉPÉS", "ZÁRÁS BEKÉSZÍTÉSE", "SUPERVISOR". | Főmenü.JPG (alsó gombsor, részben olvasható) | S | penztar-client |
 | FR-FM-21 | Külön panel-elemek: "NÉVTELEN BEJELENTÉS", "FUTÓFÉNY", "PÉNZTÁR SZÜNET", "KÖRLEVELEK", "Napi stornózott bizonylat darab" (érték pl. 6). | Pénztárak karbantartása képek alsó sávja megerősíti; Főmenü-kontextus | C | penztar-client |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-FM-01 | A főmenü minden menüpontja egyetlen kattintással / billentyűvel elérhető. | Minden FR-FM-07..18 menüpont aktiválható |

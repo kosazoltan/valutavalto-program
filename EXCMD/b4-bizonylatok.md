@@ -24,7 +24,7 @@ A régi pénzváltó-program nyomtatott bizonylatainak mező- és fejléc-szint�
 | Értéktáros (átvevő/átadó "ertektar") | Pénztári átadásnál szállító/átvevő (átadás 1: "SZALLITO NEVE: ertektar") | TBD |
 | Belsőellenőr / Ügyvezető | Dekádzárás, kezelési költség ellenőrzés (a forrásból nem azonosítható) | TBD |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 | --- | --- | --- | --- | --- |
 | FR-1 | Minden bizonylat közös fejléce: cégnév "EXCLUSIVE BEST CHANGE ZRT.", fiók-szám+város (pl. "75. <VAROS>"), cím ("<CIM>"), adószám "<ADOSZAM>", telefon "06/XX-XXX-XXXX" | forint_atveteli.jpg, kktg1.jpg, kktg2.jpg, penztar_atadas2.jpg | M | penztar-client |
@@ -49,7 +49,7 @@ A régi pénzváltó-program nyomtatott bizonylatainak mező- és fejléc-szint�
 | FR-20 | **Pénztár állás (pillanatnyi):** fejléc + cég + fiók ("75 BIKISCSABAI IRTIKTOR") + dátum-idő "perci penztar allas", oszlopok: Val.nem, Nyito osszeg, Forgalom egyenlege, Penztar allas; soronként valuta + 3 érték (pl. EUR 102.000 -85.000 17.000); HUF sor nagy összeggel | penztar_allas.jpg ("...perci penztar allas", "Val.nem Nyito osszeg Forgalom egyenlege Penztar allas", "CHF/CZK/EUR/HUF/ILS/PLN/RON/RSD/TRY/USD" sorok) | M | penztar-client |
 | FR-21 | A pénztár állás bizonylat alján kezelési-díj egyenleg blokk: "Napi nyito kez-i dij", "Kezelesi dij atvetel", "Kezelesi dij atadas", "Pillanatnyi zaro osszeg" Ft-ban | penztar_allas.jpg alsó rész ("Napi nyito kez-i dij ...: 3,482,805 Ft", "Kezelesi dij atvetel", "Kezelesi dij atadas ...: 3,482,805 Ft", "Pillanatnyi zaro osszeg") | M | penztar-client |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 | --- | --- | --- |
 | NFR-1 | Hőnyomtató keskeny szalag formátum, monospace, pontozott elválasztó vonalak | A képek mind ESC/POS-szerű szalag-bizonylatok |

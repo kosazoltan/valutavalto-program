@@ -28,7 +28,7 @@ A jelenlegi (Delphi + Firebird) valutavalto rendszer uzemeltetesi mukodesenek, k
 | Belsoellenor | Kasszaállapot/címletezés felfelé irányuló adat megtekintése | TBD |
 | Uzemeltetes (EXZ+EXV / Póka János) | Telepítés, DB helyreállítás (C mappa visszamásolás), új pénztár üres DB | TBD |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-37 | Kliens 5 percenként lekéri a központi szervertől az árfolyamokat; sikertelen lekérésnél jelzi és a jelenlegivel dolgozik, folyamatosan újrapróbál. | EXZ+EXV (572, 576) | Must | penztar-client |
@@ -48,7 +48,7 @@ A jelenlegi (Delphi + Firebird) valutavalto rendszer uzemeltetesi mukodesenek, k
 | FR-51 | Címletező a kliens gépeken; nyitás-zárás címletadata felmegy, hogy a területi vezető és belsőellenőr lássa a kasszában lévő pénzt címletre rendezve. | EXZ+EXV (577) | Must | penztar-client |
 | FR-52 | (Jövőbeni megfontolás) Webes/böngészőben futó, központi szerverrel kommunikáló megoldás a Delphi helyett. | EXZ+EXV (596, 605-606) | Could | backend / frontend-react |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-07 | Árfolyam-lekérés gyakorisága | 5 perc (EXZ+EXV 572) |

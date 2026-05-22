@@ -22,7 +22,7 @@ A meglévő (Delphi-szerű) árfolyamkészítő program képernyőinek hű leír
 | Árfolyamkészítő | Teljes hozzáférés a karbantartó és szétküldő képernyőkhöz | TBD |
 | (egyéb szerep a képeken nem azonosítható) | TBD | TBD |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-RFMUI-01 | Felső fő menüsor 4 ponttal: Csoportok karbantartása, Árfolyamok szétküldése (a szerveren át), Internet címek karbantartása, Kilépés a programból | img1 (0-s lap), img5 (szétküldés) felső sáv | Must | arfolyam-keszito-client |
@@ -47,7 +47,7 @@ A meglévő (Delphi-szerű) árfolyamkészítő program képernyőinek hű leír
 | FR-RFMUI-20 | Szétküldés-log sikeres lokális mentés visszajelzése: "A saját gépemre sikeresen lementettem az adatokat" | img5 log-panel | Must | arfolyam-keszito-client |
 | FR-RFMUI-21 | Szétküldés-log: biztonsági mentés a békéscsabai szerverre; hiba esetén "A BIZTONSÁGI MENTÉS SIKERTELEN VOLT! A szerverre nem sikerült kitenni az adatokat" üzenet | img5 log-panel | Must | arfolyam-keszito-client / backend |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-RFMUI-01 | 54 csoport-csempe egy képernyőn áttekinthető rácsban + 1..54 ellenőrző checklista | A rács 54 elemet jelenít, a checklista 1..54 |

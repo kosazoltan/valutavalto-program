@@ -28,7 +28,7 @@ A meglévő (legacy) zárási képernyők és nyomtatott bizonylatok hű leírá
 | Értéktáros / pénztáros értéktári záráskor | Értéktári zárás-előtti checklist kitöltése, értéktári zárás (forrás: Értéktári zárás előtti check list.JPG; Zárás-Értéktár.jpeg "penztaros") | TBD-2 |
 | Zárást ellenőrző személy | Név + beosztás megadása, zárószalag aláírása ("Ellenőrző személy adatai rendben") (forrás: Értéktári zárást ellenőrző személy adatai.JPG) | TBD-2 |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-1 | Címletezés–Zárások menü: Különféle címletezések / Címletek kinyomtatása / A mai napi zárás végrehajtása / A havi zárás végrehajtása / Mégsem | Címletezés -Zárások menü.jpeg | Magas | penztar-client |
@@ -62,7 +62,7 @@ A meglévő (legacy) zárási képernyők és nyomtatott bizonylatok hű leírá
 | FR-29 | Nyomtatott havi dekádzárás bizonylat: fiókfejléc + "havi 1. dekádzárás" + dekád időszak (pl. 2024.03.01–2024.03.10), soronként (Sor/Np/Bizony./Ft.atvetel/Ft.atadas), V.vetel/V.elad, dekád forgalom, nyitó/záró/összes forint + penztaros | Bizonylatok/2024. március. 1. havi dekádzárás.jpeg | Magas | penztar-client |
 | FR-30 | Nyomtatott értéktári zárás bizonylat (1 bizonylat, többhasábos): cégfejléc, napi/időszaki záró-tételek, bankjegy-forgalom kimutatás I–II. (nyitó/átvett/átadott/záró), pénztárak közötti mozgások összesítve, pénztár állása, Western Union forgalom, gép-vissztérítendő/ügyfélforgalom + penztaros aláírás | Bizonylatok/Zárás-Értéktár.jpeg | Magas | penztar-client |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-1 | NAV-fiókérték / címletezés egyezőség | Eltérés esetén a zárás csak kötelező megjegyzés + e-mail küldés után folytatható (forrás: Címletezés - Zárások napi pénztárzárás.jpeg) |

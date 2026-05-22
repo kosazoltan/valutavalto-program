@@ -20,7 +20,7 @@ Az Árfolyamkezelő (árfolyam-karbantartó) modulra bejelentett hibák és felh
 |---|---|---|
 | Árfolyamkezelő felhasználó (a forrás nem nevez meg konkrét szerepet; a domain szerint vélhetően Főértéktáros/árfolyamkészítő, de a forrás nem mondja) | Árfolyam-karbantartás | TBD |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-1 | Sor másolás/beillesztéskor a lapreferencia maradjon helyes: `$LapT01` ne változzon `$LapT3`-ra. „Copy selected row" → „Paste to selected row" után a beillesztett sor képletei az eredeti lapra hivatkozzanak (E: `=$LapT01!C9+0.1`, G: `=$LapT01!G9+0.1`), ne dobjanak #ERR-t. | Hibalista: „Hibajelentés – Sor másolásakor helytelen lapreferencia"; Várt vs. tényleges tábla | Magas (kritikus, #ERR) | arfolyam-keszito-client |
@@ -39,7 +39,7 @@ Az Árfolyamkezelő (árfolyam-karbantartó) modulra bejelentett hibák és felh
 | FR-14 | Új munkacsoport létrehozásakor automatikusan kerüljenek be az elszámoló árfolyamok és a valuta-elnevezések a megfelelő oszlopokba. | „Ha új munkacsoportot hozok létre automatikusan tegye be az elszámoló árfolyamokat és a valuta elnevezéseket" | TBD | arfolyam-keszito-client |
 | FR-15 | A Currency mező HUF érték egész szám legyen. | „Currency mező HUF egész" | TBD | arfolyam-keszito-client |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-1 | Gyors, egér nélküli adatbevitel támogatása | Cella-navigáció + enter-bevitel csak billentyűzettel működik (FR-12, FR-13) |

@@ -21,7 +21,7 @@ Az árfolyamkészítő egy Excel-szerű, munkalapokból álló modul, amelyben e
 | Pénztáros | Saját hatáskörű kedvezmény napi limittel (forrás: "csak napi 5-t adhat") | TBD |
 | Supervisor | Új valuta felvétele/törlése supervisori jelszóhoz köthető (forrás-javaslat) | TBD |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-RFM-01 | A munkalapok szoros összeköttetésben álljanak, köztük egyszerű átjárás | docx bevezető | Must | arfolyam-keszito-client |
@@ -50,7 +50,7 @@ Az árfolyamkészítő egy Excel-szerű, munkalapokból álló modul, amelyben e
 | FR-RFM-24 | Kedvezményhatárok: egyszer beállítva, ritkán állítják, de maradjon állítható; az 54 lapon (csoport) mindegyiknél egyedileg állítható | docx ÁR002-10 | Must | arfolyam-keszito-client |
 | FR-RFM-25 | Validáció kiküldés előtt: az eladási árfolyam nem lehet kisebb az elszámolónál, a vételi nem lehet magasabb az elszámolónál; ha nem megfelelő, a rendszer figyelmeztetést küld, amikor ki akarja küldeni az árfolyamot | docx ÁR002-10 | Must | arfolyam-keszito-client / backend |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-RFM-01 | Munkalapok közti egyszerű átjárás (UX) | Forrás: "egyszerű átjárás" — konkrét mérőszám TBD |

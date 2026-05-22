@@ -21,7 +21,7 @@ A régi valutaprogram kimutatás/lekérdező felületei — pillanatnyi pénztá
 | Vezető / Belsőellenőr | Összesített pénztárforgalom, statisztikai listák | TBD |
 | Adminisztrátor | "Egyéb feladatok" → beállítások, pénztárgép-parancsok, ügyfél-karbantartás | TBD |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-PA-01 | "A PILLANATNYI PÉNZTÁRÁLLÁS KIMUTATÁSA" táblázat oszlopai: VNEM, VALUTA NEVE, NYITÓ, BEVÉTEL, KIADÁS, KEZ-I DÍJ, ZÁRÓ. | Pillanatnyi pénztárállás kimutatása.jpeg / 2 .jpeg | M | penztar-client |
@@ -37,7 +37,7 @@ A régi valutaprogram kimutatás/lekérdező felületei — pillanatnyi pénztá
 | FR-PA-11 | "EGYÉB FELADATOK" menü (kibontott / pénztárgép-almenü) tételei: "KÜLÖNFÉLE BEÁLLÍTÁSOK", "PÉNZTÁRGÉP VALUTÁINAK TÖRLÉSE", "VALUTÁK BETÖLTÉSE A PÉNZTÁRGÉPBE", "NAPNYITÁS A PÉNZTÁRGÉPEN", "NAPZÁRÁS A PÉNZTÁRGÉPEN", "PÉNZTÁRGÉP COM-PORTJÁNAK ÁLLITÁSA", "KILÉPÉS AZ EGYÉB FELADATOKBÓL". | Egyéb feladatok menü(1).jpeg | M | penztar-client |
 | FR-PA-12 | A pillanatnyi pénztárállás kimutatás fejléce egységnevet/várost tartalmaz (kontextus). | Pillanatnyi pénztárállás kimutatása.jpeg | C | penztar-client |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-PA-01 | A pillanatnyi pénztárállás minden aktív valutát egy sorban, ezres tagolással jelenít meg. | Ezres szóköz-tagolás látható (pl. "3 531 465") |

@@ -30,7 +30,7 @@ A Kosa-cegcsoport (Valuta/Best Change, Ekszer, Zalog) igenyfelmeresi interjuiban
 | Belsoellenor | Belsőellenőri supervisori jelszó (sztornó 3. felett, újranyomtatás, módosítások) | TBD |
 | Ugyvezeto / admin | Alaptőke meghatározás (Kósa Zoltán + főértéktár), rendszerbeállítás | TBD |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-01 | Napi zárás kikényszerítése: zárás előtt ~30 perccel kilépéskor erősen ajánlja fel a zárást (külön művelet kell a zárás nélküli kilépéshez). | kerdesek.docx (665, 691) | Must | penztar-client |
@@ -70,7 +70,7 @@ A Kosa-cegcsoport (Valuta/Best Change, Ekszer, Zalog) igenyfelmeresi interjuiban
 | FR-35 | Okmány-szkennelés: személyi + lakcímkártya beolvasása és tranzakcióhoz rendelése (Raiffeisennek leadva), állítható paraméterrel. | 02.12 interjú (374-375) | Should | penztar-client |
 | FR-36 | Offline működés: árfolyam-lekérés 5 percenként újrapróbál, hiba esetén a legutóbbi árfolyammal dolgozik; kézi árfolyamnál nincs sávos opció. | RSL EXZ+EXV (576); kerdesek.docx (756) | Must | penztar-client |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-01 | Minimális kijelző-felbontás | 1920x1080 (forras: első kérdések, 24) |

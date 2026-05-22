@@ -16,7 +16,7 @@ Egy tranzakció felettesi engedélyezéséhez bemutatott engedélykérő adatlap
 | Engedélyező (a forrásban „engedelyezo: <NEV>", felettesi jóváhagyó) | Tranzakció engedélyezése | TBD (a forrás nem ad RBAC-értéket) |
 | Pénztáros (a tranzakciót kezdeményező, pénztár 105) | Engedélyt kér | TBD |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-1 | Engedélykérő adatlap pénztár-azonosítással: pénztár száma + pénztár neve. | „Penztar szama: 105", „Penztar neve: <FIOK_NEV>" | TBD | TBD |
@@ -26,7 +26,7 @@ Egy tranzakció felettesi engedélyezéséhez bemutatott engedélykérő adatlap
 | FR-5 | Ügyfél-azonosító adatok az engedélykérőn: név, anyja neve, születési idő, születési hely, lakcím, okmány típus, okmány szám, állampolgárság, tartózkodási hely. | „Ugyfel adatai: neve / anyja / szul.ido / szul.hely / lakcime / okmany tip. / okm. szama / allampolgar / tart-i hely" | TBD | TBD |
 | FR-6 | Engedélyező személy rögzítése. | „engedelyezo: <NEV>" | TBD | TBD |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-1 | Az engedélykérő bizonylat formátuma/megjelenítése | TBD — a forrás csak szöveges listát ad |

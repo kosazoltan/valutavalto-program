@@ -18,14 +18,14 @@ A régi program átlagárfolyam-számító riportjának STRUKTÚRÁJÁT leírni 
 | Ügyvezető / Belsőellenőr | Átlagárfolyam riport (elszámolás, haszon ellenőrzés) | EXECUTIVE / INTERNAL_AUDITOR |
 | admin | Minden | ADMIN |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-1 | Átlagárfolyam riport mint önálló funkció létezik (két külön munkafüzet a régi rendszerben) | `AcAtlagarf.xlsx`, `Atlagarfolyam.xlsx` (fájl-szintű tény) | M | frontend-react, kozponti-client |
 | FR-2 | Valutánkénti átlagárfolyam egy adott időszakra | a fájlnevek + modul-cél (átlagárfolyam) | M | frontend-react |
 | FR-3 | A részletes lap/oszlop-struktúra a megnyitható eredeti munkafüzetből pótolandó | mindkét fájl OLE2 binary → TBD | C | TBD |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-1 | Multi-tenant + multi-currency | minden átlag companyId + currency dimenzióval |

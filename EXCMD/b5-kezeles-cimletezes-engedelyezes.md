@@ -23,7 +23,7 @@ A régi valutaprogram kezelési-költség-menü, címletezés (kezelési díj + 
 | Engedélyező (vezető) | "Engedély megadása" / "Nem engedélyezett" 10M feletti tranzakcióra; "Engedélyező" mező kitöltése | TBD (jelszó/azonosító az "Engedélyező" sárga mezőbe) |
 | Belsőellenőr / Vezető | Havi tabló statisztika, forgalom, Excel-export | TBD |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-KC-01 | "KEZELÉSI KÖLTSÉGEK" menü tételei: "KEZELÉSI KÖLTSÉGEK ÁTVÉTELE", "KEZELÉSI KÖLTSÉGEK ÁTUTALÁSA", "A KEZELÉSI KÖLTSÉGEK JELENLEGI KÉSZLETE", "BIZONYLATOK MEGTEKINTÉSE", "VISSZA". | Kezelési költségek.JPG | M | penztar-client |
@@ -41,7 +41,7 @@ A régi valutaprogram kezelési-költség-menü, címletezés (kezelési díj + 
 | FR-KC-13 | Vásárlás közben rendszerüzenet: ablakcím "ibvalto", szöveg "AZ E-MAILEKET SIKERESEN ELKÜLDTEM", "OK" gomb — vélhetően az engedély-kérő / értesítő email kiküldését erősíti meg. | Vásárlás email elküldve üzenet.jpeg | S | penztar-client |
 | FR-KC-14 | A "VASARLAS" képernyő (kontextus) oszlopai: DNEM, VALUTA MEGNEVEZÉSE, ÁRFOLYAM, BANKJEGY, FIZETENDŐ; alul "Kezelési díj 3 %", "Kezelési díj engedmények", "Nettó forint", "Kezelési költség", "Kerekítési kompenzáció", "BLOKKSZÁM" (pl. <BIZONYLAT_SZAM>), nagy "FIZETENDŐ" összeg; gombok "Készen van (End)", "Vissza a főmenüre (Escape)". | Vásárlás email elküldve üzenet.jpeg | C | penztar-client |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-KC-01 | A címletező összege automatikusan frissül a darabszámok alapján, és egyeznie kell a könyvelendő összeggel. | Bevitt darab × címlet = összeg; "CIMLETEK RENDBEN" csak egyezésnél |

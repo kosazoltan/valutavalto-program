@@ -23,7 +23,7 @@ A tervezett valutavalto-rendszer modul-bontasanak (34 fejlesztesi lepes), korai 
 | Belsoellenor | Anonim bejelentés, gyanús ügylet, log-megtekintés | TBD |
 | admin | Jogosultság-/felhasználó-/rendszerparaméter-kezelés, szervezetek, saját cég | TBD |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 |---|---|---|---|---|
 | FR-53 | Adatbázis-tervezés: táblák + táblák közötti kapcsolatok létrehozása. | fejlesztés lépései (949-951) | Must | backend |
@@ -63,7 +63,7 @@ A tervezett valutavalto-rendszer modul-bontasanak (34 fejlesztesi lepes), korai 
 | FR-87 | Felhasznált általános modulok: kijelző-monitor kezelő, POS-terminál, NAV pénztárgép interface, dokumentumtár, értesítés-kezelő. | fejlesztés lépései (1227-1233) | Must | penztar-client / backend |
 | FR-88 | Adat-replikáció + verziókezelés + hírlevél/hirdetmény (korai rendszerfunkció-vázlat, részletek nélkül). | Névtelen dok (1604-1608) | Could | backend |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 |---|---|---|
 | NFR-13 | Kötelező jelszócsere periódus | 3 hónap (Névtelen dok 1602) |

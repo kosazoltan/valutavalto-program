@@ -23,7 +23,7 @@ A pénztáros rögzít egy ügyfél-foglalót (előleget) egy jövőbeni nagy ö
 | Ügyfél | Aláírás a bizonylaton (nem rendszer-szereplő) | n/a |
 | Egyéb szerep (Értéktáros, Ügyvezető stb.) jogosultsága a forrásból nem derül ki | TBD | TBD |
 
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
 | --- | --- | --- | --- | --- |
 | FR-1 | A foglaló felvételhez kötelező megadni a pénztár (kassza) azonosítót | docx: "Penztar : 105" | M | penztar-client |
@@ -42,7 +42,7 @@ A pénztáros rögzít egy ügyfél-foglalót (előleget) egy jövőbeni nagy ö
 | FR-14 | A visszafizetési bizonylaton záró szöveg: a foglaló a mai napon végrehajtott ügylet ellenértékébe beszámításra kerül + két aláírás (penztaros + ugyfel) | foglalo.jpg | M | penztar-client |
 | FR-15 | A foglaló-rekord az ügyfél-rendeléshez/keszlet-rendeléshez kapcsolódik (az "UGYFELEK RENDELESE" / "KESZLET RENDELESE ERTEKTAR FELE" rovat a Pénztári adatlapon is megjelenik) | extra_dij.jpg (Pénztári adatlap "UGYFELEK RENDELESE", "KESZLET RENDELESE ERTEKTAR FELE") | C | penztar-client |
 
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 | --- | --- | --- |
 | NFR-1 | A bizonylatok hőnyomtatóra (keskeny szalag) nyomtathatók | A foglalo.jpg keskeny szalag-formátum; szövegtörés a szalagszélességhez |

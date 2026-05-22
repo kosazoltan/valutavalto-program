@@ -17,9 +17,9 @@ Feladat: a megadott FORRÁSFÁJL(OK) tartalmát AI-ügynök által végrehajthat
 ### OUT
 ## 3. Szakteruleti szereplok
 | Szerep | Jogosultsag | RBAC ertek |
-## 4. Funkcionalis kovetelmenyef (FR)
+## 4. Funkcionalis kovetelmenyek (FR)
 | ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
-## 5. Nem-funkcionalis kovetelmenyef (NFR)
+## 5. Nem-funkcionalis kovetelmenyek (NFR)
 | ID | Leiras | Merheto kriterium |
 ## 6. Adatmodell-erintettseg
 (Postgres entitás/mező; SQLite mirror IGEN/NEM + indok; migráció szükséges?)
