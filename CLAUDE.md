@@ -615,7 +615,20 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.5.93** (2026-05-20 — átadás-átvétel teljes csomag + Főlap + multi-valuta + #1 branch-szűrés + Főpénztár-PIN + #4 sanction fallback + FK-001/FK-002).
+- **Verzió:** **v2.26.19** (2026-05-22 — EXCMD gap-sprint: G5/G6 szankció-hardening + G1 Foglaló-kontraktus + G2 sztornó-aktuális-árfolyam + G4 FATF ország-lista; mind admin-merged + auto-deploy, production HEALTHY).
+  - **EXCMD spec-szet:** 27 forrás-spec (`EXCMD/b1..b10`, SABLON 2) a `Felmérés/Valuta` forrásokból + 6 szakaszonkénti összevetés + konszolidált backlog (`EXCMD/_compare/00-KONSZOLIDALT-GAPS.md`). PII redaktálva.
+  - **G5/G6 (PR #764):** `SanctionScreeningService` NFD-normalizálás (Locale.ROOT, nem-latin betűk megtartva), ENSZ ENTITY (szervezet) import, üres-név `contains("")` false-positive guard. 12/12 teszt.
+  - **G1 (PR #765):** `ReservationPage` a valós `ReservationController` kontraktushoz igazítva (active?branchId / fulfill / cancel-by-customer|company / CreateReservationDto + ügyfél-kereső + ReservationStatus enum). vitest 2/2.
+  - **G2 (PR #766):** sztornó a pénztáros által megadott aktuális árfolyammal — `ReversalRequest.customExchangeRate` átfűzve `StornoService`→`TransactionReversalService`, díj-megőrző árfolyam-különbözet-könyvelés, alapeset változatlan. Reversal 8/8, Storno 7/7.
+  - **G4 (PR #767):** `FatfCountryRiskService` (FZS-9/2024, 2024-02-27 lista: 1/a Észak-Korea+Irán, 1/b Myanmar, 2. csoport 21 ország) + `screenCustomer(+country)` → `fatfTier`/`fatfRiskCountry` + `SanctionPage` FATF banner. Fatf 6/6.
+  - **G3 (NAV zárás-eltérés gate) BLOKKOLT:** a zárás-wizard és a NavClosing architekturálisan külön folyamat (nincs `wizardId↔navClosingId` link) → backend-restrukturálás + futó-app böngészős verifikáció kell. Külön kör.
+  - **Telepítő-szet v2.26.19 (UNSIGNED, Downloads-ban):**
+    - `Penztar-Setup-2.26.19-20260522.exe` — 297 MB, SHA-256 `57FE2D709F70D9D0CED41BE0856A6EF6BA44F536A49AF93F038447023A66230F`
+    - `Kozponti-Iranyitokozpont-Setup-2.26.19.exe` — 106 MB, SHA-256 `3B893A1F5B0017023662ABBBE5F8E4679D3D98ED6426977A6682C76C560F759A`
+    - `Arfolyamkeszito-Setup-2.26.19.exe` — 106 MB, SHA-256 `34C0C197023A31659936E8B5143BD2ECD7B34D61136F7A2AE617E02D870BCCCA`
+    - `Penztar-Eltavolito-2.26.19-20260522.exe` — verzió-független, SHA-256 `5D84BE6AA024D9543B5B13F9E846255A6E05F700D8AE4750007E97539B5BDFB4`
+  - Vault session-jegyzet: `vault/sessions/2026-05-22-excmd-gap-sprint-v2.26.19.md`.
+- **Verzió [előző]:** **v2.5.93** (2026-05-20 — átadás-átvétel teljes csomag + Főlap + multi-valuta + #1 branch-szűrés + Főpénztár-PIN + #4 sanction fallback + FK-001/FK-002).
   - **v2.5.93 (admin-merged `3c58c2cda`):** PR #731 — FK-001 duplikált "Tisza Sarok" guarded soft-delete (V244): cég-scope + egyértelműség-védelem + nem-nulla-egyenleg guard (élő egyenleg esetén NOTICE, nincs törlés → előbb átadás-átvétel-átvezetés kell). NEM hard DELETE.
   - **v2.5.92 (admin-merged `bcb4206ad`):** PR #730 — FK-002 Országos készlet (`/cashier-stocks`) területi csoportosítás (region szerint, szekciófejléc + értéktár neve, branchApi region-map, üres-fallback).
   - **v2.5.91 (admin-merged `828eb9da7`):** PR #729 — #4 szankciós lista offline cache fallback: `SanctionScreeningResult.staleData`+`listAgeDays`, `isSanctionListStale` (üres/null/>7 nap), warning + API-n kimegy. 5 teszt.
