@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import hu.puzzleir.valuta.service.TransactionService.ReversalRequest;
 import hu.puzzleir.valuta.service.TransactionService.PartialRefundRequest;
+import hu.puzzleir.valuta.util.HungarianRounding;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -117,6 +118,26 @@ public class TransactionReversalService {
         String receiptNumber = receiptSequenceService.generateReversalReceiptNumber(
                 branchId, original.getTransactionType());
 
+        // G2: aktuális/egyedi árfolyamú sztornó. Ha a pénztáros a sztornó-felületen egyedi
+        // (aktuális) árfolyamot adott meg (customExchangeRate > 0), a sztornó ezzel könyvel;
+        // a díjakat/kerekítést megőrizzük, csak az árfolyam-különbözettel igazítunk.
+        // Alapértelmezés (nincs egyedi árfolyam) = eredeti árfolyam → változatlan viselkedés.
+        BigDecimal originalRate = original.getExchangeRate();
+        BigDecimal appliedRate = originalRate;
+        if (request.getCustomExchangeRate() != null
+                && request.getCustomExchangeRate().signum() > 0) {
+            appliedRate = request.getCustomExchangeRate();
+        }
+        BigDecimal hufRateDiff = HungarianRounding.roundToFive(
+                original.getCurrencyAmount().multiply(appliedRate.subtract(originalRate)));
+        BigDecimal reversalHufAmount = original.getHufAmount().add(hufRateDiff);
+        boolean rateAdjusted = appliedRate.compareTo(originalRate) != 0;
+        String reversalNotes = "Sztorno: " + original.getReceiptNumber() + " - " + request.getReason()
+                + (rateAdjusted
+                    ? String.format(" [aktualis arfolyam: %s (eredeti: %s), arfolyam-kulonbozet: %s HUF]",
+                        appliedRate.toPlainString(), originalRate.toPlainString(), hufRateDiff.toPlainString())
+                    : "");
+
         // Sztorno tranzakcio letrehozasa (ellentetes ertekekkel)
         Transaction reversal = Transaction.builder()
                 .company(company)
@@ -129,8 +150,8 @@ public class TransactionReversalService {
                 .transactionTime(LocalTime.now())
                 .currency(original.getCurrency())
                 .currencyAmount(original.getCurrencyAmount())
-                .exchangeRate(original.getExchangeRate())
-                .hufAmount(original.getHufAmount())
+                .exchangeRate(appliedRate)
+                .hufAmount(reversalHufAmount)
                 .handlingFee(original.getHandlingFee())
                 .discountPercent(original.getDiscountPercent())
                 .discountAmount(original.getDiscountAmount())
@@ -144,7 +165,7 @@ public class TransactionReversalService {
                 .approvedBy(request.getApprovedBy())
                 .customerName(original.getCustomerName())
                 .customerDocumentNumber(original.getCustomerDocumentNumber())
-                .notes("Sztorno: " + original.getReceiptNumber() + " - " + request.getReason())
+                .notes(reversalNotes)
                 .build();
 
         Transaction savedReversal = transactionRepository.save(reversal);
@@ -161,11 +182,11 @@ public class TransactionReversalService {
             // Stock validation: van-e eleg valuta a kasszaban a visszavethez
             helper.validateCurrencyStock(branchId, currencyId, original.getCurrencyAmount());
             helper.updateCashBalance(branchId, currencyId, original.getCurrencyAmount().negate(), false);
-            helper.updateCashBalance(branchId, helper.getHufCurrencyId(), original.getHufAmount(), true);
+            helper.updateCashBalance(branchId, helper.getHufCurrencyId(), reversalHufAmount, true);
         } else if (original.getTransactionType() == TransactionType.SELL) {
             // Eredeti eladas visszavonasa: valuta +, HUF -
             helper.updateCashBalance(branchId, currencyId, original.getCurrencyAmount(), true);
-            helper.updateCashBalance(branchId, helper.getHufCurrencyId(), original.getHufAmount().negate(), false);
+            helper.updateCashBalance(branchId, helper.getHufCurrencyId(), reversalHufAmount.negate(), false);
         }
 
         // Napi statisztika frissitese

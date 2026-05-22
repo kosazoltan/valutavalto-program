@@ -977,8 +977,17 @@ public class TransactionService {
         private Long originalTransactionId;
         private String reason;
         private String approvedBy;
-        /** Ha true, az aktuális árfolyammal sztornózunk (eltérő árfolyam kezelés) */
+        /**
+         * Szándék-jelző: aktuális/egyedi árfolyamú sztornó. A tényleges árfolyamot a
+         * {@link #customExchangeRate} hordozza — a könyvelés trigger-e az, ha az &gt; 0.
+         */
         private Boolean useCurrentRate;
+        /**
+         * Az egyedi (aktuális) árfolyam értéke a sztornóhoz (G2). Ha {@code > 0}, a sztornó
+         * ezzel könyvel (a díjakat megőrizve, csak az árfolyam-különbözettel igazítva);
+         * egyébként az eredeti tranzakció árfolyama marad.
+         */
+        private BigDecimal customExchangeRate;
     }
 
     @lombok.Data

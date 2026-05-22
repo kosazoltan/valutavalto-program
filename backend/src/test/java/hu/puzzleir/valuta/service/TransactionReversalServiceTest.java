@@ -152,6 +152,96 @@ class TransactionReversalServiceTest {
     }
 
     @Test
+    @DisplayName("G2: sztorno aktualis arfolyammal - reversal a custom rate-tel konyvel")
+    void testStorno_currentRate() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(true);
+            when(dailySessionService.getDailyReversalCount()).thenReturn(0);
+
+            Transaction original = Transaction.builder()
+                    .id(100L).company(company).branch(branch).worker(worker)
+                    .receiptNumber("E030600001").transactionType(TransactionType.SELL)
+                    .status(TransactionStatus.COMPLETED)
+                    .transactionDate(LocalDate.now()).transactionTime(LocalTime.now())
+                    .currency(eurCurrency).currencyAmount(new BigDecimal("200"))
+                    .exchangeRate(new BigDecimal("400.00")).hufAmount(new BigDecimal("80000"))
+                    .handlingFee(BigDecimal.ZERO).discountPercent(BigDecimal.ZERO).discountAmount(BigDecimal.ZERO)
+                    .build();
+
+            when(transactionRepository.findById(100L)).thenReturn(Optional.of(original));
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+            when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
+                Transaction t = inv.getArgument(0);
+                if (t.getId() == null) t.setId(200L);
+                return t;
+            });
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L).reason("Arfolyam valtozott").approvedBy("SUPERVISOR")
+                    .useCurrentRate(true).customExchangeRate(new BigDecimal("410.00"))
+                    .build();
+
+            Transaction reversal = reversalService.executeReversal(request);
+
+            // 200 × (410-400) = 2000 → reversal HUF = 80000 + 2000 = 82000, rate = 410
+            assertThat(reversal.getExchangeRate()).isEqualByComparingTo("410.00");
+            assertThat(reversal.getHufAmount()).isEqualByComparingTo("82000");
+            assertThat(reversal.getNotes()).contains("arfolyam-kulonbozet");
+
+            ArgumentCaptor<BigDecimal> hufCap = ArgumentCaptor.forClass(BigDecimal.class);
+            verify(helper).updateCashBalance(eq(BRANCH_ID), eq(HUF_ID), hufCap.capture(), eq(false));
+            assertThat(hufCap.getValue()).isEqualByComparingTo("-82000");
+        }
+    }
+
+    @Test
+    @DisplayName("G2: sztorno alapertelmezett (nincs useCurrentRate) - eredeti arfolyam valtozatlan")
+    void testStorno_defaultRate_unchanged() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(true);
+            when(dailySessionService.getDailyReversalCount()).thenReturn(0);
+
+            Transaction original = Transaction.builder()
+                    .id(100L).company(company).branch(branch).worker(worker)
+                    .receiptNumber("E030600001").transactionType(TransactionType.SELL)
+                    .status(TransactionStatus.COMPLETED)
+                    .transactionDate(LocalDate.now()).transactionTime(LocalTime.now())
+                    .currency(eurCurrency).currencyAmount(new BigDecimal("200"))
+                    .exchangeRate(new BigDecimal("400.00")).hufAmount(new BigDecimal("80000"))
+                    .handlingFee(BigDecimal.ZERO).discountPercent(BigDecimal.ZERO).discountAmount(BigDecimal.ZERO)
+                    .build();
+
+            when(transactionRepository.findById(100L)).thenReturn(Optional.of(original));
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+            when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
+                Transaction t = inv.getArgument(0);
+                if (t.getId() == null) t.setId(200L);
+                return t;
+            });
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L).reason("Teves rogzites").approvedBy("SUPERVISOR")
+                    .build();
+
+            Transaction reversal = reversalService.executeReversal(request);
+
+            assertThat(reversal.getExchangeRate()).isEqualByComparingTo("400.00");
+            assertThat(reversal.getHufAmount()).isEqualByComparingTo("80000");
+            assertThat(reversal.getNotes()).doesNotContain("arfolyam-kulonbozet");
+        }
+    }
+
+    @Test
     @DisplayName("Sztorno - mar sztornozott tranzakcio")
     void testStornoFlow_alreadyReversed() {
         try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
