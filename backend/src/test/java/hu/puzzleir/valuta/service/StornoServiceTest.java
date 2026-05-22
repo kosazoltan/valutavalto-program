@@ -44,6 +44,7 @@ class StornoServiceTest {
     @Mock private BranchRepository branchRepository;
     @Mock private TransactionService transactionService;
     @Mock private DictionaryRepository dictionaryRepository;
+    @Mock private NotificationService notificationService;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
     private static final UUID COMPANY_ID = UUID.randomUUID();
@@ -225,5 +226,32 @@ class StornoServiceTest {
 
         assertThat(result.getTransactionType()).isEqualTo(TransactionType.PARTIAL_REFUND);
         assertThat(result.getPartialRefundAmount()).isEqualByComparingTo(refundAmount);
+    }
+
+    // ─── G12: sztornó jóváhagyás-kérés aktív értesítés ───
+    @Test
+    @DisplayName("G12: requestApproval aktív értesítést küld az iroda supervisorainak")
+    void requestApproval_sendsBranchNotification() {
+        Worker worker = new Worker();
+        worker.setId(WORKER_ID);
+        worker.setName("Teszt Penztaros");
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+        Branch branch = new Branch();
+        branch.setId(BRANCH_ID);
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+
+        when(transactionRepository.countReversalsByBranchAndDate(eq(COMPANY_ID), eq(BRANCH_ID), any()))
+                .thenReturn(1L);
+        when(stornoApprovalRepository.save(any())).thenAnswer(inv -> {
+            StornoApproval a = inv.getArgument(0);
+            a.setId(java.util.UUID.randomUUID());
+            return a;
+        });
+
+        stornoService.requestApproval(TRANSACTION_ID, WORKER_ID, "Teves rogzites");
+
+        verify(notificationService, times(1))
+                .sendToBranch(eq(BRANCH_ID), eq("Sztornó jóváhagyás kérés"), anyString());
     }
 }

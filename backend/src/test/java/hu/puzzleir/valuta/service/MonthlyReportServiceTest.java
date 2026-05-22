@@ -87,6 +87,37 @@ class MonthlyReportServiceTest {
     }
 
     @Test
+    @DisplayName("G18: forgalom készpénzes vs bankkártyás bontása")
+    void generateFullReport_cashVsCardSplit() {
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(testBranch));
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
+        when(dailyBalanceRepository.findByBranchAndMonth(eq(BRANCH_ID), eq(2026), eq(3))).thenReturn(List.of());
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(eq(BRANCH_ID), any())).thenReturn(List.of());
+        when(mnbExchangeRateService.getRatesForDate(any())).thenReturn(Map.of());
+        when(exchangeRateRepository.findActiveByDateAndBranch(any(), any(), eq(BRANCH_ID))).thenReturn(List.of());
+        when(subledgerSnapshotRepository.findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(
+                any(), any(), any(), any())).thenReturn(Optional.empty());
+        when(subledgerSnapshotRepository.findByBranchIdAndSnapshotDateBetweenAndSubledgerTypeAndCurrencyCode(
+                any(), any(), any(), any(), any())).thenReturn(List.of());
+        when(transferRepository.sumTransfersInByPeriod(any(), any(), any())).thenReturn(List.of());
+        when(transferRepository.sumTransfersOutByPeriod(any(), any(), any())).thenReturn(List.of());
+
+        Transaction cardBuy = Transaction.builder().transactionType(TransactionType.BUY)
+                .paymentMethod(PaymentMethod.CARD).hufAmount(new BigDecimal("100000")).build();
+        Transaction cashBuy = Transaction.builder().transactionType(TransactionType.BUY)
+                .paymentMethod(PaymentMethod.CASH).hufAmount(new BigDecimal("50000")).build();
+        Transaction cashSell = Transaction.builder().transactionType(TransactionType.SELL)
+                .paymentMethod(null).hufAmount(new BigDecimal("30000")).build(); // null → készpénz
+        when(transactionRepository.findActiveByBranchAndDateRange(eq(BRANCH_ID), any(), any()))
+                .thenReturn(List.of(cardBuy, cashBuy, cashSell));
+
+        MonthlyReportFullDto result = service.generateFullReport(BRANCH_ID, "2026-03");
+
+        assertThat(result.getCardTurnoverHuf()).isEqualByComparingTo("100000");
+        assertThat(result.getCashTurnoverHuf()).isEqualByComparingTo("80000"); // 50000 + 30000
+    }
+
+    @Test
     @DisplayName("generateFullReport: handling fee subledger aggregalas")
     void generateFullReport_handlingFeeFromSubledger() {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(testBranch));

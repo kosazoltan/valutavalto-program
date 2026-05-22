@@ -50,6 +50,7 @@ public class StornoService {
     private final TransactionService transactionService;
     private final DictionaryRepository dictionaryRepository;
     private final ExchangeRateRepository exchangeRateRepository;
+    private final NotificationService notificationService;
 
     // Napi sztornó limit supervisor jóváhagyás nélkül — iroda szinten
     private static final int DAILY_STORNO_LIMIT_BRANCH = 3;
@@ -227,6 +228,13 @@ public class StornoService {
 
         StornoApproval saved = stornoApprovalRepository.save(approval);
         log.info("Sztornó jóváhagyás kérve: tranzakció={}, pénztáros={}", transactionId, workerId);
+
+        // G12: aktív értesítés az iroda supervisorainak (eddig csak log volt — a kérés
+        // némán elveszhetett). A NotificationService in-app + e-mail értesítést küld.
+        String notifMessage = String.format(
+                "Sztornó jóváhagyás kérés — bizonylat: %s, pénztáros: %s, ok: %s (mai sztornó: %d)",
+                transaction.getReceiptNumber(), worker.getName(), reason, dailyCount);
+        notificationService.sendToBranch(branchId, "Sztornó jóváhagyás kérés", notifMessage);
 
         return toApprovalDto(saved);
     }

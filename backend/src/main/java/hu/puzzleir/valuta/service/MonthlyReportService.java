@@ -189,6 +189,9 @@ public class MonthlyReportService {
         int buyCount = 0, sellCount = 0, reversalCount = 0;
         BigDecimal totalBuyHuf = BigDecimal.ZERO;
         BigDecimal totalSellHuf = BigDecimal.ZERO;
+        // G18: fizetesi mod szerinti bontas (keszpenzes vs bankkartyas) a BUY+SELL forgalomra
+        BigDecimal cashTurnoverHuf = BigDecimal.ZERO;
+        BigDecimal cardTurnoverHuf = BigDecimal.ZERO;
 
         for (Transaction tx : monthTx) {
             BigDecimal huf = tx.getHufAmount() != null ? tx.getHufAmount().abs() : BigDecimal.ZERO;
@@ -201,6 +204,13 @@ public class MonthlyReportService {
                 totalSellHuf = totalSellHuf.add(huf);
             } else if (type == TransactionType.REVERSAL) {
                 reversalCount++;
+            }
+            if (type == TransactionType.BUY || type == TransactionType.SELL) {
+                if (tx.getPaymentMethod() == PaymentMethod.CARD) {
+                    cardTurnoverHuf = cardTurnoverHuf.add(huf);
+                } else {
+                    cashTurnoverHuf = cashTurnoverHuf.add(huf); // CASH vagy null → készpénz
+                }
             }
         }
 
@@ -261,6 +271,8 @@ public class MonthlyReportService {
                 .currencyLines(currencyLines)
                 .totalBuyHuf(totalBuyHuf)
                 .totalSellHuf(totalSellHuf)
+                .cashTurnoverHuf(cashTurnoverHuf)
+                .cardTurnoverHuf(cardTurnoverHuf)
                 .transactionCount(monthTx.size())
                 .buyCount(buyCount)
                 .sellCount(sellCount)
