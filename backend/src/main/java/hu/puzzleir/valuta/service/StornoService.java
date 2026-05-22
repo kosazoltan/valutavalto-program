@@ -229,12 +229,18 @@ public class StornoService {
         StornoApproval saved = stornoApprovalRepository.save(approval);
         log.info("Sztornó jóváhagyás kérve: tranzakció={}, pénztáros={}", transactionId, workerId);
 
-        // G12: aktív értesítés az iroda supervisorainak (eddig csak log volt — a kérés
-        // némán elveszhetett). A NotificationService in-app + e-mail értesítést küld.
+        // G12: aktív értesítés az iroda dolgozóinak (köztük a jóváhagyásra jogosult
+        // supervisoroknak) — eddig csak log volt, a kérés némán elveszhetett.
+        // Best-effort: az értesítés (DB/e-mail) hibája NEM görgetheti vissza a már
+        // mentett jóváhagyás-kérést (Copilot #770) — ezért külön try-catch.
         String notifMessage = String.format(
                 "Sztornó jóváhagyás kérés — bizonylat: %s, pénztáros: %s, ok: %s (mai sztornó: %d)",
                 transaction.getReceiptNumber(), worker.getName(), reason, dailyCount);
-        notificationService.sendToBranch(branchId, "Sztornó jóváhagyás kérés", notifMessage);
+        try {
+            notificationService.sendToBranch(branchId, "Sztornó jóváhagyás kérés", notifMessage);
+        } catch (Exception e) {
+            log.warn("Sztornó jóváhagyás-kérés értesítés sikertelen (a kérés mentve maradt): {}", e.getMessage());
+        }
 
         return toApprovalDto(saved);
     }
