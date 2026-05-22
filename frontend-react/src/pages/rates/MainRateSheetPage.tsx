@@ -777,6 +777,9 @@ export default function MainRateSheetPage() {
     )
     if (directionViolations.length > 0) {
       const list = directionViolations.map((v) => `• ${v.message}`).join('\n')
+      // window.confirm: szándékos, függőség-mentes választás, konzisztens a meglévő
+      // mintával (ReservationPage). Egyedi modal-dialógusra cserélése külön UX-kör,
+      // a futó-app (Electron) verifikációval együtt (Sourcery #787).
       const proceed = window.confirm(
         'Árfolyam-irány figyelmeztetés (FR-RFM-25):\n\n' + list +
         '\n\nAz eladási árfolyam nem lehet kisebb, a vételi nem lehet magasabb az elszámolónál. ' +

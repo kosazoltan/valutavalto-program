@@ -41,9 +41,11 @@ export interface RateDirectionViolation {
  */
 function checkRow(row: RateDirectionRow): RateDirectionViolation[] {
   const violations: RateDirectionViolation[] = []
-  if (!row.settlement || row.settlement <= 0) return violations
+  // Sourcery #787: defenzív — csak véges, pozitív elszámolóra validálunk
+  // (a hívó számokat ad át, de NaN/Infinity/0 ne adjon hamis vagy hibás riasztást).
+  if (!Number.isFinite(row.settlement) || row.settlement <= 0) return violations
 
-  if (row.sellRate > 0 && row.sellRate < row.settlement - EPSILON) {
+  if (Number.isFinite(row.sellRate) && row.sellRate > 0 && row.sellRate < row.settlement - EPSILON) {
     violations.push({
       currencyCode: row.currencyCode,
       type: 'SELL_BELOW_SETTLEMENT',
@@ -52,7 +54,7 @@ function checkRow(row: RateDirectionRow): RateDirectionViolation[] {
       message: `${row.currencyCode}: az eladási árfolyam (${row.sellRate}) kisebb az elszámolónál (${row.settlement})`,
     })
   }
-  if (row.buyRate > 0 && row.buyRate > row.settlement + EPSILON) {
+  if (Number.isFinite(row.buyRate) && row.buyRate > 0 && row.buyRate > row.settlement + EPSILON) {
     violations.push({
       currencyCode: row.currencyCode,
       type: 'BUY_ABOVE_SETTLEMENT',
