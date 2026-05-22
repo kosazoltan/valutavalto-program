@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { BarChart3, Calendar, RefreshCw, TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react'
+import HorizontalBarChart from '../../components/charts/HorizontalBarChart'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -182,6 +183,40 @@ export default function DailyTurnoverPage() {
               </table>
             )}
           </div>
+
+          {/* Forgalmi grafikon (FR-KC-08) */}
+          {(data.currencies || []).length > 0 && (
+            <div className="form-panel">
+              <h2 className="font-semibold mb-3 flex items-center gap-2">
+                <BarChart3 size={18} />{t('reports.forgalmiGrafikon')}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <div className="text-sm text-gray-500 mb-2">{t('reports.grafikonProfit')}</div>
+                  <HorizontalBarChart
+                    data={data.currencies.map(c => ({ label: c.currency, value: c.profit }))}
+                    barClassName="bg-yellow-500"
+                    formatValue={fmtHuf}
+                    emptyText={t('reports.nincsForgalmiAdat')}
+                    ariaLabel={t('reports.grafikonProfit')}
+                  />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-2">{t('reports.grafikonTranzakcio')}</div>
+                  <HorizontalBarChart
+                    data={data.currencies.map(c => ({
+                      label: c.currency,
+                      value: c.buyCount + c.sellCount + c.conversionCount,
+                    }))}
+                    barClassName="bg-blue-500"
+                    formatValue={(n) => n.toLocaleString('hu-HU')}
+                    emptyText={t('reports.nincsForgalmiAdat')}
+                    ariaLabel={t('reports.grafikonTranzakcio')}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
