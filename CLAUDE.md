@@ -615,7 +615,18 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.19** (2026-05-22 — EXCMD gap-sprint: G5/G6 szankció-hardening + G1 Foglaló-kontraktus + G2 sztornó-aktuális-árfolyam + G4 FATF ország-lista; mind admin-merged + auto-deploy, production HEALTHY).
+- **Verzió:** **v2.26.20** (2026-05-22 — EXCMD gap-sprint 2. batch: G9 pillanatnyi pénztárállás + G12 sztornó AFTER_COMMIT értesítés + G18 forgalmi riport készpénz/kártya bontás + G21 körlevél role-ack; mind admin-merged + auto-deploy, production HEALTHY).
+  - **G9 (PR #775):** `LiveCashPositionService`/Controller `GET /reports/live-cash-position` (valutánként NYITÓ/BEVÉTEL/KIADÁS/ZÁRÓ + kez.díj a DailyBalance + HANDLING_FEE subledgerből) + FE `LiveCashPositionPage` + ReportsPage link. Teszt 2/2.
+  - **G12 (PR #774):** sztornó jóváhagyás-kérés AFTER_COMMIT esemény (`StornoApprovalNotificationEvent` + `@TransactionalEventListener(AFTER_COMMIT)`+`REQUIRES_NEW`) — a notification-hiba NEM görgeti vissza a kérést. StornoServiceTest 10/10.
+  - **G18 (PR #771):** `MonthlyReportFullDto.cashTurnoverHuf`/`cardTurnoverHuf` (PaymentMethod szerinti bontás). MonthlyReportServiceTest 6/6.
+  - **G21 (PR #773):** V255 `acknowledger_role` + `getAcknowledgmentBreakdownByRole` + `GET /circulars/{id}/acknowledgment-breakdown`. CircularServiceTest 2/2.
+  - **Telepítő-szet v2.26.20 (UNSIGNED, Downloads-ban):**
+    - `Penztar-Setup-2.26.20-20260522.exe` — 283.8 MB, SHA-256 `8356B7653A72AA671B878765023673F8E5F45DFDD1B1E237651CC61CDA9247AE`
+    - `Kozponti-Iranyitokozpont-Setup-2.26.20.exe` — 101 MB, SHA-256 `85A651CC6B8250823ACDF91CCB4C2592EE8F40442AE1349DF6F39BBAAEC0C200`
+    - `Arfolyamkeszito-Setup-2.26.20.exe` — 101 MB, SHA-256 `027DC8C6F9CC30325FB22B23C8DA12EF7428977D66AF7A7F3C67581C7A323D10`
+    - `Penztar-Eltavolito-2.26.20-20260522.exe` — verzió-független, SHA-256 `5D84BE6AA024D9543B5B13F9E846255A6E05F700D8AE4750007E97539B5BDFB4`
+  - Vault: `vault/sessions/2026-05-22-excmd-gap-sprint-batch2-v2.26.20.md`. Hátralévő backlog: `EXCMD/_compare/00-KONSZOLIDALT-GAPS.md` (G7/G10/G11/G14-G17/G19/G20/G23 — döntően FE-böngészős-verifikáció vagy nagy/migrációs feature; G3 BLOKKOLT).
+- **Verzió [előző]:** **v2.26.19** (2026-05-22 — EXCMD gap-sprint: G5/G6 szankció-hardening + G1 Foglaló-kontraktus + G2 sztornó-aktuális-árfolyam + G4 FATF ország-lista; mind admin-merged + auto-deploy, production HEALTHY).
   - **EXCMD spec-szet:** 27 forrás-spec (`EXCMD/b1..b10`, SABLON 2) a `Felmérés/Valuta` forrásokból + 6 szakaszonkénti összevetés + konszolidált backlog (`EXCMD/_compare/00-KONSZOLIDALT-GAPS.md`). PII redaktálva.
   - **G5/G6 (PR #764):** `SanctionScreeningService` NFD-normalizálás (Locale.ROOT, nem-latin betűk megtartva), ENSZ ENTITY (szervezet) import, üres-név `contains("")` false-positive guard. 12/12 teszt.
   - **G1 (PR #765):** `ReservationPage` a valós `ReservationController` kontraktushoz igazítva (active?branchId / fulfill / cancel-by-customer|company / CreateReservationDto + ügyfél-kereső + ReservationStatus enum). vitest 2/2.
