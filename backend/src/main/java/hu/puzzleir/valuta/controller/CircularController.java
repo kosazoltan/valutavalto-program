@@ -71,6 +71,15 @@ public class CircularController {
         return ResponseEntity.ok(circularService.findUnacknowledged());
     }
 
+    /**
+     * G21: körlevél nyugtázásainak szerepkörönkénti megoszlása (compliance/vezetői nézet).
+     */
+    @GetMapping("/{id}/acknowledgment-breakdown")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<Map<String, Long>> acknowledgmentBreakdown(@PathVariable Long id) {
+        return ResponseEntity.ok(circularService.getAcknowledgmentBreakdownByRole(id));
+    }
+
     // ============ ÚJ ENDPOINTOK — Típusok + Célcsoport ============
 
     @GetMapping("/types")

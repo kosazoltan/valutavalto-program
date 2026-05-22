@@ -35,4 +35,8 @@ public class CircularAcknowledgment {
 
     @Column(name = "ip_address", length = 45)
     private String ipAddress;
+
+    /** G21: a nyugtázó szerepköre (Pénztáros / Belső ellenőr / Területi vezető stb.) a megoszlás-riporthoz. */
+    @Column(name = "acknowledger_role", length = 50)
+    private String acknowledgerRole;
 }

@@ -215,16 +215,39 @@ public class CircularService {
             throw new ValidationException("Már nyugtáztad ezt a körlevelet!");
         }
 
+        // G21: a nyugtázó szerepkörének rögzítése a szerepkörönkénti megoszlás-riporthoz.
+        String ackRole = SecurityUtils.getActiveOperationalRole();
+        if (ackRole == null || ackRole.isBlank()) {
+            ackRole = SecurityUtils.getCurrentRole();
+        }
+
         CircularAcknowledgment ack = CircularAcknowledgment.builder()
                 .circular(circular)
                 .workerId(workerId)
                 .acknowledgedAt(LocalDateTime.now())
+                .acknowledgerRole(ackRole)
                 .build();
 
         acknowledgmentRepository.save(ack);
 
-        log.info("Körlevél nyugtázva: circularId={}, workerId={}", circularId, workerId);
+        log.info("Körlevél nyugtázva: circularId={}, workerId={}, szerepkör={}", circularId, workerId, ackRole);
         return toDto(circular);
+    }
+
+    /**
+     * G21: körlevél nyugtázásainak szerepkörönkénti megoszlása (EXCMD b9-korlevelek FR-2).
+     * A null/üres szerepkörű (régi) nyugtázások az "ISMERETLEN" kulcs alá kerülnek.
+     *
+     * @return szerepkör → nyugtázások száma
+     */
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Long> getAcknowledgmentBreakdownByRole(Long circularId) {
+        findOrThrow(circularId); // 404, ha nincs ilyen körlevél
+        return acknowledgmentRepository.findByCircularId(circularId).stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        a -> (a.getAcknowledgerRole() == null || a.getAcknowledgerRole().isBlank())
+                                ? "ISMERETLEN" : a.getAcknowledgerRole(),
+                        java.util.stream.Collectors.counting()));
     }
 
     /**
