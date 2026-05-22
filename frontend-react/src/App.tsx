@@ -64,6 +64,7 @@ const DenominationPage = lazy(() => import('./pages/cashdesk/DenominationPage'))
 const DayOpenPage = lazy(() => import('./pages/cashdesk/DayOpenPage'))
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'))
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'))
+const PenztarSettingsPage = lazy(() => import('./pages/settings/PenztarSettingsPage'))
 const StornoPage = lazy(() => import('./pages/stornos/StornoPage'))
 const RepresentativeListPage = lazy(() => import('./pages/representatives/RepresentativeListPage'))
 const RepresentativeCreatePage = lazy(() => import('./pages/representatives/RepresentativeCreatePage'))
@@ -545,6 +546,7 @@ export default function App() {
           
           {/* Settings */}
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/penztar" element={<PenztarSettingsPage />} />
           
           {/* Fees */}
           <Route path="/fees" element={<FeePage />} />
