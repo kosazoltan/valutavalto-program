@@ -44,7 +44,10 @@ export interface RateBand {
  */
 export function raiffeisenBand(base: number, percent: number = RAIFFEISEN_BAND_PERCENT): RateBand {
   if (!Number.isFinite(base) || base <= 0) return { min: 0, max: 0 }
-  const delta = base * (percent / 100)
+  // Copilot #792: érvénytelen (NaN/Infinity/negatív) százalék → alapérték,
+  // különben {NaN, NaN} mérgezné a későbbi számításokat/UI-t.
+  const pct = Number.isFinite(percent) && percent >= 0 ? percent : RAIFFEISEN_BAND_PERCENT
+  const delta = base * (pct / 100)
   return { min: base - delta, max: base + delta }
 }
 

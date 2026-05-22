@@ -38,6 +38,10 @@ describe('rfmRules (G22 — RFM számítási mag)', () => {
     it('0/negatív bázis → {0,0}', () => {
       expect(raiffeisenBand(0)).toEqual({ min: 0, max: 0 })
     })
+    it('érvénytelen százalék (NaN/Infinity) → alapérték (10%), nem NaN', () => {
+      expect(raiffeisenBand(400, NaN)).toEqual({ min: 360, max: 440 })
+      expect(raiffeisenBand(400, Infinity)).toEqual({ min: 360, max: 440 })
+    })
   })
 
   describe('R/S képlet (FR-RFM-19)', () => {
