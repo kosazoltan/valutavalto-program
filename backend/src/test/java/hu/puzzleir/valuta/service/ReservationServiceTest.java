@@ -106,6 +106,13 @@ class ReservationServiceTest {
         return cb;
     }
 
+    /** Általános kassza-egyenleg (valutától független), olvashatóbb néven. */
+    private CashBalance cashBalanceWith(BigDecimal amount) {
+        CashBalance cb = new CashBalance();
+        cb.setCurrentBalance(amount);
+        return cb;
+    }
+
     /** Alap aktív Reservation builder */
     private Reservation activeReservation(Long id, String currencyCode,
                                            BigDecimal reservedAmount, BigDecimal rate,
@@ -404,11 +411,13 @@ class ReservationServiceTest {
         when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eur));
         when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(hufCurrency()));
         // EUR készlet (van elég: 1000 >= 100)
+        CashBalance eurBalance = cashBalanceWith(new BigDecimal("1000"));
         when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, 200L))
-                .thenReturn(Optional.of(hufBalance(new BigDecimal("1000"))));
-        // HUF kassza (addHufBalance)
+                .thenReturn(Optional.of(eurBalance));
+        // HUF kassza (addHufBalance — ide kerül a befizetett 5% letét)
+        CashBalance hufKassza = cashBalanceWith(new BigDecimal("0"));
         when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, 100L))
-                .thenReturn(Optional.of(hufBalance(new BigDecimal("0"))));
+                .thenReturn(Optional.of(hufKassza));
         // save: id beállítása + visszaadás (az audit log getId()-t hív)
         when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> {
             Reservation r = inv.getArgument(0);
@@ -424,5 +433,8 @@ class ReservationServiceTest {
         assertThat(result.getDepositAmount()).isEqualByComparingTo("2000");
         assertThat(result.getReservedAmount()).isEqualByComparingTo("100");
         assertThat(result.getStatus()).isEqualTo(ReservationStatus.ACTIVE);
+        // Pénzmozgás: a lefoglalt 100 EUR kivonva (1000 → 900), a HUF kasszába a 5% letét (0 → 2000)
+        assertThat(eurBalance.getCurrentBalance()).isEqualByComparingTo("900");
+        assertThat(hufKassza.getCurrentBalance()).isEqualByComparingTo("2000");
     }
 }
