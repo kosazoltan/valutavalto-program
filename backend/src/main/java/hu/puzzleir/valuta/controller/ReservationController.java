@@ -1,12 +1,16 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.reservation.*;
+import hu.puzzleir.valuta.dto.receipt.ReceiptData;
 import hu.puzzleir.valuta.entity.Reservation;
 import hu.puzzleir.valuta.mapper.ReservationMapper;
+import hu.puzzleir.valuta.service.ReceiptGeneratorService;
 import hu.puzzleir.valuta.service.ReservationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -37,6 +41,7 @@ public class ReservationController {
 
     private final ReservationService reservationService;
     private final ReservationMapper reservationMapper;
+    private final ReceiptGeneratorService receiptGeneratorService;
 
     /**
      * Új foglaló létrehozás.
@@ -160,5 +165,29 @@ public class ReservationController {
     public ResponseEntity<ReservationDto> getReservation(@PathVariable Long id) {
         Reservation reservation = reservationService.getReservation(id);
         return ResponseEntity.ok(reservationMapper.toDto(reservation));
+    }
+
+    /**
+     * G14 (EXCMD b4-foglalo FR-6..14): Foglaló-bizonylat PDF generálás.
+     *
+     * <p>GET /api/v1/reservations/{id}/receipt?refund=false → FOGLALÓ ÁTVÉTELE
+     * GET /api/v1/reservations/{id}/receipt?refund=true  → FOGLALÓ VISSZAFIZETÉSE</p>
+     *
+     * <p>A bizonylat tartalmazza az ügyfél pillanatkép-adatait + a foglaló
+     * részleteit (valuta, összeg, árfolyam, letét, érvényesség).</p>
+     */
+    @GetMapping("/{id}/receipt")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<byte[]> getReservationReceipt(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean refund) {
+        Reservation reservation = reservationService.getReservation(id);
+        ReceiptData data = receiptGeneratorService.generateReservationReceipt(reservation, refund);
+        byte[] pdf = receiptGeneratorService.formatForPdf(data);
+        String filename = "foglalo-" + (refund ? "visszafizetes" : "atvetel") + "-" + id + ".pdf";
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                .body(pdf);
     }
 }

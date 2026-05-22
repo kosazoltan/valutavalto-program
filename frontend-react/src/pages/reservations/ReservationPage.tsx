@@ -128,6 +128,26 @@ export default function ReservationPage() {
     }
   }, [loadReservations]);
 
+  // G14: Foglaló-bizonylat (átvétel / visszafizetés) PDF letöltése.
+  const handleDownloadReceipt = useCallback(async (id: number, refund: boolean) => {
+    try {
+      const response = await api.get(`/reservations/${id}/receipt`, {
+        params: { refund },
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(response.data as Blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `foglalo-${refund ? 'visszafizetes' : 'atvetel'}-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // A hiba-visszajelzést a backend toast adja.
+    }
+  }, []);
+
   const filteredReservations = safeArray<Reservation>(reservations).filter((r) => {
     const term = searchTerm.toLowerCase();
     return (
@@ -217,28 +237,46 @@ export default function ReservationPage() {
                     </span>
                   </td>
                   <td className="p-3">
-                    {reservation.status === 'ACTIVE' && (
-                      <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
+                      {reservation.status === 'ACTIVE' && (
+                        <>
+                          <button
+                            onClick={() => handleFulfill(reservation.id)}
+                            className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                          >
+                            {t('reservations.teljesit')}
+                          </button>
+                          <button
+                            onClick={() => handleCancelByCustomer(reservation.id)}
+                            className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                          >
+                            {t('reservations.ugyfelLemondas')}
+                          </button>
+                          <button
+                            onClick={() => handleCancelByCompany(reservation.id)}
+                            className="px-2 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700"
+                          >
+                            {t('reservations.ebcLemondas')}
+                          </button>
+                          <button
+                            onClick={() => handleDownloadReceipt(reservation.id, false)}
+                            className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                          >
+                            {t('reservations.bizonylat')}
+                          </button>
+                        </>
+                      )}
+                      {(reservation.status === 'CANCELLED_BY_CUSTOMER'
+                        || reservation.status === 'CANCELLED_BY_COMPANY'
+                        || reservation.status === 'EXPIRED') && (
                         <button
-                          onClick={() => handleFulfill(reservation.id)}
-                          className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                          onClick={() => handleDownloadReceipt(reservation.id, true)}
+                          className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
                         >
-                          {t('reservations.teljesit')}
+                          {t('reservations.visszafizetesBizonylat')}
                         </button>
-                        <button
-                          onClick={() => handleCancelByCustomer(reservation.id)}
-                          className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                        >
-                          {t('reservations.ugyfelLemondas')}
-                        </button>
-                        <button
-                          onClick={() => handleCancelByCompany(reservation.id)}
-                          className="px-2 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700"
-                        >
-                          {t('reservations.ebcLemondas')}
-                        </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

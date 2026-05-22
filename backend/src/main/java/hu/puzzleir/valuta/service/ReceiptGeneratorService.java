@@ -43,6 +43,9 @@ public class ReceiptGeneratorService {
     /** 300.000 Ft — jogszabályi küszöb PEP és Jogcím nyilatkozathoz */
     private static final BigDecimal HIGH_VALUE_THRESHOLD = new BigDecimal("300000");
     private static final DateTimeFormatter RECEIPT_DATE_FORMAT = DateTimeFormatter.ofPattern("yyMMdd");
+    /** Megjelenítendő dátum/időpont formátum a bizonylatokon (Sourcery #783 konzisztencia). */
+    private static final DateTimeFormatter DISPLAY_DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DISPLAY_DATETIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     /**
      * Bizonylat sorszám — a nap + milliszekundum + AtomicLong kombináció biztosítja
      * az egyediséget újraindítás után is: System.currentTimeMillis() % 10000 az alap,
@@ -133,6 +136,98 @@ public class ReceiptGeneratorService {
                 .hufAmount(stornoTx.getHufAmount())
                 .customerName(stornoTx.getCustomerName())
                 .customerIdNumber(stornoTx.getCustomerDocumentNumber())
+                .lines(lines)
+                .qrCode(receiptNumber)
+                .build();
+    }
+
+    /**
+     * G14 (EXCMD b4-foglalo FR-6..14): Foglaló-bizonylat generálása.
+     *
+     * <p>Két eset: FOGLALÓ ÁTVÉTELE (a foglaló létrehozásakor/befizetésekor,
+     * {@code isRefund=false}) és FOGLALÓ VISSZAFIZETÉSE (lemondás/visszatérítés
+     * esetén, {@code isRefund=true}). Mindkét bizonylat tartalmazza az ügyfél
+     * pillanatkép-adatait (név, okmány, szül.hely/idő, anyja neve, cím,
+     * állampolgárság) — a foglaló-szerződés azonosíthatóságához.</p>
+     *
+     * <p>Prefix: F (foglaló).</p>
+     */
+    @Transactional(readOnly = true)
+    public ReceiptData generateReservationReceipt(hu.puzzleir.valuta.entity.Reservation reservation, boolean isRefund) {
+        if (reservation == null) {
+            throw new ResourceNotFoundException("A foglaló nem található a bizonylathoz.");
+        }
+
+        // A meglévő foglaló-bizonylatszámot használjuk, ha van; különben generálunk.
+        String existing = isRefund
+            ? reservation.getCancellationReceiptNumber()
+            : reservation.getReceiptNumber();
+        String receiptNumber = (existing != null && !existing.isBlank())
+            ? existing
+            : generateReceiptNumber("F");
+
+        var customer = reservation.getCustomer();
+        var branch = reservation.getBranch();
+
+        // Sourcery #783: a bizonylat dátuma a tényleges domain-eseményből (létrehozás
+        // ill. lemondás), nem nyers now() — auditálható, konzisztens.
+        LocalDateTime receiptDate = isRefund
+            ? (reservation.getCancelledAt() != null ? reservation.getCancelledAt() : LocalDateTime.now())
+            : (reservation.getCreatedAt() != null ? reservation.getCreatedAt() : LocalDateTime.now());
+
+        List<ReceiptData.ReceiptLineData> lines = new ArrayList<>();
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label(isRefund ? "FOGLALÓ VISSZAFIZETÉSE" : "FOGLALÓ ÁTVÉTELE")
+                .value(receiptNumber).build());
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Foglalt valuta").value(reservation.getCurrencyCode()).build());
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Foglalt összeg")
+                .value(reservation.getReservedAmount() != null ? reservation.getReservedAmount().toPlainString() : "—").build());
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Lekötött árfolyam")
+                .value(reservation.getExchangeRate() != null ? reservation.getExchangeRate().toPlainString() : "—").build());
+        lines.add(ReceiptData.ReceiptLineData.builder()
+                .label("Letét (foglaló)")
+                .value(reservation.getDepositAmount() != null ? reservation.getDepositAmount().toPlainString() + " Ft" : "—").build());
+        if (reservation.getExpiresAt() != null) {
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("Érvényesség").value(reservation.getExpiresAt().format(DISPLAY_DATETIME)).build());
+        }
+        if (isRefund) {
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("Visszafizetett összeg")
+                    // Sourcery #783: null → "—" (ismeretlen), nem félrevezető "0 Ft".
+                    .value(reservation.getRefundAmount() != null ? reservation.getRefundAmount().toPlainString() + " Ft" : "—").build());
+            if (reservation.getCancellationReason() != null && !reservation.getCancellationReason().isBlank()) {
+                lines.add(ReceiptData.ReceiptLineData.builder()
+                        .label("Lemondás oka").value(reservation.getCancellationReason()).build());
+            }
+        }
+
+        return ReceiptData.builder()
+                .receiptNumber(receiptNumber)
+                .receiptType("RESERVATION")
+                .companyName(branch != null && branch.getCompany() != null ? branch.getCompany().getName() : "")
+                .branchName(branch != null ? branch.getName() : "")
+                .branchAddress(branch != null ? branch.getAddress() : "")
+                .workerName(reservation.getWorker() != null ? reservation.getWorker().getName() : "")
+                .date(receiptDate)
+                .currencyCode(reservation.getCurrencyCode())
+                .foreignAmount(reservation.getReservedAmount())
+                .rate(reservation.getExchangeRate())
+                .hufAmount(reservation.getDepositAmount())
+                // Ügyfél-pillanatkép (FR-6..14)
+                .customerName(customer != null ? customer.getName() : null)
+                .customerIdNumber(customer != null ? customer.getDocumentNumber() : null)
+                .customerDocType(customer != null && customer.getDocumentType() != null
+                        ? customer.getDocumentType().name() : null)
+                .customerAddress(customer != null ? customer.getAddress() : null)
+                .customerMotherName(customer != null ? customer.getMotherName() : null)
+                .customerBirthPlace(customer != null ? customer.getBirthPlace() : null)
+                .customerBirthDate(customer != null && customer.getBirthDate() != null
+                        ? customer.getBirthDate().format(DISPLAY_DATE) : null)
+                .customerNationality(customer != null ? customer.getNationality() : null)
                 .lines(lines)
                 .qrCode(receiptNumber)
                 .build();
