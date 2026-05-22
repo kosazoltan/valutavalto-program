@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { UserCheck, Search, RefreshCw, Plus, Edit2, Trash2, AlertTriangle } from 'lucide-react'
+import { UserCheck, Search, RefreshCw, Plus, Edit2, Trash2, AlertTriangle, FolderOpen } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import EmployeeSubRecordsModal from './EmployeeSubRecordsModal'
 
 interface EmployeeItem {
   id: string | number
@@ -21,6 +22,7 @@ export default function EmployeePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [subRecordsFor, setSubRecordsFor] = useState<EmployeeItem | null>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -123,6 +125,9 @@ export default function EmployeePage() {
                 <td className="px-4 py-3 text-sm">{item.hireDate ? new Date(item.hireDate).toLocaleString('hu-HU') : '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.isActive ? 'Igen' : 'Nem'}</td>
                 <td className="px-4 py-3 text-right">
+                  <button onClick={() => setSubRecordsFor(item)} className="form-button mr-2 p-1 text-green-600" title="Al-nyilvántartások (üzemorvosi/szabadság/gyerekek)">
+                    <FolderOpen className="h-4 w-4" />
+                  </button>
                   <button className="form-button mr-2 p-1 text-blue-600" title="Szerkesztés">
                     <Edit2 className="h-4 w-4" />
                   </button>
@@ -139,6 +144,14 @@ export default function EmployeePage() {
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}{filtered.length} / {items.length}
       </div>
+
+      {subRecordsFor && (
+        <EmployeeSubRecordsModal
+          employeeId={subRecordsFor.id}
+          employeeName={subRecordsFor.fullName ?? String(subRecordsFor.id)}
+          onClose={() => setSubRecordsFor(null)}
+        />
+      )}
     </div>
   )
 }
