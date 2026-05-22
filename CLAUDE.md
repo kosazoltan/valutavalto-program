@@ -615,7 +615,20 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.22** (2026-05-22 — EXCMD gap-sprint 4. batch: G13 EU ENTITY szankció (verifikáció) + G8 foglaló 5% letét + G11 10M engedély feature-flag + G7 RFM árfolyam-irány validáció; mind admin-merged + auto-deploy, production HEALTHY). **Gap-backlog: 19/23 KÉSZ (+G11 részben).**
+- **Verzió:** **v2.26.23** (2026-05-22 — EXCMD gap-sprint 5. ZÁRÓ batch: G19 munkavállaló al-nyilvántartások + G20 pénztárgép beállítás-képernyő + G3 zárás-eltérés-gate + G22 RFM számítási mag; mind admin-merged + auto-deploy, production HEALTHY). **Gap-backlog: 23/23 KÉSZ — a 27 EXCMD specből talált összes gap implementálva.**
+  - **G19 (PR #789):** 3 MUST 1:N al-tábla (üzemorvosi/szabadság/gyerekek) — V256 + entitás + CRUD service (multi-tenant IDOR guard) + EmployeeSubRecordsModal UI. 7 teszt.
+  - **G20 (PR #790):** `penztarSettings` store (localStorage + IP-oktett/gyakoriság/union-validáció) + PenztarSettingsPage (12 beállítás, Rögzítés/Kilépés). 10 teszt. Route `/settings/penztar`.
+  - **G3 (PR #791):** zárás-eltérés magyarázat-gate (FR-13) — V257 audit-mezők + statikus `closingDiscrepancyBlockReason` helper feature-flag mögött (`CLOSING_DISCREPANCY_EXPLANATION_REQUIRED`, alap KI → production változatlan) + FE prompt-retry. 5 teszt.
+  - **G22 (PR #792):** `rfmRules.ts` RFM számítási mag (EUA ×1.2/20% FR-RFM-09, Raiffeisen ±10% FR-RFM-12/13, R/S P+0,25 FR-RFM-19, kereszt FR-RFM-04/05) + EUA publish-gate. 14 teszt. (54-csempe rács-UI futó-app sub-scope.)
+  - **⚠️ FONTOS — a „23/23" hatóköre:** a 23 gap a **27 EXCMD specből** (b1–b10, funkcionális modulonként) talált összes hiány. A `Felmérés/Valuta` alatt **416 forrásfájl** van (88 docx, 178 screenshot, 27 xlsx, 8 hangfelvétel, 45 md, 45 html, …), amiből a 27 spec a fő funkcionális területeket fedi — de NEM lett mind a 416 fájl egyenként feldolgozva. **Folyamatban: a teljes 416-fájlos feldolgozás** (user-direktíva 2026-05-22: "mindent egyenként MD-vé + gap + implementálás").
+  - **Telepítő-szet v2.26.23 (UNSIGNED, Downloads-ban):**
+    - `Penztar-Setup-2.26.23-20260522.exe` — 283.85 MB, SHA-256 `8986B0B44E5CC07524E045E20217F321464E4DAD0987C32DAE5E1E03577A515A`
+    - `Kozponti-Iranyitokozpont-Setup-2.26.23.exe` — 101.06 MB, SHA-256 `3E4C6E9D2F0855E0559EF939C176454B3D9BB41E025B97768FC946C05D0A9E3C`
+    - `Arfolyamkeszito-Setup-2.26.23.exe` — 101.06 MB, SHA-256 `3DF06978436DCB05A6534ACD28326FA83FEFDC29CD8D99EF6305282470FEA22D`
+    - `Penztar-Eltavolito-2.26.23-20260522.exe` — verzió-független, SHA-256 `5D84BE6AA024D9543B5B13F9E846255A6E05F700D8AE4750007E97539B5BDFB4`
+  - Vault: `vault/sessions/2026-05-22-excmd-gap-sprint-batch5-v2.26.23-COMPLETE.md`. Backlog: `EXCMD/_compare/00-KONSZOLIDALT-GAPS.md` (23/23).
+
+- **Verzió [előző]:** **v2.26.22** (2026-05-22 — EXCMD gap-sprint 4. batch: G13 EU ENTITY szankció (verifikáció) + G8 foglaló 5% letét + G11 10M engedély feature-flag + G7 RFM árfolyam-irány validáció; mind admin-merged + auto-deploy, production HEALTHY). **Gap-backlog: 19/23 KÉSZ (+G11 részben).**
   - **G13 (verifikáció):** az `importEuSanctionList` (EU FSF `sanctionEntity` = személy+szervezet) + `SanctionListScheduler` naponta UN+EU import + screening minden bejegyzésre MÁR működik (12/12 teszt). A személy/szervezet típus-megkülönböztetést a spec maga TBD-nek jelöli → nem kellett új kód.
   - **G8 (PR #785):** foglaló-letét = round5(ft-érték × 5%) a 100% helyett (FR-9). A pénzmozgás többi része már részleges letétre volt tervezve (fulfill 95%, cancelByCustomer 5% bukás, cancelByCompany 5%×2). ReservationServiceTest 10/10.
   - **G11 (PR #786):** 10M+/fokozott (`requiresManagerApproval`) enforcement az `AML_HIGH_VALUE_APPROVAL_ENFORCEMENT` SystemParameter mögött (default false → WARN-only; true → ValidationException). Statikus `highValueApprovalBlockReason()` helper, 6/6 teszt. Nincs migráció. A hard-block tényleges bekapcsolása a pénztáros supervisor-approval UI-jával külön kör.
