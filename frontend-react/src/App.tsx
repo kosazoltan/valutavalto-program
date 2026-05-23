@@ -93,6 +93,7 @@ const NavReportPage = lazy(() => import('./pages/reports/NavReportPage'))
 const LiveCashPositionPage = lazy(() => import('./pages/reports/LiveCashPositionPage'))
 const MonthlyTabloPage = lazy(() => import('./pages/reports/MonthlyTabloPage'))
 const RegionTurnoverReportPage = lazy(() => import('./pages/reports/RegionTurnoverReportPage'))
+const TerritoryReconciliationPage = lazy(() => import('./pages/reports/TerritoryReconciliationPage'))
 const FeePage = lazy(() => import('./pages/fees/FeePage'))
 const BlacklistPage = lazy(() => import('./pages/blacklist/BlacklistPage'))
 const AnonymousReportPage = lazy(() => import('./pages/reports/AnonymousReportPage'))
@@ -523,6 +524,7 @@ export default function App() {
           <Route path="/reports/live-cash-position" element={<LiveCashPositionPage />} />
           <Route path="/reports/monthly-tablo" element={<MonthlyTabloPage />} />
           <Route path="/reports/region-turnover" element={<RegionTurnoverReportPage />} />
+          <Route path="/reports/territory-reconciliation" element={<TerritoryReconciliationPage />} />
           
           {/* Receipts */}
           <Route path="/receipts" element={<ReceiptPage />} />
