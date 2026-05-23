@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Globe, Search, RefreshCw, Send, Download, RotateCcw, AlertTriangle, X, ArrowLeftRight } from 'lucide-react'
+import { Globe, Search, RefreshCw, Send, Download, RotateCcw, AlertTriangle, X, ArrowLeftRight, Building2, Plus, Trash2 } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -75,6 +75,41 @@ export default function WesternUnionPage() {
   const [modal, setModal] = useState<ModalType>(null)
   const [form, setForm] = useState(emptyForm)
   const [submitting, setSubmitting] = useState(false)
+
+  // N4 (legacy GETWCEG / WUCEGEK) — WU partner-cég törzs
+  const [partnerOpen, setPartnerOpen] = useState(false)
+  const [partners, setPartners] = useState<{ id: string; name: string }[]>([])
+  const [partnerSearch, setPartnerSearch] = useState('')
+  const [newPartner, setNewPartner] = useState('')
+
+  const loadPartners = useCallback(async (q = '') => {
+    try {
+      const res = await api.get<{ id: string; name: string }[]>('/wu-partner-companies', { params: q ? { q } : {} })
+      setPartners(safeArray(res.data))
+    } catch (err) {
+      logger.error('WesternUnionPage', 'partner load', err)
+    }
+  }, [])
+
+  const addPartner = async () => {
+    if (!newPartner.trim()) return
+    try {
+      await api.post('/wu-partner-companies', { name: newPartner.trim() })
+      setNewPartner('')
+      await loadPartners(partnerSearch)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
+  }
+
+  const removePartner = async (id: string) => {
+    try {
+      await api.delete(`/wu-partner-companies/${id}`)
+      await loadPartners(partnerSearch)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
+  }
 
   const loadData = useCallback(async () => {
     if (!branchId) {
@@ -183,6 +218,13 @@ export default function WesternUnionPage() {
         <div className="flex items-center gap-2">
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            onClick={() => { setPartnerOpen(true); void loadPartners() }}
+            className="form-button flex items-center gap-1"
+            title="WU partnercégek kezelése (legacy GETWCEG)"
+          >
+            <Building2 className="h-4 w-4" />{t('westernunion.partnerCegek')}
           </button>
           <button onClick={() => openModal('send')} className="form-button-primary flex items-center gap-1">
             <Send className="h-4 w-4" />{t('common.send')}
@@ -363,6 +405,53 @@ export default function WesternUnionPage() {
                 {submitting ? 'Mentés...' : 'Rögzítés'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* N4 — WU partnercég törzs (legacy GETWCEG / WUCEGEK) */}
+      {partnerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Building2 className="h-5 w-5" />{t('westernunion.partnerCegek')}
+              </h2>
+              <button onClick={() => setPartnerOpen(false)}><X className="h-5 w-5" /></button>
+            </div>
+
+            <div className="mt-3 flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input type="text" placeholder="Keresés..." value={partnerSearch}
+                  onChange={e => { setPartnerSearch(e.target.value); void loadPartners(e.target.value) }}
+                  className="form-input w-full pl-10" />
+              </div>
+            </div>
+
+            <div className="mt-2 flex gap-2">
+              <input type="text" placeholder="Új partnercég neve" value={newPartner}
+                onChange={e => setNewPartner(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') void addPartner() }}
+                className="form-input flex-1" />
+              <button onClick={() => void addPartner()} disabled={!newPartner.trim()}
+                className="form-button-primary flex items-center gap-1 disabled:opacity-40">
+                <Plus className="h-4 w-4" />{t('common.add')}
+              </button>
+            </div>
+
+            <ul className="mt-3 max-h-72 divide-y divide-gray-100 overflow-auto rounded border border-gray-200">
+              {partners.length === 0 && (
+                <li className="px-3 py-2 text-sm text-gray-400">{t('common.noData')}</li>
+              )}
+              {partners.map(p => (
+                <li key={p.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                  <span>{p.name}</span>
+                  <button onClick={() => void removePartner(p.id)} title={t('common.delete')}
+                    className="text-red-500 hover:text-red-700"><Trash2 className="h-4 w-4" /></button>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}
