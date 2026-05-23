@@ -54,10 +54,12 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
      * A CANCELLED/REJECTED tételek nem valós pénzmozgások, ezért kizárva. A {@code lines}
      * lazy módon töltődik a hívó @Transactional metóduson belül.
      */
-    @Query("SELECT t FROM Transfer t " +
+    @Query("SELECT DISTINCT t FROM Transfer t " +
            "JOIN FETCH t.fromBranch fb " +
            "JOIN FETCH t.toBranch tb " +
            "JOIN FETCH t.currency " +
+           "LEFT JOIN FETCH t.lines l " +
+           "LEFT JOIN FETCH l.currency " +
            "WHERE (fb.company.id = :companyId OR tb.company.id = :companyId) " +
            "AND t.transferDate BETWEEN :startDate AND :endDate " +
            "AND t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED, " +

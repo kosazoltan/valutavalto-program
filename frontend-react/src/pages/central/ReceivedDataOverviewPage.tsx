@@ -15,14 +15,15 @@ import {
 } from '../../services/api'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { localIsoDate } from '../../utils/dateFormat'
 
 type ReconFilter = 'all' | 'match' | 'mismatch'
 
-/** Előző nap ISO formátumban (a másnap reggeli ellenőrzés alapértelmezett intervalluma). */
+/** Előző nap LOKÁLIS dátumként (a másnap reggeli ellenőrzés alapértelmezett intervalluma). */
 function previousDayIso() {
   const d = new Date()
   d.setDate(d.getDate() - 1)
-  return d.toISOString().slice(0, 10)
+  return localIsoDate(d)
 }
 
 function formatAmount(value?: number | null) {
