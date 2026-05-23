@@ -50,6 +50,26 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
     long countPendingByBranch(@Param("branchId") UUID branchId);
 
     /**
+     * FK-003: Pénztárak/értéktárak közötti pénzmozgások egyeztetéshez — cég-szűrt, intervallumra.
+     * A CANCELLED/REJECTED tételek nem valós pénzmozgások, ezért kizárva. A {@code lines}
+     * lazy módon töltődik a hívó @Transactional metóduson belül.
+     */
+    @Query("SELECT DISTINCT t FROM Transfer t " +
+           "JOIN FETCH t.fromBranch fb " +
+           "JOIN FETCH t.toBranch tb " +
+           "JOIN FETCH t.currency " +
+           "LEFT JOIN FETCH t.lines l " +
+           "LEFT JOIN FETCH l.currency " +
+           "WHERE (fb.company.id = :companyId OR tb.company.id = :companyId) " +
+           "AND t.transferDate BETWEEN :startDate AND :endDate " +
+           "AND t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED, " +
+           "hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED) " +
+           "ORDER BY t.transferDate, t.transferNumber")
+    List<Transfer> findForReconciliation(@Param("companyId") UUID companyId,
+                                         @Param("startDate") LocalDate startDate,
+                                         @Param("endDate") LocalDate endDate);
+
+    /**
      * Értéktár→pénztár átvett (RECEIVED) lehívások az adott pénztárakra, időszakra.
      * Az átértékelés-allokáció „lehívott forgalom" hajtóereje (legacy puffer→pénztár átadás).
      */
