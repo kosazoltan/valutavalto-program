@@ -1,22 +1,30 @@
-# Legacy modul: ADATLAP
+# Legacy modul (VALUTA): ADATLAP
 
-> Forrás (primer): `Anti/VALUTA/(nincs .pas)` (0 karakter) · library: `(nincs .dpr)`
-> Mély-elemzés: exportált API + tényleges .pas logika + SQL/DB + üzenetek + DFM.
+> Forrás (primer): `Anti/SZERVER/_extracted/VALUTA/DLL/ADATLAP/DEBUG/Unit2.pas` (46203 karakter)
+> KORREKCIÓ: a Anti/VALUTA/DLL-ben 0-bájtos stub volt; a VALÓDI forrás az _extracted/VALUTA/DLL-ben.
 
-## Exportált API (DLL-szerződés)
-_(nincs/üres exports clause)_
+## Exportált API
+`adatlaprutin`
 
-## DFM form(ok) / képernyő
-_(nincs DFM / üres)_
-
-## Eljárások / függvények (.pas)
-_(nincs / üres .pas)_
+## Eljárások / függvények
+`FormActivate`, `KartonDisplay`, `UgyfelDataRead`, `Kozepreir`, `JogiDataRead`, `GongyErtekDisp`, `VonalHuzo`, `cancelgombClick`, `ADATLAPRACSKeyDown`, `AdatlapBeolvaso`, `UrlapFeltolto`, `BitBtn1Enter`, `BitBtn1Exit`, `korvisszagombClick`, `Valutaparancs`, `MINORTRANSGOMBClick`, `MAJORTRANSGOMBClick`, `ELOZOGOMBClick`, `KOVETKEZOGOMBClick`, `FormKeyDown`, `ADATLAPRACSDblClick`, `MODRENDBENGOMBClick`, `GetnaturAdatok`, `GetJogiadatok`, `MegbizoKereso`, `Ninelen`, `LapformClear`, `JogiDisp`, `TextKiiro`, `Pirosito`, `adatmodositogombClick`, `CIMEDITEnter`, `CIMEDITExit`, `MainJob`, `CIMEDITKeyDown`, `BitBtn2Click`, `Bejelentesnyomtatas`, `WriteNaturAdatok`, `WriteJogiadatok`, `StartNyomtatas`
 
 ## Érintett adatbázis-táblák
-_(nincs explicit SQL-tábla)_
+`ADATLAP`, `GONGYCSOMAG`, `HARDWARE`, `JOGISZEMELY`, `PENZTAR`, `UGYFEL`
 
-## Felhasználói üzenetek (üzleti szabály-jelek)
-_(nincs kinyerhető üzenet)_
+- `SELECT * FROM PENZTAR`
+- `SELECT * FROM HARDWARE`
+- `SELECT * FROM ADATLAP`
+- `WHERE`
+- `SELECT * FROM UGYFEL`
+- `WHERE UGYFELSZAM=`
+- `UPDATE UGYFEL SET NEV=`
+- `SELECT * FROM JOGISZEMELY`
+- `UPDATE JOGISZEMELY SET JOGISZEMELYNEV=`
+- `SELECT * FROM GONGYCSOMAG`
+
+## Felhasználói üzenetek
+_(nincs)_
 
 ## Megfeleltetés a jelenlegi programmal
-_(TBD — a modul-térkép `EXCMD/legacy/00-VALUTA-modul-terkep.md` alapján; gap-jelölt, ha a fenti logika/üzenet a jelenlegi programból hiányzik.)_
+_(a tényleges jelenlegi kód ellen verifikálandó.)_

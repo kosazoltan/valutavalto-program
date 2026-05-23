@@ -1,22 +1,29 @@
-# Legacy modul: ARFTMK
+# Legacy modul (VALUTA): ARFTMK
 
-> Forrás (primer): `Anti/VALUTA/(nincs .pas)` (0 karakter) · library: `(nincs .dpr)`
-> Mély-elemzés: exportált API + tényleges .pas logika + SQL/DB + üzenetek + DFM.
+> Forrás (primer): `Anti/SZERVER/_extracted/VALUTA/DLL/ARFTMK/DEBUG/Unit2.pas` (28607 karakter)
+> KORREKCIÓ: a Anti/VALUTA/DLL-ben 0-bájtos stub volt; a VALÓDI forrás az _extracted/VALUTA/DLL-ben.
 
-## Exportált API (DLL-szerződés)
-_(nincs/üres exports clause)_
+## Exportált API
+`arfolyamtmkrutin`
 
-## DFM form(ok) / képernyő
-_(nincs DFM / üres)_
-
-## Eljárások / függvények (.pas)
-_(nincs / üres .pas)_
+## Eljárások / függvények
+`AlapadatBeolvasas`, `ARFOLYAMRACSKeyDown`, `ARFNYOMGOMBClick`, `ARFNYOMGOMBEnter`, `ARFNYOMGOMBExit`, `ARFOLYAMRACSDblClick`, `ArftmkNyomtatas`, `DNevEDITEnter`, `DNevEditExit`, `EgyvalutaTmk`, `ElszarfModositas`, `ELSZARFNYOMGOMBClick`, `EscapeGOMBClick`, `FormCreate`, `LetoltoGombClick`, `NyomtatoGombClick`, `NyomtatoPanelClick`, `SICCGOMBClick`, `BlokkFocimiro`, `TextKiiro`, `KozepreIr`, `Forintform`, `ValutaParancs`, `Elokieg`, `Kieg`, `Validalo`, `MertekCtrl`, `DuplaSupkod`, `Arfkiir`, `VARFEDITKeyDown`, `EARFEDITKeyDown`, `ELSZARFEDITKeyDown`, `arfolyamokegombClick`, `ELSZARFGOMBClick`, `ELSZARFEDITExit`, `ELSZARFEDITChange`, `MNBLETOLTOGOMBClick`, `KEZIALLITOGOMBClick`, `arfolyamletoltes`, `supervisorjelszo`
 
 ## Érintett adatbázis-táblák
-_(nincs explicit SQL-tábla)_
+`ARFOLYAM`, `HARDWARE`, `PENZTAR`
 
-## Felhasználói üzenetek (üzleti szabály-jelek)
-_(nincs kinyerhető üzenet)_
+- `SELECT * FROM ARFOLYAM ORDER BY VALUTANEM`
+- `UPDATE ARFOLYAM SET VETELIARFOLYAM=`
+- `WHERE VALUTANEM=`
+- `SELECT * FROM HARDWARE`
+- `SELECT * FROM PENZTAR`
+- `UPDATE HARDWARE SET KEZIARFOLYAM=1`
+
+## Felhasználói üzenetek
+- A FORINT ÁRFOLYAMA NEM VÁLTOZTATHATÓ
+- AZ ELSZÁMOLÓ ÁRFOLYAMOKAT LE KELL TÖLTENI A SZERVERRŐL
+- AZ ÚJ VÉTELI ÁRFOLYAM KISEBB AZ ENGEDÉLYEZETTNÉL
+- AZ ÚJ ELADÁSI ÁRFOLYAM NAGYOBB AZ ENGEDÉLYEZETTNÉL
 
 ## Megfeleltetés a jelenlegi programmal
-_(TBD — a modul-térkép `EXCMD/legacy/00-VALUTA-modul-terkep.md` alapján; gap-jelölt, ha a fenti logika/üzenet a jelenlegi programból hiányzik.)_
+_(a tényleges jelenlegi kód ellen verifikálandó.)_

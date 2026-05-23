@@ -1,22 +1,28 @@
-# Legacy modul: ARFREG
+# Legacy modul (VALUTA): ARFREG
 
-> Forrás (primer): `Anti/VALUTA/(nincs .pas)` (0 karakter) · library: `(nincs .dpr)`
-> Mély-elemzés: exportált API + tényleges .pas logika + SQL/DB + üzenetek + DFM.
+> Forrás (primer): `Anti/SZERVER/_extracted/VALUTA/DLL/ARFREG/DEBUG/Unit2.pas` (32730 karakter)
+> KORREKCIÓ: a Anti/VALUTA/DLL-ben 0-bájtos stub volt; a VALÓDI forrás az _extracted/VALUTA/DLL-ben.
 
-## Exportált API (DLL-szerződés)
-_(nincs/üres exports clause)_
+## Exportált API
+`arfolyamregiszter`
 
-## DFM form(ok) / képernyő
-_(nincs DFM / üres)_
-
-## Eljárások / függvények (.pas)
-_(nincs / üres .pas)_
+## Eljárások / függvények
+`FormActivate`, `ArfolyamRogzites`, `ArfolyamKijelzes`, `MakeArfolyamTabla`, `EgyracsDisplay`, `EgyIdoBeolvasas`, `RacsTakarito`, `Intdekodol`, `RealToStr`, `Limitform`, `RACSDrawCell`, `VISSZAGOMBClick`, `REGEBBIGOMBClick`, `datumrendbengombClick`, `EHAVIGOMBClick`, `Nulele`, `RealFormat`, `LIMITGOMBClick`, `USZOTIMERTimer`, `KEDVVISSZAGOMBClick`, `KOVETKEZOGOMBClick`, `kilepoTimer`, `MASIKHONAPGOMBClick`, `ELOZOGOMBClick`, `HunDatetostr`, `EVCOMBOChange`, `arfolyamregiszter`, `TARFOLYAMTAROLO.FormActivate`, `TArfolyamTarolo.ArfolyamRogzites`, `TArfolyamTarolo.Intdekodol`, `TArfolyamTarolo.RealToStr`, `TArfolyamTarolo.MakeArfolyamTabla`, `TarfolyamTarolo.ArfolyamKijelzes`, `TARFOLYAMTAROLO.RACSDrawCell`, `TARFOLYAMTAROLO.VISSZAGOMBClick`, `TArfolyamTarolo.RegebbiGombClick`, `TARFOLYAMTAROLO.datumrendbengombClick`, `TARFOLYAMTAROLO.EHAVIGOMBClick`, `TArfolyamTarolo.Nulele`, `TarfolyamTarolo.EgyracsDisplay`
 
 ## Érintett adatbázis-táblák
-_(nincs explicit SQL-tábla)_
+`PENZTAR`
 
-## Felhasználói üzenetek (üzleti szabály-jelek)
-_(nincs kinyerhető üzenet)_
+- `SELECT * FROM PENZTAR`
+- `DELETE FROM`
+- `WHERE (DATUM=`
+- `INSERT INTO`
+- `SELECT * FROM`
+
+## Felhasználói üzenetek
+- A KÉRT HÓNAPRÓL NINCSENEK ADATAIM !
+- ÜRES AZ ADATBÁZIS
+- NEM VOLT A HÓNAPBAN TÖBB ÁRFOLYAMVÁLTOZÁS
+- Nem volt a hónapban ez elött másik árfolyam
 
 ## Megfeleltetés a jelenlegi programmal
-_(TBD — a modul-térkép `EXCMD/legacy/00-VALUTA-modul-terkep.md` alapján; gap-jelölt, ha a fenti logika/üzenet a jelenlegi programból hiányzik.)_
+_(a tényleges jelenlegi kód ellen verifikálandó.)_
