@@ -86,6 +86,7 @@ public class CustomerService {
                 .companyName(request.getCompanyName())
                 .taxNumber(request.getTaxNumber())
                 .registrationNumber(request.getRegistrationNumber())
+                .teaorCode(request.getTeaorCode())
                 .isVip(request.getIsVip() != null && request.getIsVip())
                 .notes(request.getNotes())
                 .active(true)
@@ -128,6 +129,7 @@ public class CustomerService {
         if (request.getCompanyName() != null) customer.setCompanyName(request.getCompanyName());
         if (request.getTaxNumber() != null) customer.setTaxNumber(request.getTaxNumber());
         if (request.getRegistrationNumber() != null) customer.setRegistrationNumber(request.getRegistrationNumber());
+        if (request.getTeaorCode() != null) customer.setTeaorCode(request.getTeaorCode());
         if (request.getIsVip() != null) customer.setIsVip(request.getIsVip());
         if (request.getNotes() != null) customer.setNotes(request.getNotes());
 
@@ -389,6 +391,7 @@ public class CustomerService {
         private String companyName;
         private String taxNumber;
         private String registrationNumber;
+        private String teaorCode;
         private Boolean isVip;
         private String notes;
     }
@@ -423,6 +426,7 @@ public class CustomerService {
         private String companyName;
         private String taxNumber;
         private String registrationNumber;
+        private String teaorCode;
         private Boolean isVip;
         private String notes;
     }

@@ -51,6 +51,7 @@ public class CreateCustomerDto {
     private String companyName;
     private String taxNumber;
     private String registrationNumber;
+    private String teaorCode; // G27 — jogi-személy TEÁOR tevékenységi kód
 
     private Boolean isVip;
     private String notes;

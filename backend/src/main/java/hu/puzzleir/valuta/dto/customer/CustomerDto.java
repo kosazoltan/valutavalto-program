@@ -56,6 +56,7 @@ public class CustomerDto {
     private String companyName;
     private String taxNumber;
     private String registrationNumber;
+    private String teaorCode; // G27 — jogi-személy TEÁOR tevékenységi kód
 
     // Státusz
     private Boolean active;

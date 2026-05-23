@@ -644,6 +644,7 @@
   "customers": {
     "alapadatok": "Alapadatok",
     "cegesUgyfel": "Céges ügyfél",
+    "teaorCode": "TEÁOR kód",
     "eMail": "E-mail",
     "eMailCim": "E-mail cím",
     "elerhetosegek": "Elérhetőségek",
