@@ -20,10 +20,17 @@
 
 | # | Gap-jelölt | Forrás-modul | Jelleg |
 |---|---|---|---|
-| **G24** | Kártyás (FIZETOESZKOZ=2) sztornó **OTP/POS terminál-reverzál** („SIKERTELEN OTP-STORNÓ" ha nem sikerül) | STORNO | PSP/terminál-integráció; a jelenlegi StornoService nem fordítja vissza a kártyát |
-| **G25** | **FNYUJSAG** futófény LED-kijelző tábla soros (COM) vezérlése (sok iroda-variáns) | FNYUJSAG | hardver (COM); G20 csak a beállítást tárolja |
-| **G26** | **SCANNING/UJSCANNER** fizikai okmány-beolvasás (driver) | SCANNING/UJSCANNER | hardver (szkenner-driver) |
-| **G27** | **TEAOR** jogi-személy tevékenységi kód (`UPDATE JOGI SET TEAOR`) | BIGCTRL/TEAOR | kis adat-mező; jogi-személy ügyfélnél |
+| # | Gap-jelölt | Forrás | **Verifikált státusz (a tényleges kód ellen)** |
+|---|---|---|---|
+| **G24** | Kártyás (FIZETOESZKOZ=2) sztornó OTP/POS terminál-reverzál | STORNO | ✅ **MÁR KÉSZ** — `StornoService.executeOtpTerminalStorno` + `executePosStorno` + `executeOtpRefund` + `PosTerminalService` (POS auth-kód/referencia/terminál-azonosító, napi limit). A jelölt TÉVES POZITÍV volt (sekély grep). |
+| **G25** | FNYUJSAG futófény LED-tábla soros (COM) vezérlés | FNYUJSAG | ✅ **MÁR KÉSZ** — `LedDisplayService` + `LedSerialDisplayType` + `LedProtocolEncoder` (soros/COM) + `LedDisplayController` + `ExchangeRateDisplayService`. |
+| **G26** | SCANNING/UJSCANNER fizikai okmány-beolvasás | SCANNING | ✅ **MÁR KÉSZ** — `penztar-client/electron/scanner.ts` + `registerScannerHandlers()` (Electron szkenner-integráció) + G20 driver-beállítás. |
+| **G27** | TEAOR jogi-személy tevékenységi kód (`UPDATE JOGI SET TEAOR`) | BIGCTRL/TEAOR | ✅ **IMPLEMENTÁLVA** (PR #801, v2.26.24): Customer.teaorCode + V258 + DTO/mapper/service + frontend. **Ez volt az EGYETLEN valódi hiány.** |
+
+> **KORREKCIÓ (2026-05-23, a user epistemológiai direktívája szerint — primer = a tényleges kód):**
+> A 4 gap-jelöltből a tényleges kód-ellenőrzés után **3 (G24/G25/G26) TÉVES POZITÍV** volt
+> (a mély-elemzés flagelte, de a jelenlegi programban már implementálva van), és **csak a
+> G27 volt valódi hiány** — azt implementáltuk. Nem gyártunk hamis munkát a már-kész tételekre.
 
 A többi 105+ modul üzleti logikája a jelenlegi Java/React/Electron programban **megvan** (a modul-térkép `00-VALUTA-modul-terkep.md` + az egyes modul-MD-k „Megfeleltetés" szakasza szerint).
 
