@@ -1,8 +1,17 @@
 # Anti / ARFOLYAM (árfolyamkészítő) — bináris-visszafejtésből nyert tudás
 
-> Készült: 2026-05-22. Az ARFOLYAM modulnak **nincs forráskódja** az Anti-ban
-> (csak `Arfolyam.exe` 1.17 MB bináris + `arfdata.dat` adat). A tudást a **binárisból
-> visszafejtve** nyertük (Delphi beágyazott DFM form-ok + struktúra), NEM találgatva.
+> ## ⚠️ KORREKCIÓ (2026-05-23) — A FORRÁS MEGVAN, ez a doksi téves volt
+> A korábbi állítás („nincs forráskódja, csak bináris") **HIBÁS** volt: csak az
+> `Anti/ARFOLYAM/` mappát néztük (ott tényleg csak a telepített `Arfolyam.exe` + `.dat` van).
+> A **teljes Object Pascal forrás MEGVAN** itt:
+> **`Anti/SZERVER/_extracted/SZERVER/fejleszt/arfolyam/verzio22/arfolyam_unpacked/`**
+> (`Arfolyam.dpr` + `Unit1..Unit16.pas` + `.dfm` + `verzio20/21/22` verziók).
+> → A valódi forrásból készült mély form-MD-k: **`EXCMD/legacy/modules-arfolyam/`** (16 form + index).
+> Az alábbi bináris-RE szakasz történelmi; a ground truth mostantól a tényleges `.pas`.
+
+> [TÖRTÉNELMI] Készült: 2026-05-22. (Akkori téves feltevés: az ARFOLYAM modulnak nincs
+> forráskódja az Anti-ban — csak `Arfolyam.exe` + `arfdata.dat`. A tudást a binárisból
+> visszafejtve nyertük: Delphi beágyazott DFM form-ok + struktúra.)
 
 ## Módszer
 - `Arfolyam.exe` (Delphi 7) beágyazott form-jai a `TPF0` szignatúrából kinyerve (20 form).
