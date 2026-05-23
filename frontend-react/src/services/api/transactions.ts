@@ -108,6 +108,18 @@ export const customerApi = {
   }
 }
 
+export interface TeaorCode {
+  code: string
+  name: string
+}
+
+export const teaorApi = {
+  search: async (q: string): Promise<TeaorCode[]> => {
+    const response = await api.get<TeaorCode[]>('/teaor', { params: { q } })
+    return response.data
+  }
+}
+
 // ================== TRANSACTIONS API ==================
 
 /**

@@ -74,9 +74,37 @@ public class TransactionValidationService {
      * @throws ValidationException ha bármely szabály megsérül
      */
     public void validateTransaction(Transaction transaction) {
+        validateCurrencyExchangeable(transaction);
         validateCurrencyLineLimit(transaction);
         validateEurCoinBanknote(transaction);
         validateIdentificationRequired(transaction);
+    }
+
+    /** Elszámoló/báziz valuta — nem lehet kereskedett valuta (Legacy: "A FORINT NEM VÁLASZTHATÓ VALUTA"). */
+    private static final String BASE_CURRENCY_CODE = "HUF";
+
+    /**
+     * 0. Kereskedhetőség: a bizonylat egyik valutasora sem lehet a forint (base) vagy inaktív valuta.
+     * Legacy: ELADAS/VASARLAS — "A FORINT NEM VÁLASZTHATÓ VALUTA". Defense-in-depth: a UI is kiszűri,
+     * de szerveroldalon is kötelező (pl. inaktivált HRK).
+     */
+    public void validateCurrencyExchangeable(Transaction transaction) {
+        if (transaction.getLines() == null) {
+            return;
+        }
+        for (TransactionLine line : transaction.getLines()) {
+            if (line.getCurrency() == null) {
+                continue;
+            }
+            String code = line.getCurrency().getCode();
+            if (BASE_CURRENCY_CODE.equalsIgnoreCase(code)) {
+                throw new ValidationException("A FORINT NEM VÁLASZTHATÓ VALUTA!");
+            }
+            if (Boolean.FALSE.equals(line.getCurrency().getActive())) {
+                throw new ValidationException(
+                    String.format("A(z) %s valuta nem aktív, nem választható!", code));
+            }
+        }
     }
 
     /**
