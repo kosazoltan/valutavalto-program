@@ -48,7 +48,9 @@ class TransferReconciliationServiceTest {
     }
 
     private static Branch branch(UUID id, String code, boolean isVault) {
-        return Branch.builder().id(id).code(code).name(code + " név").isVault(isVault).build();
+        hu.puzzleir.valuta.entity.Company company = new hu.puzzleir.valuta.entity.Company();
+        company.setId(COMPANY_ID);
+        return Branch.builder().id(id).code(code).name(code + " név").isVault(isVault).company(company).build();
     }
 
     private static Transfer.TransferBuilder baseTransfer(String number, Transfer.TransferStatus status) {
@@ -154,6 +156,41 @@ class TransferReconciliationServiceTest {
             assertThat(result.getDiscrepancyRows()).isEqualTo(1);
             assertThat(result.getNotifiedBranches()).isEqualTo(1);
             verify(notificationService, times(1)).notifyBranchOnce(any(), any(), any(), any(), any(), any(), any());
+        }
+    }
+
+    @Test
+    @DisplayName("Multi-tenant — cégek közötti átadásnál az értesítés a SAJÁT céges irodát kapja, nem a másik bérlő értéktárát")
+    void testCrossCompanyNotificationStaysOwnTenant() {
+        UUID otherCompany = UUID.randomUUID();
+        UUID ownFromId = UUID.randomUUID();
+        UUID foreignVaultId = UUID.randomUUID();
+
+        hu.puzzleir.valuta.entity.Company own = new hu.puzzleir.valuta.entity.Company();
+        own.setId(COMPANY_ID);
+        hu.puzzleir.valuta.entity.Company foreign = new hu.puzzleir.valuta.entity.Company();
+        foreign.setId(otherCompany);
+
+        Branch ownFrom = Branch.builder().id(ownFromId).code("BR009").name("Saját").isVault(false).company(own).build();
+        Branch foreignVault = Branch.builder().id(foreignVaultId).code("BRX").name("Idegen értéktár").isVault(true).company(foreign).build();
+
+        Transfer t = Transfer.builder().id(9L).transferNumber("AT0009")
+                .fromBranch(ownFrom).toBranch(foreignVault).currency(currency("EUR"))
+                .transferDate(D).status(Transfer.TransferStatus.COMPLETED)
+                .amount(new BigDecimal("5000")).receivedAmount(new BigDecimal("4000")).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(transferRepository.findForReconciliation(COMPANY_ID, D, D)).thenReturn(List.of(t));
+            when(notificationService.notifyBranchOnce(eq(ownFromId), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(true);
+
+            TransferReconciliationResultDto result = service.reconcile(D, D);
+
+            assertThat(result.getDiscrepancyRows()).isEqualTo(1);
+            // a SAJÁT cég irodáját értesítjük (foreign vault NEM kaphat értesítést)
+            verify(notificationService).notifyBranchOnce(eq(ownFromId), any(), any(), any(), any(), any(), any());
+            verify(notificationService, never()).notifyBranchOnce(eq(foreignVaultId), any(), any(), any(), any(), any(), any());
         }
     }
 

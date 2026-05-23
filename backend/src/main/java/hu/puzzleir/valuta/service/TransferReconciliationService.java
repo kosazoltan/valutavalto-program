@@ -55,7 +55,7 @@ public class TransferReconciliationService {
             throw new ValidationException("A -ig dátum nem lehet korábbi a -tól dátumnál.");
         }
 
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        final UUID companyId = SecurityUtils.getCurrentCompanyId();
         List<Transfer> transfers = transferRepository.findForReconciliation(companyId, startDate, endDate);
 
         List<TransferReconciliationRowDto> rows = new ArrayList<>();
@@ -79,7 +79,7 @@ public class TransferReconciliationService {
             }
             rows.addAll(transferRows);
 
-            if (hasDiscrepancy && notifyDiscrepancy(t, transferRows)) {
+            if (hasDiscrepancy && notifyDiscrepancy(t, transferRows, companyId)) {
                 notified++;
             }
         }
@@ -151,8 +151,8 @@ public class TransferReconciliationService {
      * Az értéktár-oldal a {@code isVault=true} fél; ha egyik fél sem értéktár (pénztár-pénztár
      * mozgás), a fogadó iroda kapja az értesítést (neki kell javítania).
      */
-    private boolean notifyDiscrepancy(Transfer t, List<TransferReconciliationRowDto> transferRows) {
-        Branch target = resolveAffectedVault(t);
+    private boolean notifyDiscrepancy(Transfer t, List<TransferReconciliationRowDto> transferRows, UUID companyId) {
+        Branch target = resolveAffectedVault(t, companyId);
         if (target == null || target.getId() == null) {
             return false;
         }
@@ -174,16 +174,31 @@ public class TransferReconciliationService {
                 "WARNING", NOTIF_ENTITY_TYPE, t.getTransferNumber(), NOTIF_TYPE);
     }
 
-    private Branch resolveAffectedVault(Transfer t) {
+    private Branch resolveAffectedVault(Transfer t, UUID companyId) {
         Branch to = t.getToBranch();
         Branch from = t.getFromBranch();
-        if (to != null && Boolean.TRUE.equals(to.getIsVault())) {
+        // Multi-tenant védelem: KIZÁRÓLAG a saját cég irodáját szabad értesíteni — egy
+        // cégek közötti átadásnál NEM mehet értesítés a másik bérlő dolgozóinak.
+        boolean toOwn = belongsToCompany(to, companyId);
+        boolean fromOwn = belongsToCompany(from, companyId);
+        if (toOwn && Boolean.TRUE.equals(to.getIsVault())) {
             return to;
         }
-        if (from != null && Boolean.TRUE.equals(from.getIsVault())) {
+        if (fromOwn && Boolean.TRUE.equals(from.getIsVault())) {
             return from;
         }
-        return to != null ? to : from;
+        if (toOwn) {
+            return to;
+        }
+        if (fromOwn) {
+            return from;
+        }
+        return null;
+    }
+
+    private static boolean belongsToCompany(Branch branch, UUID companyId) {
+        return branch != null && branch.getCompany() != null
+                && companyId.equals(branch.getCompany().getId());
     }
 
     private static String branchLabel(Branch b) {
