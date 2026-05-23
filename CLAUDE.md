@@ -615,7 +615,18 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.23** (2026-05-22 — EXCMD gap-sprint 5. ZÁRÓ batch: G19 munkavállaló al-nyilvántartások + G20 pénztárgép beállítás-képernyő + G3 zárás-eltérés-gate + G22 RFM számítási mag; mind admin-merged + auto-deploy, production HEALTHY). **Gap-backlog: 23/23 KÉSZ — a 27 EXCMD specből talált összes gap implementálva.**
+- **Verzió:** **v2.26.24** (2026-05-23 — Anti-Legacy modul-szintű mély-verifikáció + G27 TEÁOR; mind admin-merged + auto-deploy, production HEALTHY 200).
+  - **G27 (PR #801):** jogi-személy TEÁOR tevékenységi kód (legacy `teaorvalasztas`/BIGCTRL) — `Customer.teaorCode` + V258 migráció + DTO/mapper/service + `CustomerCreatePage` céges szekció input. Ez volt az **egyetlen valódi szoftver-hiány** a 4 legacy gap-jelöltből.
+  - **Anti-Legacy gap-verifikáció (epistemológiai direktíva: ground truth = a tényleges kód, NEM a származtatott modul-térkép):** mind a 110 modul-MD (109 VALUTA + TRADE) + 20 ARFOLYAM DFM-form **6 párhuzamos ügynökkel** a jelenlegi Java/React/Electron kód ellen verifikálva (file:line bizonyíték). **Eredmény:** a legacy üzleti logika túlnyomóan lefedett; a korábbi gap-jelöltek (G24 kártyás sztornó / G25 LED futófény / G26 okmány-szkennelés) mind **TÉVES POZITÍV** (már implementálva: `StornoService.executeOtpTerminalStorno`, `LedDisplayService`+`LedSerialPortDriver`, `electron/scanner.ts`).
+  - **Új, verifikált valódi gap-ek (v2.26.25 sprintre):** (1) ARFOLYAM `TINTERNETTMKFORM` internet/nagyker árfolyamlap-karbantartás (a gomb jelenleg `'Hamarosan elérhető'` stub) — HIGH; (2) TEÁOR referencia-tábla + typeahead picker (most szabad-szöveg) — HIGH; (3) HUF/inaktív-valuta „nem választható" guard `TransactionValidationService`-ben (legacy üzenet-paritás, defense-in-depth) — MED; (4) GETWCEG WU partner-cég törzs CRUD — MED; (5) METRO/TESCO elkülönített ÁFA-visszatérítő partner-flow (5/18/27%) — MED. A TRADE termék-alrendszer (CIKKTORZS/telefon-feltöltés/matrica-számla) **szándékos scope-vágás** (valutaváltó profil) — csak enum-stub maradt.
+  - **Telepítő-szet v2.26.24 (UNSIGNED, Downloads-ban):**
+    - `Penztar-Setup-2.26.24-20260523.exe` — 283.83 MB, SHA-256 `67818DF0E87BFC88ED470E612E540E61B533CA59CFAB9106377CE4D8271FCB32`
+    - `Kozponti-Iranyitokozpont-Setup-2.26.24.exe` — 101.06 MB, SHA-256 `541AAC9A72D68D5A6446E15A81A213877EAE6CD52057BE740C74CFA5F8AD35AD`
+    - `Arfolyamkeszito-Setup-2.26.24.exe` — 101.06 MB, SHA-256 `D0966BB078D6FB6EF85477E0E4A12E0F3CC18053432A288C3255127ED778E723`
+    - `Penztar-Eltavolito-2.26.23-20260522.exe` — verzió-független, SHA-256 `5D84BE6AA024D9543B5B13F9E846255A6E05F700D8AE4750007E97539B5BDFB4`
+  - Vault: `vault/sessions/2026-05-23-anti-legacy-modul-verifikacio-v2.26.24.md`. Verifikáció: `EXCMD/legacy/03-FELDOLGOZAS-KESZ.md` + `00-VALUTA-modul-terkep.md`.
+
+- **Verzió [előző]:** **v2.26.23** (2026-05-22 — EXCMD gap-sprint 5. ZÁRÓ batch: G19 munkavállaló al-nyilvántartások + G20 pénztárgép beállítás-képernyő + G3 zárás-eltérés-gate + G22 RFM számítási mag; mind admin-merged + auto-deploy, production HEALTHY). **Gap-backlog: 23/23 KÉSZ — a 27 EXCMD specből talált összes gap implementálva.**
   - **G19 (PR #789):** 3 MUST 1:N al-tábla (üzemorvosi/szabadság/gyerekek) — V256 + entitás + CRUD service (multi-tenant IDOR guard) + EmployeeSubRecordsModal UI. 7 teszt.
   - **G20 (PR #790):** `penztarSettings` store (localStorage + IP-oktett/gyakoriság/union-validáció) + PenztarSettingsPage (12 beállítás, Rögzítés/Kilépés). 10 teszt. Route `/settings/penztar`.
   - **G3 (PR #791):** zárás-eltérés magyarázat-gate (FR-13) — V257 audit-mezők + statikus `closingDiscrepancyBlockReason` helper feature-flag mögött (`CLOSING_DISCREPANCY_EXPLANATION_REQUIRED`, alap KI → production változatlan) + FE prompt-retry. 5 teszt.
