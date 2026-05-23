@@ -85,6 +85,8 @@ class TransactionServiceCashierQuotaTest {
         when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(new Company()));
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(new Branch()));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(new Worker()));
+        // PP-06: a kvóta-ellenőrzés pesszimista zárat vesz a pénztáros sorára
+        org.mockito.Mockito.lenient().when(workerRepository.findByIdForUpdate(WORKER_ID)).thenReturn(Optional.of(new Worker()));
 
         // HUF + EUR valuta
         Currency huf = new Currency();

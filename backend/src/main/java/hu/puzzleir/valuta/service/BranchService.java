@@ -182,14 +182,11 @@ public class BranchService {
      * Fiókok státusz szerint
      */
     @Transactional(readOnly = true)
-    @SuppressWarnings("deprecation") // Multi-tenant audit: ritkan hasznalt, branch_status kod egyedi cegenkent is — kicsi risk
     public List<BranchDto> findByStatus(String statusCode) {
         log.debug("Finding branches by status: {}", statusCode);
+        // PP-05: SQL-szintű cég-szűrés (a korábbi memóriabeli post-filter helyett)
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        // Post-filter stream-mel company-id szures
-        List<Branch> branches = branchRepository.findByBranchStatusCode(statusCode).stream()
-                .filter(b -> b.getCompany() != null && b.getCompany().getId().equals(companyId))
-                .collect(Collectors.toList());
+        List<Branch> branches = branchRepository.findByCompanyIdAndBranchStatusCode(companyId, statusCode);
         return branchMapper.toDtoList(branches);
     }
 
@@ -317,6 +314,14 @@ public class BranchService {
         Branch branch = branchRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Fiók nem található: " + id));
 
+        // IDOR védelem: kereszt-bérlő írás elleni védelem (PP-02)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (branch.getCompany() == null || !branch.getCompany().getId().equals(companyId)) {
+            log.warn("IDOR gyanús módosítás blokkolva! userCompany={}, branchCompany={}, branchId={}",
+                    companyId, branch.getCompany() != null ? branch.getCompany().getId() : "null", id);
+            throw new ResourceNotFoundException("Fiók nem található: " + id);
+        }
+
         // Frissíthető mezők
         if (dto.getName() != null) {
             branch.setName(dto.getName());
@@ -373,6 +378,14 @@ public class BranchService {
 
         Branch branch = branchRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Fiók nem található: " + id));
+
+        // IDOR védelem: kereszt-bérlő törlés elleni védelem (PP-02)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (branch.getCompany() == null || !branch.getCompany().getId().equals(companyId)) {
+            log.warn("IDOR gyanús törlés blokkolva! userCompany={}, branchCompany={}, branchId={}",
+                    companyId, branch.getCompany() != null ? branch.getCompany().getId() : "null", id);
+            throw new ResourceNotFoundException("Fiók nem található: " + id);
+        }
 
         // Ellenőrzés: van-e gyermeke
         List<Branch> children = branchRepository.findByParentBranchId(id);

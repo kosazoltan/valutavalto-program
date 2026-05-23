@@ -77,6 +77,11 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     @Query("SELECT b FROM Branch b WHERE b.branchStatus.code = :statusCode")
     List<Branch> findByBranchStatusCode(@Param("statusCode") String statusCode);
 
+    /** PP-05: SQL-szintű, cég-szűrt státusz-lekérdezés (a memóriabeli post-filter helyett). */
+    @Query("SELECT b FROM Branch b WHERE b.company.id = :companyId AND b.branchStatus.code = :statusCode")
+    List<Branch> findByCompanyIdAndBranchStatusCode(
+            @Param("companyId") UUID companyId, @Param("statusCode") String statusCode);
+
     /**
      * Szülő alatti fiókok (közvetlen gyermekek)
      */
