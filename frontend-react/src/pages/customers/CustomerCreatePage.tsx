@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, User, Building, AlertCircle } from 'lucide-react'
-import { customerApi, CustomerCreateRequest } from '../../services/api/transactions'
+import { customerApi, CustomerCreateRequest, teaorApi, TeaorCode } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +12,8 @@ export default function CustomerCreatePage() {
   const [customerType, setCustomerType] = useState<'person' | 'company'>('person')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [teaorSuggestions, setTeaorSuggestions] = useState<TeaorCode[]>([])
+  const [teaorOpen, setTeaorOpen] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     birthName: '',
@@ -76,6 +78,30 @@ export default function CustomerCreatePage() {
 
   const updateField = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleTeaorChange = (value: string) => {
+    updateField('teaorCode', value)
+    if (value.trim().length < 2) {
+      setTeaorSuggestions([])
+      setTeaorOpen(false)
+      return
+    }
+    teaorApi.search(value.trim())
+      .then(results => {
+        setTeaorSuggestions(results)
+        setTeaorOpen(results.length > 0)
+      })
+      .catch(() => {
+        setTeaorSuggestions([])
+        setTeaorOpen(false)
+      })
+  }
+
+  const selectTeaor = (t: TeaorCode) => {
+    updateField('teaorCode', t.code)
+    setTeaorSuggestions([])
+    setTeaorOpen(false)
   }
 
   return (
@@ -183,9 +209,34 @@ export default function CustomerCreatePage() {
                   <label className="form-label required">{t('common.companyRegNumber')}</label>
                   <input type="text" value={formData.registrationNumber} onChange={(e) => updateField('registrationNumber', e.target.value)} className="form-input font-mono" required />
                 </div>
-                <div>
+                <div className="relative">
                   <label className="form-label">{t('customers.teaorCode')}</label>
-                  <input type="text" value={formData.teaorCode} onChange={(e) => updateField('teaorCode', e.target.value)} className="form-input font-mono" placeholder="pl. 6612" />
+                  <input
+                    type="text"
+                    value={formData.teaorCode}
+                    onChange={(e) => handleTeaorChange(e.target.value)}
+                    onFocus={() => setTeaorOpen(teaorSuggestions.length > 0)}
+                    onBlur={() => setTimeout(() => setTeaorOpen(false), 150)}
+                    className="form-input font-mono"
+                    placeholder="pl. 6612 vagy tevékenység neve"
+                    autoComplete="off"
+                  />
+                  {teaorOpen && (
+                    <ul className="absolute z-20 left-0 right-0 mt-1 max-h-56 overflow-auto bg-white border border-gray-300 rounded shadow-lg">
+                      {teaorSuggestions.map(s => (
+                        <li key={s.code}>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => { e.preventDefault(); selectTeaor(s) }}
+                            className="w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 flex gap-2"
+                          >
+                            <span className="font-mono text-blue-700">{s.code}</span>
+                            <span className="text-gray-700">{s.name}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <div>
                   <label className="form-label required">{t('common.taxNumber')}</label>

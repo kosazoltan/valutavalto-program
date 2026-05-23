@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionLine;
 import hu.puzzleir.valuta.entity.TransactionType;
@@ -74,9 +75,45 @@ public class TransactionValidationService {
      * @throws ValidationException ha bármely szabály megsérül
      */
     public void validateTransaction(Transaction transaction) {
+        validateCurrencyExchangeable(transaction);
         validateCurrencyLineLimit(transaction);
         validateEurCoinBanknote(transaction);
         validateIdentificationRequired(transaction);
+    }
+
+    /** Elszámoló/báziz valuta — nem lehet kereskedett valuta (Legacy: "A FORINT NEM VÁLASZTHATÓ VALUTA"). */
+    private static final String BASE_CURRENCY_CODE = "HUF";
+
+    /**
+     * 0. Kereskedhetőség: a bizonylat egyik valutasora sem lehet a forint (base) vagy inaktív valuta.
+     * Legacy: ELADAS/VASARLAS — "A FORINT NEM VÁLASZTHATÓ VALUTA". Defense-in-depth: a UI is kiszűri,
+     * de szerveroldalon is kötelező (pl. inaktivált HRK).
+     */
+    public void validateCurrencyExchangeable(Transaction transaction) {
+        if (transaction.getLines() == null) {
+            return;
+        }
+        for (TransactionLine line : transaction.getLines()) {
+            validateCurrencyExchangeable(line.getCurrency());
+        }
+    }
+
+    /**
+     * Egyetlen kereskedett valuta kereshetőség-ellenőrzése — a buy/sell egysoros flow-hoz.
+     * Legacy: ELADAS/VASARLAS — a forint és inaktív valuta nem választható kereskedett valutaként.
+     */
+    public void validateCurrencyExchangeable(Currency currency) {
+        if (currency == null) {
+            return;
+        }
+        String code = currency.getCode();
+        if (BASE_CURRENCY_CODE.equalsIgnoreCase(code)) {
+            throw new ValidationException("A FORINT NEM VÁLASZTHATÓ VALUTA!");
+        }
+        if (Boolean.FALSE.equals(currency.getActive())) {
+            throw new ValidationException(
+                String.format("A(z) %s valuta nem aktív, nem választható!", code));
+        }
     }
 
     /**

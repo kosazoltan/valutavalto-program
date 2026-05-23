@@ -78,6 +78,7 @@ public class TransactionService {
     private final @org.springframework.context.annotation.Lazy TransactionMultiLineService multiLineService;
     private final LicenseService licenseService;
     private final SystemParameterService systemParameterService;
+    private final TransactionValidationService transactionValidationService;
 
     // Sztornó limit supervisor nélkül (3 db/nap)
     private static final int DAILY_REVERSAL_LIMIT = 3;
@@ -186,6 +187,7 @@ public class TransactionService {
         Long currencyId = resolveCurrencyId(request.getCurrencyId(), request.getCurrencyCode());
         Currency currency = currencyRepository.findById(currencyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található"));
+        transactionValidationService.validateCurrencyExchangeable(currency);
 
         // Ürfolyam meghatározása
         ExchangeRate rate = exchangeRateService.getCurrentRate(currencyId);
@@ -377,6 +379,7 @@ public class TransactionService {
         Long currencyId = resolveCurrencyId(request.getCurrencyId(), request.getCurrencyCode());
         Currency currency = currencyRepository.findById(currencyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található"));
+        transactionValidationService.validateCurrencyExchangeable(currency);
 
         // Ürfolyam meghatározása
         ExchangeRate rate = exchangeRateService.getCurrentRate(currencyId);

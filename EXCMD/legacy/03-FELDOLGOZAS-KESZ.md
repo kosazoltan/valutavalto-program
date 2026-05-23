@@ -44,3 +44,26 @@ A többi 105+ modul üzleti logikája a jelenlegi Java/React/Electron programban
 - `scripts/legacy-module-md-generator.py` — a kinyerő (újrafuttatható)
 
 → **A teljes Anti-Legacy üzleti forrása fel van dolgozva** (forrás vagy bináris mélységig), az utasítás-MD-k a forrásfájl-nevek szerint az `EXCMD/legacy/`-ben. A 4 gap-jelölt (G24–G27) a következő implementációs körre dokumentálva — döntően hardver/terminál-integráció-függő.
+
+## Teljes modul-szintű verifikáció (2026-05-23, v2.26.24/25 — 6 párhuzamos ügynök, a TÉNYLEGES kód ellen)
+
+A 110 modul-MD (109 VALUTA + TRADE) + 20 ARFOLYAM DFM-form mindegyikét a jelenlegi
+Java/React/Electron kódhoz mértük file:line bizonyítékkal (NEM a térképet hittük el).
+**Eredmény: a legacy üzleti logika túlnyomóan lefedett.** A korábbi gap-jelöltek
+(G24/G25/G26) mind TÉVES POZITÍV (már implementálva). 5 új, verifikált valódi gap:
+
+| # | Gap | Modul | Státusz |
+|---|---|---|---|
+| **N3** | HUF/inaktív-valuta „nem választható" guard (legacy üzenet: „A FORINT NEM VÁLASZTHATÓ VALUTA") | ELADAS/VASARLAS | ✅ **KÉSZ v2.26.25** — `TransactionValidationService.validateCurrencyExchangeable` + 5 teszt |
+| **N2** | TEÁOR referencia-tábla + typeahead picker (szabad-szöveg helyett) | TEAOR/TEAORTABLA | ✅ **KÉSZ v2.26.25** — `TeaorCode` entity + V259 (65 kód, TEÁOR'08) + `/api/v1/teaor` + `CustomerCreatePage` typeahead + 4 teszt |
+| **N1** | Internet/nagyker árfolyamlap-karbantartás (a gomb `'Hamarosan elérhető'` stub) | ARFOLYAM TINTERNETTMKFORM | ⏸️ **HALASZTVA** — a bináris-RE csak a form NEVÉT+CÉLJÁT adja, mező-szintű spec NINCS (`.pas` forrás hiányzik). Implementálás mező-találgatás lenne → futó-app verifikáció / üzleti spec kell. Az I=Nagybani oszlop a rács-UI-ban MÁR szerkeszthető. |
+| **N4** | WU partner-cég (WUAFACEGEK) törzs CRUD | GETWCEG | ⏸️ **HALASZTVA** — üzleti döntés kell: a WU-ügynöki partner-cég törzs aktívan használt-e. A WU send/receive/ic/storno MÁR kész. |
+| **N5** | METRO/TESCO elkülönített ÁFA-visszatérítő partner-flow (5/18/27%) | METRO/TESCO | ⏸️ **HALASZTVA** — a generikus `VatRefundService` lefedi az ÁFA-visszatérítést; a partner-specifikus multi-ráta voucher-flow nagyobb feature + üzleti spec kell. |
+
+**Szándékos scope-vágás (NEM implementálandó vakon):** TRADE termék-alrendszer
+(CIKKTORZS cikktörzs, telefon-feltöltés, matrica-ÁFA-számla, HaviTradeControl) —
+valutaváltó profil; csak `TransactionType` enum-stub (VIGNETTE/PHONE_TOPUP) maradt.
+
+> **Epistemológiai elv (megőrizve):** az N1/N4/N5-öt NEM gyártjuk le találgatott
+> mezőkkel — ahol a primer forrás (tényleges kód / verifikálható spec) nem ad
+> mező-szintű igazságot, ott a hiányt ŐSZINTÉN jelezzük, nem hallucinálunk funkciót.

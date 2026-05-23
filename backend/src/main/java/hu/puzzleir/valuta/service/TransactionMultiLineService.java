@@ -48,6 +48,7 @@ public class TransactionMultiLineService {
     private final TransactionOperationHelper helper;
     private final TransactionCalculationService calculationService;
     private final TransactionLineRepository transactionLineRepository;
+    private final TransactionValidationService transactionValidationService;
 
     /**
      * Multi-line vetel tranzakcio.
@@ -89,6 +90,7 @@ public class TransactionMultiLineService {
             Long lineCurrencyId = helper.resolveCurrencyId(lineReq.getCurrencyId(), lineReq.getCurrencyCode());
             Currency lineCurrency = currencyRepository.findById(lineCurrencyId)
                     .orElseThrow(() -> new ResourceNotFoundException("Valuta nem talalhato: sor " + (lineIdx + 1)));
+            transactionValidationService.validateCurrencyExchangeable(lineCurrency);
 
             ExchangeRate lineRate = exchangeRateService.getCurrentRate(lineCurrencyId);
             BigDecimal appliedRate = calculationService.resolveBuyRate(lineRate, lineReq.getBanknoteCount(), lineReq.getCustomExchangeRate());
@@ -269,6 +271,7 @@ public class TransactionMultiLineService {
             Long lineCurrencyId = helper.resolveCurrencyId(lineReq.getCurrencyId(), lineReq.getCurrencyCode());
             Currency lineCurrency = currencyRepository.findById(lineCurrencyId)
                     .orElseThrow(() -> new ResourceNotFoundException("Valuta nem talalhato: sor " + (lineIdx + 1)));
+            transactionValidationService.validateCurrencyExchangeable(lineCurrency);
 
             ExchangeRate lineRate = exchangeRateService.getCurrentRate(lineCurrencyId);
             BigDecimal appliedRate = calculationService.resolveSellRate(lineRate, lineReq.getBanknoteCount(), lineReq.getCustomExchangeRate());
