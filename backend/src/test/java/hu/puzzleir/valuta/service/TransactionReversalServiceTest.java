@@ -121,7 +121,7 @@ class TransactionReversalServiceTest {
                     .discountAmount(BigDecimal.ZERO)
                     .build();
 
-            when(transactionRepository.findById(100L)).thenReturn(Optional.of(original));
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(original));
             when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
             when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
             when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
@@ -171,7 +171,7 @@ class TransactionReversalServiceTest {
                     .handlingFee(BigDecimal.ZERO).discountPercent(BigDecimal.ZERO).discountAmount(BigDecimal.ZERO)
                     .build();
 
-            when(transactionRepository.findById(100L)).thenReturn(Optional.of(original));
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(original));
             when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
             when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
             when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
@@ -219,7 +219,7 @@ class TransactionReversalServiceTest {
                     .handlingFee(BigDecimal.ZERO).discountPercent(BigDecimal.ZERO).discountAmount(BigDecimal.ZERO)
                     .build();
 
-            when(transactionRepository.findById(100L)).thenReturn(Optional.of(original));
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(original));
             when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
             when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
             when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
@@ -257,7 +257,7 @@ class TransactionReversalServiceTest {
                     .transactionDate(LocalDate.now())
                     .build();
 
-            when(transactionRepository.findById(100L)).thenReturn(Optional.of(reversedTx));
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(reversedTx));
 
             TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
                     .originalTransactionId(100L)
@@ -289,7 +289,7 @@ class TransactionReversalServiceTest {
                     .transactionDate(LocalDate.now())
                     .build();
 
-            when(transactionRepository.findById(100L)).thenReturn(Optional.of(otherBranchTx));
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(otherBranchTx));
 
             TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
                     .originalTransactionId(100L)
@@ -321,7 +321,7 @@ class TransactionReversalServiceTest {
                     .transactionDate(LocalDate.now().minusDays(1))
                     .build();
 
-            when(transactionRepository.findById(100L)).thenReturn(Optional.of(olderTx));
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(olderTx));
 
             TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
                     .originalTransactionId(100L)
@@ -364,7 +364,7 @@ class TransactionReversalServiceTest {
                     .discountAmount(BigDecimal.ZERO)
                     .build();
 
-            when(transactionRepository.findById(100L)).thenReturn(Optional.of(olderTx));
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(olderTx));
             when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
             when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
             when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));

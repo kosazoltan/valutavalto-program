@@ -2,7 +2,9 @@ package hu.puzzleir.valuta.repository;
 
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -18,7 +20,13 @@ import java.util.UUID;
  */
 @Repository
 public interface WorkerRepository extends JpaRepository<Worker, Long> {
-    
+
+    /** PP-06: pesszimista zár a pénztáros sorára — egyedi-árfolyam napi kvóta TOCTOU ellen. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT w FROM Worker w WHERE w.id = :id")
+    Optional<Worker> findByIdForUpdate(@Param("id") Long id);
+
+
     /**
      * Keresés code alapján (company-n belül egyedi)
      */

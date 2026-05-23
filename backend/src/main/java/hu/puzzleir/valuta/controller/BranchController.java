@@ -144,6 +144,7 @@ public class BranchController {
      * Új fiók létrehozása
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<BranchDto> createBranch(@Valid @RequestBody CreateBranchDto dto) {
         log.info("POST /api/v1/branches - code: {}", dto.getCode());
         BranchDto created = branchService.create(dto);
@@ -155,6 +156,7 @@ public class BranchController {
      * Fiók frissítése
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<BranchDto> updateBranch(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateBranchDto dto
@@ -169,6 +171,7 @@ public class BranchController {
      * Fiók törlése (soft delete)
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteBranch(@PathVariable UUID id) {
         log.info("DELETE /api/v1/branches/{}", id);
         branchService.delete(id);

@@ -106,7 +106,15 @@ public class ProductionCorsFilter extends OncePerRequestFilter {
         return allowedOriginPatterns.stream().anyMatch(pattern -> matchesPattern(origin, pattern));
     }
 
-    private boolean matchesPattern(String origin, String pattern) {
+    /**
+     * PP-04: Biztonságos minta-illesztés. A korábbi startsWith/endsWith logika kijátszható volt
+     * (pl. `http://localhost:*` minta + üres utótag → bármilyen `http://localhost:...` átment).
+     * Most: a literál szegmenseket regex-re escape-eljük, a `*` wildcardot pedig egy szűk,
+     * host/port-barát karakterosztályra (`[a-z0-9.\-]*`) cseréljük, ami NEM enged `/`, `:`, `@`
+     * karaktert — így nem injektálható path/userinfo/port-trükk (pl. localhost.evil.com kizárva).
+     * A teljes mintát lehorgonyozzuk (^...$).
+     */
+    boolean matchesPattern(String origin, String pattern) {
         String normalizedPattern = pattern.toLowerCase(Locale.ROOT);
         String normalizedOrigin = origin.toLowerCase(Locale.ROOT);
 
@@ -115,18 +123,16 @@ public class ProductionCorsFilter extends OncePerRequestFilter {
         }
 
         String[] parts = normalizedPattern.split("\\*", -1);
-        int index = 0;
-        for (String part : parts) {
-            if (part.isEmpty()) {
-                continue;
+        StringBuilder regex = new StringBuilder("^");
+        for (int i = 0; i < parts.length; i++) {
+            if (!parts[i].isEmpty()) {
+                regex.append(java.util.regex.Pattern.quote(parts[i]));
             }
-            int found = normalizedOrigin.indexOf(part, index);
-            if (found < 0) {
-                return false;
+            if (i < parts.length - 1) {
+                regex.append("[a-z0-9.\\-]*"); // wildcard: host/port-barát, nincs / : @
             }
-            index = found + part.length();
         }
-
-        return normalizedOrigin.startsWith(parts[0]) && normalizedOrigin.endsWith(parts[parts.length - 1]);
+        regex.append("$");
+        return normalizedOrigin.matches(regex.toString());
     }
 }

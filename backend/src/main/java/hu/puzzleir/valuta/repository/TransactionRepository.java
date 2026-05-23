@@ -3,9 +3,11 @@ package hu.puzzleir.valuta.repository;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionStatus;
 import hu.puzzleir.valuta.entity.TransactionType;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -22,6 +24,18 @@ import java.util.UUID;
  */
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+
+    /** PP-07: pesszimista zár az eredeti tranzakcióra — dupla-sztornó (TOCTOU) ellen. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM Transaction t WHERE t.id = :id")
+    Optional<Transaction> findByIdForUpdate(@Param("id") Long id);
+
+    /**
+     * PP-03 IDOR: cég-szűrt tranzakció-lekérés. A más cég tranzakciója és a nem létező
+     * tranzakció ugyanazt az üres eredményt adja — így nincs oldalcsatorna (txId-enumeráció).
+     */
+    @Query("SELECT t FROM Transaction t WHERE t.id = :id AND t.company.id = :companyId")
+    Optional<Transaction> findByIdAndCompanyId(@Param("id") Long id, @Param("companyId") UUID companyId);
 
     /**
      * Bizonylat keresése szám alapján (JOIN FETCH a lazy proxy hiba elkerüléséhez)

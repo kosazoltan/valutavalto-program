@@ -861,7 +861,14 @@ public class AmlService {
             .build();
 
         if (dto.getTransactionId() != null) {
-            Transaction tx = transactionRepository.findById(dto.getTransactionId()).orElse(null);
+            // PP-03 IDOR: cég-szűrt lekérés. A nem létező és a más cég tranzakciója egyaránt
+            // üres eredményt ad → azonos hiba, nincs oldalcsatorna (txId-enumeráció kizárva).
+            Transaction tx = transactionRepository.findByIdAndCompanyId(dto.getTransactionId(), companyId)
+                .orElseThrow(() -> {
+                    log.warn("AML tranzakció-csatolás elutasítva (nem létező vagy kereszt-bérlő)! userCompany={}, txId={}",
+                        companyId, dto.getTransactionId());
+                    return new ValidationException("A megadott tranzakció nem kapcsolható össze ezzel a bejelentéssel!");
+                });
             report.setTransaction(tx);
         }
 

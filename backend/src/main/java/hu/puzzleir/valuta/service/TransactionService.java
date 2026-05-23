@@ -1172,6 +1172,10 @@ public class TransactionService {
             return false;
         }
         Long workerId = SecurityUtils.getCurrentWorkerId();
+        // PP-06: pesszimista zár a pénztáros sorára — szerializálja a párhuzamos kvóta-ellenőrzést
+        // (TOCTOU race ellen: két párhuzamos kliens ne tudja átlépni a napi limitet).
+        workerRepository.findByIdForUpdate(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található: " + workerId));
         long used = transactionRepository.countDailyCashierCustomRatesByWorker(workerId, LocalDate.now());
         long limit = parseSystemParameterLong("CASHIER_CUSTOM_RATE_DAILY_LIMIT", "5");
         if (used >= limit) {

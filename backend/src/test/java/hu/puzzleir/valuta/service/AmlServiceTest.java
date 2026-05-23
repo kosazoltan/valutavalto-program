@@ -155,6 +155,29 @@ class AmlServiceTest {
         assertThat(result.getRejectionReason()).contains("KOTELEZO");
     }
 
+    // ============ PP-03 IDOR: AML tranzakció-csatolás teszt ============
+
+    @Test
+    @DisplayName("submitReport: más cég / nem létező tranzakció csatolása → ValidationException (PP-03, nincs oldalcsatorna)")
+    void testSubmitReport_crossTenantOrMissingTransactionBlocked() {
+        // findByIdAndCompanyId üres eredményt ad: más cég tranzakciója ÉS nem létező egyaránt
+        when(transactionRepository.findByIdAndCompanyId(eq(999L), eq(TEST_COMPANY_ID)))
+            .thenReturn(Optional.empty());
+
+        hu.puzzleir.valuta.dto.aml.CreateAmlReportDto dto =
+            hu.puzzleir.valuta.dto.aml.CreateAmlReportDto.builder()
+                .transactionId(999L)
+                .reportType("SUSPICIOUS")
+                .amountHuf(new BigDecimal("2000000"))
+                .build();
+
+        assertThatThrownBy(() -> amlService.submitReport(dto))
+            .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
+            .hasMessageContaining("nem kapcsolható össze");
+        // A bejelentés NEM mentődik el, ha a tranzakció-csatolás elutasításra kerül
+        verify(amlReportRepository, never()).save(any());
+    }
+
     // ============ isStructuring tesztek ============
 
     @Test

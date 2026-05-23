@@ -53,7 +53,7 @@ public class TransactionReversalService {
         Long workerId = SecurityUtils.getCurrentWorkerId();
 
         // Eredeti tranzakcio lekerese
-        Transaction original = transactionRepository.findById(request.getOriginalTransactionId())
+        Transaction original = transactionRepository.findByIdForUpdate(request.getOriginalTransactionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Eredeti tranzakcio nem talalhato"));
 
         // Validaciok
@@ -235,7 +235,7 @@ public class TransactionReversalService {
         Long workerId = SecurityUtils.getCurrentWorkerId();
 
         // Eredeti tranzakcio lekerese
-        Transaction original = transactionRepository.findById(request.getOriginalTransactionId())
+        Transaction original = transactionRepository.findByIdForUpdate(request.getOriginalTransactionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Eredeti tranzakcio nem talalhato"));
 
         // Validaciok
