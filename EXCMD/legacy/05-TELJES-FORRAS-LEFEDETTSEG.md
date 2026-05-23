@@ -43,6 +43,23 @@ ls EXCMD/legacy/modules*/*.md | sed 's#.*/##;s#.md$##;s#^T##' | tr a-z A-Z | sor
 - `scripts/legacy-deep-md-generator.py` — beágyazott sub-modulok (helga/dllek, ugyfelcontrol/dll stb.)
 - `scripts/legacy-valuta-stub-regen.py` — az 5 VALUTA-stub valódi forrása + IBVALTO
 
+## Archívum-verifikáció (a tömörített fájlok is — user-kérés 2026-05-23)
+A top-level `SZERVER/{fejleszt,newdll,ujdll}` **tényleg üres** (0 fájl) — a forrás a `_extracted`-ben van.
+**A tömörített fájlokat is átnéztük** (nem hittük el vakon):
+- `Anti/old.zip` — 3737 fájl, **0 .pas/.dpr** (adat/bináris, nincs forrás)
+- `forrasok.7z` → `_extracted_auto/forrasok_unpacked` (kibontva; ebből került elő pl. az IDCTRL is)
+- Beágyazott `.rar`-ok (`arfolyam.rar`, `recptor/orecptor.rar`→Wrecept, `ujdll/unpacker/ounpacker.rar`,
+  `korlevel/zsuzsa/korlevel.rar`, `penztarak/old.rar`) — mind **régi-verzió/duplikátum** a már lefedett modulokról.
+
+**Bizonyíték:** az ÖSSZES archívum (rar/7z/zip) `.dpr`-tartalmát kilistáztuk (7-Zip `l`) →
+**223 egyedi .dpr-név, és mind le van fedve MD-vel, kivéve az `AFATAB` (=AFATABLA alias).**
+```
+for a in $(find Anti -iname '*.rar' -o -iname '*.7z' -o -iname '*.zip'); do
+  7z l "$a" | grep -iE '\.dpr$' ; done   # → minden .dpr egyedi neve
+# diff a generált MD-nevekkel → csak AFATAB (alias)
+```
+(A `camera*` Java-alrendszer + `firebird`/`ibconsole` külön kezelt — nem Delphi-modul.)
+
 ## Verifikáció a jelenlegi program ellen
 A VALUTA + ERTEKTAR + SZERVER üzleti logika érdemi lefedettsége korábban verifikálva (10 ügynök).
 A `fejleszt` (174) sok dev-verziót/duplikátumot is tartalmaz a már verifikált modulokról; az
