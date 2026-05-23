@@ -614,8 +614,44 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 
 ---
 
+## KÖTELEZŐ ÉRVÉNYŰ: Verzió- és telepítő-build stratégia (2026-05-23 user-direktíva — token/idő-spórolás)
+
+> **Kulcs-elv: a `merge` ≠ `telepítő`.** A frontend-react + backend MINDEN mergelt PR után
+> automatikusan deploy-ol Hetznerre (excvaluta.com); az Electron-kliensek a szerverről töltik
+> a frontendet → **a webes/backend javítás azonnal a kollégáknál van telepítő-build nélkül.**
+
+**Mikor KELL új telepítő-build (283 MB Penztar + 4-way) — CSAK az alábbi 2 esetben:**
+1. **Electron-natív réteg változik** — `penztar-client/electron/*` (sync-engine, sqlite, scanner, IPC, soros nyomtató, preload, main), `kozponti-client/electron/*`, `arfolyam-keszito-client/electron/*`, natív npm-függőség, bundle-elt JRE, vagy auto-update baseline.
+2. **Milestone lezárul** — egy minor (2.**MINOR**.0) tesztelhető csomag VAGY egy major (**MAJOR**.0.0) teljes revízió/refaktor/legacy-átvilágítás vége.
+
+**Verzió-szintek (`2.MINOR.PATCH`):**
+| Szint | Mikor | Telepítő? |
+|---|---|---|
+| **PATCH** (2.26.**x**) | minden mergelt PR (tesztelői fix, szűk szkóp) | ❌ NINCS build — csak merge + Hetzner auto-deploy |
+| **MINOR** (2.**27**.0) | tesztelhető csomag összegyűlt VAGY Electron-natív változás | ✅ 1 build a batch végén |
+| **MAJOR** (**3**.0.0) | teljes revízió/refaktor/legacy-átvilágítás lezárva | ✅ 1 build a milestone-on |
+
+**Tilos:** tisztán backend/frontend-react (server-served) változásra 283 MB-os telepítőt gyártani PR-enként. A version-sync (`check-version-sync.mjs`) + a verzió-bump per-merge **maradhat** (olcsó); a **build** a drága, azt csoportosítjuk.
+
+**A „kell-e installer?" döntési teszt minden release-záráskor:** `git diff main~N..main --name-only` → ha CSAK `backend/**` és/vagy `frontend-react/**` (és nincs `*/electron/**` vagy natív dep) → **NINCS build**, elég a deploy. Ha van Electron-natív érintés VAGY milestone → build.
+
+---
+
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.24** (2026-05-23 — Anti-Legacy modul-szintű mély-verifikáció + G27 TEÁOR; mind admin-merged + auto-deploy, production HEALTHY 200).
+- **Verzió:** **v2.26.25** (2026-05-23 — Anti-Legacy modul-verifikáció follow-up: N3 HUF/inaktív-valuta guard + N2 TEÁOR picker; mind admin-merged + auto-deploy, production HEALTHY 200).
+  - **N3 (PR #803):** `TransactionValidationService.validateCurrencyExchangeable` — a HUF (base) vagy inaktív kereskedett valuta elutasítása ("A FORINT NEM VÁLASZTHATÓ VALUTA"), **ténylegesen bekötve** az `executeBuy`/`executeSell` + multi-line flow-ba (a self-review kifogta, hogy a service korábban dead code volt). 7 teszt.
+  - **N2 (PR #803):** `TeaorCode` entity + V259 (65 kurált TEÁOR'08 kód) + `/api/v1/teaor?q=` + frontend `teaorApi` + `CustomerCreatePage` typeahead (a G27 szabad-szöveg helyett). 4 teszt. **Böngészős verifikáció a deploy + V259 után esedékes** (auth-os admin oldal).
+  - **Teljes backend suite: 1584/1584 zöld.**
+  - **Halasztott (őszinte, nem találgatott) gap-ek:** N1 ARFOLYAM TINTERNETTMKFORM (bináris-RE csak form-nevet ad, mező-spec nincs → futó-app/üzleti spec kell), N4 WU partner-cég törzs, N5 METRO/TESCO multi-ráta ÁFA-flow. TRADE termék-alrendszer = szándékos scope-vágás. Lásd `EXCMD/legacy/03-FELDOLGOZAS-KESZ.md`.
+  - **⚠️ Megjegyzés az új build-stratégiához:** v2.26.25 tartalma (N2 frontend + N3 backend) **server-served** → az új szabály szerint NEM igényelt volna telepítőt; a user döntése alapján ezt az utolsó patch-telepítőt még a régi módon legyártottuk, az új szabály a következő változástól él.
+  - **Telepítő-szet v2.26.25 (UNSIGNED, Downloads-ban):**
+    - `Penztar-Setup-2.26.25-20260523.exe` — 283.83 MB, SHA-256 `DA964C578BA9A4DEB4B938AF4CAD0B2F6113785E64238419BD662863516F2696`
+    - `Kozponti-Iranyitokozpont-Setup-2.26.25.exe` — 101.06 MB, SHA-256 `819AA24790204A19D1B76E1824BAC9ADD88BDD2D915E082AE92A4715F2587BD7`
+    - `Arfolyamkeszito-Setup-2.26.25.exe` — 101.06 MB, SHA-256 `1C9420082B54E0EDD342FEA3568742C40AA81E4D1778DB824CEB118A49948A0E`
+    - `Penztar-Eltavolito-2.26.23-20260522.exe` — verzió-független, SHA-256 `5D84BE6AA024D9543B5B13F9E846255A6E05F700D8AE4750007E97539B5BDFB4`
+  - Vault: `vault/sessions/2026-05-23-anti-legacy-modul-verifikacio-v2.26.24.md` + `2026-05-23-versioning-installer-strategy.md`.
+
+- **Verzió [előző]:** **v2.26.24** (2026-05-23 — Anti-Legacy modul-szintű mély-verifikáció + G27 TEÁOR; mind admin-merged + auto-deploy, production HEALTHY 200).
   - **G27 (PR #801):** jogi-személy TEÁOR tevékenységi kód (legacy `teaorvalasztas`/BIGCTRL) — `Customer.teaorCode` + V258 migráció + DTO/mapper/service + `CustomerCreatePage` céges szekció input. Ez volt az **egyetlen valódi szoftver-hiány** a 4 legacy gap-jelöltből.
   - **Anti-Legacy gap-verifikáció (epistemológiai direktíva: ground truth = a tényleges kód, NEM a származtatott modul-térkép):** mind a 110 modul-MD (109 VALUTA + TRADE) + 20 ARFOLYAM DFM-form **6 párhuzamos ügynökkel** a jelenlegi Java/React/Electron kód ellen verifikálva (file:line bizonyíték). **Eredmény:** a legacy üzleti logika túlnyomóan lefedett; a korábbi gap-jelöltek (G24 kártyás sztornó / G25 LED futófény / G26 okmány-szkennelés) mind **TÉVES POZITÍV** (már implementálva: `StornoService.executeOtpTerminalStorno`, `LedDisplayService`+`LedSerialPortDriver`, `electron/scanner.ts`).
   - **Új, verifikált valódi gap-ek (v2.26.25 sprintre):** (1) ARFOLYAM `TINTERNETTMKFORM` internet/nagyker árfolyamlap-karbantartás (a gomb jelenleg `'Hamarosan elérhető'` stub) — HIGH; (2) TEÁOR referencia-tábla + typeahead picker (most szabad-szöveg) — HIGH; (3) HUF/inaktív-valuta „nem választható" guard `TransactionValidationService`-ben (legacy üzenet-paritás, defense-in-depth) — MED; (4) GETWCEG WU partner-cég törzs CRUD — MED; (5) METRO/TESCO elkülönített ÁFA-visszatérítő partner-flow (5/18/27%) — MED. A TRADE termék-alrendszer (CIKKTORZS/telefon-feltöltés/matrica-számla) **szándékos scope-vágás** (valutaváltó profil) — csak enum-stub maradt.
