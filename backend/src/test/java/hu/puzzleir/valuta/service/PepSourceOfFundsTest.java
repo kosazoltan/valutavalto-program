@@ -55,6 +55,7 @@ class PepSourceOfFundsTest {
 
         @InjectMocks private TransactionService transactionService;
 
+        @Mock private TransactionValidationService transactionValidationService;
         @Mock private TransactionRepository transactionRepository;
         @Mock private CurrencyRepository currencyRepository;
         @Mock private ExchangeRateRepository exchangeRateRepository;

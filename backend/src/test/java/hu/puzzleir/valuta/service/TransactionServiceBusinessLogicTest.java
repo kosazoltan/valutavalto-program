@@ -56,6 +56,7 @@ class TransactionServiceBusinessLogicTest {
     private static final Long HUF_ID = 1L;
     private static final Long EUR_ID = 2L;
     private static final Long USD_ID = 3L;
+    @Mock private TransactionValidationService transactionValidationService;
 
     @InjectMocks
     private TransactionService transactionService;

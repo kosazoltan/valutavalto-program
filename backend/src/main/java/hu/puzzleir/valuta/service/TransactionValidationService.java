@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionLine;
 import hu.puzzleir.valuta.entity.TransactionType;
@@ -93,17 +94,25 @@ public class TransactionValidationService {
             return;
         }
         for (TransactionLine line : transaction.getLines()) {
-            if (line.getCurrency() == null) {
-                continue;
-            }
-            String code = line.getCurrency().getCode();
-            if (BASE_CURRENCY_CODE.equalsIgnoreCase(code)) {
-                throw new ValidationException("A FORINT NEM VÁLASZTHATÓ VALUTA!");
-            }
-            if (Boolean.FALSE.equals(line.getCurrency().getActive())) {
-                throw new ValidationException(
-                    String.format("A(z) %s valuta nem aktív, nem választható!", code));
-            }
+            validateCurrencyExchangeable(line.getCurrency());
+        }
+    }
+
+    /**
+     * Egyetlen kereskedett valuta kereshetőség-ellenőrzése — a buy/sell egysoros flow-hoz.
+     * Legacy: ELADAS/VASARLAS — a forint és inaktív valuta nem választható kereskedett valutaként.
+     */
+    public void validateCurrencyExchangeable(Currency currency) {
+        if (currency == null) {
+            return;
+        }
+        String code = currency.getCode();
+        if (BASE_CURRENCY_CODE.equalsIgnoreCase(code)) {
+            throw new ValidationException("A FORINT NEM VÁLASZTHATÓ VALUTA!");
+        }
+        if (Boolean.FALSE.equals(currency.getActive())) {
+            throw new ValidationException(
+                String.format("A(z) %s valuta nem aktív, nem választható!", code));
         }
     }
 

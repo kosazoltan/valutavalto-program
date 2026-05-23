@@ -81,4 +81,26 @@ class TransactionValidationServiceTest {
         assertThatCode(() -> service.validateCurrencyExchangeable(txNullLines)).doesNotThrowAnyException();
         assertThatCode(() -> service.validateCurrencyExchangeable(txNullCurrency)).doesNotThrowAnyException();
     }
+
+    // === Egy-valutás overload (buy/sell egysoros + multi-line per-sor flow) ===
+
+    @Test
+    @DisplayName("validateCurrencyExchangeable(Currency) — HUF tiltott")
+    void testSingleCurrencyHufRejected() {
+        assertThatThrownBy(() -> service.validateCurrencyExchangeable(
+                Currency.builder().code("HUF").active(true).build()))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("FORINT");
+    }
+
+    @Test
+    @DisplayName("validateCurrencyExchangeable(Currency) — inaktív tiltott, aktív deviza OK, null OK")
+    void testSingleCurrencyActiveAndNull() {
+        assertThatThrownBy(() -> service.validateCurrencyExchangeable(
+                Currency.builder().code("HRK").active(false).build()))
+                .isInstanceOf(ValidationException.class);
+        assertThatCode(() -> service.validateCurrencyExchangeable(
+                Currency.builder().code("EUR").active(true).build())).doesNotThrowAnyException();
+        assertThatCode(() -> service.validateCurrencyExchangeable((Currency) null)).doesNotThrowAnyException();
+    }
 }
