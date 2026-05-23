@@ -49,6 +49,16 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
     @Query("SELECT COUNT(t) FROM Transfer t WHERE t.toBranch.id = :branchId AND t.status IN ('PENDING', 'IN_TRANSIT')")
     long countPendingByBranch(@Param("branchId") UUID branchId);
 
+    /**
+     * Értéktár→pénztár átvett (RECEIVED) lehívások az adott pénztárakra, időszakra.
+     * Az átértékelés-allokáció „lehívott forgalom" hajtóereje (legacy puffer→pénztár átadás).
+     */
+    @Query("SELECT t FROM Transfer t WHERE t.toBranch.id IN :toBranchIds " +
+           "AND t.fromBranch.isVault = true AND t.status = hu.puzzleir.valuta.entity.Transfer$TransferStatus.RECEIVED " +
+           "AND t.transferDate BETWEEN :from AND :to")
+    List<Transfer> findVaultDrawsToCashiers(@Param("toBranchIds") List<UUID> toBranchIds,
+                                            @Param("from") LocalDate from, @Param("to") LocalDate to);
+
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(t.transferNumber, 4) AS long)), 0) FROM Transfer t WHERE t.transferNumber LIKE :prefix%")
     long findMaxTransferNumber(@Param("prefix") String prefix);
 

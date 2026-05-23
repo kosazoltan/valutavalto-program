@@ -15,6 +15,7 @@ import {
   Megaphone,
   MonitorCheck,
   PackageCheck,
+  Scale,
   Search,
   Shield,
   Users,
@@ -266,6 +267,20 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
         status: 'ready',
         icon: Megaphone,
         roles: ['ugyvezeto', 'irodavezeto', 'irodai_dolgozo'],
+      },
+    ],
+  },
+  {
+    title: 'Eredmény és területi haszon',
+    modules: [
+      {
+        id: 'territory-reconciliation',
+        title: 'Területi reconciliation',
+        description: 'Értéktári átértékelés lecsorgatása a pénztárakra; terület = Σ pénztári haszon',
+        route: '/reports/territory-reconciliation',
+        status: 'ready',
+        icon: Scale,
+        roles: ['foertektar', 'ugyvezeto', 'belso_ellenor', 'teruleti_vezeto'],
       },
     ],
   },
