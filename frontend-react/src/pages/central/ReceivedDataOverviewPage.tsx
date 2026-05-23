@@ -1,179 +1,115 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useMemo, useState } from 'react'
 import {
   AlertTriangle,
+  ArrowRight,
   Calendar,
   CheckCircle2,
   ClipboardList,
-  Clock,
-  Eye,
   RefreshCw,
   Search,
-  XCircle,
+  ShieldCheck,
 } from 'lucide-react'
 import {
-  centralReceivedDataApi,
-  type CentralReceivedDataOverview,
-  type CentralReceivedDataRow,
+  transferReconciliationApi,
+  type TransferReconciliationResult,
 } from '../../services/api'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 
-type DataFilter = 'all' | 'critical' | 'missing' | 'received' | 'submitted' | 'waiting'
+type ReconFilter = 'all' | 'match' | 'mismatch'
 
-function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+/** Előző nap ISO formátumban (a másnap reggeli ellenőrzés alapértelmezett intervalluma). */
+function previousDayIso() {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  return d.toISOString().slice(0, 10)
 }
 
-function formatHuf(value?: number) {
-  return `${Math.round(value ?? 0).toLocaleString('hu-HU')} Ft`
+function formatAmount(value?: number | null) {
+  if (value == null) return '-'
+  return value.toLocaleString('hu-HU')
 }
 
-function formatDateTime(value?: string | null) {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('hu-HU', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function statusLabel(status: string) {
-  switch (status) {
-    case 'SUBMITTED':
-      return 'beküldve'
-    case 'RECEIVED':
-      return 'beérkezett'
-    case 'MISSING':
-      return 'hiányzik'
-    case 'WAITING':
-      return 'várható'
-    case 'CRITICAL':
-      return 'kritikus'
-    default:
-      return status || 'ismeretlen'
-  }
-}
-
-function statusClass(status: string) {
-  switch (status) {
-    case 'SUBMITTED':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-700'
-    case 'RECEIVED':
-      return 'border-blue-200 bg-blue-50 text-blue-700'
-    case 'MISSING':
-    case 'CRITICAL':
-      return 'border-red-200 bg-red-50 text-red-700'
-    case 'WAITING':
-      return 'border-amber-200 bg-amber-50 text-amber-700'
-    default:
-      return 'border-slate-200 bg-slate-50 text-slate-700'
-  }
-}
-
-function statusIcon(status: string) {
-  if (status === 'SUBMITTED' || status === 'RECEIVED') return <CheckCircle2 size={14} />
-  if (status === 'MISSING' || status === 'CRITICAL') return <AlertTriangle size={14} />
-  return <Clock size={14} />
-}
-
-function closingPill(done: boolean, label: string) {
-  return (
-    <span className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-xs ${done ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500'}`}>
-      {done ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
-      {label}
-    </span>
-  )
+function isMatch(status: string) {
+  return status === 'EGYEZIK'
 }
 
 export default function ReceivedDataOverviewPage() {
-  const navigate = useNavigate()
-  const [date, setDate] = useState(todayIso())
-  const [overview, setOverview] = useState<CentralReceivedDataOverview | null>(null)
+  const yesterday = previousDayIso()
+  const [startDate, setStartDate] = useState(yesterday)
+  const [endDate, setEndDate] = useState(yesterday)
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<DataFilter>('all')
+  const [filter, setFilter] = useState<ReconFilter>('all')
+  const [result, setResult] = useState<TransferReconciliationResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hasRun, setHasRun] = useState(false)
 
-  const load = useCallback(async () => {
+  // FK-003: az ellenőrzés NEM fut automatikusan — Kasza Helga manuálisan indítja.
+  const runCheck = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await centralReceivedDataApi.status(date)
-      setOverview(data)
+      const data = await transferReconciliationApi.run(startDate, endDate)
+      setResult(data)
+      setHasRun(true)
     } catch (err) {
-      logger.error('ReceivedDataOverviewPage', 'Beérkezett adatok betöltési hiba:', err)
+      logger.error('ReceivedDataOverviewPage', 'Egyeztetés futtatási hiba:', err)
       setError(getErrorMessage(err))
-      setOverview(null)
+      setResult(null)
     } finally {
       setLoading(false)
     }
-  }, [date])
+  }
 
-  useEffect(() => {
-    void load()
-  }, [load])
-
-  const rows = overview?.rows ?? []
   const filteredRows = useMemo(() => {
+    const rows = result?.rows ?? []
     const q = query.trim().toLowerCase()
     return rows.filter((row) => {
       const matchesQuery = !q || [
-        row.branchCode,
-        row.branchName,
-        row.branchCity,
-        row.notes,
+        row.fromBranchCode,
+        row.fromBranchName,
+        row.toBranchCode,
+        row.toBranchName,
+        row.currencyCode,
+        row.transferNumber,
+        row.discrepancyNote,
       ].some((value) => value?.toLowerCase().includes(q))
       if (!matchesQuery) return false
-      if (filter === 'all') return true
-      if (filter === 'critical') return row.dataStatus === 'CRITICAL'
-      if (filter === 'missing') return row.dataStatus === 'MISSING' || !row.reportReceived
-      if (filter === 'received') return row.dataStatus === 'RECEIVED'
-      if (filter === 'submitted') return row.dataStatus === 'SUBMITTED'
-      if (filter === 'waiting') return row.dataStatus === 'WAITING'
+      if (filter === 'match') return isMatch(row.status)
+      if (filter === 'mismatch') return !isMatch(row.status)
       return true
     })
-  }, [filter, query, rows])
+  }, [filter, query, result])
 
   const exportCsv = () => {
     const header = [
-      'branchCode',
-      'branchName',
-      'reportDate',
-      'dataStatus',
-      'reportReceived',
-      'reportSubmitted',
-      'transactionCount',
-      'totalBuyHuf',
-      'totalSellHuf',
-      'totalFeeHuf',
-      'closingAlertLevel',
+      'datum',
+      'kuldo',
+      'fogado',
+      'valutanem',
+      'kuldott',
+      'fogadott',
+      'statusz',
+      'megjegyzes',
     ]
     const lines = filteredRows.map((row) => [
-      row.branchCode ?? '',
-      row.branchName ?? '',
-      row.reportDate,
-      row.dataStatus,
-      String(row.reportReceived),
-      String(row.reportSubmitted),
-      String(row.transactionCount ?? 0),
-      String(row.totalBuyHuf ?? 0),
-      String(row.totalSellHuf ?? 0),
-      String(row.totalFeeHuf ?? 0),
-      row.closingAlertLevel,
+      row.date,
+      `${row.fromBranchCode ?? ''} ${row.fromBranchName ?? ''}`.trim(),
+      `${row.toBranchCode ?? ''} ${row.toBranchName ?? ''}`.trim(),
+      row.currencyCode,
+      String(row.sentAmount ?? ''),
+      String(row.receivedAmount ?? ''),
+      row.status,
+      row.discrepancyNote ?? '',
     ].map((value) => `"${value.replace(/"/g, '""')}"`).join(';'))
     const blob = new Blob([[header.join(';'), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `beerkezett-adatok-${date}.csv`
+    link.download = `egyeztetes-${startDate}_${endDate}.csv`
     link.click()
     URL.revokeObjectURL(url)
-  }
-
-  const openDaybook = (row: CentralReceivedDataRow) => {
-    navigate(`/daybook?branchId=${encodeURIComponent(row.branchId)}&date=${encodeURIComponent(date)}`)
   }
 
   return (
@@ -184,21 +120,7 @@ export default function ReceivedDataOverviewPage() {
             <ClipboardList className="h-5 w-5 text-slate-700" />
             <div>
               <h1 className="text-lg font-semibold text-slate-900">Beérkezett adatok áttekintése</h1>
-              <div className="text-xs text-slate-500">Pénztári adatcsomagok beérkezésének áttekintése</div>
-              {overview?.lastSyncedAt ? (
-                <div
-                  className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"
-                  title="A legfrissebb átvett pénztári adat időpontja"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
-                  Utolsó adatfrissülés: {formatDateTime(overview.lastSyncedAt)}
-                </div>
-              ) : (
-                <div className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden />
-                  Nincs még beérkezett adat
-                </div>
-              )}
+              <div className="text-xs text-slate-500">Pénztárak közötti pénzmozgások — egyeztetés</div>
             </div>
           </div>
           <div className="flex gap-2">
@@ -210,46 +132,56 @@ export default function ReceivedDataOverviewPage() {
             >
               CSV
             </button>
-            <button
-              type="button"
-              onClick={() => void load()}
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-            >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-              Frissítés
-            </button>
+            {hasRun && (
+              <button
+                type="button"
+                onClick={() => void runCheck()}
+                disabled={loading}
+                className="inline-flex items-center gap-2 rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                Frissítés
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       <div className="space-y-4 p-4">
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
-          <Metric label="Iroda" value={overview?.totalBranches ?? 0} />
-          <Metric label="Beérkezett" value={overview?.receivedReports ?? 0} tone="blue" />
-          <Metric label="Beküldött" value={overview?.submittedReports ?? 0} tone="green" />
-          <Metric label="Hiányzik" value={overview?.missingReports ?? 0} tone="red" />
-          <Metric label="Kritikus zárás" value={overview?.criticalClosings ?? 0} tone="red" />
-          <Metric label="Tranzakció" value={overview?.totalTransactions ?? 0} />
-          <Metric label="Vétel" value={formatHuf(overview?.totalBuyHuf)} />
-          <Metric label="Eladás" value={formatHuf(overview?.totalSellHuf)} />
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <Metric label="Összes mozgás" value={result?.totalRows ?? 0} />
+          <Metric label="Egyezik" value={result?.matchedRows ?? 0} tone="green" />
+          <Metric label="Eltérés" value={result?.discrepancyRows ?? 0} tone="red" />
+          <Metric label="Értesített értéktár" value={result?.notifiedBranches ?? 0} tone="amber" />
         </div>
 
         <div className="rounded-md border border-slate-200 bg-white p-3">
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Dátum</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Dátum -tól</label>
               <div className="flex items-center gap-2">
                 <Calendar size={16} className="text-slate-400" />
                 <input
                   type="date"
-                  value={date}
-                  onChange={(event) => setDate(event.target.value)}
+                  value={startDate}
+                  onChange={(event) => setStartDate(event.target.value)}
                   className="rounded border border-slate-300 px-2 py-2 text-sm"
                 />
               </div>
             </div>
-            <div className="min-w-[240px] flex-1">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Dátum -ig</label>
+              <div className="flex items-center gap-2">
+                <Calendar size={16} className="text-slate-400" />
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  className="rounded border border-slate-300 px-2 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="min-w-[220px] flex-1">
               <label className="mb-1 block text-xs font-medium text-slate-600">Keresés</label>
               <div className="flex items-center gap-2 rounded border border-slate-300 bg-white px-2">
                 <Search size={16} className="text-slate-400" />
@@ -257,7 +189,7 @@ export default function ReceivedDataOverviewPage() {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   className="w-full py-2 text-sm outline-none"
-                  placeholder="Iroda, kód, város, megjegyzés"
+                  placeholder="Iroda, kód, valuta, megjegyzés"
                 />
               </div>
             </div>
@@ -265,17 +197,23 @@ export default function ReceivedDataOverviewPage() {
               <label className="mb-1 block text-xs font-medium text-slate-600">Szűrő</label>
               <select
                 value={filter}
-                onChange={(event) => setFilter(event.target.value as DataFilter)}
+                onChange={(event) => setFilter(event.target.value as ReconFilter)}
                 className="rounded border border-slate-300 bg-white px-2 py-2 text-sm"
               >
                 <option value="all">Összes</option>
-                <option value="critical">Kritikus</option>
-                <option value="missing">Hiányzó</option>
-                <option value="waiting">Várható</option>
-                <option value="received">Beérkezett</option>
-                <option value="submitted">Beküldött</option>
+                <option value="match">Egyezik</option>
+                <option value="mismatch">Eltérés</option>
               </select>
             </div>
+            <button
+              type="button"
+              onClick={() => void runCheck()}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+            >
+              <ShieldCheck size={16} />
+              Ellenőrzés
+            </button>
           </div>
         </div>
 
@@ -290,65 +228,64 @@ export default function ReceivedDataOverviewPage() {
             <table className="min-w-full text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
                 <tr>
-                  <th className="px-3 py-2 text-left">Iroda</th>
-                  <th className="px-3 py-2 text-left">Adatcsomag</th>
-                  <th className="px-3 py-2 text-left">Záráskontroll</th>
-                  <th className="px-3 py-2 text-right">Forgalom</th>
-                  <th className="px-3 py-2 text-right">Díj / profit</th>
-                  <th className="px-3 py-2 text-left">Időpont</th>
-                  <th className="px-3 py-2 text-right">Művelet</th>
+                  <th className="px-3 py-2 text-left">Dátum</th>
+                  <th className="px-3 py-2 text-left">Küldő</th>
+                  <th className="px-3 py-2 text-left">Fogadó</th>
+                  <th className="px-3 py-2 text-left">Valutanem</th>
+                  <th className="px-3 py-2 text-right">Küldött összeg</th>
+                  <th className="px-3 py-2 text-right">Fogadott összeg</th>
+                  <th className="px-3 py-2 text-left">Státusz</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredRows.map((row) => (
-                  <tr key={row.branchId} className={row.dataStatus === 'CRITICAL' ? 'bg-red-50/40' : undefined}>
+                {filteredRows.map((row, index) => (
+                  <tr key={`${row.transferId}-${row.currencyCode}-${index}`} className={isMatch(row.status) ? undefined : 'bg-red-50'}>
+                    <td className="px-3 py-2 text-slate-700">{row.date}</td>
                     <td className="px-3 py-2">
-                      <div className="font-semibold text-slate-900">{row.branchCode ?? row.branchId.slice(0, 8)}</div>
-                      <div className="text-xs text-slate-500">{row.branchName ?? 'Névtelen iroda'}{row.branchCity ? `, ${row.branchCity}` : ''}</div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-xs font-semibold ${statusClass(row.dataStatus)}`}>
-                        {statusIcon(row.dataStatus)}
-                        {statusLabel(row.dataStatus)}
-                      </span>
-                      <div className="mt-1 text-xs text-slate-500">{row.transactionCount ?? 0} tranzakció</div>
+                      <div className="font-semibold text-slate-900">{row.fromBranchCode ?? '-'}</div>
+                      <div className="text-xs text-slate-500">{row.fromBranchName ?? ''}</div>
                     </td>
                     <td className="px-3 py-2">
-                      <div className="flex flex-wrap gap-1">
-                        {closingPill(row.dailyClosingDone, 'napi')}
-                        {closingPill(row.eveningClosingDone, 'esti')}
-                        {closingPill(row.navClosingDone, 'NAV')}
-                      </div>
-                      {row.closingControlMissing && <div className="mt-1 text-xs text-red-600">nincs kontrollrekord</div>}
+                      <div className="font-semibold text-slate-900">{row.toBranchCode ?? '-'}</div>
+                      <div className="text-xs text-slate-500">{row.toBranchName ?? ''}</div>
                     </td>
-                    <td className="px-3 py-2 text-right">
-                      <div className="font-mono text-xs text-slate-700">V {formatHuf(row.totalBuyHuf)}</div>
-                      <div className="font-mono text-xs text-slate-700">E {formatHuf(row.totalSellHuf)}</div>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <div className="font-mono text-xs text-slate-700">{formatHuf(row.totalFeeHuf)}</div>
-                      <div className="font-mono text-xs text-slate-500">{formatHuf(row.totalProfit)}</div>
-                    </td>
-                    <td className="px-3 py-2 text-xs text-slate-600">
-                      <div>létrehozva: {formatDateTime(row.reportCreatedAt)}</div>
-                      <div>beküldve: {formatDateTime(row.submittedAt)}</div>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <button
-                        type="button"
-                        onClick={() => openDaybook(row)}
-                        className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                      >
-                        <Eye size={14} />
-                        Napló
-                      </button>
+                    <td className="px-3 py-2 font-mono text-slate-700">{row.currencyCode}</td>
+                    <td className="px-3 py-2 text-right font-mono text-slate-700">{formatAmount(row.sentAmount)}</td>
+                    <td className="px-3 py-2 text-right font-mono text-slate-700">{formatAmount(row.receivedAmount)}</td>
+                    <td className="px-3 py-2">
+                      {isMatch(row.status) ? (
+                        <span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+                          <CheckCircle2 size={13} />
+                          EGYEZIK
+                        </span>
+                      ) : (
+                        <div>
+                          <span className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
+                            <AlertTriangle size={13} />
+                            ELTÉRÉS
+                          </span>
+                          {row.discrepancyNote && (
+                            <div className="mt-1 text-xs text-red-600">{row.discrepancyNote}</div>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
-                {!loading && filteredRows.length === 0 && (
+                {!loading && hasRun && filteredRows.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-3 py-8 text-center text-sm text-slate-500">
-                      Nincs megjeleníthető beérkezett adat.
+                      Nincs egyeztetendő pénzmozgás a megadott intervallumban.
+                    </td>
+                  </tr>
+                )}
+                {!loading && !hasRun && (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-8 text-center text-sm text-slate-500">
+                      <div className="inline-flex items-center gap-2">
+                        <ArrowRight size={15} className="text-slate-400" />
+                        Válasszon intervallumot, majd nyomja meg az „Ellenőrzés" gombot.
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -356,7 +293,7 @@ export default function ReceivedDataOverviewPage() {
             </table>
           </div>
           {loading && (
-            <div className="border-t border-slate-100 px-3 py-3 text-sm text-slate-500">Betöltés...</div>
+            <div className="border-t border-slate-100 px-3 py-3 text-sm text-slate-500">Egyeztetés folyamatban...</div>
           )}
         </div>
       </div>
@@ -364,12 +301,12 @@ export default function ReceivedDataOverviewPage() {
   )
 }
 
-function Metric({ label, value, tone = 'slate' }: { label: string; value: number | string; tone?: 'slate' | 'green' | 'blue' | 'red' }) {
+function Metric({ label, value, tone = 'slate' }: { label: string; value: number | string; tone?: 'slate' | 'green' | 'red' | 'amber' }) {
   const classes = {
     slate: 'border-slate-200 bg-white text-slate-900',
     green: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-    blue: 'border-blue-200 bg-blue-50 text-blue-800',
     red: 'border-red-200 bg-red-50 text-red-800',
+    amber: 'border-amber-200 bg-amber-50 text-amber-800',
   }
   return (
     <div className={`rounded-md border p-3 ${classes[tone]}`}>

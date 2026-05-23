@@ -89,11 +89,12 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'received-data',
         title: 'Beérkezett adatok',
-        description: 'Pénztári adatcsomagok áttekintése',
+        description: 'Pénztárak közötti pénzmozgások egyeztetése',
         route: '/central/received-data',
         status: 'ready',
         icon: FileText,
-        roles: ['foertektar', 'ugyvezeto', 'belso_ellenor', 'teruleti_vezeto'],
+        // FK-003 §6: az egyeztetési modul KIZÁRÓLAG a főértéktári szerepkörnek érhető el.
+        roles: ['foertektar'],
       },
       {
         id: 'daily-turnover',

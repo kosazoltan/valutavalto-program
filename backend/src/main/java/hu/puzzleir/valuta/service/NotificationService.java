@@ -86,6 +86,37 @@ public class NotificationService {
     }
 
     /**
+     * FK-003: idempotens iroda-értesítés egy konkrét forrás-eseményre (pl. egyeztetési eltérés).
+     * Ha az adott (entityType, entityId, notificationType) hármasra már létezik értesítés,
+     * NEM küld újat — így az ismételt manuális egyeztetés-futtatás nem spamel.
+     *
+     * @return true, ha most ténylegesen kiment értesítés (volt fogadó dolgozó), különben false
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public boolean notifyBranchOnce(UUID branchId, String title, String message,
+                                    String type, String entityType, String entityId, String notificationType) {
+        if (repo.existsByEntityTypeAndEntityIdAndNotificationType(entityType, entityId, notificationType)) {
+            return false;
+        }
+        List<Worker> workers = workerRepository.findActiveWorkersByBranch(branchId);
+        if (workers.isEmpty()) {
+            return false;
+        }
+        for (Worker w : workers) {
+            repo.save(Notification.builder()
+                    .userId(String.valueOf(w.getId()))
+                    .title(title).message(message)
+                    .type(type != null ? type : "WARNING")
+                    .entityType(entityType).entityId(entityId).notificationType(notificationType)
+                    .isRead(false).build());
+        }
+        emailNotificationService.sendToBranch(branchId, title, message);
+        log.info("FK-003 eltérés-értesítés kiküldve: branch={}, entityId={}, dolgozók={}",
+                branchId, entityId, workers.size());
+        return true;
+    }
+
+    /**
      * Broadcast értesítés minden dolgozónak.
      */
     @Transactional(rollbackFor = Exception.class)
