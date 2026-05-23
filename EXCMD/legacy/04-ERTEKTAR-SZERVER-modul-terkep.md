@@ -48,6 +48,26 @@ A többi ~47 ERTEKTAR-modul az értéktár-kontextusú variánsa a VALUTA pénzt
 | ZARASCTRL | zárás-kontroll | ✅ ClosingService (gyanú) |
 | HOVALASZ / HRKSERVER / IMPORT / TRANZAKC / UNPACKER / ADATGYUJTO | szerver-infra | ⚙️ backend/sync |
 
-## Következő lépés
-A „gyanú/❓" jelöléseket a **tényleges jelenlegi kód ellen** kell verifikálni (file:line),
-NEM a névből következtetni. A verifikáció után csak a VALÓS hiányt implementáljuk.
+## VERIFIKÁCIÓ EREDMÉNYE (2026-05-23, 2 ügynök a tényleges kód ellen, file:line)
+
+**ERTEKTAR — minden üzleti funkció LEFEDETT:**
+- RATECTRL → `RateApprovalService` (explicit `ratectrl.dll` mapping) + `RateApprovalController` (`/rate-approvals`)
+- RATEPERM → `DiscountApprovalService` (graded SUPERVISOR/MANAGER/DIRECTOR, 15% cap) + `SupervisorPinService` + `RateAuthDialog.tsx`
+- PENZTARAK → `ErtektarController.branches` + `BranchMonitoringService` + `LiveCashPositionService`
+- IRARFOLY → branch-scoped `ExchangeRate`; GETELLEN → `ellenorNev` 4-szem mezők; HRKATVEVO/HRKCIMLET → `HrkService`+`HrkMonthlyClosingService`; NIFVAL → `FtpSyncService`+`RateFileParserService`
+- vault záró/címlet/transfer variánsok → `VaultTransferService`/`StockCorrectionService`/`MaterialReceiptService`/`VaultStocktakeService`
+- **Egyetlen valódi hiány: PICTLOAD** (dekoratív város-kép FTP-betöltés) — kozmetikai, nulla ERP-érték → **szándékos non-port.**
+
+**SZERVER — minden üzleti funkció LEFEDETT:**
+- ADATGYUJTO → `DataCollectionService.collectBranchData`; ZARASCTRL → `ClosingControlService`; ATLAGARF → `AverageRateReportService`; BANKFORG → `BankOrderService`; BEERKCTRL/BEERKEZES → `ClosingControlService`+`MaterialReceiptService`; DBOOKCTRL → `DailyJournalService`; DOLGOZOK → `Employee` (+ 1:N al-táblák); JUTSZAMITO/JUTSZAZALEK → `CommissionCalculationService`+`CommissionRateService`; MNBGYUJTO/MNBHIBAK → `MnbReportService`; PTARKOZOTT → `TransferService`; WU/ÁFA → `WesternUnionService`+`VatRefundService`; USERBELEP → Spring Security/JWT; IRTMK/GETUZLET → `BranchService`
+- *DISP képernyők → `CentralWorkstationPage`/`ClosingControlPage`/`ReceivedDataOverviewPage`/`RegionTurnoverReportPage`/`CashierStocksPage`
+- IMPORT/TRANZAKC/UNPACKER/HRKSERVER/HOVALASZ → **szándékos infra-csere**: a Delphi DLL-csomag-transport helyett REST API + Electron local-first outbox sync (üzleti tartalom azonos)
+- **Valódi üzleti gap: NINCS.** Finom-paritás megjegyzés: BANKFORG napi FELVETT-KP/BEFIZETETT-KP display (alacsony prioritás, futó-app verifikáció) — nem hiányzó core.
+
+## Konklúzió
+A **teljes Anti-Legacy program** (VALUTA 109 + TRADE + ARFOLYAM + ERTEKTAR 56 + SZERVER 36)
+üzleti logikája a jelenlegi Java/React/Electron rendszerben **érdemben teljesen lefedett**.
+A maradék: (a) szándékos scope-vágás (TRADE termék-alrendszer), (b) kozmetikai non-port
+(PICTLOAD), (c) hardver-függő (FNYUJSAG/SCANNING — már szoftver-oldalon kész), (d) mező-spec
+nélküli bináris-RE (N1 ARFOLYAM internet-form), (e) üzleti döntés-függő (N4 WU partner-cég,
+N5 METRO/TESCO). Implementálva ebben a körben: N2 TEÁOR picker + N3 HUF-guard (v2.26.25).
