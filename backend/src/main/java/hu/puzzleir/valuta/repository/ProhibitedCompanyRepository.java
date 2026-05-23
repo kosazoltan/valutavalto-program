@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface ProhibitedCompanyRepository extends JpaRepository<ProhibitedCompany, UUID> {
     List<ProhibitedCompany> findAllByCompanyId(UUID companyId);
+
+    List<ProhibitedCompany> findAllByCompanyIdAndIsActiveTrue(UUID companyId);
 }

@@ -119,6 +119,17 @@ public class AmlService {
                     .rejectionReason("Tiltólista találat: " + person.getFullName() + " — tranzakció megtagadva")
                     .build();
             }
+
+            // Tiltott CÉG szűrés (legacy: JOGI SET TILTVA=1) — jogi-személy ügyfélnél a customerName a cégnév.
+            Optional<ProhibitedCompany> companyMatch = blacklistService.findActiveCompanyMatch(customerName, documentNumber);
+            if (companyMatch.isPresent()) {
+                ProhibitedCompany company = companyMatch.get();
+                log.warn("AML: Belső tiltólista találat (CÉG) — '{}'", customerName);
+                return AmlBasicCheckResult.builder()
+                    .approved(false)
+                    .rejectionReason("Tiltólista találat (cég): " + company.getCompanyName() + " — tranzakció megtagadva")
+                    .build();
+            }
         }
 
         // Input validacio
