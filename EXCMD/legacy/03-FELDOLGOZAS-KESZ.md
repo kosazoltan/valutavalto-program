@@ -9,7 +9,7 @@
 |---|---|---|---|
 | **VALUTA** (pénztár) | 109 DLL `.pas`/`.dpr`/`.dfm` | mély-kinyerő (exportált API + eljárások + SQL + üzenetek + DFM) | ✅ `EXCMD/legacy/modules/*.md` (109 MD) |
 | **TRADE** (kereskedés/díj) | 14 unit `.pas` | ugyanaz | ✅ `EXCMD/legacy/modules/TRADE.md` |
-| **ARFOLYAM** (árfolyamkészítő) | NINCS forrás (csak `.exe`+`.dat`) | **bináris-visszafejtés** (20 beágyazott DFM-form, TPF0) | ✅ `EXCMD/legacy/02-ARFOLYAM-binaris-visszafejtes.md` |
+| **ARFOLYAM** (árfolyamkészítő) | ✅ **VAN forrás** (korr. 2026-05-23): `Anti/SZERVER/_extracted/SZERVER/fejleszt/arfolyam/verzio22` — `Arfolyam.dpr` + `Unit1..16.pas` | tényleges Object Pascal forrás (16 form) + a régi bináris-RE | ✅ `EXCMD/legacy/modules-arfolyam/` (16 form-MD) + `02-...` (történelmi RE) |
 | **KESZLEX** (készlet-lekérdező) | nincs `.pas` (bináris/adat) | — | készlet-lekérdezés a jelenlegi programban (CashBalance) |
 | **ERTEKTAR** (értéktár) | nincs `.pas` (1 fájl) | — | értéktár-funkciók a jelenlegi programban |
 | **SZERVER** | 2881 `.pas` mind `_extracted` | újra-kicsomagolt **duplikátum** | nincs új egyedi forrás |

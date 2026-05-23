@@ -5,10 +5,12 @@ import { HyperFormula } from 'hyperformula'
 import { nextEditableCell, EDITABLE_ORDER, type EditableCol, type NavKey } from './sheetNavigation'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
+import { getErrorMessage } from '../../utils/errorHandling'
 import { useAuthStore } from '../../stores/authStore'
 import { exchangeRateMasterApi, type ExchangeRateMaster, type CreateMasterRateRequest } from '../../services/api/exchangeRateMaster'
 import { currencyApi } from '../../services/api/exchange-rates'
 import CurrencyManagerModal from './components/CurrencyManagerModal'
+import { arfolyamInternetLinkApi, type ArfolyamInternetLink } from '../../services/api/arfolyamInternetLinks'
 import { computeCrossSettlement, resolveSettlement, crossSettlementStaysAuto } from './mainSheetRules'
 import { validateRateDirection } from './rateDirectionRules'
 import { euaDeviationExceeds, computeEuaRate } from './rfmRules'
@@ -191,7 +193,44 @@ export default function MainRateSheetPage() {
   const [publishing, setPublishing] = useState(false)
   // V238 (2026-05-19): Valutakezelő modal — uj valuta hozzaadasa / aktivalas / deaktivalas
   const [showCurrencyManager, setShowCurrencyManager] = useState(false)
+  // N1 (legacy ARFOLYAM / TINTERNETTMKFORM) — internet-link karbantartó
+  const [internetOpen, setInternetOpen] = useState(false)
+  const [internetLinks, setInternetLinks] = useState<ArfolyamInternetLink[]>([])
+  const [linkForm, setLinkForm] = useState({ buttonNumber: '', label: '', url: '' })
   const lastSavedAt = useRef<string | null>(null)
+
+  const loadInternetLinks = useCallback(async () => {
+    try {
+      setInternetLinks(await arfolyamInternetLinkApi.list())
+    } catch (err) {
+      logger.error('MainRateSheetPage', 'internet-link load', err)
+    }
+  }, [])
+
+  useEffect(() => { void loadInternetLinks() }, [loadInternetLinks])
+
+  const addInternetLink = async () => {
+    const num = parseInt(linkForm.buttonNumber, 10)
+    if (Number.isNaN(num)) { toast.error('Hiba', 'A gombszám szám legyen.'); return }
+    if (!linkForm.label.trim() || !linkForm.url.trim()) { toast.error('Hiba', 'Felirat és URL kötelező.'); return }
+    if (!/^https?:\/\/\S+$/i.test(linkForm.url.trim())) { toast.error('Hiba', 'Az URL csak http:// vagy https:// címmel kezdődhet.'); return }
+    try {
+      await arfolyamInternetLinkApi.create(num, linkForm.label.trim(), linkForm.url.trim())
+      setLinkForm({ buttonNumber: '', label: '', url: '' })
+      await loadInternetLinks()
+    } catch (err) {
+      toast.error('Hiba', getErrorMessage(err))
+    }
+  }
+
+  const removeInternetLink = async (id: string) => {
+    try {
+      await arfolyamInternetLinkApi.remove(id)
+      await loadInternetLinks()
+    } catch (err) {
+      toast.error('Hiba', getErrorMessage(err))
+    }
+  }
   // Phase 2 wiring (Kosa Zoltan 2026-05-18 directive): a foertektaros által az
   // EXE-ben végzett árfolyam-szerkesztés a KÖZPONTI szerveren tárolt
   // ExchangeRateMaster állományt írja/olvassa. Az EXE thin client.
@@ -945,11 +984,21 @@ export default function MainRateSheetPage() {
         >
           <Send size={12} /> ÁRFOLYAMOK SZÉTKÜLDÉSE
         </button>
+        {/* N1 (legacy ARFOLYAM / TINTERNETTMKFORM) — internet-link gyors-megnyitók */}
+        {internetLinks.map(link => (
+          <button
+            key={link.id}
+            onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
+            title={link.url}
+            className="px-2 py-1 text-xs font-medium bg-sky-50 border border-sky-300 rounded text-sky-700 hover:bg-sky-100 flex items-center gap-1"
+          >
+            <Globe size={12} /> {link.buttonNumber}. {link.label}
+          </button>
+        ))}
         <button
-          onClick={() => toast.info('Internet címek', 'Hamarosan elérhető funkció.')}
-          disabled
-          title="Hamarosan elérhető funkció"
-          className="px-3 py-1 text-xs font-medium bg-white border border-slate-300 rounded text-slate-400 cursor-not-allowed flex items-center gap-1"
+          onClick={() => { setInternetOpen(true); void loadInternetLinks() }}
+          title="Internet-címek karbantartása (legacy TINTERNETTMKFORM)"
+          className="px-3 py-1 text-xs font-medium bg-white border border-slate-300 rounded hover:bg-slate-50 flex items-center gap-1"
         >
           <Globe size={12} /> INTERNET CÍMEK KARBANTARTÁSA
         </button>
@@ -1142,6 +1191,57 @@ export default function MainRateSheetPage() {
           )
         }}
       />
+
+      {/* N1 (legacy ARFOLYAM / TINTERNETTMKFORM) — internet-link karbantartó modal */}
+      {internetOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Globe size={18} /> Internet-címek karbantartása
+              </h2>
+              <button onClick={() => setInternetOpen(false)} className="text-slate-500 hover:text-slate-700">✕</button>
+            </div>
+
+            {canEdit && (
+              <div className="mt-3 grid grid-cols-12 gap-2">
+                <input type="number" placeholder="Sorsz." value={linkForm.buttonNumber}
+                  onChange={e => setLinkForm(f => ({ ...f, buttonNumber: e.target.value }))}
+                  className="col-span-2 form-input" />
+                <input type="text" placeholder="Felirat" value={linkForm.label}
+                  onChange={e => setLinkForm(f => ({ ...f, label: e.target.value }))}
+                  className="col-span-4 form-input" />
+                <input type="text" placeholder="https://..." value={linkForm.url}
+                  onChange={e => setLinkForm(f => ({ ...f, url: e.target.value }))}
+                  className="col-span-4 form-input" />
+                <button onClick={() => void addInternetLink()}
+                  className="col-span-2 px-2 py-1 text-xs font-medium bg-green-600 text-white rounded hover:bg-green-700">
+                  Hozzáad
+                </button>
+              </div>
+            )}
+
+            <ul className="mt-3 max-h-72 divide-y divide-slate-100 overflow-auto rounded border border-slate-200">
+              {internetLinks.length === 0 && (
+                <li className="px-3 py-2 text-sm text-slate-400">Nincs internet-cím rögzítve.</li>
+              )}
+              {internetLinks.map(link => (
+                <li key={link.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                  <span className="flex items-center gap-2">
+                    <span className="font-mono text-sky-700">{link.buttonNumber}.</span>
+                    <span className="font-medium">{link.label}</span>
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-slate-500 underline">{link.url}</a>
+                  </span>
+                  {canEdit && (
+                    <button onClick={() => void removeInternetLink(link.id)}
+                      className="text-red-500 hover:text-red-700" title="Törlés">✕</button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
