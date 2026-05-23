@@ -30,6 +30,7 @@ export interface Customer {
   companyName?: string
   taxNumber?: string
   registrationNumber?: string
+  teaorCode?: string
   active: boolean
   isVip: boolean
   notes?: string
@@ -61,6 +62,7 @@ export interface CustomerCreateRequest {
   companyName?: string
   taxNumber?: string
   registrationNumber?: string
+  teaorCode?: string
   isVip?: boolean
   notes?: string
 }

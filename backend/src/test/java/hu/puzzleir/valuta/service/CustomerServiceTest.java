@@ -61,6 +61,32 @@ class CustomerServiceTest {
     }
 
     @Test
+    @DisplayName("createCustomer — jogi személy TEÁOR kód perzisztálódik (G27)")
+    void testCreateCustomer_teaorCode() {
+        Company company = Company.builder().id(COMPANY_ID).build();
+        CustomerService.CreateCustomerRequest request = new CustomerService.CreateCustomerRequest();
+        request.setName("Teszt Kft.");
+        request.setDocumentNumber("CEG-001");
+        request.setIsCompany(true);
+        request.setCompanyName("Teszt Kft.");
+        request.setTaxNumber("12345678-2-42");
+        request.setTeaorCode("6612"); // értékpapír-ügynöki tevékenység
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(customerRepository.findByDocumentNumberAndCompanyId("CEG-001", COMPANY_ID))
+                    .thenReturn(Optional.empty());
+            when(customerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            Customer result = service.createCustomer(request);
+
+            assertThat(result.getTeaorCode()).isEqualTo("6612");
+            assertThat(result.getCompanyName()).isEqualTo("Teszt Kft.");
+        }
+    }
+
+    @Test
     @DisplayName("createCustomer — duplikalt dokumentum szam: IDEMPOTENS upsert visszaadja a letezot (HIBA #9 2026-05-15)")
     void testCreateCustomer_duplicateDocumentIdempotent() {
         Company company = Company.builder().id(COMPANY_ID).build();

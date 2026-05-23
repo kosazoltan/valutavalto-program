@@ -22,6 +22,7 @@ export default function CustomerCreatePage() {
     taxNumber: '',
     companyName: '',
     registrationNumber: '',
+    teaorCode: '',
     vatNumber: '',
     documentType: 'Személyi igazolvány',
     documentNumber: '',
@@ -60,6 +61,7 @@ export default function CustomerCreatePage() {
         companyName: customerType === 'company' ? formData.companyName : undefined,
         taxNumber: formData.taxNumber || formData.vatNumber || undefined,
         registrationNumber: formData.registrationNumber || undefined,
+        teaorCode: customerType === 'company' ? (formData.teaorCode || undefined) : undefined,
         isVip: formData.isVip,
       }
       const created = await customerApi.create(req)
@@ -180,6 +182,10 @@ export default function CustomerCreatePage() {
                 <div>
                   <label className="form-label required">{t('common.companyRegNumber')}</label>
                   <input type="text" value={formData.registrationNumber} onChange={(e) => updateField('registrationNumber', e.target.value)} className="form-input font-mono" required />
+                </div>
+                <div>
+                  <label className="form-label">{t('customers.teaorCode')}</label>
+                  <input type="text" value={formData.teaorCode} onChange={(e) => updateField('teaorCode', e.target.value)} className="form-input font-mono" placeholder="pl. 6612" />
                 </div>
                 <div>
                   <label className="form-label required">{t('common.taxNumber')}</label>

@@ -215,6 +215,13 @@ public class Customer {
     private String registrationNumber;
 
     /**
+     * TEÁOR tevékenységi kód (ha jogi személy) — G27, legacy BIGCTRL/TEAOR
+     * (UPDATE JOGI SET TEAOR). A jogi-személy ügyfél fő tevékenységi köre.
+     */
+    @Column(name = "teaor_code", length = 16)
+    private String teaorCode;
+
+    /**
      * Ügyfél típusa: FULL (teljes KYC) vagy SIMPLIFIED (kis ügyfél).
      * Legacy: KISUGYFEL — egyszerűsített ügyfélnyilvántartás
      * 300.000 Ft alatti tranzakciókhoz nem szükséges teljes azonosítás.
