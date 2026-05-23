@@ -70,9 +70,24 @@ class AmlServiceTest {
                 .riskLevel("CLEAR")
                 .build());
         when(blacklistService.findActivePersonMatch(any(), any())).thenReturn(Optional.empty());
+        when(blacklistService.findActiveCompanyMatch(any(), any())).thenReturn(Optional.empty());
     }
 
     // ============ checkTransaction tesztek ============
+
+    @Test
+    @DisplayName("checkTransaction: tiltott CÉG találat → elutasítva (N6, legacy JOGI TILTVA)")
+    void testCheckTransaction_prohibitedCompany() {
+        when(blacklistService.findActiveCompanyMatch(any(), any())).thenReturn(
+            Optional.of(hu.puzzleir.valuta.entity.ProhibitedCompany.builder()
+                .companyName("Tiltott Kft.").build()));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+            new BigDecimal("250000"), "C900", "Tiltott Kft.", "12345678-2-42");
+
+        assertThat(result.isApproved()).isFalse();
+        assertThat(result.getRejectionReason()).contains("cég").contains("Tiltott Kft.");
+    }
 
     @Test
     @DisplayName("checkTransaction: küszöb alatti összeg → NO_REPORT (approved, no identification)")

@@ -41,6 +41,7 @@ const PermissionMatrixPage = lazy(() => import('./pages/settings/PermissionMatri
 const VaultStocktakeListPage = lazy(() => import('./pages/vaultStocktake/VaultStocktakeListPage'))
 const VaultStocktakeDetailPage = lazy(() => import('./pages/vaultStocktake/VaultStocktakeDetailPage'))
 const ComplianceDashboardPage = lazy(() => import('./pages/compliance/ComplianceDashboardPage'))
+const DocumentShortagePage = lazy(() => import('./pages/compliance/DocumentShortagePage'))
 const TransactionPage = lazy(() => import('./pages/transactions/TransactionPage'))
 const TransactionListPage = lazy(() => import('./pages/transactions/TransactionListPage'))
 const ConversionPage = lazy(() => import('./pages/transactions/ConversionPage'))
@@ -461,6 +462,7 @@ export default function App() {
             <Route path="/vault-stocktake" element={<VaultStocktakeListPage />} />
             <Route path="/vault-stocktake/:id" element={<VaultStocktakeDetailPage />} />
             <Route path="/compliance" element={<ComplianceDashboardPage />} />
+            <Route path="/compliance/document-shortages" element={<DocumentShortagePage />} />
           
           {/* Cashier (penztaros) routes */}
           <Route path="/cashier" element={<CashierMainMenu />} />

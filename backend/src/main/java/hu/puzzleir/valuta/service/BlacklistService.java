@@ -114,6 +114,32 @@ public class BlacklistService {
         return companyRepo.findAllByCompanyId(companyId);
     }
 
+    /**
+     * Aktív tiltott-cég találat keresése (legacy: JOGI SET TILTVA=1 szűrés tranzakciókor).
+     * Egyezés: normalizált cégnév VAGY adószám/cégjegyzékszám. Multi-tenant (saját cég listája).
+     */
+    public Optional<ProhibitedCompany> findActiveCompanyMatch(String name, String taxOrRegNumber) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        String normName = normalize(name);
+        String normNumber = normalize(taxOrRegNumber);
+        return companyRepo.findAllByCompanyIdAndIsActiveTrue(companyId).stream()
+                .filter(c -> matchesCompany(c, normName, normNumber))
+                .findFirst();
+    }
+
+    private boolean matchesCompany(ProhibitedCompany c, String normName, String normNumber) {
+        if (!normName.isBlank() && normalize(c.getCompanyName()).equals(normName)) {
+            return true;
+        }
+        if (normNumber.isBlank()) {
+            return false;
+        }
+        return java.util.stream.Stream.of(c.getTaxNumber(), c.getRegistrationNumber())
+                .filter(Objects::nonNull)
+                .map(this::normalize)
+                .anyMatch(normNumber::equals);
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public ProhibitedCompany createCompany(ProhibitedCompany entity) {
         entity.setId(null);
