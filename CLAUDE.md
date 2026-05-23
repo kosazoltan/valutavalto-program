@@ -638,7 +638,18 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.25** (2026-05-23 — Anti-Legacy modul-verifikáció follow-up: N3 HUF/inaktív-valuta guard + N2 TEÁOR picker; mind admin-merged + auto-deploy, production HEALTHY 200).
+- **Verzió:** **v2.26.29** (2026-05-23 — teljes legacy-verifikáció lezárva + 7 valódi gap implementálva; mind admin-merged + auto-deploy, production HEALTHY 200). **TESZTELŐ-BUILD a kollégák hétvégi nézegetéséhez** (user-kérés).
+  - **Implementált valódi gap-ek (server-served, mind main-en):** G27 (TEÁOR mező), N1 (ARFOLYAM internet-link karbantartó — TINTERNETTMKFORM valódi forrásból, PR #807), N2 (TEÁOR picker, PR #803), N3 (HUF/inaktív-valuta guard, PR #803), N4 (WU partner-cég törzs GETWCEG/WUCEGEK, PR #806), N6 (tiltott-cég AML-szűrés — eddig csak személy szűrődött!, PR #809), N7 (okmányhiány-regiszter OKMANYHIANY, PR #809), **N9 (értéktári átértékelés lecsorgatása a pénztárakra + területi reconciliation, PR #811 — WAC-alapú, bit-pontos `terület = Σ pénztár + allokált átértékelés`, lehívás×árrés súly; központi modul-kártya is)**.
+  - **Teljes legacy-feldolgozás:** 394 modul-MD a teljes Anti-forrásból (a tömörített archívumokat is beleértve), mind verifikálva a tényleges kód ellen (14+ ügynök, file:line). **0 fennmaradó implementálható gap** — a maradék lefedett / infra-csere / szándékos scope-vágás / architektúra-döntés. Lásd `EXCMD/legacy/05-TELJES-FORRAS-LEFEDETTSEG.md` + `06-FEJLESZT-VERIFIKACIO-EREDMENY.md`.
+  - **Telepítő-szet v2.26.29 (UNSIGNED, Downloads-ban) — ezt kapja a tesztelő:**
+    - `Penztar-Setup-2.26.29-20260523.exe` — 283.84 MB, SHA-256 `F9343A6F49E2E788A7A7537C6E21AEC80AC657CBBC82EBD288429393FE25E2DC`
+    - `Kozponti-Iranyitokozpont-Setup-2.26.29.exe` — 101.06 MB, SHA-256 `CDF25BF1FD8F006D3752973723786CE6DC87CB1A5677E7A3317F91940ED5CF72`
+    - `Arfolyamkeszito-Setup-2.26.29.exe` — 101.06 MB, SHA-256 `44D939119EBA57AC03E865090E24A81E050B04D26C9188E066A3C5C4827B833F`
+    - `Penztar-Eltavolito-2.26.23-20260522.exe` — verzió-független, SHA-256 `5D84BE6AA024D9543B5B13F9E846255A6E05F700D8AE4750007E97539B5BDFB4`
+  - **UNSIGNED** — DigiCert EV CS cert kiadásig SmartScreen „További információ" → „Futtatás mindenképp". A v2.26.26–29 tartalma server-served (Hetzner auto-deploy), de a hétvégi desktop-nézegetéshez a user kérte a teljes telepítő-szetet.
+  - Vault: `vault/sessions/2026-05-23-revaluation-allocation-v2.26.29.md` (lásd ott a build-részleteket).
+
+- **Verzió [előző]:** **v2.26.25** (2026-05-23 — Anti-Legacy modul-verifikáció follow-up: N3 HUF/inaktív-valuta guard + N2 TEÁOR picker; mind admin-merged + auto-deploy, production HEALTHY 200).
   - **N3 (PR #803):** `TransactionValidationService.validateCurrencyExchangeable` — a HUF (base) vagy inaktív kereskedett valuta elutasítása ("A FORINT NEM VÁLASZTHATÓ VALUTA"), **ténylegesen bekötve** az `executeBuy`/`executeSell` + multi-line flow-ba (a self-review kifogta, hogy a service korábban dead code volt). 7 teszt.
   - **N2 (PR #803):** `TeaorCode` entity + V259 (65 kurált TEÁOR'08 kód) + `/api/v1/teaor?q=` + frontend `teaorApi` + `CustomerCreatePage` typeahead (a G27 szabad-szöveg helyett). 4 teszt. **Böngészős verifikáció a deploy + V259 után esedékes** (auth-os admin oldal).
   - **Teljes backend suite: 1584/1584 zöld.**
