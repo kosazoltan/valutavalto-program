@@ -1,6 +1,5 @@
 package hu.puzzleir.valuta.service;
 
-import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.aml.AmlDailySummaryDto;
 import hu.puzzleir.valuta.dto.aml.AmlDailyExportDto;
@@ -862,14 +861,14 @@ public class AmlService {
             .build();
 
         if (dto.getTransactionId() != null) {
-            Transaction tx = transactionRepository.findById(dto.getTransactionId())
-                .orElseThrow(() -> new ResourceNotFoundException("Tranzakció nem található: " + dto.getTransactionId()));
-            // PP-03 IDOR: csak a saját cég tranzakciója kapcsolható az AML-bejelentéshez
-            if (tx.getCompany() == null || !tx.getCompany().getId().equals(companyId)) {
-                log.warn("Kereszt-bérlő AML tranzakció-csatolás blokkolva! userCompany={}, txCompany={}, txId={}",
-                    companyId, tx.getCompany() != null ? tx.getCompany().getId() : "null", tx.getId());
-                throw new ValidationException("A megadott tranzakció nem kapcsolható össze ezzel a bejelentéssel!");
-            }
+            // PP-03 IDOR: cég-szűrt lekérés. A nem létező és a más cég tranzakciója egyaránt
+            // üres eredményt ad → azonos hiba, nincs oldalcsatorna (txId-enumeráció kizárva).
+            Transaction tx = transactionRepository.findByIdAndCompanyId(dto.getTransactionId(), companyId)
+                .orElseThrow(() -> {
+                    log.warn("AML tranzakció-csatolás elutasítva (nem létező vagy kereszt-bérlő)! userCompany={}, txId={}",
+                        companyId, dto.getTransactionId());
+                    return new ValidationException("A megadott tranzakció nem kapcsolható össze ezzel a bejelentéssel!");
+                });
             report.setTransaction(tx);
         }
 

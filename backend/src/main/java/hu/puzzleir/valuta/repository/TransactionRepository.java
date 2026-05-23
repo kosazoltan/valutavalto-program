@@ -31,6 +31,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     Optional<Transaction> findByIdForUpdate(@Param("id") Long id);
 
     /**
+     * PP-03 IDOR: cég-szűrt tranzakció-lekérés. A más cég tranzakciója és a nem létező
+     * tranzakció ugyanazt az üres eredményt adja — így nincs oldalcsatorna (txId-enumeráció).
+     */
+    @Query("SELECT t FROM Transaction t WHERE t.id = :id AND t.company.id = :companyId")
+    Optional<Transaction> findByIdAndCompanyId(@Param("id") Long id, @Param("companyId") UUID companyId);
+
+    /**
      * Bizonylat keresése szám alapján (JOIN FETCH a lazy proxy hiba elkerüléséhez)
      */
     @Query("SELECT t FROM Transaction t " +
