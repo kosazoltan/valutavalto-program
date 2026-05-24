@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerMfa;
@@ -9,19 +10,23 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
@@ -33,6 +38,8 @@ class TotpServiceTest {
 
     @Mock private WorkerMfaRepository mfaRepository;
     @Mock private WorkerRepository workerRepository;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
     private TotpService totpService;
@@ -197,5 +204,97 @@ class TotpServiceTest {
 
         assertThat(mfa.getIsEnabled()).isFalse();
         verify(mfaRepository).save(mfa);
+    }
+
+    // ==========================================================================
+    // PP-16: BCrypt backup kód tesztek
+    // ==========================================================================
+
+    @Test
+    @DisplayName("PP-16: backup kódok BCrypt formátumban tárolódnak, nem SHA-256 Base64")
+    void PP16_backupCodes_storedAsBcryptFormat() {
+        when(mfaRepository.findByWorkerId(WORKER_ID)).thenReturn(Optional.empty());
+        var enrollResponse = totpService.startEnrollment(WORKER_ID);
+        GoogleAuthenticator gAuth = new GoogleAuthenticator();
+        int validCode = gAuth.getTotpPassword(enrollResponse.getSecret());
+
+        WorkerMfa savedMfa = WorkerMfa.builder()
+                .workerId(WORKER_ID).type("TOTP").secret(enrollResponse.getSecret())
+                .isEnrolled(false).isEnabled(false).build();
+        when(mfaRepository.findByWorkerId(WORKER_ID)).thenReturn(Optional.of(savedMfa));
+        when(passwordEncoder.encode(anyString())).thenReturn("$2a$12$fakebcrypthash123456");
+        ArgumentCaptor<WorkerMfa> captor = ArgumentCaptor.forClass(WorkerMfa.class);
+
+        totpService.completeEnrollment(WORKER_ID, validCode);
+
+        verify(mfaRepository, atLeastOnce()).save(captor.capture());
+        WorkerMfa captured = captor.getAllValues().stream()
+                .filter(m -> m.getBackupCodesHashJson() != null)
+                .findFirst().orElseThrow();
+        assertThat(captured.getBackupCodesHashJson()).contains("$2a$12$");
+        // SHA-256 Base64-kódolt hashek nem tartalmaznak '$' jelet
+        assertThat(captured.getBackupCodesHashJson()).doesNotContain("SHA");
+    }
+
+    @Test
+    @DisplayName("PP-16: verifyBackupCode — helyes kód → true, és az egy-szeri kód eltávolítódik")
+    void PP16_verifyBackupCode_validCode_removesCodeAndReturnsTrue() throws Exception {
+        String validCode = "12345678";
+        String matchingHash = "$2a$12$matchinghash123456789a";
+        String otherHash    = "$2a$12$otherhash0000000000000b";
+        String json = new ObjectMapper().writeValueAsString(List.of(matchingHash, otherHash));
+
+        WorkerMfa mfa = WorkerMfa.builder()
+                .workerId(WORKER_ID).isEnabled(true).backupCodesHashJson(json).build();
+        when(mfaRepository.findByWorkerId(WORKER_ID)).thenReturn(Optional.of(mfa));
+        when(passwordEncoder.matches(validCode, matchingHash)).thenReturn(true);
+        ArgumentCaptor<WorkerMfa> captor = ArgumentCaptor.forClass(WorkerMfa.class);
+
+        boolean result = totpService.verifyBackupCode(WORKER_ID, validCode);
+
+        assertThat(result).isTrue();
+        verify(mfaRepository).save(captor.capture());
+        assertThat(captor.getValue().getBackupCodesHashJson()).contains(otherHash);
+        assertThat(captor.getValue().getBackupCodesHashJson()).doesNotContain(matchingHash);
+    }
+
+    @Test
+    @DisplayName("PP-16: verifyBackupCode — helytelen kód → false, nincs mentés")
+    void PP16_verifyBackupCode_invalidCode_returnsFalse() throws Exception {
+        String json = new ObjectMapper().writeValueAsString(
+                List.of("$2a$12$hash1aaaaaaaaaaaaaaaaaa", "$2a$12$hash2aaaaaaaaaaaaaaaaaa"));
+        WorkerMfa mfa = WorkerMfa.builder()
+                .workerId(WORKER_ID).isEnabled(true).backupCodesHashJson(json).build();
+        when(mfaRepository.findByWorkerId(WORKER_ID)).thenReturn(Optional.of(mfa));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
+
+        boolean result = totpService.verifyBackupCode(WORKER_ID, "99999999");
+
+        assertThat(result).isFalse();
+        verify(mfaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("PP-16: verifyBackupCode — nincs MFA rekord → false")
+    void PP16_verifyBackupCode_noMfa_returnsFalse() {
+        when(mfaRepository.findByWorkerId(WORKER_ID)).thenReturn(Optional.empty());
+
+        boolean result = totpService.verifyBackupCode(WORKER_ID, "12345678");
+
+        assertThat(result).isFalse();
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("PP-16: verifyBackupCode — MFA disabled → false")
+    void PP16_verifyBackupCode_disabledMfa_returnsFalse() {
+        WorkerMfa mfa = WorkerMfa.builder()
+                .workerId(WORKER_ID).isEnabled(false).build();
+        when(mfaRepository.findByWorkerId(WORKER_ID)).thenReturn(Optional.of(mfa));
+
+        boolean result = totpService.verifyBackupCode(WORKER_ID, "12345678");
+
+        assertThat(result).isFalse();
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
     }
 }

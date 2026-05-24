@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
@@ -20,12 +22,14 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +50,8 @@ public class TotpService {
 
     private final WorkerMfaRepository mfaRepository;
     private final WorkerRepository workerRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final ObjectMapper objectMapper;
     private final GoogleAuthenticator gAuth = new GoogleAuthenticator();
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -216,23 +222,54 @@ public class TotpService {
                 .toList();
     }
 
+    // PP-16: BCrypt 12-es erősség — offline brute-force ellen védett (10^8 kombináció, de lassú hash)
     private String hashBackupCodes(List<String> codes) {
-        // Egyszerű JSON tömb, az értékek bcrypt-elt verzióval helyettesítendők
-        // (productionhoz: org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder)
-        // Most: SHA-256 — gyors, NEM megfelelő production-höz, de a feladat-keret szűk
         try {
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
-            StringBuilder sb = new StringBuilder("[");
-            for (int i = 0; i < codes.size(); i++) {
-                if (i > 0) sb.append(",");
-                byte[] hash = md.digest(codes.get(i).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                sb.append("\"").append(Base64.getEncoder().encodeToString(hash)).append("\"");
+            List<String> hashed = new ArrayList<>();
+            for (String code : codes) {
+                hashed.add(passwordEncoder.encode(code));
             }
-            sb.append("]");
-            return sb.toString();
+            return objectMapper.writeValueAsString(hashed);
         } catch (Exception e) {
-            throw new RuntimeException("Backup code hashing failed", e);
+            log.error("Backup kódok hashelése sikertelen", e);
+            throw new RuntimeException("Backup kód generálása sikertelen", e);
         }
+    }
+
+    /**
+     * MFA backup kód ellenőrzése bejelentkezéskor (ha a TOTP eszköz nem elérhető).
+     * A kód egyszeri felhasználású — sikeres ellenőrzés után törlődik a tárolt listából.
+     *
+     * @param workerId a bejelentkezni próbáló worker azonosítója
+     * @param code     a felhasználó által megadott 8 jegyű backup kód
+     * @return true ha érvényes és felhasználható kód
+     */
+    public boolean verifyBackupCode(Long workerId, String code) {
+        Optional<WorkerMfa> mfaOpt = mfaRepository.findByWorkerId(workerId);
+        if (mfaOpt.isEmpty() || !mfaOpt.get().getIsEnabled()) {
+            return false;
+        }
+        WorkerMfa mfa = mfaOpt.get();
+        String json = mfa.getBackupCodesHashJson();
+        if (json == null || json.isBlank()) {
+            return false;
+        }
+        try {
+            List<String> hashes = new ArrayList<>(
+                    objectMapper.readValue(json, new TypeReference<List<String>>() {}));
+            for (int i = 0; i < hashes.size(); i++) {
+                if (passwordEncoder.matches(code, hashes.get(i))) {
+                    hashes.remove(i);
+                    mfa.setBackupCodesHashJson(objectMapper.writeValueAsString(hashes));
+                    mfaRepository.save(mfa);
+                    log.info("MFA backup kód felhasználva — workerId={}, maradék={}", workerId, hashes.size());
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            log.error("Backup kód ellenőrzés hiba — workerId={}", workerId, e);
+        }
+        return false;
     }
 
     // ==========================================================================
