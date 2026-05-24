@@ -1205,6 +1205,9 @@ export function savePendingTransaction(
   }
   const localReferenceNumber = generateStrictReceiptNumber(type === 'BUY' ? 'V' : 'E', branchCodeForReceipt);
 
+  const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
+  const roundFinOrNull = (v: number | null, decimals: number): number | null =>
+    v === null ? null : roundFin(v, decimals);
   const normalizedCustomerIdentifier = customerIdentifier?.trim() || null;
   const normalizedCustomerName = customerName?.trim() || null;
   const normalizedCustomerDocumentNumber = customerDocumentNumber?.trim() || null;
@@ -1237,12 +1240,12 @@ export function savePendingTransaction(
     [
       type,
       currencyCode,
-      foreignAmount,
-      hufAmount,
-      roundedHufAmount,
-      rate,
-      handlingFee,
-      discountPercent,
+      roundFin(foreignAmount, 8),
+      roundFin(hufAmount, 2),
+      roundFin(roundedHufAmount, 0),
+      roundFin(rate, 10),
+      roundFinOrNull(handlingFee, 0),
+      roundFinOrNull(discountPercent, 4),
       null,
       normalizedCustomerIdentifier,
       normalizedCustomerName,
@@ -1516,6 +1519,9 @@ export function savePendingConversion(
     throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
   }
   const localReferenceNumber = generateStrictReceiptNumber('K', branchCodeForReceipt);
+  const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
+  const roundFinOrNull = (v: number | null, decimals: number): number | null =>
+    v === null ? null : roundFin(v, decimals);
 
   db.run(
     `INSERT INTO pending_conversions (
@@ -1540,11 +1546,11 @@ export function savePendingConversion(
       fromCurrencyCode,
       toCurrencyId,
       toCurrencyCode,
-      fromAmount,
-      calculatedHufAmount,
-      calculatedToAmount,
-      conversionRate,
-      handlingFee,
+      roundFin(fromAmount, 8),
+      roundFin(calculatedHufAmount, 2),
+      roundFin(calculatedToAmount, 8),
+      roundFin(conversionRate, 10),
+      roundFinOrNull(handlingFee, 0),
       customerId?.trim() || null,
       customerName?.trim() || null,
       customerDocumentNumber?.trim() || null,
@@ -1886,6 +1892,9 @@ export function savePendingTransfer(
   lines: string | null = null,
 ): number {
   if (!db) throw new Error('Database not initialized');
+  const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
+  const roundFinOrNull = (v: number | null, decimals: number): number | null =>
+    v === null ? null : roundFin(v, decimals);
   // v2.3.52 B30: Átadólap-szám AT<branch>NNNNNN (legacy parity), LT-fallback ha config hiányzik.
   // v2.3.54 (Sourcery #317 P3): trim + non-empty validate — empty/whitespace branch_code-ra
   // NEM generálunk "AT  000001" malformed számot, hanem LT-fallback-re esik vissza.
@@ -1919,8 +1928,8 @@ export function savePendingTransfer(
       targetBranchCode,
       currencyId,
       currencyCode,
-      amount,
-      hufValue,
+      roundFin(amount, 8),
+      roundFinOrNull(hufValue, 2),
       transferType,
       denominations,
       note,
@@ -2062,6 +2071,7 @@ export function savePendingBankTransaction(
   note: string | null,
 ): number {
   if (!db) throw new Error('Database not initialized');
+  const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
 
   const localReferenceNumber = generateLocalReference('LBANK');
   const idempotencyKey = crypto.randomUUID();
@@ -2083,9 +2093,9 @@ export function savePendingBankTransaction(
     [
       transactionType,
       currencyCode,
-      amount,
-      exchangeRate,
-      hufAmount,
+      roundFin(amount, 8),
+      roundFin(exchangeRate, 10),
+      roundFin(hufAmount, 2),
       vaultTerritoryId,
       bankName?.trim() || null,
       bankReference?.trim() || null,
@@ -2163,6 +2173,9 @@ export function savePendingStorno(params: {
   customerDocumentNumber?: string | null;
 }): number {
   if (!db) throw new Error('Database not initialized');
+  const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
+  const roundFinOrNull = (v: number | null, decimals: number): number | null =>
+    v === null ? null : roundFin(v, decimals);
 
   const localReferenceNumber = generateLocalReference('LST');
   const idempotencyKey = crypto.randomUUID();
@@ -2190,12 +2203,12 @@ export function savePendingStorno(params: {
       params.originalReceiptNumber,
       params.originalTransactionType,
       params.currencyCode,
-      params.foreignAmount,
-      params.hufAmount,
-      params.exchangeRate,
+      roundFinOrNull(params.foreignAmount, 8),
+      roundFin(params.hufAmount, 2),
+      roundFinOrNull(params.exchangeRate, 10),
       params.reason.trim(),
       params.approvalId ?? null,
-      params.customExchangeRate ?? null,
+      roundFinOrNull(params.customExchangeRate ?? null, 10),
       params.paymentMethod ?? null,
       params.customerName?.trim() || null,
       params.customerDocumentNumber?.trim() || null,
