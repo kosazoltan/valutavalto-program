@@ -15,6 +15,7 @@ import { logger } from '../../utils/logger'
 import RateGrid from './components/RateGrid'
 import BranchPickerModal from './components/BranchPickerModal'
 import { fmtRate, parseNum, type EditableRate } from './types'
+import { currentFunctionCode, fillDownLimitBands, clearLimitBands } from './fillHelpers'
 import { useTranslation } from 'react-i18next'
 
 // ===================== Main Component =====================
@@ -260,6 +261,54 @@ export default function RateCreationPage() {
     })
   }
 
+  // ===================== Kitöltési segítség (FR-RFM-23) =====================
+
+  /** Adat lehúzás: a 0-s vételi/eladási árfolyamot a 3 kedvezménysávba tölti. */
+  const applyFillDown = (overwrite: boolean) => {
+    if (!canWriteRateCreation) {
+      toast.error('Nincs jogosultság', 'A kitöltési segítséghez főértéktáros vagy ügyvezető szerepkör kell')
+      return
+    }
+    // Copilot #829: a számlálót a handlerben, a jelenlegi `rates` alapján képezzük
+    // (a setRates updater StrictMode-ban duplán is lefuthat → megbízhatatlan).
+    let touched = 0
+    const nextRates = rates.map(r => {
+      const next = fillDownLimitBands(r, { overwrite })
+      if (next !== r) touched++
+      return next
+    })
+    if (touched === 0) {
+      toast.info('Nincs változás', 'Nincs lehúzható 0-s árfolyam')
+      return
+    }
+    pushUndo()
+    setRates(nextRates)
+    toast.success('Lehúzva', overwrite
+      ? `${touched} valuta sávjai felülírva a 0-s árfolyammal`
+      : `${touched} valuta üres sávja feltöltve a 0-s árfolyammal`)
+  }
+
+  /** Sávok törlése: a 3 kedvezménysáv kiürítése (visszaesik a 0-s alapra). */
+  const applyClearBands = () => {
+    if (!canWriteRateCreation) {
+      toast.error('Nincs jogosultság', 'A kitöltési segítséghez főértéktáros vagy ügyvezető szerepkör kell')
+      return
+    }
+    let touched = 0
+    const nextRates = rates.map(r => {
+      const next = clearLimitBands(r)
+      if (next !== r) touched++
+      return next
+    })
+    if (touched === 0) {
+      toast.info('Nincs változás', 'Nincs törölhető kedvezménysáv')
+      return
+    }
+    pushUndo()
+    setRates(nextRates)
+    toast.success('Törölve', `${touched} valuta kedvezménysávja kiürítve`)
+  }
+
   // ===================== Publish =====================
 
   const handlePublish = async () => {
@@ -482,6 +531,46 @@ export default function RateCreationPage() {
                   </span>
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Aktuális függvény (FR-RFM-22) + Kitöltési segítség (FR-RFM-23) */}
+          <div className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] text-gray-500 uppercase font-bold">Aktuális függvény</span>
+              <span
+                className="px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-800 font-mono text-[11px] font-bold"
+                title="A csoportlapon aktív képletkód-azonosító (a munkacsoport sorszámából képezve)."
+              >
+                {currentFunctionCode(selectedWg?.legacyGroupNumber)}
+              </span>
+            </div>
+            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Kitöltési segítség</div>
+            <div className="grid grid-cols-3 gap-1">
+              <button
+                onClick={() => applyFillDown(false)}
+                disabled={!canWriteRateCreation}
+                className="px-1 py-1 rounded border border-green-300 bg-green-50 hover:bg-green-100 disabled:opacity-40 text-green-800 text-[9px] font-semibold leading-tight"
+                title="A 0-s vételi/eladási árfolyamot lehúzza az ÜRES kedvezménysávokba (kézi értékek megmaradnak)"
+              >
+                Lehúzás (üres)
+              </button>
+              <button
+                onClick={() => applyFillDown(true)}
+                disabled={!canWriteRateCreation}
+                className="px-1 py-1 rounded border border-amber-300 bg-amber-50 hover:bg-amber-100 disabled:opacity-40 text-amber-800 text-[9px] font-semibold leading-tight"
+                title="A 0-s árfolyamot MINDEN kedvezménysávba felülírva lehúzza (Excel drag-fill)"
+              >
+                Lehúzás (mind)
+              </button>
+              <button
+                onClick={applyClearBands}
+                disabled={!canWriteRateCreation}
+                className="px-1 py-1 rounded border border-red-300 bg-red-50 hover:bg-red-100 disabled:opacity-40 text-red-800 text-[9px] font-semibold leading-tight"
+                title="A 3 kedvezménysáv kiürítése (visszaesik a 0-s alapárfolyamra)"
+              >
+                Sávok törlése
+              </button>
             </div>
           </div>
 
