@@ -475,11 +475,11 @@ public class RateCreationService {
                     systemParameterService.getValue("RATE_PACKAGE_HASH_STRICT", "false"));
             if (strict) {
                 log.warn("Árfolyamcsomag integritás-hiba (STRICT): clientHash={}, serverHash={}, packageId={}",
-                        safeAuditValue(clientHash), serverPackageHash, packageDto.getClientPackageId());
+                        safeAuditValue(clientHash), serverPackageHash, safeAuditValue(packageDto.getClientPackageId()));
                 throw new ValidationException("Árfolyamcsomag integritás-ellenőrzés sikertelen (hash eltérés).");
             }
             log.info("Árfolyamcsomag hash-eltérés (nem-blokkoló, STRICT KI): clientHash={}, serverHash={}, packageId={}",
-                    safeAuditValue(clientHash), serverPackageHash, packageDto.getClientPackageId());
+                    safeAuditValue(clientHash), serverPackageHash, safeAuditValue(packageDto.getClientPackageId()));
         }
 
         GroupRateDTO groupRateDTO = GroupRateDTO.builder()
