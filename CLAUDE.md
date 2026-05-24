@@ -638,7 +638,11 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.37** (2026-05-24 — AI_INTERNAL_SECURITY_AUDIT_INSTRUCTIONS.md V2.0 audit végrehajtva: PR #824 admin-merged, production HEALTHY 200). **4-WAY TELEPÍTŐ-BUILD SZÜKSÉGES** (Electron-natív réteg érintett: rtsp-recorder.ts validateRtspUrl).
+- **Verzió:** **v2.26.38** (2026-05-24 — G22 sub-scope lezárva: TCSOPORTDISPLAY 54-csempe munkacsoport-rács UI az RFM árfolyamkészítőben. PR #828 admin-merged `85c582d09`, production HEALTHY 200). **NINCS telepítő-build** (tisztán frontend-react, server-served, Hetzner auto-deploy).
+  - **G22 csempe-rács:** `RateCreationPage.tsx` munkacsoport-választó apró `w-6 h-6` számozott gombok → 2-oszlopos csempe-rács (legacy csoportszám + név + iroda-darabszám csempénként, aktív/inaktív vizuális megkülönböztetés, `max-h-52` scroll). A G22 számítási mag (rfmRules.ts) + TLIMITALLITOFORM limit-setter már korábban kész (PR #792) → ez az utolsó hátralévő vizuális paritás-elem.
+  - **AI review gate:** Copilot 0 finding (tiszta), Sourcery weekly rate-limit (zaj), minden CI check zöld.
+  - **23/23 EXCMD gap KÉSZ.** Hátralévő (Should prioritás): FR-RFM-22 "Aktuális függvény" kijelzés, FR-RFM-23 Kitöltési segítség — nem blokkoló.
+- **Verzió [előző]:** **v2.26.37** (2026-05-24 — AI_INTERNAL_SECURITY_AUDIT_INSTRUCTIONS.md V2.0 audit végrehajtva: PR #824 admin-merged, production HEALTHY 200). **4-WAY TELEPÍTŐ-BUILD SZÜKSÉGES** (Electron-natív réteg érintett: rtsp-recorder.ts validateRtspUrl).
   - **F1.2 (LOW):** WebSocketConfig stale `https://valuta-frontend.vercel.app` origin eltávolítva.
   - **F3.1 (HIGH):** ArchiveTask multi-tenant IDOR fix teljes lefedés — V264 migration (branch-ownership backfill), entity `@JsonIgnore`, repo company-scoped metódusok, service task-hijacking prevention + branchId ownership check, 5 unit teszt.
   - **F8.B (MEDIUM):** RTSP URL injection prevention — `validateRtspUrl()` protokoll + host ellenőrzés, credential nem szivárog error message-be.
