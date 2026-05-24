@@ -638,7 +638,12 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.33** (2026-05-24 — teljes antivaluta_audit.md PP-sorozat (12/12 finding) lezárva: PP-01..07+10 PR #813, PP-11+12 PR ~#815, PP-08+09 PR #816; mind admin-merged + auto-deploy, production HEALTHY 200). **4-WAY TELEPÍTŐ-BUILD kész** (PP-08+09 Electron-natív réteg érintett).
+- **Verzió:** **v2.26.34** (2026-05-24 — antivaluta_backdoor_audit.md PP-13/PP-14/PP-15 lezárva: PR #817 admin-merged + auto-deploy, production HEALTHY 200). **NINCS telepítő-build** (backend-only, server-served).
+  - **PP-13 (CRITICAL):** `SetupGoogleIdentificationService.identify()` — bootstrap-completed guard hozzáadva az endpoint elejére (`adminBootstrapService.isBootstrapAlreadyCompleted()` delegate), a `verifyIdentity()` hívás előtt. Google Subject kötés megakadályozva post-bootstrap.
+  - **PP-14 (HIGH):** `AdminBootstrapService.bootstrapAdmin()` — `alreadyCompleted` check az `companyRepository.findByCode()` ELÉ mozgatva (company enumeration attack megszüntetve).
+  - **PP-15 (MEDIUM):** `WorkerService.resolveWorkerForLogin()` — name-based fallback (bulk `findByCompanyId()` + névazonosítás) eltávolítva. Bejelentkezés kizárólag dolgozói kóddal lehetséges.
+  - **AI review gate:** 4 Copilot finding mind kezelve (PP-13 delegate P2, komment P2, unused Worker P3, AI_CONTRACT exemption P2 dokumentálva).
+- **Verzió [előző]:** **v2.26.33** (2026-05-24 — teljes antivaluta_audit.md PP-sorozat (12/12 finding) lezárva: PP-01..07+10 PR #813, PP-11+12 PR ~#815, PP-08+09 PR #816; mind admin-merged + auto-deploy, production HEALTHY 200). **4-WAY TELEPÍTŐ-BUILD kész** (PP-08+09 Electron-natív réteg érintett).
   - **PP-08 (sync-engine.ts):** auth bootstrap null token esetén exponenciális backoff (consecutiveFailures alapú, max 2048s), HA failover rotáció az authFailed blokkban (primary→fallback_primary→fallback_secondary→primary), korai return (a sikeres-sync ág NEM fut le, consecutiveFailures NEM reset-elődik).
   - **PP-09 (sqlite.ts):** `roundFin` helper (Number(v.toFixed(decimals))) + `roundFinOrNull` — alkalmazva minden pénzügyi INSERT értékre (foreignAmount/hufAmount/rate/handlingFee/discountPercent) + audit payload-ban is (savePendingTransactionV2 + savePendingConversionV2). Determinisztikus DB-tartalom, floating-point zaj kiküszöbölve.
   - **AI review gate:** Codex P1 HA failover bypass + 4 Copilot P2 finding mind javítva a squash-commit tartalmában (stale intermediate-commit review → verified current code).
