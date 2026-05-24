@@ -1,13 +1,16 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.CommissionCalculation;
 import hu.puzzleir.valuta.entity.CommissionRule;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionType;
+import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.repository.CommissionCalculationRepository;
 import hu.puzzleir.valuta.repository.CommissionRuleRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +39,7 @@ public class CommissionCalculationService {
     private final CommissionCalculationRepository commissionCalcRepo;
     private final CommissionRuleRepository commissionRuleRepo;
     private final TransactionRepository transactionRepository;
+    private final WorkerRepository workerRepository;
 
     /**
      * Egyetlen pénztáros havi jutalékának számítása.
@@ -48,6 +52,15 @@ public class CommissionCalculationService {
         if (commissionCalcRepo.existsByWorkerIdAndPeriod(workerId, yearMonth)) {
             throw new ValidationException("Már létezik jutalék számítás erre az időszakra: " + yearMonth);
         }
+
+        // #PP-18: a jutalékot a dolgozó SAJÁT fiókjához kell allokálni, NEM a
+        // számítást futtató munkamenet (SecurityUtils) fiókjához. Különben (a)
+        // @Scheduled háttérfolyamatban nincs Security Context → branchId=null →
+        // NOT NULL constraint sértés, (b) ha területi/központi user futtatja, a
+        // riport rossz fiókhoz allokál → a dolgozó fiókvezetője nem látja.
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található: " + workerId));
+        UUID workerActualBranchId = worker.getBranch().getId();
 
         LocalDate monthStart = ym.atDay(1);
         LocalDate monthEnd = ym.atEndOfMonth();
@@ -105,7 +118,7 @@ public class CommissionCalculationService {
 
         CommissionCalculation calc = CommissionCalculation.builder()
                 .workerId(workerId)
-                .branchId(SecurityUtils.getCurrentBranchId())
+                .branchId(workerActualBranchId)
                 .period(yearMonth)
                 .calculationType(CommissionCalculation.CalculationType.MONTHLY)
                 .totalTransactions(totalTx)

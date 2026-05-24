@@ -67,6 +67,7 @@ public class ExchangeRatePollingService {
     private final CurrencyRepository currencyRepository;
     private final ExchangeRateSourceRepository exchangeRateSourceRepository;
     private final SystemParameterRepository systemParameterRepository;
+    private final AuditEventService auditEventService;
 
     /**
      * A polling eredmény állapota — in-memory cache az utolsó futásról.
@@ -362,6 +363,25 @@ public class ExchangeRatePollingService {
                 updatedCount++;
                 log.debug("Hivatalos árfolyam frissítve: {} = {} HUF", currencyCode, officialRate);
 
+                // #PP-20: hash-láncolt audit naplózás a hivatalos árfolyam-frissítésre
+                // (non-repudiation: bizonyítható forrás + időpont, NAV/MNB IT-audithoz).
+                // A standard log rotálódik; az audit_log immutable és megmarad. Az audit
+                // hiba NEM blokkolhatja az árfolyam-frissítést (külön try-catch).
+                try {
+                    auditEventService.appendEvent(
+                            AuditEventService.AuditEventRequest.builder()
+                                    .eventType("EXCHANGE_RATE_SYNC")
+                                    .action("UPDATE")
+                                    .entityType("ExchangeRate")
+                                    .amount(officialRate)
+                                    .currency(currencyCode)
+                                    .reason("Automatikus hivatalos árfolyam-frissítés külső forrásból (MNB)")
+                                    .build()
+                    );
+                } catch (Exception auditEx) {
+                    log.warn("Árfolyam audit naplózás sikertelen ({}): {}", currencyCode, auditEx.getMessage());
+                }
+
             } catch (Exception e) {
                 log.error("Hiba a(z) {} árfolyam frissítésénél: {}", currencyCode, e.getMessage());
             }
@@ -603,7 +623,8 @@ public class ExchangeRatePollingService {
     }
 
     /**
-     * MNB árfolyam belső DTO.
+     * MNB árfolyam belső DTO. Package-private a #PP-20 audit-naplózás
+     * unit-tesztelhetősége miatt (updateOfficialRates közvetlen hívása).
      */
-    private record MnbRate(String currencyCode, BigDecimal rate, int unit) {}
+    record MnbRate(String currencyCode, BigDecimal rate, int unit) {}
 }

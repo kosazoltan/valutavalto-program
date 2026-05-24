@@ -11,6 +11,7 @@ import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.AmlReportRepository;
 import hu.puzzleir.valuta.repository.AmlThresholdRepository;
 import hu.puzzleir.valuta.repository.CustomerRepository;
+import hu.puzzleir.valuta.repository.ShiftedCalendarDayRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +58,7 @@ public class AmlService {
     private final AuditLogService auditLogService;
     private final SanctionScreeningService sanctionScreeningService;
     private final BlacklistService blacklistService;
+    private final ShiftedCalendarDayRepository shiftedCalendarDayRepository;
 
     /** Egyszerusitett azonositasi limit (2017. LIII. tv. 7.§) */
     private static final BigDecimal SIMPLIFIED_IDENTIFICATION_LIMIT = new BigDecimal("100000");
@@ -781,12 +783,29 @@ public class AmlService {
         int added = 0;
         while (added < businessDays) {
             date = date.plusDays(1);
-            java.time.DayOfWeek dow = date.getDayOfWeek();
-            if (dow != java.time.DayOfWeek.SATURDAY && dow != java.time.DayOfWeek.SUNDAY && !isHungarianHoliday(date)) {
+            if (isBusinessDay(date)) {
                 added++;
             }
         }
         return date.atTime(from.toLocalTime());
+    }
+
+    /**
+     * Munkanap-e a megadott nap a SAR-határidő szempontjából (#PP-17).
+     *
+     * <p>Elsőbbség: a kormányzati áthelyezés (shifted_calendar_day) FELÜLÍRJA a
+     * naptári logikát — egy áthelyezett szombat munkanap, egy áthelyezett hétköznap
+     * pedig pihenőnap. Áthelyezés hiányában a hagyományos szabály: hétvége és magyar
+     * munkaszüneti nap kihagyva.</p>
+     */
+    private boolean isBusinessDay(LocalDate date) {
+        Optional<ShiftedCalendarDay> shifted = shiftedCalendarDayRepository.findByCalendarDate(date);
+        if (shifted.isPresent()) {
+            return shifted.get().isWorkday();
+        }
+        java.time.DayOfWeek dow = date.getDayOfWeek();
+        boolean weekend = dow == java.time.DayOfWeek.SATURDAY || dow == java.time.DayOfWeek.SUNDAY;
+        return !weekend && !isHungarianHoliday(date);
     }
 
     /**

@@ -1,14 +1,18 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CommissionCalculation;
 import hu.puzzleir.valuta.entity.CommissionRule;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.entity.TransactionStatus;
+import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.repository.CommissionCalculationRepository;
 import hu.puzzleir.valuta.repository.CommissionRuleRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,9 +50,15 @@ class CommissionCalculationServiceTest {
     @Mock
     private TransactionRepository transactionRepository;
 
+    @Mock
+    private WorkerRepository workerRepository;
+
     private static final Long WORKER_ID = 1L;
     private static final String YEAR_MONTH = "2026-01";
     private static final UUID COMPANY_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    // #PP-18: a dolgozó SAJÁT fiókja — ennek kell a jutalék branchId-jébe kerülnie,
+    // NEM a munkamenet (SecurityUtils) fiókjának.
+    private static final UUID WORKER_BRANCH_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     // 2026 január 1. (a mocks egyetlen napra adnak tranzakciót)
     private static final LocalDate JAN_1 = LocalDate.of(2026, 1, 1);
@@ -89,6 +99,15 @@ class CommissionCalculationServiceTest {
     }
 
     /**
+     * #PP-18: a dolgozó betöltése a SAJÁT fiókjával (WORKER_BRANCH_ID).
+     */
+    private void mockWorkerWithBranch() {
+        Branch branch = Branch.builder().id(WORKER_BRANCH_ID).build();
+        Worker worker = Worker.builder().id(WORKER_ID).branch(branch).build();
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+    }
+
+    /**
      * Közös SecurityUtils mock.
      */
     private MockedStatic<SecurityUtils> mockSecurityUtils() {
@@ -113,6 +132,7 @@ class CommissionCalculationServiceTest {
 
             when(commissionCalcRepo.existsByWorkerIdAndPeriod(WORKER_ID, YEAR_MONTH)).thenReturn(false);
             mockTransactionsForMonth(transactions);
+            mockWorkerWithBranch();
 
             // Tier 1 szabály: 0 - 1M → 1%
             CommissionRule tier1 = createRule(
@@ -152,6 +172,7 @@ class CommissionCalculationServiceTest {
 
             when(commissionCalcRepo.existsByWorkerIdAndPeriod(WORKER_ID, YEAR_MONTH)).thenReturn(false);
             mockTransactionsForMonth(transactions);
+            mockWorkerWithBranch();
 
             // Tier 2 szabály: 1M - 5M → 1.5%
             CommissionRule tier2 = createRule(
@@ -188,6 +209,7 @@ class CommissionCalculationServiceTest {
 
             when(commissionCalcRepo.existsByWorkerIdAndPeriod(WORKER_ID, YEAR_MONTH)).thenReturn(false);
             mockTransactionsForMonth(transactions);
+            mockWorkerWithBranch();
 
             // Tier 3 szabály: 5M+ → 2%
             CommissionRule tier3 = createRule(
@@ -224,6 +246,7 @@ class CommissionCalculationServiceTest {
 
             when(commissionCalcRepo.existsByWorkerIdAndPeriod(WORKER_ID, YEAR_MONTH)).thenReturn(false);
             mockTransactionsForMonth(transactions);
+            mockWorkerWithBranch();
 
             // Szabály: 5M+ → 2% + bónusz 0.5% ha forgalom >= 5M
             CommissionRule ruleWithBonus = createRule(
@@ -296,5 +319,41 @@ class CommissionCalculationServiceTest {
         assertThatThrownBy(() -> service.approveCommission(calcId))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Csak CALCULATED státuszú");
+    }
+
+    // =====================================================================
+    // #PP-18: a jutalék a dolgozó SAJÁT fiókjához kerül (NEM a munkamenethez)
+    // =====================================================================
+    @Test
+    @DisplayName("#PP-18: a branchId a dolgozó fiókja, nem a munkamenet fiókja")
+    void testCalculateMonthly_branchIdFromWorkerNotSession() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            // A munkamenet fiókja SZÁNDÉKOSAN más, mint a dolgozó fiókja —
+            // ha a service még a session-t használná, ez bukna. (getCurrentBranchId
+            // hívás már nincs a calculateMonthly-ban, így a stub szándékosan elmarad.)
+            when(commissionCalcRepo.existsByWorkerIdAndPeriod(WORKER_ID, YEAR_MONTH)).thenReturn(false);
+            mockTransactionsForMonth(List.of(
+                    createTransaction(TransactionType.BUY, new BigDecimal("100000"))));
+            mockWorkerWithBranch();
+            when(commissionRuleRepo.findActiveRules(eq(COMPANY_ID), any(LocalDate.class)))
+                    .thenReturn(Collections.emptyList());
+            when(commissionCalcRepo.save(any(CommissionCalculation.class)))
+                    .thenAnswer(inv -> inv.getArgument(0));
+
+            CommissionCalculation result = service.calculateMonthly(WORKER_ID, YEAR_MONTH, COMPANY_ID);
+
+            assertThat(result.getBranchId()).isEqualTo(WORKER_BRANCH_ID);
+        }
+    }
+
+    @Test
+    @DisplayName("#PP-18: ismeretlen dolgozó → ResourceNotFoundException")
+    void testCalculateMonthly_unknownWorker_throws() {
+        when(commissionCalcRepo.existsByWorkerIdAndPeriod(WORKER_ID, YEAR_MONTH)).thenReturn(false);
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.calculateMonthly(WORKER_ID, YEAR_MONTH, COMPANY_ID))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Pénztáros nem található");
     }
 }
