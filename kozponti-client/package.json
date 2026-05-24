@@ -20,6 +20,7 @@
     "typecheck": "node ../frontend-react/node_modules/typescript/bin/tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "dotenv": "^16.6.1",
     "electron-log": "^5.4.3",
     "sql.js": "^1.11.0"
   },

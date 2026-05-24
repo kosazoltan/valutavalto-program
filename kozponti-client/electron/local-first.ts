@@ -262,11 +262,14 @@ function loadPersistedToken(): string | null {
 
 // --- Public API ---
 
-export async function initLocalFirst(apiUrl: string): Promise<void> {
+export async function initLocalFirst(apiUrl: string, mode = 'full'): Promise<void> {
   const dbDir = path.join(app.getPath('home'), '.valuta-central');
+  // #ERR-INST-01: mód-specifikus SQLite fájl → a Központi (full) és az Árfolyamkészítő
+  // (rate-maker) offline outbox/cache NEM keveredik a közös ~/.valuta-central mappában.
+  const dbName = mode === 'rate-maker' ? 'rate-maker.db' : 'central-workstation.db';
   const db = await initLocalDatabase({
     dbDir,
-    dbName: 'central-workstation.db',
+    dbName,
     wasmPath: resolveWasmPath(),
   });
 

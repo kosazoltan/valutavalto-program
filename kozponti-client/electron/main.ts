@@ -193,7 +193,10 @@ async function determineStartupMode(): Promise<WorkstationMode> {
     }
   }
   if (isDev) {
-    return readPersistedMode()
+    // #ERR-INST-05: a dev:renderer fixen a 'central-workstation' flavort szolgálja ki a
+    // 3020-as porton, ezért dev módban a main is 'full' → nincs renderer/main eltérés.
+    // (Rate-maker dev-hez explicit `--app-mode=rate-maker` + a megfelelő dev szerver kell.)
+    return 'full'
   }
   return pickWorkstationMode()
 }
@@ -588,9 +591,17 @@ app.whenReady().then(async () => {
   })
 
   // Munkaállomás-mód kiválasztása (választó-ablak) MINDEN más init előtt —
-  // a protokoll-kiszolgálás és az ablak-cím is ettől függ.
+  // a protokoll-kiszolgálás és az ablak-cím is ettől függ. A mód-választás a BASE
+  // userData-ban perzisztál (a .env betöltés is innen történt fent).
   activeAppMode = await determineStartupMode()
-  log.info(`[Workstation] Aktív mód: ${activeAppMode} (dist/${MODE_DIST_SUBDIR[activeAppMode]})`)
+
+  // #ERR-INST-01: a két mód offline perzisztencia-rétegeit (config/token/SQLite outbox)
+  // mód-specifikus userData almappába izoláljuk → nincs kereszt-mód adatkeveredés a
+  // helyi cache-ben. A .env + a mód-választás a BASE userData-ban marad (közös), minden
+  // más (config.json, auth-token, local-first SQLite) a base/<mód> alá kerül.
+  const baseUserData = app.getPath('userData')
+  app.setPath('userData', path.join(baseUserData, MODE_DIST_SUBDIR[activeAppMode]))
+  log.info(`[Workstation] Aktív mód: ${activeAppMode} — izolált userData: ${app.getPath('userData')}`)
 
   ensureInitialConfig()
   registerIpcHandlers()
@@ -599,7 +610,7 @@ app.whenReady().then(async () => {
 
   // Local-first: SQLite + sync engine initialization
   try {
-    await initLocalFirst(resolveConfiguredApiUrl())
+    await initLocalFirst(resolveConfiguredApiUrl(), activeAppMode)
     log.info('[App] Local-first infrastructure ready')
   } catch (err) {
     log.error('[App] Local-first init failed (continuing online-only):', err)
