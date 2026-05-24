@@ -269,13 +269,20 @@ export default function RateCreationPage() {
       toast.error('Nincs jogosultság', 'A kitöltési segítséghez főértéktáros vagy ügyvezető szerepkör kell')
       return
     }
-    pushUndo()
+    // Copilot #829: a számlálót a handlerben, a jelenlegi `rates` alapján képezzük
+    // (a setRates updater StrictMode-ban duplán is lefuthat → megbízhatatlan).
     let touched = 0
-    setRates(prev => prev.map(r => {
+    const nextRates = rates.map(r => {
       const next = fillDownLimitBands(r, { overwrite })
       if (next !== r) touched++
       return next
-    }))
+    })
+    if (touched === 0) {
+      toast.info('Nincs változás', 'Nincs lehúzható 0-s árfolyam')
+      return
+    }
+    pushUndo()
+    setRates(nextRates)
     toast.success('Lehúzva', overwrite
       ? `${touched} valuta sávjai felülírva a 0-s árfolyammal`
       : `${touched} valuta üres sávja feltöltve a 0-s árfolyammal`)
@@ -287,13 +294,18 @@ export default function RateCreationPage() {
       toast.error('Nincs jogosultság', 'A kitöltési segítséghez főértéktáros vagy ügyvezető szerepkör kell')
       return
     }
-    pushUndo()
     let touched = 0
-    setRates(prev => prev.map(r => {
+    const nextRates = rates.map(r => {
       const next = clearLimitBands(r)
       if (next !== r) touched++
       return next
-    }))
+    })
+    if (touched === 0) {
+      toast.info('Nincs változás', 'Nincs törölhető kedvezménysáv')
+      return
+    }
+    pushUndo()
+    setRates(nextRates)
     toast.success('Törölve', `${touched} valuta kedvezménysávja kiürítve`)
   }
 
@@ -528,7 +540,7 @@ export default function RateCreationPage() {
               <span className="text-[10px] text-gray-500 uppercase font-bold">Aktuális függvény</span>
               <span
                 className="px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-800 font-mono text-[11px] font-bold"
-                title="A csoportlapon aktív képletkód (legacy #NNM). A pontos katalógus a forrásban TBD."
+                title="A csoportlapon aktív képletkód-azonosító (a munkacsoport sorszámából képezve)."
               >
                 {currentFunctionCode(selectedWg?.legacyGroupNumber)}
               </span>

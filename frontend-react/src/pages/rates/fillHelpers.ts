@@ -27,9 +27,8 @@ const BAND_FIELDS: ReadonlyArray<{ buy: StringRateField; sell: StringRateField }
  * paritás: # + 2 jegyű csoportszám (legalább 01) + 'M' (munkacsoport-lap).
  */
 export function currentFunctionCode(legacyGroupNumber: number | null | undefined): string {
-  const raw = legacyGroupNumber
-  const n = Number.isFinite(raw as number) && (raw as number) > 0
-    ? Math.trunc(raw as number)
+  const n = typeof legacyGroupNumber === 'number' && Number.isFinite(legacyGroupNumber) && legacyGroupNumber > 0
+    ? Math.trunc(legacyGroupNumber)
     : 1
   return `#${String(n).padStart(2, '0')}M`
 }
