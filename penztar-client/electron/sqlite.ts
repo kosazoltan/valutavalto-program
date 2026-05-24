@@ -160,12 +160,12 @@ export async function initDatabase(): Promise<void> {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         type TEXT NOT NULL CHECK(type IN ('SELL', 'BUY')),
         currency_code TEXT NOT NULL,
-        foreign_amount TEXT NOT NULL,
-        huf_amount TEXT NOT NULL,
-        rounded_huf_amount TEXT NOT NULL,
-        rate TEXT NOT NULL,
-        handling_fee TEXT,
-        discount_percent TEXT,
+        foreign_amount REAL NOT NULL,
+        huf_amount REAL NOT NULL,
+        rounded_huf_amount REAL NOT NULL,
+        rate REAL NOT NULL,
+        handling_fee REAL,
+        discount_percent REAL,
         customer_id INTEGER,
         customer_identifier TEXT,
         customer_name TEXT,
@@ -239,11 +239,11 @@ export async function initDatabase(): Promise<void> {
         from_currency_code TEXT NOT NULL,
         to_currency_id INTEGER,
         to_currency_code TEXT NOT NULL,
-        from_amount TEXT NOT NULL,
-        calculated_huf_amount TEXT NOT NULL,
-        calculated_to_amount TEXT NOT NULL,
-        conversion_rate TEXT NOT NULL,
-        handling_fee TEXT,
+        from_amount REAL NOT NULL,
+        calculated_huf_amount REAL NOT NULL,
+        calculated_to_amount REAL NOT NULL,
+        conversion_rate REAL NOT NULL,
+        handling_fee REAL,
         customer_id TEXT,
         customer_name TEXT,
         customer_document_number TEXT,
@@ -293,9 +293,9 @@ export async function initDatabase(): Promise<void> {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         transaction_type TEXT NOT NULL CHECK(transaction_type IN ('BUY', 'SELL')),
         currency_code TEXT NOT NULL,
-        amount TEXT NOT NULL,
-        exchange_rate TEXT NOT NULL,
-        huf_amount TEXT NOT NULL,
+        amount REAL NOT NULL,
+        exchange_rate REAL NOT NULL,
+        huf_amount REAL NOT NULL,
         vault_territory_id INTEGER,
         bank_name TEXT,
         bank_reference TEXT,
@@ -314,12 +314,12 @@ export async function initDatabase(): Promise<void> {
         original_receipt_number TEXT NOT NULL,
         original_transaction_type TEXT NOT NULL,
         currency_code TEXT NOT NULL,
-        foreign_amount TEXT,
-        huf_amount TEXT NOT NULL,
-        exchange_rate TEXT,
+        foreign_amount REAL,
+        huf_amount REAL NOT NULL,
+        exchange_rate REAL,
         reason TEXT NOT NULL,
         approval_id TEXT,
-        custom_exchange_rate TEXT,
+        custom_exchange_rate REAL,
         payment_method TEXT,
         customer_name TEXT,
         customer_document_number TEXT,
@@ -408,8 +408,8 @@ export async function initDatabase(): Promise<void> {
         target_branch_code TEXT NOT NULL,
         currency_id INTEGER,
         currency_code TEXT NOT NULL,
-        amount TEXT NOT NULL,
-        huf_value TEXT,
+        amount REAL NOT NULL,
+        huf_value REAL,
         transfer_type TEXT,
         denominations TEXT,
         note TEXT,
@@ -1205,6 +1205,9 @@ export function savePendingTransaction(
   }
   const localReferenceNumber = generateStrictReceiptNumber(type === 'BUY' ? 'V' : 'E', branchCodeForReceipt);
 
+  const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
+  const roundFinOrNull = (v: number | null, decimals: number): number | null =>
+    v === null ? null : roundFin(v, decimals);
   const normalizedCustomerIdentifier = customerIdentifier?.trim() || null;
   const normalizedCustomerName = customerName?.trim() || null;
   const normalizedCustomerDocumentNumber = customerDocumentNumber?.trim() || null;
@@ -1237,12 +1240,12 @@ export function savePendingTransaction(
     [
       type,
       currencyCode,
-      foreignAmount,
-      hufAmount,
-      roundedHufAmount,
-      rate,
-      handlingFee,
-      discountPercent,
+      roundFin(foreignAmount, 8),
+      roundFin(hufAmount, 2),
+      roundFin(roundedHufAmount, 0),
+      roundFin(rate, 10),
+      roundFinOrNull(handlingFee, 0),
+      roundFinOrNull(discountPercent, 4),
       null,
       normalizedCustomerIdentifier,
       normalizedCustomerName,
@@ -1516,6 +1519,9 @@ export function savePendingConversion(
     throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
   }
   const localReferenceNumber = generateStrictReceiptNumber('K', branchCodeForReceipt);
+  const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
+  const roundFinOrNull = (v: number | null, decimals: number): number | null =>
+    v === null ? null : roundFin(v, decimals);
 
   db.run(
     `INSERT INTO pending_conversions (
@@ -1540,11 +1546,11 @@ export function savePendingConversion(
       fromCurrencyCode,
       toCurrencyId,
       toCurrencyCode,
-      fromAmount,
-      calculatedHufAmount,
-      calculatedToAmount,
-      conversionRate,
-      handlingFee,
+      roundFin(fromAmount, 8),
+      roundFin(calculatedHufAmount, 2),
+      roundFin(calculatedToAmount, 8),
+      roundFin(conversionRate, 10),
+      roundFinOrNull(handlingFee, 0),
       customerId?.trim() || null,
       customerName?.trim() || null,
       customerDocumentNumber?.trim() || null,
