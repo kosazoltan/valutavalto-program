@@ -457,26 +457,32 @@ export default function RateCreationPage() {
         {/* === RIGHT: WORKGROUP PANEL === */}
         <div className="w-64 flex-shrink-0 flex flex-col gap-1 min-h-0">
 
-          {/* Workgroup selector: tiny numbered buttons */}
-          <div className="bg-white rounded border shadow-sm px-2 py-1.5">
-            <div className="flex items-center gap-1 flex-wrap">
+          {/* Workgroup selector: 54-csempe csoport-rács (TCSOPORTDISPLAY parity, G22 sub-scope) */}
+          <div className="bg-white rounded border shadow-sm px-2 py-1.5 max-h-52 overflow-y-auto flex-shrink-0">
+            <div className="grid grid-cols-2 gap-1">
               {workgroups.map((wg, idx) => (
                 <button
                   key={wg.id}
                   onClick={() => setSelectedWgIndex(idx)}
-                  className={`w-6 h-6 rounded text-[10px] font-bold border transition-colors ${
+                  title={`${wg.name} (${wg.branches.length} iroda)`}
+                  className={`flex flex-col items-start px-1.5 py-1 rounded border text-left transition-colors min-w-0 ${
                     idx === selectedWgIndex
                       ? 'bg-green-600 text-white border-green-700 shadow-sm'
-                      : 'bg-green-50 text-green-800 border-green-300 hover:bg-green-200'
+                      : wg.active
+                        ? 'bg-green-50 text-green-800 border-green-300 hover:bg-green-200'
+                        : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
                   }`}
                 >
-                  {wg.legacyGroupNumber ?? (idx + 1)}
+                  <span className={`text-[8px] font-bold ${idx === selectedWgIndex ? 'text-green-200' : 'text-gray-400'}`}>
+                    {wg.legacyGroupNumber ?? (idx + 1)}
+                  </span>
+                  <span className="text-[10px] font-semibold leading-tight truncate w-full">{wg.name}</span>
+                  <span className={`text-[8px] ${idx === selectedWgIndex ? 'text-green-300' : 'text-gray-400'}`}>
+                    {wg.branches.length} iroda
+                  </span>
                 </button>
               ))}
             </div>
-            {selectedWg && (
-              <div className="text-xs font-bold text-gray-800 mt-1 truncate">{selectedWg.name}</div>
-            )}
           </div>
 
           {/* Branch list */}
