@@ -139,7 +139,9 @@ for (const installer of installers) {
   if (installer.merged) {
     // Összevont kliens: a build:frontend MINDKÉT flavort lefedi (külön dist-subdir),
     // és a main.ts dinamikusan (mód-választó + dual-dist) szolgálja ki őket.
-    for (const flavor of installer.mergedFlavors) {
+    check(Array.isArray(installer.mergedFlavors) && installer.mergedFlavors.length > 0,
+      `${installer.name}: merged kliens mergedFlavors hiányzik vagy nem tömb`)
+    for (const flavor of (Array.isArray(installer.mergedFlavors) ? installer.mergedFlavors : [])) {
       const flavorBuilt =
         buildFrontend.includes(`VITE_APP_FLAVOR='${flavor}'`) ||
         readText(installer.packagePath).includes(`VITE_APP_FLAVOR='${flavor}'`)

@@ -5,7 +5,7 @@ name: Windows Signed Release (v2.x)
 # Eredmenyek (GitHub Release artifact-okkent):
 #   - Penztar-Setup-<version>-<date>.exe           (NSIS, ~280 MB, kod-alairva)
 #   - Penztar-Eltavolito-<version>-<date>.exe      (NSIS uninstaller, ~60 KB)
-#   - Kozponti-Iranyitokozpont-Setup-<version>.exe (~100 MB, kod-alairva)
+#   - Kozponti-Munkaallomas-Setup-<version>.exe (~100 MB, kod-alairva)
 #   - Arfolyamkeszito-Setup-<version>.exe          (~100 MB, kod-alairva)
 #   - SHA-256 manifest (windows-signed-release-sha256.txt)
 #
@@ -366,7 +366,7 @@ jobs:
       - name: Verify Kozponti signature
         shell: pwsh
         run: |
-          $installer = Get-ChildItem kozponti-client/release/Kozponti-Iranyitokozpont-Setup-*.exe |
+          $installer = Get-ChildItem kozponti-client/release/Kozponti-Munkaallomas-Setup-*.exe |
                        Sort-Object LastWriteTime | Select-Object -Last 1
           if (-not $installer) {
             Write-Host "::error::Kozponti installer nem talalhato"
@@ -384,7 +384,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: kozponti-signed-${{ needs.preflight.outputs.version }}
-          path: kozponti-client/release/Kozponti-Iranyitokozpont-Setup-*.exe
+          path: kozponti-client/release/Kozponti-Munkaallomas-Setup-*.exe
           if-no-files-found: error
           retention-days: 14
 
@@ -522,7 +522,7 @@ jobs:
 
             - `Penztar-Setup-${{ needs.preflight.outputs.version }}-${{ needs.preflight.outputs.build_date }}.exe` — penztaros kliens
             - `Penztar-Eltavolito-${{ needs.preflight.outputs.version }}-${{ needs.preflight.outputs.build_date }}.exe` — uninstaller
-            - `Kozponti-Iranyitokozpont-Setup-${{ needs.preflight.outputs.version }}.exe` — kozponti irodavezetoi munkaallomas
+            - `Kozponti-Munkaallomas-Setup-${{ needs.preflight.outputs.version }}.exe` — kozponti irodavezetoi munkaallomas
             - `Arfolyamkeszito-Setup-${{ needs.preflight.outputs.version }}.exe` — RFM-keszito (foertektaros)
 
             ## Verifikalas

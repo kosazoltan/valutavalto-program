@@ -54,7 +54,7 @@ let mainWindow: BrowserWindow | null = null
  *  - 'full'        → Központi irányítóközpont (a frontend `dist/central` bundle-je)
  *  - 'rate-maker'  → Árfolyamkészítő        (a frontend `dist/rate-maker` bundle-je)
  *
- * A módot induláskor egy magyar nyelvű választó-ablak választtatja ki a felhasználóval,
+ * A módot induláskor egy magyar nyelvű választó-ablak választatja ki a felhasználóval,
  * a választás perzisztálódik (config.json `app_mode`), és az alapértelmezés a korábban
  * választott mód. A frontend mindkét flavor SAJÁT VITE_APP_FLAVOR-jával fordul → a
  * build-idejű flavor-függő ágak (RFM write-jog, local-rate-maker publish) helyesen működnek.
@@ -180,7 +180,7 @@ async function pickWorkstationMode(): Promise<WorkstationMode> {
 /**
  * Az induló mód meghatározása:
  *  1. `--app-mode=<full|rate-maker>` CLI argumentum (teszt/automatizálás) → felülír.
- *  2. Dev módban a renderer flavorja dönt → nincs dialog, a perzisztált (vagy 'full').
+ *  2. Dev módban nincs dialog → mindig 'full' (a dev:renderer central-workstation flavorjához igazítva).
  *  3. Csomagolt módban a magyar választó-ablak.
  */
 async function determineStartupMode(): Promise<WorkstationMode> {
