@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "com.bestchange.kozponti",
+  "appId": "com.bestchange.munkaallomas",
   "productName": "Valutavalto Kozponti Munkaallomas",
   "directories": {
     "output": "release"
@@ -34,7 +34,8 @@
     "language": "1038",
     "installerIcon": "../penztar-client/build/icons/app-icon-bestchange.ico",
     "uninstallerIcon": "../penztar-client/build/icons/app-icon-bestchange.ico",
-    "installerHeader": "../penztar-client/build/installer-header.png"
+    "installerHeader": "../penztar-client/build/installer-header.png",
+    "include": "build/installer-cleanup.nsh"
   },
   "extraResources": [
     {
