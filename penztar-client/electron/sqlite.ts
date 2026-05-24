@@ -160,12 +160,12 @@ export async function initDatabase(): Promise<void> {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         type TEXT NOT NULL CHECK(type IN ('SELL', 'BUY')),
         currency_code TEXT NOT NULL,
-        foreign_amount REAL NOT NULL,
-        huf_amount REAL NOT NULL,
-        rounded_huf_amount REAL NOT NULL,
-        rate REAL NOT NULL,
-        handling_fee REAL,
-        discount_percent REAL,
+        foreign_amount TEXT NOT NULL,
+        huf_amount TEXT NOT NULL,
+        rounded_huf_amount TEXT NOT NULL,
+        rate TEXT NOT NULL,
+        handling_fee TEXT,
+        discount_percent TEXT,
         customer_id INTEGER,
         customer_identifier TEXT,
         customer_name TEXT,
@@ -239,11 +239,11 @@ export async function initDatabase(): Promise<void> {
         from_currency_code TEXT NOT NULL,
         to_currency_id INTEGER,
         to_currency_code TEXT NOT NULL,
-        from_amount REAL NOT NULL,
-        calculated_huf_amount REAL NOT NULL,
-        calculated_to_amount REAL NOT NULL,
-        conversion_rate REAL NOT NULL,
-        handling_fee REAL,
+        from_amount TEXT NOT NULL,
+        calculated_huf_amount TEXT NOT NULL,
+        calculated_to_amount TEXT NOT NULL,
+        conversion_rate TEXT NOT NULL,
+        handling_fee TEXT,
         customer_id TEXT,
         customer_name TEXT,
         customer_document_number TEXT,
@@ -293,9 +293,9 @@ export async function initDatabase(): Promise<void> {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         transaction_type TEXT NOT NULL CHECK(transaction_type IN ('BUY', 'SELL')),
         currency_code TEXT NOT NULL,
-        amount REAL NOT NULL,
-        exchange_rate REAL NOT NULL,
-        huf_amount REAL NOT NULL,
+        amount TEXT NOT NULL,
+        exchange_rate TEXT NOT NULL,
+        huf_amount TEXT NOT NULL,
         vault_territory_id INTEGER,
         bank_name TEXT,
         bank_reference TEXT,
@@ -314,12 +314,12 @@ export async function initDatabase(): Promise<void> {
         original_receipt_number TEXT NOT NULL,
         original_transaction_type TEXT NOT NULL,
         currency_code TEXT NOT NULL,
-        foreign_amount REAL,
-        huf_amount REAL NOT NULL,
-        exchange_rate REAL,
+        foreign_amount TEXT,
+        huf_amount TEXT NOT NULL,
+        exchange_rate TEXT,
         reason TEXT NOT NULL,
         approval_id TEXT,
-        custom_exchange_rate REAL,
+        custom_exchange_rate TEXT,
         payment_method TEXT,
         customer_name TEXT,
         customer_document_number TEXT,
@@ -408,8 +408,8 @@ export async function initDatabase(): Promise<void> {
         target_branch_code TEXT NOT NULL,
         currency_id INTEGER,
         currency_code TEXT NOT NULL,
-        amount REAL NOT NULL,
-        huf_value REAL,
+        amount TEXT NOT NULL,
+        huf_value TEXT,
         transfer_type TEXT,
         denominations TEXT,
         note TEXT,
@@ -1886,6 +1886,9 @@ export function savePendingTransfer(
   lines: string | null = null,
 ): number {
   if (!db) throw new Error('Database not initialized');
+  const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
+  const roundFinOrNull = (v: number | null, decimals: number): number | null =>
+    v === null ? null : roundFin(v, decimals);
   // v2.3.52 B30: Átadólap-szám AT<branch>NNNNNN (legacy parity), LT-fallback ha config hiányzik.
   // v2.3.54 (Sourcery #317 P3): trim + non-empty validate — empty/whitespace branch_code-ra
   // NEM generálunk "AT  000001" malformed számot, hanem LT-fallback-re esik vissza.
@@ -1919,8 +1922,8 @@ export function savePendingTransfer(
       targetBranchCode,
       currencyId,
       currencyCode,
-      amount,
-      hufValue,
+      roundFin(amount, 8),
+      roundFinOrNull(hufValue, 2),
       transferType,
       denominations,
       note,
@@ -2062,6 +2065,7 @@ export function savePendingBankTransaction(
   note: string | null,
 ): number {
   if (!db) throw new Error('Database not initialized');
+  const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
 
   const localReferenceNumber = generateLocalReference('LBANK');
   const idempotencyKey = crypto.randomUUID();
@@ -2083,9 +2087,9 @@ export function savePendingBankTransaction(
     [
       transactionType,
       currencyCode,
-      amount,
-      exchangeRate,
-      hufAmount,
+      roundFin(amount, 8),
+      roundFin(exchangeRate, 10),
+      roundFin(hufAmount, 2),
       vaultTerritoryId,
       bankName?.trim() || null,
       bankReference?.trim() || null,
@@ -2163,6 +2167,9 @@ export function savePendingStorno(params: {
   customerDocumentNumber?: string | null;
 }): number {
   if (!db) throw new Error('Database not initialized');
+  const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
+  const roundFinOrNull = (v: number | null, decimals: number): number | null =>
+    v === null ? null : roundFin(v, decimals);
 
   const localReferenceNumber = generateLocalReference('LST');
   const idempotencyKey = crypto.randomUUID();
@@ -2190,12 +2197,12 @@ export function savePendingStorno(params: {
       params.originalReceiptNumber,
       params.originalTransactionType,
       params.currencyCode,
-      params.foreignAmount,
-      params.hufAmount,
-      params.exchangeRate,
+      roundFinOrNull(params.foreignAmount, 8),
+      roundFin(params.hufAmount, 2),
+      roundFinOrNull(params.exchangeRate, 10),
       params.reason.trim(),
       params.approvalId ?? null,
-      params.customExchangeRate ?? null,
+      roundFinOrNull(params.customExchangeRate ?? null, 10),
       params.paymentMethod ?? null,
       params.customerName?.trim() || null,
       params.customerDocumentNumber?.trim() || null,
