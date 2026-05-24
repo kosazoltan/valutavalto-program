@@ -49,6 +49,35 @@ const defaultApiUrl = 'https://excvaluta.com/api/v1'
 
 let mainWindow: BrowserWindow | null = null
 
+/**
+ * Az összevont „Központi munkaállomás" két üzemmódja:
+ *  - 'full'        → Központi irányítóközpont (a frontend `dist/central` bundle-je)
+ *  - 'rate-maker'  → Árfolyamkészítő        (a frontend `dist/rate-maker` bundle-je)
+ *
+ * A módot induláskor egy magyar nyelvű választó-ablak választatja ki a felhasználóval,
+ * a választás perzisztálódik (config.json `app_mode`), és az alapértelmezés a korábban
+ * választott mód. A frontend mindkét flavor SAJÁT VITE_APP_FLAVOR-jával fordul → a
+ * build-idejű flavor-függő ágak (RFM write-jog, local-rate-maker publish) helyesen működnek.
+ */
+type WorkstationMode = 'full' | 'rate-maker'
+
+const MODE_DIST_SUBDIR: Record<WorkstationMode, string> = {
+  full: 'central',
+  'rate-maker': 'rate-maker',
+}
+
+const MODE_WINDOW_TITLE: Record<WorkstationMode, string> = {
+  full: 'Valutaváltó Központi Irányítóközpont',
+  'rate-maker': 'Valutaváltó Árfolyamkészítő',
+}
+
+function isWorkstationMode(value: unknown): value is WorkstationMode {
+  return value === 'full' || value === 'rate-maker'
+}
+
+// Az aktuális session módja — induláskor a választó-ablak állítja be.
+let activeAppMode: WorkstationMode = 'full'
+
 function configPath(): string {
   return path.join(app.getPath('userData'), 'config.json')
 }
@@ -78,7 +107,8 @@ function writeConfig(config: Record<string, string>): void {
 }
 
 function getConfig(key: string): string | null {
-  if (key === 'app_mode') return 'full'
+  // app_mode: a session aktuális módja (a választó-ablak állította be), NEM hardcode.
+  if (key === 'app_mode') return activeAppMode
   const config = readConfig()
   if (key === 'server_url') return config.server_url || loadProductionUrls().api_url
   return config[key] ?? null
@@ -87,7 +117,13 @@ function getConfig(key: string): string | null {
 function setConfig(key: string, value: string): void {
   const config = readConfig()
   if (key === 'app_mode') {
-    config.app_mode = 'full'
+    // Csak érvényes munkaállomás-módot fogadunk el; a session-állapotot is frissítjük.
+    if (isWorkstationMode(value)) {
+      config.app_mode = value
+      activeAppMode = value
+    } else {
+      return
+    }
   } else {
     config[key] = value
   }
@@ -99,6 +135,70 @@ function deleteConfig(key: string): void {
   const config = readConfig()
   delete config[key]
   writeConfig(config)
+}
+
+/** A config.json-ben perzisztált korábbi mód (alapértelmezett a választó-ablakban). */
+function readPersistedMode(): WorkstationMode {
+  const stored = readConfig().app_mode
+  return isWorkstationMode(stored) ? stored : 'full'
+}
+
+function persistMode(mode: WorkstationMode): void {
+  const config = readConfig()
+  config.app_mode = mode
+  writeConfig(config)
+}
+
+/**
+ * Induláskori magyar nyelvű mód-választó. A korábban választott mód az alapértelmezett
+ * (Enter). A választás perzisztálódik. Kilépés (ablak bezárása) esetén az alapértelmezett
+ * módot adja vissza.
+ */
+async function pickWorkstationMode(): Promise<WorkstationMode> {
+  const previous = readPersistedMode()
+  // Gombsorrend: 0 = Központi irányítóközpont, 1 = Árfolyamkészítő.
+  const defaultId = previous === 'rate-maker' ? 1 : 0
+  const { response } = await dialog.showMessageBox({
+    type: 'question',
+    buttons: ['Központi irányítóközpont', 'Árfolyamkészítő'],
+    defaultId,
+    cancelId: defaultId,
+    noLink: true,
+    title: 'Munkaállomás módja',
+    message: 'Melyik módban szeretne dolgozni?',
+    detail:
+      'Központi irányítóközpont: a teljes központi felügyeleti felület.\n' +
+      'Árfolyamkészítő: a főértéktárosi árfolyamkészítő (RFM) felület.\n\n' +
+      'A választás megjegyződik; legközelebb ez lesz az alapértelmezett. ' +
+      'A mód az alkalmazás újraindításával váltható.',
+  })
+  const mode: WorkstationMode = response === 1 ? 'rate-maker' : 'full'
+  persistMode(mode)
+  return mode
+}
+
+/**
+ * Az induló mód meghatározása:
+ *  1. `--app-mode=<full|rate-maker>` CLI argumentum (teszt/automatizálás) → felülír.
+ *  2. Dev módban nincs dialog → mindig 'full' (a dev:renderer central-workstation flavorjához igazítva).
+ *  3. Csomagolt módban a magyar választó-ablak.
+ */
+async function determineStartupMode(): Promise<WorkstationMode> {
+  const arg = process.argv.find((a) => a.startsWith('--app-mode='))
+  if (arg) {
+    const value = arg.slice('--app-mode='.length)
+    if (isWorkstationMode(value)) {
+      persistMode(value)
+      return value
+    }
+  }
+  if (isDev) {
+    // #ERR-INST-05: a dev:renderer fixen a 'central-workstation' flavort szolgálja ki a
+    // 3020-as porton, ezért dev módban a main is 'full' → nincs renderer/main eltérés.
+    // (Rate-maker dev-hez explicit `--app-mode=rate-maker` + a megfelelő dev szerver kell.)
+    return 'full'
+  }
+  return pickWorkstationMode()
 }
 
 function normalizeApiUrl(value: string): string {
@@ -149,7 +249,7 @@ function resolveConfiguredApiUrl(): string {
 
 function ensureInitialConfig(): void {
   const config = readConfig()
-  config.app_mode = 'full'
+  config.app_mode = activeAppMode
   config.server_url = config.server_url || loadProductionUrls().api_url
   writeConfig(config)
 }
@@ -161,7 +261,7 @@ function createWindow(): void {
     minWidth: 1180,
     minHeight: 760,
     autoHideMenuBar: true,
-    title: 'Valutaváltó Központi Irányítóközpont',
+    title: MODE_WINDOW_TITLE[activeAppMode],
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -209,7 +309,8 @@ function createWindow(): void {
 }
 
 function registerProtocol(): void {
-  const distPath = path.join(__dirname, '../dist')
+  // Dual-bundle: az aktív mód határozza meg, melyik frontend-buildet szolgáljuk ki.
+  const distPath = path.join(__dirname, '../dist', MODE_DIST_SUBDIR[activeAppMode])
   protocol.handle('app', (request) => {
     const url = new URL(request.url)
     let filePath = path.join(distPath, decodeURIComponent(url.pathname))
@@ -339,7 +440,7 @@ function registerIpcHandlers(): void {
         clientId,
         clientSecret,
         apiBaseUrl: resolveConfiguredApiUrl(),
-        appMode: 'full',
+        appMode: activeAppMode,
       })
       log.info('[CentralWorkstation] Google OAuth + backend login OK for:', result.email ?? '(unknown)')
       return { ok: true, response: result.response, email: result.email }
@@ -373,7 +474,7 @@ function registerIpcHandlers(): void {
           companyCode: payload.companyCode,
           workerCode: payload.workerCode,
           password: payload.password,
-          appMode: 'full',
+          appMode: activeAppMode,
         }),
       })
 
@@ -489,6 +590,19 @@ app.whenReady().then(async () => {
     callback(false)
   })
 
+  // Munkaállomás-mód kiválasztása (választó-ablak) MINDEN más init előtt —
+  // a protokoll-kiszolgálás és az ablak-cím is ettől függ. A mód-választás a BASE
+  // userData-ban perzisztál (a .env betöltés is innen történt fent).
+  activeAppMode = await determineStartupMode()
+
+  // #ERR-INST-01: a két mód offline perzisztencia-rétegeit (config/token/SQLite outbox)
+  // mód-specifikus userData almappába izoláljuk → nincs kereszt-mód adatkeveredés a
+  // helyi cache-ben. A .env + a mód-választás a BASE userData-ban marad (közös), minden
+  // más (config.json, auth-token, local-first SQLite) a base/<mód> alá kerül.
+  const baseUserData = app.getPath('userData')
+  app.setPath('userData', path.join(baseUserData, MODE_DIST_SUBDIR[activeAppMode]))
+  log.info(`[Workstation] Aktív mód: ${activeAppMode} — izolált userData: ${app.getPath('userData')}`)
+
   ensureInitialConfig()
   registerIpcHandlers()
   registerLocalFirstIpcHandlers()
@@ -496,7 +610,7 @@ app.whenReady().then(async () => {
 
   // Local-first: SQLite + sync engine initialization
   try {
-    await initLocalFirst(resolveConfiguredApiUrl())
+    await initLocalFirst(resolveConfiguredApiUrl(), activeAppMode)
     log.info('[App] Local-first infrastructure ready')
   } catch (err) {
     log.error('[App] Local-first init failed (continuing online-only):', err)
