@@ -129,6 +129,7 @@ public class CustomerController {
      * GET /api/v1/customers?query=...&documentNumber=...
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<CustomerDto>> findCustomers(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) String documentNumber) {
