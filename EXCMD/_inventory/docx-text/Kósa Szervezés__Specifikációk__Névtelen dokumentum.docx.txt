@@ -1,0 +1,47 @@
+# Forrás: Kósa Szervezés\Specifikációk\Névtelen dokumentum.docx
+# karakter: 1541
+
+Valuta rendszer
+(másikból törölt)
+
+ TOC \h \u \z \t "Heading 1,1,Heading 2,2,Heading 3,3,Heading 4,4,Heading 5,5,Heading 6,6,"Használjon címsorokat (Formátum > Bekezdésstílusok), megjelennek a tartalomjegyzékben.
+
+Rendszer funkciók	
+1.1 Felhasználó karbantartás	
+
+1.2 Belépés, kilépés, kiléptetés
+1.2.1 Bejelentkezés
+Bejelentkezéshez mindenkinek egyedi felhasználóneve és jelszava van, a rendszer így mindig logolja, hogy ki végzi az adott tevékenységeket, ki az aki bejelentkezett. A jelszavakat szigorúan tilos másoknak kiadni, nem is szokták ezt megtenni a saját érdekükben sem, mert a dolgozók ezt minden esetben bizalmasan kezelik.
+
+Kép a jelenlegi bejelentkezéshez:
+
+1.2.2 Kijelentkezés
+Normál kijelentkezési folyamat, egyszer kérdezzen rá, hogy biztos ki szeretne-e jelentkezni. Valamint, ha elkezdett egy folyamatot, addig amíg azt nem zárta le ne tudjon kijelentkezni, jelezze a rendszer a felhasználó számára, hogy egy folyamatot nem zártál le, zárd le (vond vissza vagy hajtsd végre) és utána lehet kijelentkezni a rendszerből.
+
+1.3 Felhasználói profil, jelszó csere	
+1.3.1 Jelszóváltoztatás
+Jelszót legyen lehetősége az adott felhasználónak megváltoztatni, illetve 3 havonta belépéskor kérjen kötelező jelszóváltoztatást a felhasználótól.
+
+1.4 Verziókezelés	
+
+1.5 Adat replikáció	
+
+1.6 Hírlevél, hirdetmény	
+
+	
+	
+Alap és törzs adatok kezelése
+2.5 Munkatárs kezelés
+
+Beosztás kezelés
+	
+Ügyfélkezelés
+5.1 Új felvitel	
+
+5.2 Módosítás	
+
+5.3 Archiválás, törlés	
+
+5.4 Feketelista	
+
+5.5 Pénzmosás figyelés	(Pénzmosás megelőzése inkább?)
