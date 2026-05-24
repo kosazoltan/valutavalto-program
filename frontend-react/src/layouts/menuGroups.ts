@@ -114,6 +114,19 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    // #ERR-RATE-INTEG-01: a rate-maker (Árfolyamkészítő) módnak eddig NEM volt menücsoportja,
+    // ezért a sidebar üresen jelent meg. A főlap (/rates/main) saját navigációval működik, de
+    // az üres sidebar UX-hiba volt — ez a csoport adja a dedikált sidebar-navigációt rate-maker módban.
+    label: "Árfolyamkészítés",
+    canonicalRoles: ["foertektar", "ugyvezeto"],
+    modes: ["rate-maker"],
+    items: [
+      { path: "/rates/main", label: "Főlap (0-s elszámoló)", icon: TrendingUp },
+      { path: "/rates/creation", label: "Csoport árfolyamlapok", icon: FileText },
+      { path: "/rates/history", label: "Árfolyam történet", icon: FileText },
+    ],
+  },
+  {
     label: "Riportok",
     canonicalRoles: ["foertektar", "ugyvezeto", "irodavezeto", "belso_ellenor", "teruleti_vezeto", "penzugyi_vezeto"],
     modes: ["full"],
