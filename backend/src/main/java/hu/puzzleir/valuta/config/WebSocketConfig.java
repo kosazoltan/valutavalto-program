@@ -22,7 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:5173,https://excvaluta.com,https://www.excvaluta.com,https://excbesttest.com,https://www.excbesttest.com,https://valutavalto.vercel.app,https://valuta-frontend.vercel.app,app://localhost}")
+    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:5173,https://excvaluta.com,https://www.excvaluta.com,https://excbesttest.com,https://www.excbesttest.com,https://valutavalto.vercel.app,app://localhost}")
     private String corsAllowedOrigins;
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;

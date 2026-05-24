@@ -41,6 +41,11 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     boolean existsByCompanyIdAndCode(UUID companyId, String code);
 
     /**
+     * Fiók-tulajdonos cég ellenőrzése ID alapján (multi-tenant cross-tenant IDOR védelemhez).
+     */
+    boolean existsByIdAndCompanyId(UUID id, UUID companyId);
+
+    /**
      * Összes aktív fiók lekérdezése (GLOBALIS - minden ceg).
      *
      * <p><b>FIGYELEM:</b> multi-tenant kontextusban NE hasznald!

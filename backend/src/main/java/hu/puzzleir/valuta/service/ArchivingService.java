@@ -1,9 +1,13 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.ArchiveTask;
 import hu.puzzleir.valuta.entity.ArchiveTaskStatus;
 import hu.puzzleir.valuta.repository.ArchiveTaskRepository;
+import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.CompanyRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,7 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Archiválási szolgáltatás.
+ * Archiválási szolgáltatás — multi-tenant izolált.
  */
 @Service
 @RequiredArgsConstructor
@@ -24,16 +28,25 @@ public class ArchivingService {
 
     private final ArchiveTaskRepository archiveTaskRepository;
     private final MonthlyArchiveService monthlyArchiveService;
+    private final CompanyRepository companyRepository;
+    private final BranchRepository branchRepository;
 
     @Transactional(readOnly = true)
     public List<ArchiveTask> getAllTasks() {
-        return archiveTaskRepository.findAll();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return archiveTaskRepository.findByCompanyId(companyId);
     }
 
     public ArchiveTask createTask(ArchiveTask task) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cég nem található: " + companyId));
+        // Task hijacking prevention: kliens által küldött ID ignorálása (Copilot P1)
+        task.setId(null);
+        task.setCompany(company);
         task.setStatus(ArchiveTaskStatus.PENDING);
-        log.info("Archiválási feladat létrehozva: type={}, entityType={}",
-                task.getTaskType(), task.getEntityType());
+        log.info("Archiválási feladat létrehozva: type={}, entityType={}, companyId={}",
+                task.getTaskType(), task.getEntityType(), companyId);
         return archiveTaskRepository.save(task);
     }
 
@@ -42,7 +55,8 @@ public class ArchivingService {
      * A criteria mezőben JSON-ként tároljuk a paramétereket: branchId, yearMonth.
      */
     public ArchiveTask executeTask(UUID taskId) {
-        ArchiveTask task = archiveTaskRepository.findById(taskId)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        ArchiveTask task = archiveTaskRepository.findByIdAndCompanyId(taskId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Archiválási feladat nem található: " + taskId));
 
         task.setStatus(ArchiveTaskStatus.RUNNING);
@@ -73,6 +87,10 @@ public class ArchivingService {
                 }
 
                 if (branchId != null && yearMonth != null) {
+                    // Cross-tenant IDOR védelem: a branchId a jelenlegi céghez tartozzon (Copilot P1)
+                    if (!branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
+                        throw new ResourceNotFoundException("Fiók nem található: " + branchId);
+                    }
                     archivedCount = monthlyArchiveService.archiveMonth(branchId, yearMonth);
                 } else {
                     throw new IllegalArgumentException(
