@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.CommissionCalculation;
 import hu.puzzleir.valuta.entity.CommissionRule;
 import hu.puzzleir.valuta.entity.Transaction;
@@ -103,7 +104,8 @@ class CommissionCalculationServiceTest {
      */
     private void mockWorkerWithBranch() {
         Branch branch = Branch.builder().id(WORKER_BRANCH_ID).build();
-        Worker worker = Worker.builder().id(WORKER_ID).branch(branch).build();
+        Company company = Company.builder().id(COMPANY_ID).build();
+        Worker worker = Worker.builder().id(WORKER_ID).branch(branch).company(company).build();
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
     }
 
@@ -355,5 +357,21 @@ class CommissionCalculationServiceTest {
         assertThatThrownBy(() -> service.calculateMonthly(WORKER_ID, YEAR_MONTH, COMPANY_ID))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Pénztáros nem található");
+    }
+
+    @Test
+    @DisplayName("Copilot #830: más cég dolgozója → ResourceNotFoundException (multi-tenant guard)")
+    void testCalculateMonthly_crossCompanyWorker_throws() {
+        UUID otherCompany = UUID.fromString("99999999-9999-9999-9999-999999999999");
+        Branch branch = Branch.builder().id(WORKER_BRANCH_ID).build();
+        Worker foreignWorker = Worker.builder()
+                .id(WORKER_ID).branch(branch)
+                .company(Company.builder().id(otherCompany).build())
+                .build();
+        when(commissionCalcRepo.existsByWorkerIdAndPeriod(WORKER_ID, YEAR_MONTH)).thenReturn(false);
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(foreignWorker));
+
+        assertThatThrownBy(() -> service.calculateMonthly(WORKER_ID, YEAR_MONTH, COMPANY_ID))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 }

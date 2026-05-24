@@ -19,9 +19,7 @@ import java.time.LocalDateTime;
  * {@code workday=false}: hétköznap, ami pihenőnap → NEM számít munkanapnak.</p>
  */
 @Entity
-@Table(name = "shifted_calendar_day", indexes = {
-        @Index(name = "idx_shifted_calendar_day_date", columnList = "calendar_date", unique = true)
-})
+@Table(name = "shifted_calendar_day")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ShiftedCalendarDay {
 

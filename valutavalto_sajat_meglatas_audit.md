@@ -421,31 +421,39 @@ public void processFetchedRates(String providerName, List<FetchedRateDto> rates)
 
 ---
 
-## 4. ZÁRÓ SELF-REVIEW ÉS RENDES DÖNTÉS (AGENTS.md CAPMATRIX ALAPJÁN)
+## 4. ZÁRÓ SELF-REVIEW ÉS RENDES DÖNTÉS
 
-Az audit során feltárt 4 új megállapítás (#PP-17 - #PP-20) lefedése létfontosságú a valutaváltó program teljes jogszabályi megfeleléséhez és adatintegritásához. 
+> **Megjegyzés (Claude Opus 4.7, 2026-05-24):** Az eredeti audit-jelentést a Gemini / Antigravity
+> ügynök "Audit-Only" módban készítette. **A PR #830-ban a megállapítások immár IMPLEMENTÁLVA
+> lettek** (lásd a 2.1 szekciót) — tehát az alábbi eredeti "forráskódbeli módosítás nem történt"
+> állítás a jelentés-készítés időpontjára (16:53) igaz, de a javítási PR-ben már NEM: a #PP-17/18/20
+> fix-ek backend kód-, Flyway-migráció- és teszt-módosításokat tartalmaznak. A #PP-19 elutasítva
+> (téves pozitív). A 3. szekció eredeti javítási tervei a Gemini javaslatai; a tényleges implementáció
+> ezektől eltérhet (pl. V264→V265, `auditEventService.log` → valódi `appendEvent(AuditEventRequest)`,
+> a 2.1 szekció szerint). Az eredeti Gemini-tartalom (helyi `d:\...` útvonalak, `file:///` linkek)
+> történelmi hűségből megőrzött — az élő hivatkozásokhoz a 2.1 szekció repo-relatív útvonalakat ad.
 
-A forráskód módosítása ezen audit fázisban nem volt engedélyezve (Audit-Only hatalom), így forráskódbeli módosítás nem történt. A repóban elhelyezett jelen dokumentum, valamint a hozzá tartozó biztonsági mentések igazolják a zero-trust audit elvégzését.
+Az audit során feltárt 4 megállapítás (#PP-17 - #PP-20) közül 3 javítva, 1 elutasítva (téves pozitív).
 
-### Kapumátrix és Bizonyítékok
-- **Lokális lint / typecheck:** `PASS` (forráskód nem változott, de az agent:guard lefutott a repón, 0 hiba).
-- **Adatbázis sémák integritása:** `VERIFIED` (a javasolt Flyway DDL szintaktikailag helyes és elszigetelt).
-- **Biztonsági záróértékelés:** **AUDITED / RECOMMEND FOR IMPLEMENTATION**
+### Kapumátrix és Bizonyítékok (PR #830, v2.26.40)
+- **Backend build + test:** `PASS` — az érintett service-tesztek zöldek (Aml/Commission/ExchangeRatePolling).
+- **Adatbázis séma:** V265 `shifted_calendar_day` alkalmazva (a redundáns külön index elhagyva).
+- **Multi-tenant:** a jutalék-számítás dolgozó-betöltése company-scope guard-dal védve.
+- **Biztonsági záróértékelés:** **IMPLEMENTED (3) / REJECTED-FALSE-POSITIVE (1, #PP-19)**
 
 ## Állapot
-Kész (Audit-Only fázis sikeresen teljesítve, az eredmények elmentve).
+Kész — a 3 valós megállapítás javítva + tesztelve, a #PP-19 dokumentáltan elutasítva.
 
 ## Modell és hatály
-- modell/tool: Gemini / Antigravity Agent
+- audit-jelentés: Gemini / Antigravity Agent (2026-05-24T16:53:18+02:00)
+- javítás (PR #830): Claude Opus 4.7
 - szabályzat: AGENTS.md (multi-modell v2)
-- bizonyíték-időpont: 2026-05-24T16:53:18+02:00
 
-## Változtatott fájlok
-- [valutavalto_sajat_meglatas_audit.md](file:///d:/repo/valutavalto-program/valutavalto_sajat_meglatas_audit.md): ÚJ audit jelentés elmentése a repóban az AI ügynökök által közvetlenül feldolgozható és végrehajtható formában.
-
-## Lokális ellenőrzések
-- `npm run agent:guard`: PASS (0 error / 6813 files scanned)
-- `npm run check:four-area-alignment`: PASS
+## Változtatott fájlok (PR #830)
+- `backend/.../service/AmlService.java`, `entity/ShiftedCalendarDay.java`, `repository/ShiftedCalendarDayRepository.java`, `db/migration/V265__add_shifted_calendar_day.sql` (#PP-17)
+- `backend/.../service/CommissionCalculationService.java` (#PP-18 + multi-tenant guard)
+- `backend/.../service/ExchangeRatePollingService.java` (#PP-20)
+- backend tesztek + 6 verzió-fájl (2.26.40) + jelen audit MD
 
 ## Döntés
-**Merge-ready:** A repó naprakész, az audit MD letölthető és az AI ügynökök számára végrehajtható útmutatókkal van ellátva. A kódmódosítási szakasz indítható, amint a Felhasználó jóváhagyja az audit megállapításait.
+**Merge-ready:** CI zöld + AI review findingek kezelve.

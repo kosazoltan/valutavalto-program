@@ -60,6 +60,12 @@ public class CommissionCalculationService {
         // riport rossz fiókhoz allokál → a dolgozó fiókvezetője nem látja.
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található: " + workerId));
+        // Copilot #830: multi-tenant guard — a workerId a controllerből szabadon jön,
+        // ezért ellenőrizni kell, hogy a dolgozó a hívó cégéhez tartozik (cross-tenant
+        // jutalék-számítás megakadályozása).
+        if (worker.getCompany() == null || !companyId.equals(worker.getCompany().getId())) {
+            throw new ResourceNotFoundException("Pénztáros nem található: " + workerId);
+        }
         UUID workerActualBranchId = worker.getBranch().getId();
 
         LocalDate monthStart = ym.atDay(1);

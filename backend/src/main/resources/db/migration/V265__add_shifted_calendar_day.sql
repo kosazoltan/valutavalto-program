@@ -14,5 +14,5 @@ CREATE TABLE IF NOT EXISTS shifted_calendar_day (
     created_at    TIMESTAMP   NOT NULL DEFAULT now(),
     updated_at    TIMESTAMP
 );
-
-CREATE INDEX IF NOT EXISTS idx_shifted_calendar_day_date ON shifted_calendar_day (calendar_date);
+-- Copilot #830: a calendar_date UNIQUE constraint PostgreSQL-ben automatikusan
+-- létrehoz egy egyedi indexet → külön CREATE INDEX redundáns lenne (elhagyva).

@@ -368,6 +368,9 @@ public class ExchangeRatePollingService {
                 // A standard log rotálódik; az audit_log immutable és megmarad. Az audit
                 // hiba NEM blokkolhatja az árfolyam-frissítést (külön try-catch).
                 try {
+                    String afterState = String.format(
+                            "{\"currency\":\"%s\",\"officialRate\":%s,\"validDate\":\"%s\",\"source\":\"%s\"}",
+                            currencyCode, officialRate.toPlainString(), today, source);
                     auditEventService.appendEvent(
                             AuditEventService.AuditEventRequest.builder()
                                     .eventType("EXCHANGE_RATE_SYNC")
@@ -375,11 +378,13 @@ public class ExchangeRatePollingService {
                                     .entityType("ExchangeRate")
                                     .amount(officialRate)
                                     .currency(currencyCode)
+                                    .afterStateJson(afterState)
                                     .reason("Automatikus hivatalos árfolyam-frissítés külső forrásból (" + source + ")")
                                     .build()
                     );
                 } catch (Exception auditEx) {
-                    log.warn("Árfolyam audit naplózás sikertelen ({}): {}", currencyCode, auditEx.getMessage());
+                    // Copilot #830: stack trace is kell a gyökérok-elemzéshez (constraint/connectivity/serialization)
+                    log.warn("Árfolyam audit naplózás sikertelen ({}): {}", currencyCode, auditEx.getMessage(), auditEx);
                 }
 
             } catch (Exception e) {
