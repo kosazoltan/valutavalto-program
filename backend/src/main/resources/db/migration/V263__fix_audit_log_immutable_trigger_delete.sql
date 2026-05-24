@@ -1,7 +1,7 @@
 -- PP-11 fix: audit_log_immutable trigger helyes TG_OP-alapu NEW/OLD hivatkozassal.
 -- DELETE triggerben a NEW rekord nincs inicializalva (PostgreSQL PL/pgSQL specifikacio
 -- szerint DELETE-nel NEW == NULL/unassigned) -- COALESCE(OLD.id, NEW.id) PL/pgSQL
--- hibat dobna "record new is not assigned yet". Fix: TG_OP === 'DELETE' ag csak OLD-ra
+-- hibat dobna "record new is not assigned yet". Fix: TG_OP = 'DELETE' ag csak OLD-ra
 -- hivatkozik. Az UPDATE ag valtozatlan (COALESCE OLD/NEW mindketto elerheto).
 -- A fuggveny CREATE OR REPLACE-el frissitheto a mar futtatott V234 utan is.
 

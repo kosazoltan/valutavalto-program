@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
@@ -101,16 +102,18 @@ public class LicenseService {
                     String features = license.getFeatures();
                     if (features == null || features.isBlank()) return false;
                     String trimmed = features.trim();
+                    String normalizedName = featureName == null ? "" : featureName.trim();
                     if (trimmed.startsWith("[")) {
                         try {
                             List<String> list = objectMapper.readValue(trimmed, new TypeReference<List<String>>() {});
-                            return list.stream().anyMatch(f -> f.trim().equalsIgnoreCase(featureName));
-                        } catch (Exception e) {
-                            log.warn("Licenc feature JSON parsolás sikertelen, fallback: {}", e.getMessage());
+                            return list.stream().anyMatch(f -> f.trim().equalsIgnoreCase(normalizedName));
+                        } catch (JsonProcessingException e) {
+                            log.warn("Licenc feature JSON parsolás sikertelen, fallback: {}", e.getMessage(), e);
                         }
                     }
-                    // fallback: whitespace-toleráns idézőjel-alapú keresés
-                    return trimmed.replaceAll("\\s+", "").contains("\"" + featureName + "\"");
+                    // fallback: whitespace-toleráns, case-insensitive keresés
+                    String compact = trimmed.replaceAll("\\s+", "").toLowerCase();
+                    return compact.contains("\"" + normalizedName.toLowerCase() + "\"");
                 })
                 .orElse(false);
     }
