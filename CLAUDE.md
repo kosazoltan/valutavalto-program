@@ -638,7 +638,13 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.40** (2026-05-24 — `valutavalto_sajat_meglatas_audit.md` 4 findingje: #PP-17/18/20 javítva + #PP-19 elutasítva. PR #830 admin-merged `26c2c58b0`, production HEALTHY 200). **NINCS telepítő-build** (backend-only, server-served).
+- **Verzió:** **v2.26.40** (2026-05-24 — `valutavalto_sajat_meglatas_audit.md` 4 findingje: #PP-17/18/20 javítva + #PP-19 elutasítva. PR #830 admin-merged `26c2c58b0`, production HEALTHY 200). A v2.26.38–40 mind server-served → **a kollégáknál funkcionálisan már élő** (Hetzner auto-deploy + szerverről töltött frontend); a teljes desktop-szettet user-kérésre legyártottuk.
+  - **Telepítő-szet v2.26.40 (UNSIGNED, Downloads-ban) — user-kérésre, teljes 4-way:**
+    - `Penztar-Setup-2.26.40-20260524.exe` — 283.85 MB, SHA-256 `8FC75321168F7BB1403069EDDD071536E78E24457964DB09A73947C5EE83ED32`
+    - `Kozponti-Iranyitokozpont-Setup-2.26.40.exe` — 101.06 MB, SHA-256 `B116E093567BA122D8105FCB9C35A212A122981672187C8D1A9138DCDFF4477E`
+    - `Arfolyamkeszito-Setup-2.26.40.exe` — 101.06 MB, SHA-256 `A200718EB37F1E826093620238850044C0241A19D052B8CD6EA323110577B49E`
+    - `Penztar-Eltavolito-2.26.40-20260524.exe` — 0.06 MB, SHA-256 `D5BD2E67E83D3FEFA04052914F7C70D00F130A484DB3F4AF69E8919C7BC4145C`
+  - **UNSIGNED** — DigiCert EV CS cert kiadásig SmartScreen „További információ" → „Futtatás mindenképp". Build-tanulság: a kozponti/arfolyam electron-builder kötelező Azure-aláírási hookja `ALLOW_UNSIGNED_BUILD=1` env-flaget igényel (külön PS-folyamatonként beállítandó).
   - **#PP-17 (HIGH):** kormányzati áthelyezett munkanap/pihenőnap az AML SAR-határidőben — V265 `shifted_calendar_day` tábla + entity + repo + `AmlService.isBusinessDay()` (adat-vezérelt, admin tölti).
   - **#PP-18 (MEDIUM):** `CommissionCalculationService` a dolgozó SAJÁT fiókját allokálja (`worker.getBranch().getId()`) a session-branchId helyett + multi-tenant company-scope guard. Nincs @Scheduled NPE + kereszt-fiók allokáció.
   - **#PP-19 (HIGH az auditban) — ELUTASÍTVA (téves pozitív):** a REAL→TEXT-et a PP-09 (v2.26.33) tudatosan visszavonta (TEXT+`.toFixed()` = crash); a `roundFin` (59 hely) már kezeli a floating-point zajt. TEXT regressziót okozna.
