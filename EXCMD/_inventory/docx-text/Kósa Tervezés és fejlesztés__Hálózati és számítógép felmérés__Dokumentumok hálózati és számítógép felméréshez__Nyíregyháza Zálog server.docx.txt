@@ -1,0 +1,4 @@
+# Forrás: Kósa Tervezés és fejlesztés\Hálózati és számítógép felmérés\Dokumentumok hálózati és számítógép felméréshez\Nyíregyháza Zálog server.docx
+# karakter: 24
+
+Nyíregyháza Zálog server

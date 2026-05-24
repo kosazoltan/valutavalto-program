@@ -1,0 +1,4510 @@
+# Átirat: Cégcsoport felmérése\Személyes találkozó összefoglalók, kapott dokumentumok, képernyőképek\Hangfelvételek\Hang 002_sd.m4a
+# nyelv: hu (1.00), hossz: 10553s
+
+[    0.4] Jó, ez így majd magának igazából lesz.
+[    3.6] Jó, eeeem...
+[   17.0] Nekem kellett volna leírni, az agyhalál.
+[   25.9] Nem, nem, még írunk, meg minden életre át itt is jegyzetelünk,
+[   29.9] hogy ugye a hangosítás alatt ilyen fog készülni egy jegyzőkönyv összefoglaló,
+[   33.9] és akkor ezt amúgy is elküldjük nektek, és hogy nektek is meglegyen, úgyhogy így.
+[   37.9] Esetleg egy...
+[   39.9] Wifi kódot?
+[   40.9] Aha.
+[   42.9] Mindjárt fejében tűnd itt, és akkor bediktálja.
+[   45.9] Kerio Control-t, ha megtalálod, és akkor mindjárt mondom, mert azt fejében nem tudom.
+[   51.9] Jó, ezen nem fog múlni, akkor megosztom a filmet.
+[   70.7] Köszönöm.
+[   72.7] Megosztom a telefonot, és akkor...
+[   90.0] Jövögednek tűndi, vagy nem nagyon?
+[   92.0] Aha, most volt egy másfél óra jó.
+[   95.0] Jó, meg én mozognak hozzá.
+[   97.0] Az árak?
+[   98.0] Aha.
+[  110.3] Van nálad betonitási menetrend?
+[  114.8] Kéne, hogy legyen ennyi.
+[  117.8] Szuper.
+[  118.8] Jó, nézzünk, itt egy hangok szét volt, és akkor itt is elindítom, biztos, hogy tudni.
+[  123.8] Jó, csak ne hagyjuk ki semmit.
+[  135.4] Jó, és akkor van nekünk egy...
+[  138.4] A keszély.
+[  139.4] ...valutás alapunk.
+[  141.4] Itt nem látok, és akkor ezt is közben megnyitom.
+[  144.4] Hm?
+[  156.1] Jó.
+[  157.1] Féletlenül az igény felméréseket.
+[  159.1] Csak nyugodtan tudtam.
+[  168.6] Mindjárt megtalálom.
+[  169.6] Csak nyugodtan.
+[  171.6] Jó, egyszerűbb lesz.
+[  178.1] És hát szuper.
+[  186.9] És akkor ide fog bekerülni minden, ami a valutával kapcsolatos.
+[  192.9] Jó.
+[  193.9] Oké.
+[  194.9] Akkor a bejelentkezés, ugye?
+[  196.9] Az ipváltó ikont kell elindítani.
+[  199.9] Ez kicsit itt lassú lesz, mert ez a gép nem egy ikon.
+[  203.9] Nem tudom miért.
+[  204.9] A gép az adatunk.
+[  205.9] A gép az adatunk.
+[  207.9] Van néhány gépünk, de gondolom a ti programotok az telepített lesz, vagy webes?
+[  214.9] Webes lesz.
+[  215.9] Igen, és ugye kértünk egy ilyen felmérést.
+[  218.9] Nem tudom, hogy találkoztatok-e vele, de gondolom ilyen.
+[  221.9] Nem, szerintem.
+[  223.9] Akkor majd lehet, hogy az itteni gépeken is megcsináljuk.
+[  226.9] A gépnek a teljesítményéről, valamint az ilyen kapcsolatotokról.
+[  230.9] Ezt lehet, hogy a...
+[  232.9] ...kapcsolatotokról.
+[  233.9] Igen, kérdezve bekérték a szántekesek-től.
+[  236.9] Az internet kapcsolatai... Norbyval beszéltem, ugye, hogy nálunk cserélték Vodafone-os az internet minden gépen,
+[  243.9] kivéve az értéktáraknál ott ADS-enek vannak, és cserélték nagyobb kapacitásúra.
+[  250.9] És olyat hallottam Norbytól, hogy ugye, ha nincs net, akkor mi nem tudunk dolgozni, hogy akkor még egy kártyabeszerelésre kerül, hogy kétféle szolgáltató legyen, vagy úgy, hogy oldjátok meg.
+[  261.9] Igen, hát igazából ugye, itt...
+[  263.9] hát többféle
+[  266.0] megoldási lehetőség is szóba
+[  268.3] került. Ugye itt
+[  270.1] a nagybékakáj tulajdonképpen
+[  272.0] megvégzőbb óváltak együttműködni,
+[  274.0] hogy a háttérmagazin struktúra
+[  276.1] meg legyen, pont ezért is kértünk be mindenhonnan
+[  278.6] adatokat magáról
+[  280.3] a gépről is, maga arról is, hogy mondjuk
+[  282.1] esetleg milyen az internet kapcsolatotok,
+[  284.8] egy-egy helyeken milyen a
+[  286.0] sávszéleség, mert
+[  287.3] ugye a rendszerünknek kell egy minimális
+[  290.3] sávszéleség, és hogy azt hogyan
+[  292.3] fogjátok tudni hozni,
+[  293.8] vagy hogyan fogtuk létrejönni, így erről
+[  295.8] ugye az üzemeltetéssel is, magadbékkal
+[  298.0] is egyébként beszéltünk
+[  300.0] már, és abban maradtunk, hogy ha ez meg lesz
+[  302.0] és mi is látunk világosan, akkor tudjuk
+[  304.1] felállítani egy olyat, hogy
+[  305.8] legyen, igen. Tehát akkor jön a bejelentkező
+[  308.1] panál,
+[  309.3] mindenkinek a bejelentkezés, azt tudni
+[  311.9] kell, hogy
+[  313.0] amikor új dolgozót viszünk fel,
+[  316.0] azt meg fogom mutatni a bejelentkezésre.
+[  320.3] Oké.
+[  321.8] A bejelentkezés után meg kell
+[  323.2] nyitni a lapot, mert ugye nabosgép
+[  325.1] fel is dolgozunk, ugye ezzel ebben a napnyitás
+[  327.1] alában van kapcsolva. Ez már nem
+[  329.1] csipogtatós, hanem simán adatátviteles.
+[  333.2] És akkor lenyomtatja a napot,
+[  337.2] hogy a nabnál is meg legyen a nyitókészlet.
+[  339.2] Ez úgy megy, hogy azt a
+[  341.6] nyitókészletet viszi át,
+[  343.7] ami a valótes programban van.
+[  345.6] Tehát nem ő számol, hanem csak
+[  347.1] napközben számol a nabos, de reggel mindig
+[  349.2] azt kapja meg, ami nálunk van.
+[  350.7] Ami a programban van. Igen.
+[  352.5] Ez esetben ezt esetleg elvihetem?
+[  354.7] Persze.
+[  355.9] Jó, mert hogy akkor lefény másokban?
+[  357.6] Inkább fény másokban le kell főzni, az a jobb,
+[  360.4] de tudok várni, tehát újra is tudom
+[  362.4] nyomtatni, mert hogyha
+[  364.1] ugye a napgépről tudni kell,
+[  366.9] hogy ez lefagy.
+[  368.1] Tehát ez rajtunk kívül állók miatt,
+[  370.2] hogyha nem folyamatos az
+[  372.2] ügyfelkiszolgás, akkor lefagy, akkor alul ki meg
+[  374.2] be kell kapcsolni, és azért van az,
+[  376.4] hogy az adatokat sikeresen kiköltem,
+[  378.7] és akkor rendben kiad a papír, vagy
+[  380.3] újra köldöm, és akkor ámeltek,
+[  382.1] újra köldi, de ugye nem tudja a napnyitást
+[  384.3] megnyitni. Igen, még egyszer,
+[  386.2] már megnyitotta, de hogyha teszem azt fel,
+[  388.1] lefagyott volna, akkor nyomja még egyszer,
+[  389.8] és így lefény másokban. Jó?
+[  391.4] Jó, annyi, hogy akkor
+[  394.0] itt készülnek el arra, hogy például
+[  396.2] a rendszerrel, ugye ez kompatibilis,
+[  398.1] igen, tehát dupla, és tudjuk
+[  400.0] újra nyomtatni, és esetleg ezt a
+[  402.1] napnyitásos dolgot. Így van, így van,
+[  404.4] meg a nabos bizonylatokat,
+[  406.0] ez akár sima
+[  408.2] vételaladásnál se előfordul,
+[  409.8] Ez visszamenőleg is igaz?
+[  411.4] Tehát, hogy visszamenőleg is lehessen
+[  413.8] újra nyomtatni? Valótás bizonylatot
+[  416.0] csak. Csak valótás bizonylatot,
+[  418.1] ugye nabosok nem is lehet,
+[  419.4] a valótásot igen,
+[  421.5] szupervajzoriászóval. Tehát ott is
+[  423.8] majd úgy végigmegyünk, és fogom mondani, ha oda jutunk,
+[  426.2] hogy milyen kritériuma van
+[  427.8] az újra nyomtatásnak, meg majd
+[  429.6] nyomtatunk is. Jó, jó, jó.
+[  431.5] Itt ilyenkor kijön egy olyan,
+[  433.9] hogy átadólap, hogyha
+[  435.7] lenne átadólap kitöltve.
+[  438.1] Ez mit jelent, hogy átadólap?
+[  439.8] Az azt jelenti, innen
+[  441.5] ki is megyek akkor,
+[  443.6] hogy
+[  444.4] minden nap a pénztárosoknak,
+[  448.2] ha van valótafoglalás,
+[  450.9] körlevél, vagy egyéb
+[  452.1] fontos tudnivaló e-mail,
+[  453.8] akkor kitartanak egy átadólapot,
+[  455.8] azt meg fogom mutatni, és akkor
+[  457.7] azt másnap le is nyomtatják,
+[  459.8] azt kirakják a pénztárosnak,
+[  462.2] és hogyha mégis elfelejtenék
+[  464.1] kirakni, vagy nem volt sem, és
+[  465.7] nem tudja az a pénztáros, aki jött dolgozni,
+[  468.1] hogy van-e, akkor meg tudja ott nézni.
+[  469.8] Ennek ez a lényege.
+[  471.8] Ha azt megnézte, akkor
+[  473.8] onnan abból a programból kilép, és akkor jön
+[  475.8] a következő, ez
+[  477.8] szükséges, mert
+[  479.8] nem mindig számol a kasszát a kolléganők.
+[  481.8] Tehát feldobja ezt a panát,
+[  483.8] hogy ellenőrizni kell, tehát meg kell
+[  485.8] számolni a kasszát, és
+[  487.8] rákérdez, hogy
+[  489.8] Bocsánat, itt még az
+[  491.8] átadólap kapcsán,
+[  493.8] ez, ha jól értem, akkor
+[  495.8] újra nézhető, tehát mondjuk
+[  497.8] visszamenőleg ugye én meg tudom nézni. Nem.
+[  499.8] Csak az előző napot.
+[  501.8] Ez nem olyan releváns, hogy visszamenőleg
+[  503.8] nézzük, csak az előző napot.
+[  505.8] Ezt meg is fogom mutatni, csak nem akarom ezt a panát
+[  507.8] kilőni, mert akkor ezt nem tudom.
+[  509.8] Igen, csak az előző napot tudjuk.
+[  511.8] Ez mindig felülírja, ez nem menti,
+[  513.8] mert ez nem olyan fontos.
+[  515.8] Szükséges egyébként,
+[  517.8] mármint nem az átadólap,
+[  519.8] hanem, hogy mentse
+[  521.8] maga a rendszer, vagy elég, hogyha
+[  523.8] csak az előző napi mindig megvan.
+[  525.8] Nem szükséges.
+[  527.8] Szóval ez a
+[  529.8] készlet. Igen, ez felszólítja
+[  531.8] a pénztárost, hogy számoljon kasszát.
+[  533.8] Abban az esetben, hogyha az előző
+[  535.8] napon dolgozó pénztáros
+[  537.8] nyit, akkor értelemszerűen előző nap
+[  539.8] ő megszámolta, tehát nem kell neki reggel
+[  541.8] számolni, akkor arra megy rá, hogy
+[  543.8] igen, igen, tehát megszámoltam,
+[  545.8] akkor eltűnik a panát. Ha viszont
+[  547.8] egy olyan pénztáros jön, aki
+[  549.8] előző nap nem dolgozott, az megszámolja
+[  551.8] a kasszát, és rámegy arra, hogy nem,
+[  553.8] és akkor feladomja neki a címletezőt,
+[  555.8] és ugye, amiből van készlet,
+[  557.8] az, és egyezik a
+[  559.8] címletek, rendben vannak, azok pirossal
+[  561.8] szerepelnek itt, és akkor rámegy, és
+[  563.8] szépen meg tudja számolni a
+[  565.8] kasszát. Hogy egyezik a
+[  567.8] készlet, semmit nem mondottam.
+[  569.8] Szia, mondjad.
+[  577.4] Igen. 71.
+[  584.4] Hello. Tehát igen,
+[  589.5] hogy egyezik a kasszat. Bocsi, itt meg vissza
+[  591.5] tudunk menni, vagy állt a kezelésre?
+[  593.5] Kezelésére is meg tudom mutatni, tehát
+[  595.5] itt van. Akkor ezt lefotózom.
+[  597.5] De tudok menni majd
+[  599.5] a címletezésbe, és azt is meg tudod majd nézni.
+[  601.5] Szuper. Ez ugye a kezelési. Ugye
+[  603.5] külön kell tárolni a kezelési
+[  605.5] kartséget és a valótás kasszát azért, mert
+[  607.5] a valóta váltás maga, az
+[  609.5] tárgyi adómentes, viszont a kezelési nem.
+[  611.5] A NAV is azért kell, a NAV-os
+[  613.5] gép, mert a kezelési kartségről ugye adóznak,
+[  615.5] annak be kell mennie a NAV-hoz,
+[  617.5] mindenképpen, viszont
+[  619.5] a többi az is belemegy,
+[  621.5] meg úgy egyezik, de az a
+[  623.5] lényeg, hogy a kezelési kartség mindig
+[  625.5] ezen, ami a NAV-nál van, mert azt ellenőrzik.
+[  627.5] És arra fizettek adót.
+[  629.5] Igen, mert maga a valóta váltás
+[  631.5] ugye adómentes. Tehát
+[  633.5] megszámolja a pénzt a pénztáros,
+[  635.5] ha az egyezik,
+[  637.5] akkor dolgozik, ha nem egyezik,
+[  639.5] ugye az már nem a programhoz tartozik, de
+[  641.5] jelzi azt a... Nem a programhoz
+[  643.5] tartozik? Ja, hát például itt hibát
+[  645.5] nem tudtok ellenzni, hogyha esetleg nem
+[  647.5] egyezik a... Nem.
+[  649.5] Hanem akkor fel kell
+[  651.5] jönni a területi vezetőt egy kasszeltéréssel,
+[  653.5] utána engem és
+[  655.5] velem lekönyvelik, és utána úgyis egyezik
+[  657.5] a kasszalt. Tehát az egy átadás lesz, vagy
+[  659.5] egy átvétel, ha többletet, vagy hiányt talál
+[  661.5] a pénztáros. Mhm. És
+[  663.5] például
+[  665.5] ilyen esetben, csak azért
+[  667.5] kérdezem, mert például ugye a zálognál
+[  669.5] úgy van, hogy ott a
+[  671.5] napnyitásnál, ott is van
+[  673.5] ugyan a napnyitás, de ott a napzárásnál
+[  675.5] addig nem tud napot zárni
+[  677.5] az élető, amíg nem számolta le
+[  679.5] a kasszát. Ugyanúgy van. Ugyanúgy van.
+[  681.5] És akkor itt ugye ha esetleg
+[  683.5] mégsem számolja le, és nem
+[  685.5] zárta be a napot, akkor másnap nem tud
+[  687.5] napot nyitni. Csak akkor,
+[  689.5] hogyha... Itt is, igen. Jó, tehát akkor ez
+[  691.5] ott is így van. Viszont, hogyha
+[  693.5] kasszaáltérés van, akkor...
+[  695.5] Ugyanúgy azonnal jelezni kell, tehát a letévezetőnek
+[  697.5] majd nekem, és este is velem könyveli
+[  699.5] le, vagy napközben, ha kasszaáltérés
+[  701.5] talál, mert ugye napközben is robancsolnak,
+[  703.5] mint az egy nagyobb forgalom, és ha napközben
+[  705.5] is talál, akkor járzi, tehát
+[  707.5] mindenféleképpen le kell könyvelni, ahhoz, hogy
+[  709.5] kasszaegyezzen, mert akkor van vál, ha
+[  711.5] lecimletezi, akkor nem fog egyezni
+[  713.5] a gép által számolt és a
+[  715.5] cimletezett oszlop, és akkor nem enged
+[  717.5] zárni.
+[  719.5] Oké, jó. A rendszer is ezt
+[  721.5] fogja csinálni. Erről, hogyha
+[  723.5] nincs egyezés, itt, ahol
+[  725.5] utában kell le, hogy menjen üzenet
+[  727.5] valakinek automatikusan. Nem, mert addig nem tud lezárni,
+[  729.5] tehát vagy megcsinálják. Tudom csak,
+[  731.5] hogy például ugye a zálognál is ugyan, hogy
+[  733.5] addig nem tud lezárni, és erről például
+[  735.5] a zálogban, már az új
+[  737.5] rendszer esetében, a zálogban volt
+[  739.5] kérés az, hogy erről, hogy ott
+[  741.5] és ott nem zártak napot,
+[  743.5] erről menjen egy értesítő,
+[  745.5] mondjuk a Norbinak, vagy ilyen. Nem teheti meg,
+[  747.5] hogy nem zár napot, tehát nem tud hazamenni,
+[  749.5] nem tudja lekérni
+[  751.5] a zárást, az nem megy be a szerverre,
+[  753.5] és ott egyből látszik, hogy
+[  755.5] nem ment be a zárás, tehát azt nem tudja megcsinálni.
+[  757.5] Itt nincs olyan, hogy ha hazamentem,
+[  759.5] az CIA, hanem itt nem.
+[  761.5] És ha lezárom a laptopot és
+[  763.5] hazamegyek? Másnap, sőt
+[  765.5] már aznap kiderül, hogy nem ment be a zárás, de másnap
+[  767.5] mindenféleképpen kiderül.
+[  769.5] Hát és akkor másnap ugye megcsinálja,
+[  771.5] csak hogy azért már, hogy
+[  773.5] időbeni ártalódás miért
+[  775.5] Nem tudom, hogy az ágna
+[  777.5] ilyen előfordulta, nálunk ilyen soha nem fordult elő,
+[  779.5] hogy úgy megy haza, ha valaki úgy megy haza,
+[  781.5] hogy nem egyezik a kasszáját, akkor is becimletezi,
+[  783.5] akkor is lezárja, akkor is
+[  785.5] hazamegy, ezt lehet, hogy a trezorűre is olyan volt,
+[  787.5] mert járték a trezorűt általán, de olyan volt,
+[  789.5] hogy nem zártak abból. Tehát ez így
+[  791.5] nem életszerű, tehát ez felesleges, mert
+[  793.5] úgyse fogja megnézni, nagyon sem, nem.
+[  795.5] Tehát annak nincsen értelme igazán.
+[  797.5] Tehát hogyha ezt megcsinálta, akkor
+[  799.5] ugye rámegy arra, hogy tovább, és akkor
+[  801.5] beregenerál a gép. Na itt van
+[  803.5] az első, amikor felmegy a szerverre.
+[  805.5] Tehát itt be van állítva a gépen,
+[  807.5] hogy melyik pénztárban
+[  809.5] hány percenként kommunikáljon a szerverrel.
+[  811.5] Melyik szerverrel?
+[  813.5] A központi Békéscsabár helyezkedik el
+[  815.5] a nagy szerver azzal fizikálisan.
+[  819.5] És azt gondolom, folyamatában kommunikál.
+[  821.5] Tehát nem kell beállítani.
+[  823.5] Az a lényeg, hogy amikor kommunikál,
+[  825.5] tehát ránéz arra is, hogy van-e
+[  827.5] új árfolyam.
+[  829.5] És ha van árfolyam, akkor azt
+[  831.5] leszedik. Hogyha
+[  833.5] van árfolyamváltozás, akkor az
+[  835.5] kislisztáz, de is pirossal
+[  837.5] kírja, hogy árfolyamváltozás van.
+[  839.5] Tehát ezt, ha rendben
+[  841.5] arra megyek, akkor fog eltűnni.
+[  843.5] Amennyiben, nyugodtan fényképezd le.
+[  847.5] Amúgy ez téged érdekel.
+[  849.5] És gondolom, nem ilyet kiedzed meg.
+[  851.5] Azért érdekel,
+[  853.5] azért érdekel, mert
+[  855.5] a pénztáros
+[  857.5] agyában is jön, hogy
+[  859.5] mi változott. Tehát nagyon
+[  861.5] sűrűen változik az árfolyam.
+[  863.5] Tehát le is kell neki nyomtatni a
+[  865.5] szlippet, az árfolyam szlippet, mert
+[  867.5] az törvényi előírás,
+[  869.5] hogy minden árfolyamváltozást könyvelni kell.
+[  871.5] Le kell nyomtatni. A gép is megjegyzi.
+[  873.5] Illetőleg papíralapon is le kell
+[  875.5] nyomtatni. És ez azért jó, mert
+[  877.5] nemcsak azért, hogy a pénztáros ne felejtsen, hogy
+[  879.5] le kell lenyomtatni, hanem meg kiküldeni,
+[  881.5] mert van futófényünk is,
+[  883.5] ahol árfolyamot jelez ki.
+[  885.5] Itt például nem. De ott kik is kell
+[  887.5] küldeni a futófényre az árfolyamat.
+[  889.5] Illetőleg, azért ha ránéz,
+[  891.5] általában nem, ez most ugye
+[  893.5] reggeli, ez azért ennyi
+[  895.5] a változás, de általában a fővaluták
+[  897.5] szoktak többnyire változni.
+[  899.5] És akkor berögzölnek, hogy hoppá, változott az árfolyam.
+[  901.5] Tehát akkor azt tudom,
+[  903.5] hogy változik. Itt nincs monitor,
+[  905.5] tündénél ott van az árfolyam kijelzőmonitor.
+[  907.5] Ha árfolyamváltozás van,
+[  909.5] az automatikusan kimegy az árfolyam
+[  911.5] kijelzőmonitorra is.
+[  913.5] Az árfolyam kijelzőmonitoron
+[  915.5] a valuták is szerepelnek, illetve majd azt is
+[  917.5] meg fogom mutatni, hogy
+[  919.5] időközönként, nem is tudom, hány más
+[  921.5] percenként, mert az is törvényelőírás, ki kell
+[  923.5] írni azt is, hogy mi
+[  925.5] milyen kedvezményeket adunk sárosokat.
+[  927.5] És az is egy nagy kijelzőben
+[  929.5] szerepel. Jó, és ezek váltogatják
+[  931.5] egymást. Tehát ez
+[  933.5] kell mindenféleképpen, hogy rögzüljön
+[  935.5] a pénztárosban, még akkor is, hogyha
+[  937.5] automata lesz az árfolyam
+[  939.5] lenyomtatása, vagy akár
+[  941.5] az árfolyam lenyomtatása
+[  943.5] ne legyen automata, mert
+[  945.5] nem mindig nyomtatjuk, mert valamikor
+[  947.5] felesleges, de az a lényeg, hogy legyen piros,
+[  949.5] legyen ez látható, hogy mi változott
+[  951.5] új árfolyamként,
+[  953.5] hogy tudja a pénztáros, hogyha
+[  955.5] jön az ügyfi, akkor már ne automatán azt mondja,
+[  957.5] ami 10 perce volt az euró,
+[  959.5] hanem azt mondja, ami.
+[  961.5] Itt még annyi kérdésem
+[  963.5] lenne ezzel kapcsolatban, hogy ugye
+[  965.5] az árfolyamok
+[  967.5] azok folyamatosan
+[  969.5] változhatnak jelenleg, milyen gyakran
+[  971.5] kéritek le őket? Vannak olyan
+[  973.5] pénztárak, mint például lesz,
+[  975.5] belvárosi, mellettünk pár
+[  977.5] száz méterre korrekt,
+[  979.5] szembe velünk a Northline
+[  981.5] konkurencia, 20 percenként nézik
+[  983.5] az árfolyamot, vagy az értéktáros
+[  985.5] vagy a szállító. Van olyan
+[  987.5] például Szegeden, ahol árfolyamnéző van,
+[  989.5] és az jelentés, ha változott
+[  991.5] az árfolyam, e-mailben elküldi a
+[  993.5] szállítótársak folyértéktárnak, és azonnal
+[  995.5] a folyértéktár reagál, tehát akár 20 percenként
+[  997.5] is változhat egy
+[  999.5] konkurenciákkal körülött
+[ 1001.5] helyen az árfolyam.
+[ 1003.5] Ha olyan például Tesco,
+[ 1005.5] Békés Csaba, ott pedig akkor
+[ 1007.5] változik az árfolyam, ha nagy a mozgás,
+[ 1009.5] például most nagyon mozog, azt a folyértéktár
+[ 1011.5] figyeli, és csinálja az árfolyamot.
+[ 1013.5] Azért is vannak beégetve
+[ 1015.5] konkurenciánál.
+[ 1017.5] 15 percenként kommunikálsz,
+[ 1019.5] vagy 5 percenként kommunikálsz,
+[ 1021.5] vagy 15 percenként?
+[ 1023.5] Itt van mondjuk.
+[ 1025.5] Be van állítva, hogy hány percenként
+[ 1027.5] kommunikál, de van olyan, ahol 5 perc,
+[ 1029.5] 10 perc, 15 perc, tehát 5 percenként lehet
+[ 1031.5] beállítani, kommunikálnak a gépek a szerverre.
+[ 1033.5] Mondom, a nálatokhez. Ezt kiállítjátok be?
+[ 1035.5] Igen, kézzel. Be van
+[ 1037.5] beégetve a gépbe, amit a pénztárs nem állíthat,
+[ 1039.5] csak én tudom átállítani.
+[ 1041.5] Jogosultságra függő világos.
+[ 1043.5] Itt, hogyha például
+[ 1045.5] folyamatos
+[ 1047.5] kommunikáció lesz, mert
+[ 1049.5] online lesz a rendszeretek,
+[ 1051.5] itt kell
+[ 1053.5] nem, itt az kell,
+[ 1055.5] hogy amikor
+[ 1057.5] valami, én ezt nem tudom, hogyan lehet
+[ 1059.5] megoldani, programozóilag, de
+[ 1061.5] hogyha fölköld
+[ 1063.5] a főértéktárs egy árfolyamot
+[ 1065.5] a szerverre, akkor azt
+[ 1067.5] észleljék a gépek, hogy az kié. Tehát
+[ 1069.5] azt majd látjátok, azt Tamásnál fogjátok tudni
+[ 1071.5] megnézni azt a programot, az árfolyamkészítőt,
+[ 1073.5] hogy neki ugye be van
+[ 1075.5] állítva Tesco-külön,
+[ 1077.5] mert ott más az árfolyam, tehát Tescokban
+[ 1079.5] nagyobb árisra dolgozunk, belvárosokban
+[ 1081.5] konkurenciák nagyobb, kisebben csoportok
+[ 1083.5] rá van állítva. Hogy a gépek
+[ 1085.5] azok lássák, hogy az ő csoportjában
+[ 1087.5] változott-e az árfolyam, és akkor
+[ 1089.5] azonnal szedje le.
+[ 1091.5] Azért is
+[ 1093.5] kérdeztem ezt az árfolyamváltozást,
+[ 1095.5] hogy neked erre mennyire van szükség. Ennyire, hogy azért
+[ 1097.5] lássa, tehát ha pirosan jöjjön ki, hogy
+[ 1099.5] lássa, mert be vannak ugyanúgy,
+[ 1101.5] sajnálatos módon, de van, amikor meg akkor
+[ 1103.5] a mozgás, hogy nagyon.
+[ 1105.5] És azért jó, hogyha
+[ 1107.5] a pénztárs is tisztában van vele, hogy változott
+[ 1109.5] az árfolyam. És ez egy folyamat,
+[ 1113.5] hogy a változás közben is felugor?
+[ 1115.5] Nem. Amikor kilép
+[ 1117.5] a tételbe. Tehát az a lényeg,
+[ 1119.5] hogyha már megkezd egy tételt,
+[ 1121.5] azt azzal az árfolyammal kell végigcsinálnia.
+[ 1123.5] Akkor ezt ne akadályozza, se nem
+[ 1125.5] kommunikálásra száll, semmilyen felugoró
+[ 1127.5] képernyővel, azt végig kell vinni. Mert
+[ 1129.5] valamikor azonosítani kell, szkennelni kell,
+[ 1131.5] hosszadalmas számolni kell, olyankor
+[ 1133.5] nem. Csak amikor
+[ 1135.5] végzett a tranzakcióval,
+[ 1137.5] például az is be van égetve, hogy
+[ 1139.5] ha végzett a tranzakcióval, akkor nyomni kell
+[ 1141.5] egy ESC gombot a végén,
+[ 1143.5] de hogyha nem nyomja meg, akkor automatán
+[ 1145.5] 10 másodperc múlva főmenűre
+[ 1147.5] megy a gép, és akkor megint tud kommunikálni.
+[ 1149.5] Tehát ez a lényeg, hogy ez is automata legyen,
+[ 1151.5] hogyha ő nem nyomja meg azt a gombot,
+[ 1153.5] akkor is, hogyha arra ment rá, hogy
+[ 1155.5] vége a tételnek, és lenyomtatott mindent,
+[ 1157.5] akkor automatán egy 5-10 másodperc múlva
+[ 1159.5] ugorjon főmenűre. Oké.
+[ 1161.5] Jó, mert különben áll maradni.
+[ 1165.5] Most én laikus vagyok,
+[ 1167.5] miért fontos, hogy én vissza kell
+[ 1169.5] kerüljek a főmenűhez? Azért, mert nem kommunikál a gép,
+[ 1171.5] mert ugye most beszéltük meg, hogy amíg benne van egy
+[ 1173.5] tranzakcióban, addig nem kommunikál a szerverrel,
+[ 1175.5] nem jön le az új árfolyam, semmi.
+[ 1177.5] És hogyha benne... Addig van, amíg
+[ 1179.5] ugye rögzítek. Igen.
+[ 1181.5] Hogyha mondjuk rögzítés
+[ 1183.5] közben van ez, akkor éreztem már,
+[ 1185.5] hogy ott elkezdem berögzíteni
+[ 1187.5] a dolgokat, de mondjuk egy órája
+[ 1189.5] nem jutom hozzá, olyan nem lehet.
+[ 1191.5] Azért kell, hogy lépjen ki.
+[ 1193.5] De hogyha például végigvittem
+[ 1195.5] a folyamatot, akkor alapból lehet az,
+[ 1197.5] hogy amikor én végigvittem
+[ 1199.5] a folyamatot, megtörtént a
+[ 1201.5] pénzváltás, és
+[ 1203.5] mondjuk a mentésre, vagy a nyomtatásra
+[ 1205.5] és mentésre, vagy nem tudom, hogy lesz
+[ 1207.5] a képernyőtök, még nem állt össze teljesen
+[ 1209.5] a fejemben, arra kattintok,
+[ 1211.5] és ez megtörtént, és vége van, akkor
+[ 1213.5] alapból visszadobja, tehát hogy nem kell
+[ 1215.5] annyi, hogy legyen egy kis idő.
+[ 1217.5] Mert ugye a kifizetés, hogy lássak
+[ 1219.5] pénztársnál, a bizonylatról kell elnézni, mert
+[ 1221.5] ez nem kici betű, hanem itt nagyba kint
+[ 1223.5] van neki az összeg, hogy lássak
+[ 1225.5] kifizetést, hogy mennyit kiadni, azért van,
+[ 1227.5] hogy egy kicsit tovább van nekik ott.
+[ 1229.5] Mert hogy úgy
+[ 1231.5] történik ez, hogy előbb rögzíti
+[ 1233.5] a gépben, és utána fizet ki.
+[ 1235.5] Persze, előbb bizonylat van.
+[ 1237.5] Tehát jön az ügyfel, beadja neki,
+[ 1239.5] azt a 200 eurót, a 200 eurót elveszi,
+[ 1241.5] ide lerakja, azt beírja, és akkor ott van
+[ 1243.5] a forint összeg. Ugye ha
+[ 1245.5] kártyás, kezelési törlünk, stb. stb. az megvan,
+[ 1247.5] és hogy láss, hogy mennyi forintot kell neki kifizetni.
+[ 1249.5] Ne a bizonylatról kelljen kinéznie,
+[ 1251.5] mert az pici elnézi, stb.
+[ 1253.5] szép, nagyba látja, mert ezt igénylik a pénztársa.
+[ 1255.5] Jó, tehát ez a lényege.
+[ 1257.5] Jó, tehát akkor ha megérkezett
+[ 1259.5] az árfő, akkor rányomunk
+[ 1261.5] abban, hogy rendben.
+[ 1263.5] Akkor még a gép megnézi,
+[ 1265.5] hogy van-e új körlevele az illetőnek,
+[ 1267.5] és kiírja, hogy ha van neki új
+[ 1269.5] körlevele. Milyen körlevé lehet ez?
+[ 1271.5] Itt van egy olyan program,
+[ 1273.5] hogy körlevelek.
+[ 1275.5] Itt ez egy felhasználói
+[ 1277.5] program, ugye itt csak a pénztárra vonatkozó
+[ 1279.5] programok vannak, majd az én gépemben
+[ 1281.5] meg fogom nézni, mert
+[ 1283.5] nekem, illetve a középvezetőknek
+[ 1285.5] van egy olyan programja, amivel fel tudunk
+[ 1287.5] tartani körlevelet.
+[ 1289.5] Én tudok, illetőleg akiért tud a
+[ 1291.5] valótának, a zálognak, és
+[ 1293.5] a középvezetőknek. Ez egy ilyen Facebook-szerű
+[ 1295.5] posztolási lehetőség? Nem.
+[ 1297.5] Nem, ez nem.
+[ 1299.5] Mármint, hogy ez csak belső,
+[ 1301.5] Facebook csak belső.
+[ 1303.5] Hát ennek ilyen formátum van, megmutatom.
+[ 1305.5] Igazándiból ez egy piszkos, hivatalos,
+[ 1307.5] mert hogy ez kell, ha
+[ 1309.5] valami probléma van,
+[ 1311.5] ez azért kell, ez egy office,
+[ 1313.5] egy word, és ennek
+[ 1315.5] úgy néz ki, hogy hivatalosan
+[ 1317.5] iktatási számmal,
+[ 1319.5] körlevé a tárgyával, készítővel
+[ 1321.5] hatályossággal kell, hogy szerepeljen.
+[ 1323.5] Ez nagyon hivatalos, ez nem egy sima poszt,
+[ 1325.5] mert mi azt az e-mailezésre, kör e-mailre
+[ 1327.5] használjuk, amit csak nem olyan fontos.
+[ 1329.5] Ez azért kell, hogy így legyen, mert ha
+[ 1331.5] a pénztáros nem az szerint dolgozik, és
+[ 1333.5] ebből ugye pénzvonási törvényváltozástól minden,
+[ 1335.5] minden olyan dolog benne van, akkor tudsz
+[ 1337.5] szankcionálni, tudod ráverni magyarul
+[ 1339.5] a balhét, mert ez jelzi,
+[ 1341.5] hogy neki van kötelessége, megnézi
+[ 1343.5] még, ha nem is jelzi, vagy tovább lép,
+[ 1345.5] vagy nem látja a naponta minimum
+[ 1347.5] kétszer, hogy érkezett-e új körlevél,
+[ 1349.5] és ezt köteles ezt szerint dolgozni,
+[ 1351.5] ez egy hivatalos formátum,
+[ 1353.5] itt le van írva minden, és a végén
+[ 1355.5] szerepel az is, hogy
+[ 1357.5] kinek mi a feladata.
+[ 1359.5] És ez egy hivatalos dátum van elő.
+[ 1361.5] Erről kérhetünk egy mértártat,
+[ 1363.5] hogy más hatot csinálsz nekünk?
+[ 1365.5] A formátum miatt?
+[ 1367.5] Hát is tudom küldeni e-mailbe.
+[ 1369.5] Úgy gondoltam, igen.
+[ 1371.5] Írjuk föl, és akkor ne felejtsen már.
+[ 1375.5] Jó, és akkor itt
+[ 1377.5] az a lényeg, hogy benne
+[ 1379.5] vannak a múltévi levek, tehát az évente
+[ 1381.5] átkerül, hogy mindig itt a frissek legyenek,
+[ 1383.5] a tárgyéviek, és utána
+[ 1385.5] meg lehessen nézni a múltévi levek.
+[ 1387.5] Itt van egy, hogyha
+[ 1389.5] például automatán ellenőrzte az R-frame-ot,
+[ 1391.5] és nincsen, akkor rendben van,
+[ 1393.5] nem volt R-frame-változás, és akkor bele tudok
+[ 1395.5] menni a múltévibe,
+[ 1397.5] menjen, ez is megnézi még.
+[ 1399.5] Bele tudok menni a múltévibe,
+[ 1401.5] hogyha a pénztárosnak esetleg
+[ 1403.5] elfelejtett valamit, hogy
+[ 1405.5] új pénztáros van és betanul, akkor itt
+[ 1407.5] tud keresni a múltévi körlevelek között,
+[ 1409.5] és van olyan is, hogy régebbi
+[ 1411.5] levelek, ez meg az összes, ami
+[ 1413.5] mióta ez a programban benne van.
+[ 1415.5] És akkor tud keresni.
+[ 1417.5] Így van,
+[ 1419.5] lementi a gépre, és akkor ugye onnan szedi el.
+[ 1421.5] Úgy tud keresni, az mit jelent?
+[ 1423.5] Hát úgy tud keresni, csak hogy
+[ 1425.5] már megy aztán meg. De szeretnél, vagy?
+[ 1427.5] Igen. Hát alapból is.
+[ 1429.5] Alapból úgy csináljuk, csak hogyha
+[ 1431.5] igényben arra, hogy felestetnek érzi, akkor...
+[ 1433.5] Mert nagyon sok van, például egy nagyon régiben,
+[ 1435.5] nagyon sok van időnként, de szoktam
+[ 1437.5] emlékeztetőt beküldeni régiből,
+[ 1439.5] de az nem árt, ha például
+[ 1441.5] emléksz, hogy fú, valami volt, de nem emlékszem,
+[ 1443.5] és akkor rá tud keresni.
+[ 1445.5] És az az nagyon jó. Mert ugye, ahogy szokott kinézni,
+[ 1447.5] én nem tudom, hogy láttad-e, de
+[ 1449.5] mutatok neked egy példát, például erre
+[ 1451.5] keresésre. Nem tudom, hogy láttad-e,
+[ 1453.5] most a zálogos rendszert
+[ 1455.5] picit másképp fog kinézni. Az nem lényeg.
+[ 1457.5] Hát azt akartam kérdezni, hogy
+[ 1459.5] alakítva, de...
+[ 1461.5] Fontosnak tartjátok ezeket a nagyon nagy betűket?
+[ 1463.5] Nem. Hát a nagyon nagy betűket...
+[ 1465.5] A zálognál igen.
+[ 1467.5] Úgy igen, mert az üt, tudod,
+[ 1469.5] meg a színeket, majd fogom mondani
+[ 1471.5] vételaladásnál is, hogy más legyen a színe.
+[ 1473.5] Mert ugye, hogyha
+[ 1475.5] hoznak valót át, azt mi megvesszük, mindig a mi
+[ 1477.5] szempontunkból nézzük.
+[ 1479.5] És hogyha
+[ 1481.5] az nem más színű, és véletlenül eladásba
+[ 1483.5] megy bele, akkor fordított könyvvel is
+[ 1485.5] történik, többet fizet az ügyfelnek, és neki
+[ 1487.5] hiánya keletkezik. És azért fontos a nagy betű,
+[ 1489.5] meg a szín. Ami üt, az
+[ 1491.5] piros. De most nem piros.
+[ 1493.5] TG
+[ 1495.5] valami pont volt. De itt a
+[ 1497.5] tesztán próbáljuk meg. Úgyhogy
+[ 1499.5] azért igaz, az fontos. Igen, a betűméret,
+[ 1501.5] meg a szín. Hogy üssön, hogy
+[ 1503.5] van.
+[ 1505.5] Mondom,
+[ 1507.5] TG... Már egy ilyen ránccel gazdálunk,
+[ 1509.5] és most el kell tesztetünk, mert ugye...
+[ 1511.5] ...
+[ 1513.5] Viszont képernyőképről
+[ 1515.5] meg tudom megállítani. Na, az is jó az.
+[ 1517.5] Akkor azon. Igen.
+[ 1519.5] ...
+[ 1521.5] Mondjuk,
+[ 1526.6] itt legyen a munkavállaló.
+[ 1528.6] Jaj, aminnyel...
+[ 1541.5] Igazából itt a
+[ 1543.5] zálognál vannak meg az átadások,
+[ 1545.5] és akkor ott keresek a
+[ 1547.5] képernyőképeket, képernyelfogadt
+[ 1549.5] etestmel.
+[ 1571.6] Murphy. Amilyenkor nem tárgyalunk.
+[ 1573.6] Sajnálom.
+[ 1575.6] Mindig első. Annyira nem fontos.
+[ 1577.6] Nekem az a jó, hogyha minden jó.
+[ 1579.6] Az a lényeg, meg tudom mutatni,
+[ 1581.6] hogy úgy van, hogy van
+[ 1583.6] ilyen panálták minden felsorolás
+[ 1585.6] előtt igazából.
+[ 1587.6] Itt van
+[ 1589.6] még egy, ez a címjegyzék úgy mond,
+[ 1591.6] tehát ott, ahogy van a dátum,
+[ 1593.6] tartalom, iktatószám,
+[ 1595.6] és ugye ezek lesznek itt, hogy dátum,
+[ 1597.6] tartalom, mondjuk iktatószám, vagy
+[ 1599.6] amit még szeretnétek ebből kiemelni,
+[ 1601.6] ami még ott legyen. És ugye itt
+[ 1603.6] vannak maga a tételek felsorolva.
+[ 1605.6] Egyrészt többféle megjelenítés van,
+[ 1607.6] tehát alul tudom állítani, hogy 5 vagy
+[ 1609.6] mondjuk 100 oldalt, vagy akár
+[ 1611.6] helyet lássak egy izébe, vagy tudok lépkedni
+[ 1613.6] is magával a
+[ 1615.6] nyilakkal. Illetve
+[ 1617.6] itt felül van egy olyan
+[ 1619.6] keresés funkciótok,
+[ 1621.6] ahova elkezdem begépelni
+[ 1623.6] vagy dátum szerint, vagy tartalom,
+[ 1625.6] vagy iktatószám szerint,
+[ 1627.6] amit én keresek. És ezt a listát,
+[ 1629.6] amit itt felhoz, mert leszűri arra,
+[ 1631.6] amit én szeretnék. Az úgy jó.
+[ 1633.6] Az a lényeg, hogy az első képernyő az mindig
+[ 1635.6] a tájévi körlevelek legyenek.
+[ 1637.6] És akkor a legvajja.
+[ 1639.6] Hát igazából úgy is lehet
+[ 1641.6] csinálni, de egyébként lehet
+[ 1643.6] így különösszedni, de mivel a
+[ 1645.6] keresésetek elég részletező,
+[ 1647.6] tehát úgy is lehet csinálni, hogy mindig a legfrissebben
+[ 1649.6] felül. Úgy, úgy. És
+[ 1651.6] nem feltétlenül van így
+[ 1653.6] különösszedve, hanem hogy mindig a
+[ 1655.6] legfrissebben felül, és a legrégebbi
+[ 1657.6] van nyilván alul. Úgy is jól lehet keresni.
+[ 1659.6] De az sem baj, hogyha
+[ 1661.6] úgy is megcsináljátok, hogy tájévi,
+[ 1663.6] múltévi archivált, mint itt,
+[ 1665.6] mert ugye úgy szoktak keresni, azt meg
+[ 1667.6] szokták, és akkor az nekik úgy könnyebb.
+[ 1669.6] Igaz? Tündi te, mint felhasználó.
+[ 1671.6] És akkor azért.
+[ 1673.6] Hát ha
+[ 1675.6] erre van igény, vagyis hogy így legyen,
+[ 1677.6] akkor így lesz. Tehát, hogy akkor megcsináljuk,
+[ 1679.6] hogy például itt
+[ 1681.6] a kereséseknél
+[ 1683.6] még azt is ki lehet választani, hogy
+[ 1685.6] egy másikból. Mert ott nem tudja pontosan,
+[ 1687.6] hogy azt tudja, hogy miről szólt, hogy mit akar keresni,
+[ 1689.6] de nem biztos, hogy az van a
+[ 1691.6] tájban, mert például
+[ 1693.6] ha frissítőnél
+[ 1695.6] csak a frissítő
+[ 1697.6] számát szoktam felírni a tájban.
+[ 1699.6] Tehát, hogy miről szól, nem az benne,
+[ 1701.6] hanem körlevelben. És ha a frissítő
+[ 1703.6] számát nem tudja, akkor tudja,
+[ 1705.6] hogy az tavalyi volt, és akkor úgy könnyebben
+[ 1707.6] megkeresik. Ezért gondolnám
+[ 1709.6] inkább. Jó. Mert
+[ 1711.6] akkor itt mellette lehet egy olyan szűrési
+[ 1713.6] rész, hogy ahol például
+[ 1715.6] ki tudod választani azt, hogy milyen
+[ 1717.6] legördülőbb, hogy tájévi,
+[ 1719.6] múltévi, vagy régebbi, ahogy van.
+[ 1721.6] Nektek most. És akkor mondjuk nem ilyen három
+[ 1723.6] gomb, hanem egy gomb, amiben két gomb
+[ 1725.6] van. Úgy is jó. Tökéletes. Az úgy nagyon jó.
+[ 1727.6] Akkor ez a főképernyő,
+[ 1729.6] amin nincs most a főmenü, az
+[ 1731.6] nagyon fontos, hogy
+[ 1733.6] nem tudom nátok, hogyan lesz a frissítés.
+[ 1735.6] Mert
+[ 1737.6] nálunk mindig ott van a verziószám,
+[ 1739.6] tehát nálunk manuális a frissítés,
+[ 1741.6] mondjuk egy elszót le, az meg...
+[ 1743.6] Pont egy hét múlva lesz majd,
+[ 1745.6] mert hétfőn jön az
+[ 1747.6] üzemeltető. Igen.
+[ 1749.6] Jánosnak hívják talán. Oké.
+[ 1751.6] És vele fogunk megvizsgálni,
+[ 1753.6] hogy hogy csináljuk, mert ők is üzemeltettek
+[ 1755.6] már rendszereket, meg mindent,
+[ 1757.6] és igazából... Ja, pókajan irányolod?
+[ 1759.6] Igen. Tudunk alkalmazkodni. Az Csabai.
+[ 1761.6] Igen. Az én emberem.
+[ 1763.6] Szóval hogy tudunk alkalmazkodni, és ahogy
+[ 1765.6] nekik jó, vagy megbeszélünk egy
+[ 1767.6] közös utat, vagy... Igen, mert
+[ 1769.6] igazából ugye úgy szokott ez történni,
+[ 1771.6] mivel ez egy gyöves rendszer,
+[ 1773.6] tehát hogyha a verziót kell frissíteni,
+[ 1775.6] teszem, azt valamilyen olyan funkció van, ami
+[ 1777.6] eddig nem került bele, de most szükségetek van rá,
+[ 1779.6] akkor a verzió frissítés előtt
+[ 1781.6] mindig először ugyanúgy
+[ 1783.6] követjük a metódustárkába, hogy
+[ 1785.6] van egy tesztrész, azt megnézi
+[ 1787.6] az életékes, akinek meg kell. Én szoktam,
+[ 1789.6] igen. És... Utána kirakjuk
+[ 1791.6] egy pénztárba, mert még mindig lehet
+[ 1793.6] benne hiba. Igen, utána van
+[ 1795.6] egy tesztüzem, és akkor utána
+[ 1797.6] át lehet vezetni mindenhova, hogyha
+[ 1799.6] ez már jó. De
+[ 1801.6] ugye ez, hogy mondjam,
+[ 1803.6] valamelyest automatikusan
+[ 1805.6] is tud működni. Úgy, úgy. De
+[ 1807.6] de az, hogy a verziószám
+[ 1809.6] az nyilván ki lesz írva, itt is például
+[ 1811.6] azt mondjuk talán pont meg tudom mutatni.
+[ 1813.6] Igen, az a lényeg, hogy lehessen látni, hogy
+[ 1815.6] itt is itt van. Tehát, hogy itt is ki van
+[ 1817.6] írva, amíg a bejelentkezés előtt is. És akkor igazából
+[ 1819.6] van egy verziószáms, utána a dátum,
+[ 1821.6] amikor kerül. Aha, az tökéletes.
+[ 1823.6] Jó, nagyon jó.
+[ 1825.6] Mindenféleképpen kell
+[ 1827.6] a dátum, ugye a cég név, verziószám,
+[ 1829.6] pontos időt, ugye mutassa
+[ 1831.6] azt, hogy ez hanyas pénztár, és
+[ 1833.6] ugye nálunk úgy volt beégetve,
+[ 1835.6] hogy vannak pénztári meg értektári gépek.
+[ 1837.6] És akkor mutatja, hogy ez egy pénztári gép.
+[ 1841.6] Mi a különbség?
+[ 1843.6] Megint a jogosoltság
+[ 1845.6] értektári gépen nem lehet felutatni eladni.
+[ 1847.6] Itt bankkal nem lehet
+[ 1849.6] kommunikálni, azt látni fogjátok.
+[ 1851.6] Ennyi. És akkor ugye a programot
+[ 1853.6] úgy rakja rá, hogy ez egy pénztári gép,
+[ 1855.6] erre a pénztári programot rakja, az egy értektári,
+[ 1857.6] arra az értektárit rakja.
+[ 1859.6] Mert itt például a jogosoltságok nálunk
+[ 1861.6] úgy vannak, hogy nem gépenként van.
+[ 1863.6] Nem kiosztva, hanem személyenként.
+[ 1865.6] Tehát például, hogyha egy
+[ 1867.6] értektáros belépőjével lép be,
+[ 1869.6] aki mondjuk valutát is válthat, tehát mind a
+[ 1871.6] kettőt, akkor itt például akár ennél
+[ 1873.6] a gépnél is, mind a kettőt végre tudja
+[ 1875.6] hajtani. Az úgy nem jó. Miért?
+[ 1877.6] Mert más itt,
+[ 1879.6] tehát szigorú számodású
+[ 1881.6] bizonylatolás, NAV-os gép hozzá kötve,
+[ 1883.6] tehát itt már össze fog keveredni,
+[ 1885.6] tehát el kell különíteni törvény szerint a
+[ 1887.6] valutás transzakciókat és az értektári
+[ 1889.6] pénzehasztót. De az
+[ 1891.6] ne legyen, hogy ő, meg ráadásul
+[ 1893.6] a NAV-k az értektáros
+[ 1895.6] például bevonhat pénztárba is.
+[ 1897.6] Tehát ez nem gond.
+[ 1899.6] Az a lényeg
+[ 1901.6] szerintem, hogy azért legyen az, hogy pénztári
+[ 1903.6] gépen ne lehessen értektározni.
+[ 1905.6] Semmiképpen. Mert
+[ 1907.6] hogy ugye itt nem kifejezetten
+[ 1909.6] gépekre osztunk ki jogosultságokat,
+[ 1911.6] és egyébként
+[ 1913.6] ezt lehet annyival szabályozni,
+[ 1915.6] hogy például aki kiadja
+[ 1917.6] a jogosultságokat, az
+[ 1919.6] tudja, hogy ő melyik gépen kell
+[ 1921.6] mit csináljon. Tehát például én
+[ 1923.6] mint felhasználó lehet, hogy
+[ 1925.6] tudom azt csinálni,
+[ 1927.6] hogy tudok értéktározni, hogy tudok
+[ 1929.6] valutát is váltani. De ha benne
+[ 1931.6] van úgymond a céges szabályzat, hogy egyik
+[ 1933.6] gépen azt, a másik gépen azt, akkor nyilván
+[ 1935.6] nem fogom mind a két gépen
+[ 1937.6] ugyanazt. Viszont jogosultságom lesz
+[ 1939.6] ahhoz, hogy én mind a két programot
+[ 1941.6] programrészt lássam.
+[ 1943.6] Vagy tudjam használni.
+[ 1945.6] Oké, az a lényeg, hogy itt ne értéktározzon,
+[ 1947.6] ne kavarjuk azoncsak,
+[ 1949.6] mert ez a bank is így ellenőrzik.
+[ 1951.6] Ezt most igazából ilyen belső
+[ 1953.6] szabályként meghatározhatjátok.
+[ 1955.6] Törvényi előírás.
+[ 1957.6] Igen.
+[ 1959.6] De hogy ezt most így gépre
+[ 1961.6] lekorlátozni, ezt nem tudom mennyiben magad.
+[ 1963.6] Amúgy ennek utána nézek.
+[ 1965.6] Nem muszáj, hanem például én ezt úgy
+[ 1967.6] tudom elképzelni, hogy Bloknél
+[ 1969.6] Sarkodi tünde, vagy
+[ 1971.6] akár én, hogy Fagulya Zsuzsa,
+[ 1973.6] akkor metten Fagulya Zsuzsa 1-nek
+[ 1975.6] van az érték, tehát az 2-nek meg
+[ 1977.6] pénztárhozó. Ja, hogy két külön
+[ 1979.6] használót hoztuk létre magad.
+[ 1981.6] Tehát, hogy azt lehet csinálni,
+[ 1983.6] igazából a rendszerben bárhány felhasználó név.
+[ 1985.6] Mert ugye nálunk azért mindenki
+[ 1987.6] ilyen közéfezetező tud mindent meg
+[ 1989.6] beölni, ha pénztárhozó nagyon muszáj.
+[ 1991.6] Igen,
+[ 1993.6] hát azt tudtok. Az úgy, akkor jó.
+[ 1995.6] Tehát, hogy magadnak is
+[ 1997.6] létre tudsz hozni a felhasználó név.
+[ 1999.6] Annyi, hogy a felhasználó név nyilván nem egyezhet,
+[ 2001.6] mert hogy azért meg kell, hogy közömböztessünk.
+[ 2003.6] De egyébként ilyet lehet.
+[ 2005.6] Főleg az, hogy
+[ 2007.6] nem lehet ezt tornozni mindent, ugye?
+[ 2009.6] Igen, igen.
+[ 2011.6] Persze, hát, oké.
+[ 2013.6] Na, azt tudom,
+[ 2015.6] hogy bejöttem ide,
+[ 2017.6] bejöttem, bejelentkeztem,
+[ 2019.6] megnyitottam a napot.
+[ 2021.6] Igen, itt szerepel és bejelentkezett pénztárhozó.
+[ 2023.6] Itt ez
+[ 2025.6] nem nagyon használja.
+[ 2027.6] Tehát, ez itt meg is szűnhet, hogy
+[ 2029.6] megmaradt napi egyedi árfolyam,
+[ 2031.6] megmaradt egyedi napi kezelési díj,
+[ 2033.6] napi szolgálat bizonylat darab.
+[ 2035.6] A lényeg a dolognak, hogy naponta
+[ 2037.6] három bizonylatot lehet
+[ 2039.6] sztornozni jelszónél, akkor
+[ 2041.6] amennyiben annál többet sztornozik,
+[ 2043.6] akkor a szupervizori jelszó kell.
+[ 2045.6] Nálunk kettőféle.
+[ 2047.6] Oké, pillanat.
+[ 2049.6] Úgy jelent az, hogy bizonylatot
+[ 2051.6] sztornozni jelsz, amitől például idejött valaki volt,
+[ 2053.6] tehát váltott valutát, és beadott
+[ 2055.6] ötven eurót, én meg nem tudom hol voltam,
+[ 2057.6] és nem hallottam, hogy ő azt mondta,
+[ 2059.6] hogy csak harmincet akar belőle beváltani.
+[ 2061.6] Akkor a tétát lesztornozom,
+[ 2063.6] és megcsinálom neki
+[ 2065.6] harminc euróra. Azt gondolom, hogy
+[ 2067.6] nektek nem érdekes sztornozni, csak úgy lehet,
+[ 2069.6] ha dupla bizonylat itt van, az már törvényeljes,
+[ 2071.6] ez nem érdekes. Vagy pedig
+[ 2073.6] átadtam az értéktárnak
+[ 2075.6] metamen tízezer eurót,
+[ 2077.6] de
+[ 2079.6] csak kilenc ezeret kellett volna.
+[ 2081.6] Tehát a belső részekre is
+[ 2083.6] vonatkozik ez a három.
+[ 2085.6] Igen, ez összesen erre vonatkozik.
+[ 2087.6] És akkor, hogyha három sztornót, azt nézi
+[ 2089.6] a gép, három sztorno megvan, a negyedikne
+[ 2091.6] mely jelszót fog kérni a szupervizorit.
+[ 2093.6] Kettőféle szupervizori jelszó
+[ 2095.6] generálás van.
+[ 2097.6] Az egyik az
+[ 2099.6] árfolyamengedményekre, majd ott is meg fogom
+[ 2101.6] mutatni, azt az értéktárosok
+[ 2103.6] adják. És van a többi, ami
+[ 2105.6] sztornóra, kezelési költségre,
+[ 2107.6] újranyomtatásra, azt meg én
+[ 2109.6] belső ellenőrik.
+[ 2111.6] Ez milyen jelszót
+[ 2113.6] jelent?
+[ 2115.6] Ezt Antin, majd elmondom, mit
+[ 2117.6] tapasztalat alatt nem akarok. Igen.
+[ 2119.6] Igen.
+[ 2125.1] Igen.
+[ 2131.9] Három. Hello.
+[ 2136.6] Ez volt egy olyan. Tehát ez
+[ 2138.6] van egy séma. Osztok, szorzok,
+[ 2140.6] kivonok, és ott mondok.
+[ 2142.6] Tehát ő mond nekem négy betűt, én erre
+[ 2144.6] osztok, szorzok, kivonok, és mondok neki egy számot.
+[ 2146.6] Ez azért jó, mert nem kell
+[ 2148.6] gépnél lennem, vezetés közben is tudok
+[ 2150.6] számolni, mert okos vagyok. Tehát ezt
+[ 2152.6] szeretnénk megtartani. Ugyanígy van az értéktárnál is.
+[ 2154.6] El fogom mondani, le fogom érni, hogy
+[ 2156.6] ez hogy működik. Mert ez azért
+[ 2158.6] jó, tehát én nem tudok mindig gépnél lenni.
+[ 2160.6] Nálunk a pénztár az valamelyik nyit
+[ 2162.6] reggel nyolckor, és este nyolcig van
+[ 2164.6] nyitva. Tehát én nem fogok ülni,
+[ 2166.6] meg senki nem tud ülni a gépnél, mert ugye bankban
+[ 2168.6] úgy van, hogy úgy nyom egyet, és akkor
+[ 2170.6] megvan az engedélyezés.
+[ 2172.6] Itt ez úgy van, hogy ő elmondja nekem,
+[ 2174.6] hogy...
+[ 2176.6] Szóval jöjjön.
+[ 2178.6] Szia. Igen.
+[ 2182.9] 49.
+[ 2189.5] Hello.
+[ 2193.5] Ezt meg is mutatom, hogy lesz a legjobb.
+[ 2195.5] Mert akkor...
+[ 2197.5] Hogy kezdjük? Kezdjük ezekkel, vagy menjünk
+[ 2199.5] a főmenübe, vagy kezdjük a képernyőn lévő
+[ 2201.5] gombukkal? Kezdjünk itt.
+[ 2203.5] Jó, oké. Névtelen bejelentés.
+[ 2205.5] Ez egy törvényi előírás,
+[ 2207.5] aminek mindenütt bent kell lennie.
+[ 2209.5] Ez azt jelenti, hogy ezt akkor
+[ 2211.5] kell alkalmazni, hogyha
+[ 2213.5] például tündinek
+[ 2215.5] a tudomására jut, hogy az érték
+[ 2217.5] táros, szót az ismerősének,
+[ 2219.5] hogy 10 millió forint fölött
+[ 2221.5] pénzeszközforrás kell, de ha bejöhető
+[ 2223.5] ketten is megbontjuk a tételt,
+[ 2225.5] akkor nem kell. Ez a tudomására jut,
+[ 2227.5] ezt bejelenti, ez név nélküli.
+[ 2229.5] Ha ez bemegy a nagy szerverre, meg fogom
+[ 2231.5] mutatni, hogy hol lehet látni.
+[ 2233.5] Nincs név, nincs semmi, csak dátum.
+[ 2235.5] Nincs, hogy honnan jött be az országból, semmi.
+[ 2237.5] Ezt ki kell vizsgálni, megvan, hogy mennyi
+[ 2239.5] idő alatt. Ez egy nagyon egyszerű,
+[ 2241.5] ide csak belekattint,
+[ 2243.5] beírja a szöveget, beköldi
+[ 2245.5] a szerverre. Ennyi.
+[ 2247.5] És akkor ez nem menti a gépre?
+[ 2249.5] Sehol nem menti.
+[ 2253.8] Jaj.
+[ 2259.1] Ez nem menti a gépre, a rendszerben?
+[ 2261.1] A rendszerben menti, ugye?
+[ 2263.1] Igen, a szerveren menti, amihez nekem
+[ 2265.1] hozzáférésem, és azoknak, akiknek ott.
+[ 2267.1] Ott a bejelentéseket te tudod megnézni,
+[ 2269.1] egyébként menti a rendszerben, csak
+[ 2271.1] mondjuk ők nem tudják, ha már megtett bejelentéseket
+[ 2273.1] megnézni, és csak te.
+[ 2275.1] Csak, igen. Ez erről szól.
+[ 2277.1] Aztán
+[ 2279.1] ez a futófény, ha van kint
+[ 2281.1] futófény, akkor az árfolyamváltozásnál
+[ 2283.1] rákattinak a futófény,
+[ 2285.1] a futófényre kiküldi az
+[ 2287.1] árfolyamot. Ez elmaradhat, ezt lehet
+[ 2289.1] automatizálni. Igen?
+[ 2291.1] Tehát ahol...
+[ 2293.1] Hát most igen, ezt be lehet
+[ 2295.1] állítani a gépbe, hogy hol van
+[ 2297.1] futófény, hol nincs, ezt is ugye le tudjuk
+[ 2299.1] adni, hogy melyiknél van, melyik pénzt
+[ 2301.1] állnál, beállítjátok, és ha van árfolyamváltozás,
+[ 2303.1] automatán ki tudja küldni.
+[ 2305.1] Mi van akkor, ha eddig nem volt futófény,
+[ 2307.1] és most van? Azt be lehet
+[ 2309.1] igen itt állítani az egyéb beállításokban.
+[ 2311.1] Tehát ott kell majd egy menüpont, ahol
+[ 2313.1] fel tudjátok menni, hogy hol van futófény,
+[ 2315.1] hol nincs. Igen, ezt is meg fogom
+[ 2317.1] mutatni. Ja, oké.
+[ 2319.1] Akkor a körlevelek, azt
+[ 2321.1] mutattam, ott meg lehet nézni.
+[ 2323.1] Pénztárszünet, ez azért van,
+[ 2325.1] mert a táblát a kedves ügyfelem
+[ 2327.1] mindig látja, ott van az én telefonszámom,
+[ 2329.1] azt látja, de hogy fönt van egy óra,
+[ 2331.1] azt nem látja. Ezért, hogy hát, ha
+[ 2333.1] észreveszi, az árfolyam kiállító monitorokon
+[ 2335.1] be lehet állítani a pénztárszünetet.
+[ 2337.1] Ez lehet technikai, vagy
+[ 2339.1] evétszünet valamelyik, és
+[ 2341.1] be tudom állítani, hogy ez a szünet
+[ 2343.1] mettől meddig szól, mondjuk.
+[ 2345.1] Van erre korlát?
+[ 2347.1] Nincs. Nincs, tehát itt bármennyit
+[ 2349.1] nem tudok állítani. Igen, ezt akkor szoktuk
+[ 2351.1] beállítani, ha tényleg szüneten van
+[ 2353.1] bent ebédel, vagy kimegy kint ebédel,
+[ 2355.1] vagy ha az intumbab-be enged ügyfelet,
+[ 2357.1] és azért van technikai szünet.
+[ 2359.1] Például a technikai
+[ 2361.1] szünetnél ott értem, hogy nincs időkorlát,
+[ 2363.1] de mondjuk egy evétszünetnél
+[ 2365.1] sincs, tehát ezt nem is... Nincs, mert azt
+[ 2367.1] mi ellenőrizzük, megkapjuk a riasztólistát,
+[ 2369.1] ugye, mert ha bent ebédel a kamera felvétel
+[ 2371.1] alapján ellenőrzöm, az elméletek
+[ 2373.1] húsz percnél többet nem
+[ 2375.1] töltet szüneten.
+[ 2377.1] Na, már most hiába korlátozom ezt be,
+[ 2379.1] ő akkor sem fog bejönni, ha ez már elmúlt.
+[ 2381.1] Igen, úgyhogy ez nem szükséges
+[ 2383.1] bekorlátozni. Az a lényeg, hogy ott
+[ 2385.1] ki lehessen jelezni, bár talán
+[ 2387.1] ha az ügyfél az F1-ot megnézik, ha látja ott
+[ 2389.1] középen pirosban, majd meg fogom mutatni, hogy
+[ 2391.1] hogy működik, hogy szünet van. Jó.
+[ 2393.1] Oké, akkor ez ennyi.
+[ 2397.1] R-folyam, ez az F1.
+[ 2399.1] Amit mondtam, hogy le is
+[ 2401.1] kell nyomtatni az R-folyamokat, de rögzítjük,
+[ 2403.1] mert a lenyomtatott R-folyam, az csak
+[ 2405.1] a vételaladás és az elszámoló R-folyam.
+[ 2407.1] Itt viszont a sávos R-folyamokat
+[ 2409.1] is tudjuk rögzíteni,
+[ 2411.1] ami törvényjelöíres,
+[ 2413.1] hogy jól lehessen esetleg
+[ 2415.1] visszanézni, akkor vannak az e-haviak
+[ 2417.1] és a régebbiak. E-haviban
+[ 2419.1] ugye például ez a március
+[ 2421.1] 12-ei, itt van mindig az, hogy
+[ 2423.1] mikor volt az R-folyam
+[ 2425.1] változás, ez hanyadik
+[ 2427.1] 9 óra 54-es. Itt van egy kérdésem.
+[ 2429.1] Igen? Az e-havi
+[ 2431.1] az mindig az
+[ 2433.1] aktuális hónapot jelenti, vagy 30 napot?
+[ 2435.1] Igen, mindig az aktuális hónapot.
+[ 2437.1] Jó.
+[ 2439.1] És akkor amit is mondtam,
+[ 2441.1] ugye vannak a valótenemek felsorolva,
+[ 2443.1] van a vételjárfolyam, az eladásjárfolyam,
+[ 2445.1] azt mindig száz egységre kell
+[ 2447.1] kielezni,
+[ 2449.1] az R-folyam kijelzőn is, meg itt is.
+[ 2453.1] Ha már maradunk az
+[ 2455.1] általánosításnál, hogy például ilyen listanézetről
+[ 2457.1] beszélünk, akkor például hát be is jövünk,
+[ 2459.1] hogyha lenne egy ilyen szorcol, hogy
+[ 2461.1] rendezges-e, vagy egy
+[ 2463.1] kereső, ez csak így.
+[ 2465.1] Ez így tökéletes.
+[ 2467.1] És akkor ugye vannak,
+[ 2469.1] mondtam, hogy vannak sávos árfolyamaink,
+[ 2471.1] itt az első, második, ez mindegyik
+[ 2473.1] csoportnál, amit az főértektár
+[ 2475.1] lekaribrál, más.
+[ 2477.1] És ezek is így szerepelnek, hogy mi az
+[ 2479.1] árfolyamváltozás. Ez a sávos árfolyam
+[ 2481.1] ez mit jelenti? Azt jelenti,
+[ 2483.1] hogy például,
+[ 2485.1] nálunk mennyi az első sáv?
+[ 2487.1] 50 vagy 100 ezer?
+[ 2489.1] 50. 50 ezer fölött
+[ 2491.1] vásárol az ügyfél, akkor automatikus
+[ 2493.1] meg lehet adni neki a
+[ 2495.1] következőt, sőt meg kell adni a következőt.
+[ 2497.1] Az ilyen kedvezmény és...
+[ 2499.1] Vételeladásnál ezt meg fogom mondani, mert
+[ 2501.1] ott is van benne a svéd csavar,
+[ 2503.1] hülyeségvédelem, hogy a pénzkeresmet tudjon
+[ 2505.1] tévedni. Ezt most csak úgy
+[ 2507.1] elmondom, hogy ezt le kell,
+[ 2509.1] hogy mentsük,
+[ 2511.1] mert ez törvényelvéres. Szia, mondjad!
+[ 2515.1] Igen? 73.
+[ 2521.1] Hello!
+[ 2527.0] És akkor itt lehet lépkedni,
+[ 2529.0] másik hónapra,
+[ 2531.0] előző árfolyamra,
+[ 2533.0] hát ez a tegnapi,
+[ 2535.0] és akkor ezeket minden
+[ 2537.0] változást le kell rögzíteni.
+[ 2539.0] Igen, következőkre
+[ 2541.0] meg vissza tudsz lépni.
+[ 2543.0] Foglaló. Foglaló átvétele.
+[ 2545.0] Bizonyos
+[ 2547.0] valuták rendelésének a foglalót
+[ 2549.0] veszünk föl, ami kötelező,
+[ 2551.0] ami egy elkönyített kassza, tehát
+[ 2553.0] az nem a valutás kasszába rak,
+[ 2555.0] hanem nálunk többféle kassza van a
+[ 2557.0] kezelésének, van a valutás,
+[ 2559.0] van a foglalós kassza,
+[ 2561.0] ha van valahol Western Union,
+[ 2563.0] ami meg fog szűnni, tehát a Western Union,
+[ 2565.0] monogram nem is mondom, mert az kikerül innen,
+[ 2567.0] hanem foglaló,
+[ 2569.0] igen, ha kikerül minden,
+[ 2573.1] még az elker, az benne van,
+[ 2575.1] az nem fog kikerülni, tehát elkereskedelem, ha van,
+[ 2577.1] foglaló, most van még
+[ 2579.1] benne a Western Union is, de ez
+[ 2581.1] elméletileg hamarosan kikerül,
+[ 2583.1] és ezeket mind elkönyítetten kell kezelni,
+[ 2585.1] ez is törvényi előírás, mert a valutás
+[ 2587.1] kassza az a bankpénze,
+[ 2589.1] a foglaló az visszajár az ügyfélnek,
+[ 2591.1] stb.
+[ 2593.1] Tehát a foglalóban van foglaló átvétele,
+[ 2595.1] visszafizetése,
+[ 2597.1] akkor, amikor
+[ 2599.1] az ügylet létrejött, vagy meghiúsult,
+[ 2601.1] az ügyletek bizonylatai,
+[ 2603.1] azt ugye vissza tudom nézni,
+[ 2605.1] hogy van-e függőben lévő, vagy egyáltalán,
+[ 2607.1] mondjuk itt nem nagyon van foglaló, csak az egyesben,
+[ 2609.1] van a készlet,
+[ 2611.1] foglalót
+[ 2613.1] forintban is,
+[ 2615.1] hogy mennyi foglalónk van beszélve.
+[ 2617.1] Igen, hogy a foglalók
+[ 2619.1] mennyi pénz van,
+[ 2621.1] forint és valuta is lehet benne.
+[ 2623.1] Úgymond ennél a gépnél,
+[ 2625.1] vagy ennél a felhasználónál,
+[ 2627.1] vagy összesen ennél a felhasználónál.
+[ 2629.1] Csak ennél.
+[ 2631.1] Mennyi van?
+[ 2633.1] Ezt mutatja.
+[ 2635.1] És ugye itt volt ez a bizonylatok,
+[ 2637.1] hogyha lett volna itt foglaló,
+[ 2639.1] akkor meg tudom nézni,
+[ 2641.1] azt megfogjuk majd,
+[ 2643.1] hogy van-e foglaló,
+[ 2645.1] ami már megtörtént a visszaadása,
+[ 2647.1] vagy függőben lévő,
+[ 2649.1] de itt simán tudunk könnyűelni egyet.
+[ 2651.1] Ugye a foglalónál,
+[ 2653.1] ha belemegyek,
+[ 2655.1] mindig megkérdező,
+[ 2657.1] hogy milyen tranzakciót kérem vételhez,
+[ 2659.1] vagy eladáshoz.
+[ 2661.1] Legyen vétel.
+[ 2663.1] Milyen valuta?
+[ 2665.1] Itt a valutát ki tudom választani,
+[ 2667.1] mondjuk legyen az euró.
+[ 2669.1] Be tudom érni a megrendelt valuta mennyiséget,
+[ 2671.1] mondjuk legyen az tízezer.
+[ 2673.1] Kialkudott árfolyam.
+[ 2675.1] Ez ugye 101-re van, itt is van.
+[ 2677.1] Ezt tudom módosítani,
+[ 2679.1] amit az értektár mondott,
+[ 2681.1] mondjuk 385-ben.
+[ 2683.1] A megrendelés forintértéket kiszámolja.
+[ 2685.1] Az ügylet határideje,
+[ 2687.1] az azt jelenti,
+[ 2689.1] hogy melyik napra foglalja le
+[ 2691.1] az ügyfél a valutát.
+[ 2693.1] Itt is van egy olyan,
+[ 2698.0] hogyha határidő,
+[ 2700.0] az automatikusan mindig más napra
+[ 2702.0] írja be.
+[ 2704.0] Ezt lehet módosítani.
+[ 2706.0] A módosítás tájnaptól,
+[ 2708.0] ha több mint 5 nap,
+[ 2710.0] akkor szupervizori járászót kér a gép,
+[ 2712.0] ha kevesebb,
+[ 2714.0] akkor simán átírhatom,
+[ 2716.0] és akkor annyi, hogy ide bekattintok,
+[ 2718.0] és akkor át tudom írni,
+[ 2720.0] itt állj 15-re, enter-en.
+[ 2722.0] Az átvett foglaló összegét
+[ 2724.0] és nemét,
+[ 2726.0] azt ugye meghatározhatom én is,
+[ 2728.0] de ő kiszámolja.
+[ 2730.0] Hány százaléka a dolgozó most foglalónál?
+[ 2732.0] Én 5.
+[ 2734.0] Így van, 5 százaléka a foglaló.
+[ 2736.0] Tehát az be van égetve,
+[ 2738.0] hogy automatán a fizetendő összeg
+[ 2740.0] a kép, tesek.
+[ 2742.0] 3 szó kérdeztem.
+[ 2744.0] Sükert vagyok, mondjad.
+[ 2746.0] 1500 euró értele.
+[ 2748.0] Péter, Ferenc, Béla, Xavier.
+[ 2750.0] 51.
+[ 2753.8] Akkor mondjad.
+[ 2755.8] János, Róbert, Quasimodo, Elena.
+[ 2757.8] 69.
+[ 2759.8] Köszi.
+[ 2763.8] Rehetőség van arra,
+[ 2765.8] külön
+[ 2767.8] férték terjengedéllyel,
+[ 2769.8] hogy változtatom a foglalónak
+[ 2771.8] az összegét.
+[ 2773.8] Belekattintok,
+[ 2775.8] kitaladom,
+[ 2777.8] és akkor átrendtem 6000 forintra.
+[ 2779.8] De ezt csak szupervizori jelszóval,
+[ 2781.8] engedéllyel lehet megcsinálni.
+[ 2783.8] Hogyha nincsen,
+[ 2785.8] akkor ugye a kilépek visszaérje.
+[ 2787.8] Illetőleg, hogyha az ügyfélnél
+[ 2789.8] nincsen forint, csak euró,
+[ 2791.8] erre is lehetőség van
+[ 2793.8] átállítani.
+[ 2795.8] Ez is jelszót kér.
+[ 2799.5] És az a lényege a dolognak, hogy ez automatikusan,
+[ 2801.5] ezt a forintösszeget átérje euróra.
+[ 2803.5] Tehát kiszámolja a megadott
+[ 2805.5] árfolyammal.
+[ 2807.5] Itt szupervizori jelszót kér.
+[ 2809.5] Te jelszód
+[ 2811.5] jó, de mondjuk egy köszöbben
+[ 2813.5] dolgozó embernek nem lesz jó jelszó,
+[ 2815.5] minden esetben téged kell keresni.
+[ 2817.5] Így van.
+[ 2819.5] Itt Békés Csabán kell téged keresni?
+[ 2821.5] Nem, az egész országban.
+[ 2825.5] Az árfolyamos jelszóért
+[ 2827.5] mindig a helyi értéktárost
+[ 2829.5] keresik, de
+[ 2831.5] szupervizori jelszóért, a belső
+[ 2833.5] ellenőriért, engem, ha
+[ 2835.5] én nem vagyok, akkor rajtam
+[ 2837.5] kívül még a fő értéktár
+[ 2839.5] készletes a hága
+[ 2841.5] tud adni. Vagy Kósogalló
+[ 2843.5] Széldikó.
+[ 2845.5] Ő milyen pozícióban van
+[ 2847.5] a Széldikó?
+[ 2849.5] Főnök után az első.
+[ 2851.5] Egyébként öt területnek
+[ 2853.5] a területi vezetője, a területi
+[ 2855.5] vezetők főnöke.
+[ 2857.5] Ő az, akivel beszéltünk az a Széldikó?
+[ 2859.5] A Zoli felesége.
+[ 2861.5] Így, ha így tiszta.
+[ 2863.5] És akkor
+[ 2865.5] itt, hogyha a rendelés rendben
+[ 2867.5] van, akkor rendben van, ha nem
+[ 2869.5] ki tudok lépni. És akkor itt
+[ 2871.5] van két lehetőség, vagy regisztrált
+[ 2873.5] ügyfél, tehát aki régi ügyfél és benne van
+[ 2875.5] az adott bázisban, vagy új
+[ 2877.5] ügyfél, akit felrögzítek.
+[ 2879.5] Tehát legyen új ügyfél, és akkor itt fel kell
+[ 2881.5] rögzíteni értelemszerűen
+[ 2883.5] a nevét.
+[ 2885.5] Jó, ezt elmondhatom.
+[ 2895.2] Szia!
+[ 2903.3] 49.
+[ 2910.2] Hello!
+[ 2912.2] Csak ezeket
+[ 2914.2] az adatokat kell magadban hozzánk? Csak, itt csak.
+[ 2916.2] Nincsen értékhatás,
+[ 2918.2] semmi. Tehát, hogy itt mindig. Oké.
+[ 2920.2] 18 év fiatalabb lehet?
+[ 2922.2] Nem.
+[ 2926.3] És nem is engedi a rendszert beírni?
+[ 2928.3] De, engedi. Tehát ők azt a pénztárosra
+[ 2930.3] van bizony. Azt viszont le lehet korlátozni.
+[ 2932.3] Hogy leengedjen olyan rendszert, amit beírni.
+[ 2934.3] Igen, viszont...
+[ 2936.3] Ne korlátozzuk le, megmondom miért nem.
+[ 2938.3] Mert ugye sokat díják, és hogyha csoportja,
+[ 2940.3] azok váltanak való. Tehát akkor
+[ 2942.3] korlátozunk foglalóra, ha máshol
+[ 2944.3] sem korlátozunk le.
+[ 2946.3] Azt a pénztáros nézi.
+[ 2948.3] Jó, csak azért, mert ugye
+[ 2950.3] az állóknál ott mindenképp kell. Tehát ott le kell
+[ 2952.3] korlátozni, de akkor itt igazából nem muszáj.
+[ 2954.3] Annyi, hogy esetleg
+[ 2956.3] egy figyelmeztető üzenet jöjjön fel,
+[ 2958.3] és akkor ha jól elhagyja, akkor azt mondja, hogy
+[ 2960.3] rendben, és akkor ugyanúgy. Jó, de az lehet.
+[ 2962.3] Jelszó nélkül semmi nélkül, csak
+[ 2964.3] egy figyelmeztető. Igen, hogy
+[ 2966.3] nem tudom, ugye a hibő üzeneteink is
+[ 2968.3] itt elul szoktak jönni, hogy ide esetleg
+[ 2970.3] feljön, hogy nem óta 18 éves, vagy ide
+[ 2972.3] középre.
+[ 2974.3] Nem óta 18 éves, így is
+[ 2976.3] rendben van, és akkor rendben van, és akkor
+[ 2978.3] kész. Az úgy jó.
+[ 2980.3] Ha az ügyfej adatai rendben vannak,
+[ 2982.3] akkor ugye még áttekinti, ha
+[ 2984.3] minden rendben van, az ügyfél, és az összegek,
+[ 2986.3] és minden, akkor elfogadja,
+[ 2988.3] és akkor csapagodás készítető mondat,
+[ 2990.3] mert ennek a foglalóállapítása
+[ 2992.3] nincsen kezelési
+[ 2994.3] szolgálata, ezért nem legyen
+[ 2996.3] szolgálat a NAV-os gépre,
+[ 2998.3] ez csak itt van. Tehát akkor itt csak a valutás
+[ 3000.3] gép nyomtat, mert ennek nincsen
+[ 3002.3] kezelési költsége, és így a NAV-os
+[ 3004.3] gépre nem megy át. Igen,
+[ 3006.3] és akkor küld egy e-mailt
+[ 3008.3] az érintett
+[ 3010.3] terület értektárosának,
+[ 3012.3] nekem,
+[ 3014.3] és a fő értektárosnak,
+[ 3016.3] azért, hogyha a pénztárs el is
+[ 3018.3] felejti mondani, hogy ő foglalózott,
+[ 3020.3] vagy nem egyeztet vele, akkor tudja
+[ 3022.3] az értektáros, a fő értektáros is rá tudjon
+[ 3024.3] szólni, mert ugyanis ugye
+[ 3026.3] van olyan, hogy 10 millió forint fölött
+[ 3028.3] kell pénzeszközforrás, tehát
+[ 3030.3] hogy nem is foglalózhat le senki
+[ 3032.3] tételt, az még nem lenne rossz,
+[ 3034.3] hogyha itt a foglaló felvételénél
+[ 3036.3] figyelmeztetne, hogyha az összeg
+[ 3038.3] meghaladja a 10 milliót, vagy
+[ 3040.3] forrásigazolást megkérted. Aha.
+[ 3042.3] Jó, tehát ott is egy figyelmeztető
+[ 3044.3] üzenet jöjjön fel, ha
+[ 3046.3] 10 millió fölött van, hogy a forrásigazolást
+[ 3048.3] elkérted, és ha igen, akkor rendben.
+[ 3050.3] Igen. Jó.
+[ 3052.3] Szia Fontos!
+[ 3054.3] Jó.
+[ 3056.3] Már mondjad akkor, mihez.
+[ 3058.3] Igen, négy szíves.
+[ 3060.3] Igen.
+[ 3062.3] Már benne vagyunk már, nem? Benne.
+[ 3064.3] Kilencvenegy.
+[ 3066.3] Jó. Én is.
+[ 3068.3] Hello. És akkor jelzi is a
+[ 3070.3] pénztárosnak, hogy kimentek az e-mail-ek.
+[ 3072.3] Ebből az egyik megy az ügyfélnek,
+[ 3074.3] a másik marad itt. Aláírja, igen.
+[ 3076.3] És utána az ügyfél ezt visszahozza,
+[ 3078.3] amikor visszakapja a foglalót. És akkor
+[ 3080.3] ez a szöveg, amit rajta van, ennek
+[ 3082.3] mindnek rajta is kell lennie. Jó, ebből is kérünk.
+[ 3084.3] Igen, azt el is írtitek majd a második
+[ 3086.3] ellenját, jó? Jó, jó. És akkor itt ugye
+[ 3088.3] látszik, hogy már be tudunk menni. Látod, akkor
+[ 3090.3] itt van már az ügyfél. Aha.
+[ 3092.3] A foglaló visszafizetésénél. Így van. Itt vissza is tudom
+[ 3094.3] szakítani, meg meg tudom nézni
+[ 3096.3] az ügyletek bizonylatait is. Látod? Aha.
+[ 3098.3] Hogy függőben lévő foglalások, és akkor ott
+[ 3100.3] megjelenik a kis Károly, aki
+[ 3102.3] lefes feladatok a foglalóiát. Így van.
+[ 3104.3] Igen.
+[ 3106.3] És akkor készlete is mindjárt lesz 500
+[ 3108.3] euró. Aha, és akkor itt meg tudom,
+[ 3110.3] oda is bekerül automatikusan a
+[ 3116.3] ha jön az ügyfél a való test
+[ 3118.3] tranzakciót lebonyolítani, akkor először ki kell
+[ 3120.3] könyválni nekem a foglalót, mert ugye ez másik
+[ 3122.3] kasszába van, hogy átkerüljön.
+[ 3124.3] És akkor rámegyünk arra, hogy létrejött
+[ 3126.3] az ügylet, és akkor ki kell választanom,
+[ 3128.3] mert ha több van, éppen
+[ 3130.3] melyiké, és akkor rákattintok.
+[ 3132.3] És itt
+[ 3134.3] többféle lehetőség
+[ 3136.3] van. Az ügylet létrejött, a foglalat visszafizetem.
+[ 3138.3] Az ügylet meghiúsult az ügyfél
+[ 3140.3] hibájából. Ilyenkor
+[ 3142.3] a foglaló, az a lényeg,
+[ 3144.3] hogy marad nálunk.
+[ 3146.3] Tehát ez
+[ 3148.3] kikönyveli szépen.
+[ 3150.3] Nem, marad készletem.
+[ 3152.3] De kikönyveli
+[ 3157.7] a készletről, mert ugye ezt át kell vennünk
+[ 3159.7] a költséges kasszából. Tehát, hogy
+[ 3161.7] ha arra megyek, kikönyvelik. Viszont,
+[ 3163.7] ha arra megyek, hogy az ügylet meghiúsult
+[ 3165.7] az exkluzív change hibájából,
+[ 3167.7] akkor az ügyfélnek törvény szerint
+[ 3169.7] a foglaló duplája jár vissza.
+[ 3171.7] Tehát akkor úgy könyveli ki,
+[ 3173.7] hogy duplált kell az ügyfélnek fizetni.
+[ 3175.7] Mikor lehet az, hogyha például
+[ 3177.7] ilyen van, hogy mondjuk a T-bátukból
+[ 3179.7] majd ilyeneket... Elfelejti az értéktáros
+[ 3181.7] a bankból megrendelni.
+[ 3185.7] Rütkán, de volt ilyen.
+[ 3187.7] És akkor
+[ 3189.7] mondjuk ő 1000 eurót kapná jelen esetben
+[ 3191.7] vissza? Igen. Mikor?
+[ 3193.7] Vagy ez rögtön írta?
+[ 3195.7] Rögtön azonnal. Ha jön
+[ 3197.7] a pénzért és
+[ 3199.7] nem fogadja el azt, hogy
+[ 3201.7] esetleg másnapra vanna meg a pénz, akkor
+[ 3203.7] ilyenkor meg ilyen dupla.
+[ 3205.7] Annyi, hogy ilyen esetben
+[ 3207.7] ugye mivel a készlet csak 500 euró
+[ 3209.7] nem tud kifizetni 1000-et, tehát kell
+[ 3211.7] majd egy olyan, hogy át kell venni a
+[ 3213.7] költséges kasszától még 500 eurót,
+[ 3215.7] hogy vissza tudja az ügyfélnek fizetni.
+[ 3217.7] Tehát a költséges
+[ 3219.7] kasszából átkönyvelődik a foglalós
+[ 3221.7] kasszába? Igen, egy átvételre.
+[ 3223.7] És onnan akkor... Ez átvételi
+[ 3225.7] bizonylatos, tehát ezt ti kézzel töltitek?
+[ 3227.7] Nem, gépen. Gépen.
+[ 3229.7] Igen, gépen. És addig
+[ 3231.7] ugye az nagyon fontos, hogy minden
+[ 3233.7] tételnél nézze meg mindig a gép,
+[ 3235.7] hogy van-e a kassza, van a pénztereles,
+[ 3237.7] van annyi összeg, mint amennyit eladni akar,
+[ 3239.7] venni akar, kifizetni akar a pénztáros.
+[ 3241.7] És ez a megrendelés dolog, hogy
+[ 3243.7] mit tudom én, kell
+[ 3245.7] 10.000 euró, és akkor minden menjen alul,
+[ 3247.7] értesítés automatikusan még a bank felé?
+[ 3249.7] Nem tudod megoldani, és nem
+[ 3251.7] fogadja, mert
+[ 3253.7] hivatalosan e-mailbe kell, tehát
+[ 3255.7] ezeket nem tudod megoldani, hogy a bank felé
+[ 3257.7] menjen, mert az az értéktárosnak kell.
+[ 3259.7] Oké. Az semmiféleképpen nem.
+[ 3261.7] Mert hogyha például
+[ 3263.7] vannak olyan valuták, amiket fixingre hozunk ki,
+[ 3265.7] nem lehet alkotni az árfejomból,
+[ 3267.7] de vannak olyan valuták, amiket kötésre
+[ 3269.7] hozunk ki, bizonyos összeg határ fölött,
+[ 3271.7] jó árfejomból tudunk a banktól, azért
+[ 3273.7] ad árfejomból az értéktáros, és az értéktárosnak
+[ 3275.7] kell ezt a kötés
+[ 3277.7] napján megjeleznie a banknak külön,
+[ 3279.7] tehát ez nagyon, ha nem úgy jelezzük,
+[ 3281.7] akkor megbüntet a bank, tehát ez nagyon
+[ 3283.7] farangozik, tehát innen csak az értéktárrel
+[ 3285.7] kommunikál a gép, a bankkal nem.
+[ 3289.7] Igen, itt nekem olyan
+[ 3291.7] kérdésem lenne, hogy mi van akkor,
+[ 3293.7] hogyha esetleg
+[ 3295.7] elfelejti, vagy rendelnie.
+[ 3297.7] Az értéktáros visszakapja
+[ 3299.7] ebből a passzából
+[ 3301.7] 995 pontot,
+[ 3303.7] mert nekem majd nincs, Tődinek
+[ 3305.7] akár túl nincs, innen kell adni.
+[ 3307.7] Jó, mindjárt.
+[ 3311.2] Akkor kiadom.
+[ 3313.2] Önnek egy két perc és készen vagyok.
+[ 3315.2] De kulcsot hozzon!
+[ 3317.2] Jó, és akkor mennyit adok ki?
+[ 3319.2] 995
+[ 3321.2] Szerintem annyi volt.
+[ 3323.2] Én nem tudom, azt nem néztem meg, de mindjárt.
+[ 3325.2] 150 lehet.
+[ 3330.6] Elvagy, te is.
+[ 3332.6] Nem hallottam egy kicsit, hogy csinálj.
+[ 3350.3] Pontot ott tűnik, hogy jöhet, én kikönyveltem.
+[ 3352.3] Ezt kölcsönszem, hogy
+[ 3359.3] nyertem.
+[ 3369.4] Átadáshoz nem szoktatok adni navosat, ugye?
+[ 3371.4] Nem.
+[ 3388.7] 995
+[ 3390.7] 3 darabot keresünk?
+[ 3392.7] Igen, majd a kasztát.
+[ 3394.7] Majd most.
+[ 3398.1] Az ráért.
+[ 3400.1] Jó, megcsináltak?
+[ 3402.1] Oda laktuk.
+[ 3406.1] Bocsánat.
+[ 3408.1] Okés.
+[ 3410.1] Szóval, hogy az,
+[ 3412.1] lát volna itt a kérdésen,
+[ 3414.1] hogy
+[ 3416.1] mondjuk elfelejtettétek kérni,
+[ 3418.1] vagy nem tudom, és akkor visszakapja
+[ 3420.1] az 1000 euróját,
+[ 3422.1] és azt mondja, hogy oké,
+[ 3424.1] szeretnék foglalót tenni, mert
+[ 3426.1] attól függetlenül nekem kell a pénz,
+[ 3428.1] és akkor reméljétek meg, hogy újra lehet.
+[ 3430.1] Tehát tulajdonképpen, hogyha itt azt mondja,
+[ 3432.1] hogy nem vár egy napot, akkor gazdagabb
+[ 3434.1] 1000 euróval.
+[ 3436.1] Nem szokott ilyen lenni.
+[ 3438.1] Ritkán fordul elő,
+[ 3440.1] de szerintem,
+[ 3442.1] amióta én itt vagyok, egyszer fordult elő,
+[ 3444.1] hogy vissza kell tiszteltetni.
+[ 3446.1] Az se fordul elő sűrűen,
+[ 3448.1] hogy az üsve nem jön értek.
+[ 3450.1] Az akkor fordult elő,
+[ 3452.1] amikor kitört a háború,
+[ 3454.1] és akkor így mentek fel az árak,
+[ 3456.1] és akkor teszem azt föl,
+[ 3458.1] mert akkor is, hogyha mi veszünk tőle, akkor is befoglalózzuk,
+[ 3460.1] mert nekünk akkor is be kell kötni,
+[ 3462.1] és teszem azt föl, ő el akart adni 40.000 eurót.
+[ 3464.1] Adtunk, értettem,
+[ 3466.1] 398 Ft-ot,
+[ 3468.1] és másnapra vállaltuk, vagy két nap múlva,
+[ 3470.1] mert úgy tudtuk bekötni,
+[ 3472.1] és akkor jött az ügyfél,
+[ 3474.1] vagy el se jött az ügyfél, mert két nap múlva
+[ 3476.1] már 420 érmásból el tudta adni,
+[ 3478.1] és itt be volt fizetve mondjuk egy összeget,
+[ 3480.1] mint a 20.000 Ft-ja,
+[ 3482.1] de ott 100-zal többet kapott ért,
+[ 3484.1] akkor hagyta itt az 20.000-et, kész.
+[ 3486.1] Tehát nagyon-nagyon ritkán fordulnak elő ezek,
+[ 3488.1] de ennek benne kell lennie,
+[ 3490.1] mert ha előfordul, akkor így le kell tudnunk könyvelni,
+[ 3492.1] mert ez is körülmény előírás.
+[ 3494.1] Mert azért nem előleget veszünk föl,
+[ 3496.1] mert az nem jár vissza,
+[ 3498.1] hanem a foglalót, ami ugye marad,
+[ 3500.1] és meg vissza is jár.
+[ 3502.1] Annyi még, hogy itt felírtam
+[ 3504.1] az átvételi bizonylatot,
+[ 3506.1] az egészségminkát,
+[ 3508.1] igazából ez igaz lesz,
+[ 3510.1] minden olyan papírra, amit kell nyomtatni,
+[ 3512.1] vagy ki kell tölteni,
+[ 3514.1] vagy nem tudom, kedvé, vagy akármi,
+[ 3516.1] bármilyen, mindenből tudok
+[ 3518.1] másolatot nyomtatni itt már.
+[ 3520.1] Igen, az tökéletes, tehát, hogy mindenből
+[ 3522.1] szeretnénk egy másolatot kérni,
+[ 3524.1] hogy pontosan tudjuk, mihova kell.
+[ 3526.1] Igen, mert hogy a például a valótes bizonylatokon is
+[ 3528.1] törvényelvére, hogy minek kell rajta lenni.
+[ 3530.1] Így van.
+[ 3532.1] És akkor be tudjuk csatornázni, hogy mit, hova,
+[ 3534.1] és amikor küldjük nektek az összefoglalót,
+[ 3536.1] akkor ott is majd arra szeretnélek kérni,
+[ 3538.1] hogyha esetleg olvasod át, vagy valami,
+[ 3540.1] akkor ott is légy szélenőrizve azt, hogy
+[ 3542.1] jó helyre raktad a bizonyos papírokat,
+[ 3544.1] az van ott, és csak az, aminek
+[ 3546.1] lennie kell, mert ugye ez fontos, mert
+[ 3548.1] akkor a rendszer is úgy fogja csinálni,
+[ 3550.1] hogy kell. Jó, oké.
+[ 3552.1] Tehát akkor most mondjuk azt, hogy az ügylet létrejött,
+[ 3554.1] és visszafizetjük a foglalót,
+[ 3556.1] mivel nem a mai napra szól,
+[ 3558.1] hanem a holnapi napra,
+[ 3560.1] vagy hogyha teszem azt fel az ügyfelet,
+[ 3562.1] felhívjuk, hogy
+[ 3564.1] akkor tetszik tudni, mikor tetszik jönni a pénzért,
+[ 3566.1] és úúú, elutaztam Pestre, holnap tudok.
+[ 3568.1] Akkor is jelzik nekem,
+[ 3570.1] és akkor is, mivel nem határidő alapján
+[ 3572.1] veszik fel,
+[ 3574.1] hanem lejárat után előtte,
+[ 3576.1] akkor megkérdezi a gép, hogy valóban ki akarod
+[ 3578.1] fizetni, vagy véletlenül mentél bele, és
+[ 3580.1] befejezed a tranzakciót. És ha mégis most
+[ 3582.1] fizetem ki, megint kér egy jelszót,
+[ 3584.1] mert csak engedéllyel lehet.
+[ 3586.1] Olyan van, hogy nem engedélyezitek?
+[ 3588.1] Igen. Mikor van olyan?
+[ 3590.1] Hát,
+[ 3592.1] teszem azt fel, amikor
+[ 3594.1] mit mondjak,
+[ 3596.1] mikor nem engedélyezek, tehát ilyet engedélyezünk,
+[ 3598.1] mikor nem engedélyezek egy tétát.
+[ 3600.1] Tudom, de mikor
+[ 3604.1] nem szoktunk engedélyezni, mondjam egy példát,
+[ 3606.1] mert úgy hirtelen nem jut a szembe.
+[ 3608.1] Megvan. Például más jön érte,
+[ 3610.1] mert megkérdezem, hogy
+[ 3612.1] jó, akkor Kispistának vettél fel,
+[ 3614.1] Kispista hozta a bizonylatát,
+[ 3616.1] ő jött érte, és mondja, nem, a nagymamája
+[ 3618.1] jött, de nem hozta az ellenbizonylatot.
+[ 3620.1] Akkor nem adok rá jelszót, nem engedélyezek.
+[ 3622.1] Aha, mert hogy hozni kell a
+[ 3624.1] bizonylatot, és aki befizette
+[ 3626.1] a foglalatot, csak az vehet is fel.
+[ 3628.1] Ha nem, akkor más, akkor kell
+[ 3630.1] meghatalmazás.
+[ 3632.1] Meghatalmazás kell, meghatalmazás nélkül
+[ 3634.1] nem mehet is fel.
+[ 3636.1] Az álomnál is van egy ilyen
+[ 3638.1] meghatalmazásos dolog, és itt is kell
+[ 3640.1] olyan, hogy behozza a meghatalmazást,
+[ 3642.1] te beszkenneled, és ezt feltöltöd
+[ 3644.1] oda rendszerbe, és bármitől visszanézhetél.
+[ 3646.1] Igen, a valutási foglalatban
+[ 3648.1] így van. Oké, jól van.
+[ 3650.1] Mert hogy a zálogban annyi van,
+[ 3652.1] van másképp, hogy ott, akinél van a zálog,
+[ 3654.1] írsz, kiválthatja a tárgyat, akár meghatalmazás
+[ 3656.1] nélkül is, viszont akkor itt nem.
+[ 3658.1] Tehát itt mindenképpen, tehát itt kötelező a
+[ 3660.1] meghatalmazás, ha nem az az ügyfeje.
+[ 3662.1] Valóta váltásnál is 100 ezer forint
+[ 3664.1] és 300 ezer között van az
+[ 3666.1] egyszerű azonosítás, ott csak név, kárszületés,
+[ 3668.1] hely és idő. 300 ezer
+[ 3670.1] fölött van a teljes azonosítás,
+[ 3672.1] ott okmányt kérünk be, minden adatot
+[ 3674.1] felvezetünk, a bizonylaton nincs minden
+[ 3676.1] adat, csak a törvény előírásnak megfelelő,
+[ 3678.1] és beszkeneljük az okmányokat.
+[ 3680.1] Személyigazolványt,
+[ 3682.1] lakcímkártya, lakcímoldalát,
+[ 3684.1] a másikat adatvédelmi szempontból
+[ 3686.1] aggáljuk, és ezt nem lehet,
+[ 3688.1] és ezt tároljuk. És ez úgy van,
+[ 3690.1] hogy törvény szerint 8 év.
+[ 3692.1] Igen.
+[ 3694.1] Hova tároljátok, ügyfélhez?
+[ 3696.1] Vagy transzakcióhoz, vagy mind a kettő?
+[ 3698.1] Mind a kettő. Tehát majd meg fogom
+[ 3700.1] mutatni, hogy ugye mivel ez
+[ 3702.1] telepített program, itt
+[ 3704.1] a gépre tárolja,
+[ 3706.1] számokat ad neki az ügyfeleknek,
+[ 3708.1] és oda tárolja az okmányait mindent,
+[ 3710.1] és előhívható...
+[ 3712.1] Ügyfélezonosítót kapunk tulajdonképpen.
+[ 3714.1] Mint ahogy a kártyahozállóban,
+[ 3716.1] sokkal csak itt generálja maga a rendszert.
+[ 3718.1] És elő tudod hívni
+[ 3720.1] a transzakcióhoz is, meg
+[ 3722.1] ügyfélhez is.
+[ 3724.1] És akkor úgy jön be.
+[ 3726.1] És gondolom a transzakciónak is van egy száma.
+[ 3728.1] Bizonyos számmal, így van.
+[ 3730.1] És akkor a transzakciót gondolom azzal a számmal
+[ 3732.1] tudod megnézni az ügyfelek mögöző számmal.
+[ 3734.1] A pénztáros nem tudja ezt a számot.
+[ 3736.1] Ja, persze, értem, de hogy...
+[ 3738.1] Én tudom megnézni.
+[ 3740.1] Az nem is látszik itt a pénztárosnál?
+[ 3742.1] Nem.
+[ 3744.1] Jó, oké.
+[ 3746.1] Mert hogy ugye az előbbne egyszerből látszik,
+[ 3748.1] meg egyébként is csipantja le,
+[ 3750.1] de akkor itt nem látszik az azonosító
+[ 3752.1] a pénztárosnál, viszont bent
+[ 3754.1] úgymond a központban vagy a központi
+[ 3756.1] adminisztrátoroknál, a
+[ 3758.1] vezetőknél ott látszik.
+[ 3760.1] Tehát ők meg tudják nézni.
+[ 3762.1] Oké, és akkor ha a jelszót
+[ 3764.1] ugye itt is, hogyha rossz jelszót mondok,
+[ 3766.1] nincs rendben, újat ad.
+[ 3768.1] Ha jót adok, akkor jelszó elmegy.
+[ 3770.1] És ha le-okézom, akkor megkérdezi,
+[ 3772.1] hogy mi volt a határidő módosításának
+[ 3774.1] dátuma, és akkor itt ilyen nem is tudom
+[ 3776.1] 20 karaktert lehet sem begépelni.
+[ 3778.1] Így van egy indokat, hogy
+[ 3780.1] ügyfélkérése,
+[ 3782.1] aztán ennyi, és akkor
+[ 3784.1] innen...
+[ 3788.1] És ha nem annyi karaktert írsz be,
+[ 3790.1] akkor is kilép.
+[ 3792.1] Jó, és akkor itt szépen lenyomtatja
+[ 3794.1] azt, hogy visszafizettük,
+[ 3796.1] azokkal az adatokkal, és akkor itt
+[ 3798.1] a kész lett. Az nullás lesz ugye, mert
+[ 3800.1] visszaltuk az ügyfélnek,
+[ 3802.1] és viszont a bizonylatoknál is megjelenik,
+[ 3804.1] a rendezett foglalásoknál,
+[ 3806.1] hogy itt ugye B volt, mert
+[ 3808.1] bejött a pénz, K volt, mert
+[ 3810.1] kiment a pénz, tehát itt is más
+[ 3812.1] a bizonylatszám, majd látni fogjátok, hogy
+[ 3814.1] a valutás bizonylatoknál
+[ 3816.1] mindig a V a vétel,
+[ 3818.1] az E az eladás, és mindig
+[ 3820.1] először három karakterben,
+[ 3822.1] már vannak három karakteres pénzt,
+[ 3824.1] számaink is, mindig a pénztár
+[ 3826.1] száma szerepel, hogy könnyebben
+[ 3828.1] lássuk, hogy ez a bizonylat honnan szervezik.
+[ 3830.1] Például ez a 105-ös, akkor
+[ 3832.1] ez úgy kezdődik, hogy V 105.
+[ 3834.1] Az a 76-os, V 076.
+[ 3836.1] Vagy E, vagy akár.
+[ 3838.1] Értem, értem. Ja, oké.
+[ 3840.1] Jó, akkor ez volt a foglaló,
+[ 3842.1] ezt szerintem kivesésztük.
+[ 3844.1] Terminál,
+[ 3846.1] ez lehet, hogy nem lesz
+[ 3848.1] szükséges, vagy nem tudom,
+[ 3850.1] mivel a zárásokat
+[ 3852.1] a szerverre be kell koldani. Ha egy
+[ 3854.1] zárás nem ment be, vagy hibásan
+[ 3856.1] ment be, nethiba miatt, itt lehet
+[ 3858.1] újra koldani
+[ 3860.1] a zárásokat. Tehát annyi, hogy ki lehet
+[ 3862.1] választani bármelyik napot, mondjuk
+[ 3864.1] kiválasztom a tegnapot, és akkor ha arra megyek,
+[ 3866.1] hogy csomagolás mehet, akkor ő összeszed mindent,
+[ 3868.1] ami kell neki, beköldi
+[ 3870.1] a szerverre, és vár a visszaigazolásra,
+[ 3872.1] és hogyha bement, akkor zöld, ha
+[ 3874.1] nem ment, akkor piros.
+[ 3876.1] Ennyi, ezt nem tudom, hogyan lesz.
+[ 3878.1] Tehát S10-es rendben beköldve ennyi.
+[ 3880.1] Jó, és akkor
+[ 3882.1] ez erre való, AFA tábla.
+[ 3884.1] Mivel van
+[ 3886.1] olyan pénztár, ahol AFA-zunk,
+[ 3888.1] ezért itt lehet
+[ 3890.1] AFA-t is kifizetni, tehát
+[ 3892.1] van egy, ez az AFA tábla,
+[ 3894.1] ez igazándiból,
+[ 3896.1] nem is, de ezt kelljen,
+[ 3900.3] kelljen, ahol van AFA,
+[ 3902.3] Tesco-ban van AFA, ott tudom
+[ 3904.3] majd az AFA programot, itt is, hogyha
+[ 3906.3] beélesítem, meg tudom majd mutatni,
+[ 3908.3] de ott szükséges az.
+[ 3910.3] Ez szintén dátumra hozza
+[ 3912.3] a nyitókészleteket, a befizetést,
+[ 3914.3] bevételt kiadást, visszatérítést,
+[ 3916.3] záró.
+[ 3918.3] Ennyi, tehát.
+[ 3920.3] Ezt lefotózom egy pillanat.
+[ 3922.3] Itt nem tudom,
+[ 3924.3] mi a szomszéd, de nagyon nagy buli van, ahogy
+[ 3926.3] hallom.
+[ 3928.3] Lehet feladtunk már egy társasház,
+[ 3930.3] vagy megadtunk magattunk a
+[ 3932.3] Mavi egypénztárban.
+[ 3934.3] Meg egyszer, mert nem tudom, hogy ennyi
+[ 3936.3] lehet otthon.
+[ 3938.3] Oké.
+[ 3943.3] És ezzel, bocsi, bocsi,
+[ 3945.3] folyamatban ugye az AFA tábla, hova élesz,
+[ 3947.3] miért fontos, hogy én lássam, hogy tudjam.
+[ 3949.3] Itt ez most inaktív,
+[ 3951.3] a Tesco AFA, meg a Metro AFA.
+[ 3953.3] A Tescokban, most már metrókban nem egyedül
+[ 3955.3] praktikában semmi metrós AFA-t,
+[ 3957.3] a Tescokban be van élesítve az a gomb,
+[ 3959.3] és akkor ott lehet AFA visszatérítést végezni
+[ 3961.3] az ügyfeleknek. Ez megint egy külön
+[ 3963.3] kassza. Azt meg fogom, majd be fogom itt
+[ 3965.3] élesíteni, és akkor meg fogom mutatni nektek,
+[ 3967.3] ha odajutunk, nem sokára.
+[ 3969.3] Igen, hogy
+[ 3971.3] mikor, vagy minek, vagy...
+[ 3973.3] Csak nem is tudom, hogy itt meg tudom,
+[ 3975.3] igen, meg tudom. Mert két
+[ 3977.3] programjuk van, ugyanúgy, mint a
+[ 3979.3] Veuna MoneyGram-mel, hogy van
+[ 3981.3] az AFA-soknak az Innova-nak a
+[ 3983.3] programja, ahol lekönyveli az AFA-t,
+[ 3985.3] és mivel az nem
+[ 3987.3] csinál pénztárállást,
+[ 3989.3] ezért le kell a műprogramunkban is könyvelni.
+[ 3991.3] Tehát ott is csak az összeget
+[ 3993.3] fogod lekönyvelni,
+[ 3995.3] meg fogom mutatni, jó? Nem sokára.
+[ 3997.3] Ez főtt a mai forgalom, ami fontos,
+[ 3999.3] lehet. Ez az, hogyha
+[ 4001.3] ugye volt tájnapon
+[ 4003.3] forgalom,
+[ 4005.3] akkor azt írja
+[ 4007.3] valóta nemenként, forint
+[ 4009.3] összesenben, mint összesenben,
+[ 4011.3] vagy a valóta átsvételt eladást is.
+[ 4015.3] Itt is csinálok egy képpel pillanat.
+[ 4020.6] Ez a,
+[ 4022.6] hogy mondjam, órára
+[ 4024.6] pontosan, tehát eddig a pillanatig, ugye?
+[ 4026.6] Igen, ahogy előhívom,
+[ 4028.6] eddig a pillanatig. Nyitástól,
+[ 4030.6] vagy rekettől, vagy bármelyettől?
+[ 4032.6] Nyitástól. Ez csak a tájnapi.
+[ 4034.6] Szóval,
+[ 4040.1] nem remegne a kezem.
+[ 4042.1] Oké,
+[ 4044.1] és kanyar, megpróbálom beélesíteni
+[ 4046.1] az át.
+[ 4072.1] Mikor eddig ezt ezen a gépben
+[ 4074.1] nem tudom.
+[ 4076.1] Amúgy, hogyha valahova át kell mennünk, vagy
+[ 4078.1] ilyenek, akkor kell nyugodtan. Teszkóban van.
+[ 4080.1] Persze, oda át. És akkor oda át.
+[ 4082.1] De akár még át sem kell menni, mert távolival
+[ 4084.1] rámegyek, és azt az egyet lefejezzek.
+[ 4086.1] És akkor nem kell kimenni.
+[ 4088.1] Úgyhogy ennyi. Mindjárt visszalép.
+[ 4090.1] Az a
+[ 4092.1] beállításmenű, azt is meg megmondom, nem
+[ 4094.1] akarok bekavarni, hanem akkor
+[ 4096.1] menjünk végig minden
+[ 4098.1] időkérdése.
+[ 4100.1] Semmi gond,
+[ 4102.1] addig elmegyek mostóba.
+[ 4104.1] Jó, ahová először benyitottál ott.
+[ 4106.1] Nekem az egész
+[ 4115.4] amúgy, nem tudom, még így
+[ 4117.4] azt hittem, hogy az egész, hogy annyi legyen pénzt, akkor
+[ 4119.4] valamilyen.
+[ 4121.4] Ah, ha csak annyi lenne.
+[ 4123.4] Fú, nagyon sok a törvényi előírás,
+[ 4125.4] nagyon sok a statisztika, és ez még semmi.
+[ 4127.4] Egy alap, majd az én
+[ 4129.4] programjaim, na az
+[ 4131.4] az agyhalám, meg a szerver, még a szerver
+[ 4133.4] annyira nem is. Tehát nekünk
+[ 4135.4] napi adatszolgáltatási kötelezettségünk van.
+[ 4137.4] A Helga leadja
+[ 4139.4] forgalmi adatokat, én meg az
+[ 4141.4] ügyfeles adatbázisokat.
+[ 4143.4] Az egy dolog. De ezeket mind
+[ 4145.4] ellenőrizni is kell. Megvan, hogy milyen
+[ 4147.4] kritérium szerint, tehát táblázatot
+[ 4149.4] készíteni, stb. stb.
+[ 4151.4] Na és ezt lenne jó gépesíteni, mert most
+[ 4153.4] itt kézzel borkácsolom.
+[ 4155.4] Hát igen, ha egyfajam óta többször csinálsz, hogy az
+[ 4157.4] akkor ezt persze lehet automatizálni.
+[ 4159.4] Igen, tehát a leválogatásból
+[ 4161.4] majd azt megmondom, hogy hogy képzelem,
+[ 4163.4] meg hogy van most. Eleve először
+[ 4165.4] szerintem azt kellene megcsinálni, ahogy
+[ 4167.4] most van, és utána
+[ 4169.4] hogyha már minden működik, utána
+[ 4171.4] az, vagy nem tudom, hogy nektek ez mennyi,
+[ 4173.4] vagy hogyan. Hát igazán szerintem, hogyha már
+[ 4175.4] úgy látom, hogy próbálkozol mondani azt, hogy szerinted
+[ 4177.4] ez így van, de mondd nyugodtan.
+[ 4179.4] Jó, és akkor megcsináljátok. És akkor egyszerűbb úgy megcsinálni,
+[ 4181.4] aztán majd majd változtatok rajta, ha
+[ 4183.4] második képzelés. Oké, jó.
+[ 4185.4] Nem felejtsd le megcsinálni, ugye ahogy most néz ki,
+[ 4187.4] és aztán ráhúzni még egyszer. Oké, jó.
+[ 4189.4] Csak ugye anti, nem
+[ 4191.4] tudom mi lesz vele, de remélem azért
+[ 4193.4] az kibírja, meg jó lesz minden, meg meggyógyul.
+[ 4195.4] Mert most... Fejlesztők?
+[ 4197.4] Igen. Hosszában
+[ 4199.4] találtak dolgokat. Tegnap volt emerem,
+[ 4201.4] hogy most
+[ 4203.4] az kiterjedte, vagy által kicsi,
+[ 4205.4] hogy egyáltalán mi van vele,
+[ 4207.4] hogy műthető. Meg ugye hát ott kezdett
+[ 4209.4] nekivel semmi baj, és egyszerűen
+[ 4211.4] most kész. Kilukadt egy
+[ 4213.4] aorta a szívében, és ment
+[ 4215.4] a vér a szívébe, és észre se vette, csak
+[ 4217.4] nagyon fájt már a háta. Így. És úgy
+[ 4219.4] vette kész, és életmentő műtétet hajtottak
+[ 4221.4] rajta végre valamikor
+[ 4223.4] januárban.
+[ 4225.4] És 20% volt az esélye, aki
+[ 4227.4] él a műtőbe. Az igen.
+[ 4229.4] Aha, úgyhogy. Az akkor erős megint,
+[ 4231.4] úgyhogy. 75 éves,
+[ 4233.4] de onnan eddig semmi.
+[ 4235.4] Soha nem. Hát igen, ilyen.
+[ 4237.4] Csak hát számítani lehetett volna rá,
+[ 4239.4] hogy ezért idős, meg mindent.
+[ 4241.4] Hamarabb kellett volna már.
+[ 4243.4] De mindegy, jobb késő, mint soha.
+[ 4245.4] Hát igen. Meg az, hogy 20%-es
+[ 4247.4] már januárban volt,
+[ 4249.4] és már március, akkor azért... Igen, csak tudod,
+[ 4251.4] vannak visszaesések. Amikor
+[ 4253.4] visszakerül a kórházba, azért is ment ez az
+[ 4255.4] egész döcögősen.
+[ 4257.4] Mert volt egy olyan,
+[ 4259.4] egy pár hete, amikor
+[ 4261.4] a szaturáció leesett,
+[ 4263.4] nem kapott levegőt. És akkor is
+[ 4265.4] bevitték, és akkor is kiderült,
+[ 4267.4] hogy talán a nyelőcső,
+[ 4269.4] tüdő, nem tudom, valami lukk volt,
+[ 4271.4] és ott fotózták, hogy én nem tudom, mit csináltak vele.
+[ 4273.4] Közben beengedettünk,
+[ 4275.4] hogy köszi.
+[ 4277.4] Úgyhogy...
+[ 4279.4] Nagyon. Tehát neki úgy...
+[ 4281.4] Meg most, hogy a hasába, vagy nem tudom, hol
+[ 4283.4] ez a kis daganat. Úgyhogy...
+[ 4285.4] Ú, van. Akkor van
+[ 4287.4] egy nagyon szép menü, ez a supervisor,
+[ 4289.4] ez az én menüm.
+[ 4291.4] Ebben van olyan,
+[ 4297.1] hogy extra tranzakciós
+[ 4299.1] díjak. Ez egy olyan
+[ 4301.1] program, biztosan hallottátok,
+[ 4303.1] hogy én adok sok-sok
+[ 4305.1] jelszót.
+[ 4307.1] És...
+[ 4309.1] Szia. Igen.
+[ 4313.8] Igen. 51.
+[ 4320.9] 51.
+[ 4322.9] Hello.
+[ 4324.9] Kezelési
+[ 4326.9] költség esetében
+[ 4328.9] úgy lehet
+[ 4330.9] elengedni kezelési költséget,
+[ 4332.9] ha az ügykönök van egy kártyája, pontgyűjtő,
+[ 4334.9] és az ötödik alkalommal, ha betelt,
+[ 4336.9] akkor elengedem a kezelését.
+[ 4338.9] Ugye nekem ezt a pénzt is mondjuk, betelt a kártya,
+[ 4340.9] adom a jelszót, de én nem láttam ezt a kártyát.
+[ 4342.9] Én nem tudom, hogy jogos-e.
+[ 4344.9] Viszont, ha megyek ellenőrizni,
+[ 4346.9] akkor itt például le tudom válogatni
+[ 4348.9] visszamenőleg bármelyik hónapra,
+[ 4350.9] most legyen ez március,
+[ 4352.9] hogy milyen tételeknél volt
+[ 4354.9] kezelési költségengedmény.
+[ 4356.9] Ezeket le is tudom nyomtatni,
+[ 4358.9] és én ezzel alapján megkeresem
+[ 4360.9] az izonylatot, mögé tűzve
+[ 4362.9] a kiskártyát, és leellenőrzöm, hogy jogos volt-e.
+[ 4364.9] Tehát ez nekem kell.
+[ 4366.9] Ezekkel az adatokkal.
+[ 4368.9] Olyan kérdésem lenne,
+[ 4370.9] hogy
+[ 4372.9] mondtad ezt a pontgyűjtőt,
+[ 4374.9] hogy akkor, mondjuk, ha itt váltok,
+[ 4376.9] mondjuk mindig, akkor van ilyen
+[ 4378.9] törzskártyám?
+[ 4380.9] Ebben a pénztárban nincs, mert ez konkurencia mellett van,
+[ 4382.9] de a Tesco-ban van.
+[ 4384.9] Igen, azt majd tudunk is neked a hátulban mutatni.
+[ 4386.9] Szuper, szuper. Nem, lehet azt is,
+[ 4388.9] hogy a fény mással nem olyan.
+[ 4390.9] Ott tudok amúgy pontot gyűjteni,
+[ 4392.9] szóval csak ide kell bejönnem egyszer,
+[ 4394.9] vagy bárhol más, ugyanebben a fiúkban.
+[ 4396.9] Ennek az Exquisite Best Chains Zrt.
+[ 4398.9] piros irodáiban lehet
+[ 4400.9] a piros kártyákat gyűjteni, bárhol.
+[ 4402.9] Ha te a Csaba Tesco-ba vásároltál,
+[ 4404.9] és másnap már Dombóváron
+[ 4406.9] ugyanazt a kártyát beadhatod, az a lényeg,
+[ 4408.9] hogy a kártya fél évig érvényes,
+[ 4410.9] és négy váltást
+[ 4412.9] meg kell vezetni, tök mindegy,
+[ 4414.9] hogy az öt euró, vagy tíz euró,
+[ 4416.9] naponta egy váltást vezethető be,
+[ 4418.9] és ha ez a négy betelik,
+[ 4420.9] és fél évvel belül jössz az ötödik váltásra,
+[ 4422.9] és ezt beadod, akkor előtte rendítjük
+[ 4424.9] a kezelési költséget rá.
+[ 4426.9] Segítség lenne az, hogyha például
+[ 4428.9] kiírná, hogy az ötödik alkalommal,
+[ 4430.9] hogy jogosuld el rá.
+[ 4432.9] Nem tudod megoldani, mint mondtam,
+[ 4434.9] csak százezer fölött kell nevet írni,
+[ 4436.9] és hogyha ötven eurót hoz, akkor nem írunk nevet,
+[ 4438.9] és nem is szeretik, ha beírjuk a nevüket.
+[ 4440.9] Tehát ezért kell ez az ellenőrzőprogram,
+[ 4442.9] mert ezt nem tudod automatizálni.
+[ 4444.9] Mert így is vért kell izzadni,
+[ 4446.9] mert elméletek
+[ 4448.9] száz és háromszáz között
+[ 4450.9] mi elfogadjuk bemondás alapján az adatokat,
+[ 4452.9] és csak háromszáz fölött kérünk okmányt.
+[ 4454.9] De például a korrekt, az ellenek
+[ 4456.9] írja az igazolat, hogy nem szeretik
+[ 4458.9] még mindig az ügyfelek, mert megutakodják,
+[ 4460.9] stb. Tehát ezért nem tudod nevesíteni
+[ 4462.9] ezeket a kártyákat.
+[ 4464.9] Tehát ez nem névre szóló, ez csak sima.
+[ 4466.9] Nem, bemutatós, tehát akár odaadhatja
+[ 4468.9] a szomszédnak is. Értem.
+[ 4470.9] És ez úgy néz ki, hogy
+[ 4472.9] például idejövök, és akkor
+[ 4474.9] ezt a számot, a kártyaszámot
+[ 4476.9] én rögzítem? Nem.
+[ 4478.9] Semmit nem rögzítek hozzá.
+[ 4480.9] Ez itt sima papír.
+[ 4482.9] Tehát itt mit hoz le a rendszer?
+[ 4484.9] Itt azt hozza le, hogy mikor váltották be.
+[ 4486.9] Tehát itt lehozza azt,
+[ 4488.9] hogy hanyadikán, és milyen bizonylatra
+[ 4490.9] adtam én ezt.
+[ 4492.9] Én előveszem azt a vételi
+[ 4494.9] bizonylatot.
+[ 4496.9] Például egy eladásig.
+[ 4498.9] Én megkeresem, hogy
+[ 4500.9] mondjuk ez melyik?
+[ 4502.9] Ez harmadik?
+[ 4504.9] És ez egy vétel?
+[ 4506.9] Igen.
+[ 4508.9] Ugyan itt nincs egy kártya, de ez a lista
+[ 4510.9] nekem azt is hozza, amikor feleztem.
+[ 4512.9] Itt olyan kártya van, hogy
+[ 4514.9] Békés Csaba kártya,
+[ 4516.9] amit, hogyha bemutatnak az ügyfákat,
+[ 4518.9] a kezelési kártséget felezzem.
+[ 4520.9] Ott a bizonylatra
+[ 4522.9] rögzítek, de ugye azt tudom
+[ 4524.9] automatizálni, hanem például
+[ 4526.9] itt az, hogy 3-dikból 11-diken
+[ 4528.9] a 787-esre
+[ 4530.9] engedtem el.
+[ 4532.9] Tehát erre a
+[ 4534.9] bizonylatra feleztük a kezelési
+[ 4536.9] kártséget, akkor
+[ 4538.9] ettek kellene lennie.
+[ 4549.3] Nem nyomtatja rá
+[ 4551.3] a Csaba kártyás
+[ 4553.3] adatokat? A felezősre?
+[ 4555.3] De jó, hogy nem mondtátok.
+[ 4557.3] És itt egyébként
+[ 4559.3] ezt hogy tudod ellenőrizni?
+[ 4561.3] Tehát ugye nem rögzítesz semmit magához
+[ 4563.3] a... Nem szóltak, hogy megér rossz
+[ 4565.3] a program. Tehát Antival ez is volt a baj, hogy
+[ 4567.3] néha csinált egy frissítőt és elszállt valami.
+[ 4569.3] És azért kellene, hogy
+[ 4571.3] figyeljék. Tehát, hogyha Csaba kártyát
+[ 4573.3] hoznak, ott a Csaba kártya számát rögzítik
+[ 4575.3] a pénztárosok a programban.
+[ 4577.3] Tehát itt szerepelnie kellene
+[ 4579.3] a kártya számnak a bizonylaton.
+[ 4581.3] És akkor ahhoz tudom nézni, hogy
+[ 4583.3] oké, ez Csaba kártyás volt,
+[ 4585.3] egyedi kezelési kártség, mert felezték
+[ 4587.3] a kezelési kártséget, akkor
+[ 4589.3] ez jogos. Ha ez van,
+[ 4591.3] vagyis ez a pontgyűjtő kártyás lenne,
+[ 4593.3] akkor ide lenne tűzvegy kártya.
+[ 4595.3] És azon azt ellenőrzöm, hogy
+[ 4597.3] ez a dátum fél éven belül
+[ 4599.3] van a kiadáshoz képest,
+[ 4601.3] és a kártyán négy darab váltás
+[ 4603.3] szerepel. A kártyán
+[ 4605.3] szerepelnek a váltások, tehát oda
+[ 4607.3] ráírjátok valamit.
+[ 4609.3] Tehát, hogy az ilyen ráíróség,
+[ 4611.3] amit én azt hittem, hogy valami
+[ 4613.3] ilyen, de olvassátok is volt.
+[ 4615.3] Tehát ott kézzel ráírjátok
+[ 4617.3] a kártyára, és igazából azt ellenőrzöd,
+[ 4619.3] hogy valóban megtörtént-e az öt
+[ 4621.3] tranzakció, és hogy benne van-e a fél évben.
+[ 4623.3] Tehát az, hogy ő váltott vala,
+[ 4625.3] nem ő váltott vala, azt nem...
+[ 4627.3] Az a lényeg, hogy ide jöjjenek,
+[ 4629.3] nem máshova.
+[ 4631.3] Tehát semmi más nem érdekel.
+[ 4633.3] Isten csak azért kell, hogy ez alapján
+[ 4635.3] tudom ellenőrizni azt, hogy módosítva
+[ 4637.3] lett-e a kezelés. Már hogyha főértéktári
+[ 4639.3] engedély van, akkor meg én megkapom
+[ 4641.3] a Tamástól a tálfonomra.
+[ 4643.3] Vibran,
+[ 4645.3] hogy ő engedélyezett.
+[ 4649.3] Például itt van az, hogy Pécs plázában
+[ 4651.3] veszünk Petrovics Lászlótól 900
+[ 4653.3] svájci frankot, 408-ban
+[ 4655.3] 3000 elites kezelési karácsonyká.
+[ 4657.3] Akkor ezt tudom,
+[ 4659.3] ha megyek, találok egy olyat, akkor
+[ 4661.3] visszanézem, és akkor tudom, hogy az Tamás
+[ 4663.3] engedélyezte, és itt rajta van, és itt végigpipálom,
+[ 4665.3] ennyi. Tehát az a lényeg, hogy nekem ez a lista
+[ 4667.3] kell, ami
+[ 4669.3] azt tartalmazza, hogyha
+[ 4671.3] az adott kezelési költséget
+[ 4673.3] módosították. Tehát minden módosítás,
+[ 4675.3] minden kedvezmény, ami a kezelési
+[ 4677.3] költségre vonatkozik, ebben a listában
+[ 4679.3] bele kellett kerüljön. Igen.
+[ 4681.3] Csak a dátum kell, a bizonylatszám,
+[ 4683.3] az, hogy mi volt
+[ 4685.3] az árfolyam,
+[ 4687.3] vagy nem az árfolyam, a forint összeg,
+[ 4689.3] mi volt a kezelési összeg, és
+[ 4691.3] az egyedi volt, kártyás volt,
+[ 4693.3] vagy milyen kedvezmény.
+[ 4695.3] Mert azt is ki lehet választani.
+[ 4697.3] Külön van kártyás.
+[ 4699.3] Külön van kártyás,
+[ 4701.3] egyedi, amit a
+[ 4703.3] fértéktárod, és akkor
+[ 4705.3] innen tudod, hogy mi.
+[ 4707.3] Oké. És akkor ezen belül
+[ 4709.3] vannak olyanok, hogy címletek
+[ 4711.3] beállítása. Ezt nem tudom, hogy
+[ 4713.3] hogyan oldjátok meg.
+[ 4715.3] Tehát a valutáknál
+[ 4717.3] van olyan, amikor kivonnak
+[ 4719.3] címleteket, meg van olyan, amikor
+[ 4721.3] lesz plusz címlet.
+[ 4723.3] Teszem azt fel, Csakoronából
+[ 4725.3] régen volt, mi csak papírt veszünk,
+[ 4727.3] fémát csak fém euróból egyes,
+[ 4729.3] kettest veszünk. Például Csakoronából
+[ 4731.3] régen volt ötvenes, nincsen.
+[ 4733.3] És akkor, hogy ne kelljen állandóan frissítő,
+[ 4735.3] azért az Antti úgy oldotta meg,
+[ 4737.3] hogy azért mégis jelszóvédett a dolog.
+[ 4739.3] Tehát itt, hogyha mondják,
+[ 4741.3] hogy teszem azt fel, most kiadt a kétszázas
+[ 4743.3] román lej, és neki nincs még
+[ 4745.3] bennem címletezőjében, akkor
+[ 4747.3] itt be tudjuk állítani. Meg pedig úgy,
+[ 4749.3] hogy meg kell
+[ 4751.3] keresi a román lejt,
+[ 4753.3] akkor itt megkeresi hozzá
+[ 4755.3] a kétszázast, és ebbe a
+[ 4757.3] kis mocskába belepipál.
+[ 4763.3] Viszont, ahogy itt látom, ugye egy,
+[ 4765.3] kettő, öt, és akkor... Ezt úgy is
+[ 4767.3] meg lehetne oldani,
+[ 4769.3] mert ez egy ilyen mechanikus, és
+[ 4771.3] ha a pénztaros nem jól pipál, és nem
+[ 4773.3] rögzíti a beállításokat, akkor
+[ 4775.3] nem rögzül, és akkor tisztít,
+[ 4777.3] hogy esetlegesen, úgy is én kapom
+[ 4779.3] meg, hogy bejönnek az új
+[ 4781.3] címletek, én koldanok el valóta
+[ 4783.3] tájékoztatóba, hogy jelzem nektek,
+[ 4785.3] hogy gyerekek, csak koronából
+[ 4787.3] lesz 50-es, és azt lefrissítitek,
+[ 4789.3] és automatán fel
+[ 4791.3] megy a rendszerbe, hogy ne kell jönni pipálva.
+[ 4793.3] Elsősorban ezt
+[ 4795.3] automatizálni lehetne.
+[ 4797.3] Lehet ilyen, hogyha ugye jelzed,
+[ 4799.3] és akkor igen, viszont ugye
+[ 4801.3] ez állandó kapcsolatot jelent, de ha...
+[ 4803.3] Jó, oké. Nekem maradhat
+[ 4805.3] így is, nem tudom, tehát ezen gondolkozzunk
+[ 4807.3] el, hogy mi a könnyebb.
+[ 4809.3] Én csak azt nézem, hogy ugye ez a pipálgatós
+[ 4811.3] rész, könnyű
+[ 4813.3] eltéveszteni, hogy melyik sorban vagyok.
+[ 4815.3] Igen. Igen, ezt
+[ 4817.3] lehet, hogy egy kicsit tudjuk optimizálni, vagy
+[ 4819.3] esetleg lehet, hogy úgy lehetne, hogy mondjuk nem minden,
+[ 4821.3] hogy lenne egy felsorolás,
+[ 4823.3] és akkor mondjuk így csak kicsit
+[ 4825.3] jobban vagyunk. Vagy kiválasztod, hogy
+[ 4827.3] mit tanítják. Igen, igen.
+[ 4829.3] Igen, és hogy
+[ 4831.3] lenne egy összesítő, meg lenne akkor egy
+[ 4833.3] ilyen, ahol tudom ezt állítani,
+[ 4835.3] hogy mondjuk nem tudom én, mondjuk
+[ 4837.3] mit akarok, és akkor mondjuk, hogy kolomát akarok.
+[ 4839.3] Igen, mert ez így az ember
+[ 4841.3] szeme jó-józik mire. Viszont ezt
+[ 4843.3] ugye rögzíteni kell, hogy mik a valuták.
+[ 4845.3] Igen. Tehát, hogy a cím,
+[ 4847.3] hogy milyen címlet van belőlük.
+[ 4849.3] A címleteket is, és
+[ 4851.3] az, hogy ugye
+[ 4853.3] arra akartam rákérdezni, hogy például
+[ 4855.3] ha olyan
+[ 4857.3] van, hogy mondjuk ezeket a
+[ 4859.3] címleteket ugye rögzítjük, ami most van,
+[ 4861.3] de mondjuk itt változik egy olyan, és
+[ 4863.3] egyszer lesz egy 30.000-es
+[ 4865.3] forint, mondjuk, amit bevezetnek,
+[ 4867.3] akkor ott viszont ugye bele kell nyúlni,
+[ 4869.3] hogy ez is ugyanúgy bekerüljön. Igen.
+[ 4871.3] Jó, oké. Szia!
+[ 4873.3] Tehát ezt már ti nem fogjátok tudni.
+[ 4875.3] Jó, mondjad.
+[ 4882.7] 91.
+[ 4890.4] Oké, hello!
+[ 4892.4] Ha csak valamit megnézett, akkor ki tudné
+[ 4894.4] lépni rögzítés nélkül, de ha
+[ 4896.4] valamit beállított, akkor beállít, rögzít,
+[ 4898.4] kiírja, hogy nem változott semmi.
+[ 4900.4] Log file kialvasás.
+[ 4902.4] Ez
+[ 4904.4] jó lenne, ha szintén benne lenne.
+[ 4906.4] Ez, ha csunyát
+[ 4908.4] csinál a pénztáros, vagy
+[ 4910.4] is letagadja, vagy bármi, akkor
+[ 4912.4] lehet ugye megnézegetni, hogy mit csinál.
+[ 4914.4] Ez lelogolja a
+[ 4916.4] történéseket. Igen. Ha belépött, beindult,
+[ 4918.4] izé, mit csinált, vett, árfejamot nézett,
+[ 4920.4] ez, ez, ez,
+[ 4923.9] akkor... Bocsánat,
+[ 4925.9] minden tevékenységet lelogol a
+[ 4927.9] rendszer. Bejelentkezéstől kezdve
+[ 4929.9] mindent. Azt is, hogy milyen árfejamot adott.
+[ 4931.9] Azt is, ha mondjuk jelszót változtat.
+[ 4933.9] Igen.
+[ 4935.9] És nagyon fontos az, hogy úgy legyen, hogy például a
+[ 4937.9] bementem,
+[ 4939.9] bementem a 20 euró vételbe,
+[ 4941.9] árfejamot módosítottam,
+[ 4943.9] de rögzítés nélkül kiléptem.
+[ 4945.9] Mert vannak olyanok, amikor
+[ 4947.9] kamerát is ellenőrzünk, és kiderül, hogy
+[ 4949.9] a zsebre dolgozik a pénztáros, akkor
+[ 4951.9] ezzel is tudom bizonyítani, hogy apuka, te
+[ 4953.9] nem nyomtattad le, mert ugye nincs a listában se,
+[ 4955.9] nem ugrik a bizonylat, nem volt könyvvelésben
+[ 4957.9] bizonylat, tehát csak belementék, és
+[ 4959.9] kiléptek. Tehát ez a logfile erre is
+[ 4961.9] jön, látom, hogy mit működött.
+[ 4963.9] Tehát akkor is logoljon, hogyha
+[ 4965.9] nincs mentés például, vagyis
+[ 4967.9] végbehajtva a tranzakció.
+[ 4969.9] Igen.
+[ 4971.9] 69.
+[ 4978.1] Hello.
+[ 4980.1] Igen, az a lényeg, hogy
+[ 4982.1] mindent, ha
+[ 4984.1] új árfolyam érkezett, ha bármi, azt
+[ 4986.1] mindent logoljon.
+[ 4990.6] Pénzteri szünet, itt lehet
+[ 4992.6] ellenőrizni
+[ 4994.6] a pénzteri szüneteket.
+[ 4996.6] Hogy mikor írtak ki,
+[ 4998.6] ez nem fontos, ez benne volt,
+[ 5000.6] de szerintem nem kell.
+[ 5002.6] Tehát akkor ez itt ne legyen a szabályom.
+[ 5004.6] Itt látok
+[ 5006.6] olyat, hogy OTP terminál
+[ 5008.6] logolvasása, gondolom.
+[ 5010.6] Ez nincs beállítva,
+[ 5012.6] mert itt nincsen OTP
+[ 5014.6] terminál. Ez igazán
+[ 5016.6] diból, azt sem tudom, hogy működik-e.
+[ 5018.6] Ezt is majd távolról megnézzük a Tesco-ból,
+[ 5020.6] ott van OTP-s terminálban kártyás
+[ 5022.6] elolvasó, úgyhogy
+[ 5024.6] nem tudom, hogy ezt aztán megcsinálta-e az
+[ 5026.6] anti. Van egy olyan, hogy
+[ 5035.4] F9 készlet. Ez is fontos, mert
+[ 5037.4] például
+[ 5039.4] közben lehet látni ezt, hogy
+[ 5041.4] forint készlete mennyi, a valuták
+[ 5043.4] forint ellenértéke mennyi. A valuták
+[ 5045.4] forint ellenértékét az elszámoló árfolyamból
+[ 5047.4] számolja ki
+[ 5049.4] a program. Ha van
+[ 5051.4] Western Union, mondjuk azt ott látod, ott is látod
+[ 5053.4] a készletet, AFA pénztár, elektromos
+[ 5055.4] kezelés, foglaló, és a teljes pénztár
+[ 5057.4] készletértéke. Ez azért fontos,
+[ 5059.4] mert minden pénztárban be van,
+[ 5061.4] meg van szabva, hogy milyen
+[ 5063.4] trezorok vannak, és mennyi összkészlet lehet.
+[ 5065.4] És hogyha van szállítás, akkor
+[ 5067.4] küld az értektáros
+[ 5069.4] és ha mindent átvett, akkor megnézik
+[ 5071.4] ezt, hogy mennyi az F9-ot szokták
+[ 5073.4] hívni, ez az összes államkészlete,
+[ 5075.4] és akkor megmondja az értektáros, hogy
+[ 5077.4] mennyit küldjön még be.
+[ 5079.4] Hogy mennyi legyen a maximum.
+[ 5081.4] 20 millió lehet,
+[ 5083.4] akkor ha ez 21, akkor bekér 1000 eurót,
+[ 5085.4] vagy bakány, mint egy mennyi forintot,
+[ 5087.4] és akkor igen, tehát ennek így
+[ 5089.4] ez kell. Ez fontos.
+[ 5091.4] Ez az átadólap, amit
+[ 5095.4] reggel beszéltünk. Átadólap
+[ 5097.4] kitalítása. Tehát az átadólap
+[ 5099.4] így néz ki, és
+[ 5101.4] automatikus,
+[ 5103.4] ide be kell írni a 105-ös
+[ 5105.4] pénztár, automatikus a
+[ 5107.4] tájnap dátumát adja,
+[ 5109.4] az átadó pénztárost, meg az
+[ 5111.4] árföldőt azt ki kell tölteni.
+[ 5117.4] Ebből esetleg tudunk nyomtatni egy
+[ 5119.4] műeset. Igen, igen.
+[ 5121.4] Csak az nem így fog kinézni,
+[ 5123.4] mert az csak ezen a szlippen jön ki.
+[ 5125.4] Akkor be kell írni, hogy érkezett a
+[ 5127.4] card levél, van-e ügyfélrendelés,
+[ 5129.4] készletet rendel,
+[ 5131.4] rendeleke az értéktártól.
+[ 5133.4] Akkor konkurenciával kapcsolatos
+[ 5135.4] tudnivaló, meg egyéb
+[ 5137.4] tudnivaló, hogyha valami változik.
+[ 5139.4] És akkor le lehet,
+[ 5141.4] hogyha kitartottam, akkor átadólap
+[ 5143.4] rendben, és ki lehet nyomtatni.
+[ 5147.4] És így néz ki nyomtatva.
+[ 5151.4] Oké.
+[ 5156.9] Jó, és akkor ennyi
+[ 5158.9] volt ez. Itt
+[ 5160.9] látom ugye F1-től
+[ 5162.9] F12-ig van,
+[ 5164.9] meg ugye az S-kép, ez gondolom
+[ 5166.9] a gombokat jelenti. Tehát, ha megnyomom
+[ 5168.9] az F5-t, akkor
+[ 5170.9] létrejön. Na éppen nem
+[ 5172.9] működik azért a katténgatok, de
+[ 5174.9] igen, úgy lenne.
+[ 5176.9] Hogyha megnyomod a
+[ 5178.9] funkcióbülöntjüket, akkor előjön.
+[ 5180.9] És ez már legyen is így,
+[ 5182.9] mert igazából most
+[ 5184.9] ugye azon gondolkodom, már nem tudom.
+[ 5186.9] Nem, tehát
+[ 5188.9] át lehet az egészet struktúrálni.
+[ 5190.9] Hát igazából nem így lesz a képernyőtök,
+[ 5192.9] ez biztos. Tehát, hogy az, hogy pontosan
+[ 5194.9] nagyon rég, igen. Hogy biztos,
+[ 5196.9] hogy pontosan, hogy lesz, ezt nem tudom megmondani.
+[ 5198.9] De... Az a lényeg, hogy ezek a
+[ 5200.9] funkciók, amik itt meglegyenek, azt, hogy
+[ 5202.9] hova rakod, mind, az már részletkérdés.
+[ 5204.9] Oké, oké, oké.
+[ 5206.9] Felhasználó barát legyen. Hát meg, ugye megszoktatok
+[ 5208.9] már egy bizonyos dolgot, és akkor
+[ 5210.9] igen, viszont... Kint alakaznak
+[ 5212.9] megtanulni más. Viszont igen, viszont
+[ 5214.9] például, hogy itt ez itt alul van, meg ilyenek,
+[ 5216.9] nem hiszem, hogy itt lesz.
+[ 5218.9] Tehát, hogy itt azért lehet, hogy egy kicsit
+[ 5220.9] megszokatlan lesz, meg egyébként minden rendszer...
+[ 5222.9] Megtanulják. Tehát ugyanúgy, most nem
+[ 5224.9] azért mondom, hogy már nekik mindegy, azt tanulják meg,
+[ 5226.9] hanem például a VU,
+[ 5228.9] meg a MoneyGram is, az is webben sem van.
+[ 5230.9] Teljesen más. Először
+[ 5232.9] prüszkolták, mikor először bejött a
+[ 5234.9] VU, megtanulták.
+[ 5236.9] Ez minden, mindig így van, pont ezt akartam
+[ 5238.9] mondani, hogy minden új rendszer, és nehéz lesz,
+[ 5240.9] és nem csak a
+[ 5242.9] pénztárban ülnek nekik, hanem mindenkinek.
+[ 5244.9] Tehát ezt mindenkinek először
+[ 5246.9] nehéz lesz. Olyan szempontból nem bánom, hogy
+[ 5248.9] legalább kicsit odafigyelnek, mert most sokszor
+[ 5250.9] van az, hogy din-din-din üti, és
+[ 5252.9] elfelejtő, hogy a napos gép leszokott fagyni.
+[ 5254.9] És utána hogyan oldjuk, meg
+[ 5256.9] sztornozzuk, hogyan csináljuk meg. Szia!
+[ 5258.9] Eleve én nem vagyok
+[ 5269.1] gépközelben mindig, tehát ez le is
+[ 5271.1] van írva, hogy ha valamit küldesz, akkor fel
+[ 5273.1] kell hívni engem, és akkor megnézem.
+[ 5275.1] Most nem is vagyok gépközelben, úgyhogy
+[ 5277.1] légy szíves, a Borsi Tamást hívd fel, és vele
+[ 5279.1] intézd, jó? Köszönöm,
+[ 5281.1] hello! Na például
+[ 5283.1] körlevél van, olvastam, nem olvassák.
+[ 5285.1] Tehát én van, amikor ellenőrzök,
+[ 5287.1] utam vagyok, tehát fölhívd, hogy láttam-e a
+[ 5289.1] forrásigazolást. Na, arra ugye nem nézek
+[ 5291.1] mindig forrásigazolást, úgyhogy na, mindegy.
+[ 5293.1] Tehát felmentünk a főmenübe.
+[ 5295.1] Ugye innen ezt le tudom
+[ 5297.1] szedni, akkor ilyen, de ez sem kell.
+[ 5299.1] Itt azért van így megcsinálva, mert ez
+[ 5301.1] két táblából áll, szép nagy betűk,
+[ 5303.1] és akkor látnak mindent.
+[ 5305.1] Tehát ez az egyik része.
+[ 5307.1] Mindjárt ezért nincs körlevél,
+[ 5309.1] és akkor át tudok menni a másik részébe.
+[ 5311.1] Ez az első képernyő.
+[ 5313.1] Egy pillanat nélkül. Oké.
+[ 5315.1] Tessz egy percet, kérem. Oké.
+[ 5331.4] Tök jó, én nyugisítok. Micsoda?
+[ 5333.4] Én nyugisítok. Há, nem még
+[ 5335.4] szokott így lenni? Most mák.
+[ 5337.4] Igen. Meg délután
+[ 5341.2] indul be, meg ha az árfelm úgy mozog,
+[ 5343.2] meg ha nyár van és szezon
+[ 5345.2] van. Van olyan, hogy
+[ 5347.2] tűn, de még WC-re se tud kimenni.
+[ 5349.2] Igaz? Tűnik én drágám? Igen, de
+[ 5351.2] ez így tetszés volt, olyan nyugis.
+[ 5353.2] Fú.
+[ 5355.2] Fú.
+[ 5357.2] Igen. Na.
+[ 5359.2] Igen.
+[ 5361.2] János. Igen.
+[ 5363.2] Vihar előtt.
+[ 5365.2] Na, a lényeg a dolognak, ez a valuta véta.
+[ 5367.2] Ha belemegyek a vétába, akkor ez ilyen szép
+[ 5369.2] kék. Ha
+[ 5371.2] ugye az eladásban, ez piros.
+[ 5373.2] Tehát valamilyen színnel, igen,
+[ 5375.2] ezt különítjük el, hogy
+[ 5377.2] lássa a pénztörös, hogy hol van.
+[ 5379.2] Egy pillanat.
+[ 5381.2] Ez is bevon állító, ugye itt látjátok,
+[ 5391.4] hogy itt a kezelési költség mértek a
+[ 5393.4] 3 ezrelék.
+[ 5395.4] Sok irodában sávos a
+[ 5397.4] kezelési költség.
+[ 5399.4] Akkor itt csak az van, hogy sávos.
+[ 5401.4] Az frissítővel jön, meg vannak össze
+[ 5403.4] határokra a sávok, az frissítővel
+[ 5405.4] jön az ezreléket,
+[ 5407.4] én állítom be. A maximum
+[ 5409.4] kezelési költség, ez minden persze
+[ 5411.4] 9990 Ft.
+[ 5413.4] És be lehet állítani.
+[ 5415.4] Tehát ha valaha ez változni fog, azt is az egyéb
+[ 5417.4] másokba lehet állítani.
+[ 5419.4] Most volt éppen kezelési költség
+[ 5421.4] változás, úgyhogy...
+[ 5423.4] És ugye ezeket
+[ 5427.2] automatikusan a gép számolja,
+[ 5429.2] illetve nézi, hogy melyik sávba
+[ 5431.2] tartozik, azt automatikusan rakja.
+[ 5435.2] Az alapján, amit beállítottam.
+[ 5441.2] És ugye a forintértékben
+[ 5443.2] számolja az ezreléket,
+[ 5445.2] és forintértéket
+[ 5447.2] néz, hogy teszem azt a 0-t,
+[ 5449.2] ahol 500-1000 Ft-ig
+[ 5451.2] mennyi a kezelési, vagy
+[ 5453.2] 1000-1100 Ft-ig, ezt majd meg fogom
+[ 5455.2] mutatni. Oké, először mindig
+[ 5457.2] a valuta nemet kell beírni.
+[ 5459.2] Ha ugye
+[ 5461.2] nincs ilyen valuta ment, igen.
+[ 5465.2] Látok fent egy ilyenet, hogy
+[ 5467.2] saját hatáskörű engedmény.
+[ 5469.2] Azt is fogom mondani.
+[ 5471.2] Ez 5 darab lehet olyan,
+[ 5473.2] ami ha 1000 Eurónál többet vált
+[ 5475.2] valaki, akkor kérdésengedény
+[ 5477.2] nélkül azt meg lehet adni a
+[ 5479.2] sáv végét az
+[ 5481.2] ügyfelnek, az a saját határkörű
+[ 5483.2] árfolyam, meg fogom mutatni.
+[ 5485.2] Itt ugye most manuálisan
+[ 5487.2] begépeljük a valuta
+[ 5489.2] nemeket, és ugye hogyha nincs olyan
+[ 5491.2] valuta nem, akkor kiírja, hogy nincs olyan
+[ 5493.2] valuta. Na már most ezt
+[ 5495.2] a nutchange-nél láttam,
+[ 5497.2] hogy itt, hogy
+[ 5499.2] ugyanúgy esetleg legördülőbből
+[ 5501.2] lehet olyan választani. Én azt akartam mondani, hogy
+[ 5503.2] tudunk olyan legördülőt, amiben van egy ilyen filter,
+[ 5505.2] és azt be tudod írni, azt elkeresd,
+[ 5507.2] igen, olyat szeretnék.
+[ 5509.2] És akkor tuti, nem lesz elütés.
+[ 5511.2] Oké, akkor ugye beírom most
+[ 5513.2] manuálisan azt, hogy eurót akarok venni,
+[ 5515.2] ha csak simán
+[ 5517.2] összeghatár alatt leszek,
+[ 5519.2] mondjuk 200 ezer eurót, vagy
+[ 5521.2] 200 eurót, akkor ugye
+[ 5523.2] kiszámolja nekem a fizetendőt,
+[ 5525.2] nettó forintban,
+[ 5527.2] rárakja ide a kezelését, és ez a
+[ 5529.2] valóban kifizetendő
+[ 5531.2] összeg.
+[ 5535.2] Tudom, tudom.
+[ 5537.2] Akkor így egyszerre több
+[ 5539.2] zöldzenemet is tudok vásárolni.
+[ 5541.2] Igen. Kettő, négy, hatot
+[ 5543.2] összesen.
+[ 5545.2] Ja, hogy ez be van korlátozva?
+[ 5547.2] Igen. És az így is akarja, hogy maradjon?
+[ 5549.2] Vagy rátozni.
+[ 5551.2] Sőt, még hatot sem tudok,
+[ 5553.2] kettőt, hármat szoktuk esetleg max.
+[ 5555.2] Ez ugye a szokásból alakult,
+[ 5557.2] hogy ennél többet nem nagyon szoktak.
+[ 5559.2] De akkor hát maradjon.
+[ 5561.2] Az maradjon mindenféleképpen.
+[ 5563.2] És akkor most jön az, hogyha
+[ 5565.2] van árfolyamengedmények,
+[ 5567.2] ha erre rámegyek, ezek azok a
+[ 5569.2] sávos árfolyamengedmények. Látod, hogy itt
+[ 5571.2] ötvenezer forintig az alap árfolyam
+[ 5573.2] van védtábból, eladásból.
+[ 5575.2] Ötvenezer egy forinttól háromszázig
+[ 5577.2] van az első sáv.
+[ 5579.2] Egy pillanat, nyugodtan.
+[ 5583.2] De ez csak ilyen tájékoztató járvédőben?
+[ 5585.2] Nem. Itt fogom kiválasztani,
+[ 5587.2] hogy mit adok. És háromszáztól
+[ 5589.2] van egymillióig a következő.
+[ 5591.2] Na már most itt van, hogy nincs
+[ 5593.2] több saját hatáskörű engedmény.
+[ 5595.2] Ha oda majd ezer egy eurót írok,
+[ 5597.2] akkor itt lesz is még egy sáv.
+[ 5599.2] Az a saját hatáskörül.
+[ 5601.2] Tehát a program akkor jeleníti
+[ 5603.2] meg, ha ezernél több a
+[ 5605.2] valótaérték, ezt számolja, tehát
+[ 5607.2] oda dollárt is írhatok, bármit,
+[ 5609.2] ő kiszámolja, hogy ez ezer eurónál
+[ 5611.2] több, és akkor megjeleníti a sávot.
+[ 5613.2] Tehát most
+[ 5615.2] adhatok az ügyfélnek kedvezményt, mert
+[ 5617.2] ötvenezer forint feletti
+[ 5619.2] az összeg.
+[ 5621.2] Az nagyon fontos, hogy
+[ 5623.2] nem enged össze-vissza kattintani, nem enged
+[ 5625.2] nem enged ide-ide, mert az
+[ 5627.2] Ausztrál dollárnál járok.
+[ 5629.2] Igen, viszont az eurónál enged. Eurónál
+[ 5631.2] enged, de nem enged eladásba.
+[ 5633.2] De enged minden
+[ 5635.2] sávot, mégpedig azért enged minden sávot,
+[ 5637.2] mert ide tartozom,
+[ 5639.2] de az ügyfélnek van egy ilyen, itt nem pontgyűjtő
+[ 5641.2] kártya van, ilyen kártya, de ha pontgyűjtő
+[ 5643.2] lenne akkor is, valaki rendelkezik
+[ 5645.2] kártyával, az
+[ 5647.2] automatikusan árfolyam kedvezményre is
+[ 5649.2] jogosít, tehát ez azt jelenti, hogy ha
+[ 5651.2] én ötvenezer felett váltok, de van kártyám,
+[ 5653.2] akkor megkapom a következő sávot,
+[ 5655.2] a 300 ezeret, azért enged itt
+[ 5657.2] vételben több sávot választani.
+[ 5659.2] Jó, tehát itt az a lényeg,
+[ 5661.2] hogy ha...
+[ 5663.2] Persze, meg adok majd
+[ 5665.2] pontgyűjtőset is.
+[ 5667.2] Jó, beváltogatok
+[ 5669.2] mindent.
+[ 5671.2] Nektek egyébként is, nem tudom, mondták-e,
+[ 5673.2] mindig maximális kezelési
+[ 5675.2] engedést adnánk, ha nálunk
+[ 5677.2] váltanátok, és nagyon jó árfolyamat, de
+[ 5679.2] Pesten nincs irodánk.
+[ 5681.2] De mindenütt vidéken van ennyi.
+[ 5683.2] Tehát a pestiekkel nem tudunk, de
+[ 5685.2] mondjuk a pestiek nem engednek el kezelését,
+[ 5687.2] de hogyha ott akarsz váltani nagyobb
+[ 5689.2] összeget, akkor árfolyam kedvezőjét tudunk
+[ 5691.2] tőlük kérni, hogyha úgy.
+[ 5693.2] De ha egy kicsit lejjebb jöttük, akkor elengedjük
+[ 5695.2] a kezelését is. Na, tehát
+[ 5697.2] a lényege a dolognak, hogyha
+[ 5699.2] euró vétel van, akkor minden sávban
+[ 5701.2] vételt engedje, ha eladás van,
+[ 5703.2] minden sávban az eladást engedje.
+[ 5705.2] Tehát igazából csak azt engedje, amit én
+[ 5707.2] beírtam, tehát ahova beléptem. Most ugye
+[ 5709.2] beléptem a valóta vételbe,
+[ 5711.2] és beírtam azt, hogy
+[ 5713.2] euró sáv. És így
+[ 5715.2] igazából az
+[ 5717.2] összeghatállapot
+[ 5719.2] bármennyit,
+[ 5721.2] bármelyiket kiválasztatom, mert
+[ 5723.2] csak vétel lehet, és csak euró.
+[ 5725.2] És attól, hogy kártya vagy nem.
+[ 5727.2] Más valóta nem tudok
+[ 5729.2] beállítani, úgy kiválasztani csak
+[ 5731.2] eurót, és más eladást sem.
+[ 5733.2] Az a kérdésem, hogy
+[ 5735.2] ettől függetlenül,
+[ 5737.2] hogyha ezt így beírtam, hogy
+[ 5739.2] euró és
+[ 5741.2] nem tudom, ötven ezer fel.
+[ 5743.2] Attól függetlenül a többit akarom lehetni.
+[ 5745.2] Azt akartam, hogy érdekel az minket, vagy elég csak az euró?
+[ 5747.2] Mert akkor azt kiadja.
+[ 5749.2] Ez jó kérdés.
+[ 5751.2] Mert nekem ez ilyen keszepusza így, és
+[ 5753.2] nincs az szükségünk, csak képes vagyok.
+[ 5755.2] Nincs, igazad van. Ez azért alakult ki, mert
+[ 5757.2] első körben mindenhova
+[ 5759.2] engedett kattinggatni, utána össze-vissza
+[ 5761.2] kattinggattak a pénztárosok, ebből
+[ 5763.2] lett az, hogy árfolyamáltérés, és azért
+[ 5765.2] korlátoztuk, de ugye nem szedtük ki.
+[ 5767.2] Ez jó ötlet, lehet.
+[ 5769.2] Mert ugye én előttem már kiválasztom.
+[ 5771.2] Tehát, hogyha mást választok ki, akkor más jön ki.
+[ 5773.2] Ez jó ötlet.
+[ 5775.2] Oké, az lehet.
+[ 5777.2] Oké, és akkor ugye
+[ 5779.2] árfolyam módosítást azt
+[ 5781.2] kattintással elfogadom.
+[ 5783.2] Ha akarok, meg mindig mehetek.
+[ 5785.2] Ha rendben, akkor rendben, és ugye átírta.
+[ 5787.2] De lehet olyan is.
+[ 5789.2] Viszont itt ugye rákérdeztetek, rákattintok,
+[ 5791.2] és utána rákérdeztek, hogy valóban
+[ 5793.2] szeretném-e, és igen.
+[ 5795.2] Igen, mindenképpen ez ilyen
+[ 5797.2] dupla
+[ 5799.2] hülyeségvédelem,
+[ 5801.2] hogy biztos, hogy ne tévedjen.
+[ 5803.2] Akkor ugye volt ez.
+[ 5805.2] De lehet olyan is, most ebben kilépek
+[ 5807.2] is még egyet,
+[ 5809.2] mert ez volt a ságos árfolyam,
+[ 5811.2] de lehet, hogy
+[ 5813.2] az ügyfolyam egy tudom én vált
+[ 5815.2] 1500 eurót,
+[ 5817.2] akkor ugye itt elméletileg,
+[ 5819.2] ha idebben megyek, akkor látod,
+[ 5821.2] itt van a saját hatásködő, mert ez árnyel több.
+[ 5823.2] Akkor ugye megkérdezem az ügyfolyam,
+[ 5825.2] megfelel, hogy
+[ 5827.2] 388
+[ 5829.2] forint 60-nak
+[ 5831.2] tudok érte adni, megfelel-e? De az az ügyfoly
+[ 5833.2] azt mondja, hogy nem. Akkor nem
+[ 5835.2] adok kedvezményt, felhívom az értéktárást,
+[ 5837.2] és az értéktársa azt mondja,
+[ 5839.2] hogy oké, megveheted 389-ben.
+[ 5841.2] Akkor ha visszamegyek az árfolyamra
+[ 5843.2] és ráütök, akkor árfolyamkedvezmény
+[ 5845.2] ad át. Ez az egyedi. Az volt a
+[ 5847.2] sávos, ez az egyedi árfolyam.
+[ 5849.2] Ezt mindjárt lefotózom egy pillanat, csak
+[ 5851.2] visszafelé, no? Tehát akkor
+[ 5856.9] egyedében tudok adni árfolyamkedvezményt,
+[ 5858.9] ugye? Igen, és ez
+[ 5860.9] szupervajzori jászós. Na, itt jön be az értéktáros
+[ 5862.9] szupervajzori jászó. Itt
+[ 5864.9] csak ő tud adni
+[ 5866.9] szupervajzori jászót.
+[ 5868.9] Nekem is megvan, hogy van, de azt én
+[ 5870.9] már nem tudom, hogy van-e meg. Most írja.
+[ 5872.9] Úgyhogy meg fölírjuk,
+[ 5880.2] azt mondja egyet.
+[ 5882.2] Itt az a lényeg, hogy ez is
+[ 5884.2] le van védve, hogy ez ne lehessen
+[ 5886.2] tévedni, mert ugye ezt
+[ 5888.2] az értéktárs megint nem látja.
+[ 5890.2] Tehát itt volt rá egy olyan
+[ 5892.2] ...
+[ 5894.2] hogy
+[ 5896.2] lássa ezt, hogy valamilyen
+[ 5898.2] módon, ha egyedi árfolyam
+[ 5900.2] van, az a képe, hogy ő bemenjen az értéktári
+[ 5902.2] gépre, és akkor, ha
+[ 5904.2] ő az értéktárban van, akkor
+[ 5906.2] ő írja be a szupervajzori jászót.
+[ 5908.2] Hogy távol
+[ 5910.2] engedi. Igen, mert akkor látja, hogy
+[ 5912.2] valóban az van, és nem tudja
+[ 5914.2] átverni a pénztárs, vagy nem tudja
+[ 5916.2] véletlenül elérni
+[ 5918.2] úgy az árfolyamat, mert itt is be van állítva
+[ 5920.2] a hülyeségvédelem, hogy
+[ 5922.2] 1%-ot enged a gép, de többet nem,
+[ 5924.2] arra dupla jászót kér.
+[ 5926.2] Ha meg elszámoló fölött
+[ 5928.2] akarok adni kedvezményt,
+[ 5930.2] nem engedi.
+[ 5932.2] De még így is lehet, ugye
+[ 5934.2] 1-2 forint, és az már megint
+[ 5936.2] nem jó többet 10.000 eurónál,
+[ 5938.2] amit az értéktáros nem lát.
+[ 5940.2] Az jó lenne, ha lehessen a pénztársnak is
+[ 5942.2] beérni, de lehessen úgy is, hogy ő a
+[ 5944.2] gépra. Jó, mert nem mindig van ugye
+[ 5946.2] gép közelben.
+[ 5948.2] Mert ugye úgy van,
+[ 5950.2] és hát ugye jelenleg, ahogy csináljuk, az úgy
+[ 5952.2] néz ki, hogy vannak ilyen értesítések,
+[ 5954.2] és hogy erről
+[ 5956.2] kapna értesítést, ami
+[ 5958.2] és be lehet helyíteni fontossági sorrendet.
+[ 5960.2] Úgy is jó. És mondjuk ez egy fontos
+[ 5962.2] értesítés lenne, ami feluklik a
+[ 5964.2] képpárnyára. Úgy, úgy, úgy, úgy gondoltam.
+[ 5966.2] Igen, igen. Mert hogyha ugye
+[ 5968.2] ide beírom azt... Ez már biztos, hogy teljesen így marad,
+[ 5970.2] vagy így lesz. De körülbelül így gondolom
+[ 5972.2] én is, igen. Tehát ugye száz egységre
+[ 5974.2] kell beírni. Ha én csak
+[ 5976.2] beírom egy egységre, akkor ez nem
+[ 5978.2] meglepődözmény, érzékeli, hogy nem jól írtam be.
+[ 5980.2] Mert hogy száz egységre?
+[ 5982.2] Kell beírni az árfolyamokat. Tehát itt
+[ 5984.2] 38900-ot
+[ 5986.2] kell beírnom, hogyha 389-re
+[ 5988.2] akarom emelni. Ha ugye itt ide
+[ 5990.2] van írva az elszámoló árfolyam, és
+[ 5992.2] én F-fölé megyek, 396,
+[ 5994.2] így adom, akkor védte
+[ 5996.2] az árfolyam, nem lehet nagyobb az elszámoló,
+[ 5998.2] tehát itt akkor se engedi, tehát védi.
+[ 6000.2] Ha azt írom
+[ 6002.2] be, hogy itt egy százalék
+[ 6004.2] az 3-4
+[ 6006.2] forint, 88
+[ 6008.2] 393-ot, azt
+[ 6010.2] még engedi ez.
+[ 6012.2] Akkor ugye ez elég magas, kedvezménye,
+[ 6014.2] nem ez még mindig egy százalék.
+[ 6016.2] Na, mindegy.
+[ 6018.2] Jelszót bekéri, akkor
+[ 6020.2] fölhívom az értektárost,
+[ 6022.2] és elmondom neki.
+[ 6035.8] Tehát az a lényeg, hogyha
+[ 6037.8] egy százaléknál nagyobb az eltérés,
+[ 6039.8] akkor kettő jelszót kér be,
+[ 6041.8] mert ki is írja, hogy miért. Tehát mindig
+[ 6043.8] kommunikál a gép pénztárosokkal, mert
+[ 6045.8] különben nem tudják
+[ 6047.8] elmondani. Tündikem drága.
+[ 6049.8] Vodafone átkap.
+[ 6051.8] Ha beszél, akkor nem csörög.
+[ 6053.8] Na most jó lesz.
+[ 6061.6] De nem már a várakozó hívás
+[ 6063.6] hát akkor lesz.
+[ 6070.0] Helló, egyedihez szeretnék kérni
+[ 6072.0] jelszót. Ferenc, Aladár,
+[ 6074.0] Xavér, Márton.
+[ 6076.0] Tizennyolc.
+[ 6078.0] Tizennyolc.
+[ 6080.0] Én megkérhetek egy szupervájzorihoz, hogy
+[ 6082.0] a szupervájzorit meg tudjam mutatni?
+[ 6084.0] Mondjad. Hugo, Sándor,
+[ 6086.0] Ubul, Géza.
+[ 6088.0] Hatvankilenc.
+[ 6090.0] Köszönöm. Helló.
+[ 6093.7] Ez nagyon menő. Én is
+[ 6098.1] így mondom, hogy számoltam.
+[ 6100.1] És akkor engedélyezem
+[ 6102.1] a kedvezményt, vagy mégsem. Tehát
+[ 6104.1] kimegyek vele. Ha engedélyezem,
+[ 6106.1] akkor az engedély megadva, és át is írtak.
+[ 6108.1] És akkor úgy is számolt.
+[ 6110.1] Oké? És akkor itt most látni is fogjátok,
+[ 6112.1] hogy ez tölvényi előírás szerint
+[ 6114.1] 300.000 Ft. Ft.
+[ 6116.1] Tehát teljes azonosítás kell.
+[ 6118.1] Én ha rámegyek, akkor ugye bekéri,
+[ 6120.1] hogy ki adta az engedményt, az árfolyamot.
+[ 6122.1] Akkor értéktáros, főértéktáros,
+[ 6124.1] ügyvezető, vagy utalékmentes.
+[ 6126.1] Ezek a menüpontok vannak.
+[ 6128.1] Ezt értéktáros engedélyezte.
+[ 6130.1] Miért?
+[ 6132.1] Azért, mert
+[ 6134.1] adhat árfolyamot az értéktáros.
+[ 6136.1] Adhat a főértéktáros.
+[ 6138.1] És, hogyha
+[ 6140.1] kezelési mentesség van, vagy
+[ 6142.1] csökkentés, akkor az jutalékmentes a pénztárosnak.
+[ 6144.1] Mert hogy ő jutalékot is kap,
+[ 6146.1] és azt is számolja a gép.
+[ 6148.1] És ezek az anyagok bemennek a szerint.
+[ 6150.1] És ott is az értéktáros
+[ 6152.1] rögzíti.
+[ 6154.1] Tehát ez úgy megy, ez bemegy a szerverre,
+[ 6156.1] közben az értéktáros, ha ő adott árfolyamot,
+[ 6158.1] hogy a főértéktáros saját programjába
+[ 6160.1] rögzíti. És amikor ő ellenőrzi,
+[ 6162.1] van egy ellenőrzőprogram, lekéri az egészet,
+[ 6164.1] és akkor párbaállítja.
+[ 6166.1] Mi ment be a pénztárgépbe, mit írt be az értéktáros.
+[ 6168.1] És ha ez a kettő nem egyezik,
+[ 6170.1] akkor valaki vagy rosszul rögzített,
+[ 6172.1] vagy olyat adott, amit nem engedélyezett
+[ 6174.1] senki. És ez ezért
+[ 6176.1] az ellenőrzés miatt fontos.
+[ 6178.1] És
+[ 6180.1] mi a különbség például
+[ 6182.1] a között, hogyha az értéktáros
+[ 6184.1] ad? Vagy a főértéktáros?
+[ 6186.1] Bizonyos összeghatár fölött nem adhat csak a főértéktáros.
+[ 6188.1] Tehát a visszaélés elkerülése
+[ 6190.1] miatt. Értem.
+[ 6192.1] És ugye, hogyha kezelési költséget
+[ 6194.1] érint az engedmény,
+[ 6196.1] tehát törlöm vagy felezem,
+[ 6198.1] úgy, ami nem kártyás,
+[ 6200.1] akkor arra nem jár jutalék.
+[ 6202.1] Tehát azt egyből nem száll.
+[ 6204.1] Nem jár jutalék. Igen, a forgalom után.
+[ 6206.1] De azt is mutatom,
+[ 6208.1] hogy ez mind-mind itt dolgozik,
+[ 6210.1] bemenj a szerverre,
+[ 6212.1] és a szerver számolja a jutalékot,
+[ 6214.1] és hogyha olyan tételben megy be, ami jutalék van,
+[ 6216.1] és akkor azt is valahogy,
+[ 6218.1] azt majd a forrásból látjátok, azt kiszedi.
+[ 6220.1] Tehát arra nem jár jutalék a pénztárosnak.
+[ 6222.1] Értem, értem.
+[ 6224.1] Tehát, hogyha ez már van,
+[ 6226.1] akkor automatán nem enged azonosítást
+[ 6228.1] nélkül a gép tovább.
+[ 6230.1] Tehát itt, ha látod, 300 ezer alatti
+[ 6232.1] ügyfél, és nem azonosít.
+[ 6234.1] Tehát ez mind szürke, csak az ügyfél azonosítást tud,
+[ 6236.1] hogy ki kell választani, mert törvényelőírás,
+[ 6238.1] vagy 300 fölött teljes azonosítást kell.
+[ 6240.1] Tehát, ki kell választanom,
+[ 6242.1] hogy ez az ügyfél belföldi,
+[ 6244.1] vagy külföldi, természetes, vagy jogi személy,
+[ 6246.1] mert máshogy ez azonosítás.
+[ 6248.1] Most ez legyen belföldi, és természetes,
+[ 6250.1] és azonosítom. Itt akkor előjön az,
+[ 6252.1] hogy már rögzített ügyfél,
+[ 6254.1] F-föld, kiválasztom a listából,
+[ 6256.1] vagy új ügyfél,
+[ 6258.1] és akkor be kell gépálnom az adatokat.
+[ 6260.1] Fényképezed akkor?
+[ 6262.1] Igen.
+[ 6264.1] Igen, igen.
+[ 6266.1] Itt a záronál is például úgy adatoknak,
+[ 6268.1] hogy nincs olyan listából,
+[ 6270.1] hanem ott is egy ilyen megvörtülő van.
+[ 6272.1] Ha rá tudsz szűrni az előzőekre,
+[ 6274.1] akkor még oldalt lesz egy kis gombos.
+[ 6276.1] Úgy is jó az a lényeg,
+[ 6278.1] hogy ez legyen a lényeg.
+[ 6280.1] Tehát, ha mégis az ügyfél
+[ 6282.1] nem akarja beadni az okmányait,
+[ 6284.1] akkor mégsem azonosítok, kienged.
+[ 6286.1] Ha listából, akkor kikeresek
+[ 6288.1] akárkit. Itt is lehet keresni.
+[ 6290.1] Tehát nem tudom,
+[ 6292.1] hogy benne vagyok.
+[ 6294.1] Nem ért mindegy.
+[ 6296.1] De mondjuk kiválasztom, őt választom,
+[ 6298.1] akkor alapból beírja az adatokat.
+[ 6300.1] Az a lényeg,
+[ 6302.1] ügyfél neve ki kell legyen töltve.
+[ 6304.1] Leánykori név az opcionális.
+[ 6306.1] Itt ezt szeretném megváltoztatni,
+[ 6308.1] mert ugye itt van olyan,
+[ 6310.1] hogy születési, családi és utónév is
+[ 6312.1] leánykori. A leánykori kikerülhetne,
+[ 6314.1] és csak a születési,
+[ 6316.1] családi és utónév. Mert ugyanis
+[ 6318.1] most már van a férfiaknak is,
+[ 6320.1] lehet úgy is, hogy felveszi a felesége nevét,
+[ 6322.1] és akkor mondjuk úgy hívják, hogy
+[ 6324.1] Kis Gábor, de a születési neve az
+[ 6326.1] Kis Gábor volt.
+[ 6328.1] Lehet.
+[ 6330.1] Hölgyeknél is van, és ugye ez fontos,
+[ 6332.1] mert ha valakinek előző neve is
+[ 6334.1] volt, akkor azt is a banknak
+[ 6336.1] be kell küldene.
+[ 6338.1] Tehát ezek opcionálisak,
+[ 6340.1] mert a születési
+[ 6342.1] név az
+[ 6344.1] vagy ugyanaz, mint a
+[ 6346.1] családi név, meg az utónév.
+[ 6348.1] Oké, anyjaneve, az kötelező,
+[ 6350.1] tehát ha az anyjanevét nem tölti ki, nem
+[ 6352.1] engedi tovább a gép. Bocsi, van egy kérdés,
+[ 6354.1] hogy honnan látod, hogy kötelező?
+[ 6356.1] Onnan, hogy nem engedi tovább a gép.
+[ 6358.1] Meg tudom neked mutatni.
+[ 6360.1] Eldobom. Most csak azért tette fel
+[ 6362.1] ezt a kérdést, mert nálunk vannak
+[ 6364.1] ugye ezek a címkék,
+[ 6366.1] a bővítelmezőnek a címkéje.
+[ 6368.1] Megmutatom, hogy most ez
+[ 6370.1] hogyan működik, és ezt
+[ 6372.1] úgy tudom megmutatni, hogyha
+[ 6374.1] új ügyfelként azonosítom,
+[ 6376.1] de itt beírom, hogy Kis
+[ 6378.1] Jolán,
+[ 6380.1] akkor leánykori neve ugyanaz,
+[ 6382.1] anyjanevét nem akarom kitaláltani,
+[ 6384.1] akkor megyünk tovább, akkor beírom,
+[ 6386.1] hogy Gyula, mondjuk ez is kötelező
+[ 6388.1] a születési hely, meg az évkitöltése.
+[ 6390.1] De a végén
+[ 6392.1] ki fogja nekem írni azt, hogy
+[ 6394.1] mit nem töltöttem ki.
+[ 6396.1] Lakcím is ugye kötelező.
+[ 6398.1] Itt is
+[ 6410.2] lehet esetleg olyat, a rögzítésnél
+[ 6412.2] bevinnek kiválasztja, hogy utca,
+[ 6414.2] vagy tér, vagy nem tudom mi, ahogy gondolják.
+[ 6416.2] Ezeket lehet.
+[ 6418.2] Oké, lakcímkártyaszám.
+[ 6420.2] Illetve ugye
+[ 6422.2] úgy van most az állóknál, és gondolom,
+[ 6424.2] amit is így lesz, mert ugye valóta
+[ 6426.2] nálatok tulajdonképpen
+[ 6428.2] egy keretrendszer, viszont
+[ 6430.2] különböző rendszerek, és
+[ 6432.2] gondolom, hogy nálatok is úgy lesz lehet vezetve,
+[ 6434.2] hogy ha beírod az irányítószámot,
+[ 6436.2] automatikusan kitaláljátok. Akkor feladja.
+[ 6438.2] Azt a kérdést. Az jó.
+[ 6440.2] Ugye itt már gördülő van, okvány típusnál
+[ 6442.2] nálunk csak személygazadalmi jogosítvány
+[ 6444.2] és útlevél lehet, ott kiválasztja.
+[ 6446.2] Más nem is lehet? Nem.
+[ 6448.2] Okvány számot meg beírom.
+[ 6450.2] Lejárat kell?
+[ 6452.2] Egyelőre nincs benne,
+[ 6454.2] de szeretném. Igen, legyen.
+[ 6456.2] Mert ugye lejárt okványt nem
+[ 6458.2] fogadhatunk el, és az legalább figyelmezteti,
+[ 6460.2] hogy ha jön az ügyfél lábkazában, és már
+[ 6462.2] lejárt, akkor villog, hogy
+[ 6464.2] nem fogadhatod el, kérje
+[ 6466.2] a másikat. Igen. Akkor itt
+[ 6468.2] az állampolgárságnál
+[ 6470.2] Belfodinél a
+[ 6472.2] magyart adja be, de ugye van
+[ 6474.2] olyan, ugye törvényelőírás.
+[ 6476.2] Deviza Belfodinnek az minősül, aki
+[ 6478.2] Magyarországon állandó lakcímmal
+[ 6480.2] rendelkezik. Tehát ha neked van
+[ 6482.2] egy adó lakcímet Magyarországon, akkor te
+[ 6484.2] lehetnéd a Deviza Belfodin, annak ellenére,
+[ 6486.2] hogy esetleg az állampolgárságot szerz.
+[ 6488.2] Ugye azért lehet itt választani.
+[ 6490.2] Itt is ugye be van égetve,
+[ 6492.2] legördülővel ki tudom
+[ 6494.2] választani, hogy ő milyen állampolgár,
+[ 6496.2] és akkor ez rendben van, és ha arra megyek, hogy
+[ 6498.2] ügyfeladatai rendben álltad, itt villog, hogy
+[ 6500.2] ezt nem töltöttem ki. Tehát ezek,
+[ 6502.2] ami az anyjaneve, születési hely,
+[ 6504.2] születési idő, akkor
+[ 6506.2] a lakcím, az okmány típusa
+[ 6508.2] száma, ez kötelező.
+[ 6510.2] És a másik,
+[ 6512.2] ugye az van, ezt nem tudom,
+[ 6514.2] hogy hogyan lehet megoldani
+[ 6516.2] másképp, ha teszem azt,
+[ 6518.2] mint mondtad, hogy lejárt a személye.
+[ 6520.2] És akkor bekérek
+[ 6522.2] tőle újat. Nálunk ez most új
+[ 6524.2] működik, hogy nem tudja másképp kezelni a
+[ 6526.2] program. Újként kell felvinni
+[ 6528.2] az ügyfelet, teljesen újként
+[ 6530.2] kell rögzíteni.
+[ 6532.2] Igen, tudok
+[ 6534.2] bizonyos adatokat,
+[ 6536.2] de nem szerkezthetek,
+[ 6538.2] mert a törvény szerint
+[ 6540.2] egy adott bizonylathoz
+[ 6542.2] tartozó adatokat,
+[ 6544.2] veszkenált okmányokat 8 évig meg kell
+[ 6546.2] őriznem. Tehát ha én, úgy kellene megoldani,
+[ 6548.2] ha én leválogatom ezt a bizonylatot
+[ 6550.2] erre a dátumra, erre az ügyfélre,
+[ 6552.2] azt az akkori adatba ez is
+[ 6554.2] rakja bele. Tehát bizonylathoz is kell rögzíteni
+[ 6556.2] az adott személynek
+[ 6558.2] az adatait, és ezt
+[ 6560.2] későbbi megőrzésre is meg kell
+[ 6562.2] hagyni. Tehát ez úgy van, mert
+[ 6564.2] ugye azt most is csinálja a rendszerünk, hogy
+[ 6566.2] tárol, tehát archivál adatokat,
+[ 6568.2] és a régi
+[ 6570.2] például személyi igazolványokat is archiválja.
+[ 6572.2] De akkor ezt mondjuk nem csak az
+[ 6574.2] ügyfélhez köthetően kellene,
+[ 6576.2] hanem úgy kellene, hogy a bizonylathoz is
+[ 6578.2] archiválja magát az adatot.
+[ 6580.2] És akkor viszont lehet változtatni benne.
+[ 6582.2] Aha, igen, az úgy jó lesz.
+[ 6584.2] Jó, akkor ide bejöjjük, hogy
+[ 6586.2] jó. Egyébként érdekes van, hogy
+[ 6588.2] én tényleg...
+[ 6590.2] most ugye az állagot
+[ 6592.2] tudom felhozni, de egyébként az
+[ 6594.2] integrált rendszertben is, amit már úgy
+[ 6596.2] ugye néztünk, meg csináltunk,
+[ 6598.2] itt úgy van, hogy egyébként piros, vagy
+[ 6600.2] kép, vagy nem tudom milyen keretet kap az,
+[ 6602.2] ami kötelezi az adat alapból.
+[ 6604.2] Meg a címkemelet ott egy kis csillag.
+[ 6606.2] Igen, ahogy egyébként is,
+[ 6608.2] hogyha valami töltesz. Igen, az úgy jó.
+[ 6610.2] Illetve, hogyha rákattad
+[ 6612.2] ezt arra, hogy mehet is valamit, még ennek
+[ 6614.2] ellenére sem töltöttél ki, akkor
+[ 6616.2] egy piros körbe, egy háromszöve vagy fák
+[ 6618.2] játoljál. Aha, igen, az úgy jó.
+[ 6620.2] Vagy nem tudsz átattintani a gombra, mert
+[ 6622.2] igen, vagy ugye addig
+[ 6624.2] az jobb az, hogy mutatja, hogy mit nem töltött.
+[ 6626.2] Nézi, nézi, nem látja fel tőle
+[ 6628.2] az erdőt, mutassa inkább.
+[ 6630.2] Pláne, ha már ideges vagy, úgy dolgozol.
+[ 6632.2] Az úgy jó.
+[ 6634.2] Utána addig úgy se engedi,
+[ 6636.2] tehát tovább, tehát addig úgy se tud menteni.
+[ 6638.2] Viszont ugye ott látszik, hogy melyik
+[ 6640.2] adatot nem töltöttél ki, alapból is
+[ 6642.2] látszik, hogy melyik a kötelező.
+[ 6644.2] Ez rendben van, akkor rendben, akkor megint
+[ 6646.2] van egy olyan törvényelőírás, hogy meg kell
+[ 6648.2] kérdezni, hogy saját névben
+[ 6650.2] vagy más nevében végzi a tranzakciót.
+[ 6652.2] Ha arra megyek, hogy saját név, akkor
+[ 6654.2] visz tovább, ha arra...
+[ 6656.2] Mikor lehet olyan, hogy más nevében végzi?
+[ 6658.2] Úgy, hogy ugye a tényleges
+[ 6660.2] tulajdonost vizsgálni kell, hogy
+[ 6662.2] ki az a pénz.
+[ 6664.2] Úgy találsz nekem pénzt, hogy báltson.
+[ 6666.2] Így van. Ő úgy váltatja be a te pénzed, ha azt mondja, hogy nem az én pénzem,
+[ 6668.2] hanem a páromért, vagy bárkiért,
+[ 6670.2] akkor hozniak kell egy meghatalmazást.
+[ 6672.2] Hogy te meghatalmazod, hogy a
+[ 6674.2] nevedben ennyi és ennyi összeget
+[ 6676.2] beváltson, és a te okmarjaidnak
+[ 6678.2] a fénymásolatát.
+[ 6680.2] A meghatalmazáson
+[ 6682.2] ugye két tanú, minden hivatalos,
+[ 6684.2] és akkor olyankor ő más nevében
+[ 6686.2] vált. Azonosítani kell azt is,
+[ 6688.2] aki vált, meg azt is, akinek a nevében
+[ 6690.2] van. Tehát a
+[ 6692.2] zeljelő ügyfél és a megbízó.
+[ 6694.2] Igen, és ha azt mondom, hogy
+[ 6696.2] más nevében vált, akkor
+[ 6698.2] megint megkérdez, hogy a belföldi vagy külföldi
+[ 6700.2] a megbízó státusza, és ugyanúgy
+[ 6702.2] be kell azonosítani.
+[ 6704.2] Miben különbözik, ha belföldi vagy
+[ 6706.2] külföldi maga a megbízó?
+[ 6708.2] Külföldi esetében bejön egy olyan
+[ 6710.2] például, hogy
+[ 6712.2] az ügyfél az
+[ 6714.2] Magyarországon
+[ 6716.2] nem rendelkezik egy állandó akciommal,
+[ 6718.2] de kötelezően be kell
+[ 6720.2] írni a külföldinek a
+[ 6722.2] magyarországi tartózkodási helyét.
+[ 6724.2] Igazolás vagy bemondás
+[ 6726.2] alapján. Tehát ha azt mondja nekem, hogy a fiú
+[ 6728.2] meghaltál, akkor én ezt beírom.
+[ 6730.2] És ez kötelező. Értem, de
+[ 6732.2] akkor nem kell erről lopmányt hoznia, mert akkor
+[ 6734.2] bemondás alapján is lehet. Igen.
+[ 6736.2] De például
+[ 6738.2] abban az esetben,
+[ 6740.2] ha a deviz a külföldi,
+[ 6742.2] mert ugye a deviz a külföldi, az lehet
+[ 6744.2] magyar állampolgár is, de Magyarországon
+[ 6746.2] az a lényeg, hogy nem rendelkezik állandó
+[ 6748.2] akciommal. Nagyon sokan
+[ 6750.2] például olyan lakcskártyájuk van, hogy az van odaira, hogy
+[ 6752.2] külföldi cím, mert ők külföldön élnek
+[ 6754.2] és dolgoznak. Az ő deviz
+[ 6756.2] a külföldi. Tehát lehet ugyanúgy
+[ 6758.2] magyar állampolgár vagy külföldi állampolgár,
+[ 6760.2] és abban az esetben,
+[ 6762.2] ha a deviz a külföldi tartózkodási
+[ 6764.2] engedéllyel rendelkezik, az egy olyan
+[ 6766.2] kártya, ami munkavállás vagy
+[ 6768.2] tanulmányi célokra ad ki a magyar állam,
+[ 6770.2] akkor viszont van szállás bejelentője,
+[ 6772.2] egy kis papírka, azt viszont
+[ 6774.2] be kell kérni, és azt is be kell szkenálni,
+[ 6776.2] és annak alapján kell beírni
+[ 6778.2] a magyarországi tartózkodási helyét.
+[ 6780.2] Aha, és ezt akkor rögzíteni kell a rendszerbe?
+[ 6782.2] Igen. Igen, és
+[ 6784.2] szkenálni kell meg mindent. Mindenre külön
+[ 6786.2] kérdez a rendszer? Tehát
+[ 6788.2] ugye itt beszkenneled
+[ 6790.2] a rendszerbe az adatokat, gondolom ez
+[ 6792.2] itt visszanézhető a rendszeren belül.
+[ 6794.2] Külön kérdez, hogy
+[ 6796.2] például, hogy ide
+[ 6798.2] törzsd persze még igazolványt, vagy
+[ 6800.2] vagy csak feltöltitek az adatokat
+[ 6802.2] az ügyfélhez. Feltöltjük az
+[ 6804.2] okmányokat. Igen. Ezt ti tudjátok,
+[ 6806.2] hogy mi kell hozzá. Igen.
+[ 6808.2] Oké, tehát akkor...
+[ 6810.2] Ezt a gép nem tudja vizsgálni.
+[ 6812.2] Tehát nem tudja, hogy ezt tedd, ezt tedd, ezt tedd,
+[ 6814.2] mert ugye egy külföldi, tehát megvan az, hogy
+[ 6816.2] állampolgártól mit fogadhatsz el azonosításra?
+[ 6818.2] Magyar
+[ 6820.2] kártyás formátumú személyigazolványt
+[ 6822.2] és a lakcímkártyát. De
+[ 6824.2] ha régi személyigazolványt hoz, ami ugye érvényes,
+[ 6826.2] ahhoz nem biztos, hogy van lakcímkártya.
+[ 6828.2] Akkor elfogadhat magyar
+[ 6830.2] jogosítványt, de csak 2002 után
+[ 6832.2] kiállítod kártyás formátumot, a régit
+[ 6834.2] nem, tehát a gép nem tudja vizsgálni, hogy ez régi, vagy
+[ 6836.2] új, ezért ezt nem tudod belerakni.
+[ 6838.2] Úgyhogy ezeket a pénztárosnak
+[ 6840.2] kell tudnia, és akkor azt
+[ 6842.2] tenneli be. Ugye akkor itt
+[ 6844.2] annyi, hogy
+[ 6846.2] ilyet nyomtassunk
+[ 6848.2] egy ilyen bizonylatot, vagy
+[ 6850.2] mert
+[ 6852.2] ennek is a bizonylat formátuma
+[ 6854.2] az más, mert oda kell írni, hogy kinek
+[ 6856.2] a nevében végzi a tranzakciót.
+[ 6858.2] Mindenképp nyomtassunk. Akkor csinálunk egy
+[ 6860.2] tétát. Ami lehet, vagy szóba jöhet,
+[ 6862.2] mindent nyomtassunk,
+[ 6864.2] másoljunk le meg mindent,
+[ 6866.2] hogy mindenem meglegyen, és
+[ 6868.2] akkor utána ezt tudjuk beleréteni.
+[ 6870.2] Mennyiben változik?
+[ 6906.5] Hogyha kiemelt közszereplő?
+[ 6908.5] Külföldinél
+[ 6910.5] még én nem fejeztem be, tehát miért külföldi?
+[ 6912.5] Tehát külföldinél
+[ 6914.5] is, meg magyarnál is
+[ 6916.5] ugye kiemelt közszereplő
+[ 6918.5] státuszt kell vizsgálni. Meg kell kérdezni,
+[ 6920.5] hogy kiemelt közszereplő vagy sem.
+[ 6922.5] Ha kiemelt közszereplő az,
+[ 6924.5] és arra is csinálunk majd egy tétát,
+[ 6926.5] akkor legördülőbből ki lehet választani,
+[ 6928.5] hogy milyen családtag,
+[ 6930.5] miniszterteket tudja,
+[ 6932.5] odavalforsról, vagy micsoda.
+[ 6934.5] És kiemelt közszereplő esetében,
+[ 6936.5] az engedélyt kell kérni
+[ 6938.5] a vezetőtől,
+[ 6940.5] tehát az engedélyt adó
+[ 6942.5] vezetőtől, aki Kósa Zoltán,
+[ 6944.5] vagy Kassza Hávával,
+[ 6946.5] vagy Boros Sevesenér bari hárját talál,
+[ 6948.5] és be kell
+[ 6950.5] írni a pénzeszköz forrását.
+[ 6952.5] Ha ez 10 millió alatti,
+[ 6954.5] akkor bemondás alapján,
+[ 6956.5] az is legördül, hogy mi, illetve
+[ 6958.5] van egy olyan rész, hogy
+[ 6960.5] egyéb, amire be lehet írni megtakarítást,
+[ 6962.5] vagy bármi,
+[ 6964.5] és úgy lehet lekönyvelni.
+[ 6966.5] Engedélynél akkor nem lehet
+[ 6968.5] lekönyvelni. Minden engedélyköteles
+[ 6970.5] tételről pedig
+[ 6972.5] a törvény előírása, hogy kódolni kell egy
+[ 6974.5] e-mailt, az is meghagy kinek, nekem,
+[ 6976.5] az engedélyező személynek,
+[ 6978.5] mert ez visszakereshető kell, hogy legyen.
+[ 6980.5] Aztán külföldi
+[ 6982.5] nél van még olyan,
+[ 6984.5] hogy strat hiányosságú, tehát
+[ 6986.5] FATF listás. Van mindig egy lista,
+[ 6988.5] amin szerepel
+[ 6990.5] az, hogy melyek
+[ 6992.5] országok
+[ 6994.5] ...
+[ 6996.5] van nagy mértékű pénzmosás.
+[ 6998.5] Ilyen esetben...
+[ 7000.5] Tehát ez a fekete lista.
+[ 7002.5] Igen, ezek országokban állandó
+[ 7004.5] lakcímmel rendelkező ügyfelek esetében
+[ 7006.5] szintén engedélyt kell
+[ 7008.5] kérni, tehát a három vezetővel
+[ 7010.5] amelyikétől, és úgy lehet megcsinálni
+[ 7012.5] a tranzakciót. Itt is
+[ 7014.5] bemondás alapján be kell kérni a forrást,
+[ 7016.5] a pénz forrását, és be kell
+[ 7018.5] jönni az engedélyező. A lista
+[ 7020.5] az rendszeresen változik,
+[ 7022.5] azt se tudod beégetni a gépbe,
+[ 7024.5] hanem van a lányoknak.
+[ 7026.5] Van a lányoknak egy lista,
+[ 7028.5] és a gép megkérdezi, ha végigmegyek,
+[ 7030.5] majd megmutatom devizek külföldénél,
+[ 7032.5] hogy strat hiányosságú-e vagy sem.
+[ 7034.5] Az ügyfél azt választja,
+[ 7036.5] a pénzforrási akkor automatán adja a dolgokat.
+[ 7038.5] Tehát, hogy igazából
+[ 7040.5] ott a pénztáros mindenkit
+[ 7042.5] beleavatkozik a folyamatban, mert ugye
+[ 7044.5] ez a lista folyton változó. Igen, ez elég
+[ 7046.5] sűrű. Tehát most küldtem két, tehát
+[ 7048.5] pár hónapon talán változik.
+[ 7050.5] És akkor
+[ 7052.5] kikerülnek belőle, belekerülnek,
+[ 7054.5] úgyhogy ez azért elég
+[ 7056.5] sűrű. Honnan kapod
+[ 7058.5] ezeket? A Kósa Zoli kapja
+[ 7060.5] a NAV-tól, és úgyhogy tovább nekem,
+[ 7062.5] és akkor én írok róla a körlevelet, és akkor
+[ 7064.5] azt azonnal megkapják, és akkor onnantól
+[ 7066.5] él a dolog. Jó? Tehát
+[ 7068.5] itt van a szkenelés.
+[ 7070.5] Az okmányok a szkenerrel össze van
+[ 7072.5] kötve, automatán
+[ 7074.5] 300 ezer fölött feladja
+[ 7076.5] a szkenelésre, és akkor...
+[ 7080.5] Hát persze, felőlem mennyi ez, beszélj meg tündével,
+[ 7082.5] hogy hogyan, majd
+[ 7084.5] navigálunk, vagy nem tudom.
+[ 7086.5] Kérdeztem tőle, azt mondta, hogy ő nem tud
+[ 7088.5] tűnni. Nem, tehát nem lesz nyitva a kettes tünde,
+[ 7090.5] tehát ha menned kell ki, akkor kimész.
+[ 7092.5] Jó? Kiteszed a táblát, vagy nem is
+[ 7094.5] teszed, mit, órásod van? Órás. Órás táblát,
+[ 7096.5] és ha jön valaki, majd bőszen
+[ 7098.5] integetek, hogy mindjárt jössz. Ja? Oké.
+[ 7100.5] Tehát akkor itt automatán
+[ 7102.5] feladja a szkenelést, okmányt beszkenelem,
+[ 7104.5] nem tudom én mit rakjunk bele.
+[ 7106.5] Ez jó lesz.
+[ 7108.5] És akkor
+[ 7112.1] rámegyek arra, hogy okmány
+[ 7114.1] szkenelése.
+[ 7116.1] Ennyit szokott kiadni, hogy beolvasás minden,
+[ 7118.1] csak itt áll volt. Ez más program,
+[ 7120.1] én úgy látom.
+[ 7122.1] Másképp működik egy kicsit.
+[ 7124.1] Mert itt szerintem elszállt a szkennelprogram,
+[ 7126.1] és így tudta beállítani.
+[ 7128.1] Antti? Itt nem megy a
+[ 7134.6] szkennel, vagy megy a szkennel? Vagy mi van?
+[ 7136.6] Megy. Jó. Csak ján lassú?
+[ 7138.6] Jó.
+[ 7140.6] Na igen, megy, jó van.
+[ 7150.9] Nem minden gép ján lassú.
+[ 7152.9] Ez nem tudom miért.
+[ 7154.9] Pedig új gép.
+[ 7156.9] Azt nem tudom, mennyire vagytok hardware-esek.
+[ 7158.9] Antti magyarázok, de én nem értek hozzá.
+[ 7160.9] Valamit be kéne állítani, és akkor nem lesz ilyen lassú,
+[ 7162.9] mert valahogy a való társaparkomat nem akar,
+[ 7164.9] és szerintem a webessal nem lesz ilyen.
+[ 7166.9] Hát ott igazából az, hogy lassú-e vagy nem,
+[ 7168.9] az attól függ függni, hogy milyen az internet
+[ 7170.9] kapcsolat. Tehát, hogy ha...
+[ 7172.9] Nem, itt valami gépbeállítással van.
+[ 7174.9] Igen, de hogy a webess...
+[ 7176.9] Itt mindenütt egyforma, értem? Oké.
+[ 7178.9] És akkor itt úgy van, hogy itt van megjelent, hogy
+[ 7180.9] beszkenelt-e, és akkor itt, ha még
+[ 7182.9] akarsz, ugye megfordítod, szkeneled
+[ 7184.9] tovább. Ha mindent beszkeneltél,
+[ 7186.9] akkor annyi,
+[ 7188.9] hogy rámész arra, hogy
+[ 7190.9] szkennel is befejezése, és
+[ 7192.9] akkor itt három opció van. Igen,
+[ 7194.9] sikeresen beolvastam, nem, újra
+[ 7196.9] megpróbálom, és ügyfél mégsem
+[ 7198.9] kérje a váltást. Ha ügyfél mégsem
+[ 7200.9] kérte a váltást, akkor automatikusan ki tud
+[ 7202.9] lépni a tranzakcióból. Ha sikeresen
+[ 7204.9] befejezte, akkor megint
+[ 7206.9] felírja, hogy ennyit vált, azt ránézel,
+[ 7208.9] minden jó, akkor a tranzakció rendben van,
+[ 7210.9] és akkor lehet,
+[ 7212.9] cimletezéssel is
+[ 7214.9] megcsinálni a tranzakciót,
+[ 7216.9] meg annélkül is, ezt régen
+[ 7218.9] kérték a pénztársak, van, aki
+[ 7220.9] használja, a többség nem használja,
+[ 7222.9] nem maradjon benne.
+[ 7226.9] Be tudod írni, hogy beadott az
+[ 7228.9] ügyfél 1000 eurót, meg be tudod írni,
+[ 7230.9] hogy milyen cimletben adta be, és akkor
+[ 7232.9] kiszámolja a gép, hogy ez valóban 1000 euró,
+[ 7234.9] ha nem, akkor mit kell visszaadni,
+[ 7236.9] ugye már a váltáshoz képest, meg kiszámolja,
+[ 7238.9] hogy te be tudod írni, hogy mennyit
+[ 7240.9] adsz ki, és akkor kisebb az
+[ 7242.9] ilyen.
+[ 7244.9] És akkor nem kell
+[ 7246.9] cimletezni, kilép a
+[ 7248.9] cimletezővel, jó,
+[ 7250.9] és akkor itt jöhet az adatátvitel,
+[ 7252.9] és akkor jön a NAVOS gép, és most
+[ 7254.9] nem fagyott le szerencsére,
+[ 7256.9] oké, és akkor
+[ 7261.1] ha ez megvan, akkor rendben
+[ 7263.1] van, és rendben van, és akkor
+[ 7265.1] be kell írni mindig a NAVOS-nak
+[ 7267.1] a sorszámát, ezt a két
+[ 7269.1] számot,
+[ 7271.1] ez mutatja a jelzőszámot,
+[ 7273.1] vagy nem tudom mi, ez meg a darabszámát,
+[ 7275.1] a tranzakcióknak,
+[ 7277.1] hogy hanyadiknál tartunk,
+[ 7279.1] kis türelmet,
+[ 7283.6] ja, itt van Jani, jó van,
+[ 7287.4] oké, és
+[ 7290.7] akkor itt, hogyha van
+[ 7292.7] nyugtaszám, akkor nyugtaszámuk rendben is
+[ 7294.7] megy tovább, ha nincsen
+[ 7296.7] nyugta, mert áramlotta a NAVOS gép,
+[ 7298.7] olyan is előfordul, akkor is
+[ 7300.7] dolgozunk tovább, akkor nem nyomtatott
+[ 7302.7] nyugtát, és kiírja, hogy töltsd ki
+[ 7304.7] a kézi nyugtatömböt,
+[ 7306.7] és akkor kézi nyugtatömbön
+[ 7308.7] csak a kezelési költséget
+[ 7310.7] kitartjuk, és ennyi a menete.
+[ 7312.7] Oké, ha rendben
+[ 7314.7] van, akkor rendben van, és akkor
+[ 7316.7] lenyomhatjuk, hogy javagítás bizony, akkor.
+[ 7318.7] És tovább, hogy itt van
+[ 7320.7] az a nyomjön egy space, és akkor ugye
+[ 7322.7] látod az, hogy kifizeted,
+[ 7324.7] és akkor egy idő után vagy eltenik, vagy
+[ 7326.7] ezt megnyomod, és akkor állod.
+[ 7328.7] És akkor,
+[ 7330.7] mivel ez azonosítási,
+[ 7332.7] akkor bizonyos
+[ 7334.7] adatoknak ugye rajta kell lenni,
+[ 7336.7] a bizonylaton,
+[ 7338.7] ez nem nyugtasz bizonylat, ez a nyugtat,
+[ 7340.7] ne le lehet hagyni, ezeknek rajta
+[ 7342.7] kell lenni, meg az ügyfeladatoknak is,
+[ 7344.7] annak, hogy kinek vagyunk az ügynekei,
+[ 7346.7] a cégnév, ugye ez egy reklámszöveg,
+[ 7348.7] és jogcímnyilatkozatoknak,
+[ 7350.7] hogy kijelenti XY,
+[ 7352.7] hogy a tranzakciót, amit
+[ 7354.7] mondtam, látod, hogy ennek az
+[ 7356.7] ügyfelnek a nevében végzi,
+[ 7358.7] kijelenti, hogy nem
+[ 7360.7] kiamált közszereplő, és akkor itt a végén
+[ 7362.7] alá kell írni.
+[ 7364.7] Úgyhogy ez egy ilyen. Bocsánat,
+[ 7366.7] ezt megkaphatom?
+[ 7368.7] Le fogom sztornózni, és akkor
+[ 7370.7] oda fogom adni a másolatot.
+[ 7372.7] Jó, csak már, hogy azért, mert
+[ 7374.7] akkor itt a nyugtat, ezt áthozom, és akkor
+[ 7376.7] lesz bizony. Igen, igen.
+[ 7378.7] Ezt már erősülheted, ezen már nyugodtan.
+[ 7380.7] Jó.
+[ 7382.7] Akkor, mutatok
+[ 7384.7] egy olyat,
+[ 7386.7] ahol
+[ 7388.7] nem tudom, van
+[ 7390.7] nekünk annyi pénzünk.
+[ 7396.4] És akkor
+[ 7398.4] ez a három sztornózás, ez
+[ 7400.4] naponta van? Igen.
+[ 7402.4] Tehát naponta hármat lehet, és csak az az
+[ 7404.4] napon. Igen, az mindig
+[ 7406.4] nagyon fontos, hogy vissza vannak, nem lehet
+[ 7408.4] sztornózni, és csak tájnapot, bizony napot
+[ 7410.4] lehet sztornózni. Tehát az nap lehet, de
+[ 7412.4] hogy más napot már nem lehet.
+[ 7414.4] Csak tájnapot.
+[ 7416.4] Törvényelvére.
+[ 7418.4] Jó,
+[ 7420.4] csináljunk egy kis
+[ 7422.4] tétát, mondjuk
+[ 7424.4] 100 ezer alatti, akkor ugye
+[ 7426.4] itt nem fog bekérni semmit,
+[ 7428.4] hanem
+[ 7430.4] ha külföldi,
+[ 7432.4] nem csináljuk külföldire,
+[ 7434.4] természetsz
+[ 7436.4] és személy, és akkor az itt bármit választhatok.
+[ 7438.4] Azt is, hogy nem azonosítja magát,
+[ 7440.4] mert nem kell, de hogyha az ügyfel akarja,
+[ 7442.4] akkor ráírhatom a
+[ 7444.4] 300 ezer forint alatti
+[ 7446.4] nevét,
+[ 7448.4] akármit, de itt nem azonosítja magát.
+[ 7450.4] Itt engem tovább, mert nem kötelező az azonosítás.
+[ 7452.4] Bocsánat, egy pillanat.
+[ 7454.4] Oké.
+[ 7460.6] Azt hiszem, hogy minden rendben.
+[ 7462.6] Jó.
+[ 7464.6] Akkor jön a következő,
+[ 7466.6] ami 100 és 300
+[ 7468.6] között van.
+[ 7472.7] Ez látod, 300 alatt,
+[ 7474.7] vagy úgy teljes azonosítást
+[ 7476.7] enged. Itt az a lényeg az egész
+[ 7478.7] dolognak, hogy törvény szerint
+[ 7480.7] összefüggő tranzakciónak az egy héten
+[ 7482.7] belül leadott tranzakciót
+[ 7484.7] számítanak. Ha egy tranzakció
+[ 7486.7] nevesített, tehát van név és
+[ 7488.7] nem 100 ezer alatti, akkor
+[ 7490.7] ezt a szerver figyeli. Azért is
+[ 7492.7] van az, mikor beköldöm, hogy
+[ 7494.7] az ügyfelet ellenőrzi.
+[ 7496.7] Hogyha most váltok
+[ 7498.7] 100 és 300 között,
+[ 7500.7] akkor ugye
+[ 7502.7] be fogja kérni a nevemet.
+[ 7504.7] Itt lehetnek régi ügyfél is.
+[ 7506.7] Most legyen egy régi ügyfél.
+[ 7508.7] Ez jó.
+[ 7510.7] Akkor beírja a nevét, a születési helyét
+[ 7512.7] és a dátumát.
+[ 7514.7] Adatok rendben vannak.
+[ 7516.7] Ugye kiírta azt, hogy terrorlista
+[ 7518.7] ellenőrzése van.
+[ 7520.7] Egy úgynevezett, mi úgynevezünk, hogy terrorlista,
+[ 7522.7] de egy szankciós lista.
+[ 7524.7] Európai Uniós, meg világ.
+[ 7526.7] Ezt a szerverrel össze van
+[ 7528.7] kötve az néző.
+[ 7530.7] Ott van a forrásban.
+[ 7532.7] Ha nézi, és ugyanaz a név,
+[ 7534.7] akkor kiírja, hogy az ügyfel terrorgyanos.
+[ 7536.7] És akkor annak az ügyfelnek
+[ 7538.7] nem lehet váltani.
+[ 7540.7] Ha ez a listán szerepel.
+[ 7542.7] Saddam Hussein, stb.
+[ 7544.7] Nem jön, de neki sem lehet.
+[ 7546.7] Szia!
+[ 7552.7] Mondja gyorsan!
+[ 7554.7] Nem néztem.
+[ 7556.7] Nem néztem, mert a programot
+[ 7558.7] nézzük most.
+[ 7560.7] Igen?
+[ 7562.7] 3906.69.
+[ 7564.7] Igen?
+[ 7566.7] 3906.69.
+[ 7568.7] 3906.69.
+[ 7570.7] 3906.69.
+[ 7572.7] 3906.69.
+[ 7574.7] 3906.69.
+[ 7576.7] 3906.69.
+[ 7578.7] 3906.69.
+[ 7580.7] 3906.69.
+[ 7582.7] 3906.69.
+[ 7584.7] 3906.69.
+[ 7586.7] 3906.69.
+[ 7588.7] 3906.69.
+[ 7590.7] 3906.69.
+[ 7592.7] 3906.69.
+[ 7594.7] 3906.69.
+[ 7596.7] 3906.69.
+[ 7598.7] 3906.69.
+[ 7600.7] 3906.69.
+[ 7602.7] 3906.69.
+[ 7604.7] 3906.69.
+[ 7606.7] 3906.69.
+[ 7608.7] 3906.69.
+[ 7610.7] Nem, csak teljes bizonyító erejű magáni okiratot, amit csak ügyvéd vagy közjegyző állíthat ki.
+[ 7620.7] Jó, úgyhogy sajnos mást nem. Oké, jó. Persze, hogyne.
+[ 7627.7] Hogyne, csak erről írjál is válaszba, hogy én is kapjam meg, hogy akkor tudjam, hogy nem.
+[ 7633.7] Jó, oké. Jajó, hella.
+[ 7637.7] Jó, akkor...
+[ 7641.7] Tehát igen, ugye a terrorista...
+[ 7643.7] Igen, az összeköltetésben van, és olyankor nem lehet tranzakciót végezni.
+[ 7647.7] Az kidob.
+[ 7649.7] Mi van akkor, ha ugye ez 100 ezer forint alatti?
+[ 7652.7] Akkor így jártunk.
+[ 7654.7] Akkor váltatunk.
+[ 7656.7] Meg ha 100 és 300 között is, nem, azt a nevet diktálja be.
+[ 7660.7] Tehát, hogy ezt egy hétre kell nézni.
+[ 7663.7] A terroristát unblock minden egyes váltásnál.
+[ 7667.7] Az egy héten belül jösszefüggő, az pedig az csak hírta, hogy terrorista ellenőrzés.
+[ 7672.7] Az is kérje egy ügyfél ellenőrzést.
+[ 7674.7] Az ügyfél ellenőrzés jelenti azt, hogy ha egy héten belül, mit tudom én, száz...
+[ 7678.7] Tehát nevesítettről beszélünk.
+[ 7680.7] Hát azt tudja csak a szerver összerakni, ami nincs nép, nem tudja.
+[ 7683.7] Ha egy héten belül a váltások összege meghaladja a 300 ezer forintot,
+[ 7688.7] ugye ez egy ugrás, akkor teljes azonosítás kell,
+[ 7691.7] akkor kérje a rendszer,
+[ 7692.7] és azt dobja fel, hogy teljes azonosítást kell végezni,
+[ 7696.7] mert az ügyfél ekkor és ekkor már váltott, hogy a váltásainak összege meghaladja a 300 ezer forintot.
+[ 7701.7] És ételesen kell kiírja, hogy mikor váltott?
+[ 7704.7] Nem, elég szerintem nekünk most annyi, hogy meghaladta a váltásainak összege.
+[ 7709.7] Illetőleg, hogyha ugye van egy másik, hogyha meghaladta a 10 milliót,
+[ 7715.7] ugye azt is figyeli, ha több váltással meghaladja egy héten belül a 10 milliót,
+[ 7719.7] akkor meg kiírja, hogy forrásigazolásra van szükség.
+[ 7722.7] És engedi érzésre, és hogyha az nincs, akkor nem enged tovább szupervájzolódik innen.
+[ 7729.7] Mi van akkor, hogyha bejövök ide, és 300 ezerig váltok,
+[ 7735.7] majd átmegyek a másikba, és váltok 300 ezerig.
+[ 7738.7] A saját irodánkba?
+[ 7739.7] Nem.
+[ 7740.7] Konkurenciához minket nem érdekel?
+[ 7742.7] Csak a sajátunkat nézzük, csak a saját adatokat.
+[ 7745.7] Viszont a saját, ugye nyilván az mindenhol áll.
+[ 7747.7] Viszont a saját az a best is, meg az állagvadataváltás is.
+[ 7751.7] Igen.
+[ 7752.7] A zálogvalutaváltást is?
+[ 7756.7] Igen.
+[ 7757.7] Tehát, hogyha például ott zálogozott, akkor utána eltűn ide, és akkor ott...
+[ 7761.7] Nem úgy értve, hogy zálogozott, hanem itt nincs valutaváltás a zálogban,
+[ 7765.7] de nagyon sok zálogfiókjában az olyanak van.
+[ 7767.7] Tehát valutaváltás, nem a zálogban.
+[ 7770.7] Mátis Szalkán van a zálogban valuta is.
+[ 7773.7] Tehát ott vesz Kis Péter 5 millió 9 ér valutát,
+[ 7778.7] aztán átmegy az exkluzívhoz, szintén Mátis Szalkára,
+[ 7781.7] és ott vesz még 5-9-at, mondtam 4 millió 2-t, az már meghaladja a 10 milliót,
+[ 7788.7] és ugye begépelje az adatokat a pénztáros igazolányból,
+[ 7793.7] akkor van, amit néz a gép, az az ügyfelneve, a születési helye, a születési dátuma,
+[ 7802.7] az állampolgársága, a lakcímet nem, állampolgárságát és az okmány típusát, számát szokta nézni.
+[ 7810.7] És hogyha ezekből az adatokból minimum 3 egyezik, akkor az ugyanaz az ügyfel.
+[ 7815.7] Meg az anyjanevét, bocs, mert az anyjaneve, a születési helye és a születési ideje nem változik.
+[ 7822.7] Ez magyar állampolgárnál nagyon jó, de azért nem csak...
+[ 7824.7] De néz ilyenem itt is.
+[ 7826.7] Igen, elmondom miért néz ennyi adatot és miért 3 adatnak egyeznek el, hogy egy ügyfel legyen.
+[ 7831.7] Külföldiek azt játsszák az ukránok, hogy ugye nekik az igazolványokban, meg semmelyik külföldi ügyfelnek nincs benne az anyjanev.
+[ 7840.7] Azt bemondása alapján, viszont nekünk kötelező rögzíteni, mert ezt kérje a törvény.
+[ 7845.7] És az ukrán.
+[ 7846.7] Mert minthogy nincs benne az anyjanev.
+[ 7847.7] Nincs, csak magyaroknál.
+[ 7849.7] Ezt most meg nézem az akmányomat, mert kíváncsi vagyok.
+[ 7853.7] A magyarban benne van, a külföldieknél nincs.
+[ 7855.7] Már minthogy a külföldi akmányban.
+[ 7857.7] Igen.
+[ 7858.7] Tehát ha valaki szerb állampolgár neked, akkor a magyarban benne van, a szerbben nincs.
+[ 7863.7] De ott a magyar...
+[ 7864.7] A magyarom benne van.
+[ 7866.7] De ha ő ide adja nekem a szerbet, én abból dolgozom, mert én honnan tudjam, hogy kettős állampolgár.
+[ 7872.7] És abból nincs, és megkérdezem, hogy légy szíves, mondd meg nekem az édesanyjad nevét, mert törvény szerint kötelező beírni.
+[ 7878.7] És az ukránok azt csinálták, hogy egyik helyen azt mondta, hogy Irina Nagyesda, a másik helyen Magdaléna Kisinyom.
+[ 7885.7] Mindenütt mást mondanak.
+[ 7886.7] És ha én az anyjanevét, ami ugye állandó, a születéséjét meg a dátumját nézem csak, akkor ez nem egy ügyfia.
+[ 7893.7] Mert bárki születhet el.
+[ 7895.7] Egyébként az 70. december 20-án, de más az anyjaneve.
+[ 7899.7] De igazából úgy is csalóka lehet, hogyha a három adatot néz, hogy például lehet ugyanaz az anyjaneve,
+[ 7907.7] születhetett ugyanakkor, és lehet az ő neve is ugyanaz.
+[ 7911.7] De a születési helye nem ugyanaz.
+[ 7913.7] Az már nagyon ritka, hogy az anyjaneve is ugyanaz, meg a születési helye, a dátuma is.
+[ 7918.7] Például én ismerek olyan embert, aki Nyíregyházán született, ugyanúgy, mint én.
+[ 7924.7] Ugyanúgy.
+[ 7925.7] 98.07.21-én. Ugyanúgy Karolynának hívják, mint engem.
+[ 7930.7] Csak annyi, hogy őt nem Musztának hívják.
+[ 7933.7] De ez már nem egyezik.
+[ 7934.7] Igen, értem. Csak hogy tök durva, hogy például én...
+[ 7938.7] De ebben csak két adat egyezik a születési hely és az idő. Az anyjaneve nem?
+[ 7942.7] Viszont, de igen. Mert az anyja nánykori neve ugyanaz, mint az én anyukám nánykori neve.
+[ 7946.7] Akkor nem tudunk csinálni. Akkor összerakja, és akkor lehet magyarázkodni, hogy én már pedig nem váltottam.
+[ 7952.7] És akkor megnézzük az okmányokat.
+[ 7954.7] Meg ugye akkor szólnak nekem, és akkor én le tudom kérni a szerverről az okmányt, és meg tudom nézni.
+[ 7961.7] Te ezt tudjátok szerkeszteni akkor?
+[ 7964.7] Hát úgy, hogy szupervizorja el szól.
+[ 7966.7] Hogy úgy félnek felvinni akkor is, hogyha itt nem annak szól.
+[ 7969.7] Nem, hogyha teszem azt föl, összerakja a gép, hogy ez már pedig váltott, és bekér, hogy csak engedéllyel lehet.
+[ 7977.7] Akkor ugye megadjuk rá az engedélyt, és a megjegyzés rovatba beírjuk, hogy mi alapján.
+[ 7982.7] Igen.
+[ 7983.7] Öhm.
+[ 7984.7] Hogy nem ugyanaz az ügyfél.
+[ 7986.7] Tehát hogy ott tudtok módosítani, tehát ott nem feltétlenül kell teljes azonosítás olyankor.
+[ 7992.7] Igen.
+[ 7993.7] Vagy hogy lehet neki váltani.
+[ 7995.7] De mondjuk a teljes azonosítással nem játszunk, mert most az részletkérdés teljes azonosítás.
+[ 7999.7] Inkább a forrásigazolásnál van ennek.
+[ 8002.7] Mert hogyha nem ő váltott, akkor ő nem tud hozni forrásigazolást.
+[ 8008.7] Tehát akkor azt úgy meg tudjuk csinálni, hogy az engedélyt megadjuk, csak a megjegyzésbe veszünk.
+[ 8013.7] Tehát a megjegyzésbe beírjuk, hogy nem egy ugyanaz az ügyfél, mert akármi.
+[ 8019.7] Persze.
+[ 8020.7] De ilyen még életemben van.
+[ 8022.7] Tehát sok minőt látom, ilyet nem.
+[ 8024.7] Csak mert pont azon is értem, hogy ugye három adat.
+[ 8026.7] Itt nekünk ugye a nevünk például átér, mert ő misák, én meg úszta vagyok.
+[ 8029.7] De hogy például a lánykori neve az édesanyjánknak ugyanaz.
+[ 8033.7] És ugyanott is születünk, ugyanakkor az óra más.
+[ 8036.7] De jó, nyilván.
+[ 8037.7] Tehát azért nem teszünk be több adatot, mert épp azért, mert ugye ami állandó, az az anyjaneve, a születési hely, az idő.
+[ 8044.7] A neved az változtat, mert más lehet.
+[ 8047.7] Az okmányaidat cserélheted.
+[ 8049.7] És azért van három, mert például az ukránnál az anyjaneve nem releváns.
+[ 8053.7] És akkor azt szoktuk nézni, hogy a születési hely, a születési dátum, esetleg a neve, ha az nem, akkor az okmány száma.
+[ 8060.7] Mert ők azzal is, és viszont a másik az, hogy az ukránok, mivel kiemelten kockáznak,
+[ 8067.7] mert az okmány számára megváltozatos, mert háború van, ezért váltani nem lehet,
+[ 8071.7] csak úgy, hogyha előtte állkozik nekem az okmányokat, és én azt lekelesem.
+[ 8076.7] Mert volt olyan is, amikor azt csinálták az ukránok, hogy ugye összerakta már a gép, okmány szám, ugyanaz volt, stb.
+[ 8082.7] Akkor megbótolták a pénztárossal, hogy a nevét, véletlenül kihagyott egy betűtet.
+[ 8088.7] Leírt azt, hogy Yuri, egyszer J-vel, egyszer meg Y-nal, és már nem rakta össze a gép, mert nem ugyanazt beszél.
+[ 8095.7] Az ukrán útlevőben például a születési helynek az van beírva, hogy Zakarpatska oblast per ukr,
+[ 8104.7] nem város, az csak egy megye, kárpátalja.
+[ 8108.7] És ezért azt is kértük, hogy ukrajnal legyen a születési hely, mindig, és akkor így tudjuk ezeket kiküszöbölni.
+[ 8115.7] Meg van olyan, mint például neked is, hogy kettős állampolgár, hol a magyarra vált,
+[ 8120.7] na, te is szerb vagy, vagy ukrán, na pont rád vonatkozik,
+[ 8124.7] hogy van olyan, hogy ukrán okmánnyal jön, de van olyan, hogy magyarral.
+[ 8129.7] Ezért én ugye már okosodtam, tehát beírom a neve egy részét, és akkor kidobja az összes olyat,
+[ 8136.7] és akkor látom, hogy ugye, ha már a születési dátum azonos, akkor már ott gond van,
+[ 8142.7] meg akkor már az okmány is van, amikor.
+[ 8144.7] Volt olyan, aki azt csinálta, hogy egyik irodában váltott magyar, okmánnyal, másikban ukránnal.
+[ 8151.7] Mondom, van, aki azt csinálta, hogy betűkkel játszottak.
+[ 8154.7] Szóközzel játszottak, és már nem rakt össze a gék.
+[ 8158.7] Aztán, amikor kijött ez a körlevél, meg néhány írásbeli kiment.
+[ 8162.7] Jó, nem akarsz, hogy szóljatok, ha ki akartok menni levegőzni?
+[ 8166.7] Mindjárt, úgyis nem sokára megyünk a például.
+[ 8169.7] Oké, úgyhogy azért, nem tudod kiszűrni teljesen.
+[ 8172.7] Mondjuk én pont az vagyok, aki ilyet mondjuk nem tudna megcsinálni, mert én egyébként nyíregyházán születtem,
+[ 8177.7] tehát én nem unyább magyarra.
+[ 8179.7] Na, hidd el, nagyon sokan.
+[ 8181.7] Ugye azt mondják, hogy nem jöhet,
+[ 8183.7] meg hát a katona kötelesük rának.
+[ 8185.7] Már nem engedik őket.
+[ 8187.7] Meg lőnek rájuk, meg a hallott, hogy a folyón átúsz.
+[ 8190.7] Annyian váltanak menta.
+[ 8192.7] Megfizetik a határőröket.
+[ 8194.7] Így van, igen. Tehát, hogy meg lehet oldani.
+[ 8197.7] Minden megoldanak.
+[ 8198.7] Viszont nehéz. Tehát, hogy ez igaz.
+[ 8200.7] Én nekem is a családom falá...
+[ 8202.7] Hát, szóval én nekem is ugye a családom falá kint él,
+[ 8205.7] Kepet alján.
+[ 8207.7] És akkor azért nem, hogy mondjam, nem egyszerű.
+[ 8210.7] Nem egyszerű, az nem egyszerű.
+[ 8212.7] Nem egyszerű.
+[ 8213.7] Az olyan embernek, aki nem is az, hogy rafinált,
+[ 8219.7] tehát a bűnözők azok megvagyják.
+[ 8221.7] Hát jó, csak nem vagyunk mi olyan répők.
+[ 8224.7] Tudod, milyen sokkal, olyanokkal találkozunk,
+[ 8226.7] hogy borzasztó, és a bank erre nagyon ugrik.
+[ 8228.7] És az a baj, hogy az MNB is.
+[ 8230.7] És hogyha ezeket nem szűröd ki,
+[ 8232.7] akkor az MNB úgy bűntetik 10 millió, 20 millió.
+[ 8235.7] És hogyha nem rágsz mindent bele a programba,
+[ 8237.7] meg nem teszel meg mindent, akkor nagyon nehéz ez van.
+[ 8240.7] Úgyhogy ezért fontos.
+[ 8242.7] Azért viszont több adatot már nem tudsz belerakni.
+[ 8245.7] Már hogyha azt mondod, hogy négy adatot egyezik,
+[ 8247.7] akkor mi az a négy adat, ami biztos nem lehet?
+[ 8250.7] Az meg viszont nagyon ritka.
+[ 8252.7] És ezért van ez a hármas.
+[ 8254.7] Mert magyarnál nem tud trükközni az anyja nevével
+[ 8256.7] a születési helyel és a születési dátummal.
+[ 8259.7] És akkor ezt összerakja.
+[ 8261.7] Az külföldi tud trükközni az anyja nevével.
+[ 8263.7] De neki megnéz más adatot.
+[ 8265.7] És akkor ha ott megvan a három, akkor összerakja.
+[ 8268.7] Egyébként pont ezt nem gondolkodok.
+[ 8270.7] Elkem van paszportom,
+[ 8272.7] ez csak kötelező volt nekem a 16 évesemben.
+[ 8275.7] Csak a 18 évesen csinálhattam meg,
+[ 8277.7] mert én 14 éves korom óta már itt élek.
+[ 8281.7] És fizettem is eljósuk mind a kést.
+[ 8284.7] De hogy ott a paszportom,
+[ 8286.7] nem az útlevé a paszportom,
+[ 8288.7] hanem ott is van ugye úgymond személyigazolvány.
+[ 8290.7] Csak ott olyan, mint az útlevél.
+[ 8292.7] Egy ilyen kis könyv.
+[ 8293.7] Viszont ugye az nem jogosítva arra, hogy átlédd a hatát,
+[ 8295.7] de az ott személyigazoltatásra jó.
+[ 8298.7] Szerintem nekem ott benne van a nyugdán neve.
+[ 8300.7] Pont ez, hogy gondolkodok.
+[ 8301.7] De mivel nem jogosítva,
+[ 8303.7] itt viszont, ha nem jogosít határátlépésre
+[ 8305.7] és magyarországi tartozkálásra,
+[ 8307.7] nem fogadhatjuk el.
+[ 8308.7] Itt ez van.
+[ 8309.7] És ként is, hát is mondanak,
+[ 8311.7] mert nálunk is nagyon sokan
+[ 8313.7] kárpátaiak átjöttek és dolgoznak.
+[ 8315.7] És ők ugye beszélik a nyelvön
+[ 8317.7] és kommunikálnak velük.
+[ 8318.7] És bizony ott kenő pénzért
+[ 8320.7] más nevet írnak be az útlevélbe,
+[ 8322.7] kicsit a betűkkel ott is játszanak.
+[ 8324.7] És már megint nem tesz része.
+[ 8325.7] Jó, hát emúgy ezt, hogy megyem tesz,
+[ 8327.7] ezért mindenhol meg lehet csinálni.
+[ 8329.7] Van az a pénz mindig.
+[ 8331.7] Na ez az.
+[ 8332.7] Na, akkor itt tartottunk,
+[ 8336.7] akkor itt nem akarjuk.
+[ 8340.7] Neki úgy járt az adatokat, ez mit jelent?
+[ 8342.7] Mindjárt.
+[ 8359.2] Na, akkor a sztornók például.
+[ 8362.2] Belemegyek a sztornó menübe.
+[ 8364.2] Akkor van vétel, eladás, pénzátvétel, pénzátadás.
+[ 8377.6] És akkor amit akarok sztornózni,
+[ 8379.6] azt pöttyözöm be értelemszerrel.
+[ 8381.6] Most én vételt akarok.
+[ 8383.6] És akkor itt vannak a bizonylatszámok,
+[ 8385.6] és akkor megnézem, hogy melyik bizonylatot akarom sztornózni.
+[ 8388.6] És akkor rámegyek, hogy ezt a bizonylatot sztornózom.
+[ 8392.6] Még egyszer megkérdezem, hogy biztos ezt akarom?
+[ 8395.6] Ne, hogy rosszat sztornózzak.
+[ 8397.6] Igen, biztos.
+[ 8399.6] És akkor bekéri azt, hogy miért.
+[ 8401.6] Itt most azt írom, hogy nyugta.
+[ 8403.6] És ezt rányomtatja a sztornó blokkra is.
+[ 8406.6] És sztornózás indulhat.
+[ 8409.6] Amikor nem küldtem ki, nem nyom nekem magusat se a sztornónál.
+[ 8414.6] Ezt mindjárt mutatom, hogy miért nem kérek.
+[ 8419.6] Tehát azt mondja, hogy...
+[ 8421.6] ...
+[ 8423.6] ...
+[ 8425.6] ...
+[ 8426.6] ...
+[ 8432.6] Hogyha azt mondom, hogy ne küldje át az adatokat, akkor nem fogja nekem a NAV-os gépre kiküldeni.
+[ 8437.6] Aha, nem nyugtat bizonylatot és nem is megy be a NAV-hoz.
+[ 8442.6] Ez akkor kell esetleg, ha például...
+[ 8450.6] ...
+[ 8452.6] ...
+[ 8454.6] ...
+[ 8456.6] ...
+[ 8458.6] ...
+[ 8460.6] ...
+[ 8462.6] ...
+[ 8464.6] ...
+[ 8466.6] ...
+[ 8468.6] ...
+[ 8470.6] ...
+[ 8472.6] ...
+[ 8474.6] ...
+[ 8476.6] ...
+[ 8478.6] ...
+[ 8480.6] hogy bemenjen a NAV-hoz, mert ha kapjuk egy ellenőrzést, akkor az nem lesz jó.
+[ 8484.6] Olyankor használjuk.
+[ 8486.6] Vagy...
+[ 8488.6] Nagyon más...
+[ 8490.6] Ilyenkor, igen.
+[ 8492.6] Vagy igen, még olyankor használjuk, igen.
+[ 8494.6] Ha teszem azt fel,
+[ 8496.6] megcsináltam a tételt, lejött a NAV-os bizonylatom.
+[ 8498.6] De befagyott a valutásprogramom,
+[ 8500.6] itt elő szokott fordulni,
+[ 8502.6] és nincs valutás bizonylatom.
+[ 8504.6] Na már most, ha kétszer könyvelem le, és kétszer köldöm be a NAV-ot,
+[ 8506.6] megint nem jó.
+[ 8508.6] Tehát azt szoktuk csinálni,
+[ 8510.6] hogy megvan a NAV-os bizonylatom, itt nem küldöm ki,
+[ 8512.6] és azt a NAV-os bizonylatsorszámot írom erre a valutásra.
+[ 8514.6] És akkor megvan minden.
+[ 8516.6] Ennyi.
+[ 8518.6] Ezeket ide oldalad,
+[ 8520.6] akkor ezekből kérek mindegyik...
+[ 8522.6] Még ne vigyük el, mert ez nincs lesztornózva.
+[ 8524.6] Jó? És akkor...
+[ 8526.6] Mert azt te nem fog égyezni, tűn de kapd fel,
+[ 8528.6] és aztán boly lesz.
+[ 8530.6] Meg akkor szoktam ezt használni,
+[ 8532.6] ha tesztelem a programot.
+[ 8534.6] Mert a NAV-os gépnek van egy nagyon csúnya szokása,
+[ 8536.6] sztornózok el,
+[ 8538.6] kérek egy T, tehát nagyon szépen kijön,
+[ 8540.6] tesztel, tovább, azt is lesztornozom,
+[ 8542.6] akkor már nem akar dolgozni,
+[ 8544.6] ötször-hatszor ki kell, be kell kapcsolnom,
+[ 8546.6] ahhoz, hogy dolgozzon, ezért úgy tesztelek,
+[ 8548.6] hogy nem küldök ki NAV-osra.
+[ 8550.6] És akkor itt le tudom sztornozni,
+[ 8552.6] és akkor ott nincs az, hogy ez bevon.
+[ 8554.6] Ebből nem tudta kérni egy másikat?
+[ 8556.6] Egyetlen, ez nem a NAV-os gép hibája,
+[ 8558.6] ez a program hibája.
+[ 8560.6] És ezt egyetlen,
+[ 8562.6] a priorosok írtak csak valutás
+[ 8564.6] cégekre mutaváltó programot,
+[ 8566.6] és ott
+[ 8568.6] ezt az MMB-vel kellett egyeztetni,
+[ 8570.6] és bármit akarsz változtatni,
+[ 8572.6] az egy őrült nagy költség, és egy őrült
+[ 8574.6] nagy tortúra, amire az MMB engedélyezik.
+[ 8576.6] Úgyhogy ezzel nem tudsz mit csinálni.
+[ 8578.6] Ugyanúgy a lefagyással se tudsz,
+[ 8580.6] mert ha nem kommunikál
+[ 8582.6] uzamosabb ideig a NAV-os gép, akkor lefagy.
+[ 8584.6] Megint kikapcsolod, alul visszakapcsolod.
+[ 8586.6] Itt ez a NAV-os gép,
+[ 8588.6] ugye ez mutat bizonyosokat, stb.
+[ 8590.6] Ezzel a
+[ 8592.6] kommunikációval, tehát hogy itt a
+[ 8594.6] programban benne van az,
+[ 8596.6] hogy milyen adatokat kell küldeni
+[ 8598.6] neki, hogy jól legyen.
+[ 8600.6] Annyi, hogy
+[ 8602.6] nem tudom, hogy ezt
+[ 8604.6] hogy teszteltétek annak idején,
+[ 8606.6] amikor volt a
+[ 8608.6] programod. Úgy, hogy kaptunk
+[ 8610.6] egy NAV-os gépet, és az egy
+[ 8612.6] offline is volt. Tehát, hogy egy
+[ 8614.6] testvétel.
+[ 8616.6] Igazából fitti dolgokat generálsz, és senkit nem érdekel.
+[ 8618.6] Hát értem, csak hogy ugye az
+[ 8620.6] OTP-től is kértünk ilyet, mert ugye
+[ 8622.6] kegyesvizetések is az állóknál fontos,
+[ 8624.6] hogy tudjunk tesztelni. Igen, nálunk is van
+[ 8626.6] kérdés, igen. Igen, és
+[ 8628.6] hogy arra gondoltam, hogy akkor
+[ 8630.6] lehet, hogy kérnek ilyen test
+[ 8632.6] képelemányt. Nem fognak adni, mert
+[ 8634.6] most már élesben van minden.
+[ 8636.6] Nincs-e ilyen teszt? Nincs, nincs.
+[ 8638.6] Akkor volt ilyen, azt lehetett.
+[ 8640.6] Úgy, hogy egyeztetve
+[ 8642.6] az briorosokkal, de nincs, nincs.
+[ 8644.6] Az benne van a forráskodban, hogy mi.
+[ 8646.6] Tehát nem sok minden, ha megfigyeled.
+[ 8648.6] Azért van két bizonylatunk, mert mit csinál az
+[ 8650.6] ügyfia? Nem adom az adatokat,
+[ 8652.6] nem akarok váltani, mert bemegy minden a NAV-hoz,
+[ 8656.6] tehát mi okosan
+[ 8658.6] játszottuk,
+[ 8660.6] legálisan. A konkurencia
+[ 8662.6] nem ad csak ilyen papírt, de azon rajta
+[ 8664.6] van minden. Nálunk itt nincs rajta név,
+[ 8666.6] nálunk itt mindig mekkora az összeg.
+[ 8668.6] Itt nálunk csak és kizállag
+[ 8670.6] az van,
+[ 8672.6] a valuta, hogy vétel, a jutalék,
+[ 8674.6] az érték, a kifizetendő,
+[ 8676.6] a devizajogi státusz,
+[ 8678.6] a sorszámabizonylatnak,
+[ 8680.6] a bevizuhitelintézet
+[ 8682.6] egy aláírás, meg ezek.
+[ 8684.6] Tehát itt nem látsz nevet, ügyfélnevet.
+[ 8686.6] És így megnyugodtak, hogy a NAV-hoz nem megy
+[ 8688.6] a leve. Hát csak az, hogy
+[ 8690.6] milyen tétel volt. A NAV-ot az nem érdekli,
+[ 8692.6] a NAV-ot a közelési érdekli.
+[ 8694.6] És így megnyugodtak, és nincs probléma.
+[ 8696.6] Nálunk azért van valutásbizonylatunk, és
+[ 8698.6] meg NAV-os is.
+[ 8700.6] Én értelmére
+[ 8702.6] van ez, de nem tudunk, szerintem.
+[ 8704.6] De megkérdezem, de én
+[ 8706.6] nem hiszem, mert ez akkor volt,
+[ 8708.6] mielőtt még bevezették a kötelező
+[ 8710.6] NAV-os gépet, és a programot
+[ 8712.6] tesztelték, és utána
+[ 8714.6] nem, de annyit meg tudom mondani,
+[ 8716.6] hogy miért. Hát csak, hogy a csatlakozás, miért
+[ 8718.6] kérdezem már, hogyha ugye új lesz
+[ 8720.6] a rendszeretek, hogy ezt mondjuk esetleg be tudjuk
+[ 8722.6] tesztelni a csatlakozást, hogy azt nyomtatja,
+[ 8724.6] úgy nyomtatja, nem tudom.
+[ 8726.6] Igen.
+[ 8728.6] Igen.
+[ 8730.6] Igen.
+[ 8732.6] 69.
+[ 8734.6] Köszönöm.
+[ 8736.6] Én is.
+[ 8738.6] Itt most ugye régebben,
+[ 8740.6] nem tudom, hallottátok, egy QR-kódos
+[ 8742.6] csipogtatónk volt. Most megoldották, hogy
+[ 8744.6] össze van kötve a kábellel a gép.
+[ 8746.6] Ebben a pók olyan ég tudnak segíteni,
+[ 8748.6] meg antik, hogy
+[ 8750.6] hogyan hallották ezt meg, azt én már
+[ 8752.6] nem tudom, azt a vizet. Jó, jó, jó, semmi gond.
+[ 8754.6] Jó, majd beszéljük vele. Úgyhogy ezt is esetleg
+[ 8756.6] meg tudjátok, de passz.
+[ 8758.6] Ugye ezt vettük, ezt
+[ 8760.6] nem hiszem, hogy nem viszik ezt tornozni.
+[ 8762.6] Akkor majd látjátok, hogy fog kérni
+[ 8770.0] ezt a lásságot.
+[ 8772.0] Jó, nem, köszi.
+[ 8778.9] Ez meg volt
+[ 8780.9] a 93.
+[ 8782.9] Én várom azoknak a hangjait.
+[ 8784.9] Ja, minek? Nagyon éles.
+[ 8786.9] A nyomtató. Szerintem nagyon jó.
+[ 8788.9] Nem szartozik.
+[ 8790.9] Nem tudom én, nekem nagyon éles.
+[ 8794.9] Ehhez melyikhez volt?
+[ 8804.0] Nem tudom, ehhez.
+[ 8806.0] Jó, ehhez.
+[ 8808.0] Ez, ez, ez, nem?
+[ 8810.0] Jó, és akkor még van nekünk egy, amit le kell
+[ 8812.0] sztornozni, ezt.
+[ 8814.0] És mindentől kezdve
+[ 8818.5] majd gyászot fog kérni a sztornóhoz.
+[ 8824.5] Na most ott tartunk, hogy ehhez volt, mindegyik
+[ 8826.5] ehhez volt nekünk magusunk. Igen.
+[ 8828.5] Csak azokhoz nem...
+[ 8830.5] Akkor meg sem szólaltál.
+[ 8840.5] Igen.
+[ 8842.5] Igen, ezeket most összetűzöm,
+[ 8844.5] és majd a végén akkor adok belőlen
+[ 8846.5] neked, jó? Minden galt.
+[ 8848.5] Hogy ekkor legyen egy meg.
+[ 8850.5] Azt én is nem mondtam el semmit.
+[ 8852.5] Mert ugye szigorú száma, de ez akkor
+[ 8854.5] kell lenni. Oké, jó.
+[ 8856.5] De nézzük, volt-e...
+[ 8858.5] Ja, ott van, igen.
+[ 8860.5] Vásárlásból
+[ 8864.5] külföldit azt mutatok neked,
+[ 8866.5] akkor, hogy
+[ 8868.5] Vásárlás, ezt tilaszták.
+[ 8870.5] Mi veszünk valutát nekünk.
+[ 8872.5] Mindig a mi szempontunkat kell nézni.
+[ 8874.5] Mi vesszük meg a valutát ottben,
+[ 8876.5] mi adjuk el, akkor valutát adunk ki.
+[ 8878.5] Vételnél vételjárfolyam,
+[ 8880.5] eladásnél eladásjárfolyam.
+[ 8882.5] Oké, akkor
+[ 8884.5] itt külföldit, ha választok,
+[ 8886.5] ugye ez 300 alatti,
+[ 8888.5] ugyanúgy bekéri a nevet.
+[ 8890.5] Ezt ki lehet régi ügyfélből választani.
+[ 8892.5] Ez tökéletes.
+[ 8894.5] És akkor
+[ 8896.5] adatok rendben.
+[ 8898.5] És akkor
+[ 8900.5] teljes azonosítás szükséges,
+[ 8902.5] mert ő váltott, látod akkor, ezt kiírta.
+[ 8904.5] Itt kiírja is, hogy mikor volt az utolsó
+[ 8906.5] váltása.
+[ 8908.5] És kiírja azt, hogy az összes
+[ 8910.5] váltás egy héten belül mennyi.
+[ 8914.5] Megműködik.
+[ 8916.5] Ez pont jól lesz a parkolása,
+[ 8918.5] látod, ide föl a csapatenterben.
+[ 8920.5] Akkor adok kétszázast a nevet.
+[ 8922.5] Kétszázast lesz, igen.
+[ 8924.5] Mert ez meg csak százast ad.
+[ 8926.5] Oké, és akkor itt tovább
+[ 8928.5] megyek.
+[ 8930.5] Ügyfél teljes azonosítást igényel, még egyszer
+[ 8932.5] kéri. És akkor, ha itt azt mondom, hogy
+[ 8934.5] mégsem azonosítok,
+[ 8936.5] akkor kienged.
+[ 8938.5] És akkor azt akarom
+[ 8940.5] megmutatni meg, akkor
+[ 8942.5] háromszáz...
+[ 8944.5] ...
+[ 8946.5] ...
+[ 8948.5] ...
+[ 8950.5] ...
+[ 8952.5] ...
+[ 8954.5] ...
+[ 8956.5] ...
+[ 8958.5] ...
+[ 8960.5] ...
+[ 8962.5] ...
+[ 8964.5] ...
+[ 8966.5] ...
+[ 8968.5] ...
+[ 8970.5] ...
+[ 8972.5] ...
+[ 8974.5] ...
+[ 8976.5] ellenőrzése, ugye megnézi, hogy az egy héten belül váltásait, a terrorlistát, és akkor itt van az engedélyezés,
+[ 8984.5] amit mondtam, hogy megkérdezi, hogy stratégiai hiányossággal rendelkező országban jött-e.
+[ 8989.5] Ha nemre megyek meg tovább, a szkenelésre, ha igen, akkor ugye itt van, hogy stratégiai hiányosság országban jött.
+[ 8996.5] Akkor megkérdezi, hogy mi a pénzforrás, akkor itt van egy legördülő. Ha ebből nem tudok választani, akkor egyéb forrás, és be tudom gépelni, hogy mi a forrás,
+[ 9005.5] és be tudom írni az engedélyezőt. Ha rájövök, hogy nem engedélyezik, akkor még mindig ki tudok menni úgy, hogy nem engedélyezett a trétena.
+[ 9015.5] És akkor kienged. Akkor jogi szemét még nem csináltunk. Nálunk, ha jogi személy vált, akár milyen összegben, akár 5 eurót is, mindenféleképpen azonosítási kötelezettségünk van.
+[ 9032.5] Teljes azonosítás.
+[ 9034.5] Teljes azonosítás.
+[ 9035.5] Kettő része van az azonosításnak. Egyszer, ugye, be kell írnom a jogi személy nevét, cég helyét, főtevékenységét, TA-ot, számát, okirat, képviselő, stb.
+[ 9051.5] Utána a megbízott, aki az elnyárásra jogos volt, cégkivonat alapján, annak az adatait, és a tényleges tulajdonosokat ezekkel az adatokkal.
+[ 9069.3] Ó, akkor itt a tulajdonos adatait.
+[ 9070.3] A tulajdonos adatait is fel kell venni.
+[ 9072.3] Igen.
+[ 9073.3] 165 eurót kell ahhoz adnod, hogy kaphassák kettőságot.
+[ 9086.3] És akkor itt jön be az, amit már mondtam, hogy ugye antibeteg lett, de jött a banknak egy szigorítása, hogy bizonyos főtevékenységi körrel rendelkező ügyfelek esetében 3,5 millió forintos váltást esetében már forrásigazolás kell, illetve 5,5 milliós váltást kell.
+[ 9108.3] 5,5 milliós váltás esetében forrásigazolás.
+[ 9110.3] Hogy ide be kellene tenni egy olyan modult, már nem tudod lerögzíteni az összes teáorszámot, hogy mi az, ami ez, igen, mert ma nagyon sok, ezt sajnos a pénztalosra kell bízni, de hogy ajánlja fel neki, hogy gondolkozzon el, hogy szükségesen forrásigazolás.
+[ 9127.3] Aha, tehát hogy csak ide rakjunk be egy olyan részt.
+[ 9130.3] Igen, egy felugoró ablakot, hogy rámegy, hogy igen vagy nem.
+[ 9133.3] Minden esetben ugorjunk.
+[ 9135.3] Minden jogi személyeset.
+[ 9136.3] Minden jogi személyeset.
+[ 9137.3] Igen.
+[ 9138.3] Minden jogi személyeset.
+[ 9139.3] Három és fél millió forint.
+[ 9141.3] Minden jogi személyeset.
+[ 9142.3] Minden jogi személyeset.
+[ 9143.3] Minden jogi személyeset.
+[ 9144.3] Minden jogi személyeset.
+[ 9145.3] Minden jó esetében három és fél millió forint fölött ugorjon fel az ablak, hogy szükséges-e a forrásigazolás, és ott tudjon kimenni arra, hogy nem, vagy igen, és akkor ha igen, akkor ott tudja ezt beszkenelni.
+[ 9157.3] Bekérni.
+[ 9158.3] Másrészt az rendben van, hanem akkor bekérje azt a panelt, azt az engedélyező panelt, mint a strat hiányosságunál egy pénzeszközforrást,
+[ 9167.2] kell kiválasztani és engedélyezőbe írni.
+[ 9169.5] Ha meg azt írja, hogy nem, akkor megy minden tovább.
+[ 9172.7] Akkor megy minden tovább, igen.
+[ 9174.7] Oké, tulajdatai rendben, és akkor még mindig ki tudok innen lépni, hogy nem azonosítom.
+[ 9180.7] Jogi személyből is kell bizonylat, ugye, hogy mi van a bizonylatom.
+[ 9184.7] Jó, akkor csak csinálunk egyet.
+[ 9204.8] Nagyon jó a mélyen kis társa, mindegy.
+[ 9207.8] Oké, ez jó.
+[ 9211.8] Oké, oké.
+[ 9214.8] Ellenőrzünk erről is, tehát most nem szkanelünk.
+[ 9219.8] Oké.
+[ 9220.8] Mindegy, rendben van.
+[ 9223.8] Nem kell, nem küldöm ki, nem nyomtatott.
+[ 9227.8] Ezt nem akarod, hogy töltsön kézit, vagy ez így jó lesz?
+[ 9231.8] Mert ezt meg sajnálom nem fotóztatok.
+[ 9233.8] Nem fotóztam, de lefotoztattam igazából.
+[ 9235.8] Jó, hogyha nincsen nyomtaszám, akkor kérje ezt ki kell, hogy írja, hogy töltsük ki a kézit, ahhoz, hogy megy.
+[ 9243.8] Oké.
+[ 9245.8] És akkor tovább.
+[ 9251.3] És majd mindennek a második példányát fogom odaadni,
+[ 9253.3] mert oda a jobban látszik.
+[ 9255.3] Már ugye itt is van a bizonylat tartalma,
+[ 9269.7] a jogi személynek a bizonylaton szereplő kötelező adatai,
+[ 9273.7] a tényleges tulajdonos, meg ugye itt is egy új címnyilatkozata,
+[ 9276.7] hogy kének a nevében, és mindannyian ezt oda is adok,
+[ 9279.7] és akkor ezt meg lesz.
+[ 9281.7] És látod, itt már automatán, mikor már érzékelő, hogy három sztornó megvolt,
+[ 9286.7] akkor alapból már bekérje a jászont.
+[ 9292.9] Oké.
+[ 9293.9] Ez az egymásnak, ezt tornozom, és akkor teszt lesz az ingem.
+[ 9310.4] Oké, vételnél megmutattam az árfolyamokat,
+[ 9315.4] akkor mutassunk fotózóval még engedélyezést, vagy tízmilliónál mit ír ki?
+[ 9320.4] Igen.
+[ 9321.4] Jó.
+[ 9322.4] Ahhoz át kell.
+[ 9323.4] Akkor viszont előbb megismerkedünk a pénztarab közötti átadás átvételnél,
+[ 9327.4] mert ahhoz át kell vennem pénzt, mert ugye a gép úgy működik, hogy nincsen tízmillió forintom,
+[ 9331.4] tehát nem fogja engedni a tételt, mert azt is megmutatom, hogy ilyenkor mit csinál,
+[ 9335.4] írja, hogy nincs annyi pénzem.
+[ 9341.9] Látod, nincs annyi forint készletünk.
+[ 9345.9] Vételnél ugye eladásnál meg a való, tehát esetleg írja, hogy nincs annyi euróm, vagy akármi.
+[ 9350.9] De mondjuk írhatná, hogy mennyi a euróban, ami készletem van, és akkor azt...
+[ 9357.2] Azt is lehet, az lesz jó ötlet. Tehát ilyeneket, ha plusz dolgokba írtok, ez jó.
+[ 9360.2] Tehát rámondhatnád, hogy mégis eladjon valahányat, és akkor neked ez jó.
+[ 9363.2] Jó, így van, azt lehet. Igen, akkor látod a készletet.
+[ 9371.2] Oké, és akkor átadás, átrétel.
+[ 9375.2] Ez a pénztereg közötti pénzforgalom főmenü.
+[ 9382.2] Volt olyan, hogy azt nem csinálta meg, amit kértem, de belerakta Horvátországot, mert nyár van, télen a síj elérte.
+[ 9390.2] Még rakott valamit.
+[ 9392.2] Na mondd, én nem kértem, de nem csináltad meg nekem ezt.
+[ 9394.2] Miért az olyan szép?
+[ 9396.2] Jó, oké.
+[ 9398.2] Na tehát van pénzátvételeegyegység, tehát az fontos, hogy pénztár...
+[ 9402.2] Fölviszem, hogy milyen...
+[ 9404.2] Csak a pénztár csak az értéktárral kommunikálhat, tehát tőle vehet át, adhat át.
+[ 9410.2] Az egyes fő pénztárral és a többet hiánypénztárral.
+[ 9414.2] Tehát ő pénztár pénztártól nem vehet át.
+[ 9418.2] Ezt, hogyha a jogosultságokat megadjátok.
+[ 9420.2] Tehát központi...
+[ 9421.2] Központi dolgok...
+[ 9423.2] Központon kell keresztül menjen, hogy...
+[ 9425.2] Igen, illetőleg ugye a hiánytöblet kezelése, meg a visszapótlás miatt van az egyes meg a töblet hiánypénztár.
+[ 9432.2] Akkor itt van olyan, hogy pénzátvételeegyegységtől átadás, ez értelemszerű.
+[ 9437.2] A kezelési díjakat ugye nem tudom, hogy hogy fogjátok megoldani.
+[ 9441.2] A kezelési díjaknál itt az átadás átvétel ide van berakva.
+[ 9447.2] A kezelési díj átadás átvétele.
+[ 9449.2] Mert ugye a címletezésből...
+[ 9450.2] A címletezésből is külön kell a kezelési díjakat kezelni.
+[ 9453.2] Mert a gép ugye mindenre számol a kezelését, utána ő úgyis rakja be a készleteket is, és nap végén kell azt elkülöníteni.
+[ 9462.2] És ugye a kezelési költséges kasszából kell kiadni.
+[ 9466.2] Ez a horvát kuna beköldése már nincsen, mert azért kellett, mert külön kellett kezelnünk a horvát kunát.
+[ 9471.2] Mert ugye kivonták január első évvel, euró volt.
+[ 9474.2] De viszont kaptunk szeptember végéig lehetőséget, hogy vehettük.
+[ 9479.2] Haladékot tudunk.
+[ 9480.2] Mert nem adtuk, és azért kellett ez.
+[ 9482.2] Elkereskedelem.
+[ 9484.2] Ez nem minden pénztárban van.
+[ 9486.2] Ez az autópálya feltöltés, meg a telefonfeltöltés.
+[ 9490.2] Ennek az átadás átvétele.
+[ 9492.2] És itt van, ez meg vissza a fő menüre című.
+[ 9495.2] Tehát akkor ha belemegyek a pénz átvétele, akkor itt választanom kell.
+[ 9499.2] Itt van olyan, hogy teljes készlet visszavétele, vagy vissza átadása a értektárnak.
+[ 9503.2] Ez akkor jó, ha teszem azt föl, vagy biztonságjogokból, vagy pénztár megszűnése miatt.
+[ 9509.2] Vagy...
+[ 9510.2] Vagy festés miatt ugye be kell szállítani az egész készletet.
+[ 9513.2] Akkor nem egyenként kell felrögzíteni.
+[ 9515.2] Hanem rámennek arra, hogy teljes készlet visszavétele, vagy visszaadása az értektárnak.
+[ 9520.2] És akkor mindent átad.
+[ 9522.2] És mondom, egyszerűen benne is van egy spétcsavar.
+[ 9524.2] Fagulya Zsuzsa?
+[ 9526.2] Igen?
+[ 9534.0] 49?
+[ 9543.8] Hello?
+[ 9544.8] Nagyon fontos, hogy átadási bizonylaton valuta és forint együtt nem szerepelhet.
+[ 9549.8] Tehát a forintot mindig különkezeli a gép.
+[ 9551.8] Tehát itt is, hogyha teljes készletet vesz vissza,
+[ 9553.8] vagy ad át, akkor külön nyom egy forintot és külön a valutákat.
+[ 9557.8] Tehát mindig a forint külön van, mint az összes többi valuta, ami viszont lehet egyben.
+[ 9562.8] Igen, mert ez is törvényelőírás, hogy a forintról pénztárkönyvet kell vezetni.
+[ 9566.8] Mi gépit vezetünk, de kártzár ezt is fogom mutatni.
+[ 9569.8] Oké.
+[ 9571.8] Akkor most áteszünk az értektártól.
+[ 9574.8] Itt van látod benne a 75-ös, az az értektár, a töblethiány és a főpénztár.
+[ 9578.8] Ezek lehetnek benne.
+[ 9580.8] Csak ezek?
+[ 9581.8] Csak pénztár és pénztár.
+[ 9582.8] Nem.
+[ 9583.8] Nem lehet.
+[ 9584.8] Az csak az értektár dolgozik pénztárra.
+[ 9586.8] Minden esetben?
+[ 9587.8] Igen.
+[ 9588.8] Ez a három lehet?
+[ 9589.8] Igen.
+[ 9590.8] Akkor ezt választom, és akkor forintot fogunk átvenni.
+[ 9596.8] De jó, írtam már.
+[ 9617.2] Akkor átveszek tudmajót.
+[ 9619.2] Oké.
+[ 9621.2] És látod, itt már utána nem is tudok beérni több valutát.
+[ 9625.2] Itt is, ha akarom, kicimletezhetem, akkor ide becsillagozom,
+[ 9628.2] vagy bepipálom, és akkor beírhatom, hogy milyen címletben veszem át,
+[ 9632.2] és akkor azt kiszámolja nekem.
+[ 9635.2] Nincs több adat, ez fontos, adatok rendben vannak, itt mégis rá tudok nézni,
+[ 9639.2] ha nem ilyen, akkor ki tudok lépni.
+[ 9641.2] És fontos, hogy mivel szállítunk, itt nem, de egyik pénztárban a másikba szállíthatunk,
+[ 9647.2] meg az értektárba szállíthatunk, mindig ezt a ponelt fel kell adni, hogy ki a szállító,
+[ 9651.2] és milyen plomba szám.
+[ 9654.2] Ezt mindenki kátóáltani.
+[ 9658.2] Oké.
+[ 9661.2] Itt, mivel nem szállító szállít, itt azt fogom beírni, hogy értéktár, és X.
+[ 9667.2] X, és megjegyzés nincs, és akkor könyvvelhet, és akkor itt is ugyanúgy mehet az adat átvitel.
+[ 9691.8] Forintból mindig dupla példányt nyomtat, és a második példa jön rajta, vagy másolat.
+[ 9697.8] Ennek az az oka, ezt kezdték el vágni, mint mondtam, könyvelés van,
+[ 9701.8] tehát csak le kell fűzni a könyvelésre a bizonylatokat, a forintosokat sorszemszerén,
+[ 9706.8] és van dekád, az 10 napos, azt lenyomtatjuk, és azt a tetejére fűzzük, és az a könyvelés.
+[ 9711.8] Tehát nem pénztárkönyvet írunk kézzel.
+[ 9713.8] Mit jelent a dekád?
+[ 9715.8] Tíznapos pénztárzárást.
+[ 9717.8] Aha. Tehát 10 napot...
+[ 9719.8] 1-től 10-ig, 11-től 20-ig, és 21-től hóvégéig.
+[ 9722.8] Fogok mutatni meg is.
+[ 9724.8] Mindenesetben ez a...
+[ 9725.8] Igen, ez törvényi előírás.
+[ 9727.8] Hogy 1-től 10-ig, 1-től 20-ig...
+[ 9729.8] Az értéktárban nagyon sok a tétel ott napi van, igen.
+[ 9732.8] A dekád meg az 10-et jelent, és akkor az 10 minút, 10 nap.
+[ 9736.8] Tehát az értéktárban ott napi van, a valóta váltásnál ott pedig 10 napos.
+[ 9741.8] Igen, és automata.
+[ 9743.8] Tehát ha tízedikán, akkor ha megcsinálhat a pénztársai napzárást, automatán feladja neki a dekádzárást.
+[ 9749.8] De...
+[ 9750.8] Ami mit jelent pontosan?
+[ 9752.8] Azt, hogy lenyomtatja neki a kezelési dekádot is, meg a valótásot is.
+[ 9757.8] Nem kell belemenni külön menűbe.
+[ 9759.8] Nincs az, hogy elfelejti.
+[ 9761.8] Ami az először 10 napban volt.
+[ 9763.8] Tehát, hogy minden olyan transzakciót vagy...
+[ 9765.8] Igen, mindjárt mutatom neked, mert volt már.
+[ 9767.8] Olyan, hogy lázd...
+[ 9769.8] Itt lesz a vízzárás.
+[ 9774.9] Itt hol van a dekádzárás különböző könyvvel?
+[ 9777.9] A másik oldalon.
+[ 9779.9] Különféle is.
+[ 9781.9] De nem az, hanem lefűzve a dosszió.
+[ 9783.9] A fiókban szerintem.
+[ 9785.9] A fiókban? Oké.
+[ 9787.9] Igen, itt lesz.
+[ 9792.1] És iktatószámok kell látni.
+[ 9794.1] Tehát látod, itt vannak a forintosok.
+[ 9796.1] 31-én átvettek.
+[ 9798.1] Tehát azt is tudni kell, hogy az átvételi bizonylatoknak a száma
+[ 9802.1] U betű, ha forint, akkor van még egy F is mellette.
+[ 9806.1] És ugyanúgy sorszámszerű.
+[ 9808.1] És a pénztárszáma az első három.
+[ 9811.1] És ugye el kell látni iktatószámmal is,
+[ 9814.1] amit ugye január 1-ével mindig törvény szerint újraindul.
+[ 9818.1] És ezt kézzel írjátok rá?
+[ 9821.1] Igen.
+[ 9822.1] De viszont a dekádzárás tetején ott lesz.
+[ 9824.1] Kis szalett ellenőrizve.
+[ 9826.1] Tehát itt szépen lefűzi az összes forintos bizonylatot.
+[ 9829.1] Itt nem bizonylatszám szerint, hanem dátum szerint.
+[ 9834.1] Tehát hogyha van egy átvétel, utána egy átadás,
+[ 9837.1] másodikán akkor azt hűzi.
+[ 9839.1] Tehát itt is ez is egy átvétel, ez meg egy átadás.
+[ 9843.1] És tizedikén szépen lejött a dekádzárás.
+[ 9846.1] Az ez.
+[ 9848.1] Itt látszik, csak nem cseréltek szalagot.
+[ 9852.1] De majd a másodpercenyt odaadom.
+[ 9854.1] Itt szerepel a 24-es az az iktatószám.
+[ 9856.1] És látod itt is 24 volt.
+[ 9858.1] Tehát itt le is tudod ellenőrizni, hogy jót ért el.
+[ 9860.1] Tehát hogy tulajdonképpen ez a dekádzárás, ez összejelenti,
+[ 9863.1] hogy az összes, azon a 10 napi bizonylatnak a...
+[ 9866.1] Forint.
+[ 9867.1] Forint. Csak forint.
+[ 9868.1] Csak forint.
+[ 9869.1] Csak forint bizonylatnak a...
+[ 9871.1] Sorszámát, az összegét.
+[ 9873.1] Ugye forint átvétel volt, vagy átadás.
+[ 9876.1] Melyik kasszától, értektártól, vagy többlethiánytól.
+[ 9879.1] Igen.
+[ 9880.1] És utána ír egy olyat, hogy dekádforgalom, egy összesítőt.
+[ 9885.1] Ír egy nyitót, egy összes forintot, meg egy zárót.
+[ 9890.1] Tehát hogy ugye a tartozik követel oldal, az egyezik itt is, meg itt is.
+[ 9894.1] Szia!
+[ 9895.1] Mi a hajtból?
+[ 9897.1] Jó, ebből majd kapok esetleg.
+[ 9899.1] Adok.
+[ 9900.1] Szuper.
+[ 9901.1] Jó, úgyhogy ez az.
+[ 9903.1] Ezt vissza a rajbocs.
+[ 9905.1] Csak ír majd oda, hogy ne felejtsük el odaadni.
+[ 9909.1] Na!
+[ 9910.1] Akkor itt átvettem tízmilliót.
+[ 9913.1] Ezt ebből is majd adok.
+[ 9916.1] Akkor most már tudunk csinálni olyat, hogy veszünk sok eurót.
+[ 9920.1] Euró.
+[ 9921.1] Ez mennyi?
+[ 9923.1] 25.500.
+[ 9925.1] Nem nyert, akkor ez az 30.000.
+[ 9928.1] Nincs ennyi forint, akkor az meg már sok.
+[ 9932.1] Akkor 26.000.
+[ 9936.1] Tökéletes.
+[ 9937.1] Akkor 26.000-t veszünk, ez több mint tízmillió.
+[ 9939.1] Tízmillió, készen vagyunk, azonosítjuk.
+[ 9943.1] Mondjuk, hogy jó lesz.
+[ 9945.1] És feladat a jónkban.
+[ 9948.1] Szia!
+[ 9952.8] Jó.
+[ 9955.8] Oké.
+[ 9957.8] Mennyire? Vagy majd hívunk.
+[ 9959.8] Jó.
+[ 9961.8] Jó, oké. Jó, jó, köszi.
+[ 9967.9] Oké. Jó, jó, köszi. Hello.
+[ 9971.9] Megármíteni.
+[ 9977.9] Ezt szólok Tündinek, mert el fogom felajteni, hogy Bitcoin-t kell üríteni.
+[ 9984.9] Aztán át megyünk tovább, saját nevével, akkor ellenőrzik, és akkor kijön ez a tábla.
+[ 9987.9] Jó, hát köszönöm szépen.
+[ 9996.9] Hello, írnám fel magadnak légy szíves,
+[ 9999.9] két milliót, de kell fizetni a bitcoimból.
+[10003.6] És akkor
+[10004.0] egy millió kilencs hetven van még
+[10005.8] most a sárgában, és harmincet a feketéből
+[10008.1] kell majd.
+[10010.9] Azért mondom, hogy majd hívod, jó?
+[10013.3] Oké, köszi, hello!
+[10017.0] És ugye,
+[10017.6] hogyha itt
+[10019.3] ugyanúgy ki kell választani
+[10021.2] a forrást, vagy az
+[10023.0] micsoda jövedelem, megtakarítás, vagy egyéb,
+[10025.2] akkor beírni, vagy mi,
+[10028.2] és engedélyező nevét.
+[10029.6] Az egyik forrást, te bármit beírhatsz?
+[10032.6] Igen.
+[10033.5] Ami nem szerepel a listában.
+[10036.5] Igen.
+[10037.0] És akkor beírom az engedélyezőt,
+[10039.1] engedélyt megadja,
+[10041.2] ellenőrzi, ott vannak a szkenátek.
+[10044.3] Itt annyi,
+[10046.3] hogy ugye a nyíllal
+[10047.5] át tudok menni, és akkor
+[10048.7] nagyítenést tudom, és meg tudom nézni, hogy
+[10050.9] akkor az okmány ugyanaz-e, vagy
+[10052.8] változott-e valami.
+[10054.3] Nagyítenést azt tudod, hogy rámész, és akkor teljes kérdése.
+[10057.0] Igen, igen, igen.
+[10059.4] Beolvasd.
+[10059.6] Beolvasd a szkenátokmányokat.
+[10061.9] Igen, ez rendmány, nem akarok címletezni.
+[10065.8] Nem kell átvitek.
+[10068.0] Nem nyomj.
+[10068.7] Nem nyomj tovább.
+[10074.8] És akkor nem szokom mutatni,
+[10076.4] miért látod, hogy e-maileket sikeresen átoltam.
+[10078.8] Ez is törvényjelvéres,
+[10080.2] hogy engedélyezett
+[10081.1] szétáról e-mailt kell,
+[10084.4] tehát rögzíteni kell
+[10086.0] a tényét, hogy megtörtént az engedélyezés,
+[10088.2] megmutatom a gépem át.
+[10089.3] Aztán tudom majd neked köldeni.
+[10090.9] Hogy ugye akkor majd ne felejtsük,
+[10093.5] egy körlevéből kell köldönöm.
+[10095.8] Engedélyező e-mailból,
+[10097.8] foglalós e-mailból,
+[10099.6] másnál.
+[10101.8] Engedélyező, foglalós.
+[10104.2] Foglalós e-mail.
+[10108.2] Igen, és
+[10109.3] átvitele bizonylat.
+[10113.4] Van ide nekem.
+[10114.0] Ezek lesznek azon.
+[10116.5] Tündi, van ügyfeledik.
+[10118.8] Majd tudsz nekem segíteni,
+[10120.9] festékszalagot cserélni,
+[10122.2] mert ez piszkosból nem látszik.
+[10124.0] Körlevében.
+[10125.1] Aha, igen.
+[10126.0] Tessék?
+[10126.5] Nem tudom azt, amit hozzá.
+[10129.1] Egy fehér doboz.
+[10130.3] Nem tudom.
+[10134.6] Jó.
+[10136.6] Ezt gyorsan odaadom,
+[10138.6] mivel lesz tornozom előbb,
+[10140.2] utána odaadom, hogy legyenek jók a dolgok.
+[10146.9] Oké.
+[10147.5] És akkor ugye ez egy átvétel volt,
+[10149.9] akkor itt fogom megtalálni.
+[10151.6] És ezt tornozom, igen.
+[10153.8] És akkor ennek is.
+[10155.9] Tehát ez teszt lesz, jó?
+[10158.5] És akkor nem kell adott átvétel.
+[10161.5] Ezt az adott neked.
+[10172.7] És a tízmilliót is.
+[10175.9] Ez egy átvétel volt, igen.
+[10178.7] És akkor a tételt is lesz tornozom, igen.
+[10183.1] Ugye az ékezeteket nem túl jó.
+[10185.1] Nem kezeli az ékezeteket.
+[10187.1] Ezt is fogom mondani, hogy mit lehet ezzel kezdeni.
+[10190.8] Még nem is csak úgy nem kezeli,
+[10192.8] hogy nem kezeli.
+[10193.8] Nem, de mondom ezt is, hogy miért
+[10195.8] nincs ékezet nálunk.
+[10197.8] És akkor ezt is lesz tornozom.
+[10199.8] Igen.
+[10201.8] Tehát ezt.
+[10203.8] Jó, én ennek a hátuljára ráírom, hogy
+[10205.8] ezt a tisztel köszönöm.
+[10207.8] Átvételi, forint átvételi bizonyos.
+[10211.8] Számít, hogy tízmillió feletti?
+[10216.4] Nem.
+[10220.0] Ó, hát jók vagyunk.
+[10223.6] Már az angol fondot kiadtok, oké.
+[10225.6] Mindent lesz tornozva, minden engednek, jó?
+[10227.6] Köszönöm.
+[10228.6] Köszönöm.
+[10229.3] És akkor itt ezek...
+[10230.3] Azért nincsenek ékezetek, mert
+[10232.3] ezt valamit nem mondtam, mert ezt egy valami kis kifogás voltam,
+[10234.3] és azt mondta, hogy mert
+[10236.3] ez így van külföldön is, hogy ékezet,
+[10238.3] mert volt már a könyvem.
+[10240.3] Igen.
+[10242.3] És ti tudtok ékezetet, vagy nem?
+[10244.3] Igazából ez a...
+[10248.3] De az adatvárosban meg ékezett, mert
+[10250.3] ez sem rögzít, ez itt van.
+[10252.3] Ékezett át.
+[10254.3] Mert hogy itt van...
+[10256.3] De itt nem csak ez a baj, most nekem itt
+[10258.3] nem az, hogy nincs ékezet,
+[10260.3] itt van, csak nem megfelelő betűkön.
+[10262.3] Igen.
+[10264.3] Például itt egy cén van egy kis ékezet,
+[10266.3] a kóselnál.
+[10268.3] Igen, nem jól nyomja is, és azért nem szoktunk ékezett.
+[10270.3] Tehát ékezettel írják be a pénztárosok,
+[10272.3] de például
+[10274.3] a szerveren is ékezet nélkül
+[10276.3] vannak az iskolák berögzítve.
+[10278.3] Ő micsoda volt nekem, mert
+[10280.3] hogy erre is ráírom.
+[10282.3] Ez egy valuta vételi bizonylag, ez
+[10284.3] azonosított három...
+[10286.3] Márjá.
+[10287.3] Igen, ez egy jobb személyes, és igen.
+[10289.3] Valuta vételi bizonylat,
+[10291.3] jobb személyes.
+[10293.3] Szerintem mindenből nem nyomtatok, mert
+[10295.3] itt papírhalom lesz, viszont tudok adni majd.
+[10297.3] Tehát minden fajtát előveszünk,
+[10299.3] és adni fogok.
+[10301.3] Én meg ráírom, mert el fogok
+[10303.3] nyomtani holnap.
+[10305.3] Igen, mert akkor kell kis tételés,
+[10307.3] egyszerű azonosított, meg
+[10309.3] ez is a tév.
+[10311.3] Meg teljes azonosított.
+[10313.3] Oké.
+[10315.3] Jó.
+[10317.3] Itt van egy olyanom, hogy egy ilyenem,
+[10319.3] amit eltúztam, hogy bizony lett.
+[10321.3] Igen, ez is egy valuta vétel,
+[10323.3] ez teljes azonosított, és természetesen
+[10325.3] személyes.
+[10327.3] Meg teljes azonosított.
+[10329.3] Még itt el kell
+[10331.3] mondanom, hogy vételadásban,
+[10333.3] ugye amikor a szerveren
+[10335.3] az ügyfelet ellenőrzi,
+[10337.3] akkor van egy olyan,
+[10339.3] hogy az én ellenőrző
+[10341.3] programomba be lehet állítani.
+[10343.3] Lehet
+[10345.3] letiltani teljesen ügyfelet,
+[10347.3] és lehet forrásigazoláshoz
+[10349.3] kötni ügyfelet.
+[10351.3] Ami azt jelenti, hogyha én azt
+[10353.3] mondom, hogy
+[10355.3] törvény szerint háromszor
+[10357.3] jelentettek be szokatlan
+[10359.3] tranzakciót, és azt az ügyfelet utána
+[10361.3] meg kellett szakítanom vele az ügyleti
+[10363.3] kapcsolatot, letiltom, nem válthatok
+[10365.3] neki, akkor én a programomban
+[10367.3] azt az ügyfelet kijelölöm,
+[10369.3] és oda teszem, hogy tiltott
+[10371.3] ügyfelet, ha itt berögzítik
+[10373.3] azt az ügyfelet, és
+[10375.3] neki akarnak tranzakciót végezni,
+[10377.3] akkor kijön egy panál,
+[10379.3] majd az ügyfelet tiltott, nem válthat
+[10381.3] neki, és automatán kidob.
+[10383.3] Tehát nincs jelszó, nincs semmi, annak nem válthat.
+[10385.3] Viszont, ha
+[10387.3] valamiért esetlegesen ez az
+[10389.3] ügyfelet a tiltás alól kikerül,
+[10391.3] én azt fisoldhatom.
+[10393.3] És akkor válthat.
+[10395.3] Van a másik, amikor valaki
+[10397.3] sűrűn vált, és
+[10399.3] eléri
+[10401.3] a 25 millió forintot,
+[10403.3] az ügyfel már nálunk, csak forrásigazolással
+[10405.3] válthat, vagy ha úgy
+[10407.3] döntünk kockázati
+[10409.3] alapon, akkor
+[10411.3] forrásigazolással válthat. Azt is ott kijelölöm,
+[10413.3] akár jogi, akár természetes személy,
+[10415.3] hogy csak forrásigazolással válthat.
+[10417.3] Ha az az ügyfel jön, és
+[10419.3] vált, akkor kiírja azt a
+[10421.3] engedélyező panát,
+[10423.3] a rendszer, hogy forrásigazolással
+[10425.3] válthat, és ugyanúgy
+[10427.3] beszkeneli, kiválasztja, engedélyez, tehát
+[10429.3] itt csak úgy enged nekik váltani.
+[10431.3] Egyébként, na.
+[10433.3] Jó, itt
+[10435.3] olyan kérdésem válna még gyorsan,
+[10437.3] hogy itt ez...
+[10439.3] Ez a foglaló.
+[10441.3] Nem rakom egy mesről, mert
+[10443.3] átüt.
+[10445.3] Igen, mert önindítósak.
+[10449.3] Foglaló.
+[10451.3] Valamelyik meg a visszaadás,
+[10453.3] vagy... Nem.
+[10455.3] Ez az átadólap.
+[10457.3] Átadólapa? Mit jelent?
+[10459.3] Pénztárosi átadólapa, az F2.
+[10461.3] Nem F2, hanem a...
+[10463.3] F10.
+[10465.3] Hogy honnan van a pont?
+[10467.3] Van olyan bankszámát,
+[10469.3] amiről fel lehet egy réve?
+[10471.3] Jó.
+[10473.3] Igenem.
+[10475.3] Azaz a lista,
+[10477.3] a kezelési költséges listám,
+[10479.3] havi listám várja,
+[10481.3] supervisory menu-ban,
+[10483.3] extra tranzakciós díjak.
+[10485.3] Mennyit tud érni?
+[10487.3] Itt mondom, tehát
+[10489.3] egy plusz valami...
+[10491.3] Mennyit tudok váltani?
+[10493.3] Megmondani neked, hogy
+[10495.3] kábéra se tudom megmondani.
+[10497.3] Mennyire?
+[10499.3] Ha most beváltanád, ez mennyi?
+[10501.3] És ez is olyan?
+[10503.3] Igen, az a másolata.
+[10505.3] Igen, mert az nem kell,
+[10507.3] az nem szigorú számadás,
+[10511.0] azt találtam mind a kettőt.
+[10513.0] 457.
+[10518.0] Oké, és akkor ez maga
+[10520.0] az itteni kettő.
+[10522.0] Oké, akkor az
+[10524.0] átadásátvételt kiveséztük,
+[10526.0] a kormót azt láttátok,
+[10528.0] árfolyambeállítások.
+[10530.0] Mi előtte bevállalnénk,
+[10532.0] szerintem meg kellett védelni.
+[10534.0] Szívünk egy kis füstövegöt,
+[10536.0] meg tartsunk egy kis szünetet,
+[10538.0] és utána folytunk.
+[10540.0] Menjél csak szerintem, mert...
+[10542.0] Oké.
+[10544.0] És akkor úgy tudunk menni.
+[10546.0] Oké.
+[10548.0] Annyi, hogy
+[10551.4] bevállítom addig a vizitőket,
