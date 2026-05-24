@@ -32,9 +32,18 @@ public class SetupGoogleIdentificationService {
     private final BranchRepository branchRepository;
     private final WorkerRepository workerRepository;
     private final WorkerRoleService workerRoleService;
+    private final AdminBootstrapService adminBootstrapService;
 
     @Transactional
     public SetupGoogleIdentifyResponseDto identify(SetupGoogleIdentifyRequestDto request) {
+        // PP-13: bootstrap-completed guard — a setup-identify endpoint a wizard-hoz való,
+        // production-ban le kell zárni, hogy ne lehessen Google Subject-et utólag kötni
+        if (adminBootstrapService.isBootstrapAlreadyCompleted()) {
+            log.warn("SETUP_GOOGLE_DENIED_BOOTSTRAP_COMPLETED");
+            throw new AuthenticationException(
+                    "A rendszer setup mar lezarult. Kerem hasznalj a normal bejelentkezest.");
+        }
+
         GoogleIdTokenService.VerifiedGoogleIdentity identity = verifyIdentity(request.getIdToken());
         Company company = resolveCompany(request.getCompanyCode());
         String canonicalEmail = identity.email();

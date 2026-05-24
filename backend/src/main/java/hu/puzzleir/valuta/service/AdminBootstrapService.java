@@ -55,7 +55,16 @@ public class AdminBootstrapService {
 
     @Transactional(rollbackFor = Exception.class)
     public BootstrapAdminResponseDto bootstrapAdmin(BootstrapAdminRequestDto dto) {
+        // PP-14: alreadyCompleted ellenőrzés a cégkód feloldása ELŐTT — enumeration-attack prevention.
+        // Korábban a company először lett feloldva, így valid/invalid cégkód-különbség kiszivárgoott.
         boolean alreadyCompleted = isBootstrapAlreadyCompleted();
+        if (alreadyCompleted) {
+            log.warn("Admin bootstrap elutasítva, mert már lezárult.");
+            throw new ValidationException(
+                    "A bootstrap már lezajlott; jelszó frissítéshez használd a hitelesített "
+                            + "dolgozói jelszócsere vagy reset folyamatot."
+            );
+        }
 
         String normalizedCompanyCode = normalize(dto.getCompanyCode());
         String normalizedWorkerCode = normalize(dto.getWorkerCode());
@@ -66,15 +75,6 @@ public class AdminBootstrapService {
                         "Ismeretlen cégkód: " + normalizedCompanyCode
                         + ". Ellenőrizd az adatbázisban, hogy létrejött-e a cég."
                 ));
-
-        if (alreadyCompleted) {
-            log.warn("Admin bootstrap elutasítva, mert már lezárult: companyCode={}, workerCode={}",
-                    company.getCode(), normalizedWorkerCode);
-            throw new ValidationException(
-                    "A bootstrap már lezajlott; jelszó frissítéshez használd a hitelesített "
-                            + "dolgozói jelszócsere vagy reset folyamatot."
-            );
-        }
 
         Worker worker = workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), normalizedWorkerCode)
                 .orElseGet(() -> createWorkerShell(company, normalizedWorkerCode, dto.getWorkerName()));
