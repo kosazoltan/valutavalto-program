@@ -231,14 +231,16 @@ public class TotpService {
             }
             return objectMapper.writeValueAsString(hashed);
         } catch (Exception e) {
-            log.error("Backup kódok hashelése sikertelen", e);
-            throw new RuntimeException("Backup kód generálása sikertelen", e);
+            log.error("Backup kódok hashelése/szerializálása sikertelen", e);
+            throw new RuntimeException("Backup kód hashelése/szerializálása sikertelen", e);
         }
     }
 
     /**
      * MFA backup kód ellenőrzése bejelentkezéskor (ha a TOTP eszköz nem elérhető).
      * A kód egyszeri felhasználású — sikeres ellenőrzés után törlődik a tárolt listából.
+     * Backward-compatible: a PP-16 előtti SHA-256/Base64 formátumú hashek is elfogadottak
+     * (Codex P1 #818: meglévő enrolled userek backup kódjai érvényben maradnak).
      *
      * @param workerId a bejelentkezni próbáló worker azonosítója
      * @param code     a felhasználó által megadott 8 jegyű backup kód
@@ -258,9 +260,10 @@ public class TotpService {
             List<String> hashes = new ArrayList<>(
                     objectMapper.readValue(json, new TypeReference<List<String>>() {}));
             for (int i = 0; i < hashes.size(); i++) {
-                if (passwordEncoder.matches(code, hashes.get(i))) {
+                if (matchesBackupHash(code, hashes.get(i))) {
                     hashes.remove(i);
                     mfa.setBackupCodesHashJson(objectMapper.writeValueAsString(hashes));
+                    mfa.setLastVerifiedAt(LocalDateTime.now());
                     mfaRepository.save(mfa);
                     log.info("MFA backup kód felhasználva — workerId={}, maradék={}", workerId, hashes.size());
                     return true;
@@ -270,6 +273,29 @@ public class TotpService {
             log.error("Backup kód ellenőrzés hiba — workerId={}", workerId, e);
         }
         return false;
+    }
+
+    /**
+     * Backward-compatible hash egyezés: BCrypt (PP-16+) és legacy SHA-256/Base64 (pre-PP-16) is elfogadott.
+     * A BCrypt hashek '$2' prefixszel kezdődnek (pl. "$2a$12$...").
+     */
+    private boolean matchesBackupHash(String code, String storedHash) {
+        if (storedHash == null) {
+            return false;
+        }
+        if (storedHash.startsWith("$2")) {
+            return passwordEncoder.matches(code, storedHash);
+        }
+        // Legacy SHA-256/Base64 — PP-16 előtt generált backup kódokhoz
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            String sha256b64 = Base64.getEncoder().encodeToString(
+                    md.digest(code.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            return sha256b64.equals(storedHash);
+        } catch (Exception e) {
+            log.warn("SHA-256 fallback hiba backup kód ellenőrzéskor", e);
+            return false;
+        }
     }
 
     // ==========================================================================

@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
 import hu.puzzleir.valuta.entity.Worker;
@@ -212,7 +213,7 @@ class TotpServiceTest {
 
     @Test
     @DisplayName("PP-16: backup kódok BCrypt formátumban tárolódnak, nem SHA-256 Base64")
-    void PP16_backupCodes_storedAsBcryptFormat() {
+    void PP16_backupCodes_storedAsBcryptFormat() throws Exception {
         when(mfaRepository.findByWorkerId(WORKER_ID)).thenReturn(Optional.empty());
         var enrollResponse = totpService.startEnrollment(WORKER_ID);
         GoogleAuthenticator gAuth = new GoogleAuthenticator();
@@ -231,9 +232,11 @@ class TotpServiceTest {
         WorkerMfa captured = captor.getAllValues().stream()
                 .filter(m -> m.getBackupCodesHashJson() != null)
                 .findFirst().orElseThrow();
-        assertThat(captured.getBackupCodesHashJson()).contains("$2a$12$");
-        // SHA-256 Base64-kódolt hashek nem tartalmaznak '$' jelet
-        assertThat(captured.getBackupCodesHashJson()).doesNotContain("SHA");
+        // JSON parse + minden elem BCrypt prefixszel kell kezdődjön ("$2a$")
+        List<String> storedHashes = new ObjectMapper().readValue(
+                captured.getBackupCodesHashJson(), new TypeReference<List<String>>() {});
+        assertThat(storedHashes).hasSize(8);
+        assertThat(storedHashes).allMatch(h -> h.startsWith("$2a$"));
     }
 
     @Test
@@ -296,5 +299,33 @@ class TotpServiceTest {
 
         assertThat(result).isFalse();
         verify(passwordEncoder, never()).matches(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("PP-16 Codex P1: verifyBackupCode — legacy SHA-256/Base64 hash is elfogadott (backward compat)")
+    void PP16_verifyBackupCode_legacySha256Hash_stillAccepted() throws Exception {
+        // A PP-16 előtt generált backup kódok SHA-256/Base64 formátumban tárolódtak
+        String codeToVerify = "12345678";
+        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+        String sha256b64 = java.util.Base64.getEncoder().encodeToString(
+                md.digest(codeToVerify.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        // sha256b64 NEM kezdődik "$2"-vel (nincs BCrypt prefix)
+        assertThat(sha256b64).doesNotStartWith("$2");
+
+        String json = new ObjectMapper().writeValueAsString(
+                List.of(sha256b64, "$2a$12$otherBcryptHash00000000b"));
+        WorkerMfa mfa = WorkerMfa.builder()
+                .workerId(WORKER_ID).isEnabled(true).backupCodesHashJson(json).build();
+        when(mfaRepository.findByWorkerId(WORKER_ID)).thenReturn(Optional.of(mfa));
+
+        boolean result = totpService.verifyBackupCode(WORKER_ID, codeToVerify);
+
+        assertThat(result).isTrue();
+        // passwordEncoder.matches() NEM lett hívva — SHA-256 fallback kezelte
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
+        // A felhasznált kód el lett távolítva
+        ArgumentCaptor<WorkerMfa> captor = ArgumentCaptor.forClass(WorkerMfa.class);
+        verify(mfaRepository).save(captor.capture());
+        assertThat(captor.getValue().getBackupCodesHashJson()).doesNotContain(sha256b64);
     }
 }
