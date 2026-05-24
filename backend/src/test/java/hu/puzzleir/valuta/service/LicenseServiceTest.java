@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.license.LicenseStatusResponse;
 import hu.puzzleir.valuta.entity.License;
 import hu.puzzleir.valuta.repository.LicenseRepository;
@@ -27,6 +28,9 @@ class LicenseServiceTest {
 
     @Mock
     private LicenseRepository licenseRepository;
+
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     private License createValidLicense() {
         return License.builder()
@@ -143,5 +147,51 @@ class LicenseServiceTest {
         boolean result = service.checkFeature("WU");
 
         assertThat(result).isFalse();
+    }
+
+    // PP-12 fix edge cases
+
+    @Test
+    @DisplayName("PP-12: checkFeature → JSON array szóközzel → helyes felismerés")
+    void testCheckFeature_jsonWithSpaces() {
+        License l = createValidLicense();
+        l.setFeatures("[ \"WU\", \"AML\" ]");
+        when(licenseRepository.findByIsActiveTrue()).thenReturn(Optional.of(l));
+
+        assertThat(service.checkFeature("WU")).isTrue();
+        assertThat(service.checkFeature("AML")).isTrue();
+        assertThat(service.checkFeature("NONEXISTENT")).isFalse();
+    }
+
+    @Test
+    @DisplayName("PP-12: checkFeature → kis/nagybetű érzéketlenség")
+    void testCheckFeature_caseInsensitive() {
+        License l = createValidLicense();
+        l.setFeatures("[\"wu\",\"aml\"]");
+        when(licenseRepository.findByIsActiveTrue()).thenReturn(Optional.of(l));
+
+        assertThat(service.checkFeature("WU")).isTrue();
+        assertThat(service.checkFeature("AML")).isTrue();
+    }
+
+    @Test
+    @DisplayName("PP-12: checkFeature → null features → false")
+    void testCheckFeature_nullFeatures() {
+        License l = createValidLicense();
+        l.setFeatures(null);
+        when(licenseRepository.findByIsActiveTrue()).thenReturn(Optional.of(l));
+
+        assertThat(service.checkFeature("WU")).isFalse();
+    }
+
+    @Test
+    @DisplayName("PP-12: checkFeature → hibás JSON → fallback substring match")
+    void testCheckFeature_malformedJsonFallback() {
+        License l = createValidLicense();
+        l.setFeatures("[invalid json but contains \"WU\"]");
+        when(licenseRepository.findByIsActiveTrue()).thenReturn(Optional.of(l));
+
+        assertThat(service.checkFeature("WU")).isTrue();
+        assertThat(service.checkFeature("NOTHERE")).isFalse();
     }
 }

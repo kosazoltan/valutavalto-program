@@ -1,5 +1,8 @@
 package hu.puzzleir.valuta.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.dto.license.LicenseResponse;
 import hu.puzzleir.valuta.dto.license.LicenseStatusResponse;
@@ -13,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 /**
  * Licenc kezelés szolgáltatás.
@@ -24,6 +28,7 @@ import java.time.temporal.ChronoUnit;
 public class LicenseService {
 
     private final LicenseRepository licenseRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * Licenc validáció — VALID / EXPIRED / EXCEEDED / NO_LICENSE.
@@ -87,13 +92,28 @@ public class LicenseService {
 
     /**
      * Feature ellenőrzés — engedélyezett-e a modul.
+     * PP-12 fix: robusztus JSON parsolás ObjectMapper-rel a törékeny contains() helyett.
+     * A features mező JSON tömb string: ["AML","WU","STAMPS"]. Fallback: substring match.
      */
     @Transactional(readOnly = true)
     public boolean checkFeature(String featureName) {
         return licenseRepository.findByIsActiveTrue()
                 .map(license -> {
-                    if (license.getFeatures() == null) return false;
-                    return license.getFeatures().contains("\"" + featureName + "\"");
+                    String features = license.getFeatures();
+                    if (features == null || features.isBlank()) return false;
+                    String trimmed = features.trim();
+                    String normalizedName = featureName == null ? "" : featureName.trim();
+                    if (trimmed.startsWith("[")) {
+                        try {
+                            List<String> list = objectMapper.readValue(trimmed, new TypeReference<List<String>>() {});
+                            return list.stream().anyMatch(f -> f.trim().equalsIgnoreCase(normalizedName));
+                        } catch (JsonProcessingException e) {
+                            log.warn("Licenc feature JSON parsolás sikertelen, fallback: {}", e.getMessage(), e);
+                        }
+                    }
+                    // fallback: whitespace-toleráns, case-insensitive keresés
+                    String compact = trimmed.replaceAll("\\s+", "").toLowerCase();
+                    return compact.contains("\"" + normalizedName.toLowerCase() + "\"");
                 })
                 .orElse(false);
     }
