@@ -638,7 +638,16 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.38** (2026-05-24 — G22 sub-scope lezárva: TCSOPORTDISPLAY 54-csempe munkacsoport-rács UI az RFM árfolyamkészítőben. PR #828 admin-merged `85c582d09`, production HEALTHY 200). **NINCS telepítő-build** (tisztán frontend-react, server-served, Hetzner auto-deploy).
+- **Verzió:** **v2.26.40** (2026-05-24 — `valutavalto_sajat_meglatas_audit.md` 4 findingje: #PP-17/18/20 javítva + #PP-19 elutasítva. PR #830 admin-merged `26c2c58b0`, production HEALTHY 200). **NINCS telepítő-build** (backend-only, server-served).
+  - **#PP-17 (HIGH):** kormányzati áthelyezett munkanap/pihenőnap az AML SAR-határidőben — V265 `shifted_calendar_day` tábla + entity + repo + `AmlService.isBusinessDay()` (adat-vezérelt, admin tölti).
+  - **#PP-18 (MEDIUM):** `CommissionCalculationService` a dolgozó SAJÁT fiókját allokálja (`worker.getBranch().getId()`) a session-branchId helyett + multi-tenant company-scope guard. Nincs @Scheduled NPE + kereszt-fiók allokáció.
+  - **#PP-19 (HIGH az auditban) — ELUTASÍTVA (téves pozitív):** a REAL→TEXT-et a PP-09 (v2.26.33) tudatosan visszavonta (TEXT+`.toFixed()` = crash); a `roundFin` (59 hely) már kezeli a floating-point zajt. TEXT regressziót okozna.
+  - **#PP-20 (MEDIUM):** `ExchangeRatePollingService` hash-láncolt `EXCHANGE_RATE_SYNC` audit (non-repudiation), source-aware (MNB/ECB), `afterStateJson` payload, non-blocking.
+  - **AI review gate:** Copilot 2 kör / 8 finding mind kezelve (source-hardcode, multi-tenant guard, redundáns index, audit payload, stack trace, doc); Sourcery rate-limit (zaj), minden CI zöld.
+  - **Tanulság:** V264 már foglalt (F3.1) → V265; az audit `auditEventService.log(...)` API nem létezik → valódi `appendEvent(AuditEventRequest)`; `updateOfficialRates` MNB+ECB úton is hívódik → source-paraméter kell.
+- **Verzió [előző]:** **v2.26.39** (2026-05-24 — RFM Should-elemek: FR-RFM-22 "Aktuális függvény" (#NNM kijelző) + FR-RFM-23 "Kitöltési segítség" (adat-lehúzás/sáv-törlés). PR #829 admin-merged `08d2f1ad7`, production HEALTHY 200). **NINCS telepítő-build** (frontend-react, server-served).
+  - Tiszta mag: `fillHelpers.ts` (`currentFunctionCode`, `fillDownLimitBands`, `clearLimitBands`) + 13 unit teszt. Copilot 4 finding (StrictMode-counter ×2, UX tooltip, típus-guard) mind javítva. **Ezzel az összes RFM-követelmény (Must+Should) kész.**
+- **Verzió [előző]:** **v2.26.38** (2026-05-24 — G22 sub-scope lezárva: TCSOPORTDISPLAY 54-csempe munkacsoport-rács UI az RFM árfolyamkészítőben. PR #828 admin-merged `85c582d09`, production HEALTHY 200). **NINCS telepítő-build** (tisztán frontend-react, server-served, Hetzner auto-deploy).
   - **G22 csempe-rács:** `RateCreationPage.tsx` munkacsoport-választó apró `w-6 h-6` számozott gombok → 2-oszlopos csempe-rács (legacy csoportszám + név + iroda-darabszám csempénként, aktív/inaktív vizuális megkülönböztetés, `max-h-52` scroll). A G22 számítási mag (rfmRules.ts) + TLIMITALLITOFORM limit-setter már korábban kész (PR #792) → ez az utolsó hátralévő vizuális paritás-elem.
   - **AI review gate:** Copilot 0 finding (tiszta), Sourcery weekly rate-limit (zaj), minden CI check zöld.
   - **23/23 EXCMD gap KÉSZ.** Hátralévő (Should prioritás): FR-RFM-22 "Aktuális függvény" kijelzés, FR-RFM-23 Kitöltési segítség — nem blokkoló.
