@@ -638,7 +638,15 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.36** (2026-05-24 — antivaluta_audit PP-09 teljes lezárása: PR #821 admin-merged, production HEALTHY 200). **4-WAY TELEPÍTŐ-BUILD SZÜKSÉGES** (Electron-natív réteg érintett: sqlite.ts).
+- **Verzió:** **v2.26.37** (2026-05-24 — AI_INTERNAL_SECURITY_AUDIT_INSTRUCTIONS.md V2.0 audit végrehajtva: PR #824 admin-merged, production HEALTHY 200). **4-WAY TELEPÍTŐ-BUILD SZÜKSÉGES** (Electron-natív réteg érintett: rtsp-recorder.ts validateRtspUrl).
+  - **F1.2 (LOW):** WebSocketConfig stale `https://valuta-frontend.vercel.app` origin eltávolítva.
+  - **F3.1 (HIGH):** ArchiveTask multi-tenant IDOR fix teljes lefedés — V264 migration (branch-ownership backfill), entity `@JsonIgnore`, repo company-scoped metódusok, service task-hijacking prevention + branchId ownership check, 5 unit teszt.
+  - **F8.B (MEDIUM):** RTSP URL injection prevention — `validateRtspUrl()` protokoll + host ellenőrzés, credential nem szivárog error message-be.
+  - **AUTH-102 (HIGH):** `CustomerController.findCustomers()` `@PreAuthorize("hasAnyRole(...)")` hozzáadva — PII-szivárgás megelőzve.
+  - **Copilot P1 × 2:** ArchiveTask `@JsonIgnore` LAZY proxy (LazyInitializationException elhárítva) + V264 branch-ownership backfill.
+  - **AI review gate:** Codex boilerplate, Sourcery rate-limit, Copilot P1 × 2 + P2 × 5 mind kezelve.
+  - **NINCS telepítő-build szükséges a backend/frontend változásokhoz** — KIVÉVE az rtsp-recorder.ts Electron-natív változás → 4-way build kell.
+- **Verzió [előző]:** **v2.26.36** (2026-05-24 — antivaluta_audit PP-09 teljes lezárása: PR #821 admin-merged, production HEALTHY 200). **4-WAY TELEPÍTŐ-BUILD SZÜKSÉGES** (Electron-natív réteg érintett: sqlite.ts).
   - **PP-09 (MEDIUM — LEZÁRVA):** SQLite offline outbox floating-point precision fix teljes lefedés. A v2.26.33-as `roundFin` csak `savePendingTransactionV2` és `savePendingConversionV2`-t fedte le. Most pótolva: `savePendingTransaction` (legacy), `savePendingConversion` (legacy), `savePendingBankTransaction`, `savePendingStorno`, `savePendingTransfer` — összesen 5 INSERT funkció + 15+ pénzügyi érték roundFin védelemmel (valuta: 8dp, HUF: 2dp, rate: 10dp, kerekített HUF: 0dp, kezelési díj: 0dp). Séma REAL maradt (TEXT→REAL visszaállítás a Codex P1 alapján: TEXT kolumna + frontend `.toFixed()` = runtime crash). 2 körös CI gate + AI review: Codex 👍, Copilot false positive dismissed (REAL kolumnán roundFin Number visszatérés helyes).
 - **Verzió [előző]:** **v2.26.35** (2026-05-24 — antivaluta_audit_2026_05_24.md PP-16 lezárva: PR #818 admin-merged + auto-deploy, production HEALTHY 200). **NINCS telepítő-build** (backend-only, server-served).
   - **PP-16 (HIGH/CRITICAL):** `TotpService` MFA backup kódok hash-elése SHA-256 → BCrypt 12. `hashBackupCodes()` átírva `passwordEncoder.encode()`-ra. Új `verifyBackupCode()` + `matchesBackupHash()` backward-compat helper (legacy SHA-256/Base64 hashek is elfogadottak). Új `POST /api/v1/mfa/verify-backup` endpoint + `BackupCodeRequest` DTO. `RateLimitFilter` kibővítve: `/api/v1/mfa/verify*` is rate-limited (10 req/perc/IP). 6 új PP-16 teszt (1632 → 1638 összesen). 1638/1638 PASS.
