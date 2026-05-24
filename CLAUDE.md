@@ -638,7 +638,9 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.34** (2026-05-24 — antivaluta_backdoor_audit.md PP-13/PP-14/PP-15 lezárva: PR #817 admin-merged + auto-deploy, production HEALTHY 200). **NINCS telepítő-build** (backend-only, server-served).
+- **Verzió:** **v2.26.35** (2026-05-24 — antivaluta_audit_2026_05_24.md PP-16 lezárva: PR #818 admin-merged + auto-deploy, production HEALTHY 200). **NINCS telepítő-build** (backend-only, server-served).
+  - **PP-16 (HIGH/CRITICAL):** `TotpService` MFA backup kódok hash-elése SHA-256 → BCrypt 12. `hashBackupCodes()` átírva `passwordEncoder.encode()`-ra. Új `verifyBackupCode()` + `matchesBackupHash()` backward-compat helper (legacy SHA-256/Base64 hashek is elfogadottak). Új `POST /api/v1/mfa/verify-backup` endpoint + `BackupCodeRequest` DTO. `RateLimitFilter` kibővítve: `/api/v1/mfa/verify*` is rate-limited (10 req/perc/IP). 6 új PP-16 teszt (1632 → 1638 összesen). 1638/1638 PASS.
+- **Verzió [előző]:** **v2.26.34** (2026-05-24 — antivaluta_backdoor_audit.md PP-13/PP-14/PP-15 lezárva: PR #817 admin-merged + auto-deploy, production HEALTHY 200). **NINCS telepítő-build** (backend-only, server-served).
   - **PP-13 (CRITICAL):** `SetupGoogleIdentificationService.identify()` — bootstrap-completed guard hozzáadva az endpoint elejére (`adminBootstrapService.isBootstrapAlreadyCompleted()` delegate), a `verifyIdentity()` hívás előtt. Google Subject kötés megakadályozva post-bootstrap.
   - **PP-14 (HIGH):** `AdminBootstrapService.bootstrapAdmin()` — `alreadyCompleted` check az `companyRepository.findByCode()` ELÉ mozgatva (company enumeration attack megszüntetve).
   - **PP-15 (MEDIUM):** `WorkerService.resolveWorkerForLogin()` — name-based fallback (bulk `findByCompanyId()` + névazonosítás) eltávolítva. Bejelentkezés kizárólag dolgozói kóddal lehetséges.
