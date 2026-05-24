@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.ArchiveTask;
 import hu.puzzleir.valuta.entity.ArchiveTaskStatus;
 import hu.puzzleir.valuta.repository.ArchiveTaskRepository;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class ArchivingService {
     private final ArchiveTaskRepository archiveTaskRepository;
     private final MonthlyArchiveService monthlyArchiveService;
     private final CompanyRepository companyRepository;
+    private final BranchRepository branchRepository;
 
     @Transactional(readOnly = true)
     public List<ArchiveTask> getAllTasks() {
@@ -39,6 +41,8 @@ public class ArchivingService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cég nem található: " + companyId));
+        // Task hijacking prevention: kliens által küldött ID ignorálása (Copilot P1)
+        task.setId(null);
         task.setCompany(company);
         task.setStatus(ArchiveTaskStatus.PENDING);
         log.info("Archiválási feladat létrehozva: type={}, entityType={}, companyId={}",
@@ -83,6 +87,10 @@ public class ArchivingService {
                 }
 
                 if (branchId != null && yearMonth != null) {
+                    // Cross-tenant IDOR védelem: a branchId a jelenlegi céghez tartozzon (Copilot P1)
+                    if (!branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
+                        throw new ResourceNotFoundException("Fiók nem található: " + branchId);
+                    }
                     archivedCount = monthlyArchiveService.archiveMonth(branchId, yearMonth);
                 } else {
                     throw new IllegalArgumentException(

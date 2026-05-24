@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.ArchiveTaskStatus;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.ArchiveTaskRepository;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +41,7 @@ class ArchivingServiceTenantTest {
     @Mock private ArchiveTaskRepository archiveTaskRepository;
     @Mock private MonthlyArchiveService monthlyArchiveService;
     @Mock private CompanyRepository companyRepository;
+    @Mock private BranchRepository branchRepository;
 
     @InjectMocks private ArchivingService archivingService;
 
@@ -60,14 +62,16 @@ class ArchivingServiceTenantTest {
     }
 
     @Test
-    @DisplayName("createTask — company beállítása a security context alapján")
-    void createTask_setsCompanyFromContext() {
+    @DisplayName("createTask — company beállítása a security context alapján, kliens ID null-ozva")
+    void createTask_setsCompanyFromContext_nullsClientId() {
         Company companyA = new Company();
         companyA.setId(COMPANY_A);
 
         ArchiveTask input = new ArchiveTask();
         input.setTaskType("ARCHIVE");
         input.setEntityType("TRANSACTION");
+        // Kliens által küldött ID — ezt null-ozni kell (task hijacking prevention)
+        input.setId(UUID.randomUUID());
 
         ArchiveTask saved = new ArchiveTask();
         saved.setStatus(ArchiveTaskStatus.PENDING);
@@ -77,9 +81,9 @@ class ArchivingServiceTenantTest {
             when(companyRepository.findById(COMPANY_A)).thenReturn(Optional.of(companyA));
             when(archiveTaskRepository.save(any())).thenReturn(saved);
 
-            ArchiveTask result = archivingService.createTask(input);
+            archivingService.createTask(input);
 
-            assertThat(result.getStatus()).isEqualTo(ArchiveTaskStatus.PENDING);
+            assertThat(input.getId()).isNull();
             verify(companyRepository).findById(COMPANY_A);
             verify(archiveTaskRepository).save(input);
         }
@@ -97,6 +101,30 @@ class ArchivingServiceTenantTest {
                     .isInstanceOf(ResourceNotFoundException.class);
 
             verify(archiveTaskRepository).findByIdAndCompanyId(TASK_B_ID, COMPANY_A);
+        }
+    }
+
+    @Test
+    @DisplayName("executeTask — más cég branch-ével criteria injection blokkolva")
+    void executeTask_crossTenantBranchId_throws() {
+        UUID otherBranchId = UUID.fromString("44444444-4444-4444-4444-444444444444");
+        ArchiveTask task = new ArchiveTask();
+        task.setTaskType("ARCHIVE");
+        task.setEntityType("TRANSACTION");
+        task.setCriteria("branchId=" + otherBranchId + ";yearMonth=2026-01");
+        task.setStatus(ArchiveTaskStatus.PENDING);
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_A);
+            when(archiveTaskRepository.findByIdAndCompanyId(TASK_B_ID, COMPANY_A))
+                    .thenReturn(Optional.of(task));
+            when(archiveTaskRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+            when(branchRepository.existsByIdAndCompanyId(otherBranchId, COMPANY_A)).thenReturn(false);
+
+            ArchiveTask result = archivingService.executeTask(TASK_B_ID);
+
+            assertThat(result.getStatus()).isEqualTo(ArchiveTaskStatus.FAILED);
+            verify(branchRepository).existsByIdAndCompanyId(otherBranchId, COMPANY_A);
         }
     }
 

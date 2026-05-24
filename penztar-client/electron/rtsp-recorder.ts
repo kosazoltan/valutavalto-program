@@ -44,19 +44,20 @@ const FFMPEG_PATH = 'ffmpeg';
 /**
  * RTSP URL validáció — csak rtsp:// vagy rtsps:// protokoll, nem üres host.
  * Megakadályozza hogy tetszőleges URL kerüljön ffmpeg spawn arg-ba.
+ * Az error message-ben csak protocol+host jelenik meg — credential nem szivárog logba.
  */
 function validateRtspUrl(url: string): void {
   let parsed: URL;
   try {
     parsed = new URL(url);
   } catch {
-    throw new Error(`Érvénytelen RTSP URL: ${url}`);
+    throw new Error('Érvénytelen RTSP URL (nem parseolható)');
   }
   if (parsed.protocol !== 'rtsp:' && parsed.protocol !== 'rtsps:') {
     throw new Error(`Csak rtsp:// vagy rtsps:// protokoll engedélyezett. Kapott: ${parsed.protocol}`);
   }
   if (!parsed.hostname) {
-    throw new Error(`RTSP URL üres host-ot tartalmaz: ${url}`);
+    throw new Error(`RTSP URL üres host-ot tartalmaz: ${parsed.protocol}//[host hiányzik]`);
   }
 }
 
