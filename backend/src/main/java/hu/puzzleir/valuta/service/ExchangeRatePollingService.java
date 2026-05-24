@@ -218,7 +218,7 @@ public class ExchangeRatePollingService {
         log.info("MNB XML feldolgozva: {} árfolyam", parsedRates.size());
 
         // 3. DB update
-        return updateOfficialRates(parsedRates);
+        return updateOfficialRates(parsedRates, "MNB");
     }
 
     /**
@@ -244,7 +244,7 @@ public class ExchangeRatePollingService {
             ratesForDb.put(entry.getKey(), new MnbRate(entry.getKey(), entry.getValue(), 1));
         }
 
-        return updateOfficialRates(ratesForDb);
+        return updateOfficialRates(ratesForDb, "ECB");
     }
 
     /**
@@ -330,7 +330,7 @@ public class ExchangeRatePollingService {
      * A mai napra aktív ExchangeRate rekordokat keresi és frissíti az officialRate-et.
      */
     @Transactional(rollbackFor = Exception.class)
-    public int updateOfficialRates(Map<String, MnbRate> mnbRates) {
+    public int updateOfficialRates(Map<String, MnbRate> mnbRates, String source) {
         int updatedCount = 0;
         LocalDate today = LocalDate.now();
 
@@ -375,7 +375,7 @@ public class ExchangeRatePollingService {
                                     .entityType("ExchangeRate")
                                     .amount(officialRate)
                                     .currency(currencyCode)
-                                    .reason("Automatikus hivatalos árfolyam-frissítés külső forrásból (MNB)")
+                                    .reason("Automatikus hivatalos árfolyam-frissítés külső forrásból (" + source + ")")
                                     .build()
                     );
                 } catch (Exception auditEx) {
