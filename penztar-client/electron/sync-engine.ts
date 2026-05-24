@@ -553,15 +553,35 @@ export class SyncEngine {
         return;
       }
       let token = this.getAuthToken();
+      let authFailed = false;
 
       if (token) {
         const isValid = await this.validateToken(serverUrl, token);
         if (!isValid) {
           this.clearStoredAuthToken();
           token = await this.bootstrapAuthSession(serverUrl);
+          if (!token) authFailed = true;
         }
       } else {
         token = await this.bootstrapAuthSession(serverUrl);
+        if (!token) authFailed = true;
+      }
+
+      // PP-08: ha a bootstrap null token-t adott vissza (401/403 vagy hiányzó credentials),
+      // backoff-ot alkalmazunk, hogy ne spameljük a szervert 30 másodpercenként.
+      // A sikeres-sync ág (consecutiveFailures reset) nem fut le.
+      if (authFailed) {
+        this.consecutiveFailures += 1;
+        if (this.consecutiveFailures >= 3) {
+          const backoffMs = Math.min(30_000 * Math.pow(2, this.consecutiveFailures - 3), this.maxBackoffMs);
+          this.backoffUntilMs = Date.now() + backoffMs;
+          log.warn(
+            `[SyncEngine] Auth sikertelen (${this.consecutiveFailures}. hiba) — backoff: ${Math.round(backoffMs / 1000)}s`,
+          );
+        } else {
+          log.warn(`[SyncEngine] Auth sikertelen (${this.consecutiveFailures}. hiba) — sync kihagyva`);
+        }
+        return;
       }
 
       // 1. Tranzakciók szinkronizálása

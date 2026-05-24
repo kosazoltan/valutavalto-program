@@ -1332,6 +1332,14 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
   };
   const boolToInt = (v: boolean | null | undefined): number | null =>
     v === null || v === undefined ? null : (v ? 1 : 0);
+  // PP-09: JS lebegőpontos aritmetika zajt eltávolítja tárolás előtt.
+  // toFixed() az IEEE 754 double-t fix tizedesjegyre kerekíti string-ként,
+  // a Number() vissza-parseol — ez a megközelítés nem veszít prezícióból
+  // (pl. 1.2345 → "1.23450000" → 1.2345), de levágja a floating-point
+  // noise-t (pl. 0.30000000000000004 → "0.30" → 0.3).
+  const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
+  const roundFinOrNull = (v: number | null, decimals: number): number | null =>
+    v === null ? null : roundFin(v, decimals);
 
   const normalized = {
     customerIdentifier: trimOrNull(input.customerIdentifier),
@@ -1375,12 +1383,12 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
     [
       input.type,
       input.currencyCode,
-      input.foreignAmount,
-      input.hufAmount,
-      input.roundedHufAmount,
-      input.rate,
-      input.handlingFee,
-      input.discountPercent,
+      roundFin(input.foreignAmount, 8),
+      roundFin(input.hufAmount, 2),
+      roundFin(input.roundedHufAmount, 0),
+      roundFin(input.rate, 10),
+      roundFinOrNull(input.handlingFee, 0),
+      roundFinOrNull(input.discountPercent, 4),
       null, // customer_id (legacy oszlop, ID-t nem kezeljük itt)
       normalized.customerIdentifier,
       normalized.customerName,
@@ -1617,6 +1625,9 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
   };
   const boolToInt = (v: boolean | null | undefined): number | null =>
     v === null || v === undefined ? null : (v ? 1 : 0);
+  const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
+  const roundFinOrNull = (v: number | null | undefined, decimals: number): number | null =>
+    v == null ? null : Number(v.toFixed(decimals));
 
   db.run(
     `INSERT INTO pending_conversions (
@@ -1635,8 +1646,8 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.fromCurrencyId, input.fromCurrencyCode, input.toCurrencyId, input.toCurrencyCode,
-      input.fromAmount, input.calculatedHufAmount, input.calculatedToAmount, input.conversionRate,
-      input.handlingFee,
+      roundFin(input.fromAmount, 8), roundFin(input.calculatedHufAmount, 2), roundFin(input.calculatedToAmount, 8), roundFin(input.conversionRate, 10),
+      roundFinOrNull(input.handlingFee, 0),
       trimOrNull(input.customerId), trimOrNull(input.customerName), trimOrNull(input.customerDocumentNumber),
       trimOrNull(input.customerAddress), trimOrNull(input.customerNationality),
       trimOrNull(input.customerBirthPlace), trimOrNull(input.customerBirthDate),
