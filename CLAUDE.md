@@ -638,7 +638,17 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.29** (2026-05-23 — teljes legacy-verifikáció lezárva + 7 valódi gap implementálva; mind admin-merged + auto-deploy, production HEALTHY 200). **TESZTELŐ-BUILD a kollégák hétvégi nézegetéséhez** (user-kérés).
+- **Verzió:** **v2.26.33** (2026-05-24 — teljes antivaluta_audit.md PP-sorozat (12/12 finding) lezárva: PP-01..07+10 PR #813, PP-11+12 PR ~#815, PP-08+09 PR #816; mind admin-merged + auto-deploy, production HEALTHY 200). **4-WAY TELEPÍTŐ-BUILD kész** (PP-08+09 Electron-natív réteg érintett).
+  - **PP-08 (sync-engine.ts):** auth bootstrap null token esetén exponenciális backoff (consecutiveFailures alapú, max 2048s), HA failover rotáció az authFailed blokkban (primary→fallback_primary→fallback_secondary→primary), korai return (a sikeres-sync ág NEM fut le, consecutiveFailures NEM reset-elődik).
+  - **PP-09 (sqlite.ts):** `roundFin` helper (Number(v.toFixed(decimals))) + `roundFinOrNull` — alkalmazva minden pénzügyi INSERT értékre (foreignAmount/hufAmount/rate/handlingFee/discountPercent) + audit payload-ban is (savePendingTransactionV2 + savePendingConversionV2). Determinisztikus DB-tartalom, floating-point zaj kiküszöbölve.
+  - **AI review gate:** Codex P1 HA failover bypass + 4 Copilot P2 finding mind javítva a squash-commit tartalmában (stale intermediate-commit review → verified current code).
+  - **Telepítő-szet v2.26.33 (UNSIGNED, Downloads-ban):**
+    - `Penztar-Setup-2.26.33-20260524.exe` — 283.84 MB, SHA-256 `A0EBF8A9A8669E1CDB3937F7A8563CA85BCCFCB80165774D6E9587FD8880C86A`
+    - `Kozponti-Iranyitokozpont-Setup-2.26.33.exe` — 101.06 MB, SHA-256 `D9BC17AD584F2B6366AD550739A282B70C9D91AD995E56304F857ACECE457F17`
+    - `Arfolyamkeszito-Setup-2.26.33.exe` — 101.06 MB, SHA-256 `7F8A6B2D909F8ED7F00CB4CF1B74780AA8A52203DB79EF5B597078E88039E28A`
+    - `Penztar-Eltavolito-2.26.20-20260522.exe` — verzió-független, SHA-256 `5D84BE6AA024D9543B5B13F9E846255A6E05F700D8AE4750067E97539B5BDFB4`
+  - **UNSIGNED** — DigiCert EV CS cert kiadásig SmartScreen „További információ" → „Futtatás mindenképp".
+- **Verzió [előző]:** **v2.26.29** (2026-05-23 — teljes legacy-verifikáció lezárva + 7 valódi gap implementálva; mind admin-merged + auto-deploy, production HEALTHY 200). **TESZTELŐ-BUILD a kollégák hétvégi nézegetéséhez** (user-kérés).
   - **Implementált valódi gap-ek (server-served, mind main-en):** G27 (TEÁOR mező), N1 (ARFOLYAM internet-link karbantartó — TINTERNETTMKFORM valódi forrásból, PR #807), N2 (TEÁOR picker, PR #803), N3 (HUF/inaktív-valuta guard, PR #803), N4 (WU partner-cég törzs GETWCEG/WUCEGEK, PR #806), N6 (tiltott-cég AML-szűrés — eddig csak személy szűrődött!, PR #809), N7 (okmányhiány-regiszter OKMANYHIANY, PR #809), **N9 (értéktári átértékelés lecsorgatása a pénztárakra + területi reconciliation, PR #811 — WAC-alapú, bit-pontos `terület = Σ pénztár + allokált átértékelés`, lehívás×árrés súly; központi modul-kártya is)**.
   - **Teljes legacy-feldolgozás:** 394 modul-MD a teljes Anti-forrásból (a tömörített archívumokat is beleértve), mind verifikálva a tényleges kód ellen (14+ ügynök, file:line). **0 fennmaradó implementálható gap** — a maradék lefedett / infra-csere / szándékos scope-vágás / architektúra-döntés. Lásd `EXCMD/legacy/05-TELJES-FORRAS-LEFEDETTSEG.md` + `06-FEJLESZT-VERIFIKACIO-EREDMENY.md`.
   - **Telepítő-szet v2.26.29 (UNSIGNED, Downloads-ban) — ezt kapja a tesztelő:**
