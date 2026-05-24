@@ -404,14 +404,6 @@ class WorkerServiceLoginTest {
         company.setCode("EBC");
         company.setName("Test Company");
 
-        Worker worker = new Worker();
-        worker.setId(99L);
-        worker.setCompany(company);
-        worker.setCode("KZ001");
-        worker.setName("Kosa Zoltan");
-        worker.setActive(true);
-        worker.setPasswordHash("$2b$10$hashed");
-
         // normalizeCode("Kosa Zoltan") = "KOSA ZOLTAN" — space preserved, code lookup fails
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         when(workerRepository.findByCompanyIdAndCode(company.getId(), "KOSA ZOLTAN")).thenReturn(Optional.empty());

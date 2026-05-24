@@ -1,11 +1,9 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.setup.SetupGoogleIdentifyRequestDto;
-import hu.puzzleir.valuta.entity.SystemParameter;
 import hu.puzzleir.valuta.exception.AuthenticationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
-import hu.puzzleir.valuta.repository.SystemParameterRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,8 +11,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -40,7 +36,7 @@ class SetupGoogleIdentificationServiceTest {
     @Mock private BranchRepository branchRepository;
     @Mock private WorkerRepository workerRepository;
     @Mock private WorkerRoleService workerRoleService;
-    @Mock private SystemParameterRepository systemParameterRepository;
+    @Mock private AdminBootstrapService adminBootstrapService;
 
     @InjectMocks private SetupGoogleIdentificationService service;
 
@@ -55,13 +51,7 @@ class SetupGoogleIdentificationServiceTest {
     @Test
     @DisplayName("PP-13: bootstrap már lezárult → AuthenticationException, token verify NEM hívódik")
     void identify_bootstrapCompleted_rejectsBeforeTokenVerify() throws Exception {
-        SystemParameter completedFlag = SystemParameter.builder()
-                .parameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY)
-                .parameterValue("true")
-                .isActive(true)
-                .build();
-        when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
-                .thenReturn(Optional.of(completedFlag));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
 
         assertThatThrownBy(() -> service.identify(anyRequest()))
                 .isInstanceOf(AuthenticationException.class)
@@ -73,30 +63,9 @@ class SetupGoogleIdentificationServiceTest {
     }
 
     @Test
-    @DisplayName("PP-13: bootstrap inaktív flag → token verify lefut (setup folytatható)")
-    void identify_bootstrapFlagInactive_tokenVerifyProceeds() throws Exception {
-        SystemParameter inactiveFlag = SystemParameter.builder()
-                .parameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY)
-                .parameterValue("true")
-                .isActive(false)
-                .build();
-        when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
-                .thenReturn(Optional.of(inactiveFlag));
-        doThrow(new GoogleIdTokenService.GoogleTokenInvalidException("TEST", "test token invalid"))
-                .when(googleIdTokenService).verify(anyString());
-
-        assertThatThrownBy(() -> service.identify(anyRequest()))
-                .isInstanceOf(AuthenticationException.class)
-                .hasMessageContaining("Google bejelentkezes");
-
-        verify(googleIdTokenService).verify("google-id-token-xyz");
-    }
-
-    @Test
-    @DisplayName("PP-13: bootstrap flag nincs → token verify lefut (setup folytatható)")
-    void identify_bootstrapFlagAbsent_tokenVerifyProceeds() throws Exception {
-        when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
-                .thenReturn(Optional.empty());
+    @DisplayName("PP-13: bootstrap nem lezárult → token verify lefut (setup folytatható)")
+    void identify_bootstrapNotCompleted_tokenVerifyProceeds() throws Exception {
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(false);
         doThrow(new GoogleIdTokenService.GoogleTokenInvalidException("TEST", "test token invalid"))
                 .when(googleIdTokenService).verify(anyString());
 

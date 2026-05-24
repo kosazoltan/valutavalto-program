@@ -55,9 +55,8 @@ public class AdminBootstrapService {
 
     @Transactional(rollbackFor = Exception.class)
     public BootstrapAdminResponseDto bootstrapAdmin(BootstrapAdminRequestDto dto) {
-        // PP-14: alreadyCompleted check ELŐTT a cégkód feloldása — enumeration-attack prevention.
-        // Korábban a company volt feloldva először, ami lehetővé tette, hogy egy támadó
-        // valid/invalid cégkódokat próbálgatva derítse ki a DB tartalmát.
+        // PP-14: alreadyCompleted ellenőrzés a cégkód feloldása ELŐTT — enumeration-attack prevention.
+        // Korábban a company először lett feloldva, így valid/invalid cégkód-különbség kiszivárgoott.
         boolean alreadyCompleted = isBootstrapAlreadyCompleted();
         if (alreadyCompleted) {
             log.warn("Admin bootstrap elutasítva, mert már lezárult.");
