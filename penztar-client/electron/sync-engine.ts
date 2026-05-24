@@ -567,10 +567,23 @@ export class SyncEngine {
         if (!token) authFailed = true;
       }
 
-      // PP-08: ha a bootstrap null token-t adott vissza (401/403 vagy hiányzó credentials),
-      // backoff-ot alkalmazunk, hogy ne spameljük a szervert 30 másodpercenként.
+      // PP-08: ha a bootstrap null token-t adott vissza (401/403, hiányzó credentials
+      // vagy hálózati hiba a bootstrap során), backoff-ot alkalmazunk.
       // A sikeres-sync ág (consecutiveFailures reset) nem fut le.
+      // A HA failover rotáció is lefut: bootstrapAuthSession hálózati hibát
+      // elnyel és null-t ad vissza, ezért a catch-ágbeli HA-logika itt manuálisan
+      // szükséges (ha 401/403 miatt bukott, a rotáció ártalmatlan).
       if (authFailed) {
+        if (this.activeServerKind === 'primary' && this.getServerUrlFallbackPrimary()) {
+          log.warn('[SyncEngine] Auth bootstrap sikertelen — kovetkezo ciklus: fallback_primary');
+          this.activeServerKind = 'fallback_primary';
+        } else if (this.activeServerKind === 'fallback_primary' && this.getServerUrlFallbackSecondary()) {
+          log.warn('[SyncEngine] Auth bootstrap sikertelen — kovetkezo ciklus: fallback_secondary');
+          this.activeServerKind = 'fallback_secondary';
+        } else if (this.activeServerKind === 'fallback_secondary') {
+          log.warn('[SyncEngine] Auth bootstrap sikertelen — kovetkezo ciklus: primary ujraprobalas');
+          this.activeServerKind = 'primary';
+        }
         this.consecutiveFailures += 1;
         if (this.consecutiveFailures >= 3) {
           const backoffMs = Math.min(30_000 * Math.pow(2, this.consecutiveFailures - 3), this.maxBackoffMs);
