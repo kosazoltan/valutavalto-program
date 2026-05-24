@@ -606,24 +606,10 @@ public class WorkerService {
     }
 
     private Optional<Worker> resolveWorkerForLogin(Company company, String normalizedWorkerCode) {
-        String normalizedInput = normalizeLoginCode(normalizedWorkerCode);
-
-        Optional<Worker> directMatch = workerRepository.findByCompanyIdAndCode(company.getId(), normalizedWorkerCode)
+        // PP-15: name-based fallback eltávolítva — bejelentkezés csak dolgozói kóddal megengedett.
+        // A korábbi logika a worker nevét is egyeztette normalizeLoginCode-dal, ami lehetővé tette
+        // hogy valaki a teljes nevével (pl. "Kósa Zoltán") bejelentkezzen — ez nem szándékos funkció.
+        return workerRepository.findByCompanyIdAndCode(company.getId(), normalizedWorkerCode)
                 .or(() -> workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), normalizedWorkerCode));
-        if (directMatch.isPresent()) {
-            return directMatch;
-        }
-
-        List<Worker> companyWorkers = workerRepository.findByCompanyId(company.getId());
-        Worker nameMatch = null;
-        for (Worker worker : companyWorkers) {
-            if (normalizeLoginCode(worker.getCode()).equals(normalizedInput)) {
-                return Optional.of(worker);
-            }
-            if (nameMatch == null && normalizeLoginCode(worker.getName()).equals(normalizedInput)) {
-                nameMatch = worker;
-            }
-        }
-        return Optional.ofNullable(nameMatch);
     }
 }

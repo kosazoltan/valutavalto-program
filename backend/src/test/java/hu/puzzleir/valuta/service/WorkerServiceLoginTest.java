@@ -92,7 +92,6 @@ class WorkerServiceLoginTest {
         // Worker not found → dummy hash path, but company resolution should succeed
         when(workerRepository.findByCompanyIdAndCode(company.getId(), "KOSA")).thenReturn(Optional.empty());
         when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "KOSA")).thenReturn(Optional.empty());
-        when(workerRepository.findByCompanyId(company.getId())).thenReturn(java.util.List.of());
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
         LoginRequestDto dto = new LoginRequestDto();
@@ -120,7 +119,6 @@ class WorkerServiceLoginTest {
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         when(workerRepository.findByCompanyIdAndCode(company.getId(), "KOSA")).thenReturn(Optional.empty());
         when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "KOSA")).thenReturn(Optional.empty());
-        when(workerRepository.findByCompanyId(company.getId())).thenReturn(List.of());
         when(passwordEncoder.matches("1234", "$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie"))
                 .thenReturn(false);
 
@@ -392,5 +390,43 @@ class WorkerServiceLoginTest {
         dto.setPassword("1234");
         dto.setAppMode(appMode);
         return dto;
+    }
+
+    /**
+     * PP-15: a name-based fallback eltávolítása után teljes névvel NEM lehet bejelentkezni.
+     * Korábban resolveWorkerForLogin() a worker kódján kívül a worker.getName()-t is egyeztette.
+     */
+    @Test
+    @DisplayName("PP-15: bejelentkezés teljes névvel elutasítva — name-based fallback eltávolítva")
+    void login_byFullName_rejected_noNameFallback() {
+        Company company = new Company();
+        company.setId(UUID.randomUUID());
+        company.setCode("EBC");
+        company.setName("Test Company");
+
+        Worker worker = new Worker();
+        worker.setId(99L);
+        worker.setCompany(company);
+        worker.setCode("KZ001");
+        worker.setName("Kosa Zoltan");
+        worker.setActive(true);
+        worker.setPasswordHash("$2b$10$hashed");
+
+        // normalizeCode("Kosa Zoltan") = "KOSA ZOLTAN" — space preserved, code lookup fails
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCode(company.getId(), "KOSA ZOLTAN")).thenReturn(Optional.empty());
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "KOSA ZOLTAN")).thenReturn(Optional.empty());
+
+        LoginRequestDto dto = new LoginRequestDto();
+        dto.setCompanyCode("EBC");
+        dto.setWorkerCode("Kosa Zoltan");  // normalizeCode → "KOSA ZOLTAN", no worker code match
+        dto.setPassword("1234");
+
+        assertThatThrownBy(() -> workerService.login(dto, "127.0.0.1", "test"))
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessageContaining("pénztáros");
+
+        // PP-15: findByCompanyId (bulk fetch for name-scan) must NOT be called
+        verify(workerRepository, never()).findByCompanyId(company.getId());
     }
 }

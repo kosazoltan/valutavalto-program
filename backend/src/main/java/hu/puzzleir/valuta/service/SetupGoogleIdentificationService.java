@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.exception.ConflictException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
+import hu.puzzleir.valuta.repository.SystemParameterRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.util.AppModeRoleConstants;
 import lombok.RequiredArgsConstructor;
@@ -32,9 +33,23 @@ public class SetupGoogleIdentificationService {
     private final BranchRepository branchRepository;
     private final WorkerRepository workerRepository;
     private final WorkerRoleService workerRoleService;
+    private final SystemParameterRepository systemParameterRepository;
 
     @Transactional
     public SetupGoogleIdentifyResponseDto identify(SetupGoogleIdentifyRequestDto request) {
+        // PP-13: bootstrap-completed guard — a setup-identify endpoint a wizard-hoz való,
+        // production-ban le kell zárni, hogy ne lehessen Google Subject-et utólag kötni
+        boolean bootstrapCompleted = systemParameterRepository
+                .findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY)
+                .map(sp -> "true".equalsIgnoreCase(sp.getParameterValue())
+                        && Boolean.TRUE.equals(sp.getIsActive()))
+                .orElse(false);
+        if (bootstrapCompleted) {
+            log.warn("SETUP_GOOGLE_DENIED_BOOTSTRAP_COMPLETED");
+            throw new AuthenticationException(
+                    "A rendszer setup mar lezarult. Kerem hasznalj a normal bejelentkezest.");
+        }
+
         GoogleIdTokenService.VerifiedGoogleIdentity identity = verifyIdentity(request.getIdToken());
         Company company = resolveCompany(request.getCompanyCode());
         String canonicalEmail = identity.email();

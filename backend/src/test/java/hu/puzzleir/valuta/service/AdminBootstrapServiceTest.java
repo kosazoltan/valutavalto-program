@@ -161,7 +161,7 @@ class AdminBootstrapServiceTest {
     }
 
     @Test
-    @DisplayName("Bootstrap flag már true -> publikus jelszófrissítés elutasítva")
+    @DisplayName("PP-14: bootstrap flag már true → ValidationException, cég NEM kerül lekérdezésre (enumeration guard)")
     void rejectsRepeatedBootstrapPasswordUpdate() {
         SystemParameter completedFlag = SystemParameter.builder()
                 .parameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY)
@@ -170,13 +170,15 @@ class AdminBootstrapServiceTest {
                 .build();
         when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
                 .thenReturn(Optional.of(completedFlag));
-        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(ebcCompany));
 
         assertThatThrownBy(() -> service.bootstrapAdmin(validRequest()))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("bootstrap már lezajlott")
                 .hasMessageContaining("hitelesített");
 
+        // PP-14: cégkód feloldás NEM fut le — enumeration-prevention
+        verify(companyRepository, never()).findByCode(anyString());
+        verify(companyRepository, never()).findByCodeIgnoreCase(anyString());
         verify(workerRepository, never()).findByCompanyIdAndCodeIgnoreCase(any(), anyString());
         verify(passwordEncoder, never()).encode(anyString());
         verify(workerRepository, never()).save(any(Worker.class));
