@@ -638,7 +638,18 @@ Egyszer írt, type-safe, validált, iparági standard (Zod 3.22.4 már a `packag
 ---
 
 ## Aktuális release-állapot (a következő agent számára folytatási horgony)
-- **Verzió:** **v2.26.40** (2026-05-24 — `valutavalto_sajat_meglatas_audit.md` 4 findingje: #PP-17/18/20 javítva + #PP-19 elutasítva. PR #830 admin-merged `26c2c58b0`, production HEALTHY 200). A v2.26.38–40 mind server-served → **a kollégáknál funkcionálisan már élő** (Hetzner auto-deploy + szerverről töltött frontend); a teljes desktop-szettet user-kérésre legyártottuk.
+- **Verzió:** **v2.27.0** (2026-05-24 — **telepítő-összevonás**: Kozponti irányítóközpont + Árfolyamkészítő EGY „Központi munkaállomás" telepítővé olvasztva induláskori mód-választóval. **4 telepítő → 3**. PR #831 admin-merged `c3e0891f4`, production HEALTHY 200). **TELEPÍTŐ-BUILD KÉSZ** (Electron-natív + architektúra-milestone → MINOR).
+  - **Stratégia: dual-bundle** (0 frontend-változás → nulla regresszió a pénztáros/web appra). A merged kliens mindkét frontend-buildet tartalmazza (`dist/central` + `dist/rate-maker`), mindegyik SAJÁT `VITE_APP_FLAVOR`-jával; az Electron main a választott mód szerint az `app://` protokollon a megfelelő subdir-t szolgálja ki.
+  - **UX:** induláskori magyar két-gombos választó-ablak (egy ikon, megjegyzett default, újraindítással váltható). `appId` változatlan (`com.bestchange.kozponti`) → upgrade-kompatibilis. productName „Valutavalto Kozponti Munkaallomas", artifactName `Kozponti-Munkaallomas-Setup`.
+  - **telepito_audithiba_jelentes.md (Gemini) 5 finding:** #ERR-INST-01 (módonkénti offline izoláció: config/token base/<mód> userData + SQLite `central-workstation.db`/`rate-maker.db`) JAVÍTVA; #ERR-INST-04 (dotenv hiányzott a kozponti deps-ből → OAuth némán elromlott csomagolt buildben) JAVÍTVA; #ERR-INST-05 (dev→full) JAVÍTVA; #ERR-INST-02 (verzió-drift) + #ERR-INST-03 (PowerShell `set`) ELUTASÍTVA (téves pozitív: a verzió 2.27.0 konzisztens; az npm cmd.exe-vel futtat → `set` működik).
+  - **Copilot 4 finding mind kezelve** — köztük P1 CI-törő: a `windows-signed-release.yml` régi `Kozponti-Iranyitokozpont-Setup-*.exe` glob-ja frissítve `Kozponti-Munkaallomas-Setup`-ra (különben a signed-release elhasalt volna).
+  - **Tanulság:** a local-first SQLite `~/.valuta-central/`-ben van (NEM userData) → külön `dbName` mód-param kellett; az electron-log a `log.initialize()`-kor rögzíti az utat (setPath előtt) → logok a base-ben (OK).
+  - **Telepítő-szet v2.27.0 (UNSIGNED, Downloads-ban) — 3-way:**
+    - `Kozponti-Munkaallomas-Setup-2.27.0.exe` — 102.36 MB, SHA-256 `1DA8FF62C158A0BD7777DC1455255EBCC0B08AA7F96359295E3D3BCB4430216C`
+    - `Penztar-Setup-2.27.0-20260524.exe` — 283.85 MB, SHA-256 `3253B30E79A8757629DE3931A9C46A403F8960DF52BA912044BF8CB2B7E65D3D`
+    - `Penztar-Eltavolito-2.27.0-20260524.exe` — 0.06 MB, SHA-256 `493D67C97ABB42C60CCDD3FA7ECCF935A30C858B916DCC25506D4D98995ABC87`
+  - **UNSIGNED** — DigiCert EV CS cert kiadásig SmartScreen „További információ" → „Futtatás mindenképp". Az `arfolyam-keszito-client` dir megmarad (version-sync + four-area-alignment zöld), de külön telepítőt már nem szállítunk.
+- **Verzió [előző]:** **v2.26.40** (2026-05-24 — `valutavalto_sajat_meglatas_audit.md` 4 findingje: #PP-17/18/20 javítva + #PP-19 elutasítva. PR #830 admin-merged `26c2c58b0`, production HEALTHY 200). A v2.26.38–40 mind server-served → **a kollégáknál funkcionálisan már élő** (Hetzner auto-deploy + szerverről töltött frontend); a teljes desktop-szettet user-kérésre legyártottuk.
   - **Telepítő-szet v2.26.40 (UNSIGNED, Downloads-ban) — user-kérésre, teljes 4-way:**
     - `Penztar-Setup-2.26.40-20260524.exe` — 283.85 MB, SHA-256 `8FC75321168F7BB1403069EDDD071536E78E24457964DB09A73947C5EE83ED32`
     - `Kozponti-Iranyitokozpont-Setup-2.26.40.exe` — 101.06 MB, SHA-256 `B116E093567BA122D8105FCB9C35A212A122981672187C8D1A9138DCDFF4477E`
