@@ -91,15 +91,18 @@ const installers = [
     fixedMode: 'rate-maker',
   },
   {
+    // 2026-05-24: az összevont „Központi munkaállomás" — induláskori mód-választóval
+    // KÉT módot szolgál ki (full = Központi irányítóközpont, rate-maker = Árfolyamkészítő),
+    // mindkét frontend-flavor SAJÁT VITE_APP_FLAVOR-jával fordítva, külön dist-subdir-be.
     name: 'kozponti-client',
     packagePath: 'kozponti-client/package.json',
     builderPath: 'kozponti-client/electron-builder.json',
     mainPath: 'kozponti-client/electron/main.ts',
     expectedAppId: 'com.bestchange.kozponti',
-    expectedProductName: 'Valutavalto Kozponti Iranyitokozpont',
-    expectedArtifactName: 'Kozponti-Iranyitokozpont-Setup-${version}.exe',
-    flavor: 'central-workstation',
-    fixedMode: 'full',
+    expectedProductName: 'Valutavalto Kozponti Munkaallomas',
+    expectedArtifactName: 'Kozponti-Munkaallomas-Setup-${version}.exe',
+    merged: true,
+    mergedFlavors: ['central-workstation', 'rate-maker'],
   },
 ]
 
@@ -133,7 +136,23 @@ for (const installer of installers) {
   }
 
   const buildFrontend = String(packageJson.scripts?.['build:frontend'] ?? '')
-  if (installer.flavor) {
+  if (installer.merged) {
+    // Összevont kliens: a build:frontend MINDKÉT flavort lefedi (külön dist-subdir),
+    // és a main.ts dinamikusan (mód-választó + dual-dist) szolgálja ki őket.
+    for (const flavor of installer.mergedFlavors) {
+      const flavorBuilt =
+        buildFrontend.includes(`VITE_APP_FLAVOR='${flavor}'`) ||
+        readText(installer.packagePath).includes(`VITE_APP_FLAVOR='${flavor}'`)
+      check(flavorBuilt,
+        `${installer.name}: az összevont build nem fordítja a(z) ${flavor} flavort`)
+    }
+    check(mainSource.includes('activeAppMode'),
+      `${installer.name}: a main.ts nem használ dinamikus (activeAppMode) módot`)
+    check(mainSource.includes('pickWorkstationMode') || mainSource.includes('determineStartupMode'),
+      `${installer.name}: a main.ts nem tartalmaz induláskori mód-választót`)
+    check(/dist['"`\)]?\s*,\s*MODE_DIST_SUBDIR/.test(mainSource) || mainSource.includes('MODE_DIST_SUBDIR[activeAppMode]'),
+      `${installer.name}: a protokoll-kiszolgálás nem a mód-specifikus dist-subdir-ből történik`)
+  } else if (installer.flavor) {
     check(buildFrontend.includes(`VITE_APP_FLAVOR='${installer.flavor}'`),
       `${installer.name}: frontend build flavor nincs rögzítve`,
       buildFrontend)

@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "com.bestchange.kozponti",
-  "productName": "Valutavalto Kozponti Iranyitokozpont",
+  "productName": "Valutavalto Kozponti Munkaallomas",
   "directories": {
     "output": "release"
   },
@@ -19,7 +19,7 @@
         "arch": ["x64"]
       }
     ],
-    "artifactName": "Kozponti-Iranyitokozpont-Setup-${version}.exe",
+    "artifactName": "Kozponti-Munkaallomas-Setup-${version}.exe",
     "signtoolOptions": {
       "sign": "../penztar-client/scripts/sign-with-azure-keyvault.js",
       "signingHashAlgorithms": ["sha256"],
