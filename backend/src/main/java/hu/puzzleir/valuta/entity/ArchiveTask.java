@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.entity;
 
+import hu.puzzleir.valuta.entity.Company;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,6 +22,10 @@ public class ArchiveTask {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
     @Column(name = "task_type", nullable = false, length = 100)
     private String taskType;

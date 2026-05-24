@@ -39,7 +39,26 @@ export interface RecordingSegment {
 }
 
 const DEFAULT_CAMERA_DIR = 'C:/valuta/camera';
-const FFMPEG_PATH = 'ffmpeg'; // PATH-ban kell legyen, vagy teljes elérési út
+const FFMPEG_PATH = 'ffmpeg';
+
+/**
+ * RTSP URL validáció — csak rtsp:// vagy rtsps:// protokoll, nem üres host.
+ * Megakadályozza hogy tetszőleges URL kerüljön ffmpeg spawn arg-ba.
+ */
+function validateRtspUrl(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Érvénytelen RTSP URL: ${url}`);
+  }
+  if (parsed.protocol !== 'rtsp:' && parsed.protocol !== 'rtsps:') {
+    throw new Error(`Csak rtsp:// vagy rtsps:// protokoll engedélyezett. Kapott: ${parsed.protocol}`);
+  }
+  if (!parsed.hostname) {
+    throw new Error(`RTSP URL üres host-ot tartalmaz: ${url}`);
+  }
+}
 
 export class RtspRecorder extends EventEmitter {
   private processes = new Map<string, ChildProcess>();
@@ -176,6 +195,9 @@ export class RtspRecorder extends EventEmitter {
       fileSizeBytes: 0,
       encrypted: false,
     };
+
+    // RTSP URL validáció (F8.B security fix — spawn injection prevention)
+    validateRtspUrl(config.rtspUrl);
 
     // ffmpeg parancs: RTSP → MP4 szegmens
     const ffmpegArgs = [
