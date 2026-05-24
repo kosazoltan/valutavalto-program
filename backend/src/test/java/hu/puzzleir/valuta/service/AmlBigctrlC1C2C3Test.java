@@ -55,6 +55,7 @@ class AmlBigctrlC1C2C3Test {
     @Mock private AuditLogService auditLogService;
     @Mock private SanctionScreeningService sanctionScreeningService;
     @Mock private BlacklistService blacklistService;
+    @Mock private ShiftedCalendarDayRepository shiftedCalendarDayRepository;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID  = UUID.randomUUID();

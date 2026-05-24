@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.ProhibitedPerson;
 import hu.puzzleir.valuta.repository.AmlReportRepository;
 import hu.puzzleir.valuta.repository.AmlThresholdRepository;
 import hu.puzzleir.valuta.repository.CustomerRepository;
+import hu.puzzleir.valuta.repository.ShiftedCalendarDayRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,7 @@ class AmlThresholdTest {
     @Mock private AuditLogService auditLogService;
     @Mock private SanctionScreeningService sanctionScreeningService;
     @Mock private BlacklistService blacklistService;
+    @Mock private ShiftedCalendarDayRepository shiftedCalendarDayRepository;
 
     @InjectMocks
     private AmlService amlService;

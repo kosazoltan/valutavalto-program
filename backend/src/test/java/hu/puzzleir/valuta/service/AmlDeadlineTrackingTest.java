@@ -56,6 +56,7 @@ class AmlDeadlineTrackingTest {
     @Mock private AuditLogService auditLogService;
     @Mock private SanctionScreeningService sanctionScreeningService;
     @Mock private BlacklistService blacklistService;
+    @Mock private ShiftedCalendarDayRepository shiftedCalendarDayRepository;
 
     private static final UUID TEST_COMPANY_ID = UUID.randomUUID();
     private static final UUID TEST_BRANCH_ID  = UUID.randomUUID();
@@ -156,6 +157,66 @@ class AmlDeadlineTrackingTest {
             LocalDateTime monday = LocalDate.of(2026, 4, 6).atTime(9, 0);
             LocalDateTime result = callCalculateBusinessDayDeadline(monday, 0);
             assertThat(result.toLocalDate()).isEqualTo(monday.toLocalDate());
+        }
+    }
+
+    // =========================================================================
+    // 1b. #PP-17 — kormányzati áthelyezett munkanapok / pihenőnapok
+    // =========================================================================
+
+    @Nested
+    @DisplayName("1b. #PP-17 — áthelyezett naptári napok felülírják a hétvége/ünnep logikát")
+    class ShiftedCalendarDayTests {
+
+        @Test
+        @DisplayName("Áthelyezett szombat munkanapnak számít (péntek + 1 munkanap = szombat)")
+        void testShiftedSaturday_countsAsWorkday() throws Exception {
+            // 2026-01-09 = péntek, 2026-01-10 = szombat (áthelyezett munkanap)
+            LocalDate shiftedSaturday = LocalDate.of(2026, 1, 10);
+            assertThat(shiftedSaturday.getDayOfWeek()).isEqualTo(DayOfWeek.SATURDAY);
+
+            when(shiftedCalendarDayRepository.findByCalendarDate(shiftedSaturday))
+                .thenReturn(Optional.of(ShiftedCalendarDay.builder()
+                    .calendarDate(shiftedSaturday).workday(true).build()));
+
+            LocalDateTime friday = LocalDate.of(2026, 1, 9).atTime(10, 0);
+            assertThat(friday.getDayOfWeek()).isEqualTo(DayOfWeek.FRIDAY);
+
+            LocalDateTime result = callCalculateBusinessDayDeadline(friday, 1);
+
+            // +1 = szombat, de áthelyezett munkanap → az 1. munkanap = szombat 01-10
+            assertThat(result.toLocalDate()).isEqualTo(shiftedSaturday);
+        }
+
+        @Test
+        @DisplayName("Áthelyezett hétköznap pihenőnap → kihagyva (hétfő + 1 munkanap = szerda, ha kedd pihenő)")
+        void testShiftedWeekday_skippedAsRestDay() throws Exception {
+            // 2026-01-05 = hétfő, 2026-01-06 = kedd (áthelyezett pihenőnap), 2026-01-07 = szerda
+            LocalDate restDay = LocalDate.of(2026, 1, 6);
+            assertThat(restDay.getDayOfWeek()).isEqualTo(DayOfWeek.TUESDAY);
+
+            when(shiftedCalendarDayRepository.findByCalendarDate(restDay))
+                .thenReturn(Optional.of(ShiftedCalendarDay.builder()
+                    .calendarDate(restDay).workday(false).build()));
+
+            LocalDateTime monday = LocalDate.of(2026, 1, 5).atTime(10, 0);
+            assertThat(monday.getDayOfWeek()).isEqualTo(DayOfWeek.MONDAY);
+
+            LocalDateTime result = callCalculateBusinessDayDeadline(monday, 1);
+
+            // +1 = kedd (pihenőnap, skip), +2 = szerda (1. munkanap)
+            assertThat(result.toLocalDate()).isEqualTo(LocalDate.of(2026, 1, 7));
+            assertThat(result.getDayOfWeek()).isEqualTo(DayOfWeek.WEDNESDAY);
+        }
+
+        @Test
+        @DisplayName("Áthelyezés nélkül a hagyományos logika érvényes (regresszió)")
+        void testNoShift_fallsBackToNormalCalendar() throws Exception {
+            // Nincs áthelyezés → minden findByCalendarDate üres (default mock) → normál logika
+            LocalDateTime monday = LocalDate.of(2026, 1, 5).atTime(10, 0);
+            LocalDateTime result = callCalculateBusinessDayDeadline(monday, 2);
+            // +1 = kedd (1.), +2 = szerda (2.)
+            assertThat(result.toLocalDate()).isEqualTo(LocalDate.of(2026, 1, 7));
         }
     }
 

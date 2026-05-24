@@ -62,6 +62,9 @@ class AmlServiceCompletionTest {
     @Mock
     private BlacklistService blacklistService;
 
+    @Mock
+    private ShiftedCalendarDayRepository shiftedCalendarDayRepository;
+
     private static final UUID TEST_COMPANY_ID = UUID.randomUUID();
     private static final UUID TEST_BRANCH_ID = UUID.randomUUID();
 

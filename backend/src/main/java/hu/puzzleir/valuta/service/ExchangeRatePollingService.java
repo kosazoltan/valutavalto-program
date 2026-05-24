@@ -67,6 +67,7 @@ public class ExchangeRatePollingService {
     private final CurrencyRepository currencyRepository;
     private final ExchangeRateSourceRepository exchangeRateSourceRepository;
     private final SystemParameterRepository systemParameterRepository;
+    private final AuditEventService auditEventService;
 
     /**
      * A polling eredmény állapota — in-memory cache az utolsó futásról.
@@ -217,7 +218,7 @@ public class ExchangeRatePollingService {
         log.info("MNB XML feldolgozva: {} árfolyam", parsedRates.size());
 
         // 3. DB update
-        return updateOfficialRates(parsedRates);
+        return updateOfficialRates(parsedRates, "MNB");
     }
 
     /**
@@ -243,7 +244,7 @@ public class ExchangeRatePollingService {
             ratesForDb.put(entry.getKey(), new MnbRate(entry.getKey(), entry.getValue(), 1));
         }
 
-        return updateOfficialRates(ratesForDb);
+        return updateOfficialRates(ratesForDb, "ECB");
     }
 
     /**
@@ -329,7 +330,7 @@ public class ExchangeRatePollingService {
      * A mai napra aktív ExchangeRate rekordokat keresi és frissíti az officialRate-et.
      */
     @Transactional(rollbackFor = Exception.class)
-    public int updateOfficialRates(Map<String, MnbRate> mnbRates) {
+    public int updateOfficialRates(Map<String, MnbRate> mnbRates, String source) {
         int updatedCount = 0;
         LocalDate today = LocalDate.now();
 
@@ -361,6 +362,30 @@ public class ExchangeRatePollingService {
                 }
                 updatedCount++;
                 log.debug("Hivatalos árfolyam frissítve: {} = {} HUF", currencyCode, officialRate);
+
+                // #PP-20: hash-láncolt audit naplózás a hivatalos árfolyam-frissítésre
+                // (non-repudiation: bizonyítható forrás + időpont, NAV/MNB IT-audithoz).
+                // A standard log rotálódik; az audit_log immutable és megmarad. Az audit
+                // hiba NEM blokkolhatja az árfolyam-frissítést (külön try-catch).
+                try {
+                    String afterState = String.format(
+                            "{\"currency\":\"%s\",\"officialRate\":%s,\"validDate\":\"%s\",\"source\":\"%s\"}",
+                            currencyCode, officialRate.toPlainString(), today, source);
+                    auditEventService.appendEvent(
+                            AuditEventService.AuditEventRequest.builder()
+                                    .eventType("EXCHANGE_RATE_SYNC")
+                                    .action("UPDATE")
+                                    .entityType("ExchangeRate")
+                                    .amount(officialRate)
+                                    .currency(currencyCode)
+                                    .afterStateJson(afterState)
+                                    .reason("Automatikus hivatalos árfolyam-frissítés külső forrásból (" + source + ")")
+                                    .build()
+                    );
+                } catch (Exception auditEx) {
+                    // Copilot #830: stack trace is kell a gyökérok-elemzéshez (constraint/connectivity/serialization)
+                    log.warn("Árfolyam audit naplózás sikertelen ({}): {}", currencyCode, auditEx.getMessage(), auditEx);
+                }
 
             } catch (Exception e) {
                 log.error("Hiba a(z) {} árfolyam frissítésénél: {}", currencyCode, e.getMessage());
@@ -603,7 +628,8 @@ public class ExchangeRatePollingService {
     }
 
     /**
-     * MNB árfolyam belső DTO.
+     * MNB árfolyam belső DTO. Package-private a #PP-20 audit-naplózás
+     * unit-tesztelhetősége miatt (updateOfficialRates közvetlen hívása).
      */
-    private record MnbRate(String currencyCode, BigDecimal rate, int unit) {}
+    record MnbRate(String currencyCode, BigDecimal rate, int unit) {}
 }
