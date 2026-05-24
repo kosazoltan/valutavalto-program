@@ -125,9 +125,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         // Login endpoint — szigorúbb limit
-        if (path.startsWith("/api/v1/auth/login")) {
+        // MFA verify + backup verify is ide tartozik (Codex P2 #818: brute-force védelem)
+        if (path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v1/mfa/verify")) {
             if (isRateLimited(clientIp, loginLimits, loginMaxRequests, loginWindowMs)) {
-                log.warn("Rate limit elérve: login — IP: {}", safeClientIp);
+                log.warn("Rate limit elérve: login/mfa-verify — IP: {}", safeClientIp);
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json");
                 response.getWriter().write(

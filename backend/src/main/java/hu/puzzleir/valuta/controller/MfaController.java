@@ -84,6 +84,23 @@ public class MfaController {
                 .build();
     }
 
+    /**
+     * PP-16: Backup kód ellenőrzése (ha a TOTP eszköz elveszett/elromlott).
+     * A kód egyszeri — sikeres ellenőrzés után a DB-ből törlődik.
+     */
+    @PostMapping("/verify-backup")
+    public VerifyResponse verifyBackupCode(@Valid @RequestBody BackupCodeRequest req) {
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        boolean ok = totpService.verifyBackupCode(workerId, req.getCode());
+        if (!ok) {
+            throw new ValidationException("Érvénytelen vagy már felhasznált backup kód");
+        }
+        return VerifyResponse.builder()
+                .verified(true)
+                .message("Backup kód elfogadva. A kód érvénytelenítve.")
+                .build();
+    }
+
     // ==========================================================================
     // Admin endpoint-ok
     // ==========================================================================
@@ -115,6 +132,13 @@ public class MfaController {
     public static class VerifyRequest {
         @NotNull
         @Pattern(regexp = "^[0-9]{6}$", message = "A TOTP kód pontosan 6 számjegyű kell legyen")
+        private String code;
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class BackupCodeRequest {
+        @NotNull
+        @Pattern(regexp = "^[0-9]{8}$", message = "A backup kód pontosan 8 számjegyű kell legyen")
         private String code;
     }
 
