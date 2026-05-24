@@ -1332,6 +1332,12 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
   };
   const boolToInt = (v: boolean | null | undefined): number | null =>
     v === null || v === undefined ? null : (v ? 1 : 0);
+  // PP-09: tárolás előtt kerekítés a megadott tizedesjegyre, floating-point noise levágása.
+  // Pl. 0.30000000000000004 → roundFin(v,2) → 0.3; 1250.0000000002 → roundFin(v,0) → 1250.
+  // Cél: determinisztikus DB-tartalom, nem a teljes IEEE 754 pontosság megőrzése.
+  const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
+  const roundFinOrNull = (v: number | null, decimals: number): number | null =>
+    v === null ? null : roundFin(v, decimals);
 
   const normalized = {
     customerIdentifier: trimOrNull(input.customerIdentifier),
@@ -1375,12 +1381,12 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
     [
       input.type,
       input.currencyCode,
-      input.foreignAmount,
-      input.hufAmount,
-      input.roundedHufAmount,
-      input.rate,
-      input.handlingFee,
-      input.discountPercent,
+      roundFin(input.foreignAmount, 8),
+      roundFin(input.hufAmount, 2),
+      roundFin(input.roundedHufAmount, 0),
+      roundFin(input.rate, 10),
+      roundFinOrNull(input.handlingFee, 0),
+      roundFinOrNull(input.discountPercent, 4),
       null, // customer_id (legacy oszlop, ID-t nem kezeljük itt)
       normalized.customerIdentifier,
       normalized.customerName,
@@ -1425,12 +1431,12 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
     payload: {
       type: input.type,
       currencyCode: input.currencyCode,
-      foreignAmount: input.foreignAmount,
-      hufAmount: input.hufAmount,
-      roundedHufAmount: input.roundedHufAmount,
-      rate: input.rate,
-      handlingFee: input.handlingFee,
-      discountPercent: input.discountPercent,
+      foreignAmount: roundFin(input.foreignAmount, 8),
+      hufAmount: roundFin(input.hufAmount, 2),
+      roundedHufAmount: roundFin(input.roundedHufAmount, 0),
+      rate: roundFin(input.rate, 10),
+      handlingFee: roundFinOrNull(input.handlingFee, 0),
+      discountPercent: roundFinOrNull(input.discountPercent, 4),
       denominations: input.denominations,
       idempotencyKey,
     },
@@ -1617,6 +1623,9 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
   };
   const boolToInt = (v: boolean | null | undefined): number | null =>
     v === null || v === undefined ? null : (v ? 1 : 0);
+  const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
+  const roundFinOrNull = (v: number | null, decimals: number): number | null =>
+    v === null ? null : roundFin(v, decimals);
 
   db.run(
     `INSERT INTO pending_conversions (
@@ -1635,8 +1644,8 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.fromCurrencyId, input.fromCurrencyCode, input.toCurrencyId, input.toCurrencyCode,
-      input.fromAmount, input.calculatedHufAmount, input.calculatedToAmount, input.conversionRate,
-      input.handlingFee,
+      roundFin(input.fromAmount, 8), roundFin(input.calculatedHufAmount, 2), roundFin(input.calculatedToAmount, 8), roundFin(input.conversionRate, 10),
+      roundFinOrNull(input.handlingFee, 0),
       trimOrNull(input.customerId), trimOrNull(input.customerName), trimOrNull(input.customerDocumentNumber),
       trimOrNull(input.customerAddress), trimOrNull(input.customerNationality),
       trimOrNull(input.customerBirthPlace), trimOrNull(input.customerBirthDate),
@@ -1669,11 +1678,11 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
       fromCurrencyCode: input.fromCurrencyCode,
       toCurrencyId: input.toCurrencyId,
       toCurrencyCode: input.toCurrencyCode,
-      fromAmount: input.fromAmount,
-      calculatedHufAmount: input.calculatedHufAmount,
-      calculatedToAmount: input.calculatedToAmount,
-      conversionRate: input.conversionRate,
-      handlingFee: input.handlingFee,
+      fromAmount: roundFin(input.fromAmount, 8),
+      calculatedHufAmount: roundFin(input.calculatedHufAmount, 2),
+      calculatedToAmount: roundFin(input.calculatedToAmount, 8),
+      conversionRate: roundFin(input.conversionRate, 10),
+      handlingFee: roundFinOrNull(input.handlingFee, 0),
       note: trimOrNull(input.note),
       idempotencyKey,
     },
