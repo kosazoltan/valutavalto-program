@@ -5,7 +5,15 @@
 
 const RAIFFEISEN_CANONICAL = 'Raiffeisen Bank'
 
-export function resolveDefaultBankName(banks: ReadonlyArray<{ name: string }>): string {
-  const match = banks.find(b => b.name.toLowerCase().includes('raiffeisen'))
-  return match?.name ?? RAIFFEISEN_CANONICAL
+export function resolveDefaultBankName(
+  banks: ReadonlyArray<{ name?: string | null }> | null | undefined,
+): string {
+  // Defenzív: az API alak-változása vagy hibás betöltés esetén se dobjon kivételt.
+  const list = Array.isArray(banks) ? banks : []
+  // Szigorú illesztés: a normalizált név a "raiffeisen"-nel KEZDŐDjön (nem véletlen
+  // substring-egyezés), így a "...Raiffeisen..." nevű idegen bank nem aktiválódik.
+  const match = list.find(
+    b => typeof b?.name === 'string' && b.name.trim().toLowerCase().startsWith('raiffeisen'),
+  )
+  return match?.name?.trim() || RAIFFEISEN_CANONICAL
 }
