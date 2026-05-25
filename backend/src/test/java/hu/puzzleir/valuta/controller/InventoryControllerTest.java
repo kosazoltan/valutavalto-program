@@ -41,6 +41,9 @@ class InventoryControllerTest {
     @Mock
     private InventoryService inventoryService;
 
+    @Mock
+    private hu.puzzleir.valuta.service.AccessScopeService accessScopeService;
+
     @InjectMocks
     private InventoryController controller;
 
@@ -76,6 +79,10 @@ class InventoryControllerTest {
                 .build();
 
         when(inventoryService.getAllStock()).thenReturn(List.of(balance));
+        // FK-005/A3: cég-szintű kontextus → null scope (nincs terület-szűkítés), minden látható.
+        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+        when(accessScopeService.isBranchVisible(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any())).thenReturn(true);
 
         // branch, currency, company are @JsonIgnore on CashBalance entity
         // so only directly serialized fields appear in JSON response
