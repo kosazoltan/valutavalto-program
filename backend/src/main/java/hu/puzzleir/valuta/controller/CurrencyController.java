@@ -120,7 +120,11 @@ public class CurrencyController {
      * <p>POST /api/v1/currencies</p>
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    // 2026-05-24 fix: a Valutakezelőt a FŐÉRTÉKTÁROS használja az árfolyamkészítőben (a Javadoc
+    // és a frontend canWriteRateCreation = foertektar/ugyvezeto/admin szerint), de a backend eddig
+    // csak ADMIN/MANAGER-t engedett → 403 a főértéktárosnak (létrehozási hiba). A rate-maker
+    // konvencióval (LocalRateMakerController) összhangba hozva.
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<CurrencyDto> createCurrency(@Valid @RequestBody CreateCurrencyRequest req) {
         Currency saved = adminCurrencyService.createCurrency(
                 req.getCode(),
@@ -138,7 +142,8 @@ public class CurrencyController {
      * <p>PATCH /api/v1/currencies/{id}/active</p>
      */
     @PatchMapping("/{id}/active")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    // 2026-05-24 fix: aktiválás/inaktiválás is a főértéktáros joga (rate-maker) → FOERTEKTAR/UGYVEZETO.
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<CurrencyDto> setActive(
             @PathVariable Long id,
             @Valid @RequestBody SetActiveRequest req) {

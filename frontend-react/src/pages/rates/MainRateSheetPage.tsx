@@ -8,7 +8,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useAuthStore } from '../../stores/authStore'
 import { exchangeRateMasterApi, type ExchangeRateMaster, type CreateMasterRateRequest } from '../../services/api/exchangeRateMaster'
-import { currencyApi } from '../../services/api/exchange-rates'
+import { currencyApi, exchangeRateApi } from '../../services/api/exchange-rates'
 import CurrencyManagerModal from './components/CurrencyManagerModal'
 import { arfolyamInternetLinkApi, type ArfolyamInternetLink } from '../../services/api/arfolyamInternetLinks'
 import { computeCrossSettlement, resolveSettlement, crossSettlementStaysAuto } from './mainSheetRules'
@@ -676,17 +676,51 @@ export default function MainRateSheetPage() {
           return
         }
 
+        // 2026-05-24 fix: a publikált master-ráták mellett az MNB HIVATALOS rátákat is
+        // lehúzzuk, hogy a publikálatlan valuták NE maradjanak üresek a 0-s lapon — a
+        // főértéktáros mind a 28 valutát lássa a központi MNB-alapértékkel. (Eddig csak
+        // EUR/USD látszott, mert csak azoknak volt publikált master rátája.)
+        const officialByCode = new Map<string, { officialRate: number; baseBuyRate: number; baseSellRate: number }>()
+        try {
+          const officialRates = await exchangeRateApi.list()
+          if (cancelled) return
+          for (const o of officialRates) {
+            if (o.currencyCode) {
+              officialByCode.set(o.currencyCode, {
+                officialRate: Number(o.officialRate) || 0,
+                baseBuyRate: Number(o.baseBuyRate) || 0,
+                baseSellRate: Number(o.baseSellRate) || 0,
+              })
+            }
+          }
+        } catch (offErr) {
+          logger.warn('MainRateSheetPage', 'MNB hivatalos ráták lehúzása sikertelen — seed kihagyva', offErr)
+        }
+
         const mergedRows = cachedRows.map((row) => {
           const sr = codeToServerRate.get(row.currency)
-          if (!sr) return row // nincs szerver-rekord erre a valutara
-          // Backend mapping: baseBuyRate -> E (weakMultiBuy), baseSellRate -> F,
-          // officialRate -> A (settlement)
-          return {
-            ...row,
-            settlement: Number(sr.officialRate) || row.settlement,
-            weakMultiBuy: Number(sr.baseBuyRate) || row.weakMultiBuy,
-            weakMultiSell: Number(sr.baseSellRate) || row.weakMultiSell,
+          if (sr) {
+            // Publikált master ráta. Backend mapping: officialRate -> A (settlement),
+            // baseBuyRate -> E (weakMultiBuy), baseSellRate -> F (weakMultiSell).
+            return {
+              ...row,
+              settlement: Number(sr.officialRate) || row.settlement,
+              weakMultiBuy: Number(sr.baseBuyRate) || row.weakMultiBuy,
+              weakMultiSell: Number(sr.baseSellRate) || row.weakMultiSell,
+            }
           }
+          // Nincs publikált master ráta → seed az MNB hivatalos rátából (ha van),
+          // hogy a valuta ne maradjon üres. A főértéktáros innen állítja be + publikál.
+          const off = officialByCode.get(row.currency)
+          if (off && (off.officialRate > 0 || off.baseBuyRate > 0 || off.baseSellRate > 0)) {
+            return {
+              ...row,
+              settlement: off.officialRate || off.baseBuyRate || row.settlement,
+              weakMultiBuy: off.baseBuyRate || row.weakMultiBuy,
+              weakMultiSell: off.baseSellRate || row.weakMultiSell,
+            }
+          }
+          return row // se master, se hivatalos ráta — marad üres
         })
         setRows(mergedRows)
         setServerSyncState('online')
