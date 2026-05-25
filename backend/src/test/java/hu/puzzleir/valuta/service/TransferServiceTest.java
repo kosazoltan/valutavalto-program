@@ -11,6 +11,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -60,6 +61,56 @@ class TransferServiceTest {
     }
 
     @Test
+    @DisplayName("FK-005/B2+B3 — átadólap-sorszám: valuta átadás F<branch>, HUF átadás FF<branch> (gap-mentes)")
+    void testCreate_slipNumberPrefix_currencyVsHuf() {
+        UUID fromId = UUID.randomUUID();
+        UUID toId = UUID.randomUUID();
+        Company company = Company.builder().id(UUID.randomUUID()).build();
+        Branch fromBranch = Branch.builder().id(fromId).code("BR020").company(company).build();
+        Branch toBranch = Branch.builder().id(toId).code("BR099").company(company).build();
+        Worker worker = Worker.builder().id(1L).branch(fromBranch).build();
+        Currency eur = Currency.builder().id(4L).code("EUR").name("Euró").build();
+        Currency huf = Currency.builder().id(6L).code("HUF").name("Forint").build();
+
+        when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
+        when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
+        when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
+        when(currencyRepository.findById(6L)).thenReturn(Optional.of(huf));
+        when(transferRepository.findMaxSlipSequence(anyString(), anyInt())).thenReturn(0L);
+        when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
+        when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(fromId), anyLong()))
+                .thenAnswer(inv -> Optional.of(CashBalance.builder().currentBalance(new BigDecimal("1000000")).build()));
+
+        // (1) valuta átadás (F, EUR) → F020000001
+        CreateTransferDto valuta = new CreateTransferDto();
+        valuta.setToBranchId(toId.toString());
+        valuta.setCurrencyId(4L);
+        valuta.setAmount(new BigDecimal("100"));
+        valuta.setTransferType("CURRENCY");
+        valuta.setDirection("F");
+        service.create(valuta, 1L);
+
+        // (2) HUF átadás (F, HUF) → FF020000001
+        CreateTransferDto forint = new CreateTransferDto();
+        forint.setToBranchId(toId.toString());
+        forint.setCurrencyId(6L);
+        forint.setAmount(new BigDecimal("5000"));
+        forint.setTransferType("CASH");
+        forint.setDirection("F");
+        service.create(forint, 1L);
+
+        ArgumentCaptor<hu.puzzleir.valuta.entity.Transfer> captor =
+                ArgumentCaptor.forClass(hu.puzzleir.valuta.entity.Transfer.class);
+        verify(transferRepository, times(2)).save(captor.capture());
+        java.util.List<String> numbers = captor.getAllValues().stream()
+                .map(hu.puzzleir.valuta.entity.Transfer::getTransferNumber).toList();
+
+        org.assertj.core.api.Assertions.assertThat(numbers).containsExactly("F020000001", "FF020000001");
+    }
+
+    @Test
     @DisplayName("create — több-valutás (multi-line) F átadás: minden valuta-sor csökkenti a feladó kasszáját (#6)")
     void testCreate_multiLine_decreasesCashPerLine() {
         UUID fromId = UUID.randomUUID();
@@ -75,7 +126,8 @@ class TransferServiceTest {
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
         when(currencyRepository.findById(5L)).thenReturn(Optional.of(usd));
-        when(transferRepository.findMaxTransferNumber(anyString())).thenReturn(0L);
+        // FK-005/B2+B3: a sorszám-generátor a findMaxSlipSequence-t hívja (gap-mentes F/U/FF/UF).
+        when(transferRepository.findMaxSlipSequence(anyString(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(0L);
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));

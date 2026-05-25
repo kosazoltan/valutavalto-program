@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -67,7 +66,7 @@ public class TransferService {
             }
         }
 
-        String transferNumber = generateTransferNumber();
+        String transferNumber = generateTransferNumber(direction, currency, fromBranch);
 
         Transfer transfer = Transfer.builder()
                 .transferNumber(transferNumber)
@@ -531,10 +530,46 @@ public class TransferService {
                 .orElseThrow(() -> new ResourceNotFoundException("Átadás nem található: " + id));
     }
 
-    private String generateTransferNumber() {
-        String prefix = "TR-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")) + "-";
-        long max = transferRepository.findMaxTransferNumber(prefix);
-        return prefix + String.format("%04d", max + 1);
+    /**
+     * FK-005/B2+B3: átadólap-sorszám a spec szerint — átadás/átvétel + valuta/HUF szerint
+     * külön prefixszel, gap-mentes szekvenciával:
+     * <ul>
+     *   <li>valuta átadás  → {@code F<branch><6jegy>}  pl. F020000001</li>
+     *   <li>valuta átvétel → {@code U<branch><6jegy>}  pl. U020000001</li>
+     *   <li>HUF átadás     → {@code FF<branch><6jegy>} pl. FF020000001</li>
+     *   <li>HUF átvétel    → {@code UF<branch><6jegy>} pl. UF020000001</li>
+     * </ul>
+     * Az átadás/átvétel az üzleti irányból: {@code U} (Vevő) = átvétel; minden más (F/UF/FF)
+     * = átadás — a "mindkét-irány" és "korrekció" edge-case az átadás-családba (Kósa Zoltán
+     * döntés, 2026-05-25). A branch-szám a forrásfiók kódjának numerikus része (BR020 → 020).
+     * Gap-mentes: a perzisztált max szekvencia + 1 (visszagörgetett tranzakció NEM fogyaszt
+     * sorszámot, mert a szám csak commitkor kerül a DB-be).
+     *
+     * <p>Konkurencia (Copilot #845): a MAX+1 önmagában nem versenyhelyzet-biztos, DE a
+     * {@code transfer_number} oszlopon UNIQUE megszorítás van (V63 migráció), így két
+     * párhuzamos {@code create()} azonos szám esetén az egyik tranzakció a unique-constraintbe
+     * ütközik és visszagördül — duplikátum NEM perzisztálódik, és a gaplessness is megmarad
+     * (a visszagördült szám újra kiosztható). A pénztári átadás-átvétel branch-enkénti
+     * konkurenciája alacsony, így DB-sequence/locking redundáns lenne itt.
+     */
+    private String generateTransferNumber(Transfer.TransferDirection direction, Currency currency, Branch fromBranch) {
+        boolean atvetel = direction == Transfer.TransferDirection.U;
+        boolean huf = currency != null && "HUF".equalsIgnoreCase(currency.getCode());
+        String prefix = (atvetel ? "U" : "F") + (huf ? "F" : "");
+        String fullPrefix = prefix + branchNumericCode(fromBranch);
+        long max = transferRepository.findMaxSlipSequence(fullPrefix, fullPrefix.length() + 1);
+        return fullPrefix + String.format("%06d", max + 1);
+    }
+
+    /** A fiók kódjának numerikus része 3 jegyre (BR020 → "020"); ha nincs számjegy → "000". */
+    private String branchNumericCode(Branch branch) {
+        String code = branch != null ? branch.getCode() : null;
+        String digits = (code == null) ? "" : code.replaceAll("\\D", "");
+        if (digits.isEmpty()) {
+            return "000";
+        }
+        String last3 = digits.length() > 3 ? digits.substring(digits.length() - 3) : digits;
+        return String.format("%3s", last3).replace(' ', '0');
     }
 
     private TransferDto toDto(Transfer t) {
