@@ -82,6 +82,15 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(t.transferNumber, 4) AS long)), 0) FROM Transfer t WHERE t.transferNumber LIKE :prefix%")
     long findMaxTransferNumber(@Param("prefix") String prefix);
 
+    /**
+     * FK-005/B2+B3: az átadólap-sorszám gap-mentes szekvenciájához. A megadott teljes
+     * prefix (pl. "F020" / "UF020") utáni numerikus szuffix maximuma. {@code prefixLen}
+     * a teljes prefix hossza (SUBSTRING 1-indexelt, ezért +1 a service-ben átadott hossz).
+     */
+    @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(t.transferNumber, :startPos) AS long)), 0) "
+            + "FROM Transfer t WHERE t.transferNumber LIKE CONCAT(:fullPrefix, '%')")
+    long findMaxSlipSequence(@Param("fullPrefix") String fullPrefix, @Param("startPos") int startPos);
+
     /** H-3: BejĂ¶vĹ' ĂˇtadĂˇsok Ă¶sszege (DailyBalanceService-hez) */
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.toBranch.id = :branchId AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED'")
     BigDecimal sumTransfersIn(@Param("branchId") UUID branchId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
