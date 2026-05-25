@@ -94,6 +94,27 @@ class AccessScopeServiceTest {
     }
 
     @Test
+    @DisplayName("Codex P1: vault aktív role + MANAGER base-role → MÉGIS terület-scope (vault precedencia)")
+    void vaultPlusManagerBase_stillScoped() {
+        UUID b1 = UUID.randomUUID();
+        Branch vault = Branch.builder().id(vaultBranchId).regionCode("20").build();
+        when(branchRepository.findById(vaultBranchId)).thenReturn(Optional.of(vault));
+        when(branchRepository.findActiveByCompanyIdAndRegionCode(eq(companyId), eq("20")))
+                .thenReturn(List.of(Branch.builder().id(b1).regionCode("20").build()));
+
+        // A JWT mindkét authority-t hordozza: base ROLE_MANAGER + aktív ROLE_ERTEKTAR.
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                "WORKER", null, List.of(
+                        new SimpleGrantedAuthority("ROLE_MANAGER"),
+                        new SimpleGrantedAuthority("ROLE_ERTEKTAR")));
+        auth.setDetails(new WorkerAuthenticationDetails(7L, companyId, vaultBranchId, "ERTEKTAR"));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        Set<UUID> scope = accessScopeService.vaultRegionBranchScopeOrNull();
+        assertEquals(Set.of(b1, vaultBranchId), scope);
+    }
+
+    @Test
     @DisplayName("FOERTEKTAR region_code nélkül → biztonságos default: csak a saját fiók")
     void chiefVault_noRegion_ownBranchOnly() {
         Branch vault = Branch.builder().id(vaultBranchId).regionCode(null).build();

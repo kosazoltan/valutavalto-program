@@ -31,11 +31,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AccessScopeService {
 
-    /** Cég-szintű (terület-független) szerepkörök — rájuk nincs scope-szűkítés. */
-    private static final Set<String> COMPANY_WIDE_AUTHORITIES =
-            Set.of("ROLE_MANAGER", "ROLE_ADMIN", "ROLE_UGYVEZETO");
-
-    /** Értéktári (terület-kötött) szerepkörök — a saját region_code-ra szűkítve. */
+    /** Értéktári (terület-kötött) szerepkörök — a saját region_code-ra szűkítve.
+     *  Ha a felhasználó (aktívan) értéktárosként operál, a terület-scope érvényes —
+     *  akkor is, ha a base-role cég-szintű (MANAGER/ADMIN/UGYVEZETO). Lásd Codex P1 #843. */
     private static final Set<String> VAULT_AUTHORITIES =
             Set.of("ROLE_FOERTEKTAR", "ROLE_ERTEKTAR");
 
@@ -53,12 +51,15 @@ public class AccessScopeService {
     public Set<UUID> vaultRegionBranchScopeOrNull() {
         Set<String> authorities = currentAuthorities();
 
-        // Cég-szintű role → teljes cég, nincs terület-szűkítés.
-        if (authorities.stream().anyMatch(COMPANY_WIDE_AUTHORITIES::contains)) {
-            return null;
-        }
-        // Nem értéktári role → ezt a @PreAuthorize governálja; itt nincs extra scope.
-        if (authorities.stream().noneMatch(VAULT_AUTHORITIES::contains)) {
+        // Codex P1 (#843): a JwtAuthenticationFilter MINDKÉT authority-t hozzáadja
+        // (ROLE_<base-role> + ROLE_<aktív operatív role>). Ezért a vault-szerepkört
+        // ELSŐKÉNT vizsgáljuk: ha a felhasználó értéktárosként (ERTEKTAR/FOERTEKTAR)
+        // operál, a terület-scope AKKOR is érvényes, ha a base-role cég-szintű (pl. MANAGER).
+        // Az aktív értéktári kontextus dönt, nem a magasabb legacy base-role.
+        boolean operatingAsVault = authorities.stream().anyMatch(VAULT_AUTHORITIES::contains);
+        if (!operatingAsVault) {
+            // Nem értéktári kontextus → cég-szintű vagy egyéb role; nincs terület-szűkítés
+            // (a @PreAuthorize governálja a hozzáférést).
             return null;
         }
 
