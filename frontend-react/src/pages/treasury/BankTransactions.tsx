@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Plus,
   Building2,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ertektarApi, currencyApi, bankApi } from '../../services/api/index'
+import { resolveDefaultBankName } from './bankDefaults'
 import type { BankTransaction, BankTransactionRequest, Currency, BankInfo } from '../../services/api/index'
 import { formatInteger, formatDateTime, currencyColorClass } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
@@ -74,6 +75,16 @@ export default function BankTransactions() {
   useEffect(() => {
     bankApi.list().then(setBanks).catch(() => setBanks([]))
   }, [])
+
+  // Üzleti szabály: az értéktárak kizárólag a Raiffeisennel szerződnek → a banki átadás
+  // célja minden esetben a Raiffeisen. A kollégának ne kelljen választania: legyen ez az
+  // alapértelmezett. (A datalist a kézi felülírást továbbra is megengedi.)
+  const defaultBankName = useMemo(() => resolveDefaultBankName(banks), [banks])
+
+  // Ha a Bank-törzs betöltődött és a mező még üres, töltsük ki a Raiffeisennel.
+  useEffect(() => {
+    setBankName(prev => (prev ? prev : defaultBankName))
+  }, [defaultBankName])
 
   useHotkeys('n', () => setShowNewModal(true), { enableOnFormTags: false })
   useHotkeys('escape', () => { setShowNewModal(false); setShowDetailModal(null) }, { enableOnFormTags: true })
@@ -150,7 +161,7 @@ export default function BankTransactions() {
     setCurrencyCode('')
     setAmount('')
     setExchangeRate('')
-    setBankName('')
+    setBankName(defaultBankName)
     setBankRef('')
     setNote('')
   }
@@ -369,14 +380,14 @@ export default function BankTransactions() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">{t('treasury.bankNeve')}</label>
-                  {/* FK-005/C1: a bank a területileg szűrt Bank-törzsből választható
-                      (cég-szintű + saját régió bankjai); a datalist megengedi a kézi
-                      megadást is, ha a bank még nincs a törzsben. */}
+                  {/* FK-005/C1: az értéktárak kizárólag a Raiffeisennel szerződnek → a bank
+                      alapból Raiffeisen. A datalist a területileg szűrt Bank-törzsből engedi
+                      a kézi felülírást is, ha kivételesen más bankhoz adnánk át. */}
                   <input
                     type="text"
                     list="bank-master-list"
                     className="form-input w-full"
-                    placeholder="pl. OTP, Raiffeisen"
+                    placeholder="Raiffeisen Bank"
                     value={bankName}
                     onChange={e => setBankName(e.target.value)}
                   />
