@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.BranchDto;
 import hu.puzzleir.valuta.dto.CreateBranchDto;
 import hu.puzzleir.valuta.dto.UpdateBranchDto;
+import hu.puzzleir.valuta.service.AccessScopeService;
 import hu.puzzleir.valuta.service.BranchService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -23,6 +25,28 @@ import java.util.UUID;
 public class BranchController {
 
     private final BranchService branchService;
+    private final AccessScopeService accessScopeService;
+
+    /**
+     * GET /api/v1/branches/my-territory
+     * FK-005/B4: az átadás-átvétel és hasonló dropdownokhoz — az aktuális felhasználó
+     * TERÜLETILEG illetékes aktív pénztárai. Értéktáros (ERTEKTAR/FOERTEKTAR) → CSAK a
+     * saját region_code-jához tartozó pénztárak (+ saját fiók). Cég-szintű role → összes
+     * aktív fiók (változatlan). Így az "Új szállítmányigény" legördülőjében nem jelenik meg
+     * az ORSZÁG ÖSSZES pénztára, csak a saját értéktárhoz tartozók.
+     */
+    @GetMapping("/my-territory")
+    public ResponseEntity<List<BranchDto>> getMyTerritoryBranches() {
+        List<BranchDto> active = branchService.findAllActive();
+        Set<UUID> scope = accessScopeService.vaultRegionBranchScopeOrNull();
+        if (scope == null) {
+            return ResponseEntity.ok(active);
+        }
+        List<BranchDto> filtered = active.stream()
+                .filter(b -> b.getId() != null && scope.contains(b.getId()))
+                .toList();
+        return ResponseEntity.ok(filtered);
+    }
 
     /**
      * GET /api/v1/branches

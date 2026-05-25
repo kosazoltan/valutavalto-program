@@ -154,7 +154,9 @@ export default function TransferPage() {
       setPendingCount(count + localPending.length)
       setCurrencies(currencyData)
 
-      const branchData = await branchApi.listActive()
+      // FK-005/C1+B4: a cél/forrás legördülő CSAK a jogosult terület pénztárait/értéktárait
+      // mutatja (értéktárosnál region-scope; cég-szintű role-nál minden aktív — backend dönt).
+      const branchData = await branchApi.listMyTerritory()
       setBranches(branchData.map(b => ({
         id: b.id, code: b.code, name: b.name,
         isVault: b.isVault, branchTypeCode: b.branchTypeCode,

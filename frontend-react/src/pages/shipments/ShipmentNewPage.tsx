@@ -41,7 +41,9 @@ export default function ShipmentNewPage() {
 
   useEffect(() => {
     let active = true
-    Promise.all([branchApi.listActive(), currencyApi.getActive()])
+    // FK-005/B4: a Kérő/Cél iroda legördülő CSAK a saját terület pénztárait mutatja
+    // (értéktárosnál region-scope; cég-szintű role-nál minden aktív — a backend dönt).
+    Promise.all([branchApi.listMyTerritory(), currencyApi.getActive()])
       .then(([branchList, currencyList]) => {
         if (!active) return
         setBranches(branchList.filter((branch) => branch.isActive !== false))
