@@ -6,7 +6,7 @@ import ShipmentNewPage from './ShipmentNewPage'
 import { useAuthStore } from '../../stores/authStore'
 
 const mocks = vi.hoisted(() => ({
-  branchApi: { listActive: vi.fn() },
+  branchApi: { listActive: vi.fn(), listMyTerritory: vi.fn() },
   currencyApi: { getActive: vi.fn() },
   shipmentRequestApi: { create: vi.fn(), submit: vi.fn() },
   persistToken: vi.fn(),
@@ -23,7 +23,7 @@ describe('ShipmentNewPage', () => {
       user: null,
       isAuthenticated: true,
     })
-    mocks.branchApi.listActive.mockResolvedValue([
+    mocks.branchApi.listMyTerritory.mockResolvedValue([
       { id: 'BR-A', code: 'EBC', name: 'Erzsébet körút', isActive: true },
       { id: 'BR-B', code: 'BEL', name: 'Belváros', isActive: true },
     ])

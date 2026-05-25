@@ -41,7 +41,10 @@ export default function ShipmentNewPage() {
 
   useEffect(() => {
     let active = true
-    Promise.all([branchApi.listActive(), currencyApi.getActive()])
+    // FK-005/B4: a Kérő/Cél iroda legördülő CSAK a saját terület pénztárait mutatja, ha a
+    // felhasználó értéktárosként operál (vault-authority → region-scope); egyébként minden
+    // aktív. A backend AccessScopeService dönt (a vault-authority precedál a base-role felett).
+    Promise.all([branchApi.listMyTerritory(), currencyApi.getActive()])
       .then(([branchList, currencyList]) => {
         if (!active) return
         setBranches(branchList.filter((branch) => branch.isActive !== false))
