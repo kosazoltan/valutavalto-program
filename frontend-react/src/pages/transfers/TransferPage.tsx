@@ -154,9 +154,11 @@ export default function TransferPage() {
       setPendingCount(count + localPending.length)
       setCurrencies(currencyData)
 
-      // FK-005/C1+B4: a cél/forrás legördülő CSAK a jogosult terület pénztárait/értéktárait
-      // mutatja (értéktárosnál region-scope; cég-szintű role-nál minden aktív — backend dönt).
-      const branchData = await branchApi.listMyTerritory()
+      // FK-005/C1 HALASZTVA (Codex P1 #844): a region-scope elejtené a TH (többlet/hiány) és
+      // az 1.sz Főpénztár cél-fiókokat, amiket az átadás-átvétel üzleti szabály (supervisor-PIN)
+      // igényel. A banki/vault-átadás "csak Bankok + Területek" finomszűrése külön körben, a
+      // speciális (TH / Főpénztár / vault) célok megőrzésével. Itt egyelőre az összes aktív.
+      const branchData = await branchApi.listActive()
       setBranches(branchData.map(b => ({
         id: b.id, code: b.code, name: b.name,
         isVault: b.isVault, branchTypeCode: b.branchTypeCode,

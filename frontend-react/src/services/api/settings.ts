@@ -25,8 +25,9 @@ export const branchApi = {
     return response.data
   },
   // FK-005/B4: az aktuális felhasználó TERÜLETILEG illetékes aktív pénztárai.
-  // Értéktárosnak (ERTEKTAR/FOERTEKTAR) CSAK a saját region_code-jához tartozók;
-  // cég-szintű role → összes aktív (a backend AccessScopeService dönt).
+  // Ha a felhasználó értéktárosként (ERTEKTAR/FOERTEKTAR authority) operál → CSAK a saját
+  // region_code-jához tartozók (+ saját fiók); egyébként összes aktív. A backend
+  // AccessScopeService dönt (a vault-authority precedál a base-role felett).
   listMyTerritory: async (): Promise<BranchInfo[]> => {
     const response = await api.get<BranchInfo[]>('/branches/my-territory')
     return response.data

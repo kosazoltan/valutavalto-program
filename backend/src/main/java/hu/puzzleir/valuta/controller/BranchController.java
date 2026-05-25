@@ -30,10 +30,12 @@ public class BranchController {
     /**
      * GET /api/v1/branches/my-territory
      * FK-005/B4: az átadás-átvétel és hasonló dropdownokhoz — az aktuális felhasználó
-     * TERÜLETILEG illetékes aktív pénztárai. Értéktáros (ERTEKTAR/FOERTEKTAR) → CSAK a
-     * saját region_code-jához tartozó pénztárak (+ saját fiók). Cég-szintű role → összes
-     * aktív fiók (változatlan). Így az "Új szállítmányigény" legördülőjében nem jelenik meg
-     * az ORSZÁG ÖSSZES pénztára, csak a saját értéktárhoz tartozók.
+     * TERÜLETILEG illetékes aktív pénztárai. Ha a felhasználó értéktárosként
+     * (ERTEKTAR/FOERTEKTAR authority) operál → CSAK a saját region_code-jához tartozó
+     * pénztárak (+ saját fiók) — akkor is, ha a base-role cég-szintű (a vault-authority
+     * precedál, lásd AccessScopeService). Egyébként (nem értéktári kontextus) → összes aktív
+     * fiók. Így az "Új szállítmányigény" legördülőjében nem az ORSZÁG ÖSSZES pénztára jelenik
+     * meg, csak a saját értéktárhoz tartozók.
      */
     @GetMapping("/my-territory")
     public ResponseEntity<List<BranchDto>> getMyTerritoryBranches() {
