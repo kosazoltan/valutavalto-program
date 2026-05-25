@@ -79,13 +79,13 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
     List<Transfer> findVaultDrawsToCashiers(@Param("toBranchIds") List<UUID> toBranchIds,
                                             @Param("from") LocalDate from, @Param("to") LocalDate to);
 
-    @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(t.transferNumber, 4) AS long)), 0) FROM Transfer t WHERE t.transferNumber LIKE :prefix%")
-    long findMaxTransferNumber(@Param("prefix") String prefix);
-
     /**
      * FK-005/B2+B3: az átadólap-sorszám gap-mentes szekvenciájához. A megadott teljes
-     * prefix (pl. "F020" / "UF020") utáni numerikus szuffix maximuma. {@code prefixLen}
-     * a teljes prefix hossza (SUBSTRING 1-indexelt, ezért +1 a service-ben átadott hossz).
+     * prefix (pl. "F020" / "UF020") utáni numerikus szuffix maximuma.
+     *
+     * @param fullPrefix a teljes prefix (irány-prefix + 3-jegyű branch-szám, pl. "FF020")
+     * @param startPos a numerikus szuffix kezdő pozíciója (1-indexelt SUBSTRING) =
+     *                 {@code fullPrefix.length() + 1}
      */
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(t.transferNumber, :startPos) AS long)), 0) "
             + "FROM Transfer t WHERE t.transferNumber LIKE CONCAT(:fullPrefix, '%')")

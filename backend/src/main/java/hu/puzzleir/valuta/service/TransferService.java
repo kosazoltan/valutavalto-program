@@ -544,6 +544,13 @@ public class TransferService {
      * döntés, 2026-05-25). A branch-szám a forrásfiók kódjának numerikus része (BR020 → 020).
      * Gap-mentes: a perzisztált max szekvencia + 1 (visszagörgetett tranzakció NEM fogyaszt
      * sorszámot, mert a szám csak commitkor kerül a DB-be).
+     *
+     * <p>Konkurencia (Copilot #845): a MAX+1 önmagában nem versenyhelyzet-biztos, DE a
+     * {@code transfer_number} oszlopon UNIQUE megszorítás van (V63 migráció), így két
+     * párhuzamos {@code create()} azonos szám esetén az egyik tranzakció a unique-constraintbe
+     * ütközik és visszagördül — duplikátum NEM perzisztálódik, és a gaplessness is megmarad
+     * (a visszagördült szám újra kiosztható). A pénztári átadás-átvétel branch-enkénti
+     * konkurenciája alacsony, így DB-sequence/locking redundáns lenne itt.
      */
     private String generateTransferNumber(Transfer.TransferDirection direction, Currency currency, Branch fromBranch) {
         boolean atvetel = direction == Transfer.TransferDirection.U;
