@@ -33,13 +33,19 @@ public class BankService {
     private final CompanyRepository companyRepository;
     private final AccessScopeService accessScopeService;
 
-    /** Területileg szűrt lista (értéktárosnál a saját régió + cég-szintű bankok). */
+    /**
+     * Területileg szűrt lista. Codex P1 #846: a „cég-szintű role" és a „vault-user region nélkül"
+     * eseteket szét kell választani — cég-szintű role → MINDEN bank; vault-user → CSAK a cég-szintű
+     * (region NULL) + a saját régió bankjai (ha nincs régiója → csak a cég-szintűek, NEM minden).
+     */
     public List<Bank> list() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        String region = accessScopeService.vaultRegionCodeOrNull();
-        if (region == null) {
+        if (!accessScopeService.isVaultContext()) {
             return repository.findByCompanyIdAndActiveTrueOrderByNameAsc(companyId);
         }
+        // Vault-kontextus: region lehet null → a query ekkor CSAK a cég-szintű (region IS NULL)
+        // bankokat adja (a `regionCode = NULL` SQL-szemantikailag mindig false).
+        String region = accessScopeService.vaultRegionCodeOrNull();
         return repository.findActiveByCompanyAndRegionOrGlobal(companyId, region);
     }
 
@@ -48,15 +54,15 @@ public class BankService {
             return list();
         }
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        String region = accessScopeService.vaultRegionCodeOrNull();
-        // Keresésnél is tartjuk a területi szűrést (vault user): a name-match eredményt
-        // szűkítjük a látható (cég-szintű + saját régió) bankokra.
         List<Bank> matches = repository.searchByName(companyId, q.trim());
-        if (region == null) {
+        if (!accessScopeService.isVaultContext()) {
             return matches;
         }
+        // Vault-user: a name-match eredményt a látható bankokra szűkítjük — cég-szintű (region
+        // NULL) + a saját régió. Ha nincs régiója (region == null), CSAK a cég-szintűek.
+        String region = accessScopeService.vaultRegionCodeOrNull();
         return matches.stream()
-                .filter(b -> b.getRegionCode() == null || region.equals(b.getRegionCode()))
+                .filter(b -> b.getRegionCode() == null || (region != null && region.equals(b.getRegionCode())))
                 .toList();
     }
 

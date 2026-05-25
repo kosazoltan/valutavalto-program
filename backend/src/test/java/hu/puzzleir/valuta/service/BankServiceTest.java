@@ -62,9 +62,9 @@ class BankServiceTest {
     }
 
     @Test
-    @DisplayName("list() cég-szintű role (region null) → összes aktív bank")
+    @DisplayName("list() cég-szintű role → összes aktív bank")
     void list_companyWide_allActive() {
-        when(accessScopeService.vaultRegionCodeOrNull()).thenReturn(null);
+        when(accessScopeService.isVaultContext()).thenReturn(false);
         when(repository.findByCompanyIdAndActiveTrueOrderByNameAsc(companyId))
                 .thenReturn(List.of(Bank.builder().name("OTP").build()));
 
@@ -78,6 +78,7 @@ class BankServiceTest {
     @Test
     @DisplayName("list() értéktáros (region=20) → cég-szintű + saját régió bankok")
     void list_vault_regionScoped() {
+        when(accessScopeService.isVaultContext()).thenReturn(true);
         when(accessScopeService.vaultRegionCodeOrNull()).thenReturn("20");
         when(repository.findActiveByCompanyAndRegionOrGlobal(companyId, "20"))
                 .thenReturn(List.of(
@@ -92,8 +93,25 @@ class BankServiceTest {
     }
 
     @Test
+    @DisplayName("Codex P1: értéktáros region NÉLKÜL → CSAK cég-szintű bankok (NEM minden)")
+    void list_vaultNoRegion_onlyGlobal() {
+        when(accessScopeService.isVaultContext()).thenReturn(true);
+        when(accessScopeService.vaultRegionCodeOrNull()).thenReturn(null);
+        when(repository.findActiveByCompanyAndRegionOrGlobal(companyId, null))
+                .thenReturn(List.of(Bank.builder().name("OTP").regionCode(null).build()));
+
+        List<Bank> result = service.list();
+
+        assertEquals(1, result.size());
+        // a vault-úton megy (region NULL → query csak a cég-szintűeket adja), NEM a "minden aktív" ágon
+        verify(repository).findActiveByCompanyAndRegionOrGlobal(companyId, null);
+        verify(repository, never()).findByCompanyIdAndActiveTrueOrderByNameAsc(any());
+    }
+
+    @Test
     @DisplayName("search() értéktárosnál is területi szűrés (idegen régió kiesik)")
     void search_vault_filtersForeignRegion() {
+        when(accessScopeService.isVaultContext()).thenReturn(true);
         when(accessScopeService.vaultRegionCodeOrNull()).thenReturn("20");
         when(repository.searchByName(eq(companyId), eq("bank"))).thenReturn(List.of(
                 Bank.builder().name("OTP Bank").regionCode(null).build(),

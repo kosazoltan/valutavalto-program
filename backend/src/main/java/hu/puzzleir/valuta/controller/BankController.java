@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.entity.Bank;
 import hu.puzzleir.valuta.service.BankService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +38,7 @@ public class BankController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('MANAGER','ADMIN','FOERTEKTAR','UGYVEZETO')")
-    public ResponseEntity<Dto> create(@RequestBody CreateRequest request) {
+    public ResponseEntity<Dto> create(@Valid @RequestBody CreateRequest request) {
         Bank created = service.create(request.getName(), request.getRegionCode());
         return ResponseEntity.ok(new Dto(created.getId(), created.getName(), created.getRegionCode()));
     }
