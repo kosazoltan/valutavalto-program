@@ -275,8 +275,18 @@ export async function initLocalFirst(apiUrl: string, mode = 'full'): Promise<voi
 
   cachedToken = loadPersistedToken();
 
-  syncEngine = new CentralWorkstationSyncEngine(db, apiUrl, () => cachedToken);
-  syncEngine.start();
+  // Rate-maker mód: vékony árfolyam-publikáló kliens — közvetlen REST-en publikál
+  // (exchange-rate-master), NEM használja a központi pull/push szinkront. A
+  // CentralWorkstationSyncEngine a /central/sync/pull végpontot hívná, ami a
+  // rate-maker számára irreleváns (és jelenleg szerver-oldalon nem létezik → 404-zaj).
+  // Ezért rate-maker módban NEM indítjuk a sync-motort; a DB-init megmarad az
+  // offline cache-hez. Full (Központi) módban változatlanul fut a szinkron.
+  if (mode === 'rate-maker') {
+    log.info('[LocalFirst] Rate-maker mód — központi sync-motor KIHAGYVA (közvetlen REST publikálás)');
+  } else {
+    syncEngine = new CentralWorkstationSyncEngine(db, apiUrl, () => cachedToken);
+    syncEngine.start();
+  }
 
   log.info('[LocalFirst] Central Workstation local-first initialized');
 }
