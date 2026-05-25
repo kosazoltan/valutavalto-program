@@ -16,6 +16,13 @@
 <configuration>
   <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
+  <!-- A struktúrált log service_version mezője a Spring Boot saját build-verziójából
+       (spring.application.version — a fat-JAR MANIFEST.MF Implementation-Version-jéből
+       tölti automatikusan). Raw/IDE futásnál (nincs manifest) a property HIÁNYZIK, így
+       tisztán a defaultValue="dev" érvényesül (nincs literal-token kockázat).
+       Korábban a ${APP_VERSION:-2.5.57} hardcode-olt fallback elavult verziót logolt. -->
+  <springProperty scope="context" name="APP_VERSION" source="spring.application.version" defaultValue="dev"/>
+
   <!-- Audit-iter3 P1 (CodeQL java/log-injection defense-in-depth, 2026-04-27):
        a %replace(%msg){'[\r\n]', '_'} mar a application.properties-ben
        konfiguralt. A `%redact` conversionRule eltavolitva (Codex+Copilot
@@ -46,7 +53,7 @@
           <version><fieldName>schema_version</fieldName></version>
           <pattern>
             <pattern>
-              {"service":"backend","service_version":"${APP_VERSION:-2.5.57}","env":"${SPRING_PROFILES_ACTIVE:-prod}"}
+              {"service":"backend","service_version":"${APP_VERSION:-dev}","env":"${SPRING_PROFILES_ACTIVE:-prod}"}
             </pattern>
           </pattern>
           <logLevel><fieldName>level</fieldName></logLevel>
@@ -102,7 +109,7 @@
           <version><fieldName>schema_version</fieldName></version>
           <pattern>
             <pattern>
-              {"service":"backend","service_version":"${APP_VERSION:-2.5.57}","env":"${SPRING_PROFILES_ACTIVE:-prod}"}
+              {"service":"backend","service_version":"${APP_VERSION:-dev}","env":"${SPRING_PROFILES_ACTIVE:-prod}"}
             </pattern>
           </pattern>
           <logLevel><fieldName>level</fieldName></logLevel>

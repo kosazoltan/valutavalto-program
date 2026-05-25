@@ -69,6 +69,7 @@ public class RateCreationService {
     private final RatePublicationRepository ratePublicationRepository;
     private final RatePublishService ratePublishService;
     private final ObjectMapper objectMapper;
+    private final SystemParameterService systemParameterService;
 
     /**
      * Bank árfolyamok lekérése az aktuális rátákból.
@@ -461,6 +462,26 @@ public class RateCreationService {
         }
 
         String serverPackageHash = computeServerPackageHash(packageDto);
+
+        // #ERR-RATE-02 fix: a kliens által küldött hash összevetése a szerver-hash-sel
+        // (eddig a clientPackageHash némán figyelmen kívül maradt → fail-open integritás).
+        // A HARD elutasítás a RATE_PACKAGE_HASH_STRICT feature-flag mögött van (alap KI),
+        // mert a JS↔Java canonical paritás (rates BigDecimal + createdAt ezredmp) még nem
+        // e2e-igazolt; bekapcsolásig a mismatch DETEKTÁLT + naplózott (non-repudiation), de
+        // nem blokkol — így nincs production publikálás-törés.
+        final String clientHash = packageDto.getClientPackageHash();
+        if (clientHash != null && !clientHash.isBlank() && !clientHash.equals(serverPackageHash)) {
+            boolean strict = Boolean.parseBoolean(
+                    systemParameterService.getValue("RATE_PACKAGE_HASH_STRICT", "false"));
+            if (strict) {
+                log.warn("Árfolyamcsomag integritás-hiba (STRICT): clientHash={}, serverHash={}, packageId={}",
+                        safeAuditValue(clientHash), serverPackageHash, safeAuditValue(packageDto.getClientPackageId()));
+                throw new ValidationException("Árfolyamcsomag integritás-ellenőrzés sikertelen (hash eltérés).");
+            }
+            log.info("Árfolyamcsomag hash-eltérés (nem-blokkoló, STRICT KI): clientHash={}, serverHash={}, packageId={}",
+                    safeAuditValue(clientHash), serverPackageHash, safeAuditValue(packageDto.getClientPackageId()));
+        }
+
         GroupRateDTO groupRateDTO = GroupRateDTO.builder()
                 .groupId(packageDto.getGroupId())
                 .rates(packageDto.getRates())
@@ -603,14 +624,28 @@ public class RateCreationService {
         return value == null ? "" : value.trim().replace('\n', ' ').replace('\r', ' ');
     }
 
+    /**
+     * Szerveroldali csomag-hash. #ERR-RATE-01 fix: a canonical struktúra MOST a kliens
+     * {@code buildLocalRatePackage} mezőkészletét és sorrendjét tükrözi — az {@code operatorNote}
+     * mező bekerült (eddig hiányzott), a {@code createdAt} ISO-8601 stringként szerepel (nem
+     * nyers Instant), a {@code groupId} stringként. Így a szerver-fingerprint hűségesen leírja
+     * a kliens által hashelt skalár mezőket.
+     *
+     * <p>Megjegyzés: a {@code rates} tömb (BigDecimal) és a {@code createdAt} ezredmásodperc-
+     * pontosság JS↔Java byte-szintű paritása NEM garantált (eltérő szám-/dátum-szerializáció),
+     * ezért a kliens/szerver hash hard-összevetése csak a {@code RATE_PACKAGE_HASH_STRICT}
+     * feature-flag bekapcsolásával történik (lásd publishLocalRatePackage), miután a canonical
+     * paritás e2e igazolt. Alapból a fingerprint audit/forensics célt szolgál.</p>
+     */
     private String computeServerPackageHash(LocalRatePackageDto packageDto) {
         try {
             Map<String, Object> canonical = new LinkedHashMap<>();
             canonical.put("clientPackageId", packageDto.getClientPackageId());
             canonical.put("clientDeviceId", packageDto.getClientDeviceId());
             canonical.put("clientVersion", packageDto.getClientVersion());
-            canonical.put("createdAt", packageDto.getCreatedAt());
-            canonical.put("groupId", packageDto.getGroupId());
+            canonical.put("createdAt", packageDto.getCreatedAt() != null ? packageDto.getCreatedAt().toString() : "");
+            canonical.put("groupId", packageDto.getGroupId() != null ? packageDto.getGroupId().toString() : "");
+            canonical.put("operatorNote", packageDto.getOperatorNote());
             canonical.put("rates", packageDto.getRates());
 
             byte[] json = objectMapper.writeValueAsString(canonical).getBytes(StandardCharsets.UTF_8);

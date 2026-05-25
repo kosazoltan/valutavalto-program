@@ -98,7 +98,9 @@ const installers = [
     packagePath: 'kozponti-client/package.json',
     builderPath: 'kozponti-client/electron-builder.json',
     mainPath: 'kozponti-client/electron/main.ts',
-    expectedAppId: 'com.bestchange.kozponti',
+    // 2026-05-24: saját appId az összevont kliensnek (NEM a régi com.bestchange.kozponti) —
+    // így a friss telepítés tiszta dir-be megy, nem ágyazódik a régi Iranyitokozpont alá.
+    expectedAppId: 'com.bestchange.munkaallomas',
     expectedProductName: 'Valutavalto Kozponti Munkaallomas',
     expectedArtifactName: 'Kozponti-Munkaallomas-Setup-${version}.exe',
     merged: true,
