@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.dto.cashbalance.AdjustBalanceDto;
 import hu.puzzleir.valuta.dto.cashbalance.CashBalanceDto;
 import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.mapper.CashBalanceMapper;
+import hu.puzzleir.valuta.service.AccessScopeService;
 import hu.puzzleir.valuta.service.CashBalanceService;
 import hu.puzzleir.valuta.util.OptimisticLockRetry;
 import jakarta.validation.Valid;
@@ -13,6 +14,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -28,6 +31,7 @@ public class CashBalanceController {
 
     private final CashBalanceService cashBalanceService;
     private final CashBalanceMapper cashBalanceMapper;
+    private final AccessScopeService accessScopeService;
 
     /**
      * Aktuális iroda egyenlegei
@@ -70,12 +74,19 @@ public class CashBalanceController {
      *
      * GET /api/v1/cash-balances/company
      */
+    // FK-005/A1: az értéktáros (FOERTEKTAR/ERTEKTAR) és az ügyvezető is lekérdezheti az
+    // összesített készletet (Dashboard "összesített készlet" + "TOP-irodák") — eddig 403-at
+    // kapott ("Korlátozott jogosultság"). FK-005/A3: az értéktáros CSAK a saját region_code-
+    // jához tartozó pénztárak egyenlegeit kapja (a frontend ebből számolja az összesítést és
+    // a rangsort → automatikusan terület-szűkített). Cég-szintű role → null scope → teljes cég.
     @GetMapping("/company")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'UGYVEZETO', 'FOERTEKTAR', 'ERTEKTAR')")
     public ResponseEntity<List<CashBalanceDto>> getCompanyBalances() {
+        Set<UUID> scope = accessScopeService.vaultRegionBranchScopeOrNull();
         List<CashBalance> balances = cashBalanceService.getCompanyBalances();
         List<CashBalanceDto> dtos = balances.stream()
                 .map(cashBalanceMapper::toDto)
+                .filter(dto -> accessScopeService.isBranchVisible(scope, dto.getBranchId()))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }

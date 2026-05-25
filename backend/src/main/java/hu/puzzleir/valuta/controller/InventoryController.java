@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
+import hu.puzzleir.valuta.service.AccessScopeService;
 import hu.puzzleir.valuta.service.BranchService;
 import hu.puzzleir.valuta.service.InventoryService;
 import jakarta.validation.Valid;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -35,6 +37,7 @@ public class InventoryController {
 
     private final InventoryService inventoryService;
     private final BranchService branchService;
+    private final AccessScopeService accessScopeService;
 
     // ============ STOCK QUERIES ============
 
@@ -44,13 +47,18 @@ public class InventoryController {
      * Az entity közvetlen serializációja LAZY-load miatt üresen hagyta ezeket
      * a mezőket → a /inventory oldalon "VALUTA: -" + "PENZTAR: -" jelent meg.
      */
+    // FK-005/A1: ERTEKTAR (értéktáros) is láthatja a pénztári készleteket — eddig 403-at kapott.
+    // FK-005/A3: az értéktáros CSAK a saját region_code-jához tartozó pénztárakat látja
+    // (a scope null cég-szintű role-nál → nincs szűkítés).
     @GetMapping("/stock")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'ERTEKTAR')")
     public ResponseEntity<List<CashBalanceDto>> getAllStock() {
-        return ResponseEntity.ok(
-                inventoryService.getAllStock().stream()
-                        .map(InventoryController::toCashBalanceDto)
-                        .toList());
+        Set<UUID> scope = accessScopeService.vaultRegionBranchScopeOrNull();
+        List<CashBalanceDto> dtos = inventoryService.getAllStock().stream()
+                .map(InventoryController::toCashBalanceDto)
+                .filter(dto -> accessScopeService.isBranchVisible(scope, dto.getBranchId()))
+                .toList();
+        return ResponseEntity.ok(dtos);
     }
 
     @GetMapping("/stock/{branchId}")
