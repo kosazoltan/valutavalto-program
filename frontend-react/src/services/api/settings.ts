@@ -1,5 +1,31 @@
 import { api } from './client'
 
+// ================== BANK API (FK-005/C1) ==================
+
+export interface BankInfo {
+  id: string
+  name: string
+  regionCode?: string | null
+}
+
+/**
+ * Bank-törzs (FK-005/C1) — a banki átadás-átvétel cél/forrás bankjai, területi szűréssel.
+ * Az értéktáros a cég-szintű + a saját régió bankjait kapja (a backend AccessScopeService dönt).
+ */
+export const bankApi = {
+  list: async (q?: string): Promise<BankInfo[]> => {
+    const response = await api.get<BankInfo[]>('/banks', { params: q ? { q } : {} })
+    return response.data ?? []
+  },
+  create: async (data: { name: string; regionCode?: string }): Promise<BankInfo> => {
+    const response = await api.post<BankInfo>('/banks', data)
+    return response.data
+  },
+  deactivate: async (id: string): Promise<void> => {
+    await api.delete(`/banks/${id}`)
+  },
+}
+
 // ================== BRANCH API ==================
 
 export interface BranchInfo {
