@@ -3,6 +3,8 @@ package hu.puzzleir.valuta.entity;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -107,10 +109,12 @@ public class AuditLog {
     private String eventType;
 
     /** JSONB - elozo allapot UPDATE-nel. */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "before_state", columnDefinition = "jsonb")
     private String beforeState;
 
     /** JSONB - uj allapot CREATE/UPDATE-nel. */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "after_state", columnDefinition = "jsonb")
     private String afterState;
 
