@@ -11,8 +11,8 @@ import {
   Banknote,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { ertektarApi, currencyApi } from '../../services/api/index'
-import type { BankTransaction, BankTransactionRequest, Currency } from '../../services/api/index'
+import { ertektarApi, currencyApi, bankApi } from '../../services/api/index'
+import type { BankTransaction, BankTransactionRequest, Currency, BankInfo } from '../../services/api/index'
 import { formatInteger, formatDateTime, currencyColorClass } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
 import {
@@ -30,6 +30,8 @@ export default function BankTransactions() {
   const [loading, setLoading] = useState(true)
   const [transactions, setTransactions] = useState<BankTransaction[]>([])
   const [currencies, setCurrencies] = useState<Currency[]>([])
+  // FK-005/C1: a banki tranzakció bank-választója a területileg szűrt Bank-törzsből.
+  const [banks, setBanks] = useState<BankInfo[]>([])
   const [showNewModal, setShowNewModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState<BankTransaction | null>(null)
   const [typeFilter, setTypeFilter] = useState('all')
@@ -66,6 +68,12 @@ export default function BankTransactions() {
   useEffect(() => {
     void fetchData()
   }, [fetchData])
+
+  // FK-005/C1: a Bank-törzs betöltése (területileg szűrt — a backend AccessScopeService dönt).
+  // Hiba esetén csendben üres lista marad → a bank-mező szabad-szövegként továbbra is használható.
+  useEffect(() => {
+    bankApi.list().then(setBanks).catch(() => setBanks([]))
+  }, [])
 
   useHotkeys('n', () => setShowNewModal(true), { enableOnFormTags: false })
   useHotkeys('escape', () => { setShowNewModal(false); setShowDetailModal(null) }, { enableOnFormTags: true })
@@ -361,13 +369,22 @@ export default function BankTransactions() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">{t('treasury.bankNeve')}</label>
+                  {/* FK-005/C1: a bank a területileg szűrt Bank-törzsből választható
+                      (cég-szintű + saját régió bankjai); a datalist megengedi a kézi
+                      megadást is, ha a bank még nincs a törzsben. */}
                   <input
                     type="text"
+                    list="bank-master-list"
                     className="form-input w-full"
                     placeholder="pl. OTP, Raiffeisen"
                     value={bankName}
                     onChange={e => setBankName(e.target.value)}
                   />
+                  <datalist id="bank-master-list">
+                    {banks.map(b => (
+                      <option key={b.id} value={b.name} />
+                    ))}
+                  </datalist>
                 </div>
                 <div>
                   <label className="form-label">{t('treasury.bankiHivatkozas')}</label>

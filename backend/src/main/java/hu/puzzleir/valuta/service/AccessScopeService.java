@@ -104,6 +104,37 @@ public class AccessScopeService {
         }
     }
 
+    /**
+     * FK-005/C1: igaz, ha a felhasználó értéktárosként (ERTEKTAR/FOERTEKTAR authority) operál.
+     * Codex P1 #846: szét kell választani a „cég-szintű role" (→ minden látható) és a „vault-user
+     * region nélkül" (→ CSAK cég-szintű bankok) esetet — a {@link #vaultRegionCodeOrNull()}
+     * mindkettőre null-t ad, ezért kell ez a külön jelzés.
+     */
+    public boolean isVaultContext() {
+        return currentAuthorities().stream().anyMatch(VAULT_AUTHORITIES::contains);
+    }
+
+    /**
+     * FK-005/C1: a vault-felhasználó saját {@code region_code}-ja, VAGY {@code null}, ha
+     * cég-szintű role / nem értéktári kontextus / nincs region. A Bank-törzs területi
+     * szűréséhez (a bankok közül a cég-szintűek + a saját régióhoz tartozók látszanak).
+     */
+    @Transactional(readOnly = true)
+    public String vaultRegionCodeOrNull() {
+        Set<String> authorities = currentAuthorities();
+        if (authorities.stream().noneMatch(VAULT_AUTHORITIES::contains)) {
+            return null;
+        }
+        UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
+        if (branchId == null) {
+            return null;
+        }
+        return branchRepository.findById(branchId)
+                .map(Branch::getRegionCode)
+                .filter(r -> r != null && !r.isBlank())
+                .orElse(null);
+    }
+
     private Set<String> currentAuthorities() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getAuthorities() == null) {
