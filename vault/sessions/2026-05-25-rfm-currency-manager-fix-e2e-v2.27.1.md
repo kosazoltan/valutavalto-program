@@ -52,3 +52,48 @@ szerver árfolyam-publikálás + szétküldés valós működésének ellenőrz�
 - A futó EXE-vel végzett éles kézi e2e (rate-maker mód, valódi csomag publikálás, ráta megjelenése
   egy pénztáros gépén) — most már lehetséges a merged telepítő + deploy után; valós ráta-adatot
   írna production-ra, ezért külön felhasználói megerősítéssel.
+
+---
+
+## Follow-up: éles E2E (Computer Use, teszt-DB) + 2 valódi szerver-bug — v2.27.2/v2.27.3
+
+A user engedélyével végigvittük az ÉLES E2E-t a futó merged kliensen (rate-maker mód):
+silent telepítés v2.27.1 → régi kliensek cleanup verifikálva → mód-választó → bejelentkezve
+(Kosa Zoltan / Tisza Sarok). **Vizuálisan igazolt:** rate-maker sidebar, MNB-seed (összes valuta
+értékkel), Valutakezelő létrehozás/inaktiválás/aktiválás (a 403 megszűnt), képlet `=A1*2`→821,
+auto-újraszámítás (A:410.50→400 → B:800), D-oszlop védett, G7 árfolyam-irány figyelmeztetés.
+
+**A publish viszont HTTP 500-zal elhasalt** → ezért kellett az éles E2E. Két valódi bug:
+
+### #500 — audit_log jsonb (PR #841, v2.27.2, backend szerver-served)
+- Hetzner log: `column "after_state" is of type jsonb but expression is of type character varying`
+  → `InvalidDataAccessResourceUsageException` az `audit_log` INSERT-nél (`RATE_APPROVE`).
+- Gyökér: `AuditLog.beforeState/afterState` `columnDefinition="jsonb"` DE `@JdbcTypeCode` nélkül →
+  Hibernate varchar-ként kötötte a NULL paramétert is → Postgres elutasította → a `@Transactional`
+  approve/publish 500-zal visszagördült. A V234 `AuditEventService.appendEvent` is ugyanezt az
+  entitást használja → latens ugyanott.
+- Fix: `@JdbcTypeCode(SqlTypes.JSON)`. H2 nem reprodukálja (audit-tesztek 14/14 zöld), ezért a
+  bizonyíték a prod re-teszt: deploy után EUR v4 + 12 valuta v1 → **73 pénztár, 0 hiba, nincs 500.**
+
+### #404 — rate-maker fölösleges központi sync (PR #842, v2.27.3, Electron)
+- `CentralWorkstationSyncEngine` rate-maker módban is indult → `/central/sync/pull` HTTP 404
+  30 mp-enként (a végpont szerver-oldalon NEM létezik; a rate-maker közvetlen REST-en publikál).
+- Fix: `local-first.ts` — rate-maker módban a sync-motor NEM indul (DB-init marad az offline
+  cache-hez). Reinstall után verifikálva: log „központi sync-motor KIHAGYVA", nincs új 404.
+
+### service_version fix (PR #842)
+- `logback-spring.xml` `${APP_VERSION:-2.5.57}` elavult hardcode → `spring.application.version`
+  (fat-JAR `Implementation-Version`-ből; Sourcery+Copilot bug_risk: a korábbi `@project.version@`
+  filtering szűretlen futásnál literált logolt volna). Prod log igazolva: `service_version:"2.27.3"`.
+
+## Tanulság
+- A H2-alapú teszt-harness NEM reprodukálja a Postgres jsonb/varchar binding-hibát → a `jsonb`
+  String-mezőkhöz KÖTELEZŐ `@JdbcTypeCode(SqlTypes.JSON)` (a `columnDefinition="jsonb"` csak DDL).
+- A `service_version`-höz a Spring Boot `spring.application.version` (manifest) a tiszta út, NEM
+  property-token filtering (szűretlen futásnál literál-kockázat).
+- Az éles, futó-app E2E olyan szerver-oldali hibákat fog meg (publish-500, sync-404), amiket a
+  unit/IT tesztek és a kód-olvasás nem.
+
+## Telepítő v2.27.3 (UNSIGNED, Downloads)
+- `Kozponti-Munkaallomas-Setup-2.27.3.exe` — 102.63 MB, SHA-256
+  `868C1A5C3BF88B5BB649C7A66E3B76F4A8604383626348C8E1235EC2EA5E1EF8`.
