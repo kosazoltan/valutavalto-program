@@ -172,6 +172,7 @@ class WorkerServiceLoginTest {
         worker.setActive(true);
         worker.setPasswordHash("dummy");
         worker.setCode("KOSA");
+        worker.setRole(WorkerRole.ADMIN); // szerver/admin szerepkör — webes "full" felület
 
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         when(workerRepository.findByCompanyIdAndCode(companyId, "KOSA")).thenReturn(Optional.of(worker));
@@ -215,6 +216,7 @@ class WorkerServiceLoginTest {
         worker.setActive(true);
         worker.setPasswordHash("dummy");
         worker.setCode("KOSA");
+        worker.setRole(WorkerRole.ADMIN); // szerver/admin szerepkör — webes "full" felület
 
         // Mockito strict-mode: csak a B6-ág + early-return stubok
         lenient().when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
@@ -231,6 +233,7 @@ class WorkerServiceLoginTest {
         dto.setWorkerCode("KOSA");
         dto.setPassword("1234");
         dto.setBranchId(branchId);
+        dto.setAppMode("full"); // KOSA=ügyvezető, webes admin — a B6 branch-logika tesztje, nem a cashier-szabályé
 
         // When/Then: default branch login NEM dob "worker_branch_access" hibát.
         // A JWT-flow lefut try/catch-ben — más NPE-k mock nélkül.
@@ -277,6 +280,7 @@ class WorkerServiceLoginTest {
         worker.setActive(true);
         worker.setPasswordHash("dummy");
         worker.setCode("KOSA");
+        worker.setRole(WorkerRole.ADMIN); // szerver/admin szerepkör — webes "full" felület
 
         lenient().when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         lenient().when(workerRepository.findByCompanyIdAndCode(companyId, "KOSA"))
@@ -291,6 +295,7 @@ class WorkerServiceLoginTest {
         dto.setWorkerCode("KOSA");
         dto.setPassword("1234");
         dto.setBranchId(requestedBranchId);
+        dto.setAppMode("full"); // webes admin — a B6 branch-logika tesztje, nem a cashier-szabályé
 
         Exception caught = null;
         try {
@@ -404,6 +409,49 @@ class WorkerServiceLoginTest {
 
         verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(), any());
         verify(workerSessionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Codex P1 bypass zárva: legacy (0-role) NEM-pénztáros dolgozó jelszóval tilos lokális terminálon")
+    void login_password_legacyNonCashier_denied() {
+        Company company = legacyCompany();
+        Branch branch = legacyBranch(company);
+        Worker worker = legacyWorker(company, branch, WorkerRole.MANAGER); // NEM cashier, 0 role-assignment
+
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCode(company.getId(), "BORSI")).thenReturn(Optional.of(worker));
+        when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
+        when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> workerService.login(legacyLoginRequest("penztar"), "127.0.0.1", "test"))
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessageContaining("csak pénztáros");
+
+        verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(), any());
+    }
+
+    @Test
+    @DisplayName("Copilot bypass zárva: HIÁNYZÓ appMode + elevated szerepkör jelszóval tilos (default-deny-elevated)")
+    void login_password_blankAppMode_elevatedWorker_denied() {
+        Company company = legacyCompany();
+        Branch branch = legacyBranch(company);
+        Worker worker = legacyWorker(company, branch, WorkerRole.CASHIER);
+
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCode(company.getId(), "BORSI")).thenReturn(Optional.of(worker));
+        when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
+        when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of(
+                roleAssignment(2, "ertektar")));
+
+        // appMode szándékosan NINCS beállítva (null) — crafted kliens próbálná megkerülni a szabályt
+        LoginRequestDto dto = new LoginRequestDto();
+        dto.setCompanyCode("EBC");
+        dto.setWorkerCode("BORSI");
+        dto.setPassword("1234");
+
+        assertThatThrownBy(() -> workerService.login(dto, "127.0.0.1", "test"))
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessageContaining("csak pénztáros");
     }
 
     private WorkerRoleAssignment roleAssignment(int id, String code) {

@@ -64,6 +64,11 @@ public class WorkerService {
     // Dummy BCrypt hash for constant-time comparison when worker not found (timing side-channel prevention)
     private static final String DUMMY_BCRYPT_HASH = "$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie";
 
+    // Üzleti szabály (Kósa Zoltán 2026-05-26): jelszavas belépés = csak pénztáros.
+    private static final String PASSWORD_CASHIER_ONLY_MESSAGE =
+            "Jelszavas belépéssel csak pénztáros szerepkör érhető el. "
+            + "Az értéktáros és vezetői belépés Google-fiókkal történik.";
+
     /**
      * Brute force state: key = "companyCode:workerCode", value = [failedCount, lockUntilMs]
      */
@@ -382,23 +387,31 @@ public class WorkerService {
         // V57: Operatív szerepkör keresés
         List<WorkerRoleAssignment> roleAssignments = roleAssignmentRepository.findByWorkerId(worker.getId());
 
-        // Üzleti szabály (Kósa Zoltán 2026-05-26): a lokális terminálok (penztar/ertektar/
-        // ertekszallito) JELSZAVAS belépésén KIZÁRÓLAG a pénztáros szerepkör érhető el — a
-        // pénztárgépen véletlenül se lehessen értéktárosként/vezetőként belépni. Az értéktáros és
-        // vezetői belépés CSAK Google-fiókkal történik (GoogleLoginService), így nincs jelszó,
-        // amit ellopni/elfelejteni, és a Gmail-fiók azonosítja a dolgozót a naplóban.
-        // A roleAssignments-et szűrjük (NEM csak a kódokat), hogy a permission-számítás is helyes
-        // maradjon. A webes/„full" admin felület belépését ez NEM érinti.
-        if (AppModeRoleConstants.isLocalTerminalAppMode(dto.getAppMode()) && !roleAssignments.isEmpty()) {
-            List<WorkerRoleAssignment> cashierOnlyAssignments = roleAssignments.stream()
-                    .filter(ra -> AppModeRoleConstants.isCashierRole(ra.getRoleDef().getCode()))
-                    .toList();
-            if (cashierOnlyAssignments.isEmpty()) {
-                throw new AuthenticationException(
-                        "Jelszavas belépéssel csak pénztáros szerepkör érhető el. "
-                        + "Az értéktáros és vezetői belépés Google-fiókkal történik.");
+        // Üzleti szabály (Kósa Zoltán 2026-05-26): a JELSZAVAS belépés KIZÁRÓLAG pénztáros
+        // szerepkört adhat — a pénztárgépen/lokális terminálon véletlenül se lehessen
+        // értéktárosként/vezetőként belépni. Az értéktáros és vezetői belépés CSAK Google-fiókkal
+        // (GoogleLoginService): nincs jelszó amit ellopni/elfelejteni, és a Gmail-fiók azonosítja
+        // a dolgozót a naplóban.
+        // DEFAULT-DENY-ELEVATED: a szabály MINDEN appMode-ra él, KIVÉVE a webes/központi "full"
+        // admin felületet. Így a hiányzó/ismeretlen appMode (crafted kliens) sem kerülheti meg
+        // (Codex P1 / Copilot bypass-ok). A roleAssignments-et szűrjük (NEM csak a kódokat),
+        // hogy a permission/JWT számítás is helyes maradjon.
+        if (!AppModeRoleConstants.isFullAppMode(dto.getAppMode())) {
+            if (roleAssignments.isEmpty()) {
+                // Legacy (role-assignment NÉLKÜLI) dolgozó: csak a CASHIER enum fogadható el;
+                // bármely más legacy szerepkör (manager/admin/stb.) jelszóval tilos (Codex P1).
+                if (worker.getRole() != WorkerRole.CASHIER) {
+                    throw new AuthenticationException(PASSWORD_CASHIER_ONLY_MESSAGE);
+                }
+            } else {
+                List<WorkerRoleAssignment> cashierOnlyAssignments = roleAssignments.stream()
+                        .filter(ra -> AppModeRoleConstants.isCashierRole(ra.getRoleDef().getCode()))
+                        .toList();
+                if (cashierOnlyAssignments.isEmpty()) {
+                    throw new AuthenticationException(PASSWORD_CASHIER_ONLY_MESSAGE);
+                }
+                roleAssignments = cashierOnlyAssignments;
             }
-            roleAssignments = cashierOnlyAssignments;
         }
 
         List<String> roleCodes = roleAssignments.stream()

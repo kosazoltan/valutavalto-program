@@ -46,7 +46,7 @@ public final class AppModeRoleConstants {
                 || LEGACY_ERTEKSZALLITO_ROLES.contains(normalizedRole);
     }
 
-    /** Pénztáros (cashier) szerepkor — canonical "penztar" VAGY legacy "cashier". */
+    /** Pénztáros (cashier) szerepkör — canonical "penztar" VAGY legacy "cashier". */
     public static boolean isCashierRole(String roleCode) {
         if (roleCode == null) {
             return false;
@@ -56,15 +56,13 @@ public final class AppModeRoleConstants {
     }
 
     /**
-     * Lokális (Electron) terminál-appMode: penztar / ertektar / ertekszallito.
-     * Ezeken a gépeken a JELSZAVAS belépés kizárólag pénztáros szerepkört adhat
-     * (üzleti szabály, Kósa Zoltán 2026-05-26) — az értéktáros/vezető belépés Google-fiókkal.
+     * Webes/központi "full" admin appMode — KIZÁRÓLAG ez mentesül a "jelszó = csak pénztáros"
+     * szabály alól (üzleti szabály, Kósa Zoltán 2026-05-26). Minden más appMode (lokális terminál:
+     * penztar/ertektar/ertekszallito, rate-maker, kamera, ÉS a hiányzó/ismeretlen appMode is —
+     * crafted-kliens bypass ellen) jelszavas belépésnél a pénztárosra korlátozódik.
      */
-    public static boolean isLocalTerminalAppMode(String appMode) {
-        if (appMode == null || appMode.isBlank()) {
-            return false;
-        }
-        return LOCAL_CANONICAL_ROLES.contains(appMode.trim().toLowerCase(Locale.ROOT));
+    public static boolean isFullAppMode(String appMode) {
+        return appMode != null && "full".equalsIgnoreCase(appMode.trim());
     }
 
     /**
