@@ -2,7 +2,9 @@
 
 **Eszköz:** semgrep 1.133.0 `--config auto` (registry security/OWASP/nyelv-specifikus).
 **Scannelt:** 2015 forrásfájl (backend Java, frontend-react, 3 Electron kliens, packages).
-**Nyers JSON (gitignore-olt):** `security-reports/semgrep/semgrep-2.27.8.json` + `SEMGREP-AUDIT-2.27.8.md`.
+**Nyers JSON (gitignore-olt, a 2.27.8 baseline-en futtatott scan artefaktja):**
+`security-reports/semgrep/semgrep-2.27.8.json` + `SEMGREP-AUDIT-2.27.8.md`. A fájlnév a scan
+idején érvényes baseline-verziót tükrözi; a javítások a 2.27.9-ben landoltak.
 
 ## Eredmény: 224 finding (220 ERROR / 3 WARNING / 1 INFO)
 

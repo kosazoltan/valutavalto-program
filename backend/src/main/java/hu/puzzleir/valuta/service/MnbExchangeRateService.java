@@ -32,8 +32,8 @@ import java.util.*;
  * Kizárólag a havi záráshoz szükséges — a készlet MNB árfolyamon történő
  * értékeléséhez.
  *
- * SOAP endpoint: http://www.mnb.hu/arfolyamok.asmx
- * WSDL: http://www.mnb.hu/arfolyamok.asmx?wsdl
+ * SOAP endpoint: https://www.mnb.hu/arfolyamok.asmx
+ * WSDL: https://www.mnb.hu/arfolyamok.asmx?wsdl
  *
  * Elérhető műveletek:
  * - GetCurrentExchangeRates — aktuális napi árfolyamok
