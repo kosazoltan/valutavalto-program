@@ -5,7 +5,9 @@ import hu.puzzleir.valuta.logging.VVLogger;
 import jakarta.annotation.PostConstruct;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -36,7 +38,9 @@ public class ErrorCodeCatalogService {
     @PostConstruct
     public void loadCatalog() {
         try (InputStream in = new ClassPathResource(YAML_PATH).getInputStream()) {
-            Yaml yaml = new Yaml();
+            // Semgrep use-snakeyaml-constructor hardening: SafeConstructor → nincs tetszőleges
+            // típus-példányosítás (deserialization-attack védelem), bár a YAML csomagolt resource.
+            Yaml yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
             Map<String, Object> root = yaml.load(in);
             if (root == null) {
                 LOG.warn("diagnostics.error_codes.load_failed", "VV-TECH-001", Map.of(

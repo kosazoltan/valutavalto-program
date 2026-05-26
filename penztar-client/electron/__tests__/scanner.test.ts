@@ -45,14 +45,16 @@ describe('scanner — encryption/decryption', () => {
   // Replicate encrypt/decrypt logic from scanner.ts
   function encrypt(buffer: Buffer, key: Buffer): { encrypted: Buffer; iv: string; tag: string } {
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv, { authTagLength: 16 });
     const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
     const tag = cipher.getAuthTag();
     return { encrypted, iv: iv.toString('hex'), tag: tag.toString('hex') };
   }
 
   function decrypt(encrypted: Buffer, iv: string, tag: string, key: Buffer): Buffer {
-    const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'hex'));
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'hex'), {
+      authTagLength: 16,
+    });
     decipher.setAuthTag(Buffer.from(tag, 'hex'));
     return Buffer.concat([decipher.update(encrypted), decipher.final()]);
   }
