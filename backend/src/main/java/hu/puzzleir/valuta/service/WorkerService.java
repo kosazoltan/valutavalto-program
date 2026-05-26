@@ -64,6 +64,11 @@ public class WorkerService {
     // Dummy BCrypt hash for constant-time comparison when worker not found (timing side-channel prevention)
     private static final String DUMMY_BCRYPT_HASH = "$2b$10$dEHXvZQsnLDxcoSwKmiQ9.P38TXsoTTvQwX6arN1wh076V1dEt0ie";
 
+    // Üzleti szabály (Kósa Zoltán 2026-05-26): jelszavas belépés = csak pénztáros.
+    private static final String PASSWORD_CASHIER_ONLY_MESSAGE =
+            "Jelszavas belépéssel csak pénztáros szerepkör érhető el. "
+            + "Az értéktáros és vezetői belépés Google-fiókkal történik.";
+
     /**
      * Brute force state: key = "companyCode:workerCode", value = [failedCount, lockUntilMs]
      */
@@ -381,6 +386,35 @@ public class WorkerService {
         
         // V57: Operatív szerepkör keresés
         List<WorkerRoleAssignment> roleAssignments = roleAssignmentRepository.findByWorkerId(worker.getId());
+
+        // Üzleti szabály (Kósa Zoltán 2026-05-26): a JELSZAVAS belépés KIZÁRÓLAG pénztáros
+        // szerepkört adhat — a pénztárgépen/lokális terminálon véletlenül se lehessen
+        // értéktárosként/vezetőként belépni. Az értéktáros és vezetői belépés CSAK Google-fiókkal
+        // (GoogleLoginService): nincs jelszó amit ellopni/elfelejteni, és a Gmail-fiók azonosítja
+        // a dolgozót a naplóban.
+        // SZKÓP: KIZÁRÓLAG az explicit lokális terminál módok (penztar/ertektar/ertekszallito).
+        // MENTES a webes "full", a rate-maker (foertektar/ugyvezeto jelszavas belépés!), a kamera,
+        // ÉS a hiányzó appMode is — a sync-engine bootstrap-login appMode nélkül postol, azt NEM
+        // szabad eltörni (Codex P1 backward-compat). Az értéktáros/vezető belépés Google-fiókkal.
+        // A roleAssignments-et szűrjük (NEM csak a kódokat), hogy a permission/JWT is helyes maradjon.
+        if (AppModeRoleConstants.isLocalTerminalAppMode(dto.getAppMode())) {
+            if (roleAssignments.isEmpty()) {
+                // Legacy (role-assignment NÉLKÜLI) dolgozó: csak a CASHIER enum fogadható el;
+                // bármely más legacy szerepkör (manager/admin/stb.) jelszóval tilos (Codex P1).
+                if (worker.getRole() != WorkerRole.CASHIER) {
+                    throw new AuthenticationException(PASSWORD_CASHIER_ONLY_MESSAGE);
+                }
+            } else {
+                List<WorkerRoleAssignment> cashierOnlyAssignments = roleAssignments.stream()
+                        .filter(ra -> AppModeRoleConstants.isCashierRole(ra.getRoleDef().getCode()))
+                        .toList();
+                if (cashierOnlyAssignments.isEmpty()) {
+                    throw new AuthenticationException(PASSWORD_CASHIER_ONLY_MESSAGE);
+                }
+                roleAssignments = cashierOnlyAssignments;
+            }
+        }
+
         List<String> roleCodes = roleAssignments.stream()
                 .map(ra -> ra.getRoleDef().getCode())
                 .collect(Collectors.toList());

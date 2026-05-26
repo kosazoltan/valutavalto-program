@@ -6,6 +6,8 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
+import hu.puzzleir.valuta.entity.WorkerRoleAssignment;
+import hu.puzzleir.valuta.entity.WorkerRoleDefinition;
 import hu.puzzleir.valuta.exception.AuthenticationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
@@ -170,6 +172,7 @@ class WorkerServiceLoginTest {
         worker.setActive(true);
         worker.setPasswordHash("dummy");
         worker.setCode("KOSA");
+        worker.setRole(WorkerRole.ADMIN); // szerver/admin szerepkör — webes "full" felület
 
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         when(workerRepository.findByCompanyIdAndCode(companyId, "KOSA")).thenReturn(Optional.of(worker));
@@ -213,6 +216,7 @@ class WorkerServiceLoginTest {
         worker.setActive(true);
         worker.setPasswordHash("dummy");
         worker.setCode("KOSA");
+        worker.setRole(WorkerRole.ADMIN); // szerver/admin szerepkör — webes "full" felület
 
         // Mockito strict-mode: csak a B6-ág + early-return stubok
         lenient().when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
@@ -229,6 +233,7 @@ class WorkerServiceLoginTest {
         dto.setWorkerCode("KOSA");
         dto.setPassword("1234");
         dto.setBranchId(branchId);
+        dto.setAppMode("full"); // KOSA=ügyvezető, webes admin — a B6 branch-logika tesztje, nem a cashier-szabályé
 
         // When/Then: default branch login NEM dob "worker_branch_access" hibát.
         // A JWT-flow lefut try/catch-ben — más NPE-k mock nélkül.
@@ -275,6 +280,7 @@ class WorkerServiceLoginTest {
         worker.setActive(true);
         worker.setPasswordHash("dummy");
         worker.setCode("KOSA");
+        worker.setRole(WorkerRole.ADMIN); // szerver/admin szerepkör — webes "full" felület
 
         lenient().when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         lenient().when(workerRepository.findByCompanyIdAndCode(companyId, "KOSA"))
@@ -289,6 +295,7 @@ class WorkerServiceLoginTest {
         dto.setWorkerCode("KOSA");
         dto.setPassword("1234");
         dto.setBranchId(requestedBranchId);
+        dto.setAppMode("full"); // webes admin — a B6 branch-logika tesztje, nem a cashier-szabályé
 
         Exception caught = null;
         try {
@@ -351,6 +358,144 @@ class WorkerServiceLoginTest {
         assertThat(worker.getBranch()).isEqualTo(branch);
         verify(workerSessionRepository).save(any());
         verify(workerRepository).save(worker);
+    }
+
+    // ── Üzleti szabály (Kósa Zoltán 2026-05-26): JELSZÓ = CSAK PÉNZTÁROS ──────────────────────
+
+    @Test
+    @DisplayName("Jelszó=pénztáros: több szerepkörű dolgozó penztar appMode-ban CSAK pénztárosként lép be (értéktáros kiesik)")
+    void login_password_localTerminal_restrictsToCashierOnly() {
+        Company company = legacyCompany();
+        Branch branch = legacyBranch(company);
+        Worker worker = legacyWorker(company, branch, WorkerRole.CASHIER);
+
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCode(company.getId(), "BORSI")).thenReturn(Optional.of(worker));
+        when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
+        // A dolgozónak penztar + ertektar szerepköre is van (mint Balinak a V228 után)
+        when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of(
+                roleAssignment(1, "penztar"),
+                roleAssignment(2, "ertektar")));
+        when(workerRolePermissionRepository.findByRoleDefIdWithPermission(1)).thenReturn(List.of());
+        when(jwtTokenProvider.generateToken(worker, "penztar", List.of())).thenReturn("jwt-token");
+        when(jwtTokenProvider.getTokenIdFromToken("jwt-token")).thenReturn("token-id");
+
+        LoginResponseDto response = workerService.login(legacyLoginRequest("penztar"), "127.0.0.1", "test");
+
+        // CSAK pénztáros: nincs szerepkör-választó, az aktív role penztar, az ertektar KIESETT.
+        assertThat(response.getRoleSelectionRequired()).isFalse();
+        assertThat(response.getActiveRole()).isEqualTo("penztar");
+        assertThat(response.getRoles()).containsExactly("penztar");
+        assertThat(response.getRoles()).doesNotContain("ertektar");
+    }
+
+    @Test
+    @DisplayName("Jelszó=pénztáros: pénztáros szerepkör NÉLKÜLI dolgozó lokális terminálon jelszóval NEM léphet be (Google-re irányít)")
+    void login_password_localTerminal_noCashierRole_denied() {
+        Company company = legacyCompany();
+        Branch branch = legacyBranch(company);
+        Worker worker = legacyWorker(company, branch, WorkerRole.CASHIER);
+
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCode(company.getId(), "BORSI")).thenReturn(Optional.of(worker));
+        when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
+        // Csak értéktáros szerepkör (nincs pénztáros) → jelszóval tilos
+        when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of(
+                roleAssignment(2, "ertektar")));
+
+        assertThatThrownBy(() -> workerService.login(legacyLoginRequest("ertektar"), "127.0.0.1", "test"))
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessageContaining("csak pénztáros");
+
+        verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(), any());
+        verify(workerSessionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Codex P1 bypass zárva: legacy (0-role) NEM-pénztáros dolgozó jelszóval tilos lokális terminálon")
+    void login_password_legacyNonCashier_denied() {
+        Company company = legacyCompany();
+        Branch branch = legacyBranch(company);
+        Worker worker = legacyWorker(company, branch, WorkerRole.MANAGER); // NEM cashier, 0 role-assignment
+
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCode(company.getId(), "BORSI")).thenReturn(Optional.of(worker));
+        when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
+        when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> workerService.login(legacyLoginRequest("penztar"), "127.0.0.1", "test"))
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessageContaining("csak pénztáros");
+
+        verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(), any());
+    }
+
+    @Test
+    @DisplayName("Codex P1 backward-compat: HIÁNYZÓ appMode (sync-engine bootstrap) NEM korlátozódik pénztárosra")
+    void login_password_blankAppMode_notCashierRestricted() {
+        Company company = legacyCompany();
+        Branch branch = legacyBranch(company);
+        Worker worker = legacyWorker(company, branch, WorkerRole.ADMIN);
+
+        lenient().when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        lenient().when(workerRepository.findByCompanyIdAndCode(company.getId(), "BORSI")).thenReturn(Optional.of(worker));
+        lenient().when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
+        lenient().when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of(
+                roleAssignment(5, "foertektar")));
+        lenient().when(workerRolePermissionRepository.findByRoleDefIdWithPermission(5)).thenReturn(List.of());
+        lenient().when(jwtTokenProvider.generateToken(any(Worker.class), any(), any())).thenReturn("jwt");
+        lenient().when(jwtTokenProvider.getTokenIdFromToken("jwt")).thenReturn("tid");
+
+        // appMode szándékosan NINCS beállítva (null) — sync-engine bootstrap-login mintája.
+        LoginRequestDto dto = new LoginRequestDto();
+        dto.setCompanyCode("EBC");
+        dto.setWorkerCode("BORSI");
+        dto.setPassword("1234");
+
+        Exception caught = null;
+        try {
+            workerService.login(dto, "127.0.0.1", "test");
+        } catch (Exception e) {
+            caught = e;
+        }
+        // A "jelszó=pénztáros" gate NEM korlátozza a hiányzó-appMode (bootstrap) belépést.
+        if (caught != null) {
+            assertThat(caught.getMessage()).doesNotContain("csak pénztáros");
+        }
+    }
+
+    @Test
+    @DisplayName("Codex P1: rate-maker jelszavas belépés NEM korlátozódik pénztárosra (foertektar megmarad)")
+    void login_password_rateMaker_notCashierRestricted() {
+        Company company = legacyCompany();
+        Branch branch = legacyBranch(company);
+        Worker worker = legacyWorker(company, branch, WorkerRole.ADMIN);
+
+        lenient().when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        lenient().when(workerRepository.findByCompanyIdAndCode(company.getId(), "BORSI")).thenReturn(Optional.of(worker));
+        lenient().when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
+        lenient().when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of(
+                roleAssignment(5, "foertektar")));
+        lenient().when(workerRolePermissionRepository.findByRoleDefIdWithPermission(5)).thenReturn(List.of());
+        lenient().when(jwtTokenProvider.generateToken(any(Worker.class), any(), any())).thenReturn("jwt");
+        lenient().when(jwtTokenProvider.getTokenIdFromToken("jwt")).thenReturn("tid");
+
+        Exception caught = null;
+        try {
+            workerService.login(legacyLoginRequest("rate-maker"), "127.0.0.1", "test");
+        } catch (Exception e) {
+            caught = e;
+        }
+        // A LÉNYEG: a "jelszó=pénztáros" gate NEM dobja el a rate-maker belépést.
+        if (caught != null) {
+            assertThat(caught.getMessage()).doesNotContain("csak pénztáros");
+        }
+    }
+
+    private WorkerRoleAssignment roleAssignment(int id, String code) {
+        return WorkerRoleAssignment.builder()
+                .roleDef(WorkerRoleDefinition.builder().id(id).code(code).build())
+                .build();
     }
 
     private Company legacyCompany() {
