@@ -431,27 +431,37 @@ class WorkerServiceLoginTest {
     }
 
     @Test
-    @DisplayName("Copilot bypass zárva: HIÁNYZÓ appMode + elevated szerepkör jelszóval tilos (default-deny-elevated)")
-    void login_password_blankAppMode_elevatedWorker_denied() {
+    @DisplayName("Codex P1 backward-compat: HIÁNYZÓ appMode (sync-engine bootstrap) NEM korlátozódik pénztárosra")
+    void login_password_blankAppMode_notCashierRestricted() {
         Company company = legacyCompany();
         Branch branch = legacyBranch(company);
-        Worker worker = legacyWorker(company, branch, WorkerRole.CASHIER);
+        Worker worker = legacyWorker(company, branch, WorkerRole.ADMIN);
 
-        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
-        when(workerRepository.findByCompanyIdAndCode(company.getId(), "BORSI")).thenReturn(Optional.of(worker));
-        when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
-        when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of(
-                roleAssignment(2, "ertektar")));
+        lenient().when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        lenient().when(workerRepository.findByCompanyIdAndCode(company.getId(), "BORSI")).thenReturn(Optional.of(worker));
+        lenient().when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
+        lenient().when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of(
+                roleAssignment(5, "foertektar")));
+        lenient().when(workerRolePermissionRepository.findByRoleDefIdWithPermission(5)).thenReturn(List.of());
+        lenient().when(jwtTokenProvider.generateToken(any(Worker.class), any(), any())).thenReturn("jwt");
+        lenient().when(jwtTokenProvider.getTokenIdFromToken("jwt")).thenReturn("tid");
 
-        // appMode szándékosan NINCS beállítva (null) — crafted kliens próbálná megkerülni a szabályt
+        // appMode szándékosan NINCS beállítva (null) — sync-engine bootstrap-login mintája.
         LoginRequestDto dto = new LoginRequestDto();
         dto.setCompanyCode("EBC");
         dto.setWorkerCode("BORSI");
         dto.setPassword("1234");
 
-        assertThatThrownBy(() -> workerService.login(dto, "127.0.0.1", "test"))
-                .isInstanceOf(AuthenticationException.class)
-                .hasMessageContaining("csak pénztáros");
+        Exception caught = null;
+        try {
+            workerService.login(dto, "127.0.0.1", "test");
+        } catch (Exception e) {
+            caught = e;
+        }
+        // A "jelszó=pénztáros" gate NEM korlátozza a hiányzó-appMode (bootstrap) belépést.
+        if (caught != null) {
+            assertThat(caught.getMessage()).doesNotContain("csak pénztáros");
+        }
     }
 
     @Test

@@ -55,28 +55,21 @@ public final class AppModeRoleConstants {
         return "penztar".equals(normalized) || LEGACY_PENZTAR_ROLES.contains(normalized);
     }
 
-    /** Ismert elevated/szerver appMode-ok, ahol legitim a NEM-pénztáros jelszavas belépés. */
-    private static final List<String> PASSWORD_CASHIER_EXEMPT_APP_MODES = List.of(
-            "full",        // webes/központi admin felület (vezetők)
-            "rate-maker",  // árfolyamkészítő Electron kliens — foertektar/ugyvezeto jelszóval lép be
-            "kamera"       // kameraszoftver — teruleti_vezeto/biztonsagi_vezeto
-    );
-
     /**
-     * Igaz, ha a JELSZAVAS belépés ezen az appMode-on a pénztárosra korlátozódik
-     * (üzleti szabály, Kósa Zoltán 2026-05-26).
+     * Lokális (Electron) terminál-appMode: penztar / ertektar / ertekszallito.
+     * Ezeken a JELSZAVAS belépés kizárólag pénztáros szerepkört adhat (üzleti szabály,
+     * Kósa Zoltán 2026-05-26) — a pénztárgépen véletlenül se lehessen értéktárosként belépni.
      *
-     * <p>Korlátozott: lokális terminál (penztar/ertektar/ertekszallito) ÉS a hiányzó/ismeretlen
-     * appMode is — utóbbi a crafted-kliens bypass (appMode elhagyása) ellen véd.
-     * Mentes: a kifejezetten elevated/szerver módok ({@link #PASSWORD_CASHIER_EXEMPT_APP_MODES}),
-     * ahol legitim nem-pénztáros jelszavas belépés van (pl. rate-maker = foertektar/ugyvezeto) —
-     * ezeket NEM szabad eltörni.</p>
+     * <p>SZÁNDÉKOSAN csak az EXPLICIT lokális terminál módokra igaz. A hiányzó/blank appMode NEM
+     * minősül lokális terminálnak: a `sync-engine.ts` bootstrap-login appMode nélkül postol, és a
+     * `full`/`rate-maker` kontextusban legitim nem-pénztáros belépés is appMode-ot küld — ezeket
+     * NEM szabad eltörni (Codex P1 backward-compat). Az értéktáros/vezető belépés Google-fiókkal.</p>
      */
-    public static boolean isPasswordCashierRestrictedAppMode(String appMode) {
+    public static boolean isLocalTerminalAppMode(String appMode) {
         if (appMode == null || appMode.isBlank()) {
-            return true; // hiányzó appMode → deny-elevated (bypass-védelem)
+            return false;
         }
-        return !PASSWORD_CASHIER_EXEMPT_APP_MODES.contains(appMode.trim().toLowerCase(Locale.ROOT));
+        return LOCAL_CANONICAL_ROLES.contains(appMode.trim().toLowerCase(Locale.ROOT));
     }
 
     /**
