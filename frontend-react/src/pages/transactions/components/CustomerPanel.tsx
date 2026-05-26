@@ -82,7 +82,7 @@ const LEVEL_LABELS: Record<IdentificationLevel, string> = {
 
 const LEVEL_DESCRIPTIONS: Record<IdentificationLevel, string> = {
   SIMPLE: 'Csak allampolgarsag',
-  SIMPLIFIED: 'Nev, szuletesi adatok, okmany',
+  SIMPLIFIED: 'Nev, szuletesi adatok',
   FULL: 'Teljes szemelyes adatok',
 }
 
