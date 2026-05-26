@@ -9,6 +9,7 @@ import { logger } from '../../utils/logger'
 import { useAppMode } from '../../hooks/useAppMode'
 import { appModeLabel, canonicalizeRoleForAppMode, isRoleSelectableForAppMode, roleDisplayName, selectableLocalAppModes, preferredRoleForAppMode } from '../../utils/appModeRoles'
 import { setSessionAppMode, clearSessionAppMode, getSessionAppMode } from '../../utils/sessionAppMode'
+import { isLocalTerminalClient, isCentralWorkstationFlavor, isRateMakerFlavor } from '../../utils/clientEnv'
 import type { AppMode } from '../../types/appMode'
 import { useTranslation } from 'react-i18next'
 
@@ -125,10 +126,10 @@ export default function LoginPage() {
    * - egyeb szerver role (ugyvezeto, foertektar, stb.) -> /dashboard
    */
   const getDefaultRouteForRole = (role?: string | null): string => {
-    if (import.meta.env.VITE_APP_FLAVOR === 'central-workstation') return '/central-workstation'
+    if (isCentralWorkstationFlavor()) return '/central-workstation'
     // Codex/Copilot #581 fix: rate-maker app default landing /rates/main (Főlap, 0-s lap)
     // — konzisztens az App.tsx-ben definiált defaultProtectedRoute-tal.
-    if (appMode === 'rate-maker' || import.meta.env.VITE_APP_FLAVOR === 'rate-maker') return '/rates/main'
+    if (appMode === 'rate-maker' || isRateMakerFlavor()) return '/rates/main'
     if (appMode === 'full') return '/central-workstation'
     const canonical = canonicalizeRoleForAppMode(role)
     if (canonical === 'penztar') return '/cashier'
@@ -141,9 +142,8 @@ export default function LoginPage() {
 
   // HIBA 2026-05-26: csak a lokál terminál (penztar-client, nincs flavor + Electron) ajánl
   // program-mód választót. Böngészőben (full) és a kozponti/rate-maker flavor-buildekben nem.
-  const appFlavor = String(import.meta.env.VITE_APP_FLAVOR ?? '').trim()
-  const isLocalTerminalClient =
-    typeof window !== 'undefined' && window.electronAPI != null && appFlavor === ''
+  // A detektálás a központi clientEnv util-ban (Sourcery #860: nincs szétszórt flavor-check).
+  const localTerminalClient = isLocalTerminalClient()
 
   /** Mód-választó eredménye: a választott módra select-role → megfelelő role+token, majd navigáció. */
   const handleModeSelect = async (mode: AppMode) => {
@@ -201,7 +201,7 @@ export default function LoginPage() {
     // HIBA 2026-05-26: ha a dolgozó több lokál módba is beléphet (pl. értéktáros, aki a
     // pénztárt is ellenőrizheti), a lokál terminálon mód-választót mutatunk — KIVÉVE ha
     // már választott a munkamenetben. Tiszta pénztáros (1 mód) → nincs választó, megy egyből.
-    if (isLocalTerminalClient && !getSessionAppMode()) {
+    if (localTerminalClient && !getSessionAppMode()) {
       const localModes = selectableLocalAppModes(response.validAppModes)
       if (localModes.length > 1) {
         setPendingModeResponse(response)
