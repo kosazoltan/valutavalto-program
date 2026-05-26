@@ -50,8 +50,9 @@ class AppModeRoleConstantsTest {
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("biztonsagi_vezeto", "full")).isTrue();
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("teruleti_vezeto", "rate-maker")).isFalse();
         // Pénztár-ellenőrzés: a területi vezető Google-lel a PÉNZTÁR funkcióba is beléphet.
+        // (Rendezett sorrend: a computeValidAppModes stabilan penztar→kamera→full sorrendben ad vissza.)
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of("teruleti_vezeto"), null))
-                .containsExactlyInAnyOrder("penztar", "kamera", "full");
+                .containsExactly("penztar", "kamera", "full");
     }
 
     @Test
