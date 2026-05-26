@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -52,6 +53,10 @@ class DenominationOptimizationServiceTest {
 
     @BeforeEach
     void setUp() {
+        // Determinizmus: a teljes suite-ben más teszt-osztály bennhagyhat egy SecurityContextet
+        // (SecurityContextHolder statikus/thread-local). A P1-05 óta az optimize() a context
+        // companyId-jától függ; context nélkül a sima (stubolt) findByBranchAndCurrency fut.
+        SecurityContextHolder.clearContext();
         hufDenoms = List.of(
                 makeDenom("20000", 100, DenominationType.BANKNOTE),
                 makeDenom("10000", 100, DenominationType.BANKNOTE),

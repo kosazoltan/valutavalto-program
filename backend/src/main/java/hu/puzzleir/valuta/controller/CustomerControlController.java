@@ -40,6 +40,7 @@ public class CustomerControlController {
      * POST /api/v1/customer-control/{id}/restrict — Új korlátozás
      */
     @PostMapping("/{id}/restrict")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<CustomerRestrictionDto> addRestriction(
             @PathVariable Long id,
             @Valid @RequestBody CreateRestrictionDto dto) {
@@ -53,6 +54,7 @@ public class CustomerControlController {
      * DELETE /api/v1/customer-control/restrictions/{id} — Korlátozás eltávolítása
      */
     @DeleteMapping("/restrictions/{id}")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Void> removeRestriction(@PathVariable UUID id) {
         log.info("DELETE /api/v1/customer-control/restrictions/{}", id);
         customerControlService.removeRestriction(id);
