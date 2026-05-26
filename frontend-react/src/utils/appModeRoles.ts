@@ -76,6 +76,62 @@ export function isRoleSelectableForAppMode(
   return false
 }
 
+/**
+ * A penztar-client (lokál terminál) által renderelhető üzleti módok.
+ * A kozponti-client a full + rate-maker módokat csomagolja — más a támogatott halmaza.
+ */
+export const PENZTAR_CLIENT_LOCAL_MODES: AppMode[] = ['penztar', 'ertektar', 'ertekszallito']
+
+/**
+ * HIBA 2026-05-26 (mód-választó): a belépő dolgozó által ténylegesen választható módok
+ * az AKTUÁLIS kliensen — a backend `validAppModes`-ának metszete a kliens által
+ * támogatott módokkal. Ha >1, a belépés után mód-választót kell mutatni.
+ *
+ * A `supported` sorrendje adja a megjelenítési sorrendet.
+ */
+export function selectableLocalAppModes(
+  validAppModes: string[] | null | undefined,
+  supported: AppMode[] = PENZTAR_CLIENT_LOCAL_MODES,
+): AppMode[] {
+  if (!validAppModes || validAppModes.length === 0) return []
+  const allowed = new Set(validAppModes)
+  return supported.filter((m) => allowed.has(m))
+}
+
+function isLocalAppMode(appMode: AppMode): boolean {
+  return PENZTAR_CLIENT_LOCAL_MODES.includes(appMode)
+}
+
+/**
+ * A kiválasztott módhoz a legmegfelelőbb szerepkód a dolgozó szerepkörei közül
+ * (a /auth/login/select-role hívásnak kell egy appMode-ra érvényes roleCode).
+ * Preferencia (least-privilege):
+ *   1. a módra kanonikusan illeszkedő role;
+ *   2. lokál módnál egy LOKÁL role (Codex P1 #860: a generikus „selectable" fallback
+ *      lokál módnál szerver-role-t is elfogad, így a lista-sorrend miatt egy magasabb jogú
+ *      szerver-role kerülhetne be — pl. `foertektar` a `penztar` ellenőrzéshez. Előbb a
+ *      lokál role-t választjuk, hogy ne emeljünk jogot a sorrend miatt determinisztikusan);
+ *   3. bármely, a módban választható role (pl. inspection-role, ha nincs lokál role);
+ *   4. a jelenlegi aktív/worker role (fallback).
+ */
+export function preferredRoleForAppMode(
+  roles: string[] | null | undefined,
+  appMode: AppMode,
+  fallbackRole: string | null | undefined,
+): string | null {
+  const list = (roles ?? []).filter((r) => r && r.trim().length > 0)
+  const canonicalMatch = list.find((r) => canonicalizeRoleForAppMode(r) === appMode)
+  if (canonicalMatch) return canonicalMatch
+  if (isLocalAppMode(appMode)) {
+    const localSelectable = list.find((r) => isLocalRole(r) && isRoleSelectableForAppMode(r, appMode))
+    if (localSelectable) return localSelectable
+  }
+  const selectable = list.find((r) => isRoleSelectableForAppMode(r, appMode))
+  if (selectable) return selectable
+  const fb = fallbackRole?.trim()
+  return fb && fb.length > 0 ? fb : null
+}
+
 export function appModeLabel(appMode: AppMode): string {
   if (appMode === 'penztar') return 'Valutaváltó Pénztár'
   if (appMode === 'ertektar') return 'Értéktár'

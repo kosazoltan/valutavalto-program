@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persistToken, clearPersistedToken } from '../services/api/index'
 import { canonicalizeRoleForAppMode } from '../utils/appModeRoles'
+import { clearSessionAppMode } from '../utils/sessionAppMode'
 
 export interface Worker {
   id: number
@@ -108,6 +109,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     })
     // Electron: token törlése SQLite-ból
     void clearPersistedToken()
+    // HIBA 2026-05-26: a belépés után választott mód-override is törlődik kijelentkezéskor
+    clearSessionAppMode()
   },
 
   hasRole: (role: string) => {

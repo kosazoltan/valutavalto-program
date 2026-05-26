@@ -7,7 +7,10 @@ import { Eye, EyeOff, User, Lock, Building2, Shield, RefreshCw, ChevronDown } fr
 import { getErrorMessage, humanizeIpcError } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useAppMode } from '../../hooks/useAppMode'
-import { appModeLabel, canonicalizeRoleForAppMode, isRoleSelectableForAppMode, roleDisplayName } from '../../utils/appModeRoles'
+import { appModeLabel, canonicalizeRoleForAppMode, isRoleSelectableForAppMode, roleDisplayName, selectableLocalAppModes, preferredRoleForAppMode } from '../../utils/appModeRoles'
+import { setSessionAppMode, clearSessionAppMode, getSessionAppMode } from '../../utils/sessionAppMode'
+import { isLocalTerminalClient, isCentralWorkstationFlavor, isRateMakerFlavor } from '../../utils/clientEnv'
+import type { AppMode } from '../../types/appMode'
 import { useTranslation } from 'react-i18next'
 
 /**
@@ -58,6 +61,12 @@ export default function LoginPage() {
   const [pendingLoginResponse, setPendingLoginResponse] = useState<Awaited<ReturnType<typeof authApi.login>> | null>(null)
   const [selectedRole, setSelectedRole] = useState<string | null>(null)
   const [roleLoading, setRoleLoading] = useState(false)
+
+  // HIBA 2026-05-26: program-mód választó (értéktáros/vezető több módba is beléphet)
+  const [showModeSelector, setShowModeSelector] = useState(false)
+  const [pendingModeResponse, setPendingModeResponse] = useState<Awaited<ReturnType<typeof authApi.login>> | null>(null)
+  const [modeSelectorOptions, setModeSelectorOptions] = useState<AppMode[]>([])
+  const [modeLoading, setModeLoading] = useState(false)
 
   const login = useAuthStore((state) => state.login)
   const navigate = useNavigate()
@@ -117,10 +126,10 @@ export default function LoginPage() {
    * - egyeb szerver role (ugyvezeto, foertektar, stb.) -> /dashboard
    */
   const getDefaultRouteForRole = (role?: string | null): string => {
-    if (import.meta.env.VITE_APP_FLAVOR === 'central-workstation') return '/central-workstation'
+    if (isCentralWorkstationFlavor()) return '/central-workstation'
     // Codex/Copilot #581 fix: rate-maker app default landing /rates/main (Főlap, 0-s lap)
     // — konzisztens az App.tsx-ben definiált defaultProtectedRoute-tal.
-    if (appMode === 'rate-maker' || import.meta.env.VITE_APP_FLAVOR === 'rate-maker') return '/rates/main'
+    if (appMode === 'rate-maker' || isRateMakerFlavor()) return '/rates/main'
     if (appMode === 'full') return '/central-workstation'
     const canonical = canonicalizeRoleForAppMode(role)
     if (canonical === 'penztar') return '/cashier'
@@ -131,8 +140,77 @@ export default function LoginPage() {
 
   const { mode: appMode, isLoading: appModeLoading } = useAppMode()
 
+  // HIBA 2026-05-26: csak a lokál terminál (penztar-client, nincs flavor + Electron) ajánl
+  // program-mód választót. Böngészőben (full) és a kozponti/rate-maker flavor-buildekben nem.
+  // A detektálás a központi clientEnv util-ban (Sourcery #860: nincs szétszórt flavor-check).
+  const localTerminalClient = isLocalTerminalClient()
+
+  /** Mód-választó eredménye: a választott módra select-role → megfelelő role+token, majd navigáció. */
+  const handleModeSelect = async (mode: AppMode) => {
+    if (!pendingModeResponse) return
+    setModeLoading(true)
+    setError('')
+    try {
+      const roleCode = preferredRoleForAppMode(
+        pendingModeResponse.roles,
+        mode,
+        pendingModeResponse.activeRole ?? pendingModeResponse.worker.role,
+      )
+      if (!roleCode) {
+        setError('Nincs a választott programhoz használható szerepkör.')
+        return
+      }
+      setSessionAppMode(mode)
+      const response = await authApi.selectRole({
+        token: pendingModeResponse.token,
+        roleCode,
+        appMode: mode,
+      })
+      login(
+        response.worker,
+        response.token,
+        response.tokenType,
+        response.expiresAt,
+        response.activeRole,
+        response.permissions,
+        response.roles,
+        false,
+        response.centralModules ?? null,
+      )
+      setShowModeSelector(false)
+      setPendingModeResponse(null)
+      navigate(getDefaultRouteForMode(mode, response.activeRole))
+    } catch (err: unknown) {
+      clearSessionAppMode()
+      setError(getErrorMessage(err))
+    } finally {
+      setModeLoading(false)
+    }
+  }
+
+  /** Mód-specifikus default route (a session appMode még nem frissült a hívás pillanatában). */
+  const getDefaultRouteForMode = (mode: AppMode, role?: string | null): string => {
+    if (mode === 'penztar') return '/cashier'
+    if (mode === 'ertekszallito') return '/transfers'
+    if (mode === 'ertektar') return '/treasury'
+    return getDefaultRouteForRole(role)
+  }
+
   /** Login eredmény feldolgozása — ha multi-role, role-választó megjelenítése */
   const handleLoginResponse = (response: Awaited<ReturnType<typeof authApi.login>>) => {
+    // HIBA 2026-05-26: ha a dolgozó több lokál módba is beléphet (pl. értéktáros, aki a
+    // pénztárt is ellenőrizheti), a lokál terminálon mód-választót mutatunk — KIVÉVE ha
+    // már választott a munkamenetben. Tiszta pénztáros (1 mód) → nincs választó, megy egyből.
+    if (localTerminalClient && !getSessionAppMode()) {
+      const localModes = selectableLocalAppModes(response.validAppModes)
+      if (localModes.length > 1) {
+        setPendingModeResponse(response)
+        setModeSelectorOptions(localModes)
+        setShowModeSelector(true)
+        return
+      }
+    }
+
     // Szerver (full mód) whitelist: a kozponti admin/felugyeleti role-ok kozos allowlistaja.
     const effectiveRole = response.activeRole ?? response.worker.role
     const serverAllowed = isRoleSelectableForAppMode(effectiveRole, 'full')
@@ -350,6 +428,62 @@ export default function LoginPage() {
   }
 
   // V57: Role-választó modal
+  if (showModeSelector && pendingModeResponse) {
+    return (
+      <div className="w-[360px]">
+        <div className="bg-form-bg border border-form-border shadow-lg">
+          <div className="header-bar flex items-center gap-2 h-8">
+            <Shield size={16} />
+            <span>Melyik programba lép be?</span>
+          </div>
+          <div className="p-4">
+            <p className="text-sm text-gray-600 mb-3">
+              A munkaköröd alapján több programba is beléphetsz. Válaszd ki, melyikkel szeretnél dolgozni.
+            </p>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-2 mb-4">
+              {modeSelectorOptions.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  disabled={modeLoading}
+                  onClick={() => void handleModeSelect(m)}
+                  className="w-full text-left p-3 border rounded text-sm border-form-border hover:bg-blue-50 hover:border-primary disabled:opacity-50"
+                >
+                  <span className="font-semibold">{appModeLabel(m)}</span>
+                  {m === 'penztar' && <span className="block text-xs text-gray-500">Valutaváltó pénztár — vétel/eladás/konverzió, pénztár-ellenőrzés</span>}
+                  {m === 'ertektar' && <span className="block text-xs text-gray-500">Értéktár — készletek, átadás-átvétel, zárások</span>}
+                  {m === 'ertekszallito' && <span className="block text-xs text-gray-500">Értékszállító — átadólapok aláírása</span>}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="form-button"
+                disabled={modeLoading}
+                onClick={() => {
+                  setShowModeSelector(false)
+                  setPendingModeResponse(null)
+                  clearSessionAppMode()
+                  useAuthStore.getState().logout()
+                }}
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (showRoleSelector && pendingLoginResponse) {
     const selectableRoles = pendingLoginResponse.roles ?? []
     return (
