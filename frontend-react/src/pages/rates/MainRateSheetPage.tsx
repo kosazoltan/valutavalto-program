@@ -1,8 +1,14 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Send, LogOut, Globe, Save, ArrowRight, Info, Wifi, WifiOff, Settings } from 'lucide-react'
-import { HyperFormula } from 'hyperformula'
 import { nextEditableCell, EDITABLE_ORDER, type EditableCol, type NavKey } from './sheetNavigation'
+import {
+  isFormula,
+  evaluateFormula,
+  FORMULA_STORAGE_KEY,
+  type ColValues,
+  type FormulaContext,
+} from './mainSheetFormula'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -132,25 +138,24 @@ function loadFromStorage(): MainRateRow[] {
   }
 }
 
-// v2.5.61: HyperFormula oszlop-mapping. A spreadsheet sheet 9 oszlop:
-// A=settlement, B=otp, C=helper, D=currency (CSAK label), E=weakMultiBuy,
-// F=weakMultiSell, G=crossSettlement (computed), H=crossRate, I=wholesale.
-// D oszlop VÉDETT — nem accept formula, csak text label.
-const FORMULA_COLUMNS = ['settlement', 'otp', 'helper', 'weakMultiBuy', 'weakMultiSell', 'wholesale'] as const
+// Oszlop-mapping. A 9 oszlop: A=settlement, B=otp, C=helper, D=currency (CSAK label),
+// E=weakMultiBuy, F=weakMultiSell, G=crossSettlement (computed), H=crossRate, I=wholesale.
+// D oszlop VÉDETT — nem fogad képletet, csak text label.
+// 2026-05-26 (legacy képlet-motor): a Főlapon képletezhető ÉRTÉK-oszlopok = A, B, C, E, F.
+// (D=ISO-címke védett; G/H=kereszt-auto változatlan; I/Nagybani NEM képletezhető — spec.)
+const FORMULA_COLUMNS = ['settlement', 'otp', 'helper', 'weakMultiBuy', 'weakMultiSell'] as const
 type FormulaColumn = typeof FORMULA_COLUMNS[number]
-// Humanreadable oszlop-nevek a user-facing hibajelzéshez (Copilot P2 #4 fix).
+// Humanreadable oszlop-nevek a user-facing hibajelzéshez.
 const COL_NAMES: Record<FormulaColumn, string> = {
   settlement: 'A — Elszámoló',
   otp: 'B — OTP',
   helper: 'C — Segéd',
   weakMultiBuy: 'E — Gyenge multis vétel',
   weakMultiSell: 'F — Gyenge multis eladás',
-  wholesale: 'I — Nagybani',
 }
 
-/** HyperFormula formula key = `${rowIdx}.${col}`. Csak felhasználói képletek tárolódnak. */
+/** Képlet-kulcs = `${rowIdx}.${col}`. Csak felhasználói képletek tárolódnak (a legacy képlet-string). */
 type FormulaMap = Record<string, string>
-const FORMULA_STORAGE_KEY = 'arfolyamkeszito.mainSheet.formulas.v1'
 
 function loadFormulasFromStorage(): FormulaMap {
   try {
@@ -173,12 +178,9 @@ export default function MainRateSheetPage() {
   const [rows, setRows] = useState<MainRateRow[]>(() => loadFromStorage())
   const [dirty, setDirty] = useState(false)
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; col: keyof MainRateRow } | null>(null)
-  // v2.5.61 (HyperFormula): képletek per cella, kulcs = `${rowIdx}.${col}`. Csak
-  // a felhasználói képletek vannak itt — fix számérték NEM kerül ide.
+  // Képletek per cella, kulcs = `${rowIdx}.${col}`. Csak a felhasználói képletek
+  // vannak itt — fix számérték NEM kerül ide. Szintaxis: legacy (lásd mainSheetFormula).
   const [formulas, setFormulas] = useState<FormulaMap>(() => loadFormulasFromStorage())
-  // HyperFormula instance — Excel-szerű cell-formula motor 380+ függvénnyel +
-  // dependency-graph + auto-recalc. License: GPL v3 (internal company use OK).
-  const hfRef = useRef<HyperFormula | null>(null)
   // Codex P1 #581 fix: editBuffer őrzi a felhasználó RAW input-ját az aktív cella szerkesztésekor.
   const [editBuffer, setEditBuffer] = useState<string>('')
   // 2026-05-21 (Kósa Zoltán): Excel-szerű kétállapotú cella — kijelölt (editing=false,
@@ -267,101 +269,66 @@ export default function MainRateSheetPage() {
   // → Settlement column read-only ha crossBase != null. A renderelés `aIsAuto = !!row.crossBase`
   //   alapján dönt span vs. input között a render-loop-ban.
 
-  // v2.5.61 (2026-05-19 user-direktíva): HyperFormula instance létrehozása mount-kor.
-  // A spreadsheet 9 oszlopa: A=settlement, B=otp, C=helper, D=currency (label,
-  // VÉDETT), E=weakMultiBuy, F=weakMultiSell, G=crossSettlement (számolt JS-ben),
-  // H=crossRate, I=wholesale. A user az E-F-I-A-B-C-be írhat képletet "=" prefix-szel.
+  // 2026-05-26 (legacy képlet-motor): reaktív újraszámítás. A `formulas` map a
+  // felhasználói képlet-stringeket tárolja (kulcs `${rowIdx}.${field}`); a kiszámolt
+  // értékeket — a korábbi HyperFormula-architektúrával azonos módon — visszaírjuk a
+  // `rows` mezőkbe, hogy a render/save/publish változatlanul olvashassa.
+  //
+  // Jacobi-iterációs fixpont: minden passzban a passz-eleji pillanatképből számoljuk
+  // az összes képlet-cellát, majd alkalmazzuk. Aciklikus gráfra ≤ mélység lépésben
+  // konvergál; körhivatkozásnál a `maxIter` cap megállít (nem fagy). A guard-ref
+  // megakadályozza, hogy a saját setRows végtelen effekt-loopot indítson.
+  const recomputeGuardRef = useRef(false)
   useEffect(() => {
-    if (hfRef.current) return // Csak egyszer
-    const hf = HyperFormula.buildEmpty({ licenseKey: 'gpl-v3' })
-    hf.addSheet('main')
-    hfRef.current = hf
-    return () => {
-      hf.destroy()
-      hfRef.current = null
-    }
-  }, [])
+    if (recomputeGuardRef.current) { recomputeGuardRef.current = false; return }
+    const formulaKeys = Object.keys(formulas)
+    if (formulaKeys.length === 0) return
 
-  // Reaktív szinkronizáció: amikor a `rows` vagy `formulas` állapot változik,
-  // frissítjük a HyperFormula sheet tartalmát, majd újra olvassuk a kalkulált
-  // értékeket. A loop megakadályozására useRef compare-rel ellenőrizzük, hogy
-  // tényleg változott-e a recomputed érték.
-  const hfRecomputeRef = useRef<boolean>(false)
-  useEffect(() => {
-    const hf = hfRef.current
-    if (!hf) return
-    if (hfRecomputeRef.current) {
-      hfRecomputeRef.current = false
-      return
-    }
-    const sheetId = hf.getSheetId('main')
-    if (sheetId === undefined) return
-    // Build full sheet data (9 col × N row). Cells with formulas use the formula
-    // string ("=A1+B1"); cells without formulas use the raw numeric value.
-    // Copilot P2 #697 #3: cross-base row-okra (CZK, PLN, RON, RSD, BAM, TRY,
-    // ILS, UAH, RUB, CNY, THB, BRL, MXN, NZD) az A-oszlop settlement érték
-    // JS-ben származtatott (enrichedRows.settlement = computeCrossSettlement).
-    // Az `enrichedRows`-t használjuk a HF feltöltéshez, NEM a raw `rows`-t,
-    // különben a `=A8*...` képletek 0-t számolnának keresztarány-row referencia
-    // esetén.
-    const sourceRows = rows.map((r) => {
-      if (!r.crossBase) return r
-      // G mindig a kereszt-számolt érték; A a resolveSettlement (kézi felülírás vagy auto=G).
-      const crossG = computeCrossSettlement(r, eurSettlement, usdSettlement)
-      return { ...r, settlement: resolveSettlement(r, eurSettlement, usdSettlement), crossSettlement: crossG }
+    const rowColValues = (r: MainRateRow): ColValues => ({
+      A: resolveSettlement(r, eurSettlement, usdSettlement),
+      B: r.otp,
+      C: r.helper,
+      E: r.weakMultiBuy,
+      F: r.weakMultiSell,
     })
-    const data: (string | number | null)[][] = sourceRows.map((row, idx) => {
-      const formulaCell = (col: FormulaColumn, fallback: number): string | number =>
-        formulas[`${idx}.${col}`] ?? fallback
-      return [
-        formulaCell('settlement', row.settlement),       // A
-        formulaCell('otp', row.otp),                      // B
-        formulaCell('helper', row.helper),                // C
-        row.currency,                                     // D (label)
-        formulaCell('weakMultiBuy', row.weakMultiBuy),    // E
-        formulaCell('weakMultiSell', row.weakMultiSell),  // F
-        row.crossSettlement,                              // G (JS-számolt, cross-base esetén = settlement)
-        row.crossRate,                                    // H
-        formulaCell('wholesale', row.wholesale),          // I
-      ]
-    })
-    try {
-      hf.setSheetContent(sheetId, data)
-    } catch (e) {
-      logger.warn('MainRateSheetPage', 'HyperFormula setSheetContent failed', e)
-      return
-    }
-    // Olvassuk vissza a számolt értékeket. Ha bármi képlet-cella eltér a rows
-    // jelenlegi értékétől, frissítjük (egyszeri batch update).
-    const numericOrZero = (v: unknown): number => {
-      if (typeof v === 'number' && Number.isFinite(v)) return v
-      return 0
-    }
-    let mutated = false
-    const nextRows = rows.map((row, idx) => {
-      const newRow = { ...row }
-      const cols: Array<[FormulaColumn, keyof MainRateRow, number]> = [
-        ['settlement', 'settlement', 0],
-        ['otp', 'otp', 1],
-        ['helper', 'helper', 2],
-        ['weakMultiBuy', 'weakMultiBuy', 4],
-        ['weakMultiSell', 'weakMultiSell', 5],
-        ['wholesale', 'wholesale', 8],
-      ]
-      for (const [formulaCol, rowKey, hfCol] of cols) {
-        if (!formulas[`${idx}.${formulaCol}`]) continue
-        const cellVal = hf.getCellValue({ sheet: sheetId, row: idx, col: hfCol })
-        const num = numericOrZero(cellVal)
-        if (newRow[rowKey] !== num) {
-          ;(newRow as Record<string, unknown>)[rowKey] = num
-          mutated = true
+
+    const maxIter = formulaKeys.length + 2
+    let working = rows
+    let changedOverall = false
+    let converged = false
+    for (let iter = 0; iter < maxIter; iter++) {
+      const snapshot = working.map(rowColValues)
+      const byCurrency = new Map<string, ColValues>()
+      working.forEach((r, i) => byCurrency.set(r.currency.toUpperCase(), snapshot[i]!))
+      let changedThisPass = false
+      const nextWorking = working.map((row, idx) => {
+        let nr = row
+        const ctx: FormulaContext = { self: snapshot[idx]!, byCurrency }
+        for (const field of FORMULA_COLUMNS) {
+          const f = formulas[`${idx}.${field}`]
+          if (!f) continue
+          const res = evaluateFormula(f, ctx)
+          if ('error' in res) continue // hibás képlet → érték marad (a hover/edit floating jelzi a képletet)
+          const dec = row.currency === 'JPY' ? 3 : 2
+          const val = Number(res.value.toFixed(dec))
+          if (nr[field] !== val) { nr = { ...nr, [field]: val }; changedThisPass = true }
         }
-      }
-      return newRow
-    })
-    if (mutated) {
-      hfRecomputeRef.current = true
-      setRows(nextRows)
+        return nr
+      })
+      working = nextWorking
+      if (changedThisPass) changedOverall = true
+      else { converged = true; break }
+    }
+    // Copilot/Codex #863: ha NEM konvergált a maxIter alatt (körhivatkozás-gyanú, pl. `A` cella
+    // képlete `A+1`), NEM commitoljuk a tetszőleges nem-konvergált részeredményt (az korrumpálná
+    // a megjelenített/publikált rátát). A korábbi (stabil) értékek maradnak; csak figyelmeztetünk.
+    if (!converged) {
+      logger.warn('MainRateSheetPage', 'Képlet-újraszámítás nem konvergált (körhivatkozás-gyanú) — a részeredményt elvetjük, a korábbi értékek maradnak')
+      return
+    }
+    if (changedOverall) {
+      recomputeGuardRef.current = true
+      setRows(working)
     }
   }, [rows, formulas, eurSettlement, usdSettlement])
 
@@ -381,41 +348,33 @@ export default function MainRateSheetPage() {
     const trimmed = raw.trim()
     const isCrossSettlement = col === 'settlement' && !!currentRows[rowIdx]?.crossBase
 
-    // v2.5.61 (HyperFormula): "=" prefix-szel kezdődő input → képlet.
+    // 2026-05-26 (legacy képlet-motor): ha az input KÉPLET (nem tiszta szám) → tároljuk
+    // a képlet-stringet + szinkron kiértékelés a save/dispatch path-hoz (NEM placeholder 0,
+    // hogy a publikálás valódi értéket lásson; az effekt később idempotensen újraszámol).
     const formulaKey = `${rowIdx}.${col}`
     const isFormulaCol = FORMULA_COLUMNS.includes(col as FormulaColumn)
-    if (isFormulaCol && trimmed.startsWith('=')) {
-      // Codex P1 (PR #697): a save/dispatch path szinkron snapshot-ra
-      // bizalmas — ha placeholder 0-t adunk vissza, a publikálás VAGY
-      // skip-eli a row-t (weakMultiBuy<=0 guard a dispatch-ben) VAGY
-      // 0-t küld a szervernek. SYNC formula evaluation: HyperFormula
-      // `calculateFormula` aktuális sheet state-en, az eredmény azonnal
-      // a `next[rowIdx][col]`-ba kerül. Az async useEffect később verify-ol
-      // (idempotens).
+    if (isFormulaCol && isFormula(trimmed)) {
       setFormulas(prev => ({ ...prev, [formulaKey]: trimmed }))
-      const hf = hfRef.current
-      let evaluated = 0
-      if (hf) {
-        try {
-          const sheetId = hf.getSheetId('main')
-          if (sheetId !== undefined) {
-            const result = hf.calculateFormula(trimmed, sheetId)
-            if (typeof result === 'number' && Number.isFinite(result)) {
-              evaluated = result
-            } else if (result && typeof result === 'object' && 'type' in result) {
-              // Copilot P2 #697 #4: DetailedCellError (DIV/0, VALUE, REF, ...)
-              // — NEM némán 0-ra konvertálunk, hanem warn-olunk + toast-tal
-              // user-facing error indicator. Az érték a régi marad (rollback).
-              const errType = String((result as { type: unknown }).type ?? 'UNKNOWN')
-              logger.warn('MainRateSheetPage', `Formula error in cell ${formulaKey}: ${errType}`, trimmed)
-              toast.warning('Képlet hiba', `${COL_NAMES[col as FormulaColumn] ?? col} cellában: ${errType} (${trimmed})`)
-              const currentValue = currentRows[rowIdx]?.[col]
-              evaluated = typeof currentValue === 'number' ? currentValue : 0
-            }
-          }
-        } catch (e) {
-          logger.warn('MainRateSheetPage', 'sync formula eval failed', e)
-        }
+      const colVals = (r: MainRateRow): ColValues => ({
+        A: resolveSettlement(r, eurSettlement, usdSettlement),
+        B: r.otp,
+        C: r.helper,
+        E: r.weakMultiBuy,
+        F: r.weakMultiSell,
+      })
+      const byCurrency = new Map<string, ColValues>()
+      currentRows.forEach((r) => byCurrency.set(r.currency.toUpperCase(), colVals(r)))
+      const res = evaluateFormula(trimmed, { self: colVals(currentRows[rowIdx]!), byCurrency })
+      let evaluated: number
+      if ('error' in res) {
+        // Hibás képlet → NEM némán 0; warn + toast, az érték a régi marad (rollback).
+        logger.warn('MainRateSheetPage', `Formula error in cell ${formulaKey}: ${res.error}`, trimmed)
+        toast.warning('Képlet hiba', `${COL_NAMES[col as FormulaColumn] ?? col} cellában: ${res.error} (${trimmed})`)
+        const currentValue = currentRows[rowIdx]?.[col]
+        evaluated = typeof currentValue === 'number' ? currentValue : 0
+      } else {
+        const dec = currentRows[rowIdx]?.currency === 'JPY' ? 3 : 2
+        evaluated = Number(res.value.toFixed(dec))
       }
       const next = [...currentRows]
       next[rowIdx] = { ...next[rowIdx]!, [col]: evaluated, ...(isCrossSettlement ? { settlementManual: true } : {}) }
@@ -572,17 +531,25 @@ export default function MainRateSheetPage() {
   // (state update aszinkron), és VISSZAADJA a next array-t azonnal.
   // Ha nincs aktív cella vagy no-op → a current rows-t adja vissza.
   // A caller (saveLocally, dispatchToServer) ezzel azonnal tud serializálni.
-  const flushActiveCell = useCallback((): MainRateRow[] => {
-    // Csak ténylegesen szerkesztett (editing) cellát flush-olunk; a pusztán kijelölt
-    // cella nem hordoz beíratlan értéket (a readOnly miatt), így nincs mit commitolni.
-    // Copilot #762: nem-szerkesztés esetén is nullázzuk az activeCell-t (highlight),
-    // hogy a flush ("kész, kijelölés vége") szemantika konzisztens legyen.
+  // Visszaadja a SYNC commit utáni rows-t ÉS a képlet-snapshotot. A `formulas` state-update
+  // aszinkron (setFormulas), ezért a saveLocally a closure-beli stale `formulas`-t mentené —
+  // ezért a frissen beírt képlet-stringet itt szinkronban is kiszámoljuk és visszaadjuk
+  // (Copilot #863: különben a képlet elveszhet mentés-szerkesztés-közben edge-case-ben).
+  const flushActiveCell = useCallback((): { rows: MainRateRow[]; formulas: FormulaMap } => {
     if (!activeCell || !canEdit || !editing) {
       if (activeCell) {
         setActiveCell(null)
         setEditBuffer('')
       }
-      return rows
+      return { rows, formulas }
+    }
+    const trimmed = editBuffer.trim()
+    const key = `${activeCell.rowIdx}.${String(activeCell.col)}`
+    const isFormulaCol = (FORMULA_COLUMNS as readonly string[]).includes(activeCell.col as string)
+    let nextFormulas = formulas
+    if (isFormulaCol) {
+      if (isFormula(trimmed)) nextFormulas = { ...formulas, [key]: trimmed }
+      else if (formulas[key]) { nextFormulas = { ...formulas }; delete nextFormulas[key] }
     }
     const next = computeCellCommit(rows, activeCell.rowIdx, activeCell.col, editBuffer)
     setActiveCell(null)
@@ -591,23 +558,22 @@ export default function MainRateSheetPage() {
     if (next) {
       setRows(next)
       setDirty(true)
-      return next  // SYNC return — caller serializes the just-committed value
+      return { rows: next, formulas: nextFormulas } // SYNC — caller a frissen committed értéket + képletet serializálja
     }
-    return rows
-  }, [activeCell, canEdit, editing, rows, computeCellCommit, editBuffer])
+    return { rows, formulas: nextFormulas }
+  }, [activeCell, canEdit, editing, rows, formulas, computeCellCommit, editBuffer])
 
   // Codex P2 #581 iter-6 fix: saveLocally visszaadja boolean-t (true=success, false=fail).
   // Caller (CSOPORTOK navigate) csak success esetén navigáljon, hogy pending edit ne vesszen el
   // low-storage / private-browser környezetben.
   const saveLocally = useCallback((): boolean => {
-    const rowsToSave = flushActiveCell()
+    const { rows: rowsToSave, formulas: formulasToSave } = flushActiveCell()
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(rowsToSave))
-      // v2.5.61: a képletek is perzisztálódnak külön kulccsal, hogy a következő
-      // mount-kor a focusCell ugyanazt a képlet-kifejezést tudja megmutatni.
-      // Copilot P2 #697 #2: `formulas` a deps list-ben (lent) — különben a closure
-      // stale {} snapshot-ot mentene, és a frissen rögzített képletek elvesznének.
-      localStorage.setItem(FORMULA_STORAGE_KEY, JSON.stringify(formulas))
+      // A képletek külön kulccsal perzisztálódnak, hogy a következő mount-kor a focusCell
+      // ugyanazt a képlet-kifejezést tudja megmutatni. A flushActiveCell SYNC visszaadta a
+      // frissen committed képlet-snapshotot (a stale closure helyett) — Copilot #863.
+      localStorage.setItem(FORMULA_STORAGE_KEY, JSON.stringify(formulasToSave))
       lastSavedAt.current = new Date().toISOString()
       setDirty(false)
       toast.success('Mentve', 'Főlap helyileg mentve (localStorage)')
@@ -617,7 +583,7 @@ export default function MainRateSheetPage() {
       toast.error('Hiba', 'Helyi mentés sikertelen (privát böngészés / quota?)')
       return false
     }
-  }, [flushActiveCell, formulas])
+  }, [flushActiveCell])
 
   // Phase 2 wiring (Kosa Zoltan 2026-05-18): a komponens MOUNT-jakor letoltjuk a
   // legujabb publikalt arfolyamokat a szerverrol (Aktiv ExchangeRateMaster
@@ -785,7 +751,7 @@ export default function MainRateSheetPage() {
     // Phase 2 (Kosa Zoltan 2026-05-18 directive): a thin client a szerveren levo
     // ExchangeRateMaster aktiv arfolyamokhoz kepest CSAK A MODOSITOTT valutakat
     // kuldi (diff-alapu). Ezzel elkeruljuk a "ujra-publish all" anti-pattern-t.
-    const rowsToDispatch = flushActiveCell()
+    const { rows: rowsToDispatch } = flushActiveCell()
     setPublishing(true)
 
     // 1. Mentes localStorage cache-be - kulon try-block (Sourcery PR #687)
@@ -1096,6 +1062,14 @@ export default function MainRateSheetPage() {
               const renderInput = (col: keyof MainRateRow, currentVal: number, decimalsFor: number, classes: string, placeholder?: string) => {
                 const activeThis = isActive(col)
                 const editingThis = activeThis && editing
+                // Hover (lebegő) jelzés: a cella képlet eredménye-e, kézi- vagy auto-érték.
+                const cellFormula = formulas[`${idx}.${String(col)}`]
+                const isFormulaColHere = (FORMULA_COLUMNS as readonly string[]).includes(col as string)
+                const hoverTitle = cellFormula
+                  ? `Képlet: ${cellFormula} = ${currentVal ? currentVal.toFixed(decimalsFor) : '0'}`
+                  : (col === 'settlement' && aIsAutoCross
+                    ? 'Automatikus érték (G kereszt-számolt). Írj be értéket/képletet a kézi felülíráshoz; üres = vissza auto.'
+                    : (isFormulaColHere ? 'Kézi bevitelű érték (képlet is írható, pl. C*0,97 vagy !FEUR)' : undefined))
                 return (
                   <input
                     id={`cell-${idx}-${String(col)}`}
@@ -1111,6 +1085,7 @@ export default function MainRateSheetPage() {
                     className={`${classes} ${activeThis && !editing ? 'cursor-pointer' : ''}`}
                     disabled={!canEdit}
                     placeholder={placeholder}
+                    title={hoverTitle}
                   />
                 )
               }
@@ -1163,6 +1138,21 @@ export default function MainRateSheetPage() {
           </tbody>
         </table>
 
+        {/* === LEBEGŐ SZERKESZTŐ ABLAK === szerkesztés közben mutatja, mit írunk (képlet/érték) */}
+        {editing && activeCell && (
+          <div className="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg border border-blue-400 bg-white px-4 py-3 shadow-lg">
+            <div className="text-xs font-semibold text-blue-700">
+              {rows[activeCell.rowIdx]?.currency} · {COL_NAMES[activeCell.col as FormulaColumn] ?? String(activeCell.col)}
+            </div>
+            <div className="mt-1 break-all font-mono text-sm text-slate-900">
+              {editBuffer || <span className="text-slate-400">(üres → auto/törlés)</span>}
+            </div>
+            {isFormula(editBuffer) && (
+              <div className="mt-1 text-[11px] text-slate-500">Képlet — Enter: jóváhagy, Esc: elvet</div>
+            )}
+          </div>
+        )}
+
         {/* === LEGEND / INFO === */}
         <div className="mt-4 p-3 bg-white border border-slate-300 rounded text-xs text-slate-700 space-y-1">
           <div className="font-bold text-slate-900 mb-1">Oszlop magyarázatok:</div>
@@ -1186,13 +1176,15 @@ export default function MainRateSheetPage() {
               <div className="font-bold text-sm mb-2 text-center">FÜGGVÉNYEK KEZELÉSE</div>
               <table className="w-full text-xs">
                 <tbody>
-                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300 w-24">A — I</td><td className="py-1 px-2 italic">Azonos valutanem oszlopa az alap-árfolyam táblázatban (0-s lap)</td></tr>
-                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300">J — Q</td><td className="py-1 px-2 italic">Azonos valutanem oszlopa az aktuális munkacsoportban</td></tr>
-                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300">!Axxx</td><td className="py-1 px-2 italic">Más valutanem bármely oszlopa (A=oszlop, xxx=valutanem). Pl. !AEUR = A oszlop EUR sora</td></tr>
-                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300">#CCA</td><td className="py-1 px-2 italic">Azonos valutanem egy másik csoportból (A=oszlop, xxx=valutanem)</td></tr>
+                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300 w-24">A, B, C, E, F</td><td className="py-1 px-2 italic">Az AKTUÁLIS valuta sorának adott oszlopa (saját sor). A 0-s lapon ez az 5 érték-oszlop képletezhető.</td></tr>
+                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300">C*0,97</td><td className="py-1 px-2 italic">Példa: az aktuális valuta C oszlopa szorozva 0,97-tel. (Tizedeselválasztó: vessző.)</td></tr>
+                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300">!Fxxx</td><td className="py-1 px-2 italic">Más valuta sorának oszlopa (F=oszlop, xxx=valutakód). Pl. <b>!FEUR</b> = az EUR sor F (eladás) oszlopa — pl. az EUA eladása mindig az EUR eladása.</td></tr>
                   <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300">Műveletek</td><td className="py-1 px-2 italic">+ - * / és zárójel (a zárójel kötelező eltérő prioritású műveletek esetén)</td></tr>
+                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300">(üres)</td><td className="py-1 px-2 italic">Üres cella → automatikus érték. Fix szám → kézi felülírás. Képlet → a képlet eredménye, automatikus újraszámítással.</td></tr>
+                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300 text-slate-400">#CCA</td><td className="py-1 px-2 italic text-slate-400">Munkacsoportok közötti hivatkozás — a 0-s lapon NEM használt (a munkacsoport-lapok fejlesztésének része lesz).</td></tr>
                 </tbody>
               </table>
+              <div className="mt-2 text-[11px] text-slate-500">Megjegyzés: a képlet NEM kezdődik „=" jellel; egyszerűen írd be (pl. <span className="font-mono">C*0,97</span> vagy <span className="font-mono">!FEUR</span>). A G és H oszlop (kereszt-számolt / kereszt-forrás) automatikus, nem képletezhető.</div>
             </div>
             <div className="bg-white border border-emerald-300 rounded p-3 mb-4 text-xs space-y-2">
               <div><b>Adatmásolás:</b> CTRL + bal egér gomb a másolandó terület első adatának kijelöléséhez (LILA KERET) → kijelölés befejezése bal egér gomb lenyomásával (ZÖLD KERET)</div>
