@@ -115,12 +115,23 @@ class AccessScopeServiceTest {
     }
 
     @Test
-    @DisplayName("FOERTEKTAR region_code nélkül → biztonságos default: csak a saját fiók")
-    void chiefVault_noRegion_ownBranchOnly() {
+    @DisplayName("HIBA 2026-05-26: FŐÉRTÉKTÁR (FOERTEKTAR) NEMZETI role → null scope (egész országot látja)")
+    void chiefVault_isNationalRole_noScope() {
+        // A FOERTEKTAR nem terület-kötött (NEM VAULT_AUTHORITY) → null scope, akkor is, ha a
+        // belépési fiókjának nincs region_code-ja. Korábban (regresszió) csak a saját üres
+        // fiókját látta → „Nincs adat" az Országos készletben.
+        authenticateWith("ROLE_FOERTEKTAR", vaultBranchId);
+        assertNull(accessScopeService.vaultRegionBranchScopeOrNull());
+        assertFalse(accessScopeService.isVaultContext());
+    }
+
+    @Test
+    @DisplayName("Régiós értéktáros (ERTEKTAR) region_code nélkül → biztonságos default: csak a saját fiók")
+    void regionalVault_noRegion_ownBranchOnly() {
         Branch vault = Branch.builder().id(vaultBranchId).regionCode(null).build();
         when(branchRepository.findById(vaultBranchId)).thenReturn(Optional.of(vault));
 
-        authenticateWith("ROLE_FOERTEKTAR", vaultBranchId);
+        authenticateWith("ROLE_ERTEKTAR", vaultBranchId);
         Set<UUID> scope = accessScopeService.vaultRegionBranchScopeOrNull();
 
         assertEquals(Set.of(vaultBranchId), scope);
