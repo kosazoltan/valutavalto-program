@@ -32,18 +32,22 @@ public class SetupGoogleIdentificationService {
     private final BranchRepository branchRepository;
     private final WorkerRepository workerRepository;
     private final WorkerRoleService workerRoleService;
-    private final AdminBootstrapService adminBootstrapService;
 
     @Transactional
     public SetupGoogleIdentifyResponseDto identify(SetupGoogleIdentifyRequestDto request) {
-        // PP-13: bootstrap-completed guard — a setup-identify endpoint a wizard-hoz való,
-        // production-ban le kell zárni, hogy ne lehessen Google Subject-et utólag kötni
-        if (adminBootstrapService.isBootstrapAlreadyCompleted()) {
-            log.warn("SETUP_GOOGLE_DENIED_BOOTSTRAP_COMPLETED");
-            throw new AuthenticationException(
-                    "A rendszer setup mar lezarult. Kerem hasznalj a normal bejelentkezest.");
-        }
-
+        // FIX 2026-05-26 (Bali/Szeged értéktár "HTTP 0" / Google-login regresszió):
+        // A korábbi PP-13 "bootstrap-completed" blanket-guard MINDEN setup-identify hívást
+        // elutasított, ha a cég bootstrap-ja már lezárult. Ez megtörte MINDEN ÚJ kliens-telepítés
+        // Google-belépését (az értéktáros/vezető CSAK Google-lel léphet be) — pedig a setup-identify
+        // pontosan a wizard normál működése minden új gépen, NEM csak az első bootstrap-nál.
+        //
+        // A tényleges (és elégséges) védelem a WHITELIST-en van, NEM a bootstrap-állapoton:
+        //   - findGoogleLoginCandidatesByCompanyIdAndEmail: CSAK `google_login_enabled = true`
+        //     ÉS pontos email-egyezésű AKTÍV dolgozót talál (admin-vezérelt whitelist),
+        //   - bindSubjectForUniqueWorker: új subject-et CSAK akkor köt, ha a workernek még nincs
+        //     (no-overwrite), és tiltja a más workerhez tartozó subject újrakötését (no-collision).
+        // Ugyanezt a mintát követi a normál GoogleLoginService is (bind-sub-on-first-login).
+        // A blanket-guard tehát redundáns volt a whitelisttel, de funkciótörő → eltávolítva.
         GoogleIdTokenService.VerifiedGoogleIdentity identity = verifyIdentity(request.getIdToken());
         Company company = resolveCompany(request.getCompanyCode());
         String canonicalEmail = identity.email();
