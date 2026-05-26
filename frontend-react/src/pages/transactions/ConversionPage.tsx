@@ -75,8 +75,10 @@ export default function ConversionPage() {
 
   // HIBA 2026-05-26 (#3): a konverzió Pmt. azonosítási küszöbe a vétel + eladás EGYÜTTES
   // HUF-összege alapján dönt (a konverzió valójában egy vétel + egy eladás), nem csak a
-  // forrás-oldal alapján. amlAmount = 2 × köztes HUF.
-  const amlAmount = hufAmount * 2
+  // forrás-oldal alapján. amlAmount = BUY(hufAmount) + SELL(usedHuf). Codex P1 (#858): ha a
+  // cél-összeg lefelé módosul, a SELL leg kisebb, ezért a visszajárót levonjuk a 2×-ből —
+  // nem becsüljük felül a sub-limit konverziókat.
+  const amlAmount = Math.max(0, hufAmount * 2 - returnedHuf)
 
   // V235 + V236 (2026-05-19 HIBA #19): Pmt. azonositas a Konverzioba is.
   // 100k+ HUF aggregalt -> SIMPLIFIED, 300k+ -> FULL azonositas (Pmt. tv. 6.§).
@@ -289,8 +291,10 @@ export default function ConversionPage() {
           setError('Nincs elég készlet a konverzióhoz: ' + insufficient.join(' | '))
           return
         }
-      } catch {
-        setError('A készlet nem ellenőrizhető. Próbálja újra később.')
+      } catch (stockErr) {
+        // Copilot #858: a konkrét hibát is megjelenítjük (pl. lejárt munkamenet / hálózat),
+        // ne csak generikus üzenetet — így a pénztáros tudja, mi a teendő.
+        setError('A készlet nem ellenőrizhető (' + getErrorMessage(stockErr) + '). Próbálja újra később.')
         return
       }
 

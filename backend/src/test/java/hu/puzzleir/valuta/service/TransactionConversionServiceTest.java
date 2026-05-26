@@ -239,7 +239,7 @@ class TransactionConversionServiceTest {
     }
 
     @Test
-    @DisplayName("executeConversion - AML receives doubled rounded HUF and target currency code")
+    @DisplayName("executeConversion - AML a vétel+eladás tényleges legek összegét kapja (Codex P1 #858) + cél valuta")
     void executeConversion_passesDoubledRoundedHufAndTargetCurrencyToAml() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -284,8 +284,10 @@ class TransactionConversionServiceTest {
 
             conversionService.executeConversion(req);
 
+            // AML-alap = BUY(39050) + SELL usedHuf(39049) = 78099 (NEM 2×39050=78100),
+            // mert a teljes-fedezetű default cél (108.41 USD) usedHuf-ja 39049.
             verify(helper).performAmlCheck(
-                    eq(new BigDecimal("78100")),
+                    eq(new BigDecimal("78099")),
                     eq("FOREIGN-1"),
                     eq("Foreign Customer"),
                     eq("DOC-1"),

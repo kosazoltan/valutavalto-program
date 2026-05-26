@@ -104,10 +104,13 @@ public class TransactionConversionService {
         roundingDifference = roundingDifference.add(returnedHuf.subtract(returnedHufExact));
 
         // AML ellenorzes
-        // Legacy GAP-003: konverziónál az AML küszöb a KÉTSZERES összeg alapján dönt.
+        // Legacy GAP-003: konverziónál az AML küszöb a vétel + eladás EGYÜTTES összegén dönt.
         // Delphi: if _konverzio=1 then _fizetendo := _fizetendo + _fizetendo
-        // Indok: a konverzió valójában vétel+eladás, tehát a tényleges pénzmozgás kétszeres.
-        BigDecimal amlAmount = roundedHufAmount.multiply(BigDecimal.valueOf(2));
+        // Indok: a konverzió valójában vétel+eladás, tehát a tényleges pénzmozgás összegzendő.
+        // Codex P1 (#858): ha a cél-összeg lefelé módosul (címletezés), a SELL leg `usedHuf`-fal
+        // könyvel, ezért az AML-alap a TÉNYLEGES legek összege (BUY=roundedHufAmount + SELL=usedHuf),
+        // NEM a 2× felülbecslés — különben sub-limit konverzió is hibásan azonosítást kérne.
+        BigDecimal amlAmount = roundedHufAmount.add(usedHuf);
         // A foreign-USD blokk a kapott valutara vonatkozik, nem a leadott devizara.
         // Legacy parity (CB-018): az AML flagek a parent CONVERSION bizonylatra kerulnek.
         AmlService.AmlBasicCheckResult amlResult = helper.performAmlCheck(
