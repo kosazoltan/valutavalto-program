@@ -1,6 +1,5 @@
 package hu.puzzleir.valuta.controller;
 
-import hu.puzzleir.valuta.exception.GlobalExceptionHandler;
 import hu.puzzleir.valuta.service.CustomerControlService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -9,19 +8,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.test.context.web.WebAppConfiguration;
-import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 import java.util.UUID;
 
@@ -36,21 +27,21 @@ import static org.mockito.Mockito.verify;
  * Audit fix (API-01): a customer-control AML-restrikció WRITE-jai (restrict/remove)
  * csak compliance/manager szerepkörrel (SUPERVISOR/MANAGER/ADMIN) hivhatok — a korabbi
  * class-level `isAuthenticated()` barmely bejelentkezett (pl. penztaros) usernek engedte
- * az AML-tiltolista kezeleset. Ez a teszt a method-security enforcement-et verifikalja.
+ * az AML-tiltolista kezeleset. Ez a teszt a method-security (@PreAuthorize) enforcement-et
+ * verifikalja.
+ *
+ * <p>A @PreAuthorize-t a @EnableMethodSecurity AOP-proxy ervenyesiti a bean kozvetlen
+ * hivasakor is (a @WithMockUser allitja be a SecurityContextet) — nincs szukseg HTTP
+ * SecurityFilterChain-re vagy MockMvc-ra (ezert nincs CSRF-konfiguracio sem).</p>
  *
  * <p>Megj.: az `addRestriction` a `SecurityUtils.getCurrentWorkerId()`-t hivja, ami
  * @WithMockUser kontextusban nem WorkerAuthenticationDetails — ezert az "engedelyezett"
- * agat a `removeRestriction`-on verifikaljuk (nincs benne SecurityUtils-hivas), a tiltott
- * agat mindketton (a method-security interceptor a metodus-test ELOTT dob, igy ott a
- * SecurityUtils sosem fut).</p>
+ * agat a `removeRestriction`-on verifikaljuk (nincs benne SecurityUtils-hivas); a tiltott
+ * agnal a method-security interceptor a metodus-test ELOTT dob, igy a SecurityUtils sosem fut.</p>
  */
 @ExtendWith(SpringExtension.class)
-@WebAppConfiguration
 @ContextConfiguration(classes = CustomerControlControllerSecurityWebMvcTest.TestConfig.class)
 class CustomerControlControllerSecurityWebMvcTest {
-
-    @Autowired
-    private WebApplicationContext context;
 
     @Autowired
     private CustomerControlService customerControlService;
@@ -64,8 +55,6 @@ class CustomerControlControllerSecurityWebMvcTest {
     }
 
     @Configuration
-    @EnableWebMvc
-    @EnableWebSecurity
     @EnableMethodSecurity
     static class TestConfig {
         @Bean
@@ -76,25 +65,6 @@ class CustomerControlControllerSecurityWebMvcTest {
         @Bean
         CustomerControlController customerControlController(CustomerControlService customerControlService) {
             return new CustomerControlController(customerControlService);
-        }
-
-        @Bean
-        GlobalExceptionHandler globalExceptionHandler() {
-            return new GlobalExceptionHandler();
-        }
-
-        @Bean
-        MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {
-            return new MappingJackson2HttpMessageConverter();
-        }
-
-        @Bean
-        SecurityFilterChain testSecurityFilterChain(HttpSecurity http) throws Exception {
-            http
-                    .csrf(csrf -> csrf.disable())
-                    .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                    .httpBasic(Customizer.withDefaults());
-            return http.build();
         }
     }
 
