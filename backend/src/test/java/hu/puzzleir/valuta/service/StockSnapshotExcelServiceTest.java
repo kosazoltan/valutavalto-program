@@ -32,9 +32,11 @@ class StockSnapshotExcelServiceTest {
         try (Workbook wb = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
             // 2 region sheets + 1 summary = 3
             assertEquals(3, wb.getNumberOfSheets());
-            assertEquals("REGION_0I KÖRZET", wb.getSheetName(0));
-            assertEquals("REGION_1I KÖRZET", wb.getSheetName(1));
-            assertEquals("EXCLUSIVE CHANGE", wb.getSheetName(2));
+            // FK-003: lap-elnevezés a megjelenítő névből (ismeretlen régiónévre fallback: "...I körzet"),
+            // a 9. lap = "Összesítő".
+            assertEquals("REGION_0I körzet", wb.getSheetName(0));
+            assertEquals("REGION_1I körzet", wb.getSheetName(1));
+            assertEquals("Összesítő", wb.getSheetName(2));
         }
     }
 
@@ -60,32 +62,35 @@ class StockSnapshotExcelServiceTest {
             assertNotNull(audRow);
             assertEquals("AUD", audRow.getCell(0).getStringCellValue());
 
-            // USD is index 26 → row index 33
-            Row usdRow = sheet.getRow(33);
+            // FK-003: HUF-utolsó sorrend → USD index 25 (row 32), HUF index 26 (row 33, utolsó).
+            Row usdRow = sheet.getRow(32);
             assertNotNull(usdRow);
             assertEquals("USD", usdRow.getCell(0).getStringCellValue());
+            Row hufRow = sheet.getRow(33);
+            assertNotNull(hufRow);
+            assertEquals("HUF", hufRow.getCell(0).getStringCellValue());
         }
     }
 
     @Test
-    void generateFullWorkbook_wuDataInCorrectRow() throws IOException {
+    void generateFullWorkbook_noWuRows() throws IOException {
+        // FK-003: a WESTERN UNION / ÁFA / KEZELÉSI DÍJ / ELEKT. KERESKEDÉS / FOGLALÓK sorok
+        // az új exportban NEM szerepelnek — a korábbi WU-sorok helyén (index 37-42) nincs WU-címke.
         StockSnapshotDto snapshot = buildSnapshotWithData();
         byte[] bytes = service.generateFullWorkbook(snapshot);
         try (Workbook wb = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
             Sheet sheet = wb.getSheetAt(0);
-
-            // WU USD at row index 37
-            Row wuUsdRow = sheet.getRow(37);
-            assertNotNull(wuUsdRow, "WU USD row (index 37) should exist");
-            assertEquals("WESTERN UNION (USD)", wuUsdRow.getCell(0).getStringCellValue());
-            // WU USD value for branch 0 at col 2
-            assertEquals(500.0, wuUsdRow.getCell(2).getNumericCellValue(), 0.01);
-
-            // WU HUF at row index 38
-            Row wuHufRow = sheet.getRow(38);
-            assertNotNull(wuHufRow);
-            assertEquals("WESTERN UNION (HUF)", wuHufRow.getCell(0).getStringCellValue());
-            assertEquals(150000.0, wuHufRow.getCell(2).getNumericCellValue(), 0.01);
+            for (int r = 35; r <= 45; r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+                Cell c0 = row.getCell(0);
+                if (c0 != null && c0.getCellType() == CellType.STRING) {
+                    String v = c0.getStringCellValue();
+                    assertFalse(v.contains("WESTERN UNION") || v.equals("ÁFA")
+                            || v.equals("KEZELÉSI DÍJ") || v.equals("ELEKT. KERESKEDÉS") || v.equals("FOGLALÓK"),
+                            "WU/ÁFA/díj sor nem szerepelhet az új exportban (row " + r + "): " + v);
+                }
+            }
         }
     }
 
@@ -94,8 +99,8 @@ class StockSnapshotExcelServiceTest {
         StockSnapshotDto snapshot = buildSnapshot(3);
         byte[] bytes = service.generateFullWorkbook(snapshot);
         try (Workbook wb = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
-            Sheet summary = wb.getSheet("EXCLUSIVE CHANGE");
-            assertNotNull(summary, "EXCLUSIVE CHANGE sheet should exist");
+            Sheet summary = wb.getSheet("Összesítő");
+            assertNotNull(summary, "Összesítő sheet should exist");
 
             // Title row
             Row titleRow = summary.getRow(1);
@@ -179,11 +184,11 @@ class StockSnapshotExcelServiceTest {
         StockSnapshotDto snapshot = buildSnapshot(2);
         byte[] bytes = service.generateFullWorkbook(snapshot);
         try (Workbook wb = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
-            Sheet summary = wb.getSheet("EXCLUSIVE CHANGE");
+            Sheet summary = wb.getSheet("Összesítő");
             Row headerRow = summary.getRow(3);
-            // Region names in col 2 and col 4
-            assertEquals("REGION_0", headerRow.getCell(2).getStringCellValue());
-            assertEquals("REGION_1", headerRow.getCell(4).getStringCellValue());
+            // Region names in col 2 and col 4 — megjelenítő név (fallback: "...I körzet")
+            assertEquals("REGION_0I körzet", headerRow.getCell(2).getStringCellValue());
+            assertEquals("REGION_1I körzet", headerRow.getCell(4).getStringCellValue());
         }
     }
 
@@ -199,7 +204,7 @@ class StockSnapshotExcelServiceTest {
         try (Workbook wb = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
             // Only summary sheet
             assertEquals(1, wb.getNumberOfSheets());
-            assertEquals("EXCLUSIVE CHANGE", wb.getSheetName(0));
+            assertEquals("Összesítő", wb.getSheetName(0));
         }
     }
 
