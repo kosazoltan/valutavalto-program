@@ -61,9 +61,10 @@ public class AccessScopeService {
 
         // Codex P1 (#843): a JwtAuthenticationFilter MINDKÉT authority-t hozzáadja
         // (ROLE_<base-role> + ROLE_<aktív operatív role>). Ezért a vault-szerepkört
-        // ELSŐKÉNT vizsgáljuk: ha a felhasználó értéktárosként (ERTEKTAR/FOERTEKTAR)
-        // operál, a terület-scope AKKOR is érvényes, ha a base-role cég-szintű (pl. MANAGER).
+        // ELSŐKÉNT vizsgáljuk: ha a felhasználó RÉGIÓS értéktárosként (ERTEKTAR) operál,
+        // a terület-scope AKKOR is érvényes, ha a base-role cég-szintű (pl. MANAGER).
         // Az aktív értéktári kontextus dönt, nem a magasabb legacy base-role.
+        // (A FŐÉRTÉKTÁR nemzeti role NEM tartozik a VAULT_AUTHORITIES-ba → null scope.)
         boolean operatingAsVault = authorities.stream().anyMatch(VAULT_AUTHORITIES::contains);
         if (!operatingAsVault) {
             // Nem értéktári kontextus → cég-szintű vagy egyéb role; nincs terület-szűkítés
