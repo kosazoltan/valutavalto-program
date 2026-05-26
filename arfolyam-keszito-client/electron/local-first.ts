@@ -208,10 +208,16 @@ export async function initLocalFirst(apiUrl: string): Promise<void> {
 
   cachedToken = loadPersistedToken();
 
-  syncEngine = new RateMakerSyncEngine(db, apiUrl, () => cachedToken);
-  syncEngine.start();
-
-  log.info('[LocalFirst] Rate Maker local-first initialized');
+  // Az árfolyamkészítő vékony publikáló kliens: közvetlen REST-en publikál
+  // (/api/v1/local-rate-maker/packages/publish, ill. exchange-rate-master), NEM
+  // pull/push szinkronnal. A RateMakerSyncEngine a /rate-maker/sync/pull|push
+  // végpontokat hívná, amelyek a backenden NEM léteznek (csak /api/v1/sync/* és
+  // /api/v1/local-rate-maker/packages/publish) → folyamatos 404-loop a háttérben,
+  // miközben a renderer egyetlen lf:* draft-IPC-t sem használ (dead path).
+  // A kozponti rate-maker módjával összhangban (PR #842) a sync-motort NEM
+  // indítjuk; a DB-init megmarad a lokál cache-hez.
+  void apiUrl;
+  log.info('[LocalFirst] Rate Maker local-first initialized (sync-motor KIHAGYVA — közvetlen REST publikálás)');
 }
 
 export function shutdownLocalFirst(): void {

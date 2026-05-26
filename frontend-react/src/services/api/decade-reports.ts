@@ -59,7 +59,11 @@ export const decadeReportApi = {
     api.post<DecadeReportDto>(`/decade-reports/${id}/close`),
 
   list: (branchId: string, year: number, page = 0, size = 36) =>
+    // _preservePaged: a backend Page<DecadeReportDto>-t ad; e flag nélkül az axios
+    // interceptor content-tömbbé bontaná → a DecadeReportPage `res.data.content`
+    // undefined, a lista MINDIG üresnek látszana. Lásd client.ts unwrap (Page<T> → T[]).
     api.get<{ content: DecadeReportDto[]; totalElements: number }>('/decade-reports', {
-      params: { branchId, year, page, size }
-    }),
+      params: { branchId, year, page, size },
+      _preservePaged: true,
+    } as Record<string, unknown>),
 }

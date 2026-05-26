@@ -51,9 +51,13 @@ export interface CreateBankOrderRequest {
 
 export const bankOrdersApi = {
   list: async (status?: BankOrderStatus, page = 0, size = 50): Promise<BankOrderPage> => {
+    // _preservePaged: a backend Page<BankOrderDto>-t ad; e flag nélkül az axios
+    // interceptor content-tömbbé bontaná → a BankOrderPage `result.content` undefined,
+    // a lista MINDIG üresnek látszana. Lásd client.ts unwrap (Page<T> → T[]).
     const response = await api.get<BankOrderPage>('/bank-orders', {
       params: { status, page, size },
-    })
+      _preservePaged: true,
+    } as Record<string, unknown>)
     return response.data
   },
 
