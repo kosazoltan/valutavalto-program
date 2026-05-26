@@ -323,8 +323,8 @@ class GoogleLoginServiceTest {
 
         LoginResponseDto response = service.loginWithGoogle("ok", new MockHttpServletRequest());
 
-        // foertektar in SERVER_CANONICAL_ROLES + RATE_MAKER_CANONICAL_ROLES.
-        assertThat(response.getValidAppModes()).containsExactly("full", "rate-maker");
+        // foertektar: pénztár-ellenőrzés (penztar) + SERVER_CANONICAL_ROLES (full) + RATE_MAKER (rate-maker).
+        assertThat(response.getValidAppModes()).containsExactly("penztar", "full", "rate-maker");
         assertThat(response.getCentralModules())
                 .contains("rate-maker", "rate-publication", "national-stock", "vault-stocktake")
                 .doesNotContain("permission-matrix");
@@ -348,10 +348,10 @@ class GoogleLoginServiceTest {
 
         LoginResponseDto response = service.loginWithGoogle("ok", new MockHttpServletRequest());
 
-        // V247: teruleti_vezeto a kamera mellett a kozponti helyi munkaallomasba is belephet.
+        // teruleti_vezeto: pénztár-ellenőrzés (penztar) + kamera + kozponti helyi munkaallomas (full).
         assertThat(response.getValidAppModes())
-                .as("teruleti_vezeto -> kamera + full appMode")
-                .containsExactly("kamera", "full");
+                .as("teruleti_vezeto -> penztar + kamera + full appMode")
+                .containsExactly("penztar", "kamera", "full");
         assertThat(response.getActiveRole()).isEqualTo("teruleti_vezeto");
     }
 

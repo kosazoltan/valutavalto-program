@@ -49,8 +49,28 @@ class AppModeRoleConstantsTest {
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("teruleti_vezeto", "full")).isTrue();
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("biztonsagi_vezeto", "full")).isTrue();
         assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("teruleti_vezeto", "rate-maker")).isFalse();
+        // Pénztár-ellenőrzés: a területi vezető Google-lel a PÉNZTÁR funkcióba is beléphet.
+        // (Rendezett sorrend: a computeValidAppModes stabilan penztar→kamera→full sorrendben ad vissza.)
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of("teruleti_vezeto"), null))
-                .containsExactly("kamera", "full");
+                .containsExactly("penztar", "kamera", "full");
+    }
+
+    @Test
+    void leadersCanAccessPenztarForInspection() {
+        // FK (Kósa Zoltán 2026-05-26): a vezetők/ellenőrök/értéktáros Google-lel a PÉNZTÁR
+        // funkcióba is beléphetnek a pénztárak ellenőrzéséhez.
+        for (String role : List.of("ugyvezeto", "foertektar", "teruleti_vezeto", "belso_ellenor", "ertektar")) {
+            assertThat(AppModeRoleConstants.computeValidAppModes(List.of(role), null))
+                    .as("a(z) %s szerepkör validAppModes-ja tartalmazza a 'penztar'-t", role)
+                    .contains("penztar");
+        }
+    }
+
+    @Test
+    void nonInspectionServerRoleDoesNotGetPenztar() {
+        // Pl. a bérszámfejtő szerver-role NEM kap pénztár-hozzáférést (nem ellenőr/vezető).
+        assertThat(AppModeRoleConstants.computeValidAppModes(List.of("berszamfejto"), null))
+                .doesNotContain("penztar");
     }
 
     @Test

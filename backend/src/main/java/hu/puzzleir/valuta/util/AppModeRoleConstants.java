@@ -91,6 +91,16 @@ public final class AppModeRoleConstants {
     );
 
     /**
+     * Pénztár-ellenőrzési jogosultság (Kósa Zoltán 2026-05-26): ezek a vezető/ellenőr role-ok
+     * Google-belépéssel a PÉNZTÁR funkcióba IS beléphetnek (a pénztárak ellenőrzéséhez), tehát a
+     * "penztar" appMode is bekerül a validAppModes-ukba. A pénztáros (CASHIER) NEM kap fordítva
+     * vezetői hozzáférést (azt a WorkerService.login jelszó=pénztáros szabálya zárja).
+     */
+    public static final List<String> CASHIER_INSPECTION_ROLES = List.of(
+            "ugyvezeto", "foertektar", "teruleti_vezeto", "belso_ellenor", "ertektar"
+    );
+
+    /**
      * Egyseges `validAppModes` szamitas a canonical role-codes + worker.role legacy fallback alapjan.
      *
      * <p>Logika:
@@ -109,6 +119,10 @@ public final class AppModeRoleConstants {
         List<String> normalizedRoleCodes = normalizeRoleCodes(roleCodes);
         List<String> validAppModes = new ArrayList<>();
         if (normalizedRoleCodes.contains("penztar") || hasAny(normalizedRoleCodes, LEGACY_PENZTAR_ROLES)) {
+            addIfAbsent(validAppModes, "penztar");
+        }
+        // Vezetők/ellenőrök Google-belépéssel a PÉNZTÁR funkcióba is beléphetnek (pénztár-ellenőrzés).
+        if (hasAny(normalizedRoleCodes, CASHIER_INSPECTION_ROLES)) {
             addIfAbsent(validAppModes, "penztar");
         }
         if (normalizedRoleCodes.contains("ertektar") || hasAny(normalizedRoleCodes, LEGACY_ERTEKTAR_ROLES)) {
