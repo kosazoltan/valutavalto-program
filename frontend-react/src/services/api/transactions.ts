@@ -276,6 +276,10 @@ export interface ConversionRequest {
   toCurrencyId?: number
   toCurrencyCode?: string
   fromAmount: number
+  /** Címletezéshez lefelé módosított cél-összeg (HIBA 2026-05-26 #4/#5). */
+  toAmount?: number
+  /** Ügyfél deviza-státusza (HIBA 2026-05-26 #2). */
+  foreignStatus?: 'DOMESTIC' | 'FOREIGN'
   handlingFee?: number
   customerId?: string
   customerName?: string

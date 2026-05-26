@@ -81,8 +81,27 @@ public class TransactionConversionService {
         BigDecimal roundedHufAmount = HungarianRounding.roundToFive(hufAmount);
         BigDecimal roundingDifference = roundedHufAmount.subtract(hufAmount);
 
-        BigDecimal toAmountRaw = roundedHufAmount.divide(toRate.getBaseSellRate(), 2, RoundingMode.HALF_UP);
-        BigDecimal toAmount = toAmountRaw.setScale(2, RoundingMode.FLOOR);
+        // A forrás-fedezetből számolt MAXIMÁLIS cél-összeg (lefelé kerekítve 2 tizedesre).
+        BigDecimal maxToAmount = roundedHufAmount.divide(toRate.getBaseSellRate(), 2, RoundingMode.FLOOR);
+
+        // HIBA 2026-05-26 (#5): a pénztáros címletezéshez LEFELÉ módosíthatja a cél-összeget;
+        // a maradék forint-fedezet KÉSZPÉNZBEN visszajár. A cél-összeg SOHA nem lehet több a
+        // forrás-fedezetből számolt maximumnál (az a forrást módosítaná) — a felső határra
+        // vágjuk (clamp), így a kliens/szerver árfolyam-eltérés sem okoz hibás elutasítást.
+        BigDecimal toAmount;
+        if (request.getToAmount() != null && request.getToAmount().signum() > 0) {
+            toAmount = request.getToAmount().setScale(2, RoundingMode.FLOOR).min(maxToAmount);
+        } else {
+            toAmount = maxToAmount;
+        }
+
+        // HIBA 2026-05-26 (#4): visszajáró forint = a cél-összegre fel nem használt HUF-fedezet,
+        // magyar 5 Ft-os kerekítéssel. A bizonylaton fel kell tüntetni.
+        BigDecimal usedHuf = toAmount.multiply(toRate.getBaseSellRate()).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal returnedHufExact = roundedHufAmount.subtract(usedHuf).max(BigDecimal.ZERO);
+        BigDecimal returnedHuf = HungarianRounding.roundToFive(returnedHufExact);
+        // A visszajáró 5 Ft-os kerekítési maradéka a parent kerekítés-különbözetbe olvad.
+        roundingDifference = roundingDifference.add(returnedHuf.subtract(returnedHufExact));
 
         // AML ellenorzes
         // Legacy GAP-003: konverziónál az AML küszöb a KÉTSZERES összeg alapján dönt.
@@ -95,8 +114,17 @@ public class TransactionConversionService {
                 amlAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), toCurrency.getCode());
 
-        // Keszlet ellenorzes
+        // Keszlet ellenorzes — a kifizetett cel valuta + (ha van) a visszajaro HUF.
         helper.validateCurrencyStock(branchId, toCurrency.getId(), toAmount);
+        if (returnedHuf.signum() > 0) {
+            helper.validateCurrencyStock(branchId, helper.getHufCurrencyId(), returnedHuf);
+        }
+
+        // Ugyfel deviza-statusza (HIBA 2026-05-26 #2). Default: FOREIGN (penzvalto a leggyakoribb).
+        ForeignStatus foreignStatus = ForeignStatus.FOREIGN;
+        if (request.getForeignStatus() != null && !request.getForeignStatus().isBlank()) {
+            foreignStatus = ForeignStatus.valueOf(request.getForeignStatus());
+        }
 
         // Kezelesi dij
         BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
@@ -132,6 +160,8 @@ public class TransactionConversionService {
                 .hufAmount(roundedHufAmount)
                 .handlingFee(serverHandlingFee)
                 .roundingAmount(roundingDifference)
+                .returnedHuf(returnedHuf)
+                .foreignStatus(foreignStatus)
                 .customerId(request.getCustomerId())
                 .customerName(request.getCustomerName())
                 .customerAddress(request.getCustomerAddress())
@@ -183,6 +213,7 @@ public class TransactionConversionService {
                 .hufAmount(roundedHufAmount)
                 .handlingFee(BigDecimal.ZERO)
                 .roundingAmount(roundingDifference)
+                .foreignStatus(foreignStatus)
                 .linkedReceiptNumber(sellReceiptNumber)
                 .customerId(request.getCustomerId())
                 .customerName(request.getCustomerName())
@@ -211,14 +242,15 @@ public class TransactionConversionService {
                 .currency(toCurrency)
                 .currencyAmount(toAmount)
                 .exchangeRate(toRate.getBaseSellRate())
-                .hufAmount(roundedHufAmount)
+                .hufAmount(usedHuf)
                 .handlingFee(serverHandlingFee)
                 .roundingAmount(BigDecimal.ZERO)
+                .foreignStatus(foreignStatus)
                 .linkedReceiptNumber(buyReceiptNumber)
                 .customerId(request.getCustomerId())
                 .customerName(request.getCustomerName())
                 .notes(String.format("Konverzios eladas: %s HUF -> %s %s (par: %s)",
-                    roundedHufAmount, toAmount, toCurrency.getCode(),
+                    usedHuf, toAmount, toCurrency.getCode(),
                     buyReceiptNumber))
                 .conversionGroupId(conversionGroupId)
                 // Sourcery PR #360 follow-up: explicit financialEffective(true) — kritikus AML/NGM/
@@ -231,14 +263,18 @@ public class TransactionConversionService {
         // Kassza frissites
         helper.updateCashBalance(branchId, fromCurrency.getId(), request.getFromAmount(), true);
         helper.updateCashBalance(branchId, toCurrency.getId(), toAmount.negate(), false);
+        // Visszajaro forint kifizetese -> HUF kassza csokkenese (HIBA 2026-05-26 #4).
+        if (returnedHuf.signum() > 0) {
+            helper.updateCashBalance(branchId, helper.getHufCurrencyId(), returnedHuf.negate(), false);
+        }
 
-        // Napi statisztika
+        // Napi statisztika — a SELL forgalma a tenylegesen felhasznalt HUF (usedHuf).
         dailySessionService.updateSessionStats(TransactionType.BUY, roundedHufAmount, BigDecimal.ZERO);
-        dailySessionService.updateSessionStats(TransactionType.SELL, roundedHufAmount, serverHandlingFee);
+        dailySessionService.updateSessionStats(TransactionType.SELL, usedHuf, serverHandlingFee);
 
-        log.info("Konverzio: {} - {} {} -> {} {} (HUF koztes: {}, kerekites: {}, bizonylatok: {} + {})",
+        log.info("Konverzio: {} - {} {} -> {} {} (HUF koztes: {}, felhasznalt: {}, visszajaro: {}, kerekites: {}, bizonylatok: {} + {})",
                 conversionReceiptNumber, request.getFromAmount(), fromCurrency.getCode(),
-                toAmount, toCurrency.getCode(), roundedHufAmount, roundingDifference,
+                toAmount, toCurrency.getCode(), roundedHufAmount, usedHuf, returnedHuf, roundingDifference,
                 buyReceiptNumber, sellReceiptNumber);
 
         return saved;

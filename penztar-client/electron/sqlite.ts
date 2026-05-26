@@ -279,6 +279,8 @@ export async function initDatabase(): Promise<void> {
       { name: 'customer_actor_document_type', type: 'TEXT' },
       { name: 'customer_actor_document_number', type: 'TEXT' },
       { name: 'customer_actor_address', type: 'TEXT' },
+      // HIBA 2026-05-26 (#2): ugyfel deviza-statusza (DOMESTIC/FOREIGN) a konverzioban is.
+      { name: 'foreign_status', type: 'TEXT' },
     ];
     for (const col of conversionSnapshotColumns) {
       try {
@@ -1076,6 +1078,8 @@ export interface PendingConversionRow {
   customer_actor_document_type: string | null;
   customer_actor_document_number: string | null;
   customer_actor_address: string | null;
+  // HIBA 2026-05-26 (#2): ugyfel deviza-statusza
+  foreign_status: string | null;
   note: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
@@ -1120,6 +1124,8 @@ export interface PendingConversionInputV2 {
   customerActorDocumentType: string | null;
   customerActorDocumentNumber: string | null;
   customerActorAddress: string | null;
+  // HIBA 2026-05-26 (#2): ugyfel deviza-statusza (DOMESTIC/FOREIGN)
+  foreignStatus: string | null;
   note: string | null;
 }
 
@@ -1646,8 +1652,9 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
       customer_actor_birth_place, customer_actor_birth_date, customer_actor_mother_name,
       customer_actor_nationality, customer_actor_document_type,
       customer_actor_document_number, customer_actor_address,
+      foreign_status,
       note, local_reference_number, idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.fromCurrencyId, input.fromCurrencyCode, input.toCurrencyId, input.toCurrencyCode,
       roundFin(input.fromAmount, 8), roundFin(input.calculatedHufAmount, 2), roundFin(input.calculatedToAmount, 8), roundFin(input.conversionRate, 10),
@@ -1663,6 +1670,7 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
       trimOrNull(input.customerActorMotherName), trimOrNull(input.customerActorNationality),
       trimOrNull(input.customerActorDocumentType),
       trimOrNull(input.customerActorDocumentNumber), trimOrNull(input.customerActorAddress),
+      trimOrNull(input.foreignStatus),
       trimOrNull(input.note), localReferenceNumber, idempotencyKey,
     ],
   );

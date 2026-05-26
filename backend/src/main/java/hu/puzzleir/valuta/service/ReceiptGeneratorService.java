@@ -409,6 +409,13 @@ public class ReceiptGeneratorService {
                     .label("Kezelési díj").value(tx.getHandlingFee().toPlainString() + " Ft").build());
         }
 
+        // HIBA 2026-05-26 (#4): konverziónál a cél-összeg lefelé módosításából adódó
+        // visszajáró forintot fel kell tüntetni a bizonylaton.
+        if (tx.getReturnedHuf() != null && tx.getReturnedHuf().compareTo(BigDecimal.ZERO) > 0) {
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("Visszajáró forint").value(tx.getReturnedHuf().toPlainString() + " Ft").build());
+        }
+
         ReceiptData.ReceiptDataBuilder builder = ReceiptData.builder()
                 .receiptNumber(receiptNumber)
                 .navReceiptNumber(tx.getLinkedReceiptNumber())

@@ -1161,6 +1161,18 @@ export class SyncEngine {
       body['toCurrencyCode'] = conversion.to_currency_code;
     }
 
+    // HIBA 2026-05-26 (#4/#5): a penztaros (cimletezeshez) modositott cel-osszege.
+    // A backend felso hatarra vagja (clamp) es a maradek forintot visszajaroként konyveli.
+    if (conversion.calculated_to_amount !== null && conversion.calculated_to_amount !== undefined
+        && conversion.calculated_to_amount > 0) {
+      body['toAmount'] = conversion.calculated_to_amount;
+    }
+
+    // HIBA 2026-05-26 (#2): ugyfel deviza-statusza (DOMESTIC/FOREIGN).
+    if (conversion.foreign_status && conversion.foreign_status.trim().length > 0) {
+      body['foreignStatus'] = conversion.foreign_status;
+    }
+
     if (conversion.handling_fee !== null && conversion.handling_fee !== undefined) {
       body['handlingFee'] = conversion.handling_fee;
     }
