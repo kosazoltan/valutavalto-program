@@ -152,6 +152,9 @@ export default function StockSnapshotPage() {
     () => (snapshot?.companyTotals?.currencies ?? []).reduce((s, c) => s + num(c.stockHuf), 0),
     [snapshot],
   )
+  // Codex P1: ha nincs régió-besorolás, de a cég-összesítő tartalmaz adatot, akkor is
+  // jelenítsük meg (az Összesítő nézet a companyTotals-ra esik vissza), NE „nincs adat".
+  const companyHasCurrencies = (snapshot?.companyTotals?.currencies?.length ?? 0) > 0
 
   // A kiválasztott fül oszlopai + területi/cég összesen oszlop.
   const columns = useMemo<SnapshotColumn[]>(() => {
@@ -315,7 +318,7 @@ export default function StockSnapshotPage() {
 
       {loading ? (
         <div className="text-center text-sm text-gray-500 py-8">{t('common.loading')}</div>
-      ) : !snapshot || regions.length === 0 ? (
+      ) : !snapshot || (regions.length === 0 && !companyHasCurrencies) ? (
         <div className="text-center text-sm text-gray-500 py-8">{t('common.noData')}</div>
       ) : (
         <>

@@ -33,13 +33,27 @@ public class StockSnapshotExcelService {
             "UKRÁN HRIVNYA", "AMERIKAI DOLLÁR", "MAGYAR FORINT"
     );
 
-    private static final String[] WU_ROW_LABELS = {
-            "WESTERN UNION (USD)", "WESTERN UNION (HUF)", "ÁFA",
-            "KEZELÉSI DÍJ", "ELEKT. KERESKEDÉS", "FOGLALÓK"
-    };
-
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy.MM.dd");
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+
+    // FK-003: a körzet-lapok megjelenítendő neve (a regionName UPPERCASE-ékezetmentes; itt
+    // a spec szerinti „Szekszárdi körzet" formára képezzük). Ismeretlen → fallback.
+    private static final Map<String, String> REGION_DISPLAY = Map.ofEntries(
+            Map.entry("SZEKSZARD", "Szekszárdi körzet"),
+            Map.entry("SZEGED", "Szegedi körzet"),
+            Map.entry("KECSKEMET", "Kecskeméti körzet"),
+            Map.entry("DEBRECEN", "Debreceni körzet"),
+            Map.entry("NYIREGYHAZA", "Nyíregyházi körzet"),
+            Map.entry("BEKESCSABA", "Békéscsabai körzet"),
+            Map.entry("PECS", "Pécsi körzet"),
+            Map.entry("KAPOSVAR", "Kaposvári körzet")
+    );
+
+    private static String regionDisplay(String regionName) {
+        if (regionName == null) return "Körzet";
+        String key = regionName.trim().toUpperCase(java.util.Locale.ROOT);
+        return REGION_DISPLAY.getOrDefault(key, regionName + "I körzet");
+    }
 
     // Pre-built style holder to reuse across sheets
     private CellStyle titleStyle;
@@ -48,8 +62,6 @@ public class StockSnapshotExcelService {
     private CellStyle dataNumberStyle;
     private CellStyle totalStyle;
     private CellStyle totalNumberStyle;
-    private CellStyle wuLabelStyle;
-    private CellStyle wuNumberStyle;
     private CellStyle dateStyle;
     private CellStyle grayNumberStyle;
     private CellStyle turnoverHeaderStyle;
@@ -62,13 +74,12 @@ public class StockSnapshotExcelService {
 
             // One sheet per region
             for (RegionSnapshotDto region : snapshot.getRegions()) {
-                String sheetName = region.getRegionName() + "I KÖRZET";
-                Sheet sheet = workbook.createSheet(sheetName);
+                Sheet sheet = workbook.createSheet(regionDisplay(region.getRegionName()));
                 writeRegionSheet(sheet, region, snapshot.getSnapshotTime());
             }
 
-            // Summary sheet: EXCLUSIVE CHANGE
-            Sheet summarySheet = workbook.createSheet("EXCLUSIVE CHANGE");
+            // FK-003: 9. lap = Összesítő (teljes cég)
+            Sheet summarySheet = workbook.createSheet("Összesítő");
             writeSummarySheet(summarySheet, snapshot);
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -103,10 +114,6 @@ public class StockSnapshotExcelService {
         arial12BoldItalic.setBold(true);
         arial12BoldItalic.setItalic(true);
 
-        Font timesRoman11Italic = workbook.createFont();
-        timesRoman11Italic.setFontName("Times New Roman");
-        timesRoman11Italic.setFontHeightInPoints((short) 11);
-        timesRoman11Italic.setItalic(true);
 
         Font arial10Gray = workbook.createFont();
         arial10Gray.setFontName("Arial");
@@ -146,17 +153,6 @@ public class StockSnapshotExcelService {
         totalNumberStyle.setAlignment(HorizontalAlignment.CENTER);
         totalNumberStyle.setDataFormat(workbook.createDataFormat().getFormat("### ### ###"));
 
-        // WU label style: Times New Roman 11 italic, center
-        wuLabelStyle = workbook.createCellStyle();
-        wuLabelStyle.setFont(timesRoman11Italic);
-        wuLabelStyle.setAlignment(HorizontalAlignment.CENTER);
-
-        // WU number style: Times New Roman 11 italic, center, number format
-        wuNumberStyle = workbook.createCellStyle();
-        wuNumberStyle.setFont(timesRoman11Italic);
-        wuNumberStyle.setAlignment(HorizontalAlignment.CENTER);
-        wuNumberStyle.setDataFormat(workbook.createDataFormat().getFormat("### ### ###"));
-
         // Date style: Arial 10, center
         dateStyle = workbook.createCellStyle();
         dateStyle.setFont(arial10);
@@ -194,7 +190,7 @@ public class StockSnapshotExcelService {
         // Row 1 (index 1): Title
         Row titleRow = getOrCreateRow(sheet, 1);
         Cell titleCell = titleRow.createCell(0);
-        titleCell.setCellValue(region.getRegionName() + "I KÖRZET KÉSZLETEI ÉS FORGALMA");
+        titleCell.setCellValue(regionDisplay(region.getRegionName()).toUpperCase(java.util.Locale.forLanguageTag("hu")) + " KÉSZLETEI ÉS FORGALMA");
         titleCell.setCellStyle(titleStyle);
         sheet.addMergedRegion(new CellRangeAddress(1, 1, 0, 7));
 
@@ -301,8 +297,8 @@ public class StockSnapshotExcelService {
         sheet.addMergedRegion(new CellRangeAddress(34, 34, totCol, totCol + 1));
         setCellNumber(totalRow, totCol, regionTotalHuf, totalNumberStyle);
 
-        // Rows 37-42 (index 37-42): WU data
-        writeWuRows(sheet, branches, totals, branchCount, totCol);
+        // FK-003: a WESTERN UNION / ÁFA / KEZELÉSI DÍJ / ELEKT. KERESKEDÉS / FOGLALÓK sorok
+        // az új exportban NEM szerepelnek (Kasza Helga spec) → a writeWuRows hívás eltávolítva.
 
         // Row 46 (index 46): NAPI FORGALOM header
         Row turnoverHeaderRow = getOrCreateRow(sheet, 46);
@@ -409,7 +405,7 @@ public class StockSnapshotExcelService {
         for (int i = 0; i < regionCount; i++) {
             int col = 2 + i * 2;
             Cell regionNameCell = headerRow1.createCell(col);
-            regionNameCell.setCellValue(regions.get(i).getRegionName());
+            regionNameCell.setCellValue(regionDisplay(regions.get(i).getRegionName()));
             regionNameCell.setCellStyle(headerStyle);
             sheet.addMergedRegion(new CellRangeAddress(3, 3, col, col + 1));
 
@@ -479,8 +475,7 @@ public class StockSnapshotExcelService {
         sheet.addMergedRegion(new CellRangeAddress(34, 34, totCol, totCol + 1));
         setCellNumber(totalRow, totCol, companyTotalHuf, totalNumberStyle);
 
-        // WU rows
-        writeWuRowsSummary(sheet, regions, companyTotals, regionCount, totCol);
+        // FK-003: WU / ÁFA / KEZELÉSI DÍJ / FOGLALÓK sorok NEM szerepelnek az új exportban.
 
         // Turnover section
         Row turnoverHeaderRow = getOrCreateRow(sheet, 46);
@@ -559,67 +554,6 @@ public class StockSnapshotExcelService {
         setCellNumber(turnoverTotalRow, totCol + 1, companySellTotal, totalNumberStyle);
 
         sheet.createFreezePane(2, 7);
-    }
-
-    private void writeWuRows(Sheet sheet, List<BranchSnapshotDto> branches,
-                              BranchStockTotalsDto totals, int branchCount, int totCol) {
-        for (int wuIdx = 0; wuIdx < WU_ROW_LABELS.length; wuIdx++) {
-            int rowIdx = 37 + wuIdx;
-            Row row = getOrCreateRow(sheet, rowIdx);
-
-            Cell labelCell = row.createCell(0);
-            labelCell.setCellValue(WU_ROW_LABELS[wuIdx]);
-            labelCell.setCellStyle(wuLabelStyle);
-            sheet.addMergedRegion(new CellRangeAddress(rowIdx, rowIdx, 0, 1));
-
-            for (int bi = 0; bi < branchCount; bi++) {
-                int col = 2 + bi * 2;
-                long value = getWuValue(branches.get(bi).getWuBalance(), wuIdx);
-                sheet.addMergedRegion(new CellRangeAddress(rowIdx, rowIdx, col, col + 1));
-                setCellNumber(row, col, value, wuNumberStyle);
-            }
-
-            long totValue = getWuValue(totals.getWuBalance(), wuIdx);
-            sheet.addMergedRegion(new CellRangeAddress(rowIdx, rowIdx, totCol, totCol + 1));
-            setCellNumber(row, totCol, totValue, wuNumberStyle);
-        }
-    }
-
-    private void writeWuRowsSummary(Sheet sheet, List<RegionSnapshotDto> regions,
-                                     BranchStockTotalsDto companyTotals, int regionCount, int totCol) {
-        for (int wuIdx = 0; wuIdx < WU_ROW_LABELS.length; wuIdx++) {
-            int rowIdx = 37 + wuIdx;
-            Row row = getOrCreateRow(sheet, rowIdx);
-
-            Cell labelCell = row.createCell(0);
-            labelCell.setCellValue(WU_ROW_LABELS[wuIdx]);
-            labelCell.setCellStyle(wuLabelStyle);
-            sheet.addMergedRegion(new CellRangeAddress(rowIdx, rowIdx, 0, 1));
-
-            for (int ri = 0; ri < regionCount; ri++) {
-                int col = 2 + ri * 2;
-                long value = getWuValue(regions.get(ri).getTotals().getWuBalance(), wuIdx);
-                sheet.addMergedRegion(new CellRangeAddress(rowIdx, rowIdx, col, col + 1));
-                setCellNumber(row, col, value, wuNumberStyle);
-            }
-
-            long totValue = getWuValue(companyTotals.getWuBalance(), wuIdx);
-            sheet.addMergedRegion(new CellRangeAddress(rowIdx, rowIdx, totCol, totCol + 1));
-            setCellNumber(row, totCol, totValue, wuNumberStyle);
-        }
-    }
-
-    private long getWuValue(WuBalanceDetailDto wu, int index) {
-        if (wu == null) return 0;
-        return switch (index) {
-            case 0 -> wu.getWuUsd();
-            case 1 -> wu.getWuHuf();
-            case 2 -> wu.getVat();
-            case 3 -> wu.getHandlingFee();
-            case 4 -> wu.getECommerce();
-            case 5 -> 0; // Foglalók — computed separately from reservations
-            default -> 0;
-        };
     }
 
     private void setColumnWidths(Sheet sheet, int totalCols) {
