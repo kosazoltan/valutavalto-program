@@ -139,6 +139,8 @@ export default function StockSnapshotPage() {
       // Spec fájlnév: Keszlet_pillanatkep_YYYYMMDD_HHMMSS.xlsx. A timestampet dátum-komponensekből
       // építjük — NEM regex-szel, mert a `[...]` mintát a Tailwind arbitrary-property class-nak
       // hinné és érvénytelen CSS-t generálna (lightningcss build-törés).
+      // SZÁNDÉKOSAN HELYI idő (NEM UTC): a magyar főértéktár a képernyőn is a helyi „Snapshot idő"-t
+      // látja, így a fájlnév időbélyege ezzel konzisztens (Sourcery bug_risk #855 — dokumentált döntés).
       const now = new Date()
       const pad = (n: number) => String(n).padStart(2, '0')
       const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_`
