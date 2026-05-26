@@ -32,27 +32,34 @@ public class SetupGoogleIdentificationService {
     private final BranchRepository branchRepository;
     private final WorkerRepository workerRepository;
     private final WorkerRoleService workerRoleService;
+    private final AdminBootstrapService adminBootstrapService;
 
     @Transactional
     public SetupGoogleIdentifyResponseDto identify(SetupGoogleIdentifyRequestDto request) {
-        // FIX 2026-05-26 (Bali/Szeged értéktár "HTTP 0" / Google-login regresszió):
-        // A korábbi PP-13 "bootstrap-completed" blanket-guard MINDEN setup-identify hívást
-        // elutasított, ha a cég bootstrap-ja már lezárult. Ez megtörte MINDEN ÚJ kliens-telepítés
-        // Google-belépését (az értéktáros/vezető CSAK Google-lel léphet be) — pedig a setup-identify
-        // pontosan a wizard normál működése minden új gépen, NEM csak az első bootstrap-nál.
+        // FIX 2026-05-26 (Bali/Szeged értéktár Google-login regresszió + Codex P1 security):
+        // A korábbi PP-13 "bootstrap-completed" BLANKET-guard MINDEN setup-identify hívást elutasított
+        // bootstrap után — megtörte minden ÚJ kliens-telepítés Google-belépését (az értéktáros/vezető
+        // CSAK Google-lel léphet be). DE a publikus (permitAll) endpointon a bootstrap utáni ÁLLAPOT-
+        // MUTÁCIÓ (Google-subject kötés / google_login_enable) valós kockázat (Codex P1).
         //
-        // A tényleges (és elégséges) védelem a WHITELIST-en van, NEM a bootstrap-állapoton:
-        //   - findGoogleLoginCandidatesByCompanyIdAndEmail: CSAK `google_login_enabled = true`
-        //     ÉS pontos email-egyezésű AKTÍV dolgozót talál (admin-vezérelt whitelist),
-        //   - bindSubjectForUniqueWorker: új subject-et CSAK akkor köt, ha a workernek még nincs
-        //     (no-overwrite), és tiltja a más workerhez tartozó subject újrakötését (no-collision).
-        // Ugyanezt a mintát követi a normál GoogleLoginService is (bind-sub-on-first-login).
-        // A blanket-guard tehát redundáns volt a whitelisttel, de funkciótörő → eltávolítva.
+        // MEGOLDÁS — bootstrap után a setup-identify READ-ONLY:
+        //   - az AZONOSÍTÁS (worker lookup a whitelistelt email alapján) engedett → a wizard működik,
+        //   - de SEMMILYEN mutáció (subject-kötés, google-enable) NEM történik a publikus endpointon;
+        //     azt a normál, AUTENTIKÁLT GoogleLoginService első belépése végzi (bind-sub-on-first-login),
+        //     a maga subject-match / no-collision védelmével.
+        // Bootstrap ELŐTT (első wizard) a kötés a szokásos módon megtörténik.
+        boolean bootstrapCompleted = adminBootstrapService.isBootstrapAlreadyCompleted();
+
         GoogleIdTokenService.VerifiedGoogleIdentity identity = verifyIdentity(request.getIdToken());
         Company company = resolveCompany(request.getCompanyCode());
         String canonicalEmail = identity.email();
         String requestedAppMode = normalizeBlankToNull(request.getAppMode());
-        boolean bindGoogleSubject = Boolean.TRUE.equals(request.getBindGoogleSubject());
+        // Bootstrap után a publikus endpoint READ-ONLY → a kötést figyelmen kívül hagyjuk.
+        boolean bindGoogleSubject = Boolean.TRUE.equals(request.getBindGoogleSubject()) && !bootstrapCompleted;
+        if (Boolean.TRUE.equals(request.getBindGoogleSubject()) && bootstrapCompleted) {
+            log.info("SETUP_GOOGLE_BIND_DEFERRED_POST_BOOTSTRAP — a subject-kötés az autentikált "
+                    + "GoogleLoginService első belépésén történik (publikus setup-identify read-only).");
+        }
 
         List<Worker> workerMatches = workerRepository
                 .findGoogleLoginCandidatesByCompanyIdAndEmail(company.getId(), canonicalEmail)
