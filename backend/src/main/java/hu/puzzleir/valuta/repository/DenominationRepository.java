@@ -40,6 +40,26 @@ public interface DenominationRepository extends JpaRepository<Denomination, Long
     );
 
     /**
+     * Összes címlet egy fiókhoz és valutához — company-scope-pal (multi-tenant
+     * defense-in-depth). A controller @PreAuthorize + a branch.company FK már izolál,
+     * de a kanonikus elv szerint a tenant-szűrés a repository-rétegen is jelen van,
+     * hogy egy más cégbe tartozó branchId/currencyId ne adjon vissza adatot.
+     */
+    @Query("SELECT d FROM Denomination d " +
+           "LEFT JOIN FETCH d.branch " +
+           "LEFT JOIN FETCH d.currency " +
+           "WHERE d.branch.id = :branchId " +
+           "AND d.currency.id = :currencyId " +
+           "AND d.company.id = :companyId " +
+           "AND d.active = true " +
+           "ORDER BY d.faceValue DESC")
+    List<Denomination> findByBranchAndCurrencyAndCompanyId(
+        @Param("branchId") UUID branchId,
+        @Param("currencyId") Long currencyId,
+        @Param("companyId") UUID companyId
+    );
+
+    /**
      * Összes címlet egy fiókhoz
      */
     @Query("SELECT d FROM Denomination d " +

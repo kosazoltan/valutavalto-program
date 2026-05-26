@@ -2,7 +2,7 @@
 
 ## 📋 Áttekintés
 
-Spring Boot 3.2.5 + Java 21 alapú REST API a valutaváltó rendszerhez.
+Spring Boot 4.0.6 + Java 21 alapú REST API a valutaváltó rendszerhez.
 
 ### Jelenlegi Implementáció: Branch (Értéktár) Modul
 

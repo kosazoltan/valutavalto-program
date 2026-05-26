@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.entity.Denomination;
 import hu.puzzleir.valuta.entity.DenominationType;
 import hu.puzzleir.valuta.entity.OptimizationStrategy;
 import hu.puzzleir.valuta.repository.DenominationRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -73,11 +74,15 @@ public class DenominationOptimizationService {
             return new LinkedHashMap<>();
         }
 
-        // TODO Sprint A P0.3 (companyId audit): a findByBranchAndCurrency lekérdezés
-        // jelenleg NEM szűr company-ra (defense-in-depth hiányzik). A controller-szintű
-        // @PreAuthorize + branch.company FK gondoskodik a tenant-elszigetelésről, de a
-        // companyId formalis multi-tenant audit során ide is bekerül a szűrés.
-        List<Denomination> available = denominationRepository.findByBranchAndCurrency(branchId, currencyId);
+        // Multi-tenant defense-in-depth: ha van bejelentkezett kontextus (production
+        // request), a company-scope-os query fut → más cégbe tartozó branch/currency
+        // nem ad vissza adatot. Ha nincs SecurityContext (pl. unit teszt vagy nem-request
+        // szál), getCurrentCompanyIdOrNull() null-t ad → a sima query fut (változatlan
+        // viselkedés). A controller @PreAuthorize + branch.company FK marad az elsődleges kapu.
+        UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
+        List<Denomination> available = (companyId != null)
+            ? denominationRepository.findByBranchAndCurrencyAndCompanyId(branchId, currencyId, companyId)
+            : denominationRepository.findByBranchAndCurrency(branchId, currencyId);
 
         return switch (strategy) {
             case GREEDY, MIN_BANKNOTES -> greedy(available, amount);
