@@ -50,8 +50,12 @@ export interface ErrorSummary {
 
 export const diagnosticsApi = {
   listErrors: async (page = 0, size = 50): Promise<ErrorLogPage> => {
+    // _preservePaged: a backend Page<ClientErrorLog>-ot ad; e flag nélkül az axios
+    // interceptor content-tömbbé bontaná → az ErrorMonitorPage .content/.totalPages
+    // undefined lenne (törött lapozás). Lásd client.ts unwrap (Page<T> → T[]).
     const response = await api.get<ErrorLogPage>('/diagnostics/errors', {
       params: { page, size },
+      _preservePaged: true,
     })
     return response.data
   },
