@@ -26,6 +26,13 @@ describe('isFormula', () => {
     expect(isFormula('')).toBe(false)
     expect(isFormula('   ')).toBe(false)
   })
+  it('vezető-tizedes (,97 / .97) → NEM képlet, hanem érték (Codex P2 #863)', () => {
+    expect(isFormula(',97')).toBe(false)
+    expect(isFormula('.97')).toBe(false)
+    expect(isFormula('-,5')).toBe(false)
+    expect(parseNumber(',97')).toBe(0.97)
+    expect(parseNumber('.5')).toBe(0.5)
+  })
   it('oszlop-ref / kereszt-ref / művelet → képlet', () => {
     expect(isFormula('C*0,97')).toBe(true)
     expect(isFormula('!FEUR')).toBe(true)

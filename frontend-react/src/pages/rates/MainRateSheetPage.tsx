@@ -5,6 +5,7 @@ import { nextEditableCell, EDITABLE_ORDER, type EditableCol, type NavKey } from 
 import {
   isFormula,
   evaluateFormula,
+  FORMULA_STORAGE_KEY,
   type ColValues,
   type FormulaContext,
 } from './mainSheetFormula'
@@ -155,7 +156,6 @@ const COL_NAMES: Record<FormulaColumn, string> = {
 
 /** Képlet-kulcs = `${rowIdx}.${col}`. Csak felhasználói képletek tárolódnak (a legacy képlet-string). */
 type FormulaMap = Record<string, string>
-const FORMULA_STORAGE_KEY = 'arfolyamkeszito.mainSheet.formulas.v1'
 
 function loadFormulasFromStorage(): FormulaMap {
   try {
@@ -295,6 +295,7 @@ export default function MainRateSheetPage() {
     const maxIter = formulaKeys.length + 2
     let working = rows
     let changedOverall = false
+    let converged = false
     for (let iter = 0; iter < maxIter; iter++) {
       const snapshot = working.map(rowColValues)
       const byCurrency = new Map<string, ColValues>()
@@ -316,7 +317,14 @@ export default function MainRateSheetPage() {
       })
       working = nextWorking
       if (changedThisPass) changedOverall = true
-      else break
+      else { converged = true; break }
+    }
+    // Copilot/Codex #863: ha NEM konvergált a maxIter alatt (körhivatkozás-gyanú, pl. `A` cella
+    // képlete `A+1`), NEM commitoljuk a tetszőleges nem-konvergált részeredményt (az korrumpálná
+    // a megjelenített/publikált rátát). A korábbi (stabil) értékek maradnak; csak figyelmeztetünk.
+    if (!converged) {
+      logger.warn('MainRateSheetPage', 'Képlet-újraszámítás nem konvergált (körhivatkozás-gyanú) — a részeredményt elvetjük, a korábbi értékek maradnak')
+      return
     }
     if (changedOverall) {
       recomputeGuardRef.current = true
@@ -523,17 +531,25 @@ export default function MainRateSheetPage() {
   // (state update aszinkron), és VISSZAADJA a next array-t azonnal.
   // Ha nincs aktív cella vagy no-op → a current rows-t adja vissza.
   // A caller (saveLocally, dispatchToServer) ezzel azonnal tud serializálni.
-  const flushActiveCell = useCallback((): MainRateRow[] => {
-    // Csak ténylegesen szerkesztett (editing) cellát flush-olunk; a pusztán kijelölt
-    // cella nem hordoz beíratlan értéket (a readOnly miatt), így nincs mit commitolni.
-    // Copilot #762: nem-szerkesztés esetén is nullázzuk az activeCell-t (highlight),
-    // hogy a flush ("kész, kijelölés vége") szemantika konzisztens legyen.
+  // Visszaadja a SYNC commit utáni rows-t ÉS a képlet-snapshotot. A `formulas` state-update
+  // aszinkron (setFormulas), ezért a saveLocally a closure-beli stale `formulas`-t mentené —
+  // ezért a frissen beírt képlet-stringet itt szinkronban is kiszámoljuk és visszaadjuk
+  // (Copilot #863: különben a képlet elveszhet mentés-szerkesztés-közben edge-case-ben).
+  const flushActiveCell = useCallback((): { rows: MainRateRow[]; formulas: FormulaMap } => {
     if (!activeCell || !canEdit || !editing) {
       if (activeCell) {
         setActiveCell(null)
         setEditBuffer('')
       }
-      return rows
+      return { rows, formulas }
+    }
+    const trimmed = editBuffer.trim()
+    const key = `${activeCell.rowIdx}.${String(activeCell.col)}`
+    const isFormulaCol = (FORMULA_COLUMNS as readonly string[]).includes(activeCell.col as string)
+    let nextFormulas = formulas
+    if (isFormulaCol) {
+      if (isFormula(trimmed)) nextFormulas = { ...formulas, [key]: trimmed }
+      else if (formulas[key]) { nextFormulas = { ...formulas }; delete nextFormulas[key] }
     }
     const next = computeCellCommit(rows, activeCell.rowIdx, activeCell.col, editBuffer)
     setActiveCell(null)
@@ -542,23 +558,22 @@ export default function MainRateSheetPage() {
     if (next) {
       setRows(next)
       setDirty(true)
-      return next  // SYNC return — caller serializes the just-committed value
+      return { rows: next, formulas: nextFormulas } // SYNC — caller a frissen committed értéket + képletet serializálja
     }
-    return rows
-  }, [activeCell, canEdit, editing, rows, computeCellCommit, editBuffer])
+    return { rows, formulas: nextFormulas }
+  }, [activeCell, canEdit, editing, rows, formulas, computeCellCommit, editBuffer])
 
   // Codex P2 #581 iter-6 fix: saveLocally visszaadja boolean-t (true=success, false=fail).
   // Caller (CSOPORTOK navigate) csak success esetén navigáljon, hogy pending edit ne vesszen el
   // low-storage / private-browser környezetben.
   const saveLocally = useCallback((): boolean => {
-    const rowsToSave = flushActiveCell()
+    const { rows: rowsToSave, formulas: formulasToSave } = flushActiveCell()
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(rowsToSave))
-      // v2.5.61: a képletek is perzisztálódnak külön kulccsal, hogy a következő
-      // mount-kor a focusCell ugyanazt a képlet-kifejezést tudja megmutatni.
-      // Copilot P2 #697 #2: `formulas` a deps list-ben (lent) — különben a closure
-      // stale {} snapshot-ot mentene, és a frissen rögzített képletek elvesznének.
-      localStorage.setItem(FORMULA_STORAGE_KEY, JSON.stringify(formulas))
+      // A képletek külön kulccsal perzisztálódnak, hogy a következő mount-kor a focusCell
+      // ugyanazt a képlet-kifejezést tudja megmutatni. A flushActiveCell SYNC visszaadta a
+      // frissen committed képlet-snapshotot (a stale closure helyett) — Copilot #863.
+      localStorage.setItem(FORMULA_STORAGE_KEY, JSON.stringify(formulasToSave))
       lastSavedAt.current = new Date().toISOString()
       setDirty(false)
       toast.success('Mentve', 'Főlap helyileg mentve (localStorage)')
@@ -568,7 +583,7 @@ export default function MainRateSheetPage() {
       toast.error('Hiba', 'Helyi mentés sikertelen (privát böngészés / quota?)')
       return false
     }
-  }, [flushActiveCell, formulas])
+  }, [flushActiveCell])
 
   // Phase 2 wiring (Kosa Zoltan 2026-05-18): a komponens MOUNT-jakor letoltjuk a
   // legujabb publikalt arfolyamokat a szerverrol (Aktiv ExchangeRateMaster
@@ -736,7 +751,7 @@ export default function MainRateSheetPage() {
     // Phase 2 (Kosa Zoltan 2026-05-18 directive): a thin client a szerveren levo
     // ExchangeRateMaster aktiv arfolyamokhoz kepest CSAK A MODOSITOTT valutakat
     // kuldi (diff-alapu). Ezzel elkeruljuk a "ujra-publish all" anti-pattern-t.
-    const rowsToDispatch = flushActiveCell()
+    const { rows: rowsToDispatch } = flushActiveCell()
     setPublishing(true)
 
     // 1. Mentes localStorage cache-be - kulon try-block (Sourcery PR #687)

@@ -13,6 +13,14 @@
  * iteratív újraszámításé (extractDependencies adja hozzá a függőség-gráfot).
  */
 
+/**
+ * localStorage kulcs a Főlap-képletekhez. **v2** (2026-05-26): a szintaxis Excel-szerű
+ * `=A1` (HyperFormula) → legacy `C*0,97`/`!FEUR`-ra váltott, ami inkompatibilis. Az új kulcs
+ * eldobja a régi (parse-olhatatlan) `=A1` képleteket upgrade-kor — különben azok csendben
+ * stale numerikus értékeket hagynának (Codex P1 / Copilot #863).
+ */
+export const FORMULA_STORAGE_KEY = 'arfolyamkeszito.mainSheet.formulas.v2'
+
 /** A képletben hivatkozható érték-oszlopok (D=ISO-címke, G/H=kereszt-auto, I=nagybani — kizárva). */
 export const FORMULA_COL_LETTERS = ['A', 'B', 'C', 'E', 'F'] as const
 export type ColLetter = typeof FORMULA_COL_LETTERS[number]
@@ -34,7 +42,8 @@ export interface FormulaRef {
 
 export type EvalResult = { value: number } | { error: string }
 
-const NUMBER_RE = /^-?\d+(?:[.,]\d+)?$/
+// Tiszta szám: opcionális előjel + (egész[.tizedes] VAGY vezető-tizedes `,97`/`.97`).
+const NUMBER_RE = /^-?(?:\d+(?:[.,]\d+)?|[.,]\d+)$/
 
 function isColLetter(ch: string): ch is ColLetter {
   return (FORMULA_COL_LETTERS as readonly string[]).includes(ch)
