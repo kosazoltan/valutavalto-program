@@ -361,9 +361,19 @@ export default function SetupWizard() {
         body,
         timeoutMs: 15000,
       })
-      const parsed = result.body ? JSON.parse(result.body) as SetupGoogleIdentifyResponse & { message?: string } : null
+      const parsed = result.body ? JSON.parse(result.body) as SetupGoogleIdentifyResponse & { message?: string; error?: string } : null
       if (!result.ok || !parsed) {
-        throw new Error(parsed?.message || `HTTP ${result.status}`)
+        const reason = parsed?.message || parsed?.error
+        // status 0 = az api-proxy hálózati szintű hibát adott vissza (nincs HTTP válasz).
+        // A nem-informatikus kollégának értelmezhető, actionable üzenet kell — NEM "HTTP 0".
+        if (result.status === 0) {
+          throw new Error(
+            'Nem sikerült csatlakozni a szerverhez (hálózati hiba). Gyakori ok: a vírusirtó '
+            + '(pl. ESET) blokkolja a biztonságos kapcsolatot, vagy nincs internet. '
+            + (reason ? `Részletek: ${reason}` : ''),
+          )
+        }
+        throw new Error(reason || `HTTP ${result.status}`)
       }
       return parsed
     }
