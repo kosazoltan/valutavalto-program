@@ -16,26 +16,34 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * FK-005/A3 — terület (region_code) alapú adat-scope az értéktárosoknak.
+ * FK-005/A3 — terület (region_code) alapú adat-scope a (régiós) értéktárosoknak.
  *
- * <p>Az értéktáros (ERTEKTAR / FOERTEKTAR) KIZÁRÓLAG a saját {@code region_code}-jához
- * tartozó pénztárakat láthatja az összesített nézetekben (Dashboard összesített készlet,
- * TOP-irodák, Pénztári készletek). A cég-szintű szerepkörök (MANAGER / ADMIN / UGYVEZETO)
- * a teljes céget látják — rájuk NINCS terület-szűkítés (nulla regresszió).
+ * <p>A régiós értéktáros (ERTEKTAR) KIZÁRÓLAG a saját {@code region_code}-jához tartozó
+ * pénztárakat láthatja az összesített nézetekben (Dashboard összesített készlet, TOP-irodák,
+ * Pénztári/Országos készlet). A cég/országos-szintű szerepkörök (MANAGER / ADMIN / UGYVEZETO /
+ * FŐÉRTÉKTÁR) a TELJES céget látják — rájuk NINCS terület-szűkítés.
+ *
+ * <p>HIBA 2026-05-26 (FK-005 regresszió, Kasza Helga – Főértéktár): a {@code FOERTEKTAR} a
+ * NEMZETI/országos értéktár-vezető szerepkör (a menük „Országos készlet" / „Országos dashboard"),
+ * ezért NEM régió-kötött. Korábban (Codex P1 #843) tévesen a régiós ERTEKTAR-ral azonos
+ * scope-ot kapott → ha a belépési fiókjának nincs {@code region_code}-ja, a scope a saját
+ * (üres) fiókjára szűkült → „Nincs adat". A főértéktárosnak az egész országot látnia kell.
  *
  * <p>Kósa Zoltán user-direktíva (2026-05-25, „Értéktári jogosultság, átadás-átvételek"):
- * „Amikor értéktárosként bent vagyok, kizárólag a saját területemhez tartozó pénztárakat
- * szabad látnom a listákban és a menükben."
+ * „Amikor (régiós) értéktárosként bent vagyok, kizárólag a saját területemhez tartozó
+ * pénztárakat szabad látnom a listákban és a menükben."
  */
 @Service
 @RequiredArgsConstructor
 public class AccessScopeService {
 
-    /** Értéktári (terület-kötött) szerepkörök — a saját region_code-ra szűkítve.
-     *  Ha a felhasználó (aktívan) értéktárosként operál, a terület-scope érvényes —
-     *  akkor is, ha a base-role cég-szintű (MANAGER/ADMIN/UGYVEZETO). Lásd Codex P1 #843. */
+    /** Terület-kötött (régiós) értéktári szerepkör — a saját region_code-ra szűkítve.
+     *  Ha a felhasználó (aktívan) régiós értéktárosként operál, a terület-scope érvényes —
+     *  akkor is, ha a base-role cég-szintű (MANAGER/ADMIN/UGYVEZETO). Lásd Codex P1 #843.
+     *  HIBA 2026-05-26: a FŐÉRTÉKTÁR (ROLE_FOERTEKTAR) NEMZETI szerepkör → NEM tartozik ide,
+     *  az egész országot látja (mint a cég-szintű role-ok). */
     private static final Set<String> VAULT_AUTHORITIES =
-            Set.of("ROLE_FOERTEKTAR", "ROLE_ERTEKTAR");
+            Set.of("ROLE_ERTEKTAR");
 
     private final BranchRepository branchRepository;
 
@@ -53,9 +61,10 @@ public class AccessScopeService {
 
         // Codex P1 (#843): a JwtAuthenticationFilter MINDKÉT authority-t hozzáadja
         // (ROLE_<base-role> + ROLE_<aktív operatív role>). Ezért a vault-szerepkört
-        // ELSŐKÉNT vizsgáljuk: ha a felhasználó értéktárosként (ERTEKTAR/FOERTEKTAR)
-        // operál, a terület-scope AKKOR is érvényes, ha a base-role cég-szintű (pl. MANAGER).
+        // ELSŐKÉNT vizsgáljuk: ha a felhasználó RÉGIÓS értéktárosként (ERTEKTAR) operál,
+        // a terület-scope AKKOR is érvényes, ha a base-role cég-szintű (pl. MANAGER).
         // Az aktív értéktári kontextus dönt, nem a magasabb legacy base-role.
+        // (A FŐÉRTÉKTÁR nemzeti role NEM tartozik a VAULT_AUTHORITIES-ba → null scope.)
         boolean operatingAsVault = authorities.stream().anyMatch(VAULT_AUTHORITIES::contains);
         if (!operatingAsVault) {
             // Nem értéktári kontextus → cég-szintű vagy egyéb role; nincs terület-szűkítés

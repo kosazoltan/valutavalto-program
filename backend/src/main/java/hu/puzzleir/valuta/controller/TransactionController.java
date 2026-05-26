@@ -212,8 +212,11 @@ public class TransactionController {
      *
      * GET /api/v1/transactions/daily-turnover
      */
+    // FK-005/A1 (HIBA 2026-05-26): az értéktári Dashboard „Napi forgalom" csempéje ezt hívja —
+    // az értéktár-vezetői role-ok (UGYVEZETO/FOERTEKTAR/ERTEKTAR) eddig 403-at kaptak → „Nincs
+    // jogosultságod" toast. Összhangban a /cash-balances/company + /inventory/stock role-szettel.
     @GetMapping("/daily-turnover")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'UGYVEZETO', 'FOERTEKTAR', 'ERTEKTAR')")
     public ResponseEntity<TransactionService.DailyTurnoverSummary> getDailyTurnover(
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date) {
         TransactionService.DailyTurnoverSummary summary = (date != null)

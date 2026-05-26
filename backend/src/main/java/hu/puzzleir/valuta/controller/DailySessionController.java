@@ -105,8 +105,10 @@ public class DailySessionController {
      *
      * GET /api/v1/daily-sessions/history?startDate=...&endDate=...
      */
+    // FK-005/A1 (HIBA 2026-05-26): az értéktári Dashboard „Zárási állapot" csempéje ezt hívja —
+    // az értéktár-vezetői role-ok (UGYVEZETO/FOERTEKTAR/ERTEKTAR) is láthatják a zárás-állapotot.
     @GetMapping("/history")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'UGYVEZETO', 'FOERTEKTAR', 'ERTEKTAR')")
     public ResponseEntity<List<DailySessionDto>> getSessionHistory(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
