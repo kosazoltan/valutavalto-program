@@ -40,6 +40,24 @@ describe('preferredRoleForAppMode', () => {
     expect(preferredRoleForAppMode([], 'ertektar', null)).toBeNull()
     expect(preferredRoleForAppMode([], 'ertektar', '   ')).toBeNull()
   })
+
+  // Codex P1 #860: lokál módnál a lista-sorrend miatt NE kerüljön be magasabb jogú
+  // szerver-role, ha van a módra használható lokál role (least-privilege).
+  it('lokál módnál a lokál role-t preferálja a szerver-role előtt (over-grant védelem)', () => {
+    // foertektar (szerver) ELŐL a listában, de penztar módhoz az ertektar (lokál) a helyes
+    expect(preferredRoleForAppMode(['foertektar', 'ertektar'], 'penztar', null)).toBe('ertektar')
+    // sorrendtől függetlenül ugyanaz az eredmény (determinisztikus)
+    expect(preferredRoleForAppMode(['ertektar', 'foertektar'], 'penztar', null)).toBe('ertektar')
+  })
+
+  it('lokál módnál ha NINCS lokál role, az inspection (szerver) role marad a fallback', () => {
+    // pl. területi vezető penztár-ellenőrzéshez: csak szerver-role-ja van → azt kapja
+    expect(preferredRoleForAppMode(['foertektar'], 'penztar', null)).toBe('foertektar')
+  })
+
+  it('full (szerver) módnál NEM szűkít lokál role-ra (a 2. lépés csak lokál módra fut)', () => {
+    expect(preferredRoleForAppMode(['foertektar'], 'full', null)).toBe('foertektar')
+  })
 })
 
 describe('isRoleSelectableForAppMode', () => {
