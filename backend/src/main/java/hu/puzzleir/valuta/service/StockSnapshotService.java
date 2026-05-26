@@ -26,12 +26,13 @@ public class StockSnapshotService {
     private final TransactionRepository transactionRepository;
     private final CompanyRepository companyRepository;
 
+    // FK-003/004: a 26 deviza BETŰRENDBEN, a HUF (forint) MINDIG az UTOLSÓ sorban (Kasza Helga spec).
     public static final List<String> CURRENCY_CODES = List.of(
             "AUD", "BAM", "BGN", "BRL", "CAD", "CHF",
             "CNY", "CZK", "DKK", "EUR", "GBP", "HRK",
-            "HUF", "ILS", "JPY", "MXN", "NOK", "NZD",
-            "PLN", "RON", "RSD", "RUB", "SEK", "THB",
-            "TRY", "UAH", "USD"
+            "ILS", "JPY", "MXN", "NOK", "NZD", "PLN",
+            "RON", "RSD", "RUB", "SEK", "THB", "TRY",
+            "UAH", "USD", "HUF"
     );
 
     public static final Map<String, String> REGION_NAMES = new LinkedHashMap<>() {{

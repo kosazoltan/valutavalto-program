@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { Camera, RefreshCw, AlertTriangle, Download } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../services/api/index'
@@ -6,31 +6,35 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 
 /**
- * StockSnapshotDto shape (backend dto/stocksnapshot/*):
- *   { snapshotTime, companyId, companyName,
- *     regions: [RegionSnapshotDto],
- *     companyTotals: BranchStockTotalsDto }
+ * FK-003/004 — Készlet pillanatkép (főértéktári élő készlet + napi forgalom).
  *
- * RegionSnapshotDto: { regionCode, regionName, branches: [BranchSnapshotDto], totals }
- * BranchSnapshotDto: { branchId, branchName, branchCode, lastUpdated,
- *                      currencies: [CurrencyStockDetailDto],
- *                      wuBalance, reservations }
- * BranchStockTotalsDto: { currencies, wuBalance, reservations }
- * CurrencyStockDetailDto: { currencyCode, amount, stockHuf, ... }
- *
- * Fix #148 re-verify: a korabbi feltetelezes (totals.totalValueHuf) rossz volt.
- * A totals valojaban currencies LIST-et tartalmaz, az aggregalt HUF érték
- * a currencies[].stockHuf osszege.
+ * Backend: GET /stock-snapshot (StockSnapshotDto). Per-régió → per-pénztár → per-valuta
+ * készlet (stock/stockHuf) + napi forgalom (dailyBuy/dailyBuyHuf + dailySell/dailySellHuf).
+ * A 27 valuta fix sorrendben, HUF az utolsó (a backend CURRENCY_CODES adja a sorrendet, de a
+ * megjelenítés a kapott currencies-listára épül). Fülek = körzetek + Összesítő (utolsó).
  */
+
+// FK-003/004 spec: 27 valuta teljes neve. HUF mindig utolsó (a backend így is rendezi).
+const CURRENCY_NAMES: Record<string, string> = {
+  AUD: 'AUSZTRÁL DOLLÁR', BAM: 'BOSNYÁK MÁRKA', BGN: 'BOLGÁR LEVA', BRL: 'BRAZIL REÁL',
+  CAD: 'KANADAI DOLLÁR', CHF: 'SVÁJCI FRANK', CNY: 'KÍNAI YUAN', CZK: 'CSEH KORONA',
+  DKK: 'DÁN KORONA', EUR: 'EURÓ', GBP: 'ANGOL FONT', HRK: 'HORVÁT KUNA',
+  ILS: 'IZRAELI SHEKEL', JPY: 'JAPÁN YEN', MXN: 'MEXIKÓI PESO', NOK: 'NORVÉG KORONA',
+  NZD: 'ÚJ-ZÉLANDI DOLLÁR', PLN: 'LENGYEL ZLOTYI', RON: 'ROMÁN LEJ', RSD: 'SZERB DINÁR',
+  RUB: 'OROSZ RUBEL', SEK: 'SVÉD KORONA', THB: 'THAI BAHT', TRY: 'TÖRÖK LÍRA',
+  UAH: 'UKRÁN HRIVNYA', USD: 'AMERIKAI DOLLÁR', HUF: 'MAGYAR FORINT',
+}
+
 interface CurrencyStockDetail {
   currencyCode?: string
   stock?: number | string
-  amount?: number | string
   stockHuf?: number | string
+  dailyBuy?: number | string
+  dailyBuyHuf?: number | string
+  dailySell?: number | string
+  dailySellHuf?: number | string
 }
-interface BranchStockTotals {
-  currencies?: CurrencyStockDetail[]
-}
+interface BranchStockTotals { currencies?: CurrencyStockDetail[] }
 interface BranchSnapshot {
   branchId?: string
   branchName?: string
@@ -43,28 +47,64 @@ interface RegionSnapshot {
   regionName?: string
   branches?: BranchSnapshot[]
   totals?: BranchStockTotals
+  lastSyncedAt?: string
 }
 interface StockSnapshot {
   snapshotTime?: string
-  companyId?: string
   companyName?: string
   regions?: RegionSnapshot[]
   companyTotals?: BranchStockTotals
 }
 
-function sumHuf(currencies: CurrencyStockDetail[] | undefined): number {
-  if (!currencies) return 0
-  return currencies.reduce((sum, c) => {
-    const v = typeof c.stockHuf === 'string' ? Number(c.stockHuf) : (c.stockHuf ?? 0)
-    return sum + (Number.isNaN(v) ? 0 : v)
-  }, 0)
+/** Egy megjelenítendő oszlop (pénztár a körzet-fülön, vagy körzet az Összesítőn). */
+interface SnapshotColumn {
+  key: string
+  label: string
+  lastUpdated?: string
+  byCode: Record<string, CurrencyStockDetail>
 }
 
-function formatHuf(v: number | string | undefined): string {
-  if (v == null) return '-'
+function num(v: number | string | undefined): number {
+  if (v == null) return 0
   const n = typeof v === 'string' ? Number(v) : v
-  if (Number.isNaN(n)) return String(v)
-  return n.toLocaleString('hu-HU') + ' Ft'
+  return Number.isNaN(n) ? 0 : n
+}
+function fmtInt(v: number | string | undefined): string {
+  return num(v).toLocaleString('hu-HU')
+}
+function fmtHuf(v: number | string | undefined): string {
+  return num(v).toLocaleString('hu-HU') + ' Ft'
+}
+function byCodeMap(currencies: CurrencyStockDetail[] | undefined): Record<string, CurrencyStockDetail> {
+  const m: Record<string, CurrencyStockDetail> = {}
+  for (const c of currencies ?? []) if (c.currencyCode) m[c.currencyCode] = c
+  return m
+}
+
+/** A megjelenített valutakódok sorrendje: a kapott adat sorrendje (backend HUF-utolsó), fallback a fix lista. */
+function currencyOrder(columns: SnapshotColumn[]): string[] {
+  const seen = new Set<string>()
+  const order: string[] = []
+  for (const col of columns) {
+    for (const code of Object.keys(col.byCode)) {
+      if (!seen.has(code)) { seen.add(code); order.push(code) }
+    }
+  }
+  // HUF mindig az utolsó (spec), a többi a beérkezés sorrendjében
+  const withoutHuf = order.filter(c => c !== 'HUF')
+  return order.includes('HUF') ? [...withoutHuf, 'HUF'] : withoutHuf
+}
+
+/** Szinkron-idő formázás: soha = "–"; >30 perc → narancs. */
+function SyncTime({ iso }: { iso?: string }) {
+  if (!iso) return <span className="text-gray-400">–</span>
+  const d = new Date(iso)
+  const stale = Date.now() - d.getTime() > 30 * 60 * 1000
+  return (
+    <span className={stale ? 'text-orange-500' : 'text-gray-500'}>
+      {d.toLocaleString('hu-HU', { dateStyle: 'short', timeStyle: 'short' })}
+    </span>
+  )
 }
 
 export default function StockSnapshotPage() {
@@ -72,6 +112,7 @@ export default function StockSnapshotPage() {
   const [snapshot, setSnapshot] = useState<StockSnapshot | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState(0)
 
   const loadData = useCallback(async () => {
     try {
@@ -79,9 +120,8 @@ export default function StockSnapshotPage() {
       const response = await api.get<StockSnapshot>('/stock-snapshot')
       setSnapshot(response.data ?? null)
     } catch (err) {
-      const msg = getErrorMessage(err)
       logger.error('StockSnapshotPage', 'Betöltési hiba:', err)
-      setError(msg); setSnapshot(null)
+      setError(getErrorMessage(err)); setSnapshot(null)
     } finally { setLoading(false) }
   }, [])
 
@@ -92,11 +132,12 @@ export default function StockSnapshotPage() {
       setError(null)
       const r = await api.get('/stock-snapshot/excel', { responseType: 'blob' })
       const blob = new Blob([r.data as BlobPart], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url; a.download = 'keszlet-export-' + new Date().toISOString().slice(0, 10) + '.xlsx'
+      const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
+      a.href = url; a.download = `Keszlet_pillanatkep_${ts}.xlsx`
       document.body.appendChild(a); a.click(); a.remove()
       URL.revokeObjectURL(url)
     } catch (err) {
@@ -105,19 +146,161 @@ export default function StockSnapshotPage() {
     }
   }
 
-  const companyTotal = snapshot?.companyTotals ? sumHuf(snapshot.companyTotals.currencies) : 0
-  const hasCompanyTotalsFallback =
-    (snapshot?.regions?.length ?? 0) === 0 &&
-    (snapshot?.companyTotals?.currencies?.length ?? 0) > 0
+  const regions = useMemo(() => snapshot?.regions ?? [], [snapshot])
+  const isSummary = activeTab >= regions.length
+  const companyTotal = useMemo(
+    () => (snapshot?.companyTotals?.currencies ?? []).reduce((s, c) => s + num(c.stockHuf), 0),
+    [snapshot],
+  )
+  // Codex P1: ha nincs régió-besorolás, de a cég-összesítő tartalmaz adatot, akkor is
+  // jelenítsük meg (az Összesítő nézet a companyTotals-ra esik vissza), NE „nincs adat".
+  const companyHasCurrencies = (snapshot?.companyTotals?.currencies?.length ?? 0) > 0
+
+  // A kiválasztott fül oszlopai + területi/cég összesen oszlop.
+  const columns = useMemo<SnapshotColumn[]>(() => {
+    if (!snapshot) return []
+    if (isSummary) {
+      const cols: SnapshotColumn[] = regions.map((r, i) => ({
+        key: r.regionCode ?? `r${i}`,
+        label: r.regionName ?? r.regionCode ?? '?',
+        byCode: byCodeMap(r.totals?.currencies),
+      }))
+      cols.push({ key: '__company', label: t('stockSnapshot.companyTotal'), byCode: byCodeMap(snapshot.companyTotals?.currencies) })
+      return cols
+    }
+    const region = regions[activeTab]
+    if (!region) return []
+    const cols: SnapshotColumn[] = (region.branches ?? []).map((b, i) => ({
+      key: b.branchId ?? `b${i}`,
+      label: b.branchName ?? b.branchCode ?? '?',
+      lastUpdated: b.lastUpdated,
+      byCode: byCodeMap(b.currencies),
+    }))
+    cols.push({ key: '__regiontotal', label: t('stockSnapshot.regionTotalCol'), byCode: byCodeMap(region.totals?.currencies) })
+    return cols
+  }, [snapshot, regions, activeTab, isSummary, t])
+
+  const codes = useMemo(() => currencyOrder(columns), [columns])
+
+  const stickyCol = 'sticky left-0 z-10 bg-white'
+  const stickyColName = 'sticky left-16 z-10 bg-white'
+
+  function renderStockTable() {
+    const totalsHuf = columns.map(() => 0)
+    return (
+      <table className="text-sm border-collapse">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className={`${stickyCol} px-2 py-1 text-left bg-gray-100`}>{t('stockSnapshot.currencyHeader')}</th>
+            <th className={`${stickyColName} px-2 py-1 text-left bg-gray-100 min-w-[140px]`}>{t('stockSnapshot.currencyName')}</th>
+            {columns.map(col => (
+              <th key={col.key} colSpan={2} className="px-2 py-1 text-center border-l whitespace-nowrap">
+                <div className="font-semibold">{col.label}</div>
+                {!isSummary && <div className="text-[10px] font-normal"><SyncTime iso={col.lastUpdated} /></div>}
+              </th>
+            ))}
+          </tr>
+          <tr className="bg-gray-50 text-[11px] text-gray-500">
+            <th className={`${stickyCol} bg-gray-50`}></th>
+            <th className={`${stickyColName} bg-gray-50`}></th>
+            {columns.map(col => (
+              <Fragment key={col.key}>
+                <th className="px-2 py-1 text-right border-l">{t('stockSnapshot.stockHeader')}</th>
+                <th className="px-2 py-1 text-right">{t('stockSnapshot.hufValue')}</th>
+              </Fragment>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {codes.map(code => (
+            <tr key={code} className="border-t hover:bg-blue-50">
+              <td className={`${stickyCol} px-2 py-1 font-mono font-semibold`}>{code}</td>
+              <td className={`${stickyColName} px-2 py-1 whitespace-nowrap`}>{CURRENCY_NAMES[code] ?? ''}</td>
+              {columns.map((col, ci) => {
+                const c = col.byCode[code]
+                totalsHuf[ci] = (totalsHuf[ci] ?? 0) + num(c?.stockHuf)
+                return (
+                  <Fragment key={col.key}>
+                    <td className="px-2 py-1 text-right font-mono border-l">{fmtInt(c?.stock)}</td>
+                    <td className="px-2 py-1 text-right font-mono">{fmtInt(c?.stockHuf)}</td>
+                  </Fragment>
+                )
+              })}
+            </tr>
+          ))}
+          <tr className="border-t-2 border-gray-400 bg-gray-100 font-semibold">
+            <td className={`${stickyCol} px-2 py-1 bg-gray-100`}>{t('stockSnapshot.total')}</td>
+            <td className={`${stickyColName} px-2 py-1 bg-gray-100`}></td>
+            {columns.map((col, ci) => (
+              <Fragment key={col.key}>
+                <td className="px-2 py-1 border-l"></td>
+                <td className="px-2 py-1 text-right font-mono">{fmtHuf(totalsHuf[ci])}</td>
+              </Fragment>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    )
+  }
+
+  function renderTurnoverTable() {
+    return (
+      <table className="text-sm border-collapse">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className={`${stickyCol} px-2 py-1 text-left bg-gray-100`}>{t('stockSnapshot.currencyHeader')}</th>
+            <th className={`${stickyColName} px-2 py-1 text-left bg-gray-100 min-w-[140px]`}>{t('stockSnapshot.currencyName')}</th>
+            {columns.map(col => (
+              <th key={col.key} colSpan={4} className="px-2 py-1 text-center border-l whitespace-nowrap font-semibold">{col.label}</th>
+            ))}
+          </tr>
+          <tr className="bg-gray-50 text-[11px] text-gray-500">
+            <th className={`${stickyCol} bg-gray-50`}></th>
+            <th className={`${stickyColName} bg-gray-50`}></th>
+            {columns.map(col => (
+              <Fragment key={col.key}>
+                <th className="px-2 py-1 text-right border-l">{t('stockSnapshot.buy')}</th>
+                <th className="px-2 py-1 text-right">{t('stockSnapshot.buyHuf')}</th>
+                <th className="px-2 py-1 text-right border-l">{t('stockSnapshot.sell')}</th>
+                <th className="px-2 py-1 text-right">{t('stockSnapshot.sellHuf')}</th>
+              </Fragment>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {codes.map(code => (
+            <tr key={code} className="border-t hover:bg-blue-50">
+              <td className={`${stickyCol} px-2 py-1 font-mono font-semibold`}>{code}</td>
+              <td className={`${stickyColName} px-2 py-1 whitespace-nowrap`}>{CURRENCY_NAMES[code] ?? ''}</td>
+              {columns.map(col => {
+                const c = col.byCode[code]
+                return (
+                  <Fragment key={col.key}>
+                    <td className="px-2 py-1 text-right font-mono border-l">{fmtInt(c?.dailyBuy)}</td>
+                    <td className="px-2 py-1 text-right font-mono">{fmtInt(c?.dailyBuyHuf)}</td>
+                    <td className="px-2 py-1 text-right font-mono border-l">{fmtInt(c?.dailySell)}</td>
+                    <td className="px-2 py-1 text-right font-mono">{fmtInt(c?.dailySellHuf)}</td>
+                  </Fragment>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )
+  }
 
   return (
     <div className="form-panel space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="form-title flex items-center gap-2">
           <Camera className="h-6 w-6" />
           {t('stockSnapshot.title')}
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 text-sm">
+          <span className="text-gray-500">{snapshot?.companyName ?? '-'}</span>
+          <span className="text-gray-500">{snapshot?.snapshotTime ? new Date(snapshot.snapshotTime).toLocaleString('hu-HU') : '-'}</span>
+          <span className="font-mono font-semibold">{fmtHuf(companyTotal)}</span>
           <button onClick={() => void loadData()} className="form-button p-2" title={t('common.refresh')}>
             <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
           </button>
@@ -129,88 +312,47 @@ export default function StockSnapshotPage() {
 
       {error && (
         <div className="form-error flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4" />
-          {error}
+          <AlertTriangle className="h-4 w-4" />{error}
         </div>
       )}
 
       {loading ? (
         <div className="text-center text-sm text-gray-500 py-8">{t('common.loading')}</div>
-      ) : !snapshot ? (
+      ) : !snapshot || (regions.length === 0 && !companyHasCurrencies) ? (
         <div className="text-center text-sm text-gray-500 py-8">{t('common.noData')}</div>
       ) : (
-        <div className="space-y-4">
-          <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-            <div><span className="text-gray-500">{t('stockSnapshot.company')}:</span> <b>{snapshot.companyName ?? '-'}</b></div>
-            <div><span className="text-gray-500">{t('stockSnapshot.snapshotTime')}:</span> {snapshot.snapshotTime ? new Date(snapshot.snapshotTime).toLocaleString('hu-HU') : '-'}</div>
-            <div><span className="text-gray-500">{t('stockSnapshot.totalHuf')}:</span> <b className="font-mono">{formatHuf(companyTotal)}</b></div>
+        <>
+          {/* Körzet-fülek + Összesítő (utolsó) */}
+          <div className="flex flex-wrap gap-1 border-b">
+            {regions.map((r, i) => (
+              <button
+                key={r.regionCode ?? i}
+                onClick={() => setActiveTab(i)}
+                className={`px-3 py-1.5 text-sm rounded-t ${activeTab === i ? 'bg-blue-600 text-white font-semibold' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >
+                {r.regionName ?? r.regionCode}
+              </button>
+            ))}
+            <button
+              onClick={() => setActiveTab(regions.length)}
+              className={`px-3 py-1.5 text-sm rounded-t ${isSummary ? 'bg-blue-600 text-white font-semibold' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            >
+              {t('stockSnapshot.summaryTab')}
+            </button>
           </div>
 
-          {(snapshot.regions ?? []).map((region, ri) => {
-            const regionTotal = sumHuf(region.totals?.currencies)
-            return (
-              <div key={(region.regionCode ?? 'r') + ri} className="bg-white rounded shadow">
-                <div className="bg-gray-50 px-4 py-2 border-b">
-                  <h2 className="font-semibold">{region.regionName ?? region.regionCode ?? t('stockSnapshot.regionFallback')}</h2>
-                  <div className="text-xs text-gray-500">
-                    {t('stockSnapshot.regionTotal')}: {formatHuf(regionTotal)} / {t('stockSnapshot.regionBranchCount', { count: region.branches?.length ?? 0 })}
-                  </div>
-                </div>
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('stockSnapshot.branchHeader')}</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('stockSnapshot.lastUpdated')}</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('stockSnapshot.hufValue')}</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('stockSnapshot.currencies')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {(region.branches ?? []).map((b) => {
-                      const branchTotal = sumHuf(b.currencies)
-                      return (
-                        <tr key={b.branchId} className="hover:bg-gray-50">
-                          <td className="px-4 py-2 text-sm">{b.branchName ?? b.branchCode ?? '-'}</td>
-                          <td className="px-4 py-2 text-sm">{b.lastUpdated ? new Date(b.lastUpdated).toLocaleString('hu-HU') : '-'}</td>
-                          <td className="px-4 py-2 text-right text-sm font-mono">{formatHuf(branchTotal)}</td>
-                          <td className="px-4 py-2 text-right text-sm">{b.currencies?.length ?? 0}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )
-          })}
+          {/* KÉSZLET szekció */}
+          <div className="bg-white rounded shadow">
+            <div className="bg-blue-50 px-4 py-1.5 font-semibold text-blue-800 border-b">{t('stockSnapshot.stockSection')}</div>
+            <div className="overflow-x-auto">{renderStockTable()}</div>
+          </div>
 
-          {/* Fallback: ha nincs regio besorolas, companyTotals.currencies tabla */}
-          {hasCompanyTotalsFallback && (
-            <div className="bg-white rounded shadow">
-              <div className="bg-gray-50 px-4 py-2 border-b">
-                <h2 className="font-semibold">{t('stockSnapshot.fallbackTitle')}</h2>
-                <div className="text-xs text-gray-500">{t('stockSnapshot.fallbackCount', { count: snapshot.companyTotals?.currencies?.length ?? 0 })}</div>
-              </div>
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('stockSnapshot.currencyHeader')}</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('stockSnapshot.stockHeader')}</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('stockSnapshot.hufValue')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {(snapshot.companyTotals?.currencies ?? []).map((c, i) => (
-                    <tr key={(c.currencyCode ?? "") + i} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 text-sm font-mono">{c.currencyCode ?? "-"}</td>
-                      <td className="px-4 py-2 text-right text-sm font-mono">{c.stock ?? c.amount ?? "-"}</td>
-                      <td className="px-4 py-2 text-right text-sm font-mono">{formatHuf(c.stockHuf)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+          {/* NAPI FORGALOM szekció */}
+          <div className="bg-white rounded shadow">
+            <div className="bg-amber-50 px-4 py-1.5 font-semibold text-amber-800 border-b">{t('stockSnapshot.turnoverSection')}</div>
+            <div className="overflow-x-auto">{renderTurnoverTable()}</div>
+          </div>
+        </>
       )}
     </div>
   )
