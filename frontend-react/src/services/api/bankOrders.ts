@@ -57,7 +57,7 @@ export const bankOrdersApi = {
     const response = await api.get<BankOrderPage>('/bank-orders', {
       params: { status, page, size },
       _preservePaged: true,
-    } as Record<string, unknown>)
+    })
     return response.data
   },
 

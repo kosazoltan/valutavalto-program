@@ -56,7 +56,7 @@ export const diagnosticsApi = {
     const response = await api.get<ErrorLogPage>('/diagnostics/errors', {
       params: { page, size },
       _preservePaged: true,
-    } as Record<string, unknown>)
+    })
     return response.data
   },
 

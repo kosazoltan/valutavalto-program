@@ -198,9 +198,19 @@ function loadPersistedToken(): string | null {
 
 // --- Public API ---
 
-export async function initLocalFirst(apiUrl: string): Promise<void> {
+// Az árfolyamkészítő vékony publikáló kliens: közvetlen REST-en publikál
+// (/api/v1/local-rate-maker/packages/publish, ill. exchange-rate-master), NEM
+// pull/push szinkronnal. A RateMakerSyncEngine a /rate-maker/sync/pull|push
+// végpontokat hívná, amelyek a backenden NEM léteznek (csak /api/v1/sync/* és
+// /api/v1/local-rate-maker/packages/publish) → folyamatos 404-loop a háttérben,
+// miközben a renderer egyetlen lf:* draft-IPC-t sem használ (dead path).
+// A kozponti rate-maker módjával összhangban (PR #842) a sync-motort NEM
+// indítjuk; ezért az `apiUrl` itt nincs használva (a call-site kompatibilitás
+// miatt megtartjuk a paramétert), és a DB-init visszatérési értékét sem kell
+// elkapni — a `getDb()` modul-szintű accessoron át érjük el a lokál cache-t.
+export async function initLocalFirst(_apiUrl: string): Promise<void> {
   const dbDir = path.join(app.getPath('home'), '.valuta-rate-maker');
-  const db = await initLocalDatabase({
+  await initLocalDatabase({
     dbDir,
     dbName: 'rate-maker.db',
     wasmPath: resolveWasmPath(),
@@ -208,15 +218,6 @@ export async function initLocalFirst(apiUrl: string): Promise<void> {
 
   cachedToken = loadPersistedToken();
 
-  // Az árfolyamkészítő vékony publikáló kliens: közvetlen REST-en publikál
-  // (/api/v1/local-rate-maker/packages/publish, ill. exchange-rate-master), NEM
-  // pull/push szinkronnal. A RateMakerSyncEngine a /rate-maker/sync/pull|push
-  // végpontokat hívná, amelyek a backenden NEM léteznek (csak /api/v1/sync/* és
-  // /api/v1/local-rate-maker/packages/publish) → folyamatos 404-loop a háttérben,
-  // miközben a renderer egyetlen lf:* draft-IPC-t sem használ (dead path).
-  // A kozponti rate-maker módjával összhangban (PR #842) a sync-motort NEM
-  // indítjuk; a DB-init megmarad a lokál cache-hez.
-  void apiUrl;
   log.info('[LocalFirst] Rate Maker local-first initialized (sync-motor KIHAGYVA — közvetlen REST publikálás)');
 }
 

@@ -3,13 +3,18 @@ import { useAuthStore } from '../../stores/authStore'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger';
 
-// Extend AxiosRequestConfig to support _skipGlobal403Toast flag
+// Extend AxiosRequestConfig to support custom flags.
+// _preservePaged: ha true, a response interceptor NEM bontja content-tömbbé a
+// Spring Page<T> választ (lapozó UI komponenseknek kell a teljes Page). Típusos
+// mező → nem kell `as Record<string, unknown>` cast a hívóknál (Sourcery #861).
 declare module 'axios' {
   interface AxiosRequestConfig {
     _skipGlobal403Toast?: boolean
+    _preservePaged?: boolean
   }
   interface InternalAxiosRequestConfig {
     _skipGlobal403Toast?: boolean
+    _preservePaged?: boolean
   }
 }
 
@@ -411,7 +416,7 @@ api.interceptors.response.use(
     // but frontend expects a plain array, extract just the content.
     // Skip unwrap when request has _preservePaged flag (for paginated UI components).
     const d = response.data
-    const preservePaged = (response.config as unknown as Record<string, unknown>)?._preservePaged === true
+    const preservePaged = response.config?._preservePaged === true
     if (!preservePaged && d && typeof d === 'object' && !Array.isArray(d) && Array.isArray(d.content) && ('totalElements' in d || 'totalPages' in d || 'number' in d)) {
       response.data = d.content
     }
