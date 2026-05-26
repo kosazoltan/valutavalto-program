@@ -136,7 +136,13 @@ export default function StockSnapshotPage() {
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
+      // Spec fájlnév: Keszlet_pillanatkep_YYYYMMDD_HHMMSS.xlsx. A timestampet dátum-komponensekből
+      // építjük — NEM regex-szel, mert a `[...]` mintát a Tailwind arbitrary-property class-nak
+      // hinné és érvénytelen CSS-t generálna (lightningcss build-törés).
+      const now = new Date()
+      const pad = (n: number) => String(n).padStart(2, '0')
+      const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_`
+        + `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
       a.href = url; a.download = `Keszlet_pillanatkep_${ts}.xlsx`
       document.body.appendChild(a); a.click(); a.remove()
       URL.revokeObjectURL(url)

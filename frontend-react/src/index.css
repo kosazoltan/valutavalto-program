@@ -272,17 +272,6 @@
   }
 }
 
-/* Hide Vite error overlay - it will still log errors to console */
-/* Must be outside @layer because vite-error-overlay is a custom element */
-vite-error-overlay {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  position: fixed !important;
-  top: -9999px !important;
-  left: -9999px !important;
-  width: 0 !important;
-  height: 0 !important;
-  z-index: -9999 !important;
-}
+/* A Vite dev-error-overlay elrejtése a fejlesztői módban a `main.tsx` JS-ből történik
+   (querySelector('vite-error-overlay') → eltávolítás). A korábbi CSS-szabály production-ban
+   felesleges volt ÉS a lightningcss minify elhasalt rajta („Unexpected token") — eltávolítva. */
