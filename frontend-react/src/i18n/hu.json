@@ -1816,7 +1816,18 @@
     "snapshotTime": "Snapshot idő",
     "stockHeader": "Készlet",
     "title": "Készlet pillanatkép",
-    "totalHuf": "Összes HUF érték"
+    "totalHuf": "Összes HUF érték",
+    "currencyName": "Valuta neve",
+    "companyTotal": "Teljes cég összesen",
+    "regionTotalCol": "Területi összesen",
+    "summaryTab": "Összesítő",
+    "stockSection": "KÉSZLET",
+    "turnoverSection": "NAPI FORGALOM",
+    "buy": "Vétel",
+    "buyHuf": "Vétel (Ft)",
+    "sell": "Eladás",
+    "sellHuf": "Eladás (Ft)",
+    "total": "ÖSSZESEN"
   },
   "stornos": {
     "devizaOsszeg": "Deviza összeg",

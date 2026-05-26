@@ -21,14 +21,16 @@ import java.util.Map;
 @Slf4j
 public class StockSnapshotExcelService {
 
+    // FK-003/004: a HUF (MAGYAR FORINT) MINDIG az utolsó — illeszkednie KELL a
+    // StockSnapshotService.CURRENCY_CODES sorrendjéhez (index-alapú illesztés vi szerint).
     private static final List<String> CURRENCY_NAMES = List.of(
             "AUSZTRÁL DOLLÁR", "BOSNYÁK MÁRKA", "BOLGÁR LEVA", "BRAZIL REÁL",
             "KANADAI DOLLÁR", "SVÁJCI FRANK", "KÍNAI YUAN", "CSEH KORONA",
             "DÁN KORONA", "EURÓ", "ANGOL FONT", "HORVÁT KUNA",
-            "MAGYAR FORINT", "IZRAELI SHEKEL", "JAPÁN YEN", "MEXIKÓI PESO",
-            "NORVÉG KORONA", "ÚJ-ZÉLANDI DOLLÁR", "LENGYEL ZLOTYI", "ROMÁN LEJ",
-            "SZERB DINÁR", "OROSZ RUBEL", "SVÉD KORONA", "THAI BAHT",
-            "TÖRÖK LÍRA", "UKRÁN HRIVNYA", "AMERIKAI DOLLÁR"
+            "IZRAELI SHEKEL", "JAPÁN YEN", "MEXIKÓI PESO", "NORVÉG KORONA",
+            "ÚJ-ZÉLANDI DOLLÁR", "LENGYEL ZLOTYI", "ROMÁN LEJ", "SZERB DINÁR",
+            "OROSZ RUBEL", "SVÉD KORONA", "THAI BAHT", "TÖRÖK LÍRA",
+            "UKRÁN HRIVNYA", "AMERIKAI DOLLÁR", "MAGYAR FORINT"
     );
 
     private static final String[] WU_ROW_LABELS = {
