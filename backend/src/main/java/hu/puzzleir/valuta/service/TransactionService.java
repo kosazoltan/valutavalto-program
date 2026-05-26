@@ -1070,6 +1070,10 @@ public class TransactionService {
         private Long toCurrencyId;
         private String toCurrencyCode;
         private BigDecimal fromAmount;
+        // Cimletezeshez lefele modositott cel-osszeg (null = teljes fedezet). HIBA 2026-05-26.
+        private BigDecimal toAmount;
+        // Ugyfel deviza-statusza (DOMESTIC/FOREIGN). HIBA 2026-05-26.
+        private String foreignStatus;
         private BigDecimal handlingFee;
         private String customerId;
         private String customerName;

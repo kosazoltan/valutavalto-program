@@ -195,6 +195,8 @@ public class TransactionMapper {
                 .toCurrencyId(dto.getToCurrencyId())
                 .toCurrencyCode(dto.getToCurrencyCode())
                 .fromAmount(dto.getFromAmount())
+                .toAmount(dto.getToAmount())
+                .foreignStatus(dto.getForeignStatus())
                 .handlingFee(dto.getHandlingFee())
                 .customerId(dto.getCustomerId())
                 .customerName(dto.getCustomerName())

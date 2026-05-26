@@ -171,6 +171,7 @@ export interface ElectronAPI {
     customerActorDocumentType: string | null
     customerActorDocumentNumber: string | null
     customerActorAddress: string | null
+    foreignStatus: string | null
     note: string | null
   }) => Promise<number>;
   savePendingBankTransaction(

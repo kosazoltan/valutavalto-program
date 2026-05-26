@@ -16,6 +16,7 @@ import {
   transactionApi,
   currencyApi,
   exchangeRateApi,
+  cashBalanceApi,
   Currency,
   ExchangeRate,
   ConversionRequest
@@ -63,16 +64,27 @@ export default function ConversionPage() {
   const [toAmount, setToAmount] = useState<string>('')
   const [hufAmount, setHufAmount] = useState<number>(0)
   const [conversionRate, setConversionRate] = useState<number>(0)
+  // HIBA 2026-05-26 (#4): visszajáró forint (a cél-összegre fel nem használt HUF-fedezet)
+  const [returnedHuf, setReturnedHuf] = useState<number>(0)
+  // HIBA 2026-05-26 (#2): ügyfél deviza-státusza (alap: külföldi)
+  const [foreignStatus, setForeignStatus] = useState<'DOMESTIC' | 'FOREIGN'>('FOREIGN')
 
   // Customer data (optional for conversion)
   const [customerName, setCustomerName] = useState('')
   const [notes, setNotes] = useState('')
 
+  // HIBA 2026-05-26 (#3): a konverzió Pmt. azonosítási küszöbe a vétel + eladás EGYÜTTES
+  // HUF-összege alapján dönt (a konverzió valójában egy vétel + egy eladás), nem csak a
+  // forrás-oldal alapján. amlAmount = BUY(hufAmount) + SELL(usedHuf). Codex P1 (#858): ha a
+  // cél-összeg lefelé módosul, a SELL leg kisebb, ezért a visszajárót levonjuk a 2×-ből —
+  // nem becsüljük felül a sub-limit konverziókat.
+  const amlAmount = Math.max(0, hufAmount * 2 - returnedHuf)
+
   // V235 + V236 (2026-05-19 HIBA #19): Pmt. azonositas a Konverzioba is.
   // 100k+ HUF aggregalt -> SIMPLIFIED, 300k+ -> FULL azonositas (Pmt. tv. 6.§).
   const customerDataRef = useRef<CustomerPanelData | null>(null)
   const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } =
-    useIdentificationLevel(String(hufAmount))
+    useIdentificationLevel(String(amlAmount))
 
   // Track which field was last edited to prevent useEffect from overwriting manual toAmount edits
   const lastEditedField = useRef<'from' | 'to'>('from')
@@ -148,12 +160,15 @@ export default function ConversionPage() {
     return rates.find(r => r.currencyId === currencyId)
   }
 
-  // Calculate conversion when inputs change
+  // Calculate conversion when inputs change.
+  // HIBA 2026-05-26 (#5): a FORRÁS az anchor — a cél-összeg módosítása NEM írja felül a
+  // forrást; a maradék forint-fedezet visszajáróként jelenik meg (handleToAmountChange).
   useEffect(() => {
     if (!fromCurrencyId || !fromAmount) {
       setHufAmount(0)
       setToAmount('')
       setConversionRate(0)
+      setReturnedHuf(0)
       return
     }
 
@@ -164,27 +179,32 @@ export default function ConversionPage() {
     if (amount <= 0) return
 
     // Calculate HUF value using buy rate (customer sells this currency)
-    const huf = amount * fromRate.baseBuyRate
-    setHufAmount(roundHuf(huf))
+    const huf = roundHuf(amount * fromRate.baseBuyRate)
+    setHufAmount(huf)
 
     // Only recalculate toAmount when the FROM field was last edited.
-    // When the TO field was edited (handleToAmountChange), fromAmount was set
-    // as a result — we must NOT overwrite the user's manual toAmount here.
+    // When the TO field was edited (handleToAmountChange), we must NOT overwrite it.
     if (toCurrencyId && lastEditedField.current === 'from') {
       const toRate = getRate(toCurrencyId)
       if (toRate && toRate.baseSellRate > 0) {
-        const result = huf / toRate.baseSellRate
-        setToAmount(result.toFixed(2).replace('.', ','))
+        // Maximális cél-összeg (lefelé kerekítve) — ennyit fedez a forrás.
+        const maxTo = Math.floor((huf / toRate.baseSellRate) * 100) / 100
+        setToAmount(maxTo.toFixed(2).replace('.', ','))
+        // Visszajáró = a flooring-maradék forintban (általában kicsi).
+        const usedHuf = Math.round(maxTo * toRate.baseSellRate)
+        setReturnedHuf(Math.max(0, roundHuf(huf - usedHuf)))
 
         const directRate = fromRate.baseBuyRate / toRate.baseSellRate
         setConversionRate(directRate)
       } else {
         setToAmount('')
         setConversionRate(0)
+        setReturnedHuf(0)
       }
     } else if (!toCurrencyId) {
       setToAmount('')
       setConversionRate(0)
+      setReturnedHuf(0)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- getRate/roundHuf are derived from `rates` already in deps
   }, [fromCurrencyId, toCurrencyId, fromAmount, rates])
@@ -241,12 +261,48 @@ export default function ConversionPage() {
         return
       }
 
-      // V235 + V236 (2026-05-19 HIBA #19): a Pmt. azonositas-adatok atadasa
-      // a Konverzio backend-nek. 100k+ HUF -> SIMPLIFIED, 300k+ -> FULL.
+      // A pénztáros által (esetleg lefelé módosított) cél-összeg.
+      const toVal = parseFloat(toAmount.replace(',', '.').replace(/\s/g, '')) || 0
+      if (toVal <= 0) {
+        setError('A kapott (cél) összegnek nagyobbnak kell lennie 0-nál!')
+        return
+      }
+
+      // HIBA 2026-05-26 (#1): kliens-oldali készlet-előellenőrzés — a pénztár nem könyvelhet
+      // olyan konverziót, amihez nincs elég cél valuta (kifizetés), illetve nincs elég HUF a
+      // visszajáróhoz. Fail-closed: ha nem ellenőrizhető, nem engedjük tovább (offline outbox
+      // különben csak sync-kor bukna el).
+      try {
+        const balances = await cashBalanceApi.list()
+        const insufficient: string[] = []
+        const toBal = balances.find(b => b.currencyCode === toCurrency.code)
+        const toAvailable = toBal?.currentBalance ?? 0
+        if (toVal > toAvailable) {
+          insufficient.push(`${toCurrency.code}: ${toVal} kifizetés kérne, csak ${toAvailable} érhető el`)
+        }
+        if (returnedHuf > 0) {
+          const hufBal = balances.find(b => b.currencyCode === 'HUF')
+          const hufAvailable = hufBal?.currentBalance ?? 0
+          if (returnedHuf > hufAvailable) {
+            insufficient.push(`HUF visszajáró: ${returnedHuf.toLocaleString('hu-HU')} Ft kérne, csak ${hufAvailable.toLocaleString('hu-HU')} Ft érhető el`)
+          }
+        }
+        if (insufficient.length > 0) {
+          setError('Nincs elég készlet a konverzióhoz: ' + insufficient.join(' | '))
+          return
+        }
+      } catch (stockErr) {
+        // Copilot #858: a konkrét hibát is megjelenítjük (pl. lejárt munkamenet / hálózat),
+        // ne csak generikus üzenetet — így a pénztáros tudja, mi a teendő.
+        setError('A készlet nem ellenőrizhető (' + getErrorMessage(stockErr) + '). Próbálja újra később.')
+        return
+      }
+
+      // HIBA 2026-05-26 (#3): a Pmt. azonositas a vétel+eladás EGYÜTTES (2×) HUF alapján.
       const cd = customerDataRef.current
-      // 100k+ HUF eseten ha nincs customer panel-bol adat, blokkoljuk
-      if (hufAmount >= 100_000 && !cd) {
-        setError('100.000 Ft feletti konverzióhoz kötelező az ügyfél azonosítása (Pmt. tv. 6.§)')
+      // 100k+ aggregalt HUF eseten ha nincs customer panel-bol adat, blokkoljuk
+      if (amlAmount >= 100_000 && !cd) {
+        setError('100.000 Ft feletti (együttes) konverzióhoz kötelező az ügyfél azonosítása (Pmt. tv. 6.§)')
         return
       }
       const effectiveCustomerName = cd?.name?.trim() || customerName.trim() || null
@@ -263,8 +319,9 @@ export default function ConversionPage() {
           toCurrencyCode: toCurrency.code,
           fromAmount: amount,
           calculatedHufAmount: hufAmount,
-          calculatedToAmount: parseFloat(toAmount.replace(',', '.').replace(/\s/g, '')) || 0,
+          calculatedToAmount: toVal,
           conversionRate,
+          foreignStatus,
           handlingFee: null,
           customerId: cd?.id ? String(cd.id) : null,
           customerName: effectiveCustomerName,
@@ -294,10 +351,11 @@ export default function ConversionPage() {
           customerActorAddress: actorIdentity?.address ?? null,
         })
 
+        const changeMsg = returnedHuf > 0 ? ` Visszajáró: ${returnedHuf.toLocaleString('hu-HU')} Ft.` : ''
         if (outcome.allSavedSynced) {
-          setSuccess('Konverzió sikeresen rögzítve és szinkronizálva!')
+          setSuccess('Konverzió sikeresen rögzítve és szinkronizálva!' + changeMsg)
         } else {
-          setSuccess('Konverzió helyben mentve. A szinkron a háttérben folytatódik.')
+          setSuccess('Konverzió helyben mentve. A szinkron a háttérben folytatódik.' + changeMsg)
         }
       } else {
         const baseRequest: ConversionRequest = buildConversionRequestFromSelection({
@@ -306,6 +364,8 @@ export default function ConversionPage() {
           toCurrencyId,
           toCurrencyCode: toCurrency.code,
           fromAmount: amount,
+          toAmount: toVal,
+          foreignStatus,
           customerName: effectiveCustomerName || undefined,
           notes: notes || undefined,
         })
@@ -336,7 +396,8 @@ export default function ConversionPage() {
         } : baseRequest
 
         const result = await transactionApi.conversion(request)
-        setSuccess(`Konverzió sikeres! Bizonylat: ${result.receiptNumber}`)
+        const changeMsg = returnedHuf > 0 ? ` Visszajáró: ${returnedHuf.toLocaleString('hu-HU')} Ft.` : ''
+        setSuccess(`Konverzió sikeres! Bizonylat: ${result.receiptNumber}.${changeMsg}`)
       }
 
       // Reset after 2 seconds
@@ -350,28 +411,43 @@ export default function ConversionPage() {
     }
   }
 
+  // HIBA 2026-05-26 (#5): a cél-összeg módosítása NEM módosítja a forrást. A forrás (és így
+  // a köztes HUF) változatlan; ha a pénztáros lefelé módosítja a célt (címletezéshez), a
+  // maradék forint-fedezet VISSZAJÁR (returnedHuf), amit feltüntetünk. A cél nem lehet több
+  // a forrás-fedezetből számolt maximumnál — a felső határra vágjuk.
   const handleToAmountChange = (value: string) => {
     lastEditedField.current = 'to'
-    setToAmount(value)
 
-    if (!toCurrencyId || !fromCurrencyId) return
-
-    const toRate = getRate(toCurrencyId)
-    const fromRate = getRate(fromCurrencyId)
-    if (!toRate || !fromRate || fromRate.baseBuyRate <= 0 || toRate.baseSellRate <= 0) return
-
-    const toVal = parseFloat(value.replace(',', '.').replace(/\s/g, '')) || 0
-    if (toVal <= 0) {
-      setFromAmount('')
-      setHufAmount(0)
-      setConversionRate(0)
+    if (!toCurrencyId || !fromCurrencyId) {
+      setToAmount(value)
       return
     }
 
-    const huf = toVal * toRate.baseSellRate
-    setHufAmount(roundHuf(huf))
-    const from = huf / fromRate.baseBuyRate
-    setFromAmount(from.toFixed(2).replace('.', ','))
+    const toRate = getRate(toCurrencyId)
+    const fromRate = getRate(fromCurrencyId)
+    if (!toRate || !fromRate || fromRate.baseBuyRate <= 0 || toRate.baseSellRate <= 0) {
+      setToAmount(value)
+      return
+    }
+
+    let toVal = parseFloat(value.replace(',', '.').replace(/\s/g, '')) || 0
+    if (toVal <= 0) {
+      setToAmount(value)
+      setReturnedHuf(0)
+      return
+    }
+
+    // Felső határ: a forrás-fedezetből számolt maximum (a forrást SOHA nem módosítjuk).
+    const maxTo = Math.floor((hufAmount / toRate.baseSellRate) * 100) / 100
+    if (toVal > maxTo) {
+      toVal = maxTo
+      setToAmount(maxTo.toFixed(2).replace('.', ','))
+    } else {
+      setToAmount(value)
+    }
+
+    const usedHuf = Math.round(toVal * toRate.baseSellRate)
+    setReturnedHuf(Math.max(0, roundHuf(hufAmount - usedHuf)))
 
     const directRate = fromRate.baseBuyRate / toRate.baseSellRate
     setConversionRate(directRate)
@@ -384,6 +460,8 @@ export default function ConversionPage() {
     setToAmount('')
     setHufAmount(0)
     setConversionRate(0)
+    setReturnedHuf(0)
+    setForeignStatus('FOREIGN')
     setError(null)
     setSuccess(null)
     setCustomerName('')
@@ -571,6 +649,16 @@ export default function ConversionPage() {
               </div>
             )}
 
+            {/* HIBA 2026-05-26 (#4): visszajáró forint a cél-összeg lefelé módosításakor */}
+            {returnedHuf > 0 && (
+              <div className="p-3 bg-amber-50 rounded border border-amber-300 text-center">
+                <div className="text-sm text-amber-700 mb-1">Visszajáró forint</div>
+                <div className="text-xl font-bold font-mono text-amber-700">
+                  {formatInteger(returnedHuf)} {t('common.ft')}
+                </div>
+              </div>
+            )}
+
             {/* Optional customer/notes */}
             {step === 2 && (
               <div className="space-y-2 pt-2 border-t">
@@ -653,19 +741,49 @@ export default function ConversionPage() {
               <p className="text-xs text-gray-500 mt-1">{t('transactions.cimletezeshezModosithatoToAmount', 'Címletezéshez módosítható')}</p>
             </div>
 
+            {/* HIBA 2026-05-26 (#2): ügyfél deviza-státusza (belföldi / külföldi) */}
+            {step === 2 && (
+              <div>
+                <span className="form-label block mb-1">Ügyfél deviza-státusza</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForeignStatus('FOREIGN')}
+                    className={`flex-1 px-3 py-2 rounded border text-sm font-semibold ${
+                      foreignStatus === 'FOREIGN'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-600 border-gray-300'
+                    }`}
+                  >
+                    Külföldi (K)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForeignStatus('DOMESTIC')}
+                    className={`flex-1 px-3 py-2 rounded border text-sm font-semibold ${
+                      foreignStatus === 'DOMESTIC'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-600 border-gray-300'
+                    }`}
+                  >
+                    Belföldi (B)
+                  </button>
+                </div>
+              </div>
+            )}
+
             {step === 2 && (
               <div className="space-y-2">
-                {/* V235 + V236 (2026-05-19 HIBA #19): Pmt. azonositas a Konverziohoz.
-                    100k+ HUF -> SIMPLIFIED (nev + szul.hely/ido + allampolgarsag),
-                    300k+ -> FULL (+ okmany + anyja neve + lakcim + PEP + saját nevben). */}
-                {hufAmount >= 100_000 && (
+                {/* HIBA 2026-05-26 (#3): a Pmt. azonosítási küszöb a vétel + eladás EGYÜTTES
+                    (2×) HUF-összegén alapul. 100k+ -> SIMPLIFIED, 300k+ -> FULL. */}
+                {amlAmount >= 100_000 && (
                   <div className="rounded-md border border-gray-200 dark:border-gray-700 p-2 bg-white dark:bg-gray-800">
                     <CustomerPanel
                       identificationLevel={identificationLevel}
                       minimumLevel={minimumLevel}
                       onLevelChange={setIdentificationLevel}
                       requiresSourceVerification={requiresSourceVerification}
-                      hufTotal={hufAmount}
+                      hufTotal={amlAmount}
                       onCustomerReady={(data) => { customerDataRef.current = data }}
                     />
                   </div>

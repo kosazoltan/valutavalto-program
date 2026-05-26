@@ -86,6 +86,8 @@ export interface PendingConversionInput {
   customerActorDocumentType?: string | null
   customerActorDocumentNumber?: string | null
   customerActorAddress?: string | null
+  // HIBA 2026-05-26 (#2): ugyfel deviza-statusza (DOMESTIC/FOREIGN)
+  foreignStatus?: string | null
 }
 
 export interface PendingTransferInput {
@@ -410,6 +412,7 @@ export async function saveAndSyncPendingConversion(
         customerActorDocumentType: normalizeOptionalText(entry.customerActorDocumentType),
         customerActorDocumentNumber: normalizeOptionalText(entry.customerActorDocumentNumber),
         customerActorAddress: normalizeOptionalText(entry.customerActorAddress),
+        foreignStatus: normalizeOptionalText(entry.foreignStatus),
         note: normalizeOptionalText(entry.note),
       })
     } else {
@@ -549,6 +552,8 @@ export function buildConversionRequestFromSelection(params: {
   toCurrencyId: number | null
   toCurrencyCode: string
   fromAmount: number
+  toAmount?: number
+  foreignStatus?: 'DOMESTIC' | 'FOREIGN'
   customerId?: string
   customerName?: string
   customerDocumentNumber?: string
@@ -556,6 +561,13 @@ export function buildConversionRequestFromSelection(params: {
 }): ConversionRequest {
   const request: ConversionRequest = {
     fromAmount: params.fromAmount,
+  }
+
+  if (params.toAmount && params.toAmount > 0) {
+    request.toAmount = params.toAmount
+  }
+  if (params.foreignStatus) {
+    request.foreignStatus = params.foreignStatus
   }
 
   if (params.fromCurrencyId && params.fromCurrencyId > 0) {

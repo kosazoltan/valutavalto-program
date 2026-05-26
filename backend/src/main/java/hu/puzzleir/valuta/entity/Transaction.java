@@ -392,6 +392,15 @@ public class Transaction {
     private BigDecimal roundingAmount = BigDecimal.ZERO;
 
     /**
+     * Konverziónál a cél-összeg lefelé módosításából (címletezés) adódó, készpénzben
+     * visszaadott forint (visszajáró). A parent CONVERSION soron jelenik meg, a bizonylaton
+     * fel kell tüntetni (HIBA 2026-05-26).
+     */
+    @Column(name = "returned_huf", precision = 18, scale = 2)
+    @Builder.Default
+    private BigDecimal returnedHuf = BigDecimal.ZERO;
+
+    /**
      * AML flag - gyanus tranzakcio
      */
     @Column(name = "aml_suspicious")

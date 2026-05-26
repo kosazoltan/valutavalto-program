@@ -239,7 +239,7 @@ class TransactionConversionServiceTest {
     }
 
     @Test
-    @DisplayName("executeConversion - AML receives doubled rounded HUF and target currency code")
+    @DisplayName("executeConversion - AML a vétel+eladás tényleges legek összegét kapja (Codex P1 #858) + cél valuta")
     void executeConversion_passesDoubledRoundedHufAndTargetCurrencyToAml() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -284,12 +284,132 @@ class TransactionConversionServiceTest {
 
             conversionService.executeConversion(req);
 
+            // AML-alap = BUY(39050) + SELL usedHuf(39049) = 78099 (NEM 2×39050=78100),
+            // mert a teljes-fedezetű default cél (108.41 USD) usedHuf-ja 39049.
             verify(helper).performAmlCheck(
-                    eq(new BigDecimal("78100")),
+                    eq(new BigDecimal("78099")),
                     eq("FOREIGN-1"),
                     eq("Foreign Customer"),
                     eq("DOC-1"),
                     eq("USD"));
+        }
+    }
+
+    @Test
+    @DisplayName("HIBA 2026-05-26 (#4/#5) — lefele modositott cel-osszeg -> visszajaro HUF + HUF kassza + foreignStatus")
+    void executeConversion_reducedTargetReturnsHuf() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+
+            Company company = mock(Company.class);
+            Branch branch = mock(Branch.class);
+            Worker worker = mock(Worker.class);
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+            Currency eur = mock(Currency.class);
+            when(eur.getCode()).thenReturn("EUR");
+            when(eur.getId()).thenReturn(EUR_ID);
+            Currency usd = mock(Currency.class);
+            when(usd.getCode()).thenReturn("USD");
+            when(usd.getId()).thenReturn(USD_ID);
+            when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eur));
+            when(currencyRepository.findById(USD_ID)).thenReturn(Optional.of(usd));
+
+            ExchangeRate eurRate = mock(ExchangeRate.class);
+            when(eurRate.getBaseBuyRate()).thenReturn(new BigDecimal("390.50"));
+            ExchangeRate usdRate = mock(ExchangeRate.class);
+            when(usdRate.getBaseSellRate()).thenReturn(new BigDecimal("360.20"));
+            when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
+            when(exchangeRateService.getCurrentRate(USD_ID)).thenReturn(usdRate);
+
+            when(receiptSequenceService.generateReceiptNumber(eq(BRANCH_ID), any()))
+                    .thenReturn("R401", "R402", "R403");
+            when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+            when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(helper.getHufCurrencyId()).thenReturn(1L);
+
+            // huf = 100 * 390.50 = 39050 (5 Ft kerekitve marad 39050)
+            // a penztaros 100 USD-re csokkenti a celt (max ~108.41 USD lenne)
+            ConversionRequest req = new ConversionRequest();
+            req.setFromCurrencyId(EUR_ID);
+            req.setToCurrencyId(USD_ID);
+            req.setFromAmount(new BigDecimal("100"));
+            req.setToAmount(new BigDecimal("100"));
+            req.setForeignStatus("DOMESTIC");
+
+            Transaction result = conversionService.executeConversion(req);
+
+            // usedHuf = round(100 * 360.20) = 36020; visszajaro = roundToFive(39050-36020) = 3030
+            assertThat(result.getReturnedHuf()).isEqualByComparingTo("3030");
+            assertThat(result.getForeignStatus()).isEqualTo(ForeignStatus.DOMESTIC);
+
+            // HUF keszlet-ellenorzes + HUF kassza-csokkenes a visszajarora
+            verify(helper).validateCurrencyStock(eq(BRANCH_ID), eq(1L), eq(new BigDecimal("3030")));
+            verify(helper).updateCashBalance(eq(BRANCH_ID), eq(1L), eq(new BigDecimal("-3030")), eq(false));
+            // a cel valuta a csokkentett 100 USD
+            verify(helper).updateCashBalance(eq(BRANCH_ID), eq(USD_ID), eq(new BigDecimal("-100.00")), eq(false));
+        }
+    }
+
+    @Test
+    @DisplayName("HIBA 2026-05-26 (#5) — a maximumnal nagyobb cel-osszeg a felso hatarra vagodik (forras valtozatlan)")
+    void executeConversion_targetAboveMaxIsClamped() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+
+            Company company = mock(Company.class);
+            Branch branch = mock(Branch.class);
+            Worker worker = mock(Worker.class);
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+            Currency eur = mock(Currency.class);
+            when(eur.getCode()).thenReturn("EUR");
+            when(eur.getId()).thenReturn(EUR_ID);
+            Currency usd = mock(Currency.class);
+            when(usd.getCode()).thenReturn("USD");
+            when(usd.getId()).thenReturn(USD_ID);
+            when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eur));
+            when(currencyRepository.findById(USD_ID)).thenReturn(Optional.of(usd));
+
+            ExchangeRate eurRate = mock(ExchangeRate.class);
+            when(eurRate.getBaseBuyRate()).thenReturn(new BigDecimal("390.50"));
+            ExchangeRate usdRate = mock(ExchangeRate.class);
+            when(usdRate.getBaseSellRate()).thenReturn(new BigDecimal("360.20"));
+            when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
+            when(exchangeRateService.getCurrentRate(USD_ID)).thenReturn(usdRate);
+
+            when(receiptSequenceService.generateReceiptNumber(eq(BRANCH_ID), any()))
+                    .thenReturn("R501", "R502", "R503");
+            when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+            when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            ConversionRequest req = new ConversionRequest();
+            req.setFromCurrencyId(EUR_ID);
+            req.setToCurrencyId(USD_ID);
+            req.setFromAmount(new BigDecimal("100"));
+            // irrealisan magas cel -> a forras-fedezet maximumara (108.41 USD) vagodik
+            req.setToAmount(new BigDecimal("999"));
+
+            Transaction result = conversionService.executeConversion(req);
+
+            org.mockito.ArgumentCaptor<Transaction> captor =
+                    org.mockito.ArgumentCaptor.forClass(Transaction.class);
+            verify(transactionRepository, times(3)).save(captor.capture());
+            Transaction convSell = captor.getAllValues().stream()
+                    .filter(t -> t.getTransactionType() == TransactionType.SELL)
+                    .findFirst().orElseThrow();
+            // max = floor(39050 / 360.20, 2) = 108.41 USD
+            assertThat(convSell.getCurrencyAmount()).isEqualByComparingTo("108.41");
+            // visszajaro a flooring-maradek (kicsi), nem negativ
+            assertThat(result.getReturnedHuf()).isGreaterThanOrEqualTo(BigDecimal.ZERO);
         }
     }
 

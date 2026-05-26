@@ -33,6 +33,18 @@ public class ConversionRequestDto {
     @DecimalMin(value = "0", message = "A kezelési díj nem lehet negatív")
     private BigDecimal handlingFee;
 
+    /**
+     * A pénztáros által (címletezéshez) esetleg lefelé módosított cél-összeg.
+     * Ha null, a rendszer a teljes forrás-fedezetből számolt maximumot használja.
+     * Ha kisebb a maximumnál, a különbözet forintban visszajár az ügyfélnek.
+     */
+    @DecimalMin(value = "0.01", message = "A cél összegnek nagyobbnak kell lennie 0-nál")
+    private BigDecimal toAmount;
+
+    /** Ügyfél deviza-státusza (DOMESTIC = belföldi, FOREIGN = külföldi) — NGM/MNB statisztika. */
+    @Pattern(regexp = "^(DOMESTIC|FOREIGN)$", message = "Érvénytelen deviza-státusz")
+    private String foreignStatus;
+
     private String customerId;
     private String customerName;
     private String customerAddress;
