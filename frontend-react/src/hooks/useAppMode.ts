@@ -3,6 +3,7 @@ import { isElectron } from '@/utils/electron';
 import { logger } from '../utils/logger';
 import { isAppMode } from '../types/appMode';
 import type { AppMode } from '../types/appMode';
+import { getSessionAppMode } from '../utils/sessionAppMode';
 
 /**
  * App mód típus — kiterjesztve a frontend-react 'full' móddal.
@@ -21,6 +22,13 @@ export type { AppMode } from '../types/appMode';
  * - Electronban: 'app_mode' kulcs az SQLite config store-ból
  */
 async function loadAppMode(): Promise<AppMode> {
+  // HIBA 2026-05-26 (mód-választó): a belépés után választott mód elsőbbséget élvez
+  // a telepített `app_mode` config felett (a futó munkamenetre).
+  const sessionMode = getSessionAppMode();
+  if (sessionMode) {
+    return sessionMode;
+  }
+
   if (!isElectron()) {
     return 'full';
   }
@@ -56,6 +64,8 @@ async function loadAppMode(): Promise<AppMode> {
 export function useAppMode(): { mode: AppMode; isLoading: boolean } {
   // Böngészőben rögtön 'full', Electronban az adott telepített kliens módja az átmeneti állapot
   const [mode, setMode] = useState<AppMode>(() => {
+    const sessionMode = getSessionAppMode();
+    if (sessionMode) return sessionMode;
     if (!isElectron()) return 'full';
     if (import.meta.env.VITE_APP_FLAVOR === 'central-workstation') return 'full';
     return import.meta.env.VITE_APP_FLAVOR === 'rate-maker' ? 'rate-maker' : 'penztar';

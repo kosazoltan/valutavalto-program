@@ -1,5 +1,46 @@
 import { describe, expect, it } from 'vitest'
-import { canonicalizeRoleForAppMode, isRoleSelectableForAppMode } from './appModeRoles'
+import { canonicalizeRoleForAppMode, isRoleSelectableForAppMode, selectableLocalAppModes, preferredRoleForAppMode } from './appModeRoles'
+
+describe('selectableLocalAppModes (HIBA 2026-05-26 mód-választó)', () => {
+  it('üres/hiányzó validAppModes → üres lista', () => {
+    expect(selectableLocalAppModes(undefined)).toEqual([])
+    expect(selectableLocalAppModes(null)).toEqual([])
+    expect(selectableLocalAppModes([])).toEqual([])
+  })
+
+  it('tiszta pénztáros (csak penztar) → 1 mód (nincs választó)', () => {
+    expect(selectableLocalAppModes(['penztar'])).toEqual(['penztar'])
+  })
+
+  it('értéktáros (penztar + ertektar) → 2 mód, megjelenítési sorrendben', () => {
+    expect(selectableLocalAppModes(['ertektar', 'penztar'])).toEqual(['penztar', 'ertektar'])
+  })
+
+  it('a full/rate-maker módokat kiszűri a lokál terminál választójából', () => {
+    expect(selectableLocalAppModes(['penztar', 'ertektar', 'full', 'rate-maker'])).toEqual(['penztar', 'ertektar'])
+  })
+})
+
+describe('preferredRoleForAppMode', () => {
+  it('a módra kanonikusan illeszkedő role-t választja', () => {
+    expect(preferredRoleForAppMode(['ertektar', 'penztar'], 'ertektar', null)).toBe('ertektar')
+    expect(preferredRoleForAppMode(['ertektar', 'penztar'], 'penztar', null)).toBe('penztar')
+  })
+
+  it('ha nincs kanonikus illeszkedés, bármely a módban választható role', () => {
+    expect(preferredRoleForAppMode(['ertektar'], 'penztar', null)).toBe('ertektar')
+  })
+
+  it('üres roles → fallback role', () => {
+    expect(preferredRoleForAppMode([], 'ertektar', 'ertektar')).toBe('ertektar')
+    expect(preferredRoleForAppMode(null, 'penztar', 'CASHIER')).toBe('CASHIER')
+  })
+
+  it('nincs használható role → null', () => {
+    expect(preferredRoleForAppMode([], 'ertektar', null)).toBeNull()
+    expect(preferredRoleForAppMode([], 'ertektar', '   ')).toBeNull()
+  })
+})
 
 describe('isRoleSelectableForAppMode', () => {
   it('lokalis role-t barmely lokalis appMode-ban enged (kis iroda flexibilitas)', () => {

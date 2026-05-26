@@ -76,6 +76,48 @@ export function isRoleSelectableForAppMode(
   return false
 }
 
+/**
+ * A penztar-client (lokál terminál) által renderelhető üzleti módok.
+ * A kozponti-client a full + rate-maker módokat csomagolja — más a támogatott halmaza.
+ */
+export const PENZTAR_CLIENT_LOCAL_MODES: AppMode[] = ['penztar', 'ertektar', 'ertekszallito']
+
+/**
+ * HIBA 2026-05-26 (mód-választó): a belépő dolgozó által ténylegesen választható módok
+ * az AKTUÁLIS kliensen — a backend `validAppModes`-ának metszete a kliens által
+ * támogatott módokkal. Ha >1, a belépés után mód-választót kell mutatni.
+ *
+ * A `supported` sorrendje adja a megjelenítési sorrendet.
+ */
+export function selectableLocalAppModes(
+  validAppModes: string[] | null | undefined,
+  supported: AppMode[] = PENZTAR_CLIENT_LOCAL_MODES,
+): AppMode[] {
+  if (!validAppModes || validAppModes.length === 0) return []
+  const allowed = new Set(validAppModes)
+  return supported.filter((m) => allowed.has(m))
+}
+
+/**
+ * A kiválasztott módhoz a legmegfelelőbb szerepkód a dolgozó szerepkörei közül
+ * (a /auth/login/select-role hívásnak kell egy appMode-ra érvényes roleCode).
+ * Preferencia: a módra kanonikusan illeszkedő role; majd bármely, a módban választható
+ * role; végül a jelenlegi aktív/worker role (fallback).
+ */
+export function preferredRoleForAppMode(
+  roles: string[] | null | undefined,
+  appMode: AppMode,
+  fallbackRole: string | null | undefined,
+): string | null {
+  const list = (roles ?? []).filter((r) => r && r.trim().length > 0)
+  const canonicalMatch = list.find((r) => canonicalizeRoleForAppMode(r) === appMode)
+  if (canonicalMatch) return canonicalMatch
+  const selectable = list.find((r) => isRoleSelectableForAppMode(r, appMode))
+  if (selectable) return selectable
+  const fb = fallbackRole?.trim()
+  return fb && fb.length > 0 ? fb : null
+}
+
 export function appModeLabel(appMode: AppMode): string {
   if (appMode === 'penztar') return 'Valutaváltó Pénztár'
   if (appMode === 'ertektar') return 'Értéktár'
