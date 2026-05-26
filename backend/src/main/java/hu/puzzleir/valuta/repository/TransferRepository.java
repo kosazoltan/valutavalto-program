@@ -26,6 +26,23 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
            "AND t.status = :status")
     List<Transfer> findByCompanyAndStatus(@Param("companyId") UUID companyId, @Param("status") Transfer.TransferStatus status);
 
+    /**
+     * Az adott fiókhoz tartozó (bejövő VAGY kimenő) PENDING átadások, cég-szűrve.
+     * A szűrés DB-oldalon történik (nem a teljes cég pending halmazát húzza le + Java-szűr),
+     * és JOIN FETCH-csel betölti a {@code toDto}-hoz szükséges lazy asszociációkat
+     * (from/to branch + currency), így nincs N+1 lazy-load query.
+     */
+    @Query("SELECT DISTINCT t FROM Transfer t " +
+           "JOIN FETCH t.fromBranch fb " +
+           "JOIN FETCH t.toBranch tb " +
+           "JOIN FETCH t.currency " +
+           "WHERE (fb.company.id = :companyId OR tb.company.id = :companyId) " +
+           "AND t.status = :status " +
+           "AND (fb.id = :branchId OR tb.id = :branchId)")
+    List<Transfer> findPendingForBranch(@Param("companyId") UUID companyId,
+                                        @Param("branchId") UUID branchId,
+                                        @Param("status") Transfer.TransferStatus status);
+
     @Query("SELECT t FROM Transfer t WHERE t.fromBranch.id = :branchId AND t.status IN ('PENDING', 'IN_TRANSIT')")
     List<Transfer> findOutgoingByBranch(@Param("branchId") UUID branchId);
 

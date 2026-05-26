@@ -219,37 +219,43 @@ public class TransferService {
         transferRepository.save(transfer);
     }
 
+    @Transactional(readOnly = true)
     public TransferDto getById(Long id) {
         return toDto(findOrThrow(id));
     }
 
+    @Transactional(readOnly = true)
     public TransferDto getByTransferNumber(String transferNumber) {
         Transfer transfer = transferRepository.findByTransferNumber(transferNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Átadás nem található: " + transferNumber));
         return toDto(transfer);
     }
 
+    @Transactional(readOnly = true)
     public List<TransferDto> getPending() {
         UUID currentBranchId = SecurityUtils.getCurrentBranchId();
-        // Csak az aktuális fiókhoz tartozó bejövő pending átadások
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        return transferRepository.findByCompanyAndStatus(companyId, Transfer.TransferStatus.PENDING)
+        // Csak az aktuális fiókhoz tartozó (bejövő vagy kimenő) PENDING átadások.
+        // DB-oldali szűrés + JOIN FETCH (nincs N+1 lazy-load, nincs LazyInitializationException).
+        return transferRepository
+                .findPendingForBranch(companyId, currentBranchId, Transfer.TransferStatus.PENDING)
                 .stream()
-                .filter(t -> t.getToBranch().getId().equals(currentBranchId)
-                        || t.getFromBranch().getId().equals(currentBranchId))
                 .map(this::toDto).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<TransferDto> getOutgoing(UUID branchId) {
         return transferRepository.findOutgoingByBranch(branchId)
                 .stream().map(this::toDto).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<TransferDto> getIncoming(UUID branchId) {
         return transferRepository.findIncomingByBranch(branchId)
                 .stream().map(this::toDto).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public Page<TransferDto> search(UUID branchId, LocalDate startDate, LocalDate endDate,
                                      Transfer.TransferStatus status, Transfer.TransferType type, Pageable pageable) {
         return transferRepository.search(branchId, startDate, endDate, status, type, pageable)
