@@ -454,6 +454,34 @@ class WorkerServiceLoginTest {
                 .hasMessageContaining("csak pénztáros");
     }
 
+    @Test
+    @DisplayName("Codex P1: rate-maker jelszavas belépés NEM korlátozódik pénztárosra (foertektar megmarad)")
+    void login_password_rateMaker_notCashierRestricted() {
+        Company company = legacyCompany();
+        Branch branch = legacyBranch(company);
+        Worker worker = legacyWorker(company, branch, WorkerRole.ADMIN);
+
+        lenient().when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        lenient().when(workerRepository.findByCompanyIdAndCode(company.getId(), "BORSI")).thenReturn(Optional.of(worker));
+        lenient().when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
+        lenient().when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of(
+                roleAssignment(5, "foertektar")));
+        lenient().when(workerRolePermissionRepository.findByRoleDefIdWithPermission(5)).thenReturn(List.of());
+        lenient().when(jwtTokenProvider.generateToken(any(Worker.class), any(), any())).thenReturn("jwt");
+        lenient().when(jwtTokenProvider.getTokenIdFromToken("jwt")).thenReturn("tid");
+
+        Exception caught = null;
+        try {
+            workerService.login(legacyLoginRequest("rate-maker"), "127.0.0.1", "test");
+        } catch (Exception e) {
+            caught = e;
+        }
+        // A LÉNYEG: a "jelszó=pénztáros" gate NEM dobja el a rate-maker belépést.
+        if (caught != null) {
+            assertThat(caught.getMessage()).doesNotContain("csak pénztáros");
+        }
+    }
+
     private WorkerRoleAssignment roleAssignment(int id, String code) {
         return WorkerRoleAssignment.builder()
                 .roleDef(WorkerRoleDefinition.builder().id(id).code(code).build())

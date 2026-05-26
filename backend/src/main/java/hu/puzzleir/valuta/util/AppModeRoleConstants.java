@@ -55,14 +55,28 @@ public final class AppModeRoleConstants {
         return "penztar".equals(normalized) || LEGACY_PENZTAR_ROLES.contains(normalized);
     }
 
+    /** Ismert elevated/szerver appMode-ok, ahol legitim a NEM-pénztáros jelszavas belépés. */
+    private static final List<String> PASSWORD_CASHIER_EXEMPT_APP_MODES = List.of(
+            "full",        // webes/központi admin felület (vezetők)
+            "rate-maker",  // árfolyamkészítő Electron kliens — foertektar/ugyvezeto jelszóval lép be
+            "kamera"       // kameraszoftver — teruleti_vezeto/biztonsagi_vezeto
+    );
+
     /**
-     * Webes/központi "full" admin appMode — KIZÁRÓLAG ez mentesül a "jelszó = csak pénztáros"
-     * szabály alól (üzleti szabály, Kósa Zoltán 2026-05-26). Minden más appMode (lokális terminál:
-     * penztar/ertektar/ertekszallito, rate-maker, kamera, ÉS a hiányzó/ismeretlen appMode is —
-     * crafted-kliens bypass ellen) jelszavas belépésnél a pénztárosra korlátozódik.
+     * Igaz, ha a JELSZAVAS belépés ezen az appMode-on a pénztárosra korlátozódik
+     * (üzleti szabály, Kósa Zoltán 2026-05-26).
+     *
+     * <p>Korlátozott: lokális terminál (penztar/ertektar/ertekszallito) ÉS a hiányzó/ismeretlen
+     * appMode is — utóbbi a crafted-kliens bypass (appMode elhagyása) ellen véd.
+     * Mentes: a kifejezetten elevated/szerver módok ({@link #PASSWORD_CASHIER_EXEMPT_APP_MODES}),
+     * ahol legitim nem-pénztáros jelszavas belépés van (pl. rate-maker = foertektar/ugyvezeto) —
+     * ezeket NEM szabad eltörni.</p>
      */
-    public static boolean isFullAppMode(String appMode) {
-        return appMode != null && "full".equalsIgnoreCase(appMode.trim());
+    public static boolean isPasswordCashierRestrictedAppMode(String appMode) {
+        if (appMode == null || appMode.isBlank()) {
+            return true; // hiányzó appMode → deny-elevated (bypass-védelem)
+        }
+        return !PASSWORD_CASHIER_EXEMPT_APP_MODES.contains(appMode.trim().toLowerCase(Locale.ROOT));
     }
 
     /**

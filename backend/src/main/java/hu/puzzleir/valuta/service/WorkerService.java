@@ -392,11 +392,11 @@ public class WorkerService {
         // értéktárosként/vezetőként belépni. Az értéktáros és vezetői belépés CSAK Google-fiókkal
         // (GoogleLoginService): nincs jelszó amit ellopni/elfelejteni, és a Gmail-fiók azonosítja
         // a dolgozót a naplóban.
-        // DEFAULT-DENY-ELEVATED: a szabály MINDEN appMode-ra él, KIVÉVE a webes/központi "full"
-        // admin felületet. Így a hiányzó/ismeretlen appMode (crafted kliens) sem kerülheti meg
-        // (Codex P1 / Copilot bypass-ok). A roleAssignments-et szűrjük (NEM csak a kódokat),
-        // hogy a permission/JWT számítás is helyes maradjon.
-        if (!AppModeRoleConstants.isFullAppMode(dto.getAppMode())) {
+        // SZKÓP: lokális terminál (penztar/ertektar/ertekszallito) + hiányzó/ismeretlen appMode
+        // (utóbbi a crafted-kliens bypass ellen). MENTES a webes "full", a rate-maker (foertektar/
+        // ugyvezeto jelszavas belépés!) és a kamera mód — ezeket NEM törjük el (Codex P1 + Copilot).
+        // A roleAssignments-et szűrjük (NEM csak a kódokat), hogy a permission/JWT is helyes maradjon.
+        if (AppModeRoleConstants.isPasswordCashierRestrictedAppMode(dto.getAppMode())) {
             if (roleAssignments.isEmpty()) {
                 // Legacy (role-assignment NÉLKÜLI) dolgozó: csak a CASHIER enum fogadható el;
                 // bármely más legacy szerepkör (manager/admin/stb.) jelszóval tilos (Codex P1).
