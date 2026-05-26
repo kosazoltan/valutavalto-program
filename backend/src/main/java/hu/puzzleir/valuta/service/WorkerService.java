@@ -381,6 +381,26 @@ public class WorkerService {
         
         // V57: Operatív szerepkör keresés
         List<WorkerRoleAssignment> roleAssignments = roleAssignmentRepository.findByWorkerId(worker.getId());
+
+        // Üzleti szabály (Kósa Zoltán 2026-05-26): a lokális terminálok (penztar/ertektar/
+        // ertekszallito) JELSZAVAS belépésén KIZÁRÓLAG a pénztáros szerepkör érhető el — a
+        // pénztárgépen véletlenül se lehessen értéktárosként/vezetőként belépni. Az értéktáros és
+        // vezetői belépés CSAK Google-fiókkal történik (GoogleLoginService), így nincs jelszó,
+        // amit ellopni/elfelejteni, és a Gmail-fiók azonosítja a dolgozót a naplóban.
+        // A roleAssignments-et szűrjük (NEM csak a kódokat), hogy a permission-számítás is helyes
+        // maradjon. A webes/„full" admin felület belépését ez NEM érinti.
+        if (AppModeRoleConstants.isLocalTerminalAppMode(dto.getAppMode()) && !roleAssignments.isEmpty()) {
+            List<WorkerRoleAssignment> cashierOnlyAssignments = roleAssignments.stream()
+                    .filter(ra -> AppModeRoleConstants.isCashierRole(ra.getRoleDef().getCode()))
+                    .toList();
+            if (cashierOnlyAssignments.isEmpty()) {
+                throw new AuthenticationException(
+                        "Jelszavas belépéssel csak pénztáros szerepkör érhető el. "
+                        + "Az értéktáros és vezetői belépés Google-fiókkal történik.");
+            }
+            roleAssignments = cashierOnlyAssignments;
+        }
+
         List<String> roleCodes = roleAssignments.stream()
                 .map(ra -> ra.getRoleDef().getCode())
                 .collect(Collectors.toList());

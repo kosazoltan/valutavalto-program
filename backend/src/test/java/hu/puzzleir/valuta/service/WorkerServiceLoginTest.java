@@ -6,6 +6,8 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
+import hu.puzzleir.valuta.entity.WorkerRoleAssignment;
+import hu.puzzleir.valuta.entity.WorkerRoleDefinition;
 import hu.puzzleir.valuta.exception.AuthenticationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
@@ -351,6 +353,63 @@ class WorkerServiceLoginTest {
         assertThat(worker.getBranch()).isEqualTo(branch);
         verify(workerSessionRepository).save(any());
         verify(workerRepository).save(worker);
+    }
+
+    // ── Üzleti szabály (Kósa Zoltán 2026-05-26): JELSZÓ = CSAK PÉNZTÁROS ──────────────────────
+
+    @Test
+    @DisplayName("Jelszó=pénztáros: több szerepkörű dolgozó penztar appMode-ban CSAK pénztárosként lép be (értéktáros kiesik)")
+    void login_password_localTerminal_restrictsToCashierOnly() {
+        Company company = legacyCompany();
+        Branch branch = legacyBranch(company);
+        Worker worker = legacyWorker(company, branch, WorkerRole.CASHIER);
+
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCode(company.getId(), "BORSI")).thenReturn(Optional.of(worker));
+        when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
+        // A dolgozónak penztar + ertektar szerepköre is van (mint Balinak a V228 után)
+        when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of(
+                roleAssignment(1, "penztar"),
+                roleAssignment(2, "ertektar")));
+        when(workerRolePermissionRepository.findByRoleDefIdWithPermission(1)).thenReturn(List.of());
+        when(jwtTokenProvider.generateToken(worker, "penztar", List.of())).thenReturn("jwt-token");
+        when(jwtTokenProvider.getTokenIdFromToken("jwt-token")).thenReturn("token-id");
+
+        LoginResponseDto response = workerService.login(legacyLoginRequest("penztar"), "127.0.0.1", "test");
+
+        // CSAK pénztáros: nincs szerepkör-választó, az aktív role penztar, az ertektar KIESETT.
+        assertThat(response.getRoleSelectionRequired()).isFalse();
+        assertThat(response.getActiveRole()).isEqualTo("penztar");
+        assertThat(response.getRoles()).containsExactly("penztar");
+        assertThat(response.getRoles()).doesNotContain("ertektar");
+    }
+
+    @Test
+    @DisplayName("Jelszó=pénztáros: pénztáros szerepkör NÉLKÜLI dolgozó lokális terminálon jelszóval NEM léphet be (Google-re irányít)")
+    void login_password_localTerminal_noCashierRole_denied() {
+        Company company = legacyCompany();
+        Branch branch = legacyBranch(company);
+        Worker worker = legacyWorker(company, branch, WorkerRole.CASHIER);
+
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCode(company.getId(), "BORSI")).thenReturn(Optional.of(worker));
+        when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
+        // Csak értéktáros szerepkör (nincs pénztáros) → jelszóval tilos
+        when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of(
+                roleAssignment(2, "ertektar")));
+
+        assertThatThrownBy(() -> workerService.login(legacyLoginRequest("ertektar"), "127.0.0.1", "test"))
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessageContaining("csak pénztáros");
+
+        verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(), any());
+        verify(workerSessionRepository, never()).save(any());
+    }
+
+    private WorkerRoleAssignment roleAssignment(int id, String code) {
+        return WorkerRoleAssignment.builder()
+                .roleDef(WorkerRoleDefinition.builder().id(id).code(code).build())
+                .build();
     }
 
     private Company legacyCompany() {
