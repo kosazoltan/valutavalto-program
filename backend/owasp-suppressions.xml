@@ -68,6 +68,7 @@
         <cve>CVE-2026-41238</cve>
         <cve>CVE-2026-41239</cve>
         <cve>CVE-2026-41240</cve>
+        <vulnerabilityName>GHSA-39q2-94rc-95cp</vulnerabilityName>
     </suppress>
 
     <suppress>
@@ -122,5 +123,26 @@
         ]]></notes>
         <packageUrl regex="true">^pkg:maven/org\.postgresql/postgresql@42\.7\.10$</packageUrl>
         <cve>CVE-2026-42198</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+            CVE-2026-39883/29181/39882 az "opentelemetry" termekre vonatkoznak, de a
+            dependency-check ezeket az `io.opentelemetry.semconv:opentelemetry-semconv` artifactra
+            matcheli a tul-tag (over-broad) `cpe:2.3:a:opentelemetry:opentelemetry` CPE alapjan.
+            Az opentelemetry-semconv KONSTANS-ONLY artifact: kizarolag generalt szemantikus-konvencio
+            attributum-konstansok (SemanticAttributes), NINCS benne futtathato telemetria-pipeline /
+            exporter / collector kod — a hivatkozott CVE-k exploit-vektorai (SDK/Collector komponensek)
+            ebben az artifactban fizikailag nincsenek jelen. Az artifact transitivan jon a
+            `micrometer-tracing-bridge-otel`-bol (trace_id/span_id MDC-propagacio), es a metrikak a
+            Micrometer Prometheus registry-n mennek (NEM OTLP-exporter kulso collectorra).
+            A semconv kozvetlen bump-ja (1.37 -> 1.41) runtime NoSuchFieldError-t okozhatna (a bridge a
+            regi konstansokat hivja), ezert a valodi fix a micrometer/otel BOM upgrade kulon, runtime-
+            verifikalt sprintben — addig ez a CPE-tul-tag suppression indokolt.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.opentelemetry\.semconv/opentelemetry-semconv@.*$</packageUrl>
+        <cve>CVE-2026-39883</cve>
+        <cve>CVE-2026-29181</cve>
+        <cve>CVE-2026-39882</cve>
     </suppress>
 </suppressions>

@@ -484,11 +484,16 @@ Write-Section "Static pattern scans"
 
 $hardcodedSecretsPattern = '(?i)(password|passwd|secret|api[_-]?key|token|private[_-]?key|jwt[_-]?secret)["'']?\s*[:=]\s*["''][^"'']{6,}["'']'
 $weakCryptoPattern = 'MD5|SHA-1|DES/|AES/ECB|ECB/PKCS5Padding|RC4|3DES'
-$electronDangerousPattern = 'nodeIntegration\s*:\s*true|contextIsolation\s*:\s*false|sandbox\s*:\s*false|allowRunningInsecureContent\s*:\s*true|enableRemoteModule\s*:\s*true|eval\(|new Function\('
+# Megj.: az `eval\(` mintat \b szohatarral hasznaljuk, kulonben identifier-suffixre is
+# rament (pl. a Java `allocatedReval(` substringkent tartalmazza az "eval(" reszt) →
+# false-positive gate-bukas. A `\beval\(` csak valodi `eval(` hivast detektal (a "Reval"
+# belsejeben nincs szohatar "R" es "e" kozott). Az rg itt -P nelkul fut (Rust regex),
+# ahol a \b szohatar tamogatott, lookbehind nem.
+$electronDangerousPattern = 'nodeIntegration\s*:\s*true|contextIsolation\s*:\s*false|sandbox\s*:\s*false|allowRunningInsecureContent\s*:\s*true|enableRemoteModule\s*:\s*true|\beval\(|new Function\('
 $sqliPattern = 'create(Native)?Query\s*\([^\n]*\+|jdbcTemplate\.(query|update|execute)\s*\([^\n]*\+|Runtime\.getRuntime\(\)\.exec|ProcessBuilder\s*\(\s*(?:\r?\n\s*)*\x22(cmd(?:\.exe)?|powershell(?:\.exe)?|pwsh(?:\.exe)?|sh|/bin/sh)\x22'
-$reactXssPattern = 'dangerouslySetInnerHTML|eval\(|new Function\(|javascript:'
-$nodeDangerousPattern = 'child_process\.exec\(|eval\(|new Function\(|vm\.runInNewContext\('
-$pythonDangerousPattern = 'eval\(|exec\(|pickle\.loads\(|yaml\.load\(|subprocess\..*shell\s*=\s*True|DEBUG\s*=\s*True'
+$reactXssPattern = 'dangerouslySetInnerHTML|\beval\(|new Function\(|javascript:'
+$nodeDangerousPattern = 'child_process\.exec\(|\beval\(|new Function\(|vm\.runInNewContext\('
+$pythonDangerousPattern = '\beval\(|\bexec\(|pickle\.loads\(|yaml\.load\(|subprocess\..*shell\s*=\s*True|DEBUG\s*=\s*True'
 
 $results.Add((Invoke-CheckWithTimeout `
     -Name "hardcoded_secrets_scan" `

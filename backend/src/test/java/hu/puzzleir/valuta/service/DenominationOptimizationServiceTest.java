@@ -4,12 +4,14 @@ import hu.puzzleir.valuta.entity.Denomination;
 import hu.puzzleir.valuta.entity.DenominationType;
 import hu.puzzleir.valuta.entity.OptimizationStrategy;
 import hu.puzzleir.valuta.repository.DenominationRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -19,6 +21,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -325,6 +331,44 @@ class DenominationOptimizationServiceTest {
 
         // Csak 15000-ig tud lefedni
         assertThat(sum(result)).isEqualByComparingTo("15000");
+    }
+
+    // ==========================================================================
+    // Multi-tenant defense-in-depth (P1-05 audit fix)
+    // ==========================================================================
+
+    @Test
+    @DisplayName("companyId jelen (request-kontextus) → a company-scope-os query fut, az unscoped NEM")
+    void optimize_withCompanyContext_usesCompanyScopedQuery() {
+        UUID companyId = UUID.randomUUID();
+        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+            mocked.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(companyId);
+            when(denominationRepository.findByBranchAndCurrencyAndCompanyId(any(), any(), eq(companyId)))
+                    .thenReturn(hufDenoms);
+
+            Map<BigDecimal, Integer> result = service.optimize(branchId, currencyId,
+                    new BigDecimal("15000"), OptimizationStrategy.GREEDY);
+
+            assertThat(sum(result)).isEqualByComparingTo("15000");
+            verify(denominationRepository).findByBranchAndCurrencyAndCompanyId(branchId, currencyId, companyId);
+            verify(denominationRepository, never()).findByBranchAndCurrency(any(), any());
+        }
+    }
+
+    @Test
+    @DisplayName("companyId hiányzik (nincs SecurityContext, pl. teszt/scheduler) → az unscoped query fut (fallback)")
+    void optimize_withoutCompanyContext_usesUnscopedQuery() {
+        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+            mocked.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(null);
+            when(denominationRepository.findByBranchAndCurrency(any(), any())).thenReturn(hufDenoms);
+
+            Map<BigDecimal, Integer> result = service.optimize(branchId, currencyId,
+                    new BigDecimal("15000"), OptimizationStrategy.GREEDY);
+
+            assertThat(sum(result)).isEqualByComparingTo("15000");
+            verify(denominationRepository).findByBranchAndCurrency(branchId, currencyId);
+            verify(denominationRepository, never()).findByBranchAndCurrencyAndCompanyId(any(), any(), any());
+        }
     }
 
     // ==========================================================================

@@ -17,7 +17,7 @@
     
     <groupId>com.puzzleir</groupId>
     <artifactId>valuta-backend</artifactId>
-    <version>2.27.19</version>
+    <version>2.27.20</version>
     <name>Valutaváltó Backend</name>
     <description>Valutaváltó program Spring Boot backend</description>
     
@@ -41,6 +41,14 @@
         <!-- <tomcat.version>10.1.54</tomcat.version> -->
         <!-- CVE-2026-42198 fix: PostgreSQL JDBC 42.7.10 -> 42.7.11 -->
         <postgresql.version>42.7.11</postgresql.version>
+        <!-- CVE-2026-41293/43512 (9.8) + 43515 (9.1) + 41284/43513/42498/43514 fix:
+             Tomcat 11.0.21 -> 11.0.22. AZONOS 11.0.x Servlet-6.1 line (csak biztonsagi
+             point-release) — NEM a korabbi 10.1.x Servlet-6.0 override-risk (ld. fentebb). -->
+        <tomcat.version>11.0.22</tomcat.version>
+        <!-- CVE-2026-42581 (9.8) + 42579/42584 (9.1) + tovabbi netty-transport CVE-k fix:
+             netty 4.2.12 -> 4.2.14. Azonos 4.2.x minor (Lettuce/Redis-kliens transitive),
+             csak biztonsagi patch — API-kompat. -->
+        <netty.version>4.2.14.Final</netty.version>
         <!-- Surefire argLine — ures alapertelmezett, JDK 25 profil felulirja -->
     </properties>
     
@@ -297,17 +305,9 @@
             <version>1.5.0</version>
         </dependency>
 
-        <!-- QR code generation (TOTP enrollment) -->
-        <dependency>
-            <groupId>com.google.zxing</groupId>
-            <artifactId>core</artifactId>
-            <version>3.5.4</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.zxing</groupId>
-            <artifactId>javase</artifactId>
-            <version>3.5.4</version>
-        </dependency>
+        <!-- QR code generation (TOTP enrollment) a fentebbi com.google.zxing
+             (core + javase 3.5.4) függőséget használja — duplikált deklaráció
+             eltávolítva (Maven 'duplicate dependency' warning + future-compat). -->
 
         <!-- ===================================================================
              EBC belso log+audit modul (V234 + VVLogger + DiagnosticsController)
