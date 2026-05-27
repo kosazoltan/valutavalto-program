@@ -581,8 +581,10 @@ public class TransactionService {
     @Transactional(readOnly = true)
     public Transaction findByReceiptNumber(String receiptNumber) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        return transactionRepository.findByReceiptNumberAndCompanyId(receiptNumber, companyId)
+        Transaction tx = transactionRepository.findByReceiptNumberAndCompanyId(receiptNumber, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bizonylat nem található: " + receiptNumber));
+        initMultiLineForMapping(tx);
+        return tx;
     }
 
     /**
@@ -591,7 +593,23 @@ public class TransactionService {
     @Transactional(readOnly = true)
     public List<Transaction> getDailyTransactions() {
         UUID branchId = SecurityUtils.getCurrentBranchId();
-        return transactionRepository.findByBranchAndDate(branchId, LocalDate.now());
+        List<Transaction> txs = transactionRepository.findByBranchAndDate(branchId, LocalDate.now());
+        txs.forEach(this::initMultiLineForMapping);
+        return txs;
+    }
+
+    /**
+     * #LazyInit (2026-05-27, architect-mode): a TransactionMapper.toDto multiLine=true esetén
+     * a lazy `lines` kollekciót (+ soronkénti currency-t) olvassa. A controllerek a session
+     * lezárása UTÁN (OSIV=false) mappelnek → LazyInit 500 minden multi-line tranzakciónál a
+     * napi listán / bizonylat-keresőn / lapozott keresőn. Itt, a tranzakción belül töltjük be.
+     * Lapozás-biztos (a már betöltött page-content sorain fut, nem JOIN FETCH a Pageable mellé).
+     */
+    private void initMultiLineForMapping(Transaction tx) {
+        if (tx != null && Boolean.TRUE.equals(tx.getMultiLine()) && tx.getLines() != null) {
+            org.hibernate.Hibernate.initialize(tx.getLines());
+            tx.getLines().forEach(line -> org.hibernate.Hibernate.initialize(line.getCurrency()));
+        }
     }
 
     /**
@@ -617,7 +635,9 @@ public class TransactionService {
                 "A SecurityUtils.getCurrentBranchId()-t kell használni a hívó kontextusban.");
         }
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        return transactionRepository.findWithFilters(companyId, branchId, startDate, endDate, type, pageable);
+        Page<Transaction> page = transactionRepository.findWithFilters(companyId, branchId, startDate, endDate, type, pageable);
+        page.getContent().forEach(this::initMultiLineForMapping);
+        return page;
     }
 
     /**

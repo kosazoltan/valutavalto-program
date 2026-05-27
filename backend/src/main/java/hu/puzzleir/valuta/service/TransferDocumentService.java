@@ -144,8 +144,10 @@ public class TransferDocumentService {
 
     @Transactional(readOnly = true)
     public TransferDocument getById(Long id) {
-        return transferDocumentRepository.findById(id)
+        TransferDocument doc = transferDocumentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Bizonylat nem található: " + id));
+        assertOwnedByCurrentCompany(doc, id);
+        return doc;
     }
 
     @Transactional(readOnly = true)
@@ -156,9 +158,24 @@ public class TransferDocumentService {
 
     // ============ BELSŐ ============
 
+    /**
+     * Multi-tenant guard (2026-05-27, architect-mode IDOR): a getById + a courier-workflow
+     * (courierPickup/courierDeliver/receiverConfirm → findAndValidate) nyers Long docId-vel,
+     * company-ellenőrzés NÉLKÜL töltött → bármely CASHIER olvashatta/léptethette más cég
+     * értékszállítási bizonylatát az id iterálásával. A findFiltered már scope-olt; ez a
+     * single-id párja. Tenant-idegen → 404 (id-enumeráció ellen).
+     */
+    private void assertOwnedByCurrentCompany(TransferDocument doc, Long id) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (doc.getCompany() == null || !doc.getCompany().getId().equals(companyId)) {
+            throw new ResourceNotFoundException("Bizonylat nem található: " + id);
+        }
+    }
+
     private TransferDocument findAndValidate(Long docId, TransferDocument.Status expectedStatus) {
         TransferDocument doc = transferDocumentRepository.findById(docId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bizonylat nem található: " + docId));
+        assertOwnedByCurrentCompany(doc, docId);
         if (doc.getStatus() != expectedStatus) {
             throw new ValidationException(
                     "Érvénytelen státusz: " + doc.getStatus() + " (várt: " + expectedStatus + ")");

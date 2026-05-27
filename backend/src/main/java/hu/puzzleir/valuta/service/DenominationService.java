@@ -167,6 +167,14 @@ public class DenominationService {
                 denomination.getCurrency().getCode(), request.getFaceValue(),
                 oldQuantity, request.getNewQuantity());
 
+        // #LazyInit (2026-05-27, architect-mode): a PUT /denominations + /bulk a derived
+        // findByBranchIdAndCurrencyIdAndFaceValue-t használja (nincs JOIN FETCH), majd a controller
+        // a session lezárása UTÁN (OSIV=false) mappel DTO-ra. A DenominationMapper a branch+currency
+        // proxyt olvassa → LazyInit 500. A branch-et itt, a tranzakción belül inicializáljuk
+        // (a currency-t a fenti log már betöltötte, de explicit a robusztusságért).
+        org.hibernate.Hibernate.initialize(saved.getBranch());
+        org.hibernate.Hibernate.initialize(saved.getCurrency());
+
         return saved;
     }
 
