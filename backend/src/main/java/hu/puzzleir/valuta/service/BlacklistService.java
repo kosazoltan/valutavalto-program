@@ -50,6 +50,11 @@ public class BlacklistService {
     @Transactional(rollbackFor = Exception.class)
     public ProhibitedPerson createPerson(ProhibitedPerson entity) {
         entity.setId(null);
+        // Multi-tenant (2026-05-27, architect-mode IDOR): a companyId-t a szerver kötelezően a
+        // hívó cégére állítja — eddig a kliens-küldte (vagy null) companyId került mentésre, ami
+        // null/idegen tenantbe tette a tiltott-személy bejegyzést → az AML-screening (saját cég
+        // listájára szűr) csendben átengedhette.
+        entity.setCompanyId(SecurityUtils.getCurrentCompanyId());
         if (entity.getIsActive() == null) entity.setIsActive(true);
         return personRepo.save(entity);
     }
@@ -58,6 +63,7 @@ public class BlacklistService {
     public ProhibitedPerson updatePerson(UUID id, ProhibitedPerson entity) {
         ProhibitedPerson existing = personRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tiltott személy nem található: " + id));
+        assertPersonOwned(existing, id);
         existing.setFullName(entity.getFullName());
         existing.setDocumentNumber(entity.getDocumentNumber());
         existing.setIdentityNumber(entity.getIdentityNumber());
@@ -73,7 +79,17 @@ public class BlacklistService {
 
     @Transactional(rollbackFor = Exception.class)
     public void deletePerson(UUID id) {
-        personRepo.deleteById(id);
+        ProhibitedPerson existing = personRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tiltott személy nem található: " + id));
+        assertPersonOwned(existing, id);
+        personRepo.delete(existing);
+    }
+
+    private void assertPersonOwned(ProhibitedPerson person, UUID id) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (person.getCompanyId() == null || !person.getCompanyId().equals(companyId)) {
+            throw new ResourceNotFoundException("Tiltott személy nem található: " + id);
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -98,6 +114,7 @@ public class BlacklistService {
                         .listSource(parts.length > 7 ? parts[7].trim() : null)
                         .reason(parts.length > 8 ? parts[8].trim() : null)
                         .isActive(true)
+                        .companyId(SecurityUtils.getCurrentCompanyId())
                         .build();
                 imported.add(personRepo.save(p));
             }
@@ -143,6 +160,7 @@ public class BlacklistService {
     @Transactional(rollbackFor = Exception.class)
     public ProhibitedCompany createCompany(ProhibitedCompany entity) {
         entity.setId(null);
+        entity.setCompanyId(SecurityUtils.getCurrentCompanyId());
         if (entity.getIsActive() == null) entity.setIsActive(true);
         return companyRepo.save(entity);
     }
@@ -151,6 +169,7 @@ public class BlacklistService {
     public ProhibitedCompany updateCompany(UUID id, ProhibitedCompany entity) {
         ProhibitedCompany existing = companyRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tiltott cég nem található: " + id));
+        assertCompanyOwned(existing, id);
         existing.setCompanyName(entity.getCompanyName());
         existing.setTaxNumber(entity.getTaxNumber());
         existing.setRegistrationNumber(entity.getRegistrationNumber());
@@ -163,7 +182,17 @@ public class BlacklistService {
 
     @Transactional(rollbackFor = Exception.class)
     public void deleteCompany(UUID id) {
-        companyRepo.deleteById(id);
+        ProhibitedCompany existing = companyRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tiltott cég nem található: " + id));
+        assertCompanyOwned(existing, id);
+        companyRepo.delete(existing);
+    }
+
+    private void assertCompanyOwned(ProhibitedCompany company, UUID id) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (company.getCompanyId() == null || !company.getCompanyId().equals(companyId)) {
+            throw new ResourceNotFoundException("Tiltott cég nem található: " + id);
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -185,6 +214,7 @@ public class BlacklistService {
                         .listSource(parts.length > 4 ? parts[4].trim() : null)
                         .reason(parts.length > 5 ? parts[5].trim() : null)
                         .isActive(true)
+                        .companyId(SecurityUtils.getCurrentCompanyId())
                         .build();
                 imported.add(companyRepo.save(c));
             }

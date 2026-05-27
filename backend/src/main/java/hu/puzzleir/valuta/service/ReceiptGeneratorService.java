@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.entity.Transfer;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.entity.WuTransaction;
 import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -356,12 +358,31 @@ public class ReceiptGeneratorService {
     // ============ Tranzakció ID → Receipt ============
 
     /**
+     * Tranzakciót betölti és multi-tenant ellenőrzést végez.
+     *
+     * Audit (2026-05-27, architect-mode IDOR): a receipt-PDF/ESC-POS végpontok nyers Long
+     * transactionId-vel, companyId-ellenőrzés NÉLKÜL töltöttek → bármely CASHIER letölthette
+     * más cég bizonylatát (ügyfél-PII + összegek) az id iterálásával (IDOR). A tenant-idegen
+     * találatot 404-gyel (ResourceNotFoundException) utasítjuk el — nem 403, hogy az id-létezés
+     * se szivárogjon ki. Mintaforrás: ReceiptService.getById / ReceiptSearchService.getDetail.
+     */
+    private Transaction loadOwnedTransaction(Long transactionId) {
+        Transaction tx = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tranzakció nem található: " + transactionId));
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        if (tx.getCompany() == null || !tx.getCompany().getId().equals(currentCompanyId)) {
+            // Tenant-idegen → ugyanaz a válasz, mint a nem-létezőre (id-enumeráció ellen).
+            throw new ResourceNotFoundException("Tranzakció nem található: " + transactionId);
+        }
+        return tx;
+    }
+
+    /**
      * Tranzakció ID alapján PDF bizonylat generálása
      */
     @Transactional(readOnly = true)
     public byte[] generatePdfForTransaction(Long transactionId) {
-        Transaction tx = transactionRepository.findById(transactionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Tranzakció nem található: " + transactionId));
+        Transaction tx = loadOwnedTransaction(transactionId);
 
         ReceiptData data;
         if (tx.isReversal()) {
@@ -380,8 +401,7 @@ public class ReceiptGeneratorService {
      */
     @Transactional(readOnly = true)
     public byte[] generateEscPosForTransaction(Long transactionId) {
-        Transaction tx = transactionRepository.findById(transactionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Tranzakció nem található: " + transactionId));
+        Transaction tx = loadOwnedTransaction(transactionId);
 
         ReceiptData data;
         if (tx.isReversal()) {
