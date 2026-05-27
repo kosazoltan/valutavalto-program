@@ -285,22 +285,22 @@ export default function StornoPage() {
       {/* Approval Status */}
       {approval && (
         <div className={`form-panel ${
-          approval.approvalStatusDid === 'APPROVED' ? 'bg-green-50 border-green-200' :
-          approval.approvalStatusDid === 'REJECTED' ? 'bg-red-50 border-red-200' :
+          approval.approvalStatusCode === 'APPROVED' ? 'bg-green-50 border-green-200' :
+          approval.approvalStatusCode === 'REJECTED' ? 'bg-red-50 border-red-200' :
           'bg-yellow-50 border-yellow-200'
         }`}>
           <div className="flex items-start gap-3">
-            {approval.approvalStatusDid === 'APPROVED' ? (
+            {approval.approvalStatusCode === 'APPROVED' ? (
               <CheckCircle className="text-green-600 mt-0.5" size={20} />
-            ) : approval.approvalStatusDid === 'REJECTED' ? (
+            ) : approval.approvalStatusCode === 'REJECTED' ? (
               <XCircle className="text-red-600 mt-0.5" size={20} />
             ) : (
               <AlertCircle className="text-yellow-600 mt-0.5" size={20} />
             )}
             <div className="flex-1">
               <h3 className="font-semibold mb-1">
-                {approval.approvalStatusDid === 'APPROVED' ? 'Engedélyezve' :
-                 approval.approvalStatusDid === 'REJECTED' ? 'Elutasítva' :
+                {approval.approvalStatusCode === 'APPROVED' ? 'Engedélyezve' :
+                 approval.approvalStatusCode === 'REJECTED' ? 'Elutasítva' :
                  'Várakozik jóváhagyásra'}
               </h3>
               {approval.requestReason && (
@@ -319,7 +319,7 @@ export default function StornoPage() {
       )}
 
       {/* Storno Form */}
-      {(!checkResult.requiresApproval || approval?.approvalStatusDid === 'APPROVED') && (
+      {(!checkResult.requiresApproval || approval?.approvalStatusCode === 'APPROVED') && (
         <div className="form-panel">
           <h2 className="text-lg font-semibold mb-3">{t('stornos.sztornoAdatai')}</h2>
           <div className="space-y-4">

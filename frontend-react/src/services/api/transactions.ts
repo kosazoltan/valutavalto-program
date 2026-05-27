@@ -644,7 +644,10 @@ export interface StornoApproval {
   workerId: string
   branchId: string
   dailyStornoCount: number
+  /** A jóváhagyási státusz Dictionary UUID-ja (NEM a kód). Megjelenítéshez/azonosításhoz. */
   approvalStatusDid: string
+  /** #868: a jóváhagyási státusz KÓDJA (PENDING/APPROVED/REJECTED) — a státusz-logika ez ellen hasonlít. */
+  approvalStatusCode?: string
   requestReason: string
   rejectionReason?: string
   approvedByWorkerId?: string

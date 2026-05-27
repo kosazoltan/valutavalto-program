@@ -17,8 +17,31 @@
 -- A másik két BIGINT *_did oszlop (branch_group.group_type_did, organization.organization_type_did)
 -- NEM érintett: azokat az entity plain Long mezőként mappeli (konzisztens), NEM Dictionary FK-ként.
 
-ALTER TABLE storno_approval
-    ALTER COLUMN approval_status_did TYPE uuid USING NULL::uuid;
+-- Copilot P2 (#868): defenzív konverzió — csak akkor ALTER-elünk, ha a column MÉG bigint
+-- (idempotens snapshot/restore + újrafuttatás esetén is), és ha BÁRMILYEN nem-NULL érték
+-- létezne, FAIL LOUD (RAISE EXCEPTION) a csendes adatvesztés helyett. (A column UUID-Dictionary
+-- FK; bármilyen meglévő bigint értelmezhetetlen lenne, de a fail-loud a helyes default.)
+DO $$
+DECLARE
+    v_type text;
+    v_nonnull bigint;
+BEGIN
+    SELECT data_type INTO v_type
+    FROM information_schema.columns
+    WHERE table_name = 'storno_approval' AND column_name = 'approval_status_did';
+
+    IF v_type = 'bigint' THEN
+        EXECUTE 'SELECT count(*) FROM storno_approval WHERE approval_status_did IS NOT NULL'
+            INTO v_nonnull;
+        IF v_nonnull > 0 THEN
+            RAISE EXCEPTION 'V269: storno_approval.approval_status_did % nem-NULL bigint értéket tartalmaz — '
+                'kézi adatmigráció szükséges a UUID-Dictionary FK-ra konvertálás előtt (nincs csendes adatvesztés).',
+                v_nonnull;
+        END IF;
+        ALTER TABLE storno_approval ALTER COLUMN approval_status_did TYPE uuid USING NULL::uuid;
+    END IF;
+    -- ha már uuid: no-op (idempotens).
+END $$;
 
 -- Integritás: a státusz a dictionary táblára mutat (a Dictionary entity-vel összhangban).
 -- IF NOT EXISTS-szerű védelem PL/pgSQL-lel (idempotens — ha valamiért már létezik, nem hibázik).
