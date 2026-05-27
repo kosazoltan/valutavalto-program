@@ -270,9 +270,10 @@ class AmlServiceCompletionTest {
     @DisplayName("reverseAccumulation: ha limit alá csökken → highRiskFlag törölve")
     void testReverseAccumulation_clearsHighRiskFlag() {
         String customerId = "C_HIGH";
-        // Aktuális éves összeg: 4M (limit felett)
-        BigDecimal currentAnnual = new BigDecimal("4000000");
-        // Sztornózott összeg: 1M → új összeg 3M (limit=3.6M alá csökken)
+        // A sumCustomerAnnualTotal a sztornó UTÁNI összeget adja (az eredeti már REVERSED → kizárva,
+        // a REVERSAL sor customerId=null → kizárva). Itt: sztornó utáni = 3M (limit=3.6M ALATT).
+        // Sztornózott összeg: 1M → sztornó ELŐtti = 4M (limit FELETT) → lefelé keresztezte → flag törlés.
+        BigDecimal currentAnnual = new BigDecimal("3000000");
         BigDecimal stornoAmount = new BigDecimal("1000000");
 
         Company company = new Company();
