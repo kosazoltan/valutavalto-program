@@ -31,6 +31,8 @@ const MASTER_CURRENCIES = [
 const STOCK = [
   { id: 's1', branchName: 'Baja Tesco', currencyCode: 'EUR', currentBalance: 1910 },
   { id: 's2', branchName: 'Baja Tesco', currencyCode: 'TST', currentBalance: 0 },
+  // Árva, NEM-nulla egyenleg egy inaktív valutában (pl. korábbi DKK-készlet a deaktiválás előtt).
+  { id: 's3', branchName: 'Baja Tesco', currencyCode: 'DKK', currentBalance: 4200 },
 ]
 
 const BRANCHES = [
@@ -64,6 +66,16 @@ describe('CashierStocksPage (FK-007/008)', () => {
     expect(screen.getAllByText('HUF').length).toBeGreaterThan(0)
     expect(screen.getAllByText('AUD').length).toBeGreaterThan(0)
     expect(screen.getAllByText('EUR').length).toBeGreaterThan(0)
+  })
+
+  it('P1: árva, NEM-nulla egyenleg inaktív valutában NEM tűnik el (néma adatvesztés ellen)', async () => {
+    render(<CashierStocksPage />)
+    await waitFor(() => {
+      expect(screen.getByText('Baja Tesco')).toBeInTheDocument()
+    })
+    // A DKK nincs az aktív törzsben, de van nem-nulla egyenlege → megjelenik.
+    expect(screen.getByText('DKK')).toBeInTheDocument()
+    expect(screen.getByText(/4[\s ]?200/)).toBeInTheDocument()
   })
 
   it('FK-008: a pénztárkártya egyenlege megjelenik a megfelelő valutasorban', async () => {

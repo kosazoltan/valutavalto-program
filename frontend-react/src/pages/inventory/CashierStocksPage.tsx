@@ -98,6 +98,7 @@ export default function CashierStocksPage() {
       if (!m) { m = new Map<string, number>(); balByBranch.set(it.branchName, m) }
       if (typeof it.currentBalance === 'number') m.set(it.currencyCode, it.currentBalance)
     }
+    const activeCodes = new Set(currencies.map(c => c.code))
     const branchNames = new Set<string>([...branchMeta.keys(), ...balByBranch.keys()])
     const result: InventoryItem[] = []
     for (const branchName of branchNames) {
@@ -109,6 +110,15 @@ export default function CashierStocksPage() {
           currencyCode: c.code,
           currentBalance: bal?.get(c.code) ?? 0,
         })
+      }
+      // Árva, NEM-nulla egyenleg egy inaktivált/ismeretlen valutában: nem rejtjük el (néma
+      // adatvesztés ellen). A 0-egyenlegű árvák (pl. TST) kimaradnak — FK-007.
+      if (bal) {
+        for (const [code, balance] of bal) {
+          if (!activeCodes.has(code) && balance !== 0) {
+            result.push({ id: `${branchName}|${code}`, branchName, currencyCode: code, currentBalance: balance })
+          }
+        }
       }
     }
     return result
