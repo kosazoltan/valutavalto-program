@@ -44,12 +44,20 @@ export default function CashierStocksPage() {
     try {
       setLoading(true)
       setError(null)
-      const [stockResp, currencyList] = await Promise.all([
+      // A készlet a kötelező adat; a valutanem-törzs best-effort (Copilot P2): ha a /currencies
+      // elhasal, a stock attól még megjelenik (allItems → fallback a nyers sorokra).
+      const [stockResult, currencyResult] = await Promise.allSettled([
         api.get<InventoryItem[]>('/inventory/stock'),
         currencyApi.list(),
       ])
-      setItems(safeArray<InventoryItem>(stockResp.data))
-      setCurrencies(safeArray<Currency>(currencyList))
+      if (stockResult.status === 'rejected') throw stockResult.reason
+      setItems(safeArray<InventoryItem>(stockResult.value.data))
+      if (currencyResult.status === 'fulfilled') {
+        setCurrencies(safeArray<Currency>(currencyResult.value))
+      } else {
+        logger.warn('CashierStocksPage', 'Valutanem-törzs betöltése sikertelen (teljes lista kihagyva)', currencyResult.reason)
+        setCurrencies([])
+      }
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('CashierStocksPage', 'Betöltési hiba:', err)
@@ -88,7 +96,10 @@ export default function CashierStocksPage() {
   // FK-008: a teljes készlet-mátrix a valutanem-törzsből építve. Minden branch (pénztár ÉS értéktár)
   // minden aktív valutára kap egy sort; az egyenleg a /inventory/stock-ból, ahol nincs → 0. Így az
   // értéktár-kártyák is a teljes listát mutatják, és csak az aktív valuták jelennek meg (TST/DKK/NOK/SEK
-  // kizárva). A branch-univerzum: minden aktív branch (branchMeta) ∪ a készletben szereplő branch-ek.
+  // kizárva). A branch-univerzum KIZÁRÓLAG a /inventory/stock scope-szűrt soraiból jön (Codex P1):
+  // a backend getAllStock() companyId + területi filterre szűr, a branchMeta (branchApi.listActive)
+  // viszont GLOBÁLIS aktív lista — ha azt unionoznánk, egy területre korlátozott (pl. ERTEKTAR) user
+  // idegen branch-eket látna (scope-szivárgás). A branchMeta CSAK régió/isVault metaadat marad.
   const allItems = useMemo<InventoryItem[]>(() => {
     if (currencies.length === 0) return items // törzs még tölt → fallback a nyers sorokra
     const balByBranch = new Map<string, Map<string, number>>()
@@ -99,7 +110,7 @@ export default function CashierStocksPage() {
       if (typeof it.currentBalance === 'number') m.set(it.currencyCode, it.currentBalance)
     }
     const activeCodes = new Set(currencies.map(c => c.code))
-    const branchNames = new Set<string>([...branchMeta.keys(), ...balByBranch.keys()])
+    const branchNames = new Set<string>(balByBranch.keys())
     const result: InventoryItem[] = []
     for (const branchName of branchNames) {
       const bal = balByBranch.get(branchName)
@@ -122,7 +133,7 @@ export default function CashierStocksPage() {
       }
     }
     return result
-  }, [items, currencies, branchMeta])
+  }, [items, currencies])
 
   const filtered = useMemo(() => {
     if (!searchTerm) return allItems
@@ -294,7 +305,7 @@ function BranchCard({ group, isVault = false }: { group: BranchGroup; isVault?: 
   const { t } = useTranslation()
   // FK-003: az értéktár kártya vizuálisan elkülönül a pénztárkártyáktól (borostyán keret + háttér + ÉRTÉKTÁR jelvény).
   return (
-    <div className={`form-panel p-2 hover:shadow-md transition-shadow ${isVault ? 'ring-2 ring-amber-400 bg-amber-50/60' : ''}`}>
+    <div data-testid="branch-card" className={`form-panel p-2 hover:shadow-md transition-shadow ${isVault ? 'ring-2 ring-amber-400 bg-amber-50/60' : ''}`}>
       <div className="flex items-center justify-between mb-1 pb-1 border-b border-gray-200">
         <h3 className="font-bold text-secondary-900 text-sm truncate flex-1 flex items-center gap-1" title={group.branchName}>
           {isVault && <span className="text-[9px] font-bold uppercase bg-amber-500 text-white rounded px-1 py-px shrink-0">Értéktár</span>}

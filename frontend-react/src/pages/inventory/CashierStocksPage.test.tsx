@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { vi, describe, beforeEach, it, expect } from 'vitest'
 import CashierStocksPage from './CashierStocksPage'
 
@@ -27,12 +27,16 @@ const MASTER_CURRENCIES = [
   { id: 3, code: 'EUR', name: 'Euró', decimals: 2, displayOrder: 8, active: true },
 ]
 
-// Stock: Baja Tesco-nak van EUR egyenlege + egy ISMERETLEN 'TST' sor (FK-007); az értéktárnak NINCS sora.
+// Stock: Baja Tesco-nak van EUR egyenlege + egy ISMERETLEN 'TST' sor (FK-007). Az értéktárnak EGYETLEN
+// sora van (HUF) — a scope-szűrt /inventory/stock-ban szerepel, így megjelenik; a többi aktív valutát
+// a törzsből kapja meg 0-val (FK-008). A branch-univerzum KIZÁRÓLAG a stock soraiból jön (scope-helyes).
 const STOCK = [
   { id: 's1', branchName: 'Baja Tesco', currencyCode: 'EUR', currentBalance: 1910 },
   { id: 's2', branchName: 'Baja Tesco', currencyCode: 'TST', currentBalance: 0 },
   // Árva, NEM-nulla egyenleg egy inaktív valutában (pl. korábbi DKK-készlet a deaktiválás előtt).
   { id: 's3', branchName: 'Baja Tesco', currencyCode: 'DKK', currentBalance: 4200 },
+  // Értéktár: csak HUF sora van — a többi aktív valutát (AUD/EUR) a törzsből kapja 0-val.
+  { id: 's4', branchName: 'Szekszard Ertektar', currencyCode: 'HUF', currentBalance: 0 },
 ]
 
 const BRANCHES = [
@@ -50,15 +54,17 @@ describe('CashierStocksPage (FK-007/008)', () => {
 
   it('FK-007: az ismeretlen TST valutanem NEM jelenik meg egyetlen kártyán sem', async () => {
     render(<CashierStocksPage />)
+    // A merge utáni állapotra várunk: AUD CSAK a törzsből jöhet (nincs stock-sora), így ennek
+    // megjelenése bizonyítja, hogy a master-mátrix alkalmazva van (nem a nyers /stock fallback).
     await waitFor(() => {
-      expect(screen.getAllByText('EUR').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('AUD').length).toBeGreaterThan(0)
     })
     expect(screen.queryByText('TST')).not.toBeInTheDocument()
   })
 
   it('FK-008: az értéktár-kártya a teljes aktív valutalistát mutatja (0 egyenleggel is)', async () => {
     render(<CashierStocksPage />)
-    // A vault branch megjelenik (a stockban nincs sora, mégis kártyát kap a törzsből).
+    // A vault branch megjelenik (csak HUF-sora van, mégis a teljes aktív listát kapja a törzsből).
     await waitFor(() => {
       expect(screen.getByText('Szekszard Ertektar')).toBeInTheDocument()
     })
@@ -78,12 +84,18 @@ describe('CashierStocksPage (FK-007/008)', () => {
     expect(screen.getByText(/4[\s ]?200/)).toBeInTheDocument()
   })
 
-  it('FK-008: a pénztárkártya egyenlege megjelenik a megfelelő valutasorban', async () => {
+  it('FK-008: a pénztárkártya a teljes aktív listát mutatja, az egyenleg a megfelelő valutasorban', async () => {
     render(<CashierStocksPage />)
     await waitFor(() => {
       expect(screen.getByText('Baja Tesco')).toBeInTheDocument()
     })
-    // EUR egyenleg (1910) megjelenik (hu-HU formátum: 1 910).
-    expect(screen.getByText(/1[\s ]?910/)).toBeInTheDocument()
+    const card = screen.getByText('Baja Tesco').closest('[data-testid="branch-card"]') as HTMLElement
+    const scope = within(card)
+    // A pénztárkártya is a master-mátrixból épül: HUF és AUD (nincs stock-soruk) 0-val megjelenik,
+    // az EUR-soron a tényleges egyenleg (1910 → hu-HU "1 910").
+    expect(scope.getByText('HUF')).toBeInTheDocument()
+    expect(scope.getByText('AUD')).toBeInTheDocument()
+    expect(scope.getByText('EUR')).toBeInTheDocument()
+    expect(scope.getByText(/1[\s ]?910/)).toBeInTheDocument()
   })
 })
