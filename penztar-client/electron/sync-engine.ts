@@ -299,11 +299,25 @@ export class SyncEngine {
   }
 
   /**
-   * A sync-metódusok ezt használják: a runSync által failover-feloldott AKTÍV URL, vagy ha még nem
-   * futott sync ciklus (activeSyncUrl == null), akkor a primary config (getServerUrl) — backward-kompat.
+   * Az AKTÍV (failover-feloldott) szerver-URL — MINDIG az aktuális activeServerKind szerint, on-demand
+   * számolva (NINCS cache-elés). Így a rotáció (authFailed / catch ág activeServerKind-váltása) után a
+   * cikluson KÍVÜL hívott metódusok (pl. sendHeartbeat saját timeren) is konzisztens URL-t kapnak —
+   * nem egy korábbi ciklusban befagyott, már elavult URL-t (Codex/Copilot #874 P2). A prioritási
+   * sorrend a kiválasztott szinttől indul, majd a többi szintre esik vissza, ha az hiányzik.
    */
   private getActiveServerUrl(): string | null {
-    return this.activeSyncUrl ?? this.getServerUrl();
+    const primaryUrl = this.getServerUrl();
+    const fallbackPrimaryUrl = this.getServerUrlFallbackPrimary();
+    const fallbackSecondaryUrl = this.getServerUrlFallbackSecondary();
+    switch (this.activeServerKind) {
+      case 'fallback_primary':
+        return fallbackPrimaryUrl ?? primaryUrl ?? fallbackSecondaryUrl;
+      case 'fallback_secondary':
+        return fallbackSecondaryUrl ?? fallbackPrimaryUrl ?? primaryUrl;
+      case 'primary':
+      default:
+        return primaryUrl ?? fallbackPrimaryUrl ?? fallbackSecondaryUrl;
+    }
   }
 
   /**
@@ -336,15 +350,9 @@ export class SyncEngine {
    */
   private activeServerKind: 'primary' | 'fallback_primary' | 'fallback_secondary' = 'primary';
 
-  /**
-   * A runSync által AKTUÁLISAN kiválasztott (failover-feloldott) szerver-URL. A runSync az
-   * activeServerKind szerint primary/fallback_primary/fallback_secondary közül választ; az összes
-   * sync-metódusnak EZT kell használnia, NEM a getServerUrl()-t (ami csak a primary configot adja).
-   * #HA-failover (architect-mode audit): korábban a syncAll/per-entity metódusok a getServerUrl()-t
-   * (primary) hívták → primary-kiesés idején a tranzakció-POST a halott primary-t célozta → semmi
-   * nem szinkronizált, az outbox a kieséskor a gépen rekedt. null = még nem futott sync ciklus.
-   */
-  private activeSyncUrl: string | null = null;
+  // #HA-failover (architect-mode audit): az aktív szerver-URL-t a getActiveServerUrl() on-demand
+  // számolja az activeServerKind-ból (nincs cache-elt mező), így mindig konzisztens a kiválasztott
+  // szinttel — a rotáció után a cikluson kívüli hívók sem kapnak elavult URL-t.
 
   private getBootstrapCredentials(): BootstrapCredentials | null {
     const companyCode = process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE?.trim() || getConfig('bootstrap_company_code')?.trim() || '';
@@ -550,29 +558,15 @@ export class SyncEngine {
     this.status.isRunning = true;
 
     try {
-      // 3-regios HA URL-valasztas:
-      //   activeServerKind === 'primary'            -> primary (Hetzner)
-      //   activeServerKind === 'fallback_primary'   -> warm standby (Contabo)
-      //   activeServerKind === 'fallback_secondary' -> cold standby (Scaleway)
-      // Mindig a prioritasi sorrendben probaljuk. Hiba eseten a catch ugrik a kovetkezo szintre.
-      const primaryUrl = this.getServerUrl();
-      const fallbackPrimaryUrl = this.getServerUrlFallbackPrimary();
-      const fallbackSecondaryUrl = this.getServerUrlFallbackSecondary();
-      let serverUrl: string | null = null;
-      if (this.activeServerKind === 'primary') {
-        serverUrl = primaryUrl ?? fallbackPrimaryUrl ?? fallbackSecondaryUrl;
-      } else if (this.activeServerKind === 'fallback_primary') {
-        serverUrl = fallbackPrimaryUrl ?? primaryUrl ?? fallbackSecondaryUrl;
-      } else {
-        serverUrl = fallbackSecondaryUrl ?? fallbackPrimaryUrl ?? primaryUrl;
-      }
-            if (!serverUrl) {
+      // 3-regios HA URL-valasztas az aktualis activeServerKind szerint (primary=Hetzner,
+      // fallback_primary=Contabo warm, fallback_secondary=Scaleway cold). Ugyanazt a feloldast
+      // hasznalja, mint az osszes sync-metodus → garantalt konzisztencia. Hiba eseten a catch /
+      // authFailed ag lepteti az activeServerKind-ot a kovetkezo ciklusra.
+      const serverUrl = this.getActiveServerUrl();
+      if (!serverUrl) {
         log.debug('[SyncEngine] Offline mód vagy server_url hiányzik — sync kihagyva');
         return;
       }
-      // #HA-failover: a kiválasztott aktív URL-t elérhetővé tesszük az összes sync-metódusnak
-      // (syncAll/per-entity), amelyek getActiveServerUrl()-on keresztül ezt használják.
-      this.activeSyncUrl = serverUrl;
       let token = this.getAuthToken();
       let authFailed = false;
 
