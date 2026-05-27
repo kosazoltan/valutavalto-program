@@ -299,6 +299,14 @@ export class SyncEngine {
   }
 
   /**
+   * A sync-metódusok ezt használják: a runSync által failover-feloldott AKTÍV URL, vagy ha még nem
+   * futott sync ciklus (activeSyncUrl == null), akkor a primary config (getServerUrl) — backward-kompat.
+   */
+  private getActiveServerUrl(): string | null {
+    return this.activeSyncUrl ?? this.getServerUrl();
+  }
+
+  /**
    * Fallback-primary (warm standby) - 1. prioritasu fallback.
    * Peldaul: Hetzner primary -> Contabo warm standby (Nurnberg).
    * Config: 'server_url_fallback_primary' vagy backward-compat 'server_url_fallback'.
@@ -327,6 +335,16 @@ export class SyncEngine {
    * az elozo szintet a kovetkezo ciklusban.
    */
   private activeServerKind: 'primary' | 'fallback_primary' | 'fallback_secondary' = 'primary';
+
+  /**
+   * A runSync által AKTUÁLISAN kiválasztott (failover-feloldott) szerver-URL. A runSync az
+   * activeServerKind szerint primary/fallback_primary/fallback_secondary közül választ; az összes
+   * sync-metódusnak EZT kell használnia, NEM a getServerUrl()-t (ami csak a primary configot adja).
+   * #HA-failover (architect-mode audit): korábban a syncAll/per-entity metódusok a getServerUrl()-t
+   * (primary) hívták → primary-kiesés idején a tranzakció-POST a halott primary-t célozta → semmi
+   * nem szinkronizált, az outbox a kieséskor a gépen rekedt. null = még nem futott sync ciklus.
+   */
+  private activeSyncUrl: string | null = null;
 
   private getBootstrapCredentials(): BootstrapCredentials | null {
     const companyCode = process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE?.trim() || getConfig('bootstrap_company_code')?.trim() || '';
@@ -552,6 +570,9 @@ export class SyncEngine {
         log.debug('[SyncEngine] Offline mód vagy server_url hiányzik — sync kihagyva');
         return;
       }
+      // #HA-failover: a kiválasztott aktív URL-t elérhetővé tesszük az összes sync-metódusnak
+      // (syncAll/per-entity), amelyek getActiveServerUrl()-on keresztül ezt használják.
+      this.activeSyncUrl = serverUrl;
       let token = this.getAuthToken();
       let authFailed = false;
 
@@ -781,7 +802,7 @@ export class SyncEngine {
       return result;
     }
 
-    const serverUrl = this.getServerUrl();
+    const serverUrl = this.getActiveServerUrl();
     if (!serverUrl) { result.errors.push('Offline mód — szerver URL nincs beállítva'); return result; }
     const token = tokenOverride ?? this.getAuthToken();
 
@@ -1386,7 +1407,7 @@ export class SyncEngine {
    */
   async syncRates(): Promise<void> {
     try {
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
@@ -1448,7 +1469,7 @@ export class SyncEngine {
    */
   async syncCirculars(): Promise<void> {
     try {
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
@@ -1508,7 +1529,7 @@ export class SyncEngine {
       const pending = getPendingDistributions();
       if (pending.length === 0) return;
 
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
       if (!token) return;
@@ -1550,7 +1571,7 @@ export class SyncEngine {
       const pending = getPendingTransfers();
       if (pending.length === 0) return;
 
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
       if (!token) return;
@@ -1610,7 +1631,7 @@ export class SyncEngine {
       const pending = getPendingCollections();
       if (pending.length === 0) return;
 
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
       if (!token) return;
@@ -1656,7 +1677,7 @@ export class SyncEngine {
       const pending = getPendingStocktakeItems();
       if (pending.length === 0) return;
 
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
       if (!token) return;
@@ -1698,7 +1719,7 @@ export class SyncEngine {
    */
   async cacheBranchStatus(): Promise<void> {
     try {
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
@@ -1740,7 +1761,7 @@ export class SyncEngine {
    */
   async syncCashDeskMasterData(): Promise<void> {
     try {
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
@@ -1780,7 +1801,7 @@ export class SyncEngine {
    */
   async syncWorkerMasterData(): Promise<void> {
     try {
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
@@ -1832,7 +1853,7 @@ export class SyncEngine {
    */
   async restoreFromServer(sinceDaysAgo: number = 180): Promise<{ restored: number; error: string | null }> {
     try {
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return { restored: 0, error: 'offline' }; }
       const token = this.getAuthToken();
       if (!token) {
