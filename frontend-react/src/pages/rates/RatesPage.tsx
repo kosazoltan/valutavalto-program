@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { TrendingUp, RefreshCw, Edit, Save, X, Clock, Download, Eye } from 'lucide-react'
-import { exchangeRateApi, ExchangeRate } from '../../services/api/index'
+import { exchangeRateApi, ExchangeRate, currencyApi, Currency } from '../../services/api/index'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal } from '../../utils/numberFormat'
 import { recordLocalAuditEvent } from '../../utils/electronTransactions'
@@ -24,6 +24,8 @@ interface RateRow {
   mnbRate: number
   lastUpdate: string
   currencyId: number
+  /** FK-006: false = aktív valuta, de még NINCS rögzített árfolyama (üres sorként jelenik meg). */
+  hasRate: boolean
   limit1Amount?: number
   limit1BuyRate?: number
   limit1SellRate?: number
@@ -56,7 +58,36 @@ function mapExchangeRateToRow(rate: ExchangeRate): RateRow {
     limit3Amount: rate.limit3Amount ?? undefined,
     limit3BuyRate: rate.limit3BuyRate ?? undefined,
     limit3SellRate: rate.limit3SellRate ?? undefined,
+    hasRate: true,
   }
+}
+
+/**
+ * FK-006: a táblát a valutanem-TÖRZSBŐL építjük (aktív valuták, display_order sorrendben),
+ * és minden valutához hozzákötjük a legfrissebb árfolyamát; amelyikhez még nincs, az ÜRES
+ * sorként jelenik meg (a főértéktáros így látja, mihez kell még árfolyamot adni).
+ * A HUF (bázisdeviza) a rátatáblában nem külön sor (FK-006 #3 — listákban/legördülőkben szerepel).
+ */
+function buildRows(currencies: Currency[], rates: ExchangeRate[]): RateRow[] {
+  const rateByCurrencyId = new Map<number, ExchangeRate>()
+  for (const r of rates) rateByCurrencyId.set(r.currencyId, r)
+  return currencies
+    .filter((c) => c.code !== 'HUF')
+    .map((c) => {
+      const r = rateByCurrencyId.get(c.id)
+      if (r) return mapExchangeRateToRow(r)
+      return {
+        id: -c.id,
+        code: c.code,
+        name: c.name,
+        buyRate: 0,
+        sellRate: 0,
+        mnbRate: 0,
+        lastUpdate: '',
+        currencyId: c.id,
+        hasRate: false,
+      }
+    })
 }
 
 function formatHuf(amount: number): string {
@@ -97,9 +128,16 @@ export default function RatesPage() {
     setLoading(true)
     setError(null)
     try {
-      const dataRaw = await exchangeRateApi.list()
-      const data = safeArray<ExchangeRate>(dataRaw)
-      setRates(data.map(mapExchangeRateToRow))
+      // FK-006: a valutalistát a központi valutanem-törzsből kérjük (aktív + display_order),
+      // az árfolyamokat külön, majd összefűzzük — így az inaktív valuták (DKK/NOK/SEK) nem
+      // jelennek meg, az új aktív valuták (BAM/BRL/ILS/MXN/NZD/THB) pedig üres sorként igen.
+      const [currenciesRaw, ratesRaw] = await Promise.all([
+        currencyApi.list(),
+        exchangeRateApi.list(),
+      ])
+      const currencies = safeArray<Currency>(currenciesRaw)
+      const rates = safeArray<ExchangeRate>(ratesRaw)
+      setRates(buildRows(currencies, rates))
       setLastRefresh(new Date().toLocaleString('hu-HU'))
     } catch (err) {
       logger.error('RatesPage', 'Árfolyamok betöltési hiba:', err)
@@ -330,8 +368,10 @@ export default function RatesPage() {
                         step="0.01"
                         disabled={!canEdit}
                       />
-                    ) : (
+                    ) : rate.hasRate ? (
                       <span className="font-mono text-green-700 font-semibold">{formatDecimal(rate.buyRate, 2, 2)}</span>
+                    ) : (
+                      <span className="text-gray-300">&mdash;</span>
                     )}
                   </td>
 
@@ -347,8 +387,10 @@ export default function RatesPage() {
                         step="0.01"
                         disabled={!canEdit}
                       />
-                    ) : (
+                    ) : rate.hasRate ? (
                       <span className="font-mono text-red-700 font-semibold">{formatDecimal(rate.sellRate, 2, 2)}</span>
+                    ) : (
+                      <span className="text-gray-300">&mdash;</span>
                     )}
                   </td>
 

@@ -22,8 +22,14 @@ import java.util.stream.Collectors;
 
 /**
  * Valuta controller - valuták listázása
+ *
+ * FK-006 / Codex P1 #876: a /rates nézet (és más árfolyam-felületek) a GET /currencies-t is
+ * lekéri a valutalistához — ezért az olvasó (GET) végpontok ugyanazon szerepköröknek elérhetők,
+ * mint az árfolyam-olvasás (ExchangeRateController RATE_READ_ROLES), különben a FOERTEKTAR/
+ * UGYVEZETO/ERTEKTAR/PENZTAR 403-at kapna a valutalistára. A POST/PATCH (admin) végpontok a saját,
+ * szigorúbb method-level @PreAuthorize-jukat tartják meg.
  */
-@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'PENZTAR', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
 @RestController
 @RequestMapping("/api/v1/currencies")
 @RequiredArgsConstructor
