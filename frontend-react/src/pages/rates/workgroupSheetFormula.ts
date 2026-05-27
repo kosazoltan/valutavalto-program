@@ -99,8 +99,8 @@ function tokenize(input: string): Token[] {
     if (ch === '+' || ch === '-' || ch === '*' || ch === '/') { tokens.push({ kind: 'op', op: ch }); i++; continue }
     if (ch === '(') { tokens.push({ kind: 'lparen' }); i++; continue }
     if (ch === ')') { tokens.push({ kind: 'rparen' }); i++; continue }
-    // szám
-    if (isDigit(ch)) {
+    // szám — egész vagy vezető-tizedes (magyar `,97` / `.97`) operandus is (Codex P2)
+    if (isDigit(ch) || ((ch === ',' || ch === '.') && isDigit(s[i + 1]))) {
       let j = i + 1
       while (j < s.length && (isDigit(s[j]) || s[j] === ',' || s[j] === '.')) j++
       const num = parseNumber(s.slice(i, j))

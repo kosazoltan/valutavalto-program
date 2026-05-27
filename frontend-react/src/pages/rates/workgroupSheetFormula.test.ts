@@ -114,6 +114,10 @@ describe('workgroupSheetFormula (FK-03)', () => {
     it('unáris mínusz', () => {
       expect(evaluateWorkgroupFormula('-J', ctx())).toEqual({ value: -400 })
     })
+    it('vezető-tizedes operandus (magyar `,97`)', () => {
+      expect(evaluateWorkgroupFormula('J*,97', ctx())).toEqual({ value: 400 * 0.97 })
+      expect(evaluateWorkgroupFormula('F*.5', ctx())).toEqual({ value: 410 * 0.5 })
+    })
     it('hiányzó záró zárójel → hiba', () => {
       expect('error' in evaluateWorkgroupFormula('(J+L', ctx())).toBe(true)
     })
