@@ -71,9 +71,17 @@ public interface DenominationRepository extends JpaRepository<Denomination, Long
     List<Denomination> findByBranchId(@Param("branchId") UUID branchId);
 
     /**
-     * Alacsony készletű címletek
+     * Alacsony készletű címletek.
+     *
+     * #870 (élő-API teszt, HIBA #10): LEFT JOIN FETCH branch+currency — a
+     * DenominationController.getLowStockAlerts a session lezárása UTÁN (OSIV=false) mappel
+     * DTO-ra (DenominationMapper a branch.getName()/currency.getCode()-ot olvassa), ezért a
+     * lazy proxyknak betöltve kell lenniük, különben LazyInitializationException → HTTP 500.
+     * A testvér-finderek (findByBranchAndCurrency/findByBranchId) már JOIN FETCH-elnek.
      */
     @Query("SELECT d FROM Denomination d " +
+           "LEFT JOIN FETCH d.branch " +
+           "LEFT JOIN FETCH d.currency " +
            "WHERE d.company.id = :companyId " +
            "AND d.quantity <= d.minQuantity " +
            "AND d.minQuantity IS NOT NULL " +
