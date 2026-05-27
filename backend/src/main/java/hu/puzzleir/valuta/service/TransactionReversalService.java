@@ -221,6 +221,14 @@ public class TransactionReversalService {
                 request.getReason(),
                 null);
 
+        // LazyInitializationException fix (2026-05-27 live-API teszt; vö. #857 átadás-lista):
+        // a reversal.currency az original.getCurrency() LAZY proxyja. OSIV=false mellett a
+        // controller (StornoController.executeStorno) transactionMapper.toDto() hívása a lezárt
+        // session-on "Could not initialize proxy [Currency] - no session" 500-at dobott — A SZTORNÓ
+        // VÉGREHAJTÁSA UTÁN (a reversal commitált, de a válasz 500 lett → dupla-sztornó kockázat).
+        // A tranzakción belül inicializáljuk, hogy a mapping a session után is működjön.
+        org.hibernate.Hibernate.initialize(savedReversal.getCurrency());
+
         return savedReversal;
     }
 
@@ -348,6 +356,10 @@ public class TransactionReversalService {
                 saved.getReceiptNumber() + " (visszateritett: " + refundHuf.toPlainString() + " Ft)",
                 request.getReason(),
                 null);
+
+        // LazyInitializationException fix (lásd executeReversal): a partial-refund currency-je
+        // is az original lazy proxyja → OSIV=false controller-mappingnél 500. Init a tranzakción belül.
+        org.hibernate.Hibernate.initialize(saved.getCurrency());
 
         return saved;
     }

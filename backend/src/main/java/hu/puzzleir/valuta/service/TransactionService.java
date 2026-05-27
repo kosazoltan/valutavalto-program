@@ -876,7 +876,16 @@ public class TransactionService {
                 .orElse(null);
 
         if (balance == null || balance.getCurrentBalance().compareTo(amount) < 0) {
-            throw new ValidationException("Nincs elegendő valuta készlet!");
+            // 2026-05-27 (live-API teszt): a generikus "Nincs elegendő valuta készlet!" üzenet
+            // FÉLREVEZETŐ volt a BUY ágon — ott a pénztár HUF-ot fizet (HUF-készletet ellenőrzünk),
+            // de az üzenet "valuta" (deviza) készletet emlegetett, miközben a vevő épp devizát HOZ.
+            // Currency-specifikus üzenet + szükséges/elérhető összeg a pénztárosnak.
+            String code = currencyRepository.findById(currencyId).map(Currency::getCode).orElse("?");
+            BigDecimal available = balance != null ? balance.getCurrentBalance() : BigDecimal.ZERO;
+            String label = "HUF".equals(code) ? "HUF (forint)" : code + " valuta";
+            throw new ValidationException(String.format(
+                "Nincs elegendő %s készlet a tranzakcióhoz! Szükséges: %s, elérhető: %s.",
+                label, amount.toPlainString(), available.toPlainString()));
         }
     }
 
