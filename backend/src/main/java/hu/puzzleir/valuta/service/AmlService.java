@@ -1284,23 +1284,31 @@ public class AmlService {
         LocalDate yearStart = LocalDate.of(year, 1, 1);
         LocalDate yearEnd = LocalDate.of(year, 12, 31);
 
-        // 1. Ügyfél éves göngyölt összege (JELENLEGI)
-        BigDecimal currentYearTotal = transactionRepository.sumCustomerAnnualTotal(
+        // 1. Ügyfél éves göngyölt összege a sztornó UTÁN.
+        // FONTOS (2026-05-27, architect-mode audit fix): mire idáig érünk, az eredeti tranzakció
+        // státusza MÁR REVERSED (a hívó TransactionReversalService.executeReversal előbb állítja be),
+        // a sumCustomerAnnualTotal pedig csak COMPLETED + financial_effective sorokat összegez → az
+        // eredeti MÁR ki van zárva. A létrejött REVERSAL sor customerId-je null (nincs az ügyfélhez
+        // kötve), így az SEM számít bele. Ezért ez a lekérdezés a sztornó UTÁNI tényleges összeg.
+        BigDecimal postReversalTotal = transactionRepository.sumCustomerAnnualTotal(
             companyId, customerId, yearStart, yearEnd
         );
-        if (currentYearTotal == null) {
-            currentYearTotal = BigDecimal.ZERO;
+        if (postReversalTotal == null) {
+            postReversalTotal = BigDecimal.ZERO;
         }
 
-        // 2. Új összeg a sztornó után
-        BigDecimal newYearTotal = currentYearTotal.subtract(hufAmount);
+        // 2. A sztornó ELŐtti összeg = utáni + a visszavont tranzakció értéke.
+        // (A korábbi kód a már-post értékből MÉG egyszer levonta a hufAmount-ot → kétszeres levonás,
+        //  ami tévesen a limit alá vihette a számított összeget és így hibásan törölte a highRiskFlag-et.)
+        BigDecimal preReversalTotal = postReversalTotal.add(hufAmount);
 
-        log.info("AML göngyölés visszavonás: customerId={}, originalAmount={}, currentYearTotal={}, newYearTotal={}",
-            customerId, hufAmount, currentYearTotal, newYearTotal);
+        log.info("AML göngyölés visszavonás: customerId={}, visszavontÖsszeg={}, sztornóElőtt={}, sztornóUtán={}",
+            customerId, hufAmount, preReversalTotal, postReversalTotal);
 
-        // 3. Ha az új összeg a limit (3.6M) alá csökken → "nagy ügyfél" jelölés törlése
-        if (currentYearTotal.compareTo(ANNUAL_ROLLING_LIMIT) >= 0
-            && newYearTotal.compareTo(ANNUAL_ROLLING_LIMIT) < 0) {
+        // 3. Ha a sztornó hatására a göngyölt összeg a limit (3.6M) alá esett → "nagy ügyfél" jelölés törlése
+        BigDecimal newYearTotal = postReversalTotal;
+        if (preReversalTotal.compareTo(ANNUAL_ROLLING_LIMIT) >= 0
+            && postReversalTotal.compareTo(ANNUAL_ROLLING_LIMIT) < 0) {
             
             log.info("Ügyfél visszalép a göngyölési limit alá: customerId={}, newTotal={}",
                 customerId, newYearTotal);

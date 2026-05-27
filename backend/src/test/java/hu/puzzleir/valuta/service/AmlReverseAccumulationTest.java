@@ -127,4 +127,49 @@ class AmlReverseAccumulationTest {
             amlService.reverseAccumulation(customerId, new BigDecimal("50000"), originalDate)
         );
     }
+
+    // === Architect-mode audit (2026-05-27): double-subtract regresszió ===
+    // A sumCustomerAnnualTotal a sztornó UTÁNI állapotot adja (az eredeti már REVERSED → kizárva,
+    // a REVERSAL sor customerId=null → kizárva). A régi kód MÉG egyszer levonta a hufAmount-ot,
+    // ami a számított összeget tévesen a limit alá vihette → hibás highRiskFlag-törlés.
+
+    @Test
+    @DisplayName("reverseAccumulation: sztornó UTÁN is 3.6M FELETT → highRiskFlag NEM törlődik (regresszió)")
+    void testReverseAccumulation_stillAboveLimit_flagNotCleared() {
+        String customerId = "C-ABOVE";
+        LocalDateTime originalDate = LocalDateTime.of(2024, 5, 20, 10, 0);
+        // post = 3.7M, reversed = 200k → pre = 3.9M, post = 3.7M → mindkettő ≥3.6M → NINCS törlés.
+        // (A régi kód: 3.7M − 200k = 3.5M < 3.6M → tévesen törölt volna.)
+        when(transactionRepository.sumCustomerAnnualTotal(
+            eq(TEST_COMPANY_ID), eq(customerId),
+            eq(LocalDate.of(2024, 1, 1)), eq(LocalDate.of(2024, 12, 31))
+        )).thenReturn(new BigDecimal("3700000"));
+
+        amlService.reverseAccumulation(customerId, new BigDecimal("200000"), originalDate);
+
+        verify(customerRepository, never()).findByCustomerCodeAndCompanyId(any(), any());
+        verify(customerRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("reverseAccumulation: sztornó a 3.6M limit ALÁ visz → highRiskFlag törlődik")
+    void testReverseAccumulation_crossesBelowLimit_flagCleared() {
+        String customerId = "C-CROSS";
+        LocalDateTime originalDate = LocalDateTime.of(2024, 5, 20, 10, 0);
+        // post = 3.5M, reversed = 300k → pre = 3.8M (≥3.6M), post = 3.5M (<3.6M) → lefelé keresztezte → törlés.
+        Customer c = new Customer();
+        c.setHighRiskFlag(true);
+        c.setHighRiskReason("éves limit");
+        when(transactionRepository.sumCustomerAnnualTotal(
+            eq(TEST_COMPANY_ID), eq(customerId),
+            eq(LocalDate.of(2024, 1, 1)), eq(LocalDate.of(2024, 12, 31))
+        )).thenReturn(new BigDecimal("3500000"));
+        when(customerRepository.findByCustomerCodeAndCompanyId(customerId, TEST_COMPANY_ID))
+            .thenReturn(java.util.Optional.of(c));
+
+        amlService.reverseAccumulation(customerId, new BigDecimal("300000"), originalDate);
+
+        verify(customerRepository).save(c);
+        assertThat(c.getHighRiskFlag()).isFalse();
+    }
 }
