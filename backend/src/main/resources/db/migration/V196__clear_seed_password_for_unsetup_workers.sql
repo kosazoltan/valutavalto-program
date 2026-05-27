@@ -10,6 +10,20 @@
 --
 -- Biztonsag: Csak seed-allapotu fiokokat erint. Mar aktiv jelszoval rendelkezo
 -- dolgozok (password_changed_at IS NOT NULL) NEM modosulnak.
+--
+-- FIX (2026-05-27, elo-API teszt): friss telepitesen / disaster-recovery-n / lokal-dev fresh
+-- DB-n a seed-workerok (password_changed_at IS NULL + seed password_hash) NULL-update-je a
+-- worker.password_hash NOT NULL constraintbe utkozott -> a backend NEM indult el ("null value
+-- in column password_hash violates not-null constraint"). A constraintet eredetileg csak a
+-- KESOBBI V197 ejtette (DROP NOT NULL), igy a fresh-apply sorrend miatt a V196 hamarabb futott
+-- es bukott. Productionon ez NEM manifesztalodott (a dolgozok mar password_changed_at-tel
+-- rendelkeznek -> a WHERE 0 sort erint). Megoldas: a NOT NULL constraintet MAR ITT, az UPDATE
+-- ELOTT ejtjuk (idempotens -- ha mar nullable, no-op); a V197 ezutan redundans no-op.
+-- Established production DB-n a V196 mar success=t -> a checksum-valtozas miatt a kovetkezo
+-- deploy egyszeri FLYWAY_REPAIR_ON_MIGRATE=true override-ot igenyel (a deploy-hetzner.yml
+-- failed-history-cleanup + repair lepese kezeli; 0-soros adathatas). F15 allowlist + runbook:
+-- vault/operations/v196-fresh-deploy-fix.md.
+ALTER TABLE worker ALTER COLUMN password_hash DROP NOT NULL;
 
 UPDATE worker
 SET password_hash = NULL
