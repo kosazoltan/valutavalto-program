@@ -117,7 +117,19 @@ public class ExchangeRateService {
         for (ExchangeRate rate : allActive) {
             latestByCurrency.putIfAbsent(rate.getCurrency().getId(), rate);
         }
-        return new ArrayList<>(latestByCurrency.values());
+
+        // FK-006: a valutanem-törzs az IGAZSÁGFORRÁS — csak AKTÍV valuták árfolyamát adjuk vissza,
+        // a currency.display_order szerint rendezve. Az inaktív valuták (pl. DKK/NOK/SEK) árfolyamai
+        // így nem jelennek meg a nézet-felületeken, a historikus tranzakciók viszont érintetlenek.
+        // (Az árfolyamkészítő külön rate-creation/local-rate-maker endpointot használ — azt nem érinti.)
+        List<ExchangeRate> result = new ArrayList<>();
+        for (Currency currency : currencyRepository.findAllActiveOrdered()) {
+            ExchangeRate rate = latestByCurrency.get(currency.getId());
+            if (rate != null) {
+                result.add(rate);
+            }
+        }
+        return result;
     }
 
     /**

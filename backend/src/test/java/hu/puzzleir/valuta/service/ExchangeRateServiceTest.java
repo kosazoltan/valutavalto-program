@@ -134,8 +134,8 @@ class ExchangeRateServiceTest {
     @Test
     @DisplayName("getAllCurrentRates — osszes valuta arfolyam")
     void testGetAllCurrentRates() {
-        Currency eur = Currency.builder().id(4L).code("EUR").build();
-        Currency usd = Currency.builder().id(5L).code("USD").build();
+        Currency eur = Currency.builder().id(4L).code("EUR").displayOrder(8).build();
+        Currency usd = Currency.builder().id(5L).code("USD").displayOrder(21).build();
         ExchangeRate r1 = ExchangeRate.builder().id(1L).currency(eur).build();
         ExchangeRate r2 = ExchangeRate.builder().id(2L).currency(usd).build();
 
@@ -144,9 +144,40 @@ class ExchangeRateServiceTest {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
             when(exchangeRateRepository.findAllActiveRates(COMPANY_ID, BRANCH_ID))
                     .thenReturn(List.of(r1, r2));
+            // FK-006: a valutanem-törzs az igazságforrás (aktív + display_order).
+            when(currencyRepository.findAllActiveOrdered()).thenReturn(List.of(eur, usd));
 
             List<ExchangeRate> result = service.getAllCurrentRates();
             assertThat(result).hasSize(2);
+        }
+    }
+
+    @Test
+    @DisplayName("FK-006: getAllCurrentRates CSAK aktív valutát ad vissza, display_order sorrendben")
+    void testGetAllCurrentRates_filtersInactiveAndOrders() {
+        // Aktív: USD (order 21), EUR (order 8). Inaktív (törzsből kihagyva): DKK — van árfolyama, de
+        // a findAllActiveOrdered NEM tartalmazza, ezért NEM jelenhet meg a nézetben.
+        Currency eur = Currency.builder().id(4L).code("EUR").displayOrder(8).build();
+        Currency usd = Currency.builder().id(5L).code("USD").displayOrder(21).build();
+        Currency dkk = Currency.builder().id(9L).code("DKK").displayOrder(17).active(false).build();
+        ExchangeRate rUsd = ExchangeRate.builder().id(2L).currency(usd).build();
+        ExchangeRate rEur = ExchangeRate.builder().id(1L).currency(eur).build();
+        ExchangeRate rDkk = ExchangeRate.builder().id(3L).currency(dkk).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            // A rate-repo a DKK árfolyamát is visszaadja (van historikus rátája)...
+            when(exchangeRateRepository.findAllActiveRates(COMPANY_ID, BRANCH_ID))
+                    .thenReturn(List.of(rDkk, rUsd, rEur));
+            // ...de a törzs csak az aktívakat adja, display_order sorrendben (EUR=8, USD=21).
+            when(currencyRepository.findAllActiveOrdered()).thenReturn(List.of(eur, usd));
+
+            List<ExchangeRate> result = service.getAllCurrentRates();
+
+            // DKK kiesik (inaktív); a maradék EUR, USD sorrendben.
+            assertThat(result).extracting(r -> r.getCurrency().getCode())
+                    .containsExactly("EUR", "USD");
         }
     }
 }

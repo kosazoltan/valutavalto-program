@@ -6,6 +6,7 @@ import RatesPage from './RatesPage'
 const mocks = vi.hoisted(() => ({
   exchangeRateApiList: vi.fn(),
   exchangeRateApiCreate: vi.fn(),
+  currencyApiList: vi.fn(),
   recordLocalAuditEvent: vi.fn(),
   logger: {
     error: vi.fn(),
@@ -21,6 +22,9 @@ vi.mock('../../services/api/index', () => ({
   exchangeRateApi: {
     list: mocks.exchangeRateApiList,
     create: mocks.exchangeRateApiCreate,
+  },
+  currencyApi: {
+    list: mocks.currencyApiList,
   },
 }))
 
@@ -68,10 +72,17 @@ const mockRates = [
   },
 ]
 
+// FK-006: a tábla a valutanem-törzsből épül (aktív + display_order), az árfolyamok külön jönnek.
+const mockCurrencies = [
+  { id: 1, code: 'EUR', name: 'Euró', decimals: 2, displayOrder: 8, active: true },
+  { id: 2, code: 'USD', name: 'US Dollár', decimals: 2, displayOrder: 21, active: true },
+]
+
 describe('RatesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.exchangeRateApiList.mockResolvedValue(mockRates)
+    mocks.currencyApiList.mockResolvedValue(mockCurrencies)
     // Default: full mode + foertektar role (canEdit=true, MNB + Edit gombok látszanak)
     mocks.useAppMode.mockReturnValue({ mode: 'full' })
     mocks.useAuthStore.mockImplementation((selector: any) =>
@@ -177,5 +188,25 @@ describe('RatesPage', () => {
 
     const downloadButton = screen.getByRole('button', { name: /MNB letöltés/i })
     expect(downloadButton).toBeInTheDocument()
+  })
+
+  it('FK-006: aktív, árfolyam nélküli valuta üres sorként jelenik meg; HUF nincs a táblában', async () => {
+    // Törzs: HUF (bázis), EUR (van árfolyama), BAM (aktív, DE nincs árfolyama) — display_order szerint.
+    mocks.currencyApiList.mockResolvedValue([
+      { id: 10, code: 'HUF', name: 'Magyar forint', decimals: 0, displayOrder: 0, active: true },
+      { id: 1, code: 'EUR', name: 'Euró', decimals: 2, displayOrder: 8, active: true },
+      { id: 3, code: 'BAM', name: 'Bosnyák konvertibilis márka', decimals: 2, displayOrder: 2, active: true },
+    ])
+    // Csak az EUR-nak van árfolyama.
+    mocks.exchangeRateApiList.mockResolvedValue([mockRates[0]])
+
+    render(<RatesPage />)
+    await waitFor(() => {
+      expect(screen.getByText('EUR')).toBeInTheDocument()
+    })
+    // BAM (árfolyam nélküli aktív) megjelenik a táblában (üres sorként).
+    expect(screen.getByText('BAM')).toBeInTheDocument()
+    // HUF bázisdeviza NEM jelenik meg a rátatáblában.
+    expect(screen.queryByText('HUF')).not.toBeInTheDocument()
   })
 })
