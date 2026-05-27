@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Landmark, Calendar, RefreshCw } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
+import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
 
 interface BankTurnover {
@@ -15,7 +16,7 @@ interface BankTurnover {
 
 export default function BankTurnoverPage() {
   const { t } = useTranslation()
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(() => localIsoDate())
   const [data, setData] = useState<BankTurnover[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

@@ -194,10 +194,12 @@ export default function CashierTransactionPage() {
   const [cashierRateQuota, setCashierRateQuota] = useState<CashierCustomRateQuota | null>(null)
   const cashierCustomRateRowsRef = useRef<Set<string>>(new Set())
 
-  // Calculated totals
+  // Calculated totals — a HUF végösszeg 5 Ft-ra kerekítve (magyar készpénz-kerekítés). A kedvezmény
+  // Math.round-ja korábban 1 Ft-os értéket adhatott → az ügyfélnek mutatott + az AML-küszöbhöz használt
+  // `total` nem volt 5 Ft többszöröse. (Per-soros összegek külön, már roundHuf-olva mennek a backendre.)
   const subtotal = rows.reduce((sum, r) => sum + r.hufValue, 0)
-  const discountAmount = discount > 0 ? Math.round(subtotal * discount / 100) : 0
-  const total = subtotal + handlingFee - discountAmount
+  const discountAmount = discount > 0 ? roundHuf(subtotal * discount / 100) : 0
+  const total = roundHuf(subtotal + handlingFee - discountAmount)
 
   // Identification level based on HUF total
   const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } = useIdentificationLevel(String(total))
@@ -601,7 +603,12 @@ export default function CashierTransactionPage() {
     const cd = customerDataRef.current
     const aml = amlResultRef.current
     if (identificationLevel !== 'SIMPLE') {
-      if (!cd?.name?.trim() || !cd?.documentNumber?.trim()) {
+      // A NÉV minden azonosított szinten kötelező. Az okmányszám viszont CSAK FULL (300k+)
+      // szinten — a SIMPLIFIED (100k–300k) a CustomerPanel-ben szándékosan REJTI az okmányszám
+      // mezőt (HIBA #12 / v2.27.22), így itt megkövetelni egy kitölthetetlen mezőt → blokkolná
+      // az új, kézi ügyfél rögzítését 100k–300k között. (Az okmányszám-követelmény a FULL-ágba
+      // került lentebb.)
+      if (!cd?.name?.trim()) {
         toast.warning('Ügyfél azonosítás kötelező', `${SIMPLIFIED_IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft feletti tranzakcióhoz ügyfél azonosítás KÖTELEZŐ!`)
         return
       }
@@ -609,8 +616,8 @@ export default function CashierTransactionPage() {
         toast.warning('Egyszerűsített azonosítás hiányos', '100.000 Ft felett születési hely és születési idő is KÖTELEZŐ!')
         return
       }
-      if (identificationLevel === 'FULL' && (!cd?.birthPlace || !cd?.birthDate || !cd?.motherName || !cd?.address)) {
-        toast.warning('Teljes azonosítás kötelező', '300.000 Ft felett teljes ügyféladatsor szükséges (születési hely/idő, anyja neve, lakcím)!')
+      if (identificationLevel === 'FULL' && (!cd?.documentNumber?.trim() || !cd?.birthPlace || !cd?.birthDate || !cd?.motherName || !cd?.address)) {
+        toast.warning('Teljes azonosítás kötelező', '300.000 Ft felett teljes ügyféladatsor szükséges (okmányszám, születési hely/idő, anyja neve, lakcím)!')
         return
       }
     }

@@ -3,6 +3,7 @@ import { FileSpreadsheet, CheckCircle, XCircle, Clock, RefreshCw, Send, ThumbsUp
 import { dariusApi, DariusDailyReport, DariusMonthlyDto } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
 
 type Tab = 'daily' | 'monthly' | 'missing'
@@ -22,16 +23,16 @@ export default function DariusReportPage() {
   const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>('daily')
   const [dateFrom, setDateFrom] = useState(() => {
-    const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10)
+    const d = new Date(); d.setDate(1); return localIsoDate(d)
   })
-  const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10))
+  const [dateTo, setDateTo] = useState(() => localIsoDate())
   const [reports, setReports] = useState<DariusDailyReport[]>([])
   const [monthly, setMonthly] = useState<DariusMonthlyDto | null>(null)
   const [missingDates, setMissingDates] = useState<string[]>([])
   const [selected, setSelected] = useState<DariusDailyReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [generateDate, setGenerateDate] = useState(new Date().toISOString().slice(0, 10))
+  const [generateDate, setGenerateDate] = useState(localIsoDate())
 
   const loadReports = useCallback(async () => {
     setLoading(true); setError('')

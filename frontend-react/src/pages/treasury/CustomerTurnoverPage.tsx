@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Users, Calendar, RefreshCw } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
+import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
 
 interface CustomerTurnover {
@@ -16,7 +17,7 @@ interface CustomerTurnover {
 
 export default function CustomerTurnoverPage() {
   const { t } = useTranslation()
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(() => localIsoDate())
   const [data, setData] = useState<CustomerTurnover[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

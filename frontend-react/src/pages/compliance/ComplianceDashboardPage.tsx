@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Shield, AlertTriangle, Users, Clock, XCircle, FileText, RefreshCw } from 'lucide-react'
 import { amlApi, RollingWindowAuditDto, AmlDailySummary, AmlReportDto } from '../../services/api/aml'
 import { logger } from '../../utils/logger'
+import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
 
 // ============================================================================
@@ -17,7 +18,7 @@ import { useTranslation } from 'react-i18next'
 
 export default function ComplianceDashboardPage() {
     const { t } = useTranslation()
-    const [today] = useState(() => new Date().toISOString().slice(0, 10))
+    const [today] = useState(() => localIsoDate())
     const [summary, setSummary] = useState<AmlDailySummary | null>(null)
     const [overdue, setOverdue] = useState<AmlReportDto[]>([])
     const [pending, setPending] = useState<AmlReportDto[]>([])

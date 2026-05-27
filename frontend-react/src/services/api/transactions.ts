@@ -372,11 +372,10 @@ export const transactionApi = {
       reason
     })
     return response.data
-  },
-  getReceipt: async (id: number): Promise<Blob> => {
-    const response = await api.get(`/transactions/${id}/receipt`, { responseType: 'blob' })
-    return response.data
   }
+  // Megj.: a korábbi `getReceipt` (GET /transactions/{id}/receipt blob) HOLT KÓD volt és NEM létező
+  // végpontra mutatott (404). A valódi bizonylat-PDF: GET /api/v1/receipts/transaction/{id}/pdf
+  // (receiptApi). Eltávolítva (architect-mode audit, 2026-05-27).
 }
 
 // ================== CASH BALANCE API ==================

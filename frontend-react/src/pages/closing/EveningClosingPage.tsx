@@ -3,6 +3,7 @@ import { Moon, Calendar, Package, Send, Eye, CheckCircle, AlertTriangle, Clock }
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { localIsoDate } from '../../utils/dateFormat'
 import { useAuthStore } from '../../stores/authStore'
 import { eveningClosingApi } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
@@ -26,7 +27,7 @@ export default function EveningClosingPage() {
   const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
   const branchId = worker?.branchId || ''
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(localIsoDate())
   const [preview, setPreview] = useState<EveningClosingPreview | null>(null)
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
