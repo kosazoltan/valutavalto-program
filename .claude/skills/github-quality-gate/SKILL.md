@@ -46,6 +46,15 @@ If signal-check finds blockers:
 - CodeQL high/critical -> fix vulnerability
 - CHANGES_REQUESTED review -> address and re-request
 
+### Step 4b: 5-point code-content review (before accepting the diff)
+
+Beyond the process gates above, review the diff's **content** per `REVIEW.md` →
+"5-szempontú kód-tartalom review": Intent (edge cases, no silent no-op), Architecture
+(fits patterns, no over-engineering, fewest files), Security (imported library/symbol
+**actually exists** — anti-hallucination — + input validated), Maintainability (no placeholder
+names / commented dead code / mixed style), Performance (no N+1, indexed filters, pagination
+doesn't load all). If unsure about a symbol/column/method, verify against source — never accept on assumption.
+
 ### Step 5: Merge only after all signals GREEN
 
 ```bash
