@@ -25,4 +25,12 @@ public interface RateWorkgroupRepository extends JpaRepository<RateWorkgroup, UU
 
     @Query("SELECT r FROM RateWorkgroup r WHERE r.company.id = :companyId")
     List<RateWorkgroup> findByCompanyId(@Param("companyId") UUID companyId);
+
+    /**
+     * Company-scope-olt kód-keresés (FK-02): a kód-egyediség a (company_id, code) páron
+     * van (uq_rate_workgroup_company_code), ezért a kód-ütközést is cégen belül kell nézni —
+     * a globális findByCode cross-tenant fals pozitívot adna (másik cég kódjára panaszkodna).
+     */
+    @Query("SELECT r FROM RateWorkgroup r WHERE r.company.id = :companyId AND r.code = :code")
+    Optional<RateWorkgroup> findByCompanyIdAndCode(@Param("companyId") UUID companyId, @Param("code") String code);
 }

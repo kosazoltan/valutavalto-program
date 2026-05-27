@@ -442,6 +442,16 @@ export interface RateWorkgroupDTO {
   name: string
   legacyGroupNumber?: number
   active: boolean
+  /** FK-02: csempe-szín paletta-kulcs (pl. 'amber'); null = alapértelmezett. */
+  tileColor?: string | null
+}
+
+export interface RateWorkgroupSaveDTO {
+  name: string
+  code: string
+  legacyGroupNumber?: number
+  active: boolean
+  tileColor?: string | null
 }
 
 export const rateWorkgroupApi = {
@@ -452,7 +462,19 @@ export const rateWorkgroupApi = {
   getById: async (id: string): Promise<RateWorkgroupDTO> => {
     const response = await api.get<RateWorkgroupDTO>(`/rate-management/workgroups/${id}`)
     return response.data
-  }
+  },
+  create: async (data: RateWorkgroupSaveDTO): Promise<RateWorkgroupDTO> => {
+    const response = await api.post<RateWorkgroupDTO>('/rate-management/workgroups', data)
+    return response.data
+  },
+  update: async (id: string, data: RateWorkgroupSaveDTO): Promise<RateWorkgroupDTO> => {
+    const response = await api.put<RateWorkgroupDTO>(`/rate-management/workgroups/${id}`, data)
+    return response.data
+  },
+  // FK-02: "törlés" = soft-delete (inaktiválás) a backendben (FK-006 elv).
+  remove: async (id: string): Promise<void> => {
+    await api.delete(`/rate-management/workgroups/${id}`)
+  },
 }
 
 // ================== COMPETITORS API ==================

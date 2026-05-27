@@ -119,6 +119,13 @@ public class RateManagementController {
         return ResponseEntity.ok(workgroupService.update(id, workgroup));
     }
 
+    @DeleteMapping("/workgroups/{id}")
+    @PreAuthorize(RATE_MANAGEMENT_ADMIN_ROLES)
+    public ResponseEntity<Void> deleteWorkgroup(@PathVariable UUID id) {
+        workgroupService.softDelete(id);
+        return ResponseEntity.noContent().build();
+    }
+
     // ============ DISCOUNTS ============
 
     @GetMapping("/discounts/{workgroupId}")

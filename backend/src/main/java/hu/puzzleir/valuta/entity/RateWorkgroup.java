@@ -37,6 +37,10 @@ public class RateWorkgroup {
     @Column(name = "legacy_group_number")
     private Integer legacyGroupNumber;
 
+    /** FK-02: csempe-szín paletta-kulcs (pl. 'amber', 'sky'); NULL = alapértelmezett. */
+    @Column(name = "tile_color", length = 20)
+    private String tileColor;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean active = true;
