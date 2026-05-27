@@ -3,6 +3,7 @@ import { Download, AlertTriangle } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { localIsoDate } from '../../utils/dateFormat'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
 
@@ -27,7 +28,7 @@ export default function BookingExportPage() {
   const workerBranchId = useAuthStore((s) => s.worker?.branchId ?? '')
   const [branches, setBranches] = useState<BranchDto[]>([])
   const [branchId, setBranchId] = useState<string>(workerBranchId)
-  const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState<string>(() => localIsoDate())
   const [month, setMonth] = useState<string>(() => new Date().toISOString().slice(0, 7))
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)

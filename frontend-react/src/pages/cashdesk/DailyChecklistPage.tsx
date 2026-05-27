@@ -3,6 +3,7 @@ import { ClipboardCheck, Calendar, CheckCircle, Circle, AlertTriangle, Send, Mon
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { localIsoDate } from '../../utils/dateFormat'
 import { useAuthStore } from '../../stores/authStore'
 import { api, dailyChecklistApi } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
@@ -68,7 +69,7 @@ export default function DailyChecklistPage() {
   const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
 
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(localIsoDate())
   const [branchId, setBranchId] = useState(worker?.branchId || '')
   const [branches, setBranches] = useState<BranchOption[]>([])
   const [branchStatuses, setBranchStatuses] = useState<Record<string, BranchChecklistStatus>>({})

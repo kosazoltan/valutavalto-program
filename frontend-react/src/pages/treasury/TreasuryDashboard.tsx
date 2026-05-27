@@ -15,6 +15,7 @@ import { formatInteger, formatMillions } from './treasuryUtils'
 import { DashboardSkeleton } from './LoadingSkeleton'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
 
 interface BranchRanking {
@@ -87,7 +88,7 @@ export default function TreasuryDashboard() {
         }))
       )
 
-      const today = new Date().toISOString().slice(0, 10)
+      const today = localIsoDate()
       const sessionsRaw = await dailySessionApi
         .getHistory(today, today)
         .catch(() => [])
