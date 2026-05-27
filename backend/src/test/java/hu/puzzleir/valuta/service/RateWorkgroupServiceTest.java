@@ -84,15 +84,17 @@ class RateWorkgroupServiceTest {
             company.setId(COMPANY_ID);
             UUID id = UUID.randomUUID();
             RateWorkgroup existing = RateWorkgroup.builder().id(id).name("Régi").code("WG01")
-                    .company(company).active(true).tileColor(null).build();
+                    .company(company).active(true).tileColor(null).legacyGroupNumber(1).build();
             when(workgroupRepository.findById(id)).thenReturn(Optional.of(existing));
             when(workgroupRepository.save(any(RateWorkgroup.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            RateWorkgroup update = RateWorkgroup.builder().name("Új").active(true).tileColor("sky").build();
+            RateWorkgroup update = RateWorkgroup.builder().name("Új").active(true).tileColor("sky").legacyGroupNumber(7).build();
             RateWorkgroup result = service.update(id, update);
 
             assertThat(result.getName()).isEqualTo("Új");
             assertThat(result.getTileColor()).isEqualTo("sky");
+            // A sorszám is frissül (P1: korábban némán elveszett).
+            assertThat(result.getLegacyGroupNumber()).isEqualTo(7);
         }
     }
 

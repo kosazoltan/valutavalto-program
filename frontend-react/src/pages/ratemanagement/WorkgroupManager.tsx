@@ -256,7 +256,7 @@ function WorkgroupEditor({ mode, draft, setDraft, onSave, onCancel }: {
           <div>
             <label className="text-sm font-medium">Sorszám</label>
             <input className="form-input w-full" type="number" value={draft.legacyGroupNumber ?? ''}
-              onChange={e => setDraft({ ...draft, legacyGroupNumber: parseInt(e.target.value, 10) || undefined })} />
+              onChange={e => setDraft({ ...draft, legacyGroupNumber: e.target.value === '' ? undefined : parseInt(e.target.value, 10) })} />
           </div>
         </div>
         <div>
@@ -310,8 +310,12 @@ function BranchAssignment({ workgroup, onError, confirm }: {
 
   const assigned = branches.filter(b => b.assignedToCurrentWorkgroup)
 
-  const persist = async (branchIds: string[]) => {
-    await rateCreationApi.updateWorkgroupBranches(workgroup.id, branchIds)
+  // A teljes-halmaz-csere (updateWorkgroupBranches) stale-state ellen: a megerősítéskor FRISSEN
+  // lekért hozzárendelésből számoljuk a célhalmazt, nem a dialógus megnyitásakori closure-ből.
+  const persistMutation = async (mutate: (assignedIds: string[]) => string[]) => {
+    const fresh = await rateCreationApi.getBranches(workgroup.id)
+    const assignedIds = safeArray<BranchListItem>(fresh).filter(b => b.assignedToCurrentWorkgroup).map(b => b.id)
+    await rateCreationApi.updateWorkgroupBranches(workgroup.id, mutate(assignedIds))
     await load()
   }
 
@@ -319,7 +323,7 @@ function BranchAssignment({ workgroup, onError, confirm }: {
     title: 'Pénztár felvétele',
     message: `Felveszi a(z) "${b.name}" pénztárt ebbe a munkacsoportba? Ha máshol szerepel, onnan átkerül ide.`,
     confirmLabel: 'Felvétel',
-    onConfirm: async () => { await persist([...assigned.map(x => x.id), b.id]); },
+    onConfirm: async () => { await persistMutation(ids => Array.from(new Set([...ids, b.id]))); },
   })
 
   const removeBranch = (b: BranchListItem) => confirm({
@@ -327,7 +331,7 @@ function BranchAssignment({ workgroup, onError, confirm }: {
     message: `Eltávolítja a(z) "${b.name}" pénztárt ebből a munkacsoportból?`,
     confirmLabel: 'Eltávolítás',
     danger: true,
-    onConfirm: async () => { await persist(assigned.filter(x => x.id !== b.id).map(x => x.id)); },
+    onConfirm: async () => { await persistMutation(ids => ids.filter(x => x !== b.id)); },
   })
 
   if (loading) return <p className="text-sm text-gray-500">Pénztárak betöltése…</p>

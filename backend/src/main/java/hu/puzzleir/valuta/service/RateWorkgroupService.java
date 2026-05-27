@@ -64,6 +64,10 @@ public class RateWorkgroupService {
         existing.setName(update.getName());
         existing.setActive(update.getActive());
         existing.setTileColor(update.getTileColor());
+        // A sorszám (legacyGroupNumber) a csempén a fő azonosító — a szerkesztő módosíthatja,
+        // ezért itt is menteni kell (különben a UI némán eldobná). A kódot NEM írjuk felül
+        // (a szerkesztőben tiltott, az egyediség a code-on van).
+        existing.setLegacyGroupNumber(update.getLegacyGroupNumber());
         return workgroupRepository.save(existing);
     }
 
