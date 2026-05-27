@@ -27,6 +27,7 @@ ON CONFLICT (code) DO UPDATE
     SET is_active = true,
         name = EXCLUDED.name,
         symbol = COALESCE(currency.symbol, EXCLUDED.symbol),
+        decimal_places = EXCLUDED.decimal_places,
         updated_at = NOW();
 
 -- 2) Inaktiválás (törlés helyett) — DKK, NOK, SEK.
