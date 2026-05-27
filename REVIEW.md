@@ -106,6 +106,29 @@ gh api "/repos/$OWNER/$REPO" --jq '{secret_scanning:.security_and_analysis.secre
 - [ ] Container scan high/critical nélkül (ha image deploy)
 - [ ] Production environment required reviewer jóváhagyta (ha prod deploy)
 
+## ☑ 5-szempontú kód-tartalom review (diff elfogadása ELŐTT)
+
+> Hozzáadva 2026-05-27 (architect-mode metodika fold). A fenti lokális/git/biztonsági/GitHub
+> kapuk a folyamatot fedik; ez a szakasz a **diff tartalmi** átvizsgálása. Csak az ott még NEM
+> szereplő pontokat sorolja (nincs duplikáció).
+
+1. **Szándék** — a változás megoldja az EREDETI problémát (nem mást)? Minden peremeset kezelve
+   (null/undefined, hálózati hiba, üres lista, 0/negatív összeg, hiányzó jog)? Nincs hallgatólagos
+   „do nothing" ág — minden if/else explicit?
+2. **Architektúra** — illeszkedik a meglévő kódbázis mintáihoz (mapper/service/repo réteg,
+   multi-tenant scope, OSIV=false LazyInit-kezelés)? **Nincs túlbonyolítás** (felesleges absztrakció,
+   új réteg, korai általánosítás)? A változás a lehető legkevesebb fájlt érinti?
+3. **Biztonság** — *(a tiltólistán felül)* **a beimportált könyvtár/szimbólum VALÓBAN létezik**
+   (hallucináció-ellenőrzés: a package a `package.json`/`pom.xml`-ben van, az import feloldódik a
+   build-ben)? Minden input a rendszerhatáron validált?
+4. **Karbantarthatóság** — nincs benne felesleges **placeholder elnevezés** (`foo`, `tmp`, `data2`,
+   `TODO`-stub), kommentelt holt kód, vagy a fájl konvenciójától eltérő **kevert stílus**?
+5. **Teljesítmény** — a DB-lekérdezések hatékonyak (nincs N+1, van index a szűrt oszlopon, a lapozott
+   query nem tölt be mindent memóriába)? Nincs felesleges ciklus-beli I/O?
+
+**Bizonytalanság-kezelés:** ha egy ponton nem vagy biztos (pl. „létezik-e ez a metódus/oszlop"),
+**ellenőrizd a forrást** (grep/Read/build) — TILOS feltételezésre építve elfogadni a diffet.
+
 ## ☑ Záró self-review formátum (minden kódos GitHub-feladat végén)
 
 ```markdown
