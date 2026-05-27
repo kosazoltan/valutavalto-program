@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Package, Search, RefreshCw, AlertTriangle, Wallet, MapPin } from 'lucide-react'
-import { api, branchApi } from '../../services/api/index'
+import { api, branchApi, currencyApi, Currency } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
@@ -30,6 +30,10 @@ function formatBalance(value: number | undefined, currencyCode: string | undefin
 export default function CashierStocksPage() {
   const { t } = useTranslation()
   const [items, setItems] = useState<InventoryItem[]>([])
+  // FK-008: az aktív valutanem-törzs (display_order szerint) — minden kártya EBBŐL épül,
+  // így az értéktár-kártyák is a teljes listát mutatják (0 egyenleggel is), és az inaktív/ismeretlen
+  // valuták (pl. TST – FK-007, DKK/NOK/SEK – FK-006) nem jelennek meg.
+  const [currencies, setCurrencies] = useState<Currency[]>([])
   const [branchMeta, setBranchMeta] = useState<Map<string, { region: string; isVault: boolean }>>(new Map())
   const [vaultByRegion, setVaultByRegion] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
@@ -40,8 +44,20 @@ export default function CashierStocksPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<InventoryItem[]>('/inventory/stock')
-      setItems(safeArray<InventoryItem>(response.data))
+      // A készlet a kötelező adat; a valutanem-törzs best-effort (Copilot P2): ha a /currencies
+      // elhasal, a stock attól még megjelenik (allItems → fallback a nyers sorokra).
+      const [stockResult, currencyResult] = await Promise.allSettled([
+        api.get<InventoryItem[]>('/inventory/stock'),
+        currencyApi.list(),
+      ])
+      if (stockResult.status === 'rejected') throw stockResult.reason
+      setItems(safeArray<InventoryItem>(stockResult.value.data))
+      if (currencyResult.status === 'fulfilled') {
+        setCurrencies(safeArray<Currency>(currencyResult.value))
+      } else {
+        logger.warn('CashierStocksPage', 'Valutanem-törzs betöltése sikertelen (teljes lista kihagyva)', currencyResult.reason)
+        setCurrencies([])
+      }
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('CashierStocksPage', 'Betöltési hiba:', err)
@@ -77,13 +93,55 @@ export default function CashierStocksPage() {
     void loadBranchMeta()
   }, [loadData, loadBranchMeta])
 
+  // FK-008: a teljes készlet-mátrix a valutanem-törzsből építve. Minden branch (pénztár ÉS értéktár)
+  // minden aktív valutára kap egy sort; az egyenleg a /inventory/stock-ból, ahol nincs → 0. Így az
+  // értéktár-kártyák is a teljes listát mutatják, és csak az aktív valuták jelennek meg (TST/DKK/NOK/SEK
+  // kizárva). A branch-univerzum KIZÁRÓLAG a /inventory/stock scope-szűrt soraiból jön (Codex P1):
+  // a backend getAllStock() companyId + területi filterre szűr, a branchMeta (branchApi.listActive)
+  // viszont GLOBÁLIS aktív lista — ha azt unionoznánk, egy területre korlátozott (pl. ERTEKTAR) user
+  // idegen branch-eket látna (scope-szivárgás). A branchMeta CSAK régió/isVault metaadat marad.
+  const allItems = useMemo<InventoryItem[]>(() => {
+    if (currencies.length === 0) return items // törzs még tölt → fallback a nyers sorokra
+    const balByBranch = new Map<string, Map<string, number>>()
+    for (const it of items) {
+      if (!it.branchName || !it.currencyCode) continue
+      let m = balByBranch.get(it.branchName)
+      if (!m) { m = new Map<string, number>(); balByBranch.set(it.branchName, m) }
+      if (typeof it.currentBalance === 'number') m.set(it.currencyCode, it.currentBalance)
+    }
+    const activeCodes = new Set(currencies.map(c => c.code))
+    const branchNames = new Set<string>(balByBranch.keys())
+    const result: InventoryItem[] = []
+    for (const branchName of branchNames) {
+      const bal = balByBranch.get(branchName)
+      for (const c of currencies) {
+        result.push({
+          id: `${branchName}|${c.code}`,
+          branchName,
+          currencyCode: c.code,
+          currentBalance: bal?.get(c.code) ?? 0,
+        })
+      }
+      // Árva, NEM-nulla egyenleg egy inaktivált/ismeretlen valutában: nem rejtjük el (néma
+      // adatvesztés ellen). A 0-egyenlegű árvák (pl. TST) kimaradnak — FK-007.
+      if (bal) {
+        for (const [code, balance] of bal) {
+          if (!activeCodes.has(code) && balance !== 0) {
+            result.push({ id: `${branchName}|${code}`, branchName, currencyCode: code, currentBalance: balance })
+          }
+        }
+      }
+    }
+    return result
+  }, [items, currencies])
+
   const filtered = useMemo(() => {
-    if (!searchTerm) return items
+    if (!searchTerm) return allItems
     const term = searchTerm.toLowerCase()
-    return items.filter(item =>
+    return allItems.filter(item =>
       Object.values(item).some(v => v != null && String(v).toLowerCase().includes(term))
     )
-  }, [items, searchTerm])
+  }, [allItems, searchTerm])
 
   const branchGroups: BranchGroup[] = useMemo(() => {
     const map = new Map<string, BranchGroup>()
@@ -102,11 +160,15 @@ export default function CashierStocksPage() {
         group.nonZeroCount += 1
       }
     }
+    // FK-008: a valutanemek sorrendje a törzs display_order-je szerint (nem betűrend).
+    const order = new Map<string, number>()
+    currencies.forEach((c, i) => order.set(c.code, i))
     for (const group of map.values()) {
-      group.items.sort((a, b) => (a.currencyCode ?? '').localeCompare(b.currencyCode ?? ''))
+      group.items.sort((a, b) =>
+        (order.get(a.currencyCode ?? '') ?? 999) - (order.get(b.currencyCode ?? '') ?? 999))
     }
     return Array.from(map.values()).sort((a, b) => b.hufTotal - a.hufTotal)
-  }, [filtered])
+  }, [filtered, currencies])
 
   const grandTotalHuf = branchGroups.reduce((sum, g) => sum + g.hufTotal, 0)
   const totalBranches = branchGroups.length
@@ -243,7 +305,7 @@ function BranchCard({ group, isVault = false }: { group: BranchGroup; isVault?: 
   const { t } = useTranslation()
   // FK-003: az értéktár kártya vizuálisan elkülönül a pénztárkártyáktól (borostyán keret + háttér + ÉRTÉKTÁR jelvény).
   return (
-    <div className={`form-panel p-2 hover:shadow-md transition-shadow ${isVault ? 'ring-2 ring-amber-400 bg-amber-50/60' : ''}`}>
+    <div data-testid="branch-card" className={`form-panel p-2 hover:shadow-md transition-shadow ${isVault ? 'ring-2 ring-amber-400 bg-amber-50/60' : ''}`}>
       <div className="flex items-center justify-between mb-1 pb-1 border-b border-gray-200">
         <h3 className="font-bold text-secondary-900 text-sm truncate flex-1 flex items-center gap-1" title={group.branchName}>
           {isVault && <span className="text-[9px] font-bold uppercase bg-amber-500 text-white rounded px-1 py-px shrink-0">Értéktár</span>}
