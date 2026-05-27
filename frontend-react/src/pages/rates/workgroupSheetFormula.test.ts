@@ -89,6 +89,13 @@ describe('workgroupSheetFormula (FK-03)', () => {
       const r = evaluateWorkgroupFormula('#1L', ctx())
       expect('error' in r).toBe(true)
     })
+    it('háromjegyű csoportszám → érthető "kétjegyű" hiba', () => {
+      const r = evaluateWorkgroupFormula('#012L', ctx())
+      expect('error' in r && r.error).toContain('kétjegyű')
+    })
+    it('kereszt-munkacsoport műveletben (záró-token nélkül helyes)', () => {
+      expect(evaluateWorkgroupFormula('#01L*2', ctx())).toEqual({ value: 390 * 2 })
+    })
     it('K oszlopra hivatkozás → hiba', () => {
       const r = evaluateWorkgroupFormula('#01K', ctx())
       expect('error' in r && r.error).toContain('K oszlop')

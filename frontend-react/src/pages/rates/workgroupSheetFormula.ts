@@ -129,6 +129,9 @@ function tokenize(input: string): Token[] {
       if (!isDigit(d1) || !isDigit(d2)) {
         throw new TokenizeError(`Érvénytelen csoport-hivatkozás (kétjegyű szám kell): ${s.slice(i, i + 3)}`)
       }
+      if (colCh && isDigit(colCh)) {
+        throw new TokenizeError(`A csoport-hivatkozás kétjegyű sorszámot vár (#NN<oszlop>): ${s.slice(i, i + 4)}`)
+      }
       if (!colCh || !isWgCol(colCh)) {
         throw new TokenizeError(`Érvénytelen csoport-oszlop (J–S): ${s.slice(i, i + 4)}`)
       }
