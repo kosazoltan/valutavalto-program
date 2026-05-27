@@ -28,6 +28,10 @@ public class PoliceRequest {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    /** Multi-tenant tulajdonos cég (V270). A scope-olt lekérdezések ezen szűrnek. */
+    @Column(name = "company_id")
+    private UUID companyId;
+
     @Column(name = "request_number", nullable = false, length = 100)
     private String requestNumber;
 

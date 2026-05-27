@@ -46,6 +46,7 @@ public class PoliceRequestService {
                 .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található: " + createdById));
 
         PoliceRequest request = PoliceRequest.builder()
+                .companyId(SecurityUtils.getCurrentCompanyId())  // V270: multi-tenant tulajdonos
                 .requestNumber(dto.getRequestNumber())
                 .requestDate(dto.getRequestDate())
                 .requestedBy(dto.getRequestedBy())
@@ -68,7 +69,9 @@ public class PoliceRequestService {
      */
     @Transactional(rollbackFor = Exception.class)
     public PoliceRequestDto processRequest(UUID requestId) {
-        PoliceRequest request = policeRequestRepository.findById(requestId)
+        // V270 multi-tenant: csak a hívó cégének adatkérése dolgozható fel (cross-tenant → 404).
+        PoliceRequest request = policeRequestRepository
+                .findByIdAndCompanyId(requestId, SecurityUtils.getCurrentCompanyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Adatkérés nem található: " + requestId));
 
         if (request.getStatus() != PoliceRequestStatus.RECEIVED &&
@@ -123,7 +126,9 @@ public class PoliceRequestService {
      */
     @Transactional(readOnly = true)
     public PoliceRequestDto getRequest(UUID requestId) {
-        PoliceRequest request = policeRequestRepository.findById(requestId)
+        // V270 multi-tenant: csak a hívó cégének adatkérése kérdezhető le (cross-tenant → 404).
+        PoliceRequest request = policeRequestRepository
+                .findByIdAndCompanyId(requestId, SecurityUtils.getCurrentCompanyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Adatkérés nem található: " + requestId));
         return toDto(request);
     }
@@ -133,7 +138,9 @@ public class PoliceRequestService {
      */
     @Transactional(readOnly = true)
     public Page<PoliceRequestDto> getRequestHistory(Pageable pageable) {
-        return policeRequestRepository.findAllByOrderByCreatedAtDesc(pageable)
+        // V270 multi-tenant: csak a hívó cégének adatkérései.
+        return policeRequestRepository
+                .findByCompanyIdOrderByCreatedAtDesc(SecurityUtils.getCurrentCompanyId(), pageable)
                 .map(this::toDto);
     }
 
