@@ -45,7 +45,9 @@ public class RateWorkgroupService {
     @Transactional(rollbackFor = Exception.class)
     public RateWorkgroup create(RateWorkgroup workgroup) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        if (workgroupRepository.findByCode(workgroup.getCode()).isPresent()) {
+        // A kód-egyediség a (company_id, code) páron van — cégen belül kell ellenőrizni,
+        // különben egy másik cég azonos kódjára adnánk fals "már létezik" hibát.
+        if (workgroupRepository.findByCompanyIdAndCode(companyId, workgroup.getCode()).isPresent()) {
             throw new ValidationException("Már létezik munkacsoport ezzel a kóddal: " + workgroup.getCode());
         }
         Company company = companyRepository.findById(companyId)
@@ -61,7 +63,26 @@ public class RateWorkgroupService {
         RateWorkgroup existing = getById(id);
         existing.setName(update.getName());
         existing.setActive(update.getActive());
+        existing.setTileColor(update.getTileColor());
+        // A sorszám (legacyGroupNumber) a csempén a fő azonosító — a szerkesztő módosíthatja,
+        // ezért itt is menteni kell (különben a UI némán eldobná). A kódot NEM írjuk felül
+        // (a szerkesztőben tiltott, az egyediség a code-on van).
+        existing.setLegacyGroupNumber(update.getLegacyGroupNumber());
         return workgroupRepository.save(existing);
+    }
+
+    /**
+     * FK-02: munkacsoport "törlése" — FK-006 elv szerint inaktiválás (nem fizikai törlés),
+     * az árfolyam-előzmények (rate_template, publikációk) megőrzéséhez. A branch-hozzárendelés
+     * feloldódik, hogy a pénztárak más munkacsoportba átsorolhatók legyenek (V242 exkluzivitás).
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void softDelete(UUID id) {
+        RateWorkgroup existing = getById(id);
+        existing.setActive(false);
+        existing.getBranches().clear();
+        workgroupRepository.save(existing);
+        log.info("Munkacsoport inaktiválva (soft-delete): {} ({})", existing.getName(), existing.getCode());
     }
 
     private void verifyCompanyAccess(RateWorkgroup wg) {
