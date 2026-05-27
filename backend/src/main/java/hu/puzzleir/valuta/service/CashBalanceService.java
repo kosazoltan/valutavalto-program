@@ -67,7 +67,9 @@ public class CashBalanceService {
     @Transactional(readOnly = true)
     public CashBalance getBalanceByCurrency(Long currencyId) {
         UUID branchId = SecurityUtils.getCurrentBranchId();
-        return cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, currencyId)
+        // #865: WithDetails JOIN FETCH — a controller a session lezárása UTÁN mappel DTO-ra (OSIV=false),
+        // ezért a branch+currency proxynak betöltve kell lennie, különben LazyInit 500.
+        return cashBalanceRepository.findByBranchIdAndCurrencyIdWithDetails(branchId, currencyId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                     "Kassza egyenleg nem található ehhez a valutához"));
     }
@@ -287,7 +289,12 @@ public class CashBalanceService {
                     oldBalance, balance.getCurrentBalance());
         }
 
-        return cashBalanceRepository.save(balance);
+        CashBalance saved = cashBalanceRepository.save(balance);
+        // #865: a controller (POST /adjust) a session lezárása UTÁN mappel DTO-ra (OSIV=false) →
+        // a lazy branch/currency proxyt itt, a tranzakción belül inicializáljuk a LazyInit 500 ellen.
+        org.hibernate.Hibernate.initialize(saved.getBranch());
+        org.hibernate.Hibernate.initialize(saved.getCurrency());
+        return saved;
     }
 
     /**

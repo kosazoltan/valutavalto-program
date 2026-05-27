@@ -24,6 +24,23 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
     Optional<CashBalance> findByBranchIdAndCurrencyId(UUID branchId, Long currencyId);
 
     /**
+     * Egyenleg keresése fiók és valuta alapján — JOIN FETCH a lazy branch/currency proxy ellen.
+     *
+     * 2026-05-27 (live-API teszt #865): a GET /cash-balances/code/{code} és /currency/{id}
+     * a derived findByBranchIdAndCurrencyId-t használta (lazy branch+currency), majd a
+     * controller a session lezárása UTÁN (OSIV=false) hívta a CashBalanceMapper.toDto-t →
+     * LazyInitializationException (Branch proxy, no session) → HTTP 500. A lista-végpontok
+     * (findByBranchId/findByCompanyId) már JOIN FETCH-elnek; ez a single-balance párjuk.
+     */
+    @Query("SELECT cb FROM CashBalance cb " +
+           "JOIN FETCH cb.branch " +
+           "JOIN FETCH cb.currency " +
+           "JOIN FETCH cb.company " +
+           "WHERE cb.branch.id = :branchId AND cb.currency.id = :currencyId")
+    Optional<CashBalance> findByBranchIdAndCurrencyIdWithDetails(
+            @Param("branchId") UUID branchId, @Param("currencyId") Long currencyId);
+
+    /**
      * Egyenleg keresése PESSIMISTIC_WRITE lockkal (race condition védelem).
      * CRITICAL FIX: Párhuzamos készletmódosítás megakadályozása.
      */

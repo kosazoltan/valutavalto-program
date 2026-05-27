@@ -99,7 +99,9 @@ class CashBalanceServiceTest {
     void testGetBalanceByCurrency_notFound() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
-            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 999L))
+            // #865: getBalanceByCurrency a WithDetails JOIN FETCH variánst használja
+            // (lazy branch/currency proxy elkerülése a controller DTO-mappinghez).
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdWithDetails(BRANCH_ID, 999L))
                     .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.getBalanceByCurrency(999L))
