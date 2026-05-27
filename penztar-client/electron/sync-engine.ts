@@ -299,6 +299,28 @@ export class SyncEngine {
   }
 
   /**
+   * Az AKTÍV (failover-feloldott) szerver-URL — MINDIG az aktuális activeServerKind szerint, on-demand
+   * számolva (NINCS cache-elés). Így a rotáció (authFailed / catch ág activeServerKind-váltása) után a
+   * cikluson KÍVÜL hívott metódusok (pl. sendHeartbeat saját timeren) is konzisztens URL-t kapnak —
+   * nem egy korábbi ciklusban befagyott, már elavult URL-t (Codex/Copilot #874 P2). A prioritási
+   * sorrend a kiválasztott szinttől indul, majd a többi szintre esik vissza, ha az hiányzik.
+   */
+  private getActiveServerUrl(): string | null {
+    const primaryUrl = this.getServerUrl();
+    const fallbackPrimaryUrl = this.getServerUrlFallbackPrimary();
+    const fallbackSecondaryUrl = this.getServerUrlFallbackSecondary();
+    switch (this.activeServerKind) {
+      case 'fallback_primary':
+        return fallbackPrimaryUrl ?? primaryUrl ?? fallbackSecondaryUrl;
+      case 'fallback_secondary':
+        return fallbackSecondaryUrl ?? fallbackPrimaryUrl ?? primaryUrl;
+      case 'primary':
+      default:
+        return primaryUrl ?? fallbackPrimaryUrl ?? fallbackSecondaryUrl;
+    }
+  }
+
+  /**
    * Fallback-primary (warm standby) - 1. prioritasu fallback.
    * Peldaul: Hetzner primary -> Contabo warm standby (Nurnberg).
    * Config: 'server_url_fallback_primary' vagy backward-compat 'server_url_fallback'.
@@ -327,6 +349,10 @@ export class SyncEngine {
    * az elozo szintet a kovetkezo ciklusban.
    */
   private activeServerKind: 'primary' | 'fallback_primary' | 'fallback_secondary' = 'primary';
+
+  // #HA-failover (architect-mode audit): az aktív szerver-URL-t a getActiveServerUrl() on-demand
+  // számolja az activeServerKind-ból (nincs cache-elt mező), így mindig konzisztens a kiválasztott
+  // szinttel — a rotáció után a cikluson kívüli hívók sem kapnak elavult URL-t.
 
   private getBootstrapCredentials(): BootstrapCredentials | null {
     const companyCode = process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE?.trim() || getConfig('bootstrap_company_code')?.trim() || '';
@@ -532,23 +558,12 @@ export class SyncEngine {
     this.status.isRunning = true;
 
     try {
-      // 3-regios HA URL-valasztas:
-      //   activeServerKind === 'primary'            -> primary (Hetzner)
-      //   activeServerKind === 'fallback_primary'   -> warm standby (Contabo)
-      //   activeServerKind === 'fallback_secondary' -> cold standby (Scaleway)
-      // Mindig a prioritasi sorrendben probaljuk. Hiba eseten a catch ugrik a kovetkezo szintre.
-      const primaryUrl = this.getServerUrl();
-      const fallbackPrimaryUrl = this.getServerUrlFallbackPrimary();
-      const fallbackSecondaryUrl = this.getServerUrlFallbackSecondary();
-      let serverUrl: string | null = null;
-      if (this.activeServerKind === 'primary') {
-        serverUrl = primaryUrl ?? fallbackPrimaryUrl ?? fallbackSecondaryUrl;
-      } else if (this.activeServerKind === 'fallback_primary') {
-        serverUrl = fallbackPrimaryUrl ?? primaryUrl ?? fallbackSecondaryUrl;
-      } else {
-        serverUrl = fallbackSecondaryUrl ?? fallbackPrimaryUrl ?? primaryUrl;
-      }
-            if (!serverUrl) {
+      // 3-regios HA URL-valasztas az aktualis activeServerKind szerint (primary=Hetzner,
+      // fallback_primary=Contabo warm, fallback_secondary=Scaleway cold). Ugyanazt a feloldast
+      // hasznalja, mint az osszes sync-metodus → garantalt konzisztencia. Hiba eseten a catch /
+      // authFailed ag lepteti az activeServerKind-ot a kovetkezo ciklusra.
+      const serverUrl = this.getActiveServerUrl();
+      if (!serverUrl) {
         log.debug('[SyncEngine] Offline mód vagy server_url hiányzik — sync kihagyva');
         return;
       }
@@ -781,7 +796,7 @@ export class SyncEngine {
       return result;
     }
 
-    const serverUrl = this.getServerUrl();
+    const serverUrl = this.getActiveServerUrl();
     if (!serverUrl) { result.errors.push('Offline mód — szerver URL nincs beállítva'); return result; }
     const token = tokenOverride ?? this.getAuthToken();
 
@@ -1386,7 +1401,7 @@ export class SyncEngine {
    */
   async syncRates(): Promise<void> {
     try {
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
@@ -1448,7 +1463,7 @@ export class SyncEngine {
    */
   async syncCirculars(): Promise<void> {
     try {
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
@@ -1508,7 +1523,7 @@ export class SyncEngine {
       const pending = getPendingDistributions();
       if (pending.length === 0) return;
 
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
       if (!token) return;
@@ -1550,7 +1565,7 @@ export class SyncEngine {
       const pending = getPendingTransfers();
       if (pending.length === 0) return;
 
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
       if (!token) return;
@@ -1610,7 +1625,7 @@ export class SyncEngine {
       const pending = getPendingCollections();
       if (pending.length === 0) return;
 
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
       if (!token) return;
@@ -1656,7 +1671,7 @@ export class SyncEngine {
       const pending = getPendingStocktakeItems();
       if (pending.length === 0) return;
 
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
       if (!token) return;
@@ -1698,7 +1713,7 @@ export class SyncEngine {
    */
   async cacheBranchStatus(): Promise<void> {
     try {
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
@@ -1740,7 +1755,7 @@ export class SyncEngine {
    */
   async syncCashDeskMasterData(): Promise<void> {
     try {
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
@@ -1780,7 +1795,7 @@ export class SyncEngine {
    */
   async syncWorkerMasterData(): Promise<void> {
     try {
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return; }
       const token = this.getAuthToken();
 
@@ -1832,7 +1847,7 @@ export class SyncEngine {
    */
   async restoreFromServer(sinceDaysAgo: number = 180): Promise<{ restored: number; error: string | null }> {
     try {
-      const serverUrl = this.getServerUrl();
+      const serverUrl = this.getActiveServerUrl();
       if (!serverUrl) { return { restored: 0, error: 'offline' }; }
       const token = this.getAuthToken();
       if (!token) {
