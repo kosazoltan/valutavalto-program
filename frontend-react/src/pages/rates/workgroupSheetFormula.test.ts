@@ -124,6 +124,16 @@ describe('workgroupSheetFormula (FK-03)', () => {
     it('többjegyű azonosító (valuta ! nélkül) → hiba', () => {
       expect('error' in evaluateWorkgroupFormula('EUR', ctx())).toBe(true)
     })
+    it('D oszlop (ISO-kód címke) self-hivatkozása → elutasítva, nem numerikus (Codex P2)', () => {
+      const r = evaluateWorkgroupFormula('D', ctx())
+      expect('error' in r).toBe(true)
+      if ('error' in r) expect(r.error).toContain('Érvénytelen oszlop-hivatkozás')
+    })
+    it('D oszlop kereszt-hivatkozása (!DEUR) → elutasítva (Codex P2)', () => {
+      const r = evaluateWorkgroupFormula('!DEUR', ctx())
+      expect('error' in r).toBe(true)
+      if ('error' in r) expect(r.error).toContain('Érvénytelen kereszt-hivatkozás')
+    })
   })
 
   describe('extractWorkgroupDependencies', () => {
@@ -138,6 +148,9 @@ describe('workgroupSheetFormula (FK-03)', () => {
     })
     it('hibás képletre üres tömb', () => {
       expect(extractWorkgroupDependencies('@@@')).toEqual([])
+    })
+    it('a D oszlop nem kerül a függőségek közé (érvénytelen → üres)', () => {
+      expect(extractWorkgroupDependencies('D')).toEqual([])
     })
   })
 })

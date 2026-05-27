@@ -6,6 +6,7 @@
  *
  * Hivatkozás-típusok:
  *  - `A`–`I`         → a 0-s lap adott oszlopa, az AKTUÁLIS valuta sorában (self, sheet 0).
+ *                      (A `D` az ISO-kód címke, nem hivatkozható numerikusan.)
  *  - `J`–`S`         → az AKTUÁLIS munkacsoport adott oszlopa, az aktuális valuta sorában (self, wg).
  *                      (A `K` az ISO-kód, nem hivatkozható numerikusan.)
  *  - `!<oszlop><KÓD>`→ másik valuta adott oszlopa a 0-s lapon. Pl. `!FEUR` = EUR F oszlopa.
@@ -21,8 +22,12 @@
 /** localStorage kulcs-prefix a munkacsoport-lap képleteihez (csoportonként külön kulcs). */
 export const WORKGROUP_FORMULA_STORAGE_PREFIX = 'arfolyamkeszito.workgroupSheet.formulas.v1'
 
-/** A 0-s lap hivatkozható oszlopai (A–I). */
-export const SHEET0_COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'] as const
+/**
+ * A 0-s lap NUMERIKUSAN hivatkozható oszlopai. A `D` az ISO-valutakód címke (string),
+ * ezért — a 0-s lap motorjával (mainSheetFormula.FORMULA_COL_LETTERS) egyezően — kizárt;
+ * `D` / `!D<KÓD>` érvénytelen hivatkozás, nem ad numerikus értéket (Codex FK-03 P2).
+ */
+export const SHEET0_COLS = ['A', 'B', 'C', 'E', 'F', 'G', 'H', 'I'] as const
 export type Sheet0Col = typeof SHEET0_COLS[number]
 
 /** A munkacsoport-lap hivatkozható oszlopai (J–S). A K (ISO kód) nem ad numerikus értéket. */
@@ -113,7 +118,7 @@ function tokenize(input: string): Token[] {
     if (ch === '!') {
       const colCh = s[i + 1]?.toUpperCase()
       if (!colCh || !isSheet0Col(colCh)) {
-        throw new TokenizeError(`Érvénytelen kereszt-hivatkozás (oszlop A–I): ${s.slice(i, i + 2)}`)
+        throw new TokenizeError(`Érvénytelen kereszt-hivatkozás (oszlop A–I, a D ISO-kód kizárva): ${s.slice(i, i + 2)}`)
       }
       let j = i + 2
       while (j < s.length && /[A-Za-z0-9]/.test(s[j]!)) j++
