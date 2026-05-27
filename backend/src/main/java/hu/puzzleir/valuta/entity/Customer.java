@@ -172,9 +172,11 @@ public class Customer {
     private String city;
 
     /**
-     * Ország (ISO 3166-1 alpha-3)
+     * Ország — humanreadable országnév (NEM csak ISO 3166-1 alpha-3 kód).
+     * V268 (2026-05-27): VARCHAR(3) → VARCHAR(100), mert a frontend a "Magyarország"
+     * teljes országnevet küldi (HIBA #5, élő-API teszt). Lásd V236 (nationality).
      */
-    @Column(length = 3)
+    @Column(length = 100)
     private String country;
 
     /**

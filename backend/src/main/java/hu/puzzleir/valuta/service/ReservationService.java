@@ -181,7 +181,7 @@ public class ReservationService {
                 reservation.getId(), customer.getName(), amount, currencyCode,
                 exchangeRate, depositAmount);
 
-        return reservation;
+        return initLazyAssociations(reservation);
     }
 
     // ============ FOGLALÓ TELJESÍTÉS ============
@@ -241,7 +241,7 @@ public class ReservationService {
         log.info("Foglaló teljesítve: id={}, refund={} HUF",
                 reservation.getId(), reservation.getRefundAmount());
 
-        return reservation;
+        return initLazyAssociations(reservation);
     }
 
     // ============ ÜGYFÉL STORNÓ ============
@@ -299,7 +299,7 @@ public class ReservationService {
         log.info("Ügyfél stornó: id={}, valuta visszavezetve: {} {}",
                 reservation.getId(), reservation.getReservedAmount(), reservation.getCurrencyCode());
 
-        return reservation;
+        return initLazyAssociations(reservation);
     }
 
     // ============ EBC STORNÓ ============
@@ -396,7 +396,7 @@ public class ReservationService {
         log.info("EBC stornó: id={}, refund={} HUF (2×), supervisor={}",
                 reservation.getId(), refund, supervisor.getName());
 
-        return reservation;
+        return initLazyAssociations(reservation);
     }
 
     // ============ LEKÉRDEZÉSEK ============
@@ -414,7 +414,8 @@ public class ReservationService {
      */
     @Transactional(readOnly = true)
     public List<Reservation> getActiveReservations(UUID branchId) {
-        return reservationRepository.findActiveByBranch(branchId);
+        return reservationRepository.findActiveByBranch(branchId).stream()
+                .map(this::initLazyAssociations).toList();
     }
 
     /**
@@ -423,7 +424,8 @@ public class ReservationService {
     @Transactional(readOnly = true)
     public List<Reservation> getExpiredReservations() {
         return reservationRepository.findByStatusAndExpiresAtBefore(
-                ReservationStatus.ACTIVE, LocalDateTime.now());
+                ReservationStatus.ACTIVE, LocalDateTime.now()).stream()
+                .map(this::initLazyAssociations).toList();
     }
 
     /**
@@ -591,8 +593,33 @@ public class ReservationService {
      * Foglaló lekérdezése ID alapján, ResourceNotFoundException ha nem található.
      */
     private Reservation getReservationById(Long reservationId) {
-        return reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Foglaló nem található: " + reservationId));
+        return initLazyAssociations(reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Foglaló nem található: " + reservationId)));
+    }
+
+    /**
+     * #865 (élő-API teszt, HIBA #6/#7): a Reservation @ManyToOne LAZY asszociációi
+     * (customer/branch/worker/supervisorWorker) betöltése a tranzakción belül, mielőtt
+     * a controller a session lezárása UTÁN (OSIV=false) DTO-ra mappel (ReservationMapper)
+     * VAGY bizonylatot generál (ReceiptGeneratorService.generateReservationReceipt) — különben
+     * LazyInitializationException → HTTP 500. A findByIdForUpdate PESSIMISTIC lock query, ezért
+     * a JOIN FETCH + FOR UPDATE (nullable supervisorWorker LEFT JOIN) Postgres-en tiltott; az
+     * association-init a tranzakción belül a biztonságos, egységes megoldás. Hibernate.initialize(null)
+     * null-safe no-op (a nullable supervisorWorkerre is hívható).
+     */
+    private Reservation initLazyAssociations(Reservation r) {
+        if (r != null) {
+            org.hibernate.Hibernate.initialize(r.getCustomer());
+            org.hibernate.Hibernate.initialize(r.getBranch());
+            // A bizonylat-generátor a branch.getCompany().getName()-t is olvassa (nested LAZY) —
+            // a Branch proxy inicializálása NEM tölti be a Company asszociációt, ezért külön kell.
+            if (r.getBranch() != null) {
+                org.hibernate.Hibernate.initialize(r.getBranch().getCompany());
+            }
+            org.hibernate.Hibernate.initialize(r.getWorker());
+            org.hibernate.Hibernate.initialize(r.getSupervisorWorker());
+        }
+        return r;
     }
 
     /**
