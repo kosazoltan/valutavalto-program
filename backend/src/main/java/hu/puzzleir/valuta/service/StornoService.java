@@ -517,6 +517,8 @@ public class StornoService {
                 .branchId(entity.getBranch().getId().toString())
                 .dailyStornoCount(entity.getDailyStornoCount())
                 .approvalStatusDid(entity.getApprovalStatus() != null ? entity.getApprovalStatus().getId().toString() : null)
+                // #868 (Codex P2): a frontend a KÓD-ot hasonlítja ('APPROVED'/'REJECTED'), nem az UUID-t.
+                .approvalStatusCode(entity.getApprovalStatus() != null ? entity.getApprovalStatus().getCode() : null)
                 .requestReason(entity.getRequestReason())
                 .rejectionReason(entity.getRejectionReason())
                 .approvedByWorkerId(entity.getApprovedByWorker() != null ? String.valueOf(entity.getApprovedByWorker().getId()) : null)
