@@ -73,6 +73,8 @@ public class RatePublishService {
                     "A munkacsoporthoz nincs aktív iroda rendelve, ezért az árfolyam nem küldhető ki.");
         }
 
+        // 1) Beolvasás + status-check (mutáció nélkül) — hogy a teljes batch validálható legyen
+        //    MIELŐTT bármit módosítunk (PUBLISHED-re állítás csak az FK-04/E.2 protection-check után).
         List<RateTemplate> templates = new ArrayList<>();
         for (UUID templateId : templateIds) {
             RateTemplate template = templateRepository.findById(templateId)
@@ -85,11 +87,20 @@ public class RatePublishService {
                 throw new ValidationException("Csak DRAFT vagy APPROVED sablon publikálható: " + templateId
                         + " (jelenlegi állapot: " + currentStatus + ")");
             }
-
-            template.setStatus(RateTemplate.RateTemplateStatus.PUBLISHED);
-            template.setPublishedAt(LocalDateTime.now());
-            templateRepository.save(template);
             templates.add(template);
+        }
+
+        // 2) FK-04/E.2 árfolyamvédelem — ha a workgroup védelme be van kapcsolva, ellenőrzés
+        //    MIELŐTT bármilyen sablon-mutáció történne. A magyar hibaüzenet egzakt formátum:
+        //    "X-es csoport EUR vétel nem lehet magasabb az elszámolónál".
+        validateRateProtection(workgroup, templates);
+
+        // 3) Status-set + save (csak miután a teljes batch átment a validáción)
+        LocalDateTime publishedAt = LocalDateTime.now();
+        for (RateTemplate template : templates) {
+            template.setStatus(RateTemplate.RateTemplateStatus.PUBLISHED);
+            template.setPublishedAt(publishedAt);
+            templateRepository.save(template);
         }
 
         // Create publication record
@@ -329,5 +340,70 @@ public class RatePublishService {
             return publicationRepository.findByCompanyIdAndWorkgroupIdOrderByPublishedAtDesc(companyId, workgroupId);
         }
         return publicationRepository.findTop20ByCompanyIdOrderByPublishedAtDesc(companyId);
+    }
+
+    /**
+     * FK-04/E.2 árfolyamvédelem-validáció publish-time.
+     *
+     * <p>Ha a workgroup {@code protection_enabled} flag-je {@code TRUE} (csempe jobb felső
+     * checkbox), a publikálás elutasít minden olyan rátát, amelyben:
+     * <ul>
+     *   <li><b>Vételi</b> oszlopok (L=baseBuyRate, N=limit1BuyRate, P=limit2BuyRate, R=limit3BuyRate)
+     *       érték {@literal >} J (officialRate / elszámoló).</li>
+     *   <li><b>Eladási</b> oszlopok (M=baseSellRate, O=limit1SellRate, Q=limit2SellRate, S=limit3SellRate)
+     *       érték {@literal <} J.</li>
+     * </ul>
+     *
+     * <p>A hibaüzenet pontos formátuma (Kasza Helga spec, FK-04 E pont):
+     * <i>„X-es csoport EUR vétel nem lehet magasabb az elszámolónál"</i>.</p>
+     *
+     * <p>NULL J (officialRate hiányzik) → a védelem nem érvényesít az adott rátára (mert
+     * a referencia ismeretlen); ezt külön kötelezőség-szabály kell hogy lefedje, ha kell.</p>
+     */
+    private void validateRateProtection(RateWorkgroup workgroup, List<RateTemplate> templates) {
+        if (workgroup.getProtectionEnabled() == null || !workgroup.getProtectionEnabled()) {
+            return;
+        }
+        Integer groupNum = workgroup.getLegacyGroupNumber();
+        String groupLabel = groupNum != null ? groupNum + "-es csoport" : "(" + workgroup.getCode() + ") csoport";
+
+        for (RateTemplate t : templates) {
+            BigDecimal j = t.getOfficialRate();
+            if (j == null) {
+                continue; // nincs elszámoló → ezt a rátát itt nem ellenőrizzük (külön szabály tárgya)
+            }
+            String code = currencyRepository.findById(t.getCurrencyId())
+                    .map(Currency::getCode).orElse("ID=" + t.getCurrencyId());
+
+            // Vételi (L, N, P, R) ≤ J
+            checkBuyRate(t.getBaseBuyRate(), j, groupLabel, code, "L vétel");
+            checkBuyRate(t.getLimit1BuyRate(), j, groupLabel, code, "N vétel");
+            checkBuyRate(t.getLimit2BuyRate(), j, groupLabel, code, "P vétel");
+            checkBuyRate(t.getLimit3BuyRate(), j, groupLabel, code, "R vétel");
+
+            // Eladási (M, O, Q, S) ≥ J
+            checkSellRate(t.getBaseSellRate(), j, groupLabel, code, "M eladás");
+            checkSellRate(t.getLimit1SellRate(), j, groupLabel, code, "O eladás");
+            checkSellRate(t.getLimit2SellRate(), j, groupLabel, code, "Q eladás");
+            checkSellRate(t.getLimit3SellRate(), j, groupLabel, code, "S eladás");
+        }
+    }
+
+    /** FK-04/E.2: vételi {@literal >} J esetén ValidationException magyar üzenettel. */
+    private void checkBuyRate(BigDecimal buy, BigDecimal j, String groupLabel, String code, String label) {
+        if (buy != null && buy.compareTo(j) > 0) {
+            throw new ValidationException(
+                    groupLabel + " " + code + " " + label + " nem lehet magasabb az elszámolónál ("
+                            + buy + " > " + j + ").");
+        }
+    }
+
+    /** FK-04/E.2: eladási {@literal <} J esetén ValidationException magyar üzenettel. */
+    private void checkSellRate(BigDecimal sell, BigDecimal j, String groupLabel, String code, String label) {
+        if (sell != null && sell.compareTo(j) < 0) {
+            throw new ValidationException(
+                    groupLabel + " " + code + " " + label + " nem lehet alacsonyabb az elszámolónál ("
+                            + sell + " < " + j + ").");
+        }
     }
 }
