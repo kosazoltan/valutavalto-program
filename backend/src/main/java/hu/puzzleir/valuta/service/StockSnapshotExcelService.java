@@ -400,12 +400,13 @@ public class StockSnapshotExcelService {
             setCellNumber(hufRow, totCol + 1, totCurr.getDailySellHuf(), grayNumberStyle);
         }
 
-        // Row 102 (index 102): Turnover ÖSSZESEN
-        Row turnoverTotalRow = getOrCreateRow(sheet, 102);
+        // Turnover ÖSSZESEN — DINAMIKUS sor (volt 102, ha N=27: 48 + 27*2 = 102)
+        final int turnoverTotalRowIdx = turnoverStartRow + codes.size() * 2;
+        Row turnoverTotalRow = getOrCreateRow(sheet, turnoverTotalRowIdx);
         Cell turnoverTotalLabel = turnoverTotalRow.createCell(0);
         turnoverTotalLabel.setCellValue("ÖSSZESEN");
         turnoverTotalLabel.setCellStyle(totalStyle);
-        sheet.addMergedRegion(new CellRangeAddress(102, 102, 0, 1));
+        sheet.addMergedRegion(new CellRangeAddress(turnoverTotalRowIdx, turnoverTotalRowIdx, 0, 1));
 
         for (int bi = 0; bi < branchCount; bi++) {
             int col = 2 + bi * 2;
@@ -578,12 +579,13 @@ public class StockSnapshotExcelService {
             setCellNumber(hufRow, totCol + 1, totCurr.getDailySellHuf(), grayNumberStyle);
         }
 
-        // Turnover totals row
-        Row turnoverTotalRow = getOrCreateRow(sheet, 102);
+        // Turnover ÖSSZESEN — DINAMIKUS sor
+        final int turnoverTotalRowIdx = turnoverStartRow + codes.size() * 2;
+        Row turnoverTotalRow = getOrCreateRow(sheet, turnoverTotalRowIdx);
         Cell turnoverTotalLabel = turnoverTotalRow.createCell(0);
         turnoverTotalLabel.setCellValue("ÖSSZESEN");
         turnoverTotalLabel.setCellStyle(totalStyle);
-        sheet.addMergedRegion(new CellRangeAddress(102, 102, 0, 1));
+        sheet.addMergedRegion(new CellRangeAddress(turnoverTotalRowIdx, turnoverTotalRowIdx, 0, 1));
 
         for (int ri = 0; ri < regionCount; ri++) {
             int col = 2 + ri * 2;
