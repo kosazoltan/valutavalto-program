@@ -214,14 +214,18 @@ public class StockSnapshotService {
 
             BigDecimal dailyBuy = transactionRepository.sumDailyTurnoverByCurrency(branchId, today, TransactionType.BUY, code);
             BigDecimal dailySell = transactionRepository.sumDailyTurnoverByCurrency(branchId, today, TransactionType.SELL, code);
+            // FK-003/004 fix: a NAPI FORGALOM Ft-oszlopai eddig fixen 0-ra voltak hardcode-olva.
+            // A tényleges forintosított forgalmat a tranzakciók hufAmount-lábának összege adja.
+            BigDecimal dailyBuyHuf = transactionRepository.sumDailyTurnoverHufByCurrency(branchId, today, TransactionType.BUY, code);
+            BigDecimal dailySellHuf = transactionRepository.sumDailyTurnoverHufByCurrency(branchId, today, TransactionType.SELL, code);
 
             currencies.add(CurrencyStockDetailDto.builder()
                     .currencyCode(code)
                     .stock(stock).stockHuf(stockHuf)
                     .dailyBuy(dailyBuy != null ? dailyBuy.longValue() : 0)
-                    .dailyBuyHuf(0)
+                    .dailyBuyHuf(dailyBuyHuf != null ? dailyBuyHuf.longValue() : 0)
                     .dailySell(dailySell != null ? dailySell.longValue() : 0)
-                    .dailySellHuf(0)
+                    .dailySellHuf(dailySellHuf != null ? dailySellHuf.longValue() : 0)
                     .build());
         }
 

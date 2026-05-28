@@ -63,6 +63,8 @@ class StockSnapshotServiceTest {
         // Default mocks for transaction queries (return zero)
         when(transactionRepository.sumDailyTurnoverByCurrency(any(), any(), any(), anyString()))
                 .thenReturn(BigDecimal.ZERO);
+        when(transactionRepository.sumDailyTurnoverHufByCurrency(any(), any(), any(), anyString()))
+                .thenReturn(BigDecimal.ZERO);
         // Default mocks for reservations (return empty)
         when(reservationRepository.getReservedStockByBranch(any())).thenReturn(List.of());
         Company _mockCompany = Company.builder().id(COMPANY_ID).code("TEST").name("Test Company").build();
@@ -399,5 +401,25 @@ class StockSnapshotServiceTest {
         // 5000 USD * 370 HUF = 1,850,000 HUF
         assertThat(usdTotal.getStock()).as("USD stock aggregalva fallback-bol").isEqualTo(5000);
         assertThat(usdTotal.getStockHuf()).as("USD stockHuf aggregalva fallback-bol").isEqualTo(1_850_000);
+    }
+
+    @Test
+    @DisplayName("FK-003/004: NAPI FORGALOM Ft-oszlopok a hufAmount-ból (NEM fixen 0)")
+    void getFullSnapshot_dailyTurnoverHuf_populatedFromHufAmount() {
+        Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
+        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
+        when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
+        // EUR napi forgalom forintosított értéke 80 000 Ft (mindkét irányban) — a fix-0 hardcode előtt
+        // ezek 0-k voltak. A query-t EUR-ra felüldefiniáljuk (a default setUp ZERO marad a többire).
+        when(transactionRepository.sumDailyTurnoverHufByCurrency(any(), any(), any(), eq("EUR")))
+                .thenReturn(new BigDecimal("80000"));
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        CurrencyStockDetailDto eur = result.getRegions().get(0).getBranches().get(0).getCurrencies().stream()
+                .filter(c -> "EUR".equals(c.getCurrencyCode())).findFirst().orElseThrow();
+        assertThat(eur.getDailyBuyHuf()).as("napi vétel Ft NEM 0").isEqualTo(80000);
+        assertThat(eur.getDailySellHuf()).as("napi eladás Ft NEM 0").isEqualTo(80000);
     }
 }
