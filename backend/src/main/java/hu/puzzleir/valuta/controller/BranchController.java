@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.BranchDto;
 import hu.puzzleir.valuta.dto.CreateBranchDto;
+import hu.puzzleir.valuta.dto.CreateSimpleCashierBranchDto;
 import hu.puzzleir.valuta.dto.UpdateBranchDto;
 import hu.puzzleir.valuta.service.AccessScopeService;
 import hu.puzzleir.valuta.service.BranchService;
@@ -174,6 +175,26 @@ public class BranchController {
     public ResponseEntity<BranchDto> createBranch(@Valid @RequestBody CreateBranchDto dto) {
         log.info("POST /api/v1/branches - code: {}", dto.getCode());
         BranchDto created = branchService.create(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    /**
+     * POST /api/v1/branches/simple-cashier
+     *
+     * <p>Bali Henriett 2. pont (2026-05-27): egyszerűsített lakossági pénztár-felrögzítés
+     * értéktáros / főértéktáros által. Csak 3 kötelező mező (code, address, regionCode);
+     * a service kitölti a default-okat (HU/PENZTAR/ACTIVE/today). A multi-tenant scope
+     * automatikus (a jelenlegi felhasználó cége).</p>
+     *
+     * <p>Engedélyezett role-ok: az értéktáros (ERTEKTAR) / főértéktáros (FOERTEKTAR) is
+     * felrögzíthet új területéhez tartozó pénztárt, hogy a területi szűrt listáiban
+     * (FK-005/B4) automatikusan megjelenjen. ADMIN / UGYVEZETO ugyanúgy.</p>
+     */
+    @PostMapping("/simple-cashier")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'ERTEKTAR')")
+    public ResponseEntity<BranchDto> createSimpleCashier(@Valid @RequestBody CreateSimpleCashierBranchDto dto) {
+        log.info("POST /api/v1/branches/simple-cashier - code: {}, region: {}", dto.getCode(), dto.getRegionCode());
+        BranchDto created = branchService.createSimpleCashier(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 

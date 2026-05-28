@@ -62,6 +62,41 @@ export const branchApi = {
     const response = await api.get<BranchInfo>(`/branches/${id}`)
     return response.data
   },
+  /**
+   * Bali Henriett 2. pont (2026-05-27): egyszerűsített lakossági pénztár-felrögzítés
+   * értéktáros / főértéktáros által. Csak 3 kötelező mezőt vár; a backend kitölti
+   * a default-okat (HU/PENZTAR/ACTIVE/today/bankCode=code).
+   */
+  createSimpleCashier: async (payload: {
+    code: string
+    address: string
+    regionCode: string
+    name?: string
+    city?: string
+    zipCode?: string
+  }): Promise<BranchInfo> => {
+    const response = await api.post<BranchInfo>('/branches/simple-cashier', payload)
+    return response.data
+  },
+}
+
+// ================== DICTIONARY API (lightweight) ==================
+
+export interface DictionaryEntry {
+  id: string
+  category: string
+  code: string
+  name: string
+  nameHu: string
+  sortOrder: number
+}
+
+export const dictionaryApi = {
+  /** Aktív dictionary-bejegyzések kategória szerint (sortOrder szerinti sorrend). */
+  getByCategory: async (category: string): Promise<DictionaryEntry[]> => {
+    const response = await api.get<DictionaryEntry[]>(`/dictionaries/${category}`)
+    return response.data
+  },
 }
 
 // ================== SYSTEM PARAMETER API ==================

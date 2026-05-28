@@ -61,6 +61,11 @@ public class BranchDto {
     // FK-002: területi besorolás neve (SZEGED, DEBRECEN, BEKESCSABA, ... IRODA) —
     // az Országos készlet nézet területi csoportosításához (régió-szekciófejlécek).
     private String region;
+
+    // #891 Copilot fix: a numerikus KESZLEX területi kód (10/20/40/50/63/75/120/145) —
+    // a területi scope-szűrés kulcsa (AccessScopeService). A region (szöveges) display-célú,
+    // a regionCode (numerikus) a scope-logika input-ja.
+    private String regionCode;
     
     // Timestamps
     private LocalDateTime createdAt;

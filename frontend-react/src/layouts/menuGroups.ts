@@ -54,6 +54,9 @@ export const menuGroups: MenuGroup[] = [
       { path: "/stock-snapshot", label: "Készlet-snapshot", icon: FileText },
       { path: "/vault-stocktake", label: "Értéktár leltár", icon: Package },
       { path: "/bank-orders", label: "Banki rendelések", icon: Building2 },
+      // Bali Henriett 2. pont (2026-05-27, Copilot #891): a főértéktárosnak is
+      // elérhetőnek kell lennie (endpoint engedi FOERTEKTAR + UGYVEZETO + ADMIN-t).
+      { path: "/branches/new-cashier", label: "Új pénztár felrögzítése", icon: Building2 },
     ],
   },
   {
@@ -86,6 +89,8 @@ export const menuGroups: MenuGroup[] = [
       { path: "/transit", label: "Úton lévő csomagok", icon: ArrowLeftRight },
       { path: "/inventory", label: "Értéktári készlet", icon: Wallet },
       { path: "/cashier-stocks", label: "Pénztári készletek", icon: Wallet },
+      // Bali Henriett 2. pont (2026-05-27): manuális pénztár-felrögzítés értéktáros által.
+      { path: "/branches/new-cashier", label: "Új pénztár felrögzítése", icon: Building2 },
       { path: "/daybook", label: "Naplókönyv", icon: FileText },
       { path: "/evening-closing", label: "Napi zárás", icon: FileText },
       { path: "/closing/monthly", label: "Havi zárás", icon: FileText },

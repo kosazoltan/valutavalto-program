@@ -15,6 +15,8 @@ import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -42,6 +44,8 @@ public class BranchService {
     // az `initializeBranchDenominations(branchId)` metódust EDDIG SOHA NEM hívta senki —
     // ezért új branch létrehozásakor üres marad a denomination tábla.
     private final DenominationService denominationService;
+    // #891 self-review P0-1: ERTEKTAR-szintű territorialis ellenőrzéshez a saját region_code lookup.
+    private final AccessScopeService accessScopeService;
 
     @Autowired
     public BranchService(BranchRepository branchRepository,
@@ -49,13 +53,15 @@ public class BranchService {
                          DictionaryRepository dictionaryRepository,
                          BranchMapper branchMapper,
                          @Lazy CashBalanceService cashBalanceService,
-                         @Lazy DenominationService denominationService) {
+                         @Lazy DenominationService denominationService,
+                         AccessScopeService accessScopeService) {
         this.branchRepository = branchRepository;
         this.companyRepository = companyRepository;
         this.dictionaryRepository = dictionaryRepository;
         this.branchMapper = branchMapper;
         this.cashBalanceService = cashBalanceService;
         this.denominationService = denominationService;
+        this.accessScopeService = accessScopeService;
     }
 
     /**
@@ -303,6 +309,160 @@ public class BranchService {
         }
 
         return branchMapper.toDto(saved);
+    }
+
+    /**
+     * Bali Henriett 2. pont (2026-05-27) — egyszerűsített lakossági pénztár-felrögzítés
+     * értéktáros / főértéktáros által. Csak 3 kötelező mezőt vár (code, address, regionCode);
+     * a többi mezőt (bankCode, branchType, country, branchStatus, openingDate) automatikusan
+     * sensible default-okkal tölti ki (HU/PENZTAR/ACTIVE/today). A multi-tenant scope
+     * KÖTELEZŐEN a jelenlegi felhasználó cége — a dto NEM tartalmaz companyId-t.
+     */
+    /**
+     * #891 self-review/AI-review (Copilot P0): a {@code branch.region_code} oszlop a
+     * legacy NUMERIKUS KESZLEX kódot tárolja (length 10), míg a {@code dictionary} REGION
+     * kategória SZÖVEGES kódot ad (SZEGED, KECSKEMET, …). A {@link AccessScopeService}
+     * a numerikus értékre szűr — ezért a kliens-küldött szöveges kódot szervizoldalon
+     * át kell mappelni a numerikus KESZLEX-kódra, hogy az új pénztár a megfelelő ÉRTÉKTÁR
+     * scope-jába kerüljön. Forrás: {@link StockSnapshotService#REGION_NAMES} (numerikus →
+     * szöveges) — itt inverz használat.
+     */
+    private static final java.util.Map<String, String> REGION_DICT_TO_KESZLEX = java.util.Map.ofEntries(
+            java.util.Map.entry("SZEKSZARD",  "10"),
+            java.util.Map.entry("SZEGED",     "20"),
+            java.util.Map.entry("KECSKEMET",  "40"),
+            java.util.Map.entry("DEBRECEN",   "50"),
+            java.util.Map.entry("NYIREGYHAZA","63"),
+            java.util.Map.entry("BEKESCSABA", "75"),
+            java.util.Map.entry("PECS",       "120"),
+            java.util.Map.entry("KAPOSVAR",   "145")
+    );
+
+    public BranchDto createSimpleCashier(hu.puzzleir.valuta.dto.CreateSimpleCashierBranchDto dto) {
+        log.info("Creating simple cashier branch with code: {}", dto.getCode());
+
+        // Sourcery P2 + Copilot: server-side code-normalize (trim + uppercase), hogy
+        // ne függjön a frontend-implementációtól. A DTO Pattern már `[A-Z0-9]+` szűr.
+        final String normalizedCode = dto.getCode() != null ? dto.getCode().trim().toUpperCase() : null;
+
+        // Copilot: a `branch.code` GLOBÁLISAN UNIQUE (uk_branch_code), nem cég-scoped.
+        // Egy másik cég foglalt kódjánál a `branchRepository.save` DataIntegrity-t dobna —
+        // user-friendly üzenet a service-szinten.
+        if (normalizedCode == null || normalizedCode.isBlank()) {
+            throw new ValidationException("A pénztár-kód üres.");
+        }
+        if (branchRepository.existsByCode(normalizedCode)) {
+            throw new ValidationException(
+                    "A(z) " + normalizedCode + " pénztár-kód már foglalt a rendszerben — válasszon másikat.");
+        }
+
+        // Sourcery P3 + Copilot: a REGION dict-lookup-ot explicit `is_active=true` szűrés
+        // — az `Optional.filter` egy plusz ág, mert a `findByCategoryAndCode` nem szűr.
+        Dictionary region = dictionaryRepository.findByCategoryAndCode("REGION", dto.getRegionCode())
+                .filter(d -> Boolean.TRUE.equals(d.getIsActive()))
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Ismeretlen régió kód: " + dto.getRegionCode()
+                                + " (a Beállítások → Törzsadatok → Régiók listából válasszon)"));
+
+        // Copilot P0: a kliens-küldött szöveges régió-kódot KESZLEX numerikusra mappeljük,
+        // hogy a `Branch.regionCode` konzisztens legyen a meglévő ÉRTÉKTÁR seed-ekkel
+        // (V145/V239: region_code='20'/'40'/...). NÉLKÜLE a területi scope NEM matchelne.
+        final String keszlexRegionCode = REGION_DICT_TO_KESZLEX.get(dto.getRegionCode());
+        if (keszlexRegionCode == null) {
+            throw new ValidationException(
+                    "A(z) " + dto.getRegionCode() + " régióhoz nincs KESZLEX-területi-kód mappelve. "
+                            + "Engedélyezett régiók: " + REGION_DICT_TO_KESZLEX.keySet());
+        }
+
+        // P0 self-review #891 fix + Codex P1: ERTEKTAR (területi értéktáros) csak a saját
+        // KESZLEX-régiójához tartozó pénztárt rögzíthet fel. A vaultRegionCodeOrNull() a
+        // user `branch.region_code`-jából jön — numerikus érték. Egyezés-ellenőrzés a
+        // numerikus KESZLEX-kóddal.
+        String userVaultRegion = accessScopeService.vaultRegionCodeOrNull();
+        if (userVaultRegion != null && !userVaultRegion.equals(keszlexRegionCode)) {
+            log.warn("Cross-region branch-create blocked: user-keszlex={}, requested-keszlex={} ({}), code={}",
+                    userVaultRegion, keszlexRegionCode, dto.getRegionCode(), normalizedCode);
+            throw new ValidationException(
+                    "Értéktárosként csak a saját területéhez tartozó pénztárt rögzíthet fel, "
+                            + "NEM " + dto.getRegionCode() + " régióhoz tartozót. "
+                            + "Más régióhoz a főértéktáros vagy ügyvezető jogosult.");
+        }
+
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cég nem található: " + companyId));
+
+        // Default master-dictionary lookup
+        Dictionary penztarType = dictionaryRepository.findByCategoryAndCode("BRANCH_TYPE", "PENZTAR")
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Hiányzó dictionary entry: BRANCH_TYPE/PENZTAR (rendszer adat)"));
+        Dictionary huCountry = dictionaryRepository.findByCategoryAndCode("COUNTRY", "HU")
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Hiányzó dictionary entry: COUNTRY/HU (rendszer adat)"));
+        Dictionary activeStatus = dictionaryRepository.findByCategoryAndCode("BRANCH_STATUS", "ACTIVE")
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Hiányzó dictionary entry: BRANCH_STATUS/ACTIVE (rendszer adat)"));
+
+        String name = (dto.getName() != null && !dto.getName().isBlank())
+                ? dto.getName().trim()
+                : "Pénztár " + normalizedCode;
+        // A város default-ja a régió kód name_hu-jából (pl. SZEGED → "Szeged"), ha a kliens üresen hagyta.
+        String city = (dto.getCity() != null && !dto.getCity().isBlank())
+                ? dto.getCity().trim()
+                : (region.getNameHu() != null && !region.getNameHu().isBlank()
+                        ? region.getNameHu()
+                        : capitalize(dto.getRegionCode()));
+        // Codex P1: a `branch.zip_code` NOT NULL (V0_1__base_tables); üres string default.
+        String zipCode = (dto.getZipCode() != null && !dto.getZipCode().isBlank())
+                ? dto.getZipCode().trim()
+                : "";
+
+        Branch branch = Branch.builder()
+                .code(normalizedCode)
+                .company(company)
+                .bankCode(normalizedCode)            // default: bankCode == code (kézzel szerkeszthető később)
+                .branchType(penztarType)
+                .name(name)
+                .address(dto.getAddress().trim())
+                .city(city)
+                .zipCode(zipCode)
+                .country(huCountry)
+                .branchStatus(activeStatus)
+                .openingDate(LocalDate.now())
+                .regionCode(keszlexRegionCode)       // ← NUMERIKUS KESZLEX (region-scope kulcs)
+                .region(dto.getRegionCode())          // ← SZÖVEGES (legacy display + transfer/stock view) — Copilot P2
+                .isActive(true)
+                .isVault(false)                       // lakossági pénztár, NEM értéktár
+                .build();
+
+        Branch saved = branchRepository.save(branch);
+        log.info("Simple cashier branch created: {} (code={}, region={})",
+                saved.getId(), saved.getCode(), saved.getRegionCode());
+
+        // Cash balance + denomination auto-init (mint a standard create()-ben). Idempotens.
+        try {
+            int created = cashBalanceService.initializeBranchBalances(saved.getId());
+            log.info("Branch {} cash_balance auto-init: {} új rekord", saved.getId(), created);
+        } catch (RuntimeException e) {
+            log.error("Branch {} cash_balance auto-init FAILED [{}: {}] (admin kézi init szükséges)",
+                    saved.getId(), e.getClass().getSimpleName(), e.getMessage(), e);
+        }
+        try {
+            denominationService.initializeBranchDenominations(saved.getId());
+            log.info("Branch {} denomination auto-init: 14 HUF + külföldi címlet beállítva",
+                    saved.getId());
+        } catch (RuntimeException e) {
+            log.error("Branch {} denomination auto-init FAILED [{}: {}] (admin kézi init szükséges)",
+                    saved.getId(), e.getClass().getSimpleName(), e.getMessage(), e);
+        }
+
+        return branchMapper.toDto(saved);
+    }
+
+    /** Capitalize a string ("SZEGED" → "Szeged"). Null-safe. */
+    private static String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1).toLowerCase();
     }
 
     /**
