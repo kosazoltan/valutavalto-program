@@ -290,4 +290,122 @@ class RatePublishServiceTest {
         assertTrue(ex.getMessage().contains("publikálható"),
                 "A hibaüzenetnek a publikálhatóságra kell utalnia, üzenet: " + ex.getMessage());
     }
+
+    // ============================================================
+    // FK-04/E.2 — árfolyamvédelem-validáció tesztek
+    // ============================================================
+
+    private RateWorkgroup wgWithProtection(UUID id, UUID companyId, UUID branchId, boolean protectionEnabled, Integer groupNum) {
+        Branch branch = Branch.builder().id(branchId).code("BORSI")
+                .company(Company.builder().id(companyId).code("BEST").name("Best Change").build()).build();
+        return RateWorkgroup.builder()
+                .id(id).name("WG").code("WG-1").legacyGroupNumber(groupNum)
+                .protectionEnabled(protectionEnabled).branches(Set.of(branch)).build();
+    }
+
+    private RateTemplate tplWithRates(UUID id, UUID workgroupId, Long currencyId,
+                                      BigDecimal officialJ, BigDecimal buyL, BigDecimal sellM) {
+        return RateTemplate.builder()
+                .id(id).workgroupId(workgroupId).currencyId(currencyId)
+                .baseBuyRate(buyL).baseSellRate(sellM).officialRate(officialJ)
+                .buySpread(BigDecimal.ZERO).sellSpread(BigDecimal.ZERO).roundingRule(1)
+                .status(RateTemplate.RateTemplateStatus.APPROVED).build();
+    }
+
+    @Test
+    @DisplayName("FK-04/E.2: védelem KI → magas vételi ráta publikálható (validáció kihagyva)")
+    void protection_off_allowsBuyAboveJ() {
+        UUID wgId = UUID.randomUUID(); UUID tplId = UUID.randomUUID();
+        UUID companyId = ((WorkerAuthenticationDetails) SecurityContextHolder.getContext().getAuthentication().getDetails()).getCompanyId();
+        UUID branchId = UUID.randomUUID();
+        RateWorkgroup wg = wgWithProtection(wgId, companyId, branchId, false, 3);
+        // baseBuyRate (400) > officialRate (395) — sértő, DE protection=false → nem dob
+        RateTemplate tpl = tplWithRates(tplId, wgId, 1L,
+                new BigDecimal("395.00"), new BigDecimal("400.00"), new BigDecimal("405.00"));
+        when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
+        when(templateRepository.save(any(RateTemplate.class))).thenAnswer(i -> i.getArgument(0));
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(Currency.builder().id(1L).code("EUR").name("Euro").build()));
+        when(exchangeRateRepository.findCurrentRate(any(), eq(1L), any())).thenReturn(List.of());
+        when(exchangeRateRepository.findActiveBranchRates(any(), eq(1L), any())).thenReturn(List.of());
+        when(exchangeRateRepository.save(any(ExchangeRate.class))).thenAnswer(i -> i.getArgument(0));
+        when(publicationRepository.save(any(RatePublication.class))).thenAnswer(i -> {
+            RatePublication p = i.getArgument(0); if (p.getId() == null) p.setId(UUID.randomUUID()); return p;
+        });
+        when(syncOutboxRepository.save(any(SyncOutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
+
+        RatePublication pub = service.publish(wgId, List.of(tplId), "off");
+        assertNotNull(pub.getId());
+    }
+
+    @Test
+    @DisplayName("FK-04/E.2: védelem BE + vételi > J → ValidationException magyar üzenettel")
+    void protection_on_buyAboveJ_throws() {
+        UUID wgId = UUID.randomUUID(); UUID tplId = UUID.randomUUID();
+        UUID companyId = ((WorkerAuthenticationDetails) SecurityContextHolder.getContext().getAuthentication().getDetails()).getCompanyId();
+        UUID branchId = UUID.randomUUID();
+        RateWorkgroup wg = wgWithProtection(wgId, companyId, branchId, true, 3);
+        RateTemplate tpl = tplWithRates(tplId, wgId, 1L,
+                new BigDecimal("395.00"), new BigDecimal("400.00"), new BigDecimal("405.00")); // L > J
+        when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
+        when(currencyRepository.findById(1L)).thenReturn(Optional.of(
+                Currency.builder().id(1L).code("EUR").name("Euro").build()));
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> service.publish(wgId, List.of(tplId), "on"));
+        assertTrue(ex.getMessage().contains("3-es csoport"), "groupLabel hibás: " + ex.getMessage());
+        assertTrue(ex.getMessage().contains("EUR"), "currency code hiányzik: " + ex.getMessage());
+        assertTrue(ex.getMessage().contains("magasabb az elszámolónál"),
+                "magyar 'magasabb' szöveg hibás: " + ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("FK-04/E.2: védelem BE + eladási < J → ValidationException 'alacsonyabb' üzenettel")
+    void protection_on_sellBelowJ_throws() {
+        UUID wgId = UUID.randomUUID(); UUID tplId = UUID.randomUUID();
+        UUID companyId = ((WorkerAuthenticationDetails) SecurityContextHolder.getContext().getAuthentication().getDetails()).getCompanyId();
+        UUID branchId = UUID.randomUUID();
+        RateWorkgroup wg = wgWithProtection(wgId, companyId, branchId, true, 7);
+        RateTemplate tpl = tplWithRates(tplId, wgId, 1L,
+                new BigDecimal("400.00"), new BigDecimal("395.00"), new BigDecimal("390.00")); // M < J
+        when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
+        when(currencyRepository.findById(1L)).thenReturn(Optional.of(
+                Currency.builder().id(1L).code("EUR").name("Euro").build()));
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> service.publish(wgId, List.of(tplId), "on"));
+        assertTrue(ex.getMessage().contains("7-es csoport"), "groupLabel hibás: " + ex.getMessage());
+        assertTrue(ex.getMessage().contains("alacsonyabb az elszámolónál"),
+                "magyar 'alacsonyabb' szöveg hibás: " + ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("FK-04/E.2: védelem BE + minden ráta J körül (L≤J≤M) → publikálható")
+    void protection_on_validRates_succeeds() {
+        UUID wgId = UUID.randomUUID(); UUID tplId = UUID.randomUUID();
+        UUID companyId = ((WorkerAuthenticationDetails) SecurityContextHolder.getContext().getAuthentication().getDetails()).getCompanyId();
+        UUID branchId = UUID.randomUUID();
+        RateWorkgroup wg = wgWithProtection(wgId, companyId, branchId, true, 1);
+        // L=395 ≤ J=400 ≤ M=405 — minden szabály betartva
+        RateTemplate tpl = tplWithRates(tplId, wgId, 1L,
+                new BigDecimal("400.00"), new BigDecimal("395.00"), new BigDecimal("405.00"));
+        when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
+        when(templateRepository.save(any(RateTemplate.class))).thenAnswer(i -> i.getArgument(0));
+        when(currencyRepository.findById(1L)).thenReturn(Optional.of(
+                Currency.builder().id(1L).code("EUR").name("Euro").build()));
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(Currency.builder().id(1L).code("EUR").name("Euro").build()));
+        when(exchangeRateRepository.findCurrentRate(any(), eq(1L), any())).thenReturn(List.of());
+        when(exchangeRateRepository.findActiveBranchRates(any(), eq(1L), any())).thenReturn(List.of());
+        when(exchangeRateRepository.save(any(ExchangeRate.class))).thenAnswer(i -> i.getArgument(0));
+        when(publicationRepository.save(any(RatePublication.class))).thenAnswer(i -> {
+            RatePublication p = i.getArgument(0); if (p.getId() == null) p.setId(UUID.randomUUID()); return p;
+        });
+        when(syncOutboxRepository.save(any(SyncOutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
+
+        RatePublication pub = service.publish(wgId, List.of(tplId), "ok");
+        assertNotNull(pub.getId());
+    }
 }
