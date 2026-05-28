@@ -349,7 +349,7 @@ class RatePublishServiceTest {
                 new BigDecimal("395.00"), new BigDecimal("400.00"), new BigDecimal("405.00")); // L > J
         when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
         when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
-        when(currencyRepository.findById(1L)).thenReturn(Optional.of(
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(
                 Currency.builder().id(1L).code("EUR").name("Euro").build()));
 
         ValidationException ex = assertThrows(ValidationException.class,
@@ -371,7 +371,7 @@ class RatePublishServiceTest {
                 new BigDecimal("400.00"), new BigDecimal("395.00"), new BigDecimal("390.00")); // M < J
         when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
         when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
-        when(currencyRepository.findById(1L)).thenReturn(Optional.of(
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(
                 Currency.builder().id(1L).code("EUR").name("Euro").build()));
 
         ValidationException ex = assertThrows(ValidationException.class,
@@ -394,8 +394,6 @@ class RatePublishServiceTest {
         when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
         when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
         when(templateRepository.save(any(RateTemplate.class))).thenAnswer(i -> i.getArgument(0));
-        when(currencyRepository.findById(1L)).thenReturn(Optional.of(
-                Currency.builder().id(1L).code("EUR").name("Euro").build()));
         when(currencyRepository.findAllById(anyList())).thenReturn(List.of(Currency.builder().id(1L).code("EUR").name("Euro").build()));
         when(exchangeRateRepository.findCurrentRate(any(), eq(1L), any())).thenReturn(List.of());
         when(exchangeRateRepository.findActiveBranchRates(any(), eq(1L), any())).thenReturn(List.of());

@@ -367,13 +367,24 @@ public class RatePublishService {
         Integer groupNum = workgroup.getLegacyGroupNumber();
         String groupLabel = groupNum != null ? groupNum + "-es csoport" : "(" + workgroup.getCode() + ") csoport";
 
+        // Sourcery/Copilot P2: a valutakódokat EGY batch-lekérdezéssel töltjük be (NEM
+        // template-enkénti findById → N+1). currencyId → kód térkép a hibaüzenetekhez.
+        List<Long> currencyIds = templates.stream()
+                .filter(t -> t.getOfficialRate() != null)
+                .map(RateTemplate::getCurrencyId)
+                .distinct()
+                .toList();
+        Map<Long, String> codeById = new LinkedHashMap<>();
+        for (Currency c : currencyRepository.findAllById(currencyIds)) {
+            codeById.put(c.getId(), c.getCode());
+        }
+
         for (RateTemplate t : templates) {
             BigDecimal j = t.getOfficialRate();
             if (j == null) {
                 continue; // nincs elszámoló → ezt a rátát itt nem ellenőrizzük (külön szabály tárgya)
             }
-            String code = currencyRepository.findById(t.getCurrencyId())
-                    .map(Currency::getCode).orElse("ID=" + t.getCurrencyId());
+            String code = codeById.getOrDefault(t.getCurrencyId(), "ID=" + t.getCurrencyId());
 
             // Vételi (L, N, P, R) ≤ J
             checkBuyRate(t.getBaseBuyRate(), j, groupLabel, code, "L vétel");
