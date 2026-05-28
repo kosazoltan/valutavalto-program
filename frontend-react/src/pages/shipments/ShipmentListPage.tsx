@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Package, Plus, Eye, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { Package, Eye, CheckCircle, XCircle, AlertCircle, ArrowUpFromLine, ArrowDownToLine } from 'lucide-react'
 import { shipmentRequestApi, ShipmentRequest } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -103,13 +103,28 @@ export default function ShipmentListPage() {
           <Package />
           {t('shipments.atadasAtvetelSzallitmanyigenyek')}
         </h1>
-        <Link
-          to="/shipments/new"
-          className="form-button-primary flex items-center gap-2"
-        >
-          <Plus size={16} />
-          {t('shipments.ujSzallitmanyigeny')}
-        </Link>
+        {/* Bali Henriett (2026-05-27) kérés A.: az átadás és az átvétel TELJESEN
+            különváltan indítható — két különálló gomb, mint a legacy Anti rendszerben
+            ("Pénztárak közötti pénzforgalom főmenüje"). A direction URL-paramétert a
+            ShipmentNewPage olvassa és az értéktár-szereplőt zárolja (B+C követő PR). */}
+        <div className="flex gap-2">
+          <Link
+            to="/shipments/new?direction=outbound"
+            className="form-button-primary flex items-center gap-2"
+            title="Új készpénz ÁTADÁS — Értéktárból a Pénztárnak"
+          >
+            <ArrowUpFromLine size={16} />
+            Új ÁTADÁS
+          </Link>
+          <Link
+            to="/shipments/new?direction=inbound"
+            className="form-button-primary flex items-center gap-2"
+            title="Új készpénz ÁTVÉTEL — Pénztárból az Értéktárba"
+          >
+            <ArrowDownToLine size={16} />
+            Új ÁTVÉTEL
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
