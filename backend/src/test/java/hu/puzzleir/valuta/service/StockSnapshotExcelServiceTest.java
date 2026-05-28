@@ -18,6 +18,18 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class StockSnapshotExcelServiceTest {
 
+    // FK-006 follow-up: a snapshot DTO most a központi valutanem-törzs sorrendjét hordozza
+    // (StockSnapshotService.resolveCurrencyCodes). A teszt-fixture-höz egy stabil, a korábbi
+    // FK-003/004 sorrendű 27-elemű lista — a teszt kifejezetten azt méri, hogy az Excel
+    // dinamikusan, a megkapott DTO sorrendjére épít, függetlenül a service belső kódlistájától.
+    private static final List<String> TEST_CURRENCY_CODES = List.of(
+            "AUD", "BAM", "BGN", "BRL", "CAD", "CHF",
+            "CNY", "CZK", "DKK", "EUR", "GBP", "HRK",
+            "ILS", "JPY", "MXN", "NOK", "NZD", "PLN",
+            "RON", "RSD", "RUB", "SEK", "THB", "TRY",
+            "UAH", "USD", "HUF"
+    );
+
     private StockSnapshotExcelService service;
 
     @BeforeEach
@@ -238,8 +250,8 @@ class StockSnapshotExcelServiceTest {
 
     private StockSnapshotDto buildSnapshotWithData() {
         List<CurrencyStockDetailDto> currencies = new ArrayList<>();
-        for (int i = 0; i < StockSnapshotService.CURRENCY_CODES.size(); i++) {
-            String code = StockSnapshotService.CURRENCY_CODES.get(i);
+        for (int i = 0; i < TEST_CURRENCY_CODES.size(); i++) {
+            String code = TEST_CURRENCY_CODES.get(i);
             long baseStock = (i + 1) * 100L;
             long baseStockHuf = baseStock * 360;
             currencies.add(CurrencyStockDetailDto.builder()
@@ -284,7 +296,7 @@ class StockSnapshotExcelServiceTest {
     }
 
     private BranchSnapshotDto createBranch(String name) {
-        List<CurrencyStockDetailDto> currencies = StockSnapshotService.CURRENCY_CODES.stream()
+        List<CurrencyStockDetailDto> currencies = TEST_CURRENCY_CODES.stream()
                 .map(code -> CurrencyStockDetailDto.builder().currencyCode(code).build())
                 .toList();
 
@@ -300,7 +312,7 @@ class StockSnapshotExcelServiceTest {
     }
 
     private BranchStockTotalsDto aggregateTotals(List<BranchSnapshotDto> branches) {
-        List<String> codes = StockSnapshotService.CURRENCY_CODES;
+        List<String> codes = TEST_CURRENCY_CODES;
         List<CurrencyStockDetailDto> totalCurrencies = new ArrayList<>();
 
         for (int i = 0; i < codes.size(); i++) {
@@ -341,9 +353,61 @@ class StockSnapshotExcelServiceTest {
                 .build();
     }
 
+    @Test
+    void generateFullWorkbook_dynamicRowPositions_30Currencies_noOverlap() throws IOException {
+        // FK-006 P1: 30 kódú lista (27 alap + 3 leftover) — a régi hardcoded 34/46/48 sor-pozíciók
+        // ütközéssel jártak volna (7+29=36 > 34). A dinamikus pozíciók: total=7+30=37,
+        // turnoverHeader=37+12=49, turnoverStart=51. Asserteljük, hogy a teszt valutái a HELYES
+        // sorokban jelennek meg, és nincs ÖSSZESEN-felülírás.
+        List<String> codes30 = new ArrayList<>(TEST_CURRENCY_CODES);
+        codes30.add("XAU"); codes30.add("XAG"); codes30.add("XPT"); // 3 extra leftover-szerű kód
+
+        List<CurrencyStockDetailDto> currencies = new ArrayList<>();
+        for (int i = 0; i < codes30.size(); i++) {
+            currencies.add(CurrencyStockDetailDto.builder()
+                    .currencyCode(codes30.get(i)).stock((i + 1) * 100L).stockHuf((i + 1) * 360L * 100L)
+                    .build());
+        }
+        BranchSnapshotDto branch = BranchSnapshotDto.builder()
+                .branchId(UUID.randomUUID()).branchName("B").branchCode("B").currencies(currencies)
+                .wuBalance(WuBalanceDetailDto.builder().build()).reservations(List.of()).build();
+        BranchStockTotalsDto totals = BranchStockTotalsDto.builder()
+                .currencies(currencies).wuBalance(WuBalanceDetailDto.builder().build()).reservations(List.of()).build();
+        RegionSnapshotDto region = RegionSnapshotDto.builder()
+                .regionCode("10").regionName("TESTREGION").branches(List.of(branch)).totals(totals).build();
+        StockSnapshotDto snapshot = StockSnapshotDto.builder()
+                .snapshotTime(LocalDateTime.now()).companyId(UUID.randomUUID())
+                .regions(List.of(region)).companyTotals(totals).build();
+
+        byte[] bytes = service.generateFullWorkbook(snapshot);
+        try (Workbook wb = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            Sheet sheet = wb.getSheetAt(0); // region sheet
+
+            // Stock-szekció: utolsó kód (XPT) a 7+29=36-os sorban
+            Row lastStockRow = sheet.getRow(36);
+            assertNotNull(lastStockRow, "30. valuta sora létezik (dinamikus pozíció)");
+            assertEquals("XPT", lastStockRow.getCell(0).getStringCellValue());
+
+            // ÖSSZESEN a 37-es sorban (7+30) — NEM az adat-blokkban
+            Row totalRow = sheet.getRow(37);
+            assertNotNull(totalRow);
+            assertEquals("ÖSSZESEN", totalRow.getCell(0).getStringCellValue());
+
+            // NAPI FORGALOM a 49-es sorban (37+12)
+            Row turnoverHeaderRow = sheet.getRow(49);
+            assertNotNull(turnoverHeaderRow);
+            assertEquals("NAPI FORGALOM", turnoverHeaderRow.getCell(0).getStringCellValue());
+
+            // Első forgalom-sor a 51-es sorban (49+2): AUD (codes30.get(0))
+            Row firstTurnoverRow = sheet.getRow(51);
+            assertNotNull(firstTurnoverRow);
+            assertEquals("AUD", firstTurnoverRow.getCell(0).getStringCellValue());
+        }
+    }
+
     private BranchStockTotalsDto createEmptyTotals() {
         return BranchStockTotalsDto.builder()
-                .currencies(StockSnapshotService.CURRENCY_CODES.stream()
+                .currencies(TEST_CURRENCY_CODES.stream()
                         .map(code -> CurrencyStockDetailDto.builder().currencyCode(code).build())
                         .toList())
                 .wuBalance(WuBalanceDetailDto.builder().build())

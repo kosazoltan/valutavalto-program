@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.stocksnapshot.*;
 import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,15 +26,14 @@ public class StockSnapshotService {
     private final ReservationRepository reservationRepository;
     private final TransactionRepository transactionRepository;
     private final CompanyRepository companyRepository;
+    private final CurrencyRepository currencyRepository;
 
-    // FK-003/004: a 26 deviza BETŰRENDBEN, a HUF (forint) MINDIG az UTOLSÓ sorban (Kasza Helga spec).
-    public static final List<String> CURRENCY_CODES = List.of(
-            "AUD", "BAM", "BGN", "BRL", "CAD", "CHF",
-            "CNY", "CZK", "DKK", "EUR", "GBP", "HRK",
-            "ILS", "JPY", "MXN", "NOK", "NZD", "PLN",
-            "RON", "RSD", "RUB", "SEK", "THB", "TRY",
-            "UAH", "USD", "HUF"
-    );
+    // FK-006 follow-up (Kasza Helga visszajelzés a telepítés után): a snapshot valutalistája a
+    // KÖZPONTI valutanem-törzsből (currency tábla, is_active + display_order) jön, NEM hardkódolt
+    // listából. A FK-003/004 spec szerint a HUF MINDIG az utolsó sorban. Inaktív valuta, amelyhez
+    // még tartozik fizikai készlet (leftover), a snapshot végén szerepel (alfabetikusan rendezve),
+    // hogy az MNB-jellegű készletriport ne mutasson alá (a többi felület — Országos készlet,
+    // Aktuális árfolyamok — szigorúan csak az aktív törzset jeleníti meg).
 
     public static final Map<String, String> REGION_NAMES = new LinkedHashMap<>() {{
         put("10", "SZEKSZARD");
@@ -56,12 +56,14 @@ public class StockSnapshotService {
         List<Branch> branches = branchRepository.findActiveWithRegionByCompanyId(companyId);
 
         if (branches.isEmpty()) {
+            List<Object[]> companyRowsEmpty = currencyStockRepository.sumCompanyLevelByCurrency(companyId);
+            List<String> codesEmpty = resolveCurrencyCodes(Map.of(), companyRowsEmpty);
             return StockSnapshotDto.builder()
                     .snapshotTime(snapshotTime)
                     .companyId(companyId)
                     .companyName(companyName)
                     .regions(List.of())
-                    .companyTotals(buildCompanyTotalsWithFallback(companyId, List.of()))  // Fix #154 extended
+                    .companyTotals(buildCompanyTotalsWithFallback(companyId, List.of(), codesEmpty, companyRowsEmpty))
                     .build();
         }
 
@@ -79,10 +81,18 @@ public class StockSnapshotService {
                 .findByBranchIdsAndCompanyId(branchUuids, companyId).stream()
                 .collect(Collectors.toMap(wb -> wb.getBranch().getId(), wb -> wb));
 
+        // Company-szintű leftover (orphan-zombie kódok, amelyek branch-szinten nem mutatkoznak)
+        List<Object[]> companyRows = currencyStockRepository.sumCompanyLevelByCurrency(companyId);
+
+        // FK-006: EGYETLEN per-request kódlista (aktív törzs + branch leftover + company-level leftover).
+        // Önkonzisztens — minden snapshot DTO array (branch / region / company) ugyanezzel a kódlistával
+        // épül, így az index-alapú leképzések (Excel-export) nem ütköznek IOOBE-be.
+        List<String> codes = resolveCurrencyCodes(stockByBranch, companyRows);
+
         // Build per-branch snapshots grouped by region
         Map<String, List<BranchSnapshotDto>> branchesByRegion = new LinkedHashMap<>();
         for (Branch branch : branches) {
-            BranchSnapshotDto branchDto = buildBranchSnapshot(branch, stockByBranch, wuByBranch, today);
+            BranchSnapshotDto branchDto = buildBranchSnapshot(branch, stockByBranch, wuByBranch, today, codes);
             branchesByRegion.computeIfAbsent(branch.getRegionCode(), k -> new ArrayList<>()).add(branchDto);
         }
 
@@ -95,7 +105,7 @@ public class StockSnapshotService {
                     .regionCode(entry.getKey())
                     .regionName(entry.getValue())
                     .branches(regionBranches)
-                    .totals(aggregateTotals(regionBranches))
+                    .totals(aggregateTotals(regionBranches, codes))
                     .lastSyncedAt(latestLastUpdated(regionBranches))
                     .build());
         }
@@ -112,20 +122,76 @@ public class StockSnapshotService {
                 .companyId(companyId)
                 .companyName(companyName)
                 .regions(regions)
-                .companyTotals(buildCompanyTotalsWithFallback(companyId, allBranches))
+                .companyTotals(buildCompanyTotalsWithFallback(companyId, allBranches, codes, companyRows))
                 .build();
+    }
+
+    /**
+     * A snapshot-hoz tartozó valutakód-lista a FK-006 elv szerint, EGYETLEN igazságforrással
+     * (önkonzisztens minden DTO array-re, hogy az index-alapú leképzés ne csorduljon túl):
+     *  1) Aktív törzs (currency.is_active=true), display_order ASC szerint;
+     *  2) a HUF a végére mozgatva (FK-003/004 spec — Kasza Helga); ha HUF nincs az aktív
+     *     törzsben (degenerált eset), akkor is kényszerítjük a végére, így a HUF sosem kerül
+     *     a leftover-blokkba.
+     *  3) a végén alfabetikus sorrendben azok az INAKTÍV valuták, amelyeknek nem-nulla a fizikai
+     *     készlete (branch-szintű VAGY company-szintű forrásból — MNB-riport ne mutasson alá).
+     */
+    List<String> resolveCurrencyCodes(Map<String, List<CurrencyStock>> stockByBranch,
+                                      List<Object[]> companyLevelRows) {
+        List<Currency> active = currencyRepository.findAllActiveOrdered();
+        List<String> activeNonHuf = new ArrayList<>();
+        Set<String> activeSet = new LinkedHashSet<>();
+        for (Currency c : active) {
+            String code = c.getCode();
+            if (code == null) continue;
+            activeSet.add(code);
+            if (!"HUF".equals(code)) activeNonHuf.add(code);
+        }
+        activeSet.add("HUF"); // HUF mindig az aktív halmaz része a leftover-szűréshez
+
+        // Nem-nulla leftover inaktívak — branch-szintű forrás
+        Set<String> leftover = new TreeSet<>();
+        if (stockByBranch != null) {
+            for (List<CurrencyStock> stocks : stockByBranch.values()) {
+                if (stocks == null) continue;
+                for (CurrencyStock cs : stocks) {
+                    String code = cs.getCurrencyCode();
+                    if (code == null || activeSet.contains(code)) continue;
+                    BigDecimal q = cs.getQuantity();
+                    if (q != null && q.signum() != 0) leftover.add(code);
+                }
+            }
+        }
+        // Company-szintű forrás (orphan-zombie kódok, amelyek branch-szinten nem mutatkoznak)
+        if (companyLevelRows != null) {
+            for (Object[] row : companyLevelRows) {
+                if (row == null || row.length < 2) continue;
+                String code = (String) row[0];
+                BigDecimal qty = row[1] != null ? (BigDecimal) row[1] : BigDecimal.ZERO;
+                if (code != null && !activeSet.contains(code) && qty.signum() != 0) {
+                    leftover.add(code);
+                }
+            }
+        }
+
+        // Codex P2 (c9c74930): a FK-003/004 spec szerint a HUF MINDIG ABSZOLÚT az utolsó sor.
+        // Sorrend: aktív (HUF nélkül) → inaktív leftover (alfabetikus) → HUF a legvégén.
+        List<String> result = new ArrayList<>(activeNonHuf);
+        result.addAll(leftover);
+        result.add("HUF");
+        return result;
     }
 
     private BranchSnapshotDto buildBranchSnapshot(
             Branch branch, Map<String, List<CurrencyStock>> stockByBranch,
-            Map<UUID, WuBalance> wuByBranch, LocalDate today) {
+            Map<UUID, WuBalance> wuByBranch, LocalDate today, List<String> codes) {
 
         UUID branchId = branch.getId();
         String branchIdStr = branchId.toString();
 
         List<CurrencyStock> stocks = stockByBranch.getOrDefault(branchIdStr, List.of());
         Map<String, CurrencyStock> stockMap = stocks.stream()
-                .collect(Collectors.toMap(CurrencyStock::getCurrencyCode, s -> s));
+                .collect(Collectors.toMap(CurrencyStock::getCurrencyCode, s -> s, (a, b) -> a));
 
         Map<String, Long> reservedByCode = new HashMap<>();
         for (Object[] row : reservationRepository.getReservedStockByBranch(branchId)) {
@@ -135,7 +201,7 @@ public class StockSnapshotService {
         List<CurrencyStockDetailDto> currencies = new ArrayList<>();
         LocalDateTime lastUpdated = null;
 
-        for (String code : CURRENCY_CODES) {
+        for (String code : codes) {
             CurrencyStock cs = stockMap.get(code);
             long stock = 0, stockHuf = 0;
             if (cs != null) {
@@ -176,11 +242,11 @@ public class StockSnapshotService {
                 .build();
     }
 
-    private BranchStockTotalsDto aggregateTotals(List<BranchSnapshotDto> branches) {
-        if (branches.isEmpty()) return createEmptyTotals();
+    private BranchStockTotalsDto aggregateTotals(List<BranchSnapshotDto> branches, List<String> codes) {
+        if (branches.isEmpty()) return createEmptyTotals(codes);
 
         Map<String, long[]> totals = new LinkedHashMap<>();
-        for (String code : CURRENCY_CODES) totals.put(code, new long[6]);
+        for (String code : codes) totals.put(code, new long[6]);
 
         long totalWuUsd = 0, totalWuHuf = 0, totalVat = 0, totalFee = 0, totalEcom = 0;
         Map<String, Long> totalReservations = new HashMap<>();
@@ -204,7 +270,7 @@ public class StockSnapshotService {
         }
 
         return BranchStockTotalsDto.builder()
-                .currencies(CURRENCY_CODES.stream().map(code -> {
+                .currencies(codes.stream().map(code -> {
                     long[] t = totals.get(code);
                     return CurrencyStockDetailDto.builder().currencyCode(code)
                             .stock(t[0]).stockHuf(t[1]).dailyBuy(t[2]).dailyBuyHuf(t[3]).dailySell(t[4]).dailySellHuf(t[5]).build();
@@ -232,25 +298,32 @@ public class StockSnapshotService {
                 .orElse(null);
     }
 
-    private BranchStockTotalsDto createEmptyTotals() {
+    private BranchStockTotalsDto createEmptyTotals(List<String> codes) {
         return BranchStockTotalsDto.builder()
-                .currencies(CURRENCY_CODES.stream().map(code -> CurrencyStockDetailDto.builder().currencyCode(code).build()).collect(Collectors.toList()))
+                .currencies(codes.stream().map(code -> CurrencyStockDetailDto.builder().currencyCode(code).build()).collect(Collectors.toList()))
                 .wuBalance(WuBalanceDetailDto.builder().build())
                 .reservations(List.of()).build();
     }
 
-    private BranchStockTotalsDto buildCompanyTotalsWithFallback(UUID companyId, List<BranchSnapshotDto> branchSnapshots) {
-        List<Object[]> rows = currencyStockRepository.sumCompanyLevelByCurrency(companyId);
-        // Fix #156: ures DB agg eseten fallback branch-aggregaciora (test-kompat + ures DB)
+    private BranchStockTotalsDto buildCompanyTotalsWithFallback(UUID companyId,
+                                                                List<BranchSnapshotDto> branchSnapshots,
+                                                                List<String> codes,
+                                                                List<Object[]> rows) {
+        // Fix #156: ures DB agg eseten fallback branch-aggregaciora (test-kompat + ures DB).
         if (rows == null || rows.isEmpty()) {
-            return (branchSnapshots == null || branchSnapshots.isEmpty()) ? createEmptyTotals() : aggregateTotals(branchSnapshots);
+            return (branchSnapshots == null || branchSnapshots.isEmpty()) ? createEmptyTotals(codes) : aggregateTotals(branchSnapshots, codes);
         }
+        // FK-006 P1: a kódlistát NE bővítsük itt — a `codes` már magában foglalja a company-szintű
+        // leftover-eket is (resolveCurrencyCodes companyLevelRows ága). Ez biztosítja, hogy
+        // minden DTO array (branch / region / company) ugyanazzal a sorrenddel és mérettel épül,
+        // így az Excel index-alapú leképzése nem csordul túl (subagent self-review P1 IOOBE).
         Map<String, CurrencyStockDetailDto> byCode = new LinkedHashMap<>();
-        for (String code : CURRENCY_CODES) {
+        for (String code : codes) {
             byCode.put(code, CurrencyStockDetailDto.builder().currencyCode(code).build());
         }
         for (Object[] row : rows) {
             String code = (String) row[0];
+            if (code == null || !byCode.containsKey(code)) continue;
             BigDecimal qty = row[1] != null ? (BigDecimal) row[1] : BigDecimal.ZERO;
             BigDecimal huf = row[2] != null ? (BigDecimal) row[2] : BigDecimal.ZERO;
             byCode.put(code, CurrencyStockDetailDto.builder()
