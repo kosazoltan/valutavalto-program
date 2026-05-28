@@ -211,6 +211,25 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * Napi forgalom FORINTOSÍTOTT összege — adott valutához szűrve (Készlet pillanatkép NAPI
+     * FORGALOM Ft-oszlopaihoz, FK-003/004). A {@code t.hufAmount} a tranzakció forint-lába.
+     * Eddig a StockSnapshotService a dailyBuyHuf/dailySellHuf-ot fixen 0-ra állította — ez a
+     * query adja a tényleges forint-értéket (azonos szűrőkkel, mint a mennyiség-query).
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "AND t.transactionType = :type " +
+           "AND t.currency.code = :currencyCode " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumDailyTurnoverHufByCurrency(
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date,
+        @Param("type") TransactionType type,
+        @Param("currencyCode") String currencyCode
+    );
+
+    /**
      * Következő bizonylat szám generálásához
      */
     @Query("SELECT MAX(t.receiptNumber) FROM Transaction t " +
