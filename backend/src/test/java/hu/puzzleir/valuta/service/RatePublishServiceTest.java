@@ -406,4 +406,30 @@ class RatePublishServiceTest {
         RatePublication pub = service.publish(wgId, List.of(tplId), "ok");
         assertNotNull(pub.getId());
     }
+
+    @Test
+    @DisplayName("FK-04/E.2: védelem BE + sell=0 (nem beállított) → NEM dob (frontend-parity signum-skip)")
+    void protection_on_zeroSell_skipped() {
+        UUID wgId = UUID.randomUUID(); UUID tplId = UUID.randomUUID();
+        UUID companyId = ((WorkerAuthenticationDetails) SecurityContextHolder.getContext().getAuthentication().getDetails()).getCompanyId();
+        UUID branchId = UUID.randomUUID();
+        RateWorkgroup wg = wgWithProtection(wgId, companyId, branchId, true, 1);
+        // sell=0 < J=400 lenne, DE a 0 = nem beállított → a védelem kihagyja (signum-skip).
+        RateTemplate tpl = tplWithRates(tplId, wgId, 1L,
+                new BigDecimal("400.00"), new BigDecimal("395.00"), BigDecimal.ZERO);
+        when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
+        when(templateRepository.save(any(RateTemplate.class))).thenAnswer(i -> i.getArgument(0));
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(Currency.builder().id(1L).code("EUR").name("Euro").build()));
+        when(exchangeRateRepository.findCurrentRate(any(), eq(1L), any())).thenReturn(List.of());
+        when(exchangeRateRepository.findActiveBranchRates(any(), eq(1L), any())).thenReturn(List.of());
+        when(exchangeRateRepository.save(any(ExchangeRate.class))).thenAnswer(i -> i.getArgument(0));
+        when(publicationRepository.save(any(RatePublication.class))).thenAnswer(i -> {
+            RatePublication p = i.getArgument(0); if (p.getId() == null) p.setId(UUID.randomUUID()); return p;
+        });
+        when(syncOutboxRepository.save(any(SyncOutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
+
+        RatePublication pub = service.publish(wgId, List.of(tplId), "zero-sell");
+        assertNotNull(pub.getId());
+    }
 }

@@ -400,18 +400,22 @@ public class RatePublishService {
         }
     }
 
-    /** FK-04/E.2: vételi {@literal >} J esetén ValidationException magyar üzenettel. */
+    /**
+     * FK-04/E.2: vételi {@literal >} J esetén ValidationException magyar üzenettel.
+     * A 0/üres érték „nem beállított" (a frontend {@code workgroupProtection.isSet} ugyanígy
+     * skippeli) — a kötelező-ráta külön szabály tárgya, nem a védelemé (signum-skip = parity).
+     */
     private void checkBuyRate(BigDecimal buy, BigDecimal j, String groupLabel, String code, String label) {
-        if (buy != null && buy.compareTo(j) > 0) {
+        if (buy != null && buy.signum() != 0 && buy.compareTo(j) > 0) {
             throw new ValidationException(
                     groupLabel + " " + code + " " + label + " nem lehet magasabb az elszámolónál ("
                             + buy + " > " + j + ").");
         }
     }
 
-    /** FK-04/E.2: eladási {@literal <} J esetén ValidationException magyar üzenettel. */
+    /** FK-04/E.2: eladási {@literal <} J esetén ValidationException magyar üzenettel (0/üres = nem beállított, skip). */
     private void checkSellRate(BigDecimal sell, BigDecimal j, String groupLabel, String code, String label) {
-        if (sell != null && sell.compareTo(j) < 0) {
+        if (sell != null && sell.signum() != 0 && sell.compareTo(j) < 0) {
             throw new ValidationException(
                     groupLabel + " " + code + " " + label + " nem lehet alacsonyabb az elszámolónál ("
                             + sell + " < " + j + ").");
