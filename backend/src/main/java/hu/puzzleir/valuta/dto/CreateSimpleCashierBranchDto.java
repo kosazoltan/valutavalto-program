@@ -47,8 +47,9 @@ public class CreateSimpleCashierBranchDto {
     private String city;
 
     /**
-     * Opcionális irányítószám (4 számjegy). Ha üres, a service üres értéket ment, mert
-     * a Branch entity nullable zipCode-ot tűr (post-create szerkesztésnél kitölthető).
+     * Opcionális irányítószám (4 számjegy). Ha üres, a service üres stringet (`""`)
+     * ment — a {@code branch.zip_code} oszlop NOT NULL DEFAULT '' (V0_1__base_tables.sql),
+     * post-create szerkesztésnél kitölthető (UpdateBranchDto-n keresztül).
      */
     @Pattern(regexp = "^(\\d{4})?$", message = "Az irányítószám 4 számjegyből áll, vagy üres")
     private String zipCode;

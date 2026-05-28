@@ -243,24 +243,26 @@ export default function ShipmentNewPage() {
               <option value="">Válasszon irodát</option>
               {vaultCounterparties ? (
                 // FK-013: 3-csoportos optgroup értéktáros user esetén
+                // Audit follow-up: defenzív `?? []` — ha a backend Jackson kihagy egy null
+                // mezőt (Include.NON_NULL), a frontend ne crash-eljen `undefined.length` miatt.
                 <>
-                  {vaultCounterparties.territorialCashiers.length > 0 && (
+                  {(vaultCounterparties.territorialCashiers ?? []).length > 0 && (
                     <optgroup label="Saját terület pénztárai">
-                      {vaultCounterparties.territorialCashiers
+                      {(vaultCounterparties.territorialCashiers ?? [])
                         .filter((b) => b.isActive !== false)
                         .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
                     </optgroup>
                   )}
-                  {vaultCounterparties.peerVaults.length > 0 && (
+                  {(vaultCounterparties.peerVaults ?? []).length > 0 && (
                     <optgroup label="Társ értéktárak">
-                      {vaultCounterparties.peerVaults
+                      {(vaultCounterparties.peerVaults ?? [])
                         .filter((b) => b.isActive !== false)
                         .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
                     </optgroup>
                   )}
-                  {vaultCounterparties.fixedCounterparties.length > 0 && (
+                  {(vaultCounterparties.fixedCounterparties ?? []).length > 0 && (
                     <optgroup label="Banki és speciális partnerek">
-                      {vaultCounterparties.fixedCounterparties
+                      {(vaultCounterparties.fixedCounterparties ?? [])
                         .filter((b) => b.isActive !== false)
                         .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
                     </optgroup>
@@ -284,24 +286,26 @@ export default function ShipmentNewPage() {
               <option value="">Válasszon cél irodát</option>
               {vaultCounterparties ? (
                 // FK-013: 3-csoportos optgroup értéktáros user esetén
+                // Audit follow-up: defenzív `?? []` — ha a backend Jackson kihagy egy null
+                // mezőt (Include.NON_NULL), a frontend ne crash-eljen `undefined.length` miatt.
                 <>
-                  {vaultCounterparties.territorialCashiers.length > 0 && (
+                  {(vaultCounterparties.territorialCashiers ?? []).length > 0 && (
                     <optgroup label="Saját terület pénztárai">
-                      {vaultCounterparties.territorialCashiers
+                      {(vaultCounterparties.territorialCashiers ?? [])
                         .filter((b) => b.isActive !== false)
                         .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
                     </optgroup>
                   )}
-                  {vaultCounterparties.peerVaults.length > 0 && (
+                  {(vaultCounterparties.peerVaults ?? []).length > 0 && (
                     <optgroup label="Társ értéktárak">
-                      {vaultCounterparties.peerVaults
+                      {(vaultCounterparties.peerVaults ?? [])
                         .filter((b) => b.isActive !== false)
                         .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
                     </optgroup>
                   )}
-                  {vaultCounterparties.fixedCounterparties.length > 0 && (
+                  {(vaultCounterparties.fixedCounterparties ?? []).length > 0 && (
                     <optgroup label="Banki és speciális partnerek">
-                      {vaultCounterparties.fixedCounterparties
+                      {(vaultCounterparties.fixedCounterparties ?? [])
                         .filter((b) => b.isActive !== false)
                         .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
                     </optgroup>

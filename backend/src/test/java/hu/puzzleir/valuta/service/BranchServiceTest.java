@@ -268,6 +268,78 @@ class BranchServiceTest {
     }
 
     @Test
+    @DisplayName("findVaultCounterparties — FOERTEKTAR Helga-szerű eset: branchId=Tisza Sarok pénztár, regionCode='20'. A territorialCashiers a Szeged régió pénztárai (regionCode='20'); a peerVaults kihagyja az ownRegion értéktárát.")
+    void testFindVaultCounterpartiesForFoertektarHelgaCase() {
+        UUID ownBranchId = UUID.randomUUID();
+        Branch ownBranch = Branch.builder()
+                .id(ownBranchId)
+                .code("BR035")
+                .regionCode("20")   // SZEGED KESZLEX
+                .isActive(true)
+                .build();
+
+        // Szeged régió pénztárai (regionCode='20')
+        Branch szegedCashier1 = Branch.builder().id(UUID.randomUUID()).code("BR026")
+                .regionCode("20").isActive(true)
+                .branchType(hu.puzzleir.valuta.entity.Dictionary.builder()
+                        .category("BRANCH_TYPE").code("PENZTAR").build())
+                .isVault(false).build();
+        Branch szegedCashier2 = Branch.builder().id(UUID.randomUUID()).code("BR027")
+                .regionCode("20").isActive(true)
+                .branchType(hu.puzzleir.valuta.entity.Dictionary.builder()
+                        .category("BRANCH_TYPE").code("PENZTAR").build())
+                .isVault(false).build();
+        // MÁSIK régió pénztára (regionCode='50' Debrecen)
+        Branch debrecenCashier = Branch.builder().id(UUID.randomUUID()).code("BR050")
+                .regionCode("50").isActive(true)
+                .branchType(hu.puzzleir.valuta.entity.Dictionary.builder()
+                        .category("BRANCH_TYPE").code("PENZTAR").build())
+                .isVault(false).build();
+        // Saját régió értéktára (Szeged Ertektar — KI kell hagyni a peerVaults-ból)
+        Branch szegedVault = Branch.builder().id(UUID.randomUUID()).code("BR020")
+                .regionCode("20").isActive(true)
+                .branchType(hu.puzzleir.valuta.entity.Dictionary.builder()
+                        .category("BRANCH_TYPE").code("ERTEKTAR").build())
+                .isVault(true).build();
+        // Társ régió értéktára (Debrecen Ertektar — peerVaults-ba KELL)
+        Branch debrecenVault = Branch.builder().id(UUID.randomUUID()).code("BR060")
+                .regionCode("50").isActive(true)
+                .branchType(hu.puzzleir.valuta.entity.Dictionary.builder()
+                        .category("BRANCH_TYPE").code("ERTEKTAR").build())
+                .isVault(true).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            su.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(ownBranchId);
+
+            // FOERTEKTAR-nak null vault-scope (nincs ROLE_ERTEKTAR authority)
+            when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+            // Helga branch lookup: Tisza Sarok regionCode='20'
+            when(branchRepository.findById(ownBranchId)).thenReturn(Optional.of(ownBranch));
+
+            when(branchRepository.findByCompanyIdAndIsActiveTrue(COMPANY_ID))
+                    .thenReturn(List.of(szegedCashier1, szegedCashier2, debrecenCashier, szegedVault, debrecenVault));
+            when(branchRepository.findByCompanyIdAndIsVaultTrueAndIsActiveTrue(COMPANY_ID))
+                    .thenReturn(List.of(szegedVault, debrecenVault));
+            when(branchRepository.findByCompanyIdAndBranchTypeCode(COMPANY_ID, "VAULT_COUNTERPARTY"))
+                    .thenReturn(List.of());
+            when(branchMapper.toDto(any())).thenAnswer(inv -> {
+                Branch b = inv.getArgument(0);
+                return hu.puzzleir.valuta.dto.BranchDto.builder().code(b.getCode()).build();
+            });
+
+            hu.puzzleir.valuta.dto.VaultCounterpartiesDto result = service.findVaultCounterparties();
+
+            // territorialCashiers: SZEGED régió pénztárai (regionCode='20') — NEM Debrecen
+            assertThat(result.getTerritorialCashiers()).extracting("code")
+                    .containsExactlyInAnyOrder("BR026", "BR027");
+            // peerVaults: a Szeged Ertektar (BR020) KIHAGYVA — csak Debrecen Ertektar (BR060)
+            assertThat(result.getPeerVaults()).extracting("code")
+                    .containsExactly("BR060");
+        }
+    }
+
+    @Test
     @DisplayName("findVaultCounterparties — inaktív VAULT_COUNTERPARTY kiszűrve")
     void testFindVaultCounterpartiesFiltersInactiveCounterparties() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
