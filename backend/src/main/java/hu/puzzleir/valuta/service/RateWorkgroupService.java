@@ -73,6 +73,12 @@ public class RateWorkgroupService {
         if (update.getProtectionEnabled() != null) {
             existing.setProtectionEnabled(update.getProtectionEnabled());
         }
+        // FK-04/D: kedvezményhatárok (3 forint-küszöb). NULL-érték = "nem küldött",
+        // a meglévőt tartjuk; egyébként felülírjuk (üres → BigDecimal(0) értelmezhetetlen,
+        // a frontend explicit null-t küld, ha üres → szerkesztő gomb törléshez).
+        if (update.getLimit1Boundary() != null) existing.setLimit1Boundary(update.getLimit1Boundary());
+        if (update.getLimit2Boundary() != null) existing.setLimit2Boundary(update.getLimit2Boundary());
+        if (update.getLimit3Boundary() != null) existing.setLimit3Boundary(update.getLimit3Boundary());
         return workgroupRepository.save(existing);
     }
 
