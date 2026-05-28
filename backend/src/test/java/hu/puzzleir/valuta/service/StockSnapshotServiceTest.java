@@ -128,6 +128,57 @@ class StockSnapshotServiceTest {
     }
 
     @Test
+    @DisplayName("FK-006 P1: company-szintű leftover (orphan-zombie kód) is bekerül a snapshotba")
+    void getFullSnapshot_companyLevelLeftover_isIncluded() {
+        // Branch-szinten NINCS leftover, de a sumCompanyLevelByCurrency egy NOK rekordot ad
+        // (pl. törölt/inaktivált branch maradéka). Ezt is meg KELL jeleníteni a riportban,
+        // és a snapshot DTO array-eknek konzisztens méretben kell épülniük (P1 IOOBE-védelem).
+        Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
+        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
+        when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
+        List<Object[]> nokRow = new ArrayList<>();
+        nokRow.add(new Object[]{"NOK", new BigDecimal("75"), new BigDecimal("2625")});
+        when(currencyStockRepository.sumCompanyLevelByCurrency(any())).thenReturn(nokRow);
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        List<String> companyCodes = result.getCompanyTotals().getCurrencies().stream()
+                .map(CurrencyStockDetailDto::getCurrencyCode).toList();
+        assertThat(companyCodes).containsExactly("AUD", "EUR", "USD", "HUF", "NOK");
+
+        // KÖTELEZŐ konzisztencia: a per-branch és a region totals DTO array MÉRETE megegyezik
+        // a company-szintű DTO méretével (különben az Excel-export IOOBE-be csordulna).
+        BranchSnapshotDto branchDto = result.getRegions().get(0).getBranches().get(0);
+        assertThat(branchDto.getCurrencies()).hasSameSizeAs(result.getCompanyTotals().getCurrencies());
+        assertThat(result.getRegions().get(0).getTotals().getCurrencies())
+                .hasSameSizeAs(result.getCompanyTotals().getCurrencies());
+
+        CurrencyStockDetailDto nokTotal = result.getCompanyTotals().getCurrencies().stream()
+                .filter(c -> "NOK".equals(c.getCurrencyCode())).findFirst().orElseThrow();
+        assertThat(nokTotal.getStock()).isEqualTo(75);
+        assertThat(nokTotal.getStockHuf()).isEqualTo(2625);
+    }
+
+    @Test
+    @DisplayName("FK-006 P1: ha a HUF nincs az aktív törzsben, akkor is MINDIG az utolsó sorba kerül")
+    void getFullSnapshot_hufForcedLast_evenIfNotActive() {
+        // Aktív törzs HUF NÉLKÜL (degenerált eset)
+        when(currencyRepository.findAllActiveOrdered()).thenReturn(List.of(
+                Currency.builder().code("EUR").name("Euró").displayOrder(8).active(true).build(),
+                Currency.builder().code("USD").name("Amerikai dollár").displayOrder(21).active(true).build()
+        ));
+        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of());
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        List<String> codes = result.getCompanyTotals().getCurrencies().stream()
+                .map(CurrencyStockDetailDto::getCurrencyCode).toList();
+        // HUF mindenképp a végén — ne kerüljön az alfabetikus leftover-blokkba.
+        assertThat(codes).containsExactly("EUR", "USD", "HUF");
+    }
+
+    @Test
     @DisplayName("FK-006: az inaktív, NULLA-készletű valuta NEM jelenik meg a snapshotban")
     void getFullSnapshot_inactiveZeroStock_isExcluded() {
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");

@@ -283,12 +283,18 @@ public class StockSnapshotExcelService {
         }
 
         // FK-006: a valutakód-sorrend a snapshot szolgáltatástól jön (aktív törzs + leftover);
-        // a sorszám dinamikus, nincs fix 27-soros sablon.
+        // a sor-pozíciók DINAMIKUSAK — nincs fix 27-soros sablon. Self-review P1: 27<N esetén
+        // a régi hardcoded 34-es ÖSSZESEN-sor ütközött volna a stock-blokkal.
         BranchStockTotalsDto totals = region.getTotals();
         List<String> codes = extractCodes(totals);
+        final int stockStartRow = 7;
+        final int totalRowIdx = stockStartRow + codes.size();       // ÖSSZESEN (volt 34, ha N=27)
+        final int turnoverHeaderRowIdx = totalRowIdx + 12;          // 12 sor gap (volt 46, ha N=27)
+        final int turnoverSubRowIdx = turnoverHeaderRowIdx + 1;
+        final int turnoverStartRow = turnoverSubRowIdx + 1;         // forgalom-sorok kezdete (volt 48)
 
         for (int vi = 0; vi < codes.size(); vi++) {
-            int rowIdx = 7 + vi;
+            int rowIdx = stockStartRow + vi;
             Row row = getOrCreateRow(sheet, rowIdx);
 
             Cell codeCell = row.createCell(0);
@@ -313,38 +319,38 @@ public class StockSnapshotExcelService {
             setCellNumber(row, totCol + 1, totCurr.getStockHuf(), dataNumberStyle);
         }
 
-        // Row 34 (index 34): ÖSSZESEN (total HUF across currencies)
-        Row totalRow = getOrCreateRow(sheet, 34);
+        // ÖSSZESEN (total HUF across currencies) — DINAMIKUS sor
+        Row totalRow = getOrCreateRow(sheet, totalRowIdx);
         Cell totalLabel = totalRow.createCell(0);
         totalLabel.setCellValue("ÖSSZESEN");
         totalLabel.setCellStyle(totalStyle);
-        sheet.addMergedRegion(new CellRangeAddress(34, 34, 0, 1));
+        sheet.addMergedRegion(new CellRangeAddress(totalRowIdx, totalRowIdx, 0, 1));
 
         for (int bi = 0; bi < branchCount; bi++) {
             int col = 2 + bi * 2;
             long branchTotalHuf = branches.get(bi).getCurrencies().stream()
                     .mapToLong(CurrencyStockDetailDto::getStockHuf).sum();
             // Merge the two columns for the total
-            sheet.addMergedRegion(new CellRangeAddress(34, 34, col, col + 1));
+            sheet.addMergedRegion(new CellRangeAddress(totalRowIdx, totalRowIdx, col, col + 1));
             setCellNumber(totalRow, col, branchTotalHuf, totalNumberStyle);
         }
         long regionTotalHuf = totals.getCurrencies().stream()
                 .mapToLong(CurrencyStockDetailDto::getStockHuf).sum();
-        sheet.addMergedRegion(new CellRangeAddress(34, 34, totCol, totCol + 1));
+        sheet.addMergedRegion(new CellRangeAddress(totalRowIdx, totalRowIdx, totCol, totCol + 1));
         setCellNumber(totalRow, totCol, regionTotalHuf, totalNumberStyle);
 
         // FK-003: a WESTERN UNION / ÁFA / KEZELÉSI DÍJ / ELEKT. KERESKEDÉS / FOGLALÓK sorok
         // az új exportban NEM szerepelnek (Kasza Helga spec) → a writeWuRows hívás eltávolítva.
 
-        // Row 46 (index 46): NAPI FORGALOM header
-        Row turnoverHeaderRow = getOrCreateRow(sheet, 46);
+        // NAPI FORGALOM header — DINAMIKUS sor
+        Row turnoverHeaderRow = getOrCreateRow(sheet, turnoverHeaderRowIdx);
         Cell turnoverLabel = turnoverHeaderRow.createCell(0);
         turnoverLabel.setCellValue("NAPI FORGALOM");
         turnoverLabel.setCellStyle(turnoverHeaderStyle);
-        sheet.addMergedRegion(new CellRangeAddress(46, 46, 0, 1));
+        sheet.addMergedRegion(new CellRangeAddress(turnoverHeaderRowIdx, turnoverHeaderRowIdx, 0, 1));
 
         // Turnover sub-headers: VÉTEL/ELADÁS per branch
-        Row turnoverSubRow = getOrCreateRow(sheet, 47);
+        Row turnoverSubRow = getOrCreateRow(sheet, turnoverSubRowIdx);
         for (int bi = 0; bi < branchCount; bi++) {
             int col = 2 + bi * 2;
             Cell buyHeader = turnoverSubRow.createCell(col);
@@ -361,10 +367,10 @@ public class StockSnapshotExcelService {
         totSellHeader.setCellValue("ELADÁS");
         totSellHeader.setCellStyle(headerStyle);
 
-        // Rows 48-101 (index 48-101): Per currency turnover (2 rows each: quantity + HUF)
+        // Per currency turnover (2 rows each: quantity + HUF) — DINAMIKUS kezdősor
         for (int vi = 0; vi < codes.size(); vi++) {
-            int qtyRowIdx = 48 + vi * 2;
-            int hufRowIdx = 48 + vi * 2 + 1;
+            int qtyRowIdx = turnoverStartRow + vi * 2;
+            int hufRowIdx = turnoverStartRow + vi * 2 + 1;
 
             Row qtyRow = getOrCreateRow(sheet, qtyRowIdx);
             Row hufRow = getOrCreateRow(sheet, hufRowIdx);
@@ -464,12 +470,18 @@ public class StockSnapshotExcelService {
         totValueHeader.setCellValue("ÉRTÉK(Ft)");
         totValueHeader.setCellStyle(headerStyle);
 
-        // FK-006: a kódlista a cég-szintű totals-ból (a snapshot szolgáltatás az igazságforrás).
+        // FK-006: a kódlista a cég-szintű totals-ból (a snapshot szolgáltatás az igazságforrás);
+        // a sor-pozíciók DINAMIKUSAK (self-review P1: 27<N esetén a régi hardcoded 34/46/48 ütközne).
         BranchStockTotalsDto companyTotals = snapshot.getCompanyTotals();
         List<String> codes = extractCodes(companyTotals);
+        final int stockStartRow = 7;
+        final int totalRowIdx = stockStartRow + codes.size();
+        final int turnoverHeaderRowIdx = totalRowIdx + 12;
+        final int turnoverSubRowIdx = turnoverHeaderRowIdx + 1;
+        final int turnoverStartRow = turnoverSubRowIdx + 1;
 
         for (int vi = 0; vi < codes.size(); vi++) {
-            int rowIdx = 7 + vi;
+            int rowIdx = stockStartRow + vi;
             Row row = getOrCreateRow(sheet, rowIdx);
 
             Cell codeCell = row.createCell(0);
@@ -492,35 +504,35 @@ public class StockSnapshotExcelService {
             setCellNumber(row, totCol + 1, totCurr.getStockHuf(), dataNumberStyle);
         }
 
-        // Row 34: ÖSSZESEN
-        Row totalRow = getOrCreateRow(sheet, 34);
+        // ÖSSZESEN — DINAMIKUS sor
+        Row totalRow = getOrCreateRow(sheet, totalRowIdx);
         Cell totalLabel = totalRow.createCell(0);
         totalLabel.setCellValue("ÖSSZESEN");
         totalLabel.setCellStyle(totalStyle);
-        sheet.addMergedRegion(new CellRangeAddress(34, 34, 0, 1));
+        sheet.addMergedRegion(new CellRangeAddress(totalRowIdx, totalRowIdx, 0, 1));
 
         for (int ri = 0; ri < regionCount; ri++) {
             int col = 2 + ri * 2;
             long regionTotalHuf = regions.get(ri).getTotals().getCurrencies().stream()
                     .mapToLong(CurrencyStockDetailDto::getStockHuf).sum();
-            sheet.addMergedRegion(new CellRangeAddress(34, 34, col, col + 1));
+            sheet.addMergedRegion(new CellRangeAddress(totalRowIdx, totalRowIdx, col, col + 1));
             setCellNumber(totalRow, col, regionTotalHuf, totalNumberStyle);
         }
         long companyTotalHuf = companyTotals.getCurrencies().stream()
                 .mapToLong(CurrencyStockDetailDto::getStockHuf).sum();
-        sheet.addMergedRegion(new CellRangeAddress(34, 34, totCol, totCol + 1));
+        sheet.addMergedRegion(new CellRangeAddress(totalRowIdx, totalRowIdx, totCol, totCol + 1));
         setCellNumber(totalRow, totCol, companyTotalHuf, totalNumberStyle);
 
         // FK-003: WU / ÁFA / KEZELÉSI DÍJ / FOGLALÓK sorok NEM szerepelnek az új exportban.
 
-        // Turnover section
-        Row turnoverHeaderRow = getOrCreateRow(sheet, 46);
+        // NAPI FORGALOM — DINAMIKUS sor
+        Row turnoverHeaderRow = getOrCreateRow(sheet, turnoverHeaderRowIdx);
         Cell turnoverLabel = turnoverHeaderRow.createCell(0);
         turnoverLabel.setCellValue("NAPI FORGALOM");
         turnoverLabel.setCellStyle(turnoverHeaderStyle);
-        sheet.addMergedRegion(new CellRangeAddress(46, 46, 0, 1));
+        sheet.addMergedRegion(new CellRangeAddress(turnoverHeaderRowIdx, turnoverHeaderRowIdx, 0, 1));
 
-        Row turnoverSubRow = getOrCreateRow(sheet, 47);
+        Row turnoverSubRow = getOrCreateRow(sheet, turnoverSubRowIdx);
         for (int ri = 0; ri < regionCount; ri++) {
             int col = 2 + ri * 2;
             Cell buyHeader = turnoverSubRow.createCell(col);
@@ -538,8 +550,8 @@ public class StockSnapshotExcelService {
         totSellHeader.setCellStyle(headerStyle);
 
         for (int vi = 0; vi < codes.size(); vi++) {
-            int qtyRowIdx = 48 + vi * 2;
-            int hufRowIdx = 48 + vi * 2 + 1;
+            int qtyRowIdx = turnoverStartRow + vi * 2;
+            int hufRowIdx = turnoverStartRow + vi * 2 + 1;
             Row qtyRow = getOrCreateRow(sheet, qtyRowIdx);
             Row hufRow = getOrCreateRow(sheet, hufRowIdx);
 
