@@ -52,6 +52,20 @@ public class BranchController {
     }
 
     /**
+     * GET /api/v1/branches/cashier-shipment-targets
+     *
+     * <p>Bali Henriett / Kasza Helga FK-013 (2026-05-28) PÉNZTÁRI OLDAL: a pénztári F4
+     * "Átadás-átvétel" menü "Cél iroda" legördülő — 3 elem:
+     * saját értéktár (regionCode-egyezés) + TH + 1-es főpénztár.</p>
+     */
+    @GetMapping("/cashier-shipment-targets")
+    @PreAuthorize("hasAnyRole('CASHIER', 'PENZTAR', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<List<BranchDto>> getCashierShipmentTargets() {
+        log.info("GET /api/v1/branches/cashier-shipment-targets (FK-013 pénztári oldal)");
+        return ResponseEntity.ok(branchService.findCashierShipmentTargets());
+    }
+
+    /**
      * GET /api/v1/branches/vault-counterparties
      *
      * <p>Bali Henriett / Kasza Helga FK-013 (2026-05-28): az egységes értéktári

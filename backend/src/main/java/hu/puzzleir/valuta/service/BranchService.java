@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -182,6 +183,65 @@ public class BranchService {
                 .peerVaults(peerVaults)
                 .fixedCounterparties(fixedCounterparties)
                 .build();
+    }
+
+    /**
+     * Bali Henriett / Kasza Helga FK-013 (2026-05-28) PÉNZTÁRI OLDAL: a pénztári F4
+     * "Átadás-átvétel" menü "Cél iroda" legördülő tartalma — csak 3 elem szerepelhet:
+     * <ol>
+     *   <li>A pénztárhoz tartozó értéktár (regionCode-egyezéssel, is_vault=true)</li>
+     *   <li>TH pénztár (a 10 VAULT_COUNTERPARTY közül a 'TH' kóddal)</li>
+     *   <li>1-es főpénztár (a 10 VAULT_COUNTERPARTY közül a 'FOP1' kóddal)</li>
+     * </ol>
+     *
+     * <p>A docx: "A pénztári programban az átadás-átvétel menü (F4) marad a jelenlegi
+     * működés szerint – ott csak az alábbiak szerepelnek: A pénztárhoz tartozó értéktár,
+     * TH pénztár, 1-es főpénztár".</p>
+     *
+     * <p>A meghívó user pénztáros (CASHIER/PENZTAR) — a controller @PreAuthorize garantálja.
+     * Értéktáros user a {@link #findVaultCounterparties()}-t használja a 3-csoportos dropdown-hoz.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<BranchDto> findCashierShipmentTargets() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        UUID ownBranchId = SecurityUtils.getCurrentBranchIdOrNull();
+
+        final String ownRegionCode = (ownBranchId != null)
+                ? branchRepository.findById(ownBranchId).map(Branch::getRegionCode).orElse(null)
+                : null;
+        log.info("FK-013 cashier-shipment-targets: companyId={}, ownBranchId={}, ownRegionCode={}",
+                companyId, ownBranchId, ownRegionCode);
+
+        List<BranchDto> result = new ArrayList<>();
+
+        // 1. A pénztárhoz tartozó értéktár (regionCode-egyezés, is_vault=true)
+        if (ownRegionCode != null) {
+            List<Branch> regionVaults = branchRepository
+                    .findByCompanyIdAndIsVaultTrueAndIsActiveTrue(companyId).stream()
+                    .filter(b -> ownRegionCode.equals(b.getRegionCode()))
+                    .toList();
+            for (Branch v : regionVaults) {
+                result.add(branchMapper.toDto(v));
+            }
+            log.info("FK-013 cashier-shipment-targets: ownVault count={} (regionCode={})",
+                    regionVaults.size(), ownRegionCode);
+        } else {
+            log.warn("FK-013 cashier-shipment-targets: ownRegionCode=null → saját értéktár nem található");
+        }
+
+        // 2-3. TH pénztár + 1-es főpénztár (VAULT_COUNTERPARTY 'TH' és 'FOP1')
+        List<Branch> fixed = branchRepository
+                .findByCompanyIdAndBranchTypeCode(companyId, "VAULT_COUNTERPARTY").stream()
+                .filter(b -> Boolean.TRUE.equals(b.getIsActive()))
+                .filter(b -> "TH".equals(b.getCode()) || "FOP1".equals(b.getCode()))
+                .toList();
+        for (Branch f : fixed) {
+            result.add(branchMapper.toDto(f));
+        }
+        log.info("FK-013 cashier-shipment-targets: fixed (TH+FOP1) count={}", fixed.size());
+
+        log.info("FK-013 cashier-shipment-targets: total={}", result.size());
+        return result;
     }
 
     /**

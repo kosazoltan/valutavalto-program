@@ -67,6 +67,15 @@ export const branchApi = {
    *
    * Engedélyezett role-ok: ÉRTÉKTÁR / FŐÉRTÉKTÁR / cég-szintű.
    */
+  /**
+   * Bali Henriett / Kasza Helga FK-013 (2026-05-28) PÉNZTÁRI OLDAL: a pénztári F4
+   * "Átadás-átvétel" "Cél iroda" — 3 elem (saját értéktár + TH + 1-es főpénztár).
+   * A backend role-szinten korlátozza, csak CASHIER/PENZTAR/MANAGER/SUPERVISOR/ADMIN.
+   */
+  listCashierShipmentTargets: async (): Promise<BranchInfo[]> => {
+    const response = await api.get<BranchInfo[]>('/branches/cashier-shipment-targets')
+    return response.data
+  },
   listVaultCounterparties: async (): Promise<{
     territorialCashiers: BranchInfo[]
     peerVaults: BranchInfo[]
