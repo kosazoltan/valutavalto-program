@@ -86,16 +86,26 @@ export default function ShipmentNewPage() {
     })
   }, [ownBranchId, direction])
 
-  // FK-013: értéktáros-e a user? A roles + activeRole state változására reagál (a
-  // hasCanonicalRole selector stable-callback Zustand-ban, ezért a roles/activeRole
-  // változását külön szelektorral kell követni a useMemo dep-listájában).
+  // FK-013 self-review P1-1: csak a TERÜLETI értéktáros (ROLE_ERTEKTAR / canonical 'ertektar')
+  // kapja a 3-csoportos dropdown-t. A FŐÉRTÉKTÁR (nemzeti scope) és a cég-szintű ADMIN/UGYVEZETO
+  // user-ek a régi listMyTerritory listát kapják (a Főértéktárnak null vault-scope → minden
+  // aktív branch → docx szerint nem ezt akarjuk a területi átadás-átvétel dropdownjában).
+  // FONTOS: a `hasCanonicalRole(['ertektar'])` ADMIN-ra is TRUE-t ad (Zustand admin-bypass) —
+  // ezt elfogadjuk, mert ADMIN ritkán használja ezt a flow-t és debug-célból OK.
   const roles = useAuthStore((s) => s.roles)
   const activeRole = useAuthStore((s) => s.activeRole)
   const hasCanonicalRole = useAuthStore((s) => s.hasCanonicalRole)
   const isVaultUser = useMemo(
-    () => hasCanonicalRole(['ertektar', 'foertektar', 'ugyvezeto']),
+    () => hasCanonicalRole(['ertektar']),
     [hasCanonicalRole, roles, activeRole],
   )
+
+  // FK-013 self-review P0-2: ha az isVaultUser flicker-el (true → false), a vaultCounterparties
+  // state stale-en marad → a UI a régi 3-csoportos dropdown-t mutatja inkonzisztens módon.
+  // Reset, ha a user már nem értéktáros.
+  useEffect(() => {
+    if (!isVaultUser) setVaultCounterparties(null)
+  }, [isVaultUser])
 
   useEffect(() => {
     let active = true

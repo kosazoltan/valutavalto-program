@@ -8,7 +8,10 @@
 --      a sima pénztár (PENZTAR) és értéktár (ERTEKTAR) branch-ektől.
 --   2. 10 partner seed cégenként (EBC), region_code=NULL (nem területi — minden értéktár
 --      közösen használja), is_vault=false (nem értéktár), is_active=true.
---   3. Idempotens: ON CONFLICT (company_id, code) DO NOTHING.
+--   3. Idempotens: ON CONFLICT (code) DO NOTHING — a `branch.code` GLOBÁLISAN UNIQUE
+--      (uk_branch_code constraint, V0_1__base_tables.sql). Ha valamely partner-kód már
+--      foglalt egy másik (kis valószínűségű) cégben, az EBC seed silently skip — a DO $$
+--      block RAISE WARNING-ot ad az audit-trail-ben, hogy észleljük.
 --
 -- A frontend a /api/v1/branches/vault-counterparties endpoint-ot hívja, ami 3 csoportot ad:
 --   - territorialCashiers (saját régió pénztárai)
@@ -94,7 +97,24 @@ BEGIN
          country_hu_id, branch_status_id, CURRENT_DATE, true, false, 'ORSZAGOS', NULL, NOW())
     ON CONFLICT (code) DO NOTHING;
 
-    RAISE NOTICE 'V277: 10 vault counterparty branch seed-je beszúrva (vagy meglévőként meghagyva)';
+    -- Self-review P0-1 / P2-8: ellenőrzés — ha kevesebb mint 10 VAULT_COUNTERPARTY branch
+    -- létezik az EBC cégben a seed után, valószínűleg ON CONFLICT silently skip-pelt valamit.
+    DECLARE
+        actual_count INT;
+    BEGIN
+        SELECT COUNT(*) INTO actual_count
+        FROM branch b
+        JOIN dictionary d ON b.branch_type_did = d.id
+        WHERE b.company_id = ebc_company_id
+          AND d.category = 'BRANCH_TYPE' AND d.code = 'VAULT_COUNTERPARTY';
+        IF actual_count < 10 THEN
+            RAISE WARNING 'V277: EBC-ben csak %/10 vault-counterparty branch van — egyik vagy '
+                          'több partner-kód foglalt lehet más cégben (uk_branch_code GLOBAL UNIQUE). '
+                          'Audit szükséges.', actual_count;
+        ELSE
+            RAISE NOTICE 'V277: % vault counterparty branch elérhető az EBC cégben', actual_count;
+        END IF;
+    END;
 END $$;
 
 COMMENT ON COLUMN branch.branch_type_did IS
