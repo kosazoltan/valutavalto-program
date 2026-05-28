@@ -119,7 +119,8 @@ export default function TransitPage() {
       {items.length === 0 && !loading ? (
         <div className="text-center py-12 text-secondary-500">
           <Package size={40} className="mx-auto mb-2 text-secondary-300" />
-          <p>{t('rate-management.nincs')}{tab === "incoming" ? "érkező" : "kimenő"} {t('transit.utonLevoCsomag')}</p>
+          {/* v2.5.54 #17 fix: hiányzó szóköz → "nincsérkező". A két kifejezés közé szóköz kerül. */}
+          <p>{t('rate-management.nincs')} {tab === "incoming" ? "érkező" : "kimenő"} {t('transit.utonLevoCsomag')}</p>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-secondary-200 overflow-hidden">

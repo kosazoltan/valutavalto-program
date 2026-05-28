@@ -142,7 +142,12 @@ export default function DashboardPage() {
         const page = await transactionApi.list({ size: 5 })
         const txList = (page.content || []).map((tx, idx) => ({
           id: idx + 1,
-          time: tx.transactionTime ? tx.transactionTime.substring(0, 5) : '',
+          // v2.5.54 #9 fix: a "Legutóbbi tranzakciók" eddig CSAK időt (HH:MM) mutatott, dátum nélkül.
+          // Most a dátum (MM-DD, év nélkül a kompaktságért) is megjelenik az IDŐ oszlopban.
+          time: [
+            tx.transactionDate ? tx.transactionDate.substring(5) : '',
+            tx.transactionTime ? tx.transactionTime.substring(0, 5) : '',
+          ].filter(Boolean).join(' '),
           type: tx.transactionType || '',
           currency: tx.currencyCode || '',
           amount: tx.currencyAmount || 0,
