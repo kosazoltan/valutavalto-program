@@ -1,0 +1,39 @@
+{
+  "version": "2.27.46",
+  "buildDate": "2026-05-28",
+  "gitCommit": "dd6299fca",
+  "signed": false,
+  "signingNote": "DigiCert EV Code Signing validáció folyamatban (Hanse-re várunk); ALLOW_UNSIGNED_BUILD=1 használva.",
+  "artifacts": [
+    {
+      "name": "Penztar-Setup-2.27.46-20260528.exe",
+      "size_bytes": 297542852,
+      "size_mb": 283.76,
+      "sha256": "39471B92061CD71BC8DDED12C1DB4C803756F97ED9515994A6D3DA4901D5339B",
+      "target": "Pénztáros + Értéktáros munkaállomás",
+      "contents": ["PostgreSQL 17.5", "JRE custom runtime (jlink)", "Spring Boot 4.0.6 backend", "frontend-react bundle", "penztar-client Electron", "NSSM service"]
+    },
+    {
+      "name": "Kozponti-Munkaallomas-Setup-2.27.46.exe",
+      "size_bytes": 107429212,
+      "size_mb": 102.43,
+      "sha256": "B1EEF06141998CAC3D6D30DA77B49379714B5508AE085D512D34926DC2533BCE",
+      "target": "Központi Munkaállomás (Főértéktár)",
+      "contents": ["central-workstation bundle", "rate-maker bundle", "kozponti-client Electron (mód-választóval)"]
+    },
+    {
+      "name": "Penztar-Eltavolito-2.27.46-20260528.exe",
+      "size_bytes": 60860,
+      "size_mb": 0.06,
+      "sha256": "5ACD6B8A4A511AC9960CC88595AC5C63F6D1F03E18A13E1051B2533CDC94875B",
+      "target": "Eltávolító (csak ha pg_dump már megtörtént)",
+      "warning": "Törli az adatbázist is — előtte pg_dump kötelező"
+    }
+  ],
+  "mergedPRs": [
+    { "number": 889, "title": "feat(shipment): D — alkalmazott elszámoló árfolyam", "version": "2.27.43" },
+    { "number": 890, "title": "hotfix(shipment): P0 LazyInit list/findById", "version": "2.27.44" },
+    { "number": 891, "title": "feat(branch): manuális lakossági pénztár-felrögzítés", "version": "2.27.45" },
+    { "number": 892, "title": "feat(shipment): FK-013 — egységes értéktári átadás-átvétel menü", "version": "2.27.46" }
+  ]
+}
