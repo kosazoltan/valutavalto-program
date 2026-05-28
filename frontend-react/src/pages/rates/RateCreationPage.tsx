@@ -445,20 +445,14 @@ export default function RateCreationPage() {
     return errors
   }, [rates])
 
-  if (loading && !overview) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="animate-spin text-blue-600" size={32} />
-        <span className="ml-3 text-gray-600">Árfolyamok betöltése...</span>
-      </div>
-    )
-  }
-
-  const modifiedCount = rates.filter(r => r.modified).length
-
   // ===================== FK-02/03/04: Tile-list view =====================
   // Csempés listanézet az induló képernyő — a régi „bal oldali sávos" 54-csempés
   // jobboldali választó HELYETT a UI teljes szélességében.
+  //
+  // FONTOS: a tile-list ág a `loading && !overview` ÚTÁN visszatérő `<Loader/>`-nél
+  // ELŐBB futtatandó, hogy az első bootstrap-load alatt is a csempés UI látsszon
+  // (a WorkgroupTileListView saját maga rendel loading-state placeholder-t a
+  // `workgroups` üres és `loading=true` esetére — single source of truth).
   if (viewMode === 'tile-list') {
     return <WorkgroupTileListView
       workgroups={workgroups}
@@ -469,6 +463,18 @@ export default function RateCreationPage() {
       error={error}
     />
   }
+
+  // Editor mode: a klasszikus szerkesztő UI bootstrap-betöltést vár.
+  if (loading && !overview) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="animate-spin text-blue-600" size={32} />
+        <span className="ml-3 text-gray-600">Árfolyamok betöltése...</span>
+      </div>
+    )
+  }
+
+  const modifiedCount = rates.filter(r => r.modified).length
 
   // ===================== Editor view =====================
   return (
