@@ -147,18 +147,14 @@ public class ShipmentService {
         existing.setDeliveryDate(updated.getDeliveryDate());
         existing.setNotes(updated.getNotes());
 
+        // Codex P1 + P2 kompromisszum: csak akkor futtatjuk az autofill-t, ha a kliens
+        // ÚJ items listát küldött (= currency/amount változás). Notes/date-only update
+        // esetén az `updated.getItems() == null` → az eredeti tételek (és a rögzítéskor
+        // beemelt appliedRate / hufValue) érintetlenül maradnak (audit-preservation).
         if (updated.getItems() != null) {
             existing.setItems(updated.getItems());
+            applyExchangeRateAndHufValue(existing);
         }
-
-        // Codex P1 (overrides earlier P2 preservation): a PUT teljes item-listát fogad,
-        // és a setItems(updated.getItems()) felülírja az eredeti rögzített rate-eket.
-        // Ha a kliens új currency/amount-ot vagy manipulált rate-et küld, az autofill
-        // szigorúság (server-side authoritative) erősebb, mint a preservation. A
-        // konzisztencia érdekében az UPDATE is mindig server-side rate-tel tölti ki
-        // a tételeket — ez a DRAFT update jelenlegi item-merge mintájának sajátossága
-        // (egy későbbi ID-alapú merge-refaktor preserve-elheti az érintetlen tételeket).
-        applyExchangeRateAndHufValue(existing);
 
         log.info("Szállítmánykérés frissítve: {}", id);
         return shipmentRequestRepository.save(existing);
