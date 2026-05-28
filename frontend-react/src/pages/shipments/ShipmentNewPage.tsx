@@ -111,7 +111,10 @@ export default function ShipmentNewPage() {
     exchangeRateApi.getByCurrencyId(Number(form.currencyId))
       .then((rate) => {
         if (!active) return
-        const official = rate.officialRate ?? rate.baseBuyRate ?? null
+        // D + Codex P2: KIZÁRÓLAG officialRate (elszámoló ár / J). A backend is csak
+        // officialRate-et ment — baseBuyRate fallback megtévesztő lenne (a UI rate-et
+        // mutatna, de a perzisztens appliedRate NULL maradna).
+        const official = rate.officialRate ?? null
         setAppliedRate(official != null ? Number(official) : null)
       })
       .catch(() => { if (active) setAppliedRate(null) })

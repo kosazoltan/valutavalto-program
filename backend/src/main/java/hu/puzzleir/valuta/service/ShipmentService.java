@@ -140,9 +140,11 @@ public class ShipmentService {
             existing.setItems(updated.getItems());
         }
 
-        // P1 self-review fix: az update is auto-tölti az appliedRate + hufValue mezőt,
-        // hogy DRAFT módosítás (új item / currency-csere) után konzisztens maradjon a D req.
-        applyExchangeRateAndHufValue(existing);
+        // Codex P2 follow-up: az UPDATE NEM hívja az autofill-t — audit-preservation:
+        // egy DRAFT módosítása (notes/date) NEM számolja újra a már beemelt appliedRate-et.
+        // A D követelmény szövege a tétel _rögzítésekor_ (create-kor) ír a rate beemeléséről;
+        // utólagos rate-frissítés sértené az audit-megőrzést. Currency/amount-változás
+        // esetén a kliens új CREATE-tel hoz új tételt (DRAFT-rebuild) — NEM update-tel.
 
         log.info("Szállítmánykérés frissítve: {}", id);
         return shipmentRequestRepository.save(existing);
