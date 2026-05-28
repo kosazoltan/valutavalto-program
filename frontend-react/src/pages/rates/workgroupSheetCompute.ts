@@ -99,7 +99,10 @@ const fmtKey = (currencyId: number, field: WgField): string => `${currencyId}.${
  */
 export function recomputeWorkgroupSheet(input: WorkgroupComputeInput): WorkgroupComputeResult {
   const { rows, formulas, sheet0ByCurrency, otherGroupsByCurrency } = input
-  const decimalsFor = input.decimalsFor ?? ((code: string) => (code.toUpperCase() === 'JPY' ? 0 : 2))
+  // A 0-s lap (MainRateSheetPage) képlet-újraszámítója JPY-re 3, egyébként 2 tizedessel
+  // kerekít — a munkacsoport-lap KÖVESSE ezt (Codex FK-04/C P1: a JPY-rátáknak 3 tizedes
+  // a precizitása, a 0-ra kerekítés elveszítené a tört-fillért).
+  const decimalsFor = input.decimalsFor ?? ((code: string) => (code.toUpperCase() === 'JPY' ? 3 : 2))
 
   const formulaKeys = Object.keys(formulas)
   const errors: Record<string, string> = {}
