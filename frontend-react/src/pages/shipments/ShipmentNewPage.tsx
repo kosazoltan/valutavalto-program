@@ -99,6 +99,14 @@ export default function ShipmentNewPage() {
     () => hasCanonicalRole(['ertektar']),
     [hasCanonicalRole, roles, activeRole],
   )
+  // FK-013 PÉNZTÁRI OLDAL (2026-05-28): a pénztáros (CASHIER/PENZTAR canonical role)
+  // a 3-elemes szűkített listát kapja (saját értéktár + TH + 1-es főpénztár).
+  // A docx: "A pénztári programban az átadás-átvétel menü (F4) marad a jelenlegi
+  // működés szerint – ott csak az alábbiak szerepelnek".
+  const isCashierUser = useMemo(
+    () => hasCanonicalRole(['penztar']) && !hasCanonicalRole(['ertektar', 'foertektar']),
+    [hasCanonicalRole, roles, activeRole],
+  )
 
   // FK-013 self-review P0-2: ha az isVaultUser flicker-el (true → false), a vaultCounterparties
   // state stale-en marad → a UI a régi 3-csoportos dropdown-t mutatja inkonzisztens módon.
@@ -121,7 +129,10 @@ export default function ShipmentNewPage() {
           if (active) setVaultCounterparties(cp)
           return [...cp.territorialCashiers, ...cp.peerVaults, ...cp.fixedCounterparties]
         })
-      : branchApi.listMyTerritory()
+      : isCashierUser
+        // FK-013 pénztári oldal: szűkített 3-elemes lista (saját értéktár + TH + FOP1)
+        ? branchApi.listCashierShipmentTargets()
+        : branchApi.listMyTerritory()
 
     Promise.all([branchSource, currencyApi.getActive()])
       .then(([branchList, currencyList]) => {
@@ -136,7 +147,7 @@ export default function ShipmentNewPage() {
       })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [isVaultUser])
+  }, [isVaultUser, isCashierUser])
 
   const patch = (values: Partial<FormState>) => setForm((current) => ({ ...current, ...values }))
 
