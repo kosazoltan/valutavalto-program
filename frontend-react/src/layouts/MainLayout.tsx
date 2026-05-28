@@ -212,6 +212,10 @@ export default function MainLayout() {
                 <NavLink
                   key={item.path}
                   to={item.path}
+                  // v2.5.54 #11 fix: az `end` nélkül a NavLink prefix-matchel, így pl. a `/rates`
+                  // ÉS a `/rates/history` egyszerre highlightolt. Minden menüpont valós leaf-route,
+                  // ezért az exact-match (end) a helyes — egyszerre csak az aktuális oldal aktív.
+                  end
                   className={({ isActive }) =>
                     `flex items-center gap-2 px-4 py-1.5 text-xs font-medium transition-all duration-200 ${
                       isActive 
