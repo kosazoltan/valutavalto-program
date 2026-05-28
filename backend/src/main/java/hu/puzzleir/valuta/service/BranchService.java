@@ -107,21 +107,67 @@ public class BranchService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID ownBranchId = SecurityUtils.getCurrentBranchIdOrNull();
 
-        // 1. territorialCashiers — saját régió aktív pénztárai
+        // FK-013 follow-up #1 (Kasza Helga 2026-05-28 visszajelzés): a "saját régió"
+        // azonosításához a worker branch regionCode-ját olvassuk ki (KESZLEX numerikus:
+        // SZEGED=20, KECSKEMET=40, DEBRECEN=50, NYIREGYHAZA=63, BEKESCSABA=75, PECS=120,
+        // KAPOSVAR=145, SZEKSZARD=10). Helga (Főértéktáros) branchId=Tisza Sarok (BR035),
+        // regionCode="20" → saját régió=SZEGED → a Szeged Ertektar (BR020) és Szeged-területi
+        // pénztárak alkotják a saját területet.
+        final String ownRegionCode = (ownBranchId != null)
+                ? branchRepository.findById(ownBranchId).map(Branch::getRegionCode).orElse(null)
+                : null;
+        log.info("FK-013 findVaultCounterparties: companyId={}, ownBranchId={}, ownRegionCode={}",
+                companyId, ownBranchId, ownRegionCode);
+
+        // 1. territorialCashiers — saját régió aktív PÉNZTÁRAI (NEM értéktárai).
+        // A korábbi `vaultScope ∩ branch_type='PENZTAR'` szűrés a Főértéktárosnak
+        // (`vaultScope=null` → minden PENZTAR országosan) NEM a docx szerinti szűkítést
+        // adta. Most a regionCode-egyezés a kulcs: ugyanaz a régió, mint a user branch.
         java.util.Set<UUID> vaultScope = accessScopeService.vaultRegionBranchScopeOrNull();
+        log.info("FK-013 findVaultCounterparties: vaultScope={} (null=nincs szűkítés)",
+                vaultScope != null ? vaultScope.size() + " branch" : "null");
+
         List<Branch> allActive = branchRepository.findByCompanyIdAndIsActiveTrue(companyId);
+        log.info("FK-013 findVaultCounterparties: allActive cég-szintű={}", allActive.size());
+
         List<BranchDto> territorialCashiers = allActive.stream()
                 .filter(b -> b.getBranchType() != null && "PENZTAR".equals(b.getBranchType().getCode()))
-                .filter(b -> vaultScope == null || vaultScope.contains(b.getId()))
+                // NEM értéktár (Builder.Default=false, de a régi V69/V83 seedek NULL-ja is
+                // pénztár-szerű kell legyen — defenzív: !TRUE.equals(...) NULL is átengedi).
+                .filter(b -> !Boolean.TRUE.equals(b.getIsVault()))
+                // Régió-egyezés: a saját régió pénztárai. Ha nincs ownRegionCode (pl. központi
+                // user branchId nélkül), VAGY a user vault-scope NEM null (értéktáros), akkor
+                // a vault-scope ∩ branchId-szűrés az eredeti viselkedés szerint.
+                .filter(b -> {
+                    if (vaultScope != null) {
+                        return vaultScope.contains(b.getId());
+                    }
+                    if (ownRegionCode != null) {
+                        return ownRegionCode.equals(b.getRegionCode());
+                    }
+                    return true;
+                })
                 .map(branchMapper::toDto)
                 .toList();
+        log.info("FK-013 findVaultCounterparties: territorialCashiers.size={}", territorialCashiers.size());
 
-        // 2. peerVaults — a cég többi értéktára (saját értéktár-branch kihagyva)
+        // 2. peerVaults — a cég többi értéktára, a SAJÁT RÉGIÓ értéktárai kihagyva.
+        // A korábbi `ownBranchId.equals(b.getId())` szűrés CSAK akkor működött, ha a user
+        // branchId-je MAGA az értéktár-branch. Kasza Helga branch=Tisza Sarok (pénztár-típus),
+        // NEM értéktár → minden 8 értéktár átment a peerVaults-ba. Most a regionCode-egyezés
+        // a kulcs: a saját régió értéktárai (általában 1 — pl. Szeged) kihagyandók.
         List<BranchDto> peerVaults = branchRepository
                 .findByCompanyIdAndIsVaultTrueAndIsActiveTrue(companyId).stream()
-                .filter(b -> ownBranchId == null || !ownBranchId.equals(b.getId()))
+                .filter(b -> {
+                    // A saját értéktár-branchet közvetlen ID-egyezés szerint is kihagyni (defenzív).
+                    if (ownBranchId != null && ownBranchId.equals(b.getId())) return false;
+                    // A saját régió értéktárait regionCode-egyezés szerint kihagyni.
+                    if (ownRegionCode != null && ownRegionCode.equals(b.getRegionCode())) return false;
+                    return true;
+                })
                 .map(branchMapper::toDto)
                 .toList();
+        log.info("FK-013 findVaultCounterparties: peerVaults.size={} (ownRegion kihagyva)", peerVaults.size());
 
         // 3. fixedCounterparties — 10 fix banki/speciális partner (V277 seed-je)
         List<BranchDto> fixedCounterparties = branchRepository
@@ -129,9 +175,7 @@ public class BranchService {
                 .filter(b -> Boolean.TRUE.equals(b.getIsActive()))
                 .map(branchMapper::toDto)
                 .toList();
-
-        log.debug("FK-013 vault-counterparties for company={}, ownBranch={}: territorial={}, peerVaults={}, fixed={}",
-                companyId, ownBranchId, territorialCashiers.size(), peerVaults.size(), fixedCounterparties.size());
+        log.info("FK-013 findVaultCounterparties: fixedCounterparties.size={}", fixedCounterparties.size());
 
         return hu.puzzleir.valuta.dto.VaultCounterpartiesDto.builder()
                 .territorialCashiers(territorialCashiers)
