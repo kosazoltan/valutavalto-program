@@ -88,6 +88,59 @@ public class BranchService {
     }
 
     /**
+     * Bali Henriett FK-013 (2026-05-28): az egységes értéktári átadás-átvétel menüpont
+     * "Cél iroda" dropdown 3-csoportos listája.
+     *
+     * <ul>
+     *   <li><b>territorialCashiers</b>: a saját régió aktív lakossági pénztárai
+     *       (a vault-scope ∩ branch_type='PENZTAR' ∩ is_active=true).</li>
+     *   <li><b>peerVaults</b>: a cég többi értéktára (saját értéktár-branch kihagyva).</li>
+     *   <li><b>fixedCounterparties</b>: 10 fix VAULT_COUNTERPARTY (V277 seed).</li>
+     * </ul>
+     *
+     * <p>A meghívó user értéktáros / főértéktáros — a controller @PreAuthorize garantálja.
+     * Pénztáros (CASHIER/PENZTAR) user-ek a meglévő {@link #findAllActive()} vagy
+     * {@code listMyTerritory} endpointokat használják.</p>
+     */
+    @Transactional(readOnly = true)
+    public hu.puzzleir.valuta.dto.VaultCounterpartiesDto findVaultCounterparties() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        UUID ownBranchId = SecurityUtils.getCurrentBranchIdOrNull();
+
+        // 1. territorialCashiers — saját régió aktív pénztárai
+        java.util.Set<UUID> vaultScope = accessScopeService.vaultRegionBranchScopeOrNull();
+        List<Branch> allActive = branchRepository.findByCompanyIdAndIsActiveTrue(companyId);
+        List<BranchDto> territorialCashiers = allActive.stream()
+                .filter(b -> b.getBranchType() != null && "PENZTAR".equals(b.getBranchType().getCode()))
+                .filter(b -> vaultScope == null || vaultScope.contains(b.getId()))
+                .map(branchMapper::toDto)
+                .toList();
+
+        // 2. peerVaults — a cég többi értéktára (saját értéktár-branch kihagyva)
+        List<BranchDto> peerVaults = branchRepository
+                .findByCompanyIdAndIsVaultTrueAndIsActiveTrue(companyId).stream()
+                .filter(b -> ownBranchId == null || !ownBranchId.equals(b.getId()))
+                .map(branchMapper::toDto)
+                .toList();
+
+        // 3. fixedCounterparties — 10 fix banki/speciális partner (V277 seed-je)
+        List<BranchDto> fixedCounterparties = branchRepository
+                .findByCompanyIdAndBranchTypeCode(companyId, "VAULT_COUNTERPARTY").stream()
+                .filter(b -> Boolean.TRUE.equals(b.getIsActive()))
+                .map(branchMapper::toDto)
+                .toList();
+
+        log.debug("FK-013 vault-counterparties for company={}, ownBranch={}: territorial={}, peerVaults={}, fixed={}",
+                companyId, ownBranchId, territorialCashiers.size(), peerVaults.size(), fixedCounterparties.size());
+
+        return hu.puzzleir.valuta.dto.VaultCounterpartiesDto.builder()
+                .territorialCashiers(territorialCashiers)
+                .peerVaults(peerVaults)
+                .fixedCounterparties(fixedCounterparties)
+                .build();
+    }
+
+    /**
      * v2.5.1-C B6: Csak ÉRTÉKTÁRI (is_vault=TRUE) fiókok — a SetupWizard értéktár
      * módú telepítéskor használja. Multi-tenant-safe.
      */

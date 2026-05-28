@@ -53,6 +53,15 @@ export default function ShipmentNewPage() {
     notes: '',
   })
   const [branches, setBranches] = useState<BranchInfo[]>([])
+  // FK-013 (Bali Henriett / Kasza Helga 2026-05-28): az egységes értéktári átadás-átvétel
+  // dropdown 3 csoportban (territorial / peerVaults / fixedCounterparties). Csak akkor
+  // töltődik fel, ha a user értéktáros (vault-context). Egyéb esetben üres marad, és a
+  // sima `branches` listából renderelünk (a régi viselkedés).
+  const [vaultCounterparties, setVaultCounterparties] = useState<{
+    territorialCashiers: BranchInfo[]
+    peerVaults: BranchInfo[]
+    fixedCounterparties: BranchInfo[]
+  } | null>(null)
   const [currencies, setCurrencies] = useState<Currency[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -77,12 +86,44 @@ export default function ShipmentNewPage() {
     })
   }, [ownBranchId, direction])
 
+  // FK-013 self-review P1-1: csak a TERÜLETI értéktáros (ROLE_ERTEKTAR / canonical 'ertektar')
+  // kapja a 3-csoportos dropdown-t. A FŐÉRTÉKTÁR (nemzeti scope) és a cég-szintű ADMIN/UGYVEZETO
+  // user-ek a régi listMyTerritory listát kapják (a Főértéktárnak null vault-scope → minden
+  // aktív branch → docx szerint nem ezt akarjuk a területi átadás-átvétel dropdownjában).
+  // FONTOS: a `hasCanonicalRole(['ertektar'])` ADMIN-ra is TRUE-t ad (Zustand admin-bypass) —
+  // ezt elfogadjuk, mert ADMIN ritkán használja ezt a flow-t és debug-célból OK.
+  const roles = useAuthStore((s) => s.roles)
+  const activeRole = useAuthStore((s) => s.activeRole)
+  const hasCanonicalRole = useAuthStore((s) => s.hasCanonicalRole)
+  const isVaultUser = useMemo(
+    () => hasCanonicalRole(['ertektar']),
+    [hasCanonicalRole, roles, activeRole],
+  )
+
+  // FK-013 self-review P0-2: ha az isVaultUser flicker-el (true → false), a vaultCounterparties
+  // state stale-en marad → a UI a régi 3-csoportos dropdown-t mutatja inkonzisztens módon.
+  // Reset, ha a user már nem értéktáros.
+  useEffect(() => {
+    if (!isVaultUser) setVaultCounterparties(null)
+  }, [isVaultUser])
+
   useEffect(() => {
     let active = true
     // FK-005/B4: a Kérő/Cél iroda legördülő CSAK a saját terület pénztárait mutatja, ha a
     // felhasználó értéktárosként operál (vault-authority → region-scope); egyébként minden
     // aktív. A backend AccessScopeService dönt (a vault-authority precedál a base-role felett).
-    Promise.all([branchApi.listMyTerritory(), currencyApi.getActive()])
+    //
+    // FK-013 (Bali Henriett 2026-05-28): értéktáros user esetén KIBŐVÍTETT lista — 3 csoport
+    // (saját terület pénztárai + 7 másik értéktár + 10 fix banki/speciális partner) az új
+    // /branches/vault-counterparties endpoint-ról. Pénztárosnak marad a régi listMyTerritory.
+    const branchSource = isVaultUser
+      ? branchApi.listVaultCounterparties().then((cp) => {
+          if (active) setVaultCounterparties(cp)
+          return [...cp.territorialCashiers, ...cp.peerVaults, ...cp.fixedCounterparties]
+        })
+      : branchApi.listMyTerritory()
+
+    Promise.all([branchSource, currencyApi.getActive()])
       .then(([branchList, currencyList]) => {
         if (!active) return
         setBranches(branchList.filter((branch) => branch.isActive !== false))
@@ -95,7 +136,7 @@ export default function ShipmentNewPage() {
       })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [])
+  }, [isVaultUser])
 
   const patch = (values: Partial<FormState>) => setForm((current) => ({ ...current, ...values }))
 
@@ -200,7 +241,34 @@ export default function ShipmentNewPage() {
               onChange={(e) => patch({ fromBranchId: e.target.value })}
             >
               <option value="">Válasszon irodát</option>
-              {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} - {branch.name}</option>)}
+              {vaultCounterparties ? (
+                // FK-013: 3-csoportos optgroup értéktáros user esetén
+                <>
+                  {vaultCounterparties.territorialCashiers.length > 0 && (
+                    <optgroup label="Saját terület pénztárai">
+                      {vaultCounterparties.territorialCashiers
+                        .filter((b) => b.isActive !== false)
+                        .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                    </optgroup>
+                  )}
+                  {vaultCounterparties.peerVaults.length > 0 && (
+                    <optgroup label="Társ értéktárak">
+                      {vaultCounterparties.peerVaults
+                        .filter((b) => b.isActive !== false)
+                        .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                    </optgroup>
+                  )}
+                  {vaultCounterparties.fixedCounterparties.length > 0 && (
+                    <optgroup label="Banki és speciális partnerek">
+                      {vaultCounterparties.fixedCounterparties
+                        .filter((b) => b.isActive !== false)
+                        .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                    </optgroup>
+                  )}
+                </>
+              ) : (
+                branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} - {branch.name}</option>)
+              )}
             </select>
           </label>
           <label className="block">
@@ -214,7 +282,34 @@ export default function ShipmentNewPage() {
               onChange={(e) => patch({ toBranchId: e.target.value })}
             >
               <option value="">Válasszon cél irodát</option>
-              {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} - {branch.name}</option>)}
+              {vaultCounterparties ? (
+                // FK-013: 3-csoportos optgroup értéktáros user esetén
+                <>
+                  {vaultCounterparties.territorialCashiers.length > 0 && (
+                    <optgroup label="Saját terület pénztárai">
+                      {vaultCounterparties.territorialCashiers
+                        .filter((b) => b.isActive !== false)
+                        .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                    </optgroup>
+                  )}
+                  {vaultCounterparties.peerVaults.length > 0 && (
+                    <optgroup label="Társ értéktárak">
+                      {vaultCounterparties.peerVaults
+                        .filter((b) => b.isActive !== false)
+                        .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                    </optgroup>
+                  )}
+                  {vaultCounterparties.fixedCounterparties.length > 0 && (
+                    <optgroup label="Banki és speciális partnerek">
+                      {vaultCounterparties.fixedCounterparties
+                        .filter((b) => b.isActive !== false)
+                        .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                    </optgroup>
+                  )}
+                </>
+              ) : (
+                branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} - {branch.name}</option>)
+              )}
             </select>
           </label>
           <label className="block">

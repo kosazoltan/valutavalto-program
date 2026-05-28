@@ -52,6 +52,24 @@ public class BranchController {
     }
 
     /**
+     * GET /api/v1/branches/vault-counterparties
+     *
+     * <p>Bali Henriett / Kasza Helga FK-013 (2026-05-28): az egységes értéktári
+     * átadás-átvétel "Cél iroda" legördülő tartalma, 3 csoportban:
+     * territorialCashiers / peerVaults / fixedCounterparties (10 fix banki partner).</p>
+     *
+     * <p>Engedélyezett role-ok: az ÉRTÉKTÁR / FŐÉRTÉKTÁR és a cég-szintű operatív
+     * role-ok (a régi {@code listMyTerritory} mintájához igazítva). Pénztáros
+     * (CASHIER/PENZTAR) nem fér hozzá — neki a régi {@code listMyTerritory} az aktuális.</p>
+     */
+    @GetMapping("/vault-counterparties")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'ERTEKTAR', 'MANAGER')")
+    public ResponseEntity<hu.puzzleir.valuta.dto.VaultCounterpartiesDto> getVaultCounterparties() {
+        log.info("GET /api/v1/branches/vault-counterparties (FK-013)");
+        return ResponseEntity.ok(branchService.findVaultCounterparties());
+    }
+
+    /**
      * GET /api/v1/branches
      * Összes fiók lekérése (opcionális szűrőkkel)
      */
