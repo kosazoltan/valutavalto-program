@@ -84,18 +84,36 @@ public class ShipmentService {
     }
 
     /**
-     * D követelmény: ha a tétel nem kap explicit {@code appliedRate}-et a frontendtől,
-     * a service automatikusan beemeli az aktuális elszámoló árfolyamot (officialRate).
-     * A {@code hufValue}-t kerekítve (HUF) szintén kitölti. Audit-megőrzés: ha a kliens
-     * már küldött {@code appliedRate}-et, NEM írjuk felül (történeti rögzítés).
+     * D követelmény (Bali Henriett 2026-05-27): a tétel {@code appliedRate}-jét és
+     * {@code hufValue}-ját MINDIG a szerveroldali aktuális elszámoló árfolyamból
+     * (officialRate) számoljuk. A kliens által esetleg küldött értékeket figyelmen
+     * kívül hagyjuk — a követelmény szövege: „kötelezően és automatikusan a
+     * rendszerben lévő aktuális elszámoló árból kell beemelnie" (Codex P1
+     * follow-up: server-side authoritative source, audit-célból nem manipulálható
+     * a klienstől).
+     *
+     * <p>Best-effort: ha a getCurrentRate exception-t dob (lejárt 24h TTL vagy nem
+     * létezik a rate), warn-loggolunk és az oszlopok NULL-ban maradnak — egyetlen
+     * ritka/lejárt árfolyam ne bukja a teljes szállítmány-create-et.</p>
      */
     private void applyExchangeRateAndHufValue(ShipmentRequest request) {
         if (request.getItems() == null) return;
         for (ShipmentRequestItem item : request.getItems()) {
-            if (item.getAppliedRate() == null && item.getCurrencyId() != null) {
-                ExchangeRate er = exchangeRateService.getCurrentRate(item.getCurrencyId());
-                if (er != null && er.getOfficialRate() != null) {
-                    item.setAppliedRate(er.getOfficialRate());
+            // Audit-szigorúság: a kliens által küldött appliedRate / hufValue mezőt
+            // EL DOBJUK, hogy ne legyen manipulálható a beemelt rate. A server-side
+            // értékek az authoritative source.
+            item.setAppliedRate(null);
+            item.setHufValue(null);
+
+            if (item.getCurrencyId() != null) {
+                try {
+                    ExchangeRate er = exchangeRateService.getCurrentRate(item.getCurrencyId());
+                    if (er != null && er.getOfficialRate() != null) {
+                        item.setAppliedRate(er.getOfficialRate());
+                    }
+                } catch (RuntimeException ex) {
+                    log.warn("D auto-rate: nem található/lejárt árfolyam a currencyId={} valutához, "
+                            + "appliedRate NULL marad. Ok: {}", item.getCurrencyId(), ex.getMessage());
                 }
             }
             if (item.getAppliedRate() != null && item.getRequestedAmount() != null) {
@@ -121,6 +139,10 @@ public class ShipmentService {
         if (updated.getItems() != null) {
             existing.setItems(updated.getItems());
         }
+
+        // P1 self-review fix: az update is auto-tölti az appliedRate + hufValue mezőt,
+        // hogy DRAFT módosítás (új item / currency-csere) után konzisztens maradjon a D req.
+        applyExchangeRateAndHufValue(existing);
 
         log.info("Szállítmánykérés frissítve: {}", id);
         return shipmentRequestRepository.save(existing);

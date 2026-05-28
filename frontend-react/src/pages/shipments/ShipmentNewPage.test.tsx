@@ -46,14 +46,14 @@ describe('ShipmentNewPage', () => {
     await user.type(screen.getByLabelText(/Összeg/i), '1250')
     await user.click(screen.getByRole('button', { name: /Igény beküldése/i }))
 
-    // D követelmény: a create payload most már tartalmazza az appliedRate + hufValue mezőt.
-    // hufValue = 1250 × 400 = 500000, az 5 Ft-os kerekítés után marad 500000.
+    // D követelmény (Codex P1): a payload NEM tartalmazza az appliedRate / hufValue mezőt,
+    // a backend a server-oldali aktuális rate-tel autoritatív; a frontend csak display.
     await waitFor(() => expect(mocks.shipmentRequestApi.create).toHaveBeenCalledWith({
       fromBranchId: 'BR-A',
       toBranchId: 'BR-B',
       deliveryDate: undefined,
       notes: '',
-      items: [{ currencyId: '4', requestedAmount: 1250, appliedRate: 400, hufValue: 500000 }],
+      items: [{ currencyId: '4', requestedAmount: 1250 }],
     }))
     expect(mocks.shipmentRequestApi.submit).toHaveBeenCalledWith('shipment-1')
   })

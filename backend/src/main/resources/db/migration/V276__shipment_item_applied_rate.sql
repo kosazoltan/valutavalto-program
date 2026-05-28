@@ -17,8 +17,12 @@
 --                                   (auto-számolt, HUF kerekítés alkalmazva).
 --
 -- Mindkét oszlop nullable a backward-compat miatt — meglévő szállítmányok érték nélkül
--- maradnak; új tételek a service-ben kötelezően kitöltik (vagy explicit hibát adnak).
--- Idempotens: ADD COLUMN IF NOT EXISTS.
+-- maradnak. Új tételeknél a service (ShipmentService.applyExchangeRateAndHufValue)
+-- best-effort módon kitölti a server-side aktuális elszámoló árfolyamból (D követelmény:
+-- ALWAYS server-side authoritative, kliens-küldést figyelmen kívül hagyjuk). Ha az
+-- ExchangeRateService.getCurrentRate exception-t dob (lejárt 24h TTL / nincs rate),
+-- warn-loggolunk és az oszlopok NULL-ban maradnak — egyetlen ritka/lejárt árfolyam ne
+-- bukja a teljes szállítmány-create-et. Idempotens: ADD COLUMN IF NOT EXISTS.
 
 ALTER TABLE shipment_request_item
     ADD COLUMN IF NOT EXISTS applied_rate NUMERIC(18, 6),

@@ -146,13 +146,11 @@ export default function ShipmentNewPage() {
         toBranchId: form.toBranchId,
         deliveryDate: form.deliveryDate || undefined,
         notes: form.notes,
+        // D követelmény (Codex P1): a backend autoritatív a server-side aktuális rate-tel —
+        // a kliens csak display-célból mutatja a rate-et + hufValue-t, NEM küldi a payloadban.
         items: [{
           currencyId: form.currencyId,
           requestedAmount: amount,
-          // D: a beemelt elszámoló árfolyam és a forintosított érték (audit-megőrzés).
-          // Ha a frontend nem szerzi meg, a backend automatikusan beemeli (history-safe).
-          ...(appliedRate != null ? { appliedRate } : {}),
-          ...(hufValue != null ? { hufValue } : {}),
         }],
       })
       if (!created.id) throw new Error('A szerver nem adott szállítmány azonosítót.')
