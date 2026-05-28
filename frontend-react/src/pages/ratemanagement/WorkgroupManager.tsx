@@ -84,13 +84,18 @@ export default function WorkgroupManager() {
 
   const openCreate = () => {
     setEditorMode('create')
-    setDraft({ name: '', code: '', legacyGroupNumber: undefined, active: true, tileColor: DEFAULT_TILE.key })
+    setDraft({ name: '', code: '', legacyGroupNumber: undefined, active: true, tileColor: DEFAULT_TILE.key,
+      limit1Boundary: null, limit2Boundary: null, limit3Boundary: null })
     setEditorOpen(true)
   }
 
   const openRename = (wg: RateWorkgroupDTO) => {
     setEditorMode('rename')
-    setDraft({ name: wg.name, code: wg.code, legacyGroupNumber: wg.legacyGroupNumber, active: wg.active, tileColor: wg.tileColor ?? DEFAULT_TILE.key })
+    setDraft({ name: wg.name, code: wg.code, legacyGroupNumber: wg.legacyGroupNumber, active: wg.active,
+      tileColor: wg.tileColor ?? DEFAULT_TILE.key,
+      limit1Boundary: wg.limit1Boundary ?? null,
+      limit2Boundary: wg.limit2Boundary ?? null,
+      limit3Boundary: wg.limit3Boundary ?? null })
     setEditorOpen(true)
   }
 
@@ -315,6 +320,23 @@ function WorkgroupEditor({ mode, draft, setDraft, onSave, onCancel }: {
                 className={`h-7 w-7 rounded-full ${p.swatch} flex items-center justify-center ring-2 ${draft.tileColor === p.key ? 'ring-gray-800' : 'ring-transparent'}`}>
                 {draft.tileColor === p.key && <Check className="h-4 w-4 text-white" />}
               </button>
+            ))}
+          </div>
+        </div>
+        {/* FK-04/D: Kedvezményhatárok (3 forint-küszöb). Üres input = nincs határ
+            (a backend null-ra tartja a meglévő értéket; ha 0-t küldünk, az 0 lesz). */}
+        <div>
+          <label className="text-sm font-medium">Kedvezményhatárok (Ft)</label>
+          <p className="text-xs text-gray-500 mb-1">A kedvezményes vételi/eladási sávok határai HUF-ban. Üres mező = változatlan.</p>
+          <div className="grid grid-cols-3 gap-2">
+            {(['limit1Boundary','limit2Boundary','limit3Boundary'] as const).map((key, idx) => (
+              <div key={key}>
+                <label className="text-xs text-gray-600">{idx === 0 ? 'Alsó' : idx === 1 ? 'Középső' : 'Felső'} határ</label>
+                <input className="form-input w-full" type="number" min="0" step="1"
+                  value={draft[key] ?? ''}
+                  placeholder={idx === 0 ? '50 000' : idx === 1 ? '300 000' : '1 000 000'}
+                  onChange={e => setDraft({ ...draft, [key]: e.target.value === '' ? null : Number(e.target.value) })} />
+              </div>
             ))}
           </div>
         </div>

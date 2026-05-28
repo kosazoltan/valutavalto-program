@@ -450,6 +450,12 @@ export interface RateWorkgroupDTO {
    * checkbox vezérli (A.3). Régi backend null-t adhat — false-ként kezelendő.
    */
   protectionEnabled?: boolean | null
+  /** FK-04/D: kedvezményhatárok — alsó sáv felső határa Ft-ban. */
+  limit1Boundary?: number | null
+  /** FK-04/D: kedvezményhatárok — középső sáv felső határa Ft-ban. */
+  limit2Boundary?: number | null
+  /** FK-04/D: kedvezményhatárok — felső sáv felső határa Ft-ban. */
+  limit3Boundary?: number | null
 }
 
 export interface RateWorkgroupSaveDTO {
@@ -460,6 +466,10 @@ export interface RateWorkgroupSaveDTO {
   tileColor?: string | null
   /** FK-04/E árfolyamvédelem flag (lásd RateWorkgroupDTO). */
   protectionEnabled?: boolean | null
+  /** FK-04/D kedvezményhatárok (lásd RateWorkgroupDTO). */
+  limit1Boundary?: number | null
+  limit2Boundary?: number | null
+  limit3Boundary?: number | null
 }
 
 export const rateWorkgroupApi = {
