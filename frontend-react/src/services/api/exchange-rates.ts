@@ -281,6 +281,10 @@ export interface WorkgroupDetailDTO {
   limit1Boundary: number
   limit2Boundary: number
   limit3Boundary: number
+  /** FK-02 (V273): csempeszín-palettakulcs a csempés listanézethez (slate/red/orange/…). */
+  tileColor?: string | null
+  /** FK-04/E (V275): árfolyamvédelem flag — ha true, a backend a vétel ≤ J / eladás ≥ J szabályt érvényesíti save-kor. */
+  protectionEnabled?: boolean | null
 }
 
 export interface WorkgroupBranchInfo {

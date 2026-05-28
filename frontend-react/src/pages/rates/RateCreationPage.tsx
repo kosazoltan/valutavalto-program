@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AxiosError } from 'axios'
-import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock, Undo2, Redo2, Home } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock, Undo2, Redo2, Home, ArrowLeft, ShieldCheck, Shield } from 'lucide-react'
 import {
   rateCreationApi,
   RateOverviewDTO,
@@ -33,6 +33,14 @@ export default function RateCreationPage() {
   const undoStack = useRef<EditableRate[][]>([])
   const redoStack = useRef<EditableRate[][]>([])
   const [selectedWgIndex, setSelectedWgIndex] = useState<number>(0)
+  /**
+   * FK-02/03/04 (Kasza Helga / Bali Henriett 2026-05-28): a régi „bal oldali sávos"
+   * 54-csempés választó helyett egységes csempés listanézet az induló képernyő.
+   * - 'tile-list' (default): csempés grid az összes csoport árfolyamlappal
+   * - 'editor': egy csoport árfolyamlap szerkesztése (rate-tábla + iroda-panel)
+   * A csempére klikk azonnal megnyitja a szerkesztőt (megerősítés nélkül, docx-spec).
+   */
+  const [viewMode, setViewMode] = useState<'tile-list' | 'editor'>('tile-list')
   const [loading, setLoading] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -437,6 +445,26 @@ export default function RateCreationPage() {
     return errors
   }, [rates])
 
+  // ===================== FK-02/03/04: Tile-list view =====================
+  // Csempés listanézet az induló képernyő — a régi „bal oldali sávos" 54-csempés
+  // jobboldali választó HELYETT a UI teljes szélességében.
+  //
+  // FONTOS: a tile-list ág a `loading && !overview` ÚTÁN visszatérő `<Loader/>`-nél
+  // ELŐBB futtatandó, hogy az első bootstrap-load alatt is a csempés UI látsszon
+  // (a WorkgroupTileListView saját maga rendel loading-state placeholder-t a
+  // `workgroups` üres és `loading=true` esetére — single source of truth).
+  if (viewMode === 'tile-list') {
+    return <WorkgroupTileListView
+      workgroups={workgroups}
+      onSelect={(idx) => { setSelectedWgIndex(idx); setViewMode('editor') }}
+      onBackToMain={() => navigate('/rates/main')}
+      onReload={() => void loadData()}
+      loading={loading}
+      error={error}
+    />
+  }
+
+  // Editor mode: a klasszikus szerkesztő UI bootstrap-betöltést vár.
   if (loading && !overview) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -448,6 +476,7 @@ export default function RateCreationPage() {
 
   const modifiedCount = rates.filter(r => r.modified).length
 
+  // ===================== Editor view =====================
   return (
     /* 2026-04-29 v2.3.13 (Árfolyamkészítés zoom-fit): a top-toolbar magassága
        9.5rem-ról 8rem-ra csökkentve, hogy 17 valuta scrollozás nélkül elférjen
@@ -463,6 +492,14 @@ export default function RateCreationPage() {
       <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded shadow-sm border mb-1">
         <div className="flex items-center gap-2">
           <h1 className="text-sm font-bold text-gray-800">{t('rates.arfolyamkeszites')}</h1>
+          {/* FK-02/03/04: vissza a csempés listanézetre — a docx kérése „visszagombbal". */}
+          <button
+            onClick={() => setViewMode('tile-list')}
+            className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium border border-blue-400 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded"
+            title="Vissza a csoport árfolyamlapok csempés listájához"
+          >
+            <ArrowLeft size={11} /> Csempés nézet
+          </button>
           {/* Spec szerint: Munkacsoport felület felső menü → MÁSIK MUNKACSOPORT (visszalépés a 0-s lapra/csoport-választóra) */}
           <button
             onClick={() => navigate('/rates/main')}
@@ -471,6 +508,14 @@ export default function RateCreationPage() {
           >
             <Home size={11} /> FŐLAP
           </button>
+          {selectedWg && (
+            <span className="text-xs text-gray-500 ml-2">
+              <span className="font-mono font-bold">{selectedWg.legacyGroupNumber ?? '—'}</span>
+              <span className="mx-1">·</span>
+              <span className="font-semibold text-gray-700">{selectedWg.name}</span>
+              <span className="ml-1 text-gray-400">({selectedWg.code})</span>
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-3 text-xs">
           {overview && (
@@ -506,33 +551,25 @@ export default function RateCreationPage() {
         {/* === RIGHT: WORKGROUP PANEL === */}
         <div className="w-64 flex-shrink-0 flex flex-col gap-1 min-h-0">
 
-          {/* Workgroup selector: 54-csempe csoport-rács (TCSOPORTDISPLAY parity, G22 sub-scope) */}
-          <div className="bg-white rounded border shadow-sm px-2 py-1.5 max-h-52 overflow-y-auto flex-shrink-0">
-            <div className="grid grid-cols-2 gap-1">
-              {workgroups.map((wg, idx) => (
-                <button
-                  key={wg.id}
-                  onClick={() => setSelectedWgIndex(idx)}
-                  title={`${wg.name} (${wg.branches.length} iroda)`}
-                  className={`flex flex-col items-start px-1.5 py-1 rounded border text-left transition-colors min-w-0 ${
-                    idx === selectedWgIndex
-                      ? 'bg-green-600 text-white border-green-700 shadow-sm'
-                      : wg.active
-                        ? 'bg-green-50 text-green-800 border-green-300 hover:bg-green-200'
-                        : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
-                  }`}
-                >
-                  <span className={`text-[8px] font-bold ${idx === selectedWgIndex ? 'text-green-200' : 'text-gray-400'}`}>
-                    {wg.legacyGroupNumber ?? (idx + 1)}
-                  </span>
-                  <span className="text-[10px] font-semibold leading-tight truncate w-full">{wg.name}</span>
-                  <span className={`text-[8px] ${idx === selectedWgIndex ? 'text-green-300' : 'text-gray-400'}`}>
-                    {wg.branches.length} iroda
-                  </span>
-                </button>
-              ))}
+          {/* FK-02/03/04 (2026-05-28): a régi 54-csempés jobb-oldali választó ELTÁVOLÍTVA.
+              A csempés listanézet (viewMode='tile-list') a teljes szélességben kezeli a
+              csoportváltást. Helyette egy „Vissza" gombbal kompakt info-kártya — utalja
+              a usert, hogy a csoportlistába visszamehet. */}
+          <button
+            onClick={() => setViewMode('tile-list')}
+            className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0 text-left hover:bg-blue-50 transition-colors"
+            title="Vissza a csoport árfolyamlapok csempés listájához"
+          >
+            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1 flex items-center gap-1">
+              <ArrowLeft size={10} /> Csempés nézet
             </div>
-          </div>
+            <div className="text-[11px] font-semibold text-gray-700 truncate">
+              {selectedWg?.name ?? '—'}
+            </div>
+            <div className="text-[10px] text-gray-500">
+              #{selectedWg?.legacyGroupNumber ?? '—'} · {selectedWg?.branches.length ?? 0} iroda
+            </div>
+          </button>
 
           {/* Aktuális függvény (FR-RFM-22) + Kitöltési segítség (FR-RFM-23) */}
           <div className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0">
@@ -666,6 +703,126 @@ export default function RateCreationPage() {
         saving={savingBranches}
         canWriteRateCreation={canWriteRateCreation}
       />
+    </div>
+  )
+}
+
+// ===================== FK-02/03/04 Tile-list view =====================
+// Csempés listanézet (a régi „bal oldali sávos" 54-csoport választó HELYETT).
+// Spec: Kasza Helga / Bali Henriett 2026-05-28 docx (FK-02 + FK-03 + FK-04).
+// - Egy csempén: sorszám, név, kód, árfolyamvédelem-checkbox a jobb felső sarokban.
+// - Egy klikk a csempére → azonnal megnyitja a csoport árfolyamlap szerkesztőt.
+// - 10 választható csempeszín (tileColor mező a backendben).
+
+const TILE_PALETTE_RCP: { key: string; tile: string }[] = [
+  { key: 'slate',  tile: 'bg-slate-100 border-slate-300 text-slate-800 hover:bg-slate-200' },
+  { key: 'red',    tile: 'bg-red-100 border-red-300 text-red-800 hover:bg-red-200' },
+  { key: 'orange', tile: 'bg-orange-100 border-orange-300 text-orange-800 hover:bg-orange-200' },
+  { key: 'amber',  tile: 'bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200' },
+  { key: 'green',  tile: 'bg-green-100 border-green-300 text-green-800 hover:bg-green-200' },
+  { key: 'teal',   tile: 'bg-teal-100 border-teal-300 text-teal-800 hover:bg-teal-200' },
+  { key: 'sky',    tile: 'bg-sky-100 border-sky-300 text-sky-800 hover:bg-sky-200' },
+  { key: 'indigo', tile: 'bg-indigo-100 border-indigo-300 text-indigo-800 hover:bg-indigo-200' },
+  { key: 'purple', tile: 'bg-purple-100 border-purple-300 text-purple-800 hover:bg-purple-200' },
+  { key: 'pink',   tile: 'bg-pink-100 border-pink-300 text-pink-800 hover:bg-pink-200' },
+]
+function tileColorClassesRcp(colorKey: string | null | undefined): string {
+  return (TILE_PALETTE_RCP.find(p => p.key === colorKey) ?? TILE_PALETTE_RCP[0]!).tile
+}
+
+interface TileListProps {
+  workgroups: WorkgroupDetailDTO[]
+  onSelect: (idx: number) => void
+  onBackToMain: () => void
+  onReload: () => void
+  loading: boolean
+  error: string | null
+}
+
+function WorkgroupTileListView({ workgroups, onSelect, onBackToMain, onReload, loading, error }: TileListProps) {
+  // FK-04/E.1 (mai PR #882): árfolyamvédelem checkbox a csempén — a tényleges
+  // toggle-flow a rateWorkgroupApi.update-en megy. A csempés nézet read-only
+  // megjelenítést ad: a flag pillanatképét mutatja. A részletes szerkesztés
+  // (átnevezés, szín, határok) a /rate-management → Munkacsoportok tab-on
+  // (WorkgroupManager) történik, hogy egyetlen forrásból menjen az írás.
+  return (
+    <div className="space-y-3">
+      {/* HEADER */}
+      <div className="flex items-center justify-between bg-white px-3 py-2 rounded shadow-sm border">
+        <div className="flex items-center gap-2">
+          <h1 className="text-base font-bold text-gray-800">Csoport árfolyamlapok</h1>
+          <span className="text-xs text-gray-500">({workgroups.length})</span>
+          <button
+            onClick={onBackToMain}
+            className="ml-2 flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium border border-orange-400 bg-orange-50 hover:bg-orange-100 text-orange-800 rounded"
+            title="Vissza a Főlap (0-s lap) elszámoló árfolyamokhoz"
+          >
+            <Home size={11} /> FŐLAP
+          </button>
+        </div>
+        <button
+          onClick={onReload}
+          disabled={loading}
+          className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
+          title="Frissítés"
+        >
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded flex items-center gap-2 text-sm">
+          <AlertTriangle size={14} /> {error}
+        </div>
+      )}
+
+      {/* CSEMPÉS GRID */}
+      {loading && workgroups.length === 0 ? (
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="animate-spin text-blue-600" size={32} />
+          <span className="ml-3 text-gray-600">Csoportok betöltése…</span>
+        </div>
+      ) : workgroups.length === 0 ? (
+        <div className="bg-white rounded shadow-sm border p-6 text-center text-gray-500">
+          Még nincs csoport árfolyamlap. Új létrehozása a Munkacsoportok kezelő felületen lehetséges.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+          {workgroups.map((wg, idx) => {
+            const protectionOn = wg.protectionEnabled ?? true
+            return (
+              <button
+                key={wg.id}
+                onClick={() => onSelect(idx)}
+                className={`text-left rounded-lg border-2 p-3 transition-shadow hover:shadow-md ${tileColorClassesRcp(wg.tileColor)}`}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="text-2xl font-bold leading-none font-mono">
+                    {String(wg.legacyGroupNumber ?? (idx + 1)).padStart(2, '0')}
+                  </div>
+                  {/* FK-04/E.1: árfolyamvédelem-jelző (read-only). A toggle a
+                      /rate-management → Munkacsoportok tab-on van — single source of truth. */}
+                  <span
+                    className={`inline-flex items-center gap-0.5 text-[10px] font-bold ${
+                      protectionOn ? 'text-green-700' : 'text-gray-400'
+                    }`}
+                    title={protectionOn ? 'Árfolyamvédelem BE — a vétel/eladás-szabály a mentésnél érvényre jut.' : 'Árfolyamvédelem KI — a mentés a szabálysértő értékekkel is engedélyezett.'}
+                  >
+                    {protectionOn ? <ShieldCheck size={12} /> : <Shield size={12} />}
+                    VÉDELEM
+                  </span>
+                </div>
+                <div className="text-sm font-semibold truncate" title={wg.name}>{wg.name}</div>
+                <div className="text-xs opacity-70 mt-0.5">
+                  <span className="font-mono">{wg.code}</span>
+                  <span className="mx-1">·</span>
+                  <span>{wg.branches.length} iroda</span>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
