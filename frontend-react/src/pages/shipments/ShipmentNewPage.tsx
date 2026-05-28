@@ -101,8 +101,11 @@ export default function ShipmentNewPage() {
 
   /**
    * D: a valuta-választás után lekérjük az aktuális elszámoló árfolyamot (officialRate).
-   * A backend nullable rate-tel toleráns (ha nincs aktív rate, a service ott nem
-   * blokkol, csak nem tölti ki); a frontend itt csak megjeleníti, ami van.
+   * Codex/Copilot P1 follow-up: a backend KÖTELEZŐEN megköveteli az érvényes rate-et —
+   * ha az ExchangeRateService.getCurrentRate hiányzó rate-et / lejárt rate-et /
+   * null officialRate-et talál, ValidationException-t dob és a create elutasítva.
+   * A frontend itt csak megjeleníti a rate-et a felhasználónak (read-only); a
+   * payload-ot NEM küldjük át (server-side authoritative).
    */
   useEffect(() => {
     if (!form.currencyId) { setAppliedRate(null); return }
