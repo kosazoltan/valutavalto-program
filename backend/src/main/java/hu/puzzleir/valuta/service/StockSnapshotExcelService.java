@@ -16,22 +16,57 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @Slf4j
 public class StockSnapshotExcelService {
 
-    // FK-003/004: a HUF (MAGYAR FORINT) MINDIG az utolsó — illeszkednie KELL a
-    // StockSnapshotService.CURRENCY_CODES sorrendjéhez (index-alapú illesztés vi szerint).
-    private static final List<String> CURRENCY_NAMES = List.of(
-            "AUSZTRÁL DOLLÁR", "BOSNYÁK MÁRKA", "BOLGÁR LEVA", "BRAZIL REÁL",
-            "KANADAI DOLLÁR", "SVÁJCI FRANK", "KÍNAI YUAN", "CSEH KORONA",
-            "DÁN KORONA", "EURÓ", "ANGOL FONT", "HORVÁT KUNA",
-            "IZRAELI SHEKEL", "JAPÁN YEN", "MEXIKÓI PESO", "NORVÉG KORONA",
-            "ÚJ-ZÉLANDI DOLLÁR", "LENGYEL ZLOTYI", "ROMÁN LEJ", "SZERB DINÁR",
-            "OROSZ RUBEL", "SVÉD KORONA", "THAI BAHT", "TÖRÖK LÍRA",
-            "UKRÁN HRIVNYA", "AMERIKAI DOLLÁR", "MAGYAR FORINT"
+    // FK-006 follow-up: a valutakód-lista a snapshot DTO sorrendjét követi (az pedig a központi
+    // valutanem-törzset, lásd StockSnapshotService.resolveCurrencyCodes). A megjelenítendő magyar
+    // név kódról kulcsolva — ismeretlen leftover kód esetén magát a kódot mutatjuk (defensive).
+    private static final Map<String, String> CURRENCY_NAMES = Map.ofEntries(
+            Map.entry("AUD", "AUSZTRÁL DOLLÁR"),
+            Map.entry("BAM", "BOSNYÁK MÁRKA"),
+            Map.entry("BGN", "BOLGÁR LEVA"),
+            Map.entry("BRL", "BRAZIL REÁL"),
+            Map.entry("CAD", "KANADAI DOLLÁR"),
+            Map.entry("CHF", "SVÁJCI FRANK"),
+            Map.entry("CNY", "KÍNAI YUAN"),
+            Map.entry("CZK", "CSEH KORONA"),
+            Map.entry("DKK", "DÁN KORONA"),
+            Map.entry("EUR", "EURÓ"),
+            Map.entry("GBP", "ANGOL FONT"),
+            Map.entry("HRK", "HORVÁT KUNA"),
+            Map.entry("ILS", "IZRAELI SHEKEL"),
+            Map.entry("JPY", "JAPÁN YEN"),
+            Map.entry("MXN", "MEXIKÓI PESO"),
+            Map.entry("NOK", "NORVÉG KORONA"),
+            Map.entry("NZD", "ÚJ-ZÉLANDI DOLLÁR"),
+            Map.entry("PLN", "LENGYEL ZLOTYI"),
+            Map.entry("RON", "ROMÁN LEJ"),
+            Map.entry("RSD", "SZERB DINÁR"),
+            Map.entry("RUB", "OROSZ RUBEL"),
+            Map.entry("SEK", "SVÉD KORONA"),
+            Map.entry("THB", "THAI BAHT"),
+            Map.entry("TRY", "TÖRÖK LÍRA"),
+            Map.entry("UAH", "UKRÁN HRIVNYA"),
+            Map.entry("USD", "AMERIKAI DOLLÁR"),
+            Map.entry("HUF", "MAGYAR FORINT")
     );
+
+    /** A totals DTO sorrendjéből vett kódlista — a snapshot szolgáltatás az igazságforrás. */
+    private static List<String> extractCodes(BranchStockTotalsDto totals) {
+        if (totals == null || totals.getCurrencies() == null) return List.of();
+        return totals.getCurrencies().stream()
+                .map(CurrencyStockDetailDto::getCurrencyCode)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    private static String currencyNameOf(String code) {
+        return CURRENCY_NAMES.getOrDefault(code, code != null ? code : "");
+    }
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy.MM.dd");
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
@@ -247,9 +282,10 @@ public class StockSnapshotExcelService {
             }
         }
 
-        // Rows 7-33 (index 7-33): 27 currencies
-        List<String> codes = StockSnapshotService.CURRENCY_CODES;
+        // FK-006: a valutakód-sorrend a snapshot szolgáltatástól jön (aktív törzs + leftover);
+        // a sorszám dinamikus, nincs fix 27-soros sablon.
         BranchStockTotalsDto totals = region.getTotals();
+        List<String> codes = extractCodes(totals);
 
         for (int vi = 0; vi < codes.size(); vi++) {
             int rowIdx = 7 + vi;
@@ -260,7 +296,7 @@ public class StockSnapshotExcelService {
             codeCell.setCellStyle(currencyCodeStyle);
 
             Cell nameCell = row.createCell(1);
-            nameCell.setCellValue(CURRENCY_NAMES.get(vi));
+            nameCell.setCellValue(currencyNameOf(codes.get(vi)));
             nameCell.setCellStyle(currencyNameStyle);
 
             // Per-branch data
@@ -338,7 +374,7 @@ public class StockSnapshotExcelService {
             codeCell.setCellStyle(currencyCodeStyle);
 
             Cell nameCell = qtyRow.createCell(1);
-            nameCell.setCellValue(CURRENCY_NAMES.get(vi));
+            nameCell.setCellValue(currencyNameOf(codes.get(vi)));
             nameCell.setCellStyle(currencyNameStyle);
 
             for (int bi = 0; bi < branchCount; bi++) {
@@ -428,9 +464,9 @@ public class StockSnapshotExcelService {
         totValueHeader.setCellValue("ÉRTÉK(Ft)");
         totValueHeader.setCellStyle(headerStyle);
 
-        // Rows 7-33: currencies (using region totals)
-        List<String> codes = StockSnapshotService.CURRENCY_CODES;
+        // FK-006: a kódlista a cég-szintű totals-ból (a snapshot szolgáltatás az igazságforrás).
         BranchStockTotalsDto companyTotals = snapshot.getCompanyTotals();
+        List<String> codes = extractCodes(companyTotals);
 
         for (int vi = 0; vi < codes.size(); vi++) {
             int rowIdx = 7 + vi;
@@ -441,7 +477,7 @@ public class StockSnapshotExcelService {
             codeCell.setCellStyle(currencyCodeStyle);
 
             Cell nameCell = row.createCell(1);
-            nameCell.setCellValue(CURRENCY_NAMES.get(vi));
+            nameCell.setCellValue(currencyNameOf(codes.get(vi)));
             nameCell.setCellStyle(currencyNameStyle);
 
             for (int ri = 0; ri < regionCount; ri++) {
@@ -511,7 +547,7 @@ public class StockSnapshotExcelService {
             codeCell.setCellValue(codes.get(vi));
             codeCell.setCellStyle(currencyCodeStyle);
             Cell nameCell = qtyRow.createCell(1);
-            nameCell.setCellValue(CURRENCY_NAMES.get(vi));
+            nameCell.setCellValue(currencyNameOf(codes.get(vi)));
             nameCell.setCellStyle(currencyNameStyle);
 
             for (int ri = 0; ri < regionCount; ri++) {

@@ -18,6 +18,18 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class StockSnapshotExcelServiceTest {
 
+    // FK-006 follow-up: a snapshot DTO most a központi valutanem-törzs sorrendjét hordozza
+    // (StockSnapshotService.resolveCurrencyCodes). A teszt-fixture-höz egy stabil, a korábbi
+    // FK-003/004 sorrendű 27-elemű lista — a teszt kifejezetten azt méri, hogy az Excel
+    // dinamikusan, a megkapott DTO sorrendjére épít, függetlenül a service belső kódlistájától.
+    private static final List<String> TEST_CURRENCY_CODES = List.of(
+            "AUD", "BAM", "BGN", "BRL", "CAD", "CHF",
+            "CNY", "CZK", "DKK", "EUR", "GBP", "HRK",
+            "ILS", "JPY", "MXN", "NOK", "NZD", "PLN",
+            "RON", "RSD", "RUB", "SEK", "THB", "TRY",
+            "UAH", "USD", "HUF"
+    );
+
     private StockSnapshotExcelService service;
 
     @BeforeEach
@@ -238,8 +250,8 @@ class StockSnapshotExcelServiceTest {
 
     private StockSnapshotDto buildSnapshotWithData() {
         List<CurrencyStockDetailDto> currencies = new ArrayList<>();
-        for (int i = 0; i < StockSnapshotService.CURRENCY_CODES.size(); i++) {
-            String code = StockSnapshotService.CURRENCY_CODES.get(i);
+        for (int i = 0; i < TEST_CURRENCY_CODES.size(); i++) {
+            String code = TEST_CURRENCY_CODES.get(i);
             long baseStock = (i + 1) * 100L;
             long baseStockHuf = baseStock * 360;
             currencies.add(CurrencyStockDetailDto.builder()
@@ -284,7 +296,7 @@ class StockSnapshotExcelServiceTest {
     }
 
     private BranchSnapshotDto createBranch(String name) {
-        List<CurrencyStockDetailDto> currencies = StockSnapshotService.CURRENCY_CODES.stream()
+        List<CurrencyStockDetailDto> currencies = TEST_CURRENCY_CODES.stream()
                 .map(code -> CurrencyStockDetailDto.builder().currencyCode(code).build())
                 .toList();
 
@@ -300,7 +312,7 @@ class StockSnapshotExcelServiceTest {
     }
 
     private BranchStockTotalsDto aggregateTotals(List<BranchSnapshotDto> branches) {
-        List<String> codes = StockSnapshotService.CURRENCY_CODES;
+        List<String> codes = TEST_CURRENCY_CODES;
         List<CurrencyStockDetailDto> totalCurrencies = new ArrayList<>();
 
         for (int i = 0; i < codes.size(); i++) {
@@ -343,7 +355,7 @@ class StockSnapshotExcelServiceTest {
 
     private BranchStockTotalsDto createEmptyTotals() {
         return BranchStockTotalsDto.builder()
-                .currencies(StockSnapshotService.CURRENCY_CODES.stream()
+                .currencies(TEST_CURRENCY_CODES.stream()
                         .map(code -> CurrencyStockDetailDto.builder().currencyCode(code).build())
                         .toList())
                 .wuBalance(WuBalanceDetailDto.builder().build())
