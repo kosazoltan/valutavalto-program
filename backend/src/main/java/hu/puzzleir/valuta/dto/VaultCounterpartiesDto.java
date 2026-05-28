@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,9 +29,12 @@ import java.util.List;
 @Builder
 public class VaultCounterpartiesDto {
     /** Saját régió aktív lakossági pénztárai (értéktáros user perspektívájából). */
-    private List<BranchDto> territorialCashiers;
+    @Builder.Default
+    private List<BranchDto> territorialCashiers = new ArrayList<>();
     /** A cég többi értéktára (a saját kivételével). */
-    private List<BranchDto> peerVaults;
+    @Builder.Default
+    private List<BranchDto> peerVaults = new ArrayList<>();
     /** A 10 fix banki és speciális partner (cégenként 1 példány). */
-    private List<BranchDto> fixedCounterparties;
+    @Builder.Default
+    private List<BranchDto> fixedCounterparties = new ArrayList<>();
 }
