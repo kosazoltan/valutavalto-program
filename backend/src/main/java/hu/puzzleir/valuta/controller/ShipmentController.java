@@ -16,12 +16,19 @@ import java.util.UUID;
 
 /**
  * Szállítmánykérés controller.
- * Fiókok közötti valuta szállítmány igénylés kezelése.
+ * Fiókok közötti valuta szállítmány igénylés (Átadás-átvétel pénztáraknak) kezelése.
+ *
+ * <p><b>P0 fix (2026-05-28, Bali Henriett visszajelzés):</b> az olvasó végpontok a magyar
+ * szerepkör-nevezéktanra (ERTEKTAR, FOERTEKTAR, PENZTAR, UGYVEZETO) is engedélyezettek
+ * — értéktáros felhasználók addig 403-at kaptak, ami a frontenden hibás 500-ként
+ * jelent meg ("Request failed with status code 500"). Az írás-szigorúság (approve)
+ * marad SUPERVISOR/MANAGER/ADMIN szinten, kiegészítve FŐÉRTÉKTÁR/ÜGYVEZETŐ-vel.</p>
  */
 @RestController
 @RequestMapping("/api/v1/shipments")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', "
+        + "'PENZTAR', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
 public class ShipmentController {
 
     private final ShipmentService shipmentService;
@@ -81,7 +88,7 @@ public class ShipmentController {
      * POST /api/v1/shipments/{id}/approve
      */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<ShipmentRequest> approve(@PathVariable UUID id) {
         return ResponseEntity.ok(shipmentService.approve(id));
     }
