@@ -1,0 +1,65 @@
+package hu.puzzleir.valuta.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * Bali Henriett FK-013 / 2. pont (2026-05-27): minimális adatlap egy új lakossági
+ * pénztár felrögzítéséhez egy értéktáros vagy főértéktáros által.
+ *
+ * <p>A standard {@link CreateBranchDto} túl sok kötelező mezőt vár (bankCode,
+ * branchTypeId, countryId, branchStatusId, openingDate, denominationRuleId) — ezeket
+ * egy értéktáros nem tudja megadni. A backend service ezeket automatikusan kitölti
+ * sensible default-okkal (HU ország, PENZTAR branch_type, ACTIVE branch_status,
+ * mai nyitásdátum, bankCode = code).</p>
+ *
+ * <p>Kötelező a területi besorolás: a {@code regionCode} a {@code dictionary}
+ * kategória {@code REGION} egy aktív kódja (pl. SZEGED, KECSKEMET, DEBRECEN). Ez
+ * teszi lehetővé, hogy az új pénztár automatikusan megjelenjen a megfelelő
+ * értéktár területi szűrt listájában (FK-005/B4).</p>
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class CreateSimpleCashierBranchDto {
+
+    @NotBlank(message = "A pénztár száma / azonosítója kötelező")
+    @Size(min = 1, max = 20, message = "A kód hossza 1-20 karakter lehet")
+    @Pattern(regexp = "^[A-Z0-9]+$", message = "A kód csak nagybetűket és számokat tartalmazhat (pl. BR099)")
+    private String code;
+
+    /** Opcionális megjelenítendő név. Ha üres, a service code-ból generál ("Pénztár <code>"). */
+    @Size(max = 255, message = "A név max 255 karakter")
+    private String name;
+
+    @NotBlank(message = "A pénztár pontos címe kötelező")
+    @Size(min = 5, max = 500, message = "A cím legalább 5, legfeljebb 500 karakter")
+    private String address;
+
+    /** Opcionális város. Ha üres, a service a regionCode-ból tölti ki (pl. "SZEGED" → "Szeged"). */
+    @Size(max = 100, message = "A város max 100 karakter")
+    private String city;
+
+    /**
+     * Opcionális irányítószám (4 számjegy). Ha üres, a service üres értéket ment, mert
+     * a Branch entity nullable zipCode-ot tűr (post-create szerkesztésnél kitölthető).
+     */
+    @Pattern(regexp = "^(\\d{4})?$", message = "Az irányítószám 4 számjegyből áll, vagy üres")
+    private String zipCode;
+
+    /**
+     * Kötelező területi besorolás: a {@code dictionary} kategória {@code REGION}
+     * egy aktív {@code code}-ja (pl. SZEGED, KECSKEMET, DEBRECEN, PECS, KAPOSVAR,
+     * NYIREGYHAZA, BEKESCSABA, SZEKSZARD, IRODA). A {@link Branch#regionCode}
+     * mezőbe kerül — ez vezérli a területi szűrést.
+     */
+    @NotBlank(message = "A területi (régiós) hozzárendelés kötelező")
+    @Pattern(regexp = "^[A-Z_]+$", message = "A régió kód csak nagybetűk és aláhúzás (pl. SZEGED)")
+    private String regionCode;
+}

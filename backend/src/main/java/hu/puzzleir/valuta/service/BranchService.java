@@ -15,6 +15,8 @@ import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -303,6 +305,99 @@ public class BranchService {
         }
 
         return branchMapper.toDto(saved);
+    }
+
+    /**
+     * Bali Henriett 2. pont (2026-05-27) — egyszerűsített lakossági pénztár-felrögzítés
+     * értéktáros / főértéktáros által. Csak 3 kötelező mezőt vár (code, address, regionCode);
+     * a többi mezőt (bankCode, branchType, country, branchStatus, openingDate) automatikusan
+     * sensible default-okkal tölti ki (HU/PENZTAR/ACTIVE/today). A multi-tenant scope
+     * KÖTELEZŐEN a jelenlegi felhasználó cége — a dto NEM tartalmaz companyId-t.
+     */
+    public BranchDto createSimpleCashier(hu.puzzleir.valuta.dto.CreateSimpleCashierBranchDto dto) {
+        log.info("Creating simple cashier branch with code: {}", dto.getCode());
+
+        validateBranchCode(dto.getCode());
+
+        // Régió validáció: a regionCode kell, hogy létezzen aktív REGION dictionary entry-ként.
+        Dictionary region = dictionaryRepository.findByCategoryAndCode("REGION", dto.getRegionCode())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Ismeretlen régió kód: " + dto.getRegionCode()
+                                + " (a Beállítások → Törzsadatok → Régiók listából válasszon)"));
+
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cég nem található: " + companyId));
+
+        // Default master-dictionary lookup
+        Dictionary penztarType = dictionaryRepository.findByCategoryAndCode("BRANCH_TYPE", "PENZTAR")
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Hiányzó dictionary entry: BRANCH_TYPE/PENZTAR (rendszer adat)"));
+        Dictionary huCountry = dictionaryRepository.findByCategoryAndCode("COUNTRY", "HU")
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Hiányzó dictionary entry: COUNTRY/HU (rendszer adat)"));
+        Dictionary activeStatus = dictionaryRepository.findByCategoryAndCode("BRANCH_STATUS", "ACTIVE")
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Hiányzó dictionary entry: BRANCH_STATUS/ACTIVE (rendszer adat)"));
+
+        String name = (dto.getName() != null && !dto.getName().isBlank())
+                ? dto.getName().trim()
+                : "Pénztár " + dto.getCode();
+        // A város default-ja a régió kód name_hu-jából (pl. SZEGED → "Szeged"), ha a kliens üresen hagyta.
+        String city = (dto.getCity() != null && !dto.getCity().isBlank())
+                ? dto.getCity().trim()
+                : (region.getNameHu() != null && !region.getNameHu().isBlank()
+                        ? region.getNameHu()
+                        : capitalize(dto.getRegionCode()));
+        String zipCode = (dto.getZipCode() != null && !dto.getZipCode().isBlank())
+                ? dto.getZipCode().trim()
+                : null;
+
+        Branch branch = Branch.builder()
+                .code(dto.getCode())
+                .company(company)
+                .bankCode(dto.getCode())             // default: bankCode == code (kézzel szerkeszthető később)
+                .branchType(penztarType)
+                .name(name)
+                .address(dto.getAddress().trim())
+                .city(city)
+                .zipCode(zipCode)
+                .country(huCountry)
+                .branchStatus(activeStatus)
+                .openingDate(LocalDate.now())
+                .regionCode(dto.getRegionCode())     // ← a területi szűrés kulcsa (FK-005/B4)
+                .isActive(true)
+                .isVault(false)                       // lakossági pénztár, NEM értéktár
+                .build();
+
+        Branch saved = branchRepository.save(branch);
+        log.info("Simple cashier branch created: {} (code={}, region={})",
+                saved.getId(), saved.getCode(), saved.getRegionCode());
+
+        // Cash balance + denomination auto-init (mint a standard create()-ben). Idempotens.
+        try {
+            int created = cashBalanceService.initializeBranchBalances(saved.getId());
+            log.info("Branch {} cash_balance auto-init: {} új rekord", saved.getId(), created);
+        } catch (RuntimeException e) {
+            log.error("Branch {} cash_balance auto-init FAILED [{}: {}] (admin kézi init szükséges)",
+                    saved.getId(), e.getClass().getSimpleName(), e.getMessage(), e);
+        }
+        try {
+            denominationService.initializeBranchDenominations(saved.getId());
+            log.info("Branch {} denomination auto-init: 14 HUF + külföldi címlet beállítva",
+                    saved.getId());
+        } catch (RuntimeException e) {
+            log.error("Branch {} denomination auto-init FAILED [{}: {}] (admin kézi init szükséges)",
+                    saved.getId(), e.getClass().getSimpleName(), e.getMessage(), e);
+        }
+
+        return branchMapper.toDto(saved);
+    }
+
+    /** Capitalize a string ("SZEGED" → "Szeged"). Null-safe. */
+    private static String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1).toLowerCase();
     }
 
     /**

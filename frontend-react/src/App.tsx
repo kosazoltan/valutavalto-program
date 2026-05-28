@@ -72,6 +72,7 @@ const RepresentativeCreatePage = lazy(() => import('./pages/representatives/Repr
 const RepresentativeDetailPage = lazy(() => import('./pages/representatives/RepresentativeDetailPage'))
 const ShipmentListPage = lazy(() => import('./pages/shipments/ShipmentListPage'))
 const ShipmentNewPage = lazy(() => import('./pages/shipments/ShipmentNewPage'))
+const NewCashierBranchPage = lazy(() => import('./pages/branches/NewCashierBranchPage'))
 const WorkerCommissionPage = lazy(() => import('./pages/commissions/WorkerCommissionPage'))
 const WorkstationPage = lazy(() => import('./pages/workstations/WorkstationPage'))
 const ContributionPage = lazy(() => import('./pages/contributions/ContributionPage'))
@@ -503,6 +504,11 @@ export default function App() {
           {/* Shipments */}
           <Route path="/shipments" element={<ShipmentListPage />} />
           <Route path="/shipments/new" element={<ShipmentNewPage />} />
+
+          {/* Bali Henriett 2. pont (2026-05-27): manuális lakossági pénztár-felrögzítés
+              értéktáros által (terület-hozzárendeléssel, hogy a területi szűrt listákban
+              automatikusan megjelenjen). */}
+          <Route path="/branches/new-cashier" element={<NewCashierBranchPage />} />
 
           {/* Transfers */}
           <Route path="/transfers" element={<TransferPage />} />

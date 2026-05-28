@@ -86,6 +86,8 @@ export const menuGroups: MenuGroup[] = [
       { path: "/transit", label: "Úton lévő csomagok", icon: ArrowLeftRight },
       { path: "/inventory", label: "Értéktári készlet", icon: Wallet },
       { path: "/cashier-stocks", label: "Pénztári készletek", icon: Wallet },
+      // Bali Henriett 2. pont (2026-05-27): manuális pénztár-felrögzítés értéktáros által.
+      { path: "/branches/new-cashier", label: "Új pénztár felrögzítése", icon: Building2 },
       { path: "/daybook", label: "Naplókönyv", icon: FileText },
       { path: "/evening-closing", label: "Napi zárás", icon: FileText },
       { path: "/closing/monthly", label: "Havi zárás", icon: FileText },
