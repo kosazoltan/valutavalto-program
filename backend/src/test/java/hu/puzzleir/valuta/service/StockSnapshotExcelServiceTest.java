@@ -117,7 +117,7 @@ class StockSnapshotExcelServiceTest {
             // Title row
             Row titleRow = summary.getRow(1);
             assertNotNull(titleRow);
-            assertEquals("EXCLUSIVE CHANGE KÉSZLETEI ÉS FORGALMA",
+            assertEquals("EXCLUSIVE BEST CHANGE ZRT. KÉSZLETEI ÉS FORGALMA",
                     titleRow.getCell(0).getStringCellValue());
         }
     }

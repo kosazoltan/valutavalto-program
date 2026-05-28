@@ -438,7 +438,8 @@ public class StockSnapshotExcelService {
         // Row 1 (index 1): Title
         Row titleRow = getOrCreateRow(sheet, 1);
         Cell titleCell = titleRow.createCell(0);
-        titleCell.setCellValue("EXCLUSIVE CHANGE KÉSZLETEI ÉS FORGALMA");
+        // FK-003 spec (Kasza Helga): az Összesítő lap A2 címe a teljes cégnév legyen.
+        titleCell.setCellValue("EXCLUSIVE BEST CHANGE ZRT. KÉSZLETEI ÉS FORGALMA");
         titleCell.setCellStyle(titleStyle);
         sheet.addMergedRegion(new CellRangeAddress(1, 1, 0, 7));
 
