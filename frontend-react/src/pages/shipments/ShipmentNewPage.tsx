@@ -37,9 +37,16 @@ export default function ShipmentNewPage() {
     ? 'Új készpénz ÁTVÉTEL (Pénztárból az Értéktárba)'
     : t('shipments.ujSzallitmanyigeny')
   const worker = useAuthStore((state) => state.worker)
+  /**
+   * Bali Henriett kérés B.: a saját értéktár mindig a tranzakció egyik szereplője.
+   *  - outbound (ÁTADÁS): Kérő iroda = saját értéktár → fromBranchId előtöltve, locked.
+   *  - inbound  (ÁTVÉTEL): Cél iroda = saját értéktár → toBranchId előtöltve, locked.
+   *  - null (régi univerzális): semmi nincs zárolva.
+   */
+  const ownBranchId = worker?.branchId ?? ''
   const [form, setForm] = useState<FormState>({
-    fromBranchId: worker?.branchId ?? '',
-    toBranchId: '',
+    fromBranchId: direction === 'outbound' || direction === null ? ownBranchId : '',
+    toBranchId: direction === 'inbound' ? ownBranchId : '',
     deliveryDate: '',
     currencyId: '',
     amount: '',
@@ -53,8 +60,15 @@ export default function ShipmentNewPage() {
   const disabled = loading || saving
 
   useEffect(() => {
-    setForm((current) => current.fromBranchId ? current : { ...current, fromBranchId: worker?.branchId ?? '' })
-  }, [worker?.branchId])
+    // Worker-betöltés után a saját értéktár-id pótlása az irány által megszabott oldalon.
+    if (!ownBranchId) return
+    setForm((current) => {
+      if (direction === 'outbound' && !current.fromBranchId) return { ...current, fromBranchId: ownBranchId }
+      if (direction === 'inbound' && !current.toBranchId) return { ...current, toBranchId: ownBranchId }
+      if (direction === null && !current.fromBranchId) return { ...current, fromBranchId: ownBranchId } // legacy default
+      return current
+    })
+  }, [ownBranchId, direction])
 
   useEffect(() => {
     let active = true
@@ -130,15 +144,29 @@ export default function ShipmentNewPage() {
       <form onSubmit={submit} className="form-panel space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="block">
-            <span className="form-label">Kérő iroda</span>
-            <select className="form-input" value={form.fromBranchId} disabled={disabled} onChange={(e) => patch({ fromBranchId: e.target.value })}>
+            <span className="form-label">
+              Kérő iroda{direction === 'outbound' && <span className="ml-1 text-xs text-gray-500">(automatikus — Ön értéktára)</span>}
+            </span>
+            <select
+              className={`form-input ${direction === 'outbound' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              value={form.fromBranchId}
+              disabled={disabled || direction === 'outbound'}
+              onChange={(e) => patch({ fromBranchId: e.target.value })}
+            >
               <option value="">Válasszon irodát</option>
               {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} - {branch.name}</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="form-label">Cél iroda</span>
-            <select className="form-input" value={form.toBranchId} disabled={disabled} onChange={(e) => patch({ toBranchId: e.target.value })}>
+            <span className="form-label">
+              Cél iroda{direction === 'inbound' && <span className="ml-1 text-xs text-gray-500">(automatikus — Ön értéktára)</span>}
+            </span>
+            <select
+              className={`form-input ${direction === 'inbound' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              value={form.toBranchId}
+              disabled={disabled || direction === 'inbound'}
+              onChange={(e) => patch({ toBranchId: e.target.value })}
+            >
               <option value="">Válasszon cél irodát</option>
               {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} - {branch.name}</option>)}
             </select>
