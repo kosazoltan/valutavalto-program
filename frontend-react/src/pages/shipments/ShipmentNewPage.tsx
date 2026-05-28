@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState, useMemo, type FormEvent } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertCircle, ArrowLeft, Package, Send } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { branchApi, currencyApi, shipmentRequestApi, type BranchInfo, type Currency } from '../../services/api/index'
@@ -19,6 +19,23 @@ type FormState = {
 export default function ShipmentNewPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  /**
+   * Bali Henriett (2026-05-27) kérés A.: ÁTADÁS és ÁTVÉTEL teljesen elkülönülve.
+   *  - `outbound` = Értéktárból a Pénztárnak (a B+C PR lezárja a Kérő iroda mezőt
+   *    a saját értéktárra).
+   *  - `inbound`  = Pénztárból az Értéktárba (a Cél iroda zárul a saját értéktárra).
+   * Visszafelé-kompatibilis: paraméter nélkül a régi univerzális űrlap fut.
+   */
+  const direction = useMemo<'outbound' | 'inbound' | null>(() => {
+    const d = searchParams.get('direction')
+    return d === 'outbound' || d === 'inbound' ? d : null
+  }, [searchParams])
+  const directionTitle = direction === 'outbound'
+    ? 'Új készpénz ÁTADÁS (Értéktárból a Pénztárnak)'
+    : direction === 'inbound'
+    ? 'Új készpénz ÁTVÉTEL (Pénztárból az Értéktárba)'
+    : t('shipments.ujSzallitmanyigeny')
   const worker = useAuthStore((state) => state.worker)
   const [form, setForm] = useState<FormState>({
     fromBranchId: worker?.branchId ?? '',
@@ -97,7 +114,7 @@ export default function ShipmentNewPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="flex items-center gap-2 text-xl font-bold text-gray-800">
-          <Package />{t('shipments.ujSzallitmanyigeny')}
+          <Package />{directionTitle}
         </h1>
         <button onClick={() => navigate('/shipments')} className="form-button flex items-center gap-2">
           <ArrowLeft size={16} />{t('shipments.visszaAListahoz')}
