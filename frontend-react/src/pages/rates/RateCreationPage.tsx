@@ -16,7 +16,38 @@ import RateGrid from './components/RateGrid'
 import BranchPickerModal from './components/BranchPickerModal'
 import { fmtRate, parseNum, type EditableRate } from './types'
 import { currentFunctionCode, fillDownLimitBands, clearLimitBands } from './fillHelpers'
+import { validateWorkgroupProtection, workgroupProtectionLabel, type ProtectionRow } from './workgroupProtection'
+import { isFormula, type WgValues } from './workgroupSheetFormula'
+import {
+  recomputeWorkgroupSheet,
+  FIELD_TO_WGCOL,
+  type WgField,
+  type WgComputeRow,
+} from './workgroupSheetCompute'
+import {
+  loadSheet0ByCurrency,
+  loadAllGroupValueSnapshots,
+  loadGroupFormulas,
+  saveGroupFormulas,
+  saveGroupValueSnapshot,
+} from './workgroupSheetStorage'
 import { useTranslation } from 'react-i18next'
+
+/** FK-04/C: a 8 képletezhető string-mező (J=officialRate read-only auto, K=ISO kód kihagyva). */
+const WG_STRING_FIELDS: Exclude<WgField, 'officialRate'>[] = [
+  'buyRate', 'sellRate',
+  'limit1BuyRate', 'limit1SellRate',
+  'limit2BuyRate', 'limit2SellRate',
+  'limit3BuyRate', 'limit3SellRate',
+]
+
+/** EditableRate string-mező → szám (üres → null), a képlet-motor numerikus inputjához. */
+function numOrNull(s: string): number | null {
+  const t = s.trim()
+  if (t === '') return null
+  const n = parseFloat(t.replace(',', '.'))
+  return Number.isFinite(n) ? n : null
+}
 
 // ===================== Main Component =====================
 
@@ -45,6 +76,19 @@ export default function RateCreationPage() {
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // FK-04/C képletezés: felhasználói képletek (kulcs `${currencyId}.${field}`) csoportonként,
+  // a kiszámolt cellánkénti hibák, és a 0-s lap / kereszt-csoport hivatkozás-kontextus.
+  const [formulas, setFormulas] = useState<Record<string, string>>({})
+  const [cellErrors, setCellErrors] = useState<Record<string, string>>({})
+  // A 0-s lap (A–I) + más csoportok J–S pillanatképei localStorage-ból; ref, hogy a recompute
+  // effekt függőség-listája stabil maradjon (a Map-eket csoport-nyitáskor frissítjük).
+  const sheetCtxRef = useRef<{
+    sheet0ByCurrency: Map<string, ReturnType<typeof loadSheet0ByCurrency> extends Map<string, infer V> ? V : never>
+    otherGroupsByCurrency: Map<number, Map<string, WgValues>>
+  }>({ sheet0ByCurrency: new Map(), otherGroupsByCurrency: new Map() })
+  // Védi a recompute setRates-ét a végtelen effekt-loop ellen (0-s lap minta).
+  const recomputeGuardRef = useRef(false)
+
   // Limit editing state
   const [editLimits, setEditLimits] = useState<{ l1: string; l2: string; l3: string }>({ l1: '', l2: '', l3: '' })
   const [limitsModified, setLimitsModified] = useState(false)
@@ -72,6 +116,103 @@ export default function RateCreationPage() {
   // Only re-sync limit inputs when the selected workgroup identity changes
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: sync only on WG id change, not on every selectedWg reference
   }, [selectedWg?.id])
+
+  // FK-04/C: csoport-nyitáskor betöltjük a csoport képleteit + a hivatkozás-kontextust
+  // (0-s lap A–I a localStorage-ból, más csoportok J–S pillanatképei a `#NN`-hez).
+  useEffect(() => {
+    if (!selectedWg) {
+      setFormulas({})
+      setCellErrors({})
+      return
+    }
+    sheetCtxRef.current = {
+      sheet0ByCurrency: loadSheet0ByCurrency(),
+      otherGroupsByCurrency: loadAllGroupValueSnapshots(),
+    }
+    setFormulas(loadGroupFormulas(selectedWg.id))
+    setCellErrors({})
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- csak a csoport-id váltáskor töltünk újra
+  }, [selectedWg?.id])
+
+  // FK-04/C: a csoport képleteinek perzisztálása minden változáskor (localStorage, csoportonként).
+  useEffect(() => {
+    if (selectedWg) saveGroupFormulas(selectedWg.id, formulas)
+  }, [formulas, selectedWg])
+
+  // FK-04/C reaktív újraszámítás: a képlet-cellákat feloldja és visszaírja a `rates`
+  // string-mezőkbe (a fix cellák változatlanok). Jacobi-fixpont + ciklus-védelem a
+  // workgroupSheetCompute-ban; a guard-ref akadályozza a saját setRates-loopot.
+  useEffect(() => {
+    if (recomputeGuardRef.current) { recomputeGuardRef.current = false; return }
+    if (Object.keys(formulas).length === 0) {
+      if (Object.keys(cellErrors).length > 0) setCellErrors({})
+      return
+    }
+    const computeRows: WgComputeRow[] = rates.map((r) => ({
+      currencyId: r.currencyId,
+      currencyCode: r.currencyCode,
+      values: {
+        officialRate: r.officialRate,
+        buyRate: numOrNull(r.buyRate),
+        sellRate: numOrNull(r.sellRate),
+        limit1BuyRate: numOrNull(r.limit1BuyRate),
+        limit1SellRate: numOrNull(r.limit1SellRate),
+        limit2BuyRate: numOrNull(r.limit2BuyRate),
+        limit2SellRate: numOrNull(r.limit2SellRate),
+        limit3BuyRate: numOrNull(r.limit3BuyRate),
+        limit3SellRate: numOrNull(r.limit3SellRate),
+      },
+    }))
+    const result = recomputeWorkgroupSheet({
+      rows: computeRows,
+      formulas,
+      sheet0ByCurrency: sheetCtxRef.current.sheet0ByCurrency,
+      otherGroupsByCurrency: sheetCtxRef.current.otherGroupsByCurrency,
+    })
+    setCellErrors(result.errors)
+    if (result.diverged) {
+      logger.warn('RateCreationPage', 'Munkacsoport-lap képlet-újraszámítás nem konvergált (körhivatkozás-gyanú) — a részeredményt elvetjük')
+      return
+    }
+
+    // A számított értékeket VISSZAÍRJUK a string-mezőkbe (csak a képlet-cellákat).
+    let changedOverall = false
+    const next = rates.map((r, i) => {
+      let nr = r
+      for (const field of WG_STRING_FIELDS) {
+        if (!formulas[`${r.currencyId}.${field}`]) continue
+        const val = result.rows[i]!.values[field]
+        const str = val == null ? '' : fmtRate(val)
+        if (nr[field] !== str) {
+          if (nr === r) nr = { ...r }
+          nr[field] = str
+          changedOverall = true
+        }
+      }
+      return nr
+    })
+
+    // #NN kereszt-hivatkozáshoz: a csoport számított J–S pillanatképét perzisztáljuk.
+    if (selectedWg?.legacyGroupNumber != null) {
+      const byCurrency = new Map<string, WgValues>()
+      result.rows.forEach((row) => {
+        const wgv: WgValues = {}
+        for (const field of Object.keys(FIELD_TO_WGCOL) as WgField[]) {
+          const v = row.values[field]
+          if (v != null) wgv[FIELD_TO_WGCOL[field]] = v
+        }
+        byCurrency.set(row.currencyCode.toUpperCase(), wgv)
+      })
+      saveGroupValueSnapshot(selectedWg.legacyGroupNumber, byCurrency)
+    }
+
+    if (changedOverall) {
+      recomputeGuardRef.current = true
+      setRates(next)
+    }
+  // cellErrors szándékosan kihagyva: csak rates/formulas változásra számolunk újra
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rates, formulas, selectedWg?.legacyGroupNumber])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -167,6 +308,32 @@ export default function RateCreationPage() {
       return updated
     })
   }
+
+  /**
+   * FK-04/C cella-commit (a RateGrid blur/Enter-kor hívja). Ha az input KÉPLET
+   * (nem tiszta szám), a képlet-stringet tároljuk (a számított érték a recompute-ból
+   * jön); ha fix szám/üres, töröljük az esetleges képletet és a nyers értéket írjuk be.
+   */
+  const commitWorkgroupCell = useCallback((index: number, field: WgField, raw: string) => {
+    if (!canWriteRateCreation) return
+    const r = rates[index]
+    if (!r) return
+    const key = `${r.currencyId}.${field}`
+    const trimmed = raw.trim()
+    pushUndo()
+    if (isFormula(trimmed)) {
+      setFormulas(prev => (prev[key] === trimmed ? prev : { ...prev, [key]: trimmed }))
+      setRates(prev => prev.map((x, i) => (i === index ? { ...x, modified: true } : x)))
+    } else {
+      setFormulas(prev => {
+        if (!prev[key]) return prev
+        const copy = { ...prev }
+        delete copy[key]
+        return copy
+      })
+      setRates(prev => prev.map((x, i) => (i === index ? { ...x, [field]: trimmed, modified: true } : x)))
+    }
+  }, [canWriteRateCreation, rates, pushUndo])
 
   // ===================== Limit save =====================
 
@@ -345,6 +512,37 @@ export default function RateCreationPage() {
       const sell = parseNum(r.sellRate)
       if (buy >= sell) {
         toast.error('Hibás árfolyam', `${r.currencyCode}: Vétel (${r.buyRate}) >= Eladás (${r.sellRate})`)
+        return
+      }
+    }
+
+    // FK-04/E árfolyamvédelem (Kasza Helga spec): ha a csoport védelme BE van kapcsolva,
+    // a publikálás előtt — azonnal, a szerver-kör nélkül — ellenőrizzük, hogy egyetlen vételi
+    // (L,N,P,R) sem magasabb, és egyetlen eladási (M,O,Q,S) sem alacsonyabb a J elszámolónál.
+    // A backend (RatePublishService.validateRateProtection) AZONOS szabállyal véd a kiküldéskor.
+    if (selectedWg.protectionEnabled ?? true) {
+      const protectionRows: ProtectionRow[] = validRates.map((r) => ({
+        currencyCode: r.currencyCode,
+        official: r.officialRate,
+        buy: parseNum(r.buyRate),
+        sell: parseNum(r.sellRate),
+        limit1Buy: parseNum(r.limit1BuyRate),
+        limit1Sell: parseNum(r.limit1SellRate),
+        limit2Buy: parseNum(r.limit2BuyRate),
+        limit2Sell: parseNum(r.limit2SellRate),
+        limit3Buy: parseNum(r.limit3BuyRate),
+        limit3Sell: parseNum(r.limit3SellRate),
+      }))
+      const violations = validateWorkgroupProtection(
+        protectionRows,
+        true,
+        workgroupProtectionLabel(selectedWg.legacyGroupNumber, selectedWg.code),
+      )
+      if (violations.length > 0) {
+        toast.error(
+          'Árfolyamvédelem',
+          `${violations.length} szabálysértő ráta — javítsd a publikálás előtt. ${violations[0]!.message}`,
+        )
         return
       }
     }
@@ -546,7 +744,15 @@ export default function RateCreationPage() {
       <div className="flex gap-1.5 flex-1 min-h-0">
 
         {/* === LEFT: RATE TABLE === */}
-        <RateGrid rates={rates} selectedWg={selectedWg} updateRate={updateRate} validationErrors={validationErrors} />
+        <RateGrid
+          rates={rates}
+          selectedWg={selectedWg}
+          updateRate={updateRate}
+          validationErrors={validationErrors}
+          formulas={formulas}
+          cellErrors={cellErrors}
+          onCommitCell={commitWorkgroupCell}
+        />
 
         {/* === RIGHT: WORKGROUP PANEL === */}
         <div className="w-64 flex-shrink-0 flex flex-col gap-1 min-h-0">
