@@ -1019,6 +1019,10 @@ export interface ShipmentCreateRequest {
   items: Array<{
     currencyId: string | number
     requestedAmount: number
+    /** D követelmény: a beemelt aktuális elszámoló árfolyam (officialRate). */
+    appliedRate?: number
+    /** D követelmény: a forintosított érték (requestedAmount × appliedRate, HUF kerekítve). */
+    hufValue?: number
   }>
   notes?: string
 }
@@ -1113,6 +1117,10 @@ export const shipmentRequestApi = {
       items: request.items.map((item) => ({
         currencyId: Number(item.currencyId),
         requestedAmount: item.requestedAmount,
+        // D: ha a frontend már lekérte az aktuális elszámoló árfolyamot, küldjük az
+        // audit-megőrzéshez. Ha nincs, a backend automatikusan beemeli (history-szigorúság).
+        ...(typeof item.appliedRate === 'number' ? { appliedRate: item.appliedRate } : {}),
+        ...(typeof item.hufValue === 'number' ? { hufValue: item.hufValue } : {}),
       })),
     }
     const response = await api.post<Record<string, unknown>>('/shipments', payload)

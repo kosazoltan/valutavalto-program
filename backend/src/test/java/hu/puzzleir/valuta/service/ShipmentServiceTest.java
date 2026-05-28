@@ -29,6 +29,12 @@ class ShipmentServiceTest {
     @Mock
     private ShipmentRequestRepository repository;
 
+    @Mock
+    private hu.puzzleir.valuta.repository.BranchRepository branchRepository;
+
+    @Mock
+    private ExchangeRateService exchangeRateService;
+
     @InjectMocks
     private ShipmentService service;
 

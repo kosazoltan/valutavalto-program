@@ -8,6 +8,7 @@ import { useAuthStore } from '../../stores/authStore'
 const mocks = vi.hoisted(() => ({
   branchApi: { listActive: vi.fn(), listMyTerritory: vi.fn() },
   currencyApi: { getActive: vi.fn() },
+  exchangeRateApi: { getByCurrencyId: vi.fn() },
   shipmentRequestApi: { create: vi.fn(), submit: vi.fn() },
   persistToken: vi.fn(),
   clearPersistedToken: vi.fn(),
@@ -28,6 +29,8 @@ describe('ShipmentNewPage', () => {
       { id: 'BR-B', code: 'BEL', name: 'Belváros', isActive: true },
     ])
     mocks.currencyApi.getActive.mockResolvedValue([{ id: 4, code: 'EUR', name: 'Euró', decimals: 2, active: true }])
+    // D követelmény: a valuta-választás után a frontend lekéri az aktuális elszámoló árfolyamot.
+    mocks.exchangeRateApi.getByCurrencyId.mockResolvedValue({ currencyId: 4, currencyCode: 'EUR', officialRate: 400, baseBuyRate: 395, baseSellRate: 405, validDate: '2026-05-28', validTime: '12:00', active: true })
     mocks.shipmentRequestApi.create.mockResolvedValue({ id: 'shipment-1' })
     mocks.shipmentRequestApi.submit.mockResolvedValue({ id: 'shipment-1', requestStatus: 'SUBMITTED' })
   })
@@ -43,12 +46,14 @@ describe('ShipmentNewPage', () => {
     await user.type(screen.getByLabelText(/Összeg/i), '1250')
     await user.click(screen.getByRole('button', { name: /Igény beküldése/i }))
 
+    // D követelmény: a create payload most már tartalmazza az appliedRate + hufValue mezőt.
+    // hufValue = 1250 × 400 = 500000, az 5 Ft-os kerekítés után marad 500000.
     await waitFor(() => expect(mocks.shipmentRequestApi.create).toHaveBeenCalledWith({
       fromBranchId: 'BR-A',
       toBranchId: 'BR-B',
       deliveryDate: undefined,
       notes: '',
-      items: [{ currencyId: '4', requestedAmount: 1250 }],
+      items: [{ currencyId: '4', requestedAmount: 1250, appliedRate: 400, hufValue: 500000 }],
     }))
     expect(mocks.shipmentRequestApi.submit).toHaveBeenCalledWith('shipment-1')
   })

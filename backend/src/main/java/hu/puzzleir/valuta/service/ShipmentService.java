@@ -2,11 +2,14 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
+import hu.puzzleir.valuta.entity.ShipmentRequestItem;
 import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,6 +33,7 @@ public class ShipmentService {
 
     private final ShipmentRequestRepository shipmentRequestRepository;
     private final BranchRepository branchRepository;
+    private final ExchangeRateService exchangeRateService;
 
     /**
      * v2.5.70 P0 multi-tenant fix (companyId audit follow-up): a régi findByStatus /
@@ -70,9 +74,36 @@ public class ShipmentService {
         request.setRequestedById(SecurityUtils.getCurrentWorkerId());
         request.setRequestDate(LocalDate.now());
 
+        // D követelmény (Bali Henriett 2026-05-27): minden tételen kötelezően az AKTUÁLIS
+        // elszámoló árfolyam (officialRate / J) és a forintosított érték (HUF kerekítve).
+        applyExchangeRateAndHufValue(request);
+
         log.info("Szállítmánykérés létrehozva: {}, from={}, to={}",
                 request.getRequestNumber(), request.getFromBranchId(), request.getToBranchId());
         return shipmentRequestRepository.save(request);
+    }
+
+    /**
+     * D követelmény: ha a tétel nem kap explicit {@code appliedRate}-et a frontendtől,
+     * a service automatikusan beemeli az aktuális elszámoló árfolyamot (officialRate).
+     * A {@code hufValue}-t kerekítve (HUF) szintén kitölti. Audit-megőrzés: ha a kliens
+     * már küldött {@code appliedRate}-et, NEM írjuk felül (történeti rögzítés).
+     */
+    private void applyExchangeRateAndHufValue(ShipmentRequest request) {
+        if (request.getItems() == null) return;
+        for (ShipmentRequestItem item : request.getItems()) {
+            if (item.getAppliedRate() == null && item.getCurrencyId() != null) {
+                ExchangeRate er = exchangeRateService.getCurrentRate(item.getCurrencyId());
+                if (er != null && er.getOfficialRate() != null) {
+                    item.setAppliedRate(er.getOfficialRate());
+                }
+            }
+            if (item.getAppliedRate() != null && item.getRequestedAmount() != null) {
+                // requestedAmount × appliedRate → BigDecimal, majd HUF 5-Ft kerekítés (Hungarian).
+                BigDecimal rawHuf = item.getRequestedAmount().multiply(item.getAppliedRate());
+                item.setHufValue(HungarianRounding.roundToFive(rawHuf));
+            }
+        }
     }
 
     public ShipmentRequest update(UUID id, ShipmentRequest updated) {

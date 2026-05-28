@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertCircle, ArrowLeft, Package, Send } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { branchApi, currencyApi, shipmentRequestApi, type BranchInfo, type Currency } from '../../services/api/index'
+import { branchApi, currencyApi, exchangeRateApi, shipmentRequestApi, type BranchInfo, type Currency } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
@@ -57,6 +57,13 @@ export default function ShipmentNewPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /**
+   * D követelmény (Bali Henriett 2026-05-27): a valuta-választás után a rendszer
+   * AUTOMATIKUSAN beemeli az aktuális elszámoló árfolyamot (officialRate). Read-only
+   * megjelenítés a felhasználónak; a forintosított értéket élőben számoljuk.
+   */
+  const [appliedRate, setAppliedRate] = useState<number | null>(null)
+  const [rateLoading, setRateLoading] = useState(false)
   const disabled = loading || saving
 
   useEffect(() => {
@@ -92,6 +99,34 @@ export default function ShipmentNewPage() {
 
   const patch = (values: Partial<FormState>) => setForm((current) => ({ ...current, ...values }))
 
+  /**
+   * D: a valuta-választás után lekérjük az aktuális elszámoló árfolyamot (officialRate).
+   * A backend nullable rate-tel toleráns (ha nincs aktív rate, a service ott nem
+   * blokkol, csak nem tölti ki); a frontend itt csak megjeleníti, ami van.
+   */
+  useEffect(() => {
+    if (!form.currencyId) { setAppliedRate(null); return }
+    let active = true
+    setRateLoading(true)
+    exchangeRateApi.getByCurrencyId(Number(form.currencyId))
+      .then((rate) => {
+        if (!active) return
+        const official = rate.officialRate ?? rate.baseBuyRate ?? null
+        setAppliedRate(official != null ? Number(official) : null)
+      })
+      .catch(() => { if (active) setAppliedRate(null) })
+      .finally(() => { if (active) setRateLoading(false) })
+    return () => { active = false }
+  }, [form.currencyId])
+
+  // D: a forintosított érték élő számítása (5-Ft-os kerekítés a kijelzéshez; a
+  // hivatalos HUF érték a backend HungarianRounding-jából jön a save-kor).
+  const hufValue: number | null = useMemo(() => {
+    const amt = Number(form.amount.replace(',', '.'))
+    if (!Number.isFinite(amt) || amt <= 0 || appliedRate == null) return null
+    return Math.round((amt * appliedRate) / 5) * 5
+  }, [form.amount, appliedRate])
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
@@ -111,7 +146,14 @@ export default function ShipmentNewPage() {
         toBranchId: form.toBranchId,
         deliveryDate: form.deliveryDate || undefined,
         notes: form.notes,
-        items: [{ currencyId: form.currencyId, requestedAmount: amount }],
+        items: [{
+          currencyId: form.currencyId,
+          requestedAmount: amount,
+          // D: a beemelt elszámoló árfolyam és a forintosított érték (audit-megőrzés).
+          // Ha a frontend nem szerzi meg, a backend automatikusan beemeli (history-safe).
+          ...(appliedRate != null ? { appliedRate } : {}),
+          ...(hufValue != null ? { hufValue } : {}),
+        }],
       })
       if (!created.id) throw new Error('A szerver nem adott szállítmány azonosítót.')
       await shipmentRequestApi.submit(created.id)
@@ -185,6 +227,34 @@ export default function ShipmentNewPage() {
           <label className="block">
             <span className="form-label">Összeg</span>
             <input type="number" min="0.01" step="0.01" className="form-input" value={form.amount} disabled={saving} onChange={(e) => patch({ amount: e.target.value })} />
+          </label>
+          {/* D követelmény (Bali Henriett): aktuális elszámoló árfolyam + forintosított érték
+              AUTOMATIKUSAN, read-only — a felhasználó NE írja kézzel. */}
+          <label className="block">
+            <span className="form-label">
+              Alkalmazott elszámoló árfolyam
+              <span className="ml-1 text-xs text-gray-500">(automatikus — aktuális rendszer-árfolyam)</span>
+            </span>
+            <input
+              type="text"
+              className="form-input bg-gray-100 cursor-not-allowed"
+              value={rateLoading ? 'Betöltés…' : appliedRate != null ? appliedRate.toLocaleString('hu-HU', { maximumFractionDigits: 6 }) : '—'}
+              disabled
+              readOnly
+            />
+          </label>
+          <label className="block">
+            <span className="form-label">
+              Forintosított érték
+              <span className="ml-1 text-xs text-gray-500">(automatikus — 5 Ft-ra kerekítve)</span>
+            </span>
+            <input
+              type="text"
+              className="form-input bg-gray-100 cursor-not-allowed"
+              value={hufValue != null ? hufValue.toLocaleString('hu-HU') + ' Ft' : '—'}
+              disabled
+              readOnly
+            />
           </label>
           <label className="block md:col-span-2">
             <span className="form-label">Megjegyzés</span>
