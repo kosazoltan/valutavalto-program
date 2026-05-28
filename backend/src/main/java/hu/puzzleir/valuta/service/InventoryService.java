@@ -378,20 +378,28 @@ public class InventoryService {
      */
     private Integer getCurrentTerritoryFilterOrNull() {
         try {
-            String role = hu.puzzleir.valuta.security.SecurityUtils.getActiveOperationalRole();
-            if (role == null) {
-                role = hu.puzzleir.valuta.security.SecurityUtils.getCurrentRole();
-            }
+            String activeRole = hu.puzzleir.valuta.security.SecurityUtils.getActiveOperationalRole();
+            String currentRole = hu.puzzleir.valuta.security.SecurityUtils.getCurrentRole();
+            String role = activeRole != null ? activeRole : currentRole;
+            log.info("FK-005 territoryFilter: activeRole={}, currentRole={}, effectiveRole={}",
+                    activeRole, currentRole, role);
             if (role == null || !TERRITORY_SCOPED_ROLES.contains(role)) {
+                log.info("FK-005 territoryFilter: role NEM territory-scoped → null (központi role)");
                 return null; // központi role — nincs területi szűrés
             }
             UUID branchId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentBranchIdOrNull();
-            if (branchId == null) return null;
-            return branchRepository.findById(branchId)
+            log.info("FK-005 territoryFilter: territory-scoped role={}, user branchId={}", role, branchId);
+            if (branchId == null) {
+                log.warn("FK-005 territoryFilter: territory-scoped role-nak NINCS user branchId-je → null (defensive)");
+                return null;
+            }
+            Integer filter = branchRepository.findById(branchId)
                     .map(Branch::getVaultTerritoryId)
                     .orElse(null);
+            log.info("FK-005 territoryFilter: branch.vaultTerritoryId={}", filter);
+            return filter;
         } catch (Exception e) {
-            log.warn("Territoriális szűrés-meghatározás hiba (defensive null fallback): {}", e.getMessage());
+            log.warn("FK-005 territoryFilter: exception (defensive null fallback): {}", e.getMessage());
             return null;
         }
     }
@@ -406,26 +414,51 @@ public class InventoryService {
     public List<CashBalance> getAllStock() {
         UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
         Integer territoryFilter = getCurrentTerritoryFilterOrNull();
-        // FK-004 (2026-05-21): az Országos készlet nézet CSAK aktív branch-ek készletét
-        // mutatja — a deaktivált pénztárak (pl. KORUT/TISZA, V246 soft-delete) ne
-        // jelenjenek meg "BESOROLATLAN" tételként. A historikus cash_balance megmarad,
-        // csak a nézetből szűrjük (Pmt./NAV megőrzés sértetlen).
-        // Copilot #763 (perf): a findByCompanyId már JOIN FETCH-eli a branch-et (nincs N+1);
-        // a memóriabeli szűrés néhány ezer már-betöltött soron elhanyagolható, és konzisztens
-        // a meglévő (szintén in-memory) területi szűréssel — DB-oldali WHERE marginális nyereség.
+        // FK-005 diagnostic (Kasza Helga 2026-05-26 ÉLES BUG): az Országos készlet 0 Ft-ot
+        // mutatott. A diagnosztikához részletes INFO-log: companyId + territoryFilter +
+        // a teljes findByCompanyId rekord-szám + szűrés utáni rekord-szám + per-branch
+        // breakdown. A logokat a Hetzner prod-on érhető el a `journalctl -u valuta-backend`.
+        log.info("FK-005 getAllStock START: companyId={}, territoryFilter={}", companyId, territoryFilter);
+
         java.util.function.Predicate<CashBalance> activeBranch =
                 cb -> cb.getBranch() != null && Boolean.TRUE.equals(cb.getBranch().getIsActive());
+
+        List<CashBalance> allRaw = cashBalanceRepository.findByCompanyId(companyId);
+        log.info("FK-005 getAllStock: findByCompanyId returned {} cash_balance rows", allRaw.size());
+        if (allRaw.isEmpty()) {
+            log.warn("FK-005 getAllStock: 0 cash_balance rows from findByCompanyId — possible: "
+                    + "(a) wrong companyId in JWT, (b) cb.company_id NULL DB-szinten, (c) no data.");
+        }
+
+        // Per-branch előszűrés-stat (csak ha üres / kicsi az eredmény — diagnosztikai cél).
+        if (allRaw.size() <= 5) {
+            allRaw.forEach(cb -> log.info("FK-005 getAllStock raw row: id={}, branchId={}, branchName={}, "
+                            + "branchActive={}, currencyCode={}, balance={}",
+                    cb.getId(),
+                    cb.getBranch() != null ? cb.getBranch().getId() : null,
+                    cb.getBranch() != null ? cb.getBranch().getName() : "NULL-BRANCH",
+                    cb.getBranch() != null ? cb.getBranch().getIsActive() : null,
+                    cb.getCurrency() != null ? cb.getCurrency().getCode() : "NULL-CURRENCY",
+                    cb.getCurrentBalance()));
+        }
+
         if (territoryFilter == null) {
-            return cashBalanceRepository.findByCompanyId(companyId).stream()
-                    .filter(activeBranch)
-                    .toList();
+            List<CashBalance> result = allRaw.stream().filter(activeBranch).toList();
+            log.info("FK-005 getAllStock END (no territory): {} rows after activeBranch filter (was {})",
+                    result.size(), allRaw.size());
+            return result;
         }
         var territoryBranchIds = branchRepository.findByCompanyIdAndVaultTerritoryId(companyId, territoryFilter)
                 .stream().map(Branch::getId).collect(java.util.stream.Collectors.toSet());
-        return cashBalanceRepository.findByCompanyId(companyId).stream()
+        log.info("FK-005 getAllStock: territoryBranchIds={} (territoryFilter={})",
+                territoryBranchIds.size(), territoryFilter);
+        List<CashBalance> result = allRaw.stream()
                 .filter(activeBranch)
                 .filter(cb -> territoryBranchIds.contains(cb.getBranch().getId()))
                 .toList();
+        log.info("FK-005 getAllStock END (territory={}): {} rows after activeBranch+territory filter (was {})",
+                territoryFilter, result.size(), allRaw.size());
+        return result;
     }
 
     /**
