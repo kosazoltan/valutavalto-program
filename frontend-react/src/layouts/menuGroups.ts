@@ -83,8 +83,11 @@ export const menuGroups: MenuGroup[] = [
     modes: ["ertektar"],
     items: [
       { path: "/treasury", label: "Értéktári dashboard", icon: LayoutDashboard },
-      { path: "/shipments", label: "Átadás-átvétel (pénztáraknak)", icon: ArrowLeftRight },
-      { path: "/transfers", label: "Átadás bank / másik értéktár", icon: ArrowLeftRight },
+      // FK-013 (Bali Henriett / Kasza Helga 2026-05-28): a két régi menüpont
+      // (`Átadás-átvétel (pénztáraknak)` + `Átadás bank / másik értéktár`) egybevonva
+      // EGY egységes menüpontba. A "Cél iroda" dropdown 3 csoportos (saját terület
+      // pénztárai + társ értéktárak + 10 fix banki/speciális partner).
+      { path: "/shipments", label: "Átadás-átvétel", icon: ArrowLeftRight },
       { path: "/transfer-documents", label: "Szállítólevelek", icon: FileText },
       { path: "/transit", label: "Úton lévő csomagok", icon: ArrowLeftRight },
       { path: "/inventory", label: "Értéktári készlet", icon: Wallet },

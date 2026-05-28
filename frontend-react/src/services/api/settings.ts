@@ -58,6 +58,27 @@ export const branchApi = {
     const response = await api.get<BranchInfo[]>('/branches/my-territory')
     return response.data
   },
+  /**
+   * Bali Henriett / Kasza Helga FK-013 (2026-05-28): az egységes értéktári átadás-átvétel
+   * "Cél iroda" legördülő tartalma 3 csoportban:
+   *  - territorialCashiers (saját régió pénztárai)
+   *  - peerVaults (másik 7 értéktár)
+   *  - fixedCounterparties (10 fix VAULT_COUNTERPARTY: PRB/UPT/TRB/ERB/FRB/RB/JRB/MNB/TH/FOP1)
+   *
+   * Engedélyezett role-ok: ÉRTÉKTÁR / FŐÉRTÉKTÁR / cég-szintű.
+   */
+  listVaultCounterparties: async (): Promise<{
+    territorialCashiers: BranchInfo[]
+    peerVaults: BranchInfo[]
+    fixedCounterparties: BranchInfo[]
+  }> => {
+    const response = await api.get<{
+      territorialCashiers: BranchInfo[]
+      peerVaults: BranchInfo[]
+      fixedCounterparties: BranchInfo[]
+    }>('/branches/vault-counterparties')
+    return response.data
+  },
   getById: async (id: string): Promise<BranchInfo> => {
     const response = await api.get<BranchInfo>(`/branches/${id}`)
     return response.data
