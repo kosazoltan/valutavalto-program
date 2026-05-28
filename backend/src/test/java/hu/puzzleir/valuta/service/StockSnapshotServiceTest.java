@@ -118,13 +118,14 @@ class StockSnapshotServiceTest {
         List<String> codes = result.getCompanyTotals().getCurrencies().stream()
                 .map(CurrencyStockDetailDto::getCurrencyCode)
                 .toList();
-        assertThat(codes).containsExactly("AUD", "EUR", "USD", "HUF", "DKK");
+        // FK-003/004: a HUF ABSZOLÚT az utolsó sor; leftover az aktívak és HUF KÖZÖTT (Codex P2 c9c74930)
+        assertThat(codes).containsExactly("AUD", "EUR", "USD", "DKK", "HUF");
 
         // Branch-szinten ugyanaz a sorrend (a snapshot szolgáltatás egyetlen igazságforrásból építkezik)
         BranchSnapshotDto branchDto = result.getRegions().get(0).getBranches().get(0);
         List<String> branchCodes = branchDto.getCurrencies().stream()
                 .map(CurrencyStockDetailDto::getCurrencyCode).toList();
-        assertThat(branchCodes).containsExactly("AUD", "EUR", "USD", "HUF", "DKK");
+        assertThat(branchCodes).containsExactly("AUD", "EUR", "USD", "DKK", "HUF");
     }
 
     @Test
@@ -145,7 +146,8 @@ class StockSnapshotServiceTest {
 
         List<String> companyCodes = result.getCompanyTotals().getCurrencies().stream()
                 .map(CurrencyStockDetailDto::getCurrencyCode).toList();
-        assertThat(companyCodes).containsExactly("AUD", "EUR", "USD", "HUF", "NOK");
+        // HUF ABSZOLÚT a végén (Codex P2 c9c74930) — a leftover NOK az aktívak után, HUF előtt
+        assertThat(companyCodes).containsExactly("AUD", "EUR", "USD", "NOK", "HUF");
 
         // KÖTELEZŐ konzisztencia: a per-branch és a region totals DTO array MÉRETE megegyezik
         // a company-szintű DTO méretével (különben az Excel-export IOOBE-be csordulna).

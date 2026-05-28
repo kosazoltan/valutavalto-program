@@ -139,16 +139,15 @@ public class StockSnapshotService {
     List<String> resolveCurrencyCodes(Map<String, List<CurrencyStock>> stockByBranch,
                                       List<Object[]> companyLevelRows) {
         List<Currency> active = currencyRepository.findAllActiveOrdered();
-        List<String> ordered = new ArrayList<>();
+        List<String> activeNonHuf = new ArrayList<>();
         Set<String> activeSet = new LinkedHashSet<>();
         for (Currency c : active) {
             String code = c.getCode();
             if (code == null) continue;
             activeSet.add(code);
-            if (!"HUF".equals(code)) ordered.add(code);
+            if (!"HUF".equals(code)) activeNonHuf.add(code);
         }
-        ordered.add("HUF"); // HUF MINDIG a végén — akkor is, ha a törzsben nem aktív
-        activeSet.add("HUF");
+        activeSet.add("HUF"); // HUF mindig az aktív halmaz része a leftover-szűréshez
 
         // Nem-nulla leftover inaktívak — branch-szintű forrás
         Set<String> leftover = new TreeSet<>();
@@ -174,8 +173,12 @@ public class StockSnapshotService {
                 }
             }
         }
-        List<String> result = new ArrayList<>(ordered);
+
+        // Codex P2 (c9c74930): a FK-003/004 spec szerint a HUF MINDIG ABSZOLÚT az utolsó sor.
+        // Sorrend: aktív (HUF nélkül) → inaktív leftover (alfabetikus) → HUF a legvégén.
+        List<String> result = new ArrayList<>(activeNonHuf);
         result.addAll(leftover);
+        result.add("HUF");
         return result;
     }
 
