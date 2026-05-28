@@ -63,20 +63,32 @@ public class ShipmentService {
     public ShipmentRequest findById(UUID id) {
         ShipmentRequest sr = shipmentRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Szállítmánykérés nem található: " + id));
-        // v2.5.70 P0 fix: cross-tenant IDOR guard — fromBranchId-n keresztül kérdezzük le
-        // a Branch.company.id-t és összevetjük a jelenlegi user company-jával.
+        // v2.5.70 P0 fix + #890 self-review P1-2: cross-tenant IDOR guard — MIND A KÉT
+        // branch (from + to) Branch.company.id-jét összevetjük a jelenlegi user
+        // company-jával. A korábbi fix csak a fromBranchId-t ellenőrizte; ha egy shipment
+        // toBranchId-je másik cégre mutat (data-bug vagy admin-create), a UI-t serializáló
+        // entitás sérthette a tenant-izolációt.
         UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
-        UUID branchCompanyId = branchRepository.findById(sr.getFromBranchId())
-                .map(b -> b.getCompany() != null ? b.getCompany().getId() : null)
-                .orElse(null);
-        if (branchCompanyId == null || !currentCompanyId.equals(branchCompanyId)) {
-            log.warn("Cross-tenant access blocked: shipmentRequest={}, fromBranch={}, branchCompany={}, currentCompany={}",
-                    id, sr.getFromBranchId(), branchCompanyId, currentCompanyId);
-            throw new ValidationException("A szállítmánykérés nem tartozik a jelenlegi céghez (cross-tenant access blocked)");
-        }
+        assertBranchInCompany(sr.getFromBranchId(), currentCompanyId, id, "fromBranchId");
+        assertBranchInCompany(sr.getToBranchId(), currentCompanyId, id, "toBranchId");
         // P0 LazyInit hotfix: a controller direkt entity-t serializál, items lazy.
         initLazyForSerialization(sr);
         return sr;
+    }
+
+    /**
+     * #890 P1-2 self-review fix: branch ownership-check helper. ResourceNotFound-ot dob,
+     * ha a branch nem létezik VAGY más céghez tartozik (id-enumeráció ellen 404 a 403 helyett).
+     */
+    private void assertBranchInCompany(UUID branchId, UUID currentCompanyId, UUID shipmentId, String which) {
+        UUID branchCompanyId = branchRepository.findById(branchId)
+                .map(b -> b.getCompany() != null ? b.getCompany().getId() : null)
+                .orElse(null);
+        if (branchCompanyId == null || !currentCompanyId.equals(branchCompanyId)) {
+            log.warn("Cross-tenant access blocked: shipmentRequest={}, {}={}, branchCompany={}, currentCompany={}",
+                    shipmentId, which, branchId, branchCompanyId, currentCompanyId);
+            throw new ValidationException("A szállítmánykérés nem tartozik a jelenlegi céghez (cross-tenant access blocked, " + which + ")");
+        }
     }
 
     /**
@@ -103,7 +115,11 @@ public class ShipmentService {
 
         log.info("Szállítmánykérés létrehozva: {}, from={}, to={}",
                 request.getRequestNumber(), request.getFromBranchId(), request.getToBranchId());
-        return shipmentRequestRepository.save(request);
+        ShipmentRequest saved = shipmentRequestRepository.save(request);
+        // P0 self-review #890: minden controller-felé visszaadott entity-n meg kell hívni az
+        // init-et, hogy a Jackson OSIV=false-lal NE fusson LazyInit-be.
+        initLazyForSerialization(saved);
+        return saved;
     }
 
     /**
@@ -180,7 +196,9 @@ public class ShipmentService {
         }
 
         log.info("Szállítmánykérés frissítve: {}", id);
-        return shipmentRequestRepository.save(existing);
+        ShipmentRequest saved = shipmentRequestRepository.save(existing);
+        initLazyForSerialization(saved);
+        return saved;
     }
 
     public ShipmentRequest submit(UUID id) {
@@ -188,7 +206,9 @@ public class ShipmentService {
         validateStatusTransition(request, ShipmentRequestStatus.DRAFT, ShipmentRequestStatus.SUBMITTED);
         request.setStatus(ShipmentRequestStatus.SUBMITTED);
         log.info("Szállítmánykérés beküldve: {}", request.getRequestNumber());
-        return shipmentRequestRepository.save(request);
+        ShipmentRequest saved = shipmentRequestRepository.save(request);
+        initLazyForSerialization(saved);
+        return saved;
     }
 
     public ShipmentRequest approve(UUID id) {
@@ -196,7 +216,9 @@ public class ShipmentService {
         validateStatusTransition(request, ShipmentRequestStatus.SUBMITTED, ShipmentRequestStatus.APPROVED);
         request.setStatus(ShipmentRequestStatus.APPROVED);
         log.info("Szállítmánykérés jóváhagyva: {}", request.getRequestNumber());
-        return shipmentRequestRepository.save(request);
+        ShipmentRequest saved = shipmentRequestRepository.save(request);
+        initLazyForSerialization(saved);
+        return saved;
     }
 
     public ShipmentRequest deliver(UUID id) {
@@ -208,7 +230,9 @@ public class ShipmentService {
         request.setStatus(ShipmentRequestStatus.DELIVERED);
         request.setDeliveryDate(LocalDate.now());
         log.info("Szállítmánykérés leszállítva: {}", request.getRequestNumber());
-        return shipmentRequestRepository.save(request);
+        ShipmentRequest saved = shipmentRequestRepository.save(request);
+        initLazyForSerialization(saved);
+        return saved;
     }
 
     public ShipmentRequest cancel(UUID id) {
@@ -219,7 +243,9 @@ public class ShipmentService {
         }
         request.setStatus(ShipmentRequestStatus.CANCELLED);
         log.info("Szállítmánykérés visszavonva: {}", request.getRequestNumber());
-        return shipmentRequestRepository.save(request);
+        ShipmentRequest saved = shipmentRequestRepository.save(request);
+        initLazyForSerialization(saved);
+        return saved;
     }
 
     private void validateStatusTransition(ShipmentRequest request,
