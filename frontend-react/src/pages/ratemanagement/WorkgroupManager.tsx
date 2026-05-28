@@ -115,6 +115,32 @@ export default function WorkgroupManager() {
     }
   }
 
+  /**
+   * FK-04/E.1: csempe jobb felső sarok árfolyamvédelem-checkbox toggle.
+   * A backend `rate_workgroup.protection_enabled` flag-jét frissíti. A
+   * tényleges save-validáció külön PR (E.2) — ez itt csak a flag perzisztálás.
+   * Optimistic UI: helyi state azonnal frissül; hiba esetén visszaállít.
+   */
+  const toggleProtection = async (wg: RateWorkgroupDTO, next: boolean) => {
+    const prev = wg.protectionEnabled ?? true
+    // Optimistic: cseréljük a workgroups listában
+    setWorkgroups(list => list.map(w => w.id === wg.id ? { ...w, protectionEnabled: next } : w))
+    try {
+      await rateWorkgroupApi.update(wg.id, {
+        name: wg.name,
+        code: wg.code,
+        legacyGroupNumber: wg.legacyGroupNumber,
+        active: wg.active,
+        tileColor: wg.tileColor ?? null,
+        protectionEnabled: next,
+      })
+    } catch (err) {
+      logger.error('WorkgroupManager', 'Árfolyamvédelem-toggle sikertelen:', err)
+      setError('A védelem mentése sikertelen — visszaállítva.')
+      setWorkgroups(list => list.map(w => w.id === wg.id ? { ...w, protectionEnabled: prev } : w))
+    }
+  }
+
   const requestDelete = (wg: RateWorkgroupDTO) => {
     setConfirm({
       title: 'Munkacsoport törlése',
@@ -158,17 +184,38 @@ export default function WorkgroupManager() {
           <p className="text-gray-500">Még nincs munkacsoport. Hozzon létre egyet az „Új munkacsoport” gombbal.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {workgroups.map(wg => (
-              <button
-                key={wg.id}
-                onClick={() => setSelected(wg)}
-                className={`text-left rounded-lg border-2 p-3 hover:shadow-md transition-shadow ${tileClasses(wg.tileColor)}`}
-              >
-                <div className="text-2xl font-bold leading-none">{wg.legacyGroupNumber ?? '—'}</div>
-                <div className="mt-2 text-sm font-medium truncate" title={wg.name}>{wg.name}</div>
-                <div className="text-xs opacity-70">{wg.code}</div>
-              </button>
-            ))}
+            {workgroups.map(wg => {
+              const protectionOn = wg.protectionEnabled ?? true
+              return (
+                <button
+                  key={wg.id}
+                  onClick={() => setSelected(wg)}
+                  className={`text-left rounded-lg border-2 p-3 hover:shadow-md transition-shadow ${tileClasses(wg.tileColor)}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-2xl font-bold leading-none">{wg.legacyGroupNumber ?? '—'}</div>
+                    {/* FK-04 A.3 / E: jobb felső árfolyamvédelem checkbox.
+                        stopPropagation, hogy a csempe-kattintás (megnyit) ne triggerelődjön. */}
+                    <label
+                      className="inline-flex items-center gap-1 text-[10px] font-medium cursor-pointer select-none"
+                      title="Árfolyamvédelem: ha be van kapcsolva, a csoport-lap mentése blokkolja a hibás (vételi > J vagy eladási < J) értékeket."
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={protectionOn}
+                        onChange={e => { e.stopPropagation(); void toggleProtection(wg, e.target.checked) }}
+                        className="h-3.5 w-3.5"
+                        aria-label={`Árfolyamvédelem a(z) ${wg.name} csoporton`}
+                      />
+                      VÉDELEM
+                    </label>
+                  </div>
+                  <div className="mt-2 text-sm font-medium truncate" title={wg.name}>{wg.name}</div>
+                  <div className="text-xs opacity-70">{wg.code}</div>
+                </button>
+              )
+            })}
           </div>
         )}
 

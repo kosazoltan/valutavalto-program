@@ -58,6 +58,16 @@ public class RateWorkgroup {
     @Column(name = "limit3_boundary", precision = 15, scale = 2)
     private BigDecimal limit3Boundary;
 
+    /**
+     * FK-04/E árfolyamvédelem: ha TRUE, a csoport-lap mentése elutasít olyan
+     * rátákat, ahol a vételi oszlopok (L,N,P,R) {@literal >} J (elszámoló)
+     * vagy az eladási oszlopok (M,O,Q,S) {@literal <} J. A csempe jobb felső
+     * checkbox-a vezérli (FK-04 A.3). Default: TRUE (biztonság alapból be).
+     */
+    @Column(name = "protection_enabled", nullable = false)
+    @Builder.Default
+    private Boolean protectionEnabled = Boolean.TRUE;
+
     @ManyToMany
     @JsonIgnore
     @JoinTable(

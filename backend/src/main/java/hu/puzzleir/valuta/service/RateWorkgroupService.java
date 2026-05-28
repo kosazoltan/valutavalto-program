@@ -68,6 +68,11 @@ public class RateWorkgroupService {
         // ezért itt is menteni kell (különben a UI némán eldobná). A kódot NEM írjuk felül
         // (a szerkesztőben tiltott, az egyediség a code-on van).
         existing.setLegacyGroupNumber(update.getLegacyGroupNumber());
+        // FK-04/E: árfolyamvédelem flag — a csempe jobb felső checkbox-a vezérli.
+        // Ha a DTO null-t küld (régi kliens), a meglévő értéket tartjuk.
+        if (update.getProtectionEnabled() != null) {
+            existing.setProtectionEnabled(update.getProtectionEnabled());
+        }
         return workgroupRepository.save(existing);
     }
 

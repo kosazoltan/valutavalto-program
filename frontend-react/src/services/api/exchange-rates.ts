@@ -444,6 +444,12 @@ export interface RateWorkgroupDTO {
   active: boolean
   /** FK-02: csempe-szín paletta-kulcs (pl. 'amber'); null = alapértelmezett. */
   tileColor?: string | null
+  /**
+   * FK-04/E árfolyamvédelem: ha true, a csoport-lap mentésekor a backend
+   * elutasítja a vételi > J vagy eladási < J értékeket. A csempe jobb felső
+   * checkbox vezérli (A.3). Régi backend null-t adhat — false-ként kezelendő.
+   */
+  protectionEnabled?: boolean | null
 }
 
 export interface RateWorkgroupSaveDTO {
@@ -452,6 +458,8 @@ export interface RateWorkgroupSaveDTO {
   legacyGroupNumber?: number
   active: boolean
   tileColor?: string | null
+  /** FK-04/E árfolyamvédelem flag (lásd RateWorkgroupDTO). */
+  protectionEnabled?: boolean | null
 }
 
 export const rateWorkgroupApi = {
