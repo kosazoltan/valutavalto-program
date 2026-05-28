@@ -43,10 +43,20 @@ public class ShipmentService {
     @Transactional(readOnly = true)
     public Page<ShipmentRequest> findAll(ShipmentRequestStatus status, Pageable pageable) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Page<ShipmentRequest> page;
         if (status != null) {
-            return shipmentRequestRepository.findByStatusAndCompanyId(status, companyId, pageable);
+            page = shipmentRequestRepository.findByStatusAndCompanyId(status, companyId, pageable);
+        } else {
+            page = shipmentRequestRepository.findAllOrderedByCompanyId(companyId, pageable);
         }
-        return shipmentRequestRepository.findAllOrderedByCompanyId(companyId, pageable);
+        // P0 LazyInit hotfix (2026-05-28, Bali Henriett/Kasza Helga prod-bug): a ShipmentRequest
+        // entitást a controller direkt JSON-ra serializálja a session lezárása UTÁN (OSIV=false),
+        // és a Jackson érinti a lazy `items` kollekciót → LazyInitializationException 500.
+        // Csak az ÉRTÉKTÁR/FŐÉRTÉKTÁR role engedélyezése (#886, v2.27.40) hozta felszínre — előtte
+        // 403-at kapott a UI. Pattern: TransactionService.initMultiLineForMapping (architect-mode
+        // audit). Lapozás-biztos init a page-content sorain (nem JOIN FETCH a Pageable mellé).
+        page.getContent().forEach(ShipmentService::initLazyForSerialization);
+        return page;
     }
 
     @Transactional(readOnly = true)
@@ -64,7 +74,20 @@ public class ShipmentService {
                     id, sr.getFromBranchId(), branchCompanyId, currentCompanyId);
             throw new ValidationException("A szállítmánykérés nem tartozik a jelenlegi céghez (cross-tenant access blocked)");
         }
+        // P0 LazyInit hotfix: a controller direkt entity-t serializál, items lazy.
+        initLazyForSerialization(sr);
         return sr;
+    }
+
+    /**
+     * P0 LazyInit hotfix helper (2026-05-28): a {@link ShipmentRequest#items} `FetchType.LAZY`
+     * kollekciót a tranzakción belül inicializáljuk, hogy a controller-utáni Jackson-serialize
+     * NE fusson LazyInitializationException-be (OSIV=false). Null-safe.
+     */
+    private static void initLazyForSerialization(ShipmentRequest sr) {
+        if (sr != null && sr.getItems() != null) {
+            org.hibernate.Hibernate.initialize(sr.getItems());
+        }
     }
 
     public ShipmentRequest create(ShipmentRequest request) {
