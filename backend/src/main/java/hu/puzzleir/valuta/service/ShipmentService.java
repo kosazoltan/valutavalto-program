@@ -105,19 +105,30 @@ public class ShipmentService {
             item.setAppliedRate(null);
             item.setHufValue(null);
 
-            if (item.getCurrencyId() != null) {
-                try {
-                    ExchangeRate er = exchangeRateService.getCurrentRate(item.getCurrencyId());
-                    if (er != null && er.getOfficialRate() != null) {
-                        item.setAppliedRate(er.getOfficialRate());
-                    }
-                } catch (RuntimeException ex) {
-                    log.warn("D auto-rate: nem található/lejárt árfolyam a currencyId={} valutához, "
-                            + "appliedRate NULL marad. Ok: {}", item.getCurrencyId(), ex.getMessage());
-                }
+            if (item.getCurrencyId() == null) {
+                throw new ValidationException("A szállítmány-tétel currencyId-je nem lehet üres.");
             }
-            if (item.getAppliedRate() != null && item.getRequestedAmount() != null) {
-                // requestedAmount × appliedRate → BigDecimal, majd HUF 5-Ft kerekítés (Hungarian).
+            // Codex P1 (overrides earlier P0-1 tolerance): a D pont szövege „kötelezően és
+            // automatikusan a rendszerben lévő aktuális elszámoló árból" — ha nincs aktív
+            // rate (24h TTL lejárt vagy hiányzik), NEM mentjük a tételt rate nélkül,
+            // hanem explicit validation hibát dobunk. Audit-szigorúság: minden szállítmány-
+            // tételhez kötelezően tartozik elszámoló rate.
+            try {
+                ExchangeRate er = exchangeRateService.getCurrentRate(item.getCurrencyId());
+                if (er == null || er.getOfficialRate() == null) {
+                    throw new ValidationException(
+                            "A currencyId=" + item.getCurrencyId() + " valutához nincs aktuális "
+                                    + "elszámoló árfolyam (officialRate). Frissítse az árfolyamot "
+                                    + "a szállítmánykérés rögzítése előtt.");
+                }
+                item.setAppliedRate(er.getOfficialRate());
+            } catch (ResourceNotFoundException ex) {
+                throw new ValidationException(
+                        "A currencyId=" + item.getCurrencyId() + " valutához nincs aktuális "
+                                + "elszámoló árfolyam. Ok: " + ex.getMessage());
+            }
+            // requestedAmount × appliedRate → BigDecimal, majd HUF 5-Ft kerekítés (Hungarian).
+            if (item.getRequestedAmount() != null) {
                 BigDecimal rawHuf = item.getRequestedAmount().multiply(item.getAppliedRate());
                 item.setHufValue(HungarianRounding.roundToFive(rawHuf));
             }

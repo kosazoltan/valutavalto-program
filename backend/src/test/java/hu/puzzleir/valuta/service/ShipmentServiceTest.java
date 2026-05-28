@@ -44,6 +44,10 @@ class ShipmentServiceTest {
     void createSetsDraftMetadataForValidRequest() {
         when(repository.findMaxRequestNumber(any())).thenReturn(0);
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        // D Codex P1: az autofill ValidationException-t dob, ha nincs rate — minden
+        // happy-path tesztben mock-olni kell az aktuális elszámoló árfolyamot.
+        when(exchangeRateService.getCurrentRate(4L)).thenReturn(
+                ExchangeRate.builder().officialRate(new BigDecimal("400")).build());
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
@@ -99,22 +103,20 @@ class ShipmentServiceTest {
     }
 
     @Test
-    void createSurvivesExchangeRateLookupFailure() {
-        // D self-review P0-1: ha a getCurrentRate exception-t dob (lejárt rate / nincs),
-        // az autofill NEM blokkolja a create-et — appliedRate marad null, audit-log warn.
-        when(repository.findMaxRequestNumber(any())).thenReturn(0);
-        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    void createRejectsWhenCurrentRateIsMissing() {
+        // D Codex P1 (overrides earlier P0-1 tolerance): a D pont szövege „kötelezően és
+        // automatikusan a rendszerben lévő aktuális elszámoló árból" — ha nincs aktív
+        // rate, a service NE perzisztáljon NULL rate-tel; explicit ValidationException-t
+        // dob, a kliens értesül a kötelező árfolyam-frissítésről.
         when(exchangeRateService.getCurrentRate(4L))
                 .thenThrow(new ResourceNotFoundException("Nincs aktuális árfolyam"));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
-            ShipmentRequest saved = service.create(validRequest());
-
-            ShipmentRequestItem item = saved.getItems().getFirst();
-            assertThat(item.getAppliedRate()).isNull();
-            assertThat(item.getHufValue()).isNull();
-            assertThat(saved.getStatus().name()).isEqualTo("DRAFT");
+            assertThatThrownBy(() -> service.create(validRequest()))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("nincs aktuális");
+            verify(repository, never()).save(any());
         }
     }
 
