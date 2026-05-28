@@ -1,7 +1,9 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestItem;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -29,6 +31,12 @@ class ShipmentServiceTest {
     @Mock
     private ShipmentRequestRepository repository;
 
+    @Mock
+    private hu.puzzleir.valuta.repository.BranchRepository branchRepository;
+
+    @Mock
+    private ExchangeRateService exchangeRateService;
+
     @InjectMocks
     private ShipmentService service;
 
@@ -36,6 +44,10 @@ class ShipmentServiceTest {
     void createSetsDraftMetadataForValidRequest() {
         when(repository.findMaxRequestNumber(any())).thenReturn(0);
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        // D Codex P1: az autofill ValidationException-t dob, ha nincs rate — minden
+        // happy-path tesztben mock-olni kell az aktuális elszámoló árfolyamot.
+        when(exchangeRateService.getCurrentRate(4L)).thenReturn(
+                ExchangeRate.builder().officialRate(new BigDecimal("400")).build());
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
@@ -67,6 +79,69 @@ class ShipmentServiceTest {
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Legalább egy");
         verifyNoInteractions(repository);
+    }
+
+    @Test
+    void createAutoFillsAppliedRateAndHufValueFromCurrentRate() {
+        // D self-review P1-4: happy-path — ha van aktuális officialRate, az appliedRate
+        // + hufValue automatikusan kitöltődik a service-ben (1250 EUR × 400 = 500 000 Ft).
+        when(repository.findMaxRequestNumber(any())).thenReturn(0);
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(exchangeRateService.getCurrentRate(4L)).thenReturn(
+                ExchangeRate.builder().officialRate(new BigDecimal("400")).build());
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
+            ShipmentRequest req = validRequest();
+            req.getItems().getFirst().setRequestedAmount(new BigDecimal("1250"));
+            ShipmentRequest saved = service.create(req);
+
+            ShipmentRequestItem item = saved.getItems().getFirst();
+            assertThat(item.getAppliedRate()).isEqualByComparingTo("400");
+            assertThat(item.getHufValue()).isEqualByComparingTo("500000");
+        }
+    }
+
+    @Test
+    void createRejectsWhenCurrentRateIsMissing() {
+        // D Codex P1 (overrides earlier P0-1 tolerance): a D pont szövege „kötelezően és
+        // automatikusan a rendszerben lévő aktuális elszámoló árból" — ha nincs aktív
+        // rate, a service NE perzisztáljon NULL rate-tel; explicit ValidationException-t
+        // dob, a kliens értesül a kötelező árfolyam-frissítésről.
+        when(exchangeRateService.getCurrentRate(4L))
+                .thenThrow(new ResourceNotFoundException("Nincs aktuális árfolyam"));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
+            assertThatThrownBy(() -> service.create(validRequest()))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("nincs aktuális");
+            verify(repository, never()).save(any());
+        }
+    }
+
+    @Test
+    void createOverwritesClientProvidedAppliedRateWithServerSide() {
+        // D self-review + Codex P1: a D követelmény szövege „kötelezően és automatikusan
+        // a rendszerben lévő aktuális elszámoló árból" — a kliens által küldött appliedRate
+        // / hufValue mezőket figyelmen kívül hagyjuk, MINDIG a server-side rate az
+        // authoritative. A kliens 999-et próbál küldeni, de a 400 official rate győz.
+        when(repository.findMaxRequestNumber(any())).thenReturn(0);
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(exchangeRateService.getCurrentRate(4L)).thenReturn(
+                ExchangeRate.builder().officialRate(new BigDecimal("400")).build());
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
+            ShipmentRequest req = validRequest();
+            req.getItems().getFirst().setAppliedRate(new BigDecimal("999")); // manipulált kliens-érték
+            req.getItems().getFirst().setHufValue(new BigDecimal("123456"));  // manipulált kliens-érték
+            ShipmentRequest saved = service.create(req);
+
+            ShipmentRequestItem item = saved.getItems().getFirst();
+            assertThat(item.getAppliedRate()).isEqualByComparingTo("400");      // server-side
+            assertThat(item.getHufValue()).isEqualByComparingTo("400000");      // 1000 × 400
+        }
     }
 
     @Test

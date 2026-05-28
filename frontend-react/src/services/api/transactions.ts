@@ -1113,6 +1113,10 @@ export const shipmentRequestApi = {
       items: request.items.map((item) => ({
         currencyId: Number(item.currencyId),
         requestedAmount: item.requestedAmount,
+        // D követelmény (Codex P1): a backend MINDIG a server-oldali aktuális elszámoló
+        // árfolyamból dolgozik — a frontend NEM küldi az appliedRate / hufValue mezőt,
+        // csak display-célból számolja és jeleníti meg a UI-ban (audit-szigorúság:
+        // a kliens nem manipulálhatja a beemelt rate-et).
       })),
     }
     const response = await api.post<Record<string, unknown>>('/shipments', payload)

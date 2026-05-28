@@ -2,11 +2,14 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
+import hu.puzzleir.valuta.entity.ShipmentRequestItem;
 import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,6 +33,7 @@ public class ShipmentService {
 
     private final ShipmentRequestRepository shipmentRequestRepository;
     private final BranchRepository branchRepository;
+    private final ExchangeRateService exchangeRateService;
 
     /**
      * v2.5.70 P0 multi-tenant fix (companyId audit follow-up): a régi findByStatus /
@@ -70,9 +74,65 @@ public class ShipmentService {
         request.setRequestedById(SecurityUtils.getCurrentWorkerId());
         request.setRequestDate(LocalDate.now());
 
+        // D követelmény (Bali Henriett 2026-05-27): minden tételen kötelezően az AKTUÁLIS
+        // elszámoló árfolyam (officialRate / J) és a forintosított érték (HUF kerekítve).
+        applyExchangeRateAndHufValue(request);
+
         log.info("Szállítmánykérés létrehozva: {}, from={}, to={}",
                 request.getRequestNumber(), request.getFromBranchId(), request.getToBranchId());
         return shipmentRequestRepository.save(request);
+    }
+
+    /**
+     * D követelmény (Bali Henriett 2026-05-27): a tétel {@code appliedRate}-jét és
+     * {@code hufValue}-ját MINDIG a szerveroldali aktuális elszámoló árfolyamból
+     * (officialRate) számoljuk. A kliens által esetleg küldött értékeket figyelmen
+     * kívül hagyjuk — a követelmény szövege: „kötelezően és automatikusan a
+     * rendszerben lévő aktuális elszámoló árból kell beemelnie" (Codex P1
+     * follow-up: server-side authoritative source, audit-célból nem manipulálható
+     * a klienstől).
+     *
+     * <p>Best-effort: ha a getCurrentRate exception-t dob (lejárt 24h TTL vagy nem
+     * létezik a rate), warn-loggolunk és az oszlopok NULL-ban maradnak — egyetlen
+     * ritka/lejárt árfolyam ne bukja a teljes szállítmány-create-et.</p>
+     */
+    private void applyExchangeRateAndHufValue(ShipmentRequest request) {
+        if (request.getItems() == null) return;
+        for (ShipmentRequestItem item : request.getItems()) {
+            // Audit-szigorúság: a kliens által küldött appliedRate / hufValue mezőt
+            // EL DOBJUK, hogy ne legyen manipulálható a beemelt rate. A server-side
+            // értékek az authoritative source.
+            item.setAppliedRate(null);
+            item.setHufValue(null);
+
+            if (item.getCurrencyId() == null) {
+                throw new ValidationException("A szállítmány-tétel currencyId-je nem lehet üres.");
+            }
+            // Codex P1 (overrides earlier P0-1 tolerance): a D pont szövege „kötelezően és
+            // automatikusan a rendszerben lévő aktuális elszámoló árból" — ha nincs aktív
+            // rate (24h TTL lejárt vagy hiányzik), NEM mentjük a tételt rate nélkül,
+            // hanem explicit validation hibát dobunk. Audit-szigorúság: minden szállítmány-
+            // tételhez kötelezően tartozik elszámoló rate.
+            try {
+                ExchangeRate er = exchangeRateService.getCurrentRate(item.getCurrencyId());
+                if (er == null || er.getOfficialRate() == null) {
+                    throw new ValidationException(
+                            "A currencyId=" + item.getCurrencyId() + " valutához nincs aktuális "
+                                    + "elszámoló árfolyam (officialRate). Frissítse az árfolyamot "
+                                    + "a szállítmánykérés rögzítése előtt.");
+                }
+                item.setAppliedRate(er.getOfficialRate());
+            } catch (ResourceNotFoundException ex) {
+                throw new ValidationException(
+                        "A currencyId=" + item.getCurrencyId() + " valutához nincs aktuális "
+                                + "elszámoló árfolyam. Ok: " + ex.getMessage());
+            }
+            // requestedAmount × appliedRate → BigDecimal, majd HUF 5-Ft kerekítés (Hungarian).
+            if (item.getRequestedAmount() != null) {
+                BigDecimal rawHuf = item.getRequestedAmount().multiply(item.getAppliedRate());
+                item.setHufValue(HungarianRounding.roundToFive(rawHuf));
+            }
+        }
     }
 
     public ShipmentRequest update(UUID id, ShipmentRequest updated) {
@@ -87,8 +147,13 @@ public class ShipmentService {
         existing.setDeliveryDate(updated.getDeliveryDate());
         existing.setNotes(updated.getNotes());
 
+        // Codex P1 + P2 kompromisszum: csak akkor futtatjuk az autofill-t, ha a kliens
+        // ÚJ items listát küldött (= currency/amount változás). Notes/date-only update
+        // esetén az `updated.getItems() == null` → az eredeti tételek (és a rögzítéskor
+        // beemelt appliedRate / hufValue) érintetlenül maradnak (audit-preservation).
         if (updated.getItems() != null) {
             existing.setItems(updated.getItems());
+            applyExchangeRateAndHufValue(existing);
         }
 
         log.info("Szállítmánykérés frissítve: {}", id);
