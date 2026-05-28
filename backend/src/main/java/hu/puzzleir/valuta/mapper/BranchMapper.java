@@ -64,6 +64,8 @@ public class BranchMapper {
 
                 // FK-002: területi besorolás (Országos készlet területi csoportosításához)
                 .region(entity.getRegion())
+                // #891 Copilot fix: a numerikus KESZLEX területi kód a scope-szűrés kulcsa
+                .regionCode(entity.getRegionCode())
 
                 // Timestamps
                 .createdAt(entity.getCreatedAt())

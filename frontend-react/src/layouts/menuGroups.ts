@@ -54,6 +54,9 @@ export const menuGroups: MenuGroup[] = [
       { path: "/stock-snapshot", label: "Készlet-snapshot", icon: FileText },
       { path: "/vault-stocktake", label: "Értéktár leltár", icon: Package },
       { path: "/bank-orders", label: "Banki rendelések", icon: Building2 },
+      // Bali Henriett 2. pont (2026-05-27, Copilot #891): a főértéktárosnak is
+      // elérhetőnek kell lennie (endpoint engedi FOERTEKTAR + UGYVEZETO + ADMIN-t).
+      { path: "/branches/new-cashier", label: "Új pénztár felrögzítése", icon: Building2 },
     ],
   },
   {

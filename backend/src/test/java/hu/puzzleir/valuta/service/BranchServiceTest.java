@@ -107,9 +107,12 @@ class BranchServiceTest {
     private void stubDictionaries() {
         // Lenient: nem minden teszt használ minden dict-lookup-ot — Mockito strict-mode
         // unnecessary-stubbing miatt explicit lenient().
+        // #891 follow-up: a service `.filter(d -> Boolean.TRUE.equals(d.getIsActive()))`-t
+        // hív a REGION-en, ezért az `isActive(true)` kötelező a stub-ban.
         lenient().when(dictionaryRepository.findByCategoryAndCode(eq("REGION"), any())).thenAnswer(inv ->
                 Optional.of(hu.puzzleir.valuta.entity.Dictionary.builder()
-                        .category("REGION").code((String) inv.getArgument(1)).nameHu("Szeged").build()));
+                        .category("REGION").code((String) inv.getArgument(1))
+                        .nameHu("Szeged").isActive(true).build()));
         lenient().when(dictionaryRepository.findByCategoryAndCode("BRANCH_TYPE", "PENZTAR")).thenReturn(
                 Optional.of(hu.puzzleir.valuta.entity.Dictionary.builder()
                         .category("BRANCH_TYPE").code("PENZTAR").build()));
@@ -127,7 +130,7 @@ class BranchServiceTest {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             stubDictionaries();
-            lenient().when(branchRepository.existsByCompanyIdAndCode(COMPANY_ID, "BR999")).thenReturn(false);
+            lenient().when(branchRepository.existsByCode("BR999")).thenReturn(false);
             lenient().when(companyRepository.findById(COMPANY_ID))
                     .thenReturn(Optional.of(Company.builder().id(COMPANY_ID).build()));
             // accessScopeService.vaultRegionCodeOrNull() → null = cég-szintű (NEM ERTEKTAR)
@@ -146,14 +149,14 @@ class BranchServiceTest {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             stubDictionaries();
-            lenient().when(branchRepository.existsByCompanyIdAndCode(COMPANY_ID, "BR999")).thenReturn(false);
-            // ERTEKTAR Szegedről próbál DEBRECEN-be felvenni → ValidationException
-            when(accessScopeService.vaultRegionCodeOrNull()).thenReturn("SZEGED");
+            lenient().when(branchRepository.existsByCode("BR999")).thenReturn(false);
+            // ERTEKTAR Szegedről (KESZLEX "20") próbál DEBRECEN-be ("50") felvenni → blocked
+            when(accessScopeService.vaultRegionCodeOrNull()).thenReturn("20");
 
             assertThatThrownBy(() -> service.createSimpleCashier(simpleDto("DEBRECEN")))
                     .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
                     .hasMessageContaining("saját területéhez")
-                    .hasMessageContaining("SZEGED");
+                    .hasMessageContaining("DEBRECEN");
             verify(branchRepository, never()).save(any());
         }
     }
@@ -164,10 +167,11 @@ class BranchServiceTest {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             stubDictionaries();
-            lenient().when(branchRepository.existsByCompanyIdAndCode(COMPANY_ID, "BR999")).thenReturn(false);
+            lenient().when(branchRepository.existsByCode("BR999")).thenReturn(false);
             lenient().when(companyRepository.findById(COMPANY_ID))
                     .thenReturn(Optional.of(Company.builder().id(COMPANY_ID).build()));
-            when(accessScopeService.vaultRegionCodeOrNull()).thenReturn("SZEGED");
+            // ERTEKTAR Szegedről (KESZLEX "20") felvesz SZEGED (KESZLEX "20") régiójú pénztárt → OK
+            when(accessScopeService.vaultRegionCodeOrNull()).thenReturn("20");
             when(branchRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             service.createSimpleCashier(simpleDto("SZEGED"));
@@ -180,7 +184,7 @@ class BranchServiceTest {
     @DisplayName("createSimpleCashier — ismeretlen régió: ResourceNotFoundException (nincs save)")
     void testCreateSimpleCashierRejectsUnknownRegion() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
-            lenient().when(branchRepository.existsByCompanyIdAndCode(COMPANY_ID, "BR999")).thenReturn(false);
+            lenient().when(branchRepository.existsByCode("BR999")).thenReturn(false);
             when(dictionaryRepository.findByCategoryAndCode("REGION", "MARS"))
                     .thenReturn(Optional.empty());
 
