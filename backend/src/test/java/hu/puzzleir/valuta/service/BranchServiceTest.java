@@ -37,6 +37,7 @@ class BranchServiceTest {
     @Mock private BranchMapper branchMapper;
     @Mock private CashBalanceService cashBalanceService;
     @Mock private DenominationService denominationService;
+    @Mock private AccessScopeService accessScopeService;
     @InjectMocks private BranchService service;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
@@ -87,6 +88,106 @@ class BranchServiceTest {
 
             verify(branchRepository).findByCompanyIdAndBranchStatusCode(COMPANY_ID, "AKTIV");
             verify(branchRepository, never()).findByBranchStatusCode(any());
+        }
+    }
+
+    // ============================================================
+    // #891 Bali Henriett 2. pont (manuális pénztár-felrögzítés)
+    // self-review fix: ERTEKTAR cross-region tiltás + happy path
+    // ============================================================
+
+    private static hu.puzzleir.valuta.dto.CreateSimpleCashierBranchDto simpleDto(String regionCode) {
+        return hu.puzzleir.valuta.dto.CreateSimpleCashierBranchDto.builder()
+                .code("BR999")
+                .address("6720 Szeged, Teszt utca 1.")
+                .regionCode(regionCode)
+                .build();
+    }
+
+    private void stubDictionaries() {
+        // Lenient: nem minden teszt használ minden dict-lookup-ot — Mockito strict-mode
+        // unnecessary-stubbing miatt explicit lenient().
+        lenient().when(dictionaryRepository.findByCategoryAndCode(eq("REGION"), any())).thenAnswer(inv ->
+                Optional.of(hu.puzzleir.valuta.entity.Dictionary.builder()
+                        .category("REGION").code((String) inv.getArgument(1)).nameHu("Szeged").build()));
+        lenient().when(dictionaryRepository.findByCategoryAndCode("BRANCH_TYPE", "PENZTAR")).thenReturn(
+                Optional.of(hu.puzzleir.valuta.entity.Dictionary.builder()
+                        .category("BRANCH_TYPE").code("PENZTAR").build()));
+        lenient().when(dictionaryRepository.findByCategoryAndCode("COUNTRY", "HU")).thenReturn(
+                Optional.of(hu.puzzleir.valuta.entity.Dictionary.builder()
+                        .category("COUNTRY").code("HU").build()));
+        lenient().when(dictionaryRepository.findByCategoryAndCode("BRANCH_STATUS", "ACTIVE")).thenReturn(
+                Optional.of(hu.puzzleir.valuta.entity.Dictionary.builder()
+                        .category("BRANCH_STATUS").code("ACTIVE").build()));
+    }
+
+    @Test
+    @DisplayName("createSimpleCashier — happy path cég-szintű user (FOERTEKTAR/ADMIN): bárhova rögzíthet")
+    void testCreateSimpleCashierHappyPathCompanyLevel() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            stubDictionaries();
+            lenient().when(branchRepository.existsByCompanyIdAndCode(COMPANY_ID, "BR999")).thenReturn(false);
+            lenient().when(companyRepository.findById(COMPANY_ID))
+                    .thenReturn(Optional.of(Company.builder().id(COMPANY_ID).build()));
+            // accessScopeService.vaultRegionCodeOrNull() → null = cég-szintű (NEM ERTEKTAR)
+            lenient().when(accessScopeService.vaultRegionCodeOrNull()).thenReturn(null);
+            lenient().when(branchRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            service.createSimpleCashier(simpleDto("DEBRECEN"));
+
+            verify(branchRepository).save(any(Branch.class));
+        }
+    }
+
+    @Test
+    @DisplayName("createSimpleCashier — ERTEKTAR cross-region: ValidationException (saját régión kívülre nem rögzíthet)")
+    void testCreateSimpleCashierBlockedCrossRegionForErtektar() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            stubDictionaries();
+            lenient().when(branchRepository.existsByCompanyIdAndCode(COMPANY_ID, "BR999")).thenReturn(false);
+            // ERTEKTAR Szegedről próbál DEBRECEN-be felvenni → ValidationException
+            when(accessScopeService.vaultRegionCodeOrNull()).thenReturn("SZEGED");
+
+            assertThatThrownBy(() -> service.createSimpleCashier(simpleDto("DEBRECEN")))
+                    .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
+                    .hasMessageContaining("saját területéhez")
+                    .hasMessageContaining("SZEGED");
+            verify(branchRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("createSimpleCashier — ERTEKTAR same-region: létrejön a pénztár (saját területéhez)")
+    void testCreateSimpleCashierAllowedSameRegionForErtektar() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            stubDictionaries();
+            lenient().when(branchRepository.existsByCompanyIdAndCode(COMPANY_ID, "BR999")).thenReturn(false);
+            lenient().when(companyRepository.findById(COMPANY_ID))
+                    .thenReturn(Optional.of(Company.builder().id(COMPANY_ID).build()));
+            when(accessScopeService.vaultRegionCodeOrNull()).thenReturn("SZEGED");
+            when(branchRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            service.createSimpleCashier(simpleDto("SZEGED"));
+
+            verify(branchRepository).save(any(Branch.class));
+        }
+    }
+
+    @Test
+    @DisplayName("createSimpleCashier — ismeretlen régió: ResourceNotFoundException (nincs save)")
+    void testCreateSimpleCashierRejectsUnknownRegion() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            lenient().when(branchRepository.existsByCompanyIdAndCode(COMPANY_ID, "BR999")).thenReturn(false);
+            when(dictionaryRepository.findByCategoryAndCode("REGION", "MARS"))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.createSimpleCashier(simpleDto("MARS")))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Ismeretlen régió kód");
+            verify(branchRepository, never()).save(any());
         }
     }
 }

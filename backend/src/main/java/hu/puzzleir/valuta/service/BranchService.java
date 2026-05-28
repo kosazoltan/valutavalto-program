@@ -44,6 +44,8 @@ public class BranchService {
     // az `initializeBranchDenominations(branchId)` metódust EDDIG SOHA NEM hívta senki —
     // ezért új branch létrehozásakor üres marad a denomination tábla.
     private final DenominationService denominationService;
+    // #891 self-review P0-1: ERTEKTAR-szintű territorialis ellenőrzéshez a saját region_code lookup.
+    private final AccessScopeService accessScopeService;
 
     @Autowired
     public BranchService(BranchRepository branchRepository,
@@ -51,13 +53,15 @@ public class BranchService {
                          DictionaryRepository dictionaryRepository,
                          BranchMapper branchMapper,
                          @Lazy CashBalanceService cashBalanceService,
-                         @Lazy DenominationService denominationService) {
+                         @Lazy DenominationService denominationService,
+                         AccessScopeService accessScopeService) {
         this.branchRepository = branchRepository;
         this.companyRepository = companyRepository;
         this.dictionaryRepository = dictionaryRepository;
         this.branchMapper = branchMapper;
         this.cashBalanceService = cashBalanceService;
         this.denominationService = denominationService;
+        this.accessScopeService = accessScopeService;
     }
 
     /**
@@ -324,6 +328,20 @@ public class BranchService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Ismeretlen régió kód: " + dto.getRegionCode()
                                 + " (a Beállítások → Törzsadatok → Régiók listából válasszon)"));
+
+        // P0 self-review #891 fix: ERTEKTAR (területi értéktáros) csak a saját régiójához
+        // tartozó pénztárt rögzíthet fel. A FŐÉRTÉKTÁR/ADMIN/UGYVEZETO cég-szintű — bárhova
+        // rögzíthet. A vaultRegionCodeOrNull() null-t ad cég-szintű role-oknál; ERTEKTAR
+        // esetén a user saját region_code-ját. Egyezés-ellenőrzés.
+        String userVaultRegion = accessScopeService.vaultRegionCodeOrNull();
+        if (userVaultRegion != null && !userVaultRegion.equalsIgnoreCase(dto.getRegionCode())) {
+            log.warn("Cross-region branch-create blocked: user-region={}, requested-region={}, code={}",
+                    userVaultRegion, dto.getRegionCode(), dto.getCode());
+            throw new ValidationException(
+                    "Értéktárosként csak a saját területéhez (régió: " + userVaultRegion
+                            + ") tartozó pénztárt rögzíthet fel, NEM " + dto.getRegionCode()
+                            + " régiójú pénztárt. Más régióhoz a főértéktáros vagy ügyvezető jogosult.");
+        }
 
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Company company = companyRepository.findById(companyId)
