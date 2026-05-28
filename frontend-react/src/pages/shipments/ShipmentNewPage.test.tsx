@@ -6,7 +6,7 @@ import ShipmentNewPage from './ShipmentNewPage'
 import { useAuthStore } from '../../stores/authStore'
 
 const mocks = vi.hoisted(() => ({
-  branchApi: { listActive: vi.fn(), listMyTerritory: vi.fn(), listVaultCounterparties: vi.fn() },
+  branchApi: { listActive: vi.fn(), listMyTerritory: vi.fn(), listCashierShipmentTargets: vi.fn(), listVaultCounterparties: vi.fn() },
   currencyApi: { getActive: vi.fn() },
   exchangeRateApi: { getByCurrencyId: vi.fn() },
   shipmentRequestApi: { create: vi.fn(), submit: vi.fn() },
@@ -28,6 +28,12 @@ describe('ShipmentNewPage', () => {
       activeRole: null,
     })
     mocks.branchApi.listMyTerritory.mockResolvedValue([
+      { id: 'BR-A', code: 'EBC', name: 'Erzsébet körút', isActive: true },
+      { id: 'BR-B', code: 'BEL', name: 'Belváros', isActive: true },
+    ])
+    // FK-013 (#897): pénztáros user a szűkített listCashierShipmentTargets- et kapja
+    // (NEM a listMyTerritory-t). A teszt 'BR-B'-t választ, ezért itt is szerepelnie kell.
+    mocks.branchApi.listCashierShipmentTargets.mockResolvedValue([
       { id: 'BR-A', code: 'EBC', name: 'Erzsébet körút', isActive: true },
       { id: 'BR-B', code: 'BEL', name: 'Belváros', isActive: true },
     ])
