@@ -212,7 +212,9 @@ jobs:
         shell: pwsh
         env:
           ALLOW_UNSIGNED_BUILD: '1'
-        run: npm run package:unsigned
+        # --publish never: csak BUILD (a publish config miatt az electron-builder kulonben
+        # GH_TOKEN-t keresne es elbukna). A release-feltoltest a publish-release job vegzi.
+        run: npm run package:unsigned -- --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: kozponti-unsigned-${{ needs.preflight.outputs.version }}
