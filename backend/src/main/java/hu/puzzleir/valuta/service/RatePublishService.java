@@ -75,8 +75,13 @@ public class RatePublishService {
 
         // 1) Beolvasás + status-check (mutáció nélkül) — hogy a teljes batch validálható legyen
         //    MIELŐTT bármit módosítunk (PUBLISHED-re állítás csak az FK-04/E.2 protection-check után).
+        // Codex #899 P2: a templateId-kat DEDUPÁLJUK — különben a "beolvas-mind-aztán-mutál"
+        // átszervezés miatt egy duplikált id kétszer kerülne a listába és kétszer publikálódna
+        // (duplikált exchange_rate + outbox). A régi (loop-on-belüli mutáció) ezt a status-check-en
+        // bukta el; a sorrend-csere után explicit distinct kell.
+        List<UUID> uniqueTemplateIds = templateIds.stream().distinct().collect(Collectors.toList());
         List<RateTemplate> templates = new ArrayList<>();
-        for (UUID templateId : templateIds) {
+        for (UUID templateId : uniqueTemplateIds) {
             RateTemplate template = templateRepository.findById(templateId)
                     .orElseThrow(() -> new ValidationException("Sablon nem található: " + templateId));
 
@@ -386,18 +391,31 @@ public class RatePublishService {
             }
             String code = codeById.getOrDefault(t.getCurrencyId(), "ID=" + t.getCurrencyId());
 
+            // Codex #899 P2: az ALAP vételi/eladási (L/M) PUBLIKÁLT értéke base+spread
+            // (applyTemplatesToExchangeRates → mergeRate), ezért a védelmet az EFFEKTÍV
+            // rátára kell futtatni, különben pozitív spread átcsúszhat a J-n. A kedvezmény-
+            // sávok (N/O/P/Q/R/S) spread nélkül, közvetlenül publikálódnak → változatlanul.
+            BigDecimal effBuy = addSpread(t.getBaseBuyRate(), t.getBuySpread());
+            BigDecimal effSell = addSpread(t.getBaseSellRate(), t.getSellSpread());
+
             // Vételi (L, N, P, R) ≤ J
-            checkBuyRate(t.getBaseBuyRate(), j, groupLabel, code, "L vétel");
+            checkBuyRate(effBuy, j, groupLabel, code, "L vétel");
             checkBuyRate(t.getLimit1BuyRate(), j, groupLabel, code, "N vétel");
             checkBuyRate(t.getLimit2BuyRate(), j, groupLabel, code, "P vétel");
             checkBuyRate(t.getLimit3BuyRate(), j, groupLabel, code, "R vétel");
 
             // Eladási (M, O, Q, S) ≥ J
-            checkSellRate(t.getBaseSellRate(), j, groupLabel, code, "M eladás");
+            checkSellRate(effSell, j, groupLabel, code, "M eladás");
             checkSellRate(t.getLimit1SellRate(), j, groupLabel, code, "O eladás");
             checkSellRate(t.getLimit2SellRate(), j, groupLabel, code, "Q eladás");
             checkSellRate(t.getLimit3SellRate(), j, groupLabel, code, "S eladás");
         }
+    }
+
+    /** Az alap-ráta effektív (publikált) értéke = base + spread. base==null → null (a check skippel). */
+    private BigDecimal addSpread(BigDecimal base, BigDecimal spread) {
+        if (base == null) return null;
+        return base.add(spread == null ? BigDecimal.ZERO : spread);
     }
 
     /**

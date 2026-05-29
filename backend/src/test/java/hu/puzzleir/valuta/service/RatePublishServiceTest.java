@@ -432,4 +432,29 @@ class RatePublishServiceTest {
         RatePublication pub = service.publish(wgId, List.of(tplId), "zero-sell");
         assertNotNull(pub.getId());
     }
+
+    @Test
+    @DisplayName("FK-04/E.2: védelem BE + base≤J DE base+buySpread>J → ValidationException (effektív ráta, Codex #899)")
+    void protection_on_effectiveBuyAboveJ_throws() {
+        UUID wgId = UUID.randomUUID(); UUID tplId = UUID.randomUUID();
+        UUID companyId = ((WorkerAuthenticationDetails) SecurityContextHolder.getContext().getAuthentication().getDetails()).getCompanyId();
+        UUID branchId = UUID.randomUUID();
+        RateWorkgroup wg = wgWithProtection(wgId, companyId, branchId, true, 3);
+        // baseBuyRate=395 ≤ J=400 (a régi check átengedte), DE buySpread=10 → effektív 405 > 400.
+        RateTemplate tpl = RateTemplate.builder()
+                .id(tplId).workgroupId(wgId).currencyId(1L)
+                .baseBuyRate(new BigDecimal("395.00")).baseSellRate(new BigDecimal("405.00"))
+                .officialRate(new BigDecimal("400.00"))
+                .buySpread(new BigDecimal("10.00")).sellSpread(BigDecimal.ZERO).roundingRule(1)
+                .status(RateTemplate.RateTemplateStatus.APPROVED).build();
+        when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(
+                Currency.builder().id(1L).code("EUR").name("Euro").build()));
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> service.publish(wgId, List.of(tplId), "eff"));
+        assertTrue(ex.getMessage().contains("magasabb az elszámolónál"),
+                "az effektív (base+spread) vételit kell elkapnia: " + ex.getMessage());
+    }
 }
