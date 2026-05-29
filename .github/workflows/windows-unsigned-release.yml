@@ -30,7 +30,7 @@ on:
         default: 'Unsigned delivery release (auto-update channel: penztar / munkaallomas).'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: windows-unsigned-release
@@ -54,9 +54,17 @@ jobs:
       - name: Resolve version + build date
         id: resolve
         shell: pwsh
+        env:
+          # Env-en at olvassuk (NEM kozvetlen ${{ }} interpolacio a scriptbe) — shell-injection ellen.
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          $version = "${{ github.event.inputs.version }}"
+          $version = $env:INPUT_VERSION
           if (-not $version) { $version = (Get-Content package.json | ConvertFrom-Json).version }
+          $version = $version.Trim().TrimStart('v')
+          # Szigoru semver-validacio: csak a vart formatumot engedjuk (injection + elgepeles ellen).
+          if ($version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$') {
+            Write-Host "::error::Ervenytelen verzio-formatum: '$version' (vart: X.Y.Z)"; exit 1
+          }
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "build_date=$(Get-Date -Format yyyyMMdd)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
       - name: Verify Google OAuth secrets present (build-installer.ps1 production gate)
@@ -138,7 +146,7 @@ jobs:
             "GOOGLE_DESKTOP_CLIENT_ID=$env:GOOGLE_DESKTOP_CLIENT_ID",
             "GOOGLE_DESKTOP_CLIENT_SECRET=$env:GOOGLE_DESKTOP_CLIENT_SECRET"
           ) -join "`n" | Out-File -FilePath ".env" -Encoding utf8 -NoNewline
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: backend-jar-${{ needs.preflight.outputs.version }}
           path: backend/target/
@@ -216,11 +224,14 @@ jobs:
     name: Publish GitHub Release + update manifests
     runs-on: windows-latest
     needs: [preflight, build-penztar, build-kozponti]
+    # A top-level permissions read-only; CSAK ennek a job-nak adunk irast a Release-hez.
+    permissions:
+      contents: write
     steps:
       - shell: pwsh
         run: git config --global core.longpaths true
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           path: release-artifacts/
       - name: Collect installers + generate per-app update manifests + SHA-256
@@ -272,7 +283,7 @@ jobs:
             "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" | Out-File $shaFile -Append
           }
       - name: Create GitHub Release (unsigned)
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3 (supply-chain: full SHA pin)
         with:
           tag_name: v${{ needs.preflight.outputs.version }}
           name: 'v${{ needs.preflight.outputs.version }} — Unsigned delivery release'
