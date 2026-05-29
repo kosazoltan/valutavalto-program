@@ -85,25 +85,39 @@ function normalizeSafeRequestHeaders(headers?: Record<string, string>): SafeRequ
   return safe;
 }
 
-// F-005 (audit 2026-05-29) SSRF-hardening: KIZÁRÓLAG a loopback (saját gép) engedélyezett a
-// lokális backendhez — a TÁGAS privát tartományokat (10/x, 172.16-31/x, 192.168/x) és a
-// LINK-LOCAL-t (169.254/x, benne a 169.254.169.254 cloud-metadata SSRF-célpont) NEM engedjük.
-// Így egy esetleges renderer-kompromittálódás (XSS / dep-compromise) nem érheti el a belső
-// hálózati / metadata endpointokat a main-process proxyn keresztül.
-function isLoopbackHost(hostname: string): boolean {
+// F-005 (audit 2026-05-29) SSRF-hardening: a loopback + RFC1918 privát tartomány (10/x,
+// 172.16-31/x, 192.168/x) ENGEDÉLYEZETT — ez a LAN-backend / offline helyi telepítés legitim
+// use-case-e (lásd api-proxy.test.ts "LAN backend URL engedelyezett"). DE a LINK-LOCAL-t
+// (169.254/x, benne a 169.254.169.254 cloud-metadata SSRF-célpont) MOSTANTÓL BLOKKOLJUK, és
+// csak http(s) protokollt engedünk — így renderer-kompromittálódás nem érheti el a
+// metadata / nem-HTTP endpointokat a main-process proxyn át.
+function isPrivateOrLoopbackHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
-  return host === '127.0.0.1' || host === '::1' || host === '[::1]' || host === 'localhost';
+  if (host === '127.0.0.1' || host === '::1' || host === '[::1]') {
+    return true;
+  }
+  const parts = host.split('.').map((part) => Number.parseInt(part, 10));
+  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
+    return false;
+  }
+  const a = parts[0] ?? -1;
+  const b = parts[1] ?? -1;
+  // 169.254/16 (link-local + cloud-metadata 169.254.169.254) SZÁNDÉKOSAN KIMARAD (F-005).
+  return a === 10
+    || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 168)
+    || a === 127;
 }
 
 function isAllowedUrl(raw: string): boolean {
   try {
     const parsed = new URL(raw);
-    // Csak http(s) — file:, data:, stb. tiltott.
+    // Csak http(s) — file:, data:, stb. tiltott (F-005).
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
       return false;
     }
     return ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`))
-      || isLoopbackHost(parsed.hostname);
+      || isPrivateOrLoopbackHost(parsed.hostname);
   } catch {
     return false;
   }
