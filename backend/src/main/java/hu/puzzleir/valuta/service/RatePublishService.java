@@ -238,6 +238,14 @@ public class RatePublishService {
         }
 
         Map<Long, Currency> currenciesById = resolveCurrencies(templates);
+        // FK-04/E.2 #899-edge: a pre-pass validateRateProtection a NULL officialRate-ű template-eket
+        // kihagyja, de a publish ezekre fallback-J-t rendel (resolveOfficialRate). A védelem ezért
+        // megkerülhető lenne → a hurokban a RESOLVED (mentett) J ellen is ellenőrzünk, per-branch.
+        boolean protectionOn = Boolean.TRUE.equals(workgroup.getProtectionEnabled());
+        Integer protGroupNum = workgroup.getLegacyGroupNumber();
+        String protGroupLabel = protGroupNum != null
+                ? protGroupNum + "-es csoport"
+                : "(" + workgroup.getCode() + ") csoport";
         LocalDate validDate = LocalDate.now();
         LocalTime validTime = LocalTime.now();
         int createdCount = 0;
@@ -293,6 +301,23 @@ public class RatePublishService {
                         .active(true)
                         .createdBy(resolveCreatedBy())
                         .build();
+
+                // FK-04/E.2 #899-edge: a fallback-J esetén (template.officialRate == null) a pre-pass
+                // nem ellenőrzött; itt a VÉGLEGES resolved-J ellen tesszük, hogy a védelem ne legyen
+                // megkerülhető. Sértésnél ValidationException → @Transactional(rollbackFor) atomi rollback,
+                // így nincs részleges publikálás. (A nem-null J-t a pre-pass már fedte — itt skip.)
+                if (protectionOn && template.getOfficialRate() == null) {
+                    BigDecimal resolvedJ = newRate.getOfficialRate();
+                    String protCode = currency.getCode();
+                    checkBuyRate(buyRate, resolvedJ, protGroupLabel, protCode, "L vétel");
+                    checkBuyRate(template.getLimit1BuyRate(), resolvedJ, protGroupLabel, protCode, "N vétel");
+                    checkBuyRate(template.getLimit2BuyRate(), resolvedJ, protGroupLabel, protCode, "P vétel");
+                    checkBuyRate(template.getLimit3BuyRate(), resolvedJ, protGroupLabel, protCode, "R vétel");
+                    checkSellRate(sellRate, resolvedJ, protGroupLabel, protCode, "M eladás");
+                    checkSellRate(template.getLimit1SellRate(), resolvedJ, protGroupLabel, protCode, "O eladás");
+                    checkSellRate(template.getLimit2SellRate(), resolvedJ, protGroupLabel, protCode, "Q eladás");
+                    checkSellRate(template.getLimit3SellRate(), resolvedJ, protGroupLabel, protCode, "S eladás");
+                }
 
                 exchangeRateRepository.save(newRate);
                 createdCount++;
