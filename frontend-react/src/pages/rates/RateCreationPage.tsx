@@ -1038,6 +1038,7 @@ export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackTo
   const toggleProtection = async (wg: WorkgroupDetailDTO, next: boolean) => {
     try {
       await rateWorkgroupApi.update(wg.id, toWorkgroupSaveDTO(wg, { protectionEnabled: next }))
+      setActionError(null) // Copilot: sikeres művelet törölje a korábbi hibabannert.
       onReload()
     } catch (err) {
       logger.error('RateCreationPage', 'Árfolyamvédelem-toggle sikertelen:', err)
@@ -1055,6 +1056,7 @@ export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackTo
         try {
           await rateWorkgroupApi.remove(wg.id)
           setConfirm(null)
+          setActionError(null) // Copilot: sikeres törlés törölje a korábbi hibabannert.
           onReload()
         } catch (err) {
           logger.error('RateCreationPage', 'Munkacsoport törlése sikertelen:', err)
@@ -1124,28 +1126,21 @@ export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackTo
             return (
               <div
                 key={wg.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => onSelect(idx)}
-                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(idx) } }}
-                className={`relative text-left rounded-lg border-2 p-3 transition-shadow hover:shadow-md cursor-pointer ${tileClasses(wg.tileColor)}`}
+                className={`relative rounded-lg border-2 p-3 transition-shadow hover:shadow-md ${tileClasses(wg.tileColor)}`}
               >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="text-2xl font-bold leading-none font-mono">
-                    {String(wg.legacyGroupNumber ?? (idx + 1)).padStart(2, '0')}
-                  </div>
-                  {/* FK-04/E: árfolyamvédelem. Írásjoggal interaktív checkbox; e.stopPropagation
-                      hogy a csempe-kattintás (megnyit) ne triggerelődjön. Olvasójog esetén jelző. */}
+                {/* FK-04/E: árfolyamvédelem — abszolút a jobb felső sarokban, a megnyitó-gomb
+                    FÖLÖTT (z-10). Így NEM ágyazódik interaktív elem a gombba (a11y), és a
+                    billentyű-események sem buborékolnak a megnyitásba. */}
+                <div className="absolute top-2 right-2 z-10">
                   {canWrite ? (
                     <label
                       className="inline-flex items-center gap-1 text-[10px] font-bold cursor-pointer select-none"
                       title="Árfolyamvédelem: ha be van kapcsolva, a csoport-lap mentése blokkolja a hibás (vétel > J vagy eladás < J) értékeket."
-                      onClick={e => e.stopPropagation()}
                     >
                       <input
                         type="checkbox"
                         checked={protectionOn}
-                        onChange={e => { e.stopPropagation(); void toggleProtection(wg, e.target.checked) }}
+                        onChange={e => void toggleProtection(wg, e.target.checked)}
                         className="h-3.5 w-3.5"
                         aria-label={`Árfolyamvédelem a(z) ${wg.name} csoporton`}
                       />
@@ -1161,24 +1156,42 @@ export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackTo
                     </span>
                   )}
                 </div>
-                <div className="text-sm font-semibold truncate" title={wg.name}>{wg.name}</div>
-                <div className="text-xs opacity-70 mt-0.5">
-                  <span className="font-mono">{wg.code}</span>
-                  <span className="mx-1">·</span>
-                  <span>{wg.branches.length} iroda</span>
-                </div>
-                {/* FK-02 §3: karbantartó akciók (átnevezés/szín/határ, törlés) — csak írásjoggal. */}
+
+                {/* Megnyitó gomb = a fő kattintható terület. Valódi <button> (natív
+                    billentyű+fókusz), interaktív gyerek NÉLKÜL — a checkbox és az akciók
+                    sibling-ek, nem beágyazottak. */}
+                <button
+                  type="button"
+                  onClick={() => onSelect(idx)}
+                  className="block w-full text-left pr-16"
+                  aria-label={`${wg.name} (${wg.code}) árfolyamlap megnyitása`}
+                >
+                  <div className="text-2xl font-bold leading-none font-mono mb-2">
+                    {String(wg.legacyGroupNumber ?? (idx + 1)).padStart(2, '0')}
+                  </div>
+                  <div className="text-sm font-semibold truncate" title={wg.name}>{wg.name}</div>
+                  <div className="text-xs opacity-70 mt-0.5">
+                    <span className="font-mono">{wg.code}</span>
+                    <span className="mx-1">·</span>
+                    <span>{wg.branches.length} iroda</span>
+                  </div>
+                </button>
+
+                {/* FK-02 §3: karbantartó akciók (átnevezés/szín/határ, törlés) — csak írásjoggal.
+                    A megnyitó-gomb mellett sibling, így nincs gombon belüli gomb. */}
                 {canWrite && (
                   <div className="mt-2 flex items-center gap-1 border-t border-black/10 pt-1.5">
                     <button
-                      onClick={e => { e.stopPropagation(); openRename(wg) }}
+                      type="button"
+                      onClick={() => openRename(wg)}
                       className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-white/70 hover:bg-white border border-black/10"
                       title="Átnevezés / szín / kedvezményhatárok"
                     >
                       <Pencil size={10} /> Szerk.
                     </button>
                     <button
-                      onClick={e => { e.stopPropagation(); requestDelete(wg) }}
+                      type="button"
+                      onClick={() => requestDelete(wg)}
                       className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-white/70 hover:bg-red-50 text-red-700 border border-red-200"
                       title="Munkacsoport törlése"
                     >

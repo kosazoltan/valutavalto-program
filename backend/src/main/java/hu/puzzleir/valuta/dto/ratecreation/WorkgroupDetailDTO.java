@@ -33,6 +33,19 @@ public class WorkgroupDetailDTO {
     private BigDecimal limit2Boundary;  // Középső határ (pl. 300,000)
     private BigDecimal limit3Boundary;  // Felső határ (pl. 1,000,000)
 
+    /**
+     * FK-02: csempeszín-palettakulcs (pl. 'amber'); null = alapértelmezett.
+     * A rate-maker csempés kezelő nézet ebből színezi a csempét — e nélkül a
+     * /rate-creation/workgroups bootstrap nem adná vissza a beállított színt.
+     */
+    private String tileColor;
+
+    /**
+     * FK-04/E: árfolyamvédelem flag. A rate-maker csempén lévő interaktív checkbox
+     * ezt jeleníti meg; e nélkül a toggle után a reload mindig true-ra esne vissza.
+     */
+    private Boolean protectionEnabled;
+
     @Data
     @Builder
     @NoArgsConstructor
