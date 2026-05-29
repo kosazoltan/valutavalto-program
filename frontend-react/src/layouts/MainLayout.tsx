@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
@@ -43,6 +43,19 @@ export default function MainLayout() {
   // (ugyvezeto, foertektar, belso_ellenor, stb.), minden lokal appMode-ban
   // lathatja a teljes menut, hogy ellenorizhesse a penztar/ertektar muveleteket.
   const hasSupervisoryAccess = SZERVER_ROLES.some((r) => hasCanonicalRole(r))
+
+  // Codex #904: a NavLink `end` (exact-match) CSAK azokra a menüpontokra kell, amelyek egy másik
+  // menüpont szegmens-prefixei (pl. `/rates` ⊂ `/rates/history`) — különben együtt highlightolnának.
+  // A többi menüpontnál NINCS `end`, így a szülő-route a detail-aloldalakon (pl. `/customers/:id`,
+  // amelyhez nincs külön menüpont) továbbra is kiemelve marad.
+  const parentPrefixPaths = useMemo(() => {
+    const allPaths = menuGroups.flatMap((g) => g.items.map((it) => it.path))
+    const prefixes = new Set<string>()
+    for (const p of allPaths) {
+      if (allPaths.some((other) => other !== p && other.startsWith(p + '/'))) prefixes.add(p)
+    }
+    return prefixes
+  }, [])
   const { mode: appMode, isLoading: appModeLoading } = useAppMode()
   const navigate = useNavigate()
   const isBrowserFallback = !isElectronRuntime() && appMode === 'full'
@@ -212,10 +225,9 @@ export default function MainLayout() {
                 <NavLink
                   key={item.path}
                   to={item.path}
-                  // v2.5.54 #11 fix: az `end` nélkül a NavLink prefix-matchel, így pl. a `/rates`
-                  // ÉS a `/rates/history` egyszerre highlightolt. Minden menüpont valós leaf-route,
-                  // ezért az exact-match (end) a helyes — egyszerre csak az aktuális oldal aktív.
-                  end
+                  // v2.5.54 #11 + Codex #904: `end` CSAK a prefix-szülő útvonalakra (pl. /rates),
+                  // hogy ne ütközzön a /rates/history-val; a sima menüpontok szülő-highlightja megmarad.
+                  end={parentPrefixPaths.has(item.path)}
                   className={({ isActive }) =>
                     `flex items-center gap-2 px-4 py-1.5 text-xs font-medium transition-all duration-200 ${
                       isActive 
