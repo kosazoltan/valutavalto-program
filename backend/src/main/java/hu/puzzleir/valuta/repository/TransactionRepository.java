@@ -194,40 +194,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("type") TransactionType type
     );
 
-    /**
-     * Napi forgalom összeg — adott valutához szűrve (napi mérleg számításhoz).
-     */
-    @Query("SELECT COALESCE(SUM(t.currencyAmount), 0) FROM Transaction t " +
-           "WHERE t.branch.id = :branchId " +
-           "AND t.transactionDate = :date " +
-           "AND t.transactionType = :type " +
-           "AND t.currency.code = :currencyCode " +
-           "AND t.status = 'COMPLETED'")
-    BigDecimal sumDailyTurnoverByCurrency(
-        @Param("branchId") UUID branchId,
-        @Param("date") LocalDate date,
-        @Param("type") TransactionType type,
-        @Param("currencyCode") String currencyCode
-    );
-
-    /**
-     * Napi forgalom FORINTOSÍTOTT összege — adott valutához szűrve (Készlet pillanatkép NAPI
-     * FORGALOM Ft-oszlopaihoz, FK-003/004). A {@code t.hufAmount} a tranzakció forint-lába.
-     * Eddig a StockSnapshotService a dailyBuyHuf/dailySellHuf-ot fixen 0-ra állította — ez a
-     * query adja a tényleges forint-értéket (azonos szűrőkkel, mint a mennyiség-query).
-     */
-    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
-           "WHERE t.branch.id = :branchId " +
-           "AND t.transactionDate = :date " +
-           "AND t.transactionType = :type " +
-           "AND t.currency.code = :currencyCode " +
-           "AND t.status = 'COMPLETED'")
-    BigDecimal sumDailyTurnoverHufByCurrency(
-        @Param("branchId") UUID branchId,
-        @Param("date") LocalDate date,
-        @Param("type") TransactionType type,
-        @Param("currencyCode") String currencyCode
-    );
+    // A korábbi header-alapú sumDailyTurnoverByCurrency / sumDailyTurnoverHufByCurrency query-k
+    // ELTÁVOLÍTVA (Codex #903): multi-valutás (multiLine) bizonylatnál az első valutára számolták a
+    // teljes összeget. Helyettük a sumDailySingleLineTurnover* (lent, multi-line kizárva) + a
+    // TransactionLineRepository.sumDailyLineTurnover* (tétel-sor szintű) párost kell összegezni.
 
     /**
      * Napi forgalom (deviza-mennyiség) CSAK az EGY-SOROS (nem multi-line) tranzakciókból

@@ -42,6 +42,9 @@ class DailyBalanceServiceTest {
     private TransactionRepository transactionRepository;
 
     @Mock
+    private TransactionLineRepository transactionLineRepository;
+
+    @Mock
     private TransferRepository transferRepository;
 
     @Mock
@@ -192,11 +195,11 @@ class DailyBalanceServiceTest {
         when(currencyStockRepository.findByBranchIdAndCurrencyCode(eq(TEST_BRANCH_ID.toString()), eq("EUR")))
             .thenReturn(Optional.empty());
 
-        // EUR tranzakciók
-        when(transactionRepository.sumDailyTurnoverByCurrency(
+        // EUR tranzakciók (multi-line-helyes: single-line + line; itt mindkettő 0)
+        when(transactionRepository.sumDailySingleLineTurnoverByCurrency(
                 eq(TEST_BRANCH_ID), eq(TEST_DATE), eq(TransactionType.BUY), eq("EUR")))
             .thenReturn(BigDecimal.ZERO);
-        when(transactionRepository.sumDailyTurnoverByCurrency(
+        when(transactionRepository.sumDailySingleLineTurnoverByCurrency(
                 eq(TEST_BRANCH_ID), eq(TEST_DATE), eq(TransactionType.SELL), eq("EUR")))
             .thenReturn(BigDecimal.ZERO);
         when(transferRepository.sumTransfersIn(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq("EUR")))
@@ -281,5 +284,32 @@ class DailyBalanceServiceTest {
         assertThatNoException().isThrownBy(() ->
             dailyBalanceService.closeDailyBalance(TEST_BRANCH_ID, TEST_DATE, "EUR")
         );
+    }
+
+    @Test
+    @DisplayName("Codex #903: napi zárás-egyenleg a multi-line tétel-sorokat is beleszámolja (single-line + line)")
+    void testCalculateDailyBalance_multiLineTurnoverIncludedInClosing() {
+        // EUR vétel: 100 egy-soros + 50 multi-line tétel-sorból = 150 purchases; eladás 0; nyitó 0.
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(TEST_BRANCH_ID, TEST_DATE, "EUR"))
+            .thenReturn(Optional.empty());
+        when(dailyBalanceRepository.findClosingBalance(eq(TEST_BRANCH_ID), eq("EUR"), any())).thenReturn(Optional.empty());
+        when(monthlyClosingSummaryRepository.findClosingByBranchAndYearMonth(eq(TEST_BRANCH_ID), any())).thenReturn(Optional.empty());
+        when(currencyStockRepository.findByBranchIdAndCurrencyCode(eq(TEST_BRANCH_ID.toString()), eq("EUR"))).thenReturn(Optional.empty());
+        when(transactionRepository.sumDailySingleLineTurnoverByCurrency(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq(TransactionType.BUY), eq("EUR")))
+            .thenReturn(new BigDecimal("100"));
+        when(transactionLineRepository.sumDailyLineTurnoverByCurrency(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq(TransactionType.BUY), eq("EUR")))
+            .thenReturn(new BigDecimal("50"));
+        when(transactionRepository.sumDailySingleLineTurnoverByCurrency(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq(TransactionType.SELL), eq("EUR")))
+            .thenReturn(BigDecimal.ZERO);
+        when(transactionLineRepository.sumDailyLineTurnoverByCurrency(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq(TransactionType.SELL), eq("EUR")))
+            .thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumTransfersIn(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq("EUR"))).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumTransfersOut(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq("EUR"))).thenReturn(BigDecimal.ZERO);
+        when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        DailyBalance result = dailyBalanceService.calculateDailyBalance(TEST_BRANCH_ID, TEST_DATE, "EUR");
+
+        assertThat(result.getPurchases()).as("purchases = single-line 100 + line 50").isEqualByComparingTo(new BigDecimal("150"));
+        assertThat(result.getClosingBalance()).as("closing = 0 + 150 - 0").isEqualByComparingTo(new BigDecimal("150"));
     }
 }

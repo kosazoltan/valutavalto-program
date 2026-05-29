@@ -1,6 +1,6 @@
 {
   "name": "valutavalto-monorepo",
-"version": "2.27.53",  "private": true,
+"version": "2.27.54",  "private": true,
   "description": "Exclusive Best Change Zrt. - teljes valutavalto ERP okoszisztema (backend + frontend-react + penztar-client)",
   "scripts": {
     "dev": "npm run dev:all",
