@@ -1,4 +1,4 @@
-# Aktív mandate-szabályok (utolsó frissítés: 2026-05-17)
+# Aktív mandate-szabályok (utolsó frissítés: 2026-05-29)
 
 > **SESSION-START kötelező olvasmány #1.** Minden új AI session-kezdéskor ELŐSZÖR ezt az indexet olvassa be az ügynök, NEM az egyes mandate-fájlokat. Az index → mandate-fájl irány a navigáció.
 
@@ -70,6 +70,12 @@
 | **E.8** | `business-review-required` címke + üzleti approve | v2 8. | always | P0 |
 | **E.9** | "AI review NEM garantál üzleti helyességet" záró figyelmeztetés | v2 9. | always | P1 |
 | **E.10** | Mérnöki vs. üzleti product-ready különválasztás | v2 10. | always | P1 |
+
+## Fejlesztési irány-audit (2026-05-29, user-direktíva „kezeld mandátumként + alkalmazd")
+
+| # | Mandate | Fájl | Hatály | P-szint |
+|---|---|---|---|---|
+| **F.1** | Fejlesztési irány-audit: tényalapúság (út+sor+idézet) · nulla halucináció · nulla lustaság (futtass/mérj) · research-first · folyamatos root-cause hurok · Definition of Done · kötelező szállítás-előtti parancslánc (`agent:guard` → `self-check:before-*` → `github-signal-check.ps1 <PR>` → `ci:errors` → security-gate) · token-ökonómia (nincs felesleges PR) | `FEJLESZTESI_IRANY_AUDIT.md` (repo gyökér) | always | **P0** |
 
 ---
 

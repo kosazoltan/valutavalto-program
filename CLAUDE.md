@@ -38,6 +38,7 @@ hallucináció, lustaság, halogatás, „feltételezem hogy jó". Teljes szöve
 - **Security gate** minden feladatnál: `.cursor/rules/mandatory-security-gate.mdc` + `.cursor/skills/security-deploy-gate/SKILL.md`. Deploy előtt: `scripts/security/run-security-gate.ps1` (FAILED/BLOCKED → deploy tiltott).
 - **V234 belső log+audit**: minden `LOG.error()`/`vvLogger.error()` KÖTELEZŐ `error_code`-dal (`VV-<KAT>-<3jegy>`). Új hibatípus → előbb `packages/shared-logging/error-codes.yaml` (ai_fix_hint + user_impact), csak utána a hívás. `audit_log` immutable (UPDATE/DELETE tiltott trigger).
 - **Régi hibák azonnali javítása**: audit/review közben talált scope-on kívüli hibát is azonnal javítani (kivéve több-napos refaktor → GitHub issue + kód-komment).
+- **Fejlesztési irány-audit (F.1, P0)**: tényalapúság (út+sor+idézet) · nulla halucináció/lustaság (futtass-mérj-igazolj) · research-first · folyamatos root-cause hurok teljes zöldig · Definition of Done · szállítás-előtti kötelező parancslánc (`agent:guard` → `self-check:before-*` → `github-signal-check.ps1 <PR>` → `ci:errors` → security-gate) · token-ökonómia (nincs felesleges PR). Teljes szöveg: `FEJLESZTESI_IRANY_AUDIT.md` (repo gyökér, az AGENTS.md/AI_CONSTITUTION.md precedence-lánc alatt).
 
 ## GitHub minőségbiztosítás (KÖTELEZŐ minden PR-en, automatikusan)
 
