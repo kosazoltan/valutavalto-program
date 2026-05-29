@@ -207,6 +207,30 @@ jobs:
           npm ci --no-audit --no-fund
           Push-Location kozponti-client; npm ci --no-audit --no-fund; Pop-Location
           Push-Location frontend-react; npm ci --legacy-peer-deps --no-audit --no-fund; Pop-Location
+      # KRITIKUS FIX (login-blokkoló): a kozponti electron a Google DESKTOP OAuth client ID-t a
+      # kozponti-client/vite.config.ts loadEnv(repoRoot)-jából kapja (-> process.env.GOOGLE_DESKTOP_CLIENT_ID
+      # inline). E lépés nélkül a bundle desktop-OAuth NÉLKÜL épült -> "Google Desktop OAuth client nincs
+      # konfigurálva". A bundle-ölt frontend WEB login-gombja a frontend-react/.env.production VITE_GOOGLE_CLIENT_ID-t kéri.
+      - name: Construct Google OAuth env (.env + frontend-react/.env.production)
+        shell: pwsh
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
+          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
+        run: |
+          @(
+            "GOOGLE_CLIENT_ID=$env:GOOGLE_CLIENT_ID",
+            "GOOGLE_CLIENT_SECRET=$env:GOOGLE_CLIENT_SECRET",
+            "GOOGLE_DESKTOP_CLIENT_ID=$env:GOOGLE_DESKTOP_CLIENT_ID",
+            "GOOGLE_DESKTOP_CLIENT_SECRET=$env:GOOGLE_DESKTOP_CLIENT_SECRET"
+          ) -join "`n" | Out-File -FilePath ".env" -Encoding utf8 -NoNewline
+          $tpl = Get-Content "frontend-react/.env.production.example" -Raw
+          $tpl = $tpl.Replace('<<__GOOGLE_WEB_CLIENT_ID__>>', $env:GOOGLE_CLIENT_ID)
+          $tpl = $tpl.Replace('<<__GOOGLE_DESKTOP_CLIENT_ID__>>', $env:GOOGLE_DESKTOP_CLIENT_ID)
+          $tpl = $tpl.Replace('<<__GOOGLE_DESKTOP_CLIENT_SECRET__>>', $env:GOOGLE_DESKTOP_CLIENT_SECRET)
+          $tpl | Out-File -FilePath "frontend-react/.env.production" -Encoding utf8 -NoNewline
+          Write-Host "Google OAuth env kész (.env + frontend-react/.env.production)."
       - name: Build Kozponti installer (UNSIGNED)
         working-directory: kozponti-client
         shell: pwsh
