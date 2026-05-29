@@ -50,6 +50,12 @@ export default function RateGrid({
   // felhasználó a KÉPLETET lássa/szerkessze (0-s lap minta). Commit blur/Enter-kor.
   const [buffer, setBuffer] = useState('')
 
+  // FK-04/C: a J (Elszámoló / officialRate) oszlop felülírható (spec: "alapból a 0-s lap A oszlopa,
+  // felülírható"). Külön szerkesztő-buffer, mert a J a táblázat ELSŐ oszlopa (a 8 sávoszlop-rácstól
+  // elkülönül), és a `r.officialRate` szám (a többi mező string). Üres = auto (0-s lap A).
+  const [jBuffer, setJBuffer] = useState('')
+  const [jRow, setJRow] = useState<number | null>(null)
+
   // Buffer seed: a fókuszált cellába a képlet-string (ha van), egyébként a megjelenített érték.
   useEffect(() => {
     if (!activeCell) return
@@ -84,17 +90,18 @@ export default function RateGrid({
               <th className="px-1 py-0 text-center w-28">{t('rates.ellenorzes')}</th>
             </tr>
             <tr className="bg-green-700 text-white text-[10px] leading-none">
-              <th className="px-1 py-0 text-left w-14 border-r border-green-500">MNB</th>
+              {/* FK-04/C: oszlop-betűk (J–S) a fejlécben — a képletírás ezekre hivatkozik (pl. "L", "#02M", "!FEUR"). */}
+              <th className="px-1 py-0 text-left w-14 border-r border-green-500"><span className="text-yellow-300 font-bold">J</span> MNB</th>
               <th className="px-1 py-0 w-4 border-r border-green-500"></th>
-              <th className="px-1 py-0 w-10 border-r border-green-500 font-bold">{t('common.code')}</th>
-              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">{t('rates.vet')}</th>
-              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500">{t('rates.elad')}</th>
-              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">{t('rates.v')}</th>
-              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500">E-</th>
-              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">{t('rates.v')}</th>
-              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500">E-</th>
-              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500">{t('rates.vmax')}</th>
-              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500">{t('rates.emin')}</th>
+              <th className="px-1 py-0 w-10 border-r border-green-500 font-bold"><span className="text-yellow-300">K</span> {t('common.code')}</th>
+              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">L</span> {t('rates.vet')}</th>
+              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">M</span> {t('rates.elad')}</th>
+              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">N</span> {t('rates.v')}</th>
+              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">O</span> E-</th>
+              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">P</span> {t('rates.v')}</th>
+              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">Q</span> E-</th>
+              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">R</span> {t('rates.vmax')}</th>
+              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">S</span> {t('rates.emin')}</th>
               <th className="px-1 py-0 text-yellow-200">{t('common.error')}</th>
             </tr>
           </thead>
@@ -111,9 +118,29 @@ export default function RateGrid({
 
               return (
                 <tr key={r.currencyId} className={`${rowBg} border-b border-gray-100 hover:bg-blue-50/30`}>
-                  <td className="px-1 py-0 text-right font-mono text-blue-800 font-bold border-r text-[11px]">
-                    {r.officialRate ? formatDecimal(r.officialRate, 2, 4) : '0'}
-                  </td>
+                  {(() => {
+                    const jKey = `${r.currencyId}.officialRate`
+                    const jHasFormula = !!formulas[jKey]
+                    const jErr = cellErrors[jKey]
+                    const jActive = jRow === idx
+                    const jDisplay = jActive ? jBuffer : (r.officialRate ? formatDecimal(r.officialRate, 2, 4) : '')
+                    return (
+                      <td className="px-0 py-0 text-right border-r relative">
+                        <input
+                          type="text"
+                          value={jDisplay}
+                          onFocus={() => { setJRow(idx); setJBuffer(formulas[jKey] ?? (r.officialRate ? String(r.officialRate) : '')) }}
+                          onChange={e => setJBuffer(e.target.value)}
+                          onBlur={() => { if (onCommitCell) onCommitCell(idx, 'officialRate', jBuffer); setJRow(null) }}
+                          title={jHasFormula ? `Elszámoló (J) képlet: ${formulas[jKey]}${jErr ? ` — HIBA: ${jErr}` : ''}` : 'Elszámoló árfolyam (J) — felülírható; üres = a 0-s lap A oszlopa'}
+                          className={`w-full px-0.5 py-0 text-right font-mono text-[11px] text-blue-800 font-bold border-0 bg-transparent focus:bg-blue-50 focus:outline-none ${jHasFormula && !jActive ? 'bg-indigo-50' : ''} ${jErr ? 'ring-2 ring-red-400 ring-inset' : ''}`}
+                        />
+                        {jHasFormula && !jActive && (
+                          <span className="absolute left-0 top-0 text-[7px] text-indigo-500 font-bold pointer-events-none">ƒ</span>
+                        )}
+                      </td>
+                    )
+                  })()}
                   <td className="px-0 py-0 text-center border-r w-4">
                     {r.modified && <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-400" />}
                     {isInvalid && <AlertTriangle size={9} className="text-red-500 inline" />}
