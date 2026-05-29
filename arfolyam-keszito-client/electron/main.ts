@@ -467,10 +467,11 @@ app.whenReady().then(async () => {
 
   // EBC Hangsegéd Phase 9.5 — mikrofon engedély (lasd penztar-client/electron/main.ts).
   // Security: URL parse + exact hostname/protocol compare (Codex P1 + CodeQL + Copilot fix).
-  // Non-media permission: az Electron alapertelmezett viselkedeset (allow) megtartjuk (Sourcery P2 fix).
+  // F-006 (audit 2026-05-29): non-media permission BIZTONSAGOS DEFAULT = DENY (nem default-allow).
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
     if (permission !== 'media') {
-      callback(true)
+      log.warn('[Security] Non-media permission elutasitva (default-deny):', permission)
+      callback(false)
       return
     }
     try {
