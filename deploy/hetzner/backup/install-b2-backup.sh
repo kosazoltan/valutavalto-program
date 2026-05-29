@@ -84,8 +84,10 @@ echo "[backup] Legfrissebb B2-ben: \$LATEST"
 
 # Bucket osszmeret naplozasa - korai figyelmeztetes, ha a tarhasznalat no.
 # (A Backblaze "Daily Storage Cap" fiok-szintu; ez a sor a sajat bucketunk meretet adja.)
-BUCKET_SIZE=\$(rclone size "b2:\$B2_BUCKET" 2>/dev/null | tr '\n' ' ')
-echo "[backup] B2 bucket (valuta-backup) ossz: \$BUCKET_SIZE"
+# Best-effort (Codex P2): set -euo pipefail mellett az rclone size atmeneti hibaja NEM
+# buktathatja el a mar sikeresen feltoltott backupot -> || fallback a hibas systemd-statusz ellen.
+BUCKET_SIZE=\$(rclone size "b2:\$B2_BUCKET" 2>/dev/null | tr '\n' ' ') || BUCKET_SIZE="n/a (rclone size hiba)"
+echo "[backup] B2 bucket (\$B2_BUCKET) ossz: \$BUCKET_SIZE"
 BSEOF
 chmod +x /usr/local/bin/valuta-db-backup.sh
 
