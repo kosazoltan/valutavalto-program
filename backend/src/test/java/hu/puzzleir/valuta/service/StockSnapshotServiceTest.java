@@ -379,6 +379,49 @@ class StockSnapshotServiceTest {
     }
 
     /**
+     * FK-005 (T1/c) KRITIKUS regressziós teszt — EGYSEGES_AI_UGYNOK_UTASITASKESZLET.
+     * Az Országos készlet modul „0 Ft / 0 pénztár / Nincs adat"-ra esett (2026-05-20 regresszió).
+     * Invariáns rögzítése: NEM ÜRES, készlettel rendelkező pénztár-halmaznál a snapshot
+     * NEM adhat vissza üres régió-listát, és a cégszintű HUF-összesítés > 0. Ez a teszt
+     * közvetlenül megbukna, ha egy túl szűk WHERE / hibás tenant-join / területi JOIN ismét
+     * kiürítené a listát.
+     */
+    @Test
+    @DisplayName("FK-005 regresszió - nem-ures, keszlettel rendelkezo branch-halmaz -> NEM ures snapshot, HUF-osszeg > 0")
+    void getFullSnapshot_nonEmptyBranchesWithStock_doesNotReturnEmpty() {
+        Branch branch1 = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
+        Branch branch2 = createBranch(BRANCH_2_ID, "B02", "Iroda 2", "20");
+        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch1, branch2));
+
+        CurrencyStock huf1 = CurrencyStock.builder()
+                .entityType("CASHIER").entityId(BRANCH_1_ID.toString())
+                .currencyCode("HUF").quantity(new BigDecimal("1000000"))
+                .weightedAvgCost(BigDecimal.ONE).lastUpdated(LocalDateTime.now()).build();
+        CurrencyStock eur2 = CurrencyStock.builder()
+                .entityType("CASHIER").entityId(BRANCH_2_ID.toString())
+                .currencyCode("EUR").quantity(new BigDecimal("500"))
+                .weightedAvgCost(new BigDecimal("400")).lastUpdated(LocalDateTime.now()).build();
+        when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of(huf1, eur2));
+        when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        // A modul NEM eshet vissza ures listara, amikor van aktiv, keszlettel rendelkezo branch.
+        assertThat(result).isNotNull();
+        assertThat(result.getRegions())
+                .as("nem-ures branch-halmaznal a regio-lista sem lehet ures")
+                .isNotEmpty();
+        // Minden aktiv branch megjelenik (2 regio, regionkent 1-1 branch).
+        int totalBranches = result.getRegions().stream().mapToInt(r -> r.getBranches().size()).sum();
+        assertThat(totalBranches).isEqualTo(2);
+        // A cegszintu HUF-osszesites > 0 (1 000 000 HUF + 500*400 EUR-HUF = 200 000) -> nem "0 Ft".
+        assertThat(result.getCompanyTotals()).isNotNull();
+        long companyHuf = result.getCompanyTotals().getCurrencies().stream()
+                .mapToLong(CurrencyStockDetailDto::getStockHuf).sum();
+        assertThat(companyHuf).as("a cegszintu HUF-keszlet nem lehet 0, ha van keszlet").isGreaterThan(0L);
+    }
+
+    /**
      * Codex P2 PR #157 regression test:
      * Ha egy branch-nek olyan region-code-ja van ami NINCS a REGION_NAMES hardcoded map-ben,
      * a branch-e NEM vesz el a companyTotals-bol (fallback aggregation minden branch-et kell latnia).
