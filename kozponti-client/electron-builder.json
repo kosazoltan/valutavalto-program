@@ -25,7 +25,7 @@
       "signingHashAlgorithms": ["sha256"],
       "rfc3161TimeStampServer": "http://timestamp.digicert.com"
     },
-    "verifyUpdateCodeSignature": true
+    "verifyUpdateCodeSignature": false
   },
   "nsis": {
     "oneClick": false,
@@ -36,6 +36,12 @@
     "uninstallerIcon": "../penztar-client/build/icons/app-icon-bestchange.ico",
     "installerHeader": "../penztar-client/build/installer-header.png",
     "include": "build/installer-cleanup.nsh"
+  },
+  "publish": {
+    "provider": "github",
+    "owner": "kosazoltan",
+    "repo": "valutavalto-program",
+    "channel": "munkaallomas"
   },
   "extraResources": [
     {
