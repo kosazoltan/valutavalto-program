@@ -34,6 +34,7 @@ class TransactionConversionServiceTest {
     @Mock private HandlingFeeCalculator handlingFeeCalculator;
     @Mock private DailySessionService dailySessionService;
     @Mock private TransactionOperationHelper helper;
+    @Mock private PmtComplianceValidator pmtComplianceValidator;
 
     @InjectMocks
     private TransactionConversionService conversionService;

@@ -34,6 +34,7 @@ class TransactionServiceCameraLinkingTest {
     private static final Long EUR_ID = 2L;
     private static final Long HUF_ID = 1L;
     @Mock private TransactionValidationService transactionValidationService;
+    @Mock private PmtComplianceValidator pmtComplianceValidator;
 
     @InjectMocks
     private TransactionService transactionService;

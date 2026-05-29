@@ -76,6 +76,7 @@ public class TransactionService {
     private final @org.springframework.context.annotation.Lazy TransactionReversalService reversalService;
     private final @org.springframework.context.annotation.Lazy TransactionConversionService conversionService;
     private final @org.springframework.context.annotation.Lazy TransactionMultiLineService multiLineService;
+    private final PmtComplianceValidator pmtComplianceValidator;
     private final LicenseService licenseService;
     private final SystemParameterService systemParameterService;
     private final TransactionValidationService transactionValidationService;
@@ -844,55 +845,13 @@ public class TransactionService {
             String customerActorDocumentNumber,
             String customerActorAddress,
             String operation) {
-        if (hufAmount == null || hufAmount.compareTo(BigDecimal.valueOf(300_000)) < 0) {
-            return; // < 300k: Pmt. szerint nem kotelezo
-        }
-        // Codex P1 (PR #695) follow-up + F-002 (audit 2026-05-29): feature-flag alapu strict
-        // enforcement. PMT_STRICT_ENFORCEMENT=true -> ValidationException (Pmt. compliance KOTELEZO).
-        //
-        // A default 2026-05-29-ig 'false' volt (WARN-only) a v2.5.59 kliensek kompatibilitasaert,
-        // azzal a tervvel, hogy "v2.5.61+ release-ben a default 'true' lesz, miutan minden penztaros
-        // gepen lefutott a v2.5.60 telepito". A kompat-ablak rege lejart (jelenleg v2.27.x), ezert
-        // a default mostantol 'true' (F-002 fix). A strict-ag CSAK feltetelesen blokkol: 300k+ HUF
-        // ES (isPep=true de PEP-minoseg hianyzik) VAGY (onOwnBehalf=false de actor-mezok hianyoznak)
-        // — a normal tranzakciot NEM erinti; a UI gyujti ezeket a mezoket (CustomerPanel/representatives).
-        // Dev/test kornyezet a system-parameterrel explicit 'false'-ra allithatja, ha kell.
-        //
-        // PR #695 CI fix: defensive null-check a `systemParameterService`-re, mert mockolt
-        // TransactionService-be nem injectalja a szervizt. Ha null -> default strictMode=false.
-        boolean strictMode = systemParameterService != null
-            && "true".equalsIgnoreCase(systemParameterService.getValue("PMT_STRICT_ENFORCEMENT", "true"));
-
-        // PEP minoseg kotelezo, ha isPep=true
-        if (Boolean.TRUE.equals(customerIsPep) && (customerPepKind == null || customerPepKind.isBlank())) {
-            String msg = String.format(
-                "Pmt. compliance (%s, %s HUF): customerIsPep=true de customerPepKind hianyzik. "
-                + "Pmt. tv. 6.§ szerint kotelezo megjelolni a PEP minoseget.", operation, hufAmount);
-            if (strictMode) {
-                throw new ValidationException(msg);
-            }
-            log.warn("{} (WARN-only, PMT_STRICT_ENFORCEMENT=false). v2.5.61+ release: exception.", msg);
-        }
-        // Actor teljes azonositasa kotelezo, ha onOwnBehalf=false
-        if (Boolean.FALSE.equals(customerOnOwnBehalf)) {
-            java.util.List<String> missing = new java.util.ArrayList<>();
-            if (customerActorName == null          || customerActorName.isBlank())          missing.add("actorName");
-            if (customerActorBirthPlace == null    || customerActorBirthPlace.isBlank())    missing.add("actorBirthPlace");
-            if (customerActorBirthDate == null     || customerActorBirthDate.isBlank())     missing.add("actorBirthDate");
-            if (customerActorMotherName == null    || customerActorMotherName.isBlank())    missing.add("actorMotherName");
-            if (customerActorDocumentNumber == null|| customerActorDocumentNumber.isBlank()) missing.add("actorDocumentNumber");
-            if (customerActorAddress == null       || customerActorAddress.isBlank())       missing.add("actorAddress");
-            if (!missing.isEmpty()) {
-                String msg = String.format(
-                    "Pmt. compliance (%s, %s HUF): customerOnOwnBehalf=false de actor mezok hianyoznak: %s. "
-                    + "Pmt. tv. 6.§ (2) szerint a kepviselt felre is teljes azonositast kell vegezni.",
-                    operation, hufAmount, missing);
-                if (strictMode) {
-                    throw new ValidationException(msg);
-                }
-                log.warn("{} (WARN-only, PMT_STRICT_ENFORCEMENT=false). v2.5.61+ release: exception.", msg);
-            }
-        }
+        // F-002 + Codex P1 (audit 2026-05-29): a Pmt-compliance ellenorzes a megosztott
+        // PmtComplianceValidator-ban el, hogy a BUY/SELL ES a KONVERZIO (TransactionConversionService)
+        // UGYANAZT futtassa — a konverzio-ag korabban kicsuszott a Pmt-validacio alol.
+        pmtComplianceValidator.validate(
+                hufAmount, customerIsPep, customerPepKind, customerOnOwnBehalf,
+                customerActorName, customerActorBirthPlace, customerActorBirthDate,
+                customerActorMotherName, customerActorDocumentNumber, customerActorAddress, operation);
     }
 
     private void validateCurrencyStock(UUID branchId, Long currencyId, BigDecimal amount) {
