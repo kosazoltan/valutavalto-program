@@ -22,29 +22,21 @@ const DEFAULT_TIMEOUT_MS = 30_000
 const MAX_RESPONSE_BYTES = 50 * 1024 * 1024
 const ALLOWED_HOSTS = ['excvaluta.com', 'localhost']
 
-function isPrivateOrLoopbackHost(hostname: string): boolean {
+// F-005 (audit 2026-05-29) SSRF-hardening: csak a loopback (saját gép) engedélyezett a lokális
+// backendhez — a tágas privát tartományok (10/172.16-31/192.168) és a link-local (169.254/x,
+// benne a 169.254.169.254 cloud-metadata SSRF-célpont) NEM. Egy renderer-kompromittálódás így
+// nem érheti el a belső hálózati / metadata endpointokat a main-process proxyn át.
+function isLoopbackHost(hostname: string): boolean {
   const host = hostname.toLowerCase()
-  if (host === '127.0.0.1' || host === '::1' || host === '[::1]') return true
-
-  const parts = host.split('.').map((part) => Number.parseInt(part, 10))
-  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
-    return false
-  }
-
-  const a = parts[0] ?? -1
-  const b = parts[1] ?? -1
-  return a === 10
-    || (a === 172 && b >= 16 && b <= 31)
-    || (a === 192 && b === 168)
-    || (a === 169 && b === 254)
-    || a === 127
+  return host === '127.0.0.1' || host === '::1' || host === '[::1]' || host === 'localhost'
 }
 
 function isAllowedUrl(raw: string): boolean {
   try {
     const parsed = new URL(raw)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false
     return ALLOWED_HOSTS.some((host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`))
-      || isPrivateOrLoopbackHost(parsed.hostname)
+      || isLoopbackHost(parsed.hostname)
   } catch {
     return false
   }
