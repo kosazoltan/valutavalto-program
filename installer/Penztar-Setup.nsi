@@ -768,6 +768,22 @@ Section "Telepites" SecInstall
         FileClose $0
         DetailPrint "  pg_hba.conf kesz (S6-04: minden user scram-sha-256)"
 
+        ; F-007 (audit 2026-05-29): post-hardening validacio — a pg_hba.conf NEM tartalmazhat
+        ; 'trust' auth sort. Ha az initdb ideiglenes trust-modja valamiert bennmaradt (hiba a
+        ; hardening-irasban), a telepito itt HANGOSAN elbukik a PG leallitasaval — igy a penztari
+        ; gepen nem maradhat hitelesites-nelkuli (trust) DB-ablak.
+        nsExec::ExecToStack 'cmd /c findstr /I /R /C:"^[^#].*trust" "$DATA_DIR\pgsql\data\pg_hba.conf"'
+        Pop $0
+        Pop $1  ; stdout (stack balance)
+        ${If} $0 == 0
+            DetailPrint "  HIBA: pg_hba.conf meg tartalmaz 'trust' auth-ot a hardening utan!"
+            nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 10'
+            IfSilent +1
+            MessageBox MB_OK|MB_ICONSTOP "HIBA: Az adatbazis-hitelesites nem biztonsagos (trust auth maradt a pg_hba.conf-ban).$\r$\nA telepito biztonsagi okbol leallt."
+            Abort
+        ${EndIf}
+        DetailPrint "  pg_hba.conf validacio OK (nincs trust auth)"
+
         ; S6-04: Create .pgpass for service/maintenance access
         DetailPrint "  .pgpass letrehozas (postgres admin)..."
         FileOpen $0 "$DATA_DIR\config\.pgpass" w
