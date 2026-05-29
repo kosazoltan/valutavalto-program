@@ -412,10 +412,15 @@ public class RatePublishService {
         }
     }
 
-    /** Az alap-ráta effektív (publikált) értéke = base + spread. base==null → null (a check skippel). */
+    /**
+     * Az alap-ráta effektív (publikált) értéke = base + spread, a publikálással AZONOS 4-tizedes
+     * kerekítéssel (mergeRate setScale(4, HALF_UP)) — Codex #909 P2: különben egy sub-4-tizedes
+     * eltérés (pl. 400.00004 vs J=400.0000) hibásan elutasítaná a védelmet, holott a publikált
+     * (kerekített) érték 400.0000 = szabályos. base==null → null (a check skippel).
+     */
     private BigDecimal addSpread(BigDecimal base, BigDecimal spread) {
         if (base == null) return null;
-        return base.add(spread == null ? BigDecimal.ZERO : spread);
+        return base.add(spread == null ? BigDecimal.ZERO : spread).setScale(4, RoundingMode.HALF_UP);
     }
 
     /**
