@@ -409,23 +409,32 @@ if (-not $SkipDownloads) {
     $pgStagedSize = [math]::Round((Get-ChildItem "$StageDir\pgsql" -Recurse -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
     Write-Host "PostgreSQL staged - $pgStagedSize MB (pgAdmin/doc pruned)" -ForegroundColor Green
 
-    # NSSM
-    # NSSM — skip download if already staged
+    # NSSM — beszerzési sorrend: 1) mar staged → skip; 2) VENDORED repo-binaris (determinisztikus,
+    # nssm.cc-fuggetlen — a nssm.cc tartosan 503-azza a CI-IP-ket); 3) fallback: letoltes (retry).
+    # Mindharom utat ugyanaz a SHA256-ellenorzes vedi (NSSM_SHA256 = hivatalos win64 nssm.exe).
     if (Test-Path "$StageDir\tools\nssm.exe") {
-        Write-Host "NSSM already staged, skipping download" -ForegroundColor Yellow
+        Write-Host "NSSM already staged, skipping" -ForegroundColor Yellow
     } else {
-        $nssmZip = Join-Path $dlDir "nssm.zip"
-        if (-not (Test-Path $nssmZip)) {
-            Write-Host "Downloading NSSM $NSSM_VERSION..."
-            Invoke-DownloadWithRetry $NSSM_URL $nssmZip "NSSM $NSSM_VERSION"
-        } else { Write-Host "NSSM ZIP cached" -ForegroundColor Yellow }
+        New-Item -ItemType Directory -Force -Path "$StageDir\tools" | Out-Null
+        $vendoredNssm = Join-Path $RepoRoot "installer\vendor\nssm-2.24-win64.exe"
+        if (Test-Path $vendoredNssm) {
+            Copy-Item $vendoredNssm "$StageDir\tools\nssm.exe" -Force
+            Assert-FileHash "$StageDir\tools\nssm.exe" $NSSM_SHA256 "NSSM $NSSM_VERSION (vendored)"
+            Write-Host "NSSM staged a vendored repo-binarisbol (nssm.cc-fuggetlen)" -ForegroundColor Green
+        } else {
+            $nssmZip = Join-Path $dlDir "nssm.zip"
+            if (-not (Test-Path $nssmZip)) {
+                Write-Host "Downloading NSSM $NSSM_VERSION (nincs vendored copy)..."
+                Invoke-DownloadWithRetry $NSSM_URL $nssmZip "NSSM $NSSM_VERSION"
+            } else { Write-Host "NSSM ZIP cached" -ForegroundColor Yellow }
 
-        Write-Host "Extracting NSSM..."
-        Expand-Archive -Path $nssmZip -DestinationPath "$dlDir\nssm-extract" -Force
-        $nssmExe = Get-ChildItem "$dlDir\nssm-extract" -Recurse -Filter "nssm.exe" | Where-Object { $_.Directory.Name -eq "win64" } | Select-Object -First 1
-        Copy-Item $nssmExe.FullName "$StageDir\tools\nssm.exe"
-        Assert-FileHash "$StageDir\tools\nssm.exe" $NSSM_SHA256 "NSSM $NSSM_VERSION"
-        Write-Host "NSSM staged" -ForegroundColor Green
+            Write-Host "Extracting NSSM..."
+            Expand-Archive -Path $nssmZip -DestinationPath "$dlDir\nssm-extract" -Force
+            $nssmExe = Get-ChildItem "$dlDir\nssm-extract" -Recurse -Filter "nssm.exe" | Where-Object { $_.Directory.Name -eq "win64" } | Select-Object -First 1
+            Copy-Item $nssmExe.FullName "$StageDir\tools\nssm.exe" -Force
+            Assert-FileHash "$StageDir\tools\nssm.exe" $NSSM_SHA256 "NSSM $NSSM_VERSION"
+            Write-Host "NSSM staged (letoltve)" -ForegroundColor Green
+        }
     }
     # VC++ 2015-2022 Redistributable x64 — PG16 EDB binárisok előfeltétele
     $vcRedist = "$StageDir\tools\vc_redist.x64.exe"
