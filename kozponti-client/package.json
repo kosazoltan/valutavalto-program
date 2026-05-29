@@ -1,6 +1,7 @@
 {
   "name": "valuta-kozponti-client",
-"version": "2.27.54",  "private": true,
+  "version": "2.27.54",
+  "private": true,
   "author": "Exclusive Best Change Zrt.",
   "description": "Kozponti munkaallomas - osszevont Electron kliens: Kozponti iranyitokozpont (full) ES Arfolyamkeszito (rate-maker) mod, indulaskori mod-valasztoval",
   "type": "commonjs",
@@ -35,5 +36,8 @@
   },
   "engines": {
     "node": ">=20.19.0"
+  },
+  "overrides": {
+    "tmp": "^0.2.6"
   }
 }
