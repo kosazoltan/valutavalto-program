@@ -5,7 +5,9 @@
 # Futtatas elotti lepesek:
 #   1. Hozz letre B2 bucket-et: https://secure.backblaze.com/b2_buckets.htm
 #      Bucket nev: valuta-backup
-#      Privat, lifecycle: 30 nap utan a nem-current verziok torlese
+#      Privat, lifecycle: 14 nap utan a nem-current verziok torlese
+#      (a bucket-oldali lifecycle a Backblaze DASHBOARD-on allithato; a lenti
+#       RETENTION_DAYS csak a LOKALIS /var/backups/valuta retenciot vezerli)
 #   2. Hozz letre application key-t (bucket-specific!):
 #      - Scope: "Only specific buckets" -> valuta-backup
 #      - Permissions: listBuckets, listFiles, readFiles, writeFiles, deleteFiles
@@ -26,7 +28,7 @@ fi
 
 B2_BUCKET="${B2_BUCKET:-valuta-backup}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/valuta}"
-RETENTION_DAYS="${RETENTION_DAYS:-30}"
+RETENTION_DAYS="${RETENTION_DAYS:-14}"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
@@ -79,6 +81,13 @@ find "\$BACKUP_DIR" -name "valuta-*.sql.gz" -mtime +$RETENTION_DAYS -delete
 # Egeszseg-ellenorzes: a bucket-ben levo friss file melyeke?
 LATEST=\$(rclone lsl "b2:\$B2_BUCKET/db/" | sort -k 2 | tail -1)
 echo "[backup] Legfrissebb B2-ben: \$LATEST"
+
+# Bucket osszmeret naplozasa - korai figyelmeztetes, ha a tarhasznalat no.
+# (A Backblaze "Daily Storage Cap" fiok-szintu; ez a sor a sajat bucketunk meretet adja.)
+# Best-effort (Codex P2): set -euo pipefail mellett az rclone size atmeneti hibaja NEM
+# buktathatja el a mar sikeresen feltoltott backupot -> || fallback a hibas systemd-statusz ellen.
+BUCKET_SIZE=\$(rclone size "b2:\$B2_BUCKET" 2>/dev/null | tr '\n' ' ') || BUCKET_SIZE="n/a (rclone size hiba)"
+echo "[backup] B2 bucket (\$B2_BUCKET) ossz: \$BUCKET_SIZE"
 BSEOF
 chmod +x /usr/local/bin/valuta-db-backup.sh
 
