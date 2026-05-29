@@ -135,6 +135,11 @@ export default function RateCreationPage() {
     }
     setFormulas(loadGroupFormulas(selectedWg.id))
     setCellErrors({})
+    // Codex #910 P1: az undo/redo stack csoportonként ÉRVÉNYTELEN — csoportváltáskor ürítjük,
+    // különben egy másik csoportban beírt képletet a Ctrl+Z az AKTUÁLIS csoportba állítaná vissza,
+    // és a perzisztáló effekt annak localStorage-kulcsa alá mentené (kereszt-csoport korrupció).
+    undoStack.current = []
+    redoStack.current = []
   // eslint-disable-next-line react-hooks/exhaustive-deps -- csak a csoport-id váltáskor töltünk újra
   }, [selectedWg?.id])
 
@@ -183,7 +188,10 @@ export default function RateCreationPage() {
 
     if (Object.keys(formulas).length === 0) {
       if (Object.keys(cellErrors).length > 0) setCellErrors({})
-      saveSnapshot(computeRows) // fix-rátás csoport pillanatképe is elérhető #NN-hez
+      // Codex #910 P1: NEM mentünk itt snapshotot — a `rates` tile-váltáskor NEM töltődik újra,
+      // így egy korábbi (képletes) csoport számított rátáit mentené a fix-csoport #NN-kulcsa alá
+      // (rossz kereszt-hivatkozási célértékek). A fix-rátás csoport #NN-célként-kezelése (#906 P2)
+      // tudatosan elhalasztva — a kereszt-csoport korrupció elkerülése a fontosabb.
       return
     }
     const result = recomputeWorkgroupSheet({
