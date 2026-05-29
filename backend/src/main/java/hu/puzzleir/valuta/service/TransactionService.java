@@ -847,17 +847,21 @@ public class TransactionService {
         if (hufAmount == null || hufAmount.compareTo(BigDecimal.valueOf(300_000)) < 0) {
             return; // < 300k: Pmt. szerint nem kotelezo
         }
-        // Codex P1 (PR #695) follow-up: feature-flag alapu strict enforcement.
-        // PMT_STRICT_ENFORCEMENT=true -> ValidationException (Pmt. compliance KOTELEZO).
-        // PMT_STRICT_ENFORCEMENT=false (default) -> WARN-szintu naplozas (kompatibilitas
-        // a v2.5.59 kliensekhez). v2.5.61+ release-ben a default 'true' lesz, miutan
-        // minden penztaros gepen lefutott a v2.5.60 telepito.
+        // Codex P1 (PR #695) follow-up + F-002 (audit 2026-05-29): feature-flag alapu strict
+        // enforcement. PMT_STRICT_ENFORCEMENT=true -> ValidationException (Pmt. compliance KOTELEZO).
         //
-        // PR #695 CI fix: defensive null-check a `systemParameterService`-re,
-        // mert a PepSourceOfFundsTest mockolt TransactionService-be nem injectalja
-        // a system-parameter szervizt. Ha null -> default strictMode=false.
+        // A default 2026-05-29-ig 'false' volt (WARN-only) a v2.5.59 kliensek kompatibilitasaert,
+        // azzal a tervvel, hogy "v2.5.61+ release-ben a default 'true' lesz, miutan minden penztaros
+        // gepen lefutott a v2.5.60 telepito". A kompat-ablak rege lejart (jelenleg v2.27.x), ezert
+        // a default mostantol 'true' (F-002 fix). A strict-ag CSAK feltetelesen blokkol: 300k+ HUF
+        // ES (isPep=true de PEP-minoseg hianyzik) VAGY (onOwnBehalf=false de actor-mezok hianyoznak)
+        // — a normal tranzakciot NEM erinti; a UI gyujti ezeket a mezoket (CustomerPanel/representatives).
+        // Dev/test kornyezet a system-parameterrel explicit 'false'-ra allithatja, ha kell.
+        //
+        // PR #695 CI fix: defensive null-check a `systemParameterService`-re, mert mockolt
+        // TransactionService-be nem injectalja a szervizt. Ha null -> default strictMode=false.
         boolean strictMode = systemParameterService != null
-            && "true".equalsIgnoreCase(systemParameterService.getValue("PMT_STRICT_ENFORCEMENT", "false"));
+            && "true".equalsIgnoreCase(systemParameterService.getValue("PMT_STRICT_ENFORCEMENT", "true"));
 
         // PEP minoseg kotelezo, ha isPep=true
         if (Boolean.TRUE.equals(customerIsPep) && (customerPepKind == null || customerPepKind.isBlank())) {
