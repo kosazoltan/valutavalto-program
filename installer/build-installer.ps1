@@ -112,6 +112,24 @@ function Assert-FileHash($Path, $Expected, $Label) {
     Write-Host "  $Label checksum OK" -ForegroundColor Green
 }
 
+# Robusztus letoltes: a kulso forrasok (pl. nssm.cc, PG-mirror) idoszakosan 503/timeout-ot
+# adnak. Retry exponencialis backoff-fal, hogy a CI-build ne bukjon egy atmeneti hiccup miatt.
+function Invoke-DownloadWithRetry($Uri, $OutFile, $Label, $MaxAttempts = 5) {
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing -TimeoutSec 120
+            if ((Test-Path $OutFile) -and (Get-Item $OutFile).Length -gt 0) { return }
+            throw "Ures fajl: $OutFile"
+        } catch {
+            $wait = [math]::Min(30, [math]::Pow(2, $attempt))
+            Write-Host "  [$Label] letoltes sikertelen ($attempt/$MaxAttempts): $($_.Exception.Message). Ujraprobalkozas ${wait}s mulva..." -ForegroundColor Yellow
+            if (Test-Path $OutFile) { Remove-Item $OutFile -Force -ErrorAction SilentlyContinue }
+            if ($attempt -eq $MaxAttempts) { throw "[$Label] letoltes $MaxAttempts probalkozas utan is sikertelen: $Uri" }
+            Start-Sleep -Seconds $wait
+        }
+    }
+}
+
 function Write-Step($msg) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 
 # Env injection: .env.production-t generaljuk a .env.production.example-bol.
@@ -365,7 +383,7 @@ if (-not $SkipDownloads) {
     $pgZip = Join-Path $dlDir "postgresql-binaries.zip"
     if (-not (Test-Path $pgZip)) {
         Write-Host "Downloading PostgreSQL $PG_VERSION binaries..."
-        Invoke-WebRequest -Uri $PG_URL -OutFile $pgZip -UseBasicParsing
+        Invoke-DownloadWithRetry $PG_URL $pgZip "PostgreSQL $PG_VERSION"
     } else { Write-Host "PostgreSQL ZIP cached" -ForegroundColor Yellow }
 
     Assert-FileHash $pgZip $PG_SHA256 "PostgreSQL $PG_VERSION"
@@ -399,7 +417,7 @@ if (-not $SkipDownloads) {
         $nssmZip = Join-Path $dlDir "nssm.zip"
         if (-not (Test-Path $nssmZip)) {
             Write-Host "Downloading NSSM $NSSM_VERSION..."
-            Invoke-WebRequest -Uri $NSSM_URL -OutFile $nssmZip -UseBasicParsing
+            Invoke-DownloadWithRetry $NSSM_URL $nssmZip "NSSM $NSSM_VERSION"
         } else { Write-Host "NSSM ZIP cached" -ForegroundColor Yellow }
 
         Write-Host "Extracting NSSM..."
