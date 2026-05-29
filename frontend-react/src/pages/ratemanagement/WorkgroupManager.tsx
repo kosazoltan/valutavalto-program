@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Users, Plus, ArrowLeft, Pencil, Trash2, Save, X, Check } from 'lucide-react'
+import { Users, Plus, ArrowLeft, Pencil, Trash2, X } from 'lucide-react'
 import {
   rateWorkgroupApi,
   rateCreationApi,
@@ -11,26 +11,13 @@ import {
 } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
-
-// FK-02: 10 választható csempeszín — paletta-kulcs → Tailwind osztályok. A kulcsot tároljuk a
-// backendben (tile_color), így a megjelenítés független a nyers hex-től, és témázható.
-const TILE_PALETTE: { key: string; label: string; tile: string; swatch: string }[] = [
-  { key: 'slate', label: 'Szürke', tile: 'bg-slate-100 border-slate-300 text-slate-800', swatch: 'bg-slate-400' },
-  { key: 'red', label: 'Piros', tile: 'bg-red-100 border-red-300 text-red-800', swatch: 'bg-red-400' },
-  { key: 'orange', label: 'Narancs', tile: 'bg-orange-100 border-orange-300 text-orange-800', swatch: 'bg-orange-400' },
-  { key: 'amber', label: 'Borostyán', tile: 'bg-amber-100 border-amber-300 text-amber-800', swatch: 'bg-amber-400' },
-  { key: 'green', label: 'Zöld', tile: 'bg-green-100 border-green-300 text-green-800', swatch: 'bg-green-400' },
-  { key: 'teal', label: 'Türkiz', tile: 'bg-teal-100 border-teal-300 text-teal-800', swatch: 'bg-teal-400' },
-  { key: 'sky', label: 'Égkék', tile: 'bg-sky-100 border-sky-300 text-sky-800', swatch: 'bg-sky-400' },
-  { key: 'indigo', label: 'Indigó', tile: 'bg-indigo-100 border-indigo-300 text-indigo-800', swatch: 'bg-indigo-400' },
-  { key: 'purple', label: 'Lila', tile: 'bg-purple-100 border-purple-300 text-purple-800', swatch: 'bg-purple-400' },
-  { key: 'pink', label: 'Rózsaszín', tile: 'bg-pink-100 border-pink-300 text-pink-800', swatch: 'bg-pink-400' },
-]
-const DEFAULT_TILE = TILE_PALETTE[0]!
-
-function tileClasses(colorKey: string | null | undefined): string {
-  return (TILE_PALETTE.find(p => p.key === colorKey) ?? DEFAULT_TILE).tile
-}
+import {
+  DEFAULT_TILE,
+  tileClasses,
+  WorkgroupEditor,
+  ConfirmDialog,
+  type ConfirmState,
+} from '../rates/workgroupMaintenance'
 
 // FK-02 pont 4: alapértelmezett táblázatstruktúra (J–S oszlopok). A részletes működés (képletezés,
 // árfolyamvédelem, kedvezménysávok) külön fejlesztési kérés — itt csak a struktúrát jelenítjük meg.
@@ -46,14 +33,6 @@ const SHEET_COLUMNS: { col: string; label: string }[] = [
   { col: 'R', label: 'Saját h. vételi' },
   { col: 'S', label: 'Saját h. eladási' },
 ]
-
-interface ConfirmState {
-  title: string
-  message: string
-  confirmLabel: string
-  danger?: boolean
-  onConfirm: () => void | Promise<void>
-}
 
 export default function WorkgroupManager() {
   const [workgroups, setWorkgroups] = useState<RateWorkgroupDTO[]>([])
@@ -282,77 +261,6 @@ export default function WorkgroupManager() {
   )
 }
 
-// ============ Szerkesztő modal (létrehozás / átnevezés + szín) ============
-function WorkgroupEditor({ mode, draft, setDraft, onSave, onCancel }: {
-  mode: 'create' | 'rename'
-  draft: RateWorkgroupSaveDTO
-  setDraft: (d: RateWorkgroupSaveDTO) => void
-  onSave: () => void
-  onCancel: () => void
-}) {
-  return (
-    <Overlay onCancel={onCancel}>
-      <h3 className="text-base font-semibold mb-3">{mode === 'create' ? 'Új munkacsoport' : 'Munkacsoport átnevezése'}</h3>
-      <div className="space-y-3">
-        <div>
-          <label className="text-sm font-medium">Név</label>
-          <input className="form-input w-full" value={draft.name} placeholder="pl. Budapest központ"
-            onChange={e => setDraft({ ...draft, name: e.target.value })} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm font-medium">Kód</label>
-            <input className="form-input w-full" value={draft.code} placeholder="pl. WG01" disabled={mode === 'rename'}
-              onChange={e => setDraft({ ...draft, code: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Sorszám</label>
-            <input className="form-input w-full" type="number" value={draft.legacyGroupNumber ?? ''}
-              onChange={e => setDraft({ ...draft, legacyGroupNumber: e.target.value === '' ? undefined : parseInt(e.target.value, 10) })} />
-          </div>
-        </div>
-        <div>
-          <label className="text-sm font-medium">Csempeszín</label>
-          <div className="flex flex-wrap gap-2 mt-1">
-            {TILE_PALETTE.map(p => (
-              <button key={p.key} type="button" title={p.label}
-                onClick={() => setDraft({ ...draft, tileColor: p.key })}
-                className={`h-7 w-7 rounded-full ${p.swatch} flex items-center justify-center ring-2 ${draft.tileColor === p.key ? 'ring-gray-800' : 'ring-transparent'}`}>
-                {draft.tileColor === p.key && <Check className="h-4 w-4 text-white" />}
-              </button>
-            ))}
-          </div>
-        </div>
-        {/* FK-04/D: Kedvezményhatárok (3 forint-küszöb). Üres input = nincs határ
-            (a backend null-ra tartja a meglévő értéket; ha 0-t küldünk, az 0 lesz). */}
-        <div>
-          <label className="text-sm font-medium">Kedvezményhatárok (Ft)</label>
-          <p className="text-xs text-gray-500 mb-1">A kedvezményes vételi/eladási sávok határai HUF-ban. Üres mező = változatlan.</p>
-          <div className="grid grid-cols-3 gap-2">
-            {(['limit1Boundary','limit2Boundary','limit3Boundary'] as const).map((key, idx) => (
-              <div key={key}>
-                <label className="text-xs text-gray-600">{idx === 0 ? 'Alsó' : idx === 1 ? 'Középső' : 'Felső'} határ</label>
-                <input className="form-input w-full" type="number" min="0" step="1"
-                  value={draft[key] ?? ''}
-                  placeholder={idx === 0 ? '50 000' : idx === 1 ? '300 000' : '1 000 000'}
-                  onChange={e => setDraft({ ...draft, [key]: e.target.value === '' ? null : Number(e.target.value) })} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="flex justify-end gap-2 mt-4">
-        <button className="form-button-secondary inline-flex items-center gap-1 px-3 py-1.5 text-sm" onClick={onCancel}>
-          <X className="h-4 w-4" /> Mégse
-        </button>
-        <button className="form-button inline-flex items-center gap-1 px-3 py-1.5 text-sm" onClick={onSave}>
-          <Save className="h-4 w-4" /> Mentés
-        </button>
-      </div>
-    </Overlay>
-  )
-}
-
 // ============ Pénztár-hozzárendelés (felvétel / törlés / áthelyezés) ============
 function BranchAssignment({ workgroup, onError, confirm }: {
   workgroup: RateWorkgroupDTO
@@ -468,31 +376,3 @@ function DefaultRateTable() {
   )
 }
 
-// ============ Megerősítő párbeszédablak ============
-function ConfirmDialog({ state, onCancel }: { state: ConfirmState; onCancel: () => void }) {
-  return (
-    <Overlay onCancel={onCancel}>
-      <h3 className="text-base font-semibold mb-2">{state.title}</h3>
-      <p className="text-sm text-gray-600 mb-4">{state.message}</p>
-      <div className="flex justify-end gap-2">
-        <button className="form-button-secondary px-3 py-1.5 text-sm" onClick={onCancel}>Mégse</button>
-        <button
-          className={`px-3 py-1.5 text-sm rounded-md text-white ${state.danger ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primary/90'}`}
-          onClick={() => { void state.onConfirm() }}
-        >
-          {state.confirmLabel}
-        </button>
-      </div>
-    </Overlay>
-  )
-}
-
-function Overlay({ children, onCancel }: { children: React.ReactNode; onCancel: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onCancel}>
-      <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl" onClick={e => e.stopPropagation()}>
-        {children}
-      </div>
-    </div>
-  )
-}
