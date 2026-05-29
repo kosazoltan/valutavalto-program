@@ -11,6 +11,7 @@ import '@fontsource/inter/700.css'
 import './index.css'
 import ErrorBoundary from './components/ErrorBoundary'
 import { CompanyThemeProvider } from './contexts/CompanyThemeContext'
+import { appTitleForFlavor } from './utils/appTitle'
 import './components/ErrorReporter' // auto-registers global error listeners
 import './i18n' // v2.4.0 (F): i18next setup — initReactI18next + hu.json resource
 // Polyfill: crypto.randomUUID a NEM secure context-ekre (HTTP non-localhost).
@@ -38,6 +39,10 @@ if (!globalThis.crypto || typeof globalThis.crypto.randomUUID !== 'function') {
     ;(globalThis as unknown as { crypto: Crypto }).crypto = cryptoObj
   }
 }
+// v2.5.54 #6/#20: az ablak-cím a kliens build-time flavor-ja szerint (a 3 kliens
+// elkülönüljön a tálcán/ablakváltón). Az Electron-ablak címe a document.title-t követi.
+document.title = appTitleForFlavor(import.meta.env.VITE_APP_FLAVOR)
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
