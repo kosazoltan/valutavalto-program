@@ -12,6 +12,11 @@
 | **Kozponti-Munkaallomas-Setup-2.27.50.exe** | Központi + Árfolyamkészítő (egy telepítő, indításkor mód-választó) | 102,4 MB |
 | **Penztar-Eltavolito-2.27.50-20260529.exe** | Eltávolító (csak régi/sérült telepítés tisztításához) | 60 KB |
 
+> ⚠️ **FIGYELEM — adatvesztés-veszély:** a `Penztar-Eltavolito` ALAPÉRTELMEZÉSBEN **törli a helyi
+> PostgreSQL adatbázist** (`C:\ProgramData\BestChange` → teljes RMDir), KIVÉVE upgrade-módban
+> (`/PRESERVE_DATA=1`). Éles/adatos gépen **NE futtasd** előzetes `pg_dump` mentés nélkül. Csak
+> üres vagy sérült (adat nélküli) telepítés tisztításához használd.
+
 ## Telepítés (a kolléga dolga csak ennyi)
 1. Dupla-klikk a telepítőre.
 2. UAC → „Igen" (esetleg admin-jelszó).
