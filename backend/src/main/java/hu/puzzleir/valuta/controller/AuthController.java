@@ -497,11 +497,20 @@ public class AuthController {
                 .or(() -> companyRepository.findByCodeIgnoreCase(companyCode))
                 .orElseThrow(() -> new ValidationException("Ismeretlen cegkod: " + companyCode));
 
+        // Multi-tenant izolacio (Codex P1 + Copilot fix): a hitelesitett admin CSAK a SAJAT
+        // cege dolgozoihoz allithat ki setup-tokent — kulonben kereszt-tenant token-kiallitas
+        // (IDOR) lenne lehetseges a kerés companyCode-javal. Tenant-idegen → ugyanaz a "ismeretlen
+        // cegkod" valasz (id-enumeracio ellen).
+        java.util.UUID callerCompanyId = SecurityUtils.getCurrentCompanyId();
+        if (callerCompanyId == null || !company.getId().equals(callerCompanyId)) {
+            throw new ValidationException("Ismeretlen cegkod: " + companyCode);
+        }
+
         Worker worker = workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), workerCode)
                 .orElseThrow(() -> new ValidationException(
                         "Ismeretlen dolgozoi azonosito: " + workerCode + " (ceg: " + companyCode + ")"));
 
-        String rawToken = workerSetupTokenService.issueToken(
+        WorkerSetupTokenService.IssuedSetupToken issued = workerSetupTokenService.issueToken(
                 worker.getId(), company.getId(), SecurityUtils.getCurrentWorkerId());
 
         return ResponseEntity.ok(WorkerSetupTokenResponseDto.builder()
@@ -510,8 +519,8 @@ public class AuthController {
                 .companyCode(company.getCode())
                 .workerCode(worker.getCode())
                 .workerName(worker.getName())
-                .token(rawToken)
-                .expiresAt(java.time.Instant.now().plus(WorkerSetupTokenService.TOKEN_TTL))
+                .token(issued.rawToken())
+                .expiresAt(issued.expiresAt())
                 .build());
     }
 

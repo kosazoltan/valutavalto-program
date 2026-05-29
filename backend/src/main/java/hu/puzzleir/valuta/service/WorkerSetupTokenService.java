@@ -40,16 +40,20 @@ public class WorkerSetupTokenService {
 
     private final WorkerSetupTokenRepository tokenRepository;
 
+    /** A kiállított token: a raw érték (csak egyszer) + a tényleges lejárat (Sourcery fix). */
+    public record IssuedSetupToken(String rawToken, Instant expiresAt) {
+    }
+
     /**
      * Új setup-token kiállítása egy workerhez. A visszaadott raw token CSAK itt érhető el.
      *
      * @param workerId      a céltárs worker
      * @param companyId     a worker cége (scope-ellenőrzéshez)
      * @param createdByWorkerId a kiállító admin worker id-ja (audit, lehet null)
-     * @return a raw (URL-safe Base64) token — ezt kell a kollégának eljuttatni
+     * @return a raw (URL-safe Base64) token + a tényleges lejárat
      */
     @Transactional
-    public String issueToken(Long workerId, UUID companyId, Long createdByWorkerId) {
+    public IssuedSetupToken issueToken(Long workerId, UUID companyId, Long createdByWorkerId) {
         if (workerId == null || companyId == null) {
             throw new ValidationException("Setup-token kiállításához worker és cég kötelező.");
         }
@@ -70,7 +74,7 @@ public class WorkerSetupTokenService {
 
         log.info("Worker setup-token kiállítva: workerId={}, companyId={}, createdBy={}, expiresAt={}",
                 workerId, companyId, createdByWorkerId, token.getExpiresAt());
-        return rawToken;
+        return new IssuedSetupToken(rawToken, token.getExpiresAt());
     }
 
     /**
@@ -104,8 +108,13 @@ public class WorkerSetupTokenService {
             throw new ValidationException("A setup-token nem ehhez a dolgozóhoz tartozik.");
         }
 
-        token.setUsedAt(Instant.now());
-        tokenRepository.save(token);
+        // ATOMI felhasználás (Copilot review fix): a feltételes UPDATE garantálja, hogy két
+        // párhuzamos kérés közül csak EGY tudja felhasználni a tokent (a másik 0 sort kap).
+        int updated = tokenRepository.markUsedIfUnused(token.getId(), Instant.now());
+        if (updated != 1) {
+            log.warn("Setup-token párhuzamos felhasználási kísérlet: tokenId={}, workerId={}", token.getId(), workerId);
+            throw new ValidationException("Érvénytelen vagy már felhasznált setup-token.");
+        }
         log.info("Worker setup-token felhasználva: tokenId={}, workerId={}", token.getId(), workerId);
     }
 

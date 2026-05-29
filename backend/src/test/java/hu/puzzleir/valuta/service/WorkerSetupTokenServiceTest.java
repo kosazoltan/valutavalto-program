@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,13 +46,14 @@ class WorkerSetupTokenServiceTest {
     void issueToken_storesHashNotRaw() {
         when(tokenRepository.save(any(WorkerSetupToken.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        String raw = service.issueToken(WORKER_ID, COMPANY_ID, 99L);
+        WorkerSetupTokenService.IssuedSetupToken issued = service.issueToken(WORKER_ID, COMPANY_ID, 99L);
 
-        assertThat(raw).isNotBlank();
+        assertThat(issued.rawToken()).isNotBlank();
+        assertThat(issued.expiresAt()).isAfter(Instant.now());
         ArgumentCaptor<WorkerSetupToken> captor = ArgumentCaptor.forClass(WorkerSetupToken.class);
         verify(tokenRepository).save(captor.capture());
         WorkerSetupToken saved = captor.getValue();
-        assertThat(saved.getTokenHash()).isNotBlank().isNotEqualTo(raw);
+        assertThat(saved.getTokenHash()).isNotBlank().isNotEqualTo(issued.rawToken());
         assertThat(saved.getTokenHash()).hasSize(64); // SHA-256 hex
         assertThat(saved.getWorkerId()).isEqualTo(WORKER_ID);
         assertThat(saved.getCompanyId()).isEqualTo(COMPANY_ID);
@@ -119,19 +121,31 @@ class WorkerSetupTokenServiceTest {
     }
 
     @Test
-    @DisplayName("validateAndConsume — érvényes token: felhasználva (used_at beállítva)")
+    @DisplayName("validateAndConsume — érvényes token: ATOMI felhasználás (markUsedIfUnused)")
     void validate_validToken_consumed() {
         WorkerSetupToken valid = WorkerSetupToken.builder()
                 .id(3L).tokenHash("h").workerId(WORKER_ID).companyId(COMPANY_ID)
                 .issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(3600))
                 .build();
         when(tokenRepository.findByTokenHashAndUsedAtIsNull(anyString())).thenReturn(Optional.of(valid));
-        when(tokenRepository.save(any(WorkerSetupToken.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(tokenRepository.markUsedIfUnused(eq(3L), any())).thenReturn(1);
 
         service.validateAndConsume("raw", WORKER_ID, COMPANY_ID);
 
-        ArgumentCaptor<WorkerSetupToken> captor = ArgumentCaptor.forClass(WorkerSetupToken.class);
-        verify(tokenRepository).save(captor.capture());
-        assertThat(captor.getValue().getUsedAt()).isNotNull(); // egyszer hasznalatos
+        verify(tokenRepository).markUsedIfUnused(eq(3L), any()); // egyszer hasznalatos, atomi
+    }
+
+    @Test
+    @DisplayName("validateAndConsume — párhuzamos felhasználás (markUsedIfUnused=0) ValidationException")
+    void validate_concurrentConsume_rejected() {
+        WorkerSetupToken valid = WorkerSetupToken.builder()
+                .id(5L).tokenHash("h").workerId(WORKER_ID).companyId(COMPANY_ID)
+                .issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        when(tokenRepository.findByTokenHashAndUsedAtIsNull(anyString())).thenReturn(Optional.of(valid));
+        when(tokenRepository.markUsedIfUnused(eq(5L), any())).thenReturn(0); // mas mar felhasznalta
+
+        assertThatThrownBy(() -> service.validateAndConsume("raw", WORKER_ID, COMPANY_ID))
+                .isInstanceOf(ValidationException.class);
     }
 }
