@@ -44,7 +44,7 @@
 
 ## 1. A napi zárás „kikényszerítése" — kilépés előtti felajánlás
 **Kérdés:** A napi zárás „kikényszerítéséhez" megfelelő-e, ha a fiók zárása előtt x (pl. 30) perccel a kilépéskor erősen (külön tennie kelljen valamit, hogy zárás nélkül kilépjen) felajánlja a zárást?
-**Válasz:** Üzleti elvárás (a dokumentumban a kolléga válasza): **„Elegendő."** Tehát a kilépés előtti, nyomatékos zárás-felajánlás megfelelő megoldás. A repóban a napzárás domainjét a `DailySession` entitás / `CashRegisterSessionController` kezeli (pénztár-szesszió nyitás/zárás). A konkrét „x perccel kilépés előtt erős felajánlás" UI-viselkedés a pénztáros Electron-kliens (`penztar-client/`) felelőssége — a repo alapján a session-zárás backend-támogatása megvan, de a 30 perces figyelmeztetés pontos kliens-implementációjára nincs egyértelmű külön bizonyíték.
+**Válasz:** Üzleti elvárás (a dokumentumban a kolléga válasza): **„Elegendő."** Tehát a kilépés előtti, nyomatékos zárás-felajánlás megfelelő megoldás. A repóban a napzárás domainjét a `DailySession` entitás / `DailySessionService` kezeli (pénztár-szesszió nyitás/zárás). A konkrét „x perccel kilépés előtt erős felajánlás" UI-viselkedés a pénztáros Electron-kliens (`penztar-client/`) felelőssége — a repo alapján a session-zárás backend-támogatása megvan, de a 30 perces figyelmeztetés pontos kliens-implementációjára nincs egyértelmű külön bizonyíték.
 
 ## 2. Bizonylatszámok sorszám-része: fiókon belül vagy céges szinten egyedi?
 **Kérdés:** A bizonylatszámok sorszám része fiókon belül egyedi, vagy céges szinten?
@@ -59,7 +59,7 @@ Vagyis a sorszámozás **fiók-szintű (pénztár-prefix + fiókon belüli folya
 
 ## 3. Árfolyam-kedvezmény eltérés-figyelmeztetés — %-ot jelent?
 **Kérdés:** Figyelmeztetést várnak akkor, ha az árfolyam-kedvezmény „előre meghatározott értéknél nagyobb mértékben tér el". Ez %-ot jelent?
-**Válasz:** Üzleti elvárás (kolléga válasza): **Igen, %-ot jelent.** Van egy mérték (**2%**), amely felett csak supervisori (értéktárosi supervisori) jelszóval lehet az árfolyamot módosítani. A repóban az engedélyező/supervisori mechanizmust az `SupervisorService` / `SupervisorPinService` (supervisori PIN) fedi le; a sávos/egyedi árfolyam-kedvezmény az `RateWorkgroup` / `RateDiscount` / `RateDiscount` / `FeeDiscount` entitásokon keresztül modellezett. A konkrét 2%-os küszöb-konstans repo-szintű jelenlétére nincs egyértelmű külön bizonyíték — ezt küszöbként kell konfigurálni.
+**Válasz:** Üzleti elvárás (kolléga válasza): **Igen, %-ot jelent.** Van egy mérték (**2%**), amely felett csak supervisori (értéktárosi supervisori) jelszóval lehet az árfolyamot módosítani. A repóban az engedélyező/supervisori mechanizmust az `SupervisorService` / `SupervisorPinService` (supervisori PIN) fedi le; a sávos/egyedi árfolyam-kedvezmény az `RateWorkgroup` / `RateDiscount` / `FeeDiscount` entitásokon keresztül modellezett. A konkrét 2%-os küszöb-konstans repo-szintű jelenlétére nincs egyértelmű külön bizonyíték — ezt küszöbként kell konfigurálni.
 
 ## 4. Átlagárfolyam: középárfolyam vagy számolt?
 **Kérdés:** Átlag árfolyam: az a középárfolyam, vagy számolt? Amennyiben számolt, miként?
@@ -83,7 +83,7 @@ Vagyis a sorszámozás **fiók-szintű (pénztár-prefix + fiókon belüli folya
 
 ## 9. Közszereplő típusa (államfő, képviselő) rögzítendő?
 **Kérdés:** Közszereplő típusa (államfő, képviselő) rögzítendő?
-**Válasz:** Üzleti elvárás (kolléga válasza): **Igen.** Választani kell a megadott (törvényi) listából, rögzíteni kell, és a bizonylaton nyomtatni kell, mert az ügyfél nyilatkozik és aláírja. A repóban ezt a a `Transaction` PEP-mezői (V235 `transaction_pep_kind_and_actor_identity` migráció) + a bizonylat-nyomtatás (`Receipt`) fedik le — tehát a típus-rögzítés és nyilatkozat domain szinten támogatott.
+**Válasz:** Üzleti elvárás (kolléga válasza): **Igen.** Választani kell a megadott (törvényi) listából, rögzíteni kell, és a bizonylaton nyomtatni kell, mert az ügyfél nyilatkozik és aláírja. A repóban ezt a `Transaction` PEP-mezői (V235 `transaction_pep_kind_and_actor_identity` migráció) + a bizonylat-nyomtatás (`Receipt`) fedik le — tehát a típus-rögzítés és nyilatkozat domain szinten támogatott.
 
 ## 10. Részletes jelentés: többlet/hiány/eltérés — nincs redundancia?
 **Kérdés:** Részletes jelentés: többlet mennyiség, hiány mennyiség, eltérés: itt nincs redundancia az eltérés kapcsán?
@@ -95,7 +95,7 @@ Vagyis a sorszámozás **fiók-szintű (pénztár-prefix + fiókon belüli folya
 
 ## 12. Valuta átvétel banktól: banki bizonylat rögzítése nem kéne?
 **Kérdés:** Valuta átvétel banktól: banki bizonylat rögzítése nem kéne?
-**Válasz:** Üzleti válasz (kolléga): **Nem,** mert a mi bizonylatunk a banki bizonylat ellenpárja (a saját átvételi bizonylat elegendő). A repóban a banktól való valuta-/forintmozgást a `VaultBankTransaction` (+ `BankTransferController`) és a `BankOrder` fedik le; külön „banki bizonylat" rögzítő mező nem szükséges.
+**Válasz:** Üzleti válasz (kolléga): **Nem,** mert a mi bizonylatunk a banki bizonylat ellenpárja (a saját átvételi bizonylat elegendő). A repóban a banktól való valuta-/forintmozgást a `VaultBankTransaction` és a `BankOrder` / `BankOrderService` fedik le; külön „banki bizonylat" rögzítő mező nem szükséges.
 
 ## 13. Bizonylat másolat nyomtatása (nem újranyomtatás) — kell?
 **Kérdés:** Bizonylat másolat nyomtatása nem kell? (Nem az újranyomtatásra gondolok.)
@@ -123,7 +123,7 @@ Vagyis a sorszámozás **fiók-szintű (pénztár-prefix + fiókon belüli folya
 
 ## 19. Tranzakciós adó jelentés: hogyan számolandó?
 **Kérdés:** Tranzakciós adó jelentés: hogyan számolandó?
-**Válasz:** Üzleti válasz (kolléga): törvényi előírás szerint a **tranzakciós illeték 4,5 millió Ft alatt 4,5 ezrelék, e felett darabonként 20 000 Ft**, amit a NAV-nak meg kell fizetni (a forrás szerint aug. 1-jével emelkedett ennyire). A repóban ezt a tranzakciós illeték-számítás (a repóban nincs külön tranzakciós illeték-logika (nincs külön entitás) entitás; a tranzakciós adatokból a riport-szolgáltatások számolják) fedi le. A konkrét aktuális ráta/küszöb-konstansok repo-szintű értékére nincs egyértelmű külön bizonyíték — az üzleti számítási szabály a fenti.
+**Válasz:** Üzleti válasz (kolléga): törvényi előírás szerint a **tranzakciós illeték 4,5 millió Ft alatt 4,5 ezrelék, e felett darabonként 20 000 Ft**, amit a NAV-nak meg kell fizetni (a forrás szerint aug. 1-jével emelkedett ennyire). A repóban ezt a tranzakciós illeték-számítás fedi le (a repóban NINCS külön `TransactionTax` entitás; a tranzakciós adatokból a riport-/export-szolgáltatások számolják). A konkrét aktuális ráta/küszöb-konstansok repo-szintű értékére nincs egyértelmű külön bizonyíték — az üzleti számítási szabály a fenti.
 
 ## 20. Pénztárak kezelése — „állapot (nyitva/zárva)" mit jelent?
 **Kérdés:** Pénztárak kezelése: „állapot (nyitva/zárva)": a napi nyitva/zárva, vagy üzemel/nem üzemel?
@@ -131,7 +131,7 @@ Vagyis a sorszámozás **fiók-szintű (pénztár-prefix + fiókon belüli folya
 
 ## 21. Valuta értéktár↔pénztár közti mozgás — kell-e NAV-gépre?
 **Kérdés:** Valuta mozog értéktár–pénztár közt: annak ugye nem kell NAV-gépre mennie?
-**Válasz:** Üzleti válasz (kolléga): **De, kell.** (Lásd 47. pont is: a pénztárak közötti átadás/átvétel is bemegy a NAV-hoz.) A repóban az értéktár↔pénztár mozgást a `Transfer` (+ `TransferController`), a NAV-továbbítást a `NavIntegrationService` / `NavClosing` fedi — tehát az átadás-átvétel NAV felé jelentése domain szinten támogatható.
+**Válasz:** Üzleti válasz (kolléga): **De, kell.** (Lásd 47. pont is: a pénztárak közötti átadás/átvétel is bemegy a NAV-hoz.) A repóban az értéktár↔pénztár mozgást a `Transfer` / `VaultTransfer` (+ `TransferController`), a NAV-továbbítást a `NavIntegrationService` / `NavClosing` fedi — tehát az átadás-átvétel NAV felé jelentése domain szinten támogatható.
 
 ## 22. Pénzküldemény nem érkezik meg — mi a teendő?
 **Kérdés:** Pénz küldemény nem érkezik meg. Mi a teendő? Stornó valami jogcímmel és jegyzőkönyv-csatolás pl.?
@@ -199,7 +199,7 @@ Vagyis a sorszámozás **fiók-szintű (pénztár-prefix + fiókon belüli folya
 
 ## 38. „Új pénztár felvétele" ad-hoc, előfordul? Törölhető?
 **Kérdés:** „Új pénztár felvétele" ad-hoc, előfordul?
-**Válasz:** Üzleti válasz (kolléga): új pénztár nyitásakor a listába itt kell felrögzíteni; a listából **alapból nem lehet törölni**, **de supervisori jelszóval lehet** pénztárat törölni. A repóban a pénztárt a `CashRegisterDevice` / `Workstation` (+ `CashRegisterController`) kezeli; a törlés engedélyhez (supervisori) kötése konzisztens a `SupervisorService` / `SupervisorPinService` mechanizmussal.
+**Válasz:** Üzleti válasz (kolléga): új pénztár nyitásakor a listába itt kell felrögzíteni; a listából **alapból nem lehet törölni**, **de supervisori jelszóval lehet** pénztárat törölni. A repóban a pénztárt a `CashRegisterDevice` / `Workstation` (+ `WorkstationController`) kezeli; a törlés engedélyhez (supervisori) kötése konzisztens a `SupervisorService` / `SupervisorPinService` mechanizmussal.
 
 ## 39. Ügyfél-adat szerkesztés — szükséges funkció?
 **Kérdés:** Ügyfél adat szerkesztés, szükséges funkció?
@@ -219,7 +219,7 @@ Vagyis a sorszámozás **fiók-szintű (pénztár-prefix + fiókon belüli folya
 
 ## 43. Egy tranzakcióban egy vagy több deviza; a kedvezményes táblázat hogyan képződik?
 **Kérdés:** Egy vagy több devizára is egy tranzakcióban, és akkor az egynek vagy többnek számít a számolásban? Az árfolyam-kedvezményes táblázat hogyan képződik?
-**Válasz:** Üzleti válasz (kolléga): adható sávos vagy egyedi árfolyam egyetlen devizára is, de **egy tételen belül többre is**. A kedvezményes táblázatot a **főértéktáros** készíti az árfolyamkészítéskor (képletes), és azt töltik le a gépek. A repóban az árfolyamkészítés az `arfolyam-keszito-client` és/vagy a `kozponti-client` (árfolyamkészítő mód) feladata; a sávokat az `RateWorkgroup` / `RateDiscount` / `RateDiscount` / `FeeDiscount` modellezi. Több deviza egy bizonylaton (lásd 51. pont): „amennyi 1 bizonylatra rögzíthető".
+**Válasz:** Üzleti válasz (kolléga): adható sávos vagy egyedi árfolyam egyetlen devizára is, de **egy tételen belül többre is**. A kedvezményes táblázatot a **főértéktáros** készíti az árfolyamkészítéskor (képletes), és azt töltik le a gépek. A repóban az árfolyamkészítés az `arfolyam-keszito-client` és/vagy a `kozponti-client` (árfolyamkészítő mód) feladata; a sávokat a `RateWorkgroup` / `RateDiscount` / `FeeDiscount` modellezi. Több deviza egy bizonylaton (lásd 51. pont): „amennyi 1 bizonylatra rögzíthető".
 
 ## 44. A pénztárszünet ténye megjelenik valami kijelzőn?
 **Kérdés:** A pénztárszünet ténye megjelenik valami kijelzőn?
@@ -331,7 +331,7 @@ Vagyis a sorszámozás **fiók-szintű (pénztár-prefix + fiókon belüli folya
 
 ## 71. Árfolyam-kedvezmény több valutanem esetén
 **Kérdés:** Árfolyam-kedvezmény több valutanem esetén?
-**Válasz:** Üzleti válasz (kolléga): **Működik most is, adható** — annyi, amennyi **1 bizonylatra rögzíthető**. A repóban a több devizás tétel/kedvezmény az `Transaction` + `RateWorkgroup` / `RateDiscount` / `RateDiscount` / `FeeDiscount` kombinációján modellezett (lásd 43. pont).
+**Válasz:** Üzleti válasz (kolléga): **Működik most is, adható** — annyi, amennyi **1 bizonylatra rögzíthető**. A repóban a több devizás tétel/kedvezmény az `Transaction` + `RateWorkgroup` / `RateDiscount` / `FeeDiscount` kombinációján modellezett (lásd 43. pont).
 
 ## 72. Átlagárfolyam-lista: pontosan hogyan kell számolni?
 **Kérdés:** Átlag árfolyam lista: pontosan hogyan kell számolni?
@@ -407,7 +407,7 @@ Vagyis a sorszámozás **fiók-szintű (pénztár-prefix + fiókon belüli folya
 
 ## 90. Saját hatáskörű vétel-eladás (R és S oszlop) képzése?
 **Kérdés:** Saját hatáskörű vétel-eladás (R és S oszlop): ennek a képzése?
-**Válasz:** Üzleti válasz (kolléga/Tamás): az előttük lévő oszlopokhoz hasonlóan **képletezve** van; az előző értékhez hozzáadják a kedvezmény mértékét (pl. EUR „R" oszlop képlete: **P + 0,25**). A repóban a kedvezmény-sávokat az `RateWorkgroup` / `RateDiscount` / `RateDiscount` / `FeeDiscount` fedi; az oszlop-képletek az árfolyamkészítő logika részei (árfolyamkészítő kliens).
+**Válasz:** Üzleti válasz (kolléga/Tamás): az előttük lévő oszlopokhoz hasonlóan **képletezve** van; az előző értékhez hozzáadják a kedvezmény mértékét (pl. EUR „R" oszlop képlete: **P + 0,25**). A repóban a kedvezmény-sávokat az `RateWorkgroup` / `RateDiscount` / `FeeDiscount` fedi; az oszlop-képletek az árfolyamkészítő logika részei (árfolyamkészítő kliens).
 
 ## 91. Új oszlop beszúrása lehetséges? Szükséges?
 **Kérdés:** Új oszlop beszúrás lehetséges? Szükséges?
