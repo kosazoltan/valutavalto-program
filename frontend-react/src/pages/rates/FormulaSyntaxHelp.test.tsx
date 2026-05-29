@@ -10,7 +10,7 @@ describe('FormulaSyntaxHelp (T9.F)', () => {
 
   it('nyitva dokumentálja mind a 4 hivatkozástípust + a védett K oszlopot', () => {
     render(<FormulaSyntaxHelp open={true} onClose={() => {}} />)
-    expect(screen.getByText('A–I')).toBeInTheDocument()
+    expect(screen.getByText('A–C, E–I')).toBeInTheDocument()
     expect(screen.getByText('J–S')).toBeInTheDocument()
     expect(screen.getByText('!Fxxx')).toBeInTheDocument()
     expect(screen.getByText('#NNL')).toBeInTheDocument()

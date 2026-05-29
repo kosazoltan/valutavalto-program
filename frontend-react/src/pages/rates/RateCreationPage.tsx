@@ -89,7 +89,7 @@ export default function RateCreationPage() {
   const [loading, setLoading] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // T9.F: képletszintaxis-súgó (A–I / J–S / !Fxxx / #NN) a csoport-lap szerkesztőhöz.
+  // T9.F: képletszintaxis-súgó (A–I / J–S / !Fxxx / #NNL) a csoport-lap szerkesztőhöz.
   const [showFormulaHelp, setShowFormulaHelp] = useState(false)
 
   // FK-04/C képletezés: felhasználói képletek (kulcs `${currencyId}.${field}`) csoportonként,
@@ -743,7 +743,7 @@ export default function RateCreationPage() {
           >
             <Home size={11} /> FŐLAP
           </button>
-          {/* T9.F: képletszintaxis-súgó — itt, ahol a J–S/#NN képleteket írják. */}
+          {/* T9.F: képletszintaxis-súgó — itt, ahol a J–S/#NNL képleteket írják. */}
           <FormulaSyntaxHelpButton onClick={() => setShowFormulaHelp(true)} />
           {selectedWg && (
             <span className="text-xs text-gray-500 ml-2">
