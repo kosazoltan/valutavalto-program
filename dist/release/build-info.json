@@ -1,39 +1,35 @@
 {
-  "versionLocations": [
-    "package.json",
-    "frontend-react/package.json",
-    "penztar-client/package.json",
-    "backend/pom.xml"
-  ],
-  "version": "2.5.36",
-  "buildDate": "2026-05-08",
-  "pipeline": {
-    "cleanupNsi": "installer/Penztar-Cleanup.nsi",
-    "validation": "installer/tests/installer-validation-suite.ps1",
-    "setupNsi": "installer/Penztar-Setup.nsi",
-    "versionGate": "installer/scripts/check-version-bump.ps1",
-    "buildInstaller": "installer/build-installer.ps1",
-    "buildCleanup": "installer/build-cleanup.ps1",
-    "commonHelpers": "installer/build-common.ps1"
-  },
+  "version": "2.27.50",
+  "buildDate": "20260529",
   "gitBranch": "main",
+  "signed": false,
+  "signingNote": "UNSIGNED — DigiCert EV Code Signing validáció folyamatban.",
+  "contents": "FK-04/C-E képletezhető J–S árfolyamlap + publish-védelem; FK-04/E.2 backend árfolyamvédelem (recovery); FK-003/004 napi forgalom Ft fix; Excel cégcím (EXCLUSIVE BEST CHANGE ZRT.); v2.5.54 kozmetikák (#9 dashboard-dátum, #11 sidebar-highlight, #17 szóköz, #6 ablak-cím flavoronként).",
   "artifacts": [
     {
-      "sizeMB": 280.81,
-      "name": "Penztar-Setup-2.5.36-20260508.exe",
+      "name": "Penztar-Setup-2.27.50-20260529.exe",
       "type": "installer",
-      "sha256": "F209C55EB8738E4D063D432A8CACD03584782FB1DB47B998DD06E378F2004A8B",
-      "description": "Egyfajlos teljes telepito (PostgreSQL 17.5 + backend + frontend + Electron + Windows services + auto-cleanup)",
-      "sizeBytes": 294450877
+      "role": "Pénztár + Értéktár kliens (PostgreSQL 17.5 + backend + frontend + Electron + Windows services)",
+      "sizeMB": 283.8,
+      "sha256": "30E7DD833FA6E660EE76762804764D196EB39E97318D9324009D92F28E72A9A1"
     },
     {
-      "sizeMB": 0.058,
-      "name": "Penztar-Eltavolito-2.5.36-20260508.exe",
+      "name": "Kozponti-Munkaallomas-Setup-2.27.50.exe",
+      "type": "installer",
+      "role": "Központi + Árfolyamkészítő összevont munkaállomás (mód-választóval)",
+      "sizeMB": 102.4,
+      "sha256": "DA58A3BAAD88E96605F5B8F131A3F664861E317EA0B3F42522BB9CB7A98DD59E"
+    },
+    {
+      "name": "Penztar-Eltavolito-2.27.50-20260529.exe",
       "type": "uninstaller",
-      "sha256": "01D3A31B1BBEBB0943FE7F97E7D0394390EF27484C170F91D9DFD0FFAA6AC116",
-      "description": "Standalone Eltavolito - regi/serult telepitesek tisztitasahoz (NEM torli az adatbazist)",
-      "sizeBytes": 60858
+      "role": "Standalone uninstaller (NEM törli az adatbázist; production gépen pg_dump ELŐTTE).",
+      "sizeKB": 60,
+      "sha256": "5DA69DEC2671EC8CFA715C2B02BD1B22AFFD320C921159CC64CA3B391C1A2A78"
     }
   ],
-  "gitCommit": "1ff4a35b0bb2ed07cdaba1166a33c48a0d39c1e3"
+  "production": {
+    "backendVersion": "2.27.50",
+    "verified": "Hetzner excvaluta.com prod-log: service_version 2.27.50 él; getAllStock 1156 sor (FK-005 healthy)."
+  }
 }
