@@ -1,35 +1,35 @@
 {
-  "version": "2.27.50",
+  "version": "2.27.52",
   "buildDate": "20260529",
   "gitBranch": "main",
   "signed": false,
   "signingNote": "UNSIGNED — DigiCert EV Code Signing validáció folyamatban.",
-  "contents": "FK-04/C-E képletezhető J–S árfolyamlap + publish-védelem; FK-04/E.2 backend árfolyamvédelem (recovery); FK-003/004 napi forgalom Ft fix; Excel cégcím (EXCLUSIVE BEST CHANGE ZRT.); v2.5.54 kozmetikák (#9 dashboard-dátum, #11 sidebar-highlight, #17 szóköz, #6 ablak-cím flavoronként).",
+  "contents": "FK-04/C-E képletezhető J–S árfolyamlap + publish-védelem (effektív ráta); FK-04/E.2 backend árfolyamvédelem (dedup + effektív-ráta kerekítés); FK-003/004 napi forgalom Ft fix; Excel cégcím; v2.5.54 kozmetikák (#6/#9/#11/#17); v2.27.51-52 AI-review P1 javítások (undo-clear csoportváltáskor, kereszt-csoport snapshot korrupció).",
   "artifacts": [
     {
-      "name": "Penztar-Setup-2.27.50-20260529.exe",
+      "name": "Penztar-Setup-2.27.52-20260529.exe",
       "type": "installer",
       "role": "Pénztár + Értéktár kliens (PostgreSQL 17.5 + backend + frontend + Electron + Windows services)",
       "sizeMB": 283.8,
-      "sha256": "30E7DD833FA6E660EE76762804764D196EB39E97318D9324009D92F28E72A9A1"
+      "sha256": "8FF7B477C2C7431F3C32CCC30C0ADF4364F26ECBA5D993FDAFDE9B4E36A430B1"
     },
     {
-      "name": "Kozponti-Munkaallomas-Setup-2.27.50.exe",
+      "name": "Kozponti-Munkaallomas-Setup-2.27.52.exe",
       "type": "installer",
       "role": "Központi + Árfolyamkészítő összevont munkaállomás (mód-választóval)",
       "sizeMB": 102.4,
-      "sha256": "DA58A3BAAD88E96605F5B8F131A3F664861E317EA0B3F42522BB9CB7A98DD59E"
+      "sha256": "76134D2896342A6CEA39D634540E47A5CCBAEDE41DB36AD4E941C93140A60695"
     },
     {
-      "name": "Penztar-Eltavolito-2.27.50-20260529.exe",
+      "name": "Penztar-Eltavolito-2.27.52-20260529.exe",
       "type": "uninstaller",
-      "role": "Standalone uninstaller (NEM törli az adatbázist; production gépen pg_dump ELŐTTE).",
+      "role": "Standalone uninstaller (ALAPÉRTELMEZÉSBEN törli a helyi DB-t; production gépen pg_dump ELŐTTE).",
       "sizeKB": 60,
-      "sha256": "5DA69DEC2671EC8CFA715C2B02BD1B22AFFD320C921159CC64CA3B391C1A2A78"
+      "sha256": "879F54B1A9DB16E43ADCC3AB4EE36BFAED0F28B00BB241765466F512260889B5"
     }
   ],
   "production": {
-    "backendVersion": "2.27.50",
-    "verified": "Hetzner excvaluta.com prod-log: service_version 2.27.50 él; getAllStock 1156 sor (FK-005 healthy)."
+    "backendVersion": "2.27.52",
+    "verified": "Hetzner excvaluta.com prod-log: service_version 2.27.52 él; getAllStock 1156 sor (FK-005 healthy)."
   }
 }
