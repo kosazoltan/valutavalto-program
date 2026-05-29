@@ -44,6 +44,8 @@ class StockSnapshotServiceTest {
     @Mock
     private TransactionRepository transactionRepository;
     @Mock
+    private TransactionLineRepository transactionLineRepository;
+    @Mock
     private hu.puzzleir.valuta.repository.CompanyRepository companyRepository;
     @Mock
     private CurrencyRepository currencyRepository;
@@ -60,10 +62,15 @@ class StockSnapshotServiceTest {
         auth.setDetails(details);
         SecurityContextHolder.getContext().setAuthentication(auth);
 
-        // Default mocks for transaction queries (return zero)
-        when(transactionRepository.sumDailyTurnoverByCurrency(any(), any(), any(), anyString()))
+        // Default mocks for daily-turnover queries (return zero). Multi-line-helyes (Codex #903):
+        // a snapshot a single-line (Transaction) ÉS a line (TransactionLine) query-ket összegzi.
+        when(transactionRepository.sumDailySingleLineTurnoverByCurrency(any(), any(), any(), anyString()))
                 .thenReturn(BigDecimal.ZERO);
-        when(transactionRepository.sumDailyTurnoverHufByCurrency(any(), any(), any(), anyString()))
+        when(transactionRepository.sumDailySingleLineTurnoverHufByCurrency(any(), any(), any(), anyString()))
+                .thenReturn(BigDecimal.ZERO);
+        when(transactionLineRepository.sumDailyLineTurnoverByCurrency(any(), any(), any(), anyString()))
+                .thenReturn(BigDecimal.ZERO);
+        when(transactionLineRepository.sumDailyLineTurnoverHufByCurrency(any(), any(), any(), anyString()))
                 .thenReturn(BigDecimal.ZERO);
         // Default mocks for reservations (return empty)
         when(reservationRepository.getReservedStockByBranch(any())).thenReturn(List.of());
@@ -410,9 +417,8 @@ class StockSnapshotServiceTest {
         when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
         when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
         when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
-        // EUR napi forgalom forintosított értéke 80 000 Ft (mindkét irányban) — a fix-0 hardcode előtt
-        // ezek 0-k voltak. A query-t EUR-ra felüldefiniáljuk (a default setUp ZERO marad a többire).
-        when(transactionRepository.sumDailyTurnoverHufByCurrency(any(), any(), any(), eq("EUR")))
+        // EUR egy-soros napi forgalom 80 000 Ft (mindkét irányban) — a fix-0 hardcode előtt 0 volt.
+        when(transactionRepository.sumDailySingleLineTurnoverHufByCurrency(any(), any(), any(), eq("EUR")))
                 .thenReturn(new BigDecimal("80000"));
 
         StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
@@ -421,5 +427,29 @@ class StockSnapshotServiceTest {
                 .filter(c -> "EUR".equals(c.getCurrencyCode())).findFirst().orElseThrow();
         assertThat(eur.getDailyBuyHuf()).as("napi vétel Ft NEM 0").isEqualTo(80000);
         assertThat(eur.getDailySellHuf()).as("napi eladás Ft NEM 0").isEqualTo(80000);
+    }
+
+    @Test
+    @DisplayName("Codex #903: multi-line bizonylat — a forgalom valutánként helyes (single-line + line összeg)")
+    void getFullSnapshot_dailyTurnover_multiLineSummedPerCurrency() {
+        Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
+        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
+        when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
+        // EUR: egy-soros vételi forgalom 50 000 Ft. USD: CSAK multi-line tétel-sorból 30 000 Ft.
+        // A régi (header-alapú) logika a multi-line USD-forgalmat az első valutára (EUR) számolta
+        // volna; most az USD a saját sorából, helyesen jelenik meg.
+        when(transactionRepository.sumDailySingleLineTurnoverHufByCurrency(any(), any(), eq(hu.puzzleir.valuta.entity.TransactionType.BUY), eq("EUR")))
+                .thenReturn(new BigDecimal("50000"));
+        when(transactionLineRepository.sumDailyLineTurnoverHufByCurrency(any(), any(), eq(hu.puzzleir.valuta.entity.TransactionType.BUY), eq("USD")))
+                .thenReturn(new BigDecimal("30000"));
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        var currencies = result.getRegions().get(0).getBranches().get(0).getCurrencies();
+        CurrencyStockDetailDto eur = currencies.stream().filter(c -> "EUR".equals(c.getCurrencyCode())).findFirst().orElseThrow();
+        CurrencyStockDetailDto usd = currencies.stream().filter(c -> "USD".equals(c.getCurrencyCode())).findFirst().orElseThrow();
+        assertThat(eur.getDailyBuyHuf()).as("EUR egy-soros forgalom").isEqualTo(50000);
+        assertThat(usd.getDailyBuyHuf()).as("USD multi-line forgalom a SAJÁT valutáján (nem EUR-on)").isEqualTo(30000);
     }
 }

@@ -230,6 +230,36 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * Napi forgalom (deviza-mennyiség) CSAK az EGY-SOROS (nem multi-line) tranzakciókból
+     * (Codex #903 multi-line fix). A multi-line bizonylatoknál a {@code Transaction.currency}
+     * az ELSŐ sor valutája és a {@code currencyAmount} csak az első soré, a többi valuta a
+     * {@code TransactionLine}-ban él — ezért a multi-line tranzakciókat itt KIZÁRJUK, a
+     * sor-szintű összegzés (TransactionLineRepository.sumDailyLineTurnoverByCurrency) adja hozzá.
+     */
+    @Query("SELECT COALESCE(SUM(t.currencyAmount), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId AND t.transactionDate = :date " +
+           "AND t.transactionType = :type AND t.currency.code = :currencyCode " +
+           "AND t.status = 'COMPLETED' AND (t.multiLine IS NULL OR t.multiLine = false)")
+    BigDecimal sumDailySingleLineTurnoverByCurrency(
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date,
+        @Param("type") TransactionType type,
+        @Param("currencyCode") String currencyCode
+    );
+
+    /** Napi forgalom FORINTOSÍTOTT összege CSAK az egy-soros tranzakciókból (Codex #903 multi-line fix). */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.branch.id = :branchId AND t.transactionDate = :date " +
+           "AND t.transactionType = :type AND t.currency.code = :currencyCode " +
+           "AND t.status = 'COMPLETED' AND (t.multiLine IS NULL OR t.multiLine = false)")
+    BigDecimal sumDailySingleLineTurnoverHufByCurrency(
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date,
+        @Param("type") TransactionType type,
+        @Param("currencyCode") String currencyCode
+    );
+
+    /**
      * Következő bizonylat szám generálásához
      */
     @Query("SELECT MAX(t.receiptNumber) FROM Transaction t " +
