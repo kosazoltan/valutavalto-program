@@ -61,8 +61,12 @@ export default function RateCreationPage() {
   const [overview, setOverview] = useState<RateOverviewDTO | null>(null)
   const [workgroups, setWorkgroups] = useState<WorkgroupDetailDTO[]>([])
   const [rates, setRates] = useState<EditableRate[]>([])
-  const undoStack = useRef<EditableRate[][]>([])
-  const redoStack = useRef<EditableRate[][]>([])
+  // FK-04/C (Codex #906): az undo/redo a `rates` MELLETT a `formulas`-t is rögzíti — különben
+  // egy képlet beírása után a Ctrl+Z csak a megjelenített értéket állítaná vissza, a képlet a
+  // state/localStorage-ban maradna, és a recompute újra alkalmazná (képlet-szerkesztés nem volt visszavonható).
+  type UndoSnapshot = { rates: EditableRate[]; formulas: Record<string, string> }
+  const undoStack = useRef<UndoSnapshot[]>([])
+  const redoStack = useRef<UndoSnapshot[]>([])
   const [selectedWgIndex, setSelectedWgIndex] = useState<number>(0)
   /**
    * FK-02/03/04 (Kasza Helga / Bali Henriett 2026-05-28): a régi „bal oldali sávos"
@@ -144,10 +148,7 @@ export default function RateCreationPage() {
   // workgroupSheetCompute-ban; a guard-ref akadályozza a saját setRates-loopot.
   useEffect(() => {
     if (recomputeGuardRef.current) { recomputeGuardRef.current = false; return }
-    if (Object.keys(formulas).length === 0) {
-      if (Object.keys(cellErrors).length > 0) setCellErrors({})
-      return
-    }
+
     const computeRows: WgComputeRow[] = rates.map((r) => ({
       currencyId: r.currencyId,
       currencyCode: r.currencyCode,
@@ -163,6 +164,28 @@ export default function RateCreationPage() {
         limit3SellRate: numOrNull(r.limit3SellRate),
       },
     }))
+
+    // Codex #906: a J–S pillanatképet a `#NN` kereszt-hivatkozásokhoz AKKOR is mentjük, ha a
+    // csoportnak nincs képlete (fix-rátás csoport is érvényes hivatkozási cél). Külön helper.
+    const saveSnapshot = (rows: WgComputeRow[]) => {
+      if (selectedWg?.legacyGroupNumber == null) return
+      const byCurrency = new Map<string, WgValues>()
+      rows.forEach((row) => {
+        const wgv: WgValues = {}
+        for (const field of Object.keys(FIELD_TO_WGCOL) as WgField[]) {
+          const v = row.values[field]
+          if (v != null) wgv[FIELD_TO_WGCOL[field]] = v
+        }
+        byCurrency.set(row.currencyCode.toUpperCase(), wgv)
+      })
+      saveGroupValueSnapshot(selectedWg.legacyGroupNumber, byCurrency)
+    }
+
+    if (Object.keys(formulas).length === 0) {
+      if (Object.keys(cellErrors).length > 0) setCellErrors({})
+      saveSnapshot(computeRows) // fix-rátás csoport pillanatképe is elérhető #NN-hez
+      return
+    }
     const result = recomputeWorkgroupSheet({
       rows: computeRows,
       formulas,
@@ -192,19 +215,8 @@ export default function RateCreationPage() {
       return nr
     })
 
-    // #NN kereszt-hivatkozáshoz: a csoport számított J–S pillanatképét perzisztáljuk.
-    if (selectedWg?.legacyGroupNumber != null) {
-      const byCurrency = new Map<string, WgValues>()
-      result.rows.forEach((row) => {
-        const wgv: WgValues = {}
-        for (const field of Object.keys(FIELD_TO_WGCOL) as WgField[]) {
-          const v = row.values[field]
-          if (v != null) wgv[FIELD_TO_WGCOL[field]] = v
-        }
-        byCurrency.set(row.currencyCode.toUpperCase(), wgv)
-      })
-      saveGroupValueSnapshot(selectedWg.legacyGroupNumber, byCurrency)
-    }
+    // #NN kereszt-hivatkozáshoz: a csoport SZÁMÍTOTT J–S pillanatképét perzisztáljuk.
+    saveSnapshot(result.rows)
 
     if (changedOverall) {
       recomputeGuardRef.current = true
@@ -266,22 +278,26 @@ export default function RateCreationPage() {
   useEffect(() => { void loadData() }, [loadData])
 
   const pushUndo = useCallback(() => {
-    undoStack.current.push(rates.map(r => ({ ...r })))
+    undoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas } })
     if (undoStack.current.length > 50) undoStack.current.shift()
     redoStack.current = []
-  }, [rates])
+  }, [rates, formulas])
 
   const undo = useCallback(() => {
-    if (undoStack.current.length === 0) return
-    redoStack.current.push(rates.map(r => ({ ...r })))
-    setRates(undoStack.current.pop()!)
-  }, [rates])
+    const prev = undoStack.current.pop()
+    if (!prev) return
+    redoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas } })
+    setRates(prev.rates)
+    setFormulas(prev.formulas)
+  }, [rates, formulas])
 
   const redo = useCallback(() => {
-    if (redoStack.current.length === 0) return
-    undoStack.current.push(rates.map(r => ({ ...r })))
-    setRates(redoStack.current.pop()!)
-  }, [rates])
+    const nextState = redoStack.current.pop()
+    if (!nextState) return
+    undoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas } })
+    setRates(nextState.rates)
+    setFormulas(nextState.formulas)
+  }, [rates, formulas])
 
   // Ctrl+Z / Ctrl+Y global handler
   useEffect(() => {
