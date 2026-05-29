@@ -414,7 +414,7 @@ class StockSnapshotServiceTest {
         // Minden aktiv branch megjelenik (2 regio, regionkent 1-1 branch).
         int totalBranches = result.getRegions().stream().mapToInt(r -> r.getBranches().size()).sum();
         assertThat(totalBranches).isEqualTo(2);
-        // A cegszintu HUF-osszesites > 0 (1 000 000 HUF + 500*400 EUR-HUF = 200 000) -> nem "0 Ft".
+        // A cegszintu HUF-osszesites > 0 (1 000 000 HUF + 500*400 EUR-HUF = 1 200 000) -> nem "0 Ft".
         assertThat(result.getCompanyTotals()).isNotNull();
         long companyHuf = result.getCompanyTotals().getCurrencies().stream()
                 .mapToLong(CurrencyStockDetailDto::getStockHuf).sum();
