@@ -41,6 +41,7 @@ public class DailyBalanceService {
 
     private final DailyBalanceRepository dailyBalanceRepository;
     private final TransactionRepository transactionRepository;
+    private final TransactionLineRepository transactionLineRepository;
     private final TransferRepository transferRepository;
     private final CurrencyRepository currencyRepository;
     private final CompanyRepository companyRepository;
@@ -78,21 +79,14 @@ public class DailyBalanceService {
         // 1. Nyitó készlet (háromszintű fallback)
         BigDecimal openingBalance = getOpeningBalance(branchId, date, currencyCode);
 
-        // 2. Vásárlás (BUY típusú tranzakciók — beérkezett valuta)
-        BigDecimal purchases = transactionRepository.sumDailyTurnoverByCurrency(
-            branchId, date, TransactionType.BUY, currencyCode
-        );
-        if (purchases == null) {
-            purchases = BigDecimal.ZERO;
-        }
+        // 2. Vásárlás (BUY) — multi-line-helyes (Codex #903, l. #913 snapshot-fix): az egy-soros
+        //    tranzakciók ÉS a multi-line bizonylatok tétel-sorai (TransactionLine) összege valutánként.
+        //    A régi header-alapú sumDailyTurnoverByCurrency multi-valutás bizonylatnál az első valutára
+        //    számolta a teljes összeget → téves per-valuta napi zárás-egyenleg.
+        BigDecimal purchases = dailyCurrencyTurnover(branchId, date, TransactionType.BUY, currencyCode);
 
-        // 3. Eladás (SELL típusú tranzakciók — kiadott valuta)
-        BigDecimal sales = transactionRepository.sumDailyTurnoverByCurrency(
-            branchId, date, TransactionType.SELL, currencyCode
-        );
-        if (sales == null) {
-            sales = BigDecimal.ZERO;
-        }
+        // 3. Eladás (SELL) — ugyanaz a multi-line-helyes összegzés
+        BigDecimal sales = dailyCurrencyTurnover(branchId, date, TransactionType.SELL, currencyCode);
 
         // 4. Átvétel más irodától (transfer IN)
         BigDecimal transfersIn = getTransfersIn(branchId, date, currencyCode);
@@ -280,6 +274,18 @@ public class DailyBalanceService {
                 currencyCode, e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * Napi forgalom (deviza-mennyiség) valutánként, MULTI-LINE-helyesen: az egy-soros tranzakciók
+     * ({@code sumDailySingleLineTurnoverByCurrency}) ÉS a multi-line bizonylatok tétel-sorai
+     * ({@code TransactionLine.banknoteCount}, {@code sumDailyLineTurnoverByCurrency}) ÖSSZEGE.
+     * Lásd a #913 snapshot-fix indoklását — a header-alapú összegzés multi-valutás bizonylatnál téves.
+     */
+    private BigDecimal dailyCurrencyTurnover(UUID branchId, LocalDate date, TransactionType type, String currencyCode) {
+        BigDecimal single = transactionRepository.sumDailySingleLineTurnoverByCurrency(branchId, date, type, currencyCode);
+        BigDecimal line = transactionLineRepository.sumDailyLineTurnoverByCurrency(branchId, date, type, currencyCode);
+        return (single != null ? single : BigDecimal.ZERO).add(line != null ? line : BigDecimal.ZERO);
     }
 
     /**
