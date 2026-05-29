@@ -326,10 +326,15 @@ VITE_COMPANY_ID=1
             # Ennek hianya csak az auto-update funkciot bukja, a fo program tovabb fut, de a Sentry-ben
             # error log generalodik, ami zavaro. Itt manualisan letrehozzuk az electron-builder.json
             # `publish` config alapjan.
+            # FONTOS: a `channel: penztar` egyezzen az electron-builder.json publish.channel-jével,
+            # hogy az electron-updater a release-ben a `penztar.yml` manifestet keresse (NEM latest.yml).
+            # A munkaallomas kliens a `munkaallomas` channel-t hasznalja — igy egy repo-release-ben
+            # nincs latest.yml utkozes a ket telepito kozott.
             $appUpdateYml = @"
 provider: github
 owner: kosazoltan
 repo: valutavalto-program
+channel: penztar
 updaterCacheDirName: valuta-penztar-updater
 "@
             $appUpdateTarget = Join-Path $electronStage "resources\app-update.yml"

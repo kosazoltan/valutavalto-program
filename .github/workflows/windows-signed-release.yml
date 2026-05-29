@@ -228,7 +228,7 @@ jobs:
           Write-Host ".env constructed from secrets (values not logged)"
 
       - name: Download backend JAR
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: backend-jar-${{ needs.preflight.outputs.version }}
           path: backend/target/
@@ -482,7 +482,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           path: release-artifacts/
 
