@@ -6,9 +6,10 @@ import type { RateWorkgroupSaveDTO } from '../../services/api/index'
  * FK-02 — megosztott munkacsoport-karbantartó primitívek.
  *
  * Egyetlen forrás a csempeszín-palettához, a megerősítő/overlay modálokhoz és a
- * létrehozás/átnevezés-szerkesztőhöz. Két felület használja:
- *  - admin: `pages/ratemanagement/WorkgroupManager.tsx`
- *  - árfolyamkészítő: `pages/rates/RateCreationPage.tsx` (csempés kezelő nézet)
+ * létrehozás/átnevezés-szerkesztőhöz. Fogyasztói:
+ *  - admin: `pages/ratemanagement/WorkgroupManager.tsx` (már erről olvas)
+ *  - árfolyamkészítő: `pages/rates/RateCreationPage.tsx` (csempés kezelő nézet — a
+ *    karbantartó funkciókat bekötő követő PR áll rá)
  *
  * Korábban mindkét helyen külön (drifteltt) másolat élt — ez a modul szünteti meg
  * a duplikációt, hogy a paletta-kulcsok és a szerkesztő-mezők egységesek legyenek.
@@ -112,7 +113,10 @@ export function WorkgroupEditor({ mode, draft, setDraft, onSave, onCancel }: {
           <div>
             <label className="text-sm font-medium">Sorszám</label>
             <input className="form-input w-full" type="number" value={draft.legacyGroupNumber ?? ''}
-              onChange={e => setDraft({ ...draft, legacyGroupNumber: e.target.value === '' ? undefined : parseInt(e.target.value, 10) })} />
+              onChange={e => {
+                const n = parseInt(e.target.value, 10)
+                setDraft({ ...draft, legacyGroupNumber: e.target.value.trim() === '' || Number.isNaN(n) ? undefined : n })
+              }} />
           </div>
         </div>
         <div>
@@ -139,7 +143,10 @@ export function WorkgroupEditor({ mode, draft, setDraft, onSave, onCancel }: {
                 <input className="form-input w-full" type="number" min="0" step="1"
                   value={draft[key] ?? ''}
                   placeholder={idx === 0 ? '50 000' : idx === 1 ? '300 000' : '1 000 000'}
-                  onChange={e => setDraft({ ...draft, [key]: e.target.value === '' ? null : Number(e.target.value) })} />
+                  onChange={e => {
+                    const n = Number(e.target.value)
+                    setDraft({ ...draft, [key]: e.target.value.trim() === '' || !Number.isFinite(n) ? null : n })
+                  }} />
               </div>
             ))}
           </div>
