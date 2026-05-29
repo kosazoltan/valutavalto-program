@@ -131,8 +131,19 @@ public class WorkerFirstTimeSetupService {
             // halozatrol elerheto production endpointon (excvaluta.com) FIOKATVETELT engedett.
             // Ezert a lezart bootstrap utani null-hash setuphoz admin altal kiallitott,
             // egyszer hasznalatos, lejaro setup-token KOTELEZO.
-            workerSetupTokenService.validateAndConsume(
-                    dto.getSetupToken(), worker.getId(), company.getId());
+            //
+            // ATMENETI GRACE (V279): a fix deploy-pillanataban MAR null-hash (folyamatban levo)
+            // dolgozok egyszer token NELKUL is befejezhetik a setupot — kulonben a deploy kizarna
+            // a most jelszot allito kollegakat. A grace a sikeres beallitaskor lezarul (false),
+            // igy minden EZUTANI (uj) null-hash reset mar tokent igenyel.
+            if (Boolean.TRUE.equals(worker.getSetupGrace())) {
+                worker.setSetupGrace(false);
+                log.info("Worker first-time setup grace felhasznalva (token nelkul): companyCode={}, workerCode={}",
+                        company.getCode(), worker.getCode());
+            } else {
+                workerSetupTokenService.validateAndConsume(
+                        dto.getSetupToken(), worker.getId(), company.getId());
+            }
         }
         // Pre-bootstrap (a bootstrap MEG nem zarult le) + null-hash: ez a kezdeti telepites
         // use-case-e (SetupWizard). Itt nincs lezart rendszer, amibol fiokot at lehetne venni,

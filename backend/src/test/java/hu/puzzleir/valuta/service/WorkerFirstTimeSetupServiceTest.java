@@ -314,6 +314,28 @@ class WorkerFirstTimeSetupServiceTest {
     }
 
     @Test
+    @DisplayName("F-001 grace (V279): null-hash + setupGrace=true → token NÉLKÜL végigmegy, és a grace lezár")
+    void allowsNullHashAfterBootstrapWithGrace() {
+        Worker worker = seedWorker(null);
+        worker.setSetupGrace(true); // a deploy-pillanatban már null-hash, folyamatban lévő dolgozó
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
+        when(passwordEncoder.encode("UjGlobalisJelszo123!")).thenReturn("$2b$10$new");
+        when(workerRepository.save(any(Worker.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(jwtTokenProvider.generateToken(any(Worker.class))).thenReturn("jwt-token");
+
+        WorkerFirstTimeSetupResponseDto response = service.setupWorkerPassword(request(null));
+
+        assertThat(response.isSuccess()).isTrue();
+        ArgumentCaptor<Worker> saved = ArgumentCaptor.forClass(Worker.class);
+        verify(workerRepository).save(saved.capture());
+        assertThat(saved.getValue().getSetupGrace()).isFalse(); // egyszeri grace → lezárva
+        verify(workerSetupTokenService, never()).validateAndConsume(any(), any(), any()); // token nem kellett
+    }
+
+    @Test
     @DisplayName("Friss, bootstrap elotti hash nelkuli workerhez tovabbra is beallithato az elso jelszo")
     void allowsMissingHashBeforeBootstrap() {
         Worker worker = seedWorker(null);
