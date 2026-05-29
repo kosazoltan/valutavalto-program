@@ -1,14 +1,23 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AxiosError } from 'axios'
-import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock, Undo2, Redo2, Home, ArrowLeft, ShieldCheck, Shield } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock, Undo2, Redo2, Home, ArrowLeft, ShieldCheck, Shield, Pencil, Trash2 } from 'lucide-react'
 import {
   rateCreationApi,
+  rateWorkgroupApi,
   RateOverviewDTO,
   RateOverviewItem,
   WorkgroupDetailDTO,
   BranchListItem,
+  type RateWorkgroupSaveDTO,
 } from '../../services/api/index'
+import {
+  tileClasses,
+  DEFAULT_TILE,
+  WorkgroupEditor,
+  ConfirmDialog,
+  type ConfirmState,
+} from './workgroupMaintenance'
 import { toast } from '../../components/ui/toaster'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
@@ -678,6 +687,7 @@ export default function RateCreationPage() {
   if (viewMode === 'tile-list') {
     return <WorkgroupTileListView
       workgroups={workgroups}
+      canWrite={canWriteRateCreation}
       onSelect={(idx) => { setSelectedWgIndex(idx); setViewMode('editor') }}
       onBackToMain={() => navigate('/rates/main')}
       onReload={() => void loadData()}
@@ -944,24 +954,26 @@ export default function RateCreationPage() {
 // - Egy klikk a csempére → azonnal megnyitja a csoport árfolyamlap szerkesztőt.
 // - 10 választható csempeszín (tileColor mező a backendben).
 
-const TILE_PALETTE_RCP: { key: string; tile: string }[] = [
-  { key: 'slate',  tile: 'bg-slate-100 border-slate-300 text-slate-800 hover:bg-slate-200' },
-  { key: 'red',    tile: 'bg-red-100 border-red-300 text-red-800 hover:bg-red-200' },
-  { key: 'orange', tile: 'bg-orange-100 border-orange-300 text-orange-800 hover:bg-orange-200' },
-  { key: 'amber',  tile: 'bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200' },
-  { key: 'green',  tile: 'bg-green-100 border-green-300 text-green-800 hover:bg-green-200' },
-  { key: 'teal',   tile: 'bg-teal-100 border-teal-300 text-teal-800 hover:bg-teal-200' },
-  { key: 'sky',    tile: 'bg-sky-100 border-sky-300 text-sky-800 hover:bg-sky-200' },
-  { key: 'indigo', tile: 'bg-indigo-100 border-indigo-300 text-indigo-800 hover:bg-indigo-200' },
-  { key: 'purple', tile: 'bg-purple-100 border-purple-300 text-purple-800 hover:bg-purple-200' },
-  { key: 'pink',   tile: 'bg-pink-100 border-pink-300 text-pink-800 hover:bg-pink-200' },
-]
-function tileColorClassesRcp(colorKey: string | null | undefined): string {
-  return (TILE_PALETTE_RCP.find(p => p.key === colorKey) ?? TILE_PALETTE_RCP[0]!).tile
+/** WorkgroupDetailDTO → RateWorkgroupSaveDTO (a karbantartó create/update payload-ja). */
+function toWorkgroupSaveDTO(wg: WorkgroupDetailDTO, overrides?: Partial<RateWorkgroupSaveDTO>): RateWorkgroupSaveDTO {
+  return {
+    name: wg.name,
+    code: wg.code,
+    legacyGroupNumber: wg.legacyGroupNumber ?? undefined,
+    active: wg.active,
+    tileColor: wg.tileColor ?? null,
+    protectionEnabled: wg.protectionEnabled ?? null,
+    limit1Boundary: wg.limit1Boundary,
+    limit2Boundary: wg.limit2Boundary,
+    limit3Boundary: wg.limit3Boundary,
+    ...overrides,
+  }
 }
 
 interface TileListProps {
   workgroups: WorkgroupDetailDTO[]
+  /** FK-02: csak írásjogú árfolyamkészítő (FOERTEKTAR/UGYVEZETO/ADMIN) láthatja a karbantartó akciókat. */
+  canWrite: boolean
   onSelect: (idx: number) => void
   onBackToMain: () => void
   onReload: () => void
@@ -969,12 +981,92 @@ interface TileListProps {
   error: string | null
 }
 
-function WorkgroupTileListView({ workgroups, onSelect, onBackToMain, onReload, loading, error }: TileListProps) {
-  // FK-04/E.1 (mai PR #882): árfolyamvédelem checkbox a csempén — a tényleges
-  // toggle-flow a rateWorkgroupApi.update-en megy. A csempés nézet read-only
-  // megjelenítést ad: a flag pillanatképét mutatja. A részletes szerkesztés
-  // (átnevezés, szín, határok) a /rate-management → Munkacsoportok tab-on
-  // (WorkgroupManager) történik, hogy egyetlen forrásból menjen az írás.
+// Exportált a fókuszált FK-02 teszthez (a teljes RateCreationPage túl nehéz egységként).
+export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackToMain, onReload, loading, error }: TileListProps) {
+  // FK-02 §3: az árfolyamkészítő EGYSÉGES munkacsoport-kezelő felülete. A korábbi
+  // read-only csempe helyett itt érhetők el a karbantartó műveletek is (létrehozás,
+  // átnevezés/szín/határ, törlés, interaktív árfolyamvédelem) — a megosztott
+  // `workgroupMaintenance` primitíveken + `rateWorkgroupApi`-n keresztül, hogy a
+  // WorkgroupManager-rel egyetlen forrásból menjen az írás. A csempe-kattintás
+  // változatlanul a csoport árfolyamlapját nyitja meg (onSelect).
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [editorMode, setEditorMode] = useState<'create' | 'rename'>('create')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<RateWorkgroupSaveDTO>({ name: '', code: '', active: true, tileColor: DEFAULT_TILE.key })
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const openCreate = () => {
+    setEditorMode('create')
+    setEditingId(null)
+    setDraft({ name: '', code: '', legacyGroupNumber: undefined, active: true, tileColor: DEFAULT_TILE.key,
+      protectionEnabled: true, limit1Boundary: null, limit2Boundary: null, limit3Boundary: null })
+    setActionError(null)
+    setEditorOpen(true)
+  }
+
+  const openRename = (wg: WorkgroupDetailDTO) => {
+    setEditorMode('rename')
+    setEditingId(wg.id)
+    setDraft(toWorkgroupSaveDTO(wg))
+    setActionError(null)
+    setEditorOpen(true)
+  }
+
+  const saveEditor = async () => {
+    if (!draft.name.trim() || !draft.code.trim()) {
+      setActionError('A név és a kód megadása kötelező.')
+      return
+    }
+    try {
+      if (editorMode === 'create') {
+        await rateWorkgroupApi.create(draft)
+      } else if (editingId) {
+        await rateWorkgroupApi.update(editingId, draft)
+      }
+      setEditorOpen(false)
+      setActionError(null)
+      onReload()
+    } catch (err) {
+      logger.error('RateCreationPage', 'Munkacsoport mentése sikertelen:', err)
+      setActionError('A mentés sikertelen (a kód már létezhet).')
+    }
+  }
+
+  // FK-04/E: árfolyamvédelem-toggle a csempén. A teljes mezőkészletet visszaküldjük
+  // (a backend PUT teljes csere), csak a protectionEnabled-et írjuk felül.
+  const toggleProtection = async (wg: WorkgroupDetailDTO, next: boolean) => {
+    try {
+      await rateWorkgroupApi.update(wg.id, toWorkgroupSaveDTO(wg, { protectionEnabled: next }))
+      setActionError(null) // Copilot: sikeres művelet törölje a korábbi hibabannert.
+      onReload()
+    } catch (err) {
+      logger.error('RateCreationPage', 'Árfolyamvédelem-toggle sikertelen:', err)
+      setActionError('A védelem mentése sikertelen.')
+    }
+  }
+
+  const requestDelete = (wg: WorkgroupDetailDTO) => {
+    setConfirm({
+      title: 'Munkacsoport törlése',
+      message: `Biztosan törli a(z) "${wg.name}" munkacsoportot? A hozzárendelt pénztárak felszabadulnak, az árfolyam-előzmények megmaradnak.`,
+      confirmLabel: 'Törlés',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await rateWorkgroupApi.remove(wg.id)
+          setConfirm(null)
+          setActionError(null) // Copilot: sikeres törlés törölje a korábbi hibabannert.
+          onReload()
+        } catch (err) {
+          logger.error('RateCreationPage', 'Munkacsoport törlése sikertelen:', err)
+          setActionError('A törlés sikertelen.')
+          setConfirm(null)
+        }
+      },
+    })
+  }
+
   return (
     <div className="space-y-3">
       {/* HEADER */}
@@ -990,19 +1082,30 @@ function WorkgroupTileListView({ workgroups, onSelect, onBackToMain, onReload, l
             <Home size={11} /> FŐLAP
           </button>
         </div>
-        <button
-          onClick={onReload}
-          disabled={loading}
-          className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
-          title="Frissítés"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-        </button>
+        <div className="flex items-center gap-2">
+          {canWrite && (
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold border border-blue-500 bg-blue-600 hover:bg-blue-700 text-white rounded"
+              title="Új munkacsoport létrehozása"
+            >
+              <Plus size={12} /> Új munkacsoport
+            </button>
+          )}
+          <button
+            onClick={onReload}
+            disabled={loading}
+            className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
+            title="Frissítés"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </div>
 
-      {error && (
+      {(error || actionError) && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded flex items-center gap-2 text-sm">
-          <AlertTriangle size={14} /> {error}
+          <AlertTriangle size={14} /> {actionError ?? error}
         </div>
       )}
 
@@ -1014,45 +1117,104 @@ function WorkgroupTileListView({ workgroups, onSelect, onBackToMain, onReload, l
         </div>
       ) : workgroups.length === 0 ? (
         <div className="bg-white rounded shadow-sm border p-6 text-center text-gray-500">
-          Még nincs csoport árfolyamlap. Új létrehozása a Munkacsoportok kezelő felületen lehetséges.
+          Még nincs csoport árfolyamlap.{canWrite ? ' Hozzon létre egyet az „Új munkacsoport” gombbal.' : ' Új létrehozása a Munkacsoportok kezelő felületen lehetséges.'}
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
           {workgroups.map((wg, idx) => {
             const protectionOn = wg.protectionEnabled ?? true
             return (
-              <button
+              <div
                 key={wg.id}
-                onClick={() => onSelect(idx)}
-                className={`text-left rounded-lg border-2 p-3 transition-shadow hover:shadow-md ${tileColorClassesRcp(wg.tileColor)}`}
+                className={`relative rounded-lg border-2 p-3 transition-shadow hover:shadow-md ${tileClasses(wg.tileColor)}`}
               >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="text-2xl font-bold leading-none font-mono">
+                {/* FK-04/E: árfolyamvédelem — abszolút a jobb felső sarokban, a megnyitó-gomb
+                    FÖLÖTT (z-10). Így NEM ágyazódik interaktív elem a gombba (a11y), és a
+                    billentyű-események sem buborékolnak a megnyitásba. */}
+                <div className="absolute top-2 right-2 z-10">
+                  {canWrite ? (
+                    <label
+                      className="inline-flex items-center gap-1 text-[10px] font-bold cursor-pointer select-none"
+                      title="Árfolyamvédelem: ha be van kapcsolva, a csoport-lap mentése blokkolja a hibás (vétel > J vagy eladás < J) értékeket."
+                    >
+                      <input
+                        type="checkbox"
+                        checked={protectionOn}
+                        onChange={e => void toggleProtection(wg, e.target.checked)}
+                        className="h-3.5 w-3.5"
+                        aria-label={`Árfolyamvédelem a(z) ${wg.name} csoporton`}
+                      />
+                      VÉDELEM
+                    </label>
+                  ) : (
+                    <span
+                      className={`inline-flex items-center gap-0.5 text-[10px] font-bold ${protectionOn ? 'text-green-700' : 'text-gray-400'}`}
+                      title={protectionOn ? 'Árfolyamvédelem BE' : 'Árfolyamvédelem KI'}
+                    >
+                      {protectionOn ? <ShieldCheck size={12} /> : <Shield size={12} />}
+                      VÉDELEM
+                    </span>
+                  )}
+                </div>
+
+                {/* Megnyitó gomb = a fő kattintható terület. Valódi <button> (natív
+                    billentyű+fókusz), interaktív gyerek NÉLKÜL — a checkbox és az akciók
+                    sibling-ek, nem beágyazottak. */}
+                <button
+                  type="button"
+                  onClick={() => onSelect(idx)}
+                  className="block w-full text-left pr-16"
+                  aria-label={`${wg.name} (${wg.code}) árfolyamlap megnyitása`}
+                >
+                  <div className="text-2xl font-bold leading-none font-mono mb-2">
                     {String(wg.legacyGroupNumber ?? (idx + 1)).padStart(2, '0')}
                   </div>
-                  {/* FK-04/E.1: árfolyamvédelem-jelző (read-only). A toggle a
-                      /rate-management → Munkacsoportok tab-on van — single source of truth. */}
-                  <span
-                    className={`inline-flex items-center gap-0.5 text-[10px] font-bold ${
-                      protectionOn ? 'text-green-700' : 'text-gray-400'
-                    }`}
-                    title={protectionOn ? 'Árfolyamvédelem BE — a vétel/eladás-szabály a mentésnél érvényre jut.' : 'Árfolyamvédelem KI — a mentés a szabálysértő értékekkel is engedélyezett.'}
-                  >
-                    {protectionOn ? <ShieldCheck size={12} /> : <Shield size={12} />}
-                    VÉDELEM
-                  </span>
-                </div>
-                <div className="text-sm font-semibold truncate" title={wg.name}>{wg.name}</div>
-                <div className="text-xs opacity-70 mt-0.5">
-                  <span className="font-mono">{wg.code}</span>
-                  <span className="mx-1">·</span>
-                  <span>{wg.branches.length} iroda</span>
-                </div>
-              </button>
+                  <div className="text-sm font-semibold truncate" title={wg.name}>{wg.name}</div>
+                  <div className="text-xs opacity-70 mt-0.5">
+                    <span className="font-mono">{wg.code}</span>
+                    <span className="mx-1">·</span>
+                    <span>{wg.branches.length} iroda</span>
+                  </div>
+                </button>
+
+                {/* FK-02 §3: karbantartó akciók (átnevezés/szín/határ, törlés) — csak írásjoggal.
+                    A megnyitó-gomb mellett sibling, így nincs gombon belüli gomb. */}
+                {canWrite && (
+                  <div className="mt-2 flex items-center gap-1 border-t border-black/10 pt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => openRename(wg)}
+                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-white/70 hover:bg-white border border-black/10"
+                      title="Átnevezés / szín / kedvezményhatárok"
+                    >
+                      <Pencil size={10} /> Szerk.
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => requestDelete(wg)}
+                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-white/70 hover:bg-red-50 text-red-700 border border-red-200"
+                      title="Munkacsoport törlése"
+                    >
+                      <Trash2 size={10} /> Törlés
+                    </button>
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>
       )}
+
+      {editorOpen && (
+        <WorkgroupEditor
+          mode={editorMode}
+          draft={draft}
+          setDraft={setDraft}
+          onSave={() => { void saveEditor() }}
+          onCancel={() => { setEditorOpen(false); setActionError(null) }}
+        />
+      )}
+      {confirm && <ConfirmDialog state={confirm} onCancel={() => setConfirm(null)} />}
     </div>
   )
 }

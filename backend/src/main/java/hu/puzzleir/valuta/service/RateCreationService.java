@@ -289,6 +289,9 @@ public class RateCreationService {
                     .limit1Boundary(limit1Boundary)
                     .limit2Boundary(limit2Boundary)
                     .limit3Boundary(limit3Boundary)
+                    // FK-02/FK-04-E: a csempés kezelő nézet ezekből színez és vezérli a védelem-checkboxot.
+                    .tileColor(wg.getTileColor())
+                    .protectionEnabled(wg.getProtectionEnabled())
                     .build();
         }).collect(Collectors.toList());
     }
