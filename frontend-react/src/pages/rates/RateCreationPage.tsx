@@ -18,6 +18,7 @@ import {
   ConfirmDialog,
   type ConfirmState,
 } from './workgroupMaintenance'
+import { FormulaSyntaxHelp, FormulaSyntaxHelpButton } from './FormulaSyntaxHelp'
 import { toast } from '../../components/ui/toaster'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
@@ -88,6 +89,8 @@ export default function RateCreationPage() {
   const [loading, setLoading] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // T9.F: képletszintaxis-súgó (A–I / J–S / !Fxxx / #NN) a csoport-lap szerkesztőhöz.
+  const [showFormulaHelp, setShowFormulaHelp] = useState(false)
 
   // FK-04/C képletezés: felhasználói képletek (kulcs `${currencyId}.${field}`) csoportonként,
   // a kiszámolt cellánkénti hibák, és a 0-s lap / kereszt-csoport hivatkozás-kontextus.
@@ -740,6 +743,8 @@ export default function RateCreationPage() {
           >
             <Home size={11} /> FŐLAP
           </button>
+          {/* T9.F: képletszintaxis-súgó — itt, ahol a J–S/#NN képleteket írják. */}
+          <FormulaSyntaxHelpButton onClick={() => setShowFormulaHelp(true)} />
           {selectedWg && (
             <span className="text-xs text-gray-500 ml-2">
               <span className="font-mono font-bold">{selectedWg.legacyGroupNumber ?? '—'}</span>
@@ -943,6 +948,8 @@ export default function RateCreationPage() {
         saving={savingBranches}
         canWriteRateCreation={canWriteRateCreation}
       />
+      {/* T9.F: képletszintaxis-súgó modal */}
+      <FormulaSyntaxHelp open={showFormulaHelp} onClose={() => setShowFormulaHelp(false)} />
     </div>
   )
 }
