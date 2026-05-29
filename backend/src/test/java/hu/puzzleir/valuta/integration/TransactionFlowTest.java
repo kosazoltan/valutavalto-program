@@ -57,6 +57,7 @@ class TransactionFlowTest {
     private TransactionService transactionService;
 
     @Mock private hu.puzzleir.valuta.service.TransactionValidationService transactionValidationService;
+    @Mock private hu.puzzleir.valuta.service.PmtComplianceValidator pmtComplianceValidator;
     @Mock private TransactionRepository transactionRepository;
     @Mock private CurrencyRepository currencyRepository;
     @Mock private ExchangeRateRepository exchangeRateRepository;

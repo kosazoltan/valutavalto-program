@@ -39,6 +39,7 @@ public class TransactionConversionService {
     private final HandlingFeeCalculator handlingFeeCalculator;
     private final DailySessionService dailySessionService;
     private final TransactionOperationHelper helper;
+    private final PmtComplianceValidator pmtComplianceValidator;
 
     /**
      * Konverzio vegrehajtasa (valuta-valuta csere).
@@ -116,6 +117,23 @@ public class TransactionConversionService {
         AmlService.AmlBasicCheckResult amlResult = helper.performAmlCheck(
                 amlAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), toCurrency.getCode());
+
+        // F-002 / Codex P1 (audit 2026-05-29): a Pmt-compliance ellenorzes a KONVERZIORA is
+        // kotelezo (300k+ HUF eseten PEP-minoseg / kepviselt-fel azonositas) — korabban a
+        // konverzio-ag kicsuszott e validacio alol. Az AML-alap (amlAmount = BUY+SELL leg) a
+        // kuszob alapja, a BUY/SELL aggal konzisztensen.
+        pmtComplianceValidator.validate(
+                amlAmount,
+                request.getCustomerIsPep(),
+                request.getCustomerPepKind(),
+                request.getCustomerOnOwnBehalf(),
+                request.getCustomerActorName(),
+                request.getCustomerActorBirthPlace(),
+                request.getCustomerActorBirthDate() != null ? request.getCustomerActorBirthDate().toString() : null,
+                request.getCustomerActorMotherName(),
+                request.getCustomerActorDocumentNumber(),
+                request.getCustomerActorAddress(),
+                "KONVERZIO");
 
         // Keszlet ellenorzes — a kifizetett cel valuta + (ha van) a visszajaro HUF.
         helper.validateCurrencyStock(branchId, toCurrency.getId(), toAmount);

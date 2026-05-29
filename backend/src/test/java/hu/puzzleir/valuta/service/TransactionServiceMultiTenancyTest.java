@@ -37,6 +37,7 @@ import static org.mockito.Mockito.*;
 @org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
 class TransactionServiceMultiTenancyTest {
     @Mock private TransactionValidationService transactionValidationService;
+    @Mock private PmtComplianceValidator pmtComplianceValidator;
 
     @InjectMocks
     private TransactionService transactionService;

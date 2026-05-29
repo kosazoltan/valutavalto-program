@@ -76,6 +76,7 @@ public class TransactionService {
     private final @org.springframework.context.annotation.Lazy TransactionReversalService reversalService;
     private final @org.springframework.context.annotation.Lazy TransactionConversionService conversionService;
     private final @org.springframework.context.annotation.Lazy TransactionMultiLineService multiLineService;
+    private final PmtComplianceValidator pmtComplianceValidator;
     private final LicenseService licenseService;
     private final SystemParameterService systemParameterService;
     private final TransactionValidationService transactionValidationService;
@@ -844,51 +845,13 @@ public class TransactionService {
             String customerActorDocumentNumber,
             String customerActorAddress,
             String operation) {
-        if (hufAmount == null || hufAmount.compareTo(BigDecimal.valueOf(300_000)) < 0) {
-            return; // < 300k: Pmt. szerint nem kotelezo
-        }
-        // Codex P1 (PR #695) follow-up: feature-flag alapu strict enforcement.
-        // PMT_STRICT_ENFORCEMENT=true -> ValidationException (Pmt. compliance KOTELEZO).
-        // PMT_STRICT_ENFORCEMENT=false (default) -> WARN-szintu naplozas (kompatibilitas
-        // a v2.5.59 kliensekhez). v2.5.61+ release-ben a default 'true' lesz, miutan
-        // minden penztaros gepen lefutott a v2.5.60 telepito.
-        //
-        // PR #695 CI fix: defensive null-check a `systemParameterService`-re,
-        // mert a PepSourceOfFundsTest mockolt TransactionService-be nem injectalja
-        // a system-parameter szervizt. Ha null -> default strictMode=false.
-        boolean strictMode = systemParameterService != null
-            && "true".equalsIgnoreCase(systemParameterService.getValue("PMT_STRICT_ENFORCEMENT", "false"));
-
-        // PEP minoseg kotelezo, ha isPep=true
-        if (Boolean.TRUE.equals(customerIsPep) && (customerPepKind == null || customerPepKind.isBlank())) {
-            String msg = String.format(
-                "Pmt. compliance (%s, %s HUF): customerIsPep=true de customerPepKind hianyzik. "
-                + "Pmt. tv. 6.§ szerint kotelezo megjelolni a PEP minoseget.", operation, hufAmount);
-            if (strictMode) {
-                throw new ValidationException(msg);
-            }
-            log.warn("{} (WARN-only, PMT_STRICT_ENFORCEMENT=false). v2.5.61+ release: exception.", msg);
-        }
-        // Actor teljes azonositasa kotelezo, ha onOwnBehalf=false
-        if (Boolean.FALSE.equals(customerOnOwnBehalf)) {
-            java.util.List<String> missing = new java.util.ArrayList<>();
-            if (customerActorName == null          || customerActorName.isBlank())          missing.add("actorName");
-            if (customerActorBirthPlace == null    || customerActorBirthPlace.isBlank())    missing.add("actorBirthPlace");
-            if (customerActorBirthDate == null     || customerActorBirthDate.isBlank())     missing.add("actorBirthDate");
-            if (customerActorMotherName == null    || customerActorMotherName.isBlank())    missing.add("actorMotherName");
-            if (customerActorDocumentNumber == null|| customerActorDocumentNumber.isBlank()) missing.add("actorDocumentNumber");
-            if (customerActorAddress == null       || customerActorAddress.isBlank())       missing.add("actorAddress");
-            if (!missing.isEmpty()) {
-                String msg = String.format(
-                    "Pmt. compliance (%s, %s HUF): customerOnOwnBehalf=false de actor mezok hianyoznak: %s. "
-                    + "Pmt. tv. 6.§ (2) szerint a kepviselt felre is teljes azonositast kell vegezni.",
-                    operation, hufAmount, missing);
-                if (strictMode) {
-                    throw new ValidationException(msg);
-                }
-                log.warn("{} (WARN-only, PMT_STRICT_ENFORCEMENT=false). v2.5.61+ release: exception.", msg);
-            }
-        }
+        // F-002 + Codex P1 (audit 2026-05-29): a Pmt-compliance ellenorzes a megosztott
+        // PmtComplianceValidator-ban el, hogy a BUY/SELL ES a KONVERZIO (TransactionConversionService)
+        // UGYANAZT futtassa — a konverzio-ag korabban kicsuszott a Pmt-validacio alol.
+        pmtComplianceValidator.validate(
+                hufAmount, customerIsPep, customerPepKind, customerOnOwnBehalf,
+                customerActorName, customerActorBirthPlace, customerActorBirthDate,
+                customerActorMotherName, customerActorDocumentNumber, customerActorAddress, operation);
     }
 
     private void validateCurrencyStock(UUID branchId, Long currencyId, BigDecimal amount) {
