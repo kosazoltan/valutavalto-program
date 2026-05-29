@@ -225,6 +225,10 @@ export default function SetupWizard() {
   const [companyCode, setCompanyCode] = useState(DEFAULT_COMPANY_CODE)
   const [bootstrapUsername, setBootstrapUsername] = useState('')
   const [bootstrapPassword, setBootstrapPassword] = useState('')
+  // F-001: admin által kiállított, egyszer használatos setup-token. Lezárt bootstrap utáni
+  // teljes reset (null-hash) workernél a backend ezt kéri — enélkül a publikus endpointon
+  // fiókátvétel lenne. Üres marad a kezdeti telepítéskor / seed-jelszavas workernél.
+  const [setupToken, setSetupToken] = useState('')
   const [availableWorkers, setAvailableWorkers] = useState<SetupWorkerOption[]>([])
   const [googleIdToken, setGoogleIdToken] = useState<string | null>(null)
   const [googleSetup, setGoogleSetup] = useState<SetupGoogleIdentifyResponse | null>(null)
@@ -718,6 +722,7 @@ export default function SetupWizard() {
             workerCode: selectedWorkerCode,
             newPassword: adminPassword,
             currentPassword: bootstrapPassword || undefined,
+            setupToken: setupToken.trim() || undefined,
             appMode: appModeChoice,
           }),
         })
@@ -915,6 +920,8 @@ export default function SetupWizard() {
               apiUrl={apiUrl}
               companyCode={companyCode}
               offlineMode={offlineMode}
+              setupToken={setupToken}
+              onSetupTokenChange={setSetupToken}
             />
           )}
         </div>
@@ -1561,6 +1568,8 @@ interface AdminStepProps {
   apiUrl: string
   companyCode: string
   offlineMode: boolean
+  setupToken: string
+  onSetupTokenChange: (v: string) => void
 }
 
 function AdminStep(props: AdminStepProps) {
@@ -1571,6 +1580,7 @@ function AdminStep(props: AdminStepProps) {
     adminPasswordConfirm, onAdminPasswordConfirmChange,
     bootstrapPassword, onBootstrapPasswordChange,
     selectedBranch, apiUrl, companyCode, offlineMode,
+    setupToken, onSetupTokenChange,
   } = props
 
   const pwTooShort = adminPassword.length > 0 && adminPassword.length < 8
@@ -1613,6 +1623,26 @@ function AdminStep(props: AdminStepProps) {
           />
           <span className="text-xs text-slate-500 mt-1 block">
             Csak akkor töltse ki, ha ennek a pénztárosnak már volt beállított jelszava (pl. újratelepítés esetén).
+            Első telepítésnél hagyja üresen.
+          </span>
+        </FieldLabel>
+        <FieldLabel label="Setup-token (opcionális)">
+          <input
+            type="text"
+            value={setupToken}
+            onChange={(e) => onSetupTokenChange(e.target.value)}
+            disabled={offlineMode}
+            autoComplete="off"
+            placeholder="Csak ha az adminisztrátor adott egyet"
+            className={[
+              'w-full px-3 py-2 rounded-lg border focus:ring-2 outline-none font-mono text-sm',
+              offlineMode
+                ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200',
+            ].join(' ')}
+          />
+          <span className="text-xs text-slate-500 mt-1 block">
+            Újratelepítés/jelszó-reset esetén az adminisztrátor egyszeri setup-tokent adhat.
             Első telepítésnél hagyja üresen.
           </span>
         </FieldLabel>

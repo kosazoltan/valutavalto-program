@@ -7,15 +7,21 @@ import hu.puzzleir.valuta.dto.auth.LoginRequestDto;
 import hu.puzzleir.valuta.dto.auth.ResetPasswordRequestDto;
 import hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupRequestDto;
 import hu.puzzleir.valuta.dto.auth.WorkerFirstTimeSetupResponseDto;
+import hu.puzzleir.valuta.dto.auth.WorkerSetupTokenRequestDto;
+import hu.puzzleir.valuta.dto.auth.WorkerSetupTokenResponseDto;
 import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
 import hu.puzzleir.valuta.dto.auth.SelectRoleRequestDto;
+import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Worker;
+import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.AdminBootstrapService;
 import hu.puzzleir.valuta.service.PasswordResetService;
 import hu.puzzleir.valuta.service.RefreshCookieService;
 import hu.puzzleir.valuta.service.WorkerFirstTimeSetupService;
+import hu.puzzleir.valuta.service.WorkerSetupTokenService;
 import hu.puzzleir.valuta.service.TokenBlacklistService;
 import hu.puzzleir.valuta.service.WorkerRoleService;
 import hu.puzzleir.valuta.service.WorkerService;
@@ -55,6 +61,8 @@ public class AuthController {
     private final TokenBlacklistService tokenBlacklistService;
     private final AdminBootstrapService adminBootstrapService;
     private final WorkerFirstTimeSetupService workerFirstTimeSetupService;
+    private final WorkerSetupTokenService workerSetupTokenService;
+    private final CompanyRepository companyRepository;
     private final PasswordResetService passwordResetService;
     private final RefreshTokenService refreshTokenService;
     private final RefreshCookieService refreshCookieService;
@@ -467,6 +475,44 @@ public class AuthController {
                 "HttpOnly refresh cookie kiadas bukott first-time setup utan",
                 "Telepítés utáni belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.");
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * F-001 fix: admin által kiállított, egyszer használatos worker setup-token generálása.
+     *
+     * <p>POST /api/v1/auth/worker-setup-token — HITELESÍTETT admin/supervisor/manager.</p>
+     *
+     * <p>A bootstrap-lezárt utáni null-hash {@code first-time-worker-setup} csak érvényes
+     * tokennel megy át (publikus fiókátvétel ellen). Az admin itt generál egy tokent egy
+     * konkrét (cégkód + dolgozói kód) workerhez; a raw token CSAK a válaszban jelenik meg.</p>
+     */
+    @PostMapping("/worker-setup-token")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','MANAGER')")
+    public ResponseEntity<WorkerSetupTokenResponseDto> issueWorkerSetupToken(
+            @Valid @RequestBody WorkerSetupTokenRequestDto dto) {
+        String companyCode = dto.getCompanyCode() == null ? "" : dto.getCompanyCode().trim().toUpperCase();
+        String workerCode = dto.getWorkerCode() == null ? "" : dto.getWorkerCode().trim().toUpperCase();
+
+        Company company = companyRepository.findByCode(companyCode)
+                .or(() -> companyRepository.findByCodeIgnoreCase(companyCode))
+                .orElseThrow(() -> new ValidationException("Ismeretlen cegkod: " + companyCode));
+
+        Worker worker = workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), workerCode)
+                .orElseThrow(() -> new ValidationException(
+                        "Ismeretlen dolgozoi azonosito: " + workerCode + " (ceg: " + companyCode + ")"));
+
+        String rawToken = workerSetupTokenService.issueToken(
+                worker.getId(), company.getId(), SecurityUtils.getCurrentWorkerId());
+
+        return ResponseEntity.ok(WorkerSetupTokenResponseDto.builder()
+                .success(true)
+                .message("Setup-token kiállítva. Add át a dolgozónak; 72 órán belül, egyszer használható fel.")
+                .companyCode(company.getCode())
+                .workerCode(worker.getCode())
+                .workerName(worker.getName())
+                .token(rawToken)
+                .expiresAt(java.time.Instant.now().plus(WorkerSetupTokenService.TOKEN_TTL))
+                .build());
     }
 
     /**

@@ -62,6 +62,7 @@ public class WorkerFirstTimeSetupService {
     private final AdminBootstrapService adminBootstrapService;
     private final WorkerRoleService workerRoleService;
     private final BranchRepository branchRepository;
+    private final WorkerSetupTokenService workerSetupTokenService;
 
     /**
      * Worker elso jelszavanak beallitasa / reset.
@@ -121,17 +122,21 @@ public class WorkerFirstTimeSetupService {
                             ? POST_BOOTSTRAP_SEED_PASSWORD_REQUIRED_MESSAGE
                             : PRE_BOOTSTRAP_SEED_PASSWORD_REQUIRED_MESSAGE,
                     SEED_PASSWORD_MISMATCH_MESSAGE);
+        } else if (bootstrapCompleted) {
+            // F-001 fix (audit 2026-05-29): passwordHash == null ES passwordChangedAt == null
+            // (teljes reset, pl. V196/V198/V230/V231) ES a bootstrap MAR lezarult.
+            // Itt nincs jelszo-titok, amit ellenorizni lehetne — emiatt a permitAll endpoint
+            // KORABBAN bootstrap-lezartsagtol FUGGETLENUL beallitott uj jelszot + JWT-t adott.
+            // Mivel a worker-kodok (EBC + BORSI/BALI/KASZA...) a wizardban publikusak, ez
+            // halozatrol elerheto production endpointon (excvaluta.com) FIOKATVETELT engedett.
+            // Ezert a lezart bootstrap utani null-hash setuphoz admin altal kiallitott,
+            // egyszer hasznalatos, lejaro setup-token KOTELEZO.
+            workerSetupTokenService.validateAndConsume(
+                    dto.getSetupToken(), worker.getId(), company.getId());
         }
-        // V198 fix: Ha passwordHash == null ES passwordChangedAt == null, a dolgozo
-        // teljesen resetelt allapotban van (V198 migracio vagy V196 clearelte).
-        // Ilyenkor bootstrap-lezartsagtol FUGGETLENUL engedjuk az uj jelszo beallitasat,
-        // mert nincs semmi titok amit ellenorizni kellene — ez maga az ujratelepites
-        // use-case, amit a felhasznalo a SetupWizard-on keresztul csinal.
-        //
-        // Biztonsag: ez NEM account-takeover, mert a worker kodot (KOSA, BORSI stb.)
-        // publikusan latja a wizard, DE a jelszot-allito szemely fizikailag az irodaban
-        // ul es rendszergazda felugyelete alatt telepiti a gepet. A kockazat elfogadhato
-        // a "lezart bootstrap blokkolja az ujratelepites" problemat tekintve.
+        // Pre-bootstrap (a bootstrap MEG nem zarult le) + null-hash: ez a kezdeti telepites
+        // use-case-e (SetupWizard). Itt nincs lezart rendszer, amibol fiokot at lehetne venni,
+        // ezert token nelkul is engedjuk — ez maga az elso telepites.
         // Ha a passwordHash NEM null, a fenti agak mar ellenoriztek a jelszot.
 
         List<String> roleCodes = sanitizeRoleCodes(workerRoleService.getRoleCodesForWorker(worker.getId()));
