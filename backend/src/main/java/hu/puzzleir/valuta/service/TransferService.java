@@ -280,6 +280,30 @@ public class TransferService {
                                             Transfer.TransferDirection direction) {
         // #6: soronként könyvelünk (egy-valutás átadásnál egyetlen szintetikus sor a headerből).
         final java.util.List<TransferLine> bookLines = effectiveLines(transfer);
+
+        // CROSS-BRANCH LOCK-ORDERING (deadlock-megelozes): az UF/FF mod a kuldo ES a fogado iroda
+        // cash_balance sorat is lockolja egy tranzakcioban (soronkent, tobb valutaban is). Ezeket — az
+        // F/U single-branch soraival egyutt — GLOBALISAN egyseges (branchId, currencyId) sorrendben
+        // ELO-LOCKOLJUK a switch ELOTT, mielott a decrease/increase olvasna/mutalna. Kulonben egy
+        // parhuzamos, forditott iranyu transfer/trade az ellentetes sorrend miatt AB-BA deadlockot
+        // okozna. A lenti decrease/increase ugyanezeket a sorokat mar lockoltan kapja. Lasd: CashLockOrdering.
+        final boolean touchesToBranch = direction == Transfer.TransferDirection.UF
+                || direction == Transfer.TransferDirection.FF;
+        final java.util.List<hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey> lockKeys =
+                new java.util.ArrayList<>();
+        for (TransferLine ln : bookLines) {
+            Long cid = ln.getCurrency().getId();
+            lockKeys.add(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey(
+                    transfer.getFromBranch().getId(), cid));
+            if (touchesToBranch) {
+                lockKeys.add(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey(
+                        transfer.getToBranch().getId(), cid));
+            }
+        }
+        hu.puzzleir.valuta.util.CashLockOrdering.lockBranchCurrencyPairsInGlobalOrder(
+                (bid, c) -> cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(bid, c),
+                lockKeys.toArray(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey[0]));
+
         switch (direction) {
             case F -> {
                 for (TransferLine ln : bookLines) {

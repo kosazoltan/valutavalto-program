@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.util;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.BiConsumer;
@@ -29,12 +30,13 @@ import java.util.function.BiConsumer;
  * (TransactionReversalService), konverzio (TransactionConversionService), multi-line
  * (TransactionMultiLineService) — ezek mind egyetlen iroda HUF + deviza sorait mozgatjak.</p>
  *
- * <p><b>KULON, SZELESEBB FOLLOW-UP (NEM ez a helper fedi):</b> a CROSS-BRANCH cash-mozgato utak
- * (TradeService.moveTradeInventory — forras- es cel-iroda azonos valutaja; esetleg TransferService),
- * ahol KET KULONBOZO iroda sorat lockoljak: itt a determinisztikus rendezesi kulcs a (branchId,
- * currencyId) PAR, nem csak a currencyId. Egy Trade(A->B) es a forditott Trade(B->A) azonos valutara
- * AB-BA deadlockot okozhat. Ezt egy kovetkezo, fokuszalt PR rendezi (altalanos (branch,currency)-tuple
- * rendezessel); a jelen helper szandekosan a single-branch tranzakcios utakra korlatozott.</p>
+ * <p><b>CROSS-BRANCH valtozat ({@link #lockBranchCurrencyPairsInGlobalOrder}):</b> a tobb iroda
+ * cash-sorat MOZGATO utak (TradeService.moveTradeInventory — forras+cel iroda azonos valutaja;
+ * TransferService — kuldo+fogado iroda) eseten a determinisztikus rendezesi kulcs a
+ * {@code (branchId, currencyId)} PAR (nem csak a currencyId). Egy Trade(A->B) es a forditott
+ * Trade(B->A) azonos valutara kulonben AB-BA deadlockot okozna. A globalis rendezes: eloszor
+ * {@code branchId} (UUID natural order), majd {@code currencyId} — igy minden szal ugyanabban a
+ * teljes rendezesben szerzi a lockokat, korkoros varakozas nem alakulhat ki.</p>
  */
 public final class CashLockOrdering {
 
@@ -55,5 +57,35 @@ public final class CashLockOrdering {
                 .distinct()
                 .sorted()
                 .forEach(currencyId -> rowLock.accept(branchId, currencyId));
+    }
+
+    /**
+     * Cross-branch lock-kulcs: egy konkret iroda + valuta cash_balance sora.
+     */
+    public record BranchCurrencyKey(UUID branchId, Long currencyId) {
+    }
+
+    /** Globalis teljes rendezes a cross-branch cash-sorokon: eloszor branchId (UUID), majd currencyId. */
+    private static final Comparator<BranchCurrencyKey> GLOBAL_ORDER =
+            Comparator.comparing(BranchCurrencyKey::branchId)
+                    .thenComparing(BranchCurrencyKey::currencyId);
+
+    /**
+     * A megadott (iroda, valuta) cash_balance sorokat GLOBALISAN egyseges sorrendben elo-lockolja:
+     * eloszor branchId (UUID natural order), majd currencyId szerint. Cross-branch utakhoz
+     * (TradeService, TransferService), ahol KET KULONBOZO iroda sorat kell lockolni egy tranzakcioban —
+     * a determinisztikus tuple-rendezes megakadalyozza a forditott-iranyu muvelettel (Trade B->A,
+     * Transfer fordito) valo AB-BA deadlockot. A {@code null} kulcsokat es a duplikatumokat kihagyja.
+     *
+     * @param rowLock a tenyleges sor-lock muvelet (PESSIMISTIC_WRITE) a (branchId, currencyId) paron
+     * @param keys    a lockolando (iroda, valuta) parok
+     */
+    public static void lockBranchCurrencyPairsInGlobalOrder(BiConsumer<UUID, Long> rowLock, BranchCurrencyKey... keys) {
+        Arrays.stream(keys)
+                .filter(Objects::nonNull)
+                .filter(k -> k.branchId() != null && k.currencyId() != null)
+                .distinct()
+                .sorted(GLOBAL_ORDER)
+                .forEach(k -> rowLock.accept(k.branchId(), k.currencyId()));
     }
 }
