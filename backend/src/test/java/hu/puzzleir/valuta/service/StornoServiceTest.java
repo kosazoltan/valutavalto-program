@@ -473,4 +473,25 @@ class StornoServiceTest {
 
         assertThat(cap.getValue().isSupervisorApproved()).isFalse();
     }
+
+    // === CodeQL java/log-injection (#944, StornoService:398) — kliens-vezerelt approvalId
+    //     sanitizalasa a logba iras elott (CWE-117 log forging elleni vedelem). ===
+
+    @Test
+    @DisplayName("CodeQL log-injection: sanitizeForLog a CR/LF/TAB-ot underscore-ra cseréli, control karaktert kerdojelre (nincs hamis log-sor injektalas)")
+    void sanitizeForLog_stripsCrlfAndTab() {
+        String malicious = "abc\r\nADMIN\tvege";
+        String sanitized = StornoService.sanitizeForLog(malicious);
+
+        assertThat(sanitized).doesNotContain("\r").doesNotContain("\n").doesNotContain("\t");
+        assertThat(sanitized).isEqualTo("abc__ADMIN_vege");
+    }
+
+    @Test
+    @DisplayName("CodeQL log-injection: sanitizeForLog a normal (ARTALMATLAN) inputot valtozatlanul hagyja, null-safe")
+    void sanitizeForLog_passesThroughCleanInputAndNull() {
+        assertThat(StornoService.sanitizeForLog("550e8400-e29b-41d4-a716-446655440000"))
+                .isEqualTo("550e8400-e29b-41d4-a716-446655440000");
+        assertThat(StornoService.sanitizeForLog(null)).isNull();
+    }
 }
