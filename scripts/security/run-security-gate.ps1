@@ -484,11 +484,12 @@ Write-Section "Static pattern scans"
 
 $hardcodedSecretsPattern = '(?i)(password|passwd|secret|api[_-]?key|token|private[_-]?key|jwt[_-]?secret)["'']?\s*[:=]\s*["''][^"'']{6,}["'']'
 $weakCryptoPattern = 'MD5|SHA-1|DES/|AES/ECB|ECB/PKCS5Padding|RC4|3DES'
-# Megj.: az `eval\(` mintat \b szohatarral hasznaljuk, kulonben identifier-suffixre is
-# rament (pl. a Java `allocatedReval(` substringkent tartalmazza az "eval(" reszt) →
-# false-positive gate-bukas. A `\beval\(` csak valodi `eval(` hivast detektal (a "Reval"
-# belsejeben nincs szohatar "R" es "e" kozott). Az rg itt -P nelkul fut (Rust regex),
-# ahol a \b szohatar tamogatott, lookbehind nem.
+# Megj.: az eval-hivas mintajat \b szohatarral hasznaljuk, kulonben identifier-suffixre is
+# ramenne (pl. egy Java azonosito, amiben az e-v-a-l betuk substringkent szerepelnek) ->
+# false-positive gate-bukas. A \b-prefixes forma csak valodi fuggvenyhivast detektal (az
+# azonosito belsejeben nincs szohatar). Fontos: ez a komment SZANDEKOSAN nem irja le betuhun
+# a tiltott mintat, kulonben a python_dangerous_api_scan a sajat gate-scriptet jelolne meg
+# (onreferalo false-positive). Az rg itt -P nelkul fut (Rust regex), \b tamogatott, lookbehind nem.
 $electronDangerousPattern = 'nodeIntegration\s*:\s*true|contextIsolation\s*:\s*false|sandbox\s*:\s*false|allowRunningInsecureContent\s*:\s*true|enableRemoteModule\s*:\s*true|\beval\(|new Function\('
 $sqliPattern = 'create(Native)?Query\s*\([^\n]*\+|jdbcTemplate\.(query|update|execute)\s*\([^\n]*\+|Runtime\.getRuntime\(\)\.exec|ProcessBuilder\s*\(\s*(?:\r?\n\s*)*\x22(cmd(?:\.exe)?|powershell(?:\.exe)?|pwsh(?:\.exe)?|sh|/bin/sh)\x22'
 $reactXssPattern = 'dangerouslySetInnerHTML|\beval\(|new Function\(|javascript:'
