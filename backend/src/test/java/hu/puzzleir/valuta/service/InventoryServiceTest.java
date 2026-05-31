@@ -526,6 +526,21 @@ class InventoryServiceTest {
     }
 
     @Test
+    @DisplayName("IDOR: kevert-tenant BRANCH_TRANSFER (saját from + idegen to) jóváhagyása → 404 (Codex P1 #934)")
+    void approveMovement_mixedTenantTransfer_throwsNotFound() {
+        // Egy oldal a sajátunk, a másik IDEGEN — a receive MINDKÉT cash_balance-t írná, ezért tiltjuk.
+        InventoryMovement mixed = buildMovement(MovementType.BRANCH_TRANSFER, MovementStatus.PENDING,
+                eurCurrency, branch /* saját */, foreignBranch() /* idegen */);
+        mixed.setId(88L);
+        when(movementRepository.findByIdForUpdate(88L)).thenReturn(Optional.of(mixed));
+
+        assertThatThrownBy(() -> inventoryService.approveMovement(88L, WORKER_ID))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Készlet mozgás nem található");
+        verify(cashBalanceRepository, never()).save(any(CashBalance.class));
+    }
+
+    @Test
     @DisplayName("IDOR: idegen cég mozgásának lekérése (getMovement) → 404")
     void getMovement_foreignMovement_throwsNotFound() {
         InventoryMovement foreignMovement = buildMovement(MovementType.BRANCH_TRANSFER, MovementStatus.PENDING,

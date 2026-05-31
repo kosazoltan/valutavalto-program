@@ -683,8 +683,16 @@ public class InventoryService {
      */
     private void assertMovementInCompany(InventoryMovement movement) {
         UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
-        if (!branchBelongsToCompany(movement.getFromBranch(), companyId)
-                && !branchBelongsToCompany(movement.getToBranch(), companyId)) {
+        // MINDEN nem-null oldalnak a hívó cégéhez kell tartoznia (bank-mozgásnál az egyik oldal null),
+        // ÉS legalább az egyik oldal a cégé. Csak az egyik oldal egyezése NEM elég (Codex P1 #934):
+        // egy (legacy / vulnerable-window) cross-tenant BRANCH_TRANSFER receiveMovement-je MINDKÉT
+        // branch cash_balance-át írná — az idegen tenantét is. Tenant-idegen → 404 (id-enumeráció ellen).
+        Branch from = movement.getFromBranch();
+        Branch to = movement.getToBranch();
+        boolean fromOk = from == null || branchBelongsToCompany(from, companyId);
+        boolean toOk = to == null || branchBelongsToCompany(to, companyId);
+        boolean anyOwnBranch = branchBelongsToCompany(from, companyId) || branchBelongsToCompany(to, companyId);
+        if (!fromOk || !toOk || !anyOwnBranch) {
             throw new ResourceNotFoundException("Készlet mozgás nem található: " + movement.getId());
         }
     }
