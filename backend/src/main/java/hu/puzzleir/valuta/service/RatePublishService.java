@@ -120,6 +120,11 @@ public class RatePublishService {
         //    "X-es csoport EUR vétel nem lehet magasabb az elszámolónál".
         validateRateProtection(workgroup, templates);
 
+        // 2b) Audit 2026-05-31 (P2): spread-kapu (VV-ELVI 7.2/7.4, max 5% relatív) + sell>buy
+        //     sanity MINDEN publikálási úton — eddig CSAK a RateCreationService futtatta, így a
+        //     publishBatch / template-publish megkerülte (createTemplate-tel széles spread/sell≤buy).
+        validateSpreadAndSanity(templates);
+
         // 3) Status-set + save (csak miután a teljes batch átment a validáción)
         LocalDateTime publishedAt = LocalDateTime.now();
         for (RateTemplate template : templates) {
@@ -216,8 +221,12 @@ public class RatePublishService {
                 .map(t -> RateUpdateMessage.RateEntry.builder()
                         .currencyId(t.getCurrencyId())
                         .currencyCode(resolveCurrencyCode(currenciesById, t.getCurrencyId()))
-                        .buyRate(t.getBaseBuyRate().add(t.getBuySpread()))
-                        .sellRate(t.getBaseSellRate().add(t.getSellSpread()))
+                        // Audit 2026-05-31 (P2): a kimenő (WebSocket/outbox) payload a base+spread-et
+                        // a perzisztált exchange_rate-tel BIT-PONTOSAN egyezően képezze — mergeRate
+                        // null-biztos (NULL buy_spread/sell_spread → ZERO, nem NPE) + setScale(4,HALF_UP).
+                        // Korábban nyers .add(): NULL spreadnél NPE publikálás közben + skála-divergencia.
+                        .buyRate(mergeRate(t.getBaseBuyRate(), t.getBuySpread()))
+                        .sellRate(mergeRate(t.getBaseSellRate(), t.getSellSpread()))
                         .roundingRule(t.getRoundingRule())
                         .officialRate(t.getOfficialRate())
                         .limit1Amount(t.getLimit1Amount())
@@ -429,6 +438,41 @@ public class RatePublishService {
             checkSellRate(t.getLimit1SellRate(), j, groupLabel, code, "O eladás");
             checkSellRate(t.getLimit2SellRate(), j, groupLabel, code, "Q eladás");
             checkSellRate(t.getLimit3SellRate(), j, groupLabel, code, "S eladás");
+        }
+    }
+
+    /**
+     * Audit 2026-05-31 (P2 #9): a publikálási út (publishBatch / template-publish) MEGKERÜLTE a
+     * VV-ELVI 7.2/7.4 spread-kaput és a sell&gt;buy sanity-check-et — azokat eddig CSAK a
+     * {@code RateCreationService.publishGroupRateInternal} futtatta. Így egy {@code createTemplate}-tel
+     * rögzített sablon 5%-nál szélesebb spreaddel vagy sell≤buy konfigurációval is publikálható lett
+     * volna. Itt MINDEN publikálási úton, az EFFEKTÍV (base+spread) alap-rátára (L/M) érvényesítjük,
+     * a workgroup-protection flagtől függetlenül (üzleti adatbeviteli invariáns). Sértésnél
+     * {@code ValidationException} → {@code @Transactional(rollbackFor)} atomi rollback (nincs részleges publikálás).
+     */
+    private void validateSpreadAndSanity(List<RateTemplate> templates) {
+        List<Long> currencyIds = templates.stream()
+                .map(RateTemplate::getCurrencyId)
+                .distinct()
+                .toList();
+        Map<Long, String> codeById = new LinkedHashMap<>();
+        for (Currency c : currencyRepository.findAllById(currencyIds)) {
+            codeById.put(c.getId(), c.getCode());
+        }
+        for (RateTemplate t : templates) {
+            BigDecimal effBuy = mergeRate(t.getBaseBuyRate(), t.getBuySpread());
+            BigDecimal effSell = mergeRate(t.getBaseSellRate(), t.getSellSpread());
+            String code = codeById.getOrDefault(t.getCurrencyId(), "ID=" + t.getCurrencyId());
+            // sell>buy sanity CSAK ha MINDKÉT ráta pozitív. A 0 = "nem beállított" (pl. buy-only
+            // valuta: az iroda veszi, de nem adja el) — ezt a protection is signum-skip-eli, ezért
+            // itt sem blokkoljuk, különben a buy-only közzététel törne (NE törjük a működő funkciót).
+            if (effBuy.signum() > 0 && effSell.signum() > 0 && effSell.compareTo(effBuy) <= 0) {
+                throw new ValidationException(
+                        "Eladási árfolyam nagyobb kell legyen a vételinél! Valuta: " + code);
+            }
+            // RFM spread-kapu (VV-ELVI 7.2/7.4): a relatív spread nem lépheti túl az 5%-ot.
+            // (Negatív/nulla spread esetén no-op; a fenti sanity véd a tényleges inverz ellen.)
+            RateSpreadGate.enforce(effBuy, effSell, t.getOfficialRate(), t.getCurrencyId());
         }
     }
 

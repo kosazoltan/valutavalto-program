@@ -513,4 +513,71 @@ class RatePublishServiceTest {
         assertTrue(ex.getMessage().contains("magasabb az elszámolónál"),
                 "az effektív (base+spread) vételit kell elkapnia: " + ex.getMessage());
     }
+
+    @Test
+    @DisplayName("Audit P2 #9: sell ≤ buy (mindkét pozitív) → ValidationException a publish-ban (protection KI is)")
+    void publish_invertedRate_throws() {
+        UUID wgId = UUID.randomUUID(); UUID tplId = UUID.randomUUID();
+        UUID companyId = ((WorkerAuthenticationDetails) SecurityContextHolder.getContext().getAuthentication().getDetails()).getCompanyId();
+        UUID branchId = UUID.randomUUID();
+        RateWorkgroup wg = wgWithProtection(wgId, companyId, branchId, false, 1); // protection KI → csak a sanity fut
+        RateTemplate tpl = tplWithRates(tplId, wgId, 1L,
+                new BigDecimal("400.00"), new BigDecimal("400.00"), new BigDecimal("395.00")); // sell 395 < buy 400
+        when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(
+                Currency.builder().id(1L).code("EUR").name("Euro").build()));
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> service.publish(wgId, List.of(tplId), "inv"));
+        assertTrue(ex.getMessage().contains("Eladási árfolyam nagyobb kell legyen"), ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("Audit P2 #9: spread > 5% → RateSpreadGate elutasít a publish-ban (publishBatch sem kerüli meg)")
+    void publish_spreadOver5pct_throws() {
+        UUID wgId = UUID.randomUUID(); UUID tplId = UUID.randomUUID();
+        UUID companyId = ((WorkerAuthenticationDetails) SecurityContextHolder.getContext().getAuthentication().getDetails()).getCompanyId();
+        UUID branchId = UUID.randomUUID();
+        RateWorkgroup wg = wgWithProtection(wgId, companyId, branchId, false, 1);
+        // reference J=400, spread (420-380)=40 > 400*0.05=20 → tilos
+        RateTemplate tpl = tplWithRates(tplId, wgId, 1L,
+                new BigDecimal("400.00"), new BigDecimal("380.00"), new BigDecimal("420.00"));
+        when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(
+                Currency.builder().id(1L).code("EUR").name("Euro").build()));
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> service.publish(wgId, List.of(tplId), "wide"));
+        assertTrue(ex.getMessage().toLowerCase().contains("spread"), ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("Audit P2 #8: NULL buy/sell spread (DB-hidratált sablon) → buildRateUpdateMessage NEM NPE-zik")
+    void publish_nullSpread_noNpe() {
+        UUID wgId = UUID.randomUUID(); UUID tplId = UUID.randomUUID();
+        UUID companyId = ((WorkerAuthenticationDetails) SecurityContextHolder.getContext().getAuthentication().getDetails()).getCompanyId();
+        UUID branchId = UUID.randomUUID();
+        RateWorkgroup wg = wgWithProtection(wgId, companyId, branchId, false, 1);
+        RateTemplate tpl = tplWithRates(tplId, wgId, 1L,
+                new BigDecimal("400.00"), new BigDecimal("398.00"), new BigDecimal("402.00"));
+        tpl.setBuySpread(null);   // @Builder.Default csak builder-konstrukciónál hat — DB-hidratáltnál NULL lehet
+        tpl.setSellSpread(null);
+        when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
+        when(templateRepository.save(any(RateTemplate.class))).thenAnswer(i -> i.getArgument(0));
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(
+                Currency.builder().id(1L).code("EUR").name("Euro").build()));
+        when(exchangeRateRepository.findCurrentRate(any(), eq(1L), any())).thenReturn(List.of());
+        when(exchangeRateRepository.findActiveBranchRates(any(), eq(1L), any())).thenReturn(List.of());
+        when(exchangeRateRepository.save(any(ExchangeRate.class))).thenAnswer(i -> i.getArgument(0));
+        when(publicationRepository.save(any(RatePublication.class))).thenAnswer(i -> {
+            RatePublication p = i.getArgument(0); if (p.getId() == null) p.setId(UUID.randomUUID()); return p;
+        });
+        when(syncOutboxRepository.save(any(SyncOutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
+
+        RatePublication pub = service.publish(wgId, List.of(tplId), "null-spread");
+        assertNotNull(pub.getId());
+    }
 }
