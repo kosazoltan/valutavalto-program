@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -23,6 +25,7 @@ public class RateTemplate {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)
+    @JsonIgnore
     private Company company;
 
     @Column(name = "currency_id", nullable = false)
@@ -142,5 +145,18 @@ public class RateTemplate {
         public boolean isTerminal() {
             return allowedTransitions().isEmpty();
         }
+    }
+
+    /**
+     * Multi-tenant flat companyId a JSON-ban (audit 2026-05-31, P1 LazyInit).
+     * A {@code company} lazy {@code @ManyToOne} + {@code @JsonIgnore}; a controller GET/approve/revoke
+     * endpointjai az ENTITÁST adják vissza, OSIV=false mellett a Company-proxy szerializálása
+     * {@code LazyInitializationException} 500-at dobna. Ez a flat getter a már ismert FK-ból ad
+     * companyId-t lazy-betöltés nélkül (a RateWorkgroup.getCompanyId mintája, Fix #146+).
+     */
+    @JsonProperty("companyId")
+    @Transient
+    public UUID getCompanyId() {
+        return company != null ? company.getId() : null;
     }
 }
