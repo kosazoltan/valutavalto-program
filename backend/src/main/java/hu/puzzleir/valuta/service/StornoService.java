@@ -163,7 +163,13 @@ public class StornoService {
 
         // A 3. (utolso engedelyezett) irodai sztorno mar jovahagyast igenyel (count == limit-1).
         boolean branchApprovalRequired = dailyCountBranch >= DAILY_STORNO_LIMIT_BRANCH - 1;
-        // Legacy: a limit penztarosonkent is ervenyes (advisory, tovabbra is jovahagyast trigerel).
+        // Legacy: a limit penztarosonkent is ervenyes (advisory). MEGJEGYZES (self-review P2,
+        // 2026-05-31): jelenleg DAILY_STORNO_LIMIT_CASHIER (2) == DAILY_STORNO_LIMIT_BRANCH-1 (2),
+        // es cashierCount <= branchCount, ezert ez az ag a branch-ag NELKUL onmagaban sosem dont
+        // (a requiresApproval-t a branchApprovalRequired amugy is igazza teszi). SZANDEKOSAN
+        // megtartva: (a) a legacy per-penztaros uzleti szabaly explicit dokumentacioja, (b) ha a
+        // ket kuszob jovoben eltervalik (pl. szigorubb penztaros-limit), azonnal ervenyre jut. Az
+        // execute (TransactionReversalService) csak branch-szinten kenyszerit; ez advisory marad.
         boolean cashierLimitReached = dailyCountCashier >= DAILY_STORNO_LIMIT_CASHIER;
 
         boolean requiresApproval = branchApprovalRequired || cashierLimitReached;
@@ -350,6 +356,13 @@ public class StornoService {
             throw new ValidationException("Sztornó tranzakció nem sztornózható!");
         }
 
+        // Codex P2 (2026-05-31, #944 review): a napi sztornó-plafon 3. (limit-1) sztornójához
+        // supervisori jóváhagyás kell. A dokumentált flow: a pénztáros jóváhagyást kér, a supervisor
+        // megadja (StornoApproval → APPROVED), majd a PÉNZTÁROS hajtja végre az approvalId-vel. A
+        // jóváhagyást ITT, SZERVER-OLDALON verifikáljuk (a kliens-küldte flaget sosem hisszük el), és
+        // csak verifikáltan adjuk tovább supervisorApproved=true-ként az executeReversal kapujához.
+        boolean supervisorApproved = isValidGrantedApproval(request.getApprovalId(), transactionId, branchId);
+
         // Sztornó végrehajtás a TransactionService reversal metódusával
         TransactionService.ReversalRequest reversalRequest = TransactionService.ReversalRequest.builder()
                 .originalTransactionId(transactionId)
@@ -357,12 +370,39 @@ public class StornoService {
                 .approvedBy(String.valueOf(workerId))
                 .useCurrentRate(request.getUseCurrentRate())
                 .customExchangeRate(request.getCustomExchangeRate())
+                .supervisorApproved(supervisorApproved)
                 .build();
 
         Transaction reversal = transactionService.executeReversal(reversalRequest);
         log.info("Sztornó végrehajtva: eredeti={}, sztornó={}", original.getReceiptNumber(), reversal.getReceiptNumber());
 
         return reversal;
+    }
+
+    /**
+     * Codex P2 (2026-05-31, #944 review): a kliens-küldte {@code approvalId} SZERVER-OLDALI
+     * verifikációja — csak akkor jogosít a (limit-1)-edik sztornóra, ha a jóváhagyás:
+     *   (1) létezik, (2) PONTOSAN ehhez a tranzakcióhoz tartozik (nem hordozható át másik tranzakcióra),
+     *   (3) ehhez az irodához tartozik (IDOR), (4) státusza APPROVED (PENDING/REJECTED nem ad jogot).
+     * Bármelyik feltétel sérül vagy az id hiányzik/hibás formátumú → {@code false} (a végrehajtó
+     * ekkor csak supervisorként mehet tovább). A kliens-flaget SOHA nem hisszük el.
+     */
+    private boolean isValidGrantedApproval(String approvalIdStr, Long transactionId, UUID branchId) {
+        if (approvalIdStr == null || approvalIdStr.isBlank()) {
+            return false;
+        }
+        final UUID approvalId;
+        try {
+            approvalId = UUID.fromString(approvalIdStr);
+        } catch (IllegalArgumentException e) {
+            log.warn("Érvénytelen approvalId formátum a sztornó-végrehajtáskor: {}", approvalIdStr);
+            return false;
+        }
+        return stornoApprovalRepository.findById(approvalId)
+                .filter(a -> a.getTransaction() != null && transactionId.equals(a.getTransaction().getId()))
+                .filter(a -> a.getBranch() != null && branchId.equals(a.getBranch().getId()))
+                .filter(a -> a.getApprovalStatus() != null && "APPROVED".equals(a.getApprovalStatus().getCode()))
+                .isPresent();
     }
 
     /**

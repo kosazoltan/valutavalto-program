@@ -108,7 +108,14 @@ public class TransactionReversalService {
                 "Napi sztorno plafon (%d) elerve — ma tobb sztorno nem lehetseges, supervisori jovahagyassal sem!",
                 reversalLimit));
         }
-        if (dailyReversals >= reversalLimit - 1 && !SecurityUtils.isSupervisorOrAbove()) {
+        // Codex P2 (2026-05-31, #944 review): a 3. (limit-1) sztorno kapuja akkor nyilik, ha a
+        // VEGREHAJTO supervisor VAGY ha van ERVENYES, MEGADOTT jovahagyas (request.supervisorApproved,
+        // amit a StornoService verifikalt szerver-oldalon az approvalId alapjan). Kulonben a dokumentalt
+        // flow — penztaros jovahagyast ker, supervisor megadja, PENZTAROS hajtja vegre — hasznalhatatlan
+        // lenne (a penztaros jovahagyassal is elbukna). A 4.+ abszolut plafon (fent) ettol fuggetlenul tilt.
+        if (dailyReversals >= reversalLimit - 1
+                && !SecurityUtils.isSupervisorOrAbove()
+                && !request.isSupervisorApproved()) {
             throw new ValidationException(String.format(
                 "A(z) %d. napi sztornohoz supervisori jovahagyas szukseges!", reversalLimit));
         }

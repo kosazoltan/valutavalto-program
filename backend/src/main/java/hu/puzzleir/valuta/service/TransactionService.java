@@ -1052,6 +1052,17 @@ public class TransactionService {
          * egyébként az eredeti tranzakció árfolyama marad.
          */
         private BigDecimal customExchangeRate;
+        /**
+         * Codex P2 (2026-05-31, #944 review): a napi sztornó-plafon 3. (limit-1) sztornójához
+         * supervisori jóváhagyás kell. A dokumentált flow: a pénztáros jóváhagyást kér, a supervisor
+         * megadja (StornoApproval), majd a PÉNZTÁROS hajtja végre. Ez a flag jelzi, hogy a
+         * végrehajtáshoz tartozik ÉRVÉNYES, MEGADOTT (APPROVED) jóváhagyás — ezt a {@code StornoService}
+         * verifikálja SZERVER-OLDALON (approvalId → APPROVED StornoApproval ehhez a tranzakcióhoz/irodához),
+         * és csak verifikáltan állítja {@code true}-ra. Az {@code executeReversal} a 3. sztornó kapuját
+         * supervisor-végrehajtó VAGY {@code supervisorApproved} esetén engedi át; a 4.+ abszolút plafon
+         * ettől függetlenül tilt. Default {@code false} (közvetlen hívóknál nincs jóváhagyás).
+         */
+        private boolean supervisorApproved;
     }
 
     @lombok.Data

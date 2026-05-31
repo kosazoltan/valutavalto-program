@@ -456,6 +456,64 @@ class TransactionReversalServiceTest {
     }
 
     @Test
+    @DisplayName("Codex P2: Aznapi plafon - 3. sztorno (2 mar volt ma) penztaros (NEM supervisor) ERVENYES jovahagyassal (supervisorApproved=true) -> sikeres")
+    void testStorno_thirdReversalToday_cashierWithApproval_succeeds() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            // A VEGREHAJTO penztaros (NEM supervisor), de van ervenyes (megadott) jovahagyas.
+            secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(false);
+            when(dailySessionService.getDailyReversalCountForUpdate()).thenReturn(2);
+            when(helper.getDailyReversalLimit()).thenReturn(3);
+
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(buildTodaySell()));
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+            when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
+                Transaction t = inv.getArgument(0);
+                if (t.getId() == null) t.setId(204L);
+                return t;
+            });
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L).reason("3. sztorno penztaros megadott jovahagyassal")
+                    .supervisorApproved(true).build();
+
+            Transaction reversal = reversalService.executeReversal(request);
+
+            assertThat(reversal).isNotNull();
+            assertThat(reversal.getTransactionType()).isEqualTo(TransactionType.REVERSAL);
+        }
+    }
+
+    @Test
+    @DisplayName("Codex P2: Aznapi plafon - 4. sztorno (3 mar volt ma) ervenyes jovahagyassal SEM -> abszolut tiltott (a plafon a jovahagyas felett all)")
+    void testStorno_fourthReversalToday_evenWithApproval_blocked() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(false);
+            when(dailySessionService.getDailyReversalCountForUpdate()).thenReturn(3);
+            when(helper.getDailyReversalLimit()).thenReturn(3);
+
+            Transaction today = buildTodaySell();
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(today));
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L).reason("4. sztorno jovahagyassal").supervisorApproved(true).build();
+
+            assertThatThrownBy(() -> reversalService.executeReversal(request))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("plafon");
+            assertThat(today.getStatus()).isEqualTo(TransactionStatus.COMPLETED);
+            verify(transactionRepository, never()).save(any(Transaction.class));
+        }
+    }
+
+    @Test
     @DisplayName("Aznapi plafon - 4. sztorno (3 mar volt ma) SUPERVISORRAL SEM -> abszolut tiltott")
     void testStorno_fourthReversalToday_withSupervisor_alwaysBlocked() {
         try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
