@@ -66,22 +66,35 @@ public class TransactionReversalService {
         if (!original.getBranch().getId().equals(branchId)) {
             throw new ValidationException("Csak sajat iroda tranzakciojat lehet sztornozni!");
         }
-        // Audit #2 (2026-05-31, user-direktiva "Tiltas korabbi napra"): a korabbi napi tranzakcio
-        // SOHA nem sztornozhato — sem supervisorral. Kulonben a lentebbi original.setStatus(REVERSED)
-        // csendben csokkentene a korabbi nap forgalmat (a napi forgalom-osszegzes COMPLETED-re szur),
-        // a kompenzacio pedig a MAI napon konyvelodne -> a korabbi nap forgalma utolag, eszrevetlenul
-        // megvaltozna. A korabbi P2.7 (2026-05-17) supervisor-override ezzel megszunik.
+        // Audit #2 (2026-05-31, user-direktiva) — DATUM-szabaly: a korabbi napi tranzakcio
+        // VISSZAMENOLEG SOHA nem sztornozhato (sem supervisorral). Kulonben a lentebbi
+        // original.setStatus(REVERSED) csendben csokkentene a korabbi nap forgalmat (a napi
+        // forgalom-osszegzes COMPLETED-re szur), a kompenzacio pedig a MAI napon konyvelodne
+        // -> a korabbi nap forgalma utolag, eszrevetlenul megvaltozna.
+        // FONTOS: ez CSAK a korabbi-napi (P2.7, 2026-05-17) supervisor-override-ot szunteti meg;
+        // az AZNAPI supervisor-funkcio a napi plafonnal (lent) valtozatlanul megmarad.
         if (!original.getTransactionDate().equals(LocalDate.now())) {
             throw new ValidationException(
-                "Csak az aznapi tranzakcio sztornozhato — korabbi nap nem sztornozhato. Tranzakcio datuma: "
+                "Csak az aznapi tranzakcio sztornozhato — korabbi nap visszamenoleg nem sztornozhato. Tranzakcio datuma: "
                 + original.getTransactionDate());
         }
 
-        // Napi sztorno limit ellenorzese
+        // Audit #2 (2026-05-31, user-direktiva) — AZNAPI DARABSZAM-szabaly: aznap MAXIMUM
+        // `limit` (alapertelmezetten 3) sztorno lehetseges. Lebontva:
+        //   - az elso (limit-1) sztorno supervisori jovahagyas nelkul,
+        //   - a `limit`-edik (pl. 3.) sztorno CSAK supervisori jovahagyassal,
+        //   - a plafon felett (pl. 4.+) SEMMIKEPP, supervisorral sem.
+        // Korabban a plafon felett supervisorral KORLATLAN sztorno volt lehetseges (hibas).
         int dailyReversals = dailySessionService.getDailyReversalCount();
-        if (dailyReversals >= helper.getDailyReversalLimit() && !SecurityUtils.isSupervisorOrAbove()) {
-            throw new ValidationException(
-                String.format("Napi sztorno limit (%d) elerve! Supervisor jovahagyas szukseges.", helper.getDailyReversalLimit()));
+        int reversalLimit = helper.getDailyReversalLimit();
+        if (dailyReversals >= reversalLimit) {
+            throw new ValidationException(String.format(
+                "Napi sztorno plafon (%d) elerve — ma tobb sztorno nem lehetseges, supervisori jovahagyassal sem!",
+                reversalLimit));
+        }
+        if (dailyReversals >= reversalLimit - 1 && !SecurityUtils.isSupervisorOrAbove()) {
+            throw new ValidationException(String.format(
+                "A(z) %d. napi sztornohoz supervisori jovahagyas szukseges!", reversalLimit));
         }
 
         // Entitasok betoltese

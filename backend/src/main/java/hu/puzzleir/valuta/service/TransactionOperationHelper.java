@@ -32,7 +32,8 @@ public class TransactionOperationHelper {
 
     private static final VVLogger VV_LOG = VVLogger.of(TransactionOperationHelper.class);
 
-    // Sztorno limit supervisor nelkul (3 db/nap)
+    // Napi sztorno ABSZOLUT plafon (audit #2, 2026-05-31): aznap max ennyi sztorno lehetseges.
+    // Az utolso (limit-edik) supervisori jovahagyast igenyel; a plafon felett supervisorral sem.
     private static final int DAILY_REVERSAL_LIMIT = 3;
 
     // Azonositas nelkuli limit HUF-ban (300.000 Ft - NAV szabalyozas)
