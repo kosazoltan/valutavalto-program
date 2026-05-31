@@ -216,6 +216,7 @@ public class TransactionMultiLineService {
         saved.getLines().addAll(transactionLines);
         saved = transactionRepository.save(saved);
         helper.linkCameraEvidence(saved);
+        helper.flagHighRiskAfterBooking(request.getCustomerId());
 
         // Kassza frissites - soronkent valuta +, ossz HUF -
         for (TransactionLine line : transactionLines) {
@@ -393,6 +394,7 @@ public class TransactionMultiLineService {
         saved.getLines().addAll(transactionLines);
         saved = transactionRepository.save(saved);
         helper.linkCameraEvidence(saved);
+        helper.flagHighRiskAfterBooking(request.getCustomerId());
 
         // Kassza frissites - soronkent valuta -, ossz HUF +
         for (TransactionLine line : transactionLines) {

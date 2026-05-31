@@ -216,6 +216,7 @@ public class TransactionConversionService {
 
         Transaction saved = transactionRepository.save(transaction);
         helper.linkCameraEvidence(saved);
+        helper.flagHighRiskAfterBooking(request.getCustomerId());
 
         // Konverzios vetel bizonylat — financial_effective = TRUE (default), conversionGroupId =
         // parent.conversion_group_id (a sum riportokban a parent NEM, a convBuy IGEN szamol).

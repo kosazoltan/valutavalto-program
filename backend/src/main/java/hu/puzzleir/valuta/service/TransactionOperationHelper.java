@@ -108,6 +108,20 @@ public class TransactionOperationHelper {
     }
 
     /**
+     * Audit-finding 2026-05-31 (P1): a sikeres tranzakcio KONYVELESE UTAN frissiti az ugyfel
+     * highRiskFlag-jet, ha az eves gongyolt elerte az AML limitet. Eddig az
+     * {@code AmlService.setHighRiskFlagIfNeeded} SEHOL nem hivodott -> a fokozott atvilagitasi
+     * (nagy-ugyfel) jeloles eles uzemben SOSEM aktivalodott (halott write-oldali AML-kontroll).
+     * A save UTAN hivando, hogy a {@code getAnnualRollingTotal} a friss osszeget tukrozze.
+     */
+    public void flagHighRiskAfterBooking(String customerId) {
+        if (customerId == null || customerId.isBlank()) {
+            return;
+        }
+        amlService.setHighRiskFlagIfNeeded(customerId, amlService.getAnnualRollingTotal(customerId));
+    }
+
+    /**
      * Ugyfel azonositas ellenorzese.
      */
     public void validateIdentification(BigDecimal hufAmount, String customerName, String documentNumber) {

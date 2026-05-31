@@ -331,6 +331,7 @@ public class TransactionService {
 
         Transaction saved = transactionRepository.save(transaction);
         linkCameraEvidence(saved);
+        flagHighRiskAfterBooking(request.getCustomerId());
 
         // Kassza frissítése - HUF csökken, valuta nő
         updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount(), true);  // valuta +
@@ -520,6 +521,7 @@ public class TransactionService {
 
         Transaction saved = transactionRepository.save(transaction);
         linkCameraEvidence(saved);
+        flagHighRiskAfterBooking(request.getCustomerId());
 
         // Kassza frissítése - HUF nő, valuta csökken
         updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount().negate(), false); // valuta -
@@ -688,6 +690,20 @@ public class TransactionService {
         if (!dailySessionService.hasOpenSession()) {
             throw new ValidationException("Nincs nyitott napi munkamenet! Először nyissa meg a napot.");
         }
+    }
+
+    /**
+     * Audit-finding 2026-05-31 (P1): a sikeres tranzakció KÖNYVELÉSE UTÁN frissíti az ügyfél
+     * highRiskFlag-jét, ha az éves göngyölt elérte az AML limitet. Eddig az
+     * {@code AmlService.setHighRiskFlagIfNeeded} SEHOL nem hívódott → a fokozott átvilágítási
+     * jelölés éles üzemben sosem aktiválódott. A save UTÁN hívandó (a getAnnualRollingTotal a
+     * friss, már elmentett összeget tükrözze).
+     */
+    private void flagHighRiskAfterBooking(String customerId) {
+        if (customerId == null || customerId.isBlank()) {
+            return;
+        }
+        amlService.setHighRiskFlagIfNeeded(customerId, amlService.getAnnualRollingTotal(customerId));
     }
 
     /**
