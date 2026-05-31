@@ -133,12 +133,22 @@ public class StornoService {
             throw new ValidationException("Sztornó tranzakció nem sztornózható!");
         }
 
+        // Audit #2 (2026-05-31, user-direktiva): a korabbi napi tranzakcio VISSZAMENOLEG SOHA nem
+        // sztornozhato (sem supervisorral) — lasd TransactionReversalService.executeReversal. A precheck
+        // (UI-elonezet) NEM jelezhet "supervisor jovahagyas eleg"-et, kulonben a kliens egy lehetetlen
+        // jovahagyas-folyamatba kuldene a penztarost, amit az execute ugyis elutasitana (nem-informatikus
+        // vegfelhasznalo alapelv: ne igerjunk olyat, amit a backend megtilt). Ezert a precheck is dob.
+        if (!transaction.getTransactionDate().equals(LocalDate.now())) {
+            throw new ValidationException(
+                "Csak az aznapi tranzakcio sztornozhato — korabbi nap visszamenoleg nem sztornozhato. Tranzakcio datuma: "
+                + transaction.getTransactionDate());
+        }
+
         // Legacy: a limit irodánként ÉS pénztárosonként is érvényes
         boolean branchLimitReached = dailyCountBranch >= DAILY_STORNO_LIMIT_BRANCH;
         boolean cashierLimitReached = dailyCountCashier >= DAILY_STORNO_LIMIT_CASHIER;
-        boolean isPreviousDay = !transaction.getTransactionDate().equals(LocalDate.now());
 
-        boolean requiresApproval = branchLimitReached || cashierLimitReached || isPreviousDay;
+        boolean requiresApproval = branchLimitReached || cashierLimitReached;
 
         String message;
         if (requiresApproval) {
@@ -150,9 +160,6 @@ public class StornoService {
             if (cashierLimitReached) {
                 reasons.add(String.format("pénztáros napi sztornó szám (%d) elérte a limitet (%d)",
                         dailyCountCashier, DAILY_STORNO_LIMIT_CASHIER));
-            }
-            if (isPreviousDay) {
-                reasons.add("korábbi napi tranzakció");
             }
             message = "Supervisor jóváhagyás szükséges: " + String.join("; ", reasons) + ".";
         } else {
@@ -220,6 +227,15 @@ public class StornoService {
         }
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+
+        // Audit #2 (2026-05-31): korabbi napra NINCS ertelme jovahagyast kerni — az execute SOHA
+        // nem hajtja vegre. Ne hozzunk letre elarvult jovahagyas-kerest (a precheck mar tiltja, de
+        // a kozvetlen API-hivas ellen is vedunk).
+        if (!transaction.getTransactionDate().equals(LocalDate.now())) {
+            throw new ValidationException(
+                "Korabbi napi tranzakciora nem kerheto sztorno-jovahagyas — csak az aznapi sztornozhato. Tranzakcio datuma: "
+                + transaction.getTransactionDate());
+        }
 
         int dailyCount = (int) transactionRepository.countReversalsByBranchAndDate(SecurityUtils.getCurrentCompanyId(), branchId, LocalDate.now());
 
