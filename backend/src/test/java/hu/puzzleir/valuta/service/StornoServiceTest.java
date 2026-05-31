@@ -44,6 +44,7 @@ class StornoServiceTest {
     @Mock private BranchRepository branchRepository;
     @Mock private TransactionService transactionService;
     @Mock private DictionaryRepository dictionaryRepository;
+    @Mock private ExchangeRateRepository exchangeRateRepository;
     @Mock private NotificationService notificationService;
     @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
@@ -311,6 +312,56 @@ class StornoServiceTest {
         assertThatThrownBy(() -> stornoService.requestApproval(TRANSACTION_ID, WORKER_ID, "tegnapi teves"))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("aznapi");
+        verify(stornoApprovalRepository, never()).save(any());
+    }
+
+    // === Codex P2 (2026-05-31, #944 review) — a precheck a kikenyszeritessel (executeReversal)
+    //     AZONOS branch-szintu plafon-szemantikat tukrozze: 3. = approval, 4.+ = lehetetlen. ===
+
+    @Test
+    @DisplayName("Codex P2: checkStorno 3. sztorno ma (branch count=2) -> requiresApproval=true (a UI ne ugorja at a supervisor-flow-t)")
+    void checkStorno_thirdReversalToday_requiresApproval() {
+        // Ma mar 2 irodai sztorno volt -> ez a 3., amit az execute supervisorhoz kot.
+        when(transactionRepository.countReversalsByBranchAndDate(eq(COMPANY_ID), eq(BRANCH_ID), any()))
+                .thenReturn(2L);
+        when(transactionRepository.countReversalsByBranchAndWorkerAndDate(eq(COMPANY_ID), eq(BRANCH_ID), eq(WORKER_ID), any()))
+                .thenReturn(0L);
+
+        hu.puzzleir.valuta.dto.storno.StornoCheckResultDto result =
+                stornoService.checkStorno(TRANSACTION_ID, WORKER_ID);
+
+        assertThat(result.getRequiresApproval()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Codex P2: checkStorno 4. sztorno ma (branch count=3) -> DOB abszolut plafon (nem hasznalhatatlan approval-flow)")
+    void checkStorno_fourthReversalToday_throwsBlocked() {
+        // Ma mar 3 irodai sztorno volt (a plafon) -> a 4. supervisorral SEM lehetseges -> a precheck DOB.
+        when(transactionRepository.countReversalsByBranchAndDate(eq(COMPANY_ID), eq(BRANCH_ID), any()))
+                .thenReturn(3L);
+
+        assertThatThrownBy(() -> stornoService.checkStorno(TRANSACTION_ID, WORKER_ID))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("plafon");
+    }
+
+    @Test
+    @DisplayName("Codex P2: requestApproval 4. sztorno ma (branch count=3) -> DOB abszolut plafon, nem keletkezik elarvult jovahagyas-keres")
+    void requestApproval_fourthReversalToday_throwsNoOrphanRequest() {
+        Worker w = new Worker();
+        w.setId(WORKER_ID);
+        w.setName("Teszt Penztaros");
+        Branch b = new Branch();
+        b.setId(BRANCH_ID);
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(w));
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(b));
+        // Ma mar 3 irodai sztorno (a plafon) -> jovahagyast kerni ertelmetlen, az execute ugyis tilt.
+        when(transactionRepository.countReversalsByBranchAndDate(eq(COMPANY_ID), eq(BRANCH_ID), any()))
+                .thenReturn(3L);
+
+        assertThatThrownBy(() -> stornoService.requestApproval(TRANSACTION_ID, WORKER_ID, "4. sztorno"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("plafon");
         verify(stornoApprovalRepository, never()).save(any());
     }
 }

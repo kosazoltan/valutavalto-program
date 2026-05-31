@@ -144,18 +144,36 @@ public class StornoService {
                 + transaction.getTransactionDate());
         }
 
-        // Legacy: a limit irodánként ÉS pénztárosonként is érvényes
-        boolean branchLimitReached = dailyCountBranch >= DAILY_STORNO_LIMIT_BRANCH;
+        // Codex P2 (2026-05-31, #944 review): a precheck (UI-elonezet) a KIKENYSZERITESSEL
+        // (TransactionReversalService.executeReversal) AZONOS branch-szintu plafon-szemantikat
+        // tukrozze, kulonben a UI vagy ATUGORJA a supervisor-flow-t (3. sztornonal), vagy
+        // HASZNALHATATLAN jovahagyas-kerest mutat (4.+, amit az execute amugy is tilt). Az execute:
+        //   - branch count >= limit (3)      -> ABSZOLUT plafon, supervisorral SEM
+        //   - branch count == limit-1 (a 3.) -> supervisori jovahagyas szukseges
+        // A DAILY_STORNO_LIMIT_BRANCH (3) szandekosan egyezik az execute DAILY_REVERSAL_LIMIT-jevel,
+        // a count-bazis is azonos (transaction REVERSAL/branch/ma == DailySession.reversalCount).
+        //
+        // 4.+ : a precheck DOB (mint a korabbi-napi agnal) — a nem-informatikus vegfelhasznalo NE
+        // kapjon olyan jovahagyas-folyamatot, amit a backend ugyis elutasitana.
+        if (dailyCountBranch >= DAILY_STORNO_LIMIT_BRANCH) {
+            throw new ValidationException(String.format(
+                "Napi sztorno plafon (%d) elerve — ma tobb sztorno nem lehetseges, supervisori jovahagyassal sem!",
+                DAILY_STORNO_LIMIT_BRANCH));
+        }
+
+        // A 3. (utolso engedelyezett) irodai sztorno mar jovahagyast igenyel (count == limit-1).
+        boolean branchApprovalRequired = dailyCountBranch >= DAILY_STORNO_LIMIT_BRANCH - 1;
+        // Legacy: a limit penztarosonkent is ervenyes (advisory, tovabbra is jovahagyast trigerel).
         boolean cashierLimitReached = dailyCountCashier >= DAILY_STORNO_LIMIT_CASHIER;
 
-        boolean requiresApproval = branchLimitReached || cashierLimitReached;
+        boolean requiresApproval = branchApprovalRequired || cashierLimitReached;
 
         String message;
         if (requiresApproval) {
             List<String> reasons = new ArrayList<>();
-            if (branchLimitReached) {
-                reasons.add(String.format("irodai napi sztornó szám (%d) elérte a limitet (%d)",
-                        dailyCountBranch, DAILY_STORNO_LIMIT_BRANCH));
+            if (branchApprovalRequired) {
+                reasons.add(String.format("irodai napi sztornó szám (%d) elérte a jóváhagyási küszöböt (%d)",
+                        dailyCountBranch, DAILY_STORNO_LIMIT_BRANCH - 1));
             }
             if (cashierLimitReached) {
                 reasons.add(String.format("pénztáros napi sztornó szám (%d) elérte a limitet (%d)",
@@ -238,6 +256,16 @@ public class StornoService {
         }
 
         int dailyCount = (int) transactionRepository.countReversalsByBranchAndDate(SecurityUtils.getCurrentCompanyId(), branchId, LocalDate.now());
+
+        // Codex P2 (2026-05-31, #944 review): a napi sztorno-plafon (DAILY_STORNO_LIMIT_BRANCH)
+        // felett a sztorno supervisorral SEM hajthato vegre (executeReversal abszolut tilt). Ezert
+        // jovahagyast kerni ertelmetlen — ne hozzunk letre elarvult jovahagyas-kerest (a precheck
+        // mar tiltja, de a kozvetlen API-hivas ellen is vedunk, a korabbi-napi aggal egyezoen).
+        if (dailyCount >= DAILY_STORNO_LIMIT_BRANCH) {
+            throw new ValidationException(String.format(
+                "Napi sztorno plafon (%d) elerve — ma tobb sztorno nem lehetseges, supervisori jovahagyassal sem!",
+                DAILY_STORNO_LIMIT_BRANCH));
+        }
 
         StornoApproval approval = StornoApproval.builder()
                 .transaction(transaction)

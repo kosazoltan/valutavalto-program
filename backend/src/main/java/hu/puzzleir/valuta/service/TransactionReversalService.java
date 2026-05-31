@@ -95,6 +95,12 @@ public class TransactionReversalService {
         // barmilyen mellekhatas (POS-sztorno, bizonylatszam) ELOTT: a parhuzamos sztorno a lock
         // mogott sorba all, es a count olvasasa+novelese ugyanabban a write-tranzakcioban
         // szerializalodik. (A lock-mentes getDailyReversalCount() csak megjelenitesre marad.)
+        //
+        // LOCK-ORDERING KONVENCIO (deadlock-megelozes, self-review P2): ez a flow MINDIG ebben a
+        // sorrendben szerez sor-lockot — (1) transaction (findByIdForUpdate, fent), (2) daily_session
+        // (itt), (3) cash_balance (lentebb, updateCashBalance). Uj sztorno-kozeli kod ezt a sorrendet
+        // KOVESSE (a daily_session-t SOHA ne lockold a transaction sor ELOTT), kulonben lock-ordering
+        // deadlock keletkezhet. A normal vetel/eladas a daily_session-t lock NELKUL irja -> nincs kor.
         int dailyReversals = dailySessionService.getDailyReversalCountForUpdate();
         int reversalLimit = helper.getDailyReversalLimit();
         if (dailyReversals >= reversalLimit) {

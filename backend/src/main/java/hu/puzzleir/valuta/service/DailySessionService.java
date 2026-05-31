@@ -248,6 +248,13 @@ public class DailySessionService {
      * szerializálódik → a nap nem kerülhet a max-3 plafon fölé. NEM readOnly: write-lockot szerez,
      * a hívó (executeReversal) @Transactional(rollbackFor=Exception.class) tranzakciójához
      * csatlakozik (REQUIRED), a lock annak commitjáig él.
+     *
+     * FAIL-LOUD (self-review P2, 2026-05-31): a hívó executeReversal MÁR elvégezte a
+     * validateOpenSession()-t, ezért MAI napra MINDIG van OPEN sor a lock-pontnál. Ha a lockolt
+     * lekérdezés mégis üres (pl. párhuzamos napzárás közben), az invariáns-sértés → DOBUNK, NEM
+     * 0-t adunk vissza. A némán-0 a sztornó-plafont csendben kikerülné; a dobás inkább blokkolja a
+     * sztornót (a helyes, biztonságos kimenet). A megjelenítő {@link #getDailyReversalCount()}
+     * toleráns marad (0-t ad), mert ott nincs invariáns-kockázat.
      */
     public int getDailyReversalCountForUpdate() {
         UUID branchId = SecurityUtils.getCurrentBranchId();
@@ -255,7 +262,8 @@ public class DailySessionService {
 
         return dailySessionRepository.findByBranchIdAndSessionDateForUpdate(branchId, today)
                 .map(DailySession::getReversalCount)
-                .orElse(0);
+                .orElseThrow(() -> new ValidationException(
+                        "Nincs nyitott napi munkamenet a sztorno-plafon ellenorzesehez!"));
     }
 
     /**
