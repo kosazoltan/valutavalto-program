@@ -85,7 +85,17 @@ public class TransactionReversalService {
         //   - a `limit`-edik (pl. 3.) sztorno CSAK supervisori jovahagyassal,
         //   - a plafon felett (pl. 4.+) SEMMIKEPP, supervisorral sem.
         // Korabban a plafon felett supervisorral KORLATLAN sztorno volt lehetseges (hibas).
-        int dailyReversals = dailySessionService.getDailyReversalCount();
+        //
+        // Codex P1 (2026-05-31, #944 review) — CONCURRENCY: a plafon-ellenorzes a napi
+        // sztorno-szamlalot (DailySession.reversalCount) olvassa, a noveles viszont a tranzakcio
+        // VEGEN tortenik (updateSessionStats). Lock-mentes olvasassal ket parhuzamos sztorno
+        // ugyanazt a count-ot latta -> mindketto atment a >= limit ellenorzesen -> a nap a max-3
+        // plafon FOLE kerulhetett. A getDailyReversalCountForUpdate() a daily_session SORAT
+        // PESSIMISTIC_WRITE-tal lockolja (SELECT ... FOR UPDATE) MAR ITT, a plafon-ellenorzes es
+        // barmilyen mellekhatas (POS-sztorno, bizonylatszam) ELOTT: a parhuzamos sztorno a lock
+        // mogott sorba all, es a count olvasasa+novelese ugyanabban a write-tranzakcioban
+        // szerializalodik. (A lock-mentes getDailyReversalCount() csak megjelenitesre marad.)
+        int dailyReversals = dailySessionService.getDailyReversalCountForUpdate();
         int reversalLimit = helper.getDailyReversalLimit();
         if (dailyReversals >= reversalLimit) {
             throw new ValidationException(String.format(
