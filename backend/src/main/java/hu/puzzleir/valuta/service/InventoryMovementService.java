@@ -36,7 +36,9 @@ public class InventoryMovementService {
      */
     @Transactional(readOnly = true)
     public List<InventoryMovementDto> getMovements(UUID branchId, String currency, LocalDate date) {
-        return movementRepository.search(branchId, date, date, null, null,
+        // Multi-tenant izoláció (audit 2026-05-31, P1 IDOR): a hívó cégére szűrünk.
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        return movementRepository.search(companyId, branchId, date, date, null, null,
                         org.springframework.data.domain.Pageable.unpaged())
                 .stream()
                 .filter(m -> currency == null || currency.isEmpty()
@@ -50,8 +52,9 @@ public class InventoryMovementService {
      */
     @Transactional(readOnly = true)
     public InventoryBalanceDto getDailyBalance(UUID branchId, String currency, LocalDate date) {
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
         List<InventoryMovement> movements = movementRepository.search(
-                        branchId, date, date, null, null,
+                        companyId, branchId, date, date, null, null,
                         org.springframework.data.domain.Pageable.unpaged())
                 .stream()
                 .filter(m -> currency == null || m.getCurrency().getCode().equalsIgnoreCase(currency))
