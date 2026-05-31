@@ -627,4 +627,60 @@ class RatePublishServiceTest {
                 () -> service.publish(wgId, List.of(tplId), "neg"));
         assertTrue(ex.getMessage().contains("negatív"), ex.getMessage());
     }
+
+    // === FK-04/E.2 #899-edge (#924): a fallback-J (template.officialRate == NULL) elleni vedelem ===
+
+    @Test
+    @DisplayName("FK-04/E.2 #899-edge: védelem BE + NULL officialRate + fallback-J (latestRate) alá eső vétel → ValidationException")
+    void protection_on_nullOfficialRate_fallbackJ_buyAbove_throws() {
+        UUID wgId = UUID.randomUUID(); UUID tplId = UUID.randomUUID();
+        UUID companyId = ((WorkerAuthenticationDetails) SecurityContextHolder.getContext().getAuthentication().getDetails()).getCompanyId();
+        UUID branchId = UUID.randomUUID();
+        RateWorkgroup wg = wgWithProtection(wgId, companyId, branchId, true, 5);
+        // officialRate = NULL → a pre-pass validateRateProtection KIHAGYJA. A publish viszont
+        // fallback-J-t rendel a latestRate-ből (395). baseBuy=400 > 395 → a hurok-check elkapja.
+        RateTemplate tpl = tplWithRates(tplId, wgId, 1L,
+                null, new BigDecimal("400.00"), new BigDecimal("410.00"));
+        ExchangeRate latest = ExchangeRate.builder().officialRate(new BigDecimal("395.00")).build();
+        when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
+        when(templateRepository.save(any(RateTemplate.class))).thenAnswer(i -> i.getArgument(0));
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(
+                Currency.builder().id(1L).code("EUR").name("Euro").build()));
+        when(exchangeRateRepository.findCurrentRate(any(), eq(1L), any())).thenReturn(List.of(latest));
+        when(exchangeRateRepository.findActiveBranchRates(any(), eq(1L), any())).thenReturn(List.of());
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> service.publish(wgId, List.of(tplId), "fallback-J"));
+        assertTrue(ex.getMessage().contains("5-es csoport"), "groupLabel: " + ex.getMessage());
+        assertTrue(ex.getMessage().contains("EUR"), "currency: " + ex.getMessage());
+        assertTrue(ex.getMessage().contains("magasabb az elszámolónál"), "üzenet: " + ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("FK-04/E.2 #899-edge: védelem BE + NULL officialRate + midpoint-fallback szabályos ráta → publikálható (nincs false-positive)")
+    void protection_on_nullOfficialRate_midpointFallback_valid_succeeds() {
+        UUID wgId = UUID.randomUUID(); UUID tplId = UUID.randomUUID();
+        UUID companyId = ((WorkerAuthenticationDetails) SecurityContextHolder.getContext().getAuthentication().getDetails()).getCompanyId();
+        UUID branchId = UUID.randomUUID();
+        RateWorkgroup wg = wgWithProtection(wgId, companyId, branchId, true, 6);
+        // officialRate=NULL, nincs latestRate → midpoint J=(400+410)/2=405; buy=400≤405 ✓, sell=410≥405 ✓ → szabályos.
+        RateTemplate tpl = tplWithRates(tplId, wgId, 1L,
+                null, new BigDecimal("400.00"), new BigDecimal("410.00"));
+        when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
+        when(templateRepository.save(any(RateTemplate.class))).thenAnswer(i -> i.getArgument(0));
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(
+                Currency.builder().id(1L).code("EUR").name("Euro").build()));
+        when(exchangeRateRepository.findCurrentRate(any(), eq(1L), any())).thenReturn(List.of());
+        when(exchangeRateRepository.findActiveBranchRates(any(), eq(1L), any())).thenReturn(List.of());
+        when(exchangeRateRepository.save(any(ExchangeRate.class))).thenAnswer(i -> i.getArgument(0));
+        when(publicationRepository.save(any(RatePublication.class))).thenAnswer(i -> {
+            RatePublication p = i.getArgument(0); if (p.getId() == null) p.setId(UUID.randomUUID()); return p;
+        });
+        when(syncOutboxRepository.save(any(SyncOutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
+
+        RatePublication pub = service.publish(wgId, List.of(tplId), "midpoint-ok");
+        assertNotNull(pub.getId());
+    }
 }
