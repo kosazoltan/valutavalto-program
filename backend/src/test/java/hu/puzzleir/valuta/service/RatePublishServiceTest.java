@@ -580,4 +580,31 @@ class RatePublishServiceTest {
         RatePublication pub = service.publish(wgId, List.of(tplId), "null-spread");
         assertNotNull(pub.getId());
     }
+
+    @Test
+    @DisplayName("Audit P2 #938: sell-only sablon (buy=0, sell pozitív) → publikálható (spread-kapu NEM utasítja el)")
+    void publish_sellOnlyZeroBuy_allowed() {
+        UUID wgId = UUID.randomUUID(); UUID tplId = UUID.randomUUID();
+        UUID companyId = ((WorkerAuthenticationDetails) SecurityContextHolder.getContext().getAuthentication().getDetails()).getCompanyId();
+        UUID branchId = UUID.randomUUID();
+        RateWorkgroup wg = wgWithProtection(wgId, companyId, branchId, false, 1);
+        // buy=0 ("nem beállított"), sell=405, J=400 — a régi (Codex-előtti) kód 5%+ spreadként dobott.
+        RateTemplate tpl = tplWithRates(tplId, wgId, 1L,
+                new BigDecimal("400.00"), BigDecimal.ZERO, new BigDecimal("405.00"));
+        when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
+        when(templateRepository.save(any(RateTemplate.class))).thenAnswer(i -> i.getArgument(0));
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(
+                Currency.builder().id(1L).code("EUR").name("Euro").build()));
+        when(exchangeRateRepository.findCurrentRate(any(), eq(1L), any())).thenReturn(List.of());
+        when(exchangeRateRepository.findActiveBranchRates(any(), eq(1L), any())).thenReturn(List.of());
+        when(exchangeRateRepository.save(any(ExchangeRate.class))).thenAnswer(i -> i.getArgument(0));
+        when(publicationRepository.save(any(RatePublication.class))).thenAnswer(i -> {
+            RatePublication p = i.getArgument(0); if (p.getId() == null) p.setId(UUID.randomUUID()); return p;
+        });
+        when(syncOutboxRepository.save(any(SyncOutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
+
+        RatePublication pub = service.publish(wgId, List.of(tplId), "sell-only");
+        assertNotNull(pub.getId());
+    }
 }

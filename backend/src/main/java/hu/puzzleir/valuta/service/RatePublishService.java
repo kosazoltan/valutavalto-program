@@ -463,16 +463,19 @@ public class RatePublishService {
             BigDecimal effBuy = mergeRate(t.getBaseBuyRate(), t.getBuySpread());
             BigDecimal effSell = mergeRate(t.getBaseSellRate(), t.getSellSpread());
             String code = codeById.getOrDefault(t.getCurrencyId(), "ID=" + t.getCurrencyId());
-            // sell>buy sanity CSAK ha MINDKÉT ráta pozitív. A 0 = "nem beállított" (pl. buy-only
-            // valuta: az iroda veszi, de nem adja el) — ezt a protection is signum-skip-eli, ezért
-            // itt sem blokkoljuk, különben a buy-only közzététel törne (NE törjük a működő funkciót).
-            if (effBuy.signum() > 0 && effSell.signum() > 0 && effSell.compareTo(effBuy) <= 0) {
-                throw new ValidationException(
-                        "Eladási árfolyam nagyobb kell legyen a vételinél! Valuta: " + code);
+            // A sell>buy sanity ÉS a spread-kapu CSAK TELJESEN megadott (mindkét oldal pozitív)
+            // rátára értelmes. A 0 = "nem beállított" (buy-only VAGY sell-only valuta) — ezt a
+            // protection is signum-skip-eli, ezért MINDKÉT ellenőrzést kihagyjuk, különben az
+            // egyoldalú közzététel törne. Codex #938 P2: a spread-kapu officialRate-referenciával
+            // egy sell-only (buy=0, sell=405, J=400) sablont tévesen 5%+ spreadként utasítana el.
+            if (effBuy.signum() > 0 && effSell.signum() > 0) {
+                if (effSell.compareTo(effBuy) <= 0) {
+                    throw new ValidationException(
+                            "Eladási árfolyam nagyobb kell legyen a vételinél! Valuta: " + code);
+                }
+                // RFM spread-kapu (VV-ELVI 7.2/7.4): a relatív spread nem lépheti túl az 5%-ot.
+                RateSpreadGate.enforce(effBuy, effSell, t.getOfficialRate(), t.getCurrencyId());
             }
-            // RFM spread-kapu (VV-ELVI 7.2/7.4): a relatív spread nem lépheti túl az 5%-ot.
-            // (Negatív/nulla spread esetén no-op; a fenti sanity véd a tényleges inverz ellen.)
-            RateSpreadGate.enforce(effBuy, effSell, t.getOfficialRate(), t.getCurrencyId());
         }
     }
 
