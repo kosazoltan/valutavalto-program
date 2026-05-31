@@ -31,12 +31,18 @@ import java.util.function.BiConsumer;
  * (TransactionMultiLineService) — ezek mind egyetlen iroda HUF + deviza sorait mozgatjak.</p>
  *
  * <p><b>CROSS-BRANCH valtozat ({@link #lockBranchCurrencyPairsInGlobalOrder}):</b> a tobb iroda
- * cash-sorat MOZGATO utak (TradeService.moveTradeInventory — forras+cel iroda azonos valutaja;
- * TransferService — kuldo+fogado iroda) eseten a determinisztikus rendezesi kulcs a
- * {@code (branchId, currencyId)} PAR (nem csak a currencyId). Egy Trade(A->B) es a forditott
- * Trade(B->A) azonos valutara kulonben AB-BA deadlockot okozna. A globalis rendezes: eloszor
- * {@code branchId} (UUID natural order), majd {@code currencyId} — igy minden szal ugyanabban a
- * teljes rendezesben szerzi a lockokat, korkoros varakozas nem alakulhat ki.</p>
+ * cash-sorat MOZGATO utak eseten a determinisztikus rendezesi kulcs a {@code (branchId, currencyId)}
+ * PAR (nem csak a currencyId). Egy Trade(A->B) es a forditott Trade(B->A) azonos valutara kulonben
+ * AB-BA deadlockot okozna. A globalis rendezes: eloszor {@code branchId} (UUID natural order), majd
+ * {@code currencyId}. Jelenleg lefedve: {@code TradeService.moveTradeInventory} (forras+cel iroda; ez
+ * az ut NEM general bizonylatszamot, igy nincs cash<->receipt_sequence lock-axis).</p>
+ *
+ * <p><b>KOVETKEZO FOLLOW-UP (kulon PR):</b> {@code TransferService} (kuldo+fogado iroda) szinten
+ * cross-branch, DE a bizonylatszam-generalas (ReceiptSequenceService, per-branch PESSIMISTIC lock) a
+ * cash-mutacioval interleaved -> ott a cash elo-lock bevezetese a cash<->receipt_sequence lock-sorrendet
+ * is rendezni kell (a partial-refund receipt->cash, a tobbi ut cash->receipt; egysegesiteni kell),
+ * kulonben uj deadlock-axis keletkezne. Ezert a Transfer- (es ReservationService single-branch) lefedes
+ * kulon, fokuszalt PR-ben tortenik.</p>
  */
 public final class CashLockOrdering {
 

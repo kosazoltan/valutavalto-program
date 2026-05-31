@@ -138,12 +138,11 @@ class TransferCounterTransactionTest {
         verify(transactionRepository, never()).save(argThat(tx ->
                 tx.getTransactionType() == TransactionType.TRANSFER_IN));
 
-        // Küldő kassza csökkent. 2x find: (1) cross-branch lock-ordering elo-lock (CashLockOrdering,
-        // determinisztikus sorrend), (2) decreaseCashBalance no-op re-lock + mutacio (ugyanaz a sor).
-        verify(cashBalanceRepository, times(2)).findByBranchIdAndCurrencyIdForUpdate(FROM_BRANCH_ID, CURRENCY_ID);
+        // Küldő kassza csökkent
+        verify(cashBalanceRepository).findByBranchIdAndCurrencyIdForUpdate(FROM_BRANCH_ID, CURRENCY_ID);
         assertThat(fromBalance.getCurrentBalance()).isEqualByComparingTo(new BigDecimal("9500.00"));
 
-        // Fogadó kassza NEM módosult (F mód single-branch → a fogadó sort nem is elo-lockoljuk)
+        // Fogadó kassza NEM módosult
         verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdForUpdate(eq(TO_BRANCH_ID), anyLong());
 
         // Audit log
