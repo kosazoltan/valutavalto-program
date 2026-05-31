@@ -305,7 +305,7 @@ class TransactionReversalServiceTest {
     // === Audit P2.7 (2026-05-17) — VV-ELVI 5.6 negatív tesztek ===
 
     @Test
-    @DisplayName("Sztorno (audit P2.7) - regi napi tranzakcio supervisor nelkul -> ValidationException")
+    @DisplayName("Audit #2 (2026-05-31) - regi napi tranzakcio supervisor NELKUL -> tiltott (aznapi)")
     void testStornoFlow_olderTransactionWithoutSupervisor() {
         try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
             secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -330,20 +330,20 @@ class TransactionReversalServiceTest {
 
             assertThatThrownBy(() -> reversalService.executeReversal(request))
                     .isInstanceOf(ValidationException.class)
-                    .hasMessageContaining("supervisor");
+                    .hasMessageContaining("aznapi");
+            // A regi nap forgalma ERINTETLEN: nincs mentes (a dobas a save elott tortenik).
+            verify(transactionRepository, never()).save(any(Transaction.class));
         }
     }
 
     @Test
-    @DisplayName("Sztorno (audit P2.7) - regi napi tranzakcio SUPERVISOR jovahagyassal -> success")
-    void testStornoFlow_olderTransactionWithSupervisor() {
+    @DisplayName("Audit #2 (2026-05-31) - regi napi tranzakcio SUPERVISORRAL SEM sztornozhato (P2.7 override visszavonva)")
+    void testStornoFlow_olderTransactionWithSupervisor_nowAlwaysBlocked() {
         try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
             secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
             secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
             secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(true);
-
-            when(dailySessionService.getDailyReversalCount()).thenReturn(0);
 
             Transaction olderTx = Transaction.builder()
                     .id(100L)
@@ -365,14 +365,6 @@ class TransactionReversalServiceTest {
                     .build();
 
             when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(olderTx));
-            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
-            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
-            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
-            when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
-                Transaction t = inv.getArgument(0);
-                if (t.getId() == null) t.setId(201L);
-                return t;
-            });
 
             TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
                     .originalTransactionId(100L)
@@ -380,10 +372,13 @@ class TransactionReversalServiceTest {
                     .approvedBy("SUPERVISOR")
                     .build();
 
-            Transaction reversal = reversalService.executeReversal(request);
-
-            assertThat(reversal).isNotNull();
-            assertThat(reversal.getTransactionType()).isEqualTo(TransactionType.REVERSAL);
+            // User-direktiva (2026-05-31): korabbi nap supervisorral SEM sztornozhato.
+            assertThatThrownBy(() -> reversalService.executeReversal(request))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("aznapi");
+            // A korabbi nap forgalma ERINTETLEN: az eredeti statusz NEM valt REVERSED-re, nincs mentes.
+            assertThat(olderTx.getStatus()).isEqualTo(TransactionStatus.COMPLETED);
+            verify(transactionRepository, never()).save(any(Transaction.class));
         }
     }
 

@@ -66,9 +66,15 @@ public class TransactionReversalService {
         if (!original.getBranch().getId().equals(branchId)) {
             throw new ValidationException("Csak sajat iroda tranzakciojat lehet sztornozni!");
         }
-        // Csak aznapi tranzakcio sztornozhatoh supervisor nelkul
-        if (!original.getTransactionDate().equals(LocalDate.now()) && !SecurityUtils.isSupervisorOrAbove()) {
-            throw new ValidationException("Korabbi napi tranzakcio sztornozasahoz supervisor jovahagyas szukseges!");
+        // Audit #2 (2026-05-31, user-direktiva "Tiltas korabbi napra"): a korabbi napi tranzakcio
+        // SOHA nem sztornozhato — sem supervisorral. Kulonben a lentebbi original.setStatus(REVERSED)
+        // csendben csokkentene a korabbi nap forgalmat (a napi forgalom-osszegzes COMPLETED-re szur),
+        // a kompenzacio pedig a MAI napon konyvelodne -> a korabbi nap forgalma utolag, eszrevetlenul
+        // megvaltozna. A korabbi P2.7 (2026-05-17) supervisor-override ezzel megszunik.
+        if (!original.getTransactionDate().equals(LocalDate.now())) {
+            throw new ValidationException(
+                "Csak az aznapi tranzakcio sztornozhato — korabbi nap nem sztornozhato. Tranzakcio datuma: "
+                + original.getTransactionDate());
         }
 
         // Napi sztorno limit ellenorzese
