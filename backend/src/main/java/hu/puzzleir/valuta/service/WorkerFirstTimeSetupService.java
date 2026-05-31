@@ -63,6 +63,12 @@ public class WorkerFirstTimeSetupService {
     private final WorkerRoleService workerRoleService;
     private final BranchRepository branchRepository;
     private final WorkerSetupTokenService workerSetupTokenService;
+    // Audit P2 #5 (V279 grace): a token-nélküli grace-setup verseny-alapú fiókátvétel-rezíduuma
+    // utólag detektálható legyen — immutable audit_log + strukturált VV-SEC-005 log.
+    private final hu.puzzleir.valuta.repository.AuditLogRepository auditLogRepository;
+
+    private static final hu.puzzleir.valuta.logging.VVLogger VV_LOG =
+            hu.puzzleir.valuta.logging.VVLogger.of(WorkerFirstTimeSetupService.class);
 
     /**
      * Worker elso jelszavanak beallitasa / reset.
@@ -138,8 +144,19 @@ public class WorkerFirstTimeSetupService {
             // igy minden EZUTANI (uj) null-hash reset mar tokent igenyel.
             if (Boolean.TRUE.equals(worker.getSetupGrace())) {
                 worker.setSetupGrace(false);
-                log.info("Worker first-time setup grace felhasznalva (token nelkul): companyCode={}, workerCode={}",
-                        company.getCode(), worker.getCode());
+                // Audit P2 #5: immutable audit_log + strukturált VV-SEC-005 (WARN) — a verseny-alapú
+                // (token-nélküli) grace-fiókátvétel utólag detektálható legyen (deploy-kohorsz).
+                auditLogRepository.save(hu.puzzleir.valuta.entity.AuditLog.builder()
+                        .action("WORKER_SETUP_GRACE_USED")
+                        .entityType("Worker")
+                        .entityId(worker.getId() != null ? worker.getId().toString() : null)
+                        .userName(worker.getName())
+                        .companyId(company.getId())
+                        .changes("Token-nélküli first-time setup (V279 grace) felhasználva. "
+                                + "companyCode=" + company.getCode() + ", workerCode=" + worker.getCode())
+                        .build());
+                VV_LOG.warn("worker.setup.grace_used", "VV-SEC-005",
+                        java.util.Map.of("companyCode", company.getCode(), "workerCode", worker.getCode()));
             } else {
                 workerSetupTokenService.validateAndConsume(
                         dto.getSetupToken(), worker.getId(), company.getId());

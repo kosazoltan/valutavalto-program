@@ -309,6 +309,26 @@ codes:
       V230+V231 hotfix kezeli. NEM-NULL password_hash kell, NEM
       kerdezzunk current_password-ot uj telepiteskor.
 
+  VV-SEC-004:
+    name: "Audit-log iras meghiusult (currency_audit_log INSERT)"
+    category: SECURITY
+    level: ERROR
+    user_impact: "A modositas megtortent, de az audit-bejegyzes NEM mentodott (audit-res)"
+    ai_fix_hint: |
+      AdminCurrencyService.writeAudit() catch-aga: a Currency-modositas mar commitalt,
+      de a currency_audit_log INSERT bukott. Ellenorizd a DB-kapcsolatot/constraint-et.
+      Pmt./NAV-megorzes szempontjabol a business-muvelet es az audit szetcsuszott.
+
+  VV-SEC-005:
+    name: "Grace token-nelkuli first-time worker-setup felhasznalva (V279 kohorsz)"
+    category: SECURITY
+    level: WARN
+    user_impact: "Nincs kozvetlen hatas — null-hash kollega token nelkul allitott jelszot (deploy-kohorsz)"
+    ai_fix_hint: |
+      WorkerFirstTimeSetupService grace-aga (V279): a deploy-pillanatban null-hash dolgozo
+      EGYSZER token nelkul fejezte be a setupot. Verseny-alapu fiokatvetel utolagos
+      detektalasahoz strukturalt audit. A grace egyszer-hasznalatos (setup_grace=false utana).
+
   # =====================================================
   # VV-VOICE — Hangseged (voice-assistant) integracio
   # =====================================================
