@@ -395,7 +395,8 @@ public class StornoService {
         try {
             approvalId = UUID.fromString(approvalIdStr);
         } catch (IllegalArgumentException e) {
-            log.warn("Érvénytelen approvalId formátum a sztornó-végrehajtáskor: {}", approvalIdStr);
+            // CodeQL (log-injection, #944): approvalIdStr kliens-input — CRLF/control strip a logba iras elott.
+            log.warn("Érvénytelen approvalId formátum a sztornó-végrehajtáskor: {}", sanitizeForLog(approvalIdStr));
             return false;
         }
         return stornoApprovalRepository.findById(approvalId)
@@ -630,5 +631,16 @@ public class StornoService {
             log.warn("Sztornó jóváhagyás-kérés értesítés sikertelen (a kérés mentve maradt): {}",
                     e.getMessage(), e);
         }
+    }
+
+    /**
+     * CRLF + control karakter strip a log-injection elleni vedelemhez (CodeQL java/log-injection, #944).
+     * A sztorno-vegrehajtaskor a kliens-vezerelt approvalId nyers logba irasa CWE-117 (log forging) —
+     * a soremeleseket/tab-ot '_'-ra, az egyeb control karaktereket '?'-re cserelve a tamado nem tud
+     * hamis log-sorokat injektalni. Package-private a celzott unit-teszt miatt.
+     */
+    static String sanitizeForLog(String input) {
+        if (input == null) return null;
+        return input.replaceAll("[\\r\\n\\t]", "_").replaceAll("[\\p{Cntrl}]", "?");
     }
 }
