@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.dto.stocksnapshot.*;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.repository.*;
+import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -212,7 +213,11 @@ public class StockSnapshotService {
             long stock = 0, stockHuf = 0;
             if (cs != null) {
                 stock = cs.getQuantity().longValue();
-                stockHuf = cs.getQuantity().multiply(cs.getWeightedAvgCost()).longValue();
+                // Audit P3 (2026-05-31): a longValue() lefelé CSONKOLT — a HUF készletérték
+                // megjelenítésnél HALF_UP + 5 Ft-os kerekítés a helyes (HungarianRounding,
+                // konzisztens a program többi HUF-összegével), nem a tizedes-vesztő csonkolás.
+                stockHuf = HungarianRounding.roundToFive(
+                        cs.getQuantity().multiply(cs.getWeightedAvgCost())).longValue();
                 if (cs.getLastUpdated() != null && (lastUpdated == null || cs.getLastUpdated().isAfter(lastUpdated))) {
                     lastUpdated = cs.getLastUpdated();
                 }
@@ -345,7 +350,8 @@ public class StockSnapshotService {
             byCode.put(code, CurrencyStockDetailDto.builder()
                     .currencyCode(code)
                     .stock(qty.longValue())
-                    .stockHuf(huf.longValue())
+                    // Audit P3 (2026-05-31): HALF_UP + 5 Ft kerekítés a csonkoló longValue() helyett.
+                    .stockHuf(HungarianRounding.roundToFive(huf).longValue())
                     .build());
         }
         return BranchStockTotalsDto.builder()
