@@ -129,6 +129,7 @@ public class CameraHashChainService {
             if (!expectedPrevious.equals(entry.getPreviousHash())) {
                 VV_LOG.error("VV-TECH-005", "camera.chain.integrity_failure", null,
                     java.util.Map.of(
+                        "branchId", branchId,
                         "cameraId", cameraId,
                         "seq", entry.getSequenceNumber(),
                         "expectedPreviousHash", expectedPrevious,
@@ -160,13 +161,14 @@ public class CameraHashChainService {
                 recomputedChainHash = computeChainHash(entry.getPreviousHash(), entry.getFileHash(), metadata);
             } catch (Exception e) {
                 VV_LOG.error("VV-TECH-006", "camera.chain.verify_error", e,
-                    java.util.Map.of("cameraId", cameraId, "seq", entry.getSequenceNumber()));
+                    java.util.Map.of("branchId", branchId, "cameraId", cameraId, "seq", entry.getSequenceNumber()));
                 return false;
             }
 
             if (!recomputedChainHash.equals(entry.getChainHash())) {
                 VV_LOG.error("VV-TECH-007", "camera.chain.hash_mismatch", null,
                     java.util.Map.of(
+                        "branchId", branchId,
                         "cameraId", cameraId,
                         "seq", entry.getSequenceNumber(),
                         "storedChainHash", entry.getChainHash(),
