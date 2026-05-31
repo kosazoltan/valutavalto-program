@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.dto.storno.StornoRequestDto;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
@@ -44,6 +45,7 @@ class StornoServiceTest {
     @Mock private BranchRepository branchRepository;
     @Mock private TransactionService transactionService;
     @Mock private DictionaryRepository dictionaryRepository;
+    @Mock private ExchangeRateRepository exchangeRateRepository;
     @Mock private NotificationService notificationService;
     @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
@@ -282,5 +284,193 @@ class StornoServiceTest {
                 new StornoService.StornoApprovalNotificationEvent(BRANCH_ID, "Cim", "Uzenet"));
 
         verify(notificationService, times(1)).sendToBranch(BRANCH_ID, "Cim", "Uzenet");
+    }
+
+    // === Audit #2 (2026-05-31) — korábbi napi tranzakció a precheck/approval úton is tiltott ===
+
+    @Test
+    @DisplayName("Audit #2: checkStorno korábbi napra DOB (nem approval-flow) — a UI ne ígérjen lehetetlen jóváhagyást")
+    void checkStorno_previousDayTransaction_throwsBlocked() {
+        originalCardTransaction.setTransactionDate(LocalDate.now().minusDays(1));
+
+        assertThatThrownBy(() -> stornoService.checkStorno(TRANSACTION_ID, WORKER_ID))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("aznapi");
+    }
+
+    @Test
+    @DisplayName("Audit #2: requestApproval korábbi napra DOB — ne keletkezzen elárvult jóváhagyás-kérés")
+    void requestApproval_previousDayTransaction_throwsNoOrphanRequest() {
+        originalCardTransaction.setTransactionDate(LocalDate.now().minusDays(1));
+        Worker w = new Worker();
+        w.setId(WORKER_ID);
+        w.setName("Teszt Penztaros");
+        Branch b = new Branch();
+        b.setId(BRANCH_ID);
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(w));
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(b));
+
+        assertThatThrownBy(() -> stornoService.requestApproval(TRANSACTION_ID, WORKER_ID, "tegnapi teves"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("aznapi");
+        verify(stornoApprovalRepository, never()).save(any());
+    }
+
+    // === Codex P2 (2026-05-31, #944 review) — a precheck a kikenyszeritessel (executeReversal)
+    //     AZONOS branch-szintu plafon-szemantikat tukrozze: 3. = approval, 4.+ = lehetetlen. ===
+
+    @Test
+    @DisplayName("Codex P2 happy-path: checkStorno 0-1 sztorno ma -> requiresApproval=false, vegrehajthato (a precheck NEM blokkol feleslegesen)")
+    void checkStorno_belowThreshold_noApproval() {
+        // Ma meg nincs sztorno (count=0) -> sem branch, sem cashier kuszob nem teljesul.
+        when(transactionRepository.countReversalsByBranchAndDate(eq(COMPANY_ID), eq(BRANCH_ID), any()))
+                .thenReturn(0L);
+        when(transactionRepository.countReversalsByBranchAndWorkerAndDate(eq(COMPANY_ID), eq(BRANCH_ID), eq(WORKER_ID), any()))
+                .thenReturn(0L);
+
+        hu.puzzleir.valuta.dto.storno.StornoCheckResultDto result =
+                stornoService.checkStorno(TRANSACTION_ID, WORKER_ID);
+
+        assertThat(result.getRequiresApproval()).isFalse();
+        assertThat(result.getMessage()).contains("végrehajtható");
+    }
+
+    @Test
+    @DisplayName("Codex P2: checkStorno 3. sztorno ma (branch count=2) -> requiresApproval=true (a UI ne ugorja at a supervisor-flow-t)")
+    void checkStorno_thirdReversalToday_requiresApproval() {
+        // Ma mar 2 irodai sztorno volt -> ez a 3., amit az execute supervisorhoz kot.
+        when(transactionRepository.countReversalsByBranchAndDate(eq(COMPANY_ID), eq(BRANCH_ID), any()))
+                .thenReturn(2L);
+        when(transactionRepository.countReversalsByBranchAndWorkerAndDate(eq(COMPANY_ID), eq(BRANCH_ID), eq(WORKER_ID), any()))
+                .thenReturn(0L);
+
+        hu.puzzleir.valuta.dto.storno.StornoCheckResultDto result =
+                stornoService.checkStorno(TRANSACTION_ID, WORKER_ID);
+
+        assertThat(result.getRequiresApproval()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Codex P2: checkStorno 4. sztorno ma (branch count=3) -> DOB abszolut plafon (nem hasznalhatatlan approval-flow)")
+    void checkStorno_fourthReversalToday_throwsBlocked() {
+        // Ma mar 3 irodai sztorno volt (a plafon) -> a 4. supervisorral SEM lehetseges -> a precheck DOB.
+        when(transactionRepository.countReversalsByBranchAndDate(eq(COMPANY_ID), eq(BRANCH_ID), any()))
+                .thenReturn(3L);
+
+        assertThatThrownBy(() -> stornoService.checkStorno(TRANSACTION_ID, WORKER_ID))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("plafon");
+    }
+
+    @Test
+    @DisplayName("Codex P2: requestApproval 4. sztorno ma (branch count=3) -> DOB abszolut plafon, nem keletkezik elarvult jovahagyas-keres")
+    void requestApproval_fourthReversalToday_throwsNoOrphanRequest() {
+        Worker w = new Worker();
+        w.setId(WORKER_ID);
+        w.setName("Teszt Penztaros");
+        Branch b = new Branch();
+        b.setId(BRANCH_ID);
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(w));
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(b));
+        // Ma mar 3 irodai sztorno (a plafon) -> jovahagyast kerni ertelmetlen, az execute ugyis tilt.
+        when(transactionRepository.countReversalsByBranchAndDate(eq(COMPANY_ID), eq(BRANCH_ID), any()))
+                .thenReturn(3L);
+
+        assertThatThrownBy(() -> stornoService.requestApproval(TRANSACTION_ID, WORKER_ID, "4. sztorno"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("plafon");
+        verify(stornoApprovalRepository, never()).save(any());
+    }
+
+    // === Codex P2 (2026-05-31, #944 review) — a 3. sztorno megadott jovahagyassal (approvalId)
+    //     a PENZTAROS altal is vegrehajthato: executeStorno szerver-oldalon verifikalja az approvalt
+    //     es a ReversalRequest.supervisorApproved flaget allitja (a gate-et a TransactionReversalService nezi). ===
+
+    private ArgumentCaptor<TransactionService.ReversalRequest> captureReversalRequestAfterExecuteStorno(String approvalId) {
+        Transaction dummyReversal = Transaction.builder().id(999L).receiptNumber("S0316-9999").build();
+        when(transactionService.executeReversal(any())).thenReturn(dummyReversal);
+
+        StornoRequestDto request = StornoRequestDto.builder()
+                .transactionId(String.valueOf(TRANSACTION_ID))
+                .reason("3. sztorno jovahagyassal")
+                .approvalId(approvalId)
+                .build();
+
+        stornoService.executeStorno(request, WORKER_ID);
+
+        ArgumentCaptor<TransactionService.ReversalRequest> cap =
+                ArgumentCaptor.forClass(TransactionService.ReversalRequest.class);
+        verify(transactionService).executeReversal(cap.capture());
+        return cap;
+    }
+
+    @Test
+    @DisplayName("Codex P2: executeStorno ERVENYES (APPROVED, azonos tranzakcio+iroda) approvalId-vel -> supervisorApproved=true")
+    void executeStorno_validApprovedApprovalId_setsSupervisorApproved() {
+        UUID approvalId = UUID.randomUUID();
+        Dictionary approvedStatus = Dictionary.builder().code("APPROVED").build();
+        StornoApproval approval = StornoApproval.builder()
+                .id(approvalId)
+                .transaction(originalCardTransaction)
+                .branch(originalCardTransaction.getBranch())
+                .approvalStatus(approvedStatus)
+                .build();
+        when(stornoApprovalRepository.findById(approvalId)).thenReturn(Optional.of(approval));
+
+        ArgumentCaptor<TransactionService.ReversalRequest> cap =
+                captureReversalRequestAfterExecuteStorno(approvalId.toString());
+
+        assertThat(cap.getValue().isSupervisorApproved()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Codex P2 (biztonsag): executeStorno PENDING (nem APPROVED) approvalId-vel -> supervisorApproved=false")
+    void executeStorno_pendingApproval_doesNotSetSupervisorApproved() {
+        UUID approvalId = UUID.randomUUID();
+        Dictionary pending = Dictionary.builder().code("PENDING").build();
+        StornoApproval approval = StornoApproval.builder()
+                .id(approvalId)
+                .transaction(originalCardTransaction)
+                .branch(originalCardTransaction.getBranch())
+                .approvalStatus(pending)
+                .build();
+        when(stornoApprovalRepository.findById(approvalId)).thenReturn(Optional.of(approval));
+
+        ArgumentCaptor<TransactionService.ReversalRequest> cap =
+                captureReversalRequestAfterExecuteStorno(approvalId.toString());
+
+        assertThat(cap.getValue().isSupervisorApproved()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Codex P2 (biztonsag): executeStorno MAS tranzakcio APPROVED jovahagyasaval -> supervisorApproved=false (nem hordozhato at)")
+    void executeStorno_approvalForDifferentTransaction_doesNotSetSupervisorApproved() {
+        UUID approvalId = UUID.randomUUID();
+        Transaction otherTx = Transaction.builder()
+                .id(777L)
+                .branch(originalCardTransaction.getBranch())
+                .build();
+        Dictionary approvedStatus = Dictionary.builder().code("APPROVED").build();
+        StornoApproval approval = StornoApproval.builder()
+                .id(approvalId)
+                .transaction(otherTx)
+                .branch(originalCardTransaction.getBranch())
+                .approvalStatus(approvedStatus)
+                .build();
+        when(stornoApprovalRepository.findById(approvalId)).thenReturn(Optional.of(approval));
+
+        ArgumentCaptor<TransactionService.ReversalRequest> cap =
+                captureReversalRequestAfterExecuteStorno(approvalId.toString());
+
+        assertThat(cap.getValue().isSupervisorApproved()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Codex P2: executeStorno approvalId NELKUL -> supervisorApproved=false (valtozatlan direkt ut)")
+    void executeStorno_noApprovalId_supervisorApprovedFalse() {
+        ArgumentCaptor<TransactionService.ReversalRequest> cap =
+                captureReversalRequestAfterExecuteStorno(null);
+
+        assertThat(cap.getValue().isSupervisorApproved()).isFalse();
     }
 }

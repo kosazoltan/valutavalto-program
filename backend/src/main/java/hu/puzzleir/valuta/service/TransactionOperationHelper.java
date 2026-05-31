@@ -32,7 +32,8 @@ public class TransactionOperationHelper {
 
     private static final VVLogger VV_LOG = VVLogger.of(TransactionOperationHelper.class);
 
-    // Sztorno limit supervisor nelkul (3 db/nap)
+    // Napi sztorno ABSZOLUT plafon (audit #2, 2026-05-31): aznap max ennyi sztorno lehetseges.
+    // Az utolso (limit-edik) supervisori jovahagyast igenyel; a plafon felett supervisorral sem.
     private static final int DAILY_REVERSAL_LIMIT = 3;
 
     // Azonositas nelkuli limit HUF-ban (300.000 Ft - NAV szabalyozas)
@@ -169,6 +170,25 @@ public class TransactionOperationHelper {
 
         balance.updateBalance(amount.abs(), isIncoming);
         cashBalanceRepository.save(balance);
+    }
+
+    /**
+     * Cash_balance SOR megszerzese PESSIMISTIC_WRITE lockkal — MUTACIO NELKUL.
+     *
+     * Codex P1 (2026-05-31, #944 round-3 review) — LOCK-ORDERING / deadlock-megelozes: a normal
+     * vetel/eladas (TransactionService.executeBuy/executeSell) eloszor a cash_balance sorokat lockolja
+     * (updateCashBalance), majd a vegen irja a daily_session-t (updateSessionStats) — sorrend:
+     * cash_balance -> daily_session. A sztorno (TransactionReversalService.executeReversal) viszont a
+     * napi sztorno-plafon ellenorzesehez a daily_session sort lockolja; ha ezt a cash_balance lock ELOTT
+     * tenne, az ELLENTETES sorrend (daily_session -> cash_balance) a normal tranzakcioval keresztezve
+     * adatbazis-deadlockot okozhatna. Ezert a sztorno a daily_session lock ELOTT EZZEL elo-lockolja a
+     * majdan modositando cash_balance sorokat (azonos currencyId -> HUF sorrendben), igy a GLOBALIS
+     * lock-sorrend mindenhol cash_balance -> daily_session. A kesobbi updateCashBalance ugyanezt a sort
+     * mar lockoltan kapja (no-op re-lock), majd mutalja.
+     */
+    public void lockCashBalance(UUID branchId, Long currencyId) {
+        cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, currencyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Kassza egyenleg nem talalhato"));
     }
 
     /**

@@ -66,16 +66,72 @@ public class TransactionReversalService {
         if (!original.getBranch().getId().equals(branchId)) {
             throw new ValidationException("Csak sajat iroda tranzakciojat lehet sztornozni!");
         }
-        // Csak aznapi tranzakcio sztornozhatoh supervisor nelkul
-        if (!original.getTransactionDate().equals(LocalDate.now()) && !SecurityUtils.isSupervisorOrAbove()) {
-            throw new ValidationException("Korabbi napi tranzakcio sztornozasahoz supervisor jovahagyas szukseges!");
+        // Audit #2 (2026-05-31, user-direktiva) — DATUM-szabaly: a korabbi napi tranzakcio
+        // VISSZAMENOLEG SOHA nem sztornozhato (sem supervisorral). Kulonben a lentebbi
+        // original.setStatus(REVERSED) csendben csokkentene a korabbi nap forgalmat (a napi
+        // forgalom-osszegzes COMPLETED-re szur), a kompenzacio pedig a MAI napon konyvelodne
+        // -> a korabbi nap forgalma utolag, eszrevetlenul megvaltozna.
+        // FONTOS: ez CSAK a korabbi-napi (P2.7, 2026-05-17) supervisor-override-ot szunteti meg;
+        // az AZNAPI supervisor-funkcio a napi plafonnal (lent) valtozatlanul megmarad.
+        if (!original.getTransactionDate().equals(LocalDate.now())) {
+            throw new ValidationException(
+                "Csak az aznapi tranzakcio sztornozhato — korabbi nap visszamenoleg nem sztornozhato. Tranzakcio datuma: "
+                + original.getTransactionDate());
         }
 
-        // Napi sztorno limit ellenorzese
-        int dailyReversals = dailySessionService.getDailyReversalCount();
-        if (dailyReversals >= helper.getDailyReversalLimit() && !SecurityUtils.isSupervisorOrAbove()) {
-            throw new ValidationException(
-                String.format("Napi sztorno limit (%d) elerve! Supervisor jovahagyas szukseges.", helper.getDailyReversalLimit()));
+        // Audit #2 (2026-05-31, user-direktiva) — AZNAPI DARABSZAM-szabaly: aznap MAXIMUM
+        // `limit` (alapertelmezetten 3) sztorno lehetseges. Lebontva:
+        //   - az elso (limit-1) sztorno supervisori jovahagyas nelkul,
+        //   - a `limit`-edik (pl. 3.) sztorno CSAK supervisori jovahagyassal,
+        //   - a plafon felett (pl. 4.+) SEMMIKEPP, supervisorral sem.
+        // Korabban a plafon felett supervisorral KORLATLAN sztorno volt lehetseges (hibas).
+        //
+        // Codex P1 (2026-05-31, #944 review) — CONCURRENCY: a plafon-ellenorzes a napi
+        // sztorno-szamlalot (DailySession.reversalCount) olvassa, a noveles viszont a tranzakcio
+        // VEGEN tortenik (updateSessionStats). Lock-mentes olvasassal ket parhuzamos sztorno
+        // ugyanazt a count-ot latta -> mindketto atment a >= limit ellenorzesen -> a nap a max-3
+        // plafon FOLE kerulhetett. A getDailyReversalCountForUpdate() a daily_session SORAT
+        // PESSIMISTIC_WRITE-tal lockolja (SELECT ... FOR UPDATE) a plafon-ellenorzes es barmilyen
+        // mellekhatas (POS-sztorno, bizonylatszam) ELOTT: a parhuzamos sztorno a lock mogott sorba
+        // all, a count olvasasa+novelese ugyanabban a write-tranzakcioban szerializalodik.
+        //
+        // LOCK-ORDERING (Codex P1, #944 round-3 review — daily_session <-> cash_balance deadlock-megelozes):
+        // a normal vetel/eladas (TransactionService.executeBuy/executeSell) a cash_balance sorokat MAR a
+        // daily_session-iras (updateSessionStats, a tranzakcio vegen) ELOTT lockolja -> reszsorrend
+        // cash_balance -> daily_session. Ha a sztorno a daily_session-t a cash_balance ELOTT lockolna,
+        // az ELLENTETES reszsorrend (daily_session -> cash_balance) egy parhuzamos normal tranzakcioval
+        // keresztezve adatbazis-deadlockot okozhatna. Ezert a daily_session lock (lenti
+        // getDailyReversalCountForUpdate) ELOTT ELO-LOCKOLJUK a majdan modositando cash_balance sorokat,
+        // igy a sztorno reszsorrendje is cash_balance -> daily_session. A cap-check igy is a
+        // POS/mellekhatasok ELOTT marad (nincs POS-then-rollback).
+        //
+        // FIGYELEM (self-review, kulon kezelendo): a cash_balance soron BELULI sorrend NEM egyseges az
+        // egesz kodbazisban — a BUY a HUF-ot lockolja eloszor (validateCurrencyStock(HUF)), a SELL es ez
+        // a sztorno a currency-t. Ez egy PRE-EXISTING (a fix elotti) cash-vs-cash AB-BA deadlock-kockazat
+        // BUY <-> SELL/sztorno kozott, FUGGETLEN ettol a daily_session-fixtol; kulon fokuszalt PR
+        // rendezi (globalis, determinisztikus cash-lock sorrend, pl. novekvo currencyId). Itt a sorrendet
+        // a lenti updateCashBalance-szel egyezoen tartjuk (currencyId -> HUF), nem rontva a meglevo allapotot.
+        Long reversalCurrencyId = original.getCurrency().getId();
+        helper.lockCashBalance(branchId, reversalCurrencyId);
+        helper.lockCashBalance(branchId, helper.getHufCurrencyId());
+
+        int dailyReversals = dailySessionService.getDailyReversalCountForUpdate();
+        int reversalLimit = helper.getDailyReversalLimit();
+        if (dailyReversals >= reversalLimit) {
+            throw new ValidationException(String.format(
+                "Napi sztorno plafon (%d) elerve — ma tobb sztorno nem lehetseges, supervisori jovahagyassal sem!",
+                reversalLimit));
+        }
+        // Codex P2 (2026-05-31, #944 review): a 3. (limit-1) sztorno kapuja akkor nyilik, ha a
+        // VEGREHAJTO supervisor VAGY ha van ERVENYES, MEGADOTT jovahagyas (request.supervisorApproved,
+        // amit a StornoService verifikalt szerver-oldalon az approvalId alapjan). Kulonben a dokumentalt
+        // flow — penztaros jovahagyast ker, supervisor megadja, PENZTAROS hajtja vegre — hasznalhatatlan
+        // lenne (a penztaros jovahagyassal is elbukna). A 4.+ abszolut plafon (fent) ettol fuggetlenul tilt.
+        if (dailyReversals >= reversalLimit - 1
+                && !SecurityUtils.isSupervisorOrAbove()
+                && !request.isSupervisorApproved()) {
+            throw new ValidationException(String.format(
+                "A(z) %d. napi sztornohoz supervisori jovahagyas szukseges!", reversalLimit));
         }
 
         // Entitasok betoltese
@@ -175,8 +231,9 @@ public class TransactionReversalService {
         original.setStatus(TransactionStatus.REVERSED);
         transactionRepository.save(original);
 
-        // Kassza visszaallitasa (eredeti tranzakcio ellentete)
-        Long currencyId = original.getCurrency().getId();
+        // Kassza visszaallitasa (eredeti tranzakcio ellentete). A cash_balance sorok (reversalCurrencyId,
+        // HUF) MAR lockoltak (fentebb, a daily_session lock elott elo-lockoltuk) — ez no-op re-lock + mutacio.
+        Long currencyId = reversalCurrencyId;
         if (original.getTransactionType() == TransactionType.BUY) {
             // Eredeti vetel visszavonasa: valuta -, HUF +
             // Stock validation: van-e eleg valuta a kasszaban a visszavethez

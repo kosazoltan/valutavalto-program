@@ -13,6 +13,7 @@ import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.DailySessionRepository;
 import hu.puzzleir.valuta.repository.DenominationCountRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -171,5 +173,34 @@ class DailySessionServiceTest {
         assertNotNull(result);
         // Issue #110: auto-init kell hogy meghivva legyen pontosan 1x
         verify(cashBalanceService, times(1)).initializeBranchBalances(branchId);
+    }
+
+    // === Codex P1 (2026-05-31, #944 review) — sztorno-plafon lockolo szamlalo ===
+
+    @Test
+    @DisplayName("getDailyReversalCountForUpdate - a PESSIMISTIC_WRITE-lockolt session reversalCount-jat adja vissza")
+    void getDailyReversalCountForUpdate_returnsLockedCount() {
+        DailySession locked = DailySession.builder()
+                .id(7L)
+                .sessionDate(LocalDate.now())
+                .reversalCount(2)
+                .build();
+        when(dailySessionRepository.findByBranchIdAndSessionDateForUpdate(eq(branchId), eq(LocalDate.now())))
+                .thenReturn(Optional.of(locked));
+
+        assertEquals(2, service.getDailyReversalCountForUpdate());
+    }
+
+    @Test
+    @DisplayName("getDailyReversalCountForUpdate - nincs session a lock-ponton -> ValidationException (fail-loud: a plafon NEM kerulhet ki csendben 0-val)")
+    void getDailyReversalCountForUpdate_noSession_throws() {
+        // A validateOpenSession elvileg garantalja a nyitott sort, de a lockolo uton az ures
+        // talalat invarians-sertes -> dobni kell, NEM 0-t adni (kulonben a plafon csendben kikerul).
+        when(dailySessionRepository.findByBranchIdAndSessionDateForUpdate(eq(branchId), eq(LocalDate.now())))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getDailyReversalCountForUpdate())
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("munkamenet");
     }
 }
