@@ -2,12 +2,15 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.Dictionary;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.mapper.BranchMapper;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.dto.CreateBranchDto;
 import hu.puzzleir.valuta.dto.UpdateBranchDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -72,6 +75,55 @@ class BranchServiceTest {
             assertThatThrownBy(() -> service.delete(BRANCH_ID))
                     .isInstanceOf(ResourceNotFoundException.class);
             verify(branchRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("create — kliens másik cég companyId-ja: IDOR-védelem (ValidationException, nincs save)")
+    void testCreateForeignCompanyIdBlocked() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            UUID branchTypeId = UUID.randomUUID();
+            CreateBranchDto dto = CreateBranchDto.builder()
+                    .code("UJ01")
+                    .companyId(OTHER_COMPANY)   // IDEGEN cég — el kell utasítani
+                    .branchTypeId(branchTypeId)
+                    .build();
+            // hierarchia: KOZPONT típus, nincs szülő → átmegy a validáción
+            when(branchRepository.existsByCompanyIdAndCode(COMPANY_ID, "UJ01")).thenReturn(false);
+            when(dictionaryRepository.findById(branchTypeId))
+                    .thenReturn(Optional.of(Dictionary.builder().code("KOZPONT").build()));
+
+            assertThatThrownBy(() -> service.create(dto))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("másik céghez");
+            verify(branchRepository, never()).save(any(Branch.class));
+            verify(companyRepository, never()).findById(any());
+        }
+    }
+
+    @Test
+    @DisplayName("create — egyező companyId: átmegy a tenant-kapun, a céget a SecurityContextből oldja fel")
+    void testCreateMatchingCompanyIdResolvesFromContext() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            UUID branchTypeId = UUID.randomUUID();
+            CreateBranchDto dto = CreateBranchDto.builder()
+                    .code("UJ02")
+                    .companyId(COMPANY_ID)
+                    .branchTypeId(branchTypeId)
+                    .build();
+            when(branchRepository.existsByCompanyIdAndCode(COMPANY_ID, "UJ02")).thenReturn(false);
+            when(dictionaryRepository.findById(branchTypeId))
+                    .thenReturn(Optional.of(Dictionary.builder().code("KOZPONT").build()));
+            // A tenant-kapu UTÁN a SAJÁT companyId-val keres céget → üres → ResourceNotFound
+            // (nem ValidationException) bizonyítja, hogy az egyező companyId átment a kapun.
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.create(dto))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Cég nem található");
+            verify(companyRepository).findById(COMPANY_ID);
         }
     }
 

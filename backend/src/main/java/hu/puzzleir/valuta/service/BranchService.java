@@ -394,9 +394,17 @@ public class BranchService {
         validateBranchCode(dto.getCode());
         validateBranchHierarchy(dto.getBranchTypeId(), dto.getParentBranchId());
 
-        // Entitások betöltése
-        Company company = companyRepository.findById(dto.getCompanyId())
-                .orElseThrow(() -> new ResourceNotFoundException("Cég nem található: " + dto.getCompanyId()));
+        // Multi-tenant izoláció (CLAUDE.md B.3 / audit 2026-05-31, P1 IDOR): a fiók KÖTELEZŐEN a
+        // hívó cégéhez jön létre. Korábban a kliens dto.getCompanyId()-ját bíztuk meg, így egy A cég
+        // jogosultja companyId=B megadásával B cég alá hozhatott létre fiókot (auto-init cash_balance
+        // + denomination is B alá futott). A céget a SecurityContextből oldjuk fel; ha a kliens eltérő
+        // companyId-t küld, elutasítjuk (a createSimpleCashier mintája).
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (dto.getCompanyId() != null && !companyId.equals(dto.getCompanyId())) {
+            throw new ValidationException("A fiók nem hozható létre másik céghez.");
+        }
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cég nem található: " + companyId));
 
         Dictionary branchType = dictionaryRepository.findById(dto.getBranchTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Fiók típus nem található: " + dto.getBranchTypeId()));
