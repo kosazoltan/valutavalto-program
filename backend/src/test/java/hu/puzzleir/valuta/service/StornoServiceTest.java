@@ -283,4 +283,34 @@ class StornoServiceTest {
 
         verify(notificationService, times(1)).sendToBranch(BRANCH_ID, "Cim", "Uzenet");
     }
+
+    // === Audit #2 (2026-05-31) — korábbi napi tranzakció a precheck/approval úton is tiltott ===
+
+    @Test
+    @DisplayName("Audit #2: checkStorno korábbi napra DOB (nem approval-flow) — a UI ne ígérjen lehetetlen jóváhagyást")
+    void checkStorno_previousDayTransaction_throwsBlocked() {
+        originalCardTransaction.setTransactionDate(LocalDate.now().minusDays(1));
+
+        assertThatThrownBy(() -> stornoService.checkStorno(TRANSACTION_ID, WORKER_ID))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("aznapi");
+    }
+
+    @Test
+    @DisplayName("Audit #2: requestApproval korábbi napra DOB — ne keletkezzen elárvult jóváhagyás-kérés")
+    void requestApproval_previousDayTransaction_throwsNoOrphanRequest() {
+        originalCardTransaction.setTransactionDate(LocalDate.now().minusDays(1));
+        Worker w = new Worker();
+        w.setId(WORKER_ID);
+        w.setName("Teszt Penztaros");
+        Branch b = new Branch();
+        b.setId(BRANCH_ID);
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(w));
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(b));
+
+        assertThatThrownBy(() -> stornoService.requestApproval(TRANSACTION_ID, WORKER_ID, "tegnapi teves"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("aznapi");
+        verify(stornoApprovalRepository, never()).save(any());
+    }
 }
