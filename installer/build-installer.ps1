@@ -87,6 +87,10 @@ if ($packageJsonVersion -ne $Version) {
 }
 Write-Host "Build: v$Version ($BuildDate)" -ForegroundColor Cyan
 
+# Preflight: x64 toolchain guard (2026-05-31) — ARM dev-gép védelem (lásd build-common.ps1).
+# Fail-fast MIELŐTT a backend-build vagy a natív kliens-csomagolás elindulna.
+Assert-X64NodeToolchain
+
 $ErrorActionPreference = "Stop"
 # $RepoRoot, $InstallerDir already set during the version gate above
 $BuildDir = Join-Path $InstallerDir "build"
