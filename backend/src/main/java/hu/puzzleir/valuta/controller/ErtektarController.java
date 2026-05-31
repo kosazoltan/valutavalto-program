@@ -4,11 +4,14 @@ import hu.puzzleir.valuta.dto.ertektar.*;
 import hu.puzzleir.valuta.dto.monitoring.BranchStatusResponse;
 import hu.puzzleir.valuta.entity.VaultOperationStatus;
 import hu.puzzleir.valuta.service.*;
+import hu.puzzleir.valuta.util.IdempotencyGuard;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -34,6 +37,12 @@ public class ErtektarController {
     private final StockCorrectionService stockCorrectionService;
     private final ConsolidatedReportService consolidatedReportService;
     private final BranchMonitoringService branchMonitoringService;
+    // Audit 2026-05-31 (P2 #10): a /bank-transactions AZONNAL készletmozgást könyvel (COMPLETED),
+    // dedup nélkül — a penztar-client sync-engine timeout-retry-jánál duplikált VaultBankTransaction
+    // + duplikált készletmozgás (sérti a "készlet = SUM(tx)" invariánst). IdempotencyGuard-dal védjük.
+    private final IdempotencyGuard idempotencyGuard;
+
+    private static final String ENDPOINT_BANK_TX = "POST /api/v1/ertektar/bank-transactions";
 
     // === BEGYUJTES (Collections) ===
 
@@ -126,8 +135,33 @@ public class ErtektarController {
      */
     @PostMapping("/bank-transactions")
     public ResponseEntity<BankTransactionResponseDto> createBankTransaction(
-            @Valid @RequestBody BankTransactionRequestDto request) {
-        return ResponseEntity.ok(vaultBankTransactionService.createBankTransaction(request));
+            @Valid @RequestBody BankTransactionRequestDto request,
+            HttpServletRequest httpRequest) {
+        // Idempotencia (audit P2 #10): a sync-engine Idempotency-Key-t küld; az IdempotencyFilter a
+        // hiányzó header-t már 400-zal elutasítja. Itt a tényleges deduplikációt végezzük (azonos
+        // kulcs → cache-elt válasz, nincs dupla készletmozgás), a TransactionController mintájára.
+        String idempotencyKey = resolveIdempotencyKey(httpRequest);
+        IdempotencyGuard.Acquired<BankTransactionResponseDto> acquired =
+                idempotencyGuard.tryAcquire(idempotencyKey, ENDPOINT_BANK_TX, request, BankTransactionResponseDto.class);
+        if (acquired.cachedResult() != null) {
+            return ResponseEntity.ok(acquired.cachedResult());
+        }
+        try {
+            BankTransactionResponseDto result = vaultBankTransactionService.createBankTransaction(request);
+            idempotencyGuard.complete(acquired, result);
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            idempotencyGuard.fail(acquired);
+            throw e;
+        }
+    }
+
+    private String resolveIdempotencyKey(HttpServletRequest request) {
+        String key = request.getHeader("Idempotency-Key");
+        if (StringUtils.hasText(key)) {
+            return key;
+        }
+        return request.getHeader("X-Idempotency-Key");
     }
 
     /**
