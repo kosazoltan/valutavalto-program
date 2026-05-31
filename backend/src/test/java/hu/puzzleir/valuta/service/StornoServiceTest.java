@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.dto.storno.StornoRequestDto;
+import hu.puzzleir.valuta.dto.storno.StornoApprovalDto;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
@@ -48,6 +49,7 @@ class StornoServiceTest {
     @Mock private ExchangeRateRepository exchangeRateRepository;
     @Mock private NotificationService notificationService;
     @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
+    @Mock private SystemParameterService systemParameterService;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
     private static final UUID COMPANY_ID = UUID.randomUUID();
@@ -472,5 +474,87 @@ class StornoServiceTest {
                 captureReversalRequestAfterExecuteStorno(null);
 
         assertThat(cap.getValue().isSupervisorApproved()).isFalse();
+    }
+
+    // === #954 — 4-szem-elv (requester != approver) feature-flag mogott (default OFF) ===
+
+    private StornoApproval buildApprovalRequestedBy(UUID approvalId, Long requesterWorkerId) {
+        Branch b = new Branch();
+        b.setId(BRANCH_ID);
+        Worker requester = new Worker();
+        requester.setId(requesterWorkerId);
+        requester.setName("Kerelmezo");
+        Transaction tx = Transaction.builder().id(100L).build();
+        return StornoApproval.builder()
+                .id(approvalId)
+                .transaction(tx)
+                .worker(requester)
+                .branch(b)
+                .dailyStornoCount(1)
+                .requestReason("teszt")
+                .build();
+    }
+
+    private void stubApprovedDictionary() {
+        Dictionary approved = Dictionary.builder().id(UUID.randomUUID()).code("APPROVED").build();
+        when(dictionaryRepository.findByCategoryAndCode("STORNO_APPROVAL_STATUS", "APPROVED"))
+                .thenReturn(Optional.of(approved));
+        when(stornoApprovalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    @Test
+    @DisplayName("#954 4-szem-elv ON: sajat sztorno-keres jovahagyasa sajat maga altal -> ValidationException (nincs mentes)")
+    void approve_fourEyesOn_selfApproval_throws() {
+        UUID approvalId = UUID.randomUUID();
+        when(stornoApprovalRepository.findById(approvalId))
+                .thenReturn(Optional.of(buildApprovalRequestedBy(approvalId, WORKER_ID)));
+        Worker approver = new Worker();
+        approver.setId(WORKER_ID);
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(approver));
+        when(systemParameterService.getValue("STORNO_APPROVAL_FOUR_EYES_ENFORCEMENT", "false"))
+                .thenReturn("true");
+
+        assertThatThrownBy(() -> stornoService.approve(approvalId, WORKER_ID, true, "ok"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("4-szem");
+        verify(stornoApprovalRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("#954 4-szem-elv ON: FUGGETLEN jovahagyo (requester != approver) -> sikeres")
+    void approve_fourEyesOn_independentApprover_allowed() {
+        UUID approvalId = UUID.randomUUID();
+        Long otherApproverId = 2L;
+        when(stornoApprovalRepository.findById(approvalId))
+                .thenReturn(Optional.of(buildApprovalRequestedBy(approvalId, WORKER_ID)));
+        Worker approver = new Worker();
+        approver.setId(otherApproverId);
+        when(workerRepository.findById(otherApproverId)).thenReturn(Optional.of(approver));
+        when(systemParameterService.getValue("STORNO_APPROVAL_FOUR_EYES_ENFORCEMENT", "false"))
+                .thenReturn("true");
+        stubApprovedDictionary();
+
+        StornoApprovalDto dto = stornoService.approve(approvalId, otherApproverId, true, "ok");
+
+        assertThat(dto).isNotNull();
+        verify(stornoApprovalRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("#954 4-szem-elv OFF (default): sajat jovahagyas MEGENGEDETT (valtozatlan workflow)")
+    void approve_fourEyesOff_selfApproval_allowed() {
+        UUID approvalId = UUID.randomUUID();
+        when(stornoApprovalRepository.findById(approvalId))
+                .thenReturn(Optional.of(buildApprovalRequestedBy(approvalId, WORKER_ID)));
+        Worker approver = new Worker();
+        approver.setId(WORKER_ID);
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(approver));
+        // flag OFF: getValue default "false" (a mock unstubbed -> null -> "false" ag)
+        stubApprovedDictionary();
+
+        StornoApprovalDto dto = stornoService.approve(approvalId, WORKER_ID, true, "ok");
+
+        assertThat(dto).isNotNull();
+        verify(stornoApprovalRepository).save(any());
     }
 }
