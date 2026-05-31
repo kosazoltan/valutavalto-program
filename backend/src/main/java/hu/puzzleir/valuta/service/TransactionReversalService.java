@@ -347,6 +347,15 @@ public class TransactionReversalService {
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Penztaros nem talalhato"));
 
+        // CASH-FIRST LOCK-ORDERING (Codex P2, #951 -> #952): a cash_balance sorokat a bizonylatszam-
+        // generalas (ReceiptSequenceService per-branch PESSIMISTIC lock) ELOTT lockoljuk, igy minden
+        // penzmozgato ut UGYANABBAN a sorrendben (cash -> receipt) szerez lockot (BUY/SELL/sztorno is).
+        // Kulonben egy parhuzamos transfer/sztorno es ez a refund cash<->receipt_sequence AB-BA
+        // deadlockot okozna. Egyben NOVEKVO currencyId (cash<->cash deadlock-megelozes). Lasd: CashLockOrdering.
+        Long currencyId = original.getCurrency().getId();
+        CashLockOrdering.lockInAscendingCurrencyOrder(branchId, helper::lockCashBalance,
+                currencyId, helper.getHufCurrencyId());
+
         // Bizonylat szam generalas (az eredeti tpus szamlalojabol)
         String receiptNumber = receiptSequenceService.generateReversalReceiptNumber(
                 branchId, original.getTransactionType());
@@ -379,14 +388,7 @@ public class TransactionReversalService {
         Transaction saved = transactionRepository.save(partialRefund);
         helper.linkCameraEvidence(saved);
 
-        // CASH-VS-CASH LOCK-ORDERING (deadlock-megelozes): a modositando cash_balance sorokat (deviza +
-        // HUF) GLOBALISAN egyseges, NOVEKVO currencyId sorrendben elo-lockoljuk a keszlet-ellenorzes /
-        // mutacio ELOTT — egyezoen a BUY/SELL/sztorno aggal. Lasd: CashLockOrdering.
-        Long currencyId = original.getCurrency().getId();
-        CashLockOrdering.lockInAscendingCurrencyOrder(branchId, helper::lockCashBalance,
-                currencyId, helper.getHufCurrencyId());
-
-        // Kassza korrekcio: csak a visszateritett osszeggel
+        // Kassza korrekcio: csak a visszateritett osszeggel (a cash_balance sorok mar lockoltak, lasd fent)
         if (original.getTransactionType() == TransactionType.BUY) {
             // Eredeti vetel reszleges visszavonasa: valuta -, HUF +
             // Stock validation: van-e eleg valuta a kasszaban a reszleges visszavethez

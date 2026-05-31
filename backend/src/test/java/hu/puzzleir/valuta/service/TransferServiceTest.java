@@ -152,10 +152,12 @@ class TransferServiceTest {
         assertThat(result.getLines()).extracting(l -> l.getCurrencyCode()).containsExactlyInAnyOrder("EUR", "USD");
         assertThat(result.getLines()).extracting(l -> l.getAmount())
                 .containsExactlyInAnyOrder(new BigDecimal("100"), new BigDecimal("200"));
-        // F mód: minden valuta-sor csökkenti a feladó kasszáját → per-currency lock-lekérés
-        verify(cashBalanceRepository).findByBranchIdAndCurrencyIdForUpdate(fromId, 4L);
-        verify(cashBalanceRepository).findByBranchIdAndCurrencyIdForUpdate(fromId, 5L);
-        // EUR-ra NEM a fogadó (toId) kasszáját mozgatjuk create-kor F módban
+        // F mód: minden valuta-sor csökkenti a feladó kasszáját → per-currency lock-lekérés.
+        // 2x: (1) cross-branch + cash-first elo-lock (CashLockOrdering, #952), (2) decreaseCashBalance
+        // no-op re-lock + mutacio — ugyanaz a sor, ket SELECT ... FOR UPDATE.
+        verify(cashBalanceRepository, times(2)).findByBranchIdAndCurrencyIdForUpdate(fromId, 4L);
+        verify(cashBalanceRepository, times(2)).findByBranchIdAndCurrencyIdForUpdate(fromId, 5L);
+        // EUR-ra NEM a fogadó (toId) kasszáját mozgatjuk create-kor F módban (single-branch → nincs elo-lock sem)
         verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdForUpdate(toId, 4L);
     }
 

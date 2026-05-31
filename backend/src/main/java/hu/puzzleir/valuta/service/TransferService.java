@@ -280,6 +280,31 @@ public class TransferService {
                                             Transfer.TransferDirection direction) {
         // #6: soronként könyvelünk (egy-valutás átadásnál egyetlen szintetikus sor a headerből).
         final java.util.List<TransferLine> bookLines = effectiveLines(transfer);
+
+        // CROSS-BRANCH + CASH-FIRST LOCK-ORDERING (deadlock-megelozes, #952): az UF/FF mod a kuldo ES a
+        // fogado iroda cash_balance sorat is lockolja (soronkent, tobb valutaban is). Ezeket — az F/U
+        // single-branch soraival egyutt — GLOBALISAN egyseges (branchId, currencyId) sorrendben, a
+        // bizonylatszam-generalas (createTransfer*Transaction -> ReceiptSequenceService per-branch
+        // PESSIMISTIC lock) ELOTT ELO-LOCKOLJUK. Igy (a) a forditott iranyu transfer/trade nem okoz
+        // cash<->cash AB-BA deadlockot, es (b) minden penzmozgato ut cash->receipt sorrendben halad
+        // (BUY/SELL/sztorno/refund is) -> nincs cash<->receipt_sequence deadlock-axis. Lasd: CashLockOrdering.
+        final boolean touchesToBranch = direction == Transfer.TransferDirection.UF
+                || direction == Transfer.TransferDirection.FF;
+        final java.util.List<hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey> lockKeys =
+                new java.util.ArrayList<>();
+        for (TransferLine ln : bookLines) {
+            Long cid = ln.getCurrency().getId();
+            lockKeys.add(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey(
+                    transfer.getFromBranch().getId(), cid));
+            if (touchesToBranch) {
+                lockKeys.add(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey(
+                        transfer.getToBranch().getId(), cid));
+            }
+        }
+        hu.puzzleir.valuta.util.CashLockOrdering.lockBranchCurrencyPairsInGlobalOrder(
+                (bid, c) -> cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(bid, c),
+                lockKeys.toArray(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey[0]));
+
         switch (direction) {
             case F -> {
                 for (TransferLine ln : bookLines) {
