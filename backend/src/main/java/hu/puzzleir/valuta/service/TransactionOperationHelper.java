@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.logging.VVLogger;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,8 @@ public class TransactionOperationHelper {
     private final CashBalanceRepository cashBalanceRepository;
     private final CurrencyRepository currencyRepository;
     private final ObjectProvider<CameraTransactionLinker> cameraTransactionLinkerProvider;
+
+    private static final VVLogger VV_LOG = VVLogger.of(TransactionOperationHelper.class);
 
     // Sztorno limit supervisor nelkul (3 db/nap)
     private static final int DAILY_REVERSAL_LIMIT = 3;
@@ -63,7 +66,12 @@ public class TransactionOperationHelper {
                 hufAmount, customerId, customerName, documentNumber, currencyCode);
 
         if (basicResult == null) {
-            log.error("AML checkTransaction null eredmenyt adott, tranzakcio blokkolva");
+            // Audit 2026-05-31 (P2): a VV-AML-004 (FATAL) MÁR a katalógusban van — strukturált
+            // VV_LOG.fatal kell (NEM nyers log.error), hogy a Loki/Grafana audit-keresés
+            // error_code='VV-AML-004' szerint lássa ezt a FATAL AML-blokkot (a TransactionService
+            // azonos ágával egyezően, PR #682). A tranzakciót a dobott ValidationException blokkolja.
+            VV_LOG.fatal("VV-AML-004", "aml.service_unavailable_tx_blocked", null,
+                    java.util.Map.of("policy", "FAIL_CLOSED"));
             throw new ValidationException("AML ellenorzes nem elerheto, a tranzakcio nem hajthato vegre!");
         }
 

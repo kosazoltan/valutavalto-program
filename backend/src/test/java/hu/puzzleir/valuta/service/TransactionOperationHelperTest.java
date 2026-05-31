@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -14,6 +15,8 @@ import org.springframework.beans.factory.ObjectProvider;
 
 import java.math.BigDecimal;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -55,5 +58,17 @@ class TransactionOperationHelperTest {
 
         verify(amlService, never()).getAnnualRollingTotal(any());
         verify(amlService, never()).setHighRiskFlagIfNeeded(any(), any());
+    }
+
+    @Test
+    @DisplayName("Audit P2 #7: performAmlCheck NULL AML-eredménynél → ValidationException (FAIL-CLOSED; VV-AML-004 strukturált log)")
+    void performAmlCheck_nullResult_throwsFailClosed() {
+        when(amlService.checkTransaction(any(), any(), any(), any(), any())).thenReturn(null);
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> helper.performAmlCheck(new BigDecimal("100000"), "C1", "Név", "DOC", "EUR"));
+        assertTrue(ex.getMessage().contains("AML"), ex.getMessage());
+        // A tranzakciót a dobott kivétel blokkolja (fail-closed); a VV-AML-004 FATAL strukturáltan logolva.
+        verify(amlService).checkTransaction(any(), any(), any(), any(), any());
     }
 }

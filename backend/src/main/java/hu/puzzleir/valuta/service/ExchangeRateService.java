@@ -81,8 +81,13 @@ public class ExchangeRateService {
             return; // nincs korhatár
         }
         LocalDateTime rateTimestamp = LocalDateTime.of(rate.getValidDate(), rate.getValidTime());
-        long hoursOld = ChronoUnit.HOURS.between(rateTimestamp, LocalDateTime.now());
-        if (hoursOld > maxAgeHours) {
+        // Audit 2026-05-31 (P2): a ChronoUnit.HOURS egész órára CSONKOL (24h59m → 24), így a szigorú
+        // "> maxAgeHours" feltétel ~25 óráig elfogadta a lejárt rátát. Percalapú, ZÁRT (>=)
+        // összehasonlítás → a határ pontosan maxAgeHours (24h00m-től lejárt, nincs ~1h tolerancia).
+        long minutesOld = ChronoUnit.MINUTES.between(rateTimestamp, LocalDateTime.now());
+        long maxAgeMinutes = (long) maxAgeHours * 60L;
+        if (minutesOld >= maxAgeMinutes) {
+            long hoursOld = minutesOld / 60L;
             log.warn("Lejárt árfolyam: {} — {} órás (max: {} óra)",
                     rate.getCurrency().getCode(), hoursOld, maxAgeHours);
             throw new ValidationException(
