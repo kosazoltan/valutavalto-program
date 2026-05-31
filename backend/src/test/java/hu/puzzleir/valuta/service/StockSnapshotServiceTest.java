@@ -212,6 +212,29 @@ class StockSnapshotServiceTest {
     }
 
     @Test
+    @DisplayName("Audit P3 (2026-05-31): stockHuf HALF_UP + 5 Ft kerekítés, NEM longValue() csonkolás")
+    void getFullSnapshot_stockHuf_roundsToFive_notTruncated() {
+        // EUR 100 db × 398.534 Ft = 39853.4 HUF.
+        //  - régi (hibás) longValue() csonkolás → 39853
+        //  - helyes HungarianRounding.roundToFive → HALF_UP(39853.4)=39853, majd 5 Ft-ra: 39855
+        Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
+        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+
+        CurrencyStock eurStock = CurrencyStock.builder()
+                .entityType("CASHIER").entityId(BRANCH_1_ID.toString())
+                .currencyCode("EUR").quantity(new BigDecimal("100"))
+                .weightedAvgCost(new BigDecimal("398.534")).lastUpdated(LocalDateTime.now()).build();
+        when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of(eurStock));
+        when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        CurrencyStockDetailDto eur = result.getRegions().get(0).getBranches().get(0).getCurrencies().stream()
+                .filter(c -> "EUR".equals(c.getCurrencyCode())).findFirst().orElseThrow();
+        assertThat(eur.getStockHuf()).as("5 Ft-ra kerekített, nem csonkolt").isEqualTo(39855L);
+    }
+
+    @Test
     @DisplayName("getFullSnapshot - 1 branch EUR készlettel - stock=500, stockHuf=500*395.50=197750")
     void getFullSnapshot_singleBranch_returnsCurrencyData() {
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");

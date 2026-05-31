@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.CameraRecording;
 import hu.puzzleir.valuta.entity.CameraSegmentHash;
+import hu.puzzleir.valuta.logging.VVLogger;
 import hu.puzzleir.valuta.repository.CameraRecordingRepository;
 import hu.puzzleir.valuta.repository.CameraSegmentHashRepository;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,13 @@ public class CameraHashChainService {
     private final CameraRecordingRepository recordingRepository;
     private final CameraEncryptionService encryptionService;
     private final AuditLogService auditLogService;
+
+    /**
+     * V234 belső log+audit (audit P3, 2026-05-31): strukturált error_code minden tamper/hiba
+     * eseményhez, hogy a Loki/Grafana audit-keresés error_code='VV-TECH-005..007' szerint
+     * lássa a kamera hash-lánc integritás-sérüléseit (forenzikus bizonyítékérték).
+     */
+    private static final VVLogger VV_LOG = VVLogger.of(CameraHashChainService.class);
 
     /** A lánc első elemének "előző hash" értéke */
     private static final String GENESIS_HASH = "0000000000000000000000000000000000000000000000000000000000000000";
@@ -119,10 +127,13 @@ public class CameraHashChainService {
         for (CameraSegmentHash entry : chain) {
             // Előző hash ellenőrzés
             if (!expectedPrevious.equals(entry.getPreviousHash())) {
-                log.error("Hash-lánc sérült! branch={}, camera={}, seq={}: " +
-                    "elvárt previousHash={}, talált={}",
-                    branchId, cameraId, entry.getSequenceNumber(),
-                    expectedPrevious, entry.getPreviousHash());
+                VV_LOG.error("VV-TECH-005", "camera.chain.integrity_failure", null,
+                    java.util.Map.of(
+                        "branchId", branchId,
+                        "cameraId", cameraId,
+                        "seq", entry.getSequenceNumber(),
+                        "expectedPreviousHash", expectedPrevious,
+                        "foundPreviousHash", entry.getPreviousHash()));
 
                 auditLogService.log(
                     "CAMERA_CHAIN_INTEGRITY_FAILURE",
@@ -149,13 +160,19 @@ public class CameraHashChainService {
             try {
                 recomputedChainHash = computeChainHash(entry.getPreviousHash(), entry.getFileHash(), metadata);
             } catch (Exception e) {
-                log.error("Hash-lánc ellenőrzés hiba: seq={}, error={}", entry.getSequenceNumber(), e.getMessage());
+                VV_LOG.error("VV-TECH-006", "camera.chain.verify_error", e,
+                    java.util.Map.of("branchId", branchId, "cameraId", cameraId, "seq", entry.getSequenceNumber()));
                 return false;
             }
 
             if (!recomputedChainHash.equals(entry.getChainHash())) {
-                log.error("Chain hash mismatch! seq={}, tárolt={}, számított={}",
-                    entry.getSequenceNumber(), entry.getChainHash(), recomputedChainHash);
+                VV_LOG.error("VV-TECH-007", "camera.chain.hash_mismatch", null,
+                    java.util.Map.of(
+                        "branchId", branchId,
+                        "cameraId", cameraId,
+                        "seq", entry.getSequenceNumber(),
+                        "storedChainHash", entry.getChainHash(),
+                        "recomputedChainHash", recomputedChainHash));
 
                 auditLogService.log(
                     "CAMERA_CHAIN_HASH_MISMATCH",
