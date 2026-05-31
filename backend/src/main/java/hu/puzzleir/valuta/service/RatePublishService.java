@@ -463,6 +463,11 @@ public class RatePublishService {
             BigDecimal effBuy = mergeRate(t.getBaseBuyRate(), t.getBuySpread());
             BigDecimal effSell = mergeRate(t.getBaseSellRate(), t.getSellSpread());
             String code = codeById.getOrDefault(t.getCurrencyId(), "ID=" + t.getCurrencyId());
+            // Negatív ráta ÉRVÉNYTELEN input (NEM "nem beállított") — explicit elutasítás, mielőtt a
+            // signum>0 guard "egyoldaliként" átengedné (Codex #938 P2: baseBuyRate=-1 nem publikálható).
+            if (effBuy.signum() < 0 || effSell.signum() < 0) {
+                throw new ValidationException("Érvénytelen (negatív) árfolyam! Valuta: " + code);
+            }
             // A sell>buy sanity ÉS a spread-kapu CSAK TELJESEN megadott (mindkét oldal pozitív)
             // rátára értelmes. A 0 = "nem beállított" (buy-only VAGY sell-only valuta) — ezt a
             // protection is signum-skip-eli, ezért MINDKÉT ellenőrzést kihagyjuk, különben az

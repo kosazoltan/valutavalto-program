@@ -607,4 +607,24 @@ class RatePublishServiceTest {
         RatePublication pub = service.publish(wgId, List.of(tplId), "sell-only");
         assertNotNull(pub.getId());
     }
+
+    @Test
+    @DisplayName("Audit P2 #938: negatív ráta (érvénytelen input) → ValidationException (NEM kezeljük 'nem beállítottként')")
+    void publish_negativeRate_throws() {
+        UUID wgId = UUID.randomUUID(); UUID tplId = UUID.randomUUID();
+        UUID companyId = ((WorkerAuthenticationDetails) SecurityContextHolder.getContext().getAuthentication().getDetails()).getCompanyId();
+        UUID branchId = UUID.randomUUID();
+        RateWorkgroup wg = wgWithProtection(wgId, companyId, branchId, false, 1);
+        // baseBuyRate = -1 (érvénytelen) — sem nem 'nem beállított' (0), sem nem szabályos pozitív.
+        RateTemplate tpl = tplWithRates(tplId, wgId, 1L,
+                new BigDecimal("400.00"), new BigDecimal("-1.00"), new BigDecimal("400.00"));
+        when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(
+                Currency.builder().id(1L).code("EUR").name("Euro").build()));
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> service.publish(wgId, List.of(tplId), "neg"));
+        assertTrue(ex.getMessage().contains("negatív"), ex.getMessage());
+    }
 }
