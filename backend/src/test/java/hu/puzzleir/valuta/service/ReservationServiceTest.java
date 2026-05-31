@@ -436,5 +436,13 @@ class ReservationServiceTest {
         // Pénzmozgás: a lefoglalt 100 EUR kivonva (1000 → 900), a HUF kasszába a 5% letét (0 → 2000)
         assertThat(eurBalance.getCurrentBalance()).isEqualByComparingTo("900");
         assertThat(hufKassza.getCurrentBalance()).isEqualByComparingTo("2000");
+
+        // CASH-VS-CASH LOCK-ORDERING (#953): a foglalas a cash_balance sorokat NOVEKVO currencyId
+        // sorrendben elo-lockolja a mutacio elott -> determinisztikus, a BUY/SELL/sztorno aggal egyezo
+        // sorrend -> nincs cash<->cash AB-BA deadlock. Az ELSO KET lock a pre-lock: HUF(100) majd EUR(200).
+        org.mockito.ArgumentCaptor<Long> cidCaptor = org.mockito.ArgumentCaptor.forClass(Long.class);
+        verify(cashBalanceRepository, atLeast(2))
+                .findByBranchIdAndCurrencyIdForUpdate(eq(BRANCH_ID), cidCaptor.capture());
+        assertThat(cidCaptor.getAllValues().subList(0, 2)).containsExactly(100L, 200L);
     }
 }
