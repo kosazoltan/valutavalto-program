@@ -37,6 +37,7 @@
 | C.25 | KÖTELEZŐ pre-PR önellenőrzési gate (4 fázis: lokális gate + checklist + 2-kör subagent + GitHub AI, NINCS gyors-PR kivétel) | `vault/feedback/mandatory-pre-pr-self-review-gate-2026-05-20.md` | always | **P0** |
 | C.26 | Opus 4.8 munkamód (3 tilalom + bizonyíték-kényszer + ellenőrzés 4 szintje) | `vault/feedback/opus48-munkamod-mandate-2026-05-31.md` | always | **P0** |
 | C.27 | Univerzális AI Ügynök Protokoll (Plan-First→terv-de-ne-állj-meg; Goal Protocol; telepítő→Downloads MINDEN milestone-nál; memória=vault NEM .memory) | `vault/feedback/universal-agent-protocol-mandate-2026-05-31.md` | always | **P0** |
+| C.28 | Hibavédelmi Protokoll v2 (kísérlet-napló; hurok-/variáció-észlelés; STRATÉGIA-ROTÁCIÓ elakadáskor — más/ellentétes tengely; kitörés 5-lépés; strukturált válaszforma; párhuzamos ügynök TILOS user-kérés nélkül) | `vault/feedback/hibavedelmi-protokoll-v2-2026-05-31.md` | always | **P0** |
 
 ## ÚJ üzleti / szabályozási mandate (2026-05-17 Perplexity korrekciós doksi)
 
