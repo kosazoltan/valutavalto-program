@@ -65,8 +65,20 @@ public class RatePublishService {
                                    List<UUID> templateIds,
                                    String notes,
                                    PublicationMetadata metadata) {
+        // Multi-tenant izoláció (CLAUDE.md B.3 / audit 2026-05-31, P0 IDOR): a publish KÖTELEZŐEN
+        // a hívó cégének workgroup-ját + sablonjait dolgozza fel. A @PreAuthorize csak szerepet
+        // ellenőriz, céget NEM — tenant-check nélkül egy A cég jogosultja B cég workgroup-id-jét és
+        // template-id-jeit megadva ÉLES exchange_rate-et írhatott B irodáira + RATE_PUBLISHED outboxot
+        // push-olhatott B pénztáraira. Tenant-idegen → ugyanaz a "nem található" hiba (nem szivárogtat
+        // létezést, id-enumeráció ellen). A RateCreationService már mindenhol ezt az ellenőrzést végzi.
+        final UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+
         RateWorkgroup workgroup = workgroupRepository.findById(workgroupId)
                 .orElseThrow(() -> new ValidationException("Munkacsoport nem található: " + workgroupId));
+
+        if (!currentCompanyId.equals(workgroup.getCompanyId())) {
+            throw new ValidationException("Munkacsoport nem található: " + workgroupId);
+        }
 
         if (workgroup.getBranches() == null || workgroup.getBranches().isEmpty()) {
             throw new ValidationException(
@@ -84,6 +96,14 @@ public class RatePublishService {
         for (UUID templateId : uniqueTemplateIds) {
             RateTemplate template = templateRepository.findById(templateId)
                     .orElseThrow(() -> new ValidationException("Sablon nem található: " + templateId));
+
+            // Multi-tenant izoláció + integritás (P0 IDOR): a sablon CSAK a fent már
+            // tenant-ellenőrzött workgroup-hoz tartozhat. Más csoport / másik cég sablonja →
+            // template.workgroupId ≠ workgroupId → "nem található" (id-enumeráció ellen). Így a
+            // publish nem írhat idegen cég sablonjával idegen irodákra exchange_rate-et.
+            if (!workgroupId.equals(template.getWorkgroupId())) {
+                throw new ValidationException("Sablon nem található: " + templateId);
+            }
 
             // State machine = egyetlen igazságforrás (VV-ELVI v2 5.2): publikálás DRAFT vagy APPROVED→PUBLISHED.
             // A status oszlop nullable (DEFAULT 'DRAFT'), ezért NULL-t is kezelünk (nem publikálható).
@@ -111,7 +131,7 @@ public class RatePublishService {
         // Create publication record
         int affectedBranches = workgroup.getBranches().size();
         RatePublication publication = RatePublication.builder()
-                .companyId(SecurityUtils.getCurrentCompanyId())
+                .companyId(currentCompanyId)
                 .workgroupId(workgroupId)
                 .publishedBy(SecurityUtils.getCurrentWorkerId())
                 .affectedBranches(affectedBranches)

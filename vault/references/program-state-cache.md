@@ -1,11 +1,16 @@
 # Valutaváltó — AKTUÁLIS ÁLLAPOT CACHE (token-takarékos, qmd-indexelt)
 
 > Cél: 1 helyen a verifikált aktuális állapot, hogy ne kelljen újra-deriválni commitokból/fájlokból.
-> Frissítve: 2026-05-29. Verzió: **v2.27.53** (4-way sync OK, prod ÉLES, FK-005 healthy).
-> Telepítő-bundle: **v2.27.52** (a #913 backend-only → auto-deploy, nem kell új telepítő).
+> Frissítve: 2026-05-31. main: **v2.27.57** (`a3496b8b`). Folyamatban: **v2.27.58** PR #934 (tenant-IDOR batch).
+> Prod ÉLES (bootstrap 200, EBC branches non-üres).
+
+## 2026-05-31 — Több-ügynökös kódbázis-audit (30 megerősített finding, ld. `vault/references/audit-2026-05-31-confirmed-findings.md`)
+- JAVÍTVA (PR #934, v2.27.58): 2×P0 + 3×P1 multi-tenant IDOR (RatePublishService.publish, InventoryService movement+findBranch+search, BranchService.create) + lappangó InventoryMovementService. Teljes backend suite 1762 teszt 0 hiba.
+- MARADÉK JAVÍTANDÓ: 4×P1 (RateTemplate LazyInit, receiveMovement difference, AmlService highRiskFlag dead, tautologikus multitenancy teszt), 14×P2, 6×P3 — ld. session `2026-05-31-codebase-audit-tenant-idor-batch.md`.
+- **JDK:** Maven-futtatás előtt `$env:JAVA_HOME=...jdk-21...` (default JDK 25 elszáll). Git id repo-szinten `Junior AI`.
 
 ## Verzió + deploy
-- main = **2.27.52**; backend prod `https://excvaluta.com` ÉLES (`service_version:2.27.52`, bootstrap-status 200).
+- main = **2.27.57**; backend prod `https://excvaluta.com` ÉLES (bootstrap-status 200). PR #934 → v2.27.58 (backend-only, auto-deploy, nincs telepítő).
 - Auto-deploy működik (merge → Hetzner). Telepítők unsigned (DigiCert EV CS pending).
 - Friss telepítők: Penztar-Setup / Kozponti-Munkaallomas / Penztar-Eltavolito **-2.27.52** (dist/release + Downloads).
 

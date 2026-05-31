@@ -76,14 +76,18 @@ class RatePublishServiceTest {
     @InjectMocks
     private RatePublishService service;
 
+    // Az autentikált munkás cége — a tenant-IDOR ellenőrzéshez a workgroup ehhez kötött kell legyen.
+    private UUID authCompanyId;
+    private UUID authBranchId;
+
     @BeforeEach
     void setUpAuthContext() {
-        UUID companyId = UUID.randomUUID();
-        UUID branchId = UUID.randomUUID();
+        authCompanyId = UUID.randomUUID();
+        authBranchId = UUID.randomUUID();
 
         UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken("WORKER001", null, List.of());
-        auth.setDetails(new WorkerAuthenticationDetails(99L, companyId, branchId, "MANAGER"));
+        auth.setDetails(new WorkerAuthenticationDetails(99L, authCompanyId, authBranchId, "MANAGER"));
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
@@ -97,7 +101,7 @@ class RatePublishServiceTest {
     void publish_enqueuesRatePublishedOutboxEvent() throws Exception {
         UUID workgroupId = UUID.randomUUID();
         UUID templateId = UUID.randomUUID();
-        UUID companyId = UUID.randomUUID();
+        UUID companyId = authCompanyId;
         UUID branchId = UUID.randomUUID();
 
         Company company = Company.builder()
@@ -116,6 +120,7 @@ class RatePublishServiceTest {
                 .id(workgroupId)
                 .name("Main WG")
                 .code("WG-1")
+                .company(company)
                 .branches(Set.of(branch))
                 .build();
 
@@ -185,7 +190,7 @@ class RatePublishServiceTest {
     void publish_keepsGlobalFallbackActive() {
         UUID workgroupId = UUID.randomUUID();
         UUID templateId = UUID.randomUUID();
-        UUID companyId = UUID.randomUUID();
+        UUID companyId = authCompanyId;
         UUID branchId = UUID.randomUUID();
 
         Company company = Company.builder()
@@ -204,6 +209,7 @@ class RatePublishServiceTest {
                 .id(workgroupId)
                 .name("Main WG")
                 .code("WG-1")
+                .company(company)
                 .branches(Set.of(branch))
                 .build();
 
@@ -267,10 +273,10 @@ class RatePublishServiceTest {
         UUID templateId = UUID.randomUUID();
         UUID branchId = UUID.randomUUID();
 
-        Company company = Company.builder().id(UUID.randomUUID()).code("BEST").name("Best Change").build();
+        Company company = Company.builder().id(authCompanyId).code("BEST").name("Best Change").build();
         Branch branch = Branch.builder().id(branchId).code("BORSI").company(company).build();
         RateWorkgroup workgroup = RateWorkgroup.builder()
-                .id(workgroupId).name("Main WG").code("WG-1").branches(Set.of(branch)).build();
+                .id(workgroupId).name("Main WG").code("WG-1").company(company).branches(Set.of(branch)).build();
 
         // status szándékosan NULL (nullable oszlop, csak DEFAULT 'DRAFT' van)
         RateTemplate template = RateTemplate.builder()
@@ -292,14 +298,64 @@ class RatePublishServiceTest {
     }
 
     // ============================================================
+    // Multi-tenant IDOR — audit 2026-05-31 (P0)
+    // ============================================================
+
+    @Test
+    @DisplayName("IDOR: másik cég workgroup-ja → 'nem található' (cross-tenant publish blokkolva)")
+    void publish_foreignWorkgroup_throwsNotFound() {
+        UUID workgroupId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+        // A workgroup egy IDEGEN céghez tartozik (nem az auth company)
+        Company foreign = Company.builder().id(UUID.randomUUID()).code("OTHER").name("Más Kft.").build();
+        Branch branch = Branch.builder().id(branchId).code("BORSI").company(foreign).build();
+        RateWorkgroup workgroup = RateWorkgroup.builder()
+                .id(workgroupId).name("Foreign WG").code("WG-X").company(foreign).branches(Set.of(branch)).build();
+        when(workgroupRepository.findById(workgroupId)).thenReturn(Optional.of(workgroup));
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> service.publish(workgroupId, List.of(UUID.randomUUID()), "cross-tenant"));
+        assertTrue(ex.getMessage().contains("Munkacsoport nem található"),
+                "id-enumeráció ellen ugyanaz a 'nem található' üzenet kell, kapott: " + ex.getMessage());
+        // Semmilyen rátát nem írt és nem publikált idegen irodákra
+        verify(exchangeRateRepository, org.mockito.Mockito.never()).save(any(ExchangeRate.class));
+        verify(syncOutboxRepository, org.mockito.Mockito.never()).save(any(SyncOutboxEvent.class));
+    }
+
+    @Test
+    @DisplayName("IDOR: a saját workgroup-hoz NEM tartozó sablon → 'Sablon nem található'")
+    void publish_templateFromOtherWorkgroup_throwsNotFound() {
+        UUID workgroupId = UUID.randomUUID();
+        UUID otherWorkgroupId = UUID.randomUUID();
+        UUID templateId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+        Company company = Company.builder().id(authCompanyId).code("BEST").name("Best Change").build();
+        Branch branch = Branch.builder().id(branchId).code("BORSI").company(company).build();
+        RateWorkgroup workgroup = RateWorkgroup.builder()
+                .id(workgroupId).name("Main WG").code("WG-1").company(company).branches(Set.of(branch)).build();
+        // A sablon egy MÁSIK workgroup-hoz tartozik (akár másik cég sablonja is)
+        RateTemplate template = RateTemplate.builder()
+                .id(templateId).workgroupId(otherWorkgroupId).currencyId(1L)
+                .baseBuyRate(new BigDecimal("395.0000")).baseSellRate(new BigDecimal("398.0000"))
+                .status(RateTemplate.RateTemplateStatus.APPROVED).build();
+        when(workgroupRepository.findById(workgroupId)).thenReturn(Optional.of(workgroup));
+        when(templateRepository.findById(templateId)).thenReturn(Optional.of(template));
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> service.publish(workgroupId, List.of(templateId), "wrong wg"));
+        assertTrue(ex.getMessage().contains("Sablon nem található"), "kapott: " + ex.getMessage());
+        verify(exchangeRateRepository, org.mockito.Mockito.never()).save(any(ExchangeRate.class));
+    }
+
+    // ============================================================
     // FK-04/E.2 — árfolyamvédelem-validáció tesztek
     // ============================================================
 
     private RateWorkgroup wgWithProtection(UUID id, UUID companyId, UUID branchId, boolean protectionEnabled, Integer groupNum) {
-        Branch branch = Branch.builder().id(branchId).code("BORSI")
-                .company(Company.builder().id(companyId).code("BEST").name("Best Change").build()).build();
+        Company company = Company.builder().id(companyId).code("BEST").name("Best Change").build();
+        Branch branch = Branch.builder().id(branchId).code("BORSI").company(company).build();
         return RateWorkgroup.builder()
-                .id(id).name("WG").code("WG-1").legacyGroupNumber(groupNum)
+                .id(id).name("WG").code("WG-1").legacyGroupNumber(groupNum).company(company)
                 .protectionEnabled(protectionEnabled).branches(Set.of(branch)).build();
     }
 

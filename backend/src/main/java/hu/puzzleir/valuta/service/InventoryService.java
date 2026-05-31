@@ -597,7 +597,17 @@ public class InventoryService {
     @Transactional(readOnly = true)
     public Page<InventoryMovementDto> searchMovements(UUID branchId, LocalDate startDate,
             LocalDate endDate, MovementStatus status, MovementType type, Pageable pageable) {
-        return movementRepository.search(branchId, startDate, endDate, status, type, pageable)
+        // Multi-tenant izoláció (CLAUDE.md B.3): a keresés KÖTELEZŐEN a hívó cégére szűr.
+        // Audit-finding 2026-05-31 (P1 IDOR): a search query companyId-szűrés nélkül volt,
+        // branchId=null esetén MINDEN cég összes mozgása kiszivárgott.
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        // Konkrét iroda-szűrésnél a tulajdonost is ellenőrizzük (tenant-idegen → 404).
+        if (branchId != null) {
+            Branch branch = branchRepository.findById(branchId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+            assertBranchInCompany(branch);
+        }
+        return movementRepository.search(companyId, branchId, startDate, endDate, status, type, pageable)
                 .map(this::toDto);
     }
 
@@ -643,8 +653,53 @@ public class InventoryService {
     }
 
     private Branch findBranch(String branchId) {
-        return branchRepository.findById(UUID.fromString(branchId))
+        Branch branch = branchRepository.findById(UUID.fromString(branchId))
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+        assertBranchInCompany(branch);
+        return branch;
+    }
+
+    /**
+     * Multi-tenant izoláció (CLAUDE.md B.3): a single-id-vel betöltött iroda CSAK a hívó
+     * cégéhez tartozhat. Tenant-idegen iroda → 404 (id-enumeráció ellen, NEM 403).
+     *
+     * <p>Audit-finding 2026-05-31 (P1 IDOR): a findBranch a bank/transfer/korrekció úton
+     * tulajdonos-ellenőrzés nélkül oldott fel tetszőleges branchId-t bármely cégből.</p>
+     */
+    private void assertBranchInCompany(Branch branch) {
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        if (!branchBelongsToCompany(branch, companyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branch.getId());
+        }
+    }
+
+    /**
+     * Multi-tenant izoláció (CLAUDE.md B.3): a single-id-vel betöltött készletmozgás CSAK akkor
+     * látható/módosítható, ha a forrás VAGY a cél irodája a hívó cégéhez tartozik (bank-műveletnél
+     * az egyik oldal null). Tenant-idegen mozgás → 404 (id-enumeráció ellen).
+     *
+     * <p>Audit-finding 2026-05-31 (P0 IDOR): approve/receive/cancel/getMovement tenant-check
+     * nélkül engedte idegen cég mozgásának státuszváltását (cash_balance-írás) és kiolvasását.</p>
+     */
+    private void assertMovementInCompany(InventoryMovement movement) {
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        // MINDEN nem-null oldalnak a hívó cégéhez kell tartoznia (bank-mozgásnál az egyik oldal null),
+        // ÉS legalább az egyik oldal a cégé. Csak az egyik oldal egyezése NEM elég (Codex P1 #934):
+        // egy (legacy / vulnerable-window) cross-tenant BRANCH_TRANSFER receiveMovement-je MINDKÉT
+        // branch cash_balance-át írná — az idegen tenantét is. Tenant-idegen → 404 (id-enumeráció ellen).
+        Branch from = movement.getFromBranch();
+        Branch to = movement.getToBranch();
+        boolean fromOk = from == null || branchBelongsToCompany(from, companyId);
+        boolean toOk = to == null || branchBelongsToCompany(to, companyId);
+        boolean anyOwnBranch = branchBelongsToCompany(from, companyId) || branchBelongsToCompany(to, companyId);
+        if (!fromOk || !toOk || !anyOwnBranch) {
+            throw new ResourceNotFoundException("Készlet mozgás nem található: " + movement.getId());
+        }
+    }
+
+    private boolean branchBelongsToCompany(Branch branch, UUID companyId) {
+        return branch != null && branch.getCompany() != null
+                && branch.getCompany().getId().equals(companyId);
     }
 
     private Currency findCurrency(Long currencyId) {
@@ -658,8 +713,10 @@ public class InventoryService {
     }
 
     private InventoryMovement findMovement(Long id) {
-        return movementRepository.findById(id)
+        InventoryMovement movement = movementRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Készlet mozgás nem található: " + id));
+        assertMovementInCompany(movement);
+        return movement;
     }
 
     /**
@@ -667,8 +724,10 @@ public class InventoryService {
      * Státusz váltó műveletekhez (approve, receive, cancel) KÖTELEZŐ ez a metódus!
      */
     private InventoryMovement findMovementForUpdate(Long id) {
-        return movementRepository.findByIdForUpdate(id)
+        InventoryMovement movement = movementRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Készlet mozgás nem található: " + id));
+        assertMovementInCompany(movement);
+        return movement;
     }
 
     /**

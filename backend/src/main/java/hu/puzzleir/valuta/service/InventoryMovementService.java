@@ -5,8 +5,11 @@ import hu.puzzleir.valuta.dto.inventory.InventoryMovementDto;
 import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.InventoryMovement;
 import hu.puzzleir.valuta.entity.MovementType;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.InventoryMovementRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,13 +33,31 @@ public class InventoryMovementService {
 
     private final InventoryMovementRepository movementRepository;
     private final CashBalanceRepository cashBalanceRepository;
+    private final BranchRepository branchRepository;
+
+    /**
+     * Multi-tenant izoláció (audit/Codex P1 #934): a branchId-vel paraméterezett lekérdezések
+     * KÖTELEZŐEN a hívó cégének irodájára szólnak. Tenant-idegen iroda → 404 (id-enumeráció ellen).
+     * Enélkül a getDailyBalance a cashBalanceRepository.findByBranchId-n át idegen cég egyenlegét
+     * szivárogtatta volna (a mozgás-query scope-olása nem fedte a cash-balance lookupot).
+     */
+    private UUID requireOwnBranch(UUID branchId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (branchId == null || !branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+        return companyId;
+    }
 
     /**
      * Mozgások listázása branchId + currency + date alapján
      */
     @Transactional(readOnly = true)
     public List<InventoryMovementDto> getMovements(UUID branchId, String currency, LocalDate date) {
-        return movementRepository.search(branchId, date, date, null, null,
+        // Multi-tenant izoláció (audit 2026-05-31, P1 IDOR): a kért iroda a hívó cégéé kell legyen,
+        // és a mozgás-query is a cégre szűr.
+        UUID companyId = requireOwnBranch(branchId);
+        return movementRepository.search(companyId, branchId, date, date, null, null,
                         org.springframework.data.domain.Pageable.unpaged())
                 .stream()
                 .filter(m -> currency == null || currency.isEmpty()
@@ -50,8 +71,11 @@ public class InventoryMovementService {
      */
     @Transactional(readOnly = true)
     public InventoryBalanceDto getDailyBalance(UUID branchId, String currency, LocalDate date) {
+        // A branchId tulajdonosát is validáljuk (Codex P1 #934): a cashBalanceRepository.findByBranchId
+        // lookup különben idegen cég záró/nyitó egyenlegét adta volna vissza.
+        UUID companyId = requireOwnBranch(branchId);
         List<InventoryMovement> movements = movementRepository.search(
-                        branchId, date, date, null, null,
+                        companyId, branchId, date, date, null, null,
                         org.springframework.data.domain.Pageable.unpaged())
                 .stream()
                 .filter(m -> currency == null || m.getCurrency().getCode().equalsIgnoreCase(currency))

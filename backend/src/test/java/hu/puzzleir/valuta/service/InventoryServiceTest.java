@@ -5,14 +5,20 @@ import hu.puzzleir.valuta.dto.inventory.BranchTransferRequestDto;
 import hu.puzzleir.valuta.dto.inventory.InventoryMovementDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.entity.Currency;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
+import hu.puzzleir.valuta.security.SecurityUtils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.data.domain.Page;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Method;
@@ -34,6 +40,7 @@ import static org.mockito.Mockito.*;
  * Fix #4: hufValue árfolyamból számítva
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT) // megosztott statikus SecurityUtils-stub minden teszthez
 class InventoryServiceTest {
 
     @InjectMocks
@@ -47,6 +54,8 @@ class InventoryServiceTest {
     @Mock private AuditLogRepository auditLogRepository;
     @Mock private ExchangeRateRepository exchangeRateRepository;
 
+    private static final UUID COMPANY_ID = UUID.randomUUID();
+    private static final UUID OTHER_COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID_2 = UUID.randomUUID();
     private static final Long CURRENCY_ID = 1L;
@@ -54,19 +63,30 @@ class InventoryServiceTest {
 
     private Branch branch;
     private Branch branch2;
+    private Company company;
     private Currency eurCurrency;
     private Currency hufCurrency;
     private Worker worker;
 
+    private MockedStatic<SecurityUtils> securityUtilsMock;
+
     @BeforeEach
     void setUp() {
+        securityUtilsMock = mockStatic(SecurityUtils.class);
+        securityUtilsMock.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+
+        company = new Company();
+        company.setId(COMPANY_ID);
+
         branch = new Branch();
         branch.setId(BRANCH_ID);
         branch.setName("Teszt iroda 1");
+        branch.setCompany(company);
 
         branch2 = new Branch();
         branch2.setId(BRANCH_ID_2);
         branch2.setName("Teszt iroda 2");
+        branch2.setCompany(company);
 
         eurCurrency = new Currency();
         eurCurrency.setId(CURRENCY_ID);
@@ -81,6 +101,13 @@ class InventoryServiceTest {
         worker = new Worker();
         worker.setId(WORKER_ID);
         worker.setName("Teszt dolgozó");
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (securityUtilsMock != null) {
+            securityUtilsMock.close();
+        }
     }
 
     // ============ Fix #1: depositToBank — PENDING státusz ============
@@ -434,6 +461,134 @@ class InventoryServiceTest {
         // Assert: HUF esetén nincs árfolyam lookup, hufValue == amount
         verify(exchangeRateRepository, never()).findLatestMidRateByCurrencyCode(any(), anyString());
         assertThat(captor.getValue().getHufValue()).isEqualByComparingTo(new BigDecimal("50000"));
+    }
+
+    // ============ Audit 2026-05-31: multi-tenant IDOR védelem ============
+
+    private Branch foreignBranch() {
+        Company otherCompany = new Company();
+        otherCompany.setId(OTHER_COMPANY_ID);
+        Branch foreign = new Branch();
+        foreign.setId(UUID.randomUUID());
+        foreign.setName("Idegen cég irodája");
+        foreign.setCompany(otherCompany);
+        return foreign;
+    }
+
+    @Test
+    @DisplayName("IDOR: idegen cég irodájára kért bank-kivét → 404 (ResourceNotFound), nincs mozgás-mentés")
+    void requestBankWithdraw_foreignBranch_throwsNotFound() {
+        Branch foreign = foreignBranch();
+        hu.puzzleir.valuta.dto.inventory.BankWithdrawRequestDto dto =
+                hu.puzzleir.valuta.dto.inventory.BankWithdrawRequestDto.builder()
+                        .branchId(foreign.getId().toString())
+                        .currencyId(CURRENCY_ID)
+                        .amount(new BigDecimal("1000"))
+                        .build();
+        when(branchRepository.findById(foreign.getId())).thenReturn(Optional.of(foreign));
+
+        assertThatThrownBy(() -> inventoryService.requestBankWithdraw(dto, WORKER_ID))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Iroda nem található");
+        verify(movementRepository, never()).save(any(InventoryMovement.class));
+    }
+
+    @Test
+    @DisplayName("IDOR: idegen cég irodái közti transzfer → 404, nincs mozgás-mentés")
+    void transferBetweenBranches_foreignBranch_throwsNotFound() {
+        Branch foreign = foreignBranch();
+        BranchTransferRequestDto dto = BranchTransferRequestDto.builder()
+                .fromBranchId(foreign.getId().toString())
+                .toBranchId(BRANCH_ID_2.toString())
+                .currencyId(CURRENCY_ID)
+                .amount(new BigDecimal("100"))
+                .build();
+        when(branchRepository.findById(foreign.getId())).thenReturn(Optional.of(foreign));
+
+        assertThatThrownBy(() -> inventoryService.transferBetweenBranches(dto, WORKER_ID))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Iroda nem található");
+        verify(movementRepository, never()).save(any(InventoryMovement.class));
+    }
+
+    @Test
+    @DisplayName("IDOR: idegen cég mozgásának jóváhagyása → 404, nincs cash_balance-írás")
+    void approveMovement_foreignMovement_throwsNotFound() {
+        InventoryMovement foreignMovement = buildMovement(MovementType.BANK_DEPOSIT, MovementStatus.PENDING,
+                eurCurrency, foreignBranch(), null);
+        foreignMovement.setId(99L);
+        when(movementRepository.findByIdForUpdate(99L)).thenReturn(Optional.of(foreignMovement));
+
+        assertThatThrownBy(() -> inventoryService.approveMovement(99L, WORKER_ID))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Készlet mozgás nem található");
+        verify(cashBalanceRepository, never()).save(any(CashBalance.class));
+    }
+
+    @Test
+    @DisplayName("IDOR: kevert-tenant BRANCH_TRANSFER (saját from + idegen to) jóváhagyása → 404 (Codex P1 #934)")
+    void approveMovement_mixedTenantTransfer_throwsNotFound() {
+        // Egy oldal a sajátunk, a másik IDEGEN — a receive MINDKÉT cash_balance-t írná, ezért tiltjuk.
+        InventoryMovement mixed = buildMovement(MovementType.BRANCH_TRANSFER, MovementStatus.PENDING,
+                eurCurrency, branch /* saját */, foreignBranch() /* idegen */);
+        mixed.setId(88L);
+        when(movementRepository.findByIdForUpdate(88L)).thenReturn(Optional.of(mixed));
+
+        assertThatThrownBy(() -> inventoryService.approveMovement(88L, WORKER_ID))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Készlet mozgás nem található");
+        verify(cashBalanceRepository, never()).save(any(CashBalance.class));
+    }
+
+    @Test
+    @DisplayName("IDOR: idegen cég mozgásának lekérése (getMovement) → 404")
+    void getMovement_foreignMovement_throwsNotFound() {
+        InventoryMovement foreignMovement = buildMovement(MovementType.BRANCH_TRANSFER, MovementStatus.PENDING,
+                eurCurrency, foreignBranch(), foreignBranch());
+        foreignMovement.setId(77L);
+        when(movementRepository.findById(77L)).thenReturn(Optional.of(foreignMovement));
+
+        assertThatThrownBy(() -> inventoryService.getMovement(77L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Készlet mozgás nem található");
+    }
+
+    @Test
+    @DisplayName("IDOR: saját cég mozgása (bank-művelet, fromBranch=null) lekérhető")
+    void getMovement_ownBankMovement_succeeds() {
+        // BANK_WITHDRAW: fromBranch=null, toBranch=saját → a tenant-check a toBranch-en átmegy
+        InventoryMovement ownMovement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.PENDING,
+                eurCurrency, null, branch);
+        ownMovement.setId(55L);
+        when(movementRepository.findById(55L)).thenReturn(Optional.of(ownMovement));
+
+        InventoryMovementDto result = inventoryService.getMovement(55L);
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    @DisplayName("searchMovements: a hívó cég companyId-ját adja át a repo-nak (nem szivárog cross-tenant)")
+    void searchMovements_passesCurrentCompanyId() {
+        when(movementRepository.search(eq(COMPANY_ID), any(), any(), any(), any(), any(), any()))
+                .thenReturn(Page.empty());
+
+        inventoryService.searchMovements(null, null, null, null, null,
+                org.springframework.data.domain.PageRequest.of(0, 20));
+
+        verify(movementRepository).search(eq(COMPANY_ID), isNull(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("searchMovements: idegen cég branchId-jére szűrve → 404")
+    void searchMovements_foreignBranchFilter_throwsNotFound() {
+        Branch foreign = foreignBranch();
+        when(branchRepository.findById(foreign.getId())).thenReturn(Optional.of(foreign));
+
+        assertThatThrownBy(() -> inventoryService.searchMovements(foreign.getId(), null, null, null, null,
+                org.springframework.data.domain.PageRequest.of(0, 20)))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Iroda nem található");
+        verify(movementRepository, never()).search(any(), any(), any(), any(), any(), any(), any());
     }
 
     // ============ Segéd factory ============
