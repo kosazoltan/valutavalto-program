@@ -1,5 +1,14 @@
 # Valuta ERP - Backlog
 
+> ⚠️ **ELAVULT (2026-06-01):** Ez a backlog a **v2.2.2** (2026-04-23) állapotot tükrözi, miközben a
+> production már **v2.27.74**-en van (50+ release azóta). Az alábbi P0/P1 itemek nagy része valószínűleg
+> rég javítva — **kötelező egyenkénti research-first re-triage** (kód + git log) MIELŐTT bármelyiken
+> dolgoznál; ne tételezd fel, hogy nyitott. Megjegyzés: a "Transfer complete 500" / "Target cash_balance
+> lock timeout" / "Source kassza holdAmount race" gyanús gyökér-okait a 2026-06-01-i globális
+> cash-balance lock-ordering deadlock-megelőzés (#947/#951/#952/#953, CashLockOrdering) érintheti —
+> ha a transfer-complete 500 reprodukálható, ott kezdd. Új, aktuális ledger: GitHub issues + a
+> `vault/sessions/` legfrissebb jegyzetei + `vault/feedback/_active_mandates.md`.
+
 ## v2.2.2 hotfix (pending)
 
 ### [P0] Transfer complete 500-as hiba (BR017 -> BR035)
