@@ -463,6 +463,64 @@ class InventoryServiceTest {
         assertThat(captor.getValue().getHufValue()).isEqualByComparingTo(new BigDecimal("50000"));
     }
 
+    // ============ Audit 2026-05-31 (P1): receiveMovement difference + audit ============
+
+    @Test
+    @DisplayName("receiveMovement: receivedAmount ≠ amount → difference rögzítve + DIFF-audit (készlet=SUM(tx) védelem)")
+    void receiveMovement_shortage_recordsDifferenceAndAudits() {
+        InventoryMovement movement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.APPROVED,
+                eurCurrency, null, branch);
+        movement.setId(5L);
+        movement.setAmount(new BigDecimal("1000"));
+        hu.puzzleir.valuta.dto.inventory.ReceiveMovementDto dto =
+                hu.puzzleir.valuta.dto.inventory.ReceiveMovementDto.builder()
+                        .receivedAmount(new BigDecimal("950")).build();
+        CashBalance balance = CashBalance.builder()
+                .branch(branch).currency(eurCurrency).currentBalance(new BigDecimal("5000")).build();
+        when(movementRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
+                .thenReturn(Optional.of(balance));
+        when(movementRepository.save(any(InventoryMovement.class))).thenAnswer(i -> i.getArgument(0));
+
+        inventoryService.receiveMovement(5L, WORKER_ID, dto);
+
+        // A különbség mostantól RÖGZÍTVE van a mozgáson (nem tűnik el nyom nélkül).
+        assertThat(movement.getReceivedAmount()).isEqualByComparingTo(new BigDecimal("950"));
+        assertThat(movement.getDifference()).isEqualByComparingTo(new BigDecimal("-50"));
+        // ÉS auditálva (DIFF action, a különbség a changes-ben).
+        ArgumentCaptor<AuditLog> cap = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(cap.capture());
+        assertThat(cap.getValue().getAction()).isEqualTo("INVENTORY_MOVEMENT_RECEIVED_DIFF");
+        assertThat(cap.getValue().getChanges()).contains("-50");
+    }
+
+    @Test
+    @DisplayName("receiveMovement: pontos fogadás (received == amount) → difference 0, sima RECEIVED-audit")
+    void receiveMovement_exact_zeroDifference() {
+        InventoryMovement movement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.APPROVED,
+                eurCurrency, null, branch);
+        movement.setId(6L);
+        movement.setAmount(new BigDecimal("1000"));
+        hu.puzzleir.valuta.dto.inventory.ReceiveMovementDto dto =
+                hu.puzzleir.valuta.dto.inventory.ReceiveMovementDto.builder()
+                        .receivedAmount(new BigDecimal("1000")).build();
+        CashBalance balance = CashBalance.builder()
+                .branch(branch).currency(eurCurrency).currentBalance(new BigDecimal("5000")).build();
+        when(movementRepository.findByIdForUpdate(6L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
+                .thenReturn(Optional.of(balance));
+        when(movementRepository.save(any(InventoryMovement.class))).thenAnswer(i -> i.getArgument(0));
+
+        inventoryService.receiveMovement(6L, WORKER_ID, dto);
+
+        assertThat(movement.getDifference()).isEqualByComparingTo(BigDecimal.ZERO);
+        ArgumentCaptor<AuditLog> cap = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(cap.capture());
+        assertThat(cap.getValue().getAction()).isEqualTo("INVENTORY_MOVEMENT_RECEIVED");
+    }
+
     // ============ Audit 2026-05-31: multi-tenant IDOR védelem ============
 
     private Branch foreignBranch() {

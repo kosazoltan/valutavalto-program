@@ -74,6 +74,20 @@ public class InventoryMovement {
     private BigDecimal hufValue;
 
     /**
+     * A ténylegesen fogadott összeg (receiveMovement). NULL, amíg nincs fogadva.
+     * Audit-finding 2026-05-31 (P1): enélkül a forrás-leírás (amount) és a cél-jóváírás
+     * (receivedAmount) eltérése nyom nélkül eltűnt → készlet=SUM(tx) sérülés.
+     */
+    @Column(name = "received_amount", precision = 18, scale = 4)
+    private BigDecimal receivedAmount;
+
+    /**
+     * received_amount - amount (eltérés/hiány a fogadáskor). NULL, amíg nincs fogadva; 0, ha pontos.
+     */
+    @Column(name = "difference", precision = 18, scale = 4)
+    private BigDecimal difference;
+
+    /**
      * Mozgás típusa
      */
     @Enumerated(EnumType.STRING)

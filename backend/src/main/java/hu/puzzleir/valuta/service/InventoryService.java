@@ -233,6 +233,15 @@ public class InventoryService {
 
         BigDecimal receivedAmount = dto.getReceivedAmount();
 
+        // Audit-finding 2026-05-31 (P1): a forrás az eredeti amount-tal terhelődik, de a cél a
+        // kliens által megadott receivedAmount-tal íródik jóvá. Ha ezek eltérnek, a különbség eddig
+        // NYOM NÉLKÜL eltűnt (nincs difference-rekord, nincs audit) → "készlet = SUM(tx)" sérülés és
+        // manipulációs felület. Mostantól rögzítjük a fogadott összeget + a különbséget, és minden
+        // fogadást auditálunk (a Transfer alrendszer received_amount/difference mintája).
+        BigDecimal difference = receivedAmount.subtract(movement.getAmount());
+        movement.setReceivedAmount(receivedAmount);
+        movement.setDifference(difference);
+
         // CashBalance frissítés a mozgás típusa alapján
         switch (movement.getMovementType()) {
             case BANK_WITHDRAW -> {
@@ -260,7 +269,36 @@ public class InventoryService {
         }
 
         movement = movementRepository.save(movement);
+
+        writeReceiveAuditLog(movement, worker, receivedAmount, difference);
         return toDto(movement);
+    }
+
+    /**
+     * Készletmozgás-fogadás audit-bejegyzése (KÖTELEZŐ). A különbséget (difference) explicit
+     * rögzíti, így egy receivedAmount ≠ amount eltérés utólag detektálható és reconcile-olható.
+     */
+    private void writeReceiveAuditLog(InventoryMovement movement, Worker worker,
+                                      BigDecimal receivedAmount, BigDecimal difference) {
+        Branch receivingBranch = movement.getToBranch() != null
+                ? movement.getToBranch() : movement.getFromBranch();
+        boolean hasShortage = difference.signum() != 0;
+        AuditLog auditLog = AuditLog.builder()
+                .action(hasShortage ? "INVENTORY_MOVEMENT_RECEIVED_DIFF" : "INVENTORY_MOVEMENT_RECEIVED")
+                .entityType("InventoryMovement")
+                .entityId(movement.getId() != null ? movement.getId().toString() : null)
+                .userId(worker.getId().toString())
+                .userName(worker.getName())
+                .branchId(receivingBranch != null ? receivingBranch.getId().toString() : null)
+                .branchName(receivingBranch != null ? receivingBranch.getName() : null)
+                .changes("Típus: " + movement.getMovementType().name()
+                        + ", Valuta: " + movement.getCurrency().getCode()
+                        + ", Küldött (amount): " + movement.getAmount().setScale(4, RoundingMode.HALF_UP)
+                        + ", Fogadott (received): " + receivedAmount.setScale(4, RoundingMode.HALF_UP)
+                        + ", Eltérés (difference): " + difference.setScale(4, RoundingMode.HALF_UP)
+                        + ", Ref: " + movement.getReferenceNumber())
+                .build();
+        auditLogRepository.save(auditLog);
     }
 
     /**
