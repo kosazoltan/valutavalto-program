@@ -156,6 +156,51 @@ class TransactionReversalServiceTest {
     }
 
     @Test
+    @DisplayName("LOCK-ORDERING (cash-vs-cash deadlock): a sztorno a cash_balance sorokat NOVEKVO "
+            + "currencyId sorrendben elo-lockolja (HUF=1 -> HUF-first), egyezoen a BUY/SELL aggal")
+    void testReversal_locksCashBalancesInAscendingCurrencyOrder() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(true);
+            when(dailySessionService.getDailyReversalCountForUpdate()).thenReturn(0);
+
+            // EUR_ID (10) > HUF_ID (1): a determinisztikus globalis sorrend a HUF-ot lockolja ELOSZOR.
+            Transaction original = Transaction.builder()
+                    .id(100L).company(company).branch(branch).worker(worker)
+                    .receiptNumber("E030600001").transactionType(TransactionType.SELL)
+                    .status(TransactionStatus.COMPLETED)
+                    .transactionDate(LocalDate.now()).transactionTime(LocalTime.now())
+                    .currency(eurCurrency).currencyAmount(new BigDecimal("200"))
+                    .exchangeRate(new BigDecimal("400.00")).hufAmount(new BigDecimal("80000"))
+                    .handlingFee(BigDecimal.ZERO).discountPercent(BigDecimal.ZERO).discountAmount(BigDecimal.ZERO)
+                    .build();
+
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(original));
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+            when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
+                Transaction t = inv.getArgument(0);
+                if (t.getId() == null) t.setId(200L);
+                return t;
+            });
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L).reason("Teves rogzites").approvedBy("SUPERVISOR")
+                    .build();
+
+            reversalService.executeReversal(request);
+
+            // A cash_balance elo-lock sorrendje: HUF (1) ELOSZOR, csak utana EUR (10).
+            InOrder cashLockOrder = inOrder(helper);
+            cashLockOrder.verify(helper).lockCashBalance(BRANCH_ID, HUF_ID);
+            cashLockOrder.verify(helper).lockCashBalance(BRANCH_ID, EUR_ID);
+        }
+    }
+
+    @Test
     @DisplayName("G2: sztorno aktualis arfolyammal - reversal a custom rate-tel konyvel")
     void testStorno_currentRate() {
         try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
@@ -605,11 +650,13 @@ class TransactionReversalServiceTest {
 
             reversalService.executeReversal(request);
 
-            // A cash_balance sorokat (currency=EUR, majd HUF) a daily_session lock (getDailyReversalCountForUpdate)
-            // ELOTT lockolja -> a sorrend cash_balance -> daily_session, azonos a normal tranzakcioval -> nincs deadlock.
+            // A cash_balance sorokat a daily_session lock (getDailyReversalCountForUpdate) ELOTT lockolja
+            // -> reszsorrend cash_balance -> daily_session (azonos a normal tranzakcioval, nincs daily<->cash deadlock).
+            // A cash sorokon BELUL NOVEKVO currencyId sorrend (HUF=1 ELOSZOR, majd EUR=10) — globalis,
+            // determinisztikus cash-vs-cash deadlock-megelozes (CashLockOrdering), egyezoen a BUY/SELL aggal.
             InOrder inOrder = inOrder(helper, dailySessionService);
-            inOrder.verify(helper).lockCashBalance(BRANCH_ID, EUR_ID);
             inOrder.verify(helper).lockCashBalance(BRANCH_ID, HUF_ID);
+            inOrder.verify(helper).lockCashBalance(BRANCH_ID, EUR_ID);
             inOrder.verify(dailySessionService).getDailyReversalCountForUpdate();
         }
     }
