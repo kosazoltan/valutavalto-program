@@ -173,6 +173,25 @@ public class TransactionOperationHelper {
     }
 
     /**
+     * Cash_balance SOR megszerzese PESSIMISTIC_WRITE lockkal — MUTACIO NELKUL.
+     *
+     * Codex P1 (2026-05-31, #944 round-3 review) — LOCK-ORDERING / deadlock-megelozes: a normal
+     * vetel/eladas (TransactionService.executeBuy/executeSell) eloszor a cash_balance sorokat lockolja
+     * (updateCashBalance), majd a vegen irja a daily_session-t (updateSessionStats) — sorrend:
+     * cash_balance -> daily_session. A sztorno (TransactionReversalService.executeReversal) viszont a
+     * napi sztorno-plafon ellenorzesehez a daily_session sort lockolja; ha ezt a cash_balance lock ELOTT
+     * tenne, az ELLENTETES sorrend (daily_session -> cash_balance) a normal tranzakcioval keresztezve
+     * adatbazis-deadlockot okozhatna. Ezert a sztorno a daily_session lock ELOTT EZZEL elo-lockolja a
+     * majdan modositando cash_balance sorokat (azonos currencyId -> HUF sorrendben), igy a GLOBALIS
+     * lock-sorrend mindenhol cash_balance -> daily_session. A kesobbi updateCashBalance ugyanezt a sort
+     * mar lockoltan kapja (no-op re-lock), majd mutalja.
+     */
+    public void lockCashBalance(UUID branchId, Long currencyId) {
+        cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, currencyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Kassza egyenleg nem talalhato"));
+    }
+
+    /**
      * Kamera bizonylat linkeles.
      */
     public void linkCameraEvidence(Transaction transaction) {

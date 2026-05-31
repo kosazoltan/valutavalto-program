@@ -91,16 +91,30 @@ public class TransactionReversalService {
         // VEGEN tortenik (updateSessionStats). Lock-mentes olvasassal ket parhuzamos sztorno
         // ugyanazt a count-ot latta -> mindketto atment a >= limit ellenorzesen -> a nap a max-3
         // plafon FOLE kerulhetett. A getDailyReversalCountForUpdate() a daily_session SORAT
-        // PESSIMISTIC_WRITE-tal lockolja (SELECT ... FOR UPDATE) MAR ITT, a plafon-ellenorzes es
-        // barmilyen mellekhatas (POS-sztorno, bizonylatszam) ELOTT: a parhuzamos sztorno a lock
-        // mogott sorba all, es a count olvasasa+novelese ugyanabban a write-tranzakcioban
-        // szerializalodik. (A lock-mentes getDailyReversalCount() csak megjelenitesre marad.)
+        // PESSIMISTIC_WRITE-tal lockolja (SELECT ... FOR UPDATE) a plafon-ellenorzes es barmilyen
+        // mellekhatas (POS-sztorno, bizonylatszam) ELOTT: a parhuzamos sztorno a lock mogott sorba
+        // all, a count olvasasa+novelese ugyanabban a write-tranzakcioban szerializalodik.
         //
-        // LOCK-ORDERING KONVENCIO (deadlock-megelozes, self-review P2): ez a flow MINDIG ebben a
-        // sorrendben szerez sor-lockot — (1) transaction (findByIdForUpdate, fent), (2) daily_session
-        // (itt), (3) cash_balance (lentebb, updateCashBalance). Uj sztorno-kozeli kod ezt a sorrendet
-        // KOVESSE (a daily_session-t SOHA ne lockold a transaction sor ELOTT), kulonben lock-ordering
-        // deadlock keletkezhet. A normal vetel/eladas a daily_session-t lock NELKUL irja -> nincs kor.
+        // LOCK-ORDERING (Codex P1, #944 round-3 review — daily_session <-> cash_balance deadlock-megelozes):
+        // a normal vetel/eladas (TransactionService.executeBuy/executeSell) a cash_balance sorokat MAR a
+        // daily_session-iras (updateSessionStats, a tranzakcio vegen) ELOTT lockolja -> reszsorrend
+        // cash_balance -> daily_session. Ha a sztorno a daily_session-t a cash_balance ELOTT lockolna,
+        // az ELLENTETES reszsorrend (daily_session -> cash_balance) egy parhuzamos normal tranzakcioval
+        // keresztezve adatbazis-deadlockot okozhatna. Ezert a daily_session lock (lenti
+        // getDailyReversalCountForUpdate) ELOTT ELO-LOCKOLJUK a majdan modositando cash_balance sorokat,
+        // igy a sztorno reszsorrendje is cash_balance -> daily_session. A cap-check igy is a
+        // POS/mellekhatasok ELOTT marad (nincs POS-then-rollback).
+        //
+        // FIGYELEM (self-review, kulon kezelendo): a cash_balance soron BELULI sorrend NEM egyseges az
+        // egesz kodbazisban — a BUY a HUF-ot lockolja eloszor (validateCurrencyStock(HUF)), a SELL es ez
+        // a sztorno a currency-t. Ez egy PRE-EXISTING (a fix elotti) cash-vs-cash AB-BA deadlock-kockazat
+        // BUY <-> SELL/sztorno kozott, FUGGETLEN ettol a daily_session-fixtol; kulon fokuszalt PR
+        // rendezi (globalis, determinisztikus cash-lock sorrend, pl. novekvo currencyId). Itt a sorrendet
+        // a lenti updateCashBalance-szel egyezoen tartjuk (currencyId -> HUF), nem rontva a meglevo allapotot.
+        Long reversalCurrencyId = original.getCurrency().getId();
+        helper.lockCashBalance(branchId, reversalCurrencyId);
+        helper.lockCashBalance(branchId, helper.getHufCurrencyId());
+
         int dailyReversals = dailySessionService.getDailyReversalCountForUpdate();
         int reversalLimit = helper.getDailyReversalLimit();
         if (dailyReversals >= reversalLimit) {
@@ -217,8 +231,9 @@ public class TransactionReversalService {
         original.setStatus(TransactionStatus.REVERSED);
         transactionRepository.save(original);
 
-        // Kassza visszaallitasa (eredeti tranzakcio ellentete)
-        Long currencyId = original.getCurrency().getId();
+        // Kassza visszaallitasa (eredeti tranzakcio ellentete). A cash_balance sorok (reversalCurrencyId,
+        // HUF) MAR lockoltak (fentebb, a daily_session lock elott elo-lockoltuk) — ez no-op re-lock + mutacio.
+        Long currencyId = reversalCurrencyId;
         if (original.getTransactionType() == TransactionType.BUY) {
             // Eredeti vetel visszavonasa: valuta -, HUF +
             // Stock validation: van-e eleg valuta a kasszaban a visszavethez

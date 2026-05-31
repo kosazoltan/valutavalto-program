@@ -581,6 +581,40 @@ class TransactionReversalServiceTest {
     }
 
     @Test
+    @DisplayName("Codex P1 (deadlock-megelozes): executeReversal a cash_balance sorokat (currency, HUF) a daily_session lock ELOTT lockolja -> globalis lock-sorrend cash -> daily_session (a normal vetel/eladassal egyezo)")
+    void testStorno_locksCashBeforeDailySession() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(true);
+            when(dailySessionService.getDailyReversalCountForUpdate()).thenReturn(0);
+
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(buildTodaySell()));
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+            when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
+                Transaction t = inv.getArgument(0);
+                if (t.getId() == null) t.setId(205L);
+                return t;
+            });
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L).reason("lock-order").approvedBy("SUPERVISOR").build();
+
+            reversalService.executeReversal(request);
+
+            // A cash_balance sorokat (currency=EUR, majd HUF) a daily_session lock (getDailyReversalCountForUpdate)
+            // ELOTT lockolja -> a sorrend cash_balance -> daily_session, azonos a normal tranzakcioval -> nincs deadlock.
+            InOrder inOrder = inOrder(helper, dailySessionService);
+            inOrder.verify(helper).lockCashBalance(BRANCH_ID, EUR_ID);
+            inOrder.verify(helper).lockCashBalance(BRANCH_ID, HUF_ID);
+            inOrder.verify(dailySessionService).getDailyReversalCountForUpdate();
+        }
+    }
+
+    @Test
     @DisplayName("Sztorno (audit P2.7) - nincs nyitott session (napzaras utan) -> ValidationException")
     void testStornoFlow_noOpenSession() {
         try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
