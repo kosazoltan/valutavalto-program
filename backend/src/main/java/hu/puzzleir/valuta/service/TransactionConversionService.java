@@ -216,7 +216,6 @@ public class TransactionConversionService {
 
         Transaction saved = transactionRepository.save(transaction);
         helper.linkCameraEvidence(saved);
-        helper.flagHighRiskAfterBooking(request.getCustomerId());
 
         // Konverzios vetel bizonylat — financial_effective = TRUE (default), conversionGroupId =
         // parent.conversion_group_id (a sum riportokban a parent NEM, a convBuy IGEN szamol).
@@ -281,6 +280,12 @@ public class TransactionConversionService {
                 .build();
         convSell = transactionRepository.save(convSell);
         helper.linkCameraEvidence(convSell);
+
+        // Audit/Codex P1 #937: a highRiskFlag-frissítést az EFFEKTÍV (financialEffective=true) sorok
+        // — convBuy + convSell — mentése UTÁN hívjuk. A sumCustomerAnnualTotal csak a financialEffective
+        // sorokat összegzi; a parent (false) után hívva a friss konverzió még nem számítana bele, így a
+        // konverzió-okozta éves-limit átlépés sosem állítaná be a flag-et.
+        helper.flagHighRiskAfterBooking(request.getCustomerId());
 
         // Kassza frissites
         helper.updateCashBalance(branchId, fromCurrency.getId(), request.getFromAmount(), true);
