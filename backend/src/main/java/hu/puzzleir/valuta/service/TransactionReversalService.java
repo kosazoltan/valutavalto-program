@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import hu.puzzleir.valuta.service.TransactionService.ReversalRequest;
 import hu.puzzleir.valuta.service.TransactionService.PartialRefundRequest;
+import hu.puzzleir.valuta.util.CashLockOrdering;
 import hu.puzzleir.valuta.util.HungarianRounding;
 
 import java.math.BigDecimal;
@@ -105,15 +106,16 @@ public class TransactionReversalService {
         // igy a sztorno reszsorrendje is cash_balance -> daily_session. A cap-check igy is a
         // POS/mellekhatasok ELOTT marad (nincs POS-then-rollback).
         //
-        // FIGYELEM (self-review, kulon kezelendo): a cash_balance soron BELULI sorrend NEM egyseges az
-        // egesz kodbazisban — a BUY a HUF-ot lockolja eloszor (validateCurrencyStock(HUF)), a SELL es ez
-        // a sztorno a currency-t. Ez egy PRE-EXISTING (a fix elotti) cash-vs-cash AB-BA deadlock-kockazat
-        // BUY <-> SELL/sztorno kozott, FUGGETLEN ettol a daily_session-fixtol; kulon fokuszalt PR
-        // rendezi (globalis, determinisztikus cash-lock sorrend, pl. novekvo currencyId). Itt a sorrendet
-        // a lenti updateCashBalance-szel egyezoen tartjuk (currencyId -> HUF), nem rontva a meglevo allapotot.
+        // CASH-VS-CASH LOCK-ORDERING (a fenti "kulon fokuszalt PR" itt megvalosul): a sztorno a
+        // modositando cash_balance sorokat (deviza + HUF) GLOBALISAN egyseges, NOVEKVO currencyId
+        // sorrendben elo-lockolja — egyezoen a BUY/SELL/konverzio/reszleges-visszateres aggal. Igy
+        // megszunik a BUY (HUF-first) <-> sztorno (korabban currency-first) AB-BA deadlock-kockazat.
+        // (A cash-lockok a lenti daily_session lock ELOTT vannak -> reszsorrend cash_balance ->
+        // daily_session is megmarad.) A lenti updateCashBalance ugyanezeket a sorokat mar lockoltan
+        // kapja (no-op re-lock). Lasd: CashLockOrdering.
         Long reversalCurrencyId = original.getCurrency().getId();
-        helper.lockCashBalance(branchId, reversalCurrencyId);
-        helper.lockCashBalance(branchId, helper.getHufCurrencyId());
+        CashLockOrdering.lockInAscendingCurrencyOrder(branchId, helper::lockCashBalance,
+                reversalCurrencyId, helper.getHufCurrencyId());
 
         int dailyReversals = dailySessionService.getDailyReversalCountForUpdate();
         int reversalLimit = helper.getDailyReversalLimit();
@@ -377,8 +379,14 @@ public class TransactionReversalService {
         Transaction saved = transactionRepository.save(partialRefund);
         helper.linkCameraEvidence(saved);
 
-        // Kassza korrekcio: csak a visszateritett osszeggel
+        // CASH-VS-CASH LOCK-ORDERING (deadlock-megelozes): a modositando cash_balance sorokat (deviza +
+        // HUF) GLOBALISAN egyseges, NOVEKVO currencyId sorrendben elo-lockoljuk a keszlet-ellenorzes /
+        // mutacio ELOTT — egyezoen a BUY/SELL/sztorno aggal. Lasd: CashLockOrdering.
         Long currencyId = original.getCurrency().getId();
+        CashLockOrdering.lockInAscendingCurrencyOrder(branchId, helper::lockCashBalance,
+                currencyId, helper.getHufCurrencyId());
+
+        // Kassza korrekcio: csak a visszateritett osszeggel
         if (original.getTransactionType() == TransactionType.BUY) {
             // Eredeti vetel reszleges visszavonasa: valuta -, HUF +
             // Stock validation: van-e eleg valuta a kasszaban a reszleges visszavethez

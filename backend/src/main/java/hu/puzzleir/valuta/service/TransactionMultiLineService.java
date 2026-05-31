@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.CashLockOrdering;
 import hu.puzzleir.valuta.util.HungarianRounding;
 import hu.puzzleir.valuta.dto.pos.PosTransactionResult;
 import lombok.RequiredArgsConstructor;
@@ -133,6 +134,18 @@ public class TransactionMultiLineService {
         // AML ellenorzes az aggregalt osszegre
         helper.performAmlCheck(payableAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), firstCurrency.getCode());
+
+        // CASH-VS-CASH LOCK-ORDERING (deadlock-megelozes): a multi-line vetel a HUF-ot + minden tetelsor
+        // devizajat mozgatja; ezeket GLOBALISAN egyseges, NOVEKVO currencyId sorrendben elo-lockoljuk a
+        // keszlet-ellenorzes / soronkenti updateCashBalance ELOTT, egyezoen a BUY/SELL/sztorno aggal.
+        // Igy tobb-devizas multi-line eseten sincs AB-BA deadlock. Lasd: CashLockOrdering.
+        List<Long> buyLockCurrencyIds = new ArrayList<>();
+        buyLockCurrencyIds.add(helper.getHufCurrencyId());
+        for (TransactionLine line : transactionLines) {
+            buyLockCurrencyIds.add(line.getCurrency().getId());
+        }
+        CashLockOrdering.lockInAscendingCurrencyOrder(branchId, helper::lockCashBalance,
+                buyLockCurrencyIds.toArray(new Long[0]));
 
         // 2026-05-15 user-direktíva: BUY ágon a pénztár HUF készletet ellenőrizni KELL.
         // Multi-line vétel végén egyetlen HUF kifizetés a payableAmount-ra — ezt
@@ -265,6 +278,19 @@ public class TransactionMultiLineService {
         BigDecimal totalHuf = BigDecimal.ZERO;
         BigDecimal totalCurrencyAmount = BigDecimal.ZERO;
         List<TransactionLine> transactionLines = new ArrayList<>();
+
+        // CASH-VS-CASH LOCK-ORDERING (deadlock-megelozes): a multi-line eladas a HUF-ot + minden tetelsor
+        // devizajat mozgatja. A soronkenti keszlet-ellenorzes (lenti validateCurrencyStock a ciklusban) mar
+        // lockolna — ezert MAR ITT, a ciklus ELOTT GLOBALISAN egyseges, NOVEKVO currencyId sorrendben
+        // elo-lockoljuk az osszes erintett cash_balance sort, egyezoen a BUY/SELL/sztorno aggal. Lasd:
+        // CashLockOrdering.
+        List<Long> sellLockCurrencyIds = new ArrayList<>();
+        sellLockCurrencyIds.add(helper.getHufCurrencyId());
+        for (LineRequest preLockLine : request.getLines()) {
+            sellLockCurrencyIds.add(helper.resolveCurrencyId(preLockLine.getCurrencyId(), preLockLine.getCurrencyCode()));
+        }
+        CashLockOrdering.lockInAscendingCurrencyOrder(branchId, helper::lockCashBalance,
+                sellLockCurrencyIds.toArray(new Long[0]));
 
         for (int i = 0; i < request.getLines().size(); i++) {
             final int lineIdx = i;

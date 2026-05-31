@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.CashLockOrdering;
 import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -134,6 +135,13 @@ public class TransactionConversionService {
                 request.getCustomerActorDocumentNumber(),
                 request.getCustomerActorAddress(),
                 "KONVERZIO");
+
+        // CASH-VS-CASH LOCK-ORDERING (deadlock-megelozes): a konverzio HAROM cash_balance sort mozgat
+        // (forras-deviza, cel-deviza, HUF) — ezeket GLOBALISAN egyseges, NOVEKVO currencyId sorrendben
+        // elo-lockoljuk a keszlet-ellenorzes / mutacio ELOTT, egyezoen a BUY/SELL/sztorno aggal, hogy ne
+        // alakulhasson ki AB-BA deadlock egy parhuzamos tranzakcioval. Lasd: CashLockOrdering.
+        CashLockOrdering.lockInAscendingCurrencyOrder(branchId, helper::lockCashBalance,
+                fromCurrency.getId(), toCurrency.getId(), helper.getHufCurrencyId());
 
         // Keszlet ellenorzes — a kifizetett cel valuta + (ha van) a visszajaro HUF.
         helper.validateCurrencyStock(branchId, toCurrency.getId(), toAmount);

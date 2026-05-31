@@ -13,6 +13,7 @@ import hu.puzzleir.valuta.dto.pos.PosTransactionResult;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.CashLockOrdering;
 import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -236,6 +237,16 @@ public class TransactionService {
             "BUY"
         );
 
+        // LOCK-ORDERING (cash-vs-cash deadlock-megelozes): a modositando cash_balance sorokat
+        // (HUF + deviza) GLOBALISAN egyseges, NOVEKVO currencyId sorrendben elo-lockoljuk, mielott
+        // barmilyen kasszamuvelet (validateCurrencyStock / updateCashBalance) tortenne. Igy a BUY a
+        // SELL-lel / sztornoval / konverzioval NEM tud AB-BA deadlockot okozni ugyanazon iroda+valuta
+        // paroson. A lenti validateCurrencyStock/updateCashBalance ugyanezeket a sorokat mar lockoltan
+        // kapja (no-op re-lock). Lasd: CashLockOrdering.
+        CashLockOrdering.lockInAscendingCurrencyOrder(branchId,
+                cashBalanceRepository::findByBranchIdAndCurrencyIdForUpdate,
+                getHufCurrencyId(), currency.getId());
+
         // 2026-05-15 user-direktíva: BUY ágon a pénztár HUF készletet ellenőrizni KELL
         // (vételnél a cég HUF-ot fizet ki az ügyfélnek). Korábban csak SELL ágon volt
         // készlet-ellenőrzés (foreign currency), ezért negatív HUF egyenlegre is
@@ -395,6 +406,15 @@ public class TransactionService {
         BigDecimal fullHufBeforeDiscount = request.getCurrencyAmount()
             .multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
         BigDecimal hufAmount = calculationService.applySellDiscount(fullHufBeforeDiscount, request.getDiscountPercent());
+
+        // LOCK-ORDERING (cash-vs-cash deadlock-megelozes): a modositando cash_balance sorokat
+        // (HUF + deviza) GLOBALISAN egyseges, NOVEKVO currencyId sorrendben elo-lockoljuk a
+        // keszlet-ellenorzes ELOTT. Korabban az eladas a devizat lockolta eloszor (lenti
+        // validateCurrencyStock(currency)), majd a vegen a HUF-ot — ez a BUY-jal (HUF-first)
+        // keresztezve AB-BA deadlockot okozhatott. Lasd: CashLockOrdering.
+        CashLockOrdering.lockInAscendingCurrencyOrder(branchId,
+                cashBalanceRepository::findByBranchIdAndCurrencyIdForUpdate,
+                getHufCurrencyId(), currency.getId());
 
         // Készlet ellenőrzése
         validateCurrencyStock(branchId, currency.getId(), request.getCurrencyAmount());
