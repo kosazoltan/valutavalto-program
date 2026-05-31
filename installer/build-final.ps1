@@ -12,6 +12,10 @@ $InstallerDir = $PSScriptRoot
 $BuildDir = Join-Path $InstallerDir "build"
 $StageDir = Join-Path $BuildDir "stage"
 
+# Preflight: x64 toolchain guard (2026-05-31) — ARM dev-gép védelem (lásd build-common.ps1).
+# Fail-fast MIELŐTT az electron-builder a natív runtime-ot csomagolná.
+Assert-X64NodeToolchain
+
 Write-Host "=== Electron Build ===" -ForegroundColor Cyan
 Set-Location (Join-Path $RepoRoot "penztar-client")
 

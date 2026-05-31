@@ -10,6 +10,27 @@
 #   . (Join-Path $PSScriptRoot 'build-common.ps1')
 # =============================================================================
 
+function Assert-X64NodeToolchain {
+    <#
+    .SYNOPSIS
+      x64 toolchain guard (2026-05-31) — ARM dev-gep vedelem.
+    .DESCRIPTION
+      A fejlesztogep ARM is lehet, de a TERMEK x64 Windows-on fut a kollegaknal. Az
+      electron-builder.json arch:["x64"]-re van rogzitve (Electron-runtime + packaging),
+      DE a nativ node-modulok rebuild-je (better-sqlite3, node-gyp/electron-rebuild) es a
+      Prisma/engine letoltes a PATH-ban levo Node `process.arch`-ja szerint resolve-ol.
+      ARM Node-dal ARM nativ runtime szivaroghatna a csomagba -> a kollegak x64 gepen nem
+      indulna el. HARD-FAIL, ha nem x64 Node van a PATH-ban (NULLADIK PRIORITAS).
+    .EXAMPLE
+      Assert-X64NodeToolchain
+    #>
+    $nodeArch = (& node -p "process.arch").Trim()
+    if ($nodeArch -ne "x64") {
+        throw "BUILD ABORT (x64 guard): a csomagolashoz x64 Node kell, de a PATH-ban '$nodeArch' Node van. Tegyel x64 Node-ot a PATH elejere (ARM nativ runtime-szennyezes veszelye), majd inditsd ujra a buildet."
+    }
+    Write-Host "Preflight: x64 Node toolchain OK (process.arch=$nodeArch)" -ForegroundColor Green
+}
+
 function Get-VersionFromPackageJson {
     <#
     .SYNOPSIS
