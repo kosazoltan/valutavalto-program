@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.AuditLogRepository;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
@@ -44,6 +45,7 @@ class WorkerFirstTimeSetupServiceTest {
     @Mock private WorkerRoleService workerRoleService;
     @Mock private BranchRepository branchRepository;
     @Mock private WorkerSetupTokenService workerSetupTokenService;
+    @Mock private AuditLogRepository auditLogRepository;
 
     @InjectMocks private WorkerFirstTimeSetupService service;
 
@@ -333,6 +335,11 @@ class WorkerFirstTimeSetupServiceTest {
         verify(workerRepository).save(saved.capture());
         assertThat(saved.getValue().getSetupGrace()).isFalse(); // egyszeri grace → lezárva
         verify(workerSetupTokenService, never()).validateAndConsume(any(), any(), any()); // token nem kellett
+        // Audit P2 #5: a token-nélküli grace-felhasználás immutable audit_log-ba kerül (detektálhatóság).
+        ArgumentCaptor<hu.puzzleir.valuta.entity.AuditLog> audit =
+                ArgumentCaptor.forClass(hu.puzzleir.valuta.entity.AuditLog.class);
+        verify(auditLogRepository).save(audit.capture());
+        assertThat(audit.getValue().getAction()).isEqualTo("WORKER_SETUP_GRACE_USED");
     }
 
     @Test

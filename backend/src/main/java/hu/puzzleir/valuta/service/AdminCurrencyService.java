@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.CurrencyAuditLog;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.logging.VVLogger;
 import hu.puzzleir.valuta.repository.CurrencyAuditLogRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -38,6 +39,8 @@ public class AdminCurrencyService {
     private final CurrencyRepository currencyRepository;
     private final CurrencyAuditLogRepository auditRepository;
     private final ObjectMapper objectMapper;
+
+    private static final VVLogger VV_LOG = VVLogger.of(AdminCurrencyService.class);
 
     /**
      * Uj valuta hozzaadasa.
@@ -137,11 +140,11 @@ public class AdminCurrencyService {
                     .build();
             auditRepository.save(entry);
         } catch (Exception e) {
-            log.error("AdminCurrency: audit log write FAILED for action={} code={}",
-                action, currency.getCode(), e);
-            // NEM dobunk — a Currency modositas mar megtortent. Az audit-fail
-            // logolva, de a tranzakcio nem rolled back (kompromisszum: business
-            // operation > audit completeness rovid ideig).
+            // V234/audit P2: strukturalt error_code (VV-SEC-004) — a Loki/Grafana audit-keresés
+            // error_code='VV-SEC-004' szerint lassa az audit-iras meghiusulasat. A Currency-modositas
+            // mar megtortent (NEM dobunk/rollbackolunk — business operation > audit completeness rovid ideig).
+            VV_LOG.error("VV-SEC-004", "currency.audit.write_failed", e,
+                java.util.Map.of("action", action, "currencyCode", currency.getCode()));
         }
     }
 
