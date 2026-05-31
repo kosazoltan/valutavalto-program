@@ -238,6 +238,35 @@ public class DailySessionService {
     }
 
     /**
+     * Napi sztornók számának lekérése PESSIMISTIC_WRITE lockkal — a sztornó-plafon
+     * KIKÉNYSZERÍTÉSI útjához (TransactionReversalService.executeReversal).
+     *
+     * Codex P1 (2026-05-31, #944 review): a lock-mentes {@link #getDailyReversalCount()} csak
+     * megjelenítésre jó (DailySessionController). A plafon-ellenőrzés ELŐTT ezt kell hívni: a
+     * daily_session sorát SELECT ... FOR UPDATE lockolja, így a párhuzamos sztornó a lock mögött
+     * sorba áll, és a count olvasása+növelése (updateSessionStats, ugyanaz a write-tranzakció)
+     * szerializálódik → a nap nem kerülhet a max-3 plafon fölé. NEM readOnly: write-lockot szerez,
+     * a hívó (executeReversal) @Transactional(rollbackFor=Exception.class) tranzakciójához
+     * csatlakozik (REQUIRED), a lock annak commitjáig él.
+     *
+     * FAIL-LOUD (self-review P2, 2026-05-31): a hívó executeReversal MÁR elvégezte a
+     * validateOpenSession()-t, ezért MAI napra MINDIG van OPEN sor a lock-pontnál. Ha a lockolt
+     * lekérdezés mégis üres (pl. párhuzamos napzárás közben), az invariáns-sértés → DOBUNK, NEM
+     * 0-t adunk vissza. A némán-0 a sztornó-plafont csendben kikerülné; a dobás inkább blokkolja a
+     * sztornót (a helyes, biztonságos kimenet). A megjelenítő {@link #getDailyReversalCount()}
+     * toleráns marad (0-t ad), mert ott nincs invariáns-kockázat.
+     */
+    public int getDailyReversalCountForUpdate() {
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        LocalDate today = LocalDate.now();
+
+        return dailySessionRepository.findByBranchIdAndSessionDateForUpdate(branchId, today)
+                .map(DailySession::getReversalCount)
+                .orElseThrow(() -> new ValidationException(
+                        "Nincs nyitott napi munkamenet a sztorno-plafon ellenorzesehez!"));
+    }
+
+    /**
      * Nap zarasa (napzaras utan hivodik).
      * Legacy: HARDWARE.LEZARTNAP = aktualis datum
      */

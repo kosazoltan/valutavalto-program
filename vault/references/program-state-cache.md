@@ -1,11 +1,22 @@
 # Valutaváltó — AKTUÁLIS ÁLLAPOT CACHE (token-takarékos, qmd-indexelt)
 
 > Cél: 1 helyen a verifikált aktuális állapot, hogy ne kelljen újra-deriválni commitokból/fájlokból.
-> Frissítve: 2026-05-29. Verzió: **v2.27.53** (4-way sync OK, prod ÉLES, FK-005 healthy).
-> Telepítő-bundle: **v2.27.52** (a #913 backend-only → auto-deploy, nem kell új telepítő).
+> Frissítve: 2026-05-31. main: **v2.27.64**. Prod ÉLES (bootstrap 200, EBC branches non-üres).
+> **FOLYTATÁS MÁSIK GÉPEN:** `vault/sessions/2026-05-31-handoff-to-other-machine.md` (önálló handoff).
+
+## 2026-05-31 — Több-ügynökös kódbázis-audit (30 megerősített finding, ld. `vault/references/audit-2026-05-31-confirmed-findings.md`)
+- **JAVÍTVA + DEPLOYOLVA (v2.27.58 → v2.27.64, PR #934–#941):** mind a 2×P0 + 7×P1 + 7×P2.
+  - #934 (P0/P1 IDOR), #935 (P1 RateTemplate LazyInit), #937 (P1 receiveMovement difference + AML highRiskFlag),
+    #938 (P2 rate-publish spread-kapu + outbox NPE), #939 (P2 24h TTL + VV-AML-004), #940 (P2 Ertektar idempotencia),
+    #941 (P2 VV-SEC-004/005 audit error_code). + #936 installer x64-guard.
+  - Codex 5+ valós élt talált a fixeken → mind javítva. Teljes backend suite **1781 teszt 0 hiba** (utolsó).
+- **MARADÉK (a handoff + audit-referencia szerint):** P2 #3 multi-line HUF net/gross, #2 DailyBalance prior-day storno,
+  #11 sync-engine abandoned (Electron), #12 tautologikus e2e ×3; + 6×P3.
+- **Telepítők (CI-build, v2.27.60) a Downloads-ban.** Telepítő-build: `gh workflow run "windows-unsigned-release.yml"`.
+- **JDK:** Maven előtt `$env:JAVA_HOME=...jdk-21...` (default JDK 25 elszáll). Autonóm merge: `.env` GITHUB_PAT (inline, soha kiírva).
 
 ## Verzió + deploy
-- main = **2.27.52**; backend prod `https://excvaluta.com` ÉLES (`service_version:2.27.52`, bootstrap-status 200).
+- main = **2.27.57**; backend prod `https://excvaluta.com` ÉLES (bootstrap-status 200). PR #934 → v2.27.58 (backend-only, auto-deploy, nincs telepítő).
 - Auto-deploy működik (merge → Hetzner). Telepítők unsigned (DigiCert EV CS pending).
 - Friss telepítők: Penztar-Setup / Kozponti-Munkaallomas / Penztar-Eltavolito **-2.27.52** (dist/release + Downloads).
 

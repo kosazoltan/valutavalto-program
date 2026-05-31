@@ -871,13 +871,14 @@ app.whenReady().then(async () => {
   //   1. Codex P1 + CodeQL + Copilot: NE startsWith()-tel ellenorizzuk az origin-t —
   //      `https://excvaluta.com.attacker.example/...` atmenne. `new URL()` parse +
   //      exact `hostname` + `protocol` compare.
-  //   2. Sourcery P2: a `setPermissionRequestHandler` session-global; a non-media
-  //      permission-okra (notifications, geolocation, midi, ...) NEM dontunk —
-  //      az Electron eredeti viselkedeset (default-allow) megtartjuk.
+  //   2. F-006 (audit 2026-05-29): a `setPermissionRequestHandler` session-global; a non-media
+  //      permission-okra (notifications, geolocation, midi, clipboard, ...) a BIZTONSAGOS
+  //      DEFAULT = DENY. Penzugyi kliensben nincs default-allow; csak a `media` (mic,
+  //      voice-assistant) engedelyezett, az is csak explicit origin-allowlisttel (lent).
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
     if (permission !== 'media') {
-      // Non-media permission — meghagyjuk az Electron alapertelmezett viselkedeset (allow)
-      callback(true);
+      log.warn('[Security] Non-media permission elutasitva (default-deny):', permission);
+      callback(false);
       return;
     }
     try {

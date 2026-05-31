@@ -22,6 +22,10 @@ const DEFAULT_TIMEOUT_MS = 30_000
 const MAX_RESPONSE_BYTES = 50 * 1024 * 1024
 const ALLOWED_HOSTS = ['excvaluta.com', 'localhost']
 
+// F-005 (audit 2026-05-29) SSRF-hardening: loopback + RFC1918 privát (10/172.16-31/192.168)
+// ENGEDÉLYEZETT (LAN-backend / offline helyi telepítés legitim use-case-e). DE a link-local
+// (169.254/x, benne a 169.254.169.254 cloud-metadata SSRF-célpont) BLOKKOLT, és csak http(s)
+// protokoll engedett — renderer-kompromittálódás nem érheti el a metadata / nem-HTTP endpointot.
 function isPrivateOrLoopbackHost(hostname: string): boolean {
   const host = hostname.toLowerCase()
   if (host === '127.0.0.1' || host === '::1' || host === '[::1]') return true
@@ -33,16 +37,17 @@ function isPrivateOrLoopbackHost(hostname: string): boolean {
 
   const a = parts[0] ?? -1
   const b = parts[1] ?? -1
+  // 169.254/16 (link-local + cloud-metadata) SZÁNDÉKOSAN KIMARAD (F-005).
   return a === 10
     || (a === 172 && b >= 16 && b <= 31)
     || (a === 192 && b === 168)
-    || (a === 169 && b === 254)
     || a === 127
 }
 
 function isAllowedUrl(raw: string): boolean {
   try {
     const parsed = new URL(raw)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false
     return ALLOWED_HOSTS.some((host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`))
       || isPrivateOrLoopbackHost(parsed.hostname)
   } catch {

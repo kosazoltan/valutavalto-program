@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.logging.VVLogger;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +30,10 @@ public class TransactionOperationHelper {
     private final CurrencyRepository currencyRepository;
     private final ObjectProvider<CameraTransactionLinker> cameraTransactionLinkerProvider;
 
-    // Sztorno limit supervisor nelkul (3 db/nap)
+    private static final VVLogger VV_LOG = VVLogger.of(TransactionOperationHelper.class);
+
+    // Napi sztorno ABSZOLUT plafon (audit #2, 2026-05-31): aznap max ennyi sztorno lehetseges.
+    // Az utolso (limit-edik) supervisori jovahagyast igenyel; a plafon felett supervisorral sem.
     private static final int DAILY_REVERSAL_LIMIT = 3;
 
     // Azonositas nelkuli limit HUF-ban (300.000 Ft - NAV szabalyozas)
@@ -63,7 +67,12 @@ public class TransactionOperationHelper {
                 hufAmount, customerId, customerName, documentNumber, currencyCode);
 
         if (basicResult == null) {
-            log.error("AML checkTransaction null eredmenyt adott, tranzakcio blokkolva");
+            // Audit 2026-05-31 (P2): a VV-AML-004 (FATAL) MÁR a katalógusban van — strukturált
+            // VV_LOG.fatal kell (NEM nyers log.error), hogy a Loki/Grafana audit-keresés
+            // error_code='VV-AML-004' szerint lássa ezt a FATAL AML-blokkot (a TransactionService
+            // azonos ágával egyezően, PR #682). A tranzakciót a dobott ValidationException blokkolja.
+            VV_LOG.fatal("VV-AML-004", "aml.service_unavailable_tx_blocked", null,
+                    java.util.Map.of("policy", "FAIL_CLOSED"));
             throw new ValidationException("AML ellenorzes nem elerheto, a tranzakcio nem hajthato vegre!");
         }
 
@@ -108,6 +117,20 @@ public class TransactionOperationHelper {
     }
 
     /**
+     * Audit-finding 2026-05-31 (P1): a sikeres tranzakcio KONYVELESE UTAN frissiti az ugyfel
+     * highRiskFlag-jet, ha az eves gongyolt elerte az AML limitet. Eddig az
+     * {@code AmlService.setHighRiskFlagIfNeeded} SEHOL nem hivodott -> a fokozott atvilagitasi
+     * (nagy-ugyfel) jeloles eles uzemben SOSEM aktivalodott (halott write-oldali AML-kontroll).
+     * A save UTAN hivando, hogy a {@code getAnnualRollingTotal} a friss osszeget tukrozze.
+     */
+    public void flagHighRiskAfterBooking(String customerId) {
+        if (customerId == null || customerId.isBlank()) {
+            return;
+        }
+        amlService.setHighRiskFlagIfNeeded(customerId, amlService.getAnnualRollingTotal(customerId));
+    }
+
+    /**
      * Ugyfel azonositas ellenorzese.
      */
     public void validateIdentification(BigDecimal hufAmount, String customerName, String documentNumber) {
@@ -147,6 +170,25 @@ public class TransactionOperationHelper {
 
         balance.updateBalance(amount.abs(), isIncoming);
         cashBalanceRepository.save(balance);
+    }
+
+    /**
+     * Cash_balance SOR megszerzese PESSIMISTIC_WRITE lockkal — MUTACIO NELKUL.
+     *
+     * Codex P1 (2026-05-31, #944 round-3 review) — LOCK-ORDERING / deadlock-megelozes: a normal
+     * vetel/eladas (TransactionService.executeBuy/executeSell) eloszor a cash_balance sorokat lockolja
+     * (updateCashBalance), majd a vegen irja a daily_session-t (updateSessionStats) — sorrend:
+     * cash_balance -> daily_session. A sztorno (TransactionReversalService.executeReversal) viszont a
+     * napi sztorno-plafon ellenorzesehez a daily_session sort lockolja; ha ezt a cash_balance lock ELOTT
+     * tenne, az ELLENTETES sorrend (daily_session -> cash_balance) a normal tranzakcioval keresztezve
+     * adatbazis-deadlockot okozhatna. Ezert a sztorno a daily_session lock ELOTT EZZEL elo-lockolja a
+     * majdan modositando cash_balance sorokat (azonos currencyId -> HUF sorrendben), igy a GLOBALIS
+     * lock-sorrend mindenhol cash_balance -> daily_session. A kesobbi updateCashBalance ugyanezt a sort
+     * mar lockoltan kapja (no-op re-lock), majd mutalja.
+     */
+    public void lockCashBalance(UUID branchId, Long currencyId) {
+        cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, currencyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Kassza egyenleg nem talalhato"));
     }
 
     /**

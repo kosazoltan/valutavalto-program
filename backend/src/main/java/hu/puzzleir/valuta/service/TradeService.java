@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.util.CashLockOrdering;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
@@ -209,6 +210,17 @@ public class TradeService {
     private void moveTradeInventory(Trade trade) {
         Currency currency = currencyRepository.findByCode(trade.getCurrencyCode())
                 .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: " + trade.getCurrencyCode()));
+
+        // CROSS-BRANCH LOCK-ORDERING (deadlock-megelozes): a trade a forras- ES a cel-iroda azonos
+        // valuta cash_balance sorat lockolja EGY tranzakcioban. Ezeket GLOBALISAN egyseges
+        // (branchId, currencyId) sorrendben elo-lockoljuk, mielott olvasnank/mutalnank — kulonben egy
+        // parhuzamos, FORDITOTT iranyu Trade(B->A) az ellentetes sorrend miatt AB-BA adatbazis-deadlockot
+        // okozna. A nem letezo cel-sor lockolasa no-op (azt a lenti orElseGet hozza letre); a lenti
+        // findByBranchIdAndCurrencyIdForUpdate ugyanezeket a sorokat mar lockoltan kapja. Lasd: CashLockOrdering.
+        CashLockOrdering.lockBranchCurrencyPairsInGlobalOrder(
+                (bid, cid) -> cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(bid, cid),
+                new CashLockOrdering.BranchCurrencyKey(trade.getFromBranch().getId(), currency.getId()),
+                new CashLockOrdering.BranchCurrencyKey(trade.getToBranch().getId(), currency.getId()));
 
         CashBalance sourceBalance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(
                         trade.getFromBranch().getId(), currency.getId())

@@ -1,7 +1,9 @@
 package hu.puzzleir.valuta.repository;
 
 import hu.puzzleir.valuta.entity.DailySession;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -27,6 +29,29 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
            "LEFT JOIN FETCH ds.closedByWorker " +
            "WHERE ds.branch.id = :branchId AND ds.sessionDate = :sessionDate")
     Optional<DailySession> findByBranchIdAndSessionDate(
+            @Param("branchId") UUID branchId,
+            @Param("sessionDate") LocalDate sessionDate);
+
+    /**
+     * Napi session keresése fiók és dátum alapján PESSIMISTIC_WRITE lockkal (race condition védelem).
+     *
+     * Codex P1 (2026-05-31, #944 review): a napi sztornó-plafon (max 3/nap) ellenőrzése a
+     * {@code reversalCount} mezőt olvassa, a növelés viszont a tranzakció VÉGÉN történik
+     * ({@code updateSessionStats} → {@code addTransaction}). Két párhuzamos, supervisor-jóváhagyott
+     * sztornó KÜLÖNBÖZŐ eredeti tranzakcióra ugyanazt a count értéket olvashatja, mindkettő átmegy a
+     * plafon-ellenőrzésen → a nap a hirdetett max-3 fölé kerülhet. A {@code findByIdForUpdate} csak az
+     * EREDETI tranzakció sorát lockolja, a napi számlálót NEM.
+     *
+     * Ez a query a daily_session SORÁT lockolja (SELECT ... FOR UPDATE) a plafon-ellenőrzés ELŐTT, így
+     * a párhuzamos sztornó a lock mögött sorba áll: a count olvasása+növelése ugyanabban a
+     * write-tranzakcióban szerializálódik. JOIN FETCH NÉLKÜL (vö. {@code CashBalanceRepository
+     * .findByBranchIdAndCurrencyIdForUpdate}) — a FOR UPDATE PostgreSQL-en nem alkalmazható outer join
+     * nullable oldalára; a hívó csak a {@code reversalCount} primitív mezőt olvassa (nincs lazy access).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ds FROM DailySession ds " +
+           "WHERE ds.branch.id = :branchId AND ds.sessionDate = :sessionDate")
+    Optional<DailySession> findByBranchIdAndSessionDateForUpdate(
             @Param("branchId") UUID branchId,
             @Param("sessionDate") LocalDate sessionDate);
 

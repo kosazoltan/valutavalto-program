@@ -232,6 +232,15 @@ export default function RateCreationPage() {
           changedOverall = true
         }
       }
+      // J (officialRate) NUMBER mező — ha képlete van, a SZÁMÍTOTT J-t írjuk vissza (number).
+      if (formulas[`${r.currencyId}.officialRate`]) {
+        const ofVal = result.rows[i]!.values.officialRate
+        if (ofVal != null && nr.officialRate !== ofVal) {
+          if (nr === r) nr = { ...r }
+          nr.officialRate = ofVal
+          changedOverall = true
+        }
+      }
       return nr
     })
 
@@ -367,7 +376,13 @@ export default function RateCreationPage() {
         delete copy[key]
         return copy
       })
-      setRates(prev => prev.map((x, i) => (i === index ? { ...x, [field]: trimmed, modified: true } : x)))
+      if (field === 'officialRate') {
+        // J (Elszámoló) NUMBER mező (a többi string). Fix override → parse; üres → undefined (auto = 0-s lap A).
+        const n = numOrNull(trimmed)
+        setRates(prev => prev.map((x, i) => (i === index ? { ...x, officialRate: n, modified: true } : x)))
+      } else {
+        setRates(prev => prev.map((x, i) => (i === index ? { ...x, [field]: trimmed, modified: true } : x)))
+      }
     }
   }, [canWriteRateCreation, rates, pushUndo])
 

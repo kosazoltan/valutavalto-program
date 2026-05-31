@@ -56,6 +56,7 @@ public class StornoService {
     private final ExchangeRateRepository exchangeRateRepository;
     private final NotificationService notificationService;
     private final ApplicationEventPublisher eventPublisher;
+    private final SystemParameterService systemParameterService;
 
     // Napi sztornó limit supervisor jóváhagyás nélkül — iroda szinten
     private static final int DAILY_STORNO_LIMIT_BRANCH = 3;
@@ -63,6 +64,12 @@ public class StornoService {
     // Napi sztornó limit supervisor jóváhagyás nélkül — pénztáros szinten
     // Legacy: a limit irodánként ÉS pénztárosonként is érvényes
     private static final int DAILY_STORNO_LIMIT_CASHIER = 2;
+
+    // 4-szem-elv (#954): a sztornó-jóváhagyás requester≠approver kikényszerítése feature-flag mögött.
+    // SystemParameter kulcs; default OFF → jelenlegi workflow változatlan (csak role-gate). Bekapcsolva
+    // a kérelmező pénztáros NEM hagyhatja jóvá saját sztornó-kérését (független jóváhagyó kell).
+    static final String STORNO_APPROVAL_FOUR_EYES_PARAM = "STORNO_APPROVAL_FOUR_EYES_ENFORCEMENT";
+    static final String STORNO_APPROVAL_FOUR_EYES_DEFAULT = "false";
 
     /**
      * PR #115: Sztornó ellenőrzés receipt_number-rel VAGY id-vel.
@@ -133,26 +140,57 @@ public class StornoService {
             throw new ValidationException("Sztornó tranzakció nem sztornózható!");
         }
 
-        // Legacy: a limit irodánként ÉS pénztárosonként is érvényes
-        boolean branchLimitReached = dailyCountBranch >= DAILY_STORNO_LIMIT_BRANCH;
-        boolean cashierLimitReached = dailyCountCashier >= DAILY_STORNO_LIMIT_CASHIER;
-        boolean isPreviousDay = !transaction.getTransactionDate().equals(LocalDate.now());
+        // Audit #2 (2026-05-31, user-direktiva): a korabbi napi tranzakcio VISSZAMENOLEG SOHA nem
+        // sztornozhato (sem supervisorral) — lasd TransactionReversalService.executeReversal. A precheck
+        // (UI-elonezet) NEM jelezhet "supervisor jovahagyas eleg"-et, kulonben a kliens egy lehetetlen
+        // jovahagyas-folyamatba kuldene a penztarost, amit az execute ugyis elutasitana (nem-informatikus
+        // vegfelhasznalo alapelv: ne igerjunk olyat, amit a backend megtilt). Ezert a precheck is dob.
+        if (!transaction.getTransactionDate().equals(LocalDate.now())) {
+            throw new ValidationException(
+                "Csak az aznapi tranzakcio sztornozhato — korabbi nap visszamenoleg nem sztornozhato. Tranzakcio datuma: "
+                + transaction.getTransactionDate());
+        }
 
-        boolean requiresApproval = branchLimitReached || cashierLimitReached || isPreviousDay;
+        // Codex P2 (2026-05-31, #944 review): a precheck (UI-elonezet) a KIKENYSZERITESSEL
+        // (TransactionReversalService.executeReversal) AZONOS branch-szintu plafon-szemantikat
+        // tukrozze, kulonben a UI vagy ATUGORJA a supervisor-flow-t (3. sztornonal), vagy
+        // HASZNALHATATLAN jovahagyas-kerest mutat (4.+, amit az execute amugy is tilt). Az execute:
+        //   - branch count >= limit (3)      -> ABSZOLUT plafon, supervisorral SEM
+        //   - branch count == limit-1 (a 3.) -> supervisori jovahagyas szukseges
+        // A DAILY_STORNO_LIMIT_BRANCH (3) szandekosan egyezik az execute DAILY_REVERSAL_LIMIT-jevel,
+        // a count-bazis is azonos (transaction REVERSAL/branch/ma == DailySession.reversalCount).
+        //
+        // 4.+ : a precheck DOB (mint a korabbi-napi agnal) — a nem-informatikus vegfelhasznalo NE
+        // kapjon olyan jovahagyas-folyamatot, amit a backend ugyis elutasitana.
+        if (dailyCountBranch >= DAILY_STORNO_LIMIT_BRANCH) {
+            throw new ValidationException(String.format(
+                "Napi sztorno plafon (%d) elerve — ma tobb sztorno nem lehetseges, supervisori jovahagyassal sem!",
+                DAILY_STORNO_LIMIT_BRANCH));
+        }
+
+        // A 3. (utolso engedelyezett) irodai sztorno mar jovahagyast igenyel (count == limit-1).
+        boolean branchApprovalRequired = dailyCountBranch >= DAILY_STORNO_LIMIT_BRANCH - 1;
+        // Legacy: a limit penztarosonkent is ervenyes (advisory). MEGJEGYZES (self-review P2,
+        // 2026-05-31): jelenleg DAILY_STORNO_LIMIT_CASHIER (2) == DAILY_STORNO_LIMIT_BRANCH-1 (2),
+        // es cashierCount <= branchCount, ezert ez az ag a branch-ag NELKUL onmagaban sosem dont
+        // (a requiresApproval-t a branchApprovalRequired amugy is igazza teszi). SZANDEKOSAN
+        // megtartva: (a) a legacy per-penztaros uzleti szabaly explicit dokumentacioja, (b) ha a
+        // ket kuszob jovoben eltervalik (pl. szigorubb penztaros-limit), azonnal ervenyre jut. Az
+        // execute (TransactionReversalService) csak branch-szinten kenyszerit; ez advisory marad.
+        boolean cashierLimitReached = dailyCountCashier >= DAILY_STORNO_LIMIT_CASHIER;
+
+        boolean requiresApproval = branchApprovalRequired || cashierLimitReached;
 
         String message;
         if (requiresApproval) {
             List<String> reasons = new ArrayList<>();
-            if (branchLimitReached) {
-                reasons.add(String.format("irodai napi sztornó szám (%d) elérte a limitet (%d)",
-                        dailyCountBranch, DAILY_STORNO_LIMIT_BRANCH));
+            if (branchApprovalRequired) {
+                reasons.add(String.format("irodai napi sztornó szám (%d) elérte a jóváhagyási küszöböt (%d)",
+                        dailyCountBranch, DAILY_STORNO_LIMIT_BRANCH - 1));
             }
             if (cashierLimitReached) {
                 reasons.add(String.format("pénztáros napi sztornó szám (%d) elérte a limitet (%d)",
                         dailyCountCashier, DAILY_STORNO_LIMIT_CASHIER));
-            }
-            if (isPreviousDay) {
-                reasons.add("korábbi napi tranzakció");
             }
             message = "Supervisor jóváhagyás szükséges: " + String.join("; ", reasons) + ".";
         } else {
@@ -221,7 +259,26 @@ public class StornoService {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 
+        // Audit #2 (2026-05-31): korabbi napra NINCS ertelme jovahagyast kerni — az execute SOHA
+        // nem hajtja vegre. Ne hozzunk letre elarvult jovahagyas-kerest (a precheck mar tiltja, de
+        // a kozvetlen API-hivas ellen is vedunk).
+        if (!transaction.getTransactionDate().equals(LocalDate.now())) {
+            throw new ValidationException(
+                "Korabbi napi tranzakciora nem kerheto sztorno-jovahagyas — csak az aznapi sztornozhato. Tranzakcio datuma: "
+                + transaction.getTransactionDate());
+        }
+
         int dailyCount = (int) transactionRepository.countReversalsByBranchAndDate(SecurityUtils.getCurrentCompanyId(), branchId, LocalDate.now());
+
+        // Codex P2 (2026-05-31, #944 review): a napi sztorno-plafon (DAILY_STORNO_LIMIT_BRANCH)
+        // felett a sztorno supervisorral SEM hajthato vegre (executeReversal abszolut tilt). Ezert
+        // jovahagyast kerni ertelmetlen — ne hozzunk letre elarvult jovahagyas-kerest (a precheck
+        // mar tiltja, de a kozvetlen API-hivas ellen is vedunk, a korabbi-napi aggal egyezoen).
+        if (dailyCount >= DAILY_STORNO_LIMIT_BRANCH) {
+            throw new ValidationException(String.format(
+                "Napi sztorno plafon (%d) elerve — ma tobb sztorno nem lehetseges, supervisori jovahagyassal sem!",
+                DAILY_STORNO_LIMIT_BRANCH));
+        }
 
         StornoApproval approval = StornoApproval.builder()
                 .transaction(transaction)
@@ -263,6 +320,19 @@ public class StornoService {
 
         Worker approver = workerRepository.findById(approvedByWorkerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Jóváhagyó pénztáros nem található: " + approvedByWorkerId));
+
+        // 4-szem-elv (#954, feature-flag mogott, default OFF): bekapcsolt enforcement eseten a JOVAHAGYAS
+        // jovahagyoja NEM lehet azonos a kerelmezovel (fuggetlen jovahagyo). Default false -> jelenlegi
+        // workflow valtozatlan (a controller @PreAuthorize SUPERVISOR+ role-gate-je ervenyben). Csak a
+        // POZITIV jovahagyast blokkolja; sajat keres ELUTASITASA megengedett. (AML_HIGH_VALUE mintaja.)
+        boolean fourEyesEnforced = systemParameterService != null
+                && "true".equalsIgnoreCase(systemParameterService.getValue(
+                        STORNO_APPROVAL_FOUR_EYES_PARAM, STORNO_APPROVAL_FOUR_EYES_DEFAULT));
+        if (fourEyesEnforced && approved && approval.getWorker() != null
+                && approval.getWorker().getId().equals(approvedByWorkerId)) {
+            throw new ValidationException(
+                "Sajat sztorno-keres nem hagyhato jova sajat maga altal — fuggetlen jovahagyo szukseges (4-szem-elv).");
+        }
 
         approval.setApprovedByWorker(approver);
         approval.setApprovedAt(LocalDateTime.now());
@@ -306,6 +376,13 @@ public class StornoService {
             throw new ValidationException("Sztornó tranzakció nem sztornózható!");
         }
 
+        // Codex P2 (2026-05-31, #944 review): a napi sztornó-plafon 3. (limit-1) sztornójához
+        // supervisori jóváhagyás kell. A dokumentált flow: a pénztáros jóváhagyást kér, a supervisor
+        // megadja (StornoApproval → APPROVED), majd a PÉNZTÁROS hajtja végre az approvalId-vel. A
+        // jóváhagyást ITT, SZERVER-OLDALON verifikáljuk (a kliens-küldte flaget sosem hisszük el), és
+        // csak verifikáltan adjuk tovább supervisorApproved=true-ként az executeReversal kapujához.
+        boolean supervisorApproved = isValidGrantedApproval(request.getApprovalId(), transactionId, branchId);
+
         // Sztornó végrehajtás a TransactionService reversal metódusával
         TransactionService.ReversalRequest reversalRequest = TransactionService.ReversalRequest.builder()
                 .originalTransactionId(transactionId)
@@ -313,12 +390,44 @@ public class StornoService {
                 .approvedBy(String.valueOf(workerId))
                 .useCurrentRate(request.getUseCurrentRate())
                 .customExchangeRate(request.getCustomExchangeRate())
+                .supervisorApproved(supervisorApproved)
                 .build();
 
         Transaction reversal = transactionService.executeReversal(reversalRequest);
         log.info("Sztornó végrehajtva: eredeti={}, sztornó={}", original.getReceiptNumber(), reversal.getReceiptNumber());
 
         return reversal;
+    }
+
+    /**
+     * Codex P2 (2026-05-31, #944 review): a kliens-küldte {@code approvalId} SZERVER-OLDALI
+     * verifikációja — csak akkor jogosít a (limit-1)-edik sztornóra, ha a jóváhagyás:
+     *   (1) létezik, (2) PONTOSAN ehhez a tranzakcióhoz tartozik (nem hordozható át másik tranzakcióra),
+     *   (3) ehhez az irodához tartozik (IDOR), (4) státusza APPROVED (PENDING/REJECTED nem ad jogot).
+     * Bármelyik feltétel sérül vagy az id hiányzik/hibás formátumú → {@code false} (a végrehajtó
+     * ekkor csak supervisorként mehet tovább). A kliens-flaget SOHA nem hisszük el.
+     */
+    private boolean isValidGrantedApproval(String approvalIdStr, Long transactionId, UUID branchId) {
+        if (approvalIdStr == null || approvalIdStr.isBlank()) {
+            return false;
+        }
+        final UUID approvalId;
+        try {
+            approvalId = UUID.fromString(approvalIdStr);
+        } catch (IllegalArgumentException e) {
+            // CodeQL java/log-injection (#260, CWE-117): a kliens-vezerelt approvalId-t SOHA nem logoljuk
+            // nyersen (a custom sanitizer-t a CodeQL nem ismeri fel sanitizerkent -> az alert nyitva maradt).
+            // Malformed UUID eseten a tartalom diagnosztikailag ertektelen — csak a HOSSZAT (int, NEM
+            // injektalhato) naplozzuk; igy a user-input -> log taint-flow definitiven megszakad.
+            log.warn("Érvénytelen approvalId formátum a sztornó-végrehajtáskor (nem valid UUID, hossz: {} karakter)",
+                    approvalIdStr.length());
+            return false;
+        }
+        return stornoApprovalRepository.findById(approvalId)
+                .filter(a -> a.getTransaction() != null && transactionId.equals(a.getTransaction().getId()))
+                .filter(a -> a.getBranch() != null && branchId.equals(a.getBranch().getId()))
+                .filter(a -> a.getApprovalStatus() != null && "APPROVED".equals(a.getApprovalStatus().getCode()))
+                .isPresent();
     }
 
     /**

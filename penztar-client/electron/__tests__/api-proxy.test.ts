@@ -385,6 +385,20 @@ describe('fetchViaElectronNet', () => {
         url: 'https://example.com/api/v1/auth/bootstrap-status',
       })).rejects.toThrow('Blocked: URL host not in allowlist');
     });
+
+    it('F-005: cloud-metadata link-local (169.254.169.254) BLOKKOLT (SSRF)', async () => {
+      await expect(fetchViaElectronNet({
+        method: 'GET',
+        url: 'http://169.254.169.254/latest/meta-data/',
+      })).rejects.toThrow('Blocked: URL host not in allowlist');
+    });
+
+    it('F-005: nem-http(s) protokoll (file:) BLOKKOLT', async () => {
+      await expect(fetchViaElectronNet({
+        method: 'GET',
+        url: 'file:///etc/passwd',
+      })).rejects.toThrow('Blocked: URL host not in allowlist');
+    });
   });
 
   describe('response header kezelés', () => {

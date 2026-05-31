@@ -133,6 +133,15 @@ public class Worker {
     @Column(name = "password_changed_at")
     private LocalDateTime passwordChangedAt;
 
+    /**
+     * F-001 átmeneti grace (V279): TRUE, ha a dolgozó a fix deploy-pillanatában már null-hash
+     * (folyamatban lévő first-time setup). Ilyenkor a bootstrap-lezárt utáni null-hash setup
+     * EGYSZER setup-token NÉLKÜL is engedélyezett — a sikeres beállításkor a guard lezárja
+     * (false). Minden ezt követő (új) null-hash reset már setup-tokent igényel.
+     */
+    @Column(name = "setup_grace", nullable = false)
+    private Boolean setupGrace = false;
+
     // ============ SUPERVISOR PIN (V188, 2026-05-06 P2-2) ============
 
     /**

@@ -13,6 +13,7 @@ import hu.puzzleir.valuta.dto.pos.PosTransactionResult;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.CashLockOrdering;
 import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -76,6 +77,7 @@ public class TransactionService {
     private final @org.springframework.context.annotation.Lazy TransactionReversalService reversalService;
     private final @org.springframework.context.annotation.Lazy TransactionConversionService conversionService;
     private final @org.springframework.context.annotation.Lazy TransactionMultiLineService multiLineService;
+    private final PmtComplianceValidator pmtComplianceValidator;
     private final LicenseService licenseService;
     private final SystemParameterService systemParameterService;
     private final TransactionValidationService transactionValidationService;
@@ -235,6 +237,16 @@ public class TransactionService {
             "BUY"
         );
 
+        // LOCK-ORDERING (cash-vs-cash deadlock-megelozes): a modositando cash_balance sorokat
+        // (HUF + deviza) GLOBALISAN egyseges, NOVEKVO currencyId sorrendben elo-lockoljuk, mielott
+        // barmilyen kasszamuvelet (validateCurrencyStock / updateCashBalance) tortenne. Igy a BUY a
+        // SELL-lel / sztornoval / konverzioval NEM tud AB-BA deadlockot okozni ugyanazon iroda+valuta
+        // paroson. A lenti validateCurrencyStock/updateCashBalance ugyanezeket a sorokat mar lockoltan
+        // kapja (no-op re-lock). Lasd: CashLockOrdering.
+        CashLockOrdering.lockInAscendingCurrencyOrder(branchId,
+                cashBalanceRepository::findByBranchIdAndCurrencyIdForUpdate,
+                getHufCurrencyId(), currency.getId());
+
         // 2026-05-15 user-direktíva: BUY ágon a pénztár HUF készletet ellenőrizni KELL
         // (vételnél a cég HUF-ot fizet ki az ügyfélnek). Korábban csak SELL ágon volt
         // készlet-ellenőrzés (foreign currency), ezért negatív HUF egyenlegre is
@@ -330,6 +342,7 @@ public class TransactionService {
 
         Transaction saved = transactionRepository.save(transaction);
         linkCameraEvidence(saved);
+        flagHighRiskAfterBooking(request.getCustomerId());
 
         // Kassza frissítése - HUF csökken, valuta nő
         updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount(), true);  // valuta +
@@ -393,6 +406,15 @@ public class TransactionService {
         BigDecimal fullHufBeforeDiscount = request.getCurrencyAmount()
             .multiply(appliedRate).setScale(0, RoundingMode.HALF_UP);
         BigDecimal hufAmount = calculationService.applySellDiscount(fullHufBeforeDiscount, request.getDiscountPercent());
+
+        // LOCK-ORDERING (cash-vs-cash deadlock-megelozes): a modositando cash_balance sorokat
+        // (HUF + deviza) GLOBALISAN egyseges, NOVEKVO currencyId sorrendben elo-lockoljuk a
+        // keszlet-ellenorzes ELOTT. Korabban az eladas a devizat lockolta eloszor (lenti
+        // validateCurrencyStock(currency)), majd a vegen a HUF-ot — ez a BUY-jal (HUF-first)
+        // keresztezve AB-BA deadlockot okozhatott. Lasd: CashLockOrdering.
+        CashLockOrdering.lockInAscendingCurrencyOrder(branchId,
+                cashBalanceRepository::findByBranchIdAndCurrencyIdForUpdate,
+                getHufCurrencyId(), currency.getId());
 
         // Készlet ellenőrzése
         validateCurrencyStock(branchId, currency.getId(), request.getCurrencyAmount());
@@ -519,6 +541,7 @@ public class TransactionService {
 
         Transaction saved = transactionRepository.save(transaction);
         linkCameraEvidence(saved);
+        flagHighRiskAfterBooking(request.getCustomerId());
 
         // Kassza frissítése - HUF nő, valuta csökken
         updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount().negate(), false); // valuta -
@@ -690,6 +713,20 @@ public class TransactionService {
     }
 
     /**
+     * Audit-finding 2026-05-31 (P1): a sikeres tranzakció KÖNYVELÉSE UTÁN frissíti az ügyfél
+     * highRiskFlag-jét, ha az éves göngyölt elérte az AML limitet. Eddig az
+     * {@code AmlService.setHighRiskFlagIfNeeded} SEHOL nem hívódott → a fokozott átvilágítási
+     * jelölés éles üzemben sosem aktiválódott. A save UTÁN hívandó (a getAnnualRollingTotal a
+     * friss, már elmentett összeget tükrözze).
+     */
+    private void flagHighRiskAfterBooking(String customerId) {
+        if (customerId == null || customerId.isBlank()) {
+            return;
+        }
+        amlService.setHighRiskFlagIfNeeded(customerId, amlService.getAnnualRollingTotal(customerId));
+    }
+
+    /**
      * Teljes AML ellenőrzés a tranzakció előtt (Pmt. 2017. évi LIII. tv.).
      *
      * Hívja az AmlService.checkTransaction()-t az alapszintű ellenőrzéshez
@@ -844,51 +881,13 @@ public class TransactionService {
             String customerActorDocumentNumber,
             String customerActorAddress,
             String operation) {
-        if (hufAmount == null || hufAmount.compareTo(BigDecimal.valueOf(300_000)) < 0) {
-            return; // < 300k: Pmt. szerint nem kotelezo
-        }
-        // Codex P1 (PR #695) follow-up: feature-flag alapu strict enforcement.
-        // PMT_STRICT_ENFORCEMENT=true -> ValidationException (Pmt. compliance KOTELEZO).
-        // PMT_STRICT_ENFORCEMENT=false (default) -> WARN-szintu naplozas (kompatibilitas
-        // a v2.5.59 kliensekhez). v2.5.61+ release-ben a default 'true' lesz, miutan
-        // minden penztaros gepen lefutott a v2.5.60 telepito.
-        //
-        // PR #695 CI fix: defensive null-check a `systemParameterService`-re,
-        // mert a PepSourceOfFundsTest mockolt TransactionService-be nem injectalja
-        // a system-parameter szervizt. Ha null -> default strictMode=false.
-        boolean strictMode = systemParameterService != null
-            && "true".equalsIgnoreCase(systemParameterService.getValue("PMT_STRICT_ENFORCEMENT", "false"));
-
-        // PEP minoseg kotelezo, ha isPep=true
-        if (Boolean.TRUE.equals(customerIsPep) && (customerPepKind == null || customerPepKind.isBlank())) {
-            String msg = String.format(
-                "Pmt. compliance (%s, %s HUF): customerIsPep=true de customerPepKind hianyzik. "
-                + "Pmt. tv. 6.§ szerint kotelezo megjelolni a PEP minoseget.", operation, hufAmount);
-            if (strictMode) {
-                throw new ValidationException(msg);
-            }
-            log.warn("{} (WARN-only, PMT_STRICT_ENFORCEMENT=false). v2.5.61+ release: exception.", msg);
-        }
-        // Actor teljes azonositasa kotelezo, ha onOwnBehalf=false
-        if (Boolean.FALSE.equals(customerOnOwnBehalf)) {
-            java.util.List<String> missing = new java.util.ArrayList<>();
-            if (customerActorName == null          || customerActorName.isBlank())          missing.add("actorName");
-            if (customerActorBirthPlace == null    || customerActorBirthPlace.isBlank())    missing.add("actorBirthPlace");
-            if (customerActorBirthDate == null     || customerActorBirthDate.isBlank())     missing.add("actorBirthDate");
-            if (customerActorMotherName == null    || customerActorMotherName.isBlank())    missing.add("actorMotherName");
-            if (customerActorDocumentNumber == null|| customerActorDocumentNumber.isBlank()) missing.add("actorDocumentNumber");
-            if (customerActorAddress == null       || customerActorAddress.isBlank())       missing.add("actorAddress");
-            if (!missing.isEmpty()) {
-                String msg = String.format(
-                    "Pmt. compliance (%s, %s HUF): customerOnOwnBehalf=false de actor mezok hianyoznak: %s. "
-                    + "Pmt. tv. 6.§ (2) szerint a kepviselt felre is teljes azonositast kell vegezni.",
-                    operation, hufAmount, missing);
-                if (strictMode) {
-                    throw new ValidationException(msg);
-                }
-                log.warn("{} (WARN-only, PMT_STRICT_ENFORCEMENT=false). v2.5.61+ release: exception.", msg);
-            }
-        }
+        // F-002 + Codex P1 (audit 2026-05-29): a Pmt-compliance ellenorzes a megosztott
+        // PmtComplianceValidator-ban el, hogy a BUY/SELL ES a KONVERZIO (TransactionConversionService)
+        // UGYANAZT futtassa — a konverzio-ag korabban kicsuszott a Pmt-validacio alol.
+        pmtComplianceValidator.validate(
+                hufAmount, customerIsPep, customerPepKind, customerOnOwnBehalf,
+                customerActorName, customerActorBirthPlace, customerActorBirthDate,
+                customerActorMotherName, customerActorDocumentNumber, customerActorAddress, operation);
     }
 
     private void validateCurrencyStock(UUID branchId, Long currencyId, BigDecimal amount) {
@@ -1073,6 +1072,17 @@ public class TransactionService {
          * egyébként az eredeti tranzakció árfolyama marad.
          */
         private BigDecimal customExchangeRate;
+        /**
+         * Codex P2 (2026-05-31, #944 review): a napi sztornó-plafon 3. (limit-1) sztornójához
+         * supervisori jóváhagyás kell. A dokumentált flow: a pénztáros jóváhagyást kér, a supervisor
+         * megadja (StornoApproval), majd a PÉNZTÁROS hajtja végre. Ez a flag jelzi, hogy a
+         * végrehajtáshoz tartozik ÉRVÉNYES, MEGADOTT (APPROVED) jóváhagyás — ezt a {@code StornoService}
+         * verifikálja SZERVER-OLDALON (approvalId → APPROVED StornoApproval ehhez a tranzakcióhoz/irodához),
+         * és csak verifikáltan állítja {@code true}-ra. Az {@code executeReversal} a 3. sztornó kapuját
+         * supervisor-végrehajtó VAGY {@code supervisorApproved} esetén engedi át; a 4.+ abszolút plafon
+         * ettől függetlenül tilt. Default {@code false} (közvetlen hívóknál nincs jóváhagyás).
+         */
+        private boolean supervisorApproved;
     }
 
     @lombok.Data

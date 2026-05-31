@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.CashLockOrdering;
 import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +40,7 @@ public class TransactionConversionService {
     private final HandlingFeeCalculator handlingFeeCalculator;
     private final DailySessionService dailySessionService;
     private final TransactionOperationHelper helper;
+    private final PmtComplianceValidator pmtComplianceValidator;
 
     /**
      * Konverzio vegrehajtasa (valuta-valuta csere).
@@ -116,6 +118,30 @@ public class TransactionConversionService {
         AmlService.AmlBasicCheckResult amlResult = helper.performAmlCheck(
                 amlAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), toCurrency.getCode());
+
+        // F-002 / Codex P1 (audit 2026-05-29): a Pmt-compliance ellenorzes a KONVERZIORA is
+        // kotelezo (300k+ HUF eseten PEP-minoseg / kepviselt-fel azonositas) — korabban a
+        // konverzio-ag kicsuszott e validacio alol. Az AML-alap (amlAmount = BUY+SELL leg) a
+        // kuszob alapja, a BUY/SELL aggal konzisztensen.
+        pmtComplianceValidator.validate(
+                amlAmount,
+                request.getCustomerIsPep(),
+                request.getCustomerPepKind(),
+                request.getCustomerOnOwnBehalf(),
+                request.getCustomerActorName(),
+                request.getCustomerActorBirthPlace(),
+                request.getCustomerActorBirthDate() != null ? request.getCustomerActorBirthDate().toString() : null,
+                request.getCustomerActorMotherName(),
+                request.getCustomerActorDocumentNumber(),
+                request.getCustomerActorAddress(),
+                "KONVERZIO");
+
+        // CASH-VS-CASH LOCK-ORDERING (deadlock-megelozes): a konverzio HAROM cash_balance sort mozgat
+        // (forras-deviza, cel-deviza, HUF) — ezeket GLOBALISAN egyseges, NOVEKVO currencyId sorrendben
+        // elo-lockoljuk a keszlet-ellenorzes / mutacio ELOTT, egyezoen a BUY/SELL/sztorno aggal, hogy ne
+        // alakulhasson ki AB-BA deadlock egy parhuzamos tranzakcioval. Lasd: CashLockOrdering.
+        CashLockOrdering.lockInAscendingCurrencyOrder(branchId, helper::lockCashBalance,
+                fromCurrency.getId(), toCurrency.getId(), helper.getHufCurrencyId());
 
         // Keszlet ellenorzes — a kifizetett cel valuta + (ha van) a visszajaro HUF.
         helper.validateCurrencyStock(branchId, toCurrency.getId(), toAmount);
@@ -262,6 +288,12 @@ public class TransactionConversionService {
                 .build();
         convSell = transactionRepository.save(convSell);
         helper.linkCameraEvidence(convSell);
+
+        // Audit/Codex P1 #937: a highRiskFlag-frissítést az EFFEKTÍV (financialEffective=true) sorok
+        // — convBuy + convSell — mentése UTÁN hívjuk. A sumCustomerAnnualTotal csak a financialEffective
+        // sorokat összegzi; a parent (false) után hívva a friss konverzió még nem számítana bele, így a
+        // konverzió-okozta éves-limit átlépés sosem állítaná be a flag-et.
+        helper.flagHighRiskAfterBooking(request.getCustomerId());
 
         // Kassza frissites
         helper.updateCashBalance(branchId, fromCurrency.getId(), request.getFromAmount(), true);

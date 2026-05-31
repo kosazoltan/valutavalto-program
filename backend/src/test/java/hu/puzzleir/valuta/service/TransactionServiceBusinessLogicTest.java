@@ -22,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -57,6 +58,7 @@ class TransactionServiceBusinessLogicTest {
     private static final Long EUR_ID = 2L;
     private static final Long USD_ID = 3L;
     @Mock private TransactionValidationService transactionValidationService;
+    @Mock private PmtComplianceValidator pmtComplianceValidator;
 
     @InjectMocks
     private TransactionService transactionService;
@@ -189,6 +191,47 @@ class TransactionServiceBusinessLogicTest {
 
         verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyId(any(), any());
         verify(cashBalanceRepository, atLeastOnce()).findByBranchIdAndCurrencyIdForUpdate(eq(BRANCH_ID), eq(EUR_ID));
+    }
+
+    @Test
+    @DisplayName("LOCK-ORDERING (cash-vs-cash deadlock): executeSell a HUF (1) sort lockolja ELOSZOR, "
+            + "csak utana a deviza (EUR, 2) sort — NOVEKVO currencyId, egyezoen a BUY/sztorno aggal")
+    void executeSell_locksHufBeforeForeignCurrency_deadlockPrevention() {
+        TransactionService.SellRequest request = TransactionService.SellRequest.builder()
+                .currencyId(EUR_ID)
+                .currencyAmount(new BigDecimal("100"))
+                .customerId("CUST-1")
+                .build();
+
+        transactionService.executeSell(request);
+
+        // A determinisztikus globalis cash-lock sorrend: a legkisebb currencyId (HUF=1) ELSO lockolasa
+        // megelozi a deviza (EUR=2) elso lockolasat. A cash-sor PESSIMISTIC_WRITE lockot a
+        // findByBranchIdAndCurrencyIdForUpdate veszi — a hivasi sorrendet captor-ral rogzitjuk.
+        ArgumentCaptor<Long> lockOrder = ArgumentCaptor.forClass(Long.class);
+        verify(cashBalanceRepository, atLeastOnce())
+                .findByBranchIdAndCurrencyIdForUpdate(eq(BRANCH_ID), lockOrder.capture());
+        assertThat(lockOrder.getAllValues().indexOf(HUF_ID))
+                .isLessThan(lockOrder.getAllValues().indexOf(EUR_ID));
+    }
+
+    @Test
+    @DisplayName("LOCK-ORDERING (cash-vs-cash deadlock): executeBuy a HUF (1) sort lockolja ELOSZOR, "
+            + "csak utana a deviza (EUR, 2) sort — NOVEKVO currencyId (regresszio-vedelem)")
+    void executeBuy_locksHufBeforeForeignCurrency_deadlockPrevention() {
+        TransactionService.BuyRequest request = TransactionService.BuyRequest.builder()
+                .currencyId(EUR_ID)
+                .currencyAmount(new BigDecimal("100"))
+                .customerId("CUST-1")
+                .build();
+
+        transactionService.executeBuy(request);
+
+        ArgumentCaptor<Long> lockOrder = ArgumentCaptor.forClass(Long.class);
+        verify(cashBalanceRepository, atLeastOnce())
+                .findByBranchIdAndCurrencyIdForUpdate(eq(BRANCH_ID), lockOrder.capture());
+        assertThat(lockOrder.getAllValues().indexOf(HUF_ID))
+                .isLessThan(lockOrder.getAllValues().indexOf(EUR_ID));
     }
 
     // executeConversion teszt - a delegate pattern miatt a conversionService mock-ot stub-oljuk

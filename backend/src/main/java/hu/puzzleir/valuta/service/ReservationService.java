@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.dto.reservation.ReservedStockDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
+import hu.puzzleir.valuta.util.CashLockOrdering;
 import hu.puzzleir.valuta.repository.CustomerRepository;
 import hu.puzzleir.valuta.repository.NotificationRepository;
 import hu.puzzleir.valuta.repository.ReservationRepository;
@@ -123,6 +124,17 @@ public class ReservationService {
         BigDecimal ftValue = amount.multiply(exchangeRate);
         BigDecimal rawDeposit = ftValue.multiply(DEPOSIT_RATE).setScale(2, RoundingMode.HALF_UP);
         BigDecimal depositAmount = roundToFive(rawDeposit);
+
+        // CASH-VS-CASH LOCK-ORDERING (#953): a foglalas a DEVIZA (lefoglalas) ES a HUF (letet) cash_balance
+        // sorat is mozgatja egy tranzakcioban. Ezeket NOVEKVO currencyId sorrendben elo-lockoljuk a
+        // mutacio ELOTT — egyezoen a BUY/SELL/sztorno aggal (es a cancelByCompany-vel), igy egy parhuzamos
+        // vetel/lemondas nem okoz cash<->cash AB-BA deadlockot ugyanazon iroda+valuta paroson. A lenti
+        // findByBranchIdAndCurrencyIdForUpdate / addHufBalance ugyanezeket a sorokat mar lockoltan kapja.
+        Long resvHufCurrencyId = currencyRepository.findByCode("HUF")
+                .orElseThrow(() -> new ResourceNotFoundException("HUF valuta nem található!")).getId();
+        CashLockOrdering.lockInAscendingCurrencyOrder(branchId,
+                (bid, cid) -> cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(bid, cid),
+                currency.getId(), resvHufCurrencyId);
 
         // CRITICAL FIX #2: PESSIMISTIC_WRITE lock — párhuzamos készletmódosítás megakadályozása
         CashBalance currencyBalance = cashBalanceRepository
@@ -356,6 +368,20 @@ public class ReservationService {
         BigDecimal refund = reservation.getDepositAmount()
                 .multiply(new BigDecimal("2"))
                 .setScale(2, RoundingMode.HALF_UP);
+
+        // CASH-VS-CASH LOCK-ORDERING (#953): a ceges lemondas a HUF (dupla visszafizetes) ES a deviza
+        // (restoreCurrencyStock, lent) cash_balance sorat is mozgatja egy tranzakcioban. NOVEKVO
+        // currencyId sorrendben elo-lockoljuk (mint createReservation/BUY/SELL) -> nincs cash<->cash
+        // AB-BA deadlock. A lenti subtractHufBalance / restoreCurrencyStock mar lockoltan kapja oket.
+        Long cancelHufId = currencyRepository.findByCode("HUF")
+                .orElseThrow(() -> new ResourceNotFoundException("HUF valuta nem található!")).getId();
+        final String cancelCurrencyCode = reservation.getCurrencyCode();
+        Long cancelCurId = currencyRepository.findByCode(cancelCurrencyCode)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Valuta nem található: " + cancelCurrencyCode)).getId();
+        CashLockOrdering.lockInAscendingCurrencyOrder(branchId,
+                (bid, cid) -> cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(bid, cid),
+                cancelCurId, cancelHufId);
 
         // HUF készlet csökkentés (dupla visszafizetés kiadása)
         subtractHufBalance(branchId, refund);

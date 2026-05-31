@@ -89,6 +89,34 @@ class ExchangeRateServiceTest {
     }
 
     @Test
+    @DisplayName("getCurrentRate — pontosan 24h30m régi ráta elutasítva (P2: ChronoUnit.HOURS csonkolás javítva)")
+    void testGetCurrentRate_justOver24h_rejected() {
+        ReflectionTestUtils.setField(service, "maxAgeHours", 24);
+        // A régi kód (ChronoUnit.HOURS=24, > 24 → false) ezt MÉG elfogadta (~25 óráig). A percalapú
+        // (>=) határ most helyesen elutasítja. A relatív konstrukció éjfél körül is robusztus.
+        java.time.LocalDateTime target = java.time.LocalDateTime.now().minusHours(24).minusMinutes(30);
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
+        ExchangeRate rate = ExchangeRate.builder()
+                .id(1L)
+                .currency(eur)
+                .baseBuyRate(new BigDecimal("395.50"))
+                .validDate(target.toLocalDate())
+                .validTime(target.toLocalTime())
+                .build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            when(exchangeRateRepository.findLatestRate(COMPANY_ID, 4L, BRANCH_ID))
+                    .thenReturn(Optional.of(rate));
+
+            assertThatThrownBy(() -> service.getCurrentRate(4L))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("lejárt");
+        }
+    }
+
+    @Test
     @DisplayName("getCurrentRate — nem letezo valuta")
     void testGetCurrentRate_notFound() {
         ReflectionTestUtils.setField(service, "maxAgeHours", 24);

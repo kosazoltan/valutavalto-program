@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.AuditLogRepository;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
@@ -43,6 +44,8 @@ class WorkerFirstTimeSetupServiceTest {
     @Mock private AdminBootstrapService adminBootstrapService;
     @Mock private WorkerRoleService workerRoleService;
     @Mock private BranchRepository branchRepository;
+    @Mock private WorkerSetupTokenService workerSetupTokenService;
+    @Mock private AuditLogRepository auditLogRepository;
 
     @InjectMocks private WorkerFirstTimeSetupService service;
 
@@ -264,11 +267,59 @@ class WorkerFirstTimeSetupServiceTest {
     }
 
     @Test
-    @DisplayName("V198 fix: Lezart bootstrap utan hash + passwordChangedAt nelkuli worker szabadon allithat jelszot (ujratelepites use-case)")
-    void allowsMissingHashAfterBootstrapWhenFullyReset() {
-        // V198 migracio: password_hash = NULL, password_changed_at = NULL
-        // Ez az ujratelepites use-case — a dolgozo teljesen resetelt allapotban van.
+    @DisplayName("F-001: Lezart bootstrap utan null-hash setup setup-token NELKUL elutasitva (fiokatvetel ellen)")
+    void rejectsNullHashAfterBootstrapWithoutSetupToken() {
+        // V198/V230/V231 migracio: password_hash = NULL, password_changed_at = NULL.
+        // Lezart bootstrap utan ez a publikus fiokatvetel vektora volt — most setup-token KELL.
         Worker worker = seedWorker(null);
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
+        // A token-service a hianyzo/ervenytelen tokenre dob (a valodi service viselkedese).
+        org.mockito.Mockito.doThrow(new ValidationException("Ehhez a beallitashoz egyszeri setup-token szukseges."))
+                .when(workerSetupTokenService).validateAndConsume(any(), org.mockito.ArgumentMatchers.eq(10L), any());
+
+        assertThatThrownBy(() -> service.setupWorkerPassword(request(null)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("setup-token");
+
+        verify(passwordEncoder, never()).encode(any());
+        verify(workerRepository, never()).save(any(Worker.class));
+        verifyNoTokenGenerated();
+    }
+
+    @Test
+    @DisplayName("F-001: Lezart bootstrap utan null-hash setup ERVENYES setup-tokennel vegigmegy")
+    void allowsNullHashAfterBootstrapWithValidSetupToken() {
+        Worker worker = seedWorker(null);
+        WorkerFirstTimeSetupRequestDto dto = request(null);
+        dto.setSetupToken("ervenyes-setup-token");
+        when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
+        when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
+                .thenReturn(Optional.of(worker));
+        when(adminBootstrapService.isBootstrapAlreadyCompleted()).thenReturn(true);
+        // workerSetupTokenService.validateAndConsume default no-op (ervenyes token) — nem stuboljuk.
+        when(passwordEncoder.encode("UjGlobalisJelszo123!")).thenReturn("$2b$10$new");
+        when(workerRepository.save(any(Worker.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(jwtTokenProvider.generateToken(any(Worker.class))).thenReturn("jwt-token");
+
+        WorkerFirstTimeSetupResponseDto response = service.setupWorkerPassword(dto);
+
+        assertThat(response.isSuccess()).isTrue();
+        verify(workerRepository).save(any(Worker.class));
+        // a token-ot ellenoriztuk + felhasznaltuk a worker+ceg scope-jaban
+        verify(workerSetupTokenService).validateAndConsume(
+                org.mockito.ArgumentMatchers.eq("ervenyes-setup-token"),
+                org.mockito.ArgumentMatchers.eq(10L),
+                org.mockito.ArgumentMatchers.eq(company.getId()));
+    }
+
+    @Test
+    @DisplayName("F-001 grace (V279): null-hash + setupGrace=true → token NÉLKÜL végigmegy, és a grace lezár")
+    void allowsNullHashAfterBootstrapWithGrace() {
+        Worker worker = seedWorker(null);
+        worker.setSetupGrace(true); // a deploy-pillanatban már null-hash, folyamatban lévő dolgozó
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(company));
         when(workerRepository.findByCompanyIdAndCodeIgnoreCase(company.getId(), "BORSI"))
                 .thenReturn(Optional.of(worker));
@@ -280,7 +331,15 @@ class WorkerFirstTimeSetupServiceTest {
         WorkerFirstTimeSetupResponseDto response = service.setupWorkerPassword(request(null));
 
         assertThat(response.isSuccess()).isTrue();
-        verify(workerRepository).save(any(Worker.class));
+        ArgumentCaptor<Worker> saved = ArgumentCaptor.forClass(Worker.class);
+        verify(workerRepository).save(saved.capture());
+        assertThat(saved.getValue().getSetupGrace()).isFalse(); // egyszeri grace → lezárva
+        verify(workerSetupTokenService, never()).validateAndConsume(any(), any(), any()); // token nem kellett
+        // Audit P2 #5: a token-nélküli grace-felhasználás immutable audit_log-ba kerül (detektálhatóság).
+        ArgumentCaptor<hu.puzzleir.valuta.entity.AuditLog> audit =
+                ArgumentCaptor.forClass(hu.puzzleir.valuta.entity.AuditLog.class);
+        verify(auditLogRepository).save(audit.capture());
+        assertThat(audit.getValue().getAction()).isEqualTo("WORKER_SETUP_GRACE_USED");
     }
 
     @Test

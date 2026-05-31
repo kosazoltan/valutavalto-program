@@ -138,11 +138,19 @@ class TransferCounterTransactionTest {
         verify(transactionRepository, never()).save(argThat(tx ->
                 tx.getTransactionType() == TransactionType.TRANSFER_IN));
 
-        // Küldő kassza csökkent
-        verify(cashBalanceRepository).findByBranchIdAndCurrencyIdForUpdate(FROM_BRANCH_ID, CURRENCY_ID);
+        // Küldő kassza csökkent. 2x find: (1) cross-branch + cash-first elo-lock (CashLockOrdering, #952),
+        // (2) decreaseCashBalance no-op re-lock + mutacio (ugyanaz a sor).
+        verify(cashBalanceRepository, times(2)).findByBranchIdAndCurrencyIdForUpdate(FROM_BRANCH_ID, CURRENCY_ID);
         assertThat(fromBalance.getCurrentBalance()).isEqualByComparingTo(new BigDecimal("9500.00"));
 
-        // Fogadó kassza NEM módosult
+        // CASH-FIRST (#952): a cash_balance elo-lock a bizonylatszam-generalas (receipt_sequence
+        // per-branch PESSIMISTIC lock) ELOTT tortenik -> minden penzmozgato ut cash->receipt sorrendben
+        // halad, nincs cash<->receipt_sequence deadlock-axis.
+        InOrder cashBeforeReceipt = inOrder(cashBalanceRepository, receiptSequenceService);
+        cashBeforeReceipt.verify(cashBalanceRepository).findByBranchIdAndCurrencyIdForUpdate(FROM_BRANCH_ID, CURRENCY_ID);
+        cashBeforeReceipt.verify(receiptSequenceService).generateReceiptNumber(eq(FROM_BRANCH_ID), any());
+
+        // Fogadó kassza NEM módosult (F mód single-branch → a fogadó sort nem is elo-lockoljuk)
         verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdForUpdate(eq(TO_BRANCH_ID), anyLong());
 
         // Audit log

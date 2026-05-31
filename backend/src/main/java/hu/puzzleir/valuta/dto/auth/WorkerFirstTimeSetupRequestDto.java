@@ -52,6 +52,15 @@ public class WorkerFirstTimeSetupRequestDto {
     @Size(max = 32, message = "Az appMode max 32 karakter lehet")
     private String appMode;
 
+    /**
+     * F-001 fix: admin által kiállított, egyszer használatos setup-token. A bootstrap-lezárt
+     * utáni null-hash (teljes reset) setuphoz KÖTELEZŐ — enélkül a publikus endpointon a
+     * worker-kód ismeretében fiókátvétel lenne lehetséges. A kezdeti (pre-bootstrap) telepítés
+     * és a már hash-sel rendelkező (seed/aktív) workerek setupja nem igényli.
+     */
+    @Size(max = 128, message = "A setup-token max 128 karakter")
+    private String setupToken;
+
     public WorkerFirstTimeSetupRequestDto(
             String companyCode,
             String workerCode,

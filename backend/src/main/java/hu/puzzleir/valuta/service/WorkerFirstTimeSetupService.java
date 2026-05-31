@@ -62,6 +62,13 @@ public class WorkerFirstTimeSetupService {
     private final AdminBootstrapService adminBootstrapService;
     private final WorkerRoleService workerRoleService;
     private final BranchRepository branchRepository;
+    private final WorkerSetupTokenService workerSetupTokenService;
+    // Audit P2 #5 (V279 grace): a token-nélküli grace-setup verseny-alapú fiókátvétel-rezíduuma
+    // utólag detektálható legyen — immutable audit_log + strukturált VV-SEC-005 log.
+    private final hu.puzzleir.valuta.repository.AuditLogRepository auditLogRepository;
+
+    private static final hu.puzzleir.valuta.logging.VVLogger VV_LOG =
+            hu.puzzleir.valuta.logging.VVLogger.of(WorkerFirstTimeSetupService.class);
 
     /**
      * Worker elso jelszavanak beallitasa / reset.
@@ -121,17 +128,43 @@ public class WorkerFirstTimeSetupService {
                             ? POST_BOOTSTRAP_SEED_PASSWORD_REQUIRED_MESSAGE
                             : PRE_BOOTSTRAP_SEED_PASSWORD_REQUIRED_MESSAGE,
                     SEED_PASSWORD_MISMATCH_MESSAGE);
+        } else if (bootstrapCompleted) {
+            // F-001 fix (audit 2026-05-29): passwordHash == null ES passwordChangedAt == null
+            // (teljes reset, pl. V196/V198/V230/V231) ES a bootstrap MAR lezarult.
+            // Itt nincs jelszo-titok, amit ellenorizni lehetne — emiatt a permitAll endpoint
+            // KORABBAN bootstrap-lezartsagtol FUGGETLENUL beallitott uj jelszot + JWT-t adott.
+            // Mivel a worker-kodok (EBC + BORSI/BALI/KASZA...) a wizardban publikusak, ez
+            // halozatrol elerheto production endpointon (excvaluta.com) FIOKATVETELT engedett.
+            // Ezert a lezart bootstrap utani null-hash setuphoz admin altal kiallitott,
+            // egyszer hasznalatos, lejaro setup-token KOTELEZO.
+            //
+            // ATMENETI GRACE (V279): a fix deploy-pillanataban MAR null-hash (folyamatban levo)
+            // dolgozok egyszer token NELKUL is befejezhetik a setupot — kulonben a deploy kizarna
+            // a most jelszot allito kollegakat. A grace a sikeres beallitaskor lezarul (false),
+            // igy minden EZUTANI (uj) null-hash reset mar tokent igenyel.
+            if (Boolean.TRUE.equals(worker.getSetupGrace())) {
+                worker.setSetupGrace(false);
+                // Audit P2 #5: immutable audit_log + strukturált VV-SEC-005 (WARN) — a verseny-alapú
+                // (token-nélküli) grace-fiókátvétel utólag detektálható legyen (deploy-kohorsz).
+                auditLogRepository.save(hu.puzzleir.valuta.entity.AuditLog.builder()
+                        .action("WORKER_SETUP_GRACE_USED")
+                        .entityType("Worker")
+                        .entityId(worker.getId() != null ? worker.getId().toString() : null)
+                        .userName(worker.getName())
+                        .companyId(company.getId())
+                        .changes("Token-nélküli first-time setup (V279 grace) felhasználva. "
+                                + "companyCode=" + company.getCode() + ", workerCode=" + worker.getCode())
+                        .build());
+                VV_LOG.warn("worker.setup.grace_used", "VV-SEC-005",
+                        java.util.Map.of("companyCode", company.getCode(), "workerCode", worker.getCode()));
+            } else {
+                workerSetupTokenService.validateAndConsume(
+                        dto.getSetupToken(), worker.getId(), company.getId());
+            }
         }
-        // V198 fix: Ha passwordHash == null ES passwordChangedAt == null, a dolgozo
-        // teljesen resetelt allapotban van (V198 migracio vagy V196 clearelte).
-        // Ilyenkor bootstrap-lezartsagtol FUGGETLENUL engedjuk az uj jelszo beallitasat,
-        // mert nincs semmi titok amit ellenorizni kellene — ez maga az ujratelepites
-        // use-case, amit a felhasznalo a SetupWizard-on keresztul csinal.
-        //
-        // Biztonsag: ez NEM account-takeover, mert a worker kodot (KOSA, BORSI stb.)
-        // publikusan latja a wizard, DE a jelszot-allito szemely fizikailag az irodaban
-        // ul es rendszergazda felugyelete alatt telepiti a gepet. A kockazat elfogadhato
-        // a "lezart bootstrap blokkolja az ujratelepites" problemat tekintve.
+        // Pre-bootstrap (a bootstrap MEG nem zarult le) + null-hash: ez a kezdeti telepites
+        // use-case-e (SetupWizard). Itt nincs lezart rendszer, amibol fiokot at lehetne venni,
+        // ezert token nelkul is engedjuk — ez maga az elso telepites.
         // Ha a passwordHash NEM null, a fenti agak mar ellenoriztek a jelszot.
 
         List<String> roleCodes = sanitizeRoleCodes(workerRoleService.getRoleCodesForWorker(worker.getId()));

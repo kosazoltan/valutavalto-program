@@ -8,7 +8,7 @@
 
 version: 1
 last_updated: "2026-05-18"
-total_codes: 41
+total_codes: 44
 
 codes:
 
@@ -309,6 +309,26 @@ codes:
       V230+V231 hotfix kezeli. NEM-NULL password_hash kell, NEM
       kerdezzunk current_password-ot uj telepiteskor.
 
+  VV-SEC-004:
+    name: "Audit-log iras meghiusult (currency_audit_log INSERT)"
+    category: SECURITY
+    level: ERROR
+    user_impact: "A modositas megtortent, de az audit-bejegyzes NEM mentodott (audit-res)"
+    ai_fix_hint: |
+      AdminCurrencyService.writeAudit() catch-aga: a Currency-modositas mar commitalt,
+      de a currency_audit_log INSERT bukott. Ellenorizd a DB-kapcsolatot/constraint-et.
+      Pmt./NAV-megorzes szempontjabol a business-muvelet es az audit szetcsuszott.
+
+  VV-SEC-005:
+    name: "Grace token-nelkuli first-time worker-setup felhasznalva (V279 kohorsz)"
+    category: SECURITY
+    level: WARN
+    user_impact: "Nincs kozvetlen hatas — null-hash kollega token nelkul allitott jelszot (deploy-kohorsz)"
+    ai_fix_hint: |
+      WorkerFirstTimeSetupService grace-aga (V279): a deploy-pillanatban null-hash dolgozo
+      EGYSZER token nelkul fejezte be a setupot. Verseny-alapu fiokatvetel utolagos
+      detektalasahoz strukturalt audit. A grace egyszer-hasznalatos (setup_grace=false utana).
+
   # =====================================================
   # VV-VOICE — Hangseged (voice-assistant) integracio
   # =====================================================
@@ -406,6 +426,37 @@ codes:
       CameraTransactionLinker.linkTransaction() catch-all. Camera service offline?
       AML/audit ellenorzeshez kotelezo a kamerakep, manualis fix:
       - CameraExportController.linkManually(txId, branchId, timestamp, receiptNo)
+
+  VV-TECH-005:
+    name: "Kamera hash-lanc integritas serult (previousHash eltres)"
+    category: TECHNICAL
+    level: ERROR
+    user_impact: "A kamera-felvetel utolagosan modosulhatott - a bizonyitekertek serult, hatosagi vizsgalat eseten jelezni kell"
+    ai_fix_hint: |
+      CameraHashChainService.verifyChain(): egy szegmens previousHash erteke
+      nem egyezik az elozo szegmens chainHash-evel -> a lanc valahol megszakadt
+      vagy manipulalt. Ellenorizd: hianyzik-e szegmens (sequenceNumber-ugras),
+      vagy DB-manipulacio tortent. Az auditLogService is rogzit (CAMERA_CHAIN_INTEGRITY_FAILURE).
+
+  VV-TECH-006:
+    name: "Kamera hash-lanc ellenorzes szamitasi hiba"
+    category: TECHNICAL
+    level: ERROR
+    user_impact: "A kamera hash-lanc nem ellenorizheto - a verifikacio megszakadt, ujraindas szukseges"
+    ai_fix_hint: |
+      CameraHashChainService.verifyChain() computeChainHash() Exception-t dobott
+      (pl. SHA-256 algoritmus nem elerheto, vagy metadata olvasasi hiba).
+      Ellenorizd a MessageDigest.getInstance("SHA-256") elerhetoseget + a recording metadata-t.
+
+  VV-TECH-007:
+    name: "Kamera chain hash mismatch (tamper-evidence)"
+    category: TECHNICAL
+    level: ERROR
+    user_impact: "A kamera-szegmens tartalma elter a tarolt hash-tol - bizonyitekertek serult"
+    ai_fix_hint: |
+      CameraHashChainService.verifyChain(): az ujraszamolt chainHash nem egyezik
+      a tarolt ertekkel -> a szegmens tartalma (fileHash/metadata) megvaltozott a rogzites ota.
+      Az auditLogService is rogzit (CAMERA_CHAIN_HASH_MISMATCH). Hatosagi/forenzikus eskalacio.
 
   VV-AML-004:
     name: "AML service unavailable - tranzakcio blokkolva"
