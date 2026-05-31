@@ -395,8 +395,12 @@ public class StornoService {
         try {
             approvalId = UUID.fromString(approvalIdStr);
         } catch (IllegalArgumentException e) {
-            // CodeQL (log-injection, #944): approvalIdStr kliens-input — CRLF/control strip a logba iras elott.
-            log.warn("Érvénytelen approvalId formátum a sztornó-végrehajtáskor: {}", sanitizeForLog(approvalIdStr));
+            // CodeQL java/log-injection (#260, CWE-117): a kliens-vezerelt approvalId-t SOHA nem logoljuk
+            // nyersen (a custom sanitizer-t a CodeQL nem ismeri fel sanitizerkent -> az alert nyitva maradt).
+            // Malformed UUID eseten a tartalom diagnosztikailag ertektelen — csak a HOSSZAT (int, NEM
+            // injektalhato) naplozzuk; igy a user-input -> log taint-flow definitiven megszakad.
+            log.warn("Érvénytelen approvalId formátum a sztornó-végrehajtáskor (nem valid UUID, hossz: {} karakter)",
+                    approvalIdStr.length());
             return false;
         }
         return stornoApprovalRepository.findById(approvalId)
@@ -631,16 +635,5 @@ public class StornoService {
             log.warn("Sztornó jóváhagyás-kérés értesítés sikertelen (a kérés mentve maradt): {}",
                     e.getMessage(), e);
         }
-    }
-
-    /**
-     * CRLF + control karakter strip a log-injection elleni vedelemhez (CodeQL java/log-injection, #944).
-     * A sztorno-vegrehajtaskor a kliens-vezerelt approvalId nyers logba irasa CWE-117 (log forging) —
-     * a soremeleseket/tab-ot '_'-ra, az egyeb control karaktereket '?'-re cserelve a tamado nem tud
-     * hamis log-sorokat injektalni. Package-private a celzott unit-teszt miatt.
-     */
-    static String sanitizeForLog(String input) {
-        if (input == null) return null;
-        return input.replaceAll("[\\r\\n\\t]", "_").replaceAll("[\\p{Cntrl}]", "?");
     }
 }
