@@ -56,6 +56,7 @@ public class StornoService {
     private final ExchangeRateRepository exchangeRateRepository;
     private final NotificationService notificationService;
     private final ApplicationEventPublisher eventPublisher;
+    private final SystemParameterService systemParameterService;
 
     // Napi sztornó limit supervisor jóváhagyás nélkül — iroda szinten
     private static final int DAILY_STORNO_LIMIT_BRANCH = 3;
@@ -63,6 +64,12 @@ public class StornoService {
     // Napi sztornó limit supervisor jóváhagyás nélkül — pénztáros szinten
     // Legacy: a limit irodánként ÉS pénztárosonként is érvényes
     private static final int DAILY_STORNO_LIMIT_CASHIER = 2;
+
+    // 4-szem-elv (#954): a sztornó-jóváhagyás requester≠approver kikényszerítése feature-flag mögött.
+    // SystemParameter kulcs; default OFF → jelenlegi workflow változatlan (csak role-gate). Bekapcsolva
+    // a kérelmező pénztáros NEM hagyhatja jóvá saját sztornó-kérését (független jóváhagyó kell).
+    static final String STORNO_APPROVAL_FOUR_EYES_PARAM = "STORNO_APPROVAL_FOUR_EYES_ENFORCEMENT";
+    static final String STORNO_APPROVAL_FOUR_EYES_DEFAULT = "false";
 
     /**
      * PR #115: Sztornó ellenőrzés receipt_number-rel VAGY id-vel.
@@ -313,6 +320,19 @@ public class StornoService {
 
         Worker approver = workerRepository.findById(approvedByWorkerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Jóváhagyó pénztáros nem található: " + approvedByWorkerId));
+
+        // 4-szem-elv (#954, feature-flag mogott, default OFF): bekapcsolt enforcement eseten a JOVAHAGYAS
+        // jovahagyoja NEM lehet azonos a kerelmezovel (fuggetlen jovahagyo). Default false -> jelenlegi
+        // workflow valtozatlan (a controller @PreAuthorize SUPERVISOR+ role-gate-je ervenyben). Csak a
+        // POZITIV jovahagyast blokkolja; sajat keres ELUTASITASA megengedett. (AML_HIGH_VALUE mintaja.)
+        boolean fourEyesEnforced = systemParameterService != null
+                && "true".equalsIgnoreCase(systemParameterService.getValue(
+                        STORNO_APPROVAL_FOUR_EYES_PARAM, STORNO_APPROVAL_FOUR_EYES_DEFAULT));
+        if (fourEyesEnforced && approved && approval.getWorker() != null
+                && approval.getWorker().getId().equals(approvedByWorkerId)) {
+            throw new ValidationException(
+                "Sajat sztorno-keres nem hagyhato jova sajat maga altal — fuggetlen jovahagyo szukseges (4-szem-elv).");
+        }
 
         approval.setApprovedByWorker(approver);
         approval.setApprovedAt(LocalDateTime.now());
