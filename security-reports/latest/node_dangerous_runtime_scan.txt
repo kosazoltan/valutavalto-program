@@ -1,4 +1,4 @@
-﻿Command: rg -n -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/dist-electron/**" -g "!**/build/**" -g "!**/target/**" -g "!**/coverage/**" -g "!**/security-reports/**" -g "!**/.git/**" -g "!**/.venv/**" -g "!**/*.test.*" -g "!**/*.spec.*" "child_process\.exec\(|eval\(|new Function\(|vm\.runInNewContext\(" backend/src/main frontend-react/src penztar-client/electron
+﻿Command: rg -n -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/dist-electron/**" -g "!**/build/**" -g "!**/target/**" -g "!**/coverage/**" -g "!**/security-reports/**" -g "!**/.git/**" -g "!**/.venv/**" -g "!**/*.test.*" -g "!**/*.spec.*" "child_process\.exec\(|\beval\(|new Function\(|vm\.runInNewContext\(" backend/src/main frontend-react/src penztar-client/electron
 Status: PASSED
 Note: No matches found
 

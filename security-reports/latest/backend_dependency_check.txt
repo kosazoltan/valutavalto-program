@@ -1,24 +1,24 @@
 ﻿Command: mvnw.cmd dependency-check:check -DfailBuildOnCVSS=7 -DnvdApiKey=***
-Status: FAILED
-Note: Exit code 1
+Status: PASSED
+Note: 
 
 --- STDOUT ---
 [INFO] Scanning for projects...
 [INFO] 
 [INFO] --------------------< com.puzzleir:valuta-backend >---------------------
-[INFO] Building Valutaváltó Backend 2.5.1
+[INFO] Building Valutaváltó Backend 2.27.57
 [INFO]   from pom.xml
 [INFO] --------------------------------[ jar ]---------------------------------
 [INFO] 
-[INFO] --- dependency-check:12.2.1:check (default-cli) @ valuta-backend ---
+[INFO] --- dependency-check:12.2.2:check (default-cli) @ valuta-backend ---
 [INFO] Checking for updates
-[INFO] NVD API has 1 294 records in this update
-[INFO] Downloaded 1 294/1 294 (100%)
-[INFO] Completed processing batch 1/1 (100%) in 908ms
+[INFO] NVD API has 769 records in this update
+[INFO] Downloaded 769/769 (100%)
+[INFO] Completed processing batch 1/1 (100%) in 540ms
 [INFO] Updating CISA Known Exploited Vulnerability list: https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
 [INFO] Begin database defrag
-[INFO] End database defrag (4765 ms)
-[INFO] Check for updates complete (14090 ms)
+[INFO] End database defrag (4472 ms)
+[INFO] Check for updates complete (7634 ms)
 [INFO] 
 
 Dependency-Check is an open source tool performing a best effort analysis of 3rd party dependencies; false positives and false negatives may exist in the analysis performed by the tool. Use of the tool and the reporting provided constitutes acceptance for use in an AS IS condition, and there are NO warranties, implied or otherwise, with regard to the analysis or its use. Any use of the tool and the reporting provided is at the user's risk. In no event shall the copyright holder or OWASP be held liable for any damages whatsoever arising out of or in connection with the use of this tool, the analysis performed, or the resulting report.
@@ -36,110 +36,38 @@ Dependency-Check is an open source tool performing a best effort analysis of 3rd
 [INFO] Finished Dependency Merging Analyzer (0 seconds)
 [INFO] Finished Hint Analyzer (0 seconds)
 [INFO] Finished Version Filter Analyzer (0 seconds)
-[INFO] Created CPE Index (1 seconds)
-[INFO] Finished CPE Analyzer (2 seconds)
+[INFO] Created CPE Index (0 seconds)
+[INFO] Finished CPE Analyzer (1 seconds)
 [INFO] Finished False Positive Analyzer (0 seconds)
 [INFO] Finished NVD CVE Analyzer (0 seconds)
 [INFO] Finished RetireJS Analyzer (1 seconds)
-[WARNING] Disabling OSS Index analyzer due to missing user/password credentials. Authentication is now required: https://ossindex.sonatype.org/doc/auth-required
+[WARNING] Sonatype OSS Index Analyzer disabled due to missing credentials. Authentication with token is now required, and OSS Index is migrating to Sonatype Guide. See https://dependency-check.github.io/DependencyCheck/analyzers/oss-index-analyzer.html for more information on authentication with Sonatype Guide OSS Index.
 [INFO] Finished Vulnerability Suppression Analyzer (0 seconds)
 [INFO] Finished Known Exploited Vulnerability Analyzer (0 seconds)
 [INFO] Finished Dependency Bundling Analyzer (0 seconds)
 [INFO] Suppression Rule had zero matches: SuppressionRule{packageUrl=PropertyType{value=^pkg:maven/org\.apache\.logging\.log4j/log4j-api@.*$, regex=true, caseSensitive=false},cve={CVE-2025-68161,}}
 [INFO] Suppression Rule had zero matches: SuppressionRule{packageUrl=PropertyType{value=^pkg:maven/org\.apache\.logging\.log4j/log4j-api@.*$, regex=true, caseSensitive=false},cve={CVE-2026-34478,CVE-2026-34480,CVE-2026-34481,}}
 [INFO] Suppression Rule had zero matches: SuppressionRule{packageUrl=PropertyType{value=^pkg:maven/org\.apache\.pdfbox/pdfbox@.*$, regex=true, caseSensitive=false},cve={CVE-2026-33929,}}
+[INFO] Suppression Rule had zero matches: SuppressionRule{packageUrl=PropertyType{value=^pkg:maven/org\.postgresql/postgresql@42\.7\.10$, regex=true, caseSensitive=false},cve={CVE-2026-42198,}}
 [INFO] Finished Unused Suppression Rule Analyzer (0 seconds)
-[INFO] Analysis Complete (7 seconds)
+[INFO] Analysis Complete (4 seconds)
 [INFO] Writing HTML report to: D:\repo\valutavalto-program\backend\target\dependency-check-report.html
-[WARNING] 
-
-One or more dependencies were identified with known vulnerabilities in Valutaváltó Backend:
-
-spring-boot-devtools-4.0.6.jar (pkg:maven/org.springframework.boot/spring-boot-devtools@4.0.6, cpe:2.3:a:vmware:spring_boot:4.0.6:*:*:*:*:*:*:*, cpe:2.3:a:vmware:spring_boot_tools:4.0.6:*:*:*:*:*:*:*, cpe:2.3:a:vmware:spring_tools:4.0.6:*:*:*:*:*:*:*) : CVE-2022-31691
-swagger-ui-5.32.2.jar: swagger-ui-bundle.js (pkg:javascript/DOMPurify@3.3.2) : ## Summary
-In `src/purify.ts:1117-1123`, `ADD_TAGS` as a function (via `EXTRA_ELEMENT_HANDLING.tagCheck`) bypasses `FORBID_TAGS` due to short-circuit evaluation.
-
-The condition:
-```
-!(tagCheck(tagName)) && (!ALLOWED_TAGS[tagName] || FORBID_TAGS[tagName])
-```
-When `tagCheck(tagName)` returns `true`, the entire condition is `false` and the element is kept — `FORBID_TAGS[tagName]` is never evaluated.
-
-## Inconsistency
-This contradicts the attribute-side pattern at line 1214 where `FORBID_ATTR` explicitly wins first:
-```
-if (FORBID_ATTR[lcName]) { continue; }
-```
-For tags, FORBID should also take precedence over ADD.
-
-## Impact
-Applications using both `ADD_TAGS` as a function and `FORBID_TAGS` simultaneously get unexpected behavior — forbidden tags are allowed through. Config-dependent but a genuine logic inconsistency.
-
-## Suggested Fix
-Check `FORBID_TAGS` before `tagCheck`:
-```
-if (FORBID_TAGS[tagName]) { /* remove */ }
-else if (tagCheck(tagName) || ALLOWED_TAGS[tagName]) { /* keep */ }
-```
-
-## Affected Version
-v3.3.3 (commit 883ac15)
-swagger-ui-5.32.2.jar: swagger-ui-es-bundle.js (pkg:javascript/DOMPurify@3.3.2) : ## Summary
-In `src/purify.ts:1117-1123`, `ADD_TAGS` as a function (via `EXTRA_ELEMENT_HANDLING.tagCheck`) bypasses `FORBID_TAGS` due to short-circuit evaluation.
-
-The condition:
-```
-!(tagCheck(tagName)) && (!ALLOWED_TAGS[tagName] || FORBID_TAGS[tagName])
-```
-When `tagCheck(tagName)` returns `true`, the entire condition is `false` and the element is kept — `FORBID_TAGS[tagName]` is never evaluated.
-
-## Inconsistency
-This contradicts the attribute-side pattern at line 1214 where `FORBID_ATTR` explicitly wins first:
-```
-if (FORBID_ATTR[lcName]) { continue; }
-```
-For tags, FORBID should also take precedence over ADD.
-
-## Impact
-Applications using both `ADD_TAGS` as a function and `FORBID_TAGS` simultaneously get unexpected behavior — forbidden tags are allowed through. Config-dependent but a genuine logic inconsistency.
-
-## Suggested Fix
-Check `FORBID_TAGS` before `tagCheck`:
-```
-if (FORBID_TAGS[tagName]) { /* remove */ }
-else if (tagCheck(tagName) || ALLOWED_TAGS[tagName]) { /* keep */ }
-```
-
-## Affected Version
-v3.3.3 (commit 883ac15)
-
-
-See the dependency-check report for more details.
-
-
 [INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
+[INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  26.458 s
-[INFO] Finished at: 2026-05-01T07:52:50+02:00
+[INFO] Total time:  18.330 s
+[INFO] Finished at: 2026-05-30T10:57:42+02:00
 [INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.owasp:dependency-check-maven:12.2.1:check (default-cli) on project valuta-backend: 
-[ERROR] 
-[ERROR] One or more dependencies were identified with vulnerabilities that have a CVSS score greater than or equal to '7,0': 
-[ERROR] 
-[ERROR] spring-boot-devtools-4.0.6.jar (pkg:maven/org.springframework.boot/spring-boot-devtools@4.0.6, cpe:2.3:a:vmware:spring_boot:4.0.6:*:*:*:*:*:*:*, cpe:2.3:a:vmware:spring_boot_tools:4.0.6:*:*:*:*:*:*:*, cpe:2.3:a:vmware:spring_tools:4.0.6:*:*:*:*:*:*:*): CVE-2022-31691(9.8)
-[ERROR] 
-[ERROR] See the dependency-check report for more details.
-[ERROR] 
-[ERROR] 
-[ERROR] -> [Help 1]
-[ERROR] 
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR] 
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
 
 
 --- STDERR ---
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by org.fusesource.jansi.internal.JansiLoader in an unnamed module (file:/C:/Users/Kósa%20Zoltán/.m2/wrapper/dists/apache-maven-3.9.11-bin/6mqf5t809d9geo83kj4ttckcbc/apache-maven-3.9.11/lib/jansi-2.4.2.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::staticFieldBase has been called by com.google.inject.internal.aop.HiddenClassDefiner (file:/C:/Users/Kósa%20Zoltán/.m2/wrapper/dists/apache-maven-3.9.11-bin/6mqf5t809d9geo83kj4ttckcbc/apache-maven-3.9.11/lib/guice-5.1.0-classes.jar)
+WARNING: Please consider reporting this to the maintainers of class com.google.inject.internal.aop.HiddenClassDefiner
+WARNING: sun.misc.Unsafe::staticFieldBase will be removed in a future release
 
