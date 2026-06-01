@@ -8,6 +8,7 @@ import {
   Globe,
   KeyRound,
   Loader2,
+  RefreshCw,
   Rocket,
   Search,
   Server,
@@ -449,6 +450,25 @@ export default function SetupWizard() {
     }
   }, [applyGoogleSetup, postSetupGoogleIdentify])
 
+  // ESET-MITM reset után: ha az OAuth már sikerült (van id_token), CSAK a backend-azonosítást
+  // ismételjük (nincs újabb Google-popup). Ha még nincs token, a teljes login fut újra.
+  const handleRetryGoogleIdentify = useCallback(async () => {
+    if (!googleIdToken) {
+      await handleGoogleSetupLogin()
+      return
+    }
+    setGoogleSetupLoading(true)
+    setGoogleSetupError(null)
+    try {
+      const response = await postSetupGoogleIdentify({ idToken: googleIdToken })
+      applyGoogleSetup(response)
+    } catch (err: unknown) {
+      setGoogleSetupError(humanizeError(err))
+    } finally {
+      setGoogleSetupLoading(false)
+    }
+  }, [googleIdToken, handleGoogleSetupLogin, postSetupGoogleIdentify, applyGoogleSetup])
+
   const handleSharedWorkerConfirm = useCallback(async () => {
     if (!googleIdToken || !selectedSharedWorkerCode.trim()) return
     setGoogleSetupLoading(true)
@@ -821,6 +841,7 @@ export default function SetupWizard() {
               selectedSharedWorkerCode={selectedSharedWorkerCode}
               onSelectedSharedWorkerCodeChange={setSelectedSharedWorkerCode}
               onGoogleLogin={handleGoogleSetupLogin}
+              onRetryGoogleIdentify={handleRetryGoogleIdentify}
               onSharedWorkerConfirm={handleSharedWorkerConfirm}
             />
           )}
@@ -1036,6 +1057,7 @@ function WelcomeStep(props: {
   selectedSharedWorkerCode: string
   onSelectedSharedWorkerCodeChange: (value: string) => void
   onGoogleLogin: () => void
+  onRetryGoogleIdentify: () => void
   onSharedWorkerConfirm: () => void
 }) {
   const {
@@ -1045,6 +1067,7 @@ function WelcomeStep(props: {
     selectedSharedWorkerCode,
     onSelectedSharedWorkerCodeChange,
     onGoogleLogin,
+    onRetryGoogleIdentify,
     onSharedWorkerConfirm,
   } = props
   const sharedWorkerOptions = googleSetup?.requiresWorkerSelection ? (googleSetup.workerOptions ?? []) : []
@@ -1071,7 +1094,16 @@ function WelcomeStep(props: {
 
       {googleSetupError && (
         <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700">
-          {googleSetupError}
+          <div>{googleSetupError}</div>
+          <button
+            type="button"
+            onClick={onRetryGoogleIdentify}
+            disabled={googleSetupLoading}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition"
+          >
+            {googleSetupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            Próbáld újra a kapcsolatot
+          </button>
         </div>
       )}
 
