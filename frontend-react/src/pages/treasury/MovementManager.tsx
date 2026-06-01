@@ -69,6 +69,7 @@ export default function MovementManager() {
     peerVaults: BranchInfo[]
     fixedCounterparties: BranchInfo[]
   } | null>(null)
+  const [counterpartiesError, setCounterpartiesError] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -98,15 +99,19 @@ export default function MovementManager() {
   }, [fetchData])
 
   // FK-013 follow-up: a partner-lista statikus → egyszer töltjük (nem a 15s poll-ban).
-  // Best-effort: a treasury dashboard értéktáros-kontextus; ha az endpoint mégis 403/hiba
-  // (nem-értéktár user), a select "Partnerek betöltése..." állapotban marad, nem törik el a UI.
-  useEffect(() => {
-    let active = true
-    branchApi.listVaultCounterparties()
-      .then((cp) => { if (active) setVaultCounterparties(cp) })
-      .catch((err) => logger.warn('MovementManager', 'vault-counterparties betöltési hiba:', err))
-    return () => { active = false }
+  // Codex P2: betöltés-hibát FELSZÍNRE hozzuk (counterpartiesError) + retry — különben a
+  // user csapdába esik (select használhatatlan), és az üres toBranchId-submitet a guard tiltja.
+  const loadCounterparties = useCallback(() => {
+    setCounterpartiesError(false)
+    return branchApi.listVaultCounterparties()
+      .then((cp) => setVaultCounterparties(cp))
+      .catch((err) => {
+        logger.warn('MovementManager', 'vault-counterparties betöltési hiba:', err)
+        setCounterpartiesError(true)
+      })
   }, [])
+
+  useEffect(() => { void loadCounterparties() }, [loadCounterparties])
 
   // Hotkeys
   useHotkeys('n', () => setShowNewModal(true), { enableOnFormTags: false })
@@ -149,7 +154,9 @@ export default function MovementManager() {
 
   const handleSubmitNew = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!currencyId || !amount) return
+    // Codex P2: cél-iroda KÖTELEZŐ — különben (üres toBranchId) az offline-út rossz célhellyel
+    // (targetBranchId=null, targetBranchCode='TREASURY') mentene, a backend-út pedig UUID-hibát dobna.
+    if (!currencyId || !amount || !toBranchId) return
     try {
       const parsedAmount = parseFloat(amount)
       const selectedCurrency = currencies.find((currency) => currency.id === currencyId)
@@ -467,6 +474,14 @@ export default function MovementManager() {
                     <option value="" disabled>Partnerek betöltése...</option>
                   )}
                 </select>
+                {counterpartiesError && (
+                  <div className="mt-1 flex items-center gap-2 text-xs text-red-600">
+                    <span>{t('treasury.celIrodakBetoltesHiba')}</span>
+                    <button type="button" onClick={() => void loadCounterparties()} className="font-semibold underline">
+                      {t('treasury.ujra')}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Currency + Amount */}
@@ -518,7 +533,7 @@ export default function MovementManager() {
                 >
                   {t('common.cancel')}
                 </button>
-                <button type="submit" className="form-button-primary">
+                <button type="submit" className="form-button-primary disabled:opacity-50 disabled:cursor-not-allowed" disabled={!toBranchId || !currencyId || !amount}>
                   <Save size={18} />
                   <span>{t('common.create')}</span>
                 </button>
