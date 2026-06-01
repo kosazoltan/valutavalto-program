@@ -252,6 +252,29 @@ public class ShipmentService {
         return saved;
     }
 
+    /**
+     * F3 (2026-06-01): dedikált ELUTASÍTÁS — külön a visszavonástól (cancel). A státuszt
+     * REJECTED-re állítja és rögzíti az audit-mezőket (rejectionReason + rejectedByWorkerId).
+     * Tenant IDOR-védelem a {@link #findById}-on át.
+     *
+     * <p>Codex P2 (2026-06-01): az elutasítás az approve párja — CSAK SUBMITTED állapotból
+     * megengedett (a UI is csak SUBMITTED-nél mutatja a reject akciót, az approve SUBMITTED→APPROVED-ot
+     * validál). Így APPROVED/IN_TRANSIT/DRAFT NEM érvényteleníthető közvetlen API-hívással.
+     */
+    public ShipmentRequest reject(UUID id, String reason) {
+        ShipmentRequest request = findById(id);
+        validateStatusTransition(request, ShipmentRequestStatus.SUBMITTED, ShipmentRequestStatus.REJECTED);
+        // Biztonság: az elutasító dolgozó a HITELESÍTETT user (nem kliens-trusted param) — mint create().
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        request.setStatus(ShipmentRequestStatus.REJECTED);
+        request.setRejectionReason(reason);
+        request.setRejectedByWorkerId(workerId);
+        log.info("Szállítmánykérés elutasítva: {} (elutasító worker={})", request.getRequestNumber(), workerId);
+        ShipmentRequest saved = shipmentRequestRepository.save(request);
+        initLazyForSerialization(saved);
+        return saved;
+    }
+
     private void validateStatusTransition(ShipmentRequest request,
                                           ShipmentRequestStatus expectedCurrent,
                                           ShipmentRequestStatus targetStatus) {

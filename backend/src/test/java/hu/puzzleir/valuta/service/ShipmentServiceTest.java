@@ -156,6 +156,67 @@ class ShipmentServiceTest {
     }
 
     @Test
+    void reject_setsRejectedStatusAndAuditFields() {
+        // F3 (2026-06-01): dedikált elutasítás — REJECTED státusz + audit-mezők; a workerId a
+        // hitelesített userből (nem kliens-trusted).
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = rejectableShipment(shipmentId, companyId);
+        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L);
+            ShipmentRequest result = service.reject(shipmentId, "Hibás összeg");
+
+            assertThat(result.getStatus()).isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.REJECTED);
+            assertThat(result.getRejectionReason()).isEqualTo("Hibás összeg");
+            assertThat(result.getRejectedByWorkerId()).isEqualTo(77L);
+        }
+    }
+
+    @Test
+    void reject_onlyAllowedFromSubmitted() {
+        // Codex P2: az elutasítás CSAK SUBMITTED-ből megengedett (az approve párja). Egy már
+        // APPROVED kérés közvetlen API-hívással NEM érvényteleníthető.
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = rejectableShipment(shipmentId, companyId);
+        sr.setStatus(hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
+        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            assertThatThrownBy(() -> service.reject(shipmentId, "kesoi"))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("SUBMITTED");
+            verify(repository, never()).save(any());
+        }
+    }
+
+    /** SUBMITTED státuszú, tenant-konzisztens (from+to branch a companyId-hez) shipment a reject-teszthez. */
+    private ShipmentRequest rejectableShipment(UUID shipmentId, UUID companyId) {
+        UUID fromBranch = UUID.randomUUID();
+        UUID toBranch = UUID.randomUUID();
+        hu.puzzleir.valuta.entity.Company company =
+                hu.puzzleir.valuta.entity.Company.builder().id(companyId).build();
+        hu.puzzleir.valuta.entity.Branch from =
+                hu.puzzleir.valuta.entity.Branch.builder().id(fromBranch).company(company).build();
+        hu.puzzleir.valuta.entity.Branch to =
+                hu.puzzleir.valuta.entity.Branch.builder().id(toBranch).company(company).build();
+        when(branchRepository.findById(fromBranch)).thenReturn(java.util.Optional.of(from));
+        when(branchRepository.findById(toBranch)).thenReturn(java.util.Optional.of(to));
+        return ShipmentRequest.builder()
+                .id(shipmentId)
+                .fromBranchId(fromBranch)
+                .toBranchId(toBranch)
+                .status(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED)
+                .items(new ArrayList<>())
+                .build();
+    }
+
+    @Test
     void findAll_withBranchId_usesNativeBranchFilter() {
         // F2 (2026-06-01): branchId megadva → a natív, DB-szintű findByBranchAndCompanyId fut
         // (NEM a teljes lista + kliens-szűrés). Tenant-scope: companyId.

@@ -114,4 +114,20 @@ public class ShipmentController {
     public ResponseEntity<ShipmentRequest> cancel(@PathVariable UUID id) {
         return ResponseEntity.ok(shipmentService.cancel(id));
     }
+
+    /**
+     * Szállítmánykérés ELUTASÍTÁSA (reject) — külön a visszavonástól (cancel).
+     * POST /api/v1/shipments/{id}/reject?reason=...
+     *
+     * <p>F3 (2026-06-01): a státuszt REJECTED-re állítja, és rögzíti a rejectionReason +
+     * rejectedByWorkerId (a hitelesített user) audit-mezőket. Az elutasítás az approve
+     * párja → azonos írás-jogosultság.
+     */
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
+    public ResponseEntity<ShipmentRequest> reject(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        return ResponseEntity.ok(shipmentService.reject(id, reason));
+    }
 }
