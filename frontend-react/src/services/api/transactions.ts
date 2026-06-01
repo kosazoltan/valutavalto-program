@@ -1177,11 +1177,13 @@ export const shipmentRequestApi = {
     )
     return response.data
   },
-  // Reject: backend jelenleg NINCS /reject endpoint - a /cancel legkozelebbi ekvivalens.
-  // TODO: backend dedikalt /reject endpoint (audit trail szempontjabol) - kulon issue.
+  // F3 (2026-06-01): dedikált /reject végpont (audit-helyesség) — az elutasítás (reject) külön
+  // folyamat a visszavonástól (cancel). A státusz REJECTED lesz, és a backend rögzíti a
+  // rejectionReason + rejectedByWorkerId (a hitelesített user) mezőket. A workerId paramétert a
+  // backend a security-contextből származtatja (mint approve), a kliens-érték nem authoritative.
   reject: async (requestId: string, workerId: string, reason: string): Promise<ShipmentRequest> => {
     const response = await api.post<ShipmentRequest>(
-      `/shipments/${requestId}/cancel`,
+      `/shipments/${requestId}/reject`,
       null,
       { params: { workerId, reason } }
     )

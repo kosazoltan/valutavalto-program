@@ -273,11 +273,11 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     )
   })
 
-  it('reject: a /shipments/{id}/cancel endpoint-ot hivja (reject aliasa)', async () => {
+  it('reject: a dedikált /shipments/{id}/reject endpoint-ot hivja (F3, NEM /cancel)', async () => {
     mockApi.post.mockResolvedValue({ data: { id: 'shipment-1' } })
     await shipmentRequestApi.reject('shipment-1', 'worker-1', 'teszt ok')
     expect(mockApi.post).toHaveBeenCalledWith(
-      '/shipments/shipment-1/cancel',
+      '/shipments/shipment-1/reject',
       null,
       expect.objectContaining({
         params: expect.objectContaining({ workerId: 'worker-1', reason: 'teszt ok' })

@@ -9,5 +9,8 @@ public enum ShipmentRequestStatus {
     APPROVED,
     IN_TRANSIT,
     DELIVERED,
-    CANCELLED
+    CANCELLED,
+    // F3 (2026-06-01): az ELUTASÍTÁS (reject) külön állapot a VISSZAVONÁStól (cancel) —
+    // auditálási és üzleti szempontból elkülönített folyamat (rejectionReason + rejectedByWorkerId).
+    REJECTED
 }

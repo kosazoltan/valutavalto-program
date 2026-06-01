@@ -58,6 +58,13 @@ public class ShipmentRequest {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    // F3 (2026-06-01): dedikált elutasítás (reject) audit-mezői — elkülönítve a cancel-től.
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+
+    @Column(name = "rejected_by_worker_id")
+    private Long rejectedByWorkerId;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
