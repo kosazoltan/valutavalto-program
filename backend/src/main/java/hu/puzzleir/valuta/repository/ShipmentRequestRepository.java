@@ -51,6 +51,24 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
             @Param("companyId") UUID companyId,
             Pageable pageable);
 
+    /**
+     * F2 (2026-06-01): natív, DB-szintű branch-szűrő — a fromBranchId VAGY toBranchId egyezik a
+     * megadott branchId-val. Megszünteti a kliens-oldali "összes shipment letöltése + filter"
+     * mintát (memóriaszivárgás / silent truncation). Multi-tenant: a fromBranchId a cég
+     * branch-ei között kell legyen (azonos izoláció mint findAllOrderedByCompanyId). A status
+     * opcionális (null → minden státusz).
+     */
+    @Query("SELECT sr FROM ShipmentRequest sr " +
+           "WHERE (sr.fromBranchId = :branchId OR sr.toBranchId = :branchId) " +
+           "AND (:status IS NULL OR sr.status = :status) " +
+           "AND sr.fromBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) " +
+           "ORDER BY sr.createdAt DESC")
+    Page<ShipmentRequest> findByBranchAndCompanyId(
+            @Param("branchId") UUID branchId,
+            @Param("status") ShipmentRequestStatus status,
+            @Param("companyId") UUID companyId,
+            Pageable pageable);
+
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(sr.requestNumber, LENGTH(:prefix) + 1) AS integer)), 0) " +
            "FROM ShipmentRequest sr WHERE sr.requestNumber LIKE CONCAT(:prefix, '%')")
     int findMaxRequestNumber(@Param("prefix") String prefix);

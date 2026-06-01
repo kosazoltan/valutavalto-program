@@ -50,9 +50,13 @@ class PosTerminalServiceTest {
         properties.setRootPath(tempDir.toString());
         FileTransportService fileTransportService = new FileTransportService(properties, new ObjectMapper());
         service = new PosTerminalService(repository, systemParameterService, otpProtocol,
+                new BorgunProtocolService(), new WorldlineProtocolService(),
                 properties, fileTransportService);
         ReflectionTestUtils.setField(service, "bridgeSimulatedApprovalEnabled", false);
         ReflectionTestUtils.setField(service, "mockApprovalEnabled", false);
+        // F1: éles driverek alapból KI → biztonságos bridge-mód (a stub-ok nem hívódnak).
+        ReflectionTestUtils.setField(service, "borgunRealDriverEnabled", false);
+        ReflectionTestUtils.setField(service, "worldlineRealDriverEnabled", false);
     }
 
     @Test
@@ -151,6 +155,24 @@ class PosTerminalServiceTest {
         assertThat(status.reachable()).isFalse();
         assertThat(status.statusMessage()).contains("bridge heartbeat sikertelen");
         assertThat(tempDir).isEmptyDirectory();
+    }
+
+    @Test
+    void statusReportsRealDriverUnavailableWhenFlagEnabled() {
+        // F1 P2 (Codex): real-driver flag ON → a státusz NE a bridge-heartbeatet jelentse,
+        // hanem a stub valós állapotát: nem elérhető (különben félrevezető "online").
+        ReflectionTestUtils.setField(service, "borgunRealDriverEnabled", true);
+        // a bridge-szimuláció bekapcsolva — ettől függetlenül a real-driver flag dominál
+        ReflectionTestUtils.setField(service, "bridgeSimulatedApprovalEnabled", true);
+        when(repository.findByTerminalId("TERM-BORGUN"))
+                .thenReturn(Optional.of(activeTerminal("TERM-BORGUN", "BORGUN")));
+
+        TerminalStatus status = service.getStatus("TERM-BORGUN");
+
+        assertThat(status.active()).isTrue();
+        assertThat(status.reachable()).isFalse();
+        assertThat(status.statusMessage()).contains("éles driver nincs implementálva");
+        assertThat(tempDir).isEmptyDirectory(); // nem írt bridge-heartbeat artifactot
     }
 
     @Test

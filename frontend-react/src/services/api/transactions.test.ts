@@ -248,19 +248,22 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     expect(result).toEqual([])
   })
 
-  it('findByBranch: fromBranchId/toBranchId backend-mezok alapjan szur', async () => {
-    // Fix PR #180 Codex P1: backend mezok fromBranchId/toBranchId (NEM requesting/target)
-    // Fix PR #180 Sourcery (post-merge): pagination loop _preservePaged flag-gel,
-    // ezert a mock most Page<T> format (content + last).
+  it('findByBranch: a backend /shipments?branchId=... natív szűrőjét hívja (F2), nem kliens-oldalon szűr', async () => {
+    // F2 (2026-06-01): a szűrés BACKEND-oldali (DB-szintű fromBranchId VAGY toBranchId).
+    // A frontend a branchId paramétert delegálja és a választ csak mappeli — nincs kliens-szűrés.
     const shipments = [
       { id: '1', fromBranchId: 'BR-A', toBranchId: 'BR-B' },
       { id: '2', fromBranchId: 'BR-B', toBranchId: 'BR-A' },
-      { id: '3', fromBranchId: 'BR-X', toBranchId: 'BR-Y' },
     ]
     mockApi.get.mockResolvedValue({ data: { content: shipments, totalPages: 1, last: true } })
     const result = await shipmentRequestApi.findByBranch('BR-A')
+    // a backend által (szűrten) visszaadott összes sort visszaadja, kliens-szűrés nélkül
     expect(result).toHaveLength(2)
     expect(result.map((s: { id: string }) => s.id)).toEqual(['1', '2'])
+    // a branchId paraméter delegálva a backend natív szűrőjének
+    expect(mockApi.get).toHaveBeenCalledWith('/shipments', expect.objectContaining({
+      params: expect.objectContaining({ branchId: 'BR-A' }),
+    }))
   })
 
   it('approve: a /shipments/{id}/approve endpoint-ot hivja', async () => {

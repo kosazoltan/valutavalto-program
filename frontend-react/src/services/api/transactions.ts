@@ -1152,21 +1152,12 @@ export const shipmentRequestApi = {
     return asArray<Record<string, unknown>>(response.data).map(normalizeShipmentRequest)
   },
   findByBranch: async (branchId: string): Promise<ShipmentRequest[]> => {
-    // Backend jelenleg nem tamogatja a branch-parametert kozvetlenul.
-    // Megoldas: paginazott osszes lista lekeres + client-side filter.
-    // AI review (Codex PR #180 P1): backend mezonevek `fromBranchId` / `toBranchId`
-    // (NEM `requestingBranchId` / `targetBranchId`). A korabbi filter SOHA NEM illesztett.
-    // AI review (Sourcery PR #180 + #193): pagination loop `fetchPaged<T>` helperbe
-    // kiemelve, MAX_PAGES cap eseten console.warn (silent truncation elkerulese).
-    // TODO: backend /api/v1/shipments?branchId=... nativ filter - GitHub Issue.
-    const rawPages = await fetchPaged<Record<string, unknown>>(`/shipments`)
-    const all: ShipmentRequest[] = rawPages.map(normalizeShipmentRequest)
-    type ShipmentWithBackendFields = ShipmentRequest & { fromBranchId?: string; toBranchId?: string }
-    return all.filter(s => {
-      const sb = s as ShipmentWithBackendFields
-      return sb.fromBranchId === branchId || sb.toBranchId === branchId
-        || s.requestingBranchId === branchId || s.targetBranchId === branchId
-    })
+    // F2 (2026-06-01): a szűrést a BACKEND végzi DB-szinten (GET /shipments?branchId=... →
+    // fromBranchId VAGY toBranchId). Megszünteti a korábbi kliens-oldali "összes letöltése +
+    // filter" mintát (memóriaszivárgás / silent truncation). A fetchPaged a branchId paramétert
+    // minden lap-kérésen továbbítja; a szűrt eredmény jellemzően egy lapra fér.
+    const rawPages = await fetchPaged<Record<string, unknown>>(`/shipments`, { branchId })
+    return rawPages.map(normalizeShipmentRequest)
   },
   // Approve: backend POST /api/v1/shipments/{id}/approve (params ignoralva: workerId + approvedItems + notes)
   approve: async (requestId: string, workerId: string, approvedItems?: ShipmentRequestItem[], notes?: string): Promise<ShipmentRequest> => {

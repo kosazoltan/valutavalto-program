@@ -41,10 +41,14 @@ public class ShipmentService {
      * tenant-aware *ByCompanyId variánsokat hívjuk SecurityUtils.getCurrentCompanyId()-val.
      */
     @Transactional(readOnly = true)
-    public Page<ShipmentRequest> findAll(ShipmentRequestStatus status, Pageable pageable) {
+    public Page<ShipmentRequest> findAll(ShipmentRequestStatus status, UUID branchId, Pageable pageable) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Page<ShipmentRequest> page;
-        if (status != null) {
+        // F2 (2026-06-01): natív, DB-szintű branch-szűrő — megszünteti a kliens-oldali
+        // "összes letöltése + filter" mintát. branchId opcionális; ha megadott, a status is szűr.
+        if (branchId != null) {
+            page = shipmentRequestRepository.findByBranchAndCompanyId(branchId, status, companyId, pageable);
+        } else if (status != null) {
             page = shipmentRequestRepository.findByStatusAndCompanyId(status, companyId, pageable);
         } else {
             page = shipmentRequestRepository.findAllOrderedByCompanyId(companyId, pageable);
