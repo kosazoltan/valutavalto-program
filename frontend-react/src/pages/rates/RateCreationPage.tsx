@@ -127,6 +127,10 @@ export default function RateCreationPage() {
   // numerikus pillanatképe, kulcs `${currencyId}.${field}`. A 10%-eltérés ehhez mér — NEM a session
   // közbeni, még nem publikált értékhez —, így a lépésenkénti elcsúszás (400→430→470) is kiszúrható.
   const baselineRatesRef = useRef<Record<string, number>>({})
+  // FK02-B / FR-11, FR-12 (Codex P1): a szerver-bootstrap NYERS string-értékei kulcsonként
+  // (`${currencyId}.${field}`). Csoportváltáskor a fix cellákat erre állítjuk vissza, mielőtt az
+  // aktuális csoport override-jait rátennénk — így nincs kereszt-csoport „bleed".
+  const serverRateValuesRef = useRef<Record<string, string>>({})
   const [selectedWgIndex, setSelectedWgIndex] = useState<number>(0)
   /**
    * FK-02/03/04 (Kasza Helga / Bali Henriett 2026-05-28): a régi „bal oldali sávos"
@@ -205,26 +209,34 @@ export default function RateCreationPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- csak a csoport-id váltáskor töltünk újra
   }, [selectedWg?.id])
 
-  // FK02-B / FR-11, FR-12: a csoport perzisztált FIX (nem-formulás) rátaértékeit visszaírjuk a
-  // `rates`-be (a képlet-cellákat a recompute úgyis felülírja). Külön effekt, hogy NE csak a
-  // csoportváltáskor, hanem a `loadData()` UTÁNI (azonos csoportos) reloadkor is lefusson
-  // (Codex P1: `reloadVersion` növekszik minden loadData-nál). Csak OLVAS a localStorage-ból és a
-  // `rates`-re tesz overlay-t — a localStorage-t NEM írja, ezért nem törli a mentett értékeket.
+  // FK02-B / FR-11, FR-12: az aktuális csoport FIX (nem-formulás) cella-állapotának alkalmazása.
+  // Minden string-mezőt a SZERVER-baseline-ra állít vissza, majd rátenni a csoport override-jait
+  // (Codex P1: így csoportváltáskor nincs kereszt-csoport „bleed" — a nem-override-olt cellák a
+  // szerver-értékre esnek vissza, nem az előző csoportéra). A formula-cellákat a recompute UTÓLAG
+  // felülírja (ezért itt nem kezeljük külön, és nem függünk a — váltáskor még elavult — formulas-tól).
+  // Külön effekt, hogy a `loadData()` UTÁNI azonos csoportos reloadkor is lefusson (`reloadVersion`).
+  // Csak OLVAS a localStorage-ból, NEM ír — a mentett override-okat nem törli.
   useEffect(() => {
     if (!selectedWg) return
-    const savedRateValues = loadGroupRateValues(selectedWg.id)
-    if (Object.keys(savedRateValues).length === 0) return
-    setRates(prev => prev.map(r => {
-      let nr = r
-      for (const field of WG_STRING_FIELDS) {
-        const v = savedRateValues[`${r.currencyId}.${field}`]
-        if (v != null && nr[field] !== v) {
-          if (nr === r) nr = { ...r }
-          nr[field] = v
+    const saved = loadGroupRateValues(selectedWg.id)
+    const server = serverRateValuesRef.current
+    setRates(prev => {
+      let changed = false
+      const next = prev.map(r => {
+        let nr = r
+        for (const field of WG_STRING_FIELDS) {
+          const key = `${r.currencyId}.${field}`
+          const target = key in saved ? saved[key]! : (server[key] ?? '')
+          if (nr[field] !== target) {
+            if (nr === r) nr = { ...r }
+            nr[field] = target
+            changed = true
+          }
         }
-      }
-      return nr
-    }))
+        return nr
+      })
+      return changed ? next : prev
+    })
   // eslint-disable-next-line react-hooks/exhaustive-deps -- csoportváltáskor ÉS minden reloadnál
   }, [selectedWg?.id, reloadVersion])
 
@@ -373,13 +385,18 @@ export default function RateCreationPage() {
       // FK02-B / FR-2..5: a perzisztált baseline rögzítése (a 10%-eltérés ehhez mér; publish/save
       // utáni újratöltéskor frissül). Csak a numerikusan értelmezhető mezőket tároljuk.
       const baseline: Record<string, number> = {}
+      const serverValues: Record<string, string> = {}
       for (const er of editableRates) {
         for (const field of WG_STRING_FIELDS) {
-          const n = numOrNull(String(er[field] ?? ''))
-          if (n !== null) baseline[`${er.currencyId}.${field}`] = n
+          const key = `${er.currencyId}.${field}`
+          const raw = typeof er[field] === 'string' ? (er[field] as string) : ''
+          serverValues[key] = raw
+          const n = numOrNull(raw)
+          if (n !== null) baseline[key] = n
         }
       }
       baselineRatesRef.current = baseline
+      serverRateValuesRef.current = serverValues
       // FK02-B / FR-11, FR-12: a fix-érték overlay effekt újrafuttatása (azonos csoportos reload is).
       setReloadVersion(v => v + 1)
     } catch (err) {
