@@ -36,11 +36,22 @@ public class PosTerminalService {
     private final PosTerminalRepository repository;
     private final SystemParameterService systemParameterService;
     private final OtpTerminalProtocolService otpProtocol;
+    private final BorgunProtocolService borgunProtocol;
+    private final WorldlineProtocolService worldlineProtocol;
     private final IntegrationTransportProperties integrationTransportProperties;
     private final FileTransportService fileTransportService;
 
     @Value("${pos.terminal.bridge.simulated-approval-enabled:false}")
     private boolean bridgeSimulatedApprovalEnabled;
+
+    // Éles Borgun/Worldline driver kapcsolók. Alapértelmezetten KIKAPCSOLT → a biztonságos
+    // bridge-mód fut. Bekapcsolva a (jelenleg VÁZ, UnsupportedOperationException-t dobó)
+    // protokoll-service-eket hívja — NEM ad fake jóváhagyást a spec megérkezéséig.
+    @Value("${pos.terminal.borgun.real-driver-enabled:false}")
+    private boolean borgunRealDriverEnabled;
+
+    @Value("${pos.terminal.worldline.real-driver-enabled:false}")
+    private boolean worldlineRealDriverEnabled;
 
     @Value("${pos.terminal.mock-approval-enabled:false}")
     private boolean mockApprovalEnabled;
@@ -259,6 +270,15 @@ public class PosTerminalService {
                 "OTP terminál nem elérhető");
         }
 
+        // F1 P2 (Codex 2026-06-01): ha az ÉLES driver flag be van kapcsolva, a státusz NE a
+        // bridge-heartbeatet jelentse (az félrevezető "online"-t adna, miközben minden valós
+        // payment/reversal/daily-close dob) — a stub valós állapota: nem elérhető.
+        if ((mode == TerminalType.BORGUN && borgunRealDriverEnabled)
+                || (mode == TerminalType.WORLDLINE && worldlineRealDriverEnabled)) {
+            return TerminalStatus.offline(terminalId, terminal.getTerminalName(), terminal.getTerminalType(),
+                mode.name() + " éles driver nincs implementálva (real-driver flag bekapcsolva, de stub)");
+        }
+
         boolean reachable = emitBridgeHeartbeat(mode, terminal);
         if (reachable) {
             return TerminalStatus.online(terminalId, terminal.getTerminalName(),
@@ -440,31 +460,53 @@ public class PosTerminalService {
         }
     }
 
-    // ============ BORGUN IMPLEMENTÁCIÓ (TODO: éles driver) ============
+    // ============ BORGUN IMPLEMENTÁCIÓ ============
+    // Éles driver: BorgunProtocolService (jelenleg VÁZ — vendor protokoll-spec szükséges).
+    // borgunRealDriverEnabled=false (alap) → biztonságos bridge-mód.
 
     private PosTransactionResult executeBorgunPayment(BigDecimal amount, String currency, String terminalId) {
+        if (borgunRealDriverEnabled) {
+            return borgunProtocol.executePayment(amount, currency, terminalId);
+        }
         return executeProviderBridgePayment(TerminalType.BORGUN, amount, currency, terminalId);
     }
 
     private PosTransactionResult executeBorgunReversal(String originalRef, String terminalId) {
+        if (borgunRealDriverEnabled) {
+            return borgunProtocol.executeReversal(originalRef, terminalId);
+        }
         return executeProviderBridgeReversal(TerminalType.BORGUN, originalRef, terminalId);
     }
 
     private PosClosingResult executeBorgunDailyClose(String terminalId) {
+        if (borgunRealDriverEnabled) {
+            return borgunProtocol.executeDailyClose(terminalId);
+        }
         return executeProviderBridgeDailyClose(TerminalType.BORGUN, terminalId);
     }
 
-    // ============ WORLDLINE IMPLEMENTÁCIÓ (TODO: éles driver) ============
+    // ============ WORLDLINE IMPLEMENTÁCIÓ ============
+    // Éles driver: WorldlineProtocolService (jelenleg VÁZ — vendor protokoll-spec szükséges).
+    // worldlineRealDriverEnabled=false (alap) → biztonságos bridge-mód.
 
     private PosTransactionResult executeWorldlinePayment(BigDecimal amount, String currency, String terminalId) {
+        if (worldlineRealDriverEnabled) {
+            return worldlineProtocol.executePayment(amount, currency, terminalId);
+        }
         return executeProviderBridgePayment(TerminalType.WORLDLINE, amount, currency, terminalId);
     }
 
     private PosTransactionResult executeWorldlineReversal(String originalRef, String terminalId) {
+        if (worldlineRealDriverEnabled) {
+            return worldlineProtocol.executeReversal(originalRef, terminalId);
+        }
         return executeProviderBridgeReversal(TerminalType.WORLDLINE, originalRef, terminalId);
     }
 
     private PosClosingResult executeWorldlineDailyClose(String terminalId) {
+        if (worldlineRealDriverEnabled) {
+            return worldlineProtocol.executeDailyClose(terminalId);
+        }
         return executeProviderBridgeDailyClose(TerminalType.WORLDLINE, terminalId);
     }
 
