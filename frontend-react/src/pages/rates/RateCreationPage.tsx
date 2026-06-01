@@ -399,7 +399,8 @@ export default function RateCreationPage() {
   }, [selectedWg?.id])
 
   // FK02-B / FR-11, FR-12: a sávmezők (Lehúzás / Sávok törlése) fix értékeinek perzisztálása.
-  // Cél-mezőnként frissít (üres → törlés), a buy/sell mezőket nem érinti — sparse store marad.
+  // Az ÜRES sáv IS szándékos „üres" override (Codex P2): explicit '' tárolása, hogy a „Sávok törlése"
+  // egy szerver-értékű sávon reload után is megmaradjon. Formula-cellát kihagyunk; buy/sell érintetlen.
   const persistBandFields = useCallback((ratesArr: EditableRate[]) => {
     const id = selectedWg?.id
     if (!id) return
@@ -412,8 +413,7 @@ export default function RateCreationPage() {
         const key = `${r.currencyId}.${field}`
         if (formulas[key]) continue
         const v = r[field]
-        if (typeof v === 'string' && v !== '') saved[key] = v
-        else delete saved[key]
+        saved[key] = typeof v === 'string' ? v : ''
       }
     }
     saveGroupRateValues(id, saved)
@@ -506,11 +506,12 @@ export default function RateCreationPage() {
       }
 
       // FK02-B / FR-11, FR-12: a fix (nem-formulás) érték localStorage-perzisztálása csoportonként,
-      // hogy lapváltás/újratöltés után is megmaradjon. Formula vagy üres beírás → töröljük a kulcsot
-      // (a recompute, ill. a szerver-bootstrap veszi át). A J (officialRate) itt nincs perzisztálva.
+      // hogy lapváltás/újratöltés után is megmaradjon. Formula → töröljük a kulcsot (a recompute veszi
+      // át). Üres string IS szándékos „üres" override (Codex P2): explicit '' tárolása, hogy reload után
+      // a szerver-bootstrap értéket NE állítsa vissza (az overlay az ''-t is alkalmazza). J nincs itt.
       if (wgId && field !== 'officialRate') {
         const saved = loadGroupRateValues(wgId)
-        if (isFormula(trimmed) || trimmed === '') {
+        if (isFormula(trimmed)) {
           if (key in saved) { delete saved[key]; saveGroupRateValues(wgId, saved) }
         } else if (saved[key] !== trimmed) {
           saved[key] = trimmed
