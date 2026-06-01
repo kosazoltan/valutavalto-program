@@ -13,8 +13,8 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { transferApi, currencyApi } from '../../services/api/index'
-import type { Transfer, Currency, CreateTransferRequest } from '../../services/api/index'
+import { transferApi, currencyApi, branchApi } from '../../services/api/index'
+import type { Transfer, Currency, CreateTransferRequest, BranchInfo } from '../../services/api/index'
 import {
   formatInteger,
   formatDateTime,
@@ -61,6 +61,14 @@ export default function MovementManager() {
   const [currencyId, setCurrencyId] = useState<number>(0)
   const [amount, setAmount] = useState('')
   const [notes, setNotes] = useState('')
+  // FK-013 follow-up (2026-06-01): a "Cél iroda" legördülő tartalma — a /branches/vault-counterparties
+  // 3 csoportja (saját terület pénztárai / társ értéktárak / banki és speciális partnerek), mint a
+  // ShipmentNewPage egységesített átadás-átvételében. A treasury dashboard értéktáros-kontextus.
+  const [vaultCounterparties, setVaultCounterparties] = useState<{
+    territorialCashiers: BranchInfo[]
+    peerVaults: BranchInfo[]
+    fixedCounterparties: BranchInfo[]
+  } | null>(null)
 
   const fetchData = useCallback(async () => {
     try {
@@ -88,6 +96,17 @@ export default function MovementManager() {
     const interval = setInterval(() => void fetchData(), 15_000) // 15s polling for pending
     return () => clearInterval(interval)
   }, [fetchData])
+
+  // FK-013 follow-up: a partner-lista statikus → egyszer töltjük (nem a 15s poll-ban).
+  // Best-effort: a treasury dashboard értéktáros-kontextus; ha az endpoint mégis 403/hiba
+  // (nem-értéktár user), a select "Partnerek betöltése..." állapotban marad, nem törik el a UI.
+  useEffect(() => {
+    let active = true
+    branchApi.listVaultCounterparties()
+      .then((cp) => { if (active) setVaultCounterparties(cp) })
+      .catch((err) => logger.warn('MovementManager', 'vault-counterparties betöltési hiba:', err))
+    return () => { active = false }
+  }, [])
 
   // Hotkeys
   useHotkeys('n', () => setShowNewModal(true), { enableOnFormTags: false })
@@ -138,10 +157,17 @@ export default function MovementManager() {
         return
       }
 
+      // FK-013 follow-up: a kiválasztott cél-iroda KÓDJÁT a partner-listából oldjuk fel
+      // (a toBranchId most UUID, nem kód) — különben a targetBranchCode hibásan UUID lenne.
+      const allCounterparties = vaultCounterparties
+        ? [...(vaultCounterparties.territorialCashiers ?? []), ...(vaultCounterparties.peerVaults ?? []), ...(vaultCounterparties.fixedCounterparties ?? [])]
+        : []
+      const targetBranchCode = allCounterparties.find((b) => b.id === toBranchId)?.code ?? 'TREASURY'
+
       if (electronQueueAvailable) {
         await saveAndSyncPendingTransfer({
           targetBranchId: toBranchId || null,
-          targetBranchCode: toBranchId || 'TREASURY',
+          targetBranchCode,
           currencyId,
           currencyCode: selectedCurrency.code,
           amount: parsedAmount,
@@ -166,7 +192,7 @@ export default function MovementManager() {
     } catch (err) {
       logger.error('MovementManager', 'Create movement error:', err)
     }
-  }, [toBranchId, currencyId, amount, movementType, notes, fetchData, currencies, electronQueueAvailable])
+  }, [toBranchId, currencyId, amount, movementType, notes, fetchData, currencies, electronQueueAvailable, vaultCounterparties])
 
   // Filtered history
   const filteredTransfers = allTransfers.filter((t) => {
@@ -407,13 +433,40 @@ export default function MovementManager() {
                   <Building2 size={14} className="inline mr-1" />
                   {t('treasury.celIroda')}
                 </label>
-                <input
-                  type="text"
+                <select
                   className="form-input w-full"
-                  placeholder="Iroda azonosító"
                   value={toBranchId}
                   onChange={(e) => setToBranchId(e.target.value)}
-                />
+                >
+                  <option value="">{t('treasury.valasszonCelIrodat')}</option>
+                  {vaultCounterparties ? (
+                    <>
+                      {(vaultCounterparties.territorialCashiers ?? []).filter((b) => b.isActive !== false).length > 0 && (
+                        <optgroup label="Saját terület pénztárai">
+                          {(vaultCounterparties.territorialCashiers ?? [])
+                            .filter((b) => b.isActive !== false)
+                            .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                        </optgroup>
+                      )}
+                      {(vaultCounterparties.peerVaults ?? []).filter((b) => b.isActive !== false).length > 0 && (
+                        <optgroup label="Társ értéktárak">
+                          {(vaultCounterparties.peerVaults ?? [])
+                            .filter((b) => b.isActive !== false)
+                            .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                        </optgroup>
+                      )}
+                      {(vaultCounterparties.fixedCounterparties ?? []).filter((b) => b.isActive !== false).length > 0 && (
+                        <optgroup label="Banki és speciális partnerek">
+                          {(vaultCounterparties.fixedCounterparties ?? [])
+                            .filter((b) => b.isActive !== false)
+                            .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                        </optgroup>
+                      )}
+                    </>
+                  ) : (
+                    <option value="" disabled>Partnerek betöltése...</option>
+                  )}
+                </select>
               </div>
 
               {/* Currency + Amount */}
