@@ -2137,6 +2137,8 @@
     "bruttoOsszegFt": "Bruttó összeg (Ft)",
     "cegNeve": "Cég neve *",
     "celIroda": "Cél iroda",
+    "valasszonCelIrodat": "Válasszon cél irodát",
+    "celIrodakBetoltesHiba": "Nem sikerült betölteni a cél-irodák listáját.",
     "dij": "Díj",
     "eladasArfolyam": "Eladás árfolyam",
     "eladott": "Eladott",
