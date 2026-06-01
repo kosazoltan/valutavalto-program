@@ -4,6 +4,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
+import { excludeBankPartners } from '../../utils/bankPartners'
 import { useAuthStore } from '../../stores/authStore'
 import { api, dailyChecklistApi } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
@@ -109,7 +110,12 @@ export default function DailyChecklistPage() {
   const loadBranches = useCallback(async () => {
     try {
       const response = await api.get<BranchOption[]>('/branches')
-      const activeBranches = Array.isArray(response.data) ? response.data.filter((branch) => branch.isActive !== false) : []
+      // FK-014: banki/speciális partnerek (VAULT_COUNTERPARTY) kiszűrése — csak a valódi irodák
+      // (65 pénztár + 8 értéktár) végeznek napi ellenőrzést/zárást. A szűrés a status-gridre és a
+      // Fiók-választóra is hat (egy forrás).
+      const activeBranches = Array.isArray(response.data)
+        ? excludeBankPartners(response.data.filter((branch) => branch.isActive !== false))
+        : []
       setBranches(activeBranches)
       setBranchId((current) => current || worker?.branchId || activeBranches[0]?.id || '')
     } catch (err) {

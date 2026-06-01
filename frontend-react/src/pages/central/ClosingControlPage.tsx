@@ -21,6 +21,7 @@ import {
   sortByBranchCode,
   matchesClosingFilter,
 } from './closingControlView'
+import { excludeBankPartners } from '../../utils/bankPartners'
 
 // Codex P2 #560 fix: NEM toISOString().slice(0, 10), mert az UTC zónát ad vissza.
 // Helyi (Europe/Budapest) dátum lokálisan komponálva.
@@ -47,7 +48,9 @@ export default function ClosingControlPage() {
       setLoading(true)
       setError(null)
       const data = await closingControlApi.list(date)
-      setRows(data)
+      // FK-014: banki/speciális partnerek (VAULT_COUNTERPARTY) kiszűrése — csak a 65 pénztár
+      // és 8 értéktár végez napi zárást. Fetch után szűrünk, hogy a 3-kockás összesítő is helyes legyen.
+      setRows(excludeBankPartners(data))
     } catch (err) {
       logger.error('ClosingControlPage', 'Zárás kontroll betöltési hiba:', err)
       setError(getErrorMessage(err))
