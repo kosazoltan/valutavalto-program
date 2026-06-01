@@ -50,9 +50,13 @@ class PosTerminalServiceTest {
         properties.setRootPath(tempDir.toString());
         FileTransportService fileTransportService = new FileTransportService(properties, new ObjectMapper());
         service = new PosTerminalService(repository, systemParameterService, otpProtocol,
+                new BorgunProtocolService(), new WorldlineProtocolService(),
                 properties, fileTransportService);
         ReflectionTestUtils.setField(service, "bridgeSimulatedApprovalEnabled", false);
         ReflectionTestUtils.setField(service, "mockApprovalEnabled", false);
+        // F1: éles driverek alapból KI → biztonságos bridge-mód (a stub-ok nem hívódnak).
+        ReflectionTestUtils.setField(service, "borgunRealDriverEnabled", false);
+        ReflectionTestUtils.setField(service, "worldlineRealDriverEnabled", false);
     }
 
     @Test
