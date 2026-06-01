@@ -111,10 +111,13 @@ describe('group fix rátaértékek round-trip (FK02-B / FR-11, FR-12)', () => {
     expect(loadGroupRateValues('wg-2', s)).toEqual({ 'cur-1.buyRate': '999' })
   })
 
-  it('üres store mentése törli az overlay-t (publikálás után)', () => {
+  it('üres store mentése ELTÁVOLÍTJA a localStorage entryt (publikálás után)', () => {
     const s = memStorage()
+    const key = 'arfolyamkeszito.workgroupSheet.rates.v1.wg-1'
     saveGroupRateValues('wg-1', { 'cur-1.buyRate': '400' }, s)
+    expect(s.getItem(key)).not.toBeNull()
     saveGroupRateValues('wg-1', {}, s)
+    expect(s.getItem(key)).toBeNull() // nem „{}" entry, hanem ténylegesen törölve
     expect(loadGroupRateValues('wg-1', s)).toEqual({})
   })
 

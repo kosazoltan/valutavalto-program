@@ -86,6 +86,12 @@ export function loadGroupRateValues(groupId: string, storage: Storage = localSto
 
 export function saveGroupRateValues(groupId: string, values: Record<string, string>, storage: Storage = localStorage): void {
   try {
+    // Üres store → a kulcs ELTÁVOLÍTÁSA (Copilot): nem hagyunk „{}" entryt, és a publikálás-utáni
+    // „overlay-törlés" szemantikailag is helyes (a betöltés ezután {}-t ad, a szerver lesz az authority).
+    if (Object.keys(values).length === 0) {
+      storage.removeItem(ratesKey(groupId))
+      return
+    }
     storage.setItem(ratesKey(groupId), JSON.stringify(values))
   } catch {
     /* quota / privát mód → kihagyjuk (a memóriabeli state tovább működik) */
