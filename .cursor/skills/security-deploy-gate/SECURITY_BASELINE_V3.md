@@ -1,86 +1,44 @@
-# Teljes Biztonsagi Audit es Vedelmi Rendszer
+# Security Baseline V3 - risk-based
 
-Verzio: 3.0  
-Datum: 2026-03-18  
-Klasszifikacio: Bizalmas - belso fejlesztoi hasznalatra
+Verzio: 3.1
+Datum: 2026-06-01
 
-## Cel es hatokor
+Ez a baseline deploy/release es security-sensitive valtozasokra vonatkozik. Nem
+automatikus teljes gate normal lokalis szerkesztesekre.
 
-Kotelezo, megkerulhetetlen pre-deploy security baseline minden agentnek.  
-Erintett stackek:
+## Mikor kell teljes gate
 
-- Java (Spring Boot)
-- Electron
-- React (Vite/Next)
-- Python (Django/Flask/FastAPI)
-- Node.js (Express/Nest/Fastify)
+- deploy vagy release dontes elott;
+- auth, permission, crypto, secret, logging, dependency, CI, container vagy DB
+  schema valtozasnal;
+- explicit security audit keresnel;
+- ha celzott ellenorzes high/critical biztonsagi kockazatot jelez.
 
-## Kritikus mukodesi szabalyok
+## Mikor eleg celzott ellenorzes
 
-1. Minden agent minden coding taskban automatikusan alkalmazza ezt a baseline-t.
-2. Deploy/release elott kotelezo a teljes security gate futtatasa.
-3. `FAILED` vagy `BLOCKED` gate allapot eseten deploy tiltott.
-4. Nincs feltetelezes: bizonyitekalapu riport kotelezo (`security-reports/latest/`).
-5. Minden valtoztatas utan relevans tesztek futtatasa kotelezo.
+- kis, lokalis kod- vagy dokumentacios valtozas;
+- nincs dependency/security/auth/CI/deploy erintettseg;
+- a kockazat bizonyithato celzott teszttel, linttel, typecheckkel vagy diff
+  review-val.
 
-## 1) Stack-felismeres (kotelezo)
+## Full gate command
 
-Projekt gyokerben es almappakban kereso mintak:
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1
+```
 
-- Java: `pom.xml`, `build.gradle`, `build.gradle.kts`
-- Node/React/Electron: `package.json`, `package-lock.json`, `next.config.*`, `vite.config.*`
-- Python: `requirements.txt`, `pyproject.toml`, `Pipfile`, `poetry.lock`
+Evidence: `security-reports/latest/`.
 
-A gate script csak a detektalt stackhez tartozo checkeket futtassa.
+`FAILED` vagy `BLOCKED` status eseten nincs deploy-ready allitas.
 
-## 2) Dependency audit minimum
+## Minimum security checks
 
-- Java: `mvnw dependency-check:check`
-- Node/React/Electron: `npm audit --omit=dev --audit-level=high`
-- Python: `pip-audit`, `safety check`
-- Supply chain: lockfile lint where applicable
-- Opcionis: `snyk test --all-projects` (ha token/tool elerheto)
+- hard-coded secret scan;
+- dependency high/critical audit, ha dependency valtozott vagy release keszul;
+- SAST mintak: SQL/command injection, unsafe eval/deserialization, path traversal;
+- Electron veszelyes API-k, ha Electron reteg erintett;
+- auth/JWT/session tesztek, ha auth reteg erintett.
 
-## 3) NVD API key (kotelezo Java CVE scannerhez)
+## Reporting
 
-- Kulcs: [NVD API key request](https://nvd.nist.gov/developers/request-an-api-key)
-- Tarolas: kornyezeti valtozoban (`NVD_API_KEY`)
-- Soha ne commitold a kulcsot forraskodba.
-- Gate logolja, hogy kulcs be van-e allitva (ertek nelkul, maszkoltan).
-
-## 4) Security gate kovetelmenyek
-
-Kotelezo script tulajdonsagok:
-
-- Explicit timeout minden scannerre
-- Timeout/halozati akadas -> `BLOCKED`
-- High/Critical finding -> `FAILED`
-- Csak teljesen tiszta futas -> `PASSED`
-- Osszesitett `gate-status.json` + scanner szintu `summary.json`
-- `latest` riport symlink/snapshot logika
-
-## 5) SAST es kodmintak minimum
-
-- Hardcoded secret scan
-- Gyenge kriptografia mintak (MD5/SHA-1/DES/ECB)
-- SQL injection / command injection pattern scan
-- Electron dangerous APIs scan
-- React XSS-mintak (`dangerouslySetInnerHTML`, `eval`, `javascript:`) minimum ellenorzes
-- Python veszelyes primitívek (`eval/exec/pickle/yaml.load unsafe`) minimum ellenorzes
-- Node veszelyes API-k (`eval`, `new Function`, `child_process.exec`) minimum ellenorzes
-
-## 6) Deploy gate dontes
-
-- `GO` csak akkor, ha:
-  - nincs `FAILED`
-  - nincs `BLOCKED`
-  - nincs nyitott High/Critical finding
-- Egyebkent: `NO-GO`.
-
-## 7) Dokumentacios kotelezettseg
-
-Minden security valtozasnal frissitendo:
-
-- `CHANGELOG.md`
-- Agent policy file-ok (`AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `VSCODE.md`, `ANTIGRAVITY.md`)
-- Universal index: `AI-AGENT-SECURITY-UNIVERSAL.md`
+Rovid riport eleg: parancs, status, report path, blocker vagy maradek kockazat.

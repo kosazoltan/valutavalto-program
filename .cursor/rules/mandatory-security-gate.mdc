@@ -1,30 +1,16 @@
 ---
-description: Mandatory security skill execution for all coding and pre-deploy work
-alwaysApply: true
+description: "Use when: deploy, release, dependency/security/auth/CI changes, or explicit security audit."
+alwaysApply: false
 ---
 
-# Mandatory Security Gate
+# Security Gate Rule
 
-This repository enforces a non-optional security workflow for every coding agent across Claude, Codex/Cursor, VS Code tasks, and Antigravity integrations.
+Security work is risk-based, not an always-on loop.
 
-## Required behavior on every task
-
-1. Always load and follow the project skill at:
-   - `.cursor/skills/security-deploy-gate/SKILL.md`
-2. Apply the skill by default, without waiting for trigger words.
-3. Before any deploy or release decision, execute the skill's full pre-deploy gate.
-4. If any critical/high issue is found, block deploy until resolved or explicitly risk-accepted by the user.
-5. Never claim success without evidence (command outputs, checklist status, and changed files).
-6. Keep all agent-facing descriptors aligned to the same policy baseline:
-   - `AGENTS.md`
-   - `CLAUDE.md`
-   - `CODEX.md`
-   - `VSCODE.md`
-   - `ANTIGRAVITY.md`
-   - `AI-AGENT-SECURITY-UNIVERSAL.md`
-
-## Non-bypass policy
-
-- This rule is mandatory and always-on.
-- Skipping this workflow is treated as policy violation.
-- If tooling is missing, report the blocker and provide exact install/run steps, then continue with all remaining checks.
+- Normal coding task: apply the security prohibitions from `AGENTS.md` and run
+  targeted checks.
+- Security/auth/dependency/CI changes: read `.cursor/skills/security-deploy-gate/SKILL.md`
+  and run the relevant checks.
+- Deploy/release: run `scripts/security/run-security-gate.ps1` and use
+  `security-reports/latest/` as evidence.
+- `FAILED` or `BLOCKED` deploy gate blocks deploy-ready claims.

@@ -1,8 +1,8 @@
-# Mandatory Security Gate Rule
+# Security Gate Rule
 
-This rule is always-on for Antigravity agents in this repository.
+Antigravity agents follow `AGENTS.md`.
 
-1. Load security skill: `.antigravity/skills/security-deploy-gate/SKILL.md`
-2. Run tool before deploy: `.antigravity/tools/security-gate.tool.json`
-3. Block deploy on gate status `FAILED` or `BLOCKED`.
-4. Report evidence from `security-reports/latest/`.
+- Run the security gate for deploy, release, dependency/security/auth/CI changes,
+  or explicit security audit requests.
+- Do not run the full security gate for every ordinary coding task.
+- `FAILED` or `BLOCKED` gate status blocks deploy-ready claims.

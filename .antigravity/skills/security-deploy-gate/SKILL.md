@@ -1,14 +1,15 @@
 ---
 name: security-deploy-gate
-description: Mandatory repository security audit flow. Run on every coding task and always before deploy.
+description: Use for deploy, release, dependency/security/auth/CI changes, or explicit security audit. Not for every ordinary coding task.
 ---
 
 # Antigravity Security Deploy Gate
 
-## Mandatory steps
+Run the tool only when the task risk requires it:
 
-1. Read baseline: `.cursor/skills/security-deploy-gate/SECURITY_BASELINE_V3.md`
-2. Execute tool: `powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1`
-3. Evaluate findings:
-   - `FAILED` or `BLOCKED` => `NO-GO`
-4. Report evidence from `security-reports/latest/`.
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1
+```
+
+Report evidence from `security-reports/latest/`. `FAILED` or `BLOCKED` means
+no deploy-ready claim.

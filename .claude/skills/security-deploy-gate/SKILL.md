@@ -1,19 +1,22 @@
 ---
 name: security-deploy-gate
-description: Mandatory security audit and hardening flow for this repository. Apply by default on every coding task and always before deploy.
+description: Use for deploy, release, dependency/security/auth/CI changes, or explicit security audit. Not a default step for ordinary local edits.
 ---
 
-# Claude Security Deploy Gate
+# Security Deploy Gate
 
-## Mandatory
+Use this skill only when the task risk justifies it.
 
-1. Minden coding taskban alkalmazd ezt a skillt.
-2. Deploy/release elott kotelezo futtatni:
-   - `powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1`
-3. `FAILED` vagy `BLOCKED` gate status = deploy blokk.
-4. Eredmenyt bizonyitekkal kell jelenteni: `security-reports/latest/`.
+## Run full gate before deploy/release
 
-## Source of truth
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1
+```
 
-- `.cursor/skills/security-deploy-gate/SECURITY_BASELINE_V3.md`
-- `.cursor/skills/security-deploy-gate/SKILL.md`
+Evidence: `security-reports/latest/`.
+
+`FAILED` or `BLOCKED` means no deploy-ready claim.
+
+## Normal coding task
+
+Apply the security prohibitions in `AGENTS.md`, then run targeted tests/checks.

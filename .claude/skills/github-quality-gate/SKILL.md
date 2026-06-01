@@ -1,74 +1,29 @@
 ---
 name: github-quality-gate
-description: Use when the user asks to push, commit, merge, or deploy. Runs scripts/pre-push-quality-gate.ps1 (lint+typecheck+test+build) and scripts/github-signal-check.ps1 to verify all 10 AGENTS.md gates before approving merge-ready state.
+description: Use when the user asks to push, commit, merge, open a PR, or deploy. Runs the relevant local checks and GitHub signal checks before merge/deploy decisions.
 ---
 
 # github-quality-gate skill
 
-Implements the 10-gate mandate from AGENTS.md / MULTIMODEL_GITHUB_QUALITY_MANDATE_V2.md.
+Use this skill only for git publication or deployment workflows, not for every
+local edit.
 
-## Required invocation for every push/merge/deploy
+## Push/PR workflow
 
-### Step 1: Local pre-push gate
+1. Run the relevant local checks for the touched stack.
+2. Push a feature branch, never directly to protected main.
+3. If a PR exists, run:
 
-```bash
-powershell -ExecutionPolicy Bypass -File scripts/pre-push-quality-gate.ps1
-```
-
-Expected: exit=0 (all of lint+typecheck+test+build pass). If exit=1, TILOS push.
-
-### Step 2: git push feature branch
-
-```bash
-git checkout -b fix/<desc> main
-git add <specific files>
-git commit -m 'msg'
-git push -u origin <branch>
-```
-
-NEVER push directly to main/master/release/prod.
-
-### Step 3: GitHub signal check (after push)
-
-```bash
+```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github-signal-check.ps1 <PR_NUM>
 ```
 
-Queries 20 sources: PR info, required checks, check-runs+annotations, Codex/Sourcery reviews+comments, Dependabot, CodeQL, secret scanning, workflow logs, reviewDecision+threads, branch protection/rulesets.
+4. Fix blocking CI/review/security findings or document a verified false positive.
 
-### Step 4: Blocker resolution
+## Deploy/release workflow
 
-If signal-check finds blockers:
-- required check fail/pending -> wait or fix
-- Codex P0/P1 -> fix or documented false positive
-- Sourcery bug_risk/security/complexity -> fix
-- Dependabot high/critical -> upgrade or remove
-- CodeQL high/critical -> fix vulnerability
-- CHANGES_REQUESTED review -> address and re-request
+Run the deploy/security gate required by `AGENTS.md` and report the evidence path.
 
-### Step 4b: 5-point code-content review (before accepting the diff)
+## Reporting
 
-Beyond the process gates above, review the diff's **content** per `REVIEW.md` →
-"5-szempontú kód-tartalom review": Intent (edge cases, no silent no-op), Architecture
-(fits patterns, no over-engineering, fewest files), Security (imported library/symbol
-**actually exists** — anti-hallucination — + input validated), Maintainability (no placeholder
-names / commented dead code / mixed style), Performance (no N+1, indexed filters, pagination
-doesn't load all). If unsure about a symbol/column/method, verify against source — never accept on assumption.
-
-### Step 5: Merge only after all signals GREEN
-
-```bash
-gh pr merge <PR> --squash --auto --delete-branch
-```
-
-## Output format
-
-Every response must include the 16-field self-review from AGENTS.md section 4.
-
-## Files used
-
-- scripts/pre-push-quality-gate.ps1
-- scripts/github-signal-check.ps1
-- AGENTS.md (10 gates)
-- AI_CONTRACT.md (hard limits)
-- REVIEW.md (checklist)
+Keep output concise: changed files, commands, pass/fail/blocker, remaining risk.
