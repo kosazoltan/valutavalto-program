@@ -256,11 +256,23 @@ function enqueueTransaction(payload: TransactionRow) {
   });
 }
 
-// 2) Háttér-szinkron: felküldés ugyanazzal az idempotency-kulccsal (duplikáció ellen)
+// 2) Háttér-szinkron: a végpontot a tranzakció TÍPUSA dönti el — NINCS sima
+//    POST /api/v1/transactions! A TransactionController csak /buy, /sell,
+//    /conversion, /reversal POST-okat definiál (lásd sync-engine.ts:1060-1062, 1242).
+function endpointForType(type: string): string {
+  switch (type) {
+    case 'BUY':        return '/api/v1/transactions/buy';
+    case 'SELL':       return '/api/v1/transactions/sell';
+    case 'CONVERSION': return '/api/v1/transactions/conversion';
+    case 'REVERSAL':   return '/api/v1/transactions/reversal';
+    default: throw new Error(`VV-SYNC-002: ismeretlen tranzakció-típus: ${type}`);
+  }
+}
+
 async function flushPending() {
   for (const row of getPendingTransactions()) {       // sqlite.ts helper
     try {
-      const res = await fetch(`${API_BASE}/api/v1/transactions`, {
+      const res = await fetch(`${API_BASE}${endpointForType(row.type)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json',
                    'Idempotency-Key': row.idempotency_key,
@@ -274,6 +286,8 @@ async function flushPending() {
   }
 }
 ```
+
+> **Fontos (valós végpontok):** a `TransactionController` (`@RequestMapping("/api/v1/transactions")`) csak típusonkénti POST-okat tesz közzé: `/buy`, `/sell`, `/conversion`, `/reversal` — **sima `POST /api/v1/transactions` NINCS**. A `penztar-client/electron/sync-engine.ts` is így, típus szerint választ végpontot. A 2. kérdés cache-mintájában szereplő `/api/v1/exchange-rates` szintén illusztratív végpont; a tényleges törzsadat-letöltő útvonalak a `sync-engine.ts`-ben élnek.
 
 ---
 
