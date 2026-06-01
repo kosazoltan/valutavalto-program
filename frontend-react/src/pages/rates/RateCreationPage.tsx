@@ -73,6 +73,23 @@ function sortByMainSheetOrder<T extends { currencyCode: string }>(rows: T[]): T[
   })
 }
 
+// FK02-B / FR-2..5 (2026-06-01): jelentős (≥10%) eltérés az ELŐZŐ MENTETT értékhez képest →
+// megkerülhetetlen megerősítő modal (elgépelés-védelem). Kétoldali: |új-régi|/régi ≥ 0.10.
+const SIGNIFICANT_DEVIATION_THRESHOLD = 0.10
+function isSignificantDeviation(oldVal: number | null, newVal: number | null): boolean {
+  if (oldVal === null || newVal === null || oldVal === 0) return false
+  return Math.abs(newVal - oldVal) / Math.abs(oldVal) >= SIGNIFICANT_DEVIATION_THRESHOLD
+}
+
+/** WgField → ember-olvasható oszlopnév a megerősítő üzenethez. */
+const WG_FIELD_LABEL: Record<string, string> = {
+  buyRate: 'alap vétel', sellRate: 'alap eladás',
+  limit1BuyRate: '1. sáv vétel', limit1SellRate: '1. sáv eladás',
+  limit2BuyRate: '2. sáv vétel', limit2SellRate: '2. sáv eladás',
+  limit3BuyRate: '3. sáv vétel', limit3SellRate: '3. sáv eladás',
+  officialRate: 'elszámoló (J)',
+}
+
 /** EditableRate string-mező → szám (üres → null), a képlet-motor numerikus inputjához. */
 function numOrNull(s: string): number | null {
   const t = s.trim()
@@ -93,6 +110,8 @@ export default function RateCreationPage() {
   const [overview, setOverview] = useState<RateOverviewDTO | null>(null)
   const [workgroups, setWorkgroups] = useState<WorkgroupDetailDTO[]>([])
   const [rates, setRates] = useState<EditableRate[]>([])
+  // FK02-B / FR-2..5: a 10%-eltérés megerősítő modal állapota (a cella-commit interception-höz).
+  const [rateConfirm, setRateConfirm] = useState<ConfirmState | null>(null)
   // FK-04/C (Codex #906): az undo/redo a `rates` MELLETT a `formulas`-t is rögzíti — különben
   // egy képlet beírása után a Ctrl+Z csak a megjelenített értéket állítaná vissza, a képlet a
   // state/localStorage-ban maradna, és a recompute újra alkalmazná (képlet-szerkesztés nem volt visszavonható).
@@ -388,25 +407,49 @@ export default function RateCreationPage() {
     if (!r) return
     const key = `${r.currencyId}.${field}`
     const trimmed = raw.trim()
-    pushUndo()
-    if (isFormula(trimmed)) {
-      setFormulas(prev => (prev[key] === trimmed ? prev : { ...prev, [key]: trimmed }))
-      setRates(prev => prev.map((x, i) => (i === index ? { ...x, modified: true } : x)))
-    } else {
-      setFormulas(prev => {
-        if (!prev[key]) return prev
-        const copy = { ...prev }
-        delete copy[key]
-        return copy
-      })
-      if (field === 'officialRate') {
-        // J (Elszámoló) NUMBER mező (a többi string). Fix override → parse; üres → undefined (auto = 0-s lap A).
-        const n = numOrNull(trimmed)
-        setRates(prev => prev.map((x, i) => (i === index ? { ...x, officialRate: n, modified: true } : x)))
+
+    const applyCommit = () => {
+      pushUndo()
+      if (isFormula(trimmed)) {
+        setFormulas(prev => (prev[key] === trimmed ? prev : { ...prev, [key]: trimmed }))
+        setRates(prev => prev.map((x, i) => (i === index ? { ...x, modified: true } : x)))
       } else {
-        setRates(prev => prev.map((x, i) => (i === index ? { ...x, [field]: trimmed, modified: true } : x)))
+        setFormulas(prev => {
+          if (!prev[key]) return prev
+          const copy = { ...prev }
+          delete copy[key]
+          return copy
+        })
+        if (field === 'officialRate') {
+          // J (Elszámoló) NUMBER mező (a többi string). Fix override → parse; üres → undefined (auto = 0-s lap A).
+          const n = numOrNull(trimmed)
+          setRates(prev => prev.map((x, i) => (i === index ? { ...x, officialRate: n, modified: true } : x)))
+        } else {
+          setRates(prev => prev.map((x, i) => (i === index ? { ...x, [field]: trimmed, modified: true } : x)))
+        }
       }
     }
+
+    // FK02-B / FR-2..5: fix számra cserélt vétel/eladás/sáv mező esetén, ha az új érték az
+    // ELŐZŐ perzisztált értékhez képest ≥10%-ot tér el, megerősítést kérünk a mentés ELŐTT.
+    // 'Nem' → a cella feltétel nélkül visszaáll (a RateGrid commit nélkül a perzisztált értéket
+    // mutatja), a mentés abortálódik. A formula- és a J (officialRate) mezőt nem korlátozzuk.
+    if (!isFormula(trimmed) && field !== 'officialRate') {
+      const prevVal = numOrNull(String(r[field] ?? ''))
+      const nextVal = numOrNull(trimmed)
+      if (isSignificantDeviation(prevVal, nextVal)) {
+        const pct = Math.round((Math.abs((nextVal as number) - (prevVal as number)) / Math.abs(prevVal as number)) * 100)
+        setRateConfirm({
+          title: 'Nagy árfolyam-eltérés',
+          message: `${r.currencyCode} – ${WG_FIELD_LABEL[field] ?? field}: ${prevVal} → ${nextVal} (${pct}% eltérés a korábbi értékhez képest). Biztosan elmenti?`,
+          confirmLabel: 'Igen, mentem',
+          danger: true,
+          onConfirm: () => { applyCommit(); setRateConfirm(null) },
+        })
+        return
+      }
+    }
+    applyCommit()
   }, [canWriteRateCreation, rates, pushUndo])
 
   // ===================== Limit save =====================
@@ -830,6 +873,9 @@ export default function RateCreationPage() {
           cellErrors={cellErrors}
           onCommitCell={commitWorkgroupCell}
         />
+
+        {/* FK02-B / FR-2..5: 10%-eltérés megerősítő modal (cella-commit interception). */}
+        {rateConfirm && <ConfirmDialog state={rateConfirm} onCancel={() => setRateConfirm(null)} />}
 
         {/* === RIGHT: WORKGROUP PANEL === */}
         <div className="w-64 flex-shrink-0 flex flex-col gap-1 min-h-0">
