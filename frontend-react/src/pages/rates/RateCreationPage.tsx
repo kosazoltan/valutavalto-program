@@ -75,7 +75,7 @@ function sortByMainSheetOrder<T extends { currencyCode: string }>(rows: T[]): T[
 }
 
 // FK02-B / FR-2..5 (2026-06-01): jelentős (≥10%) eltérés az ELŐZŐ MENTETT értékhez képest →
-// megkerülhetetlen megerősítő modal (elgépelés-védelem). Kétoldali: |új-régi|/régi ≥ 0.10.
+// megerősítő modal (elgépelés-védelem). Az arány-számítás a ./deviationCheck modulban.
 /** WgField → ember-olvasható oszlopnév a megerősítő üzenethez. */
 const WG_FIELD_LABEL: Record<string, string> = {
   buyRate: 'alap vétel', sellRate: 'alap eladás',
