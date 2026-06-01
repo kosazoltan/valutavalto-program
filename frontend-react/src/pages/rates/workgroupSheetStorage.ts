@@ -64,6 +64,34 @@ export function loadSheet0ByCurrency(storage: Storage = localStorage): Map<strin
 
 const formulaKey = (groupId: string): string => `${WORKGROUP_FORMULA_STORAGE_PREFIX}.${groupId}`
 
+/**
+ * FK02-B / FR-11, FR-12: a csoport FIX (nem-formulás) beírt rátaértékeinek localStorage-kulcsa.
+ * A képletek mellett a fix beírt értékek (vétel/eladás/sávok) eddig csak React state-ben éltek,
+ * ezért lapváltáskor/újratöltéskor a szerver-bootstrap felülírta őket. Csoportonként, kulcs
+ * `${currencyId}.${field}` → a beírt nyers string.
+ */
+const ratesKey = (groupId: string): string => `arfolyamkeszito.workgroupSheet.rates.v1.${groupId}`
+
+/** Egy csoport fix (nem-formulás) rátaértékei (kulcs = `${currencyId}.${field}`). */
+export function loadGroupRateValues(groupId: string, storage: Storage = localStorage): Record<string, string> {
+  try {
+    const raw = storage.getItem(ratesKey(groupId))
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, string>
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+export function saveGroupRateValues(groupId: string, values: Record<string, string>, storage: Storage = localStorage): void {
+  try {
+    storage.setItem(ratesKey(groupId), JSON.stringify(values))
+  } catch {
+    /* quota / privát mód → kihagyjuk (a memóriabeli state tovább működik) */
+  }
+}
+
 /** Egy csoport képletei (kulcs = `${currencyId}.${field}`). */
 export function loadGroupFormulas(groupId: string, storage: Storage = localStorage): Record<string, string> {
   try {

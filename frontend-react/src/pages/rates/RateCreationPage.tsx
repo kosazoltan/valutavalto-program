@@ -41,6 +41,8 @@ import {
   loadGroupFormulas,
   saveGroupFormulas,
   saveGroupValueSnapshot,
+  loadGroupRateValues,
+  saveGroupRateValues,
 } from './workgroupSheetStorage'
 import { useTranslation } from 'react-i18next'
 
@@ -189,6 +191,23 @@ export default function RateCreationPage() {
     }
     setFormulas(loadGroupFormulas(selectedWg.id))
     setCellErrors({})
+    // FK02-B / FR-11, FR-12: a csoport perzisztált FIX (nem-formulás) rátaértékeit visszaírjuk a
+    // `rates`-be (a képlet-cellákat a recompute úgyis felülírja). Reload után a szerver-bootstrap
+    // értékeket így nem törli el a helyi módosításokat. Üres store → nincs felülírás.
+    const savedRateValues = loadGroupRateValues(selectedWg.id)
+    if (Object.keys(savedRateValues).length > 0) {
+      setRates(prev => prev.map(r => {
+        let nr = r
+        for (const field of WG_STRING_FIELDS) {
+          const v = savedRateValues[`${r.currencyId}.${field}`]
+          if (v != null && nr[field] !== v) {
+            if (nr === r) nr = { ...r }
+            nr[field] = v
+          }
+        }
+        return nr
+      }))
+    }
     // Codex #910 P1: az undo/redo stack csoportonként ÉRVÉNYTELEN — csoportváltáskor ürítjük,
     // különben egy másik csoportban beírt képletet a Ctrl+Z az AKTUÁLIS csoportba állítaná vissza,
     // és a perzisztáló effekt annak localStorage-kulcsa alá mentené (kereszt-csoport korrupció).
@@ -418,6 +437,7 @@ export default function RateCreationPage() {
     if (!r) return
     const key = `${r.currencyId}.${field}`
     const trimmed = raw.trim()
+    const wgId = selectedWg?.id
 
     const applyCommit = () => {
       pushUndo()
@@ -437,6 +457,19 @@ export default function RateCreationPage() {
           setRates(prev => prev.map((x, i) => (i === index ? { ...x, officialRate: n, modified: true } : x)))
         } else {
           setRates(prev => prev.map((x, i) => (i === index ? { ...x, [field]: trimmed, modified: true } : x)))
+        }
+      }
+
+      // FK02-B / FR-11, FR-12: a fix (nem-formulás) érték localStorage-perzisztálása csoportonként,
+      // hogy lapváltás/újratöltés után is megmaradjon. Formula vagy üres beírás → töröljük a kulcsot
+      // (a recompute, ill. a szerver-bootstrap veszi át). A J (officialRate) itt nincs perzisztálva.
+      if (wgId && field !== 'officialRate') {
+        const saved = loadGroupRateValues(wgId)
+        if (isFormula(trimmed) || trimmed === '') {
+          if (key in saved) { delete saved[key]; saveGroupRateValues(wgId, saved) }
+        } else if (saved[key] !== trimmed) {
+          saved[key] = trimmed
+          saveGroupRateValues(wgId, saved)
         }
       }
     }
@@ -462,7 +495,7 @@ export default function RateCreationPage() {
       }
     }
     applyCommit()
-  }, [canWriteRateCreation, rates, pushUndo])
+  }, [canWriteRateCreation, rates, pushUndo, selectedWg?.id])
 
   // ===================== Limit save =====================
 
@@ -717,6 +750,10 @@ export default function RateCreationPage() {
       } else {
         toast.success('Publikálva!', `${validRates.length} árfolyam kiküldve: ${selectedWg.name} (${selectedWg.branches.length} iroda)`)
       }
+      // FK02-B / FR-11, FR-12: publikálás után a szerver az authority (vö. published_rate
+      // server_authority policy) — a csoport helyi fix-érték overlay-ét töröljük, hogy ne árnyékolja
+      // a friss szerver-értékeket. A loadData() ezután a publikált értékeket tölti vissza.
+      saveGroupRateValues(selectedWg.id, {})
       void loadData()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Hiba a publikálás során'

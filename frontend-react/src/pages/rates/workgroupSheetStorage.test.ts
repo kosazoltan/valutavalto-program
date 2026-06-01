@@ -6,6 +6,8 @@ import {
   saveGroupFormulas,
   loadAllGroupValueSnapshots,
   saveGroupValueSnapshot,
+  loadGroupRateValues,
+  saveGroupRateValues,
 } from './workgroupSheetStorage'
 import type { WgValues } from './workgroupSheetFormula'
 
@@ -93,5 +95,32 @@ describe('group value snapshots (#NN)', () => {
     saveGroupValueSnapshot(1, new Map([['EUR', { L: 390 }]]), s)
     saveGroupValueSnapshot(1, new Map([['EUR', { L: 400 }]]), s)
     expect(loadAllGroupValueSnapshots(s).get(1)!.get('EUR')).toEqual({ L: 400 })
+  })
+})
+
+describe('group fix rátaértékek round-trip (FK02-B / FR-11, FR-12)', () => {
+  it('üres/hiányzó csoport → üres objektum (nem dob)', () => {
+    expect(loadGroupRateValues('wg-1', memStorage())).toEqual({})
+  })
+
+  it('mentés → betöltés ugyanazt adja, csoportonként izolált', () => {
+    const s = memStorage()
+    saveGroupRateValues('wg-1', { 'cur-1.buyRate': '400.5', 'cur-2.limit1SellRate': '0.85' }, s)
+    saveGroupRateValues('wg-2', { 'cur-1.buyRate': '999' }, s)
+    expect(loadGroupRateValues('wg-1', s)).toEqual({ 'cur-1.buyRate': '400.5', 'cur-2.limit1SellRate': '0.85' })
+    expect(loadGroupRateValues('wg-2', s)).toEqual({ 'cur-1.buyRate': '999' })
+  })
+
+  it('üres store mentése törli az overlay-t (publikálás után)', () => {
+    const s = memStorage()
+    saveGroupRateValues('wg-1', { 'cur-1.buyRate': '400' }, s)
+    saveGroupRateValues('wg-1', {}, s)
+    expect(loadGroupRateValues('wg-1', s)).toEqual({})
+  })
+
+  it('hibás JSON → üres objektum (defenzív)', () => {
+    const s = memStorage()
+    s.setItem('arfolyamkeszito.workgroupSheet.rates.v1.wg-1', '{nem json')
+    expect(loadGroupRateValues('wg-1', s)).toEqual({})
   })
 })
