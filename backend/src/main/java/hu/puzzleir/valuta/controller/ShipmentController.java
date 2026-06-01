@@ -34,15 +34,19 @@ public class ShipmentController {
     private final ShipmentService shipmentService;
 
     /**
-     * Szállítmánykérések listázása (lapozott, opcionális státusz szűrő).
-     * GET /api/v1/shipments?status=DRAFT&page=0&size=20
+     * Szállítmánykérések listázása (lapozott, opcionális státusz- és branch-szűrő).
+     * GET /api/v1/shipments?status=DRAFT&branchId=...&page=0&size=20
+     *
+     * <p>F2 (2026-06-01): a {@code branchId} natív, DB-szintű szűrő (fromBranchId VAGY toBranchId)
+     * — megszünteti a kliens-oldali "összes letöltése + filter" mintát.
      */
     @GetMapping
     public ResponseEntity<Page<ShipmentRequest>> findAll(
             @RequestParam(required = false) ShipmentRequestStatus status,
+            @RequestParam(required = false) UUID branchId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(shipmentService.findAll(status, PageRequest.of(page, size)));
+        return ResponseEntity.ok(shipmentService.findAll(status, branchId, PageRequest.of(page, size)));
     }
 
     /**

@@ -155,6 +155,47 @@ class ShipmentServiceTest {
         verifyNoInteractions(repository);
     }
 
+    @Test
+    void findAll_withBranchId_usesNativeBranchFilter() {
+        // F2 (2026-06-01): branchId megadva → a natív, DB-szintű findByBranchAndCompanyId fut
+        // (NEM a teljes lista + kliens-szűrés). Tenant-scope: companyId.
+        UUID companyId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+        when(repository.findByBranchAndCompanyId(
+                org.mockito.ArgumentMatchers.eq(branchId),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(companyId),
+                any())).thenReturn(org.springframework.data.domain.Page.empty());
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            service.findAll(null, branchId, org.springframework.data.domain.PageRequest.of(0, 20));
+        }
+
+        verify(repository).findByBranchAndCompanyId(
+                org.mockito.ArgumentMatchers.eq(branchId),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(companyId),
+                any());
+        verify(repository, never()).findAllOrderedByCompanyId(any(), any());
+    }
+
+    @Test
+    void findAll_withoutBranchId_usesCompanyScopedListing() {
+        // branchId == null → a meglévő cég-szintű listázás (visszafelé kompatibilis).
+        UUID companyId = UUID.randomUUID();
+        when(repository.findAllOrderedByCompanyId(org.mockito.ArgumentMatchers.eq(companyId), any()))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            service.findAll(null, null, org.springframework.data.domain.PageRequest.of(0, 20));
+        }
+
+        verify(repository).findAllOrderedByCompanyId(org.mockito.ArgumentMatchers.eq(companyId), any());
+        verify(repository, never()).findByBranchAndCompanyId(any(), any(), any(), any());
+    }
+
     private static ShipmentRequest validRequest() {
         return ShipmentRequest.builder()
                 .fromBranchId(UUID.randomUUID())
