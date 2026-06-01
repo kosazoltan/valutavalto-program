@@ -28,6 +28,7 @@ import { fmtRate, parseNum, type EditableRate } from './types'
 import { currentFunctionCode, fillDownLimitBands, clearLimitBands } from './fillHelpers'
 import { validateWorkgroupProtection, workgroupProtectionLabel, type ProtectionRow } from './workgroupProtection'
 import { isFormula, type WgValues } from './workgroupSheetFormula'
+import { isSignificantDeviation } from './deviationCheck'
 import {
   recomputeWorkgroupSheet,
   FIELD_TO_WGCOL,
@@ -75,12 +76,6 @@ function sortByMainSheetOrder<T extends { currencyCode: string }>(rows: T[]): T[
 
 // FK02-B / FR-2..5 (2026-06-01): jelentős (≥10%) eltérés az ELŐZŐ MENTETT értékhez képest →
 // megkerülhetetlen megerősítő modal (elgépelés-védelem). Kétoldali: |új-régi|/régi ≥ 0.10.
-const SIGNIFICANT_DEVIATION_THRESHOLD = 0.10
-function isSignificantDeviation(oldVal: number | null, newVal: number | null): boolean {
-  if (oldVal === null || newVal === null || oldVal === 0) return false
-  return Math.abs(newVal - oldVal) / Math.abs(oldVal) >= SIGNIFICANT_DEVIATION_THRESHOLD
-}
-
 /** WgField → ember-olvasható oszlopnév a megerősítő üzenethez. */
 const WG_FIELD_LABEL: Record<string, string> = {
   buyRate: 'alap vétel', sellRate: 'alap eladás',
@@ -112,6 +107,8 @@ export default function RateCreationPage() {
   const [rates, setRates] = useState<EditableRate[]>([])
   // FK02-B / FR-2..5: a 10%-eltérés megerősítő modal állapota (a cella-commit interception-höz).
   const [rateConfirm, setRateConfirm] = useState<ConfirmState | null>(null)
+  // FK02-B / FR-2..5: revert-jelzés a RateGrid felé — "Mégse" után a cella visszaáll a perzisztáltra.
+  const [rateRevertSignal, setRateRevertSignal] = useState(0)
   // FK-04/C (Codex #906): az undo/redo a `rates` MELLETT a `formulas`-t is rögzíti — különben
   // egy képlet beírása után a Ctrl+Z csak a megjelenített értéket állítaná vissza, a képlet a
   // state/localStorage-ban maradna, és a recompute újra alkalmazná (képlet-szerkesztés nem volt visszavonható).
@@ -872,10 +869,17 @@ export default function RateCreationPage() {
           formulas={formulas}
           cellErrors={cellErrors}
           onCommitCell={commitWorkgroupCell}
+          revertSignal={rateRevertSignal}
         />
 
-        {/* FK02-B / FR-2..5: 10%-eltérés megerősítő modal (cella-commit interception). */}
-        {rateConfirm && <ConfirmDialog state={rateConfirm} onCancel={() => setRateConfirm(null)} />}
+        {/* FK02-B / FR-2..5: 10%-eltérés megerősítő modal (cella-commit interception).
+            "Mégse" → a mentés abortál ÉS a cella visszaáll a perzisztált értékre (revert-jelzés). */}
+        {rateConfirm && (
+          <ConfirmDialog
+            state={rateConfirm}
+            onCancel={() => { setRateConfirm(null); setRateRevertSignal(n => n + 1) }}
+          />
+        )}
 
         {/* === RIGHT: WORKGROUP PANEL === */}
         <div className="w-64 flex-shrink-0 flex flex-col gap-1 min-h-0">

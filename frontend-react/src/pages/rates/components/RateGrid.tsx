@@ -28,6 +28,13 @@ interface RateGridProps {
   cellErrors?: Record<string, string>
   /** FK-04/C: cella-commit blur/Enter-kor (képlet vagy fix érték). */
   onCommitCell?: (index: number, field: WgField, raw: string) => void
+  /**
+   * FK02-B / FR-2..5: revert-jelzés. Ha a szám változása minden lépésnél nő, a parent
+   * (RateCreationPage) megerősítést kérhet; "Mégse" esetén ezt a számlálót növeli, mire
+   * a fókuszált cella buffere visszaáll a perzisztált értékre (a blur nem törli az
+   * activeCell-t, ezért a `display = buffer` egyébként a beírt, nem mentett értéket mutatná).
+   */
+  revertSignal?: number
 }
 
 export default function RateGrid({
@@ -38,6 +45,7 @@ export default function RateGrid({
   formulas = {},
   cellErrors = {},
   onCommitCell,
+  revertSignal = 0,
 }: RateGridProps) {
   const { t } = useTranslation()
   const { containerRef, activeCell, getCellProps } = useGridNavigation({
@@ -66,6 +74,19 @@ export default function RateGrid({
     setBuffer(formulas[key] ?? r[field])
   // eslint-disable-next-line react-hooks/exhaustive-deps -- csak a cella-fókusz váltáskor seed-elünk
   }, [activeCell])
+
+  // FK02-B / FR-2..5: ha a parent revert-et kér (megerősítő modal "Mégse"), a fókuszált cella
+  // buffere visszaáll a PERZISZTÁLT értékre — különben a (nem törölt) activeCell miatt a beírt,
+  // el nem mentett érték maradna láthatóan a cellában.
+  useEffect(() => {
+    if (revertSignal === 0 || !activeCell) return
+    const r = rates[activeCell.row]
+    const field = EDITABLE_FIELDS[activeCell.col]
+    if (!r || !field) return
+    const key = `${r.currencyId}.${field}`
+    setBuffer(formulas[key] ?? r[field])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- kizárólag a revert-jelzésre futunk
+  }, [revertSignal])
 
   // 2026-04-29 v2.3.13 (Árfolyamkészítés zoom-fit): 17 valuta sor scrollozás nélkül.
   return (
