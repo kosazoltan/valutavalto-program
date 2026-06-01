@@ -25,7 +25,7 @@ import { logger } from '../../utils/logger'
 import RateGrid from './components/RateGrid'
 import BranchPickerModal from './components/BranchPickerModal'
 import { fmtRate, parseNum, type EditableRate } from './types'
-import { currentFunctionCode, fillDownLimitBands, clearLimitBands } from './fillHelpers'
+import { currentFunctionCode } from './fillHelpers'
 import { validateWorkgroupProtection, workgroupProtectionLabel, type ProtectionRow } from './workgroupProtection'
 import { isFormula, type WgValues } from './workgroupSheetFormula'
 import { isSignificantDeviation } from './deviationCheck'
@@ -415,31 +415,6 @@ export default function RateCreationPage() {
     return id ? loadGroupRateValues(id) : {}
   }, [selectedWg?.id])
 
-  // FK02-B / FR-11, FR-12: a sávmezők (Lehúzás / Sávok törlése) fix értékeinek perzisztálása.
-  // CSAK a szerver-baseline-tól ELTÉRŐ sávot tároljuk override-ként (Codex P2): a fill-down nem-felülíró
-  // ágában az érintetlen (szerverrel egyező) sávok NEM pinelődnek. Üres a szerver nem-üres értékén =
-  // szándékos '' override (reload-biztos „Sávok törlése"). Formula-cellát kihagyunk; buy/sell érintetlen.
-  const persistBandFields = useCallback((ratesArr: EditableRate[]) => {
-    const id = selectedWg?.id
-    if (!id) return
-    const BANDS: Exclude<WgField, 'officialRate'>[] = [
-      'limit1BuyRate', 'limit1SellRate', 'limit2BuyRate', 'limit2SellRate', 'limit3BuyRate', 'limit3SellRate',
-    ]
-    const saved = loadGroupRateValues(id)
-    for (const r of ratesArr) {
-      for (const field of BANDS) {
-        const key = `${r.currencyId}.${field}`
-        if (formulas[key]) continue
-        const v = typeof r[field] === 'string' ? (r[field] as string) : ''
-        const serverNum = baselineRatesRef.current[key]
-        const vNum = numOrNull(v)
-        const sameAsServer = (v === '' && serverNum === undefined) || (vNum !== null && vNum === serverNum)
-        if (sameAsServer) delete saved[key]
-        else saved[key] = v
-      }
-    }
-    saveGroupRateValues(id, saved)
-  }, [selectedWg?.id, formulas])
 
   const pushUndo = useCallback(() => {
     undoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas }, savedRateValues: currentSavedRateValues() })
@@ -569,6 +544,60 @@ export default function RateCreationPage() {
     applyCommit()
   }, [canWriteRateCreation, rates, pushUndo, selectedWg?.id])
 
+  // FK02-B / FR-6..10: kötegelt cella-alkalmazás a RateGrid lebegő toolbarjához (Lehúzás / Sávok
+  // törlése). EGYETLEN undo-lépés, modal NÉLKÜL (a tömeges műveletet a felhasználó tudatosan indítja),
+  // a képlet/fix érték kezelése a commit-tal azonos, a localStorage-perzisztálás sparse (szerver-diff).
+  const applyBulkCells = useCallback((cells: Array<{ row: number; field: WgField; raw: string }>) => {
+    if (!canWriteRateCreation || cells.length === 0) return
+    const wgId = selectedWg?.id
+    pushUndo()
+
+    // Képletek frissítése: formula-input → tárol; egyéb → a kulcs törlése (a fix érték a rates-be megy).
+    setFormulas(prevF => {
+      const f = { ...prevF }
+      for (const { row, field, raw } of cells) {
+        const r = rates[row]
+        if (!r) continue
+        const key = `${r.currencyId}.${field}`
+        if (isFormula(raw.trim())) f[key] = raw.trim()
+        else delete f[key]
+      }
+      return f
+    })
+
+    // Fix (nem-formula) értékek visszaírása a rates string-mezőkbe (a formula-cellákat a recompute tölti).
+    setRates(prev => prev.map((x, i) => {
+      const forRow = cells.filter(c => c.row === i)
+      if (forRow.length === 0) return x
+      const nr: EditableRate = { ...x, modified: true }
+      for (const { field, raw } of forRow) {
+        const trimmed = raw.trim()
+        if (isFormula(trimmed)) continue
+        if (field === 'officialRate') nr.officialRate = numOrNull(trimmed)
+        else nr[field] = trimmed
+      }
+      return nr
+    }))
+
+    // localStorage-perzisztálás (sparse): csak a szerver-baseline-tól ELTÉRŐ fix érték marad override-ként.
+    if (wgId) {
+      const saved = loadGroupRateValues(wgId)
+      for (const { row, field, raw } of cells) {
+        if (field === 'officialRate') continue
+        const r = rates[row]
+        if (!r) continue
+        const key = `${r.currencyId}.${field}`
+        const trimmed = raw.trim()
+        const serverNum = baselineRatesRef.current[key]
+        const nextNum = numOrNull(trimmed)
+        const sameAsServer = (trimmed === '' && serverNum === undefined) || (nextNum !== null && nextNum === serverNum)
+        if (isFormula(trimmed) || sameAsServer) delete saved[key]
+        else saved[key] = trimmed
+      }
+      saveGroupRateValues(wgId, saved)
+    }
+  }, [canWriteRateCreation, rates, pushUndo, selectedWg?.id])
+
   // ===================== Limit save =====================
 
   const handleSaveLimits = async () => {
@@ -670,55 +699,6 @@ export default function RateCreationPage() {
     })
   }
 
-  // ===================== Kitöltési segítség (FR-RFM-23) =====================
-
-  /** Adat lehúzás: a 0-s vételi/eladási árfolyamot a 3 kedvezménysávba tölti. */
-  const applyFillDown = (overwrite: boolean) => {
-    if (!canWriteRateCreation) {
-      toast.error('Nincs jogosultság', 'A kitöltési segítséghez főértéktáros vagy ügyvezető szerepkör kell')
-      return
-    }
-    // Copilot #829: a számlálót a handlerben, a jelenlegi `rates` alapján képezzük
-    // (a setRates updater StrictMode-ban duplán is lefuthat → megbízhatatlan).
-    let touched = 0
-    const nextRates = rates.map(r => {
-      const next = fillDownLimitBands(r, { overwrite })
-      if (next !== r) touched++
-      return next
-    })
-    if (touched === 0) {
-      toast.info('Nincs változás', 'Nincs lehúzható 0-s árfolyam')
-      return
-    }
-    pushUndo()
-    setRates(nextRates)
-    persistBandFields(nextRates)
-    toast.success('Lehúzva', overwrite
-      ? `${touched} valuta sávjai felülírva a 0-s árfolyammal`
-      : `${touched} valuta üres sávja feltöltve a 0-s árfolyammal`)
-  }
-
-  /** Sávok törlése: a 3 kedvezménysáv kiürítése (visszaesik a 0-s alapra). */
-  const applyClearBands = () => {
-    if (!canWriteRateCreation) {
-      toast.error('Nincs jogosultság', 'A kitöltési segítséghez főértéktáros vagy ügyvezető szerepkör kell')
-      return
-    }
-    let touched = 0
-    const nextRates = rates.map(r => {
-      const next = clearLimitBands(r)
-      if (next !== r) touched++
-      return next
-    })
-    if (touched === 0) {
-      toast.info('Nincs változás', 'Nincs törölhető kedvezménysáv')
-      return
-    }
-    pushUndo()
-    setRates(nextRates)
-    persistBandFields(nextRates)
-    toast.success('Törölve', `${touched} valuta kedvezménysávja kiürítve`)
-  }
 
   // ===================== Publish =====================
 
@@ -996,6 +976,8 @@ export default function RateCreationPage() {
           cellErrors={cellErrors}
           onCommitCell={commitWorkgroupCell}
           revertSignal={rateRevertSignal}
+          onBulkApply={applyBulkCells}
+          canEdit={canWriteRateCreation}
         />
 
         {/* FK02-B / FR-2..5: 10%-eltérés megerősítő modal (cella-commit interception).
@@ -1041,32 +1023,16 @@ export default function RateCreationPage() {
                 {currentFunctionCode(selectedWg?.legacyGroupNumber)}
               </span>
             </div>
+            {/* FK02-B / FR-6..10: a régi GLOBÁLIS (egész táblázatra ható) destruktív gombok eltávolítva.
+                Helyette a táblázatban egér-drag / Shift+kattintás kijelölés + lebegő toolbar (Lehúzás
+                üres / Lehúzás mind / Sávok törlése) — kizárólag a kijelölt tartományra hat. */}
             <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Kitöltési segítség</div>
-            <div className="grid grid-cols-3 gap-1">
-              <button
-                onClick={() => applyFillDown(false)}
-                disabled={!canWriteRateCreation}
-                className="px-1 py-1 rounded border border-green-300 bg-green-50 hover:bg-green-100 disabled:opacity-40 text-green-800 text-[9px] font-semibold leading-tight"
-                title="A 0-s vételi/eladási árfolyamot lehúzza az ÜRES kedvezménysávokba (kézi értékek megmaradnak)"
-              >
-                Lehúzás (üres)
-              </button>
-              <button
-                onClick={() => applyFillDown(true)}
-                disabled={!canWriteRateCreation}
-                className="px-1 py-1 rounded border border-amber-300 bg-amber-50 hover:bg-amber-100 disabled:opacity-40 text-amber-800 text-[9px] font-semibold leading-tight"
-                title="A 0-s árfolyamot MINDEN kedvezménysávba felülírva lehúzza (Excel drag-fill)"
-              >
-                Lehúzás (mind)
-              </button>
-              <button
-                onClick={applyClearBands}
-                disabled={!canWriteRateCreation}
-                className="px-1 py-1 rounded border border-red-300 bg-red-50 hover:bg-red-100 disabled:opacity-40 text-red-800 text-[9px] font-semibold leading-tight"
-                title="A 3 kedvezménysáv kiürítése (visszaesik a 0-s alapárfolyamra)"
-              >
-                Sávok törlése
-              </button>
+            <div className="text-[10px] text-gray-500 leading-tight">
+              Jelölj ki cellákat a táblázatban (egér-húzás vagy Shift+kattintás), majd a megjelenő lebegő
+              eszköztárból válassz: <span className="font-semibold text-amber-700">Lehúzás (mind)</span>{' '}
+              (felső sor másolása lefelé), <span className="font-semibold text-gray-700">Ürítés</span>{' '}
+              (kijelölt cellák kiürítése) vagy{' '}
+              <span className="font-semibold text-red-700">Sávok törlése</span>.
             </div>
           </div>
 
