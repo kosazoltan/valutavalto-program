@@ -43,7 +43,10 @@ public class ClosingControlService {
                 .stream()
                 .collect(Collectors.toMap(ClosingControl::getBranchId, control -> control, (left, right) -> left));
 
-        return branchRepository.findByCompanyIdAndIsActiveTrue(companyId)
+        // FK-014 (2026-06-01): a Zárás beérkezés CSAK napi zárást végző valódi irodákat mutat
+        // (65 pénztár + 8 értéktár) — a VAULT_COUNTERPARTY banki/speciális partnerek kizárva.
+        // Backend-szűrés, így a meglévő (telepítő-frissítés nélküli) kliensek is azonnal tisztulnak.
+        return branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId)
                 .stream()
                 .sorted(Comparator.comparing(Branch::getCode, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .map(branch -> toDto(controlsByBranch.get(branch.getId()), branch, date))

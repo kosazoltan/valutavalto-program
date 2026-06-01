@@ -28,6 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class ClosingControlServiceTest {
@@ -69,10 +71,14 @@ class ClosingControlServiceTest {
         Branch branch = branch(branchId, "BP01", "Budapest 01");
 
         when(closingControlRepository.findByCompanyIdAndControlDate(companyId, date)).thenReturn(List.of());
-        when(branchRepository.findByCompanyIdAndIsActiveTrue(companyId)).thenReturn(List.of(branch));
+        // FK-014: a Zárás beérkezés a banki/speciális partnereket (VAULT_COUNTERPARTY) kizáró
+        // repo-metódust hívja — a napi zárást NEM végző partnerek nem jelenhetnek meg.
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId)).thenReturn(List.of(branch));
 
         List<ClosingControlDto> result = service.checkAllBranches(date);
 
+        verify(branchRepository).findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId);
+        verify(branchRepository, never()).findByCompanyIdAndIsActiveTrue(companyId);
         assertEquals(1, result.size());
         ClosingControlDto row = result.get(0);
         assertNull(row.getId());
