@@ -212,10 +212,16 @@ if (-not $SkipBackendBuild) {
     try {
         & .\mvnw.cmd package -DskipTests -q
         if ($LASTEXITCODE -ne 0) { throw "Maven build failed" }
-        $jar = Get-ChildItem "target\valuta-backend-*.jar" -Exclude "*-sources.jar","*-javadoc.jar" | Select-Object -First 1
-        if (-not $jar) { throw "Backend JAR not found" }
-        Copy-Item $jar.FullName "$StageDir\backend\valuta-backend.jar"
-        Write-Host "Backend JAR: $($jar.Name) -> staged" -ForegroundColor Green
+        # A pontos, aktualis verzioju JAR-t stageljuk — a target/ sok regi build-artifactot
+        # tartalmaz (2.26.x ... 2.27.x). A korabbi "Select-Object -First 1" Sort nelkul az
+        # alfabetikusan elso (legregebbi, pl. 2.26.17) JAR-t valasztotta -> minden telepito
+        # elavult backendet bundle-olt. Determinisztikus, fail-loud illesztes a $Version-re.
+        $jarPath = Join-Path "target" "valuta-backend-$Version.jar"
+        if (-not (Test-Path $jarPath)) {
+            throw "Backend JAR not found for version ${Version}: $jarPath (Maven nem termelte le a friss artifactot?)"
+        }
+        Copy-Item $jarPath "$StageDir\backend\valuta-backend.jar"
+        Write-Host "Backend JAR: valuta-backend-$Version.jar -> staged" -ForegroundColor Green
     } finally { Pop-Location }
 } else { Write-Host "Backend build SKIPPED" -ForegroundColor Yellow }
 
