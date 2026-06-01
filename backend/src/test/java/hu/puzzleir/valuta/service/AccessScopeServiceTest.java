@@ -80,12 +80,12 @@ class AccessScopeServiceTest {
     void vaultRole_withRegion_scopedToRegion() {
         UUID b1 = UUID.randomUUID();
         UUID b2 = UUID.randomUUID();
-        Branch vault = Branch.builder().id(vaultBranchId).regionCode("20").build();
+        Branch vault = Branch.builder().id(vaultBranchId).region("SZEGED").build();
         when(branchRepository.findById(vaultBranchId)).thenReturn(Optional.of(vault));
-        when(branchRepository.findActiveByCompanyIdAndRegionCode(eq(companyId), eq("20")))
+        when(branchRepository.findActiveByCompanyIdAndRegion(eq(companyId), eq("SZEGED")))
                 .thenReturn(List.of(
-                        Branch.builder().id(b1).regionCode("20").build(),
-                        Branch.builder().id(b2).regionCode("20").build()));
+                        Branch.builder().id(b1).region("SZEGED").build(),
+                        Branch.builder().id(b2).region("SZEGED").build()));
 
         authenticateWith("ROLE_ERTEKTAR", vaultBranchId);
         Set<UUID> scope = accessScopeService.vaultRegionBranchScopeOrNull();
@@ -97,10 +97,10 @@ class AccessScopeServiceTest {
     @DisplayName("Codex P1: vault aktív role + MANAGER base-role → MÉGIS terület-scope (vault precedencia)")
     void vaultPlusManagerBase_stillScoped() {
         UUID b1 = UUID.randomUUID();
-        Branch vault = Branch.builder().id(vaultBranchId).regionCode("20").build();
+        Branch vault = Branch.builder().id(vaultBranchId).region("SZEGED").build();
         when(branchRepository.findById(vaultBranchId)).thenReturn(Optional.of(vault));
-        when(branchRepository.findActiveByCompanyIdAndRegionCode(eq(companyId), eq("20")))
-                .thenReturn(List.of(Branch.builder().id(b1).regionCode("20").build()));
+        when(branchRepository.findActiveByCompanyIdAndRegion(eq(companyId), eq("SZEGED")))
+                .thenReturn(List.of(Branch.builder().id(b1).region("SZEGED").build()));
 
         // A JWT mindkét authority-t hordozza: base ROLE_MANAGER + aktív ROLE_ERTEKTAR.
         UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
@@ -128,7 +128,7 @@ class AccessScopeServiceTest {
     @Test
     @DisplayName("Régiós értéktáros (ERTEKTAR) region_code nélkül → biztonságos default: csak a saját fiók")
     void regionalVault_noRegion_ownBranchOnly() {
-        Branch vault = Branch.builder().id(vaultBranchId).regionCode(null).build();
+        Branch vault = Branch.builder().id(vaultBranchId).region(null).build();
         when(branchRepository.findById(vaultBranchId)).thenReturn(Optional.of(vault));
 
         authenticateWith("ROLE_ERTEKTAR", vaultBranchId);

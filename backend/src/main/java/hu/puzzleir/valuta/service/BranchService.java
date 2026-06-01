@@ -114,11 +114,14 @@ public class BranchService {
         // KAPOSVAR=145, SZEKSZARD=10). Helga (Főértéktáros) branchId=Tisza Sarok (BR035),
         // regionCode="20" → saját régió=SZEGED → a Szeged Ertektar (BR020) és Szeged-területi
         // pénztárak alkotják a saját területet.
-        final String ownRegionCode = (ownBranchId != null)
-                ? branchRepository.findById(ownBranchId).map(Branch::getRegionCode).orElse(null)
+        // FK (2026-06-01): a régiót a `region` oszlopból (V145/V254, pl. 'SZEGED'), NEM a
+        // `region_code`-ból (KESZLEX, pénztáraknál NULL) olvassuk — a régi region_code üres
+        // territorialCashiers-t adott.
+        final String ownRegion = (ownBranchId != null)
+                ? branchRepository.findById(ownBranchId).map(Branch::getRegion).orElse(null)
                 : null;
-        log.info("FK-013 findVaultCounterparties: companyId={}, ownBranchId={}, ownRegionCode={}",
-                companyId, ownBranchId, ownRegionCode);
+        log.info("FK-013 findVaultCounterparties: companyId={}, ownBranchId={}, ownRegion={}",
+                companyId, ownBranchId, ownRegion);
 
         // 1. territorialCashiers — saját régió aktív PÉNZTÁRAI (NEM értéktárai).
         // A korábbi `vaultScope ∩ branch_type='PENZTAR'` szűrés a Főértéktárosnak
@@ -143,8 +146,8 @@ public class BranchService {
                     if (vaultScope != null) {
                         return vaultScope.contains(b.getId());
                     }
-                    if (ownRegionCode != null) {
-                        return ownRegionCode.equals(b.getRegionCode());
+                    if (ownRegion != null) {
+                        return ownRegion.equals(b.getRegion());
                     }
                     return true;
                 })
@@ -162,8 +165,8 @@ public class BranchService {
                 .filter(b -> {
                     // A saját értéktár-branchet közvetlen ID-egyezés szerint is kihagyni (defenzív).
                     if (ownBranchId != null && ownBranchId.equals(b.getId())) return false;
-                    // A saját régió értéktárait regionCode-egyezés szerint kihagyni.
-                    if (ownRegionCode != null && ownRegionCode.equals(b.getRegionCode())) return false;
+                    // A saját régió értéktárait region-egyezés szerint kihagyni.
+                    if (ownRegion != null && ownRegion.equals(b.getRegion())) return false;
                     return true;
                 })
                 .map(branchMapper::toDto)
@@ -206,27 +209,29 @@ public class BranchService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID ownBranchId = SecurityUtils.getCurrentBranchIdOrNull();
 
-        final String ownRegionCode = (ownBranchId != null)
-                ? branchRepository.findById(ownBranchId).map(Branch::getRegionCode).orElse(null)
+        // FK (2026-06-01): a `region` oszlop (V145/V254, pl. 'SZEGED') a feltöltött, NEM a
+        // region_code (KESZLEX, pénztáraknál NULL) — különben a pénztáros nem találja a saját értéktárát.
+        final String ownRegion = (ownBranchId != null)
+                ? branchRepository.findById(ownBranchId).map(Branch::getRegion).orElse(null)
                 : null;
-        log.info("FK-013 cashier-shipment-targets: companyId={}, ownBranchId={}, ownRegionCode={}",
-                companyId, ownBranchId, ownRegionCode);
+        log.info("FK-013 cashier-shipment-targets: companyId={}, ownBranchId={}, ownRegion={}",
+                companyId, ownBranchId, ownRegion);
 
         List<BranchDto> result = new ArrayList<>();
 
-        // 1. A pénztárhoz tartozó értéktár (regionCode-egyezés, is_vault=true)
-        if (ownRegionCode != null) {
+        // 1. A pénztárhoz tartozó értéktár (region-egyezés, is_vault=true)
+        if (ownRegion != null) {
             List<Branch> regionVaults = branchRepository
                     .findByCompanyIdAndIsVaultTrueAndIsActiveTrue(companyId).stream()
-                    .filter(b -> ownRegionCode.equals(b.getRegionCode()))
+                    .filter(b -> ownRegion.equals(b.getRegion()))
                     .toList();
             for (Branch v : regionVaults) {
                 result.add(branchMapper.toDto(v));
             }
-            log.info("FK-013 cashier-shipment-targets: ownVault count={} (regionCode={})",
-                    regionVaults.size(), ownRegionCode);
+            log.info("FK-013 cashier-shipment-targets: ownVault count={} (region={})",
+                    regionVaults.size(), ownRegion);
         } else {
-            log.warn("FK-013 cashier-shipment-targets: ownRegionCode=null → saját értéktár nem található");
+            log.warn("FK-013 cashier-shipment-targets: ownRegion=null → saját értéktár nem található");
         }
 
         // 2-3. TH pénztár + 1-es főpénztár (VAULT_COUNTERPARTY 'TH' és 'FOP1')

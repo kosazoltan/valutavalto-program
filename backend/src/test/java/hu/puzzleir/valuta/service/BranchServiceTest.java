@@ -326,36 +326,36 @@ class BranchServiceTest {
         Branch ownBranch = Branch.builder()
                 .id(ownBranchId)
                 .code("BR035")
-                .regionCode("20")   // SZEGED KESZLEX
+                .region("SZEGED")   // SZEGED KESZLEX
                 .isActive(true)
                 .build();
 
         // Szeged régió pénztárai (regionCode='20')
         Branch szegedCashier1 = Branch.builder().id(UUID.randomUUID()).code("BR026")
-                .regionCode("20").isActive(true)
+                .region("SZEGED").isActive(true)
                 .branchType(hu.puzzleir.valuta.entity.Dictionary.builder()
                         .category("BRANCH_TYPE").code("PENZTAR").build())
                 .isVault(false).build();
         Branch szegedCashier2 = Branch.builder().id(UUID.randomUUID()).code("BR027")
-                .regionCode("20").isActive(true)
+                .region("SZEGED").isActive(true)
                 .branchType(hu.puzzleir.valuta.entity.Dictionary.builder()
                         .category("BRANCH_TYPE").code("PENZTAR").build())
                 .isVault(false).build();
         // MÁSIK régió pénztára (regionCode='50' Debrecen)
         Branch debrecenCashier = Branch.builder().id(UUID.randomUUID()).code("BR050")
-                .regionCode("50").isActive(true)
+                .region("DEBRECEN").isActive(true)
                 .branchType(hu.puzzleir.valuta.entity.Dictionary.builder()
                         .category("BRANCH_TYPE").code("PENZTAR").build())
                 .isVault(false).build();
         // Saját régió értéktára (Szeged Ertektar — KI kell hagyni a peerVaults-ból)
         Branch szegedVault = Branch.builder().id(UUID.randomUUID()).code("BR020")
-                .regionCode("20").isActive(true)
+                .region("SZEGED").isActive(true)
                 .branchType(hu.puzzleir.valuta.entity.Dictionary.builder()
                         .category("BRANCH_TYPE").code("ERTEKTAR").build())
                 .isVault(true).build();
         // Társ régió értéktára (Debrecen Ertektar — peerVaults-ba KELL)
         Branch debrecenVault = Branch.builder().id(UUID.randomUUID()).code("BR060")
-                .regionCode("50").isActive(true)
+                .region("DEBRECEN").isActive(true)
                 .branchType(hu.puzzleir.valuta.entity.Dictionary.builder()
                         .category("BRANCH_TYPE").code("ERTEKTAR").build())
                 .isVault(true).build();
