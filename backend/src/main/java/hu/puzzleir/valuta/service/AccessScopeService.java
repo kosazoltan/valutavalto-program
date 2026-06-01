@@ -74,16 +74,19 @@ public class AccessScopeService {
 
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
+        // FK (2026-06-01): a területi scope a `region` oszlopon van (V145 pénztárak + V254
+        // értéktárak, pl. 'SZEGED'), NEM a `region_code`-on (KESZLEX körzet, pénztáraknál NULL,
+        // V250) — a korábbi region_code-olvasás üres scope-ot adott a vault-usereknek.
         String region = (branchId == null)
                 ? null
-                : branchRepository.findById(branchId).map(Branch::getRegionCode).orElse(null);
+                : branchRepository.findById(branchId).map(Branch::getRegion).orElse(null);
 
-        // Nincs region_code → biztonságos default: csak a saját (értéktár) fiók.
+        // Nincs region → biztonságos default: csak a saját (értéktár) fiók.
         if (region == null || region.isBlank()) {
             return branchId == null ? Set.of() : Set.of(branchId);
         }
 
-        Set<UUID> ids = branchRepository.findActiveByCompanyIdAndRegionCode(companyId, region)
+        Set<UUID> ids = branchRepository.findActiveByCompanyIdAndRegion(companyId, region)
                 .stream()
                 .map(Branch::getId)
                 .collect(Collectors.toCollection(HashSet::new));

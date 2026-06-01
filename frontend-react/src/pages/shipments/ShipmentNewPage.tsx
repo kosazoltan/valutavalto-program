@@ -258,7 +258,7 @@ export default function ShipmentNewPage() {
                 // mezőt (Include.NON_NULL), a frontend ne crash-eljen `undefined.length` miatt.
                 <>
                   {(vaultCounterparties.territorialCashiers ?? []).length > 0 && (
-                    <optgroup label="Saját terület pénztárai">
+                    <optgroup label="Helyi Pénztárak">
                       {(vaultCounterparties.territorialCashiers ?? [])
                         .filter((b) => b.isActive !== false)
                         .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
@@ -301,7 +301,7 @@ export default function ShipmentNewPage() {
                 // mezőt (Include.NON_NULL), a frontend ne crash-eljen `undefined.length` miatt.
                 <>
                   {(vaultCounterparties.territorialCashiers ?? []).length > 0 && (
-                    <optgroup label="Saját terület pénztárai">
+                    <optgroup label="Helyi Pénztárak">
                       {(vaultCounterparties.territorialCashiers ?? [])
                         .filter((b) => b.isActive !== false)
                         .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}

@@ -275,4 +275,17 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
            "AND b.regionCode IS NOT NULL AND b.isActive = true " +
            "ORDER BY b.regionCode, b.code")
     List<Branch> findActiveWithRegionByCompanyId(@Param("companyId") UUID companyId);
+
+    /**
+     * FK (2026-06-01): aktív irodák cég + RÉGIÓ (region, NEM region_code) szerint.
+     * A területi értéktár↔pénztár kapcsolat a `region` oszlopon van feltöltve (V145: pénztárak,
+     * V254: értéktárak — pl. 'SZEGED'); a `region_code` (KESZLEX körzet) a pénztáraknál NULL (V250),
+     * ezért a korábbi region_code-alapú scope üres listát adott. Ez a region-alapú változat a
+     * helyes a vault-régió-scope-hoz.
+     */
+    @Query("SELECT b FROM Branch b WHERE b.company.id = :companyId " +
+           "AND b.region = :region AND b.isActive = true " +
+           "ORDER BY b.code")
+    List<Branch> findActiveByCompanyIdAndRegion(@Param("companyId") UUID companyId,
+                                                @Param("region") String region);
 }

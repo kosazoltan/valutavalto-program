@@ -449,7 +449,7 @@ export default function MovementManager() {
                   {vaultCounterparties ? (
                     <>
                       {(vaultCounterparties.territorialCashiers ?? []).filter((b) => b.isActive !== false).length > 0 && (
-                        <optgroup label="Saját terület pénztárai">
+                        <optgroup label="Helyi Pénztárak">
                           {(vaultCounterparties.territorialCashiers ?? [])
                             .filter((b) => b.isActive !== false)
                             .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
