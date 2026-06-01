@@ -51,6 +51,28 @@ const WG_STRING_FIELDS: Exclude<WgField, 'officialRate'>[] = [
   'limit3BuyRate', 'limit3SellRate',
 ]
 
+// FK02-B / FR-1 (2026-06-01): a csoport-árfolyamlap valuta-sorrendje EGYEZZEN a Főlapéval
+// (MainRateSheetPage DEFAULT_CURRENCIES), hogy a felhasználó ugyanazt a sorrendet lássa
+// mindkét nézetben. A szerver `overview.currencies` sorrendje nem garantált. Ez a lista a
+// MainRateSheetPage.DEFAULT_CURRENCIES kódjainak tükre (forrás-igazság ott).
+const MAIN_SHEET_CURRENCY_ORDER: readonly string[] = [
+  'EUR', 'USD', 'GBP', 'CHF', 'AUD', 'CAD', 'JPY', 'CZK', 'PLN', 'RON',
+  'RSD', 'ILS', 'UAH', 'RUB', 'EUA', 'TRY', 'CNY', 'BAM', 'THB', 'BRL',
+  'MXN', 'NZD',
+]
+
+/** A főlapi sorrend szerinti rendezés; az ismeretlen kódok a végére, ABC-rendben. */
+function sortByMainSheetOrder<T extends { currencyCode: string }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => {
+    const ia = MAIN_SHEET_CURRENCY_ORDER.indexOf(a.currencyCode)
+    const ib = MAIN_SHEET_CURRENCY_ORDER.indexOf(b.currencyCode)
+    if (ia === -1 && ib === -1) return a.currencyCode.localeCompare(b.currencyCode)
+    if (ia === -1) return 1
+    if (ib === -1) return -1
+    return ia - ib
+  })
+}
+
 /** EditableRate string-mező → szám (üres → null), a képlet-motor numerikus inputjához. */
 function numOrNull(s: string): number | null {
   const t = s.trim()
@@ -295,7 +317,8 @@ export default function RateCreationPage() {
         hasRate: c.hasRate,
         modified: false,
       }))
-      setRates(editableRates)
+      // FR-1: a Főlap (DEFAULT_CURRENCIES) sorrendjébe rendezzük — konzisztens nézet.
+      setRates(sortByMainSheetOrder(editableRates))
     } catch (err) {
       logger.error('RateCreationPage', 'Betöltési hiba:', err)
       setError('Hiba az árfolyam adatok betöltésekor')
