@@ -399,8 +399,9 @@ export default function RateCreationPage() {
   }, [selectedWg?.id])
 
   // FK02-B / FR-11, FR-12: a sávmezők (Lehúzás / Sávok törlése) fix értékeinek perzisztálása.
-  // Az ÜRES sáv IS szándékos „üres" override (Codex P2): explicit '' tárolása, hogy a „Sávok törlése"
-  // egy szerver-értékű sávon reload után is megmaradjon. Formula-cellát kihagyunk; buy/sell érintetlen.
+  // CSAK a szerver-baseline-tól ELTÉRŐ sávot tároljuk override-ként (Codex P2): a fill-down nem-felülíró
+  // ágában az érintetlen (szerverrel egyező) sávok NEM pinelődnek. Üres a szerver nem-üres értékén =
+  // szándékos '' override (reload-biztos „Sávok törlése"). Formula-cellát kihagyunk; buy/sell érintetlen.
   const persistBandFields = useCallback((ratesArr: EditableRate[]) => {
     const id = selectedWg?.id
     if (!id) return
@@ -412,8 +413,12 @@ export default function RateCreationPage() {
       for (const field of BANDS) {
         const key = `${r.currencyId}.${field}`
         if (formulas[key]) continue
-        const v = r[field]
-        saved[key] = typeof v === 'string' ? v : ''
+        const v = typeof r[field] === 'string' ? (r[field] as string) : ''
+        const serverNum = baselineRatesRef.current[key]
+        const vNum = numOrNull(v)
+        const sameAsServer = (v === '' && serverNum === undefined) || (vNum !== null && vNum === serverNum)
+        if (sameAsServer) delete saved[key]
+        else saved[key] = v
       }
     }
     saveGroupRateValues(id, saved)
@@ -506,12 +511,16 @@ export default function RateCreationPage() {
       }
 
       // FK02-B / FR-11, FR-12: a fix (nem-formulás) érték localStorage-perzisztálása csoportonként,
-      // hogy lapváltás/újratöltés után is megmaradjon. Formula → töröljük a kulcsot (a recompute veszi
-      // át). Üres string IS szándékos „üres" override (Codex P2): explicit '' tárolása, hogy reload után
-      // a szerver-bootstrap értéket NE állítsa vissza (az overlay az ''-t is alkalmazza). J nincs itt.
+      // hogy lapváltás/újratöltés után is megmaradjon. CSAK a szerver-baseline-tól ELTÉRŐ értéket
+      // tároljuk override-ként (Codex P2): a szerverrel megegyező érték (pl. fókusz+blur változtatás
+      // nélkül) NEM pinelődik, így nem árnyékolja a jövőbeni szerver-változást. Formula vagy
+      // szerver-egyezés → kulcstörlés; üres a szerver nem-üres értékén = szándékos '' override. J nincs.
       if (wgId && field !== 'officialRate') {
         const saved = loadGroupRateValues(wgId)
-        if (isFormula(trimmed)) {
+        const serverNum = baselineRatesRef.current[key]
+        const nextNum = numOrNull(trimmed)
+        const sameAsServer = (trimmed === '' && serverNum === undefined) || (nextNum !== null && nextNum === serverNum)
+        if (isFormula(trimmed) || sameAsServer) {
           if (key in saved) { delete saved[key]; saveGroupRateValues(wgId, saved) }
         } else if (saved[key] !== trimmed) {
           saved[key] = trimmed
