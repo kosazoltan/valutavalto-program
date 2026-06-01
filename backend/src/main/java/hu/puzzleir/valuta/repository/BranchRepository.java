@@ -159,6 +159,18 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     List<Branch> findByCompanyIdAndIsActiveTrue(@Param("companyId") UUID companyId);
 
     /**
+     * FK-014 backend-szűrés (2026-06-01): aktív, VALÓDI irodák (pénztár + értéktár) cégen belül —
+     * a VAULT_COUNTERPARTY típusú banki/speciális partnerek (PRB/UPT/TRB/ERB/FRB/RB/JRB/MNB/TH/FOP1,
+     * V277 seed) KIZÁRVA. A felügyeleti modulok (Zárás beérkezés, Napi ellenőrzési lista) csak napi
+     * zárást végző egységeket mutatnak; a partnerek sosem zárnak. LEFT JOIN: a (jelenleg nem létező,
+     * de defenzíven kezelt) null-branchType sorok is bennmaradnak.
+     */
+    @Query("SELECT b FROM Branch b LEFT JOIN b.branchType bt "
+        + "WHERE b.company.id = :companyId AND b.isActive = true "
+        + "AND (bt IS NULL OR bt.code <> 'VAULT_COUNTERPARTY') ORDER BY b.name")
+    List<Branch> findByCompanyIdAndIsActiveTrueExcludingCounterparties(@Param("companyId") UUID companyId);
+
+    /**
      * Fiók keresése cégen belül kód alapján (Értéktár modul)
      */
     @Query("SELECT b FROM Branch b WHERE b.company.id = :companyId AND b.code = :code")
