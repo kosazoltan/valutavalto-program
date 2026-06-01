@@ -177,18 +177,20 @@ class ShipmentServiceTest {
     }
 
     @Test
-    void reject_throwsForTerminalStatus() {
+    void reject_onlyAllowedFromSubmitted() {
+        // Codex P2: az elutasítás CSAK SUBMITTED-ből megengedett (az approve párja). Egy már
+        // APPROVED kérés közvetlen API-hívással NEM érvényteleníthető.
         UUID companyId = UUID.randomUUID();
         UUID shipmentId = UUID.randomUUID();
         ShipmentRequest sr = rejectableShipment(shipmentId, companyId);
-        sr.setStatus(hu.puzzleir.valuta.entity.ShipmentRequestStatus.DELIVERED);
+        sr.setStatus(hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
         when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
             assertThatThrownBy(() -> service.reject(shipmentId, "kesoi"))
                     .isInstanceOf(ValidationException.class)
-                    .hasMessageContaining("nem utasítható el");
+                    .hasMessageContaining("SUBMITTED");
             verify(repository, never()).save(any());
         }
     }
