@@ -115,6 +115,10 @@ export default function RateCreationPage() {
   type UndoSnapshot = { rates: EditableRate[]; formulas: Record<string, string> }
   const undoStack = useRef<UndoSnapshot[]>([])
   const redoStack = useRef<UndoSnapshot[]>([])
+  // FK02-B / FR-2..5: a PERZISZTÁLT (loadData-kor betöltött, utoljára publikált/mentett) árfolyamok
+  // numerikus pillanatképe, kulcs `${currencyId}.${field}`. A 10%-eltérés ehhez mér — NEM a session
+  // közbeni, még nem publikált értékhez —, így a lépésenkénti elcsúszás (400→430→470) is kiszúrható.
+  const baselineRatesRef = useRef<Record<string, number>>({})
   const [selectedWgIndex, setSelectedWgIndex] = useState<number>(0)
   /**
    * FK-02/03/04 (Kasza Helga / Bali Henriett 2026-05-28): a régi „bal oldali sávos"
@@ -335,6 +339,16 @@ export default function RateCreationPage() {
       }))
       // FR-1: a Főlap (DEFAULT_CURRENCIES) sorrendjébe rendezzük — konzisztens nézet.
       setRates(sortByMainSheetOrder(editableRates))
+      // FK02-B / FR-2..5: a perzisztált baseline rögzítése (a 10%-eltérés ehhez mér; publish/save
+      // utáni újratöltéskor frissül). Csak a numerikusan értelmezhető mezőket tároljuk.
+      const baseline: Record<string, number> = {}
+      for (const er of editableRates) {
+        for (const field of WG_STRING_FIELDS) {
+          const n = numOrNull(String(er[field] ?? ''))
+          if (n !== null) baseline[`${er.currencyId}.${field}`] = n
+        }
+      }
+      baselineRatesRef.current = baseline
     } catch (err) {
       logger.error('RateCreationPage', 'Betöltési hiba:', err)
       setError('Hiba az árfolyam adatok betöltésekor')
@@ -427,12 +441,13 @@ export default function RateCreationPage() {
       }
     }
 
-    // FK02-B / FR-2..5: fix számra cserélt vétel/eladás/sáv mező esetén, ha az új érték az
-    // ELŐZŐ perzisztált értékhez képest ≥10%-ot tér el, megerősítést kérünk a mentés ELŐTT.
-    // 'Nem' → a cella feltétel nélkül visszaáll (a RateGrid commit nélkül a perzisztált értéket
-    // mutatja), a mentés abortálódik. A formula- és a J (officialRate) mezőt nem korlátozzuk.
+    // FK02-B / FR-2..5: fix számra cserélt vétel/eladás/sáv mező esetén, ha az új érték a
+    // PERZISZTÁLT (loadData-kor betöltött) értékhez képest ≥10%-ot tér el, megerősítést kérünk a
+    // mentés ELŐTT. A baseline a perzisztált snapshot (NEM a session közbeni r[field]), így a
+    // lépésenkénti elcsúszás (400→430→470 = 17.5%) is kiszúrható. 'Nem' → a cella visszaáll, a
+    // mentés abortál. A formula- és a J (officialRate) mezőt nem korlátozzuk.
     if (!isFormula(trimmed) && field !== 'officialRate') {
-      const prevVal = numOrNull(String(r[field] ?? ''))
+      const prevVal = baselineRatesRef.current[key] ?? numOrNull(String(r[field] ?? ''))
       const nextVal = numOrNull(trimmed)
       if (isSignificantDeviation(prevVal, nextVal)) {
         const pct = Math.round((Math.abs((nextVal as number) - (prevVal as number)) / Math.abs(prevVal as number)) * 100)
