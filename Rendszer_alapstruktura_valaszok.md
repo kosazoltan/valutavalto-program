@@ -3,7 +3,7 @@
 **Dátum:** 2026. május 29.
 **Kérdező:** Kasza Helga – Főértéktár
 **Válaszadó:** Claude (Valutaváltó ERP repo alapján)
-**Repo-horgony:** v2.27.26, legutolsó Flyway-migráció: `V277__vault_counterparty_branches.sql`
+**Repo-horgony:** v2.27.55 (root `package.json`, ellenőrizve 2026-06-01), legutolsó Flyway-migráció: `V277__vault_counterparty_branches.sql`
 
 > **Mire való ez a dokumentum?**
 > Ez nem csak emberi olvasásra készült leírás. Úgy van megszerkesztve, hogy **közvetlenül átadható egy Mesterséges Intelligencia (AI) ügynöknek**, amely ez alapján a saját működését korlátozza/szabályozza. Ezért minden kérdésnél négy blokk van:
@@ -40,9 +40,9 @@ Az AI-ügynöknek MINDEN feladatnál be kell tartania az alábbiakat. Forrás: `
 **Kérdés:** Hogyan épül fel jelenleg az adatbázis struktúrája?
 
 **Válasz:**
-A központi adatbázis **PostgreSQL**, a séma-verziózás **Flyway**-jal történik. A migrációk a `backend/src/main/resources/db/migration/` mappában vannak, `V1` → **`V277__vault_counterparty_branches.sql`** sorszámmal (ez a jelenlegi legfrissebb).
+A központi adatbázis **PostgreSQL**, a séma-verziózás **Flyway**-jal történik. A migrációk a `backend/src/main/resources/db/migration/` mappában vannak; a legkorábbi fájlok `V0_1__base_tables.sql` / `V1_1__add_company_code.sql` (nincs sima `V1__`), a legfrissebb pedig a **`V277__vault_counterparty_branches.sql`**.
 
-- A séma kb. **200 JPA entity**-ből áll (`backend/src/main/java/hu/puzzleir/valuta/entity/` — `@Entity` annotált osztályok száma, ellenőrizve 2026-06-01: 201). Ezek lefedik a teljes domaint: `Transaction`, `TransactionLine`, `TransactionBanknote`, `ExchangeRate` / `ExchangeRateMaster`, `Denomination` / `DenominationCount`, `Customer`, `Worker`, `Branch`, `Company`, `VaultTerritory`, `DailySession`, `EveningClosing`, AML (`AmlReport`, `AmlThreshold`), audit (`AuditLog`, `CurrencyAuditLog`) stb.
+- A séma kb. **200 JPA entity**-ből áll (`backend/src/main/java/hu/puzzleir/valuta/entity/` — `@Entity` annotált osztályok száma, ellenőrizve 2026-06-01: 200). Ezek lefedik a teljes domaint: `Transaction`, `TransactionLine`, `TransactionBanknote`, `ExchangeRate` / `ExchangeRateMaster`, `Denomination` / `DenominationCount`, `Customer`, `Worker`, `Branch`, `Company`, `VaultTerritory`, `DailySession`, `EveningClosing`, AML (`AmlReport`, `AmlThreshold`), audit (`AuditLog`, `CurrencyAuditLog`) stb.
 - **Multi-tenant alap:** a törzs-entitások kötelező `company_id` oszloppal rendelkeznek. Pl. `Worker` (`backend/.../entity/Worker.java:48-50`) `@ManyToOne ... company_id nullable=false`, egyedi kulcs `(company_id, code)`.
 - **Audit/időbélyeg:** az entitások `@CreatedDate` / `@LastModifiedDate` mezőkkel követik a létrehozást/módosítást (Spring Data auditing).
 - A modell **legacy-leképezést** is tartalmaz (pl. a `Worker` kommentje a `prosbe.dll` PtarosKod/PtarosNev mezőkre hivatkozik), tehát egy korábbi rendszer adatszerkezetét örökölte.
@@ -51,7 +51,7 @@ A központi adatbázis **PostgreSQL**, a séma-verziózás **Flyway**-jal tört�
 
 **AI-ügynök utasítás:**
 - A séma **aktuális igazsága mindig a Flyway-migrációk + az entity-osztályok**, NEM az AI emlékezete vagy korábbi leírás.
-- Új tábla/oszlop kizárólag **új Flyway-migrációval** (`V278__...sql`), a meglévők (`V1..V277`) **soha nem módosíthatók**.
+- Új tábla/oszlop kizárólag **új Flyway-migrációval** (`V278__...sql`), a meglévők (`V0_1`-től `V277`-ig) **soha nem módosíthatók**.
 - Minden új törzs-entitásra KÖTELEZŐ a `company_id` oszlop + index, kivéve a valóban globális szótár-táblákat (pl. `Dictionary`, országkódok) — ezt esetenként indokolni kell.
 - Schema-kérdésnél ELŐSZÖR `grep`/olvasás a `db/migration/`-ben és `entity/`-ben, csak utána válasz.
 
@@ -171,7 +171,7 @@ public void assertBranchAccess(Long workerId, UUID branchId) {
 A repo tényei alapján:
 
 - A **felhasználónál (Worker)** a „Telephely" gyakorlatilag a **munkahely = fiók (`Branch`)**. A `Worker.branch` mező kommentje szó szerint: *„Munkahely (iroda/fiók)"* (`entity/Worker.java:81-85`), kötelező `branch_id` FK-val. Ez köti a felhasználót a területi struktúrához: `Worker.branch_id → Branch → vault_territory_id → VaultTerritory`, illetve `Branch.company_id → Company`. Több fiók esetén a `WorkerBranchAccess` ACL bővíti.
-- **Ez vizuálisan is megerősíthető:** a frontend fejléce a felhasználó fiók-nevét írja ki „Telephely" felirattal — `MainLayout`: `Telephely: {user?.branchName || 'Központi'}` (`frontend-react/src/stores/authStore.ts:66-67`). Tehát a UI „Telephely" mezője = a bejelentkezett dolgozó `branchName`-je (a `Branch` neve).
+- **Ez vizuálisan is megerősíthető:** a frontend fejléce a felhasználó fiók-nevét írja ki „Telephely:" felirattal. A megjelenítés a `frontend-react/src/layouts/MainLayout.tsx:274-275`-ben történik (`{t('layout.branchLabel')}` + `{user?.branchName || t('layout.centralFallback')}`), a „Telephely:" felirat pedig a `frontend-react/src/i18n/hu.json` `layout.branchLabel` kulcsból jön. Tehát a UI „Telephely" mezője = a bejelentkezett dolgozó `branchName`-je (a `Branch` neve).
 - **Külön, „telephely" nevű önálló törzs-mező a felhasználón (Worker) nincs** a `branch_id`-n túl. A „telephely cím" literál mező csak a **`VatRefundTransaction`** entitáson létezik: `siteAddress` (`entity/VatRefundTransaction.java:156` — „Telephely cím", legacy `TELEPHELYCIM`), ami egy ÁFA-visszatérítési tranzakció-attribútum, **nem a felhasználó törzsadata**.
 
 **Összegzés:** felhasználónál a „Telephely" = a hozzárendelt **`Branch`** (munkahely, a UI-ban `branchName`), amin keresztül kapcsolódik a teljes területi hierarchiához (Branch → VaultTerritory → Company). A `VatRefundTransaction.siteAddress` egy ettől eltérő, VAT-refund-specifikus telephely-cím mező.
@@ -208,7 +208,7 @@ Integer teruletId   = w.getBranch().getVaultTerritoryId(); // kapcsolat a terül
 **Kérdés:** Hogyan működik a szinkronizálás a pénztári Electron kliens (SQLite) és a központi PostgreSQL adatbázis között – különös tekintettel a törzsadatokra?
 
 **Válasz:**
-A pénztári kliens **local-first** mintát használ, ~30 mp-es polling push/pull ciklussal a `excvaluta.com` backend felé. Forrás: `penztar-client/electron/sync-engine.ts` (~1938 sor — valódi logika, nem stub), `penztar-client/electron/sqlite.ts` (~2795 sor), `api-proxy.ts`, backend `entity/SyncOutboxEvent.java` / `entity/SyncInboxEvent.java`, `repository/SyncOutboxRepository.java`. A `kozponti-client/electron/local-first.ts` dokumentálja a konfliktus-politikákat.
+A pénztári kliens **local-first** mintát használ, ~30 mp-es polling push/pull ciklussal a `excvaluta.com` backend felé. Forrás: `penztar-client/electron/sync-engine.ts` (~1900+ sor — valódi logika, nem stub), `penztar-client/electron/sqlite.ts` (~2800 sor), `api-proxy.ts`, backend `entity/SyncOutboxEvent.java` / `entity/SyncInboxEvent.java`, `repository/SyncOutboxRepository.java`. A `kozponti-client/electron/local-first.ts` dokumentálja a konfliktus-politikákat.
 
 **A lokál SQLite tábla-típusai (`penztar-client/electron/sqlite.ts`):**
 
@@ -295,6 +295,6 @@ async function flushPending() {
 
 - **Konfliktus-feloldás (5. kérdés):** a politika **dokumentált** (`kozponti-client/electron/local-first.ts`: `server_authority` a törzsadatra, append-only a tranzakcióra, `last_write_wins` a settings-re, `lf_conflict_log` naplózás). Ami a repóban nincs egy helyen összefoglalva: a **pénztári** kliens (`penztar-client`) és a **központi** kliens szinkron-implementációja eltérő érettségű, és a végpontok (`/central/sync/pull|push` vs. `/api/v1/...`) közti pontos leképezés szétszórt — nagy szinkron-változtatás előtt érdemes terméktulajdonosi/architekt egyeztetés.
 - **„Telephely" UI-felirat (4. kérdés):** megerősítve, hogy a `MainLayout` „Telephely" felirata a `branchName`-t mutatja. Ha egy másik képernyőn a „Telephely" mást jelentene, az terméktulajdonosi tisztázást igényel — adatmodell szinten a felhasználónál a `branch_id` az irányadó.
-- **Teljes táblalista:** nincs külön „egy fájlban a teljes séma" dokumentum; az igazságforrás a Flyway-migrációk (`V1..V277`) és az entity-osztályok.
+- **Teljes táblalista:** nincs külön „egy fájlban a teljes séma" dokumentum; az igazságforrás a Flyway-migrációk (`V0_1`-től `V277`-ig) és az entity-osztályok.
 
 > Ezeknél a pontoknál az AI-ügynöknek **vissza kell kérdeznie** (terméktulajdonostól), és TILOS feltételezésre építve kódot írnia.
