@@ -1029,8 +1029,9 @@ export default function RateCreationPage() {
             <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Kitöltési segítség</div>
             <div className="text-[10px] text-gray-500 leading-tight">
               Jelölj ki cellákat a táblázatban (egér-húzás vagy Shift+kattintás), majd a megjelenő lebegő
-              eszköztárból válassz: <span className="font-semibold text-amber-700">Lehúzás (mind)</span>,{' '}
-              <span className="font-semibold text-gray-700">Lehúzás (üres)</span> vagy{' '}
+              eszköztárból válassz: <span className="font-semibold text-amber-700">Lehúzás (mind)</span>{' '}
+              (felső sor másolása lefelé), <span className="font-semibold text-gray-700">Ürítés</span>{' '}
+              (kijelölt cellák kiürítése) vagy{' '}
               <span className="font-semibold text-red-700">Sávok törlése</span>.
             </div>
           </div>

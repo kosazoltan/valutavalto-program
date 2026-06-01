@@ -385,9 +385,9 @@ export default function RateGrid({
             type="button"
             onClick={bulkClearSelected}
             className="flex items-center gap-1 px-1.5 py-1 rounded bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-300 text-[10px] font-semibold"
-            title="A kijelölt cellák értékének/képletének kiürítése"
+            title="A kijelölt cellák értékének/képletének KIÜRÍTÉSE (a cellák üresre állnak)"
           >
-            <Eraser size={11} /> Lehúzás (üres)
+            <Eraser size={11} /> Ürítés
           </button>
           <button
             type="button"
