@@ -679,7 +679,9 @@ public class RateCreationService {
                 .map(Branch::getId)
                 .collect(Collectors.toSet());
 
-        List<Branch> allActiveBranches = branchRepository.findByCompanyIdAndIsActiveTrue(companyId);
+        // FK02-C (2026-06-01): KIZÁRÓLAG pénztár típusú egységek (FR-1) — értéktár és VAULT_COUNTERPARTY
+        // banki/speciális partnerek backend-szinten kizárva (NFR-1). A keresés (FR-3) így csak pénztárakon fut.
+        List<Branch> allActiveBranches = branchRepository.findRateCreationAssignableCashierBranches(companyId);
 
         return allActiveBranches.stream()
                 .map(b -> BranchListDTO.builder()
@@ -724,13 +726,21 @@ public class RateCreationService {
         if (branchIds != null && !branchIds.isEmpty()) {
             List<Branch> branches = branchRepository.findAllById(branchIds);
 
-            // Ellenőrzés: minden branch a céghez tartozik-e és aktív-e
+            // Ellenőrzés: minden branch a céghez tartozik-e, aktív-e ÉS pénztár típusú-e
             for (Branch branch : branches) {
                 if (!branch.getCompany().getId().equals(companyId)) {
                     throw new ValidationException("Iroda nem tartozik az aktuális céghez: " + branch.getCode());
                 }
                 if (!Boolean.TRUE.equals(branch.getIsActive())) {
                     throw new ValidationException("Inaktív iroda nem rendelhető hozzá: " + branch.getCode());
+                }
+                // FK02-C (2026-06-01): a POST endpoint is védi az adatot — csak PÉNZTÁR típusú, nem
+                // értéktári egység rendelhető árfolyam-munkacsoporthoz (NFR-1). Így stale frontend,
+                // manuális API-hívás vagy régi kliensverzió sem tud VAULT_COUNTERPARTY/ERTEKTAR egységet
+                // hozzárendelni, akkor sem, ha a lista-szűrés valamiért megkerülhető lenne.
+                if (!isRateCreationAssignableCashierBranch(branch)) {
+                    throw new ValidationException(
+                            "Árfolyam-munkacsoporthoz csak pénztár típusú iroda rendelhető: " + branch.getCode());
                 }
             }
 
@@ -758,6 +768,19 @@ public class RateCreationService {
 
         rateWorkgroupRepository.save(workgroup);
         log.info("Munkacsoport iroda-hozzárendelés frissítve: workgroupId={}, {} iroda", workgroupId, workgroup.getBranches().size());
+    }
+
+    /**
+     * FK02-C (2026-06-01): igaz, ha a branch árfolyam-munkacsoporthoz rendelhető — aktív, PÉNZTÁR
+     * típusú (branchType.code = 'PENZTAR') és NEM értéktár (isVault != true). Az értéktár és a
+     * VAULT_COUNTERPARTY banki/speciális partnerek nem kaphatnak árfolyamot ezen a felületen.
+     */
+    private boolean isRateCreationAssignableCashierBranch(Branch branch) {
+        return branch != null
+                && branch.getBranchType() != null
+                && "PENZTAR".equals(branch.getBranchType().getCode())
+                && !Boolean.TRUE.equals(branch.getIsVault())
+                && Boolean.TRUE.equals(branch.getIsActive());
     }
 
     /**
