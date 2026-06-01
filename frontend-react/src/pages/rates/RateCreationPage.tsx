@@ -111,10 +111,16 @@ export default function RateCreationPage() {
   const [rateConfirm, setRateConfirm] = useState<ConfirmState | null>(null)
   // FK02-B / FR-2..5: revert-jelzés a RateGrid felé — "Mégse" után a cella visszaáll a perzisztáltra.
   const [rateRevertSignal, setRateRevertSignal] = useState(0)
+  // FK02-B / FR-11, FR-12: minden loadData növeli → a fix-érték overlay azonos csoportos reload után
+  // is lefut (Codex P1: nem csak csoportváltáskor).
+  const [reloadVersion, setReloadVersion] = useState(0)
   // FK-04/C (Codex #906): az undo/redo a `rates` MELLETT a `formulas`-t is rögzíti — különben
   // egy képlet beírása után a Ctrl+Z csak a megjelenített értéket állítaná vissza, a képlet a
   // state/localStorage-ban maradna, és a recompute újra alkalmazná (képlet-szerkesztés nem volt visszavonható).
-  type UndoSnapshot = { rates: EditableRate[]; formulas: Record<string, string> }
+  // FK02-B / FR-11, FR-12 (Codex P2): a snapshot a localStorage-ba mentett fix-érték állapotot is
+  // rögzíti, hogy az undo/redo a perzisztált mentést is visszaállítsa (különben reload után a
+  // visszavont érték jönne vissza).
+  type UndoSnapshot = { rates: EditableRate[]; formulas: Record<string, string>; savedRateValues: Record<string, string> }
   const undoStack = useRef<UndoSnapshot[]>([])
   const redoStack = useRef<UndoSnapshot[]>([])
   // FK02-B / FR-2..5: a PERZISZTÁLT (loadData-kor betöltött, utoljára publikált/mentett) árfolyamok
@@ -191,23 +197,6 @@ export default function RateCreationPage() {
     }
     setFormulas(loadGroupFormulas(selectedWg.id))
     setCellErrors({})
-    // FK02-B / FR-11, FR-12: a csoport perzisztált FIX (nem-formulás) rátaértékeit visszaírjuk a
-    // `rates`-be (a képlet-cellákat a recompute úgyis felülírja). Reload után a szerver-bootstrap
-    // értékeket így nem törli el a helyi módosításokat. Üres store → nincs felülírás.
-    const savedRateValues = loadGroupRateValues(selectedWg.id)
-    if (Object.keys(savedRateValues).length > 0) {
-      setRates(prev => prev.map(r => {
-        let nr = r
-        for (const field of WG_STRING_FIELDS) {
-          const v = savedRateValues[`${r.currencyId}.${field}`]
-          if (v != null && nr[field] !== v) {
-            if (nr === r) nr = { ...r }
-            nr[field] = v
-          }
-        }
-        return nr
-      }))
-    }
     // Codex #910 P1: az undo/redo stack csoportonként ÉRVÉNYTELEN — csoportváltáskor ürítjük,
     // különben egy másik csoportban beírt képletet a Ctrl+Z az AKTUÁLIS csoportba állítaná vissza,
     // és a perzisztáló effekt annak localStorage-kulcsa alá mentené (kereszt-csoport korrupció).
@@ -215,6 +204,29 @@ export default function RateCreationPage() {
     redoStack.current = []
   // eslint-disable-next-line react-hooks/exhaustive-deps -- csak a csoport-id váltáskor töltünk újra
   }, [selectedWg?.id])
+
+  // FK02-B / FR-11, FR-12: a csoport perzisztált FIX (nem-formulás) rátaértékeit visszaírjuk a
+  // `rates`-be (a képlet-cellákat a recompute úgyis felülírja). Külön effekt, hogy NE csak a
+  // csoportváltáskor, hanem a `loadData()` UTÁNI (azonos csoportos) reloadkor is lefusson
+  // (Codex P1: `reloadVersion` növekszik minden loadData-nál). Csak OLVAS a localStorage-ból és a
+  // `rates`-re tesz overlay-t — a localStorage-t NEM írja, ezért nem törli a mentett értékeket.
+  useEffect(() => {
+    if (!selectedWg) return
+    const savedRateValues = loadGroupRateValues(selectedWg.id)
+    if (Object.keys(savedRateValues).length === 0) return
+    setRates(prev => prev.map(r => {
+      let nr = r
+      for (const field of WG_STRING_FIELDS) {
+        const v = savedRateValues[`${r.currencyId}.${field}`]
+        if (v != null && nr[field] !== v) {
+          if (nr === r) nr = { ...r }
+          nr[field] = v
+        }
+      }
+      return nr
+    }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- csoportváltáskor ÉS minden reloadnál
+  }, [selectedWg?.id, reloadVersion])
 
   // FK-04/C: a csoport képleteinek perzisztálása minden változáskor (localStorage, csoportonként).
   useEffect(() => {
@@ -368,6 +380,8 @@ export default function RateCreationPage() {
         }
       }
       baselineRatesRef.current = baseline
+      // FK02-B / FR-11, FR-12: a fix-érték overlay effekt újrafuttatása (azonos csoportos reload is).
+      setReloadVersion(v => v + 1)
     } catch (err) {
       logger.error('RateCreationPage', 'Betöltési hiba:', err)
       setError('Hiba az árfolyam adatok betöltésekor')
@@ -378,27 +392,58 @@ export default function RateCreationPage() {
 
   useEffect(() => { void loadData() }, [loadData])
 
+  // FK02-B / FR-11, FR-12: a pillanatnyi (perzisztált) fix-érték store a snapshothoz/visszaállításhoz.
+  const currentSavedRateValues = useCallback((): Record<string, string> => {
+    const id = selectedWg?.id
+    return id ? loadGroupRateValues(id) : {}
+  }, [selectedWg?.id])
+
+  // FK02-B / FR-11, FR-12: a sávmezők (Lehúzás / Sávok törlése) fix értékeinek perzisztálása.
+  // Cél-mezőnként frissít (üres → törlés), a buy/sell mezőket nem érinti — sparse store marad.
+  const persistBandFields = useCallback((ratesArr: EditableRate[]) => {
+    const id = selectedWg?.id
+    if (!id) return
+    const BANDS: Exclude<WgField, 'officialRate'>[] = [
+      'limit1BuyRate', 'limit1SellRate', 'limit2BuyRate', 'limit2SellRate', 'limit3BuyRate', 'limit3SellRate',
+    ]
+    const saved = loadGroupRateValues(id)
+    for (const r of ratesArr) {
+      for (const field of BANDS) {
+        const key = `${r.currencyId}.${field}`
+        if (formulas[key]) continue
+        const v = r[field]
+        if (typeof v === 'string' && v !== '') saved[key] = v
+        else delete saved[key]
+      }
+    }
+    saveGroupRateValues(id, saved)
+  }, [selectedWg?.id, formulas])
+
   const pushUndo = useCallback(() => {
-    undoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas } })
+    undoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas }, savedRateValues: currentSavedRateValues() })
     if (undoStack.current.length > 50) undoStack.current.shift()
     redoStack.current = []
-  }, [rates, formulas])
+  }, [rates, formulas, currentSavedRateValues])
 
   const undo = useCallback(() => {
     const prev = undoStack.current.pop()
     if (!prev) return
-    redoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas } })
+    const id = selectedWg?.id
+    redoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas }, savedRateValues: currentSavedRateValues() })
     setRates(prev.rates)
     setFormulas(prev.formulas)
-  }, [rates, formulas])
+    if (id) saveGroupRateValues(id, prev.savedRateValues)
+  }, [rates, formulas, currentSavedRateValues, selectedWg?.id])
 
   const redo = useCallback(() => {
     const nextState = redoStack.current.pop()
     if (!nextState) return
-    undoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas } })
+    const id = selectedWg?.id
+    undoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas }, savedRateValues: currentSavedRateValues() })
     setRates(nextState.rates)
     setFormulas(nextState.formulas)
-  }, [rates, formulas])
+    if (id) saveGroupRateValues(id, nextState.savedRateValues)
+  }, [rates, formulas, currentSavedRateValues, selectedWg?.id])
 
   // Ctrl+Z / Ctrl+Y global handler
   useEffect(() => {
@@ -620,6 +665,7 @@ export default function RateCreationPage() {
     }
     pushUndo()
     setRates(nextRates)
+    persistBandFields(nextRates)
     toast.success('Lehúzva', overwrite
       ? `${touched} valuta sávjai felülírva a 0-s árfolyammal`
       : `${touched} valuta üres sávja feltöltve a 0-s árfolyammal`)
@@ -643,6 +689,7 @@ export default function RateCreationPage() {
     }
     pushUndo()
     setRates(nextRates)
+    persistBandFields(nextRates)
     toast.success('Törölve', `${touched} valuta kedvezménysávja kiürítve`)
   }
 
