@@ -1,10 +1,13 @@
 package hu.puzzleir.valuta.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import hu.puzzleir.valuta.dto.ratecreation.BranchListDTO;
 import hu.puzzleir.valuta.dto.ratecreation.WorkgroupDetailDTO;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.Dictionary;
 import hu.puzzleir.valuta.entity.RateWorkgroup;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,11 +23,17 @@ import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -114,5 +123,106 @@ class RateCreationServiceTest {
 
         assertThat(dto.getTileColor()).isNull();
         assertThat(dto.getProtectionEnabled()).isTrue();
+    }
+
+    // ===================== FK02-C: Irodák listájának pénztár-szűrése =====================
+
+    @Test
+    @DisplayName("FK02-C: getAllBranchesForWorkgroup a penztar-only repo-lekerdezest hasznalja (nem a teljes aktiv listat)")
+    void getAllBranchesForWorkgroup_usesCashierOnlyQuery() {
+        UUID wgId = UUID.randomUUID();
+        Company company = Company.builder().id(COMPANY_ID).code("EBC").name("Test").build();
+        RateWorkgroup wg = RateWorkgroup.builder().id(wgId).company(company).branches(Set.of()).build();
+        when(rateWorkgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+
+        Dictionary penztar = Dictionary.builder().code("PENZTAR").build();
+        Branch cashier = Branch.builder().id(UUID.randomUUID()).code("BR020").name("Szeged Pénztár")
+                .city("Szeged").company(company).branchType(penztar).isActive(true).build();
+        when(branchRepository.findRateCreationAssignableCashierBranches(COMPANY_ID)).thenReturn(List.of(cashier));
+
+        List<BranchListDTO> result = service.getAllBranchesForWorkgroup(wgId);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getCode()).isEqualTo("BR020");
+        // FR-1/NFR-1: NEM a teljes aktív listát kérdezi le (az banki partnert is visszaadna).
+        verify(branchRepository, never()).findByCompanyIdAndIsActiveTrue(any());
+    }
+
+    @Test
+    @DisplayName("FK02-C: updateWorkgroupBranches elutasitja a nem-penztar (VAULT_COUNTERPARTY) iroda hozzarendeleset")
+    void updateWorkgroupBranches_rejectsNonCashierBranch() {
+        UUID wgId = UUID.randomUUID();
+        Company company = Company.builder().id(COMPANY_ID).code("EBC").name("Test").build();
+        RateWorkgroup wg = RateWorkgroup.builder().id(wgId).company(company).branches(new HashSet<>()).build();
+        when(rateWorkgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+
+        Dictionary counterparty = Dictionary.builder().code("VAULT_COUNTERPARTY").build();
+        UUID partnerId = UUID.randomUUID();
+        Branch partner = Branch.builder().id(partnerId).code("MNB").name("MNB")
+                .company(company).branchType(counterparty).isActive(true).build();
+        when(branchRepository.findAllById(List.of(partnerId))).thenReturn(List.of(partner));
+
+        assertThatThrownBy(() -> service.updateWorkgroupBranches(wgId, List.of(partnerId)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("csak pénztár");
+    }
+
+    @Test
+    @DisplayName("FK02-C: updateWorkgroupBranches elutasitja az ERTEKTAR tipusu egyseget (Sourcery)")
+    void updateWorkgroupBranches_rejectsVaultTypeBranch() {
+        UUID wgId = UUID.randomUUID();
+        Company company = Company.builder().id(COMPANY_ID).code("EBC").name("Test").build();
+        RateWorkgroup wg = RateWorkgroup.builder().id(wgId).company(company).branches(new HashSet<>()).build();
+        when(rateWorkgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+
+        Dictionary ertektar = Dictionary.builder().code("ERTEKTAR").build();
+        UUID vaultId = UUID.randomUUID();
+        Branch vault = Branch.builder().id(vaultId).code("ET01").name("Szeged Értéktár")
+                .company(company).branchType(ertektar).isActive(true).build();
+        when(branchRepository.findAllById(List.of(vaultId))).thenReturn(List.of(vault));
+
+        assertThatThrownBy(() -> service.updateWorkgroupBranches(wgId, List.of(vaultId)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("csak pénztár");
+    }
+
+    @Test
+    @DisplayName("FK02-C: updateWorkgroupBranches elutasitja az isVault=true penztarat is (Sourcery)")
+    void updateWorkgroupBranches_rejectsVaultFlaggedCashier() {
+        UUID wgId = UUID.randomUUID();
+        Company company = Company.builder().id(COMPANY_ID).code("EBC").name("Test").build();
+        RateWorkgroup wg = RateWorkgroup.builder().id(wgId).company(company).branches(new HashSet<>()).build();
+        when(rateWorkgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+
+        // PENZTAR típuskód, de isVault=true → értéktári anomália, NEM rendelhető hozzá.
+        Dictionary penztar = Dictionary.builder().code("PENZTAR").build();
+        UUID id = UUID.randomUUID();
+        Branch vaultFlagged = Branch.builder().id(id).code("BR099").name("Anomália")
+                .company(company).branchType(penztar).isVault(true).isActive(true).build();
+        when(branchRepository.findAllById(List.of(id))).thenReturn(List.of(vaultFlagged));
+
+        assertThatThrownBy(() -> service.updateWorkgroupBranches(wgId, List.of(id)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("csak pénztár");
+    }
+
+    @Test
+    @DisplayName("FK02-C: updateWorkgroupBranches elfogadja az aktiv penztarat")
+    void updateWorkgroupBranches_acceptsCashierBranch() {
+        UUID wgId = UUID.randomUUID();
+        Company company = Company.builder().id(COMPANY_ID).code("EBC").name("Test").build();
+        RateWorkgroup wg = RateWorkgroup.builder().id(wgId).company(company).branches(new HashSet<>()).build();
+        when(rateWorkgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(rateWorkgroupRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of(wg));
+
+        Dictionary penztar = Dictionary.builder().code("PENZTAR").build();
+        UUID cashierId = UUID.randomUUID();
+        Branch cashier = Branch.builder().id(cashierId).code("BR020").name("Szeged Pénztár")
+                .company(company).branchType(penztar).isActive(true).build();
+        when(branchRepository.findAllById(List.of(cashierId))).thenReturn(List.of(cashier));
+
+        service.updateWorkgroupBranches(wgId, List.of(cashierId));
+
+        assertThat(wg.getBranches()).extracting(Branch::getCode).containsExactly("BR020");
     }
 }

@@ -171,6 +171,19 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     List<Branch> findByCompanyIdAndIsActiveTrueExcludingCounterparties(@Param("companyId") UUID companyId);
 
     /**
+     * FK02-C (2026-06-01): Árfolyamkészítő munkacsoporthoz választható irodák — KIZÁRÓLAG aktív,
+     * cégen belüli, lakossági PÉNZTÁR típusú egységek (branchType.code = 'PENZTAR'). Az értéktár
+     * (isVault = true) és a VAULT_COUNTERPARTY banki/speciális partnerek kizárva. Az „Irodák kezelése"
+     * lista (FR-1) és a keresés (FR-3) erre a backend-szűrt halmazra épül (NFR-1: nem frontend-elrejtés).
+     * Szigorúbb, mint a {@link #findByCompanyIdAndIsActiveTrueExcludingCounterparties(UUID)} (az csak a
+     * VAULT_COUNTERPARTY-t zárja ki, az ERTEKTAR-t nem). INNER JOIN: branchType nélküli sor nem pénztár.
+     */
+    @Query("SELECT b FROM Branch b JOIN b.branchType bt "
+        + "WHERE b.company.id = :companyId AND b.isActive = true "
+        + "AND bt.code = 'PENZTAR' AND (b.isVault IS NULL OR b.isVault = false) ORDER BY b.name")
+    List<Branch> findRateCreationAssignableCashierBranches(@Param("companyId") UUID companyId);
+
+    /**
      * Fiók keresése cégen belül kód alapján (Értéktár modul)
      */
     @Query("SELECT b FROM Branch b WHERE b.company.id = :companyId AND b.code = :code")
