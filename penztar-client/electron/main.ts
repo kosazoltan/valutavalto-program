@@ -95,7 +95,7 @@ import { registerScannerHandlers } from './scanner';
 import { registerUpdaterHandlers } from './updater';
 import { performGoogleOAuthFlow, performGoogleOAuthFlowWithBackendLogin, performPasswordLoginMainProcess, GoogleOAuthFailedException } from './google-oauth';
 import { initErrorReporter, reportError, setUserIdentifier } from './error-reporter';
-import { fetchViaElectronNet, type ApiProxyRequest } from './api-proxy';
+import { fetchViaElectronNetWithRetry, type ApiProxyRequest } from './api-proxy';
 import {
   createCustomerDisplay,
   updateCustomerDisplay,
@@ -1046,32 +1046,16 @@ app.whenReady().then(async () => {
     const apiBaseUrl = resolveConfiguredApiUrl();
     const fullUrl = params.url.startsWith('http') ? params.url : `${apiBaseUrl}${params.url}`;
 
-    const MAX_RETRIES = 3;
-    const RETRY_DELAYS = [1000, 3000, 5000];
-    let lastErr: Error | null = null;
-
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
-      try {
-        const response = await fetchViaElectronNet({
-          ...params,
-          url: fullUrl,
-        });
-        return response;
-      } catch (err) {
-        lastErr = err as Error;
-        const msg = lastErr.message ?? String(err);
-        const isNetworkErr = /Network error|Timeout|ECONNRESET|EAI_AGAIN|ECONNREFUSED|ENOTFOUND/i.test(msg);
-        if (!isNetworkErr || attempt === MAX_RETRIES - 1) {
-          log.warn('[main] api:fetch failed after', attempt + 1, 'attempt(s) for', params.method, params.url, ':', msg);
-          return { ok: false, status: 0, statusText: 'NETWORK_ERROR', headers: {}, body: JSON.stringify({ error: msg }) };
-        }
-        log.warn('[main] api:fetch retry', attempt + 1, '/', MAX_RETRIES, 'for', params.method, params.url, ':', msg);
-        await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt] ?? 5000));
-      }
+    // ESET-MITM hidegindítás-reset ellen: 5 próba növekvő backoff-fal. A retry CSAK hálózati
+    // hibára fut (HTTP 4xx/5xx érintetlen) — lásd api-proxy.ts isRetryableNetworkError.
+    // (2026-06-01 értéktár-eset: net::ERR_CONNECTION_RESET a `/public/setup/google-identify` végponton.)
+    try {
+      return await fetchViaElectronNetWithRetry({ ...params, url: fullUrl });
+    } catch (err) {
+      const msg = (err instanceof Error ? err.message : String(err)) || 'Unknown error';
+      log.warn('[main] api:fetch failed (retries exhausted) for', params.method, params.url, ':', msg);
+      return { ok: false, status: 0, statusText: 'NETWORK_ERROR', headers: {}, body: JSON.stringify({ error: msg }) };
     }
-
-    const msg = lastErr?.message ?? 'Unknown error';
-    return { ok: false, status: 0, statusText: 'NETWORK_ERROR', headers: {}, body: JSON.stringify({ error: msg }) };
   });
 
   // --- VFD ügyfélkijelző IPC handlerek (P2-1) ---

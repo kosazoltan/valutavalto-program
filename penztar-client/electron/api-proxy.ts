@@ -217,3 +217,104 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
     request.end();
   });
 }
+
+/**
+ * Hálózati szintű (NEM HTTP-státusz) hiba felismerése retry-hoz.
+ *
+ * <p>Az ESET/Kaspersky/Bitdefender MITM TLS-proxy hidegindításkor reseteli az ÚJ domain
+ * (excvaluta.com) első TLS-kapcsolatát — ilyenkor az `electron.net.request` Chromium-stackje
+ * `net::ERR_CONNECTION_RESET` (vagy ERR_CONNECTION_CLOSED/ABORTED, ERR_SSL*, ERR_NETWORK_CHANGED,
+ * ERR_TIMED_OUT, ERR_NAME_NOT_RESOLVED) hibát dob. Ezekre ÉRDEMES újrapróbálni, mert a vírusirtó
+ * a következő (friss) kapcsolatra már jellemzően átengedi. A `[api-proxy] Network error` /
+ * `[api-proxy] Timeout` prefixek a {@link fetchViaElectronNet}-ből jönnek. A `ECONNRESET`/`EAI_AGAIN`/
+ * `ECONNREFUSED`/`ENOTFOUND` a Node-stílusú socket-hibák (LAN/offline backend).
+ *
+ * <p>HTTP 4xx/5xx NEM számít hálózati hibának (a {@link fetchViaElectronNet} ezekre `ok:false`
+ * választ ad, NEM dob) → a hívót a retry érintetlenül hagyja.
+ */
+const RETRYABLE_NETWORK_ERROR_RE =
+  /Network error|Timeout|ECONNRESET|EAI_AGAIN|ECONNREFUSED|ENOTFOUND|ERR_CONNECTION_RESET|ERR_CONNECTION_CLOSED|ERR_CONNECTION_ABORTED|ERR_NETWORK_CHANGED|ERR_TIMED_OUT|ERR_NAME_NOT_RESOLVED|ERR_SSL|ERR_EMPTY_RESPONSE|ERR_CONNECTION_REFUSED|socket hang up/i;
+
+export function isRetryableNetworkError(message: string | null | undefined): boolean {
+  if (!message) return false;
+  return RETRYABLE_NETWORK_ERROR_RE.test(message);
+}
+
+export interface RetryOptions {
+  /** Próbálkozások maximális száma (default 5). */
+  maxRetries?: number;
+  /** Várakozás (ms) az egyes próbák KÖZÖTT; az utolsó elem ismétlődik, ha kevesebb mint maxRetries-1. */
+  retryDelaysMs?: number[];
+  /** Injektálható sleep (teszthez: instant). */
+  sleep?: (ms: number) => Promise<void>;
+}
+
+const DEFAULT_RETRY_DELAYS_MS = [1000, 2000, 3000, 5000, 8000];
+
+/**
+ * Általános retry-wrapper hálózati hibára. HTTP-státusz (`ok:false`) választ NEM próbál újra.
+ * ESET-MITM hidegindítás-reset ellen (egyes kliensgépeken, 2026-06-01 értéktár-eset).
+ */
+export async function retryFetch(
+  doFetch: () => Promise<ApiProxyResponse>,
+  options: RetryOptions = {},
+): Promise<ApiProxyResponse> {
+  const maxRetries = Math.max(1, options.maxRetries ?? 5);
+  const delays = options.retryDelaysMs ?? DEFAULT_RETRY_DELAYS_MS;
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+
+  let lastErr: Error | null = null;
+  for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+    try {
+      return await doFetch();
+    } catch (err) {
+      lastErr = err instanceof Error ? err : new Error(String(err));
+      const isLast = attempt === maxRetries - 1;
+      if (!isRetryableNetworkError(lastErr.message) || isLast) {
+        throw lastErr;
+      }
+      const delay = delays[attempt] ?? delays[delays.length - 1] ?? 5000;
+      await sleep(delay);
+    }
+  }
+  throw lastErr ?? new Error('[api-proxy] retryFetch: ismeretlen hiba');
+}
+
+/**
+ * Egy kérés retry-biztos-e (NEM duplikálhat szerver-oldali mellékhatást újrapróbálkozáskor).
+ *
+ * <p>Codex P1 (2026-06-01): a megosztott `api:fetch` MINDEN renderer-hívásra megy, beleértve a
+ * MUTÁLÓ pénztáros-tranzakciókat (`POST /transactions/buy|sell|reversal`). Ha egy ilyen POST a
+ * szerveren már commitált, de a válasz timeoutol/resetel, az újrapróbálkozás DUPLIKÁLNÁ a
+ * tranzakciót (pénzügyi-integritás sérülés). Ezért:
+ * <ul>
+ *   <li>GET/HEAD/OPTIONS — HTTP-idempotens, mindig retry-biztos.</li>
+ *   <li>POST/PUT/PATCH/DELETE — CSAK akkor, ha `Idempotency-Key` fejléc van: ekkor a backend
+ *       deduplikál (`IdempotencyRecord` / `SyncInboxEvent`), így az újraküldés biztonságos.</li>
+ * </ul>
+ * Kulcs nélküli mutáló kérést NEM próbálunk újra (inkább egy hálózati hiba, mint dupla tranzakció).
+ */
+export function isRetrySafeRequest(params: ApiProxyRequest): boolean {
+  const method = (params.method || 'GET').toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+    return true;
+  }
+  const headers = params.headers ?? {};
+  return Object.entries(headers).some(
+    ([key, value]) => key.toLowerCase() === 'idempotency-key' && typeof value === 'string' && value.length > 0,
+  );
+}
+
+/**
+ * {@link fetchViaElectronNet} + ESET-rezisztens retry egy lépésben.
+ *
+ * <p>Retry CSAK retry-biztos kérésre fut ({@link isRetrySafeRequest}) — mutáló, kulcs-nélküli
+ * POST/PATCH-et egyetlen próbára korlátoz (nincs duplikáció-kockázat).
+ */
+export function fetchViaElectronNetWithRetry(
+  params: ApiProxyRequest,
+  options: RetryOptions = {},
+): Promise<ApiProxyResponse> {
+  const maxRetries = isRetrySafeRequest(params) ? (options.maxRetries ?? 5) : 1;
+  return retryFetch(() => fetchViaElectronNet(params), { ...options, maxRetries });
+}

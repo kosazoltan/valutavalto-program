@@ -83,7 +83,7 @@ vi.mock('electron', () => ({
   IncomingMessage: class {},
 }));
 
-import { fetchViaElectronNet } from '../api-proxy';
+import { fetchViaElectronNet, retryFetch, isRetryableNetworkError, isRetrySafeRequest, type ApiProxyResponse } from '../api-proxy';
 import { net as electronNet } from 'electron';
 
 describe('fetchViaElectronNet', () => {
@@ -418,5 +418,123 @@ describe('fetchViaElectronNet', () => {
       const result = await promise;
       expect(result.headers['set-cookie']).toBe('a=1, b=2');
     });
+  });
+});
+
+describe('isRetryableNetworkError (ESET-MITM reset felismeres)', () => {
+  it('net::ERR_CONNECTION_RESET → retryable (a Szeged-ertektar 2026-06-01 eset)', () => {
+    expect(isRetryableNetworkError('[api-proxy] Network error: net::ERR_CONNECTION_RESET')).toBe(true);
+  });
+  it('tovabbi Chromium net-hibak (CLOSED/ABORTED/SSL/TIMED_OUT/NAME_NOT_RESOLVED) → retryable', () => {
+    for (const code of ['net::ERR_CONNECTION_CLOSED', 'net::ERR_CONNECTION_ABORTED',
+      'net::ERR_SSL_PROTOCOL_ERROR', 'net::ERR_TIMED_OUT', 'net::ERR_NAME_NOT_RESOLVED',
+      'net::ERR_NETWORK_CHANGED', 'net::ERR_EMPTY_RESPONSE']) {
+      expect(isRetryableNetworkError(`[api-proxy] Network error: ${code}`)).toBe(true);
+    }
+  });
+  it('Node socket-hibak (ECONNRESET/ECONNREFUSED/EAI_AGAIN/ENOTFOUND/socket hang up) → retryable', () => {
+    for (const code of ['ECONNRESET', 'ECONNREFUSED', 'EAI_AGAIN', 'ENOTFOUND', 'socket hang up']) {
+      expect(isRetryableNetworkError(code)).toBe(true);
+    }
+  });
+  it('[api-proxy] Timeout → retryable', () => {
+    expect(isRetryableNetworkError('[api-proxy] Timeout: 15000ms exceeded for POST ...')).toBe(true);
+  });
+  it('HTTP-szeru / business hibak → NEM retryable', () => {
+    expect(isRetryableNetworkError('HTTP 401 Unauthorized')).toBe(false);
+    expect(isRetryableNetworkError('Blocked: URL host not in allowlist')).toBe(false);
+    expect(isRetryableNetworkError('')).toBe(false);
+    expect(isRetryableNetworkError(null)).toBe(false);
+    expect(isRetryableNetworkError(undefined)).toBe(false);
+  });
+});
+
+describe('retryFetch (ESET-rezisztens ujraprobalkozas)', () => {
+  const okResponse: ApiProxyResponse = {
+    ok: true, status: 200, statusText: 'OK', headers: {}, body: '{"ok":true}',
+  };
+  const instantSleep = vi.fn(async (_ms: number) => {});
+
+  beforeEach(() => instantSleep.mockClear());
+
+  it('reset×2 majd siker → 3. probara visszaad (ESET "megtanulja" a domaint)', async () => {
+    let calls = 0;
+    const doFetch = vi.fn(async () => {
+      calls += 1;
+      if (calls <= 2) throw new Error('[api-proxy] Network error: net::ERR_CONNECTION_RESET');
+      return okResponse;
+    });
+    const result = await retryFetch(doFetch, { maxRetries: 5, retryDelaysMs: [1, 1, 1, 1], sleep: instantSleep });
+    expect(result.ok).toBe(true);
+    expect(doFetch).toHaveBeenCalledTimes(3);
+    expect(instantSleep).toHaveBeenCalledTimes(2); // ket retry kozott ket varakozas
+  });
+
+  it('minden proba reset → maxRetries utan az utolso hibat dobja', async () => {
+    const doFetch = vi.fn(async () => {
+      throw new Error('[api-proxy] Network error: net::ERR_CONNECTION_RESET');
+    });
+    await expect(
+      retryFetch(doFetch, { maxRetries: 4, retryDelaysMs: [1, 1, 1], sleep: instantSleep }),
+    ).rejects.toThrow('net::ERR_CONNECTION_RESET');
+    expect(doFetch).toHaveBeenCalledTimes(4);
+    expect(instantSleep).toHaveBeenCalledTimes(3); // maxRetries-1 varakozas
+  });
+
+  it('nem-retryable hiba (HTTP-szeru throw) → AZONNAL dob, nincs retry', async () => {
+    const doFetch = vi.fn(async () => { throw new Error('Blocked: URL host not in allowlist'); });
+    await expect(retryFetch(doFetch, { maxRetries: 5, sleep: instantSleep })).rejects.toThrow('Blocked');
+    expect(doFetch).toHaveBeenCalledTimes(1);
+    expect(instantSleep).not.toHaveBeenCalled();
+  });
+
+  it('elso probara siker → nincs retry, nincs sleep', async () => {
+    const doFetch = vi.fn(async () => okResponse);
+    const result = await retryFetch(doFetch, { sleep: instantSleep });
+    expect(result.ok).toBe(true);
+    expect(doFetch).toHaveBeenCalledTimes(1);
+    expect(instantSleep).not.toHaveBeenCalled();
+  });
+
+  it('ok:false (HTTP 4xx/5xx) valasz NEM dob → retry nelkul visszaadja', async () => {
+    const httpErr: ApiProxyResponse = { ok: false, status: 401, statusText: 'Unauthorized', headers: {}, body: '{}' };
+    const doFetch = vi.fn(async () => httpErr);
+    const result = await retryFetch(doFetch, { sleep: instantSleep });
+    expect(result.status).toBe(401);
+    expect(doFetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('isRetrySafeRequest (Codex P1 — mutalo tranzakcio dupla-vedelem)', () => {
+  it('GET/HEAD/OPTIONS → mindig retry-biztos (idempotens)', () => {
+    for (const method of ['GET', 'get', 'HEAD', 'OPTIONS']) {
+      expect(isRetrySafeRequest({ method, url: 'https://excvaluta.com/api/v1/rates' })).toBe(true);
+    }
+  });
+  it('mutalo POST/PUT/PATCH/DELETE Idempotency-Key NELKUL → NEM retry-biztos', () => {
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE', 'post']) {
+      expect(isRetrySafeRequest({ method, url: 'https://excvaluta.com/api/v1/transactions/buy', body: '{}' })).toBe(false);
+    }
+  });
+  it('POST Idempotency-Key-vel → retry-biztos (backend deduplikal)', () => {
+    expect(isRetrySafeRequest({
+      method: 'POST',
+      url: 'https://excvaluta.com/api/v1/transactions/buy',
+      headers: { 'Idempotency-Key': 'abc-123' },
+      body: '{}',
+    })).toBe(true);
+  });
+  it('Idempotency-Key fejlec case-insensitive + ures kulcs nem szamit', () => {
+    expect(isRetrySafeRequest({
+      method: 'POST', url: 'https://excvaluta.com/api/v1/sell', headers: { 'idempotency-key': 'k1' },
+    })).toBe(true);
+    expect(isRetrySafeRequest({
+      method: 'POST', url: 'https://excvaluta.com/api/v1/sell', headers: { 'Idempotency-Key': '' },
+    })).toBe(false);
+  });
+  it('fetchViaElectronNetWithRetry: mutalo kulcs-nelkuli POST → 1 proba (nincs retry)', async () => {
+    // A google-identify-szeru retry-biztos POST kulccsal megy; ez itt a vedett eset:
+    // buy/sell kulcs nelkul SOHA nem duplikalodhat retry-bol.
+    expect(isRetrySafeRequest({ method: 'POST', url: 'https://excvaluta.com/api/v1/transactions/reversal' })).toBe(false);
   });
 });
