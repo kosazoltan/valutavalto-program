@@ -26,6 +26,17 @@ describe('isSignificantDeviation (FK02-B / FR-2..5)', () => {
     expect(isSignificantDeviation(400, 360)).toBe(true) // -10%
   })
 
+  it('lebegőpontos él: 1.10 → 1.21 (pontosan 10%, JS-ben 0.0999…988) → true', () => {
+    // Sima `>=` mellett ez kimaradna; az epsilon-tűrés miatt triggerel.
+    expect(Math.abs(1.21 - 1.1) / 1.1).toBeLessThan(0.1) // a nyers arány tényleg < 0.1
+    expect(isSignificantDeviation(1.1, 1.21)).toBe(true)
+    expect(isSignificantDeviation(1.1, 0.99)).toBe(true) // -10% ugyanígy
+  })
+
+  it('a tűrés nem old fel valódi 9.9%-ot (nem ad fals pozitívot)', () => {
+    expect(isSignificantDeviation(1000, 1099)).toBe(false) // 9.9%
+  })
+
   it('10% feletti eltérés → true (elgépelés-védelem)', () => {
     expect(isSignificantDeviation(400, 4000)).toBe(true) // 900%
     expect(isSignificantDeviation(400, 200)).toBe(true)  // -50%
