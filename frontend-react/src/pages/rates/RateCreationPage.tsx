@@ -28,6 +28,7 @@ import { fmtRate, parseNum, type EditableRate } from './types'
 import { currentFunctionCode, fillDownLimitBands, clearLimitBands } from './fillHelpers'
 import { validateWorkgroupProtection, workgroupProtectionLabel, type ProtectionRow } from './workgroupProtection'
 import { isFormula, type WgValues } from './workgroupSheetFormula'
+import { isSignificantDeviation } from './deviationCheck'
 import {
   recomputeWorkgroupSheet,
   FIELD_TO_WGCOL,
@@ -73,6 +74,17 @@ function sortByMainSheetOrder<T extends { currencyCode: string }>(rows: T[]): T[
   })
 }
 
+// FK02-B / FR-2..5 (2026-06-01): jelentős (≥10%) eltérés az ELŐZŐ MENTETT értékhez képest →
+// megerősítő modal (elgépelés-védelem). Az arány-számítás a ./deviationCheck modulban.
+/** WgField → ember-olvasható oszlopnév a megerősítő üzenethez. */
+const WG_FIELD_LABEL: Record<string, string> = {
+  buyRate: 'alap vétel', sellRate: 'alap eladás',
+  limit1BuyRate: '1. sáv vétel', limit1SellRate: '1. sáv eladás',
+  limit2BuyRate: '2. sáv vétel', limit2SellRate: '2. sáv eladás',
+  limit3BuyRate: '3. sáv vétel', limit3SellRate: '3. sáv eladás',
+  officialRate: 'elszámoló (J)',
+}
+
 /** EditableRate string-mező → szám (üres → null), a képlet-motor numerikus inputjához. */
 function numOrNull(s: string): number | null {
   const t = s.trim()
@@ -93,12 +105,20 @@ export default function RateCreationPage() {
   const [overview, setOverview] = useState<RateOverviewDTO | null>(null)
   const [workgroups, setWorkgroups] = useState<WorkgroupDetailDTO[]>([])
   const [rates, setRates] = useState<EditableRate[]>([])
+  // FK02-B / FR-2..5: a 10%-eltérés megerősítő modal állapota (a cella-commit interception-höz).
+  const [rateConfirm, setRateConfirm] = useState<ConfirmState | null>(null)
+  // FK02-B / FR-2..5: revert-jelzés a RateGrid felé — "Mégse" után a cella visszaáll a perzisztáltra.
+  const [rateRevertSignal, setRateRevertSignal] = useState(0)
   // FK-04/C (Codex #906): az undo/redo a `rates` MELLETT a `formulas`-t is rögzíti — különben
   // egy képlet beírása után a Ctrl+Z csak a megjelenített értéket állítaná vissza, a képlet a
   // state/localStorage-ban maradna, és a recompute újra alkalmazná (képlet-szerkesztés nem volt visszavonható).
   type UndoSnapshot = { rates: EditableRate[]; formulas: Record<string, string> }
   const undoStack = useRef<UndoSnapshot[]>([])
   const redoStack = useRef<UndoSnapshot[]>([])
+  // FK02-B / FR-2..5: a PERZISZTÁLT (loadData-kor betöltött, utoljára publikált/mentett) árfolyamok
+  // numerikus pillanatképe, kulcs `${currencyId}.${field}`. A 10%-eltérés ehhez mér — NEM a session
+  // közbeni, még nem publikált értékhez —, így a lépésenkénti elcsúszás (400→430→470) is kiszúrható.
+  const baselineRatesRef = useRef<Record<string, number>>({})
   const [selectedWgIndex, setSelectedWgIndex] = useState<number>(0)
   /**
    * FK-02/03/04 (Kasza Helga / Bali Henriett 2026-05-28): a régi „bal oldali sávos"
@@ -319,6 +339,16 @@ export default function RateCreationPage() {
       }))
       // FR-1: a Főlap (DEFAULT_CURRENCIES) sorrendjébe rendezzük — konzisztens nézet.
       setRates(sortByMainSheetOrder(editableRates))
+      // FK02-B / FR-2..5: a perzisztált baseline rögzítése (a 10%-eltérés ehhez mér; publish/save
+      // utáni újratöltéskor frissül). Csak a numerikusan értelmezhető mezőket tároljuk.
+      const baseline: Record<string, number> = {}
+      for (const er of editableRates) {
+        for (const field of WG_STRING_FIELDS) {
+          const n = numOrNull(String(er[field] ?? ''))
+          if (n !== null) baseline[`${er.currencyId}.${field}`] = n
+        }
+      }
+      baselineRatesRef.current = baseline
     } catch (err) {
       logger.error('RateCreationPage', 'Betöltési hiba:', err)
       setError('Hiba az árfolyam adatok betöltésekor')
@@ -388,25 +418,50 @@ export default function RateCreationPage() {
     if (!r) return
     const key = `${r.currencyId}.${field}`
     const trimmed = raw.trim()
-    pushUndo()
-    if (isFormula(trimmed)) {
-      setFormulas(prev => (prev[key] === trimmed ? prev : { ...prev, [key]: trimmed }))
-      setRates(prev => prev.map((x, i) => (i === index ? { ...x, modified: true } : x)))
-    } else {
-      setFormulas(prev => {
-        if (!prev[key]) return prev
-        const copy = { ...prev }
-        delete copy[key]
-        return copy
-      })
-      if (field === 'officialRate') {
-        // J (Elszámoló) NUMBER mező (a többi string). Fix override → parse; üres → undefined (auto = 0-s lap A).
-        const n = numOrNull(trimmed)
-        setRates(prev => prev.map((x, i) => (i === index ? { ...x, officialRate: n, modified: true } : x)))
+
+    const applyCommit = () => {
+      pushUndo()
+      if (isFormula(trimmed)) {
+        setFormulas(prev => (prev[key] === trimmed ? prev : { ...prev, [key]: trimmed }))
+        setRates(prev => prev.map((x, i) => (i === index ? { ...x, modified: true } : x)))
       } else {
-        setRates(prev => prev.map((x, i) => (i === index ? { ...x, [field]: trimmed, modified: true } : x)))
+        setFormulas(prev => {
+          if (!prev[key]) return prev
+          const copy = { ...prev }
+          delete copy[key]
+          return copy
+        })
+        if (field === 'officialRate') {
+          // J (Elszámoló) NUMBER mező (a többi string). Fix override → parse; üres → undefined (auto = 0-s lap A).
+          const n = numOrNull(trimmed)
+          setRates(prev => prev.map((x, i) => (i === index ? { ...x, officialRate: n, modified: true } : x)))
+        } else {
+          setRates(prev => prev.map((x, i) => (i === index ? { ...x, [field]: trimmed, modified: true } : x)))
+        }
       }
     }
+
+    // FK02-B / FR-2..5: fix számra cserélt vétel/eladás/sáv mező esetén, ha az új érték a
+    // PERZISZTÁLT (loadData-kor betöltött) értékhez képest ≥10%-ot tér el, megerősítést kérünk a
+    // mentés ELŐTT. A baseline a perzisztált snapshot (NEM a session közbeni r[field]), így a
+    // lépésenkénti elcsúszás (400→430→470 = 17.5%) is kiszúrható. 'Nem' → a cella visszaáll, a
+    // mentés abortál. A formula- és a J (officialRate) mezőt nem korlátozzuk.
+    if (!isFormula(trimmed) && field !== 'officialRate') {
+      const prevVal = baselineRatesRef.current[key] ?? numOrNull(String(r[field] ?? ''))
+      const nextVal = numOrNull(trimmed)
+      if (isSignificantDeviation(prevVal, nextVal)) {
+        const pct = Math.round((Math.abs((nextVal as number) - (prevVal as number)) / Math.abs(prevVal as number)) * 100)
+        setRateConfirm({
+          title: 'Nagy árfolyam-eltérés',
+          message: `${r.currencyCode} – ${WG_FIELD_LABEL[field] ?? field}: ${prevVal} → ${nextVal} (${pct}% eltérés a korábbi értékhez képest). Biztosan elmenti?`,
+          confirmLabel: 'Igen, mentem',
+          danger: true,
+          onConfirm: () => { applyCommit(); setRateConfirm(null) },
+        })
+        return
+      }
+    }
+    applyCommit()
   }, [canWriteRateCreation, rates, pushUndo])
 
   // ===================== Limit save =====================
@@ -829,7 +884,17 @@ export default function RateCreationPage() {
           formulas={formulas}
           cellErrors={cellErrors}
           onCommitCell={commitWorkgroupCell}
+          revertSignal={rateRevertSignal}
         />
+
+        {/* FK02-B / FR-2..5: 10%-eltérés megerősítő modal (cella-commit interception).
+            "Mégse" → a mentés abortál ÉS a cella visszaáll a perzisztált értékre (revert-jelzés). */}
+        {rateConfirm && (
+          <ConfirmDialog
+            state={rateConfirm}
+            onCancel={() => { setRateConfirm(null); setRateRevertSignal(n => n + 1) }}
+          />
+        )}
 
         {/* === RIGHT: WORKGROUP PANEL === */}
         <div className="w-64 flex-shrink-0 flex flex-col gap-1 min-h-0">
