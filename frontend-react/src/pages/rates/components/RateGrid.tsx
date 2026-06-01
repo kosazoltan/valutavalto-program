@@ -221,11 +221,15 @@ export default function RateGrid({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- kizárólag a revert-jelzésre futunk
   }, [revertSignal])
 
+  // FK02-B (Copilot): a `select-none` CSAK több-cellás tartomány-drag alatt aktív — egy cellán belüli
+  // egér-drag (input-szöveg kijelölése) így nem tiltott. Egycellás (selStart==selEnd) drag esetén nincs.
+  const isRangeDrag = isDragging && !!selStart && !!selEnd && (selStart.row !== selEnd.row || selStart.col !== selEnd.col)
+
   // 2026-04-29 v2.3.13 (Árfolyamkészítés zoom-fit): 17 valuta sor scrollozás nélkül.
   return (
     <div ref={containerRef} className="flex-1 bg-white rounded shadow-sm border overflow-hidden flex flex-col min-w-0">
       <div className="overflow-auto flex-1">
-        <table className={`w-full text-xs border-collapse ${isDragging ? 'select-none' : ''}`}>
+        <table className={`w-full text-xs border-collapse ${isRangeDrag ? 'select-none' : ''}`}>
           <thead className="sticky top-0 z-20">
             <tr className="bg-green-800 text-white text-[10px] leading-none">
               <th colSpan={2} className="px-1 py-0 text-left border-r border-green-600">{t('rates.elszArf')}</th>
