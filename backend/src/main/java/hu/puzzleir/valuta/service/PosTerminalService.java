@@ -270,6 +270,15 @@ public class PosTerminalService {
                 "OTP terminál nem elérhető");
         }
 
+        // F1 P2 (Codex 2026-06-01): ha az ÉLES driver flag be van kapcsolva, a státusz NE a
+        // bridge-heartbeatet jelentse (az félrevezető "online"-t adna, miközben minden valós
+        // payment/reversal/daily-close dob) — a stub valós állapota: nem elérhető.
+        if ((mode == TerminalType.BORGUN && borgunRealDriverEnabled)
+                || (mode == TerminalType.WORLDLINE && worldlineRealDriverEnabled)) {
+            return TerminalStatus.offline(terminalId, terminal.getTerminalName(), terminal.getTerminalType(),
+                mode.name() + " éles driver nincs implementálva (real-driver flag bekapcsolva, de stub)");
+        }
+
         boolean reachable = emitBridgeHeartbeat(mode, terminal);
         if (reachable) {
             return TerminalStatus.online(terminalId, terminal.getTerminalName(),

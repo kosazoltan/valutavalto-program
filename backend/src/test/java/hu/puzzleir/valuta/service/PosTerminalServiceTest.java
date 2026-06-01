@@ -158,6 +158,24 @@ class PosTerminalServiceTest {
     }
 
     @Test
+    void statusReportsRealDriverUnavailableWhenFlagEnabled() {
+        // F1 P2 (Codex): real-driver flag ON → a státusz NE a bridge-heartbeatet jelentse,
+        // hanem a stub valós állapotát: nem elérhető (különben félrevezető "online").
+        ReflectionTestUtils.setField(service, "borgunRealDriverEnabled", true);
+        // a bridge-szimuláció bekapcsolva — ettől függetlenül a real-driver flag dominál
+        ReflectionTestUtils.setField(service, "bridgeSimulatedApprovalEnabled", true);
+        when(repository.findByTerminalId("TERM-BORGUN"))
+                .thenReturn(Optional.of(activeTerminal("TERM-BORGUN", "BORGUN")));
+
+        TerminalStatus status = service.getStatus("TERM-BORGUN");
+
+        assertThat(status.active()).isTrue();
+        assertThat(status.reachable()).isFalse();
+        assertThat(status.statusMessage()).contains("éles driver nincs implementálva");
+        assertThat(tempDir).isEmptyDirectory(); // nem írt bridge-heartbeat artifactot
+    }
+
+    @Test
     void bridgePaymentCanBeExplicitlyEnabledForIsolatedTests() {
         ReflectionTestUtils.setField(service, "bridgeSimulatedApprovalEnabled", true);
         PosTerminal terminal = activeTerminal("TERM-BORGUN", "BORGUN");
