@@ -1,28 +1,17 @@
-﻿# GitHub Copilot Instructions
+# GitHub Copilot Instructions
 
-PRIORITAS: AGENTS.md a modellfuggetlen igazsagforras. Copilot csak kiegeszithet.
-Hatály: GitHub Copilot, Copilot Chat, Copilot Workspace, Copilot Coding Agent
-
-## Kotelezo olvasmanyok
-
-1. /AGENTS.md - 10 kapu + 10 lepeses munkafolyamat
-2. /AI_CONTRACT.md - kemeny tiltasok + plafonok (300 LOC, 5 fajl)
-3. /REVIEW.md - push elotti checklist
+Forras: `AGENTS.md`. Ez a fajl csak Copilot-specifikus rovid index.
 
 ## Viselkedes
 
-- NEM javasol kodot a AGENTS.md 3. pont biztonsagi tiltolistajabol
-- NEM javasol hard-coded secret-et
-- NEM javasol --no-verify-t
-- NEM javasol PR-t 300 LOC / 5 fajl felett bontas nelkul
-- Hiba es CI failure eseten teljes hiba-blokkot kell olvasni, nem kiragadott sorokat
-- Javitasnal logikai blokkokat kell rendbe tenni, nem soronként toldozni
-- Lint, merge, push es deploy elott kotelezo az onellenorzes
+- A cel mukodo kod es celzott javitas, nem vegtelen onellenorzes.
+- Olvasd a relevans fajlokat, kodolj, majd futtasd a kockazataranyos ellenorzest.
+- Ne javasolj hard-coded secretet, SQL/shell string osszefuzest user inputbol,
+  `eval`-t, nema catch-et, path traversal mintat vagy teszt/CI gyengitest.
+- Push/PR/deploy elott kell szelesebb ellenorzes; normal szerkeszteshez celzott
+  teszt/typecheck eleg.
 
-## Required checks
+## Kontextus
 
-Az alabbi check-eknek ZOLDNEK kell lennie merge elott:
-- lint, typecheck, unit-tests, integration-tests, build
-- codeql, dependency-review, secret-scan
-- codex-review-gate, sourcery-review-gate, scorecard
-- automatikus CI digest: `npm run ci:errors -- --pr <PR>`
+Ne tolts be minden mandate-et automatikusan. Hosszu repo-dokumentumot csak akkor
+olvass, ha a feladat konkretan igenyli.

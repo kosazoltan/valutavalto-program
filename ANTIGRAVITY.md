@@ -1,21 +1,7 @@
-# Antigravity Security Integration
+# Antigravity Agent Integration
 
-Ez a repository Antigravity agentekhez is tartalmaz kotelezo security policy-t.
+Antigravity agents follow `AGENTS.md`.
 
-## Rule
-
-- `.antigravity/rules/mandatory-security-gate.md`
-
-## Skill
-
-- `.antigravity/skills/security-deploy-gate/SKILL.md`
-
-## Tool
-
-- `.antigravity/tools/security-gate.tool.json`
-- Futtatando parancs: `powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1`
-
-## Kotelezo gate
-
-- `FAILED` vagy `BLOCKED` gate status eseten deploy tiltott.
-- Eredmenyeket `security-reports/latest/` alapjan kell jelenteni.
+- Use security gate tooling for deploy/release/security-sensitive work.
+- Do not run full gate loops for unrelated small code edits.
+- Report evidence briefly: command, status, blocker if any.

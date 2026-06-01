@@ -1,169 +1,113 @@
-﻿# AGENTS.md - Modellfuggetlen AI coding agent szabalyzat
+# AGENTS.md - AI coding agent szabalyzat
 
-> **Hatály:** MINDEN Anthropic + OpenAI + Gemini coding agent
-> **Source:** `docs/knowledge/memory/2026-04-23-multi-model-mandate-v2.qmd` + global memory `~/.claude/projects/.../memory/MULTIMODEL_GITHUB_QUALITY_MANDATE_V2.md`
-> **Mentesseg:** NINCS. Modellnev, vendor, tool mod, MCP, CLI NEM ad felmentest.
-> **Precedence:** AGENTS.md > CLAUDE.md / GEMINI.md / copilot-instructions.md (azok csak kiegeszithetik, NEM gyengithetik ezt a fajlt).
+Ez a repo egyetlen, rovid, modellfuggetlen agent-szabalya. Platformfajlok
+(`CLAUDE.md`, `CODEX.md`, `GEMINI.md`, `.github/copilot-instructions.md`,
+Cursor/VS Code/Antigravity leirasok) csak kiegeszithetik, de nem irhatjak felul.
 
-## -1. Kotelezo hatály
+## 1. Cel
 
-Minden Claude Opus/Sonnet/Haiku, OpenAI GPT/Codex/o-series/ChatGPT agent, Google Gemini/Code Assist/CLI/Jules es minden jovobeli Anthropic/OpenAI/Gemini coding agent hasznalata e szabalyzat ala tartozik.
+Az agent feladata: mukodo programkodot, tesztet, dokumentaciot vagy javitast
+szallitani. Az ellenorzes a szallitas resze, nem onallo vegtelen tevekenyseg.
 
-## 0. Szerep
+Alap mukodes:
 
-Te **auditált GitHub-operator** vagy. Minden valtoztatasodnak át kell mennie lokális, CI, GitHub review, biztonsagi es deploy kapukon.
+1. Ertsd meg a feladatot a legkisebb elegseges kontextusbol.
+2. Tervezz roviden: mi valtozik, miert, mivel bizonyitod.
+3. Kodold vagy javitsd meg a kert dolgot.
+4. Futtasd a kockazattal aranyos, relevans ellenorzest.
+5. Ha bukik, root cause alapjan javitsd; ha ugyanaz a hiba ketszer visszajon,
+   valts diagnosztikai tengelyt vagy jelents blokkolot.
+6. Zarj rovid, tenyszeru osszefoglaloval.
 
-**NEM mondhatod, hogy 'kesz', 'ready', 'done', 'pusholhato', 'merge-ready' vagy 'deploy-ready', amig nincs gepileg ellenorzott bizonyitek.**
+## 2. Kontextus es tokenfegyelem
 
-## 1. 10 kapu (kapumatrix)
+- Ne olvasd be a teljes vaultot, mandate-archivumot vagy minden szabalyfajlt.
+- Mindig a konkret feladathoz kapcsolodo fajlokat olvasd.
+- Ha hosszu dokumentum kell, csak a relevans szakaszt olvasd.
+- Ha ellentmondas van memoria/mandate es repo-teny kozott, a repo aktualis
+  kodja, migracioja, tesztje es git allapota az erosebb.
+- Lost-in-the-middle vedelem: a feladat celjat, dontest es nyitott kockazatot
+  tartsd rovid munkamemoriaban; ne temesd el hosszu idezetek koze.
 
-| Kapu | Bizonyitek | Ha nem zold |
-|---|---|---|
-| Lokalis lint | 0 error | **TILOS push** |
-| Typecheck | tsc/mypy/cargo 0 | **TILOS push** |
-| Teszt | suite zold | **TILOS push** |
-| Build | reprodukalhato sikeres | **TILOS PR-t kesznek** |
-| Required checks | pass | fail VAGY pending blokkol |
-| Codex review | P0/P1 kezelve | **TILOS merge** |
-| Sourcery review | blocking kezelve | **TILOS merge** |
-| Dependabot | 0 high/critical | **TILOS deploy** |
-| CodeQL | 0 high/critical | **TILOS merge/deploy** |
-| Secret scanning | 0 new leak | **TILOS merge/deploy** |
+## 3. Builder-first munkamod
 
-## 2. 10 lepeses munkafolyamat
+- Ne allj meg puszta tervnel, ha a feladat megvalosithato.
+- Ne kerj engedelyt rutin olvasasra, szerkesztesre, tesztre vagy buildre.
+- Ne futtass teljes gate-lancot minden apro valtozasra.
+- Ne nyiss uj nagy refaktort a kert javitas melle.
+- Ha a felhasznalo agent-mukodest ker javitani, ne irj uzleti programkodot.
 
-1. Explore: olvasd a releváns fájlokat
-2. Plan: mely fájlok változnak, miért, melyik teszt bizonyítja
-3. Code: csak a terv szerinti fájlokon
-4. Local verify: lint -> typecheck -> test -> build
-5. Diff self-review: minden fájl indoklasa
-6. Push feature branch-en (SOHA nem main-re!)
-7. GitHub-jelzés lekerdezes (`scripts/github-signal-check.ps1 <PR>`)
-8. AI review fix (Codex/Sourcery P0/P1 azonnal)
-9. Required checks re-check
-10. Záró self-review formátum (lásd 4. pont)
+## 4. Ellenorzes kockazat szerint
 
-## 3. Biztonsági tiltólista (uj kod)
+### Mindig tilos
 
-- `hard-coded secret`
-- `SQL string-konkat` user inputból
+- hard-coded secret vagy credential commitolasa
+- SQL/shell string-konkat user inputbol
 - `eval`, `Function`, unsafe deserialization
-- `shell=True` / shell string-konkat
-- path traversal
-- néma `catch(Exception e){}` / `except: pass`
-- hamis mock adat production válaszként
-- nem ellenorzott új csomag
+- path traversal validacio nelkul
+- nema `catch(Exception e){}` / `except: pass`
+- hamis mock adat production valaszkent
+- teszt skip/torles/assertion-gyengites csak a zold eredmenyert
+- `--no-verify`, force push vedett agra, branch protection gyengitese
 
-## 4. Záró self-review formátum
+### Celzott ellenorzes eleg, ha
 
-Minden valasz végén kotelezo:
+- kis, lokalis kod- vagy dokumentacios valtozas tortent;
+- nincs dependency, auth, security, deploy, DB schema vagy CI modositas;
+- a valtozas bizonyithato egy celzott testtel, linttel, typecheckkel vagy diff
+  self-review-val.
 
-\\\markdown
-## Állapot
-Nem kész / Kész / BLOCKED
+### Teljesebb ellenorzes kell, ha
 
-## Modell és hatály
-- modell/tool: Claude / OpenAI / Gemini / ...
-- szabalyzat: AGENTS.md (multi-modell)
-- bizonyitek-idopont: ISO timestamp
+- push, merge, release vagy deploy tortenik;
+- security/auth/permission/crypto/secret/logging/CI/dependency/schema erintett;
+- installer vagy Electron runtime reteg valtozik;
+- tobb modul kozotti szerzodes valtozik;
+- korabbi ellenorzes bukott.
 
-## Változtatott fájlok
-- `path`: miért
+Deploy/release elott a security gate tovabbra is kotelezo:
 
-## Lokalis ellenorzesek
-- lint / typecheck / test / build: pass/fail/pending + parancs
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1
+```
 
-## GitHub ellenorzesek
-- PR head SHA
-- required checks
-- legacy commit statuses
-- check-run failure annotaciok
-- workflow log bukas
-- reviewDecision
-- CodeQL / Dependabot / secret scanning
-- Codex / Sourcery review
-- unresolved conversations
-- branch protection / rulesets
-- supply-chain dependency diff
-- deploy artifact / SBOM / attestation
+## 5. Hibajavitasi hurok
 
-## Dontes
-Merge-ready csak akkor, ha minden fenti pont pass.
-Deploy-ready csak akkor, ha az artifact/provenance/environment kapuk is pass.
-\\\
+- Egy hibara legfeljebb ket azonos jellegu javitasi kiserlet mehet.
+- Ha nincs haladas, tilos kenyszeresen modot valtogatni vagy ugyanazt ujra futtatni.
+- Strategiavaltas csak bizonyitek alapjan: forrasolvasas, minimal repro,
+  dokumentacio, log, teszt, dependency-verzio, kornyezeti ok vagy API-szerzodes.
+- Ha objektiv blokkolas van, nevezd meg pontosan es add meg a kovetkezo hasznos
+  lepest.
 
-## 5. Kotelezo GitHub-jelzés lekerdezes (minden push utan)
+## 6. Mikor kell GitHub/AI review polling
 
-Futtasd kotelezoen `scripts/github-signal-check.ps1 <PR_NUM>`:
-- PR head SHA, review decision, merge state
-- Required checks allapot
-- Minden check-run + annotacio
-- Codex review + inline comments
-- Sourcery review + inline comments
-- Dependabot high/critical
-- CodeQL high/critical
-- Secret scanning + push protection
-- Workflow logok ha failure
+- Csak push/PR/merge utan, vagy ha a felhasznalo review-visszaolvasast ker.
+- Nem kell lokalis dokumentacio- vagy instruction-javitas kozben.
+- `scripts/github-signal-check.ps1 <PR>` a PR-minoseg kapuja, nem minden chat-turn
+  alaptevekenysege.
 
-Email-bol AI review bemasolgatas MEGSZUNTETVE.
+## 7. Zaro valasz minimuma
 
-## 6. Multi-platform specifikus fajlok
+Rovid, tenyszeru zaras:
 
-- Claude: `CLAUDE.md` (symlink AGENTS.md-re / tartalmazza ezt)
-- Gemini: `GEMINI.md`
-- OpenAI Codex: `AGENTS.md` (Codex top-level AGENTS.md-t olvas)
-- GitHub Copilot: `.github/copilot-instructions.md`
-- Kemeny tiltasok: `AI_CONTRACT.md`
+- mi valtozott;
+- mely fajlok erintettek;
+- milyen relevans ellenorzes futott vagy miert nem kellett/nem tudott futni;
+- mi maradt bizonytalan vagy blokkolt.
 
-## 7. Skillek (.claude/skills/)
+Ne allits abszolut bizonyossagot. A helyes allitas: a repo ismert,
+megvizsgalt agent-utasitas hibai javitva lettek; ismeretlen kulso agent runtime
+viselkedesre nincs 100%-os garancia.
 
-- `github-quality-gate/` - pre-push + signal-check wrapper
-- `ai-review-responder/` - Codex/Sourcery auto-fix loop
-- `deploy-verification/` - SBOM + attestation + env gates
-- `agents-md-generator/` - AGENTS.md + AI_CONTRACT.md + platform-specific generalas
+## 8. Platform fajlok szerepe
 
-## 8. Kapcsolt
+- `CLAUDE.md`: projekt- es domain-kontekstus, rovid parancsreferencia.
+- `CODEX.md`, `GEMINI.md`, `.github/copilot-instructions.md`: platformrovidito.
+- `AI_CONTRACT.md`: hard tiltasok es PR-meret plafon.
+- `AI_CONSTITUTION.md`: rovid mukodesi alapelvek.
+- `.cursor/rules/*`: csak celzott, nem allandoan mindent betolto szabalyok.
 
-- `REVIEW.md` - push elotti self-review checklist
-- `docs/obsidian-vault/MANDATE_V2.md` - Obsidian vault
-- `docs/knowledge/memory/2026-04-23-multi-model-mandate-v2.{yaml,qmd}` - session memory
-
-## 9. Parallax / AgentWard repo-adaptacio
-
-**Forras:** user direktiva 2026-05-12: PARALLAX-UGYNOKHALOZATI RENDSZERUTASITAS.
-
-Ez repo-szintu, kikenyszeritheto adaptacio. Nem allitja, hogy a lokalis
-futtatokornyezetben eBPF vagy kulso OIDC gateway automatikusan letezik; ezek
-platformszintu kovetelmenyek. Ami a repo-ban kikenyszeritheto, azt scriptek
-ellenorzik.
-
-Kotelezo elvek:
-
-- Zero-trust adatcsere: auth, OAuth, env es agent-memoria valtozas elott
-  determinisztikus ellenorzes fut.
-- Ketlepcsos verifikacio: local verifier = script/type/lint/test; global
-  verifier = AGENTS.md + vault memoria + CI/GitHub/Sourcery/Codex digest.
-- Ismetelheto mechanikai muveletet scriptbe kell tenni; az AI feladata az
-  intent, parameterezes es blokk-szintu javitas.
-- Minden env/titok alapbol sensitive. Repo-ba csak placeholder mehet.
-- Google OAuth client secret JSON fajl nem commitolhato.
-- Blokkolt OAuth client ID a repo minden nem engedelyezett fajljaban tilos:
-  `110671459871-30f1spbu0hptbs60cb4vsmv79i7bbvqj.apps.googleusercontent.com`
-- Dontesi pontot hash-lancolt archivumba kell rogziteni, ha workflow- vagy
-  biztonsagi szabaly valtozik.
-
-Kotelezo parancsok:
-
-- `npm run agent:guard`
-- `npm run agent:archive -- --summary "..."`
-- `npm run self-check:before-lint`
-- `npm run self-check:before-push`
-- `npm run self-check:before-merge`
-- `npm run self-check:before-deploy`
-
-Kapcsolt fajlok:
-
-- `scripts/agentward-guard.mjs`
-- `scripts/agent-decision-log.mjs`
-- `vault/procedures/parallax-agentward-protocol.md`
-- `vault/agent-archive/decision-log.jsonl`
+Ha egy platformfajl teljes gate-et vagy minden taskban security auditot kovetel,
+azt ezzel a fajllal osszhangban kell ertelmezni: teljes gate csak magas
+kockazatnal, push/merge/deploy/release elott kotelezo.

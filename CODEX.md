@@ -1,23 +1,22 @@
-# Codex Security Integration
+# CODEX.md - Codex kiegeszites
 
-Ez a repository Codex-integracioja kotelezo security gate-re van allitva.
+Codex ebben a repoban az `AGENTS.md` rovid SSOT szerint dolgozik.
 
-## Rule
+## Munkaszabaly
 
-- Kotelezo rule: `.cursor/rules/mandatory-security-gate.mdc`
-- Kotelezo policy: `AGENTS.md` (Mandatory security gate for all agents szekcio)
+- Eloszor kodolj vagy javits a feladat celja szerint, ne indits automatikus
+  teljes gate-ciklust.
+- Celzott ellenorzes normal kodjavitasnal; teljes gate csak push/PR/deploy vagy
+  magas kockazatu security/dependency/CI valtozasnal.
+- Ha ugyanaz a hiba ket kor utan marad, ne valts kenszeresen modot: keszits
+  minimal reprot vagy olvasd vissza a konkret forrast, majd celzottan javits.
 
-## Skill
+## Deploy gate
 
-- Kotelezo skill: `.cursor/skills/security-deploy-gate/SKILL.md`
-- Baseline: `.cursor/skills/security-deploy-gate/SECURITY_BASELINE_V3.md`
+Deploy/release elott futtatando:
 
-## Tool
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1
+```
 
-- Kotelezo futtathato gate tool: `scripts/security/run-security-gate.ps1`
-- Report output: `security-reports/latest/`
-
-## Deploy gate szabaly
-
-- `FAILED` vagy `BLOCKED` gate status eseten `NO-GO`.
-- Evidence nelkul nincs "kesz" allitas.
+`FAILED` vagy `BLOCKED` status eseten nincs deploy-ready allitas.

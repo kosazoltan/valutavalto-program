@@ -1,35 +1,15 @@
-# AI Agent Security Universal Index
+# AI Agent Security Index
 
-Ez az index osszefoglalja a repository-ben letrehozott platform-specifikus kotelezo security gate integraciokat.
+Security policy source: `AGENTS.md`.
 
-## Claude
+Full security gate command for deploy/release or security-sensitive changes:
 
-- `CLAUDE.md`
-- `.claude/skills/security-deploy-gate/SKILL.md`
-- `.claude/commands/security-gate.md`
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1
+```
 
-## Codex / Cursor
+Reports: `security-reports/latest/`.
 
-- `AGENTS.md`
-- `.cursor/rules/mandatory-security-gate.mdc`
-- `.cursor/skills/security-deploy-gate/SKILL.md`
-- `.cursor/skills/security-deploy-gate/SECURITY_BASELINE_V3.md`
-
-## VS Code
-
-- `VSCODE.md`
-- `.vscode/tasks.json`
-- `.vscode/settings.json`
-
-## Antigravity
-
-- `ANTIGRAVITY.md`
-- `.antigravity/rules/mandatory-security-gate.md`
-- `.antigravity/skills/security-deploy-gate/SKILL.md`
-- `.antigravity/tools/security-gate.tool.json`
-
-## Shared mandatory tool
-
-- `scripts/security/run-security-gate.ps1`
-- Report destination: `security-reports/latest/`
-- Gate status artifact: `security-reports/latest/gate-status.json`
+Platform files (`CLAUDE.md`, `CODEX.md`, `GEMINI.md`, `VSCODE.md`,
+`ANTIGRAVITY.md`, `.github/copilot-instructions.md`) are indexes only. They must
+not reintroduce always-on gate loops.

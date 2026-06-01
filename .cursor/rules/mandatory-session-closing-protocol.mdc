@@ -1,170 +1,27 @@
 ---
-description: "Use when: minden session, kódmódosítás, deploy, merge, push, CI, Copilot, Codex, Sourcery/Sorcery ellenőrzés és hibajavítás lezárása előtt."
-applyTo: "**"
-alwaysApply: true
+description: "Use when: closing a push, PR, merge, deploy, or explicit release/security workflow."
+alwaysApply: false
 ---
 
-> "Az utasítás kötelező érvényű utasítás, kötelező végrehajtani, halucináció, mellébeszélés, lustaság, halogatás, tévedés és butaság nélkül pontos, tiszta munka az elvárt. Kizárólag adatok alapján végezheted a munkádat, nincs becslés, nincs tippelés."
+# Session Closing Protocol
 
-# Kötelező session-zárási és visszaellenőrzési protokoll
+Do not run full closing rituals for every small edit. Use the smallest evidence
+that proves the requested work.
 
-Ez az utasítás kötelező érvényű minden mesterséges intelligencia ügynök számára (Claude, OpenAI Codex, Cursor, Gemini, Antigravity, Copilot CLI), amely ebben a repositoryban dolgozik. A session nem tekinthető befejezettnek addig, amíg az alábbi ellenőrzési, javítási és visszaolvasási körök tényszerűen le nem futottak, vagy egy objektív, dokumentált blokkoló ok miatt nem futtathatók.
+## Normal task closure
 
-## Alapelv
+- Review your diff.
+- Run the most relevant targeted check.
+- Report changed files, check result, and any blocker.
 
-- Tilos találgatásra, feltételezésre vagy próba-szerencse alapon végzett javításra építeni.
-- Minden döntést konkrét parancskimenetre, fájltartalomra, CI riportokra, review kommentekre vagy hivatalos szolgáltatói visszajelzésre kell alapozni.
-- A session végén nem maradhat ismert hiba, sikertelen check, sikertelen deploy, feldolgozatlan review megjegyzés vagy figyelmen kívül hagyott warning.
-- A warning nem kozmetikai zaj: javítani kell, kivéve ha bizonyíthatóan false positive vagy külső rendszerhiba. Ezt tényekkel kell rögzíteni.
+## Push/PR/merge/deploy closure
 
-## Kötelező zárási sorrend
+- Run relevant lint/typecheck/test/build.
+- Read back GitHub checks and review findings if a PR exists.
+- For deploy/release, run the security/deploy gate and health checks.
 
-1. **Mentsd és ellenőrizd a munkaterület állapotát.**
-   - Olvasd vissza a módosított fájlokat.
-   - Ellenőrizd a git diffet.
-   - Különítsd el a saját változtatásokat a felhasználó vagy más ügynök meglévő módosításaitól.
-   - Ne törölj és ne revertálj idegen változtatást kifejezett utasítás nélkül.
+## Anti-loop rule
 
-2. **Futtasd le a helyi minőségkapukat.**
-   - Kötelezően futtatandó, ha a repo támogatja: lint, typecheck, format check, unit test, integration test, build.
-   - Ha a projektben konkrét parancs ismert, azt használd.
-   - Ha nincs ismert parancs, keresd meg a package/script/README/CI konfigurációban.
-   - Ha egy parancs nem létezik, ezt tényszerűen rögzítsd, és futtasd a legközelebbi releváns ellenőrzést.
-
-3. **Javítsd a hibákat és warningokat teljes zöld állapotig.**
-   - Minden lint, typecheck, test, build és runtime hibát root cause alapján javíts.
-   - A warningokat is javítsd.
-   - Javítás után ugyanazt az ellenőrzést újra kell futtatni.
-   - A javítási ciklust addig kell ismételni, amíg minden releváns helyi ellenőrzés sikeres és warningmentes nem lesz, vagy objektív blokkoló ok nem marad.
-
-4. **Merge előtt kötelező szinkronizálni és ellenőrizni.**
-   - Olvasd vissza az aktuális branch állapotát.
-   - Frissítsd a célággal a repository szabályai szerint.
-   - Merge vagy rebase csak tiszta, értett állapotban történhet.
-   - Konfliktus esetén a konfliktusokat tényszerűen, fájlonként kell feloldani, majd újra futtatni kell a teljes helyi ellenőrzési kört.
-
-5. **Push előtt kötelező végső helyi ellenőrzést futtatni.**
-   - Push csak akkor történhet, ha a helyi lint, typecheck, test és build állapot zöld.
-   - Force push tilos, kivéve ha a felhasználó kifejezetten ezt kéri és a kockázat rögzítve van.
-   - Ha a push jogosultság, hálózat vagy branch policy miatt nem lehetséges, ezt tényszerűen kell rögzíteni.
-
-6. **Push és deploy után kötelező visszaolvasni a külső hibajelentéseket.**
-   - Olvasd vissza a GitHub Actions vagy egyéb CI teljes check eredményét.
-   - Olvasd vissza a GitHub Copilot review, komment, javaslat és hibajelentés tartalmát.
-   - Olvasd vissza a Codex által készített review, komment vagy hibajelentés tartalmát, ha elérhető.
-   - Olvasd vissza a Sourcery/Sorcery review, komment, quality gate és hibajelentés tartalmát, ha elérhető.
-   - Olvasd vissza a deploy szolgáltató teljes build/deploy logját és health check eredményét, ha deploy történt.
-   - Ne csak az összefoglalót nézd: a részletes hibaüzeneteket, stack trace-eket, annotációkat és warningokat is ellenőrizni kell.
-
-7. **Külső hibák alapján kötelező javítási ciklust indítani.**
-   - CI, Copilot, Codex, Sourcery/Sorcery vagy deploy hiba esetén a session nem zárható le.
-   - A hibajelentésekből először konkrét root cause diagnózist kell készíteni.
-   - Csak minimális, célzott módosítást végezz.
-   - Javítás után újra kell futtatni a helyi ellenőrzéseket, majd újra pusholni és újra visszaolvasni a külső checkeket.
-   - A ciklus addig kötelező, amíg minden check zöld, minden deploy sikeres és minden warning kezelt.
-
-8. **Deploy utáni kötelező ellenőrzések.**
-   - Ellenőrizd a cél URL-t vagy szolgáltatás health endpointját.
-   - Ellenőrizd a runtime logokat közvetlenül deploy után.
-   - Ellenőrizd, hogy nincs 4xx/5xx hiba, crash loop, missing env var, migration hiba vagy dependency hiba.
-   - Ha adatbázis-migráció, cache, queue, cron, webhook vagy külső API érintett, annak működését külön vissza kell igazolni.
-
-9. **Záró jelentés csak tényekkel adható.**
-   - Sorold fel, milyen parancsok futottak le és milyen eredménnyel.
-   - Sorold fel, milyen külső checkeket olvastál vissza és milyen eredménnyel.
-   - Ha maradt blokkoló tényező, nevezd meg pontosan: rendszer, parancs, hibaüzenet, következő szükséges lépés.
-   - Ne állítsd, hogy kész, ha nem zöld minden kötelező ellenőrzés.
-
-## Kötelező parancskategóriák
-
-Az ügynöknek a konkrét projekt alapján kell kiválasztania a pontos parancsokat, de a következő kategóriák ellenőrzése kötelező:
-
-- **Lint** — statikus szabályellenőrzés.
-- **Format check** — formázási eltérések ellenőrzése.
-- **Typecheck** — típusellenőrzés TypeScript, Python, .NET vagy más releváns eszközzel.
-- **Test** — unit, integration és releváns end-to-end tesztek.
-- **Build** — production build vagy csomagolás.
-- **Security/dependency audit** — ha a repo támogatja.
-- **Migration check** — ha adatbázis vagy schema változott.
-- **Runtime smoke test** — ha app, API, worker vagy service indult vagy deployolódott.
-- **Merge validation** — célággal való kompatibilitás.
-- **Push validation** — távoli branch frissítése és visszaellenőrzése.
-- **CI validation** — GitHub Actions vagy más pipeline teljes lefutása.
-- **Review validation** — GitHub Copilot, Codex és Sourcery/Sorcery teljes hibajelentésének visszaolvasása.
-- **Deploy validation** — deploy logok, health checkek és runtime hibák visszaolvasása.
-
-## Konkrét parancsok ebben a repositoryban
-
-```bash
-# Backend (Java 21 + Spring Boot 4.0.6 + Maven)
-cd backend && ./mvnw -B test --no-transfer-progress           # 1115+ JUnit 5 teszt
-cd backend && ./mvnw -B package --no-transfer-progress -DskipTests  # production fat-jar build
-
-# Frontend-react (React 19 + TS 5.9.3 + Vite 8)
-cd frontend-react && npm run typecheck                         # tsc --noEmit
-cd frontend-react && npm run lint                              # eslint src
-cd frontend-react && npm run lint:i18n-gate                    # i18n regression baseline (jelenleg <= 2864)
-cd frontend-react && npm test                                  # vitest unit
-cd frontend-react && npm run test:e2e                          # Playwright E2E
-cd frontend-react && npm run build                             # production Vite build
-
-# Penztar-client (Electron 41 + React)
-cd penztar-client && npm run typecheck
-cd penztar-client && npm run check:ipc                         # IPC contract validation
-cd penztar-client && npm run lint
-cd penztar-client && npm test                                  # vitest unit (sync-engine, etc.)
-
-# Production runtime smoke
-curl -s https://excvaluta.com/api/v1/auth/bootstrap-status     # >= 200, body: {"completed":true}
-curl -s https://excvaluta.com/api/v1/public/branches?companyCode=EBC  # >= 200, non-empty array
-
-# AI review lekerdezesek (zaj-szuressel)
-gh api "repos/kosazoltan/valutavalto-program/pulls/$PR/reviews" \
-  --jq '.[] | select(((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("copilot"))) and ((.body // "") | (contains("create a Codex account") | not)) and ((.body // "") | (contains("weekly rate limit") | not)))'
-gh api "repos/kosazoltan/valutavalto-program/pulls/$PR/comments" \
-  --jq '.[] | select((.user.login | ascii_downcase | contains("codex")) or (.user.login | ascii_downcase | contains("sourcery")) or (.user.login | ascii_downcase | contains("copilot")))'
-gh pr checks $PR                                               # CI rollup
-gh run list --branch main --limit 5                            # main HEAD post-merge CI
-```
-
-## Blokkoló helyzet kezelése
-
-Ha bármely kötelező lépés nem hajtható végre, az ügynök köteles:
-
-- **megnevezni** a pontos blokkoló okot;
-- **idézni** vagy **összefoglalni** a releváns hibaüzenetet;
-- **megadni**, mely ellenőrzések futottak le sikeresen;
-- **megadni**, mely ellenőrzések maradtak nyitva;
-- **NEM** késznek jelölni a feladatot;
-- **NEM** elhallgatni a warningot, sikertelen checket vagy részleges deployt.
-
-## Tiltott lezárási minták
-
-- ❌ Tilos csak azt mondani, hogy a kód "valószínűleg jó".
-- ❌ Tilos a CI vagy deploy állapot visszaolvasása nélkül késznek jelölni push vagy deploy után.
-- ❌ Tilos warningot figyelmen kívül hagyni.
-- ❌ Tilos review kommentet feldolgozatlanul hagyni.
-- ❌ Tilos olyan push vagy merge után lezárni, amelynek eredményét nem olvasta vissza az ügynök.
-- ❌ Tilos a felhasználóra hagyni a hibák felderítését, ha az ügynök hozzáfér a hibajelentésekhez.
-
-## Elvárt végállapot
-
-A session kizárólag akkor zárható le sikeresen, ha:
-
-- ✅ a munkaterület diffje értett és szándékos;
-- ✅ minden helyi ellenőrzés sikeres;
-- ✅ minden warning javítva vagy bizonyítottan elfogadhatóként dokumentálva;
-- ✅ a merge állapot tiszta;
-- ✅ a push sikeres, ha a feladat pusholást igényelt;
-- ✅ a CI minden releváns checkje zöld;
-- ✅ GitHub Copilot, Codex és Sourcery/Sorcery hibajelentése visszaolvasva és kezelve;
-- ✅ deploy esetén a deploy sikeres, a célrendszer elérhető, a logok tiszták;
-- ✅ a záró válasz tényszerűen felsorolja az elvégzett ellenőrzéseket és azok eredményét.
-
-## Hatály és precedencia
-
-- **Always-on:** ez a rule alwaysApply=true — minden coding session minden lépésénél figyelembe kell venni, NEM csak session záráskor.
-- **Multi-agent:** Claude (CLAUDE.md), Codex (CODEX.md/AGENTS.md), Cursor (.cursor/rules/), Gemini (GEMINI.md), Antigravity, Copilot CLI mind kötelezően alkalmazza.
-- **Precedencia:** ha konfliktusban van más rule-lal vagy AI ügynök default behavior-jával, EZ győz. A user explicit utasítása felülbírálhatja, de azt explicit, írásban kell rögzíteni a session-ben.
-- **Hatály bevezetés:** 2026-05-04 (Kosa Zoltan user-direktiva).
-- **Tárolás:** [.cursor/rules/mandatory-session-closing-protocol.mdc](mandatory-session-closing-protocol.mdc) (ez a fájl) + [vault: feedback/session-closing-protocol-mandatory.md](D:\valutavalto-vault\feedback\session-closing-protocol-mandatory.md) + [CLAUDE.md "Session-zárási protokoll" szekció](../../CLAUDE.md).
+If the same check fails twice, stop repeating it. Diagnose a different axis
+(source, minimal repro, config, environment, dependency, or documentation), then
+make one targeted change.

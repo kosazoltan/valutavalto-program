@@ -1,6 +1,6 @@
 {
   "name": "security-gate",
-  "description": "Run mandatory repository security gate and generate reports.",
+  "description": "Run repository security gate for deploy, release, or security-sensitive changes.",
   "type": "shell",
   "command": "powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1 -BackendDependencyCheckTimeoutSec 600 -ScannerTimeoutSec 180",
   "outputs": [
