@@ -168,6 +168,45 @@ class RateCreationServiceTest {
     }
 
     @Test
+    @DisplayName("FK02-C: updateWorkgroupBranches elutasitja az ERTEKTAR tipusu egyseget (Sourcery)")
+    void updateWorkgroupBranches_rejectsVaultTypeBranch() {
+        UUID wgId = UUID.randomUUID();
+        Company company = Company.builder().id(COMPANY_ID).code("EBC").name("Test").build();
+        RateWorkgroup wg = RateWorkgroup.builder().id(wgId).company(company).branches(new HashSet<>()).build();
+        when(rateWorkgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+
+        Dictionary ertektar = Dictionary.builder().code("ERTEKTAR").build();
+        UUID vaultId = UUID.randomUUID();
+        Branch vault = Branch.builder().id(vaultId).code("ET01").name("Szeged Értéktár")
+                .company(company).branchType(ertektar).isActive(true).build();
+        when(branchRepository.findAllById(List.of(vaultId))).thenReturn(List.of(vault));
+
+        assertThatThrownBy(() -> service.updateWorkgroupBranches(wgId, List.of(vaultId)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("csak pénztár");
+    }
+
+    @Test
+    @DisplayName("FK02-C: updateWorkgroupBranches elutasitja az isVault=true penztarat is (Sourcery)")
+    void updateWorkgroupBranches_rejectsVaultFlaggedCashier() {
+        UUID wgId = UUID.randomUUID();
+        Company company = Company.builder().id(COMPANY_ID).code("EBC").name("Test").build();
+        RateWorkgroup wg = RateWorkgroup.builder().id(wgId).company(company).branches(new HashSet<>()).build();
+        when(rateWorkgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+
+        // PENZTAR típuskód, de isVault=true → értéktári anomália, NEM rendelhető hozzá.
+        Dictionary penztar = Dictionary.builder().code("PENZTAR").build();
+        UUID id = UUID.randomUUID();
+        Branch vaultFlagged = Branch.builder().id(id).code("BR099").name("Anomália")
+                .company(company).branchType(penztar).isVault(true).isActive(true).build();
+        when(branchRepository.findAllById(List.of(id))).thenReturn(List.of(vaultFlagged));
+
+        assertThatThrownBy(() -> service.updateWorkgroupBranches(wgId, List.of(id)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("csak pénztár");
+    }
+
+    @Test
     @DisplayName("FK02-C: updateWorkgroupBranches elfogadja az aktiv penztarat")
     void updateWorkgroupBranches_acceptsCashierBranch() {
         UUID wgId = UUID.randomUUID();
