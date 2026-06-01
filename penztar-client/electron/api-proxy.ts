@@ -253,7 +253,7 @@ const DEFAULT_RETRY_DELAYS_MS = [1000, 2000, 3000, 5000, 8000];
 
 /**
  * Általános retry-wrapper hálózati hibára. HTTP-státusz (`ok:false`) választ NEM próbál újra.
- * ESET-MITM hidegindítás-reset ellen (Borsi/Helga/Zsuzsa/Tomi gépek, 2026-06-01 Szeged-értéktár).
+ * ESET-MITM hidegindítás-reset ellen (egyes kliensgépeken, 2026-06-01 értéktár-eset).
  */
 export async function retryFetch(
   doFetch: () => Promise<ApiProxyResponse>,

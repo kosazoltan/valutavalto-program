@@ -1048,7 +1048,7 @@ app.whenReady().then(async () => {
 
     // ESET-MITM hidegindítás-reset ellen: 5 próba növekvő backoff-fal. A retry CSAK hálózati
     // hibára fut (HTTP 4xx/5xx érintetlen) — lásd api-proxy.ts isRetryableNetworkError.
-    // (2026-06-01 Szeged-értéktár: net::ERR_CONNECTION_RESET a /public/setup/google-identify-on.)
+    // (2026-06-01 értéktár-eset: net::ERR_CONNECTION_RESET a `/public/setup/google-identify` végponton.)
     try {
       return await fetchViaElectronNetWithRetry({ ...params, url: fullUrl });
     } catch (err) {
