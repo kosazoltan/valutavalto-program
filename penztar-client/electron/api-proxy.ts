@@ -280,10 +280,41 @@ export async function retryFetch(
   throw lastErr ?? new Error('[api-proxy] retryFetch: ismeretlen hiba');
 }
 
-/** {@link fetchViaElectronNet} + ESET-rezisztens retry egy lépésben. */
+/**
+ * Egy kérés retry-biztos-e (NEM duplikálhat szerver-oldali mellékhatást újrapróbálkozáskor).
+ *
+ * <p>Codex P1 (2026-06-01): a megosztott `api:fetch` MINDEN renderer-hívásra megy, beleértve a
+ * MUTÁLÓ pénztáros-tranzakciókat (`POST /transactions/buy|sell|reversal`). Ha egy ilyen POST a
+ * szerveren már commitált, de a válasz timeoutol/resetel, az újrapróbálkozás DUPLIKÁLNÁ a
+ * tranzakciót (pénzügyi-integritás sérülés). Ezért:
+ * <ul>
+ *   <li>GET/HEAD/OPTIONS — HTTP-idempotens, mindig retry-biztos.</li>
+ *   <li>POST/PUT/PATCH/DELETE — CSAK akkor, ha `Idempotency-Key` fejléc van: ekkor a backend
+ *       deduplikál (`IdempotencyRecord` / `SyncInboxEvent`), így az újraküldés biztonságos.</li>
+ * </ul>
+ * Kulcs nélküli mutáló kérést NEM próbálunk újra (inkább egy hálózati hiba, mint dupla tranzakció).
+ */
+export function isRetrySafeRequest(params: ApiProxyRequest): boolean {
+  const method = (params.method || 'GET').toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+    return true;
+  }
+  const headers = params.headers ?? {};
+  return Object.entries(headers).some(
+    ([key, value]) => key.toLowerCase() === 'idempotency-key' && typeof value === 'string' && value.length > 0,
+  );
+}
+
+/**
+ * {@link fetchViaElectronNet} + ESET-rezisztens retry egy lépésben.
+ *
+ * <p>Retry CSAK retry-biztos kérésre fut ({@link isRetrySafeRequest}) — mutáló, kulcs-nélküli
+ * POST/PATCH-et egyetlen próbára korlátoz (nincs duplikáció-kockázat).
+ */
 export function fetchViaElectronNetWithRetry(
   params: ApiProxyRequest,
   options: RetryOptions = {},
 ): Promise<ApiProxyResponse> {
-  return retryFetch(() => fetchViaElectronNet(params), options);
+  const maxRetries = isRetrySafeRequest(params) ? (options.maxRetries ?? 5) : 1;
+  return retryFetch(() => fetchViaElectronNet(params), { ...options, maxRetries });
 }

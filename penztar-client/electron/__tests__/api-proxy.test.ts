@@ -83,7 +83,7 @@ vi.mock('electron', () => ({
   IncomingMessage: class {},
 }));
 
-import { fetchViaElectronNet, retryFetch, isRetryableNetworkError, type ApiProxyResponse } from '../api-proxy';
+import { fetchViaElectronNet, retryFetch, isRetryableNetworkError, isRetrySafeRequest, type ApiProxyResponse } from '../api-proxy';
 import { net as electronNet } from 'electron';
 
 describe('fetchViaElectronNet', () => {
@@ -502,5 +502,39 @@ describe('retryFetch (ESET-rezisztens ujraprobalkozas)', () => {
     const result = await retryFetch(doFetch, { sleep: instantSleep });
     expect(result.status).toBe(401);
     expect(doFetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('isRetrySafeRequest (Codex P1 — mutalo tranzakcio dupla-vedelem)', () => {
+  it('GET/HEAD/OPTIONS → mindig retry-biztos (idempotens)', () => {
+    for (const method of ['GET', 'get', 'HEAD', 'OPTIONS']) {
+      expect(isRetrySafeRequest({ method, url: 'https://excvaluta.com/api/v1/rates' })).toBe(true);
+    }
+  });
+  it('mutalo POST/PUT/PATCH/DELETE Idempotency-Key NELKUL → NEM retry-biztos', () => {
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE', 'post']) {
+      expect(isRetrySafeRequest({ method, url: 'https://excvaluta.com/api/v1/transactions/buy', body: '{}' })).toBe(false);
+    }
+  });
+  it('POST Idempotency-Key-vel → retry-biztos (backend deduplikal)', () => {
+    expect(isRetrySafeRequest({
+      method: 'POST',
+      url: 'https://excvaluta.com/api/v1/transactions/buy',
+      headers: { 'Idempotency-Key': 'abc-123' },
+      body: '{}',
+    })).toBe(true);
+  });
+  it('Idempotency-Key fejlec case-insensitive + ures kulcs nem szamit', () => {
+    expect(isRetrySafeRequest({
+      method: 'POST', url: 'https://excvaluta.com/api/v1/sell', headers: { 'idempotency-key': 'k1' },
+    })).toBe(true);
+    expect(isRetrySafeRequest({
+      method: 'POST', url: 'https://excvaluta.com/api/v1/sell', headers: { 'Idempotency-Key': '' },
+    })).toBe(false);
+  });
+  it('fetchViaElectronNetWithRetry: mutalo kulcs-nelkuli POST → 1 proba (nincs retry)', async () => {
+    // A google-identify-szeru retry-biztos POST kulccsal megy; ez itt a vedett eset:
+    // buy/sell kulcs nelkul SOHA nem duplikalodhat retry-bol.
+    expect(isRetrySafeRequest({ method: 'POST', url: 'https://excvaluta.com/api/v1/transactions/reversal' })).toBe(false);
   });
 });

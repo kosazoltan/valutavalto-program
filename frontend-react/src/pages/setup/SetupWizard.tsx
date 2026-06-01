@@ -357,12 +357,16 @@ export default function SetupWizard() {
       selectedWorkerCode: payload.selectedWorkerCode,
       bindGoogleSubject: payload.bindGoogleSubject === true,
     })
+    // Idempotency-Key: a google-identify ugyanazzal az id_token-nel termeszetszeruleg idempotens
+    // (ugyanazt a dolgozot azonositja / ugyanazt a subjectet koti). A kulcs jelzi az api-proxy-nak,
+    // hogy ez a POST retry-biztos (ESET-MITM reset ellen ujraprobalhato, duplikacio-kockazat nelkul).
+    const idempotencyKey = crypto.randomUUID()
 
     if (window.electronAPI?.apiRequest) {
       const result = await window.electronAPI.apiRequest({
         method: 'POST',
         url,
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Idempotency-Key': idempotencyKey },
         body,
         timeoutMs: 15000,
       })
