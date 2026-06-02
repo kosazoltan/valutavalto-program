@@ -784,7 +784,8 @@ public class TransactionService {
             Long workerId = SecurityUtils.getCurrentWorkerId();
             java.util.UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
             String circularBlock = circularAckBlockReason(
-                    circularRepository.findUnacknowledgedMandatoryForWorker(companyId, workerId, branchId, null),
+                    circularRepository.findUnacknowledgedMandatoryForWorker(companyId, workerId, branchId,
+                            hu.puzzleir.valuta.util.LegacyCompanyIdentityCodec.toLegacyInt(companyId)),
                     true);
             if (circularBlock != null) {
                 throw new ValidationException(circularBlock);
