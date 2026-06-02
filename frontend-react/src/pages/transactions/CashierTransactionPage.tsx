@@ -1028,6 +1028,7 @@ export default function CashierTransactionPage() {
                     setDiscount(Math.min(15, Math.max(0, parseFloat(discountInput) || 0)))
                     setShowFeeDialog(false)
                   } else if (e.key === 'Escape') {
+                    setFeeOverrideType(''); setFeeOverrideReason(''); setCardNumber('')
                     setShowFeeDialog(false)
                   }
                 }}
@@ -1047,6 +1048,7 @@ export default function CashierTransactionPage() {
                     setDiscount(Math.min(15, Math.max(0, parseFloat(discountInput) || 0)))
                     setShowFeeDialog(false)
                   } else if (e.key === 'Escape') {
+                    setFeeOverrideType(''); setFeeOverrideReason(''); setCardNumber('')
                     setShowFeeDialog(false)
                   }
                 }}
@@ -1112,7 +1114,12 @@ export default function CashierTransactionPage() {
                 {t('transactions.alkalmaz')}
               </button>
               <button
-                onClick={() => setShowFeeDialog(false)}
+                onClick={() => {
+                  // FK-KEZDÍJ (2026-06-02): Mégse → az override-draft NEM marad érvényben (biztonságos:
+                  // a nem véglegesített díj-módosítás eldobódik).
+                  setFeeOverrideType(''); setFeeOverrideReason(''); setCardNumber('')
+                  setShowFeeDialog(false)
+                }}
                 className="flex-1 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 {t('transactions.megse')}
