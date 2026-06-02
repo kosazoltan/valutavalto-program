@@ -137,9 +137,12 @@ public class TransactionMultiLineService {
         BigDecimal handlingFeeBase = handlingFeeCalculator.calculate(
                 hufAfterDiscount, TransactionType.BUY, request.getHandlingFee());
         // FK-KEZDÍJ (2026-06-02): kezelési díj override AUTORITATÍV validálása a multi-line ágon is.
-        BigDecimal serverHandlingFee = handlingFeeOverrideService.resolveOverride(
-                handlingFeeBase, request.getHandlingFeeOverrideType(), request.getHandlingFeeOverrideReason(),
-                request.getCustomerCardNumber(), request.getHandlingFee(), currentWorkerRoleForOverride());
+        BigDecimal serverHandlingFee = (request.getHandlingFeeOverrideType() != null
+                && request.getHandlingFeeOverrideType() != hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)
+                ? handlingFeeOverrideService.resolveOverride(
+                        handlingFeeBase, request.getHandlingFeeOverrideType(), request.getHandlingFeeOverrideReason(),
+                        request.getCustomerCardNumber(), request.getHandlingFee(), currentWorkerRoleForOverride())
+                : handlingFeeBase;
         BigDecimal grossAmount = handlingFeeCalculator.calculateBuyGross(hufAfterDiscount, serverHandlingFee);
 
         // Magyar 5 Ft kerekites
@@ -354,9 +357,12 @@ public class TransactionMultiLineService {
         BigDecimal handlingFeeBase = handlingFeeCalculator.calculate(
                 hufAfterDiscount, TransactionType.SELL, request.getHandlingFee());
         // FK-KEZDÍJ (2026-06-02): kezelési díj override AUTORITATÍV validálása a multi-line ágon is.
-        BigDecimal serverHandlingFee = handlingFeeOverrideService.resolveOverride(
-                handlingFeeBase, request.getHandlingFeeOverrideType(), request.getHandlingFeeOverrideReason(),
-                request.getCustomerCardNumber(), request.getHandlingFee(), currentWorkerRoleForOverride());
+        BigDecimal serverHandlingFee = (request.getHandlingFeeOverrideType() != null
+                && request.getHandlingFeeOverrideType() != hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)
+                ? handlingFeeOverrideService.resolveOverride(
+                        handlingFeeBase, request.getHandlingFeeOverrideType(), request.getHandlingFeeOverrideReason(),
+                        request.getCustomerCardNumber(), request.getHandlingFee(), currentWorkerRoleForOverride())
+                : handlingFeeBase;
         BigDecimal grossAmount = handlingFeeCalculator.calculateSellGross(hufAfterDiscount, serverHandlingFee);
 
         // Magyar 5 Ft kerekites

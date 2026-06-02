@@ -210,9 +210,12 @@ public class TransactionService {
                 hufAmount, TransactionType.BUY, request.getHandlingFee());
         // FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override) AUTORITATÍV szerver-oldali
         // validálása az engedély-mátrix szerint. NONE → a számolt alap díj marad.
-        BigDecimal serverHandlingFee = handlingFeeOverrideService.resolveOverride(
-                handlingFeeBase, request.getHandlingFeeOverrideType(), request.getHandlingFeeOverrideReason(),
-                request.getCustomerCardNumber(), request.getHandlingFee(), currentWorkerRoleForOverride());
+        BigDecimal serverHandlingFee = (request.getHandlingFeeOverrideType() != null
+                && request.getHandlingFeeOverrideType() != hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)
+                ? handlingFeeOverrideService.resolveOverride(
+                        handlingFeeBase, request.getHandlingFeeOverrideType(), request.getHandlingFeeOverrideReason(),
+                        request.getCustomerCardNumber(), request.getHandlingFee(), currentWorkerRoleForOverride())
+                : handlingFeeBase;
 
         // Bruttó: vételnél nettó - díj (a cég levonja a kezelési díjat)
         BigDecimal grossAmount = handlingFeeCalculator.calculateBuyGross(hufAmount, serverHandlingFee);
@@ -433,9 +436,12 @@ public class TransactionService {
         BigDecimal handlingFeeBase = handlingFeeCalculator.calculate(
                 hufAmount, TransactionType.SELL, request.getHandlingFee());
         // FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override) AUTORITATÍV validálása.
-        BigDecimal serverHandlingFee = handlingFeeOverrideService.resolveOverride(
-                handlingFeeBase, request.getHandlingFeeOverrideType(), request.getHandlingFeeOverrideReason(),
-                request.getCustomerCardNumber(), request.getHandlingFee(), currentWorkerRoleForOverride());
+        BigDecimal serverHandlingFee = (request.getHandlingFeeOverrideType() != null
+                && request.getHandlingFeeOverrideType() != hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)
+                ? handlingFeeOverrideService.resolveOverride(
+                        handlingFeeBase, request.getHandlingFeeOverrideType(), request.getHandlingFeeOverrideReason(),
+                        request.getCustomerCardNumber(), request.getHandlingFee(), currentWorkerRoleForOverride())
+                : handlingFeeBase;
 
         // Bruttó: eladásnál nettó + díj
         BigDecimal grossAmount = handlingFeeCalculator.calculateSellGross(hufAmount, serverHandlingFee);
