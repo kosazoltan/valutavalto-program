@@ -68,6 +68,7 @@ public class TransactionService {
     private final ExchangeRateService exchangeRateService;
     private final ReceiptSequenceService receiptSequenceService;
     private final HandlingFeeCalculator handlingFeeCalculator;
+    private final HandlingFeeOverrideService handlingFeeOverrideService;
     private final AmlService amlService;
     private final PosTerminalService posTerminalService;
     private final ObjectProvider<CameraTransactionLinker> cameraTransactionLinkerProvider;
@@ -205,8 +206,16 @@ public class TransactionService {
         BigDecimal hufAmount = calculationService.applyBuyDiscount(fullHufBeforeDiscount, request.getDiscountPercent());
 
         // Kezelési díj szerver oldali számítás (kliens értékét felülírjuk)
-        BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
+        BigDecimal handlingFeeBase = handlingFeeCalculator.calculate(
                 hufAmount, TransactionType.BUY, request.getHandlingFee());
+        // FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override) AUTORITATÍV szerver-oldali
+        // validálása az engedély-mátrix szerint. NONE → a számolt alap díj marad.
+        BigDecimal serverHandlingFee = (request.getHandlingFeeOverrideType() != null
+                && request.getHandlingFeeOverrideType() != hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)
+                ? handlingFeeOverrideService.resolveOverride(
+                        handlingFeeBase, request.getHandlingFeeOverrideType(), request.getHandlingFeeOverrideReason(),
+                        request.getCustomerCardNumber(), request.getHandlingFee(), currentWorkerRoleForOverride())
+                : handlingFeeBase;
 
         // Bruttó: vételnél nettó - díj (a cég levonja a kezelési díjat)
         BigDecimal grossAmount = handlingFeeCalculator.calculateBuyGross(hufAmount, serverHandlingFee);
@@ -303,6 +312,10 @@ public class TransactionService {
                 .exchangeRate(appliedRate)
                 .hufAmount(payableAmount)
                 .handlingFee(serverHandlingFee)
+                .handlingFeeBase(handlingFeeBase)
+                .handlingFeeOverrideType(request.getHandlingFeeOverrideType())
+                .handlingFeeOverrideReason(request.getHandlingFeeOverrideReason())
+                .customerCardNumber(request.getCustomerCardNumber())
                 .discountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO)
                 .discountAmount(discountAmount)
                 .roundingAmount(roundingDifference)
@@ -420,8 +433,15 @@ public class TransactionService {
         validateCurrencyStock(branchId, currency.getId(), request.getCurrencyAmount());
 
         // Kezelési díj szerver oldali számítás (kliens értékét felülírjuk)
-        BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
+        BigDecimal handlingFeeBase = handlingFeeCalculator.calculate(
                 hufAmount, TransactionType.SELL, request.getHandlingFee());
+        // FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override) AUTORITATÍV validálása.
+        BigDecimal serverHandlingFee = (request.getHandlingFeeOverrideType() != null
+                && request.getHandlingFeeOverrideType() != hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)
+                ? handlingFeeOverrideService.resolveOverride(
+                        handlingFeeBase, request.getHandlingFeeOverrideType(), request.getHandlingFeeOverrideReason(),
+                        request.getCustomerCardNumber(), request.getHandlingFee(), currentWorkerRoleForOverride())
+                : handlingFeeBase;
 
         // Bruttó: eladásnál nettó + díj
         BigDecimal grossAmount = handlingFeeCalculator.calculateSellGross(hufAmount, serverHandlingFee);
@@ -502,6 +522,10 @@ public class TransactionService {
                 .exchangeRate(appliedRate)
                 .hufAmount(payableAmount)
                 .handlingFee(serverHandlingFee)
+                .handlingFeeBase(handlingFeeBase)
+                .handlingFeeOverrideType(request.getHandlingFeeOverrideType())
+                .handlingFeeOverrideReason(request.getHandlingFeeOverrideReason())
+                .customerCardNumber(request.getCustomerCardNumber())
                 .discountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO)
                 .discountAmount(discountAmount)
                 .roundingAmount(roundingDifference)
@@ -963,6 +987,21 @@ public class TransactionService {
 
     // ============ REQUEST/RESPONSE DTO-k ============
 
+    /**
+     * FK-KEZDÍJ (2026-06-02): a kezelési díj override jogosultság-ellenőrzéséhez a bejelentkezett
+     * dolgozó operatív szerepköre (activeRole, fallback currentRole).
+     */
+    private String currentWorkerRoleForOverride() {
+        try {
+            String active = hu.puzzleir.valuta.security.SecurityUtils.getActiveOperationalRole();
+            return (active != null && !active.isBlank())
+                    ? active
+                    : hu.puzzleir.valuta.security.SecurityUtils.getCurrentRole();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     @lombok.Data
     @lombok.Builder
     @lombok.NoArgsConstructor
@@ -973,6 +1012,10 @@ public class TransactionService {
         private BigDecimal currencyAmount;
         private BigDecimal discountPercent;
         private BigDecimal handlingFee;
+        // FK-KEZDÍJ (2026-06-02): kezelési díj override (lásd HandlingFeeOverrideService)
+        private hu.puzzleir.valuta.entity.HandlingFeeOverrideType handlingFeeOverrideType;
+        private hu.puzzleir.valuta.entity.HandlingFeeOverrideReason handlingFeeOverrideReason;
+        private String customerCardNumber;
         private BigDecimal customExchangeRate;
         private String customerId;
         private String customerName;
@@ -1018,6 +1061,10 @@ public class TransactionService {
         private BigDecimal currencyAmount;
         private BigDecimal discountPercent;
         private BigDecimal handlingFee;
+        // FK-KEZDÍJ (2026-06-02): kezelési díj override (lásd HandlingFeeOverrideService)
+        private hu.puzzleir.valuta.entity.HandlingFeeOverrideType handlingFeeOverrideType;
+        private hu.puzzleir.valuta.entity.HandlingFeeOverrideReason handlingFeeOverrideReason;
+        private String customerCardNumber;
         private BigDecimal customExchangeRate;
         private String customerId;
         private String customerName;

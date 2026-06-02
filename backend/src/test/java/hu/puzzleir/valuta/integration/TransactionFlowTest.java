@@ -69,6 +69,7 @@ class TransactionFlowTest {
     @Mock private ExchangeRateService exchangeRateService;
     @Mock private ReceiptSequenceService receiptSequenceService;
     @Mock private HandlingFeeCalculator handlingFeeCalculator;
+    @Mock private hu.puzzleir.valuta.service.HandlingFeeOverrideService handlingFeeOverrideService;
     @Mock private AmlService amlService;
     @Mock private PosTerminalService posTerminalService;
     @Mock private hu.puzzleir.valuta.service.TransactionCalculationService calculationService;
@@ -154,6 +155,9 @@ class TransactionFlowTest {
         // Default mock: HandlingFeeCalculator returns 0 (no fee)
         when(handlingFeeCalculator.calculate(any(), any(), any()))
             .thenReturn(java.math.BigDecimal.ZERO);
+        // FK-KEZDÍJ (2026-06-02): override pass-through (NONE) — a base díjat adja vissza.
+        when(handlingFeeOverrideService.resolveOverride(any(), any(), any(), any(), any(), any()))
+            .thenAnswer(inv -> inv.getArgument(0));
         when(handlingFeeCalculator.calculateBuyGross(any(), any()))
             .thenAnswer(inv -> {
                 java.math.BigDecimal net = inv.getArgument(0);

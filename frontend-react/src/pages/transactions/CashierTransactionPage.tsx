@@ -140,6 +140,12 @@ export default function CashierTransactionPage() {
   const [showFeeDialog, setShowFeeDialog] = useState(false)
   const [feeInput, setFeeInput] = useState('')
   const [discountInput, setDiscountInput] = useState('')
+  // FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override). A szerver validálja az engedély-
+  // mátrixot; itt csak a kliens-választás (típus/jogcím/kártyaszám) — HALF/WAIVED-nél a szerver
+  // számolja a végösszeget, SPECIAL-nál a feeInput az egyedi díj.
+  const [feeOverrideType, setFeeOverrideType] = useState<'' | 'HALF' | 'WAIVED' | 'SPECIAL'>('')
+  const [feeOverrideReason, setFeeOverrideReason] = useState<'' | 'DIRECTOR_APPROVAL' | 'CUSTOMER_CARD' | 'PROMOTION'>('')
+  const [cardNumber, setCardNumber] = useState('')
 
   // Exchange rates from API
   const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([])
@@ -178,6 +184,9 @@ export default function CashierTransactionPage() {
 
   // Auth store for receipt data
   const worker = useAuthStore(s => s.worker)
+  // FK-KEZDÍJ (2026-06-02): a bejelentkezett dolgozó ügyvezető/főértéktáros-e — csak ekkor látszik
+  // a SPECIAL (egyedi díj) + a "vezetői jóváhagyás" jogcím (a szerver amúgy is validál, ez UX-gate).
+  const isDirectorUser = useAuthStore(s => s.hasCanonicalRole)(['ugyvezeto', 'foertektar', 'admin'])
 
   // Refs for keyboard navigation
   const currencyRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -811,6 +820,10 @@ export default function CashierTransactionPage() {
               currencyAmount: parseFloat(row.quantity) || 0,
               customExchangeRate: row.exchangeRate,
               handlingFee: handlingFee > 0 ? handlingFee : undefined,
+              // FK-KEZDÍJ (2026-06-02): kezelési díj override (a szerver validálja az engedély-mátrixot)
+              handlingFeeOverrideType: feeOverrideType || undefined,
+              handlingFeeOverrideReason: feeOverrideReason || undefined,
+              customerCardNumber: cardNumber.trim() || undefined,
               discountPercent: discount > 0 ? discount : undefined,
               cashierCustomRate: isCashierCustom,
               foreignStatus: row.foreignStatus,
@@ -824,6 +837,10 @@ export default function CashierTransactionPage() {
               currencyAmount: parseFloat(row.quantity) || 0,
               customExchangeRate: row.exchangeRate,
               handlingFee: handlingFee > 0 ? handlingFee : undefined,
+              // FK-KEZDÍJ (2026-06-02): kezelési díj override (a szerver validálja az engedély-mátrixot)
+              handlingFeeOverrideType: feeOverrideType || undefined,
+              handlingFeeOverrideReason: feeOverrideReason || undefined,
+              customerCardNumber: cardNumber.trim() || undefined,
               discountPercent: discount > 0 ? discount : undefined,
               cashierCustomRate: isCashierCustom,
               foreignStatus: row.foreignStatus,
@@ -1011,6 +1028,7 @@ export default function CashierTransactionPage() {
                     setDiscount(Math.min(15, Math.max(0, parseFloat(discountInput) || 0)))
                     setShowFeeDialog(false)
                   } else if (e.key === 'Escape') {
+                    setFeeOverrideType(''); setFeeOverrideReason(''); setCardNumber('')
                     setShowFeeDialog(false)
                   }
                 }}
@@ -1030,10 +1048,58 @@ export default function CashierTransactionPage() {
                     setDiscount(Math.min(15, Math.max(0, parseFloat(discountInput) || 0)))
                     setShowFeeDialog(false)
                   } else if (e.key === 'Escape') {
+                    setFeeOverrideType(''); setFeeOverrideReason(''); setCardNumber('')
                     setShowFeeDialog(false)
                   }
                 }}
               />
+            </div>
+            {/* FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override) — engedély-mátrix. */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Kezelési díj módosítása</label>
+              <select
+                value={feeOverrideType}
+                onChange={(e) => {
+                  const v = e.target.value as typeof feeOverrideType
+                  setFeeOverrideType(v)
+                  if (!v) { setFeeOverrideReason(''); setCardNumber('') }
+                }}
+                className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white"
+              >
+                <option value="">Nincs módosítás</option>
+                <option value="HALF">Felezés</option>
+                <option value="WAIVED">Elengedés</option>
+                {isDirectorUser && <option value="SPECIAL">Speciális (egyedi összeg — vezetői)</option>}
+              </select>
+              {feeOverrideType && (
+                <select
+                  value={feeOverrideReason}
+                  onChange={(e) => {
+                    const r = e.target.value as typeof feeOverrideReason
+                    setFeeOverrideReason(r)
+                    if (r !== 'CUSTOMER_CARD') setCardNumber('')
+                  }}
+                  className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white"
+                >
+                  <option value="">Jogcím választása...</option>
+                  {isDirectorUser && <option value="DIRECTOR_APPROVAL">Ügyvezetői / főértéktárosi jóváhagyás</option>}
+                  {feeOverrideType !== 'SPECIAL' && <option value="CUSTOMER_CARD">Ügyfélkártya</option>}
+                  {feeOverrideType !== 'SPECIAL' && <option value="PROMOTION">Akció</option>}
+                </select>
+              )}
+              {feeOverrideType && feeOverrideReason === 'CUSTOMER_CARD' && (
+                <input
+                  type="text"
+                  value={cardNumber}
+                  placeholder="Ügyfélkártya száma..."
+                  maxLength={100}
+                  onChange={(e) => setCardNumber(e.target.value)}
+                  className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white font-mono"
+                />
+              )}
+              {feeOverrideType && feeOverrideType !== 'SPECIAL' && (
+                <p className="text-xs text-gray-500">A díjat a szerver számolja (felezés = fele, elengedés = 0). A fenti díj-mező csak speciális (egyedi) díjnál érvényes.</p>
+              )}
             </div>
             <div className="flex gap-2">
               <button
@@ -1048,7 +1114,12 @@ export default function CashierTransactionPage() {
                 {t('transactions.alkalmaz')}
               </button>
               <button
-                onClick={() => setShowFeeDialog(false)}
+                onClick={() => {
+                  // FK-KEZDÍJ (2026-06-02): Mégse → az override-draft NEM marad érvényben (biztonságos:
+                  // a nem véglegesített díj-módosítás eldobódik).
+                  setFeeOverrideType(''); setFeeOverrideReason(''); setCardNumber('')
+                  setShowFeeDialog(false)
+                }}
                 className="flex-1 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 {t('transactions.megse')}

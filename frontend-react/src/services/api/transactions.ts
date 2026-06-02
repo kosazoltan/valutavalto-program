@@ -193,6 +193,10 @@ export interface BuyRequest {
   currencyAmount: number
   customExchangeRate?: number
   handlingFee?: number
+  // FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override) — a szerver validálja az engedély-mátrixot.
+  handlingFeeOverrideType?: 'NONE' | 'HALF' | 'WAIVED' | 'SPECIAL'
+  handlingFeeOverrideReason?: 'DIRECTOR_APPROVAL' | 'CUSTOMER_CARD' | 'PROMOTION'
+  customerCardNumber?: string
   discountPercent?: number
   customerId?: string | number
   customerName?: string
@@ -228,6 +232,10 @@ export interface SellRequest {
   currencyAmount: number
   customExchangeRate?: number
   handlingFee?: number
+  // FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override) — a szerver validálja az engedély-mátrixot.
+  handlingFeeOverrideType?: 'NONE' | 'HALF' | 'WAIVED' | 'SPECIAL'
+  handlingFeeOverrideReason?: 'DIRECTOR_APPROVAL' | 'CUSTOMER_CARD' | 'PROMOTION'
+  customerCardNumber?: string
   discountPercent?: number
   customerId?: string | number
   customerName?: string

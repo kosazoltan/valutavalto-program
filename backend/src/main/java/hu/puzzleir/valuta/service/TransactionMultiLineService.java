@@ -42,6 +42,7 @@ public class TransactionMultiLineService {
     private final ExchangeRateService exchangeRateService;
     private final ReceiptSequenceService receiptSequenceService;
     private final HandlingFeeCalculator handlingFeeCalculator;
+    private final HandlingFeeOverrideService handlingFeeOverrideService;
     private final AmlService amlService;
     private final CashBalanceRepository cashBalanceRepository;
     private final DailySessionService dailySessionService;
@@ -50,6 +51,19 @@ public class TransactionMultiLineService {
     private final TransactionCalculationService calculationService;
     private final TransactionLineRepository transactionLineRepository;
     private final TransactionValidationService transactionValidationService;
+
+    /**
+     * FK-KEZDÍJ (2026-06-02): a kezelési díj override jogosultság-ellenőrzéséhez a bejelentkezett
+     * dolgozó operatív szerepköre (activeRole, fallback currentRole) — nem a kliensből.
+     */
+    private String currentWorkerRoleForOverride() {
+        try {
+            String active = SecurityUtils.getActiveOperationalRole();
+            return (active != null && !active.isBlank()) ? active : SecurityUtils.getCurrentRole();
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     /**
      * Multi-line vetel tranzakcio.
@@ -120,8 +134,15 @@ public class TransactionMultiLineService {
         BigDecimal hufAfterDiscount = calculationService.applyBuyDiscount(totalHuf, request.getDiscountPercent());
 
         // Kezelesi dij
-        BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
+        BigDecimal handlingFeeBase = handlingFeeCalculator.calculate(
                 hufAfterDiscount, TransactionType.BUY, request.getHandlingFee());
+        // FK-KEZDÍJ (2026-06-02): kezelési díj override AUTORITATÍV validálása a multi-line ágon is.
+        BigDecimal serverHandlingFee = (request.getHandlingFeeOverrideType() != null
+                && request.getHandlingFeeOverrideType() != hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)
+                ? handlingFeeOverrideService.resolveOverride(
+                        handlingFeeBase, request.getHandlingFeeOverrideType(), request.getHandlingFeeOverrideReason(),
+                        request.getCustomerCardNumber(), request.getHandlingFee(), currentWorkerRoleForOverride())
+                : handlingFeeBase;
         BigDecimal grossAmount = handlingFeeCalculator.calculateBuyGross(hufAfterDiscount, serverHandlingFee);
 
         // Magyar 5 Ft kerekites
@@ -202,6 +223,10 @@ public class TransactionMultiLineService {
                 .exchangeRate(avgRate)
                 .hufAmount(payableAmount)
                 .handlingFee(serverHandlingFee)
+                .handlingFeeBase(handlingFeeBase)
+                .handlingFeeOverrideType(request.getHandlingFeeOverrideType())
+                .handlingFeeOverrideReason(request.getHandlingFeeOverrideReason())
+                .customerCardNumber(request.getCustomerCardNumber())
                 .discountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO)
                 .discountAmount(discountAmount)
                 .roundingAmount(roundingDifference)
@@ -329,8 +354,15 @@ public class TransactionMultiLineService {
         BigDecimal hufAfterDiscount = calculationService.applySellDiscount(totalHuf, request.getDiscountPercent());
 
         // Kezelesi dij
-        BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
+        BigDecimal handlingFeeBase = handlingFeeCalculator.calculate(
                 hufAfterDiscount, TransactionType.SELL, request.getHandlingFee());
+        // FK-KEZDÍJ (2026-06-02): kezelési díj override AUTORITATÍV validálása a multi-line ágon is.
+        BigDecimal serverHandlingFee = (request.getHandlingFeeOverrideType() != null
+                && request.getHandlingFeeOverrideType() != hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)
+                ? handlingFeeOverrideService.resolveOverride(
+                        handlingFeeBase, request.getHandlingFeeOverrideType(), request.getHandlingFeeOverrideReason(),
+                        request.getCustomerCardNumber(), request.getHandlingFee(), currentWorkerRoleForOverride())
+                : handlingFeeBase;
         BigDecimal grossAmount = handlingFeeCalculator.calculateSellGross(hufAfterDiscount, serverHandlingFee);
 
         // Magyar 5 Ft kerekites
@@ -393,6 +425,10 @@ public class TransactionMultiLineService {
                 .exchangeRate(avgRate)
                 .hufAmount(payableAmount)
                 .handlingFee(serverHandlingFee)
+                .handlingFeeBase(handlingFeeBase)
+                .handlingFeeOverrideType(request.getHandlingFeeOverrideType())
+                .handlingFeeOverrideReason(request.getHandlingFeeOverrideReason())
+                .customerCardNumber(request.getCustomerCardNumber())
                 .discountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO)
                 .discountAmount(discountAmount)
                 .roundingAmount(roundingDifference)
