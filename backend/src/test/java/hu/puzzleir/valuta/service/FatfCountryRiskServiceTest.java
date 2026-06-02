@@ -61,6 +61,26 @@ class FatfCountryRiskServiceTest {
     }
 
     @Test
+    @DisplayName("FK-FATF: a NATIONALITY-szótár (V286) magyar állampolgárság-MELLÉKNEVEI is illeszkednek")
+    void nationalityAdjectives() {
+        // A CustomerPanel a name_hu melléknevet küldi (pl. "Iráni"), NEM az ország-nevet —
+        // ezek korábban NONE-t adtak → a FATF-kockázat csendben elveszett.
+        assertThat(service.classify("Iráni")).isEqualTo(FatfTier.TIER_1A_COUNTERMEASURE);
+        assertThat(service.classify("Észak-koreai")).isEqualTo(FatfTier.TIER_1A_COUNTERMEASURE);
+        assertThat(service.classify("Szíriai")).isEqualTo(FatfTier.TIER_2_INCREASED_MONITORING);
+        assertThat(service.classify("Török")).isEqualTo(FatfTier.TIER_2_INCREASED_MONITORING);
+        assertThat(service.classify("Horvát")).isEqualTo(FatfTier.TIER_2_INCREASED_MONITORING);
+        assertThat(service.classify("Vietnámi")).isEqualTo(FatfTier.TIER_2_INCREASED_MONITORING);
+        assertThat(service.classify("Nigériai")).isEqualTo(FatfTier.TIER_2_INCREASED_MONITORING);
+        assertThat(service.classify("Kenyai")).isEqualTo(FatfTier.TIER_2_INCREASED_MONITORING);
+        assertThat(service.classify("Fülöp-szigeteki")).isEqualTo(FatfTier.TIER_2_INCREASED_MONITORING);
+        assertThat(service.classify("Dél-afrikai")).isEqualTo(FatfTier.TIER_2_INCREASED_MONITORING);
+        assertThat(service.classify("Bolgár")).isEqualTo(FatfTier.TIER_2_INCREASED_MONITORING);
+        // Magyar (a leggyakoribb) NEM listás → NONE
+        assertThat(service.classify("Magyar")).isEqualTo(FatfTier.NONE);
+    }
+
+    @Test
     @DisplayName("Null / üres input → NONE")
     void blank() {
         assertThat(service.classify(null)).isEqualTo(FatfTier.NONE);
