@@ -190,8 +190,10 @@ public class ShipmentService {
         existing.setDeliveryDate(updated.getDeliveryDate());
         existing.setNotes(updated.getNotes());
         // FK02: a szállító + plombaszám módosítás is perzisztáljon szerkesztéskor.
-        existing.setCarrierName(updated.getCarrierName());
-        existing.setSealNumber(updated.getSealNumber());
+        // Trim (Sourcery bug_risk): a create flow trimmel, az update-en is normalizáljunk, hogy
+        // ne tároljunk véletlen whitespace-t (search/equality konzisztencia create↔update közt).
+        existing.setCarrierName(updated.getCarrierName() != null ? updated.getCarrierName().trim() : null);
+        existing.setSealNumber(updated.getSealNumber() != null ? updated.getSealNumber().trim() : null);
 
         // Codex P1 + P2 kompromisszum: csak akkor futtatjuk az autofill-t, ha a kliens
         // ÚJ items listát küldött (= currency/amount változás). Notes/date-only update

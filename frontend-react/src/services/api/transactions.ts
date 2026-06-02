@@ -1117,8 +1117,10 @@ export const shipmentRequestApi = {
       deliveryDate: request.deliveryDate || undefined,
       notes: request.notes?.trim() || undefined,
       // FK02 (átadás-átvétel): a backend ShipmentRequest entity @NotBlank/@Pattern validálja.
-      carrierName: request.carrierName,
-      sealNumber: request.sealNumber,
+      // Trim itt is (mint a notes), hogy MINDEN hívó egységesen normalizált értéket küldjön
+      // (Sourcery/Copilot): a ShipmentNewPage már trimmel, de más/jövőbeli hívó ne csússzon el.
+      carrierName: request.carrierName.trim(),
+      sealNumber: request.sealNumber.trim(),
       items: request.items.map((item) => ({
         currencyId: Number(item.currencyId),
         requestedAmount: item.requestedAmount,
