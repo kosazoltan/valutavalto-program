@@ -184,6 +184,9 @@ export default function CashierTransactionPage() {
 
   // Auth store for receipt data
   const worker = useAuthStore(s => s.worker)
+  // FK-KEZDÍJ (2026-06-02): a bejelentkezett dolgozó ügyvezető/főértéktáros-e — csak ekkor látszik
+  // a SPECIAL (egyedi díj) + a "vezetői jóváhagyás" jogcím (a szerver amúgy is validál, ez UX-gate).
+  const isDirectorUser = useAuthStore(s => s.hasCanonicalRole)(['ugyvezeto', 'foertektar', 'admin'])
 
   // Refs for keyboard navigation
   const currencyRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -1064,7 +1067,7 @@ export default function CashierTransactionPage() {
                 <option value="">Nincs módosítás</option>
                 <option value="HALF">Felezés</option>
                 <option value="WAIVED">Elengedés</option>
-                <option value="SPECIAL">Speciális (egyedi összeg — vezetői)</option>
+                {isDirectorUser && <option value="SPECIAL">Speciális (egyedi összeg — vezetői)</option>}
               </select>
               {feeOverrideType && (
                 <select
@@ -1077,7 +1080,7 @@ export default function CashierTransactionPage() {
                   className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white"
                 >
                   <option value="">Jogcím választása...</option>
-                  <option value="DIRECTOR_APPROVAL">Ügyvezetői / főértéktárosi jóváhagyás</option>
+                  {isDirectorUser && <option value="DIRECTOR_APPROVAL">Ügyvezetői / főértéktárosi jóváhagyás</option>}
                   {feeOverrideType !== 'SPECIAL' && <option value="CUSTOMER_CARD">Ügyfélkártya</option>}
                   {feeOverrideType !== 'SPECIAL' && <option value="PROMOTION">Akció</option>}
                 </select>

@@ -85,6 +85,9 @@ class TransactionServiceMultiLineTest {
     private HandlingFeeCalculator handlingFeeCalculator;
 
     @Mock
+    private HandlingFeeOverrideService handlingFeeOverrideService;
+
+    @Mock
     private AmlService amlService;
 
     @Mock
@@ -175,6 +178,9 @@ class TransactionServiceMultiLineTest {
         when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
         when(handlingFeeCalculator.calculateBuyGross(any(), any())).thenAnswer(inv -> inv.getArgument(0));
         when(handlingFeeCalculator.calculateSellGross(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        // FK-KEZDÍJ (2026-06-02): override pass-through (NONE) — a base díjat adja vissza.
+        when(handlingFeeOverrideService.resolveOverride(any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> inv.getArgument(0));
 
         // CalculationService mock — rate resolve + discount
         when(calculationService.resolveBuyRate(any(), any(), any()))
