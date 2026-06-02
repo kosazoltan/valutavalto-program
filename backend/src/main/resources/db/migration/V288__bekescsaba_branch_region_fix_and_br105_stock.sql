@@ -104,3 +104,35 @@ BEGIN
     RAISE NOTICE 'V288/B: BR105 cash_balance-init — % valutanem 0 egyenleggel (sibling=%).',
         v_inserted, COALESCE(v_sibling_id::TEXT, '(fallback alapkészlet)');
 END $$;
+
+-- ============ C) BR105 vault_territory_id igazítása a Békéscsaba területhez ============
+-- A `getAllStock()` territory-szűrése (territory-scoped role, pl. Békéscsaba értéktáros) a
+-- `branch.vault_territory_id`-t használja (`findByCompanyIdAndVaultTerritoryId`). Ha a Békéscsaba
+-- branch-eknek van vault_territory_id-juk (pl. prod-ban runtime-ban beállítva), BR105 is UGYANAZT
+-- kapja (a Békéscsaba VAULT, BR075, a territory-horgony), különben egy territory-scoped Békéscsaba
+-- user KIHAGYNÁ BR105-öt a cash_balance ellenére is (Codex P1, PR #1001).
+-- NULL-safe + idempotens: csak akkor ír, ha BR105.vault_territory_id NULL ÉS van non-NULL sibling.
+-- Ha minden Békéscsaba branch vault_territory_id-ja NULL (jelenlegi seed-állapot), ez NO-OP —
+-- a központi user territoryFilter=null → BR105 a cash_balance révén (B) így is látszik.
+UPDATE branch
+   SET vault_territory_id = (
+        SELECT b2.vault_territory_id
+          FROM branch b2
+         WHERE b2.company_id = branch.company_id
+           AND b2.code IN ('BR075','BR076','BR074','BR071','BR077','BR079')
+           AND b2.vault_territory_id IS NOT NULL
+         ORDER BY CASE b2.code
+                    WHEN 'BR075' THEN 1 WHEN 'BR076' THEN 2 WHEN 'BR074' THEN 3
+                    WHEN 'BR071' THEN 4 WHEN 'BR077' THEN 5 ELSE 6 END
+         LIMIT 1
+       ),
+       updated_at = NOW()
+ WHERE company_id = (SELECT id FROM company WHERE code = 'EBC')
+   AND code = 'BR105'
+   AND vault_territory_id IS NULL
+   AND EXISTS (
+        SELECT 1 FROM branch b3
+         WHERE b3.company_id = branch.company_id
+           AND b3.code IN ('BR075','BR076','BR074','BR071','BR077','BR079')
+           AND b3.vault_territory_id IS NOT NULL
+   );
