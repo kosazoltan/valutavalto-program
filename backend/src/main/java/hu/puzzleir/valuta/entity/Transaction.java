@@ -367,6 +367,21 @@ public class Transaction {
     @Column(name = "handling_fee_type", length = 20)
     private HandlingFeeType handlingFeeType;
 
+    // ============ FK-KEZDÍJ (V287, 2026-06-02): kezelési díj módosítás (override) audit ============
+    @Enumerated(EnumType.STRING)
+    @Column(name = "handling_fee_override_type", length = 20)
+    private HandlingFeeOverrideType handlingFeeOverrideType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "handling_fee_override_reason", length = 30)
+    private HandlingFeeOverrideReason handlingFeeOverrideReason;
+
+    @Column(name = "handling_fee_base", precision = 15, scale = 2)
+    private BigDecimal handlingFeeBase;
+
+    @Column(name = "customer_card_number", length = 100)
+    private String customerCardNumber;
+
     /**
      * Kezdojegy osszeg
      */

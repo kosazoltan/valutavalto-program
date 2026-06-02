@@ -38,6 +38,12 @@ public class SellRequestDto {
     @DecimalMin(value = "0", message = "A kezelési díj nem lehet negatív")
     private BigDecimal handlingFee;
 
+    // FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override) — lásd HandlingFeeOverrideService.
+    private hu.puzzleir.valuta.entity.HandlingFeeOverrideType handlingFeeOverrideType;
+    private hu.puzzleir.valuta.entity.HandlingFeeOverrideReason handlingFeeOverrideReason;
+    @Size(max = 100, message = "A kártyaszám max 100 karakter")
+    private String customerCardNumber;
+
     @DecimalMin(value = "0.0001", message = "Az egyedi árfolyamnak pozitívnak kell lennie")
     private BigDecimal customExchangeRate;
 

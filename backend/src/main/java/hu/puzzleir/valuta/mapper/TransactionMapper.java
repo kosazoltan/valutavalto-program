@@ -95,6 +95,10 @@ public class TransactionMapper {
                 .currencyAmount(dto.getCurrencyAmount())
                 .discountPercent(dto.getDiscountPercent())
                 .handlingFee(dto.getHandlingFee())
+                // FK-KEZDÍJ (2026-06-02): kezelési díj override
+                .handlingFeeOverrideType(dto.getHandlingFeeOverrideType())
+                .handlingFeeOverrideReason(dto.getHandlingFeeOverrideReason())
+                .customerCardNumber(dto.getCustomerCardNumber())
                 .customExchangeRate(dto.getCustomExchangeRate())
                 .customerId(dto.getCustomerId())
                 .customerName(dto.getCustomerName())
@@ -133,6 +137,10 @@ public class TransactionMapper {
                 .currencyAmount(dto.getCurrencyAmount())
                 .discountPercent(dto.getDiscountPercent())
                 .handlingFee(dto.getHandlingFee())
+                // FK-KEZDÍJ (2026-06-02): kezelési díj override
+                .handlingFeeOverrideType(dto.getHandlingFeeOverrideType())
+                .handlingFeeOverrideReason(dto.getHandlingFeeOverrideReason())
+                .customerCardNumber(dto.getCustomerCardNumber())
                 .customExchangeRate(dto.getCustomExchangeRate())
                 .customerId(dto.getCustomerId())
                 .customerName(dto.getCustomerName())
