@@ -7,6 +7,19 @@ export interface ElectronCachedRate {
   sell_rate: number
   unit: number
   updated_at: string
+  // FK-SÁVOS (2026-06-02): a sávos (limit) árfolyammezők. A SQLite cached_rates tárolja és az IPC
+  // (SELECT *) visszaadja, de eddig az interface + a mapper eldobta → a pénztári képernyő nem látta
+  // a sávokat Electron cache útvonalon. (official_rate + limit1/2/3 amount/buy/sell.)
+  official_rate?: number | null
+  limit1_amount?: number | null
+  limit1_buy_rate?: number | null
+  limit1_sell_rate?: number | null
+  limit2_amount?: number | null
+  limit2_buy_rate?: number | null
+  limit2_sell_rate?: number | null
+  limit3_amount?: number | null
+  limit3_buy_rate?: number | null
+  limit3_sell_rate?: number | null
 }
 
 export interface PendingBuySellInput {
@@ -223,6 +236,18 @@ export function mapCachedRatesToExchangeRates(
       validTime: rate.updated_at ?? '',
       baseBuyRate: rate.buy_rate,
       baseSellRate: rate.sell_rate,
+      // FK-SÁVOS (2026-06-02): a sávos árfolyam-mezők átadása, hogy a getBandForAmount() Electron
+      // cache útvonalon is megkapja a valós sávokat (null → undefined a típus-kompatibilitásért).
+      officialRate: rate.official_rate ?? undefined,
+      limit1Amount: rate.limit1_amount ?? undefined,
+      limit1BuyRate: rate.limit1_buy_rate ?? undefined,
+      limit1SellRate: rate.limit1_sell_rate ?? undefined,
+      limit2Amount: rate.limit2_amount ?? undefined,
+      limit2BuyRate: rate.limit2_buy_rate ?? undefined,
+      limit2SellRate: rate.limit2_sell_rate ?? undefined,
+      limit3Amount: rate.limit3_amount ?? undefined,
+      limit3BuyRate: rate.limit3_buy_rate ?? undefined,
+      limit3SellRate: rate.limit3_sell_rate ?? undefined,
       active: true,
       createdAt: rate.updated_at,
     }
