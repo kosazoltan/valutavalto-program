@@ -98,4 +98,30 @@ describe('CashierStocksPage (FK-007/008)', () => {
     expect(scope.getByText('EUR')).toBeInTheDocument()
     expect(scope.getByText(/1[\s ]?910/)).toBeInTheDocument()
   })
+
+  it('FK-007: a KÉSZLETSOR NÉLKÜLI értéktár-kártya is a teljes aktív valutalistát mutatja (nem "0 valuta")', async () => {
+    // Az értéktárnak EGYETLEN /inventory/stock sora SINCS — csak a BRANCHES-ben szerepel isVault:true-val.
+    // Korábban üres ("0 valuta") kártyaként jelent meg; mostantól a központi törzsből kapja a 0-soros listát.
+    mocks.apiGet.mockResolvedValue({
+      data: [{ id: 's1', branchName: 'Baja Tesco', currencyCode: 'EUR', currentBalance: 1910 }],
+    })
+    mocks.branchListActive.mockResolvedValue([
+      { name: 'Baja Tesco', region: 'SZEKSZARD', isVault: false },
+      { name: 'Szekszard Ertektar', region: 'SZEKSZARD', isVault: true },
+    ])
+
+    render(<CashierStocksPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Szekszard Ertektar')).toBeInTheDocument()
+    })
+
+    const card = screen.getByText('Szekszard Ertektar').closest('[data-testid="branch-card"]') as HTMLElement
+    const scope = within(card)
+    // Mind a 3 aktív valuta megjelenik a kártyán 0-val, és a fejléc a darabszámot (3) mutatja, nem 0-t.
+    expect(scope.getByText('HUF')).toBeInTheDocument()
+    expect(scope.getByText('AUD')).toBeInTheDocument()
+    expect(scope.getByText('EUR')).toBeInTheDocument()
+    expect(scope.getByText(`${MASTER_CURRENCIES.length} valuta`)).toBeInTheDocument()
+  })
 })
