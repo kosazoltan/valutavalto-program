@@ -53,6 +53,7 @@ class InventoryServiceTest {
     @Mock private CashBalanceRepository cashBalanceRepository;
     @Mock private AuditLogRepository auditLogRepository;
     @Mock private ExchangeRateRepository exchangeRateRepository;
+    @Mock private CurrencyStockRepository currencyStockRepository;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID OTHER_COMPANY_ID = UUID.randomUUID();
@@ -666,5 +667,103 @@ class InventoryServiceTest {
         m.setMovementDate(LocalDate.now());
         m.setMovementTime(LocalTime.now());
         return m;
+    }
+
+    // ============ FK-ÉRTÉKTÁR (2026-06-02): getVaultStockFlow territory-scoping ============
+
+    @Test
+    @DisplayName("getVaultStockFlow: ERTEKTAR (territory-scoped) csak a SAJÁT értéktára készletét látja")
+    void getVaultStockFlow_ertektar_onlyOwnTerritoryVault() {
+        // Két vault branch külön területen: branch=terület 1, branch2=terület 2.
+        branch.setIsVault(true);
+        branch.setVaultTerritoryId(1);
+        branch2.setIsVault(true);
+        branch2.setVaultTerritoryId(2);
+
+        // ERTEKTAR user a branch-en (terület 1) → territoryFilter = 1.
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(BRANCH_ID);
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+
+        when(branchRepository.findByCompanyIdAndIsVaultTrueAndIsActiveTrue(COMPANY_ID))
+                .thenReturn(List.of(branch, branch2));
+
+        // KÓDBÁZIS-KONVENCIÓ: VAULT currency_stock.entity_id = vault_territory.id (::TEXT), NEM branch UUID.
+        CurrencyStock ownStock = CurrencyStock.builder()
+                .entityType("VAULT").entityId("1")   // saját terület (territoryFilter = 1)
+                .currencyCode("EUR").quantity(new BigDecimal("1000")).build();
+        CurrencyStock otherStock = CurrencyStock.builder()
+                .entityType("VAULT").entityId("2")   // másik terület
+                .currencyCode("EUR").quantity(new BigDecimal("5000")).build();
+        when(currencyStockRepository.findByCompanyIdAndEntityType(COMPANY_ID, "VAULT"))
+                .thenReturn(List.of(ownStock, otherStock));
+
+        when(movementRepository.findCompletedByCompanyIdAndDate(eq(COMPANY_ID), any()))
+                .thenReturn(List.of());
+        when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eurCurrency));
+
+        var result = inventoryService.getVaultStockFlow();
+
+        // Csak a saját terület (entity_id="1") EUR sora — a másik terület készlete NEM szivárog ki.
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getCurrencyCode()).isEqualTo("EUR");
+        assertThat(result.get(0).getClosing()).isEqualByComparingTo("1000");
+    }
+
+    @Test
+    @DisplayName("getVaultStockFlow: ERTEKTAR vault_territory NÉLKÜL → fail-closed (üres lista)")
+    void getVaultStockFlow_ertektar_noTerritory_failClosed() {
+        // ERTEKTAR user, de a branch-nek NINCS vault_territory_id-je → territoryFilter null.
+        branch.setVaultTerritoryId(null);
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(BRANCH_ID);
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        // Még ha lenne is VAULT készlet, NEM szabad visszaadni (fail-closed).
+        CurrencyStock anyStock = CurrencyStock.builder()
+                .entityType("VAULT").entityId("1").currencyCode("EUR").quantity(new BigDecimal("9999")).build();
+        when(currencyStockRepository.findByCompanyIdAndEntityType(COMPANY_ID, "VAULT"))
+                .thenReturn(List.of(anyStock));
+
+        var result = inventoryService.getVaultStockFlow();
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("getVaultStockFlow: központi role (territoryFilter null) minden értéktár készletét látja")
+    void getVaultStockFlow_centralRole_seesAllVaults() {
+        branch.setIsVault(true);
+        branch.setVaultTerritoryId(1);
+        branch2.setIsVault(true);
+        branch2.setVaultTerritoryId(2);
+
+        // UGYVEZETO NEM territory-scoped → territoryFilter null → nincs szűrés.
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ugyvezeto");
+        securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ugyvezeto");
+
+        when(branchRepository.findByCompanyIdAndIsVaultTrueAndIsActiveTrue(COMPANY_ID))
+                .thenReturn(List.of(branch, branch2));
+
+        CurrencyStock s1 = CurrencyStock.builder()
+                .entityType("VAULT").entityId(BRANCH_ID.toString())
+                .currencyCode("EUR").quantity(new BigDecimal("1000")).build();
+        CurrencyStock s2 = CurrencyStock.builder()
+                .entityType("VAULT").entityId(BRANCH_ID_2.toString())
+                .currencyCode("USD").quantity(new BigDecimal("5000")).build();
+        when(currencyStockRepository.findByCompanyIdAndEntityType(COMPANY_ID, "VAULT"))
+                .thenReturn(List.of(s1, s2));
+
+        when(movementRepository.findCompletedByCompanyIdAndDate(eq(COMPANY_ID), any()))
+                .thenReturn(List.of());
+        when(currencyRepository.findByCode(anyString())).thenReturn(Optional.empty());
+
+        var result = inventoryService.getVaultStockFlow();
+
+        // Mindkét értéktár készlete látszik.
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(r -> r.getCurrencyCode())
+                .containsExactlyInAnyOrder("EUR", "USD");
     }
 }

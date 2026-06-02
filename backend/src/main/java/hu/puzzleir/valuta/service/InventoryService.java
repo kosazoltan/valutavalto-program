@@ -414,6 +414,24 @@ public class InventoryService {
      * a meglévő endpoint flow-t. Smoke teszt v2.5.0-nál ezt elmulasztotta — most
      * try/catch + log.warn helyettesít.</p>
      */
+    /**
+     * FK-ÉRTÉKTÁR (2026-06-02): az aktuális role territory-scoped-e (ertektar/irodavezeto stb.).
+     * A {@link #getCurrentTerritoryFilterOrNull()} null-t ad vissza KÖZPONTI role-ra ÉS territory-
+     * scoped role-ra is, ha nincs vault_territory — ez a metódus a kettő megkülönböztetésére kell
+     * (fail-closed döntéshez). Defenzív: exception esetén false (nincs téves szűkítés a teszt/
+     * scheduler kontextusban).
+     */
+    private boolean isCurrentRoleTerritoryScoped() {
+        try {
+            String activeRole = hu.puzzleir.valuta.security.SecurityUtils.getActiveOperationalRole();
+            String currentRole = hu.puzzleir.valuta.security.SecurityUtils.getCurrentRole();
+            String role = activeRole != null ? activeRole : currentRole;
+            return role != null && TERRITORY_SCOPED_ROLES.contains(role);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private Integer getCurrentTerritoryFilterOrNull() {
         try {
             String activeRole = hu.puzzleir.valuta.security.SecurityUtils.getActiveOperationalRole();
@@ -535,10 +553,37 @@ public class InventoryService {
 
         var stocks = currencyStockRepository.findByCompanyIdAndEntityType(companyId, "VAULT");
 
-        // Vault branch-ek (csak `is_vault = TRUE` aktiv fiokok)
+        // FK-ÉRTÉKTÁR (2026-06-02): territory-scoped role (pl. ERTEKTAR) csak a SAJÁT
+        // vault_territory készletét látja. Központi role (foertektar/ugyvezeto/admin) → minden.
+        boolean territoryScoped = isCurrentRoleTerritoryScoped();
+        Integer territoryFilter = getCurrentTerritoryFilterOrNull();
+
+        // FAIL-CLOSED (Codex/Copilot P1): ha a role territory-scoped, de nincs meghatározható
+        // vault_territory (nincs branch / branch.vault_territory_id NULL), NE mutassunk semmit —
+        // a felnyitott (null = minden) ág CSAK a központi role-oké. Így egy hibásan konfigurált
+        // értéktáros NEM lát országos vault készletet.
+        if (territoryScoped && territoryFilter == null) {
+            log.warn("getVaultStockFlow: territory-scoped role vault_territory NÉLKÜL → fail-closed (üres lista)");
+            return java.util.List.of();
+        }
+
+        // A currency_stock VAULT sorok entity_id-je a vault_territory.id (::TEXT) — NEM branch UUID
+        // (kódbázis-konvenció, lásd VaultStockFlowService). Territory-scoped role esetén csak a saját
+        // territory készlete (cross-territory NEM szivárog ki).
+        if (territoryScoped) {
+            String territoryEntityId = String.valueOf(territoryFilter);
+            stocks = stocks.stream()
+                    .filter(cs -> territoryEntityId.equals(cs.getEntityId()))
+                    .toList();
+        }
+
+        // Vault branch-ek a mai mozgás-aggregációhoz (a movements branch-eket referál) — territory-
+        // scoped esetén a saját terület vault-fiókjaira szűkítve.
         java.util.Set<UUID> vaultBranchIds = branchRepository
                 .findByCompanyIdAndIsVaultTrueAndIsActiveTrue(companyId)
-                .stream().map(Branch::getId)
+                .stream()
+                .filter(b -> !territoryScoped || territoryFilter.equals(b.getVaultTerritoryId()))
+                .map(Branch::getId)
                 .collect(java.util.stream.Collectors.toSet());
 
         // Mai RECEIVED mozgasok a cegen belul, vault-branch-et erinto reszek
