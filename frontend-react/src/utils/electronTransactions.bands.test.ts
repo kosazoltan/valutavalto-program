@@ -26,7 +26,7 @@ describe('mapCachedRatesToExchangeRates — sávos árfolyam mezők', () => {
       limit3_sell_rate: 408,
     }]
 
-    const [rate] = mapCachedRatesToExchangeRates(cached, [])
+    const rate = mapCachedRatesToExchangeRates(cached, [])[0]!
 
     expect(rate.officialRate).toBe(408)
     expect(rate.limit1Amount).toBe(100000)
@@ -53,7 +53,7 @@ describe('mapCachedRatesToExchangeRates — sávos árfolyam mezők', () => {
       limit1_sell_rate: null,
     }]
 
-    const [rate] = mapCachedRatesToExchangeRates(cached, [])
+    const rate = mapCachedRatesToExchangeRates(cached, [])[0]!
 
     expect(rate.officialRate).toBeUndefined()
     expect(rate.limit1Amount).toBeUndefined()
