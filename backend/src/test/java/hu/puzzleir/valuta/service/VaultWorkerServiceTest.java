@@ -80,7 +80,7 @@ class VaultWorkerServiceTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(workerRepository.existsByCompanyIdAndCode(eq(COMPANY_ID), any())).thenReturn(false);
         when(passwordEncoder.encode("Titok123")).thenReturn("$2a$12$hash");
-        when(workerRepository.save(any(Worker.class))).thenAnswer(inv -> {
+        when(workerRepository.saveAndFlush(any(Worker.class))).thenAnswer(inv -> {
             Worker w = inv.getArgument(0);
             w.setId(55L);
             return w;
@@ -93,7 +93,7 @@ class VaultWorkerServiceTest {
         assertThat(result.getName()).isEqualTo("Bali Henriett");
 
         org.mockito.ArgumentCaptor<Worker> captor = org.mockito.ArgumentCaptor.forClass(Worker.class);
-        verify(workerRepository).save(captor.capture());
+        verify(workerRepository).saveAndFlush(captor.capture());
         Worker saved = captor.getValue();
         assertThat(saved.getPasswordHash()).isEqualTo("$2a$12$hash");
         assertThat(saved.getBranch().getId()).isEqualTo(BRANCH_ID);
@@ -113,7 +113,7 @@ class VaultWorkerServiceTest {
                 new VaultWorkerCreateRequestDto("Bali Henriett", "Titok123", "Masik456")))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("nem egyezik");
-        verify(workerRepository, never()).save(any());
+        verify(workerRepository, never()).saveAndFlush(any());
         verify(workerRoleService, never()).assignRole(any(), any());
     }
 
@@ -125,6 +125,6 @@ class VaultWorkerServiceTest {
                 new VaultWorkerCreateRequestDto("Bali Henriett", "Titok123", "Titok123")))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("értéktár");
-        verify(workerRepository, never()).save(any());
+        verify(workerRepository, never()).saveAndFlush(any());
     }
 }

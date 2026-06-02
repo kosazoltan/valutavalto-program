@@ -71,26 +71,43 @@ public class VaultWorkerService {
             throw new ValidationException("Az iroda nem tartozik ehhez a céghez!");
         }
 
-        String code = generateUniqueCode(companyId);
+        String hashedPassword = passwordEncoder.encode(dto.getPassword());
+        String name = dto.getName().trim();
 
-        Worker worker = Worker.builder()
-                .company(company)
-                .code(code)
-                .name(dto.getName().trim())
-                .passwordHash(passwordEncoder.encode(dto.getPassword()))
-                .role(WorkerRole.CASHIER) // legacy enum; a tényleges jogosultság a canonical ertektar role
-                .branch(branch)
-                .active(true)
-                .googleLoginEnabled(false)
-                .sharedAccount(false)
-                .passwordChangedAt(LocalDateTime.now())
-                .build();
+        // Copilot: a kód-generálás + save NEM atomi → párhuzamos felvételnél a (company_id, code)
+        // unique constraint ütközhet. DataIntegrityViolationException esetén új kóddal újrapróbáljuk.
+        Worker saved = null;
+        org.springframework.dao.DataIntegrityViolationException lastError = null;
+        for (int attempt = 0; attempt < 5 && saved == null; attempt++) {
+            String code = generateUniqueCode(companyId);
+            Worker worker = Worker.builder()
+                    .company(company)
+                    .code(code)
+                    .name(name)
+                    .passwordHash(hashedPassword)
+                    .role(WorkerRole.CASHIER) // legacy enum; a tényleges jogosultság a canonical ertektar role
+                    .branch(branch)
+                    .active(true)
+                    .googleLoginEnabled(false)
+                    .sharedAccount(false)
+                    .passwordChangedAt(LocalDateTime.now())
+                    .build();
+            try {
+                saved = workerRepository.saveAndFlush(worker);
+            } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+                lastError = ex;
+                log.warn("VAULT_WORKER_CODE_COLLISION code={} attempt={} — újrapróbálkozás", code, attempt + 1);
+            }
+        }
+        if (saved == null) {
+            log.error("VAULT_WORKER_CREATE_FAILED 5 kód-ütközés után", lastError);
+            throw new ValidationException("Nem sikerült a munkatárs felvétele (kód-ütközés). Próbáld újra.");
+        }
 
-        Worker saved = workerRepository.save(worker);
         workerRoleService.assignRole(saved.getId(), "ertektar");
 
         log.info("VAULT_WORKER_CREATED code={} branchId={} byWorkerId={}",
-                code, branchId, SecurityUtils.getCurrentWorkerId());
+                saved.getCode(), branchId, SecurityUtils.getCurrentWorkerId());
 
         return VaultWorkerOptionDto.builder().id(saved.getId()).name(saved.getName()).build();
     }
