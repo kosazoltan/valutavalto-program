@@ -18,6 +18,7 @@ import {
   getPendingBankTransactions,
   getPendingStornos,
   markTransactionSynced,
+  markTransactionSyncError,
   markConversionSynced,
   markBankTransactionSynced,
   markStornoSynced,
@@ -815,6 +816,9 @@ export class SyncEngine {
         const errorMsg = err instanceof Error ? err.message : String(err);
         result.failed++;
         result.errors.push(`TX #${tx.id} (${tx.type} ${tx.currency_code}): ${errorMsg}`);
+        // FK-SYNC (2026-06-02): a hibát TARTÓSAN a pending soron is rögzítjük (nem csak in-memory +
+        // log), hogy a "Függőben" ragadt tételnél a felhasználó lássa, MIÉRT nem ment fel.
+        try { markTransactionSyncError(tx.id, errorMsg, new Date().toISOString()); } catch { /* best-effort */ }
         // PR #116: business-validation-error -> abandon (ne retry-oljon végtelenül)
         if (this.isBusinessValidationError(errorMsg)) {
           this.abandonedTxIds.add(tx.id);

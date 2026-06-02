@@ -94,7 +94,11 @@ export default function TransactionListPage() {
               discountAmount: 0,
               discountPercent: r.discount_percent != null ? Number(r.discount_percent) : 0,
               createdAt: (r as { created_at?: string }).created_at ?? new Date().toISOString(),
-            } as Transaction))
+              // FK-SYNC (2026-06-02): a tartós sync-hiba (ha a tétel feltöltése elbukott) — a UI
+              // megmutatja, MIÉRT ragadt "Függőben", hogy a tranzakció ne tűnjön el némán.
+              syncError: r.sync_error ?? undefined,
+              syncAttempts: r.sync_attempts ?? undefined,
+            } as Transaction & { syncError?: string; syncAttempts?: number }))
           } catch { /* SQLite nem elerheto */ }
         }
 
@@ -316,17 +320,35 @@ export default function TransactionListPage() {
                     </td>
                     <td>{tx.customerName || <span className="text-gray-400 italic">—</span>}</td>
                     <td>
-                      <span className={`px-1.5 py-0.5 text-xs rounded ${
-                        tx.status === 'COMPLETED'
-                          ? 'bg-green-100 text-green-700'
-                          : tx.status === 'REVERSED'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {tx.status === 'COMPLETED' ? 'Teljesítve'
-                          : tx.status === 'REVERSED' ? 'Sztornózva'
-                            : 'Függőben'}
-                      </span>
+                      {(() => {
+                        // FK-SYNC (2026-06-02): ha a függő tételnél van tartós sync-hiba, PIROS
+                        // "Feltöltés hibás" badge + tooltip az okkal — így a tétel nem tűnik el
+                        // némán, a felhasználó látja, miért nem ment fel.
+                        const syncErr = (tx as Transaction & { syncError?: string }).syncError
+                        if (tx.status === 'PENDING' && syncErr) {
+                          return (
+                            <span
+                              className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-700 cursor-help"
+                              title={`Feltöltés sikertelen: ${syncErr}`}
+                            >
+                              Feltöltés hibás
+                            </span>
+                          )
+                        }
+                        return (
+                          <span className={`px-1.5 py-0.5 text-xs rounded ${
+                            tx.status === 'COMPLETED'
+                              ? 'bg-green-100 text-green-700'
+                              : tx.status === 'REVERSED'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {tx.status === 'COMPLETED' ? 'Teljesítve'
+                              : tx.status === 'REVERSED' ? 'Sztornózva'
+                                : 'Függőben'}
+                          </span>
+                        )
+                      })()}
                     </td>
                     <td>
                       <div className="flex gap-1">
