@@ -39,7 +39,7 @@ import { isElectron } from '../../utils/electron'
 import { toast } from '../../components/ui/toaster'
 import type { PrintReceiptData } from '../../types/receipt'
 import { localIsoDate } from '../../utils/dateFormat'
-import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isTHBranch, isMainCashierBranch, type CurrencyLineInput } from './transferRules'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isTHBranch, isMainCashierBranch, validateCarrierSeal, type CurrencyLineInput } from './transferRules'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -271,26 +271,11 @@ export default function TransferPage() {
       }
     }
 
-    // (Req #7 / FR-1..3, NFR-1,2) Szállító és plombaszám KÖTELEZŐ + hossz/formátum (a backend
-    // Bean Validationnel egyezően: szállító max 128; plomba max 64, csak [A-Za-z0-9-/]).
-    if (!carrierName.trim()) {
-      setError('A szállító nevének megadása kötelező!')
-      return
-    }
-    if (carrierName.trim().length > 128) {
-      setError('A szállító neve legfeljebb 128 karakter lehet!')
-      return
-    }
-    if (!sealNumber.trim()) {
-      setError('A plombaszám megadása kötelező!')
-      return
-    }
-    if (sealNumber.trim().length > 64) {
-      setError('A plombaszám legfeljebb 64 karakter lehet!')
-      return
-    }
-    if (!/^[A-Za-z0-9\-/]+$/.test(sealNumber.trim())) {
-      setError('A plombaszám csak betűt, számot, kötőjelet és perjelet tartalmazhat!')
+    // (Req #7 / FR-1..3, NFR-1,2) Szállító és plombaszám KÖTELEZŐ + hossz/formátum — közös validátor
+    // (a MovementManagerrel és a backend Bean Validationnel egyező egyetlen forrás).
+    const carrierSealError = validateCarrierSeal(carrierName, sealNumber)
+    if (carrierSealError) {
+      setError(carrierSealError)
       return
     }
 
@@ -373,7 +358,7 @@ export default function TransferPage() {
         setPrintReceiptData({
           type: 'transfer',
           companyType: getCompanyType(worker),
-          receiptNumber: `LOCAL-${localIsoDate()}-${now.getHours()}${now.getMinutes()}`,
+          receiptNumber: `LOCAL-${localIsoDate()}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`,
           branchCode: worker?.branchCode ?? branch.code,
           cashierName: worker?.fullName ?? '',
           date: localIsoDate(),

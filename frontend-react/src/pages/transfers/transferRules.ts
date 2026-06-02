@@ -165,3 +165,19 @@ export function filterCurrenciesForType<T extends { code: string }>(currencies: 
   if (isHufOnlyTransferType(type)) return currencies.filter(c => c.code === 'HUF')
   return currencies
 }
+
+/**
+ * FR-1..3 / NFR-1,2 (átadás-átvétel): szállító + plombaszám kliens-oldali validációja, a backend
+ * Bean Validationnel (CreateTransferDto) EGYEZŐEN — egyetlen forrás, hogy a TransferPage és a
+ * MovementManager ne csússzon el egymástól (Sourcery). Hibaszöveget ad vissza, vagy null, ha érvényes.
+ */
+export function validateCarrierSeal(carrierName: string, sealNumber: string): string | null {
+  const carrier = carrierName.trim()
+  const seal = sealNumber.trim()
+  if (!carrier) return 'A szállító nevének megadása kötelező!'
+  if (carrier.length > 128) return 'A szállító neve legfeljebb 128 karakter lehet!'
+  if (!seal) return 'A plombaszám megadása kötelező!'
+  if (seal.length > 64) return 'A plombaszám legfeljebb 64 karakter lehet!'
+  if (!/^[A-Za-z0-9\-/]+$/.test(seal)) return 'A plombaszám csak betűt, számot, kötőjelet és perjelet tartalmazhat!'
+  return null
+}

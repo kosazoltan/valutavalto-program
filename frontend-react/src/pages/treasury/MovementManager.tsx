@@ -30,6 +30,7 @@ import {
   saveAndSyncPendingTransfer,
 } from '../../utils/electronTransactions'
 import { getLocalPendingTransfers } from '../../utils/localQueue'
+import { validateCarrierSeal } from '../transfers/transferRules'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
@@ -165,11 +166,8 @@ export default function MovementManager() {
     // FR-1..3 / NFR-1,2: szállító + plombaszám kötelező + hossz/formátum (a backend Bean Validationnel egyezően).
     const carrier = carrierName.trim()
     const seal = sealNumber.trim()
-    if (!carrier) { setFormError('A szállító nevének megadása kötelező!'); return }
-    if (carrier.length > 128) { setFormError('A szállító neve legfeljebb 128 karakter lehet!'); return }
-    if (!seal) { setFormError('A plombaszám megadása kötelező!'); return }
-    if (seal.length > 64) { setFormError('A plombaszám legfeljebb 64 karakter lehet!'); return }
-    if (!/^[A-Za-z0-9\-/]+$/.test(seal)) { setFormError('A plombaszám csak betűt, számot, kötőjelet és perjelet tartalmazhat!'); return }
+    const carrierSealError = validateCarrierSeal(carrierName, sealNumber)
+    if (carrierSealError) { setFormError(carrierSealError); return }
     try {
       const parsedAmount = parseFloat(amount)
       const selectedCurrency = currencies.find((currency) => currency.id === currencyId)
