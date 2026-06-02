@@ -61,6 +61,10 @@ export default function MovementManager() {
   const [currencyId, setCurrencyId] = useState<number>(0)
   const [amount, setAmount] = useState('')
   const [notes, setNotes] = useState('')
+  // FR-1..3 (átadás-átvétel): szállító neve + plombaszám — minden /transfers létrehozásnál kötelező.
+  const [carrierName, setCarrierName] = useState('')
+  const [sealNumber, setSealNumber] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
   // FK-013 follow-up (2026-06-01): a "Cél iroda" legördülő tartalma — a /branches/vault-counterparties
   // 3 csoportja (saját terület pénztárai / társ értéktárak / banki és speciális partnerek), mint a
   // ShipmentNewPage egységesített átadás-átvételében. A treasury dashboard értéktáros-kontextus.
@@ -157,6 +161,15 @@ export default function MovementManager() {
     // Codex P2: cél-iroda KÖTELEZŐ — különben (üres toBranchId) az offline-út rossz célhellyel
     // (targetBranchId=null, targetBranchCode='TREASURY') mentene, a backend-út pedig UUID-hibát dobna.
     if (!currencyId || !amount || !toBranchId) return
+    setFormError(null)
+    // FR-1..3 / NFR-1,2: szállító + plombaszám kötelező + hossz/formátum (a backend Bean Validationnel egyezően).
+    const carrier = carrierName.trim()
+    const seal = sealNumber.trim()
+    if (!carrier) { setFormError('A szállító nevének megadása kötelező!'); return }
+    if (carrier.length > 128) { setFormError('A szállító neve legfeljebb 128 karakter lehet!'); return }
+    if (!seal) { setFormError('A plombaszám megadása kötelező!'); return }
+    if (seal.length > 64) { setFormError('A plombaszám legfeljebb 64 karakter lehet!'); return }
+    if (!/^[A-Za-z0-9\-/]+$/.test(seal)) { setFormError('A plombaszám csak betűt, számot, kötőjelet és perjelet tartalmazhat!'); return }
     try {
       const parsedAmount = parseFloat(amount)
       const selectedCurrency = currencies.find((currency) => currency.id === currencyId)
@@ -182,6 +195,8 @@ export default function MovementManager() {
           transferType: movementType,
           denominations: null,
           note: notes || null,
+          carrierName: carrier,
+          sealNumber: seal,
         })
       } else {
         await transferApi.create({
@@ -190,16 +205,21 @@ export default function MovementManager() {
           amount: parsedAmount,
           transferType: movementType,
           notes: notes || undefined,
+          carrierName: carrier,
+          sealNumber: seal,
         })
       }
       setShowNewModal(false)
       setAmount('')
       setNotes('')
+      setCarrierName('')
+      setSealNumber('')
+      setFormError(null)
       void fetchData()
     } catch (err) {
       logger.error('MovementManager', 'Create movement error:', err)
     }
-  }, [toBranchId, currencyId, amount, movementType, notes, fetchData, currencies, electronQueueAvailable, vaultCounterparties])
+  }, [toBranchId, currencyId, amount, movementType, notes, carrierName, sealNumber, fetchData, currencies, electronQueueAvailable, vaultCounterparties])
 
   // Filtered history
   const filteredTransfers = allTransfers.filter((t) => {
@@ -523,6 +543,36 @@ export default function MovementManager() {
                   onChange={(e) => setNotes(e.target.value)}
                 />
               </div>
+
+              {/* FR-1..3: Szállító neve + Plombaszám (kötelező) */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="form-label">Szállító neve <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    maxLength={128}
+                    className="form-input w-full"
+                    placeholder="Szállító neve..."
+                    value={carrierName}
+                    onChange={(e) => setCarrierName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Plombaszám <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    maxLength={64}
+                    className="form-input w-full"
+                    placeholder="Plombaszám..."
+                    value={sealNumber}
+                    onChange={(e) => setSealNumber(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {formError && (
+                <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</div>
+              )}
 
               {/* Buttons */}
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-secondary-200">

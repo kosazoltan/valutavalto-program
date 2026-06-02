@@ -115,6 +115,8 @@ export interface PrintReceiptData {
   note?: string;
   transferTarget?: string;
   transferNote?: string;
+  /** FR-5 (átadás-átvétel): a szállítást végző neve a szállítólevélen. */
+  carrierName?: string;
   closingSummary?: ClosingPrintData;
 }
 
@@ -344,6 +346,13 @@ function generateTransferLines(data: PrintReceiptData): string[] {
   lines.push(`Cél pénztár: ${data.transferTarget ?? '—'}`);
   lines.push(`Valutanem:   ${data.currencyCode ?? '—'}`);
   lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`);
+  // FR-5: szállító neve és plombaszám a szállítólevélen.
+  if (data.carrierName) {
+    lines.push(`Szállító:    ${data.carrierName}`);
+  }
+  if (data.sealNumber) {
+    lines.push(`Plombaszám:  ${data.sealNumber}`);
+  }
 
   if (data.transferNote) {
     lines.push(`Megjegyzés:  ${data.transferNote}`);
@@ -714,6 +723,8 @@ function generateTransferHtml(data: PrintReceiptData): string {
       <div class="amount-row"><span>Cél pénztár:</span><span>${escHtml(data.transferTarget ?? '—')}</span></div>
       <div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
       <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>
+      ${data.carrierName ? `<div class="amount-row"><span>Szállító:</span><span>${escHtml(data.carrierName)}</span></div>` : ''}
+      ${data.sealNumber ? `<div class="amount-row"><span>Plombaszám:</span><span>${escHtml(data.sealNumber)}</span></div>` : ''}
       ${data.transferNote ? `<div>Megjegyzés: ${escHtml(data.transferNote)}</div>` : ''}
     </div>
   `;

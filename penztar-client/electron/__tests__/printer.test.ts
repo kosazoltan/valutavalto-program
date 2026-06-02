@@ -240,6 +240,20 @@ describe('printer — generateReceiptContent (ESC/POS)', () => {
     expect(content).toContain('SZG-02');
     expect(content).toContain('Napi készlet feltöltés');
   });
+
+  it('should print carrier name and seal number on transfer receipt (FR-5)', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferTarget: 'SZG-02',
+      carrierName: "Brink's Hungary Kft.",
+      sealNumber: 'ABC/12-3',
+    });
+    expect(content).toContain('Szállító');
+    expect(content).toContain("Brink's Hungary Kft.");
+    expect(content).toContain('Plombaszám');
+    expect(content).toContain('ABC/12-3');
+  });
 });
 
 describe('printer — printReceipt', () => {

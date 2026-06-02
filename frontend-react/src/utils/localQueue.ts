@@ -43,7 +43,7 @@ export interface LocalAuditEventView {
   rateSnapshot: unknown
 }
 
-function getCompanyType(worker: Worker | null): 'BEST_CHANGE' | 'EXPRESSZ' {
+export function getCompanyType(worker: Worker | null): 'BEST_CHANGE' | 'EXPRESSZ' {
   return worker?.companyCode?.toUpperCase().includes('BEST') ? 'BEST_CHANGE' : 'EXPRESSZ'
 }
 

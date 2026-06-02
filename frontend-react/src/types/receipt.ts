@@ -55,6 +55,8 @@ export interface PrintReceiptData {
   note?: string;
   transferTarget?: string;
   transferNote?: string;
+  /** FR-5 (átadás-átvétel): a szállítást végző neve a szállítólevélen. */
+  carrierName?: string;
   closingSummary?: ClosingPrintData;
 }
 
