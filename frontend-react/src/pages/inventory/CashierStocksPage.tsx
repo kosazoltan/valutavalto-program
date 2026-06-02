@@ -208,7 +208,10 @@ export default function CashierStocksPage() {
           .filter(it => !term
             || it.branchName.toLowerCase().includes(term)
             || it.currencyCode.toLowerCase().includes(term))
-        if (vaultItems.length > 0) {
+        // Injektálunk, ha (a) van megjelenítendő (szűrt) valutasor, VAGY (b) a /currencies törzs még/nem
+        // töltött (currencies üres) — ekkor a FK-003 „mindig látszik az értéktár-kártya" fallback marad
+        // érvényben (üres kártyával). CSAK akkor hagyjuk ki, ha VAN törzs, de a keresés mindent kiszűrt.
+        if (vaultItems.length > 0 || currencies.length === 0) {
           terr.groups.push({ branchName: terr.vaultName, items: vaultItems, hufTotal: 0, nonZeroCount: 0 })
         }
       }
