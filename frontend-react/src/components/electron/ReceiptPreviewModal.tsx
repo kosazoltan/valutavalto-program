@@ -280,6 +280,12 @@ export default function ReceiptPreviewModal({
                 {receiptData.transferTarget && (
                   <p><span className="font-semibold">Cél:</span> {receiptData.transferTarget}</p>
                 )}
+                {receiptData.carrierName && (
+                  <p><span className="font-semibold">Szállító:</span> {receiptData.carrierName}</p>
+                )}
+                {receiptData.sealNumber && (
+                  <p><span className="font-semibold">Plombaszám:</span> {receiptData.sealNumber}</p>
+                )}
                 {receiptData.transferNote && (
                   <p><span className="font-semibold">Megjegyzés:</span> {receiptData.transferNote}</p>
                 )}

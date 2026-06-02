@@ -95,10 +95,12 @@ public class Transfer {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-    @Column(name = "carrier_name", length = 200)
+    // FR/NFR-1,2 (V283): szerződés-igazítás 128/64-re (a DTO @Size-zal egyezően). Nullable marad:
+    // a régi rekordok null-ok lehetnek, az új-rekord-kötelezőséget a CreateTransferDto @NotBlank védi.
+    @Column(name = "carrier_name", length = 128)
     private String carrierName;
 
-    @Column(name = "seal_number", length = 100)
+    @Column(name = "seal_number", length = 64)
     private String sealNumber;
 
     @Column(name = "handover_printed")

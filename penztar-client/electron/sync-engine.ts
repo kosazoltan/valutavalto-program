@@ -1341,8 +1341,11 @@ export class SyncEngine {
     if (tx.note) {
       body['notes'] = tx.note;
     }
-    if (tx.carrier_name) body['carrierName'] = tx.carrier_name;
-    if (tx.seal_number) body['sealNumber'] = tx.seal_number;
+    // Codex P1 (backward-compat): a backend mostantól KÖTELEZŐVÉ teszi a carrier/seal-t (@NotBlank).
+    // A frissítés ELŐTT queue-olt régi sorokon ezek null-ok lehetnek — ott sentinel-t küldünk, hogy
+    // a sync ne akadjon el (head-of-line block / örök 400). Az új sorok mindig valódi értékkel jönnek.
+    body['carrierName'] = tx.carrier_name || 'N/A';
+    body['sealNumber'] = tx.seal_number || 'LEGACY';
     if (tx.direction) body['direction'] = tx.direction;
     if (tx.lines) {
       try { body['lines'] = JSON.parse(tx.lines); } catch { /* keep omitted */ }
@@ -1593,8 +1596,10 @@ export class SyncEngine {
             try { body['denominations'] = JSON.parse(tx.denominations); } catch { /* skip */ }
           }
           if (tx.note) body['notes'] = tx.note;
-          if (tx.carrier_name) body['carrierName'] = tx.carrier_name;
-          if (tx.seal_number) body['sealNumber'] = tx.seal_number;
+          // Codex P1 (backward-compat): régi, frissítés előtt queue-olt sorokon null carrier/seal →
+          // sentinel, hogy a @NotBlank-os backend ne blokkolja a szinkront (head-of-line block).
+          body['carrierName'] = tx.carrier_name || 'N/A';
+          body['sealNumber'] = tx.seal_number || 'LEGACY';
           if (tx.direction) body['direction'] = tx.direction;
           if (tx.lines) {
             try { body['lines'] = JSON.parse(tx.lines); } catch { /* keep omitted */ }

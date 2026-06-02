@@ -10,7 +10,8 @@ import {
   AlertCircle,
   Eye,
   Clock,
-  Building2
+  Building2,
+  Printer
 } from 'lucide-react'
 import {
   transferApi,
@@ -30,10 +31,15 @@ import {
   recordLocalAuditEvent,
   saveAndSyncPendingTransfer,
 } from '../../utils/electronTransactions'
-import { getLocalPendingTransfers } from '../../utils/localQueue'
+import { getLocalPendingTransfers, getCompanyType } from '../../utils/localQueue'
 import { useTranslation } from 'react-i18next'
 import SupervisorPinModal from '../../components/auth/SupervisorPinModal'
-import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isTHBranch, isMainCashierBranch, type CurrencyLineInput } from './transferRules'
+import { ReceiptPreviewModal } from '../../components/electron'
+import { isElectron } from '../../utils/electron'
+import { toast } from '../../components/ui/toaster'
+import type { PrintReceiptData } from '../../types/receipt'
+import { localIsoDate } from '../../utils/dateFormat'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isTHBranch, isMainCashierBranch, validateCarrierSeal, type CurrencyLineInput } from './transferRules'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -134,6 +140,10 @@ export default function TransferPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+
+  // FR-6: sikeres rögzítés után nyomtatható bizonylat (Szállító + Plombaszám a szállítólevélen)
+  const [printReceiptData, setPrintReceiptData] = useState<PrintReceiptData | null>(null)
+  const [showReceiptModal, setShowReceiptModal] = useState(false)
 
   // Load data
   const loadData = useCallback(async () => {
@@ -261,13 +271,11 @@ export default function TransferPage() {
       }
     }
 
-    // (Req #7) Szállító és plombaszám kitöltése KÖTELEZŐ.
-    if (!carrierName.trim()) {
-      setError('A szállító nevének megadása kötelező!')
-      return
-    }
-    if (!sealNumber.trim()) {
-      setError('A plombaszám megadása kötelező!')
+    // (Req #7 / FR-1..3, NFR-1,2) Szállító és plombaszám KÖTELEZŐ + hossz/formátum — közös validátor
+    // (a MovementManagerrel és a backend Bean Validationnel egyező egyetlen forrás).
+    const carrierSealError = validateCarrierSeal(carrierName, sealNumber)
+    if (carrierSealError) {
+      setError(carrierSealError)
       return
     }
 
@@ -345,9 +353,46 @@ export default function TransferPage() {
             ? `${label} helyileg rögzítve és azonnal szinkronizálva`
             : `${label} helyileg rögzítve. A feltöltés az Electron queue-ból folytatódik.`,
         )
+        // FR-6: offline esetben is nyomtatható a szállítólevél a lokális adatokból.
+        const now = new Date()
+        setPrintReceiptData({
+          type: 'transfer',
+          companyType: getCompanyType(worker),
+          // A bizonylatszám a TÉNYLEGES queue-sor ID-jéhez kötve (savedIds[0]) — a fabrikált
+          // időbélyeg csak fallback, ha valamiért nincs mentett ID (Codex P2: a valós rekordra mutasson).
+          receiptNumber: outcome.savedIds[0] != null
+            ? `LOCAL-${localIsoDate()}-#${outcome.savedIds[0]}`
+            : `LOCAL-${localIsoDate()}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`,
+          branchCode: worker?.branchCode ?? branch.code,
+          cashierName: worker?.fullName ?? '',
+          date: localIsoDate(),
+          time: now.toTimeString().slice(0, 8),
+          currencyCode: currency.code,
+          foreignAmount: effAmountValue,
+          transferTarget: `${branch.code} - ${branch.name}`,
+          transferNote: notes || undefined,
+          carrierName: carrierName.trim(),
+          sealNumber: sealNumber.trim(),
+        })
       } else {
         const result = await transferApi.create(request)
         setSuccess(`${transferDirection === 'out' ? 'Átadás' : 'Átvétel'} létrehozva: ${result.transferNumber}`)
+        // FR-6: nyomtatható szállítólevél a szerver-válaszból (Szállító + Plombaszám is rajta).
+        setPrintReceiptData({
+          type: 'transfer',
+          companyType: getCompanyType(worker),
+          receiptNumber: result.transferNumber,
+          branchCode: worker?.branchCode ?? result.fromBranchCode ?? 'LOCAL',
+          cashierName: worker?.fullName ?? result.fromWorkerName ?? '',
+          date: result.transferDate,
+          time: result.transferTime,
+          currencyCode: result.currencyCode,
+          foreignAmount: result.amount,
+          transferTarget: `${result.toBranchCode} - ${result.toBranchName}`,
+          transferNote: result.notes,
+          carrierName: result.carrierName,
+          sealNumber: result.sealNumber,
+        })
       }
       setShowNewTransfer(false)
 
@@ -659,7 +704,17 @@ export default function TransferPage() {
         <div className="form-panel bg-green-50 border-green-200 flex items-center gap-2 text-green-700">
           <CheckCircle size={18} />
           <span>{success}</span>
-          <button type="button" onClick={() => setSuccess(null)} className="ml-auto text-green-500">×</button>
+          {/* FR-6: sikeres rögzítés után Nyomtatás gomb a szállítólevélhez. */}
+          {printReceiptData && (
+            <button
+              type="button"
+              onClick={() => setShowReceiptModal(true)}
+              className="ml-auto inline-flex items-center gap-1 rounded bg-green-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-green-700"
+            >
+              <Printer size={14} /> Nyomtatás
+            </button>
+          )}
+          <button type="button" onClick={() => { setSuccess(null); setPrintReceiptData(null) }} className={printReceiptData ? 'text-green-500' : 'ml-auto text-green-500'}>×</button>
         </div>
       )}
 
@@ -886,6 +941,7 @@ export default function TransferPage() {
                   <input
                     id="carrier-name"
                     type="text"
+                    maxLength={128}
                     value={carrierName}
                     onChange={(e) => setCarrierName(e.target.value)}
                     className="form-input w-full"
@@ -897,6 +953,7 @@ export default function TransferPage() {
                   <input
                     id="seal-number"
                     type="text"
+                    maxLength={64}
                     value={sealNumber}
                     onChange={(e) => setSealNumber(e.target.value)}
                     className="form-input w-full"
@@ -1034,6 +1091,31 @@ export default function TransferPage() {
           void handleCreateTransfer(true)
         }}
         onCancel={() => setShowSupervisorPin(false)}
+      />
+
+      {/* FR-5/FR-6: szállítólevél előnézet + nyomtatás (Szállító + Plombaszám is rajta). */}
+      <ReceiptPreviewModal
+        isOpen={showReceiptModal}
+        onClose={() => setShowReceiptModal(false)}
+        receiptData={printReceiptData}
+        qrCodeDataUrl={null}
+        allowPrint={isElectron()}
+        onPrint={async () => {
+          if (!printReceiptData) return
+          if (!window.electronAPI?.printReceipt) {
+            toast.warning('Nyomtatás nem elérhető', isElectron()
+              ? 'Electron preload/electronAPI hiba — indítsa újra a klienst.'
+              : 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.')
+            return
+          }
+          try {
+            const ok = await window.electronAPI.printReceipt(JSON.stringify(printReceiptData))
+            if (ok) toast.success('Nyomtatás elindítva', `Bizonylat: ${printReceiptData.receiptNumber ?? '—'}`)
+            else toast.error('Nyomtatás sikertelen', 'Ellenőrizze a nyomtatót (Beállítások > Nyomtatás).')
+          } catch {
+            toast.error('Nyomtatás sikertelen', 'A nyomtatási parancs nem futott le.')
+          }
+        }}
       />
     </div>
   )

@@ -1,9 +1,11 @@
 package hu.puzzleir.valuta.dto.transfer;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import java.math.BigDecimal;
 import java.util.List;
@@ -26,6 +28,22 @@ public class CreateTransferDto {
     @Pattern(regexp = "^(F|U|UF|FF)$", message = "Az irány csak F, U, UF vagy FF lehet!")
     private String direction;
     private String notes;
+
+    /**
+     * FR-1/FR-3 (átadás-átvétel): a fizikai szállítást végző személy/cég neve — KÖTELEZŐ minden
+     * transfer-létrehozásnál (handover ÉS treasury-mozgás). Ékezet megengedett (magyar nevek), ezért
+     * nincs ASCII-pattern, csak hossz-korlát.
+     */
+    @NotBlank(message = "A szállító neve kötelező")
+    @Size(max = 128, message = "A szállító neve legfeljebb 128 karakter lehet")
     private String carrierName;
+
+    /**
+     * FR-2/FR-3 (átadás-átvétel): a szállítmány lezárásának egyedi plombaszáma — KÖTELEZŐ.
+     * Csak alfanumerikus + kötőjel + perjel (NFR-2), max 64 karakter.
+     */
+    @NotBlank(message = "A plombaszám kötelező")
+    @Size(max = 64, message = "A plombaszám legfeljebb 64 karakter lehet")
+    @Pattern(regexp = "^[A-Za-z0-9\\-/]+$", message = "A plombaszám csak betűt, számot, kötőjelet és perjelet tartalmazhat")
     private String sealNumber;
 }
