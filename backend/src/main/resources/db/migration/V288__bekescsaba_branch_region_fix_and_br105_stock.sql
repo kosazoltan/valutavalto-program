@@ -22,7 +22,7 @@
 --      hozunk létre 0 mennyiséggel (CASHIER, entity_id = branch.id::TEXT — VaultStockFlowService
 --      konvenció). Így a "készlet = SUM(tranzakciók)" invariáns NEM sérül (0 kezdőkészlet).
 --
--- Idempotens: IS DISTINCT FROM guard (A) + WHERE NOT EXISTS guard (B).
+-- Idempotens: IS DISTINCT FROM guard (A) + COUNT(*) early-return + ON CONFLICT DO NOTHING (B).
 
 -- ============ A) Békéscsaba-területi branch-ek régiójának authoritatív helyreállítása ============
 UPDATE branch
@@ -97,7 +97,8 @@ BEGIN
           FROM currency_stock cs
          WHERE cs.company_id = v_company_id
            AND cs.entity_type = 'CASHIER'
-           AND cs.entity_id = v_sibling_id::TEXT;
+           AND cs.entity_id = v_sibling_id::TEXT
+        ON CONFLICT (company_id, entity_type, entity_id, currency_code) DO NOTHING;
     ELSE
         -- Fallback: ha egyetlen sibling sem rendelkezik készlettel, a magyar valutaváltó-alapkészlet
         -- (HUF + főbb devizák) 0 mennyiséggel — hogy a pénztár megjelenjen a területi listában.
@@ -110,7 +111,8 @@ BEGIN
             0,
             CASE WHEN c.code = 'HUF' THEN 1.0 ELSE 0 END,
             NOW()
-          FROM (VALUES ('HUF'), ('EUR'), ('USD'), ('GBP'), ('CHF')) AS c(code);
+          FROM (VALUES ('HUF'), ('EUR'), ('USD'), ('GBP'), ('CHF')) AS c(code)
+        ON CONFLICT (company_id, entity_type, entity_id, currency_code) DO NOTHING;
     END IF;
 
     GET DIAGNOSTICS v_inserted = ROW_COUNT;
