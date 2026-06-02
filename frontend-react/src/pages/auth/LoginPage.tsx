@@ -68,6 +68,17 @@ export default function LoginPage() {
   const [modeSelectorOptions, setModeSelectorOptions] = useState<AppMode[]>([])
   const [modeLoading, setModeLoading] = useState(false)
 
+  // FK-ÉRTÉKTÁR (V285): kétlépcsős értéktári belépés — Google után dolgozóválasztó + jelszó.
+  const [showVaultWorkerSelect, setShowVaultWorkerSelect] = useState(false)
+  const [vaultWorkers, setVaultWorkers] = useState<import('../../services/api/auth').VaultWorkerOption[]>([])
+  const [vaultBranchName, setVaultBranchName] = useState<string>('')
+  const [vaultIdToken, setVaultIdToken] = useState<string>('')
+  const [selectedVaultWorkerId, setSelectedVaultWorkerId] = useState<number | null>(null)
+  const [vaultPassword, setVaultPassword] = useState('')
+  const [vaultLoading, setVaultLoading] = useState(false)
+  const [vaultError, setVaultError] = useState<string | null>(null)
+  const [showVaultForgot, setShowVaultForgot] = useState(false)
+
   const login = useAuthStore((state) => state.login)
   const navigate = useNavigate()
   // V178/V179 Google OAuth audit (2026-05-03 + Electron Desktop OAuth refactor 2026-05-04):
@@ -197,7 +208,25 @@ export default function LoginPage() {
   }
 
   /** Login eredmény feldolgozása — ha multi-role, role-választó megjelenítése */
-  const handleLoginResponse = (response: Awaited<ReturnType<typeof authApi.login>>) => {
+  const handleLoginResponse = (response: Awaited<ReturnType<typeof authApi.login>>, googleIdToken?: string) => {
+    // FK-ÉRTÉKTÁR (V285): intézményi (közös) Google-fiók → a backend dolgozóválasztót kért.
+    // NINCS token; a felhasználó kiválasztja a SAJÁT nevét, majd jelszót ad (2. fázis).
+    if (response.vaultWorkerSelectionRequired) {
+      if (!googleIdToken) {
+        setError('A személyes belépéshez újra be kell jelentkezni Google-fiókkal.')
+        return
+      }
+      setVaultWorkers(response.vaultWorkers ?? [])
+      setVaultBranchName(response.vaultBranchName ?? '')
+      setVaultIdToken(googleIdToken)
+      setSelectedVaultWorkerId((response.vaultWorkers && response.vaultWorkers.length === 1)
+        ? response.vaultWorkers[0]!.id : null)
+      setVaultPassword('')
+      setVaultError(null)
+      setShowVaultWorkerSelect(true)
+      return
+    }
+
     // HIBA 2026-05-26: ha a dolgozó több lokál módba is beléphet (pl. értéktáros, aki a
     // pénztárt is ellenőrizheti), a lokál terminálon mód-választót mutatunk — KIVÉVE ha
     // már választott a munkamenetben. Tiszta pénztáros (1 mód) → nincs választó, megy egyből.
@@ -349,6 +378,32 @@ export default function LoginPage() {
     }
   }
 
+  /**
+   * FK-ÉRTÉKTÁR (V285): a kétlépcsős értéktári belépés 2. fázisa — a kiválasztott személyes
+   * dolgozó jelszavas hitelesítése. A Google ID tokent (1. fázisból) újraküldjük.
+   */
+  const handleVaultWorkerLogin = async () => {
+    if (!selectedVaultWorkerId) { setVaultError('Válaszd ki a neved a listából!'); return }
+    if (!vaultPassword) { setVaultError('Add meg a jelszavad!'); return }
+    setVaultError(null)
+    setVaultLoading(true)
+    try {
+      const response = await authApi.googleVaultSelectWorker({
+        idToken: vaultIdToken,
+        workerId: selectedVaultWorkerId,
+        password: vaultPassword,
+        appMode,
+      })
+      setShowVaultWorkerSelect(false)
+      setVaultPassword('')
+      handleLoginResponse(response)
+    } catch (err: unknown) {
+      setVaultError(getErrorMessage(err))
+    } finally {
+      setVaultLoading(false)
+    }
+  }
+
   const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     if (!credentialResponse.credential) {
       setError('Google bejelentkezés sikertelen: hiányzó token')
@@ -366,8 +421,9 @@ export default function LoginPage() {
       const response = await authApi.googleLogin({
         idToken: credentialResponse.credential,
         appMode,
+        supportsVaultWorkerSelection: true,
       })
-      handleLoginResponse(response)
+      handleLoginResponse(response, credentialResponse.credential)
     } catch (err: unknown) {
       setError(getErrorMessage(err))
     } finally {
@@ -394,7 +450,8 @@ export default function LoginPage() {
       // (megbizhatobb mint a renderer axios.post az ESET MITM-mel terhelt gepeken).
       // Fallback: regi 2-step flow (idToken IPC -> renderer axios.post backend).
       if (window.electronAPI?.googleOAuthFlowWithBackend) {
-        const result = await window.electronAPI.googleOAuthFlowWithBackend(appMode)
+        // FK-ÉRTÉKTÁR (V285): kétlépcsős-támogatás jelzése; a main process az idTokent is visszaadja.
+        const result = await window.electronAPI.googleOAuthFlowWithBackend(appMode, true)
         if (!result.ok) {
           if (result.code !== 'USER_CANCELLED') {
             setError(humanizeIpcError(result.code, result.message))
@@ -403,7 +460,7 @@ export default function LoginPage() {
         }
         // A backend `/auth/google-login` JSON-t explicit `response` mezoben adjuk at,
         // hogy az IPC ok/email boritek ne keveredjen a LoginResponse mezoi koze.
-        handleLoginResponse(result.response as Awaited<ReturnType<typeof authApi.googleLogin>>)
+        handleLoginResponse(result.response as Awaited<ReturnType<typeof authApi.googleLogin>>, result.idToken)
         return
       }
       if (!window.electronAPI?.googleOAuthFlow) {
@@ -417,8 +474,8 @@ export default function LoginPage() {
         }
         return
       }
-      const response = await authApi.googleLogin({ idToken: result.idToken, appMode })
-      handleLoginResponse(response)
+      const response = await authApi.googleLogin({ idToken: result.idToken, appMode, supportsVaultWorkerSelection: true })
+      handleLoginResponse(response, result.idToken)
     } catch (err: unknown) {
       setError(getErrorMessage(err))
     } finally {
@@ -428,6 +485,119 @@ export default function LoginPage() {
   }
 
   // V57: Role-választó modal
+  // FK-ÉRTÉKTÁR (V285): kétlépcsős értéktári belépés — dolgozóválasztó + jelszó.
+  if (showVaultWorkerSelect) {
+    return (
+      <div className="w-[380px]">
+        <div className="bg-form-bg border border-form-border shadow-lg">
+          <div className="header-bar flex items-center gap-2 h-8">
+            <Shield size={16} />
+            <span>Ki dolgozik most? — {vaultBranchName || 'Értéktár'}</span>
+          </div>
+          <div className="p-4">
+            <p className="text-sm text-gray-600 mb-3">
+              Válaszd ki a neved a listából, majd add meg a saját jelszavad. Így minden művelet
+              hozzád köthető lesz.
+            </p>
+            {vaultError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3">
+                {vaultError}
+              </div>
+            )}
+
+            {vaultWorkers.length === 0 ? (
+              <div className="text-sm text-gray-600 mb-4">
+                Ehhez az értéktárhoz még nincs felvett személyes dolgozó. Kérj segítséget az
+                adminisztrátortól, vagy lépj be újra a közös fiókkal és vegyél fel munkatársat.
+              </div>
+            ) : (
+              <div className="space-y-1.5 mb-3 max-h-52 overflow-auto">
+                {vaultWorkers.map((w) => (
+                  <button
+                    key={w.id}
+                    type="button"
+                    disabled={vaultLoading}
+                    onClick={() => { setSelectedVaultWorkerId(w.id); setVaultError(null) }}
+                    className={`w-full text-left p-2.5 border rounded text-sm disabled:opacity-50 ${
+                      selectedVaultWorkerId === w.id
+                        ? 'border-primary bg-blue-50 font-semibold'
+                        : 'border-form-border hover:bg-blue-50 hover:border-primary'
+                    }`}
+                  >
+                    {w.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {vaultWorkers.length > 0 && (
+              <form onSubmit={(e) => { e.preventDefault(); void handleVaultWorkerLogin() }}>
+                <label className="block mb-3">
+                  <span className="form-label">Jelszó</span>
+                  <input
+                    type="password"
+                    className="form-input"
+                    value={vaultPassword}
+                    disabled={vaultLoading || !selectedVaultWorkerId}
+                    autoFocus
+                    placeholder="Saját jelszó..."
+                    onChange={(e) => setVaultPassword(e.target.value)}
+                  />
+                </label>
+
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:underline"
+                    onClick={() => setShowVaultForgot(true)}
+                  >
+                    Elfelejtett jelszó?
+                  </button>
+                  <button type="submit" className="form-button" disabled={vaultLoading || !selectedVaultWorkerId}>
+                    {vaultLoading ? 'Belépés...' : 'Belépés'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {showVaultForgot && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs p-2.5 rounded">
+                Az elfelejtett jelszó visszaállítását az adminisztrátor végzi. Kérj tőle új
+                jelszót — a felületen nincs önkiszolgáló visszaállítás.
+                <button
+                  type="button"
+                  className="block mt-1.5 text-primary hover:underline"
+                  onClick={() => setShowVaultForgot(false)}
+                >
+                  Értem
+                </button>
+              </div>
+            )}
+
+            <div className="flex justify-end mt-4">
+              <button
+                type="button"
+                className="text-sm text-gray-500 hover:underline"
+                disabled={vaultLoading}
+                onClick={() => {
+                  setShowVaultWorkerSelect(false)
+                  setVaultWorkers([])
+                  setVaultIdToken('')
+                  setSelectedVaultWorkerId(null)
+                  setVaultPassword('')
+                  setVaultError(null)
+                  setShowVaultForgot(false)
+                }}
+              >
+                Mégse / vissza
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (showModeSelector && pendingModeResponse) {
     return (
       <div className="w-[360px]">

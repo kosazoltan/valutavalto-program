@@ -964,7 +964,7 @@ app.whenReady().then(async () => {
   // a TLS handshake utan leejti. A main-process electron.net.request megbizhatobb
   // (Windows certificate store + Chromium switches mind alkalmazva, NEM renderer fetch).
   // Plus: 3-szor probalja a backend POST-ot (1s, 3s, 5s wait) ha network-level error.
-  ipcMain.handle('auth:google-oauth-flow-with-backend', async (_evt, payload?: { appMode?: string }) => {
+  ipcMain.handle('auth:google-oauth-flow-with-backend', async (_evt, payload?: { appMode?: string; supportsVaultWorkerSelection?: boolean }) => {
     const clientId = process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID
         ?? process.env.GOOGLE_DESKTOP_CLIENT_ID
         ?? '';
@@ -983,9 +983,12 @@ app.whenReady().then(async () => {
         clientSecret,
         apiBaseUrl,
         appMode: payload?.appMode,
+        supportsVaultWorkerSelection: payload?.supportsVaultWorkerSelection === true,
       });
       log.info('[main] Google OAuth + backend login OK for:', result.email ?? '(unknown)');
-      return { ok: true, response: result.response, email: result.email };
+      // FK-ÉRTÉKTÁR (V285): idToken visszaadva, hogy a renderer a dolgozóválasztó 2. fázist
+      // (select-worker) ugyanazzal a Google ID tokennel tudja hívni.
+      return { ok: true, response: result.response, email: result.email, idToken: result.idToken };
     } catch (err) {
       if (err instanceof GoogleOAuthFailedException) {
         log.warn('[main] Google OAuth + backend login failed:', err.code, err.message);

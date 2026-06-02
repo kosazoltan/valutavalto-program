@@ -6,11 +6,13 @@ export interface ElectronAPI {
   >;
 
   // --- v2.5.20: Google OAuth + backend `/auth/google-login` POST EGY main-process hivasban ---
-  googleOAuthFlowWithBackend(appMode?: string): Promise<
+  // FK-ÉRTÉKTÁR (V285): supportsVaultWorkerSelection flag + idToken visszaadása a 2. fázishoz.
+  googleOAuthFlowWithBackend(appMode?: string, supportsVaultWorkerSelection?: boolean): Promise<
     | {
         ok: true;
         response: unknown;
         email?: string;
+        idToken?: string;
       }
     | { ok: false; code: string; message: string }
   >;
