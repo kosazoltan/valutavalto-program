@@ -415,7 +415,7 @@ class AuthRefreshCookieIssueFailureTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         Worker worker = worker();
-        when(googleLoginService.loginWithGoogle("id-token", request, null)).thenReturn(loginResponse());
+        when(googleLoginService.loginWithGoogle("id-token", request, null, false)).thenReturn(loginResponse());
         when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(refreshTokenService.issue(worker, request, null)).thenThrow(new IllegalStateException("database unavailable"));
 
@@ -444,7 +444,7 @@ class AuthRefreshCookieIssueFailureTest {
                 .roles(List.of("penztar", "ertektar"))
                 .activeRole(null)
                 .build();
-        when(googleLoginService.loginWithGoogle("id-token", request, null)).thenReturn(roleSelectionResponse);
+        when(googleLoginService.loginWithGoogle("id-token", request, null, false)).thenReturn(roleSelectionResponse);
 
         var result = controller.googleLogin(requestDto, request, response);
 
@@ -475,7 +475,7 @@ class AuthRefreshCookieIssueFailureTest {
                 .roles(List.of("audit_only_test"))
                 .activeRole("audit_only_test")
                 .build();
-        when(googleLoginService.loginWithGoogle("id-token", request, "penztar")).thenReturn(wrongAppModeResponse);
+        when(googleLoginService.loginWithGoogle("id-token", request, "penztar", false)).thenReturn(wrongAppModeResponse);
 
         assertThatThrownBy(() -> controller.googleLogin(requestDto, request, response))
                 .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
