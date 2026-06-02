@@ -189,6 +189,9 @@ public class ShipmentService {
         existing.setToBranchId(updated.getToBranchId());
         existing.setDeliveryDate(updated.getDeliveryDate());
         existing.setNotes(updated.getNotes());
+        // FK02: a szállító + plombaszám módosítás is perzisztáljon szerkesztéskor.
+        existing.setCarrierName(updated.getCarrierName());
+        existing.setSealNumber(updated.getSealNumber());
 
         // Codex P1 + P2 kompromisszum: csak akkor futtatjuk az autofill-t, ha a kliens
         // ÚJ items listát küldött (= currency/amount változás). Notes/date-only update

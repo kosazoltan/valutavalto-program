@@ -60,6 +60,9 @@ describe('ShipmentNewPage', () => {
     await user.selectOptions(screen.getByLabelText(/Cél iroda/i), 'BR-B')
     await user.selectOptions(screen.getByLabelText(/Valuta/i), '4')
     await user.type(screen.getByLabelText(/Összeg/i), '1250')
+    // FK02: a szállító + plombaszám kötelező — kitöltjük, különben a validáció blokkolja a beküldést.
+    await user.type(screen.getByLabelText(/Szállító neve/i), "Brink's Hungary Kft.")
+    await user.type(screen.getByLabelText(/Plombaszám/i), 'ABC/12-3')
     await user.click(screen.getByRole('button', { name: /Igény beküldése/i }))
 
     // D követelmény (Codex P1): a payload NEM tartalmazza az appliedRate / hufValue mezőt,
@@ -69,6 +72,8 @@ describe('ShipmentNewPage', () => {
       toBranchId: 'BR-B',
       deliveryDate: undefined,
       notes: '',
+      carrierName: "Brink's Hungary Kft.",
+      sealNumber: 'ABC/12-3',
       items: [{ currencyId: '4', requestedAmount: 1250 }],
     }))
     expect(mocks.shipmentRequestApi.submit).toHaveBeenCalledWith('shipment-1')
@@ -107,7 +112,7 @@ describe('ShipmentNewPage', () => {
     // (a getByText az `label` attribute-ot NEM látja text-content-ként). Mind a 2 select-en
     // (Kérő iroda + Cél iroda) renderelődik, ezért getAllByRole + length-assert.
     await waitFor(() => {
-      const territorialGroups = screen.getAllByRole('group', { name: /Saját terület pénztárai/i })
+      const territorialGroups = screen.getAllByRole('group', { name: /Helyi Pénztárak/i })
       expect(territorialGroups.length).toBeGreaterThanOrEqual(1)
     })
     expect(screen.getAllByRole('group', { name: /Társ értéktárak/i }).length).toBeGreaterThanOrEqual(1)

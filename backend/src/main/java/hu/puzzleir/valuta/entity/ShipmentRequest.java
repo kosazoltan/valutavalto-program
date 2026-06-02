@@ -1,6 +1,9 @@
 package hu.puzzleir.valuta.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -57,6 +60,20 @@ public class ShipmentRequest {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    // FR-1..3 (átadás-átvétel, FK02): a fizikai szállítást végző neve + a szállítmány plombaszáma —
+    // KÖTELEZŐ minden szállítmány-igény (átadás) létrehozásnál (@Valid a create/update endpointon).
+    // Az oszlop nullable (régi rekordok null-ok lehetnek); az új-rekord-kötelezőséget a Bean Validation adja.
+    @NotBlank(message = "A szállító neve kötelező")
+    @Size(max = 128, message = "A szállító neve legfeljebb 128 karakter lehet")
+    @Column(name = "carrier_name", length = 128)
+    private String carrierName;
+
+    @NotBlank(message = "A plombaszám kötelező")
+    @Size(max = 64, message = "A plombaszám legfeljebb 64 karakter lehet")
+    @Pattern(regexp = "^[A-Za-z0-9\\-/]+$", message = "A plombaszám csak betűt, számot, kötőjelet és perjelet tartalmazhat")
+    @Column(name = "seal_number", length = 64)
+    private String sealNumber;
 
     // F3 (2026-06-01): dedikált elutasítás (reject) audit-mezői — elkülönítve a cancel-től.
     @Column(name = "rejection_reason", columnDefinition = "TEXT")

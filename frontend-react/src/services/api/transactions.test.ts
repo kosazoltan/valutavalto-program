@@ -198,6 +198,8 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
       toBranchId: 'BR-B',
       deliveryDate: '2026-05-08',
       notes: ' teszt ',
+      carrierName: "Brink's Hungary Kft.",
+      sealNumber: 'ABC/12-3',
       items: [{ currencyId: '4', requestedAmount: 1000 }],
     })
 
@@ -206,6 +208,8 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
       toBranchId: 'BR-B',
       deliveryDate: '2026-05-08',
       notes: 'teszt',
+      carrierName: "Brink's Hungary Kft.",
+      sealNumber: 'ABC/12-3',
       items: [{ currencyId: 4, requestedAmount: 1000 }],
     })
     expect(result.requestStatus).toBe('DRAFT')

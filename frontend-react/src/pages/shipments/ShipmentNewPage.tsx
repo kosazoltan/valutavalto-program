@@ -6,6 +6,7 @@ import { branchApi, currencyApi, exchangeRateApi, shipmentRequestApi, type Branc
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import { validateCarrierSeal } from '../transfers/transferRules'
 
 type FormState = {
   fromBranchId: string
@@ -14,6 +15,8 @@ type FormState = {
   currencyId: string
   amount: string
   notes: string
+  carrierName: string
+  sealNumber: string
 }
 
 export default function ShipmentNewPage() {
@@ -51,6 +54,8 @@ export default function ShipmentNewPage() {
     currencyId: '',
     amount: '',
     notes: '',
+    carrierName: '',
+    sealNumber: '',
   })
   const [branches, setBranches] = useState<BranchInfo[]>([])
   // FK-013 (Bali Henriett / Kasza Helga 2026-05-28): az egységes értéktári átadás-átvétel
@@ -197,6 +202,13 @@ export default function ShipmentNewPage() {
       setError('A kérő és a cél iroda nem lehet ugyanaz.')
       return
     }
+    // FK02 (FR-1..3, NFR-1,2): szállító + plombaszám kötelező + hossz/formátum — közös validátor
+    // (a TransferPage/MovementManagerrel és a backend Bean Validationnel egyező egyetlen forrás).
+    const carrierSealError = validateCarrierSeal(form.carrierName, form.sealNumber)
+    if (carrierSealError) {
+      setError(carrierSealError)
+      return
+    }
     setSaving(true)
     try {
       const created = await shipmentRequestApi.create({
@@ -204,6 +216,8 @@ export default function ShipmentNewPage() {
         toBranchId: form.toBranchId,
         deliveryDate: form.deliveryDate || undefined,
         notes: form.notes,
+        carrierName: form.carrierName.trim(),
+        sealNumber: form.sealNumber.trim(),
         // D követelmény (Codex P1): a backend autoritatív a server-side aktuális rate-tel —
         // a kliens csak display-célból mutatja a rate-et + hufValue-t, NEM küldi a payloadban.
         items: [{
@@ -368,6 +382,31 @@ export default function ShipmentNewPage() {
               value={hufValue != null ? hufValue.toLocaleString('hu-HU') + ' Ft' : '—'}
               disabled
               readOnly
+            />
+          </label>
+          {/* FK02 (FR-1..3): szállító neve + plombaszám — KÖTELEZŐ az átadás-átvételnél. */}
+          <label className="block">
+            <span className="form-label">Szállító neve <span className="text-red-500">*</span></span>
+            <input
+              type="text"
+              maxLength={128}
+              className="form-input"
+              placeholder="Szállító neve..."
+              value={form.carrierName}
+              disabled={saving}
+              onChange={(e) => patch({ carrierName: e.target.value })}
+            />
+          </label>
+          <label className="block">
+            <span className="form-label">Plombaszám <span className="text-red-500">*</span></span>
+            <input
+              type="text"
+              maxLength={64}
+              className="form-input"
+              placeholder="Plombaszám..."
+              value={form.sealNumber}
+              disabled={saving}
+              onChange={(e) => patch({ sealNumber: e.target.value })}
             />
           </label>
           <label className="block md:col-span-2">

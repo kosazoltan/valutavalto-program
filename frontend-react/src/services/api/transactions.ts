@@ -1000,6 +1000,9 @@ export interface ShipmentRequest {
   modificationNotes?: string
   notes?: string
   transferId?: string
+  /** FK02 (átadás-átvétel): a fizikai szállítást végző neve + a szállítmány plombaszáma. */
+  carrierName?: string
+  sealNumber?: string
   items?: ShipmentRequestItem[]
 }
 
@@ -1021,6 +1024,9 @@ export interface ShipmentCreateRequest {
     requestedAmount: number
   }>
   notes?: string
+  /** FK02 (átadás-átvétel): KÖTELEZŐ — a szállító neve + a plombaszám. */
+  carrierName: string
+  sealNumber: string
 }
 
 /**
@@ -1110,6 +1116,9 @@ export const shipmentRequestApi = {
       toBranchId: request.toBranchId,
       deliveryDate: request.deliveryDate || undefined,
       notes: request.notes?.trim() || undefined,
+      // FK02 (átadás-átvétel): a backend ShipmentRequest entity @NotBlank/@Pattern validálja.
+      carrierName: request.carrierName,
+      sealNumber: request.sealNumber,
       items: request.items.map((item) => ({
         currencyId: Number(item.currencyId),
         requestedAmount: item.requestedAmount,
