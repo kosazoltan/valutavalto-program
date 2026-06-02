@@ -112,6 +112,8 @@ describe('CashierStocksPage (FK-007/008)', () => {
 
     render(<CashierStocksPage />)
 
+    // A fix után a vault-kártya CSAK akkor kerül be, ha a /currencies törzs betöltött (különben nincs
+    // injektált sor) — így a vault NEVÉNEK megjelenése már garantálja a feltöltött kártyát (Copilot).
     await waitFor(() => {
       expect(screen.getByText('Szekszard Ertektar')).toBeInTheDocument()
     })
