@@ -50,6 +50,9 @@ class ShipmentRequestRepositoryTest {
                 .requestedById(1L)
                 .status(ShipmentRequestStatus.DRAFT)
                 .requestDate(LocalDate.of(2026, 5, 7))
+                // FK02: carrier_name + seal_number kötelező (@NotBlank) — fixture-ben kitöltve.
+                .carrierName("Brink's Hungary Kft.")
+                .sealNumber("ABC-001")
                 .createdAt(LocalDateTime.of(2026, 5, 7, 8, 0))
                 .build();
     }

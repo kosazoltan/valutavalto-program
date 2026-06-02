@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isMainCashierBranch } from './transferRules'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isMainCashierBranch, validateCarrierSeal } from './transferRules'
 
 const currencies = [
   { id: 1, code: 'HUF', name: 'Forint' },
@@ -142,5 +142,40 @@ describe('transferRules — átadás-átvétel üzleti szabályok', () => {
       expect(isHufOnlyTransferType('CURRENCY')).toBe(false)
       expect(isHufOnlyTransferType('VAULT_DEPOSIT')).toBe(false)
     })
+  })
+})
+
+describe('validateCarrierSeal — átadás-átvétel szállító + plombaszám (FK02)', () => {
+  it('érvényes szállító + plombaszám esetén null-t ad vissza', () => {
+    expect(validateCarrierSeal("Brink's Hungary Kft.", 'ABC/12-3')).toBeNull()
+  })
+
+  it('hiányzó szállító név esetén hibát ad', () => {
+    expect(validateCarrierSeal('', 'ABC-1')).toBe('A szállító nevének megadása kötelező!')
+  })
+
+  it('csak whitespace szállító név esetén hibát ad (trim után üres)', () => {
+    expect(validateCarrierSeal('   ', 'ABC-1')).toBe('A szállító nevének megadása kötelező!')
+  })
+
+  it('hiányzó plombaszám esetén hibát ad', () => {
+    expect(validateCarrierSeal('Brink', '')).toBe('A plombaszám megadása kötelező!')
+  })
+
+  it('csak whitespace plombaszám esetén hibát ad', () => {
+    expect(validateCarrierSeal('Brink', '   ')).toBe('A plombaszám megadása kötelező!')
+  })
+
+  it('128 karakternél hosszabb szállító név esetén hibát ad', () => {
+    expect(validateCarrierSeal('a'.repeat(129), 'ABC-1')).toBe('A szállító neve legfeljebb 128 karakter lehet!')
+  })
+
+  it('64 karakternél hosszabb plombaszám esetén hibát ad', () => {
+    expect(validateCarrierSeal('Brink', 'A'.repeat(65))).toBe('A plombaszám legfeljebb 64 karakter lehet!')
+  })
+
+  it('érvénytelen karaktert tartalmazó plombaszám esetén hibát ad', () => {
+    expect(validateCarrierSeal('Brink', 'ABC 123')).toBe('A plombaszám csak betűt, számot, kötőjelet és perjelet tartalmazhat!')
+    expect(validateCarrierSeal('Brink', 'ABC#1')).toBe('A plombaszám csak betűt, számot, kötőjelet és perjelet tartalmazhat!')
   })
 })
