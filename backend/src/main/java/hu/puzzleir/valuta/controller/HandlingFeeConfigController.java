@@ -24,7 +24,11 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/handling-fee-config")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('MANAGER','ADMIN')")
+// FK-KEZDÍJ (2026-06-02): a "Kezelési költség beállítás" menüpont (menuGroups.ts) az
+// ugyvezeto/irodavezeto/belso_ellenor kanonikus role-oknak látszik, de a controller eddig csak
+// MANAGER/ADMIN-t engedett → 403. A JWT authority `ROLE_<kanonikus>` (JwtAuthenticationFilter),
+// ezért a kanonikus neveket is fel kell venni. Pénztáros (PENZTAR) TILOS (a menüből is hiányzik).
+@PreAuthorize("hasAnyRole('MANAGER','ADMIN','UGYVEZETO','IRODAVEZETO','BELSO_ELLENOR')")
 @Slf4j
 public class HandlingFeeConfigController {
 

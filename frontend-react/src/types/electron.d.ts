@@ -374,6 +374,17 @@ export interface ElectronAPI {
     sell_rate: number;
     unit: number;
     updated_at: string;
+    // FK-SÁVOS (2026-06-02): a sávos árfolyam-mezők (a SQLite cached_rates SELECT * visszaadja).
+    official_rate?: number | null;
+    limit1_amount?: number | null;
+    limit1_buy_rate?: number | null;
+    limit1_sell_rate?: number | null;
+    limit2_amount?: number | null;
+    limit2_buy_rate?: number | null;
+    limit2_sell_rate?: number | null;
+    limit3_amount?: number | null;
+    limit3_buy_rate?: number | null;
+    limit3_sell_rate?: number | null;
   }>>;
   getCachedCashDesks(): Promise<Array<{
     id: string;
