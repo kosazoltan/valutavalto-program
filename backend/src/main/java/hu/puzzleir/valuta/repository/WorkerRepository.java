@@ -135,6 +135,28 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
             @Param("email") String email);
     
     /**
+     * FK-ÉRTÉKTÁR (V285, 2026-06-02): a kétlépcsős értéktári belépés dolgozóválasztó listája.
+     * Az adott intézményi értéktár (company + branch) SZEMÉLYES, jelszóval rendelkező workerei:
+     *  - aktív,
+     *  - NEM intézményi (shared_account = false),
+     *  - van jelszó-hash (a 2. lépcső jelszavas),
+     *  - NEM Google-login fiók (googleLoginEnabled = false) — a személyes belépés jelszavas.
+     * Névre rendezve. A role (ertektar) szűrést a service végzi a WorkerRoleService-szel.
+     */
+    @Query("""
+        SELECT w FROM Worker w
+        WHERE w.company.id = :companyId
+          AND w.branch.id = :branchId
+          AND w.active = true
+          AND w.sharedAccount = false
+          AND w.googleLoginEnabled = false
+          AND w.passwordHash IS NOT NULL
+        ORDER BY w.name
+    """)
+    List<Worker> findSelectableVaultWorkers(@Param("companyId") UUID companyId,
+                                            @Param("branchId") UUID branchId);
+
+    /**
      * Supervisor és felsőbb jogosultságú dolgozók
      */
     @Query("SELECT w FROM Worker w WHERE w.company.id = :companyId AND w.role IN ('SUPERVISOR', 'MANAGER', 'ADMIN') AND w.active = true")

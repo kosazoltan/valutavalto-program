@@ -81,4 +81,24 @@ public class LoginResponseDto {
      * szerepkor mely kozponti modulokat jelenitheti meg.
      */
     private List<String> centralModules;
+
+    // ============ FK-ÉRTÉKTÁR (V285, 2026-06-02): kétlépcsős értéktári belépés ============
+
+    /**
+     * true ha intézményi (közös) Google-fiókkal léptünk be, és a felhasználónak ki kell
+     * választania a SAJÁT személyes workerét + jelszót (kétlépcsős belépés 1. fázis vége).
+     * Ilyenkor NINCS végleges token/session — a frontend a dolgozóválasztót mutatja, majd a
+     * POST /auth/google-vault/select-worker endpointtal véglegesít.
+     */
+    @Builder.Default
+    private Boolean vaultWorkerSelectionRequired = false;
+
+    /**
+     * A kiválasztható személyes értéktári dolgozók (id + név) — csak ha
+     * vaultWorkerSelectionRequired = true.
+     */
+    private List<VaultWorkerOptionDto> vaultWorkers;
+
+    /** Az intézményi értéktár fiók (branch) neve — a dolgozóválasztó fejlécéhez. */
+    private String vaultBranchName;
 }

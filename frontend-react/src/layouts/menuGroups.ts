@@ -94,6 +94,8 @@ export const menuGroups: MenuGroup[] = [
       { path: "/cashier-stocks", label: "Pénztári készletek", icon: Wallet },
       // Bali Henriett 2. pont (2026-05-27): manuális pénztár-felrögzítés értéktáros által.
       { path: "/branches/new-cashier", label: "Új pénztár felrögzítése", icon: Building2 },
+      // FK-ÉRTÉKTÁR (V285): új személyes értéktári munkatárs felvétele (név + jelszó).
+      { path: "/vault-workers/new", label: "Új munkatárs felvétele", icon: Users },
       { path: "/daybook", label: "Naplókönyv", icon: FileText },
       { path: "/evening-closing", label: "Napi zárás", icon: FileText },
       { path: "/closing/monthly", label: "Havi zárás", icon: FileText },

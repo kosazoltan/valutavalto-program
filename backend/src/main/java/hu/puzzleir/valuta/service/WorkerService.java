@@ -595,6 +595,26 @@ public class WorkerService {
         });
     }
 
+    // ============ FK-ÉRTÉKTÁR (V285): a kétlépcsős értéktári belépés lockout-újrahasználata ============
+    // A GoogleLoginService.selectVaultWorker a SZEMÉLYES worker jelszó-ellenőrzéséhez ugyanazt a
+    // brute-force lockout-állapotot (loginAttempts map) használja, NEM duplikál külön mapet (audit P0).
+    // A loginKey konvenció: companyCode + ":" + workerCode (mint a jelszavas login-nál).
+
+    /** Lockout-ellenőrzés a kétlépcsős értéktári belépés jelszó-fázisához. */
+    public void assertVaultLoginNotLocked(String loginKey) {
+        checkBruteForceLock(loginKey);
+    }
+
+    /** Sikertelen értéktári jelszó-kísérlet rögzítése (5/15 perc lockout). */
+    public void recordVaultFailedAttempt(String loginKey) {
+        recordFailedAttempt(loginKey);
+    }
+
+    /** Sikeres értéktári belépés → a lockout-számláló nullázása. */
+    public void clearVaultLoginAttempts(String loginKey) {
+        loginAttempts.remove(loginKey);
+    }
+
     /**
      * v2.5.4 (D opció): admin manuális unlock egy worker login-lockoutjára.
      * Eltávolítja a worker-t a {@code loginAttempts} ConcurrentHashMap-ból,

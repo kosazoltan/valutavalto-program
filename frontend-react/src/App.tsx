@@ -73,6 +73,7 @@ const RepresentativeDetailPage = lazy(() => import('./pages/representatives/Repr
 const ShipmentListPage = lazy(() => import('./pages/shipments/ShipmentListPage'))
 const ShipmentNewPage = lazy(() => import('./pages/shipments/ShipmentNewPage'))
 const NewCashierBranchPage = lazy(() => import('./pages/branches/NewCashierBranchPage'))
+const NewVaultWorkerPage = lazy(() => import('./pages/vault-workers/NewVaultWorkerPage'))
 const WorkerCommissionPage = lazy(() => import('./pages/commissions/WorkerCommissionPage'))
 const WorkstationPage = lazy(() => import('./pages/workstations/WorkstationPage'))
 const ContributionPage = lazy(() => import('./pages/contributions/ContributionPage'))
@@ -509,6 +510,9 @@ export default function App() {
               értéktáros által (terület-hozzárendeléssel, hogy a területi szűrt listákban
               automatikusan megjelenjen). */}
           <Route path="/branches/new-cashier" element={<NewCashierBranchPage />} />
+
+          {/* FK-ÉRTÉKTÁR (V285): új személyes értéktári munkatárs felvétele (név + jelszó). */}
+          <Route path="/vault-workers/new" element={<NewVaultWorkerPage />} />
 
           {/* Transfers */}
           <Route path="/transfers" element={<TransferPage />} />

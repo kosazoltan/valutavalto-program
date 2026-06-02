@@ -55,6 +55,8 @@ class GoogleLoginServiceTest {
     private JwtTokenProvider jwtTokenProvider;
     private BranchRepository branchRepository;
     private ClientIpResolver clientIpResolver;
+    private WorkerService workerService;
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private GoogleLoginService service;
 
     @BeforeEach
@@ -66,11 +68,14 @@ class GoogleLoginServiceTest {
         jwtTokenProvider = Mockito.mock(JwtTokenProvider.class);
         branchRepository = Mockito.mock(BranchRepository.class);
         clientIpResolver = Mockito.mock(ClientIpResolver.class);
+        workerService = Mockito.mock(WorkerService.class);
+        passwordEncoder = Mockito.mock(org.springframework.security.crypto.password.PasswordEncoder.class);
         when(clientIpResolver.resolveClientIp(any())).thenReturn("127.0.0.1");
 
         service = new GoogleLoginService(
                 googleIdTokenService, workerRepository, sessionRepository,
-                workerRoleService, jwtTokenProvider, branchRepository, clientIpResolver);
+                workerRoleService, jwtTokenProvider, branchRepository, clientIpResolver,
+                workerService, passwordEncoder);
         ReflectionTestUtils.setField(service, "bindSubOnFirstLogin", true);
     }
 
@@ -374,5 +379,172 @@ class GoogleLoginServiceTest {
         assertThat(response.getValidAppModes())
                 .as("biztonsagi_vezeto -> kamera + full appMode")
                 .containsExactly("kamera", "full");
+    }
+
+    // ============ FK-ÉRTÉKTÁR (V285): kétlépcsős értéktári belépés ============
+
+    private Worker sharedInstitutional(Company company, Branch branch, String sub, String email) {
+        return Worker.builder()
+                .id(1000L).code("G_SZEGED_ET").name("Szeged Ertektar")
+                .company(company).branch(branch).role(WorkerRole.CASHIER)
+                .active(true).email(email).googleLoginEnabled(true).googleSubject(sub)
+                .sharedAccount(true)
+                .build();
+    }
+
+    private Worker personalVaultWorker(Company company, Branch branch, Long id, String name) {
+        return Worker.builder()
+                .id(id).code("BALI").name(name)
+                .company(company).branch(branch).role(WorkerRole.CASHIER)
+                .active(true).googleLoginEnabled(false).sharedAccount(false)
+                .passwordHash("$2a$12$dummyhashdummyhashdummyhashdummyhashdu")
+                .build();
+    }
+
+    @Test
+    @DisplayName("V285: intézményi (shared) fiók + capability-flag + van személyes worker -> dolgozóválasztó (nincs token)")
+    void sharedAccount_withSelectableWorkers_returnsSelection() throws Exception {
+        Company company = Company.builder().id(UUID.randomUUID()).code("EBC").build();
+        Branch branch = Branch.builder().id(UUID.randomUUID()).code("BR020").name("Szeged Értéktár").company(company).build();
+        Worker institutional = sharedInstitutional(company, branch, "g-sub-szeged", "szeged.ebc@gmail.com");
+        Worker personal = personalVaultWorker(company, branch, 77L, "Bali Henriett");
+
+        when(googleIdTokenService.verify("ok")).thenReturn(identity("g-sub-szeged", "szeged.ebc@gmail.com"));
+        when(workerRepository.findGoogleLoginCandidatesByEmail("szeged.ebc@gmail.com")).thenReturn(List.of(institutional));
+        when(workerRepository.findSelectableVaultWorkers(any(), any())).thenReturn(List.of(personal));
+        when(workerRoleService.getRoleCodesForWorker(77L)).thenReturn(List.of("ertektar"));
+
+        LoginResponseDto response = service.loginWithGoogle("ok", new MockHttpServletRequest(), "ertektar", true);
+
+        assertThat(response.getVaultWorkerSelectionRequired()).isTrue();
+        assertThat(response.getToken()).isNull();
+        assertThat(response.getVaultBranchName()).isEqualTo("Szeged Értéktár");
+        assertThat(response.getVaultWorkers()).hasSize(1);
+        assertThat(response.getVaultWorkers().get(0).getName()).isEqualTo("Bali Henriett");
+        assertThat(response.getVaultWorkers().get(0).getId()).isEqualTo(77L);
+        // NINCS session, amíg nincs jelszavas 2. fázis
+        verify(sessionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("V285: intézményi fiók DE nincs személyes worker -> fallback intézményi session (nincs kizárás)")
+    void sharedAccount_noSelectableWorkers_fallsBackToSession() throws Exception {
+        Company company = Company.builder().id(UUID.randomUUID()).code("EBC").build();
+        Branch branch = Branch.builder().id(UUID.randomUUID()).code("BR020").name("Szeged Értéktár").company(company).build();
+        Worker institutional = sharedInstitutional(company, branch, "g-sub-szeged", "szeged.ebc@gmail.com");
+
+        when(googleIdTokenService.verify("ok")).thenReturn(identity("g-sub-szeged", "szeged.ebc@gmail.com"));
+        when(workerRepository.findGoogleLoginCandidatesByEmail("szeged.ebc@gmail.com")).thenReturn(List.of(institutional));
+        when(workerRepository.findSelectableVaultWorkers(any(), any())).thenReturn(List.of());
+        when(workerRoleService.getRoleCodesForWorker(1000L)).thenReturn(List.of("ertektar"));
+        when(workerRoleService.getPermissionCodesForRole("ertektar")).thenReturn(List.of("VAULT_VIEW"));
+        when(jwtTokenProvider.generateToken(any(), any(), any())).thenReturn("jwt-institutional");
+        when(jwtTokenProvider.getTokenIdFromToken("jwt-institutional")).thenReturn("tid-inst");
+        when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(sessionRepository.save(any(WorkerSession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        LoginResponseDto response = service.loginWithGoogle("ok", new MockHttpServletRequest(), "ertektar", true);
+
+        assertThat(response.getVaultWorkerSelectionRequired()).isFalse();
+        assertThat(response.getToken()).isEqualTo("jwt-institutional");
+        verify(sessionRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("V285: régi kliens (capability-flag false) intézményi fióknál is sessiont kap (nem törik el)")
+    void sharedAccount_oldClientNoCapability_getsSession() throws Exception {
+        Company company = Company.builder().id(UUID.randomUUID()).code("EBC").build();
+        Branch branch = Branch.builder().id(UUID.randomUUID()).code("BR020").name("Szeged Értéktár").company(company).build();
+        Worker institutional = sharedInstitutional(company, branch, "g-sub-szeged", "szeged.ebc@gmail.com");
+
+        when(googleIdTokenService.verify("ok")).thenReturn(identity("g-sub-szeged", "szeged.ebc@gmail.com"));
+        when(workerRepository.findGoogleLoginCandidatesByEmail("szeged.ebc@gmail.com")).thenReturn(List.of(institutional));
+        when(workerRoleService.getRoleCodesForWorker(1000L)).thenReturn(List.of("ertektar"));
+        when(workerRoleService.getPermissionCodesForRole("ertektar")).thenReturn(List.of("VAULT_VIEW"));
+        when(jwtTokenProvider.generateToken(any(), any(), any())).thenReturn("jwt-old");
+        when(jwtTokenProvider.getTokenIdFromToken("jwt-old")).thenReturn("tid-old");
+        when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(sessionRepository.save(any(WorkerSession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // appMode "ertektar", supportsVaultWorkerSelection = false (régi kliens 3-arg overload)
+        LoginResponseDto response = service.loginWithGoogle("ok", new MockHttpServletRequest(), "ertektar");
+
+        assertThat(response.getVaultWorkerSelectionRequired()).isFalse();
+        assertThat(response.getToken()).isEqualTo("jwt-old");
+        verify(workerRepository, never()).findSelectableVaultWorkers(any(), any());
+    }
+
+    @Test
+    @DisplayName("V285: selectVaultWorker happy path -> személyes worker JWT")
+    void selectVaultWorker_happyPath() throws Exception {
+        Company company = Company.builder().id(UUID.randomUUID()).code("EBC").build();
+        Branch branch = Branch.builder().id(UUID.randomUUID()).code("BR020").name("Szeged Értéktár").company(company).build();
+        Worker institutional = sharedInstitutional(company, branch, "g-sub-szeged", "szeged.ebc@gmail.com");
+        Worker personal = personalVaultWorker(company, branch, 77L, "Bali Henriett");
+
+        when(googleIdTokenService.verify("ok")).thenReturn(identity("g-sub-szeged", "szeged.ebc@gmail.com"));
+        when(workerRepository.findGoogleLoginCandidatesByEmail("szeged.ebc@gmail.com")).thenReturn(List.of(institutional));
+        when(workerRepository.findByIdWithCompanyAndBranch(77L)).thenReturn(java.util.Optional.of(personal));
+        when(workerRoleService.getRoleCodesForWorker(77L)).thenReturn(List.of("ertektar"));
+        when(workerRoleService.getPermissionCodesForRole("ertektar")).thenReturn(List.of("VAULT_VIEW"));
+        when(passwordEncoder.matches("sajat-jelszo", personal.getPasswordHash())).thenReturn(true);
+        when(jwtTokenProvider.generateToken(any(), any(), any())).thenReturn("jwt-personal");
+        when(jwtTokenProvider.getTokenIdFromToken("jwt-personal")).thenReturn("tid-personal");
+        when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(sessionRepository.save(any(WorkerSession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        LoginResponseDto response = service.selectVaultWorker("ok", 77L, "sajat-jelszo",
+                new MockHttpServletRequest(), "ertektar");
+
+        assertThat(response.getToken()).isEqualTo("jwt-personal");
+        assertThat(response.getActiveRole()).isEqualTo("ertektar");
+        assertThat(response.getWorker().getId()).isEqualTo(77L);
+        verify(workerService).assertVaultLoginNotLocked("EBC:BALI");
+        verify(workerService).clearVaultLoginAttempts("EBC:BALI");
+        verify(workerService, never()).recordVaultFailedAttempt(any());
+    }
+
+    @Test
+    @DisplayName("V285: selectVaultWorker hibás jelszó -> AuthenticationException + lockout-számláló nő")
+    void selectVaultWorker_wrongPassword_recordsAttempt() throws Exception {
+        Company company = Company.builder().id(UUID.randomUUID()).code("EBC").build();
+        Branch branch = Branch.builder().id(UUID.randomUUID()).code("BR020").name("Szeged Értéktár").company(company).build();
+        Worker institutional = sharedInstitutional(company, branch, "g-sub-szeged", "szeged.ebc@gmail.com");
+        Worker personal = personalVaultWorker(company, branch, 77L, "Bali Henriett");
+
+        when(googleIdTokenService.verify("ok")).thenReturn(identity("g-sub-szeged", "szeged.ebc@gmail.com"));
+        when(workerRepository.findGoogleLoginCandidatesByEmail("szeged.ebc@gmail.com")).thenReturn(List.of(institutional));
+        when(workerRepository.findByIdWithCompanyAndBranch(77L)).thenReturn(java.util.Optional.of(personal));
+        when(workerRoleService.getRoleCodesForWorker(77L)).thenReturn(List.of("ertektar"));
+        when(passwordEncoder.matches("rossz", personal.getPasswordHash())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.selectVaultWorker("ok", 77L, "rossz",
+                new MockHttpServletRequest(), "ertektar"))
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessageContaining("Érvénytelen");
+        verify(workerService).recordVaultFailedAttempt("EBC:BALI");
+        verify(workerService, never()).clearVaultLoginAttempts(any());
+        verify(sessionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("V285: selectVaultWorker más branch workere -> generikus hiba (cross-branch védelem)")
+    void selectVaultWorker_crossBranch_throws() throws Exception {
+        Company company = Company.builder().id(UUID.randomUUID()).code("EBC").build();
+        Branch szegedBranch = Branch.builder().id(UUID.randomUUID()).code("BR020").name("Szeged").company(company).build();
+        Branch debrecenBranch = Branch.builder().id(UUID.randomUUID()).code("BR050").name("Debrecen").company(company).build();
+        Worker institutional = sharedInstitutional(company, szegedBranch, "g-sub-szeged", "szeged.ebc@gmail.com");
+        // A személyes worker MÁS branch-en (Debrecen) van.
+        Worker personalOtherBranch = personalVaultWorker(company, debrecenBranch, 88L, "Idegen Dolgozó");
+
+        when(googleIdTokenService.verify("ok")).thenReturn(identity("g-sub-szeged", "szeged.ebc@gmail.com"));
+        when(workerRepository.findGoogleLoginCandidatesByEmail("szeged.ebc@gmail.com")).thenReturn(List.of(institutional));
+        when(workerRepository.findByIdWithCompanyAndBranch(88L)).thenReturn(java.util.Optional.of(personalOtherBranch));
+
+        assertThatThrownBy(() -> service.selectVaultWorker("ok", 88L, "barmi",
+                new MockHttpServletRequest(), "ertektar"))
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessageContaining("Érvénytelen");
+        verify(sessionRepository, never()).save(any());
     }
 }

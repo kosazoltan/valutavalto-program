@@ -335,7 +335,9 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
   apiBaseUrl: string;          // pl. https://excvaluta.com/api/v1
   appMode?: string;
   timeoutMs?: number;
-}): Promise<{ response: unknown; email?: string }> {
+  // FK-ÉRTÉKTÁR (V285): a kliens támogatja a kétlépcsős értéktári belépést (dolgozóválasztó).
+  supportsVaultWorkerSelection?: boolean;
+}): Promise<{ response: unknown; email?: string; idToken: string }> {
   // 1. RFC 8252 OAuth Flow -> idToken
   const oauthResult = await performGoogleOAuthFlow({
     clientId: config.clientId,
@@ -346,7 +348,11 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
   // 2. Backend POST /auth/google-login main-process net.request-tel + retry
   const apiBase = config.apiBaseUrl.replace(/\/+$/, '');
   const url = `${apiBase}/auth/google-login`;
-  const reqBody = JSON.stringify({ idToken: oauthResult.idToken, appMode: config.appMode });
+  const reqBody = JSON.stringify({
+    idToken: oauthResult.idToken,
+    appMode: config.appMode,
+    supportsVaultWorkerSelection: config.supportsVaultWorkerSelection === true,
+  });
 
   const MAX_RETRIES = 3;
   const RETRY_DELAYS = [1000, 3000, 5000];
@@ -358,6 +364,10 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
       return {
         response: responseJson,
         email: oauthResult.email,
+        // FK-ÉRTÉKTÁR (V285): a renderernek visszaadjuk az idTokent, hogy ha a backend
+        // dolgozóválasztót kért (vaultWorkerSelectionRequired), a 2. fázis (select-worker)
+        // ugyanazzal a Google ID tokennel hívható legyen.
+        idToken: oauthResult.idToken,
       };
     } catch (err) {
       const isLastAttempt = attempt === MAX_RETRIES - 1;

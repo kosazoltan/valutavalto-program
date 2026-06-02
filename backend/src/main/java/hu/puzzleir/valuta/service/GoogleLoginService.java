@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
+import hu.puzzleir.valuta.dto.auth.VaultWorkerOptionDto;
 import hu.puzzleir.valuta.dto.worker.WorkerDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Worker;
@@ -68,6 +69,9 @@ public class GoogleLoginService {
     private final JwtTokenProvider jwtTokenProvider;
     private final BranchRepository branchRepository;
     private final ClientIpResolver clientIpResolver;
+    // FK-ÉRTÉKTÁR (V285): a kétlépcsős belépés jelszó-fázisához — lockout-újrahasználat + bcrypt match.
+    private final WorkerService workerService;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Value("${google.login.bind-sub-on-first-login:true}")
     private boolean bindSubOnFirstLogin;
@@ -83,10 +87,22 @@ public class GoogleLoginService {
      *                                  (admin konfiguracios hiba)
      */
     public LoginResponseDto loginWithGoogle(String idToken, HttpServletRequest httpRequest) {
-        return loginWithGoogle(idToken, httpRequest, null);
+        return loginWithGoogle(idToken, httpRequest, null, false);
     }
 
     public LoginResponseDto loginWithGoogle(String idToken, HttpServletRequest httpRequest, String appMode) {
+        return loginWithGoogle(idToken, httpRequest, appMode, false);
+    }
+
+    /**
+     * @param supportsVaultWorkerSelection FK-ÉRTÉKTÁR (V285): ha a kliens támogatja a kétlépcsős
+     *        értéktári belépést ÉS a Google-fiók intézményi (shared_account) ÉS van kiválasztható
+     *        személyes worker → a metódus NEM ad végleges sessiont, hanem dolgozóválasztó-DTO-t
+     *        (vaultWorkerSelectionRequired = true). Minden más esetben a korábbi viselkedés
+     *        (intézményi worker sessionje) — így a régi kliensek nem törnek el.
+     */
+    public LoginResponseDto loginWithGoogle(String idToken, HttpServletRequest httpRequest,
+                                            String appMode, boolean supportsVaultWorkerSelection) {
         // 1. Google ID token validacio
         GoogleIdTokenService.VerifiedGoogleIdentity identity;
         try {
@@ -159,7 +175,140 @@ public class GoogleLoginService {
                     "A Google fiok azonositoja nem egyezik. Lepj be a regi fiokkal vagy kerd az admin segitseget.");
         }
 
-        // 5. Operativ szerepkor (V57) — egyezo logika a WorkerService.login-nal
+        // FK-ÉRTÉKTÁR (V285): intézményi (közös) Google-fiók → kétlépcsős belépés.
+        // Ha a kliens támogatja (capability-flag) ÉS a fiók shared_account ÉS van kiválasztható
+        // személyes worker → NEM adunk végleges sessiont, hanem dolgozóválasztót. Egyébként
+        // fallback: az intézményi worker sessionje (régi viselkedés — nincs kizárás akkor sem,
+        // ha még nincs felvett személyes worker, vagy régi kliens lép be).
+        if (supportsVaultWorkerSelection && Boolean.TRUE.equals(worker.getSharedAccount())) {
+            LoginResponseDto selection = buildVaultWorkerSelectionOrNull(worker);
+            if (selection != null) {
+                log.info("GOOGLE_VAULT_SELECTION_REQUIRED institutionalWorker={} candidateCount={}",
+                        worker.getCode(), selection.getVaultWorkers().size());
+                return selection;
+            }
+            log.info("GOOGLE_VAULT_NO_PERSONAL_WORKERS_FALLBACK institutionalWorker={}", worker.getCode());
+        }
+
+        // Végleges session: nem-intézményi Google login VAGY intézményi fallback.
+        return buildSessionResponse(worker, appMode, httpRequest, true);
+    }
+
+    /**
+     * FK-ÉRTÉKTÁR (V285): ha az intézményi értéktár-fiók alatt van legalább egy kiválasztható
+     * SZEMÉLYES (jelszavas, ertektar-szerepkörű) worker → dolgozóválasztó-DTO. Egyébként null
+     * (a hívó ilyenkor az intézményi sessionre esik vissza — bootstrap, nincs kizárás).
+     */
+    private LoginResponseDto buildVaultWorkerSelectionOrNull(Worker institutional) {
+        Branch branch = institutional.getBranch();
+        if (branch == null) {
+            return null;
+        }
+        List<Worker> candidates = workerRepository.findSelectableVaultWorkers(
+                institutional.getCompany().getId(), branch.getId());
+        // Csak az ertektar canonical role-lal rendelkező személyes workerek választhatók.
+        List<VaultWorkerOptionDto> options = candidates.stream()
+                .filter(w -> workerRoleService.getRoleCodesForWorker(w.getId()).contains("ertektar"))
+                .map(w -> VaultWorkerOptionDto.builder().id(w.getId()).name(w.getName()).build())
+                .toList();
+        if (options.isEmpty()) {
+            return null;
+        }
+        return LoginResponseDto.builder()
+                .vaultWorkerSelectionRequired(true)
+                .vaultWorkers(options)
+                .vaultBranchName(branch.getName())
+                .roleSelectionRequired(false)
+                .build();
+    }
+
+    /**
+     * FK-ÉRTÉKTÁR (V285): a kétlépcsős értéktári belépés 2. fázisa. A Google ID token újra-
+     * verifikálva azonosítja az intézményi fiókot; a kiválasztott személyes worker a fiók
+     * branch-e alá kell tartozzon, ertektar role-lal és jelszóval. Helyes jelszó után végleges
+     * session a SZEMÉLYES workerrel. Lockout: a WorkerService közös számlálóján (5/15 perc).
+     */
+    public LoginResponseDto selectVaultWorker(String idToken, Long personalWorkerId,
+                                              String password, HttpServletRequest httpRequest,
+                                              String appMode) {
+        // 1. Google ID token újra-verifikáció → intézményi fiók
+        GoogleIdTokenService.VerifiedGoogleIdentity identity;
+        try {
+            identity = googleIdTokenService.verify(idToken);
+        } catch (GoogleIdTokenService.GoogleTokenInvalidException ex) {
+            log.warn("GOOGLE_VAULT_SELECT_DENIED_INVALID_TOKEN code={}", ex.getCode());
+            throw new AuthenticationException("Google bejelentkezés sikertelen.");
+        }
+
+        List<Worker> candidates = workerRepository.findGoogleLoginCandidatesByEmail(identity.email());
+        if (candidates.size() != 1) {
+            log.warn("GOOGLE_VAULT_SELECT_DENIED_CANDIDATES count={}", candidates.size());
+            throw new AuthenticationException("Google fiók nincs engedélyezve ehhez a rendszerhez.");
+        }
+        Worker institutional = candidates.get(0);
+        if (!Boolean.TRUE.equals(institutional.getSharedAccount())) {
+            log.warn("GOOGLE_VAULT_SELECT_DENIED_NOT_SHARED workerCode={}", institutional.getCode());
+            throw new AuthenticationException("Ez a Google fiók nem értéktári közös fiók.");
+        }
+        // Sub-binding védelem: a token subject egyezzen az intézményi fiókéval (ha már kötött).
+        if (institutional.getGoogleSubject() != null
+                && !institutional.getGoogleSubject().equals(identity.subject())) {
+            log.warn("GOOGLE_VAULT_SELECT_DENIED_SUB_MISMATCH workerCode={}", institutional.getCode());
+            throw new AuthenticationException("A Google fiók azonosítója nem egyezik.");
+        }
+        Branch institutionalBranch = institutional.getBranch();
+        if (institutionalBranch == null) {
+            throw new AuthenticationException("Az értéktár fiókhoz nincs iroda rendelve.");
+        }
+
+        // 2. Személyes worker betöltése + validáció (generikus hibaüzenet az id-enumeráció ellen).
+        Worker personal = workerRepository.findByIdWithCompanyAndBranch(personalWorkerId)
+                .orElseThrow(() -> new AuthenticationException("Érvénytelen dolgozó vagy jelszó."));
+        boolean validSelection =
+                personal.getCompany().getId().equals(institutional.getCompany().getId())
+                && personal.getBranch() != null
+                && personal.getBranch().getId().equals(institutionalBranch.getId())
+                && Boolean.TRUE.equals(personal.getActive())
+                && !Boolean.TRUE.equals(personal.getSharedAccount())
+                // Copilot: a Google-loginra szánt workereket NE engedjük a jelszavas 2. fázison —
+                // egyezzen a findSelectableVaultWorkers query szűrésével (googleLoginEnabled=false).
+                && !Boolean.TRUE.equals(personal.getGoogleLoginEnabled())
+                && personal.getPasswordHash() != null
+                && workerRoleService.getRoleCodesForWorker(personal.getId()).contains("ertektar");
+        if (!validSelection) {
+            log.warn("GOOGLE_VAULT_SELECT_DENIED_INVALID_WORKER personalId={} institutional={}",
+                    personalWorkerId, institutional.getCode());
+            throw new AuthenticationException("Érvénytelen dolgozó vagy jelszó.");
+        }
+
+        // 3. Lockout + jelszó-ellenőrzés (közös WorkerService számláló — nincs duplikált map).
+        String loginKey = institutional.getCompany().getCode() + ":" + personal.getCode();
+        workerService.assertVaultLoginNotLocked(loginKey);
+        if (!passwordEncoder.matches(password, personal.getPasswordHash())) {
+            workerService.recordVaultFailedAttempt(loginKey);
+            log.warn("GOOGLE_VAULT_SELECT_BAD_PASSWORD workerCode={}", personal.getCode());
+            throw new AuthenticationException("Érvénytelen dolgozó vagy jelszó.");
+        }
+        workerService.clearVaultLoginAttempts(loginKey);
+
+        log.info("GOOGLE_VAULT_SELECT_SUCCESS personalWorker={} institutional={}",
+                personal.getCode(), institutional.getCode());
+
+        // 4. Végleges session a SZEMÉLYES workerrel (a Google last-login NEM frissül rajta,
+        //    mert jelszóval lépett be a 2. fázisban).
+        return buildSessionResponse(personal, appMode, httpRequest, false);
+    }
+
+    /**
+     * FK-ÉRTÉKTÁR (V285): a végleges JWT + WorkerSession + LoginResponseDto felépítése egy már
+     * azonosított workerhez. Használt: intézményi fallback / nem-intézményi Google login
+     * (updateGoogleLastLogin = true), illetve a kétlépcsős személyes belépés
+     * (updateGoogleLastLogin = false). Megegyezik a korábbi 5-7. lépéssel.
+     */
+    private LoginResponseDto buildSessionResponse(Worker worker, String appMode,
+                                                  HttpServletRequest httpRequest,
+                                                  boolean updateGoogleLastLogin) {
+        // 5. Operativ szerepkor (V57)
         List<String> roleCodes = workerRoleService.getRoleCodesForWorker(worker.getId());
         if (AppModeRoleConstants.isLegacyWorkerRoleDeniedForAppMode(
                 roleCodes, worker.getRole(), appMode)) {
@@ -178,10 +327,7 @@ public class GoogleLoginService {
         }
 
         String appModeValidationError = AppModeRoleConstants.validateLoginRolesForAppMode(
-                roleCodes,
-                activeRole,
-                roleSelectionRequired,
-                appMode);
+                roleCodes, activeRole, roleSelectionRequired, appMode);
         if (appModeValidationError != null) {
             throw new AuthenticationException(appModeValidationError);
         }
@@ -189,9 +335,7 @@ public class GoogleLoginService {
                 ? AppModeRoleConstants.selectableRolesForAppMode(roleCodes, appMode)
                 : roleCodes;
 
-        // Codex P1 PR #361 follow-up: legacy worker eseten `worker.getBranch()` lehet null,
-        // es a JWT branch claim is non-null erteket var. Ugyanaz a fallback minta mint
-        // a `WorkerService.login` agan — ceg-szintu elso aktiv branch.
+        // Codex P1 PR #361 follow-up: legacy worker eseten a branch null lehet → ceg-szintu fallback.
         Branch sessionBranch = worker.getBranch();
         if (sessionBranch == null) {
             sessionBranch = branchRepository.findByCompanyIdAndIsActiveTrue(worker.getCompany().getId())
@@ -224,21 +368,19 @@ public class GoogleLoginService {
         sessionRepository.save(session);
 
         worker.setLastLoginAt(LocalDateTime.now());
-        worker.setGoogleLastLoginAt(LocalDateTime.now());
+        if (updateGoogleLastLogin) {
+            worker.setGoogleLastLoginAt(LocalDateTime.now());
+        }
         workerRepository.save(worker);
 
-        log.info("GOOGLE_LOGIN_SUCCESS workerCode={} subjectHash={} ip={}",
-                worker.getCode(),
-                safeLogHash(googleSubject),
-                clientIp);
+        // CodeQL log-injection: a clientIp (X-Forwarded-For fejlécből) user-controlled, ezért NEM
+        // logoljuk (a WorkerSession.ipAddress amúgy is rögzíti audit-célból). Csak a DB-forrású
+        // workerCode kerül a logba.
+        log.info("GOOGLE_SESSION_BUILT workerCode={}", worker.getCode());
 
-        // 7. validAppModes szamitas — egyezo logika a WorkerService.login-nal
+        // 7. validAppModes
         long expiresInMs = 86400000L;
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(expiresInMs / 1000);
-
-        // V181 + Sourcery+Copilot PR #361 follow-up: kozos AppModeRoleConstants util.
-        // A "kamera" appMode logika is itt — a teruleti_vezeto + biztonsagi_vezeto canonical
-        // role-ok "kamera" appMode-ot kapnak (NEM "full") — NEM ferhetnek a szerver-adminhoz.
         List<String> validAppModes = AppModeRoleConstants.computeValidAppModes(roleCodes, worker.getRole());
         List<String> centralModules = CentralModuleManifest.allowedModules(roleCodes, activeRole, worker.getRole());
 

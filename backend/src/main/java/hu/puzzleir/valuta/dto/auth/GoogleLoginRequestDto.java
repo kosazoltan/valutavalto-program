@@ -18,4 +18,13 @@ public class GoogleLoginRequestDto {
 
     @Size(max = 32, message = "Az appMode max 32 karakter lehet")
     private String appMode;
+
+    /**
+     * FK-ÉRTÉKTÁR (V285, 2026-06-02): capability-flag. Ha a kliens támogatja a kétlépcsős
+     * értéktári belépést (dolgozóválasztó + személyes jelszó), true-t küld. Régi kliensek
+     * nem küldik (null/false) → a backend a korábbi viselkedéssel intézményi sessiont ad
+     * (nem törik el a meglévő login). Új kliensek esetén intézményi fióknál a backend
+     * dolgozóválasztót kér (vaultWorkerSelectionRequired = true).
+     */
+    private Boolean supportsVaultWorkerSelection;
 }
