@@ -192,7 +192,28 @@ export default function CashierStocksPage() {
     for (const terr of map.values()) {
       if (!terr.vaultName) continue
       if (!terr.groups.some(g => g.branchName === terr.vaultName)) {
-        terr.groups.push({ branchName: terr.vaultName, items: [], hufTotal: 0, nonZeroCount: 0 })
+        // FK-007: az üres (készletsor nélküli) értéktár-kártya is a központi aktív valutanem-törzsből
+        // kapja a sorait, 0 egyenleggel — ne "0 valuta" üres kártyaként jelenjen meg, mint a pénztárak.
+        // Ha a /currencies törzs még tölt (currencies üres), marad az üres fallback (best-effort).
+        // A keresőszűrőt az injektált sorokra is alkalmazzuk (Codex/Copilot), hogy konzisztens legyen
+        // a pénztárkártyák szűrésével; ha keresésnél egyetlen sor sem talál, a vault-kártyát nem injektáljuk.
+        const term = searchTerm.trim().toLowerCase()
+        const vaultItems: InventoryItem[] = currencies
+          .map(c => ({
+            id: `${terr.vaultName}|${c.code}`,
+            branchName: terr.vaultName,
+            currencyCode: c.code,
+            currentBalance: 0,
+          }))
+          .filter(it => !term
+            || it.branchName.toLowerCase().includes(term)
+            || it.currencyCode.toLowerCase().includes(term))
+        // Injektálunk, ha (a) van megjelenítendő (szűrt) valutasor, VAGY (b) a /currencies törzs még/nem
+        // töltött (currencies üres) — ekkor a FK-003 „mindig látszik az értéktár-kártya" fallback marad
+        // érvényben (üres kártyával). CSAK akkor hagyjuk ki, ha VAN törzs, de a keresés mindent kiszűrt.
+        if (vaultItems.length > 0 || currencies.length === 0) {
+          terr.groups.push({ branchName: terr.vaultName, items: vaultItems, hufTotal: 0, nonZeroCount: 0 })
+        }
       }
       terr.groups.sort((a, b) => {
         // Copilot #763: komparátor-szerződés (antiszimmetria) — ha mindkettő a vault
@@ -206,7 +227,7 @@ export default function CashierStocksPage() {
       })
     }
     return Array.from(map.values()).sort((a, b) => b.hufTotal - a.hufTotal)
-  }, [branchGroups, branchMeta, vaultByRegion])
+  }, [branchGroups, branchMeta, vaultByRegion, currencies, searchTerm])
 
   // Akkor csoportosítunk terület szerint, ha van értelmes besorolás (van branch-meta és
   // nem csak a "BESOROLATLAN" szekció létezik). Különben marad a sima, egy-grides nézet.
