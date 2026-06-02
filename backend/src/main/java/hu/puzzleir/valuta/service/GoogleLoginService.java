@@ -373,8 +373,10 @@ public class GoogleLoginService {
         }
         workerRepository.save(worker);
 
-        // CodeQL log-injection: a clientIp (X-Forwarded-For fejlécből) user-controlled → CR/LF strip.
-        log.info("GOOGLE_SESSION_BUILT workerCode={} ip={}", worker.getCode(), sanitizeForLog(clientIp));
+        // CodeQL log-injection: a clientIp (X-Forwarded-For fejlécből) user-controlled, ezért NEM
+        // logoljuk (a WorkerSession.ipAddress amúgy is rögzíti audit-célból). Csak a DB-forrású
+        // workerCode kerül a logba.
+        log.info("GOOGLE_SESSION_BUILT workerCode={}", worker.getCode());
 
         // 7. validAppModes
         long expiresInMs = 86400000L;
@@ -416,15 +418,6 @@ public class GoogleLoginService {
      * A {@link String#hashCode()} csak 32-bit, brute-force-olhato tipikus emailekre logokbol.
      * Itt 80-bit (10 byte) SHA-256 prefix elegendo audit-azonosito-szempontbol, NEM rekonstrual-hato.
      */
-    /**
-     * CodeQL log-injection védelem: a user-controlled értékek (pl. X-Forwarded-For IP) CR/LF
-     * karaktereit eltávolítja, hogy ne lehessen hamis log-sorokat injektálni.
-     */
-    static String sanitizeForLog(String value) {
-        if (value == null) return null;
-        return value.replaceAll("[\\r\\n]", "_");
-    }
-
     static String safeLogHash(String value) {
         if (value == null) return "(null)";
         try {
