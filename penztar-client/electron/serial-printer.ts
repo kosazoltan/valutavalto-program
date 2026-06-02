@@ -375,6 +375,9 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     text(twoColumn('Cél pénztár:', data.transferTarget ?? '—'));
     text(twoColumn('Valutanem:', data.currencyCode ?? '—'));
     text(twoColumn('Összeg:', `${fmtAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`));
+    // FR-5: szállító + plombaszám a soros-nyomtató úton is.
+    if (data.carrierName) text(twoColumn('Szállító:', data.carrierName));
+    if (data.sealNumber) text(twoColumn('Plombaszám:', data.sealNumber));
     if (data.transferNote) text(twoColumn('Megjegyzés:', data.transferNote));
   } else if (data.type === 'storno') {
     blank();
