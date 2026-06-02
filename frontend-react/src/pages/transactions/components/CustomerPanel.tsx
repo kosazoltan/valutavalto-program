@@ -782,9 +782,17 @@ export default function CustomerPanel({
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.allampolgarsag2')}</label>
                 <select className={fieldClass} style={fieldStyle}
                   value={customerNationality} onChange={(e) => setCustomerNationality(e.target.value)}>
-                  <option>{t('settings.magyar')}</option>
-                  <option>{t('transactions.euAllampolgarsag')}</option>
-                  <option>{t('transactions.egyeb')}</option>
+                  {nationalities.length > 0
+                    ? nationalities.map((n) => (
+                        <option key={n.code} value={n.nameHu || n.name}>{n.nameHu || n.name}</option>
+                      ))
+                    : (
+                      <>
+                        <option>{t('settings.magyar')}</option>
+                        <option>{t('transactions.euAllampolgarsag')}</option>
+                        <option>{t('transactions.egyeb')}</option>
+                      </>
+                    )}
                 </select>
               </div>
 
