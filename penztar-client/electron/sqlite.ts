@@ -381,6 +381,12 @@ export async function initDatabase(): Promise<void> {
       'customer_document_number TEXT',
       'customer_address TEXT',
       'local_reference_number TEXT',
+      // FK-SYNC (2026-06-02): a sync-hiba TARTÓS tárolása (eddig csak in-memory abandoned-set +
+      // log). Így a "Függőben" ragadt tranzakciónál a felhasználó LÁTJA, miért nem ment fel
+      // (rate mismatch, AML, insufficient balance stb.), és a tétel nem tűnik el némán.
+      'sync_error TEXT',
+      'sync_attempts INTEGER DEFAULT 0',
+      'last_attempt_at TEXT',
     ];
     for (const colDef of pendingTxColumns) {
       try {
@@ -999,6 +1005,11 @@ export interface PendingTransactionRow {
   idempotency_key: string | null;
   created_at: string;
   synced: number;
+  // FK-SYNC (2026-06-02): a legutóbbi sync-hiba (miért nem ment fel a tétel), próbálkozások száma,
+  // utolsó próbálkozás ideje. A UI ezt jeleníti meg a "Függőben" tételeknél.
+  sync_error?: string | null;
+  sync_attempts?: number | null;
+  last_attempt_at?: string | null;
 }
 
 /**
@@ -1762,6 +1773,20 @@ export function markConversionSynced(id: number): void {
 export function markTransactionSynced(id: number): void {
   if (!db) return;
   db.run('UPDATE pending_transactions SET synced = 1 WHERE id = ?', [id]);
+  saveDatabase();
+}
+
+/**
+ * FK-SYNC (2026-06-02): sikertelen tranzakció-sync TARTÓS rögzítése a pending soron. A tétel
+ * synced=0 marad (látható "Függőben"-ként), de a felhasználó/diagnosztika látja a hibaüzenetet,
+ * a próbálkozások számát és az utolsó próbálkozás idejét. Így a tranzakció nem tűnik el némán.
+ */
+export function markTransactionSyncError(id: number, error: string, attemptIso: string): void {
+  if (!db) return;
+  db.run(
+    'UPDATE pending_transactions SET sync_error = ?, sync_attempts = COALESCE(sync_attempts, 0) + 1, last_attempt_at = ? WHERE id = ?',
+    [error.slice(0, 500), attemptIso, id],
+  );
   saveDatabase();
 }
 

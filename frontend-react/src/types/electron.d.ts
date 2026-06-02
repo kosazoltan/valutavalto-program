@@ -222,6 +222,10 @@ export interface ElectronAPI {
     idempotency_key: string | null;
     created_at: string;
     synced: number;
+    // FK-SYNC (2026-06-02): a tartós sync-hiba állapot (miért nem ment fel a tétel).
+    sync_error?: string | null;
+    sync_attempts?: number | null;
+    last_attempt_at?: string | null;
   }>>;
   getPendingConversions(): Promise<Array<{
     id: number;
