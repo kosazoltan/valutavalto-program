@@ -29,6 +29,11 @@ public class TransactionOperationHelper {
     private final CashBalanceRepository cashBalanceRepository;
     private final CurrencyRepository currencyRepository;
     private final ObjectProvider<CameraTransactionLinker> cameraTransactionLinkerProvider;
+    // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate a multi-line / konverzió / sztornó
+    // úton is. Flag-gated (default OFF) → a `systemParameterService != null` guard miatt a meglévő
+    // (e service-t nem teljesen mockoló) tesztek nem törnek; a circularRepository CSAK enforce=true ágon.
+    private final SystemParameterService systemParameterService;
+    private final hu.puzzleir.valuta.repository.CircularRepository circularRepository;
 
     private static final VVLogger VV_LOG = VVLogger.of(TransactionOperationHelper.class);
 
@@ -63,6 +68,26 @@ public class TransactionOperationHelper {
      */
     public AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
                                  String customerName, String documentNumber, String currencyCode) {
+        // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate (multi-line/konverzió/sztornó).
+        // Feature-flag mögött (CIRCULAR_ACK_BLOCKING_ENFORCEMENT, default false). A circularRepository
+        // CSAK enforce=true ágon dereferálódik → flag-off (vagy nem mockolt systemParameterService)
+        // esetén no-op.
+        boolean circularEnforce = systemParameterService != null && "true".equalsIgnoreCase(
+                systemParameterService.getValue(
+                        TransactionService.CIRCULAR_ACK_BLOCKING_PARAM,
+                        TransactionService.CIRCULAR_ACK_BLOCKING_DEFAULT));
+        if (circularEnforce) {
+            java.util.UUID companyId = SecurityUtils.getCurrentCompanyId();
+            Long workerId = SecurityUtils.getCurrentWorkerId();
+            java.util.UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
+            String circularBlock = TransactionService.circularAckBlockReason(
+                    circularRepository.findUnacknowledgedMandatoryForWorker(companyId, workerId, branchId, null),
+                    true);
+            if (circularBlock != null) {
+                throw new ValidationException(circularBlock);
+            }
+        }
+
         AmlService.AmlBasicCheckResult basicResult = amlService.checkTransaction(
                 hufAmount, customerId, customerName, documentNumber, currencyCode);
 
