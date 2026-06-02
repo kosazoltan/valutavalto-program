@@ -79,6 +79,23 @@ describe('ShipmentNewPage', () => {
     expect(mocks.shipmentRequestApi.submit).toHaveBeenCalledWith('shipment-1')
   })
 
+  it('FK02: hiányzó szállító/plombaszám esetén blokkolja a beküldést és hibát mutat', async () => {
+    const user = userEvent.setup()
+    render(<MemoryRouter><ShipmentNewPage /></MemoryRouter>)
+
+    await waitFor(() => expect(screen.getByLabelText(/Cél iroda/i)).not.toBeDisabled())
+    await user.selectOptions(screen.getByLabelText(/Cél iroda/i), 'BR-B')
+    await user.selectOptions(screen.getByLabelText(/Valuta/i), '4')
+    await user.type(screen.getByLabelText(/Összeg/i), '1250')
+    // Szándékosan NEM töltjük ki a szállító + plombaszám mezőt.
+    await user.click(screen.getByRole('button', { name: /Igény beküldése/i }))
+
+    // A kötelező-validáció blokkol: sem create, sem submit nem hívódik, és megjelenik a hiba.
+    await waitFor(() => expect(screen.getByText(/A szállító nevének megadása kötelező!/i)).toBeInTheDocument())
+    expect(mocks.shipmentRequestApi.create).not.toHaveBeenCalled()
+    expect(mocks.shipmentRequestApi.submit).not.toHaveBeenCalled()
+  })
+
   it('FK-013: értéktáros user esetén 3-csoportos optgroup a Cél iroda dropdown-ban', async () => {
     // Értéktáros worker → hasCanonicalRole('ertektar') → listVaultCounterparties
     useAuthStore.setState({
