@@ -183,7 +183,17 @@ public class Worker {
     /** Utolso sikeres Google login idopontja. */
     @Column(name = "google_last_login_at")
     private LocalDateTime googleLastLoginAt;
-    
+
+    /**
+     * FK-ÉRTÉKTÁR (V285, 2026-06-02): intézményi (közös) Google-fiók jelölés.
+     * Ha true, a Google-login NEM ad végleges sessiont, hanem a kétlépcsős értéktári
+     * belépés indul: a felhasználó kiválasztja a SAJÁT (személyes) workerét + jelszó.
+     * A személyes workerek shared_account = false.
+     */
+    @Column(name = "shared_account", nullable = false)
+    @Builder.Default
+    private Boolean sharedAccount = false;
+
     /**
      * Létrehozás időpontja
      */

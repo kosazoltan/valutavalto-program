@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.auth.GoogleLoginRequestDto;
 import hu.puzzleir.valuta.dto.auth.LoginResponseDto;
+import hu.puzzleir.valuta.dto.auth.VaultWorkerSelectRequestDto;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.AuthenticationException;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -64,7 +65,16 @@ public class GoogleAuthController {
         LoginResponseDto response = googleLoginService.loginWithGoogle(
                 requestDto.getIdToken(),
                 httpRequest,
-                requestDto.getAppMode());
+                requestDto.getAppMode(),
+                Boolean.TRUE.equals(requestDto.getSupportsVaultWorkerSelection()));
+
+        // FK-ÉRTÉKTÁR (V285): intézményi fiók → dolgozóválasztó. NINCS végleges session/token,
+        // ezért a refresh cookie-t töröljük és NEM keresünk workert (a response.worker null).
+        if (Boolean.TRUE.equals(response.getVaultWorkerSelectionRequired())) {
+            refreshCookieService.clearCookie(httpRequest, httpResponse);
+            return ResponseEntity.ok(response);
+        }
+
         enforceAppModeForLoginResponse(response, requestDto.getAppMode());
 
         // 2. HttpOnly refresh cookie — ugyanaz a 7-napos `refreshToken` mint AuthController.login.
@@ -84,6 +94,43 @@ public class GoogleAuthController {
                     response.getActiveRole(),
                     "HttpOnly refresh cookie kiadas Google login utan bukott",
                     "Google belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.");
+        } else {
+            refreshCookieService.clearCookie(httpRequest, httpResponse);
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * FK-ÉRTÉKTÁR (V285): a kétlépcsős értéktári belépés 2. fázisa — a Google OAuth után kiválasztott
+     * SZEMÉLYES dolgozó jelszavas hitelesítése. Siker esetén végleges JWT + HttpOnly refresh cookie,
+     * a session a személyes workerhez tartozik (a naplózás/audit valós személyt mutat).
+     */
+    @PostMapping("/google-vault/select-worker")
+    public ResponseEntity<LoginResponseDto> selectVaultWorker(
+            @Valid @RequestBody VaultWorkerSelectRequestDto requestDto,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+
+        LoginResponseDto response = googleLoginService.selectVaultWorker(
+                requestDto.getIdToken(),
+                requestDto.getWorkerId(),
+                requestDto.getPassword(),
+                httpRequest,
+                requestDto.getAppMode());
+        enforceAppModeForLoginResponse(response, requestDto.getAppMode());
+
+        // HttpOnly refresh cookie — ugyanaz a minta mint a google-login non-role-selection ágán.
+        if (!Boolean.TRUE.equals(response.getRoleSelectionRequired())) {
+            Worker worker = workerRepository.findByIdWithCompanyAndBranch(response.getWorker().getId())
+                    .orElseThrow(() -> new AuthenticationException("Worker nem talalhato login utan."));
+            refreshCookieService.issueOrThrow(
+                    worker,
+                    httpRequest,
+                    httpResponse,
+                    response.getActiveRole(),
+                    "HttpOnly refresh cookie kiadas ertektari belepes utan bukott",
+                    "Értéktári belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.");
         } else {
             refreshCookieService.clearCookie(httpRequest, httpResponse);
         }
