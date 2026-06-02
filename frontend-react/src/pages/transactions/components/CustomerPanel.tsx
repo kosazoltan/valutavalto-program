@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { User, Search, CheckCircle, Loader2, AlertTriangle, X, Shield, ShieldCheck, ShieldAlert } from 'lucide-react'
 import type { IdentificationLevel } from '../hooks/useIdentificationLevel'
-import { customerApi, amlApi } from '../../../services/api/index'
+import { customerApi, amlApi, dictionaryApi } from '../../../services/api/index'
+import type { DictionaryEntry } from '../../../services/api/settings'
 import type { Customer as ApiCustomer, CustomerCreateRequest, AmlCheckResultDto } from '../../../services/api/transactions'
 import { logger } from '../../../utils/logger'
 import { toast } from '../../../components/ui/toaster'
@@ -143,6 +144,17 @@ export default function CustomerPanel({
   const [customerDocType, setCustomerDocType] = useState('ID_CARD')
   const [customerDocNumber, setCustomerDocNumber] = useState('')
   const [customerNationality, setCustomerNationality] = useState('Magyar')
+  // FK-ÁLLAMPOLGÁRSÁG (2026-06-02): a teljes nemzetiség-törzs (NATIONALITY dictionary). Eddig CSAK
+  // 3 fix opció volt; most az összes állampolgárság választható. Betöltési hiba esetén üres → a
+  // render a régi 3-opciós fallbackra esik vissza (sose törjön a pénztári képernyő).
+  const [nationalities, setNationalities] = useState<DictionaryEntry[]>([])
+  useEffect(() => {
+    let cancelled = false
+    dictionaryApi.getByCategory('NATIONALITY')
+      .then((list) => { if (!cancelled) setNationalities(list ?? []) })
+      .catch(() => { if (!cancelled) setNationalities([]) })
+    return () => { cancelled = true }
+  }, [])
   const [customerBirthPlace, setCustomerBirthPlace] = useState('')
   const [customerBirthDate, setCustomerBirthDate] = useState('')
   const [customerBirthName, setCustomerBirthName] = useState('')
@@ -684,9 +696,17 @@ export default function CustomerPanel({
               value={customerNationality}
               onChange={(e) => setCustomerNationality(e.target.value)}
             >
-              <option>{t('settings.magyar')}</option>
-              <option>{t('transactions.euAllampolgarsag')}</option>
-              <option>{t('transactions.egyeb')}</option>
+              {nationalities.length > 0
+                ? nationalities.map((n) => (
+                    <option key={n.code} value={n.nameHu || n.name}>{n.nameHu || n.name}</option>
+                  ))
+                : (
+                  <>
+                    <option>{t('settings.magyar')}</option>
+                    <option>{t('transactions.euAllampolgarsag')}</option>
+                    <option>{t('transactions.egyeb')}</option>
+                  </>
+                )}
             </select>
           </div>
           <div className="text-center text-gray-500 dark:text-gray-400 py-2">
@@ -918,9 +938,17 @@ export default function CustomerPanel({
                         <select className={fieldClass} style={fieldStyle}
                           value={actorNationality}
                           onChange={(e) => setActorNationality(e.target.value)}>
-                          <option>Magyar</option>
-                          <option>EU-állampolgárság</option>
-                          <option>Egyéb</option>
+                          {nationalities.length > 0
+                            ? nationalities.map((n) => (
+                                <option key={n.code} value={n.nameHu || n.name}>{n.nameHu || n.name}</option>
+                              ))
+                            : (
+                              <>
+                                <option>Magyar</option>
+                                <option>EU-állampolgárság</option>
+                                <option>Egyéb</option>
+                              </>
+                            )}
                         </select>
                       </div>
                       <div>

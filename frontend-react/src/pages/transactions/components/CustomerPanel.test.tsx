@@ -32,6 +32,10 @@ vi.mock('../../../services/api/index', () => ({
   amlApi: {
     checkAllThresholds: mocks.amlApiCheckAllThresholds,
   },
+  // FK-ÁLLAMPOLGÁRSÁG (2026-06-02): a CustomerPanel betölti a NATIONALITY dictionary-t.
+  dictionaryApi: {
+    getByCategory: vi.fn().mockResolvedValue([]),
+  },
 }))
 
 vi.mock('react-i18next', () => ({
