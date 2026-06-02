@@ -358,7 +358,11 @@ export default function TransferPage() {
         setPrintReceiptData({
           type: 'transfer',
           companyType: getCompanyType(worker),
-          receiptNumber: `LOCAL-${localIsoDate()}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`,
+          // A bizonylatszám a TÉNYLEGES queue-sor ID-jéhez kötve (savedIds[0]) — a fabrikált
+          // időbélyeg csak fallback, ha valamiért nincs mentett ID (Codex P2: a valós rekordra mutasson).
+          receiptNumber: outcome.savedIds[0] != null
+            ? `LOCAL-${localIsoDate()}-#${outcome.savedIds[0]}`
+            : `LOCAL-${localIsoDate()}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`,
           branchCode: worker?.branchCode ?? branch.code,
           cashierName: worker?.fullName ?? '',
           date: localIsoDate(),
