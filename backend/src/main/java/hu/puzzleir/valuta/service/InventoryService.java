@@ -535,11 +535,31 @@ public class InventoryService {
 
         var stocks = currencyStockRepository.findByCompanyIdAndEntityType(companyId, "VAULT");
 
-        // Vault branch-ek (csak `is_vault = TRUE` aktiv fiokok)
+        // FK-ÉRTÉKTÁR (2026-06-02): territory-scoped role (pl. ERTEKTAR) csak a SAJÁT
+        // vault_territory-jának értéktárait látja. Központi role (foertektar/ugyvezeto/admin) → null
+        // → minden vault branch. Ugyanaz a minta, mint getAllStock()/getStockMatrix() (FK-005).
+        Integer territoryFilter = getCurrentTerritoryFilterOrNull();
+
+        // Vault branch-ek (csak `is_vault = TRUE` aktiv fiokok), territory-szureLessel
         java.util.Set<UUID> vaultBranchIds = branchRepository
                 .findByCompanyIdAndIsVaultTrueAndIsActiveTrue(companyId)
-                .stream().map(Branch::getId)
+                .stream()
+                .filter(b -> territoryFilter == null
+                        || territoryFilter.equals(b.getVaultTerritoryId()))
+                .map(Branch::getId)
                 .collect(java.util.stream.Collectors.toSet());
+
+        // A currency_stock VAULT sorok entity_id-je a vault branch id. Territory-scoped role eseten
+        // csak a sajat vault branch(ek) keszletet adjuk vissza (cross-vault NEM szivarog ki).
+        java.util.Set<String> vaultBranchIdStrings = vaultBranchIds.stream()
+                .map(UUID::toString)
+                .collect(java.util.stream.Collectors.toSet());
+        if (territoryFilter != null) {
+            stocks = stocks.stream()
+                    .filter(cs -> cs.getEntityId() != null
+                            && vaultBranchIdStrings.contains(cs.getEntityId()))
+                    .toList();
+        }
 
         // Mai RECEIVED mozgasok a cegen belul, vault-branch-et erinto reszek
         var todayMovements = movementRepository

@@ -100,8 +100,12 @@ public class InventoryController {
      * Az "Értéktári készlet" oldal adatforrása, NEM a pénztáraké.
      * A pénztári készletek a /api/v1/inventory/stock endpointon érhetők el.
      */
+    // FK-ÉRTÉKTÁR (2026-06-02): az ERTEKTAR (lokál értéktáros) láthatja a SAJÁT értéktára készletét.
+    // A menüben elérhető "Értéktári készlet" oldal eddig 403-at adott ERTEKTAR role-lal (audit P0).
+    // A getVaultStockFlow() territory-scoped szűrése (getCurrentTerritoryFilterOrNull) gondoskodik
+    // arról, hogy az értéktáros csak a saját vault_territory-jának készletét lássa.
     @GetMapping("/vault-stock")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'IRODAVEZETO')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'IRODAVEZETO', 'ERTEKTAR')")
     public ResponseEntity<List<VaultStockRowDto>> getVaultStock() {
         return ResponseEntity.ok(inventoryService.getVaultStockFlow());
     }
