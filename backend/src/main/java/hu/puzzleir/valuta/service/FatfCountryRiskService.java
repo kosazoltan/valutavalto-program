@@ -51,37 +51,48 @@ public class FatfCountryRiskService {
     static {
         Map<String, FatfTier> m = new HashMap<>();
         // 1/a — ellenintézkedés
+        // FK-FATF (2026-06-02): a pénztári CustomerPanel a NATIONALITY-szótár `name_hu` magyar
+        // ÁLLAMPOLGÁRSÁG-MELLÉKNEVÉT küldi a /sanctions/screen-nek (pl. "Iráni", "Észak-koreai"),
+        // NEM az ország-nevet. Ezért a melléknév-formákat is fel kell venni aliasként, különben a
+        // classify NONE-t ad → a FATF-kockázat csendben elveszik. Normalizált forma (NFD + ékezet-strip).
         putAll(m, FatfTier.TIER_1A_COUNTERMEASURE,
                 "eszak-korea", "eszak korea", "koreai nepi demokratikus koztarsasag",
-                "north korea", "dprk", "prk", "kp");
+                "north korea", "dprk", "prk", "kp",
+                "eszak-koreai", "eszak koreai");
         putAll(m, FatfTier.TIER_1A_COUNTERMEASURE,
-                "iran", "iran iszlam koztarsasag", "irn", "ir");
+                "iran", "iran iszlam koztarsasag", "irn", "ir",
+                "irani");
         // 1/b — fokozott átvilágítás
         putAll(m, FatfTier.TIER_1B_ENHANCED_DD,
-                "myanmar", "burma", "mmr", "mm");
+                "myanmar", "burma", "mmr", "mm",
+                "mianmari", "burmai");
         // 2. csoport — fokozott monitoring (21 ország, 2024.02.27)
-        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "bulgaria", "bgr", "bg");
+        // A melléknév-aliasok (FK-FATF) KIZÁRÓLAG a NATIONALITY-szótár (V286) ténylegesen meglévő
+        // name_hu értékei szerint (9 tier-2 ország szerepel a szótárban; a többit a dropdown nem
+        // kínálja → "Egyéb"). Nem találgatunk magyar mellékneveket olyan országokra, amik nincsenek
+        // a szótárban (tényalapú elv).
+        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "bulgaria", "bgr", "bg", "bolgar");
         putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "burkina faso", "bfa");
-        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "del-afrika", "del afrika", "south africa", "zaf");
+        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "del-afrika", "del afrika", "south africa", "zaf", "del-afrikai", "del afrikai");
         putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "del-szudan", "del szudan", "south sudan", "ssd");
-        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "fulop-szigetek", "fulop szigetek", "philippines", "phl");
+        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "fulop-szigetek", "fulop szigetek", "philippines", "phl", "fulop-szigeteki", "fulop szigeteki");
         putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "haiti", "hti");
-        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "horvatorszag", "croatia", "hrv", "hr");
+        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "horvatorszag", "croatia", "hrv", "hr", "horvat");
         putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "jamaica", "jam");
         putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "jemen", "yemen", "yem");
         putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "kamerun", "cameroon", "cmr");
-        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "kenya", "ken");
+        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "kenya", "ken", "kenyai");
         putAll(m, FatfTier.TIER_2_INCREASED_MONITORING,
                 "kongoi demokratikus koztarsasag", "kongo", "dr congo", "cod");
         putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "mali", "mli");
         putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "mozambik", "mozambique", "moz");
         putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "namibia", "nam");
-        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "nigeria", "nga");
+        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "nigeria", "nga", "nigeriai");
         putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "szenegal", "senegal", "sen");
-        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "sziria", "syria", "syr");
+        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "sziria", "syria", "syr", "sziriai");
         putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "tanzania", "tza");
-        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "torokorszag", "turkey", "turkiye", "tur", "tr");
-        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "vietnam", "vnm", "vn");
+        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "torokorszag", "turkey", "turkiye", "tur", "tr", "torok");
+        putAll(m, FatfTier.TIER_2_INCREASED_MONITORING, "vietnam", "vnm", "vn", "vietnami");
         COUNTRY_TIER = Collections.unmodifiableMap(m);
     }
 
