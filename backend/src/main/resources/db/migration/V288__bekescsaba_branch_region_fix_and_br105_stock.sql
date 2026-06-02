@@ -1,4 +1,4 @@
--- V288: Békéscsaba-területi pénztárak `region` HELYREÁLLÍTÁSA + BR105 (Belváros 2) készlet-init
+-- V288: Békéscsaba-területi pénztárak `region` HELYREÁLLÍTÁSA + BR105 (Belváros 2) cash_balance-init
 --       (Kósa Zoltán user-direktíva, 2026-06-02 — "a Békéscsaba belvárost a szegedi területhez
 --        hozza... Békéscsaba értéktárhoz Békéscsaba pénztárai tartoznak!!!").
 --
@@ -15,12 +15,13 @@
 --      A város→régió leképezés ténykérdés (a V145-seed + a V254 vault-besorolás megerősíti), nem becslés.
 --
 --   B) BR105 (Békéscsaba Belváros 2) NEM jelenik meg az Országos készletben SEM Békéscsaba, SEM Szeged
---      alatt. Ok: a CashierStocksPage branch-univerzuma KIZÁRÓLAG a `/inventory/stock` sorokból jön
---      (Codex P1 territorialis-scope döntés) — egy currency_stock-sor NÉLKÜLI branch SEHOL nem látszik.
---      A V250 felvette BR105-öt, de NEM hozott létre neki CASHIER currency_stock sort. JAVÍTÁS: a
---      BR105-nek a sibling Békéscsaba pénztár(ok) valutakészletével MEGEGYEZŐ currency_stock sorokat
---      hozunk létre 0 mennyiséggel (CASHIER, entity_id = branch.id::TEXT — VaultStockFlowService
---      konvenció). Így a "készlet = SUM(tranzakciók)" invariáns NEM sérül (0 kezdőkészlet).
+--      alatt. Ok: az Országos készlet (`/api/v1/inventory/stock` → `InventoryService.getAllStock()`) a
+--      CASH_BALANCE táblát olvassa (`cashBalanceRepository.findByCompanyId`), NEM a currency_stock-ot
+--      (Codex P1 review, PR #1001). Egy cash_balance-sor NÉLKÜLI aktív branch ezért SEHOL nem látszik.
+--      A V250 felvette BR105-öt, de NEM hozott neki cash_balance sort. JAVÍTÁS: a BR105-nek a sibling
+--      Békéscsaba pénztár(ok) valutakészletével MEGEGYEZŐ cash_balance sorokat hozunk létre 0 egyenleggel.
+--      A CASHIER currency_stock sorokat a kereskedés (getOrCreateStock) hozza létre on-demand — azt itt
+--      NEM kell előre seedelni. A "készlet = SUM(tranzakciók)" invariáns nem sérül (0 kezdőegyenleg).
 --
 -- Idempotens: IS DISTINCT FROM guard (A) + COUNT(*) early-return + ON CONFLICT DO NOTHING (B).
 
@@ -32,18 +33,18 @@ UPDATE branch
    AND code IN ('BR071','BR074','BR075','BR076','BR077','BR079','BR105')
    AND region IS DISTINCT FROM 'BEKESCSABA';
 
--- ============ B) BR105 (Békéscsaba Belváros 2) CASHIER currency_stock init (0 mennyiség) ============
+-- ============ B) BR105 (Békéscsaba Belváros 2) cash_balance init (0 egyenleg) ============
 DO $$
 DECLARE
     v_company_id   UUID;
     v_br105_id     UUID;
     v_sibling_id   UUID;
-    v_cur_count    INT;
+    v_existing     INT;
     v_inserted     INT;
 BEGIN
     SELECT id INTO v_company_id FROM company WHERE code = 'EBC';
     IF v_company_id IS NULL THEN
-        RAISE NOTICE 'V288: EBC cég nem található — kihagyva (alap-seed nem futott?).';
+        RAISE NOTICE 'V288/B: EBC cég nem található — kihagyva (alap-seed nem futott?).';
         RETURN;
     END IF;
 
@@ -51,71 +52,55 @@ BEGIN
       FROM branch
      WHERE company_id = v_company_id AND code = 'BR105';
     IF v_br105_id IS NULL THEN
-        RAISE NOTICE 'V288/B: BR105 (Békéscsaba Belváros 2) nem létezik — készlet-init kihagyva.';
+        RAISE NOTICE 'V288/B: BR105 (Békéscsaba Belváros 2) nem létezik — cash_balance-init kihagyva.';
         RETURN;
     END IF;
 
-    -- Ha BR105-nek MÁR van bármilyen CASHIER készlet-sora, nincs teendő (idempotens).
-    SELECT COUNT(*) INTO v_cur_count
-      FROM currency_stock
-     WHERE company_id = v_company_id
-       AND entity_type = 'CASHIER'
-       AND entity_id = v_br105_id::TEXT;
-    IF v_cur_count > 0 THEN
-        RAISE NOTICE 'V288/B: BR105 már rendelkezik % CASHIER készlet-sorral — nincs teendő.', v_cur_count;
+    -- Ha BR105-nek MÁR van bármilyen cash_balance sora, nincs teendő (idempotens).
+    SELECT COUNT(*) INTO v_existing
+      FROM cash_balance
+     WHERE branch_id = v_br105_id;
+    IF v_existing > 0 THEN
+        RAISE NOTICE 'V288/B: BR105 már rendelkezik % cash_balance sorral — nincs teendő.', v_existing;
         RETURN;
     END IF;
 
     -- A sibling Békéscsaba pénztár(ok) (BR076 -> BR074 -> BR071 -> BR077 -> BR079) valutakészlete a
-    -- minta. Determinisztikus prioritás-sorrend; az ELSŐ olyan sibling, amelynek VAN CASHIER készlete.
+    -- minta. Determinisztikus prioritás-sorrend; az ELSŐ olyan sibling, amelynek VAN cash_balance-a.
     SELECT b.id INTO v_sibling_id
       FROM branch b
      WHERE b.company_id = v_company_id
        AND b.code IN ('BR076','BR074','BR071','BR077','BR079')
-       AND EXISTS (
-            SELECT 1 FROM currency_stock cs
-             WHERE cs.company_id = v_company_id
-               AND cs.entity_type = 'CASHIER'
-               AND cs.entity_id = b.id::TEXT
-       )
+       AND EXISTS (SELECT 1 FROM cash_balance cb WHERE cb.branch_id = b.id)
      ORDER BY CASE b.code
                 WHEN 'BR076' THEN 1 WHEN 'BR074' THEN 2 WHEN 'BR071' THEN 3
                 WHEN 'BR077' THEN 4 ELSE 5 END
      LIMIT 1;
 
     IF v_sibling_id IS NOT NULL THEN
-        -- A sibling valutakészletének MINDEN valutanemére 0 mennyiségű sor BR105-nek.
-        INSERT INTO currency_stock (
-            company_id, entity_type, entity_id, currency_code,
-            quantity, weighted_avg_cost, last_updated
+        -- A sibling MINDEN valutanemére 0 egyenlegű cash_balance sor BR105-nek.
+        INSERT INTO cash_balance (
+            company_id, branch_id, currency_id, current_balance, opening_balance, created_at, updated_at
         )
         SELECT DISTINCT
-            v_company_id, 'CASHIER', v_br105_id::TEXT, cs.currency_code,
-            0,
-            CASE WHEN cs.currency_code = 'HUF' THEN 1.0 ELSE 0 END,
-            NOW()
-          FROM currency_stock cs
-         WHERE cs.company_id = v_company_id
-           AND cs.entity_type = 'CASHIER'
-           AND cs.entity_id = v_sibling_id::TEXT
-        ON CONFLICT (company_id, entity_type, entity_id, currency_code) DO NOTHING;
+            v_company_id, v_br105_id, cb.currency_id, 0, 0, NOW(), NOW()
+          FROM cash_balance cb
+         WHERE cb.branch_id = v_sibling_id
+        ON CONFLICT (branch_id, currency_id) DO NOTHING;
     ELSE
         -- Fallback: ha egyetlen sibling sem rendelkezik készlettel, a magyar valutaváltó-alapkészlet
-        -- (HUF + főbb devizák) 0 mennyiséggel — hogy a pénztár megjelenjen a területi listában.
-        INSERT INTO currency_stock (
-            company_id, entity_type, entity_id, currency_code,
-            quantity, weighted_avg_cost, last_updated
+        -- (HUF + főbb devizák) 0 egyenleggel — hogy a pénztár megjelenjen a területi listában.
+        INSERT INTO cash_balance (
+            company_id, branch_id, currency_id, current_balance, opening_balance, created_at, updated_at
         )
         SELECT
-            v_company_id, 'CASHIER', v_br105_id::TEXT, c.code,
-            0,
-            CASE WHEN c.code = 'HUF' THEN 1.0 ELSE 0 END,
-            NOW()
-          FROM (VALUES ('HUF'), ('EUR'), ('USD'), ('GBP'), ('CHF')) AS c(code)
-        ON CONFLICT (company_id, entity_type, entity_id, currency_code) DO NOTHING;
+            v_company_id, v_br105_id, cur.id, 0, 0, NOW(), NOW()
+          FROM currency cur
+         WHERE cur.code IN ('HUF','EUR','USD','GBP','CHF')
+        ON CONFLICT (branch_id, currency_id) DO NOTHING;
     END IF;
 
     GET DIAGNOSTICS v_inserted = ROW_COUNT;
-    RAISE NOTICE 'V288/B: BR105 CASHIER készlet-init — % valutanem 0 mennyiséggel (sibling=%).',
+    RAISE NOTICE 'V288/B: BR105 cash_balance-init — % valutanem 0 egyenleggel (sibling=%).',
         v_inserted, COALESCE(v_sibling_id::TEXT, '(fallback alapkészlet)');
 END $$;
