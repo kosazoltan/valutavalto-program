@@ -47,12 +47,13 @@ export default function LiveCashPositionPage() {
     void load();
   }, [load]);
 
-  // FR-PA-04: a díj-only nyomtatás a state beállítása UTÁN fut (a CSS print-osztály már érvényes), majd visszaáll.
+  // FR-PA-04: a díj-only nyomtatás a state beállítása UTÁN fut (a CSS print-osztály már érvényes), majd
+  // visszaáll. Codex P2: csak akkor nyomtatunk, ha a friss adat MÁR betöltött (különben 0 Ft-os fals díj).
   useEffect(() => {
     if (!feePrintOnly) return;
-    window.print();
+    if (data) window.print();
     setFeePrintOnly(false);
-  }, [feePrintOnly]);
+  }, [feePrintOnly, data]);
 
   // FR-PA-04: "VISSZA A FŐMENÜRE (Escape)".
   useEffect(() => {
@@ -77,7 +78,11 @@ export default function LiveCashPositionPage() {
           <button onClick={() => window.print()} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
             Pillanatnyi állás kinyomtatása
           </button>
-          <button onClick={() => setFeePrintOnly(true)} className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">
+          <button
+            onClick={() => setFeePrintOnly(true)}
+            disabled={loading || !data}
+            className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
+          >
             Kezelési díj nyomtatása
           </button>
           <button onClick={() => navigate(-1)} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
@@ -139,6 +144,19 @@ export default function LiveCashPositionPage() {
                   </tr>
                 );
               })}
+              {/* Codex P2: ha NINCS HUF készlet-sor (pl. csak deviza pozíció), a kezelési díj akkor is
+                  látszódjon a KEZ-I DÍJ oszlopban — egy dedikált díj-sorral. */}
+              {feeHuf !== 0 && !lines.some((l) => l.currencyCode === 'HUF') && (
+                <tr className="border-t bg-green-50">
+                  <td className="p-2 font-mono">HUF</td>
+                  <td className="p-2">Kezelési díj</td>
+                  <td className="p-2 text-right">—</td>
+                  <td className="p-2 text-right">—</td>
+                  <td className="p-2 text-right">—</td>
+                  <td className="p-2 text-right">{fmt(feeHuf)}</td>
+                  <td className="p-2 text-right">—</td>
+                </tr>
+              )}
             </tbody>
           </table>
           <div className="p-3 border-t bg-gray-50 text-right text-sm">
