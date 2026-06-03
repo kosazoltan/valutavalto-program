@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, LogOut, Globe, Save, ArrowRight, Info, Wifi, WifiOff, Settings } from 'lucide-react'
+import { Send, LogOut, Globe, Save, ArrowRight, Info, Wifi, WifiOff, Settings, CheckCircle2 } from 'lucide-react'
 import { nextEditableCell, EDITABLE_ORDER, type EditableCol, type NavKey } from './sheetNavigation'
 import {
   isFormula,
@@ -1010,6 +1010,35 @@ export default function MainRateSheetPage() {
           className="px-3 py-1 text-xs font-medium bg-white border border-slate-400 rounded hover:bg-slate-50 flex items-center gap-1"
         >
           <ArrowRight size={12} /> CSOPORTOK KARBANTARTÁSA
+        </button>
+        {/* FR-HL-10 (hibalista): dedikált ELLENŐRZÉS gomb — a háromlépcsős flow (Ellenőrzés → Mentés →
+            Szétküldés) explicit szétválasztása. Ugyanazt az irány- + EUA-validációt futtatja, mint a
+            kiküldés, de MENTÉS/KIKÜLDÉS NÉLKÜL. A MENTETT táblázat-állapotot (rows) ellenőrzi — ha épp
+            cellát szerkesztesz, előbb a Mentés rögzíti a beírást (Copilot review). A szerver a kiküldéskor
+            ismét validál. */}
+        <button
+          onClick={() => {
+            const violations = validateRateDirection(
+              rows.map(r => ({
+                currencyCode: r.currency, settlement: r.settlement,
+                buyRate: r.weakMultiBuy, sellRate: r.weakMultiSell,
+              })),
+            )
+            const warnings = violations.map(v => `• ${v.message}`)
+            const eurSell = rows.find(r => r.currency === 'EUR')?.weakMultiSell ?? 0
+            const euaSell = rows.find(r => r.currency === 'EUA')?.weakMultiSell ?? 0
+            if (euaSell > 0 && eurSell > 0 && euaDeviationExceeds(euaSell, eurSell)) {
+              warnings.push(`• EUA: az euró-érme árfolyam (${euaSell}) >20%-kal eltér a képzett értéktől (${computeEuaRate(eurSell).toFixed(2)})`)
+            }
+            if (warnings.length === 0) {
+              toast.success('Ellenőrzés', 'A mentett táblázat rendben — a kiküldés a szerver-oldali ellenőrzést is elvégzi.')
+            } else {
+              toast.warning('Ellenőrzés', `${warnings.length} eltérés:\n${warnings.slice(0, 6).join('\n')}`)
+            }
+          }}
+          className="px-3 py-1 text-xs font-medium bg-blue-600 text-white border border-blue-700 rounded hover:bg-blue-700 flex items-center gap-1"
+        >
+          <CheckCircle2 size={12} /> ELLENŐRZÉS
         </button>
         <button
           onClick={() => void dispatchToServer()}
