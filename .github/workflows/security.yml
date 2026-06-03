@@ -218,13 +218,18 @@ jobs:
 
   # Audit #1026 (2026-06-04): a kozponti + arfolyam Electron-kliensek typecheck-je eddig NEM volt
   # CI-ben (csak a penztar + frontend-react) -> egy kliens-specifikus type-hiba (pl. hianyzo @types/sql.js)
-  # eszrevetlen maradt. A kliens-typecheck a frontend-react tsc-binaryjat hasznalja, es a megosztott
-  # packages/local-first-core/src-t source-kent importalja -> mindharom (frontend-react + local-first-core
-  # + kliens) installja szukseges a typecheck-hez.
-  kozponti-typecheck:
-    name: kozponti-client TypeCheck
+  # eszrevetlen maradt. EGY kombinalt job, mert a kliensek electron-kodja cross-referal:
+  #   - kozponti/electron/api-proxy.ts  re-exportal ../../arfolyam-keszito-client/electron/api-proxy
+  #   - kozponti/electron/google-oauth.ts re-exportal ../../penztar-client/electron/google-oauth
+  #   - arfolyam/electron/google-oauth.ts re-exportal ../../penztar-client/electron/google-oauth
+  # Ezert a typecheck-graph atnyulik a testver-kliensekbe -> MINDHARMAT + a frontend-react tsc-t +
+  # a megosztott packages/local-first-core source-deps-et telepiteni kell.
+  # (Follow-up: a kozos electron-modulok (api-proxy, google-oauth) kiemelese egy megosztott csomagba
+  # megszuntetne a cross-client csatolast — kulon refaktor.)
+  electron-clients-typecheck:
+    name: Electron clients TypeCheck (kozponti + arfolyam)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -232,19 +237,8 @@ jobs:
           node-version: '20'
       - run: cd frontend-react && npm ci --legacy-peer-deps
       - run: cd packages/local-first-core && npm ci --legacy-peer-deps
-      - run: cd kozponti-client && npm ci --legacy-peer-deps
-      - run: cd kozponti-client && npm run typecheck
-
-  arfolyam-typecheck:
-    name: arfolyam-keszito-client TypeCheck
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '20'
-      - run: cd frontend-react && npm ci --legacy-peer-deps
-      - run: cd packages/local-first-core && npm ci --legacy-peer-deps
+      - run: cd penztar-client && npm ci --legacy-peer-deps
       - run: cd arfolyam-keszito-client && npm ci --legacy-peer-deps
+      - run: cd kozponti-client && npm ci --legacy-peer-deps
       - run: cd arfolyam-keszito-client && npm run typecheck
+      - run: cd kozponti-client && npm run typecheck
