@@ -454,6 +454,7 @@ export async function saveAndSyncPendingConversion(
         foreignStatus: normalizeOptionalText(entry.foreignStatus),
         note: normalizeOptionalText(entry.note),
         approverWorkerId: entry.approverWorkerId ?? null,
+        approvalSessionId: entry.approvalSessionId ?? null,
       })
     } else {
       // Legacy positional API — csak alapmezok.
