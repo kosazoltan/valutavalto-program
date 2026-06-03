@@ -48,6 +48,12 @@ public class StockSnapshotService {
         put("145", "KAPOSVAR");
     }};
 
+    /** REGION_NAMES megfordítva (régiónév → KESZLEX regionCode), egyszer számolva. */
+    private static final Map<String, String> REGION_CODE_BY_NAME = new HashMap<>();
+    static {
+        REGION_NAMES.forEach((code, name) -> REGION_CODE_BY_NAME.put(name, code));
+    }
+
     /**
      * A `branch.region` (text) normalizálása a REGION_NAMES ASCII-nagybetűs értékeihez (SZEGED,
      * BEKESCSABA, ...). A seedelt adat már ASCII-nagybetűs (V145/V254), de defenzíven az ékezeteket
@@ -118,20 +124,21 @@ public class StockSnapshotService {
         List<String> codes = resolveCurrencyCodes(stockByBranch, companyRows);
 
         // Build per-branch snapshots grouped by region.
-        // FK-019: az értéktárnak van regionCode-ja (KESZLEX 10/20/...), a pénztárnak NINCS (NULL),
-        // viszont a `region` (text, pl. 'SZEGED') mind a kettőnél kitöltött (V145 pénztár, V254 értéktár)
-        // és közvetlenül egyezik a REGION_NAMES értékeivel → a pénztárt a region-névből képzett
-        // regionCode-ra soroljuk. A besorolatlan (egyik mezővel sem rendelkező) irodák a null kulcs alá
-        // kerülnek: a területi füleken nem jelennek meg, de a cégösszesítőből nem esnek ki.
-        Map<String, String> regionNameToCode = new HashMap<>();
-        REGION_NAMES.forEach((code, name) -> regionNameToCode.put(name, code));
-
+        // FK-019: a területi csoportosítás EGYETLEN forrása a `region` (text, pl. 'SZEGED') — ezt
+        // használja az Országos készlet nézet is, és mind az értéktárnál (V254), mind a pénztárnál
+        // (V145) kitöltött, közvetlenül egyezve a REGION_NAMES értékeivel. Így az értéktár és a hozzá
+        // tartozó pénztárak GARANTÁLTAN ugyanarra a fülre kerülnek (a regionCode csak fallback, ha a
+        // region-szöveg nem oldható fel ismert körzetre — pl. legacy értéktár region nélkül). A
+        // besorolatlan (egyik mezővel sem feloldható) irodák a null kulcs alá kerülnek: a területi
+        // füleken nem jelennek meg, de a cégösszesítőből nem esnek ki.
         Map<String, List<BranchSnapshotDto>> branchesByRegion = new LinkedHashMap<>();
         for (Branch branch : branches) {
             BranchSnapshotDto branchDto = buildBranchSnapshot(branch, stockByBranch, wuByBranch, today, codes);
-            String regionCode = branch.getRegionCode();
-            if (regionCode == null && branch.getRegion() != null) {
-                regionCode = regionNameToCode.get(normalizeRegion(branch.getRegion()));
+            String regionCode = branch.getRegion() != null
+                    ? REGION_CODE_BY_NAME.get(normalizeRegion(branch.getRegion()))
+                    : null;
+            if (regionCode == null) {
+                regionCode = branch.getRegionCode(); // fallback a legacy KESZLEX regionCode-ra
             }
             branchesByRegion.computeIfAbsent(regionCode, k -> new ArrayList<>()).add(branchDto);
         }

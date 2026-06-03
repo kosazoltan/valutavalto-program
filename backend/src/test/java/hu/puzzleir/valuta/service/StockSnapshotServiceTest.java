@@ -356,6 +356,30 @@ class StockSnapshotServiceTest {
     }
 
     @Test
+    @DisplayName("FK-019: besorolatlan iroda (region=NULL, regionCode=NULL) nem jelenik meg területi fülön")
+    void getFullSnapshot_unassignedBranch_notInAnyRegionTab() {
+        Company company = Company.builder().id(COMPANY_ID).code("TEST").name("Test Company").build();
+        Branch assigned = Branch.builder().id(BRANCH_1_ID).code("BR020").name("Szeged Értéktár")
+                .regionCode("20").region("SZEGED").isVault(true).company(company).isActive(true).build();
+        Branch unassigned = Branch.builder().id(BRANCH_2_ID).code("BR999").name("Besorolatlan iroda")
+                .regionCode(null).region(null).isVault(false).company(company).isActive(true).build();
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                .thenReturn(List.of(assigned, unassigned));
+        when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
+        when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        // A besorolatlan iroda egyetlen területi fülön sem szerepel...
+        boolean unassignedInAnyTab = result.getRegions().stream()
+                .flatMap(r -> r.getBranches().stream())
+                .anyMatch(b -> "Besorolatlan iroda".equals(b.getBranchName()));
+        assertThat(unassignedInAnyTab).isFalse();
+        // ...de a hozzárendelt SZEGED értéktár igen.
+        assertThat(result.getRegions()).anyMatch(r -> "SZEGED".equals(r.getRegionName()));
+    }
+
+    @Test
     @DisplayName("getFullSnapshot - WU egyenleg megjelenik")
     void getFullSnapshot_withWuBalance_includesWuData() {
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
