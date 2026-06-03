@@ -46,6 +46,7 @@ export default function TransactionListPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [typeFilter, setTypeFilter] = useState<TransactionTypeName | ''>('')
+  const [customerOnly, setCustomerOnly] = useState(false)
 
   const [page, setPage] = useState(0)
   const [data, setData] = useState<PagedResponse<Transaction> | null>(null)
@@ -159,11 +160,12 @@ export default function TransactionListPage() {
   const totalPages = data?.totalPages ?? 0
 
   // Client-side filter on customer name (server doesn't support text search on customer name)
-  const filteredTransactions = search
-    ? transactions.filter(tx =>
-        tx.customerName?.toLowerCase().includes(search.toLowerCase())
-      )
-    : transactions
+  // + FR-PA-05: "csak ügyfeles bizonylatok" — csak az ügyfélhez kötött tranzakciók.
+  const filteredTransactions = transactions.filter(tx => {
+    if (search && !tx.customerName?.toLowerCase().includes(search.toLowerCase())) return false
+    if (customerOnly && !(tx.customerName && tx.customerName.trim().length > 0)) return false
+    return true
+  })
 
   const handleSearch = () => {
     setPage(0)
@@ -246,6 +248,19 @@ export default function TransactionListPage() {
               <option value="TRANSFER_OUT">{t('transactions.atadasi')}</option>
               <option value="TRANSFER_IN">{t('transactions.atveteli')}</option>
             </select>
+          </div>
+          {/* FR-PA-05: csak ügyfeles bizonylatok szűrő */}
+          <div>
+            <label className="form-label">&nbsp;</label>
+            <label className="form-input flex h-[38px] items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={customerOnly}
+                onChange={(e) => { setCustomerOnly(e.target.checked); setPage(0) }}
+                data-testid="filter-customer-only"
+              />
+              {t('transactions.csakUgyfeles', 'Csak ügyfeles')}
+            </label>
           </div>
         </div>
       </div>
