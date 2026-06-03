@@ -15,6 +15,11 @@ public class InventoryMovementDto {
     private String currencyName;
     private BigDecimal amount;
     private BigDecimal hufValue;
+    // V280 / audit-finding 2026-05-31 (P1): a ténylegesen fogadott összeg + az eltérés (received-amount).
+    // Eddig perzisztált + auditált volt, de a read-DTO-ból hiányzott → a kliens nem látta a fogadáskori
+    // hiányt. NULL, amíg nincs fogadva; difference 0, ha pontos.
+    private BigDecimal receivedAmount;
+    private BigDecimal difference;
     private String movementType;
     private String movementTypeDisplay;
     private String status;

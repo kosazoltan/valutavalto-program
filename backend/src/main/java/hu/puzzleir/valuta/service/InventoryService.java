@@ -856,6 +856,8 @@ public class InventoryService {
                 .approvedAt(m.getApprovedAt() != null ? m.getApprovedAt().toString() : null)
                 .receivedAt(m.getReceivedAt() != null ? m.getReceivedAt().toString() : null)
                 .createdAt(m.getCreatedAt() != null ? m.getCreatedAt().toString() : null)
+                .receivedAmount(m.getReceivedAmount())
+                .difference(m.getDifference())
                 .build();
     }
 }

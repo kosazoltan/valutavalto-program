@@ -29,6 +29,14 @@ interface Branch {
   countryId?: string
   branchStatusId?: string
   openingDate?: string
+  // Pénztár Törzs alapmodul (V293): rövid név + szolgáltatás-flagek + nyitvatartás.
+  shortName?: string
+  hasAfa?: boolean
+  hasWu?: boolean
+  hasMg?: boolean
+  hasPos?: boolean
+  closedSaturday?: boolean
+  closedSunday?: boolean
 }
 
 interface BranchForm {
@@ -45,6 +53,15 @@ interface BranchForm {
   countryId: string
   branchStatusId: string
   openingDate: string
+  // Pénztár Törzs alapmodul (V293): a mezőnevek egyeznek a Create/UpdateBranchDto JSON-property-vel,
+  // ezért a handleSave a form-ot változatlanul küldheti — külön payload-átalakítás nem kell.
+  shortName: string
+  hasAfa: boolean
+  hasWu: boolean
+  hasMg: boolean
+  hasPos: boolean
+  closedSaturday: boolean
+  closedSunday: boolean
 }
 
 interface DictionaryEntry { id: string; code: string; name: string; nameHu?: string }
@@ -53,6 +70,9 @@ const emptyForm: BranchForm = {
   code: '', name: '', city: '', address: '', phone: '', email: '',
   bankCode: '', zipCode: '', branchTypeId: '', countryId: '', branchStatusId: '',
   openingDate: new Date().toISOString().slice(0, 10),
+  // V293 szolgáltatás-flagek: új fiók alapból minden szolgáltatás nélkül, hétvégén nyitva (FALSE).
+  shortName: '', hasAfa: false, hasWu: false, hasMg: false, hasPos: false,
+  closedSaturday: false, closedSunday: false,
 }
 
 export default function BranchPage() {
@@ -137,6 +157,15 @@ export default function BranchPage() {
       // Sourcery #611: NE alapertelmezzunk ma-i datumra szerkesztesnel, ha eredetileg
       // ures volt — kulonben silently felulirjuk a legacy/null DB-adatot.
       openingDate: b.openingDate ?? '',
+      // V293 szolgáltatás-flagek betöltése a meglévő irodából (különben szerkesztéskor a
+      // checkboxok mindig üresek lennének és a mentés kikapcsolná a beállított flageket).
+      shortName: b.shortName ?? '',
+      hasAfa: b.hasAfa ?? false,
+      hasWu: b.hasWu ?? false,
+      hasMg: b.hasMg ?? false,
+      hasPos: b.hasPos ?? false,
+      closedSaturday: b.closedSaturday ?? false,
+      closedSunday: b.closedSunday ?? false,
     })
     setShowForm(true)
   }
@@ -382,6 +411,63 @@ export default function BranchPage() {
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                   />
+                </div>
+              </div>
+              {/* Pénztár Törzs alapmodul (V293): rövid név + szolgáltatás-flagek + hétvégi nyitvatartás */}
+              <div>
+                <label className="form-label">Rövid név (opcionális)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  maxLength={100}
+                  value={form.shortName}
+                  onChange={(e) => setForm({ ...form, shortName: e.target.value })}
+                />
+              </div>
+              <div className="border-t pt-3">
+                <div className="form-label mb-1">Szolgáltatások</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="form-checkbox h-4 w-4"
+                      checked={form.hasAfa}
+                      onChange={(e) => setForm({ ...form, hasAfa: e.target.checked })} />
+                    <span className="text-sm">ÁFA-visszatérítés</span>
+                  </label>
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="form-checkbox h-4 w-4"
+                      checked={form.hasWu}
+                      onChange={(e) => setForm({ ...form, hasWu: e.target.checked })} />
+                    <span className="text-sm">Western Union</span>
+                  </label>
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="form-checkbox h-4 w-4"
+                      checked={form.hasMg}
+                      onChange={(e) => setForm({ ...form, hasMg: e.target.checked })} />
+                    <span className="text-sm">MoneyGram</span>
+                  </label>
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="form-checkbox h-4 w-4"
+                      checked={form.hasPos}
+                      onChange={(e) => setForm({ ...form, hasPos: e.target.checked })} />
+                    <span className="text-sm">POS terminál</span>
+                  </label>
+                </div>
+              </div>
+              <div className="border-t pt-3">
+                <div className="form-label mb-1">Hétvégi nyitvatartás</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="form-checkbox h-4 w-4"
+                      checked={form.closedSaturday}
+                      onChange={(e) => setForm({ ...form, closedSaturday: e.target.checked })} />
+                    <span className="text-sm">Szombaton zárva</span>
+                  </label>
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="form-checkbox h-4 w-4"
+                      checked={form.closedSunday}
+                      onChange={(e) => setForm({ ...form, closedSunday: e.target.checked })} />
+                    <span className="text-sm">Vasárnap zárva</span>
+                  </label>
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-4 border-t">
