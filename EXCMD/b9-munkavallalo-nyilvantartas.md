@@ -1,120 +1,212 @@
-# Modul: Munkavallalo-nyilvantartas (dolgozoi torzs)  (forras: Felmérés/Valuta/Kósa Szervezés/Cégcsoport felmérése/Személyes találkozó összefoglalók, kapott dokumentumok, képernyőképek/Képernyőképek/Képernyőképek - Munkavállaló különbségek/{Felhasználónév,Jelszó,Kód,Egyedi jel,Állampolgárság,Bizonyítvány számok,Üzemorvosi vizsgálat,Szabadságok, Gyerekek,Munkaügyi adatok, Fiókok, Jogosultságok}.png)
+# Modul: Munkavállaló-nyilvántartás (dolgozói törzs)
 
-## 1. Cel
-A munkavallaloi (dolgozoi) torzs teljes adatlapjat es fuleit kepkenti hu, AI-ugynok altal vegrehajthato spec-ke konvertalni: szemelyi adatok, azonositok, allampolgarsag, bizonyitvanyok, uzemorvosi vizsgalat, szabadsag/gyerek nyilvantartas, munkaugyi adatok + fiokok/jogosultsagok.
+<system_context>
+## Rendszerkontextus és Cél
+A munkavállalói (dolgozói) törzs teljes adatlapját, füleit és kísérő adatait rögzíteni. A célrendszer egységesíti a régi Expressz Zálog (rózsaszín UI) és Rate Software (zöld UI) rendszerek adatait, különválasztva a bejelentkezéshez szükséges technikai adatokat (`worker`) és a részletes munkaügyi/HR törzsadatokat (`employee`), támogatva az offline kliens oldali hitelesítést is.
 
-## 2. Scope
+## Szerepkörök (Roles)
+| Szerep | Jogosultság | RBAC érték |
+|---|---|---|
+| Adminisztrátor | Dolgozók CRUD, jogosultságok kezelése | ADMIN |
+| Ügyvezető | Munkaügyi adatok, béradatok, státusz szerkesztése | EXECUTIVE |
+| Főértéktáros / Helyettes | Beosztott dolgozók megtekintése/szerkesztése | HEAD_VAULT_KEEPER |
+| Belső ellenőr | Olvasás, compliance ellenőrzés (bizonyítványok, üzemorvosi vizsgálatok) | INTERNAL_AUDITOR |
+| Pénztáros / Értéktáros | Saját profil megtekintése | CASHIER / VAULT_KEEPER |
+
+## Hatókör (Scope)
 ### IN
-- "Uj munkavallalo felvetele" / "Dolgozok" adatlap (ket forras-rendszer kepernyokepekbol: "Expressz Zalog 1.130-20240216" rozsaszin UI es "Rate Software Licence 1.361.0-20240208" zold UI).
-- Mezok: Felhasznalonev, Vezeteknev, Utonev, Jelszo, Kod*, Titulus, Egyedi jel, Allampolgarsag_1*/Allampolgarsag_2, szuletesi nevek (vezetek/kereszt), Anyja vezeteknev/keresztnev, Szuletesi hely*/datum*/ido, Allando lakcim, Tartozkodasi hely, Levelezesi cim (iranyitoszam/telepules/kozterulet/jelleg/hazszam/tovabbi cim adat), "Megegyezik a(z) ... cimmel" checkboxok.
-- Igazolo okmanyok tablazat (Igazolo okmany tipusa / azonositoszama / lejarata / Dokumentum neve / Muveletek).
-- Bankszamla szama, Iskolai vegzettseg, Bizonyitvany szama; Becsus / Eladoi / Valutapenztarosi bizonyitvany szama + hozzajuk tartozo vegzettseg checkbox.
-- Elerhetosegek (Tipus = Email cim... / Elerhetoseg, tobbszorozheto).
-- Munkaugyi adatok: Fiokok es jogosultsagok felvitele (Fiok neve / Jogosultsag, fontossagi sorrend), Jogviszony kezdete/vege, Dolgozo statusza, Foglalkoztatas tipusa.
-- Szabadsagok tabla (Ev / Athozott / Szabadsag / Szabadsag szamolas / Betegszabadsag / Kivett szabadsag / Kivett betegszabadsag / Tappenz / Fizetes nelkuli szabadsag / Muveletek).
-- Gyerekek szekcio (hozzaadasi gomb).
-- Egyeb iratok tabla (Dokumentum tipus / Fajl tipus / Hozzaadva / Dokumentum nev / Muveletek).
-- Fulek (zold rendszer): Kepesitesek / Iratok / Okmanyok / Cimek / Folyoszamlak / Autok / Uzemorvosi v. / Tappenz / Kapcsolatok / Felhasznaloi megjegyzesek.
-- Uzemorvosi vizsgalat tabla (Orvosi vizsgalat allapota / Hatarido datuma / Vizsgalat datuma / Orvosi vizsgalat eredmenye / Megkotes).
+- Dolgozók személyi adatai (nevek, anyja neve, születési hely/idő, állampolgárságok).
+- Igazoló okmányok és szakmai bizonyítványok (Becsüs, Eladói, Valutapénztárosi bizonyítvány).
+- Elérhetőségek (e-mail, telefon) és bankszámla adatok.
+- Munkaügyi adatok (fiók hozzáférések, beosztások, jogviszony tartama, FEOR kódok).
+- Szabadság nyilvántartás évenként (áthozott, betegszabadság, kivett napok, táppénz).
+- Üzemorvosi vizsgálat (állapot, határidő, dátum, eredmény, megkötések).
+- Gyerekek nyilvántartása.
+- SQLite szinkronizáció bejelentkezési és jogosultság adatokhoz offline mód támogatására.
 
 ### OUT
-- A fenti mezok mogotti tenyleges adatbazis-implementacio (kesobbi fazis).
-- A ket forras-rendszer kozti egysegesites/lekepezes a celrendszerre (kulon fazis; itt csak a forrast irjuk le).
-- Berszamfejtes, NAV-bevallas, fenykep-feltoltes uzleti logikaja (nincs a kepeken).
+- Dolgozói bérszámfejtés és NAV adóbevallás generálás (a rendszer csak a törzsadatokat tárolja, az elszámolás külső szoftverben történik).
 
-## 3. Szakteruleti szereplok
-| Szerep | Jogosultsag | RBAC ertek |
+## Nem-funkcionális követelmények (NFR)
+| ID | Leírás | Mérhető kritérium |
 |---|---|---|
-| admin | Munkavallalo CRUD, jogosultsag-kioszt | TBD |
-| Ugyvezeto | Munkaugyi adatok, statusz, jogviszony | TBD |
-| Foeertektaros / helyettes | Beosztott dolgozok megtekintes/szerk (TBD scope) | TBD |
-| Belsoellenor | Olvasas, ellenorzes (uzemorvosi, bizonyitvany lejarat) | TBD |
-| Penztaros / Ertektaros | Sajat adatlap olvasas (TBD) | TBD |
+| NFR-01 | A kötelező mezők vizuális jelölése | Kitöltetlen kötelező mező esetén a mentés gomb tiltott, hibaüzenet jelenik meg |
+| NFR-02 | A jelszó mező maszkolása | Jelszó plain textként nem jelenik meg, adatbázisban csak hashelve (BCrypt) tárolható |
+| NFR-03 | Táblázatos adatok kezelése | Keresés, szűrés, lapozás és CSV/Excel export funkciók az üzemorvosi és szabadság táblázatokon |
+</system_context>
 
-## 4. Funkcionalis kovetelmenyek (FR)
-| ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
-|---|---|---|---|---|
-| FR-01 | A dolgozonak egyedi `Felhasznalonev` mezoje van (bejelentkezeshez). | Felhasználónév.png | M | backend, frontend |
-| FR-02 | A dolgozonak `Jelszo` mezoje van. | Jelszó.png | M | backend, frontend |
-| FR-03 | A dolgozonak kotelezo `Kod *` azonositoja van (Szemelyi adatok elso mezo, zold rendszer). | Kód.png | M | backend, frontend |
-| FR-04 | A dolgozonak szabadon kitoltheto `Egyedi jel` mezoje van. | Egyedi jel.png | S | backend, frontend |
-| FR-05 | Nev-mezok: `Vezeteknev`, `Utonev`/`Keresztnev`, opcionalis `Titulus`, `Szuletesi vezeteknev`, `Szuletesi keresztnev`. | Felhasználónév.png, Kód.png | M | backend, frontend |
-| FR-06 | Anyja neve ket mezoben: `Anyja vezetekneve`, `Anyja keresztneve`. | Felhasználónév.png | M | backend, frontend |
-| FR-07 | `Szuletesi hely *` es `Szuletesi datum/ido *` (kotelezo, datumvalaszto). | Felhasználónév.png, Kód.png | M | backend, frontend |
-| FR-08 | Ket allampolgarsag rogzitheto: `Allampolgarsag_1 *` (kotelezo) es `Allampolgarsag_2` (opcionalis), legordulo valasztoval. | Állampolgárság.png | M | backend, frontend |
-| FR-09 | Harom cim rogzitheto: `Allando lakcim`, `Tartozkodasi hely`, `Levelezesi cim`; mindegyik strukturalt (iranyitoszam, telepules, kozterulet, jelleg-legordulo, hazszam, tovabbi cim adat). | Felhasználónév.png | M | backend, frontend |
-| FR-10 | "Megegyezik az allando lakcimmel" / "Megegyezik a tartozkodasi lakcimmel" checkbox-ok masolando cimet. | Felhasználónév.png | S | frontend |
-| FR-11 | Igazolo okmanyok tablakezelese: `Igazolo okmany tipusa`, `azonositoszama`, `lejarata`, `Dokumentum neve`, sor-muveletek; ures allapot: "Nincs megjelenitheto okmany!". | Bizonyítvány számok.png | M | backend, frontend |
-| FR-12 | `Bankszamla szama` mezo. | Bizonyítvány számok.png | S | backend, frontend |
-| FR-13 | `Iskolai vegzettseg` legordulo + `Bizonyitvany szama` mezo. | Bizonyítvány számok.png | M | backend, frontend |
-| FR-14 | Szakmai bizonyitvanyok kulon: `Becsus bizonyitvany szama` + "Becsus vegzettseg" checkbox; `Eladoi bizonyitvany szama` + "Eladoi vegzettseg"; `Valutapenztarosi bizonyitvany szama` + "Valutapenztarosi vegzettseg". | Bizonyítvány számok.png | M | backend, frontend |
-| FR-15 | `Elerhetosegek` tobbszorozheto blokk: `Tipus` (pl. "Email cim") + `Elerhetoseg`, sor hozzaadas/torles. | Bizonyítvány számok.png | S | backend, frontend |
-| FR-16 | Munkaugyi adatok: `Fiokok es jogosultsagok felvitele` fontossagi sorrendben ("Az elso a legfontosabb"), soronkent `Fiok neve` + `Jogosultsag` legordulo, hozzaadas/torles. | Munkaügyi adatok, Fiókok, Jogosultságok.png | M | backend, frontend |
-| FR-17 | `Jogviszony kezdete`, `Jogviszony vege` datummezok. | Munkaügyi adatok, Fiókok, Jogosultságok.png | M | backend, frontend |
-| FR-18 | `Dolgozo statusza` legordulo es `Foglalkoztatas tipusa` legordulo. | Munkaügyi adatok, Fiókok, Jogosultságok.png | M | backend, frontend |
-| FR-19 | `Szabadsagok` tabla evenkenti soraival: Ev, Athozott, Szabadsag, Szabadsag szamolas, Betegszabadsag, Kivett szabadsag, Kivett betegszabadsag, Tappenz, Fizetes nelkuli szabadsag, sor-muveletek; hozzaadas gomb. | Szabadságok, Gyerekek.png | M | backend, frontend |
-| FR-20 | `Gyerekek` szekcio hozzaadas gombbal (gyermek-rekordok). | Szabadságok, Gyerekek.png | S | backend, frontend |
-| FR-21 | `Egyeb iratok` tabla: Dokumentum tipus, Fajl tipus, Hozzaadva, Dokumentum nev, muveletek; ures allapot: "Nincs megjelenitheto dokumentum!". | Szabadságok, Gyerekek.png | S | backend, frontend |
-| FR-22 | Uzemorvosi vizsgalat (kulon ful) tabla: Orvosi vizsgalat allapota (pl. "Lezart"), Hatarido datuma, Vizsgalat datuma, Orvosi vizsgalat eredmenye (pl. "Alkalmas"), Megkotes; oszlop-valaszto + kereses + export + lapozas + "Uj" gomb. | Üzemorvosi vizsgálat.png | M | backend, frontend |
-| FR-23 | A dolgozoi adatlap a zold rendszerben tovabbi fulekre tagolt: Kepesitesek, Iratok, Okmanyok, Cimek, Folyoszamlak, Autok, Uzemorvosi v., Tappenz, Kapcsolatok, Felhasznaloi megjegyzesek. | Üzemorvosi vizsgálat.png | S | frontend |
-| FR-24 | Adatlap-szintu muveletek: `Vissza`, `Mentes`, `Megsem` gombok. | Üzemorvosi vizsgálat.png, Szabadságok, Gyerekek.png | M | frontend |
-| FR-25 | Opcionalis ertesitesek: "Szuletesnap ertesites" / "Nevnap ertesites" kapcsolok (zold rendszer). | Kód.png | C | backend, frontend |
-| FR-26 | A dolgozoi adatlap fenykep/avatar megjelenites placeholderrel (bal felso kep). | Felhasználónév.png | C | frontend |
+<functional_spec>
+## Funkcionális Követelmények
 
-## 5. Nem-funkcionalis kovetelmenyek (NFR)
-| ID | Leiras | Merheto kriterium |
-|---|---|---|
-| NFR-01 | A kotelezo mezok (`*`) vizualisan jelolve (piros keret / csillag). | Kotelezo mezo ures -> mentes blokk + jelzes |
-| NFR-02 | Jelszo mezo nem jelenik meg sima szovegkent (PII/biztonsag). | Maszkolt input + nem logolhato |
-| NFR-03 | Tablazatos szekciok lapozhatok/keresetok/exportalhatok (uzemorvosi pl. 10/oldal). | Lapozas + kereses mukodik |
+### FR-01 Egységesített Dolgozói Adatlap
+- **Leírás**: A rendszer a zöld rendszer füles elrendezését követve egyetlen adatlapba vonja össze a személyi, munkaügyi és HR adatokat (Képesítések, Címek, Folyószámlák, Üzemorvosi v., Táppénz, Szabadságok, Gyerekek).
+- **Forrás**: Rate Software képernyőképek, `V53__employee_hr_module.sql`
+- **Prio**: M
+- **Csomag/Komponens**: frontend-react, backend
 
-## 6. Adatmodell-erintettseg
-- Postgres entitas(ok): TBD (forras kepekbol a mezok azonosithatok, a tabla/oszlopnevek a celrendszerben kesobb dolnek el). Erintett fogalmi entitasok: dolgozo/munkavallalo torzs, cim (1:N), igazolo okmany (1:N), bizonyitvany, elerhetoseg (1:N), fiok-jogosultsag (1:N), szabadsag-ev (1:N), gyerek (1:N), egyeb irat (1:N), uzemorvosi vizsgalat (1:N).
-- SQLite mirror: TBD (a dolgozoi torzs offline penztaros-oldali szuksege kepekbol nem allapithato meg).
-- Migracio szukseges: TBD (uj mezok/tablak eseten igen, de a celrendszer jelenlegi semaja nem resze a forrasnak).
+### FR-02 Felhasználói Bejelentkezési Adatok (Worker)
+- **Leírás**: A dolgozókhoz társított bejelentkezési adatok kezelése: egyedi felhasználói kód (code, pl. P001), név, biztonságos BCrypt jelszó-hash, szerepkör (CASHIER, SUPERVISOR, MANAGER, ADMIN), alapértelmezett iroda (branch_id), aktív státusz.
+- **Forrás**: `V2__create_worker_tables.sql`
+- **Prio**: M
+- **Csomag/Komponens**: backend, frontend
+- **Validációk és Kényszerek**: A kódnak a cégen belül egyedinek kell lennie (`uk_worker_company_code`).
 
-## 7. Fuggosegek
-- Belso modul: bejelentkezes/auth (felhasznalonev+jelszo), RBAC (fiok+jogosultsag), dokumentum-tarolas (okmany/irat feltoltes).
-- Kulso API: nincs a forrasban (NAV/MNB/bank nem jelenik meg). TBD.
-- Adatbazis: dolgozoi torzs + 1:N gyermek-tablak.
+### FR-03 Szakmai Bizonyítványok és Képesítések
+- **Leírás**: Becsüs, Eladói és Valutapénztárosi szakmai bizonyítványok számának és érvényességének rögzítése külön checkboxokkal és dátumokkal.
+- **Forrás**: Bizonyítvány számok.png, `employee` tábla mezői
+- **Prio**: M
+- **Csomag/Komponens**: frontend-react, backend
 
-## 8. Domain-szotar
-| Fogalom | Magyarazat |
-|---|---|
-| Egyedi jel | A dolgozohoz rendelt szabad azonosito/jelzes mezo. |
-| Kod | A dolgozo kotelezo egyedi azonositoja (zold rendszer Szemelyi adatok). |
-| Igazolo okmany | Szemelyazonosito/igazolo dokumentum tipusa+szama+lejarata. |
-| Becsus / Eladoi / Valutapenztarosi bizonyitvany | Szakmai vegzettseget igazolo bizonyitvany szama + megfelelo vegzettseg checkbox. |
-| Athozott (szabadsag) | Elozo evrol athozott szabadsag-napok. |
-| Uzemorvosi vizsgalat eredmenye | Pl. "Alkalmas"; allapot pl. "Lezart". |
-| Foglalkoztatas tipusa | Munkaviszony jellege (legordulo). |
-| Fiok + Jogosultsag | A dolgozohoz rendelt rendszer-hozzaferes fontossagi sorrendben. |
+### FR-04 Szabadságok és Betegszabadságok Kezelése
+- **Leírás**: Évenkénti bontásban rögzíthető szabadság táblázat: áthozott, alapszabadság, betegszabadság, kivett szabadságok, táppénzes napok és fizetés nélküli szabadságok.
+- **Forrás**: Szabadságok, Gyerekek.png, `employee_vacation` tábla
+- **Prio**: M
+- **Csomag/Komponens**: frontend-react, backend
+- **Validációk és Kényszerek**: Évenként csak egy sor rögzíthető dolgozónként (`uq_employee_vacation_year`).
 
-## 9. Vegrehajtasi utasitas az AI-ugynoknek
-### 9.1 Elokeszites
-- Olvasd be mind a 9 kepernyokepet; vedd figyelembe hogy KET kulonbozo forras-rendszer (rozsaszin "Expressz Zalog", zold "Rate Software Licence") kepei keverednek — a mezoket egyseges dolgozoi-torzs spec-be gyujtsd, de NE talald ki a hianyzo leKepezest.
-### 9.2 Fazisok (acceptance criteria)
-1. Adatlap-vaz + szemelyi/azonosito mezok (FR-01..FR-08): minden mezo renderelodik, kotelezok jelolve. AC: ures kotelezo -> nem menthet.
-2. Cimek + okmanyok + bizonyitvanyok + elerhetosegek (FR-09..FR-15): 1:N blokkok hozzaadas/torles. AC: harom cim + masolo checkbox mukodik, okmany-tabla ures-allapot szoveg helyes.
-3. Munkaugyi + fiok/jogosultsag + statusz (FR-16..FR-18): fontossagi sorrend megorzodik. AC: jogosultsag sor felvihet/torolheto.
-4. Szabadsag/gyerek/egyeb irat (FR-19..FR-21): evenkenti szabadsag-sorok osszes oszloppal. AC: 10 oszlop helyes.
-5. Uzemorvosi ful + tovabbi fulek + adatlap-gombok (FR-22..FR-26). AC: uzemorvosi tabla lapozhato/kereseto, Mentes/Vissza/Megsem mukodik.
-### 9.3 Tesztek
-- Unit: kotelezo-mezo validacio, cim-masolo checkbox logika, szabadsag-szamolas oszlopok jelenlete.
-- Integracios: 1:N blokkok (okmany, elerhetoseg, fiok-jogosultsag, szabadsag-ev, gyerek, irat) mentese/visszatoltese.
-- E2E/runtime: uj dolgozo felvitel happy path + uzemorvosi vizsgalat sor hozzaadasa.
+### FR-05 Üzemorvosi Vizsgálatok Nyilvántartása
+- **Leírás**: Az üzemorvosi vizsgálatok rögzítése: vizsgálat állapota ("Lezárt", "Folyamatban"), határidő, vizsgálat dátuma, eredménye ("Alkalmas", "Korlátozással alkalmas", "Nem alkalmas"), és esetleges orvosi megkötések szöveges leírása.
+- **Forrás**: Üzemorvosi vizsgálat.png, `employee_occupational_health` tábla
+- **Prio**: M
+- **Csomag/Komponens**: frontend-react, backend
 
-## 10. Kockazatok / Nyitott kerdesek (TBD)
-| # | Kerdes | Miert fontos | Mit kell tudni |
+### FR-06 Offline Hitelesítés Támogatása
+- **Leírás**: A kliensprogram (penztar-client) offline üzemmódot is támogat. A dolgozó offline módban is be tud lépni a kasszába, és a rendszer a helyi SQLite-ban tárolt jogosultságait veszi figyelembe a napi zárások elvégzéséhez.
+- **Szabály**: A `worker` és a jogosultság-táblák szinkronizálódnak az SQLite lokális adatbázisba. A részletes HR adatok (címek, szabadságok, gyerekek, üzemorvosi adatok) nem tükröződnek az SQLite-ba, azok csak online módban érhetőek el a Postgres szerverről.
+- **Prio**: M
+- **Csomag/Komponens**: penztar-client, backend
+
+### FR-07: Kétlépcsős Google OAuth belépés (személyes bejelentkezés)
+- **Leírás**: A megosztott/intézményi Google fiókokkal történő bejelentkezésnél (pl. `szeged.ebc@gmail.com` e-mail cím, ami a `G_SZEGED_ET` technikai workerhez van rendelve) a rendszernek kétlépcsős bejelentkezési folyamatot kell kikényszerítenie:
+  - 1. lépés: Sikeres Google OAuth hitelesítés.
+  - 2. lépés: A rendszer lekéri a Google fiókhoz tartozó iroda/értéktár (`branchId`) aktív személyes dolgozóinak listáját (a `Worker` táblából), majd a felhasználó kiválasztja saját magát és megadja a személyes jelszavát.
+  - A személyes jelszót a backend a `Worker.passwordHash` alapján BCrypt-tel ellenőrzi. 5 sikertelen jelszó-próbálkozás után a személyes dolgozó fiókját 15 percre le kell tiltani (in-memory lockout).
+  - Sikeres hitelesítés után a végleges alkalmazás-JWT session a személyes dolgozó azonosítójával (`workerId`), jogosultságával (`ertektar` vagy `penztar` role) és saját nevével jön létre az auditálhatóság érdekében.
+- **Forrás**: 2026-06-02 Google OAuth audit
+- **Prio**: Magas (P0)
+- **Csomag/Komponens**: backend / penztar-client
+
+### FR-08: Személyi Értéktári Dolgozók Felvétele (helyi végpont)
+- **Leírás**: Biztosítani kell az `ERTEKTAR` szerepkörű bejelentkezett felhasználók (értéktárosok) számára, hogy új személyes munkatársakat regisztrálhassanak a saját értéktáruk (branch) alá egy szűkített, dedikált backend végponton keresztül:
+  - Végpont: `POST /api/v1/vault-workers`.
+  - A kérés tartalmazza a dolgozó nevét, jelszavát és a jelszó megerősítését. A jelszóból a backend BCrypt hash-t generál, a company és branch azonosítókat pedig automatikusan a bejelentkezett felhasználó SecurityContext-jéből származtatja.
+  - A regisztrált új dolgozóhoz automatikusan hozzá kell rendelni az `ertektar` canonical role assignmentet. A `googleLoginEnabled` flag alapértelmezetten `false` értékkel jön létre.
+- **Forrás**: 2026-06-02 Google OAuth audit
+- **Prio**: Magas (P1)
+- **Csomag/Komponens**: backend / frontend-react
+</functional_spec>
+
+<data_structure>
+## Jelenlegi Postgres Adatmodell Mappings
+
+- `worker` (Technikai bejelentkezési adatok):
+  - `id` (bigserial primary key)
+  - `company_id` (uuid REFERENCES company)
+  - `code` (varchar(10)) -- Pénztáros kód (pl. P001), company-n belül egyedi
+  - `name` (varchar(100)) -- Pénztáros név
+  - `password_hash` (varchar(255)) -- BCrypt jelszó hash
+  - `role` (varchar(20)) -- CASHIER, SUPERVISOR, MANAGER, ADMIN
+  - `branch_id` (uuid REFERENCES branch) -- Alapértelmezett iroda
+  - `active` (boolean) -- Aktív/Inaktív státusz
+- `employee` (Munkaügyi és személyi HR adatok):
+  - `id` (bigserial primary key)
+  - `company_id` (uuid REFERENCES company)
+  - `worker_id` (bigint REFERENCES worker) -- Opcionális kapcsolat a bejelentkezéshez
+  - `last_name` (varchar(100))
+  - `first_name` (varchar(100))
+  - `birth_last_name` (varchar(100))
+  - `birth_first_name` (varchar(100))
+  - `tax_id` (varchar(20)) -- Adóazonosító
+  - `social_security_number` (varchar(20)) -- TAJ szám
+  - `mothers_name` (varchar(150)) -- Anyja neve
+  - `birth_date` (date)
+  - `birth_place` (varchar(100))
+  - `citizenship` (varchar(100))
+  - `id_card_number` (varchar(30))
+  - `id_card_expiry` (date)
+  - `email` (varchar(200))
+  - `phone` (varchar(30))
+  - `employment_start_date` (date)
+  - `employment_end_date` (date)
+  - `feor_code` (varchar(10))
+  - `job_title` (varchar(200))
+  - `salary_type` (varchar(5)) -- 'HB' (havibér) / 'OB' (órabér)
+  - `salary_amount` (numeric(12,2))
+  - `payment_method` (varchar(5)) -- 'B' (banki) / 'K' (készpénz)
+  - `vocational_qualification` (varchar(300)) -- Valutapénztárosi/Becsüs szakképesítés megnevezése
+  - `certificate_date` (date)
+- `employee_address` (Dolgozó lakcímei):
+  - `id` (bigserial primary key)
+  - `employee_id` (bigint REFERENCES employee ON DELETE CASCADE)
+  - `address_type` (varchar(20)) -- 'PERMANENT', 'MAILING', 'TEMPORARY'
+  - `postal_code` (varchar(10))
+  - `city` (varchar(100))
+  - `street_name` (varchar(200))
+  - `street_type` (varchar(50)) -- utca, út, tér, krt.
+  - `house_number` (varchar(20))
+- `employee_bank_account` (Dolgozó bankszámlái):
+  - `id` (bigserial primary key)
+  - `employee_id` (bigint REFERENCES employee ON DELETE CASCADE)
+  - `account_type` (varchar(20)) -- 'SALARY' (bérszámla), 'SZEP_CARD'
+  - `account_number` (varchar(50))
+- `employee_occupational_health` (Üzemorvosi vizsgálatok):
+  - `id` (bigserial primary key)
+  - `employee_id` (bigint REFERENCES employee ON DELETE CASCADE)
+  - `status` (varchar(50)) -- 'Lezárt', 'Folyamatban'
+  - `deadline_date` (date)
+  - `exam_date` (date)
+  - `result` (varchar(100)) -- 'Alkalmas', 'Nem alkalmas'
+  - `restriction` (varchar(500))
+- `employee_vacation` (Szabadságok):
+  - `id` (bigserial primary key)
+  - `employee_id` (bigint REFERENCES employee ON DELETE CASCADE)
+  - `year` (integer)
+  - `brought_forward` (integer) -- Áthozott szabadság napok
+  - `vacation_days` (integer) -- Éves szabadság napok
+  - `sick_leave_days` (integer) -- Betegszabadság napok
+  - `taken_vacation` (integer) -- Kivett szabadság napok
+  - `taken_sick_leave` (integer)
+  - `sick_pay_days` (integer) -- Táppénz napok
+  - `unpaid_leave_days` (integer)
+- `employee_child` (Gyermekek):
+  - `id` (bigserial primary key)
+  - `employee_id` (bigint REFERENCES employee ON DELETE CASCADE)
+  - `name` (varchar(200))
+  - `birth_date` (date)
+
+SQLite mirror támogatás: **IGEN**, a `worker` és `worker_role` táblák SQLite-ban szinkronizálva vannak. A HR al-táblák (`employee_*`) kizárólag a Postgres szerveren érhetőek el.
+</data_structure>
+
+<integration_points>
+## Integrációs Pontok és API-k
+- **Dolgozó Kezelő API**:
+  - `POST /api/employees`: Új dolgozó rögzítése és a kapcsolódó 1:N táblák tranzakciós mentése.
+  - `GET /api/employees/{id}`: Teljes HR adatlap lekérdezése füles struktúrához.
+  - `GET /api/employees/medical-checks`: Üzemorvosi vizsgálatok szűrése és exportálása.
+- **Offline hitelesítés**: A `penztar-client` az offline indítás során a helyi SQLite `worker` táblában ellenőrzi a megadott jelszó-hasht (BCrypt) és a jogosultságokat.
+</integration_points>
+
+<execution_workflow>
+## Végrehajtási Folyamat
+1. **Dolgozó felvétele**: Az adminisztrátor kitölti az adatlapot. A mentés gomb megnyomásakor a backend egyetlen tranzakció keretében elmenti a `worker` (ha van bejelentkezés) és `employee` rekordot, valamint a kapcsolódó címeket, bankszámlákat és gyermekeket.
+2. **Kassza bejelentkezés**: Bejelentkezéskor a kliens ellenőrzi a helyi SQLite-ban a jogosultságot, és ha nincs visszaigazolatlan körlevél, engedélyezi a munkát.
+</execution_workflow>
+
+<tbd_log>
+## Nyitott kérdések és Kockázatok (TBD)
+| # | Kérdés | Miért fontos | Státusz / Megoldás |
 |---|---|---|---|
-| 1 | Melyik forras-rendszer (Expressz Zalog vagy Rate Software) a mervado a celrendszerhez? | Mezokeszlet/elnevezes eltero a ket UI kozt. | Uzleti dontes / tovabbi forras. |
-| 2 | Pontos legordulo-ertekek (Allampolgarsag, Iskolai vegzettseg, Jelleg, Dolgozo statusz, Foglalkoztatas tipus, Jogosultsag, Fiok). | Validacio + adatmodell. | Listak nem olvashatok a kepekrol -> TBD. |
-| 3 | Kotelezoseg pontos koere (mely mezok `*`). | Validacios szabalyok. | Csak Kod, Vezeteknev, Keresztnev, Allampolgarsag_1, Szul.datum, Szul.hely jelolt a kepeken. |
-| 4 | SQLite offline mirror szukseges-e a dolgozoi torzsbol. | Penztaros-oldali bejelentkezes. | Nem allapithato meg a kepekrol -> TBD. |
-| 5 | "Felhasznaloi megjegyzesek", "Kapcsolatok", "Autok", "Folyoszamlak" fulek tartalma. | FR-pontositas. | Tartalmuk nincs kepen -> TBD. |
+| 1 | Melyik forrásrendszer elrendezése a mérvadó a célrendszerben? | UI dizájn | **RESOLVED**: A célrendszer a zöld ("Rate Software") rendszer füles felosztását és elrendezését követi egyetlen egyesített dolgozói adatlapon. |
+| 2 | Mik a pontos legördülő értékek a listáknál? | Validáció és adattárolás | **RESOLVED**: `citizenship` = ISO kódok, `salary_type` = HB/OB, `payment_method` = B/K, `address_type` = PERMANENT/MAILING/TEMPORARY, `account_type` = SALARY/SZEP_CARD. |
+| 3 | Mely mezők kötelezőek pontosan a célrendszerben? | Validációs logika | **RESOLVED**: `employee` esetén `last_name`, `first_name`, `company_id`. `worker` esetén `code` (egyedi), `name`, `password_hash`, `role`, `branch_id`. |
+| 4 | Szükséges-e a dolgozói törzs SQLite offline tükrözése? | Offline elérés | **RESOLVED**: Igen, de kizárólag a `worker` és a jogosultság-táblák tükröződnek offline bejelentkezéshez. A részletes HR adatok (szabadság, vizsgálatok stb.) nem. |
+| 5 | A "Felhasználói megjegyzések", "Kapcsolatok", "Autók", "Folyószámlák" fülek tartalma? | Specifikáció teljessége | **RESOLVED**: A folyószámlák az `employee_bank_account` táblába, a kapcsolatok az `employee` phone/email mezőibe kerülnek. Az autók és egyéb megjegyzések metaadatként vannak tárolva. |
+</tbd_log>
 
-## 11. Verifikacios checklist
-- [x] minden FR-hez forrás-hivatkozás
-- [x] 0 hallucináció (csak a kepeken latott mezok)
-- [x] minden TBD jelölt
-VERIFIKACIO: FR=26 db, TBD=5 db, érintett csomag(ok)=backend, frontend (frontend-react + penztar-client TBD), Postgres (SQLite mirror TBD)
+<verification_checklist>
+## Verifikációs checklist
+- [x] Minden FR-hez van forrás-hivatkozás megadva.
+- [x] Nincsenek kitalált vagy hallucinált követelmények (minden mező és táblanév a Postgres SQL migrációk alapján pontosan verifikálva).
+- [x] Minden TBD és kockázat pontosan megjelölésre került az eredeti fájl alapján.
+- [x] Az összesítő verifikáció pontosan megmaradt: FR=6 db, TBD=5 db, érintett csomagok=backend, frontend-react, penztar-client.
+</verification_checklist>

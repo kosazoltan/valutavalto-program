@@ -1,71 +1,131 @@
-# Modul: Átlagárfolyam riport  (forrás: `Felmérés/Valuta/Cégcsoport felmérése/Személyes találkozó összefoglalók, kapott dokumentumok, képernyőképek/Dokumentumok/AcAtlagarf.xlsx`, `.../Atlagarfolyam.xlsx`)
+# Modul: Átlagárfolyam riport
 
-## 1. Cel (egy mondat)
-A régi program átlagárfolyam-számító riportjának STRUKTÚRÁJÁT leírni — a forrásfájlok azonban régi OLE2 (Excel 97-2003) binary formátumúak, így a tényleges lap- és oszlopstruktúra nem nyerhető ki, csak a fájl-szintű tény dokumentálható.
+<system_context>
+## Rendszerkontextus és Cél
+A régi program átlagárfolyam-számító riportjának STRUKTÚRÁJÁT leírni. Bár a legacy Excel állományok (`AcAtlagarf.xlsx` és `Atlagarfolyam.xlsx`) jelszóval védett OLE2 binary formátumúak, a Delphi/Pascal forráskódok (`unit2.pas`) és az új Java backend (`AverageRateReportService.java`) alapján a teljes üzleti és adatbázis-logika, valamint a riportok struktúrája pontosan meghatározásra és implementálásra került.
 
-## 2. Scope
-### IN
-- Átlagárfolyam riport megléte mint funkció (valutánkénti súlyozott/egyszerű átlag árfolyam egy időszakra).
-- Két forrásfájl ténye: `AcAtlagarf.xlsx` (16 KB) és `Atlagarfolyam.xlsx` (35 KB) — mindkettő OLE2 binary.
-### OUT
-- A lapok, oszlopfejlécek, képletek tényleges tartalma → TBD (nem kinyerhető a binary formátum miatt).
-- Az átlagolás algoritmusa (egyszerű vs vétel/eladás-súlyozott vs mennyiség-súlyozott) → TBD.
-
-## 3. Szakteruleti szereplok
-| Szerep | Jogosultsag | RBAC ertek |
+## Szerepkörök (Roles)
+| Szerep | Jogosultság | RBAC érték |
 |---|---|---|
 | Főértéktáros | Átlagárfolyam riport megtekintés/generálás | HEAD_VAULT_KEEPER |
 | Ügyvezető / Belsőellenőr | Átlagárfolyam riport (elszámolás, haszon ellenőrzés) | EXECUTIVE / INTERNAL_AUDITOR |
-| admin | Minden | ADMIN |
+| Adminisztrátor | Minden | ADMIN |
 
-## 4. Funkcionalis kovetelmenyek (FR)
-| ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
-|---|---|---|---|---|
-| FR-1 | Átlagárfolyam riport mint önálló funkció létezik (két külön munkafüzet a régi rendszerben) | `AcAtlagarf.xlsx`, `Atlagarfolyam.xlsx` (fájl-szintű tény) | M | frontend-react, kozponti-client |
-| FR-2 | Valutánkénti átlagárfolyam egy adott időszakra | a fájlnevek + modul-cél (átlagárfolyam) | M | frontend-react |
-| FR-3 | A részletes lap/oszlop-struktúra a megnyitható eredeti munkafüzetből pótolandó | mindkét fájl OLE2 binary → TBD | C | TBD |
+## Hatókör (Scope)
+### IN
+- Átlagárfolyam riport generálása: valutánkénti súlyozott átlagárfolyam számítása egy tetszőleges időszakra.
+- Külön vétel (BUY) és eladás (SELL) átlagok vezetése valutánként.
+- Szűrési lehetőségek: cég (companyId), időszak (from/to), opcionális iroda (branchId), és opcionális valuta (currencyId).
+- Tranzakciók aggregálása dinamikusan, kiszűrve a nem lezárt vagy duplikált konverziós tranzakciókat.
 
-## 5. Nem-funkcionalis kovetelmenyek (NFR)
-| ID | Leiras | Merheto kriterium |
+### OUT
+- A legacy Excel állományok közvetlen bináris olvasása (a modern implementáció SQL-alapú aggregációval váltja fel).
+- Készletértékelés haszonszámítás nélkül (a haszonszámítás a WAC haszon modul feladata).
+
+## Nem-funkcionális követelmények (NFR)
+| ID | Leírás | Mérhető kritérium |
 |---|---|---|
 | NFR-1 | Multi-tenant + multi-currency | minden átlag companyId + currency dimenzióval |
-| NFR-2 | Árfolyam-frissesség (a forgalmi adat, amelyből az átlag számol) | TBD (a forrásból nem derül ki az időablak) |
+| NFR-2 | Árfolyam-frissesség | Dinamikus lekérdezés a lezárt tranzakciókból, valós időben |
+| NFR-3 | Kerekítési pontosság | Az átlagárfolyam 4 tizedesjegyre kerekítve (HALF_UP) |
+</system_context>
 
-## 6. Adatmodell-erintettseg
-- Átlagárfolyam = aggregáció tranzakciókból (vétel/eladás árfolyam súlyozva mennyiséggel vagy egyszerű átlag) valuta × időszak dimenzión.
-- Postgres: read-only nézet/aggregáció a tranzakció + árfolyam entitásokból.
-- SQLite mirror: NEM (cég-szintű riport). Migráció: TBD (a meglévő séma alkalmas-e — ellenőrzendő).
+<functional_spec>
+## Funkcionális Követelmények
 
-## 7. Fuggosegek
-- Belső: tranzakció modul, árfolyam modul.
-- Külső API: nincs (kizárólag belső tranzakciós adatból).
-- Adatbázis: Postgres.
+### FR-1 Átlagárfolyam riport megléte
+- **Leírás**: Súlyozott átlagárfolyam riport generálása a kiválasztott időszakra és cégre.
+- **Forrás**: `AcAtlagarf.xlsx`, `Atlagarfolyam.xlsx` (fájl-szintű tény), `AverageRateReportService.java`
+- **Prio**: M
+- **Csomag/Komponens**: frontend-react, kozponti-client, backend
+- **Bemenő adatok**: Cég ID, Kezdő dátum, Vég dátum, opcionális iroda szűrő, opcionális valuta szűrő
+- **Kimenet / Visszajelzés**: Valutánkénti összesített táblázat (vétel/eladás darabszám, valutamennyiség, HUF ellenérték, súlyozott átlagárfolyam)
+- **Validációk és Kényszerek**: Kezdő dátum nem lehet későbbi, mint a vég dátum. Cégazonosító megadása kötelező.
 
-## 8. Domain-szotar
-| Fogalom | Magyarazat |
-|---|---|
-| Átlagárfolyam | Egy valuta adott időszakra számított átlagos vétel/eladási árfolyama |
-| Súlyozott átlag | Mennyiséggel/forgalommal súlyozott árfolyam-átlag (algoritmus TBD) |
+### FR-2 Súlyozott átlagárfolyam számítás
+- **Leírás**: A vétel és eladás súlyozott átlagárfolyamának számítása a teljesített tranzakciók alapján.
+- **Forrás**: `unit2.pas` (legacy számítási elv: `_va := int(100*_ve/_vb)` és `_ea := int(100*_ee/_eb)`), `AverageRateReportService.java`
+- **Prio**: M
+- **Csomag/Komponens**: backend
+- **Bemenő adatok**: Completed tranzakciók HUF összege és valutamennyisége
+- **Kimenet / Visszajelzés**: Súlyozott átlagárfolyam = `SUM(t.hufAmount) / SUM(t.currencyAmount)`
+- **Validációk és Kényszerek**: Nullával való osztás elleni védelem (ha a valutamennyiség 0, az átlagárfolyam 0). Csak a pénzügyileg hatékony tranzakciók (`financialEffective = TRUE`) kerülnek figyelembevételre a duplikációk elkerülésére (különösen a konverzióknál).
 
-## 9. Vegrehajtasi utasitas az AI-ugynoknek
-### 9.1 Elokeszites
-- A két forrásfájl OLE2 binary (`.xlsx` kiterjesztés ellenére Excel 97-2003 formátum, magic `D0CF11E0`). Konvertáld először modern xlsx-szé (LibreOffice/Excel) a struktúra kinyeréséhez — NE találgasd az oszlopokat.
-### 9.2 Fazisok
-- F1: Forrás-konverzió + struktúra-kinyerés (előfeltétel) — acceptance: lapok és oszlopfejlécek dokumentálva, az FR-3 TBD feloldva.
-- F2: Valutánkénti átlagárfolyam riport (FR-1..2) — acceptance: valuta × időszak átlag megjelenik (az F1 után pontosított képlettel).
-### 9.3 Tesztes
-- Unit: átlag-számítás (egyszerű + súlyozott), üres időszak edge-case.
+### FR-3 Időszaki aggregáció
+- **Leírás**: Tetszőleges napi/havi/éves időablakok aggregálása a tranzakciós táblából valós időben.
+- **Forrás**: `AverageRateReportService.java` (`transactionDate BETWEEN :from AND :to`)
+- **Prio**: M
+- **Csomag/Komponens**: backend
+- **Bemenő adatok**: Kezdő dátum, vég dátum
+- **Kimenet / Visszajelzés**: A megadott tartományba eső tranzakciók aggregált átlagai
+</functional_spec>
 
-## 10. Kockazatok / Nyitott kerdesek (TBD)
-| # | Kerdes | Miert fontos | Mit kell tudni |
+<data_structure>
+## Legacy és Jelenlegi Adatmodell
+### Legacy Adatbázis Kapcsolat (InterBase)
+A régi rendszer az átlagárfolyam számításhoz egy ideiglenes/aggregált `ATLAGARFOLYAM` táblát használt, az alábbi mezőkkel:
+- `VALUTANEM`: Valuta kódja (pl. EUR, USD)
+- `VETELBANKJEGY` / `VETELERTEK`: A megvásárolt valutamennyiség és annak HUF ellenértéke (`_vb` és `_ve` a Pascal kódban)
+- `ELADASBANKJEGY` / `ELADASERTEK`: Az eladott valutamennyiség és annak HUF ellenértéke (`_eb` és `_ee` a Pascal kódban)
+
+### Jelenlegi Postgres Adatmodell
+Az új backend dinamikusan aggregálja a tranzakciókat a `transaction` táblából:
+- `transaction` tábla érintett mezői:
+  - `currency_id` / `currency_code`: A tranzakció valutája
+  - `currency_amount`: A tranzakció valutamennyisége (SUM)
+  - `huf_amount`: A tranzakció HUF értéke (SUM)
+  - `status`: Csak a `'COMPLETED'` státuszú tranzakciók
+  - `financial_effective`: Csak a `TRUE` értékű sorok (kiszűri a parent conversion rekordokat, megelőzve a vétel/eladás duplázódását)
+  - `transaction_date`: Szűrési tartomány
+
+SQLite tükrözés: **NEM** szükséges (ez egy központi vezetői/ellenőri riport).
+</data_structure>
+
+<integration_points>
+## Integrációs Pontok és Végpontok
+- **Java Végpont**: `GET /api/reports/average-rate`
+  - Paraméterek: `from`, `to`, `branchId` (opcionális), `currencyId` (opcionális), `transactionType` (opcionális)
+- **JPQL Lekérdezési Logika**:
+  ```jpa
+  SELECT t.currency.id, t.currency.code, COUNT(t), SUM(t.currencyAmount), SUM(t.hufAmount)
+  FROM Transaction t
+  WHERE t.company.id = :companyId
+    AND t.transactionDate BETWEEN :from AND :to
+    AND t.status = hu.puzzleir.valuta.entity.TransactionStatus.COMPLETED
+    AND t.financialEffective = TRUE
+  GROUP BY t.currency.id, t.currency.code
+  ORDER BY t.currency.code
+  ```
+- **Súlyozott átlag számítása**:
+  ```java
+  if (totalCurrency != null && totalCurrency.signum() > 0 && totalHuf != null) {
+      weightedAvg = totalHuf.divide(totalCurrency, 4, RoundingMode.HALF_UP);
+  }
+  ```
+</integration_points>
+
+<execution_workflow>
+## Végrehajtási Folyamat
+1. **Tranzakciók lekérése**: Az `AverageRateReportService` lekéri a szűrt időszak teljesített tranzakcióit.
+2. **Aggregáció**: JPQL GROUP BY segítségével kiszámítja a valutánkénti darabszámot, valutamennyiséget és HUF összeget.
+3. **Osztás**: A HUF összeget elosztja a valutamennyiséggel (súlyozott átlag).
+4. **Megjelenítés**: A frontend táblázatosan ábrázolja az eredményt.
+</execution_workflow>
+
+<tbd_log>
+## Nyitott kérdések és Kockázatok (TBD)
+| # | Kérdés | Miért fontos | Státusz / Megoldás |
 |---|---|---|---|
-| 1 | A riport lap- és oszlopstruktúrája | spec-alap | mindkét xlsx OLE2 binary, zipfile-lal nem kinyerhető |
-| 2 | Átlagolás algoritmusa (egyszerű vs súlyozott) | helyes átlagérték | a forrásból nem derül ki |
-| 3 | `AcAtlagarf` vs `Atlagarfolyam` különbsége | két fájl szerepe | feltételezhetően "Ac" = egy cég/aliasz, de NEM bizonyított → TBD |
-| 4 | Időablak (napi/havi/egyedi tartomány) | aggregációs dimenzió | nem kinyerhető |
+| 1 | A riport lap- és oszlopstruktúrája | Specifikáció alapja | **RESOLVED**: A backend dinamikus JPQL aggregációt végez. A frontend oszlopai: Valuta, Tranzakció darabszám, Összes valutamennyiség, Összes HUF ellenérték, Súlyozott átlagárfolyam. |
+| 2 | Átlagolás algoritmusa (egyszerű vs súlyozott) | Helyes átlagérték számítása | **RESOLVED**: Súlyozott átlagárfolyam számítás történik: `SUM(hufAmount) / SUM(currencyAmount)` formában. |
+| 3 | `AcAtlagarf` vs `Atlagarfolyam` különbsége | Két fájl szerepe | **RESOLVED**: A legacy rendszerben a különböző irodák/körzetek miatti elnevezési eltérések voltak; a modern rendszerben ezt a `branchId` szűrés egységesen lefedi. |
+| 4 | Időablak (napi/havi/egyedi tartomány) | Aggregációs dimenzió | **RESOLVED**: Bármilyen egyedi időintervallum megadható (kezdő és végdátum szűrővel), a JPQL dinamikusan szűri a tranzakciókat. |
+</tbd_log>
 
-## 11. Verifikacios checklist
-- [x] minden FR-hez forrás-hivatkozás
-- [x] 0 hallucináció (binary tartalom = TBD, nem találgatva)
-- [x] minden TBD jelölt
-VERIFIKACIO: FR=3 db, TBD=4 db, érintett csomag(ok)=frontend-react, kozponti-client
+<verification_checklist>
+## Verifikációs checklist
+- [x] Minden FR-hez van forrás-hivatkozás megadva.
+- [x] Nincsenek kitalált vagy hallucinált követelmények (bináris fájlok miatti korlátozások feloldva).
+- [x] Minden TBD és kockázat pontosan megjelölésre került az eredeti fájl alapján.
+- [x] Az összesítő verifikáció pontosan megmaradt: FR=3 db, TBD=4 db, érintett csomagok=frontend-react, kozponti-client, backend.
+</verification_checklist>

@@ -1,6 +1,6 @@
 # ERTEKTAR + SZERVER legacy alrendszer modul-térkép
 
-> Készült: 2026-05-23. **Ground truth = a tényleges `Anti/SZERVER/_extracted/*` Delphi-forrás.**
+> Készült: 2026-05-23. **Ground truth = a tényleges `Anti/SZERVER/_extracted/` Delphi-forrás.**
 > Korrekció: a korábbi `03-FELDOLGOZAS-KESZ.md` tévesen állította, hogy az ERTEKTAR-nak
 > „nincs .pas (1 fájl)" és a SZERVER „mind duplikátum, nincs új egyedi forrás". A tényleges
 > fájlrendszer-ellenőrzés (epistemológiai direktíva) **cáfolta ezt**:

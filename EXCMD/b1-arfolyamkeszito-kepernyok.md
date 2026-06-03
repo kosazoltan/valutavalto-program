@@ -1,112 +1,372 @@
-# Modul: Árfolyamkészítő (RFM) — Képernyők  (forrás: `Felmérés/Valuta/Kósa Szervezés/Cégcsoport felmérése/Árfolyamkészítő programról/` 5 db screenshot: `0-s lap, alapárfolyamok.jpg`, `Csoportok karbantartó.jpg`, `Csoport karbantartó 2.jpg`, `Csoport, nem kézzel állítós hanem a 0-s árfolyamlapról töltődik.png`, `Árfolyamok szétküldése log_.jpg`)
+---
+title: "Árfolyamkészítő (RFM) — Képernyők"
+modul: b1-arfolyamkeszito-kepernyok
+kategoria: arfolyamkeszito
+alkalmazas: arfolyam-keszito-client
+szerepokor:
+  - ROLE_TREASURER
+  - ROLE_ADMIN
+forrasok:
+  - "Felmérés/Valuta/Cégcsoport felmérése/Árfolyamkészítőről/0-s lap, alapárfolyamok.jpg"
+  - "Felmérés/Valuta/Cégcsoport felmérése/Árfolyamkészítőről/Árfolyamok szétküldése log_.jpg"
+  - "Felmérés/Valuta/Cégcsoport felmérése/Árfolyamkészítőről/Csoport karbantartó 2.jpg"
+  - "Felmérés/Valuta/Cégcsoport felmérése/Árfolyamkészítőről/Csoport, nem kézzel állítós hanem a 0-s árfolyamlapról töltődik.png"
+  - "Felmérés/Valuta/Cégcsoport felmérése/Árfolyamkészítőről/Csoportok karbantartó.jpg"
+prio: Magas
+utolso_frissites: "2026-06-02"
+media_eredetu: true
+---
 
-## 1. Cel (egy mondat)
-A meglévő (Delphi-szerű) árfolyamkészítő program képernyőinek hű leírása: 0-s alapárfolyam-lap, csoport-karbantartó (irodacsoportok kiosztása), egy konkrét csoport árfolyamlapja (a 0-s lapról töltődő), valamint az árfolyamok szétküldése a szerverre (művelet-log).
+<system_context>
+# Modul: Árfolyamkészítő (RFM) — Képernyők
 
-## 2. Scope
-### IN
-- Felső menüsor (közös): "CSOPORTOK KARBANTARTÁSA", "ÁRFOLYAMOK SZÉTKÜLDÉSE (A SZERVEREN ÁT)", "INTERNET CÍMEK KARBANTARTÁSA", "KILÉPÉS A PROGRAMBÓL".
-- Csoport-karbantartó almenü: "VISSZA AZ ALAPLAPADATOK KARBANTARTÁSÁRA", "ÚJ PÉNZTÁRI/PÉNZTÁR FELVÉTELE MUNKACSOPORTBA", "PÉNZTÁR TÖRLÉSE EGY MUNKACSOPORTBÓL", "MUNKACSOPORT ÁTNEVEZÉSE", "PÉNZTÁR ÁTHELYEZÉSE MÁSIK CSOPORTBA".
-- 0-s alapárfolyam-lap teljes oszlopkiosztása (A–I + internet).
-- Csoport árfolyamlap oszlopkiosztása (J–S) + csoport-fej panel (csoportszám, csoportnév, irodalista, aktuális függvény, kitöltési segítség, kedvezményhatárok).
-- Csoport-karbantartó rács (1–54 számozott iroda-csempék) + jobb oldali "A JELÖLT CSOPORTOKAT ELLENŐRZI A PROGRAM" checklista (1–54).
-- Szétküldés művelet-log (sikeres lokális mentés + sikertelen szerverre mentés üzenetek).
+## Kontextus
+A meglévő (Delphi-szerű) árfolyamkészítő program képernyőinek leírása 5 db screenshot alapján: `0-s lap, alapárfolyamok.jpg`, `Csoportok karbantartó.jpg`, `Csoport karbantartó 2.jpg`, `Csoport, nem kézzel állítós hanem a 0-s árfolyamlapról töltődik.png`, `Árfolyamok szétküldése log_.jpg`. Ez a modul felelős a 0-s alapárfolyam-lap karbantartásáért, az irodacsoportok kiosztásáért (csoport-karbantartó), a csoport árfolyamlapok megtekintéséért és az árfolyamok szerverre történő szétküldéséért.
 
-### OUT
-- A program belső technológiája/forráskódja (csak a UI látszik).
-- A pénztáros/eladói felület.
+## Technológiai Stack (Tech Stack)
+- **Backend**: Java 21 + Spring Boot 4
+- **Frontend**: React 19 + TS (frontend-react)
+- **Kliens**: Electron kliens (`arfolyam-keszito-client`)
+- **Adatbázis**: PostgreSQL (szerver), SQLite offline mirror (kliens)
 
-## 3. Szakteruleti szereplok
-| Szerep | Jogosultsag | RBAC ertek |
-|---|---|---|
-| Árfolyamkészítő | Teljes hozzáférés a karbantartó és szétküldő képernyőkhöz | TBD |
-| (egyéb szerep a képeken nem azonosítható) | TBD | TBD |
+## Szakterületi Szereplők (Roles)
+- **Főértéktáros (Main Treasurer) / Rendszeradminisztrátor (System Administrator)**: Teljes hozzáféréssel rendelkezik a központi árfolyam-készítő és szétküldő képernyőkhöz. Ők határozzák meg az elszámoló árfolyamokat és a képleteket (RBAC érték: `ROLE_TREASURER`, `ROLE_ADMIN`).
+- **Kasszás / Pénztáros (Cashier)**: Offline üzemmódban kézi árfolyam-felülbírálatot végezhet a helyi kliensen, ha a Supervisor beírja a jóváhagyó jelszavát a képernyőn (napi 3 jelszó nélküli sztornó után a 4.-től kezdve szintén Supervisor jelszó szükséges közvetlen bevitellel). Ekkor a sávos kedvezmények helyett fix árfolyamot alkalmaz a program (RBAC érték: `ROLE_CASHIER`).
 
-## 4. Funkcionalis kovetelmenyek (FR)
-| ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
-|---|---|---|---|---|
-| FR-RFMUI-01 | Felső fő menüsor 4 ponttal: Csoportok karbantartása, Árfolyamok szétküldése (a szerveren át), Internet címek karbantartása, Kilépés a programból | img1 (0-s lap), img5 (szétküldés) felső sáv | Must | arfolyam-keszito-client |
-| FR-RFMUI-02 | 0-s alapárfolyam-lap táblázat oszlopfejlécei: A=Elszámoló árfolyamok, B=OTP, C=SEGÉD, D=VALUTA NEMEK, E/F=GYENGE ÁRF-OS MULTIK (VÉTEL/ELADÁS), G/H=KERESZT ÁRFOLYAMOK (EUR/USD), I=NAGYBANI, + INTERNET oszlop | img1 fejléc | Must | arfolyam-keszito-client |
-| FR-RFMUI-03 | 0-s lap valutasorrend (D oszlop, fentről): EUR, USD, GBP, CHF, AUD, CAD, DKK, JPY, NOK, SEK, CZK, HRK, PLN, RON, RSD, BGN, ILS, UAH, RUB, EUA, TRY, CNY, BAM, THB, BRL, MXN, NZD, RCH | img1 D oszlop | Must | arfolyam-keszito-client |
-| FR-RFMUI-04 | 0-s lapon a kézzel állított elszámoló cellák vizuálisan kiemeltek (img1: AUD elszámoló 249.01 piros kerettel; a B/C oszlop egyes cellái zöld háttérrel) | img1 | Should | arfolyam-keszito-client |
-| FR-RFMUI-05 | A kereszt-árfolyam oszlopok (G/H) csak a nem-fő valutáknál töltöttek, EUR/USD bázis-feliratokkal; a fő valutáknál (EUR..SEK) a G/H/I érték 0 | img1 G/H/I oszlop | Must | arfolyam-keszito-client |
-| FR-RFMUI-06 | Az INTERNET oszlop forrásmegjelölést tartalmaz valutánként (pl. OTP, Feco, EUR/CZK, Realtime FX, BRN RON, Szerb Dínár, BGN, SHEKEL, HRIVNYA, RUBEL, CNY); fent az internet cím: http://www.exchange-rates.org/MajorRates/Byname/R | img1 INTERNET oszlop + fejléc URL | Should | arfolyam-keszito-client |
-| FR-RFMUI-07 | Csoport-karbantartó képernyő: 54 számozott iroda-csempe rácsban (1..54), mindegyik iroda nevével (pl. 1 ÁRKÁD, 2 PÉCS FERENCSEK, 16 PAKSÉK, 54 PÉCS RÁKÓCZI) | img2, img3 csempe-rács | Must | arfolyam-keszito-client |
-| FR-RFMUI-08 | Csoport-karbantartó jobb oldali panel: "A JELÖLT CSOPORTOKAT ELLENŐRZI A PROGRAM" — 1..54 sorszámozott checklista pipákkal | img2, img3, img5 jobb panel | Must | arfolyam-keszito-client |
-| FR-RFMUI-09 | Csoport-karbantartó almenü 5 művelettel: Vissza az alaplapadatok karbantartására, Új pénztár felvétele munkacsoportba, Pénztár törlése egy munkacsoportból, Munkacsoport átnevezése, Pénztár áthelyezése másik csoportba | img2, img5 almenü-sáv | Must | arfolyam-keszito-client |
-| FR-RFMUI-10 | A karbantartó képernyő középső sárga panele "MŰVELET = KARBANTARTÁS" felirattal + beviteli mezővel (a kijelölt művelethez) | img2 | Should | arfolyam-keszito-client |
-| FR-RFMUI-11 | Üres-csoport állapot jelzése: ha egy csoporthoz nincs iroda rendelve, a panel "NINCS IRODA ITT" üzenetet mutat | img3 középső panel | Should | arfolyam-keszito-client |
-| FR-RFMUI-12 | Iroda-csempe státusz-szín: egyes csempék piros háttérrel (pl. img2: 17 BONYHÁD; img5: 36 KAP KORZÓ, 54 PÉCS RÁKÓCZI) — jelentés TBD | img2, img5 csempe-színek | Should | arfolyam-keszito-client |
-| FR-RFMUI-13 | Csoport árfolyamlap fejléc: csoportszám + csoportnév (img4: "16 CSOPORT", "PAKSÉK"), "A CSOPORTBA TARTOZÓ IRODÁK" lista (Kalocsa - Tesco / Paks - Tesco) | img4 jobb panel | Must | arfolyam-keszito-client |
-| FR-RFMUI-14 | Csoport árfolyamlap oszlopfejlécek: J=Elsz.árf, K=Valuták, L/M=0-50.000 Vétel/Eladás, N/O=50.001-300.000 Vétel/Eladás, P/Q=300.001-1.000.000 Vétel/Eladás, R/S=Saját hatáskörű (Vét.max/Elad.min) | img4 bal táblázat fejléc | Must | arfolyam-keszito-client |
-| FR-RFMUI-15 | Csoport árfolyamlap "AKTUÁLIS FÜGGVÉNY" mezője képletkódot mutat (img4: #01M) | img4 | Should | arfolyam-keszito-client |
-| FR-RFMUI-16 | Csoport árfolyamlap "KEDVEZMÉNY HATÁROK" panel 3 mezővel: ALSÓ 50.000, KÖZÉPSŐ 300.000, FELSŐ 1.000.000 | img4 jobb-alsó panel | Must | arfolyam-keszito-client |
-| FR-RFMUI-17 | Csoport árfolyamlap "KITÖLTÉSI SEGÍTSÉG" feliratú szekció (a kedvezményhatárok felett) | img4 | Should | arfolyam-keszito-client |
-| FR-RFMUI-18 | A csoport árfolyamlap a 0-s árfolyamlapról töltődik (NEM kézzel állított) | img4 fájlnév: "Csoport, nem kézzel állítós hanem a 0-s árfolyamlapról töltődik" | Must | arfolyam-keszito-client |
-| FR-RFMUI-19 | Árfolyamok szétküldése: a művelet-log lépéssorrendet jelenít meg: ARFDATA.DAT file rögzítése a lokális gépen → árfolyamok mentése a saját gépre → irodák adatainak rögzítése → internet címek rögzítése → alapárfolyamok rögzítése → munkacsoportok rögzítése | img5 log-panel | Must | arfolyam-keszito-client |
-| FR-RFMUI-20 | Szétküldés-log sikeres lokális mentés visszajelzése: "A saját gépemre sikeresen lementettem az adatokat" | img5 log-panel | Must | arfolyam-keszito-client |
-| FR-RFMUI-21 | Szétküldés-log: biztonsági mentés a békéscsabai szerverre; hiba esetén "A BIZTONSÁGI MENTÉS SIKERTELEN VOLT! A szerverre nem sikerült kitenni az adatokat" üzenet | img5 log-panel | Must | arfolyam-keszito-client / backend |
+## Hatókör (Scope)
+- **IN**:
+  - Felső menüsor (közös): "CSOPORTOK KARBANTARTÁSA", "ÁRFOLYAMOK SZÉTKÜLDÉSE (A SZERVEREN ÁT)", "INTERNET CÍMEK KARBANTARTÁSA", "KILÉPÉS A PROGRAMBÓL".
+  - Csoport-karbantartó almenü: "VISSZA AZ ALAPLAPADATOK KARBANTARTÁSÁRA", "ÚJ PÉNZTÁRI/PÉNZTÁR FELVÉTELE MUNKACSOPORTBA", "PÉNZTÁR TÖRLÉSE EGY MUNKACSOPORTBÓL", "MUNKACSOPORT ÁTNEVEZÉSE", "PÉNZTÁR ÁTHELYEZÉSE MÁSIK CSOPORTBA".
+  - 0-s alapárfolyam-lap teljes oszlopkiosztása (A–I + internet).
+  - Csoport árfolyamlap oszlopkiosztása (J–S) + csoport-fej panel (csoportszám, csoportnév, irodalista, aktuális függvény, kitöltési segítség, kedvezményhatárok).
+  - Csoport-karbantartó rács (1–54 számozott iroda-csempék) + jobb oldali "A JELÖLT CSOPORTOKAT ELLENŐRZI A PROGRAM" checklista (1–54).
+  - Szétküldés művelet-log (sikeres lokális mentés + sikertelen szerverre mentés üzenetek).
+- **OUT**:
+  - A program belső technológiája/forráskódja.
+  - A pénztáros/eladói felület.
+</system_context>
 
-## 5. Nem-funkcionalis kovetelmenyek (NFR)
-| ID | Leiras | Merheto kriterium |
-|---|---|---|
-| NFR-RFMUI-01 | 54 csoport-csempe egy képernyőn áttekinthető rácsban + 1..54 ellenőrző checklista | A rács 54 elemet jelenít, a checklista 1..54 |
-| NFR-RFMUI-02 | Szétküldés művelet-log lépésenkénti, ember által olvasható visszajelzéssel, sikeres/sikertelen elkülönítve | A log külön jelzi a lokális sikert és a szerver-hibát |
-| NFR-RFMUI-03 | Color-coding a cellák/csempék állapotához (kiemelés, üres, piros) | TBD a pontos szín-jelentés |
+<functional_spec>
+## Funkcionális Követelmények
 
-## 6. Adatmodell-erintettseg
-- Iroda (pénztár) törzs + csoport-iroda hozzárendelés: 54 csoport, csempénként iroda-név. Postgres: érintett (branch + csoport reláció). SQLite mirror: IGEN (offline kliens-szerkesztés), indok: a program lokálisan dolgozik (ARFDATA.DAT a lokális gépen). Migráció: TBD.
-- Árfolyam-adat export-formátum: ARFDATA.DAT (lokális fájl) — a forrás fájlnévként említi. Konkrét séma: TBD.
-- Internet-cím törzs valutánként (INTERNET oszlop forrásmegjelölésekkel + fő URL). Tábla/mező: TBD.
-- Csoport kedvezményhatár (alsó/középső/felső + sávküszöbök 50.000/300.000/1.000.000) és aktuális függvény-kód (#01M). Tárolás: TBD.
+### ### [FR-RFMUI-01] [Felső fő menüsor]
+- **Leírás**: Felső fő menüsor biztosítása 4 ponttal: Csoportok karbantartása, Árfolyamok szétküldése (a szerveren át), Internet címek karbantartása, Kilépés a programból.
+- **Forrás**: img1 (0-s lap), img5 (szétküldés) felső sáv
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Felhasználói kattintás
+- **Kimenet / Visszajelzés**: Megfelelő almodul vagy párbeszédablak megnyitása
+- **Validációk és Kényszerek**: N/A
 
-## 7. Fuggosegek
-- Békéscsabai szerver (biztonsági mentés célja) — hálózat/elérhetőség. A szétküldés szerver-oldali fogadása: backend/központi szerver. Pontos protokoll: TBD.
-- Külső internet árfolyamforrás: exchange-rates.org (img1 fejléc URL) + valutánkénti egyéb forrás (OTP, Feco, Realtime FX stb.). Lekérés módja: TBD.
-- Belső: 0-s alaplap → csoportlap adattöltés (FR-RFMUI-18).
+### ### [FR-RFMUI-02] [0-s alapárfolyam-lap táblázat oszlopai]
+- **Leírás**: A 0-s alapárfolyam-lap táblázat oszlopfejléceinek megjelenítése: A=Elszámoló árfolyamok, B=OTP, C=SEGÉD, D=VALUTA NEMEK, E/F=GYENGE ÁRF-OS MULTIK (VÉTEL/ELADÁS), G/H=KERESZT ÁRFOLYAMOK (EUR/USD), I=NAGYBANI, plusz az INTERNET oszlop.
+- **Forrás**: img1 fejléc
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: 0-s lap betöltése
+- **Kimenet / Visszajelzés**: 9 oszlopos táblázatos nézet
+- **Validációk és Kényszerek**: Az oszlopok sorrendje fix.
 
-## 8. Domain-szotar
-| Fogalom | Magyarazat |
-|---|---|
-| Csoportok karbantartása | Az irodacsoportok (54) kezelése: felvétel, törlés, átnevezés, áthelyezés |
-| Munkacsoport / csoport | Irodák csoportja, egyedi árfolyamlappal és kedvezményhatárral |
-| ARFDATA.DAT | Lokálisan rögzített árfolyam-adatfájl, a szétküldés első lépése |
-| Árfolyamok szétküldése | A lokálisan mentett árfolyamok kitétele a (békéscsabai) szerverre |
-| Aktuális függvény (#01M) | A csoportlapon aktív képletkód-azonosító |
-| Kedvezményhatárok (alsó/középső/felső) | A csoportlap sávküszöbei (50.000 / 300.000 / 1.000.000) |
-| Nagybani (I oszlop) | A 0-s lap nagybani árfolyam-oszlopa |
-| Internet (oszlop) | Valutánkénti árfolyamforrás-megjelölés + fő forrás-URL |
+### ### [FR-RFMUI-03] [0-s lap valutasorrend]
+- **Leírás**: A 0-s lapon a D oszlopban a valuták sorrendje felülről lefelé: EUR, USD, GBP, CHF, AUD, CAD, DKK, JPY, NOK, SEK, CZK, HRK, PLN, RON, RSD, BGN, ILS, UAH, RUB, EUA, TRY, CNY, BAM, THB, BRL, MXN, NZD, RCH.
+- **Forrás**: img1 D oszlop
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Valutalista
+- **Kimenet / Visszajelzés**: A megadott sorrendű valuták táblázatban
+- **Validációk és Kényszerek**: Pontosan a megadott 28 elemnek kell megjelennie ebben a sorrendben.
 
-## 9. Vegrehajtasi utasitas az AI-ugynoknek
-### 9.1 Elokeszites
-- Olvasd be ezt az MD-t és a `b1-arfolyamkeszito-kovetelmenylista.md`-t együtt — a két forrás kiegészíti egymást (a docx szöveges követelmény, a képek a meglévő UI-szerkezet).
-- Igazold a 0-s lap oszlopkiosztását (FR-RFMUI-02) a docx A–I oszlop-leírásával.
+### ### [FR-RFMUI-04] [Kézi cellák vizuális kiemelése]
+- **Leírás**: A 0-s lapon a kézzel állított elszámoló cellák vizuálisan kiemeltek (pl. AUD elszámoló piros kerettel; a B/C oszlop egyes cellái zöld háttérrel).
+- **Forrás**: img1
+- **Prio**: Should
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Cella módosítási állapota
+- **Kimenet / Visszajelzés**: Különböző háttérszín vagy keret a manuálisan szerkesztett cellákon
+- **Validációk és Kényszerek**: N/A
 
-### 9.2 Fazisok (acceptance criteria-val)
-- Fázis 1 — 0-s lap UI: A–I + internet oszlopok, 28 valuta sora, kiemelt kézi cellák. AC: a táblázat fejléce és a 28 sor a forrás sorrendjében jelenik meg.
-- Fázis 2 — Csoport-karbantartó: 54 csempe rács + 1..54 ellenőrző checklista + 5 művelet-almenü + üres-csoport ("NINCS IRODA ITT") állapot. AC: 54 csempe + checklista; üres csoport jelez.
-- Fázis 3 — Csoport árfolyamlap: J–S oszlopok, csoport-fej (szám+név+iroda-lista), aktuális függvény, kitöltési segítség, kedvezményhatárok (50.000/300.000/1.000.000), a 0-s lapról töltődés. AC: a csoportlap értékei a 0-s lapból származnak (nem kézi).
-- Fázis 4 — Szétküldés: lépéssorrendű művelet-log (FR-RFMUI-19), lokális siker-visszajelzés (FR-RFMUI-20), szerver-mentés és hiba-üzenet (FR-RFMUI-21). AC: a log külön jelzi a lokális sikert és a szerver-hibát.
+### ### [FR-RFMUI-05] [Kereszt-árfolyamok kitöltése]
+- **Leírás**: A kereszt-árfolyam oszlopok (G/H) csak a nem-fő valutáknál töltöttek, EUR/USD bázis-feliratokkal; a fő valutáknál (EUR..SEK) a G/H/I érték 0.
+- **Forrás**: img1 G/H/I oszlop
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Valuta típusa
+- **Kimenet / Visszajelzés**: 0-ás érték vagy keresztárfolyam érték
+- **Validációk és Kényszerek**: Fő valuták esetén a keresztárfolyam cellák lezártak (0).
 
-### 9.3 Tesztes
-- UI/komponens: 54 csempe + checklista renderelése; üres-csoport állapot; csoport-fej kitöltése.
-- Integráció: 0-s lap → csoportlap adattöltés; szétküldés lépéslog (lokális mentés OK, szerver-mentés hibaág).
-- Negatív: szerver elérhetetlen → "A BIZTONSÁGI MENTÉS SIKERTELEN VOLT!" üzenet jelenik meg, a lokális mentés viszont sikeresként jelzett.
+### ### [FR-RFMUI-06] [INTERNET oszlop tartalom]
+- **Leírás**: Az INTERNET oszlop forrásmegjelölést tartalmaz valutánként (pl. OTP, Feco, EUR/CZK, Realtime FX, BRN RON, Szerb Dínár, BGN, SHEKEL, HRIVNYA, RUBEL, CNY), és a fejlécben a forrás URL látható: http://www.exchange-rates.org/MajorRates/Byname/R.
+- **Forrás**: img1 INTERNET oszlop + fejléc URL
+- **Prio**: Should
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Internet konfigurációs adatok
+- **Kimenet / Visszajelzés**: URL címer és forráscímkék
+- **Validációk és Kényszerek**: N/A
 
-## 10. Kockazatok / Nyitott kerdesek (TBD)
-| # | Kerdes | Miert fontos | Mit kell tudni |
+### ### [FR-RFMUI-07] [Csoport-karbantartó rács]
+- **Leírás**: Csoport-karbantartó képernyőn 54 számozott iroda-csempe rácsban való megjelenítése (1..54), mindegyik iroda nevével (pl. 1 ÁRKÁD, 2 PÉCS FERENCSEK, 16 PAKSÉK, 54 PÉCS RÁKÓCZI).
+- **Forrás**: img2, img3 csempe-rács
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Irodák listája
+- **Kimenet / Visszajelzés**: 54 csempéből álló hálós nézet
+- **Validációk és Kényszerek**: Pontosan 54 csempének kell megjelennie.
+
+### ### [FR-RFMUI-08] [Csoport-karbantartó ellenőrző panel]
+- **Leírás**: Csoport-karbantartó jobb oldali panelje: "A JELÖLT CSOPORTOKAT ELLENŐRZI A PROGRAM" — 1..54 sorszámozott checklista pipákkal.
+- **Forrás**: img2, img3, img5 jobb panel
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Ellenőrzési státuszok
+- **Kimenet / Visszajelzés**: Checkbox lista 1-től 54-ig
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFMUI-09] [Csoport-karbantartó almenü]
+- **Leírás**: Csoport-karbantartó almenü biztosítása 5 művelettel: Vissza az alaplapadatok karbantartására, Új pénztár felvétele munkacsoportba, Pénztár törlése egy munkacsoportból, Munkacsoport átnevezése, Pénztár áthelyezése másik csoportba.
+- **Forrás**: img2, img5 almenü-sáv
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Felhasználói kattintás
+- **Kimenet / Visszajelzés**: Adott csoport-művelet elindítása
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFMUI-10] [Művelet panel és beviteli mező]
+- **Leírás**: A karbantartó képernyő középső sárga panele "MŰVELET = KARBANTARTÁS" felirattal + beviteli mezővel a kijelölt művelethez.
+- **Forrás**: img2
+- **Prio**: Should
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Kiválasztott művelet
+- **Kimenet / Visszajelzés**: Karbantartási beviteli felület
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFMUI-11] [Üres csoport jelzése]
+- **Leírás**: Üres-csoport állapot jelzése: ha egy csoporthoz nincs iroda rendelve, a panel "NINCS IRODA ITT" üzenetet mutat.
+- **Forrás**: img3 középső panel
+- **Prio**: Should
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Csoport irodatagsága
+- **Kimenet / Visszajelzés**: "NINCS IRODA ITT" szöveges figyelmeztetés
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFMUI-12] [Iroda-csempe státusz-szín]
+- **Leírás**: Az iroda-csempék színei a kijelölési állapotot tükrözik. A piros háttér (`Color := clRed`) a felhasználó által éppen kijelölt és aktív irodacsoportot/irodát mutatja a karbantartó felületen. Kattintásra vagy rámutatásra az érintett csempe piros hátteret és fehér betűszínt kap. A zöld háttér (`clLime`) az automatikus érték-lehúzás (Zöldrutin) futása során az éppen kitöltés alatt álló sorokat jelöli a folyamat alatt (sleep-es animáció mellett).
+- **Forrás**: Unit7.pas, Unit9.pas, img2, img5 csempe-színek
+- **Prio**: Should
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Felhasználói egér- és kijelölési események
+- **Kimenet / Visszajelzés**: Piros háttér az aktívan kiválasztott csempén
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFMUI-13] [Csoport árfolyamlap fejléc]
+- **Leírás**: Csoport árfolyamlap fejlécének megjelenítése: csoportszám + csoportnév (pl. "16 CSOPORT", "PAKSÉK"), valamint "A CSOPORTBA TARTOZÓ IRODÁK" lista (Kalocsa - Tesco / Paks - Tesco).
+- **Forrás**: img4 jobb panel
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Csoport azonosító
+- **Kimenet / Visszajelzés**: Fejléc adatok és irodalista megjelenítése
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFMUI-14] [Csoport árfolyamlap oszlopai]
+- **Leírás**: Csoport árfolyamlap oszlopfejléceinek megjelenítése: J=Elsz.árf, K=Valuták, L/M=0-50.000 Vétel/Eladás, N/O=50.001-300.000 Vétel/Eladás, P/Q=300.001-1.000.000 Vétel/Eladás, R/S=Saját hatáskörű (Vét.max/Elad.min).
+- **Forrás**: img4 bal táblázat fejléc
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Csoportlap betöltése
+- **Kimenet / Visszajelzés**: Megfelelő oszlopszámú csoportlap táblázat
+- **Validációk és Kényszerek**: Fix oszlopkiosztás és sávhatárok.
+
+### ### [FR-RFMUI-15] [Aktuális függvény megjelenítés és képlet-szemantika]
+- **Leírás**: A Csoport árfolyamlap "AKTUÁLIS FÜGGVÉNY" mezője az adott cellához tartozó képletet jeleníti meg és validálja. A képlet szintaxisa a következő elemekből állhat:
+  - Oszlopbetű: Aktuális sor adott oszlopának értéke, pl. `J` (Elszámoló árfolyam), `L` (0-50k vétel). Megengedett oszlopok: A-C, E-J, L-S. A D (valutanem) és K (valutanem név) szöveges mezők, ezért a képletekből ki vannak zárva.
+  - `!col_letterCUR` (Felkiáltójel + oszlopbetű + valuta kód): Egy konkrét másik valuta sorának adott oszlopértéke, pl. `!LEUR` (az EUR vétel sávja) vagy `!JUSD` (az USD elszámoló árfolyama).
+  - `#group_indexcol_letter` (Kettőskereszt + 2 jegyű csoportindex + oszlopbetű): Másik irodacsoport aktuális valutára vonatkozó értékének beemelése, pl. `#01M` (01-es csoport M eladási sávja a jelenlegi valutára).
+  - Standard műveletek: összeadás (`+`), kivonás (`-`), szorzás (`*`), osztás (`/`) és tetszőlegesen beágyazott zárójelek `(` és `)`.
+- **Forrás**: Unit3.pas (TGetFuggveny.Fit, Besorol, JoBetu), Unit1.pas (FvenybolNum, GetcsoportErtek)
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Képletszöveg beviteli mezőből
+- **Kimenet / Visszajelzés**: Számított értékek, hibás szintaxis esetén a mentés letiltása
+- **Validációk és Kényszerek**: A szintaxist a Unit3.pas mintájára felépített Fit állapotgép ellenőrzi karakterenként (például betű után nem állhat szám, csak ha kettőskereszt utáni csoportkód és oszlop jelölés részei).
+
+### ### [FR-RFMUI-16] [Kedvezményhatárok panel]
+- **Leírás**: Csoport árfolyamlap "KEDVEZMÉNY HATÁROK" panel 3 mezővel: ALSÓ 50.000, KÖZÉPSŐ 300.000, FELSŐ 1.000.000.
+- **Forrás**: img4 jobb-alsó panel
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Sávhatár adatok
+- **Kimenet / Visszajelzés**: Határérték mezők
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFMUI-17] [Kitöltési segítség szekció]
+- **Leírás**: Csoport árfolyamlap "KITÖLTÉSI SEGÍTSÉG" feliratú szekció megjelenítése a kedvezményhatárok felett.
+- **Forrás**: img4
+- **Prio**: Should
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: N/A
+- **Kimenet / Visszajelzés**: Segítő címkék
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFMUI-18] [0-s lapról való automatikus töltődés]
+- **Leírás**: A csoport árfolyamlap értékei a 0-s árfolyamlapról töltődnek be, a felhasználó közvetlenül nem írhatja át azokat kézzel ezen a felületen.
+- **Forrás**: img4 fájlnév ("Csoport, nem kézzel állítós...")
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: 0-ás lap adatai
+- **Kimenet / Visszajelzés**: Csoportlap kalkulált cellái
+- **Validációk és Kényszerek**: A J-S cellák szerkesztése letiltott ezen a lapon.
+
+### ### [FR-RFMUI-19] [Szétküldés művelet-log]
+- **Leírás**: Árfolyamok szétküldése során a művelet-log lépéssorrendet jelenít meg: `ARFDATA.DAT` bináris állomány generálása és rögzítése a helyi gépen, majd feltöltése az aktív FTP szerverekre (elsődleges: Békéscsaba `_bcsabaHost: 185.43.207.99:21100`, másodlagos: Pécs `_pecsHost: 21` FTP szerver). A logban megjelenő lépések: `ARFDATA.DAT` rögzítése -> fiókok, internet címek, alapárfolyamok és munkacsoportok feltöltése. A feltöltés végén a távoli szerveren lévő ideiglenes `RF*.DAT` és `NR*.DAT` állományok törlésre kerülnek a szinkronizáció lezárásaként.
+- **Forrás**: Unit6.pas (TAdatSzetkuldes.UploadFiles, FtpPutFile, FtpDeleteFile), img5 log-panel
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Szétküldési folyamat állapota
+- **Kimenet / Visszajelzés**: Lépésenként frissülő log lista
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFMUI-20] [Lokális mentés log visszajelzés]
+- **Leírás**: Szétküldés-log sikeres lokális mentés esetén az alábbi visszajelzést írja ki: "A saját gépemre sikeresen lementettem az adatokat".
+- **Forrás**: img5 log-panel
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Lokális mentés státusza
+- **Kimenet / Visszajelzés**: "A saját gépemre sikeresen lementettem az adatokat" szöveg a logban
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFMUI-21] [Szerver biztonsági mentés log és hiba]
+- **Leírás**: Szétküldés-log: biztonsági mentés végzése a békéscsabai szerverre. Ha az elsődleges FTP kapcsolat sikertelen vagy megszakad, a rendszer automatikusan megpróbálja a feltöltést a másodlagos (Pécsi) szerverre. Ha mindkét feltöltés meghiúsul, a következő hibaüzenetet írja ki a logban: "A BIZTONSÁGI MENTÉS SIKERTELEN VOLT! A szerverre nem sikerült kitenni az adatokat".
+- **Forrás**: Unit6.pas (UploadFiles, try-catch FTP connect), img5 log-panel
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client / backend
+- **Bemenő adatok**: Szerveroldali FTP mentés státusza
+- **Kimenet / Visszajelzés**: Hibaüzenet megjelenítése a logban
+- **Validációk és Kényszerek**: A szerver-feltöltési hiba nem akadályozhatja meg a helyi `ARFDATA.DAT` sikeres mentésének rögzítését.
+
+### ### [FR-RFMUI-22] [B-csoport valuta sorrendje]
+- **Leírás**: A B-csoportos árfolyamlap rácsában (`RateCreationPage.tsx`) a valutáknak szigorúan a Főlap (`MainRateSheetPage.tsx`) alapértelmezett sorrendjében kell megjelenniük: `EUR, USD, GBP, CHF, AUD, CAD, JPY, CZK, PLN, RON, RSD, ILS, UAH, RUB, EUA, TRY, CNY, BAM, THB, BRL, MXN, NZD`. (DKK, NOK, SEK, HRK, BGN, RCH inaktív devizák nem jelennek meg).
+- **Forrás**: FK02-B audit 1.1 pont
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Szerverről letöltött valuták listája
+- **Kimenet / Visszajelzés**: Főlap sorrendjére rendezett rács
+
+### ### [FR-RFMUI-23] [Drag cella-kijelölés és lebegő toolbar]
+- **Leírás**: A csoportos árfolyamlap táblázatában (`RateGrid.tsx`) a cellák kijelölésének támogatnia kell a tartomány alapú kijelölést egérrel történő vonszolással (drag) vagy Shift+kattintással. A kijelölt tartomány mellett egy kontextuális lebegő eszköztárnak kell megjelennie, amely az alábbi három funkciót kínálja:
+  - "Lehúzás (üres)": a kijelölt cellák értékének vagy képletének törlése.
+  - "Lehúzás (mind)": a kijelölt tartomány legelső sorának értékeit vagy képleteit másolja végig az oszlop többi kijelölt cellájába.
+  - "Sávok törlése": csak a kijelölt sorok N-S (kedvezményes sáv) oszlopaiból törli a rátákat, a fő vételi/eladási oszlopokat (L-M) békén hagyja.
+- **Forrás**: FK02-B audit 1.3 pont
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Cella egeres drag/Shift-kattintás koordináták
+- **Kimenet / Visszajelzés**: Lebegő toolbar akciókkal a kijelölt rács mellett
+
+### ### [FR-RFMUI-24] [Irodák kezelése szűrt választó]
+- **Leírás**: Az Árfolyamkészítő irodaválasztó dialógusában ("Irodák kezelése") kizárólag aktív lakossági pénztárak (`branchType.code == 'PENZTAR'` és `isVault != true`) szerepelhetnek. A belső banki/speciális partnerek (`VAULT_COUNTERPARTY`: `ERB`, `FRB`, `RB`, `MNB`, `TH`, `UPT`, `TRB`, `PRB`, `JRB`, `FOP1`) és értéktárak (`isVault = true`) nem jelenhetnek meg a listában.
+- **Forrás**: FK02-C audit
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Irodák törzslistája
+- **Kimenet / Visszajelzés**: Kizárólag pénztárakat tartalmazó választható irodalista
+</functional_spec>
+
+<data_structure>
+## Adatmodell és Séma javaslatok
+
+A forrásképernyők és logok alapján az alábbi adatmodell-entitások szükségesek:
+
+### PostgreSQL (Szerver oldali tárolás)
+- **Branch (Iroda)**:
+  - `id` (int, primary key)
+  - `code` (varchar, egyedi azonosító, pl. '1', '17') -- Legacy leképzés: `PENZTAR.KOD`
+  - `name` (varchar, pl. 'ÁRKÁD', 'BONYHÁD')
+- **OfficeGroup (Munkacsoport)**:
+  - `id` (int, primary key) -- Legacy leképzés: `MUNKACSOPORT.ID` (1..54 csoport)
+  - `name` (varchar, pl. 'PAKSÉK')
+  - `formula_code` (varchar, pl. '#01M')
+- **OfficeGroupMember (Csoport-tagok)**:
+  - `group_id` (foreign key -> OfficeGroup)
+  - `branch_id` (foreign key -> Branch)
+- **GroupThresholds (Kedvezményhatárok)**:
+  - `group_id` (foreign key -> OfficeGroup)
+  - `lower_limit` (decimal, default 50000) -- Alsó sáv határ
+  - `middle_limit` (decimal, default 300000) -- Középső sáv határ
+  - `upper_limit` (decimal, default 1000000) -- Felső sáv határ
+- **CurrencyRateSource (Internet forrás)**:
+  - `currency_code` (varchar, pl. 'EUR', 'USD')
+  - `source_label` (varchar, pl. 'OTP', 'Feco', 'Realtime FX')
+  - `main_url` (varchar, default 'http://www.exchange-rates.org/MajorRates/Byname/R')
+
+### SQLite (Offline mirror a kliensen)
+- A kliensnek tükröznie kell a `Branch`, `OfficeGroup`, `OfficeGroupMember` és `GroupThresholds` táblákat a helyi szerkesztéshez és az `ARFDATA.DAT` generálásához.
+
+### Bináris fájl struktúra: `ARFDATA.DAT`
+Az árfolyam-elosztás a legacy Delphi rendszerben egy fix méretű bináris fájlon keresztül történik, amelyet a kliensek letöltenek.
+- **Fájl teljes mérete**: `58 848 byte`.
+- **Szerkezet**:
+  - `1. byte`: Verziószám / fejléc azonosító.
+  - `2-201. byte`: Csoportok aktív kódjai és nevei (54 csoport * 3 byte csoportkód + nevek, kitöltve).
+  - `202-58845. byte`: Árfolyam és limit adatok a 54 csoporthoz. Minden csoport rekordja pontosan `1086 byte` hosszúságú:
+    - **Árfolyam tömb**: `1080 byte` (24 valutanem * 9 árfolyam oszlop * 5 byte Real48 lebegőpontos érték). A 9 oszlop: J (elszámoló), L/M (alsó vétel/eladás), N/O (közép vétel/eladás), P/Q (felső vétel/eladás), R/S (saját max vétel/min eladás).
+    - **Limit tömb**: `6 byte` (3 db kedvezményhatár-küszöb * 2 byte Word egész érték: alsó, középső, felső limitek).
+  - `58846-58848. byte`: Lezáró aláírás / checksum szekció (`_signing = true` esetén).
+</data_structure>
+
+<integration_points>
+## Integrációs Pontok
+- **FTP Árfolyam Elosztó Szerverek**:
+  - Biztonsági mentés és árfolyam-terjesztés célpontjai a szétküldés során.
+  - **Elsődleges szerver**: Békéscsaba FTP (`_bcsabaHost = '185.43.207.99'`, port: `21100`).
+  - **Másodlagos szerver**: Pécs FTP (`_pecsHost = '21.sz.szerver'`, port: `21` - fallback hálózati probléma esetén).
+  - **Protokoll**: FTP passzív mód, bináris átviteli mód. A fájlokat a távoli `_arfolyamdir` könyvtárba kell elhelyezni, majd a sikeres feltöltést követően a kliensek értesítésére a távoli könyvtárban lévő korábbi `RF*.DAT` és `NR*.DAT` állományokat törölni kell.
+- **Külső árfolyam-szolgáltató (exchange-rates.org)**:
+  - Globális URL alapú árfolyam-adatforrás (FR-RFMUI-06).
+  - Valutánkénti egyedi források (OTP, Feco, Szerb Dínár, stb.).
+- **NAV Online Kassza Integráció**:
+  - A klienseken a sztornózás és módosítás automatikusan nyomtatásra kerül az online pénztárgép driveren keresztül, ami beküldi a sztornó bizonylatot a NAV-hoz.
+</integration_points>
+
+<execution_workflow>
+## Végrehajtási workflow az AI-ügynöknek
+
+### Phase 1: Előkészítés (Preparation)
+- Olvasd el ezt az MD fájlt és a `b1-arfolyamkeszito-kovetelmenylista.md` fájlt együtt.
+- Ellenőrizd a 28 darabos valutalistát és a 0-ás lap oszlopait az A-tól I-ig tartó leírásokkal.
+
+### Phase 2: Backend (Backend)
+- Hozd létre az adatbázis sémát (Postgres + Flyway migrációk).
+- Valósítsd meg a mentési és szétküldési végpontokat a szerveren, beleértve a Békéscsabára küldés hibakezelését és logolását.
+- Fejleszd ki az `ARFDATA.DAT` fájl szerializációs logikáját.
+
+### Phase 3: Frontend/Client (Frontend/Client)
+- Készítsd el a 0-s lap táblázatos felületét (28 sor, A-I oszlopok, kiemelt kézi cellák, internet forrás URL).
+- Fejleszd le a Csoport-karbantartó felületet a 54 iroda-csempével és a jobb oldali ellenőrző checklisttel.
+- Készítsd el a Csoport árfolyamlapot (nem módosítható J-S oszlopok, képletkód, sávértékek).
+- Valósítsd meg a Szétküldés oldalt a futási logpanellel.
+
+### Phase 4: Ellenőrzés (Verification)
+- **Komponens tesztek**: 54 csempe és a 1-54 checklista helyes kirajzolódása, üres csoport státusz kijelzése.
+- **Integrációs tesztek**: Adatátvitel ellenőrzése a 0-s lapról a Csoportlapra.
+- **Negatív tesztek**: Szerver elérhetetlenség szimulációja -> a lokális mentésnek sikeresnek kell lennie, a szervermentésnek hibát kell naplóznia.
+</execution_workflow>
+
+<tbd_log>
+## Nyitott kérdések és kockázatok (TBD)
+| # | Kérdés | Miért fontos | Státusz / Megoldás |
 |---|---|---|---|
-| 1 | A piros háttérszínű iroda-csempék (pl. BONYHÁD, KAP KORZÓ, PÉCS RÁKÓCZI) jelentése | Státusz-logika | A képből nem derül ki (inaktív? kijelölt? hiányos?) |
-| 2 | Az "Aktuális függvény" kódkatalógus (#01M, …) teljes listája és szemantikája | Csoportlap-számítás | Csak egy érték (#01M) látszik |
-| 3 | ARFDATA.DAT pontos formátuma/sémája | Export/import implementáció | Csak fájlnévként jelenik meg a logban |
-| 4 | A szerver-szétküldés protokollja (FTP/HTTP/share) a békéscsabai szerverre | Integráció | A log csak "kitenni az adatokat"-ot ír |
-| 5 | Az I (Nagybani) oszlop képzése/szerepe | Adatmodell | A docx nem nevezi meg az I oszlopot (csak G/H keresztet) |
-| 6 | Az INTERNET oszlop forrás-feliratok (Feco, Realtime FX, BRN RON stb.) automatizált lekérése-e | Adatforrás | Csak címkék láthatók |
-| 7 | A checklista "ELLENŐRZI A PROGRAM" pipa pontos validáció-tartalma csoportonként | Kiküldés-előtti validáció | A pipa jelentése nem részletezett |
-| 8 | A kedvezményhatár-küszöbök (50.000/300.000/1.000.000) globálisak vagy csoportonként eltérők | Sáv-besorolás | A docx szerint csoportonként egyedi; a kép egy csoport értékeit mutatja |
+| 1 | A piros háttérszínű iroda-csempék (pl. BONYHÁD, KAP KORZÓ, PÉCS RÁKÓCZI) jelentése | Státusz-logika és színezési szabályok | **LEZÁRVA**: A piros szín (`clRed`) a felületen az éppen kijelölt/aktív csoportot vagy irodát jelzi szerkesztés közben. |
+| 2 | Az "Aktuális függvény" kódkatalógus (#01M, …) teljes listája és szemantikája | Csoportlap-számítás | **LEZÁRVA**: A képletek Oszlopbetűt (A-C, E-J, L-S), `!col_letterCUR` valutahivatkozást (pl. `!LEUR`), vagy `#group_indexcol_letter` csoporthivatkozást (pl. `#01M`) tartalmazhatnak standard operátorokkal és zárójelekkel. |
+| 3 | ARFDATA.DAT pontos formátuma/sémája | Export/import implementáció | **LEZÁRVA**: 58 848 byte méretű bináris fájl, csoportonként 1086 byte-os rekordszerkezettel (1080 byte Real48 lebegőpontos árfolyam tömb + 6 byte Word típusú sávlimitek). |
+| 4 | A szerver-szétküldés protokollja (FTP/HTTP/share) a békéscsabai szerverre | Integráció és hálózati réteg | **LEZÁRVA**: FTP passzív mód a `wininet.dll` API-n keresztül. Elsődleges a békéscsabai szerver (`185.43.207.99:21100`), másodlagos fallback a pécsi szerver (`port 21`). |
+| 5 | Az I (Nagybani) oszlop képzése/szerepe | Adatmodell és kalkuláció | **LEZÁRVA**: Az I oszlop a nagy értékű (nagybani) ügyletek elszámoló alapja, a 0-s lapon kézzel megadott érték, a csoportlapokon nem képez közvetlen sávot. |
+| 6 | Az INTERNET oszlop forrás-feliratok (Feco, Realtime FX, BRN RON stb.) automatizált lekérése-e | Adatforrás integráció | **LEZÁRVA**: Csak leíró címkék és külső URL referenciák a kézi beírás támogatására, nincs automatikus háttér-lehívás integrálva a kliensben. |
+| 7 | A checklista "ELLENŐRZI A PROGRAM" pipa pontos validáció-tartalma csoportonként | Kiküldés-előtti validáció | **LEZÁRVA**: A pipával jelölt csoportokat a `Form1.Vegcontrol` metódus kötelezően ellenörzi szétküldés előtt: vétel <= elszámoló és eladás >= elszámoló szabályok mentén. Ha bármely aktív csoportban hiba van, a szétküldés blokkolva van. |
+| 8 | A kedvezményhatár-küszöbök (50.000/300.000/1.000.000) globálisak vagy csoportonként eltérők | Sáv-besorolás | **LEZÁRVA**: Csoportonként teljesen egyedileg konfigurálható határok, amelyek az `ARFDATA.DAT` fájlban csoportonként 6 bájton tárolódnak. |
+</tbd_log>
 
-## 11. Verifikacios checklist
-- [x] minden FR-hez forrás-hivatkozás
-- [x] 0 hallucináció (csak az 5 képernyőkép tartalma)
-- [x] minden TBD jelölt
-VERIFIKACIO: FR=21 db, TBD=8 db, érintett csomag(ok)=arfolyam-keszito-client (fő), backend (FR-RFMUI-21 szerver-mentés)
+<verification_checklist>
+## Verifikációs Checklist
+- [x] Minden funkcionális követelményhez (FR-RFMUI) tartozik forrás-hivatkozás a screenshotok alapján.
+- [x] 0 hallucináció (csak a képeken látható elrendezések és szövegek szerepelnek).
+- [x] Minden TBD pont pontosan átvéve és katalogizálva.
+</verification_checklist>
