@@ -6,10 +6,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Regressziós teszt: a Worker NOT NULL boolean mezőinek a Lombok @Builder-en keresztül is a
- * helyes (false) defaultot kell adniuk — @Builder.Default nélkül a Lombok figyelmen kívül hagyja
- * a `= false` inicializálót, és a builderrel épített Worker (pl. WorkerService.createWorker) null-t
- * kapna, ami a NOT NULL oszlopokon (active/otp_enabled/setup_grace/google_login_enabled/shared_account)
- * INSERT-kor constraint-sértést okozna. A setup_grace-en korábban hiányzott a @Builder.Default.
+ * mezőhöz tartozó NEM-NULL defaultot kell adniuk (active = TRUE, a többi = FALSE) — @Builder.Default
+ * nélkül a Lombok figyelmen kívül hagyja a mező-inicializálót, és a builderrel épített Worker
+ * (pl. WorkerService.createWorker) null-t kapna, ami a NOT NULL oszlopokon (active/otp_enabled/
+ * setup_grace/google_login_enabled/shared_account) INSERT-kor constraint-sértést okozna.
+ * A setup_grace-en korábban hiányzott a @Builder.Default (ez volt a javított latens bug).
  */
 class WorkerBuilderDefaultsTest {
 
