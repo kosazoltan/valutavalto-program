@@ -224,15 +224,24 @@ export default function MainRateSheetPage() {
   // FR-RFM-12/13: Raiffeisen ±N% sáv. A bázis (elszámoló/OTP) és a százalék szabadon
   // állítható, szezonálisan kézzel döntött → localStorage-ban perzisztált.
   const [bandBase, setBandBase] = useState<BandSource>(() => {
-    return localStorage.getItem('mainRateSheet.bandBase') === 'otp' ? 'otp' : 'settlement'
+    try {
+      return localStorage.getItem('mainRateSheet.bandBase') === 'otp' ? 'otp' : 'settlement'
+    } catch { return 'settlement' }
   })
   const [bandPercent, setBandPercent] = useState<number>(() => {
-    const raw = Number(localStorage.getItem('mainRateSheet.bandPercent'))
-    return Number.isFinite(raw) && raw > 0 ? raw : RAIFFEISEN_BAND_PERCENT
+    try {
+      const stored = localStorage.getItem('mainRateSheet.bandPercent')
+      // null (még sosem mentve) → alapérték; tárolt "0" → 0 (megengedett, NEM esik vissza alapra).
+      const raw = stored === null ? NaN : Number(stored)
+      return Number.isFinite(raw) && raw >= 0 ? raw : RAIFFEISEN_BAND_PERCENT
+    } catch { return RAIFFEISEN_BAND_PERCENT }
   })
   useEffect(() => {
-    localStorage.setItem('mainRateSheet.bandBase', bandBase)
-    localStorage.setItem('mainRateSheet.bandPercent', String(bandPercent))
+    // Defenzív: privát mód / quota / tiltott storage esetén a setItem dobhat — ne döntse le a rendert.
+    try {
+      localStorage.setItem('mainRateSheet.bandBase', bandBase)
+      localStorage.setItem('mainRateSheet.bandPercent', String(bandPercent))
+    } catch { /* storage nem elérhető — a beállítás csak a munkamenetre érvényes */ }
   }, [bandBase, bandPercent])
   // V238 (2026-05-19): Valutakezelő modal — uj valuta hozzaadasa / aktivalas / deaktivalas
   const [showCurrencyManager, setShowCurrencyManager] = useState(false)
@@ -1094,10 +1103,14 @@ export default function MainRateSheetPage() {
               warnings.push(`• EUA: az euró-érme árfolyam (${euaSell}) >20%-kal eltér a képzett értéktől (${computeEuaRate(eurSell).toFixed(2)})`)
             }
             // FR-RFM-12/13: Raiffeisen ±N% sáv-ellenőrzés (a kiküldéssel azonos szabály, mentés/kiküldés nélkül).
+            // Kereszt-valutáknál a tényleges elszámoló a resolveSettlement-tel számolt (mint a dispatch-út),
+            // különben az auto-módú soroknál a nyers settlement=0 hibásan kihagyná a sávellenőrzést.
+            const eurSettle = rows.find(r => r.currency === 'EUR')?.settlement ?? 0
+            const usdSettle = rows.find(r => r.currency === 'USD')?.settlement ?? 0
             for (const v of raiffeisenBandViolations(
               rows.map(r => ({
                 currency: r.currency,
-                base: bandBase === 'otp' ? r.otp : r.settlement,
+                base: bandBase === 'otp' ? r.otp : resolveSettlement(r, eurSettle, usdSettle),
                 buy: r.weakMultiBuy, sell: r.weakMultiSell,
               })),
               bandPercent,
