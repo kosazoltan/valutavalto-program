@@ -1113,6 +1113,11 @@ export class SyncEngine {
     if (tx.customer_is_pep !== null && tx.customer_is_pep !== undefined) {
       body['customerIsPep'] = tx.customer_is_pep === 1;
     }
+    // AML vezetoi jovahagyas: a jovahagyo supervisor/manager/admin workerId-ja (NULL ha nem kellett).
+    // A backend csak akkor hasznalja, ha a tranzakcio valoban approval-koteles; egyebkent ignoralja.
+    if (tx.approver_worker_id !== null && tx.approver_worker_id !== undefined) {
+      body['approverWorkerId'] = tx.approver_worker_id;
+    }
 
     // V226 (2026-05-14): per-line devizastatusz — DOMESTIC vagy FOREIGN.
     // Ha hianyzik (regi pending sor), a backend defaultolja a tranzakcio-szintu erteket.
@@ -1226,6 +1231,10 @@ export class SyncEngine {
     addOptionalConvText('customerPepKind', conversion.customer_pep_kind);
     if (conversion.customer_is_pep !== null && conversion.customer_is_pep !== undefined) {
       body['customerIsPep'] = conversion.customer_is_pep === 1;
+    }
+    // AML vezetoi jovahagyas a konverzional is (NULL ha nem kellett).
+    if (conversion.approver_worker_id !== null && conversion.approver_worker_id !== undefined) {
+      body['approverWorkerId'] = conversion.approver_worker_id;
     }
     if (conversion.customer_on_own_behalf !== null && conversion.customer_on_own_behalf !== undefined) {
       body['customerOnOwnBehalf'] = conversion.customer_on_own_behalf === 1;

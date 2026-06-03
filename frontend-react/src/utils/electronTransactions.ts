@@ -63,6 +63,12 @@ export interface PendingBuySellInput {
   customerActorDocumentType?: string | null
   customerActorDocumentNumber?: string | null
   customerActorAddress?: string | null
+  /**
+   * AML vezetoi jovahagyas (2026-06-04): a jovahagyo supervisor/manager/admin workerId-ja, ha a
+   * tranzakcio felsovezetoi jovahagyast igenyelt (FATF / eves limit / BIGCTRL 4+). NULL/undefined,
+   * ha nem kellett. A backend (approverWorkerId=null) backward-compat → opcionalis, additiv.
+   */
+  approverWorkerId?: number | null
 }
 
 export interface PendingConversionInput {
@@ -356,6 +362,7 @@ export async function saveAndSyncPendingBuySell(
           customerActorDocumentType: normalizeOptionalText(entry.customerActorDocumentType),
           customerActorDocumentNumber: normalizeOptionalText(entry.customerActorDocumentNumber),
           customerActorAddress: normalizeOptionalText(entry.customerActorAddress),
+          approverWorkerId: entry.approverWorkerId ?? null,
         })
       } else {
         // Legacy pozicionalis API — csak az alapmezok mennek at.

@@ -464,6 +464,113 @@ describe('SyncEngine — syncAll', () => {
     vi.unstubAllGlobals();
   });
 
+  it('should include approverWorkerId in POST body when set (AML senior approval)', async () => {
+    mockedGetPendingConversions.mockReturnValue([]);
+    mockedGetPendingBankTransactions.mockReturnValue([]);
+    mockedGetPendingDistributions.mockReturnValue([]);
+    mockedGetPendingTransfers.mockReturnValue([]);
+    mockedGetPendingCollections.mockReturnValue([]);
+    mockedGetPendingStornos.mockReturnValue([]);
+    mockedGetPendingHandoverOperations.mockReturnValue([]);
+
+    mockedGetPendingTransactions.mockReturnValue([
+      {
+        id: 201,
+        type: 'BUY',
+        currency_code: 'EUR',
+        foreign_amount: 30000,
+        huf_amount: 12000000,
+        rounded_huf_amount: 12000000,
+        rate: 400,
+        handling_fee: null,
+        discount_percent: null,
+        customer_id: null,
+        customer_identifier: 'CUST-APPROVE',
+        customer_name: 'Nagy Összeg Kft',
+        customer_document_number: 'AB999999',
+        customer_address: 'Budapest',
+        denominations: null,
+        source_of_funds: null,
+        customer_is_pep: null,
+        approver_worker_id: 42,
+        foreign_status: null,
+        local_reference_number: 'LB-APPROVE-001',
+        idempotency_key: 'approve-test-key-001',
+        created_at: '2026-06-04 10:00:00',
+        synced: 0,
+      },
+    ]);
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await engine.syncAll('test-token');
+    expect(result.synced).toBe(1);
+    expect(result.failed).toBe(0);
+
+    const fetchOpts = mockFetch.mock.calls[0]![1] as RequestInit;
+    const body = JSON.parse(fetchOpts.body as string) as Record<string, unknown>;
+    expect(body['approverWorkerId']).toBe(42);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('should NOT include approverWorkerId when null (no approval needed)', async () => {
+    mockedGetPendingConversions.mockReturnValue([]);
+    mockedGetPendingBankTransactions.mockReturnValue([]);
+    mockedGetPendingDistributions.mockReturnValue([]);
+    mockedGetPendingTransfers.mockReturnValue([]);
+    mockedGetPendingCollections.mockReturnValue([]);
+    mockedGetPendingStornos.mockReturnValue([]);
+    mockedGetPendingHandoverOperations.mockReturnValue([]);
+
+    mockedGetPendingTransactions.mockReturnValue([
+      {
+        id: 202,
+        type: 'SELL',
+        currency_code: 'EUR',
+        foreign_amount: 100,
+        huf_amount: 40000,
+        rounded_huf_amount: 40000,
+        rate: 400,
+        handling_fee: null,
+        discount_percent: null,
+        customer_id: null,
+        customer_identifier: null,
+        customer_name: null,
+        customer_document_number: null,
+        customer_address: null,
+        denominations: null,
+        source_of_funds: null,
+        customer_is_pep: null,
+        approver_worker_id: null,
+        foreign_status: null,
+        local_reference_number: 'LB-NOAPPROVE-001',
+        idempotency_key: 'noapprove-test-key-001',
+        created_at: '2026-06-04 10:05:00',
+        synced: 0,
+      },
+    ]);
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await engine.syncAll('test-token');
+    expect(result.synced).toBe(1);
+
+    const fetchOpts = mockFetch.mock.calls[0]![1] as RequestInit;
+    const body = JSON.parse(fetchOpts.body as string) as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(body, 'approverWorkerId')).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
+
   it('should include customerIsPep=true when customer_is_pep=1 (G3-G4)', async () => {
     mockedGetPendingConversions.mockReturnValue([]);
     mockedGetPendingBankTransactions.mockReturnValue([]);

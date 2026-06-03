@@ -6,6 +6,8 @@ import { AlertTriangle } from 'lucide-react'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
 import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi } from '../../services/api/index'
+import { api } from '../../services/api/client'
+import AmlApproverModal from '../../components/auth/AmlApproverModal'
 import type { BuyRequest, SellRequest, ExchangeRate, CashierCustomRateQuota } from '../../services/api/index'
 import { roundHuf } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
@@ -157,6 +159,12 @@ export default function CashierTransactionPage() {
   // A ref-bol olvasva mindig a friss erteket latjuk a guard-ban.
   const [isSubmitting, setIsSubmittingState] = useState(false)
   const isSubmittingRef = useRef(false)
+  // AML felsovezetoi jovahagyas (2026-06-04): a jovahagyo workerId a re-invoke-olt handleSubmit
+  // szamara ref-ben (mint az isSubmittingRef, hogy a memoizalt closure friss erteket lasson);
+  // a modal nyitas-allapota es a kivalto indok state-ben.
+  const approverWorkerIdRef = useRef<number | null>(null)
+  const [showAmlApprover, setShowAmlApprover] = useState(false)
+  const [amlApprovalReason, setAmlApprovalReason] = useState('')
   // Helper: state + ref atomi sync. MINDEN setIsSubmitting hivas ezt hasznalja.
   const setIsSubmitting = useCallback((value: boolean) => {
     isSubmittingRef.current = value
@@ -635,6 +643,32 @@ export default function CashierTransactionPage() {
       return
     }
 
+    // AML felsovezetoi jovahagyas pre-check (2026-06-04): ha a backend szerint a tranzakcio
+    // felsovezetoi jovahagyast igenyel (FATF / eves gongyolesi limit >=3.6M / BIGCTRL 4+), elkerjuk
+    // az engedelyezo workerId-t egy modallal, MIELOTT rogzitenenk (a local-first kliens kulonben
+    // csak sync-kor tudna meg, hogy approval kellett volna). A pre-check authoritativ: a backend ket
+    // AML-kapujat futtatja. Offline/hiba eseten NEM blokkol (a tranzakcio-POST/sync ugyis kivaltja a
+    // szerver-oldali validaciot). Ha mar van approver (a modal utani re-invoke), atugorjuk.
+    if (approverWorkerIdRef.current == null) {
+      try {
+        const checkRes = await api.post('/aml-approval/check-required', {
+          amountHuf: total,
+          customerId: cd?.id || undefined,
+          customerName: cd?.name || undefined,
+          documentNumber: cd?.documentNumber || undefined,
+          currencyCode: filledRows[0]?.currencyCode,
+          customerNationality: cd?.nationality || undefined,
+        })
+        if (checkRes.data?.requiresApproval) {
+          setAmlApprovalReason(typeof checkRes.data?.reason === 'string' ? checkRes.data.reason : '')
+          setShowAmlApprover(true)
+          return // a modal onApproved-ja beallitja az approverWorkerId-t es ujrahivja a submitet
+        }
+      } catch (err) {
+        logger.warn('CashierTransactionPage', 'AML approval pre-check hiba (nem blokkolo):', err)
+      }
+    }
+
     // Local-first degradált AML mód (2026-05-14 user-direktíva): ha az AML ellenőrzés
     // hálózati/szerver hiba miatt nem futott le, a warnings tömb `[OFFLINE_DEGRADED]`
     // prefix-szel jelzi. Ilyenkor a pénztáros KÉNYTELEN megerősíteni hogy folytatja —
@@ -724,6 +758,8 @@ export default function CashierTransactionPage() {
         customerActorDocumentType: cd.actorIdentity?.documentType,
         customerActorDocumentNumber: cd.actorIdentity?.documentNumber,
         customerActorAddress: cd.actorIdentity?.address,
+        // AML felsovezetoi jovahagyas: a jovahagyo workerId a REST buy/sell request-be (spread).
+        approverWorkerId: approverWorkerIdRef.current ?? undefined,
       } : {}
 
       if (electronQueueAvailable) {
@@ -773,6 +809,9 @@ export default function CashierTransactionPage() {
             customerActorDocumentType: actorIdentity?.documentType ?? null,
             customerActorDocumentNumber: actorIdentity?.documentNumber ?? null,
             customerActorAddress: actorIdentity?.address ?? null,
+            // AML felsovezetoi jovahagyas: a jovahagyo workerId (NULL ha nem kellett). A local-first
+            // kliens lokalisan perzisztalja, majd a sync a backend-body-ba teszi.
+            approverWorkerId: approverWorkerIdRef.current,
           })),
         )
 
@@ -894,6 +933,8 @@ export default function CashierTransactionPage() {
       setActiveField('currency')
       customerDataRef.current = null
       amlResultRef.current = null
+      // AML jovahagyas: a kovetkezo tranzakcio friss jovahagyas-allapotrol induljon.
+      approverWorkerIdRef.current = null
       // Codex P2 + Copilot P2 #579 follow-up: a tranzakció lezárult, a backend
       // most már perzisztens cashierCustomRate-flagű sorokat számol. Lokális
       // ref-eket tisztítjuk, hogy a következő tranzakció a friss backend-quota
@@ -1435,6 +1476,22 @@ export default function CashierTransactionPage() {
           }
         }}
         printLabel={isElectron() ? undefined : 'Nyomtatás nem elérhető'}
+      />
+
+      {/* AML felsovezetoi jovahagyas modal — a pre-check trigger nyitja, ha approval kell */}
+      <AmlApproverModal
+        open={showAmlApprover}
+        currentWorkerId={worker?.id ?? 0}
+        reason={amlApprovalReason}
+        onApproved={(workerId, name) => {
+          approverWorkerIdRef.current = workerId
+          setShowAmlApprover(false)
+          toast.info('AML jóváhagyás megerősítve', `Engedélyező: ${name}`)
+          // Ujrahivjuk a submitet — most az approverWorkerIdRef be van allitva, igy a pre-check
+          // atugorja a modalt es a tranzakcio rogzul az approverWorkerId-val.
+          void handleSubmit()
+        }}
+        onCancel={() => setShowAmlApprover(false)}
       />
 
       {/* HOTKEY BAR */}
