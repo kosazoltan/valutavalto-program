@@ -2,6 +2,7 @@ import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'ax
 import { useAuthStore } from '../../stores/authStore'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger';
+import { isCentralWorkstationFlavor } from '../../utils/clientEnv'
 
 // Extend AxiosRequestConfig to support custom flags.
 // _preservePaged: ha true, a response interceptor NEM bontja content-tömbbé a
@@ -368,6 +369,18 @@ api.interceptors.request.use(
     const {token} = useAuthStore.getState()
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+    // FK-016 (2026-06-03): a Központi Munkaállomás kliens (central-workstation flavor) a /branches
+    // GET lekérdezésekhez clientType=CENTRAL-t fűz. A backend ezt a LISTÁZÓ végpontokon
+    // (/branches és /branches/my-territory) értékeli ki → a virtuális partnerek (VAULT_COUNTERPARTY)
+    // kizárva; a többi /branches/* végpont a paramétert egyszerűen figyelmen kívül hagyja. Az
+    // értéktári/pénztári kliens nem küldi → ott a partnerek (átadás-átvétel) megmaradnak.
+    if (
+      (config.method ?? 'get').toUpperCase() === 'GET' &&
+      config.url?.startsWith('/branches') &&
+      isCentralWorkstationFlavor()
+    ) {
+      config.params = { ...(config.params ?? {}), clientType: 'CENTRAL' }
     }
     // Idempotency-Key header for write methods (required by backend IdempotencyFilter)
     // Fix: axios 1.x AxiosHeaders set() API hasznalata a direkt assignment helyett

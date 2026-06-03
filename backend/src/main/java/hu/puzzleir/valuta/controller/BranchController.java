@@ -39,8 +39,9 @@ public class BranchController {
      * meg, csak a saját értéktárhoz tartozók.
      */
     @GetMapping("/my-territory")
-    public ResponseEntity<List<BranchDto>> getMyTerritoryBranches() {
-        List<BranchDto> active = branchService.findAllActive();
+    public ResponseEntity<List<BranchDto>> getMyTerritoryBranches(
+            @RequestParam(required = false) String clientType) {
+        List<BranchDto> active = excludeVirtualIfCentral(branchService.findAllActive(), clientType);
         Set<UUID> scope = accessScopeService.vaultRegionBranchScopeOrNull();
         if (scope == null) {
             return ResponseEntity.ok(active);
@@ -49,6 +50,33 @@ public class BranchController {
                 .filter(b -> b.getId() != null && scope.contains(b.getId()))
                 .toList();
         return ResponseEntity.ok(filtered);
+    }
+
+    /**
+     * FK-016 (2026-06-03): a Központi Munkaállomás kliens (clientType=CENTRAL) felületein
+     * KIZÁRÓLAG a valódi fizikai irodák (értéktár + pénztár) jelenhetnek meg; a virtuális
+     * partnerek (könyvelési entitások: ERB/FRB/RB/JRB/PRB/TRB/MNB/UPT/TH/FOP1) nem.
+     *
+     * <p><b>Tényalapú megoldás:</b> ezeket a partnereket a repo MÁR megkülönbözteti a
+     * {@code branchType.code = 'VAULT_COUNTERPARTY'} diszkriminátorral (V277 seed; ugyanezt
+     * használja a {@code findByCompanyIdAndIsActiveTrueExcludingCounterparties}, a
+     * RateCreationService és a ClosingControlService is). Külön {@code is_virtual} flag
+     * REDUNDÁNS lenne (szinkronban tartandó duplikált állapot → drift), ezért a meglévő
+     * diszkriminátorra szűrünk. Az értéktári/pénztári kliens NEM ad clientType=CENTRAL-t,
+     * így ott a partnerek változatlanul megmaradnak (FK-016 regresszió-mentesség).</p>
+     */
+    private List<BranchDto> excludeVirtualIfCentral(List<BranchDto> branches, String clientType) {
+        if (!"CENTRAL".equalsIgnoreCase(clientType)) {
+            return branches;
+        }
+        return branches.stream()
+                .filter(b -> !"VAULT_COUNTERPARTY".equals(b.getBranchTypeCode()))
+                .toList();
+    }
+
+    /** CodeQL log-injection elleni semlegesítés: a felhasználói input sortörés-karaktereit cseréli. */
+    private static String sanitizeForLog(String value) {
+        return value == null ? null : value.replaceAll("[\\r\\n]", "_");
     }
 
     /**
@@ -92,10 +120,14 @@ public class BranchController {
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false, defaultValue = "false") boolean activeOnly
+            @RequestParam(required = false, defaultValue = "false") boolean activeOnly,
+            @RequestParam(required = false) String clientType
     ) {
-        log.info("GET /api/v1/branches - type: {}, status: {}, search: {}, activeOnly: {}", 
-                type, status, search, activeOnly);
+        // CodeQL (log-injection): a query-paraméterek felhasználói inputok — a logolás előtt a
+        // sortörés-karaktereket semlegesítjük, hogy ne lehessen hamis log-bejegyzést injektálni.
+        log.info("GET /api/v1/branches - type: {}, status: {}, search: {}, activeOnly: {}, clientType: {}",
+                sanitizeForLog(type), sanitizeForLog(status), sanitizeForLog(search), activeOnly,
+                sanitizeForLog(clientType));
 
         List<BranchDto> branches;
 
@@ -111,7 +143,8 @@ public class BranchController {
             branches = branchService.findAll();
         }
 
-        return ResponseEntity.ok(branches);
+        // FK-016: Központi Munkaállomás (clientType=CENTRAL) → virtuális partnerek kizárása.
+        return ResponseEntity.ok(excludeVirtualIfCentral(branches, clientType));
     }
 
     /**
