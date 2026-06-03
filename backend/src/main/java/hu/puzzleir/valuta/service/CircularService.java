@@ -73,6 +73,7 @@ public class CircularService {
                 .createdBy(worker)
                 .companyId(SecurityUtils.getCurrentCompanyId())
                 .urgent(dto.getUrgent() != null ? dto.getUrgent() : false)
+                .requiresAcknowledgment(dto.getRequiresAcknowledgment() != null && dto.getRequiresAcknowledgment())
                 .build();
 
         circular = circularRepository.save(circular);
@@ -159,6 +160,7 @@ public class CircularService {
                 .priority(priority != null ? priority : type.getDefaultPriority())
                 .urgent(priority == CircularType.CircularPriority.URGENT
                         || (dto.getUrgent() != null && dto.getUrgent()))
+                .requiresAcknowledgment(dto.getRequiresAcknowledgment() != null && dto.getRequiresAcknowledgment())
                 .targetBranchId(targetBranchId)
                 .targetCompanyId(targetCompanyId)
                 .registrationNumber(registrationNumber)
@@ -497,6 +499,7 @@ public class CircularService {
                 .createdById(c.getCreatedBy().getId())
                 .createdByName(c.getCreatedBy().getName())
                 .urgent(c.getUrgent())
+                .requiresAcknowledgment(c.getRequiresAcknowledgment())
                 .acknowledged(isAcknowledgedByCurrentWorker || Boolean.TRUE.equals(c.getAcknowledged()))
                 .acknowledgedAt(c.getAcknowledgedAt() != null ? c.getAcknowledgedAt().toString() : null)
                 .createdAt(c.getCreatedAt() != null ? c.getCreatedAt().toString() : null)

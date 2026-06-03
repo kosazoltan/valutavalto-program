@@ -8,4 +8,6 @@ public class CreateCircularDto {
     @NotBlank private String title;
     @NotBlank private String content;
     private Boolean urgent;
+    /** A4 (b9-korlevelek FR-02): kötelező nyugtázás — ha true, blokkolja a tranzakciót, amíg nincs nyugtázva. */
+    private Boolean requiresAcknowledgment;
 }

@@ -10,6 +10,8 @@ public class CircularDto {
     private Long createdById;
     private String createdByName;
     private Boolean urgent;
+    /** A4 (b9-korlevelek FR-02): kötelező nyugtázás — true esetén blokkolja a tranzakciót, amíg nincs nyugtázva. */
+    private Boolean requiresAcknowledgment;
     private Boolean acknowledged;
     private String acknowledgedAt;
     private String createdAt;
