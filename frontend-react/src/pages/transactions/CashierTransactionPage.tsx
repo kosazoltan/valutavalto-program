@@ -990,7 +990,9 @@ export default function CashierTransactionPage() {
   }, [rows])
 
   // ====== FORMAT ======
-  const formatNum = (n: number) => n.toLocaleString('hu-HU')
+  // FR-HL-15 (hibalista): a pénztári HUF-összegek mindig EGÉSZ forintban jelennek meg, tizedes nélkül
+  // (magyar készpénz egész/5 Ft; HUF-nál tizedes-kijelzés tiltott). A formatNum minden használata HUF.
+  const formatNum = (n: number) => Math.round(n).toLocaleString('hu-HU', { maximumFractionDigits: 0 })
 
   // ====== RENDER ======
   return (
