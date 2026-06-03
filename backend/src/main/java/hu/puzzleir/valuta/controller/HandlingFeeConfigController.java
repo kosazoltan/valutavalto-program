@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeConfigDto;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.HandlingFeeBracket;
 import hu.puzzleir.valuta.entity.HandlingFeeType;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.HandlingFeeBracketRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -49,15 +50,23 @@ public class HandlingFeeConfigController {
             feeType = "BRACKET";
         }
 
+        // A per-mille paraméterek OPCIONÁLISAK: ha nincsenek beállítva (ResourceNotFoundException) vagy
+        // nem szám-formátumúak (NumberFormatException), a default (ZERO / null) marad érvényben. CSAK ezt
+        // a KÉT várt kivételt kezeljük defaultként — egy váratlan hiba (pl. DB/tranzakció) NEM nyelődik el
+        // "opcionális config"-ként, hanem felszáll (Copilot review). A trace-log az okot is rögzíti.
         BigDecimal perMilleRate = BigDecimal.ZERO;
         try {
             perMilleRate = new BigDecimal(systemParameterService.getValue("HANDLING_FEE_PER_MILLE"));
-        } catch (Exception ignored) { }
+        } catch (ResourceNotFoundException | NumberFormatException e) {
+            log.trace("HANDLING_FEE_PER_MILLE nincs beállítva/érvénytelen, default ZERO: {}", e.toString());
+        }
 
         BigDecimal perMilleMax = null;
         try {
             perMilleMax = new BigDecimal(systemParameterService.getValue("HANDLING_FEE_PER_MILLE_MAX"));
-        } catch (Exception ignored) { }
+        } catch (ResourceNotFoundException | NumberFormatException e) {
+            log.trace("HANDLING_FEE_PER_MILLE_MAX nincs beállítva/érvénytelen, default null: {}", e.toString());
+        }
 
         List<HandlingFeeBracket> brackets = bracketRepository
                 .findByCompanyIdAndActiveOrderByBracketOrder(companyId, true);
