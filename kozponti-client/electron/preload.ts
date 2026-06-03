@@ -62,6 +62,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getDailyClosings: () => ipcRenderer.invoke('lf:get-daily-closings'),
     getBranchStatuses: () => ipcRenderer.invoke('lf:get-branch-statuses'),
     getBranchBalances: () => ipcRenderer.invoke('lf:get-branch-balances'),
+    // FK02-B (árfolyamkészítő rate-maker mód): tartós offline csoport-ráta-érték perzisztencia
+    saveGroupRateValues: (payload: { groupId: string; values: Record<string, string> }) =>
+      ipcRenderer.invoke('lf:save-group-rate-values', payload),
+    getGroupRateValues: (groupId: string) => ipcRenderer.invoke('lf:get-group-rate-values', groupId),
   },
 
   platform: process.platform,
