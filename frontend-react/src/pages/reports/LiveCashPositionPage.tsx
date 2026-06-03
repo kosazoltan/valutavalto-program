@@ -108,7 +108,10 @@ export default function LiveCashPositionPage() {
         <div className="text-center py-8">Betöltés...</div>
       ) : error ? (
         <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded">{error}</div>
-      ) : lines.length === 0 ? (
+      ) : lines.length === 0 && feeHuf === 0 ? (
+        // Codex P2 (#1033): csak akkor "nincs mozgás", ha SEM készlet-sor, SEM kezelési díj nincs. A backend
+        // a lines-t a DailyBalance-ből, a feeHuf-ot a DailySubledgerSnapshot-ból FÜGGETLENÜL építi, így lehet
+        // nonzero díj nulla készlet-sor mellett — ekkor a táblázat-ág a dedikált díj-sort rendereli.
         <div className="text-center py-8 text-gray-500">Nincs mai napi pénztármozgás.</div>
       ) : (
         <div className="bg-white rounded border">
