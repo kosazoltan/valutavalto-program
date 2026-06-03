@@ -289,6 +289,29 @@ class TransactionServiceIdentificationTest {
         }
 
         @Test
+        @DisplayName("executeSell: threshold requiresManagerApproval + érvényes engedélyező → rögzít és ENGED")
+        void executeSell_thresholdManagerApproval_withApprover_recordsAndProceeds() {
+                // basicResult OK (requiresApproval=false, setUp default); a threshold-kapu kéri a manager-jóváhagyást
+                hu.puzzleir.valuta.dto.aml.AmlCheckResult thr = hu.puzzleir.valuta.dto.aml.AmlCheckResult.builder()
+                                .blocked(false)
+                                .requiresManagerApproval(true)
+                                .managerApprovalReason("TranzTipus 5 — vezetői jóváhagyás szükséges")
+                                .build();
+                when(amlService.checkAllThresholds(any(), any(), any())).thenReturn(thr);
+                when(amlApprovalService.isValidSeniorApprover(99L)).thenReturn(true);
+
+                TransactionService.SellRequest request = TransactionService.SellRequest.builder()
+                                .currencyId(2L)
+                                .currencyAmount(new BigDecimal("100"))
+                                .customerId("CUST-1")
+                                .approverWorkerId(99L)
+                                .build();
+
+                assertThatCode(() -> transactionService.executeSell(request)).doesNotThrowAnyException();
+                verify(amlApprovalService).recordSeniorApproval(eq(99L), any(), any(), any(), any());
+        }
+
+        @Test
         @DisplayName("executeSell: requiresApproval=true + nincs engedélyező → BLOKKOL, nem rögzít")
         void executeSell_requiresApproval_noApprover_blocks() {
                 AmlService.AmlBasicCheckResult needsApproval = AmlService.AmlBasicCheckResult.builder()

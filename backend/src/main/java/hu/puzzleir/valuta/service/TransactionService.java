@@ -844,6 +844,11 @@ public class TransactionService {
                     : "AML ellenőrzés sikertelen!");
         }
 
+        // Egyszeri jóváhagyás-rögzítés flag: ha a tranzakció EGYSZERRE üti meg a basicResult-alapú
+        // (gate-a) ÉS a threshold-alapú manager-kaput (gate-b), a 4-szem-elvű jóváhagyást csak EGYSZER
+        // rögzítjük (ne legyen dupla audit-rekord ugyanarra a tranzakcióra).
+        boolean approvalRecorded = false;
+
         if (basicResult.isRequiresApproval()) {
             // Pmt. 14/A. § (4) / MNB 14/2025 V.2.6: a magas-kockázatú tranzakció kizárólag a kijelölt
             // felelős vezető jóváhagyásával teljesíthető. Ha a POS-on érvényes (supervisor/manager/admin,
@@ -862,6 +867,7 @@ public class TransactionService {
             // pedig TILOS a receipt_number audit-mezőbe tenni (adatminimalizálás / GDPR).
             amlApprovalService.recordSeniorApproval(
                     approverWorkerId, approvalReason, hufAmount, customerName, null);
+            approvalRecorded = true;
         }
 
         if (customerId != null && !customerId.isBlank()) {
@@ -882,17 +888,31 @@ public class TransactionService {
             // supervisor/manager is) blokkol — a jóváhagyásnak explicitnek és
             // auditálhatónak kell lennie (4-szem-elv), nincs implicit self-approval kiskapu.
             if (thresholdResult != null && thresholdResult.isRequiresManagerApproval()) {
-                boolean enforce = systemParameterService != null
-                        && "true".equalsIgnoreCase(
-                                systemParameterService.getValue(
-                                        AML_HIGH_VALUE_APPROVAL_PARAM, AML_HIGH_VALUE_APPROVAL_DEFAULT));
-                String blockReason = highValueApprovalBlockReason(thresholdResult, enforce);
-                if (blockReason != null) {
-                    throw new ValidationException(blockReason);
+                // Konzisztencia a basicResult-alapú kapuval: ha a POS-on érvényes felelős vezető
+                // engedélyezett (és még nem rögzítettük), a 4-szem-elvű jóváhagyást rögzítjük és engedünk
+                // — a flag-től függetlenül, mert az explicit, auditált vezetői jóváhagyás erősebb, mint a
+                // WARN/enforce kapcsoló. Engedélyező nélkül a meglévő flag-alapú enforce-logika dönt.
+                String managerReason = thresholdResult.getManagerApprovalReason() != null
+                        ? thresholdResult.getManagerApprovalReason()
+                        : "Vezetői jóváhagyás szükséges (AML magas-értékű / gördülő limit)";
+                if (!approvalRecorded && approverWorkerId != null && amlApprovalService != null
+                        && amlApprovalService.isValidSeniorApprover(approverWorkerId)) {
+                    amlApprovalService.recordSeniorApproval(
+                            approverWorkerId, managerReason, hufAmount, customerName, null);
+                    approvalRecorded = true;
+                } else {
+                    boolean enforce = systemParameterService != null
+                            && "true".equalsIgnoreCase(
+                                    systemParameterService.getValue(
+                                            AML_HIGH_VALUE_APPROVAL_PARAM, AML_HIGH_VALUE_APPROVAL_DEFAULT));
+                    String blockReason = highValueApprovalBlockReason(thresholdResult, enforce);
+                    if (blockReason != null) {
+                        throw new ValidationException(blockReason);
+                    }
+                    log.warn("AML magas-értékű jóváhagyás szükséges (WARN-only, enforcement kikapcsolva): "
+                            + "{} (ügyfél: {}, összeg: {} Ft)",
+                            thresholdResult.getManagerApprovalReason(), customerId, hufAmount);
                 }
-                log.warn("AML magas-értékű jóváhagyás szükséges (WARN-only, enforcement kikapcsolva): "
-                        + "{} (ügyfél: {}, összeg: {} Ft)",
-                        thresholdResult.getManagerApprovalReason(), customerId, hufAmount);
             }
         }
 
