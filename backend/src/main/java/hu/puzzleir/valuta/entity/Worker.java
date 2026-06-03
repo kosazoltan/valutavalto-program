@@ -139,7 +139,12 @@ public class Worker {
      * EGYSZER setup-token NÉLKÜL is engedélyezett — a sikeres beállításkor a guard lezárja
      * (false). Minden ezt követő (új) null-hash reset már setup-tokent igényel.
      */
+    // @Builder.Default KÖTELEZŐ: e nélkül a Lombok @Builder figyelmen kívül hagyja a `= false`
+    // inicializálót → a builderrel épített Worker (pl. WorkerService.createWorker) setupGrace=null-t
+    // kapna, ami a NOT NULL oszlopon (V279) INSERT-kor constraint-sértést okozna. (A testvér boolean
+    // mezők — otpEnabled/googleLoginEnabled/sharedAccount/active — már helyesen @Builder.Default-osak.)
     @Column(name = "setup_grace", nullable = false)
+    @Builder.Default
     private Boolean setupGrace = false;
 
     // ============ SUPERVISOR PIN (V188, 2026-05-06 P2-2) ============
