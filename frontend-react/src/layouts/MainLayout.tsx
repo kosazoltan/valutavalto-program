@@ -193,7 +193,11 @@ export default function MainLayout() {
           {sidebarOpen && (
             <div className="flex items-center gap-1.5">
               <Building2 size={18} className="text-accent-400" />
-              <span className="font-bold text-sm">{t('layout.appName')}</span>
+              <div className="flex flex-col leading-tight">
+                <span className="font-bold text-sm">{t('layout.appName')}</span>
+                {/* FR-FM-01 (b5-fomenu hibalista): verziószám a fejlécen. */}
+                <span className="text-[10px] text-secondary-300 font-mono">v{import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__}</span>
+              </div>
             </div>
           )}
           <button
