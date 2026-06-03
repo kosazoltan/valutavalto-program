@@ -175,7 +175,7 @@ class TransactionFlowTest {
                                 .requiresApproval(false)
                                 .requiresDetailedId(false)
                                 .build();
-                when(amlService.checkTransaction(any(), any(), any(), any(), any())).thenReturn(amlOk);
+                when(amlService.checkTransaction(any(), any(), any(), any(), any(), any())).thenReturn(amlOk);
         // Default mock: ReceiptSequenceService
         when(receiptSequenceService.generateReceiptNumber(any(), any()))
             .thenReturn("TEST-001");

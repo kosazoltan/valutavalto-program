@@ -154,7 +154,7 @@ public class TransactionMultiLineService {
 
         // AML ellenorzes az aggregalt osszegre
         helper.performAmlCheck(payableAmount, request.getCustomerId(), request.getCustomerName(),
-                request.getCustomerDocumentNumber(), firstCurrency.getCode());
+                request.getCustomerDocumentNumber(), firstCurrency.getCode(), request.getCustomerNationality());
 
         // A3 (Pmt. 50M, b4-foglalo FR-16): 50M Ft feletti aggregált ügyletnél is kötelező a forrás-igazolás
         // (a single-line úttal egyezően). Flag-gated (default false). Így multi-line sem kerüli meg a gate-et.
@@ -381,7 +381,7 @@ public class TransactionMultiLineService {
 
         // AML ellenorzes
         helper.performAmlCheck(payableAmount, request.getCustomerId(), request.getCustomerName(),
-                request.getCustomerDocumentNumber(), firstCurrency.getCode());
+                request.getCustomerDocumentNumber(), firstCurrency.getCode(), request.getCustomerNationality());
 
         // A3 (Pmt. 50M, b4-foglalo FR-16): 50M Ft feletti aggregált ügyletnél is kötelező a forrás-igazolás
         // (a single-line úttal egyezően). Flag-gated (default false). Így multi-line sem kerüli meg a gate-et.

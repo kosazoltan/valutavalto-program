@@ -59,6 +59,16 @@ public class AmlService {
     private final SanctionScreeningService sanctionScreeningService;
     private final BlacklistService blacklistService;
     private final ShiftedCalendarDayRepository shiftedCalendarDayRepository;
+    private final FatfCountryRiskService fatfCountryRiskService;
+    private final SystemParameterService systemParameterService;
+
+    /** FATF (Pmt./MNB 14/2025 V.2.6) tier-enforcement feature-flag. Default false: a besorolás MINDIG
+     *  lefut (warning/láthatóság), de a BLOKKOLÁS/jóváhagyás-kényszer csak a flag bekapcsolásával él. */
+    static final String FATF_ENFORCEMENT_PARAM = "AML_FATF_TIER_ENFORCEMENT";
+    static final String FATF_ENFORCEMENT_DEFAULT = "false";
+    /** V.2.6 d) / V.2.7 d): magas-kockázatú harmadik ország ügyletnél az 5M Ft-os küszöb felett
+     *  vezetői jóváhagyás + megerősített eljárás kötelező. */
+    private static final BigDecimal FATF_HIGH_RISK_APPROVAL_THRESHOLD = new BigDecimal("5000000");
 
     /** Egyszerusitett azonositasi limit (2017. LIII. tv. 7.§) */
     private static final BigDecimal SIMPLIFIED_IDENTIFICATION_LIMIT = new BigDecimal("100000");
@@ -95,6 +105,18 @@ public class AmlService {
             String customerName,
             String documentNumber,
             String currencyCode) {
+        // Backward-compat: ország-adat nélkül (a FATF-besorolás NONE lesz). A FATF-bekötéssel
+        // ellátott hívók a 6-arg overloadot hívják az ügyfél állampolgárságával.
+        return checkTransaction(hufAmount, customerId, customerName, documentNumber, currencyCode, null);
+    }
+
+    public AmlBasicCheckResult checkTransaction(
+            BigDecimal hufAmount,
+            String customerId,
+            String customerName,
+            String documentNumber,
+            String currencyCode,
+            String customerNationality) {
 
         // 0. Szankciós szűrés — KÖTELEZŐ, mindig az első ellenőrzés
         if (customerName != null && !customerName.isBlank()) {
@@ -148,6 +170,47 @@ public class AmlService {
             .requiresDetailedId(false)
             .annualLimitReached(false)
             .suspiciousFlag(false);
+
+        // 0b. FATF magas-kockázatú harmadik ország besorolása (Pmt./MNB 14/2025 V.2.6).
+        // A besorolás MINDIG lefut (láthatóság/audit → result.fatfTier); a BLOKKOLÁS/jóváhagyás-kényszer
+        // az AML_FATF_TIER_ENFORCEMENT flag mögött (default false → production-biztos, FE-bekötés után élesedik).
+        // Null-safe: @InjectMocks/nem-mockolt vagy nem-stubolt fatfCountryRiskService → NONE (no-op).
+        FatfCountryRiskService.FatfTier fatfTier = fatfCountryRiskService != null
+                ? fatfCountryRiskService.classify(customerNationality)
+                : FatfCountryRiskService.FatfTier.NONE;
+        if (fatfTier == null) {
+            fatfTier = FatfCountryRiskService.FatfTier.NONE;
+        }
+        result.fatfTier(fatfTier.name());
+        if (fatfTier != FatfCountryRiskService.FatfTier.NONE) {
+            boolean fatfEnforce = systemParameterService != null && "true".equalsIgnoreCase(
+                    systemParameterService.getValue(FATF_ENFORCEMENT_PARAM, FATF_ENFORCEMENT_DEFAULT));
+            log.warn("[AML-FATF] {} ország-besorolás: '{}' (enforce={})",
+                    fatfTier.name(), customerNationality, fatfEnforce);
+            if (fatfEnforce) {
+                boolean over5M = hufAmount != null
+                        && hufAmount.compareTo(FATF_HIGH_RISK_APPROVAL_THRESHOLD) >= 0;
+                if (fatfTier == FatfCountryRiskService.FatfTier.TIER_1A_COUNTERMEASURE) {
+                    // 1/a (ellenintézkedés): felsővezetői jóváhagyás KÖTELEZŐ (Pmt. 14/A. § (4) c).
+                    if (!SecurityUtils.isSupervisorOrAbove()) {
+                        result.requiresApproval(true);
+                        result.approvalReason("FATF 1/a (ellenintézkedéssel érintett) ország ("
+                                + customerNationality + "): felsővezetői jóváhagyás kötelező (Pmt. 14/A. § (4)).");
+                    }
+                } else if (fatfTier == FatfCountryRiskService.FatfTier.TIER_1B_ENHANCED_DD) {
+                    // 1/b (fokozott átvilágítás); 5M Ft felett megerősített eljárás + jóváhagyás (V.2.6 d / V.2.7 d).
+                    result.requiresDetailedId(true);
+                    if (over5M && !SecurityUtils.isSupervisorOrAbove()) {
+                        result.requiresApproval(true);
+                        result.approvalReason("FATF 1/b magas-kockázatú ország (" + customerNationality
+                                + ") 5M Ft felett: megerősített eljárás + felsővezetői jóváhagyás kötelező.");
+                    }
+                } else if (fatfTier == FatfCountryRiskService.FatfTier.TIER_2_INCREASED_MONITORING) {
+                    // 2. csoport: fokozott monitoring — figyelés-jelző, NEM blokkol.
+                    result.suspiciousFlag(true);
+                }
+            }
+        }
 
         // 1a. Egyszerusitett azonositasi kotelezettseg (100K-300K Ft)
         if (hufAmount.compareTo(SIMPLIFIED_IDENTIFICATION_LIMIT) >= 0) {
@@ -305,6 +368,10 @@ public class AmlService {
         private String approvalReason;
         private BigDecimal annualTotal;
         private BigDecimal projectedTotal;
+        /** FATF (Pmt./MNB 14/2025 V.2.6): az ügyfél állampolgársága/országa szerinti FATF-besorolás
+         *  neve (NONE / TIER_1A_COUNTERMEASURE / TIER_1B_ENHANCED_DD / TIER_2_INCREASED_MONITORING),
+         *  vagy null ha nincs ország-adat. A bizonylat/audit + FE-megjelenítéshez. */
+        private String fatfTier;
         /** Legacy BIGCTRL TranzTipus: -1, 0, 1, 2, 3, 4, 5, 6 */
         private int transactionType;
     }

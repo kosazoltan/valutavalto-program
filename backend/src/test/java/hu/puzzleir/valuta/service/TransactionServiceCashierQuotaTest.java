@@ -145,7 +145,7 @@ class TransactionServiceCashierQuotaTest {
                 .requiresApproval(false)
                 .requiresDetailedId(false)
                 .build();
-        when(amlService.checkTransaction(any(), any(), any(), any(), any())).thenReturn(amlOk);
+        when(amlService.checkTransaction(any(), any(), any(), any(), any(), any())).thenReturn(amlOk);
 
         // Transaction save echo
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));

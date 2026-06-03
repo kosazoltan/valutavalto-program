@@ -149,7 +149,7 @@ class TransactionServiceIdentificationTest {
                 .requiresApproval(false)
                 .requiresDetailedId(false)
                 .build();
-        when(amlService.checkTransaction(any(), any(), any(), any(), any())).thenReturn(amlOk);
+        when(amlService.checkTransaction(any(), any(), any(), any(), any(), any())).thenReturn(amlOk);
 
         // Transaction save visszaad egy dummy-t
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));

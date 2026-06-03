@@ -53,6 +53,12 @@ class AmlServiceTest {
     @Mock
     private ShiftedCalendarDayRepository shiftedCalendarDayRepository;
 
+    @Mock
+    private FatfCountryRiskService fatfCountryRiskService;
+
+    @Mock
+    private SystemParameterService systemParameterService;
+
     private static final UUID TEST_COMPANY_ID = UUID.randomUUID();
     private static final UUID TEST_BRANCH_ID = UUID.randomUUID();
 
@@ -90,6 +96,51 @@ class AmlServiceTest {
 
         assertThat(result.isApproved()).isFalse();
         assertThat(result.getRejectionReason()).contains("cég").contains("Tiltott Kft.");
+    }
+
+    // ============ FATF tier-bekötés tesztek (Pmt./MNB 14/2025 V.2.6) ============
+
+    @Test
+    @DisplayName("FATF 1/a (ellenintézkedés) + enforce → vezetői jóváhagyás kötelező")
+    void testCheckTransaction_fatf1a_enforce_requiresApproval() {
+        when(fatfCountryRiskService.classify("iran"))
+            .thenReturn(FatfCountryRiskService.FatfTier.TIER_1A_COUNTERMEASURE);
+        when(systemParameterService.getValue(eq("AML_FATF_TIER_ENFORCEMENT"), any())).thenReturn("true");
+
+        // customerId=null → izolálva az éves/napi göngyölés úttól; csak a FATF dönt.
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+            new BigDecimal("250000"), null, "Teszt Ügyfél", "DOC1", "EUR", "iran");
+
+        assertThat(result.getFatfTier()).isEqualTo("TIER_1A_COUNTERMEASURE");
+        assertThat(result.isRequiresApproval()).isTrue();
+        assertThat(result.getApprovalReason()).contains("1/a");
+    }
+
+    @Test
+    @DisplayName("FATF 1/a + flag KIKAPCSOLVA → besorolás megvan, de NEM kér jóváhagyást")
+    void testCheckTransaction_fatf1a_flagOff_noEnforcement() {
+        when(fatfCountryRiskService.classify("iran"))
+            .thenReturn(FatfCountryRiskService.FatfTier.TIER_1A_COUNTERMEASURE);
+        when(systemParameterService.getValue(eq("AML_FATF_TIER_ENFORCEMENT"), any())).thenReturn("false");
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+            new BigDecimal("250000"), null, "Teszt Ügyfél", "DOC1", "EUR", "iran");
+
+        assertThat(result.getFatfTier()).isEqualTo("TIER_1A_COUNTERMEASURE");
+        assertThat(result.isRequiresApproval()).isFalse();
+    }
+
+    @Test
+    @DisplayName("FATF NONE (alacsony-kockázatú ország) → fatfTier=NONE, nincs hatás")
+    void testCheckTransaction_fatfNone() {
+        when(fatfCountryRiskService.classify("magyar"))
+            .thenReturn(FatfCountryRiskService.FatfTier.NONE);
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+            new BigDecimal("250000"), null, "Teszt Ügyfél", "DOC1", "EUR", "magyar");
+
+        assertThat(result.getFatfTier()).isEqualTo("NONE");
+        assertThat(result.isRequiresApproval()).isFalse();
     }
 
     @Test

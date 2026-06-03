@@ -117,7 +117,7 @@ public class TransactionConversionService {
         // Legacy parity (CB-018): az AML flagek a parent CONVERSION bizonylatra kerulnek.
         AmlService.AmlBasicCheckResult amlResult = helper.performAmlCheck(
                 amlAmount, request.getCustomerId(), request.getCustomerName(),
-                request.getCustomerDocumentNumber(), toCurrency.getCode());
+                request.getCustomerDocumentNumber(), toCurrency.getCode(), request.getCustomerNationality());
 
         // F-002 / Codex P1 (audit 2026-05-29): a Pmt-compliance ellenorzes a KONVERZIORA is
         // kotelezo (300k+ HUF eseten PEP-minoseg / kepviselt-fel azonositas) — korabban a
