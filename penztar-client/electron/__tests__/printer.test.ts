@@ -254,6 +254,55 @@ describe('printer — generateReceiptContent (ESC/POS)', () => {
     expect(content).toContain('Plombaszám');
     expect(content).toContain('ABC/12-3');
   });
+
+  it('should print requesting office + forintosított value on transfer receipt (FR-2/NFR-3)', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      branchCode: 'BR050 - Debrecen Értéktár',
+      transferTarget: 'BR060 - Debrecen Tesco',
+      currencyCode: 'EUR',
+      foreignAmount: 1000,
+      roundedHufAmount: 405000,
+      deliveryDate: '2026. 06. 05.',
+    });
+    expect(content).toContain('Kérő iroda');
+    expect(content).toContain('BR050 - Debrecen Értéktár');
+    expect(content).toContain('Cél iroda');
+    expect(content).toContain('Forint érték');
+    expect(content).toContain('Kézbesítési dátum');
+    expect(content).toContain('2026. 06. 05.');
+    // 5 Ft-ra kerekített forintosított érték (hu-HU ezres tagolás, NBSP-toleráns)
+    expect(content.replace(/\s/g, '')).toContain('405000HUF');
+  });
+
+  it('transfer receipt always shows Kérő iroda + Cél iroda (FR-2 kötelező, „—" fallback)', () => {
+    const content = generateReceiptContent({ ...baseData, type: 'transfer', branchCode: '', transferTarget: '' });
+    expect(content).toContain('Kérő iroda');
+    expect(content).toContain('Cél iroda');
+    expect(content).toContain('—');
+  });
+
+  it('transfer receipt uses Átadó/Átvevő + Ügyintéző labels (preview parity, no Pénztáros/Ügyfél)', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      branchCode: 'BR050 - Debrecen Értéktár',
+      transferTarget: 'BR060 - Debrecen Tesco',
+      cashierName: 'Bali Henriett',
+    });
+    expect(content).toContain('Ügyintéző:');
+    expect(content).toContain('Átadó');
+    expect(content).toContain('Átvevő');
+    expect(content).not.toContain('Pénztáros');
+    expect(content).not.toContain('Ügyfél');
+  });
+
+  it('non-transfer (sell) receipt keeps Pénztáros/Ügyfél labels (no regression)', () => {
+    const content = generateReceiptContent({ ...baseData, type: 'sell' });
+    expect(content).toContain('Pénztáros');
+    expect(content).toContain('Ügyfél');
+  });
 });
 
 describe('printer — printReceipt', () => {

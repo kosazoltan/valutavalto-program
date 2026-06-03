@@ -115,6 +115,8 @@ export interface PrintReceiptData {
   note?: string;
   transferTarget?: string;
   transferNote?: string;
+  /** FR-2 (átadás-átvétel): a kért kézbesítési dátum (a fejléc dátuma a kiállítás dátuma). */
+  deliveryDate?: string;
   /** FR-5 (átadás-átvétel): a szállítást végző neve a szállítólevélen. */
   carrierName?: string;
   closingSummary?: ClosingPrintData;
@@ -193,8 +195,12 @@ export function generateReceiptContent(data: PrintReceiptData): string {
   lines.push(CMD.ALIGN_LEFT);
   lines.push(`Bizonylat: ${data.receiptNumber}`);
   lines.push(`Dátum:     ${data.date}  ${data.time}`);
-  lines.push(`Pénztár:   ${data.branchCode}`);
-  lines.push(`Pénztáros: ${data.cashierName}`);
+  // Átadási bizonylaton a kérő iroda a törzsben „Kérő iroda" néven szerepel (nem duplikáljuk „Pénztár"-ként),
+  // és a felelős neve „Ügyintéző" (nem „Pénztáros") — a bizonylat-előnézettel egyezően.
+  if (data.type !== 'transfer') {
+    lines.push(`Pénztár:   ${data.branchCode}`);
+  }
+  lines.push(`${data.type === 'transfer' ? 'Ügyintéző:' : 'Pénztáros:'} ${data.cashierName}`);
   lines.push('');
   lines.push(CMD.LINE);
 
@@ -285,7 +291,9 @@ export function generateReceiptContent(data: PrintReceiptData): string {
   lines.push('');
   lines.push(CMD.ALIGN_LEFT);
   lines.push('...............    ...............');
-  lines.push('  Pénztáros            Ügyfél');
+  lines.push(data.type === 'transfer'
+    ? '  Átadó                Átvevő'
+    : '  Pénztáros            Ügyfél');
 
   // Lábléc
   lines.push('');
@@ -343,15 +351,25 @@ function generateTransferLines(data: PrintReceiptData): string[] {
   lines.push('Átadás-átvétel:');
   lines.push(CMD.BOLD_OFF);
   lines.push('');
-  lines.push(`Cél pénztár: ${data.transferTarget ?? '—'}`);
+  // FR-2 (átadási bizonylat): kérő iroda + cél iroda (kötelező mezők → mindig, „—" fallback) + valuta/összeg + forintosított érték.
+  lines.push(`Kérő iroda:  ${data.branchCode || '—'}`);
+  lines.push(`Cél iroda:   ${data.transferTarget ?? '—'}`);
   lines.push(`Valutanem:   ${data.currencyCode ?? '—'}`);
   lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`);
+  // NFR-3: 5 Ft-ra kerekített forintosított érték (a kérő-oldalon számolt roundedHufAmount).
+  if (data.roundedHufAmount !== undefined || data.hufAmount !== undefined) {
+    lines.push(`Forint érték: ${formatAmount(data.roundedHufAmount ?? data.hufAmount)} HUF`);
+  }
   // FR-5: szállító neve és plombaszám a szállítólevélen.
   if (data.carrierName) {
     lines.push(`Szállító:    ${data.carrierName}`);
   }
   if (data.sealNumber) {
     lines.push(`Plombaszám:  ${data.sealNumber}`);
+  }
+  // FR-2: kért kézbesítési dátum (a fejléc dátuma a kiállítás dátuma).
+  if (data.deliveryDate) {
+    lines.push(`Kézbesítési dátum: ${data.deliveryDate}`);
   }
 
   if (data.transferNote) {
@@ -526,8 +544,9 @@ async function generateReceiptHtml(data: PrintReceiptData): Promise<string> {
     <div class="meta">
       <div>Bizonylat: ${escHtml(data.receiptNumber)}</div>
       <div>Dátum: ${escHtml(data.date)} &nbsp; ${escHtml(data.time)}</div>
-      <div>Pénztár: ${escHtml(data.branchCode)}</div>
-      <div>Pénztáros: ${escHtml(data.cashierName)}</div>
+      ${data.type === 'transfer'
+        ? `<div>Ügyintéző: ${escHtml(data.cashierName)}</div>`
+        : `<div>Pénztár: ${escHtml(data.branchCode)}</div><div>Pénztáros: ${escHtml(data.cashierName)}</div>`}
     </div>
     <div class="line"></div>
   `;
@@ -586,11 +605,11 @@ async function generateReceiptHtml(data: PrintReceiptData): Promise<string> {
     <div style="display: flex; justify-content: space-around; margin: 12px 0;">
       <div style="text-align: center;">
         <div style="border-top: 1px solid #000; width: 90px; display: inline-block;"></div>
-        <div style="font-size: 9px;">Pénztáros</div>
+        <div style="font-size: 9px;">${data.type === 'transfer' ? 'Átadó' : 'Pénztáros'}</div>
       </div>
       <div style="text-align: center;">
         <div style="border-top: 1px solid #000; width: 90px; display: inline-block;"></div>
-        <div style="font-size: 9px;">Ügyfél</div>
+        <div style="font-size: 9px;">${data.type === 'transfer' ? 'Átvevő' : 'Ügyfél'}</div>
       </div>
     </div>
   `;
@@ -720,11 +739,14 @@ function generateTransferHtml(data: PrintReceiptData): string {
   return `
     <div class="section">
       <div class="bold">Átadás-átvétel:</div>
-      <div class="amount-row"><span>Cél pénztár:</span><span>${escHtml(data.transferTarget ?? '—')}</span></div>
+      <div class="amount-row"><span>Kérő iroda:</span><span>${escHtml(data.branchCode || '—')}</span></div>
+      <div class="amount-row"><span>Cél iroda:</span><span>${escHtml(data.transferTarget ?? '—')}</span></div>
       <div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
       <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>
+      ${(data.roundedHufAmount !== undefined || data.hufAmount !== undefined) ? `<div class="amount-row"><span>Forint érték:</span><span>${formatAmount(data.roundedHufAmount ?? data.hufAmount)} HUF</span></div>` : ''}
       ${data.carrierName ? `<div class="amount-row"><span>Szállító:</span><span>${escHtml(data.carrierName)}</span></div>` : ''}
       ${data.sealNumber ? `<div class="amount-row"><span>Plombaszám:</span><span>${escHtml(data.sealNumber)}</span></div>` : ''}
+      ${data.deliveryDate ? `<div class="amount-row"><span>Kézbesítési dátum:</span><span>${escHtml(data.deliveryDate)}</span></div>` : ''}
       ${data.transferNote ? `<div>Megjegyzés: ${escHtml(data.transferNote)}</div>` : ''}
     </div>
   `;

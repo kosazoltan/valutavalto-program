@@ -7,6 +7,12 @@ import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { validateCarrierSeal } from '../transfers/transferRules'
+import { ReceiptPreviewModal } from '../../components/electron'
+import { isElectron } from '../../utils/electron'
+import { toast } from '../../components/ui/toaster'
+import { getCompanyType } from '../../utils/localQueue'
+import { localIsoDate } from '../../utils/dateFormat'
+import type { PrintReceiptData } from '../../types/receipt'
 
 type FormState = {
   fromBranchId: string
@@ -71,6 +77,11 @@ export default function ShipmentNewPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // FR-1..5 (átadás-nyomtatás): sikeres rögzítés után „Bizonylat Előnézet" modal — a meglévő
+  // ReceiptPreviewModal `transfer` típussal. A modal bezárásakor navigálunk a listára. A nyomtatás
+  // KIZÁRÓLAG itt, frissen rögzített tételnél érhető el (a listanézet nem nyit modalt).
+  const [printReceiptData, setPrintReceiptData] = useState<PrintReceiptData | null>(null)
+  const [showReceiptModal, setShowReceiptModal] = useState(false)
   /**
    * D követelmény (Bali Henriett 2026-05-27): a valuta-választás után a rendszer
    * AUTOMATIKUSAN beemeli az aktuális elszámoló árfolyamot (officialRate). Read-only
@@ -227,7 +238,51 @@ export default function ShipmentNewPage() {
       })
       if (!created.id) throw new Error('A szerver nem adott szállítmány azonosítót.')
       await shipmentRequestApi.submit(created.id)
-      navigate('/shipments', { replace: true })
+      // FR-1..3: a beküldés után NEM navigálunk azonnal — megnyitjuk a Bizonylat Előnézet modalt.
+      // A bizonylat adatait a szerver-válaszból (created: kérő/cél iroda NEVE, szállító, plomba,
+      // bizonylatszám) + a lokális, már megjelenített valuta/összeg/forintosított értékből építjük.
+      const currencyCode = currencies.find((c) => String(c.id) === form.currencyId)?.code ?? ''
+      // „KÓD - Név" feloldás a már betöltött iroda-listákból (a cél lehet virtuális partner is,
+      // ezért a vault-counterparty csoportokat is bevonjuk); fallback a szerver-válasz nevére.
+      const allBranches: BranchInfo[] = [
+        ...branches,
+        ...(vaultCounterparties
+          ? [
+              ...vaultCounterparties.territorialCashiers,
+              ...vaultCounterparties.peerVaults,
+              ...vaultCounterparties.fixedCounterparties,
+            ]
+          : []),
+      ]
+      const branchLabel = (id: string, fallbackName?: string): string => {
+        const b = allBranches.find((x) => x.id === id)
+        return b ? `${b.code} - ${b.name}` : (fallbackName ?? '')
+      }
+      const now = new Date()
+      setPrintReceiptData({
+        type: 'transfer',
+        companyType: getCompanyType(worker),
+        receiptNumber: created.requestNumber || created.id,
+        // Kérő iroda (az átadó értéktár), Cél iroda (a fogadó pénztár) — „KÓD - Név" formátumban.
+        branchCode: branchLabel(form.fromBranchId, created.requestingBranchName),
+        cashierName: created.requestedByWorkerName || worker?.fullName || '',
+        // A fejléc dátuma a KIÁLLÍTÁS dátuma (Codex P2); a kért kézbesítési dátum külön mezőben (lentebb).
+        date: created.requestedAt?.slice(0, 10) || localIsoDate(),
+        time: now.toTimeString().slice(0, 8),
+        currencyCode,
+        foreignAmount: amount,
+        // NFR-3: 5 Ft-ra kerekített forintosított érték (a kijelzett hufValue ugyanezzel a szabállyal).
+        // Megjegyzés: a szállítmány-IGÉNY nem perzisztál HUF-ot (nincs items[].hufAmount), így a
+        // bizonylaton a felhasználónak már megjelenített, szerver-autoritatív rate-tel számolt becslés szerepel.
+        roundedHufAmount: hufValue ?? undefined,
+        // FR-2: kért kézbesítési dátum (külön a kiállítási dátumtól).
+        deliveryDate: created.requestedDeliveryDate || form.deliveryDate || undefined,
+        transferTarget: branchLabel(form.toBranchId, created.targetBranchName),
+        transferNote: created.notes || form.notes || undefined,
+        carrierName: created.carrierName || form.carrierName.trim(),
+        sealNumber: created.sealNumber || form.sealNumber.trim(),
+      })
+      setShowReceiptModal(true)
     } catch (err) {
       logger.error('ShipmentNewPage', 'Szallitmanyigeny letrehozasi hiba:', err)
       setError(getErrorMessage(err))
@@ -420,6 +475,36 @@ export default function ShipmentNewPage() {
           </button>
         </div>
       </form>
+
+      {/* FR-1..5: Bizonylat Előnézet + nyomtatás — kizárólag frissen rögzített átadás-átvételnél.
+          A modal bezárása (nyomtatás után vagy mégse) navigál a szállítmány-listára. */}
+      <ReceiptPreviewModal
+        isOpen={showReceiptModal}
+        onClose={() => {
+          setShowReceiptModal(false)
+          navigate('/shipments', { replace: true })
+        }}
+        receiptData={printReceiptData}
+        qrCodeDataUrl={null}
+        allowPrint={isElectron()}
+        printLabel="Nyomtatás"
+        onPrint={async () => {
+          if (!printReceiptData) return
+          if (!window.electronAPI?.printReceipt) {
+            toast.warning('Nyomtatás nem elérhető', isElectron()
+              ? 'Electron preload/electronAPI hiba — indítsa újra a klienst.'
+              : 'A nyomtatás csak az asztali (Electron) kliensben érhető el.')
+            return
+          }
+          try {
+            const ok = await window.electronAPI.printReceipt(JSON.stringify(printReceiptData))
+            if (ok) toast.success('Nyomtatás elindítva', `Bizonylat: ${printReceiptData.receiptNumber ?? '—'}`)
+            else toast.error('Nyomtatás sikertelen', 'A nyomtató nem válaszolt.')
+          } catch (e) {
+            toast.error('Nyomtatás hiba', getErrorMessage(e))
+          }
+        }}
+      />
     </div>
   )
 }
