@@ -55,6 +55,10 @@ export interface CustomerPanelData {
   // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat mezok
   isPep?: boolean
   sourceOfFunds?: string
+  // AML 50M (Pmt./MNB 14/2025, V.2.5/V.2.8): strukturált forrás-dokumentum az 50M Ft feletti ügylethez.
+  // Elfogadható: közjegyző/ügyvéd ellenjegyzésű magánokirat VAGY max. 3 éves banki bizonylat (szlip).
+  sourceOfFundsDocType?: string
+  sourceOfFundsDocDate?: string
   onOwnBehalf?: boolean
   actorName?: string
   // V235 NEW (HIBA #15): PEP minoseg, ha isPep=true
@@ -165,6 +169,9 @@ export default function CustomerPanel({
   // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat mezok
   const [isPep, setIsPep] = useState<boolean>(false)
   const [sourceOfFunds, setSourceOfFunds] = useState<string>('')
+  // AML 50M (Pmt./MNB 14/2025): strukturált forrás-dokumentum az 50M Ft feletti ügylethez.
+  const [sourceOfFundsDocType, setSourceOfFundsDocType] = useState<string>('')
+  const [sourceOfFundsDocDate, setSourceOfFundsDocDate] = useState<string>('')
   const [onOwnBehalf, setOnOwnBehalf] = useState<boolean>(true)
   const [actorName, setActorName] = useState<string>('')
   // V235 NEW (2026-05-19 HIBA #15): PEP minoseg — csak ha isPep=true
@@ -269,6 +276,8 @@ export default function CustomerPanel({
       // V229 (HIBA #8): 300k+ JOGCIM nyilatkozat mezok a state-bol
       isPep,
       sourceOfFunds: sourceOfFunds.trim() || undefined,
+      sourceOfFundsDocType: sourceOfFundsDocType || undefined,
+      sourceOfFundsDocDate: sourceOfFundsDocDate || undefined,
       onOwnBehalf,
       actorName: actorName.trim() || undefined,
       // V235 (HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
@@ -289,7 +298,7 @@ export default function CustomerPanel({
       data = await runAmlCheck(customer.id, data)
     }
     onCustomerReady(data)
-  }, [hufTotal, onCustomerReady, runAmlCheck, isPep, sourceOfFunds, onOwnBehalf, actorName,
+  }, [hufTotal, onCustomerReady, runAmlCheck, isPep, sourceOfFunds, sourceOfFundsDocType, sourceOfFundsDocDate, onOwnBehalf, actorName,
       pepKind, actorBirthPlace, actorBirthDate, actorMotherName, actorNationality,
       actorDocumentType, actorDocumentNumber, actorAddress])
 
@@ -395,6 +404,8 @@ export default function CustomerPanel({
         // V229 (HIBA #8): 300k+ JOGCIM nyilatkozat
         isPep,
         sourceOfFunds: sourceOfFunds.trim() || undefined,
+      sourceOfFundsDocType: sourceOfFundsDocType || undefined,
+      sourceOfFundsDocDate: sourceOfFundsDocDate || undefined,
         onOwnBehalf,
         // Copilot P2 (PR #695): csak akkor adjuk at az actorName-et ha
         // tenyleg "mas neveben" jar el — egyebkent stale data maradhatna
@@ -996,6 +1007,34 @@ export default function CustomerPanel({
                     onChange={(e) => setSourceOfFunds(e.target.value)}
                     placeholder="pl. munkabér, megtakarítás, vállalkozási bevétel" />
                 </div>
+                {/* AML 50M (Pmt./MNB 14/2025 V.2.5): 50M Ft feletti ügyletnél KÖTELEZŐ strukturált
+                    forrás-dokumentum — közjegyző/ügyvéd ellenjegyzésű teljes bizonyító erejű magánokirat
+                    VAGY max. 3 éves banki bizonylat (szlip). Két tanús magánnyilatkozat TILOS. */}
+                {hufTotal >= 50_000_000 && (
+                  <>
+                    <div>
+                      <label className="text-xs block">Forrás-dokumentum (50M felett kötelező) *</label>
+                      <select className={fieldClass} style={fieldStyle}
+                        data-testid="source-of-funds-doctype"
+                        value={sourceOfFundsDocType}
+                        onChange={(e) => setSourceOfFundsDocType(e.target.value)}>
+                        <option value="">— válassz —</option>
+                        <option value="MAGANOKIRAT_KOZJEGYZO">Közjegyző által ellenjegyzett magánokirat</option>
+                        <option value="MAGANOKIRAT_UGYVED">Ügyvéd által ellenjegyzett magánokirat</option>
+                        <option value="BANK_SZLIP">Banki bizonylat / szlip (max. 3 éves)</option>
+                      </select>
+                    </div>
+                    {sourceOfFundsDocType === 'BANK_SZLIP' && (
+                      <div>
+                        <label className="text-xs block">Banki bizonylat kiállítási dátuma (max. 3 év) *</label>
+                        <input type="date" className={fieldClass} style={fieldStyle}
+                          data-testid="source-of-funds-docdate"
+                          value={sourceOfFundsDocDate}
+                          onChange={(e) => setSourceOfFundsDocDate(e.target.value)} />
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
 

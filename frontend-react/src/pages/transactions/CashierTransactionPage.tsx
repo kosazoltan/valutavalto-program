@@ -710,6 +710,9 @@ export default function CashierTransactionPage() {
         // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat
         customerIsPep: cd.isPep,
         sourceOfFunds: cd.sourceOfFunds,
+        // AML 50M (Pmt./MNB 14/2025): strukturált forrás-dokumentum a szerver-oldali validációhoz
+        sourceOfFundsDocType: cd.sourceOfFundsDocType,
+        sourceOfFundsDocDate: cd.sourceOfFundsDocDate,
         customerOnOwnBehalf: cd.onOwnBehalf,
         customerActorName: cd.actorName,
         // V235 (2026-05-19 HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
@@ -754,6 +757,9 @@ export default function CashierTransactionPage() {
             customerDocumentType: cd?.documentType ?? null,
             // V229 300k+ JOGCIM nyilatkozat
             sourceOfFunds: cd?.sourceOfFunds ?? null,
+            // AML 50M (Pmt./MNB 14/2025): strukturált forrás-dokumentum
+            sourceOfFundsDocType: cd?.sourceOfFundsDocType ?? null,
+            sourceOfFundsDocDate: cd?.sourceOfFundsDocDate ?? null,
             customerIsPep: cd?.isPep ?? null,
             customerOnOwnBehalf: cd?.onOwnBehalf ?? null,
             customerActorName: cd?.actorName ?? null,
