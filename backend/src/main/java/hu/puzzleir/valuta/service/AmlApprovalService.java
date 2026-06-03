@@ -46,6 +46,9 @@ public class AmlApprovalService {
     /** Az engedély (grant) érvényessége — bőven fedi a local-first offline → sync késleltetést. */
     private static final int GRANT_VALIDITY_DAYS = 7;
 
+    /** Egy PIN-ellenőrzésből kiállítható grantok felső korlátja (multi-line nyugta max sorszáma + margó). */
+    private static final int MAX_GRANTS_PER_VERIFY = 10;
+
     /**
      * Felsővezetői AML-jóváhagyás rögzítése. Validálja, hogy az {@code approverWorkerId} érvényes,
      * az aktuális céghez tartozó, supervisor-vagy-feljebb dolgozó, ÉS nem a tranzakciót rögzítő
@@ -92,24 +95,36 @@ public class AmlApprovalService {
     }
 
     /**
-     * Engedély (grant) kiállítása a supervisor-PIN SIKERES ellenőrzése után (a verify-approver hívja).
+     * Engedély-grant(ok) kiállítása a supervisor-PIN SIKERES ellenőrzése után (a verify-approver hívja).
      * A grant bizonyítja, hogy az {@code approverWorkerId} PIN-nel igazolta a jelenlétét a bejelentkezett
-     * (rögzítő) pénztáros sessionjében; a tranzakció-rögzítéskor ez fogy el (single-use).
+     * (rögzítő) pénztáros sessionjében; a tranzakció-rögzítéskor egy grant fogy el (single-use).
+     *
+     * <p>Codex P1 (multi-line): EGY buy/sell nyugta több soros tranzakcióvá bomlik, és mindegyik AML-kapus
+     * sor külön grantot fogyaszt. Ezért egy PIN-ellenőrzés a nyugta sorszáma szerinti N grantot állít ki
+     * (a fungible grantokból minden gated sor egyet fogyaszt; a fel nem használtak 7 nap múlva lejárnak).
+     * A {@code requestedCount} 1..{@link #MAX_GRANTS_PER_VERIFY} közé klampelve.</p>
+     *
+     * @return a ténylegesen kiállított grantok száma.
      */
     @Transactional
-    public void issueApprovalGrant(Long approverWorkerId) {
+    public int issueApprovalGrants(Long approverWorkerId, int requestedCount) {
+        int count = Math.max(1, Math.min(requestedCount, MAX_GRANTS_PER_VERIFY));
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long cashierWorkerId = SecurityUtils.getCurrentWorkerId();
         LocalDateTime now = LocalDateTime.now();
-        AmlApprovalGrant grant = AmlApprovalGrant.builder()
-                .companyId(companyId)
-                .cashierWorkerId(cashierWorkerId)
-                .approverWorkerId(approverWorkerId)
-                .createdAt(now)
-                .expiresAt(now.plusDays(GRANT_VALIDITY_DAYS))
-                .build();
-        grantRepository.save(grant);
-        log.info("[AML-APPROVAL] Grant kiállítva — engedélyező #{}, pénztáros #{}", approverWorkerId, cashierWorkerId);
+        LocalDateTime expiresAt = now.plusDays(GRANT_VALIDITY_DAYS);
+        for (int i = 0; i < count; i++) {
+            grantRepository.save(AmlApprovalGrant.builder()
+                    .companyId(companyId)
+                    .cashierWorkerId(cashierWorkerId)
+                    .approverWorkerId(approverWorkerId)
+                    .createdAt(now)
+                    .expiresAt(expiresAt)
+                    .build());
+        }
+        log.info("[AML-APPROVAL] {} grant kiállítva — engedélyező #{}, pénztáros #{}",
+                count, approverWorkerId, cashierWorkerId);
+        return count;
     }
 
     /**

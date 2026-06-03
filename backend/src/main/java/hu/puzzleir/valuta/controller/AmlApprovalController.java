@@ -117,6 +117,12 @@ public class AmlApprovalController {
         return o instanceof String s && !s.isBlank() ? s : null;
     }
 
+    /** Number vagy numerikus String → long; érvénytelen/hiányzó → defaultVal (nincs 500). */
+    private static long toLongOrDefault(Object o, long defaultVal) {
+        Long v = toLong(o);
+        return v != null ? v : defaultVal;
+    }
+
     /** Number vagy numerikus String → Long; minden más (vagy érvénytelen String) → null (nincs 500). */
     private static Long toLong(Object o) {
         if (o instanceof Number n) {
@@ -195,10 +201,13 @@ public class AmlApprovalController {
             return ResponseEntity.status(401).body(Map.of("ok", false, "error", "Hibás PIN"));
         }
 
-        // PIN OK → egyszer-használatos grant kiállítása (Codex P1): ez bizonyítja a tranzakció-
+        // PIN OK → egyszer-használatos grant(ok) kiállítása (Codex P1): ez bizonyítja a tranzakció-
         // rögzítéskor, hogy a PIN-ellenőrzés ténylegesen megtörtént. A bare approverWorkerId önmagában
-        // nem elég a rögzítéshez — a recordSeniorApproval elhasználja ezt a grantot.
-        amlApprovalService.issueApprovalGrant(approverWorkerId);
+        // nem elég a rögzítéshez — a recordSeniorApproval elhasználja ezt a grantot. Multi-line nyugtánál
+        // (több soros tranzakció) soronként egy grant fogy, ezért a kliens átadja a grantCount-ot (a
+        // nyugta sorszáma); a fel nem használt grantok lejárnak.
+        int grantCount = (int) Math.max(1L, toLongOrDefault(body.get("grantCount"), 1L));
+        amlApprovalService.issueApprovalGrants(approverWorkerId, grantCount);
 
         String approverName = workerRepository.findById(approverWorkerId)
                 .map(Worker::getName)

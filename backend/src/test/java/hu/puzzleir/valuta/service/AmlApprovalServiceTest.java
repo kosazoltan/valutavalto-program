@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -149,6 +150,22 @@ class AmlApprovalServiceTest {
         assertThatThrownBy(() -> service.recordSeniorApproval(null, "AML", BigDecimal.TEN, "X", null))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("nincs megadva");
+    }
+
+    @Test
+    @DisplayName("issueApprovalGrants: a kért N grantot kiállítja (multi-line nyugta sorai)")
+    void issueApprovalGrants_issuesRequestedCount() {
+        int issued = service.issueApprovalGrants(99L, 4);
+        assertThat(issued).isEqualTo(4);
+        verify(grantRepository, times(4)).save(any());
+    }
+
+    @Test
+    @DisplayName("issueApprovalGrants: a felső korlátra (10) klampel túl nagy kérésnél")
+    void issueApprovalGrants_clampsToMax() {
+        int issued = service.issueApprovalGrants(99L, 999);
+        assertThat(issued).isEqualTo(10);
+        verify(grantRepository, times(10)).save(any());
     }
 
     @Test
