@@ -49,15 +49,22 @@ public class HandlingFeeConfigController {
             feeType = "BRACKET";
         }
 
+        // A per-mille paraméterek OPCIONÁLISAK: ha nincsenek beállítva (ResourceNotFound) vagy nem
+        // szám-formátumúak (NumberFormatException), a default (ZERO / null) marad érvényben. A kivételt
+        // NEM nyeljük el némán (AGENTS.md): trace-szinten naplózzuk, hogy egy váratlan ok is észlelhető legyen.
         BigDecimal perMilleRate = BigDecimal.ZERO;
         try {
             perMilleRate = new BigDecimal(systemParameterService.getValue("HANDLING_FEE_PER_MILLE"));
-        } catch (Exception ignored) { }
+        } catch (Exception e) {
+            log.trace("HANDLING_FEE_PER_MILLE nincs beállítva/érvénytelen, default ZERO: {}", e.toString());
+        }
 
         BigDecimal perMilleMax = null;
         try {
             perMilleMax = new BigDecimal(systemParameterService.getValue("HANDLING_FEE_PER_MILLE_MAX"));
-        } catch (Exception ignored) { }
+        } catch (Exception e) {
+            log.trace("HANDLING_FEE_PER_MILLE_MAX nincs beállítva/érvénytelen, default null: {}", e.toString());
+        }
 
         List<HandlingFeeBracket> brackets = bracketRepository
                 .findByCompanyIdAndActiveOrderByBracketOrder(companyId, true);
