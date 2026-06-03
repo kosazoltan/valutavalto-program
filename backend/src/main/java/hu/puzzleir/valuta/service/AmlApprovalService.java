@@ -71,9 +71,10 @@ public class AmlApprovalService {
                 .build();
         TransactionAmlApproval saved = approvalRepository.save(rec);
         // Az engedélyező NEVE az audit-rekordba kerül (V.2.6 kötelező); a sima app-logba viszont csak
-        // a workerId — a teljes név PII, ne szivárogjon a Loki/Grafana log-streambe.
+        // a workerId — a teljes név PII, ne szivárogjon a Loki/Grafana log-streambe. Az indokot a MENTETT
+        // rekordból logoljuk, hogy a log és az audit-rekord konzisztens legyen (a default-feloldás után).
         log.info("[AML-APPROVAL] Felsővezetői jóváhagyás rögzítve — engedélyező #{}, indok: {}",
-                approverWorkerId, approvalReason);
+                approverWorkerId, saved.getApprovalReason());
         return saved;
     }
 

@@ -67,7 +67,7 @@ class AmlApprovalServiceTest {
     }
 
     @Test
-    @DisplayName("érvényes supervisor engedélyező → rögzít az engedélyező NEVÉVEL")
+    @DisplayName("érvényes felsővezető (MANAGER) engedélyező → rögzít az engedélyező NEVÉVEL")
     void recordSeniorApproval_validSupervisor_recordsWithName() {
         when(workerRepository.findById(99L)).thenReturn(Optional.of(
                 worker(99L, "Kósa Zoltán", WorkerRole.MANAGER, companyId)));
