@@ -85,9 +85,11 @@ public class StockSnapshotService {
                 branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId));
 
         // FR-02: a területen belül az értéktár (isVault=true) az ELSŐ oszlop, utána a pénztárak névsorban.
+        // A repo már `ORDER BY b.name` (DB magyar kolláció) szerint adja a listát; a STABIL List.sort
+        // csak az isVault-rendezést teszi rá, így a néven belüli sorrend megőrzi a DB kollációját
+        // (nem írjuk felül egy ASCII-alapú összehasonlítóval — Copilot review).
         branches.sort(
-                Comparator.comparing((Branch b) -> Boolean.TRUE.equals(b.getIsVault()), Comparator.reverseOrder())
-                        .thenComparing(b -> b.getName() == null ? "" : b.getName(), String.CASE_INSENSITIVE_ORDER));
+                Comparator.comparing((Branch b) -> Boolean.TRUE.equals(b.getIsVault()), Comparator.reverseOrder()));
 
         if (branches.isEmpty()) {
             List<Object[]> companyRowsEmpty = currencyStockRepository.sumCompanyLevelByCurrency(companyId);
