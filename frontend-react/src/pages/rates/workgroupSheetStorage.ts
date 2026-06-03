@@ -108,8 +108,9 @@ export function saveGroupRateValues(groupId: string, values: Record<string, stri
  * Electronon kívül (böngésző/dev) ezek no-op / üres értéket adnak — nincs regresszió.
  */
 interface RateMakerLocalFirstApi {
-  saveGroupRateValues?: (payload: { groupId: string; values: Record<string, string> }) => Promise<{ ok: boolean }>
-  getGroupRateValues?: (groupId: string) => Promise<Record<string, string>>
+  // A handler hiba esetén `{ ok: false, error }`-t is adhat (Copilot review) — a hívó best-effort, nem dob.
+  saveGroupRateValues?: (payload: { groupId: string; values: Record<string, string> }) => Promise<{ ok: boolean; error?: string }>
+  getGroupRateValues?: (groupId: string) => Promise<unknown>
 }
 
 function getLocalFirstApi(): RateMakerLocalFirstApi | null {
@@ -134,7 +135,14 @@ export async function loadGroupRateValuesFromOfflineDb(groupId: string): Promise
   if (!lf?.getGroupRateValues) return {}
   try {
     const res = await lf.getGroupRateValues(groupId)
-    return res && typeof res === 'object' ? res : {}
+    // Defenzív szanálás (Copilot review): csak sima objektum + string értékek mehetnek tovább —
+    // tömb / null / nem-string érték NEM (különben a cellákba nem-string kerülhetne).
+    if (!res || typeof res !== 'object' || Array.isArray(res)) return {}
+    const clean: Record<string, string> = {}
+    for (const [k, v] of Object.entries(res as Record<string, unknown>)) {
+      if (typeof v === 'string') clean[k] = v
+    }
+    return clean
   } catch {
     return {}
   }

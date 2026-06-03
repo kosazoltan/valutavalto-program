@@ -306,7 +306,9 @@ export function registerLocalFirstIpcHandlers(): void {
     try {
       const db = getDb();
       const { groupId, values } = payload ?? { groupId: '', values: {} };
-      if (!groupId || typeof values !== 'object' || values === null) {
+      // Szigorú payload-validáció (Copilot review): groupId string ÉS values sima objektum (nem tömb/null).
+      if (typeof groupId !== 'string' || !groupId
+          || typeof values !== 'object' || values === null || Array.isArray(values)) {
         return { ok: false, error: 'invalid payload' };
       }
       // Üres map → tombstone (a publikálás-utáni overlay-törléssel összhangban; betöltéskor {}).
@@ -325,8 +327,10 @@ export function registerLocalFirstIpcHandlers(): void {
 
   ipcMain.handle('lf:get-group-rate-values', (_event, groupId: string) => {
     try {
+      if (typeof groupId !== 'string' || !groupId) return {};
       const entity = cachedEntities.getCached<Record<string, string>>(getDb(), 'group_rate_values', groupId);
-      return entity && entity.data && typeof entity.data === 'object' ? entity.data : {};
+      return entity && entity.data && typeof entity.data === 'object' && !Array.isArray(entity.data)
+        ? entity.data : {};
     } catch (error) {
       log.error('[LocalFirst] Hiba a csoport-árfolyam értékek SQLite lekérésekor:', error);
       return {};
