@@ -146,7 +146,7 @@ jobs:
             "GOOGLE_DESKTOP_CLIENT_ID=$env:GOOGLE_DESKTOP_CLIENT_ID",
             "GOOGLE_DESKTOP_CLIENT_SECRET=$env:GOOGLE_DESKTOP_CLIENT_SECRET"
           ) -join "`n" | Out-File -FilePath ".env" -Encoding utf8 -NoNewline
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: backend-jar-${{ needs.preflight.outputs.version }}
           path: backend/target/
@@ -257,7 +257,7 @@ jobs:
       - shell: pwsh
         run: git config --global core.longpaths true
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: release-artifacts/
       - name: Collect installers + generate per-app update manifests + SHA-256
