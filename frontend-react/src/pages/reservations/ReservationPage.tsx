@@ -266,6 +266,17 @@ export default function ReservationPage() {
                           </button>
                         </>
                       )}
+                      {reservation.status === 'FULFILLED' && (
+                        // Codex P2 (#1032): a teljesített foglaló BESZÁMÍTÁSI bizonylata (refund=false) — ezen
+                        // jelenik meg a kötelező "beszámításra került" záró-szöveg. Korábban a FULFILLED soron
+                        // egyetlen nyomtató gomb sem volt, így a bizonylat elérhetetlen volt a pénztáros számára.
+                        <button
+                          onClick={() => handleDownloadReceipt(reservation.id, false)}
+                          className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                          {t('reservations.bizonylat')}
+                        </button>
+                      )}
                       {(reservation.status === 'CANCELLED_BY_CUSTOMER'
                         || reservation.status === 'CANCELLED_BY_COMPANY'
                         || reservation.status === 'EXPIRED') && (

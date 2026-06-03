@@ -218,9 +218,9 @@ class ReceiptGeneratorServiceTest {
         assertThat(result.getCustomerBirthPlace()).isEqualTo("Budapest");
         assertThat(result.getCustomerMotherName()).isEqualTo("Anya Anna");
         assertThat(result.getLines()).anyMatch(l -> "FOGLALÓ ÁTVÉTELE".equals(l.getLabel()));
-        // B7 / FR-8: Forint-érték (1000 × 400 = 400000 Ft) megjelenik a bizonylaton.
+        // B7 / FR-8: Forint-érték (1000 × 400 = 400000 Ft) megjelenik, ezres csoportosítással (Codex P2).
         assertThat(result.getLines())
-                .anyMatch(l -> "Forint-érték".equals(l.getLabel()) && "400000 Ft".equals(l.getValue()));
+                .anyMatch(l -> "Forint-érték".equals(l.getLabel()) && "400.000 Ft".equals(l.getValue()));
     }
 
     @Test
@@ -248,13 +248,15 @@ class ReceiptGeneratorServiceTest {
     }
 
     @Test
-    @DisplayName("generateReservationReceipt (TELJESÍTÉS/FULFILLED) → beszámítási záró-szöveg megjelenik")
+    @DisplayName("generateReservationReceipt (TELJESÍTÉS/FULFILLED, refund=false) → beszámítási záró-szöveg megjelenik")
     void testReservationReceiptFulfilled() {
         var reservation = buildReservation();
         // Teljesítés — a foglaló beszámításra kerül a mai ügyletbe.
         reservation.setStatus(hu.puzzleir.valuta.entity.ReservationStatus.FULFILLED);
 
-        ReceiptData result = service.generateReservationReceipt(reservation, true);
+        // Codex P2 (#1032): a FULFILLED beszámítási bizonylatot a ReservationPage az ÁTVÉTEL (refund=false)
+        // gombbal nyomtatja, ezért a záró-szövegnek EZEN az úton kell megjelennie (nem csak refund=true-n).
+        ReceiptData result = service.generateReservationReceipt(reservation, false);
 
         // B7 / FR-14: FULFILLED státusznál megjelenik a beszámítási záró-szöveg.
         assertThat(result.getLines())
