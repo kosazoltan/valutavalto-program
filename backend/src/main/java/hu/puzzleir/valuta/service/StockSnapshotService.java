@@ -48,6 +48,26 @@ public class StockSnapshotService {
         put("145", "KAPOSVAR");
     }};
 
+    /** REGION_NAMES megfordítva (régiónév → KESZLEX regionCode), egyszer számolva. */
+    private static final Map<String, String> REGION_CODE_BY_NAME = new HashMap<>();
+    static {
+        REGION_NAMES.forEach((code, name) -> REGION_CODE_BY_NAME.put(name, code));
+    }
+
+    /**
+     * A `branch.region` (text) normalizálása a REGION_NAMES ASCII-nagybetűs értékeihez (SZEGED,
+     * BEKESCSABA, ...). A seedelt adat már ASCII-nagybetűs (V145/V254), de defenzíven az ékezeteket
+     * is leképezzük, hogy egy esetleges 'Szeged'/'Nyíregyháza' érték is helyes körzetbe kerüljön.
+     */
+    private static String normalizeRegion(String region) {
+        if (region == null) {
+            return null;
+        }
+        String s = region.trim().toUpperCase(java.util.Locale.forLanguageTag("hu"));
+        return s.replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O")
+                .replace("Ö", "O").replace("Ő", "O").replace("Ú", "U").replace("Ü", "U").replace("Ű", "U");
+    }
+
     @Transactional(readOnly = true)
     public StockSnapshotDto getFullSnapshot(UUID companyId) {
         LocalDateTime snapshotTime = LocalDateTime.now();
@@ -55,7 +75,21 @@ public class StockSnapshotService {
 
         String companyName = companyRepository.findById(companyId).map(hu.puzzleir.valuta.entity.Company::getName).orElse(null);
 
-        List<Branch> branches = branchRepository.findActiveWithRegionByCompanyId(companyId);
+        // FK-019: a területi füleken az értéktár MELLETT az összes hozzá tartozó pénztár is megjelenjen.
+        // KORÁBBAN a findActiveWithRegionByCompanyId CSAK a regionCode<>NULL irodákat adta vissza — a
+        // pénztárak regionCode-ja NULL (V250), így kimaradtak. Most az ÖSSZES aktív, valódi irodát
+        // (értéktár + pénztár) kérjük, a virtuális partnereket (VAULT_COUNTERPARTY) kizárva.
+        // A területi csoportosítás a `region` (text) mezőn megy (lentebb) — a vault_territory_id a
+        // seed-állapotban NULL (V288 NO-OP), ezért NEM arra csoportosítunk.
+        List<Branch> branches = new ArrayList<>(
+                branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId));
+
+        // FR-02: a területen belül az értéktár (isVault=true) az ELSŐ oszlop, utána a pénztárak névsorban.
+        // A repo már `ORDER BY b.name` (DB magyar kolláció) szerint adja a listát; a STABIL List.sort
+        // csak az isVault-rendezést teszi rá, így a néven belüli sorrend megőrzi a DB kollációját
+        // (nem írjuk felül egy ASCII-alapú összehasonlítóval — Copilot review).
+        branches.sort(
+                Comparator.comparing((Branch b) -> Boolean.TRUE.equals(b.getIsVault()), Comparator.reverseOrder()));
 
         if (branches.isEmpty()) {
             List<Object[]> companyRowsEmpty = currencyStockRepository.sumCompanyLevelByCurrency(companyId);
@@ -91,11 +125,24 @@ public class StockSnapshotService {
         // épül, így az index-alapú leképzések (Excel-export) nem ütköznek IOOBE-be.
         List<String> codes = resolveCurrencyCodes(stockByBranch, companyRows);
 
-        // Build per-branch snapshots grouped by region
+        // Build per-branch snapshots grouped by region.
+        // FK-019: a területi csoportosítás EGYETLEN forrása a `region` (text, pl. 'SZEGED') — ezt
+        // használja az Országos készlet nézet is, és mind az értéktárnál (V254), mind a pénztárnál
+        // (V145) kitöltött, közvetlenül egyezve a REGION_NAMES értékeivel. Így az értéktár és a hozzá
+        // tartozó pénztárak GARANTÁLTAN ugyanarra a fülre kerülnek (a regionCode csak fallback, ha a
+        // region-szöveg nem oldható fel ismert körzetre — pl. legacy értéktár region nélkül). A
+        // besorolatlan (egyik mezővel sem feloldható) irodák a null kulcs alá kerülnek: a területi
+        // füleken nem jelennek meg, de a cégösszesítőből nem esnek ki.
         Map<String, List<BranchSnapshotDto>> branchesByRegion = new LinkedHashMap<>();
         for (Branch branch : branches) {
             BranchSnapshotDto branchDto = buildBranchSnapshot(branch, stockByBranch, wuByBranch, today, codes);
-            branchesByRegion.computeIfAbsent(branch.getRegionCode(), k -> new ArrayList<>()).add(branchDto);
+            String regionCode = branch.getRegion() != null
+                    ? REGION_CODE_BY_NAME.get(normalizeRegion(branch.getRegion()))
+                    : null;
+            if (regionCode == null) {
+                regionCode = branch.getRegionCode(); // fallback a legacy KESZLEX regionCode-ra
+            }
+            branchesByRegion.computeIfAbsent(regionCode, k -> new ArrayList<>()).add(branchDto);
         }
 
         // Region aggregation

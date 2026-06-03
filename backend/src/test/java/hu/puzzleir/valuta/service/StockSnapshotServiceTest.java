@@ -109,7 +109,7 @@ class StockSnapshotServiceTest {
         // Aktív törzs: HUF=0, AUD=1, EUR=8, USD=21 → várt sorrend HUF nélkül: [AUD, EUR, USD, HUF]
         // DKK INAKTÍV, mégis van készlet (leftover) → várt végső sorrend: [AUD, EUR, USD, HUF, DKK]
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(branch));
 
         CurrencyStock dkkLeftover = CurrencyStock.builder()
                 .entityType("CASHIER").entityId(BRANCH_1_ID.toString())
@@ -144,7 +144,7 @@ class StockSnapshotServiceTest {
         // (pl. törölt/inaktivált branch maradéka). Ezt is meg KELL jeleníteni a riportban,
         // és a snapshot DTO array-eknek konzisztens méretben kell épülniük (P1 IOOBE-védelem).
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(branch));
         when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
         when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
         List<Object[]> nokRow = new ArrayList<>();
@@ -179,7 +179,7 @@ class StockSnapshotServiceTest {
                 Currency.builder().code("EUR").name("Euró").displayOrder(8).active(true).build(),
                 Currency.builder().code("USD").name("Amerikai dollár").displayOrder(21).active(true).build()
         ));
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of());
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of());
 
         StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
 
@@ -193,7 +193,7 @@ class StockSnapshotServiceTest {
     @DisplayName("FK-006: az inaktív, NULLA-készletű valuta NEM jelenik meg a snapshotban")
     void getFullSnapshot_inactiveZeroStock_isExcluded() {
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(branch));
 
         // DKK inaktív + ZERO készlet → ne legyen a listában
         CurrencyStock dkkZero = CurrencyStock.builder()
@@ -218,7 +218,7 @@ class StockSnapshotServiceTest {
         //  - régi (hibás) longValue() csonkolás → 39853
         //  - helyes HungarianRounding.roundToFive → HALF_UP(39853.4)=39853, majd 5 Ft-ra: 39855
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(branch));
 
         CurrencyStock eurStock = CurrencyStock.builder()
                 .entityType("CASHIER").entityId(BRANCH_1_ID.toString())
@@ -238,7 +238,7 @@ class StockSnapshotServiceTest {
     @DisplayName("getFullSnapshot - 1 branch EUR készlettel - stock=500, stockHuf=500*395.50=197750")
     void getFullSnapshot_singleBranch_returnsCurrencyData() {
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(branch));
 
         CurrencyStock eurStock = CurrencyStock.builder()
                 .entityType("CASHIER")
@@ -271,7 +271,7 @@ class StockSnapshotServiceTest {
     void getFullSnapshot_multipleBranchesInSameRegion_aggregatesTotals() {
         Branch branch1 = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
         Branch branch2 = createBranch(BRANCH_2_ID, "B02", "Iroda 2", "10");
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch1, branch2));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(branch1, branch2));
 
         CurrencyStock eurStock1 = CurrencyStock.builder()
                 .entityType("CASHIER").entityId(BRANCH_1_ID.toString())
@@ -303,7 +303,7 @@ class StockSnapshotServiceTest {
     void getFullSnapshot_companyTotals_sumsAcrossRegions() {
         Branch branch1 = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
         Branch branch2 = createBranch(BRANCH_2_ID, "B02", "Iroda 2", "20");
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch1, branch2));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(branch1, branch2));
 
         CurrencyStock usdStock1 = CurrencyStock.builder()
                 .entityType("CASHIER").entityId(BRANCH_1_ID.toString())
@@ -329,10 +329,61 @@ class StockSnapshotServiceTest {
     }
 
     @Test
+    @DisplayName("FK-019: regionCode=NULL pénztár a region (text) alapján a területi fülre kerül, az értéktár UTÁN")
+    void getFullSnapshot_penztarWithNullRegionCode_groupedByRegionText_vaultFirst() {
+        Company company = Company.builder().id(COMPANY_ID).code("TEST").name("Test Company").build();
+        // Szeged Értéktár: regionCode="20", isVault=true.
+        Branch vault = Branch.builder().id(BRANCH_1_ID).code("BR020").name("Szeged Értéktár")
+                .regionCode("20").region("SZEGED").isVault(true).company(company).isActive(true).build();
+        // Szeged Móra (pénztár): regionCode=NULL (V250), de region="SZEGED" (V145) — eddig kimaradt.
+        Branch penztar = Branch.builder().id(BRANCH_2_ID).code("BR040").name("Szeged Móra")
+                .regionCode(null).region("SZEGED").isVault(false).company(company).isActive(true).build();
+        // Szándékosan FORDÍTOTT sorrendben adjuk vissza — a service-nek kell az értéktárat előre rendeznie.
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                .thenReturn(List.of(penztar, vault));
+        when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
+        when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        RegionSnapshotDto szeged = result.getRegions().stream()
+                .filter(r -> "SZEGED".equals(r.getRegionName())).findFirst().orElseThrow();
+        // FR-01: az értéktár MELLETT a pénztár is megjelenik (2 oszlop).
+        assertThat(szeged.getBranches()).hasSize(2);
+        // FR-02: az értéktár (isVault) az ELSŐ, utána a pénztár.
+        assertThat(szeged.getBranches().get(0).getBranchName()).isEqualTo("Szeged Értéktár");
+        assertThat(szeged.getBranches().get(1).getBranchName()).isEqualTo("Szeged Móra");
+    }
+
+    @Test
+    @DisplayName("FK-019: besorolatlan iroda (region=NULL, regionCode=NULL) nem jelenik meg területi fülön")
+    void getFullSnapshot_unassignedBranch_notInAnyRegionTab() {
+        Company company = Company.builder().id(COMPANY_ID).code("TEST").name("Test Company").build();
+        Branch assigned = Branch.builder().id(BRANCH_1_ID).code("BR020").name("Szeged Értéktár")
+                .regionCode("20").region("SZEGED").isVault(true).company(company).isActive(true).build();
+        Branch unassigned = Branch.builder().id(BRANCH_2_ID).code("BR999").name("Besorolatlan iroda")
+                .regionCode(null).region(null).isVault(false).company(company).isActive(true).build();
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                .thenReturn(List.of(assigned, unassigned));
+        when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
+        when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        // A besorolatlan iroda egyetlen területi fülön sem szerepel...
+        boolean unassignedInAnyTab = result.getRegions().stream()
+                .flatMap(r -> r.getBranches().stream())
+                .anyMatch(b -> "Besorolatlan iroda".equals(b.getBranchName()));
+        assertThat(unassignedInAnyTab).isFalse();
+        // ...de a hozzárendelt SZEGED értéktár igen.
+        assertThat(result.getRegions()).anyMatch(r -> "SZEGED".equals(r.getRegionName()));
+    }
+
+    @Test
     @DisplayName("getFullSnapshot - WU egyenleg megjelenik")
     void getFullSnapshot_withWuBalance_includesWuData() {
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(branch));
         when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
 
         WuBalance wuBalance = WuBalance.builder()
@@ -357,7 +408,7 @@ class StockSnapshotServiceTest {
     @DisplayName("getFullSnapshot - foglalasok megjelennek")
     void getFullSnapshot_withReservations_includesReservationData() {
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(branch));
         when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
         when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
 
@@ -384,7 +435,7 @@ class StockSnapshotServiceTest {
     @Test
     @DisplayName("getFullSnapshot - ures branch lista - ures, de valid DTO")
     void getFullSnapshot_emptyBranches_returnsEmptySnapshot() {
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of());
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of());
 
         StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
 
@@ -414,7 +465,7 @@ class StockSnapshotServiceTest {
     void getFullSnapshot_nonEmptyBranchesWithStock_doesNotReturnEmpty() {
         Branch branch1 = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
         Branch branch2 = createBranch(BRANCH_2_ID, "B02", "Iroda 2", "20");
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch1, branch2));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(branch1, branch2));
 
         CurrencyStock huf1 = CurrencyStock.builder()
                 .entityType("CASHIER").entityId(BRANCH_1_ID.toString())
@@ -454,7 +505,7 @@ class StockSnapshotServiceTest {
     void getFullSnapshot_branchWithUnknownRegion_includedInCompanyTotalsFallback() {
         // UNKNOWN_REGION nincs a REGION_NAMES-ben ("10","20","40","50","63","75","120","145")
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda-UNKNOWN", "UNKNOWN_REGION_99");
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(branch));
 
         CurrencyStock usdStock = CurrencyStock.builder()
                 .entityType("CASHIER").entityId(BRANCH_1_ID.toString())
@@ -480,7 +531,7 @@ class StockSnapshotServiceTest {
     @DisplayName("FK-003/004: NAPI FORGALOM Ft-oszlopok a hufAmount-ból (NEM fixen 0)")
     void getFullSnapshot_dailyTurnoverHuf_populatedFromHufAmount() {
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(branch));
         when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
         when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
         // EUR egy-soros napi forgalom 80 000 Ft (mindkét irányban) — a fix-0 hardcode előtt 0 volt.
@@ -499,7 +550,7 @@ class StockSnapshotServiceTest {
     @DisplayName("Codex #903: multi-line bizonylat — a forgalom valutánként helyes (single-line + line összeg)")
     void getFullSnapshot_dailyTurnover_multiLineSummedPerCurrency() {
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
-        when(branchRepository.findActiveWithRegionByCompanyId(COMPANY_ID)).thenReturn(List.of(branch));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(branch));
         when(currencyStockRepository.findAllByBranchIds(anyList())).thenReturn(List.of());
         when(wuBalanceRepository.findByBranchIdsAndCompanyId(anyList(), eq(COMPANY_ID))).thenReturn(List.of());
         // EUR: egy-soros vételi forgalom 50 000 Ft. USD: CSAK multi-line tétel-sorból 30 000 Ft.
