@@ -262,19 +262,23 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (:startDate IS NULL OR t.transactionDate >= :startDate) " +
            "AND (:endDate IS NULL OR t.transactionDate <= :endDate) " +
            "AND (:type IS NULL OR t.transactionType = :type) " +
+           // FR-PA-05: "csak ügyfeles" — szerver-oldali szűrés a HELYES lapozásért (a count-query is szűr).
+           "AND (:customerOnly = false OR (t.customerName IS NOT NULL AND t.customerName <> '')) " +
            "ORDER BY t.transactionDate DESC, t.transactionTime DESC",
            countQuery = "SELECT COUNT(t) FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
            "AND t.branch.id = :branchId " +
            "AND (:startDate IS NULL OR t.transactionDate >= :startDate) " +
            "AND (:endDate IS NULL OR t.transactionDate <= :endDate) " +
-           "AND (:type IS NULL OR t.transactionType = :type)")
+           "AND (:type IS NULL OR t.transactionType = :type) " +
+           "AND (:customerOnly = false OR (t.customerName IS NOT NULL AND t.customerName <> ''))")
     Page<Transaction> findWithFilters(
         @Param("companyId") UUID companyId,
         @Param("branchId") UUID branchId,
         @Param("startDate") LocalDate startDate,
         @Param("endDate") LocalDate endDate,
         @Param("type") TransactionType type,
+        @Param("customerOnly") boolean customerOnly,
         Pageable pageable
     );
 

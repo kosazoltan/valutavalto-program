@@ -378,22 +378,26 @@ describe('TransactionListPage', () => {
     expect(screen.getAllByText('Eladás').length).toBeGreaterThan(0)
   })
 
-  it('FR-PA-05: "Csak ügyfeles" szűrő elrejti az ügyfél nélküli bizonylatot', async () => {
+  it('FR-PA-05: "Csak ügyfeles" szűrő SZERVER-oldali customerOnly paramétert küld (helyes lapozás)', async () => {
     const user = userEvent.setup()
     renderTransactionListPage()
     await waitFor(() => {
       expect(screen.getByText('Kiss János')).toBeInTheDocument()
     })
-    // Alapból az ügyfél nélküli (E001000005) bizonylat látszik.
-    expect(screen.getByText('E001000005')).toBeInTheDocument()
+    // Alapból customerOnly nincs beállítva (szűretlen).
+    expect(mocks.transactionApiList).toHaveBeenCalledWith(
+      expect.objectContaining({ customerOnly: undefined }),
+    )
+    mocks.transactionApiList.mockClear()
 
-    // "Csak ügyfeles" bekapcsolása.
+    // "Csak ügyfeles" bekapcsolása → újralekérdezés a szerverről customerOnly: true-val
+    // (NEM kliens-oldali oldal-szűrés, hogy a lapozás >25 tételnél is helyes legyen).
     await user.click(screen.getByTestId('filter-customer-only'))
 
-    // Az ügyfél nélküli bizonylat eltűnik, az ügyfeles megmarad.
     await waitFor(() => {
-      expect(screen.queryByText('E001000005')).not.toBeInTheDocument()
+      expect(mocks.transactionApiList).toHaveBeenCalledWith(
+        expect.objectContaining({ customerOnly: true }),
+      )
     })
-    expect(screen.getByText('Kiss János')).toBeInTheDocument()
   })
 })

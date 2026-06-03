@@ -66,7 +66,7 @@ public class TransactionReportService {
             return transactionRepository.findCompanyWideWithFilters(
                     companyId, startDate, endDate, type, pageable);
         }
-        return transactionRepository.findWithFilters(companyId, branchId, startDate, endDate, type, pageable);
+        return transactionRepository.findWithFilters(companyId, branchId, startDate, endDate, type, false, pageable);
     }
 
     /**

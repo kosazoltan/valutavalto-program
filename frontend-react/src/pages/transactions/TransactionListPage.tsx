@@ -63,6 +63,7 @@ export default function TransactionListPage() {
         startDate: dateFrom || undefined,
         endDate: dateTo || undefined,
         type: typeFilter || undefined,
+        customerOnly: customerOnly || undefined,
       })
 
       // Electron: a helyi SQLite pending (meg fel nem kuldott) bizonylatai is latszodjanak
@@ -149,7 +150,7 @@ export default function TransactionListPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, dateFrom, dateTo, typeFilter])
+  }, [page, dateFrom, dateTo, typeFilter, customerOnly])
 
   useEffect(() => {
     fetchTransactions()
@@ -159,13 +160,14 @@ export default function TransactionListPage() {
   const totalElements = data?.totalElements ?? 0
   const totalPages = data?.totalPages ?? 0
 
-  // Client-side filter on customer name (server doesn't support text search on customer name)
-  // + FR-PA-05: "csak ügyfeles bizonylatok" — csak az ügyfélhez kötött tranzakciók.
-  const filteredTransactions = transactions.filter(tx => {
-    if (search && !tx.customerName?.toLowerCase().includes(search.toLowerCase())) return false
-    if (customerOnly && !(tx.customerName && tx.customerName.trim().length > 0)) return false
-    return true
-  })
+  // Client-side filter on customer name (server doesn't support text search on customer name).
+  // FR-PA-05 "csak ügyfeles" SZERVER-oldali (customerOnly param) → a lapozás helyes; itt csak a
+  // helyi név-keresés marad kliens-oldalon (a meglévő viselkedés szerint).
+  const filteredTransactions = search
+    ? transactions.filter(tx =>
+        tx.customerName?.toLowerCase().includes(search.toLowerCase())
+      )
+    : transactions
 
   const handleSearch = () => {
     setPage(0)

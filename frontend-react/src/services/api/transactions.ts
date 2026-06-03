@@ -329,6 +329,7 @@ export const transactionApi = {
     startDate?: string
     endDate?: string
     type?: TransactionTypeName
+    customerOnly?: boolean
     page?: number
     size?: number
   }): Promise<PagedResponse<Transaction>> => {

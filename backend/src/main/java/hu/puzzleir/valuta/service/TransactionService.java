@@ -682,6 +682,7 @@ public class TransactionService {
             LocalDate startDate,
             LocalDate endDate,
             TransactionType type,
+            boolean customerOnly,
             Pageable pageable) {
         if (branchId == null) {
             throw new IllegalArgumentException(
@@ -689,7 +690,7 @@ public class TransactionService {
                 "A SecurityUtils.getCurrentBranchId()-t kell használni a hívó kontextusban.");
         }
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        Page<Transaction> page = transactionRepository.findWithFilters(companyId, branchId, startDate, endDate, type, pageable);
+        Page<Transaction> page = transactionRepository.findWithFilters(companyId, branchId, startDate, endDate, type, customerOnly, pageable);
         page.getContent().forEach(this::initMultiLineForMapping);
         return page;
     }

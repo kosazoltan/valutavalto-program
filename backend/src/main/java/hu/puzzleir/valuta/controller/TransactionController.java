@@ -200,9 +200,10 @@ public class TransactionController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) TransactionType type,
+            @RequestParam(required = false, defaultValue = "false") boolean customerOnly,
             Pageable pageable) {
         UUID branchId = SecurityUtils.getCurrentBranchId();
-        Page<Transaction> page = transactionService.searchTransactions(branchId, startDate, endDate, type, pageable);
+        Page<Transaction> page = transactionService.searchTransactions(branchId, startDate, endDate, type, customerOnly, pageable);
         Page<TransactionDto> dtoPage = page.map(transactionMapper::toDto);
         return ResponseEntity.ok(dtoPage);
     }
