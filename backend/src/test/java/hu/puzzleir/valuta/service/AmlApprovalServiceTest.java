@@ -150,7 +150,7 @@ class AmlApprovalServiceTest {
     }
 
     @Test
-    @DisplayName("issueApprovalGrant: EGY grant, SERVER-FIX uses-kapuval (6) — a count nem a klienstől jön")
+    @DisplayName("issueApprovalGrant: EGY grant, SERVER-FIX uses=1 — egy PIN egy nyugtát fed (Codex P1)")
     void issueApprovalGrant_savesOneGrantWithServerFixedUses() {
         service.issueApprovalGrant(99L, "session-xyz");
 
@@ -160,7 +160,9 @@ class AmlApprovalServiceTest {
         assertThat(saved.getApproverWorkerId()).isEqualTo(99L);
         assertThat(saved.getCompanyId()).isEqualTo(companyId);
         assertThat(saved.getSessionId()).isEqualTo("session-xyz"); // receipt-scoping (Codex P1)
-        assertThat(saved.getUsesRemaining()).isEqualTo(6); // GRANT_USES_PER_PIN — multi-line nyugta fedése
+        // GRANT_USES_PER_PIN=1: egy nyugta (single/multi-line/konverzió) az approvalRecorded flag miatt
+        // legfeljebb egy jóváhagyást rögzít → egy PIN egy felhasználást fedez, nem amplifikálható.
+        assertThat(saved.getUsesRemaining()).isEqualTo(1);
     }
 
     @Test

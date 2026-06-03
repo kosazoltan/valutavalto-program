@@ -200,10 +200,10 @@ public class AmlApprovalController {
 
         // PIN OK → grant kiállítása (Codex P1): ez bizonyítja a tranzakció-rögzítéskor, hogy a PIN-
         // ellenőrzés ténylegesen megtörtént. A bare approverWorkerId önmagában nem elég a rögzítéshez — a
-        // recordSeniorApproval atomikusan elhasználja a grant egy felhasználását. A felhasználási kapu
-        // SERVER-FIX (nem a klienstől), így egy PIN nem amplifikálódhat tetszőleges számú jóváhagyássá;
-        // a kapu lefedi a multi-line nyugta soronkénti tranzakcióit. A grant a beküldött approvalSessionId-hez
-        // kötött, így a maradék felhasználások csak EHHEZ a nyugtához használhatók (receipt-scoping).
+        // recordSeniorApproval atomikusan elhasználja a grant egyetlen felhasználását. A kapu SERVER-FIX
+        // uses=1 (nem a klienstől): egy nyugta (single/multi-line/konverzió) az approvalRecorded flag miatt
+        // legfeljebb egy jóváhagyást rögzít, így egy PIN-ből NEM mintázható több jóváhagyás (Codex P1). A grant
+        // a beküldött approvalSessionId-hez kötött (receipt-scoping), és a consume @Transactional → retry-safe.
         amlApprovalService.issueApprovalGrant(approverWorkerId, approvalSessionId);
 
         String approverName = workerRepository.findById(approverWorkerId)

@@ -46,11 +46,18 @@ public class AmlApprovalService {
     private static final int GRANT_VALIDITY_DAYS = 7;
 
     /**
-     * Egy PIN-ellenőrzésből kiállított grant felhasználási kapuja (server-fix, NEM a klienstől — Codex P1).
-     * = a multi-line buy/sell nyugta max sorszáma (CashierTransactionPage MAX_LINES=6), így egy nyugta
-     * minden AML-kapus sorát fedi, de egy PIN nem amplifikálódhat tetszőleges számú jóváhagyássá.
+     * Egy PIN-ellenőrzésből kiállított grant felhasználási kapuja = {@code 1} (server-fix, NEM a klienstől).
+     *
+     * <p><b>Codex P1 — „ne mintázz egy PIN-ből hat felhasználást":</b> egy nyugta (single-line, multi-line ÉS
+     * konverzió út) a {@code performAmlCheck}/{@code recordSeniorApproval} flow-ban az {@code approvalRecorded}
+     * flag miatt LEGFELJEBB EGYSZER rögzít felsővezetői jóváhagyást — a basicResult- és a threshold-kapu
+     * kölcsönösen kizárt. Ezért egyetlen PIN-ellenőrzésnek pontosan EGY felhasználást kell fedeznie; a korábbi
+     * 6-os kapu (egykori per-soros architektúrából maradt) túl-provisionált volt, és egy PIN-t legfeljebb 6
+     * jóváhagyásra amplifikálhatott a klienstől újraküldött {@code approvalSessionId}-vel. A grant ráadásul
+     * {@code @Transactional} consume: ha a tranzakció rollbackel (pl. retry), a felhasználás visszagördül, így
+     * uses=1 a legitim retry-t is fedi anélkül, hogy egy PIN több, független nyugtára szivároghatna át.</p>
      */
-    private static final int GRANT_USES_PER_PIN = 6;
+    private static final int GRANT_USES_PER_PIN = 1;
 
     /**
      * Felsővezetői AML-jóváhagyás rögzítése. Validálja, hogy az {@code approverWorkerId} érvényes,
@@ -103,10 +110,10 @@ public class AmlApprovalService {
      * A grant bizonyítja, hogy az {@code approverWorkerId} PIN-nel igazolta a jelenlétét a bejelentkezett
      * (rögzítő) pénztáros sessionjében; a tranzakció-rögzítéskor a grant {@code usesRemaining}-je csökken.
      *
-     * <p>Codex P1: a kiállítás EGY grant, fix {@link #GRANT_USES_PER_PIN} felhasználási kapuval — a count
-     * NEM a klienstől jön (nincs amplifikáció a kliens-oldalról). A kapu = a multi-line nyugta max sorszáma,
-     * így egy nyugta minden AML-kapus sorát fedi egyetlen PIN-ellenőrzésből. A fel nem használt kapacitás
-     * 7 nap múlva lejár.</p>
+     * <p>Codex P1: a kiállítás EGY grant, fix {@link #GRANT_USES_PER_PIN}=1 felhasználási kapuval — a count
+     * NEM a klienstől jön (nincs amplifikáció a kliens-oldalról), és egy PIN-ellenőrzés pontosan egy nyugta
+     * egyetlen jóváhagyás-rögzítését fedi (lásd a konstans Javadocját: az {@code approvalRecorded} flag miatt
+     * nyugtánként legfeljebb egy recordSeniorApproval fut). A fel nem használt grant 7 nap múlva lejár.</p>
      */
     @Transactional
     public void issueApprovalGrant(Long approverWorkerId, String sessionId) {
