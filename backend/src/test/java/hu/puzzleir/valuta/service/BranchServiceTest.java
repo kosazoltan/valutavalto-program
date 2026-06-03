@@ -10,16 +10,19 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.dto.BranchDto;
 import hu.puzzleir.valuta.dto.CreateBranchDto;
 import hu.puzzleir.valuta.dto.UpdateBranchDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -429,6 +432,120 @@ class BranchServiceTest {
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessageContaining("Ismeretlen régió kód");
             verify(branchRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("Pénztár Törzs (V293): create átviszi a short_name + szolgáltatás-flageket az entitásra")
+    void testCreatePersistsPenztarTorzsFields() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            UUID branchTypeId = UUID.randomUUID();
+            UUID countryId = UUID.randomUUID();
+            UUID statusId = UUID.randomUUID();
+            CreateBranchDto dto = CreateBranchDto.builder()
+                    .code("PT01").companyId(COMPANY_ID)
+                    .branchTypeId(branchTypeId).countryId(countryId).branchStatusId(statusId)
+                    .name("Pénztár Törzs Teszt").address("Teszt utca 1.").city("Budapest").zipCode("1011")
+                    .bankCode("PT01").openingDate(LocalDate.now())
+                    .shortName("PT Teszt").hasAfa(true).hasWu(true).hasMg(false).hasPos(true)
+                    .closedSaturday(false).closedSunday(true)
+                    .build();
+            when(branchRepository.existsByCompanyIdAndCode(COMPANY_ID, "PT01")).thenReturn(false);
+            when(dictionaryRepository.findById(branchTypeId))
+                    .thenReturn(Optional.of(Dictionary.builder().code("KOZPONT").build()));
+            when(dictionaryRepository.findById(countryId))
+                    .thenReturn(Optional.of(Dictionary.builder().code("HU").build()));
+            when(dictionaryRepository.findById(statusId))
+                    .thenReturn(Optional.of(Dictionary.builder().code("ACTIVE").build()));
+            when(companyRepository.findById(COMPANY_ID))
+                    .thenReturn(Optional.of(Company.builder().id(COMPANY_ID).build()));
+            when(branchRepository.save(any(Branch.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(branchMapper.toDto(any())).thenReturn(BranchDto.builder().build());
+
+            service.create(dto);
+
+            ArgumentCaptor<Branch> captor = ArgumentCaptor.forClass(Branch.class);
+            verify(branchRepository).save(captor.capture());
+            Branch saved = captor.getValue();
+            assertThat(saved.getShortName()).isEqualTo("PT Teszt");
+            assertThat(saved.getHasAfa()).isTrue();
+            assertThat(saved.getHasWu()).isTrue();
+            assertThat(saved.getHasMg()).isFalse();
+            assertThat(saved.getHasPos()).isTrue();
+            assertThat(saved.getClosedSaturday()).isFalse();
+            assertThat(saved.getClosedSunday()).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("Pénztár Törzs (V293): create flag nélkül → entity FALSE default (null nem írja felül)")
+    void testCreateWithoutFlags_defaultsFalse() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            UUID branchTypeId = UUID.randomUUID();
+            UUID countryId = UUID.randomUUID();
+            UUID statusId = UUID.randomUUID();
+            CreateBranchDto dto = CreateBranchDto.builder()
+                    .code("PT02").companyId(COMPANY_ID)
+                    .branchTypeId(branchTypeId).countryId(countryId).branchStatusId(statusId)
+                    .name("Flag nélküli").address("Teszt utca 2.").city("Budapest").zipCode("1011")
+                    .bankCode("PT02").openingDate(LocalDate.now())
+                    .build();
+            when(branchRepository.existsByCompanyIdAndCode(COMPANY_ID, "PT02")).thenReturn(false);
+            when(dictionaryRepository.findById(branchTypeId))
+                    .thenReturn(Optional.of(Dictionary.builder().code("KOZPONT").build()));
+            when(dictionaryRepository.findById(countryId))
+                    .thenReturn(Optional.of(Dictionary.builder().code("HU").build()));
+            when(dictionaryRepository.findById(statusId))
+                    .thenReturn(Optional.of(Dictionary.builder().code("ACTIVE").build()));
+            when(companyRepository.findById(COMPANY_ID))
+                    .thenReturn(Optional.of(Company.builder().id(COMPANY_ID).build()));
+            when(branchRepository.save(any(Branch.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(branchMapper.toDto(any())).thenReturn(BranchDto.builder().build());
+
+            service.create(dto);
+
+            ArgumentCaptor<Branch> captor = ArgumentCaptor.forClass(Branch.class);
+            verify(branchRepository).save(captor.capture());
+            Branch saved = captor.getValue();
+            assertThat(saved.getHasAfa()).isFalse();
+            assertThat(saved.getHasWu()).isFalse();
+            assertThat(saved.getClosedSunday()).isFalse();
+            assertThat(saved.getShortName()).isNull();
+        }
+    }
+
+    @Test
+    @DisplayName("Pénztár Törzs (V293): update partial — csak a megadott flageket írja, a többit változatlan hagyja")
+    void testUpdatePartialPenztarTorzsFields() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            Branch existing = Branch.builder().id(BRANCH_ID)
+                    .company(Company.builder().id(COMPANY_ID).build())
+                    .hasAfa(false).hasWu(true).hasMg(false).hasPos(false)
+                    .closedSaturday(false).closedSunday(false)
+                    .build();
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(existing));
+            when(branchRepository.save(any(Branch.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(branchMapper.toDto(any())).thenReturn(BranchDto.builder().build());
+
+            UpdateBranchDto dto = new UpdateBranchDto();
+            dto.setShortName("Rövid");
+            dto.setHasAfa(true);          // false → true
+            dto.setClosedSunday(true);    // false → true
+            // hasWu NINCS megadva → marad true (változatlan)
+
+            service.update(BRANCH_ID, dto);
+
+            ArgumentCaptor<Branch> captor = ArgumentCaptor.forClass(Branch.class);
+            verify(branchRepository).save(captor.capture());
+            Branch saved = captor.getValue();
+            assertThat(saved.getShortName()).isEqualTo("Rövid");
+            assertThat(saved.getHasAfa()).isTrue();        // felülírva
+            assertThat(saved.getClosedSunday()).isTrue();  // felülírva
+            assertThat(saved.getHasWu()).isTrue();         // VÁLTOZATLAN (nem volt a DTO-ban)
+            assertThat(saved.getHasMg()).isFalse();        // változatlan
         }
     }
 }

@@ -66,7 +66,16 @@ public class BranchDto {
     // a területi scope-szűrés kulcsa (AccessScopeService). A region (szöveges) display-célú,
     // a regionCode (numerikus) a scope-logika input-ja.
     private String regionCode;
-    
+
+    // Pénztár Törzs alapmodul (V293): rövid név + szolgáltatás-flagek + nyitvatartás
+    private String shortName;
+    private Boolean hasAfa;
+    private Boolean hasWu;
+    private Boolean hasMg;
+    private Boolean hasPos;
+    private Boolean closedSaturday;
+    private Boolean closedSunday;
+
     // Timestamps
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -67,6 +67,15 @@ public class BranchMapper {
                 // #891 Copilot fix: a numerikus KESZLEX területi kód a scope-szűrés kulcsa
                 .regionCode(entity.getRegionCode())
 
+                // Pénztár Törzs alapmodul (V293): rövid név + szolgáltatás-flagek + nyitvatartás
+                .shortName(entity.getShortName())
+                .hasAfa(entity.getHasAfa())
+                .hasWu(entity.getHasWu())
+                .hasMg(entity.getHasMg())
+                .hasPos(entity.getHasPos())
+                .closedSaturday(entity.getClosedSaturday())
+                .closedSunday(entity.getClosedSunday())
+
                 // Timestamps
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
