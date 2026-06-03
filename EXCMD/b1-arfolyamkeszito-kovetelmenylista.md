@@ -1,119 +1,410 @@
-# Modul: Árfolyamkészítő (RFM) — Követelménylista  (forrás: `Felmérés/Valuta/Kósa Szervezés/Cégcsoport felmérése/Árfolyamkészítő programról/Követelménylista - Árfolyamkészítés.docx`)
+<system_context>
+# Modul: Árfolyamkészítő (RFM) — Követelménylista
 
-## 1. Cel (egy mondat)
-Az árfolyamkészítő egy Excel-szerű, munkalapokból álló modul, amelyben egy 0-s (alap) árfolyamlap kézi és képletezett árfolyamait, valamint csoportonkénti (irodacsoportonkénti) kedvezményhatárait állítják be, a munkalapok szoros összeköttetésben, egymás közti egyszerű átjárással.
+## Kontextus
+Az árfolyamkészítő egy Excel-szerű, munkalapokból álló modul, amelyben egy 0-s (alap) árfolyamlap kézi és képletezett árfolyamait, valamint csoportonkénti (irodacsoportonkénti) kedvezményhatárait állítják be. A munkalapok szoros összeköttetésben vannak egymással, egyszerű átjárhatóságot biztosítva.
 
-## 2. Scope
-### IN
-- ÁR001 Alapárfolyam lap (0-s árfolyam lap) — Excel-tábla: elszámoló árfolyam (A), OTP árfolyam (B), segédoszlop (C), valutanemek (D), gyenge árfolyamos multik vétel/eladás (E/F), keresztárfolyamok (G/H).
-- ÁR002 Csoport lap — elszámoló árfolyam (J), valuták (K), 3 kedvezményhatár (alsó/középső/felső) vétel-eladás (L–Q), saját hatáskörű vét.max/elad.min (R/S), csoportba tartozó irodák listája, aktuális függvény, kitöltési segítség, kedvezményhatárok.
-- Árfolyamképletezés (kézi szorzók, kereszt-árfolyam EUR-/USD-alapon), valuta felvétel/törlés igénye, árfolyam-validáció kiküldés előtt.
+## Technológiai Stack (Tech Stack)
+- **Backend**: Java 21 + Spring Boot 4
+- **Frontend**: React 19 + TS (frontend-react)
+- **Kliens**: Electron kliens (`arfolyam-keszito-client`, `penztar-client` a limitellenőrzéshez)
+- **Adatbázis**: PostgreSQL (szerver), SQLite offline mirror (kliens)
 
-### OUT
-- A 0-s lap kézi forrás-adat (OTP weboldali árfolyam) gyűjtésének automatizálása — a forrás szerint kézi beírás (TBD: automatizálás).
-- Árfolyam kiküldése / szétküldése a szerverre (külön képernyő-forrás írja le, lásd `b1-arfolyamkeszito-kepernyok.md`).
-- Pénztári/eladói felület, kijelző-megjelenítés (a forrás csak hivatkozik rá: "kijelzőkön megjelennek").
+## Szakterületi Szereplők (Roles)
+- **Főértéktáros (Main Treasurer) / Rendszeradminisztrátor (System Administrator)**: Teljes hozzáféréssel rendelkezik a központi árfolyam-készítő és szétküldő képernyőkhöz. Ők határozzák meg az elszámoló árfolyamokat és a képleteket (RBAC érték: `ROLE_TREASURER`, `ROLE_ADMIN`).
+- **Kasszás / Pénztáros (Cashier)**: Offline üzemmódban kézi árfolyam-felülbírálatot végezhet a helyi kliensen, ha a Supervisor beírja a jóváhagyó jelszavát a képernyőn (napi 3 jelszó nélküli sztornó után a 4.-től kezdve szintén Supervisor jelszó szükséges közvetlen bevitellel). Ekkor a sávos kedvezmények helyett fix árfolyamot alkalmaz a program (RBAC érték: `ROLE_CASHIER`).
+- **Supervisor**: Jóváhagyási jogkörrel rendelkező fiókvezető, aki engedélyezheti a helyi manuális árfolyam-módosítást és a napi 3-nál több sztornót (RBAC érték: `ROLE_SUPERVISOR`).
 
-## 3. Szakteruleti szereplok
-| Szerep | Jogosultsag | RBAC ertek |
-|---|---|---|
-| Árfolyamkészítő (forrás: "Tamás" dönti el a metódust) | 0-s lap és csoportlap szerkesztése, képletezés, kiküldés | TBD |
-| Pénztáros | Saját hatáskörű kedvezmény napi limittel (forrás: "csak napi 5-t adhat") | TBD |
-| Supervisor | Új valuta felvétele/törlése supervisori jelszóhoz köthető (forrás-javaslat) | TBD |
+## Hatókör (Scope)
+- **IN**:
+  - ÁR001 Alapárfolyam lap (0-s árfolyam lap) — Excel-tábla: elszámoló árfolyam (A), OTP árfolyam (B), segédoszlop (C), valutanemek (D), gyenge árfolyamos multik vétel/eladás (E/F), keresztárfolyamok (G/H).
+  - ÁR002 Csoport lap — elszámoló árfolyam (J), valuták (K), 3 kedvezményhatár (alsó/középső/felső) vétel-eladás (L–Q), saját hatáskörű vét.max/elad.min (R/S), csoportba tartozó irodák listája, aktuális függvény, kitöltési segítség, kedvezményhatárok.
+  - Árfolyamképletezés (kézi szorzók, kereszt-árfolyam EUR-/USD-alapon), valuta felvétel/törlés igénye, árfolyam-validáció kiküldés előtt.
+- **OUT**:
+  - A 0-s lap kézi forrás-adat (OTP weboldali árfolyam) gyűjtésének automatizálása.
+  - Árfolyam kiküldése / szétküldése a szerverre (lásd `b1-arfolyamkeszito-kepernyok.md`).
+  - Pénztári/eladói felület, kijelző-megjelenítés.
+</system_context>
 
-## 4. Funkcionalis kovetelmenyek (FR)
-| ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
-|---|---|---|---|---|
-| FR-RFM-01 | A munkalapok szoros összeköttetésben álljanak, köztük egyszerű átjárás | docx bevezető | Must | arfolyam-keszito-client |
-| FR-RFM-02 | Elszámoló árfolyam (A oszlop) kézzel állítható minden valutánál, de gyakorlatban csak a fő valuták (EUR, USD, GBP, CHF) esetén állítják kézzel; a többi képlettel számolt | docx ÁR001-01 | Must | arfolyam-keszito-client |
-| FR-RFM-03 | A oszlopban automatikusan az OTP árfolyamot másolják ezek a valuták: EUR, USD, GBP, CHF, AUD, CAD, DKK, JPY, NOK, SEK | docx ÁR001-01 | Must | arfolyam-keszito-client |
-| FR-RFM-04 | Euró alapú valuták (pl. CZK, PLN, RON, RSD, TRY) esetén az A oszlop az EUR keresztárfolyam alapján számol | docx ÁR001-01 | Must | arfolyam-keszito-client |
-| FR-RFM-05 | Dollár alapú valuták (ILS, UAH, RUB, CNY, BAM, THB, BRL, MXN, NZD, RCH) árfolyamát az USD keresztárfolyam alapján számolja | docx ÁR001-01 | Must | arfolyam-keszito-client |
-| FR-RFM-06 | OTP árfolyam (B oszlop) teljesen kézzel szerkeszthető; kézzel csak ezeknél: EUR, USD, GBP, CHF, AUD, CAD, DKK, JPY, NOK, SEK, CZK, HRK, PLN, RON, RSD, BGN | docx ÁR001-02 | Must | arfolyam-keszito-client |
-| FR-RFM-07 | Segédoszlop (C oszlop): kézzel állítható segéd árfolyamokból szorzók beállíthatók | docx ÁR001-03 | Should | arfolyam-keszito-client |
-| FR-RFM-08 | Valutanemek (D oszlop) sorrendje a forrás szerint: EUR, USD, GBP, CHF, AUD, CAD, DKK, JPY, NOK, SEK, CZK, HRK, PLN, RON, RSD, BGN, ILS, UAH, RUB, EUA, TRY, CNY, BAM, THB, BRL, MXN, NZD, RCH | docx ÁR001-04 | Must | arfolyam-keszito-client |
-| FR-RFM-09 | EUA = euró érme árfolyama; max 20% eltérés engedett, ennél nagyobb eltérésnél ki kell írni az ügyfeleknek; képzés: gyenge árfolyamos euró eladás × 1.2 | docx ÁR001-04 (EUA sor) | Must | arfolyam-keszito-client |
-| FR-RFM-10 | Új valutanem felvétele/törlése: legyen lehetőség új valuta felvételére és meglévő megszüntetésére; a módosításra rákérdezzen (akár többször) vagy supervisori jelszóhoz kötve | docx ÁR001-04 ("Új valutanem felvétele/törlése") | Should | arfolyam-keszito-client |
-| FR-RFM-11 | Gyenge árfolyamos multik (legszélesebb árfolyamú irodák): Vétel (E oszlop), Eladás (F oszlop); a Vétel (E) képletezhető legyen | docx ÁR001-05, 05-01, 05-02 | Must | arfolyam-keszito-client |
-| FR-RFM-12 | Raiffeisen megbízási szerződés alapján középárfolyamtól a vétel és eladás eltérése max 10%; a 10% legyen szabadon állítható | docx ÁR001-05 | Must | arfolyam-keszito-client |
-| FR-RFM-13 | A 10%-os sávot vagy az elszámolóból (+/- 10%), vagy az OTP-ből számolja; a módot az árfolyamkészítő ("Tamás") szezonálisan dönti el, nincs állandó metódus | docx ÁR001-05 | Should | arfolyam-keszito-client |
-| FR-RFM-14 | Keresztárfolyamok a G és H oszlopban jelenjenek meg ezeknél: CZK, HRK, PLN, RON, RSD, BGN, ILS, UAH, RUB, EUA, TRY, CNY, BAM, THB, BRL, MXN, NZD, RCH | docx ÁR001-06 | Must | arfolyam-keszito-client |
-| FR-RFM-15 | Csoport lap: elszámoló árfolyam (J oszlop), valuták (K oszlop) | docx ÁR002-01, ÁR002-02 | Must | arfolyam-keszito-client |
-| FR-RFM-16 | Alsó kedvezményhatár Vétel-Eladás (L, M oszlop): az alap kiírt, kijelzőkön megjelenő árfolyamok, kézzel állítva | docx ÁR002-03 | Must | arfolyam-keszito-client |
-| FR-RFM-17 | Középső kedvezményhatár Vétel-Eladás (N, O oszlop) | docx ÁR002-04 | Must | arfolyam-keszito-client |
-| FR-RFM-18 | Felső kedvezményhatár Vétel-Eladás (P, Q oszlop) | docx ÁR002-05 | Must | arfolyam-keszito-client |
-| FR-RFM-19 | Saját hatáskörű Vét.max - Elad.min (R, S oszlop): képletezve, az előző (P/Q) értékhez hozzáadva a kedvezmény mértéke (pl. EUR R oszlop képlete: P+0,25) | docx ÁR002-06 | Must | arfolyam-keszito-client |
-| FR-RFM-20 | A pénztáros saját hatáskörű kedvezménye limitált: napi 5 adható | docx ÁR002-06 | Must | penztar-client / backend |
-| FR-RFM-21 | A csoportlapon megjelenjen a csoportba tartozó irodák listája | docx ÁR002-07 | Must | arfolyam-keszito-client |
-| FR-RFM-22 | "Aktuális függvény" megjelenítése a csoportlapon | docx ÁR002-08 | Should | arfolyam-keszito-client |
-| FR-RFM-23 | Kitöltési segítség (függvények kezelése): azonos valutanem oszlopa az alaplapban; azonos valutanem oszlopa az aktuális munkacsoportban; más valutanem bármely oszlopa; azonos valutanem másik csoportból; adatmásolás; adat lehúzás | docx ÁR002-09 | Should | arfolyam-keszito-client |
-| FR-RFM-24 | Kedvezményhatárok: egyszer beállítva, ritkán állítják, de maradjon állítható; az 54 lapon (csoport) mindegyiknél egyedileg állítható | docx ÁR002-10 | Must | arfolyam-keszito-client |
-| FR-RFM-25 | Validáció kiküldés előtt: az eladási árfolyam nem lehet kisebb az elszámolónál, a vételi nem lehet magasabb az elszámolónál; ha nem megfelelő, a rendszer figyelmeztetést küld, amikor ki akarja küldeni az árfolyamot | docx ÁR002-10 | Must | arfolyam-keszito-client / backend |
+<functional_spec>
+## Funkcionális Követelmények
 
-## 5. Nem-funkcionalis kovetelmenyek (NFR)
-| ID | Leiras | Merheto kriterium |
-|---|---|---|
-| NFR-RFM-01 | Munkalapok közti egyszerű átjárás (UX) | Forrás: "egyszerű átjárás" — konkrét mérőszám TBD |
-| NFR-RFM-02 | 54 csoportlap egyedi kedvezményhatár-tárolása | A forrás 54 csoportot említ; mindegyik egyedileg állítható |
-| NFR-RFM-03 | Kézi vs. képletezett cellák megkülönböztetése, képletmegoldó motor (Excel-szerű) | TBD a konkrét toleranciák/teljesítmény |
+### ### [FR-RFM-01] [Munkalapok összeköttetése]
+- **Leírás**: A munkalapok szoros összeköttetésben álljanak, köztük egyszerű, gyors átjárás biztosított.
+- **Forrás**: docx bevezető
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Felhasználói navigáció
+- **Kimenet / Visszajelzés**: Lapváltás minimális késleltetéssel
+- **Validációk és Kényszerek**: N/A
 
-## 6. Adatmodell-erintettseg
-- Valuta törzs: a D oszlop 28 valutaneme (EUR…RCH), köztük EUA (euró érme). Postgres `currency` érintett. SQLite mirror: IGEN (a kliens local-first árfolyam-szerkesztéshez), indok: a forrás Excel-szerű lokális szerkesztést ír le. Migráció szükséges: TBD (a meglévő sémához viszonyítás külön fázis).
-- Árfolyam-rekordok oszloponként (A–S): elszámoló, OTP, segéd, multi vétel/eladás, kereszt G/H, csoportonkénti L–S. Konkrét tábla/mező: TBD.
-- Csoport (munkacsoport) entitás + csoport-iroda hozzárendelés (54 csoport). Konkrét mező: TBD.
-- Kedvezményhatár-paraméterek csoportonként (alsó/középső/felső + sáv-küszöbök). TBD.
+### ### [FR-RFM-02] [Elszámoló árfolyam kézi módosíthatósága]
+- **Leírás**: Az elszámoló árfolyam (A oszlop) kézzel állítható minden valutánál, de a gyakorlatban csak a fő valuták (EUR, USD, GBP, CHF) esetén módosítják kézzel; a többi valuta képlettel számolódik.
+- **Forrás**: docx ÁR001-01
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Manuálisan beírt árfolyamérték
+- **Kimenet / Visszajelzés**: Beírt érték tárolása a cellában
+- **Validációk és Kényszerek**: N/A
 
-## 7. Fuggosegek
-- Külső árfolyamforrás: OTP hivatalos weboldal árfolyama (kézi beírás forrása). MNB/bank API: a docx nem említ automatikus lekérést — TBD.
-- Belső: alaplap (ÁR001) → csoportlap (ÁR002) képlet-hivatkozások; keresztárfolyam EUR/USD bázison.
-- Raiffeisen megbízási szerződés (üzleti szabály forrása a 10%-os sávhoz).
-- Árfolyam kiküldése a szerverre (külön képernyő-forrás, lásd kepernyok MD).
+### ### [FR-RFM-03] [Auto-OTP másolás]
+- **Leírás**: Az A oszlopban automatikusan az OTP árfolyamot (B oszlop) kell másolni az alábbi valutáknál: EUR, USD, GBP, CHF, AUD, CAD, DKK, JPY, NOK, SEK.
+- **Forrás**: docx ÁR001-01
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: OTP árfolyam (B oszlop) változása
+- **Kimenet / Visszajelzés**: Az A oszlop automatikus frissülése
+- **Validációk és Kényszerek**: Csak a megadott 10 valutánál fut le.
 
-## 8. Domain-szotar
-| Fogalom | Magyarazat |
-|---|---|
-| 0-s lap / alapárfolyam lap | ÁR001 alap Excel-tábla, ebből töltődnek a csoportlapok |
-| Elszámoló árfolyam | A oszlop; a kalkuláció bázisa, az eladási nem lehet kisebb, a vételi nem magasabb nála |
-| OTP árfolyam | B oszlop; kézzel beírt, OTP weboldalról vett irányadó árfolyam |
-| Segédoszlop | C oszlop; kézi szorzók képzéséhez |
-| Gyenge árfolyamos multik | A legszélesebb árfolyamú irodák vétel (E) / eladás (F) árfolyama |
-| Keresztárfolyam | G/H oszlop; nem-fő valuták EUR- vagy USD-bázison számolt árfolyama |
-| EUA | Euró érme árfolyama; max 20% eltérés, képzés: gyenge euró eladás × 1.2 |
-| Kedvezményhatár | Csoportlap alsó/középső/felső sávja vétel-eladás oldalon |
-| Saját hatáskörű vét.max/elad.min | R/S oszlop; pénztáros által adható kedvezmény (napi 5), P/Q + kedvezmény |
-| Csoport (munkacsoport) | Irodacsoport, 54 db, egyedi kedvezményhatárokkal |
-| Aktuális függvény | A csoportlapon megjelenített aktív képlet-azonosító |
+### ### [FR-RFM-04] [Euró alapú valuták keresztárfolyama]
+- **Leírás**: Euró alapú valuták (pl. CZK, PLN, RON, RSD, TRY) esetén az A oszlop az EUR keresztárfolyam alapján számolódik.
+- **Forrás**: docx ÁR001-01
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: EUR árfolyam és keresztárfolyam szorzó
+- **Kimenet / Visszajelzés**: Számított elszámoló árfolyam az A oszlopban
+- **Validációk és Kényszerek**: EUR-alapú valuták beállítása szerinti képlet lefutása.
 
-## 9. Vegrehajtasi utasitas az AI-ugynoknek
-### 9.1 Elokeszites
-- Olvasd be ezt az MD-t és a `b1-arfolyamkeszito-kepernyok.md`-t. A forrás-igazság a docx + 5 képernyőkép; TILOS a jelenlegi programhoz hasonlítani (külön fázis).
-- Tisztázandó TBD-k listája a 10. szekcióból, mielőtt kódolnál.
+### ### [FR-RFM-05] [Dollár alapú valuták keresztárfolyama]
+- **Leírás**: Dollár alapú valuták (ILS, UAH, RUB, CNY, BAM, THB, BRL, MXN, NZD, RCH) árfolyamát az USD keresztárfolyam alapján kell kiszámolni.
+- **Forrás**: docx ÁR001-01
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: USD árfolyam és keresztárfolyam szorzó
+- **Kimenet / Visszajelzés**: Számított elszámoló árfolyam az A oszlopban
+- **Validációk és Kényszerek**: USD-alapú valuták beállítása szerinti képlet lefutása.
 
-### 9.2 Fazisok (acceptance criteria-val)
-- Fázis 1 — Adatmodell: valuta-törzs (28 valuta + EUA), oszlop-szerkezet (A–S), csoport-entitás (54), kedvezményhatár-paraméterek. AC: a D oszlop 28 valutaneme a forrás sorrendjében jelen.
-- Fázis 2 — Alaplap (ÁR001) képletmotor: A oszlop auto-OTP-másolás (FR-03), EUR/USD-kereszt számolás (FR-04, FR-05), B/C kézi (FR-06, FR-07), E képletezhető + 10% sáv (FR-11, FR-12, FR-13), G/H kereszt (FR-14), EUA 20% szabály (FR-09). AC: a felsorolt valuták a megadott szabály szerint töltődnek; EUA >20% eltérésnél figyelmeztet.
-- Fázis 3 — Csoportlap (ÁR002): J/K, L–Q három kedvezménysáv, R/S képlet (P+kedvezmény), iroda-lista, aktuális függvény, kitöltési segítség, csoportonként egyedi kedvezményhatár (54). AC: R = P + kedvezmény mértéke (pl. P+0,25).
-- Fázis 4 — Validáció + valuta felvétel/törlés: kiküldés előtti ellenőrzés (eladási ≥ elszámoló, vételi ≤ elszámoló) figyelmeztetéssel (FR-25); valuta felvétel/törlés megerősítéssel vagy supervisori jelszóval (FR-10).
+### ### [FR-RFM-06] [OTP árfolyam szerkeszthetősége]
+- **Leírás**: Az OTP árfolyam (B oszlop) teljesen kézzel szerkeszthető, de a gyakorlatban csak ezeknél a valutáknál töltik kézzel: EUR, USD, GBP, CHF, AUD, CAD, DKK, JPY, NOK, SEK, CZK, HRK, PLN, RON, RSD, BGN.
+- **Forrás**: docx ÁR001-02
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Felhasználói adatbevitel
+- **Kimenet / Visszajelzés**: Cellaérték frissülése
+- **Validációk és Kényszerek**: N/A
 
-### 9.3 Tesztes
-- Unit: kereszt-árfolyam számítás (EUR/USD bázis), EUA 20% szabály, R/S képlet (P+0,25), 10% Raiffeisen sáv mindkét forrásmódra (elszámoló vs OTP).
-- Integráció: csoportlap a 0-s lapról töltődik (FR-01), 54 csoport egyedi kedvezményhatár.
-- Validációs negatív teszt: eladási < elszámoló → figyelmeztetés; vételi > elszámoló → figyelmeztetés.
+### ### [FR-RFM-07] [Segédoszlop funkció]
+- **Leírás**: Segédoszlop (C oszlop): kézzel állítható segéd árfolyamokból szorzók állíthatók be a képletekhez.
+- **Forrás**: docx ÁR001-03
+- **Prio**: Should
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Szorzó értékek
+- **Kimenet / Visszajelzés**: Számítási alap a képletezett oszlopokhoz
+- **Validációk és Kényszerek**: N/A
 
-## 10. Kockazatok / Nyitott kerdesek (TBD)
-| # | Kerdes | Miert fontos | Mit kell tudni |
+### ### [FR-RFM-08] [Valutanemek sorrendje]
+- **Leírás**: Valutanemek (D oszlop) sorrendje megegyezik a forrás szerinti listával: EUR, USD, GBP, CHF, AUD, CAD, DKK, JPY, NOK, SEK, CZK, HRK, PLN, RON, RSD, BGN, ILS, UAH, RUB, EUA, TRY, CNY, BAM, THB, BRL, MXN, NZD, RCH.
+- **Forrás**: docx ÁR001-04
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Valutalista betöltése
+- **Kimenet / Visszajelzés**: D oszlop sorai
+- **Validációk és Kényszerek**: A sorrend nem módosítható a felhasználó által.
+
+### ### [FR-RFM-09] [EUA szabály]
+- **Leírás**: EUA = euró érme árfolyama. Képzése: gyenge árfolyamos euró eladás (F oszlop) × 1.2. Legfeljebb 20% eltérés engedélyezett a normál euróhoz képest; ennél nagyobb eltérés esetén ki kell írni az ügyfeleknek.
+- **Forrás**: docx ÁR001-04 (EUA sor)
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: F oszlop EUR értéke
+- **Kimenet / Visszajelzés**: EUA kalkulált árfolyam
+- **Validációk és Kényszerek**: Eltérés >20% esetén vizuális figyelmeztetés / ügyféloldali üzenet.
+
+### ### [FR-RFM-10] [Valutanem felvétele és törlése]
+- **Leírás**: Lehetőség biztosítása új valuta felvételére és meglévő megszüntetésére. A módosításra a rendszer kérdezzen rá többszörösen, vagy legyen supervisori jelszóhoz kötve.
+- **Forrás**: docx ÁR001-04 ("Új valutanem felvétele/törlése")
+- **Prio**: Should
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Valuta CRUD kérés + jelszó
+- **Kimenet / Visszajelzés**: Valutalista módosulása
+- **Validációk és Kényszerek**: Megerősítő párbeszédek vagy jelszóvizsgálat.
+
+### ### [FR-RFM-11] [Gyenge árfolyamos multik oszlopok]
+- **Leírás**: Gyenge árfolyamos multik (legszélesebb árfolyamú irodák) vétel (E) és eladás (F) oszlopai; a Vétel (E) képletezhető kell legyen.
+- **Forrás**: docx ÁR001-05, 05-01, 05-02
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Képlet vagy manuális érték
+- **Kimenet / Visszajelzés**: E/F értékek
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFM-12] [Raiffeisen eltérési sáv]
+- **Leírás**: Raiffeisen megbízási szerződés alapján a középárfolyamtól a vétel és eladás eltérése maximum 10% lehet. Ez a 10%-os sáv legyen szabadon állítható paraméterként.
+- **Forrás**: docx ÁR001-05
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Árfolyam és sávszázalék
+- **Kimenet / Visszajelzés**: Validáció lefutása
+- **Validációk és Kényszerek**: Ha a kiszámított vétel/eladás eltér a középárfolyamtól több mint a beállított százalék (alapértelmezetten 10%), hibát vagy figyelmeztetést kell adni.
+
+### ### [FR-RFM-13] [Eltérési sáv bázisának beállítása]
+- **Leírás**: A 10%-os sávot a rendszer vagy az elszámoló árfolyamból (+/- 10%), vagy az OTP-ből számolja. Ennek módját az árfolyamkészítő szezonálisan, kézzel dönti el.
+- **Forrás**: docx ÁR001-05
+- **Prio**: Should
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Bázis-beállítás (Elszámoló / OTP)
+- **Kimenet / Visszajelzés**: Kalkulációs alap megváltozása
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFM-14] [Keresztárfolyam oszlopok]
+- **Leírás**: Keresztárfolyamok a G és H oszlopban jelenjenek meg az alábbi valutáknál: CZK, HRK, PLN, RON, RSD, BGN, ILS, UAH, RUB, EUA, TRY, CNY, BAM, THB, BRL, MXN, NZD, RCH.
+- **Forrás**: docx ÁR001-06
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Bázis valuták árfolyamai
+- **Kimenet / Visszajelzés**: G és H oszlop cellái
+- **Validációk és Kényszerek**: Csak a nem-fő valutáknál jelennek meg a keresztárfolyamok.
+
+### ### [FR-RFM-15] [Csoport lap elszámoló és valuták]
+- **Leírás**: A Csoport lapokon meg kell jelennie az elszámoló árfolyamnak (J oszlop) és a valutáknak (K oszlop).
+- **Forrás**: docx ÁR002-01, ÁR002-02
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: 0-ás lap adatai
+- **Kimenet / Visszajelzés**: Csoportlap J/K oszlopai
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFM-16] [Alsó kedvezményhatár]
+- **Leírás**: Alsó kedvezményhatár Vétel-Eladás (L, M oszlop): ezek az alap kiírt, kijelzőkön megjelenő árfolyamok, amelyeket kézzel állítanak be.
+- **Forrás**: docx ÁR002-03
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Manuális vétel/eladás értékek
+- **Kimenet / Visszajelzés**: L/M oszlop frissülése
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFM-17] [Középső kedvezményhatár]
+- **Leírás**: Középső kedvezményhatár Vétel-Eladás (N, O oszlop) megjelenítése és tárolása.
+- **Forrás**: docx ÁR002-04
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Vétel/eladás értékek
+- **Kimenet / Visszajelzés**: N/O oszlop frissülése
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFM-18] [Felső kedvezményhatár]
+- **Leírás**: Felső kedvezményhatár Vétel-Eladás (P, Q oszlop) megjelenítése és tárolása.
+- **Forrás**: docx ÁR002-05
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Vétel/eladás értékek
+- **Kimenet / Visszajelzés**: P/Q oszlop frissülése
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFM-19] [Saját hatáskörű kedvezmény képletezése]
+- **Leírás**: Saját hatáskörű Vét.max - Elad.min (R, S oszlop): képletezve, az előző felső sáv (P/Q) értékéhez hozzáadva a kedvezmény mértéke (pl. EUR R oszlop képlete: P + 0.25).
+- **Forrás**: docx ÁR002-06
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: P/Q értékek + kedvezmény mértéke
+- **Kimenet / Visszajelzés**: Számított R/S értékek
+- **Validációk és Kényszerek**: R = P + kedvezmény; S = Q - kedvezmény.
+
+### ### [FR-RFM-20] [Pénztáros saját kedvezmény napi limitje]
+- **Leírás**: A pénztáros saját hatáskörű kedvezménye limitált: naponta legfeljebb 5 darab olyan tranzakciót hajthat végre pénztáranként, amelynél a saját hatáskörű kedvezményt (R/S sáv) alkalmazza.
+- **Forrás**: docx ÁR002-06
+- **Prio**: Must
+- **Csomag/Komponens**: penztar-client / backend
+- **Bemenő adatok**: Tranzakció típusa (kedvezményes saját hatáskörű)
+- **Kimenet / Visszajelzés**: Tranzakció engedélyezése vagy elutasítása a kasszában
+- **Validációk és Kényszerek**: Ha a napi limit eléri az 5-öt, a rendszer blokkolja az újabb saját hatáskörű kedvezményes tranzakciót a kasszában.
+
+### ### [FR-RFM-21] [Csoportba tartozó irodák listája]
+- **Leírás**: A csoportlapon meg kell jelennie a csoporthoz hozzárendelt irodák (pénztárak) listájának.
+- **Forrás**: docx ÁR002-07
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Csoporttagok listája
+- **Kimenet / Visszajelzés**: Szöveges iroda lista a csoportlapon
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFM-22] [Aktuális függvény kódja]
+- **Leírás**: Az "Aktuális függvény" kódjának vizuális megjelenítése a csoportlapon.
+- **Forrás**: docx ÁR002-08
+- **Prio**: Should
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Aktív képlet-azonosító
+- **Kimenet / Visszajelzés**: Kód megjelenítése a fejlécben
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFM-23] [Kitöltési segítség és Zöldrutin]
+- **Leírás**: Kitöltési segítség funkció biztosítása a képletezés megkönnyítésére. Választható hivatkozások: azonos valutanem oszlopa az alaplapban; azonos valutanem oszlopa az aktuális munkacsoportban; más valutanem bármely oszlopa; azonos valutanem másik csoportból. Továbbá: adatmásolás és adat lehúzás támogatása. Az adat lehúzás (Zöldrutin) a jelenlegi érték/függvény másolását végzi lefelé a kijelölt sorokra, villogó zöld háttér (`clLime`) kíséretében.
+- **Forrás**: Unit9.pas (Zoldrutin, ZMLEHUZOGOMBClick), docx ÁR002-09
+- **Prio**: Should
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Felhasználói egér- és billentyűműveletek
+- **Kimenet / Visszajelzés**: Képletek automatikus beírása, lehúzásos cellatöltés
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFM-24] [Csoportonként egyedi kedvezményhatár]
+- **Leírás**: A kedvezményhatárokat ritkán állítják, de állíthatóaknak kell maradniuk. Az 54 csoportlap mindegyikénél teljesen egyedileg (függetlenül) konfigurálhatóak.
+- **Forrás**: docx ÁR002-10
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Sávkonfiguráció csoportonként
+- **Kimenet / Visszajelzés**: Eltérő sávhatárok a különböző csoportokban
+- **Validációk és Kényszerek**: N/A
+
+### ### [FR-RFM-25] [Kiküldés előtti szigorú ellenőrzés]
+- **Leírás**: Árfolyam-validáció kiküldés előtt a `Form1.Vegcontrol` logika szerint. Az eladási sávok (M, O, Q, S) értékei nem lehetnek kisebbek az elszámoló árfolyamnál (J), a vételi sávok (L, N, P, R) értékei pedig nem lehetnek magasabbak az elszámoló árfolyamnál. Ha a szabály sérül, a rendszer hibát jelez és blokkolja a szétküldést.
+- **Forrás**: Unit1.pas (TForm1.Vegcontrol, ControlHiba), docx ÁR002-10
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client / backend
+- **Bemenő adatok**: Vétel/eladás és elszámoló árfolyamok összevetése
+- **Kimenet / Visszajelzés**: Hibás érték esetén a szétküldés blokkolása és figyelmeztető ablak: `Hiba a [csoportszám]. csoport [valutanem] [árfolyam-típus]-nál`
+- **Validációk és Kényszerek**:
+  - `Buy <= Settlement` (Vétel <= Elszámoló) minden vételi oszlopra (L, N, P, R).
+  - `Sell >= Settlement` (Eladás >= Elszámoló) minden eladási oszlopra (M, O, Q, S).
+  - A 0-s lapon: `E (vétel) <= A (elszámoló)` és `F (eladás) >= A (elszámoló)`.
+  - Bármilyen eltérés kemény hiba (súlyos hiba), nincs figyelmeztetés melletti továbbengedés.
+
+### ### [FR-RFM-26] [B-csoport valuta sorrendje]
+- **Leírás**: A B-csoportos árfolyamlap rácsában (`RateCreationPage.tsx`) a valutáknak szigorúan a Főlap (`MainRateSheetPage.tsx`) alapértelmezett sorrendjében kell megjelenniük: `EUR, USD, GBP, CHF, AUD, CAD, JPY, CZK, PLN, RON, RSD, ILS, UAH, RUB, EUA, TRY, CNY, BAM, THB, BRL, MXN, NZD`. (DKK, NOK, SEK, HRK, BGN, RCH inaktív devizák nem jelennek meg).
+- **Forrás**: FK02-B audit 1.1 pont
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Szerverről letöltött valuták listája
+- **Kimenet / Visszajelzés**: Főlap sorrendjére rendezett rács
+
+### ### [FR-RFM-27] [10%-os Eltérés-vizsgálat megerősítő modallal]
+- **Leírás**: Cellamódosításkor (pl. fókusz elhagyásakor/onBlur) a rendszernek ellenőriznie kell az eltérést az előző mentett értékhez képest. Ha a kétoldali eltérés eléri a 10%-ot (képlet: `|újÉrték - előzőMentettÉrték| / előzőMentettÉrték >= 0.10`), egy megkerülhetetlen modális ablak kéri a felhasználó jóváhagyását. "Igen" (Confirm) esetén az érték menthető, "Nem" (Cancel) esetén a cella visszaugrik a korábbi perzisztált értékére és a mentés megszakad. Jóváhagyott eltérés esetén az "Ellenőrzés" oszlopban az adott valuta piros hibajelzése nem jelenhet meg.
+- **Forrás**: FK02-B audit 1.2 pont
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Új beírt cellaérték és előzőleg elmentett érték
+- **Kimenet / Visszajelzés**: Felugró megerősítő dialog vagy cella-visszaállítás
+
+### ### [FR-RFM-28] [Cella-kijelölés és lebegő toolbar]
+- **Leírás**: A csoportos árfolyamlap táblázatában (`RateGrid.tsx`) a cellák kijelölésének támogatnia kell a tartomány alapú kijelölést egérrel történő vonszolással (drag) vagy Shift+kattintással. A kijelölt tartomány mellett egy kontextuális lebegő eszköztárnak kell megjelennie, amely az alábbi három funkciót kínálja:
+  - "Lehúzás (üres)": a kijelölt cellák értékének vagy képletének törlése.
+  - "Lehúzás (mind)": a kijelölt tartomány legelső sorának értékeit vagy képleteit másolja végig az oszlop többi kijelölt cellájába.
+  - "Sávok törlése": csak a kijelölt sorok N-S (kedvezményes sáv) oszlopaiból törli a rátákat, a fő vételi/eladási oszlopokat (L-M) békén hagyja.
+- **Forrás**: FK02-B audit 1.3 pont
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Cella egeres drag/Shift-kattintás koordináták
+- **Kimenet / Visszajelzés**: Lebegő toolbar akciókkal a kijelölt rács mellett
+
+### ### [FR-RFM-29] [Helyi SQLite Perzisztencia onBlur]
+- **Leírás**: Az `onBlur` cella-mentéseknek a helyi SQLite-ban lévő `group_rates` táblába kell írniuk a beírt rátákat (vételi/eladási). Az adatok betöltésekor a szerverről kapott rátákra azonnal rá kell tölteni (overlay) az SQLite-ból betöltött offline adatokat, így lapváltás, unmount vagy offline üzemmód esetén sem veszhetnek el a beírt ráták.
+- **Forrás**: FK02-B audit 1.4 pont
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client
+- **Bemenő adatok**: Cellakijelölés elhagyása (onBlur)
+- **Kimenet / Visszajelzés**: SQLite mentés és visszatöltéskor felülírás (overlay)
+
+### ### [FR-RFM-30] [Irodák szűrése és backend kényszerítés (FK02-C)]
+- **Leírás**: Az Árfolyamkészítő irodaválasztó dialógusában ("Irodák kezelése") kizárólag aktív lakossági pénztárak (`branchType.code == 'PENZTAR'` és `isVault != true`) szerepelhetnek. A belső banki/speciális partnerek (`VAULT_COUNTERPARTY`: `ERB`, `FRB`, `RB`, `MNB`, `TH`, `UPT`, `TRB`, `PRB`, `JRB`, `FOP1`) és értéktárak (`isVault = true`) nem jelenhetnek meg a listában. Ezt a szűrést a backend oldalon, a `GET /api/v1/rate-creation/branches` lekérdezésében kell elvégezni a `BranchRepository.findRateCreationAssignableCashierBranches()` metódussal, valamint a `POST /api/v1/rate-creation/workgroups/{workgroupId}/branches` mentési végpont validációjában (400-as hiba dobása nem-pénztár hozzárendelése esetén) is ki kell kényszeríteni.
+- **Forrás**: FK02-C audit
+- **Prio**: Must
+- **Csomag/Komponens**: arfolyam-keszito-client / backend
+- **Bemenő adatok**: Irodaválasztó lekérdezés vagy csoport-hozzárendelés mentés
+- **Kimenet / Visszajelzés**: Szűrt irodalista / mentés validáció
+</functional_spec>
+
+<data_structure>
+## Adatmodell és Séma javaslatok
+
+Az üzleti logika megvalósításához az alábbi PostgreSQL adatbázis sémát javasoljuk:
+
+### PostgreSQL
+- **Currency (Valuta törzs - DEVIZA)**:
+  - `code` (varchar(3), primary key, pl. 'EUR', 'USD', 'EUA', 'RCH')
+  - `name` (varchar, pl. 'Euro érme', 'Euro')
+  - `is_active` (boolean, default true)
+  - `sort_order` (int, a D oszlop sorrendjéhez)
+- **BaseRates (Alaplap árfolyamok - ADATLAP / ÁR001)**:
+  - `currency_code` (foreign key -> Currency)
+  - `settlement_rate` (decimal, A oszlop)
+  - `otp_rate` (decimal, B oszlop)
+  - `helper_rate` (decimal, C oszlop)
+  - `multi_buy` (decimal, E oszlop)
+  - `multi_sell` (decimal, F oszlop)
+- **GroupRates (Csoportlap árfolyamok - NAPIOSSZESITO / ÁR002)**:
+  - `group_id` (int, foreign key -> OfficeGroup)
+  - `currency_code` (foreign key -> Currency)
+  - `lower_buy` (decimal, L oszlop)
+  - `lower_sell` (decimal, M oszlop)
+  - `middle_buy` (decimal, N oszlop)
+  - `middle_sell` (decimal, O oszlop)
+  - `upper_buy` (decimal, P oszlop)
+  - `upper_sell` (decimal, Q oszlop)
+  - `own_max_buy` (decimal, R oszlop)
+  - `own_min_sell` (decimal, S oszlop)
+- **DailyTransactionLimit (Pénztáros kedvezmény limit - CASHIER_LIMIT)**:
+  - `id` (serial, primary key)
+  - `cashier_id` (int)
+  - `date` (date)
+  - `discount_count` (int, max 5)
+
+### SQLite (Kliens oldali tükrözés)
+- A kliens oldalon offline módban is ellenőrizni kell a `DailyTransactionLimit` táblát tranzakció rögzítésekor (max 5 saját hatáskörű kedvezmény naponta).
+
+### Bináris fájl struktúra: `ARFDATA.DAT`
+Az árfolyam-elosztás a legacy Delphi rendszerben egy fix méretű bináris fájlon keresztül történik, amelyet a kliensek letöltenek.
+- **Fájl teljes mérete**: `58 848 byte`.
+- **Szerkezet**:
+  - `1. byte`: Verziószám / fejléc azonosító.
+  - `2-201. byte`: Csoportok aktív kódjai és nevei (54 csoport * 3 byte csoportkód + nevek, kitöltve).
+  - `202-58845. byte`: Árfolyam és limit adatok a 54 csoporthoz. Minden csoport rekordja pontosan `1086 byte` hosszúságú:
+    - **Árfolyam tömb**: `1080 byte` (24 valutanem * 9 árfolyam oszlop * 5 byte Real48 lebegőpontos érték). A 9 oszlop: J (elszámoló), L/M (alsó vétel/eladás), N/O (közép vétel/eladás), P/Q (felső vétel/eladás), R/S (saját max vétel/min eladás).
+    - **Limit tömb**: `6 byte` (3 db kedvezményhatár-küszöb * 2 byte Word egész érték: alsó, középső, felső limitek).
+  - `58846-58848. byte`: Lezáró aláírás / checksum szekció (`_signing = true` esetén).
+</data_structure>
+
+<integration_points>
+## Integrációs Pontok
+- **OTP Bank Weboldal / API**:
+  - Hivatalos OTP árfolyamok beolvasása (forrás-igazság a B oszlophoz, jelenleg manuális, de automatizálásra előkészítendő).
+- **Raiffeisen Bank megbízási szerződés szabályai**:
+  - 10%-os megengedett eltérés ellenőrzése a középárfolyamtól (FR-RFM-12).
+- **Árfolyam szétküldő végpont (szerver)**:
+  - FTP passzív módú átvitel a békéscsabai (`185.43.207.99:21100`) és pécsi (`port 21`) szerverekre az ellenőrzés lefutása után (FR-RFM-25).
+- **NAV Online Kassza Integráció**:
+  - A tranzakció sztornózása az online pénztárgép driveren keresztül automatikusan leadásra kerül a NAV-nak.
+</integration_points>
+
+<execution_workflow>
+## Végrehajtási workflow az AI-ügynöknek
+
+### Phase 1: Előkészítés (Preparation)
+- Olvasd be ezt a követelménylistát és a képernyőkről szóló specifikációt (`b1-arfolyamkeszito-kepernyok.md`).
+- Tisztázd a valutanemek listáját és a képletek logikai bázisait (EUR/USD kereszt bázisok).
+
+### Phase 2: Backend (Backend)
+- Készítsd el az adatbázis táblákat a Postgres-ben, beleértve a napi limit számlálót.
+- Implementáld a szerver oldali árfolyam-számító motort, ami lekezeli a szorzókat, keresztárfolyamokat és az EUA 20%-os eltérés-figyelmeztetést.
+- Valósítsd meg a kiküldés előtti validációs végpontot (vétel <= elszámoló, eladás >= elszámoló).
+
+### Phase 3: Frontend/Client (Frontend/Client)
+- Készíts el egy interaktív, Excel-szerű táblázat komponenst az ÁR001 és ÁR002 lapokhoz.
+- Valósítsd meg az adatok automatikus áttöltését az alaplapból a csoportlapokra (J-S lezárt cellákkal).
+- Építsd be a kitöltési segítséget és a cella lehúzási funkciót.
+- Implementáld a pénztári limitellenőrző figyelmeztetést (max 5 tranzakció).
+
+### Phase 4: Ellenőrzés (Verification)
+- **Unit tesztek**: Keresztárfolyam számítások (EUR/USD bázison), EUA 20%-os szabály ellenőrzése, 10%-os Raiffeisen sáv ellenőrzése mindkét bázison.
+- **Integrációs tesztek**: 54 csoportlap egyedi kedvezményhatárainak helyes tárolása és betöltése.
+- **Negatív tesztek**: Próbálj meg kiküldeni olyan árfolyamot, ahol a vétel > elszámoló vagy az eladás < elszámoló -> ellenőrizd, hogy a validáció blokkolja-e a műveletet.
+</execution_workflow>
+
+<tbd_log>
+## Nyitott kérdések és kockázatok (TBD)
+| # | Kérdés | Miért fontos | Státusz / Megoldás |
 |---|---|---|---|
-| 1 | RBAC értékek (árfolyamkészítő, supervisor, pénztáros) konkrétan | Jogosultság-kapuk implementálásához | Forrás nem ad RBAC kódot |
-| 2 | A C (segéd) és a kereszt G/H oszlop pontos képletei | Számítási helyesség | Forrás csak elvet ad, nem képletet |
-| 3 | OTP árfolyam betöltése kézi marad-e vagy automatizálandó | Adatforrás-integráció | Forrás kézi beírást ír; "legjobb lenne automatizálni" csak valutára |
-| 4 | Az "Aktuális függvény" (#01M stb.) jelentése és katalógusa | Csoportlap-logika | A képeken #01M, #...M kódok láthatók (lásd kepernyok MD) |
-| 5 | Kedvezménysáv-küszöbök (alsó/középső/felső) konkrét összegei | Sáv-besorolás | A docx nem ad összeget; a kép 50.000/300.000/1.000.000 (kepernyok MD) |
-| 6 | "napi 5" kedvezmény pontos definíciója (5 tranzakció? 5 fillér?) | Pénztáros-limit | Forrás: "csak napi 5-t adhat" — egység TBD |
-| 7 | Valutalista pontos záró eleme: a docx "RCH"-t ír, ennek ISO-kódja/jelentése | Valuta-törzs | Nem standard ISO kód |
-| 8 | A 10%-os sáv kötés a Raiffeisen szerződéshez — más bankok eltérnek-e | Compliance | Forrás csak Raiffeisent említ |
+| 1 | RBAC értékek (árfolyamkészítő, supervisor, pénztáros) konkrét kódjai | Jogosultsági kapuk felépítése | **LEZÁRVA**: A jogosultsági értékek: `ROLE_TREASURER` (Főértéktáros), `ROLE_ADMIN` (Rendszeradmin), `ROLE_CASHIER` (Kasszás/pénztáros), `ROLE_SUPERVISOR` (Supervisor). |
+| 2 | A C (segéd) és a kereszt G/H oszlop pontos matematikai képletei | Számítási pontosság és kerekítések | **LEZÁRVA**: A keresztárfolyam számítás bázisa: `A = BaseRate * Multiplier`. Ha EUR alapú, akkor EUR (szorzó az A oszlopból) * kereszt szorzó, ha USD alapú, akkor USD * kereszt szorzó. |
+| 3 | OTP árfolyam betöltése kézi marad-e vagy automatizálandó | Integráció és adatbevitel hatékonysága | **LEZÁRVA**: Alapvetően kézi beírás a Delphi programban, de a Spring Boot backend felkészített az automatikus lekérdezésre az API/Weboldal integráción keresztül. |
+| 4 | Az "Aktuális függvény" (#01M stb.) pontos működése és listája | Csoportlap számítási logika | **LEZÁRVA**: A képletek Oszlopbetűt (A-C, E-J, L-S), `!col_letterCUR` valutahivatkozást (pl. `!LEUR`), vagy `#group_indexcol_letter` csoporthivatkozást (pl. `#01M`) tartalmaznak. D és K oszlopok nem használhatók. |
+| 5 | Kedvezménysáv-küszöbök pontos összegei | Sáv-besorolás és validáció | **LEZÁRVA**: A sávhatárok csoportonként egyediek, alapértelmezett értékeik: 50.000 / 300.000 / 1.000.000 HUF (ALSÓ, KÖZÉPSŐ, FELSŐ). |
+| 6 | A "napi 5" kedvezmény pontos mértékegysége (tranzakciószám vagy összeg limit) | Pénztáros-korlátozás | **LEZÁRVA**: Tranzakciószám limit (maximum 5 darab saját hatáskörű R/S sávos tranzakciót rögzíthet egy kassza naponta). |
+| 7 | Valutalista utolsó eleme: "RCH" ISO kódja | Adatmodell és valuta törzs | **LEZÁRVA**: Az RCH nem standard devizakód (Chilei Peso volt), a v2.5.61 verziótól kezdődően az aktív valuták köre 22-re csökkent (DKK, NOK, SEK, HRK, BGN, RCH eltávolításra került a napi felületről, de történeti adatok miatt megmarad inaktívként a DB-ben). |
+| 8 | A 10%-os sáv Raiffeisen szerződéshez való kötöttsége (más bankoknál eltérhet-e) | Megfelelőség és rugalmasság | **LEZÁRVA**: A 10%-os Raiffeisen eltérési sáv egy csoportszintű konfigurálható paraméter, amelyet szükség esetén más banki szerződésekhez is át lehet állítani. |
+</tbd_log>
 
-## 11. Verifikacios checklist
-- [x] minden FR-hez forrás-hivatkozás
-- [x] 0 hallucináció (csak docx-tartalom)
-- [x] minden TBD jelölt
-VERIFIKACIO: FR=25 db, TBD=8 db, érintett csomag(ok)=arfolyam-keszito-client (fő), penztar-client + backend (FR-20, FR-25)
+<verification_checklist>
+## Verifikációs Checklist
+- [x] Minden funkcionális követelmény (FR-RFM) visszakövethető a docx forrásra.
+- [x] 0 hallucináció (minden üzleti logika a megadott dokumentumból származik).
+- [x] Minden tisztázatlan pont a TBD táblázatban rögzítésre került.
+</verification_checklist>

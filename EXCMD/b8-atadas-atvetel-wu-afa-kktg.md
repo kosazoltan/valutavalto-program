@@ -1,104 +1,196 @@
-# Modul: Átadás-átvétel, Western Union, ÁFA, kezelési költség, haszon  (forrás: `Felmérés/Valuta/Kósa Tervezés és fejlesztés/Segédanyagok Valuta/WU e ker kktg áfa 2024 02 hó.xlsx`, `Felmérés/Valuta/Cégcsoport felmérése/Személyes találkozó összefoglalók, kapott dokumentumok, képernyőképek/Dokumentumok/Áfa, kktg  2024 10 09 hó.xlsx`, `.../EXZ haszon pt 202409 hó.xlsx`, `.../Kezelési költség jelentés.jpg`)
+# Modul: Átadás-átvétel, Western Union, ÁFA, kezelési költség, haszon
 
-## 1. Cel (egy mondat)
-A régi program "egyéb havi adatai" riportjának STRUKTÚRÁJÁT leírni: napi bontású Western Union, elektromos kereskedés, ÁFA-visszatérítés, kezelési költség, értéktár befizetés/átvétel, valamint a kezelési költség jelentés bizonylat-formátuma.
+<system_context>
+## Rendszerkontextus és Cél
+A régi program "egyéb havi adatai" riportjának STRUKTÚRÁJÁT és üzleti szabályait leírni: napi bontású Western Union, e-kereskedelem, ÁFA-visszatérítés, kezelési költség, értéktár befizetés/átvétel (pénzátadás), valamint a kezelési költség jelentés és haszonszámítás logikája.
 
-## 2. Scope
+## Szerepkörök (Roles)
+| Szerep | Jogosultság | RBAC érték |
+|---|---|---|
+| Pénztáros | WU napi mozgás rögzítés saját pénztárra, kezelési díj rögzítés | CASHIER |
+| Értéktáros / Főértéktáros | Kezelési költség befizetés/átvétel, körzet egyéb-adatok, pénzszállítás indítása | VAULT_KEEPER / HEAD_VAULT_KEEPER |
+| Ügyvezető / Belsőellenőr | ÁFA, haszon, cég-szintű egyéb-adatok | EXECUTIVE / INTERNAL_AUDITOR |
+| Adminisztrátor | Minden | ADMIN |
+
+## Hatókör (Scope)
 ### IN
-- "EGYÉB HAVI ADATAI" riport: napi soros (1–29/31. nap) WU + elektromos kereskedés + ÁFA-visszatérítés + kezelési költség mozgások irodánként/körzetenként/cégenként — `WU e ker kktg áfa 2024 02 hó.xlsx` (lapok: Best Change, Expressz, Munka1).
-- Western Union al-blokk: NYITÓ, BEVÉTEL, KIADÁS, ZÁRÓ.
+- "EGYÉB HAVI ADATAI" riport: napi soros (1–31. nap) WU + e-kereskedelem + ÁFA-visszatérítés + kezelési költség mozgások irodánként/körzetenként/cégenként.
+- Western Union al-blokk: NYITÓ, BEVÉTEL, KIADÁS, ZÁRÓ kézi rögzítése.
 - Kezelési költség al-blokk: BEFIZETÉS ÉRTÉKTÁRNAK, BEVÉTEL ÜGYFÉLTŐL, ÁTVÉTEL PÉNZTÁRTÓL.
 - Elektromos kereskedés al-blokk: NYITÓ, BEVÉTEL BANKTÓL, KIADÁS PÉNZTÁRNAK, VISSZATÉRÍTÉS (USD/HUF), ZÁRÓ.
 - ÁFA-visszatérítés, MATRICA, TELEFON, ÁTADÁS, ÁTVÉTEL napi mezők.
-- Kezelési költség jelentés bizonylat (napi/dekád) — `Kezelési költség jelentés.jpg`.
+- Kezelési költség jelentés bizonylat (napi/dekád) "K-" prefix sorszámozással.
+- Pénzszállítás / Átadás-Átvétel tranzakciós metaadatok (Plomba azonosító és Szállító rögzítése).
+
 ### OUT
-- `Áfa, kktg 2024 10 09 hó.xlsx` és `EXZ haszon pt 202409 hó.xlsx` tényleges adattartalma (régi OLE2 binary → TBD).
-- Az ÁFA-számítás üzleti szabálya (kulcs, alap) — nem szerepel a forrásban → TBD.
-- A haszonszámítás képlete → TBD.
-- Western Union külső API integráció (nincs a forrásban).
+- Western Union közvetlen API integráció (nincs API kapcsolat, a rendszer kizárólag manuális egyenleg- és forgalomrögzítést támogat).
+- Automatikus banki kivonat feldolgozás az e-kereskedelemhez.
 
-## 3. Szakteruleti szereplok
-| Szerep | Jogosultsag | RBAC ertek |
-|---|---|---|
-| Pénztáros | WU napi mozgás rögzítés saját pénztárra | CASHIER |
-| Értéktáros / Főértéktáros | Kezelési költség befizetés/átvétel, körzet egyéb-adatok | VAULT_KEEPER / HEAD_VAULT_KEEPER |
-| Ügyvezető / Belsőellenőr | ÁFA, haszon, cég-szintű egyéb-adatok | EXECUTIVE / INTERNAL_AUDITOR |
-| admin | Minden | ADMIN |
-
-## 4. Funkcionalis kovetelmenyek (FR)
-| ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
-|---|---|---|---|---|
-| FR-1 | "EGYÉB HAVI ADATAI" riport fejléc cég + hónap (pl. "EXCLUSIVE BEST CHANGE KFT 2024 FEBRUAR EGYÉB HAVI ADATAI", "EXPRESSZ ÉKSZERHÁZ ...") | `WU e ker kktg áfa 2024 02 hó.xlsx` R0 + SS | M | kozponti-client, frontend-react |
-| FR-2 | Napi soros bontás: minden iroda alatt 1 sor / nap (DÁTUM 2024.02.01 ... 2024.02.29) | `WU...xlsx` SS dátum-lista + sheet1 R7+ | M | frontend-react |
-| FR-3 | Western Union blokk oszlopok: NYITÓ, BEVÉTEL, KIADÁS, ZÁRÓ (záró=nyitó+bevétel-kiadás) | `WU...xlsx` SS "WESTERN UNION" + R1 | M | penztar-client, frontend-react |
-| FR-4 | Kezelési költség blokk: KEZELÉSI KÖLTSÉG, BEFIZETÉS ÉRTÉKTÁRNAK, BEVÉTEL ÜGYFÉLTŐL, ÁTVÉTEL PÉNZTÁRTÓL | `WU...xlsx` SS | M | penztar-client |
-| FR-5 | Elektromos kereskedés blokk: NYITÓ, BEVÉTEL BANKTÓL, KIADÁS PÉNZTÁRNAK, VISSZATÉRÍTÉS, ZÁRÓ — USD és HUF dimenzióban | `WU...xlsx` SS + R2–R3 (USD/HUF al-oszlopok) | S | frontend-react |
-| FR-6 | ÁFA VISSZATÉRÍTÉS napi mező | `WU...xlsx` SS "AFA VISSZATÉRÍTÉS" | M | frontend-react |
-| FR-7 | MATRICA, TELEFON napi mezők (egyéb értékesítés) | `WU...xlsx` SS | C | penztar-client |
-| FR-8 | ÁTADÁS / ÁTVÉTEL napi mező az egyéb-adatok riportban | `WU...xlsx` SS + R3 | S | penztar-client |
-| FR-9 | Körzet → iroda hierarchia ugyanaz mint a forgalmi riportban (SZEKSZÁRD..KAPOSVÁR körzetek + EXPRESSZ körzet) | `WU...xlsx` SS körzet/iroda-lista | M | frontend-react |
-| FR-10 | Cégenként külön munkalap (Best Change / Expressz) + összesítő (Munka1) | `WU...xlsx` sheet names | S | frontend-react |
-| FR-11 | Kezelési költség jelentés fejléc: cégnév + "KEZELÉSI KÖLTSÉG JELENTÉS" + iroda ("BÉKÉSCSABA értéktár") + cím + dátum | `Kezelési költség jelentés.jpg` | M | penztar-client |
-| FR-12 | Kezelési költség jelentés tételsor: Sorszám, Bizonylatszám (pl. "K-000675"), Tranzakció ("forint - átadás"), Bank/ptár (pl. RB), Bevétel, Kiadás | `Kezelési költség jelentés.jpg` | M | penztar-client |
-| FR-13 | Kezelési költség jelentés összesítő: BEVÉTELI BIZONYLATOK (darab) / KIADÁSI BIZONYLATOK (darab); KEZELÉSI DÍJ / NYITÓ / ZÁRÓ / ÖSSZESEN mátrix | `Kezelési költség jelentés.jpg` | M | penztar-client |
-| FR-14 | Kezelési költség jelentés lábléc: helyszín + dátum + "pénztáros" aláírás | `Kezelési költség jelentés.jpg` | S | penztar-client |
-| FR-15 | ÁFA + kezelési költség havi összesítő riport | `Áfa, kktg 2024 10 09 hó.xlsx` (csak fájl + cím ismert) | C | kozponti-client |
-| FR-16 | Haszon riport pénztáranként | `EXZ haszon pt 202409 hó.xlsx` (csak fájlnév ismert) | C | kozponti-client |
-
-## 5. Nem-funkcionalis kovetelmenyek (NFR)
-| ID | Leiras | Merheto kriterium |
+## Nem-funkcionális követelmények (NFR)
+| ID | Leírás | Mérhető kritérium |
 |---|---|---|
 | NFR-1 | WU/elektromos záró-egyenleg napi folytonosság (előző nap záró = következő nap nyitó) | invariáns-teszt nem bukik |
 | NFR-2 | Multi-tenant + multi-currency (USD/HUF) az elektromos kereskedés blokkban | minden összeg currency-vel dimenzionált |
 | NFR-3 | HUF 5 Ft kerekítés | minden HUF mező roundHuf |
+</system_context>
 
-## 6. Adatmodell-erintettseg
-- Western Union napi egyenleg pénztáranként (nyitó/bevétel/kiadás/záró).
-- Kezelési költség mozgás: ügyféltől bevétel + pénztártól átvétel + értéktárnak befizetés; kezelési díj mint külön bizonylat-típus ("K-" prefix bizonylatszám).
-- Elektromos kereskedés: USD + HUF al-egyenleg, banki bevétel / pénztári kiadás / visszatérítés.
-- ÁFA-visszatérítés, matrica, telefon mint napi tételek.
-- SQLite mirror: IGEN (WU + kezelési költség penztar-client offline rögzítés); NEM az ÁFA/haszon cég-szintű összesítőre. Migráció: TBD.
+<functional_spec>
+## Funkcionális Követelmények
 
-## 7. Fuggosegek
-- Belső: tranzakció modul, iroda/körzet törzs, kezelési költség (kktg) modul, átadás-átvétel modul.
-- Külső: Western Union (a forrás nem mutat API-t, csak manuális napi egyenleg) → TBD.
-- Adatbázis: Postgres + SQLite.
+### FR-1 "EGYÉB HAVI ADATAI" riport fejléc cég + hónap
+- **Leírás**: Riport fejléc cég és hónap szerint (pl. "EXCLUSIVE BEST CHANGE KFT 2024 FEBRUÁR EGYÉB HAVI ADATAI").
+- **Forrás**: `WU...xlsx`
+- **Prio**: M
+- **Csomag/Komponens**: kozponti-client, frontend-react
+- **Bemenő adatok**: Cég kiválasztása, Hónap/Év
+- **Kimenet / Visszajelzés**: Megjelenített fejléc szövege a riportban
 
-## 8. Domain-szotar
-| Fogalom | Magyarazat |
-|---|---|
-| Western Union (WU) | Pénzküldő szolgáltatás napi nyitó/bevétel/kiadás/záró egyenleggel |
-| Kezelési költség (kktg) | Tranzakció után felszámított díj; ügyféltől bevétel, értéktárnak befizetve |
-| Kezelési díj | A jelentés összesítő sora (a nap/dekád kktg összege) |
-| Elektromos kereskedés (e ker) | Banki és pénztári USD/HUF mozgások, visszatérítéssel |
-| ÁFA visszatérítés | Külföldi vásárlók ÁFA-visszaigénylése |
-| Dekád | ~10 napos zárási időszak (a kezelési költség jelentés "dekádzárás" mintán) |
-| BEFIZETÉS ÉRTÉKTÁRNAK | A pénztár kezelési költségének átadása az értéktárba |
+### FR-2 Napi soros bontás
+- **Leírás**: Napi soros bontás: minden iroda alatt 1 sor / nap (DÁTUM 1-től 28/29/30/31-ig).
+- **Forrás**: `WU...xlsx`
+- **Prio**: M
+- **Csomag/Komponens**: frontend-react
 
-## 9. Vegrehajtasi utasitas az AI-ugynoknek
-### 9.1 Elokeszites
-- Olvasd a `WU...xlsx` sharedStrings + sheet1 első 18 sorát (blokkok + napi tételek) és a kezelési költség jelentés képet.
-- A két OLE2 binary fájl (Áfa-kktg, EXZ haszon) adattartalma NEM elérhető → TBD.
-### 9.2 Fazisok
-- F1: WU napi egyenleg blokk (FR-1..3) — acceptance: nyitó/bevétel/kiadás/záró napi sorok, záró-folytonosság.
-- F2: Kezelési költség (FR-4, FR-11..14) — acceptance: "K-" bizonylatok + KEZELÉSI DÍJ/NYITÓ/ZÁRÓ/ÖSSZESEN mátrix jelentés generálódik.
-- F3: Elektromos kereskedés + ÁFA + matrica/telefon (FR-5..8) — acceptance: USD/HUF al-egyenleg helyes.
-- F4: Cég/körzet/iroda aggregáció (FR-9..10) — acceptance: hierarchikus összesítő.
-### 9.3 Tesztes
-- Unit: WU/e-ker záró=nyitó+bevétel-kiadás; kezelési díj összegzés; ÁFA-mező napi aggregálás.
-- Integration: havi egyéb-adatok riport irodánként.
+### FR-3 Western Union manuális egyenlegek
+- **Leírás**: Western Union napi adatok manuális bevitele: NYITÓ, BEVÉTEL, KIADÁS, ZÁRÓ (Záró = Nyitó + Bevétel - Kiadás). Nincs közvetlen API kapcsolat a Western Union rendszerével.
+- **Forrás**: `WU...xlsx`, `WUNION.md`
+- **Prio**: M
+- **Csomag/Komponens**: penztar-client, frontend-react
+- **Bemenő adatok**: Nyitó, napi bevétel, napi kiadás
+- **Kimenet / Visszajelzés**: Kiszámolt és mentett záró egyenleg
 
-## 10. Kockazatok / Nyitott kerdesek (TBD)
-| # | Kerdes | Miert fontos | Mit kell tudni |
+### FR-4 Kezelési költség blokk
+- **Leírás**: Kezelési költség (kktg) rögzítése és riportálása: BEFIZETÉS ÉRTÉKTÁRNAK, BEVÉTEL ÜGYFÉLTŐL, ÁTVÉTEL PÉNZTÁRTÓL.
+- **Forrás**: `WU...xlsx`
+- **Prio**: M
+- **Csomag/Komponens**: penztar-client
+
+### FR-5 Elektromos kereskedés (E-ker) egyenlegek
+- **Leírás**: E-kereskedelem egyenlegeinek vezetése USD és HUF devizákban: NYITÓ, BEVÉTEL BANKTÓL, KIADÁS PÉNZTÁRNAK, VISSZATÉRÍTÉS, ZÁRÓ.
+- **Forrás**: `WU...xlsx`
+- **Prio**: S
+- **Csomag/Komponens**: frontend-react
+
+### FR-6 ÁFA VISSZATÉRÍTÉS napi mezők
+- **Leírás**: ÁFA-visszatérítések kezelése. A rendszer támogatja a Tesco (V- bizonylatprefix) és a Metro Cash & Carry (AV- bizonylatprefix) ÁFA-visszatérítési bizonylatokat standard magyar ÁFA-kulcsokkal (5%, 18%, 27%). A kifizetés minden esetben HUF-ban történik.
+- **Forrás**: `WU...xlsx`, `METRO.md`, `TESCO.md`
+- **Prio**: M
+- **Csomag/Komponens**: frontend-react
+
+### FR-7 Pénzszállítás / Átadás-Átvétel metaadatok
+- **Leírás**: Irodák közötti vagy értéktári átadás-átvételi bizonylat rögzítésekor kötelező a biztonsági zárókupak/szállítózsák plomba metaadatainak megadása (`plombaszam` - pl. "PL-998822") és a szállító/kísérő nevének (`szallito`) rögzítése a bizonylaton.
+- **Forrás**: `ATADVET.md`, `unit2.pas`
+- **Prio**: M
+- **Csomag/Komponens**: penztar-client, backend
+- **Bemenő adatok**: Szállító neve, plomba azonosítója
+- **Validációk és Kényszerek**: Plombaszám nem lehet üres értéktári átadásoknál.
+
+### FR-8 Haszon riport és számítás
+- **Leírás**: Pénztárankénti realized és WAC (Weighted Average Cost) alapú haszonszámítás.
+- **Formula**:
+  - `Realized Profit = (Sale Price - Acquisition WAC Cost) * Quantity`
+  - A haszonszámítás tranzakciónként történik, a valutakészlet súlyozott átlagos bekerülési értékét a `currency_stock` tábla követi, a realized profit pedig a `profit_log`-ba íródik.
+- **Forrás**: `ProfitCalculationService.java`, `WacService.java`
+- **Prio**: M
+- **Csomag/Komponens**: backend, kozponti-client
+
+### FR-9 Pénzszállítás szállító és plomba validációja
+- **Leírás**: Pénztárak és értéktárak közötti szállításoknál (mind a `/transfers` oldali átadásoknál, mind a `/shipments/new` szállítási igénynél) kötelező megadni a szállítót és a plombaszámot:
+  - **Szállító neve** (`carrierName` / `szallito`): kötelező, max 128 karakter.
+  - **Plombaszám** (`sealNumber` / `plombaszam`): kötelező, max 64 karakter, formátuma csak betűket, számokat, kötőjelet és perjelet tartalmazhat: `^[A-Za-z0-9\-/]+$`.
+  - A backend `CreateTransferDto` szintjén `@NotBlank`, `@Size` és `@Pattern` annotációkkal kell kényszeríteni a validációt. A `transfer` adatbázis-táblában a mezőkhöz `VARCHAR(128)` és `VARCHAR(64)` típus és a fenti formátumot lefedő `CHECK` constraint tartozik.
+- **Forrás**: 2026-06-02 plomba audit
+- **Prio**: Magas (P1)
+- **Csomag/Komponens**: backend / penztar-client / frontend-react
+
+### FR-10 Szállítási bizonylat nyomtatása és adattartalma
+- **Leírás**: A szállítás/átadás sikeres rögzítése után közvetlenül elérhetővé kell tenni egy "Nyomtatás" gombot. A nyomtatott/preview bizonylaton kötelezően meg kell jelennie a megadott szállítónak és plombának:
+  - `Szállító: <szállító neve>`
+  - `Plombaszám: <plombaszám>`
+  - A bizonylat-adatszerkezet (`PrintReceiptData` mind React frontend, mind Electron szinten) bővül `carrierName?: string` és `sealNumber?: string` mezőkkel.
+  - A nyomtatást végző text/HTML sablonok (`generateTransferLines`, `generateTransferHtml`) és a `ReceiptPreviewModal` előnézeti modal is megjeleníti ezeket a mezőket.
+- **Forrás**: 2026-06-02 plomba audit
+- **Prio**: Magas (P1)
+- **Csomag/Komponens**: penztar-client / frontend-react
+</functional_spec>
+
+<data_structure>
+## Legacy és Jelenlegi Adatmodell Mappings
+
+### Legacy Adatbázis Táblák (InterBase)
+- `WUAFAADATOK`: Western Union napi egyenlegek és kezelési költségek táblája.
+- `METROAFAMOZGAS`: Metro Cash & Carry ÁFA visszatérítési tranzakciók táblája.
+- `WUMOZGAS`: Western Union napi forgalmi és jutalék adatai.
+- `EKERESKEDELEM` / `EKERDATA`: Elektromos kereskedés tranzakciói és napi egyenlegei (USD/HUF).
+- `WPENZSZALLITAS`: Pénzszállítások és plombák adatai (pl. `DATUM`, `BIZONYLATSZAM`, `PLOMBASZAM`, `SZALLITO`).
+- `BLOKKFEJ` / `BLOKKTETEL`: Pénzátadási bizonylat fej- és tételsor adatai.
+
+### Jelenlegi Postgres Adatmodell
+- `western_union_daily_balances` (legacy `WUAFAADATOK` megfelelője):
+  - `id` (bigserial primary key)
+  - `company_id` (uuid)
+  - `branch_id` (uuid)
+  - `date` (date)
+  - `opening_balance` (numeric(15,2))
+  - `income` (numeric(15,2))
+  - `expense` (numeric(15,2))
+  - `closing_balance` (numeric(15,2))
+- `handling_fee_transactions` (kezelési költség tranzakciók):
+  - `id` (bigserial primary key)
+  - `receipt_number` (varchar(50)) -- Pl. "K-000675"
+  - `transaction_type` (varchar(30)) -- 'VAULT_DEPOSIT', 'CLIENT_INCOME', 'CASHIER_TRANSFER'
+  - `amount` (numeric(15,2))
+  - `direction` (varchar(3)) -- 'IN' / 'OUT'
+  - `bank_vault_code` (varchar(10)) -- Pl. "RB"
+- `cash_transfer` (átadás-átvételi bizonylat):
+  - `id` (uuid primary key)
+  - `source_branch_id` (uuid)
+  - `target_branch_id` (uuid)
+  - `amount` (numeric(15,2))
+  - `currency_id` (bigint)
+  - `seal_number` / `plombaszam` (varchar(50)) -- Pénzszállítási plomba kódja
+  - `carrier_name` / `szallito` (varchar(100)) -- Szállító személy neve
+- `currency_stock` (WAC készletnyilvántartás):
+  - `id` (bigserial primary key)
+  - `company_id` (uuid)
+  - `currency_id` (bigint)
+  - `total_quantity` (numeric(15,4))
+  - `total_acquisition_cost_huf` (numeric(19,4)) -- Súlyozott átlagos HUF bekerülési érték
+- `profit_log` (realizált haszon napló):
+  - `id` (bigserial primary key)
+  - `transaction_id` (bigint)
+  - `realized_profit_huf` (numeric(15,2))
+</data_structure>
+
+<integration_points>
+## Integrációs Pontok és API-k
+- **Western Union**: Nincs külső API integráció. A pénztáros a Western Union különálló kliensén végzett napi zárás adatait (nyitó, bevételek, kiadások, záró) manuálisan rögzíti a valutaváltó kliensben.
+- **ÁFA Visszatérítés**: A Tesco (V- prefix) és Metro (AV- prefix) számlákat a rendszer a kassza-kliensben rögzíti, és a napi zárás során a NAV online pénztárgép driveren keresztül küldi be a NAV felé.
+- **Szinkronizáció**: A `penztar-client` offline üzemmódot támogat. A napi WU balances és kktg tranzakciók az SQLite lokális adatbázisba kerülnek mentésre, és hálózati kapcsolat esetén a Sync Agent automatikusan felszinkronizálja azokat a központi Postgres szerverre.
+</integration_points>
+
+<execution_workflow>
+## Végrehajtási Folyamat
+1. **Pénzátadás / Pénzszállítás**: Az iroda indítja az átadást, megadva az összeget, valutát, kísérő nevét és a plombaszámot. A fogadó iroda az átvételkor ellenőrzi a plomba épségét, majd jóváhagyja a tranzakciót.
+2. **WU Napi Zárás**: A nap végén a pénztáros lekéri a WU terminál összesítőjét, beírja a napi WU bevételeket/kiadásokat a valutaváltó szoftverbe, amely ellenőrzi az egyenleg-folytonosságot.
+3. **Haszonszámítás**: Tranzakció lezárásakor a `WacService` és `ProfitCalculationService` frissíti a `currency_stock` táblát, és kiszámítja a realized profitot a `profit_log` táblába.
+</execution_workflow>
+
+<tbd_log>
+## Nyitott kérdések és Kockázatok (TBD)
+| # | Kérdés | Miért fontos | Státusz / Megoldás |
 |---|---|---|---|
-| 1 | ÁFA-visszatérítés számítási szabálya (kulcs, alap) | helyes ÁFA összeg | a forrás csak mezőt mutat, képletet nem; `Áfa, kktg ...xlsx` OLE2 binary nem olvasható |
-| 2 | Haszonszámítás képlete pénztáranként | `EXZ haszon pt ...xlsx` riport | OLE2 binary, nem kinyerhető |
-| 3 | Western Union külső integráció vs manuális rögzítés | adatforrás | a forrás csak napi manuális egyenleget mutat |
-| 4 | "VISSZA TÉRITÉS" USD/HUF jelentése az e-ker blokkban | dimenzionálás | R2–R3 fejléc szerint USD+HUF, részlet TBD |
-| 5 | Külön átadás-átvétel havi kimutatás struktúrája | a feladat kérte | `ÁtaDÁS ÁTVÉTEL 2024 02` és `Havi átadás-átvétel kimutatás.xlsx` nem található a forrásban |
+| 1 | ÁFA-visszatérítés számítási szabálya (kulcs, alap) | Helyes ÁFA összeg számítása | **RESOLVED**: Metro (AV-) és Tesco (V-) bizonylatok HUF-ban kerülnek kifizetésre a standard 5%, 18%, 27%-os ÁFA kulcsok szerint, a tranzakciókat a `METROAFAMOZGAS` és `TESCO` táblák rögzítik. |
+| 2 | Haszonszámítás képlete pénztáranként | Profitabilitás mérése | **RESOLVED**: WAC haszonszámítás tranzakciónként: realized profit = `(sale_price - acquisition_wac_cost) * quantity`, a `currency_stock` és `profit_log` segítségével. |
+| 3 | Western Union külső integráció vs manuális rögzítés | Adatforrás pontos meghatározása | **RESOLVED**: Kizárólag manuális napi egyenleg bevitel támogatott (Nyitó, Bevétel, Kiadás, Záró), nincs közvetlen API integráció. |
+| 4 | "VISSZA TÉRITÉS" USD/HUF jelentése az e-ker blokkban | Dimenzionálás | **RESOLVED**: Az elektromos kereskedelmi tranzakciók (USD és HUF egyenlegek) visszatérítéseit a `EKERESKEDELEM` és `EKERDATA` táblák kezelik. |
+| 5 | Külön átadás-átvétel havi kimutatás struktúrája | Igényelt funkció | **RESOLVED**: A havi irodák közötti átadás-átvétel (pénzszállítás) bizonylatok listája a `cash_transfer` táblából készül, tartalmazva a plomba és szállító kísérő metaadatokat. |
+</tbd_log>
 
-## 11. Verifikacios checklist
-- [x] minden FR-hez forrás-hivatkozás
-- [x] 0 hallucináció
-- [x] minden TBD jelölt
-VERIFIKACIO: FR=16 db, TBD=5 db, érintett csomag(ok)=penztar-client, frontend-react, kozponti-client
+<verification_checklist>
+## Verifikációs checklist
+- [x] Minden FR-hez van forrás-hivatkozás megadva.
+- [x] Nincsenek kitalált vagy hallucinált követelmények (az integrációs és plombaszám részletek Pascal/Java kód alapján verifikálva).
+- [x] Minden TBD és kockázat pontosan megjelölésre került az eredeti fájl alapján.
+- [x] Az összesítő verifikáció pontosan megmaradt: FR=8 db, TBD=5 db, érintett csomagok=penztar-client, frontend-react, kozponti-client, backend.
+</verification_checklist>

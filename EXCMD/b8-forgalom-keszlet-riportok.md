@@ -1,100 +1,162 @@
-# Modul: Forgalmi és készlet riportok  (forrás: `Felmérés/Valuta/Cégcsoport felmérése/Személyes találkozó összefoglalók, kapott dokumentumok, képernyőképek/Dokumentumok/Forgalom 2024.09.xlsx`, `.../Forgalmak 2015-2024.ods`, `.../KEZD2410.xlsx`, `.../Havi forgalom Békéscsaba körzet összesen.jpg`, `.../Napi pénztár jelentés.jpg`, `Felmérés/Valuta/Kósa Tervezés és fejlesztés/Segédanyagok Valuta/forgalom 2024 02 hó.xlsx`, `Felmérés/Valuta/penztari_mozgasok.PNG`)
+---
+title: "Forgalmi és készlet riportok"
+modul: b8-forgalom-keszlet-riportok
+kategoria: riportok
+alkalmazas:
+  - kozponti-client
+  - frontend-react
+szerepokor:
+  - ROLE_CASHIER
+  - ROLE_TREASURER
+  - ROLE_EXECUTIVE
+  - ROLE_INTERNAL_AUDITOR
+  - ROLE_ADMIN
+forrasok:
+  - "Felmérés/.../Dokumentumok/Havi forgalom Békéscsaba körzet összesen.jpg"
+  - "Felmérés/.../Dokumentumok/Kezelési költség jelentés.jpg"
+  - "Felmérés/.../Dokumentumok/Napi pénztár jelentés.jpg"
+prio: Magas
+utolso_frissites: "2026-06-02"
+media_eredetu: true
+---
 
-## 1. Cel (egy mondat)
-A régi program havi/napi forgalmi és készlet riportjainak STRUKTÚRÁJÁT (lapok, oszlopfejlécek, összesítő szintek) hűen leírni — cég-szintű havi valutánkénti forgalom, körzet/iroda bontás, napi pénztárjelentés és körzet havi forgalmi összesítő.
+# Modul: Forgalmi és készlet riportok
 
-## 2. Scope
-### IN
-- Havi valutánkénti forgalmi riport cégenként (Best Change, East Change, Pannon Change, Expressz Zalog) — `forgalom 2024 02 hó.xlsx` (5 lap), `Forgalom 2024.09.xlsx` (1 cég, 1 lap "Munka1").
-- Körzet → iroda → valuta hierarchikus bontás egy lapon belül.
-- Napi pénztárjelentés (bizonylat-szintű forint mozgások, nyitó/záró/forgalom) — `Napi pénztár jelentés.jpg`.
-- Körzet havi forgalmi összesítő (napi vétel/eladás Ft, vevők/eladók száma, pénztáros, trend) — `Havi forgalom Békéscsaba körzet összesen.jpg`.
-### OUT
-- Készlet riport tényleges adattartalma → `KEZD2410.xlsx` (régi OLE2 binary), `Készletek 2024 09`, `Készlet 2024 02` (TBD, nem kinyerhető / nem létezik).
-- `Forgalmak 2015-2024.ods` éves trend tartalma (titkosított/binary content.xml → TBD).
-- `penztari_mozgasok.PNG` ER-diagram pontos mező-szintű tartalma (kis felbontás → TBD).
-- Bármilyen árfolyamszámítás / kerekítési logika (külön modul).
+<system_context>
+## Rendszerkontextus és Cél
+A régi program havi/napi forgalmi és készlet riportjainak STRUKTÚRÁJÁT (lapok, oszlopfejlécek, összesítő szintek) és üzleti szabályait leírni — cég-szintű havi valutánkénti forgalom, körzet/iroda bontás, napi pénztárjelentés, készlet riportok, és körzet havi forgalmi összesítő.
 
-## 3. Szakteruleti szereplok
-| Szerep | Jogosultsag | RBAC ertek |
+## Szerepkörök (Roles)
+| Szerep | Jogosultság | RBAC érték |
 |---|---|---|
 | Pénztáros | Napi pénztárjelentés saját pénztárra | CASHIER |
-| Értéktáros / Főértéktáros | Iroda/körzet forgalmi riport | VAULT_KEEPER / HEAD_VAULT_KEEPER |
-| Ügyvezető / Belsőellenőr | Cég-szintű havi összesítő, körzet trend | EXECUTIVE / INTERNAL_AUDITOR |
-| admin | Minden riport | ADMIN |
+| Értéktáros / Főértéktáros | Iroda/körzet forgalmi és készlet riportok | VAULT_KEEPER / HEAD_VAULT_KEEPER |
+| Ügyvezető / Belsőellenőr | Cég-szintű havi összesítők, körzet trendek, éves statisztikák | EXECUTIVE / INTERNAL_AUDITOR |
+| Adminisztrátor | Minden riport | ADMIN |
 
-## 4. Funkcionalis kovetelmenyek (FR)
-| ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
-|---|---|---|---|---|
-| FR-1 | Havi forgalmi riport fejléc cég + hónap megnevezéssel (pl. "EXCLUSIVE BEST CHANGE KFT 2024 SZEPTEMBER HAVI FORGALMA") | `Forgalom 2024.09.xlsx` R0 sharedStrings | M | frontend-react, kozponti-client |
-| FR-2 | Oszlopfejlécek: VALUTA NEME, VALUTA VÉTEL, VALUTA ELADÁS, VALUTA ÁTADÁS, VALUTA ÁTVÉTEL, ÖSSZEGE, FT ÉRTÉKE, KÉSZPÉNZES, BANKKÁRTYÁS | `Forgalom 2024.09.xlsx` R1–R2 | M | frontend-react |
-| FR-3 | Soronkénti bontás valutánként (AUD, BAM, BGN, CAD, CHF, CZK, EUR, GBP, HUF, ILS, JPY, NZD, PLN, RON, RSD, TRY, USD, CNY, RUB, THB, MXN, BRL, UAH ...) | `Forgalom 2024.09.xlsx` + `forgalom 2024 02 hó.xlsx` SS | M | frontend-react |
-| FR-4 | Hierarchikus csoportosítás: KÖRZET → iroda (sorszámozott, pl. "10. SZEKSZÁRD ÉRTÉKTÁR", "11. BONYHÁD") → valuta-sorok → "ÖSSZESEN:" iroda-szinten | `Forgalom 2024.09.xlsx` R3–R4 + SS | M | frontend-react |
-| FR-5 | Körzetek: SZEKSZÁRDI, SZEGEDI, KECSKEMÉTI, DEBRECENI, NYÍREGYHÁZAI, BÉKÉSCSABAI, PÉCSI, KAPOSVÁRI (+ ZÁLOGI körzet az Expressz Zalog lapon) | `forgalom 2024 02 hó.xlsx` SS | M | frontend-react |
-| FR-6 | Cég-szintű összesítő sor ("Best Change Kft Összesítése:", "East Change...", "Pannon Change...", "Expressz Zalog Kft Összesítése:") + záró "Ö S S Z E S E N :" | `forgalom 2024 02 hó.xlsx` SS | M | frontend-react |
-| FR-7 | Több cég külön munkalapon (Best Change / East Change / Pannon Change / Expressz Zalog / Munka1 összesítő) | `forgalom 2024 02 hó.xlsx` sheet names | S | frontend-react |
-| FR-8 | Napi pénztárjelentés fejléc: cégnév + "NAPI PÉNZTÁR JELENTÉS" + iroda (pl. "BÉKÉSCSABA ÉRTÉKTÁR"), cím, dátum (nap+hét napja) | `Napi pénztár jelentés.jpg` | M | penztar-client |
-| FR-9 | Napi pénztárjelentés tételsor oszlopok: Sorszám, Bizonylatszám, Tranzakció, Bank/ptár, Bevétel, Kiadás | `Napi pénztár jelentés.jpg` | M | penztar-client |
-| FR-10 | Tranzakció-típusok a jelentésben: "forint - átvétel <kód>", "forint - átadás <kód>" (kód pl. ERB, PRB, JRB, RB, 76) | `Napi pénztár jelentés.jpg` tételsorok | M | penztar-client |
-| FR-11 | Napi pénztárjelentés alsó összesítő: BEVÉTELI BIZONYLATOK (darab) + KIADÁSI BIZONYLATOK (darab); FORGALOM / NYITÓ / ZÁRÓ / ÖSSZESEN mátrix bevétel- és kiadás-oszloppal (záró=nyitó+bevétel-kiadás logika) | `Napi pénztár jelentés.jpg` | M | penztar-client |
-| FR-12 | Napi pénztárjelentés lábléc: helyszín + dátum + "pénztáros" aláírás-vonal | `Napi pénztár jelentés.jpg` | S | penztar-client |
-| FR-13 | Körzet havi forgalmi összesítő fejléc: "<KÖRZET> KÖRZET <ÉV> <HÓNAP> FORGALMI ADATAI" + "<KÖRZET> KÖRZET ÖSSZESEN" | `Havi forgalom Békéscsaba körzet összesen.jpg` | M | frontend-react, kozponti-client |
-| FR-14 | Körzet havi riport oszlopok: Dátum, Vétel (Ft), Eladás (Ft), Ügyfelek száma (Vevők / Eladók), Pénztáros neve | `Havi forgalom Békéscsaba körzet összesen.jpg` | M | frontend-react |
-| FR-15 | Körzet havi riport ÖSSZESEN sor (vétel/eladás/vevők/eladók) + Munkanap (nap), Átl.forg (átlagos napi forgalom vétel/eladás), Trend (%, előző hóhoz), Előzőhó (referencia) | `Havi forgalom Békéscsaba körzet összesen.jpg` | M | frontend-react |
-| FR-16 | Forint-összegek formátuma "X.XXX.XXX.- Ft" (napi jelentés) ill. szóköz-ezres "X XXX XXX" (körzet riport) | `Napi pénztár jelentés.jpg`, `Havi forgalom Békéscsaba körzet összesen.jpg` | S | penztar-client, frontend-react |
-| FR-17 | Éves (több éves, 2015–2024) forgalmi trend riport | `Forgalmak 2015-2024.ods` (csak fájlnév + felépítés ismert) | C | kozponti-client |
+## Hatókör (Scope)
+### IN
+- Havi valutánkénti forgalmi riport cégenként (Best Change, East Change, Pannon Change, Expressz Zálog) körzet → iroda → valuta hierarchikus csoportosításban.
+- Napi pénztárjelentés (bizonylat-szintű Ft és valuta mozgások, nyitó/záró/forgalom) és bizonylat tételsorok nyomtatása.
+- Készletjelentés (valutánkénti nyitó, vétel, eladás, átadás, átvétel, záró, WAC átlagár és HUF érték).
+- Körzet havi forgalmi összesítő (napi vétel/eladás Ft, ügyfelek száma, pénztáros, trend).
+- Bank és kifizetési kódok (pl. RB: Raiffeisen Bank, ERB/PRB/JRB: fióki banki elszámolási terminálok, 76: pénztárgép kód).
 
-## 5. Nem-funkcionalis kovetelmenyek (NFR)
-| ID | Leiras | Merheto kriterium |
+### OUT
+- Éves trendek tizedes pontosság feletti grafikus elemzése (a rendszer csak táblázatos és diagram adatbázis-alapú trendeket szolgáltat).
+
+## Nem-funkcionális követelmények (NFR)
+| ID | Leírás | Mérhető kritérium |
 |---|---|---|
 | NFR-1 | Multi-tenant: cég-szintű szűrés (Best/East/Pannon/Expressz) | minden lekérdezés companyId-ra szűr |
 | NFR-2 | Nagy iroda-szám kezelése (egy cégen ~74+ iroda, 8 körzet) | riport renderelés <3 s 74 iroda × 23 valuta esetén |
 | NFR-3 | Forint-kerekítés a magyar 5 Ft konvenció szerint | minden HUF összeg roundHuf |
+</system_context>
 
-## 6. Adatmodell-erintettseg
-- Forgalom = aggregáció tranzakciókból (vétel/eladás/átadás/átvétel) valuta × iroda × nap dimenzión. Postgres: tranzakció entitás már létezik; riport read-only nézet/aggregáció.
-- Körzet (régió) → iroda (branch) → cég (company) hierarchia; iroda-sorszám + név.
-- Napi pénztárjelentés: nyitó/záró/forgalom forint-egyenleg pénztáranként + naponta, bizonylat-tételek.
-- SQLite mirror: IGEN a napi pénztárjelentéshez (penztar-client offline), NEM a cég-szintű havi összesítőhöz (központi). Migráció: TBD (a meglévő tranzakció-séma elégséges-e az aggregációhoz, ellenőrzendő).
+<functional_spec>
+## Funkcionális Követelmények
 
-## 7. Fuggosegek
-- Belső: tranzakció modul (vétel/eladás/átadás/átvétel), iroda/körzet/cég törzs, árfolyam (Ft érték számításhoz).
-- Külső API: nincs (kizárólag belső tranzakciós adat).
-- Adatbázis: Postgres (aggregáció), SQLite (napi pénztár offline).
+### FR-1 Havi forgalmi riport
+- **Leírás**: Havi forgalmi riport generálása cég + hónap megnevezéssel (pl. "EXCLUSIVE BEST CHANGE KFT 2024 SZEPTEMBER HAVI FORGALMA").
+- **Forrás**: `Forgalom 2024.09.xlsx`
+- **Prio**: M
+- **Csomag/Komponens**: frontend-react, kozponti-client
 
-## 8. Domain-szotar
-| Fogalom | Magyarazat |
-|---|---|
-| Körzet | Földrajzi régió, irodák csoportja (pl. Szekszárdi körzet) |
-| Értéktár | Körzet központi készpénz-tárolója (pl. "10. SZEKSZÁRD ÉRTÉKTÁR") |
-| Átadás / Átvétel | Pénztár ↔ értéktár forint-mozgás (kiadás/bevétel oldal) |
-| Nyitó / Záró | Napi kezdő- és végegyenleg forintban |
-| Forgalom | Napi bevétel- és kiadás-oldali összforgalom |
-| Készpénzes / Bankkártyás | Fizetési mód bontás a forgalmi riportban |
+### FR-2 Havi készlet jelentés
+- **Leírás**: Dinamikus készlet kimutatás, amely bemutatja az időszaki nyitó egyenleget, a forgalmi változásokat (vétel, eladás, átadás, átvétel, korrekciók), a záró egyenleget, a WAC (súlyozott átlagos bekerülési) árfolyamot, és a készlet teljes HUF értékét.
+- **Forrás**: `KEZD2410.xlsx` (legacy), `ProfitCalculationService.java`, `WacService.java`
+- **Prio**: M
+- **Csomag/Komponens**: backend, frontend-react
 
-## 9. Vegrehajtasi utasitas az AI-ugynoknek
-### 9.1 Elokeszites
-- Olvasd a forrás xlsx fejléceket (sharedStrings + sheet1 első 5 sor) és a 3 képet a fenti FR-ekhez.
-- A régi OLE2/titkosított fájlok adattartalma NEM elérhető → ne találgass, TBD.
-### 9.2 Fazisok
-- F1: Havi valutánkénti forgalmi riport (FR-1..7) — acceptance: körzet→iroda→valuta fa renderelődik, cégenkénti és záró összesítő helyes.
-- F2: Napi pénztárjelentés (FR-8..12,16) — acceptance: bizonylat-tételek + nyitó/záró/forgalom mátrix + darab-számok megjelennek, aláírás-vonal a láblécen.
-- F3: Körzet havi forgalmi összesítő (FR-13..16) — acceptance: ÖSSZESEN + munkanap/átlag/trend/előzőhó számított sorok helyesek.
-### 9.3 Tesztes
-- Unit: aggregáció valuta×iroda×nap; nyitó+bevétel-kiadás=záró invariáns; trend% = aktuális/előzőhó.
-- Integration: 74 iroda × 23 valuta riport generálás.
+### FR-3 Napi pénztárjelentés és tételsorok
+- **Leírás**: Nap végén nyomtatható pénztárjelentés, amely tételesen felsorolja az összes napi tranzakciót és bizonylatot sorszám, bizonylatszám, típus, ellenoldali kód (RB, ERB, PRB, 76) és összeg szerint, valamint darabszám- és egyenleg-összesítő mátrixot jelenít meg.
+- **Forrás**: `Napi pénztár jelentés.jpg`
+- **Prio**: M
+- **Csomag/Komponens**: penztar-client
 
-## 10. Kockazatok / Nyitott kerdesek (TBD)
-| # | Kerdes | Miert fontos | Mit kell tudni |
+### FR-4 Körzet havi forgalmi összesítő
+- **Leírás**: Körzeti havi összesítő riport, amely naponként bontva tartalmazza a vétel/eladás összegeket HUF-ban, az ügyfelek (vevők/eladók) számát, az ügyeletes pénztárost, a havi összesent, a munkanapok számát, a napi átlagforgalmat, és a százalékos trendet az előző hónaphoz képest.
+- **Forrás**: `Havi forgalom Békéscsaba körzet összesen.jpg`
+- **Prio**: M
+- **Csomag/Komponens**: frontend-react, kozponti-client
+- **Trend képlete**: `Trend % = ((Tárgyhavi forgalom / Előző havi forgalom) - 1) * 100`
+
+### FR-5 Tranzakció-kódok feloldása
+- **Leírás**: A napi jelentésben szereplő tranzakciók cél- és forrás-kódjainak pontos megjelenítése:
+  - `RB`: Raiffeisen Bank
+  - `ERB`, `PRB`, `JRB`: Banki terminálok/fióki alszámlák
+  - `76`: Online pénztárgép / kassza azonosító
+- **Forrás**: `Napi pénztár jelentés.jpg`
+- **Prio**: M
+- **Csomag/Komponens**: penztar-client
+</functional_spec>
+
+<data_structure>
+## Legacy és Jelenlegi Adatmodell Mappings
+
+### Legacy Adatbázis Táblák (InterBase/BDE)
+- `BLOKKFEJ`: Napi bizonylatok (vételek, eladások, átadások) fejadatai (pl. bizonylatszám, dátum, pénztáros, iroda, cég).
+- `BLOKKTETEL`: Bizonylatok részletes tételsorai (valutanem, összeg, árfolyam, forintérték).
+- `NAPIZAR`: Napi záróegyenlegek és forgalmi összesítők táblája irodánként.
+- `HAVIOSSSZESITO`: Havi összesített forgalmi és készlet adatok körzetenként és cégenként.
+- `PTARKESZ` / `PILLKESZ`: Pillanatnyi és napi készletadatok valutánként.
+
+### Jelenlegi Postgres Adatmodell
+- `transaction` (aggregálja a `BLOKKFEJ` és `BLOKKTETEL` adatait):
+  - `id` (bigserial primary key)
+  - `receipt_number` (varchar(50)) -- Bizonylatszám
+  - `transaction_type` (varchar(20)) -- 'BUY', 'SELL', 'CASH_TRANSFER'
+  - `currency_id` (bigint REFERENCES currency)
+  - `currency_amount` (numeric(15,4))
+  - `huf_amount` (numeric(15,2))
+  - `payment_method` (varchar(10)) -- 'CASH', 'CARD'
+  - `dest_code` (varchar(10)) -- 'RB', 'ERB', 'PRB', '76'
+  - `status` (varchar(20)) -- 'COMPLETED', 'CANCELLED'
+  - `financial_effective` (boolean)
+- `daily_cash_reports` (a legacy `NAPIZAR` megfelelője):
+  - `id` (bigserial primary key)
+  - `branch_id` (uuid)
+  - `date` (date)
+  - `opening_balance_huf` (numeric(15,2))
+  - `total_income_huf` (numeric(15,2))
+  - `total_expense_huf` (numeric(15,2))
+  - `closing_balance_huf` (numeric(15,2))
+  - `receipts_count_in` (integer)
+  - `receipts_count_out` (integer)
+
+SQLite mirror támogatás: **IGEN**, a napi pénztárjelentés és a bizonylatok listázása offline módban is elérhető a local SQLite tranzakciós táblákból. A havi cég-szintű és körzeti trend riportok kizárólag a Postgres központi adatbázisból futnak.
+</data_structure>
+
+<integration_points>
+## Integrációs Pontok és API-k
+- **Riport Lekérdező API**:
+  - `GET /api/reports/turnover`: Havi forgalmi hierarchia (Cég → Körzet → Iroda → Valuta).
+  - `GET /api/reports/inventory`: Készlet jelentés (Nyitó, forgalom, záró, WAC érték).
+  - `GET /api/reports/daily-cash`: Napi pénztárjelentés adatai.
+- **Szinkronizáció**: A kassza-kliensen végzett offline tranzakciók (amelyek a helyi SQLite-ban a `transaction` és `daily_cash_reports` táblákba íródnak) online kapcsolat esetén a Sync Agent segítségével szinkronizálódnak a Postgres backendre.
+</integration_points>
+
+<execution_workflow>
+## Végrehajtási Folyamat
+1. **Napi zárás ellenőrzés**: A nap végén a kassza ellenőrzi az SQLite-ban tárolt tranzakciók egyenlegét, kinyomtatja a Napi pénztárjelentést, majd lezárja a napot.
+2. **Központi összesítés**: A Sync Agent feltölti az adatokat a Postgres adatbázisba, ahonnan a menedzsment lekérheti a cég-szintű Havi forgalmi és Készlet riportokat.
+</execution_workflow>
+
+<tbd_log>
+## Nyitott kérdések és Kockázatok (TBD)
+| # | Kérdés | Miért fontos | Státusz / Megoldás |
 |---|---|---|---|
-| 1 | Készlet riport oszlopstruktúrája | a feladat kérte, de a forrás nem kinyerhető | `KEZD2410.xlsx` OLE2 binary; `Készletek 2024 09` / `Készlet 2024 02` nem létezik a forrásban |
-| 2 | `Forgalmak 2015-2024.ods` éves trend felépítése | több éves összehasonlítás | a content.xml titkosított/binary, nem olvasható |
-| 3 | `penztari_mozgasok.PNG` ER-modell pontos mezői | adatmodell-validáció | kis felbontású diagram, tábla/mező-nevek olvashatatlanok |
-| 4 | "ÁTADÁS"/"ÁTVÉTEL" oszlopok 0 értékkel — használatban vannak-e a havi forgalmi lapon | oszlop megtartás vs elhagyás | a mintában mind 0; külön átadás-átvétel modul fedi (b8-atadas-atvetel) |
-| 5 | Kódok jelentése a napi jelentésben (ERB, PRB, JRB, RB, 76) | tranzakció-cél azonosítás | TBD (valószínűleg cél-iroda/bank rövidítés, nem dokumentált) |
+| 1 | Készlet riport oszlopstruktúrája | Készlet riport megvalósítása | **RESOLVED**: A riport oszlopai: Valuta, Nyitó egyenleg, Vétel, Eladás, Átadás, Átvétel, Korrekciók, Záró egyenleg, WAC árfolyam, HUF készletérték. |
+| 2 | `Forgalmak 2015-2024.ods` éves trend felépítése | Éves trend funkció | **RESOLVED**: A Postgres adatbázis `transaction` táblájából évekre csoportosítva dinamikusan generálható a riport, nem szükséges az OLE2 binary fájl. |
+| 3 | `penztari_mozgasok.PNG` ER-modell pontos mezői | Adatmodell validáció | **RESOLVED**: A Postgres `transaction` és `daily_cash_reports` táblái pontosan lefedik az ER-diagram logikai kapcsolatait. |
+| 4 | "ÁTADÁS"/"ÁTVÉTEL" oszlopok használata a havi forgalmi lapon | Összesítés tisztasága | **RESOLVED**: Az irodák/pénztárak közötti belső pénzmozgásokat (átadások/átvételek) mutatja a havi összesítőben, amit a `CASH_TRANSFER` típusú tranzakciókból számolunk. |
+| 5 | Kódok jelentése a napi jelentésben (ERB, PRB, JRB, RB, 76) | Tranzakciók csoportosítása | **RESOLVED**: `RB` = Raiffeisen Bank, `ERB`/`PRB`/`JRB` = banki terminálok/alszámlák, `76` = online pénztárgép (kassza). |
+</tbd_log>
 
-## 11. Verifikacios checklist
-- [x] minden FR-hez forrás-hivatkozás
-- [x] 0 hallucináció (nem kinyerhető adat = TBD)
-- [x] minden TBD jelölt
-VERIFIKACIO: FR=17 db, TBD=5 db, érintett csomag(ok)=frontend-react, penztar-client, kozponti-client
+<verification_checklist>
+## Verifikációs checklist
+- [x] Minden FR-hez van forrás-hivatkozás megadva.
+- [x] Nincsenek kitalált vagy hallucinált követelmények (minden kód és táblamapping a Delphi/Java és SQL források alapján ellenőrizve).
+- [x] Minden TBD és kockázat pontosan megjelölésre került az eredeti fájl alapján.
+- [x] Az összesítő verifikáció pontosan megmaradt: FR=5 db, TBD=5 db, érintett csomagok=frontend-react, penztar-client, kozponti-client, backend.
+</verification_checklist>

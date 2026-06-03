@@ -1,7 +1,7 @@
 # Legacy modul (VALUTA): ADATLAP
 
 > Forrás (primer): `Anti/SZERVER/_extracted/VALUTA/DLL/ADATLAP/DEBUG/Unit2.pas` (46203 karakter)
-> KORREKCIÓ: a Anti/VALUTA/DLL-ben 0-bájtos stub volt; a VALÓDI forrás az _extracted/VALUTA/DLL-ben.
+> KORREKCIÓ: az `Anti/VALUTA/DLL/` mappában 0-bájtos stub volt; a VALÓDI forrás az `Anti/SZERVER/_extracted/VALUTA/DLL/` mappában található.
 
 ## Exportált API
 `adatlaprutin`

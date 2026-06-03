@@ -1,100 +1,288 @@
-# Modul: Beallitasok (jelszoval vedett konfiguracios kepernyok)  (forrás: Felmérés/Valuta/Kósa Szervezés/Cégcsoport felmérése/Személyes találkozó összefoglalók, kapott dokumentumok, képernyőképek/Képernyőképek/Beállítások menü külön jelszóval.jpeg + Beállítások külön jelszóval_ Alapfunkciók.jpeg + Beállítások csak jelszóval_ alapfunkció.jpeg + Beállítások külön jelszóval_ Alkalmazások .jpeg + Beállítások külön jelszóval_ Árfolyam kijelző beállításai.jpeg + Beállítások külön jelszóval_ IP cím beállítás.jpeg + Beállítások külön jelszóval_ Jelszó beállítások napi jelentéshez.jpg + Beállítások külön jelszóval_ adatok beküldése a szerverre.jpeg + Beállítások külön jelszóval_ nyomtató beállítás.jpeg + Beállítások külön jelszóval_ szkenner beállítás.jpeg + Beállítások csak jelszóval_ Kezelési költség számítások.jpeg + Beállítások csak jelszóval_ futófény beállítások.jpeg + Beállítások külön jelszóval_ Bankkártyás fizetések.jpeg)
+---
+title: "Beállítások (jelszóval védett konfigurációs képernyők)"
+modul: b6-beallitasok
+kategoria: beallitasok
+alkalmazas: penztar-client
+szerepokor:
+  - ROLE_ADMIN
+  - ROLE_TREASURER
+forrasok:
+  - "Felmérés/.../Képernyőképek/Beállítások csak jelszóval_ alapfunkció.jpeg"
+  - "Felmérés/.../Képernyőképek/Beállítások külön jelszóval_ Alapfunkciók.jpeg"
+  - "Felmérés/.../Képernyőképek/Beállítások külön jelszóval_ Alkalmazások .jpeg"
+  - "Felmérés/.../Képernyőképek/Beállítások külön jelszóval_ IP cím beállítás.jpeg"
+  - "Felmérés/.../Képernyőképek/Beállítások külön jelszóval_ Jelszó beállítások napi jelentéshez.jpg"
+  - "Felmérés/.../Képernyőképek/Beállítások külön jelszóval_ nyomtató beállítás.jpeg"
+  - "Felmérés/.../Képernyőképek/Beállítások külön jelszóval_ szkenner beállítás.jpeg"
+  - "Felmérés/.../Képernyőképek/Beállítások külön jelszóval_ Árfolyam kijelző beállításai.jpeg"
+  - "Felmérés/.../Képernyőképek/Beállítások külön jelszóval_ adatok beküldése a szerverre.jpeg"
+  - "Felmérés/.../Képernyőképek/Beállítások menü külön jelszóval.jpeg"
+prio: Közepes
+utolso_frissites: "2026-06-02"
+media_eredetu: true
+---
 
-## 1. Cel (egy mondat)
-A regi penztaros program "Beallitasok" (jelszoval vedett) konfiguracios kepernyoinek hu leirasa: bal oldali TEMAK fulista, jobb oldali BEALLITASOK panel, alul Rogzites es kilepes / Kilepes modositas nelkul / Vissza a menure gombsor.
+# Modul: Beallitasok (jelszoval vedett konfiguracios kepernyok)
 
-## 2. Scope
-### IN
-- Beallitas-menu kerete: bal "TEMAK" fullista (12 ful), jobb "BEALLITASOK" tartalom-panel, also gombsor (3 gomb).
-- 12 beallitas-ful: Alapfunkcio, Alkalmazasok, IP-cim beallitasa, Jelszo beallitas (napi jelentes), Kijelzes szine (arfolyam-kijelzo szine), Futofeny, Keszletek bekuldese (adatok bekuldese a szerverre), Kezelesi koltseg szamitasa, Bankkartya fizetes, Nyomtato, Reklam a kijelzon, Scanner beallitasa.
-- A kepernyo-csoport "kulon jelszoval" es "csak jelszoval" valtozatban is megjelenik (azonos tartalom).
-### OUT
-- A jelszoval-bekeres parbeszedablak konkret kinezete (a forrasban nem szerepel kep) -> TBD.
-- A "Reklam a kijelzon" ful: csak a fejlec-kepen lathato (REKLAMOK A KIJELZON: Nincs reklam / Van reklam radiogomb) — kulon screenshot nincs, reszletes mezok TBD.
-- A "Szoveg szerkesztese" (futofeny szoveg) szerkesztofelulet — nincs kepe -> TBD.
-- A jelenlegi (uj) ERP-hez valo hasonlitas (kesobbi fazis).
+<system_context>
+## Rendszerkontextus és Háttér
+Ez a specifikáció a régi pénztáros program jelszóval védett "Beállítások" konfigurációs képernyőit írja le. A felület bal oldali "Témák" füllistából (12 fül), jobb oldali beállítás-panelből, és az alul elhelyezkedő mentési/kilépési akciógombokból áll.
 
-## 3. Szakteruleti szereplok
-| Szerep | Jogosultsag | RBAC ertek |
+### Szerepkörök (Roles)
+| Szerep | Jogosultság / Feladatkör | RBAC érték |
 |---|---|---|
-| Penztaros | A beallitas-menu jelszoval vedett; a forras "kulon/csak jelszoval" cimkezi — pontos szerep-megfeleltetes nem lathato | TBD |
-| Ertektaros / Foertektaros / admin | Konfiguracios hozzaferes feltetelezheto, de a kepen nem azonositott | TBD |
+| Pénztáros | A beállítások menü elérése jelszóhoz kötött. A Pénztáros szerep hozzáférhetősége korlátozott lehet (lásd TBD-2). | TBD |
+| Értéktáros / Főértéktáros / Admin | Konfigurációs hozzáférés a globális vagy gép-szintű paraméterek beállításához. | TBD |
 
-## 4. Funkcionalis kovetelmenyek (FR)
-| ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
-|---|---|---|---|---|
-| FR-01 | Beallitas-keret: bal "TEMAK" fullista (12 ful), jobb "BEALLITASOK" tartalom-panel; also gombsor: "ROGZITES ES KILEPES", "KILEPES MODOSITAS NELKUL", "VISSZA A MENURE". | menü külön jelszóval.jpeg | M | penztar-client |
-| FR-02 | ALAPFUNKCIO ful: 3 egymast kizaro radiogomb a gep szerepehez — "PENZTARI GEP" (alapertelmezetten kivalasztva a kepen), "ERTEKTARI GEP", "AFAS GEP". | Alapfunkciók.jpeg / csak jelszóval_ alapfunkció.jpeg | M | penztar-client |
-| FR-03 | ALKALMAZASOK ful: tobbszoros valasztasu (checkbox) lista — "VALUTAVALTAS" (a kepen bepipalva), "WESTERN UNION", "TESCO AFA", "METRO AFA", "E-KERESKEDELEM". | Alkalmazások .jpeg | S | penztar-client |
-| FR-04 | KIJELZES SZINE ful ("AZ ARFOLYAM KIJELZO SZINE"): 3 radiogomb — "ZOLD", "SARGA", "PIROS" (a kepen PIROS kivalasztva); a panelen elo elonezet az arfolyam-kijelzo tablazatrol (VETEL/ELADAS oszlop a valasztott szinnel). | Árfolyam kijelző beállításai.jpeg | S | penztar-client |
-| FR-05 | IP-CIM BEALLITASA ful ("A SZERVER ELERES IP-CIME"): 4 kulon oktett-beviteli mezo (a kepen <IP_OKTETT_1> / <IP_OKTETT_2> / <IP_OKTETT_3> / <IP_OKTETT_4>); gombok: "IP-CIM RENDBEN", "MEGSEM". | IP cím beállítás.jpeg | M | penztar-client |
-| FR-06 | JELSZO BEALLITAS ful ("NAPI JELENTES JELSZAVA"): jelenlegi jelszo kijelzese (a kepen "<JELSZO>") + "JELSZO MODOSITAS" gomb; "AZ ERTEKTAR E-MAIL CIME" szovegmezo (a kepen <EMAIL>); "SZOMBATI NYITVATARTAS" radio: "SZOMBATON NYITVA" / "SZOMBATON ZARVA" (a kepen ZARVA). | Jelszó beállítások napi jelentéshez.jpg | M | penztar-client |
-| FR-07 | KESZLETEK BEKULDESE ful ("ADATOK BEKULDESE A SZERVERRE"): "Adatok bekuldesenek gyakorisaga: N percenkent" — csuszka 0–25 skalan (a kepen 2 perc). | adatok beküldése a szerverre.jpeg | M | penztar-client |
-| FR-08 | NYOMTATO ful ("NYOMTATO TIPUSA"): 2 radiogomb — "LPT1 PORTRA CSATLAKOZTATVA" (a kepen kivalasztva), "USB PORTRA CSATLAKOZTATVA". | nyomtató beállítás.jpeg | S | penztar-client |
-| FR-09 | SCANNER BEALLITASA ful ("A SCANNER BEALLITASA"): "Az alkalmazott driver:" radio-lista a rendszeren elerheto szkenner-driverekrol (a kepen: "CanoScan Lide 120", "WIA-CanoScan Lide 120" — utobbi kivalasztva). | szkenner beállítás.jpeg | S | penztar-client |
-| FR-10 | KEZELESI KOLTSEG ful ("KEZELESI KOLTSEG SZAMITASA"): 3 radiogomb — "NINCS KEZELESI KOLTSEG", "EZRELEKES KEZELESI KOLTSEG" (a kepen kivalasztva), "SAVOS KEZELESI KOLTSEG"; alul parameter-panel a valasztott modhoz (a kepen "EZRELEKES KEZELESI KOLTSEG: 3 ezrelek Max: 9990 Ft") + "MODOSITAS" gomb. | Kezelési költség számítások.jpeg | M | penztar-client |
-| FR-11 | FUTOFENY ful ("FUTOFENY BEALLITASA"): kijelzett parameterek "Hany futofenytabla van: N" (kepen 2), "Elso futofenytabla comportja: N" (kepen 1), "Masodik futofenytabla comportja: N" (kepen 2); megjelenites-radio: "CSAK ARFOLYAMKIJELZES" (kepen kivalasztva), "CSAK SZOVEG KIJELZESE" (+ "Szoveg szerkesztese" gomb), "VALTAKOZO KIJELZES (Nappal szoveg/Ejjel arfolyam)"; "FUTOFENY KIKAPCSOLASA" gomb; "Futofeny sebessege" csuszka LASSU–GYORS kozott. | futófény beállítások.jpeg | S | penztar-client |
-| FR-12 | BANKKARTYA FIZETES ful ("FIZETES BANKKARTYAVAL"): 2 radiogomb — "NINCS ENGEDELYEZVE" (a kepen kivalasztva), "ENGEDELYEZVE"; "ADATOK RENDBEN" gomb. | Bankkártyás fizetések.jpeg | S | penztar-client |
-| FR-13 | REKLAM A KIJELZON ful: "REKLAMOK A KIJELZON" radio — "NINCS REKLAM A KIJELZON" (a fejlec-kepen kivalasztva), "VAN REKLAM A KIJELZON". Tovabbi mezok nem lathatok (nincs kulon screenshot). | menü külön jelszóval.jpeg | C | penztar-client |
-| FR-14 | A keret also gombsorja minden fulnel azonos: "ROGZITES ES KILEPES" (mentes), "KILEPES MODOSITAS NELKUL" (eldobas), "VISSZA A MENURE" (visszalepes). | minden screenshot | M | penztar-client |
+### Hatókör (Scope)
+#### IN
+- Beállítás-menü kerete: bal oldali "TEMAK" füllista (12 fül), jobb "BEALLITASOK" tartalom-panel, alsó gombsor (3 gomb).
+- A 12 konfigurációs fül részletei: Alapfunkció, Alkalmazások, IP-cím beállítása, Jelszó beállítás (napi jelentés), Kijelzés színe, Futófény, Készletek beküldése, Kezelési költség számítása, Bankkártya fizetés, Nyomtató, Reklám a kijelzőn, Scanner beállítása.
+- "Külön jelszóval" és "csak jelszóval" védett képernyőváltozatok.
 
-## 5. Nem-funkcionalis kovetelmenyek (NFR)
-| ID | Leiras | Merheto kriterium |
-|---|---|---|
-| NFR-01 | A teljes Beallitasok kepernyo-csoport jelszoval vedett ("kulon jelszoval" / "csak jelszoval" cimkek a forras-fajlnevekben). | A menu csak sikeres jelszo-megadas utan nyilik meg; ervenytelen jelszo eseten nincs hozzaferes. |
-| NFR-02 | Letezik legalabb ket vedelmi mod: "kulon jelszoval" es "csak jelszoval" (a fajlnevek alapjan); a pontos kulonbseg a forrasbol nem allapithato meg. | TBD — a ket mod kozti elteres tisztazasa. |
-| NFR-03 | A "napi jelentes jelszava" kulon, fultartalmon belul modosithato jelszo (FR-06), elkulonul a menu-belepteto jelszotol. | A "JELSZO MODOSITAS" gomb csak a napi-jelentes jelszot valtoztatja. |
+#### OUT
+- A jelszóbekérő dialógusablak konkrét fizikai kinézete (TBD-2).
+- A "Reklám a kijelzőn" fül részletes mezőinek felépítése (csak a rádiógombok ismertek).
+- A futófény egyedi szövegének szerkesztőfelülete (szövegszerkesztő képernyő).
 
-## 6. Adatmodell-erintettseg
-- A beallitasok jellemzoen gep-szintu / telephely-szintu konfiguracio (Postgres parameter-tabla, pl. SystemParameter jellegu kulcs-ertek, vagy branch-konfig). Konkret entitas/mezo a forrasbol nem azonosithato -> TBD.
-- Erintett fogalmi mezok: gep-szerep (penztari/ertektari/afas), engedelyezett alkalmazasok (multi-select), szerver IP, adatkuldes-gyakorisag (perc), kijelzo-szin, napi-jelentes jelszo, ertektar e-mail, szombati nyitvatartas, kezelesi-koltseg mod + parameter, nyomtato-port, szkenner-driver, futofeny-konfig (tablaszam, comport-ok, mod, sebesseg), bankkartya-engedely, reklam-megjelenites.
-- SQLite mirror: a penztaros kliens local-first, ezert a gep-szintu beallitasok lokalis perzisztencianak indokoltak (offline mukodes) — IGEN/NEM dontes a tervezesi fazisban -> TBD.
-- Migracio szuksege: TBD (a celarchitektura entitasai a kovetkezo fazisban dolnek el).
+### Technológiai verem (Tech Stack)
+- Pénztári kliens (`penztar-client`)
+- Helyi SQLite mirror az offline működéshez és a helyi gép konfigurációs paramétereinek tárolásához
+- Központi Postgres konfigurációs táblák (szinkronizálva a klienssel)
+- Hardveres integrációk: ESC/POS nyomtató (LPT1/USB), WIA/TWAIN alapú okmányszkenner, COM-portos LED futófény kijelző
+</system_context>
 
-## 7. Fuggosegek
-- Belso modul: penztar-client beallitas/konfiguracio; futofeny-tabla soros (COM) port kezelo; szkenner-driver (WIA/TWAIN); nyomtato (LPT1/USB) kezelo; arfolyam-kijelzo (masodkijelzo) renderer.
-- Kulso: szerver elerese a megadott IP-cimen (adatkuldes); szkenner-driver az operacios rendszerbol; bankkartya-terminal (ha "ENGEDELYEZVE") — protokoll a forrasbol nem lathato -> TBD.
-- Adatbazis: szerver-oldali adatfogadas a "Keszletek bekuldese" gyakorisag szerint.
+<functional_spec>
+## Funkcionális követelmények (FR)
 
-## 8. Domain-szotar
-| Fogalom | Magyarazat |
-|---|---|
-| Alapfunkcio | A gep uzemmodja: penztari / ertektari / afas gep. |
-| Futofeny | Kulso LED futofeny-tabla(k) soros (COM) porton, arfolyam vagy szoveg kijelzesere. |
-| Comport | A futofenytabla(k) soros portja (kepen 1 es 2). |
-| Kezelesi koltseg | Tranzakcios dij: nincs / ezrelekes (pl. 3 ezrelek, max 9990 Ft) / savos. |
-| Napi jelentes jelszava | A napi zaras/jelentes funkciot vedo kulon jelszo (kepen "<JELSZO>"). |
-| Keszletek bekuldese | Adatok periodikus felkuldese a szerverre (kepen 2 percenkent). |
-| Kijelzes szine | A (masodik) arfolyam-kijelzo szinsemaja: zold/sarga/piros. |
+### FR-01: Beállítások keret és alapnavigáció
+- **Leírás**: Biztosítani kell a beállítások keretablakot: bal oldalon a 12 fülből álló "TEMAK" listát, jobb oldalon a kiválasztott fülhöz tartozó beállítási panelt. Alsó funkciógombok: "ROGZITES ES KILEPES", "KILEPES MODOSITAS NELKUL", "VISSZA A MENURE".
+- **Forrás**: `Beállítások menü külön jelszóval.jpeg`
+- **Prio**: M
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Felhasználói fül-kiválasztás, akciógombok kattintása.
+- **Kimenet / Visszajelzés**: Panel frissülése vagy ablak bezárása.
+- **Validációk és Kényszerek**: A "KILEPES MODOSITAS NELKUL" gombnak az összes el nem mentett változtatást el kell dobnia (FR-14).
 
-## 9. Vegrehajtasi utasitas az AI-ugynoknek
-### 9.1 Elokeszites
-- Forrasként a 13 screenshotot tekintsd hitelesnek; ami nem lathato → TBD, nem talalgatas.
-- A "kulon jelszoval" / "csak jelszoval" valtozat tartalma azonos (csak hozzaferesi mod) — egy logikai kepernyo-csoport.
-### 9.2 Fazisok (acceptance criteria-val)
-- F1 — Keret + navigacio: 12- full ful-lista + tartalom-panel + 3 also gomb. AC: minden ful kivalaszthato, a panel a megfelelo tartalmat mutatja; "Kilepes modositas nelkul" eldobja a valtoztatasokat.
-- F2 — Egyszeru valasztos fulek (FR-02, FR-04, FR-08, FR-10, FR-11, FR-12, FR-13): radio/checkbox allapot mentese es betoltese. AC: a kivalasztott ertek perzisztens "Rogzites es kilepes" utan.
-- F3 — Strukturalt fulek (FR-05 IP 4-oktett, FR-06 jelszo+email+nyitvatartas, FR-07 csuszka, FR-09 driver-lista, FR-10 koltseg-parameter, FR-11 futofeny comport/sebesseg). AC: validalt bevitel (IP-oktett 0–255; gyakorisag a skala-tartomanyban); "JELSZO MODOSITAS" kulon dialogus.
-- F4 — Jelszo-vedelem (NFR-01..03): a menu belepteto-jelszoval nyilik, a napi-jelentes jelszo kulon kezelve.
-### 9.3 Tesztes
-- Unit: ertek-perzisztencia fulenkent (mentes/eldobas), IP-oktett es gyakorisag-tartomany validacio.
-- Integracio: "Rogzites es kilepes" utan ujranyitva a beallitasok visszatoltodnek; "Kilepes modositas nelkul" utan valtozatlanok.
-- UI/smoke: ful-navigacio, jelszo-bekeres a menu elott.
+### FR-02: ALAPFUNKCIO fül beállításai
+- **Leírás**: Az "Alapfunkció" fülön meg kell jeleníteni 3 egymást kizáró rádiógombot a gép fizikai/logikai szerepének beállításához: "PENZTARI GEP" (alapértelmezett), "ERTEKTARI GEP", "AFAS GEP".
+- **Forrás**: `Alapfunkciók.jpeg`, `Beállítások csak jelszóval_ alapfunkció.jpeg`
+- **Prio**: M
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Rádiógomb választás.
+- **Kimenet / Visszajelzés**: Kiválasztott üzemmód.
+- **Validációk és Kényszerek**: Egyszerre csak egy üzemmód lehet kiválasztva.
 
-## 10. Kockazatok / Nyitott kerdesek (TBD)
-| # | Kerdes | Miert fontos | Mit kell tudni |
+### FR-03: ALKALMAZASOK fül beállításai
+- **Leírás**: Az "Alkalmazások" fülön egy többszörös választású (checkbox) listát kell biztosítani a gépen futó kiegészítő modulok aktiválásához: "VALUTAVALTAS", "WESTERN UNION", "TESCO AFA", "METRO AFA", "E-KERESKEDELEM".
+- **Forrás**: `Beállítások külön jelszóval_ Alkalmazások .jpeg`
+- **Prio**: S
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Jelölőnégyzetek állapota.
+- **Kimenet / Visszajelzés**: Aktivált modulok listája.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-04: KIJELZES SZINE fül beállításai
+- **Leírás**: Az "AZ ARFOLYAM KIJELZO SZINE" fülön 3 rádiógombot kell elhelyezni: "ZOLD", "SARGA", "PIROS" (alapértelmezett). A panelen meg kell jeleníteni egy élő előnézeti táblázatot (VETEL és ELADAS oszlopok a kiválasztott színű szövegformázással).
+- **Forrás**: `Beállítások külön jelszóval_ Árfolyam kijelző beállításai.jpeg`
+- **Prio**: S
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Szín kiválasztása.
+- **Kimenet / Visszajelzés**: Az előnézeti kép és a fizikai kijelző színének frissülése.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-05: IP-CIM BEALLITASA fül beállításai
+- **Leírás**: A szerver elérési IP-címének megadásához 4 különálló numerikus oktett-beviteli mezőt kell biztosítani, valamint az "IP-CIM RENDBEN" és "MEGSEM" gombokat.
+- **Forrás**: `Beállítások külön jelszóval_ IP cím beállítás.jpeg`
+- **Prio**: M
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: 4 darab IP oktett.
+- **Kimenet / Visszajelzés**: Elmentett szerver IP cím (Lásd: TBD-7).
+- **Validációk és Kényszerek**: Minden mezőnek 0 és 255 közötti egész számnak kell lennie.
+
+### FR-06: JELSZO BEALLITAS fül beállításai
+- **Leírás**: A "NAPI JELENTES JELSZAVA" fülön meg kell jeleníteni az aktuális jelszó értékét ("<JELSZO>"), és biztosítani kell egy "JELSZO MODOSITAS" gombot. Ezen felül itt kell elhelyezni "AZ ERTEKTAR E-MAIL CIME" szöveges mezőt és a "SZOMBATI NYITVATARTAS" rádiógombokat ("SZOMBATON NYITVA", "SZOMBATON ZARVA").
+- **Forrás**: `Beállítások külön jelszóval_ Jelszó beállítások napi jelentéshez.jpg`
+- **Prio**: M
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Új jelszó, e-mail cím, nyitvatartási állapot.
+- **Kimenet / Visszajelzés**: Mentett biztonsági és e-mail beállítások.
+- **Validációk és Kényszerek**: Az e-mail címnek meg kell felelnie a standard e-mail formátumnak.
+
+### FR-07: KESZLETEK BEKULDESE fül beállításai
+- **Leírás**: Az adatok szerverre küldésének beállítására egy "Adatok bekuldesenek gyakorisaga: N percenkent" feliratot és egy 0-tól 25 percig skálázott csúszkát kell biztosítani.
+- **Forrás**: `Beállítások külön jelszóval_ adatok beküldése a szerverre.jpeg`
+- **Prio**: M
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Csúszka értéke (pl. 2 perc).
+- **Kimenet / Visszajelzés**: Szinkronizációs gyakoriság beállítása.
+- **Validációk és Kényszerek**: A csúszka értéktartománya szigorúan 0 és 25 közötti egész szám lehet.
+
+### FR-08: NYOMTATO fül beállításai
+- **Leírás**: A "NYOMTATO TIPUSA" beállítására 2 rádiógombot kell biztosítani: "LPT1 PORTRA CSATLAKOZTATVA" és "USB PORTRA CSATLAKOZTATVA".
+- **Forrás**: `Beállítások külön jelszóval_ nyomtató beállítás.jpeg`
+- **Prio**: S
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Port-típus kiválasztása.
+- **Kimenet / Visszajelzés**: Nyomtatási kimeneti csatorna beállítása.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-09: SCANNER BEALLITASA fül beállításai
+- **Leírás**: A "A SCANNER BEALLITASA" fülön meg kell jeleníteni a kliensgépen elérhető szkenner-driverek rádiógombos listáját (pl. "CanoScan Lide 120", "WIA-CanoScan Lide 120").
+- **Forrás**: `Beállítások külön jelszóval_ szkenner beállítás.jpeg`
+- **Prio**: S
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Driver kiválasztása a listából.
+- **Kimenet / Visszajelzés**: Mentett szkenner driver profil.
+- **Validációk és Kényszerek**: Ha nincs csatlakoztatott szkenner, jelezni kell.
+
+### FR-10: KEZELESI KOLTSEG fül beállításai
+- **Leírás**: A "KEZELESI KOLTSEG SZAMITASA" fülön 3 rádiógombot kell biztosítani: "NINCS KEZELESI KOLTSEG", "EZRELEKES KEZELESI KOLTSEG", "SAVOS KEZELESI KOLTSEG". A kijelölt mód alatt meg kell jeleníteni a hozzá tartozó paraméter-panelt (pl. "EZRELEKES KEZELESI KOLTSEG: 3 ezrelek Max: 9990 Ft") és egy "MODOSITAS" gombot (Lásd: TBD-5).
+- **Forrás**: `Beállítások csak jelszóval_ Kezelési költség számítások.jpeg`
+- **Prio**: M
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Költségszámítási típus, ezrelék érték, maximum Forint érték.
+- **Kimenet / Visszajelzés**: Tranzakciós kezelési díj kalkulációs paraméterek frissítése.
+- **Validációk és Kényszerek**: Az ezrelék és a maximum értéknek pozitív számnak kell lennie.
+
+### FR-11: FUTOFENY fül beállításai
+- **Leírás**: A "FUTOFENY BEALLITASA" panelen a következő beviteli mezőket kell biztosítani:
+  - "Hany futofenytabla van: N" (egész szám)
+  - "Elso futofenytabla comportja: N"
+  - "Masodik futofenytabla comportja: N"
+  - Megjelenítési mód választó (rádiógombok): "CSAK ARFOLYAMKIJELZES", "CSAK SZOVEG KIJELZESE" (a "Szoveg szerkesztese" gombbal, Lásd: TBD-4), "VALTAKOZO KIJELZES (Nappal szoveg/Ejjel arfolyam)"
+  - "FUTOFENY KIKAPCSOLASA" akciógomb
+  - "Futofeny sebessege" csúszka LASSU és GYORS értékek között.
+- **Forrás**: `Beállítások csak jelszóval_ futófény beállítások.jpeg`
+- **Prio**: S
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Táblaszám, COM-portok, módok, sebesség érték.
+- **Kimenet / Visszajelzés**: Futófény soros kommunikációs paramétereinek frissítése.
+- **Validációk és Kényszerek**: A COM portoknak egyedi számoknak kell lenniük.
+
+### FR-12: BANKKARTYA FIZETES fül beállításai
+- **Leírás**: A "FIZETES BANKKARTYAVAL" fülön 2 rádiógombot kell elhelyezni: "NINCS ENGEDELYEZVE", "ENGEDELYEZVE", valamint egy "ADATOK RENDBEN" jóváhagyó gombot (Lásd: TBD-6).
+- **Forrás**: `Beállítások külön jelszóval_ Bankkártyás fizetések.jpeg`
+- **Prio**: S
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Rádiógomb választása.
+- **Kimenet / Visszajelzés**: Bankkártyás fizetés funkció feloldása vagy zárolása a tranzakciós képernyőkön.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-13: REKLAM A KIJELZON fül beállításai
+- **Leírás**: Biztosítani kell a "REKLAMOK A KIJELZON" beállítást "NINCS REKLAM A KIJELZON" és "VAN REKLAM A KIJELZON" rádiógombokkal (Lásd: TBD-3).
+- **Forrás**: `Beállítások menü külön jelszóval.jpeg` (csak a füllistában látható)
+- **Prio**: C
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Rádiógomb választás.
+- **Kimenet / Visszajelzés**: Másodkijelzőn futó reklámok engedélyezése.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-14: Keret alsó akciógombjainak működése
+- **Leírás**: Minden fül megnyitása esetén az alsó gombsornak azonosan kell viselkednie:
+  - "ROGZITES ES KILEPES": Minden megváltoztatott paramétert elment a lokális SQLite-ba és a Postgres adatbázisba, majd bezárja a konfigurációs ablakot.
+  - "KILEPES MODOSITAS NELKUL": Elveti az összes módosítást a konfiguráció mentése nélkül, és bezárja az ablakot.
+  - "VISSZA A MENURE": Mentés nélkül bezárja a beállításokat, visszatér a főmenübe.
+- **Forrás**: Minden beállítási képernyőkép alsó sávja.
+- **Prio**: M
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Gomb leütések vagy kattintások.
+- **Kimenet / Visszajelzés**: Mentés és/vagy navigáció a főmenübe.
+- **Validációk és Kényszerek**: - "ROGZITES ES KILEPES" előtt le kell futtatni az összes fülön lévő adatvalidációt (IP formátum, COM portok száma stb.).
+
+### FR-15: Kezelési költség konfiguráció jogosultságai
+- **Leírás**: A kezelési költség konfigurációját (`FR-10` és `HandlingFeeConfigPage`) a backend oldalon a `MANAGER` és `ADMIN` szerepkörökön túl a `FOERTEKTAR` (Főértéktáros) és `UGYVEZETO` (Ügyvezető) szerepköröknek is engedélyezni kell. A kasszás szerepkör számára a beállítások letiltottak.
+- **Forrás**: 2026-06-02 tranzakciós audit 5. pont
+- **Prio**: Magas (P1)
+- **Csomag/Komponens**: backend / frontend-react
+- **Bemenő adatok**: Felhasználói szerepkör
+- **Kimenet / Visszajelzés**: API hozzáférés engedélyezése vagy 403-as hiba
+</functional_spec>
+
+<data_structure>
+## Javasolt Adatmodell és Séma (SQLite és Postgres Tükör)
+
+### Postgres és SQLite táblák:
+
+#### 1. `gep_konfiguracio`
+A helyi gép konfigurációs paramétereinek tárolása.
+- `id` (INTEGER PRIMARY KEY)
+- `gep_szerep` (VARCHAR(20) NOT NULL DEFAULT 'PENZTAR') -- PENZTAR, ERTEKTAR, AFA
+- `valutavaltas_aktiv` (BOOLEAN DEFAULT TRUE)
+- `western_union_aktiv` (BOOLEAN DEFAULT FALSE)
+- `tesco_afa_aktiv` (BOOLEAN DEFAULT FALSE)
+- `metro_afa_aktiv` (BOOLEAN DEFAULT FALSE)
+- `ekereskedelem_aktiv` (BOOLEAN DEFAULT FALSE)
+- `kijelzo_szin` (VARCHAR(10) DEFAULT 'PIROS') -- ZOLD, SARGA, PIROS
+- `szerver_ip_cim` (VARCHAR(15) DEFAULT '127.0.0.1')
+- `napi_jelentes_jelszo` (VARCHAR(100)) -- Hashelt jelszó
+- `ertektar_email` (VARCHAR(100))
+- `szombati_nyitvatartas` (BOOLEAN DEFAULT FALSE)
+- `szinkronizacio_gyakorisag_perc` (INTEGER DEFAULT 2)
+- `nyomtato_port` (VARCHAR(10) DEFAULT 'LPT1') -- LPT1, USB
+- `scanner_driver` (VARCHAR(100))
+- `kezelesi_koltseg_tipus` (VARCHAR(20) DEFAULT 'EZRELEKES') -- NINCS, EZRELEKES, SAVOS
+- `kezelesi_koltseg_ezrelek` (INTEGER DEFAULT 3)
+- `kezelesi_koltseg_max_huf` (NUMERIC(15, 2) DEFAULT 9990.0)
+- `futofeny_darab` (INTEGER DEFAULT 0)
+- `futofeny_com1` (INTEGER)
+- `futofeny_com2` (INTEGER)
+- `futofeny_megjelenites_mod` (VARCHAR(20) DEFAULT 'ARFOLYAM') -- ARFOLYAM, SZOVEG, VALTAKOZO
+- `futofeny_sebesseg` (INTEGER DEFAULT 5) -- 1-10 közötti skála
+- `bankkartya_fizetes_aktiv` (BOOLEAN DEFAULT FALSE)
+- `reklam_kijelzon_aktiv` (BOOLEAN DEFAULT FALSE)
+- `utolso_modositas` (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+</data_structure>
+
+<integration_points>
+## Integrációs Pontok és Belső Függőségek
+- **Hardveres periféria API-k**: Soros port vezérlő (COM) a futófény és a kijelző színeinek átadásához (FR-04, FR-11). Windows WIA/TWAIN interfész a szkenner driverek lekérdezéséhez (FR-09).
+- **Tranzakciós modul és Zárás**: A kezelési költség számítási paraméterei (ezrelék, max limit) közvetlenül befolyásolják a váltások kalkulációját (FR-10). A napi zárási jelszó a zárási workflow indítását védi (FR-06).
+- **Hálózati réteg**: A megadott IP-cím határozza meg, hogy a kliens melyik központi Postgres szerver felé továbbítja a tranzakciókat és készlet adatokat (FR-05, FR-07).
+</integration_points>
+
+<execution_workflow>
+## Végrehajtási folyamat az AI Agent számára
+
+### Fázis 1: Előkészítés
+- Elkészíteni az SQLite/Postgres migrációs szkriptet a `gep_konfiguracio` táblához alapértelmezett seed értékekkel.
+- Összegyűjteni a teszteléshez használható virtuális COM port és nyomtató port eszközöket.
+
+### Fázis 2: Backend megvalósítás
+- Megvalósítani a konfigurációs mentési és betöltési API végpontokat a validációkkal együtt.
+- Elkészíteni a jelszó-hashelő funkciót a napi jelentések védelméhez.
+
+### Fázis 3: Frontend megvalósítás
+- Lefejleszteni a 12 füles oldalsávos struktúrát a `penztar-client` alkalmazásban.
+- Megírni az IP cím beviteli mező (4 oktett) beviteli maszkját és validációját.
+- Lekódolni a futófény sebesség-csúszkáját és a gyakoriság-csúszkáját.
+- Implementálni a színválasztó előnézeti rácsát az árfolyam-kijelzőnek.
+
+### Fázis 4: Verifikáció és Tesztelés
+- Unit tesztekkel verifikálni, hogy a mentett értékek (pl. a csúszkák vagy rádiógombok állapotai) megegyeznek-e a visszatöltöttekkel.
+- Tesztelni, hogy a "KILEPES MODOSITAS NELKUL" megnyomására a konfiguráció valóban változatlan marad-e.
+- IP cím oktett formátum ellenőrzése és jelszó módosítás helyességének tesztelése.
+</execution_workflow>
+
+<tbd_log>
+## Nyitott kérdések és Kockázatok (TBD)
+| # | Kérdés / Kockázat | Hatás | Leírás |
 |---|---|---|---|
-| 1 | "kulon jelszoval" vs "csak jelszoval" pontos kulonbsege | Hozzaferes-modell helyessege | A ket vedelmi mod elterese / mikor melyik aktiv. |
-| 2 | Mely szerepek erhetik el a beallitas-menut + a belepteto jelszo eredete | RBAC | Szerep–jelszo megfeleltetes (a kepen nem lathato). |
-| 3 | "Reklam a kijelzon" ful tovabbi mezoi | Teljesseg | Kulon screenshot nincs; csak a Nincs/Van radio lathato. |
-| 4 | "Szoveg szerkesztese" (futofeny) szerkeszto-felulet | FR-11 teljesseg | Nincs kepe. |
-| 5 | "Savos kezelesi koltseg" parameter-panel tartalma | FR-10 teljesseg | Csak az "ezrelekes" panel lathato (3 ezrelek, max 9990 Ft). |
-| 6 | Bankkartya "ENGEDELYEZVE" eseten megjeleno tovabbi mezok/terminal-protokoll | FR-12 teljesseg | A kepen csak a radio + "Adatok rendben" gomb. |
-| 7 | Szerver-IP adatkuldes pontos protokollja/portja | FR-05/FR-07 | A kepen csak az IP-oktettek (<SZERVER_IP>) lathatok. |
-| 8 | Az ertek-tarolas helye (gep-szintu vs telephely-szintu, lokalis SQLite vs szerver) | Adatmodell | Architekturalis dontes a kovetkezo fazisban. |
+| TBD-1 | A "külön jelszóval" és "csak jelszóval" közötti eltérés | Felhasználói hozzáférés | Mi a pontos funkcionális különbség a két konfigurációs belépési mód között (pl. eltérő mezők szerkeszthetősége)? |
+| TBD-2 | Beállítások belépő jelszava | Biztonság | Milyen alapértelmezett jelszó védi a beállítások menüt? Honnan származik az ellenőrzés logikája? |
+| TBD-3 | "Reklám a kijelzőn" fül további paraméterei | Teljes körű konfiguráció | Milyen beállítások jelennek meg még a reklám fülön, ha a "VAN REKLÁM A KIJELZŐN" opciót választja a felhasználó? (Nincs képünk róla). |
+| TBD-4 | "Szöveg szerkesztese" futófény felület | Funkcionális lefedettség | Hogyan néz ki a futófényre kiírandó egyedi szövegek szerkesztő felülete, és milyen korlátai vannak (pl. maximális karakterszám)? |
+| TBD-5 | "Sávos kezelési költség" beállításai | Pénzügyi modul | **RESOLVED**: A sávos kezelési költség paramétereit (ezrelékes sávok, maximum összegek, sávhatárok) a `handling_fee_bracket` táblában kell tárolni és a backend oldali calculator konfigurációja szerint kell érvényesíteni. |
+| TBD-6 | Bankkártyás fizetések paraméterei | POS integráció | Ha a bankkártyás fizetés "ENGEDÉLYEZVE" van, milyen terminál-konfigurációs mezők (pl. terminál ID, IP port) jelennek meg a felületen? |
+| TBD-7 | Szerver elérés portja és protokollja | Hálózati szinkron | Az IP cím mellett megadható-e egyedi hálózati port is, vagy a rendszer rögzített standard portot használ a szerverkapcsolathoz? |
+| TBD-8 | Lokális vs. központi konfiguráció | Adatmodell | A beállítások kizárólag a kliens gépen (SQLite) tárolódnak, vagy szinkronizálásra kerülnek a központi adatbázissal (Postgres) is a gép azonosítója alapján? |
+</tbd_log>
 
-## 11. Verifikacios checklist
-- [x] minden FR-hez forrás-hivatkozás
-- [x] 0 hallucináció (csak a kepeken lathato tartalom; minden hianyt TBD jelol)
-- [x] minden TBD jelölt
-VERIFIKACIO: FR=14 db, TBD=8 db, érintett csomag(ok)=penztar-client
+<verification_checklist>
+## Verifikációs Checklist
+- [ ] Minden funkcionális követelmény (FR-01-től FR-14-ig) tartalmazza a megfelelő képi forrás-hivatkozást.
+- [ ] A 12 darab fül struktúrája és azok beállítási opciói pontosan megőrzésre kerültek.
+- [ ] A 8 darab nyitott kérdés rögzítve lett a TBD kockázati naplóban.
+- [ ] Nem lettek új üzleti vagy konfigurációs szabályok kitalálva (csak a képeken látható beállítások).
+- [ ] Az IP beviteli mezők száma és a csúszkák percmértékei pontosak (FR-05, FR-07).
+</verification_checklist>

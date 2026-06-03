@@ -201,3 +201,16 @@ vault/.obsidian/
 # Dolgozói import runtime artefaktok (PII: nevek+munkakör) — NEM commitolandó
 import_work/
 scripts/import-employees/*.sql
+
+# === Média/ASR feldolgozás (2026-06-02) — generált artefaktumok, NEM commitolandó ===
+# Python venv a faster-whisper ASR + OCR passhoz (3GB+ CUDA/torch/cudnn DLL-ek)
+.venv-asr/
+# Generált forrás-/média-inventár (nehéz CSV/JSON/JSONL + transzkriptek; a 00-coverage-map.md marad)
+EXCMD/_inventory/*.csv
+EXCMD/_inventory/*.json
+EXCMD/_inventory/*.jsonl
+EXCMD/_inventory/transcripts/
+EXCMD/_inventory/docx-text/
+EXCMD/_inventory/media-asr-transcripts-2026-06-02/
+# Python bytecode cache
+scripts/media/__pycache__/

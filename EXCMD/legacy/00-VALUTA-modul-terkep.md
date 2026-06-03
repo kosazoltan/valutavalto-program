@@ -1,6 +1,6 @@
 # Anti / VALUTA legacy modul-térkép (primer forrás: a tényleges .dpr/.pas fájlrendszer)
 
-> Készült: 2026-05-22. **Ground truth = a tényleges `Anti/VALUTA/DLL/*` fájlrendszer**
+> Készült: 2026-05-22. **Ground truth = a tényleges `Anti/VALUTA/DLL/` fájlrendszer**
 > (109 DLL-modul, verifikálva `EXCMD/anti/valuta-modul-lista.csv`). A korábbi
 > `Anti/antivaluta.md`-t NEM vettük igazságként; a modul-lista a fájlrendszerből készült.
 >

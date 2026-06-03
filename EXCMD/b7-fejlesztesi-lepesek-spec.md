@@ -1,125 +1,457 @@
-# Modul: Fejlesztesi lepesek + rendszerfunkciok + adatmodell-szabalyok (Valuta)  (forras: Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx; Kósa Szervezés/Specifikációk/Névtelen dokumentum.docx; Kósa Szervezés/c.docm)
+# Modul: Fejlesztesi lepesek + rendszerfunkciok + adatmodell-szabalyok (Valuta)
 
-## 1. Cel (egy mondat)
-A tervezett valutavalto-rendszer modul-bontasanak (34 fejlesztesi lepes), korai rendszerfunkcio-specifikacioinak es a PowerDesigner-szeru adatmodell (entitasok, domenek, 11 uzleti szabaly) hu rogzitese.
+<system_context>
+## Rendszerkontextus és Háttér
+Ez a modul leírja a tervezett valutaváltó-rendszer moduláris fejlesztési lépéseit (34 lépésből álló munkaterv), az alapvető rendszerfunkciókat (belépés, kilépés-védelem, 3 havi jelszócsere), valamint a PowerDesigner-alapú logikai adatmodellt és annak 11 üzleti szabályát.
 
-## 2. Scope
-### IN
-- 34 fejlesztési lépés / modul-bontás a "Fejlesztés lépései.docx"-ból (v01 2024.11.08, v02 2024.11.13, MR & NG) — adatbázis-tervezéstől az architektúráig.
-- Korai rendszerfunkció-spec a "Névtelen dokumentum.docx"-ból: belépés/kilépés, jelszó-csere (3 havi kötelező), folyamat-zárás kilépés előtt, replikáció, ügyfél/feketelista/pénzmosás vázlat.
-- Adatmodell a `c.docm`-ből: entitások (szervezet, saját cég, munkaállomás, cím-hierarchia, ügyfél/személy/cég, árfolyam-családok, díj, pénztár/mozgás/címletezés, körlevél, tiltólisták, stb.), domének (típus-definíciók), 11 üzleti szabály.
-
-### OUT
-- Üzleti folyamatok részletes leírása (lásd b7-igenyfelmeres-interjuk.md).
-- Jelenlegi rendszer architektúra (lásd b7-uzemeltetes-megbeszeles.md).
-- A jelenlegi (megvalósult) programmal való összevetés.
-
-## 3. Szakteruleti szereplok
-| Szerep | Jogosultsag | RBAC ertek |
+### Szerepkörök (Roles)
+| Szerep | Jogosultság / Feladatkör | RBAC érték |
 |---|---|---|
-| Felhasznalo (altalanos) | Bejelentkezés egyedi user+jelszó, 3 havi kötelező jelszócsere, folyamat lezárása kilépés előtt | TBD (forrás csak jog-listát ad fejlesztési lépésként) |
-| Penztaros | Váltás, foglaló, pénztári mozgás, zárás/nyitás | TBD |
-| Ertektaros / Foertektaros | Árfolyamkezelés, díjak, jutalék, valuta-igény | TBD |
-| Belsoellenor | Anonim bejelentés, gyanús ügylet, log-megtekintés | TBD |
-| admin | Jogosultság-/felhasználó-/rendszerparaméter-kezelés, szervezetek, saját cég | TBD |
+| Felhasználó (általános) | Egyedi felhasználónév/jelszó alapú belépés, 3 havi kötelező jelszócsere, folyamat-lezárási kötelezettség kilépés előtt. | TBD (Lásd: TBD-19) |
+| Pénztáros | Váltási tranzakciók végrehajtása, foglaló kezelése, pénztárközi mozgások és napi zárások/nyitások rögzítése. | TBD |
+| Értéktáros / Főértéktáros | Árfolyamok karbantartása, kezelési díjak és jutalékok paraméterezése, valuta-igények elbírálása. | TBD |
+| Belsőellenőr | Anonim bejelentések megtekintése, gyanús ügyletek felülvizsgálata, biztonsági logok lekérdezése. | TBD |
+| Adminisztrátor | Felhasználók, jogosultságok, munkaállomások, saját cég és irodahierarchia kezelése. | TBD |
 
-## 4. Funkcionalis kovetelmenyek (FR)
-| ID | Leiras | Forrás-hivatkozas | Prio | Csomag |
-|---|---|---|---|---|
-| FR-53 | Adatbázis-tervezés: táblák + táblák közötti kapcsolatok létrehozása. | fejlesztés lépései (949-951) | Must | backend |
-| FR-54 | Autentikáció: belépés, token, jelszócsere endpointokkal. | fejlesztés lépései (955-959) | Must | backend |
-| FR-55 | Bejelentkezés egyedi felhasználónév+jelszóval, minden tevékenység logolva; jelszó nem megosztható. | Névtelen dok (1592-1593) | Must | backend |
-| FR-56 | Kijelentkezés: egyszeri megerősítés; lezáratlan folyamat esetén tiltja a kilépést, jelzi a felhasználónak (vond vissza / hajtsd végre). | Névtelen dok (1597-1598) | Must | penztar-client |
-| FR-57 | Jelszóváltoztatás: felhasználó által + 3 havonta belépéskor kötelező csere. | Névtelen dok (1602) | Must | backend |
-| FR-58 | Dashboard: főmenü, logó, lábléc (verzió), kilépés. | fejlesztés lépései (960-965) | Should | frontend-react |
-| FR-59 | Rendszerparaméter-karbantartás: lista + szerkesztő. | fejlesztés lépései (966-969) | Should | backend |
-| FR-60 | Jogosultság-kezelés: lista, új, szerkesztő, aktiválás/inaktiválás, törlés. | fejlesztés lépései (970-976) | Must | backend |
-| FR-61 | Felhasználó-kezelés: lista, új, szerkesztő, aktiválás/inaktiválás, archiválás, törlés. | fejlesztés lépései (977-984) | Must | backend |
-| FR-62 | HR modul: munkavállaló lista/új/szerkesztő (+felhasználóhoz kapcsolás), aktiválás, archiválás, törlés, jutalékai (lista, kalkuláció, könyvelési lista-generálás). | fejlesztés lépései (985-996) | Should | kozponti-client |
-| FR-63 | Munkaállomás-kezelés: lista, új, szerkesztő, aktiválás, archiválás, törlés. | fejlesztés lépései (997-1004) | Should | backend |
-| FR-64 | Szervezetek + saját cég kezelés: fiók/értéktár lista/új/szerkesztés, hierarchia-módosítás, adásvétel/áthelyezés, aktiválás, bezárás. | fejlesztés lépései (1005-1021) | Must | kozponti-client |
-| FR-65 | Szervezeti rendszerparaméterek: szervezet-/devizanem-/időtartam-függő variánsok. | fejlesztés lépései (1022-1035) | Should | backend |
-| FR-66 | Címlet-kezelés: lista/új/szerkesztő/aktiválás/archiválás/törlés. | fejlesztés lépései (1036-1043) | Must | backend |
-| FR-67 | Devizanem-kezelés: lista/új/szerkesztő/aktiválás/archiválás/törlés. | fejlesztés lépései (1044-1051) | Must | arfolyam-keszito-client |
-| FR-68 | Körlevél: lista/új/szerkesztő/aktiválás/archiválás/törlés + értesítések + "értettem" felugró ablak. | fejlesztés lépései (1052-1061) | Should | kozponti-client |
-| FR-69 | Ügyfél és meghatalmazott: lista/új/szerkesztő/aktiválás/archiválás/törlés. | fejlesztés lépései (1062-1069) | Must | backend |
-| FR-70 | Anonim bejelentés: lista, új, inaktiválás. | fejlesztés lépései (1070-1074) | Should | kozponti-client |
-| FR-71 | Árfolyamkezelés: konkurens árfolyamok (lista/új/szerkesztés/törlés), banki árfolyamok (lista/új/lekérés), árfolyam-meghatározás (lista/szerkesztő/változás), automata árfolyam-lekérdezés. | fejlesztés lépései (1075-1090) | Must | arfolyam-keszito-client |
-| FR-72 | Díjak/díjmértékek: díjtípus (lista/új/szerkesztés/archiválás/törlés), díjmérték, adható díjkedvezmény, díjváltozás (szinkron utáni automata életbeléptetés), alkalmazott díjak. | fejlesztés lépései (1091-1117) | Must | backend |
-| FR-73 | Jutalék-paraméterezés: jutalékmérték lista/új/szerkesztés/törlés. | fejlesztés lépései (1118-1123) | Should | backend |
-| FR-74 | Tiltólisták: új/szerkesztés/letöltés/aktiválás/törlés + automata szinkronizálás. | fejlesztés lépései (1124-1131) | Must | backend |
-| FR-75 | Váltás: indítás, igényrögzítés, ellenőrzések, művelet-végrehajtás (eladás, vétel, kereszt/összetett váltás). | fejlesztés lépései (1132-1140) | Must | penztar-client |
-| FR-76 | Foglaló-kezelés: rögzítés, érvényesítés, visszafizetés, ügyfél-hibából automata lezárás. | fejlesztés lépései (1141-1146) | Must | penztar-client |
-| FR-77 | Valuta-igények: igény rögzítése, generálása készletadatból, teljesítése. | fejlesztés lépései (1147-1151) | Should | kozponti-client |
-| FR-78 | Pénztárak közötti mozgás: pénz átadás/átvétel egységnek, transzfer-korrekció, kezelési díjak átadása/átvétele. | fejlesztés lépései (1152-1157) | Must | penztar-client |
-| FR-79 | Átadólap: ablak, generálás, nyomtatás. | fejlesztés lépései (1158-1162) | Must | penztar-client |
-| FR-80 | Bizonylatkezelés: lista, sztornó, újranyomtatás, utólagos NAV-feladás. | fejlesztés lépései (1163-1168) | Must | backend |
-| FR-81 | Zárás/nyitás: napi zárás, POS-terminál napi zárás, dekád-zárás, havi zárás, nyitás. | fejlesztés lépései (1169-1175) | Must | penztar-client |
-| FR-82 | Járulék/jutalék kalkuláció időszakra. | fejlesztés lépései (1176-1178) | Should | backend |
-| FR-83 | Pénzmosás/terror-gyanús eset bejelentés: új, felülvizsgálat, feladás. | fejlesztés lépései (1179-1183) | Must | backend |
-| FR-84 | Listák/riportok: ügylet-, bizonylat-, díjösszesítő-lista; havi készlet/forgalom/körzet/iroda/átadás-átvétel; kezelési költség; napi pénztár; pillanatnyi pénztárállás; gyanús ügylet keresés; kártyás tranzakciós díjak. | fejlesztés lépései (1184-1201) | Must | kozponti-client |
-| FR-85 | Technikai funkciók: árfolyam-kijelző; pénztárszünet-kezelés (lista/új/szerkesztés/törlés + automata lezárás); logolás (rendszer-/POS-/NAV-log, kimásolás, archiválás); üzleti adat archiválás. | fejlesztés lépései (1202-1223) | Must | penztar-client / backend |
-| FR-86 | Architektúra: adat-szinkronizációs modul. | fejlesztés lépései (1224-1226) | Must | backend |
-| FR-87 | Felhasznált általános modulok: kijelző-monitor kezelő, POS-terminál, NAV pénztárgép interface, dokumentumtár, értesítés-kezelő. | fejlesztés lépései (1227-1233) | Must | penztar-client / backend |
-| FR-88 | Adat-replikáció + verziókezelés + hírlevél/hirdetmény (korai rendszerfunkció-vázlat, részletek nélkül). | Névtelen dok (1604-1608) | Could | backend |
+### Hatókör (Scope)
+#### IN
+- A 34 fejlesztési lépés / moduláris ütemterv (az adatbázistól az adat-replikációig).
+- Alaprendszer funkciók: belépési biztonsági szűrők, kilépési folyamat-zárás védelem, jelszócsere ciklus.
+- Logikai adatmodell entitáslistája és adattípus-doménjei.
+- Az adatmodell 11 darab üzleti validációs szabálya.
 
-## 5. Nem-funkcionalis kovetelmenyek (NFR)
-| ID | Leiras | Merheto kriterium |
-|---|---|---|
-| NFR-13 | Kötelező jelszócsere periódus | 3 hónap (Névtelen dok 1602) |
-| NFR-14 | Teljes tevékenység-logolás (ki, mit) | minden bejelentkezett művelet logolt (1593) |
-| NFR-15 | Cím-validitás: a cím rész-területei koherensek (közterület a településen, megye az országban) | c.docm "cím validitás" üzleti szabály (1660-1668) |
-| NFR-16 | Adattípus-domének rögzített hossza | pl. bankszámlaszám VARCHAR(32), belső id (64), bizonylatszám (64), hosszú név (256) — c.docm domének |
+#### OUT
+- Az üzleti folyamatok és interjúk részletes tartalma (lásd `b7-igenyfelmeres-interjuk.md`).
+- A meglévő fizikai üzemeltetési architektúra (lásd `b7-uzemeltetes-megbeszeles.md`).
 
-## 6. Adatmodell-erintettseg
-- Postgres entitas-jeloltek (c.docm export, hu nevek): dokumentum, dokumentum file, bank, irányítószám, közterület, közterület-település/-típus, megye, munkaállomás, ország, saját cég, saját cég bankszámla, saját cég tevékenysége, szervezet tevékenysége, szervezeti egység, TEAOR, személy, személy azonosító okmány, végzettség, elemi jog, felhasználó (+elemi joga, +jogcsoportjai), hozzáférési jog, jogcsoport, körlevél (+csatolmány, +hivatkozás, +olvasva, +címzett szervezeti egység/felhasználó/jogcsoport/telephely), banki/csoport/kedvezményes/saját árfolyam, címlet, devizanem, konkurens (+deviza árfolyam, +nyitvatartás), árfolyam csoport, szervezet konkurense, rendszerparaméter (+szervezet-/devizanem-/időtartam-függő), alkalmazható díj kedvezmény, díj kedvezmény típus, díj mérték fej/tétel, díj típus, szervezetnél alkalmazandó díj, névtelen bejelentés, pénztár, jogcím, nyitás-zárás bizonylat, pénztár nyitás-zárás, pénztári egyenleg (+címletezés), pénztári időszak, pénztári mozgás (+címletezés), tevékenységnél alkalmazható jogcím, cég tulajdonos, cég ügyfél, céges dokumentum, közszereplő típus, okmány típus, személy ügyfél, tiltott cég/személy/állampolgárság, ügyfél, ügyfél igazoló okmány.
-- Domének: bankszámlaszám(32), belső id(64), bizonylatszám(64), hosszú név(256), igen-nem, megjegyzés, név, rövid név, százalék, árfolyam, összeg.
-- 11 üzleti szabály (c.docm): (1) cég TEAOR a hierarchia legalsó eleméből; (2) cím-validitás koherencia; (3) címletezés devizaneme = egyenleg/mozgás devizaneméhez tartozó címlet; (4) desktop rendszernél pénztár kötelezően munkaállomáshoz rendelt; (5) egy személynek egy okmánytípusból csak egy érvényes; (6) transzfer/pénzszállító csomag kiindulási és cél hely kizárólagosság (nem lehet kiindulási bank ÉS cél bank, telephely ÉS bank együtt); (7) megye az országhoz tartozik; (8) munkaállomás csak egy telephely tevékenységeihez; (9) pénztári mozgás csak nyitott pénztárba; (10) Rule_10 (definíció nélkül a forrásban → TBD); (11) ügyfél vagy személy, vagy cég.
-- SQLite mirror: a pénztári mozgás/egyenleg/címletezés/bizonylat IGEN (offline pénztáros). Törzs (szervezet, díj, árfolyam, tiltólista) read-only mirror IGEN a kliensen. Indok: kliensoldali váltás offline.
-- Migracio szukseges: TBD (a c.docm logikai modell, nem fizikai séma; Flyway-séma külön fázis).
+### Technológiai verem (Tech Stack)
+- Backend szerver és API réteg (`backend`)
+- Kliensoldali webes dashboard (`frontend-react`)
+- Pénztári lokális kliens (`penztar-client` / `arfolyam-keszito-client`)
+- Központi szerverkezelő kliens (`kozponti-client`)
+- PostgreSQL központi relációs adatbázis és SQLite offline kliensoldali mirror (outbox replikációval)
+</system_context>
 
-## 7. Fuggosegek
-- Belső modul: minden 34 lépés egymásra épül (DB -> backend -> auth -> törzs -> tranzakció -> riport -> architektúra-szinkron).
-- Külső API: NAV pénztárgép interface, automata árfolyam-lekérdezés (forrás bank), tiltólista-letöltés (FR-74).
-- Adatmodell-eszköz: a forrás PowerDesigner/hasonló logikai modell-export (`c.docm`).
+<functional_spec>
+## Funkcionális követelmények (FR)
 
-## 8. Domain-szotar
-| Fogalom | Magyarazat |
-|---|---|
-| Elemi jog / jogcsoport / hozzáférési jog | A jogosultság-modell entitásai (c.docm). |
-| Saját cég / szervezeti egység | A multi-tenant cég- és fiók/értéktár-hierarchia entitásai. |
-| Pénztári mozgás címletezése | A pénztári mozgáshoz kötött címlet-bontás (címlet devizaneme = mozgás devizaneme). |
-| Csoport árfolyam / saját árfolyam / kedvezményes árfolyam | Árfolyam-családok az árfolyamkezelő modulban. |
-| Jogcím | Pénztári mozgáshoz/tevékenységhez rendelhető jogcím-entitás. |
-| Dekád-zárás | 10 napos zárási ciklus (FR-81, fejlesztés lépései 1173). |
-| Rule_10 | Üzleti szabály név definíció nélkül a c.docm-ben (TBD). |
+### FR-53: Adatbázis-tervezés lépése
+- **Leírás**: Az adatbázis táblák és a táblák közötti relációk fizikai megvalósítása a megadott logikai modell alapján.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (949-951)
+- **Prio**: Must
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Logikai adatmodell leírása.
+- **Kimenet / Visszajelzés**: Létrehozott SQL adatbázis séma.
+- **Validációk és Kényszerek**: Az integritási szabályoknak le kell futniuk.
 
-## 9. Vegrehajtasi utasitas az AI-ugynoknek
-### 9.1 Elokeszites
-- A "Fejlesztés lépései" a 34-lépéses munkaterv (modul-sorrend); a `c.docm` adja a logikai adatmodellt; a "Névtelen dokumentum" csonka korai vázlat (sok üres alpont).
-- Az entitás- és domén-neveket magyar nevükön rögzítsd; a c.docm angol Code-mezőket is ad (pl. account_number, internal_id, note_number, long_name).
-### 9.2 Fazisok (acceptance criteria-val)
-- 1. fazis: alap (FR-53, FR-54, FR-55, FR-57) + jogosultság/felhasználó (FR-60, FR-61). AC: token-auth, 3 havi jelszó-csere, RBAC entitások (elemi jog/jogcsoport/hozzáférési jog).
-- 2. fazis: törzsadatok (FR-64..FR-69, FR-66, FR-67) + a 11 üzleti szabály validáció. AC: cím-koherencia, munkaállomás-telephely, ügyfél=személy XOR cég.
-- 3. fazis: tranzakció (FR-75, FR-78, FR-79, FR-80, FR-81) + foglaló (FR-76). AC: pénztári mozgás csak nyitott pénztárba; címletezés-deviza egyezés.
-- 4. fazis: árfolyam/díj (FR-71, FR-72) + AML (FR-83, FR-74) + riportok (FR-84) + szinkron (FR-86).
-### 9.3 Tesztes
-- Backend: a 11 üzleti szabály mindegyikére invariáns-teszt (különösen #3 címletezés-deviza, #6 kiindulási/cél hely XOR, #9 nyitott pénztár, #11 ügyfél XOR).
-- Domén-validáció: hossz-határok (32/64/256), százalék/árfolyam/összeg típus.
-- Frontend/Electron: kilépés-gate lezáratlan folyamatnál (FR-56), 3 havi jelszó-csere prompt (FR-57).
+### FR-54: Autentikációs végpontok
+- **Leírás**: Biztosítani kell a bejelentkezést, a munkamenet-token (JWT) kiadását és a jelszócsere végpontokat.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (955-959)
+- **Prio**: Must
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Felhasználónév, jelszó.
+- **Kimenet / Visszajelzés**: Munkamenet token vagy hibaüzenet.
+- **Validációk és Kényszerek**: Jelszó hashelés és titkosított átvitel kötelező.
 
-## 10. Kockazatok / Nyitott kerdesek (TBD)
-| # | Kerdes | Miert fontos | Mit kell tudni |
+### FR-55: Egyedi bejelentkezés és műveleti naplózás
+- **Leírás**: Minden felhasználónak egyedi felhasználónévvel és jelszóval kell bejelentkeznie. Minden rendszerben végzett tevékenységet logolni kell az elkövető azonosítójával és időbélyeggel (NFR-14). A jelszó megosztása tiltott.
+- **Forrás**: `Kósa Szervezés/Specifikációk/Névtelen dokumentum.docx` (1592-1593)
+- **Prio**: Must
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Felhasználói hitelesítő adatok.
+- **Kimenet / Visszajelzés**: Bejelentkezés naplózása, belépés jóváhagyása.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-56: Kijelentkezés folyamat-zárás védelemmel
+- **Leírás**: A kijelentkezéskor a rendszernek egyszeri megerősítést kell kérnie. Ha a felhasználónak lezáratlan folyamata van (pl. megnyitott tranzakció vagy zárás előkészítés), a rendszer köteles letiltani a kijelentkezést, és figyelmeztetést küldeni a teendőről ("vond vissza" vagy "hajtsd végre").
+- **Forrás**: `Kósa Szervezés/Specifikációk/Névtelen dokumentum.docx` (1597-1598)
+- **Prio**: Must
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Kijelentkezési parancs.
+- **Kimenet / Visszajelzés**: Kijelentkezés megerősítő / blokkoló figyelmeztető ablak.
+- **Validációk és Kényszerek**: Lezáratlan folyamat esetén a kilépés fizikailag nem hajtható végre.
+
+### FR-57: Kötelező időszakos jelszóváltoztatás
+- **Leírás**: Biztosítani kell a jelszóváltoztatás lehetőségét a felhasználó által. Ezen felül 3 havonta belépéskor a rendszernek kötelező jelszócserét kell előírnia (NFR-13).
+- **Forrás**: `Kósa Szervezés/Specifikációk/Névtelen dokumentum.docx` (1602)
+- **Prio**: Must
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Régi jelszó, új jelszó.
+- **Kimenet / Visszajelzés**: Sikeres jelszócsere naplózása.
+- **Validációk és Kényszerek**: Az új jelszó nem egyezhet meg az előző jelszavak listájával.
+
+### FR-58: Rendszer Dashboard
+- **Leírás**: Meg kell valósítani az alkalmazás főmenüjét, a cégcsoport logóját, a láblécet (verziószám kijelzés) és a kilépési opciókat tartalmazó Dashboard-ot.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (960-965)
+- **Prio**: Should
+- **Csomag/Komponens**: `frontend-react`
+- **Bemenő adatok**: Jogosultsági maszk.
+- **Kimenet / Visszajelzés**: Dashboard felület.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-59: Rendszerparaméterek karbantartása
+- **Leírás**: Adminisztrációs felület a globális rendszerparaméterek listázására és szerkesztésére.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (966-969)
+- **Prio**: Should
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Paraméter kulcs, érték.
+- **Kimenet / Visszajelzés**: Mentett paraméter.
+- **Validációk és Kényszerek**: Típusellenőrzés.
+
+### FR-60: Jogosultságok kezelése (RBAC)
+- **Leírás**: Felület a rendszerjogosultságok kezelésére: lista, új jog felvétele, szerkesztés, aktiválás, inaktiválás és törlés.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (970-976)
+- **Prio**: Must
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Jogosultság adatok.
+- **Kimenet / Visszajelzés**: Frissített jogosultsági táblák.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-61: Felhasználók kezelése
+- **Leírás**: Felhasználói fiókok kezelése: lista, új felhasználó rögzítése, szerkesztése, aktiválás, inaktiválás, archiválás és törlés.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (977-984)
+- **Prio**: Must
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Felhasználói fiók adatok.
+- **Kimenet / Visszajelzés**: Frissített felhasználói tábla.
+- **Validációk és Kényszerek**: E-mail cím formátum ellenőrzése.
+
+### FR-62: HR és Munkavállaló modul
+- **Leírás**: Munkavállalók nyilvántartása, fiókok felhasználókhoz rendelése, jutalékok listázása, jutalék kalkuláció és könyvelési lista-generálás.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (985-996)
+- **Prio**: Should
+- **Csomag/Komponens**: `kozponti-client`
+- **Bemenő adatok**: Munkavállalói adatok, jutalékráták.
+- **Kimenet / Visszajelzés**: Jutalék elszámolási riport.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-63: Munkaállomás-kezelés
+- **Leírás**: A fizikai munkaállomások (gépek) nyilvántartása és telephelyhez rendelése: lista, új, szerkesztés, aktiválás, archiválás, törlés.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (997-1004)
+- **Prio**: Should
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Munkaállomás kód, telephely ID.
+- **Kimenet / Visszajelzés**: Munkaállomás profil.
+- **Validációk és Kényszerek**: A munkaállomás csak egy telephely tevékenységeihez tartozhat (üzleti szabály #8).
+
+### FR-64: Szervezetek és saját cég struktúra
+- **Leírás**: Fiókok és értéktárak hierarchikus nyilvántartása, saját cégadatok kezelése, szervezeti egység áthelyezések, aktiválások és bezárások.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1005-1021)
+- **Prio**: Must
+- **Csomag/Komponens**: `kozponti-client`
+- **Bemenő adatok**: Szervezeti hierarchia adatok.
+- **Kimenet / Visszajelzés**: Szervezeti struktúra térkép.
+- **Validációk és Kényszerek**: A cég TEAOR kódjának a hierarchia legalsó eleméből kell származnia (üzleti szabály #1).
+
+### FR-65: Szervezeti szintű rendszerparaméterek
+- **Leírás**: Szervezeti egység, devizanem vagy időtartam-függő rendszerparaméterek variánsainak kezelése.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1022-1035)
+- **Prio**: Should
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Szervezet ID, paraméter kulcs.
+- **Kimenet / Visszajelzés**: Szervezeti paraméter beállítás.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-66: Címletek karbantartása
+- **Leírás**: Valuta címletek (bankjegy/érme) nyilvántartása: lista, új címlet, szerkesztés, aktiválás, archiválás, törlés.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1036-1043)
+- **Prio**: Must
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Deviza kód, címlet érték.
+- **Kimenet / Visszajelzés**: Címlettörzs frissülés.
+- **Validációk és Kényszerek**: A címletezés devizanemének egyeznie kell az egyenleg vagy mozgás devizaneméhez tartozó címlettel (üzleti szabály #3).
+
+### FR-67: Devizanemek karbantartása
+- **Leírás**: Kezelt devizanemek nyilvántartása és beállítása: lista, új deviza, szerkesztés, aktiválás, archiválás és törlés.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1044-1051)
+- **Prio**: Must
+- **Csomag/Komponens**: `arfolyam-keszito-client`
+- **Bemenő adatok**: Devizakód (ISO), megnevezés.
+- **Kimenet / Visszajelzés**: Devizanem törzs.
+- **Validációk és Kényszerek**: Egyedi ISO kódok.
+
+### FR-68: Belső körlevelek és hirdetmények
+- **Leírás**: Körlevelek és hirdetmények készítése, címzettek hozzárendelése (szervezeti egység/felhasználó/jogcsoport), csatolmányok kezelése, értesítések küldése és az olvasottság ("értettem" gomb leütése) visszakövetése.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1052-1061)
+- **Prio**: Should
+- **Csomag/Komponens**: `kozponti-client`
+- **Bemenő adatok**: Körlevél szöveg, címzett szűrő.
+- **Kimenet / Visszajelzés**: Kliensoldalon felugró kötelezően elolvasandó értesítés.
+- **Validációk és Kényszerek**: Az "értettem" megnyomásáig a körlevél nem tűnhet el.
+
+### FR-69: Ügyfelek és meghatalmazottak nyilvántartása
+- **Leírás**: Ügyfelek és meghatalmazottak adatlapjainak kezelése: lista, új rögzítés, szerkesztés, aktiválás, archiválás, törlés.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1062-1069)
+- **Prio**: Must
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: KYC ügyfélprofil adatok.
+- **Kimenet / Visszajelzés**: Ügyfél rekord.
+- **Validációk és Kényszerek**: Egy ügyfél kizárólag Természetes Személy VAGY Cég lehet (üzleti szabály #11). Egy személynek egy okmánytípusból egyszerre csak egy érvényes okmánya lehet (üzleti szabály #5).
+
+### FR-70: Anonim bejelentések kezelése
+- **Leírás**: Anonim bejelentések (pl. visszaélés-jelentő csatorna) kezelése: új bejelentés beküldése, lista, inaktiválás/lezárás.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1070-1074)
+- **Prio**: Should
+- **Csomag/Komponens**: `kozponti-client`
+- **Bemenő adatok**: Bejelentés szövege.
+- **Kimenet / Visszajelzés**: Rögzített bejelentés a belső ellenőrzésnek.
+- **Validációk és Kényszerek**: A beküldő személyét a rendszer nem azonosíthatja és nem naplózhatja.
+
+### FR-71: Árfolyamok kezelése
+- **Leírás**: Konkurens árfolyamok figyelése, banki/elszámoló árfolyamok lekérése és rögzítése, árfolyam-meghatározási workflow, valamint az árfolyamok automatizált frissítése.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1075-1090)
+- **Prio**: Must
+- **Csomag/Komponens**: `arfolyam-keszito-client`
+- **Bemenő adatok**: Banki árfolyam API adatok, manuálisan megadott ráták (Lásd: TBD-23).
+- **Kimenet / Visszajelzés**: Érvényes árfolyamtábla.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-72: Kezelési díjak és kedvezmények
+- **Leírás**: Díjtípusok (pl. ezrelékes, sávos) nyilvántartása, díjmértékek megadása, adható díjkedvezmények rögzítése, valamint a szinkronizációt követő automatikus díjváltozási életbeléptetések.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1091-1117)
+- **Prio**: Must
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Díjmértékek (Lásd: TBD-22).
+- **Kimenet / Visszajelzés**: Számított tranzakciós díjak.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-73: Jutalékok paraméterezése
+- **Leírás**: Jutalékmértékek nyilvántartása és karbantartása: lista, új mérték rögzítése, szerkesztés, törlés.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1118-1123)
+- **Prio**: Should
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Jutalék százalékos értékek.
+- **Kimenet / Visszajelzés**: Jutalék profil.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-74: Tiltólisták (Compliance)
+- **Leírás**: Szankciós, terrorista és PEP tiltólisták kezelése: új elem, szerkesztés, külső forrásból történő letöltés, aktiválás, valamint az automata szinkronizálás megvalósítása.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1124-1131)
+- **Prio**: Must
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Külső szankciós listafájlok.
+- **Kimenet / Visszajelzés**: Szinkronizált lokális tiltólista.
+- **Validációk és Kényszerek**: Csak érvényes formátumú adat tölthető be.
+
+### FR-75: Váltási tranzakciók (Vétel, Eladás, Keresztváltás)
+- **Leírás**: Váltási igények rögzítése, kötelező KYC/AML ellenőrzések lefutása, valamint a tranzakció végrehajtása (vétel, eladás, keresztváltás és összetett váltás).
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1132-1140)
+- **Prio**: Must
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Ügyfél azonosító, váltandó összeg, cél deviza.
+- **Kimenet / Visszajelzés**: Lekönyvelt tranzakció, nyomtatott bizonylat.
+- **Validációk és Kényszerek**: A tranzakció kizárólag nyitott pénztárban hajtható végre (üzleti szabály #9).
+
+### FR-76: Foglaló rögzítése és automatikus lezárása
+- **Leírás**: Foglaló felvétele, érvényesítése, visszafizetése vagy beszámítása. Ha az ügylet határideje lejár és a meghiúsulás az ügyfél hibájából történik, a rendszernek automatikusan le kell zárnia a foglalót (elszámolás a cég javára).
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1141-1146)
+- **Prio**: Must
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Foglaló adatok, lejárati határidő.
+- **Kimenet / Visszajelzés**: Foglaló státusz frissülés (RENDEZETT/ELVESZETT).
+- **Validációk és Kényszerek**: A foglaló összege a rendelt összeg 5%-a.
+
+### FR-77: Valuta-igények kezelése
+- **Leírás**: Készletadatok alapján irodai valuta-igények automatikus generálása, manuális igények rögzítése, valamint az igények teljesítése az értéktár felől.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1147-1151)
+- **Prio**: Should
+- **Csomag/Komponens**: `kozponti-client`
+- **Bemenő adatok**: Aktuális készletszintek, igényelt összegek.
+- **Kimenet / Visszajelzés**: Valutaigénylő adatlap.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-78: Pénztárak közötti pénzmozgás és transzfer
+- **Leírás**: Pénz átadása és átvétele a társpénztárak/értéktár között, transzfer korrekciók könyvelése, valamint a kezelési díjak fizikai átadás-átvétele.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1152-1157)
+- **Prio**: Must
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Forrás/Cél pénztár, szállítási adatok (plomba, szállító).
+- **Kimenet / Visszajelzés**: Szállítási napló bejegyzés.
+- **Validációk és Kényszerek**: Transzfer esetén a kiindulási és cél helyeknek kizárólagosnak kell lenniük (pl. nem lehet mindkettő bank vagy telephely, üzleti szabály #6).
+
+### FR-79: Átadólap generálás és nyomtatás
+- **Leírás**: Az értéktár felé történő készlet-átadásról átadólap ablakot kell biztosítani, amelyből az adatok legenerálhatóak és kinyomtathatóak.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1158-1162)
+- **Prio**: Must
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Átadott tételek összesítése.
+- **Kimenet / Visszajelzés**: Nyomtatott átadólap.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-80: Bizonylatkezelés és NAV feladás
+- **Leírás**: Kinyomtatott bizonylatok listázása, napi bizonylatok sztornózása, újranyomtatás kezdeményezése, valamint a hibás/offline tranzakciók utólagos NAV-feladásának megvalósítása.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1163-1168)
+- **Prio**: Must
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Bizonylat sorszám.
+- **Kimenet / Visszajelzés**: Sztornó státusz / NAV szinkron nyugtázás.
+- **Validációk és Kényszerek**: Csak aznapi bizonylat sztornózható.
+
+### FR-81: Zárási és nyitási folyamatok
+- **Leírás**: Meg kell valósítani a napi zárás, a POS-terminál napi zárás, a 10 napos dekád-zárás, a havi zárás és a napi nyitás folyamatait.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1169-1175)
+- **Prio**: Must
+- **Csomag/Komponens**: `penztar-client`
+- **Bemenő adatok**: Címletezési adatok, záróegyenlegek.
+- **Kimenet / Visszajelzés**: Zárási jelentés nyomtatása.
+- **Validációk és Kényszerek**: A záróegyenlegnek meg kell egyeznie a könyvelt egyenleggel.
+
+### FR-82: Járulék és jutalék számítás
+- **Leírás**: A munkavállalói járulékok és jutalékok kiszámítása a megadott időszaki forgalmi adatok alapján.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1176-1178)
+- **Prio**: Should
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Forgalmi adatok, jutaléktörzs.
+- **Kimenet / Visszajelzés**: Számított jutalék összegek.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-83: Gyanús ügyletek bejelentése (AML)
+- **Leírás**: Gyanús ügyletek és pénzmosási kísérletek bejelentése: új gyanús eset rögzítése, vezetői/ellenőri felülvizsgálat, és a hatósági feladás megvalósítása (Lásd: TBD-21).
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1179-1183)
+- **Prio**: Must
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Tranzakció ID, gyanú indoklása.
+- **Kimenet / Visszajelzés**: Rögzített gyanús ügylet bejelentő.
+- **Validációk és Kényszerek**: Az adatokat az ellenőr jóváhagyásáig zártan kell kezelni.
+
+### FR-84: Rendszer listák és riportok
+- **Leírás**: Meg kell jeleníteni és le kell tudni kérdezni a különböző riportokat: ügylet-, bizonylat-, díjösszesítő listák; havi készlet/forgalom/iroda kimutatások; kezelési költség és napi pénztár jelentések; gyanús ügyletek; bankkártyás tranzakciós díjak listája.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1184-1201)
+- **Prio**: Must
+- **Csomag/Komponens**: `kozponti-client`
+- **Bemenő adatok**: Szűrési feltételek (időszak, iroda, devizanem).
+- **Kimenet / Visszajelzés**: Kimutatási rácsok és PDF exportok.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-85: Technikai és üzemeltetési funkciók
+- **Leírás**: Az árfolyam-kijelző monitorok vezérlése; a pénztárszünetek kezelése és azok automatikus lezárása; a rendszer-, POS- és NAV-logok kezelése, kimásolása és archiválása; az üzleti adatok archiválása.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1202-1223)
+- **Prio**: Must
+- **Csomag/Komponens**: `penztar-client` / `backend`
+- **Bemenő adatok**: Rendszeresemények, naplózási szintek.
+- **Kimenet / Visszajelzés**: Archivált logfájlok, kijelző frissítés.
+- **Validációk és Kényszerek**: A naplózás nem sértheti a PII adatkezelési szabályokat.
+
+### FR-86: Adat-szinkronizációs és replikációs modul
+- **Leírás**: A kliensoldali lokális SQLite adatbázisok és a központi Postgres adatbázis közötti szinkronizáció megvalósítása (offline működés támogatása).
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1224-1226)
+- **Prio**: Must
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Változás-naplók.
+- **Kimenet / Visszajelzés**: Szinkronizált adatállapotok.
+- **Validációk és Kényszerek**: Ütközéskezelés a tranzakciós adatoknál.
+
+### FR-87: Periféria és Külső interfész modulok
+- **Leírás**: A külső rendszerek illesztőprogramjai: árfolyam-kijelző monitor vezérlő, POS-terminál integráció, online pénztárgép (AEE) interface, központi dokumentumtár és az értesítés-kezelő modulok.
+- **Forrás**: `Kósa Szervezés/Kósa cégcsoport fejlesztés lépései.docx` (1227-1233)
+- **Prio**: Must
+- **Csomag/Komponens**: `penztar-client` / `backend`
+- **Bemenő adatok**: Hardver jelek és API hívások.
+- **Kimenet / Visszajelzés**: Perifériák állapota.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-88: Korai replikáció és hírlevél modulok
+- **Leírás**: Az adatok replikációja, a verziókövetés, valamint a belső hírlevél/hirdetmény küldési funkciók megvalósítása.
+- **Forrás**: `Kósa Szervezés/Specifikációk/Névtelen dokumentum.docx` (1604-1608)
+- **Prio**: Could
+- **Csomag/Komponens**: `backend`
+- **Bemenő adatok**: Hírlevél szöveg.
+- **Kimenet / Visszajelzés**: Kézbesített rendszerüzenetek.
+- **Validációk és Kényszerek**: Nincs.
+
+### FR-89: SQLite szinkronizációs hibák perzisztenciája és kijelzése
+- **Leírás**: Az Electron kliens és a backend közötti szinkronizáció diagnosztizálhatósága érdekében a lokális SQLite `pending_transactions` tábláját ki kell egészíteni `sync_error` (TEXT), `retry_count` (INTEGER) és `last_attempt_at` (TEXT) mezőkkel. Szinkronizációs hiba esetén a sync engine a backend által visszadobott üzleti/validációs hibát köteles ebbe a mezőbe menteni, a kasszás felületen pedig külön hibajelentő vagy szinkron-napló nézetben megjeleníteni a pénztáros számára.
+- **Forrás**: 2026-06-02 tranzakciós audit 2. pont
+- **Prio**: Magas (P1)
+- **Csomag/Komponens**: penztar-client
+- **Bemenő adatok**: Backend sync válasz státusza és hibaüzenete
+- **Kimenet / Visszajelzés**: SQLite tábla frissítése és hiba megjelenítése a kliensen
+
+### FR-90: Értéktári készlet (vault-stock) RBAC hozzáférés
+- **Leírás**: A lokális értéktári kliens `Értéktári készlet` (`/inventory`) oldalát kiszolgáló backend API `/api/v1/inventory/vault-stock` hozzáférését engedélyezni kell az `ERTEKTAR` szerepkörnek is (a meglévő `SUPERVISOR`, `MANAGER`, `ADMIN`, `FOERTEKTAR`, `UGYVEZETO`, `IRODAVEZETO` mellett). A backend service-nek a kérést az aktuális company és a dolgozó saját branch-e/értéktára szerint kell szűrnie, megelőzve az országos adatszivárgást.
+- **Forrás**: 2026-06-02 Google OAuth audit
+- **Prio**: Magas (P0)
+- **Csomag/Komponens**: backend / frontend-react
+- **Bemenő adatok**: Felhasználói JWT
+- **Kimenet / Visszajelzés**: 200 OK és szűrt készletadat, feloldva a korábbi 403 Access Denied hibát
+</functional_spec>
+
+<data_structure>
+## Logikai Adatmodell és Üzleti Szabályok (c.docm alapján)
+
+A rendszer 11 alapvető üzleti szabállyal rendelkezik, amelyeket az adatmodell tervezése és a backend validációk megvalósítása során szigorúan be kell tartani.
+
+### A 11 Üzleti Szabály:
+1. **TEAOR hierarchia**: A saját cég TEAOR kódját a szervezeti hierarchia legalsó szintjén elhelyezkedő egységekből kell származtatni.
+2. **Cím-validitás**: A rögzített címek hierarchiájának koherensnek kell lennie (pl. a közterületnek léteznie kell a megadott településen, a megyének az adott országban).
+3. **Címletezés devizaneme**: A címletezés során rögzített devizanemnek meg kell egyeznie az egyenleg vagy pénztári mozgás devizaneméhez tartozó címlet devizanemével.
+4. **Pénztár munkaállomása**: Desktop üzemmód esetén a pénztárat kötelezően hozzá kell rendelni egy konkrét fizikai munkaállomáshoz.
+5. **Okmány-érvényesség**: Egy adott természetes személynek egy okmánytípusból (pl. személyi igazolvány) egyszerre kizárólag egyetlen érvényes okmánya lehet rögzítve.
+6. **Transzfer kizárólagosság**: Pénzszállítási transzfer rögzítésekor a kiindulási és a cél helyszínek kizárólagosak (pl. nem lehet a kiindulási és a cél egység is egyszerre bank, vagy egyszerre telephely).
+7. **Megye-ország reláció**: A megyéknek logikailag és adatbázis-szinten is az adott országhoz kell kapcsolódniuk.
+8. **Munkaállomás fiókja**: Egy munkaállomás kizárólag a hozzárendelt telephelyen engedélyezett tevékenységekhez használható.
+9. **Nyitott pénztár szabály**: Pénztári tranzakciót és pénzmozgást kizárólag nyitott pénztári időszakban lehet lekönyvelni.
+10. **Rule_10**: (A PowerDesigner exportban szereplő szabály, amelynek leírása nem szerepelt a forrásban, Lásd: TBD-18).
+11. **Ügyféltípus kizárólagosság**: Egy ügyféladatbázis-rekord logikailag vagy természetes személyhez, vagy céghez kell hogy tartozzon (XOR kapcsolat).
+
+### Adattípus-domének:
+- `bankszamlaszam`: VARCHAR(32)
+- `belso_id`: BIGINT / INT64
+- `bizonylatszam`: VARCHAR(64)
+- `hosszu_nev`: VARCHAR(256)
+- `igen_nem`: BOOLEAN
+- `szazalek`: NUMERIC(5, 2)
+- `arfolyam`: NUMERIC(12, 4)
+- `osszeg`: NUMERIC(15, 2)
+</data_structure>
+
+<integration_points>
+## Integrációs Pontok és Belső Függőségek
+- **NAV Online Pénztárgép API**: Kapcsolat az online pénztárgéppel a bizonylatok beküldésére és a zárási/nyitási utasításokra (FR-80, FR-87).
+- **OTP POS Terminál API**: A bankkártyás fizetések tranzakciós kezelésére és napi zárására (FR-81, FR-87).
+- **Banki Árfolyam API**: Automatikus középárfolyam és elszámoló árfolyam adatok lekérése a kijelölt bankoktól (FR-71).
+- **Kliens Szinkronizációs Szolgáltatás**: Az SQLite és Postgres adatbázisok közötti replikációért felelős modul (FR-86).
+</integration_points>
+
+<execution_workflow>
+## Végrehajtási folyamat az AI Agent számára
+
+### Fázis 1: Előkészítés
+- A logikai adatmodell (c.docm) alapján elkészíteni a PostgreSQL táblázatokat, biztosítva a domének és az egyedi azonosítók (internal_id) struktúráját.
+- Beállítani az SQLite sémákat a kliensoldali `penztar-client` offline tárolásához.
+
+### Fázis 2: Backend megvalósítás
+- Megírni a 11 üzleti szabály validációs logikáját a backend szervizekben (pl. ügyfél XOR validáció, cím-hierarchia validáció).
+- Elkészíteni az autentikációs, jelszócserés (3 havi szabály) és jogosultság-kezelési API végpontokat.
+- Kialakítani az adat-replikációs és outbox naplózó modulokat.
+
+### Fázis 3: Frontend / Kliens megvalósítás
+- Megvalósítani a dashboard-ot és a 34 lépésből álló funkcionális képernyőket (HR kezelő, árfolyam-szerkesztő, bizonylat-sztornó, zárások).
+- Lekódolni az Electron alapú kliensen a kijelentkezési szűrőt (lezáratlan folyamatok ellenőrzése).
+
+### Fázis 4: Verifikáció
+- Unit tesztek segítségével verifikálni a 11 üzleti szabály helyes működését (pl. hibás cím rögzítésekor dob-e hibát).
+- Tesztelni a 3 havi kötelező jelszócsere prompt aktiválódását.
+- Offline szinkronizáció (replikáció) működésének tesztelése hálózati kimaradás szimulálásával.
+</execution_workflow>
+
+<tbd_log>
+## Nyitott kérdések és Kockázatok (TBD)
+| # | Kérdés / Kockázat | Hatás | Leírás |
 |---|---|---|---|
-| TBD-18 | Rule_10 üzleti szabály tartalma | adatmodell-integritás | A c.docm csak a nevet adja, leírás/definíció nincs (1790-1799). |
-| TBD-19 | RBAC kód-értékek a szerepekhez | jogosultság-impl | A forrás csak entitás-listát ad, konkrét kódot nem. |
-| TBD-20 | Névtelen dokumentum üres alpontjai (1.1 Felhasználó karbantartás, 1.4 Verziókezelés, 1.5 Adat replikáció, 1.6 Hírlevél, 2.5 Munkatárs, Beosztás, 5.x Ügyfél) | spec-teljesség | Címek léteznek, tartalom nincs — csonka dokumentum. |
-| TBD-21 | "Pénzmosás figyelés (Pénzmosás megelőzése inkább?)" megnevezés/scope | AML-modul | A forrás maga is bizonytalan a megnevezésben (1624). |
-| TBD-22 | Díjmérték fej/tétel pontos szerkezete | díjmodell | A c.docm entitásnevet ad, attribútum-részletet nem nyertünk ki teljesen. |
-| TBD-23 | Konkurens nyitvatartás / konkurens deviza árfolyam használati cél | árfolyam-versenyfigyelés | Entitás létezik, üzleti folyamat-leírás nincs a forrásban. |
+| TBD-18 | Rule_10 üzleti szabály leírása | Adatmodell validáció | A c.docm adatmodell exportban szerepel a szabály, de a leírása hiányzik. Mit kell validálnia ennek a szabálynak? |
+| TBD-19 | Szerepkörök kódértékei és jogai | Biztonság, RBAC | A forrás nem tartalmazza az egyes szerepkörökhöz (Pénztáros, Supervisor) tartozó pontos elemi jogosultság kódokat. |
+| TBD-20 | Névtelen dokumentum üres pontjai | Fejlesztési scope | A dokumentum több pontja (verziókezelés, hírlevél, munkatárs adatok) üres fejlécként maradt meg. Ezeket meg kell-e valósítani? |
+| TBD-21 | Pénzmosás elleni (AML) bejelentés | Compliance | A gyanús esetek bejelentésének pontos adattartalma és a hatósági beküldés technikai specifikációja nem ismert. |
+| TBD-22 | Díjmértékek és kedvezmények modellje | Üzleti logika | A c.docm-ben szereplő díjtáblázatok fej/tétel struktúrájának részletes oszloplistája nem tisztázott. |
+| TBD-23 | Konkurens árfolyamok felhasználása | Üzleti logika | Hogyan történik a konkurens árfolyamok betöltése (manuálisan vagy külső web-scraping útján), és hogyan befolyásolja a saját árfolyamokat? |
+</tbd_log>
 
-## 11. Verifikacios checklist
-- [x] minden FR-hez forrás-hivatkozás
-- [x] 0 hallucináció
-- [x] minden TBD jelölt
-VERIFIKACIO: FR=36 db (FR-53..FR-88), TBD=6 db (TBD-18..TBD-23), érintett csomag(ok)=backend, frontend-react, penztar-client, kozponti-client, arfolyam-keszito-client.
+<verification_checklist>
+## Verifikációs Checklist
+- [ ] Minden funkcionális követelmény (FR-53-tól FR-88-ig) rendelkezik dokumentum-alapú forráshivatkozással.
+- [ ] A 11 darab adatmodell-üzleti szabály pontosan rögzítésre került az adatstruktúra szekcióban.
+- [ ] A 6 darab TBD kockázat dokumentált a TBD logban.
+- [ ] A 3 havi kötelező jelszócsere szabály (NFR-13) bekerült a specifikációba.
+- [ ] Nem lettek önkényesen új funkciók kitalálva a munkaterv 34 lépésén felül.
+</verification_checklist>
