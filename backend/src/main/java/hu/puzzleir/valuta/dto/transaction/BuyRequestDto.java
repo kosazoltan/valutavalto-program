@@ -69,6 +69,9 @@ public class BuyRequestDto {
     /** A3 (Pmt. 50M): banki bizonylat (szlip) kiállítási dátuma — max. 3 év a tranzakcióhoz képest. */
     private java.time.LocalDate sourceOfFundsDocDate;
 
+    /** AML felsővezetői jóváhagyás (Pmt. 14/A.§(4), MNB 14/2025 V.2.6): a POS-on jóváhagyó vezető workerId-ja. */
+    private Long approverWorkerId;
+
     /** Ügyfél PEP (kiemelt közszereplő) státusza */
     private Boolean customerIsPep;
 

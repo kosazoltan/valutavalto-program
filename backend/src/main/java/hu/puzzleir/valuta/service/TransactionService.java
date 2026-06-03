@@ -70,6 +70,7 @@ public class TransactionService {
     private final HandlingFeeCalculator handlingFeeCalculator;
     private final HandlingFeeOverrideService handlingFeeOverrideService;
     private final AmlService amlService;
+    private final AmlApprovalService amlApprovalService;
     private final PosTerminalService posTerminalService;
     private final ObjectProvider<CameraTransactionLinker> cameraTransactionLinkerProvider;
     private final TransactionCalculationService calculationService;
@@ -291,7 +292,8 @@ public class TransactionService {
         // AML ellenőrzés (Pmt. 2017. évi LIII. tv.) — flagek a Transaction-be CB-018 szerint
         AmlService.AmlBasicCheckResult amlResult = performAmlCheck(
                 payableAmount, request.getCustomerId(), request.getCustomerName(),
-                request.getCustomerDocumentNumber(), currency.getCode(), request.getCustomerNationality());
+                request.getCustomerDocumentNumber(), currency.getCode(), request.getCustomerNationality(),
+                request.getApproverWorkerId());
 
         // A3 (Pmt. 50M, b4-foglalo FR-16): 50M Ft feletti ügyletnél kötelező forrás-igazolás
         // (közjegyző/ügyvéd magánokirat vagy max. 3 éves banki szlip; két tanú TILOS). Flag-gated.
@@ -508,7 +510,8 @@ public class TransactionService {
         // AML ellenőrzés (Pmt. 2017. évi LIII. tv.) — flagek a Transaction-be CB-018 szerint
         AmlService.AmlBasicCheckResult amlResult = performAmlCheck(
                 payableAmount, request.getCustomerId(), request.getCustomerName(),
-                request.getCustomerDocumentNumber(), currency.getCode(), request.getCustomerNationality());
+                request.getCustomerDocumentNumber(), currency.getCode(), request.getCustomerNationality(),
+                request.getApproverWorkerId());
 
         // A3 (Pmt. 50M, b4-foglalo FR-16): 50M Ft feletti ügyletnél kötelező forrás-igazolás. Flag-gated.
         enforceSourceOfFunds(payableAmount, request.getSourceOfFundsDocType(), request.getSourceOfFundsDocDate());
@@ -801,7 +804,7 @@ public class TransactionService {
      */
     private AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
                                  String customerName, String documentNumber, String currencyCode,
-                                 String customerNationality) {
+                                 String customerNationality, Long approverWorkerId) {
         // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate. Feature-flag mögött
         // (CIRCULAR_ACK_BLOCKING_ENFORCEMENT, default false → nem blokkol → a meglévő kliensek és a
         // @InjectMocks tesztek nem törnek meg). Bekapcsolva: ha a pénztárosnak van olvasatlan,
@@ -842,9 +845,21 @@ public class TransactionService {
         }
 
         if (basicResult.isRequiresApproval()) {
-            throw new ValidationException(basicResult.getApprovalReason() != null
+            // Pmt. 14/A. § (4) / MNB 14/2025 V.2.6: a magas-kockázatú tranzakció kizárólag a kijelölt
+            // felelős vezető jóváhagyásával teljesíthető. Ha a POS-on érvényes (supervisor/manager/admin,
+            // az aktuális céghez tartozó) engedélyezőt adtak meg, a jóváhagyást INSERT-only audit-rekordba
+            // rögzítjük (az engedélyező NEVÉVEL, 8 éves megőrzés) és a tranzakció folytatódhat; különben
+            // elutasul. Engedélyező hiányában a pénztáros az AML-indokot kapja (hívja a vezetőt).
+            String approvalReason = basicResult.getApprovalReason() != null
                     ? basicResult.getApprovalReason()
-                    : "Supervisor jóváhagyás szükséges (AML limit)!");
+                    : "Supervisor jóváhagyás szükséges (AML limit)!";
+            if (approverWorkerId == null || amlApprovalService == null) {
+                throw new ValidationException(approvalReason);
+            }
+            // recordSeniorApproval validálja az engedélyező jogosultságát (multi-tenant + szerepkör);
+            // érvénytelennél ValidationException-t dob ("nem jogosult" / "nem ehhez a céghez").
+            amlApprovalService.recordSeniorApproval(
+                    approverWorkerId, approvalReason, hufAmount, customerName, documentNumber);
         }
 
         if (customerId != null && !customerId.isBlank()) {
@@ -1188,6 +1203,8 @@ public class TransactionService {
         // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum a szerver-oldali validációhoz.
         private String sourceOfFundsDocType;
         private java.time.LocalDate sourceOfFundsDocDate;
+        // AML felsővezetői jóváhagyás (Pmt. 14/A.§(4) V.2.6): a POS-on jóváhagyó supervisor workerId-ja.
+        private Long approverWorkerId;
         private Boolean customerIsPep;
         // V229 Pmt. snapshot (HIBA #5+#7+#8 2026-05-15)
         private String customerBirthPlace;
@@ -1240,6 +1257,8 @@ public class TransactionService {
         // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum a szerver-oldali validációhoz.
         private String sourceOfFundsDocType;
         private java.time.LocalDate sourceOfFundsDocDate;
+        // AML felsővezetői jóváhagyás (Pmt. 14/A.§(4) V.2.6): a POS-on jóváhagyó supervisor workerId-ja.
+        private Long approverWorkerId;
         private Boolean customerIsPep;
         // V229 Pmt. snapshot (HIBA #5+#7+#8 2026-05-15)
         private String customerBirthPlace;
@@ -1338,6 +1357,8 @@ public class TransactionService {
         // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum a szerver-oldali validációhoz.
         private String sourceOfFundsDocType;
         private java.time.LocalDate sourceOfFundsDocDate;
+        // AML felsővezetői jóváhagyás (Pmt. 14/A.§(4) V.2.6): a POS-on jóváhagyó supervisor workerId-ja.
+        private Long approverWorkerId;
         private Boolean customerIsPep;
         // V235 + V236 Konverzio Pmt. azonositas (HIBA #19 2026-05-19)
         private String customerBirthPlace;
