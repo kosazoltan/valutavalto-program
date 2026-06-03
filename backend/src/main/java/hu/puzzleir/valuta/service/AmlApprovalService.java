@@ -1,20 +1,24 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.AmlApprovalGrant;
 import hu.puzzleir.valuta.entity.TransactionAmlApproval;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.AmlApprovalGrantRepository;
 import hu.puzzleir.valuta.repository.TransactionAmlApprovalRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -33,10 +37,14 @@ public class AmlApprovalService {
 
     private final WorkerRepository workerRepository;
     private final TransactionAmlApprovalRepository approvalRepository;
+    private final AmlApprovalGrantRepository grantRepository;
 
     /** A jóváhagyásra jogosult worker-szerepek (Pmt. 14/A. § (4): kijelölt felelős vezető). */
     private static final Set<WorkerRole> SENIOR_APPROVER_ROLES =
             EnumSet.of(WorkerRole.SUPERVISOR, WorkerRole.MANAGER, WorkerRole.ADMIN);
+
+    /** Az engedély (grant) érvényessége — bőven fedi a local-first offline → sync késleltetést. */
+    private static final int GRANT_VALIDITY_DAYS = 7;
 
     /**
      * Felsővezetői AML-jóváhagyás rögzítése. Validálja, hogy az {@code approverWorkerId} érvényes,
@@ -57,6 +65,11 @@ public class AmlApprovalService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
         Worker approver = resolveSeniorApprover(approverWorkerId, companyId);
+        // PIN-jelenlét bizonyítása (Codex P1): csak akkor rögzítünk jóváhagyást, ha a /verify-approver
+        // a supervisor-PIN sikeres ellenőrzésekor létrehozott egy egyszer-használatos grantot erre a
+        // (cég, pénztáros, engedélyező) hármasra. Enélkül a bare approverWorkerId-vel forgeolható lenne
+        // a jóváhagyás-audit. A grant rögzítéskor elhasználódik (a tranzakcióval együtt rollbackelhet).
+        consumeApprovalGrant(approverWorkerId, companyId);
 
         TransactionAmlApproval rec = TransactionAmlApproval.builder()
                 .companyId(companyId)
@@ -76,6 +89,44 @@ public class AmlApprovalService {
         log.info("[AML-APPROVAL] Felsővezetői jóváhagyás rögzítve — engedélyező #{}, indok: {}",
                 approverWorkerId, saved.getApprovalReason());
         return saved;
+    }
+
+    /**
+     * Engedély (grant) kiállítása a supervisor-PIN SIKERES ellenőrzése után (a verify-approver hívja).
+     * A grant bizonyítja, hogy az {@code approverWorkerId} PIN-nel igazolta a jelenlétét a bejelentkezett
+     * (rögzítő) pénztáros sessionjében; a tranzakció-rögzítéskor ez fogy el (single-use).
+     */
+    @Transactional
+    public void issueApprovalGrant(Long approverWorkerId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Long cashierWorkerId = SecurityUtils.getCurrentWorkerId();
+        LocalDateTime now = LocalDateTime.now();
+        AmlApprovalGrant grant = AmlApprovalGrant.builder()
+                .companyId(companyId)
+                .cashierWorkerId(cashierWorkerId)
+                .approverWorkerId(approverWorkerId)
+                .createdAt(now)
+                .expiresAt(now.plusDays(GRANT_VALIDITY_DAYS))
+                .build();
+        grantRepository.save(grant);
+        log.info("[AML-APPROVAL] Grant kiállítva — engedélyező #{}, pénztáros #{}", approverWorkerId, cashierWorkerId);
+    }
+
+    /**
+     * Egyetlen fel nem használt, le nem járt grant elhasználása a (cég, pénztáros, engedélyező) hármasra.
+     * Ha nincs ilyen → {@link ValidationException} (a jóváhagyás PIN-ellenőrzés nélkül nem rögzíthető).
+     */
+    private void consumeApprovalGrant(Long approverWorkerId, UUID companyId) {
+        Long cashierWorkerId = SecurityUtils.getCurrentWorkerId();
+        List<AmlApprovalGrant> grants = grantRepository.findConsumable(
+                companyId, cashierWorkerId, approverWorkerId, LocalDateTime.now(), Limit.of(1));
+        if (grants.isEmpty()) {
+            throw new ValidationException("AML jóváhagyás PIN-ellenőrzés nélkül nem rögzíthető "
+                    + "(hiányzó vagy lejárt engedély). Kérjen jóváhagyást az engedélyező supervisor-PIN-jével.");
+        }
+        AmlApprovalGrant grant = grants.get(0);
+        grant.setUsedAt(LocalDateTime.now());
+        grantRepository.save(grant);
     }
 
     /** True, ha az adott worker (az aktuális cégben) jogosult AML felsővezetői jóváhagyásra. */

@@ -48,6 +48,8 @@ class AmlApprovalControllerTest {
             assertThat(resp.getBody()).containsEntry("ok", true)
                     .containsEntry("approverWorkerId", APPROVER_ID)
                     .containsEntry("approverName", "Teszt Supervisor");
+            // Codex P1: PIN OK → egyszer-használatos grant kiállítása (a rögzítéskor ez fogy el).
+            verify(amlApprovalService).issueApprovalGrant(APPROVER_ID);
         }
     }
 

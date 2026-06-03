@@ -1,10 +1,12 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.AmlApprovalGrant;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.TransactionAmlApproval;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.AmlApprovalGrantRepository;
 import hu.puzzleir.valuta.repository.TransactionAmlApprovalRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
@@ -39,6 +41,7 @@ class AmlApprovalServiceTest {
 
     @Mock private WorkerRepository workerRepository;
     @Mock private TransactionAmlApprovalRepository approvalRepository;
+    @Mock private AmlApprovalGrantRepository grantRepository;
     @InjectMocks private AmlApprovalService service;
 
     private final UUID companyId = UUID.randomUUID();
@@ -72,6 +75,11 @@ class AmlApprovalServiceTest {
         when(workerRepository.findById(99L)).thenReturn(Optional.of(
                 worker(99L, "Kósa Zoltán", WorkerRole.MANAGER, companyId)));
         when(approvalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        // Codex P1: van fel nem hasznalt, le nem jart grant (a PIN-ellenorzes letrehozta) → rogzitheto.
+        AmlApprovalGrant grant = AmlApprovalGrant.builder()
+                .id(1L).companyId(companyId).cashierWorkerId(1L).approverWorkerId(99L).build();
+        when(grantRepository.findConsumable(any(), any(), any(), any(), any()))
+                .thenReturn(List.of(grant));
 
         TransactionAmlApproval rec = service.recordSeniorApproval(99L,
                 "FATF 1/a (ellenintézkedés)", new BigDecimal("6000000"), "Teszt Ügyfél", "V00001");
@@ -81,6 +89,24 @@ class AmlApprovalServiceTest {
         assertThat(rec.getApprovalReason()).contains("1/a");
         assertThat(rec.getCompanyId()).isEqualTo(companyId);
         verify(approvalRepository).save(any());
+        // A grant elhasznalodott (used_at beallitva, mentve).
+        assertThat(grant.getUsedAt()).isNotNull();
+        verify(grantRepository).save(grant);
+    }
+
+    @Test
+    @DisplayName("érvényes engedélyező DE nincs PIN-grant → elutasít (Codex P1: nincs forge PIN nélkül)")
+    void recordSeniorApproval_noGrant_rejected() {
+        when(workerRepository.findById(99L)).thenReturn(Optional.of(
+                worker(99L, "Kósa Zoltán", WorkerRole.MANAGER, companyId)));
+        // Nincs fel nem hasznalt grant → a PIN-ellenorzes nem tortent meg → tilos rogziteni.
+        when(grantRepository.findConsumable(any(), any(), any(), any(), any()))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.recordSeniorApproval(99L, "AML", BigDecimal.TEN, "X", null))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("PIN-ellenőrzés nélkül");
+        verify(approvalRepository, never()).save(any());
     }
 
     @Test

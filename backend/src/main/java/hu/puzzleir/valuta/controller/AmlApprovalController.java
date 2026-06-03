@@ -195,10 +195,15 @@ public class AmlApprovalController {
             return ResponseEntity.status(401).body(Map.of("ok", false, "error", "Hibás PIN"));
         }
 
+        // PIN OK → egyszer-használatos grant kiállítása (Codex P1): ez bizonyítja a tranzakció-
+        // rögzítéskor, hogy a PIN-ellenőrzés ténylegesen megtörtént. A bare approverWorkerId önmagában
+        // nem elég a rögzítéshez — a recordSeniorApproval elhasználja ezt a grantot.
+        amlApprovalService.issueApprovalGrant(approverWorkerId);
+
         String approverName = workerRepository.findById(approverWorkerId)
                 .map(Worker::getName)
                 .orElse("#" + approverWorkerId);
-        log.info("[AML-APPROVAL] Engedélyező verifikálva — approver #{} a rögzítő #{} tranzakciójához",
+        log.info("[AML-APPROVAL] Engedélyező verifikálva + grant kiállítva — approver #{} a rögzítő #{} tranzakciójához",
                 approverWorkerId, currentWorkerId);
         return ResponseEntity.ok(Map.of(
                 "ok", true,
