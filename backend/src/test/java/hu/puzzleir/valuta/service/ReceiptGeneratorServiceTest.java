@@ -227,6 +227,8 @@ class ReceiptGeneratorServiceTest {
     @DisplayName("generateReservationReceipt (visszafizetés) → VISSZAFIZETÉSE címsor + ok")
     void testReservationReceiptRefund() {
         var reservation = buildReservation();
+        // Lemondás (ügyfél elállt) — NEM beszámítás.
+        reservation.setStatus(hu.puzzleir.valuta.entity.ReservationStatus.CANCELLED_BY_CUSTOMER);
         reservation.setCancellationReceiptNumber("F-260522-0002");
         reservation.setCancellationReason("Ügyfél elállt");
         reservation.setRefundAmount(new BigDecimal("20000.00"));
@@ -240,7 +242,21 @@ class ReceiptGeneratorServiceTest {
         // B7 / FR-13: az eredeti foglaló bizonylatszáma kereszthivatkozásként a visszafizetési bizonylaton.
         assertThat(result.getLines())
                 .anyMatch(l -> "Eredeti foglaló bizonylatszáma".equals(l.getLabel()) && "F-260522-0001".equals(l.getValue()));
-        // B7 / FR-14: beszámítási záró-szöveg.
+        // Codex P2: LEMONDÁSNÁL a "beszámításra került" szöveg NEM jelenik meg (a letét nem beszámításra került).
+        assertThat(result.getLines())
+                .noneMatch(l -> l.getValue() != null && l.getValue().contains("beszámításra került"));
+    }
+
+    @Test
+    @DisplayName("generateReservationReceipt (TELJESÍTÉS/FULFILLED) → beszámítási záró-szöveg megjelenik")
+    void testReservationReceiptFulfilled() {
+        var reservation = buildReservation();
+        // Teljesítés — a foglaló beszámításra kerül a mai ügyletbe.
+        reservation.setStatus(hu.puzzleir.valuta.entity.ReservationStatus.FULFILLED);
+
+        ReceiptData result = service.generateReservationReceipt(reservation, true);
+
+        // B7 / FR-14: FULFILLED státusznál megjelenik a beszámítási záró-szöveg.
         assertThat(result.getLines())
                 .anyMatch(l -> l.getValue() != null && l.getValue().contains("beszámításra került"));
     }

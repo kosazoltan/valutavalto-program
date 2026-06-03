@@ -193,9 +193,13 @@ public class ReceiptGeneratorService {
         // egész forintra kerekítve (a doc: "ennek ft. erteke: 254.000 HUF"). A megjelenítés a nyomtató-
         // rétegben formázódik ezres csoportosítással.
         if (reservation.getReservedAmount() != null && reservation.getExchangeRate() != null) {
+            // Codex P2: a tényleges KÉSZPÉNZ-értékhez igazítva 5 Ft-ra kerekítjük — egyezően a
+            // ReservationService.fulfillReservation fullPrice-számításával (roundToFive), hogy a foglaló-
+            // bizonylaton mutatott Ft-érték ne térjen el a beszedett összegtől.
             java.math.BigDecimal ftValue = reservation.getReservedAmount()
                     .multiply(reservation.getExchangeRate())
-                    .setScale(0, java.math.RoundingMode.HALF_UP);
+                    .divide(java.math.BigDecimal.valueOf(5), 0, java.math.RoundingMode.HALF_UP)
+                    .multiply(java.math.BigDecimal.valueOf(5));
             lines.add(ReceiptData.ReceiptLineData.builder()
                     .label("Forint-érték").value(ftValue.toPlainString() + " Ft").build());
         }
@@ -236,10 +240,14 @@ public class ReceiptGeneratorService {
                 lines.add(ReceiptData.ReceiptLineData.builder()
                         .label("Lemondás oka").value(reservation.getCancellationReason()).build());
             }
-            // FR-14 (b4-foglalo): záró tájékoztató — a foglaló beszámításra került a mai ügylet ellenértékébe.
-            lines.add(ReceiptData.ReceiptLineData.builder()
-                    .label("Megjegyzés")
-                    .value("A foglaló a mai napon végrehajtott ügylet ellenértékébe beszámításra került.").build());
+            // FR-14 (b4-foglalo): záró tájékoztató — CSAK ha a foglaló TÉNYLEGESEN beszámításra került
+            // (FULFILLED). Codex P2: lemondásnál (CANCELLED_BY_CUSTOMER/COMPANY) a letét visszafizetésre/
+            // visszatartásra kerül, NEM beszámításra → a "beszámításra került" szöveg félrevezető lenne.
+            if (reservation.getStatus() == hu.puzzleir.valuta.entity.ReservationStatus.FULFILLED) {
+                lines.add(ReceiptData.ReceiptLineData.builder()
+                        .label("Megjegyzés")
+                        .value("A foglaló a mai napon végrehajtott ügylet ellenértékébe beszámításra került.").build());
+            }
         }
 
         return ReceiptData.builder()
