@@ -43,6 +43,8 @@ import {
   saveGroupValueSnapshot,
   loadGroupRateValues,
   saveGroupRateValues,
+  persistGroupRateValues,
+  loadGroupRateValuesFromOfflineDb,
 } from './workgroupSheetStorage'
 import { useTranslation } from 'react-i18next'
 
@@ -240,6 +242,38 @@ export default function RateCreationPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- csoportváltáskor ÉS minden reloadnál
   }, [selectedWg?.id, reloadVersion])
 
+  // FK02-B / FR-11, FR-12: SQLite-first TARTÓS overlay (Electron). A fenti szinkron localStorage-
+  // overlay UTÁN fut; ha az Electron SQLite-ban van mentett érték (a localStorage-nál tartósabb
+  // forrás — pl. törölt/elavult localStorage esetén is megőrzi), rámossa a cellákra ÉS visszaírja
+  // a localStorage-ba, hogy a szinkron út is naprakész legyen. Böngészőben/dev-ben no-op (üres).
+  useEffect(() => {
+    if (!selectedWg) return
+    const groupId = selectedWg.id
+    let cancelled = false
+    void loadGroupRateValuesFromOfflineDb(groupId).then(saved => {
+      if (cancelled || !saved || Object.keys(saved).length === 0) return
+      saveGroupRateValues(groupId, saved) // a szinkron localStorage utat is szinkronizáljuk
+      setRates(prev => {
+        let changed = false
+        const next = prev.map(r => {
+          let nr = r
+          for (const field of WG_STRING_FIELDS) {
+            const key = `${r.currencyId}.${field}`
+            if (key in saved && nr[field] !== saved[key]) {
+              if (nr === r) nr = { ...r }
+              nr[field] = saved[key]!
+              changed = true
+            }
+          }
+          return nr
+        })
+        return changed ? next : prev
+      })
+    })
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- csoportváltáskor ÉS minden reloadnál
+  }, [selectedWg?.id, reloadVersion])
+
   // FK-04/C: a csoport képleteinek perzisztálása minden változáskor (localStorage, csoportonként).
   useEffect(() => {
     if (selectedWg) saveGroupFormulas(selectedWg.id, formulas)
@@ -429,7 +463,7 @@ export default function RateCreationPage() {
     redoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas }, savedRateValues: currentSavedRateValues() })
     setRates(prev.rates)
     setFormulas(prev.formulas)
-    if (id) saveGroupRateValues(id, prev.savedRateValues)
+    if (id) persistGroupRateValues(id, prev.savedRateValues) // FK02-B: dual-write (localStorage + SQLite)
   }, [rates, formulas, currentSavedRateValues, selectedWg?.id])
 
   const redo = useCallback(() => {
@@ -439,7 +473,7 @@ export default function RateCreationPage() {
     undoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas }, savedRateValues: currentSavedRateValues() })
     setRates(nextState.rates)
     setFormulas(nextState.formulas)
-    if (id) saveGroupRateValues(id, nextState.savedRateValues)
+    if (id) persistGroupRateValues(id, nextState.savedRateValues) // FK02-B: dual-write (localStorage + SQLite)
   }, [rates, formulas, currentSavedRateValues, selectedWg?.id])
 
   // Ctrl+Z / Ctrl+Y global handler
@@ -512,11 +546,16 @@ export default function RateCreationPage() {
         const serverNum = baselineRatesRef.current[key]
         const nextNum = numOrNull(trimmed)
         const sameAsServer = (trimmed === '' && serverNum === undefined) || (nextNum !== null && nextNum === serverNum)
+        let mutated = false
         if (isFormula(trimmed) || sameAsServer) {
-          if (key in saved) { delete saved[key]; saveGroupRateValues(wgId, saved) }
+          if (key in saved) { delete saved[key]; mutated = true }
         } else if (saved[key] !== trimmed) {
           saved[key] = trimmed
-          saveGroupRateValues(wgId, saved)
+          mutated = true
+        }
+        if (mutated) {
+          // FK02-B / FR-11,12: dual-write — localStorage (szinkron) + tartós Electron SQLite (best-effort).
+          persistGroupRateValues(wgId, saved)
         }
       }
     }
@@ -594,7 +633,7 @@ export default function RateCreationPage() {
         if (isFormula(trimmed) || sameAsServer) delete saved[key]
         else saved[key] = trimmed
       }
-      saveGroupRateValues(wgId, saved)
+      persistGroupRateValues(wgId, saved) // FK02-B: dual-write (localStorage + SQLite)
     }
   }, [canWriteRateCreation, rates, pushUndo, selectedWg?.id])
 
@@ -805,9 +844,10 @@ export default function RateCreationPage() {
         toast.success('Publikálva!', `${validRates.length} árfolyam kiküldve: ${selectedWg.name} (${selectedWg.branches.length} iroda)`)
       }
       // FK02-B / FR-11, FR-12: publikálás után a szerver az authority (vö. published_rate
-      // server_authority policy) — a csoport helyi fix-érték overlay-ét töröljük, hogy ne árnyékolja
-      // a friss szerver-értékeket. A loadData() ezután a publikált értékeket tölti vissza.
-      saveGroupRateValues(selectedWg.id, {})
+      // server_authority policy) — a csoport helyi fix-érték overlay-ét töröljük MINDKÉT tárolóból
+      // (localStorage + tartós SQLite), különben a betöltéskori SQLite-first overlay feltámasztaná az
+      // elavult override-okat (review P0). A loadData() ezután a publikált értékeket tölti vissza.
+      persistGroupRateValues(selectedWg.id, {})
       void loadData()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Hiba a publikálás során'

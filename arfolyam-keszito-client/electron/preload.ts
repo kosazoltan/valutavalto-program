@@ -58,6 +58,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getRateDrafts: () => ipcRenderer.invoke('lf:get-rate-drafts'),
     getPublishedRates: () => ipcRenderer.invoke('lf:get-published-rates'),
     getCurrencyPairs: () => ipcRenderer.invoke('lf:get-currency-pairs'),
+    // FK02-B (csoport-árfolyamlap FR-11/FR-12): tartós offline csoport-ráta-érték perzisztencia
+    saveGroupRateValues: (payload: { groupId: string; values: Record<string, string> }) =>
+      ipcRenderer.invoke('lf:save-group-rate-values', payload),
+    getGroupRateValues: (groupId: string) => ipcRenderer.invoke('lf:get-group-rate-values', groupId),
   },
 
   platform: process.platform,
