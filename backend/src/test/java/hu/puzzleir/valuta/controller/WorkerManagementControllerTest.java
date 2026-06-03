@@ -27,9 +27,21 @@ class WorkerManagementControllerTest {
 
     @Test
     void resetPasswordAcceptsEightCharacterPassword() {
-        ResponseEntity<Void> response = controller.resetPassword(42L, Map.of("newPassword", "12345678"));
+        // 8 karakteres minimum-hossz HATÁR + komplexitás (nagybetű + szám) teljesül.
+        ResponseEntity<Void> response = controller.resetPassword(42L, Map.of("newPassword", "Pass1234"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(workerManagementService).resetPassword(42L, "12345678");
+        verify(workerManagementService).resetPassword(42L, "Pass1234");
+    }
+
+    @Test
+    void resetPasswordRejectsPasswordWithoutComplexity() {
+        // "12345678" elég hosszú (8), de nincs benne nagybetű → a create-tel azonos
+        // komplexitási szabály (CreateWorkerDto @Pattern) elutasítja. A reset-jelszó azonnal
+        // élő login-jelszó (nincs kényszerített csere), ezért gyenge jelszó nem engedhető át.
+        ResponseEntity<Void> response = controller.resetPassword(42L, Map.of("newPassword", "12345678"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(workerManagementService, never()).resetPassword(42L, "12345678");
     }
 }

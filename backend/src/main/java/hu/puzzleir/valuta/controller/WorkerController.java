@@ -11,6 +11,7 @@ import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.service.WorkerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,6 +29,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/workers")
 @RequiredArgsConstructor
+@Slf4j
 public class WorkerController {
     
     private final WorkerService workerService;
@@ -202,6 +204,17 @@ public class WorkerController {
      */
     @GetMapping("/{id}/roles")
     public ResponseEntity<List<String>> getWorkerRoles(@PathVariable Long id) {
+        // Multi-tenant IDOR védelem (self-review B1 + Copilot review): a worker operatív szerepkör-kódjai
+        // csak a saját céghez tartozó workerre kérhetők le. A WorkerRoleService.getRoleCodesForWorker maga
+        // NEM companyId-scope-olt (login/first-time-setup/Google flow-k hívják auth-kontextus nélkül, ahol
+        // még nincs bejelentkezett felhasználó), ezért a tenancy-t itt, az authentikált REST-úton
+        // kényszerítjük ki. Repository-szintű companyId-scope-olt lookup → EGYSÉGES 404 idegen ÉS nem
+        // létező workerId-re egyaránt (nincs 400-vs-404 enumerációs orákulum; konzisztens az EmployeeService
+        // "idegen tenant → 404" mintájával).
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (workerRepository.findByIdAndCompanyId(id, companyId).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
         List<String> roles = workerRoleService.getRoleCodesForWorker(id);
         return ResponseEntity.ok(roles);
     }
@@ -264,6 +277,14 @@ public class WorkerController {
                 workerRepository.save(w);
                 updated++;
             } catch (Exception e) {
+                // A hiba a válasz "errors" listájában is megjelenik, de admin bulk-mutációnál
+                // szerver-oldali nyomot is hagyunk (megfigyelhetőség/audit). Codex/Copilot/CodeQL review:
+                // a nyers e.getMessage() egy uk_worker_email constraint-sértésnél tartalmazhatja a beküldött
+                // email értéket "(email)=(...)" formában → PII-szivárgás + log-injection (user-input a logban).
+                // Ezért CSAK a kivétel TÍPUSÁT logoljuk (nem az üzenetet), és a workerCode-ot CR/LF-mentesítjük.
+                String safeCode = code.replaceAll("[\\r\\n]", "_");
+                log.warn("Bulk email update sikertelen: workerCode={}, hibatipus={}",
+                        safeCode, e.getClass().getSimpleName());
                 errors.add(code + ": " + e.getMessage());
                 skipped++;
             }

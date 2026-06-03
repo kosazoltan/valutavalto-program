@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.dto.worker;
 
 import hu.puzzleir.valuta.entity.WorkerRole;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -26,6 +27,7 @@ public class UpdateWorkerDto {
     @Size(max = 20, message = "Telefonszám maximum 20 karakter")
     private String phone;
     
+    @Email(message = "Érvénytelen email cím formátum")
     @Size(max = 100, message = "Email maximum 100 karakter")
     private String email;
     

@@ -103,6 +103,11 @@ public class WorkerService {
                 .passwordHash(passwordEncoder.encode(dto.getPassword()))
                 .role(dto.getRole())
                 .branch(branch)
+                // A dolgozó régiója = az irodája régiója. A publikus dolgozó-azonosító flow
+                // (PublicBranchController -> findByCompanyIdAndRegionAndActiveTrue) region nélkül
+                // ÜRES listát ad, ezért API-n létrehozott dolgozónál is ki kell tölteni (branch-ből
+                // auto-derivált, így mindig szinkronban marad az iroda területi besorolásával).
+                .region(branch.getRegion())
                 .active(true)
                 .phone(dto.getPhone())
                 .email(dto.getEmail())
@@ -135,7 +140,7 @@ public class WorkerService {
         }
         if (dto.getRole() != null) {
             // Csak ADMIN vagy MANAGER változtathat role-t
-            if (!SecurityUtils.isAdmin() && !SecurityUtils.getCurrentRole().equals("MANAGER")) {
+            if (!SecurityUtils.isAdmin() && !"MANAGER".equals(SecurityUtils.getCurrentRole())) {
                 throw new ValidationException("Nincs jogosultsága szerepkör módosításhoz!");
             }
             worker.setRole(dto.getRole());
@@ -148,6 +153,9 @@ public class WorkerService {
                 throw new ValidationException("Az iroda nem tartozik ehhez a céghez!");
             }
             worker.setBranch(branch);
+            // Iroda-váltáskor a régió is követi az új iroda területi besorolását (különben a
+            // publikus dolgozó-kereső régió-szűrése elavult területen keresné a dolgozót).
+            worker.setRegion(branch.getRegion());
         }
         if (dto.getPhone() != null) {
             worker.setPhone(dto.getPhone());

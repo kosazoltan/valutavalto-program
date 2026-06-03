@@ -154,9 +154,9 @@ public class EmployeeService {
                 .active(true)
                 .build();
 
-        // Worker hozzárendelés (opcionális)
+        // Worker hozzárendelés (opcionális) — CSAK az aktuális céghez tartozó worker köthető (PP-02 IDOR).
         if (dto.getWorkerId() != null) {
-            employee.setWorker(workerRepository.findById(dto.getWorkerId())
+            employee.setWorker(workerRepository.findByIdAndCompanyId(dto.getWorkerId(), companyId)
                     .orElseThrow(() -> new ResourceNotFoundException("Worker nem található: " + dto.getWorkerId())));
         }
 
@@ -225,9 +225,11 @@ public class EmployeeService {
         if (dto.getUnder30MotherCreditAmount() != null) employee.setUnder30MotherCreditAmount(dto.getUnder30MotherCreditAmount());
         if (dto.getActive() != null) employee.setActive(dto.getActive());
 
-        // Worker hozzárendelés frissítése
+        // Worker hozzárendelés frissítése — CSAK az aktuális (employee-vel egyező) céghez tartozó worker
+        // köthető (PP-02 IDOR). Az employee a findEmployeeOrThrow után már garantáltan az aktuális cégé.
         if (dto.getWorkerId() != null) {
-            employee.setWorker(workerRepository.findById(dto.getWorkerId())
+            employee.setWorker(workerRepository
+                    .findByIdAndCompanyId(dto.getWorkerId(), employee.getCompany().getId())
                     .orElseThrow(() -> new ResourceNotFoundException("Worker nem található: " + dto.getWorkerId())));
         }
 
@@ -316,8 +318,16 @@ public class EmployeeService {
     // ===== Privát segédmetódusok =====
 
     private Employee findEmployeeOrThrow(Long id) {
-        return employeeRepository.findById(id)
+        Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található: " + id));
+        // Multi-tenant IDOR védelem (PP-02): idegen céghez tartozó dolgozó NEM adható vissza/módosítható/
+        // törölhető. Az EmployeeDto érzékeny PII-t tartalmaz (TAJ, adóazonosító, bér, bankszámla, anyja
+        // neve) → cross-tenant lekérés GDPR/Pmt. sértés lenne. (A SubRecordService.loadScoped azonos mintája.)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (employee.getCompany() == null || !employee.getCompany().getId().equals(companyId)) {
+            throw new ResourceNotFoundException("Dolgozó nem található: " + id);
+        }
+        return employee;
     }
 
     private void saveAddresses(Employee employee, List<EmployeeAddressDto> dtos) {
