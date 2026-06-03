@@ -197,6 +197,9 @@ public class TransactionConversionService {
                 .customerDocumentNumber(request.getCustomerDocumentNumber())
                 .customerNationality(request.getCustomerNationality())
                 .sourceOfFunds(request.getSourceOfFunds())
+                // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum perzisztálása
+                .sourceOfFundsDocType(request.getSourceOfFundsDocType())
+                .sourceOfFundsDocDate(request.getSourceOfFundsDocDate())
                 .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
                 // V235 + V236 Konverzio Pmt. azonositas (HIBA #19 2026-05-19)
                 .customerBirthPlace(request.getCustomerBirthPlace())

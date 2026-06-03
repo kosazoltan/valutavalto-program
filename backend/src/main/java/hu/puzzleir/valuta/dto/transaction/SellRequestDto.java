@@ -58,6 +58,17 @@ public class SellRequestDto {
     @Size(max = 500, message = "Pénzeszköz forrás max 500 karakter")
     private String sourceOfFunds;
 
+    /**
+     * A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum típusa az 50M Ft feletti ügylet
+     * szerver-oldali validációjához. Elfogadható: MAGANOKIRAT_KOZJEGYZO / MAGANOKIRAT_UGYVED / BANK_SZLIP
+     * (KET_TANU TILOS). A tényleges blokkolást az AML_SOURCE_OF_FUNDS_50M_ENFORCEMENT flag vezérli.
+     */
+    @Size(max = 50, message = "Forrás-dokumentum típus max 50 karakter")
+    private String sourceOfFundsDocType;
+
+    /** A3 (Pmt. 50M): banki bizonylat (szlip) kiállítási dátuma — max. 3 év a tranzakcióhoz képest. */
+    private java.time.LocalDate sourceOfFundsDocDate;
+
     /** Ügyfél PEP (kiemelt közszereplő) státusza */
     private Boolean customerIsPep;
 
