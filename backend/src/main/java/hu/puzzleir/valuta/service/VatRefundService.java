@@ -36,6 +36,11 @@ import java.util.UUID;
 public class VatRefundService {
 
     private final VatRefundTransactionRepository vatRefundTransactionRepository;
+    // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate az ÁFA-visszatérítés úton is
+    // (önálló tranzakció-belépési pont). Flag-gated (default OFF); a circularRepository CSAK
+    // enforce=true ágon dereferálódik (guard → tesztek nem törnek).
+    private final SystemParameterService systemParameterService;
+    private final hu.puzzleir.valuta.repository.CircularRepository circularRepository;
 
     /**
      * ÁFA visszatérítés tranzakció létrehozása.
@@ -46,6 +51,23 @@ public class VatRefundService {
     public VatRefundTransactionDto createVatRefund(CreateVatRefundRequest request) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         String workerCode = SecurityUtils.getCurrentWorkerCode();
+
+        // A4: kötelező körlevél-nyugtázás gate (flag-gated, default OFF).
+        boolean circularEnforce = systemParameterService != null && circularRepository != null
+                && "true".equalsIgnoreCase(systemParameterService.getValue(
+                        TransactionService.CIRCULAR_ACK_BLOCKING_PARAM,
+                        TransactionService.CIRCULAR_ACK_BLOCKING_DEFAULT));
+        if (circularEnforce) {
+            String circularBlock = TransactionService.circularAckBlockReason(
+                    circularRepository.findUnacknowledgedMandatoryForWorker(
+                            companyId, SecurityUtils.getCurrentWorkerId(),
+                            SecurityUtils.getCurrentBranchIdOrNull(),
+                            hu.puzzleir.valuta.util.LegacyCompanyIdentityCodec.toLegacyInt(companyId)),
+                    true);
+            if (circularBlock != null) {
+                throw new ValidationException(circularBlock);
+            }
+        }
 
         VoucherType voucherType = parseVoucherType(request.getVoucherType());
 

@@ -68,12 +68,13 @@ public class TransactionOperationHelper {
      */
     public AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
                                  String customerName, String documentNumber, String currencyCode) {
-        // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate (multi-line/konverzió/sztornó).
+        // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate. Ezt a performAmlCheck-et a
+        // multi-line (TransactionMultiLineService) ÉS a konverzió (TransactionConversionService) hívja.
+        // (A sztornó/reversal NEM ezen az AML-úton megy → nincs gate-elve, by-design.)
         // Feature-flag mögött (CIRCULAR_ACK_BLOCKING_ENFORCEMENT, default false). A circularRepository
-        // CSAK enforce=true ágon dereferálódik → flag-off (vagy nem mockolt systemParameterService)
-        // esetén no-op.
-        boolean circularEnforce = systemParameterService != null && "true".equalsIgnoreCase(
-                systemParameterService.getValue(
+        // CSAK enforce=true ágon dereferálódik → flag-off (vagy nem mockolt függőség) esetén no-op.
+        boolean circularEnforce = systemParameterService != null && circularRepository != null
+                && "true".equalsIgnoreCase(systemParameterService.getValue(
                         TransactionService.CIRCULAR_ACK_BLOCKING_PARAM,
                         TransactionService.CIRCULAR_ACK_BLOCKING_DEFAULT));
         if (circularEnforce) {

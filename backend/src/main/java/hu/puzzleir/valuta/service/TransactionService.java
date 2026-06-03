@@ -777,8 +777,9 @@ public class TransactionService {
         // @InjectMocks tesztek nem törnek meg). Bekapcsolva: ha a pénztárosnak van olvasatlan,
         // KÖTELEZŐ-nyugtázandó (requires_acknowledgment=true) körlevele, a tranzakció elutasul, amíg
         // nem nyugtázza (CircularPage). A circularRepository CSAK enforce=true ágon dereferálódik.
-        boolean circularEnforce = systemParameterService != null && "true".equalsIgnoreCase(
-                systemParameterService.getValue(CIRCULAR_ACK_BLOCKING_PARAM, CIRCULAR_ACK_BLOCKING_DEFAULT));
+        boolean circularEnforce = systemParameterService != null && circularRepository != null
+                && "true".equalsIgnoreCase(
+                        systemParameterService.getValue(CIRCULAR_ACK_BLOCKING_PARAM, CIRCULAR_ACK_BLOCKING_DEFAULT));
         if (circularEnforce) {
             java.util.UUID companyId = SecurityUtils.getCurrentCompanyId();
             Long workerId = SecurityUtils.getCurrentWorkerId();

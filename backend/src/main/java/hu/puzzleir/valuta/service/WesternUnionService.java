@@ -89,8 +89,8 @@ public class WesternUnionService {
         // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate a WU send/receive úton is.
         // Feature-flag mögött (CIRCULAR_ACK_BLOCKING_ENFORCEMENT, default false); a circularRepository
         // CSAK enforce=true ágon dereferálódik (systemParameterService != null guard → tesztek nem törnek).
-        boolean circularEnforce = systemParameterService != null && "true".equalsIgnoreCase(
-                systemParameterService.getValue(
+        boolean circularEnforce = systemParameterService != null && circularRepository != null
+                && "true".equalsIgnoreCase(systemParameterService.getValue(
                         TransactionService.CIRCULAR_ACK_BLOCKING_PARAM,
                         TransactionService.CIRCULAR_ACK_BLOCKING_DEFAULT));
         if (circularEnforce) {
