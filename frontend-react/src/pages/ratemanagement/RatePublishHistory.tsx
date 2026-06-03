@@ -10,6 +10,8 @@ interface Publication {
   templateId: string | null
   workgroupId: string
   publishedBy: number
+  // FR-HL-11: a módosító NEVE (backend feloldja a workerId-ból); fallback "#<id>" ismeretlennél.
+  publishedByName?: string
   publishedAt: string
   affectedBranches: number
   notes: string | null
@@ -72,7 +74,8 @@ export default function RatePublishHistory() {
                   {pub.notes && <p className="text-sm text-muted-foreground">{pub.notes}</p>}
                 </div>
                 <div className="text-right text-sm text-muted-foreground">
-                  <p>{t('ratemanagement.publikalta')}{pub.publishedBy}</p>
+                  {/* FR-HL-11: a módosító NEVE (workerId helyett); fallback a workerId, ha nincs név. */}
+                  <p>{t('ratemanagement.publikalta')}{pub.publishedByName ?? pub.publishedBy}</p>
                   <p className="text-xs">{pub.id.substring(0, 8)}...</p>
                 </div>
               </div>

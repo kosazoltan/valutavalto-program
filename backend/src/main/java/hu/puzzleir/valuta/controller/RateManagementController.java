@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.ratemanagement.RatePublishRequestDto;
+import hu.puzzleir.valuta.dto.ratemanagement.RatePublicationAuditDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.RateDiscountRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -151,8 +152,9 @@ public class RateManagementController {
     // ============ PUBLICATIONS ============
 
     @GetMapping("/publications")
-    public ResponseEntity<List<RatePublication>> getPublications(
+    public ResponseEntity<List<RatePublicationAuditDto>> getPublications(
             @RequestParam(required = false) UUID workgroupId) {
-        return ResponseEntity.ok(publishService.getPublicationHistory(workgroupId));
+        // FR-HL-11: az audit-történet a módosító NEVÉVEL feloldva (nem csak workerId).
+        return ResponseEntity.ok(publishService.getPublicationAuditHistory(workgroupId));
     }
 }
