@@ -26,6 +26,7 @@ public class TransactionOperationHelper {
 
     private final DailySessionService dailySessionService;
     private final AmlService amlService;
+    private final AmlApprovalService amlApprovalService;
     private final CashBalanceRepository cashBalanceRepository;
     private final CurrencyRepository currencyRepository;
     private final ObjectProvider<CameraTransactionLinker> cameraTransactionLinkerProvider;
@@ -75,6 +76,14 @@ public class TransactionOperationHelper {
     public AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
                                  String customerName, String documentNumber, String currencyCode,
                                  String customerNationality) {
+        // Backward-compat: engedélyező nélkül (a requiresApproval-ág a meglévő blokkoló viselkedést tartja).
+        return performAmlCheck(hufAmount, customerId, customerName, documentNumber, currencyCode,
+                customerNationality, null);
+    }
+
+    public AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
+                                 String customerName, String documentNumber, String currencyCode,
+                                 String customerNationality, Long approverWorkerId) {
         // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate. Ezt a performAmlCheck-et a
         // multi-line (TransactionMultiLineService) ÉS a konverzió (TransactionConversionService) hívja.
         // (A sztornó/reversal NEM ezen az AML-úton megy → nincs gate-elve, by-design.)
@@ -116,10 +125,24 @@ public class TransactionOperationHelper {
                     : "AML ellenorzes sikertelen!");
         }
 
+        // Egyszeri jóváhagyás-rögzítés flag (a TransactionService single-line ágával azonos logika): ha a
+        // tranzakció a basicResult- ÉS a threshold-kaput is megüti, a 4-szem-elvű jóváhagyást csak EGYSZER rögzítjük.
+        boolean approvalRecorded = false;
+
         if (basicResult.isRequiresApproval()) {
-            throw new ValidationException(basicResult.getApprovalReason() != null
+            // Pmt. 14/A. § (4) / MNB 14/2025 V.2.6: a magas-kockázatú tranzakció (multi-line / konverzió út)
+            // kizárólag a kijelölt felelős vezető jóváhagyásával teljesíthető. Érvényes POS-engedélyezőnél
+            // INSERT-only audit-rekordba rögzítjük (névvel) és engedjük; különben elutasul (a TransactionService
+            // single-line ágával azonos logika). A recordSeniorApproval validál (multi-tenant + szerep + 4-szem).
+            String approvalReason = basicResult.getApprovalReason() != null
                     ? basicResult.getApprovalReason()
-                    : "Supervisor jovahagyas szukseges (AML limit)!");
+                    : "Supervisor jovahagyas szukseges (AML limit)!";
+            if (approverWorkerId == null || amlApprovalService == null) {
+                throw new ValidationException(approvalReason);
+            }
+            amlApprovalService.recordSeniorApproval(
+                    approverWorkerId, approvalReason, hufAmount, customerName, null);
+            approvalRecorded = true;
         }
 
         if (customerId != null && !customerId.isBlank()) {
@@ -132,13 +155,23 @@ public class TransactionOperationHelper {
                     throw new ValidationException(warnings);
                 }
 
-                // Sprint 5.3 C2: 8 napos gordulo limit + manager approval kotelezoseg
+                // Sprint 5.3 C2: 8 napos gordulo limit + manager approval kotelezoseg.
+                // Konzisztencia: érvényes POS-engedélyezőnél a 4-szem-elvű jóváhagyást rögzítjük és engedünk
+                // (ne blokkoljon csak azért, mert a pénztáros maga nem supervisor); engedélyező nélkül a
+                // meglévő szerepkör-alapú blokk marad.
                 if (thresholdResult.isRequiresManagerApproval()
                         && !hu.puzzleir.valuta.security.SecurityUtils.isSupervisorOrAbove()) {
                     String reason = thresholdResult.getManagerApprovalReason() != null
                             ? thresholdResult.getManagerApprovalReason()
                             : "Supervisor/Manager jovahagyas szukseges (AML magas kockazatu tranzakcio)";
-                    throw new ValidationException(reason);
+                    if (!approvalRecorded && approverWorkerId != null && amlApprovalService != null
+                            && amlApprovalService.isValidSeniorApprover(approverWorkerId)) {
+                        amlApprovalService.recordSeniorApproval(
+                                approverWorkerId, reason, hufAmount, customerName, null);
+                        approvalRecorded = true;
+                    } else {
+                        throw new ValidationException(reason);
+                    }
                 }
             }
         }
