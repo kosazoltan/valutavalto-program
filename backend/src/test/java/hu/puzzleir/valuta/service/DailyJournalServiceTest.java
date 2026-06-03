@@ -171,8 +171,8 @@ class DailyJournalServiceTest {
     }
 
     @Test
-    @DisplayName("Copilot P3 #706: 100 tranzakció → render cap + 'tovabbi tranzakcio' marker (no exception)")
-    void manyTransactions_truncationMarker() throws IOException {
+    @DisplayName("100 tranzakció → MULTI-PAGE PDF, MINDEN tétel megjelenik, nincs csonkolás-marker")
+    void manyTransactions_multiPage_noTruncation() throws IOException {
         Branch branch = createBranch(companyId);
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
 
@@ -195,15 +195,21 @@ class DailyJournalServiceTest {
             assertThat(pdf).isNotEmpty();
             assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
 
-            // PDFBox text extraction a render cap verifikálásához
             try (var doc = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+                // Nagy forgalmú nap → TÖBB oldal (a régi viselkedés egyetlen oldalra csonkolt).
+                assertThat(doc.getNumberOfPages()).isGreaterThan(1);
+
                 String text = new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
-                // Truncation marker megjelenik a PDF szövegben
-                assertThat(text).contains("tovabbi tranzakcio");
-                // A fejléc szöveg is benne van
+                // A fejléc + tranzakciószám
                 assertThat(text).contains("NAPKONYV");
-                // Tranzakciok szama: 100 a header-ben
                 assertThat(text).contains("Tranzakciok szama: 100");
+                // MINDEN tétel megjelenik: az ELSŐ és az UTOLSÓ bizonylat is (nincs cap).
+                assertThat(text).contains("V2026000001");
+                assertThat(text).contains("V2026000100");
+                // Nincs csonkolás-marker (a multi-page render kiváltotta a "...tovabbi tranzakcio" sort).
+                assertThat(text).doesNotContain("tovabbi tranzakcio");
+                // Az összesítés (HUF-egyenérték: 100 × 36500 = 3.650.000) szintén jelen van.
+                assertThat(text).contains("OSSZESITES VALUTANKENT");
             }
         }
     }
