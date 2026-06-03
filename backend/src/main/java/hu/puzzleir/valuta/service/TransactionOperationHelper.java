@@ -144,6 +144,26 @@ public class TransactionOperationHelper {
     }
 
     /**
+     * A3 (Pmt. 50M, b4-foglalo FR-16): forrás-igazolás gate a multi-line / aggregált úton (a single-line
+     * TransactionService.enforceSourceOfFunds párja). A flag (AML_SOURCE_OF_FUNDS_50M_ENFORCEMENT, default
+     * false) mögött; flag-off vagy nem mockolt systemParameterService esetén no-op. A blokkoló szabályt a
+     * TransactionService.sourceOfFundsBlockReason statikus metódus mondja ki (egyetlen igazságforrás).
+     */
+    public void enforceSourceOfFunds(BigDecimal hufAmount, String docType, java.time.LocalDate docDate) {
+        boolean enforce = systemParameterService != null && "true".equalsIgnoreCase(
+                systemParameterService.getValue(TransactionService.SOURCE_OF_FUNDS_50M_PARAM,
+                        TransactionService.SOURCE_OF_FUNDS_50M_DEFAULT));
+        if (!enforce) {
+            return;
+        }
+        String reason = TransactionService.sourceOfFundsBlockReason(
+                hufAmount, docType, docDate, java.time.LocalDate.now(), true);
+        if (reason != null) {
+            throw new ValidationException(reason);
+        }
+    }
+
+    /**
      * Audit-finding 2026-05-31 (P1): a sikeres tranzakcio KONYVELESE UTAN frissiti az ugyfel
      * highRiskFlag-jet, ha az eves gongyolt elerte az AML limitet. Eddig az
      * {@code AmlService.setHighRiskFlagIfNeeded} SEHOL nem hivodott -> a fokozott atvilagitasi

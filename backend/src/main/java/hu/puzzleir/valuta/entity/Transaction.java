@@ -437,6 +437,19 @@ public class Transaction {
     private String sourceOfFunds;
 
     /**
+     * A3 (Pmt. 50M, b4-foglalo FR-16): a forrás-dokumentum strukturált típusa.
+     * MAGANOKIRAT_KOZJEGYZO / MAGANOKIRAT_UGYVED / BANK_SZLIP (KET_TANU TILOS 50M felett).
+     */
+    @Column(name = "source_of_funds_doc_type", length = 50)
+    private String sourceOfFundsDocType;
+
+    /**
+     * A3 (Pmt. 50M): banki bizonylat (szlip) kiállítási dátuma — max. 3 év (1095 nap).
+     */
+    @Column(name = "source_of_funds_doc_date")
+    private java.time.LocalDate sourceOfFundsDocDate;
+
+    /**
      * Ügyfél PEP (kiemelt közszereplő) státusza a tranzakció pillanatában.
      * Legacy: _kozszereplo mező.
      */

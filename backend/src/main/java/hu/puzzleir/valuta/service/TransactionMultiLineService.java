@@ -156,6 +156,10 @@ public class TransactionMultiLineService {
         helper.performAmlCheck(payableAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), firstCurrency.getCode());
 
+        // A3 (Pmt. 50M, b4-foglalo FR-16): 50M Ft feletti aggregált ügyletnél is kötelező a forrás-igazolás
+        // (a single-line úttal egyezően). Flag-gated (default false). Így multi-line sem kerüli meg a gate-et.
+        helper.enforceSourceOfFunds(payableAmount, request.getSourceOfFundsDocType(), request.getSourceOfFundsDocDate());
+
         // CASH-VS-CASH LOCK-ORDERING (deadlock-megelozes): a multi-line vetel a HUF-ot + minden tetelsor
         // devizajat mozgatja; ezeket GLOBALISAN egyseges, NOVEKVO currencyId sorrendben elo-lockoljuk a
         // keszlet-ellenorzes / soronkenti updateCashBalance ELOTT, egyezoen a BUY/SELL/sztorno aggal.
@@ -219,6 +223,9 @@ public class TransactionMultiLineService {
                 .currency(firstCurrency)
                 .currencyAmount(totalCurrencyAmount)
                 .sourceOfFunds(request.getSourceOfFunds())
+                // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum perzisztálása
+                .sourceOfFundsDocType(request.getSourceOfFundsDocType())
+                .sourceOfFundsDocDate(request.getSourceOfFundsDocDate())
                 .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
                 .exchangeRate(avgRate)
                 .hufAmount(payableAmount)
@@ -376,6 +383,10 @@ public class TransactionMultiLineService {
         helper.performAmlCheck(payableAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), firstCurrency.getCode());
 
+        // A3 (Pmt. 50M, b4-foglalo FR-16): 50M Ft feletti aggregált ügyletnél is kötelező a forrás-igazolás
+        // (a single-line úttal egyezően). Flag-gated (default false). Így multi-line sem kerüli meg a gate-et.
+        helper.enforceSourceOfFunds(payableAmount, request.getSourceOfFundsDocType(), request.getSourceOfFundsDocDate());
+
         String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.SELL);
         BigDecimal discountAmount = calculationService.calculateDiscountAmount(totalHuf, request.getDiscountPercent());
 
@@ -421,6 +432,9 @@ public class TransactionMultiLineService {
                 .currency(firstCurrency)
                 .currencyAmount(totalCurrencyAmount)
                 .sourceOfFunds(request.getSourceOfFunds())
+                // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum perzisztálása
+                .sourceOfFundsDocType(request.getSourceOfFundsDocType())
+                .sourceOfFundsDocDate(request.getSourceOfFundsDocDate())
                 .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
                 .exchangeRate(avgRate)
                 .hufAmount(payableAmount)

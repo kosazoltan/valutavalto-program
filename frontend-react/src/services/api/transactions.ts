@@ -175,6 +175,10 @@ export interface Transaction {
   // G3-G4: PEP + Jogcím nyilatkozat (Legacy Gap Fix)
   customerIsPep?: boolean
   sourceOfFunds?: string
+  // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum az 50M Ft feletti ügylethez.
+  // A backend AML_SOURCE_OF_FUNDS_50M_ENFORCEMENT flag aktiválásakor töltődik a pénztáros felületről.
+  sourceOfFundsDocType?: string
+  sourceOfFundsDocDate?: string
   foreignStatus?: 'DOMESTIC' | 'FOREIGN'
   // Legacy compatibility aliases
   transactionNumber?: string // Same as receiptNumber
@@ -208,6 +212,10 @@ export interface BuyRequest {
   customerBirthDate?: string
   customerMotherName?: string
   sourceOfFunds?: string
+  // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum az 50M Ft feletti ügylethez.
+  // A backend AML_SOURCE_OF_FUNDS_50M_ENFORCEMENT flag aktiválásakor töltődik a pénztáros felületről.
+  sourceOfFundsDocType?: string
+  sourceOfFundsDocDate?: string
   customerIsPep?: boolean
   // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat
   customerOnOwnBehalf?: boolean
@@ -247,6 +255,10 @@ export interface SellRequest {
   customerBirthDate?: string
   customerMotherName?: string
   sourceOfFunds?: string
+  // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum az 50M Ft feletti ügylethez.
+  // A backend AML_SOURCE_OF_FUNDS_50M_ENFORCEMENT flag aktiválásakor töltődik a pénztáros felületről.
+  sourceOfFundsDocType?: string
+  sourceOfFundsDocDate?: string
   customerIsPep?: boolean
   // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat
   customerOnOwnBehalf?: boolean
@@ -295,6 +307,10 @@ export interface ConversionRequest {
   customerDocumentNumber?: string
   customerNationality?: string
   sourceOfFunds?: string
+  // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum az 50M Ft feletti ügylethez.
+  // A backend AML_SOURCE_OF_FUNDS_50M_ENFORCEMENT flag aktiválásakor töltődik a pénztáros felületről.
+  sourceOfFundsDocType?: string
+  sourceOfFundsDocDate?: string
   customerIsPep?: boolean
   notes?: string
   // V235 + V236 (2026-05-19 HIBA #19): Konverzio Pmt. azonositas

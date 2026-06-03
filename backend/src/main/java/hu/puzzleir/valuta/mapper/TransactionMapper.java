@@ -106,6 +106,9 @@ public class TransactionMapper {
                 .customerDocumentNumber(dto.getCustomerDocumentNumber())
                 .customerNationality(dto.getCustomerNationality())
                 .sourceOfFunds(dto.getSourceOfFunds())
+                // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum továbbítása a service-be
+                .sourceOfFundsDocType(dto.getSourceOfFundsDocType())
+                .sourceOfFundsDocDate(dto.getSourceOfFundsDocDate())
                 .customerIsPep(dto.getCustomerIsPep())
                 // V229 Pmt. snapshot (HIBA #5+#7+#8)
                 .customerBirthPlace(dto.getCustomerBirthPlace())
@@ -148,6 +151,9 @@ public class TransactionMapper {
                 .customerDocumentNumber(dto.getCustomerDocumentNumber())
                 .customerNationality(dto.getCustomerNationality())
                 .sourceOfFunds(dto.getSourceOfFunds())
+                // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum továbbítása a service-be
+                .sourceOfFundsDocType(dto.getSourceOfFundsDocType())
+                .sourceOfFundsDocDate(dto.getSourceOfFundsDocDate())
                 .customerIsPep(dto.getCustomerIsPep())
                 // V229 Pmt. snapshot (HIBA #5+#7+#8)
                 .customerBirthPlace(dto.getCustomerBirthPlace())
@@ -212,6 +218,9 @@ public class TransactionMapper {
                 .customerDocumentNumber(dto.getCustomerDocumentNumber())
                 .customerNationality(dto.getCustomerNationality())
                 .sourceOfFunds(dto.getSourceOfFunds())
+                // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum továbbítása a service-be
+                .sourceOfFundsDocType(dto.getSourceOfFundsDocType())
+                .sourceOfFundsDocDate(dto.getSourceOfFundsDocDate())
                 .customerIsPep(dto.getCustomerIsPep())
                 // V235 + V236 Konverzio Pmt. azonositas (HIBA #19 2026-05-19)
                 .customerBirthPlace(dto.getCustomerBirthPlace())
