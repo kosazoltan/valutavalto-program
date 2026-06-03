@@ -215,3 +215,36 @@ jobs:
       # UJ violations (>2862) -> CI fail. Cel: a baseline fokozatosan csokken, mig egy
       # kovetkezo sprint-ben az osszes szoveg lokalizalva lesz t()-vel.
       - run: cd frontend-react && npm run lint:i18n-gate --if-present
+
+  # Audit #1026 (2026-06-04): a kozponti + arfolyam Electron-kliensek typecheck-je eddig NEM volt
+  # CI-ben (csak a penztar + frontend-react) -> egy kliens-specifikus type-hiba (pl. hianyzo @types/sql.js)
+  # eszrevetlen maradt. A kliens-typecheck a frontend-react tsc-binaryjat hasznalja, es a megosztott
+  # packages/local-first-core/src-t source-kent importalja -> mindharom (frontend-react + local-first-core
+  # + kliens) installja szukseges a typecheck-hez.
+  kozponti-typecheck:
+    name: kozponti-client TypeCheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+      - run: cd frontend-react && npm ci --legacy-peer-deps
+      - run: cd packages/local-first-core && npm ci --legacy-peer-deps
+      - run: cd kozponti-client && npm ci --legacy-peer-deps
+      - run: cd kozponti-client && npm run typecheck
+
+  arfolyam-typecheck:
+    name: arfolyam-keszito-client TypeCheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+      - run: cd frontend-react && npm ci --legacy-peer-deps
+      - run: cd packages/local-first-core && npm ci --legacy-peer-deps
+      - run: cd arfolyam-keszito-client && npm ci --legacy-peer-deps
+      - run: cd arfolyam-keszito-client && npm run typecheck
