@@ -973,6 +973,11 @@ export default function CashierTransactionPage() {
       const axiosError = error as { response?: { data?: { message?: string } } }
       const serverMessage = axiosError?.response?.data?.message
       toast.error('Hiba a tranzakció mentés során!', serverMessage || message)
+      // Codex P2: hiba esetén ÉRVÉNYTELENÍTJÜK a jóváhagyást — különben a pénztáros szerkeszthetné a
+      // sorokat/ügyfelet, és UGYANAZZAL a granttal/session-nel egy MÁSIK nyugtát küldhetne (receipt-
+      // scoping szivárgás). Újraküldéskor friss pre-check + új PIN-jóváhagyás kell.
+      approverWorkerIdRef.current = null
+      approvalSessionIdRef.current = null
     } finally {
       setIsSubmitting(false)
     }

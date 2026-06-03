@@ -458,6 +458,10 @@ export default function ConversionPage() {
       }, 2000)
     } catch (err) {
       setError(getErrorMessage(err))
+      // Codex P2: hiba esetén érvénytelenítjük a jóváhagyást (különben szerkesztés után ugyanazzal a
+      // granttal/session-nel másik konverzió mehetne — receipt-scoping szivárgás). Újra: friss pre-check.
+      approverWorkerIdRef.current = null
+      approvalSessionIdRef.current = null
     } finally {
       setLoading(false)
     }
