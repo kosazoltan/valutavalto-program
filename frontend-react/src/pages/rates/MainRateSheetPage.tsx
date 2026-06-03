@@ -103,6 +103,23 @@ const REMOVED_CURRENCIES = new Set(['DKK', 'NOK', 'SEK', 'HRK', 'BGN', 'RCH'])
 
 const STORAGE_KEY = 'arfolyamkeszito.mainSheet.v1'
 
+// FR-HL-04/05 (b3-arfolyam-karbantarto-hibalista): a 0-ás lapon (és offline) KIZÁRÓLAG az aktív
+// valuták jelenhetnek meg. A szerverről lekért INAKTÍV valuta-kódokat ide persistáljuk, hogy a
+// Valutakezelőben inaktivált valuta a 0-ás lapról (a hard-coded DEFAULT_CURRENCIES-ből is) eltűnjön,
+// és offline (szerver nélküli) betöltéskor is szűrve maradjon. (A REMOVED_CURRENCIES mintát követi.)
+const INACTIVE_STORAGE_KEY = 'arfolyamkeszito.mainSheet.inactiveCurrencies.v1'
+
+export function loadInactiveCurrencyCodes(): Set<string> {
+  try {
+    const raw = localStorage.getItem(INACTIVE_STORAGE_KEY)
+    if (!raw) return new Set<string>()
+    const arr = JSON.parse(raw) as string[]
+    return Array.isArray(arr) ? new Set(arr) : new Set<string>()
+  } catch {
+    return new Set<string>()
+  }
+}
+
 const emptyRow = (currency: string, crossBase: MainRateRow['crossBase']): MainRateRow => ({
   currency,
   settlement: 0,
@@ -116,25 +133,30 @@ const emptyRow = (currency: string, crossBase: MainRateRow['crossBase']): MainRa
   crossBase,
 })
 
-function loadFromStorage(): MainRateRow[] {
+export function loadFromStorage(): MainRateRow[] {
+  // FR-HL-04/05: a véglegesen törölt ÉS a (szerver szerint) INAKTÍV valutákat is kiszűrjük.
+  const inactive = loadInactiveCurrencyCodes()
+  const excluded = (code: string) => REMOVED_CURRENCIES.has(code) || inactive.has(code)
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return DEFAULT_CURRENCIES.map(c => emptyRow(c.currency, c.crossBase))
+    if (!raw) {
+      return DEFAULT_CURRENCIES.filter(c => !excluded(c.currency)).map(c => emptyRow(c.currency, c.crossBase))
+    }
     const parsed = JSON.parse(raw) as MainRateRow[]
     // v2.5.61: szűrjük a törölt valutákat — a régi localStorage-ban még benne
-    // lehetnek (DKK/NOK/SEK/HRK/BGN/RCH). Defensive cleanup mounton.
-    const filtered = parsed.filter(r => !REMOVED_CURRENCIES.has(r.currency))
-    // Defensive: ha új valuta jött a default listába, hozzáadjuk
+    // lehetnek (DKK/NOK/SEK/HRK/BGN/RCH). + FR-HL-04: az inaktívakat is. Defensive cleanup mounton.
+    const filtered = parsed.filter(r => !excluded(r.currency))
+    // Defensive: ha új AKTÍV valuta jött a default listába, hozzáadjuk (inaktívat NEM re-seedelünk).
     const existingCurrencies = new Set(filtered.map(r => r.currency))
     for (const def of DEFAULT_CURRENCIES) {
-      if (!existingCurrencies.has(def.currency)) {
+      if (!existingCurrencies.has(def.currency) && !excluded(def.currency)) {
         filtered.push(emptyRow(def.currency, def.crossBase))
       }
     }
     return filtered
   } catch (e) {
     logger.error('MainRateSheetPage', 'Storage load failed', e)
-    return DEFAULT_CURRENCIES.map(c => emptyRow(c.currency, c.crossBase))
+    return DEFAULT_CURRENCIES.filter(c => !excluded(c.currency)).map(c => emptyRow(c.currency, c.crossBase))
   }
 }
 
@@ -177,6 +199,9 @@ export default function MainRateSheetPage() {
   )
   const [rows, setRows] = useState<MainRateRow[]>(() => loadFromStorage())
   const [dirty, setDirty] = useState(false)
+  // FR-HL-04: a Valutakezelőben végzett aktiválás/inaktiválás után újra-szinkronizálunk a szerverrel,
+  // hogy a 0-ás lap AZONNAL (app-újraindítás nélkül) szűrjön az aktív valutákra.
+  const [currencyReloadVersion, setCurrencyReloadVersion] = useState(0)
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; col: keyof MainRateRow } | null>(null)
   // Képletek per cella, kulcs = `${rowIdx}.${col}`. Csak a felhasználói képletek
   // vannak itt — fix számérték NEM kerül ide. Szintaxis: legacy (lásd mainSheetFormula).
@@ -595,14 +620,23 @@ export default function MainRateSheetPage() {
     setServerSyncState('loading')
     const loadServerData = async () => {
       try {
-        // 1. Lehúzzuk a currencies tablat (currencyCode -> currencyId mapping)
-        const currencies = await currencyApi.list()
+        // 1. Lehúzzuk a TELJES currencies tablat (FR-HL-04/05: az `active` flag is kell, hogy az
+        //    inaktív valutákat kiszűrhessük a 0-ás lapról; a /currencies/all aktívat+inaktívat is ad).
+        const currencies = await currencyApi.getAll()
         if (cancelled) return
         const codeToId = new Map<string, number>()
         for (const c of currencies) {
           codeToId.set(c.code, c.id)
         }
         currencyIdMapRef.current = codeToId
+
+        // FR-HL-04/05: az INAKTÍV valuta-kódokat persistáljuk, hogy a lenti loadFromStorage() ÉS az
+        // offline fallback is kiszűrje őket — így a Valutakezelőben inaktivált valuta eltűnik a 0-ás
+        // lapról (a hard-coded DEFAULT_CURRENCIES-ből is), és reaktiváláskor visszajön.
+        const inactiveCodes = currencies.filter(c => c.active === false).map(c => c.code)
+        try {
+          localStorage.setItem(INACTIVE_STORAGE_KEY, JSON.stringify(inactiveCodes))
+        } catch { /* quota / privát mód → a szerver-szűrés a memóriában akkor is érvényesül */ }
 
         // 2. Lehuzzuk az aktiv (publikalt) torzs arfolyamokat
         const serverRates = await exchangeRateMasterApi.listActivePublished()
@@ -712,10 +746,10 @@ export default function MainRateSheetPage() {
     }
     void loadServerData()
     return () => { cancelled = true }
-    // dirty intentional kihagyva a dep-listabol - csak az elso mount-on syncolunk,
-    // a dirty-t a runtime-ban olvasunk be a useEffect inside-ban
+    // dirty intentional kihagyva a dep-listabol - csak mounton ÉS valuta-aktiválás/inaktiválás után
+    // (currencyReloadVersion) syncolunk; a dirty-t a runtime-ban olvasunk be a useEffect inside-ban.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [currencyReloadVersion])
 
   // Auto-save on dirty + 1 sec debounce
   useEffect(() => {
@@ -1208,13 +1242,11 @@ export default function MainRateSheetPage() {
         isOpen={showCurrencyManager}
         onClose={() => setShowCurrencyManager(false)}
         onCurrencyChanged={() => {
-          // A backend Currency tabla változott → értesítjük a felhasználót hogy
-          // a Főlap új-betöltést igényel (page reload vagy app restart). MVP:
-          // simán toast, dinamikus row-frissítés v2.5.62-be jön.
-          toast.info(
-            'Valutakezelő',
-            'Egy valuta módosult. A változás a Főlapon a következő app-indítás után jelenik meg.',
-          )
+          // FR-HL-04: a backend Currency tábla változott (aktiválás/inaktiválás) → AZONNAL újra-
+          // szinkronizálunk a szerverrel (currencyReloadVersion bump), így a 0-ás lap rögtön szűr az
+          // aktív valutákra, app-újraindítás nélkül. (Korábban csak toast volt, dinamikus frissítés nélkül.)
+          setCurrencyReloadVersion(v => v + 1)
+          toast.success('Valutakezelő', 'A valuta-módosítás érvénybe lépett — a Főlap frissült.')
         }}
       />
 
