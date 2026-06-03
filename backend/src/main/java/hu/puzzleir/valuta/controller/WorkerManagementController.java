@@ -53,6 +53,11 @@ public class WorkerManagementController {
         if (newPassword.length() < 8 || newPassword.length() > 128) {
             return ResponseEntity.badRequest().build();
         }
+        // Jelszó-komplexitás: ugyanaz a szabály, mint a létrehozásnál (CreateWorkerDto @Pattern) —
+        // legalább egy nagybetű ÉS egy szám. Enélkül a reset megkerülné a create-kori erősséget.
+        if (!newPassword.matches("^(?=.*[A-Z])(?=.*[0-9]).*$")) {
+            return ResponseEntity.badRequest().build();
+        }
         workerManagementService.resetPassword(id, newPassword);
         return ResponseEntity.ok().build();
     }

@@ -11,6 +11,7 @@ import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.service.WorkerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,6 +29,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/workers")
 @RequiredArgsConstructor
+@Slf4j
 public class WorkerController {
     
     private final WorkerService workerService;
@@ -202,6 +204,12 @@ public class WorkerController {
      */
     @GetMapping("/{id}/roles")
     public ResponseEntity<List<String>> getWorkerRoles(@PathVariable Long id) {
+        // Multi-tenant IDOR védelem (self-review B1): a worker operatív szerepkör-kódjai csak a saját
+        // céghez tartozó workerre kérhetők le. A WorkerRoleService.getRoleCodesForWorker maga NEM
+        // companyId-scope-olt (login/first-time-setup/Google flow-k hívják auth-kontextus nélkül, ahol
+        // még nincs bejelentkezett felhasználó), ezért a tenancy-t itt, az authentikált REST-úton a
+        // companyId-scope-olt WorkerService.findById-vel kényszerítjük ki — idegen cég workerId-jére dob.
+        workerService.findById(id);
         List<String> roles = workerRoleService.getRoleCodesForWorker(id);
         return ResponseEntity.ok(roles);
     }
@@ -264,6 +272,9 @@ public class WorkerController {
                 workerRepository.save(w);
                 updated++;
             } catch (Exception e) {
+                // A hiba a válasz "errors" listájában is megjelenik, de admin bulk-mutációnál
+                // szerver-oldali nyomot is hagyunk (megfigyelhetőség/audit). PII (email) NEM kerül logba.
+                log.warn("Bulk email update sikertelen: workerCode={}, ok={}", code, e.getMessage());
                 errors.add(code + ": " + e.getMessage());
                 skipped++;
             }

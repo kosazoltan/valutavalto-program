@@ -2,7 +2,9 @@ package hu.puzzleir.valuta.dto.employee;
 
 import hu.puzzleir.valuta.entity.EmployeePaymentMethod;
 import hu.puzzleir.valuta.entity.SalaryType;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -33,7 +35,13 @@ public class CreateEmployeeDto {
 
     private String birthLastName;
     private String birthFirstName;
+    // A @Size felső korlátok = a DB-oszlophosszok (tax_id/ssn=20), így meglévő, perzisztálható
+    // adatot nem utasítanak el; csak túlcsordulásnál adnak tiszta 400-at a nyers 500 helyett.
+    // Szigorúbb @Pattern (pl. 9/10 jegy) SZÁNDÉKOSAN nincs: a 196 importált dolgozó tárolt
+    // formátuma nem verifikált, és a teljes DTO újra-validálódna minden részleges módosításnál.
+    @Size(max = 20, message = "Adóazonosító maximum 20 karakter")
     private String taxId;
+    @Size(max = 20, message = "TAJ szám maximum 20 karakter")
     private String socialSecurityNumber;
     private String mothersName;
     private LocalDate birthDate;
@@ -44,7 +52,10 @@ public class CreateEmployeeDto {
     private String idCardNumber;
     private LocalDate idCardExpiry;
 
+    @Email(message = "Érvénytelen email cím formátum")
+    @Size(max = 200, message = "Email maximum 200 karakter")
     private String email;
+    @Size(max = 30, message = "Telefonszám maximum 30 karakter")
     private String phone;
 
     private LocalDate pensionStartDate;
@@ -55,6 +66,7 @@ public class CreateEmployeeDto {
     private LocalDate employmentStartDate;
     private String employmentType;
     private LocalDate employmentEndDate;
+    @Size(max = 10, message = "FEOR kód maximum 10 karakter")
     private String feorCode;
     private String jobTitle;
     private BigDecimal workHoursPerDay;
