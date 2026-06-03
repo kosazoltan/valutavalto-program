@@ -1139,14 +1139,15 @@ export default function RateCreationPage() {
           </div>
 
           {/* FR-HL-10 (hibalista): dedikált ELLENŐRZÉS gomb — a háromlépcsős flow (Ellenőrzés →
-              Mentés/auto-perzisztálás → Szétküldés) explicit szétválasztása. Az ellenőrzés a már
-              reaktívan számolt validationErrors-t (FR-HL-09 Ellenőrzés-oszlop) összegzi, mentés/kiküldés
-              NÉLKÜL — így a felhasználó kiküldés előtt külön lépésben ellenőrizhet. */}
+              Mentés/auto-perzisztálás → Szétküldés) explicit szétválasztása. A gombra kattintáskor a
+              fókuszált cella blur-je commitol, így a validationErrors (FR-HL-09 Ellenőrzés-oszlop)
+              naprakész. Ez KLIENS-oldali pre-check (limit/MNB); a tényleges kiküldés a szerver-oldali
+              árfolyamvédelmi ellenőrzést (RatePublishService) is elvégzi (Codex review). */}
           <button
             onClick={() => {
               const errorCount = Object.values(validationErrors).filter(e => e && e.length > 0).length
               if (errorCount === 0) {
-                toast.success('Ellenőrzés', 'Minden árfolyam rendben — szétküldhető.')
+                toast.success('Ellenőrzés', 'A kliens-ellenőrzés rendben — a kiküldés a szerver-oldali védelmet is ellenőrzi.')
               } else {
                 toast.warning('Ellenőrzés', `${errorCount} valutánál eltérés/hiba (lásd az „Ellenőrzés” oszlopot).`)
               }

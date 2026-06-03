@@ -1013,7 +1013,9 @@ export default function MainRateSheetPage() {
         </button>
         {/* FR-HL-10 (hibalista): dedikált ELLENŐRZÉS gomb — a háromlépcsős flow (Ellenőrzés → Mentés →
             Szétküldés) explicit szétválasztása. Ugyanazt az irány- + EUA-validációt futtatja, mint a
-            kiküldés, de MENTÉS/KIKÜLDÉS NÉLKÜL: a felhasználó külön, kiküldés előtt ellenőrizhet. */}
+            kiküldés, de MENTÉS/KIKÜLDÉS NÉLKÜL. A MENTETT táblázat-állapotot (rows) ellenőrzi — ha épp
+            cellát szerkesztesz, előbb a Mentés rögzíti a beírást (Copilot review). A szerver a kiküldéskor
+            ismét validál. */}
         <button
           onClick={() => {
             const violations = validateRateDirection(
@@ -1029,7 +1031,7 @@ export default function MainRateSheetPage() {
               warnings.push(`• EUA: az euró-érme árfolyam (${euaSell}) >20%-kal eltér a képzett értéktől (${computeEuaRate(eurSell).toFixed(2)})`)
             }
             if (warnings.length === 0) {
-              toast.success('Ellenőrzés', 'Minden árfolyam rendben — szétküldhető.')
+              toast.success('Ellenőrzés', 'A mentett táblázat rendben — a kiküldés a szerver-oldali ellenőrzést is elvégzi.')
             } else {
               toast.warning('Ellenőrzés', `${warnings.length} eltérés:\n${warnings.slice(0, 6).join('\n')}`)
             }

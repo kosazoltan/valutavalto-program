@@ -151,6 +151,10 @@ export default function RateGrid({
   useEffect(() => {
     const onCopy = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || (e.key !== 'c' && e.key !== 'C')) return
+      // Copilot review: a globális handler NE térítse el a Ctrl+C-t, ha a fókusz a rácson KÍVÜL van
+      // (pl. a felhasználó máshol másol szöveget, miközben egy korábbi rács-kijelölés még él).
+      const focusInGrid = containerRef.current?.contains(document.activeElement) ?? false
+      if (!focusInGrid) return
       const b = selBounds()
       // Csak TÖBB cellás tartománynál vesszük át; egycellásnál a natív input-másolás működik.
       if (b && (b.r0 !== b.r1 || b.c0 !== b.c1)) {
@@ -160,7 +164,7 @@ export default function RateGrid({
     }
     window.addEventListener('keydown', onCopy)
     return () => window.removeEventListener('keydown', onCopy)
-  }, [selBounds, copySelectedRange])
+  }, [selBounds, copySelectedRange, containerRef])
 
   const showToolbarIfMulti = useCallback((start: GridCoord, end: GridCoord, clientX: number, clientY: number) => {
     const multi = start.row !== end.row || start.col !== end.col
