@@ -376,8 +376,8 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     blank();
     push(COMMANDS.BOLD_ON); text('Átadás-átvétel:'); push(COMMANDS.BOLD_OFF);
     blank();
-    // FR-2: kérő iroda (átadó értéktár) + cél iroda + valuta/összeg + forintosított érték.
-    if (data.branchCode) text(twoColumn('Kérő iroda:', data.branchCode));
+    // FR-2: kérő iroda + cél iroda (kötelező → mindig, „—" fallback) + valuta/összeg + forintosított érték.
+    text(twoColumn('Kérő iroda:', data.branchCode || '—'));
     text(twoColumn('Cél iroda:', data.transferTarget ?? '—'));
     text(twoColumn('Valutanem:', data.currencyCode ?? '—'));
     text(twoColumn('Összeg:', `${fmtAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`));
@@ -388,6 +388,8 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     // FR-5: szállító + plombaszám a soros-nyomtató úton is.
     if (data.carrierName) text(twoColumn('Szállító:', data.carrierName));
     if (data.sealNumber) text(twoColumn('Plombaszám:', data.sealNumber));
+    // FR-2: kért kézbesítési dátum.
+    if (data.deliveryDate) text(twoColumn('Kézbesítési dátum:', data.deliveryDate));
     if (data.transferNote) text(twoColumn('Megjegyzés:', data.transferNote));
   } else if (data.type === 'storno') {
     blank();

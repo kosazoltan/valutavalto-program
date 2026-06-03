@@ -55,6 +55,8 @@ export interface PrintReceiptData {
   note?: string;
   transferTarget?: string;
   transferNote?: string;
+  /** FR-2 (átadás-átvétel): a kért kézbesítési dátum (a fejléc `date` a kiállítás dátuma). */
+  deliveryDate?: string;
   /** FR-5 (átadás-átvétel): a szállítást végző neve a szállítólevélen. */
   carrierName?: string;
   closingSummary?: ClosingPrintData;

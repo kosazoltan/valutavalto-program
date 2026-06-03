@@ -266,12 +266,17 @@ export default function ShipmentNewPage() {
         // Kérő iroda (az átadó értéktár), Cél iroda (a fogadó pénztár) — „KÓD - Név" formátumban.
         branchCode: branchLabel(form.fromBranchId, created.requestingBranchName),
         cashierName: created.requestedByWorkerName || worker?.fullName || '',
-        date: created.requestedDeliveryDate || form.deliveryDate || localIsoDate(),
+        // A fejléc dátuma a KIÁLLÍTÁS dátuma (Codex P2); a kért kézbesítési dátum külön mezőben (lentebb).
+        date: created.requestedAt?.slice(0, 10) || localIsoDate(),
         time: now.toTimeString().slice(0, 8),
         currencyCode,
         foreignAmount: amount,
         // NFR-3: 5 Ft-ra kerekített forintosított érték (a kijelzett hufValue ugyanezzel a szabállyal).
+        // Megjegyzés: a szállítmány-IGÉNY nem perzisztál HUF-ot (nincs items[].hufAmount), így a
+        // bizonylaton a felhasználónak már megjelenített, szerver-autoritatív rate-tel számolt becslés szerepel.
         roundedHufAmount: hufValue ?? undefined,
+        // FR-2: kért kézbesítési dátum (külön a kiállítási dátumtól).
+        deliveryDate: created.requestedDeliveryDate || form.deliveryDate || undefined,
         transferTarget: branchLabel(form.toBranchId, created.targetBranchName),
         transferNote: created.notes || form.notes || undefined,
         carrierName: created.carrierName || form.carrierName.trim(),

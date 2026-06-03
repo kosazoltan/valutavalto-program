@@ -280,12 +280,9 @@ export default function ReceiptPreviewModal({
             {receiptData.type === 'transfer' && (
               <div className="space-y-1">
                 <p className="font-semibold">Átadás-átvétel</p>
-                {receiptData.branchCode && (
-                  <p><span className="font-semibold">Kérő iroda:</span> {receiptData.branchCode}</p>
-                )}
-                {receiptData.transferTarget && (
-                  <p><span className="font-semibold">Cél iroda:</span> {receiptData.transferTarget}</p>
-                )}
+                {/* FR-2: a Kérő iroda és Cél iroda kötelező mezők — mindig megjelennek (hiány esetén „—"). */}
+                <p><span className="font-semibold">Kérő iroda:</span> {receiptData.branchCode || '—'}</p>
+                <p><span className="font-semibold">Cél iroda:</span> {receiptData.transferTarget || '—'}</p>
                 {receiptData.carrierName && (
                   <p><span className="font-semibold">Szállító:</span> {receiptData.carrierName}</p>
                 )}
@@ -300,6 +297,9 @@ export default function ReceiptPreviewModal({
                 )}
                 {(receiptData.roundedHufAmount !== undefined || receiptData.hufAmount !== undefined) && (
                   <p><span className="font-semibold">Forint érték:</span> {formatInt(receiptData.roundedHufAmount ?? receiptData.hufAmount)} HUF</p>
+                )}
+                {receiptData.deliveryDate && (
+                  <p><span className="font-semibold">Kézbesítési dátum:</span> {receiptData.deliveryDate}</p>
                 )}
                 {receiptData.transferNote && (
                   <p><span className="font-semibold">Megjegyzés:</span> {receiptData.transferNote}</p>

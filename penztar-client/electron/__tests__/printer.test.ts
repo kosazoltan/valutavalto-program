@@ -264,13 +264,23 @@ describe('printer — generateReceiptContent (ESC/POS)', () => {
       currencyCode: 'EUR',
       foreignAmount: 1000,
       roundedHufAmount: 405000,
+      deliveryDate: '2026. 06. 05.',
     });
     expect(content).toContain('Kérő iroda');
     expect(content).toContain('BR050 - Debrecen Értéktár');
     expect(content).toContain('Cél iroda');
     expect(content).toContain('Forint érték');
+    expect(content).toContain('Kézbesítési dátum');
+    expect(content).toContain('2026. 06. 05.');
     // 5 Ft-ra kerekített forintosított érték (hu-HU ezres tagolás, NBSP-toleráns)
     expect(content.replace(/\s/g, '')).toContain('405000HUF');
+  });
+
+  it('transfer receipt always shows Kérő iroda + Cél iroda (FR-2 kötelező, „—" fallback)', () => {
+    const content = generateReceiptContent({ ...baseData, type: 'transfer', branchCode: '', transferTarget: '' });
+    expect(content).toContain('Kérő iroda');
+    expect(content).toContain('Cél iroda');
+    expect(content).toContain('—');
   });
 
   it('transfer receipt uses Átadó/Átvevő + Ügyintéző labels (preview parity, no Pénztáros/Ügyfél)', () => {

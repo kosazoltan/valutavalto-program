@@ -20,6 +20,7 @@ const base: PrintReceiptData = {
   foreignAmount: 1000,
   roundedHufAmount: 405000,
   transferTarget: 'BR060 - Debrecen Tesco',
+  deliveryDate: '2026. 06. 05.',
   transferNote: 'Sürgős szállítás',
   carrierName: 'Gyors Futár Kft.',
   sealNumber: 'PL-12345',
@@ -56,8 +57,18 @@ describe('ReceiptPreviewModal — átadási bizonylat (transfer)', () => {
     expect(txt).toContain('Forint érték:')
     expect(txt).toContain('HUF')
     expect(txt).toContain('Sürgős szállítás')
-    // Dátum a közös fejlécben
+    // Kiállítási dátum a közös fejlécben + külön kért kézbesítési dátum a törzsben
     expect(txt).toContain('2026. 06. 03.')
+    expect(txt).toContain('Kézbesítési dátum:')
+    expect(txt).toContain('2026. 06. 05.')
+  })
+
+  it('FR-2: a Kérő iroda és Cél iroda kötelező mezők hiányzó érték esetén is megjelennek („—")', () => {
+    const { container } = renderModal({ ...base, branchCode: '', transferTarget: '' })
+    const txt = container.textContent ?? ''
+    expect(txt).toContain('Kérő iroda:')
+    expect(txt).toContain('Cél iroda:')
+    expect(txt).toContain('—')
   })
 
   it('FR-2: tranzakció-specifikus szekciók (ügyfél / jogcím) NEM jelennek meg transfer bizonylaton', () => {
