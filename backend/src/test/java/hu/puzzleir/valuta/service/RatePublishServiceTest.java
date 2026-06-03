@@ -70,6 +70,9 @@ class RatePublishServiceTest {
     @Mock
     private SyncOutboxRepository syncOutboxRepository;
 
+    @Mock
+    private hu.puzzleir.valuta.repository.WorkerRepository workerRepository;
+
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
@@ -94,6 +97,50 @@ class RatePublishServiceTest {
     @AfterEach
     void clearAuthContext() {
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    @DisplayName("FR-HL-11: getPublicationAuditHistory feloldja a módosító NEVÉT a workerId-ból")
+    void getPublicationAuditHistory_resolvesWorkerName() {
+        RatePublication pub = RatePublication.builder()
+                .id(UUID.randomUUID())
+                .companyId(authCompanyId)
+                .workgroupId(UUID.randomUUID())
+                .publishedBy(99L)
+                .affectedBranches(3)
+                .build();
+        when(publicationRepository.findTop20ByCompanyIdOrderByPublishedAtDesc(authCompanyId))
+                .thenReturn(List.of(pub));
+        // A worker az AKTUÁLIS cégbe tartozik (multi-tenant szűrés feltétele a név-feloldáshoz).
+        Company workerCompany = Company.builder().id(authCompanyId).code("BEST").build();
+        hu.puzzleir.valuta.entity.Worker worker = hu.puzzleir.valuta.entity.Worker.builder()
+                .id(99L).name("Kovács János").company(workerCompany).build();
+        when(workerRepository.findAllById(any())).thenReturn(List.of(worker));
+
+        var result = service.getPublicationAuditHistory(null);
+
+        assertEquals(1, result.size());
+        assertEquals("Kovács János", result.get(0).publishedByName());
+        assertEquals(99L, result.get(0).publishedBy());
+        assertEquals(3, result.get(0).affectedBranches());
+    }
+
+    @Test
+    @DisplayName("FR-HL-11: ismeretlen/törölt worker → '#<id>' fallback név")
+    void getPublicationAuditHistory_unknownWorker_fallback() {
+        RatePublication pub = RatePublication.builder()
+                .id(UUID.randomUUID())
+                .companyId(authCompanyId)
+                .workgroupId(UUID.randomUUID())
+                .publishedBy(42L)
+                .build();
+        when(publicationRepository.findTop20ByCompanyIdOrderByPublishedAtDesc(authCompanyId))
+                .thenReturn(List.of(pub));
+        when(workerRepository.findAllById(any())).thenReturn(List.of());
+
+        var result = service.getPublicationAuditHistory(null);
+
+        assertEquals("#42", result.get(0).publishedByName());
     }
 
     @Test

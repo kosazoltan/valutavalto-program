@@ -11,7 +11,10 @@ import hu.puzzleir.valuta.entity.RatePublication;
 import hu.puzzleir.valuta.entity.RateTemplate;
 import hu.puzzleir.valuta.entity.RateWorkgroup;
 import hu.puzzleir.valuta.entity.SyncOutboxEvent;
+import hu.puzzleir.valuta.entity.Worker;
+import hu.puzzleir.valuta.dto.ratemanagement.RatePublicationAuditDto;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
+import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.repository.RatePublicationRepository;
 import hu.puzzleir.valuta.repository.RateTemplateRepository;
@@ -47,6 +50,7 @@ public class RatePublishService {
     private final CurrencyRepository currencyRepository;
     private final ExchangeRateRepository exchangeRateRepository;
     private final SyncOutboxRepository syncOutboxRepository;
+    private final WorkerRepository workerRepository;
     private final ObjectMapper objectMapper;
 
     /**
@@ -399,6 +403,44 @@ public class RatePublishService {
             return publicationRepository.findByCompanyIdAndWorkgroupIdOrderByPublishedAtDesc(companyId, workgroupId);
         }
         return publicationRepository.findTop20ByCompanyIdOrderByPublishedAtDesc(companyId);
+    }
+
+    /**
+     * FR-HL-11 (b3-arfolyam-karbantarto-hibalista): a publikálási audit-történet a módosító NEVÉVEL
+     * feloldva (a nyers entitás csak a workerId-t tárolja). A worker-neveket egy batch-lekérdezéssel
+     * oldjuk fel (N+1 elkerülése); ismeretlen/hiányzó worker esetén "#<id>" fallback. A rekord
+     * insert-only (immutable audit) — itt CSAK olvasunk.
+     */
+    @Transactional(readOnly = true)
+    public List<RatePublicationAuditDto> getPublicationAuditHistory(UUID workgroupId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<RatePublication> pubs = getPublicationHistory(workgroupId);
+        Set<Long> workerIds = pubs.stream()
+                .map(RatePublication::getPublishedBy)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        // Multi-tenant védelem (Copilot review): a findAllById nyers id-szerint old fel, ezért a
+        // feloldott workerek közül CSAK az aktuális cégébe tartozókat fogadjuk el névként — más cég
+        // dolgozó-neve nem szivároghat (a publishedBy egyébként is azonos cégű, ez fail-safe).
+        Map<Long, String> idToName = workerRepository.findAllById(workerIds).stream()
+                .filter(w -> w.getCompany() != null && companyId.equals(w.getCompany().getId()))
+                .collect(Collectors.toMap(Worker::getId,
+                        w -> w.getName() != null && !w.getName().isBlank() ? w.getName() : ("#" + w.getId())));
+        return pubs.stream()
+                .map(p -> new RatePublicationAuditDto(
+                        p.getId(),
+                        p.getTemplateId(),
+                        p.getWorkgroupId(),
+                        p.getPublishedBy(),
+                        p.getPublishedBy() != null
+                                ? idToName.getOrDefault(p.getPublishedBy(), "#" + p.getPublishedBy())
+                                : "—",
+                        p.getPublishedAt(),
+                        p.getAffectedBranches(),
+                        p.getNotes(),
+                        p.getSource(),
+                        p.getClientVersion()))
+                .collect(Collectors.toList());
     }
 
     /**
