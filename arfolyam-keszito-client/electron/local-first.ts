@@ -292,4 +292,48 @@ export function registerLocalFirstIpcHandlers(): void {
   ipcMain.handle('lf:get-currency-pairs', () => {
     return cachedEntities.listCached(getDb(), 'currency_pair');
   });
+
+  // FK02-B (csoport-árfolyamlap FR-11/FR-12): a beírt csoport-ráta ÉRTÉKEK TARTÓS offline
+  // perzisztálása az onBlur-ra, hogy lapváltás/offline után se vesszenek el. A local-first
+  // `lf_cached_entities` táblát használjuk (nincs külön nyers tábla) — entityType='group_rate_values',
+  // entityId=groupId, data = a teljes `${currencyId}.${field}` → string érték-map (a localStorage
+  // szemantikájával 1:1, így a sávok K_1/K_2/E_1/E_2 is megőrződnek, nem csak a vétel/eladás).
+  // Csak lokál (a vékony publikáló kliens nem futtat sync-motort).
+  ipcMain.handle('lf:save-group-rate-values', (_event, payload: {
+    groupId: string;
+    values: Record<string, string>;
+  }) => {
+    try {
+      const db = getDb();
+      const { groupId, values } = payload ?? { groupId: '', values: {} };
+      // Szigorú payload-validáció (Copilot review): groupId string ÉS values sima objektum (nem tömb/null).
+      if (typeof groupId !== 'string' || !groupId
+          || typeof values !== 'object' || values === null || Array.isArray(values)) {
+        return { ok: false, error: 'invalid payload' };
+      }
+      // Üres map → tombstone (a publikálás-utáni overlay-törléssel összhangban; betöltéskor {}).
+      if (Object.keys(values).length === 0) {
+        cachedEntities.softDeleteCached(db, 'group_rate_values', groupId);
+      } else {
+        cachedEntities.upsertCached(db, 'group_rate_values', groupId, values, 1);
+      }
+      saveDatabase();
+      return { ok: true };
+    } catch (error) {
+      log.error('[LocalFirst] Hiba a csoport-árfolyam értékek SQLite mentésekor:', error);
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle('lf:get-group-rate-values', (_event, groupId: string) => {
+    try {
+      if (typeof groupId !== 'string' || !groupId) return {};
+      const entity = cachedEntities.getCached<Record<string, string>>(getDb(), 'group_rate_values', groupId);
+      return entity && entity.data && typeof entity.data === 'object' && !Array.isArray(entity.data)
+        ? entity.data : {};
+    } catch (error) {
+      log.error('[LocalFirst] Hiba a csoport-árfolyam értékek SQLite lekérésekor:', error);
+      return {};
+    }
+  });
 }

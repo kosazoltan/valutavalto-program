@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import {
   sheet0RowToValues,
   loadSheet0ByCurrency,
@@ -8,6 +8,9 @@ import {
   saveGroupValueSnapshot,
   loadGroupRateValues,
   saveGroupRateValues,
+  saveGroupRateValuesToOfflineDb,
+  loadGroupRateValuesFromOfflineDb,
+  persistGroupRateValues,
 } from './workgroupSheetStorage'
 import type { WgValues } from './workgroupSheetFormula'
 
@@ -125,5 +128,48 @@ describe('group fix rátaértékek round-trip (FK02-B / FR-11, FR-12)', () => {
     const s = memStorage()
     s.setItem('arfolyamkeszito.workgroupSheet.rates.v1.wg-1', '{nem json')
     expect(loadGroupRateValues('wg-1', s)).toEqual({})
+  })
+})
+
+describe('tartós offline SQLite réteg (FK02-B / FR-11, FR-12)', () => {
+  const g = globalThis as { electronAPI?: unknown }
+  afterEach(() => { delete g.electronAPI })
+
+  it('böngészőben (nincs electronAPI) → save no-op, load üres (nem dob)', async () => {
+    saveGroupRateValuesToOfflineDb('wg-1', { 'cur-1.buyRate': '400' })
+    await expect(loadGroupRateValuesFromOfflineDb('wg-1')).resolves.toEqual({})
+  })
+
+  it('Electronban: save átadja a groupId+values payloadot a localFirst IPC-nek', () => {
+    const calls: Array<{ groupId: string; values: Record<string, string> }> = []
+    g.electronAPI = { localFirst: { saveGroupRateValues: (p: { groupId: string; values: Record<string, string> }) => { calls.push(p); return Promise.resolve({ ok: true }) } } }
+    saveGroupRateValuesToOfflineDb('wg-7', { 'cur-1.buyRate': '400', 'cur-2.limit1SellRate': '0.9' })
+    expect(calls).toEqual([{ groupId: 'wg-7', values: { 'cur-1.buyRate': '400', 'cur-2.limit1SellRate': '0.9' } }])
+  })
+
+  it('Electronban: load a localFirst IPC válaszát adja vissza', async () => {
+    g.electronAPI = { localFirst: { getGroupRateValues: (id: string) => Promise.resolve(id === 'wg-7' ? { 'cur-1.buyRate': '400' } : {}) } }
+    await expect(loadGroupRateValuesFromOfflineDb('wg-7')).resolves.toEqual({ 'cur-1.buyRate': '400' })
+  })
+
+  it('IPC-hiba esetén save nem dob, load üreset ad (best-effort)', async () => {
+    g.electronAPI = { localFirst: {
+      saveGroupRateValues: () => Promise.reject(new Error('ipc fail')),
+      getGroupRateValues: () => Promise.reject(new Error('ipc fail')),
+    } }
+    expect(() => saveGroupRateValuesToOfflineDb('wg-1', { 'cur-1.buyRate': '1' })).not.toThrow()
+    await expect(loadGroupRateValuesFromOfflineDb('wg-1')).resolves.toEqual({})
+  })
+
+  it('persistGroupRateValues dual-write: localStorage ÉS SQLite IPC is megkapja (review P0/P1 fix)', () => {
+    localStorage.clear()
+    const calls: Array<{ groupId: string; values: Record<string, string> }> = []
+    g.electronAPI = { localFirst: { saveGroupRateValues: (p: { groupId: string; values: Record<string, string> }) => { calls.push(p); return Promise.resolve({ ok: true }) } } }
+    persistGroupRateValues('wg-9', { 'cur-1.buyRate': '410' })
+    // localStorage szinkron út
+    expect(loadGroupRateValues('wg-9')).toEqual({ 'cur-1.buyRate': '410' })
+    // tartós SQLite út
+    expect(calls).toEqual([{ groupId: 'wg-9', values: { 'cur-1.buyRate': '410' } }])
+    localStorage.clear()
   })
 })

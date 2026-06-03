@@ -98,6 +98,67 @@ export function saveGroupRateValues(groupId: string, values: Record<string, stri
   }
 }
 
+/**
+ * FK02-B / FR-11, FR-12 — TARTÓS offline (Electron SQLite) perzisztencia a localStorage MELLÉ.
+ *
+ * A LOCAL-FIRST mandate szerint az árfolyamkészítő tartós lokál tárolója az SQLite (`rate-maker.db`),
+ * nem a böngésző localStorage-a. A localStorage a gyors SZINKRON út + web/dev fallback; az SQLite a
+ * tartós, „kamu-mock nélküli" tároló (FK02-B findings QA-garancia #1). Dual-write: a hívó MINDKETTŐBE
+ * ír (localStorage azonnal, SQLite best-effort), betöltéskor SQLite-first (Electron) → localStorage.
+ * Electronon kívül (böngésző/dev) ezek no-op / üres értéket adnak — nincs regresszió.
+ */
+interface RateMakerLocalFirstApi {
+  // A handler hiba esetén `{ ok: false, error }`-t is adhat (Copilot review) — a hívó best-effort, nem dob.
+  saveGroupRateValues?: (payload: { groupId: string; values: Record<string, string> }) => Promise<{ ok: boolean; error?: string }>
+  getGroupRateValues?: (groupId: string) => Promise<unknown>
+}
+
+function getLocalFirstApi(): RateMakerLocalFirstApi | null {
+  const api = (globalThis as { electronAPI?: { localFirst?: RateMakerLocalFirstApi } }).electronAPI
+  return api?.localFirst ?? null
+}
+
+/** Fire-and-forget: a csoport fix rátaértékeit az Electron SQLite-ba is elmenti (best-effort, nem dob). */
+export function saveGroupRateValuesToOfflineDb(groupId: string, values: Record<string, string>): void {
+  const lf = getLocalFirstApi()
+  if (!lf?.saveGroupRateValues) return
+  try {
+    void lf.saveGroupRateValues({ groupId, values }).catch(() => { /* best-effort: a localStorage út él */ })
+  } catch {
+    /* nem-Electron / IPC-hiba → a szinkron localStorage út tovább működik */
+  }
+}
+
+/** Az Electron SQLite-ból tölti a csoport fix rátaértékeit (üres, ha nincs Electron vagy nincs adat). */
+export async function loadGroupRateValuesFromOfflineDb(groupId: string): Promise<Record<string, string>> {
+  const lf = getLocalFirstApi()
+  if (!lf?.getGroupRateValues) return {}
+  try {
+    const res = await lf.getGroupRateValues(groupId)
+    // Defenzív szanálás (Copilot review): csak sima objektum + string értékek mehetnek tovább —
+    // tömb / null / nem-string érték NEM (különben a cellákba nem-string kerülhetne).
+    if (!res || typeof res !== 'object' || Array.isArray(res)) return {}
+    const clean: Record<string, string> = {}
+    for (const [k, v] of Object.entries(res as Record<string, unknown>)) {
+      if (typeof v === 'string') clean[k] = v
+    }
+    return clean
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * FK02-B / FR-11, FR-12 — EGYSÉGES dual-write: a csoport fix rátaértékeit a localStorage-ba (szinkron)
+ * ÉS a tartós Electron SQLite-ba (best-effort) is elmenti. MINDEN író call-site ezt hívja (onBlur, undo,
+ * redo, bulk-paste, publikálás-utáni törlés), hogy a két tároló SOHA ne divergáljon — különben a
+ * betöltéskori SQLite-first overlay elavult/visszavont értéket támaszthatna fel (review P0/P1).
+ */
+export function persistGroupRateValues(groupId: string, values: Record<string, string>): void {
+  saveGroupRateValues(groupId, values)
+  saveGroupRateValuesToOfflineDb(groupId, values)
+}
+
 /** Egy csoport képletei (kulcs = `${currencyId}.${field}`). */
 export function loadGroupFormulas(groupId: string, storage: Storage = localStorage): Record<string, string> {
   try {
