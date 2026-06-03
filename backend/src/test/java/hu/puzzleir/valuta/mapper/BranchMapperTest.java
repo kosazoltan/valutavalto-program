@@ -60,6 +60,50 @@ class BranchMapperTest {
     }
 
     @Test
+    @DisplayName("Pénztár Törzs (V293): short_name + szolgáltatás-flagek + nyitvatartás átkerül a DTO-ba")
+    void mapsPenztarTorzsServiceFlags() {
+        Branch branch = Branch.builder()
+                .id(UUID.randomUUID())
+                .code("BR010")
+                .name("Eger Belváros")
+                .shortName("Eger BV")
+                .hasAfa(true)
+                .hasWu(true)
+                .hasMg(false)
+                .hasPos(true)
+                .closedSaturday(false)
+                .closedSunday(true)
+                .isActive(true)
+                .build();
+
+        BranchDto dto = mapper.toDto(branch);
+
+        assertThat(dto.getShortName()).isEqualTo("Eger BV");
+        assertThat(dto.getHasAfa()).isTrue();
+        assertThat(dto.getHasWu()).isTrue();
+        assertThat(dto.getHasMg()).isFalse();
+        assertThat(dto.getHasPos()).isTrue();
+        assertThat(dto.getClosedSaturday()).isFalse();
+        assertThat(dto.getClosedSunday()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Pénztár Törzs: entity default flagek (FALSE) helyesen képződnek le")
+    void mapsPenztarTorzsDefaults() {
+        Branch branch = Branch.builder().id(UUID.randomUUID()).code("BR011").name("Új iroda").build();
+
+        BranchDto dto = mapper.toDto(branch);
+
+        assertThat(dto.getShortName()).isNull();
+        assertThat(dto.getHasAfa()).isFalse();
+        assertThat(dto.getHasWu()).isFalse();
+        assertThat(dto.getHasMg()).isFalse();
+        assertThat(dto.getHasPos()).isFalse();
+        assertThat(dto.getClosedSaturday()).isFalse();
+        assertThat(dto.getClosedSunday()).isFalse();
+    }
+
+    @Test
     @DisplayName("null entity → null DTO")
     void mapsNullEntity() {
         assertThat(mapper.toDto(null)).isNull();

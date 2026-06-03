@@ -43,4 +43,15 @@ public class UpdateBranchDto {
     private UUID denominationRuleId;
 
     private Boolean isActive;
+
+    // Pénztár Törzs alapmodul (V293): opcionális rövid név + szolgáltatás-flagek + nyitvatartás.
+    // Partial update: csak a nem-null mezők íródnak felül (a service null-guard mintája szerint).
+    @Size(max = 100, message = "A rövid név max 100 karakter")
+    private String shortName;
+    private Boolean hasAfa;
+    private Boolean hasWu;
+    private Boolean hasMg;
+    private Boolean hasPos;
+    private Boolean closedSaturday;
+    private Boolean closedSunday;
 }

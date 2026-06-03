@@ -444,6 +444,14 @@ public class BranchService {
                 .openingDate(dto.getOpeningDate())
                 .denominationRuleId(dto.getDenominationRuleId())
                 .isActive(true)
+                // Pénztár Törzs alapmodul (V293): opcionális mezők; a flagek null → FALSE default.
+                .shortName(dto.getShortName())
+                .hasAfa(Boolean.TRUE.equals(dto.getHasAfa()))
+                .hasWu(Boolean.TRUE.equals(dto.getHasWu()))
+                .hasMg(Boolean.TRUE.equals(dto.getHasMg()))
+                .hasPos(Boolean.TRUE.equals(dto.getHasPos()))
+                .closedSaturday(Boolean.TRUE.equals(dto.getClosedSaturday()))
+                .closedSunday(Boolean.TRUE.equals(dto.getClosedSunday()))
                 .build();
 
         Branch saved = branchRepository.save(branch);
@@ -692,6 +700,28 @@ public class BranchService {
         }
         if (dto.getIsActive() != null) {
             branch.setIsActive(dto.getIsActive());
+        }
+        // Pénztár Törzs alapmodul (V293): partial update — csak a nem-null mezők íródnak felül.
+        if (dto.getShortName() != null) {
+            branch.setShortName(dto.getShortName());
+        }
+        if (dto.getHasAfa() != null) {
+            branch.setHasAfa(dto.getHasAfa());
+        }
+        if (dto.getHasWu() != null) {
+            branch.setHasWu(dto.getHasWu());
+        }
+        if (dto.getHasMg() != null) {
+            branch.setHasMg(dto.getHasMg());
+        }
+        if (dto.getHasPos() != null) {
+            branch.setHasPos(dto.getHasPos());
+        }
+        if (dto.getClosedSaturday() != null) {
+            branch.setClosedSaturday(dto.getClosedSaturday());
+        }
+        if (dto.getClosedSunday() != null) {
+            branch.setClosedSunday(dto.getClosedSunday());
         }
 
         Branch updated = branchRepository.save(branch);

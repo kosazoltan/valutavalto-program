@@ -106,6 +106,41 @@ public class Branch {
     @Builder.Default
     private Boolean isActive = true;
 
+    // ── Pénztár Törzs alapmodul (V293, Kasza Helga FELTERKEPEZES 2026-06-03) ──────────────
+    /** Rövid név (opcionális, listákhoz/címkékhez). */
+    @Column(name = "short_name", length = 100)
+    private String shortName;
+
+    /** ÁFA-visszatérítés elérhető-e az irodában. */
+    @Column(name = "has_afa", nullable = false)
+    @Builder.Default
+    private Boolean hasAfa = Boolean.FALSE;
+
+    /** Western Union szolgáltatás elérhető-e. */
+    @Column(name = "has_wu", nullable = false)
+    @Builder.Default
+    private Boolean hasWu = Boolean.FALSE;
+
+    /** MoneyGram szolgáltatás elérhető-e. */
+    @Column(name = "has_mg", nullable = false)
+    @Builder.Default
+    private Boolean hasMg = Boolean.FALSE;
+
+    /** Bankkártya-elfogadás (POS) elérhető-e. */
+    @Column(name = "has_pos", nullable = false)
+    @Builder.Default
+    private Boolean hasPos = Boolean.FALSE;
+
+    /** Az iroda szombaton zárva van-e. */
+    @Column(name = "closed_saturday", nullable = false)
+    @Builder.Default
+    private Boolean closedSaturday = Boolean.FALSE;
+
+    /** Az iroda vasárnap zárva van-e. */
+    @Column(name = "closed_sunday", nullable = false)
+    @Builder.Default
+    private Boolean closedSunday = Boolean.FALSE;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

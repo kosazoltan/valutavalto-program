@@ -39,6 +39,16 @@ export interface BranchInfo {
   vaultTerritoryId?: number | null
   branchTypeCode?: string
   region?: string
+  // Pénztár Törzs alapmodul (V293): rövid név + szolgáltatás-flagek + nyitvatartás —
+  // a backend BranchDto-ból jönnek, hogy a ráépülő modulok (átadás-átvétel, zárás, készlet,
+  // értéktár) a naprakész törzsadattal dolgozhassanak.
+  shortName?: string
+  hasAfa?: boolean
+  hasWu?: boolean
+  hasMg?: boolean
+  hasPos?: boolean
+  closedSaturday?: boolean
+  closedSunday?: boolean
 }
 
 export const branchApi = {

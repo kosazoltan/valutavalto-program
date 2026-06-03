@@ -62,4 +62,15 @@ public class CreateBranchDto {
     private LocalDate openingDate;
 
     private UUID denominationRuleId;
+
+    // Pénztár Törzs alapmodul (V293): opcionális rövid név + szolgáltatás-flagek + nyitvatartás.
+    // Backward-compat: ha a kliens nem küldi, a service a FALSE default-okat hagyja érvényben.
+    @Size(max = 100, message = "A rövid név max 100 karakter")
+    private String shortName;
+    private Boolean hasAfa;
+    private Boolean hasWu;
+    private Boolean hasMg;
+    private Boolean hasPos;
+    private Boolean closedSaturday;
+    private Boolean closedSunday;
 }
