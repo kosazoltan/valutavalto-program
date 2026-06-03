@@ -148,6 +148,9 @@ export default function ReceiptPreviewModal({
   const absHuf = Math.abs(receiptData.hufAmount ?? 0);
   const isMediumValue = absHuf >= MEDIUM_THRESHOLD;
   const isHighValue = absHuf >= HIGH_THRESHOLD;
+  // Átadási bizonylat (értéktári átadás-átvétel): nincs ügyfél / deviza-státusz / jogcím-nyilatkozat,
+  // ezeket a tranzakció-specifikus szekciókat a transfer bizonylaton elrejtjük.
+  const isTransfer = receiptData.type === 'transfer';
 
   const roundingDiff = receiptData.roundingDiff ?? 0;
   const netTotal = receiptData.roundedHufAmount ?? receiptData.hufAmount ?? 0;
@@ -277,8 +280,11 @@ export default function ReceiptPreviewModal({
             {receiptData.type === 'transfer' && (
               <div className="space-y-1">
                 <p className="font-semibold">Átadás-átvétel</p>
+                {receiptData.branchCode && (
+                  <p><span className="font-semibold">Kérő iroda:</span> {receiptData.branchCode}</p>
+                )}
                 {receiptData.transferTarget && (
-                  <p><span className="font-semibold">Cél:</span> {receiptData.transferTarget}</p>
+                  <p><span className="font-semibold">Cél iroda:</span> {receiptData.transferTarget}</p>
                 )}
                 {receiptData.carrierName && (
                   <p><span className="font-semibold">Szállító:</span> {receiptData.carrierName}</p>
@@ -286,12 +292,23 @@ export default function ReceiptPreviewModal({
                 {receiptData.sealNumber && (
                   <p><span className="font-semibold">Plombaszám:</span> {receiptData.sealNumber}</p>
                 )}
+                {receiptData.currencyCode && (
+                  <p><span className="font-semibold">Valuta:</span> {receiptData.currencyCode}</p>
+                )}
+                {receiptData.foreignAmount !== undefined && (
+                  <p><span className="font-semibold">Összeg:</span> {formatAmount(receiptData.foreignAmount)} {receiptData.currencyCode ?? ''}</p>
+                )}
+                {(receiptData.roundedHufAmount !== undefined || receiptData.hufAmount !== undefined) && (
+                  <p><span className="font-semibold">Forint érték:</span> {formatInt(receiptData.roundedHufAmount ?? receiptData.hufAmount)} HUF</p>
+                )}
                 {receiptData.transferNote && (
                   <p><span className="font-semibold">Megjegyzés:</span> {receiptData.transferNote}</p>
                 )}
               </div>
             )}
 
+            {/* Tranzakció-specifikus szekciók (ügyfél / deviza-státusz / jogcím) — átadási bizonylaton elrejtve. */}
+            {!isTransfer && (<>
             <div className="my-3 border-t border-gray-300" />
 
             {/* === ÜGYFÉL ADATOK (3 szintű) === */}
@@ -348,17 +365,18 @@ export default function ReceiptPreviewModal({
                 <div className="my-2 border-t border-gray-300" />
               </>
             )}
+            </>)}
 
-            {/* === Pénztáros + aláírás === */}
-            <p className="mb-1">Pénztáros: {receiptData.cashierName}</p>
+            {/* === Pénztáros / Átadó + aláírás === */}
+            <p className="mb-1">{isTransfer ? 'Ügyintéző' : 'Pénztáros'}: {receiptData.cashierName}</p>
             <div className="flex justify-around mt-3 mb-2">
               <div className="text-center">
                 <div className="border-t border-black w-16 mx-auto mb-0.5" />
-                <p>Pénztáros</p>
+                <p>{isTransfer ? 'Átadó' : 'Pénztáros'}</p>
               </div>
               <div className="text-center">
                 <div className="border-t border-black w-16 mx-auto mb-0.5" />
-                <p>Ügyfél</p>
+                <p>{isTransfer ? 'Átvevő' : 'Ügyfél'}</p>
               </div>
             </div>
 

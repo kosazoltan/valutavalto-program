@@ -328,8 +328,12 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
   push(COMMANDS.ALIGN_LEFT);
   text(`Bizonylat: ${data.receiptNumber}`);
   text(`Dátum:     ${data.date}  ${data.time}`);
-  text(`Pénztár:   ${data.branchCode}`);
-  text(`Pénztáros: ${data.cashierName}`);
+  // Átadási bizonylaton a kérő iroda a törzsben „Kérő iroda" néven szerepel (nem „Pénztár"),
+  // a felelős neve „Ügyintéző" — a bizonylat-előnézettel egyezően.
+  if (data.type !== 'transfer') {
+    text(`Pénztár:   ${data.branchCode}`);
+  }
+  text(`${data.type === 'transfer' ? 'Ügyintéző:' : 'Pénztáros:'} ${data.cashierName}`);
   blank();
   push(line(), COMMANDS.LF);
 
@@ -372,9 +376,15 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     blank();
     push(COMMANDS.BOLD_ON); text('Átadás-átvétel:'); push(COMMANDS.BOLD_OFF);
     blank();
-    text(twoColumn('Cél pénztár:', data.transferTarget ?? '—'));
+    // FR-2: kérő iroda (átadó értéktár) + cél iroda + valuta/összeg + forintosított érték.
+    if (data.branchCode) text(twoColumn('Kérő iroda:', data.branchCode));
+    text(twoColumn('Cél iroda:', data.transferTarget ?? '—'));
     text(twoColumn('Valutanem:', data.currencyCode ?? '—'));
     text(twoColumn('Összeg:', `${fmtAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`));
+    // NFR-3: 5 Ft-ra kerekített forintosított érték.
+    if (data.roundedHufAmount !== undefined || data.hufAmount !== undefined) {
+      text(twoColumn('Forint érték:', `${fmtAmount(data.roundedHufAmount ?? data.hufAmount)} HUF`));
+    }
     // FR-5: szállító + plombaszám a soros-nyomtató úton is.
     if (data.carrierName) text(twoColumn('Szállító:', data.carrierName));
     if (data.sealNumber) text(twoColumn('Plombaszám:', data.sealNumber));
@@ -443,7 +453,9 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
   // --- Aláírás sorok ---
   blank();
   text('...............    ...............');
-  text('  Pénztáros            Ügyfél');
+  text(data.type === 'transfer'
+    ? '  Átadó                Átvevő'
+    : '  Pénztáros            Ügyfél');
 
   // --- Lábléc ---
   blank();
