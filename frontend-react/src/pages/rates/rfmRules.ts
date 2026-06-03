@@ -51,6 +51,49 @@ export function raiffeisenBand(base: number, percent: number = RAIFFEISEN_BAND_P
   return { min: base - delta, max: base + delta }
 }
 
+export type BandSource = 'settlement' | 'otp'
+
+export interface BandViolation {
+  currency: string
+  kind: 'buy' | 'sell'
+  rate: number
+  base: number
+  min: number
+  max: number
+}
+
+export interface BandCheckRow {
+  currency: string
+  /** A sáv bázisa (elszámoló VAGY OTP — a hívó a forrásmód szerint adja át). */
+  base: number
+  buy: number
+  sell: number
+}
+
+/**
+ * Raiffeisen ±N% sáv-validáció (FR-RFM-12): a vétel és eladás a bázistól (elszámoló
+ * vagy OTP — FR-RFM-13) legfeljebb {@code percent}%-kal térhet el. A bázison kívül eső
+ * vétel/eladás sértésként visszaadva. Bázis ≤ 0 → kihagyva (nincs viszonyítási alap).
+ * Tisztán (pure) tesztelhető; az UI a kiküldés előtti figyelmeztetéshez hívja.
+ */
+export function raiffeisenBandViolations(
+  rows: BandCheckRow[],
+  percent: number = RAIFFEISEN_BAND_PERCENT,
+): BandViolation[] {
+  const violations: BandViolation[] = []
+  for (const r of rows) {
+    if (!Number.isFinite(r.base) || r.base <= 0) continue
+    const band = raiffeisenBand(r.base, percent)
+    if (Number.isFinite(r.buy) && r.buy > 0 && (r.buy < band.min || r.buy > band.max)) {
+      violations.push({ currency: r.currency, kind: 'buy', rate: r.buy, base: r.base, min: band.min, max: band.max })
+    }
+    if (Number.isFinite(r.sell) && r.sell > 0 && (r.sell < band.min || r.sell > band.max)) {
+      violations.push({ currency: r.currency, kind: 'sell', rate: r.sell, base: r.base, min: band.min, max: band.max })
+    }
+  }
+  return violations
+}
+
 /**
  * Saját hatáskörű Vét.max / Elad.min képlet (FR-RFM-19): az előző (P/Q) értékhez
  * hozzáadva a kedvezmény mértéke (pl. EUR: P + 0,25).

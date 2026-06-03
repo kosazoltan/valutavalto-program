@@ -19,7 +19,10 @@ import CurrencyManagerModal from './components/CurrencyManagerModal'
 import { arfolyamInternetLinkApi, type ArfolyamInternetLink } from '../../services/api/arfolyamInternetLinks'
 import { computeCrossSettlement, resolveSettlement, crossSettlementStaysAuto } from './mainSheetRules'
 import { validateRateDirection } from './rateDirectionRules'
-import { euaDeviationExceeds, computeEuaRate } from './rfmRules'
+import {
+  euaDeviationExceeds, computeEuaRate, raiffeisenBandViolations,
+  RAIFFEISEN_BAND_PERCENT, type BandSource,
+} from './rfmRules'
 
 /**
  * Főlap (0-s lap) — Árfolyamkészítő program ALAP felülete.
@@ -218,6 +221,28 @@ export default function MainRateSheetPage() {
   const pendingFocusRef = useRef(false)
   const [showHelp, setShowHelp] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  // FR-RFM-12/13: Raiffeisen ±N% sáv. A bázis (elszámoló/OTP) és a százalék szabadon
+  // állítható, szezonálisan kézzel döntött → localStorage-ban perzisztált.
+  const [bandBase, setBandBase] = useState<BandSource>(() => {
+    try {
+      return localStorage.getItem('mainRateSheet.bandBase') === 'otp' ? 'otp' : 'settlement'
+    } catch { return 'settlement' }
+  })
+  const [bandPercent, setBandPercent] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem('mainRateSheet.bandPercent')
+      // null (még sosem mentve) → alapérték; tárolt "0" → 0 (megengedett, NEM esik vissza alapra).
+      const raw = stored === null ? NaN : Number(stored)
+      return Number.isFinite(raw) && raw >= 0 ? raw : RAIFFEISEN_BAND_PERCENT
+    } catch { return RAIFFEISEN_BAND_PERCENT }
+  })
+  useEffect(() => {
+    // Defenzív: privát mód / quota / tiltott storage esetén a setItem dobhat — ne döntse le a rendert.
+    try {
+      localStorage.setItem('mainRateSheet.bandBase', bandBase)
+      localStorage.setItem('mainRateSheet.bandPercent', String(bandPercent))
+    } catch { /* storage nem elérhető — a beállítás csak a munkamenetre érvényes */ }
+  }, [bandBase, bandPercent])
   // V238 (2026-05-19): Valutakezelő modal — uj valuta hozzaadasa / aktivalas / deaktivalas
   const [showCurrencyManager, setShowCurrencyManager] = useState(false)
   // N1 (legacy ARFOLYAM / TINTERNETTMKFORM) — internet-link karbantartó
@@ -862,6 +887,27 @@ export default function MainRateSheetPage() {
       )
     }
 
+    // G23 (FR-RFM-12/13): Raiffeisen ±N% eltérési sáv — a vétel/eladás a kiválasztott bázistól
+    // (elszámoló VAGY OTP) max bandPercent%-kal térhet el. A bázison kívüli értékek figyelmeztetést
+    // adnak a kiküldés előtt (a megbízási szerződés szerinti 10%-os korlát, szabadon állítva).
+    const bandViolations = raiffeisenBandViolations(
+      modifiedRows.map(({ row, effectiveSettlement }) => ({
+        currency: row.currency,
+        base: bandBase === 'otp' ? row.otp : effectiveSettlement,
+        buy: row.weakMultiBuy,
+        sell: row.weakMultiSell,
+      })),
+      bandPercent,
+    )
+    const bandBaseLabel = bandBase === 'otp' ? 'OTP' : 'elszámoló'
+    for (const v of bandViolations) {
+      warnings.push(
+        `• Raiffeisen sáv: ${v.currency} ${v.kind === 'buy' ? 'vétel' : 'eladás'} (${v.rate}) a ` +
+        `±${bandPercent}%-os sávon kívül [${v.min.toFixed(2)}–${v.max.toFixed(2)}], ` +
+        `bázis: ${bandBaseLabel} (${v.base.toFixed(2)})`,
+      )
+    }
+
     if (warnings.length > 0) {
       // window.confirm: szándékos, függőség-mentes választás, konzisztens a meglévő
       // mintával (ReservationPage). Egyedi modal-dialógusra cserélése külön UX-kör,
@@ -943,7 +989,7 @@ export default function MainRateSheetPage() {
     } finally {
       setPublishing(false)
     }
-  }, [canEdit, flushActiveCell, serverSyncState])
+  }, [canEdit, flushActiveCell, serverSyncState, bandBase, bandPercent])
 
   const formatCell = (val: number, decimals = 2): string => {
     if (!val || val === 0) return '0'
@@ -978,6 +1024,32 @@ export default function MainRateSheetPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {/* FR-RFM-12/13: Raiffeisen ±N% eltérési sáv — bázis (elszámoló/OTP) + százalék. A
+              kiküldés/ellenőrzés ezen a sávon kívüli vétel/eladásra figyelmeztet. */}
+          <div className="flex items-center gap-1 text-xs" title="Raiffeisen eltérési sáv (FR-RFM-12/13): a vétel/eladás max ennyivel térhet el a választott bázistól">
+            <span className="text-slate-500">Sáv:</span>
+            <select
+              value={bandBase}
+              onChange={(e) => setBandBase(e.target.value === 'otp' ? 'otp' : 'settlement')}
+              disabled={!canEdit}
+              className="px-1 py-0.5 border border-slate-300 rounded text-xs disabled:opacity-40"
+              title="A sáv bázisa: elszámoló vagy OTP árfolyam (FR-RFM-13)"
+            >
+              <option value="settlement">Elszámoló</option>
+              <option value="otp">OTP</option>
+            </select>
+            <input
+              type="number"
+              min={0}
+              step={0.5}
+              value={bandPercent}
+              onChange={(e) => { const n = Number(e.target.value); if (Number.isFinite(n) && n >= 0) setBandPercent(n) }}
+              disabled={!canEdit}
+              className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs disabled:opacity-40"
+              title="Megengedett eltérés százaléka (alap 10%) — FR-RFM-12"
+            />
+            <span className="text-slate-500">%</span>
+          </div>
           <button
             onClick={() => setShowHelp(true)}
             className="flex items-center gap-1 px-2 py-1 text-xs border border-slate-300 rounded hover:bg-slate-100"
@@ -1029,6 +1101,24 @@ export default function MainRateSheetPage() {
             const euaSell = rows.find(r => r.currency === 'EUA')?.weakMultiSell ?? 0
             if (euaSell > 0 && eurSell > 0 && euaDeviationExceeds(euaSell, eurSell)) {
               warnings.push(`• EUA: az euró-érme árfolyam (${euaSell}) >20%-kal eltér a képzett értéktől (${computeEuaRate(eurSell).toFixed(2)})`)
+            }
+            // FR-RFM-12/13: Raiffeisen ±N% sáv-ellenőrzés (a kiküldéssel azonos szabály, mentés/kiküldés nélkül).
+            // Kereszt-valutáknál a tényleges elszámoló a resolveSettlement-tel számolt (mint a dispatch-út),
+            // különben az auto-módú soroknál a nyers settlement=0 hibásan kihagyná a sávellenőrzést.
+            const eurSettle = rows.find(r => r.currency === 'EUR')?.settlement ?? 0
+            const usdSettle = rows.find(r => r.currency === 'USD')?.settlement ?? 0
+            for (const v of raiffeisenBandViolations(
+              rows.map(r => ({
+                currency: r.currency,
+                base: bandBase === 'otp' ? r.otp : resolveSettlement(r, eurSettle, usdSettle),
+                buy: r.weakMultiBuy, sell: r.weakMultiSell,
+              })),
+              bandPercent,
+            )) {
+              warnings.push(
+                `• Raiffeisen sáv: ${v.currency} ${v.kind === 'buy' ? 'vétel' : 'eladás'} (${v.rate}) a ±${bandPercent}%-os ` +
+                `sávon kívül [${v.min.toFixed(2)}–${v.max.toFixed(2)}], bázis: ${bandBase === 'otp' ? 'OTP' : 'elszámoló'}`,
+              )
             }
             if (warnings.length === 0) {
               toast.success('Ellenőrzés', 'A mentett táblázat rendben — a kiküldés a szerver-oldali ellenőrzést is elvégzi.')
