@@ -93,11 +93,17 @@ public class AmlApprovalController {
         }
 
         // 2) Threshold kapu (BIGCTRL 4+ / 8 napos gördülő) — csak ha van ügyfél-azonosító.
+        //    Copilot review: a basic-ághoz hasonlóan ez is NEM blokkol hiba esetén (a tranzakció-POST
+        //    a hiteles kapu), így a pre-check sosem ad 500-at a pénztárosnak.
         if (!required && customerId != null && !customerId.isBlank()) {
-            AmlCheckResult threshold = amlService.checkAllThresholds(customerId, amountHuf, currencyCode);
-            if (threshold.isRequiresManagerApproval()) {
-                required = true;
-                reason = threshold.getManagerApprovalReason();
+            try {
+                AmlCheckResult threshold = amlService.checkAllThresholds(customerId, amountHuf, currencyCode);
+                if (threshold.isRequiresManagerApproval()) {
+                    required = true;
+                    reason = threshold.getManagerApprovalReason();
+                }
+            } catch (RuntimeException e) {
+                log.warn("[AML-APPROVAL] check-required threshold-kapu hiba (nem blokkoló): {}", e.toString());
             }
         }
 
@@ -109,6 +115,21 @@ public class AmlApprovalController {
 
     private static String asStr(Object o) {
         return o instanceof String s && !s.isBlank() ? s : null;
+    }
+
+    /** Number vagy numerikus String → Long; minden más (vagy érvénytelen String) → null (nincs 500). */
+    private static Long toLong(Object o) {
+        if (o instanceof Number n) {
+            return n.longValue();
+        }
+        if (o instanceof String s && !s.isBlank()) {
+            try {
+                return Long.parseLong(s.trim());
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
     }
 
     private static BigDecimal toBigDecimal(Object o) {
@@ -135,10 +156,9 @@ public class AmlApprovalController {
             @RequestBody Map<String, Object> body,
             HttpServletRequest request) {
 
-        Object idObj = body.get("approverWorkerId");
-        Long approverWorkerId = idObj instanceof Number n ? n.longValue()
-                : idObj instanceof String s && !s.isBlank() ? Long.parseLong(s.trim())
-                : null;
+        // Copilot review: a String approverWorkerId parse-ja NumberFormatException-t dobhatna (→ 500),
+        // ezert a toLong NULL-t ad ervenytelen ertekre, amit lent egysegesen 400-kent kezelunk.
+        Long approverWorkerId = toLong(body.get("approverWorkerId"));
         String pin = body.get("pin") instanceof String p ? p : null;
 
         if (approverWorkerId == null || pin == null || pin.isBlank()) {

@@ -34,6 +34,10 @@ import {
   saveAndSyncPendingConversion,
 } from '../../utils/electronTransactions'
 import { useTranslation } from 'react-i18next'
+import { api } from '../../services/api/client'
+import { logger } from '../../utils/logger'
+import { useAuthStore } from '../../stores/authStore'
+import AmlApproverModal from '../../components/auth/AmlApproverModal'
 
 /**
  * Konverziós tranzakció oldal
@@ -85,6 +89,13 @@ export default function ConversionPage() {
   const customerDataRef = useRef<CustomerPanelData | null>(null)
   const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } =
     useIdentificationLevel(String(amlAmount))
+
+  // AML felsovezetoi jovahagyas (2026-06-04) — a buy/sell flow-val azonos minta (ref a re-invoke-hoz).
+  const worker = useAuthStore((s) => s.worker)
+  const approverWorkerIdRef = useRef<number | null>(null)
+  const amlPrecheckInFlightRef = useRef(false)
+  const [showAmlApprover, setShowAmlApprover] = useState(false)
+  const [amlApprovalReason, setAmlApprovalReason] = useState('')
 
   // Track which field was last edited to prevent useEffect from overwriting manual toAmount edits
   const lastEditedField = useRef<'from' | 'to'>('from')
@@ -307,6 +318,34 @@ export default function ConversionPage() {
       }
       const effectiveCustomerName = cd?.name?.trim() || customerName.trim() || null
 
+      // AML felsovezetoi jovahagyas pre-check (2026-06-04): a konverzio AML-alapja az EGYUTTES
+      // amlAmount (vetel + eladas). Ha approval kell, a modal elkeri az engedelyezot a rogzites elott.
+      // Offline/hiba eseten nem blokkol (a backend a hiteles kapu). A re-invoke utan az approverWorkerIdRef
+      // mar be van allitva, igy a pre-check atugorja a modalt.
+      if (approverWorkerIdRef.current == null) {
+        if (amlPrecheckInFlightRef.current) return
+        amlPrecheckInFlightRef.current = true
+        try {
+          const checkRes = await api.post('/aml-approval/check-required', {
+            amountHuf: amlAmount,
+            customerId: cd?.id ? String(cd.id) : undefined,
+            customerName: effectiveCustomerName || undefined,
+            documentNumber: cd?.documentNumber || undefined,
+            currencyCode: fromCurrency.code,
+            customerNationality: cd?.nationality || undefined,
+          })
+          if (checkRes.data?.requiresApproval) {
+            setAmlApprovalReason(typeof checkRes.data?.reason === 'string' ? checkRes.data.reason : '')
+            setShowAmlApprover(true)
+            return // a modal onApproved-ja beallitja az approverWorkerId-t es ujrahivja a submitet
+          }
+        } catch (err) {
+          logger.warn('ConversionPage', 'AML approval pre-check hiba (nem blokkolo):', err)
+        } finally {
+          amlPrecheckInFlightRef.current = false
+        }
+      }
+
       if (electronQueueAvailable) {
         // V235 + V236 (Codex P1 #695): teljes Pmt. customer-snapshot atadasa
         // az Electron offline outbox-nak — onOwnBehalf=false eseten az actor
@@ -349,6 +388,8 @@ export default function ConversionPage() {
           customerActorDocumentType: actorIdentity?.documentType ?? null,
           customerActorDocumentNumber: actorIdentity?.documentNumber ?? null,
           customerActorAddress: actorIdentity?.address ?? null,
+          // AML felsovezetoi jovahagyas: a jovahagyo workerId (NULL ha nem kellett).
+          approverWorkerId: approverWorkerIdRef.current,
         })
 
         const changeMsg = returnedHuf > 0 ? ` Visszajáró: ${returnedHuf.toLocaleString('hu-HU')} Ft.` : ''
@@ -393,12 +434,17 @@ export default function ConversionPage() {
           customerActorDocumentType: cd.actorIdentity?.documentType,
           customerActorDocumentNumber: cd.actorIdentity?.documentNumber,
           customerActorAddress: cd.actorIdentity?.address,
+          // AML felsovezetoi jovahagyas: a jovahagyo workerId a REST conversion request-be.
+          approverWorkerId: approverWorkerIdRef.current ?? undefined,
         } : baseRequest
 
         const result = await transactionApi.conversion(request)
         const changeMsg = returnedHuf > 0 ? ` Visszajáró: ${returnedHuf.toLocaleString('hu-HU')} Ft.` : ''
         setSuccess(`Konverzió sikeres! Bizonylat: ${result.receiptNumber}.${changeMsg}`)
       }
+
+      // AML jovahagyas: a kovetkezo konverzio friss jovahagyas-allapotrol induljon.
+      approverWorkerIdRef.current = null
 
       // Reset after 2 seconds
       setTimeout(() => {
@@ -825,6 +871,20 @@ export default function ConversionPage() {
           </div>
         </div>
       </div>
+
+      {/* AML felsovezetoi jovahagyas modal — a pre-check trigger nyitja, ha approval kell */}
+      <AmlApproverModal
+        open={showAmlApprover}
+        currentWorkerId={worker?.id ?? 0}
+        reason={amlApprovalReason}
+        onApproved={(workerId, name) => {
+          approverWorkerIdRef.current = workerId
+          setShowAmlApprover(false)
+          setSuccess(`AML jóváhagyás megerősítve. Engedélyező: ${name}`)
+          void handleSubmit()
+        }}
+        onCancel={() => setShowAmlApprover(false)}
+      />
     </div>
   )
 }

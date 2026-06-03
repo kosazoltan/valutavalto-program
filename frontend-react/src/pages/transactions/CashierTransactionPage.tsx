@@ -163,6 +163,10 @@ export default function CashierTransactionPage() {
   // szamara ref-ben (mint az isSubmittingRef, hogy a memoizalt closure friss erteket lasson);
   // a modal nyitas-allapota es a kivalto indok state-ben.
   const approverWorkerIdRef = useRef<number | null>(null)
+  // Copilot review: a pre-check (aml-approval/check-required) az isSubmitting guard ELOTT fut, ezert
+  // gyors dupla-submit parhuzamos pre-checket/modalt nyithatna. Ez a ref biztositja, hogy egyszerre
+  // csak egy pre-check fusson, amig nincs jovahagyo.
+  const amlPrecheckInFlightRef = useRef(false)
   const [showAmlApprover, setShowAmlApprover] = useState(false)
   const [amlApprovalReason, setAmlApprovalReason] = useState('')
   // Helper: state + ref atomi sync. MINDEN setIsSubmitting hivas ezt hasznalja.
@@ -650,6 +654,9 @@ export default function CashierTransactionPage() {
     // AML-kapujat futtatja. Offline/hiba eseten NEM blokkol (a tranzakcio-POST/sync ugyis kivaltja a
     // szerver-oldali validaciot). Ha mar van approver (a modal utani re-invoke), atugorjuk.
     if (approverWorkerIdRef.current == null) {
+      // In-flight guard (Copilot review): parhuzamos pre-check/modal elkerulese gyors dupla-submitnel.
+      if (amlPrecheckInFlightRef.current) return
+      amlPrecheckInFlightRef.current = true
       try {
         const checkRes = await api.post('/aml-approval/check-required', {
           amountHuf: total,
@@ -666,6 +673,8 @@ export default function CashierTransactionPage() {
         }
       } catch (err) {
         logger.warn('CashierTransactionPage', 'AML approval pre-check hiba (nem blokkolo):', err)
+      } finally {
+        amlPrecheckInFlightRef.current = false
       }
     }
 

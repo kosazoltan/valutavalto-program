@@ -107,6 +107,8 @@ export interface PendingConversionInput {
   customerActorAddress?: string | null
   // HIBA 2026-05-26 (#2): ugyfel deviza-statusza (DOMESTIC/FOREIGN)
   foreignStatus?: string | null
+  /** AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, ha a konverzio felsovezetoi jovahagyast igenyelt. */
+  approverWorkerId?: number | null
 }
 
 export interface PendingTransferInput {
@@ -446,6 +448,7 @@ export async function saveAndSyncPendingConversion(
         customerActorAddress: normalizeOptionalText(entry.customerActorAddress),
         foreignStatus: normalizeOptionalText(entry.foreignStatus),
         note: normalizeOptionalText(entry.note),
+        approverWorkerId: entry.approverWorkerId ?? null,
       })
     } else {
       // Legacy positional API — csak alapmezok.
