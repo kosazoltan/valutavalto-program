@@ -178,7 +178,7 @@ public class DailyJournalService {
                         r.textLeft(JournalRenderer.BOLD, FONT_SIZE_BODY, columnHeader + "  (folytatas)");
                         r.advance(LINE_HEIGHT);
                     }
-                    renderTransactionRow(r.content(), t, r.y()); // a sor a BODY fonttal renderel
+                    renderTransactionRow(r.content(), t, r.y()); // a sor önállóan állítja a BODY fontot
                     r.advance(LINE_HEIGHT);
                 }
                 r.advance(LINE_HEIGHT);
@@ -307,6 +307,9 @@ public class DailyJournalService {
                 ? AMOUNT_FORMAT.format(t.getHufAmount()) : "0";
 
         content.beginText();
+        // Önálló font-beállítás: a sor NEM függ a hívó által hagyott font-állapottól (különben a
+        // megelőző BOLD oszlopfejléc miatt a tételsorok kövéren renderelődnének — multi-page review P1).
+        content.setFont(JournalRenderer.BODY, FONT_SIZE_BODY);
         content.newLineAtOffset(MARGIN, y);
         content.showText(String.format("%-6s%-12s%-12s%-7s%12s   %12s Ft",
                 time, truncate(receipt, 11), truncate(type, 11), currency, currAmt, hufAmt));
