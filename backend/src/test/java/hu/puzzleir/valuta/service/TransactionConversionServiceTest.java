@@ -50,7 +50,7 @@ class TransactionConversionServiceTest {
         lenient().when(helper.resolveCurrencyId(eq(EUR_ID), any())).thenReturn(EUR_ID);
         lenient().when(helper.resolveCurrencyId(eq(USD_ID), any())).thenReturn(USD_ID);
         // CB-018 parity: AML result must propagate to Transaction.amlSuspicious / amlAnnualLimitReached
-        lenient().when(helper.performAmlCheck(any(), any(), any(), any(), any(), any()))
+        lenient().when(helper.performAmlCheck(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(AmlService.AmlBasicCheckResult.builder()
                         .approved(true)
                         .suspiciousFlag(false)
@@ -211,7 +211,7 @@ class TransactionConversionServiceTest {
             when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
 
             // Override AML mock to simulate BIGCTRL-flagged suspicious + annual-limit scenario
-            when(helper.performAmlCheck(any(), any(), any(), any(), any(), any()))
+            when(helper.performAmlCheck(any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(AmlService.AmlBasicCheckResult.builder()
                             .approved(true)
                             .suspiciousFlag(true)
@@ -293,6 +293,7 @@ class TransactionConversionServiceTest {
                     eq("Foreign Customer"),
                     eq("DOC-1"),
                     eq("USD"),
+                    any(),
                     any());
         }
     }

@@ -26,6 +26,7 @@ public class TransactionOperationHelper {
 
     private final DailySessionService dailySessionService;
     private final AmlService amlService;
+    private final AmlApprovalService amlApprovalService;
     private final CashBalanceRepository cashBalanceRepository;
     private final CurrencyRepository currencyRepository;
     private final ObjectProvider<CameraTransactionLinker> cameraTransactionLinkerProvider;
@@ -75,6 +76,14 @@ public class TransactionOperationHelper {
     public AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
                                  String customerName, String documentNumber, String currencyCode,
                                  String customerNationality) {
+        // Backward-compat: engedélyező nélkül (a requiresApproval-ág a meglévő blokkoló viselkedést tartja).
+        return performAmlCheck(hufAmount, customerId, customerName, documentNumber, currencyCode,
+                customerNationality, null);
+    }
+
+    public AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
+                                 String customerName, String documentNumber, String currencyCode,
+                                 String customerNationality, Long approverWorkerId) {
         // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate. Ezt a performAmlCheck-et a
         // multi-line (TransactionMultiLineService) ÉS a konverzió (TransactionConversionService) hívja.
         // (A sztornó/reversal NEM ezen az AML-úton megy → nincs gate-elve, by-design.)
@@ -117,9 +126,18 @@ public class TransactionOperationHelper {
         }
 
         if (basicResult.isRequiresApproval()) {
-            throw new ValidationException(basicResult.getApprovalReason() != null
+            // Pmt. 14/A. § (4) / MNB 14/2025 V.2.6: a magas-kockázatú tranzakció (multi-line / konverzió út)
+            // kizárólag a kijelölt felelős vezető jóváhagyásával teljesíthető. Érvényes POS-engedélyezőnél
+            // INSERT-only audit-rekordba rögzítjük (névvel) és engedjük; különben elutasul (a TransactionService
+            // single-line ágával azonos logika). A recordSeniorApproval validál (multi-tenant + szerep + 4-szem).
+            String approvalReason = basicResult.getApprovalReason() != null
                     ? basicResult.getApprovalReason()
-                    : "Supervisor jovahagyas szukseges (AML limit)!");
+                    : "Supervisor jovahagyas szukseges (AML limit)!";
+            if (approverWorkerId == null || amlApprovalService == null) {
+                throw new ValidationException(approvalReason);
+            }
+            amlApprovalService.recordSeniorApproval(
+                    approverWorkerId, approvalReason, hufAmount, customerName, null);
         }
 
         if (customerId != null && !customerId.isBlank()) {

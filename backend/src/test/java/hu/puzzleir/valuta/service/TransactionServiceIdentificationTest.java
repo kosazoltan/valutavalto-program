@@ -52,6 +52,7 @@ class TransactionServiceIdentificationTest {
     @Mock private ReceiptSequenceService receiptSequenceService;
     @Mock private HandlingFeeCalculator handlingFeeCalculator;
     @Mock private AmlService amlService;
+    @Mock private AmlApprovalService amlApprovalService;
     @Mock private PosTerminalService posTerminalService;
     @Mock private LicenseService licenseService;
     @Mock private TransactionCalculationService calculationService;
@@ -255,6 +256,60 @@ class TransactionServiceIdentificationTest {
                 assertThatThrownBy(() -> transactionService.executeSell(request))
                                 .isInstanceOf(ValidationException.class)
                                 .hasMessageContaining("egyedi eladási árfolyamnak pozitívnak kell lennie");
+        }
+
+        // =====================================================================
+        // AML felsővezetői jóváhagyás bekötése (Pmt. 14/A.§(4) / MNB 14/2025 V.2.6)
+        // =====================================================================
+
+        @Test
+        @DisplayName("executeSell: requiresApproval=true + érvényes engedélyező → rögzít és ENGED")
+        void executeSell_requiresApproval_withValidApprover_recordsAndProceeds() {
+                // AML: jóváhagyás-köteles eredmény
+                AmlService.AmlBasicCheckResult needsApproval = AmlService.AmlBasicCheckResult.builder()
+                                .approved(true)
+                                .requiresApproval(true)
+                                .approvalReason("FATF 1/a — felelős vezető jóváhagyása szükséges")
+                                .requiresDetailedId(false)
+                                .build();
+                when(amlService.checkTransaction(any(), any(), any(), any(), any(), any()))
+                                .thenReturn(needsApproval);
+
+                TransactionService.SellRequest request = TransactionService.SellRequest.builder()
+                                .currencyId(2L)
+                                .currencyAmount(new BigDecimal("100"))
+                                .approverWorkerId(99L)
+                                .build();
+
+                assertThatCode(() -> transactionService.executeSell(request)).doesNotThrowAnyException();
+
+                // A jóváhagyás rögzítésre kerül az engedélyező workerId-jával, és a tranzakció elmentődik
+                verify(amlApprovalService).recordSeniorApproval(eq(99L), any(), any(), any(), any());
+                verify(transactionRepository, atLeastOnce()).save(any(Transaction.class));
+        }
+
+        @Test
+        @DisplayName("executeSell: requiresApproval=true + nincs engedélyező → BLOKKOL, nem rögzít")
+        void executeSell_requiresApproval_noApprover_blocks() {
+                AmlService.AmlBasicCheckResult needsApproval = AmlService.AmlBasicCheckResult.builder()
+                                .approved(true)
+                                .requiresApproval(true)
+                                .approvalReason("FATF 1/a — felelős vezető jóváhagyása szükséges")
+                                .requiresDetailedId(false)
+                                .build();
+                when(amlService.checkTransaction(any(), any(), any(), any(), any(), any()))
+                                .thenReturn(needsApproval);
+
+                TransactionService.SellRequest request = TransactionService.SellRequest.builder()
+                                .currencyId(2L)
+                                .currencyAmount(new BigDecimal("100"))
+                                .approverWorkerId(null)
+                                .build();
+
+                assertThatThrownBy(() -> transactionService.executeSell(request))
+                                .isInstanceOf(ValidationException.class)
+                                .hasMessageContaining("jóváhagyás");
+                verify(amlApprovalService, never()).recordSeniorApproval(any(), any(), any(), any(), any());
         }
 }
 

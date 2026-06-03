@@ -40,8 +40,14 @@ public class AmlApprovalService {
 
     /**
      * Felsővezetői AML-jóváhagyás rögzítése. Validálja, hogy az {@code approverWorkerId} érvényes,
-     * az aktuális céghez tartozó, supervisor-vagy-feljebb dolgozó; majd INSERT-only audit-rekordba
-     * rögzíti az engedélyező NEVÉT. Érvénytelen/hiányzó engedélyezőnél {@link ValidationException}.
+     * az aktuális céghez tartozó, supervisor-vagy-feljebb dolgozó, ÉS nem a tranzakciót rögzítő
+     * pénztáros (4-szem-elv); majd INSERT-only audit-rekordba rögzíti az engedélyező NEVÉT.
+     * Érvénytelen/hiányzó engedélyezőnél {@link ValidationException}.
+     *
+     * <p><b>Tranzakcionalitás:</b> a rögzítés a hívó tranzakció-flow tranzakcióján belül fut
+     * ({@code REQUIRED}), így ha a tranzakció később rollbackel, a jóváhagyás-rekord is visszagördül —
+     * azaz audit-rekord csak ténylegesen létrejött (committed) magas-kockázatú tranzakcióhoz tartozik,
+     * nincs orphan jóváhagyás technikailag elhasalt kísérletekhez.</p>
      *
      * @return a rögzített jóváhagyás (az engedélyező nevével).
      */
@@ -64,8 +70,10 @@ public class AmlApprovalService {
                 .approvedAt(LocalDateTime.now())
                 .build();
         TransactionAmlApproval saved = approvalRepository.save(rec);
-        log.info("[AML-APPROVAL] Felsővezetői jóváhagyás rögzítve — engedélyező: {} (#{}), indok: {}",
-                saved.getApprovedByName(), approverWorkerId, approvalReason);
+        // Az engedélyező NEVE az audit-rekordba kerül (V.2.6 kötelező); a sima app-logba viszont csak
+        // a workerId — a teljes név PII, ne szivárogjon a Loki/Grafana log-streambe.
+        log.info("[AML-APPROVAL] Felsővezetői jóváhagyás rögzítve — engedélyező #{}, indok: {}",
+                approverWorkerId, approvalReason);
         return saved;
     }
 
@@ -84,6 +92,13 @@ public class AmlApprovalService {
     private Worker resolveSeniorApprover(Long approverWorkerId, UUID companyId) {
         if (approverWorkerId == null) {
             throw new ValidationException("AML felsővezetői jóváhagyás szükséges, de nincs megadva az engedélyező.");
+        }
+        // 4-szem-elv (Pmt. 14/A. § (4)): az engedélyező NEM lehet a tranzakciót rögzítő pénztáros — nincs
+        // implicit self-approval kiskapu. (A POS-on bejelentkezett dolgozó workerId-ját hasonlítjuk össze.)
+        Long currentWorkerId = SecurityUtils.getCurrentWorkerId();
+        if (currentWorkerId != null && currentWorkerId.equals(approverWorkerId)) {
+            throw new ValidationException(
+                    "Az AML-engedélyező nem lehet a tranzakciót rögzítő dolgozó (4-szem-elv).");
         }
         Worker approver = workerRepository.findById(approverWorkerId)
                 .orElseThrow(() -> new ValidationException(

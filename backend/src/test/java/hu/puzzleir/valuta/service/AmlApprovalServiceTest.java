@@ -108,6 +108,16 @@ class AmlApprovalServiceTest {
     }
 
     @Test
+    @DisplayName("self-approval (engedélyező = a bejelentkezett pénztáros) → elutasít (4-szem-elv)")
+    void recordSeniorApproval_selfApproval_rejected() {
+        // setUp: a bejelentkezett worker id-ja 1L → 1L engedélyező = self-approval.
+        assertThatThrownBy(() -> service.recordSeniorApproval(1L, "AML", BigDecimal.TEN, "X", null))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("4-szem-elv");
+        verify(approvalRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("hiányzó engedélyező (null) → elutasít")
     void recordSeniorApproval_nullApprover_rejected() {
         assertThatThrownBy(() -> service.recordSeniorApproval(null, "AML", BigDecimal.TEN, "X", null))

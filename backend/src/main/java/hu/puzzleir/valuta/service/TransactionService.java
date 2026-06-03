@@ -856,10 +856,12 @@ public class TransactionService {
             if (approverWorkerId == null || amlApprovalService == null) {
                 throw new ValidationException(approvalReason);
             }
-            // recordSeniorApproval validálja az engedélyező jogosultságát (multi-tenant + szerepkör);
+            // recordSeniorApproval validálja az engedélyező jogosultságát (multi-tenant + szerepkör + 4-szem);
             // érvénytelennél ValidationException-t dob ("nem jogosult" / "nem ehhez a céghez").
+            // receiptNumber=null: a bizonylatszám az AML-check pillanatában még nem ismert, az okmányszámot
+            // pedig TILOS a receipt_number audit-mezőbe tenni (adatminimalizálás / GDPR).
             amlApprovalService.recordSeniorApproval(
-                    approverWorkerId, approvalReason, hufAmount, customerName, documentNumber);
+                    approverWorkerId, approvalReason, hufAmount, customerName, null);
         }
 
         if (customerId != null && !customerId.isBlank()) {
