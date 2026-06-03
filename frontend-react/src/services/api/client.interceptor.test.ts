@@ -41,6 +41,7 @@ import './client'
 const requestInterceptor = capturedRequestHandlers[0]
 
 function run(config: Partial<InternalAxiosRequestConfig>): InternalAxiosRequestConfig {
+  if (!requestInterceptor) throw new Error('A request-interceptor nem regisztrálódott')
   return requestInterceptor({ headers: {}, ...config } as InternalAxiosRequestConfig)
 }
 
