@@ -48,6 +48,20 @@ public class StockSnapshotService {
         put("145", "KAPOSVAR");
     }};
 
+    /**
+     * A `branch.region` (text) normalizálása a REGION_NAMES ASCII-nagybetűs értékeihez (SZEGED,
+     * BEKESCSABA, ...). A seedelt adat már ASCII-nagybetűs (V145/V254), de defenzíven az ékezeteket
+     * is leképezzük, hogy egy esetleges 'Szeged'/'Nyíregyháza' érték is helyes körzetbe kerüljön.
+     */
+    private static String normalizeRegion(String region) {
+        if (region == null) {
+            return null;
+        }
+        String s = region.trim().toUpperCase(java.util.Locale.forLanguageTag("hu"));
+        return s.replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O")
+                .replace("Ö", "O").replace("Ő", "O").replace("Ú", "U").replace("Ü", "U").replace("Ű", "U");
+    }
+
     @Transactional(readOnly = true)
     public StockSnapshotDto getFullSnapshot(UUID companyId) {
         LocalDateTime snapshotTime = LocalDateTime.now();
@@ -55,7 +69,19 @@ public class StockSnapshotService {
 
         String companyName = companyRepository.findById(companyId).map(hu.puzzleir.valuta.entity.Company::getName).orElse(null);
 
-        List<Branch> branches = branchRepository.findActiveWithRegionByCompanyId(companyId);
+        // FK-019: a területi füleken az értéktár MELLETT az összes hozzá tartozó pénztár is megjelenjen.
+        // KORÁBBAN a findActiveWithRegionByCompanyId CSAK a regionCode<>NULL irodákat adta vissza — a
+        // pénztárak regionCode-ja NULL (V250), így kimaradtak. Most az ÖSSZES aktív, valódi irodát
+        // (értéktár + pénztár) kérjük, a virtuális partnereket (VAULT_COUNTERPARTY) kizárva.
+        // A területi csoportosítás a `region` (text) mezőn megy (lentebb) — a vault_territory_id a
+        // seed-állapotban NULL (V288 NO-OP), ezért NEM arra csoportosítunk.
+        List<Branch> branches = new ArrayList<>(
+                branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId));
+
+        // FR-02: a területen belül az értéktár (isVault=true) az ELSŐ oszlop, utána a pénztárak névsorban.
+        branches.sort(
+                Comparator.comparing((Branch b) -> Boolean.TRUE.equals(b.getIsVault()), Comparator.reverseOrder())
+                        .thenComparing(b -> b.getName() == null ? "" : b.getName(), String.CASE_INSENSITIVE_ORDER));
 
         if (branches.isEmpty()) {
             List<Object[]> companyRowsEmpty = currencyStockRepository.sumCompanyLevelByCurrency(companyId);
@@ -91,11 +117,23 @@ public class StockSnapshotService {
         // épül, így az index-alapú leképzések (Excel-export) nem ütköznek IOOBE-be.
         List<String> codes = resolveCurrencyCodes(stockByBranch, companyRows);
 
-        // Build per-branch snapshots grouped by region
+        // Build per-branch snapshots grouped by region.
+        // FK-019: az értéktárnak van regionCode-ja (KESZLEX 10/20/...), a pénztárnak NINCS (NULL),
+        // viszont a `region` (text, pl. 'SZEGED') mind a kettőnél kitöltött (V145 pénztár, V254 értéktár)
+        // és közvetlenül egyezik a REGION_NAMES értékeivel → a pénztárt a region-névből képzett
+        // regionCode-ra soroljuk. A besorolatlan (egyik mezővel sem rendelkező) irodák a null kulcs alá
+        // kerülnek: a területi füleken nem jelennek meg, de a cégösszesítőből nem esnek ki.
+        Map<String, String> regionNameToCode = new HashMap<>();
+        REGION_NAMES.forEach((code, name) -> regionNameToCode.put(name, code));
+
         Map<String, List<BranchSnapshotDto>> branchesByRegion = new LinkedHashMap<>();
         for (Branch branch : branches) {
             BranchSnapshotDto branchDto = buildBranchSnapshot(branch, stockByBranch, wuByBranch, today, codes);
-            branchesByRegion.computeIfAbsent(branch.getRegionCode(), k -> new ArrayList<>()).add(branchDto);
+            String regionCode = branch.getRegionCode();
+            if (regionCode == null && branch.getRegion() != null) {
+                regionCode = regionNameToCode.get(normalizeRegion(branch.getRegion()));
+            }
+            branchesByRegion.computeIfAbsent(regionCode, k -> new ArrayList<>()).add(branchDto);
         }
 
         // Region aggregation
