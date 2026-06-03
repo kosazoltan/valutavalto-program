@@ -218,6 +218,9 @@ class ReceiptGeneratorServiceTest {
         assertThat(result.getCustomerBirthPlace()).isEqualTo("Budapest");
         assertThat(result.getCustomerMotherName()).isEqualTo("Anya Anna");
         assertThat(result.getLines()).anyMatch(l -> "FOGLALÓ ÁTVÉTELE".equals(l.getLabel()));
+        // B7 / FR-8: Forint-érték (1000 × 400 = 400000 Ft) megjelenik a bizonylaton.
+        assertThat(result.getLines())
+                .anyMatch(l -> "Forint-érték".equals(l.getLabel()) && "400000 Ft".equals(l.getValue()));
     }
 
     @Test
@@ -234,6 +237,12 @@ class ReceiptGeneratorServiceTest {
         assertThat(result.getReceiptNumber()).isEqualTo("F-260522-0002");
         assertThat(result.getLines()).anyMatch(l -> "FOGLALÓ VISSZAFIZETÉSE".equals(l.getLabel()));
         assertThat(result.getLines()).anyMatch(l -> "Ügyfél elállt".equals(l.getValue()));
+        // B7 / FR-13: az eredeti foglaló bizonylatszáma kereszthivatkozásként a visszafizetési bizonylaton.
+        assertThat(result.getLines())
+                .anyMatch(l -> "Eredeti foglaló bizonylatszáma".equals(l.getLabel()) && "F-260522-0001".equals(l.getValue()));
+        // B7 / FR-14: beszámítási záró-szöveg.
+        assertThat(result.getLines())
+                .anyMatch(l -> l.getValue() != null && l.getValue().contains("beszámításra került"));
     }
 
     @Test
