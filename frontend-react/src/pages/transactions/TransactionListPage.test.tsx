@@ -377,4 +377,27 @@ describe('TransactionListPage', () => {
     expect(screen.getAllByText('Vétel').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Eladás').length).toBeGreaterThan(0)
   })
+
+  it('FR-PA-05: "Csak ügyfeles" szűrő SZERVER-oldali customerOnly paramétert küld (helyes lapozás)', async () => {
+    const user = userEvent.setup()
+    renderTransactionListPage()
+    await waitFor(() => {
+      expect(screen.getByText('Kiss János')).toBeInTheDocument()
+    })
+    // Alapból customerOnly nincs beállítva (szűretlen).
+    expect(mocks.transactionApiList).toHaveBeenCalledWith(
+      expect.objectContaining({ customerOnly: undefined }),
+    )
+    mocks.transactionApiList.mockClear()
+
+    // "Csak ügyfeles" bekapcsolása → újralekérdezés a szerverről customerOnly: true-val
+    // (NEM kliens-oldali oldal-szűrés, hogy a lapozás >25 tételnél is helyes legyen).
+    await user.click(screen.getByTestId('filter-customer-only'))
+
+    await waitFor(() => {
+      expect(mocks.transactionApiList).toHaveBeenCalledWith(
+        expect.objectContaining({ customerOnly: true }),
+      )
+    })
+  })
 })

@@ -172,7 +172,7 @@ public class CustomerStatisticsService {
                 ? transactionRepository.findCompanyWideWithFilters(
                         companyId, from, to, null, org.springframework.data.domain.Pageable.unpaged())
                 : transactionRepository.findWithFilters(
-                        companyId, branchId, from, to, null, org.springframework.data.domain.Pageable.unpaged());
+                        companyId, branchId, from, to, null, false, org.springframework.data.domain.Pageable.unpaged());
 
         List<Transaction> transactions = page.getContent().stream()
                 .filter(t -> t.getCustomerDocumentNumber() != null && !t.getCustomerDocumentNumber().isBlank())

@@ -107,6 +107,7 @@ class TransactionServiceMultiTenancyTest {
                 LocalDate.now().minusDays(7),
                 LocalDate.now(),
                 TransactionType.BUY,
+                false,
                 PageRequest.of(0, 10)
             )
         )
@@ -115,7 +116,7 @@ class TransactionServiceMultiTenancyTest {
         .hasMessageContaining("B17");
 
         // Repository hívás SOHA NEM történik
-        verify(transactionRepository, never()).findWithFilters(any(), any(), any(), any(), any(), any());
+        verify(transactionRepository, never()).findWithFilters(any(), any(), any(), any(), any(), anyBoolean(), any());
     }
 
     @Test
@@ -128,7 +129,7 @@ class TransactionServiceMultiTenancyTest {
         LocalDate startDate = endDate.minusDays(7);
 
         Page<Transaction> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(transactionRepository.findWithFilters(eq(COMPANY_ID), eq(BRANCH_BR035), any(), any(), any(), any()))
+        when(transactionRepository.findWithFilters(eq(COMPANY_ID), eq(BRANCH_BR035), any(), any(), any(), anyBoolean(), any()))
             .thenReturn(emptyPage);
 
         // When
@@ -137,6 +138,7 @@ class TransactionServiceMultiTenancyTest {
             startDate,
             endDate,
             TransactionType.BUY,
+            false,
             PageRequest.of(0, 10)
         );
 
@@ -148,6 +150,7 @@ class TransactionServiceMultiTenancyTest {
             eq(startDate),
             eq(endDate),
             eq(TransactionType.BUY),
+            eq(false),
             any()
         );
     }
@@ -178,6 +181,6 @@ class TransactionServiceMultiTenancyTest {
             any()
         );
         // Defenzív: a branch-scoped findWithFilters NEM hívódik
-        verify(transactionRepository, never()).findWithFilters(any(), any(), any(), any(), any(), any());
+        verify(transactionRepository, never()).findWithFilters(any(), any(), any(), any(), any(), anyBoolean(), any());
     }
 }
