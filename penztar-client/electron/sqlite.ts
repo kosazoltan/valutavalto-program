@@ -175,6 +175,7 @@ export async function initDatabase(): Promise<void> {
         source_of_funds TEXT,
         customer_is_pep INTEGER,
         approver_worker_id INTEGER,
+        approval_session_id TEXT,
         local_reference_number TEXT,
         idempotency_key TEXT,
         created_at TEXT DEFAULT (datetime('now')),
@@ -197,6 +198,12 @@ export async function initDatabase(): Promise<void> {
     // backward-compat, igy a meglevo telepitesek migracioja additiv es kockazatmentes.
     try {
       db.run(`ALTER TABLE pending_transactions ADD COLUMN approver_worker_id INTEGER;`);
+    } catch {
+      // Column already exists — expected on fresh installs
+    }
+    // AML jovahagyas-session azonosito (Codex P1: receipt-scoping) — a grantot a konkret nyugtahoz koti.
+    try {
+      db.run(`ALTER TABLE pending_transactions ADD COLUMN approval_session_id TEXT;`);
     } catch {
       // Column already exists — expected on fresh installs
     }
@@ -281,6 +288,7 @@ export async function initDatabase(): Promise<void> {
       { name: 'customer_is_pep', type: 'INTEGER' },
       // AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId a konverzional is.
       { name: 'approver_worker_id', type: 'INTEGER' },
+      { name: 'approval_session_id', type: 'TEXT' },
       { name: 'customer_on_own_behalf', type: 'INTEGER' },
       { name: 'customer_actor_name', type: 'TEXT' },
       { name: 'customer_pep_kind', type: 'TEXT' },
@@ -997,6 +1005,7 @@ export interface PendingTransactionRow {
   customer_is_pep: number | null;
   /** AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, NULL ha nem kellett. */
   approver_worker_id: number | null;
+  approval_session_id: string | null;
   /** V226 (2026-05-14): per-line devizastatusz — 'DOMESTIC' / 'FOREIGN' / null. */
   foreign_status: string | null;
   // V229 + V235 (2026-05-19 HIBA #14 + #17 + #18): teljes Pmt. customer-snapshot
@@ -1058,6 +1067,8 @@ export interface PendingTransactionInputV2 {
   customerIsPep: boolean | null;
   // AML vezetoi jovahagyas (2026-06-04): jovahagyo supervisor/manager/admin workerId.
   approverWorkerId: number | null;
+  // AML jovahagyas-session azonosito (Codex P1: receipt-scoping).
+  approvalSessionId: string | null;
   customerOnOwnBehalf: boolean | null;
   customerActorName: string | null;
   // V235 NEW (HIBA #15): PEP minőség
@@ -1096,6 +1107,7 @@ export interface PendingConversionRow {
   source_of_funds: string | null;
   customer_is_pep: number | null;
   approver_worker_id: number | null;
+  approval_session_id: string | null;
   customer_on_own_behalf: number | null;
   customer_actor_name: string | null;
   customer_pep_kind: string | null;
@@ -1143,6 +1155,7 @@ export interface PendingConversionInputV2 {
   sourceOfFunds: string | null;
   customerIsPep: boolean | null;
   approverWorkerId: number | null;
+  approvalSessionId: string | null;
   customerOnOwnBehalf: boolean | null;
   customerActorName: string | null;
   customerPepKind: string | null;
@@ -1229,6 +1242,7 @@ export function savePendingTransaction(
   customerIsPep: boolean | null = null,
   foreignStatus: 'DOMESTIC' | 'FOREIGN' | null = null,
   approverWorkerId: number | null = null,
+  approvalSessionId: string | null = null,
 ): number {
   if (!db) throw new Error('Database not initialized');
 
@@ -1269,11 +1283,12 @@ export function savePendingTransaction(
       source_of_funds,
       customer_is_pep,
       approver_worker_id,
+      approval_session_id,
       foreign_status,
       local_reference_number,
       idempotency_key
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       type,
       currencyCode,
@@ -1292,6 +1307,7 @@ export function savePendingTransaction(
       normalizedSourceOfFunds,
       customerIsPep === null ? null : (customerIsPep ? 1 : 0),
       approverWorkerId ?? null,
+      approvalSessionId ?? null,
       foreignStatus,
       localReferenceNumber,
       idempotencyKey,
@@ -1408,7 +1424,7 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
       handling_fee, discount_percent,
       customer_id, customer_identifier, customer_name, customer_document_number, customer_address,
       denominations,
-      source_of_funds, customer_is_pep, approver_worker_id, foreign_status,
+      source_of_funds, customer_is_pep, approver_worker_id, approval_session_id, foreign_status,
       customer_birth_place, customer_birth_date, customer_mother_name,
       customer_nationality, customer_document_type,
       customer_on_own_behalf, customer_actor_name,
@@ -1418,7 +1434,7 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
       customer_actor_document_number, customer_actor_address,
       local_reference_number, idempotency_key
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.type,
       input.currencyCode,
@@ -1437,6 +1453,7 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
       normalized.sourceOfFunds,
       boolToInt(input.customerIsPep),
       input.approverWorkerId ?? null,
+      input.approvalSessionId ?? null,
       input.foreignStatus,
       normalized.customerBirthPlace,
       normalized.customerBirthDate,
@@ -1680,14 +1697,14 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
       customer_id, customer_name, customer_document_number,
       customer_address, customer_nationality, customer_birth_place, customer_birth_date,
       customer_mother_name, customer_document_type,
-      source_of_funds, customer_is_pep, approver_worker_id, customer_on_own_behalf, customer_actor_name,
+      source_of_funds, customer_is_pep, approver_worker_id, approval_session_id, customer_on_own_behalf, customer_actor_name,
       customer_pep_kind,
       customer_actor_birth_place, customer_actor_birth_date, customer_actor_mother_name,
       customer_actor_nationality, customer_actor_document_type,
       customer_actor_document_number, customer_actor_address,
       foreign_status,
       note, local_reference_number, idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.fromCurrencyId, input.fromCurrencyCode, input.toCurrencyId, input.toCurrencyCode,
       roundFin(input.fromAmount, 8), roundFin(input.calculatedHufAmount, 2), roundFin(input.calculatedToAmount, 8), roundFin(input.conversionRate, 10),
@@ -1698,6 +1715,7 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
       trimOrNull(input.customerMotherName), trimOrNull(input.customerDocumentType),
       trimOrNull(input.sourceOfFunds), boolToInt(input.customerIsPep),
       input.approverWorkerId ?? null,
+      input.approvalSessionId ?? null,
       boolToInt(input.customerOnOwnBehalf), trimOrNull(input.customerActorName),
       trimOrNull(input.customerPepKind),
       trimOrNull(input.customerActorBirthPlace), trimOrNull(input.customerActorBirthDate),

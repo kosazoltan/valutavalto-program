@@ -67,15 +67,16 @@ public class AmlApprovalService {
      */
     @Transactional
     public TransactionAmlApproval recordSeniorApproval(Long approverWorkerId, String approvalReason,
-            BigDecimal hufAmount, String customerName, String receiptNumber) {
+            BigDecimal hufAmount, String customerName, String receiptNumber, String approvalSessionId) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
         Worker approver = resolveSeniorApprover(approverWorkerId, companyId);
         // PIN-jelenlét bizonyítása (Codex P1): csak akkor rögzítünk jóváhagyást, ha a /verify-approver
-        // a supervisor-PIN sikeres ellenőrzésekor létrehozott egy egyszer-használatos grantot erre a
-        // (cég, pénztáros, engedélyező) hármasra. Enélkül a bare approverWorkerId-vel forgeolható lenne
-        // a jóváhagyás-audit. A grant rögzítéskor elhasználódik (a tranzakcióval együtt rollbackelhet).
-        consumeApprovalGrant(approverWorkerId, companyId);
+        // a supervisor-PIN sikeres ellenőrzésekor létrehozott egy grantot erre a (cég, pénztáros,
+        // engedélyező, approval-session) négyesre. A sessionId a konkrét nyugtához köti a grantot, így a
+        // maradék felhasználások NEM szivároghatnak másik nyugtára. Enélkül a bare approverWorkerId-vel
+        // forgeolható lenne a jóváhagyás-audit. A grant rögzítéskor elhasználódik (rollbackelhet).
+        consumeApprovalGrant(approverWorkerId, companyId, approvalSessionId);
 
         TransactionAmlApproval rec = TransactionAmlApproval.builder()
                 .companyId(companyId)
@@ -108,7 +109,7 @@ public class AmlApprovalService {
      * 7 nap múlva lejár.</p>
      */
     @Transactional
-    public void issueApprovalGrant(Long approverWorkerId) {
+    public void issueApprovalGrant(Long approverWorkerId, String sessionId) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long cashierWorkerId = SecurityUtils.getCurrentWorkerId();
         LocalDateTime now = LocalDateTime.now();
@@ -116,12 +117,13 @@ public class AmlApprovalService {
                 .companyId(companyId)
                 .cashierWorkerId(cashierWorkerId)
                 .approverWorkerId(approverWorkerId)
+                .sessionId(sessionId)
                 .createdAt(now)
                 .expiresAt(now.plusDays(GRANT_VALIDITY_DAYS))
                 .usesRemaining(GRANT_USES_PER_PIN)
                 .build());
-        log.info("[AML-APPROVAL] Grant kiállítva ({} felhasználás) — engedélyező #{}, pénztáros #{}",
-                GRANT_USES_PER_PIN, approverWorkerId, cashierWorkerId);
+        log.info("[AML-APPROVAL] Grant kiállítva ({} felhasználás, session {}) — engedélyező #{}, pénztáros #{}",
+                GRANT_USES_PER_PIN, sessionId, approverWorkerId, cashierWorkerId);
     }
 
     /**
@@ -131,10 +133,14 @@ public class AmlApprovalService {
      * sync-nél sem fogyhat 0 alá (Codex P2). Ha az elsőként választott grant közben kimerült (0-t ad), a
      * következő jelöltet próbálja.
      */
-    private void consumeApprovalGrant(Long approverWorkerId, UUID companyId) {
+    private void consumeApprovalGrant(Long approverWorkerId, UUID companyId, String approvalSessionId) {
+        if (approvalSessionId == null || approvalSessionId.isBlank()) {
+            throw new ValidationException("AML jóváhagyás PIN-ellenőrzés nélkül nem rögzíthető "
+                    + "(hiányzó jóváhagyás-session). Kérjen jóváhagyást az engedélyező supervisor-PIN-jével.");
+        }
         Long cashierWorkerId = SecurityUtils.getCurrentWorkerId();
         List<Long> candidateIds = grantRepository.findConsumableIds(
-                companyId, cashierWorkerId, approverWorkerId, LocalDateTime.now());
+                companyId, cashierWorkerId, approverWorkerId, approvalSessionId, LocalDateTime.now());
         for (Long id : candidateIds) {
             if (grantRepository.decrementIfAvailable(id) == 1) {
                 return; // atomikusan elhasználva

@@ -284,7 +284,7 @@ class TransactionServiceIdentificationTest {
                 assertThatCode(() -> transactionService.executeSell(request)).doesNotThrowAnyException();
 
                 // A jóváhagyás rögzítésre kerül az engedélyező workerId-jával, és a tranzakció elmentődik
-                verify(amlApprovalService).recordSeniorApproval(eq(99L), any(), any(), any(), any());
+                verify(amlApprovalService).recordSeniorApproval(eq(99L), any(), any(), any(), any(), any());
                 verify(transactionRepository, atLeastOnce()).save(any(Transaction.class));
         }
 
@@ -308,7 +308,7 @@ class TransactionServiceIdentificationTest {
                                 .build();
 
                 assertThatCode(() -> transactionService.executeSell(request)).doesNotThrowAnyException();
-                verify(amlApprovalService).recordSeniorApproval(eq(99L), any(), any(), any(), any());
+                verify(amlApprovalService).recordSeniorApproval(eq(99L), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -332,7 +332,7 @@ class TransactionServiceIdentificationTest {
                 assertThatThrownBy(() -> transactionService.executeSell(request))
                                 .isInstanceOf(ValidationException.class)
                                 .hasMessageContaining("jóváhagyás");
-                verify(amlApprovalService, never()).recordSeniorApproval(any(), any(), any(), any(), any());
+                verify(amlApprovalService, never()).recordSeniorApproval(any(), any(), any(), any(), any(), any());
         }
 }
 

@@ -20,7 +20,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "aml_approval_grant", indexes = {
         @Index(name = "ix_aml_approval_grant_consume",
-                columnList = "company_id,cashier_worker_id,approver_worker_id,uses_remaining")
+                columnList = "company_id,cashier_worker_id,approver_worker_id,session_id,uses_remaining")
 })
 @Getter
 @Setter
@@ -43,6 +43,14 @@ public class AmlApprovalGrant {
     /** A PIN-nel igazolt ENGEDÉLYEZŐ (supervisor/manager/admin) workerId-ja. */
     @Column(name = "approver_worker_id", nullable = false)
     private Long approverWorkerId;
+
+    /**
+     * A jóváhagyás-session (nyugta/kérés) azonosítója — a kliens generálja a modal megnyitásakor, és a
+     * nyugta MINDEN tranzakciója magával viszi. A grant csak az ezzel a sessionId-vel tagelt
+     * tranzakciókat hagyhatja jóvá → a maradék felhasználások nem szivároghatnak másik nyugtára.
+     */
+    @Column(name = "session_id", nullable = false, length = 64)
+    private String sessionId;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

@@ -163,6 +163,10 @@ export default function CashierTransactionPage() {
   // szamara ref-ben (mint az isSubmittingRef, hogy a memoizalt closure friss erteket lasson);
   // a modal nyitas-allapota es a kivalto indok state-ben.
   const approverWorkerIdRef = useRef<number | null>(null)
+  // Codex P1 (receipt-scoping): a jovahagyas-session azonosito — a modal megnyitasakor generaljuk, a
+  // grant (verify-approver) ehhez kotodik, es a tranzakcio(k) UGYANEZT viszik, igy a maradek grant-
+  // felhasznalasok NEM szivaroghatnak masik nyugtara.
+  const approvalSessionIdRef = useRef<string | null>(null)
   // Copilot review: a pre-check (aml-approval/check-required) az isSubmitting guard ELOTT fut, ezert
   // gyors dupla-submit parhuzamos pre-checket/modalt nyithatna. Ez a ref biztositja, hogy egyszerre
   // csak egy pre-check fusson, amig nincs jovahagyo.
@@ -667,6 +671,8 @@ export default function CashierTransactionPage() {
           customerNationality: cd?.nationality || undefined,
         })
         if (checkRes.data?.requiresApproval) {
+          // Uj jovahagyas-session a nyugtahoz (a grantot ehhez koti a backend).
+          approvalSessionIdRef.current = crypto.randomUUID()
           setAmlApprovalReason(typeof checkRes.data?.reason === 'string' ? checkRes.data.reason : '')
           setShowAmlApprover(true)
           return // a modal onApproved-ja beallitja az approverWorkerId-t es ujrahivja a submitet
@@ -769,6 +775,7 @@ export default function CashierTransactionPage() {
         customerActorAddress: cd.actorIdentity?.address,
         // AML felsovezetoi jovahagyas: a jovahagyo workerId a REST buy/sell request-be (spread).
         approverWorkerId: approverWorkerIdRef.current ?? undefined,
+        approvalSessionId: approvalSessionIdRef.current ?? undefined,
       } : {}
 
       if (electronQueueAvailable) {
@@ -821,6 +828,7 @@ export default function CashierTransactionPage() {
             // AML felsovezetoi jovahagyas: a jovahagyo workerId (NULL ha nem kellett). A local-first
             // kliens lokalisan perzisztalja, majd a sync a backend-body-ba teszi.
             approverWorkerId: approverWorkerIdRef.current,
+            approvalSessionId: approvalSessionIdRef.current,
           })),
         )
 
@@ -944,6 +952,7 @@ export default function CashierTransactionPage() {
       amlResultRef.current = null
       // AML jovahagyas: a kovetkezo tranzakcio friss jovahagyas-allapotrol induljon.
       approverWorkerIdRef.current = null
+      approvalSessionIdRef.current = null
       // Codex P2 + Copilot P2 #579 follow-up: a tranzakció lezárult, a backend
       // most már perzisztens cashierCustomRate-flagű sorokat számol. Lokális
       // ref-eket tisztítjuk, hogy a következő tranzakció a friss backend-quota
@@ -1492,6 +1501,7 @@ export default function CashierTransactionPage() {
         open={showAmlApprover}
         currentWorkerId={worker?.id ?? 0}
         reason={amlApprovalReason}
+        sessionId={approvalSessionIdRef.current ?? ''}
         onApproved={(workerId, name) => {
           approverWorkerIdRef.current = workerId
           setShowAmlApprover(false)

@@ -1118,6 +1118,10 @@ export class SyncEngine {
     if (tx.approver_worker_id !== null && tx.approver_worker_id !== undefined) {
       body['approverWorkerId'] = tx.approver_worker_id;
     }
+    // AML jovahagyas-session (Codex P1: receipt-scoping) — a grantot a konkret nyugtahoz koti.
+    if (tx.approval_session_id !== null && tx.approval_session_id !== undefined) {
+      body['approvalSessionId'] = tx.approval_session_id;
+    }
 
     // V226 (2026-05-14): per-line devizastatusz — DOMESTIC vagy FOREIGN.
     // Ha hianyzik (regi pending sor), a backend defaultolja a tranzakcio-szintu erteket.
@@ -1235,6 +1239,10 @@ export class SyncEngine {
     // AML vezetoi jovahagyas a konverzional is (NULL ha nem kellett).
     if (conversion.approver_worker_id !== null && conversion.approver_worker_id !== undefined) {
       body['approverWorkerId'] = conversion.approver_worker_id;
+    }
+    // AML jovahagyas-session (Codex P1: receipt-scoping).
+    if (conversion.approval_session_id !== null && conversion.approval_session_id !== undefined) {
+      body['approvalSessionId'] = conversion.approval_session_id;
     }
     if (conversion.customer_on_own_behalf !== null && conversion.customer_on_own_behalf !== undefined) {
       body['customerOnOwnBehalf'] = conversion.customer_on_own_behalf === 1;

@@ -24,6 +24,7 @@ public interface AmlApprovalGrantRepository extends JpaRepository<AmlApprovalGra
             WHERE g.companyId = :companyId
               AND g.cashierWorkerId = :cashierWorkerId
               AND g.approverWorkerId = :approverWorkerId
+              AND g.sessionId = :sessionId
               AND g.usesRemaining > 0
               AND g.expiresAt > :now
             ORDER BY g.createdAt ASC
@@ -31,6 +32,7 @@ public interface AmlApprovalGrantRepository extends JpaRepository<AmlApprovalGra
     List<Long> findConsumableIds(@Param("companyId") UUID companyId,
                                  @Param("cashierWorkerId") Long cashierWorkerId,
                                  @Param("approverWorkerId") Long approverWorkerId,
+                                 @Param("sessionId") String sessionId,
                                  @Param("now") LocalDateTime now);
 
     /**

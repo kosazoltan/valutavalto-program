@@ -493,6 +493,7 @@ describe('SyncEngine — syncAll', () => {
         source_of_funds: null,
         customer_is_pep: null,
         approver_worker_id: 42,
+        approval_session_id: 'sess-abc',
         foreign_status: null,
         local_reference_number: 'LB-APPROVE-001',
         idempotency_key: 'approve-test-key-001',
@@ -514,6 +515,8 @@ describe('SyncEngine — syncAll', () => {
     const fetchOpts = mockFetch.mock.calls[0]![1] as RequestInit;
     const body = JSON.parse(fetchOpts.body as string) as Record<string, unknown>;
     expect(body['approverWorkerId']).toBe(42);
+    // Codex P1 receipt-scoping: a jovahagyas-session is bekerul a sync-body-ba.
+    expect(body['approvalSessionId']).toBe('sess-abc');
 
     vi.unstubAllGlobals();
   });

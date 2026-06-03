@@ -160,10 +160,13 @@ public class AmlApprovalController {
         // ezert a toLong NULL-t ad ervenytelen ertekre, amit lent egysegesen 400-kent kezelunk.
         Long approverWorkerId = toLong(body.get("approverWorkerId"));
         String pin = body.get("pin") instanceof String p ? p : null;
+        // A jóváhagyás-session azonosító a konkrét nyugtához köti a grantot (Codex P1: receipt-scoping).
+        String approvalSessionId = body.get("approvalSessionId") instanceof String s ? s : null;
 
-        if (approverWorkerId == null || pin == null || pin.isBlank()) {
+        if (approverWorkerId == null || pin == null || pin.isBlank()
+                || approvalSessionId == null || approvalSessionId.isBlank()) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("ok", false, "error", "approverWorkerId + pin kötelező"));
+                    .body(Map.of("ok", false, "error", "approverWorkerId + pin + approvalSessionId kötelező"));
         }
 
         // 1) 4-szem-elv: az engedélyező nem lehet a rögzítő pénztáros.
@@ -199,8 +202,9 @@ public class AmlApprovalController {
         // ellenőrzés ténylegesen megtörtént. A bare approverWorkerId önmagában nem elég a rögzítéshez — a
         // recordSeniorApproval atomikusan elhasználja a grant egy felhasználását. A felhasználási kapu
         // SERVER-FIX (nem a klienstől), így egy PIN nem amplifikálódhat tetszőleges számú jóváhagyássá;
-        // a kapu lefedi a multi-line nyugta soronkénti tranzakcióit.
-        amlApprovalService.issueApprovalGrant(approverWorkerId);
+        // a kapu lefedi a multi-line nyugta soronkénti tranzakcióit. A grant a beküldött approvalSessionId-hez
+        // kötött, így a maradék felhasználások csak EHHEZ a nyugtához használhatók (receipt-scoping).
+        amlApprovalService.issueApprovalGrant(approverWorkerId, approvalSessionId);
 
         String approverName = workerRepository.findById(approverWorkerId)
                 .map(Worker::getName)

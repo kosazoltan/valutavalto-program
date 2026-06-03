@@ -42,14 +42,14 @@ class AmlApprovalControllerTest {
             when(workerRepository.findById(APPROVER_ID)).thenReturn(Optional.of(approver));
 
             ResponseEntity<Map<String, Object>> resp = controller.verifyApprover(
-                    Map.of("approverWorkerId", 20, "pin", "1234"), request);
+                    Map.of("approverWorkerId", 20, "pin", "1234", "approvalSessionId", "sess-1"), request);
 
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(resp.getBody()).containsEntry("ok", true)
                     .containsEntry("approverWorkerId", APPROVER_ID)
                     .containsEntry("approverName", "Teszt Supervisor");
-            // Codex P1: PIN OK → grant kiállítása (a rögzítéskor egy felhasználása fogy el).
-            verify(amlApprovalService).issueApprovalGrant(APPROVER_ID);
+            // Codex P1: PIN OK → grant kiállítása a beküldött approval-session-höz kötve (receipt-scoping).
+            verify(amlApprovalService).issueApprovalGrant(eq(APPROVER_ID), eq("sess-1"));
         }
     }
 
@@ -60,7 +60,7 @@ class AmlApprovalControllerTest {
 
             // approver == a bejelentkezett pénztáros → 4-szem-elv sért
             ResponseEntity<Map<String, Object>> resp = controller.verifyApprover(
-                    Map.of("approverWorkerId", 10, "pin", "1234"), request);
+                    Map.of("approverWorkerId", 10, "pin", "1234", "approvalSessionId", "sess-1"), request);
 
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(resp.getBody()).containsEntry("ok", false);
@@ -75,7 +75,7 @@ class AmlApprovalControllerTest {
             when(amlApprovalService.isValidSeniorApprover(APPROVER_ID)).thenReturn(false);
 
             ResponseEntity<Map<String, Object>> resp = controller.verifyApprover(
-                    Map.of("approverWorkerId", 20, "pin", "1234"), request);
+                    Map.of("approverWorkerId", 20, "pin", "1234", "approvalSessionId", "sess-1"), request);
 
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(resp.getBody()).containsEntry("ok", false);
@@ -91,7 +91,7 @@ class AmlApprovalControllerTest {
             when(supervisorPinService.verifyPin(eq(APPROVER_ID), eq("0000"), any(), any())).thenReturn(false);
 
             ResponseEntity<Map<String, Object>> resp = controller.verifyApprover(
-                    Map.of("approverWorkerId", 20, "pin", "0000"), request);
+                    Map.of("approverWorkerId", 20, "pin", "0000", "approvalSessionId", "sess-1"), request);
 
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
             assertThat(resp.getBody()).containsEntry("ok", false);

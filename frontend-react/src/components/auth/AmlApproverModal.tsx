@@ -27,6 +27,12 @@ interface Props {
   currentWorkerId: number
   /** A jóváhagyást kiváltó AML-indok (megjelenítéshez). */
   reason?: string
+  /**
+   * A jóváhagyás-session azonosítója (a hívó oldal generálja, és UGYANEZT teszi a tranzakcióba) —
+   * a backend a grantot ehhez köti, így a maradék felhasználások csak EHHEZ a nyugtához érvényesek
+   * (Codex P1: receipt-scoping).
+   */
+  sessionId: string
   /** Sikeres jóváhagyás után — a validált engedélyező adataival. */
   onApproved: (approverWorkerId: number, approverName: string) => void
   onCancel: () => void
@@ -41,7 +47,7 @@ function approverLabel(a: EligibleApprover): string {
   return composed || `#${a.id}`
 }
 
-export default function AmlApproverModal({ open, currentWorkerId, reason, onApproved, onCancel }: Props) {
+export default function AmlApproverModal({ open, currentWorkerId, reason, sessionId, onApproved, onCancel }: Props) {
   const [approvers, setApprovers] = useState<EligibleApprover[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pin, setPin] = useState('')
@@ -86,6 +92,7 @@ export default function AmlApproverModal({ open, currentWorkerId, reason, onAppr
       const res = await api.post('/aml-approval/verify-approver', {
         approverWorkerId: selectedId,
         pin,
+        approvalSessionId: sessionId,
       })
       if (res.data?.ok) {
         onApproved(Number(res.data.approverWorkerId), String(res.data.approverName ?? ''))

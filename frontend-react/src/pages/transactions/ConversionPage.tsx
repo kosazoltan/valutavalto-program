@@ -93,6 +93,8 @@ export default function ConversionPage() {
   // AML felsovezetoi jovahagyas (2026-06-04) — a buy/sell flow-val azonos minta (ref a re-invoke-hoz).
   const worker = useAuthStore((s) => s.worker)
   const approverWorkerIdRef = useRef<number | null>(null)
+  // Codex P1 (receipt-scoping): a jovahagyas-session azonosito (a grant ehhez kotodik).
+  const approvalSessionIdRef = useRef<string | null>(null)
   const amlPrecheckInFlightRef = useRef(false)
   const [showAmlApprover, setShowAmlApprover] = useState(false)
   const [amlApprovalReason, setAmlApprovalReason] = useState('')
@@ -335,6 +337,7 @@ export default function ConversionPage() {
             customerNationality: cd?.nationality || undefined,
           })
           if (checkRes.data?.requiresApproval) {
+            approvalSessionIdRef.current = crypto.randomUUID()
             setAmlApprovalReason(typeof checkRes.data?.reason === 'string' ? checkRes.data.reason : '')
             setShowAmlApprover(true)
             return // a modal onApproved-ja beallitja az approverWorkerId-t es ujrahivja a submitet
@@ -390,6 +393,7 @@ export default function ConversionPage() {
           customerActorAddress: actorIdentity?.address ?? null,
           // AML felsovezetoi jovahagyas: a jovahagyo workerId (NULL ha nem kellett).
           approverWorkerId: approverWorkerIdRef.current,
+          approvalSessionId: approvalSessionIdRef.current,
         })
 
         const changeMsg = returnedHuf > 0 ? ` Visszajáró: ${returnedHuf.toLocaleString('hu-HU')} Ft.` : ''
@@ -436,6 +440,7 @@ export default function ConversionPage() {
           customerActorAddress: cd.actorIdentity?.address,
           // AML felsovezetoi jovahagyas: a jovahagyo workerId a REST conversion request-be.
           approverWorkerId: approverWorkerIdRef.current ?? undefined,
+          approvalSessionId: approvalSessionIdRef.current ?? undefined,
         } : baseRequest
 
         const result = await transactionApi.conversion(request)
@@ -445,6 +450,7 @@ export default function ConversionPage() {
 
       // AML jovahagyas: a kovetkezo konverzio friss jovahagyas-allapotrol induljon.
       approverWorkerIdRef.current = null
+      approvalSessionIdRef.current = null
 
       // Reset after 2 seconds
       setTimeout(() => {
@@ -877,6 +883,7 @@ export default function ConversionPage() {
         open={showAmlApprover}
         currentWorkerId={worker?.id ?? 0}
         reason={amlApprovalReason}
+        sessionId={approvalSessionIdRef.current ?? ''}
         onApproved={(workerId, name) => {
           approverWorkerIdRef.current = workerId
           setShowAmlApprover(false)

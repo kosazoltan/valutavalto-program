@@ -195,6 +195,8 @@ export interface Transaction {
 export interface BuyRequest {
   /** AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, ha a tranzakcio felsovezetoi jovahagyast igenyelt. */
   approverWorkerId?: number
+  /** AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1: receipt-scoping). */
+  approvalSessionId?: string
   currencyId?: number
   currencyCode?: string
   currencyAmount: number
@@ -241,6 +243,8 @@ export interface BuyRequest {
 export interface SellRequest {
   /** AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, ha a tranzakcio felsovezetoi jovahagyast igenyelt. */
   approverWorkerId?: number
+  /** AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1: receipt-scoping). */
+  approvalSessionId?: string
   currencyId?: number
   currencyCode?: string
   currencyAmount: number
@@ -300,6 +304,8 @@ export interface ReversalRequest {
 export interface ConversionRequest {
   /** AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, ha a tranzakcio felsovezetoi jovahagyast igenyelt. */
   approverWorkerId?: number
+  /** AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1: receipt-scoping). */
+  approvalSessionId?: string
   fromCurrencyId?: number
   fromCurrencyCode?: string
   toCurrencyId?: number

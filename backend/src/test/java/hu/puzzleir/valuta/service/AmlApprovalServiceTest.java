@@ -78,11 +78,11 @@ class AmlApprovalServiceTest {
                 worker(99L, "Kósa Zoltán", WorkerRole.MANAGER, companyId)));
         when(approvalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         // Codex P1: van felhasználható grant (a PIN-ellenorzes letrehozta) → atomikus decrement sikeres.
-        when(grantRepository.findConsumableIds(any(), any(), any(), any())).thenReturn(List.of(1L));
+        when(grantRepository.findConsumableIds(any(), any(), any(), any(), any())).thenReturn(List.of(1L));
         when(grantRepository.decrementIfAvailable(1L)).thenReturn(1);
 
         TransactionAmlApproval rec = service.recordSeniorApproval(99L,
-                "FATF 1/a (ellenintézkedés)", new BigDecimal("6000000"), "Teszt Ügyfél", "V00001");
+                "FATF 1/a (ellenintézkedés)", new BigDecimal("6000000"), "Teszt Ügyfél", "V00001", "session-1");
 
         assertThat(rec.getApprovedByName()).isEqualTo("Kósa Zoltán");
         assertThat(rec.getApprovedByWorkerId()).isEqualTo(99L);
@@ -99,9 +99,9 @@ class AmlApprovalServiceTest {
         when(workerRepository.findById(99L)).thenReturn(Optional.of(
                 worker(99L, "Kósa Zoltán", WorkerRole.MANAGER, companyId)));
         // Nincs felhasználható grant → a PIN-ellenorzes nem tortent meg → tilos rogziteni.
-        when(grantRepository.findConsumableIds(any(), any(), any(), any())).thenReturn(List.of());
+        when(grantRepository.findConsumableIds(any(), any(), any(), any(), any())).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.recordSeniorApproval(99L, "AML", BigDecimal.TEN, "X", null))
+        assertThatThrownBy(() -> service.recordSeniorApproval(99L, "AML", BigDecimal.TEN, "X", null, "session-1"))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("PIN-ellenőrzés nélkül");
         verify(approvalRepository, never()).save(any());
@@ -113,7 +113,7 @@ class AmlApprovalServiceTest {
         when(workerRepository.findById(50L)).thenReturn(Optional.of(
                 worker(50L, "Pénztáros Béla", WorkerRole.CASHIER, companyId)));
 
-        assertThatThrownBy(() -> service.recordSeniorApproval(50L, "AML", BigDecimal.TEN, "X", null))
+        assertThatThrownBy(() -> service.recordSeniorApproval(50L, "AML", BigDecimal.TEN, "X", null, "session-1"))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("nem jogosult");
         verify(approvalRepository, never()).save(any());
@@ -125,7 +125,7 @@ class AmlApprovalServiceTest {
         when(workerRepository.findById(77L)).thenReturn(Optional.of(
                 worker(77L, "Más Cég Vezető", WorkerRole.MANAGER, UUID.randomUUID())));
 
-        assertThatThrownBy(() -> service.recordSeniorApproval(77L, "AML", BigDecimal.TEN, "X", null))
+        assertThatThrownBy(() -> service.recordSeniorApproval(77L, "AML", BigDecimal.TEN, "X", null, "session-1"))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("nem ehhez a céghez");
         verify(approvalRepository, never()).save(any());
@@ -135,7 +135,7 @@ class AmlApprovalServiceTest {
     @DisplayName("self-approval (engedélyező = a bejelentkezett pénztáros) → elutasít (4-szem-elv)")
     void recordSeniorApproval_selfApproval_rejected() {
         // setUp: a bejelentkezett worker id-ja 1L → 1L engedélyező = self-approval.
-        assertThatThrownBy(() -> service.recordSeniorApproval(1L, "AML", BigDecimal.TEN, "X", null))
+        assertThatThrownBy(() -> service.recordSeniorApproval(1L, "AML", BigDecimal.TEN, "X", null, "session-1"))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("4-szem-elv");
         verify(approvalRepository, never()).save(any());
@@ -144,7 +144,7 @@ class AmlApprovalServiceTest {
     @Test
     @DisplayName("hiányzó engedélyező (null) → elutasít")
     void recordSeniorApproval_nullApprover_rejected() {
-        assertThatThrownBy(() -> service.recordSeniorApproval(null, "AML", BigDecimal.TEN, "X", null))
+        assertThatThrownBy(() -> service.recordSeniorApproval(null, "AML", BigDecimal.TEN, "X", null, "session-1"))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("nincs megadva");
     }
@@ -152,13 +152,14 @@ class AmlApprovalServiceTest {
     @Test
     @DisplayName("issueApprovalGrant: EGY grant, SERVER-FIX uses-kapuval (6) — a count nem a klienstől jön")
     void issueApprovalGrant_savesOneGrantWithServerFixedUses() {
-        service.issueApprovalGrant(99L);
+        service.issueApprovalGrant(99L, "session-xyz");
 
         ArgumentCaptor<AmlApprovalGrant> captor = ArgumentCaptor.forClass(AmlApprovalGrant.class);
         verify(grantRepository, times(1)).save(captor.capture());
         AmlApprovalGrant saved = captor.getValue();
         assertThat(saved.getApproverWorkerId()).isEqualTo(99L);
         assertThat(saved.getCompanyId()).isEqualTo(companyId);
+        assertThat(saved.getSessionId()).isEqualTo("session-xyz"); // receipt-scoping (Codex P1)
         assertThat(saved.getUsesRemaining()).isEqualTo(6); // GRANT_USES_PER_PIN — multi-line nyugta fedése
     }
 

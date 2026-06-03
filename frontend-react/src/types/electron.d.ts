@@ -125,6 +125,8 @@ export interface ElectronAPI {
     customerActorAddress: string | null
     // AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, NULL ha nem kellett.
     approverWorkerId?: number | null
+    // AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1).
+    approvalSessionId?: string | null
   }) => Promise<number>;
   savePendingConversion(
     fromCurrencyId: number | null,
@@ -179,6 +181,8 @@ export interface ElectronAPI {
     note: string | null
     // AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, NULL ha nem kellett.
     approverWorkerId?: number | null
+    // AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1).
+    approvalSessionId?: string | null
   }) => Promise<number>;
   savePendingBankTransaction(
     transactionType: 'BUY' | 'SELL',

@@ -18,12 +18,17 @@ CREATE TABLE IF NOT EXISTS aml_approval_grant (
     company_id          UUID      NOT NULL,
     cashier_worker_id   BIGINT    NOT NULL,
     approver_worker_id  BIGINT    NOT NULL,
+    -- A jovahagyas-session (nyugta/keres) azonosito, amit a kliens a modal megnyitasakor general, es
+    -- amit a nyugta MINDEN tranzakcioja magaval visz. A grant CSAK az ezzel a session_id-vel tagelt
+    -- tranzakciokat hagyhatja jova -> a maradek felhasznalasok NEM szivaroghatnak masik nyugtara
+    -- (Codex P1: receipt-scoping).
+    session_id          VARCHAR(64) NOT NULL,
     created_at          TIMESTAMP NOT NULL DEFAULT now(),
     expires_at          TIMESTAMP NOT NULL,
     -- Hatralevo felhasznalasok szama (server-fix kapu egy PIN-ellenorzesbol; 0 = kimerult).
     uses_remaining      INTEGER   NOT NULL DEFAULT 1
 );
 
--- A consume-lookup gyorsitasa: (company, penztaros, engedelyezo) + meg felhasznalhato grantok.
+-- A consume-lookup gyorsitasa: (company, penztaros, engedelyezo, session) + meg felhasznalhato grantok.
 CREATE INDEX IF NOT EXISTS ix_aml_approval_grant_consume
-    ON aml_approval_grant (company_id, cashier_worker_id, approver_worker_id, uses_remaining);
+    ON aml_approval_grant (company_id, cashier_worker_id, approver_worker_id, session_id, uses_remaining);

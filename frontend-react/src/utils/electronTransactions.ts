@@ -69,6 +69,8 @@ export interface PendingBuySellInput {
    * ha nem kellett. A backend (approverWorkerId=null) backward-compat → opcionalis, additiv.
    */
   approverWorkerId?: number | null
+  /** AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1: receipt-scoping). */
+  approvalSessionId?: string | null
 }
 
 export interface PendingConversionInput {
@@ -109,6 +111,8 @@ export interface PendingConversionInput {
   foreignStatus?: string | null
   /** AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, ha a konverzio felsovezetoi jovahagyast igenyelt. */
   approverWorkerId?: number | null
+  /** AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1: receipt-scoping). */
+  approvalSessionId?: string | null
 }
 
 export interface PendingTransferInput {
@@ -365,6 +369,7 @@ export async function saveAndSyncPendingBuySell(
           customerActorDocumentNumber: normalizeOptionalText(entry.customerActorDocumentNumber),
           customerActorAddress: normalizeOptionalText(entry.customerActorAddress),
           approverWorkerId: entry.approverWorkerId ?? null,
+          approvalSessionId: entry.approvalSessionId ?? null,
         })
       } else {
         // Legacy pozicionalis API — csak az alapmezok mennek at.
