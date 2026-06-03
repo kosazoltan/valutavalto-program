@@ -125,6 +125,43 @@ export default function RateGrid({
     return () => window.removeEventListener('keydown', onKey)
   }, [clearSelection])
 
+  // FR-HL-07 (hibalista): a kijelölt CELLATARTOMÁNY vágólapra másolása TSV-ként (tab-elválasztott
+  // oszlop, sor-törés), így Excelbe/másik csoportba illeszthető. Egycellás kijelölésnél a natív
+  // input-másolás marad (a böngésző Ctrl+C-je a fókuszált cella szövegét másolja).
+  const copySelectedRange = useCallback(async (): Promise<boolean> => {
+    const b = selBounds()
+    if (!b) return false
+    const lines: string[] = []
+    for (let row = b.r0; row <= b.r1; row++) {
+      const cells: string[] = []
+      for (let col = b.c0; col <= b.c1; col++) {
+        const field = EDITABLE_FIELDS[col]
+        cells.push(field ? String(rates[row]?.[field] ?? '') : '')
+      }
+      lines.push(cells.join('\t'))
+    }
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'))
+      return true
+    } catch {
+      return false
+    }
+  }, [selBounds, rates])
+
+  useEffect(() => {
+    const onCopy = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || (e.key !== 'c' && e.key !== 'C')) return
+      const b = selBounds()
+      // Csak TÖBB cellás tartománynál vesszük át; egycellásnál a natív input-másolás működik.
+      if (b && (b.r0 !== b.r1 || b.c0 !== b.c1)) {
+        e.preventDefault()
+        void copySelectedRange()
+      }
+    }
+    window.addEventListener('keydown', onCopy)
+    return () => window.removeEventListener('keydown', onCopy)
+  }, [selBounds, copySelectedRange])
+
   const showToolbarIfMulti = useCallback((start: GridCoord, end: GridCoord, clientX: number, clientY: number) => {
     const multi = start.row !== end.row || start.col !== end.col
     if (multi && canEdit) setToolbarPos({ top: clientY + 10, left: clientX + 10 })

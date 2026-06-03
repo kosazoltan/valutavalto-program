@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AxiosError } from 'axios'
-import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock, Undo2, Redo2, Home, ArrowLeft, ShieldCheck, Shield, Pencil, Trash2 } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock, Undo2, Redo2, Home, ArrowLeft, ShieldCheck, Shield, Pencil, Trash2, CheckCircle2 } from 'lucide-react'
 import {
   rateCreationApi,
   rateWorkgroupApi,
@@ -1137,6 +1137,26 @@ export default function RateCreationPage() {
               </button>
             )}
           </div>
+
+          {/* FR-HL-10 (hibalista): dedikált ELLENŐRZÉS gomb — a háromlépcsős flow (Ellenőrzés →
+              Mentés/auto-perzisztálás → Szétküldés) explicit szétválasztása. Az ellenőrzés a már
+              reaktívan számolt validationErrors-t (FR-HL-09 Ellenőrzés-oszlop) összegzi, mentés/kiküldés
+              NÉLKÜL — így a felhasználó kiküldés előtt külön lépésben ellenőrizhet. */}
+          <button
+            onClick={() => {
+              const errorCount = Object.values(validationErrors).filter(e => e && e.length > 0).length
+              if (errorCount === 0) {
+                toast.success('Ellenőrzés', 'Minden árfolyam rendben — szétküldhető.')
+              } else {
+                toast.warning('Ellenőrzés', `${errorCount} valutánál eltérés/hiba (lásd az „Ellenőrzés” oszlopot).`)
+              }
+            }}
+            disabled={!selectedWg}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-3 rounded shadow flex items-center justify-center gap-2 transition-colors flex-shrink-0"
+          >
+            <CheckCircle2 size={16} />
+            <span className="text-xs">Ellenőrzés</span>
+          </button>
 
           {/* Publish button - always visible */}
           <button
