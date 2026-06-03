@@ -11,6 +11,7 @@ interface Circular {
   content: string
   createdByName?: string
   urgent?: boolean
+  requiresAcknowledgment?: boolean
   acknowledged?: boolean
   createdAt?: string
   circularType?: string
@@ -72,6 +73,7 @@ const emptyForm = {
   category: 'GENERAL',
   content: '',
   urgent: false,
+  requiresAcknowledgment: false,
 }
 
 function documentNumber(circular: Circular): string {
@@ -163,6 +165,7 @@ export default function CircularPage() {
         title: formData.title,
         content: formData.content,
         urgent: formData.urgent,
+        requiresAcknowledgment: formData.requiresAcknowledgment,
         circularType: formData.circularType,
         target: 'ALL_BRANCHES',
         priority: formData.urgent ? 'URGENT' : 'NORMAL',
@@ -321,6 +324,13 @@ export default function CircularPage() {
                 <label className="flex h-[38px] items-center gap-2 rounded border px-3 text-sm">
                   <input type="checkbox" checked={formData.urgent} onChange={(e) => setFormData({ ...formData, urgent: e.target.checked })} />
                   Azonnali nyugtázás
+                </label>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-600">Kötelező nyugtázás</label>
+                <label className="flex h-[38px] items-center gap-2 rounded border px-3 text-sm">
+                  <input type="checkbox" checked={formData.requiresAcknowledgment} onChange={(e) => setFormData({ ...formData, requiresAcknowledgment: e.target.checked })} />
+                  Tranzakció-blokkoló
                 </label>
               </div>
               <div className="col-span-2">

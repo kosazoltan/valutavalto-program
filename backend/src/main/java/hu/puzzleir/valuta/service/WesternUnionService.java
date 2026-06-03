@@ -50,6 +50,9 @@ public class WesternUnionService {
     private final CompanyRepository companyRepository;
     private final AmlService amlService;
     private final WuDailyLimitRepository wuDailyLimitRepository;
+    // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate a WU úton (flag-gated, default OFF).
+    private final SystemParameterService systemParameterService;
+    private final hu.puzzleir.valuta.repository.CircularRepository circularRepository;
 
     private static final String WU_LIMIT_CURRENCY = "USD";
     private static final BigDecimal DEFAULT_WU_DAILY_LIMIT_USD = new BigDecimal("10000.00");
@@ -83,6 +86,26 @@ public class WesternUnionService {
      */
     private void performAmlCheck(String customerName, String documentNumber,
                                  BigDecimal amountHuf, BigDecimal amountUsd, BigDecimal exchangeRate) {
+        // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate a WU send/receive úton is.
+        // Feature-flag mögött (CIRCULAR_ACK_BLOCKING_ENFORCEMENT, default false); a circularRepository
+        // CSAK enforce=true ágon dereferálódik (systemParameterService != null guard → tesztek nem törnek).
+        boolean circularEnforce = systemParameterService != null && circularRepository != null
+                && "true".equalsIgnoreCase(systemParameterService.getValue(
+                        TransactionService.CIRCULAR_ACK_BLOCKING_PARAM,
+                        TransactionService.CIRCULAR_ACK_BLOCKING_DEFAULT));
+        if (circularEnforce) {
+            java.util.UUID companyId = SecurityUtils.getCurrentCompanyId();
+            Long workerId = SecurityUtils.getCurrentWorkerId();
+            java.util.UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
+            String circularBlock = TransactionService.circularAckBlockReason(
+                    circularRepository.findUnacknowledgedMandatoryForWorker(companyId, workerId, branchId,
+                            hu.puzzleir.valuta.util.LegacyCompanyIdentityCodec.toLegacyInt(companyId)),
+                    true);
+            if (circularBlock != null) {
+                throw new ValidationException(circularBlock);
+            }
+        }
+
         BigDecimal hufForCheck = amountHuf;
         if ((hufForCheck == null || hufForCheck.compareTo(BigDecimal.ZERO) == 0)
                 && amountUsd != null && exchangeRate != null

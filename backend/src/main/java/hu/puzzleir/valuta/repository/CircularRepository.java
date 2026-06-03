@@ -62,6 +62,22 @@ public interface CircularRepository extends JpaRepository<Circular, Long> {
             @Param("branchId") UUID branchId,
             @Param("companyIdInt") Integer companyIdInt);
 
+    /**
+     * A4 (b9-korlevelek FR-02): a pénztáros olvasatlan, KÖTELEZŐ-nyugtázandó
+     * (requires_acknowledgment=true) körlevelei — a tranzakció-blokkoló gate forrása.
+     */
+    @Query("SELECT c FROM Circular c WHERE c.companyId = :companyId AND c.archived = false " +
+           "AND c.requiresAcknowledgment = true " +
+           "AND c.id NOT IN (SELECT ca.circular.id FROM CircularAcknowledgment ca WHERE ca.workerId = :workerId) " +
+           "AND (c.target = 'ALL_BRANCHES' OR c.targetBranchId = :branchId " +
+           "OR (c.target = 'COMPANY_SPECIFIC' AND c.targetCompanyId = :companyIdInt)) " +
+           "ORDER BY c.priority DESC, c.urgent DESC, c.createdAt DESC")
+    List<Circular> findUnacknowledgedMandatoryForWorker(
+            @Param("companyId") UUID companyId,
+            @Param("workerId") Long workerId,
+            @Param("branchId") UUID branchId,
+            @Param("companyIdInt") Integer companyIdInt);
+
     @Query("SELECT c FROM Circular c WHERE c.companyId = :companyId AND c.archiveYear = :year ORDER BY c.createdAt DESC")
     List<Circular> findByArchiveYear(@Param("companyId") UUID companyId, @Param("year") Integer year);
 

@@ -81,6 +81,8 @@ public class TransactionService {
     private final PmtComplianceValidator pmtComplianceValidator;
     private final LicenseService licenseService;
     private final SystemParameterService systemParameterService;
+    /** A4: kötelező körlevél-nyugtázás gate (flag-gated, default OFF → @InjectMocks tesztekben nem hívódik). */
+    private final hu.puzzleir.valuta.repository.CircularRepository circularRepository;
     private final TransactionValidationService transactionValidationService;
 
     // Sztornó limit supervisor nélkül (3 db/nap)
@@ -104,6 +106,11 @@ public class TransactionService {
     static final String AML_HIGH_VALUE_APPROVAL_PARAM = "AML_HIGH_VALUE_APPROVAL_ENFORCEMENT";
     /** G11: a feature-flag alapértéke (false = WARN-only, kompatibilis a meglévő kliensekkel). */
     static final String AML_HIGH_VALUE_APPROVAL_DEFAULT = "false";
+
+    /** A4 (b9-korlevelek FR-02): a kötelező körlevél-nyugtázás tranzakció-blokkoló enforcement flag-je. */
+    static final String CIRCULAR_ACK_BLOCKING_PARAM = "CIRCULAR_ACK_BLOCKING_ENFORCEMENT";
+    /** A4: alapérték false (NEM blokkol) — production-biztos; a business kapcsolja élesre. */
+    static final String CIRCULAR_ACK_BLOCKING_DEFAULT = "false";
 
     // Max tetelsorok szama bizonylaton (Legacy: BLOKKTETEL limit)
     private static final int MAX_TRANSACTION_LINES = 6;
@@ -765,6 +772,27 @@ public class TransactionService {
      */
     private AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
                                  String customerName, String documentNumber, String currencyCode) {
+        // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate. Feature-flag mögött
+        // (CIRCULAR_ACK_BLOCKING_ENFORCEMENT, default false → nem blokkol → a meglévő kliensek és a
+        // @InjectMocks tesztek nem törnek meg). Bekapcsolva: ha a pénztárosnak van olvasatlan,
+        // KÖTELEZŐ-nyugtázandó (requires_acknowledgment=true) körlevele, a tranzakció elutasul, amíg
+        // nem nyugtázza (CircularPage). A circularRepository CSAK enforce=true ágon dereferálódik.
+        boolean circularEnforce = systemParameterService != null && circularRepository != null
+                && "true".equalsIgnoreCase(
+                        systemParameterService.getValue(CIRCULAR_ACK_BLOCKING_PARAM, CIRCULAR_ACK_BLOCKING_DEFAULT));
+        if (circularEnforce) {
+            java.util.UUID companyId = SecurityUtils.getCurrentCompanyId();
+            Long workerId = SecurityUtils.getCurrentWorkerId();
+            java.util.UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
+            String circularBlock = circularAckBlockReason(
+                    circularRepository.findUnacknowledgedMandatoryForWorker(companyId, workerId, branchId,
+                            hu.puzzleir.valuta.util.LegacyCompanyIdentityCodec.toLegacyInt(companyId)),
+                    true);
+            if (circularBlock != null) {
+                throw new ValidationException(circularBlock);
+            }
+        }
+
         AmlService.AmlBasicCheckResult basicResult = amlService.checkTransaction(
                 hufAmount, customerId, customerName, documentNumber, currencyCode);
 
@@ -839,6 +867,33 @@ public class TransactionService {
      * @return a blokkoló indok szövege, ha (jóváhagyás-köteles ÉS enforce bekapcsolva);
      *         {@code null}, ha nincs blokk (a hívó WARN-only naplózást végez)
      */
+    /**
+     * A4 (b9-korlevelek FR-02): eldönti, hogy a kötelező körlevél-nyugtázás hiánya blokkolja-e a
+     * tranzakciót. Csomag-privát, statikus a tesztelhetőségért (a hívó a feature-flag állapotát és a
+     * lekérdezett olvasatlan-kötelező listát adja át).
+     *
+     * @param unacknowledgedMandatory a pénztáros olvasatlan, requires_acknowledgment=true körlevelei
+     * @param enforcementEnabled a CIRCULAR_ACK_BLOCKING_ENFORCEMENT flag aktuális értéke
+     * @return a blokkoló indok, ha (enforce ÉS van olvasatlan kötelező); különben {@code null}
+     */
+    static String circularAckBlockReason(
+            java.util.List<hu.puzzleir.valuta.entity.Circular> unacknowledgedMandatory,
+            boolean enforcementEnabled) {
+        if (!enforcementEnabled) {
+            return null;
+        }
+        if (unacknowledgedMandatory == null || unacknowledgedMandatory.isEmpty()) {
+            return null;
+        }
+        String titles = unacknowledgedMandatory.stream()
+                .map(hu.puzzleir.valuta.entity.Circular::getTitle)
+                .filter(t -> t != null && !t.isBlank())
+                .limit(5)
+                .collect(java.util.stream.Collectors.joining("; "));
+        return "Olvasatlan kötelező körlevél — a tranzakció előtt nyugtázni kell a Körlevelek menüben"
+                + (titles.isBlank() ? "" : (": " + titles));
+    }
+
     static String highValueApprovalBlockReason(
             hu.puzzleir.valuta.dto.aml.AmlCheckResult thresholdResult, boolean enforcementEnabled) {
         if (thresholdResult == null || !thresholdResult.isRequiresManagerApproval()) {

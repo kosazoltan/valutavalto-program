@@ -114,6 +114,9 @@ public class CircularController {
         dto.setTitle(request.title());
         dto.setContent(request.content());
         dto.setUrgent(request.urgent());
+        // A4 (b9-korlevelek FR-02): a tranzakció-blokkoló (kötelező nyugtázás) flag átvezetése,
+        // különben a /circulars/typed úton mindig false-ra mentődne (codex P2).
+        dto.setRequiresAcknowledgment(request.requiresAcknowledgment());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(circularService.createTyped(
@@ -230,6 +233,7 @@ public class CircularController {
         String title,
         String content,
         Boolean urgent,
+        Boolean requiresAcknowledgment,
         CircularType circularType,
         CircularType.CircularTarget target,
         CircularType.CircularPriority priority,

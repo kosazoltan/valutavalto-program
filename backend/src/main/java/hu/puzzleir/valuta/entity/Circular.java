@@ -140,6 +140,14 @@ public class Circular {
     private Boolean acknowledged = false;
 
     /**
+     * A4 (b9-korlevelek FR-02): kötelező nyugtázás — ha true, a pénztáros NEM tranzaktálhat, amíg
+     * nem nyugtázza (a CIRCULAR_ACK_BLOCKING_ENFORCEMENT flag bekapcsolt állapotában). Default false.
+     */
+    @Column(name = "requires_acknowledgment", nullable = false)
+    @Builder.Default
+    private Boolean requiresAcknowledgment = false;
+
+    /**
      * Tudomásul vétel időpontja
      */
     @Column(name = "acknowledged_at")
