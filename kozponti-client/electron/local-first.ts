@@ -390,4 +390,44 @@ export function registerLocalFirstIpcHandlers(): void {
   ipcMain.handle('lf:get-branch-balances', () => {
     return cachedEntities.listCached(getDb(), 'branch_balance');
   });
+
+  // --- Group rates (FK02-B: árfolyamkészítő rate-maker mód offline csoport-ráta perzisztencia) ---
+  // A Kozponti-Munkaallomas rate-maker módja ugyanazt a frontend-react RateCreationPage-et futtatja,
+  // mint a standalone arfolyam-keszito-client; ezért a csoport-ráta értékek TARTÓS offline tárolásához
+  // (FR-11/FR-12) itt is regisztrálni kell a group_rate_values IPC-t (különben no-op localStorage marad).
+  ipcMain.handle('lf:save-group-rate-values', (_event, payload: {
+    groupId: string;
+    values: Record<string, string>;
+  }) => {
+    try {
+      const db = getDb();
+      const { groupId, values } = payload ?? { groupId: '', values: {} };
+      if (typeof groupId !== 'string' || !groupId
+          || typeof values !== 'object' || values === null || Array.isArray(values)) {
+        return { ok: false, error: 'invalid payload' };
+      }
+      if (Object.keys(values).length === 0) {
+        cachedEntities.softDeleteCached(db, 'group_rate_values', groupId);
+      } else {
+        cachedEntities.upsertCached(db, 'group_rate_values', groupId, values, 1);
+      }
+      saveDatabase();
+      return { ok: true };
+    } catch (error) {
+      log.error('[LocalFirst] Hiba a csoport-árfolyam értékek SQLite mentésekor:', error);
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle('lf:get-group-rate-values', (_event, groupId: string) => {
+    try {
+      if (typeof groupId !== 'string' || !groupId) return {};
+      const entity = cachedEntities.getCached<Record<string, string>>(getDb(), 'group_rate_values', groupId);
+      return entity && entity.data && typeof entity.data === 'object' && !Array.isArray(entity.data)
+        ? entity.data : {};
+    } catch (error) {
+      log.error('[LocalFirst] Hiba a csoport-árfolyam értékek SQLite lekérésekor:', error);
+      return {};
+    }
+  });
 }
