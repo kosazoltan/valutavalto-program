@@ -1,14 +1,17 @@
--- AML felsovezetoi jovahagyas — egyszer-hasznalatos engedely ("grant").
+-- AML felsovezetoi jovahagyas — engedely ("grant") a PIN-jelenlet bizonyitasara.
 --
 -- Codex P1 (2026-06-04): a /aml-approval/verify-approver eddig csak az approverWorkerId-t adta vissza,
 -- es a tranzakcio-rogzites (recordSeniorApproval) ezt PIN-bizonyitek nelkul elfogadta. Egy authentikalt
 -- penztaros igy a modal/PIN megkerulesevel barmely supervisor id-jat beadhatta volna -> hamis jovahagyas-
 -- audit a supervisor jelenlete nelkul.
 --
--- Megoldas: a PIN sikeres ellenorzesekor a szerver letrehoz egy egyszer-hasznalatos grant-rekordot
--- (company + penztaros + engedelyezo + lejarat). A tranzakcio-rogzites CSAK akkor rogzit jovahagyast,
--- ha van fel nem hasznalt, le nem jart grant a (company, penztaros, engedelyezo) harmasra; rogziteskor
--- a grant elhasznalodik (used_at). A 7 napos lejarat a local-first offline -> sync kesleltetest fedi.
+-- Megoldas: a PIN sikeres ellenorzesekor a szerver letrehoz EGY grant-rekordot, fix uses_remaining
+-- kapuval (= a multi-line nyugta max sorszama). A tranzakcio-rogzites CSAK akkor rogzit jovahagyast, ha
+-- van fel nem hasznalt (uses_remaining>0), le nem jart grant a (company, penztaros, engedelyezo) harmasra;
+-- rogziteskor a grant uses_remaining-je ATOMIKUS feltteles UPDATE-tel csokken (race-mentes single-use).
+-- A count NEM a klienstol jon (Codex P1 #2: "derive instead of trusting the request"). A 7 napos lejarat
+-- a local-first offline -> sync kesleltetest fedi (operacios biztonsag: rogzitett+jovahagyott tranzakcio
+-- ne bukjon sync-kor).
 
 CREATE TABLE IF NOT EXISTS aml_approval_grant (
     id                  BIGSERIAL PRIMARY KEY,
@@ -17,9 +20,10 @@ CREATE TABLE IF NOT EXISTS aml_approval_grant (
     approver_worker_id  BIGINT    NOT NULL,
     created_at          TIMESTAMP NOT NULL DEFAULT now(),
     expires_at          TIMESTAMP NOT NULL,
-    used_at             TIMESTAMP
+    -- Hatralevo felhasznalasok szama (server-fix kapu egy PIN-ellenorzesbol; 0 = kimerult).
+    uses_remaining      INTEGER   NOT NULL DEFAULT 1
 );
 
--- A consume-lookup gyorsitasa: (company, penztaros, engedelyezo) + meg fel nem hasznalt grantok.
+-- A consume-lookup gyorsitasa: (company, penztaros, engedelyezo) + meg felhasznalhato grantok.
 CREATE INDEX IF NOT EXISTS ix_aml_approval_grant_consume
-    ON aml_approval_grant (company_id, cashier_worker_id, approver_worker_id, used_at);
+    ON aml_approval_grant (company_id, cashier_worker_id, approver_worker_id, uses_remaining);

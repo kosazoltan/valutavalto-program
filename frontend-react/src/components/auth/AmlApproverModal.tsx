@@ -27,12 +27,6 @@ interface Props {
   currentWorkerId: number
   /** A jóváhagyást kiváltó AML-indok (megjelenítéshez). */
   reason?: string
-  /**
-   * Hány grantot állítson ki a backend egy PIN-ellenőrzésből (Codex P1, multi-line). EGY buy/sell nyugta
-   * több soros tranzakcióra bomlik, és minden AML-kapus sor külön grantot fogyaszt — a nyugta sorszámát
-   * adjuk át. Default 1 (pl. konverzió = egyetlen tranzakció). A fel nem használt grantok lejárnak.
-   */
-  grantCount?: number
   /** Sikeres jóváhagyás után — a validált engedélyező adataival. */
   onApproved: (approverWorkerId: number, approverName: string) => void
   onCancel: () => void
@@ -47,7 +41,7 @@ function approverLabel(a: EligibleApprover): string {
   return composed || `#${a.id}`
 }
 
-export default function AmlApproverModal({ open, currentWorkerId, reason, grantCount, onApproved, onCancel }: Props) {
+export default function AmlApproverModal({ open, currentWorkerId, reason, onApproved, onCancel }: Props) {
   const [approvers, setApprovers] = useState<EligibleApprover[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pin, setPin] = useState('')
@@ -92,8 +86,6 @@ export default function AmlApproverModal({ open, currentWorkerId, reason, grantC
       const res = await api.post('/aml-approval/verify-approver', {
         approverWorkerId: selectedId,
         pin,
-        // Multi-line: annyi grant, ahány sor a nyugtán (a fungible grantokból minden gated sor egyet fogyaszt).
-        grantCount: grantCount && grantCount > 1 ? grantCount : 1,
       })
       if (res.data?.ok) {
         onApproved(Number(res.data.approverWorkerId), String(res.data.approverName ?? ''))

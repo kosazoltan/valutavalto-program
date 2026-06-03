@@ -11,7 +11,6 @@ import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,8 +45,12 @@ public class AmlApprovalService {
     /** Az engedély (grant) érvényessége — bőven fedi a local-first offline → sync késleltetést. */
     private static final int GRANT_VALIDITY_DAYS = 7;
 
-    /** Egy PIN-ellenőrzésből kiállítható grantok felső korlátja (multi-line nyugta max sorszáma + margó). */
-    private static final int MAX_GRANTS_PER_VERIFY = 10;
+    /**
+     * Egy PIN-ellenőrzésből kiállított grant felhasználási kapuja (server-fix, NEM a klienstől — Codex P1).
+     * = a multi-line buy/sell nyugta max sorszáma (CashierTransactionPage MAX_LINES=6), így egy nyugta
+     * minden AML-kapus sorát fedi, de egy PIN nem amplifikálódhat tetszőleges számú jóváhagyássá.
+     */
+    private static final int GRANT_USES_PER_PIN = 6;
 
     /**
      * Felsővezetői AML-jóváhagyás rögzítése. Validálja, hogy az {@code approverWorkerId} érvényes,
@@ -95,53 +98,50 @@ public class AmlApprovalService {
     }
 
     /**
-     * Engedély-grant(ok) kiállítása a supervisor-PIN SIKERES ellenőrzése után (a verify-approver hívja).
+     * Engedély-grant kiállítása a supervisor-PIN SIKERES ellenőrzése után (a verify-approver hívja).
      * A grant bizonyítja, hogy az {@code approverWorkerId} PIN-nel igazolta a jelenlétét a bejelentkezett
-     * (rögzítő) pénztáros sessionjében; a tranzakció-rögzítéskor egy grant fogy el (single-use).
+     * (rögzítő) pénztáros sessionjében; a tranzakció-rögzítéskor a grant {@code usesRemaining}-je csökken.
      *
-     * <p>Codex P1 (multi-line): EGY buy/sell nyugta több soros tranzakcióvá bomlik, és mindegyik AML-kapus
-     * sor külön grantot fogyaszt. Ezért egy PIN-ellenőrzés a nyugta sorszáma szerinti N grantot állít ki
-     * (a fungible grantokból minden gated sor egyet fogyaszt; a fel nem használtak 7 nap múlva lejárnak).
-     * A {@code requestedCount} 1..{@link #MAX_GRANTS_PER_VERIFY} közé klampelve.</p>
-     *
-     * @return a ténylegesen kiállított grantok száma.
+     * <p>Codex P1: a kiállítás EGY grant, fix {@link #GRANT_USES_PER_PIN} felhasználási kapuval — a count
+     * NEM a klienstől jön (nincs amplifikáció a kliens-oldalról). A kapu = a multi-line nyugta max sorszáma,
+     * így egy nyugta minden AML-kapus sorát fedi egyetlen PIN-ellenőrzésből. A fel nem használt kapacitás
+     * 7 nap múlva lejár.</p>
      */
     @Transactional
-    public int issueApprovalGrants(Long approverWorkerId, int requestedCount) {
-        int count = Math.max(1, Math.min(requestedCount, MAX_GRANTS_PER_VERIFY));
+    public void issueApprovalGrant(Long approverWorkerId) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long cashierWorkerId = SecurityUtils.getCurrentWorkerId();
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plusDays(GRANT_VALIDITY_DAYS);
-        for (int i = 0; i < count; i++) {
-            grantRepository.save(AmlApprovalGrant.builder()
-                    .companyId(companyId)
-                    .cashierWorkerId(cashierWorkerId)
-                    .approverWorkerId(approverWorkerId)
-                    .createdAt(now)
-                    .expiresAt(expiresAt)
-                    .build());
-        }
-        log.info("[AML-APPROVAL] {} grant kiállítva — engedélyező #{}, pénztáros #{}",
-                count, approverWorkerId, cashierWorkerId);
-        return count;
+        grantRepository.save(AmlApprovalGrant.builder()
+                .companyId(companyId)
+                .cashierWorkerId(cashierWorkerId)
+                .approverWorkerId(approverWorkerId)
+                .createdAt(now)
+                .expiresAt(now.plusDays(GRANT_VALIDITY_DAYS))
+                .usesRemaining(GRANT_USES_PER_PIN)
+                .build());
+        log.info("[AML-APPROVAL] Grant kiállítva ({} felhasználás) — engedélyező #{}, pénztáros #{}",
+                GRANT_USES_PER_PIN, approverWorkerId, cashierWorkerId);
     }
 
     /**
-     * Egyetlen fel nem használt, le nem járt grant elhasználása a (cég, pénztáros, engedélyező) hármasra.
-     * Ha nincs ilyen → {@link ValidationException} (a jóváhagyás PIN-ellenőrzés nélkül nem rögzíthető).
+     * Egy felhasználható, le nem járt grant ATOMIKUS elhasználása a (cég, pénztáros, engedélyező) hármasra.
+     * Ha nincs ilyen → {@link ValidationException} (a jóváhagyás PIN-ellenőrzés nélkül nem rögzíthető). Az
+     * elhasználás feltételes UPDATE ({@code uses_remaining-- WHERE uses_remaining>0}), így párhuzamos
+     * sync-nél sem fogyhat 0 alá (Codex P2). Ha az elsőként választott grant közben kimerült (0-t ad), a
+     * következő jelöltet próbálja.
      */
     private void consumeApprovalGrant(Long approverWorkerId, UUID companyId) {
         Long cashierWorkerId = SecurityUtils.getCurrentWorkerId();
-        List<AmlApprovalGrant> grants = grantRepository.findConsumable(
-                companyId, cashierWorkerId, approverWorkerId, LocalDateTime.now(), Limit.of(1));
-        if (grants.isEmpty()) {
-            throw new ValidationException("AML jóváhagyás PIN-ellenőrzés nélkül nem rögzíthető "
-                    + "(hiányzó vagy lejárt engedély). Kérjen jóváhagyást az engedélyező supervisor-PIN-jével.");
+        List<Long> candidateIds = grantRepository.findConsumableIds(
+                companyId, cashierWorkerId, approverWorkerId, LocalDateTime.now());
+        for (Long id : candidateIds) {
+            if (grantRepository.decrementIfAvailable(id) == 1) {
+                return; // atomikusan elhasználva
+            }
         }
-        AmlApprovalGrant grant = grants.get(0);
-        grant.setUsedAt(LocalDateTime.now());
-        grantRepository.save(grant);
+        throw new ValidationException("AML jóváhagyás PIN-ellenőrzés nélkül nem rögzíthető "
+                + "(hiányzó, kimerült vagy lejárt engedély). Kérjen jóváhagyást az engedélyező supervisor-PIN-jével.");
     }
 
     /** True, ha az adott worker (az aktuális cégben) jogosult AML felsővezetői jóváhagyásra. */

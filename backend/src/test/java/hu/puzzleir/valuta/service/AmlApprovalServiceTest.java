@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -76,11 +77,9 @@ class AmlApprovalServiceTest {
         when(workerRepository.findById(99L)).thenReturn(Optional.of(
                 worker(99L, "Kósa Zoltán", WorkerRole.MANAGER, companyId)));
         when(approvalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        // Codex P1: van fel nem hasznalt, le nem jart grant (a PIN-ellenorzes letrehozta) → rogzitheto.
-        AmlApprovalGrant grant = AmlApprovalGrant.builder()
-                .id(1L).companyId(companyId).cashierWorkerId(1L).approverWorkerId(99L).build();
-        when(grantRepository.findConsumable(any(), any(), any(), any(), any()))
-                .thenReturn(List.of(grant));
+        // Codex P1: van felhasználható grant (a PIN-ellenorzes letrehozta) → atomikus decrement sikeres.
+        when(grantRepository.findConsumableIds(any(), any(), any(), any())).thenReturn(List.of(1L));
+        when(grantRepository.decrementIfAvailable(1L)).thenReturn(1);
 
         TransactionAmlApproval rec = service.recordSeniorApproval(99L,
                 "FATF 1/a (ellenintézkedés)", new BigDecimal("6000000"), "Teszt Ügyfél", "V00001");
@@ -90,9 +89,8 @@ class AmlApprovalServiceTest {
         assertThat(rec.getApprovalReason()).contains("1/a");
         assertThat(rec.getCompanyId()).isEqualTo(companyId);
         verify(approvalRepository).save(any());
-        // A grant elhasznalodott (used_at beallitva, mentve).
-        assertThat(grant.getUsedAt()).isNotNull();
-        verify(grantRepository).save(grant);
+        // A grant atomikusan elhasznalodott (uses_remaining--).
+        verify(grantRepository).decrementIfAvailable(1L);
     }
 
     @Test
@@ -100,9 +98,8 @@ class AmlApprovalServiceTest {
     void recordSeniorApproval_noGrant_rejected() {
         when(workerRepository.findById(99L)).thenReturn(Optional.of(
                 worker(99L, "Kósa Zoltán", WorkerRole.MANAGER, companyId)));
-        // Nincs fel nem hasznalt grant → a PIN-ellenorzes nem tortent meg → tilos rogziteni.
-        when(grantRepository.findConsumable(any(), any(), any(), any(), any()))
-                .thenReturn(List.of());
+        // Nincs felhasználható grant → a PIN-ellenorzes nem tortent meg → tilos rogziteni.
+        when(grantRepository.findConsumableIds(any(), any(), any(), any())).thenReturn(List.of());
 
         assertThatThrownBy(() -> service.recordSeniorApproval(99L, "AML", BigDecimal.TEN, "X", null))
                 .isInstanceOf(ValidationException.class)
@@ -153,19 +150,16 @@ class AmlApprovalServiceTest {
     }
 
     @Test
-    @DisplayName("issueApprovalGrants: a kért N grantot kiállítja (multi-line nyugta sorai)")
-    void issueApprovalGrants_issuesRequestedCount() {
-        int issued = service.issueApprovalGrants(99L, 4);
-        assertThat(issued).isEqualTo(4);
-        verify(grantRepository, times(4)).save(any());
-    }
+    @DisplayName("issueApprovalGrant: EGY grant, SERVER-FIX uses-kapuval (6) — a count nem a klienstől jön")
+    void issueApprovalGrant_savesOneGrantWithServerFixedUses() {
+        service.issueApprovalGrant(99L);
 
-    @Test
-    @DisplayName("issueApprovalGrants: a felső korlátra (10) klampel túl nagy kérésnél")
-    void issueApprovalGrants_clampsToMax() {
-        int issued = service.issueApprovalGrants(99L, 999);
-        assertThat(issued).isEqualTo(10);
-        verify(grantRepository, times(10)).save(any());
+        ArgumentCaptor<AmlApprovalGrant> captor = ArgumentCaptor.forClass(AmlApprovalGrant.class);
+        verify(grantRepository, times(1)).save(captor.capture());
+        AmlApprovalGrant saved = captor.getValue();
+        assertThat(saved.getApproverWorkerId()).isEqualTo(99L);
+        assertThat(saved.getCompanyId()).isEqualTo(companyId);
+        assertThat(saved.getUsesRemaining()).isEqualTo(6); // GRANT_USES_PER_PIN — multi-line nyugta fedése
     }
 
     @Test

@@ -20,7 +20,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "aml_approval_grant", indexes = {
         @Index(name = "ix_aml_approval_grant_consume",
-                columnList = "company_id,cashier_worker_id,approver_worker_id,used_at")
+                columnList = "company_id,cashier_worker_id,approver_worker_id,uses_remaining")
 })
 @Getter
 @Setter
@@ -50,7 +50,10 @@ public class AmlApprovalGrant {
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
-    /** NULL, amíg fel nem használták; a rögzítéskor töltődik (single-use). */
-    @Column(name = "used_at")
-    private LocalDateTime usedAt;
+    /**
+     * Hátralévő felhasználások száma (server-fix kapu egy PIN-ellenőrzésből; 0 = kimerült). A rögzítéskor
+     * atomikus feltételes UPDATE csökkenti — így párhuzamos sync-nél sem fogyhat 0 alá (single-use garancia).
+     */
+    @Column(name = "uses_remaining", nullable = false)
+    private Integer usesRemaining;
 }

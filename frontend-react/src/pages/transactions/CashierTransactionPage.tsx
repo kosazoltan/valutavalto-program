@@ -163,9 +163,6 @@ export default function CashierTransactionPage() {
   // szamara ref-ben (mint az isSubmittingRef, hogy a memoizalt closure friss erteket lasson);
   // a modal nyitas-allapota es a kivalto indok state-ben.
   const approverWorkerIdRef = useRef<number | null>(null)
-  // Codex P1 (multi-line): a nyugta sorszama — ennyi grantot keruenk egy PIN-ellenorzesbol, mert minden
-  // AML-kapus sor kulon backend-tranzakcio es kulon grantot fogyaszt.
-  const amlGrantCountRef = useRef(1)
   // Copilot review: a pre-check (aml-approval/check-required) az isSubmitting guard ELOTT fut, ezert
   // gyors dupla-submit parhuzamos pre-checket/modalt nyithatna. Ez a ref biztositja, hogy egyszerre
   // csak egy pre-check fusson, amig nincs jovahagyo.
@@ -670,8 +667,6 @@ export default function CashierTransactionPage() {
           customerNationality: cd?.nationality || undefined,
         })
         if (checkRes.data?.requiresApproval) {
-          // Multi-line: annyi grant kell, ahany AML-kapus sor lehet -> a kitoltott sorok szama (felso korlat).
-          amlGrantCountRef.current = filledRows.length
           setAmlApprovalReason(typeof checkRes.data?.reason === 'string' ? checkRes.data.reason : '')
           setShowAmlApprover(true)
           return // a modal onApproved-ja beallitja az approverWorkerId-t es ujrahivja a submitet
@@ -1497,7 +1492,6 @@ export default function CashierTransactionPage() {
         open={showAmlApprover}
         currentWorkerId={worker?.id ?? 0}
         reason={amlApprovalReason}
-        grantCount={amlGrantCountRef.current}
         onApproved={(workerId, name) => {
           approverWorkerIdRef.current = workerId
           setShowAmlApprover(false)
