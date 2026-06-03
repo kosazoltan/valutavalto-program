@@ -200,7 +200,7 @@ class TransactionServiceMultiLineTest {
         // AML mock — approved
         AmlService.AmlBasicCheckResult amlOk = new AmlService.AmlBasicCheckResult();
         amlOk.setApproved(true);
-        when(amlService.checkTransaction(any(), any(), any(), any(), any())).thenReturn(amlOk);
+        when(amlService.checkTransaction(any(), any(), any(), any(), any(), any())).thenReturn(amlOk);
 
         // Helper mock — validateOpenSession no-op (void), resolveCurrencyId delegates, etc.
         when(helper.getHufCurrencyId()).thenReturn(HUF_ID);

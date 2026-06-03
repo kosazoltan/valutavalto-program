@@ -291,7 +291,7 @@ public class TransactionService {
         // AML ellenőrzés (Pmt. 2017. évi LIII. tv.) — flagek a Transaction-be CB-018 szerint
         AmlService.AmlBasicCheckResult amlResult = performAmlCheck(
                 payableAmount, request.getCustomerId(), request.getCustomerName(),
-                request.getCustomerDocumentNumber(), currency.getCode());
+                request.getCustomerDocumentNumber(), currency.getCode(), request.getCustomerNationality());
 
         // A3 (Pmt. 50M, b4-foglalo FR-16): 50M Ft feletti ügyletnél kötelező forrás-igazolás
         // (közjegyző/ügyvéd magánokirat vagy max. 3 éves banki szlip; két tanú TILOS). Flag-gated.
@@ -508,7 +508,7 @@ public class TransactionService {
         // AML ellenőrzés (Pmt. 2017. évi LIII. tv.) — flagek a Transaction-be CB-018 szerint
         AmlService.AmlBasicCheckResult amlResult = performAmlCheck(
                 payableAmount, request.getCustomerId(), request.getCustomerName(),
-                request.getCustomerDocumentNumber(), currency.getCode());
+                request.getCustomerDocumentNumber(), currency.getCode(), request.getCustomerNationality());
 
         // A3 (Pmt. 50M, b4-foglalo FR-16): 50M Ft feletti ügyletnél kötelező forrás-igazolás. Flag-gated.
         enforceSourceOfFunds(payableAmount, request.getSourceOfFundsDocType(), request.getSourceOfFundsDocDate());
@@ -800,7 +800,8 @@ public class TransactionService {
      * BIGCTRL.DLL a blokkra kiirta.
      */
     private AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
-                                 String customerName, String documentNumber, String currencyCode) {
+                                 String customerName, String documentNumber, String currencyCode,
+                                 String customerNationality) {
         // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate. Feature-flag mögött
         // (CIRCULAR_ACK_BLOCKING_ENFORCEMENT, default false → nem blokkol → a meglévő kliensek és a
         // @InjectMocks tesztek nem törnek meg). Bekapcsolva: ha a pénztárosnak van olvasatlan,
@@ -823,7 +824,7 @@ public class TransactionService {
         }
 
         AmlService.AmlBasicCheckResult basicResult = amlService.checkTransaction(
-                hufAmount, customerId, customerName, documentNumber, currencyCode);
+                hufAmount, customerId, customerName, documentNumber, currencyCode, customerNationality);
 
         if (basicResult == null) {
             // Codex+Copilot PR #682 finding: VV-AML-004 a katalogusban FATAL.

@@ -63,12 +63,12 @@ class TransactionOperationHelperTest {
     @Test
     @DisplayName("Audit P2 #7: performAmlCheck NULL AML-eredménynél → ValidationException (FAIL-CLOSED; VV-AML-004 strukturált log)")
     void performAmlCheck_nullResult_throwsFailClosed() {
-        when(amlService.checkTransaction(any(), any(), any(), any(), any())).thenReturn(null);
+        when(amlService.checkTransaction(any(), any(), any(), any(), any(), any())).thenReturn(null);
 
         ValidationException ex = assertThrows(ValidationException.class,
                 () -> helper.performAmlCheck(new BigDecimal("100000"), "C1", "Név", "DOC", "EUR"));
         assertTrue(ex.getMessage().contains("AML"), ex.getMessage());
         // A tranzakciót a dobott kivétel blokkolja (fail-closed); a VV-AML-004 FATAL strukturáltan logolva.
-        verify(amlService).checkTransaction(any(), any(), any(), any(), any());
+        verify(amlService).checkTransaction(any(), any(), any(), any(), any(), any());
     }
 }

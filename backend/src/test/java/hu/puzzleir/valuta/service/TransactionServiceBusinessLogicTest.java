@@ -157,13 +157,13 @@ class TransactionServiceBusinessLogicTest {
                 .requiresApproval(false)
                 .requiresDetailedId(false)
                 .build();
-        when(amlService.checkTransaction(any(), any(), any(), any(), any())).thenReturn(amlOk);
+        when(amlService.checkTransaction(any(), any(), any(), any(), any(), any())).thenReturn(amlOk);
     }
 
     @Test
     @DisplayName("executeSell: null AML eredmény -> fail-closed ValidationException")
     void executeSell_nullAmlResult_blocksTransaction() {
-        when(amlService.checkTransaction(any(), any(), any(), any(), any())).thenReturn(null);
+        when(amlService.checkTransaction(any(), any(), any(), any(), any(), any())).thenReturn(null);
 
         TransactionService.SellRequest request = TransactionService.SellRequest.builder()
                 .currencyId(EUR_ID)

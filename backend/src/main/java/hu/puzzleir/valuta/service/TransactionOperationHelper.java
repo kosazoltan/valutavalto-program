@@ -68,6 +68,13 @@ public class TransactionOperationHelper {
      */
     public AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
                                  String customerName, String documentNumber, String currencyCode) {
+        // Backward-compat: ország-adat nélkül (FATF NONE). A FATF-bekötött hívók a 6-arg-ot hívják.
+        return performAmlCheck(hufAmount, customerId, customerName, documentNumber, currencyCode, null);
+    }
+
+    public AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
+                                 String customerName, String documentNumber, String currencyCode,
+                                 String customerNationality) {
         // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate. Ezt a performAmlCheck-et a
         // multi-line (TransactionMultiLineService) ÉS a konverzió (TransactionConversionService) hívja.
         // (A sztornó/reversal NEM ezen az AML-úton megy → nincs gate-elve, by-design.)
@@ -91,7 +98,7 @@ public class TransactionOperationHelper {
         }
 
         AmlService.AmlBasicCheckResult basicResult = amlService.checkTransaction(
-                hufAmount, customerId, customerName, documentNumber, currencyCode);
+                hufAmount, customerId, customerName, documentNumber, currencyCode, customerNationality);
 
         if (basicResult == null) {
             // Audit 2026-05-31 (P2): a VV-AML-004 (FATAL) MÁR a katalógusban van — strukturált
