@@ -990,7 +990,11 @@ export default function CashierTransactionPage() {
   }, [rows])
 
   // ====== FORMAT ======
-  const formatNum = (n: number) => n.toLocaleString('hu-HU')
+  // FR-HL-15 (hibalista): a pénztári HUF-összegek KIJELZÉSE egész forintban, tizedes nélkül (HUF-nál
+  // tizedes tiltott). Ez NEM az 5 Ft-os készpénz-kerekítés — azt a fizetendő végösszegre a HungarianRounding
+  // végzi (lásd a `total` számítását fent); itt csak a megjelenítés kerekül egész Ft-ra (Math.round).
+  // A formatNum minden használata HUF-érték (hufValue/subtotal/handlingFee/discountAmount/total).
+  const formatNum = (n: number) => Math.round(n).toLocaleString('hu-HU', { maximumFractionDigits: 0 })
 
   // ====== RENDER ======
   return (
