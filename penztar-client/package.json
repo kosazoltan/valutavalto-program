@@ -44,7 +44,7 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.60.1",
     "vite": "^8.0.16",
-    "vite-plugin-electron": "^0.29.1",
+    "vite-plugin-electron": "^1.0.0",
     "vitest": "^4.1.8"
   },
   "overrides": {
