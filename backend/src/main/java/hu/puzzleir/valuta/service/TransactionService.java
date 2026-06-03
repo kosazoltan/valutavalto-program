@@ -112,6 +112,21 @@ public class TransactionService {
     /** A4: alapérték false (NEM blokkol) — production-biztos; a business kapcsolja élesre. */
     static final String CIRCULAR_ACK_BLOCKING_DEFAULT = "false";
 
+    /** A3 (Pmt. 50M, b4-foglalo FR-16): forrás-igazolás enforcement feature-flag. */
+    static final String SOURCE_OF_FUNDS_50M_PARAM = "AML_SOURCE_OF_FUNDS_50M_ENFORCEMENT";
+    /** A3: alapérték false (NEM blokkol) — production-biztos; a business kapcsolja élesre. */
+    static final String SOURCE_OF_FUNDS_50M_DEFAULT = "false";
+    /** A3: Pmt. 50M Ft küszöb a forrás-igazoláshoz. */
+    private static final BigDecimal SOURCE_OF_FUNDS_THRESHOLD = new BigDecimal("50000000");
+    /** A3: banki bizonylat (szlip) maximális kora — 3 év = 1095 nap. */
+    private static final long BANK_SLIP_MAX_AGE_DAYS = 1095;
+    /** A3: elfogadható forrás-dokumentum típusok (normalizált, exact-match). */
+    private static final java.util.Set<String> ACCEPTABLE_SOURCE_DOC_TYPES = java.util.Set.of(
+            "MAGANOKIRAT_KOZJEGYZO", "MAGANOKIRAT_UGYVED", "BANK_SZLIP");
+    /** A3: 50M felett TILOS két tanús magánnyilatkozat ismert kódjai (a contains("TANU") a fallback). */
+    private static final java.util.Set<String> TWO_WITNESS_DOC_TYPES = java.util.Set.of(
+            "KET_TANU", "KETTANU", "KET_TANUS", "KET_TANUVAL", "TWO_WITNESS", "2_TANU");
+
     // Max tetelsorok szama bizonylaton (Legacy: BLOKKTETEL limit)
     private static final int MAX_TRANSACTION_LINES = 6;
 
@@ -278,6 +293,10 @@ public class TransactionService {
                 payableAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), currency.getCode());
 
+        // A3 (Pmt. 50M, b4-foglalo FR-16): 50M Ft feletti ügyletnél kötelező forrás-igazolás
+        // (közjegyző/ügyvéd magánokirat vagy max. 3 éves banki szlip; két tanú TILOS). Flag-gated.
+        enforceSourceOfFunds(payableAmount, request.getSourceOfFundsDocType(), request.getSourceOfFundsDocDate());
+
         // Bizonylat szám generálása (új szekvencia rendszer)
         String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.BUY);
 
@@ -336,6 +355,9 @@ public class TransactionService {
                 .customerDocumentNumber(request.getCustomerDocumentNumber())
                 .customerNationality(request.getCustomerNationality())
                 .sourceOfFunds(request.getSourceOfFunds())
+                // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum perzisztálása
+                .sourceOfFundsDocType(request.getSourceOfFundsDocType())
+                .sourceOfFundsDocDate(request.getSourceOfFundsDocDate())
                 .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
                 // V229 Pmt. snapshot (HIBA #5+#7+#8)
                 .customerBirthPlace(request.getCustomerBirthPlace())
@@ -488,6 +510,9 @@ public class TransactionService {
                 payableAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), currency.getCode());
 
+        // A3 (Pmt. 50M, b4-foglalo FR-16): 50M Ft feletti ügyletnél kötelező forrás-igazolás. Flag-gated.
+        enforceSourceOfFunds(payableAmount, request.getSourceOfFundsDocType(), request.getSourceOfFundsDocDate());
+
         // Bizonylat szám generálása (új szekvencia rendszer)
         String receiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.SELL);
 
@@ -546,6 +571,9 @@ public class TransactionService {
                 .customerDocumentNumber(request.getCustomerDocumentNumber())
                 .customerNationality(request.getCustomerNationality())
                 .sourceOfFunds(request.getSourceOfFunds())
+                // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum perzisztálása
+                .sourceOfFundsDocType(request.getSourceOfFundsDocType())
+                .sourceOfFundsDocDate(request.getSourceOfFundsDocDate())
                 .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
                 // V229 Pmt. snapshot (HIBA #5+#7+#8)
                 .customerBirthPlace(request.getCustomerBirthPlace())
@@ -895,6 +923,83 @@ public class TransactionService {
                 + (titles.isBlank() ? "" : (": " + titles));
     }
 
+    /**
+     * A3 (Pmt. 50M, b4-foglalo FR-16): eldönti, hogy az 50M Ft feletti ügyletnél a pénzeszköz-forrás
+     * igazolása hiányzik/érvénytelen-e. Csomag-privát, statikus a tesztelhetőségért.
+     *
+     * Szabály (a spec szerint LEZÁRT): >= 50M Ft → KÖTELEZŐ közjegyző/ügyvéd ellenjegyzésű, teljes
+     * bizonyító erejű magánokirat VAGY max. 3 éves banki bizonylat (szlip). Két tanús magánnyilatkozat TILOS.
+     *
+     * @return a blokkoló indok, ha (enforce ÉS >=50M ÉS hiányzó/érvénytelen forrás-igazolás); különben null.
+     */
+    static String sourceOfFundsBlockReason(BigDecimal hufAmount, String docType,
+                                           java.time.LocalDate docDate, java.time.LocalDate txDate,
+                                           boolean enforcementEnabled) {
+        if (!enforcementEnabled) {
+            return null;
+        }
+        if (hufAmount == null || hufAmount.compareTo(SOURCE_OF_FUNDS_THRESHOLD) < 0) {
+            return null; // 50M alatt nincs külön forrás-igazolási kényszer (a 300k jogcím külön szabály)
+        }
+        String t = docType == null ? "" : docType.trim().toUpperCase(java.util.Locale.ROOT);
+        if (t.isEmpty()) {
+            return "50M Ft feletti ügylet: a pénzeszközök forrását igazolni kell (közjegyző/ügyvéd "
+                    + "ellenjegyzésű teljes bizonyító erejű magánokirat vagy max. 3 éves banki bizonylat).";
+        }
+        // Sourcery/Copilot review: az elfogadható típusokat ELŐSZÖR ellenőrizzük (explicit, exact-match
+        // halmaz) — így egyetlen érvényes típus sem osztályozható félre semmilyen substring-egyezés miatt.
+        if (!ACCEPTABLE_SOURCE_DOC_TYPES.contains(t)) {
+            // Nem elfogadható. Ha két tanús magánnyilatkozat (Pmt. 50M felett TILOS) → specifikus,
+            // segítő üzenet; a contains("TANU") itt már CSAK nem-elfogadható típusra fut (az accept-lista
+            // egyetlen eleme sem tartalmazza), ezért nem okozhat érvényes típus téves blokkolását.
+            if (TWO_WITNESS_DOC_TYPES.contains(t) || t.contains("TANU")) {
+                return "50M Ft feletti ügylet: két tanúval ellátott magánnyilatkozat NEM fogadható el "
+                        + "forrás-igazolásként (Pmt.). Közjegyző/ügyvéd ellenjegyzésű magánokirat vagy banki bizonylat szükséges.";
+            }
+            return "50M Ft feletti ügylet: nem elfogadható forrás-dokumentum típus (" + docType + "). "
+                    + "Elfogadható: MAGANOKIRAT_KOZJEGYZO, MAGANOKIRAT_UGYVED vagy BANK_SZLIP.";
+        }
+        if (t.equals("BANK_SZLIP")) {
+            if (docDate == null) {
+                return "50M Ft feletti ügylet: banki bizonylat esetén kötelező a kiállítás dátuma (max. 3 év).";
+            }
+            java.time.LocalDate effectiveTxDate = txDate != null ? txDate : docDate;
+            long ageDays = java.time.temporal.ChronoUnit.DAYS.between(docDate, effectiveTxDate);
+            if (ageDays < 0) {
+                return "50M Ft feletti ügylet: a banki bizonylat kiállítási dátuma a jövőben van — érvénytelen.";
+            }
+            if (ageDays > BANK_SLIP_MAX_AGE_DAYS) {
+                return "50M Ft feletti ügylet: a banki bizonylat 3 évnél régebbi (" + ageDays
+                        + " nap) — nem fogadható el forrás-igazolásként.";
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A3: a forrás-igazolás enforcement feature-flag feloldása (egyetlen igazságforrás, a single-line
+     * és a multi-line {@link TransactionOperationHelper} úton egyaránt). null/nem-true → false.
+     */
+    static boolean isSourceOfFundsEnforcementEnabled(SystemParameterService sp) {
+        return sp != null && "true".equalsIgnoreCase(
+                sp.getValue(SOURCE_OF_FUNDS_50M_PARAM, SOURCE_OF_FUNDS_50M_DEFAULT));
+    }
+
+    /**
+     * A3: a forrás-igazolás gate flag-olvasással + dobással (a buy/sell hívja). A flag default false
+     * → @InjectMocks tesztekben (systemParameterService mock → null → "false") no-op, így a tesztek
+     * nem törnek és nem kell forrás-dokumentumot megadniuk.
+     */
+    private void enforceSourceOfFunds(BigDecimal hufAmount, String docType, java.time.LocalDate docDate) {
+        if (!isSourceOfFundsEnforcementEnabled(systemParameterService)) {
+            return;
+        }
+        String reason = sourceOfFundsBlockReason(hufAmount, docType, docDate, java.time.LocalDate.now(), true);
+        if (reason != null) {
+            throw new ValidationException(reason);
+        }
+    }
+
     static String highValueApprovalBlockReason(
             hu.puzzleir.valuta.dto.aml.AmlCheckResult thresholdResult, boolean enforcementEnabled) {
         if (thresholdResult == null || !thresholdResult.isRequiresManagerApproval()) {
@@ -1079,6 +1184,9 @@ public class TransactionService {
         private String customerDocumentNumber;
         private String customerNationality;
         private String sourceOfFunds;
+        // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum a szerver-oldali validációhoz.
+        private String sourceOfFundsDocType;
+        private java.time.LocalDate sourceOfFundsDocDate;
         private Boolean customerIsPep;
         // V229 Pmt. snapshot (HIBA #5+#7+#8 2026-05-15)
         private String customerBirthPlace;
@@ -1128,6 +1236,9 @@ public class TransactionService {
         private String customerDocumentNumber;
         private String customerNationality;
         private String sourceOfFunds;
+        // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum a szerver-oldali validációhoz.
+        private String sourceOfFundsDocType;
+        private java.time.LocalDate sourceOfFundsDocDate;
         private Boolean customerIsPep;
         // V229 Pmt. snapshot (HIBA #5+#7+#8 2026-05-15)
         private String customerBirthPlace;
@@ -1223,6 +1334,9 @@ public class TransactionService {
         private String customerDocumentNumber;
         private String customerNationality;
         private String sourceOfFunds;
+        // A3 (Pmt. 50M, b4-foglalo FR-16): strukturált forrás-dokumentum a szerver-oldali validációhoz.
+        private String sourceOfFundsDocType;
+        private java.time.LocalDate sourceOfFundsDocDate;
         private Boolean customerIsPep;
         // V235 + V236 Konverzio Pmt. azonositas (HIBA #19 2026-05-19)
         private String customerBirthPlace;
