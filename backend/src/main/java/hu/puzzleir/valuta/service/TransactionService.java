@@ -120,6 +120,12 @@ public class TransactionService {
     private static final BigDecimal SOURCE_OF_FUNDS_THRESHOLD = new BigDecimal("50000000");
     /** A3: banki bizonylat (szlip) maximális kora — 3 év = 1095 nap. */
     private static final long BANK_SLIP_MAX_AGE_DAYS = 1095;
+    /** A3: elfogadható forrás-dokumentum típusok (normalizált, exact-match). */
+    private static final java.util.Set<String> ACCEPTABLE_SOURCE_DOC_TYPES = java.util.Set.of(
+            "MAGANOKIRAT_KOZJEGYZO", "MAGANOKIRAT_UGYVED", "BANK_SZLIP");
+    /** A3: 50M felett TILOS két tanús magánnyilatkozat ismert kódjai (a contains("TANU") a fallback). */
+    private static final java.util.Set<String> TWO_WITNESS_DOC_TYPES = java.util.Set.of(
+            "KET_TANU", "KETTANU", "KET_TANUS", "KET_TANUVAL", "TWO_WITNESS", "2_TANU");
 
     // Max tetelsorok szama bizonylaton (Legacy: BLOKKTETEL limit)
     private static final int MAX_TRANSACTION_LINES = 6;
@@ -939,14 +945,16 @@ public class TransactionService {
             return "50M Ft feletti ügylet: a pénzeszközök forrását igazolni kell (közjegyző/ügyvéd "
                     + "ellenjegyzésű teljes bizonyító erejű magánokirat vagy max. 3 éves banki bizonylat).";
         }
-        // Két tanús magánnyilatkozat 50M felett TILOS (Pmt.).
-        if (t.contains("TANU") || t.equals("TWO_WITNESS")) {
-            return "50M Ft feletti ügylet: két tanúval ellátott magánnyilatkozat NEM fogadható el "
-                    + "forrás-igazolásként (Pmt.). Közjegyző/ügyvéd ellenjegyzésű magánokirat vagy banki bizonylat szükséges.";
-        }
-        boolean acceptable = t.equals("MAGANOKIRAT_KOZJEGYZO") || t.equals("MAGANOKIRAT_UGYVED")
-                || t.equals("BANK_SZLIP");
-        if (!acceptable) {
+        // Sourcery/Copilot review: az elfogadható típusokat ELŐSZÖR ellenőrizzük (explicit, exact-match
+        // halmaz) — így egyetlen érvényes típus sem osztályozható félre semmilyen substring-egyezés miatt.
+        if (!ACCEPTABLE_SOURCE_DOC_TYPES.contains(t)) {
+            // Nem elfogadható. Ha két tanús magánnyilatkozat (Pmt. 50M felett TILOS) → specifikus,
+            // segítő üzenet; a contains("TANU") itt már CSAK nem-elfogadható típusra fut (az accept-lista
+            // egyetlen eleme sem tartalmazza), ezért nem okozhat érvényes típus téves blokkolását.
+            if (TWO_WITNESS_DOC_TYPES.contains(t) || t.contains("TANU")) {
+                return "50M Ft feletti ügylet: két tanúval ellátott magánnyilatkozat NEM fogadható el "
+                        + "forrás-igazolásként (Pmt.). Közjegyző/ügyvéd ellenjegyzésű magánokirat vagy banki bizonylat szükséges.";
+            }
             return "50M Ft feletti ügylet: nem elfogadható forrás-dokumentum típus (" + docType + "). "
                     + "Elfogadható: MAGANOKIRAT_KOZJEGYZO, MAGANOKIRAT_UGYVED vagy BANK_SZLIP.";
         }
@@ -968,14 +976,21 @@ public class TransactionService {
     }
 
     /**
+     * A3: a forrás-igazolás enforcement feature-flag feloldása (egyetlen igazságforrás, a single-line
+     * és a multi-line {@link TransactionOperationHelper} úton egyaránt). null/nem-true → false.
+     */
+    static boolean isSourceOfFundsEnforcementEnabled(SystemParameterService sp) {
+        return sp != null && "true".equalsIgnoreCase(
+                sp.getValue(SOURCE_OF_FUNDS_50M_PARAM, SOURCE_OF_FUNDS_50M_DEFAULT));
+    }
+
+    /**
      * A3: a forrás-igazolás gate flag-olvasással + dobással (a buy/sell hívja). A flag default false
      * → @InjectMocks tesztekben (systemParameterService mock → null → "false") no-op, így a tesztek
      * nem törnek és nem kell forrás-dokumentumot megadniuk.
      */
     private void enforceSourceOfFunds(BigDecimal hufAmount, String docType, java.time.LocalDate docDate) {
-        boolean enforce = systemParameterService != null && "true".equalsIgnoreCase(
-                systemParameterService.getValue(SOURCE_OF_FUNDS_50M_PARAM, SOURCE_OF_FUNDS_50M_DEFAULT));
-        if (!enforce) {
+        if (!isSourceOfFundsEnforcementEnabled(systemParameterService)) {
             return;
         }
         String reason = sourceOfFundsBlockReason(hufAmount, docType, docDate, java.time.LocalDate.now(), true);

@@ -14,6 +14,6 @@ ALTER TABLE transaction ADD COLUMN IF NOT EXISTS source_of_funds_doc_type VARCHA
 ALTER TABLE transaction ADD COLUMN IF NOT EXISTS source_of_funds_doc_date DATE;
 
 COMMENT ON COLUMN transaction.source_of_funds_doc_type IS
-  'A4/A3 Pmt. 50M: forrás-dokumentum típus — MAGANOKIRAT_KOZJEGYZO / MAGANOKIRAT_UGYVED / BANK_SZLIP (KET_TANU TILOS).';
+  'A3 Pmt. 50M: forrás-dokumentum típus — MAGANOKIRAT_KOZJEGYZO / MAGANOKIRAT_UGYVED / BANK_SZLIP (KET_TANU TILOS).';
 COMMENT ON COLUMN transaction.source_of_funds_doc_date IS
-  'A4/A3 Pmt. 50M: banki bizonylat (szlip) kiállítási dátuma — max. 3 év (1095 nap) lehet a tranzakcióhoz képest.';
+  'A3 Pmt. 50M: banki bizonylat (szlip) kiállítási dátuma — max. 3 év (1095 nap) lehet a tranzakcióhoz képest.';

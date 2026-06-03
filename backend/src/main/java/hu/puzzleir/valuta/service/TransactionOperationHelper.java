@@ -150,10 +150,7 @@ public class TransactionOperationHelper {
      * TransactionService.sourceOfFundsBlockReason statikus metódus mondja ki (egyetlen igazságforrás).
      */
     public void enforceSourceOfFunds(BigDecimal hufAmount, String docType, java.time.LocalDate docDate) {
-        boolean enforce = systemParameterService != null && "true".equalsIgnoreCase(
-                systemParameterService.getValue(TransactionService.SOURCE_OF_FUNDS_50M_PARAM,
-                        TransactionService.SOURCE_OF_FUNDS_50M_DEFAULT));
-        if (!enforce) {
+        if (!TransactionService.isSourceOfFundsEnforcementEnabled(systemParameterService)) {
             return;
         }
         String reason = TransactionService.sourceOfFundsBlockReason(
