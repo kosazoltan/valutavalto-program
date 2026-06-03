@@ -413,17 +413,23 @@ public class RatePublishService {
      */
     @Transactional(readOnly = true)
     public List<RatePublicationAuditDto> getPublicationAuditHistory(UUID workgroupId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         List<RatePublication> pubs = getPublicationHistory(workgroupId);
         Set<Long> workerIds = pubs.stream()
                 .map(RatePublication::getPublishedBy)
                 .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toSet());
+        // Multi-tenant védelem (Copilot review): a findAllById nyers id-szerint old fel, ezért a
+        // feloldott workerek közül CSAK az aktuális cégébe tartozókat fogadjuk el névként — más cég
+        // dolgozó-neve nem szivároghat (a publishedBy egyébként is azonos cégű, ez fail-safe).
         Map<Long, String> idToName = workerRepository.findAllById(workerIds).stream()
+                .filter(w -> w.getCompany() != null && companyId.equals(w.getCompany().getId()))
                 .collect(Collectors.toMap(Worker::getId,
                         w -> w.getName() != null && !w.getName().isBlank() ? w.getName() : ("#" + w.getId())));
         return pubs.stream()
                 .map(p -> new RatePublicationAuditDto(
                         p.getId(),
+                        p.getTemplateId(),
                         p.getWorkgroupId(),
                         p.getPublishedBy(),
                         p.getPublishedBy() != null
@@ -431,6 +437,7 @@ public class RatePublishService {
                                 : "—",
                         p.getPublishedAt(),
                         p.getAffectedBranches(),
+                        p.getNotes(),
                         p.getSource(),
                         p.getClientVersion()))
                 .collect(Collectors.toList());

@@ -111,8 +111,10 @@ class RatePublishServiceTest {
                 .build();
         when(publicationRepository.findTop20ByCompanyIdOrderByPublishedAtDesc(authCompanyId))
                 .thenReturn(List.of(pub));
+        // A worker az AKTUÁLIS cégbe tartozik (multi-tenant szűrés feltétele a név-feloldáshoz).
+        Company workerCompany = Company.builder().id(authCompanyId).code("BEST").build();
         hu.puzzleir.valuta.entity.Worker worker = hu.puzzleir.valuta.entity.Worker.builder()
-                .id(99L).name("Kovács János").build();
+                .id(99L).name("Kovács János").company(workerCompany).build();
         when(workerRepository.findAllById(any())).thenReturn(List.of(worker));
 
         var result = service.getPublicationAuditHistory(null);
