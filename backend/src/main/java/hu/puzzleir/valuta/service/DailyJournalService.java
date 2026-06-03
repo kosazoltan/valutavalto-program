@@ -149,116 +149,149 @@ public class DailyJournalService {
         try (PDDocument doc = new PDDocument();
              ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
 
-            PDPage page = new PDPage(PDRectangle.A4);
-            doc.addPage(page);
+            // MULTI-PAGE: a JournalRenderer automatikusan új A4 oldalt nyit, ha a tartalom eléri a
+            // lap alját. Így nagy forgalmú napon sem csonkul a tételes lista (a totálok eddig is
+            // helyesek voltak; korábban a tételsorok cap-elve voltak egy "...tovabbi tranzakcio" markerrel).
+            final String columnHeader = "Ido   Bizonylat   Tipus       Valuta  Mennyiseg     HUF egyenertek";
+            try (JournalRenderer r = new JournalRenderer(doc)) {
 
-            try (PDPageContentStream content = new PDPageContentStream(doc, page)) {
-                float y = PAGE_HEIGHT - MARGIN;
+                // === Fejléc (első oldal) ===
+                r.textLeft(JournalRenderer.BOLD, FONT_SIZE_HEADER, "NAPKONYV — Napi forgalmi naplo");
+                r.advance(LINE_HEIGHT * 1.5f);
+                r.textLeft(JournalRenderer.BODY, FONT_SIZE_BODY,
+                        "Iroda: " + safeText(branch.getCode() + " - " + branch.getName()));
+                r.advance(LINE_HEIGHT);
+                r.textLeft(JournalRenderer.BODY, FONT_SIZE_BODY, "Datum: " + DATE_FORMAT.format(date));
+                r.advance(LINE_HEIGHT);
+                r.textLeft(JournalRenderer.BODY, FONT_SIZE_BODY, "Tranzakciok szama: " + txs.size());
+                r.advance(LINE_HEIGHT * 2);
 
-                // === Fejléc ===
-                content.beginText();
-                content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD), FONT_SIZE_HEADER);
-                content.newLineAtOffset(MARGIN, y);
-                content.showText("NAPKONYV — Napi forgalmi naplo");
-                content.endText();
-                y -= LINE_HEIGHT * 1.5f;
+                // === Tranzakció lista oszlopfejléc ===
+                r.textLeft(JournalRenderer.BOLD, FONT_SIZE_BODY, columnHeader);
+                r.advance(LINE_HEIGHT);
 
-                content.beginText();
-                content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), FONT_SIZE_BODY);
-                content.newLineAtOffset(MARGIN, y);
-                content.showText("Iroda: " + safeText(branch.getCode() + " - " + branch.getName()));
-                content.endText();
-                y -= LINE_HEIGHT;
-
-                content.beginText();
-                content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), FONT_SIZE_BODY);
-                content.newLineAtOffset(MARGIN, y);
-                content.showText("Datum: " + DATE_FORMAT.format(date));
-                content.endText();
-                y -= LINE_HEIGHT;
-
-                content.beginText();
-                content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), FONT_SIZE_BODY);
-                content.newLineAtOffset(MARGIN, y);
-                content.showText("Tranzakciok szama: " + txs.size());
-                content.endText();
-                y -= LINE_HEIGHT * 2;
-
-                // === Tranzakció lista fejléc ===
-                content.beginText();
-                content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD), FONT_SIZE_BODY);
-                content.newLineAtOffset(MARGIN, y);
-                content.showText("Ido   Bizonylat   Tipus       Valuta  Mennyiseg     HUF egyenertek");
-                content.endText();
-                y -= LINE_HEIGHT;
-
-                // === Tranzakciók ===
-                // Egy A4 lapra ~50-60 tranzakció fér. Ha több → "...és X további tranzakció"
-                // sor + az összesítés ugyanezen oldalon marad. (Copilot #705 fix: a régi
-                // try-with-resources break-pattern bugos volt — page-flow korrekt: explicit
-                // cap, NEM félbeszakítás.)
-                content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), FONT_SIZE_BODY);
-                final float MIN_Y_FOR_TX = MARGIN + 120f;  // Hely a footer-aggregátorra
-                int rendered = 0;
+                // === Tranzakciók (MINDET kirendereljük, lapokra törve) ===
                 for (Transaction t : txs) {
-                    if (y < MIN_Y_FOR_TX) break;
-                    renderTransactionRow(content, t, y);
-                    y -= LINE_HEIGHT;
-                    rendered++;
+                    if (r.needsNewPage(LINE_HEIGHT)) {
+                        r.newPage();
+                        // Folytatólagos oldalon megismételjük az oszlopfejlécet.
+                        r.textLeft(JournalRenderer.BOLD, FONT_SIZE_BODY, columnHeader + "  (folytatas)");
+                        r.advance(LINE_HEIGHT);
+                    }
+                    renderTransactionRow(r.content(), t, r.y()); // a sor a BODY fonttal renderel
+                    r.advance(LINE_HEIGHT);
                 }
-                if (rendered < txs.size()) {
-                    int remaining = txs.size() - rendered;
-                    content.beginText();
-                    content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA_OBLIQUE), FONT_SIZE_BODY);
-                    content.newLineAtOffset(MARGIN, y);
-                    // Copilot P3 #706 fix: a "(multi-page render TODO)" rész a felhasználói
-                    // PDF-ben félrevezető lehet; a TODO csak a kódkommentben marad (lásd fent).
-                    content.showText("...es meg " + remaining + " tovabbi tranzakcio (NEM jelenitett meg)");
-                    content.endText();
-                    y -= LINE_HEIGHT;
-                }
+                r.advance(LINE_HEIGHT);
 
-                y -= LINE_HEIGHT;
-
-                // === Összesítés valutánként ===
-                content.beginText();
-                content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD), FONT_SIZE_BODY);
-                content.newLineAtOffset(MARGIN, y);
-                content.showText("OSSZESITES VALUTANKENT (HUF egyenertek):");
-                content.endText();
-                y -= LINE_HEIGHT;
-
-                content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), FONT_SIZE_BODY);
+                // === Összesítés valutánként (lap-biztos) ===
+                r.ensureSpace(LINE_HEIGHT * 2);
+                r.textLeft(JournalRenderer.BOLD, FONT_SIZE_BODY, "OSSZESITES VALUTANKENT (HUF egyenertek):");
+                r.advance(LINE_HEIGHT);
                 for (var entry : currencySummary.entrySet()) {
-                    content.beginText();
-                    content.newLineAtOffset(MARGIN + 20, y);
-                    content.showText("  " + entry.getKey() + ": " + AMOUNT_FORMAT.format(entry.getValue()) + " Ft");
-                    content.endText();
-                    y -= LINE_HEIGHT;
+                    r.ensureSpace(LINE_HEIGHT);
+                    r.textAt(JournalRenderer.BODY, FONT_SIZE_BODY, MARGIN + 20,
+                            "  " + entry.getKey() + ": " + AMOUNT_FORMAT.format(entry.getValue()) + " Ft");
+                    r.advance(LINE_HEIGHT);
                 }
+                r.advance(LINE_HEIGHT);
 
-                y -= LINE_HEIGHT;
-
-                // === Összesítés típusonként ===
-                content.beginText();
-                content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD), FONT_SIZE_BODY);
-                content.newLineAtOffset(MARGIN, y);
-                content.showText("OSSZESITES TIPUSONKENT:");
-                content.endText();
-                y -= LINE_HEIGHT;
-
-                content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), FONT_SIZE_BODY);
+                // === Összesítés típusonként (lap-biztos) ===
+                r.ensureSpace(LINE_HEIGHT * 2);
+                r.textLeft(JournalRenderer.BOLD, FONT_SIZE_BODY, "OSSZESITES TIPUSONKENT:");
+                r.advance(LINE_HEIGHT);
                 for (var entry : typeSummary.entrySet()) {
-                    content.beginText();
-                    content.newLineAtOffset(MARGIN + 20, y);
-                    content.showText("  " + entry.getKey().name() + ": " + entry.getValue() + " db");
-                    content.endText();
-                    y -= LINE_HEIGHT;
+                    r.ensureSpace(LINE_HEIGHT);
+                    r.textAt(JournalRenderer.BODY, FONT_SIZE_BODY, MARGIN + 20,
+                            "  " + entry.getKey().name() + ": " + entry.getValue() + " db");
+                    r.advance(LINE_HEIGHT);
                 }
-            }
+            } // a JournalRenderer.close() lezárja az utolsó content stream-et a doc.save ELŐTT
 
             doc.save(baos);
             return baos.toByteArray();
+        }
+    }
+
+    /**
+     * Lap-folyamot kezelő segéd a Napkönyv PDF-hez: ha a tartalom eléri a lap alját, a hívó
+     * {@link #needsNewPage}/{@link #ensureSpace} alapján automatikusan új A4 oldalt nyit
+     * ({@link #newPage}). A PDFBox content stream laponként külön, ezért oldalváltáskor a régit
+     * lezárjuk és újat nyitunk. Az {@link AutoCloseable#close()} idempotens (a doc.save ELŐTT
+     * kell hívni, hogy a stream véglegesítődjön).
+     */
+    private static final class JournalRenderer implements AutoCloseable {
+        static final PDType1Font BOLD = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+        static final PDType1Font BODY = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+        private static final float TOP_Y = PAGE_HEIGHT - MARGIN;
+        private static final float BOTTOM_Y = MARGIN;
+
+        private final PDDocument doc;
+        private PDPageContentStream content;
+        private float y;
+
+        JournalRenderer(PDDocument doc) throws IOException {
+            this.doc = doc;
+            startPage();
+        }
+
+        private void startPage() throws IOException {
+            PDPage page = new PDPage(PDRectangle.A4);
+            doc.addPage(page);
+            content = new PDPageContentStream(doc, page);
+            y = TOP_Y;
+        }
+
+        PDPageContentStream content() {
+            return content;
+        }
+
+        float y() {
+            return y;
+        }
+
+        /** Sorelőrelépés (az y-t csökkenti). */
+        void advance(float dy) {
+            y -= dy;
+        }
+
+        /** True, ha a következő {@code needed} magasságú blokk már nem fér el az aktuális lapon. */
+        boolean needsNewPage(float needed) {
+            return y - needed < BOTTOM_Y;
+        }
+
+        /** Ha a {@code needed} blokk nem fér el, új oldalt nyit. */
+        void ensureSpace(float needed) throws IOException {
+            if (needsNewPage(needed)) {
+                newPage();
+            }
+        }
+
+        /** Lezárja az aktuális stream-et és új A4 oldalt nyit (a fejlécet a hívó rajzolja újra). */
+        void newPage() throws IOException {
+            content.close();
+            startPage();
+        }
+
+        /** Szöveg a bal margón, az aktuális y-on (a sort NEM lépteti). */
+        void textLeft(PDType1Font font, float size, String s) throws IOException {
+            textAt(font, size, MARGIN, s);
+        }
+
+        /** Szöveg adott x-en, az aktuális y-on. */
+        void textAt(PDType1Font font, float size, float x, String s) throws IOException {
+            content.beginText();
+            content.setFont(font, size);
+            content.newLineAtOffset(x, y);
+            content.showText(s);
+            content.endText();
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (content != null) {
+                content.close();
+                content = null;
+            }
         }
     }
 
