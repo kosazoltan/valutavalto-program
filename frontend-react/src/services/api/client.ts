@@ -370,10 +370,11 @@ api.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    // FK-016 (2026-06-03): a Központi Munkaállomás kliens (central-workstation flavor) minden
-    // /branches GET lekérdezéséhez clientType=CENTRAL-t fűz, hogy a backend a virtuális
-    // partnereket (VAULT_COUNTERPARTY) kizárja. Az értéktári/pénztári kliens nem küldi ezt,
-    // így ott a partnerek (átadás-átvétel) változatlanul megmaradnak (regresszió-mentesség).
+    // FK-016 (2026-06-03): a Központi Munkaállomás kliens (central-workstation flavor) a /branches
+    // GET lekérdezésekhez clientType=CENTRAL-t fűz. A backend ezt a LISTÁZÓ végpontokon
+    // (/branches és /branches/my-territory) értékeli ki → a virtuális partnerek (VAULT_COUNTERPARTY)
+    // kizárva; a többi /branches/* végpont a paramétert egyszerűen figyelmen kívül hagyja. Az
+    // értéktári/pénztári kliens nem küldi → ott a partnerek (átadás-átvétel) megmaradnak.
     if (
       (config.method ?? 'get').toUpperCase() === 'GET' &&
       config.url?.startsWith('/branches') &&

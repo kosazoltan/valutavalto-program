@@ -74,6 +74,11 @@ public class BranchController {
                 .toList();
     }
 
+    /** CodeQL log-injection elleni semlegesítés: a felhasználói input sortörés-karaktereit cseréli. */
+    private static String sanitizeForLog(String value) {
+        return value == null ? null : value.replaceAll("[\\r\\n]", "_");
+    }
+
     /**
      * GET /api/v1/branches/cashier-shipment-targets
      *
@@ -118,8 +123,11 @@ public class BranchController {
             @RequestParam(required = false, defaultValue = "false") boolean activeOnly,
             @RequestParam(required = false) String clientType
     ) {
+        // CodeQL (log-injection): a query-paraméterek felhasználói inputok — a logolás előtt a
+        // sortörés-karaktereket semlegesítjük, hogy ne lehessen hamis log-bejegyzést injektálni.
         log.info("GET /api/v1/branches - type: {}, status: {}, search: {}, activeOnly: {}, clientType: {}",
-                type, status, search, activeOnly, clientType);
+                sanitizeForLog(type), sanitizeForLog(status), sanitizeForLog(search), activeOnly,
+                sanitizeForLog(clientType));
 
         List<BranchDto> branches;
 

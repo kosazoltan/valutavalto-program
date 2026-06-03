@@ -35,7 +35,7 @@ class BranchControllerTest {
         return BranchDto.builder().id(UUID.randomUUID()).code(code).name(code).branchTypeCode(typeCode).build();
     }
 
-    /** PENZTAR + ERTEKTAR + a 10 VAULT_COUNTERPARTY partner egy listában. */
+    /** PENZTAR + ERTEKTAR + 3 minta a VAULT_COUNTERPARTY partnerekből (a 10 könyvelési entitásból). */
     private List<BranchDto> mixedBranches() {
         return List.of(
                 branch("BR010", "PENZTAR"),
