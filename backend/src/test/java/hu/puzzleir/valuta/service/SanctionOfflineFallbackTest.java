@@ -58,11 +58,20 @@ class SanctionOfflineFallbackTest {
     }
 
     @Test
-    @DisplayName("elavult lista (>7 napos) → staleData=true, listAgeDays kitöltve")
-    void oldList_stale() {
+    @DisplayName("friss-még lista (10 napos, < 30 napos spec-küszöb) → staleData=false")
+    void recentList_notStale() {
+        // A5 (EXCMD szankció-spec): a staleness-küszöb 30 nap, így a 10 napos lista még friss.
         SanctionScreeningResult r = screenClean(LocalDate.now().minusDays(10), 100);
-        assertThat(r.isStaleData()).isTrue();
+        assertThat(r.isStaleData()).isFalse();
         assertThat(r.getListAgeDays()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("31 napos lista (a 30 napos spec-küszöb feletti minimum) → staleData=true")
+    void justOverLimit_stale() {
+        SanctionScreeningResult r = screenClean(LocalDate.now().minusDays(31), 100);
+        assertThat(r.isStaleData()).isTrue();
+        assertThat(r.getListAgeDays()).isEqualTo(31);
     }
 
     @Test
@@ -81,10 +90,10 @@ class SanctionOfflineFallbackTest {
     }
 
     @Test
-    @DisplayName("pontosan 7 napos lista → MÉG nem elavult (≤ határ)")
+    @DisplayName("pontosan 30 napos lista → MÉG nem elavult (≤ spec-küszöb)")
     void exactlyAtLimit_notStale() {
-        SanctionScreeningResult r = screenClean(LocalDate.now().minusDays(7), 100);
+        SanctionScreeningResult r = screenClean(LocalDate.now().minusDays(30), 100);
         assertThat(r.isStaleData()).isFalse();
-        assertThat(r.getListAgeDays()).isEqualTo(7);
+        assertThat(r.getListAgeDays()).isEqualTo(30);
     }
 }

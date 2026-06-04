@@ -38,11 +38,16 @@ import java.util.*;
 public class SanctionScreeningService {
 
     private static final int MAX_LEVENSHTEIN_DISTANCE = 2;
+    // A5 (EXCMD szankció-spec doc<->kód igazítás): a match-score-ok a spec szerinti súlyok.
+    // A score METAADAT — a determineRiskLevel típus-alapú (EXACT->CONFIRMED, bármi->POSSIBLE)
+    // és a blokkolás a matched=!matches.isEmpty()-ből jön, tehát a score NEM befolyásolja a
+    // blokkolási döntést. A spec-értékek a korábbi 0.7/0.5-nél MAGASABBAK -> szigorúbb
+    // (biztonságosabb) súlyozás a downstream audit/megjelenítés felé, gyengítés nélkül.
     private static final double EXACT_MATCH_SCORE = 1.0;
-    private static final double PARTIAL_MATCH_SCORE = 0.7;
-    private static final double ALIAS_MATCH_SCORE = 0.5;
-    /** #4: e fölött a helyi szankciós lista elavultnak (degradált) minősül. */
-    private static final int MAX_SANCTION_LIST_AGE_DAYS = 7;
+    private static final double PARTIAL_MATCH_SCORE = 0.8;
+    private static final double ALIAS_MATCH_SCORE = 0.9;
+    /** #4 / A5: e fölött a helyi szankciós lista elavultnak (degradált) minősül — spec szerint 30 nap. */
+    private static final int MAX_SANCTION_LIST_AGE_DAYS = 30;
 
     private final SanctionEntryRepository sanctionEntryRepository;
     private final SanctionScreeningLogRepository screeningLogRepository;
@@ -162,53 +167,89 @@ public class SanctionScreeningService {
         List<SanctionMatch> matches = new ArrayList<>();
 
         for (SanctionEntry entry : activeEntries) {
-            String normalizedEntry = normalizeName(entry.getFullName());
-
-            // Csak nem-üres entry-nevet hasonlítunk (üres contains() false-positive véd).
-            if (!normalizedEntry.isBlank()) {
-                // Exact match
-                if (normalizedInput.equals(normalizedEntry)) {
-                    matches.add(toMatch(entry, "EXACT", EXACT_MATCH_SCORE));
-                    continue;
-                }
-
-                // Contains match
-                if (normalizedEntry.contains(normalizedInput) || normalizedInput.contains(normalizedEntry)) {
-                    matches.add(toMatch(entry, "PARTIAL", PARTIAL_MATCH_SCORE));
-                    continue;
-                }
-
-                // Levenshtein fuzzy match
-                int distance = levenshteinDistance(normalizedInput, normalizedEntry);
-                if (distance <= MAX_LEVENSHTEIN_DISTANCE) {
-                    double score = 1.0 - ((double) distance / Math.max(normalizedInput.length(), normalizedEntry.length()));
-                    matches.add(toMatch(entry, "PARTIAL", Math.max(score, 0.3)));
-                    continue;
-                }
-            }
-
-            // Alias match
-            if (entry.getAliases() != null && !entry.getAliases().isBlank()) {
-                try {
-                    List<String> aliases = objectMapper.readValue(entry.getAliases(), new TypeReference<>() {});
-                    for (String alias : aliases) {
-                        String normalizedAlias = normalizeName(alias);
-                        if (normalizedAlias.isBlank()) continue;
-                        if (normalizedInput.equals(normalizedAlias) ||
-                            normalizedAlias.contains(normalizedInput) ||
-                            normalizedInput.contains(normalizedAlias) ||
-                            levenshteinDistance(normalizedInput, normalizedAlias) <= MAX_LEVENSHTEIN_DISTANCE) {
-                            matches.add(toMatch(entry, "ALIAS", ALIAS_MATCH_SCORE));
-                            break;
-                        }
-                    }
-                } catch (Exception e) {
-                    log.warn("Alias JSON parse hiba: entryId={}, aliases='{}'", entry.getId(), entry.getAliases());
-                }
+            SanctionMatch best = bestMatchForEntry(entry, normalizedInput);
+            if (best != null) {
+                matches.add(best);
             }
         }
 
         return matches;
+    }
+
+    /**
+     * Egy bejegyzésre a LEGJOBB találat kiválasztása szigorú prioritás-sorrendben:
+     * 1) pontos teljes-név, 2) PONTOS alias (b8 FR-3: 0.9 CSAK a pontos alias-egyezésé),
+     * 3) teljes-név contains, 4) teljes-név fuzzy, 5) alias contains/fuzzy.
+     *
+     * <p>A pontos alias-egyezés a részleges teljes-név egyezés ELŐTT szerepel, így pl. ha a
+     * keresett név pontosan egyezik egy aliasszal, miközben a teljes-név is tartalmazza azt
+     * (overlap-eset), akkor is a helyes ALIAS/0.9 score kerül rögzítésre, nem a PARTIAL/0.8.</p>
+     */
+    private SanctionMatch bestMatchForEntry(SanctionEntry entry, String normalizedInput) {
+        String normalizedEntry = normalizeName(entry.getFullName());
+        boolean hasName = !normalizedEntry.isBlank();
+
+        // 1) Pontos teljes-név egyezés
+        if (hasName && normalizedInput.equals(normalizedEntry)) {
+            return toMatch(entry, "EXACT", EXACT_MATCH_SCORE);
+        }
+
+        List<String> aliases = parseAliases(entry);
+
+        // 2) PONTOS alias-egyezés (a részleges teljes-név egyezés ELŐTT)
+        for (String alias : aliases) {
+            String normalizedAlias = normalizeName(alias);
+            if (!normalizedAlias.isBlank() && normalizedInput.equals(normalizedAlias)) {
+                return toMatch(entry, "ALIAS", ALIAS_MATCH_SCORE);
+            }
+        }
+
+        // 3) Teljes-név contains
+        if (hasName && (normalizedEntry.contains(normalizedInput) || normalizedInput.contains(normalizedEntry))) {
+            return toMatch(entry, "PARTIAL", PARTIAL_MATCH_SCORE);
+        }
+
+        // 4) Teljes-név Levenshtein fuzzy
+        if (hasName) {
+            int distance = levenshteinDistance(normalizedInput, normalizedEntry);
+            if (distance <= MAX_LEVENSHTEIN_DISTANCE) {
+                return toMatch(entry, "PARTIAL", fuzzyScore(distance, normalizedInput, normalizedEntry));
+            }
+        }
+
+        // 5) Alias contains / fuzzy — a fő-ággal megegyezően PARTIAL (a 0.9 a pontos egyezésé)
+        for (String alias : aliases) {
+            String normalizedAlias = normalizeName(alias);
+            if (normalizedAlias.isBlank()) continue;
+            if (normalizedAlias.contains(normalizedInput) || normalizedInput.contains(normalizedAlias)) {
+                return toMatch(entry, "PARTIAL", PARTIAL_MATCH_SCORE);
+            }
+            int aliasDistance = levenshteinDistance(normalizedInput, normalizedAlias);
+            if (aliasDistance <= MAX_LEVENSHTEIN_DISTANCE) {
+                return toMatch(entry, "PARTIAL", fuzzyScore(aliasDistance, normalizedInput, normalizedAlias));
+            }
+        }
+
+        return null;
+    }
+
+    /** Levenshtein-távolság alapú [0.3, 1.0] score (rövid stringnél clamp 0.3-ra). */
+    private double fuzzyScore(int distance, String a, String b) {
+        double score = 1.0 - ((double) distance / Math.max(a.length(), b.length()));
+        return Math.max(score, 0.3);
+    }
+
+    /** Alias JSON tömb biztonságos beolvasása (parse-hiba → üres lista, naplózással). */
+    private List<String> parseAliases(SanctionEntry entry) {
+        if (entry.getAliases() == null || entry.getAliases().isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return objectMapper.readValue(entry.getAliases(), new TypeReference<>() {});
+        } catch (Exception e) {
+            log.warn("Alias JSON parse hiba: entryId={}, aliases='{}'", entry.getId(), entry.getAliases());
+            return Collections.emptyList();
+        }
     }
 
     /**

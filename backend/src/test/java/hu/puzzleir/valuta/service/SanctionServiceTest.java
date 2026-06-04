@@ -127,6 +127,72 @@ class SanctionServiceTest {
     }
 
     // =====================================================================
+    // A5 / b8 FR-3: alias-score differenciálás
+    // =====================================================================
+    @Test
+    @DisplayName("Alias: PONTOS alias-egyezés → ALIAS típus, 0.9 score (spec)")
+    void testScreen_exactAliasMatch_score09() {
+        // Arrange — a keresett név pontosan egy aliasszal egyezik
+        SanctionEntry entry = createEntry("Osama bin Laden", "[\"Abu Abdallah\"]");
+        when(sanctionEntryRepository.findByActiveTrue()).thenReturn(List.of(entry));
+
+        // Act
+        SanctionScreeningResult result = service.screenCustomer(
+                "Abu Abdallah", null, null,
+                "W001", "Teszt Pénztáros", "BP01"
+        );
+
+        // Assert — pontos alias-egyezés → ALIAS, 0.9
+        assertThat(result.isMatched()).isTrue();
+        var aliasMatch = result.getMatches().stream()
+                .filter(m -> "ALIAS".equals(m.getMatchType())).findFirst().orElseThrow();
+        assertThat(aliasMatch.getScore()).isEqualTo(0.9);
+    }
+
+    @Test
+    @DisplayName("Alias: FUZZY (elgépelt) alias-találat → PARTIAL típus (távolság-alapú), NEM flat ALIAS/0.9")
+    void testScreen_fuzzyAliasMatch_notExactAliasType() {
+        // Arrange — alias "Abu Abdallah", keresett "Abu Abdallat" (Levenshtein = 1, NEM pontos egyezés)
+        SanctionEntry entry = createEntry("Osama bin Laden", "[\"Abu Abdallah\"]");
+        when(sanctionEntryRepository.findByActiveTrue()).thenReturn(List.of(entry));
+
+        // Act
+        SanctionScreeningResult result = service.screenCustomer(
+                "Abu Abdallat", null, null,
+                "W001", "Teszt Pénztáros", "BP01"
+        );
+
+        // Assert — a blokkolás megmarad (matched), de a fuzzy alias NEM kap "ALIAS" típust:
+        // a 0.9/"ALIAS" a PONTOS alias-egyezésé, a fuzzy a fő-ággal megegyezően "PARTIAL".
+        assertThat(result.isMatched()).isTrue();
+        assertThat(result.getMatches()).isNotEmpty();
+        assertThat(result.getMatches()).noneSatisfy(m ->
+                assertThat(m.getMatchType()).isEqualTo("ALIAS"));
+        assertThat(result.getMatches()).anySatisfy(m ->
+                assertThat(m.getMatchType()).isEqualTo("PARTIAL"));
+    }
+
+    @Test
+    @DisplayName("Alias: pontos alias-egyezés overlap-esetben (a fullName is tartalmazza) → ALIAS/0.9, NEM PARTIAL/0.8")
+    void testScreen_exactAliasOverlapsFullName_prefersAlias() {
+        // Arrange — a fullName tartalmazza az aliast; a keresett név PONTOSAN az alias (P3 overlap-eset)
+        SanctionEntry entry = createEntry("Abu Abdallah al-Muhajir", "[\"Abu Abdallah\"]");
+        when(sanctionEntryRepository.findByActiveTrue()).thenReturn(List.of(entry));
+
+        // Act
+        SanctionScreeningResult result = service.screenCustomer(
+                "Abu Abdallah", null, null,
+                "W001", "Teszt Pénztáros", "BP01"
+        );
+
+        // Assert — a pontos alias-egyezés (ALIAS/0.9) elsőbbséget élvez a részleges teljes-név (PARTIAL/0.8) felett
+        assertThat(result.isMatched()).isTrue();
+        var match = result.getMatches().get(0);
+        assertThat(match.getMatchType()).isEqualTo("ALIAS");
+        assertThat(match.getScore()).isEqualTo(0.9);
+    }
+
+    // =====================================================================
     // XML import: sikeres
     // =====================================================================
     @Test
