@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   getPendingReceiptDrafts,
+  getReprintableReceiptDrafts,
   printPendingReceiptDraft,
   getLocalPendingTransfers,
   getLocalPendingBankTransactions,
@@ -9,6 +10,8 @@ import {
 } from './localQueue'
 import type { LocalPendingHandoverOperation } from './localQueue'
 import type { PrintReceiptData } from '../types/receipt'
+import type { Worker } from '../stores/authStore'
+import { multiLinePayable } from './rounding'
 
 // ─── No electronAPI → all async functions return empty / false ───────────────
 
@@ -22,6 +25,11 @@ describe('localQueue — without electronAPI', () => {
 
   it('getPendingReceiptDrafts returns []', async () => {
     const result = await getPendingReceiptDrafts(null)
+    expect(result).toEqual([])
+  })
+
+  it('getReprintableReceiptDrafts returns []', async () => {
+    const result = await getReprintableReceiptDrafts(null)
     expect(result).toEqual([])
   })
 
@@ -137,5 +145,174 @@ describe('mapPendingHandoverGeneratesToSheets', () => {
   it('createdByName is always "Electron queue"', () => {
     const sheets = mapPendingHandoverGeneratesToSheets([generateOp], cashDeskNames)
     expect(sheets[0]!.createdByName).toBe('Electron queue')
+  })
+})
+
+// ─── getReprintableReceiptDrafts — fizikai újranyomtatás (Codex P2 #1035) ────────
+
+describe('getReprintableReceiptDrafts — with electronAPI', () => {
+  const worker = {
+    fullName: 'Teszt Pénztáros',
+    branchCode: 'BR105',
+    companyCode: 'BEST',
+  } as unknown as Worker
+
+  afterEach(() => {
+    if ('electronAPI' in window) {
+      delete (window as any).electronAPI
+    }
+  })
+
+  function installElectronAPI(overrides: {
+    transactions?: unknown[]
+    conversions?: unknown[]
+    stornos?: unknown[]
+  }) {
+    ;(window as any).electronAPI = {
+      getReprintableTransactions: async () => overrides.transactions ?? [],
+      getReprintableConversions: async () => overrides.conversions ?? [],
+      getReprintableStornos: async () => overrides.stornos ?? [],
+    }
+  }
+
+  it('maps a single-line synced transaction to a reprintable draft', async () => {
+    installElectronAPI({
+      transactions: [{
+        id: 7,
+        type: 'BUY',
+        currency_code: 'EUR',
+        foreign_amount: 100,
+        huf_amount: 39000,
+        rounded_huf_amount: 39000,
+        rate: 390,
+        handling_fee: null,
+        discount_percent: null,
+        customer_name: 'Nagy Anna',
+        customer_document_number: 'AB123456',
+        lines: null,
+        local_reference_number: 'V105000042',
+        created_at: '2026-06-04 10:15:00',
+        synced: 1,
+      }],
+    })
+
+    const result = await getReprintableReceiptDrafts(worker)
+    expect(result).toHaveLength(1)
+    const draft = result[0]!
+    expect(draft.reprint).toBe(true)
+    expect(draft.entityType).toBe('TRANSACTION')
+    expect(draft.referenceNumber).toBe('V105000042')
+    expect(draft.title).toBe('Vételi bizonylat')
+    expect(draft.receiptData.type).toBe('buy')
+    expect(draft.receiptData.companyType).toBe('BEST_CHANGE')
+    expect(draft.receiptData.receiptNumber).toBe('V105000042')
+    expect(draft.receiptData.currencyCode).toBe('EUR')
+    expect(draft.receiptData.foreignAmount).toBe(100)
+    expect(draft.receiptData.rate).toBe(390)
+    expect(draft.receiptData.hufAmount).toBe(39000)
+    expect(draft.receiptData.transactionLines).toBeUndefined()
+    expect(draft.receiptData.customerName).toBe('Nagy Anna')
+  })
+
+  it('reconstructs the full line set + aggregate total for a multi-line synced transaction', async () => {
+    // A `lines` oszlop a backend TransactionLineRequestDto alakjában tárolódik. A tárolt sor
+    // huf_amount-ja a fejléc ELSŐ sorának értéke (NEM az aggregátum) → a teljes fizetendőt a
+    // lines-ból kell rekonstruálni (multiLinePayable), pontosan ahogy a pont-of-sale teszi.
+    const lines = [
+      { currencyCode: 'EUR', banknoteCount: 100, customExchangeRate: 390, discountType: 0, foreignStatus: 'DOMESTIC' },
+      { currencyCode: 'USD', banknoteCount: 200, customExchangeRate: 360, discountType: 0, foreignStatus: 'DOMESTIC' },
+    ]
+    installElectronAPI({
+      transactions: [{
+        id: 9,
+        type: 'SELL',
+        currency_code: 'EUR',
+        foreign_amount: 100,
+        huf_amount: 39000, // csak az első sor — NEM az aggregátum
+        rounded_huf_amount: 39000,
+        rate: 390,
+        handling_fee: 500,
+        discount_percent: 2,
+        customer_name: null,
+        customer_document_number: null,
+        lines: JSON.stringify(lines),
+        local_reference_number: 'E105000099',
+        created_at: '2026-06-04 11:00:00',
+        synced: 1,
+      }],
+    })
+
+    const result = await getReprintableReceiptDrafts(worker)
+    expect(result).toHaveLength(1)
+    const rd = result[0]!.receiptData
+    expect(rd.type).toBe('sell')
+    expect(rd.transactionLines).toHaveLength(2)
+    expect(rd.transactionLines![0]).toEqual({ currencyCode: 'EUR', foreignAmount: 100, rate: 390, hufAmount: 39000 })
+    expect(rd.transactionLines![1]).toEqual({ currencyCode: 'USD', foreignAmount: 200, rate: 360, hufAmount: 72000 })
+
+    const totalRaw = 100 * 390 + 200 * 360 // 111000
+    const expectedPayable = multiLinePayable(totalRaw, 'sell', 2, 500)
+    expect(rd.hufAmount).toBe(expectedPayable)
+    expect(rd.roundedHufAmount).toBe(expectedPayable)
+    expect(rd.roundingDiff).toBe(0)
+    expect(rd.handlingFee).toBe(500)
+  })
+
+  it('maps synced conversions and stornos with reprint flag', async () => {
+    installElectronAPI({
+      conversions: [{
+        id: 3,
+        from_currency_code: 'EUR',
+        to_currency_code: 'USD',
+        from_amount: 100,
+        calculated_huf_amount: 39000,
+        calculated_to_amount: 108,
+        conversion_rate: 1.08,
+        customer_name: null,
+        customer_document_number: null,
+        note: 'teszt',
+        local_reference_number: 'K105000001',
+        created_at: '2026-06-04 09:00:00',
+        synced: 1,
+      }],
+      stornos: [{
+        id: 4,
+        original_receipt_number: 'V105000010',
+        currency_code: 'EUR',
+        foreign_amount: 50,
+        huf_amount: 19500,
+        exchange_rate: 390,
+        custom_exchange_rate: null,
+        reason: 'téves rögzítés',
+        customer_name: null,
+        customer_document_number: null,
+        local_reference_number: 'S105000002',
+        created_at: '2026-06-04 12:00:00',
+        synced: 1,
+      }],
+    })
+
+    const result = await getReprintableReceiptDrafts(worker)
+    expect(result).toHaveLength(2)
+    // DESC sorrend created_at szerint → a storno (12:00) az első.
+    const storno = result.find((d) => d.entityType === 'STORNO')!
+    expect(storno.reprint).toBe(true)
+    expect(storno.receiptData.type).toBe('storno')
+    expect(storno.receiptData.originalReceiptNumber).toBe('V105000010')
+    expect(storno.receiptData.stornoReason).toBe('téves rögzítés')
+    const conv = result.find((d) => d.entityType === 'CONVERSION')!
+    expect(conv.reprint).toBe(true)
+    expect(conv.receiptData.type).toBe('conversion')
+    expect(conv.receiptData.sourceCurrencyCode).toBe('EUR')
+    expect(conv.receiptData.targetCurrencyCode).toBe('USD')
+  })
+
+  it('returns [] when only some reprint APIs are present (old installer)', async () => {
+    ;(window as any).electronAPI = {
+      getReprintableTransactions: async () => [],
+      // getReprintableConversions / getReprintableStornos hiányoznak → graceful []
+    }
+    const result = await getReprintableReceiptDrafts(worker)
+    expect(result).toEqual([])
   })
 })

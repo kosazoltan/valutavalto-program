@@ -7,6 +7,7 @@ import { useAuthStore } from '../../stores/authStore'
 import ReceiptPreviewModal from '../../components/electron/ReceiptPreviewModal'
 import {
   getPendingReceiptDrafts,
+  getReprintableReceiptDrafts,
   printPendingReceiptDraft,
   type PendingReceiptDraft,
 } from '../../utils/localQueue'
@@ -73,6 +74,9 @@ export default function ReceiptPage() {
   const worker = useAuthStore((state) => state.worker)
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [localDrafts, setLocalDrafts] = useState<PendingReceiptDraft[]>([])
+  // Fizikai újranyomtatás (Codex P2 #1035): a már szinkronizált (synced=1) helyi bizonylatok,
+  // amelyeket egy meghiúsult nyomtatás (papírelakadás) után ESC/POS-on újra ki lehet nyomtatni.
+  const [reprintable, setReprintable] = useState<PendingReceiptDraft[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   // EXCMD b5b FR-BSZUR-01: bizonylattípus-szűrő (egyszerre egy aktív). A backend Receipt.receiptType =
@@ -87,12 +91,14 @@ export default function ReceiptPage() {
   const loadData = useCallback(async (): Promise<void> => {
     try {
       setLoading(true)
-      const [data, drafts] = await Promise.all([
+      const [data, drafts, reprints] = await Promise.all([
         receiptApi.list(),
         isElectron() ? getPendingReceiptDrafts(worker) : Promise.resolve([]),
+        isElectron() ? getReprintableReceiptDrafts(worker) : Promise.resolve([]),
       ])
       setReceipts(data)
       setLocalDrafts(drafts)
+      setReprintable(reprints)
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       logger.error('ReceiptPage', 'Failed to load receipts:', err)
@@ -160,6 +166,26 @@ export default function ReceiptPage() {
     })
   }, [localDrafts, searchTerm, typeFilter])
 
+  // Fizikai újranyomtatás (Codex P2 #1035): a szinkronizált, újranyomtatható helyi bizonylatokra
+  // a kereső + típus-szűrő ugyanúgy hat, mint a vázlat-listára (azonos PrintJobType-alapú szűrés).
+  const filteredReprintable = useMemo(() => {
+    const lowered = searchTerm.toLowerCase()
+    return reprintable.filter((item) => {
+      if (typeFilter === TYPE_FILTER_CUSTOMER_ONLY) {
+        if (!hasCustomer(item.receiptData.customerName)) return false
+      } else if (typeFilter !== 'ALL') {
+        const draftType = TYPE_FILTER_TO_DRAFT_TYPE[typeFilter]
+        if (!draftType || (item.receiptData.type ?? '') !== draftType) return false
+      }
+      if (!lowered) return true
+      return (
+        item.referenceNumber.toLowerCase().includes(lowered)
+        || item.title.toLowerCase().includes(lowered)
+        || item.receiptData.customerName?.toLowerCase().includes(lowered)
+      )
+    })
+  }, [reprintable, searchTerm, typeFilter])
+
   if (loading) {
     return <div className="flex items-center justify-center h-64">Betöltés...</div>
   }
@@ -226,6 +252,42 @@ export default function ReceiptPage() {
                     <div className="flex gap-2">
                       <button onClick={() => setSelectedDraft(draft)} className="form-button text-xs"><Eye size={12} />{t('closing.elonezet')}</button>
                       <button onClick={() => setSelectedDraft(draft)} className="form-button text-xs"><Printer size={12} />{t('receipts.vazlatNyomtatas')}</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Fizikai újranyomtatás (Codex P2 #1035): már szinkronizált helyi bizonylatok, amelyeknél a
+          fizikai nyomtatás meghiúsult (papírelakadás) — a lokális adatból ESC/POS-on újranyomtathatók. */}
+      {filteredReprintable.length > 0 && (
+        <div className="form-panel">
+          <div className="mb-4 flex items-center gap-2 text-blue-800">
+            <Printer size={18} />
+            <h2 className="text-lg font-bold">Fizikai újranyomtatás</h2>
+          </div>
+          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            Ezek a bizonylatok már véglegesítve és szinkronizálva vannak. Ha a nyomtatás meghiúsult
+            (pl. papírelakadás), itt a tárolt adatból fizikailag újranyomtathatók — a sorszám nem változik.
+          </div>
+          <table className="data-grid w-full">
+            <thead>
+              <tr><th>{t('receipts.helyiReferencia')}</th><th>{t('common.type')}</th><th>{t('common.createdAt')}</th><th>{t('common.status2')}</th><th>{t('common.actions')}</th></tr>
+            </thead>
+            <tbody>
+              {filteredReprintable.map((item) => (
+                <tr key={item.id}>
+                  <td className="font-mono">{item.referenceNumber}</td>
+                  <td>{item.title}</td>
+                  <td>{new Date(item.createdAt).toLocaleString('hu-HU')}</td>
+                  <td><span className="badge badge-blue">{item.statusLabel}</span></td>
+                  <td>
+                    <div className="flex gap-2">
+                      <button onClick={() => setSelectedDraft(item)} className="form-button text-xs"><Eye size={12} />{t('closing.elonezet')}</button>
+                      <button onClick={() => setSelectedDraft(item)} className="form-button text-xs"><Printer size={12} />Újranyomtatás</button>
                     </div>
                   </td>
                 </tr>
@@ -311,7 +373,14 @@ export default function ReceiptPage() {
         receiptData={selectedDraft?.receiptData ?? null}
         qrCodeDataUrl={null}
         variant="draft"
-        statusMessage="Szigorú számadású bizonylat — helyileg már véglegesítve, lezárva. Szerver-szinkron függőben (auditnapló kiegészítése)."
+        printLabel={selectedDraft?.reprint ? 'Újranyomtatás' : undefined}
+        statusMessage={
+          selectedDraft?.reprint
+            // Fizikai újranyomtatás (Codex P2 #1035): a bizonylat már szinkronizált — ez nem új
+            // kiállítás, csak a meglévő (azonos sorszámú) bizonylat ismételt fizikai nyomtatása.
+            ? 'Már szinkronizált bizonylat fizikai újranyomtatása — a sorszám és a tartalom változatlan (pl. papírelakadás utáni ismételt nyomtatás).'
+            : 'Szigorú számadású bizonylat — helyileg már véglegesítve, lezárva. Szerver-szinkron függőben (auditnapló kiegészítése).'
+        }
         onPrint={async () => {
           if (!selectedDraft) {
             return
@@ -319,9 +388,13 @@ export default function ReceiptPage() {
 
           const printed = await printPendingReceiptDraft(selectedDraft.receiptData)
           if (!printed) {
-            throw new Error('A vázlat nyomtatása nem érhető el ebben a környezetben')
+            throw new Error('A bizonylat nyomtatása nem érhető el ebben a környezetben')
           }
-          toast.success('A helyi bizonylatvázlat nyomtatása elindítva')
+          toast.success(
+            selectedDraft.reprint
+              ? 'A bizonylat fizikai újranyomtatása elindítva'
+              : 'A helyi bizonylatvázlat nyomtatása elindítva',
+          )
         }}
       />
     </div>

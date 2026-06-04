@@ -2491,6 +2491,75 @@ export function markStornoSynced(id: number): void {
   saveDatabase();
 }
 
+// ============================================================================
+// Fizikai ujranyomtatas — mar szinkronizalt (synced = 1) bizonylatok
+// ============================================================================
+//
+// VALOS operativ hianyossag (Codex P2, #1035): ha egy bizonylat MAR felszinkronizalt
+// (synced = 1) es a fizikai nyomtatas meghiusul (papirelakadas, nyomtato offline),
+// a vazlat-bongeszobol eltunik (getPendingTransactions/Conversions/Stornos CSAK
+// synced = 0-t listaz), igy nincs tiszta fizikai-ujranyomtatasi ut.
+//
+// Ezek a lekerdezesek a LEGUTOBBI szinkronizalt sorokat adjak vissza (DESC, limitelve),
+// hogy az operator a lokalis receiptData-bol (local-first) ESC/POS-on ujra tudja nyomtatni
+// a bizonylatot. A sync-engine TOVABBRA is a synced = 0 lekerdezeseket hasznalja —
+// ezeket NEM erintik.
+//
+// A `lines` oszlop (multi-line aggregalt vetel/eladas) is visszaadasra kerul a SELECT *
+// reven, igy az ujranyomtatas a TELJES tetelsort rekonstrualni tudja.
+
+/** Alapertelmezett ujranyomtatasi ablak: a legutobbi N szinkronizalt bizonylat. */
+const REPRINT_DEFAULT_LIMIT = 50;
+
+function clampReprintLimit(limit?: number): number {
+  if (typeof limit !== 'number' || !Number.isFinite(limit) || limit <= 0) {
+    return REPRINT_DEFAULT_LIMIT;
+  }
+  return Math.min(Math.floor(limit), 200);
+}
+
+export function getReprintableTransactions(limit?: number): PendingTransactionRow[] {
+  if (!db) return [];
+  const results: PendingTransactionRow[] = [];
+  const stmt = db.prepare(
+    'SELECT * FROM pending_transactions WHERE synced = 1 ORDER BY created_at DESC, id DESC LIMIT ?',
+  );
+  stmt.bind([clampReprintLimit(limit)]);
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as PendingTransactionRow);
+  }
+  stmt.free();
+  return results;
+}
+
+export function getReprintableConversions(limit?: number): PendingConversionRow[] {
+  if (!db) return [];
+  const results: PendingConversionRow[] = [];
+  const stmt = db.prepare(
+    'SELECT * FROM pending_conversions WHERE synced = 1 ORDER BY created_at DESC, id DESC LIMIT ?',
+  );
+  stmt.bind([clampReprintLimit(limit)]);
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as PendingConversionRow);
+  }
+  stmt.free();
+  return results;
+}
+
+export function getReprintableStornos(limit?: number): PendingStornoRow[] {
+  if (!db) return [];
+  const results: PendingStornoRow[] = [];
+  const stmt = db.prepare(
+    'SELECT * FROM pending_stornos WHERE synced = 1 ORDER BY created_at DESC, id DESC LIMIT ?',
+  );
+  stmt.bind([clampReprintLimit(limit)]);
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as PendingStornoRow);
+  }
+  stmt.free();
+  return results;
+}
+
 export function savePendingHandoverOperation(params: {
   operationType: 'GENERATE' | 'PRINT' | 'COMPLETE';
   sheetId?: string | null;

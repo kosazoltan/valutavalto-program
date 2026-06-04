@@ -67,6 +67,9 @@ import {
   getPendingConversions,
   getPendingBankTransactions,
   getPendingStornos,
+  getReprintableTransactions,
+  getReprintableConversions,
+  getReprintableStornos,
   markTransactionSynced,
   markConversionSynced,
   markBankTransactionSynced,
@@ -597,6 +600,30 @@ ipcMain.handle('save-pending-storno', async (_event, payload: {
 
 ipcMain.handle('get-pending-stornos', async (): Promise<ReturnType<typeof getPendingStornos>> => {
   return getPendingStornos();
+});
+
+// Fizikai ujranyomtatas (Codex P2 #1035): a mar szinkronizalt (synced = 1) bizonylatok
+// legutobbi sorai, hogy egy meghiusult fizikai nyomtatas (papirelakadas) utan az operator a
+// lokalis receiptData-bol ESC/POS-on UJRA tudja nyomtatni. A sync-engine erintetlen (synced = 0).
+ipcMain.handle('get-reprintable-transactions', async (
+  _event,
+  limit?: number,
+): Promise<ReturnType<typeof getReprintableTransactions>> => {
+  return getReprintableTransactions(limit);
+});
+
+ipcMain.handle('get-reprintable-conversions', async (
+  _event,
+  limit?: number,
+): Promise<ReturnType<typeof getReprintableConversions>> => {
+  return getReprintableConversions(limit);
+});
+
+ipcMain.handle('get-reprintable-stornos', async (
+  _event,
+  limit?: number,
+): Promise<ReturnType<typeof getReprintableStornos>> => {
+  return getReprintableStornos(limit);
 });
 
 ipcMain.handle('get-pending-transaction-count', async (): Promise<number> => {
