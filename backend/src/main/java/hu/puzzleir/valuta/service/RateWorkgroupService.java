@@ -105,7 +105,18 @@ public class RateWorkgroupService {
         // FK02-D (FR-17): a kód a sorszámból generált (felhasználó nem szerkeszti); átnevezéskor
         // a sorszámhoz igazítjuk. A DEFAULT csoport kódja megmarad.
         if (!"DEFAULT".equalsIgnoreCase(existing.getCode())) {
-            existing.setCode(generateWorkgroupCode(existing.getCode(), newSeq));
+            String newCode = generateWorkgroupCode(existing.getCode(), newSeq);
+            // Codex P2: a regenerált kód (company_id, code) egyediségét is validáljuk save ELŐTT —
+            // különben legacy/elcsúszott adatnál a uq_rate_workgroup_company_code constraint a save-en
+            // nyers DB-hibát adna a tiszta 409 helyett. (Self kizárva.)
+            if (!newCode.equals(existing.getCode())) {
+                workgroupRepository.findByCompanyIdAndCode(companyId, newCode)
+                        .filter(dup -> !dup.getId().equals(id))
+                        .ifPresent(dup -> {
+                            throw new ValidationException("VV-VALID-003: Már létezik munkacsoport ezzel a kóddal: " + newCode);
+                        });
+            }
+            existing.setCode(newCode);
         }
         // FK-04/E: árfolyamvédelem flag — a csempe jobb felső checkbox-a vezérli.
         // Ha a DTO null-t küld (régi kliens), a meglévő értéket tartjuk.

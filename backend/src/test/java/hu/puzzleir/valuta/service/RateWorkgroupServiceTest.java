@@ -176,6 +176,30 @@ class RateWorkgroupServiceTest {
     }
 
     @Test
+    @DisplayName("FK02-D Codex P2: update regenerált kódja ütközik másik csoport kódjával → ValidationException")
+    void update_regeneratedCodeCollides_throws() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            Company company = new Company();
+            company.setId(COMPANY_ID);
+            UUID id = UUID.randomUUID();
+            UUID otherId = UUID.randomUUID();
+            RateWorkgroup existing = RateWorkgroup.builder().id(id).name("A").code("GROUP_01")
+                    .company(company).active(true).legacyGroupNumber(1).build();
+            // A 9-es sorszám szabad, DE a "GROUP_09" kód már foglalt egy elcsúszott legacy csoporton.
+            when(workgroupRepository.findById(id)).thenReturn(Optional.of(existing));
+            when(workgroupRepository.findByCompanyIdAndLegacyGroupNumber(COMPANY_ID, 9)).thenReturn(Optional.empty());
+            when(workgroupRepository.findByCompanyIdAndCode(COMPANY_ID, "GROUP_09"))
+                    .thenReturn(Optional.of(RateWorkgroup.builder().id(otherId).build()));
+
+            RateWorkgroup update = RateWorkgroup.builder().name("A").active(true).legacyGroupNumber(9).build();
+            assertThatThrownBy(() -> service.update(id, update))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("VV-VALID-003");
+        }
+    }
+
+    @Test
     @DisplayName("FK02-D FR-16: update SAJÁT sorszámával (nem ütközik önmagával) → OK")
     void update_sameSequenceSelf_ok() {
         try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
