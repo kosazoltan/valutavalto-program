@@ -483,9 +483,17 @@ public class TransactionMultiLineService {
 
         // A6 / b8 FR-8: soronkenti realizalt profit best-effort rogzitese (flag-gated,
         // cold-start-safe, read-only a keszleten). Egysoros executeSell-lel egyezo logika.
+        // A tranzakcio-szintu kedvezmenyt soronkent atadjuk (uniform % a teljes osszegre),
+        // hogy a profit a tenyleges (diszkontalt) eladasi ratat hasznalja. A try-catch
+        // garantalja, hogy a best-effort profit-rogzites SOHA ne torje meg az eladast.
         for (TransactionLine line : transactionLines) {
-            wacService.recordSellProfitIfEnabled(branchId, saved.getId(), line.getCurrency().getCode(),
-                    line.getBanknoteCount(), line.getAppliedRate());
+            try {
+                wacService.recordSellProfitIfEnabled(branchId, saved.getId(), line.getCurrency().getCode(),
+                        line.getBanknoteCount(), line.getAppliedRate(), request.getDiscountPercent());
+            } catch (Exception e) {
+                log.warn("WAC profit rogzites sikertelen (best-effort, eladas folytatodik): tx={} {}",
+                        saved.getId(), line.getCurrency().getCode(), e);
+            }
         }
 
         // Napi statisztika

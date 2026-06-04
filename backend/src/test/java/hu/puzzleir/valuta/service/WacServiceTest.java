@@ -55,7 +55,7 @@ class WacServiceTest {
                 .thenReturn("false");
 
         wacService.recordSellProfitIfEnabled(BRANCH_ID, 1L, "EUR",
-                new BigDecimal("100"), new BigDecimal("400"));
+                new BigDecimal("100"), new BigDecimal("400"), BigDecimal.ZERO);
 
         verifyNoInteractions(profitLogRepository);
         verifyNoInteractions(currencyStockRepository);
@@ -73,7 +73,7 @@ class WacServiceTest {
                     .thenReturn(Optional.empty());
 
             wacService.recordSellProfitIfEnabled(BRANCH_ID, 1L, "EUR",
-                    new BigDecimal("100"), new BigDecimal("400"));
+                    new BigDecimal("100"), new BigDecimal("400"), BigDecimal.ZERO);
 
             verifyNoInteractions(profitLogRepository);
         }
@@ -101,7 +101,7 @@ class WacServiceTest {
                     .thenReturn(Optional.of(stock));
 
             wacService.recordSellProfitIfEnabled(BRANCH_ID, 7L, "EUR",
-                    new BigDecimal("100"), new BigDecimal("400"));
+                    new BigDecimal("100"), new BigDecimal("400"), BigDecimal.ZERO);
 
             ArgumentCaptor<ProfitLog> captor = ArgumentCaptor.forClass(ProfitLog.class);
             verify(profitLogRepository).save(captor.capture());
@@ -114,6 +114,40 @@ class WacServiceTest {
             assertThat(pl.getTransactionType()).isEqualTo("SELL");
             assertThat(pl.getTransactionId()).isEqualTo(7L);
             assertThat(pl.getBranchId()).isEqualTo(BRANCH_ID);
+        }
+    }
+
+    @Test
+    @DisplayName("recordSellProfitIfEnabled: kedvezményes eladás → a DISZKONTÁLT eladási ráta a profit alapja")
+    void enabledWithDiscount_usesDiscountedRate() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(systemParameterService.getValue(eq(WacService.WAC_PROFIT_TRACKING_PARAM), any()))
+                    .thenReturn("true");
+            Company company = mock(Company.class);
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            CurrencyStock stock = CurrencyStock.builder()
+                    .company(company)
+                    .entityType("CASHIER")
+                    .entityId(BRANCH_ID.toString())
+                    .currencyCode("EUR")
+                    .quantity(new BigDecimal("500"))
+                    .weightedAvgCost(new BigDecimal("300"))
+                    .build();
+            when(currencyStockRepository.findByCompanyIdAndEntityTypeAndEntityIdAndCurrencyCode(
+                    COMPANY_ID, "CASHIER", BRANCH_ID.toString(), "EUR"))
+                    .thenReturn(Optional.of(stock));
+
+            // 10% kedvezmény: effektív ráta = 400 × 0.9 = 360
+            wacService.recordSellProfitIfEnabled(BRANCH_ID, 8L, "EUR",
+                    new BigDecimal("100"), new BigDecimal("400"), new BigDecimal("10"));
+
+            ArgumentCaptor<ProfitLog> captor = ArgumentCaptor.forClass(ProfitLog.class);
+            verify(profitLogRepository).save(captor.capture());
+            ProfitLog pl = captor.getValue();
+            // profit = (360 - 300) × 100 = 6000 (kedvezmény nélkül 10000 lenne)
+            assertThat(pl.getSalePrice()).isEqualByComparingTo("360");
+            assertThat(pl.getRealizedProfit()).isEqualByComparingTo("6000.00");
         }
     }
 }

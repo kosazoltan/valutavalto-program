@@ -611,9 +611,15 @@ public class TransactionService {
         updateCashBalance(branchId, getHufCurrencyId(), payableAmount, true);                       // HUF +
 
         // A6 / b8 FR-8: realizált profit best-effort rögzítése (flag-gated, cold-start-safe,
-        // read-only a készleten → nincs havi-zárás/cash_balance kettős-számolás).
-        wacService.recordSellProfitIfEnabled(branchId, saved.getId(), currency.getCode(),
-                request.getCurrencyAmount(), appliedRate);
+        // read-only a készleten → nincs havi-zárás/cash_balance kettős-számolás). A kedvezményt
+        // átadjuk, hogy a profit a tényleges (diszkontált) eladási rátát használja. A try-catch
+        // garantálja, hogy a best-effort profit-rögzítés SOHA ne törje meg az eladást.
+        try {
+            wacService.recordSellProfitIfEnabled(branchId, saved.getId(), currency.getCode(),
+                    request.getCurrencyAmount(), appliedRate, request.getDiscountPercent());
+        } catch (Exception e) {
+            log.warn("WAC profit rögzítés sikertelen (best-effort, eladás folytatódik): tx={}", saved.getId(), e);
+        }
 
         // Napi statisztika frissítése
         dailySessionService.updateSessionStats(

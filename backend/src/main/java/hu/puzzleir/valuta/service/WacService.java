@@ -13,6 +13,7 @@ import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -159,15 +160,23 @@ public class WacService {
      *
      * <p>Cold-start védelem: ha nincs WAC bekerülési ár (nincs készlet-sor, vagy WAC ≤ 0),
      * KIHAGYJA a rögzítést — különben a teljes eladási árat profitként könyvelné (túlbecslés).</p>
+     *
+     * <p>{@code discountPercent}: ha &gt; 0, az eladási ráta a kedvezménnyel csökkentve kerül a
+     * profitba (effektív ráta = sellRate × (100 − pct) / 100). A kedvezmény a teljes deviza-
+     * bevételre uniform %-ban hat, így ez egysoros és multi-line eladásnál is helyes.</p>
+     *
+     * <p>REQUIRES_NEW + a hívó oldali try-catch garantálja a "best-effort" jelleget: a profit-
+     * rögzítés bármilyen hibája SAJÁT al-tranzakcióban marad, és NEM viszi rollback-re az eladást.</p>
      */
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public void recordSellProfitIfEnabled(UUID branchId, Long transactionId, String currencyCode,
-                                          BigDecimal quantity, BigDecimal sellRate) {
+                                          BigDecimal quantity, BigDecimal sellRate, BigDecimal discountPercent) {
         if (systemParameterService == null || !"true".equalsIgnoreCase(
                 systemParameterService.getValue(WAC_PROFIT_TRACKING_PARAM, WAC_PROFIT_TRACKING_DEFAULT))) {
             return; // flag OFF (default) → no-op
         }
-        if (branchId == null || currencyCode == null || quantity == null || sellRate == null) {
+        if (branchId == null || transactionId == null || currencyCode == null
+                || quantity == null || sellRate == null) {
             return;
         }
         UUID companyId = SecurityUtils.getCurrentCompanyId();
@@ -181,7 +190,15 @@ public class WacService {
                     branchId, currencyCode, quantity);
             return;
         }
-        recordProfit(branchId, transactionId, currencyCode, quantity, sellRate, "SELL");
+        // Kedvezményes eladásnál a tényleges (diszkontált) eladási ráta a profit alapja,
+        // különben a kedvezmény nélküli appliedRate túlbecsülné a realizált hasznot.
+        BigDecimal effectiveSellRate = sellRate;
+        if (discountPercent != null && discountPercent.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal factor = BigDecimal.valueOf(100).subtract(discountPercent)
+                    .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
+            effectiveSellRate = sellRate.multiply(factor);
+        }
+        recordProfit(branchId, transactionId, currencyCode, quantity, effectiveSellRate, "SELL");
     }
 
     /**
