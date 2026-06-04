@@ -1439,6 +1439,14 @@ export interface Receipt {
   // backward-compatible: a többi fogyasztó (pl. reports.ts) figyelmen kívül hagyja.
   customerName?: string
   hufAmount?: number
+  // EXCMD b5b FR-BSZUR-03: természetes személy ügyfél-adatlap szűrőmezők (a tx-snapshotból).
+  customerMotherName?: string
+  customerBirthPlace?: string
+  customerBirthDate?: string
+  customerNationality?: string
+  customerAddress?: string
+  customerDocumentType?: string
+  customerDocumentNumber?: string
 }
 
 export const receiptApi = {

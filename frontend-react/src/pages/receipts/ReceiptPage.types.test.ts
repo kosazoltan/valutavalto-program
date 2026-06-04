@@ -6,8 +6,12 @@ import {
   formatHuf,
   matchesPeriod,
   periodToBackendRange,
+  matchesCustomerFilters,
+  hasActiveCustomerFilter,
+  CUSTOMER_FILTER_FIELDS,
   AML_10M_THRESHOLD_HUF,
 } from './ReceiptPage'
+import type { Receipt } from '../../services/api/transactions'
 
 // EXCMD b5b FR-BSZUR-01: a bizonylattípus-szűrő a backend Receipt.receiptType = TransactionType.name()
 // enum-nevekre szűr; a megjelenítő-címkének a TransactionType.java magyar leírásaival kell egyeznie.
@@ -145,5 +149,56 @@ describe('periodToBackendRange (EXCMD b5b FR-BSZUR-02 backend from/to)', () => {
     expect(periodToBackendRange('CUSTOM', '', '2026-04-10', '')).toEqual({ from: '2026-04-10', to: undefined })
     expect(periodToBackendRange('CUSTOM', '', '', '2026-04-20')).toEqual({ from: undefined, to: '2026-04-20' })
     expect(periodToBackendRange('CUSTOM', '', '', '')).toEqual({ from: undefined, to: undefined })
+  })
+})
+
+describe('matchesCustomerFilters / hasActiveCustomerFilter (EXCMD b5b FR-BSZUR-03)', () => {
+  const base: Receipt = {
+    id: '1', receiptNumber: 'V017000001', receiptType: 'BUY', issueDate: '2026-04-29', isPrinted: true,
+    customerName: 'Kovács János', customerMotherName: 'Nagy Erzsébet', customerBirthPlace: 'Budapest',
+    customerBirthDate: '1985-03-12', customerNationality: 'magyar', customerAddress: '1011 Budapest, Fő utca 1.',
+    customerDocumentType: 'Személyi igazolvány', customerDocumentNumber: 'AB123456',
+  }
+
+  it('üres szűrő → minden átmegy', () => {
+    expect(matchesCustomerFilters(base, {})).toBe(true)
+    expect(hasActiveCustomerFilter({})).toBe(false)
+  })
+
+  it('egy mező részleges egyezése (kis/nagybetű-érzéketlen)', () => {
+    expect(matchesCustomerFilters(base, { customerName: 'kovács' })).toBe(true)
+    expect(matchesCustomerFilters(base, { customerName: 'KOV' })).toBe(true)
+    expect(matchesCustomerFilters(base, { customerName: 'Szabó' })).toBe(false)
+  })
+
+  it('több mező = ÉS-kapcsolat', () => {
+    expect(matchesCustomerFilters(base, { customerName: 'kovács', customerNationality: 'magyar' })).toBe(true)
+    expect(matchesCustomerFilters(base, { customerName: 'kovács', customerNationality: 'német' })).toBe(false)
+  })
+
+  it('születési idő részleges (hónap-előtag) is egyezik', () => {
+    expect(matchesCustomerFilters(base, { customerBirthDate: '1985-03' })).toBe(true)
+    expect(matchesCustomerFilters(base, { customerBirthDate: '1990' })).toBe(false)
+  })
+
+  it('hiányzó mezőre szűrve NEM egyezik (üres adatlap-mező)', () => {
+    const noDoc: Receipt = { ...base, customerDocumentNumber: undefined }
+    expect(matchesCustomerFilters(noDoc, { customerDocumentNumber: 'AB' })).toBe(false)
+  })
+
+  it('whitespace-only szűrőérték → nem szűkít / nem aktív', () => {
+    expect(matchesCustomerFilters(base, { customerName: '   ' })).toBe(true)
+    expect(hasActiveCustomerFilter({ customerName: '   ' })).toBe(false)
+  })
+
+  it('hasActiveCustomerFilter true, ha legalább egy mező kitöltött', () => {
+    expect(hasActiveCustomerFilter({ customerAddress: 'Budapest' })).toBe(true)
+  })
+
+  it('a 8 FR-BSZUR-03 mező definiált (LEÁNYKORI NEVE nélkül)', () => {
+    expect(CUSTOMER_FILTER_FIELDS.map((f) => f.key)).toEqual([
+      'customerName', 'customerMotherName', 'customerBirthPlace', 'customerBirthDate',
+      'customerNationality', 'customerAddress', 'customerDocumentType', 'customerDocumentNumber',
+    ])
   })
 })

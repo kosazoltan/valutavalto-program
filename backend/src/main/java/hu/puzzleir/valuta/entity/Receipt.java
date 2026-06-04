@@ -62,4 +62,28 @@ public class Receipt {
 
     @Transient
     private BigDecimal hufAmount;
+
+    // === EXCMD b5b FR-BSZUR-03 (természetes személy ügyfél-adatlap szűrőmezők) ===
+    // Szintén a kapcsolt Transaction-snapshotból (read-through), @Transient → Jackson serializálja.
+    // A bizonylat-böngésző ezekre LIKE-szűrhet. (LEÁNYKORI NEVE nincs a tx-snapshotban → defer.)
+    @Transient
+    private String customerMotherName;
+
+    @Transient
+    private String customerBirthPlace;
+
+    @Transient
+    private LocalDate customerBirthDate;
+
+    @Transient
+    private String customerNationality;
+
+    @Transient
+    private String customerAddress;
+
+    @Transient
+    private String customerDocumentType;
+
+    @Transient
+    private String customerDocumentNumber;
 }

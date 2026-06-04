@@ -180,10 +180,27 @@ public class ReceiptService {
             }
             Transaction tx = txById.get(txId);
             if (tx != null) {
-                r.setCustomerName(tx.getCustomerName());
-                r.setHufAmount(tx.getHufAmount());
+                applyCustomerSnapshot(r, tx);
             }
         }
+    }
+
+    /**
+     * EXCMD b5b FR-BSZUR-02/03/05: a Receipt @Transient ügyfél-/összeg-mezőit a kapcsolt
+     * Transaction-snapshotból tölti (read-through view layer). EGY helyen, hogy a synthesized
+     * és a materializált (real) dúsítási út ne driftelhessen szét. Csak skalár mezőket olvas.
+     */
+    private static void applyCustomerSnapshot(Receipt r, Transaction tx) {
+        r.setCustomerName(tx.getCustomerName());
+        r.setHufAmount(tx.getHufAmount());
+        // FR-BSZUR-03 természetes személy szűrőmezők (LEÁNYKORI NEVE nincs a tx-snapshotban → defer)
+        r.setCustomerMotherName(tx.getCustomerMotherName());
+        r.setCustomerBirthPlace(tx.getCustomerBirthPlace());
+        r.setCustomerBirthDate(tx.getCustomerBirthDate());
+        r.setCustomerNationality(tx.getCustomerNationality());
+        r.setCustomerAddress(tx.getCustomerAddress());
+        r.setCustomerDocumentType(tx.getCustomerDocumentType());
+        r.setCustomerDocumentNumber(tx.getCustomerDocumentNumber());
     }
 
     /**
@@ -351,7 +368,7 @@ public class ReceiptService {
     }
 
     private Receipt synthesizeReceipt(Transaction tx) {
-        return Receipt.builder()
+        Receipt r = Receipt.builder()
                 .id(encodeTransactionId(tx.getId()))
                 .companyId(tx.getCompany() != null ? tx.getCompany().getId() : null)
                 .receiptNumber(tx.getReceiptNumber())
@@ -359,11 +376,11 @@ public class ReceiptService {
                         ? tx.getTransactionType().name() : "UNKNOWN")
                 .issueDate(tx.getTransactionDate())
                 .isPrinted(false)
-                // EXCMD b5b (FR-BSZUR-02 "csak ügyfeles" + FR-BSZUR-05 10M Ft AML-jelölő):
-                // @Transient mezők a kapcsolt tx-ből (a tx már kézben van — nincs extra query).
-                .customerName(tx.getCustomerName())
-                .hufAmount(tx.getHufAmount())
                 .build();
+        // EXCMD b5b (FR-BSZUR-02/03/05): @Transient ügyfél-/összeg-mezők a kapcsolt tx-ből
+        // (a tx már kézben van — nincs extra query). Közös helper a real-úttal (no drift).
+        applyCustomerSnapshot(r, tx);
+        return r;
     }
 
     /** Test-only — segit egy Transaction-bol synthesized UUID-t generaalni. */

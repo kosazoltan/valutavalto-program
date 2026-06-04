@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Receipt as ReceiptIcon, Search, Printer, Eye, Clock } from 'lucide-react'
+import { Receipt as ReceiptIcon, Search, Printer, Eye, Clock, ChevronDown, ChevronRight, X } from 'lucide-react'
 import { receiptApi, Receipt } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
@@ -170,6 +170,38 @@ export function draftMatchesFilters(
   )
 }
 
+// EXCMD b5b FR-BSZUR-03: természetes személy ügyfél-adatlap szűrőmezők. A `key` a dúsított Receipt
+// mezőre mutat (a tx-snapshotból), a `label` a megjelenítés. LEÁNYKORI NEVE nincs a tx-snapshotban → kimarad.
+// Jogi személy (FR-BSZUR-04) telephely/képviselő-beosztás sincs külön snapshot-mezőként → külön increment.
+export const CUSTOMER_FILTER_FIELDS: { key: keyof Receipt; labelKey: string }[] = [
+  { key: 'customerName', labelKey: 'receipts.filter.customerName' },
+  { key: 'customerMotherName', labelKey: 'receipts.filter.customerMotherName' },
+  { key: 'customerBirthPlace', labelKey: 'receipts.filter.customerBirthPlace' },
+  { key: 'customerBirthDate', labelKey: 'receipts.filter.customerBirthDate' },
+  { key: 'customerNationality', labelKey: 'receipts.filter.customerNationality' },
+  { key: 'customerAddress', labelKey: 'receipts.filter.customerAddress' },
+  { key: 'customerDocumentType', labelKey: 'receipts.filter.customerDocumentType' },
+  { key: 'customerDocumentNumber', labelKey: 'receipts.filter.customerDocumentNumber' },
+]
+
+/**
+ * EXCMD b5b FR-BSZUR-03: a bizonylat megfelel-e az ÖSSZES (nem üres) ügyfél-adatlap szűrőnek.
+ * Részleges egyezés (LIKE), kis/nagybetű-érzéketlen — a spec szerint. Üres szűrőmező → nem szűkít.
+ */
+export const matchesCustomerFilters = (receipt: Receipt, filters: Record<string, string>): boolean => {
+  for (const { key } of CUSTOMER_FILTER_FIELDS) {
+    const needle = (filters[key] ?? '').trim().toLowerCase()
+    if (!needle) continue
+    const hay = String(receipt[key] ?? '').toLowerCase()
+    if (!hay.includes(needle)) return false
+  }
+  return true
+}
+
+/** Van-e legalább egy aktív (nem üres) ügyfél-adatlap szűrő. */
+export const hasActiveCustomerFilter = (filters: Record<string, string>): boolean =>
+  CUSTOMER_FILTER_FIELDS.some(({ key }) => (filters[key] ?? '').trim().length > 0)
+
 export default function ReceiptPage() {
   const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
@@ -191,6 +223,9 @@ export default function ReceiptPage() {
   const [periodMonth, setPeriodMonth] = useState<string>(currentMonthValue)
   const [periodFrom, setPeriodFrom] = useState<string>('')
   const [periodTo, setPeriodTo] = useState<string>('')
+  // EXCMD b5b FR-BSZUR-03: természetes személy ügyfél-adatlap szűrőmezők (mezőkulcs → beírt érték).
+  const [customerFilters, setCustomerFilters] = useState<Record<string, string>>({})
+  const [customerPanelOpen, setCustomerPanelOpen] = useState(false)
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null)
   const [selectedDraft, setSelectedDraft] = useState<PendingReceiptDraft | null>(null)
 
@@ -233,13 +268,15 @@ export default function ReceiptPage() {
         // FR-BSZUR-01: bizonylattípus-szűrő (ALL = kikapcsolva). receiptType case-insensitive egyezés.
         if ((r.receiptType ?? '').toUpperCase() !== typeFilter) return false
       }
+      // EXCMD b5b FR-BSZUR-03: ügyfél-adatlap szűrőmezők (LIKE, kis/nagybetű-érzéketlen).
+      if (!matchesCustomerFilters(r, customerFilters)) return false
       if (!term) return true
       return (
         r.receiptNumber?.toLowerCase().includes(term) ||
         r.navReceiptNumber?.toLowerCase().includes(term)
       )
     })
-  }, [receipts, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo])
+  }, [receipts, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo, customerFilters])
 
   const handlePrint = async (id: string): Promise<void> => {
     try {
@@ -253,18 +290,43 @@ export default function ReceiptPage() {
     }
   }
 
+  // Sourcery (#1039 nitpick): a lista „Újranyomtatás" gombja KÖZVETLENÜL nyomtasson (1 klikk, ESC/POS),
+  // ne csak előnézetet nyisson (a printer-ikon + címke azonnali nyomtatást sugall). Az előnézet az
+  // „Előnézet" (szem) gombbal érhető el. Hibát toast-tal jelzünk (nem dobunk, mert ez közvetlen akció).
+  const reprintDraft = useCallback(async (draft: PendingReceiptDraft): Promise<void> => {
+    try {
+      const printed = await printPendingReceiptDraft(draft.receiptData)
+      if (!printed) {
+        toast.error('A bizonylat nyomtatása nem érhető el ebben a környezetben')
+        return
+      }
+      toast.success(
+        draft.reprint
+          ? 'A bizonylat fizikai újranyomtatása elindítva'
+          : 'A helyi bizonylatvázlat nyomtatása elindítva',
+      )
+    } catch (err) {
+      toast.error('Hiba történt a nyomtatás során', getErrorMessage(err))
+      logger.error('ReceiptPage', 'Failed to reprint draft:', err)
+    }
+  }, [])
+
   // EXCMD b5b FR-BSZUR-01/02 + Codex P2 (#1034): a hatókör/időszak + "csak ügyfeles" + típus-szűrő +
   // keresőszó a helyi vázlat-listára is hat (közös helper: draftMatchesFilters).
+  // FR-BSZUR-03: ha részletes ügyfél-adatlap szűrő aktív, a helyi vázlat-/újranyomtatás-listák
+  // (amelyeknek nincs dúsított adatlap-mezőjük) NEM jeleníthetők meg — különben szűretlenül látszanának.
+  const customerFilterActive = useMemo(() => hasActiveCustomerFilter(customerFilters), [customerFilters])
+
   const filteredDrafts = useMemo(
-    () => localDrafts.filter((draft) => draftMatchesFilters(draft, typeFilter, searchTerm, periodMode, periodMonth, periodFrom, periodTo)),
-    [localDrafts, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo],
+    () => (customerFilterActive ? [] : localDrafts.filter((draft) => draftMatchesFilters(draft, typeFilter, searchTerm, periodMode, periodMonth, periodFrom, periodTo))),
+    [localDrafts, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo, customerFilterActive],
   )
 
   // Fizikai újranyomtatás (Codex P2 #1035): a szinkronizált, újranyomtatható helyi bizonylatokra
   // ugyanaz a szűrés hat, mint a vázlat-listára (ugyanaz a draftMatchesFilters helper, periódussal).
   const filteredReprintable = useMemo(
-    () => reprintable.filter((item) => draftMatchesFilters(item, typeFilter, searchTerm, periodMode, periodMonth, periodFrom, periodTo)),
-    [reprintable, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo],
+    () => (customerFilterActive ? [] : reprintable.filter((item) => draftMatchesFilters(item, typeFilter, searchTerm, periodMode, periodMonth, periodFrom, periodTo))),
+    [reprintable, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo, customerFilterActive],
   )
 
   if (loading) {
@@ -359,6 +421,47 @@ export default function ReceiptPage() {
             </>
           )}
         </div>
+        {/* EXCMD b5b FR-BSZUR-03: természetes személy ügyfél-adatlap szűrő (összecsukható panel). */}
+        <div className="mt-3 border-t pt-3">
+          <button
+            type="button"
+            className="form-button text-xs flex items-center gap-1"
+            onClick={() => setCustomerPanelOpen((o) => !o)}
+            aria-expanded={customerPanelOpen}
+          >
+            {customerPanelOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            {t('receipts.filter.customerPanel')}
+            {customerFilterActive && <span className="inline-block w-2 h-2 rounded-full bg-blue-500" aria-hidden="true" />}
+          </button>
+          {customerPanelOpen && (
+            <div className="mt-2">
+              <p className="text-xs text-gray-500 mb-2">{t('receipts.filter.customerPanelHint')}</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {CUSTOMER_FILTER_FIELDS.map(({ key, labelKey }) => (
+                  <div key={key}>
+                    <label className="form-label" htmlFor={`receipt-cf-${key}`}>{t(labelKey)}</label>
+                    <input
+                      id={`receipt-cf-${key}`}
+                      type="text"
+                      className="form-input"
+                      value={customerFilters[key] ?? ''}
+                      onChange={(e) => setCustomerFilters((prev) => ({ ...prev, [key]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+              {customerFilterActive && (
+                <button
+                  type="button"
+                  className="form-button text-xs mt-2 flex items-center gap-1"
+                  onClick={() => setCustomerFilters({})}
+                >
+                  <X size={12} />{t('receipts.filter.clearCustomer')}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {filteredDrafts.length > 0 && (
@@ -400,11 +503,10 @@ export default function ReceiptPage() {
         <div className="form-panel">
           <div className="mb-4 flex items-center gap-2 text-blue-800">
             <Printer size={18} />
-            <h2 className="text-lg font-bold">Fizikai újranyomtatás</h2>
+            <h2 className="text-lg font-bold">{t('receipts.reprintSection')}</h2>
           </div>
           <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-            Ezek a bizonylatok már véglegesítve és szinkronizálva vannak. Ha a nyomtatás meghiúsult
-            (pl. papírelakadás), itt a tárolt adatból fizikailag újranyomtathatók — a sorszám nem változik.
+            {t('receipts.reprintSectionHint')}
           </div>
           <table className="data-grid w-full">
             <thead>
@@ -420,7 +522,7 @@ export default function ReceiptPage() {
                   <td>
                     <div className="flex gap-2">
                       <button onClick={() => setSelectedDraft(item)} className="form-button text-xs"><Eye size={12} />{t('closing.elonezet')}</button>
-                      <button onClick={() => setSelectedDraft(item)} className="form-button text-xs"><Printer size={12} />Újranyomtatás</button>
+                      <button onClick={() => reprintDraft(item)} className="form-button text-xs"><Printer size={12} />{t('receipts.reprintAction')}</button>
                     </div>
                   </td>
                 </tr>
