@@ -38,11 +38,16 @@ import java.util.*;
 public class SanctionScreeningService {
 
     private static final int MAX_LEVENSHTEIN_DISTANCE = 2;
+    // A5 (EXCMD szankció-spec doc<->kód igazítás): a match-score-ok a spec szerinti súlyok.
+    // A score METAADAT — a determineRiskLevel típus-alapú (EXACT->CONFIRMED, bármi->POSSIBLE)
+    // és a blokkolás a matched=!matches.isEmpty()-ből jön, tehát a score NEM befolyásolja a
+    // blokkolási döntést. A spec-értékek a korábbi 0.7/0.5-nél MAGASABBAK -> szigorúbb
+    // (biztonságosabb) súlyozás a downstream audit/megjelenítés felé, gyengítés nélkül.
     private static final double EXACT_MATCH_SCORE = 1.0;
-    private static final double PARTIAL_MATCH_SCORE = 0.7;
-    private static final double ALIAS_MATCH_SCORE = 0.5;
-    /** #4: e fölött a helyi szankciós lista elavultnak (degradált) minősül. */
-    private static final int MAX_SANCTION_LIST_AGE_DAYS = 7;
+    private static final double PARTIAL_MATCH_SCORE = 0.8;
+    private static final double ALIAS_MATCH_SCORE = 0.9;
+    /** #4 / A5: e fölött a helyi szankciós lista elavultnak (degradált) minősül — spec szerint 30 nap. */
+    private static final int MAX_SANCTION_LIST_AGE_DAYS = 30;
 
     private final SanctionEntryRepository sanctionEntryRepository;
     private final SanctionScreeningLogRepository screeningLogRepository;
