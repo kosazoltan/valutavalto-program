@@ -19,6 +19,10 @@ vi.mock('electron', () => ({
   },
 }));
 
+// A VALÓS production tranzakció-magot importáljuk (nem replikát): így ha a sqlite.ts
+// BEGIN/COMMIT/ROLLBACK + re-entry guard logika változik, az atomicitás-tesztek elkapják.
+import { runInTransaction } from '../sqlite';
+
 
 
 /**
@@ -439,18 +443,9 @@ describe('sqlite — local audit events', () => {
  * mintát replikálják in-memory, mert az `initDatabase()` electron `app`-függő.
  */
 describe('sqlite — strict receipt sequence atomicity (withTransaction)', () => {
-  /** A sqlite.ts withTransaction helper viselkedés-azonos másolata a teszthez. */
-  function withTransaction<T>(database: Database, fn: () => T): T {
-    database.run('BEGIN');
-    try {
-      const result = fn();
-      database.run('COMMIT');
-      return result;
-    } catch (e) {
-      try { database.run('ROLLBACK'); } catch { /* best-effort */ }
-      throw e;
-    }
-  }
+  // A VALÓS production tranzakció-mag (sqlite.ts runInTransaction) — NEM replika.
+  // A withTransaction(db, fn) alias a meglévő hívási helyek érintetlenül hagyásához.
+  const withTransaction = runInTransaction;
 
   /** A generateStrictReceiptNumber sequence-UPSERT magja. */
   function bumpSequence(database: Database, branch: string, prefix: string): number {
@@ -579,5 +574,27 @@ describe('sqlite — strict receipt sequence atomicity (withTransaction)', () =>
     }
     stmt.free();
     expect(refs).toEqual(['V039000001', 'V039000002']);
+  });
+
+  it('re-entry guard: nested withTransaction fail-fast (sql.js nem támogat nested BEGIN-t)', () => {
+    // Egy fejlesztői hiba (withTransaction egy másikon belül) NE csendben korrumpáljon:
+    // a re-entry guard azonnal dobjon. A külső tranzakció emiatt ROLLBACK-el.
+    expect(() => {
+      withTransaction(db, () => {
+        bumpSequence(db, '039', 'V'); // seq → 1 (a guard miatt vissza fog gördülni)
+        withTransaction(db, () => {
+          bumpSequence(db, '039', 'V');
+        });
+      });
+    }).toThrow(/re-entr/i);
+
+    // A külső ROLLBACK miatt a sequence NEM perzisztálódott → tiszta állapot (nincs hézag,
+    // nincs félig-kész tranzakció). A guard flag is visszaállt (finally), így új mentés mehet.
+    expect(readSeq(db, '039', 'V')).toBeNull();
+    const ref = withTransaction(db, () => {
+      const seq = bumpSequence(db, '039', 'V');
+      return `V039${String(seq).padStart(6, '0')}`;
+    });
+    expect(ref).toBe('V039000001');
   });
 });

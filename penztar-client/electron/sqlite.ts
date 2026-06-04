@@ -16,19 +16,41 @@ let dbPath = '';
  *
  * sql.js NEM támogat egymásba ágyazott BEGIN-t, ezért ezt CSAK top-level
  * (IPC-szintű) mentésekben szabad hívni, soha nem egy másik withTransaction-ön
- * belül.
+ * belül. A re-entrancia ellen RUNTIME guard véd: ha egy hívó tévedésből egy már
+ * futó tranzakción belül hívja, fail-fast hibát kapunk (nem csendes korrupció).
  */
-function withTransaction<T>(fn: () => T): T {
-  if (!db) throw new Error('Database not initialized');
-  db.run('BEGIN');
+let inTransaction = false;
+
+/**
+ * A tranzakció-MAG: explicit {@link Database}-szel. A production logika (BEGIN /
+ * COMMIT / ROLLBACK + re-entry guard) EGYETLEN helyen él, hogy a unit teszt a
+ * VALÓS kódot exercise-elje (ne egy viselkedés-replikát). Az electron-független
+ * tesztek a saját in-memory db-jükkel hívják; a {@link withTransaction} a modul
+ * `db` globáljával delegál ide.
+ */
+export function runInTransaction<T>(database: Database, fn: () => T): T {
+  if (inTransaction) {
+    // Re-entry guard: sql.js nem támogat nested BEGIN-t → fail-fast, hogy egy
+    // fejlesztői hiba SOHA ne csendben korrumpálja a folyamatban lévő tranzakciót.
+    throw new Error('withTransaction nem hívható re-entránsan (sql.js nem támogat nested BEGIN-t)');
+  }
+  inTransaction = true;
+  database.run('BEGIN');
   try {
     const result = fn();
-    db.run('COMMIT');
+    database.run('COMMIT');
     return result;
   } catch (e) {
-    try { db.run('ROLLBACK'); } catch { /* rollback best-effort */ }
+    try { database.run('ROLLBACK'); } catch { /* rollback best-effort */ }
     throw e;
+  } finally {
+    inTransaction = false;
   }
+}
+
+function withTransaction<T>(fn: () => T): T {
+  if (!db) throw new Error('Database not initialized');
+  return runInTransaction(db, fn);
 }
 
 function getDbPath(): string {
