@@ -48,6 +48,7 @@ import {
   saveGroupRateValues,
   persistGroupRateValues,
   loadGroupRateValuesFromOfflineDb,
+  saveGroupRateValuesToOfflineDbAwait,
 } from './workgroupSheetStorage'
 import { useTranslation } from 'react-i18next'
 
@@ -693,8 +694,15 @@ export default function RateCreationPage() {
           : loadGroupRateValues(targetId)
         const { formulas: nf, values: nv } = applyCrossGroupCopy(
           loadGroupFormulas(targetId), targetValues, payload)
-        saveGroupFormulas(targetId, nf)
-        persistGroupRateValues(targetId, nv) // dual-write (localStorage + SQLite)
+        saveGroupFormulas(targetId, nf)       // localStorage (formulák)
+        saveGroupRateValues(targetId, nv)     // localStorage (értékek, szinkron)
+        // Codex P2: Electronban a sikert az AUTORITATÍV SQLite-íráshoz kötjük (await + {ok}),
+        // nem a fire-and-forget perzisztáláshoz — ha a SQLite-írás bukik, NEM jelzünk sikert.
+        const dbOk = isElectron() ? (await saveGroupRateValuesToOfflineDbAwait(targetId, nv)).ok : true
+        if (!dbOk) {
+          logger.warn('RateCreationPage', `Cross-csoport másolás: SQLite-mentés sikertelen — ${targetId}`)
+          continue
+        }
         const wg = workgroups.find(w => w.id === targetId)
         if (wg) succeeded.push(wg.name)
       } catch (e) {

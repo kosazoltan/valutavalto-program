@@ -129,6 +129,25 @@ export function saveGroupRateValuesToOfflineDb(groupId: string, values: Record<s
   }
 }
 
+/**
+ * Awaitable SQLite-mentés: a csoport fix rátaértékeit az Electron SQLite-ba menti és VISSZAADJA
+ * a tényleges eredményt (a hívó a sikert ehhez kötheti — pl. a cross-csoport másolás csak akkor
+ * jelez sikert, ha az AUTORITATÍV SQLite-írás is rendben volt). Electronon kívül `{ ok: true }`
+ * (ott a localStorage az autoritás). FK02-D / Codex P2.
+ */
+export async function saveGroupRateValuesToOfflineDbAwait(
+  groupId: string, values: Record<string, string>,
+): Promise<{ ok: boolean }> {
+  const lf = getLocalFirstApi()
+  if (!lf?.saveGroupRateValues) return { ok: true }
+  try {
+    const res = await lf.saveGroupRateValues({ groupId, values })
+    return { ok: !!res?.ok }
+  } catch {
+    return { ok: false }
+  }
+}
+
 /** Az Electron SQLite-ból tölti a csoport fix rátaértékeit (üres, ha nincs Electron vagy nincs adat). */
 export async function loadGroupRateValuesFromOfflineDb(groupId: string): Promise<Record<string, string>> {
   const lf = getLocalFirstApi()
