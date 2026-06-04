@@ -254,6 +254,36 @@ class ReceiptServiceB7Test {
     }
 
     @Test
+    @DisplayName("Codex P2 (FR-BSZUR-03): a materializált real receipt-eket IS szűri az ügyfél-adatlap szűrő")
+    void list_customerFilters_filtersMaterializedReceipts() {
+        Receipt match = Receipt.builder()
+                .id(new UUID(0L, 730L)).companyId(COMPANY_ID)
+                .receiptNumber("V017000090").receiptType("BUY")
+                .issueDate(LocalDate.of(2026, 4, 29)).isPrinted(true).build();
+        Receipt noMatch = Receipt.builder()
+                .id(new UUID(0L, 731L)).companyId(COMPANY_ID)
+                .receiptNumber("V017000091").receiptType("BUY")
+                .issueDate(LocalDate.of(2026, 4, 29)).isPrinted(true).build();
+        Transaction txMatch = makeTransaction(730L, "V017000090", TransactionType.BUY);
+        txMatch.setCustomerName("Kovács János");
+        Transaction txNoMatch = makeTransaction(731L, "V017000091", TransactionType.BUY);
+        txNoMatch.setCustomerName("Szabó Péter");
+
+        when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any()))
+                .thenReturn(new java.util.ArrayList<>(List.of(match, noMatch)));
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(
+                eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(List.of()); // nincs synthesized (mindkettő materializált)
+        when(transactionRepository.findAllByIdInAndCompanyId(any(), eq(COMPANY_ID)))
+                .thenReturn(List.of(txMatch, txNoMatch));
+
+        List<Receipt> receipts = receiptService.list(null, null, null, java.util.Map.of("customerName", "kovács"));
+
+        // Csak a "Kovács János" marad — a "Szabó Péter" real receipt szerver-oldalon kiesik (Java-szűrés).
+        assertThat(receipts).extracting(Receipt::getReceiptNumber).containsExactly("V017000090");
+    }
+
+    @Test
     @DisplayName("Codex P2: transactionId + from/to — a tranzakció-ág is szűr a dátumtartományra")
     void list_filteredByTransactionId_honorsDateRange() {
         UUID txFilter = new UUID(0L, 720L);

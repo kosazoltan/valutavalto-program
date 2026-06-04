@@ -109,7 +109,7 @@ public class ReceiptService {
         // receipt-eket IS a DB szűri az issueDate-tartományra (nem csak a synthesized ágat), különben a
         // ?from=&to= az időszakon kívüli materializált bizonylatokat is visszaadná (és a teljes táblát
         // betöltené). NULL határ = nyitott vég → mindkettő NULL esetén a teljes lista (változatlan).
-        List<Receipt> realReceipts = repo.findByCompanyIdAndIssueDateRange(companyId, fromDate, toDate);
+        List<Receipt> realReceipts = new ArrayList<>(repo.findByCompanyIdAndIssueDateRange(companyId, fromDate, toDate));
 
         // Mely Transaction-ok vannak mar materializalva real Receipt-ben?
         // A materializaltakat az `id` mezo synthesizedUuid alakjarol ismerjuk fel
@@ -156,10 +156,48 @@ public class ReceiptService {
         // kézben tartja a tx-et).
         enrichRealReceipts(realReceipts, companyId);
 
+        // EXCMD b5b FR-BSZUR-03 (Codex P2): a materializált (real) receipt-eket IS szűrjük az
+        // ügyfél-adatlap szűrőkre — különben a GET /receipts?customerName=... az adatlap-szűrőnek NEM
+        // megfelelő real bizonylatokat is visszaadná (a synthesized ág már DB-szinten szűrt). A real
+        // ág nincs csonkolva (findByCompanyIdAndIssueDateRange limit nélkül) → Java-szűrés helyes és
+        // teljes; a dúsított @Transient mezőkből (applyCustomerSnapshot) dolgozik, így a synthesized
+        // DB-LIKE-kal konzisztens (azonos tx-snapshot, részleges + kis/nagybetű-érzéketlen egyezés).
+        if (customerFilters != null && !customerFilters.isEmpty()) {
+            realReceipts.removeIf(r -> !receiptMatchesCustomerFilters(r, customerFilters));
+        }
+
         List<Receipt> result = new ArrayList<>(realReceipts.size() + synthesized.size());
         result.addAll(realReceipts);
         result.addAll(synthesized);
         return result;
+    }
+
+    /**
+     * EXCMD b5b FR-BSZUR-03: egy (már dúsított) Receipt megfelel-e az ÖSSZES (nem üres) ügyfél-adatlap
+     * szűrőnek. Részleges (contains), kis/nagybetű-érzéketlen egyezés — a synthesized DB-LIKE-kal és a
+     * kliens-oldali matchesCustomerFilters-szel azonos szemantika. A születési dátumot stringgé alakítjuk.
+     */
+    private static boolean receiptMatchesCustomerFilters(Receipt r, java.util.Map<String, String> f) {
+        return matchesField(r.getCustomerName(), f.get("customerName"))
+            && matchesField(r.getCustomerMotherName(), f.get("customerMotherName"))
+            && matchesField(r.getCustomerBirthPlace(), f.get("customerBirthPlace"))
+            && matchesField(r.getCustomerBirthDate() == null ? null : r.getCustomerBirthDate().toString(),
+                            f.get("customerBirthDate"))
+            && matchesField(r.getCustomerNationality(), f.get("customerNationality"))
+            && matchesField(r.getCustomerAddress(), f.get("customerAddress"))
+            && matchesField(r.getCustomerDocumentType(), f.get("customerDocumentType"))
+            && matchesField(r.getCustomerDocumentNumber(), f.get("customerDocumentNumber"));
+    }
+
+    /** Üres/hiányzó szűrő → nem szűkít (true). Egyébként részleges, kis/nagybetű-érzéketlen contains. */
+    private static boolean matchesField(String value, String filter) {
+        if (filter == null || filter.isBlank()) {
+            return true;
+        }
+        if (value == null) {
+            return false;
+        }
+        return value.toLowerCase().contains(filter.trim().toLowerCase());
     }
 
     /**
