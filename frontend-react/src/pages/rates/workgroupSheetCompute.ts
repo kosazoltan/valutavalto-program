@@ -144,7 +144,10 @@ export function recomputeWorkgroupSheet(input: WorkgroupComputeInput): Workgroup
       for (const field of WG_FIELDS) {
         const f = formulas[fmtKey(row.currencyId, field)]
         if (!f) continue
-        const res = evaluateWorkgroupFormula(f, ctx)
+        // FK02-D (FR-8): a 0-s lap egybetűs rövidített hivatkozása (E/F/C) csak a vételi (L) és
+        // eladási (M) oszlopnál érvényes; a többi mezőnél a kiértékelő hibát ad (VV-VALID-004).
+        const col = FIELD_TO_WGCOL[field]
+        const res = evaluateWorkgroupFormula(f, ctx, { allowSheet0Shorthand: col === 'L' || col === 'M' })
         if ('error' in res) {
           passErrors[fmtKey(row.currencyId, field)] = res.error
           continue // hibás képlet → érték marad (a hover/edit jelzi a képletet)
