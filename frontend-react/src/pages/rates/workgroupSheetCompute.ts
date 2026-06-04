@@ -92,6 +92,11 @@ function rowToWgValues(values: Record<WgField, number | null>): WgValues {
 
 const fmtKey = (currencyId: number, field: WgField): string => `${currencyId}.${field}`
 
+// FK02-D (FR-8): a kiértékelő opciói előre allokálva (modul-szintű konstansok), hogy a
+// fixpont-iteráció belső WG_FIELDS-ciklusa NE hozzon létre cellánként új objektumot.
+const OPTS_ALLOW_SHORTHAND = { allowSheet0Shorthand: true } as const
+const OPTS_DENY_SHORTHAND = { allowSheet0Shorthand: false } as const
+
 /**
  * Reaktív újraszámítás: a képlet-cellákat feloldja, a fix cellák változatlanok.
  *
@@ -147,7 +152,8 @@ export function recomputeWorkgroupSheet(input: WorkgroupComputeInput): Workgroup
         // FK02-D (FR-8): a 0-s lap egybetűs rövidített hivatkozása (E/F/C) csak a vételi (L) és
         // eladási (M) oszlopnál érvényes; a többi mezőnél a kiértékelő hibát ad (VV-VALID-004).
         const col = FIELD_TO_WGCOL[field]
-        const res = evaluateWorkgroupFormula(f, ctx, { allowSheet0Shorthand: col === 'L' || col === 'M' })
+        const res = evaluateWorkgroupFormula(
+          f, ctx, (col === 'L' || col === 'M') ? OPTS_ALLOW_SHORTHAND : OPTS_DENY_SHORTHAND)
         if ('error' in res) {
           passErrors[fmtKey(row.currencyId, field)] = res.error
           continue // hibás képlet → érték marad (a hover/edit jelzi a képletet)
