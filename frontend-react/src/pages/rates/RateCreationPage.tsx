@@ -696,15 +696,18 @@ export default function RateCreationPage() {
           : loadGroupRateValues(targetId)
         const { formulas: nf, values: nv } = applyCrossGroupCopy(
           loadGroupFormulas(targetId), targetValues, payload)
+        // Codex P2: SQLite-FIRST — az autoritatív SQLite-írást ELŐBB await-eljük (IPC-hostban);
+        // CSAK siker esetén commitoljuk a localStorage-ot. Így bukásnál NINCS részleges commit
+        // (a cél localStorage-a sem íródik felül egy sikertelennek jelzett másolásnál).
+        if (dbAvailable) {
+          const dbOk = (await saveGroupRateValuesToOfflineDbAwait(targetId, nv)).ok
+          if (!dbOk) {
+            logger.warn('RateCreationPage', `Cross-csoport másolás: SQLite-mentés sikertelen — ${targetId}`)
+            continue
+          }
+        }
         saveGroupFormulas(targetId, nf)       // localStorage (formulák)
         saveGroupRateValues(targetId, nv)     // localStorage (értékek, szinkron)
-        // Codex P2: ahol az IPC elérhető, a sikert az AUTORITATÍV SQLite-íráshoz kötjük (await + {ok});
-        // ahol nincs, a localStorage az autoritás → ok=true.
-        const dbOk = dbAvailable ? (await saveGroupRateValuesToOfflineDbAwait(targetId, nv)).ok : true
-        if (!dbOk) {
-          logger.warn('RateCreationPage', `Cross-csoport másolás: SQLite-mentés sikertelen — ${targetId}`)
-          continue
-        }
         const wg = workgroups.find(w => w.id === targetId)
         if (wg) succeeded.push(wg.name)
       } catch (e) {
