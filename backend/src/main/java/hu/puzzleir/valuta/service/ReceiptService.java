@@ -12,6 +12,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -67,19 +68,39 @@ public class ReceiptService {
      * @param transactionId opcionalis filter — ha megadva, csak az adott transaction Receipt-jeit
      * @return Receipt lista (list-merge: real + synthesized)
      */
+    /** Backward-compat: dátum-szűrés nélküli lista (a régi hívók/tesztek számára). */
     public List<Receipt> list(UUID transactionId) {
+        return list(transactionId, null, null);
+    }
+
+    /**
+     * Receipt list endpoint dátum-tartomány szűréssel (EXCMD b5b FR-BSZUR-02).
+     *
+     * @param fromDate opcionális alsó dátumhatár (inkluzív, NULL = nyitott)
+     * @param toDate   opcionális felső dátumhatár (inkluzív, NULL = nyitott)
+     */
+    public List<Receipt> list(UUID transactionId, LocalDate fromDate, LocalDate toDate) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (transactionId != null) {
             // EXCMD b5b (Codex/Copilot P2): a tranzakció-szűrt ágat is dúsítjuk, különben a
             // GET /api/v1/receipts?transactionId=... úton a materializált real receipt-ek
             // customerName/hufAmount-ja null marad (ügyfél-oszlop + 10M AML-jelölő hiányozna).
-            List<Receipt> filtered = repo.findByCompanyIdAndTransactionId(companyId, transactionId);
+            List<Receipt> filtered = new ArrayList<>(repo.findByCompanyIdAndTransactionId(companyId, transactionId));
+            // EXCMD b5b FR-BSZUR-02 (Codex P2): ha a from/to is meg van adva a transactionId mellett,
+            // azt is tiszteletben tartjuk (szerződés-konzisztencia). A lista kicsi (egy tranzakció
+            // bizonylatai), ezért issueDate-re Java-szűrés elég.
+            if (fromDate != null || toDate != null) {
+                filtered.removeIf(r -> !isWithinRange(r.getIssueDate(), fromDate, toDate));
+            }
             enrichRealReceipts(filtered, companyId);
             return filtered;
         }
 
-        // Real Receipt rekordok a DB-bol
-        List<Receipt> realReceipts = repo.findAllByCompanyId(companyId);
+        // Real (materializált) Receipt rekordok a DB-bol — EXCMD b5b FR-BSZUR-02 (Codex P2): a real
+        // receipt-eket IS a DB szűri az issueDate-tartományra (nem csak a synthesized ágat), különben a
+        // ?from=&to= az időszakon kívüli materializált bizonylatokat is visszaadná (és a teljes táblát
+        // betöltené). NULL határ = nyitott vég → mindkettő NULL esetén a teljes lista (változatlan).
+        List<Receipt> realReceipts = repo.findByCompanyIdAndIssueDateRange(companyId, fromDate, toDate);
 
         // Mely Transaction-ok vannak mar materializalva real Receipt-ben?
         // A materializaltakat az `id` mezo synthesizedUuid alakjarol ismerjuk fel
@@ -91,9 +112,12 @@ public class ReceiptService {
             }
         }
 
-        // Synthesized Receipt-ek a Transaction-bol — kihagyva a mar materializaltakat
-        List<Transaction> txList = transactionRepository.findReceiptListByCompanyId(
-                companyId, PageRequest.of(0, RECEIPT_LIST_LIMIT));
+        // Synthesized Receipt-ek a Transaction-bol — kihagyva a mar materializaltakat.
+        // EXCMD b5b FR-BSZUR-02 (Codex P2): a dátum-szűrést a DB-be toljuk, hogy a top-500 limit a
+        // KIVÁLASZTOTT időszakon BELÜL érvényesüljön — különben egy régi hónap/tartomány csendben
+        // hiányos lenne (a szűrés a már 500-ra csonkolt listán futna). NULL határ = nyitott vég.
+        List<Transaction> txList = transactionRepository.findReceiptListByCompanyIdAndDateRange(
+                companyId, fromDate, toDate, PageRequest.of(0, RECEIPT_LIST_LIMIT));
 
         List<Receipt> synthesized = new ArrayList<>();
         for (Transaction tx : txList) {
@@ -181,6 +205,20 @@ public class ReceiptService {
             return decodeTransactionId(txUuid);
         }
         return null;
+    }
+
+    /**
+     * EXCMD b5b FR-BSZUR-02: egy bizonylat-dátum a [from, to] (inkluzív, nyitott végek megengedettek)
+     * tartományba esik-e. NULL dátum + bármely határ → nincs benne (defenzív: nem provábilhatóan benne).
+     */
+    private static boolean isWithinRange(LocalDate date, LocalDate from, LocalDate to) {
+        if (date == null) {
+            return from == null && to == null;
+        }
+        if (from != null && date.isBefore(from)) {
+            return false;
+        }
+        return to == null || !date.isAfter(to);
     }
 
     public Receipt getById(UUID id) {

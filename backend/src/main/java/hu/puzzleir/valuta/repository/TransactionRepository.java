@@ -1319,6 +1319,33 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         Pageable pageable);
 
     /**
+     * EXCMD b5b FR-BSZUR-02 (Codex P2): bizonylat-lista OPCIONÁLIS dátum-tartománnyal.
+     *
+     * <p>A {@link #findReceiptListByCompanyId} a top-500 LEGUTÓBBI tranzakcióra korlátoz,
+     * ezért egy régi hónap/tartomány kliens-oldali szűrése csendben hiányos lehet (a 500-as
+     * ablakon kívüli egyező bizonylatok kimaradnak). Ez a query a dátum-szűrést a DB-be tolja:
+     * a limit így a KIVÁLASZTOTT időszakon belüli legutóbbi 500-ra vonatkozik (helyes).</p>
+     *
+     * <p>A {@code fromDate}/{@code toDate} külön-külön elhagyható (NULL = nyitott vég), így
+     * a "csak hónap", "csak tól", "csak ig" és "egyéni tartomány" esetek egy query-vel lefedettek.
+     * Mindkettő NULL → a {@link #findReceiptListByCompanyId}-vel azonos (szűretlen, top-500).</p>
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "JOIN FETCH t.branch " +
+           "JOIN FETCH t.company " +
+           "LEFT JOIN FETCH t.currency " +
+           "LEFT JOIN FETCH t.worker " +
+           "WHERE t.company.id = :companyId " +
+           "AND (:fromDate IS NULL OR t.transactionDate >= :fromDate) " +
+           "AND (:toDate IS NULL OR t.transactionDate <= :toDate) " +
+           "ORDER BY t.transactionDate DESC, t.transactionTime DESC")
+    List<Transaction> findReceiptListByCompanyIdAndDateRange(
+        @Param("companyId") UUID companyId,
+        @Param("fromDate") LocalDate fromDate,
+        @Param("toDate") LocalDate toDate,
+        Pageable pageable);
+
+    /**
      * G23 (EXCMD b8-forgalom FR-13..15): körzet-szintű havi forgalmi összesítő.
      *
      * <p>Régiónként (branch.regionCode) aggregálja a COMPLETED, pénzügyileg

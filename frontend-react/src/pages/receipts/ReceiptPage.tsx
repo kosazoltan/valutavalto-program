@@ -46,16 +46,16 @@ const TYPE_FILTER_TO_DRAFT_TYPE: Record<string, string> = {
   REVERSAL: 'storno',
 }
 
-// EXCMD b5b FR-BSZUR-02: "csak ügyfeles" szűrő — NEM bizonylattípus (nem receiptType-ra szűr),
-// hanem az ügyfél-jelenlétre (customerName kitöltött). Ezért a típus-szűrő dropdown-ban külön,
-// speciálisan kezelt értékként szerepel (nem a TransactionType enum-nevek között).
+// EXCMD b5b FR-BSZUR-01 (lista 2. opció): "csak ügyfeles" szűrő — NEM bizonylattípus (nem
+// receiptType-ra szűr), hanem az ügyfél-jelenlétre (customerName kitöltött). Ezért a típus-szűrő
+// dropdown-ban külön, speciálisan kezelt értékként szerepel (nem a TransactionType enum-nevek között).
 export const TYPE_FILTER_CUSTOMER_ONLY = 'CUSTOMER_ONLY'
 
 // EXCMD b5b FR-BSZUR-05: 10 millió Ft-os AML küszöb. A küszöböt elérő/meghaladó bizonylatokat
 // vizuálisan jelöljük (10M+ badge). A 10 M Ft-os AML-küszöb nem kerülhető meg (Pmt.).
 export const AML_10M_THRESHOLD_HUF = 10_000_000
 
-/** EXCMD b5b FR-BSZUR-02: van-e (nem üres) ügyfél a bizonylaton. */
+/** EXCMD b5b FR-BSZUR-01: van-e (nem üres) ügyfél a bizonylaton. */
 export const hasCustomer = (name?: string | null): boolean =>
   typeof name === 'string' && name.trim().length > 0
 
@@ -68,6 +68,73 @@ const HUF_FORMATTER = new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 0 
 export const formatHuf = (hufAmount?: number | null): string =>
   typeof hufAmount === 'number' && Number.isFinite(hufAmount) ? HUF_FORMATTER.format(hufAmount) : '—'
 
+// EXCMD b5b FR-BSZUR-02: hatókör/időszak-választó.
+//  - ALL: nincs időszak-szűrés (összes bizonylat).
+//  - MONTH: "A HÓNAP ÖSSZES BIZONYLATA" — egy naptári hónap (YYYY-MM).
+//  - CUSTOM: "CSAK A VÁLASZTOTT [időszak]" — dátumtól-ig (inkluzív), bármelyik vég nyitva hagyható.
+export type PeriodMode = 'ALL' | 'MONTH' | 'CUSTOM'
+
+/**
+ * EXCMD b5b FR-BSZUR-02: eldönti, hogy egy bizonylat dátuma a választott időszakba esik-e.
+ * A {@code dateStr} ISO dátum ("YYYY-MM-DD") vagy ISO timestamp (a kezdő 10 karakter a nap).
+ * ISO-dátum sztringeken a lexikografikus összehasonlítás megegyezik a kronológiaival (azonos formátum),
+ * ezért Date-parszolás nélkül, determinisztikusan dolgozunk.
+ */
+export const matchesPeriod = (
+  dateStr: string | undefined | null,
+  mode: PeriodMode,
+  month: string,
+  from: string,
+  to: string,
+): boolean => {
+  if (mode === 'ALL') return true
+  if (typeof dateStr !== 'string') return false
+  if (mode === 'MONTH') {
+    // Hónap-egyezéshez "YYYY-MM" (7 kar.) elég.
+    if (dateStr.length < 7) return false
+    if (!month) return true
+    return dateStr.slice(0, 7) === month
+  }
+  // CUSTOM: a tól-ig összehasonlításhoz TELJES "YYYY-MM-DD" (10 kar.) kell — különben egy
+  // csonka "YYYY-MM" érték a prefix-egyezés miatt félreesne (Copilot). Nyitott végek megengedettek.
+  if (dateStr.length < 10) return false
+  const day = dateStr.slice(0, 10)
+  if (from && day < from) return false
+  if (to && day > to) return false
+  return true
+}
+
+/** Az aktuális naptári hónap "YYYY-MM" alakban (a MONTH-mód alapértéke). */
+const currentMonthValue = (): string => {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+/**
+ * EXCMD b5b FR-BSZUR-02 (Codex P2): a periódus-állapotot a backend list-query ISO from/to
+ * dátumaira képezi, hogy a dátum-szűrés a DB-ben fusson (a top-500 limit a választott időszakon
+ * BELÜL érvényesüljön, ne csonkoljon a szűrés előtt). MONTH → a hónap első/utolsó napja (a tényleges
+ * hónaphossz alapján, hogy a backend LocalDate-parszolása ne dobjon érvénytelen dátumra). ALL → üres.
+ */
+export const periodToBackendRange = (
+  mode: PeriodMode,
+  month: string,
+  from: string,
+  to: string,
+): { from?: string; to?: string } => {
+  if (mode === 'MONTH') {
+    if (!month) return {}
+    const [y, m] = month.split('-').map(Number)
+    if (!y || !m) return {}
+    const lastDay = new Date(y, m, 0).getDate() // a hónap utolsó napja (m: 1-alapú → Date(y, m, 0))
+    return { from: `${month}-01`, to: `${month}-${String(lastDay).padStart(2, '0')}` }
+  }
+  if (mode === 'CUSTOM') {
+    return { from: from || undefined, to: to || undefined }
+  }
+  return {}
+}
+
 export default function ReceiptPage() {
   const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
@@ -77,18 +144,26 @@ export default function ReceiptPage() {
   const [searchTerm, setSearchTerm] = useState('')
   // EXCMD b5b FR-BSZUR-01: bizonylattípus-szűrő (egyszerre egy aktív). A backend Receipt.receiptType =
   // TransactionType.name() (verifikálva: ReceiptService:166), ezért az ENUM-NEVEKRE szűrünk:
-  // BUY/SELL/CONVERSION/TRANSFER_OUT/TRANSFER_IN/REVERSAL. A "csak ügyfeles" (FR-BSZUR-02) + ügyfél-adatlap
-  // szűrőmezők + AML-jelölők (FR-03..05) richer list-adatot igényelnek (customerName/hufAmount/approver a
-  // GET /receipts-ben) → következő increment (a list-DTO dúsítása). Itt a típus-szűrő a meglévő adatból.
+  // BUY/SELL/CONVERSION/TRANSFER_OUT/TRANSFER_IN/REVERSAL. A "csak ügyfeles" (FR-BSZUR-01 opció 2) az
+  // ügyfél-jelenlétre szűr. Az ügyfél-adatlap szűrőmezők + ENGEDÉLYEZŐ (FR-BSZUR-03/04 + 05-approver)
+  // további list-adatot igényelnek → következő incrementek.
   const [typeFilter, setTypeFilter] = useState<string>('ALL')
+  // EXCMD b5b FR-BSZUR-02: hatókör/időszak-szűrő (hónap vs. egyéni dátumtartomány).
+  const [periodMode, setPeriodMode] = useState<PeriodMode>('ALL')
+  const [periodMonth, setPeriodMonth] = useState<string>(currentMonthValue)
+  const [periodFrom, setPeriodFrom] = useState<string>('')
+  const [periodTo, setPeriodTo] = useState<string>('')
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null)
   const [selectedDraft, setSelectedDraft] = useState<PendingReceiptDraft | null>(null)
 
   const loadData = useCallback(async (): Promise<void> => {
     try {
       setLoading(true)
+      // EXCMD b5b FR-BSZUR-02 (Codex P2): a periódust a backendre is továbbadjuk, hogy a synthesized
+      // lista dátum-szűrése a 500-as limit ELŐTT történjen (régi hónap/tartomány ne legyen csonka).
+      const range = periodToBackendRange(periodMode, periodMonth, periodFrom, periodTo)
       const [data, drafts] = await Promise.all([
-        receiptApi.list(),
+        receiptApi.list(range),
         isElectron() ? getPendingReceiptDrafts(worker) : Promise.resolve([]),
       ])
       setReceipts(data)
@@ -100,7 +175,7 @@ export default function ReceiptPage() {
     } finally {
       setLoading(false)
     }
-  }, [worker])
+  }, [worker, periodMode, periodMonth, periodFrom, periodTo])
 
   useEffect(() => {
     void loadData()
@@ -109,7 +184,9 @@ export default function ReceiptPage() {
   const filteredReceipts = useMemo(() => {
     const term = searchTerm.toLowerCase()
     return receipts.filter(r => {
-      // EXCMD b5b FR-BSZUR-02: "csak ügyfeles" — NEM receiptType-ra szűr, hanem ügyfél-jelenlétre.
+      // EXCMD b5b FR-BSZUR-02: hatókör/időszak-szűrő (a bizonylat issueDate-je alapján).
+      if (!matchesPeriod(r.issueDate, periodMode, periodMonth, periodFrom, periodTo)) return false
+      // EXCMD b5b FR-BSZUR-01 (opció 2): "csak ügyfeles" — NEM receiptType-ra szűr, hanem ügyfél-jelenlétre.
       if (typeFilter === TYPE_FILTER_CUSTOMER_ONLY) {
         if (!hasCustomer(r.customerName)) return false
       } else if (typeFilter !== 'ALL') {
@@ -122,7 +199,7 @@ export default function ReceiptPage() {
         r.navReceiptNumber?.toLowerCase().includes(term)
       )
     })
-  }, [receipts, searchTerm, typeFilter])
+  }, [receipts, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo])
 
   const handlePrint = async (id: string): Promise<void> => {
     try {
@@ -139,7 +216,9 @@ export default function ReceiptPage() {
   const filteredDrafts = useMemo(() => {
     const lowered = searchTerm.toLowerCase()
     return localDrafts.filter((draft) => {
-      // EXCMD b5b FR-BSZUR-02: "csak ügyfeles" a vázlat-listára is hat (a draft customerName-je
+      // EXCMD b5b FR-BSZUR-02: hatókör/időszak-szűrő a vázlatokra is (a draft createdAt-je alapján).
+      if (!matchesPeriod(draft.createdAt, periodMode, periodMonth, periodFrom, periodTo)) return false
+      // EXCMD b5b FR-BSZUR-01 (opció 2): "csak ügyfeles" a vázlat-listára is hat (a draft customerName-je
       // a receiptData-ban van). NEM a típusra szűr — ügyfél-jelenlétre.
       if (typeFilter === TYPE_FILTER_CUSTOMER_ONLY) {
         if (!hasCustomer(draft.receiptData.customerName)) return false
@@ -158,7 +237,7 @@ export default function ReceiptPage() {
         || draft.receiptData.customerName?.toLowerCase().includes(lowered)
       )
     })
-  }, [localDrafts, searchTerm, typeFilter])
+  }, [localDrafts, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo])
 
   if (loading) {
     return <div className="flex items-center justify-center h-64">Betöltés...</div>
@@ -184,21 +263,73 @@ export default function ReceiptPage() {
           </div>
           {/* EXCMD b5b FR-BSZUR-01: bizonylattípus-szűrő (egyszerre egy aktív; ALL = szűrés kikapcsolva). */}
           <div className="min-w-[200px]">
-            <label className="form-label">Bizonylattípus</label>
+            <label className="form-label">{t('receipts.filter.type')}</label>
             <select className="form-input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
               {/* A backend Receipt.receiptType = TransactionType.name() — az enum-nevekre szűrünk (verifikálva:
-                  ReceiptService:166, TransactionType.java). A "csak ügyfeles" (FR-BSZUR-02) NEM TransactionType:
-                  az ügyfél-jelenlétre (customerName kitöltött) szűr, ezért külön, speciális értékkel. */}
-              <option value="ALL">Szűrés kikapcsolva (összes)</option>
-              <option value={TYPE_FILTER_CUSTOMER_ONLY}>Csak ügyfeles</option>
-              <option value="BUY">Csak vételi</option>
-              <option value="SELL">Csak eladási</option>
-              <option value="CONVERSION">Csak konverziós</option>
-              <option value="TRANSFER_OUT">Csak pénz-átadási</option>
-              <option value="TRANSFER_IN">Csak pénz-átvételi</option>
-              <option value="REVERSAL">Csak stornózott</option>
+                  ReceiptService:166, TransactionType.java). A "csak ügyfeles" (FR-BSZUR-01 opció 2) NEM
+                  TransactionType: az ügyfél-jelenlétre (customerName kitöltött) szűr, ezért külön, spec. értékkel. */}
+              <option value="ALL">{t('receipts.filter.allDisabled')}</option>
+              <option value={TYPE_FILTER_CUSTOMER_ONLY}>{t('receipts.filter.customerOnly')}</option>
+              <option value="BUY">{t('receipts.filter.buyOnly')}</option>
+              <option value="SELL">{t('receipts.filter.sellOnly')}</option>
+              <option value="CONVERSION">{t('receipts.filter.conversionOnly')}</option>
+              <option value="TRANSFER_OUT">{t('receipts.filter.transferOutOnly')}</option>
+              <option value="TRANSFER_IN">{t('receipts.filter.transferInOnly')}</option>
+              <option value="REVERSAL">{t('receipts.filter.reversalOnly')}</option>
             </select>
           </div>
+          {/* EXCMD b5b FR-BSZUR-02: hatókör/időszak-választó (összes / hónap / egyéni dátumtartomány). */}
+          <div className="min-w-[180px]">
+            <label className="form-label" htmlFor="receipt-period-mode">{t('receipts.filter.period')}</label>
+            <select
+              id="receipt-period-mode"
+              className="form-input"
+              value={periodMode}
+              onChange={(e) => setPeriodMode(e.target.value as PeriodMode)}
+            >
+              <option value="ALL">{t('receipts.filter.periodAll')}</option>
+              <option value="MONTH">{t('receipts.filter.periodMonth')}</option>
+              <option value="CUSTOM">{t('receipts.filter.periodCustom')}</option>
+            </select>
+          </div>
+          {periodMode === 'MONTH' && (
+            <div className="min-w-[160px]">
+              <label className="form-label" htmlFor="receipt-period-month">{t('receipts.filter.month')}</label>
+              <input
+                id="receipt-period-month"
+                type="month"
+                className="form-input"
+                value={periodMonth}
+                onChange={(e) => setPeriodMonth(e.target.value)}
+              />
+            </div>
+          )}
+          {periodMode === 'CUSTOM' && (
+            <>
+              <div className="min-w-[150px]">
+                <label className="form-label" htmlFor="receipt-period-from">{t('receipts.filter.dateFrom')}</label>
+                <input
+                  id="receipt-period-from"
+                  type="date"
+                  className="form-input"
+                  value={periodFrom}
+                  max={periodTo || undefined}
+                  onChange={(e) => setPeriodFrom(e.target.value)}
+                />
+              </div>
+              <div className="min-w-[150px]">
+                <label className="form-label" htmlFor="receipt-period-to">{t('receipts.filter.dateTo')}</label>
+                <input
+                  id="receipt-period-to"
+                  type="date"
+                  className="form-input"
+                  value={periodTo}
+                  min={periodFrom || undefined}
+                  onChange={(e) => setPeriodTo(e.target.value)}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -239,7 +370,7 @@ export default function ReceiptPage() {
         <table className="data-grid w-full">
           <thead>
             {/* EXCMD b5b: Ügyfél (FR-BSZUR-02) + Összeg/AML-jelölő (FR-BSZUR-05) oszlopok. */}
-            <tr><th>{t('cashier.receiptNumber')}</th><th>{t('receipts.navBizonylatszam')}</th><th>{t('common.type')}</th><th>Ügyfél</th><th>Összeg (Ft)</th><th>{t('cashier.issueDate')}</th><th>{t('cashier.printed')}</th><th>{t('common.actions')}</th></tr>
+            <tr><th>{t('cashier.receiptNumber')}</th><th>{t('receipts.navBizonylatszam')}</th><th>{t('common.type')}</th><th>{t('receipts.ugyfel')}</th><th>{t('receipts.osszegFt')}</th><th>{t('cashier.issueDate')}</th><th>{t('cashier.printed')}</th><th>{t('common.actions')}</th></tr>
           </thead>
           <tbody>
             {filteredReceipts.length === 0 ? (
@@ -255,7 +386,7 @@ export default function ReceiptPage() {
                   <td className="text-right whitespace-nowrap">
                     {formatHuf(r.hufAmount)}
                     {isAmlThresholdExceeded(r.hufAmount) && (
-                      <span className="badge badge-red ml-2" title="10 millió Ft feletti — AML küszöb (Pmt.)">10M+</span>
+                      <span className="badge badge-red ml-2" title={t('receipts.amlBadgeTitle')}>{t('receipts.amlBadgeText')}</span>
                     )}
                   </td>
                   <td>{new Date(r.issueDate).toLocaleDateString('hu-HU')}</td>
@@ -285,11 +416,11 @@ export default function ReceiptPage() {
               <div><strong>{t('receipts.navBizonylatszam2')}</strong> {selectedReceipt.navReceiptNumber || '-'}</div>
               <div><strong>{t('cashdesk.tipus')}</strong> {receiptTypeLabel(selectedReceipt.receiptType)}</div>
               {/* EXCMD b5b: ügyfél (FR-BSZUR-02) + összeg/AML-jelölő (FR-BSZUR-05), csak olvasható szűrési segédadat. */}
-              <div><strong>Ügyfél:</strong> {hasCustomer(selectedReceipt.customerName) ? selectedReceipt.customerName : '—'}</div>
+              <div><strong>{t('receipts.ugyfelLabel')}</strong> {hasCustomer(selectedReceipt.customerName) ? selectedReceipt.customerName : '—'}</div>
               <div>
-                <strong>Összeg (Ft):</strong> {formatHuf(selectedReceipt.hufAmount)}
+                <strong>{t('receipts.osszegFtLabel')}</strong> {formatHuf(selectedReceipt.hufAmount)}
                 {isAmlThresholdExceeded(selectedReceipt.hufAmount) && (
-                  <span className="badge badge-red ml-2" title="10 millió Ft feletti — AML küszöb (Pmt.)">10M+</span>
+                  <span className="badge badge-red ml-2" title={t('receipts.amlBadgeTitle')}>{t('receipts.amlBadgeText')}</span>
                 )}
               </div>
               <div><strong>{t('receipts.kiadasDatuma')}</strong> {new Date(selectedReceipt.issueDate).toLocaleString('hu-HU')}</div>
