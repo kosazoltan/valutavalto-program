@@ -157,8 +157,14 @@ function parseTransactionReceiptLines(linesJson: string | null | undefined): Tra
   const lines: TransactionReceiptLine[] = []
   for (const raw of parsed) {
     const entry = raw as { currencyCode?: unknown; banknoteCount?: unknown; customExchangeRate?: unknown }
-    const foreignAmount = Number(entry.banknoteCount) || 0
-    const rate = Number(entry.customExchangeRate) || 0
+    const foreignAmount = Number(entry.banknoteCount)
+    const rate = Number(entry.customExchangeRate)
+    // Copilot P2: érvénytelen (nem véges) numerikus mező esetén NE essünk csendben 0-ra — az
+    // hibás 0-értékű sort és így hibás aggregált összeget adna. A teljes payload-ot érvénytelennek
+    // tekintjük → null, amitől a hívó az egysoros (tárolt, ismert-jó) értékekre esik vissza.
+    if (!Number.isFinite(foreignAmount) || !Number.isFinite(rate)) {
+      return null
+    }
     lines.push({
       currencyCode: typeof entry.currencyCode === 'string' && entry.currencyCode ? entry.currencyCode : '—',
       foreignAmount,
@@ -193,12 +199,16 @@ function buildTransactionReceiptData(row: TransactionReceiptRow, worker: Worker 
     // a fejlec ELSO soranak erteke (NEM az aggregatum), ezert a lines-bol szamolunk ujra.
     const totalRaw = lines.reduce((sum, ln) => sum + ln.hufAmount, 0)
     const payable = multiLinePayable(totalRaw, mode, row.discount_percent ?? 0, row.handling_fee ?? 0)
+    // Codex P2: a kezelési díj MÁR bele van számolva a `payable`-be (multiLinePayable), ezért NEM
+    // adjuk át külön `handlingFee`-ként — különben a ReceiptPreviewModal (paid = roundedHufAmount +
+    // handlingFee) duplán számolná a díjat. Így a preview „Kifizetve" összege EGYEZIK a fizikailag
+    // nyomtatott FIZETENDŐ-vel (printer.ts a multi-line nyugtán a roundedHufAmount-ot nyomtatja,
+    // a díjat nem tételezi külön).
     return {
       ...base,
       hufAmount: payable,
       roundedHufAmount: payable,
       roundingDiff: 0,
-      handlingFee: row.handling_fee ?? undefined,
       transactionLines: lines,
     }
   }

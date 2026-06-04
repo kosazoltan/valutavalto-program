@@ -219,6 +219,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     customer_document_number: string | null;
     customer_address: string | null;
     denominations: string | null;
+    // Multi-line aggregalt vetel/eladas sorai JSON-kent (backend TransactionLineRequestDto alak);
+    // NULL → egysoros. A vazlat-bongeszo ebbol rekonstrualja a multi-line nyugtat (localQueue).
+    lines: string | null;
     local_reference_number: string | null;
     idempotency_key: string | null;
     created_at: string;

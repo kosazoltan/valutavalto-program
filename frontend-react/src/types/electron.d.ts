@@ -229,6 +229,9 @@ export interface ElectronAPI {
     customer_document_number: string | null;
     customer_address: string | null;
     denominations: string | null;
+    // Multi-line aggregált vétel/eladás sorai JSON-ként (backend TransactionLineRequestDto alak);
+    // NULL → egysoros. A vázlat-böngésző ebből rekonstruálja a multi-line nyugtát (localQueue).
+    lines: string | null;
     local_reference_number: string | null;
     idempotency_key: string | null;
     created_at: string;

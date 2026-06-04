@@ -255,7 +255,41 @@ describe('getReprintableReceiptDrafts — with electronAPI', () => {
     expect(rd.hufAmount).toBe(expectedPayable)
     expect(rd.roundedHufAmount).toBe(expectedPayable)
     expect(rd.roundingDiff).toBe(0)
-    expect(rd.handlingFee).toBe(500)
+    // Codex P2: a kezelési díj MÁR a payable-ben van — NEM adjuk át külön handlingFee-ként,
+    // különben a ReceiptPreviewModal (paid = roundedHufAmount + handlingFee) duplán számolná.
+    expect(rd.handlingFee).toBeUndefined()
+  })
+
+  it('falls back to single-line stored values when lines JSON has invalid numeric entries', async () => {
+    // Copilot P2: hibás (nem véges) banknoteCount/customExchangeRate → a teljes payload érvénytelen,
+    // így a tárolt egysoros (ismert-jó) értékekre esünk vissza, NEM 0-értékű hibás sorokra.
+    installElectronAPI({
+      transactions: [{
+        id: 11,
+        type: 'BUY',
+        currency_code: 'EUR',
+        foreign_amount: 100,
+        huf_amount: 39000,
+        rounded_huf_amount: 39000,
+        rate: 390,
+        handling_fee: null,
+        discount_percent: null,
+        customer_name: null,
+        customer_document_number: null,
+        lines: JSON.stringify([{ currencyCode: 'EUR', banknoteCount: 'NEM_SZAM', customExchangeRate: 390 }]),
+        local_reference_number: 'V105000111',
+        created_at: '2026-06-04 10:30:00',
+        synced: 1,
+      }],
+    })
+
+    const result = await getReprintableReceiptDrafts(worker)
+    expect(result).toHaveLength(1)
+    const rd = result[0]!.receiptData
+    expect(rd.transactionLines).toBeUndefined()
+    expect(rd.currencyCode).toBe('EUR')
+    expect(rd.foreignAmount).toBe(100)
+    expect(rd.hufAmount).toBe(39000)
   })
 
   it('maps synced conversions and stornos with reprint flag', async () => {

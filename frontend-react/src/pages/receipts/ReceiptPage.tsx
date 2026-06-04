@@ -69,6 +69,33 @@ const HUF_FORMATTER = new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 0 
 export const formatHuf = (hufAmount?: number | null): string =>
   typeof hufAmount === 'number' && Number.isFinite(hufAmount) ? HUF_FORMATTER.format(hufAmount) : '—'
 
+/**
+ * Közös szűrő a helyi vázlat- ÉS a fizikai-újranyomtatás-listára (Sourcery: a két szűrő korábban
+ * majdnem azonos volt). A "csak ügyfeles" (FR-BSZUR-02) ügyfél-jelenlétre, a típus-szűrő a
+ * PrintJobType-ra (Codex P2 #1034), a keresőszó a referenciára/címre/ügyfélnévre szűr.
+ */
+export function draftMatchesFilters(
+  draft: PendingReceiptDraft,
+  typeFilter: string,
+  searchTerm: string,
+): boolean {
+  if (typeFilter === TYPE_FILTER_CUSTOMER_ONLY) {
+    if (!hasCustomer(draft.receiptData.customerName)) return false
+  } else if (typeFilter !== 'ALL') {
+    // A TRANSFER_OUT/IN-hez nincs vázlat-típus (a draftok csak vétel/eladás/konverzió/sztornó) →
+    // ilyenkor egy tétel sem egyezik (üres lista, helyes).
+    const draftType = TYPE_FILTER_TO_DRAFT_TYPE[typeFilter]
+    if (!draftType || (draft.receiptData.type ?? '') !== draftType) return false
+  }
+  const lowered = searchTerm.toLowerCase()
+  if (!lowered) return true
+  return (
+    draft.referenceNumber.toLowerCase().includes(lowered)
+    || draft.title.toLowerCase().includes(lowered)
+    || (draft.receiptData.customerName?.toLowerCase().includes(lowered) ?? false)
+  )
+}
+
 export default function ReceiptPage() {
   const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
@@ -142,49 +169,19 @@ export default function ReceiptPage() {
     }
   }
 
-  const filteredDrafts = useMemo(() => {
-    const lowered = searchTerm.toLowerCase()
-    return localDrafts.filter((draft) => {
-      // EXCMD b5b FR-BSZUR-02: "csak ügyfeles" a vázlat-listára is hat (a draft customerName-je
-      // a receiptData-ban van). NEM a típusra szűr — ügyfél-jelenlétre.
-      if (typeFilter === TYPE_FILTER_CUSTOMER_ONLY) {
-        if (!hasCustomer(draft.receiptData.customerName)) return false
-      // Codex P2 (#1034): a típus-szűrő a helyi vázlat-listára is hat (különben "Csak vételi" mellett is
-      // látszanának eladási/konverziós/sztornó vázlatok). A draft type-ja PrintJobType (kisbetűs).
-      } else if (typeFilter !== 'ALL') {
-        // A TRANSFER_OUT/IN-hez nincs vázlat-típus (a draftok csak vétel/eladás/konverzió/sztornó) →
-        // ilyenkor egy vázlat sem egyezik (üres vázlat-lista, helyes).
-        const draftType = TYPE_FILTER_TO_DRAFT_TYPE[typeFilter]
-        if (!draftType || (draft.receiptData.type ?? '') !== draftType) return false
-      }
-      if (!lowered) return true
-      return (
-        draft.referenceNumber.toLowerCase().includes(lowered)
-        || draft.title.toLowerCase().includes(lowered)
-        || draft.receiptData.customerName?.toLowerCase().includes(lowered)
-      )
-    })
-  }, [localDrafts, searchTerm, typeFilter])
+  // EXCMD b5b FR-BSZUR-01/02 + Codex P2 (#1034): a "csak ügyfeles" + típus-szűrő + keresőszó a helyi
+  // vázlat-listára is hat (közös helper: draftMatchesFilters).
+  const filteredDrafts = useMemo(
+    () => localDrafts.filter((draft) => draftMatchesFilters(draft, typeFilter, searchTerm)),
+    [localDrafts, searchTerm, typeFilter],
+  )
 
   // Fizikai újranyomtatás (Codex P2 #1035): a szinkronizált, újranyomtatható helyi bizonylatokra
-  // a kereső + típus-szűrő ugyanúgy hat, mint a vázlat-listára (azonos PrintJobType-alapú szűrés).
-  const filteredReprintable = useMemo(() => {
-    const lowered = searchTerm.toLowerCase()
-    return reprintable.filter((item) => {
-      if (typeFilter === TYPE_FILTER_CUSTOMER_ONLY) {
-        if (!hasCustomer(item.receiptData.customerName)) return false
-      } else if (typeFilter !== 'ALL') {
-        const draftType = TYPE_FILTER_TO_DRAFT_TYPE[typeFilter]
-        if (!draftType || (item.receiptData.type ?? '') !== draftType) return false
-      }
-      if (!lowered) return true
-      return (
-        item.referenceNumber.toLowerCase().includes(lowered)
-        || item.title.toLowerCase().includes(lowered)
-        || item.receiptData.customerName?.toLowerCase().includes(lowered)
-      )
-    })
-  }, [reprintable, searchTerm, typeFilter])
+  // a kereső + típus-szűrő ugyanúgy hat, mint a vázlat-listára (ugyanaz a draftMatchesFilters helper).
+  const filteredReprintable = useMemo(
+    () => reprintable.filter((item) => draftMatchesFilters(item, typeFilter, searchTerm)),
+    [reprintable, searchTerm, typeFilter],
+  )
 
   if (loading) {
     return <div className="flex items-center justify-center h-64">Betöltés...</div>
