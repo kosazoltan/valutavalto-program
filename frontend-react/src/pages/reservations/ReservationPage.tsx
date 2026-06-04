@@ -91,14 +91,38 @@ export default function ReservationPage() {
     void loadReservations();
   }, [loadReservations]);
 
+  // G14: Foglaló-bizonylat (átvétel / visszafizetés) PDF letöltése.
+  const handleDownloadReceipt = useCallback(async (id: number, refund: boolean) => {
+    try {
+      const response = await api.get(`/reservations/${id}/receipt`, {
+        params: { refund },
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(response.data as Blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `foglalo-${refund ? 'visszafizetes' : 'atvetel'}-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // A hiba-visszajelzést a backend toast adja.
+    }
+  }, []);
+
   const handleFulfill = useCallback(async (id: number) => {
     try {
       await api.post(`/reservations/${id}/fulfill`);
+      // Codex P2 (#1032): a teljesített foglaló a listából eltűnik (csak ACTIVE/expired töltődik), ezért a
+      // kötelező BESZÁMÍTÁSI bizonylatot (FR-14, refund=false) RÖGTÖN a teljesítés után letöltjük — ez az
+      // egyetlen elérhető nyomtatási út a FULFILLED állapotú foglalóhoz a termék-flow-ban.
+      await handleDownloadReceipt(id, false);
       void loadReservations();
     } catch {
       // A lista látható marad; a hiba-visszajelzést a backend toast adja.
     }
-  }, [loadReservations]);
+  }, [loadReservations, handleDownloadReceipt]);
 
   const handleCancelByCustomer = useCallback(async (id: number) => {
     const reason = prompt('Lemondás oka (ügyfél miatt — a letét nem jár vissza):');
@@ -127,26 +151,6 @@ export default function ReservationPage() {
       // noop
     }
   }, [loadReservations]);
-
-  // G14: Foglaló-bizonylat (átvétel / visszafizetés) PDF letöltése.
-  const handleDownloadReceipt = useCallback(async (id: number, refund: boolean) => {
-    try {
-      const response = await api.get(`/reservations/${id}/receipt`, {
-        params: { refund },
-        responseType: 'blob',
-      });
-      const url = URL.createObjectURL(response.data as Blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `foglalo-${refund ? 'visszafizetes' : 'atvetel'}-${id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      // A hiba-visszajelzést a backend toast adja.
-    }
-  }, []);
 
   const filteredReservations = safeArray<Reservation>(reservations).filter((r) => {
     const term = searchTerm.toLowerCase();
@@ -265,17 +269,6 @@ export default function ReservationPage() {
                             {t('reservations.bizonylat')}
                           </button>
                         </>
-                      )}
-                      {reservation.status === 'FULFILLED' && (
-                        // Codex P2 (#1032): a teljesített foglaló BESZÁMÍTÁSI bizonylata (refund=false) — ezen
-                        // jelenik meg a kötelező "beszámításra került" záró-szöveg. Korábban a FULFILLED soron
-                        // egyetlen nyomtató gomb sem volt, így a bizonylat elérhetetlen volt a pénztáros számára.
-                        <button
-                          onClick={() => handleDownloadReceipt(reservation.id, false)}
-                          className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                        >
-                          {t('reservations.bizonylat')}
-                        </button>
                       )}
                       {(reservation.status === 'CANCELLED_BY_CUSTOMER'
                         || reservation.status === 'CANCELLED_BY_COMPANY'
