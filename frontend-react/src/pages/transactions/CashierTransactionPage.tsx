@@ -18,6 +18,7 @@ import {
   recordLocalAuditEvent,
   saveAndSyncPendingBuySell,
 } from '../../utils/electronTransactions'
+import type { PendingBuySellInput } from '../../utils/electronTransactions'
 import { logger } from '../../utils/logger'
 import { isElectron } from '../../utils/electron'
 import ReceiptPreviewModal from '../../components/electron/ReceiptPreviewModal'
@@ -785,52 +786,77 @@ export default function CashierTransactionPage() {
         // bizonylaton hianyzott a szul.hely / szul.ido / anyja neve / allampolgar-
         // sag / okmany tipus / "mas neveben" flag es az actor teljes azonositasa.
         const actorIdentity = cd?.actorIdentity ?? null
-        const outcome = await saveAndSyncPendingBuySell(
-          filledRows.map((row) => ({
-            type: mode === 'buy' ? 'BUY' : 'SELL',
+        // Egy sor → PendingBuySellInput. A fejlec customer/AML mezok minden soron azonosak (egy
+        // ugyfel / egy nyugta), a tetel-specifikus mezok (currency/foreign/huf/rate/foreignStatus)
+        // a sorbol jonnek.
+        const buildEntry = (row: TransactionRow): PendingBuySellInput => ({
+          type: mode === 'buy' ? 'BUY' : 'SELL',
+          currencyCode: row.currencyCode,
+          foreignAmount: parseFloat(row.quantity) || 0,
+          hufAmount: row.hufValue,
+          roundedHufAmount: roundHuf(row.hufValue),
+          rate: row.exchangeRate,
+          handlingFee: handlingFee > 0 ? handlingFee : null,
+          discountPercent: discount > 0 ? discount : null,
+          customerIdentifier: cd?.documentNumber || null,
+          customerName: cd?.name || null,
+          customerDocumentNumber: cd?.documentNumber || null,
+          customerAddress: cd?.address || null,
+          denominations: null,
+          foreignStatus: row.foreignStatus,
+          // V229 100k+ alapmezok
+          customerBirthPlace: cd?.birthPlace ?? null,
+          customerBirthDate: cd?.birthDate ?? null,
+          customerMotherName: cd?.motherName ?? null,
+          customerNationality: cd?.nationality ?? null,
+          customerDocumentType: cd?.documentType ?? null,
+          // V229 300k+ JOGCIM nyilatkozat
+          sourceOfFunds: cd?.sourceOfFunds ?? null,
+          customerIsPep: cd?.isPep ?? null,
+          customerOnOwnBehalf: cd?.onOwnBehalf ?? null,
+          customerActorName: cd?.actorName ?? null,
+          // V235 PEP minoseg (HIBA #15)
+          customerPepKind: cd?.pepKind ?? null,
+          // V235 actor teljes azonositasa (HIBA #17)
+          customerActorBirthPlace: actorIdentity?.birthPlace ?? null,
+          customerActorBirthDate: actorIdentity?.birthDate ?? null,
+          customerActorMotherName: actorIdentity?.motherName ?? null,
+          customerActorNationality: actorIdentity?.nationality ?? null,
+          customerActorDocumentType: actorIdentity?.documentType ?? null,
+          customerActorDocumentNumber: actorIdentity?.documentNumber ?? null,
+          customerActorAddress: actorIdentity?.address ?? null,
+          // AML felsovezetoi jovahagyas: a jovahagyo workerId (NULL ha nem kellett). A local-first
+          // kliens lokalisan perzisztalja, majd a sync a backend-body-ba teszi.
+          approverWorkerId: approverWorkerIdRef.current,
+          approvalSessionId: approvalSessionIdRef.current,
+        })
+
+        // Multi-line aggregate (2026-06-04): tobb-soros nyugtanal EGY aggregalt pending tranzakciot
+        // mentunk `lines[]` tombbel — a sync EGY POST /transactions/buy|sell-t kuld, a backend egyetlen
+        // AML-kaput es egyetlen approval-grantot fogyaszt el. Egysoros nyugtanal a viselkedes
+        // VALTOZATLAN (egy pending, `lines` nelkul).
+        //
+        // RATE-SEMANTIKA (penz-helyesseg): minden sor customExchangeRate-jet a sor TENYLEGES alkalmazott
+        // arfolyamara (row.exchangeRate) allitjuk — pontosan ahogy az egysoros sync is teszi
+        // (sync-engine: customExchangeRate = tx.rate). Igy az aggregalt nyugta penzugyileg azonos N
+        // egysoros tranzakcio osszegevel (resolveBuyRate/resolveSellRate ugyanazt a customExchangeRate-et
+        // honoralja mindket uton). A per-soros discountType=0 (a tenyleges szazalekos kedvezmenyt a
+        // fejlec discountPercent hordozza, mint az egysoros agon).
+        let entries: PendingBuySellInput[]
+        if (filledRows.length > 1) {
+          const header = buildEntry(filledRows[0]!)
+          const lines = filledRows.map((row) => ({
             currencyCode: row.currencyCode,
-            foreignAmount: parseFloat(row.quantity) || 0,
-            hufAmount: row.hufValue,
-            roundedHufAmount: roundHuf(row.hufValue),
-            rate: row.exchangeRate,
-            handlingFee: handlingFee > 0 ? handlingFee : null,
-            discountPercent: discount > 0 ? discount : null,
-            customerIdentifier: cd?.documentNumber || null,
-            customerName: cd?.name || null,
-            customerDocumentNumber: cd?.documentNumber || null,
-            customerAddress: cd?.address || null,
-            denominations: null,
+            banknoteCount: parseFloat(row.quantity) || 0,
+            customExchangeRate: row.exchangeRate,
+            discountType: 0,
             foreignStatus: row.foreignStatus,
-            // V229 100k+ alapmezok
-            customerBirthPlace: cd?.birthPlace ?? null,
-            customerBirthDate: cd?.birthDate ?? null,
-            customerMotherName: cd?.motherName ?? null,
-            customerNationality: cd?.nationality ?? null,
-            customerDocumentType: cd?.documentType ?? null,
-            // V229 300k+ JOGCIM nyilatkozat
-            sourceOfFunds: cd?.sourceOfFunds ?? null,
-            // AML 50M (Pmt./MNB 14/2025): strukturált forrás-dokumentum
-            sourceOfFundsDocType: cd?.sourceOfFundsDocType ?? null,
-            sourceOfFundsDocDate: cd?.sourceOfFundsDocDate ?? null,
-            customerIsPep: cd?.isPep ?? null,
-            customerOnOwnBehalf: cd?.onOwnBehalf ?? null,
-            customerActorName: cd?.actorName ?? null,
-            // V235 PEP minoseg (HIBA #15)
-            customerPepKind: cd?.pepKind ?? null,
-            // V235 actor teljes azonositasa (HIBA #17)
-            customerActorBirthPlace: actorIdentity?.birthPlace ?? null,
-            customerActorBirthDate: actorIdentity?.birthDate ?? null,
-            customerActorMotherName: actorIdentity?.motherName ?? null,
-            customerActorNationality: actorIdentity?.nationality ?? null,
-            customerActorDocumentType: actorIdentity?.documentType ?? null,
-            customerActorDocumentNumber: actorIdentity?.documentNumber ?? null,
-            customerActorAddress: actorIdentity?.address ?? null,
-            // AML felsovezetoi jovahagyas: a jovahagyo workerId (NULL ha nem kellett). A local-first
-            // kliens lokalisan perzisztalja, majd a sync a backend-body-ba teszi.
-            approverWorkerId: approverWorkerIdRef.current,
-            approvalSessionId: approvalSessionIdRef.current,
-          })),
-        )
+          }))
+          entries = [{ ...header, lines: JSON.stringify(lines) }]
+        } else {
+          entries = filledRows.map(buildEntry)
+        }
+        const outcome = await saveAndSyncPendingBuySell(entries)
 
         if (outcome.allSavedSynced) {
           toast.success('Bizonylat(ok) sikeresen rögzítve!', `${filledRows.length} tétel azonnal szinkronizálva.`)

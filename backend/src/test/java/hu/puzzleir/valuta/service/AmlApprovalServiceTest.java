@@ -176,24 +176,22 @@ class AmlApprovalServiceTest {
     }
 
     @Test
-    @DisplayName("multi-line sibling sor (ugyanaz ügyfél+session, grant kimerült) → FEDETT, de KAP audit-rekordot (Codex P1)")
-    void recordSeniorApproval_siblingLineCovered() {
+    @DisplayName("KIMERÜLT grant (uses=0) → ELUTASÍT, nincs replay (Codex P1: strict single-use)")
+    void recordSeniorApproval_exhaustedGrant_rejected() {
         when(workerRepository.findById(99L)).thenReturn(Optional.of(
                 worker(99L, "Kósa Zoltán", WorkerRole.MANAGER, companyId)));
-        when(approvalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        // Az első sor már elhasználta a grantot (uses=0), de az LÉTEZIK az ügyfélhez+sessionhöz.
+        // A grant LÉTEZIK az ügyfélhez+sessionhöz, de már kimerült (uses=0) — egy korábbi tranzakció elhasználta.
         when(grantRepository.findActiveBySessionScope(any(), any(), any(), any(), any()))
                 .thenReturn(List.of(grant(1L, "session-1", "Teszt Ügyfél", 0)));
-        when(grantRepository.decrementIfAvailable(1L)).thenReturn(0); // kimerült → fedett
+        when(grantRepository.decrementIfAvailable(1L)).thenReturn(0); // kimerült
 
-        TransactionAmlApproval rec = service.recordSeniorApproval(99L,
-                "AML", new BigDecimal("2000000"), "Teszt Ügyfél", null, "session-1");
-
-        // Codex P1: a fedett sibling sor IS kap audit-rekordot (nincs auditálatlan magas-kockázatú tranzakció),
-        // csak a grant-felhasználás marad el (single-use → decrement 0-t adott).
-        assertThat(rec).isNotNull();
-        assertThat(rec.getApprovedByName()).isEqualTo("Kósa Zoltán");
-        verify(approvalRepository).save(any());
+        // Strict single-use: a kimerült grant NEM újrahasználható (a kliens-vezérelt session nem amplifikálható).
+        // A multi-line nyugta most aggregát tranzakció → egy consume, nincs legitim sibling-újrafelhasználás.
+        assertThatThrownBy(() -> service.recordSeniorApproval(99L,
+                "AML", new BigDecimal("2000000"), "Teszt Ügyfél", null, "session-1"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("kimerült");
+        verify(approvalRepository, never()).save(any());
     }
 
     @Test

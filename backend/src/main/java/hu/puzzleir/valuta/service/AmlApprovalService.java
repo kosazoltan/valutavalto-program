@@ -87,14 +87,11 @@ public class AmlApprovalService {
         // a supervisor-PIN sikeres ellenőrzésekor létrehozott egy grantot erre a (cég, pénztáros,
         // engedélyező, approval-session, ÜGYFÉL) ötösre. A grant SINGLE-USE és a jóváhagyott ügyfélhez
         // kötött, így (a) egy bare approverWorkerId-vel nem forgeolható az audit, (b) a session nem
-        // hasznosítható újra MÁS ügyfél tranzakciójára. Az első sor atomikusan elhasználja a grantot; a
-        // multi-line nyugta sibling sorai (ugyanaz a session+ügyfél) FEDETTEK (újabb grant nélkül).
-        boolean grantConsumed = consumeApprovalGrant(approverWorkerId, companyId, approvalSessionId, customerName);
+        // hasznosítható újra MÁS ügyfél tranzakciójára. STRICT single-use: kimerült/hiányzó/más-ügyfél grant →
+        // ValidationException. A multi-line nyugta most EGY aggregát backend-tranzakció (TransactionMultiLineService,
+        // egy AML-kapu, egy consume), ezért egy nyugta egyetlen jóváhagyás-rögzítést igényel — nincs sibling-replay.
+        consumeApprovalGrant(approverWorkerId, companyId, approvalSessionId, customerName);
 
-        // Codex P1: MINDEN magas-kockázatú tranzakció (a fedett sibling sor IS) KAP audit-rekordot — a
-        // Pmt./MNB V.2.6 8 éves megőrzés szerint minden jóváhagyott tranzakció EGYÉNILEG visszakövethető kell
-        // legyen (nincs csendben átengedett, auditálatlan magas-kockázatú tranzakció). A "covered" sornál csak
-        // a grant-felhasználás marad el (single-use), az audit nem.
         TransactionAmlApproval rec = TransactionAmlApproval.builder()
                 .companyId(companyId)
                 .branchId(branchId)
@@ -110,8 +107,8 @@ public class AmlApprovalService {
         // Az engedélyező NEVE az audit-rekordba kerül (V.2.6 kötelező); a sima app-logba viszont csak
         // a workerId — a teljes név PII, ne szivárogjon a Loki/Grafana log-streambe. Az indokot a MENTETT
         // rekordból logoljuk, hogy a log és az audit-rekord konzisztens legyen (a default-feloldás után).
-        log.info("[AML-APPROVAL] Felsővezetői jóváhagyás rögzítve ({}) — engedélyező #{}, indok: {}",
-                grantConsumed ? "grant elhasználva" : "fedett sibling sor", approverWorkerId, saved.getApprovalReason());
+        log.info("[AML-APPROVAL] Felsővezetői jóváhagyás rögzítve — engedélyező #{}, indok: {}",
+                approverWorkerId, saved.getApprovalReason());
         return saved;
     }
 
@@ -152,17 +149,14 @@ public class AmlApprovalService {
      * a kliens-választott session nem hasznosítható újra MÁS ügyfél tranzakciójára.
      *
      * <p>Visszatérés:</p>
-     * <ul>
-     *   <li>{@code true} (CONSUMED): volt felhasználható grant (uses&gt;0) az ügyfélhez → atomikusan
-     *       elhasználva, a hívó RÖGZÍTSE a jóváhagyás-auditot.</li>
-     *   <li>{@code false} (ALREADY_COVERED): a grant már kimerült, de LÉTEZIK az ügyfélhez+sessionhöz (egy
-     *       multi-line nyugta sibling sora) → a jóváhagyás már rögzítve, a hívó NE rögzítsen duplán.</li>
-     * </ul>
-     *
-     * <p>{@link ValidationException}: ha nincs (le nem járt) grant a sessionhöz (forge / PIN nélkül), VAGY a
-     * session egy MÁS ügyfélhez tartozó granthoz van kötve (újrahasznált session) — utóbbi az amplifikáció-gát.</p>
+     * <p>STRICT single-use: pontosan egy felhasználható (uses&gt;0), le nem járt, az ügyfélhez kötött grantot
+     * fogyaszt atomikusan. {@link ValidationException} ha: nincs grant a sessionhöz (forge / PIN nélkül), a
+     * session MÁS ügyfélhez kötött (amplifikáció-gát), VAGY a grant már KIMERÜLT (Codex P1: a kimerült grant
+     * NEM újrahasználható). A multi-line nyugta most EGY aggregát backend-tranzakció (TransactionMultiLineService,
+     * egy AML-kapu), ezért egy nyugta = egy consume — nincs legitim „sibling" újrafelhasználás, és így a
+     * kliens-vezérelt session nem amplifikálható több jóváhagyott tranzakcióra.</p>
      */
-    private boolean consumeApprovalGrant(Long approverWorkerId, UUID companyId, String approvalSessionId,
+    private void consumeApprovalGrant(Long approverWorkerId, UUID companyId, String approvalSessionId,
             String customerName) {
         if (approvalSessionId == null || approvalSessionId.isBlank()) {
             throw new ValidationException("AML jóváhagyás PIN-ellenőrzés nélkül nem rögzíthető "
@@ -185,14 +179,15 @@ public class AmlApprovalService {
             throw new ValidationException("AML jóváhagyás nem érvényes erre az ügyfélre "
                     + "(a jóváhagyás-session másik ügyfélhez tartozik). Kérjen jóváhagyást ehhez a nyugtához.");
         }
-        // Atomikus single-use elhasználás: az első felhasználható grant a hívóé lesz (CONSUMED).
+        // Atomikus single-use elhasználás: az első felhasználható grant a hívóé lesz.
         for (AmlApprovalGrant g : matching) {
             if (grantRepository.decrementIfAvailable(g.getId()) == 1) {
-                return true; // CONSUMED — a hívó rögzíti az auditot
+                return; // elhasználva
             }
         }
-        // Nincs felhasználható (mind 0), DE létezik az ügyfélhez+sessionhöz → multi-line sibling sor: FEDETT.
-        return false; // ALREADY_COVERED — a jóváhagyás már rögzítve, nincs új audit
+        // Mind KIMERÜLT (uses=0) → ELUTASÍT (Codex P1: a kimerült grant nem újrahasználható, nincs replay).
+        throw new ValidationException("AML jóváhagyás már felhasználva vagy lejárt "
+                + "(a jóváhagyás-engedély kimerült). Kérjen ÚJ jóváhagyást az engedélyező supervisor-PIN-jével.");
     }
 
     /** Ügyfél-kulcs normalizálása (trim); üres → {@code null}. A grant és a consume ugyanígy normalizál. */

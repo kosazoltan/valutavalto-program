@@ -127,6 +127,9 @@ export interface ElectronAPI {
     approverWorkerId?: number | null
     // AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1).
     approvalSessionId?: string | null
+    // Multi-line aggregate (2026-06-04): tobb-soros nyugta sorai JSON-kent (backend
+    // TransactionLineRequestDto alak). NULL/hianyzo → egysoros (valtozatlan viselkedes).
+    lines?: string | null
   }) => Promise<number>;
   savePendingConversion(
     fromCurrencyId: number | null,

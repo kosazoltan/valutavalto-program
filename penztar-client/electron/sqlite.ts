@@ -176,6 +176,7 @@ export async function initDatabase(): Promise<void> {
         customer_is_pep INTEGER,
         approver_worker_id INTEGER,
         approval_session_id TEXT,
+        lines TEXT,
         local_reference_number TEXT,
         idempotency_key TEXT,
         created_at TEXT DEFAULT (datetime('now')),
@@ -211,6 +212,16 @@ export async function initDatabase(): Promise<void> {
     // V226 (2026-05-14): foreign_status tetel-szinten oszlop
     try {
       db.run(`ALTER TABLE pending_transactions ADD COLUMN foreign_status TEXT;`);
+    } catch {
+      // Column already exists — expected on fresh installs or repeat migration
+    }
+
+    // Multi-line aggregate (2026-06-04): egy tobb-soros vetel/eladas nyugta EGY aggregalt
+    // backend-tranzakciokent szinkronizal (egy POST /transactions/buy|sell, `lines[]` tombbel),
+    // N fuggetlen egysoros helyett. Egy AML-kapu + egy approval-grant. Ha NULL, a sor egysoros
+    // (valtozatlan viselkedes). A tomb a backend TransactionLineRequestDto alakjat hordozza JSON-kent.
+    try {
+      db.run(`ALTER TABLE pending_transactions ADD COLUMN lines TEXT;`);
     } catch {
       // Column already exists — expected on fresh installs or repeat migration
     }
@@ -1024,6 +1035,11 @@ export interface PendingTransactionRow {
   customer_actor_document_type: string | null;
   customer_actor_document_number: string | null;
   customer_actor_address: string | null;
+  /**
+   * Multi-line aggregate (2026-06-04): tobb-soros nyugta sorai JSON-kent
+   * (backend TransactionLineRequestDto alak). NULL → egysoros (valtozatlan).
+   */
+  lines: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
   created_at: string;
@@ -1081,6 +1097,14 @@ export interface PendingTransactionInputV2 {
   customerActorDocumentType: string | null;
   customerActorDocumentNumber: string | null;
   customerActorAddress: string | null;
+  /**
+   * Multi-line aggregate (2026-06-04): ha kitoltott, ez a pending sor EGY tobb-soros
+   * vetel/eladas nyugtat kepvisel — a backend `lines[]` aggregalt utvonalra kerul (egy
+   * AML-kapu, egy approval-grant). JSON-string a backend TransactionLineRequestDto alakjaban
+   * ([{ currencyCode, banknoteCount, customExchangeRate, discountType, foreignStatus }]).
+   * NULL/undefined → egysoros tranzakcio (valtozatlan viselkedes).
+   */
+  lines?: string | null;
 }
 
 export interface PendingConversionRow {
@@ -1432,9 +1456,10 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
       customer_actor_birth_place, customer_actor_birth_date, customer_actor_mother_name,
       customer_actor_nationality, customer_actor_document_type,
       customer_actor_document_number, customer_actor_address,
+      lines,
       local_reference_number, idempotency_key
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.type,
       input.currencyCode,
@@ -1470,6 +1495,7 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
       normalized.customerActorDocumentType,
       normalized.customerActorDocumentNumber,
       normalized.customerActorAddress,
+      input.lines ?? null,
       localReferenceNumber,
       idempotencyKey,
     ],

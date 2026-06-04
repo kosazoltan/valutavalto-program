@@ -1071,6 +1071,22 @@ export class SyncEngine {
       customExchangeRate: tx.rate,
     };
 
+    // Multi-line aggregate (2026-06-04): ha a pending sor tobb-soros nyugtat kepvisel, a `lines[]`
+    // tombot is feltesszuk a body-ba — a backend ekkor az executeMultiLineBuy/Sell aggregalt
+    // utvonalra megy (egy AML-kapu, egy approval-grant). A fejlec currencyCode/currencyAmount/
+    // customExchangeRate az ELSO sor erteke (backward-compat), de a tenyleges konyveles a sorokbol
+    // tortenik. NULL/hianyzo `lines` → valtozatlan egysoros viselkedes.
+    if (tx.lines) {
+      try {
+        const parsedLines = JSON.parse(tx.lines);
+        if (Array.isArray(parsedLines) && parsedLines.length > 0) {
+          body['lines'] = parsedLines;
+        }
+      } catch {
+        // Nem parsable → kihagyjuk; a fejlec-mezok egysorosként mennek fel (fail-safe).
+      }
+    }
+
     if (tx.handling_fee !== null && tx.handling_fee !== undefined) {
       body['handlingFee'] = tx.handling_fee;
     }

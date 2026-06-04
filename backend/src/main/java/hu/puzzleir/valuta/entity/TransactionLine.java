@@ -128,19 +128,20 @@ public class TransactionLine {
     // ============ HELPER METHODS ============
 
     /**
-     * Legacy-kompatibilis forint számítás.
+     * Sor forint-értéke = alkalmazott árfolyam × bankjegy-mennyiség, egész forintra kerekítve.
      *
-     * A régi rendszerben: _aktErtek = round((_aktArfolyam / 100 * _aktBankjegy) + 0.001)
-     * JPY esetén: _aktErtek = round(_aktErtek / 10)
-     *
-     * CRITICAL FIX (Eszter review): paraméter eltávolítva, currency entity-ből olvassa a kódot.
+     * <p><b>CRITICAL FIX (Codex P1, 2026-06-04 — adverzariális money-review):</b> a korábbi
+     * {@code appliedRate / 100} (JPY {@code / 1000}) osztó egy LEGACY Delphi ráta-konvenció maradványa volt
+     * (ott a ráta per-100-egység: {@code _aktArfolyam / 100 * _aktBankjegy}). A MODERN rendszer árfolyamai
+     * azonban PER-EGYSÉG kvótáltak (pl. EUR baseBuyRate=392.16 / 1 EUR), és a single-line út
+     * {@code currencyAmount × appliedRate} osztó NÉLKÜL számol. Az osztó tehát 100×/1000×-rel ALULTARIFÁLTA a
+     * multi-line sorokat (EUR 100 @ 390 → 390 Ft a helyes 39.000 Ft helyett). Mivel a multi-line út élesben
+     * eddig nem futott (a pénztáros single-line tranzakciókat küldött), a hiba lappangott; az aggregát-
+     * submission bekötésekor derült ki. Az osztó eltávolítva → egyezik a single-line és a per-egység ráta-
+     * konvencióval.</p>
      */
     public BigDecimal calculateHufValue() {
-        String code = this.currency != null ? this.currency.getCode() : "";
-        BigDecimal divisor = "JPY".equals(code)
-            ? new BigDecimal("1000")
-            : new BigDecimal("100");
-        return appliedRate.divide(divisor, 4, java.math.RoundingMode.HALF_UP)
+        return appliedRate
             .multiply(banknoteCount)
             .setScale(0, java.math.RoundingMode.HALF_UP);
     }

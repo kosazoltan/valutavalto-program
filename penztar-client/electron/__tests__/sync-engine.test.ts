@@ -240,6 +240,62 @@ describe('SyncEngine — syncAll', () => {
     vi.unstubAllGlobals();
   });
 
+  it('should send lines[] in the body for a multi-line aggregate transaction', async () => {
+    // Multi-line aggregate (2026-06-04): egy tobb-soros nyugta EGY pending sorkent jon, kitoltott
+    // `lines` JSON-nal. A sync EGY POST /transactions/buy-t kuld, a body-ban a `lines[]` tomb a
+    // backend TransactionLineRequestDto alakjaban → aggregalt utvonal (egy AML-kapu, egy grant).
+    const linesJson = JSON.stringify([
+      { currencyCode: 'EUR', banknoteCount: 100, customExchangeRate: 400, discountType: 0, foreignStatus: 'FOREIGN' },
+      { currencyCode: 'USD', banknoteCount: 50, customExchangeRate: 360, discountType: 0, foreignStatus: 'FOREIGN' },
+    ]);
+    mockedGetPendingTransactions.mockReturnValue([
+      {
+        id: 7,
+        type: 'BUY',
+        currency_code: 'EUR',
+        foreign_amount: 100,
+        huf_amount: 40000,
+        rounded_huf_amount: 40000,
+        rate: 400,
+        handling_fee: null,
+        discount_percent: null,
+        customer_id: null,
+        customer_identifier: null,
+        customer_name: null,
+        customer_document_number: null,
+        customer_address: null,
+        denominations: null, source_of_funds: null, customer_is_pep: null, foreign_status: null,
+        lines: linesJson,
+        local_reference_number: 'LV-20260604-ML01',
+        idempotency_key: 'key-ml-7',
+        created_at: '2026-06-04 10:00:00', synced: 0,
+      },
+    ]);
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await engine.syncAll('test-token');
+
+    expect(result.synced).toBe(1);
+    expect(result.failed).toBe(0);
+
+    const fetchCall = mockFetch.mock.calls[0]!;
+    expect(fetchCall[0]).toBe('http://localhost:8080/api/v1/transactions/buy');
+    const body = JSON.parse((fetchCall[1] as { body: string }).body);
+    expect(Array.isArray(body.lines)).toBe(true);
+    expect(body.lines).toHaveLength(2);
+    expect(body.lines[0]).toMatchObject({ currencyCode: 'EUR', banknoteCount: 100, customExchangeRate: 400 });
+    expect(body.lines[1]).toMatchObject({ currencyCode: 'USD', banknoteCount: 50, customExchangeRate: 360 });
+    // Egysoros mezok backward-compat: a fejlec az ELSO sor erteke marad.
+    expect(body.currencyCode).toBe('EUR');
+
+    vi.unstubAllGlobals();
+  });
+
   it('should handle auth errors and stop syncing', async () => {
     mockedGetPendingTransactions.mockReturnValue([
       {

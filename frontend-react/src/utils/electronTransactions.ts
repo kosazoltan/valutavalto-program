@@ -71,6 +71,15 @@ export interface PendingBuySellInput {
   approverWorkerId?: number | null
   /** AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1: receipt-scoping). */
   approvalSessionId?: string | null
+  /**
+   * Multi-line aggregate (2026-06-04): ha kitoltott, ez az entry EGY tobb-soros vetel/eladas
+   * nyugtat kepvisel — a backend `lines[]` aggregalt utvonalra megy (egy AML-kapu, egy approval-
+   * grant), N fuggetlen egysoros helyett. JSON-string a backend TransactionLineRequestDto alakjaban:
+   * [{ currencyCode, banknoteCount, customExchangeRate, discountType, foreignStatus }].
+   * A fejlec-mezok (currencyCode/foreignAmount/hufAmount/rate) az ELSO sor erteket hordozzak.
+   * NULL/hianyzo → egysoros tranzakcio (valtozatlan viselkedes).
+   */
+  lines?: string | null
 }
 
 export interface PendingConversionInput {
@@ -370,6 +379,7 @@ export async function saveAndSyncPendingBuySell(
           customerActorAddress: normalizeOptionalText(entry.customerActorAddress),
           approverWorkerId: entry.approverWorkerId ?? null,
           approvalSessionId: entry.approvalSessionId ?? null,
+          lines: entry.lines ?? null,
         })
       } else {
         // Legacy pozicionalis API — csak az alapmezok mennek at.
