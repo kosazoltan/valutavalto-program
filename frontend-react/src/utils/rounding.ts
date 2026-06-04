@@ -30,3 +30,43 @@ export function roundHuf(amount: number): number {
 
   return amount < 0 ? -rounded : rounded
 }
+
+/**
+ * Multi-line (több-soros) vétel/eladás fizetendő végösszege — a backend
+ * TransactionMultiLineService.executeMultiLineBuy/Sell képletének tükrözése.
+ *
+ * A backend a nyers per-soros HUF-okat ÖSSZEGZI (totalRaw), majd EGYETLEN
+ * aggregált összegre alkalmazza a kedvezményt és a kezelési díjat, végül
+ * EGYSZER kerekít 5 Ft-ra (HungarianRounding.roundToFive). A kedvezmény
+ * előjele vétel/eladás-aszimmetrikus (a cég a margót vételnél magához ADJA,
+ * eladásnál levonja), egyezően a TransactionCalculationService-szel:
+ *
+ *   BUY  payable = roundHuf( (totalRaw + totalRaw*disc%) - handlingFee )
+ *   SELL payable = roundHuf( (totalRaw - totalRaw*disc%) + handlingFee )
+ *
+ * A diszkont-tag a backend HALF_UP, 0 tizedes kerekítését tükrözi
+ * (applyBuyDiscount/applySellDiscount: divide(100, 0, HALF_UP)).
+ *
+ * @param totalRaw      a nyers per-soros HUF-értékek összege (kerekítés ELŐTT)
+ * @param mode          'buy' vagy 'sell'
+ * @param discountPercent  kedvezmény százalék (0 ha nincs)
+ * @param handlingFee   kezelési díj Ft-ban (0 ha nincs)
+ * @returns a 5 Ft-ra kerekített fizetendő végösszeg
+ */
+export function multiLinePayable(
+  totalRaw: number,
+  mode: 'buy' | 'sell',
+  discountPercent: number,
+  handlingFee: number,
+): number {
+  const discountAmount = discountPercent > 0
+    ? Math.round((totalRaw * discountPercent) / 100)
+    : 0
+  const net = mode === 'buy'
+    ? totalRaw + discountAmount
+    : totalRaw - discountAmount
+  const gross = mode === 'buy'
+    ? net - handlingFee
+    : net + handlingFee
+  return roundHuf(gross)
+}

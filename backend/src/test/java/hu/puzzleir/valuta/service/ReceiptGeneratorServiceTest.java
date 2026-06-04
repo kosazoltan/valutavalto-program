@@ -218,12 +218,17 @@ class ReceiptGeneratorServiceTest {
         assertThat(result.getCustomerBirthPlace()).isEqualTo("Budapest");
         assertThat(result.getCustomerMotherName()).isEqualTo("Anya Anna");
         assertThat(result.getLines()).anyMatch(l -> "FOGLALÓ ÁTVÉTELE".equals(l.getLabel()));
+        // B7 / FR-8: Forint-érték (1000 × 400 = 400000 Ft) megjelenik, ezres csoportosítással (Codex P2).
+        assertThat(result.getLines())
+                .anyMatch(l -> "Forint-érték".equals(l.getLabel()) && "400.000 Ft".equals(l.getValue()));
     }
 
     @Test
     @DisplayName("generateReservationReceipt (visszafizetés) → VISSZAFIZETÉSE címsor + ok")
     void testReservationReceiptRefund() {
         var reservation = buildReservation();
+        // Lemondás (ügyfél elállt) — NEM beszámítás.
+        reservation.setStatus(hu.puzzleir.valuta.entity.ReservationStatus.CANCELLED_BY_CUSTOMER);
         reservation.setCancellationReceiptNumber("F-260522-0002");
         reservation.setCancellationReason("Ügyfél elállt");
         reservation.setRefundAmount(new BigDecimal("20000.00"));
@@ -234,6 +239,53 @@ class ReceiptGeneratorServiceTest {
         assertThat(result.getReceiptNumber()).isEqualTo("F-260522-0002");
         assertThat(result.getLines()).anyMatch(l -> "FOGLALÓ VISSZAFIZETÉSE".equals(l.getLabel()));
         assertThat(result.getLines()).anyMatch(l -> "Ügyfél elállt".equals(l.getValue()));
+        // B7 / FR-13: az eredeti foglaló bizonylatszáma kereszthivatkozásként a visszafizetési bizonylaton.
+        assertThat(result.getLines())
+                .anyMatch(l -> "Eredeti foglaló bizonylatszáma".equals(l.getLabel()) && "F-260522-0001".equals(l.getValue()));
+        // Codex P2: LEMONDÁSNÁL a "beszámításra került" szöveg NEM jelenik meg (a letét nem beszámításra került).
+        assertThat(result.getLines())
+                .noneMatch(l -> l.getValue() != null && l.getValue().contains("beszámításra került"));
+    }
+
+    @Test
+    @DisplayName("generateReservationReceipt (TELJESÍTÉS/FULFILLED, refund=false) → beszámítási záró-szöveg megjelenik")
+    void testReservationReceiptFulfilled() {
+        var reservation = buildReservation();
+        // Teljesítés — a foglaló beszámításra kerül. A befizetés (createdAt) és a teljesítés (fulfilledAt)
+        // KÜLÖN nap (többnapos foglaló): a Codex P2 (#1032) szerint a bizonylat a teljesítés napját viseli.
+        reservation.setStatus(hu.puzzleir.valuta.entity.ReservationStatus.FULFILLED);
+        reservation.setCreatedAt(java.time.LocalDateTime.of(2026, 5, 20, 9, 0));
+        reservation.setFulfilledAt(java.time.LocalDateTime.of(2026, 5, 25, 14, 30));
+
+        // Codex P2 (#1032): a FULFILLED beszámítási bizonylatot a ReservationPage az ÁTVÉTEL (refund=false)
+        // gombbal nyomtatja, ezért a záró-szövegnek EZEN az úton kell megjelennie (nem csak refund=true-n).
+        ReceiptData result = service.generateReservationReceipt(reservation, false);
+
+        // B7 / FR-14: FULFILLED státusznál megjelenik a beszámítási záró-szöveg, a TELJESÍTÉS dátumával.
+        assertThat(result.getLines())
+                .anyMatch(l -> l.getValue() != null
+                        && l.getValue().contains("beszámításra került")
+                        && l.getValue().contains("2026-05-25"));
+        // A bizonylat dátuma a teljesítés napja (nem a befizetésé).
+        assertThat(result.getDate()).isEqualTo(java.time.LocalDateTime.of(2026, 5, 25, 14, 30));
+        // A "Befizetés napja" külön a createdAt-ot mutatja.
+        assertThat(result.getLines())
+                .anyMatch(l -> "Befizetés napja".equals(l.getLabel()) && "2026-05-20".equals(l.getValue()));
+        // Codex P2 (#1032): a FULFILLED bizonylat KÜLÖN "FOGLALÓ BESZÁMÍTÁSA" dokumentum (nem "ÁTVÉTELE").
+        assertThat(result.getLines()).anyMatch(l -> "FOGLALÓ BESZÁMÍTÁSA".equals(l.getLabel()));
+        assertThat(result.getLines()).noneMatch(l -> "FOGLALÓ ÁTVÉTELE".equals(l.getLabel()));
+        // Settlement-specifikus mező: a Beszámítás napja (fulfilledAt).
+        assertThat(result.getLines())
+                .anyMatch(l -> "Beszámítás napja".equals(l.getLabel()) && "2026-05-25".equals(l.getValue()));
+    }
+
+    @Test
+    @DisplayName("generateReservationReceipt (ACTIVE átvétel) → 'FOGLALÓ ÁTVÉTELE' cím (nem BESZÁMÍTÁSA)")
+    void testReservationReceiptIntakeTitle() {
+        var reservation = buildReservation(); // ACTIVE (nincs status beállítva → nem FULFILLED)
+        ReceiptData result = service.generateReservationReceipt(reservation, false);
+        assertThat(result.getLines()).anyMatch(l -> "FOGLALÓ ÁTVÉTELE".equals(l.getLabel()));
+        assertThat(result.getLines()).noneMatch(l -> "FOGLALÓ BESZÁMÍTÁSA".equals(l.getLabel()));
     }
 
     @Test

@@ -229,12 +229,24 @@ export default function ReceiptPreviewModal({
                   <span>CURR.</span><span>RATE</span><span>CASH</span><span>VALUE</span>
                 </div>
                 <div className="my-1 border-t border-gray-400" />
-                <div className="flex justify-between">
-                  <span className="font-bold">{receiptData.currencyCode ?? '—'}</span>
-                  <span>{formatRate(receiptData.rate)}</span>
-                  <span>{formatAmount(receiptData.foreignAmount)}</span>
-                  <span>{formatInt(receiptData.hufAmount)}</span>
-                </div>
+                {/* Multi-line aggregate (2026-06-04): minden valuta-sor egy sorban, EGY bizonylatszám alatt.
+                    Egysoros bizonylatnál a fejléc currencyCode/rate/foreignAmount/hufAmount jelenik meg (változatlan). */}
+                {(receiptData.transactionLines && receiptData.transactionLines.length > 0
+                  ? receiptData.transactionLines
+                  : [{
+                      currencyCode: receiptData.currencyCode ?? '—',
+                      rate: receiptData.rate ?? 0,
+                      foreignAmount: receiptData.foreignAmount ?? 0,
+                      hufAmount: receiptData.hufAmount ?? 0,
+                    }]
+                ).map((ln, i) => (
+                  <div className="flex justify-between" key={`${ln.currencyCode}-${i}`}>
+                    <span className="font-bold">{ln.currencyCode || '—'}</span>
+                    <span>{formatRate(ln.rate)}</span>
+                    <span>{formatAmount(ln.foreignAmount)}</span>
+                    <span>{formatInt(ln.hufAmount)}</span>
+                  </div>
+                ))}
                 <div className="my-2 border-t border-gray-400" />
 
                 {/* Összesítés */}

@@ -123,6 +123,13 @@ export interface ElectronAPI {
     customerActorDocumentType: string | null
     customerActorDocumentNumber: string | null
     customerActorAddress: string | null
+    // AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, NULL ha nem kellett.
+    approverWorkerId?: number | null
+    // AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1).
+    approvalSessionId?: string | null
+    // Multi-line aggregate (2026-06-04): tobb-soros nyugta sorai JSON-kent (backend
+    // TransactionLineRequestDto alak). NULL/hianyzo → egysoros (valtozatlan viselkedes).
+    lines?: string | null
   }) => Promise<number>;
   savePendingConversion(
     fromCurrencyId: number | null,
@@ -175,6 +182,10 @@ export interface ElectronAPI {
     customerActorAddress: string | null
     foreignStatus: string | null
     note: string | null
+    // AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, NULL ha nem kellett.
+    approverWorkerId?: number | null
+    // AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1).
+    approvalSessionId?: string | null
   }) => Promise<number>;
   savePendingBankTransaction(
     transactionType: 'BUY' | 'SELL',
@@ -227,6 +238,16 @@ export interface ElectronAPI {
     sync_attempts?: number | null;
     last_attempt_at?: string | null;
   }>>;
+  // 2026-06-04 (audit-fix): a TÉNYLEGES szigorú helyi sorszám (local_reference_number)
+  // lekérdezése a mentett pending vétel/eladás sor ID-je alapján — a nyugta a valós
+  // bizonylatszámot kapja, nem fabrikált P-<timestamp>-et. Opcionális: régi telepítő
+  // (preload) még nem ismeri → a renderer fallback-el a fabrikált számra.
+  getPendingTransactionRefById?: (id: number) => Promise<string | null>;
+  // 2026-06-04 (audit-fix, buy/sell-paritás): a TÉNYLEGES átadólap-sorszám (local_reference_number,
+  // pl. AT105000042) lekérdezése a mentett transfer pending-sor ID-je alapján — a szállítólevél a
+  // valós (rögzített) számot kapja, nem fabrikált LOCAL-<dátum>-#<id>-t. Opcionális: régi telepítő
+  // (preload) még nem ismeri → a renderer fallback-el a fabrikált számra.
+  getPendingTransferRefById?: (id: number) => Promise<string | null>;
   getPendingConversions(): Promise<Array<{
     id: number;
     from_currency_id: number | null;
