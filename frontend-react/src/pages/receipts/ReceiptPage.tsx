@@ -263,38 +263,38 @@ export default function ReceiptPage() {
           </div>
           {/* EXCMD b5b FR-BSZUR-01: bizonylattípus-szűrő (egyszerre egy aktív; ALL = szűrés kikapcsolva). */}
           <div className="min-w-[200px]">
-            <label className="form-label">Bizonylattípus</label>
+            <label className="form-label">{t('receipts.filter.type')}</label>
             <select className="form-input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
               {/* A backend Receipt.receiptType = TransactionType.name() — az enum-nevekre szűrünk (verifikálva:
                   ReceiptService:166, TransactionType.java). A "csak ügyfeles" (FR-BSZUR-01 opció 2) NEM
                   TransactionType: az ügyfél-jelenlétre (customerName kitöltött) szűr, ezért külön, spec. értékkel. */}
-              <option value="ALL">Szűrés kikapcsolva (összes)</option>
-              <option value={TYPE_FILTER_CUSTOMER_ONLY}>Csak ügyfeles</option>
-              <option value="BUY">Csak vételi</option>
-              <option value="SELL">Csak eladási</option>
-              <option value="CONVERSION">Csak konverziós</option>
-              <option value="TRANSFER_OUT">Csak pénz-átadási</option>
-              <option value="TRANSFER_IN">Csak pénz-átvételi</option>
-              <option value="REVERSAL">Csak stornózott</option>
+              <option value="ALL">{t('receipts.filter.allDisabled')}</option>
+              <option value={TYPE_FILTER_CUSTOMER_ONLY}>{t('receipts.filter.customerOnly')}</option>
+              <option value="BUY">{t('receipts.filter.buyOnly')}</option>
+              <option value="SELL">{t('receipts.filter.sellOnly')}</option>
+              <option value="CONVERSION">{t('receipts.filter.conversionOnly')}</option>
+              <option value="TRANSFER_OUT">{t('receipts.filter.transferOutOnly')}</option>
+              <option value="TRANSFER_IN">{t('receipts.filter.transferInOnly')}</option>
+              <option value="REVERSAL">{t('receipts.filter.reversalOnly')}</option>
             </select>
           </div>
           {/* EXCMD b5b FR-BSZUR-02: hatókör/időszak-választó (összes / hónap / egyéni dátumtartomány). */}
           <div className="min-w-[180px]">
-            <label className="form-label" htmlFor="receipt-period-mode">Időszak</label>
+            <label className="form-label" htmlFor="receipt-period-mode">{t('receipts.filter.period')}</label>
             <select
               id="receipt-period-mode"
               className="form-input"
               value={periodMode}
               onChange={(e) => setPeriodMode(e.target.value as PeriodMode)}
             >
-              <option value="ALL">Összes időszak</option>
-              <option value="MONTH">A hónap összes bizonylata</option>
-              <option value="CUSTOM">Csak a választott időszak</option>
+              <option value="ALL">{t('receipts.filter.periodAll')}</option>
+              <option value="MONTH">{t('receipts.filter.periodMonth')}</option>
+              <option value="CUSTOM">{t('receipts.filter.periodCustom')}</option>
             </select>
           </div>
           {periodMode === 'MONTH' && (
             <div className="min-w-[160px]">
-              <label className="form-label" htmlFor="receipt-period-month">Hónap</label>
+              <label className="form-label" htmlFor="receipt-period-month">{t('receipts.filter.month')}</label>
               <input
                 id="receipt-period-month"
                 type="month"
@@ -307,7 +307,7 @@ export default function ReceiptPage() {
           {periodMode === 'CUSTOM' && (
             <>
               <div className="min-w-[150px]">
-                <label className="form-label" htmlFor="receipt-period-from">Dátumtól</label>
+                <label className="form-label" htmlFor="receipt-period-from">{t('receipts.filter.dateFrom')}</label>
                 <input
                   id="receipt-period-from"
                   type="date"
@@ -318,7 +318,7 @@ export default function ReceiptPage() {
                 />
               </div>
               <div className="min-w-[150px]">
-                <label className="form-label" htmlFor="receipt-period-to">Dátumig</label>
+                <label className="form-label" htmlFor="receipt-period-to">{t('receipts.filter.dateTo')}</label>
                 <input
                   id="receipt-period-to"
                   type="date"
@@ -370,7 +370,7 @@ export default function ReceiptPage() {
         <table className="data-grid w-full">
           <thead>
             {/* EXCMD b5b: Ügyfél (FR-BSZUR-02) + Összeg/AML-jelölő (FR-BSZUR-05) oszlopok. */}
-            <tr><th>{t('cashier.receiptNumber')}</th><th>{t('receipts.navBizonylatszam')}</th><th>{t('common.type')}</th><th>Ügyfél</th><th>Összeg (Ft)</th><th>{t('cashier.issueDate')}</th><th>{t('cashier.printed')}</th><th>{t('common.actions')}</th></tr>
+            <tr><th>{t('cashier.receiptNumber')}</th><th>{t('receipts.navBizonylatszam')}</th><th>{t('common.type')}</th><th>{t('receipts.ugyfel')}</th><th>{t('receipts.osszegFt')}</th><th>{t('cashier.issueDate')}</th><th>{t('cashier.printed')}</th><th>{t('common.actions')}</th></tr>
           </thead>
           <tbody>
             {filteredReceipts.length === 0 ? (
@@ -386,7 +386,7 @@ export default function ReceiptPage() {
                   <td className="text-right whitespace-nowrap">
                     {formatHuf(r.hufAmount)}
                     {isAmlThresholdExceeded(r.hufAmount) && (
-                      <span className="badge badge-red ml-2" title="10 millió Ft feletti — AML küszöb (Pmt.)">10M+</span>
+                      <span className="badge badge-red ml-2" title={t('receipts.amlBadgeTitle')}>10M+</span>
                     )}
                   </td>
                   <td>{new Date(r.issueDate).toLocaleDateString('hu-HU')}</td>
@@ -416,11 +416,11 @@ export default function ReceiptPage() {
               <div><strong>{t('receipts.navBizonylatszam2')}</strong> {selectedReceipt.navReceiptNumber || '-'}</div>
               <div><strong>{t('cashdesk.tipus')}</strong> {receiptTypeLabel(selectedReceipt.receiptType)}</div>
               {/* EXCMD b5b: ügyfél (FR-BSZUR-02) + összeg/AML-jelölő (FR-BSZUR-05), csak olvasható szűrési segédadat. */}
-              <div><strong>Ügyfél:</strong> {hasCustomer(selectedReceipt.customerName) ? selectedReceipt.customerName : '—'}</div>
+              <div><strong>{t('receipts.ugyfelLabel')}</strong> {hasCustomer(selectedReceipt.customerName) ? selectedReceipt.customerName : '—'}</div>
               <div>
-                <strong>Összeg (Ft):</strong> {formatHuf(selectedReceipt.hufAmount)}
+                <strong>{t('receipts.osszegFtLabel')}</strong> {formatHuf(selectedReceipt.hufAmount)}
                 {isAmlThresholdExceeded(selectedReceipt.hufAmount) && (
-                  <span className="badge badge-red ml-2" title="10 millió Ft feletti — AML küszöb (Pmt.)">10M+</span>
+                  <span className="badge badge-red ml-2" title={t('receipts.amlBadgeTitle')}>10M+</span>
                 )}
               </div>
               <div><strong>{t('receipts.kiadasDatuma')}</strong> {new Date(selectedReceipt.issueDate).toLocaleString('hu-HU')}</div>

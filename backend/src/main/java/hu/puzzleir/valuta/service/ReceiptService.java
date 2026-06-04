@@ -90,8 +90,11 @@ public class ReceiptService {
             return filtered;
         }
 
-        // Real Receipt rekordok a DB-bol
-        List<Receipt> realReceipts = repo.findAllByCompanyId(companyId);
+        // Real (materializált) Receipt rekordok a DB-bol — EXCMD b5b FR-BSZUR-02 (Codex P2): a real
+        // receipt-eket IS a DB szűri az issueDate-tartományra (nem csak a synthesized ágat), különben a
+        // ?from=&to= az időszakon kívüli materializált bizonylatokat is visszaadná (és a teljes táblát
+        // betöltené). NULL határ = nyitott vég → mindkettő NULL esetén a teljes lista (változatlan).
+        List<Receipt> realReceipts = repo.findByCompanyIdAndIssueDateRange(companyId, fromDate, toDate);
 
         // Mely Transaction-ok vannak mar materializalva real Receipt-ben?
         // A materializaltakat az `id` mezo synthesizedUuid alakjarol ismerjuk fel
