@@ -125,7 +125,7 @@ export default function LiveCashPositionPage() {
                 <th className="p-2 text-right">NYITÓ</th>
                 <th className="p-2 text-right">BEVÉTEL</th>
                 <th className="p-2 text-right">KIADÁS</th>
-                <th className="p-2 text-right">KEZ-I DÍJ</th>
+                <th className="p-2 text-right">KEZ-I DÍJ *</th>
                 <th className="p-2 text-right">ZÁRÓ</th>
               </tr>
             </thead>
@@ -164,8 +164,18 @@ export default function LiveCashPositionPage() {
               )}
             </tbody>
           </table>
-          <div className="p-3 border-t bg-gray-50 text-right text-sm">
-            Kezelési díj (mai egyenleg): <strong>{fmt(feeHuf)} Ft</strong>
+          <div className="p-3 border-t bg-gray-50 text-sm">
+            <div className="text-right">
+              Kezelési díj (mai egyenleg): <strong>{fmt(feeHuf)} Ft</strong>
+            </div>
+            {/* Codex P2 (#1033): a KEZ-I DÍJ a kezelési-díj alszámla (DailySubledgerSnapshot) napi egyenlege,
+                amit a backend a per-valuta készlet-mérlegtől (DailyBalance) FÜGGETLENÜL épít. NEM a
+                készpénz-mozgás egyik tagja: a per-valuta NYITÓ + BEVÉTEL − KIADÁS = ZÁRÓ egyenlet a
+                díj NÉLKÜL áll fenn; a KEZ-I DÍJ külön, tájékoztató figura (ezért a "*"). */}
+            <div className="mt-1 text-left text-xs text-gray-500">
+              * A KEZ-I DÍJ a kezelési-díj alszámla napi egyenlege (tájékoztató) — külön nyilvántartás,
+              nem a NYITÓ + BEVÉTEL − KIADÁS = ZÁRÓ készpénz-mozgás tétele.
+            </div>
           </div>
         </div>
       )}
