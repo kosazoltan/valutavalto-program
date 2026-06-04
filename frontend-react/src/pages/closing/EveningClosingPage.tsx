@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Moon, Calendar, Package, Send, Eye, CheckCircle, AlertTriangle, Clock } from 'lucide-react'
+import { Moon, Calendar, Package, Send, Eye, CheckCircle, AlertTriangle, Clock, Printer } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -69,19 +69,28 @@ export default function EveningClosingPage() {
   const fmtNum = (n: number) => n.toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const fmtHuf = (n: number) => n.toLocaleString('hu-HU', { minimumFractionDigits: 0 }) + ' Ft'
 
+  const handlePrint = () => window.print()
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold flex items-center gap-2"><Moon />{t('closing.estiZarasCsomagkeszites')}</h1>
-        {preview && preview.status !== 'SENT' && preview.status !== 'CONFIRMED' && (
-          <button onClick={handleSend} disabled={sending} className="form-button-primary">
-            <Send size={16} /> {sending ? 'Küldés...' : 'Esti zárás küldése'}
-          </button>
-        )}
+        <div className="no-print flex gap-2">
+          {preview && (
+            <button onClick={handlePrint} className="form-button">
+              <Printer size={16} /> {t('common.print')}
+            </button>
+          )}
+          {preview && preview.status !== 'SENT' && preview.status !== 'CONFIRMED' && (
+            <button onClick={handleSend} disabled={sending} className="form-button-primary">
+              <Send size={16} /> {sending ? 'Küldés...' : 'Esti zárás küldése'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Dátum */}
-      <div className="form-panel flex gap-3 items-end">
+      <div className="no-print form-panel flex gap-3 items-end">
         <div>
           <label className="form-label">{t('common.date')}</label>
           <div className="flex items-center gap-1">

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Package, Eye, CheckCircle, XCircle, AlertCircle, ArrowUpFromLine, ArrowDownToLine } from 'lucide-react'
+import { Package, Eye, CheckCircle, XCircle, AlertCircle, ArrowUpFromLine, ArrowDownToLine, Printer } from 'lucide-react'
 import { shipmentRequestApi, ShipmentRequest } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -107,7 +107,15 @@ export default function ShipmentListPage() {
             különváltan indítható — két különálló gomb, mint a legacy Anti rendszerben
             ("Pénztárak közötti pénzforgalom főmenüje"). A direction URL-paramétert a
             ShipmentNewPage olvassa és az értéktár-szereplőt zárolja (B+C követő PR). */}
-        <div className="flex gap-2">
+        <div className="no-print flex gap-2">
+          <button
+            onClick={() => window.print()}
+            className="form-button flex items-center gap-2"
+            title={t('common.print')}
+          >
+            <Printer size={16} />
+            {t('common.print')}
+          </button>
           <Link
             to="/shipments/new?direction=outbound"
             className="form-button-primary flex items-center gap-2"
@@ -128,7 +136,7 @@ export default function ShipmentListPage() {
       </div>
 
       {/* Filters */}
-      <div className="form-panel">
+      <div className="no-print form-panel">
         <div className="flex gap-3 items-end">
           <div>
             <label className="form-label">{t('common.status')}</label>
@@ -184,7 +192,7 @@ export default function ShipmentListPage() {
                 <th>{t('shipments.kezbesitesiDatum')}</th>
                 <th>{t('common.status')}</th>
                 <th>{t('shipments.kerve')}</th>
-                <th className="w-32">{t('common.actions')}</th>
+                <th className="no-print w-32">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -203,7 +211,7 @@ export default function ShipmentListPage() {
                       {new Date(shipment.requestedAt).toLocaleString('hu-HU')}
                     </div>
                   </td>
-                  <td>
+                  <td className="no-print">
                     <div className="flex gap-1">
                       <button
                         onClick={() => navigate(`/shipments/${shipment.id}`)}

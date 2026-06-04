@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Calendar, Search, RefreshCw, AlertTriangle } from 'lucide-react'
+import { Calendar, Search, RefreshCw, AlertTriangle, Printer } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
@@ -66,14 +66,17 @@ export default function MonthlyClosingPage() {
           <Calendar className="h-6 w-6" />
           {t('monthlyClose.title')}
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="no-print flex items-center gap-2">
+          <button onClick={() => window.print()} className="form-button" title={t('common.print')}>
+            <Printer className="h-4 w-4" /> {t('common.print')}
+          </button>
           <button onClick={() => void loadData()} className="form-button p-2" title={t('common.refresh')}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="no-print flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
