@@ -77,6 +77,7 @@ class TransactionFlowTest {
     @Mock private hu.puzzleir.valuta.service.TransactionConversionService conversionService;
     @Mock private hu.puzzleir.valuta.service.TransactionMultiLineService multiLineService;
     @Mock private LicenseService licenseService;
+    @Mock private hu.puzzleir.valuta.service.WacService wacService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID = UUID.randomUUID();
