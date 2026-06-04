@@ -52,6 +52,19 @@ describe('recomputeWorkgroupSheet (FK-04/C)', () => {
     expect(res.rows[0]!.values.officialRate).toBe(402)
   })
 
+  it('FR-8: F shorthand csak L/M-ben — buyRate (L) kiértékelődik, limit1BuyRate (N) hibázik', () => {
+    const sheet0 = new Map<string, Sheet0Values>([['EUR', { F: 390 }]])
+    const rows = (): WgComputeRow[] => [{ currencyId: 1, currencyCode: 'EUR', values: { ...emptyVals(), officialRate: 400 } }]
+    // F a buyRate (L) mezőben → engedélyezett shorthand → a Főlap EUR F értéke (390)
+    const resL = recomputeWorkgroupSheet(input({ rows: rows(), sheet0ByCurrency: sheet0, formulas: { '1.buyRate': 'F' } }))
+    expect(resL.rows[0]!.values.buyRate).toBe(390)
+    expect(resL.errors['1.buyRate']).toBeUndefined()
+    // F a limit1BuyRate (N) mezőben → tiltott → VV-VALID-004 hiba, az érték marad null
+    const resN = recomputeWorkgroupSheet(input({ rows: rows(), sheet0ByCurrency: sheet0, formulas: { '1.limit1BuyRate': 'F' } }))
+    expect(resN.errors['1.limit1BuyRate']).toContain('VV-VALID-004')
+    expect(resN.rows[0]!.values.limit1BuyRate).toBeNull()
+  })
+
   it('!<oszlop><KÓD> kereszt-valuta: EUA eladása = EUR F oszlopa a 0-s lapon', () => {
     const rows: WgComputeRow[] = [{ currencyId: 9, currencyCode: 'EUA', values: { ...emptyVals(), officialRate: 400 } }]
     const sheet0 = new Map<string, Sheet0Values>([['EUR', { F: 415 }]])

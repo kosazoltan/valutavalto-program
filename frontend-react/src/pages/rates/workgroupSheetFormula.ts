@@ -252,11 +252,37 @@ function evalTokens(tokens: Token[], ctx: WorkgroupFormulaContext): number {
   return result
 }
 
+export interface EvaluateOptions {
+  /**
+   * FK02-D (FR-8): a 0-s lap RÖVIDÍTETT hivatkozása — a `E`/`F`/`C` shorthand (domain-szótár) —
+   * csak a vételi (L) és eladási (M) oszlopban értelmezett. Más oszlopban (N–S kedvezménysávok,
+   * J elszámoló) érvénytelen → `VV-VALID-004`.
+   *
+   * FONTOS: a megszorítás KIZÁRÓLAG az E/F/C oszlopra vonatkozik. A többi 0-s lap self-ref
+   * (A,B,G,H,I) MINDENHOL érvényes marad — pl. a meglévő, tesztelt FK-04/C „J = A" funkció
+   * (az elszámoló-oszlop a Főlap A oszlopáról) NEM törhet. A `!<oszlop><KÓD>` (sheet0Cross),
+   * a `#NN` (wgCross) és a csoport self-refek (J–S, wgSelf) szintén mindenhol érvényesek.
+   * Default: engedélyezett (backward-compat a meglévő hívókkal/tesztekkel).
+   */
+  allowSheet0Shorthand?: boolean
+}
+
+/** FK02-D (FR-8): a 0-s lap rövidített hivatkozásának (shorthand) oszlopai. */
+const SHEET0_SHORTHAND_COLS: ReadonlySet<string> = new Set(['E', 'F', 'C'])
+
 /** Kiértékeli a munkacsoport-lap képletét. Hibára `{ error }`. */
-export function evaluateWorkgroupFormula(formula: string, ctx: WorkgroupFormulaContext): EvalResult {
+export function evaluateWorkgroupFormula(
+  formula: string,
+  ctx: WorkgroupFormulaContext,
+  opts?: EvaluateOptions,
+): EvalResult {
   try {
     const tokens = tokenize(formula)
     if (tokens.length === 0) return { error: 'Üres képlet' }
+    if (opts?.allowSheet0Shorthand === false
+        && tokens.some(t => t.kind === 'sheet0Self' && SHEET0_SHORTHAND_COLS.has(t.col))) {
+      return { error: 'VV-VALID-004: a 0-s lap rövidített hivatkozása (E/F/C) csak a vételi (L) és eladási (M) oszlopban érvényes' }
+    }
     const value = evalTokens(tokens, ctx)
     if (!Number.isFinite(value)) return { error: 'Nem véges eredmény' }
     return { value }
