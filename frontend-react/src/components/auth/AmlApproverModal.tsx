@@ -34,12 +34,11 @@ interface Props {
    */
   sessionId: string
   /**
-   * A nyugta tényleges sorszáma — a backend ennyi felhasználású grantot állít ki (Codex P1). A penztar-client
-   * a multi-line nyugtát N független tranzakcióként synkronizálja UGYANAZZAL a session-nel, mind megütheti az
-   * AML-kaput → N grant-felhasználás kell. Single-line/konverzió → 1. Server-side [1, MAX_LINES]-re klampelt.
-   * Hiányzó/0 → 1.
+   * A jóváhagyott ügyfél neve — a backend a SINGLE-USE grantot ehhez köti (Codex P1). A multi-line nyugta
+   * minden sora ugyanazt az ügyfelet viszi: az első sor elhasználja a grantot, a többi (ugyanaz a session +
+   * ügyfél) jóváhagyás-fedettként átmegy. MÁS ügyfélre újrahasznált session elbukik → nincs amplifikáció.
    */
-  grantUses?: number
+  customerName?: string
   /** Sikeres jóváhagyás után — a validált engedélyező adataival. */
   onApproved: (approverWorkerId: number, approverName: string) => void
   onCancel: () => void
@@ -54,7 +53,7 @@ function approverLabel(a: EligibleApprover): string {
   return composed || `#${a.id}`
 }
 
-export default function AmlApproverModal({ open, currentWorkerId, reason, sessionId, grantUses, onApproved, onCancel }: Props) {
+export default function AmlApproverModal({ open, currentWorkerId, reason, sessionId, customerName, onApproved, onCancel }: Props) {
   const [approvers, setApprovers] = useState<EligibleApprover[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pin, setPin] = useState('')
@@ -100,8 +99,8 @@ export default function AmlApproverModal({ open, currentWorkerId, reason, sessio
         approverWorkerId: selectedId,
         pin,
         approvalSessionId: sessionId,
-        // A nyugta sorszáma → ennyi felhasználású grant (multi-line per-soros sync; Codex P1). Default 1.
-        grantUses: grantUses && grantUses > 0 ? grantUses : 1,
+        // A jóváhagyott ügyfél neve → a backend a single-use grantot ehhez köti (Codex P1: customer-scoping).
+        customerName: customerName ?? undefined,
       })
       if (res.data?.ok) {
         onApproved(Number(res.data.approverWorkerId), String(res.data.approverName ?? ''))

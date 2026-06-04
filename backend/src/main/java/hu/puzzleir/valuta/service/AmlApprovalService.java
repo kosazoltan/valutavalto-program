@@ -46,27 +46,23 @@ public class AmlApprovalService {
     private static final int GRANT_VALIDITY_DAYS = 7;
 
     /**
-     * Egy PIN-ből kiállított grant MAXIMÁLIS felhasználási kapuja = a multi-line nyugta max sorszáma
-     * (CashierTransactionPage {@code MAX_LINES = 6}). A tényleges uses ennél kevesebb is lehet — a hívó a
-     * nyugta TÉNYLEGES sorszámát kéri (lásd {@link #issueApprovalGrant}).
+     * Egy PIN-ből kiállított grant felhasználási kapuja = {@code 1} (SINGLE-USE, server-fix — NEM a klienstől).
      *
-     * <p><b>Codex P1 (kétlépéses feloldás):</b></p>
-     * <ul>
-     *   <li><b>„ne mintázz egy PIN-ből hat felhasználást":</b> a uses NEM fix 6, hanem a nyugta tényleges
-     *       sorszáma — egy single-line nyugta PONTOSAN 1 felhasználást mintáz, nem 6-ot.</li>
-     *   <li><b>„ne köss egyetlen single-use grantot minden sorhoz":</b> a penztar-client local-first úton egy
-     *       multi-line nyugtát N FÜGGETLEN single-line tranzakcióként synkronizál, mind UGYANAZZAL az
-     *       {@code approvalSessionId}-vel; FATF/PEP/éves-limit triggernél MINDEN sor megüti a per-tranzakció
-     *       AML-kaput, így N darab {@code consumeApprovalGrant} fut. Ha a grant csak 1 felhasználású lenne, az
-     *       első sor elhasználná, a többi „kimerült"-tel elhasalna. Ezért a uses = a nyugta sorszáma.</li>
-     * </ul>
+     * <p><b>Codex P1 — „Derive grant use count on the server":</b> a korábbi klienstől-jövő {@code grantUses}
+     * count amplifikálható volt (egy kompromittált renderer 6-ot küldhetett, majd a kliens-választott
+     * {@code approvalSessionId}-t újrahasználva 6 nem-összefüggő tranzakciót hagyhatott jóvá egy PIN-ből). A
+     * grant ezért SINGLE-USE, és a konkrét JÓVÁHAGYOTT ÜGYFÉLHEZ kötött ({@code customerKey}).</p>
      *
-     * <p>A uses a klienstől jövő sorszám, de KÉT korlát védi: (1) server-side hard-cap {@code MAX_GRANT_USES_PER_PIN}
-     * = MAX_LINES; (2) a grant a konkrét {@code approvalSessionId}-hez (nyugtához) kötött, így a felhasználások
-     * csak EHHEZ a nyugtához használhatók — nem szivároghatnak másik nyugtára (receipt-scoping). A consume
-     * {@code @Transactional}: rollbacknél (retry) a felhasználás visszagördül.</p>
+     * <p><b>Multi-line a kliens-count nélkül:</b> a penztar-client a multi-line nyugtát N független single-line
+     * tranzakcióként synkronizálja, mind UGYANAZT az ügyfelet ÉS sessiont viszi. Az ELSŐ sor elhasználja az
+     * egyetlen grantot és rögzíti a jóváhagyást; a többi sor (ugyanaz a session ÉS ugyanaz a
+     * {@code customerKey}) JÓVÁHAGYÁS-FEDETTKÉNT átmegy újabb grant nélkül (nincs „kimerült" elhasalás). Egy
+     * MÁS ügyfélre újrahasznált session viszont elbukik (customer-eltérés) → a „nem-összefüggő tranzakciók"
+     * amplifikáció megszűnik. A jóváhagyás-audit így nyugtánként EGYSZER keletkezik (a tényleges
+     * jóváhagyás-esemény = egy supervisor-PIN egy ügyfél nyugtájához). A consume {@code @Transactional}:
+     * rollbacknél (retry) a felhasználás visszagördül.</p>
      */
-    private static final int MAX_GRANT_USES_PER_PIN = 6;
+    private static final int GRANT_USES_PER_PIN = 1;
 
     /**
      * Felsővezetői AML-jóváhagyás rögzítése. Validálja, hogy az {@code approverWorkerId} érvényes,
@@ -89,10 +85,18 @@ public class AmlApprovalService {
         Worker approver = resolveSeniorApprover(approverWorkerId, companyId);
         // PIN-jelenlét bizonyítása (Codex P1): csak akkor rögzítünk jóváhagyást, ha a /verify-approver
         // a supervisor-PIN sikeres ellenőrzésekor létrehozott egy grantot erre a (cég, pénztáros,
-        // engedélyező, approval-session) négyesre. A sessionId a konkrét nyugtához köti a grantot, így a
-        // maradék felhasználások NEM szivároghatnak másik nyugtára. Enélkül a bare approverWorkerId-vel
-        // forgeolható lenne a jóváhagyás-audit. A grant rögzítéskor elhasználódik (rollbackelhet).
-        consumeApprovalGrant(approverWorkerId, companyId, approvalSessionId);
+        // engedélyező, approval-session, ÜGYFÉL) ötösre. A grant SINGLE-USE és a jóváhagyott ügyfélhez
+        // kötött, így (a) egy bare approverWorkerId-vel nem forgeolható az audit, (b) a session nem
+        // hasznosítható újra MÁS ügyfél tranzakciójára. Egy multi-line nyugta első sora elhasználja a
+        // grantot és rögzít; a többi sor (ugyanaz a session+ügyfél) FEDETT → nem rögzít duplán, nem hasal el.
+        boolean shouldRecord = consumeApprovalGrant(approverWorkerId, companyId, approvalSessionId, customerName);
+        if (!shouldRecord) {
+            // Sibling sor egy már jóváhagyott (ugyanazon ügyfél+session) multi-line nyugtában: a jóváhagyás
+            // már rögzítve van az első sorhoz → nem rögzítünk újabb audit-rekordot (nyugtánként egy esemény).
+            log.debug("[AML-APPROVAL] Sibling sor — a session+ügyfél jóváhagyása már rögzítve, nincs új audit (session {})",
+                    approvalSessionId);
+            return null;
+        }
 
         TransactionAmlApproval rec = TransactionAmlApproval.builder()
                 .companyId(companyId)
@@ -119,55 +123,88 @@ public class AmlApprovalService {
      * A grant bizonyítja, hogy az {@code approverWorkerId} PIN-nel igazolta a jelenlétét a bejelentkezett
      * (rögzítő) pénztáros sessionjében; a tranzakció-rögzítéskor a grant {@code usesRemaining}-je csökken.
      *
-     * <p>Codex P1: EGY grant, {@code requestedUses} felhasználással = a nyugta TÉNYLEGES sorszáma. A kapu a
-     * {@link #MAX_GRANT_USES_PER_PIN}-re van hard-capelve (server-side, így a kliens nem amplifikálhat 6 fölé),
-     * és minimum 1. A grant a {@code sessionId}-hez (nyugtához) kötött, így a felhasználások nem szivároghatnak
-     * másik nyugtára. A fel nem használt grant 7 nap múlva lejár.</p>
+     * <p>Codex P1: EGY SINGLE-USE grant ({@link #GRANT_USES_PER_PIN}=1), a konkrét JÓVÁHAGYOTT ÜGYFÉLHEZ
+     * ({@code customerKey}) ÉS a {@code sessionId}-hez kötve. A count NEM a klienstől jön (nincs grantUses
+     * amplifikáció). A fel nem használt grant 7 nap múlva lejár.</p>
      *
-     * @param requestedUses a nyugta sorszáma (single-line/konverzió → 1; multi-line buy/sell → a kitöltött
-     *                      sorok száma). {@code [1, MAX_GRANT_USES_PER_PIN]}-re klampelve.
+     * @param customerKey a jóváhagyott ügyfél neve (a modal küldi) — a consume ehhez köti a fedett sorokat;
+     *                    {@code null}/üres esetén nincs ügyfél-kötés (defenzív, de a modal mindig küldi).
      */
     @Transactional
-    public void issueApprovalGrant(Long approverWorkerId, String sessionId, int requestedUses) {
+    public void issueApprovalGrant(Long approverWorkerId, String sessionId, String customerKey) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long cashierWorkerId = SecurityUtils.getCurrentWorkerId();
-        int uses = Math.max(1, Math.min(requestedUses, MAX_GRANT_USES_PER_PIN));
         LocalDateTime now = LocalDateTime.now();
         grantRepository.save(AmlApprovalGrant.builder()
                 .companyId(companyId)
                 .cashierWorkerId(cashierWorkerId)
                 .approverWorkerId(approverWorkerId)
                 .sessionId(sessionId)
+                .customerKey(normalizeKey(customerKey))
                 .createdAt(now)
                 .expiresAt(now.plusDays(GRANT_VALIDITY_DAYS))
-                .usesRemaining(uses)
+                .usesRemaining(GRANT_USES_PER_PIN)
                 .build());
-        log.info("[AML-APPROVAL] Grant kiállítva ({} felhasználás [kért={}], session {}) — engedélyező #{}, pénztáros #{}",
-                uses, requestedUses, sessionId, approverWorkerId, cashierWorkerId);
+        log.info("[AML-APPROVAL] Grant kiállítva (single-use, session {}, ügyfél-kötött) — engedélyező #{}, pénztáros #{}",
+                sessionId, approverWorkerId, cashierWorkerId);
     }
 
     /**
-     * Egy felhasználható, le nem járt grant ATOMIKUS elhasználása a (cég, pénztáros, engedélyező) hármasra.
-     * Ha nincs ilyen → {@link ValidationException} (a jóváhagyás PIN-ellenőrzés nélkül nem rögzíthető). Az
-     * elhasználás feltételes UPDATE ({@code uses_remaining-- WHERE uses_remaining>0}), így párhuzamos
-     * sync-nél sem fogyhat 0 alá (Codex P2). Ha az elsőként választott grant közben kimerült (0-t ad), a
-     * következő jelöltet próbálja.
+     * Egy SINGLE-USE, le nem járt, az ÜGYFÉLHEZ kötött grant ATOMIKUS elhasználása a
+     * (cég, pénztáros, engedélyező, session) négyesre. Codex P1: a grant a jóváhagyott ügyfélhez kötött, így
+     * a kliens-választott session nem hasznosítható újra MÁS ügyfél tranzakciójára.
+     *
+     * <p>Visszatérés:</p>
+     * <ul>
+     *   <li>{@code true} (CONSUMED): volt felhasználható grant (uses&gt;0) az ügyfélhez → atomikusan
+     *       elhasználva, a hívó RÖGZÍTSE a jóváhagyás-auditot.</li>
+     *   <li>{@code false} (ALREADY_COVERED): a grant már kimerült, de LÉTEZIK az ügyfélhez+sessionhöz (egy
+     *       multi-line nyugta sibling sora) → a jóváhagyás már rögzítve, a hívó NE rögzítsen duplán.</li>
+     * </ul>
+     *
+     * <p>{@link ValidationException}: ha nincs (le nem járt) grant a sessionhöz (forge / PIN nélkül), VAGY a
+     * session egy MÁS ügyfélhez tartozó granthoz van kötve (újrahasznált session) — utóbbi az amplifikáció-gát.</p>
      */
-    private void consumeApprovalGrant(Long approverWorkerId, UUID companyId, String approvalSessionId) {
+    private boolean consumeApprovalGrant(Long approverWorkerId, UUID companyId, String approvalSessionId,
+            String customerName) {
         if (approvalSessionId == null || approvalSessionId.isBlank()) {
             throw new ValidationException("AML jóváhagyás PIN-ellenőrzés nélkül nem rögzíthető "
                     + "(hiányzó jóváhagyás-session). Kérjen jóváhagyást az engedélyező supervisor-PIN-jével.");
         }
         Long cashierWorkerId = SecurityUtils.getCurrentWorkerId();
-        List<Long> candidateIds = grantRepository.findConsumableIds(
+        String custKey = normalizeKey(customerName);
+        List<AmlApprovalGrant> grants = grantRepository.findActiveBySessionScope(
                 companyId, cashierWorkerId, approverWorkerId, approvalSessionId, LocalDateTime.now());
-        for (Long id : candidateIds) {
-            if (grantRepository.decrementIfAvailable(id) == 1) {
-                return; // atomikusan elhasználva
+        if (grants.isEmpty()) {
+            throw new ValidationException("AML jóváhagyás PIN-ellenőrzés nélkül nem rögzíthető "
+                    + "(hiányzó vagy lejárt engedély). Kérjen jóváhagyást az engedélyező supervisor-PIN-jével.");
+        }
+        // Ügyfél-kötés (Codex P1): csak az AZONOS ügyfélhez kötött grantok érvényesek erre a tranzakcióra.
+        // A NULL customer_key-ű (régi, V294) grant bármely ügyfélre érvényes (visszafele-kompatibilitás).
+        List<AmlApprovalGrant> matching = grants.stream()
+                .filter(g -> g.getCustomerKey() == null || g.getCustomerKey().equals(custKey))
+                .toList();
+        if (matching.isEmpty()) {
+            throw new ValidationException("AML jóváhagyás nem érvényes erre az ügyfélre "
+                    + "(a jóváhagyás-session másik ügyfélhez tartozik). Kérjen jóváhagyást ehhez a nyugtához.");
+        }
+        // Atomikus single-use elhasználás: az első felhasználható grant a hívóé lesz (CONSUMED).
+        for (AmlApprovalGrant g : matching) {
+            if (grantRepository.decrementIfAvailable(g.getId()) == 1) {
+                return true; // CONSUMED — a hívó rögzíti az auditot
             }
         }
-        throw new ValidationException("AML jóváhagyás PIN-ellenőrzés nélkül nem rögzíthető "
-                + "(hiányzó, kimerült vagy lejárt engedély). Kérjen jóváhagyást az engedélyező supervisor-PIN-jével.");
+        // Nincs felhasználható (mind 0), DE létezik az ügyfélhez+sessionhöz → multi-line sibling sor: FEDETT.
+        return false; // ALREADY_COVERED — a jóváhagyás már rögzítve, nincs új audit
+    }
+
+    /** Ügyfél-kulcs normalizálása (trim); üres → {@code null}. A grant és a consume ugyanígy normalizál. */
+    private static String normalizeKey(String customerKey) {
+        if (customerKey == null) {
+            return null;
+        }
+        String trimmed = customerKey.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     /** True, ha az adott worker (az aktuális cégben) jogosult AML felsővezetői jóváhagyásra. */

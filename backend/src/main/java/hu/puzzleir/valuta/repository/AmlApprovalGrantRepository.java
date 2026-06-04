@@ -15,25 +15,26 @@ import java.util.UUID;
 public interface AmlApprovalGrantRepository extends JpaRepository<AmlApprovalGrant, Long> {
 
     /**
-     * A még felhasználható (uses_remaining&gt;0), le nem járt grantok ID-jai a (company, pénztáros,
-     * engedélyező) hármasra, a legrégebbi elöl. A hívó az elsőn próbál atomikus decrementet
-     * ({@link #decrementIfAvailable}); ha az 0-t ad (közben elfogyott), a következőt próbálja.
+     * A (company, pénztáros, engedélyező, session) hármasra tartozó, le nem járt grantok — a felhasználástól
+     * FÜGGETLENÜL (uses_remaining 0 is). A hívó ebből (a) ellenőrzi az ügyfél-kötést (customer_key), és (b)
+     * megkülönbözteti a "kimerült de létező" (sibling-sor, jóváhagyás-fedett) esetet a "nincs grant"
+     * (forge) esettől. Codex P1: a customer-kötés akadályozza meg a session nem-összefüggő tranzakcióra
+     * történő újrahasználatát.
      */
     @Query("""
-            SELECT g.id FROM AmlApprovalGrant g
+            SELECT g FROM AmlApprovalGrant g
             WHERE g.companyId = :companyId
               AND g.cashierWorkerId = :cashierWorkerId
               AND g.approverWorkerId = :approverWorkerId
               AND g.sessionId = :sessionId
-              AND g.usesRemaining > 0
               AND g.expiresAt > :now
             ORDER BY g.createdAt ASC
             """)
-    List<Long> findConsumableIds(@Param("companyId") UUID companyId,
-                                 @Param("cashierWorkerId") Long cashierWorkerId,
-                                 @Param("approverWorkerId") Long approverWorkerId,
-                                 @Param("sessionId") String sessionId,
-                                 @Param("now") LocalDateTime now);
+    List<AmlApprovalGrant> findActiveBySessionScope(@Param("companyId") UUID companyId,
+                                                    @Param("cashierWorkerId") Long cashierWorkerId,
+                                                    @Param("approverWorkerId") Long approverWorkerId,
+                                                    @Param("sessionId") String sessionId,
+                                                    @Param("now") LocalDateTime now);
 
     /**
      * Egyetlen grant atomikus elhasználása: {@code uses_remaining--} CSAK ha még &gt;0. A feltétel a

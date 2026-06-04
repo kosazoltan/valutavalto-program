@@ -42,21 +42,21 @@ class AmlApprovalControllerTest {
             when(workerRepository.findById(APPROVER_ID)).thenReturn(Optional.of(approver));
 
             ResponseEntity<Map<String, Object>> resp = controller.verifyApprover(
-                    Map.of("approverWorkerId", 20, "pin", "1234", "approvalSessionId", "sess-1"), request);
+                    Map.of("approverWorkerId", 20, "pin", "1234", "approvalSessionId", "sess-1",
+                            "customerName", "Teszt Ügyfél"), request);
 
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(resp.getBody()).containsEntry("ok", true)
                     .containsEntry("approverWorkerId", APPROVER_ID)
                     .containsEntry("approverName", "Teszt Supervisor");
-            // Codex P1: PIN OK → grant kiállítása a beküldött approval-session-höz kötve (receipt-scoping).
-            // grantUses hiányzik a body-ból → default 1 (single-line/konverzió).
-            verify(amlApprovalService).issueApprovalGrant(eq(APPROVER_ID), eq("sess-1"), eq(1));
+            // Codex P1: PIN OK → SINGLE-USE grant kiállítása a sessionhöz ÉS a jóváhagyott ügyfélhez kötve.
+            verify(amlApprovalService).issueApprovalGrant(eq(APPROVER_ID), eq("sess-1"), eq("Teszt Ügyfél"));
         }
     }
 
-    // verifyApprover: multi-line grantUses átadása (Codex P1) — a nyugta sorszáma a grantba.
+    // verifyApprover: a jóváhagyott ügyfél neve (customerName) a grantba kerül (Codex P1: customer-scoping).
     @Test
-    void verifyApprover_passesGrantUses() {
+    void verifyApprover_passesCustomerName() {
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentWorkerId).thenReturn(10L);
             when(amlApprovalService.isValidSeniorApprover(APPROVER_ID)).thenReturn(true);
@@ -64,12 +64,12 @@ class AmlApprovalControllerTest {
             when(workerRepository.findById(APPROVER_ID)).thenReturn(
                     Optional.of(Worker.builder().name("Teszt Supervisor").build()));
 
+            // customerName hiányzik a body-ból → null (defenzív, de a modal mindig küldi).
             controller.verifyApprover(
-                    Map.of("approverWorkerId", 20, "pin", "1234", "approvalSessionId", "sess-1", "grantUses", 4),
+                    Map.of("approverWorkerId", 20, "pin", "1234", "approvalSessionId", "sess-1"),
                     request);
 
-            // A multi-line nyugta 4 sora → 4 felhasználású grant (a per-soros sync mind UGYANEZT a sessiont viszi).
-            verify(amlApprovalService).issueApprovalGrant(eq(APPROVER_ID), eq("sess-1"), eq(4));
+            verify(amlApprovalService).issueApprovalGrant(eq(APPROVER_ID), eq("sess-1"), isNull());
         }
     }
 

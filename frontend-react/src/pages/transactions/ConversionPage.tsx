@@ -888,6 +888,9 @@ export default function ConversionPage() {
         currentWorkerId={worker?.id ?? 0}
         reason={amlApprovalReason}
         sessionId={approvalSessionIdRef.current ?? ''}
+        // Codex P1: a single-use grant a jóváhagyott ügyfélhez kötött — ugyanaz a customerName mint amit a
+        // konverzió-tranzakció visz (effectiveCustomerName logika: customer-panel név, vagy a kézi mező).
+        customerName={customerDataRef.current?.name?.trim() || customerName.trim() || undefined}
         onApproved={(workerId, name) => {
           approverWorkerIdRef.current = workerId
           setShowAmlApprover(false)

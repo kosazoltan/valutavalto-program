@@ -52,6 +52,15 @@ public class AmlApprovalGrant {
     @Column(name = "session_id", nullable = false, length = 64)
     private String sessionId;
 
+    /**
+     * Az ügyfél-kulcs (a jóváhagyott ügyfél neve), amihez a grant kötve van — Codex P1. Egy multi-line
+     * nyugta minden sora ugyanazt az ügyfelet viszi: az első sor elhasználja a grantot, a többi (ugyanaz a
+     * session ÉS ugyanaz a customer_key) jóváhagyás-fedettként átmegy. MÁS ügyfélre újrahasznált session
+     * elbukik → nincs amplifikáció nem-összefüggő tranzakciókra. NULL a régi (V294) grantoknál (BC).
+     */
+    @Column(name = "customer_key", length = 160)
+    private String customerKey;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
