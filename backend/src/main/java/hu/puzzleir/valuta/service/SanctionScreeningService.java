@@ -199,11 +199,23 @@ public class SanctionScreeningService {
                     for (String alias : aliases) {
                         String normalizedAlias = normalizeName(alias);
                         if (normalizedAlias.isBlank()) continue;
-                        if (normalizedInput.equals(normalizedAlias) ||
-                            normalizedAlias.contains(normalizedInput) ||
-                            normalizedInput.contains(normalizedAlias) ||
-                            levenshteinDistance(normalizedInput, normalizedAlias) <= MAX_LEVENSHTEIN_DISTANCE) {
+                        // A5 / b8 FR-3: a 0.9 ALIAS-score CSAK a PONTOS alias-egyezésé.
+                        // A contains/fuzzy alias-találat a fő-ággal megegyezően PARTIAL (0.8),
+                        // illetve Levenshtein-távolság-alapú score — különben a 0.9 túlbecsülné
+                        // egy elgépelt alias konfidenciáját (a score az UI-ban + audit-logban látszik).
+                        if (normalizedInput.equals(normalizedAlias)) {
                             matches.add(toMatch(entry, "ALIAS", ALIAS_MATCH_SCORE));
+                            break;
+                        }
+                        if (normalizedAlias.contains(normalizedInput) || normalizedInput.contains(normalizedAlias)) {
+                            matches.add(toMatch(entry, "PARTIAL", PARTIAL_MATCH_SCORE));
+                            break;
+                        }
+                        int aliasDistance = levenshteinDistance(normalizedInput, normalizedAlias);
+                        if (aliasDistance <= MAX_LEVENSHTEIN_DISTANCE) {
+                            double aliasScore = 1.0 - ((double) aliasDistance
+                                    / Math.max(normalizedInput.length(), normalizedAlias.length()));
+                            matches.add(toMatch(entry, "PARTIAL", Math.max(aliasScore, 0.3)));
                             break;
                         }
                     }

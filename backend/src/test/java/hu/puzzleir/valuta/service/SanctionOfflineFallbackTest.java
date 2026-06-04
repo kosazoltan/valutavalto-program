@@ -67,11 +67,11 @@ class SanctionOfflineFallbackTest {
     }
 
     @Test
-    @DisplayName("elavult lista (>30 napos spec-küszöb) → staleData=true, listAgeDays kitöltve")
-    void oldList_stale() {
-        SanctionScreeningResult r = screenClean(LocalDate.now().minusDays(40), 100);
+    @DisplayName("31 napos lista (a 30 napos spec-küszöb feletti minimum) → staleData=true")
+    void justOverLimit_stale() {
+        SanctionScreeningResult r = screenClean(LocalDate.now().minusDays(31), 100);
         assertThat(r.isStaleData()).isTrue();
-        assertThat(r.getListAgeDays()).isEqualTo(40);
+        assertThat(r.getListAgeDays()).isEqualTo(31);
     }
 
     @Test
@@ -90,10 +90,10 @@ class SanctionOfflineFallbackTest {
     }
 
     @Test
-    @DisplayName("pontosan 7 napos lista → MÉG nem elavult (≤ határ)")
+    @DisplayName("pontosan 30 napos lista → MÉG nem elavult (≤ spec-küszöb)")
     void exactlyAtLimit_notStale() {
-        SanctionScreeningResult r = screenClean(LocalDate.now().minusDays(7), 100);
+        SanctionScreeningResult r = screenClean(LocalDate.now().minusDays(30), 100);
         assertThat(r.isStaleData()).isFalse();
-        assertThat(r.getListAgeDays()).isEqualTo(7);
+        assertThat(r.getListAgeDays()).isEqualTo(30);
     }
 }
