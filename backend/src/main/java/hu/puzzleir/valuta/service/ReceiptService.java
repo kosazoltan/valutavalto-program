@@ -85,7 +85,13 @@ public class ReceiptService {
             // EXCMD b5b (Codex/Copilot P2): a tranzakció-szűrt ágat is dúsítjuk, különben a
             // GET /api/v1/receipts?transactionId=... úton a materializált real receipt-ek
             // customerName/hufAmount-ja null marad (ügyfél-oszlop + 10M AML-jelölő hiányozna).
-            List<Receipt> filtered = repo.findByCompanyIdAndTransactionId(companyId, transactionId);
+            List<Receipt> filtered = new ArrayList<>(repo.findByCompanyIdAndTransactionId(companyId, transactionId));
+            // EXCMD b5b FR-BSZUR-02 (Codex P2): ha a from/to is meg van adva a transactionId mellett,
+            // azt is tiszteletben tartjuk (szerződés-konzisztencia). A lista kicsi (egy tranzakció
+            // bizonylatai), ezért issueDate-re Java-szűrés elég.
+            if (fromDate != null || toDate != null) {
+                filtered.removeIf(r -> !isWithinRange(r.getIssueDate(), fromDate, toDate));
+            }
             enrichRealReceipts(filtered, companyId);
             return filtered;
         }
@@ -199,6 +205,20 @@ public class ReceiptService {
             return decodeTransactionId(txUuid);
         }
         return null;
+    }
+
+    /**
+     * EXCMD b5b FR-BSZUR-02: egy bizonylat-dátum a [from, to] (inkluzív, nyitott végek megengedettek)
+     * tartományba esik-e. NULL dátum + bármely határ → nincs benne (defenzív: nem provábilhatóan benne).
+     */
+    private static boolean isWithinRange(LocalDate date, LocalDate from, LocalDate to) {
+        if (date == null) {
+            return from == null && to == null;
+        }
+        if (from != null && date.isBefore(from)) {
+            return false;
+        }
+        return to == null || !date.isAfter(to);
     }
 
     public Receipt getById(UUID id) {

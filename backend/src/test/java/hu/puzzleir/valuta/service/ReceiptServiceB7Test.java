@@ -225,6 +225,30 @@ class ReceiptServiceB7Test {
     }
 
     @Test
+    @DisplayName("Codex P2: transactionId + from/to — a tranzakció-ág is szűr a dátumtartományra")
+    void list_filteredByTransactionId_honorsDateRange() {
+        UUID txFilter = new UUID(0L, 720L);
+        Receipt inRange = Receipt.builder()
+                .id(txFilter).companyId(COMPANY_ID)
+                .receiptNumber("V017000080").receiptType("BUY")
+                .issueDate(LocalDate.of(2026, 4, 15)).isPrinted(true).build();
+        Receipt outRange = Receipt.builder()
+                .id(new UUID(0L, 721L)).companyId(COMPANY_ID)
+                .receiptNumber("V017000081").receiptType("BUY")
+                .issueDate(LocalDate.of(2026, 3, 1)).isPrinted(true).build(); // tartományon KÍVÜL
+
+        when(receiptRepository.findByCompanyIdAndTransactionId(COMPANY_ID, txFilter))
+                .thenReturn(List.of(inRange, outRange));
+        when(transactionRepository.findAllByIdInAndCompanyId(any(), eq(COMPANY_ID)))
+                .thenReturn(List.of());
+
+        List<Receipt> receipts = receiptService.list(txFilter, LocalDate.of(2026, 4, 1), LocalDate.of(2026, 4, 30));
+
+        // Csak az áprilisi marad — a tartományon kívüli (márciusi) kiesik a transactionId-ágon is.
+        assertThat(receipts).extracting(Receipt::getReceiptNumber).containsExactly("V017000080");
+    }
+
+    @Test
     @DisplayName("list() synthesize Receipt-et ad vissza, ha a Receipt tabla URES")
     void list_synthesizesFromTransactionsWhenReceiptTableEmpty() {
         when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any()))
