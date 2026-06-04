@@ -266,6 +266,34 @@ export function evaluateWorkgroupFormula(formula: string, ctx: WorkgroupFormulaC
   }
 }
 
+/**
+ * FK02-D (FR-1..4): relatív valutakód-csere lehúzáskor.
+ *
+ * Egy forrássorból más sorba másolt képletben a `!<oszlop><KÓD>` (sheet0Cross) hivatkozás
+ * valutakódját a célsor valutájára cseréli — DE CSAK akkor, ha a hivatkozásban lévő kód
+ * MEGEGYEZIK a forrássor valutájával (TBD-4). Így pl. az EUA-sor `!FEUR` (EUR≠EUA, fix
+ * kereszthivatkozás) NEM cserélődik, míg az AUD-sor `!EAUD` lehúzva BAM-ra `!EBAM` lesz.
+ *
+ * A `#NN<oszlop>` (wgCross) és az egybetűs self-refek (0-s lap A–C/E–I — a D ISO-kód kizárva;
+ * csoport J–S) nem hordoznak explicit valutakódot — a valuta a sorból jön —, ezért VÁLTOZATLANOK
+ * (eleve relatívak).
+ *
+ * Tiszta string-szintű csere (a tokenizer kód-mintáját követve), megőrzi a képlet többi részét
+ * (operátorok, számok, zárójelek, formázás).
+ */
+export function replaceFormulaCurrency(formula: string, fromCode: string, toCode: string): string {
+  const from = fromCode.trim().toUpperCase()
+  const to = toCode.trim().toUpperCase()
+  if (!from || !to || from === to) return formula
+  // `!` + egy oszlopbetű + valutakód ([A-Za-z0-9]+). Az érvényes 0-s lap oszlopokat az
+  // isSheet0Col dönti el (SHEET0_COLS: A,B,C,E,F,G,H,I — a D ISO-kód kizárva, a tokenizerrel egyezően).
+  return formula.replace(/!([A-Za-z])([A-Za-z0-9]+)/g, (match, col: string, code: string) => {
+    const upCol = col.toUpperCase()
+    if (!isSheet0Col(upCol)) return match // pl. !D… vagy érvénytelen oszlop → érintetlen (a parser hibázik rajta)
+    return code.toUpperCase() === from ? `!${col}${to}` : match
+  })
+}
+
 /** A képlet által hivatkozott cellák (reaktív újraszámításhoz / ciklus-detektáláshoz). */
 export function extractWorkgroupDependencies(formula: string): WorkgroupFormulaRef[] {
   let tokens: Token[]
