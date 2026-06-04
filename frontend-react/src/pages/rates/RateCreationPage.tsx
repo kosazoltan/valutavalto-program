@@ -30,6 +30,7 @@ import { validateWorkgroupProtection, workgroupProtectionLabel, type ProtectionR
 import { sortWorkgroupsBySequence } from './workgroupOrdering'
 import { isFormula, type WgValues } from './workgroupSheetFormula'
 import { applyCrossGroupCopy, type CrossGroupCopyCell } from './crossGroupCopy'
+import { isElectron } from '../../utils/electron'
 import { isSignificantDeviation } from './deviationCheck'
 import {
   recomputeWorkgroupSheet,
@@ -673,27 +674,38 @@ export default function RateCreationPage() {
   }, [])
 
   // Megerősítés után: a kijelölt cellák tartalma a célcsoport(ok) azonos pozícióiba (dual-write).
-  const executeCrossGroupCopy = useCallback(() => {
+  const executeCrossGroupCopy = useCallback(async () => {
     if (!copyCells || copyTargetIds.size === 0) return
     const payload: CrossGroupCopyCell[] = copyCells.map(c => {
       const key = `${c.currencyId}.${c.field}`
       const isF = isFormula(c.raw)
       return { key, formula: isF ? c.raw : undefined, value: isF ? undefined : c.raw }
     })
-    let okCount = 0
+    const succeeded: string[] = []
     for (const targetId of copyTargetIds) {
       try {
+        // Codex P1: Electron-ben a SQLite (offline DB) az AUTORITÁS a fix értékekre — onnan
+        // hidratáljuk a cél jelenlegi értékeit, hogy a localStorage-cache esetleges divergenciája
+        // (pl. másik eszközről szinkronizált adat) NE okozzon adatvesztést a perzisztáláskor.
+        // Web (nincs Electron) → localStorage. A formulák localStorage-only-k (nincs SQLite-mirror).
+        const targetValues = isElectron()
+          ? await loadGroupRateValuesFromOfflineDb(targetId)
+          : loadGroupRateValues(targetId)
         const { formulas: nf, values: nv } = applyCrossGroupCopy(
-          loadGroupFormulas(targetId), loadGroupRateValues(targetId), payload)
+          loadGroupFormulas(targetId), targetValues, payload)
         saveGroupFormulas(targetId, nf)
         persistGroupRateValues(targetId, nv) // dual-write (localStorage + SQLite)
-        okCount++
+        const wg = workgroups.find(w => w.id === targetId)
+        if (wg) succeeded.push(wg.name)
       } catch (e) {
         logger.error('RateCreationPage', 'Cross-csoport másolás hiba', e)
       }
     }
-    const names = workgroups.filter(w => copyTargetIds.has(w.id)).map(w => w.name).join(', ')
-    toast.success('Másolás kész', `${okCount} munkacsoportba: ${names}`)
+    if (succeeded.length > 0) {
+      toast.success('Másolás kész', `${succeeded.length} munkacsoportba: ${succeeded.join(', ')}`)
+    } else {
+      toast.error('Másolás sikertelen', 'Egyik célcsoportba sem sikerült a másolás.')
+    }
     closeCopyModal()
   }, [copyCells, copyTargetIds, workgroups, closeCopyModal])
 
@@ -1311,7 +1323,7 @@ export default function RateCreationPage() {
             </p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setCopyConfirmOpen(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium">Nem</button>
-              <button onClick={executeCrossGroupCopy} className="px-4 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700 text-sm font-semibold">Igen, másolás</button>
+              <button onClick={() => void executeCrossGroupCopy()} className="px-4 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700 text-sm font-semibold">Igen, másolás</button>
             </div>
           </div>
         </div>
