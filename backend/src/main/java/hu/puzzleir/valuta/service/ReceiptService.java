@@ -12,6 +12,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -67,7 +68,18 @@ public class ReceiptService {
      * @param transactionId opcionalis filter — ha megadva, csak az adott transaction Receipt-jeit
      * @return Receipt lista (list-merge: real + synthesized)
      */
+    /** Backward-compat: dátum-szűrés nélküli lista (a régi hívók/tesztek számára). */
     public List<Receipt> list(UUID transactionId) {
+        return list(transactionId, null, null);
+    }
+
+    /**
+     * Receipt list endpoint dátum-tartomány szűréssel (EXCMD b5b FR-BSZUR-02).
+     *
+     * @param fromDate opcionális alsó dátumhatár (inkluzív, NULL = nyitott)
+     * @param toDate   opcionális felső dátumhatár (inkluzív, NULL = nyitott)
+     */
+    public List<Receipt> list(UUID transactionId, LocalDate fromDate, LocalDate toDate) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (transactionId != null) {
             // EXCMD b5b (Codex/Copilot P2): a tranzakció-szűrt ágat is dúsítjuk, különben a
@@ -91,9 +103,12 @@ public class ReceiptService {
             }
         }
 
-        // Synthesized Receipt-ek a Transaction-bol — kihagyva a mar materializaltakat
-        List<Transaction> txList = transactionRepository.findReceiptListByCompanyId(
-                companyId, PageRequest.of(0, RECEIPT_LIST_LIMIT));
+        // Synthesized Receipt-ek a Transaction-bol — kihagyva a mar materializaltakat.
+        // EXCMD b5b FR-BSZUR-02 (Codex P2): a dátum-szűrést a DB-be toljuk, hogy a top-500 limit a
+        // KIVÁLASZTOTT időszakon BELÜL érvényesüljön — különben egy régi hónap/tartomány csendben
+        // hiányos lenne (a szűrés a már 500-ra csonkolt listán futna). NULL határ = nyitott vég.
+        List<Transaction> txList = transactionRepository.findReceiptListByCompanyIdAndDateRange(
+                companyId, fromDate, toDate, PageRequest.of(0, RECEIPT_LIST_LIMIT));
 
         List<Receipt> synthesized = new ArrayList<>();
         for (Transaction tx : txList) {

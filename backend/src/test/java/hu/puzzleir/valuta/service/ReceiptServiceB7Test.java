@@ -100,7 +100,7 @@ class ReceiptServiceB7Test {
         tx.setCustomerName("Kovács János");
         tx.setHufAmount(new BigDecimal("12000000.00")); // 12 M Ft → 10M+ küszöb felett
 
-        when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of(tx));
 
         List<Receipt> receipts = receiptService.list(null);
@@ -133,7 +133,7 @@ class ReceiptServiceB7Test {
         when(receiptRepository.findAllByCompanyId(COMPANY_ID))
                 .thenReturn(List.of(real1, real2));
         // a materializáltakat a synthesized-detektálás kihagyja → nincs synthesized
-        when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of(tx1, tx2));
         // N+1 ELKERÜLÉS + multi-tenant + OSIV-safe: EGYETLEN cég-szűrt batch query a két txId-ra
         when(transactionRepository.findAllByIdInAndCompanyId(any(), eq(COMPANY_ID)))
@@ -163,7 +163,7 @@ class ReceiptServiceB7Test {
                 .issueDate(LocalDate.of(2026, 4, 29)).isPrinted(true).build();
 
         when(receiptRepository.findAllByCompanyId(COMPANY_ID)).thenReturn(List.of(real));
-        when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of());
         // A cég-szűrt query az AKTUÁLIS céggel hívva ÜRES (a cross-company tx kiszűrődik a DB-ben).
         when(transactionRepository.findAllByIdInAndCompanyId(any(), eq(COMPANY_ID)))
@@ -213,7 +213,7 @@ class ReceiptServiceB7Test {
         Transaction tx1 = makeTransaction(101L, "V017000001", TransactionType.BUY);
         Transaction tx2 = makeTransaction(102L, "E017000001", TransactionType.SELL);
 
-        when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of(tx1, tx2));
 
         List<Receipt> receipts = receiptService.list(null);
@@ -246,7 +246,7 @@ class ReceiptServiceB7Test {
 
         when(receiptRepository.findAllByCompanyId(COMPANY_ID))
                 .thenReturn(List.of(realForTx1));
-        when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of(tx1, tx2));
 
         List<Receipt> receipts = receiptService.list(null);

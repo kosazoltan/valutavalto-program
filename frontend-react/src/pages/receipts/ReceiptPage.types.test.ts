@@ -5,6 +5,7 @@ import {
   isAmlThresholdExceeded,
   formatHuf,
   matchesPeriod,
+  periodToBackendRange,
   AML_10M_THRESHOLD_HUF,
 } from './ReceiptPage'
 
@@ -115,5 +116,34 @@ describe('matchesPeriod (EXCMD b5b FR-BSZUR-02 hatókör/időszak)', () => {
     expect(matchesPeriod(undefined, 'MONTH', '2026-04', '', '')).toBe(false)
     expect(matchesPeriod(null, 'CUSTOM', '', '2026-04-10', '')).toBe(false)
     expect(matchesPeriod('20', 'MONTH', '2026-04', '', '')).toBe(false)
+  })
+
+  it('CUSTOM: csonka "YYYY-MM" (7 kar.) NEM csúszhat át a tartomány-összehasonlításon (Copilot)', () => {
+    // 7 karakteres érték korábban a prefix-egyezés miatt félreesett volna; most defenzíven kizárt.
+    expect(matchesPeriod('2026-04', 'CUSTOM', '', '2026-04-10', '2026-04-20')).toBe(false)
+  })
+})
+
+describe('periodToBackendRange (EXCMD b5b FR-BSZUR-02 backend from/to)', () => {
+  it('ALL → üres (nincs backend dátum-szűrés)', () => {
+    expect(periodToBackendRange('ALL', '2026-04', '2026-04-10', '2026-04-20')).toEqual({})
+  })
+
+  it('MONTH → a hónap első/utolsó napja (tényleges hónaphossz)', () => {
+    expect(periodToBackendRange('MONTH', '2026-04', '', '')).toEqual({ from: '2026-04-01', to: '2026-04-30' })
+    expect(periodToBackendRange('MONTH', '2026-02', '', '')).toEqual({ from: '2026-02-01', to: '2026-02-28' }) // 2026 nem szökőév
+    expect(periodToBackendRange('MONTH', '2024-02', '', '')).toEqual({ from: '2024-02-01', to: '2024-02-29' }) // 2024 szökőév
+    expect(periodToBackendRange('MONTH', '2026-12', '', '')).toEqual({ from: '2026-12-01', to: '2026-12-31' })
+  })
+
+  it('MONTH üres hónappal → üres (nincs szűrés)', () => {
+    expect(periodToBackendRange('MONTH', '', '', '')).toEqual({})
+  })
+
+  it('CUSTOM → from/to átadva, üres vég → undefined (nyitott)', () => {
+    expect(periodToBackendRange('CUSTOM', '', '2026-04-10', '2026-04-20')).toEqual({ from: '2026-04-10', to: '2026-04-20' })
+    expect(periodToBackendRange('CUSTOM', '', '2026-04-10', '')).toEqual({ from: '2026-04-10', to: undefined })
+    expect(periodToBackendRange('CUSTOM', '', '', '2026-04-20')).toEqual({ from: undefined, to: '2026-04-20' })
+    expect(periodToBackendRange('CUSTOM', '', '', '')).toEqual({ from: undefined, to: undefined })
   })
 })

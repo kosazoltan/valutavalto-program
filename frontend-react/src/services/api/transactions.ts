@@ -1442,9 +1442,14 @@ export interface Receipt {
 }
 
 export const receiptApi = {
-  list: async (transactionId?: string): Promise<Receipt[]> => {
-    const params = transactionId ? { transactionId } : {}
-    const response = await api.get<Receipt[]>('/receipts', { params })
+  // EXCMD b5b FR-BSZUR-02: opcionális from/to (ISO dátum) — a dátum-szűrés a backenden fut,
+  // így a top-500 limit a választott időszakon belül érvényesül (nem csonkol a szűrés előtt).
+  list: async (params?: { transactionId?: string; from?: string; to?: string }): Promise<Receipt[]> => {
+    const query: Record<string, string> = {}
+    if (params?.transactionId) query.transactionId = params.transactionId
+    if (params?.from) query.from = params.from
+    if (params?.to) query.to = params.to
+    const response = await api.get<Receipt[]>('/receipts', { params: query })
     return response.data
   },
   getById: async (id: string): Promise<Receipt> => {

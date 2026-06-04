@@ -88,12 +88,16 @@ export const matchesPeriod = (
   to: string,
 ): boolean => {
   if (mode === 'ALL') return true
-  if (typeof dateStr !== 'string' || dateStr.length < 7) return false
+  if (typeof dateStr !== 'string') return false
   if (mode === 'MONTH') {
+    // Hónap-egyezéshez "YYYY-MM" (7 kar.) elég.
+    if (dateStr.length < 7) return false
     if (!month) return true
     return dateStr.slice(0, 7) === month
   }
-  // CUSTOM: nyitott végek megengedettek; ha mindkettő üres → minden átmegy.
+  // CUSTOM: a tól-ig összehasonlításhoz TELJES "YYYY-MM-DD" (10 kar.) kell — különben egy
+  // csonka "YYYY-MM" érték a prefix-egyezés miatt félreesne (Copilot). Nyitott végek megengedettek.
+  if (dateStr.length < 10) return false
   const day = dateStr.slice(0, 10)
   if (from && day < from) return false
   if (to && day > to) return false
@@ -104,6 +108,31 @@ export const matchesPeriod = (
 const currentMonthValue = (): string => {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+/**
+ * EXCMD b5b FR-BSZUR-02 (Codex P2): a periódus-állapotot a backend list-query ISO from/to
+ * dátumaira képezi, hogy a dátum-szűrés a DB-ben fusson (a top-500 limit a választott időszakon
+ * BELÜL érvényesüljön, ne csonkoljon a szűrés előtt). MONTH → a hónap első/utolsó napja (a tényleges
+ * hónaphossz alapján, hogy a backend LocalDate-parszolása ne dobjon érvénytelen dátumra). ALL → üres.
+ */
+export const periodToBackendRange = (
+  mode: PeriodMode,
+  month: string,
+  from: string,
+  to: string,
+): { from?: string; to?: string } => {
+  if (mode === 'MONTH') {
+    if (!month) return {}
+    const [y, m] = month.split('-').map(Number)
+    if (!y || !m) return {}
+    const lastDay = new Date(y, m, 0).getDate() // a hónap utolsó napja (m: 1-alapú → Date(y, m, 0))
+    return { from: `${month}-01`, to: `${month}-${String(lastDay).padStart(2, '0')}` }
+  }
+  if (mode === 'CUSTOM') {
+    return { from: from || undefined, to: to || undefined }
+  }
+  return {}
 }
 
 export default function ReceiptPage() {
@@ -130,8 +159,11 @@ export default function ReceiptPage() {
   const loadData = useCallback(async (): Promise<void> => {
     try {
       setLoading(true)
+      // EXCMD b5b FR-BSZUR-02 (Codex P2): a periódust a backendre is továbbadjuk, hogy a synthesized
+      // lista dátum-szűrése a 500-as limit ELŐTT történjen (régi hónap/tartomány ne legyen csonka).
+      const range = periodToBackendRange(periodMode, periodMonth, periodFrom, periodTo)
       const [data, drafts] = await Promise.all([
-        receiptApi.list(),
+        receiptApi.list(range),
         isElectron() ? getPendingReceiptDrafts(worker) : Promise.resolve([]),
       ])
       setReceipts(data)
@@ -143,7 +175,7 @@ export default function ReceiptPage() {
     } finally {
       setLoading(false)
     }
-  }, [worker])
+  }, [worker, periodMode, periodMonth, periodFrom, periodTo])
 
   useEffect(() => {
     void loadData()
@@ -248,8 +280,9 @@ export default function ReceiptPage() {
           </div>
           {/* EXCMD b5b FR-BSZUR-02: hatókör/időszak-választó (összes / hónap / egyéni dátumtartomány). */}
           <div className="min-w-[180px]">
-            <label className="form-label">Időszak</label>
+            <label className="form-label" htmlFor="receipt-period-mode">Időszak</label>
             <select
+              id="receipt-period-mode"
               className="form-input"
               value={periodMode}
               onChange={(e) => setPeriodMode(e.target.value as PeriodMode)}
@@ -261,8 +294,9 @@ export default function ReceiptPage() {
           </div>
           {periodMode === 'MONTH' && (
             <div className="min-w-[160px]">
-              <label className="form-label">Hónap</label>
+              <label className="form-label" htmlFor="receipt-period-month">Hónap</label>
               <input
+                id="receipt-period-month"
                 type="month"
                 className="form-input"
                 value={periodMonth}
@@ -273,8 +307,9 @@ export default function ReceiptPage() {
           {periodMode === 'CUSTOM' && (
             <>
               <div className="min-w-[150px]">
-                <label className="form-label">Dátumtól</label>
+                <label className="form-label" htmlFor="receipt-period-from">Dátumtól</label>
                 <input
+                  id="receipt-period-from"
                   type="date"
                   className="form-input"
                   value={periodFrom}
@@ -283,8 +318,9 @@ export default function ReceiptPage() {
                 />
               </div>
               <div className="min-w-[150px]">
-                <label className="form-label">Dátumig</label>
+                <label className="form-label" htmlFor="receipt-period-to">Dátumig</label>
                 <input
+                  id="receipt-period-to"
                   type="date"
                   className="form-input"
                   value={periodTo}
