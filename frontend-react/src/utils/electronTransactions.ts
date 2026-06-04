@@ -63,6 +63,23 @@ export interface PendingBuySellInput {
   customerActorDocumentType?: string | null
   customerActorDocumentNumber?: string | null
   customerActorAddress?: string | null
+  /**
+   * AML vezetoi jovahagyas (2026-06-04): a jovahagyo supervisor/manager/admin workerId-ja, ha a
+   * tranzakcio felsovezetoi jovahagyast igenyelt (FATF / eves limit / BIGCTRL 4+). NULL/undefined,
+   * ha nem kellett. A backend (approverWorkerId=null) backward-compat → opcionalis, additiv.
+   */
+  approverWorkerId?: number | null
+  /** AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1: receipt-scoping). */
+  approvalSessionId?: string | null
+  /**
+   * Multi-line aggregate (2026-06-04): ha kitoltott, ez az entry EGY tobb-soros vetel/eladas
+   * nyugtat kepvisel — a backend `lines[]` aggregalt utvonalra megy (egy AML-kapu, egy approval-
+   * grant), N fuggetlen egysoros helyett. JSON-string a backend TransactionLineRequestDto alakjaban:
+   * [{ currencyCode, banknoteCount, customExchangeRate, discountType, foreignStatus }].
+   * A fejlec-mezok (currencyCode/foreignAmount/hufAmount/rate) az ELSO sor erteket hordozzak.
+   * NULL/hianyzo → egysoros tranzakcio (valtozatlan viselkedes).
+   */
+  lines?: string | null
 }
 
 export interface PendingConversionInput {
@@ -101,6 +118,10 @@ export interface PendingConversionInput {
   customerActorAddress?: string | null
   // HIBA 2026-05-26 (#2): ugyfel deviza-statusza (DOMESTIC/FOREIGN)
   foreignStatus?: string | null
+  /** AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, ha a konverzio felsovezetoi jovahagyast igenyelt. */
+  approverWorkerId?: number | null
+  /** AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1: receipt-scoping). */
+  approvalSessionId?: string | null
 }
 
 export interface PendingTransferInput {
@@ -182,6 +203,14 @@ export interface ElectronQueueSyncOutcome {
    * pending-no-errors -> "offline" toast, 0-pending -> "success" toast.
    */
   syncErrors: string[]
+  /**
+   * 2026-06-04 (audit-fix): a mentett pending-sorok TÉNYLEGES szigorú helyi sorszámai
+   * (local_reference_number), `savedIds`-szel azonos sorrendben. A nyugta-nyomtatás ezt
+   * bélyegzi a bizonylatra a fabrikált `P-<timestamp>` helyett, így a kinyomtatott szám
+   * EGYEZIK a rögzített tranzakcióval. Egy-egy elem null lehet, ha a régi Electron-preload
+   * nem ismeri a lekérdező IPC-t (offline-first fallback). Csak a vétel/eladás úton töltjük.
+   */
+  localReferenceNumbers: (string | null)[]
 }
 
 function getElectronAPI() {
@@ -269,6 +298,7 @@ async function safeElectronOp<T>(opName: string, fn: () => Promise<T>): Promise<
 async function finalizeSyncOutcome(
   savedIds: number[],
   listPendingIds: () => Promise<number[]>,
+  localReferenceNumbers: (string | null)[] = [],
 ): Promise<ElectronQueueSyncOutcome> {
   const electronAPI = getElectronAPI()
   if (!electronAPI) {
@@ -301,6 +331,7 @@ async function finalizeSyncOutcome(
     pendingCount,
     allSavedSynced: pendingCount === 0,
     syncErrors,
+    localReferenceNumbers,
   }
 }
 
@@ -356,6 +387,9 @@ export async function saveAndSyncPendingBuySell(
           customerActorDocumentType: normalizeOptionalText(entry.customerActorDocumentType),
           customerActorDocumentNumber: normalizeOptionalText(entry.customerActorDocumentNumber),
           customerActorAddress: normalizeOptionalText(entry.customerActorAddress),
+          approverWorkerId: entry.approverWorkerId ?? null,
+          approvalSessionId: entry.approvalSessionId ?? null,
+          lines: entry.lines ?? null,
         })
       } else {
         // Legacy pozicionalis API — csak az alapmezok mennek at.
@@ -381,10 +415,22 @@ export async function saveAndSyncPendingBuySell(
       savedIds.push(savedId)
     }
 
+    // 2026-06-04 (audit-fix): a TÉNYLEGES szigorú helyi sorszámok lekérdezése a mentett
+    // ID-k alapján — a nyugta a valós (rögzített) bizonylatszámot kapja, nem fabrikált
+    // P-<timestamp>-et. A lekérdezést a sync ELŐTT végezzük (a sor még biztosan elérhető;
+    // a getPendingTransactionRefById szándékosan nem szűr synced-re, így sync után is jó).
+    // Régi telepítő (a query-IPC nélkül) → null fallback, a renderer megőrzi a régi viselkedést.
+    let localReferenceNumbers: (string | null)[] = savedIds.map(() => null)
+    if (typeof electronAPI.getPendingTransactionRefById === 'function') {
+      localReferenceNumbers = await Promise.all(
+        savedIds.map((id) => electronAPI.getPendingTransactionRefById!(id).catch(() => null)),
+      )
+    }
+
     return finalizeSyncOutcome(savedIds, async () => {
       const pending = await electronAPI.getPendingTransactions()
       return pending.map((row) => row.id)
-    })
+    }, localReferenceNumbers)
   })
 }
 
@@ -439,6 +485,8 @@ export async function saveAndSyncPendingConversion(
         customerActorAddress: normalizeOptionalText(entry.customerActorAddress),
         foreignStatus: normalizeOptionalText(entry.foreignStatus),
         note: normalizeOptionalText(entry.note),
+        approverWorkerId: entry.approverWorkerId ?? null,
+        approvalSessionId: entry.approvalSessionId ?? null,
       })
     } else {
       // Legacy positional API — csak alapmezok.
@@ -491,10 +539,20 @@ export async function saveAndSyncPendingTransfer(
       entry.lines ?? null,
     )
 
+    // 2026-06-04 (audit-fix, buy/sell-paritás): a TÉNYLEGES átadólap-sorszám (local_reference_number,
+    // pl. AT105000042) lekérdezése a mentett ID alapján — a szállítólevél a valós (rögzített) számot
+    // kapja, nem fabrikált LOCAL-<dátum>-#<id>-t. Régi telepítő (a query-IPC nélkül) → null fallback.
+    let localReferenceNumbers: (string | null)[] = [null]
+    if (typeof electronAPI.getPendingTransferRefById === 'function') {
+      localReferenceNumbers = [
+        await electronAPI.getPendingTransferRefById(savedId).catch(() => null),
+      ]
+    }
+
     return finalizeSyncOutcome([savedId], async () => {
       const pending = await electronAPI.getPendingTransfers()
       return pending.map((row) => row.id)
-    })
+    }, localReferenceNumbers)
   })
 }
 

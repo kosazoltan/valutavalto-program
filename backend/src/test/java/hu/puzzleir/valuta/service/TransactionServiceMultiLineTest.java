@@ -318,10 +318,18 @@ class TransactionServiceMultiLineTest {
         assertThat(result.getHufAmount()).isNotNull();
         assertThat(result.getHufAmount().compareTo(BigDecimal.ZERO)).isGreaterThan(0);
 
-        // Minden sornak legyen hufValue
+        // Codex P1 (2026-06-04): minden sor HUF-erteke = alkalmazott arfolyam × bankjegy-mennyiseg, EGESZ
+        // forintra kerekitve — OSZTO NELKUL (a korabbi /100 legacy-osztot tavolitottuk el). EXACT assert
+        // (nem csak > 0), hogy a 100×/1000× alultarifalo regresszio ne lappanghasson ujra.
         for (TransactionLine line : result.getLines()) {
             assertThat(line.getHufValue()).isNotNull();
-            assertThat(line.getHufValue().compareTo(BigDecimal.ZERO)).isGreaterThan(0);
+            BigDecimal expected = line.getAppliedRate()
+                    .multiply(line.getBanknoteCount())
+                    .setScale(0, java.math.RoundingMode.HALF_UP);
+            assertThat(line.getHufValue()).isEqualByComparingTo(expected);
+            // Sanity: 100+ egysegnyi valuta ~350-400 arfolyamon tizezres nagysagrend — a /100 bug ~tizeztized
+            // erteket adott volna (< 1000), ezt explicit kizarjuk.
+            assertThat(line.getHufValue().compareTo(new BigDecimal("1000"))).isGreaterThan(0);
         }
     }
 

@@ -174,6 +174,9 @@ export async function initDatabase(): Promise<void> {
         denominations TEXT,
         source_of_funds TEXT,
         customer_is_pep INTEGER,
+        approver_worker_id INTEGER,
+        approval_session_id TEXT,
+        lines TEXT,
         local_reference_number TEXT,
         idempotency_key TEXT,
         created_at TEXT DEFAULT (datetime('now')),
@@ -191,9 +194,34 @@ export async function initDatabase(): Promise<void> {
       }
     }
 
+    // AML vezetoi jovahagyas (2026-06-04): a jovahagyo supervisor/manager/admin workerId-ja.
+    // NULL, ha a tranzakcio nem igenyelt felsovezeti jovahagyast. A backend (approverWorkerId=null)
+    // backward-compat, igy a meglevo telepitesek migracioja additiv es kockazatmentes.
+    try {
+      db.run(`ALTER TABLE pending_transactions ADD COLUMN approver_worker_id INTEGER;`);
+    } catch {
+      // Column already exists — expected on fresh installs
+    }
+    // AML jovahagyas-session azonosito (Codex P1: receipt-scoping) — a grantot a konkret nyugtahoz koti.
+    try {
+      db.run(`ALTER TABLE pending_transactions ADD COLUMN approval_session_id TEXT;`);
+    } catch {
+      // Column already exists — expected on fresh installs
+    }
+
     // V226 (2026-05-14): foreign_status tetel-szinten oszlop
     try {
       db.run(`ALTER TABLE pending_transactions ADD COLUMN foreign_status TEXT;`);
+    } catch {
+      // Column already exists — expected on fresh installs or repeat migration
+    }
+
+    // Multi-line aggregate (2026-06-04): egy tobb-soros vetel/eladas nyugta EGY aggregalt
+    // backend-tranzakciokent szinkronizal (egy POST /transactions/buy|sell, `lines[]` tombbel),
+    // N fuggetlen egysoros helyett. Egy AML-kapu + egy approval-grant. Ha NULL, a sor egysoros
+    // (valtozatlan viselkedes). A tomb a backend TransactionLineRequestDto alakjat hordozza JSON-kent.
+    try {
+      db.run(`ALTER TABLE pending_transactions ADD COLUMN lines TEXT;`);
     } catch {
       // Column already exists — expected on fresh installs or repeat migration
     }
@@ -269,6 +297,9 @@ export async function initDatabase(): Promise<void> {
       { name: 'customer_document_type', type: 'TEXT' },
       { name: 'source_of_funds', type: 'TEXT' },
       { name: 'customer_is_pep', type: 'INTEGER' },
+      // AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId a konverzional is.
+      { name: 'approver_worker_id', type: 'INTEGER' },
+      { name: 'approval_session_id', type: 'TEXT' },
       { name: 'customer_on_own_behalf', type: 'INTEGER' },
       { name: 'customer_actor_name', type: 'TEXT' },
       { name: 'customer_pep_kind', type: 'TEXT' },
@@ -983,6 +1014,9 @@ export interface PendingTransactionRow {
   denominations: string | null;
   source_of_funds: string | null;
   customer_is_pep: number | null;
+  /** AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, NULL ha nem kellett. */
+  approver_worker_id: number | null;
+  approval_session_id: string | null;
   /** V226 (2026-05-14): per-line devizastatusz — 'DOMESTIC' / 'FOREIGN' / null. */
   foreign_status: string | null;
   // V229 + V235 (2026-05-19 HIBA #14 + #17 + #18): teljes Pmt. customer-snapshot
@@ -1001,6 +1035,11 @@ export interface PendingTransactionRow {
   customer_actor_document_type: string | null;
   customer_actor_document_number: string | null;
   customer_actor_address: string | null;
+  /**
+   * Multi-line aggregate (2026-06-04): tobb-soros nyugta sorai JSON-kent
+   * (backend TransactionLineRequestDto alak). NULL → egysoros (valtozatlan).
+   */
+  lines: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
   created_at: string;
@@ -1042,6 +1081,10 @@ export interface PendingTransactionInputV2 {
   // V229 300k+ JOGCÍM
   sourceOfFunds: string | null;
   customerIsPep: boolean | null;
+  // AML vezetoi jovahagyas (2026-06-04): jovahagyo supervisor/manager/admin workerId.
+  approverWorkerId: number | null;
+  // AML jovahagyas-session azonosito (Codex P1: receipt-scoping).
+  approvalSessionId: string | null;
   customerOnOwnBehalf: boolean | null;
   customerActorName: string | null;
   // V235 NEW (HIBA #15): PEP minőség
@@ -1054,6 +1097,14 @@ export interface PendingTransactionInputV2 {
   customerActorDocumentType: string | null;
   customerActorDocumentNumber: string | null;
   customerActorAddress: string | null;
+  /**
+   * Multi-line aggregate (2026-06-04): ha kitoltott, ez a pending sor EGY tobb-soros
+   * vetel/eladas nyugtat kepvisel — a backend `lines[]` aggregalt utvonalra kerul (egy
+   * AML-kapu, egy approval-grant). JSON-string a backend TransactionLineRequestDto alakjaban
+   * ([{ currencyCode, banknoteCount, customExchangeRate, discountType, foreignStatus }]).
+   * NULL/undefined → egysoros tranzakcio (valtozatlan viselkedes).
+   */
+  lines?: string | null;
 }
 
 export interface PendingConversionRow {
@@ -1079,6 +1130,8 @@ export interface PendingConversionRow {
   customer_document_type: string | null;
   source_of_funds: string | null;
   customer_is_pep: number | null;
+  approver_worker_id: number | null;
+  approval_session_id: string | null;
   customer_on_own_behalf: number | null;
   customer_actor_name: string | null;
   customer_pep_kind: string | null;
@@ -1125,6 +1178,8 @@ export interface PendingConversionInputV2 {
   customerDocumentType: string | null;
   sourceOfFunds: string | null;
   customerIsPep: boolean | null;
+  approverWorkerId: number | null;
+  approvalSessionId: string | null;
   customerOnOwnBehalf: boolean | null;
   customerActorName: string | null;
   customerPepKind: string | null;
@@ -1210,6 +1265,8 @@ export function savePendingTransaction(
   sourceOfFunds: string | null = null,
   customerIsPep: boolean | null = null,
   foreignStatus: 'DOMESTIC' | 'FOREIGN' | null = null,
+  approverWorkerId: number | null = null,
+  approvalSessionId: string | null = null,
 ): number {
   if (!db) throw new Error('Database not initialized');
 
@@ -1249,11 +1306,13 @@ export function savePendingTransaction(
       denominations,
       source_of_funds,
       customer_is_pep,
+      approver_worker_id,
+      approval_session_id,
       foreign_status,
       local_reference_number,
       idempotency_key
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       type,
       currencyCode,
@@ -1271,6 +1330,8 @@ export function savePendingTransaction(
       denominations,
       normalizedSourceOfFunds,
       customerIsPep === null ? null : (customerIsPep ? 1 : 0),
+      approverWorkerId ?? null,
+      approvalSessionId ?? null,
       foreignStatus,
       localReferenceNumber,
       idempotencyKey,
@@ -1387,7 +1448,7 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
       handling_fee, discount_percent,
       customer_id, customer_identifier, customer_name, customer_document_number, customer_address,
       denominations,
-      source_of_funds, customer_is_pep, foreign_status,
+      source_of_funds, customer_is_pep, approver_worker_id, approval_session_id, foreign_status,
       customer_birth_place, customer_birth_date, customer_mother_name,
       customer_nationality, customer_document_type,
       customer_on_own_behalf, customer_actor_name,
@@ -1395,9 +1456,10 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
       customer_actor_birth_place, customer_actor_birth_date, customer_actor_mother_name,
       customer_actor_nationality, customer_actor_document_type,
       customer_actor_document_number, customer_actor_address,
+      lines,
       local_reference_number, idempotency_key
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.type,
       input.currencyCode,
@@ -1415,6 +1477,8 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
       input.denominations,
       normalized.sourceOfFunds,
       boolToInt(input.customerIsPep),
+      input.approverWorkerId ?? null,
+      input.approvalSessionId ?? null,
       input.foreignStatus,
       normalized.customerBirthPlace,
       normalized.customerBirthDate,
@@ -1431,6 +1495,7 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
       normalized.customerActorDocumentType,
       normalized.customerActorDocumentNumber,
       normalized.customerActorAddress,
+      input.lines ?? null,
       localReferenceNumber,
       idempotencyKey,
     ],
@@ -1510,6 +1575,53 @@ export function getPendingTransactions(): PendingTransactionRow[] {
   }
   stmt.free();
   return results;
+}
+
+/**
+ * Egy mentett vétel/eladás pending-sor szigorú helyi sorszámának (local_reference_number)
+ * lekérdezése ID alapján.
+ *
+ * 2026-06-04 (audit-fix): a nyugta-nyomtatás a TÉNYLEGES, rögzített szigorú sorszámot
+ * kell hogy a bizonylatra bélyegezze — nem fabrikált `P-<timestamp>`-et. A
+ * `savePendingTransactionV2` csak a beszúrt sor ID-jét adja vissza; ez a kis lekérdezés
+ * a hozzá tartozó helyi sorszámot adja vissza. SZÁNDÉKOSAN NEM szűr `synced = 0`-ra,
+ * így a sorszám akkor is lekérdezhető, ha a sor azonnal felszinkronizálódott (synced=1).
+ */
+export function getPendingTransactionRefById(id: number): string | null {
+  if (!db) return null;
+  const stmt = db.prepare('SELECT local_reference_number FROM pending_transactions WHERE id = ?');
+  stmt.bind([id]);
+  let ref: string | null = null;
+  if (stmt.step()) {
+    const row = stmt.getAsObject() as { local_reference_number?: string | null };
+    ref = row.local_reference_number ?? null;
+  }
+  stmt.free();
+  return ref;
+}
+
+/**
+ * Egy mentett átadás/átvétel (transfer) pending-sor szigorú átadólap-sorszámának
+ * (local_reference_number, pl. AT105000042) lekérdezése ID alapján.
+ *
+ * 2026-06-04 (audit-fix, buy/sell-paritás): a szállítólevél-nyomtatás a TÉNYLEGES,
+ * rögzített átadólap-számot kell hogy a bizonylatra bélyegezze — nem fabrikált
+ * `LOCAL-<dátum>-#<id>`-t. A `savePendingTransfer` csak a beszúrt sor ID-jét adja
+ * vissza; ez a kis lekérdezés a hozzá tartozó helyi sorszámot adja vissza.
+ * SZÁNDÉKOSAN NEM szűr `synced = 0`-ra, így a sorszám akkor is lekérdezhető, ha a
+ * sor azonnal felszinkronizálódott (synced=1).
+ */
+export function getPendingTransferRefById(id: number): string | null {
+  if (!db) return null;
+  const stmt = db.prepare('SELECT local_reference_number FROM pending_transfers WHERE id = ?');
+  stmt.bind([id]);
+  let ref: string | null = null;
+  if (stmt.step()) {
+    const row = stmt.getAsObject() as { local_reference_number?: string | null };
+    ref = row.local_reference_number ?? null;
+  }
+  stmt.free();
+  return ref;
 }
 
 export function savePendingConversion(
@@ -1658,14 +1770,14 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
       customer_id, customer_name, customer_document_number,
       customer_address, customer_nationality, customer_birth_place, customer_birth_date,
       customer_mother_name, customer_document_type,
-      source_of_funds, customer_is_pep, customer_on_own_behalf, customer_actor_name,
+      source_of_funds, customer_is_pep, approver_worker_id, approval_session_id, customer_on_own_behalf, customer_actor_name,
       customer_pep_kind,
       customer_actor_birth_place, customer_actor_birth_date, customer_actor_mother_name,
       customer_actor_nationality, customer_actor_document_type,
       customer_actor_document_number, customer_actor_address,
       foreign_status,
       note, local_reference_number, idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.fromCurrencyId, input.fromCurrencyCode, input.toCurrencyId, input.toCurrencyCode,
       roundFin(input.fromAmount, 8), roundFin(input.calculatedHufAmount, 2), roundFin(input.calculatedToAmount, 8), roundFin(input.conversionRate, 10),
@@ -1675,6 +1787,8 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
       trimOrNull(input.customerBirthPlace), trimOrNull(input.customerBirthDate),
       trimOrNull(input.customerMotherName), trimOrNull(input.customerDocumentType),
       trimOrNull(input.sourceOfFunds), boolToInt(input.customerIsPep),
+      input.approverWorkerId ?? null,
+      input.approvalSessionId ?? null,
       boolToInt(input.customerOnOwnBehalf), trimOrNull(input.customerActorName),
       trimOrNull(input.customerPepKind),
       trimOrNull(input.customerActorBirthPlace), trimOrNull(input.customerActorBirthDate),

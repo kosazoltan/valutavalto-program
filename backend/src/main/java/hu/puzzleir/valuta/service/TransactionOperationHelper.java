@@ -78,12 +78,12 @@ public class TransactionOperationHelper {
                                  String customerNationality) {
         // Backward-compat: engedélyező nélkül (a requiresApproval-ág a meglévő blokkoló viselkedést tartja).
         return performAmlCheck(hufAmount, customerId, customerName, documentNumber, currencyCode,
-                customerNationality, null);
+                customerNationality, null, null);
     }
 
     public AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
                                  String customerName, String documentNumber, String currencyCode,
-                                 String customerNationality, Long approverWorkerId) {
+                                 String customerNationality, Long approverWorkerId, String approvalSessionId) {
         // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate. Ezt a performAmlCheck-et a
         // multi-line (TransactionMultiLineService) ÉS a konverzió (TransactionConversionService) hívja.
         // (A sztornó/reversal NEM ezen az AML-úton megy → nincs gate-elve, by-design.)
@@ -141,7 +141,7 @@ public class TransactionOperationHelper {
                 throw new ValidationException(approvalReason);
             }
             amlApprovalService.recordSeniorApproval(
-                    approverWorkerId, approvalReason, hufAmount, customerName, null);
+                    approverWorkerId, approvalReason, hufAmount, customerName, null, approvalSessionId);
             approvalRecorded = true;
         }
 
@@ -167,7 +167,7 @@ public class TransactionOperationHelper {
                     if (!approvalRecorded && approverWorkerId != null && amlApprovalService != null
                             && amlApprovalService.isValidSeniorApprover(approverWorkerId)) {
                         amlApprovalService.recordSeniorApproval(
-                                approverWorkerId, reason, hufAmount, customerName, null);
+                                approverWorkerId, reason, hufAmount, customerName, null, approvalSessionId);
                         approvalRecorded = true;
                     } else {
                         throw new ValidationException(reason);

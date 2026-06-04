@@ -123,6 +123,21 @@ export const teaorApi = {
 // ================== TRANSACTIONS API ==================
 
 /**
+ * Multi-line (több-soros) bizonylat egy tételsora. A mezőnevek PONTOSAN a backend
+ * TransactionLineRequestDto-t tükrözik, hogy a Jackson-deszerializáció ne csússzon el.
+ * Ha a BuyRequest/SellRequest `lines` tömbje kitöltött, a backend executeMultiLineBuy/Sell
+ * ágra fut (EGY tranzakció, EGY AML-grant fogyasztás), és a fejléc currencyAmount/
+ * customExchangeRate értékeit FIGYELMEN KÍVÜL hagyja (az első sor adja a fejléc valutáját).
+ */
+export interface TransactionLineRequest {
+  currencyCode: string
+  banknoteCount: number
+  customExchangeRate?: number | null
+  discountType?: number | null
+  foreignStatus?: string | null
+}
+
+/**
  * A tranzakció-típusok kanonikus union-ja (a backend TransactionType enum-jával
  * összhangban). Egyetlen forrás, hogy a Transaction.transactionType, a legacy
  * `type` alias és a list() szűrő ne driftelhessen szét (Sourcery/Copilot #780).
@@ -193,6 +208,10 @@ export interface Transaction {
 }
 
 export interface BuyRequest {
+  /** AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, ha a tranzakcio felsovezetoi jovahagyast igenyelt. */
+  approverWorkerId?: number
+  /** AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1: receipt-scoping). */
+  approvalSessionId?: string
   currencyId?: number
   currencyCode?: string
   currencyAmount: number
@@ -234,9 +253,20 @@ export interface BuyRequest {
   notes?: string
   cashierCustomRate?: boolean
   foreignStatus?: 'DOMESTIC' | 'FOREIGN'
+  /**
+   * Multi-line aggregált vétel (Codex P1, 2026-06-04): ha kitöltött (>1 sor), a backend
+   * executeMultiLineBuy ágra fut — EGY tranzakció, EGY AML-grant fogyasztás. A fejléc
+   * currencyAmount/customExchangeRate ekkor az ELSŐ sort tükrözi (a backend a fejléc-összeget
+   * figyelmen kívül hagyja). Egysoros esetben NE küldd (változatlan single-line viselkedés).
+   */
+  lines?: TransactionLineRequest[]
 }
 
 export interface SellRequest {
+  /** AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, ha a tranzakcio felsovezetoi jovahagyast igenyelt. */
+  approverWorkerId?: number
+  /** AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1: receipt-scoping). */
+  approvalSessionId?: string
   currencyId?: number
   currencyCode?: string
   currencyAmount: number
@@ -278,6 +308,13 @@ export interface SellRequest {
   notes?: string
   cashierCustomRate?: boolean
   foreignStatus?: 'DOMESTIC' | 'FOREIGN'
+  /**
+   * Multi-line aggregált eladás (Codex P1, 2026-06-04): ha kitöltött (>1 sor), a backend
+   * executeMultiLineSell ágra fut — EGY tranzakció, EGY AML-grant fogyasztás. A fejléc
+   * currencyAmount/customExchangeRate ekkor az ELSŐ sort tükrözi (a backend a fejléc-összeget
+   * figyelmen kívül hagyja). Egysoros esetben NE küldd (változatlan single-line viselkedés).
+   */
+  lines?: TransactionLineRequest[]
 }
 
 export interface CashierCustomRateQuota {
@@ -294,6 +331,10 @@ export interface ReversalRequest {
 }
 
 export interface ConversionRequest {
+  /** AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, ha a tranzakcio felsovezetoi jovahagyast igenyelt. */
+  approverWorkerId?: number
+  /** AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1: receipt-scoping). */
+  approvalSessionId?: string
   fromCurrencyId?: number
   fromCurrencyCode?: string
   toCurrencyId?: number

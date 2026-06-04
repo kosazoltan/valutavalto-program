@@ -111,6 +111,7 @@ public class TransactionMapper {
                 .sourceOfFundsDocDate(dto.getSourceOfFundsDocDate())
                 // AML felsővezetői jóváhagyás (Pmt. 14/A.§(4) V.2.6): POS-on megadott engedélyező
                 .approverWorkerId(dto.getApproverWorkerId())
+                .approvalSessionId(dto.getApprovalSessionId())
                 .customerIsPep(dto.getCustomerIsPep())
                 // V229 Pmt. snapshot (HIBA #5+#7+#8)
                 .customerBirthPlace(dto.getCustomerBirthPlace())
@@ -158,6 +159,7 @@ public class TransactionMapper {
                 .sourceOfFundsDocDate(dto.getSourceOfFundsDocDate())
                 // AML felsővezetői jóváhagyás (Pmt. 14/A.§(4) V.2.6): POS-on megadott engedélyező
                 .approverWorkerId(dto.getApproverWorkerId())
+                .approvalSessionId(dto.getApprovalSessionId())
                 .customerIsPep(dto.getCustomerIsPep())
                 // V229 Pmt. snapshot (HIBA #5+#7+#8)
                 .customerBirthPlace(dto.getCustomerBirthPlace())
@@ -227,6 +229,7 @@ public class TransactionMapper {
                 .sourceOfFundsDocDate(dto.getSourceOfFundsDocDate())
                 // AML felsővezetői jóváhagyás (Pmt. 14/A.§(4) V.2.6): POS-on megadott engedélyező
                 .approverWorkerId(dto.getApproverWorkerId())
+                .approvalSessionId(dto.getApprovalSessionId())
                 .customerIsPep(dto.getCustomerIsPep())
                 // V235 + V236 Konverzio Pmt. azonositas (HIBA #19 2026-05-19)
                 .customerBirthPlace(dto.getCustomerBirthPlace())

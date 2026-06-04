@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { roundHuf } from './rounding'
+import { roundHuf, multiLinePayable } from './rounding'
 
 describe('roundHuf', () => {
   // Utolsó számjegy 0, 5 — marad
@@ -82,4 +82,34 @@ describe('roundHuf', () => {
   it('7 → 5', () => expect(roundHuf(7)).toBe(5))
   it('8 → 10', () => expect(roundHuf(8)).toBe(10))
   it('9 → 10', () => expect(roundHuf(9)).toBe(10))
+})
+
+describe('multiLinePayable — backend TransactionMultiLineService képlet tükrözése', () => {
+  // BUY: payable = roundHuf( (totalRaw + totalRaw*disc%) - handlingFee )
+  // (applyBuyDiscount ADD + calculateBuyGross SUBTRACT fee)
+  it('buy: nincs díj/kedvezmény → nyers összeg 5 Ft-ra kerekítve', () => {
+    expect(multiLinePayable(100000, 'buy', 0, 0)).toBe(100000)
+    expect(multiLinePayable(100003, 'buy', 0, 0)).toBe(100005)
+  })
+  it('buy: 10% kedvezmény + 500 díj (backend: 110000 - 500 = 109500)', () => {
+    expect(multiLinePayable(100000, 'buy', 10, 500)).toBe(109500)
+  })
+  it('buy: csak kezelési díj (a cég levonja)', () => {
+    expect(multiLinePayable(100000, 'buy', 0, 500)).toBe(99500)
+  })
+
+  // SELL: payable = roundHuf( (totalRaw - totalRaw*disc%) + handlingFee )
+  // (applySellDiscount SUBTRACT + calculateSellGross ADD fee)
+  it('sell: 10% kedvezmény + 500 díj (backend: 90000 + 500 = 90500)', () => {
+    expect(multiLinePayable(100000, 'sell', 10, 500)).toBe(90500)
+  })
+  it('sell: csak kezelési díj (hozzáadva)', () => {
+    expect(multiLinePayable(100000, 'sell', 0, 500)).toBe(100500)
+  })
+
+  // A diszkont-tag a backend HALF_UP, 0 tizedes kerekítését tükrözi, majd EGYSZER 5 Ft kerekítés.
+  it('buy: a diszkont HALF_UP kerekül, a végösszeg EGYSZER 5 Ft-ra', () => {
+    // totalRaw=100001, 1% → disc=round(1000.01)=1000 → net=101001 → gross=101001 → roundHuf=101000
+    expect(multiLinePayable(100001, 'buy', 1, 0)).toBe(101000)
+  })
 })

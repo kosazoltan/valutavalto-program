@@ -293,7 +293,7 @@ public class TransactionService {
         AmlService.AmlBasicCheckResult amlResult = performAmlCheck(
                 payableAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), currency.getCode(), request.getCustomerNationality(),
-                request.getApproverWorkerId());
+                request.getApproverWorkerId(), request.getApprovalSessionId());
 
         // A3 (Pmt. 50M, b4-foglalo FR-16): 50M Ft feletti ügyletnél kötelező forrás-igazolás
         // (közjegyző/ügyvéd magánokirat vagy max. 3 éves banki szlip; két tanú TILOS). Flag-gated.
@@ -511,7 +511,7 @@ public class TransactionService {
         AmlService.AmlBasicCheckResult amlResult = performAmlCheck(
                 payableAmount, request.getCustomerId(), request.getCustomerName(),
                 request.getCustomerDocumentNumber(), currency.getCode(), request.getCustomerNationality(),
-                request.getApproverWorkerId());
+                request.getApproverWorkerId(), request.getApprovalSessionId());
 
         // A3 (Pmt. 50M, b4-foglalo FR-16): 50M Ft feletti ügyletnél kötelező forrás-igazolás. Flag-gated.
         enforceSourceOfFunds(payableAmount, request.getSourceOfFundsDocType(), request.getSourceOfFundsDocDate());
@@ -804,7 +804,7 @@ public class TransactionService {
      */
     private AmlService.AmlBasicCheckResult performAmlCheck(BigDecimal hufAmount, String customerId,
                                  String customerName, String documentNumber, String currencyCode,
-                                 String customerNationality, Long approverWorkerId) {
+                                 String customerNationality, Long approverWorkerId, String approvalSessionId) {
         // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate. Feature-flag mögött
         // (CIRCULAR_ACK_BLOCKING_ENFORCEMENT, default false → nem blokkol → a meglévő kliensek és a
         // @InjectMocks tesztek nem törnek meg). Bekapcsolva: ha a pénztárosnak van olvasatlan,
@@ -866,7 +866,7 @@ public class TransactionService {
             // receiptNumber=null: a bizonylatszám az AML-check pillanatában még nem ismert, az okmányszámot
             // pedig TILOS a receipt_number audit-mezőbe tenni (adatminimalizálás / GDPR).
             amlApprovalService.recordSeniorApproval(
-                    approverWorkerId, approvalReason, hufAmount, customerName, null);
+                    approverWorkerId, approvalReason, hufAmount, customerName, null, approvalSessionId);
             approvalRecorded = true;
         }
 
@@ -898,7 +898,7 @@ public class TransactionService {
                 if (!approvalRecorded && approverWorkerId != null && amlApprovalService != null
                         && amlApprovalService.isValidSeniorApprover(approverWorkerId)) {
                     amlApprovalService.recordSeniorApproval(
-                            approverWorkerId, managerReason, hufAmount, customerName, null);
+                            approverWorkerId, managerReason, hufAmount, customerName, null, approvalSessionId);
                     approvalRecorded = true;
                 } else {
                     boolean enforce = systemParameterService != null
@@ -1227,6 +1227,8 @@ public class TransactionService {
         private java.time.LocalDate sourceOfFundsDocDate;
         // AML felsővezetői jóváhagyás (Pmt. 14/A.§(4) V.2.6): a POS-on jóváhagyó supervisor workerId-ja.
         private Long approverWorkerId;
+        // AML jóváhagyás-session azonosító — a grantot a konkrét nyugtához köti (Codex P1).
+        private String approvalSessionId;
         private Boolean customerIsPep;
         // V229 Pmt. snapshot (HIBA #5+#7+#8 2026-05-15)
         private String customerBirthPlace;
@@ -1281,6 +1283,8 @@ public class TransactionService {
         private java.time.LocalDate sourceOfFundsDocDate;
         // AML felsővezetői jóváhagyás (Pmt. 14/A.§(4) V.2.6): a POS-on jóváhagyó supervisor workerId-ja.
         private Long approverWorkerId;
+        // AML jóváhagyás-session azonosító — a grantot a konkrét nyugtához köti (Codex P1).
+        private String approvalSessionId;
         private Boolean customerIsPep;
         // V229 Pmt. snapshot (HIBA #5+#7+#8 2026-05-15)
         private String customerBirthPlace;
@@ -1381,6 +1385,8 @@ public class TransactionService {
         private java.time.LocalDate sourceOfFundsDocDate;
         // AML felsővezetői jóváhagyás (Pmt. 14/A.§(4) V.2.6): a POS-on jóváhagyó supervisor workerId-ja.
         private Long approverWorkerId;
+        // AML jóváhagyás-session azonosító — a grantot a konkrét nyugtához köti (Codex P1).
+        private String approvalSessionId;
         private Boolean customerIsPep;
         // V235 + V236 Konverzio Pmt. azonositas (HIBA #19 2026-05-19)
         private String customerBirthPlace;

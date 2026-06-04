@@ -68,6 +68,9 @@ public class ConversionRequestDto {
     /** AML felsővezetői jóváhagyás (Pmt. 14/A.§(4), MNB 14/2025 V.2.6): a POS-on jóváhagyó vezető workerId-ja. */
     private Long approverWorkerId;
 
+    /** AML jóváhagyás-session azonosító — a grantot a konkrét nyugtához köti (Codex P1: receipt-scoping). */
+    private String approvalSessionId;
+
     /** PEP (kiemelt közszereplő) státusz */
     private Boolean customerIsPep;
 

@@ -1071,6 +1071,22 @@ export class SyncEngine {
       customExchangeRate: tx.rate,
     };
 
+    // Multi-line aggregate (2026-06-04): ha a pending sor tobb-soros nyugtat kepvisel, a `lines[]`
+    // tombot is feltesszuk a body-ba — a backend ekkor az executeMultiLineBuy/Sell aggregalt
+    // utvonalra megy (egy AML-kapu, egy approval-grant). A fejlec currencyCode/currencyAmount/
+    // customExchangeRate az ELSO sor erteke (backward-compat), de a tenyleges konyveles a sorokbol
+    // tortenik. NULL/hianyzo `lines` → valtozatlan egysoros viselkedes.
+    if (tx.lines) {
+      try {
+        const parsedLines = JSON.parse(tx.lines);
+        if (Array.isArray(parsedLines) && parsedLines.length > 0) {
+          body['lines'] = parsedLines;
+        }
+      } catch {
+        // Nem parsable → kihagyjuk; a fejlec-mezok egysorosként mennek fel (fail-safe).
+      }
+    }
+
     if (tx.handling_fee !== null && tx.handling_fee !== undefined) {
       body['handlingFee'] = tx.handling_fee;
     }
@@ -1112,6 +1128,15 @@ export class SyncEngine {
     }
     if (tx.customer_is_pep !== null && tx.customer_is_pep !== undefined) {
       body['customerIsPep'] = tx.customer_is_pep === 1;
+    }
+    // AML vezetoi jovahagyas: a jovahagyo supervisor/manager/admin workerId-ja (NULL ha nem kellett).
+    // A backend csak akkor hasznalja, ha a tranzakcio valoban approval-koteles; egyebkent ignoralja.
+    if (tx.approver_worker_id !== null && tx.approver_worker_id !== undefined) {
+      body['approverWorkerId'] = tx.approver_worker_id;
+    }
+    // AML jovahagyas-session (Codex P1: receipt-scoping) — a grantot a konkret nyugtahoz koti.
+    if (tx.approval_session_id !== null && tx.approval_session_id !== undefined) {
+      body['approvalSessionId'] = tx.approval_session_id;
     }
 
     // V226 (2026-05-14): per-line devizastatusz — DOMESTIC vagy FOREIGN.
@@ -1226,6 +1251,14 @@ export class SyncEngine {
     addOptionalConvText('customerPepKind', conversion.customer_pep_kind);
     if (conversion.customer_is_pep !== null && conversion.customer_is_pep !== undefined) {
       body['customerIsPep'] = conversion.customer_is_pep === 1;
+    }
+    // AML vezetoi jovahagyas a konverzional is (NULL ha nem kellett).
+    if (conversion.approver_worker_id !== null && conversion.approver_worker_id !== undefined) {
+      body['approverWorkerId'] = conversion.approver_worker_id;
+    }
+    // AML jovahagyas-session (Codex P1: receipt-scoping).
+    if (conversion.approval_session_id !== null && conversion.approval_session_id !== undefined) {
+      body['approvalSessionId'] = conversion.approval_session_id;
     }
     if (conversion.customer_on_own_behalf !== null && conversion.customer_on_own_behalf !== undefined) {
       body['customerOnOwnBehalf'] = conversion.customer_on_own_behalf === 1;

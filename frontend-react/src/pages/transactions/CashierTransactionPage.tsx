@@ -6,8 +6,10 @@ import { AlertTriangle } from 'lucide-react'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
 import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi } from '../../services/api/index'
-import type { BuyRequest, SellRequest, ExchangeRate, CashierCustomRateQuota } from '../../services/api/index'
-import { roundHuf } from '../../utils/rounding'
+import { api } from '../../services/api/client'
+import AmlApproverModal from '../../components/auth/AmlApproverModal'
+import type { BuyRequest, SellRequest, TransactionLineRequest, ExchangeRate, CashierCustomRateQuota } from '../../services/api/index'
+import { roundHuf, multiLinePayable } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
 import {
   getElectronCachedRates,
@@ -16,6 +18,7 @@ import {
   recordLocalAuditEvent,
   saveAndSyncPendingBuySell,
 } from '../../utils/electronTransactions'
+import type { PendingBuySellInput } from '../../utils/electronTransactions'
 import { logger } from '../../utils/logger'
 import { isElectron } from '../../utils/electron'
 import ReceiptPreviewModal from '../../components/electron/ReceiptPreviewModal'
@@ -157,6 +160,20 @@ export default function CashierTransactionPage() {
   // A ref-bol olvasva mindig a friss erteket latjuk a guard-ban.
   const [isSubmitting, setIsSubmittingState] = useState(false)
   const isSubmittingRef = useRef(false)
+  // AML felsovezetoi jovahagyas (2026-06-04): a jovahagyo workerId a re-invoke-olt handleSubmit
+  // szamara ref-ben (mint az isSubmittingRef, hogy a memoizalt closure friss erteket lasson);
+  // a modal nyitas-allapota es a kivalto indok state-ben.
+  const approverWorkerIdRef = useRef<number | null>(null)
+  // Codex P1 (receipt-scoping): a jovahagyas-session azonosito — a modal megnyitasakor generaljuk, a
+  // grant (verify-approver) ehhez kotodik, es a tranzakcio(k) UGYANEZT viszik, igy a maradek grant-
+  // felhasznalasok NEM szivaroghatnak masik nyugtara.
+  const approvalSessionIdRef = useRef<string | null>(null)
+  // Copilot review: a pre-check (aml-approval/check-required) az isSubmitting guard ELOTT fut, ezert
+  // gyors dupla-submit parhuzamos pre-checket/modalt nyithatna. Ez a ref biztositja, hogy egyszerre
+  // csak egy pre-check fusson, amig nincs jovahagyo.
+  const amlPrecheckInFlightRef = useRef(false)
+  const [showAmlApprover, setShowAmlApprover] = useState(false)
+  const [amlApprovalReason, setAmlApprovalReason] = useState('')
   // Helper: state + ref atomi sync. MINDEN setIsSubmitting hivas ezt hasznalja.
   const setIsSubmitting = useCallback((value: boolean) => {
     isSubmittingRef.current = value
@@ -635,6 +652,39 @@ export default function CashierTransactionPage() {
       return
     }
 
+    // AML felsovezetoi jovahagyas pre-check (2026-06-04): ha a backend szerint a tranzakcio
+    // felsovezetoi jovahagyast igenyel (FATF / eves gongyolesi limit >=3.6M / BIGCTRL 4+), elkerjuk
+    // az engedelyezo workerId-t egy modallal, MIELOTT rogzitenenk (a local-first kliens kulonben
+    // csak sync-kor tudna meg, hogy approval kellett volna). A pre-check authoritativ: a backend ket
+    // AML-kapujat futtatja. Offline/hiba eseten NEM blokkol (a tranzakcio-POST/sync ugyis kivaltja a
+    // szerver-oldali validaciot). Ha mar van approver (a modal utani re-invoke), atugorjuk.
+    if (approverWorkerIdRef.current == null) {
+      // In-flight guard (Copilot review): parhuzamos pre-check/modal elkerulese gyors dupla-submitnel.
+      if (amlPrecheckInFlightRef.current) return
+      amlPrecheckInFlightRef.current = true
+      try {
+        const checkRes = await api.post('/aml-approval/check-required', {
+          amountHuf: total,
+          customerId: cd?.id || undefined,
+          customerName: cd?.name || undefined,
+          documentNumber: cd?.documentNumber || undefined,
+          currencyCode: filledRows[0]?.currencyCode,
+          customerNationality: cd?.nationality || undefined,
+        })
+        if (checkRes.data?.requiresApproval) {
+          // Uj jovahagyas-session a nyugtahoz (a grantot ehhez + a jovahagyott ugyfelhez koti a backend).
+          approvalSessionIdRef.current = crypto.randomUUID()
+          setAmlApprovalReason(typeof checkRes.data?.reason === 'string' ? checkRes.data.reason : '')
+          setShowAmlApprover(true)
+          return // a modal onApproved-ja beallitja az approverWorkerId-t es ujrahivja a submitet
+        }
+      } catch (err) {
+        logger.warn('CashierTransactionPage', 'AML approval pre-check hiba (nem blokkolo):', err)
+      } finally {
+        amlPrecheckInFlightRef.current = false
+      }
+    }
+
     // Local-first degradált AML mód (2026-05-14 user-direktíva): ha az AML ellenőrzés
     // hálózati/szerver hiba miatt nem futott le, a warnings tömb `[OFFLINE_DEGRADED]`
     // prefix-szel jelzi. Ilyenkor a pénztáros KÉNYTELEN megerősíteni hogy folytatja —
@@ -724,6 +774,9 @@ export default function CashierTransactionPage() {
         customerActorDocumentType: cd.actorIdentity?.documentType,
         customerActorDocumentNumber: cd.actorIdentity?.documentNumber,
         customerActorAddress: cd.actorIdentity?.address,
+        // AML felsovezetoi jovahagyas: a jovahagyo workerId a REST buy/sell request-be (spread).
+        approverWorkerId: approverWorkerIdRef.current ?? undefined,
+        approvalSessionId: approvalSessionIdRef.current ?? undefined,
       } : {}
 
       if (electronQueueAvailable) {
@@ -733,48 +786,77 @@ export default function CashierTransactionPage() {
         // bizonylaton hianyzott a szul.hely / szul.ido / anyja neve / allampolgar-
         // sag / okmany tipus / "mas neveben" flag es az actor teljes azonositasa.
         const actorIdentity = cd?.actorIdentity ?? null
-        const outcome = await saveAndSyncPendingBuySell(
-          filledRows.map((row) => ({
-            type: mode === 'buy' ? 'BUY' : 'SELL',
+        // Egy sor → PendingBuySellInput. A fejlec customer/AML mezok minden soron azonosak (egy
+        // ugyfel / egy nyugta), a tetel-specifikus mezok (currency/foreign/huf/rate/foreignStatus)
+        // a sorbol jonnek.
+        const buildEntry = (row: TransactionRow): PendingBuySellInput => ({
+          type: mode === 'buy' ? 'BUY' : 'SELL',
+          currencyCode: row.currencyCode,
+          foreignAmount: parseFloat(row.quantity) || 0,
+          hufAmount: row.hufValue,
+          roundedHufAmount: roundHuf(row.hufValue),
+          rate: row.exchangeRate,
+          handlingFee: handlingFee > 0 ? handlingFee : null,
+          discountPercent: discount > 0 ? discount : null,
+          customerIdentifier: cd?.documentNumber || null,
+          customerName: cd?.name || null,
+          customerDocumentNumber: cd?.documentNumber || null,
+          customerAddress: cd?.address || null,
+          denominations: null,
+          foreignStatus: row.foreignStatus,
+          // V229 100k+ alapmezok
+          customerBirthPlace: cd?.birthPlace ?? null,
+          customerBirthDate: cd?.birthDate ?? null,
+          customerMotherName: cd?.motherName ?? null,
+          customerNationality: cd?.nationality ?? null,
+          customerDocumentType: cd?.documentType ?? null,
+          // V229 300k+ JOGCIM nyilatkozat
+          sourceOfFunds: cd?.sourceOfFunds ?? null,
+          customerIsPep: cd?.isPep ?? null,
+          customerOnOwnBehalf: cd?.onOwnBehalf ?? null,
+          customerActorName: cd?.actorName ?? null,
+          // V235 PEP minoseg (HIBA #15)
+          customerPepKind: cd?.pepKind ?? null,
+          // V235 actor teljes azonositasa (HIBA #17)
+          customerActorBirthPlace: actorIdentity?.birthPlace ?? null,
+          customerActorBirthDate: actorIdentity?.birthDate ?? null,
+          customerActorMotherName: actorIdentity?.motherName ?? null,
+          customerActorNationality: actorIdentity?.nationality ?? null,
+          customerActorDocumentType: actorIdentity?.documentType ?? null,
+          customerActorDocumentNumber: actorIdentity?.documentNumber ?? null,
+          customerActorAddress: actorIdentity?.address ?? null,
+          // AML felsovezetoi jovahagyas: a jovahagyo workerId (NULL ha nem kellett). A local-first
+          // kliens lokalisan perzisztalja, majd a sync a backend-body-ba teszi.
+          approverWorkerId: approverWorkerIdRef.current,
+          approvalSessionId: approvalSessionIdRef.current,
+        })
+
+        // Multi-line aggregate (2026-06-04): tobb-soros nyugtanal EGY aggregalt pending tranzakciot
+        // mentunk `lines[]` tombbel — a sync EGY POST /transactions/buy|sell-t kuld, a backend egyetlen
+        // AML-kaput es egyetlen approval-grantot fogyaszt el. Egysoros nyugtanal a viselkedes
+        // VALTOZATLAN (egy pending, `lines` nelkul).
+        //
+        // RATE-SEMANTIKA (penz-helyesseg): minden sor customExchangeRate-jet a sor TENYLEGES alkalmazott
+        // arfolyamara (row.exchangeRate) allitjuk — pontosan ahogy az egysoros sync is teszi
+        // (sync-engine: customExchangeRate = tx.rate). Igy az aggregalt nyugta penzugyileg azonos N
+        // egysoros tranzakcio osszegevel (resolveBuyRate/resolveSellRate ugyanazt a customExchangeRate-et
+        // honoralja mindket uton). A per-soros discountType=0 (a tenyleges szazalekos kedvezmenyt a
+        // fejlec discountPercent hordozza, mint az egysoros agon).
+        let entries: PendingBuySellInput[]
+        if (filledRows.length > 1) {
+          const header = buildEntry(filledRows[0]!)
+          const lines = filledRows.map((row) => ({
             currencyCode: row.currencyCode,
-            foreignAmount: parseFloat(row.quantity) || 0,
-            hufAmount: row.hufValue,
-            roundedHufAmount: roundHuf(row.hufValue),
-            rate: row.exchangeRate,
-            handlingFee: handlingFee > 0 ? handlingFee : null,
-            discountPercent: discount > 0 ? discount : null,
-            customerIdentifier: cd?.documentNumber || null,
-            customerName: cd?.name || null,
-            customerDocumentNumber: cd?.documentNumber || null,
-            customerAddress: cd?.address || null,
-            denominations: null,
+            banknoteCount: parseFloat(row.quantity) || 0,
+            customExchangeRate: row.exchangeRate,
+            discountType: 0,
             foreignStatus: row.foreignStatus,
-            // V229 100k+ alapmezok
-            customerBirthPlace: cd?.birthPlace ?? null,
-            customerBirthDate: cd?.birthDate ?? null,
-            customerMotherName: cd?.motherName ?? null,
-            customerNationality: cd?.nationality ?? null,
-            customerDocumentType: cd?.documentType ?? null,
-            // V229 300k+ JOGCIM nyilatkozat
-            sourceOfFunds: cd?.sourceOfFunds ?? null,
-            // AML 50M (Pmt./MNB 14/2025): strukturált forrás-dokumentum
-            sourceOfFundsDocType: cd?.sourceOfFundsDocType ?? null,
-            sourceOfFundsDocDate: cd?.sourceOfFundsDocDate ?? null,
-            customerIsPep: cd?.isPep ?? null,
-            customerOnOwnBehalf: cd?.onOwnBehalf ?? null,
-            customerActorName: cd?.actorName ?? null,
-            // V235 PEP minoseg (HIBA #15)
-            customerPepKind: cd?.pepKind ?? null,
-            // V235 actor teljes azonositasa (HIBA #17)
-            customerActorBirthPlace: actorIdentity?.birthPlace ?? null,
-            customerActorBirthDate: actorIdentity?.birthDate ?? null,
-            customerActorMotherName: actorIdentity?.motherName ?? null,
-            customerActorNationality: actorIdentity?.nationality ?? null,
-            customerActorDocumentType: actorIdentity?.documentType ?? null,
-            customerActorDocumentNumber: actorIdentity?.documentNumber ?? null,
-            customerActorAddress: actorIdentity?.address ?? null,
-          })),
-        )
+          }))
+          entries = [{ ...header, lines: JSON.stringify(lines) }]
+        } else {
+          entries = filledRows.map(buildEntry)
+        }
+        const outcome = await saveAndSyncPendingBuySell(entries)
 
         if (outcome.allSavedSynced) {
           toast.success('Bizonylat(ok) sikeresen rögzítve!', `${filledRows.length} tétel azonnal szinkronizálva.`)
@@ -785,105 +867,228 @@ export default function CashierTransactionPage() {
           )
         }
 
-        // Build receipt queue for all lines (Electron)
+        // Build receipt(s) (Electron)
         if (isElectron()) {
           const now = new Date()
-          const outcomeReceipts = (outcome as { receiptNumbers?: string[] }).receiptNumbers ?? []
-          const receipts: PrintReceiptData[] = filledRows.map((row, idx) => ({
+          // 2026-06-04 (audit-fix): a TÉNYLEGES, rögzített szigorú helyi sorszámok (a mentett
+          // pending-sorok local_reference_number-jei, savedIds-szel azonos sorrendben). A
+          // korábbi kód egy NEM LÉTEZŐ `receiptNumbers` mezőre castolt → mindig fabrikált
+          // `P-<timestamp>` került a bizonylatra, ami EGYETLEN rögzített tranzakcióval sem
+          // egyezett (audit-probléma). Most a valós sorszámot bélyegezzük; ha hiányzik (régi
+          // telepítő / null), fallback a fabrikált számra.
+          const outcomeReceipts = outcome.localReferenceNumbers ?? []
+          const receiptHeader = {
             type: mode === 'buy' ? 'buy' as const : 'sell' as const,
             companyType: ((worker?.companyCode ?? '').startsWith('EXP') ? 'EXPRESSZ' : 'BEST_CHANGE') as 'BEST_CHANGE' | 'EXPRESSZ',
-            receiptNumber: outcomeReceipts[idx] ?? `P-${now.getTime()}-${idx}`,
             branchCode: worker?.branchCode ?? '',
             cashierName: worker?.fullName ?? '',
             date: now.toLocaleDateString('hu-HU'),
             time: now.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }),
-            currencyCode: row.currencyCode,
-            foreignAmount: parseFloat(row.quantity) || 0,
-            rate: row.exchangeRate,
-            hufAmount: row.hufValue,
-            roundedHufAmount: roundHuf(row.hufValue),
-            roundingDiff: roundHuf(row.hufValue) - row.hufValue,
             customerName: cd?.name || undefined,
             customerDocNumber: cd?.documentNumber || undefined,
             customerAddress: cd?.address || undefined,
             vatExemptionText: 'Tárgyi adómentes az ÁFA tv. 86.§ (1) bek. k) pontja alapján.',
-          }))
-          receiptQueueRef.current = receipts.slice(1)
-          if (receipts[0]) {
-            openReceiptModal(receipts[0])
+          }
+
+          if (filledRows.length > 1) {
+            // Multi-line aggregate (2026-06-04): a sync EGY aggregált tranzakciót küldött EGY
+            // bizonylatszámmal (outcomeReceipts[0]), így EGY bizonylatot nyomtatunk, amely az
+            // összes valuta-sort listázza. A backend (TransactionMultiLineService) a nyers
+            // per-soros HUF-okat ÖSSZEGZI, majd a TELJES összeget kerekíti EGYSZER 5 Ft-ra —
+            // ezt tükrözzük a fejléc hufAmount/roundedHufAmount/roundingDiff mezőiben.
+            // FINDING 2 (Codex P2): a nyomtatott FIZETENDŐ végösszegnek a backend multi-line
+            // payable-jét KELL tükröznie — nyers Σ hufValue helyett a kedvezmény+kezelési díjjal
+            // korrigált, EGYSZER 5 Ft-ra kerekített összeget (multiLinePayable). Különben a
+            // bizonylaton mutatott összeg eltér a szinkronizált tranzakció hufAmount-jától, ha
+            // díj/kedvezmény van. A per-soros transactionLines TOVÁBBRA is a NYERS per-soros
+            // HUF-bontást mutatja (részletezés), a fejléc viszont a fizetendő végösszeget.
+            const totalRaw = filledRows.reduce((sum, row) => sum + row.hufValue, 0)
+            const totalPayable = multiLinePayable(
+              totalRaw,
+              mode === 'buy' ? 'buy' : 'sell',
+              discount > 0 ? discount : 0,
+              handlingFee > 0 ? handlingFee : 0,
+            )
+            const receipt: PrintReceiptData = {
+              ...receiptHeader,
+              receiptNumber: outcomeReceipts[0] ?? `P-${now.getTime()}-0`,
+              hufAmount: totalPayable,
+              roundedHufAmount: totalPayable,
+              roundingDiff: 0,
+              handlingFee: handlingFee > 0 ? handlingFee : undefined,
+              transactionLines: filledRows.map((row) => ({
+                currencyCode: row.currencyCode,
+                foreignAmount: parseFloat(row.quantity) || 0,
+                rate: row.exchangeRate,
+                hufAmount: row.hufValue,
+              })),
+            }
+            receiptQueueRef.current = []
+            openReceiptModal(receipt)
+          } else {
+            // Egysoros bizonylat: változatlan viselkedés (egy sor → egy bizonylat egy számmal).
+            const receipts: PrintReceiptData[] = filledRows.map((row, idx) => ({
+              ...receiptHeader,
+              receiptNumber: outcomeReceipts[idx] ?? `P-${now.getTime()}-${idx}`,
+              currencyCode: row.currencyCode,
+              foreignAmount: parseFloat(row.quantity) || 0,
+              rate: row.exchangeRate,
+              hufAmount: row.hufValue,
+              roundedHufAmount: roundHuf(row.hufValue),
+              roundingDiff: roundHuf(row.hufValue) - row.hufValue,
+            }))
+            receiptQueueRef.current = receipts.slice(1)
+            if (receipts[0]) {
+              openReceiptModal(receipts[0])
+            }
           }
         }
       } else {
-        const receiptNumbers: string[] = []
-
-        for (let ri = 0; ri < filledRows.length; ri++) {
-          const row = filledRows[ri]!
-          const rowKey = `${ri}-${row.currencyCode}`
-          const isCashierCustom = cashierCustomRateRowsRef.current.has(rowKey) || undefined
-          if (mode === 'buy') {
-            const request: BuyRequest = {
-              currencyCode: row.currencyCode,
-              currencyAmount: parseFloat(row.quantity) || 0,
-              customExchangeRate: row.exchangeRate,
-              handlingFee: handlingFee > 0 ? handlingFee : undefined,
-              // FK-KEZDÍJ (2026-06-02): kezelési díj override (a szerver validálja az engedély-mátrixot)
-              handlingFeeOverrideType: feeOverrideType || undefined,
-              handlingFeeOverrideReason: feeOverrideReason || undefined,
-              customerCardNumber: cardNumber.trim() || undefined,
-              discountPercent: discount > 0 ? discount : undefined,
-              cashierCustomRate: isCashierCustom,
-              foreignStatus: row.foreignStatus,
-              ...customerData,
-            }
-            const result = await transactionApi.buy(request)
-            receiptNumbers.push(result.receiptNumber)
-          } else {
-            const request: SellRequest = {
-              currencyCode: row.currencyCode,
-              currencyAmount: parseFloat(row.quantity) || 0,
-              customExchangeRate: row.exchangeRate,
-              handlingFee: handlingFee > 0 ? handlingFee : undefined,
-              // FK-KEZDÍJ (2026-06-02): kezelési díj override (a szerver validálja az engedély-mátrixot)
-              handlingFeeOverrideType: feeOverrideType || undefined,
-              handlingFeeOverrideReason: feeOverrideReason || undefined,
-              customerCardNumber: cardNumber.trim() || undefined,
-              discountPercent: discount > 0 ? discount : undefined,
-              cashierCustomRate: isCashierCustom,
-              foreignStatus: row.foreignStatus,
-              ...customerData,
-            }
-            const result = await transactionApi.sell(request)
-            receiptNumbers.push(result.receiptNumber)
-          }
+        const now = new Date()
+        const receiptBase = {
+          type: mode === 'buy' ? 'buy' as const : 'sell' as const,
+          companyType: ((worker?.companyCode ?? '').startsWith('EXP') ? 'EXPRESSZ' : 'BEST_CHANGE') as 'BEST_CHANGE' | 'EXPRESSZ',
+          branchCode: worker?.branchCode ?? '',
+          cashierName: worker?.fullName ?? '',
+          date: now.toLocaleDateString('hu-HU'),
+          time: now.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }),
+          customerName: cd?.name || undefined,
+          customerDocNumber: cd?.documentNumber || undefined,
+          customerAddress: cd?.address || undefined,
+          vatExemptionText: 'Tárgyi adómentes az ÁFA tv. 86.§ (1) bek. k) pontja alapján.',
         }
 
-        toast.success('Bizonylat(ok) sikeresen készítve!', `${filledRows.length} tétel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat számok: ${receiptNumbers.join(', ')}`)
-
-        // Build receipt queue for all lines (API path)
-        if (filledRows.length > 0 && receiptNumbers.length > 0) {
-          const now = new Date()
-          const receipts: PrintReceiptData[] = filledRows.map((row, idx) => ({
-            type: mode === 'buy' ? 'buy' as const : 'sell' as const,
-            companyType: ((worker?.companyCode ?? '').startsWith('EXP') ? 'EXPRESSZ' : 'BEST_CHANGE') as 'BEST_CHANGE' | 'EXPRESSZ',
-            receiptNumber: receiptNumbers[idx] ?? `API-${now.getTime()}-${idx}`,
-            branchCode: worker?.branchCode ?? '',
-            cashierName: worker?.fullName ?? '',
-            date: now.toLocaleDateString('hu-HU'),
-            time: now.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }),
+        if (filledRows.length > 1) {
+          // FINDING 1 (Codex P1, 2026-06-04): többsoros nyugtát EGY aggregált REST-kérésként
+          // küldünk (`lines[]`), tükrözve az Electron utat. A grant immár STRICT single-use →
+          // a korábbi per-soros transactionApi.buy/sell loop a 2. sornál "already used"-del
+          // bukna (részleges nyugta). Az aggregált kérést a backend executeMultiLineBuy/Sell
+          // ÁGRA futtatja: EGY tranzakció, EGY AML-grant fogyasztás, EGY bizonylatszám.
+          //
+          // Fejléc: customer/AML/handlingFee/discount mezők az első soron át (a backend a díjat
+          // + kedvezményt az AGGREGÁTUMRA alkalmazza). currencyCode/currencyAmount/customExchangeRate
+          // az ELSŐ sorból (a backend a fejléc-összeget figyelmen kívül hagyja, ha lines[] jelen van —
+          // egyezően az Electron úttal). Soronkénti customExchangeRate = row.exchangeRate (a pénztáros
+          // PONTOS árfolyama, ahogy az egysoros úton is). Per-soros discountType=0 (a százalékos
+          // kedvezményt a fejléc discountPercent hordozza).
+          const first = filledRows[0]!
+          const lines: TransactionLineRequest[] = filledRows.map((row) => ({
             currencyCode: row.currencyCode,
-            foreignAmount: parseFloat(row.quantity) || 0,
-            rate: row.exchangeRate,
-            hufAmount: row.hufValue,
-            roundedHufAmount: roundHuf(row.hufValue),
-            roundingDiff: roundHuf(row.hufValue) - row.hufValue,
-            customerName: cd?.name || undefined,
-            customerDocNumber: cd?.documentNumber || undefined,
-            customerAddress: cd?.address || undefined,
-            vatExemptionText: 'Tárgyi adómentes az ÁFA tv. 86.§ (1) bek. k) pontja alapján.',
+            banknoteCount: parseFloat(row.quantity) || 0,
+            customExchangeRate: row.exchangeRate,
+            discountType: 0,
+            foreignStatus: row.foreignStatus,
           }))
-          receiptQueueRef.current = receipts.slice(1)
-          if (receipts[0]) {
-            openReceiptModal(receipts[0])
+          const aggregateBase = {
+            currencyCode: first.currencyCode,
+            currencyAmount: parseFloat(first.quantity) || 0,
+            customExchangeRate: first.exchangeRate,
+            handlingFee: handlingFee > 0 ? handlingFee : undefined,
+            // FK-KEZDÍJ (2026-06-02): kezelési díj override (a szerver validálja az engedély-mátrixot)
+            handlingFeeOverrideType: feeOverrideType || undefined,
+            handlingFeeOverrideReason: feeOverrideReason || undefined,
+            customerCardNumber: cardNumber.trim() || undefined,
+            discountPercent: discount > 0 ? discount : undefined,
+            foreignStatus: first.foreignStatus,
+            lines,
+            ...customerData,
+          }
+          const result = mode === 'buy'
+            ? await transactionApi.buy(aggregateBase as BuyRequest)
+            : await transactionApi.sell(aggregateBase as SellRequest)
+
+          toast.success('Bizonylat(ok) sikeresen készítve!', `${filledRows.length} tétel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat szám: ${result.receiptNumber}`)
+
+          // EGY bizonylat az összes valuta-sorral (mirror az Electron multi-line ágat). A fejléc
+          // hufAmount-ot a backend által visszaadott aggregált összegre állítjuk (single-source-of-
+          // truth: a tényleges payable, díj/kedvezmény + 5 Ft kerekítéssel). A per-soros bontás a
+          // nyers per-soros HUF-ot mutatja.
+          const totalRaw = filledRows.reduce((sum, row) => sum + row.hufValue, 0)
+          const backendHuf = typeof result.hufAmount === 'number' ? result.hufAmount : null
+          const totalPayable = backendHuf ?? multiLinePayable(
+            totalRaw,
+            mode === 'buy' ? 'buy' : 'sell',
+            discount > 0 ? discount : 0,
+            handlingFee > 0 ? handlingFee : 0,
+          )
+          const receipt: PrintReceiptData = {
+            ...receiptBase,
+            receiptNumber: result.receiptNumber,
+            hufAmount: totalPayable,
+            roundedHufAmount: totalPayable,
+            roundingDiff: 0,
+            handlingFee: handlingFee > 0 ? handlingFee : undefined,
+            transactionLines: filledRows.map((row) => ({
+              currencyCode: row.currencyCode,
+              foreignAmount: parseFloat(row.quantity) || 0,
+              rate: row.exchangeRate,
+              hufAmount: row.hufValue,
+            })),
+          }
+          receiptQueueRef.current = []
+          openReceiptModal(receipt)
+        } else {
+          // Egysoros REST út: VÁLTOZATLAN viselkedés (egy sor → egy kérés → egy bizonylat).
+          const receiptNumbers: string[] = []
+          for (let ri = 0; ri < filledRows.length; ri++) {
+            const row = filledRows[ri]!
+            const rowKey = `${ri}-${row.currencyCode}`
+            const isCashierCustom = cashierCustomRateRowsRef.current.has(rowKey) || undefined
+            if (mode === 'buy') {
+              const request: BuyRequest = {
+                currencyCode: row.currencyCode,
+                currencyAmount: parseFloat(row.quantity) || 0,
+                customExchangeRate: row.exchangeRate,
+                handlingFee: handlingFee > 0 ? handlingFee : undefined,
+                // FK-KEZDÍJ (2026-06-02): kezelési díj override (a szerver validálja az engedély-mátrixot)
+                handlingFeeOverrideType: feeOverrideType || undefined,
+                handlingFeeOverrideReason: feeOverrideReason || undefined,
+                customerCardNumber: cardNumber.trim() || undefined,
+                discountPercent: discount > 0 ? discount : undefined,
+                cashierCustomRate: isCashierCustom,
+                foreignStatus: row.foreignStatus,
+                ...customerData,
+              }
+              const result = await transactionApi.buy(request)
+              receiptNumbers.push(result.receiptNumber)
+            } else {
+              const request: SellRequest = {
+                currencyCode: row.currencyCode,
+                currencyAmount: parseFloat(row.quantity) || 0,
+                customExchangeRate: row.exchangeRate,
+                handlingFee: handlingFee > 0 ? handlingFee : undefined,
+                // FK-KEZDÍJ (2026-06-02): kezelési díj override (a szerver validálja az engedély-mátrixot)
+                handlingFeeOverrideType: feeOverrideType || undefined,
+                handlingFeeOverrideReason: feeOverrideReason || undefined,
+                customerCardNumber: cardNumber.trim() || undefined,
+                discountPercent: discount > 0 ? discount : undefined,
+                cashierCustomRate: isCashierCustom,
+                foreignStatus: row.foreignStatus,
+                ...customerData,
+              }
+              const result = await transactionApi.sell(request)
+              receiptNumbers.push(result.receiptNumber)
+            }
+          }
+
+          toast.success('Bizonylat(ok) sikeresen készítve!', `${filledRows.length} tétel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat számok: ${receiptNumbers.join(', ')}`)
+
+          // Build receipt queue for all lines (API path)
+          if (filledRows.length > 0 && receiptNumbers.length > 0) {
+            const receipts: PrintReceiptData[] = filledRows.map((row, idx) => ({
+              ...receiptBase,
+              receiptNumber: receiptNumbers[idx] ?? `API-${now.getTime()}-${idx}`,
+              currencyCode: row.currencyCode,
+              foreignAmount: parseFloat(row.quantity) || 0,
+              rate: row.exchangeRate,
+              hufAmount: row.hufValue,
+              roundedHufAmount: roundHuf(row.hufValue),
+              roundingDiff: roundHuf(row.hufValue) - row.hufValue,
+            }))
+            receiptQueueRef.current = receipts.slice(1)
+            if (receipts[0]) {
+              openReceiptModal(receipts[0])
+            }
           }
         }
       }
@@ -894,6 +1099,9 @@ export default function CashierTransactionPage() {
       setActiveField('currency')
       customerDataRef.current = null
       amlResultRef.current = null
+      // AML jovahagyas: a kovetkezo tranzakcio friss jovahagyas-allapotrol induljon.
+      approverWorkerIdRef.current = null
+      approvalSessionIdRef.current = null
       // Codex P2 + Copilot P2 #579 follow-up: a tranzakció lezárult, a backend
       // most már perzisztens cashierCustomRate-flagű sorokat számol. Lokális
       // ref-eket tisztítjuk, hogy a következő tranzakció a friss backend-quota
@@ -914,6 +1122,11 @@ export default function CashierTransactionPage() {
       const axiosError = error as { response?: { data?: { message?: string } } }
       const serverMessage = axiosError?.response?.data?.message
       toast.error('Hiba a tranzakció mentés során!', serverMessage || message)
+      // Codex P2: hiba esetén ÉRVÉNYTELENÍTJÜK a jóváhagyást — különben a pénztáros szerkeszthetné a
+      // sorokat/ügyfelet, és UGYANAZZAL a granttal/session-nel egy MÁSIK nyugtát küldhetne (receipt-
+      // scoping szivárgás). Újraküldéskor friss pre-check + új PIN-jóváhagyás kell.
+      approverWorkerIdRef.current = null
+      approvalSessionIdRef.current = null
     } finally {
       setIsSubmitting(false)
     }
@@ -1435,6 +1648,24 @@ export default function CashierTransactionPage() {
           }
         }}
         printLabel={isElectron() ? undefined : 'Nyomtatás nem elérhető'}
+      />
+
+      {/* AML felsovezetoi jovahagyas modal — a pre-check trigger nyitja, ha approval kell */}
+      <AmlApproverModal
+        open={showAmlApprover}
+        currentWorkerId={worker?.id ?? 0}
+        reason={amlApprovalReason}
+        sessionId={approvalSessionIdRef.current ?? ''}
+        customerName={customerDataRef.current?.name ?? undefined}
+        onApproved={(workerId, name) => {
+          approverWorkerIdRef.current = workerId
+          setShowAmlApprover(false)
+          toast.info('AML jóváhagyás megerősítve', `Engedélyező: ${name}`)
+          // Ujrahivjuk a submitet — most az approverWorkerIdRef be van allitva, igy a pre-check
+          // atugorja a modalt es a tranzakcio rogzul az approverWorkerId-val.
+          void handleSubmit()
+        }}
+        onCancel={() => setShowAmlApprover(false)}
       />
 
       {/* HOTKEY BAR */}

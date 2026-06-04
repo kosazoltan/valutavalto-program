@@ -345,9 +345,18 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     text(isSell ? 'Deviza eladás (HUF -> valuta):' : 'Deviza vásárlás (valuta -> HUF):');
     push(COMMANDS.BOLD_OFF);
     blank();
-    text(twoColumn('Valutanem:', data.currencyCode ?? '—'));
-    text(twoColumn('Összeg:', `${fmtAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`));
-    text(twoColumn('Árfolyam:', fmtRate(data.rate)));
+    const txLines = data.transactionLines;
+    if (txLines && txLines.length > 0) {
+      // Multi-line aggregate: minden valuta-sor listázva EGY bizonylatszám alatt.
+      for (const ln of txLines) {
+        text(`${ln.currencyCode}:`);
+        text(twoColumn(`  ${fmtAmount(ln.foreignAmount)} x ${fmtRate(ln.rate)}`, `${fmtAmount(ln.hufAmount)} Ft`));
+      }
+    } else {
+      text(twoColumn('Valutanem:', data.currencyCode ?? '—'));
+      text(twoColumn('Összeg:', `${fmtAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`));
+      text(twoColumn('Árfolyam:', fmtRate(data.rate)));
+    }
     blank();
     push(line(), COMMANDS.LF);
     push(COMMANDS.BOLD_ON);
