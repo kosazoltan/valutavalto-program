@@ -86,6 +86,99 @@ class ReceiptServiceB7Test {
         return t;
     }
 
+    // EXCMD b5b (FR-BSZUR-02 "csak ügyfeles" + FR-BSZUR-05 10M Ft AML-jelölő):
+    // a list() a synthesized ÉS a real Receipt-eket is dúsítja customerName + hufAmount
+    // @Transient mezőkkel a kapcsolt Transaction-ből.
+
+    @Test
+    @DisplayName("EXCMD b5b: synthesized Receipt customerName + hufAmount dúsítás a tx-ből")
+    void list_synthesizedReceiptEnrichedWithCustomerAndHuf() {
+        when(receiptRepository.findAllByCompanyId(COMPANY_ID))
+                .thenReturn(Collections.emptyList());
+
+        Transaction tx = makeTransaction(601L, "V017000040", TransactionType.BUY);
+        tx.setCustomerName("Kovács János");
+        tx.setHufAmount(new BigDecimal("12000000.00")); // 12 M Ft → 10M+ küszöb felett
+
+        when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
+                .thenReturn(List.of(tx));
+
+        List<Receipt> receipts = receiptService.list(null);
+
+        assertThat(receipts).hasSize(1);
+        assertThat(receipts.get(0).getCustomerName()).isEqualTo("Kovács János");
+        assertThat(receipts.get(0).getHufAmount()).isEqualByComparingTo("12000000.00");
+    }
+
+    @Test
+    @DisplayName("EXCMD b5b: real (materializált) Receipt dúsítása EGY batch findAllById query-vel (N+1-mentes)")
+    void list_realReceiptsEnrichedViaBatchQuery() {
+        // Két materializált real receipt (synthesized UUID id-vel), tx nélkül a Receipt táblában
+        Receipt real1 = Receipt.builder()
+                .id(new UUID(0L, 701L)).companyId(COMPANY_ID)
+                .receiptNumber("V017000050").receiptType("BUY")
+                .issueDate(LocalDate.of(2026, 4, 29)).isPrinted(true).build();
+        Receipt real2 = Receipt.builder()
+                .id(new UUID(0L, 702L)).companyId(COMPANY_ID)
+                .receiptNumber("E017000051").receiptType("SELL")
+                .issueDate(LocalDate.of(2026, 4, 29)).isPrinted(true).build();
+
+        Transaction tx1 = makeTransaction(701L, "V017000050", TransactionType.BUY);
+        tx1.setCustomerName("Nagy Anna");
+        tx1.setHufAmount(new BigDecimal("500000.00")); // küszöb alatt
+        Transaction tx2 = makeTransaction(702L, "E017000051", TransactionType.SELL);
+        tx2.setCustomerName("Szabó Péter");
+        tx2.setHufAmount(new BigDecimal("10000000.00")); // pontosan a küszöbön → 10M+
+
+        when(receiptRepository.findAllByCompanyId(COMPANY_ID))
+                .thenReturn(List.of(real1, real2));
+        // a materializáltakat a synthesized-detektálás kihagyja → nincs synthesized
+        when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
+                .thenReturn(List.of(tx1, tx2));
+        // N+1 ELKERÜLÉS: EGYETLEN batch findAllById a két txId-ra
+        when(transactionRepository.findAllById(any()))
+                .thenReturn(List.of(tx1, tx2));
+
+        List<Receipt> receipts = receiptService.list(null);
+
+        assertThat(receipts).hasSize(2);
+        assertThat(receipts).extracting(Receipt::getCustomerName)
+                .containsExactlyInAnyOrder("Nagy Anna", "Szabó Péter");
+        // EGYETLEN batch hívás (NEM per-receipt) — N+1-mentesség bizonyítása
+        Mockito.verify(transactionRepository, Mockito.times(1)).findAllById(any());
+    }
+
+    @Test
+    @DisplayName("Codex P2 (multi-tenant): cross-company tx-id NEM szivárogtat — MÁS cég tx-éből NEM dúsít")
+    void list_realReceiptEnrich_crossTenant_notLeaked() {
+        // Materializált real receipt a saját cégnél, de a dekódolt tx-id egy MÁS céghez tartozó
+        // tranzakcióra mutat (adat-integritás-sértés szimulációja) — a customerName/hufAmount NEM
+        // szivároghat ki a másik cégtől.
+        Receipt real = Receipt.builder()
+                .id(new UUID(0L, 703L)).companyId(COMPANY_ID)
+                .receiptNumber("V017000060").receiptType("BUY")
+                .issueDate(LocalDate.of(2026, 4, 29)).isPrinted(true).build();
+
+        Transaction otherTx = makeTransaction(703L, "V017000060", TransactionType.BUY);
+        Company other = new Company();
+        other.setId(OTHER_COMPANY_ID);
+        otherTx.setCompany(other);
+        otherTx.setCustomerName("Idegen Cég Ügyfele");
+        otherTx.setHufAmount(new BigDecimal("9999999.00"));
+
+        when(receiptRepository.findAllByCompanyId(COMPANY_ID)).thenReturn(List.of(real));
+        when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
+                .thenReturn(List.of());
+        when(transactionRepository.findAllById(any())).thenReturn(List.of(otherTx));
+
+        List<Receipt> receipts = receiptService.list(null);
+
+        assertThat(receipts).hasSize(1);
+        // A MÁS céghez tartozó tx-ből NEM dúsítunk → customerName/hufAmount marad null (nincs leak).
+        assertThat(receipts.get(0).getCustomerName()).isNull();
+        assertThat(receipts.get(0).getHufAmount()).isNull();
+    }
+
     @Test
     @DisplayName("list() synthesize Receipt-et ad vissza, ha a Receipt tabla URES")
     void list_synthesizesFromTransactionsWhenReceiptTableEmpty() {

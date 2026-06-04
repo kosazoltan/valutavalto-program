@@ -97,10 +97,84 @@ public class ReceiptService {
             }
         }
 
+        // EXCMD b5b (FR-BSZUR-02 "csak ügyfeles" + FR-BSZUR-05 10M Ft AML-jelölő):
+        // a REAL Receipt-eket a kapcsolt Transaction-ből dúsítjuk customerName + hufAmount
+        // @Transient mezőkkel. N+1 ELKERÜLÉSE: a real receipt-ek transactionId-jait EGY
+        // batch query-ben töltjük be (findAllById), majd id→Transaction map-ből töltjük.
+        // A synthesized Receipt-ek már dúsítva vannak (synthesizeReceipt kézben tartja a tx-et).
+        enrichRealReceipts(realReceipts, companyId);
+
         List<Receipt> result = new ArrayList<>(realReceipts.size() + synthesized.size());
         result.addAll(realReceipts);
         result.addAll(synthesized);
         return result;
+    }
+
+    /**
+     * EXCMD b5b: REAL Receipt-ek dúsítása customerName + hufAmount @Transient mezőkkel
+     * a kapcsolt Transaction-ből. N+1 ELKERÜLÉS: az összes transactionId-t EGY
+     * {@code findAllById} batch query-vel töltjük, majd id→Transaction map-ből osztjuk ki.
+     *
+     * <p>Defenzív: ha egy real receipt-nek nincs transactionId-ja VAGY a Transaction nem
+     * található, a customerName/hufAmount null marad (a UI ilyenkor "—"-t mutat).</p>
+     *
+     * <p>DEFER (jövő increment): FR-BSZUR-05 "ENGEDÉLYEZŐ" (approver neve/beosztása) a
+     * TransactionAmlApproval táblával való JOIN-t igényel — ez NEM ennek az increment-nek
+     * a tárgya. Itt csak a 10M Ft küszöb-jelölőhöz szükséges hufAmount kerül kiosztásra.</p>
+     */
+    private void enrichRealReceipts(List<Receipt> realReceipts, UUID companyId) {
+        Set<Long> txIds = new HashSet<>();
+        for (Receipt r : realReceipts) {
+            Long txId = resolveTransactionId(r);
+            if (txId != null) {
+                txIds.add(txId);
+            }
+        }
+        if (txIds.isEmpty()) {
+            return;
+        }
+        java.util.Map<Long, Transaction> txById = new java.util.HashMap<>();
+        for (Transaction tx : transactionRepository.findAllById(txIds)) {
+            // Multi-tenant (Codex P2, S-lencse): a receipt id-ból DEKÓDOLT tx-id-t NEM bízzuk meg vakon —
+            // csak az aktuális céghez tartozó tranzakcióból dúsítunk (egyezően a getById()/print()
+            // tenant-ellenőrzésével). Egy adat-integritás-sértés (cross-company tx-id egy receipten) így
+            // sem szivárogtathatja ki egy másik cég ügyfél-nevét/összegét.
+            if (tx.getCompany() != null && companyId.equals(tx.getCompany().getId())) {
+                txById.put(tx.getId(), tx);
+            }
+        }
+        for (Receipt r : realReceipts) {
+            Long txId = resolveTransactionId(r);
+            if (txId == null) {
+                continue;
+            }
+            Transaction tx = txById.get(txId);
+            if (tx != null) {
+                r.setCustomerName(tx.getCustomerName());
+                r.setHufAmount(tx.getHufAmount());
+            }
+        }
+    }
+
+    /**
+     * A real Receipt-hez tartozó Transaction.id (Long) feloldása, defenzíven.
+     *
+     * <p>A jelenlegi materialize-flow (print()) a receipt {@code id}-ját synthesizedUuid-ra
+     * állítja (low 64 bit = Transaction.id), a {@code transactionId} oszlopot pedig null-on
+     * hagyja. Ezért elsődlegesen a synthesizedUuid {@code id}-ból dekódolunk (ez egyezik a
+     * list() materializált-detektálásával), és tartalékként a {@code transactionId} oszlopot
+     * is megnézzük, ha az synthesizedUuid-ként van kódolva. Ha egyik sem értelmezhető → null
+     * (a customerName/hufAmount null marad).</p>
+     */
+    private static Long resolveTransactionId(Receipt r) {
+        if (r.getId() != null && isSynthesizedUuid(r.getId())) {
+            return decodeTransactionId(r.getId());
+        }
+        UUID txUuid = r.getTransactionId();
+        if (txUuid != null && isSynthesizedUuid(txUuid)) {
+            return decodeTransactionId(txUuid);
+        }
+        return null;
     }
 
     public Receipt getById(UUID id) {
@@ -241,6 +315,10 @@ public class ReceiptService {
                         ? tx.getTransactionType().name() : "UNKNOWN")
                 .issueDate(tx.getTransactionDate())
                 .isPrinted(false)
+                // EXCMD b5b (FR-BSZUR-02 "csak ügyfeles" + FR-BSZUR-05 10M Ft AML-jelölő):
+                // @Transient mezők a kapcsolt tx-ből (a tx már kézben van — nincs extra query).
+                .customerName(tx.getCustomerName())
+                .hufAmount(tx.getHufAmount())
                 .build();
     }
 
