@@ -5,6 +5,7 @@ import { useGridNavigation } from '../../../hooks/useGridNavigation'
 import type { WorkgroupDetailDTO } from '../../../services/api/index'
 import { fmtAmount, parseNum, type EditableRate } from '../types'
 import type { WgField } from '../workgroupSheetCompute'
+import { replaceFormulaCurrency } from '../workgroupSheetFormula'
 import { useTranslation } from 'react-i18next'
 
 // FK-04/C: a 8 képletezhető oszlop (J=elszámoló read-only, K=ISO kód read-only).
@@ -221,7 +222,15 @@ export default function RateGrid({
       if (!src) continue
       // A forrás a kijelölés legfelső sora: a KÉPLET (ha van), különben a megjelenített érték.
       const srcRaw = formulas[`${src.currencyId}.${field}`] ?? src[field]
-      for (let row = b.r0 + 1; row <= b.r1; row++) cells.push({ row, field, raw: srcRaw })
+      for (let row = b.r0 + 1; row <= b.r1; row++) {
+        // FK02-D (FR-1..4): relatív valutakód-csere — a `!<oszlop><KÓD>` hivatkozás kódja a
+        // célsor valutájára cserélődik, ha megegyezik a forrássor valutájával (TBD-4).
+        const tgt = rates[row]
+        const raw = (tgt && typeof srcRaw === 'string')
+          ? replaceFormulaCurrency(srcRaw, src.currencyCode, tgt.currencyCode)
+          : srcRaw
+        cells.push({ row, field, raw })
+      }
     }
     onBulkApply(cells)
     clearSelection()
