@@ -7,6 +7,7 @@ import { useAuthStore } from '../../stores/authStore'
 import ReceiptPreviewModal from '../../components/electron/ReceiptPreviewModal'
 import {
   getPendingReceiptDrafts,
+  getReprintableReceiptDrafts,
   printPendingReceiptDraft,
   type PendingReceiptDraft,
 } from '../../utils/localQueue'
@@ -135,11 +136,48 @@ export const periodToBackendRange = (
   return {}
 }
 
+/**
+ * Közös szűrő a helyi vázlat- ÉS a fizikai-újranyomtatás-listára (Sourcery: a két szűrő korábban
+ * majdnem azonos volt). A hatókör/időszak (FR-BSZUR-02, a tétel createdAt-je alapján), a "csak
+ * ügyfeles" (FR-BSZUR-01 opció 2) ügyfél-jelenlétre, a típus-szűrő a PrintJobType-ra (Codex P2 #1034),
+ * a keresőszó a referenciára/címre/ügyfélnévre szűr.
+ */
+export function draftMatchesFilters(
+  draft: PendingReceiptDraft,
+  typeFilter: string,
+  searchTerm: string,
+  periodMode: PeriodMode,
+  periodMonth: string,
+  periodFrom: string,
+  periodTo: string,
+): boolean {
+  // EXCMD b5b FR-BSZUR-02: hatókör/időszak-szűrő a helyi tételekre (a draft createdAt-je alapján).
+  if (!matchesPeriod(draft.createdAt, periodMode, periodMonth, periodFrom, periodTo)) return false
+  if (typeFilter === TYPE_FILTER_CUSTOMER_ONLY) {
+    if (!hasCustomer(draft.receiptData.customerName)) return false
+  } else if (typeFilter !== 'ALL') {
+    // A TRANSFER_OUT/IN-hez nincs vázlat-típus (a draftok csak vétel/eladás/konverzió/sztornó) →
+    // ilyenkor egy tétel sem egyezik (üres lista, helyes).
+    const draftType = TYPE_FILTER_TO_DRAFT_TYPE[typeFilter]
+    if (!draftType || (draft.receiptData.type ?? '') !== draftType) return false
+  }
+  const lowered = searchTerm.toLowerCase()
+  if (!lowered) return true
+  return (
+    draft.referenceNumber.toLowerCase().includes(lowered)
+    || draft.title.toLowerCase().includes(lowered)
+    || (draft.receiptData.customerName?.toLowerCase().includes(lowered) ?? false)
+  )
+}
+
 export default function ReceiptPage() {
   const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [localDrafts, setLocalDrafts] = useState<PendingReceiptDraft[]>([])
+  // Fizikai újranyomtatás (Codex P2 #1035): a már szinkronizált (synced=1) helyi bizonylatok,
+  // amelyeket egy meghiúsult nyomtatás (papírelakadás) után ESC/POS-on újra ki lehet nyomtatni.
+  const [reprintable, setReprintable] = useState<PendingReceiptDraft[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   // EXCMD b5b FR-BSZUR-01: bizonylattípus-szűrő (egyszerre egy aktív). A backend Receipt.receiptType =
@@ -162,12 +200,14 @@ export default function ReceiptPage() {
       // EXCMD b5b FR-BSZUR-02 (Codex P2): a periódust a backendre is továbbadjuk, hogy a synthesized
       // lista dátum-szűrése a 500-as limit ELŐTT történjen (régi hónap/tartomány ne legyen csonka).
       const range = periodToBackendRange(periodMode, periodMonth, periodFrom, periodTo)
-      const [data, drafts] = await Promise.all([
+      const [data, drafts, reprints] = await Promise.all([
         receiptApi.list(range),
         isElectron() ? getPendingReceiptDrafts(worker) : Promise.resolve([]),
+        isElectron() ? getReprintableReceiptDrafts(worker) : Promise.resolve([]),
       ])
       setReceipts(data)
       setLocalDrafts(drafts)
+      setReprintable(reprints)
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       logger.error('ReceiptPage', 'Failed to load receipts:', err)
@@ -213,31 +253,19 @@ export default function ReceiptPage() {
     }
   }
 
-  const filteredDrafts = useMemo(() => {
-    const lowered = searchTerm.toLowerCase()
-    return localDrafts.filter((draft) => {
-      // EXCMD b5b FR-BSZUR-02: hatókör/időszak-szűrő a vázlatokra is (a draft createdAt-je alapján).
-      if (!matchesPeriod(draft.createdAt, periodMode, periodMonth, periodFrom, periodTo)) return false
-      // EXCMD b5b FR-BSZUR-01 (opció 2): "csak ügyfeles" a vázlat-listára is hat (a draft customerName-je
-      // a receiptData-ban van). NEM a típusra szűr — ügyfél-jelenlétre.
-      if (typeFilter === TYPE_FILTER_CUSTOMER_ONLY) {
-        if (!hasCustomer(draft.receiptData.customerName)) return false
-      // Codex P2 (#1034): a típus-szűrő a helyi vázlat-listára is hat (különben "Csak vételi" mellett is
-      // látszanának eladási/konverziós/sztornó vázlatok). A draft type-ja PrintJobType (kisbetűs).
-      } else if (typeFilter !== 'ALL') {
-        // A TRANSFER_OUT/IN-hez nincs vázlat-típus (a draftok csak vétel/eladás/konverzió/sztornó) →
-        // ilyenkor egy vázlat sem egyezik (üres vázlat-lista, helyes).
-        const draftType = TYPE_FILTER_TO_DRAFT_TYPE[typeFilter]
-        if (!draftType || (draft.receiptData.type ?? '') !== draftType) return false
-      }
-      if (!lowered) return true
-      return (
-        draft.referenceNumber.toLowerCase().includes(lowered)
-        || draft.title.toLowerCase().includes(lowered)
-        || draft.receiptData.customerName?.toLowerCase().includes(lowered)
-      )
-    })
-  }, [localDrafts, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo])
+  // EXCMD b5b FR-BSZUR-01/02 + Codex P2 (#1034): a hatókör/időszak + "csak ügyfeles" + típus-szűrő +
+  // keresőszó a helyi vázlat-listára is hat (közös helper: draftMatchesFilters).
+  const filteredDrafts = useMemo(
+    () => localDrafts.filter((draft) => draftMatchesFilters(draft, typeFilter, searchTerm, periodMode, periodMonth, periodFrom, periodTo)),
+    [localDrafts, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo],
+  )
+
+  // Fizikai újranyomtatás (Codex P2 #1035): a szinkronizált, újranyomtatható helyi bizonylatokra
+  // ugyanaz a szűrés hat, mint a vázlat-listára (ugyanaz a draftMatchesFilters helper, periódussal).
+  const filteredReprintable = useMemo(
+    () => reprintable.filter((item) => draftMatchesFilters(item, typeFilter, searchTerm, periodMode, periodMonth, periodFrom, periodTo)),
+    [reprintable, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo],
+  )
 
   if (loading) {
     return <div className="flex items-center justify-center h-64">Betöltés...</div>
@@ -366,6 +394,42 @@ export default function ReceiptPage() {
         </div>
       )}
 
+      {/* Fizikai újranyomtatás (Codex P2 #1035): már szinkronizált helyi bizonylatok, amelyeknél a
+          fizikai nyomtatás meghiúsult (papírelakadás) — a lokális adatból ESC/POS-on újranyomtathatók. */}
+      {filteredReprintable.length > 0 && (
+        <div className="form-panel">
+          <div className="mb-4 flex items-center gap-2 text-blue-800">
+            <Printer size={18} />
+            <h2 className="text-lg font-bold">Fizikai újranyomtatás</h2>
+          </div>
+          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            Ezek a bizonylatok már véglegesítve és szinkronizálva vannak. Ha a nyomtatás meghiúsult
+            (pl. papírelakadás), itt a tárolt adatból fizikailag újranyomtathatók — a sorszám nem változik.
+          </div>
+          <table className="data-grid w-full">
+            <thead>
+              <tr><th>{t('receipts.helyiReferencia')}</th><th>{t('common.type')}</th><th>{t('common.createdAt')}</th><th>{t('common.status2')}</th><th>{t('common.actions')}</th></tr>
+            </thead>
+            <tbody>
+              {filteredReprintable.map((item) => (
+                <tr key={item.id}>
+                  <td className="font-mono">{item.referenceNumber}</td>
+                  <td>{item.title}</td>
+                  <td>{new Date(item.createdAt).toLocaleString('hu-HU')}</td>
+                  <td><span className="badge badge-blue">{item.statusLabel}</span></td>
+                  <td>
+                    <div className="flex gap-2">
+                      <button onClick={() => setSelectedDraft(item)} className="form-button text-xs"><Eye size={12} />{t('closing.elonezet')}</button>
+                      <button onClick={() => setSelectedDraft(item)} className="form-button text-xs"><Printer size={12} />Újranyomtatás</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <div className="form-panel">
         <table className="data-grid w-full">
           <thead>
@@ -442,7 +506,14 @@ export default function ReceiptPage() {
         receiptData={selectedDraft?.receiptData ?? null}
         qrCodeDataUrl={null}
         variant="draft"
-        statusMessage="Szigorú számadású bizonylat — helyileg már véglegesítve, lezárva. Szerver-szinkron függőben (auditnapló kiegészítése)."
+        printLabel={selectedDraft?.reprint ? 'Újranyomtatás' : undefined}
+        statusMessage={
+          selectedDraft?.reprint
+            // Fizikai újranyomtatás (Codex P2 #1035): a bizonylat már szinkronizált — ez nem új
+            // kiállítás, csak a meglévő (azonos sorszámú) bizonylat ismételt fizikai nyomtatása.
+            ? 'Már szinkronizált bizonylat fizikai újranyomtatása — a sorszám és a tartalom változatlan (pl. papírelakadás utáni ismételt nyomtatás).'
+            : 'Szigorú számadású bizonylat — helyileg már véglegesítve, lezárva. Szerver-szinkron függőben (auditnapló kiegészítése).'
+        }
         onPrint={async () => {
           if (!selectedDraft) {
             return
@@ -450,9 +521,13 @@ export default function ReceiptPage() {
 
           const printed = await printPendingReceiptDraft(selectedDraft.receiptData)
           if (!printed) {
-            throw new Error('A vázlat nyomtatása nem érhető el ebben a környezetben')
+            throw new Error('A bizonylat nyomtatása nem érhető el ebben a környezetben')
           }
-          toast.success('A helyi bizonylatvázlat nyomtatása elindítva')
+          toast.success(
+            selectedDraft.reprint
+              ? 'A bizonylat fizikai újranyomtatása elindítva'
+              : 'A helyi bizonylatvázlat nyomtatása elindítva',
+          )
         }}
       />
     </div>

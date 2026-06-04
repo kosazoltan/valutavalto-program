@@ -1,8 +1,9 @@
 import type { BankTransaction, HandoverSheet, Transfer } from '../services/api/index'
 import type { Worker } from '../stores/authStore'
-import type { PrintReceiptData } from '../types/receipt'
+import type { PrintReceiptData, TransactionReceiptLine } from '../types/receipt'
 import { getElectronAPI } from './electron'
 import { logger } from './logger'
+import { multiLinePayable } from './rounding'
 
 export interface PendingReceiptDraft {
   id: string
@@ -12,6 +13,13 @@ export interface PendingReceiptDraft {
   title: string
   statusLabel: string
   canPrint: boolean
+  /**
+   * Fizikai ujranyomtatas (Codex P2 #1035): ha `true`, ez a tetel egy MAR szinkronizalt
+   * (synced = 1) bizonylat, amit egy meghiusult fizikai nyomtatas (papirelakadas) utan
+   * az operator ujra ki akar nyomtatni — NEM szinkronra varo vazlat. A nyomtatasi ut
+   * azonos (lokalis receiptData → ESC/POS), csak a megjelenites/statusz ter el.
+   */
+  reprint?: boolean
   receiptData: PrintReceiptData
 }
 
@@ -76,6 +84,190 @@ function localNumericId(id: number): number {
   return -(1_000_000 + id)
 }
 
+// ─── Bizonylat receiptData epitok (vazlat ES ujranyomtatas kozos utvonala) ──────
+//
+// A vetel/eladas/konverzio/storno pending-sorbol PrintReceiptData-t epitenek. Mind a vazlat-
+// lista (synced = 0), mind a fizikai ujranyomtatas (synced = 1, Codex P2 #1035) ugyanezt
+// hasznalja, igy a megjelenites es a nyomtatott tartalom GARANTALTAN egyezik.
+
+/** A builder altal igenyelt minimalis tranzakcios sor-alak (vazlat ES reprint sor is megfelel). */
+interface TransactionReceiptRow {
+  id: number
+  type: string
+  currency_code: string
+  foreign_amount: number
+  huf_amount: number
+  rounded_huf_amount: number
+  rate: number
+  handling_fee?: number | null
+  discount_percent?: number | null
+  customer_name: string | null
+  customer_document_number: string | null
+  lines?: string | null
+  local_reference_number: string | null
+  created_at: string
+}
+
+interface ConversionReceiptRow {
+  id: number
+  from_currency_code: string
+  to_currency_code: string
+  from_amount: number
+  calculated_huf_amount: number
+  calculated_to_amount: number
+  conversion_rate: number
+  customer_name: string | null
+  customer_document_number: string | null
+  note: string | null
+  local_reference_number: string | null
+  created_at: string
+}
+
+interface StornoReceiptRow {
+  id: number
+  original_receipt_number: string
+  currency_code: string
+  foreign_amount: number | null
+  huf_amount: number
+  exchange_rate: number | null
+  custom_exchange_rate: number | null
+  reason: string
+  customer_name: string | null
+  customer_document_number: string | null
+  local_reference_number: string | null
+  created_at: string
+}
+
+/**
+ * A `lines` oszlop (multi-line aggregalt vetel/eladas) JSON-jenek atalakitasa receipt-sorokka.
+ * A tarolt alak a backend TransactionLineRequestDto-ja:
+ * `[{ currencyCode, banknoteCount, customExchangeRate, discountType, foreignStatus }]`.
+ * A per-soros nyers HUF = banknoteCount * customExchangeRate (kerekites elott), egyezoen a
+ * CashierTransactionPage pont-of-sale szamitasaval. Ervenytelen/ures JSON → null (egysoros ag).
+ */
+function parseTransactionReceiptLines(linesJson: string | null | undefined): TransactionReceiptLine[] | null {
+  if (!linesJson) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(linesJson)
+  } catch {
+    return null
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) return null
+  const lines: TransactionReceiptLine[] = []
+  for (const raw of parsed) {
+    const entry = raw as { currencyCode?: unknown; banknoteCount?: unknown; customExchangeRate?: unknown }
+    const foreignAmount = Number(entry.banknoteCount)
+    const rate = Number(entry.customExchangeRate)
+    // Copilot P2: érvénytelen (nem véges) numerikus mező esetén NE essünk csendben 0-ra — az
+    // hibás 0-értékű sort és így hibás aggregált összeget adna. A teljes payload-ot érvénytelennek
+    // tekintjük → null, amitől a hívó az egysoros (tárolt, ismert-jó) értékekre esik vissza.
+    if (!Number.isFinite(foreignAmount) || !Number.isFinite(rate)) {
+      return null
+    }
+    lines.push({
+      currencyCode: typeof entry.currencyCode === 'string' && entry.currencyCode ? entry.currencyCode : '—',
+      foreignAmount,
+      rate,
+      hufAmount: foreignAmount * rate,
+    })
+  }
+  return lines
+}
+
+function buildTransactionReceiptData(row: TransactionReceiptRow, worker: Worker | null): PrintReceiptData {
+  const parts = toDateParts(normalizeTimestamp(row.created_at))
+  const mode: 'buy' | 'sell' = row.type === 'BUY' ? 'buy' : 'sell'
+  const receiptNumber = row.local_reference_number ?? `LOCAL-TX-${row.id}`
+  const base: PrintReceiptData = {
+    type: mode,
+    companyType: getCompanyType(worker),
+    receiptNumber,
+    branchCode: worker?.branchCode ?? 'LOCAL',
+    cashierName: worker?.fullName ?? 'Electron queue',
+    date: parts.date,
+    time: parts.time,
+    customerName: row.customer_name ?? undefined,
+    customerDocNumber: row.customer_document_number ?? undefined,
+  }
+
+  const lines = parseTransactionReceiptLines(row.lines)
+  if (lines && lines.length > 1) {
+    // Multi-line aggregalt nyugta: a TELJES tetelsort listazzuk EGY bizonylatszam alatt, es a
+    // fejlec fizetendo vegosszeget a backend TransactionMultiLineService kepletevel rekonstrualjuk
+    // (nyers Σ → kedvezmeny + kezelesi dij → EGYSZER 5 Ft-ra kerekitve). A tarolt sor huf_amount-ja
+    // a fejlec ELSO soranak erteke (NEM az aggregatum), ezert a lines-bol szamolunk ujra.
+    const totalRaw = lines.reduce((sum, ln) => sum + ln.hufAmount, 0)
+    const payable = multiLinePayable(totalRaw, mode, row.discount_percent ?? 0, row.handling_fee ?? 0)
+    // Codex P2: a kezelési díj MÁR bele van számolva a `payable`-be (multiLinePayable), ezért NEM
+    // adjuk át külön `handlingFee`-ként — különben a ReceiptPreviewModal (paid = roundedHufAmount +
+    // handlingFee) duplán számolná a díjat. Így a preview „Kifizetve" összege EGYEZIK a fizikailag
+    // nyomtatott FIZETENDŐ-vel (printer.ts a multi-line nyugtán a roundedHufAmount-ot nyomtatja,
+    // a díjat nem tételezi külön).
+    return {
+      ...base,
+      hufAmount: payable,
+      roundedHufAmount: payable,
+      roundingDiff: 0,
+      transactionLines: lines,
+    }
+  }
+
+  // Egysoros bizonylat (valtozatlan): a tarolt per-soros ertekek.
+  return {
+    ...base,
+    currencyCode: row.currency_code,
+    foreignAmount: row.foreign_amount,
+    rate: row.rate,
+    hufAmount: row.huf_amount,
+    roundedHufAmount: row.rounded_huf_amount,
+  }
+}
+
+function buildConversionReceiptData(row: ConversionReceiptRow, worker: Worker | null): PrintReceiptData {
+  const parts = toDateParts(normalizeTimestamp(row.created_at))
+  return {
+    type: 'conversion',
+    companyType: getCompanyType(worker),
+    receiptNumber: row.local_reference_number ?? `LOCAL-CONV-${row.id}`,
+    branchCode: worker?.branchCode ?? 'LOCAL',
+    cashierName: worker?.fullName ?? 'Electron queue',
+    date: parts.date,
+    time: parts.time,
+    sourceCurrencyCode: row.from_currency_code,
+    sourceAmount: row.from_amount,
+    targetCurrencyCode: row.to_currency_code,
+    targetAmount: row.calculated_to_amount,
+    rate: row.conversion_rate,
+    hufAmount: row.calculated_huf_amount,
+    customerName: row.customer_name ?? undefined,
+    customerDocNumber: row.customer_document_number ?? undefined,
+    note: row.note ?? undefined,
+  }
+}
+
+function buildStornoReceiptData(row: StornoReceiptRow, worker: Worker | null): PrintReceiptData {
+  const parts = toDateParts(normalizeTimestamp(row.created_at))
+  return {
+    type: 'storno',
+    companyType: getCompanyType(worker),
+    receiptNumber: row.local_reference_number ?? `LOCAL-STORNO-${row.id}`,
+    branchCode: worker?.branchCode ?? 'LOCAL',
+    cashierName: worker?.fullName ?? 'Electron queue',
+    date: parts.date,
+    time: parts.time,
+    currencyCode: row.currency_code,
+    foreignAmount: row.foreign_amount ?? undefined,
+    rate: row.custom_exchange_rate ?? row.exchange_rate ?? undefined,
+    hufAmount: row.huf_amount,
+    roundedHufAmount: row.huf_amount,
+    customerName: row.customer_name ?? undefined,
+    customerDocNumber: row.customer_document_number ?? undefined,
+    stornoReason: row.reason,
+    originalReceiptNumber: row.original_receipt_number,
+  }
+}
+
 export async function getPendingReceiptDrafts(worker: Worker | null): Promise<PendingReceiptDraft[]> {
   try {
     const electronAPI = getElectronAPI()
@@ -93,7 +285,6 @@ export async function getPendingReceiptDrafts(worker: Worker | null): Promise<Pe
 
     for (const row of transactions) {
       const createdAt = normalizeTimestamp(row.created_at)
-      const parts = toDateParts(createdAt)
       drafts.push({
         id: `tx-${row.id}`,
         referenceNumber: row.local_reference_number ?? `LOCAL-TX-${row.id}`,
@@ -102,28 +293,12 @@ export async function getPendingReceiptDrafts(worker: Worker | null): Promise<Pe
         title: row.type === 'BUY' ? 'Vételi vázlat' : 'Eladási vázlat',
         statusLabel: 'Helyben mentve, szinkronra vár',
         canPrint: true,
-        receiptData: {
-          type: row.type === 'BUY' ? 'buy' : 'sell',
-          companyType: getCompanyType(worker),
-          receiptNumber: row.local_reference_number ?? `LOCAL-TX-${row.id}`,
-          branchCode: worker?.branchCode ?? 'LOCAL',
-          cashierName: worker?.fullName ?? 'Electron queue',
-          date: parts.date,
-          time: parts.time,
-          currencyCode: row.currency_code,
-          foreignAmount: row.foreign_amount,
-          rate: row.rate,
-          hufAmount: row.huf_amount,
-          roundedHufAmount: row.rounded_huf_amount,
-          customerName: row.customer_name ?? undefined,
-          customerDocNumber: row.customer_document_number ?? undefined,
-        },
+        receiptData: buildTransactionReceiptData(row, worker),
       })
     }
 
     for (const row of conversions) {
       const createdAt = normalizeTimestamp(row.created_at)
-      const parts = toDateParts(createdAt)
       drafts.push({
         id: `conv-${row.id}`,
         referenceNumber: row.local_reference_number ?? `LOCAL-CONV-${row.id}`,
@@ -132,30 +307,12 @@ export async function getPendingReceiptDrafts(worker: Worker | null): Promise<Pe
         title: 'Konverziós vázlat',
         statusLabel: 'Helyben mentve, szinkronra vár',
         canPrint: true,
-        receiptData: {
-          type: 'conversion',
-          companyType: getCompanyType(worker),
-          receiptNumber: row.local_reference_number ?? `LOCAL-CONV-${row.id}`,
-          branchCode: worker?.branchCode ?? 'LOCAL',
-          cashierName: worker?.fullName ?? 'Electron queue',
-          date: parts.date,
-          time: parts.time,
-          sourceCurrencyCode: row.from_currency_code,
-          sourceAmount: row.from_amount,
-          targetCurrencyCode: row.to_currency_code,
-          targetAmount: row.calculated_to_amount,
-          rate: row.conversion_rate,
-          hufAmount: row.calculated_huf_amount,
-          customerName: row.customer_name ?? undefined,
-          customerDocNumber: row.customer_document_number ?? undefined,
-          note: row.note ?? undefined,
-        },
+        receiptData: buildConversionReceiptData(row, worker),
       })
     }
 
     for (const row of stornoRows) {
       const createdAt = normalizeTimestamp(row.created_at)
-      const parts = toDateParts(createdAt)
       drafts.push({
         id: `storno-${row.id}`,
         referenceNumber: row.local_reference_number ?? `LOCAL-STORNO-${row.id}`,
@@ -164,30 +321,94 @@ export async function getPendingReceiptDrafts(worker: Worker | null): Promise<Pe
         title: 'Sztornó vázlat',
         statusLabel: 'Helyben mentve, szinkronra vár',
         canPrint: true,
-        receiptData: {
-          type: 'storno',
-          companyType: getCompanyType(worker),
-          receiptNumber: row.local_reference_number ?? `LOCAL-STORNO-${row.id}`,
-          branchCode: worker?.branchCode ?? 'LOCAL',
-          cashierName: worker?.fullName ?? 'Electron queue',
-          date: parts.date,
-          time: parts.time,
-          currencyCode: row.currency_code,
-          foreignAmount: row.foreign_amount ?? undefined,
-          rate: row.custom_exchange_rate ?? row.exchange_rate ?? undefined,
-          hufAmount: row.huf_amount,
-          roundedHufAmount: row.huf_amount,
-          customerName: row.customer_name ?? undefined,
-          customerDocNumber: row.customer_document_number ?? undefined,
-          stornoReason: row.reason,
-          originalReceiptNumber: row.original_receipt_number,
-        },
+        receiptData: buildStornoReceiptData(row, worker),
       })
     }
 
     return drafts.sort((left, right) => right.createdAt.localeCompare(left.createdAt))
   } catch (err) {
     logger.error('localQueue', 'getPendingReceiptDrafts failed', err)
+    throw err
+  }
+}
+
+/**
+ * Fizikai ujranyomtatas (Codex P2 #1035): a MAR szinkronizalt (synced = 1) bizonylatok legutobbi
+ * sorai, hogy egy meghiusult fizikai nyomtatas (papirelakadas, nyomtato offline) utan az operator
+ * a lokalis receiptData-bol ESC/POS-on UJRA ki tudja nyomtatni a bizonylatot.
+ *
+ * Local-first marad: a fizikai nyomtatas ugyanazon a `printReceipt` (ESC/POS/serial) uton megy, mint
+ * a vazlat-nyomtatas (NEM a backend). A multi-currency bizonylatok teljes tetelsora a `lines` oszlopbol
+ * rekonstrualodik (lasd `buildTransactionReceiptData`).
+ *
+ * Visszafele kompatibilis: ha a futtatott Electron build (preload) meg nem ismeri a reprint-API-kat
+ * (regi telepito), ures listat ad → a UI nem mutat ujranyomtatas-szekciot, semmi nem torik.
+ */
+export async function getReprintableReceiptDrafts(worker: Worker | null): Promise<PendingReceiptDraft[]> {
+  try {
+    const electronAPI = getElectronAPI()
+    if (
+      !electronAPI?.getReprintableTransactions
+      || !electronAPI.getReprintableConversions
+      || !electronAPI.getReprintableStornos
+    ) {
+      return []
+    }
+
+    const [transactions, conversions, stornoRows] = await Promise.all([
+      electronAPI.getReprintableTransactions(),
+      electronAPI.getReprintableConversions(),
+      electronAPI.getReprintableStornos(),
+    ])
+
+    const REPRINT_STATUS = 'Szinkronizálva — fizikai újranyomtatás'
+    const drafts: PendingReceiptDraft[] = []
+
+    for (const row of transactions) {
+      drafts.push({
+        id: `reprint-tx-${row.id}`,
+        referenceNumber: row.local_reference_number ?? `LOCAL-TX-${row.id}`,
+        entityType: 'TRANSACTION',
+        createdAt: normalizeTimestamp(row.created_at),
+        title: row.type === 'BUY' ? 'Vételi bizonylat' : 'Eladási bizonylat',
+        statusLabel: REPRINT_STATUS,
+        canPrint: true,
+        reprint: true,
+        receiptData: buildTransactionReceiptData(row, worker),
+      })
+    }
+
+    for (const row of conversions) {
+      drafts.push({
+        id: `reprint-conv-${row.id}`,
+        referenceNumber: row.local_reference_number ?? `LOCAL-CONV-${row.id}`,
+        entityType: 'CONVERSION',
+        createdAt: normalizeTimestamp(row.created_at),
+        title: 'Konverziós bizonylat',
+        statusLabel: REPRINT_STATUS,
+        canPrint: true,
+        reprint: true,
+        receiptData: buildConversionReceiptData(row, worker),
+      })
+    }
+
+    for (const row of stornoRows) {
+      drafts.push({
+        id: `reprint-storno-${row.id}`,
+        referenceNumber: row.local_reference_number ?? `LOCAL-STORNO-${row.id}`,
+        entityType: 'STORNO',
+        createdAt: normalizeTimestamp(row.created_at),
+        title: 'Sztornó bizonylat',
+        statusLabel: REPRINT_STATUS,
+        canPrint: true,
+        reprint: true,
+        receiptData: buildStornoReceiptData(row, worker),
+      })
+    }
+
+    return drafts.sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+  } catch (err) {
+    logger.error('localQueue', 'getReprintableReceiptDrafts failed', err)
     throw err
   }
 }

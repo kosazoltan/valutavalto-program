@@ -229,6 +229,9 @@ export interface ElectronAPI {
     customer_document_number: string | null;
     customer_address: string | null;
     denominations: string | null;
+    // Multi-line aggregált vétel/eladás sorai JSON-ként (backend TransactionLineRequestDto alak);
+    // NULL → egysoros. A vázlat-böngésző ebből rekonstruálja a multi-line nyugtát (localQueue).
+    lines: string | null;
     local_reference_number: string | null;
     idempotency_key: string | null;
     created_at: string;
@@ -301,6 +304,56 @@ export interface ElectronAPI {
     customer_document_number: string | null;
     local_reference_number: string | null;
     idempotency_key: string | null;
+    created_at: string;
+    synced: number;
+  }>>;
+  // Fizikai ujranyomtatas (Codex P2 #1035): mar szinkronizalt (synced = 1) bizonylatok a lokalis
+  // receiptData-bol valo ESC/POS ujranyomtatashoz (papirelakadas utan). Opcionalis: regi telepito
+  // (preload) meg nem ismeri → a renderer ures listara esik vissza. A `lines` (multi-line) is jon.
+  getReprintableTransactions?(limit?: number): Promise<Array<{
+    id: number;
+    type: string;
+    currency_code: string;
+    foreign_amount: number;
+    huf_amount: number;
+    rounded_huf_amount: number;
+    rate: number;
+    handling_fee: number | null;
+    discount_percent: number | null;
+    customer_name: string | null;
+    customer_document_number: string | null;
+    lines: string | null;
+    local_reference_number: string | null;
+    created_at: string;
+    synced: number;
+  }>>;
+  getReprintableConversions?(limit?: number): Promise<Array<{
+    id: number;
+    from_currency_code: string;
+    to_currency_code: string;
+    from_amount: number;
+    calculated_huf_amount: number;
+    calculated_to_amount: number;
+    conversion_rate: number;
+    customer_name: string | null;
+    customer_document_number: string | null;
+    note: string | null;
+    local_reference_number: string | null;
+    created_at: string;
+    synced: number;
+  }>>;
+  getReprintableStornos?(limit?: number): Promise<Array<{
+    id: number;
+    original_receipt_number: string;
+    currency_code: string;
+    foreign_amount: number | null;
+    huf_amount: number;
+    exchange_rate: number | null;
+    custom_exchange_rate: number | null;
+    reason: string;
+    customer_name: string | null;
+    customer_document_number: string | null;
+    local_reference_number: string | null;
     created_at: string;
     synced: number;
   }>>;

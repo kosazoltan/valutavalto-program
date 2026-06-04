@@ -219,6 +219,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     customer_document_number: string | null;
     customer_address: string | null;
     denominations: string | null;
+    // Multi-line aggregalt vetel/eladas sorai JSON-kent (backend TransactionLineRequestDto alak);
+    // NULL → egysoros. A vazlat-bongeszo ebbol rekonstrualja a multi-line nyugtat (localQueue).
+    lines: string | null;
     local_reference_number: string | null;
     idempotency_key: string | null;
     created_at: string;
@@ -299,6 +302,63 @@ contextBridge.exposeInMainWorld('electronAPI', {
     synced: number;
   }>> =>
     ipcRenderer.invoke('get-pending-stornos'),
+
+  // Fizikai ujranyomtatas (Codex P2 #1035): mar szinkronizalt (synced = 1) bizonylatok lekerdezese,
+  // hogy egy meghiusult fizikai nyomtatas utan a lokalis receiptData-bol ESC/POS-on ujra lehessen
+  // nyomtatni. A `lines` oszlop (multi-line aggregalt vetel/eladas) is visszajon, igy az ujranyomtatas
+  // a TELJES tetelsort rekonstrualja.
+  getReprintableTransactions: (limit?: number): Promise<Array<{
+    id: number;
+    type: string;
+    currency_code: string;
+    foreign_amount: number;
+    huf_amount: number;
+    rounded_huf_amount: number;
+    rate: number;
+    handling_fee: number | null;
+    discount_percent: number | null;
+    customer_name: string | null;
+    customer_document_number: string | null;
+    lines: string | null;
+    local_reference_number: string | null;
+    created_at: string;
+    synced: number;
+  }>> =>
+    ipcRenderer.invoke('get-reprintable-transactions', limit),
+
+  getReprintableConversions: (limit?: number): Promise<Array<{
+    id: number;
+    from_currency_code: string;
+    to_currency_code: string;
+    from_amount: number;
+    calculated_huf_amount: number;
+    calculated_to_amount: number;
+    conversion_rate: number;
+    customer_name: string | null;
+    customer_document_number: string | null;
+    note: string | null;
+    local_reference_number: string | null;
+    created_at: string;
+    synced: number;
+  }>> =>
+    ipcRenderer.invoke('get-reprintable-conversions', limit),
+
+  getReprintableStornos: (limit?: number): Promise<Array<{
+    id: number;
+    original_receipt_number: string;
+    currency_code: string;
+    foreign_amount: number | null;
+    huf_amount: number;
+    exchange_rate: number | null;
+    custom_exchange_rate: number | null;
+    reason: string;
+    customer_name: string | null;
+    customer_document_number: string | null;
+    local_reference_number: string | null;
+    created_at: string;
+    synced: number;
+  }>> =>
+    ipcRenderer.invoke('get-reprintable-stornos', limit),
 
   syncOffline: (): Promise<number> =>
     ipcRenderer.invoke('sync-offline'),
