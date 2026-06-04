@@ -202,6 +202,54 @@ public class WacService {
     }
 
     /**
+     * A6 / b8 FR-8: sztornó / részleges visszatérítés profit-KOMPENZÁCIÓJA — flag-gated, best-effort.
+     *
+     * <p>Az eredeti ELADÁS profit-tételeit (ha vannak) negáló {@code REVERSAL} tételekkel ellensúlyozza,
+     * a visszatérített mennyiség arányában ({@code reversedQty / originalQty}), így a {@code profit_log}
+     * összegzése a sztornózott/visszatérített eladás hasznát NEM tartalmazza. Teljes sztornónál az arány 1,
+     * részleges visszatérítésnél a visszatérített deviza aránya. Csak SELL-eredetit kompenzál
+     * (a BUY nem realizál WAC-profitot).</p>
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
+    public void recordReversalCompensationIfEnabled(Long originalTransactionId,
+                                                    BigDecimal reversedQty, BigDecimal originalQty) {
+        if (systemParameterService == null || !"true".equalsIgnoreCase(
+                systemParameterService.getValue(WAC_PROFIT_TRACKING_PARAM, WAC_PROFIT_TRACKING_DEFAULT))) {
+            return; // flag OFF (default) → no-op
+        }
+        if (originalTransactionId == null) {
+            return;
+        }
+        BigDecimal ratio = BigDecimal.ONE;
+        if (reversedQty != null && originalQty != null && originalQty.compareTo(BigDecimal.ZERO) > 0) {
+            ratio = reversedQty.divide(originalQty, 10, RoundingMode.HALF_UP);
+        }
+        for (ProfitLog original : profitLogRepository.findByTransactionId(originalTransactionId)) {
+            // Csak az eredeti SELL-profit kerül kompenzálásra; a korábbi REVERSAL-tételeket nem duplázzuk.
+            if (!"SELL".equals(original.getTransactionType()) || original.getRealizedProfit() == null) {
+                continue;
+            }
+            BigDecimal compensation = original.getRealizedProfit().multiply(ratio)
+                    .negate().setScale(2, RoundingMode.HALF_UP);
+            ProfitLog comp = ProfitLog.builder()
+                    .company(original.getCompany())
+                    .transactionId(originalTransactionId)
+                    .branchId(original.getBranchId())
+                    .currencyCode(original.getCurrencyCode())
+                    .quantity(reversedQty != null ? reversedQty : original.getQuantity())
+                    .acquisitionCost(original.getAcquisitionCost())
+                    .salePrice(original.getSalePrice())
+                    .realizedProfit(compensation)
+                    .transactionType("REVERSAL")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            profitLogRepository.save(comp);
+            log.info("WAC profit kompenzáció: eredeti tx={} {} arány={} kompenzáció={}",
+                    originalTransactionId, original.getCurrencyCode(), ratio, compensation);
+        }
+    }
+
+    /**
      * Profit összesítés branch-re (pénztárra).
      */
     @Transactional(readOnly = true)

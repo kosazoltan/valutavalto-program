@@ -481,19 +481,18 @@ public class TransactionMultiLineService {
         }
         helper.updateCashBalance(branchId, helper.getHufCurrencyId(), payableAmount, true);
 
-        // A6 / b8 FR-8: soronkenti realizalt profit best-effort rogzitese (flag-gated,
-        // cold-start-safe, read-only a keszleten). Egysoros executeSell-lel egyezo logika.
-        // A tranzakcio-szintu kedvezmenyt soronkent atadjuk (uniform % a teljes osszegre),
-        // hogy a profit a tenyleges (diszkontalt) eladasi ratat hasznalja. A try-catch
-        // garantalja, hogy a best-effort profit-rogzites SOHA ne torje meg az eladast.
+        // A6 / b8 FR-8: soronkenti realizalt profit best-effort rogzitese a tranzakcio COMMITJA
+        // UTAN (flag-gated, cold-start-safe, read-only a keszleten). Egysoros executeSell-lel egyezo
+        // logika. A tranzakcio-szintu kedvezmenyt soronkent atadjuk (uniform % a teljes osszegre).
+        // Az afterCommit garantalja, hogy a profit_log CSAK sikeres eladas utan irodjon (nincs
+        // orphan rollback eseten) es a best-effort iras SOHA ne torje meg az eladast.
+        final Transaction savedTx = saved;
         for (TransactionLine line : transactionLines) {
-            try {
-                wacService.recordSellProfitIfEnabled(branchId, saved.getId(), line.getCurrency().getCode(),
-                        line.getBanknoteCount(), line.getAppliedRate(), request.getDiscountPercent());
-            } catch (Exception e) {
-                log.warn("WAC profit rogzites sikertelen (best-effort, eladas folytatodik): tx={} {}",
-                        saved.getId(), line.getCurrency().getCode(), e);
-            }
+            final TransactionLine l = line;
+            TransactionAfterCommit.run(
+                    () -> wacService.recordSellProfitIfEnabled(branchId, savedTx.getId(), l.getCurrency().getCode(),
+                            l.getBanknoteCount(), l.getAppliedRate(), request.getDiscountPercent()),
+                    "WAC multi-line sell profit tx=" + savedTx.getId() + " " + l.getCurrency().getCode());
         }
 
         // Napi statisztika

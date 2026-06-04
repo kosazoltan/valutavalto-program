@@ -18,6 +18,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -149,5 +150,61 @@ class WacServiceTest {
             assertThat(pl.getSalePrice()).isEqualByComparingTo("360");
             assertThat(pl.getRealizedProfit()).isEqualByComparingTo("6000.00");
         }
+    }
+
+    @Test
+    @DisplayName("recordReversalCompensationIfEnabled: flag OFF → no-op")
+    void reversalCompensation_flagOff_noOp() {
+        when(systemParameterService.getValue(eq(WacService.WAC_PROFIT_TRACKING_PARAM), any()))
+                .thenReturn("false");
+
+        wacService.recordReversalCompensationIfEnabled(7L, BigDecimal.TEN, BigDecimal.TEN);
+
+        verifyNoInteractions(profitLogRepository);
+    }
+
+    @Test
+    @DisplayName("recordReversalCompensationIfEnabled: teljes sztornó → negáló REVERSAL profit-tétel")
+    void reversalCompensation_fullReversal_negates() {
+        when(systemParameterService.getValue(eq(WacService.WAC_PROFIT_TRACKING_PARAM), any()))
+                .thenReturn("true");
+        Company company = mock(Company.class);
+        ProfitLog originalLog = ProfitLog.builder()
+                .company(company).transactionId(7L).branchId(BRANCH_ID).currencyCode("EUR")
+                .quantity(new BigDecimal("100")).acquisitionCost(new BigDecimal("300"))
+                .salePrice(new BigDecimal("400")).realizedProfit(new BigDecimal("10000.00"))
+                .transactionType("SELL").build();
+        when(profitLogRepository.findByTransactionId(7L)).thenReturn(List.of(originalLog));
+
+        // teljes sztornó: reversedQty == originalQty → arány 1 → kompenzáció = -10000
+        wacService.recordReversalCompensationIfEnabled(7L, new BigDecimal("100"), new BigDecimal("100"));
+
+        ArgumentCaptor<ProfitLog> captor = ArgumentCaptor.forClass(ProfitLog.class);
+        verify(profitLogRepository).save(captor.capture());
+        ProfitLog comp = captor.getValue();
+        assertThat(comp.getRealizedProfit()).isEqualByComparingTo("-10000.00");
+        assertThat(comp.getTransactionType()).isEqualTo("REVERSAL");
+        assertThat(comp.getTransactionId()).isEqualTo(7L);
+    }
+
+    @Test
+    @DisplayName("recordReversalCompensationIfEnabled: részleges visszatérítés → ARÁNYOS negáló tétel")
+    void reversalCompensation_partial_proportional() {
+        when(systemParameterService.getValue(eq(WacService.WAC_PROFIT_TRACKING_PARAM), any()))
+                .thenReturn("true");
+        Company company = mock(Company.class);
+        ProfitLog originalLog = ProfitLog.builder()
+                .company(company).transactionId(7L).branchId(BRANCH_ID).currencyCode("EUR")
+                .quantity(new BigDecimal("100")).acquisitionCost(new BigDecimal("300"))
+                .salePrice(new BigDecimal("400")).realizedProfit(new BigDecimal("10000.00"))
+                .transactionType("SELL").build();
+        when(profitLogRepository.findByTransactionId(7L)).thenReturn(List.of(originalLog));
+
+        // 40 EUR visszatérítés 100-ból → arány 0.4 → kompenzáció = -10000 × 0.4 = -4000
+        wacService.recordReversalCompensationIfEnabled(7L, new BigDecimal("40"), new BigDecimal("100"));
+
+        ArgumentCaptor<ProfitLog> captor = ArgumentCaptor.forClass(ProfitLog.class);
+        verify(profitLogRepository).save(captor.capture());
+        assertThat(captor.getValue().getRealizedProfit()).isEqualByComparingTo("-4000.00");
     }
 }
