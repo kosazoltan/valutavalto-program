@@ -1577,6 +1577,29 @@ export function getPendingTransactions(): PendingTransactionRow[] {
   return results;
 }
 
+/**
+ * Egy mentett vétel/eladás pending-sor szigorú helyi sorszámának (local_reference_number)
+ * lekérdezése ID alapján.
+ *
+ * 2026-06-04 (audit-fix): a nyugta-nyomtatás a TÉNYLEGES, rögzített szigorú sorszámot
+ * kell hogy a bizonylatra bélyegezze — nem fabrikált `P-<timestamp>`-et. A
+ * `savePendingTransactionV2` csak a beszúrt sor ID-jét adja vissza; ez a kis lekérdezés
+ * a hozzá tartozó helyi sorszámot adja vissza. SZÁNDÉKOSAN NEM szűr `synced = 0`-ra,
+ * így a sorszám akkor is lekérdezhető, ha a sor azonnal felszinkronizálódott (synced=1).
+ */
+export function getPendingTransactionRefById(id: number): string | null {
+  if (!db) return null;
+  const stmt = db.prepare('SELECT local_reference_number FROM pending_transactions WHERE id = ?');
+  stmt.bind([id]);
+  let ref: string | null = null;
+  if (stmt.step()) {
+    const row = stmt.getAsObject() as { local_reference_number?: string | null };
+    ref = row.local_reference_number ?? null;
+  }
+  stmt.free();
+  return ref;
+}
+
 export function savePendingConversion(
   fromCurrencyId: number | null,
   fromCurrencyCode: string,

@@ -226,6 +226,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }>> =>
     ipcRenderer.invoke('get-pending-transactions'),
 
+  // 2026-06-04 (audit-fix): a TÉNYLEGES szigorú helyi sorszám lekérdezése a mentett pending-sor
+  // ID-je alapján, hogy a nyugta a valós (rögzített) bizonylatszámot kapja.
+  getPendingTransactionRefById: (id: number): Promise<string | null> =>
+    ipcRenderer.invoke('get-pending-transaction-ref-by-id', id),
+
   getPendingTransactionCount: (): Promise<number> =>
     ipcRenderer.invoke('get-pending-transaction-count'),
 

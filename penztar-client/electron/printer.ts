@@ -80,6 +80,19 @@ export type PrintJobType =
   | 'vault_closing'
   | 'kktg_transfer';
 
+/**
+ * Multi-line aggregált vétel/eladás (2026-06-04) egyetlen valuta-sora.
+ * Egy aggregált tranzakció (egy bizonylatszám) több valuta-tételt tartalmazhat.
+ */
+export interface TransactionReceiptLine {
+  currencyCode: string;
+  foreignAmount: number;
+  rate: number;
+  /** A sor nyers (kerekítetlen) HUF-értéke. A teljes bizonylat fejléce hordozza az
+   *  összegzett és EGYSZER kerekített végösszeget (lásd `roundedHufAmount`). */
+  hufAmount: number;
+}
+
 export interface PrintReceiptData {
   type: PrintJobType;
   companyType: 'BEST_CHANGE' | 'EXPRESSZ';
@@ -119,6 +132,13 @@ export interface PrintReceiptData {
   deliveryDate?: string;
   /** FR-5 (átadás-átvétel): a szállítást végző neve a szállítólevélen. */
   carrierName?: string;
+  /**
+   * Multi-line aggregált vétel/eladás (2026-06-04): ha jelen van, a bizonylat ezeket a
+   * valuta-sorokat listázza EGYETLEN bizonylatszám alatt, és a fejléc
+   * hufAmount/roundedHufAmount/roundingDiff a TELJES (összegzett, egyszer kerekített)
+   * összeget hordozza. Egysoros bizonylatnál nincs jelen → a viselkedés VÁLTOZATLAN.
+   */
+  transactionLines?: TransactionReceiptLine[];
   closingSummary?: ClosingPrintData;
 }
 
@@ -320,9 +340,19 @@ function generateTransactionLines(data: PrintReceiptData): string[] {
   lines.push(isSell ? 'Deviza eladás (HUF → valuta):' : 'Deviza vásárlás (valuta → HUF):');
   lines.push(CMD.BOLD_OFF);
   lines.push('');
-  lines.push(`Valutanem:   ${data.currencyCode ?? '—'}`);
-  lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`);
-  lines.push(`Árfolyam:    ${formatRate(data.rate)}`);
+
+  const txLines = data.transactionLines;
+  if (txLines && txLines.length > 0) {
+    // Multi-line aggregate: minden valuta-sor listázva EGY bizonylatszám alatt.
+    txLines.forEach((ln) => {
+      lines.push(`${ln.currencyCode}:`);
+      lines.push(`  ${formatAmount(ln.foreignAmount)} × ${formatRate(ln.rate)} = ${formatAmount(ln.hufAmount)} Ft`);
+    });
+  } else {
+    lines.push(`Valutanem:   ${data.currencyCode ?? '—'}`);
+    lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`);
+    lines.push(`Árfolyam:    ${formatRate(data.rate)}`);
+  }
   lines.push('');
   lines.push(CMD.LINE);
   lines.push(CMD.BOLD_ON);
@@ -710,12 +740,22 @@ function generateTransactionHtml(data: PrintReceiptData): string {
   const isSell = data.type === 'sell';
   const label = isSell ? 'Deviza eladás (HUF → valuta):' : 'Deviza vásárlás (valuta → HUF):';
 
-  let html = `
-    <div class="section">
-      <div class="bold">${escHtml(label)}</div>
+  const txLines = data.transactionLines;
+  const bodyRows = (txLines && txLines.length > 0)
+    // Multi-line aggregate: minden valuta-sor listázva EGY bizonylatszám alatt.
+    ? txLines.map((ln) => `
+        <div class="amount-row"><span>${escHtml(ln.currencyCode)}: ${formatAmount(ln.foreignAmount)} × ${formatRate(ln.rate)}</span><span>${formatAmount(ln.hufAmount)} Ft</span></div>
+      `).join('')
+    : `
       <div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
       <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>
       <div class="amount-row"><span>Árfolyam:</span><span>${formatRate(data.rate)}</span></div>
+    `;
+
+  let html = `
+    <div class="section">
+      <div class="bold">${escHtml(label)}</div>
+      ${bodyRows}
     </div>
     <div class="line"></div>
     <div class="amount-row bold"><span>HUF összeg:</span><span>${formatAmount(data.hufAmount)} Ft</span></div>

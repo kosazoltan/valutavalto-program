@@ -867,32 +867,68 @@ export default function CashierTransactionPage() {
           )
         }
 
-        // Build receipt queue for all lines (Electron)
+        // Build receipt(s) (Electron)
         if (isElectron()) {
           const now = new Date()
-          const outcomeReceipts = (outcome as { receiptNumbers?: string[] }).receiptNumbers ?? []
-          const receipts: PrintReceiptData[] = filledRows.map((row, idx) => ({
+          // 2026-06-04 (audit-fix): a TÉNYLEGES, rögzített szigorú helyi sorszámok (a mentett
+          // pending-sorok local_reference_number-jei, savedIds-szel azonos sorrendben). A
+          // korábbi kód egy NEM LÉTEZŐ `receiptNumbers` mezőre castolt → mindig fabrikált
+          // `P-<timestamp>` került a bizonylatra, ami EGYETLEN rögzített tranzakcióval sem
+          // egyezett (audit-probléma). Most a valós sorszámot bélyegezzük; ha hiányzik (régi
+          // telepítő / null), fallback a fabrikált számra.
+          const outcomeReceipts = outcome.localReferenceNumbers ?? []
+          const receiptHeader = {
             type: mode === 'buy' ? 'buy' as const : 'sell' as const,
             companyType: ((worker?.companyCode ?? '').startsWith('EXP') ? 'EXPRESSZ' : 'BEST_CHANGE') as 'BEST_CHANGE' | 'EXPRESSZ',
-            receiptNumber: outcomeReceipts[idx] ?? `P-${now.getTime()}-${idx}`,
             branchCode: worker?.branchCode ?? '',
             cashierName: worker?.fullName ?? '',
             date: now.toLocaleDateString('hu-HU'),
             time: now.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }),
-            currencyCode: row.currencyCode,
-            foreignAmount: parseFloat(row.quantity) || 0,
-            rate: row.exchangeRate,
-            hufAmount: row.hufValue,
-            roundedHufAmount: roundHuf(row.hufValue),
-            roundingDiff: roundHuf(row.hufValue) - row.hufValue,
             customerName: cd?.name || undefined,
             customerDocNumber: cd?.documentNumber || undefined,
             customerAddress: cd?.address || undefined,
             vatExemptionText: 'Tárgyi adómentes az ÁFA tv. 86.§ (1) bek. k) pontja alapján.',
-          }))
-          receiptQueueRef.current = receipts.slice(1)
-          if (receipts[0]) {
-            openReceiptModal(receipts[0])
+          }
+
+          if (filledRows.length > 1) {
+            // Multi-line aggregate (2026-06-04): a sync EGY aggregált tranzakciót küldött EGY
+            // bizonylatszámmal (outcomeReceipts[0]), így EGY bizonylatot nyomtatunk, amely az
+            // összes valuta-sort listázza. A backend (TransactionMultiLineService) a nyers
+            // per-soros HUF-okat ÖSSZEGZI, majd a TELJES összeget kerekíti EGYSZER 5 Ft-ra —
+            // ezt tükrözzük a fejléc hufAmount/roundedHufAmount/roundingDiff mezőiben.
+            const totalRaw = filledRows.reduce((sum, row) => sum + row.hufValue, 0)
+            const totalRounded = roundHuf(totalRaw)
+            const receipt: PrintReceiptData = {
+              ...receiptHeader,
+              receiptNumber: outcomeReceipts[0] ?? `P-${now.getTime()}-0`,
+              hufAmount: totalRaw,
+              roundedHufAmount: totalRounded,
+              roundingDiff: totalRounded - totalRaw,
+              transactionLines: filledRows.map((row) => ({
+                currencyCode: row.currencyCode,
+                foreignAmount: parseFloat(row.quantity) || 0,
+                rate: row.exchangeRate,
+                hufAmount: row.hufValue,
+              })),
+            }
+            receiptQueueRef.current = []
+            openReceiptModal(receipt)
+          } else {
+            // Egysoros bizonylat: változatlan viselkedés (egy sor → egy bizonylat egy számmal).
+            const receipts: PrintReceiptData[] = filledRows.map((row, idx) => ({
+              ...receiptHeader,
+              receiptNumber: outcomeReceipts[idx] ?? `P-${now.getTime()}-${idx}`,
+              currencyCode: row.currencyCode,
+              foreignAmount: parseFloat(row.quantity) || 0,
+              rate: row.exchangeRate,
+              hufAmount: row.hufValue,
+              roundedHufAmount: roundHuf(row.hufValue),
+              roundingDiff: roundHuf(row.hufValue) - row.hufValue,
+            }))
+            receiptQueueRef.current = receipts.slice(1)
+            if (receipts[0]) {
+              openReceiptModal(receipts[0])
+            }
           }
         }
       } else {

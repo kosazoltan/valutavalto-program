@@ -203,6 +203,14 @@ export interface ElectronQueueSyncOutcome {
    * pending-no-errors -> "offline" toast, 0-pending -> "success" toast.
    */
   syncErrors: string[]
+  /**
+   * 2026-06-04 (audit-fix): a mentett pending-sorok TÉNYLEGES szigorú helyi sorszámai
+   * (local_reference_number), `savedIds`-szel azonos sorrendben. A nyugta-nyomtatás ezt
+   * bélyegzi a bizonylatra a fabrikált `P-<timestamp>` helyett, így a kinyomtatott szám
+   * EGYEZIK a rögzített tranzakcióval. Egy-egy elem null lehet, ha a régi Electron-preload
+   * nem ismeri a lekérdező IPC-t (offline-first fallback). Csak a vétel/eladás úton töltjük.
+   */
+  localReferenceNumbers: (string | null)[]
 }
 
 function getElectronAPI() {
@@ -290,6 +298,7 @@ async function safeElectronOp<T>(opName: string, fn: () => Promise<T>): Promise<
 async function finalizeSyncOutcome(
   savedIds: number[],
   listPendingIds: () => Promise<number[]>,
+  localReferenceNumbers: (string | null)[] = [],
 ): Promise<ElectronQueueSyncOutcome> {
   const electronAPI = getElectronAPI()
   if (!electronAPI) {
@@ -322,6 +331,7 @@ async function finalizeSyncOutcome(
     pendingCount,
     allSavedSynced: pendingCount === 0,
     syncErrors,
+    localReferenceNumbers,
   }
 }
 
@@ -405,10 +415,22 @@ export async function saveAndSyncPendingBuySell(
       savedIds.push(savedId)
     }
 
+    // 2026-06-04 (audit-fix): a TÉNYLEGES szigorú helyi sorszámok lekérdezése a mentett
+    // ID-k alapján — a nyugta a valós (rögzített) bizonylatszámot kapja, nem fabrikált
+    // P-<timestamp>-et. A lekérdezést a sync ELŐTT végezzük (a sor még biztosan elérhető;
+    // a getPendingTransactionRefById szándékosan nem szűr synced-re, így sync után is jó).
+    // Régi telepítő (a query-IPC nélkül) → null fallback, a renderer megőrzi a régi viselkedést.
+    let localReferenceNumbers: (string | null)[] = savedIds.map(() => null)
+    if (typeof electronAPI.getPendingTransactionRefById === 'function') {
+      localReferenceNumbers = await Promise.all(
+        savedIds.map((id) => electronAPI.getPendingTransactionRefById!(id).catch(() => null)),
+      )
+    }
+
     return finalizeSyncOutcome(savedIds, async () => {
       const pending = await electronAPI.getPendingTransactions()
       return pending.map((row) => row.id)
-    })
+    }, localReferenceNumbers)
   })
 }
 

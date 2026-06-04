@@ -238,6 +238,11 @@ export interface ElectronAPI {
     sync_attempts?: number | null;
     last_attempt_at?: string | null;
   }>>;
+  // 2026-06-04 (audit-fix): a TÉNYLEGES szigorú helyi sorszám (local_reference_number)
+  // lekérdezése a mentett pending vétel/eladás sor ID-je alapján — a nyugta a valós
+  // bizonylatszámot kapja, nem fabrikált P-<timestamp>-et. Opcionális: régi telepítő
+  // (preload) még nem ismeri → a renderer fallback-el a fabrikált számra.
+  getPendingTransactionRefById?: (id: number) => Promise<string | null>;
   getPendingConversions(): Promise<Array<{
     id: number;
     from_currency_id: number | null;

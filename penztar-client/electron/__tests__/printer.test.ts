@@ -183,6 +183,31 @@ describe('printer — generateReceiptContent (ESC/POS)', () => {
     expect(content).toContain('FIZETENDŐ');
   });
 
+  it('should list ALL currency lines under a SINGLE receipt number for a multi-line aggregate', () => {
+    // Multi-line aggregate (2026-06-04): egy bizonylatszám, több valuta-sor, összegzett+egyszer kerekített végösszeg.
+    const content = generateReceiptContent({
+      ...baseData,
+      currencyCode: undefined,
+      foreignAmount: undefined,
+      rate: undefined,
+      receiptNumber: 'BC-2026-AGG',
+      hufAmount: 70000,
+      roundedHufAmount: 70000,
+      roundingDiff: 0,
+      transactionLines: [
+        { currencyCode: 'EUR', foreignAmount: 100, rate: 400, hufAmount: 40000 },
+        { currencyCode: 'USD', foreignAmount: 100, rate: 300, hufAmount: 30000 },
+      ],
+    });
+    // Mindkét valuta-sor szerepel
+    expect(content).toContain('EUR');
+    expect(content).toContain('USD');
+    // EGY bizonylatszám-fejléc az egész aggregátumra (nincs per-soros álszám)
+    expect(content.match(/Bizonylat: BC-2026-AGG/g)?.length ?? 0).toBe(1);
+    // Az összegzett végösszeg jelenik meg
+    expect(content).toContain('FIZETENDŐ');
+  });
+
   it('should include footer text', () => {
     const content = generateReceiptContent(baseData);
     expect(content).toContain('Köszönjük, hogy minket választott!');

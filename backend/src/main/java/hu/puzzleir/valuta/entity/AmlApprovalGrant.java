@@ -13,11 +13,13 @@ import java.util.UUID;
  * egy SINGLE-USE grant-rekordot, amely bizonyítja, hogy az adott engedélyező (approver) PIN-nel igazolta
  * a jelenlétét az adott pénztáros (cashier) sessionjében, a konkrét JÓVÁHAGYOTT ÜGYFÉLHEZ
  * ({@code customer_key}) kötve. A tranzakció-rögzítés ({@code AmlApprovalService.recordSeniorApproval})
- * CSAK akkor rögzít jóváhagyást, ha van le nem járt grant a (company, cashier, approver, session)
- * négyesre, ÉS az ügyfél egyezik — az első sor atomikusan elhasználja ({@code uses_remaining--}), a
- * multi-line nyugta sibling sorai (ugyanaz a session+ügyfél) jóváhagyás-fedettként rögzülnek további
- * grant nélkül. Így egy pénztáros nem forgeolhat jóváhagyást a PIN megkerülésével, és egy session nem
- * használható újra MÁS ügyfélre (Codex P1, 2026-06-04). A 7 napos lejárat az offline → sync késleltetést fedi.</p>
+ * CSAK akkor rögzít jóváhagyást, ha van le nem járt, FEL NEM HASZNÁLT grant a (company, cashier, approver,
+ * session) négyesre, ÉS az ügyfél egyezik — a rögzítés atomikusan elhasználja ({@code uses_remaining--}).
+ * STRICT single-use: a multi-line nyugta most EGY aggregát backend-tranzakció (egy AML-kapu, egy consume),
+ * ezért egy nyugta egyetlen grant-felhasználást igényel; a kimerült grant ELUTASÍT (nincs „sibling-fedett"
+ * újrafelhasználás → a kliens-vezérelt session nem amplifikálható). Így egy pénztáros nem forgeolhat
+ * jóváhagyást a PIN megkerülésével, és egy session nem használható újra MÁS ügyfélre (Codex P1, 2026-06-04).
+ * A 7 napos lejárat az offline → sync késleltetést fedi.</p>
  */
 @Entity
 @Table(name = "aml_approval_grant", indexes = {
@@ -55,10 +57,10 @@ public class AmlApprovalGrant {
     private String sessionId;
 
     /**
-     * Az ügyfél-kulcs (a jóváhagyott ügyfél neve), amihez a grant kötve van — Codex P1. Egy multi-line
-     * nyugta minden sora ugyanazt az ügyfelet viszi: az első sor elhasználja a grantot, a többi (ugyanaz a
-     * session ÉS ugyanaz a customer_key) jóváhagyás-fedettként átmegy. MÁS ügyfélre újrahasznált session
-     * elbukik → nincs amplifikáció nem-összefüggő tranzakciókra. NULL a régi (V294) grantoknál (BC).
+     * Az ügyfél-kulcs (a jóváhagyott ügyfél neve), amihez a grant kötve van — Codex P1. A grant SINGLE-USE és
+     * EHHEZ az ügyfélhez kötött: a (multi-line esetén aggregát) nyugta egyetlen tranzakciója elhasználja; egy
+     * MÁS ügyfélre újrahasznált session ELBUKIK → nincs amplifikáció nem-összefüggő tranzakciókra. NULL a régi
+     * (V294) grantoknál (BC).
      */
     @Column(name = "customer_key", length = 255)
     private String customerKey;

@@ -121,7 +121,7 @@ public class AmlApprovalService {
      * ({@code customerKey}) ÉS a {@code sessionId}-hez kötve. A count NEM a klienstől jön (nincs grantUses
      * amplifikáció). A fel nem használt grant 7 nap múlva lejár.</p>
      *
-     * @param customerKey a jóváhagyott ügyfél neve (a modal küldi) — a consume ehhez köti a fedett sorokat;
+     * @param customerKey a jóváhagyott ügyfél neve (a modal küldi) — a consume ehhez köti az engedélyt;
      *                    {@code null}/üres esetén nincs ügyfél-kötés (defenzív, de a modal mindig küldi).
      */
     @Transactional

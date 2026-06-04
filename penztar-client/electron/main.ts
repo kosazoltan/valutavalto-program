@@ -62,6 +62,7 @@ import {
   savePendingBankTransaction,
   savePendingStorno,
   getPendingTransactions,
+  getPendingTransactionRefById,
   getPendingConversions,
   getPendingBankTransactions,
   getPendingStornos,
@@ -480,6 +481,15 @@ ipcMain.handle('save-pending-transaction-v2', async (
 
 ipcMain.handle('get-pending-transactions', async (): Promise<ReturnType<typeof getPendingTransactions>> => {
   return getPendingTransactions();
+});
+
+// 2026-06-04 (audit-fix): a nyugta-nyomtatáshoz a TÉNYLEGES szigorú helyi sorszám lekérdezése
+// a mentett pending-sor ID-je alapján (nem fabrikált P-<timestamp>).
+ipcMain.handle('get-pending-transaction-ref-by-id', async (
+  _event,
+  id: number,
+): Promise<string | null> => {
+  return getPendingTransactionRefById(id);
 });
 
 ipcMain.handle('save-pending-conversion', async (
