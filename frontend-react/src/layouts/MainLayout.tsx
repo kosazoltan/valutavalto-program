@@ -272,7 +272,7 @@ export default function MainLayout() {
       {/* Main content */}
       <main className="flex-1 flex flex-col">
         {/* MODERN Header Bar */}
-        <header className="h-10 bg-white border-b border-form-border flex items-center justify-between px-4 shadow-sm">
+        <header className="no-print h-10 bg-white border-b border-form-border flex items-center justify-between px-4 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="text-xs">
               <span className="text-secondary-500">{t('layout.branchLabel')}</span>

@@ -275,3 +275,39 @@
 /* A Vite dev-error-overlay elrejtése a fejlesztői módban a `main.tsx` JS-ből történik
    (querySelector('vite-error-overlay') → eltávolítás). A korábbi CSS-szabály production-ban
    felesleges volt ÉS a lightningcss minify elhasalt rajta („Unexpected token") — eltávolítva. */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Nyomtatási elrendezés (window.print) — az alkalmazás-keret elrejtése, hogy
+   a bizonylat/zárás/szállítólevél TISZTA A4 dokumentumként nyomtatódjon.
+   Az `aside` (oldalsáv), a `.status-bar` (alsó állapotsáv) és minden `.no-print`
+   (felső fejléc, gombsorok, szűrők) nem jelenik meg. A tartalom-konténer
+   overflow-ja láthatóra vált, hogy a hosszú tartalom ne csonkuljon.
+   ───────────────────────────────────────────────────────────────────────── */
+@media print {
+  aside,
+  .status-bar,
+  .no-print {
+    display: none !important;
+  }
+
+  /* A fő tartalmi terület és a konténerek ne korlátozzák/csonkolják a nyomtatást. */
+  main {
+    overflow: visible !important;
+  }
+  main > div {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+}
