@@ -332,7 +332,7 @@ export default function MainLayout() {
         )}
 
         {/* Page content */}
-        <div className="flex-1 p-3 overflow-auto min-h-0">
+        <div className="app-print-content flex-1 p-3 overflow-auto min-h-0">
           <Outlet />
         </div>
 

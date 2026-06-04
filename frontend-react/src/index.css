@@ -290,11 +290,13 @@
     display: none !important;
   }
 
-  /* A fő tartalmi terület és a konténerek ne korlátozzák/csonkolják a nyomtatást. */
+  /* A fő tartalmi terület és a layout content-wrappere ne korlátozza/csonkolja a
+     nyomtatást. Szűk, dedikált szelektor (.app-print-content) a blast-radius minimumra
+     szorításához — a szabály a MainLayout content-konténerére hat, nem tetszőleges div-re. */
   main {
     overflow: visible !important;
   }
-  main > div {
+  .app-print-content {
     overflow: visible !important;
     padding: 0 !important;
   }
