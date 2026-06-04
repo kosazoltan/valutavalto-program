@@ -118,6 +118,17 @@ function getLocalFirstApi(): RateMakerLocalFirstApi | null {
   return api?.localFirst ?? null
 }
 
+/**
+ * FK02-D / Codex P1: a group-rate SQLite IPC TÉNYLEGES elérhetősége. NEM elég `isElectron()`-t
+ * nézni: a standalone rate-maker host (`arfolyam-keszito-client`) Electron, de a group-rate IPC
+ * (`saveGroupRateValues`/`getGroupRateValues`) csak a `kozponti-client`-ben van bekötve. Ahol az
+ * IPC hiányzik, a localStorage az autoritás — onnan kell tölteni (különben `{}` → adatvesztés).
+ */
+export function isGroupRateOfflineDbAvailable(): boolean {
+  const lf = getLocalFirstApi()
+  return lf?.getGroupRateValues != null && lf?.saveGroupRateValues != null
+}
+
 /** Fire-and-forget: a csoport fix rátaértékeit az Electron SQLite-ba is elmenti (best-effort, nem dob). */
 export function saveGroupRateValuesToOfflineDb(groupId: string, values: Record<string, string>): void {
   const lf = getLocalFirstApi()

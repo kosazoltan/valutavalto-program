@@ -30,7 +30,6 @@ import { validateWorkgroupProtection, workgroupProtectionLabel, type ProtectionR
 import { sortWorkgroupsBySequence } from './workgroupOrdering'
 import { isFormula, type WgValues } from './workgroupSheetFormula'
 import { applyCrossGroupCopy, type CrossGroupCopyCell } from './crossGroupCopy'
-import { isElectron } from '../../utils/electron'
 import { isSignificantDeviation } from './deviationCheck'
 import {
   recomputeWorkgroupSheet,
@@ -49,6 +48,7 @@ import {
   persistGroupRateValues,
   loadGroupRateValuesFromOfflineDb,
   saveGroupRateValuesToOfflineDbAwait,
+  isGroupRateOfflineDbAvailable,
 } from './workgroupSheetStorage'
 import { useTranslation } from 'react-i18next'
 
@@ -685,20 +685,22 @@ export default function RateCreationPage() {
     const succeeded: string[] = []
     for (const targetId of copyTargetIds) {
       try {
-        // Codex P1: Electron-ben a SQLite (offline DB) az AUTORITÁS a fix értékekre — onnan
-        // hidratáljuk a cél jelenlegi értékeit, hogy a localStorage-cache esetleges divergenciája
-        // (pl. másik eszközről szinkronizált adat) NE okozzon adatvesztést a perzisztáláskor.
-        // Web (nincs Electron) → localStorage. A formulák localStorage-only-k (nincs SQLite-mirror).
-        const targetValues = isElectron()
+        // Codex P1: ahol a group-rate SQLite IPC ELÉRHETŐ (kozponti rate-maker host), a SQLite az
+        // autoritás — onnan hidratáljuk a cél értékeit, hogy a localStorage-cache divergenciája
+        // (másik eszközről szinkronizált adat) NE okozzon adatvesztést. Ahol az IPC NINCS bekötve
+        // (standalone arfolyam-keszito host, web), a localStorage az autoritás — különben `{}`
+        // töltődne és felülírná a meglévő értékeket. A formulák localStorage-only-k.
+        const dbAvailable = isGroupRateOfflineDbAvailable()
+        const targetValues = dbAvailable
           ? await loadGroupRateValuesFromOfflineDb(targetId)
           : loadGroupRateValues(targetId)
         const { formulas: nf, values: nv } = applyCrossGroupCopy(
           loadGroupFormulas(targetId), targetValues, payload)
         saveGroupFormulas(targetId, nf)       // localStorage (formulák)
         saveGroupRateValues(targetId, nv)     // localStorage (értékek, szinkron)
-        // Codex P2: Electronban a sikert az AUTORITATÍV SQLite-íráshoz kötjük (await + {ok}),
-        // nem a fire-and-forget perzisztáláshoz — ha a SQLite-írás bukik, NEM jelzünk sikert.
-        const dbOk = isElectron() ? (await saveGroupRateValuesToOfflineDbAwait(targetId, nv)).ok : true
+        // Codex P2: ahol az IPC elérhető, a sikert az AUTORITATÍV SQLite-íráshoz kötjük (await + {ok});
+        // ahol nincs, a localStorage az autoritás → ok=true.
+        const dbOk = dbAvailable ? (await saveGroupRateValuesToOfflineDbAwait(targetId, nv)).ok : true
         if (!dbOk) {
           logger.warn('RateCreationPage', `Cross-csoport másolás: SQLite-mentés sikertelen — ${targetId}`)
           continue
