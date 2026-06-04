@@ -14,6 +14,27 @@ import { isElectron } from '../../utils/electron'
 import { logger } from '../../utils/logger';
 import { useTranslation } from 'react-i18next'
 
+// A backend Receipt.receiptType = TransactionType.name() (enum-név). Magyar megjelenítő-címkék, hogy a
+// tábla/részletek a típus-szűrővel konzisztens, olvasható szöveget mutassanak (a TransactionType.java
+// magyar leírásai alapján). Ismeretlen érték → a nyers kód (fallback).
+const RECEIPT_TYPE_LABELS: Record<string, string> = {
+  BUY: 'Vétel',
+  SELL: 'Eladás',
+  REVERSAL: 'Sztornó',
+  PARTIAL_REFUND: 'Részleges visszatérítés',
+  CONVERSION: 'Konverzió',
+  TRANSFER_OUT: 'Pénz-átadás',
+  TRANSFER_IN: 'Pénz-átvétel',
+  WESTERN_UNION_SEND: 'WU küldés',
+  WESTERN_UNION_RECEIVE: 'WU fogadás',
+  MONEYGRAM_SEND: 'MG küldés',
+  MONEYGRAM_RECEIVE: 'MG fogadás',
+  VIGNETTE: 'Autópálya matrica',
+  PHONE_TOPUP: 'Telefon feltöltés',
+  OTHER: 'Egyéb',
+}
+export const receiptTypeLabel = (code?: string): string => (code ? (RECEIPT_TYPE_LABELS[code.toUpperCase()] ?? code) : '—')
+
 export default function ReceiptPage() {
   const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
@@ -21,6 +42,12 @@ export default function ReceiptPage() {
   const [localDrafts, setLocalDrafts] = useState<PendingReceiptDraft[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  // EXCMD b5b FR-BSZUR-01: bizonylattípus-szűrő (egyszerre egy aktív). A backend Receipt.receiptType =
+  // TransactionType.name() (verifikálva: ReceiptService:166), ezért az ENUM-NEVEKRE szűrünk:
+  // BUY/SELL/CONVERSION/TRANSFER_OUT/TRANSFER_IN/REVERSAL. A "csak ügyfeles" (FR-BSZUR-02) + ügyfél-adatlap
+  // szűrőmezők + AML-jelölők (FR-03..05) richer list-adatot igényelnek (customerName/hufAmount/approver a
+  // GET /receipts-ben) → következő increment (a list-DTO dúsítása). Itt a típus-szűrő a meglévő adatból.
+  const [typeFilter, setTypeFilter] = useState<string>('ALL')
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null)
   const [selectedDraft, setSelectedDraft] = useState<PendingReceiptDraft | null>(null)
 
@@ -47,13 +74,17 @@ export default function ReceiptPage() {
   }, [loadData])
 
   const filteredReceipts = useMemo(() => {
-    if (!searchTerm) return receipts
     const term = searchTerm.toLowerCase()
-    return receipts.filter(r =>
-      r.receiptNumber?.toLowerCase().includes(term) ||
-      r.navReceiptNumber?.toLowerCase().includes(term)
-    )
-  }, [receipts, searchTerm])
+    return receipts.filter(r => {
+      // EXCMD b5b FR-BSZUR-01: típus-szűrő (ALL = kikapcsolva). A receiptType case-insensitive egyezés.
+      if (typeFilter !== 'ALL' && (r.receiptType ?? '').toUpperCase() !== typeFilter) return false
+      if (!term) return true
+      return (
+        r.receiptNumber?.toLowerCase().includes(term) ||
+        r.navReceiptNumber?.toLowerCase().includes(term)
+      )
+    })
+  }, [receipts, searchTerm, typeFilter])
 
   const handlePrint = async (id: string): Promise<void> => {
     try {
@@ -94,11 +125,29 @@ export default function ReceiptPage() {
       </div>
 
       <div className="form-panel">
-        <div>
-          <label className="form-label">{t('common.search')}</label>
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-            <input type="text" className="form-input pl-8" placeholder="Bizonylatszám..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        <div className="flex flex-wrap gap-4">
+          <div className="flex-1 min-w-[200px]">
+            <label className="form-label">{t('common.search')}</label>
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              <input type="text" className="form-input pl-8" placeholder="Bizonylatszám..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+          </div>
+          {/* EXCMD b5b FR-BSZUR-01: bizonylattípus-szűrő (egyszerre egy aktív; ALL = szűrés kikapcsolva). */}
+          <div className="min-w-[200px]">
+            <label className="form-label">Bizonylattípus</label>
+            <select className="form-input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+              {/* A backend Receipt.receiptType = TransactionType.name() — az enum-nevekre szűrünk (verifikálva:
+                  ReceiptService:166, TransactionType.java). A "csak ügyfeles" (FR-BSZUR-02) richer list-adatot
+                  igényel (customerName a GET /receipts-ben) → következő increment. */}
+              <option value="ALL">Szűrés kikapcsolva (összes)</option>
+              <option value="BUY">Csak vételi</option>
+              <option value="SELL">Csak eladási</option>
+              <option value="CONVERSION">Csak konverziós</option>
+              <option value="TRANSFER_OUT">Csak pénz-átadási</option>
+              <option value="TRANSFER_IN">Csak pénz-átvételi</option>
+              <option value="REVERSAL">Csak stornózott</option>
+            </select>
           </div>
         </div>
       </div>
@@ -149,7 +198,7 @@ export default function ReceiptPage() {
                 <tr key={r.id}>
                   <td className="font-mono">{r.receiptNumber}</td>
                   <td className="font-mono">{r.navReceiptNumber || '-'}</td>
-                  <td>{r.receiptType}</td>
+                  <td>{receiptTypeLabel(r.receiptType)}</td>
                   <td>{new Date(r.issueDate).toLocaleDateString('hu-HU')}</td>
                   <td><span className={`badge ${r.isPrinted ? 'badge-green' : 'badge-yellow'}`}>{r.isPrinted ? 'Igen' : 'Nem'}</span></td>
                   <td>
@@ -175,7 +224,7 @@ export default function ReceiptPage() {
             <div className="space-y-2">
               <div><strong>{t('receipts.bizonylatszam')}</strong> {selectedReceipt.receiptNumber}</div>
               <div><strong>{t('receipts.navBizonylatszam2')}</strong> {selectedReceipt.navReceiptNumber || '-'}</div>
-              <div><strong>{t('cashdesk.tipus')}</strong> {selectedReceipt.receiptType}</div>
+              <div><strong>{t('cashdesk.tipus')}</strong> {receiptTypeLabel(selectedReceipt.receiptType)}</div>
               <div><strong>{t('receipts.kiadasDatuma')}</strong> {new Date(selectedReceipt.issueDate).toLocaleString('hu-HU')}</div>
               <div><strong>{t('receipts.nyomtatva')}</strong> {selectedReceipt.isPrinted ? 'Igen' : 'Nem'}</div>
               {selectedReceipt.content && (
