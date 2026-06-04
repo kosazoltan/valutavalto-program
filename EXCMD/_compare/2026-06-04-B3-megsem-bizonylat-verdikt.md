@@ -18,10 +18,13 @@ A legacy Delphi a bizonylatszámot KORÁN (a rögzítés közben) osztotta ki, e
 3. **Rögzítés UTÁNi megszakítás (van szám) = STORNO/REVERSAL**, ami a rendszerben létezik (`TransactionType.REVERSAL`, `generateStornoReceipt`).
 
 ## Verdikt
-- Megszakítás **rögzítés közben** (submit előtt) → nincs szám → **nincs kiesés** → MEGSEM-placeholder FELESLEGES.
-- Megszakítás **submit után** (van szám, rögzítve) → **STORNO** (létezik), nem MEGSEM.
+A legacy FR-15 „rögzítés közben VAGY a nyomtatás előtt" megszakítás a modern flow-ban HÁROM, eltérő esetre bomlik — a megszakítás NEM egyetlen „storno-only" eset (Codex P2 pontosítás):
 
-A MEGSEM bizonylat a legacy korai-számkiosztás artefaktuma; a modern submit-kori gapless számozás + storno kiváltja. **Category-C: doc↔modern-architektúra eltérés, NEM bug.** A CLAUDE.md/mandátum szerint dokumentálva, NEM implementálva (felesleges feature elkerülése).
+1. **Megszakítás rögzítés közben** (submit/számkiosztás ELŐTT, `handleCancel`) → nincs szám → **nincs kiesés** → MEGSEM-placeholder FELESLEGES.
+2. **A NYOMTATÁS meghiúsul/megszakad, de a tranzakció MÁR rögzített és érvényes** → **ÚJRANYOMTATÁS** (`receiptApi.print` / a függő vázlat újra-nyomtatása) — NEM storno, NEM MEGSEM: a tranzakció érvényes marad, csak a fizikai nyomtatás ismétlődik. (A bizonylatszám nem vész el — a rekordhoz tartozik.)
+3. **A rögzített tranzakciót ténylegesen vissza KELL vonni** → **STORNO/REVERSAL** (`TransactionType.REVERSAL`, `generateStornoReceipt`), ami új storno-bizonylatszámot kap (nem hagy rést).
+
+Egyik esetben sincs „kiosztott, de fel nem használt" szám (a legacy gap-forrás), mert a számkiosztás atomikus a rögzítéssel. **Category-C: doc↔modern-architektúra eltérés, NEM bug** — a MEGSEM a legacy korai-számkiosztás artefaktuma, amit a modern submit-kori gapless számozás + újranyomtatás + storno együtt kivált. A mandátum szerint dokumentálva, NEM implementálva (felesleges feature elkerülése).
 
 ## Ha a jövőben mégis felmerülne
 Egyetlen lehetséges residual: ha egy submit-kor kiosztott LOKÁLIS szám olyan tranzakcióhoz tartozik, amit a SZERVER utólag elutasít (pl. AML-blokk sync-kor) — ez NEM a FR-15 „mégsem rögzítés közben" esete, hanem lokális↔szerver rekonciliáció (külön téma); a lokális sorozat akkor is gapless marad (a szám ki van osztva), a szerver-oldali audit kezeli az elutasítást.
