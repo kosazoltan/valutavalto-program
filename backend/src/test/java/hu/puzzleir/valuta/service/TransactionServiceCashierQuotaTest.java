@@ -41,6 +41,7 @@ import static org.mockito.Mockito.when;
 class TransactionServiceCashierQuotaTest {
     @Mock private TransactionValidationService transactionValidationService;
     @Mock private PmtComplianceValidator pmtComplianceValidator;
+    @Mock private WacService wacService;
 
     @InjectMocks
     private TransactionService transactionService;

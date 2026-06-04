@@ -35,6 +35,16 @@ public class WacService {
     private final ProfitLogRepository profitLogRepository;
     private final CompanyRepository companyRepository;
     private final BranchRepository branchRepository;
+    private final SystemParameterService systemParameterService;
+
+    /**
+     * A6 / b8 FR-8: a profit_log élesítését vezérlő flag. Default OFF — a realizált
+     * profit-követés bekapcsolása ops-döntés, mert a WAC bekerülési ár a
+     * MaterialReceiptService értéktár→pénztár átadásokból épül; éles bekapcsolás előtt
+     * a nyitó-készlet bekerülési árának konzisztenciáját ops/compliance igazolja.
+     */
+    static final String WAC_PROFIT_TRACKING_PARAM = "WAC_PROFIT_TRACKING_ENABLED";
+    private static final String WAC_PROFIT_TRACKING_DEFAULT = "false";
 
     /**
      * WAC frissítés amikor valuta érkezik (bank→értéktár, értéktár→pénztár, ügyfél→pénztár).
@@ -137,6 +147,41 @@ public class WacService {
                 acquisitionCost, customerPrice, realizedProfit);
 
         return realizedProfit;
+    }
+
+    /**
+     * A6 / b8 FR-8: ELADÁS realizált profitjának rögzítése a profit_log-ba — flag-gated,
+     * cold-start-safe, a tranzakciót sosem törő best-effort melléklet.
+     *
+     * <p>FONTOS: csak OLVAS a currency_stock-ból (a WAC bekerülési árat) és a profit_log-ba ÍR,
+     * a currency_stock mennyiségét/WAC-ját NEM módosítja — így a havi zárás készletértékelését
+     * ({@code MonthlyClosingService}) NEM befolyásolja, és nincs kettős-számolás a cash_balance-szal.</p>
+     *
+     * <p>Cold-start védelem: ha nincs WAC bekerülési ár (nincs készlet-sor, vagy WAC ≤ 0),
+     * KIHAGYJA a rögzítést — különben a teljes eladási árat profitként könyvelné (túlbecslés).</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void recordSellProfitIfEnabled(UUID branchId, Long transactionId, String currencyCode,
+                                          BigDecimal quantity, BigDecimal sellRate) {
+        if (systemParameterService == null || !"true".equalsIgnoreCase(
+                systemParameterService.getValue(WAC_PROFIT_TRACKING_PARAM, WAC_PROFIT_TRACKING_DEFAULT))) {
+            return; // flag OFF (default) → no-op
+        }
+        if (branchId == null || currencyCode == null || quantity == null || sellRate == null) {
+            return;
+        }
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        CurrencyStock stock = currencyStockRepository
+                .findByCompanyIdAndEntityTypeAndEntityIdAndCurrencyCode(
+                        companyId, "CASHIER", branchId.toString(), currencyCode)
+                .orElse(null);
+        if (stock == null || stock.getWeightedAvgCost() == null
+                || stock.getWeightedAvgCost().compareTo(BigDecimal.ZERO) <= 0) {
+            log.debug("WAC profit kihagyva (nincs bekerülési ár): branch={} {} qty={}",
+                    branchId, currencyCode, quantity);
+            return;
+        }
+        recordProfit(branchId, transactionId, currencyCode, quantity, sellRate, "SELL");
     }
 
     /**

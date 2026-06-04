@@ -38,6 +38,7 @@ import static org.mockito.Mockito.*;
 class TransactionServiceMultiTenancyTest {
     @Mock private TransactionValidationService transactionValidationService;
     @Mock private PmtComplianceValidator pmtComplianceValidator;
+    @Mock private WacService wacService;
 
     @InjectMocks
     private TransactionService transactionService;
