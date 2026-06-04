@@ -38,6 +38,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     Optional<Transaction> findByIdAndCompanyId(@Param("id") Long id, @Param("companyId") UUID companyId);
 
     /**
+     * Batch, cég-szűrt tranzakció-lekérés id-halmazra (bizonylat-böngésző dúsítás).
+     * A company-szűrés a query-ben történik (JPQL t.company.id) — így (1) más cég
+     * tranzakciója NEM kerül vissza (multi-tenant), és (2) NEM kell a detached
+     * {@code tx.getCompany()} lazy-asszociációt dereferálni (OSIV=off →
+     * LazyInitializationException elkerülve). Csak skalár mezőket olvasunk
+     * (customerName, hufAmount), amelyek a SELECT t-vel betöltődnek.
+     */
+    @Query("SELECT t FROM Transaction t WHERE t.id IN :ids AND t.company.id = :companyId")
+    List<Transaction> findAllByIdInAndCompanyId(
+        @Param("ids") java.util.Collection<Long> ids,
+        @Param("companyId") UUID companyId);
+
+    /**
      * Bizonylat keresése szám alapján (JOIN FETCH a lazy proxy hiba elkerüléséhez)
      */
     @Query("SELECT t FROM Transaction t " +
