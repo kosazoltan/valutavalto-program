@@ -1434,6 +1434,11 @@ export interface Receipt {
   navReceiptNumber?: string
   isPrinted: boolean
   printedAt?: string
+  // EXCMD b5b (FR-BSZUR-02 "csak ügyfeles" + FR-BSZUR-05 10M Ft AML-jelölő): a backend a
+  // kapcsolt Transaction-ből dúsítja (@Transient → Jackson serializálja). Opcionális —
+  // backward-compatible: a többi fogyasztó (pl. reports.ts) figyelmen kívül hagyja.
+  customerName?: string
+  hufAmount?: number
 }
 
 export const receiptApi = {

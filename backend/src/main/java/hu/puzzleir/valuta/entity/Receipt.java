@@ -5,6 +5,7 @@ import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -50,4 +51,15 @@ public class Receipt {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    // === EXCMD b5b (FR-BSZUR-02 "csak ügyfeles" + FR-BSZUR-05 10M Ft AML-jelölő) ===
+    // A bizonylat-böngésző szűrője ügyfél-jelenlét és HUF-küszöb alapján szűr/jelöl.
+    // Ezek NEM a receipt táblában tárolódnak, hanem a kapcsolt Transaction-ből jönnek
+    // (read-through view layer, ld. ReceiptService). @Transient → JPA nem perzisztálja,
+    // de a Jackson SERIALIZÁLJA, így megjelennek a GET /api/v1/receipts JSON-ban.
+    @Transient
+    private String customerName;
+
+    @Transient
+    private BigDecimal hufAmount;
 }
