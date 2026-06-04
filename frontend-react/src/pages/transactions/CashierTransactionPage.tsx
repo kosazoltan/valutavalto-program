@@ -167,6 +167,11 @@ export default function CashierTransactionPage() {
   // grant (verify-approver) ehhez kotodik, es a tranzakcio(k) UGYANEZT viszik, igy a maradek grant-
   // felhasznalasok NEM szivaroghatnak masik nyugtara.
   const approvalSessionIdRef = useRef<string | null>(null)
+  // Codex P1: a jovahagyando nyugta TENYLEGES sorszama → ennyi felhasznalasu grantot ker a modal a
+  // verify-approver-tol. A penztar-client a multi-line nyugtat N fuggetlen tranzakciokent synkronizalja
+  // ugyanazzal a session-nel, mind megutheti az AML-kaput → N grant-felhasznalas kell (kulonben az elso
+  // sor elhasznalja az egyetlen grantot, a tobbi "kimerult"-tel elhasal). A pre-check trigger allitja be.
+  const amlGrantUsesRef = useRef(1)
   // Copilot review: a pre-check (aml-approval/check-required) az isSubmitting guard ELOTT fut, ezert
   // gyors dupla-submit parhuzamos pre-checket/modalt nyithatna. Ez a ref biztositja, hogy egyszerre
   // csak egy pre-check fusson, amig nincs jovahagyo.
@@ -673,6 +678,9 @@ export default function CashierTransactionPage() {
         if (checkRes.data?.requiresApproval) {
           // Uj jovahagyas-session a nyugtahoz (a grantot ehhez koti a backend).
           approvalSessionIdRef.current = crypto.randomUUID()
+          // A grant felhasznalasai = a nyugta tenyleges sorszama (minden sor onallo backend-tranzakcio,
+          // mind UGYANEZT a session-t viszi); single-line → 1. Server-side [1, MAX_LINES]-re klampelt.
+          amlGrantUsesRef.current = filledRows.length
           setAmlApprovalReason(typeof checkRes.data?.reason === 'string' ? checkRes.data.reason : '')
           setShowAmlApprover(true)
           return // a modal onApproved-ja beallitja az approverWorkerId-t es ujrahivja a submitet
@@ -1507,6 +1515,7 @@ export default function CashierTransactionPage() {
         currentWorkerId={worker?.id ?? 0}
         reason={amlApprovalReason}
         sessionId={approvalSessionIdRef.current ?? ''}
+        grantUses={amlGrantUsesRef.current}
         onApproved={(workerId, name) => {
           approverWorkerIdRef.current = workerId
           setShowAmlApprover(false)

@@ -33,6 +33,13 @@ interface Props {
    * (Codex P1: receipt-scoping).
    */
   sessionId: string
+  /**
+   * A nyugta tényleges sorszáma — a backend ennyi felhasználású grantot állít ki (Codex P1). A penztar-client
+   * a multi-line nyugtát N független tranzakcióként synkronizálja UGYANAZZAL a session-nel, mind megütheti az
+   * AML-kaput → N grant-felhasználás kell. Single-line/konverzió → 1. Server-side [1, MAX_LINES]-re klampelt.
+   * Hiányzó/0 → 1.
+   */
+  grantUses?: number
   /** Sikeres jóváhagyás után — a validált engedélyező adataival. */
   onApproved: (approverWorkerId: number, approverName: string) => void
   onCancel: () => void
@@ -47,7 +54,7 @@ function approverLabel(a: EligibleApprover): string {
   return composed || `#${a.id}`
 }
 
-export default function AmlApproverModal({ open, currentWorkerId, reason, sessionId, onApproved, onCancel }: Props) {
+export default function AmlApproverModal({ open, currentWorkerId, reason, sessionId, grantUses, onApproved, onCancel }: Props) {
   const [approvers, setApprovers] = useState<EligibleApprover[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pin, setPin] = useState('')
@@ -93,6 +100,8 @@ export default function AmlApproverModal({ open, currentWorkerId, reason, sessio
         approverWorkerId: selectedId,
         pin,
         approvalSessionId: sessionId,
+        // A nyugta sorszáma → ennyi felhasználású grant (multi-line per-soros sync; Codex P1). Default 1.
+        grantUses: grantUses && grantUses > 0 ? grantUses : 1,
       })
       if (res.data?.ok) {
         onApproved(Number(res.data.approverWorkerId), String(res.data.approverName ?? ''))

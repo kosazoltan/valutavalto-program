@@ -150,9 +150,9 @@ class AmlApprovalServiceTest {
     }
 
     @Test
-    @DisplayName("issueApprovalGrant: EGY grant, SERVER-FIX uses=1 — egy PIN egy nyugtát fed (Codex P1)")
-    void issueApprovalGrant_savesOneGrantWithServerFixedUses() {
-        service.issueApprovalGrant(99L, "session-xyz");
+    @DisplayName("issueApprovalGrant: single-line (uses=1) → 1 felhasználású grant, session-scoped (Codex P1)")
+    void issueApprovalGrant_singleLine() {
+        service.issueApprovalGrant(99L, "session-xyz", 1);
 
         ArgumentCaptor<AmlApprovalGrant> captor = ArgumentCaptor.forClass(AmlApprovalGrant.class);
         verify(grantRepository, times(1)).save(captor.capture());
@@ -160,9 +160,27 @@ class AmlApprovalServiceTest {
         assertThat(saved.getApproverWorkerId()).isEqualTo(99L);
         assertThat(saved.getCompanyId()).isEqualTo(companyId);
         assertThat(saved.getSessionId()).isEqualTo("session-xyz"); // receipt-scoping (Codex P1)
-        // GRANT_USES_PER_PIN=1: egy nyugta (single/multi-line/konverzió) az approvalRecorded flag miatt
-        // legfeljebb egy jóváhagyást rögzít → egy PIN egy felhasználást fedez, nem amplifikálható.
+        // Single-line nyugta → 1 felhasználás (NEM fix 6 — egy PIN nem amplifikálható; Codex P1).
         assertThat(saved.getUsesRemaining()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("issueApprovalGrant: multi-line (uses=3) → 3 felhasználás; cap=6; floor=1 (Codex P1)")
+    void issueApprovalGrant_multiLineAndClamping() {
+        ArgumentCaptor<AmlApprovalGrant> captor = ArgumentCaptor.forClass(AmlApprovalGrant.class);
+
+        // Multi-line 3 sor → 3 felhasználás (a per-soros sync mindhárom tranzakciója UGYANEZT a sessiont viszi).
+        service.issueApprovalGrant(99L, "s3", 3);
+        // Túlkérés (10) → hard-cap MAX_GRANT_USES_PER_PIN (=MAX_LINES=6): a kliens nem amplifikálhat 6 fölé.
+        service.issueApprovalGrant(99L, "s10", 10);
+        // Érvénytelen alsó kérés (0) → floor 1.
+        service.issueApprovalGrant(99L, "s0", 0);
+
+        verify(grantRepository, times(3)).save(captor.capture());
+        var saved = captor.getAllValues();
+        assertThat(saved.get(0).getUsesRemaining()).isEqualTo(3);
+        assertThat(saved.get(1).getUsesRemaining()).isEqualTo(6);
+        assertThat(saved.get(2).getUsesRemaining()).isEqualTo(1);
     }
 
     @Test

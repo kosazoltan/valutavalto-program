@@ -198,13 +198,14 @@ public class AmlApprovalController {
             return ResponseEntity.status(401).body(Map.of("ok", false, "error", "Hibás PIN"));
         }
 
-        // PIN OK → grant kiállítása (Codex P1): ez bizonyítja a tranzakció-rögzítéskor, hogy a PIN-
-        // ellenőrzés ténylegesen megtörtént. A bare approverWorkerId önmagában nem elég a rögzítéshez — a
-        // recordSeniorApproval atomikusan elhasználja a grant egyetlen felhasználását. A kapu SERVER-FIX
-        // uses=1 (nem a klienstől): egy nyugta (single/multi-line/konverzió) az approvalRecorded flag miatt
-        // legfeljebb egy jóváhagyást rögzít, így egy PIN-ből NEM mintázható több jóváhagyás (Codex P1). A grant
-        // a beküldött approvalSessionId-hez kötött (receipt-scoping), és a consume @Transactional → retry-safe.
-        amlApprovalService.issueApprovalGrant(approverWorkerId, approvalSessionId);
+        // PIN OK → grant kiállítása (Codex P1): ez bizonyítja a tranzakció-rögzítéskor, hogy a PIN-ellenőrzés
+        // ténylegesen megtörtént. A grant felhasználásai = a nyugta TÉNYLEGES sorszáma (grantUses): a
+        // penztar-client a multi-line nyugtát N független single-line tranzakcióként synkronizálja UGYANAZZAL
+        // az approvalSessionId-vel, mind megütheti a per-tranzakció AML-kaput → N consume kell. A grantUses
+        // server-side [1, MAX_LINES]-re klampelt (a kliens nem amplifikálhat), és a grant az approvalSessionId-
+        // hez (nyugtához) kötött (receipt-scoping). Single-line/konverzió → 1. A consume @Transactional → retry-safe.
+        int grantUses = body.get("grantUses") instanceof Number n ? n.intValue() : 1;
+        amlApprovalService.issueApprovalGrant(approverWorkerId, approvalSessionId, grantUses);
 
         String approverName = workerRepository.findById(approverWorkerId)
                 .map(Worker::getName)

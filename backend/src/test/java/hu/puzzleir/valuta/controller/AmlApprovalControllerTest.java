@@ -49,7 +49,27 @@ class AmlApprovalControllerTest {
                     .containsEntry("approverWorkerId", APPROVER_ID)
                     .containsEntry("approverName", "Teszt Supervisor");
             // Codex P1: PIN OK → grant kiállítása a beküldött approval-session-höz kötve (receipt-scoping).
-            verify(amlApprovalService).issueApprovalGrant(eq(APPROVER_ID), eq("sess-1"));
+            // grantUses hiányzik a body-ból → default 1 (single-line/konverzió).
+            verify(amlApprovalService).issueApprovalGrant(eq(APPROVER_ID), eq("sess-1"), eq(1));
+        }
+    }
+
+    // verifyApprover: multi-line grantUses átadása (Codex P1) — a nyugta sorszáma a grantba.
+    @Test
+    void verifyApprover_passesGrantUses() {
+        try (var mocked = mockStatic(SecurityUtils.class)) {
+            mocked.when(SecurityUtils::getCurrentWorkerId).thenReturn(10L);
+            when(amlApprovalService.isValidSeniorApprover(APPROVER_ID)).thenReturn(true);
+            when(supervisorPinService.verifyPin(eq(APPROVER_ID), eq("1234"), any(), any())).thenReturn(true);
+            when(workerRepository.findById(APPROVER_ID)).thenReturn(
+                    Optional.of(Worker.builder().name("Teszt Supervisor").build()));
+
+            controller.verifyApprover(
+                    Map.of("approverWorkerId", 20, "pin", "1234", "approvalSessionId", "sess-1", "grantUses", 4),
+                    request);
+
+            // A multi-line nyugta 4 sora → 4 felhasználású grant (a per-soros sync mind UGYANEZT a sessiont viszi).
+            verify(amlApprovalService).issueApprovalGrant(eq(APPROVER_ID), eq("sess-1"), eq(4));
         }
     }
 
