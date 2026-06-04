@@ -53,6 +53,7 @@ class PepSourceOfFundsTest {
         private static final Long HUF_ID     = 1L;
         private static final Long EUR_ID     = 4L; // EUR=4 prod ID
 
+        @Mock private WacService wacService;
         @InjectMocks private TransactionService transactionService;
 
         @Mock private TransactionValidationService transactionValidationService;

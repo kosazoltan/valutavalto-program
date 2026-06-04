@@ -82,6 +82,7 @@ public class TransactionService {
     private final PmtComplianceValidator pmtComplianceValidator;
     private final LicenseService licenseService;
     private final SystemParameterService systemParameterService;
+    private final WacService wacService;
     /** A4: kötelező körlevél-nyugtázás gate (flag-gated, default OFF → @InjectMocks tesztekben nem hívódik). */
     private final hu.puzzleir.valuta.repository.CircularRepository circularRepository;
     private final TransactionValidationService transactionValidationService;
@@ -608,6 +609,16 @@ public class TransactionService {
         // Kassza frissítése - HUF nő, valuta csökken
         updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount().negate(), false); // valuta -
         updateCashBalance(branchId, getHufCurrencyId(), payableAmount, true);                       // HUF +
+
+        // A6 / b8 FR-8: realizált profit best-effort rögzítése a tranzakció COMMITJA UTÁN
+        // (flag-gated, cold-start-safe, read-only a készleten → nincs havi-zárás/cash_balance
+        // kettős-számolás). A diszkontált eladási rátát használja. Az afterCommit garantálja, hogy
+        // a profit_log CSAK sikeres eladás után íródjon (nincs orphan-tétel rollback esetén), és a
+        // best-effort írás SOHA ne törje meg az eladást.
+        TransactionAfterCommit.run(
+                () -> wacService.recordSellProfitIfEnabled(branchId, saved.getId(), currency.getCode(),
+                        request.getCurrencyAmount(), appliedRate, request.getDiscountPercent()),
+                "WAC sell profit tx=" + saved.getId());
 
         // Napi statisztika frissítése
         dailySessionService.updateSessionStats(

@@ -44,6 +44,7 @@ class TransactionReversalServiceTest {
     @Mock private CashBalanceRepository cashBalanceRepository;
     @Mock private TransactionOperationHelper helper;
     @Mock private AuditLogService auditLogService;
+    @Mock private WacService wacService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID = UUID.randomUUID();

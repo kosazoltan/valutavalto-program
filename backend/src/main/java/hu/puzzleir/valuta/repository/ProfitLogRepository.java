@@ -18,6 +18,9 @@ public interface ProfitLogRepository extends JpaRepository<ProfitLog, Long> {
 
     List<ProfitLog> findByCompanyIdAndCreatedAtBetween(UUID companyId, LocalDateTime from, LocalDateTime to);
 
+    /** A6 (b8 FR-8): egy tranzakció profit-tételei — sztornó/refund-kompenzáció alapja. */
+    List<ProfitLog> findByTransactionId(Long transactionId);
+
     @Query("SELECT COALESCE(SUM(p.realizedProfit), 0) FROM ProfitLog p " +
            "WHERE p.branchId = :branchId AND p.createdAt BETWEEN :from AND :to")
     BigDecimal sumProfitByBranch(

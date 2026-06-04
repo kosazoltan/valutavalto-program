@@ -51,6 +51,7 @@ public class TransactionMultiLineService {
     private final TransactionCalculationService calculationService;
     private final TransactionLineRepository transactionLineRepository;
     private final TransactionValidationService transactionValidationService;
+    private final WacService wacService;
 
     /**
      * FK-KEZDÍJ (2026-06-02): a kezelési díj override jogosultság-ellenőrzéséhez a bejelentkezett
@@ -479,6 +480,20 @@ public class TransactionMultiLineService {
             helper.updateCashBalance(branchId, line.getCurrency().getId(), line.getBanknoteCount().negate(), false);
         }
         helper.updateCashBalance(branchId, helper.getHufCurrencyId(), payableAmount, true);
+
+        // A6 / b8 FR-8: soronkenti realizalt profit best-effort rogzitese a tranzakcio COMMITJA
+        // UTAN (flag-gated, cold-start-safe, read-only a keszleten). Egysoros executeSell-lel egyezo
+        // logika. A tranzakcio-szintu kedvezmenyt soronkent atadjuk (uniform % a teljes osszegre).
+        // Az afterCommit garantalja, hogy a profit_log CSAK sikeres eladas utan irodjon (nincs
+        // orphan rollback eseten) es a best-effort iras SOHA ne torje meg az eladast.
+        final Transaction savedTx = saved;
+        for (TransactionLine line : transactionLines) {
+            final TransactionLine l = line;
+            TransactionAfterCommit.run(
+                    () -> wacService.recordSellProfitIfEnabled(branchId, savedTx.getId(), l.getCurrency().getCode(),
+                            l.getBanknoteCount(), l.getAppliedRate(), request.getDiscountPercent()),
+                    "WAC multi-line sell profit tx=" + savedTx.getId() + " " + l.getCurrency().getCode());
+        }
 
         // Napi statisztika
         dailySessionService.updateSessionStats(TransactionType.SELL, payableAmount, serverHandlingFee);

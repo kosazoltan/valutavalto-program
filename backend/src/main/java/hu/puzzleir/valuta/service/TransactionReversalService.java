@@ -42,6 +42,7 @@ public class TransactionReversalService {
     private final CashBalanceRepository cashBalanceRepository;
     private final TransactionOperationHelper helper;
     private final AuditLogService auditLogService;
+    private final WacService wacService;
 
     /**
      * Sztorno vegrehajtasa.
@@ -288,6 +289,16 @@ public class TransactionReversalService {
         // A tranzakción belül inicializáljuk, hogy a mapping a session után is működjön.
         org.hibernate.Hibernate.initialize(savedReversal.getCurrency());
 
+        // A6 / b8 FR-8: ha az eredeti egy ELADÁS volt, a teljes sztornó a profit_log-ban is
+        // ellensúlyozza a korábban rögzített realizált hasznot (flag-gated, commit után, best-effort).
+        if (original.getTransactionType() == TransactionType.SELL) {
+            final Long origId = original.getId();
+            final BigDecimal origQty = original.getCurrencyAmount();
+            TransactionAfterCommit.run(
+                    () -> wacService.recordReversalCompensationIfEnabled(origId, origQty, origQty),
+                    "WAC sztornó kompenzáció tx=" + origId);
+        }
+
         return savedReversal;
     }
 
@@ -427,6 +438,17 @@ public class TransactionReversalService {
         // LazyInitializationException fix (lásd executeReversal): a partial-refund currency-je
         // is az original lazy proxyja → OSIV=false controller-mappingnél 500. Init a tranzakción belül.
         org.hibernate.Hibernate.initialize(saved.getCurrency());
+
+        // A6 / b8 FR-8: ELADÁS részleges visszatérítésekor a profit_log-ban a visszatérített deviza
+        // ARÁNYÁBAN ellensúlyozzuk a realizált hasznot (flag-gated, commit után, best-effort).
+        if (original.getTransactionType() == TransactionType.SELL) {
+            final Long origId = original.getId();
+            final BigDecimal refundedQty = refundCurrency;
+            final BigDecimal origQty = original.getCurrencyAmount();
+            TransactionAfterCommit.run(
+                    () -> wacService.recordReversalCompensationIfEnabled(origId, refundedQty, origQty),
+                    "WAC részleges visszatérítés kompenzáció tx=" + origId);
+        }
 
         return saved;
     }
