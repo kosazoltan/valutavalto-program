@@ -135,8 +135,8 @@ class ReceiptServiceB7Test {
         // a materializáltakat a synthesized-detektálás kihagyja → nincs synthesized
         when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
                 .thenReturn(List.of(tx1, tx2));
-        // N+1 ELKERÜLÉS: EGYETLEN batch findAllById a két txId-ra
-        when(transactionRepository.findAllById(any()))
+        // N+1 ELKERÜLÉS + multi-tenant + OSIV-safe: EGYETLEN cég-szűrt batch query a két txId-ra
+        when(transactionRepository.findAllByIdInAndCompanyId(any(), eq(COMPANY_ID)))
                 .thenReturn(List.of(tx1, tx2));
 
         List<Receipt> receipts = receiptService.list(null);
@@ -145,38 +145,37 @@ class ReceiptServiceB7Test {
         assertThat(receipts).extracting(Receipt::getCustomerName)
                 .containsExactlyInAnyOrder("Nagy Anna", "Szabó Péter");
         // EGYETLEN batch hívás (NEM per-receipt) — N+1-mentesség bizonyítása
-        Mockito.verify(transactionRepository, Mockito.times(1)).findAllById(any());
+        Mockito.verify(transactionRepository, Mockito.times(1))
+                .findAllByIdInAndCompanyId(any(), eq(COMPANY_ID));
     }
 
     @Test
-    @DisplayName("Codex P2 (multi-tenant): cross-company tx-id NEM szivárogtat — MÁS cég tx-éből NEM dúsít")
+    @DisplayName("Codex P1+P2 (multi-tenant): a dúsítás cég-szűrt query-t hív — cross-company tx NEM szivárog")
     void list_realReceiptEnrich_crossTenant_notLeaked() {
-        // Materializált real receipt a saját cégnél, de a dekódolt tx-id egy MÁS céghez tartozó
-        // tranzakcióra mutat (adat-integritás-sértés szimulációja) — a customerName/hufAmount NEM
-        // szivároghat ki a másik cégtől.
+        // Materializált real receipt a saját cégnél, a dekódolt tx-id egy MÁS céghez tartozó
+        // tranzakcióra mutatna. A dúsítás cég-szűrt query-t (findAllByIdInAndCompanyId) hív az
+        // AKTUÁLIS companyId-vel — egy másik cég tranzakciója a DB-ben kiszűrődik, ezért a query
+        // ÜRES eredményt ad → a customerName/hufAmount null marad (nincs leak), és nem is kell a
+        // detached tx.getCompany()-t dereferálni (OSIV-off safe).
         Receipt real = Receipt.builder()
                 .id(new UUID(0L, 703L)).companyId(COMPANY_ID)
                 .receiptNumber("V017000060").receiptType("BUY")
                 .issueDate(LocalDate.of(2026, 4, 29)).isPrinted(true).build();
 
-        Transaction otherTx = makeTransaction(703L, "V017000060", TransactionType.BUY);
-        Company other = new Company();
-        other.setId(OTHER_COMPANY_ID);
-        otherTx.setCompany(other);
-        otherTx.setCustomerName("Idegen Cég Ügyfele");
-        otherTx.setHufAmount(new BigDecimal("9999999.00"));
-
         when(receiptRepository.findAllByCompanyId(COMPANY_ID)).thenReturn(List.of(real));
         when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
                 .thenReturn(List.of());
-        when(transactionRepository.findAllById(any())).thenReturn(List.of(otherTx));
+        // A cég-szűrt query az AKTUÁLIS céggel hívva ÜRES (a cross-company tx kiszűrődik a DB-ben).
+        when(transactionRepository.findAllByIdInAndCompanyId(any(), eq(COMPANY_ID)))
+                .thenReturn(List.of());
 
         List<Receipt> receipts = receiptService.list(null);
 
         assertThat(receipts).hasSize(1);
-        // A MÁS céghez tartozó tx-ből NEM dúsítunk → customerName/hufAmount marad null (nincs leak).
         assertThat(receipts.get(0).getCustomerName()).isNull();
         assertThat(receipts.get(0).getHufAmount()).isNull();
+        // Bizonyítjuk, hogy a dúsítás a SAJÁT cég id-jával kérdez (nem támadó-vezérelt értékkel).
+        Mockito.verify(transactionRepository).findAllByIdInAndCompanyId(any(), eq(COMPANY_ID));
     }
 
     @Test

@@ -133,15 +133,15 @@ public class ReceiptService {
         if (txIds.isEmpty()) {
             return;
         }
+        // Multi-tenant + OSIV-off safe (Codex P1+P2): a company-szűrés a QUERY-ben történik
+        // (findAllByIdInAndCompanyId), NEM Java-ban a detached tx.getCompany() dereferálásával.
+        // Ezzel (1) más cég tranzakciója nem kerül vissza (nincs ügyfél-név/összeg leak), és
+        // (2) nem dobhat LazyInitializationException-t a lazy company-asszociáció a tranzakción
+        // kívül (list() nem @Transactional, spring.jpa.open-in-view=false). Csak skalár
+        // mezőket olvasunk (customerName, hufAmount), amelyeket a SELECT t betölt.
         java.util.Map<Long, Transaction> txById = new java.util.HashMap<>();
-        for (Transaction tx : transactionRepository.findAllById(txIds)) {
-            // Multi-tenant (Codex P2, S-lencse): a receipt id-ból DEKÓDOLT tx-id-t NEM bízzuk meg vakon —
-            // csak az aktuális céghez tartozó tranzakcióból dúsítunk (egyezően a getById()/print()
-            // tenant-ellenőrzésével). Egy adat-integritás-sértés (cross-company tx-id egy receipten) így
-            // sem szivárogtathatja ki egy másik cég ügyfél-nevét/összegét.
-            if (tx.getCompany() != null && companyId.equals(tx.getCompany().getId())) {
-                txById.put(tx.getId(), tx);
-            }
+        for (Transaction tx : transactionRepository.findAllByIdInAndCompanyId(txIds, companyId)) {
+            txById.put(tx.getId(), tx);
         }
         for (Receipt r : realReceipts) {
             Long txId = resolveTransactionId(r);
