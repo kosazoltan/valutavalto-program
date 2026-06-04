@@ -186,11 +186,18 @@ public class ReceiptGeneratorService {
         var customer = reservation.getCustomer();
         var branch = reservation.getBranch();
 
-        // Sourcery #783: a bizonylat dátuma a tényleges domain-eseményből (létrehozás
-        // ill. lemondás), nem nyers now() — auditálható, konzisztens.
+        // Sourcery #783: a bizonylat dátuma a tényleges domain-eseményből (létrehozás / teljesítés /
+        // lemondás), nem nyers now() — auditálható, konzisztens.
+        // Codex P2 (#1032): a FULFILLED beszámítási bizonylat (refund=false) a TELJESÍTÉS napját viseli
+        // (fulfilledAt), NEM a befizetés napját (createdAt) — többnapos foglalónál a "beszámításra került"
+        // záradék a tényleges teljesítés-dátummal konzisztens. A "Befizetés napja" sor külön mutatja a createdAt-ot.
+        boolean fulfilled = reservation.getStatus() == hu.puzzleir.valuta.entity.ReservationStatus.FULFILLED;
+        LocalDateTime fulfilledOrNow = reservation.getFulfilledAt() != null
+            ? reservation.getFulfilledAt() : LocalDateTime.now();
         LocalDateTime receiptDate = isRefund
             ? (reservation.getCancelledAt() != null ? reservation.getCancelledAt() : LocalDateTime.now())
-            : (reservation.getCreatedAt() != null ? reservation.getCreatedAt() : LocalDateTime.now());
+            : (fulfilled ? fulfilledOrNow
+                         : (reservation.getCreatedAt() != null ? reservation.getCreatedAt() : LocalDateTime.now()));
 
         List<ReceiptData.ReceiptLineData> lines = new ArrayList<>();
         lines.add(ReceiptData.ReceiptLineData.builder()
@@ -262,10 +269,15 @@ public class ReceiptGeneratorService {
         // beszámítási bizonylatát a ReservationPage az ÁTVÉTEL (refund=false) gombbal nyomtatja — a refund=true
         // gomb csak a lemondott/lejárt sorokon jelenik meg. Így a "beszámításra került" szöveg a ténylegesen
         // használt nyomtatási úton is megjelenik. Lemondásnál (CANCELLED_*) NEM jelenik meg (nem beszámítás).
-        if (reservation.getStatus() == hu.puzzleir.valuta.entity.ReservationStatus.FULFILLED) {
+        if (fulfilled) {
+            // Codex P2 (#1032): a teljesítés TÉNYLEGES dátuma (fulfilledAt), nem "a mai napon" — többnapos
+            // foglalónál a befizetés-napi bizonylatszám/dátum mellett a beszámítás a teljesítés napjával egyezik.
+            String fulfilledDay = reservation.getFulfilledAt() != null
+                    ? reservation.getFulfilledAt().format(DISPLAY_DATE) : "a teljesítés napján";
             lines.add(ReceiptData.ReceiptLineData.builder()
                     .label("Megjegyzés")
-                    .value("A foglaló a mai napon végrehajtott ügylet ellenértékébe beszámításra került.").build());
+                    .value("A foglaló " + fulfilledDay
+                            + " napon végrehajtott ügylet ellenértékébe beszámításra került.").build());
         }
 
         return ReceiptData.builder()

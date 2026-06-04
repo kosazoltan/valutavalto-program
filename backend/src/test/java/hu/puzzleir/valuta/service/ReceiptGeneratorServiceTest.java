@@ -251,16 +251,26 @@ class ReceiptGeneratorServiceTest {
     @DisplayName("generateReservationReceipt (TELJESÍTÉS/FULFILLED, refund=false) → beszámítási záró-szöveg megjelenik")
     void testReservationReceiptFulfilled() {
         var reservation = buildReservation();
-        // Teljesítés — a foglaló beszámításra kerül a mai ügyletbe.
+        // Teljesítés — a foglaló beszámításra kerül. A befizetés (createdAt) és a teljesítés (fulfilledAt)
+        // KÜLÖN nap (többnapos foglaló): a Codex P2 (#1032) szerint a bizonylat a teljesítés napját viseli.
         reservation.setStatus(hu.puzzleir.valuta.entity.ReservationStatus.FULFILLED);
+        reservation.setCreatedAt(java.time.LocalDateTime.of(2026, 5, 20, 9, 0));
+        reservation.setFulfilledAt(java.time.LocalDateTime.of(2026, 5, 25, 14, 30));
 
         // Codex P2 (#1032): a FULFILLED beszámítási bizonylatot a ReservationPage az ÁTVÉTEL (refund=false)
         // gombbal nyomtatja, ezért a záró-szövegnek EZEN az úton kell megjelennie (nem csak refund=true-n).
         ReceiptData result = service.generateReservationReceipt(reservation, false);
 
-        // B7 / FR-14: FULFILLED státusznál megjelenik a beszámítási záró-szöveg.
+        // B7 / FR-14: FULFILLED státusznál megjelenik a beszámítási záró-szöveg, a TELJESÍTÉS dátumával.
         assertThat(result.getLines())
-                .anyMatch(l -> l.getValue() != null && l.getValue().contains("beszámításra került"));
+                .anyMatch(l -> l.getValue() != null
+                        && l.getValue().contains("beszámításra került")
+                        && l.getValue().contains("2026-05-25"));
+        // A bizonylat dátuma a teljesítés napja (nem a befizetésé).
+        assertThat(result.getDate()).isEqualTo(java.time.LocalDateTime.of(2026, 5, 25, 14, 30));
+        // A "Befizetés napja" külön a createdAt-ot mutatja.
+        assertThat(result.getLines())
+                .anyMatch(l -> "Befizetés napja".equals(l.getLabel()) && "2026-05-20".equals(l.getValue()));
     }
 
     @Test
