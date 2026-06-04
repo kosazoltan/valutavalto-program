@@ -70,7 +70,12 @@ public class ReceiptService {
     public List<Receipt> list(UUID transactionId) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (transactionId != null) {
-            return repo.findByCompanyIdAndTransactionId(companyId, transactionId);
+            // EXCMD b5b (Codex/Copilot P2): a tranzakció-szűrt ágat is dúsítjuk, különben a
+            // GET /api/v1/receipts?transactionId=... úton a materializált real receipt-ek
+            // customerName/hufAmount-ja null marad (ügyfél-oszlop + 10M AML-jelölő hiányozna).
+            List<Receipt> filtered = repo.findByCompanyIdAndTransactionId(companyId, transactionId);
+            enrichRealReceipts(filtered, companyId);
+            return filtered;
         }
 
         // Real Receipt rekordok a DB-bol
@@ -97,11 +102,12 @@ public class ReceiptService {
             }
         }
 
-        // EXCMD b5b (FR-BSZUR-02 "csak ügyfeles" + FR-BSZUR-05 10M Ft AML-jelölő):
+        // EXCMD b5b (FR-BSZUR-01 "csak ügyfeles" + FR-BSZUR-05 10M Ft AML-jelölő):
         // a REAL Receipt-eket a kapcsolt Transaction-ből dúsítjuk customerName + hufAmount
         // @Transient mezőkkel. N+1 ELKERÜLÉSE: a real receipt-ek transactionId-jait EGY
-        // batch query-ben töltjük be (findAllById), majd id→Transaction map-ből töltjük.
-        // A synthesized Receipt-ek már dúsítva vannak (synthesizeReceipt kézben tartja a tx-et).
+        // cég-szűrt batch query-ben töltjük be (findAllByIdInAndCompanyId), majd id→Transaction
+        // map-ből töltjük. A synthesized Receipt-ek már dúsítva vannak (synthesizeReceipt
+        // kézben tartja a tx-et).
         enrichRealReceipts(realReceipts, companyId);
 
         List<Receipt> result = new ArrayList<>(realReceipts.size() + synthesized.size());

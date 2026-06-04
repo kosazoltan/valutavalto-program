@@ -179,6 +179,32 @@ class ReceiptServiceB7Test {
     }
 
     @Test
+    @DisplayName("Codex/Copilot P2: a transactionId-szűrt ág IS dúsít (customerName + hufAmount)")
+    void list_filteredByTransactionId_isEnriched() {
+        // GET /api/v1/receipts?transactionId=... — a korai-return szűrt ágnak is dúsítania kell,
+        // különben a materializált receipt customerName/hufAmount-ja null marad (—/nincs 10M badge).
+        UUID txFilter = new UUID(0L, 710L); // synthesizedUuid → decode 710
+        Receipt real = Receipt.builder()
+                .id(txFilter).companyId(COMPANY_ID)
+                .receiptNumber("V017000070").receiptType("BUY")
+                .issueDate(LocalDate.of(2026, 4, 29)).isPrinted(true).build();
+        Transaction tx = makeTransaction(710L, "V017000070", TransactionType.BUY);
+        tx.setCustomerName("Kovács Béla");
+        tx.setHufAmount(new BigDecimal("12000000.00")); // 10M felett → AML-jelölő is
+
+        when(receiptRepository.findByCompanyIdAndTransactionId(COMPANY_ID, txFilter))
+                .thenReturn(List.of(real));
+        when(transactionRepository.findAllByIdInAndCompanyId(any(), eq(COMPANY_ID)))
+                .thenReturn(List.of(tx));
+
+        List<Receipt> receipts = receiptService.list(txFilter);
+
+        assertThat(receipts).hasSize(1);
+        assertThat(receipts.get(0).getCustomerName()).isEqualTo("Kovács Béla");
+        assertThat(receipts.get(0).getHufAmount()).isEqualByComparingTo("12000000.00");
+    }
+
+    @Test
     @DisplayName("list() synthesize Receipt-et ad vissza, ha a Receipt tabla URES")
     void list_synthesizesFromTransactionsWhenReceiptTableEmpty() {
         when(receiptRepository.findAllByCompanyId(COMPANY_ID))
