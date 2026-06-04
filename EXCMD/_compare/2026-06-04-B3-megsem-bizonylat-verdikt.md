@@ -1,6 +1,8 @@
-# B3 (b4-bizonylatok FR-15/16 — „MÉGSEM" bizonylat) — verdikt: MOOT a modern architektúrában (category-C)
+# B3 (b4-bizonylatok FR-15/16 — „MEGSEM" bizonylat) — verdikt: MOOT a modern architektúrában (category-C)
 
 > EXCMD↔kód összevetés, 2026-06-04. Tényalapú, file:line bizonyítékkal. NEM implementálandó (architektúra-eltérés, nem bug).
+>
+> Helyesírási konvenció ebben a dokumentumban: a **„MEGSEM"** (ékezet nélkül, nagybetűvel) a legacy Delphi által a bizonylatra NYOMTATOTT literál felirat; a **„mégsem gomb"** (ékezettel, magyar szó) a megszakító UI-művelet. A kettő szándékosan eltérő alak.
 
 ## A spec (EXCMD/b4-bizonylatok.md FR-15/16)
 - **FR-15:** ha egy tranzakciót a rögzítés közben vagy a nyomtatás előtt megszakítanak (mégsem gomb), a rendszer „MEGSEM BIZONYLAT"-ot generál a rögzített adatokkal + a megszakítás okával, **elkerülve a bizonylatszámok kiesését** (nagy, keresztben „MEGSEM" felirat).
