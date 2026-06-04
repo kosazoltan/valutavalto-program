@@ -33,4 +33,13 @@ public interface RateWorkgroupRepository extends JpaRepository<RateWorkgroup, UU
      */
     @Query("SELECT r FROM RateWorkgroup r WHERE r.company.id = :companyId AND r.code = :code")
     Optional<RateWorkgroup> findByCompanyIdAndCode(@Param("companyId") UUID companyId, @Param("code") String code);
+
+    /**
+     * FK02-D (FR-15/16): company-scope-olt sorszám-keresés a duplikált munkacsoport-sorszám
+     * (legacy_group_number) tiltásához. A sorszám-egyediség a (company_id, legacy_group_number)
+     * páron van (uq_workgroup_legacynum_per_company, V296).
+     */
+    @Query("SELECT r FROM RateWorkgroup r WHERE r.company.id = :companyId AND r.legacyGroupNumber = :seq")
+    Optional<RateWorkgroup> findByCompanyIdAndLegacyGroupNumber(@Param("companyId") UUID companyId,
+                                                               @Param("seq") Integer seq);
 }
