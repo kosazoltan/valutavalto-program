@@ -118,6 +118,17 @@ function getLocalFirstApi(): RateMakerLocalFirstApi | null {
   return api?.localFirst ?? null
 }
 
+/**
+ * FK02-D / Codex P1: a group-rate SQLite IPC TÉNYLEGES elérhetősége. NEM elég `isElectron()`-t
+ * nézni: a standalone rate-maker host (`arfolyam-keszito-client`) Electron, de a group-rate IPC
+ * (`saveGroupRateValues`/`getGroupRateValues`) csak a `kozponti-client`-ben van bekötve. Ahol az
+ * IPC hiányzik, a localStorage az autoritás — onnan kell tölteni (különben `{}` → adatvesztés).
+ */
+export function isGroupRateOfflineDbAvailable(): boolean {
+  const lf = getLocalFirstApi()
+  return lf?.getGroupRateValues != null && lf?.saveGroupRateValues != null
+}
+
 /** Fire-and-forget: a csoport fix rátaértékeit az Electron SQLite-ba is elmenti (best-effort, nem dob). */
 export function saveGroupRateValuesToOfflineDb(groupId: string, values: Record<string, string>): void {
   const lf = getLocalFirstApi()
@@ -126,6 +137,25 @@ export function saveGroupRateValuesToOfflineDb(groupId: string, values: Record<s
     void lf.saveGroupRateValues({ groupId, values }).catch(() => { /* best-effort: a localStorage út él */ })
   } catch {
     /* nem-Electron / IPC-hiba → a szinkron localStorage út tovább működik */
+  }
+}
+
+/**
+ * Awaitable SQLite-mentés: a csoport fix rátaértékeit az Electron SQLite-ba menti és VISSZAADJA
+ * a tényleges eredményt (a hívó a sikert ehhez kötheti — pl. a cross-csoport másolás csak akkor
+ * jelez sikert, ha az AUTORITATÍV SQLite-írás is rendben volt). Electronon kívül `{ ok: true }`
+ * (ott a localStorage az autoritás). FK02-D / Codex P2.
+ */
+export async function saveGroupRateValuesToOfflineDbAwait(
+  groupId: string, values: Record<string, string>,
+): Promise<{ ok: boolean }> {
+  const lf = getLocalFirstApi()
+  if (!lf?.saveGroupRateValues) return { ok: true }
+  try {
+    const res = await lf.saveGroupRateValues({ groupId, values })
+    return { ok: !!res?.ok }
+  } catch {
+    return { ok: false }
   }
 }
 

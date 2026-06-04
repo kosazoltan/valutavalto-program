@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AxiosError } from 'axios'
-import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock, Undo2, Redo2, Home, ArrowLeft, ShieldCheck, Shield, Pencil, Trash2, CheckCircle2 } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock, Undo2, Redo2, Home, ArrowLeft, ShieldCheck, Shield, Pencil, Trash2, CheckCircle2, Copy } from 'lucide-react'
 import {
   rateCreationApi,
   rateWorkgroupApi,
@@ -29,6 +29,7 @@ import { currentFunctionCode } from './fillHelpers'
 import { validateWorkgroupProtection, workgroupProtectionLabel, type ProtectionRow } from './workgroupProtection'
 import { sortWorkgroupsBySequence } from './workgroupOrdering'
 import { isFormula, type WgValues } from './workgroupSheetFormula'
+import { applyCrossGroupCopy, type CrossGroupCopyCell } from './crossGroupCopy'
 import { isSignificantDeviation } from './deviationCheck'
 import {
   recomputeWorkgroupSheet,
@@ -46,6 +47,8 @@ import {
   saveGroupRateValues,
   persistGroupRateValues,
   loadGroupRateValuesFromOfflineDb,
+  saveGroupRateValuesToOfflineDbAwait,
+  isGroupRateOfflineDbAvailable,
 } from './workgroupSheetStorage'
 import { useTranslation } from 'react-i18next'
 
@@ -153,6 +156,11 @@ export default function RateCreationPage() {
   // a kiszámolt cellánkénti hibák, és a 0-s lap / kereszt-csoport hivatkozás-kontextus.
   const [formulas, setFormulas] = useState<Record<string, string>>({})
   const [cellErrors, setCellErrors] = useState<Record<string, string>>({})
+  // FK02-D (FR-9..13): cross-csoport másolás állapota — a kijelölt forrás-cellák, a kijelölt
+  // célcsoportok, és a megerősítő dialog nyitottsága.
+  const [copyCells, setCopyCells] = useState<Array<{ currencyId: number; field: WgField; raw: string }> | null>(null)
+  const [copyTargetIds, setCopyTargetIds] = useState<Set<string>>(new Set())
+  const [copyConfirmOpen, setCopyConfirmOpen] = useState(false)
   // A 0-s lap (A–I) + más csoportok J–S pillanatképei localStorage-ból; ref, hogy a recompute
   // effekt függőség-listája stabil maradjon (a Map-eket csoport-nyitáskor frissítjük).
   const sheetCtxRef = useRef<{
@@ -641,6 +649,79 @@ export default function RateCreationPage() {
     }
   }, [canWriteRateCreation, rates, pushUndo, selectedWg?.id])
 
+  // ===================== FK02-D: cross-csoport másolás (FR-9..13) =====================
+
+  // A RateGrid „Másolás más csoportba" gomb átadja a kijelölt cellákat → megnyitjuk a választót.
+  const handleCopyToGroups = useCallback((cells: Array<{ currencyId: number; field: WgField; raw: string }>) => {
+    if (!canWriteRateCreation || cells.length === 0) return
+    setCopyCells(cells)
+    setCopyTargetIds(new Set())
+    setCopyConfirmOpen(false)
+  }, [canWriteRateCreation])
+
+  const toggleCopyTarget = useCallback((id: string) => {
+    setCopyTargetIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const closeCopyModal = useCallback(() => {
+    setCopyCells(null)
+    setCopyTargetIds(new Set())
+    setCopyConfirmOpen(false)
+  }, [])
+
+  // Megerősítés után: a kijelölt cellák tartalma a célcsoport(ok) azonos pozícióiba (dual-write).
+  const executeCrossGroupCopy = useCallback(async () => {
+    if (!copyCells || copyTargetIds.size === 0) return
+    const payload: CrossGroupCopyCell[] = copyCells.map(c => {
+      const key = `${c.currencyId}.${c.field}`
+      const isF = isFormula(c.raw)
+      return { key, formula: isF ? c.raw : undefined, value: isF ? undefined : c.raw }
+    })
+    const succeeded: string[] = []
+    for (const targetId of copyTargetIds) {
+      try {
+        // Codex P1: ahol a group-rate SQLite IPC ELÉRHETŐ (kozponti rate-maker host), a SQLite az
+        // autoritás — onnan hidratáljuk a cél értékeit, hogy a localStorage-cache divergenciája
+        // (másik eszközről szinkronizált adat) NE okozzon adatvesztést. Ahol az IPC NINCS bekötve
+        // (standalone arfolyam-keszito host, web), a localStorage az autoritás — különben `{}`
+        // töltődne és felülírná a meglévő értékeket. A formulák localStorage-only-k.
+        const dbAvailable = isGroupRateOfflineDbAvailable()
+        const targetValues = dbAvailable
+          ? await loadGroupRateValuesFromOfflineDb(targetId)
+          : loadGroupRateValues(targetId)
+        const { formulas: nf, values: nv } = applyCrossGroupCopy(
+          loadGroupFormulas(targetId), targetValues, payload)
+        // Codex P2: SQLite-FIRST — az autoritatív SQLite-írást ELŐBB await-eljük (IPC-hostban);
+        // CSAK siker esetén commitoljuk a localStorage-ot. Így bukásnál NINCS részleges commit
+        // (a cél localStorage-a sem íródik felül egy sikertelennek jelzett másolásnál).
+        if (dbAvailable) {
+          const dbOk = (await saveGroupRateValuesToOfflineDbAwait(targetId, nv)).ok
+          if (!dbOk) {
+            logger.warn('RateCreationPage', `Cross-csoport másolás: SQLite-mentés sikertelen — ${targetId}`)
+            continue
+          }
+        }
+        saveGroupFormulas(targetId, nf)       // localStorage (formulák)
+        saveGroupRateValues(targetId, nv)     // localStorage (értékek, szinkron)
+        const wg = workgroups.find(w => w.id === targetId)
+        if (wg) succeeded.push(wg.name)
+      } catch (e) {
+        logger.error('RateCreationPage', 'Cross-csoport másolás hiba', e)
+      }
+    }
+    if (succeeded.length > 0) {
+      toast.success('Másolás kész', `${succeeded.length} munkacsoportba: ${succeeded.join(', ')}`)
+    } else {
+      toast.error('Másolás sikertelen', 'Egyik célcsoportba sem sikerült a másolás.')
+    }
+    closeCopyModal()
+  }, [copyCells, copyTargetIds, workgroups, closeCopyModal])
+
   // ===================== Limit save =====================
 
   const handleSaveLimits = async () => {
@@ -1021,6 +1102,7 @@ export default function RateCreationPage() {
           onCommitCell={commitWorkgroupCell}
           revertSignal={rateRevertSignal}
           onBulkApply={applyBulkCells}
+          onCopyToGroups={handleCopyToGroups}
           canEdit={canWriteRateCreation}
         />
 
@@ -1193,6 +1275,72 @@ export default function RateCreationPage() {
         saving={savingBranches}
         canWriteRateCreation={canWriteRateCreation}
       />
+
+      {/* FK02-D (FR-9..13): cross-csoport másolás — célcsoport-választó csempénézet + megerősítés */}
+      {copyCells && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeCopyModal}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3 border-b">
+              <h2 className="text-lg font-bold flex items-center gap-2"><Copy size={18} /> Másolás más csoportba</h2>
+              <button onClick={closeCopyModal} className="p-1 text-gray-500 hover:text-gray-800" aria-label="Bezárás"><X size={20} /></button>
+            </div>
+            <div className="px-5 py-3 text-sm text-gray-600">
+              {copyCells.length} kijelölt cella tartalma a kiválasztott munkacsoport(ok) azonos pozícióiba kerül.
+              Válassz egy vagy több célcsoportot (az aktuális nem választható):
+            </div>
+            <div className="px-5 pb-3 overflow-y-auto">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {sortWorkgroupsBySequence(workgroups).filter(w => w.id !== selectedWg?.id).map(wg => {
+                  const selected = copyTargetIds.has(wg.id)
+                  return (
+                    <button
+                      key={wg.id}
+                      type="button"
+                      onClick={() => toggleCopyTarget(wg.id)}
+                      className={`text-left rounded-lg border-2 p-3 transition-colors ${selected ? 'border-sky-500 bg-sky-100' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                    >
+                      <div className="text-2xl font-bold leading-none text-gray-800">{wg.legacyGroupNumber ?? '—'}</div>
+                      <div className="mt-2 text-sm font-medium truncate" title={wg.name}>{wg.name}</div>
+                      {selected && <div className="mt-1 text-xs font-semibold text-sky-700">✓ kijelölve</div>}
+                    </button>
+                  )
+                })}
+              </div>
+              {workgroups.filter(w => w.id !== selectedWg?.id).length === 0 && (
+                <div className="text-center py-6 text-gray-400 text-sm">Nincs másik munkacsoport.</div>
+              )}
+            </div>
+            <div className="px-5 py-3 border-t flex justify-end gap-2">
+              <button onClick={closeCopyModal} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium">Mégse</button>
+              <button
+                onClick={() => setCopyConfirmOpen(true)}
+                disabled={copyTargetIds.size === 0}
+                className="px-4 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+              >
+                Véglegesítés ({copyTargetIds.size})
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FK02-D (FR-12): megerősítő dialog a cross-csoport másoláshoz */}
+      {copyConfirmOpen && copyCells && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold mb-3">Másolás megerősítése</h3>
+            <p className="text-sm text-gray-700 mb-5">
+              Biztosan másolod ezekbe a munkacsoportokba:{' '}
+              <span className="font-semibold">{workgroups.filter(w => copyTargetIds.has(w.id)).map(w => w.name).join(', ')}</span>?
+              A célcsoport(ok) érintett celláinak korábbi értéke felülíródik.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setCopyConfirmOpen(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium">Nem</button>
+              <button onClick={() => void executeCrossGroupCopy()} className="px-4 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700 text-sm font-semibold">Igen, másolás</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* T9.F: képletszintaxis-súgó modal */}
       <FormulaSyntaxHelp open={showFormulaHelp} onClose={() => setShowFormulaHelp(false)} />
     </div>
