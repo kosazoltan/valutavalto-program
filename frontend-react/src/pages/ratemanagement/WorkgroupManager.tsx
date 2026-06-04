@@ -11,6 +11,7 @@ import {
 } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import { sortWorkgroupsBySequence } from '../rates/workgroupOrdering'
 import {
   DEFAULT_TILE,
   tileClasses,
@@ -50,7 +51,8 @@ export default function WorkgroupManager() {
     try {
       setLoading(true)
       const list = await rateWorkgroupApi.list()
-      setWorkgroups(safeArray<RateWorkgroupDTO>(list).filter(w => w.active))
+      // FK02-D (FR-14): a csempék mindig sorszám szerint növekvő sorrendben.
+      setWorkgroups(sortWorkgroupsBySequence(safeArray<RateWorkgroupDTO>(list).filter(w => w.active)))
     } catch (err) {
       logger.error('WorkgroupManager', 'Lekérés sikertelen:', err)
       setError('A munkacsoportok betöltése sikertelen.')

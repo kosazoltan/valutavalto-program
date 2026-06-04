@@ -27,6 +27,7 @@ import BranchPickerModal from './components/BranchPickerModal'
 import { fmtRate, parseNum, type EditableRate } from './types'
 import { currentFunctionCode } from './fillHelpers'
 import { validateWorkgroupProtection, workgroupProtectionLabel, type ProtectionRow } from './workgroupProtection'
+import { sortWorkgroupsBySequence } from './workgroupOrdering'
 import { isFormula, type WgValues } from './workgroupSheetFormula'
 import { isSignificantDeviation } from './deviationCheck'
 import {
@@ -395,8 +396,11 @@ export default function RateCreationPage() {
       }
 
       setOverview(overviewData)
-      setWorkgroups(wgData)
-      setSelectedWgIndex((current) => (wgData[current] ? current : 0))
+      // FK02-D (FR-14): a csempék/fülek MINDIG sorszám szerint növekvő sorrendben — a forrásnál
+      // rendezünk, hogy a selectedWgIndex is e stabil sorrendre mutasson.
+      const orderedWg = sortWorkgroupsBySequence(wgData)
+      setWorkgroups(orderedWg)
+      setSelectedWgIndex((current) => (orderedWg[current] ? current : 0))
 
       const editableRates: EditableRate[] = overviewData.currencies.map((c: RateOverviewItem) => ({
         currencyId: c.currencyId,
