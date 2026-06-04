@@ -162,11 +162,17 @@ public class AmlApprovalController {
         String pin = body.get("pin") instanceof String p ? p : null;
         // A jóváhagyás-session azonosító a konkrét nyugtához köti a grantot (Codex P1: receipt-scoping).
         String approvalSessionId = body.get("approvalSessionId") instanceof String s ? s : null;
+        // A jóváhagyott ügyfél neve — a single-use grant EHHEZ kötött (Codex P1: customer-scoping). KÖTELEZŐ:
+        // az AML felsővezetői jóváhagyás definíció szerint azonosított (magas-kockázatú) ügyfélhez tartozik,
+        // ezért üres customerName-mel NEM állítunk ki grantot — különben a NULL customer_key wildcard-ként
+        // bármely ügyfélre érvényes lenne (cross-customer amplifikáció-rés).
+        String customerName = body.get("customerName") instanceof String c ? c.trim() : null;
 
         if (approverWorkerId == null || pin == null || pin.isBlank()
-                || approvalSessionId == null || approvalSessionId.isBlank()) {
+                || approvalSessionId == null || approvalSessionId.isBlank()
+                || customerName == null || customerName.isBlank()) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("ok", false, "error", "approverWorkerId + pin + approvalSessionId kötelező"));
+                    .body(Map.of("ok", false, "error", "approverWorkerId + pin + approvalSessionId + customerName kötelező"));
         }
 
         // 1) 4-szem-elv: az engedélyező nem lehet a rögzítő pénztáros.
@@ -203,7 +209,6 @@ public class AmlApprovalController {
         // NEM a klienstől jön (nincs grantUses amplifikáció), és a kliens-választott approvalSessionId nem
         // hasznosítható újra MÁS ügyfél tranzakciójára. A multi-line nyugta sibling sorai (ugyanaz az ügyfél +
         // session) az első sor jóváhagyása alá fedettek, nem hasalnak el. A consume @Transactional → retry-safe.
-        String customerName = body.get("customerName") instanceof String c ? c : null;
         amlApprovalService.issueApprovalGrant(approverWorkerId, approvalSessionId, customerName);
 
         String approverName = workerRepository.findById(approverWorkerId)

@@ -87,17 +87,14 @@ public class AmlApprovalService {
         // a supervisor-PIN sikeres ellenőrzésekor létrehozott egy grantot erre a (cég, pénztáros,
         // engedélyező, approval-session, ÜGYFÉL) ötösre. A grant SINGLE-USE és a jóváhagyott ügyfélhez
         // kötött, így (a) egy bare approverWorkerId-vel nem forgeolható az audit, (b) a session nem
-        // hasznosítható újra MÁS ügyfél tranzakciójára. Egy multi-line nyugta első sora elhasználja a
-        // grantot és rögzít; a többi sor (ugyanaz a session+ügyfél) FEDETT → nem rögzít duplán, nem hasal el.
-        boolean shouldRecord = consumeApprovalGrant(approverWorkerId, companyId, approvalSessionId, customerName);
-        if (!shouldRecord) {
-            // Sibling sor egy már jóváhagyott (ugyanazon ügyfél+session) multi-line nyugtában: a jóváhagyás
-            // már rögzítve van az első sorhoz → nem rögzítünk újabb audit-rekordot (nyugtánként egy esemény).
-            log.debug("[AML-APPROVAL] Sibling sor — a session+ügyfél jóváhagyása már rögzítve, nincs új audit (session {})",
-                    approvalSessionId);
-            return null;
-        }
+        // hasznosítható újra MÁS ügyfél tranzakciójára. Az első sor atomikusan elhasználja a grantot; a
+        // multi-line nyugta sibling sorai (ugyanaz a session+ügyfél) FEDETTEK (újabb grant nélkül).
+        boolean grantConsumed = consumeApprovalGrant(approverWorkerId, companyId, approvalSessionId, customerName);
 
+        // Codex P1: MINDEN magas-kockázatú tranzakció (a fedett sibling sor IS) KAP audit-rekordot — a
+        // Pmt./MNB V.2.6 8 éves megőrzés szerint minden jóváhagyott tranzakció EGYÉNILEG visszakövethető kell
+        // legyen (nincs csendben átengedett, auditálatlan magas-kockázatú tranzakció). A "covered" sornál csak
+        // a grant-felhasználás marad el (single-use), az audit nem.
         TransactionAmlApproval rec = TransactionAmlApproval.builder()
                 .companyId(companyId)
                 .branchId(branchId)
@@ -113,8 +110,8 @@ public class AmlApprovalService {
         // Az engedélyező NEVE az audit-rekordba kerül (V.2.6 kötelező); a sima app-logba viszont csak
         // a workerId — a teljes név PII, ne szivárogjon a Loki/Grafana log-streambe. Az indokot a MENTETT
         // rekordból logoljuk, hogy a log és az audit-rekord konzisztens legyen (a default-feloldás után).
-        log.info("[AML-APPROVAL] Felsővezetői jóváhagyás rögzítve — engedélyező #{}, indok: {}",
-                approverWorkerId, saved.getApprovalReason());
+        log.info("[AML-APPROVAL] Felsővezetői jóváhagyás rögzítve ({}) — engedélyező #{}, indok: {}",
+                grantConsumed ? "grant elhasználva" : "fedett sibling sor", approverWorkerId, saved.getApprovalReason());
         return saved;
     }
 

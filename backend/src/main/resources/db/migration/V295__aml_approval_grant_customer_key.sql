@@ -13,8 +13,10 @@
 --
 -- A customer_key NULL marad a regi (V294) grantoknal -> azoknal nincs customer-kotes (visszafele-kompatibilis).
 
+-- A hossz a TransactionAmlApproval.customer_name-mel (255) egyezik, hogy egy hosszú ügyfél/cég-név se
+-- bukjon el a grant-mentéskor (a consume customerName-mel egyezteti — a kettőnek konzisztensnek kell lennie).
 ALTER TABLE aml_approval_grant
-    ADD COLUMN IF NOT EXISTS customer_key VARCHAR(160);
+    ADD COLUMN IF NOT EXISTS customer_key VARCHAR(255);
 
 -- A consume-lookup customer-szures gyorsitasa (a meglevo ix_aml_approval_grant_consume mellett).
 CREATE INDEX IF NOT EXISTS ix_aml_approval_grant_session_customer

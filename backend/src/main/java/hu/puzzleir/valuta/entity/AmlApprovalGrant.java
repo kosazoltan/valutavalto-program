@@ -10,12 +10,14 @@ import java.util.UUID;
  * AML felsővezetői jóváhagyás — egyszer-használatos engedély ("grant").
  *
  * <p>A {@code /api/v1/aml-approval/verify-approver} a supervisor-PIN sikeres ellenőrzésekor létrehoz
- * egy grant-rekordot, amely bizonyítja, hogy az adott engedélyező (approver) PIN-nel igazolta a
- * jelenlétét az adott pénztáros (cashier) sessionjében. A tranzakció-rögzítés
- * ({@code AmlApprovalService.recordSeniorApproval}) CSAK akkor rögzít jóváhagyást, ha van fel nem
- * használt, le nem járt grant a (company, cashier, approver) hármasra — rögzítéskor a grant
- * elhasználódik ({@code usedAt}). Így egy pénztáros nem forgeolhat jóváhagyást a PIN megkerülésével
- * (Codex P1, 2026-06-04). A 7 napos lejárat a local-first offline → sync késleltetést fedi.</p>
+ * egy SINGLE-USE grant-rekordot, amely bizonyítja, hogy az adott engedélyező (approver) PIN-nel igazolta
+ * a jelenlétét az adott pénztáros (cashier) sessionjében, a konkrét JÓVÁHAGYOTT ÜGYFÉLHEZ
+ * ({@code customer_key}) kötve. A tranzakció-rögzítés ({@code AmlApprovalService.recordSeniorApproval})
+ * CSAK akkor rögzít jóváhagyást, ha van le nem járt grant a (company, cashier, approver, session)
+ * négyesre, ÉS az ügyfél egyezik — az első sor atomikusan elhasználja ({@code uses_remaining--}), a
+ * multi-line nyugta sibling sorai (ugyanaz a session+ügyfél) jóváhagyás-fedettként rögzülnek további
+ * grant nélkül. Így egy pénztáros nem forgeolhat jóváhagyást a PIN megkerülésével, és egy session nem
+ * használható újra MÁS ügyfélre (Codex P1, 2026-06-04). A 7 napos lejárat az offline → sync késleltetést fedi.</p>
  */
 @Entity
 @Table(name = "aml_approval_grant", indexes = {
@@ -58,7 +60,7 @@ public class AmlApprovalGrant {
      * session ÉS ugyanaz a customer_key) jóváhagyás-fedettként átmegy. MÁS ügyfélre újrahasznált session
      * elbukik → nincs amplifikáció nem-összefüggő tranzakciókra. NULL a régi (V294) grantoknál (BC).
      */
-    @Column(name = "customer_key", length = 160)
+    @Column(name = "customer_key", length = 255)
     private String customerKey;
 
     @Column(name = "created_at", nullable = false)

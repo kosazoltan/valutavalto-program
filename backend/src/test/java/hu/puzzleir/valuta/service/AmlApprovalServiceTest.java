@@ -176,21 +176,24 @@ class AmlApprovalServiceTest {
     }
 
     @Test
-    @DisplayName("multi-line sibling sor (ugyanaz ügyfél+session, grant kimerült) → FEDETT, NINCS új audit (Codex P1)")
+    @DisplayName("multi-line sibling sor (ugyanaz ügyfél+session, grant kimerült) → FEDETT, de KAP audit-rekordot (Codex P1)")
     void recordSeniorApproval_siblingLineCovered() {
         when(workerRepository.findById(99L)).thenReturn(Optional.of(
                 worker(99L, "Kósa Zoltán", WorkerRole.MANAGER, companyId)));
+        when(approvalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         // Az első sor már elhasználta a grantot (uses=0), de az LÉTEZIK az ügyfélhez+sessionhöz.
         when(grantRepository.findActiveBySessionScope(any(), any(), any(), any(), any()))
                 .thenReturn(List.of(grant(1L, "session-1", "Teszt Ügyfél", 0)));
-        when(grantRepository.decrementIfAvailable(1L)).thenReturn(0); // kimerült
+        when(grantRepository.decrementIfAvailable(1L)).thenReturn(0); // kimerült → fedett
 
         TransactionAmlApproval rec = service.recordSeniorApproval(99L,
                 "AML", new BigDecimal("2000000"), "Teszt Ügyfél", null, "session-1");
 
-        // Sibling sor: a jóváhagyás már rögzítve az első sorhoz → null, NINCS új audit-rekord.
-        assertThat(rec).isNull();
-        verify(approvalRepository, never()).save(any());
+        // Codex P1: a fedett sibling sor IS kap audit-rekordot (nincs auditálatlan magas-kockázatú tranzakció),
+        // csak a grant-felhasználás marad el (single-use → decrement 0-t adott).
+        assertThat(rec).isNotNull();
+        assertThat(rec.getApprovedByName()).isEqualTo("Kósa Zoltán");
+        verify(approvalRepository).save(any());
     }
 
     @Test
