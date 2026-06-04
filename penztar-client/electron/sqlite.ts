@@ -7,6 +7,52 @@ import crypto from 'node:crypto';
 let db: Database | null = null;
 let dbPath = '';
 
+/**
+ * NGM 23/2014 atomicitás-garancia: a szigorú bizonylat-sorszám UPSERT (sequence
+ * inkrement) ÉS a hozzá tartozó pending-sor INSERT EGYETLEN SQL tranzakcióban
+ * fusson. Ha az INSERT a sequence-inkrement UTÁN dob (constraint/runtime hiba),
+ * a ROLLBACK visszacsinálja a sequence-előléptetést is → NINCS hézag a szigorú
+ * számadású sorszámozásban (adó/audit-megfelelőség: a sorozat hézagmentes).
+ *
+ * sql.js NEM támogat egymásba ágyazott BEGIN-t, ezért ezt CSAK top-level
+ * (IPC-szintű) mentésekben szabad hívni, soha nem egy másik withTransaction-ön
+ * belül. A re-entrancia ellen RUNTIME guard véd: ha egy hívó tévedésből egy már
+ * futó tranzakción belül hívja, fail-fast hibát kapunk (nem csendes korrupció).
+ */
+let inTransaction = false;
+
+/**
+ * A tranzakció-MAG: explicit {@link Database}-szel. A production logika (BEGIN /
+ * COMMIT / ROLLBACK + re-entry guard) EGYETLEN helyen él, hogy a unit teszt a
+ * VALÓS kódot exercise-elje (ne egy viselkedés-replikát). Az electron-független
+ * tesztek a saját in-memory db-jükkel hívják; a {@link withTransaction} a modul
+ * `db` globáljával delegál ide.
+ */
+export function runInTransaction<T>(database: Database, fn: () => T): T {
+  if (inTransaction) {
+    // Re-entry guard: sql.js nem támogat nested BEGIN-t → fail-fast, hogy egy
+    // fejlesztői hiba SOHA ne csendben korrumpálja a folyamatban lévő tranzakciót.
+    throw new Error('withTransaction nem hívható re-entránsan (sql.js nem támogat nested BEGIN-t)');
+  }
+  inTransaction = true;
+  database.run('BEGIN');
+  try {
+    const result = fn();
+    database.run('COMMIT');
+    return result;
+  } catch (e) {
+    try { database.run('ROLLBACK'); } catch { /* rollback best-effort */ }
+    throw e;
+  } finally {
+    inTransaction = false;
+  }
+}
+
+function withTransaction<T>(fn: () => T): T {
+  if (!db) throw new Error('Database not initialized');
+  return runInTransaction(db, fn);
+}
+
 function getDbPath(): string {
   const userDir = app.getPath('home');
   const valutaDir = path.join(userDir, '.valuta');
@@ -1277,8 +1323,6 @@ export function savePendingTransaction(
   if (!branchCodeForReceipt) {
     throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
   }
-  const localReferenceNumber = generateStrictReceiptNumber(type === 'BUY' ? 'V' : 'E', branchCodeForReceipt);
-
   const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
   const roundFinOrNull = (v: number | null, decimals: number): number | null =>
     v === null ? null : roundFin(v, decimals);
@@ -1288,55 +1332,61 @@ export function savePendingTransaction(
   const normalizedCustomerAddress = customerAddress?.trim() || null;
   const normalizedSourceOfFunds = sourceOfFunds?.trim() || null;
 
-  db.run(
-    `INSERT INTO pending_transactions (
-      type,
-      currency_code,
-      foreign_amount,
-      huf_amount,
-      rounded_huf_amount,
-      rate,
-      handling_fee,
-      discount_percent,
-      customer_id,
-      customer_identifier,
-      customer_name,
-      customer_document_number,
-      customer_address,
-      denominations,
-      source_of_funds,
-      customer_is_pep,
-      approver_worker_id,
-      approval_session_id,
-      foreign_status,
-      local_reference_number,
-      idempotency_key
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      type,
-      currencyCode,
-      roundFin(foreignAmount, 8),
-      roundFin(hufAmount, 2),
-      roundFin(roundedHufAmount, 0),
-      roundFin(rate, 10),
-      roundFinOrNull(handlingFee, 0),
-      roundFinOrNull(discountPercent, 4),
-      null,
-      normalizedCustomerIdentifier,
-      normalizedCustomerName,
-      normalizedCustomerDocumentNumber,
-      normalizedCustomerAddress,
-      denominations,
-      normalizedSourceOfFunds,
-      customerIsPep === null ? null : (customerIsPep ? 1 : 0),
-      approverWorkerId ?? null,
-      approvalSessionId ?? null,
-      foreignStatus,
-      localReferenceNumber,
-      idempotencyKey,
-    ],
-  );
+  // NGM 23/2014 atomicitás: a sorszám-inkrement ÉS a sor INSERT egy tranzakcióban,
+  // hogy egy INSERT-hiba ROLLBACK-elje a sorszám-előléptetést is (nincs hézag).
+  const localReferenceNumber = withTransaction(() => {
+    const ref = generateStrictReceiptNumber(type === 'BUY' ? 'V' : 'E', branchCodeForReceipt);
+    db!.run(
+      `INSERT INTO pending_transactions (
+        type,
+        currency_code,
+        foreign_amount,
+        huf_amount,
+        rounded_huf_amount,
+        rate,
+        handling_fee,
+        discount_percent,
+        customer_id,
+        customer_identifier,
+        customer_name,
+        customer_document_number,
+        customer_address,
+        denominations,
+        source_of_funds,
+        customer_is_pep,
+        approver_worker_id,
+        approval_session_id,
+        foreign_status,
+        local_reference_number,
+        idempotency_key
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        type,
+        currencyCode,
+        roundFin(foreignAmount, 8),
+        roundFin(hufAmount, 2),
+        roundFin(roundedHufAmount, 0),
+        roundFin(rate, 10),
+        roundFinOrNull(handlingFee, 0),
+        roundFinOrNull(discountPercent, 4),
+        null,
+        normalizedCustomerIdentifier,
+        normalizedCustomerName,
+        normalizedCustomerDocumentNumber,
+        normalizedCustomerAddress,
+        denominations,
+        normalizedSourceOfFunds,
+        customerIsPep === null ? null : (customerIsPep ? 1 : 0),
+        approverWorkerId ?? null,
+        approvalSessionId ?? null,
+        foreignStatus,
+        ref,
+        idempotencyKey,
+      ],
+    );
+    return ref;
+  });
   saveDatabase();
 
   // Get last inserted ID
@@ -1402,11 +1452,6 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
   if (!branchCodeForReceipt) {
     throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
   }
-  const localReferenceNumber = generateStrictReceiptNumber(
-    input.type === 'BUY' ? 'V' : 'E',
-    branchCodeForReceipt,
-  );
-
   const trimOrNull = (v: string | null | undefined): string | null => {
     const t = v?.trim();
     return t && t.length > 0 ? t : null;
@@ -1442,64 +1487,72 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
     customerActorAddress: trimOrNull(input.customerActorAddress),
   };
 
-  db.run(
-    `INSERT INTO pending_transactions (
-      type, currency_code, foreign_amount, huf_amount, rounded_huf_amount, rate,
-      handling_fee, discount_percent,
-      customer_id, customer_identifier, customer_name, customer_document_number, customer_address,
-      denominations,
-      source_of_funds, customer_is_pep, approver_worker_id, approval_session_id, foreign_status,
-      customer_birth_place, customer_birth_date, customer_mother_name,
-      customer_nationality, customer_document_type,
-      customer_on_own_behalf, customer_actor_name,
-      customer_pep_kind,
-      customer_actor_birth_place, customer_actor_birth_date, customer_actor_mother_name,
-      customer_actor_nationality, customer_actor_document_type,
-      customer_actor_document_number, customer_actor_address,
-      lines,
-      local_reference_number, idempotency_key
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      input.type,
-      input.currencyCode,
-      roundFin(input.foreignAmount, 8),
-      roundFin(input.hufAmount, 2),
-      roundFin(input.roundedHufAmount, 0),
-      roundFin(input.rate, 10),
-      roundFinOrNull(input.handlingFee, 0),
-      roundFinOrNull(input.discountPercent, 4),
-      null, // customer_id (legacy oszlop, ID-t nem kezeljük itt)
-      normalized.customerIdentifier,
-      normalized.customerName,
-      normalized.customerDocumentNumber,
-      normalized.customerAddress,
-      input.denominations,
-      normalized.sourceOfFunds,
-      boolToInt(input.customerIsPep),
-      input.approverWorkerId ?? null,
-      input.approvalSessionId ?? null,
-      input.foreignStatus,
-      normalized.customerBirthPlace,
-      normalized.customerBirthDate,
-      normalized.customerMotherName,
-      normalized.customerNationality,
-      normalized.customerDocumentType,
-      boolToInt(input.customerOnOwnBehalf),
-      normalized.customerActorName,
-      normalized.customerPepKind,
-      normalized.customerActorBirthPlace,
-      normalized.customerActorBirthDate,
-      normalized.customerActorMotherName,
-      normalized.customerActorNationality,
-      normalized.customerActorDocumentType,
-      normalized.customerActorDocumentNumber,
-      normalized.customerActorAddress,
-      input.lines ?? null,
-      localReferenceNumber,
-      idempotencyKey,
-    ],
-  );
+  // NGM 23/2014 atomicitás: sorszám-inkrement + sor INSERT egy tranzakcióban.
+  const localReferenceNumber = withTransaction(() => {
+    const ref = generateStrictReceiptNumber(
+      input.type === 'BUY' ? 'V' : 'E',
+      branchCodeForReceipt,
+    );
+    db!.run(
+      `INSERT INTO pending_transactions (
+        type, currency_code, foreign_amount, huf_amount, rounded_huf_amount, rate,
+        handling_fee, discount_percent,
+        customer_id, customer_identifier, customer_name, customer_document_number, customer_address,
+        denominations,
+        source_of_funds, customer_is_pep, approver_worker_id, approval_session_id, foreign_status,
+        customer_birth_place, customer_birth_date, customer_mother_name,
+        customer_nationality, customer_document_type,
+        customer_on_own_behalf, customer_actor_name,
+        customer_pep_kind,
+        customer_actor_birth_place, customer_actor_birth_date, customer_actor_mother_name,
+        customer_actor_nationality, customer_actor_document_type,
+        customer_actor_document_number, customer_actor_address,
+        lines,
+        local_reference_number, idempotency_key
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        input.type,
+        input.currencyCode,
+        roundFin(input.foreignAmount, 8),
+        roundFin(input.hufAmount, 2),
+        roundFin(input.roundedHufAmount, 0),
+        roundFin(input.rate, 10),
+        roundFinOrNull(input.handlingFee, 0),
+        roundFinOrNull(input.discountPercent, 4),
+        null, // customer_id (legacy oszlop, ID-t nem kezeljük itt)
+        normalized.customerIdentifier,
+        normalized.customerName,
+        normalized.customerDocumentNumber,
+        normalized.customerAddress,
+        input.denominations,
+        normalized.sourceOfFunds,
+        boolToInt(input.customerIsPep),
+        input.approverWorkerId ?? null,
+        input.approvalSessionId ?? null,
+        input.foreignStatus,
+        normalized.customerBirthPlace,
+        normalized.customerBirthDate,
+        normalized.customerMotherName,
+        normalized.customerNationality,
+        normalized.customerDocumentType,
+        boolToInt(input.customerOnOwnBehalf),
+        normalized.customerActorName,
+        normalized.customerPepKind,
+        normalized.customerActorBirthPlace,
+        normalized.customerActorBirthDate,
+        normalized.customerActorMotherName,
+        normalized.customerActorNationality,
+        normalized.customerActorDocumentType,
+        normalized.customerActorDocumentNumber,
+        normalized.customerActorAddress,
+        input.lines ?? null,
+        ref,
+        idempotencyKey,
+      ],
+    );
+    return ref;
+  });
   saveDatabase();
 
   const stmt = db.prepare('SELECT last_insert_rowid() as id');
@@ -1647,47 +1700,51 @@ export function savePendingConversion(
   if (!branchCodeForReceipt) {
     throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
   }
-  const localReferenceNumber = generateStrictReceiptNumber('K', branchCodeForReceipt);
   const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
   const roundFinOrNull = (v: number | null, decimals: number): number | null =>
     v === null ? null : roundFin(v, decimals);
 
-  db.run(
-    `INSERT INTO pending_conversions (
-      from_currency_id,
-      from_currency_code,
-      to_currency_id,
-      to_currency_code,
-      from_amount,
-      calculated_huf_amount,
-      calculated_to_amount,
-      conversion_rate,
-      handling_fee,
-      customer_id,
-      customer_name,
-      customer_document_number,
-      note,
-      local_reference_number,
-      idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      fromCurrencyId,
-      fromCurrencyCode,
-      toCurrencyId,
-      toCurrencyCode,
-      roundFin(fromAmount, 8),
-      roundFin(calculatedHufAmount, 2),
-      roundFin(calculatedToAmount, 8),
-      roundFin(conversionRate, 10),
-      roundFinOrNull(handlingFee, 0),
-      customerId?.trim() || null,
-      customerName?.trim() || null,
-      customerDocumentNumber?.trim() || null,
-      note?.trim() || null,
-      localReferenceNumber,
-      idempotencyKey,
-    ],
-  );
+  // NGM 23/2014 atomicitás: sorszám-inkrement + sor INSERT egy tranzakcióban.
+  const localReferenceNumber = withTransaction(() => {
+    const ref = generateStrictReceiptNumber('K', branchCodeForReceipt);
+    db!.run(
+      `INSERT INTO pending_conversions (
+        from_currency_id,
+        from_currency_code,
+        to_currency_id,
+        to_currency_code,
+        from_amount,
+        calculated_huf_amount,
+        calculated_to_amount,
+        conversion_rate,
+        handling_fee,
+        customer_id,
+        customer_name,
+        customer_document_number,
+        note,
+        local_reference_number,
+        idempotency_key
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        fromCurrencyId,
+        fromCurrencyCode,
+        toCurrencyId,
+        toCurrencyCode,
+        roundFin(fromAmount, 8),
+        roundFin(calculatedHufAmount, 2),
+        roundFin(calculatedToAmount, 8),
+        roundFin(conversionRate, 10),
+        roundFinOrNull(handlingFee, 0),
+        customerId?.trim() || null,
+        customerName?.trim() || null,
+        customerDocumentNumber?.trim() || null,
+        note?.trim() || null,
+        ref,
+        idempotencyKey,
+      ],
+    );
+    return ref;
+  });
   saveDatabase();
 
   const stmt = db.prepare('SELECT last_insert_rowid() as id');
@@ -1750,8 +1807,6 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
   if (!branchCodeForReceipt) {
     throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
   }
-  const localReferenceNumber = generateStrictReceiptNumber('K', branchCodeForReceipt);
-
   const trimOrNull = (v: string | null | undefined): string | null => {
     const t = v?.trim();
     return t && t.length > 0 ? t : null;
@@ -1762,43 +1817,48 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
   const roundFinOrNull = (v: number | null, decimals: number): number | null =>
     v === null ? null : roundFin(v, decimals);
 
-  db.run(
-    `INSERT INTO pending_conversions (
-      from_currency_id, from_currency_code, to_currency_id, to_currency_code,
-      from_amount, calculated_huf_amount, calculated_to_amount, conversion_rate,
-      handling_fee,
-      customer_id, customer_name, customer_document_number,
-      customer_address, customer_nationality, customer_birth_place, customer_birth_date,
-      customer_mother_name, customer_document_type,
-      source_of_funds, customer_is_pep, approver_worker_id, approval_session_id, customer_on_own_behalf, customer_actor_name,
-      customer_pep_kind,
-      customer_actor_birth_place, customer_actor_birth_date, customer_actor_mother_name,
-      customer_actor_nationality, customer_actor_document_type,
-      customer_actor_document_number, customer_actor_address,
-      foreign_status,
-      note, local_reference_number, idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      input.fromCurrencyId, input.fromCurrencyCode, input.toCurrencyId, input.toCurrencyCode,
-      roundFin(input.fromAmount, 8), roundFin(input.calculatedHufAmount, 2), roundFin(input.calculatedToAmount, 8), roundFin(input.conversionRate, 10),
-      roundFinOrNull(input.handlingFee, 0),
-      trimOrNull(input.customerId), trimOrNull(input.customerName), trimOrNull(input.customerDocumentNumber),
-      trimOrNull(input.customerAddress), trimOrNull(input.customerNationality),
-      trimOrNull(input.customerBirthPlace), trimOrNull(input.customerBirthDate),
-      trimOrNull(input.customerMotherName), trimOrNull(input.customerDocumentType),
-      trimOrNull(input.sourceOfFunds), boolToInt(input.customerIsPep),
-      input.approverWorkerId ?? null,
-      input.approvalSessionId ?? null,
-      boolToInt(input.customerOnOwnBehalf), trimOrNull(input.customerActorName),
-      trimOrNull(input.customerPepKind),
-      trimOrNull(input.customerActorBirthPlace), trimOrNull(input.customerActorBirthDate),
-      trimOrNull(input.customerActorMotherName), trimOrNull(input.customerActorNationality),
-      trimOrNull(input.customerActorDocumentType),
-      trimOrNull(input.customerActorDocumentNumber), trimOrNull(input.customerActorAddress),
-      trimOrNull(input.foreignStatus),
-      trimOrNull(input.note), localReferenceNumber, idempotencyKey,
-    ],
-  );
+  // NGM 23/2014 atomicitás: sorszám-inkrement + sor INSERT egy tranzakcióban.
+  const localReferenceNumber = withTransaction(() => {
+    const ref = generateStrictReceiptNumber('K', branchCodeForReceipt);
+    db!.run(
+      `INSERT INTO pending_conversions (
+        from_currency_id, from_currency_code, to_currency_id, to_currency_code,
+        from_amount, calculated_huf_amount, calculated_to_amount, conversion_rate,
+        handling_fee,
+        customer_id, customer_name, customer_document_number,
+        customer_address, customer_nationality, customer_birth_place, customer_birth_date,
+        customer_mother_name, customer_document_type,
+        source_of_funds, customer_is_pep, approver_worker_id, approval_session_id, customer_on_own_behalf, customer_actor_name,
+        customer_pep_kind,
+        customer_actor_birth_place, customer_actor_birth_date, customer_actor_mother_name,
+        customer_actor_nationality, customer_actor_document_type,
+        customer_actor_document_number, customer_actor_address,
+        foreign_status,
+        note, local_reference_number, idempotency_key
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        input.fromCurrencyId, input.fromCurrencyCode, input.toCurrencyId, input.toCurrencyCode,
+        roundFin(input.fromAmount, 8), roundFin(input.calculatedHufAmount, 2), roundFin(input.calculatedToAmount, 8), roundFin(input.conversionRate, 10),
+        roundFinOrNull(input.handlingFee, 0),
+        trimOrNull(input.customerId), trimOrNull(input.customerName), trimOrNull(input.customerDocumentNumber),
+        trimOrNull(input.customerAddress), trimOrNull(input.customerNationality),
+        trimOrNull(input.customerBirthPlace), trimOrNull(input.customerBirthDate),
+        trimOrNull(input.customerMotherName), trimOrNull(input.customerDocumentType),
+        trimOrNull(input.sourceOfFunds), boolToInt(input.customerIsPep),
+        input.approverWorkerId ?? null,
+        input.approvalSessionId ?? null,
+        boolToInt(input.customerOnOwnBehalf), trimOrNull(input.customerActorName),
+        trimOrNull(input.customerPepKind),
+        trimOrNull(input.customerActorBirthPlace), trimOrNull(input.customerActorBirthDate),
+        trimOrNull(input.customerActorMotherName), trimOrNull(input.customerActorNationality),
+        trimOrNull(input.customerActorDocumentType),
+        trimOrNull(input.customerActorDocumentNumber), trimOrNull(input.customerActorAddress),
+        trimOrNull(input.foreignStatus),
+        trimOrNull(input.note), ref, idempotencyKey,
+      ],
+    );
+    return ref;
+  });
   saveDatabase();
 
   const stmt = db.prepare('SELECT last_insert_rowid() as id');
@@ -2047,47 +2107,53 @@ export function savePendingTransfer(
   // NEM generálunk "AT  000001" malformed számot, hanem LT-fallback-re esik vissza.
   const rawBranchCode = getConfig('branch_code');
   const sourceBranchCode = rawBranchCode != null ? rawBranchCode.trim() : '';
-  const localReferenceNumber = sourceBranchCode
-    ? generateStrictReceiptNumber('AT', sourceBranchCode)
-    : generateLocalReference('LT');
   const idempotencyKey = crypto.randomUUID();
 
-  db.run(
-    `INSERT INTO pending_transfers (
-      target_branch_id,
-      target_branch_code,
-      currency_id,
-      currency_code,
-      amount,
-      huf_value,
-      transfer_type,
-      denominations,
-      note,
-      carrier_name,
-      seal_number,
-      direction,
-      lines,
-      local_reference_number,
-      idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      targetBranchId,
-      targetBranchCode,
-      currencyId,
-      currencyCode,
-      roundFin(amount, 8),
-      roundFinOrNull(hufValue, 2),
-      transferType,
-      denominations,
-      note,
-      carrierName,
-      sealNumber,
-      direction,
-      lines,
-      localReferenceNumber,
-      idempotencyKey,
-    ],
-  );
+  // NGM 23/2014 atomicitás: a szigorú átadólap-sorszám (AT-prefix) inkrement +
+  // sor INSERT egy tranzakcióban, hogy egy INSERT-hiba ROLLBACK-elje a sorszám-
+  // előléptetést is (nincs hézag). Az LT-fallback nem érinti a sequence-t.
+  const localReferenceNumber = withTransaction(() => {
+    const ref = sourceBranchCode
+      ? generateStrictReceiptNumber('AT', sourceBranchCode)
+      : generateLocalReference('LT');
+    db!.run(
+      `INSERT INTO pending_transfers (
+        target_branch_id,
+        target_branch_code,
+        currency_id,
+        currency_code,
+        amount,
+        huf_value,
+        transfer_type,
+        denominations,
+        note,
+        carrier_name,
+        seal_number,
+        direction,
+        lines,
+        local_reference_number,
+        idempotency_key
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        targetBranchId,
+        targetBranchCode,
+        currencyId,
+        currencyCode,
+        roundFin(amount, 8),
+        roundFinOrNull(hufValue, 2),
+        transferType,
+        denominations,
+        note,
+        carrierName,
+        sealNumber,
+        direction,
+        lines,
+        ref,
+        idempotencyKey,
+      ],
+    );
+    return ref;
+  });
   saveDatabase();
 
   const stmt = db.prepare('SELECT last_insert_rowid() as id');
