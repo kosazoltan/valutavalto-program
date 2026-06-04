@@ -426,3 +426,158 @@ describe('sqlite — local audit events', () => {
     expect(row['cnt']).toBe(1);
   });
 });
+
+/**
+ * NGM 23/2014 szigorú számadású sorszám atomicitás (fix/penztar-strict-receipt-seq-atomic).
+ *
+ * A sorszám-előléptetés (local_receipt_sequence UPSERT) ÉS a hozzá tartozó
+ * pending-sor INSERT egyetlen SQL tranzakcióban fut (BEGIN ... COMMIT / ROLLBACK).
+ * Ha az INSERT a sorszám-inkrement UTÁN dob, a ROLLBACK visszaállítja a sequence-t
+ * is → NINCS hézag a sorozatban (adó/audit-megfelelőség).
+ *
+ * Ezek a tesztek pontosan a sqlite.ts `withTransaction(() => { gen + INSERT })`
+ * mintát replikálják in-memory, mert az `initDatabase()` electron `app`-függő.
+ */
+describe('sqlite — strict receipt sequence atomicity (withTransaction)', () => {
+  /** A sqlite.ts withTransaction helper viselkedés-azonos másolata a teszthez. */
+  function withTransaction<T>(database: Database, fn: () => T): T {
+    database.run('BEGIN');
+    try {
+      const result = fn();
+      database.run('COMMIT');
+      return result;
+    } catch (e) {
+      try { database.run('ROLLBACK'); } catch { /* best-effort */ }
+      throw e;
+    }
+  }
+
+  /** A generateStrictReceiptNumber sequence-UPSERT magja. */
+  function bumpSequence(database: Database, branch: string, prefix: string): number {
+    database.run(
+      `INSERT INTO local_receipt_sequence (branch_code, prefix, last_seq, updated_at)
+       VALUES (?, ?, 1, datetime('now'))
+       ON CONFLICT(branch_code, prefix) DO UPDATE SET
+         last_seq = last_seq + 1,
+         updated_at = datetime('now')`,
+      [branch, prefix],
+    );
+    const stmt = database.prepare(
+      'SELECT last_seq FROM local_receipt_sequence WHERE branch_code = ? AND prefix = ?',
+    );
+    stmt.bind([branch, prefix]);
+    stmt.step();
+    const seq = Number(stmt.getAsObject()['last_seq'] ?? 1);
+    stmt.free();
+    return seq;
+  }
+
+  function readSeq(database: Database, branch: string, prefix: string): number | null {
+    const stmt = database.prepare(
+      'SELECT last_seq FROM local_receipt_sequence WHERE branch_code = ? AND prefix = ?',
+    );
+    stmt.bind([branch, prefix]);
+    const has = stmt.step();
+    const seq = has ? Number(stmt.getAsObject()['last_seq']) : null;
+    stmt.free();
+    return seq;
+  }
+
+  beforeEach(async () => {
+    const wasmBinary = fs.readFileSync(wasmPath);
+    const SQL = await initSqlJs({ wasmBinary: wasmBinary as unknown as ArrayBuffer });
+    db = new SQL.Database();
+    runSchema(db);
+    db.run(`
+      CREATE TABLE IF NOT EXISTS local_receipt_sequence (
+        branch_code TEXT NOT NULL,
+        prefix TEXT NOT NULL,
+        last_seq INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT DEFAULT (datetime('now')),
+        PRIMARY KEY (branch_code, prefix)
+      );
+    `);
+  });
+
+  afterEach(() => {
+    if (db) db.close();
+  });
+
+  it('success path: assigns the number AND inserts the row in one transaction', () => {
+    const ref = withTransaction(db, () => {
+      const seq = bumpSequence(db, '039', 'V');
+      const r = `V039${String(seq).padStart(6, '0')}`;
+      db.run(
+        `INSERT INTO pending_transactions (type, currency_code, foreign_amount, huf_amount, rounded_huf_amount, rate, local_reference_number)
+         VALUES ('BUY', 'EUR', 100, 40000, 40000, 400, ?)`,
+        [r],
+      );
+      return r;
+    });
+
+    expect(ref).toBe('V039000001');
+    expect(readSeq(db, '039', 'V')).toBe(1);
+
+    const stmt = db.prepare('SELECT local_reference_number FROM pending_transactions WHERE local_reference_number = ?');
+    stmt.bind([ref]);
+    expect(stmt.step()).toBe(true);
+    stmt.free();
+  });
+
+  it('rollback path: a failing INSERT after the sequence bump leaves last_seq UNCHANGED (no gap)', () => {
+    // 1) Sikeres mentés → seq = 1
+    withTransaction(db, () => {
+      const seq = bumpSequence(db, '039', 'V');
+      const r = `V039${String(seq).padStart(6, '0')}`;
+      db.run(
+        `INSERT INTO pending_transactions (type, currency_code, foreign_amount, huf_amount, rounded_huf_amount, rate, local_reference_number)
+         VALUES ('BUY', 'EUR', 100, 40000, 40000, 400, ?)`,
+        [r],
+      );
+      return r;
+    });
+    expect(readSeq(db, '039', 'V')).toBe(1);
+
+    // 2) A következő mentés az INSERT-nél dob (type CHECK constraint sérül 'INVALID'-dal),
+    //    a sorszám-inkrement (seq → 2) UTÁN. A withTransaction ROLLBACK-eli.
+    expect(() => {
+      withTransaction(db, () => {
+        const seq = bumpSequence(db, '039', 'V'); // ideiglenesen 2-re lépne
+        const r = `V039${String(seq).padStart(6, '0')}`;
+        db.run(
+          `INSERT INTO pending_transactions (type, currency_code, foreign_amount, huf_amount, rounded_huf_amount, rate, local_reference_number)
+           VALUES ('INVALID', 'EUR', 100, 40000, 40000, 400, ?)`,
+          [r],
+        );
+        return r;
+      });
+    }).toThrow();
+
+    // A ROLLBACK miatt a sequence VÁLTOZATLAN maradt → nincs hézag.
+    expect(readSeq(db, '039', 'V')).toBe(1);
+
+    // 3) A következő SIKERES mentés ÚJRA az 1 utáni 2-es számot kapja (a kihagyott szám
+    //    nem veszett el): bizonyítja, hogy a hibás kör nem fogyasztott el sorszámot.
+    const ref2 = withTransaction(db, () => {
+      const seq = bumpSequence(db, '039', 'V');
+      const r = `V039${String(seq).padStart(6, '0')}`;
+      db.run(
+        `INSERT INTO pending_transactions (type, currency_code, foreign_amount, huf_amount, rounded_huf_amount, rate, local_reference_number)
+         VALUES ('SELL', 'EUR', 100, 40000, 40000, 400, ?)`,
+        [r],
+      );
+      return r;
+    });
+    expect(ref2).toBe('V039000002');
+    expect(readSeq(db, '039', 'V')).toBe(2);
+
+    // Csak 2 sor van (a hibás kör nem szúrt be), és a sorszámozás hézagmentes: 1, 2.
+    const stmt = db.prepare('SELECT local_reference_number FROM pending_transactions ORDER BY id ASC');
+    const refs: string[] = [];
+    while (stmt.step()) {
+      refs.push(stmt.getAsObject()['local_reference_number'] as string);
+    }
+    stmt.free();
+    expect(refs).toEqual(['V039000001', 'V039000002']);
+  });
+});
