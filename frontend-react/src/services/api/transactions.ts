@@ -1450,13 +1450,23 @@ export interface Receipt {
 }
 
 export const receiptApi = {
-  // EXCMD b5b FR-BSZUR-02: opcionális from/to (ISO dátum) — a dátum-szűrés a backenden fut,
-  // így a top-500 limit a választott időszakon belül érvényesül (nem csonkol a szűrés előtt).
-  list: async (params?: { transactionId?: string; from?: string; to?: string }): Promise<Receipt[]> => {
+  // EXCMD b5b FR-BSZUR-02/03: opcionális from/to (ISO dátum) + ügyfél-adatlap LIKE-szűrők — a szűrés
+  // a backenden fut (a synthesized top-500 limit ELŐTT), így nem csonkol a kliens-oldali szűrés előtt.
+  list: async (params?: {
+    transactionId?: string
+    from?: string
+    to?: string
+    customerFilters?: Record<string, string>
+  }): Promise<Receipt[]> => {
     const query: Record<string, string> = {}
     if (params?.transactionId) query.transactionId = params.transactionId
     if (params?.from) query.from = params.from
     if (params?.to) query.to = params.to
+    if (params?.customerFilters) {
+      for (const [k, v] of Object.entries(params.customerFilters)) {
+        if (v && v.trim()) query[k] = v.trim()
+      }
+    }
     const response = await api.get<Receipt[]>('/receipts', { params: query })
     return response.data
   },

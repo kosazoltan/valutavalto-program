@@ -226,6 +226,15 @@ export default function ReceiptPage() {
   // EXCMD b5b FR-BSZUR-03: természetes személy ügyfél-adatlap szűrőmezők (mezőkulcs → beírt érték).
   const [customerFilters, setCustomerFilters] = useState<Record<string, string>>({})
   const [customerPanelOpen, setCustomerPanelOpen] = useState(false)
+  // FR-BSZUR-03 (Codex P2): az adatlap-szűrőket a BACKENDRE is továbbadjuk (a synthesized 500-as
+  // csonkolás ELŐTT), de a gépeléskénti refetch elkerülésére debounce-oljuk (400 ms). A kliens-oldali
+  // matchesCustomerFilters azonnali visszajelzést ad a már betöltött listán, a backend pótolja a >500-as
+  // egyezéseket.
+  const [debouncedCustomerFilters, setDebouncedCustomerFilters] = useState<Record<string, string>>({})
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedCustomerFilters(customerFilters), 400)
+    return () => clearTimeout(id)
+  }, [customerFilters])
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null)
   const [selectedDraft, setSelectedDraft] = useState<PendingReceiptDraft | null>(null)
 
@@ -235,8 +244,11 @@ export default function ReceiptPage() {
       // EXCMD b5b FR-BSZUR-02 (Codex P2): a periódust a backendre is továbbadjuk, hogy a synthesized
       // lista dátum-szűrése a 500-as limit ELŐTT történjen (régi hónap/tartomány ne legyen csonka).
       const range = periodToBackendRange(periodMode, periodMonth, periodFrom, periodTo)
+      // FR-BSZUR-03 (Codex P2): az ügyfél-adatlap szűrőket is a backendre adjuk (debounce-olt értékkel),
+      // hogy a synthesized LIKE a 500-as csonkolás ELŐTT fusson — egy >500-as időszakban se vesszen el
+      // egy régi egyező rekord.
       const [data, drafts, reprints] = await Promise.all([
-        receiptApi.list(range),
+        receiptApi.list({ ...range, customerFilters: debouncedCustomerFilters }),
         isElectron() ? getPendingReceiptDrafts(worker) : Promise.resolve([]),
         isElectron() ? getReprintableReceiptDrafts(worker) : Promise.resolve([]),
       ])
@@ -250,7 +262,7 @@ export default function ReceiptPage() {
     } finally {
       setLoading(false)
     }
-  }, [worker, periodMode, periodMonth, periodFrom, periodTo])
+  }, [worker, periodMode, periodMonth, periodFrom, periodTo, debouncedCustomerFilters])
 
   useEffect(() => {
     void loadData()
@@ -431,7 +443,12 @@ export default function ReceiptPage() {
           >
             {customerPanelOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             {t('receipts.filter.customerPanel')}
-            {customerFilterActive && <span className="inline-block w-2 h-2 rounded-full bg-blue-500" aria-hidden="true" />}
+            {customerFilterActive && (
+              <>
+                <span className="inline-block w-2 h-2 rounded-full bg-blue-500" aria-hidden="true" />
+                <span className="sr-only">{t('receipts.filter.customerActive')}</span>
+              </>
+            )}
           </button>
           {customerPanelOpen && (
             <div className="mt-2">

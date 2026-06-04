@@ -1229,7 +1229,8 @@
       "customerAddress": "Lakcím",
       "customerDocumentType": "Okmánytípus",
       "customerDocumentNumber": "Azonosító",
-      "clearCustomer": "Adatlap-szűrők törlése"
+      "clearCustomer": "Adatlap-szűrők törlése",
+      "customerActive": "aktív ügyfél-adatlap szűrő"
     },
     "helyiFuggoBizonylatok": "Helyi, függő bizonylatok",
     "helyiReferencia": "Helyi referencia",

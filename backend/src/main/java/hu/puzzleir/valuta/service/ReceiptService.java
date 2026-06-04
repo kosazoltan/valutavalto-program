@@ -70,16 +70,25 @@ public class ReceiptService {
      */
     /** Backward-compat: dátum-szűrés nélküli lista (a régi hívók/tesztek számára). */
     public List<Receipt> list(UUID transactionId) {
-        return list(transactionId, null, null);
+        return list(transactionId, null, null, java.util.Collections.emptyMap());
+    }
+
+    /** Backward-compat: dátum-tartomány, ügyfél-adatlap szűrő nélkül. */
+    public List<Receipt> list(UUID transactionId, LocalDate fromDate, LocalDate toDate) {
+        return list(transactionId, fromDate, toDate, java.util.Collections.emptyMap());
     }
 
     /**
-     * Receipt list endpoint dátum-tartomány szűréssel (EXCMD b5b FR-BSZUR-02).
+     * EXCMD b5b FR-BSZUR-02/03: bizonylat-lista dátum-tartomány + ügyfél-adatlap szűréssel.
      *
-     * @param fromDate opcionális alsó dátumhatár (inkluzív, NULL = nyitott)
-     * @param toDate   opcionális felső dátumhatár (inkluzív, NULL = nyitott)
+     * @param fromDate        opcionális alsó dátumhatár (inkluzív, NULL = nyitott)
+     * @param toDate          opcionális felső dátumhatár (inkluzív, NULL = nyitott)
+     * @param customerFilters mezőkulcs → részleges érték (customerName..customerDocumentNumber).
+     *                        A LIKE-szűrés a synthesized DB-query-ben fut (FR-BSZUR-03, Codex P2),
+     *                        hogy a top-500 limit a SZŰRT halmazra vonatkozzon (ne csonkoljon előtte).
      */
-    public List<Receipt> list(UUID transactionId, LocalDate fromDate, LocalDate toDate) {
+    public List<Receipt> list(UUID transactionId, LocalDate fromDate, LocalDate toDate,
+                              java.util.Map<String, String> customerFilters) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (transactionId != null) {
             // EXCMD b5b (Codex/Copilot P2): a tranzakció-szűrt ágat is dúsítjuk, különben a
@@ -116,8 +125,21 @@ public class ReceiptService {
         // EXCMD b5b FR-BSZUR-02 (Codex P2): a dátum-szűrést a DB-be toljuk, hogy a top-500 limit a
         // KIVÁLASZTOTT időszakon BELÜL érvényesüljön — különben egy régi hónap/tartomány csendben
         // hiányos lenne (a szűrés a már 500-ra csonkolt listán futna). NULL határ = nyitott vég.
+        // EXCMD b5b FR-BSZUR-03 (Codex P2): az ügyfél-adatlap LIKE-szűrők IS a DB-ben futnak a
+        // synthesized ágon — különben a 500-as csonkolás UTÁN, kliens-oldalon szűrve egy >500-as
+        // időszakban egy régi egyező ügyfél-rekord kimaradna. A real (materializált) ág nincs
+        // csonkolva → ott a kliens-oldali matchesCustomerFilters elég.
         List<Transaction> txList = transactionRepository.findReceiptListByCompanyIdAndDateRange(
-                companyId, fromDate, toDate, PageRequest.of(0, RECEIPT_LIST_LIMIT));
+                companyId, fromDate, toDate,
+                likeParam(customerFilters, "customerName"),
+                likeParam(customerFilters, "customerMotherName"),
+                likeParam(customerFilters, "customerBirthPlace"),
+                likeParam(customerFilters, "customerBirthDate"),
+                likeParam(customerFilters, "customerNationality"),
+                likeParam(customerFilters, "customerAddress"),
+                likeParam(customerFilters, "customerDocumentType"),
+                likeParam(customerFilters, "customerDocumentNumber"),
+                PageRequest.of(0, RECEIPT_LIST_LIMIT));
 
         List<Receipt> synthesized = new ArrayList<>();
         for (Transaction tx : txList) {
@@ -236,6 +258,20 @@ public class ReceiptService {
             return false;
         }
         return to == null || !date.isAfter(to);
+    }
+
+    /**
+     * EXCMD b5b FR-BSZUR-03: egy ügyfél-adatlap szűrőértéket a synthesized JPQL-query LIKE-mintájára
+     * képez: üres/hiányzó → NULL (nincs szűrés), egyébként {@code %érték%} kisbetűsítve (a query LOWER-rel
+     * hasonlít). Így a részleges, kis/nagybetű-érzéketlen egyezés a kliens-oldali matchesCustomerFilters-szel
+     * konzisztens.
+     */
+    private static String likeParam(java.util.Map<String, String> filters, String key) {
+        String v = filters == null ? null : filters.get(key);
+        if (v == null || v.isBlank()) {
+            return null;
+        }
+        return "%" + v.trim().toLowerCase() + "%";
     }
 
     public Receipt getById(UUID id) {

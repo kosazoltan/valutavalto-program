@@ -1329,6 +1329,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * <p>A {@code fromDate}/{@code toDate} külön-külön elhagyható (NULL = nyitott vég), így
      * a "csak hónap", "csak tól", "csak ig" és "egyéni tartomány" esetek egy query-vel lefedettek.
      * Mindkettő NULL → a {@link #findReceiptListByCompanyId}-vel azonos (szűretlen, top-500).</p>
+     *
+     * <p>EXCMD b5b FR-BSZUR-03 (Codex P2): az ügyfél-adatlap LIKE-szűrők (custName..custDocNumber)
+     * IS a DB-ben futnak, NEM a kliensen a már 500-ra csonkolt listán — különben egy >500 receiptes
+     * időszakban egy régi, egyező ügyfél-rekord csendben kimaradna. Minden custX külön-külön elhagyható
+     * (NULL = nincs szűrés); a caller `%érték%` formában, kisbetűsítve adja át (a query LOWER-rel
+     * hasonlít). A születési dátumot string-re CAST-oljuk a részleges (pl. "1985-03") egyezéshez.</p>
      */
     @Query("SELECT t FROM Transaction t " +
            "JOIN FETCH t.branch " +
@@ -1338,11 +1344,27 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "WHERE t.company.id = :companyId " +
            "AND (:fromDate IS NULL OR t.transactionDate >= :fromDate) " +
            "AND (:toDate IS NULL OR t.transactionDate <= :toDate) " +
+           "AND (:custName IS NULL OR LOWER(t.customerName) LIKE :custName) " +
+           "AND (:custMotherName IS NULL OR LOWER(t.customerMotherName) LIKE :custMotherName) " +
+           "AND (:custBirthPlace IS NULL OR LOWER(t.customerBirthPlace) LIKE :custBirthPlace) " +
+           "AND (:custBirthDate IS NULL OR LOWER(CAST(t.customerBirthDate AS string)) LIKE :custBirthDate) " +
+           "AND (:custNationality IS NULL OR LOWER(t.customerNationality) LIKE :custNationality) " +
+           "AND (:custAddress IS NULL OR LOWER(t.customerAddress) LIKE :custAddress) " +
+           "AND (:custDocType IS NULL OR LOWER(t.customerDocumentType) LIKE :custDocType) " +
+           "AND (:custDocNumber IS NULL OR LOWER(t.customerDocumentNumber) LIKE :custDocNumber) " +
            "ORDER BY t.transactionDate DESC, t.transactionTime DESC")
     List<Transaction> findReceiptListByCompanyIdAndDateRange(
         @Param("companyId") UUID companyId,
         @Param("fromDate") LocalDate fromDate,
         @Param("toDate") LocalDate toDate,
+        @Param("custName") String custName,
+        @Param("custMotherName") String custMotherName,
+        @Param("custBirthPlace") String custBirthPlace,
+        @Param("custBirthDate") String custBirthDate,
+        @Param("custNationality") String custNationality,
+        @Param("custAddress") String custAddress,
+        @Param("custDocType") String custDocType,
+        @Param("custDocNumber") String custDocNumber,
         Pageable pageable);
 
     /**

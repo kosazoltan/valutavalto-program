@@ -28,14 +28,39 @@ public class ReceiptController {
      * - {@code transactionId}: csak az adott tranzakció bizonylatai.
      * - {@code from}/{@code to} (ISO dátum): EXCMD b5b FR-BSZUR-02 hatókör/időszak — a dátum-szűrés
      *   a DB-ben fut, így a top-500 limit a választott időszakon belül érvényesül (nem csonkol előtte).
+     * - {@code customerName..customerDocumentNumber}: EXCMD b5b FR-BSZUR-03 ügyfél-adatlap LIKE-szűrők —
+     *   szintén a DB-ben futnak a synthesized ágon (a 500-as csonkolás ELŐTT, Codex P2).
      */
     @GetMapping
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<List<Receipt>> list(
             @RequestParam(required = false) UUID transactionId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(service.list(transactionId, from, to));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String customerName,
+            @RequestParam(required = false) String customerMotherName,
+            @RequestParam(required = false) String customerBirthPlace,
+            @RequestParam(required = false) String customerBirthDate,
+            @RequestParam(required = false) String customerNationality,
+            @RequestParam(required = false) String customerAddress,
+            @RequestParam(required = false) String customerDocumentType,
+            @RequestParam(required = false) String customerDocumentNumber) {
+        java.util.Map<String, String> customerFilters = new java.util.HashMap<>();
+        putIfPresent(customerFilters, "customerName", customerName);
+        putIfPresent(customerFilters, "customerMotherName", customerMotherName);
+        putIfPresent(customerFilters, "customerBirthPlace", customerBirthPlace);
+        putIfPresent(customerFilters, "customerBirthDate", customerBirthDate);
+        putIfPresent(customerFilters, "customerNationality", customerNationality);
+        putIfPresent(customerFilters, "customerAddress", customerAddress);
+        putIfPresent(customerFilters, "customerDocumentType", customerDocumentType);
+        putIfPresent(customerFilters, "customerDocumentNumber", customerDocumentNumber);
+        return ResponseEntity.ok(service.list(transactionId, from, to, customerFilters));
+    }
+
+    private static void putIfPresent(java.util.Map<String, String> map, String key, String value) {
+        if (value != null && !value.isBlank()) {
+            map.put(key, value);
+        }
     }
 
     @GetMapping("/{id}")
