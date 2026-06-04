@@ -51,8 +51,27 @@ export interface LocalAuditEventView {
   rateSnapshot: unknown
 }
 
+/**
+ * A bizonylat-fejléc cégadatait vezérlő tenant-típus meghatározása a bejelentkezett worker
+ * cég-adataiból. A {@link ReceiptPreviewModal} a visszaadott értékhez hardcode-olja a cég
+ * teljes nevét / adószámát / címét (jelenleg 2 cég).
+ *
+ * Leképezés (invariánsok):
+ * - **BEST_CHANGE** ← cégkód pontosan `EBC` vagy `BEST` (DB-seed V110: code=`EBC`,
+ *   name=`Exclusive Best Change Zrt.`), VAGY a cégnév tartalmazza a `BEST CHANGE` frázist.
+ * - **EXPRESSZ** ← minden más (pl. Expressz Ékszerház és Minibank Kft.), illetve hiányzó mezők.
+ *
+ * Pontos kód-egyezést használunk (nem substring), hogy egy jövőbeli tenant, amelynek kódjában/
+ * nevében véletlenül szerepel az „EBC"/„BEST" részlet (pl. „WEBCAM"), NE keveredjen.
+ * Korábbi hiba: a `companyCode.includes('BEST')` az EBC-t (kód `EBC`) tévesen EXPRESSZ-nek vette.
+ */
 export function getCompanyType(worker: Worker | null): 'BEST_CHANGE' | 'EXPRESSZ' {
-  return worker?.companyCode?.toUpperCase().includes('BEST') ? 'BEST_CHANGE' : 'EXPRESSZ'
+  const code = (worker?.companyCode ?? '').trim().toUpperCase()
+  const name = (worker?.companyName ?? '').toUpperCase()
+  if (code === 'EBC' || code === 'BEST' || name.includes('BEST CHANGE')) {
+    return 'BEST_CHANGE'
+  }
+  return 'EXPRESSZ'
 }
 
 function normalizeTimestamp(value: string): string {
