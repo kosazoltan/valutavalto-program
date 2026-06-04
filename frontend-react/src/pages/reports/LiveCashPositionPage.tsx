@@ -55,10 +55,12 @@ export default function LiveCashPositionPage() {
     setFeePrintOnly(false);
   }, [feePrintOnly, data]);
 
-  // FR-PA-04: "VISSZA A FŐMENÜRE (Escape)".
+  // FR-PA-04: "VISSZA A FŐMENÜRE (Escape)". Codex P2 (#1033): explicit FIX route a pénztáros-főmenühöz
+  // (/cashier, ld. DayOpenPage konvenció), NEM navigate(-1) — a history-alapú vissza a riport-listára (vagy
+  // közvetlen/bookmark-látogatásnál idegen bejegyzésre) vinne, nem a spec által ígért főmenüre.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') navigate(-1);
+      if (e.key === 'Escape') navigate('/cashier');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -85,7 +87,7 @@ export default function LiveCashPositionPage() {
           >
             Kezelési díj nyomtatása
           </button>
-          <button onClick={() => navigate(-1)} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+          <button onClick={() => navigate('/cashier')} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
             Vissza (Esc)
           </button>
         </div>
