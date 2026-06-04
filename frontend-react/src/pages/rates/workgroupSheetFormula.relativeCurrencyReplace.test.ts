@@ -36,7 +36,7 @@ describe('replaceFormulaCurrency — relatív valutakód-csere (FK02-D)', () => 
     expect(replaceFormulaCurrency('!EAUD*0.97+!FEUR', 'AUD', 'BAM')).toBe('!EBAM*0.97+!FEUR')
   })
 
-  it('self-refek (egybetűs A–I / J–S) és számok változatlanok', () => {
+  it('self-refek (egybetűs 0-s lap A–C/E–I, csoport J–S) és számok változatlanok', () => {
     expect(replaceFormulaCurrency('F+1', 'AUD', 'BAM')).toBe('F+1')
     expect(replaceFormulaCurrency('L*M', 'AUD', 'BAM')).toBe('L*M')
   })
