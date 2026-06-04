@@ -48,6 +48,21 @@ public class ReceiptGeneratorService {
     /** Megjelenítendő dátum/időpont formátum a bizonylatokon (Sourcery #783 konzisztencia). */
     private static final DateTimeFormatter DISPLAY_DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DISPLAY_DATETIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    /**
+     * HUF-összeg formázása a bizonylatra: ezres csoportosítással, ponttal (magyar konvenció:
+     * {@code 400.000 Ft}) — Codex P2. A PDF/ESC-POS renderer a sor-értékeket nyersen nyomtatja, ezért a
+     * csoportosítást itt kell elvégezni. {@code null} → {@code "—"} (Sourcery #783: nem félrevezető "0 Ft").
+     * A HUF egész forint (5 Ft-os kerekítés), ezért a tizedesjegyeket nem jelenítjük meg.
+     */
+    private static String hufFt(BigDecimal value) {
+        if (value == null) {
+            return "—";
+        }
+        java.text.DecimalFormatSymbols sym = new java.text.DecimalFormatSymbols();
+        sym.setGroupingSeparator('.');
+        return new java.text.DecimalFormat("#,##0", sym).format(value) + " Ft";
+    }
     /**
      * Bizonylat sorszám — a nap + milliszekundum + AtomicLong kombináció biztosítja
      * az egyediséget újraindítás után is: System.currentTimeMillis() % 10000 az alap,
@@ -171,15 +186,26 @@ public class ReceiptGeneratorService {
         var customer = reservation.getCustomer();
         var branch = reservation.getBranch();
 
-        // Sourcery #783: a bizonylat dátuma a tényleges domain-eseményből (létrehozás
-        // ill. lemondás), nem nyers now() — auditálható, konzisztens.
+        // Sourcery #783: a bizonylat dátuma a tényleges domain-eseményből (létrehozás / teljesítés /
+        // lemondás), nem nyers now() — auditálható, konzisztens.
+        // Codex P2 (#1032): a FULFILLED beszámítási bizonylat (refund=false) a TELJESÍTÉS napját viseli
+        // (fulfilledAt), NEM a befizetés napját (createdAt) — többnapos foglalónál a "beszámításra került"
+        // záradék a tényleges teljesítés-dátummal konzisztens. A "Befizetés napja" sor külön mutatja a createdAt-ot.
+        boolean fulfilled = reservation.getStatus() == hu.puzzleir.valuta.entity.ReservationStatus.FULFILLED;
+        LocalDateTime fulfilledOrNow = reservation.getFulfilledAt() != null
+            ? reservation.getFulfilledAt() : LocalDateTime.now();
         LocalDateTime receiptDate = isRefund
             ? (reservation.getCancelledAt() != null ? reservation.getCancelledAt() : LocalDateTime.now())
-            : (reservation.getCreatedAt() != null ? reservation.getCreatedAt() : LocalDateTime.now());
+            : (fulfilled ? fulfilledOrNow
+                         : (reservation.getCreatedAt() != null ? reservation.getCreatedAt() : LocalDateTime.now()));
 
         List<ReceiptData.ReceiptLineData> lines = new ArrayList<>();
+        // Codex P2 (#1032): a FULFILLED foglaló külön RENDEZÉSI/BESZÁMÍTÁSI dokumentum (saját cím), NEM az
+        // "ÁTVÉTELE" intake-bizonylat — a teljesítéskor nem letétet veszünk át, hanem a foglalót beszámítjuk.
+        String headerTitle = isRefund ? "FOGLALÓ VISSZAFIZETÉSE"
+                : (fulfilled ? "FOGLALÓ BESZÁMÍTÁSA" : "FOGLALÓ ÁTVÉTELE");
         lines.add(ReceiptData.ReceiptLineData.builder()
-                .label(isRefund ? "FOGLALÓ VISSZAFIZETÉSE" : "FOGLALÓ ÁTVÉTELE")
+                .label(headerTitle)
                 .value(receiptNumber).build());
         lines.add(ReceiptData.ReceiptLineData.builder()
                 .label("Foglalt valuta").value(reservation.getCurrencyCode()).build());
@@ -189,22 +215,79 @@ public class ReceiptGeneratorService {
         lines.add(ReceiptData.ReceiptLineData.builder()
                 .label("Lekötött árfolyam")
                 .value(reservation.getExchangeRate() != null ? reservation.getExchangeRate().toPlainString() : "—").build());
+        // FR-8 (b4-foglalo): a rendelt deviza-összeg FORINT-ÉRTÉKE (mért összeg × lekötött árfolyam),
+        // egész forintra kerekítve (a doc: "ennek ft. erteke: 254.000 HUF"). A megjelenítés a nyomtató-
+        // rétegben formázódik ezres csoportosítással.
+        if (reservation.getReservedAmount() != null && reservation.getExchangeRate() != null) {
+            // Codex P2: a tényleges KÉSZPÉNZ-értékhez igazítva 5 Ft-ra kerekítjük — egyezően a
+            // ReservationService.fulfillReservation fullPrice-számításával (roundToFive), hogy a foglaló-
+            // bizonylaton mutatott Ft-érték ne térjen el a beszedett összegtől.
+            java.math.BigDecimal ftValue = reservation.getReservedAmount()
+                    .multiply(reservation.getExchangeRate())
+                    .divide(java.math.BigDecimal.valueOf(5), 0, java.math.RoundingMode.HALF_UP)
+                    .multiply(java.math.BigDecimal.valueOf(5));
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("Forint-érték").value(hufFt(ftValue)).build());
+        }
         lines.add(ReceiptData.ReceiptLineData.builder()
                 .label("Letét (foglaló)")
-                .value(reservation.getDepositAmount() != null ? reservation.getDepositAmount().toPlainString() + " Ft" : "—").build());
+                .value(hufFt(reservation.getDepositAmount())).build());
+        // FR-8: a foglaló BEFIZETÉSÉNEK napja (a doc: "Foglalo befizetve: 2024.10.21") — a foglalás
+        // létrehozásának dátuma. (Refund-bizonylaton lentebb az eredeti átvétel napjaként jelenik meg.)
+        if (!isRefund && reservation.getCreatedAt() != null) {
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("Befizetés napja").value(reservation.getCreatedAt().format(DISPLAY_DATE)).build());
+        }
         if (reservation.getExpiresAt() != null) {
             lines.add(ReceiptData.ReceiptLineData.builder()
-                    .label("Érvényesség").value(reservation.getExpiresAt().format(DISPLAY_DATETIME)).build());
+                    .label(isRefund ? "Ügylet határideje volt" : "Ügylet határideje")
+                    .value(reservation.getExpiresAt().format(DISPLAY_DATETIME)).build());
         }
         if (isRefund) {
+            // FR-13 (b4-foglalo): a visszafizetési bizonylaton az EREDETI foglaló bizonylatszáma + az
+            // eredeti foglaló-átvétel napja (kereszthivatkozás a "Kifizetes bizonylata" ÉS a
+            // "Foglalo bizonylatszama" / "Foglalo atvetel napja" mezőkhöz).
+            if (reservation.getReceiptNumber() != null && !reservation.getReceiptNumber().isBlank()) {
+                lines.add(ReceiptData.ReceiptLineData.builder()
+                        .label("Eredeti foglaló bizonylatszáma").value(reservation.getReceiptNumber()).build());
+            }
+            if (reservation.getCreatedAt() != null) {
+                lines.add(ReceiptData.ReceiptLineData.builder()
+                        .label("Foglaló átvétel napja").value(reservation.getCreatedAt().format(DISPLAY_DATE)).build());
+            }
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("Átvett foglaló összege")
+                    .value(hufFt(reservation.getDepositAmount())).build());
             lines.add(ReceiptData.ReceiptLineData.builder()
                     .label("Visszafizetett összeg")
                     // Sourcery #783: null → "—" (ismeretlen), nem félrevezető "0 Ft".
-                    .value(reservation.getRefundAmount() != null ? reservation.getRefundAmount().toPlainString() + " Ft" : "—").build());
+                    .value(hufFt(reservation.getRefundAmount())).build());
             if (reservation.getCancellationReason() != null && !reservation.getCancellationReason().isBlank()) {
                 lines.add(ReceiptData.ReceiptLineData.builder()
                         .label("Lemondás oka").value(reservation.getCancellationReason()).build());
             }
+        }
+
+        // FR-14 (b4-foglalo): záró tájékoztató — CSAK ha a foglaló TÉNYLEGESEN beszámításra került (FULFILLED).
+        // Codex P2 (#1032): a jegyzet az isRefund-ágon KÍVÜL, a közös szakaszban van, mert a FULFILLED foglaló
+        // beszámítási bizonylatát a ReservationPage az ÁTVÉTEL (refund=false) gombbal nyomtatja — a refund=true
+        // gomb csak a lemondott/lejárt sorokon jelenik meg. Így a "beszámításra került" szöveg a ténylegesen
+        // használt nyomtatási úton is megjelenik. Lemondásnál (CANCELLED_*) NEM jelenik meg (nem beszámítás).
+        if (fulfilled) {
+            // Codex P2 (#1032): a BESZÁMÍTÁSI bizonylat settlement-specifikus mezői — a beszámítás (teljesítés)
+            // napja külön sorként, hogy a befizetés-napi (createdAt) adatok mellett egyértelmű legyen a rendezés
+            // dátuma (többnapos foglaló). A receiptDate (fejléc dátum) is a fulfilledAt-et viseli.
+            if (reservation.getFulfilledAt() != null) {
+                lines.add(ReceiptData.ReceiptLineData.builder()
+                        .label("Beszámítás napja").value(reservation.getFulfilledAt().format(DISPLAY_DATE)).build());
+            }
+            // FR-14: a teljesítés TÉNYLEGES dátuma a záró-szövegben (nem "a mai napon").
+            String fulfilledDay = reservation.getFulfilledAt() != null
+                    ? reservation.getFulfilledAt().format(DISPLAY_DATE) : "a teljesítés napján";
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("Megjegyzés")
+                    .value("A foglaló " + fulfilledDay
+                            + " napon végrehajtott ügylet ellenértékébe beszámításra került.").build());
         }
 
         return ReceiptData.builder()

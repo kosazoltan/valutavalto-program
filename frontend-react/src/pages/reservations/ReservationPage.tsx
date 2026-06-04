@@ -91,14 +91,53 @@ export default function ReservationPage() {
     void loadReservations();
   }, [loadReservations]);
 
+  // Codex P2 (#1032): a teljesítés utáni auto-letöltés HIBÁJÁNÁL maradjon retry-út — különben a FULFILLED
+  // foglaló a listából eltűnik, és a pénztáros sosem tudja kinyomtatni a kötelező beszámítási bizonylatot.
+  const [failedReceiptId, setFailedReceiptId] = useState<number | null>(null);
+
+  // G14: Foglaló-bizonylat (átvétel / visszafizetés) PDF letöltése. Visszaad: sikeres volt-e (retry-hez).
+  const handleDownloadReceipt = useCallback(async (id: number, refund: boolean): Promise<boolean> => {
+    try {
+      const response = await api.get(`/reservations/${id}/receipt`, {
+        params: { refund },
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(response.data as Blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `foglalo-${refund ? 'visszafizetes' : 'atvetel'}-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      return true;
+    } catch {
+      // A hiba-visszajelzést a backend toast adja; a hívó dönt a retry-útról.
+      return false;
+    }
+  }, []);
+
   const handleFulfill = useCallback(async (id: number) => {
     try {
       await api.post(`/reservations/${id}/fulfill`);
+      // Codex P2 (#1032): a teljesített foglaló a listából eltűnik (csak ACTIVE/expired töltődik), ezért a
+      // kötelező BESZÁMÍTÁSI bizonylatot (FR-14, refund=false) RÖGTÖN a teljesítés után letöltjük — ez az
+      // egyetlen elérhető nyomtatási út a FULFILLED állapotú foglalóhoz a termék-flow-ban. Ha a letöltés
+      // elhasal (hálózat/blob), megjegyezzük az id-t és retry-bannert mutatunk (a foglaló már teljesítve van).
+      const ok = await handleDownloadReceipt(id, false);
+      setFailedReceiptId(ok ? null : id);
       void loadReservations();
     } catch {
-      // A lista látható marad; a hiba-visszajelzést a backend toast adja.
+      // A teljesítés maga hasalt el (nem a letöltés) — a lista látható marad, a hibát a backend toast adja.
     }
-  }, [loadReservations]);
+  }, [loadReservations, handleDownloadReceipt]);
+
+  // Retry: a sikertelen beszámítási bizonylat újra-letöltése (a FULFILLED foglaló id-jával).
+  const handleRetryReceipt = useCallback(async () => {
+    if (failedReceiptId == null) return;
+    const ok = await handleDownloadReceipt(failedReceiptId, false);
+    if (ok) setFailedReceiptId(null);
+  }, [failedReceiptId, handleDownloadReceipt]);
 
   const handleCancelByCustomer = useCallback(async (id: number) => {
     const reason = prompt('Lemondás oka (ügyfél miatt — a letét nem jár vissza):');
@@ -128,26 +167,6 @@ export default function ReservationPage() {
     }
   }, [loadReservations]);
 
-  // G14: Foglaló-bizonylat (átvétel / visszafizetés) PDF letöltése.
-  const handleDownloadReceipt = useCallback(async (id: number, refund: boolean) => {
-    try {
-      const response = await api.get(`/reservations/${id}/receipt`, {
-        params: { refund },
-        responseType: 'blob',
-      });
-      const url = URL.createObjectURL(response.data as Blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `foglalo-${refund ? 'visszafizetes' : 'atvetel'}-${id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      // A hiba-visszajelzést a backend toast adja.
-    }
-  }, []);
-
   const filteredReservations = safeArray<Reservation>(reservations).filter((r) => {
     const term = searchTerm.toLowerCase();
     return (
@@ -168,6 +187,19 @@ export default function ReservationPage() {
           {t('reservations.ujFoglalo')}
         </button>
       </div>
+
+      {failedReceiptId != null && (
+        // Codex P2 (#1032): retry-út a sikertelen beszámítási bizonylat-letöltéshez (a foglaló már teljesítve).
+        <div className="mb-3 flex items-center justify-between rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <span>A beszámítási bizonylat letöltése nem sikerült (foglaló #{failedReceiptId}). Próbálja újra.</span>
+          <button
+            onClick={() => void handleRetryReceipt()}
+            className="ml-3 rounded bg-amber-600 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-700"
+          >
+            Bizonylat letöltése újra
+          </button>
+        </div>
+      )}
 
       <div className="mb-3">
         <input
