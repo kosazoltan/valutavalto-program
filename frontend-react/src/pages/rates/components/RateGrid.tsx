@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, ArrowDownToLine, Eraser, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowDownToLine, Eraser, Trash2, Copy } from 'lucide-react'
 import { formatDecimal } from '../../../utils/numberFormat'
 import { useGridNavigation } from '../../../hooks/useGridNavigation'
 import type { WorkgroupDetailDTO } from '../../../services/api/index'
@@ -50,6 +50,11 @@ interface RateGridProps {
    * A parent (RateCreationPage) egyetlen undo-lépésben, modal nélkül, perzisztálva alkalmazza.
    */
   onBulkApply?: (cells: Array<{ row: number; field: WgField; raw: string }>) => void
+  /**
+   * FK02-D (FR-9..13): cross-csoport másolás — a kijelölt cellák tartalmát (érték/képlet)
+   * a parent (RateCreationPage) csempe-választóval más munkacsoport(ok)ba másolja.
+   */
+  onCopyToGroups?: (cells: Array<{ currencyId: number; field: WgField; raw: string }>) => void
   /** FK02-B: szerkesztési jog — a kijelölés-toolbar csak írásjoggal jelenik meg. */
   canEdit?: boolean
 }
@@ -64,6 +69,7 @@ export default function RateGrid({
   onCommitCell,
   revertSignal = 0,
   onBulkApply,
+  onCopyToGroups,
   canEdit = true,
 }: RateGridProps) {
   const { t } = useTranslation()
@@ -246,6 +252,25 @@ export default function RateGrid({
     onBulkApply(cells)
     clearSelection()
   }, [selBounds, onBulkApply, clearSelection])
+
+  // FK02-D (FR-9..13): a kijelölt cellák átadása a parentnek cross-csoport másoláshoz.
+  // A tartalom: a KÉPLET (ha van), különben a megjelenített fix érték. A kijelölést NEM
+  // töröljük (a felhasználó a csempe-választó modalban dönt; mégse esetén marad a kijelölés).
+  const copyToGroupsSelected = useCallback(() => {
+    const b = selBounds()
+    if (!b || !onCopyToGroups) return
+    const cells: Array<{ currencyId: number; field: WgField; raw: string }> = []
+    for (let row = b.r0; row <= b.r1; row++) {
+      const r = rates[row]
+      if (!r) continue
+      for (let col = b.c0; col <= b.c1; col++) {
+        const field = EDITABLE_FIELDS[col]!
+        const raw = formulas[`${r.currencyId}.${field}`] ?? r[field]
+        cells.push({ currencyId: r.currencyId, field, raw: typeof raw === 'string' ? raw : String(raw ?? '') })
+      }
+    }
+    onCopyToGroups(cells)
+  }, [selBounds, onCopyToGroups, rates, formulas])
 
   // Buffer seed: a fókuszált cellába a képlet-string (ha van), egyébként a megjelenített érték.
   useEffect(() => {
@@ -443,6 +468,16 @@ export default function RateGrid({
           >
             <Eraser size={11} /> Ürítés
           </button>
+          {onCopyToGroups && (
+            <button
+              type="button"
+              onClick={copyToGroupsSelected}
+              className="flex items-center gap-1 px-1.5 py-1 rounded bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 text-[10px] font-semibold"
+              title="A kijelölt cellák tartalmának (érték vagy képlet) másolása más munkacsoport(ok) azonos pozícióiba"
+            >
+              <Copy size={11} /> Másolás más csoportba
+            </button>
+          )}
           <button
             type="button"
             onClick={bulkClearBandsSelected}
