@@ -271,6 +271,21 @@ class ReceiptGeneratorServiceTest {
         // A "Befizetés napja" külön a createdAt-ot mutatja.
         assertThat(result.getLines())
                 .anyMatch(l -> "Befizetés napja".equals(l.getLabel()) && "2026-05-20".equals(l.getValue()));
+        // Codex P2 (#1032): a FULFILLED bizonylat KÜLÖN "FOGLALÓ BESZÁMÍTÁSA" dokumentum (nem "ÁTVÉTELE").
+        assertThat(result.getLines()).anyMatch(l -> "FOGLALÓ BESZÁMÍTÁSA".equals(l.getLabel()));
+        assertThat(result.getLines()).noneMatch(l -> "FOGLALÓ ÁTVÉTELE".equals(l.getLabel()));
+        // Settlement-specifikus mező: a Beszámítás napja (fulfilledAt).
+        assertThat(result.getLines())
+                .anyMatch(l -> "Beszámítás napja".equals(l.getLabel()) && "2026-05-25".equals(l.getValue()));
+    }
+
+    @Test
+    @DisplayName("generateReservationReceipt (ACTIVE átvétel) → 'FOGLALÓ ÁTVÉTELE' cím (nem BESZÁMÍTÁSA)")
+    void testReservationReceiptIntakeTitle() {
+        var reservation = buildReservation(); // ACTIVE (nincs status beállítva → nem FULFILLED)
+        ReceiptData result = service.generateReservationReceipt(reservation, false);
+        assertThat(result.getLines()).anyMatch(l -> "FOGLALÓ ÁTVÉTELE".equals(l.getLabel()));
+        assertThat(result.getLines()).noneMatch(l -> "FOGLALÓ BESZÁMÍTÁSA".equals(l.getLabel()));
     }
 
     @Test

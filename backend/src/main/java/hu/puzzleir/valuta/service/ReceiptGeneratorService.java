@@ -200,8 +200,12 @@ public class ReceiptGeneratorService {
                          : (reservation.getCreatedAt() != null ? reservation.getCreatedAt() : LocalDateTime.now()));
 
         List<ReceiptData.ReceiptLineData> lines = new ArrayList<>();
+        // Codex P2 (#1032): a FULFILLED foglaló külön RENDEZÉSI/BESZÁMÍTÁSI dokumentum (saját cím), NEM az
+        // "ÁTVÉTELE" intake-bizonylat — a teljesítéskor nem letétet veszünk át, hanem a foglalót beszámítjuk.
+        String headerTitle = isRefund ? "FOGLALÓ VISSZAFIZETÉSE"
+                : (fulfilled ? "FOGLALÓ BESZÁMÍTÁSA" : "FOGLALÓ ÁTVÉTELE");
         lines.add(ReceiptData.ReceiptLineData.builder()
-                .label(isRefund ? "FOGLALÓ VISSZAFIZETÉSE" : "FOGLALÓ ÁTVÉTELE")
+                .label(headerTitle)
                 .value(receiptNumber).build());
         lines.add(ReceiptData.ReceiptLineData.builder()
                 .label("Foglalt valuta").value(reservation.getCurrencyCode()).build());
@@ -270,8 +274,14 @@ public class ReceiptGeneratorService {
         // gomb csak a lemondott/lejárt sorokon jelenik meg. Így a "beszámításra került" szöveg a ténylegesen
         // használt nyomtatási úton is megjelenik. Lemondásnál (CANCELLED_*) NEM jelenik meg (nem beszámítás).
         if (fulfilled) {
-            // Codex P2 (#1032): a teljesítés TÉNYLEGES dátuma (fulfilledAt), nem "a mai napon" — többnapos
-            // foglalónál a befizetés-napi bizonylatszám/dátum mellett a beszámítás a teljesítés napjával egyezik.
+            // Codex P2 (#1032): a BESZÁMÍTÁSI bizonylat settlement-specifikus mezői — a beszámítás (teljesítés)
+            // napja külön sorként, hogy a befizetés-napi (createdAt) adatok mellett egyértelmű legyen a rendezés
+            // dátuma (többnapos foglaló). A receiptDate (fejléc dátum) is a fulfilledAt-et viseli.
+            if (reservation.getFulfilledAt() != null) {
+                lines.add(ReceiptData.ReceiptLineData.builder()
+                        .label("Beszámítás napja").value(reservation.getFulfilledAt().format(DISPLAY_DATE)).build());
+            }
+            // FR-14: a teljesítés TÉNYLEGES dátuma a záró-szövegben (nem "a mai napon").
             String fulfilledDay = reservation.getFulfilledAt() != null
                     ? reservation.getFulfilledAt().format(DISPLAY_DATE) : "a teljesítés napján";
             lines.add(ReceiptData.ReceiptLineData.builder()
