@@ -52,7 +52,13 @@ export interface LocalAuditEventView {
 }
 
 export function getCompanyType(worker: Worker | null): 'BEST_CHANGE' | 'EXPRESSZ' {
-  return worker?.companyCode?.toUpperCase().includes('BEST') ? 'BEST_CHANGE' : 'EXPRESSZ'
+  // Tenant-azonosítás a cég KÓDJA ÉS NEVE alapján. Az EBC tenant cégkódja "EBC", neve
+  // "Exclusive Best Change Zrt." — a korábbi, KIZÁRÓLAG a companyCode-ra `includes('BEST')`-et
+  // néző logika tévesen EXPRESSZ-re esett ('EBC' nem tartalmazza a "BEST"-et), így a bizonylat
+  // fejlécén az Expressz Ékszerház cégadatai jelentek meg az EBC tenant helyett (tenant-keveredés).
+  // A név tartalmazza a "BEST"-et, a kód az "EBC"-t → bármelyik pozitív jel BEST_CHANGE-et ad.
+  const haystack = `${worker?.companyCode ?? ''} ${worker?.companyName ?? ''}`.toUpperCase()
+  return (haystack.includes('BEST') || haystack.includes('EBC')) ? 'BEST_CHANGE' : 'EXPRESSZ'
 }
 
 function normalizeTimestamp(value: string): string {
