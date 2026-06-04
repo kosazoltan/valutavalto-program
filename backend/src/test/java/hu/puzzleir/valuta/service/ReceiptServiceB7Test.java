@@ -308,6 +308,28 @@ class ReceiptServiceB7Test {
     }
 
     @Test
+    @DisplayName("Codex P2 (FR-BSZUR-03): transactionId + customer-szűrő — a tx-ág is szűr ügyfél-adatlapra")
+    void list_filteredByTransactionId_honorsCustomerFilters() {
+        UUID txFilter = new UUID(0L, 740L);
+        Receipt real = Receipt.builder()
+                .id(txFilter).companyId(COMPANY_ID)
+                .receiptNumber("V017000100").receiptType("BUY")
+                .issueDate(LocalDate.of(2026, 4, 29)).isPrinted(true).build();
+        Transaction tx = makeTransaction(740L, "V017000100", TransactionType.BUY);
+        tx.setCustomerName("Szabó Péter");
+
+        when(receiptRepository.findByCompanyIdAndTransactionId(COMPANY_ID, txFilter))
+                .thenReturn(List.of(real));
+        when(transactionRepository.findAllByIdInAndCompanyId(any(), eq(COMPANY_ID)))
+                .thenReturn(List.of(tx));
+
+        // customerName "kovács" — a "Szabó Péter" NEM egyezik → a tx-ág is kiszűri (üres).
+        List<Receipt> receipts = receiptService.list(txFilter, null, null,
+                java.util.Map.of("customerName", "kovács"));
+        assertThat(receipts).isEmpty();
+    }
+
+    @Test
     @DisplayName("list() synthesize Receipt-et ad vissza, ha a Receipt tabla URES")
     void list_synthesizesFromTransactionsWhenReceiptTableEmpty() {
         when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any()))

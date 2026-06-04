@@ -102,6 +102,12 @@ public class ReceiptService {
                 filtered.removeIf(r -> !isWithinRange(r.getIssueDate(), fromDate, toDate));
             }
             enrichRealReceipts(filtered, companyId);
+            // EXCMD b5b FR-BSZUR-03 (Codex P2): ha customer-szűrő is jön a transactionId mellett, azt is
+            // tiszteletben tartjuk (szerződés-konzisztencia a nem-transactionId úttal). Enrich UTÁN, a
+            // dúsított @Transient mezőkből.
+            if (customerFilters != null && !customerFilters.isEmpty()) {
+                filtered.removeIf(r -> !receiptMatchesCustomerFilters(r, customerFilters));
+            }
             return filtered;
         }
 
