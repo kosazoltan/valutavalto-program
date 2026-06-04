@@ -8,8 +8,8 @@ import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
 import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi } from '../../services/api/index'
 import { api } from '../../services/api/client'
 import AmlApproverModal from '../../components/auth/AmlApproverModal'
-import type { BuyRequest, SellRequest, ExchangeRate, CashierCustomRateQuota } from '../../services/api/index'
-import { roundHuf } from '../../utils/rounding'
+import type { BuyRequest, SellRequest, TransactionLineRequest, ExchangeRate, CashierCustomRateQuota } from '../../services/api/index'
+import { roundHuf, multiLinePayable } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
 import {
   getElectronCachedRates,
@@ -896,14 +896,26 @@ export default function CashierTransactionPage() {
             // összes valuta-sort listázza. A backend (TransactionMultiLineService) a nyers
             // per-soros HUF-okat ÖSSZEGZI, majd a TELJES összeget kerekíti EGYSZER 5 Ft-ra —
             // ezt tükrözzük a fejléc hufAmount/roundedHufAmount/roundingDiff mezőiben.
+            // FINDING 2 (Codex P2): a nyomtatott FIZETENDŐ végösszegnek a backend multi-line
+            // payable-jét KELL tükröznie — nyers Σ hufValue helyett a kedvezmény+kezelési díjjal
+            // korrigált, EGYSZER 5 Ft-ra kerekített összeget (multiLinePayable). Különben a
+            // bizonylaton mutatott összeg eltér a szinkronizált tranzakció hufAmount-jától, ha
+            // díj/kedvezmény van. A per-soros transactionLines TOVÁBBRA is a NYERS per-soros
+            // HUF-bontást mutatja (részletezés), a fejléc viszont a fizetendő végösszeget.
             const totalRaw = filledRows.reduce((sum, row) => sum + row.hufValue, 0)
-            const totalRounded = roundHuf(totalRaw)
+            const totalPayable = multiLinePayable(
+              totalRaw,
+              mode === 'buy' ? 'buy' : 'sell',
+              discount > 0 ? discount : 0,
+              handlingFee > 0 ? handlingFee : 0,
+            )
             const receipt: PrintReceiptData = {
               ...receiptHeader,
               receiptNumber: outcomeReceipts[0] ?? `P-${now.getTime()}-0`,
-              hufAmount: totalRaw,
-              roundedHufAmount: totalRounded,
-              roundingDiff: totalRounded - totalRaw,
+              hufAmount: totalPayable,
+              roundedHufAmount: totalPayable,
+              roundingDiff: 0,
+              handlingFee: handlingFee > 0 ? handlingFee : undefined,
               transactionLines: filledRows.map((row) => ({
                 currencyCode: row.currencyCode,
                 foreignAmount: parseFloat(row.quantity) || 0,
@@ -932,76 +944,151 @@ export default function CashierTransactionPage() {
           }
         }
       } else {
-        const receiptNumbers: string[] = []
-
-        for (let ri = 0; ri < filledRows.length; ri++) {
-          const row = filledRows[ri]!
-          const rowKey = `${ri}-${row.currencyCode}`
-          const isCashierCustom = cashierCustomRateRowsRef.current.has(rowKey) || undefined
-          if (mode === 'buy') {
-            const request: BuyRequest = {
-              currencyCode: row.currencyCode,
-              currencyAmount: parseFloat(row.quantity) || 0,
-              customExchangeRate: row.exchangeRate,
-              handlingFee: handlingFee > 0 ? handlingFee : undefined,
-              // FK-KEZDÍJ (2026-06-02): kezelési díj override (a szerver validálja az engedély-mátrixot)
-              handlingFeeOverrideType: feeOverrideType || undefined,
-              handlingFeeOverrideReason: feeOverrideReason || undefined,
-              customerCardNumber: cardNumber.trim() || undefined,
-              discountPercent: discount > 0 ? discount : undefined,
-              cashierCustomRate: isCashierCustom,
-              foreignStatus: row.foreignStatus,
-              ...customerData,
-            }
-            const result = await transactionApi.buy(request)
-            receiptNumbers.push(result.receiptNumber)
-          } else {
-            const request: SellRequest = {
-              currencyCode: row.currencyCode,
-              currencyAmount: parseFloat(row.quantity) || 0,
-              customExchangeRate: row.exchangeRate,
-              handlingFee: handlingFee > 0 ? handlingFee : undefined,
-              // FK-KEZDÍJ (2026-06-02): kezelési díj override (a szerver validálja az engedély-mátrixot)
-              handlingFeeOverrideType: feeOverrideType || undefined,
-              handlingFeeOverrideReason: feeOverrideReason || undefined,
-              customerCardNumber: cardNumber.trim() || undefined,
-              discountPercent: discount > 0 ? discount : undefined,
-              cashierCustomRate: isCashierCustom,
-              foreignStatus: row.foreignStatus,
-              ...customerData,
-            }
-            const result = await transactionApi.sell(request)
-            receiptNumbers.push(result.receiptNumber)
-          }
+        const now = new Date()
+        const receiptBase = {
+          type: mode === 'buy' ? 'buy' as const : 'sell' as const,
+          companyType: ((worker?.companyCode ?? '').startsWith('EXP') ? 'EXPRESSZ' : 'BEST_CHANGE') as 'BEST_CHANGE' | 'EXPRESSZ',
+          branchCode: worker?.branchCode ?? '',
+          cashierName: worker?.fullName ?? '',
+          date: now.toLocaleDateString('hu-HU'),
+          time: now.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }),
+          customerName: cd?.name || undefined,
+          customerDocNumber: cd?.documentNumber || undefined,
+          customerAddress: cd?.address || undefined,
+          vatExemptionText: 'Tárgyi adómentes az ÁFA tv. 86.§ (1) bek. k) pontja alapján.',
         }
 
-        toast.success('Bizonylat(ok) sikeresen készítve!', `${filledRows.length} tétel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat számok: ${receiptNumbers.join(', ')}`)
-
-        // Build receipt queue for all lines (API path)
-        if (filledRows.length > 0 && receiptNumbers.length > 0) {
-          const now = new Date()
-          const receipts: PrintReceiptData[] = filledRows.map((row, idx) => ({
-            type: mode === 'buy' ? 'buy' as const : 'sell' as const,
-            companyType: ((worker?.companyCode ?? '').startsWith('EXP') ? 'EXPRESSZ' : 'BEST_CHANGE') as 'BEST_CHANGE' | 'EXPRESSZ',
-            receiptNumber: receiptNumbers[idx] ?? `API-${now.getTime()}-${idx}`,
-            branchCode: worker?.branchCode ?? '',
-            cashierName: worker?.fullName ?? '',
-            date: now.toLocaleDateString('hu-HU'),
-            time: now.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }),
+        if (filledRows.length > 1) {
+          // FINDING 1 (Codex P1, 2026-06-04): többsoros nyugtát EGY aggregált REST-kérésként
+          // küldünk (`lines[]`), tükrözve az Electron utat. A grant immár STRICT single-use →
+          // a korábbi per-soros transactionApi.buy/sell loop a 2. sornál "already used"-del
+          // bukna (részleges nyugta). Az aggregált kérést a backend executeMultiLineBuy/Sell
+          // ÁGRA futtatja: EGY tranzakció, EGY AML-grant fogyasztás, EGY bizonylatszám.
+          //
+          // Fejléc: customer/AML/handlingFee/discount mezők az első soron át (a backend a díjat
+          // + kedvezményt az AGGREGÁTUMRA alkalmazza). currencyCode/currencyAmount/customExchangeRate
+          // az ELSŐ sorból (a backend a fejléc-összeget figyelmen kívül hagyja, ha lines[] jelen van —
+          // egyezően az Electron úttal). Soronkénti customExchangeRate = row.exchangeRate (a pénztáros
+          // PONTOS árfolyama, ahogy az egysoros úton is). Per-soros discountType=0 (a százalékos
+          // kedvezményt a fejléc discountPercent hordozza).
+          const first = filledRows[0]!
+          const lines: TransactionLineRequest[] = filledRows.map((row) => ({
             currencyCode: row.currencyCode,
-            foreignAmount: parseFloat(row.quantity) || 0,
-            rate: row.exchangeRate,
-            hufAmount: row.hufValue,
-            roundedHufAmount: roundHuf(row.hufValue),
-            roundingDiff: roundHuf(row.hufValue) - row.hufValue,
-            customerName: cd?.name || undefined,
-            customerDocNumber: cd?.documentNumber || undefined,
-            customerAddress: cd?.address || undefined,
-            vatExemptionText: 'Tárgyi adómentes az ÁFA tv. 86.§ (1) bek. k) pontja alapján.',
+            banknoteCount: parseFloat(row.quantity) || 0,
+            customExchangeRate: row.exchangeRate,
+            discountType: 0,
+            foreignStatus: row.foreignStatus,
           }))
-          receiptQueueRef.current = receipts.slice(1)
-          if (receipts[0]) {
-            openReceiptModal(receipts[0])
+          const aggregateBase = {
+            currencyCode: first.currencyCode,
+            currencyAmount: parseFloat(first.quantity) || 0,
+            customExchangeRate: first.exchangeRate,
+            handlingFee: handlingFee > 0 ? handlingFee : undefined,
+            // FK-KEZDÍJ (2026-06-02): kezelési díj override (a szerver validálja az engedély-mátrixot)
+            handlingFeeOverrideType: feeOverrideType || undefined,
+            handlingFeeOverrideReason: feeOverrideReason || undefined,
+            customerCardNumber: cardNumber.trim() || undefined,
+            discountPercent: discount > 0 ? discount : undefined,
+            foreignStatus: first.foreignStatus,
+            lines,
+            ...customerData,
+          }
+          const result = mode === 'buy'
+            ? await transactionApi.buy(aggregateBase as BuyRequest)
+            : await transactionApi.sell(aggregateBase as SellRequest)
+
+          toast.success('Bizonylat(ok) sikeresen készítve!', `${filledRows.length} tétel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat szám: ${result.receiptNumber}`)
+
+          // EGY bizonylat az összes valuta-sorral (mirror az Electron multi-line ágat). A fejléc
+          // hufAmount-ot a backend által visszaadott aggregált összegre állítjuk (single-source-of-
+          // truth: a tényleges payable, díj/kedvezmény + 5 Ft kerekítéssel). A per-soros bontás a
+          // nyers per-soros HUF-ot mutatja.
+          const totalRaw = filledRows.reduce((sum, row) => sum + row.hufValue, 0)
+          const backendHuf = typeof result.hufAmount === 'number' ? result.hufAmount : null
+          const totalPayable = backendHuf ?? multiLinePayable(
+            totalRaw,
+            mode === 'buy' ? 'buy' : 'sell',
+            discount > 0 ? discount : 0,
+            handlingFee > 0 ? handlingFee : 0,
+          )
+          const receipt: PrintReceiptData = {
+            ...receiptBase,
+            receiptNumber: result.receiptNumber,
+            hufAmount: totalPayable,
+            roundedHufAmount: totalPayable,
+            roundingDiff: 0,
+            handlingFee: handlingFee > 0 ? handlingFee : undefined,
+            transactionLines: filledRows.map((row) => ({
+              currencyCode: row.currencyCode,
+              foreignAmount: parseFloat(row.quantity) || 0,
+              rate: row.exchangeRate,
+              hufAmount: row.hufValue,
+            })),
+          }
+          receiptQueueRef.current = []
+          openReceiptModal(receipt)
+        } else {
+          // Egysoros REST út: VÁLTOZATLAN viselkedés (egy sor → egy kérés → egy bizonylat).
+          const receiptNumbers: string[] = []
+          for (let ri = 0; ri < filledRows.length; ri++) {
+            const row = filledRows[ri]!
+            const rowKey = `${ri}-${row.currencyCode}`
+            const isCashierCustom = cashierCustomRateRowsRef.current.has(rowKey) || undefined
+            if (mode === 'buy') {
+              const request: BuyRequest = {
+                currencyCode: row.currencyCode,
+                currencyAmount: parseFloat(row.quantity) || 0,
+                customExchangeRate: row.exchangeRate,
+                handlingFee: handlingFee > 0 ? handlingFee : undefined,
+                // FK-KEZDÍJ (2026-06-02): kezelési díj override (a szerver validálja az engedély-mátrixot)
+                handlingFeeOverrideType: feeOverrideType || undefined,
+                handlingFeeOverrideReason: feeOverrideReason || undefined,
+                customerCardNumber: cardNumber.trim() || undefined,
+                discountPercent: discount > 0 ? discount : undefined,
+                cashierCustomRate: isCashierCustom,
+                foreignStatus: row.foreignStatus,
+                ...customerData,
+              }
+              const result = await transactionApi.buy(request)
+              receiptNumbers.push(result.receiptNumber)
+            } else {
+              const request: SellRequest = {
+                currencyCode: row.currencyCode,
+                currencyAmount: parseFloat(row.quantity) || 0,
+                customExchangeRate: row.exchangeRate,
+                handlingFee: handlingFee > 0 ? handlingFee : undefined,
+                // FK-KEZDÍJ (2026-06-02): kezelési díj override (a szerver validálja az engedély-mátrixot)
+                handlingFeeOverrideType: feeOverrideType || undefined,
+                handlingFeeOverrideReason: feeOverrideReason || undefined,
+                customerCardNumber: cardNumber.trim() || undefined,
+                discountPercent: discount > 0 ? discount : undefined,
+                cashierCustomRate: isCashierCustom,
+                foreignStatus: row.foreignStatus,
+                ...customerData,
+              }
+              const result = await transactionApi.sell(request)
+              receiptNumbers.push(result.receiptNumber)
+            }
+          }
+
+          toast.success('Bizonylat(ok) sikeresen készítve!', `${filledRows.length} tétel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat számok: ${receiptNumbers.join(', ')}`)
+
+          // Build receipt queue for all lines (API path)
+          if (filledRows.length > 0 && receiptNumbers.length > 0) {
+            const receipts: PrintReceiptData[] = filledRows.map((row, idx) => ({
+              ...receiptBase,
+              receiptNumber: receiptNumbers[idx] ?? `API-${now.getTime()}-${idx}`,
+              currencyCode: row.currencyCode,
+              foreignAmount: parseFloat(row.quantity) || 0,
+              rate: row.exchangeRate,
+              hufAmount: row.hufValue,
+              roundedHufAmount: roundHuf(row.hufValue),
+              roundingDiff: roundHuf(row.hufValue) - row.hufValue,
+            }))
+            receiptQueueRef.current = receipts.slice(1)
+            if (receipts[0]) {
+              openReceiptModal(receipts[0])
+            }
           }
         }
       }

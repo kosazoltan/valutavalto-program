@@ -1600,6 +1600,30 @@ export function getPendingTransactionRefById(id: number): string | null {
   return ref;
 }
 
+/**
+ * Egy mentett átadás/átvétel (transfer) pending-sor szigorú átadólap-sorszámának
+ * (local_reference_number, pl. AT105000042) lekérdezése ID alapján.
+ *
+ * 2026-06-04 (audit-fix, buy/sell-paritás): a szállítólevél-nyomtatás a TÉNYLEGES,
+ * rögzített átadólap-számot kell hogy a bizonylatra bélyegezze — nem fabrikált
+ * `LOCAL-<dátum>-#<id>`-t. A `savePendingTransfer` csak a beszúrt sor ID-jét adja
+ * vissza; ez a kis lekérdezés a hozzá tartozó helyi sorszámot adja vissza.
+ * SZÁNDÉKOSAN NEM szűr `synced = 0`-ra, így a sorszám akkor is lekérdezhető, ha a
+ * sor azonnal felszinkronizálódott (synced=1).
+ */
+export function getPendingTransferRefById(id: number): string | null {
+  if (!db) return null;
+  const stmt = db.prepare('SELECT local_reference_number FROM pending_transfers WHERE id = ?');
+  stmt.bind([id]);
+  let ref: string | null = null;
+  if (stmt.step()) {
+    const row = stmt.getAsObject() as { local_reference_number?: string | null };
+    ref = row.local_reference_number ?? null;
+  }
+  stmt.free();
+  return ref;
+}
+
 export function savePendingConversion(
   fromCurrencyId: number | null,
   fromCurrencyCode: string,

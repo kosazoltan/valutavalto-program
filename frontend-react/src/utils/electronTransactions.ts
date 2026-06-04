@@ -539,10 +539,20 @@ export async function saveAndSyncPendingTransfer(
       entry.lines ?? null,
     )
 
+    // 2026-06-04 (audit-fix, buy/sell-paritás): a TÉNYLEGES átadólap-sorszám (local_reference_number,
+    // pl. AT105000042) lekérdezése a mentett ID alapján — a szállítólevél a valós (rögzített) számot
+    // kapja, nem fabrikált LOCAL-<dátum>-#<id>-t. Régi telepítő (a query-IPC nélkül) → null fallback.
+    let localReferenceNumbers: (string | null)[] = [null]
+    if (typeof electronAPI.getPendingTransferRefById === 'function') {
+      localReferenceNumbers = [
+        await electronAPI.getPendingTransferRefById(savedId).catch(() => null),
+      ]
+    }
+
     return finalizeSyncOutcome([savedId], async () => {
       const pending = await electronAPI.getPendingTransfers()
       return pending.map((row) => row.id)
-    })
+    }, localReferenceNumbers)
   })
 }
 

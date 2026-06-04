@@ -63,6 +63,7 @@ import {
   savePendingStorno,
   getPendingTransactions,
   getPendingTransactionRefById,
+  getPendingTransferRefById,
   getPendingConversions,
   getPendingBankTransactions,
   getPendingStornos,
@@ -490,6 +491,15 @@ ipcMain.handle('get-pending-transaction-ref-by-id', async (
   id: number,
 ): Promise<string | null> => {
   return getPendingTransactionRefById(id);
+});
+
+// 2026-06-04 (audit-fix, buy/sell-paritás): a szállítólevél-nyomtatáshoz a TÉNYLEGES átadólap-
+// sorszám lekérdezése a mentett transfer pending-sor ID-je alapján (nem fabrikált LOCAL-<dátum>-#<id>).
+ipcMain.handle('get-pending-transfer-ref-by-id', async (
+  _event,
+  id: number,
+): Promise<string | null> => {
+  return getPendingTransferRefById(id);
 });
 
 ipcMain.handle('save-pending-conversion', async (

@@ -358,11 +358,14 @@ export default function TransferPage() {
         setPrintReceiptData({
           type: 'transfer',
           companyType: getCompanyType(worker),
-          // A bizonylatszám a TÉNYLEGES queue-sor ID-jéhez kötve (savedIds[0]) — a fabrikált
-          // időbélyeg csak fallback, ha valamiért nincs mentett ID (Codex P2: a valós rekordra mutasson).
-          receiptNumber: outcome.savedIds[0] != null
-            ? `LOCAL-${localIsoDate()}-#${outcome.savedIds[0]}`
-            : `LOCAL-${localIsoDate()}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`,
+          // A bizonylatszám a TÉNYLEGES, rögzített átadólap-sorszám (local_reference_number, pl.
+          // AT105000042) — ezt szinkronizáljuk a backendre is, így a kinyomtatott szállítólevél
+          // EGYEZIK a rögzített átadással. Ha hiányzik (régi telepítő / null), fallback a queue-sor
+          // ID-jére, végső soron a fabrikált időbélyegre.
+          receiptNumber: outcome.localReferenceNumbers?.[0]
+            ?? (outcome.savedIds[0] != null
+              ? `LOCAL-${localIsoDate()}-#${outcome.savedIds[0]}`
+              : `LOCAL-${localIsoDate()}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`),
           branchCode: worker?.branchCode ?? branch.code,
           cashierName: worker?.fullName ?? '',
           date: localIsoDate(),

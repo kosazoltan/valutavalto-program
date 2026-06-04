@@ -243,6 +243,11 @@ export interface ElectronAPI {
   // bizonylatszámot kapja, nem fabrikált P-<timestamp>-et. Opcionális: régi telepítő
   // (preload) még nem ismeri → a renderer fallback-el a fabrikált számra.
   getPendingTransactionRefById?: (id: number) => Promise<string | null>;
+  // 2026-06-04 (audit-fix, buy/sell-paritás): a TÉNYLEGES átadólap-sorszám (local_reference_number,
+  // pl. AT105000042) lekérdezése a mentett transfer pending-sor ID-je alapján — a szállítólevél a
+  // valós (rögzített) számot kapja, nem fabrikált LOCAL-<dátum>-#<id>-t. Opcionális: régi telepítő
+  // (preload) még nem ismeri → a renderer fallback-el a fabrikált számra.
+  getPendingTransferRefById?: (id: number) => Promise<string | null>;
   getPendingConversions(): Promise<Array<{
     id: number;
     from_currency_id: number | null;
