@@ -70,16 +70,25 @@ public class ReceiptService {
      */
     /** Backward-compat: dátum-szűrés nélküli lista (a régi hívók/tesztek számára). */
     public List<Receipt> list(UUID transactionId) {
-        return list(transactionId, null, null);
+        return list(transactionId, null, null, java.util.Collections.emptyMap());
+    }
+
+    /** Backward-compat: dátum-tartomány, ügyfél-adatlap szűrő nélkül. */
+    public List<Receipt> list(UUID transactionId, LocalDate fromDate, LocalDate toDate) {
+        return list(transactionId, fromDate, toDate, java.util.Collections.emptyMap());
     }
 
     /**
-     * Receipt list endpoint dátum-tartomány szűréssel (EXCMD b5b FR-BSZUR-02).
+     * EXCMD b5b FR-BSZUR-02/03: bizonylat-lista dátum-tartomány + ügyfél-adatlap szűréssel.
      *
-     * @param fromDate opcionális alsó dátumhatár (inkluzív, NULL = nyitott)
-     * @param toDate   opcionális felső dátumhatár (inkluzív, NULL = nyitott)
+     * @param fromDate        opcionális alsó dátumhatár (inkluzív, NULL = nyitott)
+     * @param toDate          opcionális felső dátumhatár (inkluzív, NULL = nyitott)
+     * @param customerFilters mezőkulcs → részleges érték (customerName..customerDocumentNumber).
+     *                        A LIKE-szűrés a synthesized DB-query-ben fut (FR-BSZUR-03, Codex P2),
+     *                        hogy a top-500 limit a SZŰRT halmazra vonatkozzon (ne csonkoljon előtte).
      */
-    public List<Receipt> list(UUID transactionId, LocalDate fromDate, LocalDate toDate) {
+    public List<Receipt> list(UUID transactionId, LocalDate fromDate, LocalDate toDate,
+                              java.util.Map<String, String> customerFilters) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (transactionId != null) {
             // EXCMD b5b (Codex/Copilot P2): a tranzakció-szűrt ágat is dúsítjuk, különben a
@@ -93,6 +102,12 @@ public class ReceiptService {
                 filtered.removeIf(r -> !isWithinRange(r.getIssueDate(), fromDate, toDate));
             }
             enrichRealReceipts(filtered, companyId);
+            // EXCMD b5b FR-BSZUR-03 (Codex P2): ha customer-szűrő is jön a transactionId mellett, azt is
+            // tiszteletben tartjuk (szerződés-konzisztencia a nem-transactionId úttal). Enrich UTÁN, a
+            // dúsított @Transient mezőkből.
+            if (customerFilters != null && !customerFilters.isEmpty()) {
+                filtered.removeIf(r -> !receiptMatchesCustomerFilters(r, customerFilters));
+            }
             return filtered;
         }
 
@@ -100,7 +115,7 @@ public class ReceiptService {
         // receipt-eket IS a DB szűri az issueDate-tartományra (nem csak a synthesized ágat), különben a
         // ?from=&to= az időszakon kívüli materializált bizonylatokat is visszaadná (és a teljes táblát
         // betöltené). NULL határ = nyitott vég → mindkettő NULL esetén a teljes lista (változatlan).
-        List<Receipt> realReceipts = repo.findByCompanyIdAndIssueDateRange(companyId, fromDate, toDate);
+        List<Receipt> realReceipts = new ArrayList<>(repo.findByCompanyIdAndIssueDateRange(companyId, fromDate, toDate));
 
         // Mely Transaction-ok vannak mar materializalva real Receipt-ben?
         // A materializaltakat az `id` mezo synthesizedUuid alakjarol ismerjuk fel
@@ -116,8 +131,21 @@ public class ReceiptService {
         // EXCMD b5b FR-BSZUR-02 (Codex P2): a dátum-szűrést a DB-be toljuk, hogy a top-500 limit a
         // KIVÁLASZTOTT időszakon BELÜL érvényesüljön — különben egy régi hónap/tartomány csendben
         // hiányos lenne (a szűrés a már 500-ra csonkolt listán futna). NULL határ = nyitott vég.
+        // EXCMD b5b FR-BSZUR-03 (Codex P2): az ügyfél-adatlap LIKE-szűrők IS a DB-ben futnak a
+        // synthesized ágon — különben a 500-as csonkolás UTÁN, kliens-oldalon szűrve egy >500-as
+        // időszakban egy régi egyező ügyfél-rekord kimaradna. A real (materializált) ág nincs
+        // csonkolva → ott a kliens-oldali matchesCustomerFilters elég.
         List<Transaction> txList = transactionRepository.findReceiptListByCompanyIdAndDateRange(
-                companyId, fromDate, toDate, PageRequest.of(0, RECEIPT_LIST_LIMIT));
+                companyId, fromDate, toDate,
+                likeParam(customerFilters, "customerName"),
+                likeParam(customerFilters, "customerMotherName"),
+                likeParam(customerFilters, "customerBirthPlace"),
+                likeParam(customerFilters, "customerBirthDate"),
+                likeParam(customerFilters, "customerNationality"),
+                likeParam(customerFilters, "customerAddress"),
+                likeParam(customerFilters, "customerDocumentType"),
+                likeParam(customerFilters, "customerDocumentNumber"),
+                PageRequest.of(0, RECEIPT_LIST_LIMIT));
 
         List<Receipt> synthesized = new ArrayList<>();
         for (Transaction tx : txList) {
@@ -134,10 +162,48 @@ public class ReceiptService {
         // kézben tartja a tx-et).
         enrichRealReceipts(realReceipts, companyId);
 
+        // EXCMD b5b FR-BSZUR-03 (Codex P2): a materializált (real) receipt-eket IS szűrjük az
+        // ügyfél-adatlap szűrőkre — különben a GET /receipts?customerName=... az adatlap-szűrőnek NEM
+        // megfelelő real bizonylatokat is visszaadná (a synthesized ág már DB-szinten szűrt). A real
+        // ág nincs csonkolva (findByCompanyIdAndIssueDateRange limit nélkül) → Java-szűrés helyes és
+        // teljes; a dúsított @Transient mezőkből (applyCustomerSnapshot) dolgozik, így a synthesized
+        // DB-LIKE-kal konzisztens (azonos tx-snapshot, részleges + kis/nagybetű-érzéketlen egyezés).
+        if (customerFilters != null && !customerFilters.isEmpty()) {
+            realReceipts.removeIf(r -> !receiptMatchesCustomerFilters(r, customerFilters));
+        }
+
         List<Receipt> result = new ArrayList<>(realReceipts.size() + synthesized.size());
         result.addAll(realReceipts);
         result.addAll(synthesized);
         return result;
+    }
+
+    /**
+     * EXCMD b5b FR-BSZUR-03: egy (már dúsított) Receipt megfelel-e az ÖSSZES (nem üres) ügyfél-adatlap
+     * szűrőnek. Részleges (contains), kis/nagybetű-érzéketlen egyezés — a synthesized DB-LIKE-kal és a
+     * kliens-oldali matchesCustomerFilters-szel azonos szemantika. A születési dátumot stringgé alakítjuk.
+     */
+    private static boolean receiptMatchesCustomerFilters(Receipt r, java.util.Map<String, String> f) {
+        return matchesField(r.getCustomerName(), f.get("customerName"))
+            && matchesField(r.getCustomerMotherName(), f.get("customerMotherName"))
+            && matchesField(r.getCustomerBirthPlace(), f.get("customerBirthPlace"))
+            && matchesField(r.getCustomerBirthDate() == null ? null : r.getCustomerBirthDate().toString(),
+                            f.get("customerBirthDate"))
+            && matchesField(r.getCustomerNationality(), f.get("customerNationality"))
+            && matchesField(r.getCustomerAddress(), f.get("customerAddress"))
+            && matchesField(r.getCustomerDocumentType(), f.get("customerDocumentType"))
+            && matchesField(r.getCustomerDocumentNumber(), f.get("customerDocumentNumber"));
+    }
+
+    /** Üres/hiányzó szűrő → nem szűkít (true). Egyébként részleges, kis/nagybetű-érzéketlen contains. */
+    private static boolean matchesField(String value, String filter) {
+        if (filter == null || filter.isBlank()) {
+            return true;
+        }
+        if (value == null) {
+            return false;
+        }
+        return value.toLowerCase().contains(filter.trim().toLowerCase());
     }
 
     /**
@@ -180,10 +246,27 @@ public class ReceiptService {
             }
             Transaction tx = txById.get(txId);
             if (tx != null) {
-                r.setCustomerName(tx.getCustomerName());
-                r.setHufAmount(tx.getHufAmount());
+                applyCustomerSnapshot(r, tx);
             }
         }
+    }
+
+    /**
+     * EXCMD b5b FR-BSZUR-02/03/05: a Receipt @Transient ügyfél-/összeg-mezőit a kapcsolt
+     * Transaction-snapshotból tölti (read-through view layer). EGY helyen, hogy a synthesized
+     * és a materializált (real) dúsítási út ne driftelhessen szét. Csak skalár mezőket olvas.
+     */
+    private static void applyCustomerSnapshot(Receipt r, Transaction tx) {
+        r.setCustomerName(tx.getCustomerName());
+        r.setHufAmount(tx.getHufAmount());
+        // FR-BSZUR-03 természetes személy szűrőmezők (LEÁNYKORI NEVE nincs a tx-snapshotban → defer)
+        r.setCustomerMotherName(tx.getCustomerMotherName());
+        r.setCustomerBirthPlace(tx.getCustomerBirthPlace());
+        r.setCustomerBirthDate(tx.getCustomerBirthDate());
+        r.setCustomerNationality(tx.getCustomerNationality());
+        r.setCustomerAddress(tx.getCustomerAddress());
+        r.setCustomerDocumentType(tx.getCustomerDocumentType());
+        r.setCustomerDocumentNumber(tx.getCustomerDocumentNumber());
     }
 
     /**
@@ -219,6 +302,20 @@ public class ReceiptService {
             return false;
         }
         return to == null || !date.isAfter(to);
+    }
+
+    /**
+     * EXCMD b5b FR-BSZUR-03: egy ügyfél-adatlap szűrőértéket a synthesized JPQL-query LIKE-mintájára
+     * képez: üres/hiányzó → NULL (nincs szűrés), egyébként {@code %érték%} kisbetűsítve (a query LOWER-rel
+     * hasonlít). Így a részleges, kis/nagybetű-érzéketlen egyezés a kliens-oldali matchesCustomerFilters-szel
+     * konzisztens.
+     */
+    private static String likeParam(java.util.Map<String, String> filters, String key) {
+        String v = filters == null ? null : filters.get(key);
+        if (v == null || v.isBlank()) {
+            return null;
+        }
+        return "%" + v.trim().toLowerCase() + "%";
     }
 
     public Receipt getById(UUID id) {
@@ -351,7 +448,7 @@ public class ReceiptService {
     }
 
     private Receipt synthesizeReceipt(Transaction tx) {
-        return Receipt.builder()
+        Receipt r = Receipt.builder()
                 .id(encodeTransactionId(tx.getId()))
                 .companyId(tx.getCompany() != null ? tx.getCompany().getId() : null)
                 .receiptNumber(tx.getReceiptNumber())
@@ -359,11 +456,11 @@ public class ReceiptService {
                         ? tx.getTransactionType().name() : "UNKNOWN")
                 .issueDate(tx.getTransactionDate())
                 .isPrinted(false)
-                // EXCMD b5b (FR-BSZUR-02 "csak ügyfeles" + FR-BSZUR-05 10M Ft AML-jelölő):
-                // @Transient mezők a kapcsolt tx-ből (a tx már kézben van — nincs extra query).
-                .customerName(tx.getCustomerName())
-                .hufAmount(tx.getHufAmount())
                 .build();
+        // EXCMD b5b (FR-BSZUR-02/03/05): @Transient ügyfél-/összeg-mezők a kapcsolt tx-ből
+        // (a tx már kézben van — nincs extra query). Közös helper a real-úttal (no drift).
+        applyCustomerSnapshot(r, tx);
+        return r;
     }
 
     /** Test-only — segit egy Transaction-bol synthesized UUID-t generaalni. */

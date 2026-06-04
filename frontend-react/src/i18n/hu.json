@@ -1218,7 +1218,19 @@
       "sellOnly": "Csak eladási",
       "transferInOnly": "Csak pénz-átvételi",
       "transferOutOnly": "Csak pénz-átadási",
-      "type": "Bizonylattípus"
+      "type": "Bizonylattípus",
+      "customerPanel": "Ügyfél-adatlap szűrő",
+      "customerPanelHint": "Természetes személy adatai szerint (részleges egyezés)",
+      "customerName": "Neve",
+      "customerMotherName": "Anyja neve",
+      "customerBirthPlace": "Születési helye",
+      "customerBirthDate": "Születési ideje",
+      "customerNationality": "Állampolgárság",
+      "customerAddress": "Lakcím",
+      "customerDocumentType": "Okmánytípus",
+      "customerDocumentNumber": "Azonosító",
+      "clearCustomer": "Adatlap-szűrők törlése",
+      "customerActive": "aktív ügyfél-adatlap szűrő"
     },
     "helyiFuggoBizonylatok": "Helyi, függő bizonylatok",
     "helyiReferencia": "Helyi referencia",
@@ -1231,7 +1243,10 @@
     "tartalom": "Tartalom:",
     "ugyfel": "Ügyfél",
     "ugyfelLabel": "Ügyfél:",
-    "vazlatNyomtatas": "Vázlat nyomtatás"
+    "vazlatNyomtatas": "Vázlat nyomtatás",
+    "reprintAction": "Újranyomtatás",
+    "reprintSection": "Fizikai újranyomtatás",
+    "reprintSectionHint": "Ezek a bizonylatok már véglegesítve és szinkronizálva vannak. Ha a nyomtatás meghiúsult (pl. papírelakadás), itt a tárolt adatból fizikailag újranyomtathatók — a sorszám nem változik."
   },
   "reports": {
     "bejelentesReszletei": "Bejelentés részletei",
