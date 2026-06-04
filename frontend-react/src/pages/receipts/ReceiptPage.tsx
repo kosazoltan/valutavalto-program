@@ -386,7 +386,7 @@ export default function ReceiptPage() {
                   <td className="text-right whitespace-nowrap">
                     {formatHuf(r.hufAmount)}
                     {isAmlThresholdExceeded(r.hufAmount) && (
-                      <span className="badge badge-red ml-2" title={t('receipts.amlBadgeTitle')}>10M+</span>
+                      <span className="badge badge-red ml-2" title={t('receipts.amlBadgeTitle')}>{t('receipts.amlBadgeText')}</span>
                     )}
                   </td>
                   <td>{new Date(r.issueDate).toLocaleDateString('hu-HU')}</td>
@@ -420,7 +420,7 @@ export default function ReceiptPage() {
               <div>
                 <strong>{t('receipts.osszegFtLabel')}</strong> {formatHuf(selectedReceipt.hufAmount)}
                 {isAmlThresholdExceeded(selectedReceipt.hufAmount) && (
-                  <span className="badge badge-red ml-2" title={t('receipts.amlBadgeTitle')}>10M+</span>
+                  <span className="badge badge-red ml-2" title={t('receipts.amlBadgeTitle')}>{t('receipts.amlBadgeText')}</span>
                 )}
               </div>
               <div><strong>{t('receipts.kiadasDatuma')}</strong> {new Date(selectedReceipt.issueDate).toLocaleString('hu-HU')}</div>
