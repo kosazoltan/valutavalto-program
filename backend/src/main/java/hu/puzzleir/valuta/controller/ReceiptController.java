@@ -4,12 +4,14 @@ import hu.puzzleir.valuta.entity.Receipt;
 import hu.puzzleir.valuta.service.ReceiptGeneratorService;
 import hu.puzzleir.valuta.service.ReceiptService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,10 +23,19 @@ public class ReceiptController {
     private final ReceiptService service;
     private final ReceiptGeneratorService receiptGeneratorService;
 
+    /**
+     * Bizonylat-lista. Opcionális szűrők:
+     * - {@code transactionId}: csak az adott tranzakció bizonylatai.
+     * - {@code from}/{@code to} (ISO dátum): EXCMD b5b FR-BSZUR-02 hatókör/időszak — a dátum-szűrés
+     *   a DB-ben fut, így a top-500 limit a választott időszakon belül érvényesül (nem csonkol előtte).
+     */
     @GetMapping
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<List<Receipt>> list(@RequestParam(required = false) UUID transactionId) {
-        return ResponseEntity.ok(service.list(transactionId));
+    public ResponseEntity<List<Receipt>> list(
+            @RequestParam(required = false) UUID transactionId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(service.list(transactionId, from, to));
     }
 
     @GetMapping("/{id}")

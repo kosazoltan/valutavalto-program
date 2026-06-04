@@ -93,14 +93,14 @@ class ReceiptServiceB7Test {
     @Test
     @DisplayName("EXCMD b5b: synthesized Receipt customerName + hufAmount dúsítás a tx-ből")
     void list_synthesizedReceiptEnrichedWithCustomerAndHuf() {
-        when(receiptRepository.findAllByCompanyId(COMPANY_ID))
+        when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any()))
                 .thenReturn(Collections.emptyList());
 
         Transaction tx = makeTransaction(601L, "V017000040", TransactionType.BUY);
         tx.setCustomerName("Kovács János");
         tx.setHufAmount(new BigDecimal("12000000.00")); // 12 M Ft → 10M+ küszöb felett
 
-        when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of(tx));
 
         List<Receipt> receipts = receiptService.list(null);
@@ -130,10 +130,10 @@ class ReceiptServiceB7Test {
         tx2.setCustomerName("Szabó Péter");
         tx2.setHufAmount(new BigDecimal("10000000.00")); // pontosan a küszöbön → 10M+
 
-        when(receiptRepository.findAllByCompanyId(COMPANY_ID))
+        when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any()))
                 .thenReturn(List.of(real1, real2));
         // a materializáltakat a synthesized-detektálás kihagyja → nincs synthesized
-        when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of(tx1, tx2));
         // N+1 ELKERÜLÉS + multi-tenant + OSIV-safe: EGYETLEN cég-szűrt batch query a két txId-ra
         when(transactionRepository.findAllByIdInAndCompanyId(any(), eq(COMPANY_ID)))
@@ -162,8 +162,8 @@ class ReceiptServiceB7Test {
                 .receiptNumber("V017000060").receiptType("BUY")
                 .issueDate(LocalDate.of(2026, 4, 29)).isPrinted(true).build();
 
-        when(receiptRepository.findAllByCompanyId(COMPANY_ID)).thenReturn(List.of(real));
-        when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
+        when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any())).thenReturn(List.of(real));
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of());
         // A cég-szűrt query az AKTUÁLIS céggel hívva ÜRES (a cross-company tx kiszűrődik a DB-ben).
         when(transactionRepository.findAllByIdInAndCompanyId(any(), eq(COMPANY_ID)))
@@ -205,15 +205,59 @@ class ReceiptServiceB7Test {
     }
 
     @Test
+    @DisplayName("Codex P2: a from/to MINDKÉT query-be bekerül — real ÉS synthesized is DB-szinten szűrt")
+    void list_dateRange_filtersRealAndSynthesizedAtDbLevel() {
+        LocalDate from = LocalDate.of(2026, 4, 1);
+        LocalDate to = LocalDate.of(2026, 4, 30);
+        when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), eq(from), eq(to)))
+                .thenReturn(Collections.emptyList());
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(
+                eq(COMPANY_ID), eq(from), eq(to), any(Pageable.class)))
+                .thenReturn(Collections.emptyList());
+
+        receiptService.list(null, from, to);
+
+        // A dátum-szűrés a DB-ben fut MINDKÉT forrásra (nem csak a synthesized ágon) — a real
+        // receipt-ek sem kerülnek be a tartományon kívülről (Codex P2 szerződés).
+        Mockito.verify(receiptRepository).findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), eq(from), eq(to));
+        Mockito.verify(transactionRepository)
+                .findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), eq(from), eq(to), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("Codex P2: transactionId + from/to — a tranzakció-ág is szűr a dátumtartományra")
+    void list_filteredByTransactionId_honorsDateRange() {
+        UUID txFilter = new UUID(0L, 720L);
+        Receipt inRange = Receipt.builder()
+                .id(txFilter).companyId(COMPANY_ID)
+                .receiptNumber("V017000080").receiptType("BUY")
+                .issueDate(LocalDate.of(2026, 4, 15)).isPrinted(true).build();
+        Receipt outRange = Receipt.builder()
+                .id(new UUID(0L, 721L)).companyId(COMPANY_ID)
+                .receiptNumber("V017000081").receiptType("BUY")
+                .issueDate(LocalDate.of(2026, 3, 1)).isPrinted(true).build(); // tartományon KÍVÜL
+
+        when(receiptRepository.findByCompanyIdAndTransactionId(COMPANY_ID, txFilter))
+                .thenReturn(List.of(inRange, outRange));
+        when(transactionRepository.findAllByIdInAndCompanyId(any(), eq(COMPANY_ID)))
+                .thenReturn(List.of());
+
+        List<Receipt> receipts = receiptService.list(txFilter, LocalDate.of(2026, 4, 1), LocalDate.of(2026, 4, 30));
+
+        // Csak az áprilisi marad — a tartományon kívüli (márciusi) kiesik a transactionId-ágon is.
+        assertThat(receipts).extracting(Receipt::getReceiptNumber).containsExactly("V017000080");
+    }
+
+    @Test
     @DisplayName("list() synthesize Receipt-et ad vissza, ha a Receipt tabla URES")
     void list_synthesizesFromTransactionsWhenReceiptTableEmpty() {
-        when(receiptRepository.findAllByCompanyId(COMPANY_ID))
+        when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any()))
                 .thenReturn(Collections.emptyList());
 
         Transaction tx1 = makeTransaction(101L, "V017000001", TransactionType.BUY);
         Transaction tx2 = makeTransaction(102L, "E017000001", TransactionType.SELL);
 
-        when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of(tx1, tx2));
 
         List<Receipt> receipts = receiptService.list(null);
@@ -244,9 +288,9 @@ class ReceiptServiceB7Test {
                 .isPrinted(true)
                 .build();
 
-        when(receiptRepository.findAllByCompanyId(COMPANY_ID))
+        when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any()))
                 .thenReturn(List.of(realForTx1));
-        when(transactionRepository.findReceiptListByCompanyId(eq(COMPANY_ID), any(Pageable.class)))
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of(tx1, tx2));
 
         List<Receipt> receipts = receiptService.list(null);
