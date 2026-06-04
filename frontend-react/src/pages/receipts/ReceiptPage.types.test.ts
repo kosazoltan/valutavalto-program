@@ -4,6 +4,7 @@ import {
   hasCustomer,
   isAmlThresholdExceeded,
   formatHuf,
+  matchesPeriod,
   AML_10M_THRESHOLD_HUF,
 } from './ReceiptPage'
 
@@ -71,5 +72,48 @@ describe('formatHuf (EXCMD b5b hu-HU összegformázás)', () => {
     expect(formatHuf(undefined)).toBe('—')
     expect(formatHuf(null)).toBe('—')
     expect(formatHuf(NaN)).toBe('—')
+  })
+})
+
+describe('matchesPeriod (EXCMD b5b FR-BSZUR-02 hatókör/időszak)', () => {
+  it('ALL: minden dátum átmegy (üres/hiányos is)', () => {
+    expect(matchesPeriod('2026-04-29', 'ALL', '2026-04', '', '')).toBe(true)
+    expect(matchesPeriod(undefined, 'ALL', '', '', '')).toBe(true)
+    expect(matchesPeriod('', 'ALL', '', '', '')).toBe(true)
+  })
+
+  it('MONTH: csak az adott naptári hónap bizonylatai (YYYY-MM)', () => {
+    expect(matchesPeriod('2026-04-29', 'MONTH', '2026-04', '', '')).toBe(true)
+    expect(matchesPeriod('2026-04-01', 'MONTH', '2026-04', '', '')).toBe(true)
+    expect(matchesPeriod('2026-05-01', 'MONTH', '2026-04', '', '')).toBe(false)
+    expect(matchesPeriod('2026-03-31', 'MONTH', '2026-04', '', '')).toBe(false)
+    // ISO timestamp esetén is a nap eleje (első 7 kar.) számít
+    expect(matchesPeriod('2026-04-29T10:30:00Z', 'MONTH', '2026-04', '', '')).toBe(true)
+  })
+
+  it('MONTH üres hónappal → minden átmegy (nincs szűkítés)', () => {
+    expect(matchesPeriod('2026-04-29', 'MONTH', '', '', '')).toBe(true)
+  })
+
+  it('CUSTOM: inkluzív dátumtartomány (tól-ig)', () => {
+    expect(matchesPeriod('2026-04-10', 'CUSTOM', '', '2026-04-10', '2026-04-20')).toBe(true) // alsó határ inkluzív
+    expect(matchesPeriod('2026-04-20', 'CUSTOM', '', '2026-04-10', '2026-04-20')).toBe(true) // felső határ inkluzív
+    expect(matchesPeriod('2026-04-15', 'CUSTOM', '', '2026-04-10', '2026-04-20')).toBe(true)
+    expect(matchesPeriod('2026-04-09', 'CUSTOM', '', '2026-04-10', '2026-04-20')).toBe(false)
+    expect(matchesPeriod('2026-04-21', 'CUSTOM', '', '2026-04-10', '2026-04-20')).toBe(false)
+  })
+
+  it('CUSTOM: nyitott végek (csak tól / csak ig / egyik sem)', () => {
+    expect(matchesPeriod('2026-12-31', 'CUSTOM', '', '2026-04-10', '')).toBe(true)  // csak tól
+    expect(matchesPeriod('2026-01-01', 'CUSTOM', '', '2026-04-10', '')).toBe(false)
+    expect(matchesPeriod('2026-01-01', 'CUSTOM', '', '', '2026-04-20')).toBe(true)  // csak ig
+    expect(matchesPeriod('2026-12-31', 'CUSTOM', '', '', '2026-04-20')).toBe(false)
+    expect(matchesPeriod('2026-06-15', 'CUSTOM', '', '', '')).toBe(true)            // egyik sem → minden átmegy
+  })
+
+  it('nem-ALL módban a hiányzó/rövid dátum NEM esik bele (defenzív)', () => {
+    expect(matchesPeriod(undefined, 'MONTH', '2026-04', '', '')).toBe(false)
+    expect(matchesPeriod(null, 'CUSTOM', '', '2026-04-10', '')).toBe(false)
+    expect(matchesPeriod('20', 'MONTH', '2026-04', '', '')).toBe(false)
   })
 })
