@@ -2560,6 +2560,61 @@ export function getReprintableStornos(limit?: number): PendingStornoRow[] {
   return results;
 }
 
+// ============================================================================
+// RPO-vedohalo (2026-06-05): re-assert lekerdezok. Failover/reconnect utan a
+// kliens ujrakuldi a legutobbi (idempotency-key-vel rendelkezo) SYNCED rekordokat;
+// a backend a key alapjan dedupol (ha mar megvan) vagy visszapotol (ha a failover-
+// ablakban elveszett). A `sinceIso` ablak < a backend 24h idempotency-TTL-jenel.
+// A lokalis allapotot NEM valtoztatjak (a rekordok synced=1 maradnak).
+// ============================================================================
+export function getReassertableTransactions(sinceIso: string): PendingTransactionRow[] {
+  if (!db) return [];
+  const results: PendingTransactionRow[] = [];
+  const stmt = db.prepare(
+    "SELECT * FROM pending_transactions WHERE synced = 1 AND idempotency_key IS NOT NULL AND created_at >= ? ORDER BY created_at ASC, id ASC",
+  );
+  stmt.bind([sinceIso]);
+  while (stmt.step()) results.push(stmt.getAsObject() as unknown as PendingTransactionRow);
+  stmt.free();
+  return results;
+}
+
+export function getReassertableConversions(sinceIso: string): PendingConversionRow[] {
+  if (!db) return [];
+  const results: PendingConversionRow[] = [];
+  const stmt = db.prepare(
+    "SELECT * FROM pending_conversions WHERE synced = 1 AND idempotency_key IS NOT NULL AND created_at >= ? ORDER BY created_at ASC, id ASC",
+  );
+  stmt.bind([sinceIso]);
+  while (stmt.step()) results.push(stmt.getAsObject() as unknown as PendingConversionRow);
+  stmt.free();
+  return results;
+}
+
+export function getReassertableStornos(sinceIso: string): PendingStornoRow[] {
+  if (!db) return [];
+  const results: PendingStornoRow[] = [];
+  const stmt = db.prepare(
+    "SELECT * FROM pending_stornos WHERE synced = 1 AND idempotency_key IS NOT NULL AND created_at >= ? ORDER BY created_at ASC, id ASC",
+  );
+  stmt.bind([sinceIso]);
+  while (stmt.step()) results.push(stmt.getAsObject() as unknown as PendingStornoRow);
+  stmt.free();
+  return results;
+}
+
+export function getReassertableBankTransactions(sinceIso: string): PendingBankTransactionRow[] {
+  if (!db) return [];
+  const results: PendingBankTransactionRow[] = [];
+  const stmt = db.prepare(
+    "SELECT * FROM pending_bank_transactions WHERE synced = 1 AND idempotency_key IS NOT NULL AND created_at >= ? ORDER BY created_at ASC, id ASC",
+  );
+  stmt.bind([sinceIso]);
+  while (stmt.step()) results.push(stmt.getAsObject() as unknown as PendingBankTransactionRow);
+  stmt.free();
+  return results;
+}
+
 export function savePendingHandoverOperation(params: {
   operationType: 'GENERATE' | 'PRINT' | 'COMPLETE';
   sheetId?: string | null;

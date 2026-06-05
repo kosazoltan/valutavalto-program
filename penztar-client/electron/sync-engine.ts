@@ -17,6 +17,10 @@ import {
   getPendingConversions,
   getPendingBankTransactions,
   getPendingStornos,
+  getReassertableTransactions,
+  getReassertableConversions,
+  getReassertableStornos,
+  getReassertableBankTransactions,
   markTransactionSynced,
   markTransactionSyncError,
   markConversionSynced,
@@ -272,6 +276,11 @@ export class SyncEngine {
   // 404/500 spam-et, ami az event-loop-ot blokkolhatja.
   private consecutiveFailures = 0;
   private backoffUntilMs = 0;
+  // RPO-vedohalo (2026-06-05): a re-assert legalabb egyszer fusson le inditas utan
+  // (a kliens failover utan tipikusan ujraindul/ujracsatlakozik), es minden
+  // outage-recovery-kor (failover-pillanat). Lasd reassertRecentSynced().
+  private reassertedAtStartup = false;
+  private static readonly REASSERT_WINDOW_HOURS = 6;
   private readonly maxBackoffMs = 300_000; // 5 perc
 
   /**
@@ -642,10 +651,24 @@ export class SyncEngine {
 
       this.status.lastSyncAt = new Date().toISOString();
       // E-B6.3 v2.3.11: sikeres sync resetel a backoff-ot
+      const recoveredFromOutage = this.consecutiveFailures > 0;
       if (this.consecutiveFailures > 0) {
         log.info(`[SyncEngine] Sikeres sync — backoff reset (volt: ${this.consecutiveFailures} failure)`);
         this.consecutiveFailures = 0;
         this.backoffUntilMs = 0;
+      }
+      // RPO-vedohalo (2026-06-05): failover/reconnect (outage-recovery) UTAN, vagy az elso
+      // sikeres sync-nel (inditas) ujra-asszertaljuk a legutobbi synced tranzakciokat. Ha a
+      // failover-ablakban a szerver-oldalon elveszett egy mar nyugtazott tetel, a backend az
+      // idempotency-key alapjan VISSZAPOTOLJA; ha megvan, dedupol. Local-first vedohalo a
+      // szinkron-replikacio (RPO=0) MELLE, a degradalt-ablak + kettos-hiba esetere.
+      if (token && (recoveredFromOutage || !this.reassertedAtStartup)) {
+        this.reassertedAtStartup = true;
+        try {
+          await this.reassertRecentSynced(serverUrl, token);
+        } catch (reassertErr) {
+          log.warn('[SyncEngine] Re-assert hiba (nem blokkolo):', reassertErr);
+        }
       }
     } catch (err) {
       // 3-regios HA: failover lepked egy szintet tovabb.
@@ -1051,6 +1074,55 @@ export class SyncEngine {
     }
 
     return result;
+  }
+
+  /**
+   * RPO-vedohalo (2026-06-05): a REASSERT_WINDOW_HOURS-on beluli, idempotency-key-vel
+   * rendelkezo SYNCED tranzakciok ujrakuldese. A backend a key alapjan dedupol (ha mar
+   * megvan) vagy visszapotol (ha a failover-ablakban a szerver-oldalon elveszett). A
+   * lokalis allapotot NEM valtoztatja (a rekordok synced=1 maradnak). Failover/reconnect
+   * (outage-recovery) utan + inditaskor fut. A szinkron-replikacio (RPO=0) MELLE: a ritka
+   * degradalt-ablak + kettos-hiba esetere local-first vedohalo.
+   */
+  private async reassertRecentSynced(serverUrl: string, token: string): Promise<number> {
+    if (!serverUrl || !token) return 0;
+    const since = new Date(
+      Date.now() - SyncEngine.REASSERT_WINDOW_HOURS * 3_600_000,
+    ).toISOString();
+    let count = 0;
+    const tryOne = async (label: string, fn: () => Promise<void>): Promise<void> => {
+      try {
+        await fn();
+        count++;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // halozati hiba -> nincs ertelme folytatni; a kovetkezo recovery ujraprobalja
+        if (msg.includes('fetch') || msg.includes('network') || msg.includes('timeout')) {
+          throw err;
+        }
+        log.warn(`[Reassert] ${label}: ${msg}`);
+      }
+    };
+    try {
+      for (const tx of getReassertableTransactions(since)) {
+        await tryOne(`TX#${tx.id}`, () => this.syncTransaction(serverUrl, token, tx));
+      }
+      for (const c of getReassertableConversions(since)) {
+        await tryOne(`CONV#${c.id}`, () => this.syncConversion(serverUrl, token, c));
+      }
+      for (const s of getReassertableStornos(since)) {
+        await tryOne(`STORNO#${s.id}`, () => this.syncStorno(serverUrl, token, s));
+      }
+      for (const b of getReassertableBankTransactions(since)) {
+        await tryOne(`BANK#${b.id}`, () => this.syncBankTransaction(serverUrl, token, b));
+      }
+    } catch (netErr) {
+      log.warn('[Reassert] halozati hiba — megszakitva, kovetkezo recovery folytatja:', netErr);
+    }
+    if (count > 0) {
+      log.info(`[SyncEngine] Re-assert: ${count} synced rekord ujra-asszertalva (RPO-vedohalo).`);
+    }
+    return count;
   }
 
   /**
