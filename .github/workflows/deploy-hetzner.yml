@@ -189,6 +189,97 @@ jobs:
           echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Health check URL:** ${{ env.HEALTH_URL }}" >> $GITHUB_STEP_SUMMARY
 
+  # 2026-06-05: Scaleway warm standby JAR-szinkron. ELOTTE a standby orokke 2.5.49-en
+  # ragadt (a deploy csak Hetznert frissitette) -> egy 10 oras Hetzner-outage alatt a
+  # tartalek elavult koddal NEM tudta volna atvenni a forgalmat. Mostantol minden sikeres
+  # primary-deploy utan a standby is megkapja ugyanazt a JAR-t, warm/read-only modban.
+  # Kulon job: ha a standby elerhetetlen, FAIL-loud (latszik a HA-res), de a mar lefutott
+  # primary deployt NEM gorgeti vissza.
+  deploy-standby:
+    name: Sync JAR to Scaleway standby (warm)
+    runs-on: ubuntu-latest
+    needs: [build, deploy]
+    timeout-minutes: 10
+    steps:
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: backend-jar
+          path: ./deploy-artifacts
+
+      - name: Set up SSH (standby)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SCALEWAY_SSH_PRIVATE_KEY }}" > ~/.ssh/scaleway_key
+          chmod 600 ~/.ssh/scaleway_key
+          ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Upload JAR to standby
+        run: |
+          JAR=$(ls ./deploy-artifacts/valuta-backend-*.jar | grep -v SNAPSHOT | tail -1)
+          JAR_NAME=$(basename "$JAR")
+          echo "Uploading $JAR_NAME to standby ..."
+          scp -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
+              "$JAR" \
+              "root@${{ secrets.SCALEWAY_SERVER_IP }}:${{ env.VPS_DEPLOY_PATH }}/target/$JAR_NAME"
+
+      - name: Swap symlink + restart (warm, read-only) + health
+        run: |
+          ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
+              "root@${{ secrets.SCALEWAY_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -euo pipefail
+            TARGET=${{ env.VPS_DEPLOY_PATH }}/target
+            # 1) BIZTONSAG: a standby DB recovery-ben (warm) kell legyen. Ha promote-olt
+            #    (failover utan), NE nyuljunk hozza ezzel a jobbal -> split-brain veszely.
+            IN_REC=$(sudo -u postgres psql -tAc "SELECT pg_is_in_recovery();" 2>/dev/null || echo "x")
+            if [ "$IN_REC" != "t" ]; then
+              echo "::error::Standby PG nem recovery modban van ('$IN_REC') — ABORT (lehet aktiv primary egy failover utan; kezi ellenorzes kell)"
+              exit 1
+            fi
+            # 2) logs mappa — a 2.27.x logback ide ir; ha hianyzik/rossz a tulajdonos,
+            #    a backend crash-loopol ("Failed to create parent directories").
+            mkdir -p ${{ env.VPS_DEPLOY_PATH }}/logs
+            chown -R ${{ env.VPS_USER_OWNER }}:${{ env.VPS_USER_OWNER }} ${{ env.VPS_DEPLOY_PATH }}/logs
+            # 3) current.jar -> legujabb verziozott jar (a regi marad rollbackhez)
+            JAR=$(ls $TARGET/valuta-backend-*.jar | grep -v SNAPSHOT | grep -v current | sort -V | tail -1)
+            echo "=== Standby symlink: $JAR -> current ==="
+            ln -sfn "$JAR" "$TARGET/${{ env.JAR_SYMLINK }}"
+            chown -h ${{ env.VPS_USER_OWNER }}:${{ env.VPS_USER_OWNER }} "$TARGET/${{ env.JAR_SYMLINK }}"
+            chown ${{ env.VPS_USER_OWNER }}:${{ env.VPS_USER_OWNER }} "$JAR"
+            # 4) restart a meglevo warm .env-vel (SPRING_FLYWAY_ENABLED=false, read-only).
+            #    NEM modositjuk az env-et — a Flyway tiltva marad (read-only replikan nem futhat).
+            echo "=== Restarting standby valuta-backend (warm) ==="
+            systemctl restart valuta-backend.service
+            # 5) health — a standby lassabban all fel (read-only replikan ~30s)
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              sleep 8
+              CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 http://localhost:8080/api/v1/auth/bootstrap-status || echo 000)
+              echo "standby health attempt $i: HTTP $CODE"
+              if [ "$CODE" = "200" ]; then
+                journalctl -u valuta-backend.service -n 200 --no-pager | grep -oE '"service_version":"[^"]*"' | tail -1
+                # vegso assert: meg mindig recovery-ben (a restart nem promote-olt)
+                STILL=$(sudo -u postgres psql -tAc "SELECT pg_is_in_recovery();")
+                echo "standby pg_is_in_recovery (t=jo): $STILL"
+                echo "=== Standby warm backend UP ==="
+                exit 0
+              fi
+            done
+            echo "::error::Standby health check FAILED — a tartalek nem all keszen az atvetelre"
+            journalctl -u valuta-backend.service -n 40 --no-pager
+            exit 1
+          ENDSSH
+
+      - name: Standby summary
+        if: always()
+        run: |
+          echo "## Scaleway standby sync (warm)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Standby:** ${{ secrets.SCALEWAY_SERVER_IP }} (read-only, Flyway off)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Result:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" != "success" ]; then
+            echo "- ⚠️ A standby NEM frissult — failover eseten elavult kod indulna. Kezi beavatkozas kell." >> $GITHUB_STEP_SUMMARY
+          fi
+
   deploy-frontend:
     name: Build + Deploy frontend-react
     runs-on: ubuntu-latest
