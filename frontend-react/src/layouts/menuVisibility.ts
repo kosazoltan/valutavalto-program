@@ -32,7 +32,14 @@ function isSupervisoryMenuBypass(ctx: MenuVisibilityContext): boolean {
   return ctx.appMode !== 'full' && hasSupervisoryAccess(ctx.hasCanonicalRole)
 }
 
-/** Item effektív szerepkör-megszorítása: saját canonicalRoles, különben a csoporté (öröklés). */
+/**
+ * Item effektív szerepkör-megszorítása: saját canonicalRoles, különben a csoporté (öröklés).
+ *
+ * Sorrend (Sourcery #1059): a `modes` és a `minRole` a felügyeleti bypass ELŐTT érvényesül —
+ * azaz a bypass KIZÁRÓLAG a canonicalRoles-ellenőrzést írja felül (a mód- és minRole-szűrést
+ * NEM). Ez szándékos és egyezik az audit előtti viselkedéssel (a `hasSupervisoryAccess` ott is
+ * csak a role-szűrőt rövidzárta, a külön mód- és minRole-szűrőt nem).
+ */
 export function isMenuItemVisible(item: MenuItem, group: MenuGroup, ctx: MenuVisibilityContext): boolean {
   if (item.modes && !item.modes.includes(ctx.appMode)) return false
   if (item.minRole && !ctx.hasRole(item.minRole)) return false

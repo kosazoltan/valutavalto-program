@@ -53,11 +53,12 @@ describe('menuVisibility — konzisztens szigorítás (full mód)', () => {
     expect(isMenuItemVisible(itemByPath(admin, '/workers'), admin, ctxFor(['ugyvezeto'], 'full'))).toBe(true)
   })
 
-  it('penztaros (full): semmilyen felügyeleti csoportot nem lát', () => {
+  it('penztar (full): semmilyen felügyeleti csoportot nem lát', () => {
     const admin = groupByLabel('Adminisztráció')
     const aml = groupByLabel('AML / Compliance')
-    expect(isMenuGroupVisible(admin, ctxFor(['penztaros'], 'full'))).toBe(false)
-    expect(isMenuGroupVisible(aml, ctxFor(['penztaros'], 'full'))).toBe(false)
+    // 'penztar' a VALÓS kanonikus pénztáros szerepkör (PENZTAR_ROLES), nem 'penztaros'.
+    expect(isMenuGroupVisible(admin, ctxFor(['penztar'], 'full'))).toBe(false)
+    expect(isMenuGroupVisible(aml, ctxFor(['penztar'], 'full'))).toBe(false)
   })
 })
 

@@ -210,8 +210,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
  * Így a route-hozzáférés definíció szerint egyezik a (full-módú) menü-láthatósággal.
  * A RoleGate SZIGORÚAN (oversight-bypass nélkül) érvényesít minden módban.
  *
- * Fail-safe: ha az útvonal nincs a menüben (nincs definiált megszorítás), a build-time
- * konzisztenciát az App.routes.rbac teszt őrzi (minden itt gatelt path-nak van menü-szerepköre).
+ * Fail-safe: ha az útvonal nincs a menüben (nincs definiált megszorítás), nem szűkítünk.
+ * A `menuVisibility.test.ts` ("minden MenuRoleGate-tel védett admin-route-nak van nem-üres
+ * menü-szerepköre") garantálja, hogy az itt gatelt path-ok mind feloldódnak szerepkörre.
  */
 function MenuRoleGate({ path, children }: { path: string; children: React.ReactNode }) {
   const roles = effectiveCanonicalRolesForPath(menuGroups, path)
