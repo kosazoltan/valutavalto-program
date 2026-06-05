@@ -138,23 +138,37 @@ systemctl stop valuta-backend
 systemctl stop postgresql
 ```
 
-### 3.2 PG rewind a Scaleway-ról (új primary)
+### 3.2 Hetzner re-clone a Scaleway-ról — IRÁNY: a FRISS-adatú node-ról! (2026-06-05 fix)
+
+> **KRITIKUS IRÁNY:** valós failover után a **Scaleway** tartja a legfrissebb adatot (ő vette át a
+> write-okat). A Hetzner visszatéréskor ELAVULT → a Hetznernek a **Scaleway-ról** kell újraklónoznia
+> (NEM fordítva!), különben elveszik a failover-ablak összes tranzakciója.
+>
+> **`pg_rewind` NEM használható** (wal_log_hints=off + nincs checksum). A re-clone **`pg_basebackup`**,
+> a **WireGuardon** át (a publikus 5432 cloud-firewall-blokkolt). A Scaleway WG-IP-je: `10.8.0.2`.
 
 ```bash
-# Hetzner-en
-sudo -u postgres pg_rewind \
-  --target-pgdata=/var/lib/postgresql/16/main \
-  --source-server="host=163.172.152.234 port=5432 user=replicator password=<replicator_pwd>"
+# Elofeltetel: a Scaleway (uj primary) figyeljen a WG-IP-n + engedje a Hetznert (10.8.0.1):
+#   ssh root@163.172.152.234
+#   sudo -u postgres psql -c "ALTER SYSTEM SET listen_addresses='localhost,163.172.152.234,10.8.0.2';"
+#   echo 'host replication replicator 10.8.0.1/32 scram-sha-256' >> /etc/postgresql/16/main/pg_hba.conf
+#   echo 'host all         replicator 10.8.0.1/32 scram-sha-256' >> /etc/postgresql/16/main/pg_hba.conf
+#   systemctl restart postgresql@16-main   # ha a listen valtozott
 
-# standby.signal létrehozás
-sudo -u postgres touch /var/lib/postgresql/16/main/standby.signal
+# Hetzner-en (a friss adat a Scaleway-rol, WireGuardon):
+RPWD=$(grep -oE "password=[^ ']+" /var/lib/postgresql/16/main/postgresql.auto.conf | head -1 | cut -d= -f2-)
+systemctl stop valuta-backend postgresql@16-main
+rm -rf /var/lib/postgresql/16/main
+sudo -u postgres /usr/lib/postgresql/16/bin/pg_basebackup -D /var/lib/postgresql/16/main \
+  -d "host=10.8.0.2 port=5432 user=replicator password=$RPWD application_name=hetzner_standby dbname=postgres" \
+  -R -X stream -c fast
+echo "primary_slot_name = 'standby_slot_0'" >> /var/lib/postgresql/16/main/postgresql.auto.conf
+chown -R postgres:postgres /var/lib/postgresql/16/main; chmod 700 /var/lib/postgresql/16/main
+systemctl start postgresql@16-main    # most a Hetzner a Scaleway STANDBY-ja, felzarkozik
 
-# primary_conninfo beállítása
-echo "primary_conninfo = 'host=163.172.152.234 port=5432 user=replicator password=<pwd>'" \
-  | sudo -u postgres tee -a /var/lib/postgresql/16/main/postgresql.auto.conf
-
-# PG start (most már standby)
-systemctl start postgresql
+# Ezutan TERVEZETT switchover: Hetzner-t promote + Scaleway-t re-clone Hetznerrol (2.1/2.2 forditva),
+# vagy hagyd a Scaleway-t primary-nak amig kenyelmes a visszavaltas. A szinkron-config (sync_state)
+# az uj primary-n allitando be (synchronous_standby_names a masik node app_name-jere).
 ```
 
 ### 3.3 DNS visszaállítás Cloudflare-en

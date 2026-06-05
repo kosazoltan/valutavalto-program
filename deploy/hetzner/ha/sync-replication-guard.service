@@ -1,0 +1,16 @@
+[Unit]
+# Szinkron-replikáció auto-degradáció guard (Hetzner primary). Ha a szinkron
+# Scaleway standby leáll, async-ra degradál (Hetzner írható marad), visszatéréskor
+# vissza sync-re. Lásd sync-replication-guard.sh.
+Description=Synchronous replication auto-degradation guard (sync<->async)
+After=postgresql.service postgresql@16-main.service
+Wants=postgresql@16-main.service
+
+[Service]
+Type=simple
+ExecStart=/opt/valutavalto/deploy/hetzner/ha/sync-replication-guard.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
