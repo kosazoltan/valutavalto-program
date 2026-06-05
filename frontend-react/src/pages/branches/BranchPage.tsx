@@ -87,6 +87,9 @@ function ServiceBadge({ label, active }: { label: string; active: boolean }) {
         active ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400'
       }`}
       title={active ? `${label}: aktív` : `${label}: nincs`}
+      // Copilot #1056 a11y: a státusz csak színnel nem megbízható (képernyőolvasó/billentyűzet),
+      // ezért aria-label is hordozza ugyanazt az információt, mint a tooltip.
+      aria-label={active ? `${label}: aktív` : `${label}: nincs`}
     >
       {label}
     </span>
@@ -126,7 +129,9 @@ export default function BranchPage() {
     const t = searchTerm.trim().toLowerCase()
     return branches.filter((b) => {
       if (!showInactive && !b.isActive) return false
-      if (territoryFilter && (b.region ?? '') !== territoryFilter) return false
+      // Sourcery/Copilot #1056: a territories-halmaz trimelt region-t tárol, ezért a
+      // szűrésnél is trimelni kell, különben " SZEGED " sosem egyezne a dropdown "SZEGED"-jével.
+      if (territoryFilter && (b.region?.trim() ?? '') !== territoryFilter) return false
       if (!t) return true
       return (
         b.name.toLowerCase().includes(t) ||

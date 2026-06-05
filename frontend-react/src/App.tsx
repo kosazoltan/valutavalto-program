@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
+import RoleGate from './components/RoleGate'
 import { Toaster } from './components/ui/toaster'
 import ErrorBoundary from './components/ErrorBoundary'
 // EBC Hangsegéd Phase 9.5b — VoiceAssistantProvider + Panel mount (env-flag gated)
@@ -191,11 +192,11 @@ function RouteLoadingFallback() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
-  
+
   return <>{children}</>
 }
 
@@ -513,8 +514,16 @@ export default function App() {
               automatikusan megjelenjen). */}
           <Route path="/branches/new-cashier" element={<NewCashierBranchPage />} />
 
-          {/* FK-020: Pénztár Törzs Adatbázis lista (Adminisztráció menücsoport). */}
-          <Route path="/admin/branches" element={<BranchPage />} />
+          {/* FK-020: Pénztár Törzs Adatbázis lista (Adminisztráció menücsoport).
+              Codex #1056 P1: szerepkör-gate a menü canonicalRoles-szal egyezően. */}
+          <Route
+            path="/admin/branches"
+            element={
+              <RoleGate canonicalRoles={['foertektar', 'belso_ellenor', 'ugyvezeto']}>
+                <BranchPage />
+              </RoleGate>
+            }
+          />
 
           {/* FK-ÉRTÉKTÁR (V285): új személyes értéktári munkatárs felvétele (név + jelszó). */}
           <Route path="/vault-workers/new" element={<NewVaultWorkerPage />} />
