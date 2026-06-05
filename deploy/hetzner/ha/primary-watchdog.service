@@ -1,0 +1,11 @@
+[Unit]
+Description=Off-host primary watchdog (Scaleway -> Hetzner primary health, email alert)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/valutavalto/deploy/hetzner/ha/primary-watchdog.sh
+# A jelszo-fajl root:600; a script rootkent fut, csak kimeno HTTPS/SMTP-t hasznal.
+User=root
+Nice=10

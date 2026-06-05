@@ -40,6 +40,21 @@ feloldodott.
   amugy is lefedi a DB-kiesest (a backend nem szolgal ki DB nelkul).
 - **caddy job up=0** (admin API 2019, ugyanaz az ufw-minta) — nincs hozza alert-rule, nem
   spamel; ha kell caddy-metrika, ugyanugy ALLOW a DENY ele.
-- **OFF-HOST monitoring hianyzik:** a stack a Hetzner primaryn fut → ha a TELJES host meghal,
-  az Alertmanager is vele → nincs e-mail. Teljes host-halal lefedesehez kulso/Scaleway-oldali
-  health-probe kell (a failover-korben rendezzuk).
+## OFF-HOST watchdog (Scaleway) — MEGOLDVA 2026-06-05
+
+Az on-host Alertmanager nem tud riasztani, ha a TELJES Hetzner host meghal (akkor o is
+vele hal). Ezert a Scaleway standby-n fut egy fuggetlen watchdog:
+`deploy/hetzner/ha/primary-watchdog.{sh,service,timer}` (systemd timer, 1 perc).
+
+- Figyeli az `excvaluta.com/api/v1/auth/bootstrap-status`-t publikusan ES kozvetlen origin IP-n.
+- 3 egymas utani bukas utan e-mailt kuld mind a 4 kollegahoz, majd recovery-mailt feljovetelkor.
+- **FONTOS: a Scaleway BLOKKOLJA a kimeno SMTP-t (25/465/587)** → a watchdog **Resend HTTP API**-n
+  (443) kuld. From: `watchdog@ebciroda.com` (verifikalt Resend-domain). Kulcs a szerveren:
+  `/etc/primary-watchdog/resend_api_key` (root:600, NEM repoban). Elve tesztelve, megerkezett.
+- **Auto-promote SZANDEKOSAN KI** (`AUTO_FAILOVER=no`): financialis ERP-nel a split-brain
+  veszelyesebb, mint a riasztas-vezerelt kezi failover. A standby mar 2.27.90, igy a runbook
+  szerinti failover ELOSZOR tenylegesen mukodne. Az `AUTO_FAILOVER=yes` opt-in, ha az
+  uzemelteto vallalja a kockazatot.
+
+Megjegyzes: a Hetzner-oldali Alertmanager Gmail SMTP-vel kuld (ott a 587 nyitva); a Scaleway
+watchdog Resend-del (ott az SMTP tiltva). Mindketto ugyanahhoz a 4 cimzetthez er el.
