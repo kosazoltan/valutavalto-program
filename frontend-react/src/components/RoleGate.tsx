@@ -1,18 +1,21 @@
 import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
-import { SZERVER_ROLES } from '../layouts/menuGroups'
 
 /**
- * RoleGate — szerepkör-szintű route-védelem (Codex #1056 P1).
+ * RoleGate — szerepkör-szintű route-védelem (Codex #1056 P1+P2).
  *
- * A menü `canonicalRoles`-szal szűri a láthatóságot, de a route-okat eddig csak a
- * `ProtectedRoute` (auth) védte → bárki, aki belépett, közvetlen URL-lel elérte a
- * korlátozott admin-oldalakat (pl. a Pénztár Törzs Adatbázist). A RoleGate pontosan a
- * menü-predikátumot tükrözi: `hasSupervisoryAccess` (bármely szerver-szerepkör) VAGY a
- * megadott canonical role valamelyike. Így nem szűkít a menünél jobban, viszont kizárja a
- * pénztáros (penztaros) közvetlen URL-belépést a felügyeleti oldalakra.
+ * A védett route-okat eddig csak a `ProtectedRoute` (auth) védte → bárki, aki belépett,
+ * közvetlen URL-lel elérte a korlátozott admin-oldalakat (pl. a Pénztár Törzs Adatbázist).
+ * A RoleGate SZIGORÚAN a megadott `canonicalRoles`-ra korlátoz: csak az a felhasználó
+ * léphet be, akinek a tényleges szerepköre canonicalizálva szerepel a listában.
  *
- * Megj.: az `isAuthenticated` ellenőrzést a szülő `ProtectedRoute` már elvégzi.
+ * P2 (Codex #1056): szándékosan NEM használunk `hasSupervisoryAccess` (bármely
+ * szerver-szerepkör) rövidzárat — az túl tág hozzáférést adott (pl. arfolyam_nezo,
+ * teruleti_vezeto, irodai_dolgozo), eltérve a dokumentált szerepkör-szűkítéstől. A
+ * `hasCanonicalRole` ADMIN-fallbackje (ADMIN minden role-t teljesít) megmarad.
+ *
+ * Megj.: a menü (`MainLayout`) láthatósági szűrője külön réteg; az `isAuthenticated`
+ * ellenőrzést a szülő `ProtectedRoute` már elvégzi.
  */
 export default function RoleGate({
   canonicalRoles,
@@ -24,8 +27,7 @@ export default function RoleGate({
   redirectTo?: string
 }) {
   const hasCanonicalRole = useAuthStore((state) => state.hasCanonicalRole)
-  const hasSupervisoryAccess = SZERVER_ROLES.some((r) => hasCanonicalRole(r))
-  const allowed = hasSupervisoryAccess || canonicalRoles.some((r) => hasCanonicalRole(r))
+  const allowed = canonicalRoles.some((r) => hasCanonicalRole(r))
   if (!allowed) {
     return <Navigate to={redirectTo} replace />
   }

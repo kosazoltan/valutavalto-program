@@ -46,8 +46,15 @@ describe('RoleGate — #1056 P1 route-RBAC', () => {
     expect(screen.getByText('VEDETT_TARTALOM')).toBeInTheDocument()
   })
 
-  it('bármely szerver-szerepkör (pl. irodai_dolgozo) → hasSupervisoryAccess átengedi (nem szűkít a menünél jobban)', () => {
+  it('P2 (Codex #1056): tágabb szerver-szerepkör (pl. irodai_dolgozo), ami NINCS a listán → blokkolt', () => {
+    // A szigorítás előtt a hasSupervisoryAccess rövidzár átengedte volna; most NEM.
     mockHasCanonicalRole.mockImplementation((r: string) => r === 'irodai_dolgozo')
+    renderGate()
+    expect(screen.queryByText('VEDETT_TARTALOM')).not.toBeInTheDocument()
+  })
+
+  it('ADMIN (hasCanonicalRole minden role-t teljesít) → átengedve', () => {
+    mockHasCanonicalRole.mockReturnValue(true)
     renderGate()
     expect(screen.getByText('VEDETT_TARTALOM')).toBeInTheDocument()
   })
