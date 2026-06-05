@@ -1,36 +1,42 @@
 global:
   resolve_timeout: 5m
+  # Gmail SMTP — kuldo: noraautomatizalas@gmail.com (App Password a /run/secrets-bol).
+  # A jelszo NINCS itt: smtp_auth_password_file mutat a gitignore-olt secret-fajlra.
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'noraautomatizalas@gmail.com'
+  smtp_auth_username: 'noraautomatizalas@gmail.com'
+  smtp_auth_password_file: /run/secrets/smtp_app_password
+  smtp_require_tls: true
 
 route:
-  receiver: telegram-default
+  receiver: email-all
   group_by: [alertname, severity]
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 3h
-  routes:
-    - receiver: telegram-critical
-      matchers: [severity="critical"]
-      continue: true
 
 receivers:
-  - name: telegram-default
-    telegram_configs:
-      - bot_token_file: /run/secrets/telegram_bot_token
-        chat_id: ${TELEGRAM_CHAT_ID}
-        parse_mode: HTML
-        message: |
-          <b>{{ .GroupLabels.alertname }}</b>
+  # 2026-06-05: a korabbi 'null-receiver' (bootstrap, Telegram kihagyva) miatt a
+  # BackendDown riasztas a semmibe ment -> ~10 oras nema kieses. Mostantol mind a 4
+  # whitelist-kolléga emailt kap szerver-leallasrol.
+  - name: email-all
+    email_configs:
+      - to: 'kosa.zoltan.ebc@gmail.com, borsi.tamas.ebc@gmail.com, kasza.helga.ebc@gmail.com, bali.henriett.ebc@gmail.com'
+        send_resolved: true
+        headers:
+          Subject: '[excvaluta {{ .Status | toUpper }}] {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>excvaluta monitoring — {{ .Status | toUpper }}</h2>
+          <p><b>Riasztas:</b> {{ .GroupLabels.alertname }}</p>
           {{ range .Alerts }}
-          Severity: {{ .Labels.severity }}
-          Summary: {{ .Annotations.summary }}
-          Desc: {{ .Annotations.description }}
-          Service: {{ .Labels.service }}
-          Started: {{ .StartsAt }}
+          <hr>
+          <p>
+          <b>Sulyossag:</b> {{ .Labels.severity }}<br>
+          <b>Osszegzes:</b> {{ .Annotations.summary }}<br>
+          <b>Leiras:</b> {{ .Annotations.description }}<br>
+          <b>Szolgaltatas:</b> {{ .Labels.service }} ({{ .Labels.job }})<br>
+          <b>Kezdet:</b> {{ .StartsAt }}{{ if .EndsAt }}<br><b>Vege:</b> {{ .EndsAt }}{{ end }}
+          </p>
           {{ end }}
-
-  - name: telegram-critical
-    telegram_configs:
-      - bot_token_file: /run/secrets/telegram_bot_token
-        chat_id: ${TELEGRAM_CHAT_ID}
-        parse_mode: HTML
-        message: "CRITICAL: {{ .GroupLabels.alertname }} - {{ .CommonAnnotations.summary }}"
+          <hr>
+          <p style="color:#888">Hetzner primary monitoring · excvaluta.com</p>
