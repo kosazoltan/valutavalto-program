@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -63,4 +64,45 @@ public class CreateSimpleCashierBranchDto {
     @NotBlank(message = "A területi (régiós) hozzárendelés kötelező")
     @Pattern(regexp = "^[A-Z_]+$", message = "A régió kód csak nagybetűk és aláhúzás (pl. SZEGED)")
     private String regionCode;
+
+    // ========================================================================
+    // FK-021 (2026-06-05): teljes törzsadat-felrögzítés. Mind OPCIONÁLIS (nullable),
+    // így a meglévő minimál NewCashierBranchPage-flow változatlanul működik (a service
+    // null esetén a korábbi default-ot használja: isVault=false, isActive=true,
+    // bankCode=code, V293-flagek=false).
+    // ========================================================================
+
+    /** Opcionális rövid név. Ha üres, a service nem állít (a name marad a megjelenítendő). */
+    @Size(max = 100, message = "A rövid név max 100 karakter")
+    private String shortName;
+
+    /** Opcionális telefonszám. */
+    @Size(max = 50, message = "A telefonszám max 50 karakter")
+    private String phone;
+
+    /** Opcionális e-mail cím. */
+    @Email(message = "Érvénytelen e-mail formátum")
+    @Size(max = 255, message = "Az e-mail max 255 karakter")
+    private String email;
+
+    /** Opcionális bankkód (banki hivatkozási szám). Ha üres, a service a code-ot használja.
+     *  Codex #1058: a Branch.bank_code oszlop length=20, ezért a DTO is max 20 (CreateBranchDto-val egyezően). */
+    @Size(max = 20, message = "A bankkód max 20 karakter")
+    private String bankCode;
+
+    /** FK-021: iroda típusa. true = Értéktár, false = Pénztár. Null → pénztár (default). */
+    private Boolean isVault;
+
+    /** FK-021: aktív-e. false, ha "tartósan zárva". Null → aktív (default). */
+    private Boolean isActive;
+
+    /** V293 szolgáltatás-flagek (ÁFA / WU / MG / POS). Null → false. */
+    private Boolean hasAfa;
+    private Boolean hasWu;
+    private Boolean hasMg;
+    private Boolean hasPos;
+
+    /** Hétvégi nyitvatartás. Null → false (nyitva). */
+    private Boolean closedSaturday;
+    private Boolean closedSunday;
 }

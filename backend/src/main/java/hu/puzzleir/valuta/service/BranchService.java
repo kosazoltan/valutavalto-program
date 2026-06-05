@@ -595,22 +595,44 @@ public class BranchService {
                 ? dto.getZipCode().trim()
                 : "";
 
+        // FK-021 (2026-06-05): a teljes törzsadat-mezők a DTO-ból, null esetén a korábbi default.
+        String resolvedBankCode = (dto.getBankCode() != null && !dto.getBankCode().isBlank())
+                ? dto.getBankCode().trim()
+                : normalizedCode;                    // default: bankCode == code (kézzel szerkeszthető)
+        String resolvedShortName = (dto.getShortName() != null && !dto.getShortName().isBlank())
+                ? dto.getShortName().trim() : null;
+        String resolvedPhone = (dto.getPhone() != null && !dto.getPhone().isBlank())
+                ? dto.getPhone().trim() : null;
+        String resolvedEmail = (dto.getEmail() != null && !dto.getEmail().isBlank())
+                ? dto.getEmail().trim() : null;
+        boolean isVault = Boolean.TRUE.equals(dto.getIsVault());                 // null → pénztár
+        boolean isActive = dto.getIsActive() == null || Boolean.TRUE.equals(dto.getIsActive()); // null → aktív; "tartósan zárva" → false
+
         Branch branch = Branch.builder()
                 .code(normalizedCode)
                 .company(company)
-                .bankCode(normalizedCode)            // default: bankCode == code (kézzel szerkeszthető később)
+                .bankCode(resolvedBankCode)
                 .branchType(penztarType)
                 .name(name)
+                .shortName(resolvedShortName)
                 .address(dto.getAddress().trim())
                 .city(city)
                 .zipCode(zipCode)
+                .phone(resolvedPhone)
+                .email(resolvedEmail)
                 .country(huCountry)
                 .branchStatus(activeStatus)
                 .openingDate(LocalDate.now())
                 .regionCode(keszlexRegionCode)       // ← NUMERIKUS KESZLEX (region-scope kulcs)
                 .region(dto.getRegionCode())          // ← SZÖVEGES (legacy display + transfer/stock view) — Copilot P2
-                .isActive(true)
-                .isVault(false)                       // lakossági pénztár, NEM értéktár
+                .isActive(isActive)
+                .isVault(isVault)                     // FK-021: Pénztár (false) / Értéktár (true)
+                .hasAfa(Boolean.TRUE.equals(dto.getHasAfa()))
+                .hasWu(Boolean.TRUE.equals(dto.getHasWu()))
+                .hasMg(Boolean.TRUE.equals(dto.getHasMg()))
+                .hasPos(Boolean.TRUE.equals(dto.getHasPos()))
+                .closedSaturday(Boolean.TRUE.equals(dto.getClosedSaturday()))
+                .closedSunday(Boolean.TRUE.equals(dto.getClosedSunday()))
                 .build();
 
         Branch saved = branchRepository.save(branch);

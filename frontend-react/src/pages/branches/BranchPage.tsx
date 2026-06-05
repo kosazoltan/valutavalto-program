@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Building2, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
@@ -98,6 +99,7 @@ function ServiceBadge({ label, active }: { label: string; active: boolean }) {
 
 export default function BranchPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [branches, setBranches] = useState<Branch[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -176,12 +178,6 @@ export default function BranchPage() {
       }
     })()
   }, [])
-
-  const openCreate = () => {
-    setEditingBranch(null)
-    setForm(emptyForm)
-    setShowForm(true)
-  }
 
   const openEdit = (b: Branch) => {
     setEditingBranch(b)
@@ -292,7 +288,7 @@ export default function BranchPage() {
             ({filtered.length} pénztár)
           </span>
         </h1>
-        <button onClick={openCreate} className="form-button-primary flex items-center gap-2">
+        <button onClick={() => navigate('/admin/branches/new')} className="form-button-primary flex items-center gap-2">
           <Plus size={16} />
           Új pénztár
         </button>
