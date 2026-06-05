@@ -83,7 +83,11 @@ log "=== 3. Backend .env atallitas (read-only flag torles + Redis enable) ==="
 
 # Read-only flag-ek torlese / FALSE-ra
 sed -i -E 's|^SPRING_FLYWAY_ENABLED=.*|SPRING_FLYWAY_ENABLED=true|' "$ENV_FILE"
-sed -i -E 's|^SPRING_JPA_HIBERNATE_DDL_AUTO=.*|SPRING_JPA_HIBERNATE_DDL_AUTO=validate|' "$ENV_FILE"
+# 2026-06-05 BUGFIX: NEM 'validate'! A production Hetzner DDL_AUTO=none (default),
+# es a semaban van latens elteres (commission_rule.company_id int4 vs entity uuid),
+# ami 'validate' alatt MEGAKADALYOZZA a backend indulasat failovernel. A promote-olt
+# node-nak ugyanugy 'none'-nal kell futnia, mint a production primary-nek.
+sed -i -E 's|^SPRING_JPA_HIBERNATE_DDL_AUTO=.*|SPRING_JPA_HIBERNATE_DDL_AUTO=none|' "$ENV_FILE"
 sed -i -E 's|^SPRING_JPA_PROPERTIES_HIBERNATE_CONNECTION_DEFAULT_READ_ONLY=.*|SPRING_JPA_PROPERTIES_HIBERNATE_CONNECTION_DEFAULT_READ_ONLY=false|' "$ENV_FILE"
 
 # Redis bekapcsolas

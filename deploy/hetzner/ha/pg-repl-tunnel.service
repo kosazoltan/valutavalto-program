@@ -1,0 +1,17 @@
+[Unit]
+# Perzisztens SSH-tunnel a postgres replikacionak: Scaleway 127.0.0.1:5433 -> Hetzner 127.0.0.1:5432.
+# MIERT: a publikus 5432 a ket szerver kozott Hetzner-Cloud-Firewall-blokkolt (uj kapcsolat
+# timeout); a 22-es port nyitva. A standby primary_conninfo host=127.0.0.1 port=5433.
+# Lasd: REPLICATION-TUNNEL-SETUP.md
+Description=SSH tunnel for postgres streaming replication (Scaleway 5433 -> Hetzner localhost:5432)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/ssh -NT -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=accept-new -i /etc/pg-repl-tunnel/id_ed25519 -L 127.0.0.1:5433:127.0.0.1:5432 root@95.216.191.162
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
