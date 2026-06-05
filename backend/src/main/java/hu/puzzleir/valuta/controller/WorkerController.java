@@ -79,10 +79,18 @@ public class WorkerController {
     
     /**
      * Company összes dolgozója
-     * 
+     *
      * GET /api/v1/workers
+     *
+     * RBAC-audit (2026-06-05): eddig NEM volt @PreAuthorize → bármely belépett user (akár
+     * pénztáros) lekérhette a TELJES céges dolgozó-listát (név + telefon + email + OTP/login-
+     * metaadat) közvetlen API-hívással. Caller-audit: az endpointot KIZÁRÓLAG az admin WorkerPage
+     * hívja, amit a frontend MenuRoleGate [ugyvezeto, irodavezeto, irodai_dolgozo]-ra korlátoz —
+     * a backend ezt + ADMIN/MANAGER-t engedi (a /workers/active picker SZÁNDÉKOSAN marad szélesebb
+     * az AML-jóváhagyó flow miatt).
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'UGYVEZETO', 'IRODAVEZETO', 'IRODAI_DOLGOZO')")
     public ResponseEntity<List<WorkerDto>> getAllWorkers() {
         List<WorkerDto> workers = workerService.findAllByCompany();
         return ResponseEntity.ok(workers);
