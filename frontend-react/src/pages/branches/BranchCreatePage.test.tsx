@@ -92,6 +92,19 @@ describe('BranchCreatePage — FK-021 Új iroda felrögzítése', () => {
     expect(mockCreate.mock.calls[0]?.[0]).toMatchObject({ isVault: true })
   })
 
+  it('Sourcery #1058: a kód-mező kiszűri a nem [A-Z0-9] karaktereket', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('3. Területi besorolás')).toBeInTheDocument())
+    fireEvent.change(screen.getByPlaceholderText(/Tisza Lajos krt/), { target: { value: 'Cím' } })
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'SZEGED' } })
+    // szóköz, ékezet, írásjel → kiszűrve, csak nagybetű+szám marad
+    fireEvent.change(screen.getByPlaceholderText('pl. BR099'), { target: { value: 'br 0-9!9á' } })
+    expect((screen.getByPlaceholderText('pl. BR099') as HTMLInputElement).value).toBe('BR099')
+    fireEvent.click(screen.getByRole('button', { name: /Pénztár felrögzítése/ }))
+    await waitFor(() => expect(mockCreate).toHaveBeenCalled())
+    expect(mockCreate.mock.calls[0]?.[0]).toMatchObject({ code: 'BR099' })
+  })
+
   it('FR-6: szolgáltatás-flagek a payloadban', async () => {
     renderPage()
     await fillRequired()

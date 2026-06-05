@@ -157,9 +157,11 @@ export default function BranchCreatePage() {
         <Section title="1. Alapadatok">
           <label className="block">
             <span className="form-label">Pénztár száma / azonosítója <span className="text-red-600">*</span></span>
+            {/* Sourcery #1058: a backend @Pattern("^[A-Z0-9]+$")-t a beviteli szűrés is tükrözi —
+                rögtön kiszűrjük a nem megengedett karaktert (szóköz/ékezet/írásjel), nem csak uppercase. */}
             <input type="text" className="form-input uppercase" placeholder="pl. BR099" maxLength={20}
               value={form.code} disabled={disabled}
-              onChange={(e) => patch({ code: e.target.value.toUpperCase() })} />
+              onChange={(e) => patch({ code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })} />
             <span className="text-xs text-gray-500">Csak nagybetűk és számok (pl. BR099). Egyedi a rendszerben.</span>
           </label>
           <label className="block">
@@ -242,7 +244,7 @@ export default function BranchCreatePage() {
           </label>
           <label className="block">
             <span className="form-label">Bankkód</span>
-            <input type="text" className="form-input" placeholder="pl. 210" maxLength={50}
+            <input type="text" className="form-input" placeholder="pl. 210" maxLength={20}
               value={form.bankCode} disabled={disabled}
               onChange={(e) => patch({ bankCode: e.target.value })} />
             <span className="text-xs text-gray-500">Banki hivatkozási szám. Ha üres, a kód lesz a bankkód.</span>

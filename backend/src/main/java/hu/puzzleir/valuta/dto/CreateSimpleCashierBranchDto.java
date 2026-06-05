@@ -85,8 +85,9 @@ public class CreateSimpleCashierBranchDto {
     @Size(max = 255, message = "Az e-mail max 255 karakter")
     private String email;
 
-    /** Opcionális bankkód (banki hivatkozási szám). Ha üres, a service a code-ot használja. */
-    @Size(max = 50, message = "A bankkód max 50 karakter")
+    /** Opcionális bankkód (banki hivatkozási szám). Ha üres, a service a code-ot használja.
+     *  Codex #1058: a Branch.bank_code oszlop length=20, ezért a DTO is max 20 (CreateBranchDto-val egyezően). */
+    @Size(max = 20, message = "A bankkód max 20 karakter")
     private String bankCode;
 
     /** FK-021: iroda típusa. true = Értéktár, false = Pénztár. Null → pénztár (default). */
