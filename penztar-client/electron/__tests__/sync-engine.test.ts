@@ -37,6 +37,10 @@ vi.mock('../sqlite', () => ({
   getPendingTransfers: vi.fn(() => []),
   getPendingCollections: vi.fn(() => []),
   getPendingHandoverOperations: vi.fn(() => []),
+  getReassertableTransactions: vi.fn(() => []),
+  getReassertableConversions: vi.fn(() => []),
+  getReassertableStornos: vi.fn(() => []),
+  getReassertableBankTransactions: vi.fn(() => []),
   markTransactionSynced: vi.fn(),
   markConversionSynced: vi.fn(),
   markBankTransactionSynced: vi.fn(),
@@ -63,6 +67,7 @@ import {
   getPendingTransfers,
   getPendingCollections,
   getPendingHandoverOperations,
+  getReassertableTransactions,
   markTransactionSynced,
   markConversionSynced,
   markStornoSynced,
@@ -1463,5 +1468,86 @@ describe('SyncEngine — P1.7 offline mode regression', () => {
     expect(result.synced).toBe(0);
     expect(result.failed).toBe(0);
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('SyncEngine — re-assert (RPO védőháló)', () => {
+  let engine: SyncEngine;
+  const mockedGetReassertableTransactions = vi.mocked(getReassertableTransactions);
+
+  const syncedTx = (id: number, key: string) => ({
+    id,
+    type: 'SELL' as const,
+    currency_code: 'EUR',
+    foreign_amount: 100,
+    huf_amount: 40000,
+    rounded_huf_amount: 40000,
+    rate: 400,
+    handling_fee: null,
+    discount_percent: null,
+    customer_id: null,
+    customer_identifier: null,
+    customer_name: null,
+    customer_document_number: null,
+    customer_address: null,
+    denominations: null,
+    source_of_funds: null,
+    customer_is_pep: null,
+    foreign_status: null,
+    local_reference_number: 'LS-X',
+    idempotency_key: key,
+    created_at: '2026-06-05 12:00:00',
+    synced: 1,
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    engine = new SyncEngine();
+    mockedGetConfig.mockImplementation((key: string) =>
+      key === 'server_url' ? 'http://localhost:8080/api/v1' : null,
+    );
+  });
+  afterEach(() => engine.stop());
+
+  type ReassertAccess = {
+    reassertRecentSynced(serverUrl: string, token: string): Promise<number>;
+  };
+
+  it('re-asserts recent synced transactions via POST and does NOT change local state', async () => {
+    mockedGetReassertableTransactions.mockReturnValue([
+      syncedTx(1, 'idem-1'),
+      syncedTx(2, 'idem-2'),
+    ]);
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true }) });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const count = await (engine as unknown as ReassertAccess).reassertRecentSynced(
+      'http://localhost:8080/api/v1',
+      'test-token',
+    );
+
+    expect(count).toBe(2);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    // RPO-védőháló: a re-assert NEM jelöli újra synced-nek (nem nyúl a lokális állapothoz)
+    expect(vi.mocked(markTransactionSynced)).not.toHaveBeenCalled();
+  });
+
+  it('returns 0 and sends nothing when there are no reassertable records', async () => {
+    mockedGetReassertableTransactions.mockReturnValue([]);
+    const mockFetch = vi.fn();
+    vi.stubGlobal('fetch', mockFetch);
+
+    const count = await (engine as unknown as ReassertAccess).reassertRecentSynced(
+      'http://localhost:8080/api/v1',
+      'test-token',
+    );
+
+    expect(count).toBe(0);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('returns 0 without throwing when serverUrl or token is missing', async () => {
+    const count = await (engine as unknown as ReassertAccess).reassertRecentSynced('', '');
+    expect(count).toBe(0);
   });
 });
