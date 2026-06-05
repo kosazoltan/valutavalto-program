@@ -43,10 +43,22 @@ if [[ "$LAG" -gt 60 ]]; then
     log "FIGYELEM: lag > 60s, lehet adatvesztes (utolso ${LAG} mp tranzakciok)"
 fi
 
-read -t 10 -p "Folytatod a failover-t? (y/N, 10s timeout = N): " confirm || confirm=""
-if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    log "Megszakitva - nincs promote"
-    exit 0
+# Non-interaktiv (auto-failover) mod: FAILOVER_AUTO=1 (a watchdog hasznalja).
+# Ilyenkor a MAX-LAG VEDELEM abortal, ha tul nagy az adatvesztes -> inkabb riaszt
+# egy embert, mint vakon promote-olni elveszett tranzakciokkal.
+FAILOVER_MAX_LAG="${FAILOVER_MAX_LAG:-300}"
+if [[ "${FAILOVER_AUTO:-0}" == "1" ]]; then
+    if [[ "$LAG" -gt "$FAILOVER_MAX_LAG" ]]; then
+        err "AUTO-FAILOVER ABORT: lag ${LAG}s > max ${FAILOVER_MAX_LAG}s (tul nagy adatvesztes) - kezi dontes kell"
+        exit 2
+    fi
+    log "AUTO-FAILOVER mod: interaktiv megerosites kihagyva (lag ${LAG}s <= ${FAILOVER_MAX_LAG}s OK)"
+else
+    read -t 10 -p "Folytatod a failover-t? (y/N, 10s timeout = N): " confirm || confirm=""
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        log "Megszakitva - nincs promote"
+        exit 0
+    fi
 fi
 
 # ----- 2. PG promote -----

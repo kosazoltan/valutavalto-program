@@ -1,0 +1,11 @@
+[Unit]
+Description=Run off-host primary watchdog every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Unit=primary-watchdog.service
+
+[Install]
+WantedBy=timers.target

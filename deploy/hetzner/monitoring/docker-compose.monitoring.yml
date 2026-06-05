@@ -81,6 +81,9 @@ services:
     restart: unless-stopped
     volumes:
       - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      # Gmail SMTP App Password (gitignore-olt secrets/ -> read-only a kontenerbe).
+      # Az alertmanager.yml smtp_auth_password_file ezt olvassa.
+      - ./secrets/smtp_app_password:/run/secrets/smtp_app_password:ro
       - alertmanager_data:/alertmanager
     ports:
       - "127.0.0.1:9093:9093"
