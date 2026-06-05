@@ -21,6 +21,10 @@ interface Branch {
   /** v2.5.1-E B6: ÉRTÉKTÁRI fiók-e (admin/foertektar állítja be). */
   isVault?: boolean
   vaultTerritoryId?: number | null
+  // FK-020: terület (display). A region a szöveges terület-azonosító (pl. SZEGED),
+  // a regionCode a numerikus scope-kód. A lista "Terület" oszlopa + szűrője a region-t használja.
+  region?: string
+  regionCode?: string
   // 2026-05-15 HIBA #2: kotelezo szervezeti mezok
   bankCode?: string
   zipCode?: string
@@ -75,12 +79,32 @@ const emptyForm: BranchForm = {
   closedSaturday: false, closedSunday: false,
 }
 
+/** FK-020: szolgáltatás-jelölő badge a lista soraiban. Aktív = színes, inaktív = szürke. */
+function ServiceBadge({ label, active }: { label: string; active: boolean }) {
+  return (
+    <span
+      className={`inline-block px-1.5 py-0.5 rounded text-xs font-semibold ${
+        active ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400'
+      }`}
+      title={active ? `${label}: aktív` : `${label}: nincs`}
+      // Copilot #1056 a11y: a státusz csak színnel nem megbízható (képernyőolvasó/billentyűzet),
+      // ezért aria-label is hordozza ugyanazt az információt, mint a tooltip.
+      aria-label={active ? `${label}: aktív` : `${label}: nincs`}
+    >
+      {label}
+    </span>
+  )
+}
+
 export default function BranchPage() {
   const { t } = useTranslation()
   const [branches, setBranches] = useState<Branch[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  // FK-020: területi szűrő (region) + inaktívak megjelenítése (alapból csak aktív).
+  const [territoryFilter, setTerritoryFilter] = useState('')
+  const [showInactive, setShowInactive] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null)
   const [form, setForm] = useState<BranchForm>(emptyForm)
@@ -90,22 +114,41 @@ export default function BranchPage() {
   const [countries, setCountries] = useState<DictionaryEntry[]>([])
   const [branchStatuses, setBranchStatuses] = useState<DictionaryEntry[]>([])
 
+  // FK-020: a területi szűrő legördülő dinamikusan a betöltött adatból épül (nem hardcode),
+  // így mindig a valós region-értékeket mutatja. "Minden terület" + az előforduló területek.
+  const territories = useMemo(() => {
+    const set = new Set<string>()
+    for (const b of branches) {
+      if (b.region && b.region.trim()) set.add(b.region.trim())
+    }
+    return Array.from(set).sort((a, z) => a.localeCompare(z, 'hu'))
+  }, [branches])
+
+  // FK-020: szabad szöveges keresés (név/kód/cím/város) + területi szűrő + aktív/inaktív.
   const filtered = useMemo(() => {
-    if (!searchTerm) return branches
-    const t = searchTerm.toLowerCase()
-    return branches.filter(
-      (b) =>
+    const t = searchTerm.trim().toLowerCase()
+    return branches.filter((b) => {
+      if (!showInactive && !b.isActive) return false
+      // Sourcery/Copilot #1056: a territories-halmaz trimelt region-t tárol, ezért a
+      // szűrésnél is trimelni kell, különben " SZEGED " sosem egyezne a dropdown "SZEGED"-jével.
+      if (territoryFilter && (b.region?.trim() ?? '') !== territoryFilter) return false
+      if (!t) return true
+      return (
         b.name.toLowerCase().includes(t) ||
         b.code.toLowerCase().includes(t) ||
-        (b.city ?? '').toLowerCase().includes(t),
-    )
-  }, [branches, searchTerm])
+        (b.address ?? '').toLowerCase().includes(t) ||
+        (b.city ?? '').toLowerCase().includes(t)
+      )
+    })
+  }, [branches, searchTerm, territoryFilter, showInactive])
 
   const load = async () => {
     try {
       setLoading(true)
       setError(null)
-      const res = await api.get('/branches')
+      // FK-020 / FK-016: a Központi Munkaállomás (clientType=CENTRAL) kizárja a virtuális
+      // partnereket -> a 65 pénztár + 8 értéktár (73 valós iroda) jelenik meg.
+      const res = await api.get('/branches', { params: { clientType: 'CENTRAL' } })
       setBranches(safeArray<Branch>(res.data))
     } catch (err) {
       logger.error('BranchPage', 'load error', err)
@@ -244,11 +287,14 @@ export default function BranchPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Building2 />
-          {t('branches.fiokok')}
+          Pénztár Törzs Adatbázis
+          <span className="text-sm font-normal text-gray-500" data-testid="branch-count">
+            ({filtered.length} pénztár)
+          </span>
         </h1>
         <button onClick={openCreate} className="form-button-primary flex items-center gap-2">
           <Plus size={16} />
-          {t('branches.ujFiok')}
+          Új pénztár
         </button>
       </div>
 
@@ -257,15 +303,38 @@ export default function BranchPage() {
       )}
 
       <div className="form-panel">
-        <div className="relative">
-          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-          <input
-            type="text"
-            className="form-input pl-8"
-            placeholder="Keresés névben, kódban, városban..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              className="form-input pl-8 w-full"
+              placeholder="Keresés névben, kódban, címben..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Keresés"
+            />
+          </div>
+          <select
+            className="form-input w-auto"
+            value={territoryFilter}
+            onChange={(e) => setTerritoryFilter(e.target.value)}
+            aria-label="Területi szűrő"
+          >
+            <option value="">Minden terület</option>
+            {territories.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+          <label className="inline-flex items-center gap-2 cursor-pointer whitespace-nowrap">
+            <input
+              type="checkbox"
+              className="form-checkbox h-4 w-4"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+            />
+            <span className="text-sm">Inaktívak is</span>
+          </label>
         </div>
       </div>
 
@@ -491,10 +560,10 @@ export default function BranchPage() {
           <thead>
             <tr>
               <th>{t('common.code')}</th>
-              <th>{t('common.name')}</th>
-              <th>{t('common.city')}</th>
-              <th>{t('common.email')}</th>
-              <th>{t('common.phone')}</th>
+              <th>Pénztár neve</th>
+              <th>Terület</th>
+              <th>Szolgáltatások</th>
+              <th>Kontakt</th>
               <th>{t('common.status')}</th>
               <th>{t('branches.ertektar')}</th>
               <th>{t('common.actions')}</th>
@@ -509,10 +578,21 @@ export default function BranchPage() {
               filtered.map((b) => (
                 <tr key={b.id}>
                   <td className="font-mono text-sm">{b.code}</td>
-                  <td>{b.name}</td>
-                  <td>{b.city ?? '-'}</td>
-                  <td>{b.email ?? '-'}</td>
-                  <td>{b.phone ?? '-'}</td>
+                  <td>{b.name}{b.shortName ? <span className="text-gray-400 text-xs ml-1">({b.shortName})</span> : null}</td>
+                  <td className="text-sm">{b.region ?? '-'}</td>
+                  <td>
+                    <div className="flex gap-1 flex-wrap">
+                      <ServiceBadge label="ÁFA" active={b.hasAfa ?? false} />
+                      <ServiceBadge label="WU" active={b.hasWu ?? false} />
+                      <ServiceBadge label="MG" active={b.hasMg ?? false} />
+                      <ServiceBadge label="POS" active={b.hasPos ?? false} />
+                    </div>
+                  </td>
+                  <td className="text-sm">
+                    {b.email ? <div className="truncate max-w-[180px]" title={b.email}>{b.email}</div> : null}
+                    {b.phone ? <div className="text-gray-500">{b.phone}</div> : null}
+                    {!b.email && !b.phone ? <span className="text-gray-400">-</span> : null}
+                  </td>
                   <td>
                     <span className={`badge ${b.isActive ? 'badge-green' : 'badge-red'}`}>
                       {b.isActive ? 'Aktív' : 'Inaktív'}
