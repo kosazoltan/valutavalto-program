@@ -21,7 +21,8 @@ import { CASHIER_APP_MODE } from '../types/appMode'
 import type { AppMode } from '../types/appMode'
 import { isElectron as isElectronRuntime } from '../utils/electron'
 
-import { menuGroups, SZERVER_ROLES } from "./menuGroups"
+import { menuGroups } from "./menuGroups"
+import { isMenuGroupVisible, isMenuItemVisible, type MenuVisibilityContext } from "./menuVisibility"
 import { useFeatureFlags } from "../hooks/useFeatureFlags"
 import TransitBadge from "../components/TransitBadge"
 
@@ -39,10 +40,6 @@ export default function MainLayout() {
   const [showSessionDialog, setShowSessionDialog] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
   const { user, logout, hasRole, hasCanonicalRole } = useAuthStore()
-  // Supervisory hozzaferes: ha a felhasznalonak van szerver-szintu canonicalRole-ja
-  // (ugyvezeto, foertektar, belso_ellenor, stb.), minden lokal appMode-ban
-  // lathatja a teljes menut, hogy ellenorizhesse a penztar/ertektar muveleteket.
-  const hasSupervisoryAccess = SZERVER_ROLES.some((r) => hasCanonicalRole(r))
 
   // Codex #904: a NavLink `end` (exact-match) CSAK azokra a menüpontokra kell, amelyek egy másik
   // menüpont szegmens-prefixei (pl. `/rates` ⊂ `/rates/history`) — különben együtt highlightolnának.
@@ -59,6 +56,10 @@ export default function MainLayout() {
   const { mode: appMode, isLoading: appModeLoading } = useAppMode()
   const navigate = useNavigate()
   const isBrowserFallback = !isElectronRuntime() && appMode === 'full'
+
+  // RBAC-audit (2026-06-05): a menü-láthatóság tiszta logikája a menuVisibility modulban
+  // (least-privilege full módban, lokál oversight-bypass, öröklés, csoport-ha-van-látható-item).
+  const menuVisibilityCtx: MenuVisibilityContext = { appMode, hasCanonicalRole, hasRole, featureFlags }
 
   const markSessionReadyWithoutDailyGate = useCallback(() => {
     setSessionInfo(null)
@@ -211,9 +212,7 @@ export default function MainLayout() {
         {/* Navigation Groups */}
         <nav className="flex-1 py-2 overflow-y-auto">
           {menuGroups
-            .filter((group) => !group.modes || group.modes.includes(appMode))
-            .filter((group) => hasSupervisoryAccess || !group.canonicalRoles || group.canonicalRoles.some((r) => hasCanonicalRole(r)))
-            .filter((group) => !group.featureFlagKey || featureFlags[group.featureFlagKey])
+            .filter((group) => isMenuGroupVisible(group, menuVisibilityCtx))
             .map((group) => (
             <div key={group.label} className="mb-3">
               {sidebarOpen && (
@@ -222,9 +221,7 @@ export default function MainLayout() {
                 </div>
               )}
               {group.items
-                .filter((item) => !item.modes || item.modes.includes(appMode))
-                .filter((item) => hasSupervisoryAccess || !item.canonicalRoles || item.canonicalRoles.some((r) => hasCanonicalRole(r)))
-                .filter((item) => !item.minRole || hasRole(item.minRole))
+                .filter((item) => isMenuItemVisible(item, group, menuVisibilityCtx))
                 .map((item) => (
                 <NavLink
                   key={item.path}

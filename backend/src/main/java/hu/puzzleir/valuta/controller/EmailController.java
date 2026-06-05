@@ -31,7 +31,11 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/email")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("isAuthenticated()")
+// RBAC-audit (2026-06-05): korábban CSAK isAuthenticated() → bármely belépett user (akár
+// pénztáros) olvashatta a postaláda-üzeneteket közvetlen API-hívással. Az /email-settings
+// felület a menüben [ugyvezeto, irodavezeto]; a backend ezt + ADMIN/MANAGER-t engedi.
+// (A frontend caller-audit szerint az /email endpointokat KIZÁRÓLAG az EmailPage hívja.)
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'UGYVEZETO', 'IRODAVEZETO')")
 public class EmailController {
 
     private final EmailAccountService emailAccountService;
