@@ -82,6 +82,49 @@ describe('menuVisibility — lokál oversight-bypass (penztar/ertektar)', () => 
   })
 })
 
+describe('ELLENŐRZÉS — pénztár/értéktár (lokál) modul menüi megfelelően elérhetők', () => {
+  // A central admin szigorítás (PR #1059) NEM érintheti a lokál operatív menük elérhetőségét.
+  // Ez a blokk garantálja, hogy a lokál módban az operatív szerepkör a SAJÁT teljes menüjét látja,
+  // és hogy egyetlen lokál operatív route sincs a central RoleGate-tel szűkített admin-route-ok közt.
+
+  const LOCAL_CASES: Array<{ mode: MenuVisibilityContext['appMode']; role: string; groupLabel: string }> = [
+    { mode: 'penztar', role: 'penztar', groupLabel: 'Pénztár (Valutaváltó)' },
+    { mode: 'ertektar', role: 'ertektar', groupLabel: 'Értéktár (lokál)' },
+    { mode: 'ertekszallito', role: 'ertekszallito', groupLabel: 'Értékszállító' },
+    { mode: 'rate-maker', role: 'foertektar', groupLabel: 'Árfolyamkészítés' },
+  ]
+
+  for (const { mode, role, groupLabel } of LOCAL_CASES) {
+    it(`${mode} mód / ${role}: a "${groupLabel}" csoport ÉS minden itemje látható`, () => {
+      const group = groupByLabel(groupLabel)
+      const ctx = ctxFor([role], mode)
+      expect(isMenuGroupVisible(group, ctx), `csoport rejtve: ${groupLabel}`).toBe(true)
+      for (const item of group.items) {
+        expect(isMenuItemVisible(item, group, ctx), `item rejtve: ${item.path}`).toBe(true)
+      }
+    })
+  }
+
+  it('egyetlen lokál operatív route sincs a central MenuRoleGate-tel szűkített admin-route-ok közt', () => {
+    // A 16 central admin-route (App.tsx MenuRoleGate) — ezek operatív userre redirectelnének.
+    const gatedAdminPaths = new Set([
+      '/workers', '/employees', '/attendance', '/licenses', '/settings',
+      '/settings/permission-matrix', '/scheduler', '/email-settings', '/handling-fee-config',
+      '/audit-log', '/admin/error-monitor', '/admin/audit-diagnostics',
+      '/sanction', '/compliance', '/police-requests', '/seal-tracking', '/admin/branches',
+    ])
+    const localModes = new Set(['penztar', 'ertektar', 'ertekszallito', 'rate-maker'])
+    const localItemPaths = new Set<string>()
+    for (const group of menuGroups) {
+      if (!group.modes || !group.modes.some((m) => localModes.has(m))) continue
+      for (const item of group.items) localItemPaths.add(item.path)
+    }
+    for (const p of localItemPaths) {
+      expect(gatedAdminPaths.has(p), `lokál operatív route tévesen admin-gatelt: ${p}`).toBe(false)
+    }
+  })
+})
+
 describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-hez', () => {
   it('/admin/branches → item-szintű [foertektar, belso_ellenor, ugyvezeto]', () => {
     expect([...(effectiveCanonicalRolesForPath(menuGroups, '/admin/branches') ?? [])].sort())
