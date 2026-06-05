@@ -1,0 +1,107 @@
+/**
+ * FK-020 — Pénztár Törzs Adatbázis lista nézet tesztjei.
+ * Lefedi: lista render (FR-2), keresés (FR-3), területi szűrő (FR-4),
+ * inaktívak (FR-5), szolgáltatás-badge-ek (FR-6), darabszám (FR-9).
+ */
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { vi, describe, beforeEach, it, expect } from 'vitest'
+import BranchPage from './BranchPage'
+
+const mockGet = vi.fn()
+
+vi.mock('../../services/api/index', () => ({
+  api: {
+    get: (...args: unknown[]) => mockGet(...args),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+    patch: vi.fn(),
+  },
+}))
+
+vi.mock('../../components/ui/toaster', () => ({
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
+}))
+
+const BRANCHES = [
+  { id: '1', code: 'BR027', name: 'Szeged Tesco', region: 'SZEGED', address: 'Rókusi krt. 42', city: 'Szeged', email: 'szeged@ebc.hu', phone: '+3611', isActive: true, isVault: false, hasAfa: true, hasWu: true, hasMg: false, hasPos: false },
+  { id: '2', code: 'BR013', name: 'Pécs Tesco', region: 'PECS', address: 'Makay u. 5', city: 'Pécs', email: 'pecs@ebc.hu', phone: '+3622', isActive: true, isVault: false, hasAfa: false, hasWu: false, hasMg: true, hasPos: false },
+  { id: '3', code: 'BR074', name: 'Békéscsaba Tesco', region: 'BEKESCSABA', address: 'Szarvasi út 68', city: 'Békéscsaba', email: 'bcs@ebc.hu', phone: '+3633', isActive: true, isVault: false, hasAfa: false, hasWu: false, hasMg: false, hasPos: true },
+  { id: '4', code: 'BR999', name: 'Régi bezárt iroda', region: 'SZEGED', address: 'Régi u. 1', city: 'Szeged', email: null, phone: null, isActive: false, isVault: false, hasAfa: false, hasWu: false, hasMg: false, hasPos: false },
+]
+
+function mockApi() {
+  mockGet.mockImplementation((url: string) => {
+    if (typeof url === 'string' && url === '/branches') return Promise.resolve({ data: BRANCHES })
+    // dictionary dropdownok a form-hoz
+    return Promise.resolve({ data: [] })
+  })
+}
+
+function renderPage() {
+  return render(<MemoryRouter><BranchPage /></MemoryRouter>)
+}
+
+describe('BranchPage — FK-020 Pénztár Törzs Adatbázis lista', () => {
+  beforeEach(() => {
+    mockGet.mockReset()
+    mockApi()
+  })
+
+  it('FR-2/FR-9: alapból csak az aktív irodákat listázza + darabszám', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Szeged Tesco')).toBeInTheDocument())
+    expect(screen.getByText('Pécs Tesco')).toBeInTheDocument()
+    expect(screen.getByText('Békéscsaba Tesco')).toBeInTheDocument()
+    // inaktív alapból NEM látszik
+    expect(screen.queryByText('Régi bezárt iroda')).not.toBeInTheDocument()
+    // darabszám = 3
+    expect(screen.getByTestId('branch-count')).toHaveTextContent('3 pénztár')
+  })
+
+  it('FR-2: clientType=CENTRAL paraméterrel kéri a listát (virtuálisok kizárása)', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Szeged Tesco')).toBeInTheDocument())
+    expect(mockGet).toHaveBeenCalledWith('/branches', { params: { clientType: 'CENTRAL' } })
+  })
+
+  it('FR-3: szabad szöveges keresés névre/címre szűr', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Szeged Tesco')).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('Keresés'), { target: { value: 'Pécs' } })
+    expect(screen.getByText('Pécs Tesco')).toBeInTheDocument()
+    expect(screen.queryByText('Szeged Tesco')).not.toBeInTheDocument()
+    expect(screen.getByTestId('branch-count')).toHaveTextContent('1 pénztár')
+  })
+
+  it('FR-4: területi szűrő region szerint szűr', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Szeged Tesco')).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('Területi szűrő'), { target: { value: 'SZEGED' } })
+    expect(screen.getByText('Szeged Tesco')).toBeInTheDocument()
+    expect(screen.queryByText('Pécs Tesco')).not.toBeInTheDocument()
+    expect(screen.queryByText('Békéscsaba Tesco')).not.toBeInTheDocument()
+  })
+
+  it('FR-5: "Inaktívak is" checkbox megjeleníti az inaktív irodát', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Szeged Tesco')).toBeInTheDocument())
+    fireEvent.click(screen.getByLabelText('Inaktívak is'))
+    expect(screen.getByText('Régi bezárt iroda')).toBeInTheDocument()
+    expect(screen.getByTestId('branch-count')).toHaveTextContent('4 pénztár')
+  })
+
+  it('FR-6: szolgáltatás-badge-ek megjelennek (ÁFA/WU/MG/POS)', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Szeged Tesco')).toBeInTheDocument())
+    const row = screen.getByText('Szeged Tesco').closest('tr') as HTMLElement
+    // a Szeged sorban: ÁFA aktív (kék), WU aktív, MG/POS szürke — mind jelen van label-ként
+    expect(within(row).getByText('ÁFA')).toBeInTheDocument()
+    expect(within(row).getByText('WU')).toBeInTheDocument()
+    expect(within(row).getByText('MG')).toBeInTheDocument()
+    expect(within(row).getByText('POS')).toBeInTheDocument()
+    expect(within(row).getByText('ÁFA').className).toMatch(/text-blue-700/)
+    expect(within(row).getByText('MG').className).toMatch(/text-gray-400/)
+  })
+})

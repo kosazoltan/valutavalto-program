@@ -110,6 +110,8 @@ const DocumentStoragePage = lazy(() => import('./pages/documents/DocumentStorage
 const NotificationPage = lazy(() => import('./pages/notifications/NotificationPage'))
 const OrganizationalSystemParameterPage = lazy(() => import('./pages/organizations/OrganizationalSystemParameterPage'))
 const BranchGroupPage = lazy(() => import('./pages/branches/BranchGroupPage'))
+// FK-020: Pénztár Törzs Adatbázis lista (Adminisztráció menücsoport).
+const BranchPage = lazy(() => import('./pages/branches/BranchPage'))
 const AuditLogPage = lazy(() => import('./pages/audit/AuditLogPage'))
 const CircularPage = lazy(() => import('./pages/circulars/CircularPage'))
 const FeePackagePage = lazy(() => import('./pages/fees/FeePackagePage'))
@@ -510,6 +512,9 @@ export default function App() {
               értéktáros által (terület-hozzárendeléssel, hogy a területi szűrt listákban
               automatikusan megjelenjen). */}
           <Route path="/branches/new-cashier" element={<NewCashierBranchPage />} />
+
+          {/* FK-020: Pénztár Törzs Adatbázis lista (Adminisztráció menücsoport). */}
+          <Route path="/admin/branches" element={<BranchPage />} />
 
           {/* FK-ÉRTÉKTÁR (V285): új személyes értéktári munkatárs felvétele (név + jelszó). */}
           <Route path="/vault-workers/new" element={<NewVaultWorkerPage />} />
