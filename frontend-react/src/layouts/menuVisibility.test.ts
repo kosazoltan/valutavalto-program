@@ -106,9 +106,10 @@ describe('ELLENŐRZÉS — pénztár/értéktár (lokál) modul menüi megfelel�
   }
 
   it('egyetlen lokál operatív route sincs a central MenuRoleGate-tel szűkített admin-route-ok közt', () => {
-    // A 16 central admin-route (App.tsx MenuRoleGate) — ezek operatív userre redirectelnének.
+    // A central admin-route-ok (App.tsx MenuRoleGate) — ezek operatív userre redirectelnének.
+    // (A /workers SZÁNDÉKOSAN nincs köztük: a backend SecurityConfig HTTP-matchere védi — Codex #1059.)
     const gatedAdminPaths = new Set([
-      '/workers', '/employees', '/attendance', '/licenses', '/settings',
+      '/employees', '/attendance', '/licenses', '/settings',
       '/settings/permission-matrix', '/scheduler', '/email-settings', '/handling-fee-config',
       '/audit-log', '/admin/error-monitor', '/admin/audit-diagnostics',
       '/sanction', '/compliance', '/police-requests', '/seal-tracking', '/admin/branches',
@@ -149,7 +150,7 @@ describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-h
   // (nem undefined, nem üres) szerepkör-megszorítása — különben a route csendben védtelen lenne.
   it('minden MenuRoleGate-tel védett admin-route-nak van nem-üres menü-szerepköre', () => {
     const gatedPaths = [
-      '/workers', '/employees', '/attendance', '/licenses', '/settings',
+      '/employees', '/attendance', '/licenses', '/settings',
       '/settings/permission-matrix', '/scheduler', '/email-settings', '/handling-fee-config',
       '/audit-log', '/admin/error-monitor', '/admin/audit-diagnostics',
       '/sanction', '/compliance', '/police-requests', '/seal-tracking', '/admin/branches',

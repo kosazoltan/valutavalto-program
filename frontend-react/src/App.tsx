@@ -731,7 +731,11 @@ export default function App() {
           <Route path="/scheduler" element={<MenuRoleGate path="/scheduler"><SchedulerPage /></MenuRoleGate>} />
           <Route path="/email-settings" element={<MenuRoleGate path="/email-settings"><EmailPage /></MenuRoleGate>} />
           <Route path="/employees" element={<MenuRoleGate path="/employees"><EmployeePage /></MenuRoleGate>} />
-          <Route path="/workers" element={<MenuRoleGate path="/workers"><WorkerPage /></MenuRoleGate>} />
+          {/* Codex #1059: a /workers-t a backend SecurityConfig HTTP-matchere már szigorúan védi
+              (SUPERVISOR/MANAGER/ADMIN). Egy kanonikus-szerepkörű frontend RoleGate eltérne ettől
+              (false-admit/false-block a kanonikus↔angol név-eltérés miatt), ezért itt NEM gatelünk
+              route-szinten — a backend a hiteles enforcement, a menü pedig full-módban rejti. */}
+          <Route path="/workers" element={<WorkerPage />} />
           <Route path="/transit" element={<TransitPage />} />
           <Route path="/led-display" element={<LedDisplayPage />} />
           <Route path="/data-import" element={<DataImportPage />} />
