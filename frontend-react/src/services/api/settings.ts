@@ -114,6 +114,19 @@ export const branchApi = {
     name?: string
     city?: string
     zipCode?: string
+    // FK-021: teljes törzsadat-mezők (mind opcionális; elhagyva → backend default).
+    shortName?: string
+    phone?: string
+    email?: string
+    bankCode?: string
+    isVault?: boolean
+    isActive?: boolean
+    hasAfa?: boolean
+    hasWu?: boolean
+    hasMg?: boolean
+    hasPos?: boolean
+    closedSaturday?: boolean
+    closedSunday?: boolean
   }): Promise<BranchInfo> => {
     const response = await api.post<BranchInfo>('/branches/simple-cashier', payload)
     return response.data

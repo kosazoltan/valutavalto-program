@@ -235,6 +235,87 @@ class BranchServiceTest {
         }
     }
 
+    @Test
+    @DisplayName("createSimpleCashier — FK-021: kibővített törzsadat-mezők átmennek a Branch entityre (isVault, inaktív, szolgáltatás-flagek)")
+    void testCreateSimpleCashierFullMasterData() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            stubDictionaries();
+            lenient().when(branchRepository.existsByCode("BR777")).thenReturn(false);
+            lenient().when(companyRepository.findById(COMPANY_ID))
+                    .thenReturn(Optional.of(Company.builder().id(COMPANY_ID).build()));
+            lenient().when(accessScopeService.vaultRegionCodeOrNull()).thenReturn(null);
+            lenient().when(branchRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            hu.puzzleir.valuta.dto.CreateSimpleCashierBranchDto dto =
+                    hu.puzzleir.valuta.dto.CreateSimpleCashierBranchDto.builder()
+                            .code("BR777")
+                            .name("Szeged Belváros")
+                            .shortName("Belváros")
+                            .address("6720 Szeged, Tisza Lajos krt. 1.")
+                            .regionCode("SZEGED")
+                            .phone("06701234567")
+                            .email("szeged@ebc.hu")
+                            .bankCode("210")
+                            .isVault(true)
+                            // FR-5: "Tartósan zárva" → inaktív.
+                            .isActive(false)
+                            .hasAfa(true)
+                            .hasWu(true)
+                            .hasMg(false)
+                            .hasPos(true)
+                            .closedSaturday(true)
+                            .closedSunday(false)
+                            .build();
+
+            service.createSimpleCashier(dto);
+
+            ArgumentCaptor<Branch> captor = ArgumentCaptor.forClass(Branch.class);
+            verify(branchRepository).save(captor.capture());
+            Branch saved = captor.getValue();
+            assertThat(saved.getShortName()).isEqualTo("Belváros");
+            assertThat(saved.getPhone()).isEqualTo("06701234567");
+            assertThat(saved.getEmail()).isEqualTo("szeged@ebc.hu");
+            assertThat(saved.getBankCode()).isEqualTo("210");
+            assertThat(saved.getIsVault()).isTrue();
+            assertThat(saved.getIsActive()).isFalse();
+            assertThat(saved.getHasAfa()).isTrue();
+            assertThat(saved.getHasWu()).isTrue();
+            assertThat(saved.getHasMg()).isFalse();
+            assertThat(saved.getHasPos()).isTrue();
+            assertThat(saved.getClosedSaturday()).isTrue();
+            assertThat(saved.getClosedSunday()).isFalse();
+        }
+    }
+
+    @Test
+    @DisplayName("createSimpleCashier — FK-021: hiányzó opcionális mezők → biztonságos default (pénztár, aktív, bankkód=kód)")
+    void testCreateSimpleCashierDefaultsWhenOptionalOmitted() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            stubDictionaries();
+            lenient().when(branchRepository.existsByCode("BR999")).thenReturn(false);
+            lenient().when(companyRepository.findById(COMPANY_ID))
+                    .thenReturn(Optional.of(Company.builder().id(COMPANY_ID).build()));
+            lenient().when(accessScopeService.vaultRegionCodeOrNull()).thenReturn(null);
+            lenient().when(branchRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            // simpleDto csak a kötelező mezőket adja (NewCashierBranchPage backward-compat).
+            service.createSimpleCashier(simpleDto("SZEGED"));
+
+            ArgumentCaptor<Branch> captor = ArgumentCaptor.forClass(Branch.class);
+            verify(branchRepository).save(captor.capture());
+            Branch saved = captor.getValue();
+            assertThat(saved.getIsVault()).isFalse();
+            assertThat(saved.getIsActive()).isTrue();
+            assertThat(saved.getBankCode()).isEqualTo("BR999");
+            assertThat(saved.getHasAfa()).isFalse();
+            assertThat(saved.getHasWu()).isFalse();
+            assertThat(saved.getHasMg()).isFalse();
+            assertThat(saved.getHasPos()).isFalse();
+        }
+    }
+
     // ============================================================
     // #892 FK-013 — findVaultCounterparties self-review tests
     // ============================================================

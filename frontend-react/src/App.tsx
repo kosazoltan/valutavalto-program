@@ -113,6 +113,8 @@ const OrganizationalSystemParameterPage = lazy(() => import('./pages/organizatio
 const BranchGroupPage = lazy(() => import('./pages/branches/BranchGroupPage'))
 // FK-020: Pénztár Törzs Adatbázis lista (Adminisztráció menücsoport).
 const BranchPage = lazy(() => import('./pages/branches/BranchPage'))
+// FK-021: Új iroda felrögzítése (teljes törzsadat-form, 5 csoport).
+const BranchCreatePage = lazy(() => import('./pages/branches/BranchCreatePage'))
 const AuditLogPage = lazy(() => import('./pages/audit/AuditLogPage'))
 const CircularPage = lazy(() => import('./pages/circulars/CircularPage'))
 const FeePackagePage = lazy(() => import('./pages/fees/FeePackagePage'))
@@ -521,6 +523,16 @@ export default function App() {
             element={
               <RoleGate canonicalRoles={['foertektar', 'belso_ellenor', 'ugyvezeto']}>
                 <BranchPage />
+              </RoleGate>
+            }
+          />
+          {/* FK-021: Új iroda felrögzítése (a lista "Új pénztár" gombjáról).
+              Ugyanaz a szerepkör-gate, mint a listán (a create is felügyeleti művelet). */}
+          <Route
+            path="/admin/branches/new"
+            element={
+              <RoleGate canonicalRoles={['foertektar', 'belso_ellenor', 'ugyvezeto']}>
+                <BranchCreatePage />
               </RoleGate>
             }
           />
