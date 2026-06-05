@@ -79,8 +79,14 @@ public class WorkerController {
     
     /**
      * Company összes dolgozója
-     * 
+     *
      * GET /api/v1/workers
+     *
+     * Hozzáférés: a SecurityConfig HTTP-matchere már SUPERVISOR/MANAGER/ADMIN-ra korlátozza
+     * (`/api/v1/workers/**`), ami a method-szintű ellenőrzés ELŐTT fut — ezért itt NEM kell
+     * külön @PreAuthorize (Codex #1059: a method-szintű canonical szerepkörök hatástalanok
+     * lennének a szigorúbb HTTP-matcher mögött). A /workers/me és /workers/active SZÁNDÉKOSAN
+     * `authenticated()` (self-profil, ill. pénztáros AML-jóváhagyó picker).
      */
     @GetMapping
     public ResponseEntity<List<WorkerDto>> getAllWorkers() {

@@ -2,6 +2,8 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
 import RoleGate from './components/RoleGate'
+import { menuGroups } from './layouts/menuGroups'
+import { effectiveCanonicalRolesForPath } from './layouts/menuVisibility'
 import { Toaster } from './components/ui/toaster'
 import ErrorBoundary from './components/ErrorBoundary'
 // EBC Hangsegéd Phase 9.5b — VoiceAssistantProvider + Panel mount (env-flag gated)
@@ -200,6 +202,25 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   return <>{children}</>
+}
+
+/**
+ * MenuRoleGate — RBAC-audit (2026-06-05): szerepkör-szintű route-védelem, ahol a megengedett
+ * szerepkörök a MENÜBŐL származnak (single source of truth, `effectiveCanonicalRolesForPath`).
+ * Így a route-hozzáférés definíció szerint egyezik a (full-módú) menü-láthatósággal.
+ * A RoleGate SZIGORÚAN (oversight-bypass nélkül) érvényesít minden módban.
+ *
+ * Fail-safe: ha az útvonal nincs a menüben (nincs definiált megszorítás), nem szűkítünk.
+ * A `menuVisibility.test.ts` ("minden MenuRoleGate-tel védett admin-route-nak van nem-üres
+ * menü-szerepköre") garantálja, hogy az itt gatelt path-ok mind feloldódnak szerepkörre.
+ */
+function MenuRoleGate({ path, children }: { path: string; children: React.ReactNode }) {
+  const roles = effectiveCanonicalRolesForPath(menuGroups, path)
+  if (!roles) {
+    // Nincs menü-szerepkör (nem listázott vagy korlátlan) → nem szűkítünk route-szinten.
+    return <>{children}</>
+  }
+  return <RoleGate canonicalRoles={roles}>{children}</RoleGate>
 }
 
 /**
@@ -464,12 +485,12 @@ export default function App() {
             <Route path="/rate-management/workflow" element={<RateMasterWorkflowPage />} />
             <Route path="/mnb/reports" element={<MnbReportsPage />} />
             <Route path="/statistics/cashier-kpi" element={<CashierKpiPage />} />
-            <Route path="/sanction" element={<SanctionPage />} />
-            <Route path="/attendance" element={<AttendancePage />} />
-            <Route path="/settings/permission-matrix" element={<PermissionMatrixPage />} />
+            <Route path="/sanction" element={<MenuRoleGate path="/sanction"><SanctionPage /></MenuRoleGate>} />
+            <Route path="/attendance" element={<MenuRoleGate path="/attendance"><AttendancePage /></MenuRoleGate>} />
+            <Route path="/settings/permission-matrix" element={<MenuRoleGate path="/settings/permission-matrix"><PermissionMatrixPage /></MenuRoleGate>} />
             <Route path="/vault-stocktake" element={<VaultStocktakeListPage />} />
             <Route path="/vault-stocktake/:id" element={<VaultStocktakeDetailPage />} />
-            <Route path="/compliance" element={<ComplianceDashboardPage />} />
+            <Route path="/compliance" element={<MenuRoleGate path="/compliance"><ComplianceDashboardPage /></MenuRoleGate>} />
             <Route path="/compliance/document-shortages" element={<DocumentShortagePage />} />
           
           {/* Cashier (penztaros) routes */}
@@ -585,7 +606,7 @@ export default function App() {
           <Route path="/logging" element={<LoggingPage />} />
           
           {/* Settings */}
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings" element={<MenuRoleGate path="/settings"><SettingsPage /></MenuRoleGate>} />
           <Route path="/settings/penztar" element={<PenztarSettingsPage />} />
           
           {/* Fees */}
@@ -629,20 +650,20 @@ export default function App() {
           <Route path="/branch-groups" element={<BranchGroupPage />} />
 
           {/* Audit Log */}
-          <Route path="/audit-log" element={<AuditLogPage />} />
+          <Route path="/audit-log" element={<MenuRoleGate path="/audit-log"><AuditLogPage /></MenuRoleGate>} />
 
           {/* Hiba-monitor (admin/manager/supervisor) */}
-          <Route path="/admin/error-monitor" element={<ErrorMonitorPage />} />
+          <Route path="/admin/error-monitor" element={<MenuRoleGate path="/admin/error-monitor"><ErrorMonitorPage /></MenuRoleGate>} />
 
           {/* V234 Audit-diagnosztika (admin/support/manager) - belso log+audit modul */}
-          <Route path="/admin/audit-diagnostics" element={<AuditDiagnosticsPage />} />
+          <Route path="/admin/audit-diagnostics" element={<MenuRoleGate path="/admin/audit-diagnostics"><AuditDiagnosticsPage /></MenuRoleGate>} />
 
           {/* Circulars (Körlevelek) */}
           <Route path="/circulars" element={<CircularPage />} />
 
           {/* Fee Packages */}
           <Route path="/fee-packages" element={<FeePackagePage />} />
-          <Route path="/handling-fee-config" element={<HandlingFeeConfigPage />} />
+          <Route path="/handling-fee-config" element={<MenuRoleGate path="/handling-fee-config"><HandlingFeeConfigPage /></MenuRoleGate>} />
 
           {/* PEP (Politically Exposed Persons) */}
           <Route path="/pep" element={<PepPage />} />
@@ -703,13 +724,17 @@ export default function App() {
           <Route path="/cashier-stocks" element={<CashierStocksPage />} />
           <Route path="/western-union" element={<WesternUnionPage />} />
           <Route path="/competitors" element={<CompetitorPage />} />
-          <Route path="/police-requests" element={<PoliceRequestPage />} />
-          <Route path="/seal-tracking" element={<SealTrackingPage />} />
+          <Route path="/police-requests" element={<MenuRoleGate path="/police-requests"><PoliceRequestPage /></MenuRoleGate>} />
+          <Route path="/seal-tracking" element={<MenuRoleGate path="/seal-tracking"><SealTrackingPage /></MenuRoleGate>} />
           <Route path="/print-templates" element={<PrintTemplatePage />} />
-          <Route path="/licenses" element={<LicensePage />} />
-          <Route path="/scheduler" element={<SchedulerPage />} />
-          <Route path="/email-settings" element={<EmailPage />} />
-          <Route path="/employees" element={<EmployeePage />} />
+          <Route path="/licenses" element={<MenuRoleGate path="/licenses"><LicensePage /></MenuRoleGate>} />
+          <Route path="/scheduler" element={<MenuRoleGate path="/scheduler"><SchedulerPage /></MenuRoleGate>} />
+          <Route path="/email-settings" element={<MenuRoleGate path="/email-settings"><EmailPage /></MenuRoleGate>} />
+          <Route path="/employees" element={<MenuRoleGate path="/employees"><EmployeePage /></MenuRoleGate>} />
+          {/* Codex #1059: a /workers-t a backend SecurityConfig HTTP-matchere már szigorúan védi
+              (SUPERVISOR/MANAGER/ADMIN). Egy kanonikus-szerepkörű frontend RoleGate eltérne ettől
+              (false-admit/false-block a kanonikus↔angol név-eltérés miatt), ezért itt NEM gatelünk
+              route-szinten — a backend a hiteles enforcement, a menü pedig full-módban rejti. */}
           <Route path="/workers" element={<WorkerPage />} />
           <Route path="/transit" element={<TransitPage />} />
           <Route path="/led-display" element={<LedDisplayPage />} />
