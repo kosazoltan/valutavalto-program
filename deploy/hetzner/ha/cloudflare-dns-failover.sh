@@ -107,11 +107,15 @@ for r in d['result']:
             exit 0
         fi
 
-        # Megerositest kerunk
-        read -t 10 -p "Folytatod a DNS atkapcsolast? (y/N, 10s timeout = N): " confirm || confirm=""
-        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-            log "Megszakitva - nincs DNS atkapcsolas"
-            exit 0
+        # Megerositest kerunk (interaktiv). CF_AUTO=1 -> kihagyas (auto-failover, watchdog).
+        if [[ "${CF_AUTO:-0}" != "1" ]]; then
+            read -t 10 -p "Folytatod a DNS atkapcsolast? (y/N, 10s timeout = N): " confirm || confirm=""
+            if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+                log "Megszakitva - nincs DNS atkapcsolas"
+                exit 0
+            fi
+        else
+            log "CF_AUTO=1 -> interaktiv megerosites kihagyva (auto-failover)"
         fi
 
         curl -s -H "Authorization: Bearer $CF_API_TOKEN" \

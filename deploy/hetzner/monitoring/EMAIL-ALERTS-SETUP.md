@@ -51,10 +51,19 @@ vele hal). Ezert a Scaleway standby-n fut egy fuggetlen watchdog:
 - **FONTOS: a Scaleway BLOKKOLJA a kimeno SMTP-t (25/465/587)** → a watchdog **Resend HTTP API**-n
   (443) kuld. From: `watchdog@ebciroda.com` (verifikalt Resend-domain). Kulcs a szerveren:
   `/etc/primary-watchdog/resend_api_key` (root:600, NEM repoban). Elve tesztelve, megerkezett.
-- **Auto-promote SZANDEKOSAN KI** (`AUTO_FAILOVER=no`): financialis ERP-nel a split-brain
-  veszelyesebb, mint a riasztas-vezerelt kezi failover. A standby mar 2.27.90, igy a runbook
-  szerinti failover ELOSZOR tenylegesen mukodne. Az `AUTO_FAILOVER=yes` opt-in, ha az
-  uzemelteto vallalja a kockazatot.
+- **Auto-failover BE** (`AUTO_FAILOVER=yes`, user-dontes 2026-06-05). A watchdog tartos
+  kiesesnel MAGA promote-olja a standby-t (`failover-to-standby.sh FAILOVER_AUTO=1`) ES
+  atkapcsolja a Cloudflare DNS-t (`cloudflare-dns-failover.sh CF_AUTO=1`, CF-creds:
+  `/etc/primary-watchdog/cf_env` root:600). SPLIT-BRAIN VEDELEM:
+  (1) promote CSAK ha a publikus (Cloudflare) ES a kozvetlen origin is down -> Scaleway-lokalis
+  blip nem indit failovert; (2) magasabb kuszob (`PROMOTE_THRESHOLD=6` ~6 perc) mint a riasztas
+  (`FAIL_THRESHOLD=3`); (3) promote elotti friss ujra-ellenorzes (3 burst); (4) max-lag abort
+  (`FAILOVER_MAX_LAG=300` -> tul nagy adatvesztesnel inkabb riaszt); (5) one-shot (`promoted`).
+  TESZTELVE: dry-run (`WATCHDOG_DRY_RUN=1 ... --simulate-down`) a teljes dontesi lancot
+  vegigvitte valodi promote nelkul; CF-creds `status`-szal verifikalva.
+  ⚠️ **A valodi promote+DNS END-TO-END meg NEM volt elesben futtatva** (az production-leallast
+  jelentene) — ajanlott egy kontrollalt drill alacsony forgalmu idoben:
+  `gh workflow run scaleway-failover-drill.yml -f drill_level=1 -f dry_run=false`.
 
 Megjegyzes: a Hetzner-oldali Alertmanager Gmail SMTP-vel kuld (ott a 587 nyitva); a Scaleway
 watchdog Resend-del (ott az SMTP tiltva). Mindketto ugyanahhoz a 4 cimzetthez er el.
