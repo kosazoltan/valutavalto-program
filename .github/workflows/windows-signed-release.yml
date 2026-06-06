@@ -501,7 +501,7 @@ jobs:
           "# Valutavalto v${{ needs.preflight.outputs.version }} signed release SHA-256" | Out-File $manifest
           "# Build date: ${{ needs.preflight.outputs.build_date }}" | Out-File $manifest -Append
           "# Git SHA: ${{ github.sha }}" | Out-File $manifest -Append
-          "# Signing: Sectigo OV CS via Azure Key Vault Premium HSM (AzureSignTool)" | Out-File $manifest -Append
+          "# Signing: DigiCert EV CS via Azure Key Vault Premium HSM (AzureSignTool)" | Out-File $manifest -Append
           "" | Out-File $manifest -Append
           Get-ChildItem $flatDir -Include "*.exe","*.jar" -File | Sort-Object Name | ForEach-Object {
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
@@ -518,7 +518,7 @@ jobs:
           body: |
             ${{ github.event.inputs.release_notes }}
 
-            ## Artifacts (mind Sectigo OV CS-szel alairva, Azure Key Vault Premium HSM)
+            ## Artifacts (mind DigiCert EV CS-szel alairva, Azure Key Vault Premium HSM)
 
             - `Penztar-Setup-${{ needs.preflight.outputs.version }}-${{ needs.preflight.outputs.build_date }}.exe` — penztaros kliens
             - `Penztar-Eltavolito-${{ needs.preflight.outputs.version }}-${{ needs.preflight.outputs.build_date }}.exe` — uninstaller
@@ -553,7 +553,7 @@ jobs:
           echo "## Windows Signed Release — v${{ needs.preflight.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Build date:** ${{ needs.preflight.outputs.build_date }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Git SHA:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Signing:** Sectigo OV CS via Azure Key Vault Premium HSM (AzureSignTool)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Signing:** DigiCert EV CS via Azure Key Vault Premium HSM (AzureSignTool)" >> $GITHUB_STEP_SUMMARY
           echo "- **Penztar:** ${{ needs.build-penztar.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Kozponti:** ${{ needs.build-kozponti.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Arfolyamkeszito:** ${{ needs.build-arfolyamkeszito.result }}" >> $GITHUB_STEP_SUMMARY
