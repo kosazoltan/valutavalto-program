@@ -280,6 +280,28 @@ jobs:
           ./build-cleanup.ps1
           Pop-Location
 
+      # A build-installer.ps1 csak a BELSO Electron exe-t iratja ala (electron-builder
+      # signtoolOptions hook). A VEGSO Penztar-Setup.exe NSIS-kimenetet kulon kell alairni —
+      # ugyanazzal a hookkal (DRY: azonos cert/timestamp/digest, mint a belso exe).
+      - name: Sign final Penztar NSIS installer (Azure Key Vault)
+        shell: pwsh
+        env:
+          CODE_SIGN_ENABLED: '1'
+          AZURE_KEY_VAULT_URI: ${{ secrets.AZURE_KEY_VAULT_URI }}
+          AZURE_KEY_VAULT_CERT_NAME: ${{ secrets.AZURE_KEY_VAULT_CERT_NAME }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: |
+          $installer = Get-ChildItem installer/build/Penztar-Setup-*.exe |
+                       Sort-Object LastWriteTime | Select-Object -Last 1
+          if (-not $installer) {
+            Write-Host "::error::Penztar-Setup exe nem talalhato az alairashoz"
+            exit 1
+          }
+          Write-Host "Signing final NSIS installer: $($installer.FullName)"
+          node -e "require('./penztar-client/scripts/sign-with-azure-keyvault.js').default({path: process.argv[1]}).then(() => process.exit(0)).catch(e => { console.error(e.message); process.exit(1) })" "$($installer.FullName)"
+
       - name: Verify Penztar installer signature
         shell: pwsh
         run: |
