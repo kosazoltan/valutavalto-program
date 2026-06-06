@@ -270,7 +270,7 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: |
           Push-Location installer
-          ./build-installer.ps1 -SkipDownloads -SkipBackendBuild
+          ./build-installer.ps1 -SkipBackendBuild
           Pop-Location
 
       - name: Build Eltavolito (NSIS uninstaller, no signing for NSIS-only)
@@ -351,6 +351,31 @@ jobs:
           npm ci --legacy-peer-deps --no-audit --no-fund
           Pop-Location
 
+      # KRITIKUS (login-blokkolo): a kozponti electron a Google DESKTOP OAuth client ID-t a
+      # kozponti-client/vite.config.ts loadEnv(repoRoot)-jabol kapja, a bundle-olt WEB login-gomb
+      # pedig a frontend-react/.env.production VITE_GOOGLE_CLIENT_ID-t. E lepes nelkul a kozponti
+      # Google login NEM mukodik. (Azonos az unsigned workflow build-kozponti lepesevel.)
+      - name: Construct Google OAuth env (.env + frontend-react/.env.production)
+        shell: pwsh
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
+          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
+        run: |
+          @(
+            "GOOGLE_CLIENT_ID=$env:GOOGLE_CLIENT_ID",
+            "GOOGLE_CLIENT_SECRET=$env:GOOGLE_CLIENT_SECRET",
+            "GOOGLE_DESKTOP_CLIENT_ID=$env:GOOGLE_DESKTOP_CLIENT_ID",
+            "GOOGLE_DESKTOP_CLIENT_SECRET=$env:GOOGLE_DESKTOP_CLIENT_SECRET"
+          ) -join "`n" | Out-File -FilePath ".env" -Encoding utf8 -NoNewline
+          $tpl = Get-Content "frontend-react/.env.production.example" -Raw
+          $tpl = $tpl.Replace('<<__GOOGLE_WEB_CLIENT_ID__>>', $env:GOOGLE_CLIENT_ID)
+          $tpl = $tpl.Replace('<<__GOOGLE_DESKTOP_CLIENT_ID__>>', $env:GOOGLE_DESKTOP_CLIENT_ID)
+          $tpl = $tpl.Replace('<<__GOOGLE_DESKTOP_CLIENT_SECRET__>>', $env:GOOGLE_DESKTOP_CLIENT_SECRET)
+          $tpl | Out-File -FilePath "frontend-react/.env.production" -Encoding utf8 -NoNewline
+          Write-Host "Google OAuth env kesz (.env + frontend-react/.env.production)."
+
       - name: Build Kozponti installer (signed via Azure Key Vault)
         shell: pwsh
         env:
@@ -360,8 +385,10 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        # --publish never: csak BUILD+SIGN (a publish config miatt az electron-builder kulonben
+        # GH_TOKEN-t keresne es elbukna). A release-feltoltest a publish-release job vegzi.
         working-directory: kozponti-client
-        run: npm run package
+        run: npm run package -- --publish never
 
       - name: Verify Kozponti signature
         shell: pwsh
