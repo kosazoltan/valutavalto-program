@@ -437,90 +437,10 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  build-arfolyamkeszito:
-    name: Build Arfolyamkeszito (signed via Azure Key Vault)
-    runs-on: windows-latest
-    needs: preflight
-    timeout-minutes: 45
-    steps:
-      - name: Enable git longpaths (Windows MAX_PATH workaround)
-        shell: pwsh
-        run: git config --global core.longpaths true
-
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Node ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            arfolyam-keszito-client/package-lock.json
-            frontend-react/package-lock.json
-
-      - name: Set up .NET ${{ env.DOTNET_VERSION }}
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Install AzureSignTool
-        shell: pwsh
-        run: dotnet tool install --global AzureSignTool
-
-      - name: Install dependencies (arfolyamkeszito + frontend-react)
-        shell: pwsh
-        run: |
-          npm ci --no-audit --no-fund
-          Push-Location arfolyam-keszito-client
-          npm ci --no-audit --no-fund
-          Pop-Location
-          Push-Location frontend-react
-          npm ci --legacy-peer-deps --no-audit --no-fund
-          Pop-Location
-
-      - name: Build Arfolyamkeszito installer (signed via Azure Key Vault)
-        shell: pwsh
-        env:
-          CODE_SIGN_ENABLED: '1'
-          AZURE_KEY_VAULT_URI: ${{ secrets.AZURE_KEY_VAULT_URI }}
-          AZURE_KEY_VAULT_CERT_NAME: ${{ secrets.AZURE_KEY_VAULT_CERT_NAME }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        working-directory: arfolyam-keszito-client
-        run: npm run package
-
-      - name: Verify Arfolyamkeszito signature
-        shell: pwsh
-        run: |
-          $installer = Get-ChildItem arfolyam-keszito-client/release/Arfolyamkeszito-Setup-*.exe |
-                       Sort-Object LastWriteTime | Select-Object -Last 1
-          if (-not $installer) {
-            Write-Host "::error::Arfolyamkeszito installer nem talalhato"
-            exit 1
-          }
-          Write-Host "Verifying: $($installer.FullName)"
-          $sig = Get-AuthenticodeSignature -FilePath $installer.FullName
-          Write-Host "Signature status: $($sig.Status)"
-          if ($sig.Status -ne 'Valid') {
-            Write-Host "::error::Arfolyamkeszito installer NEM valid alairas — Status=$($sig.Status)"
-            exit 1
-          }
-
-      - name: Upload Arfolyamkeszito artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: arfolyamkeszito-signed-${{ needs.preflight.outputs.version }}
-          path: arfolyam-keszito-client/release/Arfolyamkeszito-Setup-*.exe
-          if-no-files-found: error
-          retention-days: 14
-
   publish-release:
     name: Publish GitHub Release + SHA-256 manifest
     runs-on: windows-latest
-    needs: [preflight, build-penztar, build-kozponti, build-arfolyamkeszito]
+    needs: [preflight, build-penztar, build-kozponti]
     if: github.event.inputs.publish_release == 'true'
     steps:
       - name: Enable git longpaths (Windows MAX_PATH workaround)
@@ -571,8 +491,7 @@ jobs:
 
             - `Penztar-Setup-${{ needs.preflight.outputs.version }}-${{ needs.preflight.outputs.build_date }}.exe` — penztaros kliens
             - `Penztar-Eltavolito-${{ needs.preflight.outputs.version }}-${{ needs.preflight.outputs.build_date }}.exe` — uninstaller
-            - `Kozponti-Munkaallomas-Setup-${{ needs.preflight.outputs.version }}.exe` — kozponti irodavezetoi munkaallomas
-            - `Arfolyamkeszito-Setup-${{ needs.preflight.outputs.version }}.exe` — RFM-keszito (foertektaros)
+            - `Kozponti-Munkaallomas-Setup-${{ needs.preflight.outputs.version }}.exe` — kozponti irodavezetoi munkaallomas (tartalmazza az arfolyamkeszito/rate-maker modot is, inditaskori mod-valasztoval)
 
             ## Verifikalas
             ```powershell
@@ -594,7 +513,7 @@ jobs:
   summary:
     name: Build Summary
     runs-on: ubuntu-latest
-    needs: [preflight, build-penztar, build-kozponti, build-arfolyamkeszito]
+    needs: [preflight, build-penztar, build-kozponti]
     if: always()
     steps:
       - name: Generate summary
@@ -605,5 +524,4 @@ jobs:
           echo "- **Signing:** DigiCert EV CS via Azure Key Vault Premium HSM (AzureSignTool)" >> $GITHUB_STEP_SUMMARY
           echo "- **Penztar:** ${{ needs.build-penztar.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Kozponti:** ${{ needs.build-kozponti.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Arfolyamkeszito:** ${{ needs.build-arfolyamkeszito.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- **GitHub Release:** ${{ github.event.inputs.publish_release }}" >> $GITHUB_STEP_SUMMARY
