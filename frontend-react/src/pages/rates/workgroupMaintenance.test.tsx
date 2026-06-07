@@ -7,7 +7,6 @@ import {
   tileClasses,
   WorkgroupEditor,
   ConfirmDialog,
-  nextWorkgroupSequence,
 } from './workgroupMaintenance'
 import type { RateWorkgroupSaveDTO } from '../../services/api/index'
 
@@ -50,19 +49,6 @@ describe('workgroupMaintenance — WorkgroupEditor', () => {
     const amber = screen.getByTitle('Borostyán')
     fireEvent.click(amber)
     expect(amber.className).toContain('ring-gray-800')
-  })
-})
-
-describe('workgroupMaintenance — nextWorkgroupSequence (FK02-E FR-1/FR-2)', () => {
-  it('üres listára 1-et ad', () => {
-    expect(nextWorkgroupSequence([])).toBe(1)
-  })
-  it('a legnagyobb sorszám + 1 (hézagok/null kihagyva)', () => {
-    expect(nextWorkgroupSequence([{ legacyGroupNumber: 1 }, { legacyGroupNumber: 5 }, { legacyGroupNumber: null }]))
-      .toBe(6)
-  })
-  it('csak null/undefined → 1', () => {
-    expect(nextWorkgroupSequence([{ legacyGroupNumber: null }, {}])).toBe(1)
   })
 })
 

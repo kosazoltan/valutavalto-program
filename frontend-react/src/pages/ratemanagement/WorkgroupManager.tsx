@@ -17,7 +17,6 @@ import {
   tileClasses,
   WorkgroupEditor,
   ConfirmDialog,
-  nextWorkgroupSequence,
   type ConfirmState,
 } from '../rates/workgroupMaintenance'
 
@@ -66,9 +65,9 @@ export default function WorkgroupManager() {
 
   const openCreate = () => {
     setEditorMode('create')
-    // FK02-E (FR-1, FR-2): a kódot a szerver generálja a sorszámból; a sorszámot a következő szabad
-    // értékkel töltjük elő.
-    setDraft({ name: '', code: '', legacyGroupNumber: nextWorkgroupSequence(workgroups), active: true,
+    // FK02-E (FR-1, FR-2): a kódot ÉS (üres esetén) a sorszámot a szerver osztja ki a teljes
+    // cég-scope alapján (inaktív csoportok sorszámát is figyelembe véve) → nincs ütközési hiba.
+    setDraft({ name: '', code: '', legacyGroupNumber: undefined, active: true,
       tileColor: DEFAULT_TILE.key, limit1Boundary: null, limit2Boundary: null, limit3Boundary: null })
     setEditorOpen(true)
   }
@@ -84,19 +83,16 @@ export default function WorkgroupManager() {
   }
 
   const saveEditor = async () => {
-    // FK02-E (FR-1): a kód a szerveren generálódik a sorszámból — csak a név kötelező.
+    // FK02-E (FR-1): a kód és (üres esetén) a sorszám a szerveren képződik — csak a név kötelező.
     if (!draft.name.trim()) {
       setError('A név megadása kötelező.')
       return
     }
-    const payload = editorMode === 'create'
-      ? { ...draft, legacyGroupNumber: draft.legacyGroupNumber ?? nextWorkgroupSequence(workgroups) }
-      : draft
     try {
       if (editorMode === 'create') {
-        await rateWorkgroupApi.create(payload)
+        await rateWorkgroupApi.create(draft)
       } else if (selected) {
-        const updated = await rateWorkgroupApi.update(selected.id, payload)
+        const updated = await rateWorkgroupApi.update(selected.id, draft)
         setSelected(updated)
       }
       setEditorOpen(false)

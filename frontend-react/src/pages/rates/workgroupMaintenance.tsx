@@ -41,21 +41,6 @@ export const TILE_PALETTE: TilePaletteEntry[] = [
 
 export const DEFAULT_TILE = TILE_PALETTE[0]!
 
-/**
- * FK02-E (FR-1, FR-2): a következő szabad munkacsoport-sorszám (max + 1, legalább 1).
- * Az „Új munkacsoport" dialóg ezzel tölti elő a Sorszám mezőt, így a kód (GROUP_NN) a szerveren
- * ütközésmentesen generálódik, és a felhasználó nem lát kód-hibát. Felülírható, ha a felhasználó
- * más sorszámot akar (a szerver továbbra is védi a sorszám-egyediséget).
- */
-export function nextWorkgroupSequence(existing: ReadonlyArray<{ legacyGroupNumber?: number | null }>): number {
-  let max = 0
-  for (const wg of existing) {
-    const n = wg.legacyGroupNumber
-    if (typeof n === 'number' && Number.isFinite(n) && n > max) max = n
-  }
-  return max + 1
-}
-
 /** Paletta-kulcs → Tailwind csempe-osztályok; ismeretlen/null kulcs → alapértelmezett. */
 export function tileClasses(colorKey: string | null | undefined): string {
   return (TILE_PALETTE.find(p => p.key === colorKey) ?? DEFAULT_TILE).tile
@@ -124,15 +109,16 @@ export function WorkgroupEditor({ mode, draft, setDraft, onSave, onCancel }: {
             a következő szabad értékkel). */}
         <div>
           <label className="text-sm font-medium">Sorszám</label>
-          <input className="form-input w-full" type="number" min="1" value={draft.legacyGroupNumber ?? ''}
+          <input className="form-input w-full" type="number" min="1" placeholder="automatikus (következő szabad)"
+            value={draft.legacyGroupNumber ?? ''}
             onChange={e => {
               const n = parseInt(e.target.value, 10)
               setDraft({ ...draft, legacyGroupNumber: e.target.value.trim() === '' || Number.isNaN(n) ? undefined : n })
             }} />
           <p className="text-xs text-gray-500 mt-1">
-            A munkacsoport kódját a rendszer automatikusan generálja a sorszámból (pl.{' '}
+            Üresen hagyva a rendszer a következő szabad sorszámot adja. A kódot automatikusan generálja
             {/* eslint-disable-next-line i18next/no-literal-string */}
-            <span className="font-mono">GROUP_03</span>).
+            {' '}a sorszámból (pl. <span className="font-mono">GROUP_03</span>).
           </p>
         </div>
         <div>

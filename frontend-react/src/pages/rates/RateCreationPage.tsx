@@ -16,7 +16,6 @@ import {
   DEFAULT_TILE,
   WorkgroupEditor,
   ConfirmDialog,
-  nextWorkgroupSequence,
   type ConfirmState,
 } from './workgroupMaintenance'
 import { FormulaSyntaxHelp, FormulaSyntaxHelpButton } from './FormulaSyntaxHelp'
@@ -1472,9 +1471,10 @@ export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackTo
   const openCreate = () => {
     setEditorMode('create')
     setEditingId(null)
-    // FK02-E (FR-1, FR-2): a sorszámot a következő szabad értékkel töltjük elő; a kódot (GROUP_NN)
-    // a szerver generálja → a felhasználó nem ad meg kódot és nem lát kód-ütközési hibát.
-    setDraft({ name: '', code: '', legacyGroupNumber: nextWorkgroupSequence(workgroups), active: true,
+    // FK02-E (FR-1, FR-2): a kódot ÉS a sorszámot a szerver osztja ki (a teljes cég-scope alapján,
+    // az inaktív csoportok foglalt sorszámát is figyelembe véve) → a felhasználó nem lát ütközési
+    // hibát. A sorszám üresen marad; igény esetén felülírható.
+    setDraft({ name: '', code: '', legacyGroupNumber: undefined, active: true,
       tileColor: DEFAULT_TILE.key, protectionEnabled: true, limit1Boundary: null, limit2Boundary: null, limit3Boundary: null })
     setActionError(null)
     setEditorOpen(true)
@@ -1489,21 +1489,16 @@ export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackTo
   }
 
   const saveEditor = async () => {
-    // FK02-E (FR-1): a kód már nem felhasználói mező (a szerver generálja), ezért csak a nevet
-    // követeljük meg. Létrehozáskor a sorszám kötelező (ebből képződik a kód); ha üres, a
-    // következő szabad értékre esünk vissza, hogy ne legyen kód-hiba.
+    // FK02-E (FR-1): a kód és (üres esetén) a sorszám is a szerveren képződik — csak a név kötelező.
     if (!draft.name.trim()) {
       setActionError('A név megadása kötelező.')
       return
     }
-    const payload: RateWorkgroupSaveDTO = editorMode === 'create'
-      ? { ...draft, legacyGroupNumber: draft.legacyGroupNumber ?? nextWorkgroupSequence(workgroups) }
-      : draft
     try {
       if (editorMode === 'create') {
-        await rateWorkgroupApi.create(payload)
+        await rateWorkgroupApi.create(draft)
       } else if (editingId) {
-        await rateWorkgroupApi.update(editingId, payload)
+        await rateWorkgroupApi.update(editingId, draft)
       }
       setEditorOpen(false)
       setActionError(null)
