@@ -312,7 +312,7 @@ export default function ReceiptPreviewModal({
                 {receiptData.foreignAmount !== undefined && (
                   <p><span className="font-semibold">Összeg:</span> {formatAmount(receiptData.foreignAmount)} {receiptData.currencyCode ?? ''}</p>
                 )}
-                {(receiptData.roundedHufAmount !== undefined || receiptData.hufAmount !== undefined) && (
+                {(receiptData.roundedHufAmount != null || receiptData.hufAmount != null) && (
                   <p><span className="font-semibold">Forint érték:</span> {formatInt(receiptData.roundedHufAmount ?? receiptData.hufAmount)} HUF</p>
                 )}
                 {receiptData.deliveryDate && (

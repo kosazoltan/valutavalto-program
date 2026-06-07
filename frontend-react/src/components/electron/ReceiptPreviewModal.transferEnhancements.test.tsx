@@ -81,4 +81,10 @@ describe('ReceiptPreviewModal — átadás-átvétel bővítések (FK02-E transf
     const { container } = renderModal({ ...base, denominations: [] })
     expect(container.textContent ?? '').not.toContain('Címletezés')
   })
+
+  it('regresszió: nem-HUF átadásnál hiányzó forint-érték esetén NEM jelenik meg „0 HUF"', () => {
+    // online nem-HUF eset: a backend hufValue=null → roundedHufAmount=null kerül a receiptData-ba
+    const { container } = renderModal({ ...base, roundedHufAmount: undefined, hufAmount: undefined })
+    expect(container.textContent ?? '').not.toContain('Forint érték:')
+  })
 })

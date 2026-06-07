@@ -1280,6 +1280,7 @@ export interface Transfer {
   toWorkerName?: string
   transferType: 'CURRENCY' | 'CASH' | 'HANDLING_FEE' | 'VAULT_DEPOSIT' | 'VAULT_WITHDRAW' | 'CORRECTION' | 'OTHER'
   transferTypeDisplay: string
+  direction?: 'F' | 'U' | 'UF' | 'FF'
   status: 'PENDING' | 'IN_TRANSIT' | 'RECEIVED' | 'COMPLETED' | 'REJECTED' | 'CANCELLED'
   statusDisplay: string
   transferDate: string

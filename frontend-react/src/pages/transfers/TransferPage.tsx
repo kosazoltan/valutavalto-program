@@ -591,14 +591,18 @@ export default function TransferPage() {
       setShowStornoModal(false)
       setStornoTarget(null)
       setSuccess(`Sztornózva: ${result.stornoSerialNumber ?? `${result.transferNumber}-SZ`}`)
-      // FR-16: a sztornó bizonylat előnézet + nyomtatás.
+      // FR-16: a sztornó bizonylat előnézet + nyomtatás. A Kérő/Cél orientáció az EREDETI irányt
+      // követi (átvételnél fordított), hogy egyezzen az eredeti bizonylattal.
       const vaultLabel = worker?.branchName ?? worker?.branchCode ?? '—'
+      const stornoIsReceipt = result.direction === 'U'
+      const stornoOther = `${result.toBranchCode} - ${result.toBranchName}`
       setPrintReceiptData({
         type: 'transfer',
         companyType: getCompanyType(worker),
         receiptNumber: result.stornoSerialNumber ?? `${result.transferNumber}-SZ`,
-        branchCode: vaultLabel,
-        transferTarget: `${result.toBranchCode} - ${result.toBranchName}`,
+        branchCode: stornoIsReceipt ? stornoOther : vaultLabel,
+        transferTarget: stornoIsReceipt ? vaultLabel : stornoOther,
+        transferDocType: stornoIsReceipt ? 'receipt' : 'handover',
         cashierName: worker?.fullName ?? '',
         date: result.transferDate,
         time: result.transferTime,
@@ -749,8 +753,10 @@ export default function TransferPage() {
                           <XCircle size={14} />
                         </button>
                       )}
-                      {/* FR-12: sztornó (indoklással) — nem sztornózott bizonylaton */}
-                      {!transfer.isCancelled && (
+                      {/* FR-12: sztornó (indoklással) — CSAK véglegesített (COMPLETED), még nem sztornózott
+                          bizonylaton. A PENDING-et a „Törlés" (/cancel) kezeli; a még nem szinkronizált
+                          lokális sorok PENDING-ek, így itt nem jelennek meg (nincs backend-id). */}
+                      {transfer.isCompleted && !transfer.isCancelled && (
                         <button
                           type="button"
                           onClick={() => openStornoModal(transfer)}
