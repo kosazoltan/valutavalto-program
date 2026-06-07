@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isMainCashierBranch, validateCarrierSeal } from './transferRules'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isMainCashierBranch, validateCarrierSeal, buildDenominationPayload } from './transferRules'
 
 const currencies = [
   { id: 1, code: 'HUF', name: 'Forint' },
@@ -177,5 +177,47 @@ describe('validateCarrierSeal — átadás-átvétel szállító + plombaszám (
   it('érvénytelen karaktert tartalmazó plombaszám esetén hibát ad', () => {
     expect(validateCarrierSeal('Brink', 'ABC 123')).toBe('A plombaszám csak betűt, számot, kötőjelet és perjelet tartalmazhat!')
     expect(validateCarrierSeal('Brink', 'ABC#1')).toBe('A plombaszám csak betűt, számot, kötőjelet és perjelet tartalmazhat!')
+  })
+
+  describe('buildDenominationPayload (FR-17..20b — címletezés)', () => {
+    it('kikapcsolt címletezés → nincs sor (undefined)', () => {
+      const r = buildDenominationPayload(false, [{ quantity: '5', faceValue: '100' }], 1000)
+      expect(r.denominations).toBeUndefined()
+      expect(r.error).toBeUndefined()
+    })
+
+    it('FR-19: bekapcsolt, de üres/érvénytelen sorok → nincs címletezés', () => {
+      const r = buildDenominationPayload(true, [{ quantity: '', faceValue: '' }, { quantity: '0', faceValue: '100' }], 1000)
+      expect(r.denominations).toBeUndefined()
+      expect(r.error).toBeUndefined()
+    })
+
+    it('FR-17/18: egyező összegű sorok → denominations tömb (érvénytelen sor kihagyva)', () => {
+      const r = buildDenominationPayload(true, [
+        { quantity: '5', faceValue: '100' },   // 500
+        { quantity: '10', faceValue: '50' },   // 500
+        { quantity: '0', faceValue: '20' },    // kihagyva (0 db)
+      ], 1000)
+      expect(r.error).toBeUndefined()
+      expect(r.denominations).toEqual([
+        { quantity: 5, faceValue: 100 },
+        { quantity: 10, faceValue: 50 },
+      ])
+    })
+
+    it('FR-20b: NEM egyező összeg → hiba, nincs denominations', () => {
+      const r = buildDenominationPayload(true, [
+        { quantity: '5', faceValue: '100' },
+        { quantity: '3', faceValue: '50' },
+      ], 1000) // 650 ≠ 1000
+      expect(r.denominations).toBeUndefined()
+      expect(r.error).toContain('nem egyezik')
+    })
+
+    it('magyar tizedesvessző + szóköz elfogadott a névleges értékben', () => {
+      const r = buildDenominationPayload(true, [{ quantity: '2', faceValue: '2 500,5' }], 5001)
+      expect(r.error).toBeUndefined()
+      expect(r.denominations).toEqual([{ quantity: 2, faceValue: 2500.5 }])
+    })
   })
 })
