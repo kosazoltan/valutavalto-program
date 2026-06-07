@@ -502,23 +502,30 @@ public class TransferService {
                 (bid, c) -> cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(bid, c),
                 lockKeys.toArray(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey[0]));
 
+        final boolean multiLine = transfer.getLines() != null && !transfer.getLines().isEmpty();
         for (TransferLine ln : bookLines) {
+            // A FELADÓ kasszáját a KIKÜLDÖTT (ln.amount), a FOGADÓ kasszáját a TÉNYLEGESEN FOGADOTT
+            // összeggel kell visszafordítani (F-átadásnál a receive a receivedAmount-tal könyvelt).
+            BigDecimal sent = ln.getAmount();
+            BigDecimal received = multiLine
+                    ? (ln.getReceivedAmount() != null ? ln.getReceivedAmount() : ln.getAmount())
+                    : (transfer.getReceivedAmount() != null ? transfer.getReceivedAmount() : ln.getAmount());
             switch (direction) {
                 case F, UF -> {
-                    increaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
-                    decreaseCashBalance(transfer.getToBranch(), ln.getCurrency(), ln.getAmount());
-                    createReversalTransaction(transfer, actor, transfer.getFromBranch(), ln.getCurrency(), ln.getAmount(), TransactionType.TRANSFER_IN);
-                    createReversalTransaction(transfer, actor, transfer.getToBranch(), ln.getCurrency(), ln.getAmount(), TransactionType.TRANSFER_OUT);
+                    increaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), sent);
+                    decreaseCashBalance(transfer.getToBranch(), ln.getCurrency(), received);
+                    createReversalTransaction(transfer, actor, transfer.getFromBranch(), ln.getCurrency(), sent, TransactionType.TRANSFER_IN);
+                    createReversalTransaction(transfer, actor, transfer.getToBranch(), ln.getCurrency(), received, TransactionType.TRANSFER_OUT);
                 }
                 case U -> {
-                    decreaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
-                    createReversalTransaction(transfer, actor, transfer.getFromBranch(), ln.getCurrency(), ln.getAmount(), TransactionType.TRANSFER_OUT);
+                    decreaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), sent);
+                    createReversalTransaction(transfer, actor, transfer.getFromBranch(), ln.getCurrency(), sent, TransactionType.TRANSFER_OUT);
                 }
                 case FF -> {
-                    increaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
-                    increaseCashBalance(transfer.getToBranch(), ln.getCurrency(), ln.getAmount());
-                    createReversalTransaction(transfer, actor, transfer.getFromBranch(), ln.getCurrency(), ln.getAmount(), TransactionType.TRANSFER_IN);
-                    createReversalTransaction(transfer, actor, transfer.getToBranch(), ln.getCurrency(), ln.getAmount(), TransactionType.TRANSFER_IN);
+                    increaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), sent);
+                    increaseCashBalance(transfer.getToBranch(), ln.getCurrency(), sent);
+                    createReversalTransaction(transfer, actor, transfer.getFromBranch(), ln.getCurrency(), sent, TransactionType.TRANSFER_IN);
+                    createReversalTransaction(transfer, actor, transfer.getToBranch(), ln.getCurrency(), sent, TransactionType.TRANSFER_IN);
                 }
             }
         }

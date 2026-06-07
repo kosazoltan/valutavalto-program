@@ -386,6 +386,38 @@ class TransferServiceTest {
     }
 
     @Test
+    @DisplayName("Sztornó (F): a FOGADÓ kasszáját a ténylegesen FOGADOTT összeggel fordítja vissza (receivedAmount≠amount)")
+    void testStorno_handover_usesReceivedAmountForToBranch() {
+        UUID companyId = UUID.randomUUID();
+        Transfer transfer = buildStornoTarget(companyId, Transfer.TransferDirection.F);
+        transfer.setReceivedAmount(new BigDecimal("900")); // fogadáskor 900 érkezett (eredeti 1000)
+        UUID fromId = transfer.getFromBranch().getId();
+        UUID toId = transfer.getToBranch().getId();
+        CashBalance fromBal = CashBalance.builder().currentBalance(new BigDecimal("5000")).build();
+        CashBalance toBal = CashBalance.builder().currentBalance(new BigDecimal("5000")).build();
+
+        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(workerRepository.findById(1L)).thenReturn(Optional.of(Worker.builder().id(1L).name("Teszt").build()));
+        when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-SZ-1");
+        when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(fromId), anyLong())).thenReturn(Optional.of(fromBal));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(toId), anyLong())).thenReturn(Optional.of(toBal));
+
+        try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(1L);
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(null);
+
+            service.storno(50L, "Téves rögzítés");
+
+            // Feladó VISSZAKAPJA a kiküldött 1000-et (5000+1000); a fogadó a FOGADOTT 900-at veszti (5000-900).
+            assertThat(fromBal.getCurrentBalance()).isEqualByComparingTo("6000");
+            assertThat(toBal.getCurrentBalance()).isEqualByComparingTo("4100");
+        }
+    }
+
+    @Test
     @DisplayName("FR-12: átvétel (U) sztornó — fromBranch (fogadó) ELVESZTI a készletet (kikerül)")
     void testStorno_reversesStock_receipt() {
         UUID companyId = UUID.randomUUID();
