@@ -405,6 +405,18 @@ export interface ElectronAPI {
     created_at: string;
     synced: number;
   }>>;
+  /** Offline átadás-átvétel SZTORNÓ (internetkimaradáskor): a backend fordítja vissza a készletet szinkronkor. */
+  savePendingTransferStorno(payload: { transferId: number; transferNumber?: string | null; reason: string }): Promise<number>;
+  getPendingTransferStornos(): Promise<Array<{
+    id: number;
+    transfer_id: number;
+    transfer_number: string | null;
+    reason: string;
+    local_reference_number: string | null;
+    idempotency_key: string | null;
+    created_at: string;
+    synced: number;
+  }>>;
   savePendingCollection(
     sourceBranchCode: string,
     currencyCode: string,

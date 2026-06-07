@@ -1,9 +1,11 @@
 package hu.puzzleir.valuta.repository;
 
 import hu.puzzleir.valuta.entity.Transfer;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -18,6 +20,11 @@ import java.util.UUID;
 public interface TransferRepository extends JpaRepository<Transfer, Long> {
 
     Optional<Transfer> findByTransferNumber(String transferNumber);
+
+    /** Pessimistic lock a sztornóhoz: a konkurens dupla-sztornó (kétszeres készlet-visszafordítás) ellen. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM Transfer t WHERE t.id = :id")
+    Optional<Transfer> findByIdForUpdate(@Param("id") Long id);
 
     List<Transfer> findByStatus(Transfer.TransferStatus status);
 

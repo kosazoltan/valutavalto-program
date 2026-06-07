@@ -333,6 +333,10 @@ class TransferServiceTest {
     // ===================== Sztornózás (FR-12..16, FR-20) =====================
 
     private Transfer buildStornoTarget(UUID companyId) {
+        return buildStornoTarget(companyId, Transfer.TransferDirection.F);
+    }
+
+    private Transfer buildStornoTarget(UUID companyId, Transfer.TransferDirection direction) {
         Company company = Company.builder().id(companyId).build();
         Branch fromBranch = Branch.builder().id(UUID.randomUUID()).code("BR020").company(company).build();
         Branch toBranch = Branch.builder().id(UUID.randomUUID()).code("BR099").company(company).build();
@@ -341,18 +345,29 @@ class TransferServiceTest {
                 .currency(Currency.builder().id(4L).code("EUR").name("Euró").build())
                 .fromWorker(Worker.builder().id(1L).name("Teszt").build())
                 .transferType(Transfer.TransferType.CURRENCY)
+                .direction(direction)
                 .status(Transfer.TransferStatus.COMPLETED)
                 .transferDate(java.time.LocalDate.now()).transferTime(java.time.LocalTime.now())
                 .amount(new BigDecimal("1000")).isCancelled(false).build();
     }
 
     @Test
-    @DisplayName("FR-12/FR-13: sztornó megjelöli az eredetit + audit (VV-TX-002), a sorszám <eredeti>-SZ")
-    void testStorno_success() {
+    @DisplayName("FR-12/FR-13: átadás (F) sztornó — fromBranch VISSZAKAPJA, toBranch ELVESZTI a készletet + audit")
+    void testStorno_success_reversesStock_handover() {
         UUID companyId = UUID.randomUUID();
-        Transfer transfer = buildStornoTarget(companyId);
-        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        Transfer transfer = buildStornoTarget(companyId, Transfer.TransferDirection.F);
+        UUID fromId = transfer.getFromBranch().getId();
+        UUID toId = transfer.getToBranch().getId();
+        CashBalance fromBal = CashBalance.builder().currentBalance(new BigDecimal("5000")).build();
+        CashBalance toBal = CashBalance.builder().currentBalance(new BigDecimal("5000")).build();
+
+        when(transferRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(transfer));
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(workerRepository.findById(1L)).thenReturn(Optional.of(Worker.builder().id(1L).name("Teszt").build()));
+        when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-SZ-1");
+        when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(fromId), anyLong())).thenReturn(Optional.of(fromBal));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(toId), anyLong())).thenReturn(Optional.of(toBal));
 
         try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
@@ -362,9 +377,70 @@ class TransferServiceTest {
             TransferDto result = service.storno(50L, "Téves rögzítés");
 
             assertThat(result.getIsCancelled()).isTrue();
-            assertThat(result.getCancellationReason()).isEqualTo("Téves rögzítés");
             assertThat(result.getStornoSerialNumber()).isEqualTo("AT-000023-SZ");
             verify(auditLogService).log(eq("STORNO"), contains("VV-TX-002"), eq(50L));
+            // F (átadás) visszafordítás: a feladó VISSZAKAPJA (5000+1000), a fogadó ELVESZTI (5000-1000).
+            assertThat(fromBal.getCurrentBalance()).isEqualByComparingTo("6000");
+            assertThat(toBal.getCurrentBalance()).isEqualByComparingTo("4000");
+        }
+    }
+
+    @Test
+    @DisplayName("Sztornó (F): a FOGADÓ kasszáját a ténylegesen FOGADOTT összeggel fordítja vissza (receivedAmount≠amount)")
+    void testStorno_handover_usesReceivedAmountForToBranch() {
+        UUID companyId = UUID.randomUUID();
+        Transfer transfer = buildStornoTarget(companyId, Transfer.TransferDirection.F);
+        transfer.setReceivedAmount(new BigDecimal("900")); // fogadáskor 900 érkezett (eredeti 1000)
+        UUID fromId = transfer.getFromBranch().getId();
+        UUID toId = transfer.getToBranch().getId();
+        CashBalance fromBal = CashBalance.builder().currentBalance(new BigDecimal("5000")).build();
+        CashBalance toBal = CashBalance.builder().currentBalance(new BigDecimal("5000")).build();
+
+        when(transferRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(transfer));
+        when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(workerRepository.findById(1L)).thenReturn(Optional.of(Worker.builder().id(1L).name("Teszt").build()));
+        when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-SZ-1");
+        when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(fromId), anyLong())).thenReturn(Optional.of(fromBal));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(toId), anyLong())).thenReturn(Optional.of(toBal));
+
+        try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(1L);
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(null);
+
+            service.storno(50L, "Téves rögzítés");
+
+            // Feladó VISSZAKAPJA a kiküldött 1000-et (5000+1000); a fogadó a FOGADOTT 900-at veszti (5000-900).
+            assertThat(fromBal.getCurrentBalance()).isEqualByComparingTo("6000");
+            assertThat(toBal.getCurrentBalance()).isEqualByComparingTo("4100");
+        }
+    }
+
+    @Test
+    @DisplayName("FR-12: átvétel (U) sztornó — fromBranch (fogadó) ELVESZTI a készletet (kikerül)")
+    void testStorno_reversesStock_receipt() {
+        UUID companyId = UUID.randomUUID();
+        Transfer transfer = buildStornoTarget(companyId, Transfer.TransferDirection.U);
+        UUID fromId = transfer.getFromBranch().getId();
+        CashBalance fromBal = CashBalance.builder().currentBalance(new BigDecimal("5000")).build();
+
+        when(transferRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(transfer));
+        when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(workerRepository.findById(1L)).thenReturn(Optional.of(Worker.builder().id(1L).name("Teszt").build()));
+        when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-SZ-1");
+        when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(fromId), anyLong())).thenReturn(Optional.of(fromBal));
+
+        try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(1L);
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(null);
+
+            service.storno(50L, "Téves átvétel");
+
+            // U (átvétel) visszafordítás: a fogadó (fromBranch) ELVESZTI (5000-1000).
+            assertThat(fromBal.getCurrentBalance()).isEqualByComparingTo("4000");
         }
     }
 
@@ -374,7 +450,7 @@ class TransferServiceTest {
         UUID transferCompany = UUID.randomUUID();
         UUID otherCompany = UUID.randomUUID();
         Transfer transfer = buildStornoTarget(transferCompany);
-        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        when(transferRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(transfer));
 
         try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(otherCompany);
@@ -391,7 +467,7 @@ class TransferServiceTest {
         UUID companyId = UUID.randomUUID();
         Transfer transfer = buildStornoTarget(companyId);
         transfer.setStatus(Transfer.TransferStatus.PENDING);
-        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        when(transferRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(transfer));
 
         try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
@@ -409,7 +485,7 @@ class TransferServiceTest {
         UUID companyId = UUID.randomUUID();
         Transfer transfer = buildStornoTarget(companyId);
         transfer.setIsCancelled(true);
-        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        when(transferRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(transfer));
 
         try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);

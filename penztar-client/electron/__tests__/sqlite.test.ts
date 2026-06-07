@@ -75,6 +75,18 @@ function runSchema(database: Database): void {
     );
   `);
   database.run(`
+    CREATE TABLE IF NOT EXISTS pending_transfer_stornos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      transfer_id INTEGER NOT NULL,
+      transfer_number TEXT,
+      reason TEXT NOT NULL,
+      local_reference_number TEXT,
+      idempotency_key TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      synced INTEGER DEFAULT 0
+    );
+  `);
+  database.run(`
     CREATE TABLE IF NOT EXISTS local_audit_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       entity_type TEXT NOT NULL,
@@ -306,6 +318,29 @@ describe('sqlite — pending transactions logic', () => {
     const row = stmt.getAsObject();
     stmt.free();
     expect(row['synced']).toBe(1);
+  });
+
+  it('offline transfer-storno: csak synced=0 jön vissza, mark után eltűnik', () => {
+    db.run(`INSERT INTO pending_transfer_stornos (transfer_id, transfer_number, reason, synced)
+            VALUES (50, 'AT-000023', 'Téves rögzítés', 0)`);
+    db.run(`INSERT INTO pending_transfer_stornos (transfer_id, transfer_number, reason, synced)
+            VALUES (51, 'AT-000024', 'Már szinkronizált', 1)`);
+
+    const sel = () => {
+      const stmt = db.prepare('SELECT * FROM pending_transfer_stornos WHERE synced = 0 ORDER BY created_at ASC');
+      const rows = [];
+      while (stmt.step()) rows.push(stmt.getAsObject());
+      stmt.free();
+      return rows;
+    };
+
+    const pending = sel();
+    expect(pending).toHaveLength(1);
+    expect(pending[0]!['transfer_id']).toBe(50);
+    expect(pending[0]!['reason']).toBe('Téves rögzítés');
+
+    db.run('UPDATE pending_transfer_stornos SET synced = 1 WHERE id = ?', [pending[0]!['id'] as number]);
+    expect(sel()).toHaveLength(0);
   });
 
   it('should count pending (unsynced) transactions', () => {

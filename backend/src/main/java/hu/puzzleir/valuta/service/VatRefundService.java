@@ -41,6 +41,7 @@ public class VatRefundService {
     // enforce=true ágon dereferálódik (guard → tesztek nem törnek).
     private final SystemParameterService systemParameterService;
     private final hu.puzzleir.valuta.repository.CircularRepository circularRepository;
+    private final AuditLogService auditLogService;
 
     /**
      * ÁFA visszatérítés tranzakció létrehozása.
@@ -73,7 +74,7 @@ public class VatRefundService {
 
         validateRequest(request, voucherType);
 
-        String serialNumber = generateSerialNumber(voucherType);
+        String serialNumber = generateSerialNumber(voucherType, companyId);
 
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
@@ -105,6 +106,10 @@ public class VatRefundService {
         VatRefundTransaction saved = vatRefundTransactionRepository.save(entity);
         log.info("ÁFA visszatérítés létrehozva: id={}, tipus={}, sorszam={}, osszeg={}",
             saved.getId(), saved.getVoucherType(), saved.getSerialNumber(), saved.getGrossAmount());
+        auditLogService.log("VAT_REFUND_CREATED",
+            String.format("ÁFA visszatérítés: %s (%s), bruttó %s", saved.getSerialNumber(),
+                saved.getVoucherType(), saved.getGrossAmount()),
+            saved.getId());
 
         return toDto(saved);
     }
@@ -119,11 +124,13 @@ public class VatRefundService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         String workerCode = SecurityUtils.getCurrentWorkerCode();
 
-        VatRefundTransaction original = vatRefundTransactionRepository.findById(id)
+        // Pessimistic lock: a dupla-sztornó race ellen (isReversed olvasás+írás atomi a sorzáron belül).
+        VatRefundTransaction original = vatRefundTransactionRepository.findByIdForUpdate(id)
             .orElseThrow(() -> new ResourceNotFoundException("ÁFA visszatérítés nem található: " + id));
 
+        // Cross-tenant: idegen cég tranzakciója → 404 (a létezést sem áruljuk el, mint a transfer/WU sztornó).
         if (!original.getCompanyId().equals(companyId)) {
-            throw new ValidationException("Hozzáférés megtagadva: másik cég tranzakciója");
+            throw new ResourceNotFoundException("ÁFA visszatérítés nem található: " + id);
         }
         if (Boolean.TRUE.equals(original.getIsReversed())) {
             throw new ValidationException("A tranzakció már sztornózva van: " + id);
@@ -163,6 +170,10 @@ public class VatRefundService {
         VatRefundTransaction savedStorno = vatRefundTransactionRepository.save(storno);
 
         log.info("ÁFA visszatérítés sztornózva: eredeti id={}, sztorno id={}", id, savedStorno.getId());
+        auditLogService.log("VAT_REFUND_STORNO",
+            String.format("ÁFA visszatérítés sztornózva: %s → %s (eredeti id=%d)",
+                original.getSerialNumber(), stornoSerial, id),
+            savedStorno.getId());
         return toDto(savedStorno);
     }
 
@@ -174,8 +185,9 @@ public class VatRefundService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         VatRefundTransaction entity = vatRefundTransactionRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("ÁFA visszatérítés nem található: " + id));
+        // Cross-tenant: idegen cég → 404 (a létezést sem áruljuk el).
         if (!entity.getCompanyId().equals(companyId)) {
-            throw new ValidationException("Hozzáférés megtagadva");
+            throw new ResourceNotFoundException("ÁFA visszatérítés nem található: " + id);
         }
         return toDto(entity);
     }
@@ -234,14 +246,18 @@ public class VatRefundService {
         }
     }
 
-    private static final java.util.concurrent.atomic.AtomicLong VAT_SERIAL_COUNTER =
-            new java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis() % 100000);
-
-    private String generateSerialNumber(VoucherType type) {
+    /**
+     * Cégszintű, DB-alapú, újraindítás-biztos sorszám: {@code TÍPUS-YYYYMMDD-NNNNN}, a cégen belüli
+     * aznapi MAX+1-gyel (a régi static AtomicLong helyett, ami újraindításkor/cégek között ütközött).
+     * Egyediség-backstop: a (company_id, serial_number) UNIQUE index (V300).
+     */
+    private String generateSerialNumber(VoucherType type, UUID companyId) {
         LocalDate today = LocalDate.now();
         String datePart = String.format("%d%02d%02d", today.getYear(), today.getMonthValue(), today.getDayOfMonth());
-        long seq = VAT_SERIAL_COUNTER.incrementAndGet() % 100000;
-        return type.name() + "-" + datePart + "-" + String.format("%05d", seq);
+        String prefix = type.name() + "-" + datePart + "-"; // pl. "AK-20260607-"
+        long max = vatRefundTransactionRepository.findMaxVatSerialForCompany(
+                companyId, prefix + "%", prefix.length() + 1);
+        return prefix + String.format("%05d", max + 1);
     }
 
     private VatRefundTransactionDto toDto(VatRefundTransaction e) {

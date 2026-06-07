@@ -509,6 +509,21 @@ export async function initDatabase(): Promise<void> {
       );
     `);
 
+    // Értéktár offline mód — átadás-átvétel bizonylat SZTORNÓ (internetkimaradáskor is).
+    // A backend (POST /transfers/{id}/storno) fordítja vissza a készletet szinkronkor.
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_transfer_stornos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transfer_id INTEGER NOT NULL,
+        transfer_number TEXT,
+        reason TEXT NOT NULL,
+        local_reference_number TEXT,
+        idempotency_key TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+
     // NGM 23/2014 szigoru szamadasu helyi bizonylat-sorszamozo
     // Formatum: {prefix}{branchCode3}{seq6} (pl. V039000042)
     // Per-branch + per-prefix, folyamatos sorszam az elso indulas ota.
@@ -2488,6 +2503,77 @@ export function getPendingStornos(): PendingStornoRow[] {
 export function markStornoSynced(id: number): void {
   if (!db) return;
   db.run('UPDATE pending_stornos SET synced = 1 WHERE id = ?', [id]);
+  saveDatabase();
+}
+
+// ============================================================================
+// Átadás-átvétel bizonylat OFFLINE SZTORNÓ (pending_transfer_stornos)
+// ============================================================================
+
+export interface PendingTransferStornoRow {
+  id: number;
+  transfer_id: number;
+  transfer_number: string | null;
+  reason: string;
+  local_reference_number: string | null;
+  idempotency_key: string | null;
+  created_at: string;
+  synced: number;
+}
+
+/**
+ * Offline átadás-átvétel sztornó rögzítése. A backend (POST /transfers/{id}/storno) fordítja
+ * vissza a készletet a szinkronkor — a penztar-client nem tart külön cash_balance-t (a lokális
+ * pozíció a backendről szinkronizálódik), így az offline tranzakció-sztornóval AZONOS minta.
+ */
+export function savePendingTransferStorno(params: {
+  transferId: number;
+  transferNumber?: string | null;
+  reason: string;
+}): number {
+  if (!db) throw new Error('Database not initialized');
+  const localReferenceNumber = generateLocalReference('LTS');
+  const idempotencyKey = crypto.randomUUID();
+
+  db.run(
+    `INSERT INTO pending_transfer_stornos (transfer_id, transfer_number, reason, local_reference_number, idempotency_key)
+     VALUES (?, ?, ?, ?, ?)`,
+    [params.transferId, params.transferNumber ?? null, params.reason.trim(), localReferenceNumber, idempotencyKey],
+  );
+  saveDatabase();
+
+  const stmt = db.prepare('SELECT last_insert_rowid() as id');
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  const insertedId = (row['id'] as number) ?? 0;
+
+  saveLocalAuditEvent({
+    entityType: 'TRANSFER',
+    eventType: 'STORNO',
+    referenceNumber: params.transferNumber ?? localReferenceNumber,
+    entityId: String(params.transferId),
+    payload: { transferId: params.transferId, reason: params.reason.trim(), idempotencyKey },
+    status: 'PENDING_UPLOAD',
+  });
+
+  return insertedId;
+}
+
+export function getPendingTransferStornos(): PendingTransferStornoRow[] {
+  if (!db) return [];
+  const results: PendingTransferStornoRow[] = [];
+  const stmt = db.prepare('SELECT * FROM pending_transfer_stornos WHERE synced = 0 ORDER BY created_at ASC');
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as PendingTransferStornoRow);
+  }
+  stmt.free();
+  return results;
+}
+
+export function markTransferStornoSynced(id: number): void {
+  if (!db) return;
+  db.run('UPDATE pending_transfer_stornos SET synced = 1 WHERE id = ?', [id]);
   saveDatabase();
 }
 

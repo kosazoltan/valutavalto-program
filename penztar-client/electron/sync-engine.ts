@@ -35,6 +35,8 @@ import {
   markDistributionSynced,
   getPendingTransfers,
   markTransferSynced,
+  getPendingTransferStornos,
+  markTransferStornoSynced,
   getPendingCollections,
   markCollectionSynced,
   getPendingStocktakeItems,
@@ -640,6 +642,7 @@ export class SyncEngine {
         // 3. Értéktár szinkronizáció
         await this.syncDistributions();
         await this.syncTransfers();
+        await this.syncTransferStornos();
         await this.syncCollections();
         await this.syncStocktakeItems();
         await this.cacheBranchStatus();
@@ -1728,6 +1731,55 @@ export class SyncEngine {
       }
     } catch (err) {
       log.warn('[SyncEngine] Transfer sync hiba:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  /**
+   * Átadás-átvétel OFFLINE SZTORNÓ szinkronizálása: a queue-olt sztornókat a backend
+   * POST /transfers/{id}/storno végpontjára küldi (a backend fordítja vissza a készletet).
+   * A „már sztornózva" (409) ÉS az üzleti-validációs hiba „elvégzettnek" számít (mark synced,
+   * head-of-line block elkerülése) — nem akad el az egész queue egy nem-újrázható tételen.
+   */
+  async syncTransferStornos(): Promise<void> {
+    try {
+      const pending = getPendingTransferStornos();
+      if (pending.length === 0) return;
+
+      const serverUrl = this.getActiveServerUrl();
+      if (!serverUrl) return;
+      const token = this.getAuthToken();
+      if (!token) return;
+
+      for (const st of pending) {
+        try {
+          await httpPost(`${serverUrl}/transfers/${st.transfer_id}/storno`,
+            { reason: st.reason }, token, st.idempotency_key ?? undefined);
+          markTransferStornoSynced(st.id);
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          // Már sztornózva (409 / VV-TX-003) → a kívánt végállapot már fennáll → kész.
+          if (errorMsg.includes('409') || errorMsg.includes('VV-TX-003') || errorMsg.includes('már sztornózva')) {
+            markTransferStornoSynced(st.id);
+            log.info(`[SyncEngine] Transfer-storno #${st.id} már sztornózva a szerveren → synced.`);
+            continue;
+          }
+          if (isAuthStatusError(err)) {
+            this.clearStoredAuthToken();
+            log.warn('[SyncEngine] Transfer-storno auth hiba (401/403), ciklus leállítva.');
+            break;
+          }
+          // Üzleti validációs hiba (nem-újrázható) → ne blokkolja a queue-t.
+          if (this.isBusinessValidationError(errorMsg)) {
+            markTransferStornoSynced(st.id);
+            log.warn(`[SyncEngine] Transfer-storno #${st.id} elvetve (business error): ${errorMsg}`);
+            continue;
+          }
+          log.warn(`[SyncEngine] Transfer-storno #${st.id} sync hiba:`, errorMsg);
+          break; // hálózati hiba → később újra
+        }
+      }
+    } catch (err) {
+      log.warn('[SyncEngine] Transfer-storno sync hiba:', err instanceof Error ? err.message : err);
     }
   }
 

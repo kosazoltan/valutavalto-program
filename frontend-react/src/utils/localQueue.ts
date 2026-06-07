@@ -490,6 +490,21 @@ export async function getLocalPendingTransfers(worker: Worker | null): Promise<T
   }
 }
 
+/**
+ * Offline átadás-átvétel SZTORNÓ queue-olása (internetkimaradáskor). A backend a szinkronkor
+ * fordítja vissza a készletet (POST /transfers/{id}/storno). True, ha lokálisan rögzült.
+ */
+export async function queueOfflineTransferStorno(
+  transferId: number,
+  transferNumber: string | null,
+  reason: string,
+): Promise<boolean> {
+  const electronAPI = getElectronAPI()
+  if (!electronAPI?.savePendingTransferStorno) return false
+  await electronAPI.savePendingTransferStorno({ transferId, transferNumber, reason })
+  return true
+}
+
 export async function getLocalPendingBankTransactions(): Promise<BankTransaction[]> {
   try {
     const electronAPI = getElectronAPI()
