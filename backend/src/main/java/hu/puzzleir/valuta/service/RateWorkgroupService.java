@@ -47,6 +47,22 @@ public class RateWorkgroupService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Integer seq = workgroup.getLegacyGroupNumber();
 
+        // FK02-E (FR-1, FR-2): az új árfolyamkészítő flow se kódot, se sorszámot NEM küld (mindkettő
+        // üres). Ekkor a SZERVER osztja ki a sorszámot — a TELJES cég-scope (aktív ÉS inaktív/soft-deleted)
+        // legnagyobb sorszáma + 1. Az inaktívakat is figyelembe kell venni, mert a V296 unique index
+        // (company_id, legacy_group_number) rájuk is érvényes; az aktív-only max+1 ütközne egy törölt
+        // csoport foglalt sorszámával (a felhasználó megmagyarázhatatlan hibát látna).
+        // Ha a kliens explicit kódot ad (legacy hívó / DEFAULT), a régi viselkedést tartjuk (nincs auto-seq).
+        boolean clientCodeBlank = workgroup.getCode() == null || workgroup.getCode().isBlank();
+        if (seq == null && clientCodeBlank) {
+            seq = workgroupRepository.findByCompanyId(companyId).stream()
+                    .map(RateWorkgroup::getLegacyGroupNumber)
+                    .filter(n -> n != null)
+                    .max(Integer::compareTo)
+                    .orElse(0) + 1;
+            workgroup.setLegacyGroupNumber(seq);
+        }
+
         // FK02-D (FR-17): a kódot a SZERVER generálja a sorszámból (GROUP_NN); a klienstől
         // érkező kód-érték (a DEFAULT kivételével) NEM mérvadó. A meglévő DEFAULT csoport kódja megmarad.
         String code = generateWorkgroupCode(workgroup.getCode(), seq);

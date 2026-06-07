@@ -104,20 +104,22 @@ export function WorkgroupEditor({ mode, draft, setDraft, onSave, onCancel }: {
           <input className="form-input w-full" value={draft.name} placeholder="pl. Budapest központ"
             onChange={e => setDraft({ ...draft, name: e.target.value })} />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm font-medium">Kód</label>
-            <input className="form-input w-full" value={draft.code} placeholder="pl. WG01" disabled={mode === 'rename'}
-              onChange={e => setDraft({ ...draft, code: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Sorszám</label>
-            <input className="form-input w-full" type="number" value={draft.legacyGroupNumber ?? ''}
-              onChange={e => {
-                const n = parseInt(e.target.value, 10)
-                setDraft({ ...draft, legacyGroupNumber: e.target.value.trim() === '' || Number.isNaN(n) ? undefined : n })
-              }} />
-          </div>
+        {/* FK02-E (FR-1): a Kód mező eltávolítva — a rendszer automatikusan generálja a sorszámból
+            (GROUP_NN). A felhasználó csak a sorszámot adja meg (az „Új munkacsoport"-nál előtöltve
+            a következő szabad értékkel). */}
+        <div>
+          <label className="text-sm font-medium">Sorszám</label>
+          <input className="form-input w-full" type="number" min="1" placeholder="automatikus (következő szabad)"
+            value={draft.legacyGroupNumber ?? ''}
+            onChange={e => {
+              const n = parseInt(e.target.value, 10)
+              setDraft({ ...draft, legacyGroupNumber: e.target.value.trim() === '' || Number.isNaN(n) ? undefined : n })
+            }} />
+          <p className="text-xs text-gray-500 mt-1">
+            Üresen hagyva a rendszer a következő szabad sorszámot adja. A kódot automatikusan generálja
+            {/* eslint-disable-next-line i18next/no-literal-string */}
+            {' '}a sorszámból (pl. <span className="font-mono">GROUP_03</span>).
+          </p>
         </div>
         <div>
           <label className="text-sm font-medium">Csempeszín</label>

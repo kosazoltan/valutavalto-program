@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, ArrowDownToLine, Eraser, Trash2, Copy } from 'lucide-react'
+import { AlertTriangle, ArrowDownToLine, Eraser, Trash2, Copy, RefreshCw } from 'lucide-react'
 import { formatDecimal } from '../../../utils/numberFormat'
 import { useGridNavigation } from '../../../hooks/useGridNavigation'
 import type { WorkgroupDetailDTO } from '../../../services/api/index'
@@ -21,6 +21,22 @@ const EDITABLE_FIELDS: GridField[] = [
 // FK02-B / FR-6..10: a kedvezménysáv-oszlopok indexei az EDITABLE_FIELDS-ben (N–S, azaz limit1–3
 // vétel/eladás) — a „Sávok törlése" toolbar-művelet ezeket üríti, a fő L/M (buy/sell) érintetlenül.
 const BAND_COL_INDICES = [2, 3, 4, 5, 6, 7] as const
+
+// FK02-E (FR-10 / NFR-3): megjelenítési tizedesek — JPY 4, minden más valuta 2 tizedes.
+const decimalsForDisplay = (code: string): number => (code.toUpperCase() === 'JPY' ? 4 : 2)
+
+/**
+ * FK02-E (FR-10): egy fix (nem-fókuszált) cella megjelenítése a valuta tizedes-szabálya szerint.
+ * A tárolt nyers értéket (string, magyar vagy pontos tizedes) számra alakítja, majd a megjelenítési
+ * tizedesekre formázza. Üres marad üres. A fókuszált cellát a hívó a (teljes precizitású) bufferrel
+ * mutatja, hogy a szerkesztés ne veszítsen pontosságot.
+ */
+function formatCellDisplay(raw: string, code: string): string {
+  const t = raw.trim()
+  if (t === '') return ''
+  const dd = decimalsForDisplay(code)
+  return formatDecimal(parseNum(t), dd, dd)
+}
 
 interface GridCoord {
   row: number
@@ -57,6 +73,12 @@ interface RateGridProps {
   onCopyToGroups?: (cells: Array<{ currencyId: number; field: WgField; raw: string }>) => void
   /** FK02-B: szerkesztési jog — a kijelölés-toolbar csak írásjoggal jelenik meg. */
   canEdit?: boolean
+  /**
+   * FK02-E (FR-13, FR-14): a szétküldés (szinkron) AKTÍV idejére zárolja a táblázatot — egy
+   * overlay blokkolja a szerkesztést és visszajelez. A zárolás KIZÁRÓLAG a szinkron műveletre
+   * korlátozódik; annak befejeztével (publishing → false) azonnal feloldódik (a cellák szerkeszthetők).
+   */
+  syncing?: boolean
 }
 
 export default function RateGrid({
@@ -71,6 +93,7 @@ export default function RateGrid({
   onBulkApply,
   onCopyToGroups,
   canEdit = true,
+  syncing = false,
 }: RateGridProps) {
   const { t } = useTranslation()
   const { containerRef, activeCell, getCellProps } = useGridNavigation({
@@ -302,7 +325,17 @@ export default function RateGrid({
 
   // 2026-04-29 v2.3.13 (Árfolyamkészítés zoom-fit): 17 valuta sor scrollozás nélkül.
   return (
-    <div ref={containerRef} className="flex-1 bg-white rounded shadow-sm border overflow-hidden flex flex-col min-w-0">
+    <div ref={containerRef} className="relative flex-1 bg-white rounded shadow-sm border overflow-hidden flex flex-col min-w-0">
+      {/* FK02-E (FR-14): a szétküldés (szinkron) idejére zároló overlay — blokkolja a szerkesztést
+          és egyértelmű visszajelzést ad. A szinkron befejeztével (FR-13) azonnal eltűnik. */}
+      {syncing && (
+        <div className="absolute inset-0 z-40 bg-white/60 backdrop-blur-[1px] flex items-center justify-center">
+          <div className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-md shadow-lg text-sm font-semibold">
+            <RefreshCw size={16} className="animate-spin" />
+            Szinkronizálás folyamatban, kérjük várjon…
+          </div>
+        </div>
+      )}
       <div className="overflow-auto flex-1">
         <table className={`w-full text-xs border-collapse ${isRangeDrag ? 'select-none' : ''}`}>
           <thead className="sticky top-0 z-20">
@@ -324,21 +357,23 @@ export default function RateGrid({
             </tr>
             <tr className="bg-green-700 text-white text-[10px] leading-none">
               {/* FK-04/C: oszlop-betűk (J–S) a fejlécben — a képletírás ezekre hivatkozik (pl. "L", "#02M", "!FEUR"). */}
-              <th className="px-1 py-0 text-left w-14 border-r border-green-500"><span className="text-yellow-300 font-bold">J</span> MNB</th>
+              <th className="px-1 py-0 text-left w-16 border-r border-green-500"><span className="text-yellow-300 font-bold">J</span> MNB</th>
               <th className="px-1 py-0 w-4 border-r border-green-500"></th>
-              <th className="px-1 py-0 w-10 border-r border-green-500 font-bold"><span className="text-yellow-300">K</span> {t('common.code')}</th>
-              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">L</span> {t('rates.vet')}</th>
-              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">M</span> {t('rates.elad')}</th>
-              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">N</span> {t('rates.v')}</th>
-              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">O</span> E-</th>
-              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">P</span> {t('rates.v')}</th>
-              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">Q</span> E-</th>
-              <th className="px-1 py-0 w-[72px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">R</span> {t('rates.vmax')}</th>
-              <th className="px-1 py-0 w-[72px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">S</span> {t('rates.emin')}</th>
+              <th className="px-1 py-0 w-12 border-r border-green-500 font-bold"><span className="text-yellow-300">K</span> {t('common.code')}</th>
+              <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">L</span> {t('rates.vet')}</th>
+              <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">M</span> {t('rates.elad')}</th>
+              <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">N</span> {t('rates.v')}</th>
+              <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">O</span> E-</th>
+              <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">P</span> {t('rates.v')}</th>
+              <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">Q</span> E-</th>
+              <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">R</span> {t('rates.vmax')}</th>
+              <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">S</span> {t('rates.emin')}</th>
               <th className="px-1 py-0 text-yellow-200">{t('common.error')}</th>
             </tr>
           </thead>
-          <tbody className="text-[10.5px] leading-none">
+          {/* FK02-E (FR-11): nagyobb, olvashatóbb cella-betűméret (~+20%). A táblázat scrollozható
+              (overflow-auto), így a megnövelt méret nem töri a layoutot. */}
+          <tbody className="text-[12.5px] leading-tight">
             {rates.map((r, idx) => {
               const buy = parseNum(r.buyRate)
               const sell = parseNum(r.sellRate)
@@ -356,17 +391,21 @@ export default function RateGrid({
                     const jHasFormula = !!formulas[jKey]
                     const jErr = cellErrors[jKey]
                     const jActive = jRow === idx
-                    const jDisplay = jActive ? jBuffer : (r.officialRate ? formatDecimal(r.officialRate, 2, 4) : '')
+                    // FK02-E (FR-10): a J (elszámoló) megjelenítése a valuta tizedes-szabálya szerint
+                    // (JPY 4, többi 2); fókuszban a teljes precizitású buffer.
+                    const jDd = decimalsForDisplay(r.currencyCode)
+                    // Copilot: null/undefined ellenőrzés (NEM truthy) — egy érvényes 0 override is megjelenjen.
+                    const jDisplay = jActive ? jBuffer : (r.officialRate != null ? formatDecimal(r.officialRate, jDd, jDd) : '')
                     return (
                       <td className="px-0 py-0 text-right border-r relative">
                         <input
                           type="text"
                           value={jDisplay}
-                          onFocus={() => { setJRow(idx); setJBuffer(formulas[jKey] ?? (r.officialRate ? String(r.officialRate) : '')) }}
+                          onFocus={() => { setJRow(idx); setJBuffer(formulas[jKey] ?? (r.officialRate != null ? String(r.officialRate) : '')) }}
                           onChange={e => setJBuffer(e.target.value)}
                           onBlur={() => { if (onCommitCell) onCommitCell(idx, 'officialRate', jBuffer); setJRow(null) }}
                           title={jHasFormula ? `Elszámoló (J) képlet: ${formulas[jKey]}${jErr ? ` — HIBA: ${jErr}` : ''}` : 'Elszámoló árfolyam (J) — felülírható; üres = a 0-s lap A oszlopa'}
-                          className={`w-full px-0.5 py-0 text-right font-mono text-[11px] text-blue-800 font-bold border-0 bg-transparent focus:bg-blue-50 focus:outline-none ${jHasFormula && !jActive ? 'bg-indigo-50' : ''} ${jErr ? 'ring-2 ring-red-400 ring-inset' : ''}`}
+                          className={`w-full px-0.5 py-0.5 text-right font-mono text-[13px] text-blue-800 font-bold border-0 bg-transparent focus:bg-blue-50 focus:outline-none ${jHasFormula && !jActive ? 'bg-indigo-50' : ''} ${jErr ? 'ring-2 ring-red-400 ring-inset' : ''}`}
                         />
                         {jHasFormula && !jActive && (
                           <span className="absolute left-0 top-0 text-[7px] text-indigo-500 font-bold pointer-events-none">ƒ</span>
@@ -378,7 +417,7 @@ export default function RateGrid({
                     {r.modified && <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-400" />}
                     {isInvalid && <AlertTriangle size={9} className="text-red-500 inline" />}
                   </td>
-                  <td className="px-1 py-0 text-center font-bold text-blue-700 border-r text-[11px]">
+                  <td className="px-1 py-0 text-center font-bold text-blue-700 border-r text-[12.5px]">
                     {r.currencyCode}
                   </td>
                   {EDITABLE_FIELDS.map((field, colIdx) => {
@@ -391,8 +430,9 @@ export default function RateGrid({
                     const key = `${r.currencyId}.${field}`
                     const hasFormula = !!formulas[key]
                     const cellError = cellErrors[key]
-                    // A fókuszált cella a buffert (képlet/nyers) mutatja; a többi a számított értéket.
-                    const display = isActive ? buffer : r[field]
+                    // A fókuszált cella a buffert (képlet/nyers) mutatja; a többi a számított értéket
+                    // a valuta tizedes-szabálya szerint formázva (FK02-E FR-10: JPY 4, többi 2).
+                    const display = isActive ? buffer : formatCellDisplay(r[field], r.currencyCode)
                     const formulaBg = hasFormula && !isActive ? 'bg-indigo-50' : ''
                     const errorRing = cellError ? 'ring-2 ring-red-400 ring-inset' : ''
                     const commit = (raw: string) => {
@@ -417,7 +457,7 @@ export default function RateGrid({
                           }}
                           onBlur={() => { if (isActive) commit(buffer) }}
                           title={hasFormula ? `Képlet: ${formulas[key]}${cellError ? ` — HIBA: ${cellError}` : ''}` : cellError}
-                          className={`w-full px-0.5 py-0 text-right font-mono text-[11px] ${colorClass} font-bold border-0 bg-transparent ${focusBg} focus:outline-none ${activeBorder} ${formulaBg} ${errorRing}`}
+                          className={`w-full px-0.5 py-0.5 text-right font-mono text-[13px] ${colorClass} font-bold border-0 bg-transparent ${focusBg} focus:outline-none ${activeBorder} ${formulaBg} ${errorRing}`}
                         />
                         {hasFormula && !isActive && (
                           <span className="absolute left-0.5 top-0 text-[7px] text-indigo-500 font-bold pointer-events-none" title={`Képlet: ${formulas[key]}`}>ƒ</span>

@@ -16,6 +16,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -133,6 +134,53 @@ class RateWorkgroupServiceTest {
             RateWorkgroup saved = service.create(wg);
 
             assertThat(saved.getCode()).isEqualTo("DEFAULT");
+        }
+    }
+
+    @Test
+    @DisplayName("FK02-E FR-1/FR-2: kód+sorszám nélkül a szerver a TELJES scope (aktív+inaktív) max+1-ét osztja ki")
+    void create_autoAssignsSequenceOverActiveAndInactive() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            Company company = new Company();
+            company.setId(COMPANY_ID);
+            // 1,2 aktív + 5 INAKTÍV (soft-deleted) — a max+1 = 6 (nem 3), különben ütközne az
+            // inaktív 5-ös foglalt sorszámával a V296 unique indexen (a felhasználó hibát látna).
+            RateWorkgroup a = RateWorkgroup.builder().legacyGroupNumber(1).active(true).build();
+            RateWorkgroup b = RateWorkgroup.builder().legacyGroupNumber(2).active(true).build();
+            RateWorkgroup deleted = RateWorkgroup.builder().legacyGroupNumber(5).active(false).build();
+            when(workgroupRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of(a, b, deleted));
+            when(workgroupRepository.findByCompanyIdAndLegacyGroupNumber(COMPANY_ID, 6)).thenReturn(Optional.empty());
+            when(workgroupRepository.findByCompanyIdAndCode(COMPANY_ID, "GROUP_06")).thenReturn(Optional.empty());
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(workgroupRepository.save(any(RateWorkgroup.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            // Az új frontend flow: se kód, se sorszám.
+            RateWorkgroup wg = RateWorkgroup.builder().name("Új csoport").code("").build();
+            RateWorkgroup saved = service.create(wg);
+
+            assertThat(saved.getLegacyGroupNumber()).isEqualTo(6);
+            assertThat(saved.getCode()).isEqualTo("GROUP_06");
+        }
+    }
+
+    @Test
+    @DisplayName("FK02-E: első csoport (üres scope) → sorszám 1")
+    void create_autoAssignsFirstSequence() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            Company company = new Company();
+            company.setId(COMPANY_ID);
+            when(workgroupRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of());
+            when(workgroupRepository.findByCompanyIdAndLegacyGroupNumber(COMPANY_ID, 1)).thenReturn(Optional.empty());
+            when(workgroupRepository.findByCompanyIdAndCode(COMPANY_ID, "GROUP_01")).thenReturn(Optional.empty());
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(workgroupRepository.save(any(RateWorkgroup.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            RateWorkgroup saved = service.create(RateWorkgroup.builder().name("Első").code("").build());
+
+            assertThat(saved.getLegacyGroupNumber()).isEqualTo(1);
+            assertThat(saved.getCode()).isEqualTo("GROUP_01");
         }
     }
 

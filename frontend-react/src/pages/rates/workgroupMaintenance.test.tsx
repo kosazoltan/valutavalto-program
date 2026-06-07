@@ -34,11 +34,14 @@ describe('workgroupMaintenance — WorkgroupEditor', () => {
     return <WorkgroupEditor mode={mode} draft={draft} setDraft={setDraft} onSave={() => {}} onCancel={() => {}} />
   }
 
-  it('create módban szerkeszthető a kód, rename módban zárolt', () => {
+  it('FK02-E (FR-1): a Kód mező NEM jelenik meg (a rendszer generálja a sorszámból)', () => {
     const { rerender } = render(<Harness mode="create" />)
-    expect(screen.getByPlaceholderText('pl. WG01')).not.toBeDisabled()
+    // A korábbi „pl. WG01" kód-input megszűnt; helyette a sorszámból generálódik a kód.
+    expect(screen.queryByPlaceholderText('pl. WG01')).toBeNull()
+    expect(screen.queryByText('Kód')).toBeNull()
+    expect(screen.getByText('Sorszám')).toBeInTheDocument()
     rerender(<Harness mode="rename" />)
-    expect(screen.getByPlaceholderText('pl. WG01')).toBeDisabled()
+    expect(screen.queryByPlaceholderText('pl. WG01')).toBeNull()
   })
 
   it('a szín-paletta választása frissíti a draftot (ring a kiválasztotton)', () => {

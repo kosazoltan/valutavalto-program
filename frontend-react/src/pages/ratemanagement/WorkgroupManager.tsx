@@ -65,8 +65,10 @@ export default function WorkgroupManager() {
 
   const openCreate = () => {
     setEditorMode('create')
-    setDraft({ name: '', code: '', legacyGroupNumber: undefined, active: true, tileColor: DEFAULT_TILE.key,
-      limit1Boundary: null, limit2Boundary: null, limit3Boundary: null })
+    // FK02-E (FR-1, FR-2): a kódot ÉS (üres esetén) a sorszámot a szerver osztja ki a teljes
+    // cég-scope alapján (inaktív csoportok sorszámát is figyelembe véve) → nincs ütközési hiba.
+    setDraft({ name: '', code: '', legacyGroupNumber: undefined, active: true,
+      tileColor: DEFAULT_TILE.key, limit1Boundary: null, limit2Boundary: null, limit3Boundary: null })
     setEditorOpen(true)
   }
 
@@ -81,8 +83,9 @@ export default function WorkgroupManager() {
   }
 
   const saveEditor = async () => {
-    if (!draft.name.trim() || !draft.code.trim()) {
-      setError('A név és a kód megadása kötelező.')
+    // FK02-E (FR-1): a kód és (üres esetén) a sorszám a szerveren képződik — csak a név kötelező.
+    if (!draft.name.trim()) {
+      setError('A név megadása kötelező.')
       return
     }
     try {

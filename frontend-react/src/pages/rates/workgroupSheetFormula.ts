@@ -9,7 +9,9 @@
  *                      (A `D` az ISO-kód címke, nem hivatkozható numerikusan.)
  *  - `J`–`S`         → az AKTUÁLIS munkacsoport adott oszlopa, az aktuális valuta sorában (self, wg).
  *                      (A `K` az ISO-kód, nem hivatkozható numerikusan.)
- *  - `!<oszlop><KÓD>`→ másik valuta adott oszlopa a 0-s lapon. Pl. `!FEUR` = EUR F oszlopa.
+ *  - `!<oszlop A–I><KÓD>`→ másik valuta adott oszlopa a 0-s lapon. Pl. `!FEUR` = EUR F oszlopa.
+ *  - `!<oszlop J–S><KÓD>`→ másik valuta adott oszlopa az AKTUÁLIS munkacsoportban (FK02-E FR-4).
+ *                      Pl. `!MEUR` = az aktuális csoport EUR sorának M (eladás) oszlopa.
  *  - `#<NN><oszlop>` → másik munkacsoport (NN = kétjegyű sorszám) J–S oszlopa, az aktuális
  *                      valuta sorában. Pl. `#01L` = a 01-es csoport L oszlopa.
  *  - Műveletek: `+ - * /` és zárójel.
@@ -46,6 +48,12 @@ export interface WorkgroupFormulaContext {
   workgroupSelf: WgValues
   /** Csoportsorszám → aktuális valuta J–S oszlop-értékei — a `#NN<oszlop>` hivatkozásokhoz. */
   workgroupsByNumber: Map<number, WgValues>
+  /**
+   * FK02-E (FR-4): valutakód → AKTUÁLIS munkacsoport J–S oszlop-értékei — a `!<J–S oszlop><KÓD>`
+   * kereszt-valuta (azonos csoport) hivatkozáshoz, pl. `!MEUR`. Opcionális: a régi hívók/tesztek
+   * nem adják meg, ekkor a wg-oszlopos kereszt-hivatkozás „ismeretlen valuta" hibát ad.
+   */
+  workgroupByCurrency?: Map<string, WgValues>
 }
 
 export type WorkgroupFormulaRef =
@@ -53,6 +61,7 @@ export type WorkgroupFormulaRef =
   | { kind: 'sheet0Cross'; currency: string; col: Sheet0Col }
   | { kind: 'wgSelf'; col: WgCol }
   | { kind: 'wgCross'; group: number; col: WgCol }
+  | { kind: 'wgCrossCurrency'; currency: string; col: WgCol }
 
 export type EvalResult = { value: number } | { error: string }
 
@@ -86,6 +95,7 @@ type Token =
   | { kind: 'sheet0Cross'; currency: string; col: Sheet0Col }
   | { kind: 'wgSelf'; col: WgCol }
   | { kind: 'wgCross'; group: number; col: WgCol }
+  | { kind: 'wgCrossCurrency'; currency: string; col: WgCol }
   | { kind: 'op'; op: '+' | '-' | '*' | '/' }
   | { kind: 'lparen' }
   | { kind: 'rparen' }
@@ -114,17 +124,21 @@ function tokenize(input: string): Token[] {
       i = j
       continue
     }
-    // kereszt-valuta a 0-s lapon: !<oszlop A–I><VALUTAKÓD>
+    // kereszt-valuta: !<oszlop><VALUTAKÓD>. Az A–I oszlop a 0-s lapra (sheet0Cross), a J–S oszlop
+    // az AKTUÁLIS munkacsoportra (wgCrossCurrency, FK02-E FR-4 — pl. !MEUR = EUR M oszlopa) hivatkozik.
     if (ch === '!') {
       const colCh = s[i + 1]?.toUpperCase()
-      if (!colCh || !isSheet0Col(colCh)) {
-        throw new TokenizeError(`Érvénytelen kereszt-hivatkozás (oszlop A–I, a D ISO-kód kizárva): ${s.slice(i, i + 2)}`)
+      const isSheet0 = !!colCh && isSheet0Col(colCh)
+      const isWg = !!colCh && isWgCol(colCh) && colCh !== 'K' // a K (ISO kód) nem hivatkozható
+      if (!colCh || (!isSheet0 && !isWg)) {
+        throw new TokenizeError(`Érvénytelen kereszt-hivatkozás (oszlop A–I vagy J–S; a D/K kód kizárva): ${s.slice(i, i + 2)}`)
       }
       let j = i + 2
       while (j < s.length && /[A-Za-z0-9]/.test(s[j]!)) j++
       const currency = s.slice(i + 2, j).toUpperCase()
       if (currency.length === 0) throw new TokenizeError(`Hiányzó valutakód: ${s.slice(i, j)}`)
-      tokens.push({ kind: 'sheet0Cross', currency, col: colCh })
+      if (isSheet0) tokens.push({ kind: 'sheet0Cross', currency, col: colCh as Sheet0Col })
+      else tokens.push({ kind: 'wgCrossCurrency', currency, col: colCh as WgCol })
       i = j
       continue
     }
@@ -163,7 +177,7 @@ function tokenize(input: string): Token[] {
 }
 
 function resolveRef(
-  token: Extract<Token, { kind: 'sheet0Self' | 'sheet0Cross' | 'wgSelf' | 'wgCross' }>,
+  token: Extract<Token, { kind: 'sheet0Self' | 'sheet0Cross' | 'wgSelf' | 'wgCross' | 'wgCrossCurrency' }>,
   ctx: WorkgroupFormulaContext,
 ): number {
   switch (token.kind) {
@@ -193,6 +207,15 @@ function resolveRef(
       if (v === undefined || v === null) {
         throw new ParseError(`Nincs érték: #${String(token.group).padStart(2, '0')}${token.col}`)
       }
+      return v
+    }
+    case 'wgCrossCurrency': {
+      // FK02-E (FR-4): másik valuta J–S oszlopa az AKTUÁLIS csoportban (pl. !MEUR).
+      if (token.col === 'K') throw new ParseError('A K oszlop (ISO kód) nem hivatkozható')
+      const row = ctx.workgroupByCurrency?.get(token.currency)
+      if (!row) throw new ParseError(`Ismeretlen valuta a csoportban: ${token.currency}`)
+      const v = row[token.col]
+      if (v === undefined || v === null) throw new ParseError(`Nincs érték: !${token.col}${token.currency}`)
       return v
     }
   }
@@ -234,7 +257,8 @@ function evalTokens(tokens: Token[], ctx: WorkgroupFormulaContext): number {
     if (t.kind === 'op' && t.op === '-') { next(); return -parseFactor() }
     if (t.kind === 'op' && t.op === '+') { next(); return parseFactor() }
     if (t.kind === 'num') { next(); return t.value }
-    if (t.kind === 'sheet0Self' || t.kind === 'sheet0Cross' || t.kind === 'wgSelf' || t.kind === 'wgCross') {
+    if (t.kind === 'sheet0Self' || t.kind === 'sheet0Cross' || t.kind === 'wgSelf'
+        || t.kind === 'wgCross' || t.kind === 'wgCrossCurrency') {
       next(); return resolveRef(t, ctx)
     }
     if (t.kind === 'lparen') {
@@ -315,7 +339,10 @@ export function replaceFormulaCurrency(formula: string, fromCode: string, toCode
   // isSheet0Col dönti el (SHEET0_COLS: A,B,C,E,F,G,H,I — a D ISO-kód kizárva, a tokenizerrel egyezően).
   return formula.replace(/!([A-Za-z])([A-Za-z0-9]+)/g, (match, col: string, code: string) => {
     const upCol = col.toUpperCase()
-    if (!isSheet0Col(upCol)) return match // pl. !D… vagy érvénytelen oszlop → érintetlen (a parser hibázik rajta)
+    // A–I (0-s lap) ÉS J–S (FK02-E: aktuális csoport, másik valuta) kereszt-hivatkozás cserélhető.
+    // A K (ISO kód) és érvénytelen oszlop érintetlen (a parser hibázik rajta).
+    const validCol = isSheet0Col(upCol) || (isWgCol(upCol) && upCol !== 'K')
+    if (!validCol) return match
     return code.toUpperCase() === from ? `!${col}${to}` : match
   })
 }
@@ -334,6 +361,7 @@ export function extractWorkgroupDependencies(formula: string): WorkgroupFormulaR
     else if (t.kind === 'sheet0Cross') refs.push({ kind: 'sheet0Cross', currency: t.currency, col: t.col })
     else if (t.kind === 'wgSelf') refs.push({ kind: 'wgSelf', col: t.col })
     else if (t.kind === 'wgCross') refs.push({ kind: 'wgCross', group: t.group, col: t.col })
+    else if (t.kind === 'wgCrossCurrency') refs.push({ kind: 'wgCrossCurrency', currency: t.currency, col: t.col })
   }
   return refs
 }
