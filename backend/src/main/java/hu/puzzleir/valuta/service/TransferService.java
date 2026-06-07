@@ -84,6 +84,7 @@ public class TransferService {
 
         Transfer transfer = Transfer.builder()
                 .transferNumber(transferNumber)
+                .companyId(companyId)
                 .fromBranch(fromBranch)
                 .toBranch(toBranch)
                 .fromWorker(fromWorker)
@@ -286,6 +287,12 @@ public class TransferService {
         }
         if (Boolean.TRUE.equals(transfer.getIsCancelled())) {
             throw new ConflictException("VV-TX-003: Ez a bizonylat már sztornózva van: " + transfer.getTransferNumber());
+        }
+        // Csak véglegesített (COMPLETED) bizonylat sztornózható — a PENDING/IN_TRANSIT-et a /cancel kezeli
+        // (API-megkerülés elleni védelem; a UI is csak COMPLETED-en mutatja a sztornó gombot).
+        if (transfer.getStatus() != Transfer.TransferStatus.COMPLETED) {
+            throw new ValidationException(
+                    "Csak véglegesített (lezárt) átadás-átvétel bizonylat sztornózható. Függőben lévő bizonylatot a törlés (cancel) kezel.");
         }
 
         transfer.setIsCancelled(true);
@@ -668,11 +675,13 @@ public class TransferService {
      * FK-005/B2+B3: átadólap-sorszám a spec szerint — átadás/átvétel + valuta/HUF szerint
      * külön prefixszel, gap-mentes szekvenciával:
      * <ul>
-     *   <li>valuta átadás  → {@code F<branch><6jegy>}  pl. F020000001</li>
-     *   <li>valuta átvétel → {@code U<branch><6jegy>}  pl. U020000001</li>
-     *   <li>HUF átadás     → {@code FF<branch><6jegy>} pl. FF020000001</li>
-     *   <li>HUF átvétel    → {@code UF<branch><6jegy>} pl. UF020000001</li>
+     *   <li>deviza átadás  → {@code AT-NNNNNN}  pl. AT-000001</li>
+     *   <li>deviza átvétel → {@code AV-NNNNNN}  pl. AV-000001</li>
+     *   <li>HUF átadás     → {@code FF-NNNNNN}  pl. FF-000001</li>
+     *   <li>HUF átvétel    → {@code UF-NNNNNN}  pl. UF-000001</li>
      * </ul>
+     * CÉGSZINTŰ folyamatos sorszám (NEM pénztáranként, NEM dátum-alapú); egyediség: cégszintű MAX+1
+     * + a (company_id, transfer_number) COMPOSITE UNIQUE (V299). Két cég azonos sorszáma megengedett.
      * Az átadás/átvétel az üzleti irányból: {@code U} (Vevő) = átvétel; minden más (F/UF/FF)
      * = átadás — a "mindkét-irány" és "korrekció" edge-case az átadás-családba (Kósa Zoltán
      * döntés, 2026-05-25). A branch-szám a forrásfiók kódjának numerikus része (BR020 → 020).

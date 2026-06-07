@@ -67,6 +67,7 @@ public class TransferController {
 
     /** Sztornó bizonylat előnézet-adatai (FR-15): eredeti adatok + indoklás + {@code <eredeti>-SZ} sorszám. */
     @GetMapping("/{id}/storno-preview")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TransferDto> stornoPreview(@PathVariable Long id) {
         return ResponseEntity.ok(transferService.getStornoPreview(id));
     }

@@ -386,6 +386,24 @@ class TransferServiceTest {
     }
 
     @Test
+    @DisplayName("Sztornó: nem véglegesített (PENDING) bizonylat → ValidationException (a /cancel kezeli)")
+    void testStorno_pending_rejected() {
+        UUID companyId = UUID.randomUUID();
+        Transfer transfer = buildStornoTarget(companyId);
+        transfer.setStatus(Transfer.TransferStatus.PENDING);
+        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+
+        try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            assertThatThrownBy(() -> service.storno(50L, "indok"))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("véglegesített");
+            verify(transferRepository, never()).save(any());
+        }
+    }
+
+    @Test
     @DisplayName("FR: már sztornózott bizonylat újra-sztornózása → ConflictException (409, VV-TX-003)")
     void testStorno_alreadyCancelled_409() {
         UUID companyId = UUID.randomUUID();

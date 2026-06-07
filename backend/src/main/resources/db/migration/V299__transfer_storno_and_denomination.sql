@@ -29,3 +29,15 @@ CREATE TABLE IF NOT EXISTS transfer_denomination (
 
 CREATE INDEX IF NOT EXISTS idx_transfer_denomination_transfer ON transfer_denomination (transfer_id);
 CREATE INDEX IF NOT EXISTS idx_transfer_denomination_company ON transfer_denomination (company_id);
+
+-- 3) CÉGSZINTŰ sorszám-egyediség. A cégszintű folyamatos AT/AV/FF/UF-NNNNNN sorszám miatt KÉT cég
+--    azonos sorszámot kaphat (pl. mindkettő AT-000001) — ez a tenant-szintű szekvencia szándékos
+--    következménye. A `transfer` táblán azonban a `transfer_number` eddig GLOBÁLIS UNIQUE volt (V63),
+--    ami a második cég azonos sorszámán bukna. Ezért: company_id oszlop (backfill a from_branch cégéből),
+--    a globális UNIQUE eldobása, és egy (company_id, transfer_number) COMPOSITE UNIQUE.
+--    A régi sorszámok (F020…) globálisan egyediek voltak, így a composite egyediség rájuk is teljesül.
+ALTER TABLE transfer ADD COLUMN IF NOT EXISTS company_id UUID;
+UPDATE transfer t SET company_id = b.company_id
+  FROM branch b WHERE t.from_branch_id = b.id AND t.company_id IS NULL;
+ALTER TABLE transfer DROP CONSTRAINT IF EXISTS transfer_transfer_number_key;
+ALTER TABLE transfer ADD CONSTRAINT uq_transfer_company_number UNIQUE (company_id, transfer_number);
