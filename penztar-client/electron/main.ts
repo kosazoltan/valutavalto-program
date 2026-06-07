@@ -61,6 +61,8 @@ import {
   type PendingConversionInputV2,
   savePendingBankTransaction,
   savePendingStorno,
+  savePendingTransferStorno,
+  getPendingTransferStornos,
   getPendingTransactions,
   getPendingTransactionRefById,
   getPendingTransferRefById,
@@ -600,6 +602,19 @@ ipcMain.handle('save-pending-storno', async (_event, payload: {
 
 ipcMain.handle('get-pending-stornos', async (): Promise<ReturnType<typeof getPendingStornos>> => {
   return getPendingStornos();
+});
+
+// Offline átadás-átvétel SZTORNÓ (internetkimaradáskor): queue → sync → backend visszafordítás.
+ipcMain.handle('save-pending-transfer-storno', async (_event, payload: {
+  transferId: number;
+  transferNumber?: string | null;
+  reason: string;
+}): Promise<number> => {
+  return savePendingTransferStorno(payload);
+});
+
+ipcMain.handle('get-pending-transfer-stornos', async (): Promise<ReturnType<typeof getPendingTransferStornos>> => {
+  return getPendingTransferStornos();
 });
 
 // Fizikai ujranyomtatas (Codex P2 #1035): a mar szinkronizalt (synced = 1) bizonylatok

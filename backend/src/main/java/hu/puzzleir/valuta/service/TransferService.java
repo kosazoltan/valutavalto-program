@@ -295,10 +295,23 @@ public class TransferService {
                     "Csak véglegesített (lezárt) átadás-átvétel bizonylat sztornózható. Függőben lévő bizonylatot a törlés (cancel) kezel.");
         }
 
+        // A sztornózó dolgozó (az ellentételező tranzakciókhoz).
+        Worker actor = workerRepository.findById(SecurityUtils.getCurrentWorkerId())
+                .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található"));
+
         transfer.setIsCancelled(true);
         transfer.setCancelledAt(LocalDateTime.now());
         transfer.setCancellationReason(reason);
-        transfer.setCancelledBy(SecurityUtils.getCurrentWorkerId());
+        transfer.setCancelledBy(actor.getId());
+
+        // FIZIKAI KÉSZLET-VISSZAFORDÍTÁS: az eredeti (COMPLETED) átadás-átvétel készletmozgását
+        // visszafordítjuk (a készpénz visszakerül/kikerül), ellentételező TRANSFER tranzakciókkal.
+        // Ha a visszafordítandó összeg már nincs meg a fogadó kasszában, a (negatív-védett) helper
+        // hibát dob → a teljes sztornó rollbackel (a bizonylat nem-sztornózott marad, tiszta hibával).
+        Transfer.TransferDirection dir = transfer.getDirection() != null
+                ? transfer.getDirection() : Transfer.TransferDirection.UF;
+        reverseCounterTransactions(transfer, actor, dir);
+
         transferRepository.save(transfer);
 
         // Audit (FR/NFR-8): VV-TX-002, action=STORNO, entity=TransferRequest.
@@ -457,6 +470,85 @@ public class TransferService {
                 log.info("FF mód — {} sor 2x TRANSFER_OUT: {}", bookLines.size(), transfer.getTransferNumber());
             }
         }
+    }
+
+    /**
+     * SZTORNÓ — az EREDETI (COMPLETED) átadás-átvétel készletmozgásának FIZIKAI visszafordítása.
+     * Az eredeti net cash-hatás negálása irányonként, soronként, cash-lock-kal (deadlock-safe), és
+     * ellentételező TRANSFER tranzakciók (referencia: {@code <sorszám>-SZ}) az audit/készlet-invariánshoz.
+     * <ul>
+     *   <li>F/UF (átadás):  fromBranch += , toBranch -=  (a készpénz VISSZAKERÜL a feladóhoz)</li>
+     *   <li>U   (átvétel):  fromBranch -=                (a készpénz KIKERÜL a fogadóból)</li>
+     *   <li>FF  (korrekció): fromBranch += , toBranch += (a két kivét visszafordítása)</li>
+     * </ul>
+     */
+    private void reverseCounterTransactions(Transfer transfer, Worker actor, Transfer.TransferDirection direction) {
+        final java.util.List<TransferLine> bookLines = effectiveLines(transfer);
+        // A toBranch-et minden irány érinti a visszafordításnál, KIVÉVE az U-t (ott csak a fromBranch mozdult).
+        final boolean touchesToBranch = direction != Transfer.TransferDirection.U;
+        // PRE-LOCK ugyanabban a globális (branchId, currencyId) sorrendben, mint a create — nincs deadlock.
+        final java.util.List<hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey> lockKeys =
+                new java.util.ArrayList<>();
+        for (TransferLine ln : bookLines) {
+            Long cid = ln.getCurrency().getId();
+            lockKeys.add(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey(
+                    transfer.getFromBranch().getId(), cid));
+            if (touchesToBranch) {
+                lockKeys.add(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey(
+                        transfer.getToBranch().getId(), cid));
+            }
+        }
+        hu.puzzleir.valuta.util.CashLockOrdering.lockBranchCurrencyPairsInGlobalOrder(
+                (bid, c) -> cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(bid, c),
+                lockKeys.toArray(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey[0]));
+
+        for (TransferLine ln : bookLines) {
+            switch (direction) {
+                case F, UF -> {
+                    increaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
+                    decreaseCashBalance(transfer.getToBranch(), ln.getCurrency(), ln.getAmount());
+                    createReversalTransaction(transfer, actor, transfer.getFromBranch(), ln.getCurrency(), ln.getAmount(), TransactionType.TRANSFER_IN);
+                    createReversalTransaction(transfer, actor, transfer.getToBranch(), ln.getCurrency(), ln.getAmount(), TransactionType.TRANSFER_OUT);
+                }
+                case U -> {
+                    decreaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
+                    createReversalTransaction(transfer, actor, transfer.getFromBranch(), ln.getCurrency(), ln.getAmount(), TransactionType.TRANSFER_OUT);
+                }
+                case FF -> {
+                    increaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
+                    increaseCashBalance(transfer.getToBranch(), ln.getCurrency(), ln.getAmount());
+                    createReversalTransaction(transfer, actor, transfer.getFromBranch(), ln.getCurrency(), ln.getAmount(), TransactionType.TRANSFER_IN);
+                    createReversalTransaction(transfer, actor, transfer.getToBranch(), ln.getCurrency(), ln.getAmount(), TransactionType.TRANSFER_IN);
+                }
+            }
+        }
+        log.info("Sztornó visszafordítás kész: {} ({} sor, irány {})",
+                transfer.getTransferNumber(), bookLines.size(), direction);
+    }
+
+    /** Ellentételező (sztornó) tranzakció — a kassza-mozgást alátámasztó audit/könyvelési tétel. */
+    private void createReversalTransaction(Transfer transfer, Worker worker, Branch branch,
+                                           Currency currency, BigDecimal amount, TransactionType type) {
+        String receiptNumber = receiptSequenceService.generateReceiptNumber(branch.getId(), type);
+        Transaction tx = Transaction.builder()
+                .company(branch.getCompany())
+                .branch(branch)
+                .worker(worker)
+                .receiptNumber(receiptNumber)
+                .transactionType(type)
+                .status(TransactionStatus.COMPLETED)
+                .transactionDate(LocalDate.now())
+                .transactionTime(LocalTime.now())
+                .currency(currency)
+                .currencyAmount(amount)
+                .exchangeRate(BigDecimal.ONE)
+                .hufAmount(transfer.getHufValue() != null ? transfer.getHufValue() : BigDecimal.ZERO)
+                .referenceNumber(transfer.getTransferNumber() + "-SZ")
+                .notes(String.format("Sztornó visszafordítás: %s [%s]",
+                        transfer.getTransferNumber(), transfer.getCancellationReason()))
+                .build();
+        transactionRepository.save(tx);
+        log.debug("Sztornó ellentételező tx: {} {} {} @ {}", type, currency.getCode(), amount, branch.getCode());
     }
 
     /**

@@ -32,7 +32,7 @@ import {
   recordLocalAuditEvent,
   saveAndSyncPendingTransfer,
 } from '../../utils/electronTransactions'
-import { getLocalPendingTransfers, getCompanyType } from '../../utils/localQueue'
+import { getLocalPendingTransfers, getCompanyType, queueOfflineTransferStorno } from '../../utils/localQueue'
 import { useTranslation } from 'react-i18next'
 import SupervisorPinModal from '../../components/auth/SupervisorPinModal'
 import { ReceiptPreviewModal } from '../../components/electron'
@@ -610,6 +610,46 @@ export default function TransferPage() {
       setShowReceiptModal(true) // FR-16: a sztornó bizonylat azonnal nyomtatható
       await loadData()
     } catch (err) {
+      // OFFLINE (internetkimaradás): queue-oljuk a sztornót — a backend a szinkronkor fordítja
+      // vissza a készletet (a tranzakció-sztornóval azonos minta). A bizonylat-előnézet a memóriából.
+      const e = err as { response?: unknown; code?: string }
+      const networkErr = !e?.response || e?.code === 'ERR_NETWORK'
+      const target = stornoTarget
+      if (electronQueueAvailable && networkErr && target) {
+        try {
+          const queued = await queueOfflineTransferStorno(target.id, target.transferNumber, reason)
+          if (queued) {
+            setShowStornoModal(false)
+            setStornoTarget(null)
+            setSuccess(`Sztornó helyben rögzítve (offline): ${target.transferNumber}-SZ. A szinkronizálás az internet visszatértekor folytatódik.`)
+            const vaultLabel = worker?.branchName ?? worker?.branchCode ?? '—'
+            const stornoIsReceipt = target.direction === 'U'
+            const stornoOther = `${target.toBranchCode} - ${target.toBranchName}`
+            const now = new Date()
+            setPrintReceiptData({
+              type: 'transfer',
+              companyType: getCompanyType(worker),
+              receiptNumber: `${target.transferNumber}-SZ`,
+              branchCode: stornoIsReceipt ? stornoOther : vaultLabel,
+              transferTarget: stornoIsReceipt ? vaultLabel : stornoOther,
+              transferDocType: stornoIsReceipt ? 'receipt' : 'handover',
+              cashierName: worker?.fullName ?? '',
+              date: localIsoDate(),
+              time: now.toTimeString().slice(0, 8),
+              currencyCode: target.currencyCode,
+              foreignAmount: target.amount,
+              roundedHufAmount: target.hufValue,
+              carrierName: target.carrierName,
+              sealNumber: target.sealNumber,
+              vaultAddress: target.vaultAddress,
+              isStorno: true,
+              stornoReason: reason,
+            })
+            setShowReceiptModal(true)
+            return
+          }
+        } catch { /* ha a queue-olás is bukik, az általános hiba jelzés következik */ }
+      }
       setError(getErrorMessage(err))
     } finally {
       setLoading(false)

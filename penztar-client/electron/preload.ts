@@ -303,6 +303,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }>> =>
     ipcRenderer.invoke('get-pending-stornos'),
 
+  // Offline átadás-átvétel SZTORNÓ (internetkimaradáskor): a backend fordítja vissza a készletet szinkronkor.
+  savePendingTransferStorno: (payload: { transferId: number; transferNumber?: string | null; reason: string }): Promise<number> =>
+    ipcRenderer.invoke('save-pending-transfer-storno', payload),
+  getPendingTransferStornos: (): Promise<Array<{
+    id: number;
+    transfer_id: number;
+    transfer_number: string | null;
+    reason: string;
+    local_reference_number: string | null;
+    idempotency_key: string | null;
+    created_at: string;
+    synced: number;
+  }>> =>
+    ipcRenderer.invoke('get-pending-transfer-stornos'),
+
   // Fizikai ujranyomtatas (Codex P2 #1035): mar szinkronizalt (synced = 1) bizonylatok lekerdezese,
   // hogy egy meghiusult fizikai nyomtatas utan a lokalis receiptData-bol ESC/POS-on ujra lehessen
   // nyomtatni. A `lines` oszlop (multi-line aggregalt vetel/eladas) is visszajon, igy az ujranyomtatas
