@@ -4,8 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.ratecreation.BranchListDTO;
 import hu.puzzleir.valuta.dto.ratecreation.WorkgroupDetailDTO;
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.dto.ratecreation.RateOverviewDTO;
 import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.Dictionary;
+import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.RateWorkgroup;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
@@ -123,6 +126,47 @@ class RateCreationServiceTest {
 
         assertThat(dto.getTileColor()).isNull();
         assertThat(dto.getProtectionEnabled()).isTrue();
+    }
+
+    // ===================== FK02-E: EUA (euró érme) az árfolyam-overview-ban =====================
+
+    @Test
+    @DisplayName("FK02-E (FR-3): getRateOverview beemeli az inaktiv EUA-t a rate-overview-ba")
+    void getRateOverview_includesInactiveEua() {
+        Currency eur = Currency.builder().id(1L).code("EUR").name("Euró").active(true).displayOrder(8).build();
+        Currency usd = Currency.builder().id(2L).code("USD").name("US Dollár").active(true).displayOrder(21).build();
+        Currency eua = Currency.builder().id(99L).code("EUA").name("Euró érme").active(false).displayOrder(17)
+                .maxDeviationPercent(new BigDecimal("20.00")).build();
+        // Az AKTÍV lista NEM tartalmazza az EUA-t (is_active=false) — pont ez a FR-3 gyökere.
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(eur, usd));
+        when(currencyRepository.findByCode("EUA")).thenReturn(Optional.of(eua));
+        // Nincs árfolyam → fallback ág is üres (a sor hasRate=false- szal jön vissza).
+        when(exchangeRateRepository.findActiveRatesByDate(any(), any())).thenReturn(List.<ExchangeRate>of());
+        when(exchangeRateRepository.findLatestActiveRates(any())).thenReturn(List.<ExchangeRate>of());
+
+        RateOverviewDTO overview = service.getRateOverview();
+
+        assertThat(overview.getCurrencies()).extracting(RateOverviewDTO.CurrencyRateItem::getCurrencyCode)
+                .as("az EUA-nak meg kell jelennie az árfolyam-overview-ban (FR-3)")
+                .contains("EUA");
+        RateOverviewDTO.CurrencyRateItem euaItem = overview.getCurrencies().stream()
+                .filter(c -> "EUA".equals(c.getCurrencyCode())).findFirst().orElseThrow();
+        assertThat(euaItem.isHasRate()).as("EUA-nak még nincs publikált árfolyama").isFalse();
+    }
+
+    @Test
+    @DisplayName("FK02-E (FR-3): ha az EUA torzs hianyzik, az overview nem dob hibat (csak kihagyja)")
+    void getRateOverview_eauMissing_noError() {
+        Currency eur = Currency.builder().id(1L).code("EUR").name("Euró").active(true).displayOrder(8).build();
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(eur));
+        when(currencyRepository.findByCode("EUA")).thenReturn(Optional.empty());
+        when(exchangeRateRepository.findActiveRatesByDate(any(), any())).thenReturn(List.<ExchangeRate>of());
+        when(exchangeRateRepository.findLatestActiveRates(any())).thenReturn(List.<ExchangeRate>of());
+
+        RateOverviewDTO overview = service.getRateOverview();
+
+        assertThat(overview.getCurrencies()).extracting(RateOverviewDTO.CurrencyRateItem::getCurrencyCode)
+                .containsExactly("EUR");
     }
 
     // ===================== FK02-C: Irodák listájának pénztár-szűrése =====================

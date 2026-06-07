@@ -308,6 +308,20 @@ public class RateCreationService {
         // Összes aktív valuta
         List<Currency> activeCurrencies = currencyRepository.findByActiveTrueOrderByDisplayOrderAsc();
 
+        // FK02-E (FR-3, FR-4): az EUA (euró érme) inaktív törzsadat (is_active=false, V298), hogy a
+        // pénztár / készlet / címletezés findByActiveTrue-ja érintetlen maradjon. Az árfolyamkészítő
+        // csoport-árfolyamlapján viszont meg KELL jelennie (publikálhatóan), ezért az overview-ba
+        // expliciten beemeljük, ha még nincs benne (azaz amíg EUA inaktív). A frontend a
+        // MAIN_SHEET_CURRENCY_ORDER szerint rendezi a RUB és TRY közé.
+        List<Currency> overviewCurrencies = activeCurrencies;
+        if (activeCurrencies.stream().noneMatch(c -> "EUA".equals(c.getCode()))) {
+            Optional<Currency> eua = currencyRepository.findByCode("EUA");
+            if (eua.isPresent()) {
+                overviewCurrencies = new ArrayList<>(activeCurrencies);
+                overviewCurrencies.add(eua.get());
+            }
+        }
+
         // Aktuális exchange_rate-ek (company + dátum szűrés, fallback ha nincs mai adat)
         List<ExchangeRate> currentRates = findActiveRatesWithFallback(companyId);
 
@@ -320,7 +334,7 @@ public class RateCreationService {
             }
         }
 
-        List<RateOverviewDTO.CurrencyRateItem> items = activeCurrencies.stream()
+        List<RateOverviewDTO.CurrencyRateItem> items = overviewCurrencies.stream()
                 .filter(c -> !"HUF".equals(c.getCode())) // HUF-ot kiszűrjük
                 .map(currency -> {
                     ExchangeRate rate = rateMap.get(currency.getId());

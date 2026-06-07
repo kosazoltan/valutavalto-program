@@ -7,6 +7,7 @@ import {
   tileClasses,
   WorkgroupEditor,
   ConfirmDialog,
+  nextWorkgroupSequence,
 } from './workgroupMaintenance'
 import type { RateWorkgroupSaveDTO } from '../../services/api/index'
 
@@ -34,11 +35,14 @@ describe('workgroupMaintenance — WorkgroupEditor', () => {
     return <WorkgroupEditor mode={mode} draft={draft} setDraft={setDraft} onSave={() => {}} onCancel={() => {}} />
   }
 
-  it('create módban szerkeszthető a kód, rename módban zárolt', () => {
+  it('FK02-E (FR-1): a Kód mező NEM jelenik meg (a rendszer generálja a sorszámból)', () => {
     const { rerender } = render(<Harness mode="create" />)
-    expect(screen.getByPlaceholderText('pl. WG01')).not.toBeDisabled()
+    // A korábbi „pl. WG01" kód-input megszűnt; helyette a sorszámból generálódik a kód.
+    expect(screen.queryByPlaceholderText('pl. WG01')).toBeNull()
+    expect(screen.queryByText('Kód')).toBeNull()
+    expect(screen.getByText('Sorszám')).toBeInTheDocument()
     rerender(<Harness mode="rename" />)
-    expect(screen.getByPlaceholderText('pl. WG01')).toBeDisabled()
+    expect(screen.queryByPlaceholderText('pl. WG01')).toBeNull()
   })
 
   it('a szín-paletta választása frissíti a draftot (ring a kiválasztotton)', () => {
@@ -46,6 +50,19 @@ describe('workgroupMaintenance — WorkgroupEditor', () => {
     const amber = screen.getByTitle('Borostyán')
     fireEvent.click(amber)
     expect(amber.className).toContain('ring-gray-800')
+  })
+})
+
+describe('workgroupMaintenance — nextWorkgroupSequence (FK02-E FR-1/FR-2)', () => {
+  it('üres listára 1-et ad', () => {
+    expect(nextWorkgroupSequence([])).toBe(1)
+  })
+  it('a legnagyobb sorszám + 1 (hézagok/null kihagyva)', () => {
+    expect(nextWorkgroupSequence([{ legacyGroupNumber: 1 }, { legacyGroupNumber: 5 }, { legacyGroupNumber: null }]))
+      .toBe(6)
+  })
+  it('csak null/undefined → 1', () => {
+    expect(nextWorkgroupSequence([{ legacyGroupNumber: null }, {}])).toBe(1)
   })
 })
 

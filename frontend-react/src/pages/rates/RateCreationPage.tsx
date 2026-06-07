@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AxiosError } from 'axios'
-import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock, Undo2, Redo2, Home, ArrowLeft, ShieldCheck, Shield, Pencil, Trash2, CheckCircle2, Copy } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock, Undo2, Redo2, Home, ArrowLeft, ShieldCheck, Shield, Pencil, Trash2, CheckCircle2, Copy, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import {
   rateCreationApi,
   rateWorkgroupApi,
@@ -16,6 +16,7 @@ import {
   DEFAULT_TILE,
   WorkgroupEditor,
   ConfirmDialog,
+  nextWorkgroupSequence,
   type ConfirmState,
 } from './workgroupMaintenance'
 import { FormulaSyntaxHelp, FormulaSyntaxHelpButton } from './FormulaSyntaxHelp'
@@ -137,6 +138,9 @@ export default function RateCreationPage() {
   // (`${currencyId}.${field}`). Csoportváltáskor a fix cellákat erre állítjuk vissza, mielőtt az
   // aktuális csoport override-jait rátennénk — így nincs kereszt-csoport „bleed".
   const serverRateValuesRef = useRef<Record<string, string>>({})
+  // FK02-E (FR-6, FR-9): a J (elszámoló / officialRate) szerver-alapértéke valutánként (currencyId →
+  // szám). A J cella üres (nincs override) állapotban ezt mutatja; ürítéskor erre áll vissza.
+  const serverOfficialRateRef = useRef<Record<number, number | null>>({})
   const [selectedWgIndex, setSelectedWgIndex] = useState<number>(0)
   /**
    * FK-02/03/04 (Kasza Helga / Bali Henriett 2026-05-28): a régi „bal oldali sávos"
@@ -146,6 +150,9 @@ export default function RateCreationPage() {
    * A csempére klikk azonnal megnyitja a szerkesztőt (megerősítés nélkül, docx-spec).
    */
   const [viewMode, setViewMode] = useState<'tile-list' | 'editor'>('tile-list')
+  // FK02-E (FR-12): a jobb oldali munkacsoport-panel elrejtése — így a táblázat a teljes szélességet
+  // kitölti, a számok nagyobb területen jelennek meg.
+  const [panelCollapsed, setPanelCollapsed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -244,6 +251,15 @@ export default function RateCreationPage() {
             changed = true
           }
         }
+        // FK02-E (FR-7, FR-9): a J (officialRate) override visszaállítása — mentett override, vagy a
+        // szerver-alapérték (0-s lap A). A formula-J-t a recompute effekt utólag felülírja.
+        const ofKey = `${r.currencyId}.officialRate`
+        const ofTarget = ofKey in saved ? numOrNull(saved[ofKey]!) : (serverOfficialRateRef.current[r.currencyId] ?? null)
+        if (nr.officialRate !== ofTarget) {
+          if (nr === r) nr = { ...r }
+          nr.officialRate = ofTarget
+          changed = true
+        }
         return nr
       })
       return changed ? next : prev
@@ -274,6 +290,16 @@ export default function RateCreationPage() {
               changed = true
             }
           }
+          // FK02-E (FR-7): a J (officialRate) override SQLite-first visszaállítása, ha van mentve.
+          const ofKey = `${r.currencyId}.officialRate`
+          if (ofKey in saved) {
+            const ofVal = numOrNull(saved[ofKey]!)
+            if (nr.officialRate !== ofVal) {
+              if (nr === r) nr = { ...r }
+              nr.officialRate = ofVal
+              changed = true
+            }
+          }
           return nr
         })
         return changed ? next : prev
@@ -287,6 +313,20 @@ export default function RateCreationPage() {
   useEffect(() => {
     if (selectedWg) saveGroupFormulas(selectedWg.id, formulas)
   }, [formulas, selectedWg])
+
+  // FK02-E (FR-4): az EUA sor M (eladás) oszlopának alapértelmezett képlete `!MEUR` — az aktuális
+  // csoport EUR sorának M (eladás) oszlopa. Akkor injektáljuk, ha nincs rá mentett képlet ÉS nincs
+  // fix érték-override (a felhasználó képlettel vagy értékkel felülírhatja; ürítés után visszaáll).
+  useEffect(() => {
+    if (!selectedWg) return
+    const eua = rates.find(r => r.currencyCode.toUpperCase() === 'EUA')
+    if (!eua) return
+    const key = `${eua.currencyId}.sellRate`
+    if (formulas[key]) return
+    if (key in loadGroupRateValues(selectedWg.id)) return
+    setFormulas(prev => (prev[key] ? prev : { ...prev, [key]: '!MEUR' }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- csoportváltáskor/reloadkor, ha EUA megjelent
+  }, [selectedWg?.id, reloadVersion, rates.length])
 
   // FK-04/C reaktív újraszámítás: a képlet-cellákat feloldja és visszaírja a `rates`
   // string-mezőkbe (a fix cellák változatlanok). Jacobi-fixpont + ciklus-védelem a
@@ -432,7 +472,9 @@ export default function RateCreationPage() {
       // utáni újratöltéskor frissül). Csak a numerikusan értelmezhető mezőket tároljuk.
       const baseline: Record<string, number> = {}
       const serverValues: Record<string, string> = {}
+      const serverOfficial: Record<number, number | null> = {}
       for (const er of editableRates) {
+        serverOfficial[er.currencyId] = er.officialRate
         for (const field of WG_STRING_FIELDS) {
           const key = `${er.currencyId}.${field}`
           const raw = typeof er[field] === 'string' ? (er[field] as string) : ''
@@ -443,6 +485,7 @@ export default function RateCreationPage() {
       }
       baselineRatesRef.current = baseline
       serverRateValuesRef.current = serverValues
+      serverOfficialRateRef.current = serverOfficial
       // FK02-B / FR-11, FR-12: a fix-érték overlay effekt újrafuttatása (azonos csoportos reload is).
       setReloadVersion(v => v + 1)
     } catch (err) {
@@ -540,9 +583,11 @@ export default function RateCreationPage() {
           return copy
         })
         if (field === 'officialRate') {
-          // J (Elszámoló) NUMBER mező (a többi string). Fix override → parse; üres → undefined (auto = 0-s lap A).
+          // J (Elszámoló) NUMBER mező (a többi string). Fix override → parse; üres → vissza a
+          // szerver-alapértékre (FK02-E FR-9: a 0-s lap A oszlopa), NEM marad üres.
           const n = numOrNull(trimmed)
-          setRates(prev => prev.map((x, i) => (i === index ? { ...x, officialRate: n, modified: true } : x)))
+          const resolved = n ?? (serverOfficialRateRef.current[r.currencyId] ?? null)
+          setRates(prev => prev.map((x, i) => (i === index ? { ...x, officialRate: resolved, modified: true } : x)))
         } else {
           setRates(prev => prev.map((x, i) => (i === index ? { ...x, [field]: trimmed, modified: true } : x)))
         }
@@ -569,6 +614,25 @@ export default function RateCreationPage() {
           // FK02-B / FR-11,12: dual-write — localStorage (szinkron) + tartós Electron SQLite (best-effort).
           persistGroupRateValues(wgId, saved)
         }
+      }
+
+      // FK02-E (FR-7, FR-9): a J (officialRate) override perzisztálása. A szerver-alapértéktől eltérő
+      // fix érték marad override-ként; formula vagy üres/alapérték → kulcstörlés (reloadkor a J a
+      // szerver-alapértékre = 0-s lap A oszlopra áll vissza). A formula maga külön (saveGroupFormulas) megy.
+      if (wgId && field === 'officialRate') {
+        const saved = loadGroupRateValues(wgId)
+        const ofKey = `${r.currencyId}.officialRate`
+        const n = numOrNull(trimmed)
+        const serverDefault = serverOfficialRateRef.current[r.currencyId] ?? null
+        const isDefault = !isFormula(trimmed) && (n === null || n === serverDefault)
+        let mutated = false
+        if (isFormula(trimmed) || isDefault) {
+          if (ofKey in saved) { delete saved[ofKey]; mutated = true }
+        } else if (saved[ofKey] !== trimmed) {
+          saved[ofKey] = trimmed
+          mutated = true
+        }
+        if (mutated) persistGroupRateValues(wgId, saved)
       }
     }
 
@@ -1085,6 +1149,12 @@ export default function RateCreationPage() {
             className="px-2 py-0.5 border rounded text-xs hover:bg-gray-50 flex items-center gap-1">
             <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
           </button>
+          {/* FK02-E (FR-12): munkacsoport-panel elrejtése/megjelenítése — a táblázat kitölti a helyet. */}
+          <button onClick={() => setPanelCollapsed(c => !c)}
+            className="px-2 py-0.5 border rounded text-xs hover:bg-gray-50 flex items-center gap-1"
+            title={panelCollapsed ? 'Munkacsoport-panel megjelenítése' : 'Munkacsoport-panel elrejtése (nagyobb táblázat)'}>
+            {panelCollapsed ? <PanelRightOpen size={13} /> : <PanelRightClose size={13} />}
+          </button>
         </div>
       </div>
 
@@ -1104,6 +1174,7 @@ export default function RateCreationPage() {
           onBulkApply={applyBulkCells}
           onCopyToGroups={handleCopyToGroups}
           canEdit={canWriteRateCreation}
+          syncing={publishing}
         />
 
         {/* FK02-B / FR-2..5: 10%-eltérés megerősítő modal (cella-commit interception).
@@ -1115,7 +1186,8 @@ export default function RateCreationPage() {
           />
         )}
 
-        {/* === RIGHT: WORKGROUP PANEL === */}
+        {/* === RIGHT: WORKGROUP PANEL === (FK02-E FR-12: elrejthető) */}
+        {!panelCollapsed && (
         <div className="w-64 flex-shrink-0 flex flex-col gap-1 min-h-0">
 
           {/* FK-02/03/04 (2026-05-28): a régi 54-csempés jobb-oldali választó ELTÁVOLÍTVA.
@@ -1259,6 +1331,7 @@ export default function RateCreationPage() {
             <span className="text-xs">{t('rates.arfolyamokSzetkuldese')}</span>
           </button>
         </div>
+        )}
       </div>
 
       {/* === BRANCH PICKER MODAL === */}
@@ -1399,8 +1472,10 @@ export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackTo
   const openCreate = () => {
     setEditorMode('create')
     setEditingId(null)
-    setDraft({ name: '', code: '', legacyGroupNumber: undefined, active: true, tileColor: DEFAULT_TILE.key,
-      protectionEnabled: true, limit1Boundary: null, limit2Boundary: null, limit3Boundary: null })
+    // FK02-E (FR-1, FR-2): a sorszámot a következő szabad értékkel töltjük elő; a kódot (GROUP_NN)
+    // a szerver generálja → a felhasználó nem ad meg kódot és nem lát kód-ütközési hibát.
+    setDraft({ name: '', code: '', legacyGroupNumber: nextWorkgroupSequence(workgroups), active: true,
+      tileColor: DEFAULT_TILE.key, protectionEnabled: true, limit1Boundary: null, limit2Boundary: null, limit3Boundary: null })
     setActionError(null)
     setEditorOpen(true)
   }
@@ -1414,15 +1489,21 @@ export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackTo
   }
 
   const saveEditor = async () => {
-    if (!draft.name.trim() || !draft.code.trim()) {
-      setActionError('A név és a kód megadása kötelező.')
+    // FK02-E (FR-1): a kód már nem felhasználói mező (a szerver generálja), ezért csak a nevet
+    // követeljük meg. Létrehozáskor a sorszám kötelező (ebből képződik a kód); ha üres, a
+    // következő szabad értékre esünk vissza, hogy ne legyen kód-hiba.
+    if (!draft.name.trim()) {
+      setActionError('A név megadása kötelező.')
       return
     }
+    const payload: RateWorkgroupSaveDTO = editorMode === 'create'
+      ? { ...draft, legacyGroupNumber: draft.legacyGroupNumber ?? nextWorkgroupSequence(workgroups) }
+      : draft
     try {
       if (editorMode === 'create') {
-        await rateWorkgroupApi.create(draft)
+        await rateWorkgroupApi.create(payload)
       } else if (editingId) {
-        await rateWorkgroupApi.update(editingId, draft)
+        await rateWorkgroupApi.update(editingId, payload)
       }
       setEditorOpen(false)
       setActionError(null)

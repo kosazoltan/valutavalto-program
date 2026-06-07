@@ -75,10 +75,10 @@ describe('WorkgroupTileListView (FK-02 karbantartás)', () => {
     const dialog = screen.getByText('Új munkacsoport', { selector: 'h3' }).closest('div') as HTMLElement
     const scope = within(dialog)
     fireEvent.change(scope.getByPlaceholderText('pl. Budapest központ'), { target: { value: 'Szeged' } })
-    fireEvent.change(scope.getByPlaceholderText('pl. WG01'), { target: { value: 'WG05' } })
+    // FK02-E (FR-1): nincs Kód mező — csak a nevet adjuk meg, a sorszám előtöltve (max+1 = 2).
     fireEvent.click(scope.getByText('Mentés'))
     await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1))
-    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Szeged', code: 'WG05' }))
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Szeged', legacyGroupNumber: 2 }))
     await waitFor(() => expect(onReload).toHaveBeenCalled())
   })
 

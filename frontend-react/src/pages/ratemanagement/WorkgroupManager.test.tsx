@@ -76,14 +76,15 @@ describe('WorkgroupManager (FK-02)', () => {
     render(<WorkgroupManager />)
     await waitFor(() => expect(screen.getByText('Budapest központ')).toBeInTheDocument())
     fireEvent.click(screen.getByText('Új munkacsoport'))
-    // A modal név+kód mezői.
+    // FK02-E (FR-1): a modal csak a nevet kéri; a Kód mező megszűnt (szerver generálja a sorszámból).
     const dialog = screen.getByText('Új munkacsoport', { selector: 'h3' }).closest('div') as HTMLElement
     const scope = within(dialog)
+    expect(scope.queryByPlaceholderText('pl. WG01')).toBeNull()
     fireEvent.change(scope.getByPlaceholderText('pl. Budapest központ'), { target: { value: 'Szeged' } })
-    fireEvent.change(scope.getByPlaceholderText('pl. WG01'), { target: { value: 'WG05' } })
     fireEvent.click(scope.getByText('Mentés'))
     await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1))
-    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Szeged', code: 'WG05' }))
+    // A sorszám az aktív csoportok (1, 2) alapján 3-ra töltődik elő.
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Szeged', legacyGroupNumber: 3 }))
   })
 
   it('törlés megerősítő dialógus után hívja a remove (soft-delete) API-t', async () => {

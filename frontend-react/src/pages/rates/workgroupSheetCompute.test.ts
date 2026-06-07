@@ -105,10 +105,10 @@ describe('recomputeWorkgroupSheet (FK-04/C)', () => {
     expect(res.rows[0]!.values.buyRate).toBe(100) // eredeti fix érték
   })
 
-  it('JPY → 3 tizedes kerekítés (0-s lap konzisztencia, Codex P1)', () => {
+  it('JPY → 4 tizedes kerekítés (FK02-E FR-10 / NFR-3)', () => {
     const rows: WgComputeRow[] = [{ currencyId: 5, currencyCode: 'JPY', values: { ...emptyVals(), officialRate: 2 } }]
     const res = recomputeWorkgroupSheet(input({ rows, formulas: { '5.buyRate': 'J / 3' } }))
-    expect(res.rows[0]!.values.buyRate).toBe(0.667) // 0.6667 → JPY 3 tizedes → 0.667
+    expect(res.rows[0]!.values.buyRate).toBe(0.6667) // 0.66666… → JPY 4 tizedes → 0.6667
   })
 
   it('hibás képlet (ismeretlen valuta) → errors-ban, érték marad', () => {

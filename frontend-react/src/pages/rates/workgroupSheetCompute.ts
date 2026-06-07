@@ -104,10 +104,10 @@ const OPTS_DENY_SHORTHAND = { allowSheet0Shorthand: false } as const
  */
 export function recomputeWorkgroupSheet(input: WorkgroupComputeInput): WorkgroupComputeResult {
   const { rows, formulas, sheet0ByCurrency, otherGroupsByCurrency } = input
-  // A 0-s lap (MainRateSheetPage) képlet-újraszámítója JPY-re 3, egyébként 2 tizedessel
-  // kerekít — a munkacsoport-lap KÖVESSE ezt (Codex FK-04/C P1: a JPY-rátáknak 3 tizedes
-  // a precizitása, a 0-ra kerekítés elveszítené a tört-fillért).
-  const decimalsFor = input.decimalsFor ?? ((code: string) => (code.toUpperCase() === 'JPY' ? 3 : 2))
+  // FK02-E (FR-10 / NFR-3): a munkacsoport-lap JPY-re 4, egyébként 2 tizedessel kerekít
+  // (a JPY rátáknak 4 tizedes a tárolt+megjelenített precizitása; a többi valuta 2 tizedesre
+  // kerekül a tárolásban is, a megjelenítéssel összhangban).
+  const decimalsFor = input.decimalsFor ?? ((code: string) => (code.toUpperCase() === 'JPY' ? 4 : 2))
 
   const formulaKeys = Object.keys(formulas)
   const errors: Record<string, string> = {}
@@ -143,6 +143,9 @@ export function recomputeWorkgroupSheet(input: WorkgroupComputeInput): Workgroup
         sheet0ByCurrency,
         workgroupSelf: selfByCurrency.get(code) ?? {},
         workgroupsByNumber,
+        // FK02-E (FR-4): a passz-eleji pillanatkép az AKTUÁLIS csoport összes valutájának J–S
+        // értékeivel — a `!<J–S oszlop><KÓD>` (pl. !MEUR) kereszt-valuta hivatkozáshoz.
+        workgroupByCurrency: selfByCurrency,
       }
 
       let nextValues = row.values
