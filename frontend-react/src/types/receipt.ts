@@ -80,7 +80,23 @@ export interface PrintReceiptData {
   deliveryDate?: string;
   /** FR-5 (átadás-átvétel): a szállítást végző neve a szállítólevélen. */
   carrierName?: string;
+  /** FR-1: a bejelentkezett értéktár SAJÁT helyi címe a fejléchez (a cégnév marad, csak a cím dinamikus). */
+  vaultAddress?: string;
+  /** FR-2: a bizonylat típusa — 'handover' → „Átadási bizonylat", 'receipt' → „Átvételi bizonylat". */
+  transferDocType?: 'handover' | 'receipt';
+  /** FR-13..15: sztornó bizonylat-e (fejléc „SZTORNÓ BIZONYLAT" + indoklás). A `stornoReason` hordozza az indoklást. */
+  isStorno?: boolean;
+  /** FR-17..19: opcionális címletezés sorai (darab × névleges érték). Üres/hiány → a bizonylaton nem jelenik meg. */
+  denominations?: TransferDenominationLine[];
   closingSummary?: ClosingPrintData;
+}
+
+/** FR-17..19: egy címletezési sor a bizonylaton (darab × névleges érték = összesen). */
+export interface TransferDenominationLine {
+  quantity: number;
+  faceValue: number;
+  currencyCode?: string;
+  lineTotal: number;
 }
 
 export interface ClosingPrintData {
