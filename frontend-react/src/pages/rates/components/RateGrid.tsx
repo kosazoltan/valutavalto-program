@@ -394,13 +394,14 @@ export default function RateGrid({
                     // FK02-E (FR-10): a J (elszámoló) megjelenítése a valuta tizedes-szabálya szerint
                     // (JPY 4, többi 2); fókuszban a teljes precizitású buffer.
                     const jDd = decimalsForDisplay(r.currencyCode)
-                    const jDisplay = jActive ? jBuffer : (r.officialRate ? formatDecimal(r.officialRate, jDd, jDd) : '')
+                    // Copilot: null/undefined ellenőrzés (NEM truthy) — egy érvényes 0 override is megjelenjen.
+                    const jDisplay = jActive ? jBuffer : (r.officialRate != null ? formatDecimal(r.officialRate, jDd, jDd) : '')
                     return (
                       <td className="px-0 py-0 text-right border-r relative">
                         <input
                           type="text"
                           value={jDisplay}
-                          onFocus={() => { setJRow(idx); setJBuffer(formulas[jKey] ?? (r.officialRate ? String(r.officialRate) : '')) }}
+                          onFocus={() => { setJRow(idx); setJBuffer(formulas[jKey] ?? (r.officialRate != null ? String(r.officialRate) : '')) }}
                           onChange={e => setJBuffer(e.target.value)}
                           onBlur={() => { if (onCommitCell) onCommitCell(idx, 'officialRate', jBuffer); setJRow(null) }}
                           title={jHasFormula ? `Elszámoló (J) képlet: ${formulas[jKey]}${jErr ? ` — HIBA: ${jErr}` : ''}` : 'Elszámoló árfolyam (J) — felülírható; üres = a 0-s lap A oszlopa'}

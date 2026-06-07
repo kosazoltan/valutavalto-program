@@ -53,6 +53,12 @@ describe('RateGrid (FK02-E)', () => {
     expect(onCommitCell).toHaveBeenCalledWith(0, 'officialRate', '353')
   })
 
+  it('Copilot: érvényes 0 officialRate is megjelenik (nem truthy-szűrt)', () => {
+    renderGrid([row({ officialRate: 0 })])
+    const jInput = screen.getByTitle(/Elszámoló árfolyam \(J\)/) as HTMLInputElement
+    expect(jInput.value).toBe('0,00')
+  })
+
   it('FR-10: a megjelenítés JPY-nél 4, minden más valutánál 2 tizedes', () => {
     renderGrid([
       row({ currencyId: 1, currencyCode: 'EUR', buyRate: '388,1267' }),
