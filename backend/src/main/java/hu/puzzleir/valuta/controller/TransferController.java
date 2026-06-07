@@ -54,6 +54,23 @@ public class TransferController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Átadás-átvétel bizonylat SZTORNÓZÁSA indoklással (FR-12..16). Külön a {@code /cancel}-től
+     * (ami a PENDING-törlés): a sztornó megtartja a rekordot, megjelöli, és {@code <eredeti>-SZ}
+     * sorszámú sztornó bizonylatot tesz lehetővé. Jogosultság = a rögzítési joggal azonos.
+     */
+    @PostMapping("/{id}/storno")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<TransferDto> storno(@PathVariable Long id, @Valid @RequestBody StornoRequestDto dto) {
+        return ResponseEntity.ok(transferService.storno(id, dto.getReason()));
+    }
+
+    /** Sztornó bizonylat előnézet-adatai (FR-15): eredeti adatok + indoklás + {@code <eredeti>-SZ} sorszám. */
+    @GetMapping("/{id}/storno-preview")
+    public ResponseEntity<TransferDto> stornoPreview(@PathVariable Long id) {
+        return ResponseEntity.ok(transferService.getStornoPreview(id));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<TransferDto> getById(@PathVariable Long id) {
         return ResponseEntity.ok(transferService.getById(id));

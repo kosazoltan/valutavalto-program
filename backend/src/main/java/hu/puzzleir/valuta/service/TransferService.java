@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.dto.transfer.*;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -15,8 +16,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import hu.puzzleir.valuta.exception.ConflictException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
@@ -66,7 +69,18 @@ public class TransferService {
             }
         }
 
-        String transferNumber = generateTransferNumber(direction, currency, fromBranch);
+        // A sorszám és a címletezés cég-azonosítója a forrásfiók cégéből (a sorszám cégszinten folyamatos);
+        // SecurityContext nélküli hívásnál (pl. teszt) null-fallback.
+        UUID companyId = fromBranch.getCompany() != null
+                ? fromBranch.getCompany().getId() : SecurityUtils.getCurrentCompanyIdOrNull();
+
+        String transferNumber = generateTransferNumber(direction, currency, companyId);
+
+        // HUF-fallback (FR-5, FR-6): HUF esetén az elszámoló árfolyam konstans 1,0000 → a forintosított
+        // érték = összeg (5 Ft-ra kerekítve). HUF-nál NINCS DB-árfolyam, ezért a rögzítés sosem
+        // blokkolódik árfolyam hiányára. Más valutánál a kliens által küldött hufValue marad.
+        boolean isHuf = "HUF".equalsIgnoreCase(currency.getCode());
+        BigDecimal hufValue = isHuf ? HungarianRounding.roundToFive(dto.getAmount()) : dto.getHufValue();
 
         Transfer transfer = Transfer.builder()
                 .transferNumber(transferNumber)
@@ -79,7 +93,7 @@ public class TransferService {
                 .transferTime(LocalTime.now())
                 .currency(currency)
                 .amount(dto.getAmount())
-                .hufValue(dto.getHufValue())
+                .hufValue(hufValue)
                 .direction(direction)
                 .handoverPrinted(false)
                 .receiptPrinted(false)
@@ -107,6 +121,32 @@ public class TransferService {
                         .amount(lineDto.getAmount())
                         .lineNo(lineNo++)
                         .build());
+            }
+        }
+
+        // Opcionális címletezés (FR-17..20b): szabad bevitel (darab × névleges érték). Ha van legalább
+        // egy sor, az összegük KÖTELEZŐEN egyezik az átadás összegével (részleges címletezés tilos).
+        if (dto.getDenominations() != null && !dto.getDenominations().isEmpty()) {
+            BigDecimal denomSum = BigDecimal.ZERO;
+            for (var d : dto.getDenominations()) {
+                if (d.getQuantity() == null || d.getQuantity() <= 0
+                        || d.getFaceValue() == null || d.getFaceValue().compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new ValidationException("VV-VALID-002: A címletezés darabszáma és névleges értéke pozitív kell legyen!");
+                }
+                BigDecimal lineTotal = d.getFaceValue().multiply(BigDecimal.valueOf(d.getQuantity()));
+                denomSum = denomSum.add(lineTotal);
+                transfer.getDenominations().add(TransferDenomination.builder()
+                        .companyId(companyId)
+                        .transfer(transfer)
+                        .quantity(d.getQuantity())
+                        .faceValue(d.getFaceValue())
+                        .currencyCode(currency.getCode())
+                        .lineTotal(lineTotal)
+                        .build());
+            }
+            if (denomSum.compareTo(dto.getAmount()) != 0) {
+                throw new ValidationException("VV-VALID-002: A címletezés összege (" + denomSum
+                        + ") nem egyezik az átadás összegével (" + dto.getAmount() + ")!");
             }
         }
 
@@ -219,9 +259,72 @@ public class TransferService {
         transferRepository.save(transfer);
     }
 
+    /**
+     * Értéktári átadás-átvétel bizonylat SZTORNÓZÁSA indoklással (FR-12..16, FR-20).
+     *
+     * Az eredeti rekord megmarad, csak megjelölődik ({@code is_cancelled=true} + indoklás + ki/mikor).
+     * A sztornó bizonylat sorszáma {@code <eredeti>-SZ} (a DTO számolja, nincs külön rekord).
+     *
+     * Tenant-izoláció (FR-20): kizárólag a SAJÁT cég bizonylata sztornózható — más cégé → 404
+     * (VV-TENANT-001 audit), hogy a létezés se szivárogjon. Már sztornózott → 409 (VV-TX-003).
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public TransferDto storno(Long id, String reason) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Transfer transfer = transferRepository.findById(id).orElse(null);
+        // Cross-tenant védelem: ha nincs, vagy NEM a saját céghez tartozik → 404 (létezést sem áruljuk el).
+        boolean ownCompany = transfer != null
+                && ((transfer.getFromBranch() != null && transfer.getFromBranch().getCompany() != null
+                        && companyId.equals(transfer.getFromBranch().getCompany().getId()))
+                    || (transfer.getToBranch() != null && transfer.getToBranch().getCompany() != null
+                        && companyId.equals(transfer.getToBranch().getCompany().getId())));
+        if (!ownCompany) {
+            auditLogService.log("STORNO_DENIED",
+                    "VV-TENANT-001: Idegen cég átadás-átvétel bizonylatának sztornó kísérlete: id=" + id,
+                    id);
+            throw new ResourceNotFoundException("Átadás nem található: " + id);
+        }
+        if (Boolean.TRUE.equals(transfer.getIsCancelled())) {
+            throw new ConflictException("VV-TX-003: Ez a bizonylat már sztornózva van: " + transfer.getTransferNumber());
+        }
+
+        transfer.setIsCancelled(true);
+        transfer.setCancelledAt(LocalDateTime.now());
+        transfer.setCancellationReason(reason);
+        transfer.setCancelledBy(SecurityUtils.getCurrentWorkerId());
+        transferRepository.save(transfer);
+
+        // Audit (FR/NFR-8): VV-TX-002, action=STORNO, entity=TransferRequest.
+        auditLogService.log("STORNO",
+                String.format("VV-TX-002: Átadás-átvétel sztornózva: %s, indoklás: %s",
+                        transfer.getTransferNumber(), reason),
+                transfer.getId());
+
+        return toDto(transfer);
+    }
+
     @Transactional(readOnly = true)
     public TransferDto getById(Long id) {
         return toDto(findOrThrow(id));
+    }
+
+    /**
+     * Sztornó bizonylat előnézet-adatai (FR-15): az eredeti bizonylat adatai + indoklás +
+     * a {@code <eredeti>-SZ} sorszám (a {@link #toDto} tölti). Tenant-szűrt.
+     */
+    @Transactional(readOnly = true)
+    public TransferDto getStornoPreview(Long id) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Transfer transfer = transferRepository.findById(id).orElse(null);
+        boolean ownCompany = transfer != null
+                && ((transfer.getFromBranch() != null && transfer.getFromBranch().getCompany() != null
+                        && companyId.equals(transfer.getFromBranch().getCompany().getId()))
+                    || (transfer.getToBranch() != null && transfer.getToBranch().getCompany() != null
+                        && companyId.equals(transfer.getToBranch().getCompany().getId())));
+        if (!ownCompany) {
+            throw new ResourceNotFoundException("Átadás nem található: " + id);
+        }
+        return toDto(transfer);
     }
 
     @Transactional(readOnly = true)
@@ -583,24 +686,18 @@ public class TransferService {
      * (a visszagördült szám újra kiosztható). A pénztári átadás-átvétel branch-enkénti
      * konkurenciája alacsony, így DB-sequence/locking redundáns lenne itt.
      */
-    private String generateTransferNumber(Transfer.TransferDirection direction, Currency currency, Branch fromBranch) {
+    private String generateTransferNumber(Transfer.TransferDirection direction, Currency currency, UUID companyId) {
         boolean atvetel = direction == Transfer.TransferDirection.U;
         boolean huf = currency != null && "HUF".equalsIgnoreCase(currency.getCode());
-        String prefix = (atvetel ? "U" : "F") + (huf ? "F" : "");
-        String fullPrefix = prefix + branchNumericCode(fromBranch);
-        long max = transferRepository.findMaxSlipSequence(fullPrefix, fullPrefix.length() + 1);
-        return fullPrefix + String.format("%06d", max + 1);
-    }
-
-    /** A fiók kódjának numerikus része 3 jegyre (BR020 → "020"); ha nincs számjegy → "000". */
-    private String branchNumericCode(Branch branch) {
-        String code = branch != null ? branch.getCode() : null;
-        String digits = (code == null) ? "" : code.replaceAll("\\D", "");
-        if (digits.isEmpty()) {
-            return "000";
-        }
-        String last3 = digits.length() > 3 ? digits.substring(digits.length() - 3) : digits;
-        return String.format("%3s", last3).replace(' ', '0');
+        // Értéktári átadás-átvétel sorszám-prefix: deviza átadás=AT, deviza átvétel=AV;
+        // HUF átadás=FF, HUF átvétel=UF. Az átvétel CSAK a U irány; a "mindkét-irány"/korrekció
+        // (UF/FF direction) az átadás-családba esik (Kósa Zoltán döntés). Minden prefix 2 karakter.
+        String prefix = huf ? (atvetel ? "UF" : "FF") : (atvetel ? "AV" : "AT");
+        // Cégszintű (NEM pénztáranként) folyamatos sorszám: PREFIX-NNNNNN, naponta nem indul újra.
+        // Gap-mentes: MAX+1 + a transfer_number UNIQUE constraint (race → rollback). startPos a
+        // "PREFIX-" után (prefix 2 + '-' 1 = 3 karakter, 1-indexelt SUBSTRING → 4).
+        long max = transferRepository.findMaxTransferSerialForCompany(companyId, prefix + "-%", prefix.length() + 2);
+        return prefix + "-" + String.format("%06d", max + 1);
     }
 
     private TransferDto toDto(Transfer t) {
@@ -644,7 +741,51 @@ public class TransferService {
                 .isCompleted(t.getStatus() == Transfer.TransferStatus.COMPLETED)
                 .isPending(t.getStatus() == Transfer.TransferStatus.PENDING)
                 .lines(mapLines(t))
+                // Értéktári átadás-átvétel bizonylat bővítések:
+                .vaultAddress(currentVaultAddress())
+                .isCancelled(Boolean.TRUE.equals(t.getIsCancelled()))
+                .cancellationReason(t.getCancellationReason())
+                .cancelledAt(t.getCancelledAt() != null ? t.getCancelledAt().toString() : null)
+                .stornoSerialNumber(Boolean.TRUE.equals(t.getIsCancelled()) ? t.getTransferNumber() + "-SZ" : null)
+                .denominations(mapDenominations(t))
                 .build();
+    }
+
+    /**
+     * FR-1: a bejelentkezett értéktár (Branch) saját helyi címe a bizonylat fejlécéhez —
+     * "Város, Cím, IRSZ" (pl. "Szeged, Hajnóczy u. 57., 6722"). A céget+adószámot a frontend tartja;
+     * itt CSAK a cím dinamikus, a JWT branchId-ból. A branchRepository.findById az aktuális
+     * tranzakción belül L1-cache-elt (azonos branchId → 1 query lista-renderelésnél is).
+     */
+    private String currentVaultAddress() {
+        // OrNull: SecurityContext nélküli hívás (teszt/scheduler) ne dobjon — ekkor nincs vaultAddress.
+        UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
+        if (branchId == null) {
+            return null;
+        }
+        return branchRepository.findById(branchId).map(this::formatBranchAddress).orElse(null);
+    }
+
+    private String formatBranchAddress(Branch b) {
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        if (b.getCity() != null && !b.getCity().isBlank()) parts.add(b.getCity().trim());
+        if (b.getAddress() != null && !b.getAddress().isBlank()) parts.add(b.getAddress().trim());
+        if (b.getZipCode() != null && !b.getZipCode().isBlank()) parts.add(b.getZipCode().trim());
+        return parts.isEmpty() ? null : String.join(", ", parts);
+    }
+
+    private java.util.List<TransferDenominationDto> mapDenominations(Transfer t) {
+        if (t.getDenominations() == null || t.getDenominations().isEmpty()) {
+            return null; // nincs címletezés → NON_NULL miatt kimarad a JSON-ból (a bizonylaton sem jelenik meg)
+        }
+        return t.getDenominations().stream()
+                .map(d -> TransferDenominationDto.builder()
+                        .quantity(d.getQuantity())
+                        .faceValue(d.getFaceValue())
+                        .currencyCode(d.getCurrencyCode())
+                        .lineTotal(d.getLineTotal())
+                        .build())
+                .toList();
     }
 
     private java.util.List<hu.puzzleir.valuta.dto.transfer.TransferLineDto> mapLines(Transfer t) {

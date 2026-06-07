@@ -103,6 +103,27 @@ public class Transfer {
     @Column(name = "seal_number", length = 64)
     private String sealNumber;
 
+    // Értéktári átadás-átvétel sztornó (V299): az eredeti rekord megmarad, csak megjelölődik.
+    // A sztornó bizonylat sorszáma a service-ben képződik (<eredeti>-SZ), nem külön rekord.
+    @Column(name = "is_cancelled", nullable = false)
+    @Builder.Default
+    private Boolean isCancelled = false;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
+    /** A sztornózó dolgozó id-ja (worker.id). */
+    @Column(name = "cancelled_by")
+    private Long cancelledBy;
+
+    /** Opcionális címletezés (darab × névleges érték) — üres, ha nem adtak meg. */
+    @OneToMany(mappedBy = "transfer", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private java.util.List<TransferDenomination> denominations = new java.util.ArrayList<>();
+
     @Column(name = "handover_printed")
     @Builder.Default
     private Boolean handoverPrinted = false;
