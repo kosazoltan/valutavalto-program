@@ -108,6 +108,22 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
             + "FROM Transfer t WHERE t.transferNumber LIKE CONCAT(:fullPrefix, '%')")
     long findMaxSlipSequence(@Param("fullPrefix") String fullPrefix, @Param("startPos") int startPos);
 
+    /**
+     * Értéktári átadás-átvétel CÉGSZINTŰ folyamatos sorszámához (AT/AV/FF/UF-NNNNNN).
+     * A megadott prefix-minta (pl. "AT-%") utáni 6-jegyű numerikus szuffix maximuma a cégen belül.
+     * A sztornó bizonylatokat (`...-SZ`) kizárjuk, hogy a CAST ne hibázzon és ne torzítsa a maximumot.
+     *
+     * @param companyId  a cég (tenant) azonosítója — a sorszám cégszinten folyamatos
+     * @param likePattern prefix-minta, pl. {@code "AT-%"}
+     * @param startPos    a numerikus szuffix kezdő pozíciója (1-indexelt SUBSTRING) = prefix + '-' után, pl. 4
+     */
+    @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(t.transferNumber, :startPos) AS long)), 0) "
+            + "FROM Transfer t WHERE (t.fromBranch.company.id = :companyId OR t.toBranch.company.id = :companyId) "
+            + "AND t.transferNumber LIKE :likePattern AND t.transferNumber NOT LIKE '%-SZ'")
+    long findMaxTransferSerialForCompany(@Param("companyId") UUID companyId,
+                                         @Param("likePattern") String likePattern,
+                                         @Param("startPos") int startPos);
+
     /** H-3: BejĂ¶vĹ' ĂˇtadĂˇsok Ă¶sszege (DailyBalanceService-hez) */
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.toBranch.id = :branchId AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED'")
     BigDecimal sumTransfersIn(@Param("branchId") UUID branchId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);

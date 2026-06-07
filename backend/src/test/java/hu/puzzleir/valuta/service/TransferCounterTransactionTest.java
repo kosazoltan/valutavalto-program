@@ -376,10 +376,10 @@ class TransferCounterTransactionTest {
         transferService.create(dto, FROM_WORKER_ID);
 
         // Then
-        // FK-005/B2+B3: az átadólap-sorszám új formátuma F/U/FF/UF + branch + 6 jegy
+        // Az átadás-átvétel sorszám cégszintű formátuma: AT/AV/FF/UF-NNNNNN
         // (a counter-tranzakció erre a számra hivatkozik).
         verify(transactionRepository).save(argThat(tx ->
-                tx.getReferenceNumber() != null && tx.getReferenceNumber().matches("^(FF|UF|F|U)\\d+$")));
+                tx.getReferenceNumber() != null && tx.getReferenceNumber().matches("^(AT|AV|FF|UF)-\\d{6}$")));
     }
 
     // === Audit log tesztek ===
@@ -439,7 +439,7 @@ class TransferCounterTransactionTest {
             if (t.getId() == null) t.setId(1L);
             return t;
         });
-        when(transferRepository.findMaxSlipSequence(anyString(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(0L);
+        when(transferRepository.findMaxTransferSerialForCompany(any(), anyString(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(0L);
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
         // Default receipt number mock
         lenient().when(receiptSequenceService.generateReceiptNumber(eq(FROM_BRANCH_ID), eq(TransactionType.TRANSFER_OUT)))

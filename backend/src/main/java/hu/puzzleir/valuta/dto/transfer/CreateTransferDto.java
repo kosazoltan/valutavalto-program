@@ -30,6 +30,13 @@ public class CreateTransferDto {
     private String notes;
 
     /**
+     * Opcionális címletezés (darab × névleges érték). Ha legalább egy sor van, az összegük
+     * a service-ben validáltan egyezik az átadás összegével (FR-20b). Üres/null → nincs címletezés.
+     */
+    @Valid
+    private List<TransferDenominationDto> denominations;
+
+    /**
      * FR-1/FR-3 (átadás-átvétel): a fizikai szállítást végző személy/cég neve — KÖTELEZŐ minden
      * transfer-létrehozásnál (handover ÉS treasury-mozgás). Ékezet megengedett (magyar nevek), ezért
      * nincs ASCII-pattern, csak hossz-korlát.

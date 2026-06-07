@@ -151,6 +151,10 @@ export default function ReceiptPreviewModal({
   // Átadási bizonylat (értéktári átadás-átvétel): nincs ügyfél / deviza-státusz / jogcím-nyilatkozat,
   // ezeket a tranzakció-specifikus szekciókat a transfer bizonylaton elrejtjük.
   const isTransfer = receiptData.type === 'transfer';
+  // FR-2/FR-13: a transfer bizonylat címe — átadás/átvétel, sztornónál „SZTORNÓ BIZONYLAT".
+  const transferTitle = receiptData.isStorno
+    ? 'SZTORNÓ BIZONYLAT'
+    : receiptData.transferDocType === 'receipt' ? 'Átvételi bizonylat' : 'Átadási bizonylat';
 
   const roundingDiff = receiptData.roundingDiff ?? 0;
   const netTotal = receiptData.roundedHufAmount ?? receiptData.hufAmount ?? 0;
@@ -189,10 +193,11 @@ export default function ReceiptPreviewModal({
             <div className="text-center">
               <p className="text-lg font-bold">NYUGTA</p>
               <p className="text-xs font-bold">{company.fullName}</p>
-              <p className="text-xs">{company.address}</p>
+              {/* FR-1: átadás-átvételnél a bejelentkezett értéktár SAJÁT címe (a cégnév marad). */}
+              <p className="text-xs">{isTransfer && receiptData.vaultAddress ? receiptData.vaultAddress : company.address}</p>
               <p className="text-xs">Adószám: {company.taxNumber}</p>
-              <p className="text-sm font-bold mt-1">{subtypeHu[receiptData.type] ?? receiptData.type}</p>
-              <p className="text-xs">{subtypeEn[receiptData.type] ?? ''}</p>
+              <p className="text-sm font-bold mt-1">{isTransfer ? transferTitle : (subtypeHu[receiptData.type] ?? receiptData.type)}</p>
+              <p className="text-xs">{isTransfer ? '' : (subtypeEn[receiptData.type] ?? '')}</p>
             </div>
 
             <div className="my-3 border-t border-gray-300" />
@@ -307,7 +312,7 @@ export default function ReceiptPreviewModal({
                 {receiptData.foreignAmount !== undefined && (
                   <p><span className="font-semibold">Összeg:</span> {formatAmount(receiptData.foreignAmount)} {receiptData.currencyCode ?? ''}</p>
                 )}
-                {(receiptData.roundedHufAmount !== undefined || receiptData.hufAmount !== undefined) && (
+                {(receiptData.roundedHufAmount != null || receiptData.hufAmount != null) && (
                   <p><span className="font-semibold">Forint érték:</span> {formatInt(receiptData.roundedHufAmount ?? receiptData.hufAmount)} HUF</p>
                 )}
                 {receiptData.deliveryDate && (
@@ -315,6 +320,34 @@ export default function ReceiptPreviewModal({
                 )}
                 {receiptData.transferNote && (
                   <p><span className="font-semibold">Megjegyzés:</span> {receiptData.transferNote}</p>
+                )}
+                {/* FR-15: sztornó indoklása a sztornó bizonylaton. */}
+                {receiptData.isStorno && receiptData.stornoReason && (
+                  <p><span className="font-semibold">Sztornó indoklása:</span> {receiptData.stornoReason}</p>
+                )}
+                {/* FR-17..19: opcionális címletezési táblázat — csak ha van megadott sor. */}
+                {receiptData.denominations && receiptData.denominations.length > 0 && (
+                  <div className="mt-2">
+                    <p className="font-semibold">Címletezés</p>
+                    <table className="w-full text-[9px]">
+                      <thead>
+                        <tr className="border-b border-gray-300">
+                          <th className="text-left">Darab</th>
+                          <th className="text-right">Névleges</th>
+                          <th className="text-right">Összesen</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {receiptData.denominations.map((d, i) => (
+                          <tr key={i}>
+                            <td className="text-left">{d.quantity}</td>
+                            <td className="text-right">{formatAmount(d.faceValue)}</td>
+                            <td className="text-right">{formatAmount(d.lineTotal)} {d.currencyCode ?? receiptData.currencyCode ?? ''}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}

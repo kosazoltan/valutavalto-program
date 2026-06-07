@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "transfer")
@@ -23,8 +24,14 @@ public class Transfer {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "transfer_number", nullable = false, unique = true, length = 30)
+    // A sorszám-egyediség CÉGSZINTŰ (V299: uq_transfer_company_number (company_id, transfer_number)),
+    // NEM globális — a per-tenant AT/AV/FF/UF-NNNNNN sorszám miatt két cég azonos sorszámot kaphat.
+    @Column(name = "transfer_number", nullable = false, length = 30)
     private String transferNumber;
+
+    /** A bizonylat cége (multi-tenant + cégszintű sorszám-egyediség). A create a from_branch cégéből tölti. */
+    @Column(name = "company_id")
+    private UUID companyId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "from_branch_id", nullable = false)
@@ -102,6 +109,27 @@ public class Transfer {
 
     @Column(name = "seal_number", length = 64)
     private String sealNumber;
+
+    // Értéktári átadás-átvétel sztornó (V299): az eredeti rekord megmarad, csak megjelölődik.
+    // A sztornó bizonylat sorszáma a service-ben képződik (<eredeti>-SZ), nem külön rekord.
+    @Column(name = "is_cancelled", nullable = false)
+    @Builder.Default
+    private Boolean isCancelled = false;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
+    /** A sztornózó dolgozó id-ja (worker.id). */
+    @Column(name = "cancelled_by")
+    private Long cancelledBy;
+
+    /** Opcionális címletezés (darab × névleges érték) — üres, ha nem adtak meg. */
+    @OneToMany(mappedBy = "transfer", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private java.util.List<TransferDenomination> denominations = new java.util.ArrayList<>();
 
     @Column(name = "handover_printed")
     @Builder.Default

@@ -11,7 +11,8 @@ import {
   Eye,
   Clock,
   Building2,
-  Printer
+  Printer,
+  Ban
 } from 'lucide-react'
 import {
   transferApi,
@@ -125,6 +126,12 @@ export default function TransferPage() {
   const [notes, setNotes] = useState('')
   const [carrierName, setCarrierName] = useState('')
   const [sealNumber, setSealNumber] = useState('')
+  // FR-17/18: opcionális címletezés (darab × névleges érték). Üres → nem küldjük, a bizonylaton nem jelenik meg.
+  const [showDenominations, setShowDenominations] = useState(false)
+  const denomIdRef = useRef(1)
+  const [denominationLines, setDenominationLines] = useState<Array<{ id: number; quantity: string; faceValue: string }>>([
+    { id: 0, quantity: '', faceValue: '' },
+  ])
 
   // Receive modal
   const [showReceiveModal, setShowReceiveModal] = useState(false)
@@ -144,6 +151,11 @@ export default function TransferPage() {
   // FR-6: sikeres rögzítés után nyomtatható bizonylat (Szállító + Plombaszám a szállítólevélen)
   const [printReceiptData, setPrintReceiptData] = useState<PrintReceiptData | null>(null)
   const [showReceiptModal, setShowReceiptModal] = useState(false)
+
+  // FR-12..16: sztornó modal (indoklással)
+  const [showStornoModal, setShowStornoModal] = useState(false)
+  const [stornoTarget, setStornoTarget] = useState<Transfer | null>(null)
+  const [stornoReason, setStornoReason] = useState('')
 
   // Load data
   const loadData = useCallback(async () => {
@@ -279,6 +291,23 @@ export default function TransferPage() {
       return
     }
 
+    // FR-17..20b: opcionális címletezés — csak bekapcsolt + érvényes sorok. Ha van sor, az összegnek
+    // egyeznie kell az átadás összegével (a backend is validálja: VV-VALID-002).
+    let effDenominations: Array<{ quantity: number; faceValue: number }> | undefined
+    if (showDenominations) {
+      const parsed = denominationLines
+        .map(l => ({ quantity: parseInt(l.quantity, 10), faceValue: parseFloat(l.faceValue.replace(',', '.').replace(/\s/g, '')) }))
+        .filter(l => Number.isFinite(l.quantity) && l.quantity > 0 && Number.isFinite(l.faceValue) && l.faceValue > 0)
+      if (parsed.length > 0) {
+        const denomSum = parsed.reduce((s, l) => s + l.quantity * l.faceValue, 0)
+        if (Math.abs(denomSum - effAmountValue) > 0.0001) {
+          setError(`A címletezés összege (${denomSum.toLocaleString('hu-HU')}) nem egyezik az átadás összegével (${effAmountValue.toLocaleString('hu-HU')})!`)
+          return
+        }
+        effDenominations = parsed
+      }
+    }
+
     if (requiresSupervisorPin && !pinVerified && !pendingTransferAfterPin) {
       setShowSupervisorPin(true)
       return
@@ -320,7 +349,20 @@ export default function TransferPage() {
         carrierName: carrierName.trim() || undefined,
         sealNumber: sealNumber.trim() || undefined,
         lines: effLines,
+        denominations: effDenominations,
       }
+
+      // FR-1/FR-2/FR-3/FR-4: a bizonylat fejléc-adatai. A bejelentkezett értéktár neve a vault-oldal;
+      // átadásnál Kérő iroda = értéktár, átvételnél Cél iroda = értéktár.
+      const vaultLabel = worker?.branchName ?? worker?.branchCode ?? '—'
+      const transferDocType: 'handover' | 'receipt' = transferDirection === 'in' ? 'receipt' : 'handover'
+      // FR-17..19: a bizonylaton megjelenő címletezési sorok (lineTotal a frontend számolja az előnézethez).
+      const receiptDenominations = effDenominations?.map(d => ({
+        quantity: d.quantity,
+        faceValue: d.faceValue,
+        currencyCode: currencies.find(c => c.id === effCurrencyId)?.code,
+        lineTotal: d.quantity * d.faceValue,
+      }))
 
       if (electronQueueAvailable) {
         const branch = branches.find((item) => item.id === toBranchId)
@@ -338,7 +380,7 @@ export default function TransferPage() {
           amount: effAmountValue,
           hufValue: null,
           transferType,
-          denominations: null,
+          denominations: effDenominations ? JSON.stringify(effDenominations) : null,
           note: notes || null,
           carrierName: carrierName.trim() || null,
           sealNumber: sealNumber.trim() || null,
@@ -366,36 +408,47 @@ export default function TransferPage() {
             ?? (outcome.savedIds[0] != null
               ? `LOCAL-${localIsoDate()}-#${outcome.savedIds[0]}`
               : `LOCAL-${localIsoDate()}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`),
-          branchCode: worker?.branchCode ?? branch.code,
+          // FR-3/4: átadásnál Kérő=értéktár (vaultLabel), Cél=másik; átvételnél fordítva.
+          branchCode: transferDirection === 'in' ? `${branch.code} - ${branch.name}` : vaultLabel,
           cashierName: worker?.fullName ?? '',
           date: localIsoDate(),
           time: now.toTimeString().slice(0, 8),
           currencyCode: currency.code,
           foreignAmount: effAmountValue,
-          transferTarget: `${branch.code} - ${branch.name}`,
+          transferTarget: transferDirection === 'in' ? vaultLabel : `${branch.code} - ${branch.name}`,
           transferNote: notes || undefined,
           carrierName: carrierName.trim(),
           sealNumber: sealNumber.trim(),
+          transferDocType, // FR-2
+          denominations: receiptDenominations, // FR-17..19 (offline: lokális adatokból)
         })
       } else {
         const result = await transferApi.create(request)
         setSuccess(`${transferDirection === 'out' ? 'Átadás' : 'Átvétel'} létrehozva: ${result.transferNumber}`)
         // FR-6: nyomtatható szállítólevél a szerver-válaszból (Szállító + Plombaszám is rajta).
-        setPrintReceiptData({
-          type: 'transfer',
-          companyType: getCompanyType(worker),
-          receiptNumber: result.transferNumber,
-          branchCode: worker?.branchCode ?? result.fromBranchCode ?? 'LOCAL',
-          cashierName: worker?.fullName ?? result.fromWorkerName ?? '',
-          date: result.transferDate,
-          time: result.transferTime,
-          currencyCode: result.currencyCode,
-          foreignAmount: result.amount,
-          transferTarget: `${result.toBranchCode} - ${result.toBranchName}`,
-          transferNote: result.notes,
-          carrierName: result.carrierName,
-          sealNumber: result.sealNumber,
-        })
+        {
+          const otherLabel = `${result.toBranchCode} - ${result.toBranchName}`
+          setPrintReceiptData({
+            type: 'transfer',
+            companyType: getCompanyType(worker),
+            receiptNumber: result.transferNumber,
+            // FR-3/4: átadásnál Kérő=értéktár, Cél=másik iroda; átvételnél fordítva.
+            branchCode: transferDirection === 'in' ? otherLabel : vaultLabel,
+            transferTarget: transferDirection === 'in' ? vaultLabel : otherLabel,
+            cashierName: worker?.fullName ?? result.fromWorkerName ?? '',
+            date: result.transferDate,
+            time: result.transferTime,
+            currencyCode: result.currencyCode,
+            foreignAmount: result.amount,
+            roundedHufAmount: result.hufValue, // FR-6: HUF forintosított érték
+            transferNote: result.notes,
+            carrierName: result.carrierName,
+            sealNumber: result.sealNumber,
+            vaultAddress: result.vaultAddress, // FR-1
+            transferDocType, // FR-2
+            denominations: result.denominations ?? receiptDenominations, // FR-17..19
+          })
+        }
       }
       setShowNewTransfer(false)
 
@@ -408,6 +461,8 @@ export default function TransferPage() {
       setNotes('')
       setCarrierName('')
       setSealNumber('')
+      setShowDenominations(false)
+      setDenominationLines([{ id: denomIdRef.current++, quantity: '', faceValue: '' }])
 
       // Reload
       await loadData()
@@ -517,6 +572,59 @@ export default function TransferPage() {
     }
   }
 
+  // FR-12: sztornó modal megnyitása (indoklás bekérése)
+  const openStornoModal = (transfer: Transfer) => {
+    setStornoTarget(transfer)
+    setStornoReason('')
+    setShowStornoModal(true)
+  }
+
+  // FR-12..16: sztornó rögzítése indoklással → a sztornó bizonylat nyomtatható
+  const handleStornoConfirm = async () => {
+    if (!stornoTarget) return
+    const reason = stornoReason.trim()
+    if (!reason) { setError('A sztornó indoklása kötelező!'); return }
+    try {
+      setLoading(true)
+      setError(null)
+      const result = await transferApi.storno(stornoTarget.id, reason)
+      setShowStornoModal(false)
+      setStornoTarget(null)
+      setSuccess(`Sztornózva: ${result.stornoSerialNumber ?? `${result.transferNumber}-SZ`}`)
+      // FR-16: a sztornó bizonylat előnézet + nyomtatás. A Kérő/Cél orientáció az EREDETI irányt
+      // követi (átvételnél fordított), hogy egyezzen az eredeti bizonylattal.
+      const vaultLabel = worker?.branchName ?? worker?.branchCode ?? '—'
+      const stornoIsReceipt = result.direction === 'U'
+      const stornoOther = `${result.toBranchCode} - ${result.toBranchName}`
+      setPrintReceiptData({
+        type: 'transfer',
+        companyType: getCompanyType(worker),
+        receiptNumber: result.stornoSerialNumber ?? `${result.transferNumber}-SZ`,
+        branchCode: stornoIsReceipt ? stornoOther : vaultLabel,
+        transferTarget: stornoIsReceipt ? vaultLabel : stornoOther,
+        transferDocType: stornoIsReceipt ? 'receipt' : 'handover',
+        cashierName: worker?.fullName ?? '',
+        date: result.transferDate,
+        time: result.transferTime,
+        currencyCode: result.currencyCode,
+        foreignAmount: result.amount,
+        roundedHufAmount: result.hufValue,
+        carrierName: result.carrierName,
+        sealNumber: result.sealNumber,
+        vaultAddress: result.vaultAddress,
+        isStorno: true, // FR-13/15
+        stornoReason: result.cancellationReason ?? reason,
+        denominations: result.denominations, // FR-17..19
+      })
+      setShowReceiptModal(true) // FR-16: a sztornó bizonylat azonnal nyomtatható
+      await loadData()
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Open receive modal
   const openReceiveModal = (transfer: Transfer) => {
     setSelectedTransfer(transfer)
@@ -570,8 +678,16 @@ export default function TransferPage() {
             </tr>
           ) : (
             transfers.map((transfer) => (
-              <tr key={transfer.id}>
-                <td className="font-mono font-semibold">{transfer.transferNumber}</td>
+              <tr key={transfer.id} className={transfer.isCancelled ? 'opacity-60' : ''}>
+                <td className="font-mono font-semibold">
+                  <span className={transfer.isCancelled ? 'line-through' : ''}>{transfer.transferNumber}</span>
+                  {/* FR-14: sztornózott bizonylat jelölése a listában */}
+                  {transfer.isCancelled && (
+                    <span className="ml-1 inline-block rounded bg-red-100 text-red-700 text-[10px] font-semibold px-1.5 py-0.5 align-middle">
+                      Sztornózva
+                    </span>
+                  )}
+                </td>
                 <td>
                   <div className="flex items-center gap-1">
                     <Building2 size={14} className="text-gray-400" />
@@ -635,6 +751,19 @@ export default function TransferPage() {
                           title="Törlés"
                         >
                           <XCircle size={14} />
+                        </button>
+                      )}
+                      {/* FR-12: sztornó (indoklással) — CSAK véglegesített (COMPLETED), még nem sztornózott
+                          bizonylaton. A PENDING-et a „Törlés" (/cancel) kezeli; a még nem szinkronizált
+                          lokális sorok PENDING-ek, így itt nem jelennek meg (nincs backend-id). */}
+                      {transfer.isCompleted && !transfer.isCancelled && (
+                        <button
+                          type="button"
+                          onClick={() => openStornoModal(transfer)}
+                          className="toolbar-button text-orange-600"
+                          title="Sztornó (indoklással)"
+                        >
+                          <Ban size={14} />
                         </button>
                       )}
                     </div>
@@ -976,6 +1105,76 @@ export default function TransferPage() {
                   placeholder="Opcionális megjegyzés..."
                 />
               </div>
+
+              {/* FR-17/18: opcionális címletezés (darab × névleges érték). Ha megadják, az összegnek
+                  egyeznie kell az átadás összegével. */}
+              <div className="border-t pt-3">
+                <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showDenominations}
+                    onChange={(e) => setShowDenominations(e.target.checked)}
+                  />
+                  Címletezés megadása (opcionális)
+                </label>
+                {showDenominations && (
+                  <div className="mt-2 space-y-2">
+                    {denominationLines.map((line, idx) => {
+                      const q = parseInt(line.quantity, 10)
+                      const fv = parseFloat(line.faceValue.replace(',', '.').replace(/\s/g, ''))
+                      const lineTotal = (Number.isFinite(q) && Number.isFinite(fv)) ? q * fv : 0
+                      return (
+                        <div key={line.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
+                          <div>
+                            {idx === 0 && <label className="form-label text-xs">Darab</label>}
+                            <NumberInput
+                              value={line.quantity}
+                              onChange={(v) => setDenominationLines(prev => prev.map((r, i) => i === idx ? { ...r, quantity: v } : r))}
+                              className="form-input w-full"
+                              placeholder="db"
+                              allowDecimals={false}
+                              allowNegative={false}
+                            />
+                          </div>
+                          <div>
+                            {idx === 0 && <label className="form-label text-xs">Névleges érték</label>}
+                            <NumberInput
+                              value={line.faceValue}
+                              onChange={(v) => setDenominationLines(prev => prev.map((r, i) => i === idx ? { ...r, faceValue: v } : r))}
+                              className="form-input w-full"
+                              placeholder="0"
+                              allowDecimals={true}
+                              allowNegative={false}
+                            />
+                          </div>
+                          <div>
+                            {idx === 0 && <label className="form-label text-xs">Összesen</label>}
+                            <div className="form-input w-full bg-gray-50 text-right font-mono">
+                              {lineTotal ? lineTotal.toLocaleString('hu-HU') : '—'}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setDenominationLines(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev)}
+                            className="toolbar-button text-red-600 mb-1"
+                            title="Sor törlése"
+                            disabled={denominationLines.length <= 1}
+                          >
+                            <XCircle size={16} />
+                          </button>
+                        </div>
+                      )
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setDenominationLines(prev => [...prev, { id: denomIdRef.current++, quantity: '', faceValue: '' }])}
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      + Sor hozzáadása
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 mt-6">
@@ -1095,6 +1294,48 @@ export default function TransferPage() {
         }}
         onCancel={() => setShowSupervisorPin(false)}
       />
+
+      {/* FR-12..16: sztornó modal — kötelező indoklással */}
+      {showStornoModal && stornoTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
+              <Ban size={18} className="text-orange-600" /> Bizonylat sztornózása
+            </h3>
+            <p className="text-sm text-gray-600 mb-3">
+              {stornoTarget.transferNumber} — a sztornó bizonylat sorszáma:{' '}
+              <span className="font-mono font-semibold">{stornoTarget.transferNumber}-SZ</span>
+            </p>
+            <label htmlFor="storno-reason" className="form-label">Sztornó indoklása <span className="text-red-500">*</span></label>
+            <textarea
+              id="storno-reason"
+              value={stornoReason}
+              onChange={(e) => setStornoReason(e.target.value)}
+              className="form-input w-full"
+              rows={3}
+              maxLength={500}
+              placeholder="Az érvénytelenítés oka (kötelező, max 500 karakter)…"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => { setShowStornoModal(false); setStornoTarget(null) }}
+                className="form-button"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleStornoConfirm()}
+                disabled={loading || !stornoReason.trim()}
+                className="form-button-primary bg-orange-600 hover:bg-orange-700 disabled:opacity-50"
+              >
+                Sztornó rögzítése
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FR-5/FR-6: szállítólevél előnézet + nyomtatás (Szállító + Plombaszám is rajta). */}
       <ReceiptPreviewModal

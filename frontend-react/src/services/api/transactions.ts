@@ -1280,6 +1280,7 @@ export interface Transfer {
   toWorkerName?: string
   transferType: 'CURRENCY' | 'CASH' | 'HANDLING_FEE' | 'VAULT_DEPOSIT' | 'VAULT_WITHDRAW' | 'CORRECTION' | 'OTHER'
   transferTypeDisplay: string
+  direction?: 'F' | 'U' | 'UF' | 'FF'
   status: 'PENDING' | 'IN_TRANSIT' | 'RECEIVED' | 'COMPLETED' | 'REJECTED' | 'CANCELLED'
   statusDisplay: string
   transferDate: string
@@ -1302,6 +1303,26 @@ export interface Transfer {
   hasDifference: boolean
   isCompleted: boolean
   isPending: boolean
+  // Értéktári átadás-átvétel bizonylat bővítések:
+  /** FR-1: a bejelentkezett értéktár (Branch) saját helyi címe a bizonylat fejlécéhez. */
+  vaultAddress?: string
+  /** FR-14: sztornózva van-e (lista-jelölés). */
+  isCancelled?: boolean
+  /** FR-12/15: sztornó indoklása. */
+  cancellationReason?: string
+  cancelledAt?: string
+  /** FR-13: a sztornó bizonylat sorszáma (<eredeti>-SZ). */
+  stornoSerialNumber?: string
+  /** FR-17..19: opcionális címletezés sorai. */
+  denominations?: TransferDenomination[]
+}
+
+/** FR-17..19: egy címletezési sor (darab × névleges = összesen). */
+export interface TransferDenomination {
+  quantity: number
+  faceValue: number
+  currencyCode?: string
+  lineTotal: number
 }
 
 export interface CreateTransferRequest {
@@ -1316,6 +1337,8 @@ export interface CreateTransferRequest {
   sealNumber?: string
   /** #6: több-valutás átadólap sorai. Ha kitöltött, a currencyId/amount az ELSŐ sort tükrözi. */
   lines?: Array<{ currencyId: number; amount: number }>
+  /** FR-17..20b: opcionális címletezés (darab × névleges érték). Ha van sor, összege = amount. */
+  denominations?: Array<{ quantity: number; faceValue: number }>
 }
 
 export interface ReceiveTransferRequest {
@@ -1338,6 +1361,16 @@ export const transferApi = {
   },
   cancel: async (id: number): Promise<void> => {
     await api.post(`/transfers/${id}/cancel`)
+  },
+  /** FR-12..16: átadás-átvétel bizonylat sztornózása indoklással (a /cancel a PENDING-törlés). */
+  storno: async (id: number, reason: string): Promise<Transfer> => {
+    const response = await api.post<Transfer>(`/transfers/${id}/storno`, { reason })
+    return response.data
+  },
+  /** FR-15: sztornó bizonylat előnézet-adatai (eredeti + indoklás + <eredeti>-SZ sorszám). */
+  getStornoPreview: async (id: number): Promise<Transfer> => {
+    const response = await api.get<Transfer>(`/transfers/${id}/storno-preview`)
+    return response.data
   },
   getById: async (id: number): Promise<Transfer> => {
     const response = await api.get<Transfer>(`/transfers/${id}`)
