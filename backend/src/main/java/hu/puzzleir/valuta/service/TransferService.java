@@ -272,7 +272,9 @@ public class TransferService {
     @Transactional(rollbackFor = Exception.class)
     public TransferDto storno(Long id, String reason) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        Transfer transfer = transferRepository.findById(id).orElse(null);
+        // Pessimistic lock: a konkurens dupla-sztornó (kétszeres készlet-visszafordítás) ellen — az
+        // isCancelled ellenőrzés+állítás atomi a sorzáron belül (a második kérés a lockon vár, majd 409-et kap).
+        Transfer transfer = transferRepository.findByIdForUpdate(id).orElse(null);
         // Cross-tenant védelem: ha nincs, vagy NEM a saját céghez tartozik → 404 (létezést sem áruljuk el).
         boolean ownCompany = transfer != null
                 && ((transfer.getFromBranch() != null && transfer.getFromBranch().getCompany() != null

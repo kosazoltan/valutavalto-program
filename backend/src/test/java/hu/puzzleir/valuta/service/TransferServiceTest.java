@@ -361,7 +361,7 @@ class TransferServiceTest {
         CashBalance fromBal = CashBalance.builder().currentBalance(new BigDecimal("5000")).build();
         CashBalance toBal = CashBalance.builder().currentBalance(new BigDecimal("5000")).build();
 
-        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        when(transferRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(transfer));
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(workerRepository.findById(1L)).thenReturn(Optional.of(Worker.builder().id(1L).name("Teszt").build()));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-SZ-1");
@@ -396,7 +396,7 @@ class TransferServiceTest {
         CashBalance fromBal = CashBalance.builder().currentBalance(new BigDecimal("5000")).build();
         CashBalance toBal = CashBalance.builder().currentBalance(new BigDecimal("5000")).build();
 
-        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        when(transferRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(transfer));
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(workerRepository.findById(1L)).thenReturn(Optional.of(Worker.builder().id(1L).name("Teszt").build()));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-SZ-1");
@@ -425,7 +425,7 @@ class TransferServiceTest {
         UUID fromId = transfer.getFromBranch().getId();
         CashBalance fromBal = CashBalance.builder().currentBalance(new BigDecimal("5000")).build();
 
-        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        when(transferRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(transfer));
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(workerRepository.findById(1L)).thenReturn(Optional.of(Worker.builder().id(1L).name("Teszt").build()));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-SZ-1");
@@ -450,7 +450,7 @@ class TransferServiceTest {
         UUID transferCompany = UUID.randomUUID();
         UUID otherCompany = UUID.randomUUID();
         Transfer transfer = buildStornoTarget(transferCompany);
-        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        when(transferRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(transfer));
 
         try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(otherCompany);
@@ -467,7 +467,7 @@ class TransferServiceTest {
         UUID companyId = UUID.randomUUID();
         Transfer transfer = buildStornoTarget(companyId);
         transfer.setStatus(Transfer.TransferStatus.PENDING);
-        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        when(transferRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(transfer));
 
         try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
@@ -485,7 +485,7 @@ class TransferServiceTest {
         UUID companyId = UUID.randomUUID();
         Transfer transfer = buildStornoTarget(companyId);
         transfer.setIsCancelled(true);
-        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        when(transferRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(transfer));
 
         try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
