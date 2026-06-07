@@ -181,3 +181,47 @@ export function validateCarrierSeal(carrierName: string, sealNumber: string): st
   if (!/^[A-Za-z0-9\-/]+$/.test(seal)) return 'A plombaszám csak betűt, számot, kötőjelet és perjelet tartalmazhat!'
   return null
 }
+
+/** FR-17/18: egy címletezés-sor nyers (string) bemenete a formból. */
+export interface DenominationLineInput {
+  quantity: string
+  faceValue: string
+}
+
+export interface DenominationBuildResult {
+  /** A beküldhető címletezés-sorok (üres/kikapcsolt esetben undefined → nem küldjük). */
+  denominations?: Array<{ quantity: number; faceValue: number }>
+  /** Hibaszöveg, ha a megadott sorok összege nem egyezik az átadás összegével (FR-20b). */
+  error?: string
+}
+
+/**
+ * FR-17..20b (átadás-átvétel): az opcionális címletezés-sorok feldolgozása + összeg-egyezés
+ * ellenőrzése. Pure, izoláltan tesztelhető (a TransferPage ezt használja).
+ *
+ * - Kikapcsolt címletezés (`enabled=false`) VAGY nincs érvényes sor → `{}` (nincs címletezés, FR-19).
+ * - Az érvénytelen sorokat (≤0 darab / névleges, NaN) kihagyjuk.
+ * - Ha van legalább egy érvényes sor, az összegüknek egyeznie kell az átadás összegével — különben
+ *   `error` (a backend is validál: VV-VALID-002). A magyar tizedesvessző és szóköz elfogadott.
+ */
+export function buildDenominationPayload(
+  enabled: boolean,
+  lines: ReadonlyArray<DenominationLineInput>,
+  totalAmount: number,
+): DenominationBuildResult {
+  if (!enabled) return {}
+  const parsed = lines
+    .map(l => ({
+      quantity: parseInt(l.quantity, 10),
+      faceValue: parseFloat(String(l.faceValue).replace(',', '.').replace(/\s/g, '')),
+    }))
+    .filter(l => Number.isFinite(l.quantity) && l.quantity > 0 && Number.isFinite(l.faceValue) && l.faceValue > 0)
+  if (parsed.length === 0) return {}
+  const sum = parsed.reduce((s, l) => s + l.quantity * l.faceValue, 0)
+  if (Math.abs(sum - totalAmount) > 0.0001) {
+    return {
+      error: `A címletezés összege (${sum.toLocaleString('hu-HU')}) nem egyezik az átadás összegével (${totalAmount.toLocaleString('hu-HU')})!`,
+    }
+  }
+  return { denominations: parsed }
+}

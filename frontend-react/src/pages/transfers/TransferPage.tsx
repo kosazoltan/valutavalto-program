@@ -40,7 +40,7 @@ import { isElectron } from '../../utils/electron'
 import { toast } from '../../components/ui/toaster'
 import type { PrintReceiptData } from '../../types/receipt'
 import { localIsoDate } from '../../utils/dateFormat'
-import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isTHBranch, isMainCashierBranch, validateCarrierSeal, type CurrencyLineInput } from './transferRules'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isTHBranch, isMainCashierBranch, validateCarrierSeal, buildDenominationPayload, type CurrencyLineInput } from './transferRules'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -291,22 +291,13 @@ export default function TransferPage() {
       return
     }
 
-    // FR-17..20b: opcionális címletezés — csak bekapcsolt + érvényes sorok. Ha van sor, az összegnek
-    // egyeznie kell az átadás összegével (a backend is validálja: VV-VALID-002).
-    let effDenominations: Array<{ quantity: number; faceValue: number }> | undefined
-    if (showDenominations) {
-      const parsed = denominationLines
-        .map(l => ({ quantity: parseInt(l.quantity, 10), faceValue: parseFloat(l.faceValue.replace(',', '.').replace(/\s/g, '')) }))
-        .filter(l => Number.isFinite(l.quantity) && l.quantity > 0 && Number.isFinite(l.faceValue) && l.faceValue > 0)
-      if (parsed.length > 0) {
-        const denomSum = parsed.reduce((s, l) => s + l.quantity * l.faceValue, 0)
-        if (Math.abs(denomSum - effAmountValue) > 0.0001) {
-          setError(`A címletezés összege (${denomSum.toLocaleString('hu-HU')}) nem egyezik az átadás összegével (${effAmountValue.toLocaleString('hu-HU')})!`)
-          return
-        }
-        effDenominations = parsed
-      }
+    // FR-17..20b: opcionális címletezés feldolgozása + összeg-egyezés (pure helper, tesztelt).
+    const denomResult = buildDenominationPayload(showDenominations, denominationLines, effAmountValue)
+    if (denomResult.error) {
+      setError(denomResult.error)
+      return
     }
+    const effDenominations = denomResult.denominations
 
     if (requiresSupervisorPin && !pinVerified && !pendingTransferAfterPin) {
       setShowSupervisorPin(true)
