@@ -273,7 +273,7 @@ jobs:
           ./build-installer.ps1 -SkipBackendBuild
           Pop-Location
 
-      - name: Build Eltavolito (NSIS uninstaller, no signing for NSIS-only)
+      - name: Build Eltavolito (NSIS uninstaller — alairas a kovetkezo lepesben)
         shell: pwsh
         run: |
           Push-Location installer
@@ -281,9 +281,12 @@ jobs:
           Pop-Location
 
       # A build-installer.ps1 csak a BELSO Electron exe-t iratja ala (electron-builder
-      # signtoolOptions hook). A VEGSO Penztar-Setup.exe NSIS-kimenetet kulon kell alairni —
-      # ugyanazzal a hookkal (DRY: azonos cert/timestamp/digest, mint a belso exe).
-      - name: Sign final Penztar NSIS installer (Azure Key Vault)
+      # signtoolOptions hook). A VEGSO NSIS-kimeneteket KULON kell alairni — ugyanazzal a hookkal
+      # (DRY: azonos cert/timestamp/digest, mint a belso exe):
+      #   - Penztar-Setup-*.exe       (telepito)
+      #   - Penztar-Eltavolito-*.exe  (standalone NSIS uninstaller) — kulonben SmartScreen-figyelmeztetes,
+      #                               ha vegfelhasznalohoz juttatjuk a standalone eltavolitot.
+      - name: Sign final Penztar NSIS installers (Setup + Eltavolito, Azure Key Vault)
         shell: pwsh
         env:
           CODE_SIGN_ENABLED: '1'
@@ -293,31 +296,48 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: |
-          $installer = Get-ChildItem installer/build/Penztar-Setup-*.exe |
-                       Sort-Object LastWriteTime | Select-Object -Last 1
-          if (-not $installer) {
+          $setup = Get-ChildItem installer/build/Penztar-Setup-*.exe |
+                   Sort-Object LastWriteTime | Select-Object -Last 1
+          $cleanup = Get-ChildItem installer/build/Penztar-Eltavolito-*.exe |
+                     Sort-Object LastWriteTime | Select-Object -Last 1
+          if (-not $setup) {
             Write-Host "::error::Penztar-Setup exe nem talalhato az alairashoz"
             exit 1
           }
-          Write-Host "Signing final NSIS installer: $($installer.FullName)"
-          node -e "require('./penztar-client/scripts/sign-with-azure-keyvault.js').default({path: process.argv[1]}).then(() => process.exit(0)).catch(e => { console.error(e.message); process.exit(1) })" "$($installer.FullName)"
-
-      - name: Verify Penztar installer signature
-        shell: pwsh
-        run: |
-          $installer = Get-ChildItem installer/build/Penztar-Setup-*.exe |
-                       Sort-Object LastWriteTime | Select-Object -Last 1
-          if (-not $installer) {
-            Write-Host "::error::Penztar installer nem talalhato"
+          if (-not $cleanup) {
+            Write-Host "::error::Penztar-Eltavolito exe nem talalhato az alairashoz"
             exit 1
           }
-          Write-Host "Verifying: $($installer.FullName)"
-          $sig = Get-AuthenticodeSignature -FilePath $installer.FullName
-          Write-Host "Signature status: $($sig.Status)"
-          Write-Host "Signer: $($sig.SignerCertificate.Subject)"
-          if ($sig.Status -ne 'Valid') {
-            Write-Host "::error::Penztar installer NEM valid alairas — Status=$($sig.Status)"
-            exit 1
+          foreach ($exe in @($setup, $cleanup)) {
+            Write-Host "Signing final NSIS exe: $($exe.FullName)"
+            node -e "require('./penztar-client/scripts/sign-with-azure-keyvault.js').default({path: process.argv[1]}).then(() => process.exit(0)).catch(e => { console.error(e.message); process.exit(1) })" "$($exe.FullName)"
+            # PowerShell NEM all le automatikusan natív parancs non-zero exit kódjára (Copilot review):
+            # explicit fail-fast, kulonben egy bukott alairas utan a kovetkezo sikeres alairas
+            # 0-val zarna a lepest (alairatlan EXE szallitasaval).
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "::error::Alairas sikertelen: $($exe.Name) (exit $LASTEXITCODE)"
+              exit 1
+            }
+          }
+
+      - name: Verify Penztar installer signatures (Setup + Eltavolito)
+        shell: pwsh
+        run: |
+          $exes = @(
+            (Get-ChildItem installer/build/Penztar-Setup-*.exe | Sort-Object LastWriteTime | Select-Object -Last 1),
+            (Get-ChildItem installer/build/Penztar-Eltavolito-*.exe | Sort-Object LastWriteTime | Select-Object -Last 1)
+          )
+          foreach ($exe in $exes) {
+            if (-not $exe) {
+              Write-Host "::error::Egy Penztar NSIS exe nem talalhato a verifikaciohoz"
+              exit 1
+            }
+            $sig = Get-AuthenticodeSignature -FilePath $exe.FullName
+            Write-Host "$($exe.Name): Status=$($sig.Status), Signer=$($sig.SignerCertificate.Subject)"
+            if ($sig.Status -ne 'Valid') {
+              Write-Host "::error::$($exe.Name) NEM valid alairas — Status=$($sig.Status)"
+              exit 1
+            }
           }
 
       - name: Upload Penztar artifacts
