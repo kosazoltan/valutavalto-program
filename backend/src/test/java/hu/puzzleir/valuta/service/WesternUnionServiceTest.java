@@ -32,6 +32,7 @@ class WesternUnionServiceTest {
     @Mock CompanyRepository companyRepository;
     @Mock AmlService amlService;
     @Mock WuDailyLimitRepository wuDailyLimitRepository;
+    @Mock AuditLogService auditLogService;
 
     @InjectMocks WesternUnionService service;
 

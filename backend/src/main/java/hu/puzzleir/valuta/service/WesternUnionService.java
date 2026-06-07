@@ -50,6 +50,7 @@ public class WesternUnionService {
     private final CompanyRepository companyRepository;
     private final AmlService amlService;
     private final WuDailyLimitRepository wuDailyLimitRepository;
+    private final AuditLogService auditLogService;
     // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate a WU úton (flag-gated, default OFF).
     private final SystemParameterService systemParameterService;
     private final hu.puzzleir.valuta.repository.CircularRepository circularRepository;
@@ -333,6 +334,12 @@ public class WesternUnionService {
         if ("STORNO".equals(original.getTransactionType())) {
             throw new ValidationException("Sztornó tranzakció nem sztornózható: " + originalId);
         }
+        // CUSTOMER_IN/OUT: a létrehozási oldal jelenleg NEM mozgat WuBalance-t, így a sztornó-oldali
+        // ellentételezés (updateBalance) egyenleg-elcsúszást okozna. Amíg a create-oldal nincs definiálva,
+        // a sztornót expliciten tiltjuk (latens hiba megelőzése), nem némán rossz egyenleget könyvelünk.
+        if ("CUSTOMER_IN".equals(original.getTransactionType()) || "CUSTOMER_OUT".equals(original.getTransactionType())) {
+            throw new ValidationException("Ügyfél be/ki (CUSTOMER) WU tranzakció sztornója jelenleg nem támogatott: " + originalId);
+        }
 
         // STORNO rekord létrehozása
         WuTransaction storno = WuTransaction.builder()
@@ -379,6 +386,10 @@ public class WesternUnionService {
 
         log.info("WU STORNO created: originalId={}, stornoId={}, reason='{}'",
                 originalId, savedStorno.getId(), auditLogValue(reason));
+        auditLogService.log("WU_STORNO",
+                String.format("WU tranzakció sztornózva: MTCN %s, %s USD (eredeti id=%s)",
+                        original.getMtcn(), original.getAmountUsd(), originalId),
+                savedStorno.getId().toString());
         return savedStorno;
     }
 
