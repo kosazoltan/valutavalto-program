@@ -334,7 +334,7 @@ describe('sqlite — pending transactions logic', () => {
       return rows;
     };
 
-    let pending = sel();
+    const pending = sel();
     expect(pending).toHaveLength(1);
     expect(pending[0]!['transfer_id']).toBe(50);
     expect(pending[0]!['reason']).toBe('Téves rögzítés');
