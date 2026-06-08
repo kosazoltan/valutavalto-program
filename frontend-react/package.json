@@ -41,7 +41,7 @@
     "axios": "^1.16.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
-    "date-fns": "^3.3.1",
+    "date-fns": "^4.4.0",
     "dexie": "^4.4.3",
     "i18next": "^26.3.0",
     "js-yaml": "^4.2.0",
