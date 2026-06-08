@@ -10,6 +10,7 @@ Usage:
 Exit: 0 = found or not-found cleanly, 1 = tool error
 """
 import sys
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 import os
 import subprocess
 from pathlib import Path

@@ -11,6 +11,7 @@ Supports: .ts  .tsx  .js  .java
 Exit: 0 = OK, 1 = file not found / tool error
 """
 import sys
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 import re
 import subprocess
 from pathlib import Path
