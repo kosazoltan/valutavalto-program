@@ -95,9 +95,22 @@ if ($secretHits) {
     Add-Result "secrets-scan" $true "" $sec
 }
 
-# ── 7. (Opcionális, lassabb) ──────────────────────────────────────────────────
+# ── 7. Secrets deep scan (30+ minta) ─────────────────────────────────────────
+Run-Check "secrets-deep-scan" "python `"$Scripts\secrets-deep-scan.py`""
+
+# ── 8. Electron security (3 kliens) ──────────────────────────────────────────
+Run-Check "electron-security" "python `"$Scripts\electron-security-scan.py`""
+
+# ── 9. Flyway SQL tartalom audit ──────────────────────────────────────────────
+Run-Check "flyway-content-audit" "python `"$Scripts\flyway-content-audit.py`" --last 5"
+
+# ── 10. (Opcionális, lassabb) ─────────────────────────────────────────────────
 if (-not $Fast) {
-    Run-Check "complexity-scan" "python `"$Scripts\complexity-scan.py`""
+    Run-Check "complexity-scan"    "python `"$Scripts\complexity-scan.py`""
+    Run-Check "layer-violations"   "python `"$Scripts\layer-violation-scan.py`""
+    Run-Check "transaction-audit"  "python `"$Scripts\transaction-audit.py`""
+    Run-Check "n-plus-one-scan"    "python `"$Scripts\n-plus-one-scan.py`""
+    Run-Check "ts-antipatterns"    "python `"$Scripts\ts-antipattern-scan.py`""
 }
 
 # ── Összesítő ─────────────────────────────────────────────────────────────────
