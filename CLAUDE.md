@@ -18,6 +18,19 @@ cimletezes, arfolyam, atadas-atvetel, foglalo.
 - Ha ugyanaz a hiba ket kor utan megmarad, valts diagnosztikai tengelyt; ne
   futtasd ujra ugyanazt a gate-et.
 
+## Token-optimalizacio es model-routing (agent-kotelezo)
+
+- Prompt Caching: stabil kontextus elol, volatilis tartalom hatul; `cache_control`
+  minden Claude API-integracioban. Reszletek:
+  `vault/feedback/prompt-caching-mandate-2026-06-10.md`.
+- Dynamic Model Routing: Fable 5 csak komplex/penzu-gyi/security feladathoz;
+  Sonnet/Haiku rutin szerkesztesre; Explore-subagent L1/L0-on. Reszletek:
+  `vault/feedback/fable5-optimization-mandate-2026-06-10.md`.
+- Context Window: >80% token-terheltsegnel /clear ajanlott uj independent taskhoz.
+- Task Completion: csonka deliverable TILOS; `max_tokens` explicit API-hivasokban.
+- Fallback Signaling: `[WARNING: MODEL_REGRESS_DETECTED]` ha penzu-gyi-kritikus feladat
+  nem Fable 5 / L3-as szinten fut.
+
 ## Nem-informatikus vegfelhasznalo elv
 
 Kollegaknak nem adunk parancssort vagy manualis rendszergazdai lepeseket. A

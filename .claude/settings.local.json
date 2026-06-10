@@ -5,7 +5,11 @@
       "WebFetch(domain:api.frankfurter.app)",
       "WebSearch",
       "mcp__Claude_Preview__preview_start",
-      "Bash(powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1)"
+      "Bash(powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(python3 scripts/legacy-transfer.py self-test)"
     ]
   }
 }

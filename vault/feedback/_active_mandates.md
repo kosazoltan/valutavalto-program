@@ -21,6 +21,11 @@ feladat kifejezetten mandate-et vagy agent-mukodest erint.
 - `vault/feedback/prompt-caching-mandate-2026-06-10.md` - Prompt Caching kotelezo:
   cache-barat agent-munkamod + cache_control szabalyok minden Claude API-integracioban
   (user-direktiva 2026-06-10).
+- `vault/feedback/fable5-optimization-mandate-2026-06-10.md` - SYSTEM_DIRECTIVE:
+  CLAUDE_FABLE_5_OPTIMIZATION_AND_EXECUTION - 5 protokoll: Prompt Caching (ref.),
+  Dynamic Model Routing (L0-L3 szintek), Context Window Management (>80% /clear),
+  Task Completion Guarantee (csonka deliverable TILOS), Fallback Signaling
+  ([WARNING: MODEL_REGRESS_DETECTED]) (user-direktiva 2026-06-10).
 - `docs/knowledge/memory/*` - csak regi dontes vagy release-tortenet kutatasakor.
 - `.cursor/rules/*.mdc` - celzott Cursor workflow, `alwaysApply: false`.
 
