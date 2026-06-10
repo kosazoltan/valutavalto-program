@@ -87,4 +87,23 @@ class BranchControllerTest {
 
         assertThat(result).extracting(BranchDto::getCode).containsExactly("BR010", "BR050");
     }
+
+    /**
+     * FK-022 FR-8: a PUT /api/v1/branches/{id} végpontot csak ADMIN / FOERTEKTAR / UGYVEZETO
+     * hívhatja — a Belső ellenőr (és minden más szerep) 403-at kap. A szerep-listát a
+     * {@code @PreAuthorize} hordozza; ez a teszt a guard véletlen eltávolítása/zsugorítása
+     * elleni regresszió-védelem.
+     */
+    @Test
+    @DisplayName("FK-022 FR-8: updateBranch @PreAuthorize — csak ADMIN/FOERTEKTAR/UGYVEZETO")
+    void updateBranch_preAuthorizeGuardsRoles() throws NoSuchMethodException {
+        var method = BranchController.class.getMethod(
+                "updateBranch", UUID.class, hu.puzzleir.valuta.dto.UpdateBranchDto.class);
+        var preAuthorize = method.getAnnotation(
+                org.springframework.security.access.prepost.PreAuthorize.class);
+
+        assertThat(preAuthorize).as("PUT /branches/{id} @PreAuthorize kötelező (FR-8)").isNotNull();
+        assertThat(preAuthorize.value()).contains("ADMIN", "FOERTEKTAR", "UGYVEZETO");
+        assertThat(preAuthorize.value()).doesNotContain("BELSO_ELLENOR", "CASHIER", "PENZTAR");
+    }
 }

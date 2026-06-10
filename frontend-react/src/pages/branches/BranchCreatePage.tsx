@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle, ArrowLeft, Building2, Save } from 'lucide-react'
 import { branchApi, dictionaryApi, type DictionaryEntry } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import { Check, Section } from './branchFormShared'
 
 /**
  * FK-021 (2026-06-05): Új iroda (pénztár / értéktár) felrögzítése — teljes törzsadat-form
@@ -39,28 +40,6 @@ const INITIAL: FormState = {
   regionCode: '', bankCode: '',
   hasAfa: false, hasWu: false, hasMg: false, hasPos: false,
   closedSaturday: false, closedSunday: false, tartosanZarva: false,
-}
-
-/** Logikai csoport-keret a formon. */
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <fieldset className="border border-gray-200 rounded-lg p-4">
-      <legend className="px-2 text-sm font-semibold text-gray-700">{title}</legend>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>
-    </fieldset>
-  )
-}
-
-function Check({ label, checked, onChange, hint }: { label: string; checked: boolean; onChange: (v: boolean) => void; hint?: string }) {
-  return (
-    <label className="inline-flex items-start gap-2 cursor-pointer">
-      <input type="checkbox" className="form-checkbox h-4 w-4 mt-0.5" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span className="text-sm">
-        {label}
-        {hint ? <span className="block text-xs text-gray-500">{hint}</span> : null}
-      </span>
-    </label>
-  )
 }
 
 export default function BranchCreatePage() {
