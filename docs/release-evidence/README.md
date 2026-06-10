@@ -49,6 +49,32 @@ acceptance test suite megléte, 4-way verzió-szinkron
 (`scripts/check-version-sync.mjs`) és 30 napnál frissebb, PASSED security gate
 riport (`security-reports/latest/gate-status.json`).
 
+## Együttélés a PowerShell product-ready rendszerrel
+
+A repóban két, egymást kiegészítő gate-rendszer él:
+
+| | PowerShell rendszer (`product-ready:*`) | Node verifier (`verify:*`, ez a mappa) |
+|---|---|---|
+| Szerep | Elsődleges, mély verifier (reportRef-eket is megnyitja, lokális bundle-t, exportot, smoke-okat futtat) | Cross-platform (Linux/CI/macOS) tükör-kapu |
+| Futtatás | Windows / PowerShell | bárhol, csak Node 20+ |
+| Evidence | `docs/PRODUCT_READY_EXTERNAL_EVIDENCE*.json` aggregált fájl + reportRef-ek | `docs/release-evidence/*.json` rész-fájlok |
+| Final gate | `npm run product-ready:final-gate:complete` | `npm run verify:final-gate` |
+
+**Az evidence-et nem kell kétszer kitölteni.** Ha egy `docs/release-evidence/`
+rész-fájl hiányzik, a Node verifier automatikusan a Codex aggregált evidence-fájlból
+(`docs/PRODUCT_READY_EXTERNAL_EVIDENCE*.json`) olvas — konzervatív szabályokkal:
+szekció-`status: PASS`, a szemantikus küszöbök (≥168 óra, ≤60 perc RTO,
+`criticalFlowsPassed`, minden kliens install/launch/uninstall true,
+`evidenceStatus: COMPLETE` + `finalDecision.readyForProductReadyClaim: true`),
+és a placeholder-tiltás az aggregált fájlra is érvényes. A `DRAFT` státuszú
+(kitöltetlen) aggregált sablont a verifier nem fogadja el forrásként.
+A kimenet jelzi a forrást: `[forrás: docs/PRODUCT_READY_EXTERNAL_EVIDENCE...]`.
+Ha mindkét forrás létezik, a rész-fájl az erősebb (azt validálja).
+
+Egy kivétel: az enforcement-flag kód-keresztellenőrzés aggregált módban nem fut —
+azt a PowerShell verifier végzi mélyen (`compliance export flag` checkek); a
+rész-fájlos `compliance-decision.json` útvonalon viszont a Node verifier is megköveteli.
+
 ## Kritérium-források (tényalap)
 
 - `vault/references/product-ready-roadmap-2026-05-06.md` — "Done definition (Product Ready)"

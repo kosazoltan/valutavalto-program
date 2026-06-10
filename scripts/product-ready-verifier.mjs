@@ -21,6 +21,13 @@
 //                                                         #  installer|evidence|internal)
 //
 // Evidence fájlok helye: docs/release-evidence/*.json (sablonok: templates/ alatt).
+//
+// EGYÜTTÉLÉS a PowerShell product-ready rendszerrel (scripts/product-ready-*.ps1,
+// npm: product-ready:*): az a Windows-os elsődleges, mély verifier; ez a Node-os
+// cross-platform tükör. Az evidence-et NEM kell kétszer kitölteni: ha a
+// docs/release-evidence/ rész-fájl hiányzik, a verifier a Codex-rendszer aggregált
+// evidence-fájljából (docs/PRODUCT_READY_EXTERNAL_EVIDENCE*.json) olvas,
+// konzervatív szabályokkal (szekció-status PASS + szemantikus küszöbök).
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -150,6 +157,148 @@ function scanEnforcementFlags() {
     }
   }
   return [...flags].sort()
+}
+
+// ---------------------------------------------------------------------------
+// Codex aggregált evidence (docs/PRODUCT_READY_EXTERNAL_EVIDENCE*.json) —
+// alternatív forrás, ha a docs/release-evidence/ rész-fájl hiányzik.
+// ---------------------------------------------------------------------------
+
+function loadCodexAggregate() {
+  const docsDir = path.join(repoRoot, 'docs')
+  let candidates = []
+  try {
+    candidates = fs
+      .readdirSync(docsDir)
+      .filter((name) => /^PRODUCT_READY_EXTERNAL_EVIDENCE.*\.json$/.test(name))
+      .sort()
+  } catch {
+    return null
+  }
+  if (candidates.length === 0) return null
+  const fileName = candidates[candidates.length - 1]
+  try {
+    const raw = fs.readFileSync(path.join(docsDir, fileName), 'utf8').replace(/^﻿/, '')
+    const data = JSON.parse(raw)
+    // A kitöltetlen sablon evidenceStatus=DRAFT — az nem evidence.
+    if (data.evidenceStatus === 'DRAFT') return null
+    return { fileName: `docs/${fileName}`, data }
+  } catch {
+    return null
+  }
+}
+
+function aggregateSection(aggregate, section, reasons) {
+  const value = aggregate.data[section]
+  if (!value || typeof value !== 'object') {
+    reasons.push(`${aggregate.fileName}: hiányzó "${section}" szekció`)
+    return null
+  }
+  return value
+}
+
+// Konzervatív leképezések: szekció-status PASS + a Codex-séma szemantikus mezői.
+// A mély reportRef-validációt a PowerShell verifier végzi (product-ready:external-evidence:complete).
+const AGGREGATE_VALIDATORS = {
+  acceptance(aggregate) {
+    const reasons = []
+    const section = aggregateSection(aggregate, 'acceptance', reasons)
+    if (!section) return reasons
+    if (section.status !== 'PASS') reasons.push(`${aggregate.fileName}: acceptance.status = ${JSON.stringify(section.status)} — PASS kell`)
+    requireDate(section, 'executedAt', 'acceptance', reasons, { maxAgeDays: MAX_EVIDENCE_AGE_DAYS })
+    requireString(section, 'reportRef', 'acceptance', reasons)
+    if (section.failed !== 0) reasons.push(`${aggregate.fileName}: acceptance.failed = ${JSON.stringify(section.failed)} — 0 kell`)
+    if (section.criticalFlowsPassed !== true) reasons.push(`${aggregate.fileName}: acceptance.criticalFlowsPassed = ${JSON.stringify(section.criticalFlowsPassed)} — true kell`)
+    const env = aggregate.data.environment
+    if (!['staging', 'production'].includes(env)) reasons.push(`${aggregate.fileName}: environment = ${JSON.stringify(env)} — staging vagy production kell`)
+    return reasons
+  },
+  approvals(aggregate) {
+    const reasons = []
+    const section = aggregateSection(aggregate, 'approvals', reasons)
+    if (!section) return reasons
+    requireString(section, 'reportRef', 'approvals', reasons)
+    for (const owner of ['productOwner', 'operationsOwner', 'complianceOwner']) {
+      requireString(section, owner, 'approvals', reasons)
+    }
+    return reasons
+  },
+  compliance(aggregate) {
+    const reasons = []
+    const section = aggregateSection(aggregate, 'compliance', reasons)
+    if (!section) return reasons
+    if (section.status !== 'PASS') reasons.push(`${aggregate.fileName}: compliance.status = ${JSON.stringify(section.status)} — PASS kell`)
+    if (section.approvedDecisionStatus !== 'APPROVED') reasons.push(`${aggregate.fileName}: compliance.approvedDecisionStatus = ${JSON.stringify(section.approvedDecisionStatus)} — APPROVED kell`)
+    requireString(section, 'approvedDecisionRef', 'compliance', reasons)
+    requireString(section, 'exportReportRef', 'compliance', reasons)
+    if (!['staging', 'production'].includes(section.exportedEnvironment)) {
+      reasons.push(`${aggregate.fileName}: compliance.exportedEnvironment = ${JSON.stringify(section.exportedEnvironment)} — staging vagy production kell`)
+    }
+    // Az enforcement-flag fedettséget aggregált módban a PowerShell verifier
+    // ellenőrzi mélyen (compliance export flag-checkek) — itt nem duplikáljuk.
+    return reasons
+  },
+  'dr-drill'(aggregate) {
+    const reasons = []
+    const section = aggregateSection(aggregate, 'drRestore', reasons)
+    if (!section) return reasons
+    if (section.status !== 'PASS') reasons.push(`${aggregate.fileName}: drRestore.status = ${JSON.stringify(section.status)} — PASS kell`)
+    requireDate(section, 'executedAt', 'dr-drill', reasons, { maxAgeDays: MAX_EVIDENCE_AGE_DAYS })
+    requireString(section, 'reportRef', 'dr-drill', reasons)
+    if (typeof section.rtoMinutes !== 'number' || section.rtoMinutes > MAX_DR_RESTORE_MINUTES) {
+      reasons.push(`${aggregate.fileName}: drRestore.rtoMinutes = ${JSON.stringify(section.rtoMinutes)} — szám kell, ≤ ${MAX_DR_RESTORE_MINUTES}`)
+    }
+    if (section.flywayVerified !== true) reasons.push(`${aggregate.fileName}: drRestore.flywayVerified — true kell`)
+    if (section.auditHashChainVerified !== true) reasons.push(`${aggregate.fileName}: drRestore.auditHashChainVerified — true kell`)
+    return reasons
+  },
+  monitoring(aggregate) {
+    const reasons = []
+    const section = aggregateSection(aggregate, 'monitoring', reasons)
+    if (!section) return reasons
+    if (section.status !== 'PASS') reasons.push(`${aggregate.fileName}: monitoring.status = ${JSON.stringify(section.status)} — PASS kell`)
+    requireString(section, 'reportRef', 'monitoring', reasons)
+    if (typeof section.observationHours !== 'number' || section.observationHours < MIN_MONITORING_HOURS) {
+      reasons.push(`${aggregate.fileName}: monitoring.observationHours = ${JSON.stringify(section.observationHours)} — szám kell, ≥ ${MIN_MONITORING_HOURS}`)
+    }
+    for (const flag of ['scrapeVerified', 'dashboardLoaded', 'alertDelivered']) {
+      if (section[flag] !== true) reasons.push(`${aggregate.fileName}: monitoring.${flag} — true kell`)
+    }
+    return reasons
+  },
+  installer(aggregate) {
+    const reasons = []
+    const section = aggregateSection(aggregate, 'installer', reasons)
+    if (!section) return reasons
+    if (section.status !== 'PASS') reasons.push(`${aggregate.fileName}: installer.status = ${JSON.stringify(section.status)} — PASS kell`)
+    requireString(section, 'signedArtifactReportRef', 'installer', reasons)
+    requireString(section, 'cleanVmReportRef', 'installer', reasons)
+    if (section.signedArtifactsVerified !== true) reasons.push(`${aggregate.fileName}: installer.signedArtifactsVerified — true kell`)
+    const clients = Array.isArray(section.clients) ? section.clients : []
+    if (clients.length === 0) reasons.push(`${aggregate.fileName}: installer.clients — üres`)
+    clients.forEach((client) => {
+      for (const step of ['installed', 'launched', 'uninstalled']) {
+        if (client[step] !== true) {
+          reasons.push(`${aggregate.fileName}: installer.clients[${client.name ?? '?'}].${step} — true kell`)
+        }
+      }
+    })
+    return reasons
+  },
+  evidence(aggregate) {
+    const reasons = []
+    if (aggregate.data.evidenceStatus !== 'COMPLETE') {
+      reasons.push(`${aggregate.fileName}: evidenceStatus = ${JSON.stringify(aggregate.data.evidenceStatus)} — COMPLETE kell`)
+    }
+    const section = aggregateSection(aggregate, 'finalDecision', reasons)
+    if (!section) return reasons
+    if (section.readyForProductReadyClaim !== true) {
+      reasons.push(`${aggregate.fileName}: finalDecision.readyForProductReadyClaim — true kell`)
+    }
+    requireString(section, 'decidedBy', 'evidence', reasons)
+    requireDate(section, 'decidedAt', 'evidence', reasons, { maxAgeDays: MAX_EVIDENCE_AGE_DAYS })
+    return reasons
+  },
 }
 
 // ---------------------------------------------------------------------------
@@ -500,12 +649,28 @@ const CHECKS = [
 
 function runCheck(check) {
   const { reasons, missing } = check.run()
+  // Rész-fájl hiányakor a Codex aggregált evidence az alternatív forrás.
+  if (missing && AGGREGATE_VALIDATORS[check.id]) {
+    const aggregate = loadCodexAggregate()
+    if (aggregate) {
+      const aggregateReasons = []
+      checkPlaceholders(aggregate.data, aggregate.fileName, aggregateReasons)
+      aggregateReasons.push(...AGGREGATE_VALIDATORS[check.id](aggregate))
+      return {
+        ...check,
+        status: aggregateReasons.length === 0 ? 'PASS' : 'FAIL',
+        reasons: aggregateReasons,
+        source: aggregate.fileName,
+      }
+    }
+  }
   return { ...check, status: reasons.length === 0 ? 'PASS' : missing ? 'MISSING' : 'FAIL', reasons }
 }
 
 function printResult(result, { verbose = true } = {}) {
   const mark = result.status === 'PASS' ? 'PASS   ' : result.status === 'MISSING' ? 'MISSING' : 'FAIL   '
-  console.log(`[product-ready] ${mark} ${result.id} — ${result.title}`)
+  const source = result.source ? ` [forrás: ${result.source}]` : ''
+  console.log(`[product-ready] ${mark} ${result.id} — ${result.title}${source}`)
   if (verbose) {
     for (const reason of result.reasons) console.log(`                  - ${reason}`)
   }
