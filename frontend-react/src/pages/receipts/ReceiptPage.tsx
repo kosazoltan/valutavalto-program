@@ -6,6 +6,7 @@ import { toast } from '../../components/ui/toaster'
 import { useAuthStore } from '../../stores/authStore'
 import ReceiptPreviewModal from '../../components/electron/ReceiptPreviewModal'
 import {
+  getCompanyType,
   getPendingReceiptDrafts,
   getReprintableReceiptDrafts,
   printPendingReceiptDraft,
@@ -14,6 +15,8 @@ import {
 import { isElectron } from '../../utils/electron'
 import { logger } from '../../utils/logger';
 import { useTranslation } from 'react-i18next'
+import type { PrintReceiptData, TransactionReceiptLine } from '../../types/receipt'
+import type { Worker } from '../../stores/authStore'
 
 // A backend Receipt.receiptType = TransactionType.name() (enum-név). Magyar megjelenítő-címkék, hogy a
 // tábla/részletek a típus-szűrővel konzisztens, olvasható szöveget mutassanak (a TransactionType.java
@@ -22,6 +25,7 @@ const RECEIPT_TYPE_LABELS: Record<string, string> = {
   BUY: 'Vétel',
   SELL: 'Eladás',
   REVERSAL: 'Sztornó',
+  CANCELLED_TRANSACTION: 'Megszakított tranzakció',
   PARTIAL_REFUND: 'Részleges visszatérítés',
   CONVERSION: 'Konverzió',
   TRANSFER_OUT: 'Pénz-átadás',
@@ -68,6 +72,107 @@ const HUF_FORMATTER = new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 0 
 /** HUF összeg hu-HU formázása (pl. "10 000 000"); üres érték → "—". */
 export const formatHuf = (hufAmount?: number | null): string =>
   typeof hufAmount === 'number' && Number.isFinite(hufAmount) ? HUF_FORMATTER.format(hufAmount) : '—'
+
+type CancelledReceiptContent = {
+  receiptNumber?: unknown
+  reason?: unknown
+  mode?: unknown
+  cancelledAt?: unknown
+  workerCode?: unknown
+  customerName?: unknown
+  customerDocumentNumber?: unknown
+  lines?: unknown
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const optionalString = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined
+
+const finiteNumber = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined
+
+function safeJsonRecord(value?: string): Record<string, unknown> | null {
+  if (!value) return null
+  try {
+    const parsed = JSON.parse(value) as unknown
+    return isRecord(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function toReceiptDateParts(value: string): { date: string; time: string } {
+  const normalized = value.includes('T') ? value : value.replace(' ', 'T')
+  const date = new Date(normalized)
+  if (Number.isNaN(date.getTime())) {
+    return {
+      date: normalized.slice(0, 10) || '—',
+      time: normalized.length >= 19 ? normalized.slice(11, 19) : '—',
+    }
+  }
+  return {
+    date: date.toLocaleDateString('hu-HU'),
+    time: date.toLocaleTimeString('hu-HU'),
+  }
+}
+
+const CANCELLED_TRANSACTION_NOTE = 'Pénzmozgás nem történt.'
+
+export function isCancelledTransactionReceipt(receipt: Receipt): boolean {
+  return (receipt.receiptType ?? '').toUpperCase() === 'CANCELLED_TRANSACTION'
+}
+
+export function buildCancelledTransactionPrintData(receipt: Receipt, worker: Worker | null): PrintReceiptData | null {
+  if (!isCancelledTransactionReceipt(receipt)) return null
+
+  const content = safeJsonRecord(receipt.content) as CancelledReceiptContent | null
+  if (!content) return null
+
+  const lines = Array.isArray(content.lines)
+    ? content.lines
+        .filter(isRecord)
+        .map((line): TransactionReceiptLine | null => {
+          const currencyCode = optionalString(line.currencyCode)
+          const foreignAmount = finiteNumber(line.foreignAmount)
+          const rate = finiteNumber(line.rate)
+          const hufAmount = finiteNumber(line.hufAmount)
+          if (!currencyCode || foreignAmount === undefined || rate === undefined || hufAmount === undefined) {
+            return null
+          }
+          return { currencyCode, foreignAmount, rate, hufAmount }
+        })
+        .filter((line): line is TransactionReceiptLine => line !== null)
+    : []
+
+  if (lines.length === 0) return null
+
+  const totalHuf = lines.reduce((sum, line) => sum + line.hufAmount, 0)
+  const firstLine = lines[0]!
+  const dateParts = toReceiptDateParts(optionalString(content.cancelledAt) ?? receipt.issueDate)
+  const reason = optionalString(content.reason) ?? 'MEGSEM'
+
+  return {
+    type: 'cancelled_transaction',
+    companyType: getCompanyType(worker),
+    receiptNumber: optionalString(content.receiptNumber) ?? receipt.receiptNumber,
+    branchCode: worker?.branchCode ?? 'LOCAL',
+    cashierName: worker?.fullName ?? optionalString(content.workerCode) ?? '—',
+    date: dateParts.date,
+    time: dateParts.time,
+    currencyCode: firstLine.currencyCode,
+    foreignAmount: firstLine.foreignAmount,
+    rate: firstLine.rate,
+    hufAmount: totalHuf,
+    roundedHufAmount: totalHuf,
+    customerName: optionalString(content.customerName) ?? receipt.customerName,
+    customerDocNumber: optionalString(content.customerDocumentNumber) ?? receipt.customerDocumentNumber,
+    transactionLines: lines,
+    stornoReason: reason,
+    note: `${CANCELLED_TRANSACTION_NOTE} Mód: ${optionalString(content.mode) ?? '—'}.`,
+  }
+}
 
 // EXCMD b5b FR-BSZUR-02: hatókör/időszak-választó.
 //  - ALL: nincs időszak-szűrés (összes bizonylat).
@@ -294,11 +399,28 @@ export default function ReceiptPage() {
     })
   }, [receipts, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo, customerFilters])
 
-  const handlePrint = async (id: string): Promise<void> => {
+  const handlePrint = async (receipt: Receipt): Promise<void> => {
     try {
-      await receiptApi.print(id)
+      if (isCancelledTransactionReceipt(receipt)) {
+        const receiptData = buildCancelledTransactionPrintData(receipt, worker)
+        if (!receiptData) {
+          toast.error('A megszakított tranzakció bizonylatának tartalma nem nyomtatható')
+          return
+        }
+        const printed = await printPendingReceiptDraft(receiptData)
+        if (!printed) {
+          toast.error('A fizikai nyomtatás nem érhető el ebben a környezetben')
+          return
+        }
+      }
+
+      await receiptApi.print(receipt.id)
       await loadData()
-      toast.success('Bizonylat nyomtatása elindítva')
+      toast.success(
+        isCancelledTransactionReceipt(receipt)
+          ? 'Megszakított tranzakció bizonylata kinyomtatva'
+          : 'Bizonylat nyomtatása elindítva',
+      )
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       toast.error('Hiba történt a nyomtatás során', errorMessage)
@@ -382,6 +504,7 @@ export default function ReceiptPage() {
               <option value="TRANSFER_OUT">{t('receipts.filter.transferOutOnly')}</option>
               <option value="TRANSFER_IN">{t('receipts.filter.transferInOnly')}</option>
               <option value="REVERSAL">{t('receipts.filter.reversalOnly')}</option>
+              <option value="CANCELLED_TRANSACTION">{t('receipts.filter.cancelledTransactionOnly')}</option>
             </select>
           </div>
           {/* EXCMD b5b FR-BSZUR-02: hatókör/időszak-választó (összes / hónap / egyéni dátumtartomány). */}
@@ -581,7 +704,7 @@ export default function ReceiptPage() {
                   <td>
                     <div className="flex gap-2">
                       <button onClick={() => setSelectedReceipt(r)} className="form-button text-xs"><Eye size={12} />{t('common.details')}</button>
-                      {!r.isPrinted && <button onClick={() => handlePrint(r.id)} className="form-button text-xs"><Printer size={12} />{t('common.print')}</button>}
+                      {!r.isPrinted && <button onClick={() => handlePrint(r)} className="form-button text-xs"><Printer size={12} />{t('common.print')}</button>}
                     </div>
                   </td>
                 </tr>

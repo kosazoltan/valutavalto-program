@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.entity.DariusReportStatus;
 import hu.puzzleir.valuta.repository.DariusDailyReportRepository;
 import hu.puzzleir.valuta.repository.MnbExchangeRateCacheRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.BankApiConfigService;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -35,6 +36,7 @@ public class BankIntegrationStatusController {
 
     private final MnbExchangeRateCacheRepository mnbCacheRepository;
     private final DariusDailyReportRepository dariusReportRepository;
+    private final BankApiConfigService bankApiConfigService;
 
     @GetMapping("/status")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','TREASURY_MANAGER','MAIN_TREASURY','COMPLIANCE_OFFICER')")
@@ -65,6 +67,7 @@ public class BankIntegrationStatusController {
         var submittedThisMonth = dariusReportRepository
                 .findByCompanyIdAndStatusAndReportDateBetween(companyId, DariusReportStatus.SUBMITTED, monthStart, monthEnd);
         long submittedCount = submittedThisMonth.size();
+        var raiffeisenConfig = bankApiConfigService.getDto(BankApiConfigService.PROVIDER_RAIFFEISEN);
 
         // Last submitted — ez ALL TIME, nemcsak hónap
         LocalDateTime lastSubmitted = dariusReportRepository
@@ -84,6 +87,13 @@ public class BankIntegrationStatusController {
                 .raiffeisen(RaiffeisenStatus.builder()
                         .schedulerActive(true)
                         .scheduledTime("08:00 CET (munkanapokon)")
+                        .enabled(raiffeisenConfig.getEnabled())
+                        .mode(String.valueOf(raiffeisenConfig.getMode()))
+                        .endpointConfigured(raiffeisenConfig.getEndpointUrl() != null
+                                && !raiffeisenConfig.getEndpointUrl().isBlank())
+                        .lastRunStatus(String.valueOf(raiffeisenConfig.getLastRunStatus()))
+                        .lastRunTimestamp(raiffeisenConfig.getLastRunTimestamp())
+                        .lastRunMessage(raiffeisenConfig.getLastRunMessage())
                         .build())
                 .darius(DariusStatus.builder()
                         .currentMonth(monthStart.toString().substring(0, 7))
@@ -123,6 +133,12 @@ public class BankIntegrationStatusController {
     public static class RaiffeisenStatus {
         private Boolean schedulerActive;
         private String scheduledTime;
+        private Boolean enabled;
+        private String mode;
+        private Boolean endpointConfigured;
+        private String lastRunStatus;
+        private LocalDateTime lastRunTimestamp;
+        private String lastRunMessage;
     }
 
     @Data @Builder @AllArgsConstructor

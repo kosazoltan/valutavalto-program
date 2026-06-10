@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -205,6 +206,49 @@ class WacServiceTest {
 
         ArgumentCaptor<ProfitLog> captor = ArgumentCaptor.forClass(ProfitLog.class);
         verify(profitLogRepository).save(captor.capture());
+        assertThat(captor.getValue().getRealizedProfit()).isEqualByComparingTo("-4000.00");
+    }
+
+    @Test
+    @DisplayName("recordReversalCompensationIfEnabled: ugyanaz a kompenzáló tranzakció idempotens, nem dupláz profitot")
+    void reversalCompensation_sameCompensationTransaction_skipsDuplicate() {
+        when(systemParameterService.getValue(eq(WacService.WAC_PROFIT_TRACKING_PARAM), any()))
+                .thenReturn("true");
+        Company company = mock(Company.class);
+        ProfitLog originalLog = ProfitLog.builder()
+                .id(99L)
+                .company(company).transactionId(7L).branchId(BRANCH_ID).currencyCode("EUR")
+                .quantity(new BigDecimal("100")).acquisitionCost(new BigDecimal("300"))
+                .salePrice(new BigDecimal("400")).realizedProfit(new BigDecimal("10000.00"))
+                .transactionType("SELL").build();
+        when(profitLogRepository.findByTransactionId(7L)).thenReturn(List.of(originalLog));
+        when(profitLogRepository.existsByCompensationKey("REVERSAL:7001:99")).thenReturn(true);
+
+        wacService.recordReversalCompensationIfEnabled(7L, 7001L, new BigDecimal("100"), new BigDecimal("100"));
+
+        verify(profitLogRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("recordReversalCompensationIfEnabled: új kompenzáló tranzakció egyedi kulccsal ment")
+    void reversalCompensation_newCompensationTransaction_recordsWithKey() {
+        when(systemParameterService.getValue(eq(WacService.WAC_PROFIT_TRACKING_PARAM), any()))
+                .thenReturn("true");
+        Company company = mock(Company.class);
+        ProfitLog originalLog = ProfitLog.builder()
+                .id(99L)
+                .company(company).transactionId(7L).branchId(BRANCH_ID).currencyCode("EUR")
+                .quantity(new BigDecimal("100")).acquisitionCost(new BigDecimal("300"))
+                .salePrice(new BigDecimal("400")).realizedProfit(new BigDecimal("10000.00"))
+                .transactionType("SELL").build();
+        when(profitLogRepository.findByTransactionId(7L)).thenReturn(List.of(originalLog));
+        when(profitLogRepository.existsByCompensationKey("REVERSAL:7002:99")).thenReturn(false);
+
+        wacService.recordReversalCompensationIfEnabled(7L, 7002L, new BigDecimal("40"), new BigDecimal("100"));
+
+        ArgumentCaptor<ProfitLog> captor = ArgumentCaptor.forClass(ProfitLog.class);
+        verify(profitLogRepository).save(captor.capture());
+        assertThat(captor.getValue().getCompensationKey()).isEqualTo("REVERSAL:7002:99");
         assertThat(captor.getValue().getRealizedProfit()).isEqualByComparingTo("-4000.00");
     }
 }

@@ -8,6 +8,10 @@ import { logger } from '../../../utils/logger'
 import { toast } from '../../../components/ui/toaster'
 import { getErrorMessage } from '../../../utils/errorHandling'
 import { useTranslation } from 'react-i18next'
+import {
+  PRIVACY_NOTICE_VERSION,
+  appendPrivacyNoticeAcknowledgement,
+} from '../../../utils/privacyNotice'
 
 /**
  * V235 (2026-05-19 HIBA #15): a Pmt. szerinti "kiemelt kozszereplo" 6 minoseg-
@@ -168,6 +172,7 @@ export default function CustomerPanel({
   const [customerAddressCardNumber, setCustomerAddressCardNumber] = useState('')
   // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat mezok
   const [isPep, setIsPep] = useState<boolean>(false)
+  const [privacyNoticeAccepted, setPrivacyNoticeAccepted] = useState<boolean>(false)
   const [sourceOfFunds, setSourceOfFunds] = useState<string>('')
   // AML 50M (Pmt./MNB 14/2025): strukturált forrás-dokumentum az 50M Ft feletti ügylethez.
   const [sourceOfFundsDocType, setSourceOfFundsDocType] = useState<string>('')
@@ -333,9 +338,10 @@ export default function CustomerPanel({
       // V235 (HIBA #15 2026-05-19): ha PEP, a minoseget is meg kell jelolni
       if (isPep && !pepKind) missing.push('PEP minőség')
     }
+    if (!privacyNoticeAccepted) missing.push('Adatkezelési tájékoztató')
     return missing
   }, [identificationLevel, customerName, customerDocNumber, customerBirthPlace, customerBirthDate, customerMotherName, customerAddress, hufTotal, sourceOfFunds, onOwnBehalf, actorName,
-      isPep, pepKind, actorBirthPlace, actorBirthDate, actorMotherName, actorDocumentNumber, actorAddress])
+      isPep, pepKind, actorBirthPlace, actorBirthDate, actorMotherName, actorDocumentNumber, actorAddress, privacyNoticeAccepted])
 
   const handleSaveManualCustomer = useCallback(async () => {
     // Replace silent `return` with explicit toast — user-visible feedback per #581 bug report
@@ -362,6 +368,8 @@ export default function CustomerPanel({
         address: customerAddress.trim() || undefined,
         residence: customerResidence.trim() || undefined,
         addressCardNumber: customerAddressCardNumber.trim() || undefined,
+        isPep,
+        notes: appendPrivacyNoticeAcknowledgement(),
       }
 
       let savedCustomer: ApiCustomer | null = null
@@ -445,7 +453,7 @@ export default function CustomerPanel({
     } finally {
       setIsSaving(false)
     }
-  }, [missingRequiredFields, customerName, customerDocType, customerDocNumber, customerNationality, customerBirthPlace, customerBirthDate, customerBirthName, customerMotherName, customerAddress, customerResidence, customerAddressCardNumber, hufTotal, identificationLevel, onCustomerReady, onAmlResult, runAmlCheck])
+  }, [missingRequiredFields, customerName, customerDocType, customerDocNumber, customerNationality, customerBirthPlace, customerBirthDate, customerBirthName, customerMotherName, customerAddress, customerResidence, customerAddressCardNumber, isPep, hufTotal, identificationLevel, onCustomerReady, onAmlResult, runAmlCheck])
 
   const handleClearCustomer = useCallback(() => {
     setSelectedCustomer(null)
@@ -460,6 +468,7 @@ export default function CustomerPanel({
     setCustomerAddress('')
     setCustomerResidence('')
     setCustomerAddressCardNumber('')
+    setPrivacyNoticeAccepted(false)
     setAmlResult(null)
     setSearchQuery('')
     setSearchResults([])
@@ -1037,6 +1046,19 @@ export default function CustomerPanel({
                 )}
               </div>
             )}
+
+            <label className="flex items-start gap-2 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-gray-900 px-2 py-2 text-xs text-slate-700 dark:text-slate-300">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={privacyNoticeAccepted}
+                onChange={(e) => setPrivacyNoticeAccepted(e.target.checked)}
+                data-testid="customer-privacy-notice-checkbox"
+              />
+              <span>
+                Az ügyfél megkapta az adatkezelési tájékoztatót. Verzió: {PRIVACY_NOTICE_VERSION}.
+              </span>
+            </label>
 
             <button
               onClick={() => void handleSaveManualCustomer()}

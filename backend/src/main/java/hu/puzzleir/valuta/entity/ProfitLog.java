@@ -70,6 +70,9 @@ public class ProfitLog {
     @Column(name = "transaction_type", nullable = false, length = 10)
     private String transactionType;
 
+    @Column(name = "compensation_key", length = 120)
+    private String compensationKey;
+
     @Column(name = "created_at")
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

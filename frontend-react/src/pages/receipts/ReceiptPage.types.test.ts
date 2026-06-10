@@ -8,10 +8,13 @@ import {
   periodToBackendRange,
   matchesCustomerFilters,
   hasActiveCustomerFilter,
+  isCancelledTransactionReceipt,
+  buildCancelledTransactionPrintData,
   CUSTOMER_FILTER_FIELDS,
   AML_10M_THRESHOLD_HUF,
 } from './ReceiptPage'
 import type { Receipt } from '../../services/api/transactions'
+import type { Worker } from '../../stores/authStore'
 
 // EXCMD b5b FR-BSZUR-01: a bizonylattípus-szűrő a backend Receipt.receiptType = TransactionType.name()
 // enum-nevekre szűr; a megjelenítő-címkének a TransactionType.java magyar leírásaival kell egyeznie.
@@ -21,6 +24,7 @@ describe('receiptTypeLabel (EXCMD b5b bizonylattípus)', () => {
     expect(receiptTypeLabel('BUY')).toBe('Vétel')
     expect(receiptTypeLabel('SELL')).toBe('Eladás')
     expect(receiptTypeLabel('REVERSAL')).toBe('Sztornó')
+    expect(receiptTypeLabel('CANCELLED_TRANSACTION')).toBe('Megszakított tranzakció')
     expect(receiptTypeLabel('CONVERSION')).toBe('Konverzió')
     expect(receiptTypeLabel('TRANSFER_OUT')).toBe('Pénz-átadás')
     expect(receiptTypeLabel('TRANSFER_IN')).toBe('Pénz-átvétel')
@@ -210,5 +214,72 @@ describe('matchesCustomerFilters / hasActiveCustomerFilter (EXCMD b5b FR-BSZUR-0
     expect(matchesCustomerFilters(receipt, { customerActorName: 'kovács' })).toBe(false)
     // Üres szűrő nem szűkít.
     expect(matchesCustomerFilters(receipt, { customerActorName: '' })).toBe(true)
+  })
+})
+
+describe('buildCancelledTransactionPrintData (MEGSEM fizikai nyomtatás)', () => {
+  const worker: Worker = {
+    id: 7,
+    workerCode: 'P001',
+    firstName: 'Teszt',
+    lastName: 'Erika',
+    fullName: 'Teszt Erika',
+    role: 'CASHIER',
+    branchId: 'BR01',
+    branchCode: 'SZG-01',
+    branchName: 'Szeged',
+    companyId: 'C1',
+    companyCode: 'EBC',
+    companyName: 'Exclusive Best Change Zrt.',
+  }
+
+  const cancelledReceipt: Receipt = {
+    id: 'cancelled-1',
+    receiptNumber: 'M-20260609-101530-ABC12345',
+    receiptType: 'CANCELLED_TRANSACTION',
+    issueDate: '2026-06-09T10:15:30',
+    isPrinted: false,
+    content: JSON.stringify({
+      receiptNumber: 'M-20260609-101530-ABC12345',
+      mode: 'SELL',
+      reason: 'MEGSEM',
+      cancelledAt: '2026-06-09T10:15:30',
+      workerCode: 'P001',
+      customerName: 'Kovács János',
+      customerDocumentNumber: 'AB123456',
+      lines: [
+        { currencyCode: 'EUR', foreignAmount: 100, rate: 400, hufAmount: 40000 },
+        { currencyCode: 'USD', foreignAmount: 100, rate: 300, hufAmount: 30000 },
+      ],
+    }),
+  }
+
+  it('felismeri a megszakított tranzakció bizonylatot', () => {
+    expect(isCancelledTransactionReceipt(cancelledReceipt)).toBe(true)
+    expect(isCancelledTransactionReceipt({ ...cancelledReceipt, receiptType: 'SELL' })).toBe(false)
+  })
+
+  it('szerveres Receipt.content JSON-ból nyomtatható PrintReceiptData-t képez', () => {
+    const data = buildCancelledTransactionPrintData(cancelledReceipt, worker)
+
+    expect(data).not.toBeNull()
+    expect(data?.type).toBe('cancelled_transaction')
+    expect(data?.companyType).toBe('BEST_CHANGE')
+    expect(data?.receiptNumber).toBe('M-20260609-101530-ABC12345')
+    expect(data?.branchCode).toBe('SZG-01')
+    expect(data?.cashierName).toBe('Teszt Erika')
+    expect(data?.customerName).toBe('Kovács János')
+    expect(data?.customerDocNumber).toBe('AB123456')
+    expect(data?.transactionLines).toHaveLength(2)
+    expect(data?.hufAmount).toBe(70000)
+    expect(data?.roundedHufAmount).toBe(70000)
+    expect(data?.stornoReason).toBe('MEGSEM')
+    expect(data?.note).toContain('Pénzmozgás nem történt')
+  })
+
+  it('sérült vagy hiányos tartalmat nem enged nyomtatható adatként tovább', () => {
+    expect(buildCancelledTransactionPrintData({ ...cancelledReceipt, content: '{bad-json' }, worker)).toBeNull()
+    expect(buildCancelledTransactionPrintData({ ...cancelledReceipt, content: JSON.stringify({ lines: [] }) }, worker)).toBeNull()
+    expect(buildCancelledTransactionPrintData({ ...cancelledReceipt, receiptType: 'BUY' }, worker)).toBeNull()
   })
 })

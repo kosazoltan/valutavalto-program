@@ -31,8 +31,18 @@
 |---|---|---|
 | `RaiffeisenRateService` | `backend/.../service/RaiffeisenRateService.java` | ✅ árfolyam scraping (napi 8:00 CET, munkanapokon) |
 | `RaiffeisenRateScheduler` | `.../config/RaiffeisenRateScheduler.java` | ✅ ütemezett job |
+| `BankApiConfigController` | `backend/.../controller/BankApiConfigController.java` | ✅ admin konfiguráció + manuális Raiffeisen fetch |
+| `BankApiConfigService` | `backend/.../service/BankApiConfigService.java` | ✅ endpoint/auth mód/utolsó futás státusz, secret maszkolás |
+| `bank_api_config` | `backend/.../db/migration/V301__bank_api_config.sql` | ✅ Raiffeisen/MNB seed + titkosított client secret oszlop |
 | `DariusReportService` | `.../service/DariusReportService.java` | ⚠️ napi jelentés **outbox-fájlba** (NEM közvetlen API hívás) |
 | Adapter REST kliens | nincs | ❌ **JÖVŐ FEJLESZTÉS** (Sprint 3+) |
+
+2026-06-09 kiegészítés: a Raiffeisen árfolyam letöltés már a `bank_api_config`
+konfigurált endpointját használja, és `SUCCESS` / `FAILED` / `SKIPPED` utolsó
+futási státuszt ír vissza. A `REST_PRIMARY_WITH_HTML_FALLBACK` mód jelenleg
+szándékosan HTML fallbacket futtat, mert nincs repóban validált Raiffeisen
+REST/OAuth2/mTLS szerződés vagy banki credential. Ez nem minősül kész banki REST
+integrációnak.
 
 ### Kérdéses funkció: Darius napi beküldés
 A `submitToDarius()` metódus most JSON file-t ír egy outbox könyvtárba. **NEM** küldi tényleg a Raiffeisen API-ra. Ez azt jelenti, hogy:
@@ -63,10 +73,14 @@ Visszaadja a Bank-integráció státusát:
     "schedulerNextRun": "2026-05-14T08:00:00"
   },
   "raiffeisen": {
-    "lastFetch": "2026-05-13T08:00:00",
-    "lastFetchSuccess": true,
-    "rateCount": 12,
-    "schedulerNextRun": "2026-05-14T08:00:00"
+    "schedulerActive": true,
+    "scheduledTime": "08:00 CET (munkanapokon)",
+    "enabled": true,
+    "mode": "HTML_SCRAPING_FALLBACK",
+    "endpointConfigured": true,
+    "lastRunStatus": "SUCCESS",
+    "lastRunTimestamp": "2026-06-09T10:55:00",
+    "lastRunMessage": "Raiffeisen árfolyamok cache-elve: 14/14"
   },
   "darius": {
     "currentMonth": "2026-05",
@@ -85,6 +99,14 @@ Visszaadja a Bank-integráció státusát:
 - Retry gomb (failed jelentésekhez)
 - Trigger gomb (manuális árfolyam-frissítés)
 
+### Új admin konfigurációs REST endpointok
+- `GET /api/v1/bank-api-config`
+- `GET /api/v1/bank-api-config/{providerName}`
+- `PUT /api/v1/bank-api-config/{providerName}` (`ROLE_ADMIN`)
+- `POST /api/v1/bank-api-config/raiffeisen/fetch-now`
+
+A válasz nem tartalmazza a secret értéket; csak `clientSecretConfigured` flaget ad vissza.
+
 ## 4. Verifikáció
 
 ```bash
@@ -95,6 +117,10 @@ curl -s -H "Authorization: Bearer $JWT" \
 # Darius pending count
 curl -s -H "Authorization: Bearer $JWT" \
   https://excvaluta.com/api/v1/admin/bank-integration/status | jq '.darius.pendingReportsCount'
+
+# Raiffeisen config status (secret nelkul)
+curl -s -H "Authorization: Bearer $JWT" \
+  https://excvaluta.com/api/v1/bank-api-config/raiffeisen | jq '{providerName,mode,enabled,lastRunStatus,clientSecretConfigured}'
 ```
 
 ## 5. Production setup követelmények

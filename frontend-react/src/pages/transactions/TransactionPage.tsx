@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal } from '../../utils/numberFormat'
-import { transactionApi } from '../../services/api/index'
+import { receiptApi, transactionApi } from '../../services/api/index'
 import type { BuyRequest, SellRequest, Transaction } from '../../services/api/index'
 import { roundHuf } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
@@ -139,7 +139,7 @@ export default function TransactionPage() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') navigate('/transactions')
+      if (e.key === 'Escape') void handleCancel()
       if (e.key >= '1' && e.key <= '8' && !e.ctrlKey && !e.altKey) {
         const target = e.target as HTMLElement
         if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.isContentEditable) {
@@ -153,7 +153,7 @@ export default function TransactionPage() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currencyRates, navigate])
+  }, [currencyRates, handleCancel])
 
   const switchTransactionType = (type: 'BUY' | 'SELL') => {
     setTransactionType(type)
@@ -228,6 +228,37 @@ export default function TransactionPage() {
         setTimeout(() => document.querySelector<HTMLButtonElement>('[data-action="save"]')?.focus(), 50)
       }
     }
+  }
+
+  async function handleCancel() {
+    const foreignNum = parseFloat(foreignAmount.replace(',', '.')) || 0
+    const hufNum = parseFloat(hufAmount.replace(/\s/g, '').replace(',', '.')) || 0
+    const hasDraftTransaction = Boolean(foreignAmount || hufAmount || customRate != null || customer)
+    if (hasDraftTransaction) {
+      if (!confirm('Biztosan elveti a tranzakciot?')) return
+      try {
+        const receipt = await receiptApi.createCancelledTransaction({
+          mode: transactionType,
+          reason: 'USER_CANCELLED',
+          customerName: customer?.name,
+          customerDocumentNumber: customer?.documentNumber,
+          lines: [{
+            currencyCode: selectedCurrency?.code,
+            foreignAmount: foreignNum > 0 ? foreignNum : undefined,
+            rate: currentRate > 0 ? currentRate : undefined,
+            hufAmount: hufNum > 0 ? hufNum : undefined,
+          }],
+        })
+        toast.info('Megszakított bizonylat rögzítve', `Bizonylat: ${receipt.receiptNumber}`)
+      } catch (error) {
+        console.warn('Cancelled transaction receipt could not be recorded', error)
+        toast.warning(
+          'Megszakítás lokálisan elvetve',
+          'A megszakított bizonylat szerveroldali rögzítése nem sikerült. Ellenőrizze a kapcsolatot.'
+        )
+      }
+    }
+    navigate('/transactions')
   }
 
   const handleSubmit = async () => {
@@ -346,7 +377,7 @@ export default function TransactionPage() {
           {t('misc.ujTranzakcio')}
         </h1>
         <div className="flex gap-2">
-          <button onClick={() => navigate('/transactions')} className="form-button flex items-center gap-1" title="Mégsem (Esc)">
+          <button onClick={() => { void handleCancel() }} className="form-button flex items-center gap-1" title="Mégsem (Esc)">
             <X size={16} />{t('common.cancel')}
           </button>
           <button

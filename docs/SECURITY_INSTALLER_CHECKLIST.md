@@ -91,6 +91,12 @@
   - Pénztár alkalmazás indul
   - Backend health: `curl http://127.0.0.1:8080/actuator/health`
   - Eltávolító futtatás → tiszta deinstallation
+- [ ] **Automatizált clean VM installer smoke evidence** lefuttatva a disposable VM-en:
+  ```powershell
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\installer-clean-vm-smoke.ps1 `
+    -ExecuteInstall -AcceptVmMutation -ConfirmDisposableCleanVm
+  # Elvárt: 0 FAIL; riport a security-reports/installer-clean-vm-smoke/<timestamp>/report.md alatt
+  ```
 
 ### 2.4 Code signing (FUTURE — még nincs implementálva)
 
@@ -107,6 +113,11 @@
   ```powershell
   Get-AuthenticodeSignature installer\build\Penztar-Setup-*.exe |
       Select-Object Status, SignerCertificate
+  ```
+- [ ] **Fail-closed signed artifact smoke** minden production release artifactra:
+  ```powershell
+  npm run installer:smoke:signed
+  # Elvárt: 0 FAIL; minden EXE Authenticode Status = Valid
   ```
 
 ## 3. Telepítés utáni ellenőrzés (a céges gépen)
@@ -202,6 +213,11 @@
       Select-String -Pattern "JWT_SECRET=[^$]" |
       Select-Object Path, Line
   # Üres output = OK (csak placeholder/template van benne, nem éles érték)
+  ```
+- [ ] **Csomagolt Electron artifact secret-leak scan lefutott**:
+  ```powershell
+  npm run installer:smoke:artifacts
+  # Elvárt: resources + app.asar forbidden filename és high-confidence secret pattern scan PASS
   ```
 - [ ] **Minden secret helyben generálódik** telepítéskor:
   - JWT secret (`crypto.randomBytes(32)` az Electron oldalon, vagy `[System.Web.Security.Membership]::GeneratePassword`)

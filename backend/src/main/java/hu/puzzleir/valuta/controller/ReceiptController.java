@@ -1,8 +1,10 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.dto.receipt.CancelledTransactionReceiptRequest;
 import hu.puzzleir.valuta.entity.Receipt;
 import hu.puzzleir.valuta.service.ReceiptGeneratorService;
 import hu.puzzleir.valuta.service.ReceiptService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
@@ -76,6 +78,19 @@ public class ReceiptController {
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Receipt> print(@PathVariable UUID id) {
         return ResponseEntity.ok(service.print(id));
+    }
+
+    /**
+     * MEGSEM / megszakitott penzvaltas bizonylat.
+     *
+     * Nem penzmozgas es nem sztorno: csak a mar megkezdett, de rogzitett tranzakciova nem valtott
+     * penztari folyamat audit-bizonylata.
+     */
+    @PostMapping("/cancelled-transaction")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<Receipt> createCancelledTransactionReceipt(
+            @Valid @RequestBody CancelledTransactionReceiptRequest request) {
+        return ResponseEntity.ok(service.createCancelledTransactionReceipt(request));
     }
 
     /**

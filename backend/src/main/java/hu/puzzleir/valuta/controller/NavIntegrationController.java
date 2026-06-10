@@ -9,7 +9,8 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * NAV pénztárgép integráció controller.
- * Placeholder — a tényleges COM port kommunikáció későbbi fejlesztés.
+ * Alacsony szintű bridge endpointok. Az üzleti pénztárgép parancsok elsődleges, auditált útja:
+ * {@code /api/v1/cash-register/command}.
  */
 @RestController
 @RequestMapping("/api/v1/nav-integration")

@@ -61,6 +61,7 @@ public class CustomerDto {
     // Státusz
     private Boolean active;
     private Boolean isVip;
+    private Boolean isPep;
     private String notes;
 
     // Statisztika

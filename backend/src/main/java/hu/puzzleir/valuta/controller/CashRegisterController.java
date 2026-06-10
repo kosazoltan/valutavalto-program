@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterEventDto;
+import hu.puzzleir.valuta.dto.cashregister.CashRegisterCommandRequest;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterReceiptRequest;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterStornoRequest;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterDeviceDto;
@@ -77,6 +78,14 @@ public class CashRegisterController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         branchService.findById(branchId);
         return eventResponse(cashRegisterService.generateZReport(branchId, date));
+    }
+
+    @PostMapping("/command")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<CashRegisterEventDto> executeCommand(
+            @Valid @RequestBody CashRegisterCommandRequest request) {
+        branchService.findById(request.getBranchId());
+        return eventResponse(cashRegisterService.executeCommand(request));
     }
 
     @GetMapping("/receipt-gaps/{branchId}")

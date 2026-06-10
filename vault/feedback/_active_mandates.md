@@ -1,6 +1,6 @@
 # Aktiv agent mandate index
 
-Frissitve: 2026-06-01
+Frissitve: 2026-06-08
 
 Ez az index korabban tul sok always-on szabalyra hivatkozott. Az uj rendben az
 agent nem innen indul minden sessionben; ezt csak akkor kell olvasni, ha a
@@ -45,3 +45,33 @@ feladat kifejezetten mandate-et vagy agent-mukodest erint.
 - Nincs teszt/CI/security gyengites a zold eredmenyert.
 - Deploy/release elott teljes relevans gate es evidence kell.
 - Ha nincs bizonyitek, azt roviden es oszinten kell jelenteni.
+
+## 2026-06-08 uj kotelezo munkammod-mandatumok
+
+### 1. Kettos terv minden valtoztatás elott
+Minden fejlesztes/javitas/modositas elott KET terv kotelezo:
+- **Implementacios terv** (mit, hol, miert, mellekhatások)
+- **Lokalis ellenorzesi terv** (melyik Python/Bash script, bemenet/kimenet, melyik teszt/typecheck/grep)
+Csak e ket terv utan kezdodik az implementacio es az ellenorzes.
+Referencia: `memory/feedback_local_sandbox_handoff_protocol.md`
+
+### 2. Globalis hatasvizsglat minden kodmodositas utan
+Szuk scope NEM mentesit: barmilyen DTO/service/endpoint/mapper valtozas utan:
+1. grep -- modositott osztaly/metodus/endpoint minden hivoja (java+ts+tsx)
+2. Teljes erintett modul tesztek (NEM csak celzott)
+3. TypeCheck mind a 4 kliensen (frontend-react + 3 Electron)
+4. Mentalis vegpont-audit (melyik masik endpoint/tenant/flow erinti)
+Valutavalto-specifikus csapdak: JPQL customerId != '' (nem IS NOT NULL!),
+financialEffective=TRUE, Flyway UNIQUE, 4-area verzio-szinkron, multi-tenant company-scope.
+Referencia: `memory/feedback_global_impact_check_after_changes.md`
+
+### 3. Session handoff major task utan
+Minden merge-elt PR / lezart feature / telepito-build / outage-fix utan:
+- `vault/sessions/handoff-YYYY-MM-DD-<tema>.md` letrehozasa (max 30 sor)
+- Jelzem a usernek: "Erdemes uj sessiont nyitni a handoff alapjan."
+Referencia: `memory/feedback_local_sandbox_handoff_protocol.md`
+
+### 4. Hatályon kívül helyezett mintak (2026-06-08)
+- `mandatory-pre-pr-self-review-gate-2026-05-20.md` (C.25) → superseded, lasd 7-lencsés review
+- `OPUS_GITHUB_QUALITY_MANDATE.md` / `MULTIMODEL_GITHUB_QUALITY_MANDATE_V2.md` → archivalt
+- "Opus 4.8" modell-branding → elavult (tenyleges: opusplan = Opus/Sonnet adaptiv)

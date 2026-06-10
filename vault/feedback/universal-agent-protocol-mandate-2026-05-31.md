@@ -30,7 +30,7 @@ A protokoll három pontban ütközik a projekt-szabályokkal; a user az alábbia
 
 ## ÖSSZHANG a meglévő mandate-ekkel (nem ír felül, kiegészít)
 
-- 0. Négy alaptörvény = opus48-munkamód 3 tilalma + bizonyíték-kényszer (már él).
+- 0. Négy alaptörvény = Claude Code munkamód 3 tilalma + bizonyíték-kényszer (már él; "opus48" branding elavult — lásd 2026-06-08 javítás a mandate fájlban).
 - 1. Lost-in-the-Middle = opus48 dokumentum-olvasási fegyelem (már él).
 - 2. Goal Protocol (North Star / Mérföldkő / Mikrocél) = ÚJ explicit elvárás, alkalmazandó.
 - 3.1 Pre-Flight = session-zárási protokoll lokál gate (már él: teljes suite zöld push előtt).

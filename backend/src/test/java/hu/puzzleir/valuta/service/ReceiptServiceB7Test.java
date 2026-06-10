@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.dto.receipt.CancelledTransactionReceiptRequest;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Receipt;
@@ -53,11 +54,13 @@ class ReceiptServiceB7Test {
 
     @Mock private ReceiptRepository receiptRepository;
     @Mock private TransactionRepository transactionRepository;
+    @Mock private AuditLogService auditLogService;
 
     @InjectMocks private ReceiptService receiptService;
 
     private static final UUID COMPANY_ID = UUID.fromString("a72280a4-f950-482d-bcbf-6b98f0925b43");
     private static final UUID OTHER_COMPANY_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID BRANCH_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     private MockedStatic<SecurityUtils> securityUtilsMock;
 
@@ -65,6 +68,9 @@ class ReceiptServiceB7Test {
     void setUp() {
         securityUtilsMock = Mockito.mockStatic(SecurityUtils.class);
         securityUtilsMock.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+        securityUtilsMock.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+        securityUtilsMock.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L);
+        securityUtilsMock.when(SecurityUtils::getCurrentWorkerCode).thenReturn("P077");
     }
 
     private Transaction makeTransaction(long id, String receiptNumber, TransactionType type) {
@@ -109,6 +115,53 @@ class ReceiptServiceB7Test {
         assertThat(receipts).hasSize(1);
         assertThat(receipts.get(0).getCustomerName()).isEqualTo("Kovács János");
         assertThat(receipts.get(0).getHufAmount()).isEqualByComparingTo("12000000.00");
+    }
+
+    @Test
+    @DisplayName("P1 Product Ready: MEGSEM megszakitott tranzakcio onallo receipt + audit log")
+    void createCancelledTransactionReceipt_persistsStandaloneReceiptAndAudit() {
+        when(receiptRepository.save(any(Receipt.class))).thenAnswer(inv -> {
+            Receipt r = inv.getArgument(0);
+            r.setId(UUID.fromString("33333333-3333-3333-3333-333333333333"));
+            return r;
+        });
+
+        CancelledTransactionReceiptRequest request = CancelledTransactionReceiptRequest.builder()
+                .mode("BUY")
+                .reason("Ugyfel elallt")
+                .customerName("Kovacs Janos")
+                .customerDocumentNumber("AB123456")
+                .lines(List.of(CancelledTransactionReceiptRequest.Line.builder()
+                        .currencyCode("EUR")
+                        .foreignAmount(new BigDecimal("100.00"))
+                        .rate(new BigDecimal("390.00"))
+                        .hufAmount(new BigDecimal("39000.00"))
+                        .build()))
+                .build();
+
+        Receipt saved = receiptService.createCancelledTransactionReceipt(request);
+
+        assertThat(saved.getCompanyId()).isEqualTo(COMPANY_ID);
+        assertThat(saved.getReceiptType()).isEqualTo("CANCELLED_TRANSACTION");
+        assertThat(saved.getReceiptNumber()).startsWith("M-");
+        assertThat(saved.getTransactionId()).isNull();
+        assertThat(saved.getIsPrinted()).isFalse();
+        assertThat(saved.getContent())
+                .contains("\"financialEffect\":\"NONE\"")
+                .contains("\"mode\":\"BUY\"")
+                .contains("\"currencyCode\":\"EUR\"");
+
+        Mockito.verify(auditLogService).log(
+                eq("CANCELLED_TRANSACTION_RECEIPT_CREATED"),
+                eq("RECEIPT"),
+                eq("33333333-3333-3333-3333-333333333333"),
+                eq("77"),
+                eq("P077"),
+                eq(BRANCH_ID.toString()),
+                isNull(),
+                org.mockito.ArgumentMatchers.contains(saved.getReceiptNumber()),
+                isNull(),
+                isNull());
     }
 
     @Test

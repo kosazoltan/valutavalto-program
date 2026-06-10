@@ -53,6 +53,41 @@ tenyszeruen megtortent.
 - AML/Pmt. es arfolyam TTL szabalyok nem kerulhetok meg.
 - Secret soha nem kerulhet kodba, chatbe vagy memoriaba.
 
+## Helyi toolok (scripts/dev-tools/ — 44 db, zero-API-cost)
+
+**Trigger-mátrix:** `memory/reference_dev_tools_trigger_matrix.md`
+
+```powershell
+# Backend Java valtozas utan (mindig)
+python scripts/dev-tools/blast-radius.py <OsztályNév>
+python scripts/dev-tools/transaction-audit.py
+python scripts/dev-tools/multi-tenant-audit.py
+.\scripts\dev-tools\typecheck-all.ps1
+
+# Flyway migracio hozzaadasakor
+python scripts/dev-tools/flyway-validate.py
+python scripts/dev-tools/flyway-content-audit.py --last 3
+python scripts/dev-tools/sql-index-gap.py
+
+# Push / PR elott (mindig)
+.\scripts\dev-tools\pre-push-gate.ps1 -Fast
+python scripts/dev-tools/secrets-deep-scan.py
+.\scripts\dev-tools\branch-hygiene.ps1
+
+# Teszt futtatasa utan
+python scripts/dev-tools/junit-report-parse.py
+python scripts/dev-tools/test-timing-analyze.py
+
+# React komponens hozzaadasakor
+python scripts/dev-tools/missing-test-files.py --module <modul>
+python scripts/dev-tools/react-complexity-scan.py --module <modul>
+
+# Kiadas elott
+python scripts/dev-tools/changelog-gen.py --from <elozo-tag>
+python scripts/dev-tools/api-surface-report.py
+.\scripts\dev-tools\bundle-size-check.ps1
+```
+
 ## Gyakori parancsok
 
 ```powershell

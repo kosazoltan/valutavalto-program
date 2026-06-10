@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestItem;
@@ -35,25 +36,38 @@ class ShipmentServiceTest {
     private hu.puzzleir.valuta.repository.BranchRepository branchRepository;
 
     @Mock
+    private hu.puzzleir.valuta.repository.CurrencyRepository currencyRepository;
+
+    @Mock
     private ExchangeRateService exchangeRateService;
+
+    @Mock
+    private TransferSerialSequenceService transferSerialSequenceService;
 
     @InjectMocks
     private ShipmentService service;
 
     @Test
     void createSetsDraftMetadataForValidRequest() {
-        when(repository.findMaxRequestNumber(any())).thenReturn(0);
+        when(currencyRepository.findById(4L)).thenReturn(java.util.Optional.of(currency("EUR")));
+        when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         // D Codex P1: az autofill ValidationException-t dob, ha nincs rate — minden
         // happy-path tesztben mock-olni kell az aktuális elszámoló árfolyamot.
         when(exchangeRateService.getCurrentRate(4L)).thenReturn(
                 ExchangeRate.builder().officialRate(new BigDecimal("400")).build());
 
+        UUID companyId = UUID.randomUUID();
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(UUID.randomUUID());
             security.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
             ShipmentRequest saved = service.create(validRequest());
 
-            assertThat(saved.getRequestNumber()).startsWith("SHR-");
+            assertThat(saved.getRequestNumber()).isEqualTo("AT-000001");
+            assertThat(saved.getCompanyId()).isEqualTo(companyId);
+            assertThat(saved.getSerialPrefix()).isEqualTo("AT");
+            assertThat(saved.getSerialNumber()).isEqualTo(1L);
             assertThat(saved.getRequestedById()).isEqualTo(42L);
             assertThat(saved.getStatus().name()).isEqualTo("DRAFT");
         }
@@ -85,12 +99,15 @@ class ShipmentServiceTest {
     void createAutoFillsAppliedRateAndHufValueFromCurrentRate() {
         // D self-review P1-4: happy-path — ha van aktuális officialRate, az appliedRate
         // + hufValue automatikusan kitöltődik a service-ben (1250 EUR × 400 = 500 000 Ft).
-        when(repository.findMaxRequestNumber(any())).thenReturn(0);
+        when(currencyRepository.findById(4L)).thenReturn(java.util.Optional.of(currency("EUR")));
+        when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(exchangeRateService.getCurrentRate(4L)).thenReturn(
                 ExchangeRate.builder().officialRate(new BigDecimal("400")).build());
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(UUID.randomUUID());
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(UUID.randomUUID());
             security.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
             ShipmentRequest req = validRequest();
             req.getItems().getFirst().setRequestedAmount(new BigDecimal("1250"));
@@ -108,10 +125,14 @@ class ShipmentServiceTest {
         // automatikusan a rendszerben lévő aktuális elszámoló árból" — ha nincs aktív
         // rate, a service NE perzisztáljon NULL rate-tel; explicit ValidationException-t
         // dob, a kliens értesül a kötelező árfolyam-frissítésről.
+        when(currencyRepository.findById(4L)).thenReturn(java.util.Optional.of(currency("EUR")));
+        when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
         when(exchangeRateService.getCurrentRate(4L))
                 .thenThrow(new ResourceNotFoundException("Nincs aktuális árfolyam"));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(UUID.randomUUID());
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(UUID.randomUUID());
             security.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
             assertThatThrownBy(() -> service.create(validRequest()))
                     .isInstanceOf(ValidationException.class)
@@ -126,12 +147,15 @@ class ShipmentServiceTest {
         // a rendszerben lévő aktuális elszámoló árból" — a kliens által küldött appliedRate
         // / hufValue mezőket figyelmen kívül hagyjuk, MINDIG a server-side rate az
         // authoritative. A kliens 999-et próbál küldeni, de a 400 official rate győz.
-        when(repository.findMaxRequestNumber(any())).thenReturn(0);
+        when(currencyRepository.findById(4L)).thenReturn(java.util.Optional.of(currency("EUR")));
+        when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(exchangeRateService.getCurrentRate(4L)).thenReturn(
                 ExchangeRate.builder().officialRate(new BigDecimal("400")).build());
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(UUID.randomUUID());
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(UUID.randomUUID());
             security.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
             ShipmentRequest req = validRequest();
             req.getItems().getFirst().setAppliedRate(new BigDecimal("999")); // manipulált kliens-érték
@@ -153,6 +177,39 @@ class ShipmentServiceTest {
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("pozitív összeg");
         verifyNoInteractions(repository);
+    }
+
+    @Test
+    void createHufUsesRateOneAndUfPrefixForInbound() {
+        UUID ownBranchId = UUID.randomUUID();
+        UUID fromBranchId = UUID.randomUUID();
+        ShipmentRequest request = ShipmentRequest.builder()
+                .fromBranchId(fromBranchId)
+                .toBranchId(ownBranchId)
+                .deliveryDate(LocalDate.now().plusDays(1))
+                .items(new ArrayList<>(List.of(ShipmentRequestItem.builder()
+                        .currencyId(6L)
+                        .requestedAmount(new BigDecimal("1000000"))
+                        .build())))
+                .build();
+
+        when(currencyRepository.findById(6L)).thenReturn(java.util.Optional.of(currency("HUF")));
+        when(transferSerialSequenceService.next(any(), eq("UF"))).thenReturn(23L);
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(UUID.randomUUID());
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(ownBranchId);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
+
+            ShipmentRequest saved = service.create(request);
+
+            assertThat(saved.getRequestNumber()).isEqualTo("UF-000023");
+            assertThat(saved.getItems().getFirst().getAppliedRate()).isEqualByComparingTo("1");
+            assertThat(saved.getItems().getFirst().getHufValue()).isEqualByComparingTo("1000000");
+        }
+
+        verify(exchangeRateService, never()).getCurrentRate(6L);
     }
 
     @Test
@@ -267,5 +324,9 @@ class ShipmentServiceTest {
                         .requestedAmount(new BigDecimal("1000"))
                         .build())))
                 .build();
+    }
+
+    private static Currency currency(String code) {
+        return Currency.builder().id("HUF".equals(code) ? 6L : 4L).code(code).build();
     }
 }

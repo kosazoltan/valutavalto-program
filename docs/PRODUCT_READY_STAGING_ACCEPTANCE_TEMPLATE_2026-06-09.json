@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "status": "PENDING",
+  "environment": "staging-or-production",
+  "executedAt": null,
+  "operator": "",
+  "source": {
+    "baseUrl": "",
+    "deploymentRef": "",
+    "dataSetRef": ""
+  },
+  "summary": {
+    "passed": 0,
+    "failed": null,
+    "criticalFlowsPassed": null
+  },
+  "requiredFlows": [
+    "buy",
+    "sell",
+    "conversion",
+    "transfer",
+    "storno",
+    "dayClosing",
+    "navCashRegister",
+    "receiptPrint",
+    "offlineSync"
+  ],
+  "flows": [
+    {
+      "id": "buy",
+      "status": "PENDING",
+      "executedAt": null,
+      "evidenceRef": "",
+      "notes": ""
+    },
+    {
+      "id": "sell",
+      "status": "PENDING",
+      "executedAt": null,
+      "evidenceRef": "",
+      "notes": ""
+    },
+    {
+      "id": "conversion",
+      "status": "PENDING",
+      "executedAt": null,
+      "evidenceRef": "",
+      "notes": ""
+    },
+    {
+      "id": "transfer",
+      "status": "PENDING",
+      "executedAt": null,
+      "evidenceRef": "",
+      "notes": ""
+    },
+    {
+      "id": "storno",
+      "status": "PENDING",
+      "executedAt": null,
+      "evidenceRef": "",
+      "notes": ""
+    },
+    {
+      "id": "dayClosing",
+      "status": "PENDING",
+      "executedAt": null,
+      "evidenceRef": "",
+      "notes": ""
+    },
+    {
+      "id": "navCashRegister",
+      "status": "PENDING",
+      "executedAt": null,
+      "evidenceRef": "",
+      "notes": ""
+    },
+    {
+      "id": "receiptPrint",
+      "status": "PENDING",
+      "executedAt": null,
+      "evidenceRef": "",
+      "notes": ""
+    },
+    {
+      "id": "offlineSync",
+      "status": "PENDING",
+      "executedAt": null,
+      "evidenceRef": "",
+      "notes": ""
+    }
+  ],
+  "safety": {
+    "redacted": null,
+    "containsSecrets": null,
+    "containsCustomerPersonalData": null
+  }
+}

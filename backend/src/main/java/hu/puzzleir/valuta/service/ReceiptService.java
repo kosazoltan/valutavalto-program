@@ -1,7 +1,11 @@
 package hu.puzzleir.valuta.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import hu.puzzleir.valuta.dto.receipt.CancelledTransactionReceiptRequest;
 import hu.puzzleir.valuta.entity.Receipt;
 import hu.puzzleir.valuta.entity.Transaction;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.ReceiptRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
@@ -14,9 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -49,9 +56,13 @@ public class ReceiptService {
 
     private final ReceiptRepository repo;
     private final TransactionRepository transactionRepository;
+    private final AuditLogService auditLogService;
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /** v2.3.48: receipt list limit a frontend ReceiptPage NEM-paginalt UI-ahoz. */
     private static final int RECEIPT_LIST_LIMIT = 500;
+    private static final DateTimeFormatter CANCELLED_RECEIPT_TS = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
     /**
      * v2.3.54 (Sourcery #318 P3): enum a tenant-guard log-operation-jenek
@@ -346,6 +357,53 @@ public class ReceiptService {
     }
 
     /**
+     * P1 Product Ready: MEGSEM / megszakitott penzvaltas bizonylat.
+     *
+     * <p>Nem irunk felkesz {@link Transaction} rekordot, mert az keszletet, forgalmat es napzarast
+     * torzitana. A megszakitas nulla penzmozgasu, onallo {@link Receipt} rekordkent materializalodik,
+     * tenant-szurt companyId-vel es audit hash-chain bejegyzessel.</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Receipt createCancelledTransactionReceipt(CancelledTransactionReceiptRequest request) {
+        if (request == null) {
+            throw new ValidationException("A megszakitott bizonylat kerese nem lehet ures.");
+        }
+        if (!hasAtLeastOneLine(request)) {
+            throw new ValidationException("Megszakitott bizonylat csak megkezdett tranzakciohoz rogzithet.");
+        }
+
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        String workerCode = SecurityUtils.getCurrentWorkerCode();
+        LocalDateTime now = LocalDateTime.now();
+
+        String receiptNumber = generateCancelledReceiptNumber(now);
+        Receipt receipt = Receipt.builder()
+                .companyId(companyId)
+                .receiptNumber(receiptNumber)
+                .receiptType("CANCELLED_TRANSACTION")
+                .issueDate(now.toLocalDate())
+                .content(buildCancelledReceiptContent(request, receiptNumber, now, branchId, workerId, workerCode))
+                .isPrinted(false)
+                .build();
+
+        Receipt saved = repo.save(receipt);
+        auditLogService.log(
+                "CANCELLED_TRANSACTION_RECEIPT_CREATED",
+                "RECEIPT",
+                saved.getId() != null ? saved.getId().toString() : saved.getReceiptNumber(),
+                workerId != null ? workerId.toString() : null,
+                workerCode,
+                branchId != null ? branchId.toString() : null,
+                null,
+                "Megszakitott tranzakcio bizonylat rogzítve: " + saved.getReceiptNumber(),
+                null,
+                null);
+        return saved;
+    }
+
+    /**
      * Print mark — materializaalja a Receipt rekordot, ha synthesized UUID,
      * majd isPrinted=true-ra allitja.
      *
@@ -396,6 +454,59 @@ public class ReceiptService {
     }
 
     // === Helpers ===
+
+    private static boolean hasAtLeastOneLine(CancelledTransactionReceiptRequest request) {
+        if (request.getLines() == null || request.getLines().isEmpty()) {
+            return false;
+        }
+        return request.getLines().stream().anyMatch(line ->
+                (line.getCurrencyCode() != null && !line.getCurrencyCode().isBlank())
+                        || line.getForeignAmount() != null
+                        || line.getRate() != null
+                        || line.getHufAmount() != null);
+    }
+
+    private static String generateCancelledReceiptNumber(LocalDateTime now) {
+        String suffix = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return "M-" + now.format(CANCELLED_RECEIPT_TS) + "-" + suffix;
+    }
+
+    private static String buildCancelledReceiptContent(
+            CancelledTransactionReceiptRequest request,
+            String receiptNumber,
+            LocalDateTime now,
+            UUID branchId,
+            Long workerId,
+            String workerCode) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("receiptNumber", receiptNumber);
+        payload.put("receiptType", "CANCELLED_TRANSACTION");
+        payload.put("title", "MEGSZAKITOTT TRANZAKCIO BIZONYLAT");
+        payload.put("mode", request.getMode());
+        payload.put("reason", blankToDefault(request.getReason(), "USER_CANCELLED"));
+        payload.put("cancelledAt", now.toString());
+        payload.put("branchId", branchId != null ? branchId.toString() : null);
+        payload.put("workerId", workerId);
+        payload.put("workerCode", workerCode);
+        payload.put("customerName", blankToNull(request.getCustomerName()));
+        payload.put("customerDocumentNumber", blankToNull(request.getCustomerDocumentNumber()));
+        payload.put("lines", request.getLines() == null ? List.of() : request.getLines());
+        payload.put("financialEffect", "NONE");
+
+        try {
+            return OBJECT_MAPPER.writeValueAsString(payload);
+        } catch (JsonProcessingException e) {
+            throw new ValidationException("A megszakitott bizonylat tartalma nem serializalhato.");
+        }
+    }
+
+    private static String blankToDefault(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
 
     /**
      * Multi-tenant Receipt ownership guard.

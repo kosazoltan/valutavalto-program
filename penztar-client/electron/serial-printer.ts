@@ -254,6 +254,7 @@ const JOB_TYPE_LABELS: Record<string, string> = {
   buy: 'VÁSÁRLÁSI BIZONYLAT',
   transfer: 'ÁTADÁS-ÁTVÉTELI BIZONYLAT',
   storno: 'STORNÓ BIZONYLAT',
+  cancelled_transaction: 'MEGSZAKÍTOTT TRANZAKCIÓ',
   conversion: 'KONVERZIÓS BIZONYLAT',
   closing: 'NAPI ZÁRÁS',
   handling_fee: 'KEZELÉSI DÍJ BIZONYLAT',
@@ -261,6 +262,14 @@ const JOB_TYPE_LABELS: Record<string, string> = {
   vault_closing: 'ÉRTÉKTÁRI ZÁRÁS',
   kktg_transfer: 'KKTG ÁTADÁS-ÁTVÉTEL',
 };
+
+function getJobTypeLabel(data: PrintReceiptData): string {
+  if (data.type === 'transfer') {
+    if (data.isStorno) return 'SZTORNÓ BIZONYLAT';
+    return data.transferDocType === 'receipt' ? 'ÁTVÉTELI BIZONYLAT' : 'ÁTADÁSI BIZONYLAT';
+  }
+  return JOB_TYPE_LABELS[data.type] ?? data.type;
+}
 
 const COMPANIES: Record<string, { name: string; fullName: string; taxNumber: string; address: string; phone: string }> = {
   BEST_CHANGE: {
@@ -310,7 +319,7 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
   push(COMMANDS.NORMAL_SIZE);
   text(company.fullName);
   push(COMMANDS.BOLD_OFF);
-  text(company.address);
+  text(data.type === 'transfer' && data.vaultAddress ? data.vaultAddress : company.address);
   const phone = data.companyPhone || company.phone;
   if (phone) text(`Tel: ${phone}`);
   text(`Adószám: ${data.companyTaxNumber || company.taxNumber}`);
@@ -320,7 +329,7 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
 
   // --- Bizonylat típus ---
   push(COMMANDS.BOLD_ON, COMMANDS.DOUBLE_HEIGHT);
-  text(JOB_TYPE_LABELS[data.type] ?? data.type);
+  text(getJobTypeLabel(data));
   push(COMMANDS.NORMAL_SIZE, COMMANDS.BOLD_OFF);
   blank();
 
@@ -399,6 +408,20 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     if (data.sealNumber) text(twoColumn('Plombaszám:', data.sealNumber));
     // FR-2: kért kézbesítési dátum.
     if (data.deliveryDate) text(twoColumn('Kézbesítési dátum:', data.deliveryDate));
+    if (data.isStorno && data.stornoReason) {
+      blank();
+      text(`Sztornó indoklása: ${data.stornoReason}`);
+    }
+    if (data.denominations && data.denominations.length > 0) {
+      blank();
+      push(COMMANDS.BOLD_ON);
+      text('Címletezés:');
+      push(COMMANDS.BOLD_OFF);
+      for (const denomination of data.denominations) {
+        const lineTotal = denomination.quantity * denomination.faceValue;
+        text(twoColumn(`${denomination.quantity} x ${fmtAmount(denomination.faceValue)}`, fmtAmount(lineTotal)));
+      }
+    }
     if (data.transferNote) text(twoColumn('Megjegyzés:', data.transferNote));
   } else if (data.type === 'storno') {
     blank();
@@ -409,6 +432,26 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     text(twoColumn('Összeg:', `${fmtAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`));
     text(twoColumn('HUF összeg:', `${fmtAmount(data.hufAmount)} Ft`));
     if (data.stornoReason) { blank(); text(`Indok: ${data.stornoReason}`); }
+  } else if (data.type === 'cancelled_transaction') {
+    blank();
+    push(COMMANDS.BOLD_ON); text('MEGSZAKÍTOTT TRANZAKCIÓ:'); push(COMMANDS.BOLD_OFF);
+    blank();
+    text('Pénzmozgás nem történt.');
+    blank();
+    const txLines = data.transactionLines;
+    if (txLines && txLines.length > 0) {
+      for (const ln of txLines) {
+        text(`${ln.currencyCode}:`);
+        text(twoColumn(`  ${fmtAmount(ln.foreignAmount)} x ${fmtRate(ln.rate)}`, `${fmtAmount(ln.hufAmount)} Ft`));
+      }
+    } else {
+      text(twoColumn('Valutanem:', data.currencyCode ?? '—'));
+      text(twoColumn('Összeg:', `${fmtAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`));
+      text(twoColumn('Árfolyam:', fmtRate(data.rate)));
+    }
+    text(twoColumn('HUF érték:', `${fmtAmount(data.roundedHufAmount ?? data.hufAmount)} Ft`));
+    if (data.stornoReason) text(twoColumn('Indok:', data.stornoReason));
+    if (data.note) text(twoColumn('Megjegyzés:', data.note));
   } else if (data.type === 'closing') {
     buildClosingBlock(data, parts);
   } else if (data.type === 'handling_fee') {

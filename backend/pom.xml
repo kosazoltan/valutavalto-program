@@ -25,6 +25,9 @@
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>${java.version}</maven.compiler.release>
+        <!-- CVE-2026-41842/41850/41851 fix: Spring Framework 7.0.7 -> 7.0.8
+             (same 7.0.x line; Spring Framework 7.0.8 was published as the security patch release). -->
+        <spring-framework.version>7.0.8</spring-framework.version>
         <!-- CVE-2026-22746/22748 fix: Spring Security 6.5.9 -> 6.5.10 -->
         <spring-security.version>6.5.10</spring-security.version>
         <!-- CVE-2026-34478/34480/34481 fix: log4j explicit override 2.24.3 -> 2.25.4 -->
@@ -41,6 +44,7 @@
         <!-- <tomcat.version>10.1.54</tomcat.version> -->
         <!-- CVE-2026-42198 fix: PostgreSQL JDBC 42.7.10 -> 42.7.11 -->
         <postgresql.version>42.7.11</postgresql.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
         <!-- CVE-2026-41293/43512 (9.8) + 43515 (9.1) + 41284/43513/42498/43514 fix:
              Tomcat 11.0.21 -> 11.0.22. AZONOS 11.0.x Servlet-6.1 line (csak biztonsagi
              point-release) — NEM a korabbi 10.1.x Servlet-6.0 override-risk (ld. fentebb). -->
@@ -252,6 +256,20 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
         

@@ -293,9 +293,10 @@ public class TransactionReversalService {
         // ellensúlyozza a korábban rögzített realizált hasznot (flag-gated, commit után, best-effort).
         if (original.getTransactionType() == TransactionType.SELL) {
             final Long origId = original.getId();
+            final Long compensationId = savedReversal.getId();
             final BigDecimal origQty = original.getCurrencyAmount();
             TransactionAfterCommit.run(
-                    () -> wacService.recordReversalCompensationIfEnabled(origId, origQty, origQty),
+                    () -> wacService.recordReversalCompensationIfEnabled(origId, compensationId, origQty, origQty),
                     "WAC sztornó kompenzáció tx=" + origId);
         }
 
@@ -443,10 +444,11 @@ public class TransactionReversalService {
         // ARÁNYÁBAN ellensúlyozzuk a realizált hasznot (flag-gated, commit után, best-effort).
         if (original.getTransactionType() == TransactionType.SELL) {
             final Long origId = original.getId();
+            final Long compensationId = saved.getId();
             final BigDecimal refundedQty = refundCurrency;
             final BigDecimal origQty = original.getCurrencyAmount();
             TransactionAfterCommit.run(
-                    () -> wacService.recordReversalCompensationIfEnabled(origId, refundedQty, origQty),
+                    () -> wacService.recordReversalCompensationIfEnabled(origId, compensationId, refundedQty, origQty),
                     "WAC részleges visszatérítés kompenzáció tx=" + origId);
         }
 

@@ -123,6 +123,7 @@ export default function ReceiptPreviewModal({
     conversion: 'Konverziós bizonylat',
     transfer: 'Átadási bizonylat',
     closing: 'Napi zárás',
+    cancelled_transaction: 'Megszakított tranzakció',
   };
 
   const subtypeEn: Record<string, string> = {
@@ -132,6 +133,7 @@ export default function ReceiptPreviewModal({
     conversion: 'CONVERSION',
     transfer: 'TRANSFER',
     closing: 'DAILY CLOSING',
+    cancelled_transaction: 'CANCELLED TRANSACTION',
   };
 
   const formatAmount = (value: number | undefined) =>
@@ -167,7 +169,7 @@ export default function ReceiptPreviewModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-xl font-bold text-gray-800">{t('components.bizonylatElonezet2')}</h2>
-          {/* eslint-disable i18next/no-literal-string */}
+          { }
           <button
             onClick={onClose}
             className="rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
@@ -175,7 +177,7 @@ export default function ReceiptPreviewModal({
           >
             ✕
           </button>
-          {/* eslint-enable i18next/no-literal-string */}
+          { }
         </div>
 
         {/* Receipt content — 80mm thermal printer format */}
@@ -290,6 +292,42 @@ export default function ReceiptPreviewModal({
                     <p className="font-semibold">Sztornó oka:</p>
                     <p className="text-[9px] italic">{receiptData.stornoReason}</p>
                   </>
+                )}
+              </div>
+            )}
+
+            {receiptData.type === 'cancelled_transaction' && (
+              <div className="space-y-1">
+                <p className="font-semibold">Megszakított tranzakció</p>
+                <p className="font-bold">Pénzmozgás nem történt.</p>
+                {receiptData.transactionLines && receiptData.transactionLines.length > 0 && (
+                  <table className="w-full text-[9px]">
+                    <thead>
+                      <tr className="border-b border-gray-300">
+                        <th className="text-left">Valuta</th>
+                        <th className="text-right">Összeg</th>
+                        <th className="text-right">Árf.</th>
+                        <th className="text-right">Forint</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {receiptData.transactionLines.map((ln, i) => (
+                        <tr key={`${ln.currencyCode}-${i}`}>
+                          <td className="text-left">{ln.currencyCode || '—'}</td>
+                          <td className="text-right">{formatAmount(ln.foreignAmount)}</td>
+                          <td className="text-right">{formatRate(ln.rate)}</td>
+                          <td className="text-right">{formatInt(ln.hufAmount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                <p className="font-bold">HUF érték: {formatInt(receiptData.roundedHufAmount ?? receiptData.hufAmount)} Ft</p>
+                {receiptData.stornoReason && (
+                  <p><span className="font-semibold">Indok:</span> {receiptData.stornoReason}</p>
+                )}
+                {receiptData.note && (
+                  <p className="text-[9px] italic">{receiptData.note}</p>
                 )}
               </div>
             )}
