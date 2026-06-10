@@ -123,7 +123,7 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
-            <version>12.7.0</version>
+            <version>12.8.1</version>
         </dependency>
         
         <!-- Jsoup HTML Parser (Raiffeisen scraping) -->
@@ -221,7 +221,7 @@
         <dependency>
             <groupId>com.google.auth</groupId>
             <artifactId>google-auth-library-oauth2-http</artifactId>
-            <version>1.47.0</version>
+            <version>1.48.0</version>
         </dependency>
 
         <dependency>
