@@ -342,6 +342,12 @@
     "var": "VÁR",
     "zaroKeszlet": "Záró készlet"
   },
+  "closingDenominationMenu": {
+    "title": "Címletezés – zárások",
+    "subtitle": "Válassza ki a zárási folyamathoz tartozó címletezést",
+    "back": "VISSZA",
+    "exit": "KILÉPÉS"
+  },
   "commissions": {
     "dolgozo": "Dolgozó",
     "dolgozoiJutalekok": "Dolgozói Jutalékok",
@@ -995,6 +1001,11 @@
     "ujParameter": "Új paraméter",
     "ujSzervezet": "Új szervezet",
     "parameter": "paraméter"
+  },
+  "otherTasks": {
+    "title": "Egyéb feladatok",
+    "subtitleNav": "NAV pénztárgépes konfiguráció — pénztárgép-parancsok és beállítások",
+    "subtitlePos": "OTP POS / adatlapos konfiguráció — terminál-parancsok, adatlapok, ügyfél-karbantartás"
   },
   "pep": {
     "allamfo": "Államfő",

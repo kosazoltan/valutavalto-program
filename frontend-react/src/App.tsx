@@ -109,6 +109,9 @@ const SynchronizationPage = lazy(() => import('./pages/sync/SynchronizationPage'
 const LocalQueuePage = lazy(() => import('./pages/sync/LocalQueuePage'))
 const PosTerminalPage = lazy(() => import('./pages/pos/PosTerminalPage'))
 const NavIntegrationPage = lazy(() => import('./pages/nav/NavIntegrationPage'))
+// EXCMD b6b FR-EFM-01 + b5 FR-KC-05: konszolidált választó-menük (Egyéb feladatok, Címletezés-zárások).
+const OtherTasksPage = lazy(() => import('./pages/othertasks/OtherTasksPage'))
+const ClosingDenominationMenuPage = lazy(() => import('./pages/closing/ClosingDenominationMenuPage'))
 const DocumentStoragePage = lazy(() => import('./pages/documents/DocumentStoragePage'))
 const NotificationPage = lazy(() => import('./pages/notifications/NotificationPage'))
 const OrganizationalSystemParameterPage = lazy(() => import('./pages/organizations/OrganizationalSystemParameterPage'))
@@ -636,6 +639,10 @@ export default function App() {
           
           {/* NAV Integration */}
           <Route path="/nav-integration" element={<NavIntegrationPage />} />
+
+          {/* EXCMD b6b FR-EFM: Egyéb feladatok menü + b5 FR-KC-05: Címletezés-zárások menü */}
+          <Route path="/other-tasks" element={<OtherTasksPage />} />
+          <Route path="/closing/denominations-menu" element={<ClosingDenominationMenuPage />} />
           
           {/* Document Storage */}
           <Route path="/documents" element={<DocumentStoragePage />} />

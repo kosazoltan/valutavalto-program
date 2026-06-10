@@ -70,11 +70,15 @@ export const menuGroups: MenuGroup[] = [
       { path: "/transactions/conversion", label: "Konverzió", icon: ArrowLeftRight },
       { path: "/cashdesk", label: "Kassza / készlet", icon: Wallet },
       { path: "/cashdesk/denominations", label: "Címletezés", icon: FileText },
+      // EXCMD b5 FR-KC-05: zárási címletezések választó-menüje.
+      { path: "/closing/denominations-menu", label: "Címletezés – zárások", icon: FileText },
       { path: "/customers", label: "Ügyfelek", icon: Users },
       { path: "/transit", label: "Úton lévő csomagok", icon: ArrowLeftRight },
       { path: "/closing/wizard", label: "Napzárás", icon: FileText },
       { path: "/rates", label: "Árfolyamok (nézet)", icon: TrendingUp },
       { path: "/transactions", label: "Tranzakciólista", icon: FileText },
+      // EXCMD b6b FR-EFM-01: konszolidált „Egyéb feladatok" menü (NAV/POS variáns a konfiguráció szerint).
+      { path: "/other-tasks", label: "Egyéb feladatok", icon: Settings },
     ],
   },
   {
