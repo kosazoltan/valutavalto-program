@@ -1,0 +1,26 @@
+{
+  "approvals": [
+    {
+      "role": "product",
+      "name": "KITÖLTENDŐ: jóváhagyó neve",
+      "decision": "KITÖLTENDŐ: APPROVED (más érték = blokk)",
+      "date": "KITÖLTENDŐ: ISO dátum",
+      "statement": "KITÖLTENDŐ: mit hagy jóvá pontosan (scope, verzió)",
+      "acceptedOpenGapsRef": "KITÖLTENDŐ: a tételesen vállalt nyitott gap-lista hivatkozása, pl. EXCMD/_ai-protokoll/2026-06-04-excmd-teljes-audit-statusz-es-javitas.md §4"
+    },
+    {
+      "role": "ops",
+      "name": "KITÖLTENDŐ",
+      "decision": "KITÖLTENDŐ: APPROVED",
+      "date": "KITÖLTENDŐ: ISO dátum",
+      "statement": "KITÖLTENDŐ: üzemeltetési átvétel nyilatkozat"
+    },
+    {
+      "role": "compliance",
+      "name": "KITÖLTENDŐ",
+      "decision": "KITÖLTENDŐ: APPROVED",
+      "date": "KITÖLTENDŐ: ISO dátum",
+      "statement": "KITÖLTENDŐ: AML/Pmt. megfelelőségi nyilatkozat"
+    }
+  ]
+}

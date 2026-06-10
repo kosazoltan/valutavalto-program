@@ -1,0 +1,14 @@
+{
+  "drillDate": "KITÖLTENDŐ: ISO dátum",
+  "performedBy": { "name": "KITÖLTENDŐ: a drillt végző személy" },
+  "environment": "KITÖLTENDŐ: hova történt a visszaállítás (pl. izolált restore-VPS)",
+  "backupSource": "KITÖLTENDŐ: melyik mentésből (pl. Hetzner napi pg_dump 2026-06-09)",
+  "restoreStartedAt": "KITÖLTENDŐ: ISO időpont",
+  "restoreCompletedAt": "KITÖLTENDŐ: ISO időpont (cél: indulástól ≤ 60 perc)",
+  "postRestoreChecks": [
+    { "name": "Sortszám/integritás egyezés a forrás DB-vel (kulcstáblák)", "result": "KITÖLTENDŐ: PASS vagy FAIL" },
+    { "name": "Alkalmazás-bejelentkezés + tranzakciólista a visszaállított DB-n", "result": "KITÖLTENDŐ: PASS vagy FAIL" }
+  ],
+  "result": "KITÖLTENDŐ: PASS csak ha minden ellenőrzés PASS",
+  "notes": "KITÖLTENDŐ: runbook-eltérések, tanulságok (docs/operations/dr-backup-runbook.md frissítése ha kellett)"
+}

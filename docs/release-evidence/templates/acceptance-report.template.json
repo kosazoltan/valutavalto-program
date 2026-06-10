@@ -1,0 +1,18 @@
+{
+  "environment": "KITÖLTENDŐ: staging vagy production",
+  "appVersion": "KITÖLTENDŐ: pl. 2.27.96 (egyeznie kell a root package.json verzióval)",
+  "executedAt": "KITÖLTENDŐ: ISO dátum, pl. 2026-06-10T14:30:00+02:00",
+  "executedBy": {
+    "name": "KITÖLTENDŐ: a tesztet végző személy neve",
+    "role": "KITÖLTENDŐ: pl. ops / tesztelő kolléga"
+  },
+  "scenarios": [
+    { "id": "VETEL", "name": "Valuta vétel teljes flow bizonylattal", "result": "KITÖLTENDŐ: PASS vagy FAIL" },
+    { "id": "ELADAS", "name": "Valuta eladás teljes flow bizonylattal", "result": "KITÖLTENDŐ: PASS vagy FAIL" },
+    { "id": "SZTORNO", "name": "Sztornó jóváhagyással + készlet-visszafordítás", "result": "KITÖLTENDŐ: PASS vagy FAIL" },
+    { "id": "NAPZARAS", "name": "Napzárás címletezéssel", "result": "KITÖLTENDŐ: PASS vagy FAIL" },
+    { "id": "HAVIZARAS", "name": "Havi zárás", "result": "KITÖLTENDŐ: PASS vagy FAIL" }
+  ],
+  "overallResult": "KITÖLTENDŐ: PASS csak ha minden forgatókönyv PASS",
+  "notes": "KITÖLTENDŐ: megfigyelések, mellékletek (screenshot/log) helye"
+}

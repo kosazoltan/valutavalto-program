@@ -1,0 +1,15 @@
+{
+  "windowStart": "KITÖLTENDŐ: ISO időpont (a 168 órás ablak kezdete)",
+  "windowEnd": "KITÖLTENDŐ: ISO időpont (legalább 168 órával a kezdet után)",
+  "source": "KITÖLTENDŐ: a monitoring dashboard neve/URL-je (lásd docs/operations/monitoring-runbook.md)",
+  "uptimePercent": "KITÖLTENDŐ: szám, pl. 99.95 (idézőjel nélkül)",
+  "p99LatencyMs": "KITÖLTENDŐ: szám, pl. 420 (idézőjel nélkül)",
+  "errorRatePercent": "KITÖLTENDŐ: szám, pl. 0.02 (idézőjel nélkül)",
+  "incidents": [
+    {
+      "description": "KITÖLTENDŐ: ha volt incidens; ha nem volt, a tömb maradjon üres: []",
+      "resolved": false
+    }
+  ],
+  "confirmedBy": { "name": "KITÖLTENDŐ: aki az adatokat a dashboardról ellenőrizte" }
+}
