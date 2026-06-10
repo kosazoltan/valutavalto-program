@@ -14,6 +14,21 @@ hatályos 2026-05-25, valamint a „Belső kockázatértékelés" és az MNB-seg
   (közjegyző/ügyvéd magánokirat / max. 3 éves banki szlip; két tanú TILOS) + dátumát ≥50M Ft-nál;
   V291 migráció élesíti az `AML_SOURCE_OF_FUNDS_50M_ENFORCEMENT` flag-et. (Szabályzat V.2.5 b), V.2.8.)
 
+## ✅ KÉSZ (2026-06-10 kör)
+
+- **1) FATF tier-akció**: a `checkTransaction` 6-arg overload (customerNationality) + tier-akciók
+  (TIER_1A/1B/2) implementálva (`AmlService.java:175-221`), V305 élesítette az
+  `AML_FATF_TIER_ENFORCEMENT` flaget.
+- **2) SOF/SOW 10M Ft / 7 nap kumulált trigger [M]**: implementálva a WU-flow-ban (a szabály
+  pénzátutalási — küldés+fogadás, ≥2 különböző partner): `WesternUnionService.enforceWuSofCumulative`
+  (recordSend/recordReceive), `WuTransactionRepository.findRecentSendReceiveByCustomer(Name)`
+  (company-szűrt + név-fallback), `wu_transactions.source_of_funds_doc_type/_doc_date` (V308),
+  elfogadható doc-lista a V.2.8 B.2 szerint, FE SOF-mezők a WU send/receive formon. A flaget
+  (`AML_WU_SOF_CUMULATIVE_10M_ENFORCEMENT`) a V308 élesíti. 9 teszt (statikus gate + flow).
+- **3) Vezetői jóváhagyás workflow**: a high-value (10M) + FATF-tier jóváhagyás-kényszer a meglévő
+  AML-approval stackkel él (`AmlApprovalController` check-required/verify-approver + AmlApproverModal,
+  4-szem + PIN + jóváhagyó-név audit — `AmlApprovalService.recordSeniorApproval`); V305 élesítette.
+
 ## A szabályzat kód-releváns szabályai → kód-helyek (követő munka)
 
 ### 1) FATF magas-kockázatú harmadik ország tier-akció a kassza-flow-ban — [L, compliance-kritikus]

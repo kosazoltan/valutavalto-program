@@ -33,6 +33,8 @@ class WesternUnionServiceTest {
     @Mock AmlService amlService;
     @Mock WuDailyLimitRepository wuDailyLimitRepository;
     @Mock AuditLogService auditLogService;
+    @Mock SystemParameterService systemParameterService;
+    @Mock hu.puzzleir.valuta.repository.CircularRepository circularRepository;
 
     @InjectMocks WesternUnionService service;
 
@@ -465,5 +467,154 @@ class WesternUnionServiceTest {
         assertThatThrownBy(() -> service.recordIcOut(dto))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("AML alapösszeg");
+    }
+
+    // ============ SOF 10M/7nap kumulált trigger (V.2.8 A.1) ============
+
+    @Test
+    void wuSofCumulativeBlockReason_underThreshold_passes() {
+        assertThat(WesternUnionService.wuSofCumulativeBlockReason(
+                new BigDecimal("9999999"), 3, null, true)).isNull();
+    }
+
+    @Test
+    void wuSofCumulativeBlockReason_singleCounterparty_passes() {
+        assertThat(WesternUnionService.wuSofCumulativeBlockReason(
+                new BigDecimal("15000000"), 1, null, true)).isNull();
+    }
+
+    @Test
+    void wuSofCumulativeBlockReason_triggeredWithoutDoc_blocks() {
+        assertThat(WesternUnionService.wuSofCumulativeBlockReason(
+                new BigDecimal("10000000"), 2, null, true))
+                .contains("kumulált küszöb");
+    }
+
+    @Test
+    void wuSofCumulativeBlockReason_triggeredWithAcceptableDoc_passes() {
+        assertThat(WesternUnionService.wuSofCumulativeBlockReason(
+                new BigDecimal("12000000"), 2, "BANKSZAMLAKIVONAT", true)).isNull();
+        assertThat(WesternUnionService.wuSofCumulativeBlockReason(
+                new BigDecimal("12000000"), 2, "jovedelemigazolas", true)).isNull();
+    }
+
+    @Test
+    void wuSofCumulativeBlockReason_triggeredWithUnacceptableDoc_blocks() {
+        assertThat(WesternUnionService.wuSofCumulativeBlockReason(
+                new BigDecimal("12000000"), 2, "KET_TANUS_NYILATKOZAT", true))
+                .contains("nem elfogadható");
+    }
+
+    @Test
+    void wuSofCumulativeBlockReason_flagOff_passes() {
+        assertThat(WesternUnionService.wuSofCumulativeBlockReason(
+                new BigDecimal("99000000"), 5, null, false)).isNull();
+    }
+
+    @Test
+    void recordSend_sofCumulativeTriggered_withoutDoc_throws() {
+        UUID custId = UUID.randomUUID();
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(amlService.checkTransaction(any(), any(), any(), any(), any()))
+                .thenReturn(AmlService.AmlBasicCheckResult.builder().approved(true).build());
+        lenient().when(systemParameterService.getValue(
+                eq(WesternUnionService.WU_SOF_CUMULATIVE_PARAM), any()))
+                .thenReturn("true");
+        // 7 napos ablak: 6M SEND (Kovács felé) + 5M RECEIVE (Nagy-tól) → a mostani 1M-mel 12M, 3 partner.
+        WuTransaction prevSend = WuTransaction.builder()
+                .transactionType("SEND").amountHuf(new BigDecimal("6000000"))
+                .receiverName("Kovács Béla").status(WuTransactionStatus.COMPLETED).build();
+        WuTransaction prevReceive = WuTransaction.builder()
+                .transactionType("RECEIVE").amountHuf(new BigDecimal("5000000"))
+                .senderName("Nagy Anna").status(WuTransactionStatus.COMPLETED).build();
+        when(wuTransactionRepository.findRecentSendReceiveByCustomer(eq(companyId), eq(custId), any()))
+                .thenReturn(java.util.List.of(prevSend, prevReceive));
+
+        WuTransactionDto dto = WuTransactionDto.builder()
+                .branchId(branchId)
+                .wuCustomerId(custId)
+                .mtcn("1234567890")
+                .amountHuf(new BigDecimal("1000000"))
+                .senderName("Teszt Ügyfél")
+                .receiverName("Szabó Péter")
+                .build();
+
+        assertThatThrownBy(() -> service.recordSend(dto))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("kumulált küszöb");
+        verify(wuTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    void recordSend_sofCumulativeTriggered_withValidDoc_succeeds() {
+        UUID custId = UUID.randomUUID();
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(amlService.checkTransaction(any(), any(), any(), any(), any()))
+                .thenReturn(AmlService.AmlBasicCheckResult.builder().approved(true).build());
+        lenient().when(systemParameterService.getValue(
+                eq(WesternUnionService.WU_SOF_CUMULATIVE_PARAM), any()))
+                .thenReturn("true");
+        WuTransaction prevSend = WuTransaction.builder()
+                .transactionType("SEND").amountHuf(new BigDecimal("6000000"))
+                .receiverName("Kovács Béla").status(WuTransactionStatus.COMPLETED).build();
+        WuTransaction prevReceive = WuTransaction.builder()
+                .transactionType("RECEIVE").amountHuf(new BigDecimal("5000000"))
+                .senderName("Nagy Anna").status(WuTransactionStatus.COMPLETED).build();
+        when(wuTransactionRepository.findRecentSendReceiveByCustomer(eq(companyId), eq(custId), any()))
+                .thenReturn(java.util.List.of(prevSend, prevReceive));
+        when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
+                .thenReturn(Optional.of(WuBalance.builder()
+                        .branch(branch).company(company)
+                        .usdBalance(new BigDecimal("10000"))
+                        .hufBalance(new BigDecimal("50000000"))
+                        .build()));
+        when(wuTransactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        WuTransactionDto dto = WuTransactionDto.builder()
+                .branchId(branchId)
+                .wuCustomerId(custId)
+                .mtcn("1234567890")
+                .amountUsd(new BigDecimal("100"))
+                .amountHuf(new BigDecimal("1000000"))
+                .senderName("Teszt Ügyfél")
+                .receiverName("Szabó Péter")
+                .sourceOfFundsDocType("BANKSZAMLAKIVONAT")
+                .sourceOfFundsDocDate(java.time.LocalDate.now().minusDays(3))
+                .build();
+
+        WuTransaction result = service.recordSend(dto);
+        assertThat(result.getSourceOfFundsDocType()).isEqualTo("BANKSZAMLAKIVONAT");
+    }
+
+    @Test
+    void recordReceive_sofCumulative_nameFallback_underThreshold_passes() {
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(amlService.checkTransaction(any(), any(), any(), any(), any()))
+                .thenReturn(AmlService.AmlBasicCheckResult.builder().approved(true).build());
+        lenient().when(systemParameterService.getValue(
+                eq(WesternUnionService.WU_SOF_CUMULATIVE_PARAM), any()))
+                .thenReturn("true");
+        // Nincs WuCustomer → név-alapú fallback (RECEIVE-nél a fogadó neve az ügyfél-identitás).
+        when(wuTransactionRepository.findRecentSendReceiveByCustomerName(
+                eq(companyId), eq("TESZT ÜGYFÉL"), any()))
+                .thenReturn(java.util.List.of());
+        when(wuBalanceRepository.findByBranchIdForUpdate(branchId))
+                .thenReturn(Optional.of(WuBalance.builder()
+                        .branch(branch).company(company)
+                        .usdBalance(new BigDecimal("10000"))
+                        .hufBalance(new BigDecimal("50000000"))
+                        .build()));
+        when(wuTransactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        WuTransactionDto dto = WuTransactionDto.builder()
+                .branchId(branchId)
+                .mtcn("1234567890")
+                .amountUsd(new BigDecimal("100"))
+                .amountHuf(new BigDecimal("500000"))
+                .senderName("Külföldi Küldő")
+                .receiverName("Teszt Ügyfél")
+                .build();
+
+        assertThatCode(() -> service.recordReceive(dto)).doesNotThrowAnyException();
     }
 }

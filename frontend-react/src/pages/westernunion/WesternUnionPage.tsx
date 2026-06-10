@@ -60,7 +60,26 @@ const emptyForm = {
   senderName: '',
   receiverName: '',
   destinationCountry: '',
+  // SOF (V.2.8 A.1): 10M/7nap kumulált triggernél a backend kötelezővé teszi.
+  sourceOfFundsDocType: '',
+  sourceOfFundsDocDate: '',
 }
+
+/** Elfogadható forrás-dokumentum típusok (V.2.8 B.2 — a backend WU_SOF_ACCEPTABLE_DOC_TYPES tükre). */
+const SOF_DOC_TYPES: { value: string; label: string }[] = [
+  { value: '', label: '— nincs (csak kumulált küszöbnél kötelező) —' },
+  { value: 'JOVEDELEMIGAZOLAS', label: 'Jövedelemigazolás' },
+  { value: 'NAV_IGAZOLAS', label: 'NAV-igazolás' },
+  { value: 'BANKSZAMLAKIVONAT', label: 'Bankszámlakivonat' },
+  { value: 'ADASVETELI_SZERZODES', label: 'Adásvételi szerződés' },
+  { value: 'OROKLESI_OKIRAT', label: 'Öröklési okirat' },
+  { value: 'AJANDEKOZASI_SZERZODES', label: 'Ajándékozási szerződés' },
+  { value: 'VALLALKOZOI_JOVEDELEM', label: 'Vállalkozói jövedelem' },
+  { value: 'NYUGDIJ_IGAZOLAS', label: 'Nyugdíj-igazolás' },
+  { value: 'MAGANOKIRAT_KOZJEGYZO', label: 'Magánokirat (közjegyző)' },
+  { value: 'MAGANOKIRAT_UGYVED', label: 'Magánokirat (ügyvéd)' },
+  { value: 'BANK_SZLIP', label: 'Banki bizonylat (szlip)' },
+]
 
 export default function WesternUnionPage() {
   const { t } = useTranslation()
@@ -176,6 +195,8 @@ export default function WesternUnionPage() {
         senderName: form.senderName || undefined,
         receiverName: form.receiverName || undefined,
         destinationCountry: form.destinationCountry || undefined,
+        sourceOfFundsDocType: form.sourceOfFundsDocType || undefined,
+        sourceOfFundsDocDate: form.sourceOfFundsDocDate || undefined,
       }
       await api.post(`/western-union/${modal}`, body)
       setSuccess(`WU ${modal.toUpperCase()} sikeresen rögzítve!`)
@@ -188,12 +209,17 @@ export default function WesternUnionPage() {
     }
   }
 
-  const handleStorno = async (id: string) => {
-    const reason = prompt('Sztornó indoka:')
-    if (reason === null) return
+  // Sztornó-indok modal — Electron-kompatibilis (NEM window.prompt, az a rendererben nem támogatott).
+  const [stornoTarget, setStornoTarget] = useState<{ id: string; reason: string } | null>(null)
+
+  const handleStornoSubmit = async () => {
+    if (!stornoTarget) return
+    const reason = stornoTarget.reason.trim()
+    if (!reason) return
     try {
-      await api.post(`/western-union/storno/${id}`, null, { params: { reason } })
+      await api.post(`/western-union/storno/${stornoTarget.id}`, null, { params: { reason } })
       setSuccess('Sztornó sikeres!')
+      setStornoTarget(null)
       await loadData()
     } catch (err) {
       setError(getErrorMessage(err))
@@ -321,7 +347,7 @@ export default function WesternUnionPage() {
                 </td>
                 <td className="px-4 py-3 text-right">
                   {item.status === 'COMPLETED' && item.transactionType !== 'STORNO' && (
-                    <button onClick={() => handleStorno(item.id)}
+                    <button onClick={() => setStornoTarget({ id: item.id, reason: '' })}
                       className="form-button p-1 text-red-600" title="Sztornó">
                       <RotateCcw className="h-4 w-4" />
                     </button>
@@ -396,6 +422,27 @@ export default function WesternUnionPage() {
                 <input type="number" step="0.01" className="form-input w-full"
                   value={form.feeAmount} onChange={e => setForm(f => ({ ...f, feeAmount: e.target.value }))} />
               </div>
+
+              {/* SOF (V.2.8 A.1): a backend a 10M/7nap kumulált triggernél követeli meg */}
+              {(modal === 'send' || modal === 'receive') && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="form-label">Pénzeszköz-forrás dokumentum</label>
+                    <select className="form-input w-full" value={form.sourceOfFundsDocType}
+                      onChange={e => setForm(f => ({ ...f, sourceOfFundsDocType: e.target.value }))}>
+                      {SOF_DOC_TYPES.map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Forrás-dokumentum dátuma</label>
+                    <input type="date" className="form-input w-full"
+                      value={form.sourceOfFundsDocDate}
+                      onChange={e => setForm(f => ({ ...f, sourceOfFundsDocDate: e.target.value }))} />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
@@ -403,6 +450,29 @@ export default function WesternUnionPage() {
               <button onClick={handleSubmit} disabled={submitting}
                 className="form-button-primary flex items-center gap-1">
                 {submitting ? 'Mentés...' : 'Rögzítés'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sztornó-indok modal (Electron-kompatibilis) */}
+      {stornoTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold">Sztornó indoka</h2>
+              <button onClick={() => setStornoTarget(null)}><X className="h-5 w-5" /></button>
+            </div>
+            <textarea autoFocus rows={3} className="form-input w-full"
+              placeholder="Adja meg a sztornó indokát…"
+              value={stornoTarget.reason}
+              onChange={e => setStornoTarget(s => (s ? { ...s, reason: e.target.value } : s))} />
+            <div className="mt-4 flex justify-end gap-3">
+              <button onClick={() => setStornoTarget(null)} className="form-button">{t('common.cancel')}</button>
+              <button onClick={handleStornoSubmit} disabled={!stornoTarget.reason.trim()}
+                className="form-button-primary">
+                Sztornó végrehajtása
               </button>
             </div>
           </div>

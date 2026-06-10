@@ -32048,6 +32048,14 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "sourceOfFundsDocType": {
+            "type": "string",
+            "description": "SOF (V.2.8 A.1): forrás-dokumentum típusa — a 10M/7nap kumulált triggernél kötelező"
+          },
+          "sourceOfFundsDocDate": {
+            "type": "string",
+            "format": "date"
           }
         },
         "required": [

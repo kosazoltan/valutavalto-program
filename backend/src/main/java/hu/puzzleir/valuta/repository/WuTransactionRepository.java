@@ -38,4 +38,32 @@ public interface WuTransactionRepository extends JpaRepository<WuTransaction, UU
             @Param("to") LocalDateTime to);
 
     Optional<WuTransaction> findFirstByMtcnAndCompanyIdOrderByTransactionDateDesc(String mtcn, UUID companyId);
+
+    /**
+     * SOF 10M/7nap kumulált trigger (EBC szabályzat V.2.8 A.1): az ügyfél (WuCustomer)
+     * lezárt SEND/RECEIVE forgalma az ablakban. Company-szűrt (multi-tenant).
+     */
+    @Query("SELECT t FROM WuTransaction t WHERE t.company.id = :companyId " +
+           "AND t.wuCustomer.id = :wuCustomerId " +
+           "AND t.transactionType IN ('SEND','RECEIVE') " +
+           "AND t.status = hu.puzzleir.valuta.entity.WuTransactionStatus.COMPLETED " +
+           "AND t.transactionDate >= :since")
+    List<WuTransaction> findRecentSendReceiveByCustomer(
+            @Param("companyId") UUID companyId,
+            @Param("wuCustomerId") UUID wuCustomerId,
+            @Param("since") LocalDateTime since);
+
+    /**
+     * SOF 10M/7nap trigger név-alapú fallbackje, ha a tranzakcióhoz nincs WuCustomer kötve:
+     * az „ugyanazon ügyfél" a SEND-nél a küldő, a RECEIVE-nél a fogadó neve (kisbetű-érzéketlen).
+     */
+    @Query("SELECT t FROM WuTransaction t WHERE t.company.id = :companyId " +
+           "AND ((t.transactionType = 'SEND' AND UPPER(t.senderName) = :nameUpper) " +
+           "  OR (t.transactionType = 'RECEIVE' AND UPPER(t.receiverName) = :nameUpper)) " +
+           "AND t.status = hu.puzzleir.valuta.entity.WuTransactionStatus.COMPLETED " +
+           "AND t.transactionDate >= :since")
+    List<WuTransaction> findRecentSendReceiveByCustomerName(
+            @Param("companyId") UUID companyId,
+            @Param("nameUpper") String nameUpper,
+            @Param("since") LocalDateTime since);
 }

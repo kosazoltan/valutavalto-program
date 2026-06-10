@@ -13354,6 +13354,10 @@ export interface components {
             transactionDate?: string;
             /** Format: date-time */
             createdAt?: string;
+            /** @description SOF (V.2.8 A.1): forrás-dokumentum típusa — a 10M/7nap kumulált triggernél kötelező */
+            sourceOfFundsDocType?: string;
+            /** Format: date */
+            sourceOfFundsDocDate?: string;
         };
         WuStubTransferRequest: {
             /** Format: uuid */

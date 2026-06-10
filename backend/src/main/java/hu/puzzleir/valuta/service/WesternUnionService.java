@@ -58,6 +58,27 @@ public class WesternUnionService {
     private static final String WU_LIMIT_CURRENCY = "USD";
     private static final BigDecimal DEFAULT_WU_DAILY_LIMIT_USD = new BigDecimal("10000.00");
 
+    // ============ SOF 10M/7nap kumulált trigger (EBC szabályzat V.2.8 A.1) ============
+
+    /** Flag: ha true, a 10M/7nap kumulált trigger SOF-dokumentumot követel (V308 seedeli). */
+    static final String WU_SOF_CUMULATIVE_PARAM = "AML_WU_SOF_CUMULATIVE_10M_ENFORCEMENT";
+    static final String WU_SOF_CUMULATIVE_DEFAULT = "false";
+    /** Kumulált küszöb: 10.000.000 Ft 7 naptári napon belül (küldés+fogadás együtt). */
+    static final BigDecimal WU_SOF_CUMULATIVE_THRESHOLD_HUF = new BigDecimal("10000000");
+    static final int WU_SOF_WINDOW_DAYS = 7;
+    /** A trigger második feltétele: legalább ennyi KÜLÖNBÖZŐ küldő/kedvezményezett. */
+    static final int WU_SOF_MIN_DISTINCT_COUNTERPARTIES = 2;
+
+    /**
+     * Elfogadható forrás-dokumentum típusok (V.2.8 B.2 — a kumulált triggernél TÁGABB lista,
+     * mint az 50M-es szabálynál): jövedelem/NAV/bankszámlakivonat/adásvételi/öröklési/
+     * ajándékozási/vállalkozói/nyugdíj + az 50M-nél elfogadott okiratok.
+     */
+    static final java.util.Set<String> WU_SOF_ACCEPTABLE_DOC_TYPES = java.util.Set.of(
+            "JOVEDELEMIGAZOLAS", "NAV_IGAZOLAS", "BANKSZAMLAKIVONAT", "ADASVETELI_SZERZODES",
+            "OROKLESI_OKIRAT", "AJANDEKOZASI_SZERZODES", "VALLALKOZOI_JOVEDELEM", "NYUGDIJ_IGAZOLAS",
+            "MAGANOKIRAT_KOZJEGYZO", "MAGANOKIRAT_UGYVED", "BANK_SZLIP");
+
     // ============ MTCN VALIDATION ============
 
     /**
@@ -149,6 +170,102 @@ public class WesternUnionService {
     // ============ SEND / RECEIVE ============
 
     /**
+     * SOF 10M/7nap kumulált gate döntés — statikus, függőség-mentes (tesztelhető, a
+     * {@code TransactionService.sourceOfFundsBlockReason} mintájára).
+     *
+     * @return blokkoló indok, ha (enforce ÉS kumulált ≥10M ÉS ≥2 különböző partner ÉS
+     *         nincs elfogadható forrás-dokumentum); különben {@code null}.
+     */
+    static String wuSofCumulativeBlockReason(BigDecimal cumulativeHuf, long distinctCounterparties,
+                                             String docType, boolean enforcementEnabled) {
+        if (!enforcementEnabled) {
+            return null;
+        }
+        if (cumulativeHuf == null || cumulativeHuf.compareTo(WU_SOF_CUMULATIVE_THRESHOLD_HUF) < 0) {
+            return null;
+        }
+        if (distinctCounterparties < WU_SOF_MIN_DISTINCT_COUNTERPARTIES) {
+            return null;
+        }
+        String t = docType == null ? "" : docType.trim().toUpperCase(java.util.Locale.ROOT);
+        if (WU_SOF_ACCEPTABLE_DOC_TYPES.contains(t)) {
+            return null;
+        }
+        String prefix = t.isEmpty()
+                ? "Pénzátutalási kumulált küszöb átlépve"
+                : "Pénzátutalási kumulált küszöb átlépve — nem elfogadható forrás-dokumentum típus (" + docType + ")";
+        return prefix + ": az ügyfél 7 napon belüli összesített küldés+fogadás forgalma elérte a 10M Ft-ot "
+                + "legalább 2 különböző küldővel/kedvezményezettel — a pénzeszközök forrásának dokumentált "
+                + "igazolása kötelező (pl. jövedelemigazolás, NAV-igazolás, bankszámlakivonat, adásvételi/"
+                + "öröklési/ajándékozási okirat, vállalkozói jövedelem, nyugdíj-igazolás).";
+    }
+
+    /**
+     * A SOF kumulált trigger kiértékelése a friss tranzakcióval EGYÜTT (a jelenlegi összeg és
+     * partner is beleszámít). Flag mögött (default OFF); a tesztek @InjectMocks-szal nem törnek
+     * (null systemParameterService → skip), élesben a V308 kapcsolja be.
+     */
+    private void enforceWuSofCumulative(WuTransactionDto dto, Branch branch, boolean isSend) {
+        boolean enforce = systemParameterService != null && "true".equalsIgnoreCase(
+                systemParameterService.getValue(WU_SOF_CUMULATIVE_PARAM, WU_SOF_CUMULATIVE_DEFAULT));
+        if (!enforce) {
+            return;
+        }
+        // Az „ugyanazon ügyfél": SEND-nél a küldő, RECEIVE-nél a fogadó.
+        String customerName = isSend ? dto.getSenderName() : dto.getReceiverName();
+        LocalDateTime txDate = dto.getTransactionDate() != null ? dto.getTransactionDate() : LocalDateTime.now();
+        LocalDateTime since = txDate.minusDays(WU_SOF_WINDOW_DAYS);
+        UUID companyId = branch.getCompany().getId();
+
+        List<WuTransaction> window;
+        if (dto.getWuCustomerId() != null) {
+            window = wuTransactionRepository.findRecentSendReceiveByCustomer(
+                    companyId, dto.getWuCustomerId(), since);
+        } else if (customerName != null && !customerName.isBlank()) {
+            window = wuTransactionRepository.findRecentSendReceiveByCustomerName(
+                    companyId, customerName.trim().toUpperCase(java.util.Locale.ROOT), since);
+        } else {
+            return; // azonosítatlan ügyfél-identitás — a kumulálás nem értelmezhető
+        }
+
+        // Kumulált HUF: ablakbeli forgalom + a MOSTANI tranzakció (HUF, vagy USD×árfolyam becslés).
+        BigDecimal cumulative = BigDecimal.ZERO;
+        java.util.Set<String> counterparties = new java.util.HashSet<>();
+        for (WuTransaction t : window) {
+            BigDecimal huf = t.getAmountHuf();
+            if ((huf == null || huf.compareTo(BigDecimal.ZERO) == 0)
+                    && t.getAmountUsd() != null && t.getExchangeRate() != null) {
+                huf = t.getAmountUsd().multiply(t.getExchangeRate());
+            }
+            if (huf != null) {
+                cumulative = cumulative.add(huf);
+            }
+            String cp = "SEND".equals(t.getTransactionType()) ? t.getReceiverName() : t.getSenderName();
+            if (cp != null && !cp.isBlank()) {
+                counterparties.add(cp.trim().toUpperCase(java.util.Locale.ROOT));
+            }
+        }
+        BigDecimal currentHuf = dto.getAmountHuf();
+        if ((currentHuf == null || currentHuf.compareTo(BigDecimal.ZERO) == 0)
+                && dto.getAmountUsd() != null && dto.getExchangeRate() != null) {
+            currentHuf = dto.getAmountUsd().multiply(dto.getExchangeRate());
+        }
+        if (currentHuf != null) {
+            cumulative = cumulative.add(currentHuf);
+        }
+        String currentCp = isSend ? dto.getReceiverName() : dto.getSenderName();
+        if (currentCp != null && !currentCp.isBlank()) {
+            counterparties.add(currentCp.trim().toUpperCase(java.util.Locale.ROOT));
+        }
+
+        String blockReason = wuSofCumulativeBlockReason(
+                cumulative, counterparties.size(), dto.getSourceOfFundsDocType(), true);
+        if (blockReason != null) {
+            throw new ValidationException(blockReason);
+        }
+    }
+
+    /**
      * WU küldés rögzítése.
      */
     @Transactional(rollbackFor = Exception.class)
@@ -156,6 +273,7 @@ public class WesternUnionService {
         validateMtcn(dto.getMtcn());
         Branch branch = findBranch(dto.getBranchId());
         performAmlCheck(dto.getSenderName(), null, dto.getAmountHuf(), dto.getAmountUsd(), dto.getExchangeRate());
+        enforceWuSofCumulative(dto, branch, true);
         consumeDailyLimit(branch, dto.getAmountUsd(), dto.getTransactionDate());
 
         WuTransaction tx = WuTransaction.builder()
@@ -171,6 +289,8 @@ public class WesternUnionService {
                 .receiverName(dto.getReceiverName())
                 .destinationCountry(dto.getDestinationCountry())
                 .receiptNumber(dto.getReceiptNumber())
+                .sourceOfFundsDocType(dto.getSourceOfFundsDocType())
+                .sourceOfFundsDocDate(dto.getSourceOfFundsDocDate())
                 .status(WuTransactionStatus.COMPLETED)
                 .transactionDate(dto.getTransactionDate() != null ? dto.getTransactionDate() : LocalDateTime.now())
                 .build();
@@ -203,6 +323,7 @@ public class WesternUnionService {
         validateMtcn(dto.getMtcn());
         Branch branch = findBranch(dto.getBranchId());
         performAmlCheck(dto.getReceiverName(), null, dto.getAmountHuf(), dto.getAmountUsd(), dto.getExchangeRate());
+        enforceWuSofCumulative(dto, branch, false);
         consumeDailyLimit(branch, dto.getAmountUsd(), dto.getTransactionDate());
 
         WuTransaction tx = WuTransaction.builder()
@@ -218,6 +339,8 @@ public class WesternUnionService {
                 .receiverName(dto.getReceiverName())
                 .destinationCountry(dto.getDestinationCountry())
                 .receiptNumber(dto.getReceiptNumber())
+                .sourceOfFundsDocType(dto.getSourceOfFundsDocType())
+                .sourceOfFundsDocDate(dto.getSourceOfFundsDocDate())
                 .status(WuTransactionStatus.COMPLETED)
                 .transactionDate(dto.getTransactionDate() != null ? dto.getTransactionDate() : LocalDateTime.now())
                 .build();
