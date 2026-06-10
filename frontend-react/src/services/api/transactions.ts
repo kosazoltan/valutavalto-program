@@ -1480,6 +1480,8 @@ export interface Receipt {
   customerAddress?: string
   customerDocumentType?: string
   customerDocumentNumber?: string
+  // EXCMD b5b FR-BSZUR-04: képviselő / meghatalmazott neve (jogi személy képviselője) a tx-snapshotból.
+  customerActorName?: string
 }
 
 export const receiptApi = {

@@ -182,6 +182,10 @@ export const CUSTOMER_FILTER_FIELDS: { key: keyof Receipt; labelKey: string }[] 
   { key: 'customerAddress', labelKey: 'receipts.filter.customerAddress' },
   { key: 'customerDocumentType', labelKey: 'receipts.filter.customerDocumentType' },
   { key: 'customerDocumentNumber', labelKey: 'receipts.filter.customerDocumentNumber' },
+  // FR-BSZUR-04 (jogi személy): képviselő/meghatalmazott neve. "Jogi személy neve" → customerName,
+  // "Telephely címe" → customerAddress (a tx-snapshot jogi személynél is ezeket hordozza);
+  // "Képviselő beosztása" nincs az adatmodellben → defer (lásd Receipt.java megjegyzés).
+  { key: 'customerActorName', labelKey: 'receipts.filter.customerActorName' },
 ]
 
 /**

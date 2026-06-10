@@ -195,10 +195,20 @@ describe('matchesCustomerFilters / hasActiveCustomerFilter (EXCMD b5b FR-BSZUR-0
     expect(hasActiveCustomerFilter({ customerAddress: 'Budapest' })).toBe(true)
   })
 
-  it('a 8 FR-BSZUR-03 mező definiált (LEÁNYKORI NEVE nélkül)', () => {
+  it('a 8 FR-BSZUR-03 mező + az FR-BSZUR-04 képviselő-mező definiált (LEÁNYKORI NEVE nélkül)', () => {
     expect(CUSTOMER_FILTER_FIELDS.map((f) => f.key)).toEqual([
       'customerName', 'customerMotherName', 'customerBirthPlace', 'customerBirthDate',
       'customerNationality', 'customerAddress', 'customerDocumentType', 'customerDocumentNumber',
+      // FR-BSZUR-04: képviselő / meghatalmazott neve (jogi személy képviselője a tx-snapshotból).
+      'customerActorName',
     ])
+  })
+
+  it('FR-BSZUR-04: a képviselő-név szűrő részleges, kis/nagybetű-érzéketlen egyezéssel működik', () => {
+    const receipt = { customerActorName: 'Dr. Példa Pál' } as unknown as Receipt
+    expect(matchesCustomerFilters(receipt, { customerActorName: 'példa' })).toBe(true)
+    expect(matchesCustomerFilters(receipt, { customerActorName: 'kovács' })).toBe(false)
+    // Üres szűrő nem szűkít.
+    expect(matchesCustomerFilters(receipt, { customerActorName: '' })).toBe(true)
   })
 })

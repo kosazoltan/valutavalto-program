@@ -86,4 +86,12 @@ public class Receipt {
 
     @Transient
     private String customerDocumentNumber;
+
+    // === EXCMD b5b FR-BSZUR-04 (jogi személy / képviselő) ===
+    // A tx-snapshot customerActorName mezője: a más nevében eljáró személy (meghatalmazott /
+    // jogi személy képviselője). "Jogi személy neve" → customerName, "Telephely címe" →
+    // customerAddress (a snapshot a szerződő fél adatait hordozza, jogi személynél is).
+    // "Képviselő beosztása" SEHOL nincs az adatmodellben (Transaction + Customer ellenőrizve) → defer.
+    @Transient
+    private String customerActorName;
 }

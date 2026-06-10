@@ -145,6 +145,7 @@ public class ReceiptService {
                 likeParam(customerFilters, "customerAddress"),
                 likeParam(customerFilters, "customerDocumentType"),
                 likeParam(customerFilters, "customerDocumentNumber"),
+                likeParam(customerFilters, "customerActorName"),
                 PageRequest.of(0, RECEIPT_LIST_LIMIT));
 
         List<Receipt> synthesized = new ArrayList<>();
@@ -192,7 +193,8 @@ public class ReceiptService {
             && matchesField(r.getCustomerNationality(), f.get("customerNationality"))
             && matchesField(r.getCustomerAddress(), f.get("customerAddress"))
             && matchesField(r.getCustomerDocumentType(), f.get("customerDocumentType"))
-            && matchesField(r.getCustomerDocumentNumber(), f.get("customerDocumentNumber"));
+            && matchesField(r.getCustomerDocumentNumber(), f.get("customerDocumentNumber"))
+            && matchesField(r.getCustomerActorName(), f.get("customerActorName"));
     }
 
     /** Üres/hiányzó szűrő → nem szűkít (true). Egyébként részleges, kis/nagybetű-érzéketlen contains. */
@@ -267,6 +269,8 @@ public class ReceiptService {
         r.setCustomerAddress(tx.getCustomerAddress());
         r.setCustomerDocumentType(tx.getCustomerDocumentType());
         r.setCustomerDocumentNumber(tx.getCustomerDocumentNumber());
+        // FR-BSZUR-04: képviselő / meghatalmazott neve (jogi személy képviselője is ide kerül).
+        r.setCustomerActorName(tx.getCustomerActorName());
     }
 
     /**

@@ -44,7 +44,8 @@ public class ReceiptController {
             @RequestParam(required = false) String customerNationality,
             @RequestParam(required = false) String customerAddress,
             @RequestParam(required = false) String customerDocumentType,
-            @RequestParam(required = false) String customerDocumentNumber) {
+            @RequestParam(required = false) String customerDocumentNumber,
+            @RequestParam(required = false) String customerActorName) {
         java.util.Map<String, String> customerFilters = new java.util.HashMap<>();
         putIfPresent(customerFilters, "customerName", customerName);
         putIfPresent(customerFilters, "customerMotherName", customerMotherName);
@@ -54,6 +55,8 @@ public class ReceiptController {
         putIfPresent(customerFilters, "customerAddress", customerAddress);
         putIfPresent(customerFilters, "customerDocumentType", customerDocumentType);
         putIfPresent(customerFilters, "customerDocumentNumber", customerDocumentNumber);
+        // FR-BSZUR-04: képviselő / meghatalmazott neve (jogi személy képviselője).
+        putIfPresent(customerFilters, "customerActorName", customerActorName);
         return ResponseEntity.ok(service.list(transactionId, from, to, customerFilters));
     }
 

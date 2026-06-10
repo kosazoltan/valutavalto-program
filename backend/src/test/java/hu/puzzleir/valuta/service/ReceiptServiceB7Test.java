@@ -101,7 +101,7 @@ class ReceiptServiceB7Test {
         tx.setCustomerName("Kovács János");
         tx.setHufAmount(new BigDecimal("12000000.00")); // 12 M Ft → 10M+ küszöb felett
 
-        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of(tx));
 
         List<Receipt> receipts = receiptService.list(null);
@@ -134,7 +134,7 @@ class ReceiptServiceB7Test {
         when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any()))
                 .thenReturn(List.of(real1, real2));
         // a materializáltakat a synthesized-detektálás kihagyja → nincs synthesized
-        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of(tx1, tx2));
         // N+1 ELKERÜLÉS + multi-tenant + OSIV-safe: EGYETLEN cég-szűrt batch query a két txId-ra
         when(transactionRepository.findAllByIdInAndCompanyId(any(), eq(COMPANY_ID)))
@@ -164,7 +164,7 @@ class ReceiptServiceB7Test {
                 .issueDate(LocalDate.of(2026, 4, 29)).isPrinted(true).build();
 
         when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any())).thenReturn(List.of(real));
-        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of());
         // A cég-szűrt query az AKTUÁLIS céggel hívva ÜRES (a cross-company tx kiszűrődik a DB-ben).
         when(transactionRepository.findAllByIdInAndCompanyId(any(), eq(COMPANY_ID)))
@@ -213,7 +213,7 @@ class ReceiptServiceB7Test {
         when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), eq(from), eq(to)))
                 .thenReturn(Collections.emptyList());
         when(transactionRepository.findReceiptListByCompanyIdAndDateRange(
-                eq(COMPANY_ID), eq(from), eq(to), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+                eq(COMPANY_ID), eq(from), eq(to), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(Collections.emptyList());
 
         receiptService.list(null, from, to);
@@ -223,7 +223,7 @@ class ReceiptServiceB7Test {
         Mockito.verify(receiptRepository).findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), eq(from), eq(to));
         Mockito.verify(transactionRepository)
                 .findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), eq(from), eq(to),
-                        any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class));
+                        any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class));
     }
 
     @Test
@@ -232,7 +232,7 @@ class ReceiptServiceB7Test {
         when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any()))
                 .thenReturn(Collections.emptyList());
         when(transactionRepository.findReceiptListByCompanyIdAndDateRange(
-                eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+                eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(Collections.emptyList());
 
         receiptService.list(null, null, null,
@@ -250,6 +250,7 @@ class ReceiptServiceB7Test {
                 isNull(),             // custAddress
                 isNull(),             // custDocType
                 isNull(),             // custDocNumber
+                isNull(),             // custActorName (FR-BSZUR-04)
                 any(Pageable.class));
     }
 
@@ -272,7 +273,7 @@ class ReceiptServiceB7Test {
         when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any()))
                 .thenReturn(new java.util.ArrayList<>(List.of(match, noMatch)));
         when(transactionRepository.findReceiptListByCompanyIdAndDateRange(
-                eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+                eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of()); // nincs synthesized (mindkettő materializált)
         when(transactionRepository.findAllByIdInAndCompanyId(any(), eq(COMPANY_ID)))
                 .thenReturn(List.of(txMatch, txNoMatch));
@@ -338,7 +339,7 @@ class ReceiptServiceB7Test {
         Transaction tx1 = makeTransaction(101L, "V017000001", TransactionType.BUY);
         Transaction tx2 = makeTransaction(102L, "E017000001", TransactionType.SELL);
 
-        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of(tx1, tx2));
 
         List<Receipt> receipts = receiptService.list(null);
@@ -371,7 +372,7 @@ class ReceiptServiceB7Test {
 
         when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any()))
                 .thenReturn(List.of(realForTx1));
-        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of(tx1, tx2));
 
         List<Receipt> receipts = receiptService.list(null);

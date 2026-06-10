@@ -170,8 +170,14 @@ public class ReceiptPdfService {
             if (data.getLines() != null) {
                 for (ReceiptData.ReceiptLineData line : data.getLines()) {
                     if (line.getLabel() != null && line.getValue() != null) {
-                        y = drawLabelValue(cs, fontBold, fontNormal, 10,
-                                line.getLabel() + ":", line.getValue(), y);
+                        if (line.getLabel().isBlank()) {
+                            // Üres label = bekezdés-szöveg (pl. FR-10 foglaló jogi blokk):
+                            // label nélkül, mért szélességre tördelve.
+                            y = drawWrappedText(cs, fontNormal, 8, line.getValue(), y);
+                        } else {
+                            y = drawLabelValue(cs, fontBold, fontNormal, 10,
+                                    line.getLabel() + ":", line.getValue(), y);
+                        }
                     }
                 }
             }
@@ -213,6 +219,30 @@ public class ReceiptPdfService {
         cs.showText(sanitize(text));
         cs.endText();
         return y - LINE_HEIGHT;
+    }
+
+    /**
+     * Bekezdés-szöveg kiírása a tartalom-szélességre tördelve (mért szélességű greedy wrap).
+     * Visszaadja az új y értéket.
+     */
+    private float drawWrappedText(PDPageContentStream cs, PDType1Font font, float size,
+                                  String text, float y) throws IOException {
+        String[] words = sanitize(text).trim().split("\\s+");
+        StringBuilder current = new StringBuilder();
+        for (String word : words) {
+            String candidate = current.isEmpty() ? word : current + " " + word;
+            float width = font.getStringWidth(candidate) / 1000f * size;
+            if (width > CONTENT_WIDTH && !current.isEmpty()) {
+                y = drawText(cs, font, size, MARGIN, y, current.toString());
+                current = new StringBuilder(word);
+            } else {
+                current = new StringBuilder(candidate);
+            }
+        }
+        if (!current.isEmpty()) {
+            y = drawText(cs, font, size, MARGIN, y, current.toString());
+        }
+        return y;
     }
 
     /** Középre igazított szöveg. */
