@@ -9,6 +9,11 @@ name: Legacy Binary Analysis
 #  - Forrás hiányában a teljes elemzés szándékosan kihagyott (exit 0), így a
 #    publikus CI nem bukik a gitignore-olt fa miatt.
 
+# Minimális GITHUB_TOKEN jogosultság (CodeQL hardening): a job csak checkoutol,
+# öntesztet futtat és artifactot tölt fel — ehhez a read-only contents elég.
+permissions:
+  contents: read
+
 on:
   pull_request:
     paths:
