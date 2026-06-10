@@ -159,6 +159,16 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     List<Branch> findByCompanyIdAndIsActiveTrue(@Param("companyId") UUID companyId);
 
     /**
+     * System-szintu napzaras monitorozas: aktiv, valodi irodak minden cegbol.
+     *
+     * <p>Schedulerben nincs SecurityContext, ezert ez tudatosan globalis query. A banki/spec
+     * VAULT_COUNTERPARTY partnerek nem napi zarasra kotelezett irodak, ezert kizartak.</p>
+     */
+    @Query("SELECT b FROM Branch b LEFT JOIN b.branchType bt "
+        + "WHERE b.isActive = true AND (bt IS NULL OR bt.code <> 'VAULT_COUNTERPARTY') ORDER BY b.company.id, b.code")
+    List<Branch> findActiveClosingMonitoredBranches();
+
+    /**
      * FK-014 backend-szűrés (2026-06-01): aktív, VALÓDI irodák (pénztár + értéktár) cégen belül —
      * a VAULT_COUNTERPARTY típusú banki/speciális partnerek (PRB/UPT/TRB/ERB/FRB/RB/JRB/MNB/TH/FOP1,
      * V277 seed) KIZÁRVA. A felügyeleti modulok (Zárás beérkezés, Napi ellenőrzési lista) csak napi

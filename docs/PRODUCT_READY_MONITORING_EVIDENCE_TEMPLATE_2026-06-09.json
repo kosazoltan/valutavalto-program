@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "status": "PENDING",
+  "environment": "staging-or-production",
+  "observedFrom": null,
+  "observedTo": null,
+  "observationHours": null,
+  "operator": "",
+  "source": {
+    "prometheusBaseUrl": "",
+    "grafanaBaseUrl": "",
+    "alertmanagerBaseUrl": "",
+    "deploymentRef": ""
+  },
+  "checks": {
+    "scrapeVerified": null,
+    "dashboardLoaded": null,
+    "alertDelivered": null,
+    "backendUp": null,
+    "postgresUp": null,
+    "hostMetricsPresent": null,
+    "clientErrorLogObservable": null
+  },
+  "evidenceRefs": {
+    "scrapeRef": "",
+    "dashboardRef": "",
+    "alertDeliveryRef": "",
+    "prometheusTargetsRef": "",
+    "grafanaDashboardRef": ""
+  },
+  "summary": {
+    "passed": 0,
+    "failed": null,
+    "reviewRequired": null
+  },
+  "safety": {
+    "redacted": null,
+    "containsSecrets": null,
+    "containsCustomerPersonalData": null
+  }
+}

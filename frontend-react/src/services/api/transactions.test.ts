@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { transactionApi } from './transactions'
+import { transactionApi, transferApi } from './transactions'
 import { api } from './client'
 
 vi.mock('./client', () => {
@@ -169,6 +169,74 @@ describe('transactionApi', () => {
         reason: 'ok',
       })
     })
+  })
+})
+
+describe('transferApi storno contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('storno: calls POST /transfers/{id}/storno with mandatory reason body', async () => {
+    const transfer = {
+      id: 77,
+      transferNumber: 'AT-000023',
+      isCancelled: true,
+      cancellationReason: 'Téves rögzítés',
+      stornoSerialNumber: 'AT-000023-SZ',
+    }
+    mockApi.post.mockResolvedValue({ data: transfer })
+
+    const result = await transferApi.storno(77, 'Téves rögzítés')
+
+    expect(mockApi.post).toHaveBeenCalledWith('/transfers/77/storno', { reason: 'Téves rögzítés' })
+    expect(result.stornoSerialNumber).toBe('AT-000023-SZ')
+  })
+
+  it('getStornoPreview: calls GET /transfers/{id}/storno-preview and preserves preview serial', async () => {
+    const transfer = {
+      id: 77,
+      transferNumber: 'AT-000023',
+      isCancelled: false,
+      stornoSerialNumber: 'AT-000023-SZ',
+    }
+    mockApi.get.mockResolvedValue({ data: transfer })
+
+    const result = await transferApi.getStornoPreview(77)
+
+    expect(mockApi.get).toHaveBeenCalledWith('/transfers/77/storno-preview')
+    expect(result.isCancelled).toBe(false)
+    expect(result.stornoSerialNumber).toBe('AT-000023-SZ')
+  })
+})
+
+import { receiptApi } from './transactions'
+
+describe('receiptApi cancelled transaction receipt', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('calls POST /receipts/cancelled-transaction', async () => {
+    const receipt = {
+      id: '33333333-3333-3333-3333-333333333333',
+      receiptNumber: 'M-20260609-101500-ABCDEF12',
+      receiptType: 'CANCELLED_TRANSACTION',
+      issueDate: '2026-06-09',
+      isPrinted: false,
+    }
+    const request = {
+      mode: 'BUY' as const,
+      reason: 'USER_CANCELLED',
+      customerName: 'Kovacs Janos',
+      lines: [{ currencyCode: 'EUR', foreignAmount: 100, rate: 390, hufAmount: 39000 }],
+    }
+    mockApi.post.mockResolvedValue({ data: receipt })
+
+    const result = await receiptApi.createCancelledTransaction(request)
+
+    expect(mockApi.post).toHaveBeenCalledWith('/receipts/cancelled-transaction', request)
+    expect(result.receiptType).toBe('CANCELLED_TRANSACTION')
   })
 })
 

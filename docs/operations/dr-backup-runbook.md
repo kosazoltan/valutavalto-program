@@ -252,6 +252,10 @@ A pénztáros Electron kliens (`penztar-client/`) **offline-képes**:
 
 Havi rendszerességgel, a fejlesztő (vagy DPO) végezze el:
 
+- [ ] **Helyi DR tooling smoke** — `npm run dr:restore:synthetic`.
+      Ez Dockerben indított ideiglenes PostgreSQL-re állít vissza egy minimális, szintetikus dumpot,
+      és ellenőrzi a kritikus row count / Flyway / audit hash-chain lekérdezési utat. Ez csak a
+      restore automatizmus működését bizonyítja, **nem** helyettesíti a valós backup dump restore-ját.
 - [ ] **Backup integritás** — legutóbbi `valuta-*.dump` fájl SHA-256 ellenőrzése a `.sha256` mellett.
 - [ ] **Test restore staging-be** — új Hetzner instance / lokális Docker postgres, `pg_restore` sikeres, row count >0 a kritikus táblákra (`transactions`, `audit_log`, `aml_report`, `customer`).
 - [ ] **Smoke test staging restore-on** (4. szakasz teljes lista).

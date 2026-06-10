@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "status": "PENDING",
+  "environment": "staging-or-production",
+  "approvedAt": null,
+  "evidenceOwner": "",
+  "completedEvidenceRef": "",
+  "finalGateCommand": "npm run product-ready:final-gate:complete",
+  "approvals": [
+    {
+      "role": "productOwner",
+      "name": "",
+      "approved": null,
+      "approvedAt": null,
+      "evidenceRef": "",
+      "notes": ""
+    },
+    {
+      "role": "operationsOwner",
+      "name": "",
+      "approved": null,
+      "approvedAt": null,
+      "evidenceRef": "",
+      "notes": ""
+    },
+    {
+      "role": "complianceOwner",
+      "name": "",
+      "approved": null,
+      "approvedAt": null,
+      "evidenceRef": "",
+      "notes": ""
+    }
+  ],
+  "safety": {
+    "redacted": true,
+    "containsSecrets": false,
+    "containsCustomerPersonalData": false
+  }
+}

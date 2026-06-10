@@ -37,6 +37,7 @@ public class TransferService {
     private final CashBalanceRepository cashBalanceRepository;
     private final TransactionRepository transactionRepository;
     private final ReceiptSequenceService receiptSequenceService;
+    private final TransferSerialSequenceService transferSerialSequenceService;
     private final AuditLogService auditLogService;
 
     @Transactional(rollbackFor = Exception.class)
@@ -69,8 +70,8 @@ public class TransferService {
             }
         }
 
-        // A sorszám és a címletezés cég-azonosítója a forrásfiók cégéből (a sorszám cégszinten folyamatos);
-        // SecurityContext nélküli hívásnál (pl. teszt) null-fallback.
+        // A sorszám és a címletezés cég-azonosítója a forrásfiók cégéből jön; a sorszám
+        // tenant + prefix szinten folyamatos és DB-oldalon atomikusan léptetett.
         UUID companyId = fromBranch.getCompany() != null
                 ? fromBranch.getCompany().getId() : SecurityUtils.getCurrentCompanyIdOrNull();
 
@@ -296,6 +297,7 @@ public class TransferService {
             throw new ValidationException(
                     "Csak véglegesített (lezárt) átadás-átvétel bizonylat sztornózható. Függőben lévő bizonylatot a törlés (cancel) kezel.");
         }
+        String normalizedReason = normalizeStornoReason(reason);
 
         // A sztornózó dolgozó (az ellentételező tranzakciókhoz).
         Worker actor = workerRepository.findById(SecurityUtils.getCurrentWorkerId())
@@ -303,7 +305,7 @@ public class TransferService {
 
         transfer.setIsCancelled(true);
         transfer.setCancelledAt(LocalDateTime.now());
-        transfer.setCancellationReason(reason);
+        transfer.setCancellationReason(normalizedReason);
         transfer.setCancelledBy(actor.getId());
 
         // FIZIKAI KÉSZLET-VISSZAFORDÍTÁS: az eredeti (COMPLETED) átadás-átvétel készletmozgását
@@ -319,7 +321,7 @@ public class TransferService {
         // Audit (FR/NFR-8): VV-TX-002, action=STORNO, entity=TransferRequest.
         auditLogService.log("STORNO",
                 String.format("VV-TX-002: Átadás-átvétel sztornózva: %s, indoklás: %s",
-                        transfer.getTransferNumber(), reason),
+                        transfer.getTransferNumber(), normalizedReason),
                 transfer.getId());
 
         return toDto(transfer);
@@ -346,7 +348,9 @@ public class TransferService {
         if (!ownCompany) {
             throw new ResourceNotFoundException("Átadás nem található: " + id);
         }
-        return toDto(transfer);
+        TransferDto preview = toDto(transfer);
+        preview.setStornoSerialNumber(transfer.getTransferNumber() + "-SZ");
+        return preview;
     }
 
     @Transactional(readOnly = true)
@@ -781,20 +785,14 @@ public class TransferService {
      *   <li>HUF átadás     → {@code FF-NNNNNN}  pl. FF-000001</li>
      *   <li>HUF átvétel    → {@code UF-NNNNNN}  pl. UF-000001</li>
      * </ul>
-     * CÉGSZINTŰ folyamatos sorszám (NEM pénztáranként, NEM dátum-alapú); egyediség: cégszintű MAX+1
-     * + a (company_id, transfer_number) COMPOSITE UNIQUE (V299). Két cég azonos sorszáma megengedett.
+     * CÉGSZINTŰ folyamatos sorszám (NEM pénztáranként, NEM dátum-alapú); egyediség: tenant + prefix
+     * atomikus DB számláló + a (company_id, transfer_number) COMPOSITE UNIQUE (V299).
+     * Két cég azonos sorszáma megengedett.
      * Az átadás/átvétel az üzleti irányból: {@code U} (Vevő) = átvétel; minden más (F/UF/FF)
      * = átadás — a "mindkét-irány" és "korrekció" edge-case az átadás-családba (Kósa Zoltán
      * döntés, 2026-05-25). A branch-szám a forrásfiók kódjának numerikus része (BR020 → 020).
-     * Gap-mentes: a perzisztált max szekvencia + 1 (visszagörgetett tranzakció NEM fogyaszt
-     * sorszámot, mert a szám csak commitkor kerül a DB-be).
-     *
-     * <p>Konkurencia (Copilot #845): a MAX+1 önmagában nem versenyhelyzet-biztos, DE a
-     * {@code transfer_number} oszlopon UNIQUE megszorítás van (V63 migráció), így két
-     * párhuzamos {@code create()} azonos szám esetén az egyik tranzakció a unique-constraintbe
-     * ütközik és visszagördül — duplikátum NEM perzisztálódik, és a gaplessness is megmarad
-     * (a visszagördült szám újra kiosztható). A pénztári átadás-átvétel branch-enkénti
-     * konkurenciája alacsony, így DB-sequence/locking redundáns lenne itt.
+     * Konkurencia: a számláló {@code INSERT ... ON CONFLICT ... DO UPDATE ... RETURNING}
+     * művelettel lép, ezért párhuzamos hívásoknál sem keletkezhet duplikált tenant/prefix sorszám.
      */
     private String generateTransferNumber(Transfer.TransferDirection direction, Currency currency, UUID companyId) {
         boolean atvetel = direction == Transfer.TransferDirection.U;
@@ -803,11 +801,8 @@ public class TransferService {
         // HUF átadás=FF, HUF átvétel=UF. Az átvétel CSAK a U irány; a "mindkét-irány"/korrekció
         // (UF/FF direction) az átadás-családba esik (Kósa Zoltán döntés). Minden prefix 2 karakter.
         String prefix = huf ? (atvetel ? "UF" : "FF") : (atvetel ? "AV" : "AT");
-        // Cégszintű (NEM pénztáranként) folyamatos sorszám: PREFIX-NNNNNN, naponta nem indul újra.
-        // Gap-mentes: MAX+1 + a transfer_number UNIQUE constraint (race → rollback). startPos a
-        // "PREFIX-" után (prefix 2 + '-' 1 = 3 karakter, 1-indexelt SUBSTRING → 4).
-        long max = transferRepository.findMaxTransferSerialForCompany(companyId, prefix + "-%", prefix.length() + 2);
-        return prefix + "-" + String.format("%06d", max + 1);
+        long next = transferSerialSequenceService.next(companyId, prefix);
+        return prefix + "-" + String.format("%06d", next);
     }
 
     private TransferDto toDto(Transfer t) {
@@ -896,6 +891,17 @@ public class TransferService {
                         .lineTotal(d.getLineTotal())
                         .build())
                 .toList();
+    }
+
+    private String normalizeStornoReason(String reason) {
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new ValidationException("A sztornó indoklása kötelező.");
+        }
+        String normalized = reason.trim();
+        if (normalized.length() > 500) {
+            throw new ValidationException("A sztornó indoklása legfeljebb 500 karakter lehet.");
+        }
+        return normalized;
     }
 
     private java.util.List<hu.puzzleir.valuta.dto.transfer.TransferLineDto> mapLines(Transfer t) {

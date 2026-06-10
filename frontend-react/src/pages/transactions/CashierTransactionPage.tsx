@@ -5,7 +5,7 @@ import { useFKeyHotkey } from '../../hooks/useFKeyHotkey'
 import { AlertTriangle } from 'lucide-react'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
-import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi } from '../../services/api/index'
+import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi, receiptApi } from '../../services/api/index'
 import { api } from '../../services/api/client'
 import AmlApproverModal from '../../components/auth/AmlApproverModal'
 import type { BuyRequest, SellRequest, TransactionLineRequest, ExchangeRate, CashierCustomRateQuota } from '../../services/api/index'
@@ -336,7 +336,7 @@ export default function CashierTransactionPage() {
     setDiscountInput(String(discount || ''))
     setShowFeeDialog(true)
   })
-  useHotkeys('escape', () => handleCancel(), { enableOnFormTags: true })
+  useHotkeys('escape', () => { void handleCancel() }, { enableOnFormTags: true })
 
   // ====== HANDLERS ======
 
@@ -1194,19 +1194,53 @@ export default function CashierTransactionPage() {
     [handleSubmit]
   )
 
-  const handleCancel = useCallback(() => {
-    if (rows.some((r) => r.currencyCode)) {
+  const handleCancel = useCallback(async () => {
+    const hasDraftTransaction = rows.some((r) =>
+      r.currencyCode || r.quantity || r.exchangeRate > 0 || r.hufValue > 0
+    )
+    if (hasDraftTransaction) {
       if (!confirm('Biztosan elveti a tranzakciot?')) return
+      try {
+        const cd = customerDataRef.current
+        const receipt = await receiptApi.createCancelledTransaction({
+          mode: mode === 'buy' ? 'BUY' : 'SELL',
+          reason: 'USER_CANCELLED',
+          customerName: cd?.name || undefined,
+          customerDocumentNumber: cd?.documentNumber || undefined,
+          lines: rows
+            .filter((r) => r.currencyCode || r.quantity || r.exchangeRate > 0 || r.hufValue > 0)
+            .map((r) => ({
+              currencyCode: r.currencyCode || undefined,
+              foreignAmount: parseFloat(r.quantity) > 0 ? parseFloat(r.quantity) : undefined,
+              rate: r.exchangeRate > 0 ? r.exchangeRate : undefined,
+              hufAmount: r.hufValue > 0 ? r.hufValue : undefined,
+            })),
+        })
+        toast.info('Megszakított bizonylat rögzítve', `Bizonylat: ${receipt.receiptNumber}`)
+      } catch (error) {
+        logger.warn('CashierTransactionPage', 'Cancelled transaction receipt could not be recorded', error)
+        toast.warning(
+          'Megszakítás lokálisan elvetve',
+          'A megszakított bizonylat szerveroldali rögzítése nem sikerült. Ellenőrizze a kapcsolatot.'
+        )
+      }
     }
     setRows(Array.from({ length: MAX_LINES }, emptyRow))
     setActiveRow(0)
     setActiveField('currency')
+    setHandlingFee(0)
+    setDiscount(0)
+    setFeeOverrideType('')
+    setFeeOverrideReason('')
+    setCardNumber('')
+    customerDataRef.current = null
+    amlResultRef.current = null
     // Codex P2 + Copilot P2 #579 follow-up: cancel-elt tranzakcio → ref-ek tisztítás
     // (abandoned rows NE számítsanak a local effectiveRemaining-be a kovetkezo
     // tranzakcio során).
     cashierCustomRateRowsRef.current.clear()
     rateAuthApprovedRef.current.clear()
-  }, [rows])
+  }, [mode, rows])
 
   // ====== FORMAT ======
   // FR-HL-15 (hibalista): a pénztári HUF-összegek KIJELZÉSE egész forintban, tizedes nélkül (HUF-nál
@@ -1679,7 +1713,7 @@ export default function CashierTransactionPage() {
           { key: 'F9', label: 'Díj/Kedv.', onClick: () => { setFeeInput(String(handlingFee || '')); setDiscountInput(String(discount || '')); setShowFeeDialog(true) } },
         ]}
         right={[
-          { key: 'Esc', label: 'Mégse', onClick: handleCancel, variant: 'secondary' },
+          { key: 'Esc', label: 'Mégse', onClick: () => { void handleCancel() }, variant: 'secondary' },
         ]}
       />
     </div>

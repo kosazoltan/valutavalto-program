@@ -156,6 +156,7 @@ export default function TransferPage() {
   const [showStornoModal, setShowStornoModal] = useState(false)
   const [stornoTarget, setStornoTarget] = useState<Transfer | null>(null)
   const [stornoReason, setStornoReason] = useState('')
+  const stornoPreviewRequestRef = useRef(0)
 
   // Load data
   const loadData = useCallback(async () => {
@@ -563,11 +564,29 @@ export default function TransferPage() {
     }
   }
 
-  // FR-12: sztornó modal megnyitása (indoklás bekérése)
-  const openStornoModal = (transfer: Transfer) => {
+  const closeStornoModal = () => {
+    stornoPreviewRequestRef.current += 1
+    setShowStornoModal(false)
+    setStornoTarget(null)
+  }
+
+  // FR-12/FR-15: sztornó modal megnyitása + szerveroldali preview betöltése.
+  const openStornoModal = async (transfer: Transfer) => {
+    const requestId = stornoPreviewRequestRef.current + 1
+    stornoPreviewRequestRef.current = requestId
     setStornoTarget(transfer)
     setStornoReason('')
     setShowStornoModal(true)
+    try {
+      const preview = await transferApi.getStornoPreview(transfer.id)
+      if (stornoPreviewRequestRef.current === requestId) {
+        setStornoTarget(preview)
+      }
+    } catch (err) {
+      if (stornoPreviewRequestRef.current === requestId) {
+        toast.warning('Sztornó előnézet nem frissült', getErrorMessage(err))
+      }
+    }
   }
 
   // FR-12..16: sztornó rögzítése indoklással → a sztornó bizonylat nyomtatható
@@ -579,8 +598,7 @@ export default function TransferPage() {
       setLoading(true)
       setError(null)
       const result = await transferApi.storno(stornoTarget.id, reason)
-      setShowStornoModal(false)
-      setStornoTarget(null)
+      closeStornoModal()
       setSuccess(`Sztornózva: ${result.stornoSerialNumber ?? `${result.transferNumber}-SZ`}`)
       // FR-16: a sztornó bizonylat előnézet + nyomtatás. A Kérő/Cél orientáció az EREDETI irányt
       // követi (átvételnél fordított), hogy egyezzen az eredeti bizonylattal.
@@ -619,8 +637,7 @@ export default function TransferPage() {
         try {
           const queued = await queueOfflineTransferStorno(target.id, target.transferNumber, reason)
           if (queued) {
-            setShowStornoModal(false)
-            setStornoTarget(null)
+            closeStornoModal()
             setSuccess(`Sztornó helyben rögzítve (offline): ${target.transferNumber}-SZ. A szinkronizálás az internet visszatértekor folytatódik.`)
             const vaultLabel = worker?.branchName ?? worker?.branchCode ?? '—'
             const stornoIsReceipt = target.direction === 'U'
@@ -790,7 +807,7 @@ export default function TransferPage() {
                       {transfer.isCompleted && !transfer.isCancelled && (
                         <button
                           type="button"
-                          onClick={() => openStornoModal(transfer)}
+                          onClick={() => { void openStornoModal(transfer) }}
                           className="toolbar-button text-orange-600"
                           title="Sztornó (indoklással)"
                         >
@@ -1335,7 +1352,7 @@ export default function TransferPage() {
             </h3>
             <p className="text-sm text-gray-600 mb-3">
               {stornoTarget.transferNumber} — a sztornó bizonylat sorszáma:{' '}
-              <span className="font-mono font-semibold">{stornoTarget.transferNumber}-SZ</span>
+              <span className="font-mono font-semibold">{stornoTarget.stornoSerialNumber ?? `${stornoTarget.transferNumber}-SZ`}</span>
             </p>
             <label htmlFor="storno-reason" className="form-label">Sztornó indoklása <span className="text-red-500">*</span></label>
             <textarea
@@ -1350,7 +1367,7 @@ export default function TransferPage() {
             <div className="flex justify-end gap-2 mt-4">
               <button
                 type="button"
-                onClick={() => { setShowStornoModal(false); setStornoTarget(null) }}
+                onClick={closeStornoModal}
                 className="form-button"
               >
                 {t('common.cancel')}

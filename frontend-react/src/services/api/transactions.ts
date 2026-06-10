@@ -33,6 +33,7 @@ export interface Customer {
   teaorCode?: string
   active: boolean
   isVip: boolean
+  isPep?: boolean
   notes?: string
   lastTransactionDate?: string
   transactionCount: number
@@ -64,6 +65,7 @@ export interface CustomerCreateRequest {
   registrationNumber?: string
   teaorCode?: string
   isVip?: boolean
+  isPep?: boolean
   notes?: string
 }
 
@@ -1482,6 +1484,19 @@ export interface Receipt {
   customerDocumentNumber?: string
 }
 
+export interface CancelledTransactionReceiptRequest {
+  mode: 'BUY' | 'SELL'
+  reason?: string
+  customerName?: string
+  customerDocumentNumber?: string
+  lines: Array<{
+    currencyCode?: string
+    foreignAmount?: number
+    rate?: number
+    hufAmount?: number
+  }>
+}
+
 export const receiptApi = {
   // EXCMD b5b FR-BSZUR-02/03: opcionális from/to (ISO dátum) + ügyfél-adatlap LIKE-szűrők — a szűrés
   // a backenden fut (a synthesized top-500 limit ELŐTT), így nem csonkol a kliens-oldali szűrés előtt.
@@ -1505,6 +1520,10 @@ export const receiptApi = {
   },
   getById: async (id: string): Promise<Receipt> => {
     const response = await api.get<Receipt>(`/receipts/${id}`)
+    return response.data
+  },
+  createCancelledTransaction: async (request: CancelledTransactionReceiptRequest): Promise<Receipt> => {
+    const response = await api.post<Receipt>('/receipts/cancelled-transaction', request)
     return response.data
   },
   print: async (id: string): Promise<void> => {

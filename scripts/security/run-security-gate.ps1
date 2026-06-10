@@ -325,7 +325,7 @@ if (!(Test-Path -LiteralPath $RepoRoot)) {
     throw "RepoRoot not found: $RepoRoot"
 }
 
-$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$timestamp = "$(Get-Date -Format 'yyyyMMdd-HHmmss-fff')-$PID"
 $reportsRoot = Join-Path $RepoRoot "security-reports"
 $reportDir = Join-Path $reportsRoot $timestamp
 $latestDir = Join-Path $reportsRoot "latest"

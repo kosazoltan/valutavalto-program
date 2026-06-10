@@ -45,6 +45,8 @@ class TransferCounterTransactionTest {
     @Mock
     private ReceiptSequenceService receiptSequenceService;
     @Mock
+    private TransferSerialSequenceService transferSerialSequenceService;
+    @Mock
     private AuditLogService auditLogService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
@@ -439,7 +441,7 @@ class TransferCounterTransactionTest {
             if (t.getId() == null) t.setId(1L);
             return t;
         });
-        when(transferRepository.findMaxTransferSerialForCompany(any(), anyString(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(0L);
+        lenient().when(transferSerialSequenceService.next(any(), anyString())).thenReturn(1L);
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
         // Default receipt number mock
         lenient().when(receiptSequenceService.generateReceiptNumber(eq(FROM_BRANCH_ID), eq(TransactionType.TRANSFER_OUT)))

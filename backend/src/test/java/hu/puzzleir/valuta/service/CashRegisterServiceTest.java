@@ -2,6 +2,9 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.dto.cashregister.CashRegisterCommandRequest;
+import hu.puzzleir.valuta.dto.cashregister.CashRegisterCommandType;
+import hu.puzzleir.valuta.dto.cashregister.CashRegisterCurrencyCommandLine;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterEventDto;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterReceiptRequest;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterStornoRequest;
@@ -82,6 +85,7 @@ class CashRegisterServiceTest {
         assertThat(result.getEventType()).isEqualTo("OPEN");
         assertThat(result.getBranchId()).isEqualTo(BRANCH_ID);
         assertThat(result.getRawResponse()).contains("OK");
+        verify(navIntegrationService).sendQrCode(CashRegisterService.DAY_OPEN_COMMAND, "COM1");
         verify(cashRegisterEventRepository).save(any(CashRegisterEvent.class));
     }
 
@@ -101,7 +105,72 @@ class CashRegisterServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getEventType()).isEqualTo("CLOSE");
         assertThat(result.getRawResponse()).contains("Z jelentés");
+        verify(navIntegrationService).sendQrCode(CashRegisterService.DAY_CLOSE_COMMAND, "COM1");
         verify(cashRegisterEventRepository).save(any(CashRegisterEvent.class));
+    }
+
+    @Test
+    @DisplayName("executeCommand → valuta-lista törlés explicit NAV CCL parancs")
+    void executeCommandCurrencyListClearUsesExplicitLegacyCommand() {
+        Branch branch = createBranch();
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(cashRegisterEventRepository.save(any(CashRegisterEvent.class))).thenAnswer(inv -> {
+            CashRegisterEvent e = inv.getArgument(0);
+            if (e.getId() == null) e.setId(UUID.randomUUID());
+            return e;
+        });
+
+        CashRegisterEventDto result = service.executeCommand(CashRegisterCommandRequest.builder()
+                .branchId(BRANCH_ID)
+                .commandType(CashRegisterCommandType.CURRENCY_LIST_CLEAR)
+                .build());
+
+        assertThat(result.getEventType()).isEqualTo("CURRENCY_LIST_CLEAR");
+        assertThat(result.getRawResponse()).contains("CURRENCY_LIST_CLEAR", CashRegisterService.CURRENCY_LIST_CLEAR_COMMAND);
+        verify(navIntegrationService).sendQrCode(CashRegisterService.CURRENCY_LIST_CLEAR_COMMAND, "COM1");
+    }
+
+    @Test
+    @DisplayName("executeCommand → valuta-lista betöltés explicit NAV CYS payload")
+    void executeCommandCurrencyListSetBuildsDeterministicLegacyPayload() {
+        Branch branch = createBranch();
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(cashRegisterEventRepository.save(any(CashRegisterEvent.class))).thenAnswer(inv -> {
+            CashRegisterEvent e = inv.getArgument(0);
+            if (e.getId() == null) e.setId(UUID.randomUUID());
+            return e;
+        });
+
+        CashRegisterEventDto result = service.executeCommand(CashRegisterCommandRequest.builder()
+                .branchId(BRANCH_ID)
+                .commandType(CashRegisterCommandType.CURRENCY_LIST_SET)
+                .currencies(List.of(
+                        CashRegisterCurrencyCommandLine.builder().currencyCode("EUR").displayName("EUR").build(),
+                        CashRegisterCurrencyCommandLine.builder().currencyCode("usd").displayName("US|D").build(),
+                        CashRegisterCurrencyCommandLine.builder().currencyCode("GBP").cashRegisterKey("gb01").rate(new BigDecimal("1.23456")).build()))
+                .build());
+
+        String expectedPayload = CashRegisterService.CURRENCY_LIST_SET_COMMAND
+                + "|CY00|EUR|1.0000|1.0000"
+                + "|CY01|US/D|1.0000|1.0000"
+                + "|GB01|GBP|1.2345|1.2345";
+        assertThat(result.getEventType()).isEqualTo("CURRENCY_LIST_SET");
+        assertThat(result.getRawResponse()).contains("CURRENCY_LIST_SET", expectedPayload);
+        verify(navIntegrationService).sendQrCode(expectedPayload, "COM1");
+    }
+
+    @Test
+    @DisplayName("executeCommand → CURRENCY_LIST_SET üres valuta-listával fail-fast")
+    void executeCommandCurrencyListSetRequiresCurrencies() {
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(createBranch()));
+
+        assertThatThrownBy(() -> service.executeCommand(CashRegisterCommandRequest.builder()
+                .branchId(BRANCH_ID)
+                .commandType(CashRegisterCommandType.CURRENCY_LIST_SET)
+                .currencies(List.of())
+                .build()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("legalább egy valuta");
     }
 
     @Test

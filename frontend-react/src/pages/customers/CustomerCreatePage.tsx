@@ -1,10 +1,14 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, User, Building, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Save, User, Building, AlertCircle, ShieldCheck } from 'lucide-react'
 import { customerApi, CustomerCreateRequest, teaorApi, TeaorCode } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import {
+  PRIVACY_NOTICE_VERSION,
+  appendPrivacyNoticeAcknowledgement,
+} from '../../utils/privacyNotice'
 
 export default function CustomerCreatePage() {
   const { t } = useTranslation()
@@ -12,6 +16,7 @@ export default function CustomerCreatePage() {
   const [customerType, setCustomerType] = useState<'person' | 'company'>('person')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [privacyNoticeAccepted, setPrivacyNoticeAccepted] = useState(false)
   const [teaorSuggestions, setTeaorSuggestions] = useState<TeaorCode[]>([])
   const [teaorOpen, setTeaorOpen] = useState(false)
   const [formData, setFormData] = useState({
@@ -36,6 +41,7 @@ export default function CustomerCreatePage() {
     phone: '',
     email: '',
     isVip: false,
+    isPep: null as boolean | null,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,6 +71,8 @@ export default function CustomerCreatePage() {
         registrationNumber: formData.registrationNumber || undefined,
         teaorCode: customerType === 'company' ? (formData.teaorCode || undefined) : undefined,
         isVip: formData.isVip,
+        isPep: formData.isPep ?? undefined,
+        notes: appendPrivacyNoticeAcknowledgement(),
       }
       const created = await customerApi.create(req)
       navigate(`/customers/${created.id}`)
@@ -168,7 +176,7 @@ export default function CustomerCreatePage() {
               <div className="space-y-3">
                 <div>
                   <label className="form-label required">{t('common.name')}</label>
-                  <input type="text" value={formData.name} onChange={(e) => updateField('name', e.target.value)} className="form-input" required />
+                  <input type="text" value={formData.name} onChange={(e) => updateField('name', e.target.value)} className="form-input" required data-testid="customer-create-name-input" />
                 </div>
                 <div>
                   <label className="form-label">{t('common.birthName')}</label>
@@ -177,7 +185,7 @@ export default function CustomerCreatePage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="form-label required">{t('common.birthDate')}</label>
-                    <input type="date" value={formData.birthDate} onChange={(e) => updateField('birthDate', e.target.value)} className="form-input" required />
+                    <input type="date" value={formData.birthDate} onChange={(e) => updateField('birthDate', e.target.value)} className="form-input" required data-testid="customer-create-birth-date-input" />
                   </div>
                   <div>
                     <label className="form-label">{t('common.birthPlace')}</label>
@@ -186,7 +194,7 @@ export default function CustomerCreatePage() {
                 </div>
                 <div>
                   <label className="form-label required">{t('common.motherName')}</label>
-                  <input type="text" value={formData.motherName} onChange={(e) => updateField('motherName', e.target.value)} className="form-input" required />
+                  <input type="text" value={formData.motherName} onChange={(e) => updateField('motherName', e.target.value)} className="form-input" required data-testid="customer-create-mother-name-input" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -261,7 +269,7 @@ export default function CustomerCreatePage() {
               </div>
               <div>
                 <label className="form-label required">{t('common.documentNumber')}</label>
-                <input type="text" value={formData.documentNumber} onChange={(e) => updateField('documentNumber', e.target.value)} className="form-input font-mono" required />
+                <input type="text" value={formData.documentNumber} onChange={(e) => updateField('documentNumber', e.target.value)} className="form-input font-mono" required data-testid="customer-create-document-number-input" />
               </div>
               <div>
                 <label className="form-label">{t('customers.okmanyErvenyessege')}</label>
@@ -277,16 +285,16 @@ export default function CustomerCreatePage() {
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="form-label required">{t('customers.iranyitoszam')}</label>
-                  <input type="text" value={formData.postalCode} onChange={(e) => updateField('postalCode', e.target.value)} className="form-input" required />
+                  <input type="text" value={formData.postalCode} onChange={(e) => updateField('postalCode', e.target.value)} className="form-input" required data-testid="customer-create-postal-code-input" />
                 </div>
                 <div className="col-span-2">
                   <label className="form-label required">{t('common.city')}</label>
-                  <input type="text" value={formData.city} onChange={(e) => updateField('city', e.target.value)} className="form-input" required />
+                  <input type="text" value={formData.city} onChange={(e) => updateField('city', e.target.value)} className="form-input" required data-testid="customer-create-city-input" />
                 </div>
               </div>
               <div>
                 <label className="form-label required">{t('customers.utcaHazszam')}</label>
-                <input type="text" value={formData.address} onChange={(e) => updateField('address', e.target.value)} className="form-input" required />
+                <input type="text" value={formData.address} onChange={(e) => updateField('address', e.target.value)} className="form-input" required data-testid="customer-create-address-input" />
               </div>
               <div>
                 <label className="form-label">{t('common.country')}</label>
@@ -309,12 +317,50 @@ export default function CustomerCreatePage() {
               </div>
             </div>
           </div>
+
+          {/* Compliance */}
+          <div className="form-panel col-span-2">
+            <h2 className="section-title flex items-center gap-2">
+              <ShieldCheck size={16} />
+              Compliance
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="form-label required">Kiemelt közszereplő (PEP)</label>
+                <select
+                  value={formData.isPep === null ? '' : String(formData.isPep)}
+                  onChange={(e) => updateField('isPep', e.target.value === 'true')}
+                  className="form-input"
+                  required
+                  data-testid="customer-is-pep-select"
+                >
+                  <option value="">— válassz —</option>
+                  <option value="false">Nem közszereplő</option>
+                  <option value="true">Kiemelt közszereplő vagy közeli hozzátartozó</option>
+                </select>
+              </div>
+              <label className="flex items-start gap-2 rounded border border-slate-300 bg-slate-50 p-3 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={privacyNoticeAccepted}
+                  onChange={(e) => setPrivacyNoticeAccepted(e.target.checked)}
+                  required
+                  data-testid="customer-privacy-notice-checkbox"
+                />
+                <span>
+                  Az ügyfél megkapta az adatkezelési tájékoztatót, és az azonosításhoz szükséges
+                  adatok kezeléséről tájékoztatást kapott. Verzió: {PRIVACY_NOTICE_VERSION}.
+                </span>
+              </label>
+            </div>
+          </div>
         </div>
 
         {/* Submit */}
         <div className="form-panel flex justify-end gap-2">
           <Link to="/customers" className="form-button">{t('common.cancel')}</Link>
-          <button type="submit" disabled={saving} className="form-button-primary flex items-center gap-1">
+          <button type="submit" disabled={saving || !privacyNoticeAccepted || formData.isPep === null} className="form-button-primary flex items-center gap-1" data-testid="customer-create-save-button">
             <Save size={16} />
             {saving ? 'Mentés...' : 'Mentés'}
           </button>

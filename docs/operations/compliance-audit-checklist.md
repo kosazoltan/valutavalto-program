@@ -201,7 +201,7 @@ A felhasználói tasklist említ "4 órás bejelentési határidő"-t. **A kódb
 | Tétel | Várt | Tényleges | Eredmény |
 |---|---|---|---|
 | Hash-lánc (tamper-evidence) | SHA-256 + previous_hash | `AuditLogService.java:135` `applyHashChain()` | **PASS** |
-| Lánc folytonosság-ellenőrzés rendszeresen | havi cron | **GAP** — automatikus check nincs commit-olva |
+| Lánc folytonosság-ellenőrzés rendszeresen | havi cron | **PARTIAL** — `scripts/audit-hash-chain-verify.ps1` és `npm run audit:hash-chain:preflight` commitolva; staging/production `-ExecuteQuery` futás + ütemezés még VERIFY |
 | Multi-tenant company_id szűrés | minden lekérdezésen | `AuditLogService.java:30-36` `resolveCompanyId()` + minden query company-scoped | **PASS** |
 | CSV export | hatósági / belső audit | `AuditLogService.java:232 exportLogsCsv` + `:375 exportFullCsv` | **PASS** |
 | Logged események listája | RATE_CHANGE, AML_HIGH_RISK_SET, AML_REPORT_*, security events, transaction events | `AuditLogService.java:290-332` mind dedikált metódus | **PASS** |
@@ -263,15 +263,15 @@ Teljes checklist (1-4 szakasz) — minden tétel PASS / dokumentált PARTIAL / 0
 |---|---|---|---|
 | Sorszám-folytonosság havi automata SQL check | 1.1 | P1 | cron + email DPO |
 | Igazolvány-típus enum a kódban | 1.2 | P2 | `Customer.documentType` enum (SZEMELYI/UTLEVEL/JOGOSITVANY) |
-| `Customer.isPep` UI required field | 1.3 | P1 | frontend-react ügyfél-form validáció |
+| `Customer.isPep` UI required field | 1.3 | P1 | Backend DTO/API + customer create/detail UI validáció implementálva; Product Ready-hez staging acceptance evidence kell |
 | Jogcím nyilatkozat összeg-küszöb dokumentálás | 1.4 | P2 | EscPosReceiptService kommentbe + audit |
 | Általános sztornó supervisor jóváhagyás | 1.5 | P1 | TransactionStornoService verify, ha hiányzik → @PreAuthorize HAS_ROLE_SUPERVISOR |
-| Napzárás-kimaradás daily cron alert | 1.6 | P0 | SQL: `MAX(closing_date) < CURRENT_DATE - 1` → DPO email |
+| Napzárás-kimaradás daily cron alert | 1.6 | P0 | Backend scheduler + supervisor értesítés implementálva (`DailyClosingMissedAlertService`, `DailyClosingMissedAlertScheduler`); Product Ready-hez production scheduler/alert-delivery evidence kell |
 | `audit_log` retention policy explicit | 1.7 / 4 | P1 | vault `feedback/audit-log-retention.md` + (lehet 8 év, indefinite is OK ha jogalap erős) |
 | Auto-DRAFT AML report bejelentés-köteles tranzakciónál | 2.4 | P1 | `AmlService.checkAllThresholds` után automata `submitReport(dto)` ha `requiresEnhanced && !exists` |
 | 4 órás bejelentési határidő (ha üzleti igény) | 2.5 | VERIFY | igényt pontosítani — Pmt. 33.§ szerint 2 munkanap a törvényi |
-| Audit log hash-lánc havi automata verify | 4 | P1 | scheduled job + lánc törés detect → DPO incident |
-| Adatkezelési tájékoztató UI-on | 3.2 | P0 | ügyfél-form checkbox + bizonylat lábjegyzet |
+| Audit log hash-lánc havi automata verify | 4 | P1 | `npm run audit:hash-chain:verify` staging/production DB ellen + scheduled job + lánc törés detect → DPO incident |
+| Adatkezelési tájékoztató UI-on | 3.2 | P0 | Ügyfél-create és tranzakciós kézi ügyfélfelvétel checkbox + audit marker implementálva; bizonylat-lábjegyzet és DPO/legal final evidence még külső bizonyíték |
 | `worker` retention explicit policy | 3.3 | P1 | DPO + HR konfig |
 | Munkavállalói GDPR review (entity-mezőlista) | 3.3 | P2 | DPO entity-szintű audit |
 | Hetzner / Cloudflare / Google DPA összegyűjtés | 3.5 | P0 | jogi feladat (auditor-által kérendő) |

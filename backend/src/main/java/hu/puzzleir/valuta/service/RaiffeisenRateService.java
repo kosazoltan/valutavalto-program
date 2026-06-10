@@ -1,5 +1,8 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.BankApiConfig;
+import hu.puzzleir.valuta.entity.BankApiMode;
+import hu.puzzleir.valuta.entity.BankApiRunStatus;
 import hu.puzzleir.valuta.entity.MnbExchangeRateCache;
 import hu.puzzleir.valuta.repository.MnbExchangeRateCacheRepository;
 import lombok.RequiredArgsConstructor;
@@ -63,6 +66,7 @@ public class RaiffeisenRateService {
     );
 
     private final MnbExchangeRateCacheRepository cacheRepository;
+    private final BankApiConfigService bankApiConfigService;
 
     // ============ PUBLIKUS API ============
 
@@ -74,18 +78,36 @@ public class RaiffeisenRateService {
     @Transactional(rollbackFor = Exception.class)
     public int fetchAndCacheRates() {
         LocalDate today = LocalDate.now();
+        BankApiConfig config = bankApiConfigService.getOrCreate(BankApiConfigService.PROVIDER_RAIFFEISEN);
+        if (Boolean.FALSE.equals(config.getEnabled()) || config.getMode() == BankApiMode.DISABLED) {
+            String message = "Raiffeisen árfolyam letöltés kihagyva: bank_api_config disabled";
+            log.info(message);
+            bankApiConfigService.recordRun(BankApiConfigService.PROVIDER_RAIFFEISEN, BankApiRunStatus.SKIPPED, message);
+            return 0;
+        }
+
+        String endpointUrl = resolveEndpointUrl(config);
         log.info("Raiffeisen devizaközép árfolyamok letöltése: {}", today);
+        if (config.getMode() == BankApiMode.REST_PRIMARY_WITH_HTML_FALLBACK) {
+            log.warn("Raiffeisen REST_PRIMARY_WITH_HTML_FALLBACK konfigurált, de validált banki REST/OAuth2/mTLS "
+                    + "szerződés nincs a repóban; HTML fallback fut: {}", endpointUrl);
+        }
 
         Map<String, RaiffeisenRate> scraped;
         try {
-            scraped = scrapeRates();
+            scraped = scrapeRates(endpointUrl);
         } catch (Exception e) {
-            log.error("Raiffeisen scraping sikertelen: {} — fallback: meglévő cache marad érintetlen", e.getMessage());
+            String message = "Raiffeisen scraping sikertelen: " + e.getMessage()
+                    + " — fallback: meglévő cache marad érintetlen";
+            log.error(message);
+            bankApiConfigService.recordRun(BankApiConfigService.PROVIDER_RAIFFEISEN, BankApiRunStatus.FAILED, message);
             return 0;
         }
 
         if (scraped.isEmpty()) {
-            log.warn("Raiffeisen scraping: üres eredmény — meglévő cache marad érintetlen");
+            String message = "Raiffeisen scraping: üres eredmény — meglévő cache marad érintetlen";
+            log.warn(message);
+            bankApiConfigService.recordRun(BankApiConfigService.PROVIDER_RAIFFEISEN, BankApiRunStatus.FAILED, message);
             return 0;
         }
 
@@ -113,6 +135,17 @@ public class RaiffeisenRateService {
         }
 
         log.info("Raiffeisen árfolyamok cache-elve: {}/{} valuta", saved, scraped.size());
+        if (saved > 0) {
+            bankApiConfigService.recordRun(
+                    BankApiConfigService.PROVIDER_RAIFFEISEN,
+                    BankApiRunStatus.SUCCESS,
+                    "Raiffeisen árfolyamok cache-elve: " + saved + "/" + scraped.size());
+        } else {
+            bankApiConfigService.recordRun(
+                    BankApiConfigService.PROVIDER_RAIFFEISEN,
+                    BankApiRunStatus.FAILED,
+                    "Raiffeisen sanity/mentési ellenőrzés után nem maradt menthető árfolyam: 0/" + scraped.size());
+        }
         return saved;
     }
 
@@ -144,7 +177,11 @@ public class RaiffeisenRateService {
      * A táblázatból kinyeri: valutakód, egység, buy, middle, sell értékeket.
      */
     Map<String, RaiffeisenRate> scrapeRates() throws Exception {
-        Document doc = Jsoup.connect(RAIFFEISEN_URL)
+        return scrapeRates(RAIFFEISEN_URL);
+    }
+
+    Map<String, RaiffeisenRate> scrapeRates(String endpointUrl) throws Exception {
+        Document doc = Jsoup.connect(endpointUrl)
                 .timeout(TIMEOUT_MS)
                 .userAgent("ValutavaltoERP/1.0")
                 .get();
@@ -176,6 +213,13 @@ public class RaiffeisenRateService {
         }
 
         return result;
+    }
+
+    private String resolveEndpointUrl(BankApiConfig config) {
+        if (config.getEndpointUrl() != null && !config.getEndpointUrl().isBlank()) {
+            return config.getEndpointUrl().trim();
+        }
+        return RAIFFEISEN_URL;
     }
 
     /**

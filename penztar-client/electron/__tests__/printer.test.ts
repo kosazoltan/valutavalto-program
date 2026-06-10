@@ -111,6 +111,27 @@ describe('printer — generateReceiptContent (ESC/POS)', () => {
     expect(content).toContain('BC-2026-000');
   });
 
+  it('should show MEGSZAKÍTOTT TRANZAKCIÓ with no financial effect for cancelled transaction type', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'cancelled_transaction',
+      hufAmount: 70000,
+      roundedHufAmount: 70000,
+      stornoReason: 'MEGSEM',
+      note: 'Pénzmozgás nem történt. Mód: SELL.',
+      transactionLines: [
+        { currencyCode: 'EUR', foreignAmount: 100, rate: 400, hufAmount: 40000 },
+        { currencyCode: 'USD', foreignAmount: 100, rate: 300, hufAmount: 30000 },
+      ],
+    });
+    expect(content).toContain('MEGSZAKÍTOTT TRANZAKCIÓ');
+    expect(content).toContain('Pénzmozgás nem történt.');
+    expect(content).toContain('EUR');
+    expect(content).toContain('USD');
+    expect(content).toContain('MEGSEM');
+    expect(content.replace(/\s/g, '')).toContain('70000Ft');
+  });
+
   it('should show KONVERZIÓS BIZONYLAT for conversion type', () => {
     const content = generateReceiptContent({
       ...baseData,
@@ -258,12 +279,49 @@ describe('printer — generateReceiptContent (ESC/POS)', () => {
     const content = generateReceiptContent({
       ...baseData,
       type: 'transfer',
+      transferDocType: 'handover',
       transferTarget: 'SZG-02',
       transferNote: 'Napi készlet feltöltés',
     });
-    expect(content).toContain('ÁTADÁS-ÁTVÉTELI BIZONYLAT');
+    expect(content).toContain('ÁTADÁSI BIZONYLAT');
     expect(content).toContain('SZG-02');
     expect(content).toContain('Napi készlet feltöltés');
+  });
+
+  it('should show receipt transfer title and vault address', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'receipt',
+      vaultAddress: 'Szeged, Hajnóczy u. 57., 6722',
+      transferTarget: 'SZG-02',
+    });
+    expect(content).toContain('ÁTVÉTELI BIZONYLAT');
+    expect(content).toContain('Szeged, Hajnóczy u. 57., 6722');
+  });
+
+  it('should print transfer denominations only when provided', () => {
+    const withoutDenominations = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'handover',
+      transferTarget: 'SZG-02',
+    });
+    expect(withoutDenominations).not.toContain('Címletezés');
+
+    const withDenominations = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'handover',
+      transferTarget: 'SZG-02',
+      denominations: [
+        { quantity: 2, faceValue: 100 },
+        { quantity: 3, faceValue: 50 },
+      ],
+    });
+    expect(withDenominations).toContain('Címletezés');
+    expect(withDenominations).toContain('2 x 100');
+    expect(withDenominations).toContain('3 x 50');
   });
 
   it('should print carrier name and seal number on transfer receipt (FR-5)', () => {

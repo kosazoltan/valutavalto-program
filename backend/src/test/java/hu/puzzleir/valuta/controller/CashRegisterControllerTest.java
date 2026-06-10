@@ -69,6 +69,30 @@ class CashRegisterControllerTest {
                 .andExpect(jsonPath("$.rawResponse").value("{\"status\":\"OK\",\"message\":\"Bizonylat sikeresen nyomtatva\"}"));
     }
 
+    @Test
+    @DisplayName("explicit pénztárgép command ERROR rawResponse nem HTTP 200")
+    void executeCommand_returns502WhenEventContainsErrorStatus() throws Exception {
+        when(cashRegisterService.executeCommand(any()))
+                .thenReturn(CashRegisterEventDto.builder()
+                        .id(UUID.randomUUID())
+                        .branchId(BRANCH_ID)
+                        .eventType("CURRENCY_LIST_CLEAR")
+                        .eventTimestamp(LocalDateTime.now())
+                        .rawResponse("{\"status\":\"ERROR\",\"message\":\"Pénztárgép valuta-lista törlés sikertelen\"}")
+                        .build());
+
+        mockMvc.perform(post("/api/v1/cash-register/command")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "branchId": "%s",
+                                  "commandType": "CURRENCY_LIST_CLEAR"
+                                }
+                                """.formatted(BRANCH_ID)))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.eventType").value("CURRENCY_LIST_CLEAR"));
+    }
+
     private String receiptRequestJson() {
         return """
                 {

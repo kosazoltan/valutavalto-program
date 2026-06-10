@@ -13,7 +13,7 @@ Keres (kritikus biztonsági anti-patternek):
   - enableRemoteModule: true  (deprecated, exploit vektor)
   - allowRunningInsecureContent: true
   - webSecurity: false  (SOP bypass)
-  - eval() / new Function() electron process-ben
+  - dynamic code execution electron process-ben
   - ipcMain.on nélkül validáció
   - shell.openExternal() user input-tal
   - protocol.registerFileProtocol + user path
@@ -57,7 +57,7 @@ WARNING_PATTERNS = [
      "sandbox=false reduces process isolation"),
     ("EVAL-IN-MAIN",
      re.compile(r'\beval\s*\(|new\s+Function\s*\('),
-     "eval() or new Function() -- code injection risk"),
+     "dynamic code execution -- code injection risk"),
     ("OPEN-EXTERNAL",
      re.compile(r'shell\.openExternal\s*\([^"\']/'),
      "shell.openExternal() with variable -- verify input sanitization"),

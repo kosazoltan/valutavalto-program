@@ -2,11 +2,13 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestItem;
 import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.util.HungarianRounding;
@@ -19,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 /**
@@ -33,7 +34,9 @@ public class ShipmentService {
 
     private final ShipmentRequestRepository shipmentRequestRepository;
     private final BranchRepository branchRepository;
+    private final CurrencyRepository currencyRepository;
     private final ExchangeRateService exchangeRateService;
+    private final TransferSerialSequenceService transferSerialSequenceService;
 
     /**
      * v2.5.70 P0 multi-tenant fix (companyId audit follow-up): a régi findByStatus /
@@ -108,7 +111,12 @@ public class ShipmentService {
 
     public ShipmentRequest create(ShipmentRequest request) {
         validateCreateRequest(request);
-        request.setRequestNumber(generateRequestNumber());
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        request.setCompanyId(companyId);
+        RequestNumberParts requestNumberParts = generateRequestNumber(request);
+        request.setRequestNumber(requestNumberParts.value());
+        request.setSerialPrefix(requestNumberParts.prefix());
+        request.setSerialNumber(requestNumberParts.serialNumber());
         request.setStatus(ShipmentRequestStatus.DRAFT);
         request.setRequestedById(SecurityUtils.getCurrentWorkerId());
         request.setRequestDate(LocalDate.now());
@@ -157,14 +165,21 @@ public class ShipmentService {
             // hanem explicit validation hibát dobunk. Audit-szigorúság: minden szállítmány-
             // tételhez kötelezően tartozik elszámoló rate.
             try {
-                ExchangeRate er = exchangeRateService.getCurrentRate(item.getCurrencyId());
-                if (er == null || er.getOfficialRate() == null) {
-                    throw new ValidationException(
-                            "A currencyId=" + item.getCurrencyId() + " valutához nincs aktuális "
-                                    + "elszámoló árfolyam (officialRate). Frissítse az árfolyamot "
-                                    + "a szállítmánykérés rögzítése előtt.");
+                Currency currency = currencyRepository.findById(item.getCurrencyId())
+                        .orElseThrow(() -> new ValidationException(
+                                "Ismeretlen valuta a szállítmány-tételben: currencyId=" + item.getCurrencyId()));
+                if ("HUF".equalsIgnoreCase(currency.getCode())) {
+                    item.setAppliedRate(BigDecimal.ONE);
+                } else {
+                    ExchangeRate er = exchangeRateService.getCurrentRate(item.getCurrencyId());
+                    if (er == null || er.getOfficialRate() == null) {
+                        throw new ValidationException(
+                                "A currencyId=" + item.getCurrencyId() + " valutához nincs aktuális "
+                                        + "elszámoló árfolyam (officialRate). Frissítse az árfolyamot "
+                                        + "a szállítmánykérés rögzítése előtt.");
+                    }
+                    item.setAppliedRate(er.getOfficialRate());
                 }
-                item.setAppliedRate(er.getOfficialRate());
             } catch (ResourceNotFoundException ex) {
                 throw new ValidationException(
                         "A currencyId=" + item.getCurrencyId() + " valutához nincs aktuális "
@@ -324,9 +339,26 @@ public class ShipmentService {
         });
     }
 
-    private String generateRequestNumber() {
-        String prefix = "SHR-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")) + "-";
-        int nextNum = shipmentRequestRepository.findMaxRequestNumber(prefix) + 1;
-        return prefix + String.format("%04d", nextNum);
+    private RequestNumberParts generateRequestNumber(ShipmentRequest request) {
+        ShipmentRequestItem firstItem = request.getItems().get(0);
+        Currency currency = currencyRepository.findById(firstItem.getCurrencyId())
+                .orElseThrow(() -> new ValidationException(
+                        "Ismeretlen valuta a szállítmány-tételben: currencyId=" + firstItem.getCurrencyId()));
+        String prefix = determineSerialPrefix(currency.getCode(), request);
+        UUID companyId = request.getCompanyId() != null ? request.getCompanyId() : SecurityUtils.getCurrentCompanyId();
+        long serialNumber = transferSerialSequenceService.next(companyId, prefix);
+        return new RequestNumberParts(prefix, serialNumber, prefix + "-" + String.format("%06d", serialNumber));
     }
+
+    private String determineSerialPrefix(String currencyCode, ShipmentRequest request) {
+        boolean huf = "HUF".equalsIgnoreCase(currencyCode);
+        UUID currentBranchId = SecurityUtils.getCurrentBranchIdOrNull();
+        boolean receipt = currentBranchId != null && currentBranchId.equals(request.getToBranchId());
+        if (huf) {
+            return receipt ? "UF" : "FF";
+        }
+        return receipt ? "AV" : "AT";
+    }
+
+    private record RequestNumberParts(String prefix, long serialNumber, String value) {}
 }

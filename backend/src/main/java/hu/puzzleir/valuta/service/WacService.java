@@ -213,6 +213,19 @@ public class WacService {
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public void recordReversalCompensationIfEnabled(Long originalTransactionId,
                                                     BigDecimal reversedQty, BigDecimal originalQty) {
+        recordReversalCompensationIfEnabled(originalTransactionId, null, reversedQty, originalQty);
+    }
+
+    /**
+     * Idempotens profit-kompenzáció konkrét sztornó/refund tranzakcióhoz.
+     *
+     * <p>A {@code compensationTransactionId} az újonnan létrejött REVERSAL/PARTIAL_REFUND tranzakció
+     * azonosítója. Ugyanannak a kompenzáló tranzakciónak ismételt after-commit futása ugyanazt a
+     * {@code compensation_key}-t képezi, ezért nem ír még egyszer negatív profitot.</p>
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
+    public void recordReversalCompensationIfEnabled(Long originalTransactionId, Long compensationTransactionId,
+                                                    BigDecimal reversedQty, BigDecimal originalQty) {
         if (systemParameterService == null || !"true".equalsIgnoreCase(
                 systemParameterService.getValue(WAC_PROFIT_TRACKING_PARAM, WAC_PROFIT_TRACKING_DEFAULT))) {
             return; // flag OFF (default) → no-op
@@ -229,6 +242,11 @@ public class WacService {
             if (!"SELL".equals(original.getTransactionType()) || original.getRealizedProfit() == null) {
                 continue;
             }
+            String compensationKey = buildCompensationKey(originalTransactionId, compensationTransactionId, original);
+            if (compensationKey != null && profitLogRepository.existsByCompensationKey(compensationKey)) {
+                log.info("WAC profit kompenzáció kihagyva (idempotens ismétlés): key={}", compensationKey);
+                continue;
+            }
             BigDecimal compensation = original.getRealizedProfit().multiply(ratio)
                     .negate().setScale(2, RoundingMode.HALF_UP);
             ProfitLog comp = ProfitLog.builder()
@@ -241,12 +259,23 @@ public class WacService {
                     .salePrice(original.getSalePrice())
                     .realizedProfit(compensation)
                     .transactionType("REVERSAL")
+                    .compensationKey(compensationKey)
                     .createdAt(LocalDateTime.now())
                     .build();
             profitLogRepository.save(comp);
             log.info("WAC profit kompenzáció: eredeti tx={} {} arány={} kompenzáció={}",
                     originalTransactionId, original.getCurrencyCode(), ratio, compensation);
         }
+    }
+
+    private String buildCompensationKey(Long originalTransactionId, Long compensationTransactionId, ProfitLog original) {
+        if (compensationTransactionId == null) {
+            return null;
+        }
+        String originalLogPart = original.getId() != null
+                ? original.getId().toString()
+                : originalTransactionId + ":" + original.getCurrencyCode() + ":" + original.getQuantity();
+        return "REVERSAL:" + compensationTransactionId + ":" + originalLogPart;
     }
 
     /**

@@ -21,6 +21,8 @@ public interface ProfitLogRepository extends JpaRepository<ProfitLog, Long> {
     /** A6 (b8 FR-8): egy tranzakció profit-tételei — sztornó/refund-kompenzáció alapja. */
     List<ProfitLog> findByTransactionId(Long transactionId);
 
+    boolean existsByCompensationKey(String compensationKey);
+
     @Query("SELECT COALESCE(SUM(p.realizedProfit), 0) FROM ProfitLog p " +
            "WHERE p.branchId = :branchId AND p.createdAt BETWEEN :from AND :to")
     BigDecimal sumProfitByBranch(

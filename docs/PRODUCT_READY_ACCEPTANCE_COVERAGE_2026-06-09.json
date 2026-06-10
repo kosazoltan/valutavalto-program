@@ -1,0 +1,311 @@
+{
+  "schemaVersion": 1,
+  "status": "LOCAL_PASS",
+  "environment": "local",
+  "lastReviewedAt": "2026-06-09",
+  "productReadyMeaning": "Local regression coverage map for critical acceptance flows. This does not replace staging or production acceptance execution evidence.",
+  "requiredFlows": [
+    "buy",
+    "sell",
+    "conversion",
+    "transfer",
+    "storno",
+    "dayClosing",
+    "navCashRegister",
+    "receiptPrint",
+    "offlineSync"
+  ],
+  "flows": [
+    {
+      "id": "buy",
+      "commands": [
+        "npm run acceptance:local:flows",
+        "npm run acceptance:local:postgres-seeded"
+      ],
+      "evidenceRefs": [
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/integration/TransactionFlowTest.java",
+          "patterns": [
+            "testBuyFlow_withCustomer",
+            "TransactionType.BUY"
+          ]
+        },
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/integration/SeededPostgresAcceptanceIT.java",
+          "patterns": [
+            "seededPostgresBuySellAndDaySessionRoundTrip",
+            "TransactionType.BUY",
+            "sumDailyTurnover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sell",
+      "commands": [
+        "npm run acceptance:local:flows",
+        "npm run acceptance:local:postgres-seeded"
+      ],
+      "evidenceRefs": [
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/integration/TransactionFlowTest.java",
+          "patterns": [
+            "testSellFlow_fullCycle",
+            "TransactionType.SELL"
+          ]
+        },
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/integration/SeededPostgresAcceptanceIT.java",
+          "patterns": [
+            "seededPostgresBuySellAndDaySessionRoundTrip",
+            "TransactionType.SELL",
+            "findByBranchAndDate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "conversion",
+      "commands": [
+        "npm --prefix frontend-react test -- --run src/services/api/transactions.test.ts",
+        "npm --prefix penztar-client test -- electron/__tests__/printer.test.ts",
+        "npm --prefix penztar-client test -- electron/__tests__/sync-engine.test.ts"
+      ],
+      "evidenceRefs": [
+        {
+          "path": "frontend-react/src/services/api/transactions.test.ts",
+          "patterns": [
+            "calls POST /transactions/conversion",
+            "/transactions/conversion"
+          ]
+        },
+        {
+          "path": "penztar-client/electron/__tests__/printer.test.ts",
+          "patterns": [
+            "should show KONVERZI",
+            "type: 'conversion'"
+          ]
+        },
+        {
+          "path": "penztar-client/electron/__tests__/sync-engine.test.ts",
+          "patterns": [
+            "should sync conversions after transactions",
+            "/transactions/conversion"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transfer",
+      "commands": [
+        "npm run acceptance:local:backend",
+        "npm run acceptance:local:postgres-lock",
+        "npm --prefix frontend-react test -- src/components/electron/ReceiptPreviewModal.transferEnhancements.test.tsx",
+        "npm --prefix penztar-client test -- electron/__tests__/printer.test.ts"
+      ],
+      "evidenceRefs": [
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/service/TransferServiceTest.java",
+          "patterns": [
+            "testCreate_huf_fallbackRateIsOne",
+            "testCreate_denomination_success",
+            "testCreate_slipNumberPrefix_currencyVsHuf",
+            "testStorno"
+          ]
+        },
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/service/TransferCounterTransactionTest.java",
+          "patterns": [
+            "fMode_createShouldCreateTransferOutAndDecreaseFromBalance",
+            "uMode_createShouldCreateTransferInAndIncreaseFromBalance",
+            "ufMode_createShouldCreateBothTransactionsAndUpdateBothBalances"
+          ]
+        },
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/service/TransferSerialSequenceServicePostgresIT.java",
+          "patterns": [
+            "migrationBackfillsExistingTenantPrefixMaximumsAndIgnoresStornoSerials",
+            "nextAllocatesUniqueContinuousNumbersUnderConcurrentPostgresTransactions",
+            "nextKeepsTenantAndPrefixSequencesIndependent",
+            "transferSerialSequenceService.next"
+          ]
+        },
+        {
+          "path": "frontend-react/src/components/electron/ReceiptPreviewModal.transferEnhancements.test.tsx",
+          "patterns": [
+            "FR-2: transferDocType=receipt",
+            "FR-2: transferDocType=handover",
+            "FR-17/FR-18: ha van címletezés",
+            "FR-19: ha nincs címletezés"
+          ]
+        },
+        {
+          "path": "penztar-client/electron/__tests__/printer.test.ts",
+          "patterns": [
+            "should show transfer details",
+            "should show receipt transfer title and vault address",
+            "should print transfer denominations only when provided"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "storno",
+      "commands": [
+        "npm run acceptance:local:backend",
+        "npm --prefix frontend-react test -- --run src/services/api/transactions.test.ts"
+      ],
+      "evidenceRefs": [
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/service/TransactionReversalServiceTest.java",
+          "patterns": [
+            "testStornoFlow",
+            "TransactionType.REVERSAL"
+          ]
+        },
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/service/TransferServiceTest.java",
+          "patterns": [
+            "testStorno_success_reversesStock_handover",
+            "testStorno_blankReason_rejectedBeforeStockMutation",
+            "testGetStornoPreview_setsStornoSerialBeforeCancellation"
+          ]
+        },
+        {
+          "path": "frontend-react/src/services/api/transactions.test.ts",
+          "patterns": [
+            "storno: calls POST /transfers/{id}/storno with mandatory reason body",
+            "getStornoPreview: calls GET /transfers/{id}/storno-preview and preserves preview serial",
+            "/transfers/77/storno-preview"
+          ]
+        },
+        {
+          "path": "frontend-react/src/pages/transfers/TransferPage.tsx",
+          "patterns": [
+            "transferApi.getStornoPreview",
+            "stornoPreviewRequestRef",
+            "closeStornoModal",
+            "stornoTarget.stornoSerialNumber ?? `${stornoTarget.transferNumber}-SZ`",
+            "void openStornoModal(transfer)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dayClosing",
+      "commands": [
+        "npm run acceptance:local:flows",
+        "npm run acceptance:local:backend",
+        "npm run acceptance:local:postgres-seeded"
+      ],
+      "evidenceRefs": [
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/integration/ClosingFlowTest.java",
+          "patterns": [
+            "testClosingWizard_happyPath",
+            "testClosingWizard_complete"
+          ]
+        },
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/service/CashRegisterServiceTest.java",
+          "patterns": [
+            "testCloseDay",
+            "DAY_CLOSE_COMMAND"
+          ]
+        },
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/integration/SeededPostgresAcceptanceIT.java",
+          "patterns": [
+            "DailySessionStatus.OPEN",
+            "findOpenSessionByBranchAndDate",
+            "DailySession::getTransactionCount"
+          ]
+        },
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/service/DailyClosingMissedAlertServiceTest.java",
+          "patterns": [
+            "Hiányzó ClosingControl esetén company supervisorok értesítést kapnak",
+            "Már auditált napi alert nem küld új értesítést",
+            "Vasárnap zárva tartó iroda nem számít hiányzónak"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "navCashRegister",
+      "commands": [
+        "npm run acceptance:local:backend"
+      ],
+      "evidenceRefs": [
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/service/CashRegisterServiceTest.java",
+          "patterns": [
+            "executeCommandCurrencyListSetBuildsDeterministicLegacyPayload",
+            "executeCommandCurrencyListClearUsesExplicitLegacyCommand",
+            "DAY_OPEN_COMMAND",
+            "DAY_CLOSE_COMMAND"
+          ]
+        },
+        {
+          "path": "backend/src/test/java/hu/puzzleir/valuta/controller/CashRegisterControllerTest.java",
+          "patterns": [
+            "executeCommand_returns502WhenEventContainsErrorStatus"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "receiptPrint",
+      "commands": [
+        "npm --prefix penztar-client test -- electron/__tests__/printer.test.ts",
+        "npm --prefix frontend-react test -- --run src/pages/receipts/ReceiptPage.types.test.ts src/services/api/transactions.test.ts"
+      ],
+      "evidenceRefs": [
+        {
+          "path": "penztar-client/electron/__tests__/printer.test.ts",
+          "patterns": [
+            "type: 'buy'",
+            "type: 'storno'",
+            "type: 'cancelled_transaction'",
+            "type: 'conversion'",
+            "type: 'closing'"
+          ]
+        },
+        {
+          "path": "frontend-react/src/pages/receipts/ReceiptPage.types.test.ts",
+          "patterns": [
+            "buildCancelledTransactionPrintData",
+            "CANCELLED_TRANSACTION"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "offlineSync",
+      "commands": [
+        "npm --prefix penztar-client test -- electron/__tests__/sync-engine.test.ts",
+        "npm --prefix penztar-client test -- electron/__tests__/sync-engine-network-disruption.test.ts"
+      ],
+      "evidenceRefs": [
+        {
+          "path": "penztar-client/electron/__tests__/sync-engine.test.ts",
+          "patterns": [
+            "should sync conversions after transactions",
+            "offline_mode=true config",
+            "markTransactionSynced",
+            "markConversionSynced",
+            "markStornoSynced"
+          ]
+        },
+        {
+          "path": "penztar-client/electron/__tests__/sync-engine-network-disruption.test.ts",
+          "patterns": [
+            "markTransactionSynced",
+            "markConversionSynced",
+            "ECONNRESET"
+          ]
+        }
+      ]
+    }
+  ]
+}

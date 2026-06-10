@@ -96,6 +96,15 @@ export default function BankTransactions() {
   useHotkeys('n', () => setShowNewModal(true), { enableOnFormTags: false })
   useHotkeys('escape', () => { setShowNewModal(false); setShowDetailModal(null) }, { enableOnFormTags: true })
 
+  const resetForm = useCallback(() => {
+    setCurrencyCode('')
+    setAmount('')
+    setExchangeRate('')
+    setBankName(defaultBankName)
+    setBankRef('')
+    setNote('')
+  }, [defaultBankName])
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     if (!currencyCode || !amount || !exchangeRate) return
@@ -139,7 +148,7 @@ export default function BankTransactions() {
     } finally {
       setSubmitting(false)
     }
-  }, [txType, currencyCode, amount, exchangeRate, bankName, defaultBankName, bankRef, note, fetchData, electronQueueAvailable])
+  }, [txType, currencyCode, amount, exchangeRate, bankName, defaultBankName, bankRef, note, fetchData, electronQueueAvailable, resetForm])
 
   const handleConfirmReceived = useCallback(async (id: number) => {
     setWorkflowSubmitting(true)
@@ -166,15 +175,6 @@ export default function BankTransactions() {
       setWorkflowSubmitting(false)
     }
   }, [fetchData])
-
-  const resetForm = () => {
-    setCurrencyCode('')
-    setAmount('')
-    setExchangeRate('')
-    setBankName(defaultBankName)
-    setBankRef('')
-    setNote('')
-  }
 
   const hufAmount = amount && exchangeRate
     ? (parseFloat(amount) * parseFloat(exchangeRate)).toFixed(0)

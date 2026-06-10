@@ -1205,6 +1205,7 @@
     "filter": {
       "allDisabled": "Szűrés kikapcsolva (összes)",
       "buyOnly": "Csak vételi",
+      "cancelledTransactionOnly": "Csak megszakított tranzakció",
       "conversionOnly": "Csak konverziós",
       "customerOnly": "Csak ügyfeles",
       "dateFrom": "Dátumtól",

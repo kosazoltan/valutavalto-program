@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test'
 
+const UNAUTHENTICATED_RESOURCE_ERROR =
+  'Failed to load resource: the server responded with a status of 401 (Unauthorized)'
+const REFRESH_COOKIE_PATH = '/api/v1/auth/refresh-cookie'
+
+const isExpectedUnauthenticatedResourceError = (text: string): boolean =>
+  text === UNAUTHENTICATED_RESOURCE_ERROR
+
 /**
  * SMOKE TEST — App betöltés, nincs JS error
  */
@@ -13,9 +20,15 @@ test('app betöltődik a login oldalon', async ({ page }) => {
 
   // Gyűjtsük össze a console errorokat
   const errors: string[] = []
+  const unauthorizedResponses: string[] = []
   page.on('console', msg => {
     if (msg.type() === 'error') {
       errors.push(msg.text())
+    }
+  })
+  page.on('response', response => {
+    if (response.status() === 401) {
+      unauthorizedResponses.push(response.url())
     }
   })
 
@@ -28,19 +41,30 @@ test('app betöltődik a login oldalon', async ({ page }) => {
   // Alapvető elemek jelenléte: bármelyik input form
   const inputs = page.locator('input, button, [role="button"]')
   const count = await inputs.count()
-  expect(count).toBeGreaterThanOrEqual(0)
+  expect(count).toBeGreaterThan(0)
 
-  // Nem szabad, hogy kritikus JS errorok legyenek
-  // (Warning-ok OK, pl. deprecated API-k)
-  const criticalErrors = errors.filter(e => 
-    !e.includes('warn') && 
+  const unexpectedUnauthorizedResponses = unauthorizedResponses.filter(url =>
+    !url.includes(REFRESH_COOKIE_PATH)
+  )
+  expect(unexpectedUnauthorizedResponses).toEqual([])
+
+  // Nem szabad, hogy kritikus JS errorok legyenek.
+  // A mockolt refresh-cookie 401 normalis unauthenticated bootstrap zaj; mas 401-et
+  // a fenti response-ellenorzes mar elutasit.
+  const criticalErrors = errors.filter(e =>
+    !isExpectedUnauthenticatedResourceError(e) &&
+    !e.includes('warn') &&
     !e.includes('deprecated') &&
     !e.includes('Chrome DevTools')
   )
-  expect(criticalErrors.length).toBeLessThanOrEqual(2) // Maximum 2 harmless error
+  expect(criticalErrors).toEqual([])
 })
 
 test('backend nem elérhető esetén teszt skip-olódik gracefully', async ({ page }) => {
+  await page.route('**/api/v1/auth/refresh-cookie', route =>
+    route.fulfill({ status: 401, contentType: 'application/json', body: '{}' })
+  )
+
   // Ha a backend nem elérhető, az axios 500/offline hibát dob
   // Ezt kezelnie kell az app-nak
   const errors: string[] = []

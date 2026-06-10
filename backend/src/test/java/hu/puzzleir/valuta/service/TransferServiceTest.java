@@ -38,6 +38,7 @@ class TransferServiceTest {
     @Mock private CashBalanceRepository cashBalanceRepository;
     @Mock private TransactionRepository transactionRepository;
     @Mock private ReceiptSequenceService receiptSequenceService;
+    @Mock private TransferSerialSequenceService transferSerialSequenceService;
     @Mock private AuditLogService auditLogService;
     @InjectMocks private TransferService service;
 
@@ -80,7 +81,8 @@ class TransferServiceTest {
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
         when(currencyRepository.findById(6L)).thenReturn(Optional.of(huf));
-        when(transferRepository.findMaxTransferSerialForCompany(any(), anyString(), anyInt())).thenReturn(0L);
+        when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
+        when(transferSerialSequenceService.next(any(), eq("FF"))).thenReturn(1L);
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -130,8 +132,7 @@ class TransferServiceTest {
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
         when(currencyRepository.findById(5L)).thenReturn(Optional.of(usd));
-        // A sorszám-generátor a cégszintű findMaxTransferSerialForCompany-t hívja (gap-mentes AT/AV/FF/UF).
-        when(transferRepository.findMaxTransferSerialForCompany(any(), anyString(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(0L);
+        when(transferSerialSequenceService.next(any(), anyString())).thenReturn(1L);
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -235,7 +236,7 @@ class TransferServiceTest {
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
         when(currencyRepository.findById(6L)).thenReturn(Optional.of(huf));
-        when(transferRepository.findMaxTransferSerialForCompany(any(), anyString(), anyInt())).thenReturn(0L);
+        when(transferSerialSequenceService.next(any(), eq("FF"))).thenReturn(1L);
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -273,7 +274,7 @@ class TransferServiceTest {
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
-        when(transferRepository.findMaxTransferSerialForCompany(any(), anyString(), anyInt())).thenReturn(0L);
+        when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
 
         CreateTransferDto dto = new CreateTransferDto();
         dto.setToBranchId(toId.toString());
@@ -305,7 +306,7 @@ class TransferServiceTest {
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
-        when(transferRepository.findMaxTransferSerialForCompany(any(), anyString(), anyInt())).thenReturn(0L);
+        when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -378,6 +379,7 @@ class TransferServiceTest {
 
             assertThat(result.getIsCancelled()).isTrue();
             assertThat(result.getStornoSerialNumber()).isEqualTo("AT-000023-SZ");
+            assertThat(result.getCancellationReason()).isEqualTo("Téves rögzítés");
             verify(auditLogService).log(eq("STORNO"), contains("VV-TX-002"), eq(50L));
             // F (átadás) visszafordítás: a feladó VISSZAKAPJA (5000+1000), a fogadó ELVESZTI (5000-1000).
             assertThat(fromBal.getCurrentBalance()).isEqualByComparingTo("6000");
@@ -441,6 +443,45 @@ class TransferServiceTest {
 
             // U (átvétel) visszafordítás: a fogadó (fromBranch) ELVESZTI (5000-1000).
             assertThat(fromBal.getCurrentBalance()).isEqualByComparingTo("4000");
+        }
+    }
+
+    @Test
+    @DisplayName("FR-12/NFR-3: sztornó indoklás service-szinten sem lehet üres vagy csak whitespace")
+    void testStorno_blankReason_rejectedBeforeStockMutation() {
+        UUID companyId = UUID.randomUUID();
+        Transfer transfer = buildStornoTarget(companyId);
+        when(transferRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(transfer));
+
+        try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            assertThatThrownBy(() -> service.storno(50L, "   "))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("indoklása kötelező");
+
+            verify(workerRepository, never()).findById(anyLong());
+            verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdForUpdate(any(), anyLong());
+            verify(transferRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("FR-15: sztornó preview már a tényleges sztornó előtt visszaadja a <eredeti>-SZ sorszámot")
+    void testGetStornoPreview_setsStornoSerialBeforeCancellation() {
+        UUID companyId = UUID.randomUUID();
+        Transfer transfer = buildStornoTarget(companyId);
+        transfer.setIsCancelled(false);
+        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+
+        try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(null);
+
+            TransferDto preview = service.getStornoPreview(50L);
+
+            assertThat(preview.getIsCancelled()).isFalse();
+            assertThat(preview.getStornoSerialNumber()).isEqualTo("AT-000023-SZ");
         }
     }
 

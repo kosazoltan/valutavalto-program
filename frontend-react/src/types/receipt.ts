@@ -8,6 +8,7 @@ export type PrintJobType =
   | 'buy'
   | 'transfer'
   | 'storno'
+  | 'cancelled_transaction'
   | 'conversion'
   | 'closing'
   | 'handling_fee'
