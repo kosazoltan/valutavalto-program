@@ -18,6 +18,9 @@ feladat kifejezetten mandate-et vagy agent-mukodest erint.
 
 - `vault/feedback/*.md` - csak konkret user-direktiva vagy historikus ok
   vizsgalatakor.
+- `vault/feedback/prompt-caching-mandate-2026-06-10.md` - Prompt Caching kotelezo:
+  cache-barat agent-munkamod + cache_control szabalyok minden Claude API-integracioban
+  (user-direktiva 2026-06-10).
 - `docs/knowledge/memory/*` - csak regi dontes vagy release-tortenet kutatasakor.
 - `.cursor/rules/*.mdc` - celzott Cursor workflow, `alwaysApply: false`.
 
