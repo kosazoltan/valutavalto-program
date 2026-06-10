@@ -70,11 +70,15 @@ export const menuGroups: MenuGroup[] = [
       { path: "/transactions/conversion", label: "Konverzió", icon: ArrowLeftRight },
       { path: "/cashdesk", label: "Kassza / készlet", icon: Wallet },
       { path: "/cashdesk/denominations", label: "Címletezés", icon: FileText },
+      // EXCMD b5 FR-KC-05: zárási címletezések választó-menüje.
+      { path: "/closing/denominations-menu", label: "Címletezés – zárások", icon: FileText },
       { path: "/customers", label: "Ügyfelek", icon: Users },
       { path: "/transit", label: "Úton lévő csomagok", icon: ArrowLeftRight },
       { path: "/closing/wizard", label: "Napzárás", icon: FileText },
       { path: "/rates", label: "Árfolyamok (nézet)", icon: TrendingUp },
       { path: "/transactions", label: "Tranzakciólista", icon: FileText },
+      // EXCMD b6b FR-EFM-01: konszolidált „Egyéb feladatok" menü (NAV/POS variáns a konfiguráció szerint).
+      { path: "/other-tasks", label: "Egyéb feladatok", icon: Settings },
     ],
   },
   {
@@ -188,6 +192,9 @@ export const menuGroups: MenuGroup[] = [
       // FK-020: Pénztár Törzs Adatbázis lista (olvasás: foertektar/helyettes, belso_ellenor, ugyvezeto).
       { path: "/admin/branches", label: "Pénztár Törzs Adatbázis", icon: Building2, canonicalRoles: ["foertektar", "belso_ellenor", "ugyvezeto"] },
       { path: "/workers", label: "Dolgozók", icon: Users },
+      // #954 four-eyes előfeltétel: supervisor sztornó-jóváhagyó lista (backend
+      // @PreAuthorize SUPERVISOR/MANAGER/ADMIN a hiteles enforcement).
+      { path: "/stornos/approvals", label: "Sztornó jóváhagyások", icon: ClipboardCheck, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
       { path: "/employees", label: "HR (munkavállalók)", icon: Users },
       { path: "/attendance", label: "Munkaidő nyilvántartás", icon: Users },
       { path: "/licenses", label: "Engedélyek", icon: Shield },

@@ -280,6 +280,7 @@ public class AuditLogService {
                 .userId(workerId != null ? workerId.toString() : null)
                 .changes(details)
                 .build();
+        applyHashChain(entry);
         auditLogRepository.save(entry);
     }
 
@@ -295,6 +296,7 @@ public class AuditLogService {
                 .entityId(transactionId != null ? transactionId.toString() : null)
                 .changes("Tranzakció esemény: " + event)
                 .build();
+        applyHashChain(entry);
         auditLogRepository.save(entry);
     }
 
@@ -313,6 +315,7 @@ public class AuditLogService {
                 .newValue(newRate != null ? newRate.toPlainString() : null)
                 .changes(String.format("Árfolyam módosítás: %s %s -> %s", currency, oldRate, newRate))
                 .build();
+        applyHashChain(entry);
         auditLogRepository.save(entry);
     }
 
@@ -328,6 +331,7 @@ public class AuditLogService {
                 .changes(details)
                 .ipAddress(ipAddress)
                 .build();
+        applyHashChain(entry);
         auditLogRepository.save(entry);
     }
 

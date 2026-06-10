@@ -20,7 +20,7 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "shipment_request", indexes = {
-    @Index(name = "idx_shipment_request_number", columnList = "request_number", unique = true),
+    @Index(name = "idx_shipment_request_company_number", columnList = "company_id, request_number", unique = true),
     @Index(name = "idx_shipment_request_status", columnList = "status")
 })
 @EntityListeners(AuditingEntityListener.class)
@@ -35,8 +35,17 @@ public class ShipmentRequest {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "request_number", nullable = false, unique = true, length = 50)
+    @Column(name = "request_number", nullable = false, length = 50)
     private String requestNumber;
+
+    @Column(name = "company_id")
+    private UUID companyId;
+
+    @Column(name = "serial_prefix", length = 4)
+    private String serialPrefix;
+
+    @Column(name = "serial_number")
+    private Long serialNumber;
 
     @Column(name = "from_branch_id", nullable = false)
     private UUID fromBranchId;

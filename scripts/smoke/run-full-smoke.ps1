@@ -12,7 +12,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$timestamp = "$(Get-Date -Format 'yyyyMMdd-HHmmss-fff')-$PID"
 $runDir = Join-Path $OutputRoot $timestamp
 $null = New-Item -ItemType Directory -Path $runDir -Force
 

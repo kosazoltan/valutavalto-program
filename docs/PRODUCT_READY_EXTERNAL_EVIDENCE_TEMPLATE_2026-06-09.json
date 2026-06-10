@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "evidenceStatus": "DRAFT",
+  "environment": "staging-or-production",
+  "generatedAt": null,
+  "localEvidenceBundleRef": "",
+  "evidenceOwner": "",
+  "approvals": {
+    "reportRef": "",
+    "productOwner": "",
+    "operationsOwner": "",
+    "complianceOwner": ""
+  },
+  "acceptance": {
+    "status": "PENDING",
+    "executedAt": null,
+    "reportRef": "",
+    "localCoverageReportRef": "",
+    "failed": null,
+    "criticalFlowsPassed": null,
+    "coveredFlows": [
+      "buy",
+      "sell",
+      "conversion",
+      "transfer",
+      "storno",
+      "dayClosing",
+      "navCashRegister",
+      "receiptPrint",
+      "offlineSync"
+    ]
+  },
+  "compliance": {
+    "status": "PENDING",
+    "approvedDecisionRef": "",
+    "exportReportRef": "",
+    "approvedDecisionStatus": "DRAFT",
+    "exportedEnvironment": "staging-or-production",
+    "failed": null
+  },
+  "drRestore": {
+    "status": "PENDING",
+    "executedAt": null,
+    "reportRef": "",
+    "rtoMinutes": null,
+    "flywayVerified": null,
+    "auditHashChainVerified": null,
+    "rowCounts": {
+      "transactions": null,
+      "audit_log": null,
+      "aml_report": null,
+      "customer": null
+    }
+  },
+  "monitoring": {
+    "status": "PENDING",
+    "reportRef": "",
+    "observationHours": null,
+    "scrapeVerified": null,
+    "dashboardLoaded": null,
+    "alertDelivered": null
+  },
+  "installer": {
+    "status": "PENDING",
+    "signedArtifactReportRef": "",
+    "cleanVmReportRef": "",
+    "signedArtifactsVerified": null,
+    "clients": [
+      {
+        "name": "penztar",
+        "installed": null,
+        "launched": null,
+        "uninstalled": null
+      },
+      {
+        "name": "arfolyam-keszito",
+        "installed": null,
+        "launched": null,
+        "uninstalled": null
+      },
+      {
+        "name": "kozponti",
+        "installed": null,
+        "launched": null,
+        "uninstalled": null
+      }
+    ]
+  },
+  "finalDecision": {
+    "readyForProductReadyClaim": null,
+    "decidedAt": null,
+    "decidedBy": "",
+    "externalEvidenceRef": "",
+    "finalGateSummaryRef": "",
+    "notes": ""
+  }
+}

@@ -1352,6 +1352,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (:custAddress IS NULL OR LOWER(t.customerAddress) LIKE :custAddress) " +
            "AND (:custDocType IS NULL OR LOWER(t.customerDocumentType) LIKE :custDocType) " +
            "AND (:custDocNumber IS NULL OR LOWER(t.customerDocumentNumber) LIKE :custDocNumber) " +
+           "AND (:custActorName IS NULL OR LOWER(t.customerActorName) LIKE :custActorName) " +
            "ORDER BY t.transactionDate DESC, t.transactionTime DESC")
     List<Transaction> findReceiptListByCompanyIdAndDateRange(
         @Param("companyId") UUID companyId,
@@ -1365,6 +1366,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("custAddress") String custAddress,
         @Param("custDocType") String custDocType,
         @Param("custDocNumber") String custDocNumber,
+        @Param("custActorName") String custActorName,
         Pageable pageable);
 
     /**

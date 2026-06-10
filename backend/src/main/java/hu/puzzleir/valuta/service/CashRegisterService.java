@@ -4,6 +4,9 @@ import hu.puzzleir.valuta.dto.nav.NavSendResult;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.dto.cashregister.CashRegisterCommandRequest;
+import hu.puzzleir.valuta.dto.cashregister.CashRegisterCommandType;
+import hu.puzzleir.valuta.dto.cashregister.CashRegisterCurrencyCommandLine;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterEventDto;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterReceiptRequest;
 import hu.puzzleir.valuta.dto.cashregister.CashRegisterStornoRequest;
@@ -15,22 +18,31 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
  * Pénztárgép szolgáltatás.
- * NAV online pénztárgép integráció — egyelőre mock/log implementáció.
- * A tényleges hardware kommunikáció abstract.
+ * NAV online pénztárgép integráció.
+ * A hardware bridge fail-closed: ha nincs éles driver vagy explicit szimuláció, ERROR event készül.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class CashRegisterService {
+
+    static final String NAV_AEE_NAMESPACE = "fiscat/AEE";
+    static final String DAY_OPEN_COMMAND = NAV_AEE_NAMESPACE + "|OP";
+    static final String DAY_CLOSE_COMMAND = NAV_AEE_NAMESPACE + "|DC|0|0";
+    static final String CURRENCY_LIST_CLEAR_COMMAND = NAV_AEE_NAMESPACE + "|CCL";
+    static final String CURRENCY_LIST_SET_COMMAND = NAV_AEE_NAMESPACE + "|CYS";
 
     private final CashRegisterEventRepository cashRegisterEventRepository;
     private final BranchRepository branchRepository;
@@ -43,20 +55,13 @@ public class CashRegisterService {
     @Transactional(rollbackFor = Exception.class)
     public CashRegisterEventDto openDay(UUID branchId) {
         Branch branch = findBranch(branchId);
-        String comPort = resolveNavComPort();
-        boolean qrSent = navIntegrationService.sendQrCode("CASH_REGISTER_OPEN|branchId=" + branchId, comPort);
-
-        CashRegisterEvent event = CashRegisterEvent.builder()
-                .branch(branch)
-                .eventType(CashRegisterEventType.OPEN)
-                .eventTimestamp(LocalDateTime.now())
-            .rawResponse(buildResponse(qrSent ? "OK" : "ERROR",
-                qrSent ? "Pénztárgép napi nyitás sikeres" : "Pénztárgép napi nyitás sikertelen",
-                "comPort", comPort,
-                "bridge", "NAV"))
-                .build();
-
-        event = cashRegisterEventRepository.save(event);
+        CashRegisterEvent event = sendExplicitQrCommand(
+                branch,
+                CashRegisterEventType.OPEN,
+                DAY_OPEN_COMMAND,
+                "Pénztárgép napi nyitás sikeres",
+                "Pénztárgép napi nyitás sikertelen",
+                "command", CashRegisterCommandType.DAY_OPEN.name());
         log.info("Pénztárgép napi nyitás: branch={}", branch.getCode());
         return toDto(event);
     }
@@ -67,20 +72,13 @@ public class CashRegisterService {
     @Transactional(rollbackFor = Exception.class)
     public CashRegisterEventDto closeDay(UUID branchId) {
         Branch branch = findBranch(branchId);
-        String comPort = resolveNavComPort();
-        boolean qrSent = navIntegrationService.sendQrCode("CASH_REGISTER_CLOSE|branchId=" + branchId, comPort);
-
-        CashRegisterEvent event = CashRegisterEvent.builder()
-                .branch(branch)
-                .eventType(CashRegisterEventType.CLOSE)
-                .eventTimestamp(LocalDateTime.now())
-            .rawResponse(buildResponse(qrSent ? "OK" : "ERROR",
-                qrSent ? "Z jelentés nyomtatva, pénztárgép napi zárás sikeres" : "Z jelentés küldés sikertelen",
-                "comPort", comPort,
-                "bridge", "NAV"))
-                .build();
-
-        event = cashRegisterEventRepository.save(event);
+        CashRegisterEvent event = sendExplicitQrCommand(
+                branch,
+                CashRegisterEventType.CLOSE,
+                DAY_CLOSE_COMMAND,
+                "Z jelentés nyomtatva, pénztárgép napi zárás sikeres",
+                "Z jelentés küldés sikertelen",
+                "command", CashRegisterCommandType.DAY_CLOSE.name());
         log.info("Pénztárgép napi zárás (Z): branch={}", branch.getCode());
         return toDto(event);
     }
@@ -184,6 +182,29 @@ public class CashRegisterService {
 
         event = cashRegisterEventRepository.save(event);
         log.info("Pénztárgép X jelentés: branch={}", branch.getCode());
+        return toDto(event);
+    }
+
+    /**
+     * FR-EFM-02: explicit NAV pénztárgép parancsok auditált küldése.
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public CashRegisterEventDto executeCommand(CashRegisterCommandRequest request) {
+        if (request == null || request.getCommandType() == null) {
+            throw new IllegalArgumentException("Hiányzó pénztárgép parancs");
+        }
+
+        Branch branch = findBranch(request.getBranchId());
+        String payload = buildExplicitCommandPayload(request);
+        CashRegisterEvent event = sendExplicitQrCommand(
+                branch,
+                eventTypeFor(request.getCommandType()),
+                payload,
+                successMessageFor(request.getCommandType()),
+                errorMessageFor(request.getCommandType()),
+                "command", request.getCommandType().name());
+
+        log.info("Explicit pénztárgép parancs: branch={}, command={}", branch.getCode(), request.getCommandType());
         return toDto(event);
     }
 
@@ -318,6 +339,125 @@ public class CashRegisterService {
                 .build();
     }
 
+    private CashRegisterEvent sendExplicitQrCommand(
+            Branch branch,
+            CashRegisterEventType eventType,
+            String payload,
+            String successMessage,
+            String errorMessage,
+            String... extraPairs) {
+        String comPort = resolveNavComPort();
+        boolean qrSent = navIntegrationService.sendQrCode(payload, comPort);
+        String[] responsePairs = appendPairs(extraPairs,
+                "comPort", comPort,
+                "bridge", "NAV",
+                "payload", payload);
+        CashRegisterEvent event = CashRegisterEvent.builder()
+                .branch(branch)
+                .eventType(eventType)
+                .eventTimestamp(LocalDateTime.now())
+                .rawResponse(buildResponse(qrSent ? "OK" : "ERROR",
+                        qrSent ? successMessage : errorMessage,
+                        responsePairs))
+                .build();
+        return cashRegisterEventRepository.save(event);
+    }
+
+    private String buildExplicitCommandPayload(CashRegisterCommandRequest request) {
+        return switch (request.getCommandType()) {
+            case DAY_OPEN -> DAY_OPEN_COMMAND;
+            case DAY_CLOSE -> DAY_CLOSE_COMMAND;
+            case CURRENCY_LIST_CLEAR -> CURRENCY_LIST_CLEAR_COMMAND;
+            case CURRENCY_LIST_SET -> buildCurrencyListSetPayload(request.getCurrencies());
+        };
+    }
+
+    private String buildCurrencyListSetPayload(List<CashRegisterCurrencyCommandLine> currencies) {
+        if (currencies == null || currencies.isEmpty()) {
+            throw new IllegalArgumentException("CURRENCY_LIST_SET parancshoz legalább egy valuta szükséges");
+        }
+
+        StringBuilder payload = new StringBuilder(CURRENCY_LIST_SET_COMMAND);
+        int generatedKeyIndex = 1;
+        for (CashRegisterCurrencyCommandLine line : currencies) {
+            if (line == null || line.getCurrencyCode() == null || line.getCurrencyCode().isBlank()) {
+                throw new IllegalArgumentException("CURRENCY_LIST_SET valuta currencyCode mező kötelező");
+            }
+            String currencyCode = line.getCurrencyCode().trim().toUpperCase(Locale.ROOT);
+            String key = resolveCashRegisterCurrencyKey(line, currencyCode, generatedKeyIndex);
+            if (!isFixedCashRegisterCurrency(currencyCode) && (line.getCashRegisterKey() == null || line.getCashRegisterKey().isBlank())) {
+                generatedKeyIndex++;
+            }
+            String displayName = sanitizeNavField(firstNonBlank(line.getDisplayName(), currencyCode), 40);
+            String rate = formatNavRate(line.getRate());
+            payload.append('|').append(key)
+                    .append('|').append(displayName)
+                    .append('|').append(rate)
+                    .append('|').append(rate);
+        }
+        return payload.toString();
+    }
+
+    private String resolveCashRegisterCurrencyKey(
+            CashRegisterCurrencyCommandLine line,
+            String currencyCode,
+            int generatedKeyIndex) {
+        if (line.getCashRegisterKey() != null && !line.getCashRegisterKey().isBlank()) {
+            return line.getCashRegisterKey().trim().toUpperCase(Locale.ROOT);
+        }
+        if ("HUF".equals(currencyCode)) {
+            return "LOCA";
+        }
+        if ("EUR".equals(currencyCode)) {
+            return "CY00";
+        }
+        return "CY" + String.format("%02d", generatedKeyIndex);
+    }
+
+    private boolean isFixedCashRegisterCurrency(String currencyCode) {
+        return "HUF".equals(currencyCode) || "EUR".equals(currencyCode);
+    }
+
+    private String formatNavRate(BigDecimal rate) {
+        BigDecimal effective = rate != null ? rate : BigDecimal.ONE;
+        return effective.setScale(4, RoundingMode.DOWN).toPlainString();
+    }
+
+    private String sanitizeNavField(String value, int maxLength) {
+        String cleaned = firstNonBlank(value, "")
+                .replace('|', '/')
+                .replaceAll("\\p{Cntrl}", "")
+                .trim();
+        return cleaned.length() <= maxLength ? cleaned : cleaned.substring(0, maxLength);
+    }
+
+    private CashRegisterEventType eventTypeFor(CashRegisterCommandType commandType) {
+        return switch (commandType) {
+            case DAY_OPEN -> CashRegisterEventType.OPEN;
+            case DAY_CLOSE -> CashRegisterEventType.CLOSE;
+            case CURRENCY_LIST_CLEAR -> CashRegisterEventType.CURRENCY_LIST_CLEAR;
+            case CURRENCY_LIST_SET -> CashRegisterEventType.CURRENCY_LIST_SET;
+        };
+    }
+
+    private String successMessageFor(CashRegisterCommandType commandType) {
+        return switch (commandType) {
+            case DAY_OPEN -> "Pénztárgép napi nyitás sikeres";
+            case DAY_CLOSE -> "Z jelentés nyomtatva, pénztárgép napi zárás sikeres";
+            case CURRENCY_LIST_CLEAR -> "Pénztárgép valuta-lista törlés sikeres";
+            case CURRENCY_LIST_SET -> "Pénztárgép valuta-lista betöltés sikeres";
+        };
+    }
+
+    private String errorMessageFor(CashRegisterCommandType commandType) {
+        return switch (commandType) {
+            case DAY_OPEN -> "Pénztárgép napi nyitás sikertelen";
+            case DAY_CLOSE -> "Z jelentés küldés sikertelen";
+            case CURRENCY_LIST_CLEAR -> "Pénztárgép valuta-lista törlés sikertelen";
+            case CURRENCY_LIST_SET -> "Pénztárgép valuta-lista betöltés sikertelen";
+        };
+    }
+
     private NavSendResult invokeNavSend(long syntheticTransactionId, String comPort) {
         try {
             return navIntegrationService.sendTransaction(syntheticTransactionId, comPort);
@@ -350,15 +490,24 @@ public class CashRegisterService {
         return preferred != null && !preferred.isBlank() ? preferred : fallback;
     }
 
-    private String buildResponse(String status, String message, String key1, String value1, String key2, String value2) {
-        return String.format(
-                "{\"status\":\"%s\",\"message\":\"%s\",\"%s\":\"%s\",\"%s\":\"%s\"}",
-                escapeJson(status),
-                escapeJson(message),
-                escapeJson(key1),
-                escapeJson(value1),
-                escapeJson(key2),
-                escapeJson(value2));
+    private String buildResponse(String status, String message, String... pairs) {
+        StringBuilder json = new StringBuilder();
+        json.append("{\"status\":\"").append(escapeJson(status))
+                .append("\",\"message\":\"").append(escapeJson(message)).append('"');
+        for (int i = 0; pairs != null && i + 1 < pairs.length; i += 2) {
+            json.append(",\"").append(escapeJson(pairs[i]))
+                    .append("\":\"").append(escapeJson(pairs[i + 1])).append('"');
+        }
+        json.append('}');
+        return json.toString();
+    }
+
+    private String[] appendPairs(String[] first, String... second) {
+        String[] safeFirst = first != null ? first : new String[0];
+        String[] result = new String[safeFirst.length + second.length];
+        System.arraycopy(safeFirst, 0, result, 0, safeFirst.length);
+        System.arraycopy(second, 0, result, safeFirst.length, second.length);
+        return result;
     }
 
     private String escapeJson(String value) {

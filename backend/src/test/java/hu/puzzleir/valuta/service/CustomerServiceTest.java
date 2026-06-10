@@ -87,6 +87,28 @@ class CustomerServiceTest {
     }
 
     @Test
+    @DisplayName("createCustomer — PEP státusz perzisztálódik")
+    void testCreateCustomer_isPep() {
+        Company company = Company.builder().id(COMPANY_ID).build();
+        CustomerService.CreateCustomerRequest request = new CustomerService.CreateCustomerRequest();
+        request.setName("PEP Ugyfel");
+        request.setDocumentNumber("PEP-001");
+        request.setIsPep(true);
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(customerRepository.findByDocumentNumberAndCompanyId("PEP-001", COMPANY_ID))
+                    .thenReturn(Optional.empty());
+            when(customerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            Customer result = service.createCustomer(request);
+
+            assertThat(result.getIsPep()).isTrue();
+        }
+    }
+
+    @Test
     @DisplayName("createCustomer — duplikalt dokumentum szam: IDEMPOTENS upsert visszaadja a letezot (HIBA #9 2026-05-15)")
     void testCreateCustomer_duplicateDocumentIdempotent() {
         Company company = Company.builder().id(COMPANY_ID).build();

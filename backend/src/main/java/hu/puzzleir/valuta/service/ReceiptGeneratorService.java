@@ -169,6 +169,31 @@ public class ReceiptGeneratorService {
      *
      * <p>Prefix: F (foglaló).</p>
      */
+    /**
+     * FR-10 (b4-foglalo): a foglaló-átvételi bizonylat kötelező jogi tájékoztató blokkja —
+     * VERBATIM átirat a legacy program nyomtatott bizonylatáról (forrás:
+     * "Felmérés/.../Bizonylatok/Foglaló bizonylatok.jpg", FOGLALO ATVETELE szelvény, OCR 2026-06-10).
+     * A legacy nyomtató ékezet nélkül nyomtatott; a szöveg tartalma változatlan, a magyar
+     * helyesírás (ékezetek) helyreállítva. Változatlan formában nyomtatandó.
+     */
+    static final String[] RESERVATION_LEGAL_NOTICE = {
+        "A fent megjelölt ügyfél (továbbiakban: Ügyfél) a jelen bizonylat aláírásával "
+            + "egyidejűleg megfizeti az Exclusive Change (továbbiakban: Megbízott) részére "
+            + "a fent megjelölt ellenérték összegének öt százalékának (5 %) megfelelő összeget "
+            + "foglalóként, mely összeg átvételét a Megbízott a jelen bizonylat aláírásával "
+            + "nyugtáz és elismer.",
+        "Ügyfél és Megbízott kijelentik, hogy a foglaló jogi természetével tisztában vannak, "
+            + "azt magukra nézve kötelezőnek ismerik el. Tudomással bírnak azon körülményről, "
+            + "hogy amennyiben a pénzváltási megbízási szerződés teljesülése a szerződés "
+            + "megkötése után Megbízott felelősségébe tartozó okból hiúsulna meg, a foglaló "
+            + "kétszeres összege Ügyfél részére visszajár. Abban az esetben, ha a szerződés "
+            + "teljesülése a szerződés megkötése után az Ügyfél felelősségében felmerült okból "
+            + "hiúsulna meg, akkor az általa átadott összeget végleg elveszti. Az átadott "
+            + "foglaló az Ügyfél által fizetendő összegbe beszámításra kerül. Tájékoztatjuk "
+            + "ügyfeleinket, hogy a feltüntetett árfolyam tájékoztató jellegű. Az aktuális "
+            + "árfolyam a kifizetés napján kerül meghatározásra.",
+    };
+
     @Transactional(readOnly = true)
     public ReceiptData generateReservationReceipt(hu.puzzleir.valuta.entity.Reservation reservation, boolean isRefund) {
         if (reservation == null) {
@@ -265,6 +290,19 @@ public class ReceiptGeneratorService {
             if (reservation.getCancellationReason() != null && !reservation.getCancellationReason().isBlank()) {
                 lines.add(ReceiptData.ReceiptLineData.builder()
                         .label("Lemondás oka").value(reservation.getCancellationReason()).build());
+            }
+        }
+
+        // FR-10 (b4-foglalo): a kötelező jogi tájékoztató blokk KIZÁRÓLAG az ÁTVÉTELI bizonylaton
+        // (a forrás-képen a FOGLALO ATVETELE szelvényen szerepel; a visszafizetési/beszámítási
+        // szelvényeken nem). A bekezdéseket üres label-lel fűzzük be — a PDF-réteg az üres label-t
+        // folytatósorként, tördelt szövegként rendereli.
+        if (!isRefund && !fulfilled) {
+            lines.add(ReceiptData.ReceiptLineData.builder()
+                    .label("Jogi tájékoztató").value("").build());
+            for (String paragraph : RESERVATION_LEGAL_NOTICE) {
+                lines.add(ReceiptData.ReceiptLineData.builder()
+                        .label("").value(paragraph).build());
             }
         }
 

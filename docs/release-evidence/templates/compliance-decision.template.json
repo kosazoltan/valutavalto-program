@@ -1,0 +1,47 @@
+{
+  "decision": "KITÖLTENDŐ: APPROVED",
+  "approvedBy": {
+    "name": "KITÖLTENDŐ: megfelelési vezető / ügyvezető neve",
+    "role": "KITÖLTENDŐ: pl. megfelelési vezető"
+  },
+  "date": "KITÖLTENDŐ: ISO dátum",
+  "scope": "KITÖLTENDŐ: mire terjed ki a döntés (verzió, modulok, AML go-live)",
+  "dbExport": {
+    "location": "KITÖLTENDŐ: a DB export tárolási helye (NEM a repo! pl. titkosított belső tároló útvonal)",
+    "sha256": "KITÖLTENDŐ: az export fájl SHA-256 hash-e (64 hex karakter)",
+    "exportedAt": "KITÖLTENDŐ: ISO dátum",
+    "method": "KITÖLTENDŐ: pl. pg_dump parancs / scripts/export-database.ps1"
+  },
+  "enforcementFlagDecisions": [
+    {
+      "flag": "AML_SOURCE_OF_FUNDS_50M_ENFORCEMENT",
+      "decision": "KITÖLTENDŐ: ON / OFF / DEFER",
+      "justification": "KITÖLTENDŐ: üzleti/compliance indoklás"
+    },
+    {
+      "flag": "AML_FATF_TIER_ENFORCEMENT",
+      "decision": "KITÖLTENDŐ: ON / OFF / DEFER",
+      "justification": "KITÖLTENDŐ"
+    },
+    {
+      "flag": "AML_HIGH_VALUE_APPROVAL_ENFORCEMENT",
+      "decision": "KITÖLTENDŐ: ON / OFF / DEFER",
+      "justification": "KITÖLTENDŐ"
+    },
+    {
+      "flag": "CIRCULAR_ACK_BLOCKING_ENFORCEMENT",
+      "decision": "KITÖLTENDŐ: ON / OFF / DEFER",
+      "justification": "KITÖLTENDŐ"
+    },
+    {
+      "flag": "STORNO_APPROVAL_FOUR_EYES_ENFORCEMENT",
+      "decision": "KITÖLTENDŐ: ON / OFF / DEFER",
+      "justification": "KITÖLTENDŐ"
+    },
+    {
+      "flag": "PMT_STRICT_ENFORCEMENT",
+      "decision": "KITÖLTENDŐ: ON / OFF / DEFER",
+      "justification": "KITÖLTENDŐ"
+    }
+  ]
+}

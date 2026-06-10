@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   User, ArrowLeft, Save, Edit, Clock, FileText,
-  Phone, MapPin, CreditCard, Calendar, AlertCircle, Loader2, Users
+  Phone, MapPin, CreditCard, Calendar, AlertCircle, Loader2, Users, ShieldCheck
 } from 'lucide-react'
 import { customerApi, Customer, CustomerCreateRequest } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -62,6 +62,7 @@ export default function CustomerDetailPage() {
         taxNumber: customer.taxNumber,
         registrationNumber: customer.registrationNumber,
         isVip: customer.isVip,
+        isPep: customer.isPep,
         notes: customer.notes,
       }
       const updated = await customerApi.update(Number(id), req)
@@ -185,6 +186,22 @@ export default function CustomerDetailPage() {
             <div>
               <label className="form-label">{t('common.note')}</label>
               <input type="text" value={customer.notes || ''} onChange={(e) => updateField('notes', e.target.value)} disabled={!isEditing} className="form-input" />
+            </div>
+            <div>
+              <label className="form-label flex items-center gap-1">
+                <ShieldCheck size={14} />
+                Kiemelt közszereplő (PEP)
+              </label>
+              <select
+                value={customer.isPep ? 'true' : 'false'}
+                onChange={(e) => updateField('isPep', e.target.value === 'true')}
+                disabled={!isEditing}
+                className="form-input"
+                data-testid="customer-detail-is-pep-select"
+              >
+                <option value="false">Nem közszereplő</option>
+                <option value="true">Kiemelt közszereplő vagy közeli hozzátartozó</option>
+              </select>
             </div>
           </div>
         </div>

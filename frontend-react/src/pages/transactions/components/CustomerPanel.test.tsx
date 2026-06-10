@@ -44,6 +44,10 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
+async function acceptPrivacyNotice(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByTestId('customer-privacy-notice-checkbox'))
+}
+
 describe('CustomerPanel — missing required fields UX (bug #2 fix)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -177,12 +181,15 @@ describe('CustomerPanel — missing required fields UX (bug #2 fix)', () => {
     await user.type(screen.getByTestId('customer-name-input'), 'Kiss János')
     await user.type(screen.getByTestId('customer-birth-place-input'), 'Budapest')
     await user.type(screen.getByTestId('customer-birth-date-input'), '1990-01-15')
+    await acceptPrivacyNotice(user)
 
     const saveButton = screen.getByRole('button', { name: /Ügyfél rögzítése/i })
     await user.click(saveButton)
 
     expect(mocks.toastWarning).not.toHaveBeenCalled()
-    expect(mocks.customerApiCreate).toHaveBeenCalled()
+    expect(mocks.customerApiCreate).toHaveBeenCalledWith(expect.objectContaining({
+      notes: expect.stringContaining('ADATKEZELESI_TAJEKOZTATO_ACK v2026-06-09'),
+    }))
   })
 })
 
@@ -215,6 +222,7 @@ describe('CustomerPanel — AML degradált mód (local-first 2026-05-14)', () =>
     await user.type(screen.getByTestId('customer-name-input'), 'Bali Henrietta')
     await user.type(screen.getByTestId('customer-birth-place-input'), 'Szeged')
     await user.type(screen.getByTestId('customer-birth-date-input'), '1985-06-20')
+    await acceptPrivacyNotice(user)
 
     await user.click(screen.getByRole('button', { name: /Ügyfél rögzítése/i }))
 
@@ -253,6 +261,7 @@ describe('CustomerPanel — AML degradált mód (local-first 2026-05-14)', () =>
     await user.type(screen.getByTestId('customer-name-input'), 'Auth Test')
     await user.type(screen.getByTestId('customer-birth-place-input'), 'Budapest')
     await user.type(screen.getByTestId('customer-birth-date-input'), '1990-01-01')
+    await acceptPrivacyNotice(user)
 
     await user.click(screen.getByRole('button', { name: /Ügyfél rögzítése/i }))
 
@@ -292,6 +301,7 @@ describe('CustomerPanel — AML degradált mód (local-first 2026-05-14)', () =>
     await user.type(screen.getByTestId('customer-name-input'), 'Cancel Test')
     await user.type(screen.getByTestId('customer-birth-place-input'), 'Miskolc')
     await user.type(screen.getByTestId('customer-birth-date-input'), '1985-03-15')
+    await acceptPrivacyNotice(user)
 
     await user.click(screen.getByRole('button', { name: /Ügyfél rögzítése/i }))
 
@@ -330,6 +340,7 @@ describe('CustomerPanel — AML degradált mód (local-first 2026-05-14)', () =>
     await user.type(screen.getByTestId('customer-name-input'), '500 Test')
     await user.type(screen.getByTestId('customer-birth-place-input'), 'Pécs')
     await user.type(screen.getByTestId('customer-birth-date-input'), '1998-08-08')
+    await acceptPrivacyNotice(user)
 
     await user.click(screen.getByRole('button', { name: /Ügyfél rögzítése/i }))
 
@@ -368,6 +379,7 @@ describe('CustomerPanel — AML degradált mód (local-first 2026-05-14)', () =>
     await user.type(screen.getByTestId('customer-name-input'), '503 Test')
     await user.type(screen.getByTestId('customer-birth-place-input'), 'Debrecen')
     await user.type(screen.getByTestId('customer-birth-date-input'), '1995-05-05')
+    await acceptPrivacyNotice(user)
 
     await user.click(screen.getByRole('button', { name: /Ügyfél rögzítése/i }))
 

@@ -33,7 +33,9 @@ export interface BranchInfo {
   code: string
   name: string
   companyId?: string
+  address?: string
   city?: string
+  zipCode?: string
   isActive?: boolean
   isVault?: boolean
   vaultTerritoryId?: number | null

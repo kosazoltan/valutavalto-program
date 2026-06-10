@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { AlertCircle, ArrowLeft, Package, Send } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Package, Plus, Send, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { branchApi, currencyApi, exchangeRateApi, shipmentRequestApi, type BranchInfo, type Currency } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
@@ -23,6 +23,11 @@ type FormState = {
   notes: string
   carrierName: string
   sealNumber: string
+}
+
+type DenominationFormLine = {
+  quantity: string
+  faceValue: string
 }
 
 export default function ShipmentNewPage() {
@@ -89,7 +94,12 @@ export default function ShipmentNewPage() {
    */
   const [appliedRate, setAppliedRate] = useState<number | null>(null)
   const [rateLoading, setRateLoading] = useState(false)
+  const [denominations, setDenominations] = useState<DenominationFormLine[]>([])
   const disabled = loading || saving
+  const selectedCurrency = useMemo(
+    () => currencies.find((currency) => String(currency.id) === form.currencyId),
+    [currencies, form.currencyId],
+  )
 
   useEffect(() => {
     // Worker-betöltés után a saját értéktár-id pótlása az irány által megszabott oldalon.
@@ -177,6 +187,11 @@ export default function ShipmentNewPage() {
    */
   useEffect(() => {
     if (!form.currencyId) { setAppliedRate(null); return }
+    if (selectedCurrency?.code?.toUpperCase() === 'HUF') {
+      setRateLoading(false)
+      setAppliedRate(1)
+      return
+    }
     let active = true
     setRateLoading(true)
     exchangeRateApi.getByCurrencyId(Number(form.currencyId))
@@ -191,7 +206,7 @@ export default function ShipmentNewPage() {
       .catch(() => { if (active) setAppliedRate(null) })
       .finally(() => { if (active) setRateLoading(false) })
     return () => { active = false }
-  }, [form.currencyId])
+  }, [form.currencyId, selectedCurrency?.code])
 
   // D: a forintosított érték élő számítása (5-Ft-os kerekítés a kijelzéshez; a
   // hivatalos HUF érték a backend HungarianRounding-jából jön a save-kor).
@@ -220,6 +235,27 @@ export default function ShipmentNewPage() {
       setError(carrierSealError)
       return
     }
+    const normalizedDenominations = denominations
+      .map((line) => {
+        const quantity = Number(line.quantity)
+        const faceValue = Number(line.faceValue.replace(',', '.'))
+        return {
+          quantity,
+          faceValue,
+          currencyCode: selectedCurrency?.code ?? '',
+          lineTotal: quantity * faceValue,
+        }
+      })
+      .filter((line) => line.quantity > 0 || line.faceValue > 0)
+    if (normalizedDenominations.some((line) => !Number.isInteger(line.quantity) || line.quantity <= 0 || !Number.isFinite(line.faceValue) || line.faceValue <= 0)) {
+      setError('A címletezésben minden sorhoz pozitív egész darabszám és pozitív névleges érték szükséges.')
+      return
+    }
+    const denominationTotal = normalizedDenominations.reduce((sum, line) => sum + line.lineTotal, 0)
+    if (normalizedDenominations.length > 0 && Math.abs(denominationTotal - amount) > 0.0001) {
+      setError('A címletezés összegének egyeznie kell az átadás-átvétel összegével.')
+      return
+    }
     setSaving(true)
     try {
       const created = await shipmentRequestApi.create({
@@ -241,7 +277,7 @@ export default function ShipmentNewPage() {
       // FR-1..3: a beküldés után NEM navigálunk azonnal — megnyitjuk a Bizonylat Előnézet modalt.
       // A bizonylat adatait a szerver-válaszból (created: kérő/cél iroda NEVE, szállító, plomba,
       // bizonylatszám) + a lokális, már megjelenített valuta/összeg/forintosított értékből építjük.
-      const currencyCode = currencies.find((c) => String(c.id) === form.currencyId)?.code ?? ''
+      const currencyCode = selectedCurrency?.code ?? ''
       // „KÓD - Név" feloldás a már betöltött iroda-listákból (a cél lehet virtuális partner is,
       // ezért a vault-counterparty csoportokat is bevonjuk); fallback a szerver-válasz nevére.
       const allBranches: BranchInfo[] = [
@@ -258,6 +294,11 @@ export default function ShipmentNewPage() {
         const b = allBranches.find((x) => x.id === id)
         return b ? `${b.code} - ${b.name}` : (fallbackName ?? '')
       }
+      const branchAddress = (id: string): string | undefined => {
+        const b = allBranches.find((x) => x.id === id)
+        if (!b) return undefined
+        return [b.city, b.address, b.zipCode].filter(Boolean).join(', ') || undefined
+      }
       const now = new Date()
       setPrintReceiptData({
         type: 'transfer',
@@ -270,6 +311,7 @@ export default function ShipmentNewPage() {
         date: created.requestedAt?.slice(0, 10) || localIsoDate(),
         time: now.toTimeString().slice(0, 8),
         currencyCode,
+        rate: appliedRate ?? undefined,
         foreignAmount: amount,
         // NFR-3: 5 Ft-ra kerekített forintosított érték (a kijelzett hufValue ugyanezzel a szabállyal).
         // Megjegyzés: a szállítmány-IGÉNY nem perzisztál HUF-ot (nincs items[].hufAmount), így a
@@ -278,9 +320,12 @@ export default function ShipmentNewPage() {
         // FR-2: kért kézbesítési dátum (külön a kiállítási dátumtól).
         deliveryDate: created.requestedDeliveryDate || form.deliveryDate || undefined,
         transferTarget: branchLabel(form.toBranchId, created.targetBranchName),
+        vaultAddress: branchAddress(ownBranchId),
+        transferDocType: direction === 'inbound' ? 'receipt' : 'handover',
         transferNote: created.notes || form.notes || undefined,
         carrierName: created.carrierName || form.carrierName.trim(),
         sealNumber: created.sealNumber || form.sealNumber.trim(),
+        denominations: normalizedDenominations.length > 0 ? normalizedDenominations : undefined,
       })
       setShowReceiptModal(true)
     } catch (err) {
@@ -468,6 +513,68 @@ export default function ShipmentNewPage() {
             <span className="form-label">Megjegyzés</span>
             <textarea className="form-input min-h-24" value={form.notes} disabled={saving} onChange={(e) => patch({ notes: e.target.value })} />
           </label>
+          <div className="md:col-span-2 rounded border border-gray-200 p-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <span className="form-label mb-0">Címletezés</span>
+              <button
+                type="button"
+                className="form-button flex items-center gap-2"
+                disabled={saving}
+                onClick={() => setDenominations((current) => [...current, { quantity: '', faceValue: '' }])}
+              >
+                <Plus size={16} /> Sor hozzáadása
+              </button>
+            </div>
+            {denominations.length > 0 && (
+              <div className="space-y-2">
+                {denominations.map((line, index) => {
+                  const quantity = Number(line.quantity)
+                  const faceValue = Number(line.faceValue.replace(',', '.'))
+                  const lineTotal = Number.isFinite(quantity) && Number.isFinite(faceValue) ? quantity * faceValue : 0
+                  return (
+                    <div key={index} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        className="form-input"
+                        placeholder="Darab"
+                        value={line.quantity}
+                        disabled={saving}
+                        onChange={(e) => setDenominations((current) => current.map((item, i) => i === index ? { ...item, quantity: e.target.value } : item))}
+                      />
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        className="form-input"
+                        placeholder="Névleges érték"
+                        value={line.faceValue}
+                        disabled={saving}
+                        onChange={(e) => setDenominations((current) => current.map((item, i) => i === index ? { ...item, faceValue: e.target.value } : item))}
+                      />
+                      <input
+                        type="text"
+                        className="form-input bg-gray-100"
+                        value={lineTotal > 0 ? `${lineTotal.toLocaleString('hu-HU')} ${selectedCurrency?.code ?? ''}` : '—'}
+                        disabled
+                        readOnly
+                      />
+                      <button
+                        type="button"
+                        className="toolbar-button text-red-600"
+                        title="Címletsor törlése"
+                        disabled={saving}
+                        onClick={() => setDenominations((current) => current.filter((_, i) => i !== index))}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex justify-end">
           <button type="submit" className="form-button-primary flex items-center gap-2" disabled={disabled}>

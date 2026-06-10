@@ -65,7 +65,6 @@ async function forwardToBackend(entry: FrontendLogEntry): Promise<void> {
     // Re-entrant hivas (pl. axios interceptor a 5xx valaszbol indit vvLogger.error-t)
     // Csak lokalisan loggoljuk, NEM kuldunk ujabb backend forward-ot.
     if (!IS_PROD) {
-      // eslint-disable-next-line no-console
       console.warn('[vvLogger] Skipping re-entrant forward:', entry.eventType)
     }
     return
@@ -75,7 +74,6 @@ async function forwardToBackend(entry: FrontendLogEntry): Promise<void> {
     await auditDiagnosticsApi.forwardLog(entry)
   } catch (err) {
     if (!IS_PROD) {
-      // eslint-disable-next-line no-console
       console.warn('[vvLogger] Backend forward failed:', err)
     }
   } finally {

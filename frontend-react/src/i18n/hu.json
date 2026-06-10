@@ -342,6 +342,12 @@
     "var": "VÁR",
     "zaroKeszlet": "Záró készlet"
   },
+  "closingDenominationMenu": {
+    "title": "Címletezés – zárások",
+    "subtitle": "Válassza ki a zárási folyamathoz tartozó címletezést",
+    "back": "VISSZA",
+    "exit": "KILÉPÉS"
+  },
   "commissions": {
     "dolgozo": "Dolgozó",
     "dolgozoiJutalekok": "Dolgozói Jutalékok",
@@ -996,6 +1002,11 @@
     "ujSzervezet": "Új szervezet",
     "parameter": "paraméter"
   },
+  "otherTasks": {
+    "title": "Egyéb feladatok",
+    "subtitleNav": "NAV pénztárgépes konfiguráció — pénztárgép-parancsok és beállítások",
+    "subtitlePos": "OTP POS / adatlapos konfiguráció — terminál-parancsok, adatlapok, ügyfél-karbantartás"
+  },
   "pep": {
     "allamfo": "Államfő",
     "allamiVallalatVezetoje": "Állami vállalat vezetője",
@@ -1205,8 +1216,22 @@
     "filter": {
       "allDisabled": "Szűrés kikapcsolva (összes)",
       "buyOnly": "Csak vételi",
+      "cancelledTransactionOnly": "Csak megszakított tranzakció",
+      "clearCustomer": "Adatlap-szűrők törlése",
       "conversionOnly": "Csak konverziós",
+      "customerActive": "aktív ügyfél-adatlap szűrő",
+      "customerActorName": "Képviselő / meghatalmazott neve",
+      "customerAddress": "Lakcím",
+      "customerBirthDate": "Születési ideje",
+      "customerBirthPlace": "Születési helye",
+      "customerDocumentNumber": "Azonosító",
+      "customerDocumentType": "Okmánytípus",
+      "customerMotherName": "Anyja neve",
+      "customerName": "Neve",
+      "customerNationality": "Állampolgárság",
       "customerOnly": "Csak ügyfeles",
+      "customerPanel": "Ügyfél-adatlap szűrő",
+      "customerPanelHint": "Természetes személy adatai szerint (részleges egyezés)",
       "dateFrom": "Dátumtól",
       "dateTo": "Dátumig",
       "month": "Hónap",
@@ -1218,19 +1243,7 @@
       "sellOnly": "Csak eladási",
       "transferInOnly": "Csak pénz-átvételi",
       "transferOutOnly": "Csak pénz-átadási",
-      "type": "Bizonylattípus",
-      "customerPanel": "Ügyfél-adatlap szűrő",
-      "customerPanelHint": "Természetes személy adatai szerint (részleges egyezés)",
-      "customerName": "Neve",
-      "customerMotherName": "Anyja neve",
-      "customerBirthPlace": "Születési helye",
-      "customerBirthDate": "Születési ideje",
-      "customerNationality": "Állampolgárság",
-      "customerAddress": "Lakcím",
-      "customerDocumentType": "Okmánytípus",
-      "customerDocumentNumber": "Azonosító",
-      "clearCustomer": "Adatlap-szűrők törlése",
-      "customerActive": "aktív ügyfél-adatlap szűrő"
+      "type": "Bizonylattípus"
     },
     "helyiFuggoBizonylatok": "Helyi, függő bizonylatok",
     "helyiReferencia": "Helyi referencia",

@@ -213,24 +213,37 @@ export default function ClosingWizardPage() {
       // getErrorMessage a backend response.data.message-t adja (AxiosError-nál az
       // err.message csak "Request failed with status code 400" lenne) — Sourcery/Copilot #791.
       const errorMsg = getErrorMessage(err)
-      // G3 (FR-13): ha az eltérés-gate magyarázatot kér, bekérjük és újrapróbáljuk.
+      // G3 (FR-13): ha az eltérés-gate magyarázatot kér, inline modallal kérjük be és újrapróbáljuk.
+      // NEM window.prompt: az Electron rendererben nem támogatott (a penztar-client is ezt az oldalt
+      // futtatja) — V307-tel a gate éles, prompt-tal a zárás beragadna.
       if (/eltérés/i.test(errorMsg) && /magyarázat/i.test(errorMsg)) {
-        const explanation = window.prompt(`${errorMsg}\n\nAdja meg az eltérés magyarázatát:`)
-        if (explanation && explanation.trim()) {
-          try {
-            await closingWizardApi.finalize(wizardId, String(worker.id), explanation.trim())
-            toast.success('Napzárás végrehajtva', 'A nap lezárva (eltérés-magyarázattal).')
-            navigate('/')
-            return
-          } catch (retryErr) {
-            toast.error('Hiba', getErrorMessage(retryErr))
-            return
-          }
-        }
+        setDiscrepancyPrompt({ message: errorMsg, explanation: '' })
+        return
       }
       toast.error('Hiba', errorMsg)
     }
   }, [canFinalize, wizardId, worker, navigate])
+
+  // G3 (FR-13): eltérés-magyarázat modal állapota (null = zárva).
+  const [discrepancyPrompt, setDiscrepancyPrompt] = useState<{ message: string; explanation: string } | null>(null)
+  const [discrepancySubmitting, setDiscrepancySubmitting] = useState(false)
+
+  const handleDiscrepancySubmit = useCallback(async () => {
+    if (!discrepancyPrompt || !wizardId || !worker) return
+    const explanation = discrepancyPrompt.explanation.trim()
+    if (!explanation) return
+    setDiscrepancySubmitting(true)
+    try {
+      await closingWizardApi.finalize(wizardId, String(worker.id), explanation)
+      toast.success('Napzárás végrehajtva', 'A nap lezárva (eltérés-magyarázattal).')
+      setDiscrepancyPrompt(null)
+      navigate('/')
+    } catch (retryErr) {
+      toast.error('Hiba', getErrorMessage(retryErr))
+    } finally {
+      setDiscrepancySubmitting(false)
+    }
+  }, [discrepancyPrompt, wizardId, worker, navigate])
 
   const handleCancel = useCallback(async () => {
     if (wizardId) {
@@ -457,6 +470,50 @@ export default function ClosingWizardPage() {
             )}
           </button>
         </div>
+
+        {/* G3 (FR-13): eltérés-magyarázat modal — Electron-kompatibilis (nem window.prompt) */}
+        {discrepancyPrompt && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-lg mx-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
+                Eltérés-magyarázat szükséges
+              </h3>
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 whitespace-pre-wrap">
+                {discrepancyPrompt.message}
+              </p>
+              <textarea
+                autoFocus
+                rows={3}
+                value={discrepancyPrompt.explanation}
+                onChange={(e) =>
+                  setDiscrepancyPrompt((p) => (p ? { ...p, explanation: e.target.value } : p))
+                }
+                placeholder="Adja meg az eltérés magyarázatát…"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+              />
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  onClick={() => setDiscrepancyPrompt(null)}
+                  disabled={discrepancySubmitting}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-bold rounded-lg transition-colors"
+                >
+                  Mégsem
+                </button>
+                <button
+                  onClick={handleDiscrepancySubmit}
+                  disabled={discrepancySubmitting || !discrepancyPrompt.explanation.trim()}
+                  className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors ${
+                    discrepancyPrompt.explanation.trim() && !discrepancySubmitting
+                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  {discrepancySubmitting ? 'Küldés…' : 'Zárás magyarázattal'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   )
 }

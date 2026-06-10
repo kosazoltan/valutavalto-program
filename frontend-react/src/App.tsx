@@ -70,6 +70,7 @@ const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'))
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'))
 const PenztarSettingsPage = lazy(() => import('./pages/settings/PenztarSettingsPage'))
 const StornoPage = lazy(() => import('./pages/stornos/StornoPage'))
+const StornoApprovalListPage = lazy(() => import('./pages/stornos/StornoApprovalListPage'))
 const RepresentativeListPage = lazy(() => import('./pages/representatives/RepresentativeListPage'))
 const RepresentativeCreatePage = lazy(() => import('./pages/representatives/RepresentativeCreatePage'))
 const RepresentativeDetailPage = lazy(() => import('./pages/representatives/RepresentativeDetailPage'))
@@ -109,6 +110,9 @@ const SynchronizationPage = lazy(() => import('./pages/sync/SynchronizationPage'
 const LocalQueuePage = lazy(() => import('./pages/sync/LocalQueuePage'))
 const PosTerminalPage = lazy(() => import('./pages/pos/PosTerminalPage'))
 const NavIntegrationPage = lazy(() => import('./pages/nav/NavIntegrationPage'))
+// EXCMD b6b FR-EFM-01 + b5 FR-KC-05: konszolidált választó-menük (Egyéb feladatok, Címletezés-zárások).
+const OtherTasksPage = lazy(() => import('./pages/othertasks/OtherTasksPage'))
+const ClosingDenominationMenuPage = lazy(() => import('./pages/closing/ClosingDenominationMenuPage'))
 const DocumentStoragePage = lazy(() => import('./pages/documents/DocumentStoragePage'))
 const NotificationPage = lazy(() => import('./pages/notifications/NotificationPage'))
 const OrganizationalSystemParameterPage = lazy(() => import('./pages/organizations/OrganizationalSystemParameterPage'))
@@ -504,6 +508,10 @@ export default function App() {
           <Route path="/transactions/conversion" element={<ConversionPage />} />
           <Route path="/transactions/:id" element={<TransactionPage />} />
           <Route path="/transactions/:id/storno" element={<StornoPage />} />
+          {/* #954 four-eyes előfeltétel: supervisor sztornó-jóváhagyó lista. A backend
+              @PreAuthorize (SUPERVISOR/MANAGER/ADMIN) a hiteles enforcement (a /workers
+              mintája szerint route-szinten nem gatelünk); a menü szerepkör szerint rejti. */}
+          <Route path="/stornos/approvals" element={<StornoApprovalListPage />} />
           
           {/* Customers */}
           <Route path="/customers" element={<CustomerListPage />} />
@@ -636,6 +644,10 @@ export default function App() {
           
           {/* NAV Integration */}
           <Route path="/nav-integration" element={<NavIntegrationPage />} />
+
+          {/* EXCMD b6b FR-EFM: Egyéb feladatok menü + b5 FR-KC-05: Címletezés-zárások menü */}
+          <Route path="/other-tasks" element={<OtherTasksPage />} />
+          <Route path="/closing/denominations-menu" element={<ClosingDenominationMenuPage />} />
           
           {/* Document Storage */}
           <Route path="/documents" element={<DocumentStoragePage />} />

@@ -46,6 +46,7 @@ public class CustomerMapper {
                 .teaorCode(entity.getTeaorCode())
                 .active(entity.getActive())
                 .isVip(entity.getIsVip())
+                .isPep(entity.getIsPep())
                 .notes(entity.getNotes())
                 .lastTransactionDate(entity.getLastTransactionDate())
                 .transactionCount(entity.getTransactionCount())
@@ -83,6 +84,7 @@ public class CustomerMapper {
                 .registrationNumber(dto.getRegistrationNumber())
                 .teaorCode(dto.getTeaorCode())
                 .isVip(dto.getIsVip())
+                .isPep(dto.getIsPep())
                 .notes(dto.getNotes())
                 .build();
     }
@@ -116,6 +118,7 @@ public class CustomerMapper {
                 .registrationNumber(dto.getRegistrationNumber())
                 .teaorCode(dto.getTeaorCode())
                 .isVip(dto.getIsVip())
+                .isPep(dto.getIsPep())
                 .notes(dto.getNotes())
                 .build();
     }

@@ -1,0 +1,19 @@
+{
+  "appVersion": "KITÖLTENDŐ: egyeznie kell a root package.json verzióval",
+  "statement": "KITÖLTENDŐ: összegző nyilatkozat — minden rész-evidence valós, ellenőrzött adat",
+  "confirmations": {
+    "acceptance": false,
+    "approvals": false,
+    "compliance": false,
+    "dr-drill": false,
+    "monitoring": false,
+    "installer": false
+  },
+  "signedOffBy": [
+    {
+      "name": "KITÖLTENDŐ: pl. Kósa Zoltán",
+      "role": "KITÖLTENDŐ: pl. ügyvezető",
+      "date": "KITÖLTENDŐ: ISO dátum"
+    }
+  ]
+}

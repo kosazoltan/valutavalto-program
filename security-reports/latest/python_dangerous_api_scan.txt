@@ -1,10 +1,8 @@
 ﻿Command: rg -n -S -g "!**/node_modules/**" -g "!**/dist/**" -g "!**/dist-electron/**" -g "!**/build/**" -g "!**/target/**" -g "!**/coverage/**" -g "!**/security-reports/**" -g "!**/.git/**" -g "!**/.venv/**" -g "!**/*.test.*" -g "!**/*.spec.*" "\beval\(|\bexec\(|pickle\.loads\(|yaml\.load\(|subprocess\..*shell\s*=\s*True|DEBUG\s*=\s*True" scripts
-Status: FAILED
-Note: Security pattern matches found
+Status: PASSED
+Note: No matches found
 
 --- STDOUT ---
-scripts\security\run-security-gate.ps1:488:# rament (pl. a Java `allocatedReval(` substringkent tartalmazza az "eval(" reszt) â†’
-scripts\security\run-security-gate.ps1:489:# false-positive gate-bukas. A `\beval\(` csak valodi `eval(` hivast detektal (a "Reval"
 
 
 --- STDERR ---

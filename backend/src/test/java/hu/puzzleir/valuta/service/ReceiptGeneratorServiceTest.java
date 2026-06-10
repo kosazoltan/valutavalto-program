@@ -221,6 +221,28 @@ class ReceiptGeneratorServiceTest {
         // B7 / FR-8: Forint-érték (1000 × 400 = 400000 Ft) megjelenik, ezres csoportosítással (Codex P2).
         assertThat(result.getLines())
                 .anyMatch(l -> "Forint-érték".equals(l.getLabel()) && "400.000 Ft".equals(l.getValue()));
+        // FR-10: a kötelező jogi tájékoztató blokk az ÁTVÉTELI bizonylaton — verbatim a
+        // "Foglaló bizonylatok.jpg" forrásból (kétszeres visszafizetés + beszámítás + árfolyam-tájékoztató).
+        assertThat(result.getLines()).anyMatch(l -> "Jogi tájékoztató".equals(l.getLabel()));
+        assertThat(result.getLines()).anyMatch(l -> l.getValue() != null
+                && l.getValue().contains("a foglaló kétszeres összege Ügyfél részére visszajár"));
+        assertThat(result.getLines()).anyMatch(l -> l.getValue() != null
+                && l.getValue().contains("Az aktuális árfolyam a kifizetés napján kerül meghatározásra"));
+    }
+
+    @Test
+    @DisplayName("FR-10: a jogi tájékoztató CSAK az átvételi bizonylaton — visszafizetésen/beszámításon nem")
+    void testReservationLegalNoticeOnlyOnIntake() {
+        var refundReservation = buildReservation();
+        refundReservation.setStatus(hu.puzzleir.valuta.entity.ReservationStatus.CANCELLED_BY_CUSTOMER);
+        ReceiptData refund = service.generateReservationReceipt(refundReservation, true);
+        assertThat(refund.getLines()).noneMatch(l -> "Jogi tájékoztató".equals(l.getLabel()));
+
+        var fulfilledReservation = buildReservation();
+        fulfilledReservation.setStatus(hu.puzzleir.valuta.entity.ReservationStatus.FULFILLED);
+        fulfilledReservation.setFulfilledAt(java.time.LocalDateTime.of(2026, 5, 24, 10, 0));
+        ReceiptData settlement = service.generateReservationReceipt(fulfilledReservation, false);
+        assertThat(settlement.getLines()).noneMatch(l -> "Jogi tájékoztató".equals(l.getLabel()));
     }
 
     @Test

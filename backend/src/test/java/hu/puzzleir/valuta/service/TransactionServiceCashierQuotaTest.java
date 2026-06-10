@@ -25,6 +25,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -179,6 +181,7 @@ class TransactionServiceCashierQuotaTest {
         TransactionService.BuyRequest request = buildBuy(new BigDecimal("2000"), false, "Teszt Elek", "AB123456");
 
         assertThatCode(() -> transactionService.executeBuy(request)).doesNotThrowAnyException();
+        verify(workerRepository, never()).findByIdForUpdate(any());
     }
 
     // ==========================================================================
@@ -198,8 +201,9 @@ class TransactionServiceCashierQuotaTest {
 
         // Verify: a Transaction.cashierCustomRate=false-ra normalizálódott (a flag nem került mentésre)
         org.mockito.ArgumentCaptor<Transaction> captor = org.mockito.ArgumentCaptor.forClass(Transaction.class);
-        org.mockito.Mockito.verify(transactionRepository).save(captor.capture());
+        verify(transactionRepository).save(captor.capture());
         org.assertj.core.api.Assertions.assertThat(captor.getValue().getCashierCustomRate()).isFalse();
+        verify(workerRepository, never()).findByIdForUpdate(any());
     }
 
     // ==========================================================================
@@ -215,6 +219,7 @@ class TransactionServiceCashierQuotaTest {
         TransactionService.BuyRequest request = buildBuy(new BigDecimal("1300"), true, "Nagy Béla", "CD234567");
 
         assertThatCode(() -> transactionService.executeBuy(request)).doesNotThrowAnyException();
+        verify(workerRepository).findByIdForUpdate(WORKER_ID);
     }
 
     // ==========================================================================
@@ -232,6 +237,7 @@ class TransactionServiceCashierQuotaTest {
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Pénztárosi sáv napi limit elérve")
                 .hasMessageContaining("5/5");
+        verify(workerRepository).findByIdForUpdate(WORKER_ID);
     }
 
     // ==========================================================================
@@ -248,6 +254,7 @@ class TransactionServiceCashierQuotaTest {
         assertThatThrownBy(() -> transactionService.executeBuy(request))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Pénztárosi sáv napi limit elérve");
+        verify(workerRepository).findByIdForUpdate(WORKER_ID);
     }
 
     // ==========================================================================
@@ -271,6 +278,7 @@ class TransactionServiceCashierQuotaTest {
         assertThatThrownBy(() -> transactionService.executeSell(request))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Pénztárosi sáv napi limit elérve");
+        verify(workerRepository).findByIdForUpdate(WORKER_ID);
     }
 
     // ==========================================================================
@@ -286,5 +294,6 @@ class TransactionServiceCashierQuotaTest {
         TransactionService.BuyRequest request = buildBuy(new BigDecimal("1300"), true, "Nagy Béla", "CD234567");
 
         assertThatCode(() -> transactionService.executeBuy(request)).doesNotThrowAnyException();
+        verify(workerRepository).findByIdForUpdate(WORKER_ID);
     }
 }

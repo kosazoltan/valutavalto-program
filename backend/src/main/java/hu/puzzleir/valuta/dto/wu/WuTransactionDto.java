@@ -31,4 +31,8 @@ public class WuTransactionDto {
     private Long workerId;
     private LocalDateTime transactionDate;
     private LocalDateTime createdAt;
+    /** SOF (V.2.8 A.1): forrás-dokumentum típusa — a 10M/7nap kumulált triggernél kötelező. */
+    private String sourceOfFundsDocType;
+    /** SOF: a forrás-dokumentum kiállítási dátuma. */
+    private java.time.LocalDate sourceOfFundsDocDate;
 }

@@ -9,5 +9,7 @@ public enum CashRegisterEventType {
     RECEIPT,
     STORNO,
     X_REPORT,
-    Z_REPORT
+    Z_REPORT,
+    CURRENCY_LIST_CLEAR,
+    CURRENCY_LIST_SET
 }

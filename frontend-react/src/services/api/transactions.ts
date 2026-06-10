@@ -33,6 +33,7 @@ export interface Customer {
   teaorCode?: string
   active: boolean
   isVip: boolean
+  isPep?: boolean
   notes?: string
   lastTransactionDate?: string
   transactionCount: number
@@ -64,6 +65,7 @@ export interface CustomerCreateRequest {
   registrationNumber?: string
   teaorCode?: string
   isVip?: boolean
+  isPep?: boolean
   notes?: string
 }
 
@@ -722,6 +724,10 @@ export interface StornoApproval {
   rejectionReason?: string
   approvedByWorkerId?: string
   approvedAt?: string
+  /** Supervisor jóváhagyó-lista megjelenítési mezői (kérelmező neve, bizonylatszám, kérés ideje). */
+  workerName?: string
+  receiptNumber?: string
+  createdAt?: string
 }
 
 export const stornoApi = {
@@ -740,6 +746,30 @@ export const stornoApi = {
   approve: async (approvalId: string, approvedByWorkerId: string, approved: boolean, reason?: string): Promise<StornoApproval> => {
     const response = await api.post<StornoApproval>(`/stornos/approve/${approvalId}`, null, {
       params: { approvedByWorkerId, approved, reason }
+    })
+    return response.data
+  },
+  // Supervisor jóváhagyó-lista: a saját iroda függő (PENDING) sztornó-kérései.
+  // Backend: GET /stornos/approvals/pending (SUPERVISOR/MANAGER/ADMIN role-gate).
+  pendingApprovals: async (): Promise<StornoApproval[]> => {
+    const response = await api.get<StornoApproval[]>('/stornos/approvals/pending')
+    return response.data
+  },
+  // Telefonos supervisor-PIN jóváhagyás (egyszemélyes iroda): a pénztáros sessionjéből
+  // hívható; a PIN BODY-ban megy (nem query-paramban — access-log védelem).
+  approveByPin: async (
+    approvalId: string,
+    approverWorkerId: number,
+    pin: string,
+    approved: boolean,
+    reason?: string
+  ): Promise<StornoApproval> => {
+    const response = await api.post<StornoApproval>('/stornos/approve-by-pin', {
+      approvalId,
+      approverWorkerId,
+      pin,
+      approved,
+      reason,
     })
     return response.data
   },
@@ -1480,6 +1510,21 @@ export interface Receipt {
   customerAddress?: string
   customerDocumentType?: string
   customerDocumentNumber?: string
+  // EXCMD b5b FR-BSZUR-04: képviselő / meghatalmazott neve (jogi személy képviselője) a tx-snapshotból.
+  customerActorName?: string
+}
+
+export interface CancelledTransactionReceiptRequest {
+  mode: 'BUY' | 'SELL'
+  reason?: string
+  customerName?: string
+  customerDocumentNumber?: string
+  lines: Array<{
+    currencyCode?: string
+    foreignAmount?: number
+    rate?: number
+    hufAmount?: number
+  }>
 }
 
 export const receiptApi = {
@@ -1505,6 +1550,10 @@ export const receiptApi = {
   },
   getById: async (id: string): Promise<Receipt> => {
     const response = await api.get<Receipt>(`/receipts/${id}`)
+    return response.data
+  },
+  createCancelledTransaction: async (request: CancelledTransactionReceiptRequest): Promise<Receipt> => {
+    const response = await api.post<Receipt>('/receipts/cancelled-transaction', request)
     return response.data
   },
   print: async (id: string): Promise<void> => {

@@ -1,6 +1,10 @@
-# MANDATE — Claude Code + Opus 4.8 munkamód (2026-05-31, P0)
+# MANDATE — Claude Code munkamód (2026-05-31 → frissítve 2026-06-08, P0)
 
-> Forrás: `vault/references/claude-code-opus48-utasitaskeszlet.md` (teljes, 364 sor, user-átadott).
+> ⚠️ **Branding-javítás 2026-06-08:** Az eredeti "Opus 4.8" modell-jelölés elavult volt (nem létező modell).
+> A jelenlegi konfiguráció: `opusplan` (tervezés=Opus, végrehajtás=Sonnet) — lásd `feedback_cost_discipline_model_routing.md`.
+> A tartalom érvényes és aktív marad.
+>
+> Forrás: user-átadott utasításkészlet (2026-05-31).
 > Ez a fájl a **kötelező munkamód-kiegészítés** — az eddigi mandate-ekkel ÖSSZHANGBAN, nem helyettük.
 
 ## A HÁROM TILALOM (kikényszeríthető, nem óhaj)

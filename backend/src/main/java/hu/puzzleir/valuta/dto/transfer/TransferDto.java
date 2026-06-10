@@ -56,7 +56,7 @@ public class TransferDto {
     private String cancellationReason;
     /** Sztornózás időpontja. */
     private String cancelledAt;
-    /** A sztornó bizonylat sorszáma: {@code <eredeti>-SZ} (FR-13). Csak sztornózott rekordnál. */
+    /** A sztornó bizonylat sorszáma: {@code <eredeti>-SZ} (FR-13). Sztornózott rekordnál és preview-ban töltött. */
     private String stornoSerialNumber;
     /** Opcionális címletezés sorai (FR-17..19). Üres/null → a bizonylaton nem jelenik meg. */
     private List<TransferDenominationDto> denominations;

@@ -1,0 +1,22 @@
+{
+  "appVersion": "KITÖLTENDŐ: egyeznie kell a root package.json verzióval",
+  "installerFileName": "KITÖLTENDŐ: pl. Penztar-Setup-2.27.96.exe",
+  "installerSha256": "KITÖLTENDŐ: 64 hex karakter (Get-FileHash <fájl> -Algorithm SHA256)",
+  "signature": {
+    "subject": "KITÖLTENDŐ: a code-signing tanúsítvány subject-je (pl. Exclusive Best Change Zrt.)",
+    "issuer": "KITÖLTENDŐ: kibocsátó CA (pl. DigiCert EV Code Signing)",
+    "thumbprint": "KITÖLTENDŐ: tanúsítvány-ujjlenyomat hex",
+    "timestamped": false
+  },
+  "cleanVm": {
+    "os": "KITÖLTENDŐ: pl. Windows 11 Pro 24H2, friss snapshot",
+    "cleanSnapshot": false,
+    "steps": {
+      "install": { "result": "KITÖLTENDŐ: PASS vagy FAIL", "notes": "KITÖLTENDŐ: SmartScreen/UAC viselkedés" },
+      "launch": { "result": "KITÖLTENDŐ: PASS vagy FAIL", "notes": "KITÖLTENDŐ: első indítás + bejelentkezés" },
+      "uninstall": { "result": "KITÖLTENDŐ: PASS vagy FAIL", "notes": "KITÖLTENDŐ: Eltavolito lefutott, adatvédelem rendben" }
+    }
+  },
+  "testedAt": "KITÖLTENDŐ: ISO dátum",
+  "testedBy": { "name": "KITÖLTENDŐ" }
+}

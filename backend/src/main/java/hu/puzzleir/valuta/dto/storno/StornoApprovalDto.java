@@ -29,4 +29,12 @@ public class StornoApprovalDto {
     private String rejectionReason;
     private String approvedByWorkerId;
     private LocalDateTime approvedAt;
+    /**
+     * Supervisor jóváhagyó-lista megjelenítési mezői: kérelmező neve, az eredeti
+     * bizonylatszám és a kérés időpontja — ezek nélkül a jóváhagyó nem tudja
+     * azonosítani, mit hagy jóvá.
+     */
+    private String workerName;
+    private String receiptNumber;
+    private LocalDateTime createdAt;
 }

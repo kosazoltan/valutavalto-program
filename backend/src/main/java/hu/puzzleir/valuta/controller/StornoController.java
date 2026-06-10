@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.storno.StornoApprovalDto;
 import hu.puzzleir.valuta.dto.storno.StornoCheckResultDto;
+import hu.puzzleir.valuta.dto.storno.StornoPinApprovalRequestDto;
 import hu.puzzleir.valuta.dto.storno.StornoRequestDto;
 import hu.puzzleir.valuta.dto.transaction.TransactionDto;
 import hu.puzzleir.valuta.entity.Transaction;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -62,6 +64,18 @@ public class StornoController {
     }
 
     /**
+     * Függő (PENDING) sztornó-jóváhagyási kérések listája — supervisor jóváhagyó-lista.
+     * Branch-izolált (a hívó security-contextje szerint).
+     *
+     * GET /api/v1/stornos/approvals/pending
+     */
+    @GetMapping("/approvals/pending")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<List<StornoApprovalDto>> getPendingStornoApprovals() {
+        return ResponseEntity.ok(stornoService.getPendingApprovals());
+    }
+
+    /**
      * Sztornó jóváhagyása/elutasítása
      *
      * POST /api/v1/stornos/approve/{approvalId}?approvedByWorkerId=&approved=&reason=
@@ -75,6 +89,38 @@ public class StornoController {
         Long approvedByWorkerId = SecurityUtils.getCurrentWorkerId();
         StornoApprovalDto result = stornoService.approve(approvalId, approvedByWorkerId, approved, reason);
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Sztornó jóváhagyása TELEFONOS supervisor-PIN-nel — egyszemélyes iroda flow.
+     *
+     * <p>A pénztáros (CASHIER) sessionjéből hívható: a supervisor telefonon bediktálja a
+     * PIN-jét, a pénztáros beírja. A StornoService validál (4-szem KEMÉNYEN + szerepkör +
+     * cég + PIN lockout/audit) — az AmlApprovalController.verify-approver mintája.</p>
+     *
+     * POST /api/v1/stornos/approve-by-pin
+     * Body: { approvalId, approverWorkerId, pin, approved, reason? } — a PIN szándékosan
+     * BODY-ban megy, nem query-paramban (a query string access-logba kerülne).
+     */
+    @PostMapping("/approve-by-pin")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<StornoApprovalDto> approveByPin(
+            @Valid @RequestBody StornoPinApprovalRequestDto body,
+            jakarta.servlet.http.HttpServletRequest request) {
+        String ip = extractClientIp(request);
+        String ua = request.getHeader("User-Agent");
+        StornoApprovalDto result = stornoService.approveByPin(
+                body.getApprovalId(), body.getApproverWorkerId(), body.getPin(),
+                Boolean.TRUE.equals(body.getApproved()), body.getReason(), ip, ua);
+        return ResponseEntity.ok(result);
+    }
+
+    private String extractClientIp(jakarta.servlet.http.HttpServletRequest req) {
+        String fwd = req.getHeader("X-Forwarded-For");
+        if (fwd != null && !fwd.isBlank()) {
+            return fwd.split(",")[0].trim();
+        }
+        return req.getRemoteAddr();
     }
 
     /**

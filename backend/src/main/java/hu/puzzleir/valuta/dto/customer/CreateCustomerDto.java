@@ -54,5 +54,6 @@ public class CreateCustomerDto {
     private String teaorCode; // G27 — jogi-személy TEÁOR tevékenységi kód
 
     private Boolean isVip;
+    private Boolean isPep;
     private String notes;
 }

@@ -1,11 +1,20 @@
 ---
 title: "KÖTELEZŐ pre-PR önellenőrzési gate — minden PR ELŐTT (C.25)"
-status: active
+status: superseded
+superseded_by: "feedback_strong_self_review_before_pr.md (7-lencsés, 2026-06-08)"
 priority: P0
 hatály: 2026-05-20+ CEST
 forrás: Kósa Zoltán user-direktíva (2026-05-20 03:40 CEST) — "még mindig nagyon sok a CI/Copilot/Sourcery/Codex hibatalálat"
 related:
   - vault/feedback/two-rounds-self-subagent-review-mandatory-2026-05-19.md (C.23)
+
+superseded_note: >
+  2026-06-08: Ez a C.25 gate superseded. A 10-tételes checklist domain-specifikus elemei
+  (JPQL customerId != '', financialEffective=TRUE, Flyway UNIQUE, 4-area verzió-szinkron,
+  BigDecimal, multi-tenant scope) beépültek a 7-lencsés self-review-ba
+  (memory/feedback_strong_self_review_before_pr.md + Valutaváltó domain addon szekció).
+  A "2-kör subagent" megközelítés felváltotta az adverzariális bot-panel (Codex+Sourcery+Copilot
+  párhuzamos szerepjáték push előtt). Archivált, NEM töltendő be session-indításkor.
   - vault/feedback/two-rounds-before-merge-mandatory-2026-05-19.md (C.22)
 research: GitHub Blog "Agent PRs", ClackyAI "Code Review Checklist AI-Generated", Qodo 2026
 ---

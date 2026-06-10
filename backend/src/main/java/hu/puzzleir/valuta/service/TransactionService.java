@@ -1475,10 +1475,9 @@ public class TransactionService {
      * <p>2026-05-13 v2.5.50+ (Codex P1 #564 follow-up): sub-threshold normalization +
      * NumberFormatException védelem.</p>
      *
-     * <p><b>Ismert korlátozás (P3 future sprint):</b> a read-check-write nem atomikus.
-     * Két párhuzamos tranzakció elméletben túlfuttathatja a kvótát 1-gyel. Real-world
-     * pénztári környezetben 1 pénztáros/gép, így a verseny nehéz. Megoldás később:
-     * pessimistic lock a worker-day count-on, vagy SERIALIZABLE isolation level.</p>
+     * <p>2026-06-09 Product Ready audit: a kvótaellenőrzés pesszimista zárat vesz a
+     * pénztáros sorára, így az ugyanazon pénztároshoz tartozó párhuzamos limit-checkek
+     * tranzakciós sorrendbe kerülnek.</p>
      *
      * @return a normalizált flag (false ha sub-threshold, egyébként az eredeti)
      */

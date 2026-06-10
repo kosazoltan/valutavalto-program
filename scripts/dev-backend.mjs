@@ -9,7 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
 const isWin = platform() === 'win32'
 const BACKEND_DIR = resolve(ROOT, 'backend')
-const mvnw = isWin ? resolve(BACKEND_DIR, 'mvnw.cmd') : './mvnw'
+const mvnw = isWin ? '.\\mvnw.cmd' : './mvnw'
 
 const jvmArgs = [
   '-DENCRYPTION_SALT=00112233445566778899aabbccddeeff',
@@ -17,11 +17,10 @@ const jvmArgs = [
 ].join(' ')
 
 const args = ['spring-boot:run', `-Dspring-boot.run.jvmArguments=${jvmArgs}`]
-
 console.log(`[dev-backend] Launching: ${mvnw} ${args.join(' ')}`)
 const child = spawn(mvnw, args, {
   cwd: BACKEND_DIR,
   stdio: 'inherit',
-  shell: isWin, // Windows needs shell for .cmd resolution
+  shell: isWin,
 })
 child.on('exit', code => process.exit(code ?? 0))

@@ -346,6 +346,12 @@ Ha 15 percen belül NEM zöld a smoke test (lásd `dr-backup-runbook.md` 4. szak
 
 ## 8. Fő hivatkozások
 
+- Lokális tooling validáció:
+  - `npm run monitoring:preflight` — config/provisioning ellenőrzés, `docker compose config`,
+    Grafana dashboard JSON parse, Prometheus `promtool check config/rules`.
+  - `npm run monitoring:synthetic` — ugyanennek a Product Ready kapuba kötött, reprodukálható neve.
+  Ezek nem helyettesítik az élő scrape/dashboard/alert delivery bizonyítékot, de kiszűrik a hibás
+  Prometheus YAML/rule és Grafana JSON artifactokat deploy előtt.
 - `backend/src/main/resources/application-production.properties:117-126` — Actuator + management port konfiguráció.
 - `backend/src/main/resources/application.properties:97-104` — dev Actuator (port 9090, 0.0.0.0).
 - `backend/src/main/java/hu/puzzleir/valuta/controller/DiagnosticsController.java` — kliens hibajelentés ingest.
@@ -365,6 +371,6 @@ Ha 15 percen belül NEM zöld a smoke test (lásd `dr-backup-runbook.md` 4. szak
 | `client_error_log` 90 napos cleanup timer élő verifikáció | P1 | `systemctl list-timers valuta-client-error-cleanup.timer` |
 | Caddy access log retention + rotate | P2 | logrotate config |
 | HikariCP exhausted alert | P2 | Grafana alert rule + GitHub Issue webhook |
-| AML overdue daily SQL alert | P0 | naponta 08:00 cron + ha COUNT > 0 → email DPO |
+| AML overdue daily SQL alert | P0 | Backend `AmlDeadlineScheduler` naponta 08:00-kor fut és supervisor/manager értesítést küld; Product Ready-hez production alert-delivery evidence kell |
 
 **Lezárás:** a backend Prometheus metrikákat **már most exportálja** — a hiányzó réteg a scrape + dashboard + alerting. A kliens-oldali hibajelentés saját megoldással (DiagnosticsController + V182 + GitHub auto-issue) **lefedett**, Sentry NEM szükséges.

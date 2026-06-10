@@ -96,6 +96,17 @@ public class WuTransaction {
     @JoinColumn(name = "worker_id")
     private Worker worker;
 
+    /**
+     * Pénzeszköz-forrás dokumentum típusa (Pmt./EBC szabályzat V.2.8 A.1: 10M Ft / 7 nap
+     * kumulált küldés+fogadás ≥2 különböző partnerrel → kötelező SOF-igazolás).
+     */
+    @Column(name = "source_of_funds_doc_type", length = 50)
+    private String sourceOfFundsDocType;
+
+    /** A forrás-dokumentum kiállítási dátuma. */
+    @Column(name = "source_of_funds_doc_date")
+    private java.time.LocalDate sourceOfFundsDocDate;
+
     @Column(name = "transaction_date", nullable = false)
     private LocalDateTime transactionDate;
 

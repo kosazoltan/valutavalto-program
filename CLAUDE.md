@@ -18,6 +18,19 @@ cimletezes, arfolyam, atadas-atvetel, foglalo.
 - Ha ugyanaz a hiba ket kor utan megmarad, valts diagnosztikai tengelyt; ne
   futtasd ujra ugyanazt a gate-et.
 
+## Token-optimalizacio es model-routing (agent-kotelezo)
+
+- Prompt Caching: stabil kontextus elol, volatilis tartalom hatul; `cache_control`
+  minden Claude API-integracioban. Reszletek:
+  `vault/feedback/prompt-caching-mandate-2026-06-10.md`.
+- Dynamic Model Routing: Fable 5 csak komplex/penzu-gyi/security feladathoz;
+  Sonnet/Haiku rutin szerkesztesre; Explore-subagent L1/L0-on. Reszletek:
+  `vault/feedback/fable5-optimization-mandate-2026-06-10.md`.
+- Context Window: >80% token-terheltsegnel /clear ajanlott uj independent taskhoz.
+- Task Completion: csonka deliverable TILOS; `max_tokens` explicit API-hivasokban.
+- Fallback Signaling: `[WARNING: MODEL_REGRESS_DETECTED]` ha penzu-gyi-kritikus feladat
+  nem Fable 5 / L3-as szinten fut.
+
 ## Nem-informatikus vegfelhasznalo elv
 
 Kollegaknak nem adunk parancssort vagy manualis rendszergazdai lepeseket. A
@@ -39,6 +52,41 @@ tenyszeruen megtortent.
 - HUF kerekites: 5 Ft-os kerekites.
 - AML/Pmt. es arfolyam TTL szabalyok nem kerulhetok meg.
 - Secret soha nem kerulhet kodba, chatbe vagy memoriaba.
+
+## Helyi toolok (scripts/dev-tools/ — 44 db, zero-API-cost)
+
+**Trigger-mátrix:** `memory/reference_dev_tools_trigger_matrix.md`
+
+```powershell
+# Backend Java valtozas utan (mindig)
+python scripts/dev-tools/blast-radius.py <OsztályNév>
+python scripts/dev-tools/transaction-audit.py
+python scripts/dev-tools/multi-tenant-audit.py
+.\scripts\dev-tools\typecheck-all.ps1
+
+# Flyway migracio hozzaadasakor
+python scripts/dev-tools/flyway-validate.py
+python scripts/dev-tools/flyway-content-audit.py --last 3
+python scripts/dev-tools/sql-index-gap.py
+
+# Push / PR elott (mindig)
+.\scripts\dev-tools\pre-push-gate.ps1 -Fast
+python scripts/dev-tools/secrets-deep-scan.py
+.\scripts\dev-tools\branch-hygiene.ps1
+
+# Teszt futtatasa utan
+python scripts/dev-tools/junit-report-parse.py
+python scripts/dev-tools/test-timing-analyze.py
+
+# React komponens hozzaadasakor
+python scripts/dev-tools/missing-test-files.py --module <modul>
+python scripts/dev-tools/react-complexity-scan.py --module <modul>
+
+# Kiadas elott
+python scripts/dev-tools/changelog-gen.py --from <elozo-tag>
+python scripts/dev-tools/api-surface-report.py
+.\scripts\dev-tools\bundle-size-check.ps1
+```
 
 ## Gyakori parancsok
 

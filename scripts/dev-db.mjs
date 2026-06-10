@@ -1,10 +1,6 @@
 #!/usr/bin/env node
 // Cross-platform + idempotent postgres starter
 import { spawn, execSync } from 'node:child_process'
-import { platform } from 'node:os'
-
-const isWin = platform() === 'win32'
-
 function dockerInspect(name) {
   try {
     execSync(`docker inspect --format "{{.State.Running}}" ${name}`, { stdio: 'pipe' })
@@ -22,12 +18,12 @@ async function main() {
   }
   if (state === false) {
     console.log(`[dev-db] ${name} exists but stopped - starting...`)
-    const r = spawn('docker', ['start', name], { stdio: 'inherit', shell: isWin })
+    const r = spawn('docker', ['start', name], { stdio: 'inherit' })
     r.on('exit', code => process.exit(code ?? 0))
     return
   }
   console.log(`[dev-db] ${name} not found - creating via docker-compose...`)
-  const r = spawn('docker', ['compose', 'up', '-d', 'postgres'], { stdio: 'inherit', shell: isWin })
+  const r = spawn('docker', ['compose', 'up', '-d', 'postgres'], { stdio: 'inherit' })
   r.on('exit', code => process.exit(code ?? 0))
 }
 main()

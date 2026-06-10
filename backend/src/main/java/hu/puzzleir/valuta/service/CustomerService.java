@@ -88,6 +88,7 @@ public class CustomerService {
                 .registrationNumber(request.getRegistrationNumber())
                 .teaorCode(request.getTeaorCode())
                 .isVip(request.getIsVip() != null && request.getIsVip())
+                .isPep(request.getIsPep() != null && request.getIsPep())
                 .notes(request.getNotes())
                 .active(true)
                 .build();
@@ -131,6 +132,7 @@ public class CustomerService {
         if (request.getRegistrationNumber() != null) customer.setRegistrationNumber(request.getRegistrationNumber());
         if (request.getTeaorCode() != null) customer.setTeaorCode(request.getTeaorCode());
         if (request.getIsVip() != null) customer.setIsVip(request.getIsVip());
+        if (request.getIsPep() != null) customer.setIsPep(request.getIsPep());
         if (request.getNotes() != null) customer.setNotes(request.getNotes());
 
         Customer saved = customerRepository.save(customer);
@@ -393,6 +395,7 @@ public class CustomerService {
         private String registrationNumber;
         private String teaorCode;
         private Boolean isVip;
+        private Boolean isPep;
         private String notes;
     }
 
@@ -428,6 +431,7 @@ public class CustomerService {
         private String registrationNumber;
         private String teaorCode;
         private Boolean isVip;
+        private Boolean isPep;
         private String notes;
     }
 }

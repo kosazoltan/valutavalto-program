@@ -1,0 +1,35 @@
+{
+  "decisionStatus": "DRAFT",
+  "environment": "staging-or-production",
+  "decidedAt": null,
+  "decidedBy": null,
+  "approvedByCompliance": null,
+  "notes": "Fill this file with the approved go-live values before using -RequireApprovedDecision. Do not store secrets here.",
+  "flags": [
+    {
+      "key": "PMT_STRICT_ENFORCEMENT",
+      "approvedValue": "true",
+      "rationale": "Strict Pmt. validation should be enabled unless a signed compliance waiver exists."
+    },
+    {
+      "key": "AML_SOURCE_OF_FUNDS_50M_ENFORCEMENT",
+      "approvedValue": "true",
+      "rationale": "V291 activates structured source-of-funds enforcement for >=50M HUF transactions."
+    },
+    {
+      "key": "AML_HIGH_VALUE_APPROVAL_ENFORCEMENT",
+      "approvedValue": null,
+      "rationale": "Compliance/business decision required: hard-block vs warn-only for 10M+/enhanced AML approvals."
+    },
+    {
+      "key": "AML_FATF_TIER_ENFORCEMENT",
+      "approvedValue": null,
+      "rationale": "Compliance/business decision required for FATF tier enforcement."
+    },
+    {
+      "key": "CIRCULAR_ACK_BLOCKING_ENFORCEMENT",
+      "approvedValue": null,
+      "rationale": "Operational/compliance decision required because blocking can stop cashier transactions."
+    }
+  ]
+}
