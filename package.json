@@ -103,7 +103,7 @@
     "stop:db": "docker stop valuta-postgres"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0",
+    "concurrently": "^10.0.3",
     "wait-on": "^8.0.1"
   },
   "overrides": {
