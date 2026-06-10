@@ -4,9 +4,15 @@
  * lépései); a forrás-képernyőn szürkített pontok inaktívak — kattintásra NEM indulhatnak el
  * (FR-KC-05 kényszer), ezért route-juk sincs.
  *
- * FR-KC-06 (Prio C, háttér-menü) SZÁNDÉKOSAN nincs implementálva: az OCR-forrás feliratai
- * csonkák („KÜLÖNFÉLE CÍ...", „CÍMLETEK KIN..."), a teljes szövegük nem ismert — a
- * no-hallucináció elv szerint kitalált felirat nem kerülhet a UI-ba.
+ * FR-KC-06 (Prio C, háttér-menü) SZÁNDÉKOSAN nincs implementálva. A forrás-kép
+ * (Cimletezés menü.jpeg, újraolvasva 2026-06-10) tisztázta: a csonkítás NEM OCR-hiba —
+ * a Címletezés-dialógus FIZIKAILAG takarja a háttér-menüt a képen, így a „KÜLÖNFÉLE CÍ…"
+ * és „CÍMLETEK KIN…" teljes szövege a forrásból megismerhetetlen. A kivehető pontok:
+ * „A MAI NAPI ZÁRÁS […]", „A HAVI ZÁRÁS VÉ[GRE]HAJTÁSA", „MÉGSEM" — mind meglévő
+ * funkcióra mutat (/closing/wizard, /closing/monthly, vissza). Kitalált felirat nem
+ * kerülhet a UI-ba; a funkciók ezen a választó-menün + a főmenün elérhetők. Ugyanez a
+ * kép vizuálisan megerősítette az FR-KC-05 implementációt (6 gomb, pontosan a 4
+ * szürkített inaktív, VISSZA/KILÉPÉS, „CIMLETEZÉS – ZÁRÁSOK" cím).
  */
 
 export interface ClosingDenominationMenuItem {
