@@ -44,6 +44,9 @@ class BranchServiceTest {
     @Mock private CashBalanceService cashBalanceService;
     @Mock private DenominationService denominationService;
     @Mock private AccessScopeService accessScopeService;
+    // FK-022: update() audit log + JSON-serializálás
+    @Mock private AuditLogService auditLogService;
+    @Mock private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     @InjectMocks private BranchService service;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
@@ -628,5 +631,210 @@ class BranchServiceTest {
             assertThat(saved.getHasWu()).isTrue();         // VÁLTOZATLAN (nem volt a DTO-ban)
             assertThat(saved.getHasMg()).isFalse();        // változatlan
         }
+    }
+
+    // ============================================================
+    // FK-022 — Iroda adatainak szerkesztése (update audit + régió + típus + státusz)
+    // ============================================================
+
+    private Branch existingEditableBranch() {
+        return Branch.builder().id(BRANCH_ID)
+                .company(Company.builder().id(COMPANY_ID).build())
+                .code("BR100").name("Régi Név").address("6720 Szeged, Régi utca 1.")
+                .isActive(true).isVault(false)
+                .hasAfa(false).hasWu(false).hasMg(false).hasPos(false)
+                .closedSaturday(false).closedSunday(false)
+                .build();
+    }
+
+    /** A mapper a mindenkori entity-állapotból épít DTO-t — így a before/after pillanatkép eltér. */
+    private void stubMapperFromEntityState() {
+        lenient().when(branchMapper.toDto(any(Branch.class))).thenAnswer(inv -> {
+            Branch b = inv.getArgument(0);
+            return BranchDto.builder().id(b.getId()).code(b.getCode()).name(b.getName())
+                    .isActive(b.getIsActive()).isVault(b.getIsVault()).build();
+        });
+    }
+
+    private void stubJsonFromDtoName() throws Exception {
+        lenient().when(objectMapper.writeValueAsString(any()))
+                .thenAnswer(inv -> "JSON:" + ((BranchDto) inv.getArgument(0)).getName()
+                        + ":aktiv=" + ((BranchDto) inv.getArgument(0)).getIsActive());
+    }
+
+    @Test
+    @DisplayName("FK-022 FR-7: update — audit log BRANCH_UPDATE before/after értékkel (régi és új állapot)")
+    void testUpdateWritesAuditLogWithBeforeAndAfter() throws Exception {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            su.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
+            su.when(SecurityUtils::getCurrentWorkerCode).thenReturn("FOERT01");
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(existingEditableBranch()));
+            when(branchRepository.save(any(Branch.class))).thenAnswer(inv -> inv.getArgument(0));
+            stubMapperFromEntityState();
+            stubJsonFromDtoName();
+
+            UpdateBranchDto dto = new UpdateBranchDto();
+            dto.setName("Új Név");
+
+            service.update(BRANCH_ID, dto);
+
+            verify(auditLogService).logWithDetails(
+                    eq("BRANCH_UPDATE"), eq("BRANCH"), eq(BRANCH_ID.toString()),
+                    eq("42"), eq("FOERT01"),
+                    eq(BRANCH_ID.toString()), eq("Új Név"),
+                    eq("JSON:Régi Név:aktiv=true"),   // oldValue — a mutáció ELŐTTI állapot
+                    eq("JSON:Új Név:aktiv=true"),     // newValue — a mentett állapot
+                    isNull(), isNull());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-022 FR-11: update isActive=false (tartósan zárva) → az entity inaktív + audit tükrözi")
+    void testUpdateTartosanZarvaSetsInactive() throws Exception {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(existingEditableBranch()));
+            when(branchRepository.save(any(Branch.class))).thenAnswer(inv -> inv.getArgument(0));
+            stubMapperFromEntityState();
+            stubJsonFromDtoName();
+
+            UpdateBranchDto dto = new UpdateBranchDto();
+            dto.setIsActive(false);
+
+            service.update(BRANCH_ID, dto);
+
+            ArgumentCaptor<Branch> captor = ArgumentCaptor.forClass(Branch.class);
+            verify(branchRepository).save(captor.capture());
+            assertThat(captor.getValue().getIsActive()).isFalse();
+            verify(auditLogService).logWithDetails(any(), any(), any(), any(), any(), any(), any(),
+                    eq("JSON:Régi Név:aktiv=true"), eq("JSON:Régi Név:aktiv=false"), any(), any());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-022 FR-5: update isActive=true (inaktív → aktív visszakapcsolás)")
+    void testUpdateReactivatesInactiveBranch() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            Branch inactive = existingEditableBranch();
+            inactive.setIsActive(false);
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(inactive));
+            when(branchRepository.save(any(Branch.class))).thenAnswer(inv -> inv.getArgument(0));
+            stubMapperFromEntityState();
+
+            UpdateBranchDto dto = new UpdateBranchDto();
+            dto.setIsActive(true);
+
+            service.update(BRANCH_ID, dto);
+
+            ArgumentCaptor<Branch> captor = ArgumentCaptor.forClass(Branch.class);
+            verify(branchRepository).save(captor.capture());
+            assertThat(captor.getValue().getIsActive()).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("FK-022 FR-10: update üres név → ValidationException, nincs save, nincs audit")
+    void testUpdateRejectsBlankName() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(existingEditableBranch()));
+
+            UpdateBranchDto dto = new UpdateBranchDto();
+            dto.setName("   ");
+
+            assertThatThrownBy(() -> service.update(BRANCH_ID, dto))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("név nem lehet üres");
+            verify(branchRepository, never()).save(any());
+            verifyNoInteractions(auditLogService);
+        }
+    }
+
+    @Test
+    @DisplayName("FK-022: update regionCode=SZEGED → KESZLEX '20' + szöveges region frissül")
+    void testUpdateRegionMapsToKeszlexCode() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            stubDictionaries();
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(existingEditableBranch()));
+            when(branchRepository.save(any(Branch.class))).thenAnswer(inv -> inv.getArgument(0));
+            stubMapperFromEntityState();
+
+            UpdateBranchDto dto = new UpdateBranchDto();
+            dto.setRegionCode("SZEGED");
+
+            service.update(BRANCH_ID, dto);
+
+            ArgumentCaptor<Branch> captor = ArgumentCaptor.forClass(Branch.class);
+            verify(branchRepository).save(captor.capture());
+            assertThat(captor.getValue().getRegionCode()).isEqualTo("20");
+            assertThat(captor.getValue().getRegion()).isEqualTo("SZEGED");
+        }
+    }
+
+    @Test
+    @DisplayName("FK-022: update ismeretlen régió → ResourceNotFoundException, nincs save")
+    void testUpdateRejectsUnknownRegion() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(existingEditableBranch()));
+            when(dictionaryRepository.findByCategoryAndCode("REGION", "MARS")).thenReturn(Optional.empty());
+
+            UpdateBranchDto dto = new UpdateBranchDto();
+            dto.setRegionCode("MARS");
+
+            assertThatThrownBy(() -> service.update(BRANCH_ID, dto))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Ismeretlen régió kód");
+            verify(branchRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-022: update dict-ben létező, de KESZLEX-mappolatlan régió (IRODA) → ValidationException")
+    void testUpdateRejectsUnmappedRegion() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            stubDictionaries();
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(existingEditableBranch()));
+
+            UpdateBranchDto dto = new UpdateBranchDto();
+            dto.setRegionCode("IRODA");
+
+            assertThatThrownBy(() -> service.update(BRANCH_ID, dto))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("nincs KESZLEX-területi-kód");
+            verify(branchRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-022: update isVault=true → az iroda típusa Értéktárra vált")
+    void testUpdateIsVaultFlag() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(existingEditableBranch()));
+            when(branchRepository.save(any(Branch.class))).thenAnswer(inv -> inv.getArgument(0));
+            stubMapperFromEntityState();
+
+            UpdateBranchDto dto = new UpdateBranchDto();
+            dto.setIsVault(true);
+
+            service.update(BRANCH_ID, dto);
+
+            ArgumentCaptor<Branch> captor = ArgumentCaptor.forClass(Branch.class);
+            verify(branchRepository).save(captor.capture());
+            assertThat(captor.getValue().getIsVault()).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("FK-022 FR-3: az UpdateBranchDto-ban NINCS code mező — a pénztár kódja nem szerkeszthető")
+    void testUpdateDtoHasNoCodeField() {
+        assertThat(UpdateBranchDto.class.getDeclaredFields())
+                .extracting(java.lang.reflect.Field::getName)
+                .doesNotContain("code");
     }
 }

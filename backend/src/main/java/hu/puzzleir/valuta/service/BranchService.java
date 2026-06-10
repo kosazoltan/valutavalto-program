@@ -13,6 +13,8 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -47,6 +49,9 @@ public class BranchService {
     private final DenominationService denominationService;
     // #891 self-review P0-1: ERTEKTAR-szintű territorialis ellenőrzéshez a saját region_code lookup.
     private final AccessScopeService accessScopeService;
+    // FK-022 FR-7: iroda-módosítás audit logja before/after értékkel (hash-láncolt audit_log).
+    private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public BranchService(BranchRepository branchRepository,
@@ -55,7 +60,9 @@ public class BranchService {
                          BranchMapper branchMapper,
                          @Lazy CashBalanceService cashBalanceService,
                          @Lazy DenominationService denominationService,
-                         AccessScopeService accessScopeService) {
+                         AccessScopeService accessScopeService,
+                         AuditLogService auditLogService,
+                         ObjectMapper objectMapper) {
         this.branchRepository = branchRepository;
         this.companyRepository = companyRepository;
         this.dictionaryRepository = dictionaryRepository;
@@ -63,6 +70,8 @@ public class BranchService {
         this.cashBalanceService = cashBalanceService;
         this.denominationService = denominationService;
         this.accessScopeService = accessScopeService;
+        this.auditLogService = auditLogService;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -682,6 +691,14 @@ public class BranchService {
             throw new ResourceNotFoundException("Fiók nem található: " + id);
         }
 
+        // FK-022 FR-10: a név partial-update-ben megadható, de üresre nem törölhető.
+        if (dto.getName() != null && dto.getName().isBlank()) {
+            throw new ValidationException("A megjelenítendő név nem lehet üres.");
+        }
+
+        // FK-022 FR-7: audit before-pillanatkép a mutáció ELŐTT (DTO-másolat, nem a managed entity).
+        BranchDto before = branchMapper.toDto(branch);
+
         // Frissíthető mezők
         if (dto.getName() != null) {
             branch.setName(dto.getName());
@@ -745,11 +762,101 @@ public class BranchService {
         if (dto.getClosedSunday() != null) {
             branch.setClosedSunday(dto.getClosedSunday());
         }
+        // FK-022: az iroda típusa (Pénztár/Értéktár) is módosítható a szerkesztő formról.
+        if (dto.getIsVault() != null) {
+            branch.setIsVault(dto.getIsVault());
+        }
+        // FK-022: területi besorolás módosítása — ugyanaz a REGION-dict validáció + KESZLEX
+        // numerikus mapping, mint createSimpleCashier-nél, hogy a területi scope konzisztens maradjon.
+        if (dto.getRegionCode() != null && !dto.getRegionCode().isBlank()) {
+            dictionaryRepository.findByCategoryAndCode("REGION", dto.getRegionCode())
+                    .filter(d -> Boolean.TRUE.equals(d.getIsActive()))
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Ismeretlen régió kód: " + dto.getRegionCode()
+                                    + " (a Beállítások → Törzsadatok → Régiók listából válasszon)"));
+            String keszlexRegionCode = REGION_DICT_TO_KESZLEX.get(dto.getRegionCode());
+            if (keszlexRegionCode == null) {
+                throw new ValidationException(
+                        "A(z) " + dto.getRegionCode() + " régióhoz nincs KESZLEX-területi-kód mappelve. "
+                                + "Engedélyezett régiók: " + REGION_DICT_TO_KESZLEX.keySet());
+            }
+            branch.setRegionCode(keszlexRegionCode);
+            branch.setRegion(dto.getRegionCode());
+        }
 
         Branch updated = branchRepository.save(branch);
         log.info("Branch updated successfully: {}", id);
 
-        return branchMapper.toDto(updated);
+        BranchDto after = branchMapper.toDto(updated);
+
+        // FK-022 FR-7: audit log a módosítás előtti és utáni teljes állapottal (§3 — hash-láncolt
+        // audit_log, action=BRANCH_UPDATE). Ugyanabban a tranzakcióban fut, rollback esetén
+        // az audit-bejegyzés is visszagörgetődik.
+        auditLogService.logWithDetails(
+                "BRANCH_UPDATE",
+                "BRANCH",
+                id.toString(),
+                currentWorkerIdOrNull(),
+                currentWorkerCodeOrNull(),
+                id.toString(),
+                updated.getName(),
+                toJsonSafe(before),
+                toJsonSafe(after),
+                null,
+                null);
+
+        return after;
+    }
+
+    /**
+     * FK-022: worker-id az audit loghoz — rendszer-kontextusban (nincs auth) null.
+     * Sourcery P2: a kivételt nem nyeljük le némán — WARN-on látható marad egy esetleges
+     * valódi security-context hiba, miközben az audit nem-fatális marad.
+     */
+    private static String currentWorkerIdOrNull() {
+        try {
+            Long workerId = SecurityUtils.getCurrentWorkerId();
+            return workerId != null ? workerId.toString() : null;
+        } catch (RuntimeException e) {
+            log.warn("Audit worker-id feloldás sikertelen (rendszer-kontextus?): {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /** FK-022: worker-kód az audit loghoz — rendszer-kontextusban (nincs auth) null. */
+    private static String currentWorkerCodeOrNull() {
+        try {
+            return SecurityUtils.getCurrentWorkerCode();
+        } catch (RuntimeException e) {
+            log.warn("Audit worker-kód feloldás sikertelen (rendszer-kontextus?): {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * FK-022: audit-mező JSON-serializálás — hiba esetén nem buktatja a mentést.
+     * Sourcery P2: a fallback nem a semmitmondó Object.toString(), hanem egy minimális,
+     * de értelmezhető kulcsmező-pillanatkép (id/code/name), hogy az audit trail hiba
+     * esetén is használható maradjon.
+     */
+    private String toJsonSafe(BranchDto dto) {
+        try {
+            return objectMapper.writeValueAsString(dto);
+        } catch (JsonProcessingException e) {
+            log.warn("Branch audit JSON serialization failed: {}", e.getMessage());
+            try {
+                java.util.Map<String, Object> fallback = new java.util.LinkedHashMap<>();
+                fallback.put("id", dto.getId());
+                fallback.put("code", dto.getCode());
+                fallback.put("name", dto.getName());
+                return objectMapper.writeValueAsString(fallback);
+            } catch (JsonProcessingException inner) {
+                // Copilot P2: az oldValue/newValue mindig parse-olható JSON marad — a végső
+                // fallback sem nyers toString, hanem garantáltan JSON error-wrapper.
+                log.warn("Branch audit fallback serialization failed: {}", inner.getMessage());
+                return "{\"auditSerializationError\":\"" + inner.getClass().getSimpleName() + "\"}";
+            }
+        }
     }
 
     /**

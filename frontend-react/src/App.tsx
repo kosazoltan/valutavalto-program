@@ -121,6 +121,7 @@ const BranchGroupPage = lazy(() => import('./pages/branches/BranchGroupPage'))
 const BranchPage = lazy(() => import('./pages/branches/BranchPage'))
 // FK-021: Új iroda felrögzítése (teljes törzsadat-form, 5 csoport).
 const BranchCreatePage = lazy(() => import('./pages/branches/BranchCreatePage'))
+const BranchEditPage = lazy(() => import('./pages/branches/BranchEditPage'))
 const AuditLogPage = lazy(() => import('./pages/audit/AuditLogPage'))
 const CircularPage = lazy(() => import('./pages/circulars/CircularPage'))
 const FeePackagePage = lazy(() => import('./pages/fees/FeePackagePage'))
@@ -562,6 +563,17 @@ export default function App() {
             element={
               <RoleGate canonicalRoles={['foertektar', 'belso_ellenor', 'ugyvezeto']}>
                 <BranchCreatePage />
+              </RoleGate>
+            }
+          />
+          {/* FK-022: Iroda adatainak szerkesztése (a lista "Szerkesztés" gombjáról).
+              RBAC-mátrix (§3): a Belső ellenőr csak OLVAS — a szerkesztő oldalra nem léphet
+              (a backend PUT amúgy is 403-at adna, FR-8). ADMIN a RoleGate-fallback révén átmegy. */}
+          <Route
+            path="/admin/branches/:id/edit"
+            element={
+              <RoleGate canonicalRoles={['foertektar', 'ugyvezeto']}>
+                <BranchEditPage />
               </RoleGate>
             }
           />

@@ -41,6 +41,10 @@ export interface BranchInfo {
   vaultTerritoryId?: number | null
   branchTypeCode?: string
   region?: string
+  // FK-022: a szerkesztő form előtöltéséhez (elérhetőség + bankkód a BranchDto-ból).
+  phone?: string
+  email?: string
+  bankCode?: string
   // Pénztár Törzs alapmodul (V293): rövid név + szolgáltatás-flagek + nyitvatartás —
   // a backend BranchDto-ból jönnek, hogy a ráépülő modulok (átadás-átvétel, zárás, készlet,
   // értéktár) a naprakész törzsadattal dolgozhassanak.
@@ -133,6 +137,35 @@ export const branchApi = {
     const response = await api.post<BranchInfo>('/branches/simple-cashier', payload)
     return response.data
   },
+  /**
+   * FK-022: meglévő iroda törzsadatainak frissítése (PUT /branches/{id}).
+   * Partial update: csak a megadott mezők íródnak felül; a `code` nem küldhető (FR-3).
+   */
+  update: async (id: string, payload: BranchUpdateRequest): Promise<BranchInfo> => {
+    const response = await api.put<BranchInfo>(`/branches/${id}`, payload)
+    return response.data
+  },
+}
+
+/** FK-022: a PUT /branches/{id} (UpdateBranchDto) frontend-oldali párja — partial update. */
+export interface BranchUpdateRequest {
+  name?: string
+  shortName?: string
+  address?: string
+  zipCode?: string
+  city?: string
+  phone?: string
+  email?: string
+  bankCode?: string
+  regionCode?: string
+  isVault?: boolean
+  isActive?: boolean
+  hasAfa?: boolean
+  hasWu?: boolean
+  hasMg?: boolean
+  hasPos?: boolean
+  closedSaturday?: boolean
+  closedSunday?: boolean
 }
 
 // ================== DICTIONARY API (lightweight) ==================

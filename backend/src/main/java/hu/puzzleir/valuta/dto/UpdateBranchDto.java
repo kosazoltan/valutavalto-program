@@ -54,4 +54,13 @@ public class UpdateBranchDto {
     private Boolean hasPos;
     private Boolean closedSaturday;
     private Boolean closedSunday;
+
+    // FK-022: iroda szerkesztése — az iroda típusa (Pénztár/Értéktár) is módosítható.
+    private Boolean isVault;
+
+    // FK-022: területi besorolás — szöveges REGION dictionary-kód (pl. SZEGED). A service
+    // ugyanazon az úton dolgozza fel, mint createSimpleCashier-nél: REGION-dict validáció +
+    // KESZLEX numerikus mapping (Branch.regionCode) + szöveges régió (Branch.region).
+    // A `code` mező szándékosan NINCS a DTO-ban: a pénztár kódja nem szerkeszthető (FR-3).
+    private String regionCode;
 }

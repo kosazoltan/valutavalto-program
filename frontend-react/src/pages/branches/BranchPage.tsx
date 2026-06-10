@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Building2, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
+import { Building2, Plus, Edit, Trash2, Search } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
@@ -44,42 +44,6 @@ interface Branch {
   closedSunday?: boolean
 }
 
-interface BranchForm {
-  code: string
-  name: string
-  city: string
-  address: string
-  phone: string
-  email: string
-  // 2026-05-15 HIBA #2: a CreateBranchDto kotelezo mezoi a frontend-form-bol hianyoztak
-  bankCode: string
-  zipCode: string
-  branchTypeId: string
-  countryId: string
-  branchStatusId: string
-  openingDate: string
-  // Pénztár Törzs alapmodul (V293): a mezőnevek egyeznek a Create/UpdateBranchDto JSON-property-vel,
-  // ezért a handleSave a form-ot változatlanul küldheti — külön payload-átalakítás nem kell.
-  shortName: string
-  hasAfa: boolean
-  hasWu: boolean
-  hasMg: boolean
-  hasPos: boolean
-  closedSaturday: boolean
-  closedSunday: boolean
-}
-
-interface DictionaryEntry { id: string; code: string; name: string; nameHu?: string }
-
-const emptyForm: BranchForm = {
-  code: '', name: '', city: '', address: '', phone: '', email: '',
-  bankCode: '', zipCode: '', branchTypeId: '', countryId: '', branchStatusId: '',
-  openingDate: new Date().toISOString().slice(0, 10),
-  // V293 szolgáltatás-flagek: új fiók alapból minden szolgáltatás nélkül, hétvégén nyitva (FALSE).
-  shortName: '', hasAfa: false, hasWu: false, hasMg: false, hasPos: false,
-  closedSaturday: false, closedSunday: false,
-}
-
 /** FK-020: szolgáltatás-jelölő badge a lista soraiban. Aktív = színes, inaktív = szürke. */
 function ServiceBadge({ label, active }: { label: string; active: boolean }) {
   return (
@@ -107,14 +71,6 @@ export default function BranchPage() {
   // FK-020: területi szűrő (region) + inaktívak megjelenítése (alapból csak aktív).
   const [territoryFilter, setTerritoryFilter] = useState('')
   const [showInactive, setShowInactive] = useState(false)
-  const [showForm, setShowForm] = useState(false)
-  const [editingBranch, setEditingBranch] = useState<Branch | null>(null)
-  const [form, setForm] = useState<BranchForm>(emptyForm)
-  const [saving, setSaving] = useState(false)
-  // 2026-05-15 HIBA #2: dictionary dropdownok a DictionaryController-bol
-  const [branchTypes, setBranchTypes] = useState<DictionaryEntry[]>([])
-  const [countries, setCountries] = useState<DictionaryEntry[]>([])
-  const [branchStatuses, setBranchStatuses] = useState<DictionaryEntry[]>([])
 
   // FK-020: a területi szűrő legördülő dinamikusan a betöltött adatból épül (nem hardcode),
   // így mindig a valós region-értékeket mutatja. "Minden terület" + az előforduló területek.
@@ -162,86 +118,12 @@ export default function BranchPage() {
 
   useEffect(() => {
     void load()
-    // Dictionary dropdownok eloltese (HIBA #2 fix, 2026-05-15)
-    void (async () => {
-      try {
-        const [types, ctry, status] = await Promise.all([
-          api.get('/dictionaries/BRANCH_TYPE'),
-          api.get('/dictionaries/COUNTRY'),
-          api.get('/dictionaries/BRANCH_STATUS'),
-        ])
-        setBranchTypes(safeArray<DictionaryEntry>(types.data))
-        setCountries(safeArray<DictionaryEntry>(ctry.data))
-        setBranchStatuses(safeArray<DictionaryEntry>(status.data))
-      } catch (err) {
-        logger.warn('BranchPage', 'Dictionary load failed (form dropdowns may be empty)', err)
-      }
-    })()
   }, [])
 
+  // FK-022: a szerkesztés a dedikált, FK-021-formátumú szerkesztő oldalon történik
+  // (előtöltött 5 csoport, read-only kód, státuszváltás megerősítéssel).
   const openEdit = (b: Branch) => {
-    setEditingBranch(b)
-    setForm({
-      code: b.code,
-      name: b.name,
-      city: b.city ?? '',
-      address: b.address ?? '',
-      phone: b.phone ?? '',
-      email: b.email ?? '',
-      bankCode: b.bankCode ?? '',
-      zipCode: b.zipCode ?? '',
-      branchTypeId: b.branchTypeId ?? '',
-      countryId: b.countryId ?? '',
-      branchStatusId: b.branchStatusId ?? '',
-      // Sourcery #611: NE alapertelmezzunk ma-i datumra szerkesztesnel, ha eredetileg
-      // ures volt — kulonben silently felulirjuk a legacy/null DB-adatot.
-      openingDate: b.openingDate ?? '',
-      // V293 szolgáltatás-flagek betöltése a meglévő irodából (különben szerkesztéskor a
-      // checkboxok mindig üresek lennének és a mentés kikapcsolná a beállított flageket).
-      shortName: b.shortName ?? '',
-      hasAfa: b.hasAfa ?? false,
-      hasWu: b.hasWu ?? false,
-      hasMg: b.hasMg ?? false,
-      hasPos: b.hasPos ?? false,
-      closedSaturday: b.closedSaturday ?? false,
-      closedSunday: b.closedSunday ?? false,
-    })
-    setShowForm(true)
-  }
-
-  const handleSave = async () => {
-    // 2026-05-15 HIBA #2: kotelezo mezok validalasa a CreateBranchDto szerint
-    const missing: string[] = []
-    if (!form.code.trim()) missing.push('Kód')
-    if (!form.name.trim()) missing.push('Név')
-    if (!form.bankCode.trim()) missing.push('Banki kód')
-    if (!form.address.trim()) missing.push('Cím')
-    if (!form.city.trim()) missing.push('Város')
-    if (!/^\d{4}$/.test(form.zipCode)) missing.push('Irányítószám (4 számjegy)')
-    if (!form.branchTypeId) missing.push('Iroda típusa')
-    if (!form.countryId) missing.push('Ország')
-    if (!form.branchStatusId) missing.push('Státusz')
-    if (!form.openingDate) missing.push('Nyitás dátuma')
-    if (missing.length > 0) {
-      toast.warning('Hiányzó kötelező mezők', missing.join(', '))
-      return
-    }
-    try {
-      setSaving(true)
-      if (editingBranch) {
-        await api.put(`/branches/${editingBranch.id}`, form)
-        toast.success('Fiók sikeresen módosítva!')
-      } else {
-        await api.post('/branches', form)
-        toast.success('Fiók sikeresen létrehozva!')
-      }
-      setShowForm(false)
-      await load()
-    } catch (err) {
-      toast.error('Hiba', getErrorMessage(err))
-    } finally {
-      setSaving(false)
-    }
+    navigate(`/admin/branches/${b.id}/edit`)
   }
 
   const handleDelete = async (id: string) => {
@@ -333,223 +215,6 @@ export default function BranchPage() {
           </label>
         </div>
       </div>
-
-      {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold">{editingBranch ? 'Fiók szerkesztése' : 'Új fiók'}</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-700">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">{t('common.codeRequired')}</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={form.code}
-                    onChange={(e) => setForm({ ...form, code: e.target.value })}
-                    disabled={!!editingBranch}
-                  />
-                </div>
-                <div>
-                  <label className="form-label">{t('common.nameRequired')}</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="form-label">{t('common.city')}</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={form.city}
-                  onChange={(e) => setForm({ ...form, city: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="form-label">{t('common.address')}</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={form.address}
-                  onChange={(e) => setForm({ ...form, address: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">Irányítószám *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={form.zipCode}
-                    pattern="\d{4}"
-                    maxLength={4}
-                    onChange={(e) => setForm({ ...form, zipCode: e.target.value.replace(/\D/g, '') })}
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Banki kód *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={form.bankCode}
-                    onChange={(e) => setForm({ ...form, bankCode: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">Iroda típusa *</label>
-                  <select
-                    className="form-input"
-                    value={form.branchTypeId}
-                    onChange={(e) => setForm({ ...form, branchTypeId: e.target.value })}
-                  >
-                    <option value="">— válassz —</option>
-                    {branchTypes.map(t => (
-                      <option key={t.id} value={t.id}>{t.nameHu || t.name} ({t.code})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="form-label">Ország *</label>
-                  <select
-                    className="form-input"
-                    value={form.countryId}
-                    onChange={(e) => setForm({ ...form, countryId: e.target.value })}
-                  >
-                    <option value="">— válassz —</option>
-                    {countries.map(c => (
-                      <option key={c.id} value={c.id}>{c.nameHu || c.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">Státusz *</label>
-                  <select
-                    className="form-input"
-                    value={form.branchStatusId}
-                    onChange={(e) => setForm({ ...form, branchStatusId: e.target.value })}
-                  >
-                    <option value="">— válassz —</option>
-                    {branchStatuses.map(s => (
-                      <option key={s.id} value={s.id}>{s.nameHu || s.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="form-label">Nyitás dátuma *</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={form.openingDate}
-                    max={new Date().toISOString().slice(0, 10)}
-                    onChange={(e) => setForm({ ...form, openingDate: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">{t('common.phone')}</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="form-label">{t('common.email')}</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  />
-                </div>
-              </div>
-              {/* Pénztár Törzs alapmodul (V293): rövid név + szolgáltatás-flagek + hétvégi nyitvatartás */}
-              <div>
-                <label className="form-label">Rövid név (opcionális)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  maxLength={100}
-                  value={form.shortName}
-                  onChange={(e) => setForm({ ...form, shortName: e.target.value })}
-                />
-              </div>
-              <div className="border-t pt-3">
-                <div className="form-label mb-1">Szolgáltatások</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="inline-flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="form-checkbox h-4 w-4"
-                      checked={form.hasAfa}
-                      onChange={(e) => setForm({ ...form, hasAfa: e.target.checked })} />
-                    <span className="text-sm">ÁFA-visszatérítés</span>
-                  </label>
-                  <label className="inline-flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="form-checkbox h-4 w-4"
-                      checked={form.hasWu}
-                      onChange={(e) => setForm({ ...form, hasWu: e.target.checked })} />
-                    <span className="text-sm">Western Union</span>
-                  </label>
-                  <label className="inline-flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="form-checkbox h-4 w-4"
-                      checked={form.hasMg}
-                      onChange={(e) => setForm({ ...form, hasMg: e.target.checked })} />
-                    <span className="text-sm">MoneyGram</span>
-                  </label>
-                  <label className="inline-flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="form-checkbox h-4 w-4"
-                      checked={form.hasPos}
-                      onChange={(e) => setForm({ ...form, hasPos: e.target.checked })} />
-                    <span className="text-sm">POS terminál</span>
-                  </label>
-                </div>
-              </div>
-              <div className="border-t pt-3">
-                <div className="form-label mb-1">Hétvégi nyitvatartás</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="inline-flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="form-checkbox h-4 w-4"
-                      checked={form.closedSaturday}
-                      onChange={(e) => setForm({ ...form, closedSaturday: e.target.checked })} />
-                    <span className="text-sm">Szombaton zárva</span>
-                  </label>
-                  <label className="inline-flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="form-checkbox h-4 w-4"
-                      checked={form.closedSunday}
-                      onChange={(e) => setForm({ ...form, closedSunday: e.target.checked })} />
-                    <span className="text-sm">Vasárnap zárva</span>
-                  </label>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <button onClick={() => setShowForm(false)} className="form-button">{t('common.cancel')}</button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="form-button-primary flex items-center gap-2"
-                >
-                  <Save size={16} />
-                  {saving ? 'Mentés...' : 'Mentés'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="form-panel">
         <table className="data-grid w-full">
