@@ -52,6 +52,37 @@ python scripts/legacy-binary-analyzer.py --self-test
 **CI:** automatikus a fenti path-eken; kézzel a GitHub Actions „Legacy Binary Analysis"
 → Run workflow gombbal (önhostolt runner esetén az `anti_root` megadható).
 
+## Base64-híd: a források áthozatala a felhő-sessionbe (`scripts/legacy-transfer.py`)
+
+**Probléma:** a Claude Code felhő-sessionbe egyetlen adatcsatorna vezet — a git
+(file-upload nincs; lokális gépen futó MCP a felhő-sandboxot nem éri el). A nyers
+`Anti/` fa gitignore-olt, a binárisok (EXE/DLL) pedig nem szöveg.
+
+**Megoldás:** a Base64 adatkódolás (NEM titkosítás!) pontosan erre való — bináris →
+szövegként biztonságosan továbbítható forma. Ugyanezt a mintát használja maga az
+MCP-szabvány is (binary resource → base64 `blob`), és az e-mail/JSON/data-URI világ.
+Saját, stdlib-only eszközzel csináljuk (harmadik-fél base64-MCP-szolgáltatásnak
+proprietárius forrást kiküldeni adatszivárgás lenne):
+
+```
+[lokális gép]  python scripts/legacy-transfer.py pack            # Anti/ → legacy-transfer/
+               git add legacy-transfer && git commit && git push #   (szöveg: UTF-8-ra konvertált
+                                                                 #    .pas; bináris: base64 + sha256)
+[felhő/CI]     python scripts/legacy-transfer.py unpack          # legacy-transfer/ → Anti_transfer/
+               python scripts/legacy-binary-analyzer.py --anti-root Anti_transfer
+```
+
+- **Integritás:** fájlonként SHA-256 a manifesztben; eltérésnél az unpack hibát jelez.
+- **Pontosabb beolvasás:** a cp1250-es Delphi-forrás UTF-8-ként, bájthelyesen érkezik
+  (nem OCR-en/kivonaton át) — a TPF0-kinyerés pedig az EREDETI bináris bájtjain fut.
+- **Guardrail-kompatibilis:** a szöveg-fájlok UTF-8-ak; a base64-blobok `.b64`
+  kiterjesztésűek (a UTF-8 guardrail nem ellenőrzi őket).
+- **Méret:** 8 MB-os chunkok (b64-ben ~10,7 MB) — GitHub-barát; szelektív `--include`.
+- **Adatvédelem:** a becsomagolt tartalom a (privát) repóba kerül és bárki visszafejti,
+  aki a repót látja — csak azt csomagold, amit ezzel vállalsz.
+- A CI (`legacy-binary-analysis.yml`) a `legacy-transfer/` megjelenésekor automatikusan
+  kibont + elemez, és minden futáskor lefuttatja a pack/unpack öntesztet.
+
 ## Eddigi eredmény (kézi verdiktek, e workflow-t megelőzően)
 
 - `EXCMD/legacy/02-ARFOLYAM-binaris-visszafejtes.md` — Arfolyam.exe 20 form, TPF0-RE.

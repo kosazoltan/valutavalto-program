@@ -103,6 +103,10 @@ logs/
 docs/legacy-drive/
 
 Anti/
+# A legacy-transfer/ (Base64-kódolt, sha256-manifesztes transzfer-forma) SZÁNDÉKOSAN
+# trackelt — ez a git-only felhő-session adatcsatornája (scripts/legacy-transfer.py).
+# A belőle visszafejtett nyers fa viszont nem kerülhet a repóba:
+Anti_transfer/
 
 Felmérés/
 # ATTENTION: the next pattern is the macOS NFD-encoded variant of the same

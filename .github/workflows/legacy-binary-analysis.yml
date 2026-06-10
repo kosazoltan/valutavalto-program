@@ -18,14 +18,18 @@ on:
   pull_request:
     paths:
       - 'scripts/legacy-binary-analyzer.py'
+      - 'scripts/legacy-transfer.py'
       - '.github/workflows/legacy-binary-analysis.yml'
+      - 'legacy-transfer/**'
       - 'frontend-react/src/pages/rates/**'
       - 'arfolyam-keszito-client/src/**'
   push:
     branches: [main]
     paths:
       - 'scripts/legacy-binary-analyzer.py'
+      - 'scripts/legacy-transfer.py'
       - '.github/workflows/legacy-binary-analysis.yml'
+      - 'legacy-transfer/**'
   workflow_dispatch:
     inputs:
       anti_root:
@@ -46,10 +50,21 @@ jobs:
       - name: Önteszt — TPF0-kinyerés + keresztellenőrzés nem regresszál
         run: python scripts/legacy-binary-analyzer.py --self-test
 
-      - name: Teljes elemzés (ha az Anti/ fa elérhető)
+      - name: Önteszt — Base64 pack/unpack round-trip (legacy-transfer)
+        run: python scripts/legacy-transfer.py self-test
+
+      - name: Transzfer kibontása (ha a repo tartalmaz legacy-transfer csomagot)
+        if: hashFiles('legacy-transfer/manifest.json') != ''
+        run: python scripts/legacy-transfer.py unpack --in legacy-transfer --dest Anti_transfer
+
+      - name: Teljes elemzés (Anti/ fa VAGY kibontott transzfer)
         run: |
-          ANTI="${{ github.event.inputs.anti_root || 'Anti' }}"
-          python scripts/legacy-binary-analyzer.py --anti-root "$ANTI"
+          if [ -f legacy-transfer/manifest.json ]; then
+            python scripts/legacy-binary-analyzer.py --anti-root Anti_transfer
+          else
+            ANTI="${{ github.event.inputs.anti_root || 'Anti' }}"
+            python scripts/legacy-binary-analyzer.py --anti-root "$ANTI"
+          fi
 
       - name: Riport-artifact feltöltése (ha készült)
         if: hashFiles('docs/legacy-analysis/generated/legacy-binary-analysis.json') != ''
