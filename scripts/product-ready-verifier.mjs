@@ -247,12 +247,21 @@ function checkCompliance() {
     const sha = requireSha256(dbExport, 'sha256', 'compliance.dbExport', reasons)
     requireDate(dbExport, 'exportedAt', 'compliance.dbExport', reasons, { maxAgeDays: MAX_EVIDENCE_AGE_DAYS })
     requireString(dbExport, 'method', 'compliance.dbExport', reasons)
-    if (location != null) {
+    if (location != null && sha != null) {
       const inRepo = path.resolve(repoRoot, location)
-      if (inRepo.startsWith(repoRoot) && fs.existsSync(inRepo) && fs.statSync(inRepo).isFile()) {
-        const actual = crypto.createHash('sha256').update(fs.readFileSync(inRepo)).digest('hex')
-        if (sha != null && actual.toLowerCase() !== sha.toLowerCase()) {
-          reasons.push(`compliance.dbExport: a(z) ${location} tényleges SHA-256-ja (${actual}) NEM egyezik a megadottal`)
+      if (inRepo.startsWith(repoRoot + path.sep)) {
+        // Nincs exists-then-read (TOCTOU): közvetlen olvasás, hiba = repón kívüli hely.
+        let fileBytes = null
+        try {
+          fileBytes = fs.readFileSync(inRepo)
+        } catch {
+          fileBytes = null
+        }
+        if (fileBytes != null) {
+          const actual = crypto.createHash('sha256').update(fileBytes).digest('hex')
+          if (actual.toLowerCase() !== sha.toLowerCase()) {
+            reasons.push(`compliance.dbExport: a(z) ${location} tényleges SHA-256-ja (${actual}) NEM egyezik a megadottal`)
+          }
         }
       }
     }
