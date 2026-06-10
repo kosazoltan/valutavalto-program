@@ -306,6 +306,19 @@ public class StornoService {
     }
 
     /**
+     * Iroda függő (PENDING) sztornó-jóváhagyási kérései a supervisor jóváhagyó-listájához.
+     * Branch-izolált (a hívó security-contextjéből); a lazy asszociációkat (worker,
+     * transaction) a tranzakción belül oldjuk fel (OSIV kikapcsolva).
+     */
+    @Transactional(readOnly = true)
+    public List<StornoApprovalDto> getPendingApprovals() {
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        return stornoApprovalRepository.findPendingByBranch(branchId).stream()
+                .map(this::toApprovalDto)
+                .toList();
+    }
+
+    /**
      * Sztornó jóváhagyása/elutasítása supervisor által
      */
     public StornoApprovalDto approve(UUID approvalId, Long approvedByWorkerId, boolean approved, String reason) {
@@ -632,6 +645,9 @@ public class StornoService {
                 .rejectionReason(entity.getRejectionReason())
                 .approvedByWorkerId(entity.getApprovedByWorker() != null ? String.valueOf(entity.getApprovedByWorker().getId()) : null)
                 .approvedAt(entity.getApprovedAt())
+                .workerName(entity.getWorker() != null ? entity.getWorker().getName() : null)
+                .receiptNumber(entity.getTransaction() != null ? entity.getTransaction().getReceiptNumber() : null)
+                .createdAt(entity.getCreatedAt())
                 .build();
     }
 

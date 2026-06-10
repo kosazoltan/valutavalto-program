@@ -722,6 +722,10 @@ export interface StornoApproval {
   rejectionReason?: string
   approvedByWorkerId?: string
   approvedAt?: string
+  /** Supervisor jóváhagyó-lista megjelenítési mezői (kérelmező neve, bizonylatszám, kérés ideje). */
+  workerName?: string
+  receiptNumber?: string
+  createdAt?: string
 }
 
 export const stornoApi = {
@@ -741,6 +745,12 @@ export const stornoApi = {
     const response = await api.post<StornoApproval>(`/stornos/approve/${approvalId}`, null, {
       params: { approvedByWorkerId, approved, reason }
     })
+    return response.data
+  },
+  // Supervisor jóváhagyó-lista: a saját iroda függő (PENDING) sztornó-kérései.
+  // Backend: GET /stornos/approvals/pending (SUPERVISOR/MANAGER/ADMIN role-gate).
+  pendingApprovals: async (): Promise<StornoApproval[]> => {
+    const response = await api.get<StornoApproval[]>('/stornos/approvals/pending')
     return response.data
   },
   execute: async (request: StornoRequest, workerId: string): Promise<Transaction> => {

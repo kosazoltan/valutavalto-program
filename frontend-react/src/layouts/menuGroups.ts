@@ -192,6 +192,9 @@ export const menuGroups: MenuGroup[] = [
       // FK-020: Pénztár Törzs Adatbázis lista (olvasás: foertektar/helyettes, belso_ellenor, ugyvezeto).
       { path: "/admin/branches", label: "Pénztár Törzs Adatbázis", icon: Building2, canonicalRoles: ["foertektar", "belso_ellenor", "ugyvezeto"] },
       { path: "/workers", label: "Dolgozók", icon: Users },
+      // #954 four-eyes előfeltétel: supervisor sztornó-jóváhagyó lista (backend
+      // @PreAuthorize SUPERVISOR/MANAGER/ADMIN a hiteles enforcement).
+      { path: "/stornos/approvals", label: "Sztornó jóváhagyások", icon: ClipboardCheck, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
       { path: "/employees", label: "HR (munkavállalók)", icon: Users },
       { path: "/attendance", label: "Munkaidő nyilvántartás", icon: Users },
       { path: "/licenses", label: "Engedélyek", icon: Shield },

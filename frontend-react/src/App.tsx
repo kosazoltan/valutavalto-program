@@ -70,6 +70,7 @@ const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'))
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'))
 const PenztarSettingsPage = lazy(() => import('./pages/settings/PenztarSettingsPage'))
 const StornoPage = lazy(() => import('./pages/stornos/StornoPage'))
+const StornoApprovalListPage = lazy(() => import('./pages/stornos/StornoApprovalListPage'))
 const RepresentativeListPage = lazy(() => import('./pages/representatives/RepresentativeListPage'))
 const RepresentativeCreatePage = lazy(() => import('./pages/representatives/RepresentativeCreatePage'))
 const RepresentativeDetailPage = lazy(() => import('./pages/representatives/RepresentativeDetailPage'))
@@ -507,6 +508,10 @@ export default function App() {
           <Route path="/transactions/conversion" element={<ConversionPage />} />
           <Route path="/transactions/:id" element={<TransactionPage />} />
           <Route path="/transactions/:id/storno" element={<StornoPage />} />
+          {/* #954 four-eyes előfeltétel: supervisor sztornó-jóváhagyó lista. A backend
+              @PreAuthorize (SUPERVISOR/MANAGER/ADMIN) a hiteles enforcement (a /workers
+              mintája szerint route-szinten nem gatelünk); a menü szerepkör szerint rejti. */}
+          <Route path="/stornos/approvals" element={<StornoApprovalListPage />} />
           
           {/* Customers */}
           <Route path="/customers" element={<CustomerListPage />} />

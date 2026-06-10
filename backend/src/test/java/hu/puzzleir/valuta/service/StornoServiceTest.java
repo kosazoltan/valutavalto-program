@@ -557,4 +557,35 @@ class StornoServiceTest {
         assertThat(dto).isNotNull();
         verify(stornoApprovalRepository).save(any());
     }
+
+    @Test
+    @DisplayName("Pending jovahagyo-lista: branch-izolalt lekeres + megjelenitesi mezok (workerName, receiptNumber, createdAt)")
+    void getPendingApprovals_branchScoped_withDisplayFields() {
+        UUID approvalId = UUID.randomUUID();
+        StornoApproval pending = buildApprovalRequestedBy(approvalId, WORKER_ID);
+        pending.setTransaction(Transaction.builder().id(100L).receiptNumber("V0316-00001").build());
+        pending.setCreatedAt(java.time.LocalDateTime.of(2026, 6, 10, 9, 0));
+        when(stornoApprovalRepository.findPendingByBranch(BRANCH_ID))
+                .thenReturn(java.util.List.of(pending));
+
+        java.util.List<StornoApprovalDto> result = stornoService.getPendingApprovals();
+
+        // A lekérés a security-context branch-ével történik (multi-tenant izoláció)
+        verify(stornoApprovalRepository).findPendingByBranch(BRANCH_ID);
+        assertThat(result).hasSize(1);
+        StornoApprovalDto dto = result.get(0);
+        assertThat(dto.getWorkerName()).isEqualTo("Kerelmezo");
+        assertThat(dto.getReceiptNumber()).isEqualTo("V0316-00001");
+        assertThat(dto.getCreatedAt()).isEqualTo(java.time.LocalDateTime.of(2026, 6, 10, 9, 0));
+        assertThat(dto.getRequestReason()).isEqualTo("teszt");
+    }
+
+    @Test
+    @DisplayName("Pending jovahagyo-lista: ures branch -> ures lista (nem null)")
+    void getPendingApprovals_emptyBranch_returnsEmptyList() {
+        when(stornoApprovalRepository.findPendingByBranch(BRANCH_ID))
+                .thenReturn(java.util.List.of());
+
+        assertThat(stornoService.getPendingApprovals()).isEmpty();
+    }
 }

@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -59,6 +60,18 @@ public class StornoController {
         Long workerId = SecurityUtils.getCurrentWorkerId();
         StornoApprovalDto result = stornoService.requestApproval(transactionId, workerId, reason);
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Függő (PENDING) sztornó-jóváhagyási kérések listája — supervisor jóváhagyó-lista.
+     * Branch-izolált (a hívó security-contextje szerint).
+     *
+     * GET /api/v1/stornos/approvals/pending
+     */
+    @GetMapping("/approvals/pending")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<List<StornoApprovalDto>> getPendingApprovals() {
+        return ResponseEntity.ok(stornoService.getPendingApprovals());
     }
 
     /**

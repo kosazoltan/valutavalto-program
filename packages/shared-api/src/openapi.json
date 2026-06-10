@@ -5252,6 +5252,29 @@
         }
       }
     },
+    "/api/v1/stornos/approvals/pending": {
+      "get": {
+        "tags": [
+          "storno-controller"
+        ],
+        "operationId": "getPendingApprovals",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StornoApprovalDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stamps/receive": {
       "post": {
         "tags": [
@@ -33553,6 +33576,9 @@
           "approvalStatusDid": {
             "type": "string"
           },
+          "approvalStatusCode": {
+            "type": "string"
+          },
           "requestReason": {
             "type": "string"
           },
@@ -33563,6 +33589,16 @@
             "type": "string"
           },
           "approvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "workerName": {
+            "type": "string"
+          },
+          "receiptNumber": {
+            "type": "string"
+          },
+          "createdAt": {
             "type": "string",
             "format": "date-time"
           }

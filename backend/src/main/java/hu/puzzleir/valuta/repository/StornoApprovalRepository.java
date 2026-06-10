@@ -34,4 +34,14 @@ public interface StornoApprovalRepository extends JpaRepository<StornoApproval, 
      */
     @Query("SELECT sa FROM StornoApproval sa WHERE sa.transaction.id = :transactionId")
     List<StornoApproval> findByTransactionId(@Param("transactionId") Long transactionId);
+
+    /**
+     * Iroda függő (PENDING) sztornó-jóváhagyási kérései — a supervisor jóváhagyó-listájához.
+     * Legrégebbi elöl (FIFO feldolgozás).
+     */
+    @Query("SELECT sa FROM StornoApproval sa " +
+           "WHERE sa.branch.id = :branchId " +
+           "AND sa.approvalStatus.code = 'PENDING' " +
+           "ORDER BY sa.createdAt ASC")
+    List<StornoApproval> findPendingByBranch(@Param("branchId") UUID branchId);
 }
