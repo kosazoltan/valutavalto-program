@@ -9,6 +9,7 @@ import {
   recordLocalAuditEvent,
   saveAndSyncPendingStorno,
 } from '../../utils/electronTransactions'
+import StornoPinApprovalModal from '../../components/auth/StornoPinApprovalModal'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
@@ -29,6 +30,9 @@ export default function StornoPage() {
   const [reason, setReason] = useState('')
   const [customRate, setCustomRate] = useState<string>('')
   const [paymentMethod, setPaymentMethod] = useState<string>('CASH')
+  // Telefonos supervisor-PIN jóváhagyás (egyszemélyes iroda): a PENDING kéréshez
+  // a pénztáros a helyszínről, telefonon bediktált PIN-nel kérhet jóváhagyást.
+  const [showPinApproval, setShowPinApproval] = useState(false)
 
   const loadTransaction = useCallback(async (): Promise<void> => {
     try {
@@ -313,10 +317,32 @@ export default function StornoPage() {
                   <strong>{t('stornos.elutasitasOka')}</strong> {approval.rejectionReason}
                 </p>
               )}
+              {/* Egyszemélyes iroda: telefonos supervisor-PIN jóváhagyás a PENDING kéréshez */}
+              {approval.approvalStatusCode !== 'APPROVED' && approval.approvalStatusCode !== 'REJECTED' && (
+                <button
+                  onClick={() => setShowPinApproval(true)}
+                  className="form-button-primary mt-2"
+                  disabled={loading}
+                >
+                  Telefonos jóváhagyás (supervisor PIN)
+                </button>
+              )}
             </div>
           </div>
         </div>
       )}
+
+      <StornoPinApprovalModal
+        open={showPinApproval && !!approval}
+        currentWorkerId={Number(workerId)}
+        approvalId={approval?.id ?? ''}
+        onApproved={(updated) => {
+          setApproval(updated)
+          setShowPinApproval(false)
+          setError(null)
+        }}
+        onCancel={() => setShowPinApproval(false)}
+      />
 
       {/* Storno Form */}
       {(!checkResult.requiresApproval || approval?.approvalStatusCode === 'APPROVED') && (

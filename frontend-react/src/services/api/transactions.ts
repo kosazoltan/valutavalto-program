@@ -753,6 +753,24 @@ export const stornoApi = {
     const response = await api.get<StornoApproval[]>('/stornos/approvals/pending')
     return response.data
   },
+  // Telefonos supervisor-PIN jóváhagyás (egyszemélyes iroda): a pénztáros sessionjéből
+  // hívható; a PIN BODY-ban megy (nem query-paramban — access-log védelem).
+  approveByPin: async (
+    approvalId: string,
+    approverWorkerId: number,
+    pin: string,
+    approved: boolean,
+    reason?: string
+  ): Promise<StornoApproval> => {
+    const response = await api.post<StornoApproval>('/stornos/approve-by-pin', {
+      approvalId,
+      approverWorkerId,
+      pin,
+      approved,
+      reason,
+    })
+    return response.data
+  },
   execute: async (request: StornoRequest, workerId: string): Promise<Transaction> => {
     const response = await api.post<Transaction>('/stornos/execute', request, {
       params: { workerId }

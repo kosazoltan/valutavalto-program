@@ -1670,6 +1670,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stornos/approve-by-pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["approveByPin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stornos/approvals/pending": {
         parameters: {
             query?: never;
@@ -1677,7 +1693,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getPendingApprovals"];
+        get: operations["getPendingStornoApprovals"];
         put?: never;
         post?: never;
         delete?: never;
@@ -13878,6 +13894,15 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
         };
+        StornoPinApprovalRequestDto: {
+            /** Format: uuid */
+            approvalId: string;
+            /** Format: int64 */
+            approverWorkerId: number;
+            pin: string;
+            approved: boolean;
+            reason?: string;
+        };
         StornoRequestDto: {
             transactionId?: string;
             reason?: string;
@@ -21937,7 +21962,31 @@ export interface operations {
             };
         };
     };
-    getPendingApprovals: {
+    approveByPin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StornoPinApprovalRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StornoApprovalDto"];
+                };
+            };
+        };
+    };
+    getPendingStornoApprovals: {
         parameters: {
             query?: never;
             header?: never;

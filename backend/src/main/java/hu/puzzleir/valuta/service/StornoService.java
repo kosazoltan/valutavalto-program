@@ -30,11 +30,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import hu.puzzleir.valuta.entity.WorkerRole;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -57,6 +61,11 @@ public class StornoService {
     private final NotificationService notificationService;
     private final ApplicationEventPublisher eventPublisher;
     private final SystemParameterService systemParameterService;
+    private final SupervisorPinService supervisorPinService;
+
+    /** Telefonos PIN-jóváhagyásra jogosult szerepek (az AML felsővezetői jóváhagyás mintája). */
+    private static final Set<WorkerRole> SENIOR_APPROVER_ROLES =
+            EnumSet.of(WorkerRole.SUPERVISOR, WorkerRole.MANAGER, WorkerRole.ADMIN);
 
     // Napi sztornó limit supervisor jóváhagyás nélkül — iroda szinten
     private static final int DAILY_STORNO_LIMIT_BRANCH = 3;
@@ -347,6 +356,79 @@ public class StornoService {
                 "Sajat sztorno-keres nem hagyhato jova sajat maga altal — fuggetlen jovahagyo szukseges (4-szem-elv).");
         }
 
+        return applyApprovalDecision(approval, approver, approved, reason);
+    }
+
+    /**
+     * Sztornó jóváhagyása TELEFONOS supervisor-PIN-nel — egyszemélyes iroda flow.
+     *
+     * <p>Üzleti döntés (2026-06-10): a valutaváltó irodák jellemzően egyszemélyesek, a
+     * supervisor-jóváhagyás telefonon keresztül, PIN-kóddal történik. A pénztáros (CASHIER)
+     * sessionjéből hívható; az AML felsővezetői jóváhagyás (AmlApprovalController.verify-approver)
+     * mintáját követi:</p>
+     * <ol>
+     *   <li>4-szem-elv KEMÉNYEN (nem flag-gated): a telefonos jóváhagyó nem lehet a kérelmező
+     *       ÉS nem lehet a bejelentkezett dolgozó — a távoli jóváhagyás lényege a függetlenség;</li>
+     *   <li>jogosultság: a jóváhagyó az aktuális céghez tartozó SUPERVISOR/MANAGER/ADMIN;</li>
+     *   <li>jelenlét-bizonyíték: a jóváhagyó supervisor-PIN-je helyes
+     *       (SupervisorPinService — BCrypt + lockout + audit).</li>
+     * </ol>
+     */
+    public StornoApprovalDto approveByPin(UUID approvalId, Long approverWorkerId, String pin,
+                                          boolean approved, String reason,
+                                          String clientIp, String userAgent) {
+        StornoApproval approval = stornoApprovalRepository.findById(approvalId)
+                .orElseThrow(() -> new ResourceNotFoundException("Jóváhagyási kérés nem található: " + approvalId));
+
+        // IDOR védelem: csak saját iroda jóváhagyási kérése kezelhető
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        if (!approval.getBranch().getId().equals(branchId)) {
+            throw new ValidationException("Nincs jogosultság más iroda jóváhagyási kéréséhez!");
+        }
+
+        if (approverWorkerId == null || pin == null || pin.isBlank()) {
+            throw new ValidationException("Jóváhagyó és PIN megadása kötelező a telefonos jóváhagyáshoz!");
+        }
+
+        // 4-szem-elv KEMÉNYEN: a telefonos jóváhagyó != kérelmező és != bejelentkezett dolgozó.
+        if (approval.getWorker() != null && approval.getWorker().getId().equals(approverWorkerId)) {
+            throw new ValidationException(
+                "A telefonos jóváhagyó nem lehet a sztornó-kérés kérelmezője (4-szem-elv).");
+        }
+        Long currentWorkerId = SecurityUtils.getCurrentWorkerId();
+        if (currentWorkerId != null && currentWorkerId.equals(approverWorkerId)) {
+            throw new ValidationException(
+                "A telefonos jóváhagyó nem lehet a bejelentkezett dolgozó (4-szem-elv).");
+        }
+
+        // Jogosultság: az aktuális céghez tartozó SUPERVISOR/MANAGER/ADMIN (AML-minta).
+        Worker approver = workerRepository.findById(approverWorkerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Jóváhagyó dolgozó nem található: " + approverWorkerId));
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (approver.getCompany() == null || !companyId.equals(approver.getCompany().getId())) {
+            throw new ValidationException("A jóváhagyó nem ehhez a céghez tartozik.");
+        }
+        if (approver.getRole() == null || !SENIOR_APPROVER_ROLES.contains(approver.getRole())) {
+            throw new ValidationException(
+                "A kiválasztott dolgozó nem jogosult sztornó-jóváhagyásra (supervisor/manager/admin szükséges).");
+        }
+
+        // PIN-jelenlét bizonyítása (lockout + audit a SupervisorPinService-ben; lockout esetén dob).
+        boolean pinOk = supervisorPinService.verifyPin(approverWorkerId, pin, clientIp, userAgent);
+        if (!pinOk) {
+            throw new ValidationException("Hibás supervisor PIN.");
+        }
+
+        log.info("Sztornó TELEFONOS PIN-jóváhagyás: approvalId={}, jóváhagyó={}, rögzítő={}",
+                approvalId, approverWorkerId, currentWorkerId);
+        return applyApprovalDecision(approval, approver, approved, reason);
+    }
+
+    /**
+     * Közös döntés-alkalmazás: status dictionary + jóváhagyó + időbélyeg + mentés.
+     */
+    private StornoApprovalDto applyApprovalDecision(StornoApproval approval, Worker approver,
+                                                    boolean approved, String reason) {
         approval.setApprovedByWorker(approver);
         approval.setApprovedAt(LocalDateTime.now());
 
@@ -362,7 +444,8 @@ public class StornoService {
         }
 
         StornoApproval saved = stornoApprovalRepository.save(approval);
-        log.info("Sztornó jóváhagyás {}: approvalId={}, által={}", approved ? "ELFOGADVA" : "ELUTASÍTVA", approvalId, approvedByWorkerId);
+        log.info("Sztornó jóváhagyás {}: approvalId={}, által={}",
+                approved ? "ELFOGADVA" : "ELUTASÍTVA", saved.getId(), approver.getId());
 
         return toApprovalDto(saved);
     }

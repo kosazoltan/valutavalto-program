@@ -50,6 +50,7 @@ class StornoServiceTest {
     @Mock private NotificationService notificationService;
     @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
     @Mock private SystemParameterService systemParameterService;
+    @Mock private SupervisorPinService supervisorPinService;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
     private static final UUID COMPANY_ID = UUID.randomUUID();
@@ -587,5 +588,133 @@ class StornoServiceTest {
                 .thenReturn(java.util.List.of());
 
         assertThat(stornoService.getPendingApprovals()).isEmpty();
+    }
+
+    // ─── Telefonos supervisor-PIN jovahagyas (egyszemelyes iroda uzleti dontes) ───
+
+    private Worker buildSeniorApprover(Long workerId) {
+        Worker approver = new Worker();
+        approver.setId(workerId);
+        approver.setName("Telefonos Supervisor");
+        approver.setRole(WorkerRole.SUPERVISOR);
+        Company company = new Company();
+        company.setId(COMPANY_ID);
+        approver.setCompany(company);
+        return approver;
+    }
+
+    @Test
+    @DisplayName("PIN-jovahagyas OK: tavoli supervisor helyes PIN-nel -> APPROVED")
+    void approveByPin_validRemoteSupervisor_approves() {
+        UUID approvalId = UUID.randomUUID();
+        Long remoteApproverId = 99L;
+        when(stornoApprovalRepository.findById(approvalId))
+                .thenReturn(Optional.of(buildApprovalRequestedBy(approvalId, WORKER_ID)));
+        when(workerRepository.findById(remoteApproverId))
+                .thenReturn(Optional.of(buildSeniorApprover(remoteApproverId)));
+        when(supervisorPinService.verifyPin(eq(remoteApproverId), eq("123456"), any(), any()))
+                .thenReturn(true);
+        stubApprovedDictionary();
+
+        StornoApprovalDto dto = stornoService.approveByPin(
+                approvalId, remoteApproverId, "123456", true, null, "1.2.3.4", "test-ua");
+
+        assertThat(dto).isNotNull();
+        verify(supervisorPinService).verifyPin(eq(remoteApproverId), eq("123456"), any(), any());
+        verify(stornoApprovalRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("PIN-jovahagyas: hibas PIN -> ValidationException, nincs mentes")
+    void approveByPin_wrongPin_throws() {
+        UUID approvalId = UUID.randomUUID();
+        Long remoteApproverId = 99L;
+        when(stornoApprovalRepository.findById(approvalId))
+                .thenReturn(Optional.of(buildApprovalRequestedBy(approvalId, WORKER_ID)));
+        when(workerRepository.findById(remoteApproverId))
+                .thenReturn(Optional.of(buildSeniorApprover(remoteApproverId)));
+        when(supervisorPinService.verifyPin(eq(remoteApproverId), any(), any(), any()))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> stornoService.approveByPin(
+                approvalId, remoteApproverId, "000000", true, null, "1.2.3.4", "test-ua"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Hibás supervisor PIN");
+
+        verify(stornoApprovalRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("PIN-jovahagyas 4-szem KEMENYEN: jovahagyo = kerelmezo -> tiltva (flag nelkul is)")
+    void approveByPin_approverIsRequester_throws() {
+        UUID approvalId = UUID.randomUUID();
+        when(stornoApprovalRepository.findById(approvalId))
+                .thenReturn(Optional.of(buildApprovalRequestedBy(approvalId, 99L)));
+
+        assertThatThrownBy(() -> stornoService.approveByPin(
+                approvalId, 99L, "123456", true, null, "1.2.3.4", "test-ua"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("kérelmezője");
+
+        verify(supervisorPinService, never()).verifyPin(any(), any(), any(), any());
+        verify(stornoApprovalRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("PIN-jovahagyas 4-szem KEMENYEN: jovahagyo = bejelentkezett dolgozo -> tiltva")
+    void approveByPin_approverIsCurrentWorker_throws() {
+        UUID approvalId = UUID.randomUUID();
+        // A kerelmezo masvalaki (50L), de a jovahagyo a bejelentkezett WORKER_ID lenne
+        when(stornoApprovalRepository.findById(approvalId))
+                .thenReturn(Optional.of(buildApprovalRequestedBy(approvalId, 50L)));
+
+        assertThatThrownBy(() -> stornoService.approveByPin(
+                approvalId, WORKER_ID, "123456", true, null, "1.2.3.4", "test-ua"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("bejelentkezett");
+
+        verify(supervisorPinService, never()).verifyPin(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("PIN-jovahagyas: nem-senior szerepkoru jovahagyo -> tiltva")
+    void approveByPin_nonSeniorApprover_throws() {
+        UUID approvalId = UUID.randomUUID();
+        Long remoteApproverId = 99L;
+        when(stornoApprovalRepository.findById(approvalId))
+                .thenReturn(Optional.of(buildApprovalRequestedBy(approvalId, WORKER_ID)));
+        Worker cashierApprover = buildSeniorApprover(remoteApproverId);
+        cashierApprover.setRole(WorkerRole.CASHIER);
+        when(workerRepository.findById(remoteApproverId))
+                .thenReturn(Optional.of(cashierApprover));
+
+        assertThatThrownBy(() -> stornoService.approveByPin(
+                approvalId, remoteApproverId, "123456", true, null, "1.2.3.4", "test-ua"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("nem jogosult");
+
+        verify(supervisorPinService, never()).verifyPin(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("PIN-jovahagyas: mas ceghez tartozo jovahagyo -> tiltva (multi-tenant)")
+    void approveByPin_approverFromOtherCompany_throws() {
+        UUID approvalId = UUID.randomUUID();
+        Long remoteApproverId = 99L;
+        when(stornoApprovalRepository.findById(approvalId))
+                .thenReturn(Optional.of(buildApprovalRequestedBy(approvalId, WORKER_ID)));
+        Worker foreignApprover = buildSeniorApprover(remoteApproverId);
+        Company otherCompany = new Company();
+        otherCompany.setId(UUID.randomUUID());
+        foreignApprover.setCompany(otherCompany);
+        when(workerRepository.findById(remoteApproverId))
+                .thenReturn(Optional.of(foreignApprover));
+
+        assertThatThrownBy(() -> stornoService.approveByPin(
+                approvalId, remoteApproverId, "123456", true, null, "1.2.3.4", "test-ua"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("céghez");
+
+        verify(supervisorPinService, never()).verifyPin(any(), any(), any(), any());
     }
 }

@@ -27,16 +27,27 @@ DB-manipulációval volt zárható.
 | OpenAPI | `openapi.json` + `openapi.d.ts` szinkron (új path + DTO-mezők + a hiányzó `approvalStatusCode` pótlása) |
 | Teszt | `StornoServiceTest`: pending-lista branch-izoláció + megjelenítési mezők + üres-lista eset |
 
-## Flag-élesítési döntés — TOVÁBBRA IS NYITOTT (üzleti döntés)
+## Flag-élesítési döntés — MEGSZÜLETETT és VÉGREHAJTVA (2026-06-10, 2. kör)
 
-A `STORNO_APPROVAL_FOUR_EYES_ENFORCEMENT` flaget ez a kör **NEM kapcsolja be**.
-A V305-ben dokumentált DEFER „külön döntés"-t ír elő, és van valós üzleti
-kockázat: **egyszemélyes kis irodában** (ahol a pénztáros egyben a supervisor)
-a 4-szem-elv a napi limit feletti sztornót teljesen blokkolná — független
-jóváhagyó hiányában.
+**Üzleti döntés (Kósa Zoltán):** „A valutaváltóirodák általában egyszemélyes
+valutaváltók, így a telefonon keresztül történő supervisor jóváhagyás pin kóddal
+működhet, működjön. Ez volt a fő üzleti cél és döntés ez esetben."
 
-Élesítési előfeltétel (üzleti): döntés arról, hogy kis irodákban a központi
-(távoli) supervisor jóváhagyása elegendő-e — a jóváhagyó-lista branch-izolált,
-tehát ehhez a központi supervisor branch-hozzárendelésének kérdését is rendezni
-kell. A technikai evidence-hiány ezzel a körrel megszűnt; a flag egy V306-os,
-V305-mintájú idempotens migrációval élesíthető, amikor az üzleti döntés megvan.
+A kód-felderítés kimutatta: a telefonos PIN-minta az **AML felsővezetői
+jóváhagyásnál már működött** (`AmlApprovalController.verify-approver` —
+pénztáros-sessionből hívható, 4-szem + szerepkör + cég + PIN + single-use grant),
+de a **sztornó-jóváhagyásnál HIÁNYZOTT**: a `POST /stornos/approve` supervisor-
+sessiont követelt, a `/supervisor-pin/verify` szintén SUPERVISOR+-gated — egyik
+sem volt hívható pénztáros-sessionből (az AmlApprovalController javadoc-ja ezt
+explicit dokumentálta).
+
+Pótolt elemek (2. kör):
+| Réteg | Változás |
+|---|---|
+| Service | `StornoService.approveByPin` — 4-szem KEMÉNYEN (jóváhagyó ≠ kérelmező ÉS ≠ bejelentkezett), SUPERVISOR/MANAGER/ADMIN + cég-check (AML-minta), `SupervisorPinService.verifyPin` (BCrypt + 3-hibás/5-perc lockout + audit) |
+| Controller | `POST /api/v1/stornos/approve-by-pin` — `isAuthenticated()` (pénztáros hívhatja); a PIN BODY-ban (access-log védelem) |
+| DTO | `StornoPinApprovalRequestDto` (validált) |
+| Frontend | `StornoPinApprovalModal` (AmlApproverModal-minta: jóváhagyó-választó + PIN auto-submit) + StornoPage „Telefonos jóváhagyás (supervisor PIN)" gomb a PENDING kérésnél |
+| Migráció | **V306**: `STORNO_APPROVAL_FOUR_EYES_ENFORCEMENT` = true (V305-minta, idempotens) — az egyszemélyes-iroda blokkoló a PIN-úttal megszűnt |
+| OpenAPI | path + DTO szinkron; a sztornó pending-lista operationId-ütközése a rate-approvals-szal feloldva (`getPendingStornoApprovals`) |
+| Teszt | `StornoServiceTest`: +6 PIN-teszt (helyes PIN → APPROVED; hibás PIN; jóváhagyó=kérelmező; jóváhagyó=bejelentkezett; nem-senior szerepkör; idegen cég — mind tiltva) |

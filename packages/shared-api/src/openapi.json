@@ -5252,12 +5252,42 @@
         }
       }
     },
+    "/api/v1/stornos/approve-by-pin": {
+      "post": {
+        "tags": [
+          "storno-controller"
+        ],
+        "operationId": "approveByPin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StornoPinApprovalRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/StornoApprovalDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stornos/approvals/pending": {
       "get": {
         "tags": [
           "storno-controller"
         ],
-        "operationId": "getPendingApprovals",
+        "operationId": "getPendingStornoApprovals",
         "responses": {
           "200": {
             "description": "OK",
@@ -33601,6 +33631,34 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "StornoPinApprovalRequestDto": {
+        "type": "object",
+        "required": [
+          "approvalId",
+          "approverWorkerId",
+          "pin",
+          "approved"
+        ],
+        "properties": {
+          "approvalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "approverWorkerId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pin": {
+            "type": "string"
+          },
+          "approved": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
           }
         }
       },
