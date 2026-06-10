@@ -808,12 +808,17 @@ public class BranchService {
         return after;
     }
 
-    /** FK-022: worker-id az audit loghoz — rendszer-kontextusban (nincs auth) null. */
+    /**
+     * FK-022: worker-id az audit loghoz — rendszer-kontextusban (nincs auth) null.
+     * Sourcery P2: a kivételt nem nyeljük le némán — WARN-on látható marad egy esetleges
+     * valódi security-context hiba, miközben az audit nem-fatális marad.
+     */
     private static String currentWorkerIdOrNull() {
         try {
             Long workerId = SecurityUtils.getCurrentWorkerId();
             return workerId != null ? workerId.toString() : null;
         } catch (RuntimeException e) {
+            log.warn("Audit worker-id feloldás sikertelen (rendszer-kontextus?): {}", e.getMessage());
             return null;
         }
     }
@@ -823,17 +828,34 @@ public class BranchService {
         try {
             return SecurityUtils.getCurrentWorkerCode();
         } catch (RuntimeException e) {
+            log.warn("Audit worker-kód feloldás sikertelen (rendszer-kontextus?): {}", e.getMessage());
             return null;
         }
     }
 
-    /** FK-022: audit-mező JSON-serializálás — hiba esetén nem buktatja a mentést (toString-fallback). */
+    /**
+     * FK-022: audit-mező JSON-serializálás — hiba esetén nem buktatja a mentést.
+     * Sourcery P2: a fallback nem a semmitmondó Object.toString(), hanem egy minimális,
+     * de értelmezhető kulcsmező-pillanatkép (id/code/name), hogy az audit trail hiba
+     * esetén is használható maradjon.
+     */
     private String toJsonSafe(BranchDto dto) {
         try {
             return objectMapper.writeValueAsString(dto);
         } catch (JsonProcessingException e) {
             log.warn("Branch audit JSON serialization failed: {}", e.getMessage());
-            return String.valueOf(dto);
+            try {
+                java.util.Map<String, Object> fallback = new java.util.LinkedHashMap<>();
+                fallback.put("id", dto.getId());
+                fallback.put("code", dto.getCode());
+                fallback.put("name", dto.getName());
+                return objectMapper.writeValueAsString(fallback);
+            } catch (JsonProcessingException inner) {
+                // Copilot P2: az oldValue/newValue mindig parse-olható JSON marad — a végső
+                // fallback sem nyers toString, hanem garantáltan JSON error-wrapper.
+                log.warn("Branch audit fallback serialization failed: {}", inner.getMessage());
+                return "{\"auditSerializationError\":\"" + inner.getClass().getSimpleName() + "\"}";
+            }
         }
     }
 

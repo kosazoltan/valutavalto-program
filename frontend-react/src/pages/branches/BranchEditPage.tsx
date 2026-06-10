@@ -137,9 +137,11 @@ export default function BranchEditPage() {
     event.preventDefault()
     if (!form || !branch) return
     setError(null)
-    // FR-10 / NFR-3: kötelező mezők — név, pontos cím (a kód read-only, a terület előtöltött).
-    if (!form.name.trim() || !form.address.trim()) {
-      setError('A megjelenítendő név és a pontos cím megadása kötelező.')
+    // FR-10 / NFR-3: kötelező mezők — név, pontos cím, területi besorolás (a kód read-only).
+    // Copilot #1076: legacy/hiányos irodánál a region üres lehet — ilyenkor a mentéshez
+    // kötelező területet választani, hogy a törzsadat ne maradjon besorolás nélkül.
+    if (!form.name.trim() || !form.address.trim() || !form.regionCode) {
+      setError('A megjelenítendő név, a pontos cím és a területi besorolás megadása kötelező.')
       return
     }
     // FR-4/FR-5: státuszváltás mindkét irányban megerősítő kérdéssel.
@@ -177,7 +179,11 @@ export default function BranchEditPage() {
       </div>
 
       {error && (
-        <div className="form-panel border border-red-300 bg-red-50 text-red-700 flex items-start gap-2">
+        <div
+          className="form-panel border border-red-300 bg-red-50 text-red-700 flex items-start gap-2"
+          role="alert"
+          aria-live="assertive"
+        >
           <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
           <span>{error}</span>
         </div>
@@ -259,7 +265,7 @@ export default function BranchEditPage() {
           {/* 3. Területi besorolás */}
           <Section title="3. Területi besorolás">
             <label className="block">
-              <span className="form-label">Terület / Régió hozzárendelése</span>
+              <span className="form-label">Terület / Régió hozzárendelése <span className="text-red-600">*</span></span>
               <select className="form-input" value={form.regionCode} disabled={disabled}
                 onChange={(e) => patch({ regionCode: e.target.value })}
                 aria-label="Terület / Régió hozzárendelése">

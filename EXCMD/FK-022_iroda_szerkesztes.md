@@ -64,7 +64,7 @@ A Központi munkaállomás Pénztár Törzs Adatbázis moduljában meglévő iro
 - SQLite mirror: NEM érintett ebben az FK-ban (FK-024 hatóköre)
 
 ## 6.b Biztonsági érintettség (security-standards.md hivatkozással)
-- [x] Új jogosultság / szerep (§2 – UPDATE jog: csak Főértéktáros)
+- [x] Új jogosultság / szerep (§2 – UPDATE jog: Admin / Főértéktáros / Ügyvezető, a §3 RBAC-mátrixszal és a meglévő @PreAuthorize-zal összhangban)
 - [ ] PII / pénzügyi adat (§3 – email, telefon nem pénzügyi PII)
 - [x] Cross-tenant teszt szükséges (§1)
 - [x] Új audit-esemény (§3 KAT: VALID action=UPDATE entity=Branch, before+after value)

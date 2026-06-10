@@ -187,6 +187,16 @@ describe('BranchEditPage — FK-022 Iroda adatainak szerkesztése', () => {
     expect(mockUpdate).not.toHaveBeenCalled()
   })
 
+  it('NFR-3: üres területi besorolás → validációs hiba, nincs mentés (Copilot #1076)', async () => {
+    renderPage()
+    await waitLoaded()
+    fireEvent.change(screen.getByLabelText(/Terület \/ Régió/), { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: /Mentés/ }))
+
+    await waitFor(() => expect(screen.getByText(/területi besorolás megadása kötelező/)).toBeInTheDocument())
+    expect(mockUpdate).not.toHaveBeenCalled()
+  })
+
   it('Betöltési hiba esetén hibaüzenet jelenik meg, a form nem renderelődik', async () => {
     mockGetById.mockRejectedValue(new Error('Fiók nem található'))
     renderPage()

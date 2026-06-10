@@ -57,8 +57,12 @@ const REGIONS = [
 
 type PutCapture = { body: Record<string, unknown> | null }
 
-/** Mockolt API + login. A PUT /branches/{id} body-ját a capture-be írja. */
-async function loginWithBranchMocks(page: Page, capture: PutCapture, branchOverride?: Partial<typeof BRANCH>): Promise<boolean> {
+/**
+ * Mockolt API + login. A PUT /branches/{id} body-ját a capture-be írja.
+ * Copilot #1076: az API teljesen mockolt, így a login determinisztikus — hard assert,
+ * nem graceful skip (a skip elrejtené a valódi regressziót).
+ */
+async function loginWithBranchMocks(page: Page, capture: PutCapture, branchOverride?: Partial<typeof BRANCH>): Promise<void> {
   const branch = { ...BRANCH, ...branchOverride }
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
@@ -125,44 +129,33 @@ async function loginWithBranchMocks(page: Page, capture: PutCapture, branchOverr
   await page.locator('input[type="password"]').fill('1234')
   await page.getByRole('button', { name: /Bejelentkezés/i }).click()
 
-  try {
-    await expect(page).toHaveURL(/\/central-workstation$/, { timeout: 8000 })
-    return true
-  } catch {
-    return false
-  }
+  await expect(page).toHaveURL(/\/central-workstation$/, { timeout: 15000 })
 }
 
 /**
  * Lista → Szerkesztés gomb → szerkesztő oldal. Kliens-oldali navigáció a menün át
  * (a page.goto teljes reload-ja elveszítené a memóriabeli auth-state-et → örök "Betöltés...").
- * False = nem jutott el (graceful skip a hívóban).
+ * Hard assertek: ha bármely lépés elakad, a teszt FAIL-el (nem skip).
  */
-async function openEditPage(page: Page, opts?: { showInactive?: boolean }): Promise<boolean> {
-  try {
-    // FONTOS: isVisible() nem vár — waitFor kell, hogy a sidebar/lista kirenderelődjön.
-    const menuLink = page.getByRole('link', { name: /Pénztár Törzs Adatbázis/ })
-    await menuLink.waitFor({ state: 'visible', timeout: 8000 })
-    await menuLink.click()
-    await expect(page).toHaveURL(/\/admin\/branches$/, { timeout: 8000 })
-    if (opts?.showInactive) {
-      await page.getByRole('checkbox', { name: /Inaktívak is/ }).check()
-    }
-    const editButton = page.getByRole('button', { name: /Szerkesztés/ }).first()
-    await editButton.waitFor({ state: 'visible', timeout: 8000 })
-    await editButton.click()
-    await expect(page).toHaveURL(/\/admin\/branches\/b-1\/edit$/, { timeout: 8000 })
-    return true
-  } catch {
-    return false
+async function openEditPage(page: Page, opts?: { showInactive?: boolean }): Promise<void> {
+  // FONTOS: isVisible() nem vár — waitFor kell, hogy a sidebar/lista kirenderelődjön.
+  const menuLink = page.getByRole('link', { name: /Pénztár Törzs Adatbázis/ })
+  await menuLink.waitFor({ state: 'visible', timeout: 15000 })
+  await menuLink.click()
+  await expect(page).toHaveURL(/\/admin\/branches$/, { timeout: 15000 })
+  if (opts?.showInactive) {
+    await page.getByRole('checkbox', { name: /Inaktívak is/ }).check()
   }
+  const editButton = page.getByRole('button', { name: /Szerkesztés/ }).first()
+  await editButton.waitFor({ state: 'visible', timeout: 15000 })
+  await editButton.click()
+  await expect(page).toHaveURL(/\/admin\/branches\/b-1\/edit$/, { timeout: 15000 })
 }
 
 test('FK-022 FR-1/FR-3: a szerkesztő form előtöltve nyílik, a kód read-only', async ({ page }) => {
   const capture: PutCapture = { body: null }
-  const loggedIn = await loginWithBranchMocks(page, capture)
-  if (!loggedIn) test.skip(true, 'login nem navigált central-workstation-re — E2E graceful skip')
-  if (!(await openEditPage(page))) test.skip(true, 'szerkesztő oldal nem nyílt meg — E2E graceful skip')
+  await loginWithBranchMocks(page, capture)
+  await openEditPage(page)
 
   await expect(page.getByText('1. Alapadatok')).toBeVisible()
   await expect(page.getByLabel(/Megjelenítendő név/)).toHaveValue('Szeged Tesco')
@@ -175,9 +168,8 @@ test('FK-022 FR-1/FR-3: a szerkesztő form előtöltve nyílik, a kód read-only
 
 test('FK-022 FR-2/FR-6: mezőmódosítás + mentés → PUT payload + vissza a listára', async ({ page }) => {
   const capture: PutCapture = { body: null }
-  const loggedIn = await loginWithBranchMocks(page, capture)
-  if (!loggedIn) test.skip(true, 'login nem navigált central-workstation-re — E2E graceful skip')
-  if (!(await openEditPage(page))) test.skip(true, 'szerkesztő oldal nem nyílt meg — E2E graceful skip')
+  await loginWithBranchMocks(page, capture)
+  await openEditPage(page)
 
   await page.getByLabel(/Megjelenítendő név/).fill('Szeged Belváros')
   await page.getByRole('checkbox', { name: /Western Union/ }).check()
@@ -190,9 +182,8 @@ test('FK-022 FR-2/FR-6: mezőmódosítás + mentés → PUT payload + vissza a l
 
 test('FK-022 FR-4/FR-11: aktív → inaktív státuszváltás megerősítéssel, Igen → isActive=false', async ({ page }) => {
   const capture: PutCapture = { body: null }
-  const loggedIn = await loginWithBranchMocks(page, capture)
-  if (!loggedIn) test.skip(true, 'login nem navigált central-workstation-re — E2E graceful skip')
-  if (!(await openEditPage(page))) test.skip(true, 'szerkesztő oldal nem nyílt meg — E2E graceful skip')
+  await loginWithBranchMocks(page, capture)
+  await openEditPage(page)
 
   await page.getByRole('checkbox', { name: /Tartósan zárva/ }).check()
   await page.getByRole('button', { name: /^Mentés/ }).click()
@@ -207,9 +198,8 @@ test('FK-022 FR-4/FR-11: aktív → inaktív státuszváltás megerősítéssel,
 
 test('FK-022 FR-4: megerősítő kérdésnél "Nem" → nincs mentés, a form megmarad', async ({ page }) => {
   const capture: PutCapture = { body: null }
-  const loggedIn = await loginWithBranchMocks(page, capture)
-  if (!loggedIn) test.skip(true, 'login nem navigált central-workstation-re — E2E graceful skip')
-  if (!(await openEditPage(page))) test.skip(true, 'szerkesztő oldal nem nyílt meg — E2E graceful skip')
+  await loginWithBranchMocks(page, capture)
+  await openEditPage(page)
 
   await page.getByRole('checkbox', { name: /Tartósan zárva/ }).check()
   await page.getByRole('button', { name: /^Mentés/ }).click()
@@ -223,13 +213,10 @@ test('FK-022 FR-4: megerősítő kérdésnél "Nem" → nincs mentés, a form me
 
 test('FK-022 FR-5: inaktív iroda visszaaktiválása megerősítéssel → isActive=true', async ({ page }) => {
   const capture: PutCapture = { body: null }
-  const loggedIn = await loginWithBranchMocks(page, capture, { isActive: false })
-  if (!loggedIn) test.skip(true, 'login nem navigált central-workstation-re — E2E graceful skip')
+  await loginWithBranchMocks(page, capture, { isActive: false })
 
   // Az inaktív iroda a lista alapszűrőjében nem látszik — az "Inaktívak is" szűrővel érjük el (FK-020).
-  if (!(await openEditPage(page, { showInactive: true }))) {
-    test.skip(true, 'szerkesztő oldal nem nyílt meg — E2E graceful skip')
-  }
+  await openEditPage(page, { showInactive: true })
 
   // inaktív iroda → a "Tartósan zárva" előtöltve bepipálva
   await expect(page.getByRole('checkbox', { name: /Tartósan zárva/ })).toBeChecked()
