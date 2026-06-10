@@ -7798,22 +7798,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/receipts-search/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["search_1"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/rates/polling/status": {
         parameters: {
             query?: never;
@@ -17016,41 +17000,6 @@ export interface components {
             /** Format: int32 */
             lowDenominationAlerts?: number;
             balances?: components["schemas"]["CashBalance"][];
-        };
-        PageReceiptSearchResultDto: {
-            /** Format: int64 */
-            totalElements?: number;
-            /** Format: int32 */
-            totalPages?: number;
-            /** Format: int32 */
-            size?: number;
-            content?: components["schemas"]["ReceiptSearchResultDto"][];
-            /** Format: int32 */
-            number?: number;
-            sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
-            /** Format: int32 */
-            numberOfElements?: number;
-            pageable?: components["schemas"]["PageableObject"];
-            empty?: boolean;
-        };
-        ReceiptSearchResultDto: {
-            /** Format: int64 */
-            id?: number;
-            receiptNumber?: string;
-            /** Format: date */
-            transactionDate?: string;
-            transactionTime?: string;
-            transactionType?: string;
-            transactionTypeDisplay?: string;
-            currencyCode?: string;
-            currencyAmount?: number;
-            hufAmount?: number;
-            exchangeRate?: number;
-            customerName?: string;
-            cashierName?: string;
-            status?: string;
         };
         PollingStatusDto: {
             /** Format: date-time */
@@ -31859,35 +31808,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": string;
-                };
-            };
-        };
-    };
-    search_1: {
-        parameters: {
-            query: {
-                number?: string;
-                dateFrom?: string;
-                dateTo?: string;
-                type?: string;
-                minAmount?: number;
-                maxAmount?: number;
-                customer?: string;
-                pageable: components["schemas"]["Pageable"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PageReceiptSearchResultDto"];
                 };
             };
         };
