@@ -1,0 +1,55 @@
+name: Legacy Binary Analysis
+
+# Dinamikus legacy-paritás workflow (autonóm):
+#  - A nyers Anti/ legacy-fa (EXE/DLL + Pascal) gitignore-olt, NEM kerül a repóba.
+#  - Ez a workflow a `scripts/legacy-binary-analyzer.py` öntesztjét futtatja minden
+#    releváns változásnál (a kinyerő + keresztellenőrző logika nem regresszálhat),
+#    és — ha az Anti/ fa elérhető a runneren (önhostolt runner a forrással, vagy
+#    artifact-injektálás) — lefuttatja a teljes EXE→implementáció elemzést.
+#  - Forrás hiányában a teljes elemzés szándékosan kihagyott (exit 0), így a
+#    publikus CI nem bukik a gitignore-olt fa miatt.
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/legacy-binary-analyzer.py'
+      - '.github/workflows/legacy-binary-analysis.yml'
+      - 'frontend-react/src/pages/rates/**'
+      - 'arfolyam-keszito-client/src/**'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/legacy-binary-analyzer.py'
+      - '.github/workflows/legacy-binary-analysis.yml'
+  workflow_dispatch:
+    inputs:
+      anti_root:
+        description: 'Az Anti/ fa elérési útja a runneren (önhostolt runner esetén)'
+        required: false
+        default: 'Anti'
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Önteszt — TPF0-kinyerés + keresztellenőrzés nem regresszál
+        run: python scripts/legacy-binary-analyzer.py --self-test
+
+      - name: Teljes elemzés (ha az Anti/ fa elérhető)
+        run: |
+          ANTI="${{ github.event.inputs.anti_root || 'Anti' }}"
+          python scripts/legacy-binary-analyzer.py --anti-root "$ANTI"
+
+      - name: Riport-artifact feltöltése (ha készült)
+        if: hashFiles('docs/legacy-analysis/generated/legacy-binary-analysis.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-binary-analysis
+          path: docs/legacy-analysis/generated/
+          if-no-files-found: ignore
