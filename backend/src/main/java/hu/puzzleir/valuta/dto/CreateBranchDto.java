@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.dto;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -59,6 +60,7 @@ public class CreateBranchDto {
 
     @NotNull(message = "A nyitás dátuma kötelező")
     @PastOrPresent(message = "A nyitás dátuma nem lehet jövőbeli")
+    @JsonDeserialize(using = BlankTolerantLocalDateDeserializer.class)
     private LocalDate openingDate;
 
     private UUID denominationRuleId;
@@ -73,4 +75,32 @@ public class CreateBranchDto {
     private Boolean hasPos;
     private Boolean closedSaturday;
     private Boolean closedSunday;
+
+    // ========================================================================
+    // FK-022 hotfix (FK-025 TBD#1): a spec "BranchCreateRequest"-je ebben a repóban ez a
+    // DTO (POST /api/v1/branches). Az opcionális szövegmezők üres stringként ("") is
+    // érkezhetnek (programmatic kliens) → blank → null normalizálás, hogy a @Pattern/@Email
+    // ne utasítsa vissza (a null-t a Bean Validation átengedi) — az UpdateBranchDto
+    // mintája (commit 4cf0ebc6f). Create-nél nincs clear-szemantika (nincs előző érték).
+    // A kötelező @NotBlank mezőkhöz nem nyúlunk — ott a "" elutasítása a helyes viselkedés.
+    // Figyelem: a Lombok @Builder/@AllArgsConstructor megkerüli a settereket — a Jackson
+    // setter-úton deszerializál (HTTP-kérésnél a normalizálás garantált), builderrel csak
+    // teszt-kód épít DTO-t.
+    // ========================================================================
+
+    private static String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value.trim();
+    }
+
+    public void setShortName(String shortName) {
+        this.shortName = blankToNull(shortName);
+    }
+
+    public void setPhone(String phone) {
+        this.phone = blankToNull(phone);
+    }
+
+    public void setEmail(String email) {
+        this.email = blankToNull(email);
+    }
 }
