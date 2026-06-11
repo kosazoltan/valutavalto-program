@@ -6,12 +6,21 @@ fejlesztési tervvel; a hibásan implementált vagy el sem készített részek f
 
 ## Forrás-elérhetőségi tényállás (változatlan blokkoló)
 
-- A `scripts/legacy-transfer.py` Base64-híd a repóban van, de a **kódolt forráscsomag
-  (`legacy-transfer/`) nem került pushra** — az `Anti/` és `forrasok/` fa (EXE/DLL/Pascal)
-  továbbra is csak a lokális D: meghajtón él (`.gitignore` 32–33/105. sor).
-- **Lokális teendő a bájthelyes bináris-olvasáshoz:** `python scripts/legacy-transfer.py pack`
-  futtatása a lokális gépen, majd a keletkező `legacy-transfer/` commit+push. A felhő-session
-  ezután közvetlenül elemzi a binárisokat (a CI unpack-öntesztje bekötve).
+- ~~A `scripts/legacy-transfer.py` Base64-híd a repóban van, de a **kódolt forráscsomag
+  (`legacy-transfer/`) nem került pushra**~~ — **FELOLDVA 2026-06-11:** az Anti-fa
+  becsomagolva és pusholva a dedikált **`legacy-transfer-data`** branchre
+  (10 461 fájl: 8 304 szöveges forrás UTF-8-ban + 810 sha256-dedupolt bináris blob,
+  ~1,65 GB). SZÁNDÉKOSAN nem main-en él: a CI-checkoutok ne hízzanak +1,6 GB-bal.
+- **Felhő-oldali használat:**
+  ```
+  git fetch origin legacy-transfer-data
+  git checkout origin/legacy-transfer-data -- legacy-transfer/
+  python scripts/legacy-transfer.py unpack --in legacy-transfer --dest Anti_transfer
+  python scripts/legacy-binary-analyzer.py --anti-root Anti_transfer
+  ```
+- A `forrasok/` fa (808 MB, ~74%-ban az Anti duplikátuma név+méret szerint) NEM került
+  külön csomagolásra; ha a re-verifikáció hiányt talál, ugyanezzel az eszközzel pótolható
+  (`pack --source forrasok --out legacy-transfer-forrasok`).
 - E körben a repóban lévő forrás-hű kivonatokból dolgoztunk: 394 modul-MD (223 .dpr lefedve),
   TPF0 form-dumpok, Felmérés (406 fájl), EXCMD specek + javítási utasítások.
 
