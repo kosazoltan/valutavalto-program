@@ -124,13 +124,21 @@ public class AmlEddService {
 
         // f) pass-through (V311): 72h-n belül MINDKÉT irányban >=küszöb forgalom —
         // áteresztő-számla gyanú. Hónapvége-horgony (a b)-vel azonos idempotencia-minta).
+        // Codex review (2. kör): a trigger csak SCAN-NAPI aktivitással él — a csúszó
+        // 72h-ablak így hónap-határon sem jelöli újra ugyanazt a párt új esemény nélkül;
+        // friss aktivitásnál a hosszabbítás viszont jogos (új trigger-esemény).
         BigDecimal passThroughMin = paramAsBigDecimal(EDD_PASSTHROUGH_MIN_PARAM, EDD_PASSTHROUGH_MIN_DEFAULT);
         LocalDate windowStart = day.minusDays(EDD_PASSTHROUGH_WINDOW_DAYS - 1L);
         for (Object[] row : transactionRepository.findEddPassThroughTriggers(
                 windowStart, day, passThroughMin)) {
+            UUID ptCompanyId = (UUID) row[0];
+            String ptCustomerCode = (String) row[1];
+            if (transactionRepository.countEddDayActivity(ptCompanyId, ptCustomerCode, day) == 0) {
+                continue; // a pár kizárólag korábbi napok forgalma — már jelölve volt
+            }
             String reason = "V.2.7 f): pass-through gyanú — 72h-n belül vétel " + row[2]
                     + " Ft ÉS eladás " + row[3] + " Ft (küszöb: " + passThroughMin.toPlainString() + " Ft)";
-            switch (markEdd((UUID) row[0], (String) row[1], day, monthAnchorUntil, reason)) {
+            switch (markEdd(ptCompanyId, ptCustomerCode, day, monthAnchorUntil, reason)) {
                 case MARKED -> marked++;
                 case EXTENDED -> extended++;
                 default -> unchanged++;

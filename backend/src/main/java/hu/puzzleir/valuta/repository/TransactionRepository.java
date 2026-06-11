@@ -660,6 +660,23 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * EDD f) segéd (Codex review): volt-e az ügyfélnek BUY/SELL aktivitása az adott napon.
+     * A pass-through trigger csak scan-napi aktivitással él — a csúszó 72h-ablak így nem
+     * jelöli újra ugyanazt a párt aktivitás nélkül (hónap-határon sem).
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.company.id = :companyId AND t.customerId = :customerId " +
+           "AND t.transactionDate = :day " +
+           "AND t.status = 'COMPLETED' AND t.financialEffective = true " +
+           "AND t.transactionType IN (hu.puzzleir.valuta.entity.TransactionType.BUY, " +
+           "                          hu.puzzleir.valuta.entity.TransactionType.SELL)")
+    long countEddDayActivity(
+        @Param("companyId") UUID companyId,
+        @Param("customerId") String customerId,
+        @Param("day") LocalDate day
+    );
+
+    /**
      * Havi tranzakciók branch-hez (havi záráshoz).
      */
     @Query("SELECT t FROM Transaction t " +

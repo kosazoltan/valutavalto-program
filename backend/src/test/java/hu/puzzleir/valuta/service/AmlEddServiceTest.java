@@ -231,6 +231,7 @@ class AmlEddServiceTest {
                 DAY.minusDays(2), DAY, new BigDecimal(AmlEddService.EDD_PASSTHROUGH_MIN_DEFAULT)))
                 .thenReturn(List.<Object[]>of(new Object[]{
                         COMPANY_A, "C-5", new BigDecimal("6000000"), new BigDecimal("5500000")}));
+        when(transactionRepository.countEddDayActivity(COMPANY_A, "C-5", DAY)).thenReturn(1L);
         when(customerRepository.findByCustomerCodeAndCompanyId("C-5", COMPANY_A))
                 .thenReturn(Optional.of(customer));
 
@@ -239,6 +240,27 @@ class AmlEddServiceTest {
         assertThat(result.marked()).isEqualTo(1);
         assertThat(customer.getEddUntil()).isEqualTo(LocalDate.of(2027, 6, 30)); // hónapvége-horgony
         assertThat(customer.getEddReason()).contains("V.2.7 f)").contains("pass-through");
+    }
+
+    @Test
+    @DisplayName("Codex P2 (2. kör) regresszió: pass-through scan-napi aktivitás nélkül nem jelöl újra")
+    void passThroughSkipsWithoutScanDayActivity() {
+        flagOn();
+        when(transactionRepository.findEddSingleTransactionTriggers(any(), any())).thenReturn(List.of());
+        // a pár a csúszó 72h-ablakban még látszik (pl. hónap-határ után), de a scan-napon
+        // nincs új BUY/SELL → nem szabad újra-hosszabbítani
+        when(transactionRepository.findEddPassThroughTriggers(
+                DAY.minusDays(2), DAY, new BigDecimal(AmlEddService.EDD_PASSTHROUGH_MIN_DEFAULT)))
+                .thenReturn(List.<Object[]>of(new Object[]{
+                        COMPANY_A, "C-5", new BigDecimal("6000000"), new BigDecimal("5500000")}));
+        when(transactionRepository.countEddDayActivity(COMPANY_A, "C-5", DAY)).thenReturn(0L);
+
+        AmlEddService.AmlEddScanResult result = service.scanDate(DAY);
+
+        assertThat(result.marked()).isZero();
+        assertThat(result.extended()).isZero();
+        verify(customerRepository, never()).save(any());
+        verifyNoInteractions(auditLogService);
     }
 
     @Test
