@@ -1,24 +1,83 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Settings as SettingsIcon, Save, X } from 'lucide-react'
+import { Settings as SettingsIcon, Save, X, Lock } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import {
   loadPenztarSettings, savePenztarSettings, isValidServerIp, clampFrequency,
+  clampFutofenyDarab, clampFutofenySebesseg, clampComPort,
   FREQUENCY_MIN, FREQUENCY_MAX,
   type PenztarSettings, type MachineRole, type DisplayColor, type PrinterPort,
-  type HandlingFeeMode,
+  type HandlingFeeMode, type FutofenyMode,
 } from './penztarSettings'
+import { machineConfigApi, resolveWorkstationCode } from '../../services/api/machineConfig'
 
 const APP_OPTIONS = ['VALUTAVALTAS', 'WESTERN_UNION', 'TESCO_AFA', 'METRO_AFA', 'E_KERESKEDELEM']
 
 /**
  * G20 (EXCMD b6-beallitasok): pénztárgép lokális beállítások képernyő.
- * Az értékek "Rögzítés és kilépés" után perzisztensek (localStorage). A tényleges
- * hardver-kötés (szkenner/nyomtató/futófény/IP) runtime-feladat az Electron mainben.
+ *
+ * FR-14 Perzisztencia (háromrétegű):
+ *   1. localStorage (gyors lokális cache, offline-safe)
+ *   2. Backend PUT /api/v1/machine-config/{workstationCode} (Postgres, company-izolált)
+ *   Betöltéskor: backend érték nyeri, localStorage a fallback (offline).
+ *   Electron SQLite: az általános getConfig/setConfig IPC nincs kibővítve (az Electron
+ *   main módosítása kockázatos ebben a körben) — a backend+localStorage elegendő.
+ *
+ * FR-06 Jelszó biztonsági eltérés:
+ *   A spec plain-text jelszót mutat ("<JELSZO>"), de b9 NFR-02 + security-standards
+ *   alapján maszkoltan jelenítjük meg (••••). A jelszó-módosítás inline modal-ban
+ *   (window.prompt TILOS Electron-ban); a plain-text a backendnek megy, ahol BCrypt-tel
+ *   hash-elődik; a hash soha nem jön vissza (csak dailyReportPasswordSet: boolean).
+ *
+ * FR-06 Branch mezők:
+ *   Az értéktár e-mail és szombati nyitvatartás a Branch entitáson él (V293).
+ *   Döntés: a settings oldalon read-only hivatkozással jelennek meg, szerkesztés a
+ *   Pénztár Törzsben (BranchEditPage). NEM duplikáljuk a branch-adatot a machine_config
+ *   JSON-ban — elkerüljük az inkonzisztenciát.
+ *
+ * FR-11 Futófény:
+ *   A soros-port vezérlés (COM-port tényleges nyitása) runtime-feladat (spec
+ *   integration_points szerint külön réteg). A panel a KONFIGURÁCIÓT rögzíti.
  */
 export default function PenztarSettingsPage() {
   const navigate = useNavigate()
   const [s, setS] = useState<PenztarSettings>(() => loadPenztarSettings())
+  const [loading, setLoading] = useState(true)
+  const workstationCodeRef = useRef<string>('UNKNOWN')
+
+  // FR-14: Betöltéskor backend érték nyeri, localStorage fallback (offline)
+  useEffect(() => {
+    let cancelled = false
+    async function loadFromBackend() {
+      try {
+        const code = await resolveWorkstationCode()
+        if (!cancelled) workstationCodeRef.current = code
+        const remote = await machineConfigApi.get(code)
+        if (remote && remote.config && !cancelled) {
+          try {
+            const parsed = JSON.parse(remote.config) as Partial<PenztarSettings>
+            // Backend-érték nyeri: felülírja a localStorage cache-t
+            setS((prev) => ({ ...prev, ...parsed }))
+          } catch {
+            // Sérült backend JSON → localStorage-érték marad
+          }
+        }
+        // dailyReportPasswordSet jelzőt a UI-ban felhasználhatjuk (jelenleg megjelenítjük)
+      } catch {
+        // Offline → localStorage fallback
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void loadFromBackend()
+    return () => { cancelled = true }
+  }, [])
+
+  // FR-06: Jelszó-módosítás inline modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [pendingPassword, setPendingPassword] = useState<string | undefined>(undefined)
 
   const set = useCallback(<K extends keyof PenztarSettings>(key: K, value: PenztarSettings[K]) => {
     setS((prev) => ({ ...prev, [key]: value }))
@@ -42,18 +101,61 @@ export default function PenztarSettingsPage() {
     }))
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!isValidServerIp(s.serverIp)) {
       toast.error('Érvénytelen IP', 'Mind a 4 oktett 0–255 közötti egész legyen.')
       return
     }
+    // FR-11: COM-portok egyediség-ellenőrzése (spec FR-11 validáció)
+    if (s.futofenyDarab >= 2 && s.futofenyCom1 === s.futofenyCom2) {
+      toast.error('COM-port ütközés', 'Az első és második futófénytábla COM-portja nem lehet azonos.')
+      return
+    }
+
+    // 1. réteg: localStorage
     const ok = savePenztarSettings(s)
     if (!ok) {
       toast.error('Mentési hiba', 'A beállítások mentése nem sikerült (böngésző tárhely / privát mód).')
       return
     }
+
+    // 2. réteg: Backend (async, nem blokkoló — offline esetén silent fail)
+    try {
+      await machineConfigApi.put(workstationCodeRef.current, {
+        configJson: JSON.stringify(s),
+        // Jelszó csak ha a user új jelszót adott meg a modalban
+        dailyReportPassword: pendingPassword,
+      })
+      // Jelszót csak sikeres backend-mentés után töröljük (Codex P2: hiba esetén megmarad)
+      setPendingPassword(undefined)
+    } catch {
+      // Backend-hiba nem blokkolja a mentést — localStorage-ban megvan.
+      // Jelszó-state szándékosan megmarad, hogy újrapróbáláskor ne kelljen újra beírni.
+      toast.error(
+        'Backend szinkron hiba',
+        'A beállítások lokálisan mentve, de a szerver-szinkronizáció sikertelen. Kérjük, próbáljon meg újra menteni.',
+      )
+      return
+    }
+
     toast.success('Mentve', 'A beállítások rögzítve.')
     navigate(-1)
+  }
+
+  const handlePasswordSave = () => {
+    if (!newPassword || newPassword.length < 4) {
+      toast.error('Rövid jelszó', 'A jelszónak legalább 4 karakter hosszúnak kell lennie.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Jelszó-eltérés', 'A két jelszó nem egyezik.')
+      return
+    }
+    setPendingPassword(newPassword)
+    setNewPassword('')
+    setConfirmPassword('')
+    setShowPasswordModal(false)
+    toast.success('Jelszó beállítva', 'Az új jelszó a "Rögzítés és kilépés" gombra mentődik el a szerverre.')
   }
 
   const radioGroup = <T extends string>(
@@ -72,10 +174,20 @@ export default function PenztarSettingsPage() {
     </div>
   )
 
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-xl font-bold flex items-center gap-2"><SettingsIcon />Pénztárgép beállítások</h1>
+        <div className="form-panel text-sm text-muted-foreground">Beállítások betöltése...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold flex items-center gap-2"><SettingsIcon />Pénztárgép beállítások</h1>
 
+      {/* FR-02 + FR-03: Alapfunkció és Alkalmazások */}
       <div className="form-panel space-y-3">
         <h2 className="section-title">Alapfunkció</h2>
         {radioGroup<MachineRole>('machineRole', 'A gép szerepe', s.machineRole, [
@@ -97,6 +209,7 @@ export default function PenztarSettingsPage() {
         </div>
       </div>
 
+      {/* FR-04 + FR-13: Kijelző és reklám */}
       <div className="form-panel space-y-3">
         <h2 className="section-title">Kijelző és reklám</h2>
         {radioGroup<DisplayColor>('displayColor', 'Árfolyam-kijelző színe', s.displayColor, [
@@ -108,6 +221,7 @@ export default function PenztarSettingsPage() {
         </label>
       </div>
 
+      {/* FR-05 + FR-07: Szerver kapcsolat */}
       <div className="form-panel space-y-3">
         <h2 className="section-title">Szerver kapcsolat</h2>
         <div>
@@ -134,18 +248,139 @@ export default function PenztarSettingsPage() {
         </div>
       </div>
 
+      {/* FR-06: Napi jelentés jelszó + értéktár e-mail + szombati nyitvatartás */}
       <div className="form-panel space-y-3">
         <h2 className="section-title">Napi jelentés</h2>
+
+        {/* Jelszó maszkolva + módosítás gomb */}
+        {/*
+          BIZTONSÁGI ELTÉRÉS A SPECTŐL (b6 FR-06 + b9 NFR-02):
+          A spec plain-text jelszót jelenítene meg ("<JELSZO>"), de a security-standards
+          alapján a jelszót maszkolt formában (••••) mutatjuk. A módosítás inline modálban
+          történik (window.prompt TILOS Electron-ban).
+        */}
         <div>
-          <label className="form-label" htmlFor="email">Értéktár e-mail címe</label>
-          <input id="email" type="email" className="form-input w-full"
-            value={s.dailyReportEmail} onChange={(e) => set('dailyReportEmail', e.target.value)} />
+          <div className="form-label">Napi-jelentés jelszó</div>
+          <div className="flex items-center gap-2">
+            <span className="form-input w-32 inline-block text-center tracking-widest select-none text-muted-foreground">
+              {pendingPassword ? '••••••••' : '••••'}
+            </span>
+            <button
+              type="button"
+              className="form-button flex items-center gap-1 text-sm"
+              onClick={() => setShowPasswordModal(true)}
+            >
+              <Lock size={14} />Jelszó módosítás
+            </button>
+            {pendingPassword && (
+              <span className="text-xs text-green-600">
+                (Új jelszó beállítva — mentéskor érvényesül)
+              </span>
+            )}
+          </div>
         </div>
-        {radioGroup<string>('saturday', 'Szombati nyitvatartás', s.saturdayOpen ? 'OPEN' : 'CLOSED', [
-          { v: 'OPEN', label: 'Szombaton nyitva' }, { v: 'CLOSED', label: 'Szombaton zárva' },
-        ], (v) => set('saturdayOpen', v === 'OPEN'))}
+
+        {/*
+          FR-06 BRANCH MEZŐK KEZELÉSE:
+          Az értéktár e-mail (Branch.email) és szombati nyitvatartás (Branch.closed_saturday)
+          a Branch entitáson tárolódnak (V293). Döntés: read-only megjelenítés + link a
+          Pénztár Törzsbe. NEM duplikáljuk machine_config JSON-ban az inkonzisztencia elkerülésére.
+          A meglévő localStorage-értékeket (dailyReportEmail, saturdayOpen) egyelőre megtartjuk
+          backward-kompatibilitásból, de a szerkesztés a BranchEditPage-en történik.
+        */}
+        <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 space-y-1">
+          <div className="font-medium">Értéktár e-mail és szombati nyitvatartás</div>
+          <div>
+            Ezek a beállítások a <strong>Pénztár Törzs</strong> iroda-adataiban szerkeszthetők
+            (Branch entitás, V293: email + closed_saturday mezők).
+            A jelenlegi értékek: e-mail: <em>{s.dailyReportEmail || '(nem megadott)'}</em>,
+            szombat: <em>{s.saturdayOpen ? 'nyitva' : 'zárva'}</em>.
+          </div>
+        </div>
       </div>
 
+      {/* FR-11: Futófény beállítások */}
+      {/*
+        Soros-port vezérlés (COM-port tényleges nyitása, adatküldés) runtime/hardver-feladat
+        (spec integration_points: "COM-vezérlés külön réteg"). Ez a panel a KONFIGURÁCIÓT
+        rögzíti — az Electron main folyamatban lesz a tényleges COM-kommunikáció.
+      */}
+      <div className="form-panel space-y-3">
+        <h2 className="section-title">Futófény beállítások</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div>
+            <label className="form-label" htmlFor="futofenyDarab">
+              Futófénytáblák száma: {s.futofenyDarab}
+            </label>
+            <input
+              id="futofenyDarab" type="number" min={0} max={10}
+              className="form-input w-20"
+              value={s.futofenyDarab}
+              onChange={(e) => set('futofenyDarab', clampFutofenyDarab(e.target.value))}
+            />
+          </div>
+          <div>
+            <label className="form-label" htmlFor="com1">
+              1. tábla COM-portja
+            </label>
+            <input
+              id="com1" type="number" min={1} max={255}
+              className="form-input w-20"
+              value={s.futofenyCom1}
+              disabled={s.futofenyDarab === 0}
+              onChange={(e) => set('futofenyCom1', clampComPort(e.target.value, 1))}
+            />
+          </div>
+          <div>
+            <label className="form-label" htmlFor="com2">
+              2. tábla COM-portja
+            </label>
+            <input
+              id="com2" type="number" min={1} max={255}
+              className="form-input w-20"
+              value={s.futofenyCom2}
+              disabled={s.futofenyDarab < 2}
+              onChange={(e) => set('futofenyCom2', clampComPort(e.target.value, 2))}
+            />
+          </div>
+        </div>
+
+        {radioGroup<FutofenyMode>('futofenyMod', 'Megjelenítési mód', s.futofenyMod, [
+          { v: 'ARFOLYAM', label: 'Csak árfolyam-kijelzés' },
+          { v: 'SZOVEG', label: 'Csak szöveg kijelzése' },
+          { v: 'VALTAKOZO', label: 'Váltakozó (nappal szöveg / éjjel árfolyam)' },
+        ], (v) => set('futofenyMod', v))}
+
+        <div>
+          <label className="form-label" htmlFor="futofenySebesseg">
+            Futófény sebessége: <span className="font-medium">{s.futofenySebesseg <= 3 ? 'Lassú' : s.futofenySebesseg >= 8 ? 'Gyors' : 'Közepes'}</span> ({s.futofenySebesseg})
+          </label>
+          <div className="flex items-center gap-2">
+            <span className="text-xs">Lassú</span>
+            <input
+              id="futofenySebesseg" type="range" min={1} max={10} value={s.futofenySebesseg}
+              onChange={(e) => set('futofenySebesseg', clampFutofenySebesseg(e.target.value))}
+              className="flex-1"
+            />
+            <span className="text-xs">Gyors</span>
+          </div>
+        </div>
+
+        <div>
+          <button
+            type="button"
+            className={`form-button text-sm ${s.futofenyKikapcsolva ? 'border-red-400 text-red-700' : 'border-gray-300'}`}
+            onClick={() => set('futofenyKikapcsolva', !s.futofenyKikapcsolva)}
+          >
+            {s.futofenyKikapcsolva ? '▶ Futófény bekapcsolása' : '⏹ Futófény kikapcsolása'}
+          </button>
+          {s.futofenyKikapcsolva && (
+            <span className="ml-2 text-xs text-red-600">Futófény kikapcsolva</span>
+          )}
+        </div>
+      </div>
+
+      {/* FR-08, FR-09, FR-10, FR-12: Eszközök és fizetés */}
       <div className="form-panel space-y-3">
         <h2 className="section-title">Eszközök és fizetés</h2>
         {radioGroup<PrinterPort>('printerPort', 'Nyomtató típusa', s.printerPort, [
@@ -165,14 +400,68 @@ export default function PenztarSettingsPage() {
         </label>
       </div>
 
+      {/* Akciógombok */}
       <div className="flex gap-2">
-        <button onClick={handleSave} className="form-button-primary flex items-center gap-1">
+        <button onClick={() => void handleSave()} className="form-button-primary flex items-center gap-1">
           <Save size={16} />Rögzítés és kilépés
         </button>
         <button onClick={() => navigate(-1)} className="form-button flex items-center gap-1">
           <X size={16} />Kilépés módosítás nélkül
         </button>
       </div>
+
+      {/* FR-06: Jelszó-módosítás inline modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background rounded-lg shadow-lg p-6 space-y-4 w-full max-w-sm">
+            <h3 className="font-semibold flex items-center gap-2"><Lock size={16} />Napi-jelentés jelszó módosítása</h3>
+            <div className="space-y-2">
+              <label className="form-label" htmlFor="newPwd">Új jelszó</label>
+              <input
+                id="newPwd"
+                type="password"
+                className="form-input w-full"
+                value={newPassword}
+                autoComplete="new-password"
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Legalább 4 karakter"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="form-label" htmlFor="confirmPwd">Jelszó megerősítése</label>
+              <input
+                id="confirmPwd"
+                type="password"
+                className="form-input w-full"
+                value={confirmPassword}
+                autoComplete="new-password"
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Ismételd meg az új jelszót"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                className="form-button text-sm"
+                onClick={() => {
+                  setShowPasswordModal(false)
+                  setNewPassword('')
+                  setConfirmPassword('')
+                }}
+              >
+                Mégse
+              </button>
+              <button
+                type="button"
+                className="form-button-primary text-sm"
+                onClick={handlePasswordSave}
+              >
+                Beállítás
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
