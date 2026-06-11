@@ -70,6 +70,42 @@ public class TransferService {
             }
         }
 
+        // Kötés-típus parse + technikai gyűjtő-kód invariánsok (ERB/FRB/TRB/PRB, c4 P3#5).
+        // A guard a sorszám-generálás ELŐTT fut, hogy elutasításkor ne keletkezzen sorszám-lyuk.
+        if (dto.getTransferType() == null || dto.getTransferType().isBlank()) {
+            // Copilot (#1092): valueOf(null) NPE-t dobna (500), a @NotNull csak a HTTP-útvonalat védi.
+            throw new ValidationException("A kötés-típus megadása kötelező!");
+        }
+        Transfer.TransferType transferType;
+        try {
+            transferType = Transfer.TransferType.valueOf(dto.getTransferType());
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Érvénytelen kötés-típus: " + dto.getTransferType());
+        }
+        if (isTechnicalRb(transferType) && !Boolean.TRUE.equals(fromBranch.getIsVault())) {
+            // Codex/Copilot P2 (#1092): a vault-only szabály backend-oldali kikényszerítése —
+            // a technikai RB-kötést csak értéktári fiók dolgozója rögzítheti, a FE-szűrés
+            // közvetlen API-hívással nem kerülhető meg.
+            throw new ValidationException(transferType + " technikai kötés csak értéktári fiókból rögzíthető!");
+        }
+        validateTechnicalRbCurrency(transferType, currency);
+        if (isTechnicalRb(transferType) && dto.getLines() != null) {
+            // A valuta-invariáns a multi-line sorokra is érvényes (a könyvelés soronként megy).
+            // A findById itt tölti be először a sor-valutát; a későbbi sor-feldolgozás ugyanazt
+            // a példányt a persistence contextből kapja, így összességében nincs plusz query.
+            for (var l : dto.getLines()) {
+                Currency lineCurrency = currencyRepository.findById(l.getCurrencyId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: " + l.getCurrencyId()));
+                validateTechnicalRbCurrency(transferType, lineCurrency);
+            }
+        }
+        // Az átvétel a rendszer-definíció szerint KIZÁRÓLAG a U irány (generateTransferNumber:
+        // atvetel = direction == U; F/UF/FF = átadás-család) → minden mást elutasítunk,
+        // a kihagyott direction default UF-ját is.
+        if (transferType == Transfer.TransferType.PRB && direction != Transfer.TransferDirection.U) {
+            throw new ValidationException("PRB (POS átvétel banktól) csak átvétel (U) irányban rögzíthető!");
+        }
+
         // A sorszám és a címletezés cég-azonosítója a forrásfiók cégéből jön; a sorszám
         // tenant + prefix szinten folyamatos és DB-oldalon atomikusan léptetett.
         UUID companyId = fromBranch.getCompany() != null
@@ -89,7 +125,7 @@ public class TransferService {
                 .fromBranch(fromBranch)
                 .toBranch(toBranch)
                 .fromWorker(fromWorker)
-                .transferType(Transfer.TransferType.valueOf(dto.getTransferType()))
+                .transferType(transferType)
                 .status(Transfer.TransferStatus.PENDING)
                 .transferDate(LocalDate.now())
                 .transferTime(LocalTime.now())
@@ -922,6 +958,26 @@ public class TransferService {
                 .toList();
     }
 
+    /** A 4 technikai gyűjtő RB-kötés-kód (ERB/FRB/TRB/PRB, c4 P3#5). */
+    private static boolean isTechnicalRb(Transfer.TransferType type) {
+        return type == Transfer.TransferType.ERB || type == Transfer.TransferType.FRB
+                || type == Transfer.TransferType.TRB || type == Transfer.TransferType.PRB;
+    }
+
+    /**
+     * Technikai RB-kötés valuta-invariáns (fejléc-valutára ÉS minden multi-line sorra):
+     * FRB/PRB → kizárólag HUF, ERB/TRB → kizárólag deviza. Más típusra no-op.
+     */
+    private void validateTechnicalRbCurrency(Transfer.TransferType type, Currency currency) {
+        boolean huf = "HUF".equalsIgnoreCase(currency.getCode());
+        if ((type == Transfer.TransferType.FRB || type == Transfer.TransferType.PRB) && !huf) {
+            throw new ValidationException(type + " kötés csak HUF valutával rögzíthető!");
+        }
+        if ((type == Transfer.TransferType.ERB || type == Transfer.TransferType.TRB) && huf) {
+            throw new ValidationException(type + " kötés csak devizával (nem HUF) rögzíthető!");
+        }
+    }
+
     private String getTransferTypeDisplay(Transfer.TransferType type) {
         return switch (type) {
             case CURRENCY -> "Deviza";
@@ -931,6 +987,10 @@ public class TransferService {
             case VAULT_WITHDRAW -> "Széf kivét";
             case CORRECTION -> "Korrekció";
             case OTHER -> "Egyéb";
+            case ERB -> "Fixing valuta mozgás RB (ERB)";
+            case FRB -> "Forint mozgás RB (FRB)";
+            case TRB -> "Egyedi kötés RB (TRB)";
+            case PRB -> "POS átvétel banktól (PRB)";
         };
     }
 

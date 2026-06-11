@@ -29,7 +29,18 @@ export function getAvailableTransferTypes(isVaultUser: boolean, direction: 'out'
     base.push(
       { value: 'VAULT_DEPOSIT', label: 'Értéktár feltöltés' },
       { value: 'VAULT_WITHDRAW', label: 'Értéktár leszedés' },
+      // Technikai gyűjtő kötés-kódok (legacy RB-gyűjtők, b5-penztar-mozgasok.md:51-72,
+      // c4 P3#5 — üzleti döntés 2026-06-11). A valuta+irány+vault-only invariánsokat a
+      // backend is kikényszeríti (TransferService.create guard: Branch.isVault ellenőrzés,
+      // Codex/Copilot P2 #1092) — ez a lista csak a UI-választékot szűri.
+      { value: 'ERB', label: 'ERB — Fixing valuta mozgás RB' },
+      { value: 'FRB', label: 'FRB — Forint mozgás RB' },
+      { value: 'TRB', label: 'TRB — Egyedi kötés RB' },
     )
+    if (direction === 'in') {
+      // PRB = POS ÁTVÉTEL BANKTÓL → a legacy név szerint kizárólag átvétel irányban.
+      base.push({ value: 'PRB', label: 'PRB — POS átvétel banktól' })
+    }
   }
   return base
 }
@@ -37,14 +48,24 @@ export function getAvailableTransferTypes(isVaultUser: boolean, direction: 'out'
 /**
  * A felhasználó számára engedélyezett típus-értékek (irány-független halmaz) — a
  * `getAvailableTransferTypes` single source of truth-ból származtatva (DRY, nincs drift).
+ * Mindkét irány unióját adja, mert a PRB csak 'in' irányban választható.
  */
 export function getAllowedTransferTypeValues(isVaultUser: boolean): TransferType[] {
-  return getAvailableTransferTypes(isVaultUser, 'out').map(o => o.value)
+  const union = [
+    ...getAvailableTransferTypes(isVaultUser, 'out').map(o => o.value),
+    ...getAvailableTransferTypes(isVaultUser, 'in').map(o => o.value),
+  ]
+  return [...new Set(union)]
 }
 
-/** FT és kezelési költség típus → kizárólag HUF (forint) érintett. */
+/** FT / kezelési költség / FRB (forint mozgás RB) / PRB (POS átvétel banktól) → kizárólag HUF. */
 export function isHufOnlyTransferType(type: TransferType): boolean {
-  return type === 'CASH' || type === 'HANDLING_FEE'
+  return type === 'CASH' || type === 'HANDLING_FEE' || type === 'FRB' || type === 'PRB'
+}
+
+/** Kizárólag devizás (HUF nélküli) kötés-típusok: valuta + ERB/TRB technikai RB-kötések. */
+export function isCurrencyOnlyTransferType(type: TransferType): boolean {
+  return type === 'CURRENCY' || type === 'ERB' || type === 'TRB'
 }
 
 /**
@@ -156,12 +177,12 @@ export function buildTransferLines(rows: CurrencyLineInput[]): BuiltTransferLine
 
 /**
  * (Req #4 + #5) Valuta-szűrés a típus szerint:
- *  - FT / kezelési költség → CSAK HUF,
- *  - valuta → HUF NÉLKÜL (csak deviza),
+ *  - FT / kezelési költség / FRB / PRB → CSAK HUF,
+ *  - valuta / ERB / TRB → HUF NÉLKÜL (csak deviza),
  *  - egyéb (értéktár) → minden valuta.
  */
 export function filterCurrenciesForType<T extends { code: string }>(currencies: T[], type: TransferType): T[] {
-  if (type === 'CURRENCY') return currencies.filter(c => c.code !== 'HUF')
+  if (isCurrencyOnlyTransferType(type)) return currencies.filter(c => c.code !== 'HUF')
   if (isHufOnlyTransferType(type)) return currencies.filter(c => c.code === 'HUF')
   return currencies
 }
