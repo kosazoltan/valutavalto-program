@@ -1,35 +1,28 @@
 {
-  "version": "2.27.52",
-  "buildDate": "20260529",
+  "version": "2.27.99",
+  "buildDate": "20260611",
   "gitBranch": "main",
   "signed": false,
   "signingNote": "UNSIGNED — DigiCert EV Code Signing validáció folyamatban.",
-  "contents": "FK-04/C-E képletezhető J–S árfolyamlap + publish-védelem (effektív ráta); FK-04/E.2 backend árfolyamvédelem (dedup + effektív-ráta kerekítés); FK-003/004 napi forgalom Ft fix; Excel cégcím; v2.5.54 kozmetikák (#6/#9/#11/#17); v2.27.51-52 AI-review P1 javítások (undo-clear csoportváltáskor, kereszt-csoport snapshot korrupció).",
+  "contents": "Átadás-átvétel bizonylat fejléc-javítás (PR #1095): fejléc cím+telefon a branch-törzsből (hardcode eltávolítva), Kérő iroda auto-kitöltés, átvételi bizonylaton kötelező jogi nyilatkozat + Átadó/Átvevő aláírás vonalak, HUF bizonylat automatikus dupla példány, offline branch-adat cache (cached_cash_desks address/zip_code/phone), Codex P2: részleges soros nyomtatási hiba esetén a fallback csak a hiányzó példányokat nyomtatja.",
   "artifacts": [
     {
-      "name": "Penztar-Setup-2.27.52-20260529.exe",
+      "name": "Penztar-Setup-2.27.99-20260611.exe",
       "type": "installer",
       "role": "Pénztár + Értéktár kliens (PostgreSQL 17.5 + backend + frontend + Electron + Windows services)",
-      "sizeMB": 283.8,
-      "sha256": "8FF7B477C2C7431F3C32CCC30C0ADF4364F26ECBA5D993FDAFDE9B4E36A430B1"
+      "sizeMB": 282.3,
+      "sha256": "409065A0476778E8215B69099DC0684DB01C5006C9F231E1AD4910F31EC572DB"
     },
     {
-      "name": "Kozponti-Munkaallomas-Setup-2.27.52.exe",
-      "type": "installer",
-      "role": "Központi + Árfolyamkészítő összevont munkaállomás (mód-választóval)",
-      "sizeMB": 102.4,
-      "sha256": "76134D2896342A6CEA39D634540E47A5CCBAEDE41DB36AD4E941C93140A60695"
-    },
-    {
-      "name": "Penztar-Eltavolito-2.27.52-20260529.exe",
+      "name": "Penztar-Eltavolito-2.27.99-20260611.exe",
       "type": "uninstaller",
       "role": "Standalone uninstaller (ALAPÉRTELMEZÉSBEN törli a helyi DB-t; production gépen pg_dump ELŐTTE).",
       "sizeKB": 60,
-      "sha256": "879F54B1A9DB16E43ADCC3AB4EE36BFAED0F28B00BB241765466F512260889B5"
+      "sha256": "A84CA02D632FD10E89E8F20E8F36FFDDCF9BE33A00BDB193BC5A633BD656A6E7"
     }
   ],
   "production": {
-    "backendVersion": "2.27.52",
-    "verified": "Hetzner excvaluta.com prod-log: service_version 2.27.52 él; getAllStock 1156 sor (FK-005 healthy)."
+    "backendVersion": "2.27.99",
+    "verified": "Hetzner auto-deploy: a PR #1095 merge (828c1136a) deploy-futása sikeres (run 27375986830)."
   }
 }

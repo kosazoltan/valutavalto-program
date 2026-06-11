@@ -1,4 +1,4 @@
-# Valutaváltó — telepítési jegyzet (v2.27.52, 2026-05-29)
+# Valutaváltó — telepítési jegyzet (v2.27.99, 2026-06-11)
 
 > **UNSIGNED build** — a DigiCert EV Code Signing validáció folyamatban. A Windows SmartScreen
 > figyelmeztethet; „További információ" → „Futtatás mindenképp". A telepítő MINDENT automatikusan
@@ -8,9 +8,8 @@
 
 | Fájl | Kinek | Méret |
 |---|---|---|
-| **Penztar-Setup-2.27.52-20260529.exe** | Pénztáros + Értéktáros munkaállomás | 283,8 MB |
-| **Kozponti-Munkaallomas-Setup-2.27.52.exe** | Központi + Árfolyamkészítő (egy telepítő, indításkor mód-választó) | 102,4 MB |
-| **Penztar-Eltavolito-2.27.52-20260529.exe** | Eltávolító (csak régi/sérült telepítés tisztításához) | 60 KB |
+| **Penztar-Setup-2.27.99-20260611.exe** | Pénztáros + Értéktáros munkaállomás | 282,3 MB |
+| **Penztar-Eltavolito-2.27.99-20260611.exe** | Eltávolító (csak régi/sérült telepítés tisztításához) | 60 KB |
 
 > ⚠️ **FIGYELEM — adatvesztés-veszély:** a `Penztar-Eltavolito` ALAPÉRTELMEZÉSBEN **törli a helyi
 > PostgreSQL adatbázist** (`C:\ProgramData\BestChange` → teljes RMDir), KIVÉVE upgrade-módban
@@ -22,16 +21,20 @@
 2. UAC → „Igen" (esetleg admin-jelszó).
 3. Várd meg, amíg végez — minden automatikus.
 
-## Mi újult (v2.27.50 → v2.27.52)
-- **Árfolyamkészítő:** képletezhető csoport-árfolyamlapok (J–S oszlopok, A–I / !FEUR / #NN hivatkozások) + árfolyamvédelem (téves árfolyam mentésének blokkolása); az árfolyamvédelem mostantól az effektív (spread-del korrigált) rátát ellenőrzi.
-- **Készlet pillanatkép:** a NAPI FORGALOM forint-oszlopai már a valós forgalmat mutatják (nem 0).
-- **Excel összesítő:** cégcím „EXCLUSIVE BEST CHANGE ZRT.".
-- **Kozmetika:** dashboard dátum a tranzakciólistában, helyes oldalsáv-kijelölés, ablak-cím kliensenként eltér.
-- **Javítás (v2.27.51–52):** csoport-árfolyamlap szerkesztés stabilitása — a képlet-visszavonás (Ctrl+Z) és a csoportok közötti hivatkozások többé nem keverik a csoportok adatait.
+## Mi újult (v2.27.98 → v2.27.99)
+- **Átadás-átvétel bizonylat fejléc:** az iroda neve, címe és telefonszáma mostantól az iroda-törzsből
+  (branch tábla) töltődik — nincs többé beégetett székhelycím/telefonszám a bizonylaton.
+- **Kérő iroda mező:** automatikusan kitöltődik a bejelentkezett iroda adataival (nem marad üres).
+- **Átvételi bizonylat:** kötelező jogi nyilatkozat szöveg + Átadó/Átvevő aláírás vonalak
+  (sztornó bizonylaton nem jelenik meg).
+- **HUF bizonylat:** forint valutanemű átadás-átvételi bizonylat automatikusan 2 példányban nyomtat
+  (1. iratározás, 2. könyvelés); deviza esetén 1 példány.
+- **Nyomtatási stabilitás:** ha a soros blokknyomtató részlegesen hibázik, a tartalék nyomtatás már
+  csak a hiányzó példányokat nyomtatja (nem keletkezik felesleges többletpéldány).
+- **Offline mód:** a bizonylat-fejléc iroda-adatai offline is elérhetők (helyi gyorsítótár bővítés).
 
 ## SHA256
-- Penztar-Setup: `8FF7B477C2C7431F3C32CCC30C0ADF4364F26ECBA5D993FDAFDE9B4E36A430B1`
-- Kozponti-Munkaallomas: `76134D2896342A6CEA39D634540E47A5CCBAEDE41DB36AD4E941C93140A60695`
-- Eltavolito: `879F54B1A9DB16E43ADCC3AB4EE36BFAED0F28B00BB241765466F512260889B5`
+- Penztar-Setup: `409065A0476778E8215B69099DC0684DB01C5006C9F231E1AD4910F31EC572DB`
+- Eltavolito: `A84CA02D632FD10E89E8F20E8F36FFDDCF9BE33A00BDB193BC5A633BD656A6E7`
 
-A backend (excvaluta.com) már v2.27.52-n fut — a webes/szerver-funkciók a telepítő nélkül is élnek.
+A backend (excvaluta.com) már a PR #1095 utáni kóddal fut — a webes/szerver-funkciók a telepítő nélkül is élnek.
