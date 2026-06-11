@@ -71,6 +71,5 @@ hamis-negatívot tartalmaztak — ezeket NEM fogadtuk el:
 
 ## Nyitva maradt (őszintén, döntés-/inputfüggő)
 
-- **Anti/forrasok bináris re-verifikáció**: a `legacy-transfer-data` branch pushjával
-  feloldva — felhő-sessionben futtatható (fetch-parancs fent); lokálisan a nyers fák
-  közvetlenül elérhetők.
+- ✅ Nincs nyitott tétel. Az utolsó (Anti/forrasok bináris re-verifikáció) zárva
+  2026-06-11: lásd `2026-06-11-binaris-reverifikacio-verdikt.md` — 287 form, 0 valódi gap.

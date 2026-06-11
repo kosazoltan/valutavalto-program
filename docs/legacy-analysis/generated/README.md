@@ -17,3 +17,5 @@ git add docs/legacy-analysis/generated/ && git commit -m "chore(legacy): binári
 ```
 
 A teljes workflow leírása: `docs/legacy-analysis/BINARY-ANALYSIS-WORKFLOW.md`.
+
+> A legacy-binary-analysis.json szándékosan NEM commitolt: a binárisokból kinyert nyers caption-bájtok nem garantáltan érvényes UTF-8-ak (guardrail). Reprodukálás: python scripts/legacy-binary-analyzer.py --anti-root Anti
