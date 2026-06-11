@@ -1,14 +1,10 @@
 package hu.puzzleir.valuta.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -131,21 +127,5 @@ public class UpdateBranchDto {
     public void setCity(String city) {
         this.clearCity = city != null && city.isBlank();
         this.city = blankToNull(city);
-    }
-
-    /**
-     * FK-025: üres string ("") → null a nyitás dátumára, hogy a Jackson ne dobjon
-     * deszerializálási hibát (a BranchEditPage nem küldi a mezőt, de programmatic /
-     * Electron kliens küldhet üres stringet). ISO-8601 formátum (pl. "2020-01-15").
-     */
-    public static class BlankTolerantLocalDateDeserializer extends JsonDeserializer<LocalDate> {
-        @Override
-        public LocalDate deserialize(JsonParser p, DeserializationContext ctx) throws IOException {
-            String value = p.getText();
-            if (value == null || value.isBlank()) {
-                return null;
-            }
-            return LocalDate.parse(value.trim());
-        }
     }
 }
