@@ -63,7 +63,8 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
       eddReason: 'V.2.7 b): >=100M Ft havi készpénzforgalom',
     })
     renderPage()
-    await waitFor(() => expect(screen.getByText('EDD 2027-06-30-ig')).toBeInTheDocument())
+    // hu-HU lokalizált dátum a badge-ben (Sourcery review)
+    await waitFor(() => expect(screen.getByText('EDD 2027. 06. 30.-ig')).toBeInTheDocument())
   })
 
   it('EDD-jelölés gomb supervisor-nak látszik, indokkal POST-ol és frissíti az ügyfelet', async () => {
@@ -81,7 +82,7 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
     fireEvent.click(screen.getByText('EDD-jelölés rögzítése'))
 
     await waitFor(() => expect(mocks.customerApi.markEdd).toHaveBeenCalledWith(42, 'NAV 2026/123'))
-    await waitFor(() => expect(screen.getByText('EDD 2027-06-11-ig')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('EDD 2027. 06. 11.-ig')).toBeInTheDocument())
   })
 
   it('pénztárosnak az EDD-jelölés gomb nem jelenik meg', async () => {

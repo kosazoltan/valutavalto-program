@@ -13,7 +13,17 @@ for (const [ns, entries] of Object.entries(huJson)) {
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => flatKeys[key] ?? key,
+    // Egyszerű {{var}} interpoláció — a valós i18next-tel konzisztens viselkedés
+    // (pl. customers.eddBadge: "EDD {{date}}-ig")
+    t: (key: string, opts?: Record<string, unknown>) => {
+      let value = flatKeys[key] ?? key
+      if (opts) {
+        for (const [k, v] of Object.entries(opts)) {
+          value = value.replaceAll(`{{${k}}}`, String(v))
+        }
+      }
+      return value
+    },
     i18n: { language: 'hu', changeLanguage: vi.fn() },
   }),
   Trans: ({ children }: { children: React.ReactNode }) => children,
