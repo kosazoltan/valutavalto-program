@@ -492,7 +492,9 @@ jobs:
           "# Git SHA: ${{ github.sha }}" | Out-File $manifest -Append
           "# Signing: DigiCert EV CS via Azure Key Vault Premium HSM (AzureSignTool)" | Out-File $manifest -Append
           "" | Out-File $manifest -Append
-          Get-ChildItem $flatDir -Include "*.exe","*.jar" -File | Sort-Object Name | ForEach-Object {
+          # FIX: a -Include -Recurse/záró \* nélkül csendben üres listát ad (PowerShell-gotcha),
+          # ezért korábban a manifeszt csak a fejlécet tartalmazta hash-sorok nélkül. Extension-szűrés.
+          Get-ChildItem $flatDir -File | Where-Object { $_.Extension -in '.exe', '.jar' } | Sort-Object Name | ForEach-Object {
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
             "${hash}  $($_.Name)" | Out-File $manifest -Append
           }
