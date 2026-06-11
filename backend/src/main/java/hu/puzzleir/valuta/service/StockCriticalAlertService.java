@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,10 @@ public class StockCriticalAlertService {
     static final String AUDIT_ACTION = "STOCK_CRITICAL_ALERT";
     static final String NOTIFICATION_TYPE = "STOCK_CRITICAL";
 
+    /** A scheduler is Europe/Budapest zónával fut — az idempotencia-dátumnak ugyanabban
+     *  a zónában kell képződnie, különben UTC JVM-en éjfél körül napot tévesztene. */
+    static final ZoneId BUSINESS_ZONE = ZoneId.of("Europe/Budapest");
+
     private final CashBalanceRepository cashBalanceRepository;
     private final WorkerRepository workerRepository;
     private final NotificationService notificationService;
@@ -42,7 +47,7 @@ public class StockCriticalAlertService {
 
     @Transactional(rollbackFor = Exception.class)
     public StockCriticalAlertResult checkNow() {
-        return checkDate(LocalDate.now());
+        return checkDate(LocalDate.now(BUSINESS_ZONE));
     }
 
     @Transactional(rollbackFor = Exception.class)

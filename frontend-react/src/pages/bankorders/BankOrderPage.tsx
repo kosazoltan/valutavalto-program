@@ -104,8 +104,11 @@ export default function BankOrderPage() {
     setShowCreate(true)
     void loadReferenceData()
     setSearchParams({}, { replace: true })
+    // Copilot review: searchParams dependency kell, hogy route-on belüli param-változás
+    // (back/forward, ismételt gomb-kattintás) is megnyissa a formot. Nem loopol: a
+    // param-törlés utáni újrafutás a create!=1 ágon azonnal kilép.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [searchParams])
 
   const load = async (statusOverride?: BankOrderStatus | '') => {
     setLoading(true)
