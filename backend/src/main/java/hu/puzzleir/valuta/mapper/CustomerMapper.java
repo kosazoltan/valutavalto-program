@@ -48,6 +48,10 @@ public class CustomerMapper {
                 .isVip(entity.getIsVip())
                 .isPep(entity.getIsPep())
                 .notes(entity.getNotes())
+                .eddUntil(entity.getEddUntil())
+                .eddReason(entity.getEddReason())
+                .eddActive(hu.puzzleir.valuta.service.AmlEddService.isEddActive(
+                        entity, java.time.LocalDate.now(hu.puzzleir.valuta.service.AmlEddService.BUSINESS_ZONE)))
                 .lastTransactionDate(entity.getLastTransactionDate())
                 .transactionCount(entity.getTransactionCount())
                 .createdAt(entity.getCreatedAt())

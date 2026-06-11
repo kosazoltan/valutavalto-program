@@ -220,4 +220,54 @@ class AmlEddServiceTest {
         assertThatThrownBy(() -> service.scanDate(null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    @DisplayName("Pmt.30.§(1) manuális jelölés: 1 éves ablak + audit, flag-állástól függetlenül")
+    void manualMarkSetsWindowRegardlessOfFlag() {
+        Customer customer = Customer.builder().id(42L).customerCode("C-9")
+                .company(hu.puzzleir.valuta.entity.Company.builder().id(COMPANY_A).code("EBC").build())
+                .build();
+        when(customerRepository.findById(42L)).thenReturn(Optional.of(customer));
+
+        try (org.mockito.MockedStatic<hu.puzzleir.valuta.security.SecurityUtils> sec =
+                org.mockito.Mockito.mockStatic(hu.puzzleir.valuta.security.SecurityUtils.class)) {
+            sec.when(hu.puzzleir.valuta.security.SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_A);
+
+            Customer result = service.markManualEdd(42L, "NAV-bejelentés 2026/123");
+
+            assertThat(result.getEddUntil())
+                    .isEqualTo(LocalDate.now(AmlEddService.BUSINESS_ZONE).plusYears(1));
+            assertThat(result.getEddReason()).contains("Pmt. 30.§ (1)").contains("NAV-bejelentés 2026/123");
+            assertThat(result.getHighRiskFlag()).isTrue();
+            verify(customerRepository).save(customer);
+            verify(auditLogService).logForCompany(
+                    eq(AmlEddService.AUDIT_ACTION), anyString(), anyString(), eq(COMPANY_A));
+        }
+    }
+
+    @Test
+    @DisplayName("Pmt.30.§(1) manuális jelölés: cross-tenant ügyfél 404 (nem szivárog)")
+    void manualMarkRejectsCrossTenantCustomer() {
+        Customer foreign = Customer.builder().id(43L).customerCode("X-1")
+                .company(hu.puzzleir.valuta.entity.Company.builder().id(COMPANY_B).code("BEST").build())
+                .build();
+        when(customerRepository.findById(43L)).thenReturn(Optional.of(foreign));
+
+        try (org.mockito.MockedStatic<hu.puzzleir.valuta.security.SecurityUtils> sec =
+                org.mockito.Mockito.mockStatic(hu.puzzleir.valuta.security.SecurityUtils.class)) {
+            sec.when(hu.puzzleir.valuta.security.SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_A);
+
+            assertThatThrownBy(() -> service.markManualEdd(43L, "indok"))
+                    .isInstanceOf(hu.puzzleir.valuta.exception.ResourceNotFoundException.class);
+            verify(customerRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("Pmt.30.§(1) manuális jelölés: üres indok ValidationException")
+    void manualMarkRejectsBlankReason() {
+        assertThatThrownBy(() -> service.markManualEdd(42L, "  "))
+                .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class);
+        verifyNoInteractions(customerRepository, auditLogService);
+    }
 }
