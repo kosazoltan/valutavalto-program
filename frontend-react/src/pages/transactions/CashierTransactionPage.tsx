@@ -7,7 +7,7 @@ import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
 import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi, receiptApi } from '../../services/api/index'
 import { api } from '../../services/api/client'
-import AmlApproverModal from '../../components/auth/AmlApproverModal'
+import AmlApproverModal, { toApprovalCustomer } from '../../components/auth/AmlApproverModal'
 import SuspicionReportModal from '../../components/SuspicionReportModal'
 import type { BuyRequest, SellRequest, TransactionLineRequest, ExchangeRate, CashierCustomRateQuota } from '../../services/api/index'
 import { roundHuf, multiLinePayable } from '../../utils/rounding'
@@ -1703,23 +1703,12 @@ export default function CashierTransactionPage() {
             .filter((r) => r.currencyCode && r.hufValue > 0)
             .map((r) => ({
               currencyCode: r.currencyCode,
-              amount: Number(r.quantity) || 0,
+              // Copilot review (#1089): a quantity magyar formátumú string (szóköz, vessző)
+              amount: parseFloat(r.quantity.replace(',', '.').replace(/\s/g, '')) || 0,
               rate: r.exchangeRate,
               hufValue: r.hufValue,
             })),
-          customer: customerDataRef.current
-            ? {
-                name: customerDataRef.current.name,
-                motherName: customerDataRef.current.motherName,
-                birthDate: customerDataRef.current.birthDate,
-                birthPlace: customerDataRef.current.birthPlace,
-                address: customerDataRef.current.address,
-                residence: customerDataRef.current.residence,
-                documentType: customerDataRef.current.documentType,
-                documentNumber: customerDataRef.current.documentNumber,
-                nationality: customerDataRef.current.nationality,
-              }
-            : undefined,
+          customer: toApprovalCustomer(customerDataRef.current),
         }}
         onApproved={(workerId, name) => {
           approverWorkerIdRef.current = workerId

@@ -37,7 +37,7 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../../services/api/client'
 import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
-import AmlApproverModal from '../../components/auth/AmlApproverModal'
+import AmlApproverModal, { toApprovalCustomer } from '../../components/auth/AmlApproverModal'
 
 /**
  * Konverziós tranzakció oldal
@@ -910,23 +910,13 @@ export default function ConversionPage() {
                   currencyCode: currencies.find((c) => c.id === toCurrencyId)?.code ?? '?',
                   amount: parseFloat(toAmount.replace(',', '.').replace(/\s/g, '')) || 0,
                   rate: getRate(toCurrencyId)?.baseSellRate ?? 0,
-                  hufValue: hufAmount,
+                  // Codex P2 + Copilot (#1089): a cél-lábon a TÉNYLEGESEN felhasznált HUF
+                  // (a visszajáró levonva) — manuálisan csökkentett cél-összegnél is hű
+                  hufValue: Math.max(0, hufAmount - returnedHuf),
                 }
               : null,
           ].filter(Boolean)) as Array<{ currencyCode: string; amount: number; rate: number; hufValue: number }>,
-          customer: customerDataRef.current
-            ? {
-                name: customerDataRef.current.name,
-                motherName: customerDataRef.current.motherName,
-                birthDate: customerDataRef.current.birthDate,
-                birthPlace: customerDataRef.current.birthPlace,
-                address: customerDataRef.current.address,
-                residence: customerDataRef.current.residence,
-                documentType: customerDataRef.current.documentType,
-                documentNumber: customerDataRef.current.documentNumber,
-                nationality: customerDataRef.current.nationality,
-              }
-            : undefined,
+          customer: toApprovalCustomer(customerDataRef.current),
         }}
         onApproved={(workerId, name) => {
           approverWorkerIdRef.current = workerId

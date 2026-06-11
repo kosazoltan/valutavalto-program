@@ -81,6 +81,35 @@ const HUF_FMT = new Intl.NumberFormat('hu-HU')
 const ELIGIBLE_ROLES = ['SUPERVISOR', 'MANAGER', 'ADMIN']
 const PIN_LENGTH = 6
 
+/**
+ * Sourcery review (#1089): közös CustomerPanel-adat → adatlap-ügyfél leképezés, hogy a
+ * hívóhelyek (kassza + konverzió) ne duplikálják és ne drifteljenek szét.
+ */
+export function toApprovalCustomer(data: {
+  name: string
+  motherName?: string
+  birthDate?: string
+  birthPlace?: string
+  address?: string
+  residence?: string
+  documentType?: string
+  documentNumber?: string
+  nationality?: string
+} | null): ApprovalRequestDetails['customer'] {
+  if (!data) return undefined
+  return {
+    name: data.name,
+    motherName: data.motherName,
+    birthDate: data.birthDate,
+    birthPlace: data.birthPlace,
+    address: data.address,
+    residence: data.residence,
+    documentType: data.documentType,
+    documentNumber: data.documentNumber,
+    nationality: data.nationality,
+  }
+}
+
 function approverLabel(a: EligibleApprover): string {
   if (a.fullName && a.fullName.trim()) return a.fullName
   const composed = `${a.lastName ?? ''} ${a.firstName ?? ''}`.trim()
