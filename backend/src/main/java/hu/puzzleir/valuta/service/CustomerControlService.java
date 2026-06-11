@@ -152,25 +152,36 @@ public class CustomerControlService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Long workerId = SecurityUtils.getCurrentWorkerId();
 
-        String customerName = request.getCustomerName() != null ? request.getCustomerName().trim() : "";
+        // Review (Sourcery+Copilot): defenzív null/blank-guard — a @NotBlank csak a controller
+        // @Valid útján fut; service-szintű hívásnál is kötelező az indok.
+        String signs = request.getSuspicionSigns() != null ? request.getSuspicionSigns().trim() : "";
+        if (signs.isEmpty()) {
+            throw new hu.puzzleir.valuta.exception.ValidationException(
+                    "A gyanús jelek leírása kötelező");
+        }
+
+        String customerName;
         if (request.getCustomerId() != null) {
             hu.puzzleir.valuta.entity.Customer customer = customerRepository
                     .findById(request.getCustomerId())
                     .filter(c -> c.getCompany() != null && c.getCompany().getId().equals(companyId))
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Ügyfél nem található: " + request.getCustomerId()));
+            // Review (Copilot, audit-integritás): törzsbeli ügyfélnél MINDIG a törzs-név kerül a
+            // naplóba — a kliens által küldött név nem írhatja felül.
+            customerName = customer.getName();
+        } else {
+            customerName = request.getCustomerName() != null ? request.getCustomerName().trim() : "";
             if (customerName.isEmpty()) {
-                customerName = customer.getName();
+                throw new hu.puzzleir.valuta.exception.ValidationException(
+                        "Ismeretlen ügyfélnél az ügyfél neve kötelező a gyanú-bejelentéshez");
             }
-        } else if (customerName.isEmpty()) {
-            throw new hu.puzzleir.valuta.exception.ValidationException(
-                    "Ismeretlen ügyfélnél az ügyfél neve kötelező a gyanú-bejelentéshez");
         }
 
         String details = "GYANÚ-BEJELENTÉS (b9 FR-03) — ügyfél: " + customerName
                 + (request.getHufAmount() != null
                         ? "; érintett összeg: " + request.getHufAmount().toPlainString() + " Ft" : "")
-                + "; gyanús jelek: " + request.getSuspicionSigns().trim();
+                + "; gyanús jelek: " + signs;
 
         CustomerScreeningLog saved = screeningLogRepository.save(CustomerScreeningLog.builder()
                 .customerId(request.getCustomerId())

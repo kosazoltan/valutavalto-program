@@ -13,12 +13,15 @@ import { getErrorMessage } from '../utils/errorHandling'
  */
 export default function SuspicionReportModal({
   open,
+  customerId,
   customerName,
   hufAmount,
   onClose,
   onReported,
 }: {
   open: boolean
+  /** Belső ügyfél-azonosító, ha törzsbeli az ügyfél — a backend tenant-guardja + törzs-név ehhez kötődik. */
+  customerId?: number
   customerName?: string
   hufAmount?: number
   onClose: () => void
@@ -29,12 +32,22 @@ export default function SuspicionReportModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Review (Copilot): bezáráskor (Mégse/Escape) a state törlése — újranyitáskor ne maradjon
+  // korábbi (akár másik ügyfélhez tartozó) félbehagyott tartalom.
+  const resetAndClose = () => {
+    setSigns('')
+    setNameInput('')
+    setError(null)
+    onClose()
+  }
+
   if (!open) return null
 
+  const hasPrefilledName = Boolean((customerName ?? '').trim())
   const effectiveName = (customerName ?? '').trim() || nameInput.trim()
 
   const submit = async () => {
-    if (!signs.trim() || !effectiveName) {
+    if (!signs.trim() || (!effectiveName && customerId == null)) {
       setError('Az ügyfél neve és a gyanús jelek leírása kötelező.')
       return
     }
@@ -42,7 +55,10 @@ export default function SuspicionReportModal({
       setSaving(true)
       setError(null)
       await api.post('/customer-control/suspicion-report', {
-        customerName: effectiveName,
+        // Review (Codex P1 + Sourcery): törzsbeli ügyfélnél az ID megy — a backend a
+        // törzs-nevet használja (audit-integritás) és tenant-guardot futtat.
+        customerId: customerId ?? undefined,
+        customerName: effectiveName || undefined,
         hufAmount: typeof hufAmount === 'number' && Number.isFinite(hufAmount) && hufAmount > 0 ? hufAmount : undefined,
         suspicionSigns: signs.trim(),
       })
@@ -62,7 +78,7 @@ export default function SuspicionReportModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="suspicion-report-title"
-      onKeyDown={(e) => { if (e.key === 'Escape' && !saving) onClose() }}
+      onKeyDown={(e) => { if (e.key === 'Escape' && !saving) resetAndClose() }}
     >
       <div className="w-full max-w-md rounded bg-white shadow-xl">
         <div className="flex items-center justify-between border-b p-4">
@@ -76,19 +92,21 @@ export default function SuspicionReportModal({
             A bejelentés a szűrési naplóba kerül és a vezetők azonnali értesítést kapnak.
             A tranzakciót NE rögzítse — a bejelentés után telefonon egyeztessen a területi vezetővel.
           </p>
-          {!((customerName ?? '').trim()) && (
+          {!hasPrefilledName && (
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-gray-700">Ügyfél neve</span>
+              {/* Review (Copilot): üres névnél ide kerül a fókusz (kötelező mező elsőként) */}
               <input
                 type="text"
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
                 maxLength={255}
                 className="w-full rounded border px-3 py-2"
+                autoFocus
               />
             </label>
           )}
-          {(customerName ?? '').trim() && (
+          {hasPrefilledName && (
             <div className="text-sm"><strong>Ügyfél:</strong> {customerName}</div>
           )}
           <label className="block text-sm">
@@ -99,7 +117,7 @@ export default function SuspicionReportModal({
               rows={4}
               maxLength={1000}
               className="w-full rounded border px-3 py-2"
-              autoFocus
+              autoFocus={hasPrefilledName}
             />
           </label>
           {error && (
@@ -107,7 +125,7 @@ export default function SuspicionReportModal({
           )}
         </div>
         <div className="flex items-center justify-end gap-2 border-t p-4">
-          <button onClick={onClose} className="form-button" disabled={saving}>Mégse</button>
+          <button onClick={resetAndClose} className="form-button" disabled={saving}>Mégse</button>
           <button
             onClick={() => void submit()}
             disabled={saving || !signs.trim() || !effectiveName}

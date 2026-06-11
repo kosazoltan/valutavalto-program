@@ -40,6 +40,7 @@ import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -103,6 +104,38 @@ class CustomerControlSuspicionReportTest {
         assertThat(dto.getDetails()).contains("Gyanús Géza").contains("PIN-kódot");
         verify(notificationService).sendToWorker(eq(10L), anyString(), contains("Gyanús Géza"), eq("URGENT"));
         verify(auditLogService).log(eq("CUSTOMER_SUSPICION_REPORT"), contains("GYANÚ-BEJELENTÉS"), anyString());
+    }
+
+    @Test
+    @DisplayName("Törzsbeli ügyfélnél a kliens-küldte név NEM írhatja felül a törzs-nevet (audit-integritás)")
+    void masterDataNameWinsOverClientName() {
+        Customer customer = Customer.builder().id(42L).name("Törzs Tamás")
+                .company(Company.builder().id(COMPANY_A).code("EBC").build()).build();
+        when(customerRepository.findById(42L)).thenReturn(Optional.of(customer));
+        when(screeningLogRepository.save(any(CustomerScreeningLog.class)))
+                .thenAnswer(inv -> {
+                    CustomerScreeningLog l = inv.getArgument(0);
+                    l.setId(UUID.randomUUID());
+                    return l;
+                });
+        when(workerRepository.findSupervisorsAndAbove(COMPANY_A)).thenReturn(List.of());
+
+        CustomerScreeningLogDto dto = service.reportSuspicion(SuspicionReportRequest.builder()
+                .customerId(42L)
+                .customerName("Hamis Név")
+                .suspicionSigns("jel")
+                .build());
+
+        assertThat(dto.getDetails()).contains("Törzs Tamás").doesNotContain("Hamis Név");
+    }
+
+    @Test
+    @DisplayName("Üres gyanús-jelek: ValidationException a service-rétegben is (defenzív)")
+    void rejectsBlankSignsAtServiceLayer() {
+        assertThatThrownBy(() -> service.reportSuspicion(SuspicionReportRequest.builder()
+                .customerName("X").suspicionSigns("   ").build()))
+                .isInstanceOf(ValidationException.class);
+        verifyNoInteractions(screeningLogRepository);
     }
 
     @Test
