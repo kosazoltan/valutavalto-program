@@ -319,8 +319,12 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
   push(COMMANDS.NORMAL_SIZE);
   text(company.fullName);
   push(COMMANDS.BOLD_OFF);
-  text(data.type === 'transfer' && data.vaultAddress ? data.vaultAddress : company.address);
-  const phone = data.companyPhone || company.phone;
+  // FR-1/FR-2/FR-3 (fejléc-javítás 2026-06-11): átadás-átvételnél a cím és a telefonszám
+  // KIZÁRÓLAG a branch táblából jövő vaultAddress/vaultPhone; hiány esetén nincs cím/telefon
+  // sor (TBD-3), hardcode-olt székhely/telefon transfer bizonylatra nem kerülhet.
+  const headerAddress = data.type === 'transfer' ? (data.vaultAddress ?? '') : company.address;
+  if (headerAddress) text(headerAddress);
+  const phone = data.type === 'transfer' ? (data.vaultPhone ?? '') : (data.companyPhone || company.phone);
   if (phone) text(`Tel: ${phone}`);
   text(`Adószám: ${data.companyTaxNumber || company.taxNumber}`);
   blank();
@@ -504,7 +508,18 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
   text('2007. évi CXVII tv. 85. § e)');
   push(line(), COMMANDS.LF);
 
-  // --- Aláírás sorok ---
+  // FR-5 (fejléc-javítás 2026-06-11): kötelező jogi nyilatkozat — KIZÁRÓLAG átvételi
+  // bizonylaton (transferDocType === 'receipt'), átadásin és sztornón NEM.
+  if (data.type === 'transfer' && data.transferDocType === 'receipt' && !data.isStorno) {
+    blank();
+    push(COMMANDS.ALIGN_LEFT);
+    text('Büntetőjogi felelősségem tudatában,');
+    text('kijelentem, hogy a fentiekben felsorolt');
+    text('pénzkészletet a szállítóktól átvettem,');
+    text('azt tökéletesen átszámoltam.');
+  }
+
+  // --- Aláírás sorok (FR-6: átvételi bizonylaton a nyilatkozat ALATT — Átadó/Átvevő) ---
   blank();
   text('...............    ...............');
   text(data.type === 'transfer'

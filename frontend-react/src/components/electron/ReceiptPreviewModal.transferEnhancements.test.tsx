@@ -44,6 +44,49 @@ describe('ReceiptPreviewModal — átadás-átvétel bővítések (FK02-E transf
     expect(container.textContent ?? '').toContain('Átvételi bizonylat')
   })
 
+  it('Fejléc-javítás FR-1/FR-3: hiányzó vaultAddress esetén transfer bizonylaton NEM jelenik meg hardcode-olt székhelycím', () => {
+    const { container } = renderModal({ ...base, vaultAddress: undefined })
+    const txt = container.textContent ?? ''
+    expect(txt).not.toContain('Citrom utca')
+    expect(txt).not.toContain('Pécs')
+  })
+
+  it('Fejléc-javítás FR-2: a vaultPhone „Tel:" sorként jelenik meg a fejlécben', () => {
+    const { container } = renderModal({ ...base, vaultPhone: '06703800161' })
+    expect(container.textContent ?? '').toContain('Tel: 06703800161')
+  })
+
+  it('Fejléc-javítás TBD-3: hiányzó vaultPhone esetén nincs „Tel:" sor (nem üres sor, nem „null")', () => {
+    const { container } = renderModal({ ...base, vaultPhone: undefined })
+    const txt = container.textContent ?? ''
+    expect(txt).not.toContain('Tel:')
+    expect(txt).not.toContain('null')
+  })
+
+  it('Fejléc-javítás FR-5: átvételi bizonylaton megjelenik a kötelező jogi nyilatkozat', () => {
+    const { container } = renderModal({ ...base, transferDocType: 'receipt' })
+    const txt = container.textContent ?? ''
+    expect(txt).toContain('Büntetőjogi felelősségem tudatában')
+    expect(txt).toContain('pénzkészletet a szállítóktól átvettem, azt tökéletesen átszámoltam')
+  })
+
+  it('Fejléc-javítás FR-5: átadási bizonylaton a jogi nyilatkozat NEM jelenik meg', () => {
+    const { container } = renderModal({ ...base, transferDocType: 'handover' })
+    expect(container.textContent ?? '').not.toContain('Büntetőjogi felelősségem tudatában')
+  })
+
+  it('Fejléc-javítás FR-5: sztornó bizonylaton a jogi nyilatkozat NEM jelenik meg (átvételi irány esetén sem)', () => {
+    const { container } = renderModal({ ...base, transferDocType: 'receipt', isStorno: true, stornoReason: 'Téves' })
+    expect(container.textContent ?? '').not.toContain('Büntetőjogi felelősségem tudatában')
+  })
+
+  it('Fejléc-javítás FR-6: átvételi bizonylaton a nyilatkozat alatt Átadó és Átvevő aláírás vonalak vannak', () => {
+    const { container } = renderModal({ ...base, transferDocType: 'receipt' })
+    const txt = container.textContent ?? ''
+    expect(txt).toContain('Átadó')
+    expect(txt).toContain('Átvevő')
+  })
+
   it('FR-2: transferDocType=handover (alapért.) → „Átadási bizonylat" cím', () => {
     const { container } = renderModal({ ...base, transferDocType: 'handover' })
     expect(container.textContent ?? '').toContain('Átadási bizonylat')

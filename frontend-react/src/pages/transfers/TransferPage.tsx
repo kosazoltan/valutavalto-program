@@ -218,6 +218,13 @@ export default function TransferPage() {
   const ownBranch = branches.find(b => b.id === worker?.branchId)
   const isVaultUser = ownBranch?.isVault === true
 
+  // FR-4 (fejléc-javítás 2026-06-11): a „Kérő iroda" automatikus kitöltése. Elsődleges forrás a
+  // betöltött branch-törzs (kód + név, a cél-iroda formátummal egyezően); ha az még nem érhető el,
+  // a worker JWT-kontextus branchName/branchCode mezői; „—" csak ha egyik sincs.
+  const vaultLabel = ownBranch
+    ? `${ownBranch.code} - ${ownBranch.name}`
+    : (worker?.branchName ?? worker?.branchCode ?? '—')
+
   // (Req #2/#3) Iránytól + felhasználó-típustól függő választható átadás-típusok.
   const availableTransferTypes = getAvailableTransferTypes(isVaultUser, transferDirection)
   // Irányváltás-guard: a PRB csak átvétel ('in') irányban választható — ha a user PRB-vel
@@ -363,9 +370,9 @@ export default function TransferPage() {
         denominations: effDenominations,
       }
 
-      // FR-1/FR-2/FR-3/FR-4: a bizonylat fejléc-adatai. A bejelentkezett értéktár neve a vault-oldal;
-      // átadásnál Kérő iroda = értéktár, átvételnél Cél iroda = értéktár.
-      const vaultLabel = worker?.branchName ?? worker?.branchCode ?? '—'
+      // FR-1/FR-2/FR-3/FR-4: a bizonylat fejléc-adatai. A bejelentkezett értéktár neve a vault-oldal
+      // (component-szintű vaultLabel, FR-4 auto-kitöltéssel); átadásnál Kérő iroda = értéktár,
+      // átvételnél Cél iroda = értéktár.
       const transferDocType: 'handover' | 'receipt' = transferDirection === 'in' ? 'receipt' : 'handover'
       // FR-17..19: a bizonylaton megjelenő címletezési sorok (lineTotal a frontend számolja az előnézethez).
       const receiptDenominations = effDenominations?.map(d => ({
@@ -407,6 +414,22 @@ export default function TransferPage() {
             : `${label} helyileg rögzítve. A feltöltés az Electron queue-ból folytatódik.`,
         )
         // FR-6: offline esetben is nyomtatható a szállítólevél a lokális adatokból.
+        // NFR-1 (offline fejléc): az értéktár címe/telefonszáma a lokális cached_cash_desks
+        // mirrorból (a sync-engine tartja frissen) — internet nélkül is helyes fejléc.
+        let offlineVaultAddress: string | undefined
+        let offlineVaultPhone: string | undefined
+        try {
+          const cachedDesks = await window.electronAPI?.getCachedCashDesks?.()
+          const ownDesk = cachedDesks?.find(d => d.id === worker?.branchId)
+          if (ownDesk) {
+            // A backend formatBranchAddress() formátumával egyezően: "Város, Cím, IRSZ".
+            const parts = [ownDesk.city, ownDesk.address, ownDesk.zip_code]
+              .map(p => (p ?? '').trim())
+              .filter(p => p !== '')
+            offlineVaultAddress = parts.length > 0 ? parts.join(', ') : undefined
+            offlineVaultPhone = ownDesk.phone?.trim() || undefined
+          }
+        } catch { /* cache-hiány nem blokkolja a bizonylatot — fallback a cég-székhely cím */ }
         const now = new Date()
         setPrintReceiptData({
           type: 'transfer',
@@ -430,6 +453,8 @@ export default function TransferPage() {
           transferNote: notes || undefined,
           carrierName: carrierName.trim(),
           sealNumber: sealNumber.trim(),
+          vaultAddress: offlineVaultAddress, // FR-1 (offline: cached_cash_desks mirrorból)
+          vaultPhone: offlineVaultPhone, // FR-2 (offline)
           transferDocType, // FR-2
           denominations: receiptDenominations, // FR-17..19 (offline: lokális adatokból)
         })
@@ -456,6 +481,7 @@ export default function TransferPage() {
             carrierName: result.carrierName,
             sealNumber: result.sealNumber,
             vaultAddress: result.vaultAddress, // FR-1
+            vaultPhone: result.vaultPhone, // FR-2 (fejléc-javítás): branch.phone a szerver-válaszból
             transferDocType, // FR-2
             denominations: result.denominations ?? receiptDenominations, // FR-17..19
           })
@@ -620,8 +646,8 @@ export default function TransferPage() {
       closeStornoModal()
       setSuccess(`Sztornózva: ${result.stornoSerialNumber ?? `${result.transferNumber}-SZ`}`)
       // FR-16: a sztornó bizonylat előnézet + nyomtatás. A Kérő/Cél orientáció az EREDETI irányt
-      // követi (átvételnél fordított), hogy egyezzen az eredeti bizonylattal.
-      const vaultLabel = worker?.branchName ?? worker?.branchCode ?? '—'
+      // követi (átvételnél fordított), hogy egyezzen az eredeti bizonylattal. A vaultLabel a
+      // component-szintű FR-4 auto-kitöltött érték.
       const stornoIsReceipt = result.direction === 'U'
       const stornoOther = `${result.toBranchCode} - ${result.toBranchName}`
       setPrintReceiptData({
@@ -640,6 +666,7 @@ export default function TransferPage() {
         carrierName: result.carrierName,
         sealNumber: result.sealNumber,
         vaultAddress: result.vaultAddress,
+        vaultPhone: result.vaultPhone, // FR-2 (fejléc-javítás)
         isStorno: true, // FR-13/15
         stornoReason: result.cancellationReason ?? reason,
         denominations: result.denominations, // FR-17..19
@@ -658,7 +685,6 @@ export default function TransferPage() {
           if (queued) {
             closeStornoModal()
             setSuccess(`Sztornó helyben rögzítve (offline): ${target.transferNumber}-SZ. A szinkronizálás az internet visszatértekor folytatódik.`)
-            const vaultLabel = worker?.branchName ?? worker?.branchCode ?? '—'
             const stornoIsReceipt = target.direction === 'U'
             const stornoOther = `${target.toBranchCode} - ${target.toBranchName}`
             const now = new Date()
@@ -678,6 +704,7 @@ export default function TransferPage() {
               carrierName: target.carrierName,
               sealNumber: target.sealNumber,
               vaultAddress: target.vaultAddress,
+              vaultPhone: target.vaultPhone, // FR-2 (fejléc-javítás)
               isStorno: true,
               stornoReason: reason,
             })

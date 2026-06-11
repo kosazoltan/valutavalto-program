@@ -50,6 +50,12 @@ public class TransferDto {
     // Értéktári átadás-átvétel bizonylat bővítések:
     /** A bejelentkezett értéktár (Branch) saját helyi címe a bizonylat fejlécéhez (FR-1). */
     private String vaultAddress;
+    /**
+     * A bejelentkezett értéktár (Branch) telefonszáma a bizonylat fejlécéhez (FR-2,
+     * bizonylat-fejléc javítás 2026-06-11). NULL/üres branch.phone esetén NULL —
+     * a kliens ekkor nem jelenít meg telefon sort (TBD-3 döntés).
+     */
+    private String vaultPhone;
     /** Sztornózva van-e (FR-14 lista-jelölés). */
     private Boolean isCancelled;
     /** Sztornó indoklása (FR-12, FR-15). */

@@ -482,6 +482,12 @@ export interface ElectronAPI {
     name: string;
     company_id: string | null;
     city: string | null;
+    /** Fejléc-javítás 2026-06-11 (NFR-1 offline): utca/házszám — régi mirror-ban hiányozhat. */
+    address?: string | null;
+    /** Fejléc-javítás 2026-06-11 (NFR-1 offline): irányítószám — régi mirror-ban hiányozhat. */
+    zip_code?: string | null;
+    /** Fejléc-javítás 2026-06-11 (NFR-1 offline): telefonszám — régi mirror-ban hiányozhat. */
+    phone?: string | null;
     is_active: number;
     cached_at: string;
   }>>;

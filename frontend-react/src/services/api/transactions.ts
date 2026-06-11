@@ -1345,6 +1345,8 @@ export interface Transfer {
   // Értéktári átadás-átvétel bizonylat bővítések:
   /** FR-1: a bejelentkezett értéktár (Branch) saját helyi címe a bizonylat fejlécéhez. */
   vaultAddress?: string
+  /** FR-2 (fejléc-javítás 2026-06-11): az értéktár telefonszáma a `branch.phone`-ból (NULL → nincs telefon sor). */
+  vaultPhone?: string
   /** FR-14: sztornózva van-e (lista-jelölés). */
   isCancelled?: boolean
   /** FR-12/15: sztornó indoklása. */
