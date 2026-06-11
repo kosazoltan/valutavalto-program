@@ -93,6 +93,19 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
     List<CashBalance> findLowBalances(@Param("companyId") UUID companyId);
 
     /**
+     * E-B8 (#279): kritikus készletű egyenlegek MINDEN cégre — a scheduler security
+     * context nélkül fut, ezért nincs company-szűrés (a service company-nként csoportosít
+     * és cégen belüli supervisoroknak értesít, így nincs cross-tenant szivárgás).
+     */
+    @Query("SELECT cb FROM CashBalance cb " +
+           "JOIN FETCH cb.branch " +
+           "JOIN FETCH cb.currency " +
+           "JOIN FETCH cb.company " +
+           "WHERE cb.currentBalance <= cb.minBalance " +
+           "AND cb.minBalance IS NOT NULL")
+    List<CashBalance> findAllLowBalances();
+
+    /**
      * Magas készletű egyenlegek (JOIN FETCH)
      */
     @Query("SELECT cb FROM CashBalance cb " +
