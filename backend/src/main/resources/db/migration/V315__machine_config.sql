@@ -1,4 +1,4 @@
--- V314: Gépenként tárolt konfigurációs tábla (EXCMD b6-beallitasok FR-14).
+-- V315: Gépenként tárolt konfigurációs tábla (EXCMD b6-beallitasok FR-14).
 -- Az egyes pénztárállomások helyi beállításait (FR-02..FR-13 értékek) JSONB-ben
 -- tárolja, company_id + workstation_code szerint izolálva (multi-tenant).
 -- A napi-jelentés jelszava BCrypt-hash-elve tárolódik a config mezőn KÍVÜL (külön

@@ -68,7 +68,7 @@ public class MachineConfigService {
         MachineConfig mc = machineConfigRepository
                 .findByCompanyIdAndWorkstationCode(companyId, workstationCode)
                 .orElseGet(() -> {
-                    log.info("[MachineConfig] Új konfiguráció létrehozva: company={} workstation={}", companyId, workstationCode);
+                    log.info("[MachineConfig] Új konfiguráció létrehozva: company={} workstation={}", companyId, sanitize(workstationCode));
                     return MachineConfig.builder()
                             .companyId(companyId)
                             .workstationCode(workstationCode)
@@ -83,9 +83,15 @@ public class MachineConfigService {
         // Üres/null → hash megmarad változatlanul (nem töröljük a meglévő jelszót).
         if (plainPassword != null && !plainPassword.isBlank()) {
             mc.setDailyReportPasswordHash(passwordEncoder.encode(plainPassword));
-            log.info("[MachineConfig] Napi-jelentés jelszó frissítve (hash-elve): company={} workstation={}", companyId, workstationCode);
+            log.info("[MachineConfig] Napi-jelentés jelszó frissítve (hash-elve): company={} workstation={}", companyId, sanitize(workstationCode));
         }
 
         return machineConfigRepository.save(mc);
+    }
+
+    /** Log-injection megelőzése: newline karakterek eltávolítása user-inputból (CodeQL). */
+    private static String sanitize(String value) {
+        if (value == null) return "(null)";
+        return value.replace('\r', ' ').replace('\n', ' ');
     }
 }

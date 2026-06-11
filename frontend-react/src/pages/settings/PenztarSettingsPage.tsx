@@ -4,6 +4,7 @@ import { Settings as SettingsIcon, Save, X, Lock } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import {
   loadPenztarSettings, savePenztarSettings, isValidServerIp, clampFrequency,
+  clampFutofenyDarab, clampFutofenySebesseg, clampComPort,
   FREQUENCY_MIN, FREQUENCY_MAX,
   type PenztarSettings, type MachineRole, type DisplayColor, type PrinterPort,
   type HandlingFeeMode, type FutofenyMode,
@@ -121,14 +122,20 @@ export default function PenztarSettingsPage() {
     // 2. réteg: Backend (async, nem blokkoló — offline esetén silent fail)
     try {
       await machineConfigApi.put(workstationCodeRef.current, {
-        config: JSON.stringify(s),
+        configJson: JSON.stringify(s),
         // Jelszó csak ha a user új jelszót adott meg a modalban
         dailyReportPassword: pendingPassword,
       })
+      // Jelszót csak sikeres backend-mentés után töröljük (Codex P2: hiba esetén megmarad)
       setPendingPassword(undefined)
     } catch {
-      // Backend-hiba nem blokkolja a mentést — localStorage-ban megvan
-      toast.error('Backend szinkron hiba', 'A beállítások lokálisan mentve, de a szerver-szinkronizáció sikertelen.')
+      // Backend-hiba nem blokkolja a mentést — localStorage-ban megvan.
+      // Jelszó-state szándékosan megmarad, hogy újrapróbáláskor ne kelljen újra beírni.
+      toast.error(
+        'Backend szinkron hiba',
+        'A beállítások lokálisan mentve, de a szerver-szinkronizáció sikertelen. Kérjük, próbáljon meg újra menteni.',
+      )
+      return
     }
 
     toast.success('Mentve', 'A beállítások rögzítve.')
@@ -309,7 +316,7 @@ export default function PenztarSettingsPage() {
               id="futofenyDarab" type="number" min={0} max={10}
               className="form-input w-20"
               value={s.futofenyDarab}
-              onChange={(e) => set('futofenyDarab', Math.max(0, Math.min(10, Math.floor(Number(e.target.value) || 0))))}
+              onChange={(e) => set('futofenyDarab', clampFutofenyDarab(e.target.value))}
             />
           </div>
           <div>
@@ -321,7 +328,7 @@ export default function PenztarSettingsPage() {
               className="form-input w-20"
               value={s.futofenyCom1}
               disabled={s.futofenyDarab === 0}
-              onChange={(e) => set('futofenyCom1', Math.max(1, Math.min(255, Math.floor(Number(e.target.value) || 1))))}
+              onChange={(e) => set('futofenyCom1', clampComPort(e.target.value, 1))}
             />
           </div>
           <div>
@@ -333,7 +340,7 @@ export default function PenztarSettingsPage() {
               className="form-input w-20"
               value={s.futofenyCom2}
               disabled={s.futofenyDarab < 2}
-              onChange={(e) => set('futofenyCom2', Math.max(1, Math.min(255, Math.floor(Number(e.target.value) || 2))))}
+              onChange={(e) => set('futofenyCom2', clampComPort(e.target.value, 2))}
             />
           </div>
         </div>
@@ -352,7 +359,7 @@ export default function PenztarSettingsPage() {
             <span className="text-xs">Lassú</span>
             <input
               id="futofenySebesseg" type="range" min={1} max={10} value={s.futofenySebesseg}
-              onChange={(e) => set('futofenySebesseg', Math.max(1, Math.min(10, Number(e.target.value))))}
+              onChange={(e) => set('futofenySebesseg', clampFutofenySebesseg(e.target.value))}
               className="flex-1"
             />
             <span className="text-xs">Gyors</span>

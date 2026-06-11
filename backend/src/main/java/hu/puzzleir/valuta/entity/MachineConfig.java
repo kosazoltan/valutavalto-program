@@ -2,6 +2,8 @@ package hu.puzzleir.valuta.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -54,6 +56,7 @@ public class MachineConfig {
      * Postgres {@code jsonb} típusra leképezve String-ként; a service/controller
      * JSON-t vár és ad vissza.
      */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "config", nullable = false, columnDefinition = "jsonb")
     @Builder.Default
     private String config = "{}";

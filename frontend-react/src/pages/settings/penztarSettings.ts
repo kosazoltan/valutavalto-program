@@ -147,6 +147,13 @@ export function isValidComPort(v: unknown): boolean {
   return typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 255
 }
 
+/** COM-port érték 1–255 közé szorítva (NaN esetén 1). */
+export function clampComPort(v: unknown, fallback = 1): number {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return fallback
+  return Math.min(255, Math.max(1, Math.round(n)))
+}
+
 /** Futófény sebesség 1–10 közé szorítva. */
 export function clampFutofenySebesseg(v: unknown): number {
   const n = Number(v)

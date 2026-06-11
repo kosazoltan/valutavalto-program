@@ -1,7 +1,9 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.dto.MachineConfigUpdateRequest;
 import hu.puzzleir.valuta.entity.MachineConfig;
 import hu.puzzleir.valuta.service.MachineConfigService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -76,17 +78,17 @@ public class MachineConfigController {
      * </ul>
      *
      * @param workstationCode a gép kódja (branch_code, pl. BR039)
-     * @param body            a kérés törzse
+     * @param request         a kérés törzse (typed DTO)
      */
     @PutMapping("/{workstationCode}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> upsertConfig(
             @PathVariable String workstationCode,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody MachineConfigUpdateRequest request) {
 
-        String configJson = body.get("config") instanceof String s ? s : "{}";
+        String configJson = request.configJson() != null ? request.configJson() : "{}";
         // dailyReportPassword plain-text — a service hash-eli, soha nem tároljuk plain-ben.
-        String plainPassword = body.get("dailyReportPassword") instanceof String p ? p : null;
+        String plainPassword = request.dailyReportPassword();
 
         MachineConfig saved = machineConfigService.upsert(workstationCode, configJson, plainPassword);
 
@@ -94,7 +96,13 @@ public class MachineConfigController {
         resp.put("workstationCode", saved.getWorkstationCode());
         resp.put("dailyReportPasswordSet", saved.getDailyReportPasswordHash() != null);
         resp.put("updatedAt", saved.getUpdatedAt() != null ? saved.getUpdatedAt().toString() : null);
-        log.info("[MachineConfig] Konfiguráció mentve: workstation={}", workstationCode);
+        log.info("[MachineConfig] Konfiguráció mentve: workstation={}", sanitize(workstationCode));
         return ResponseEntity.ok(resp);
+    }
+
+    /** Log-injection megelőzése: newline karakterek eltávolítása user-inputból (CodeQL). */
+    private static String sanitize(String value) {
+        if (value == null) return "(null)";
+        return value.replace('\r', ' ').replace('\n', ' ');
     }
 }

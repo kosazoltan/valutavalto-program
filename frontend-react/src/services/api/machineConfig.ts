@@ -23,8 +23,8 @@ export interface MachineConfigGetResponse {
 }
 
 export interface MachineConfigPutRequest {
-  /** A teljes settings JSON string. */
-  config: string
+  /** A teljes settings JSON string (MachineConfigUpdateRequest.configJson mezőjének megfelelő). */
+  configJson: string
   /**
    * Ha megadva és nem üres: a szerver BCrypt-tel hash-eli és menti.
    * Ha nincs megadva vagy üres: a meglévő jelszó változatlan.
