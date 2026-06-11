@@ -37,7 +37,10 @@ A Codex jogosan jelezte: a verdikt premisszája (a számkiosztás atomikus a rö
 
 > Megjegyzés a review-eszköznek: ha a `rg "withTransaction|BEGIN|COMMIT|ROLLBACK" penztar-client/electron/sqlite.ts` korábban üres volt, az a `#1036` merge ELŐTTI fát vizsgálta. A frissített branchen a fenti sorokon megtalálható.
 
-## Nyitott follow-up (NEM MEGSEM): online-synced bizonylat fizikai újranyomtatása
+## Follow-up — LEZÁRVA (#1035/#1039): online-synced bizonylat fizikai ESC/POS újranyomtatása
+
+**LEZÁRVA (a verdikt utáni körben, #1035/#1039).** A synced=1 bizonylatok fizikai ESC/POS-újranyomtatása megvalósult: `getReprintableTransactions/Conversions/Stornos` (sqlite.ts, `WHERE synced=1`) + `get-reprintable-*` IPC (preload.ts) + ReceiptPage `reprintable` lista (1-kattintásos ESC/POS "Újranyomtatás" gomb, ReceiptPreviewModal reprint-variant). Az alábbi (eredeti) leírás történeti.
+
 Codex P2 (helyes, kódból igazolt) feltárt egy valós, a MEGSEM-től FÜGGETLEN hiányosságot: ha egy bizonylat MÁR szinkronizált (`synced=1`) és a fizikai nyomtatás meghiúsul, jelenleg nincs tiszta fizikai-újranyomtatási út:
 - a vázlat-böngésző csak `synced=0` rekordot listáz (`sqlite.ts:1624`/`:1932`), a synced rekord eltűnik;
 - a szerver Print-gomb (`ReceiptService.print`) csak az `isPrinted`/materializálást végzi, ESC-POS-t nem küld.
