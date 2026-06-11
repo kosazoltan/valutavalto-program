@@ -103,11 +103,12 @@
     "stop:db": "docker stop valuta-postgres"
   },
   "devDependencies": {
-    "concurrently": "^10.0.3",
+    "concurrently": "^9.2.1",
     "wait-on": "^8.0.1"
   },
   "overrides": {
-    "axios": ">=1.15.2"
+    "axios": ">=1.15.2",
+    "shell-quote": "^1.8.4"
   },
   "engines": {
     "node": ">=20.19.0",

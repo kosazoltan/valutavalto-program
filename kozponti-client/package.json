@@ -27,7 +27,7 @@
   "devDependencies": {
     "@types/node": "^20.11.20",
     "@types/sql.js": "^1.4.11",
-    "concurrently": "^10.0.3",
+    "concurrently": "^9.2.1",
     "electron": "^42.0.1",
     "electron-builder": "^26.8.1",
     "shx": "^0.4.0",
@@ -39,6 +39,7 @@
     "node": ">=20.19.0"
   },
   "overrides": {
-    "tmp": "^0.2.6"
+    "tmp": "^0.2.6",
+    "shell-quote": "^1.8.4"
   }
 }
