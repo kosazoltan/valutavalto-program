@@ -222,6 +222,93 @@ class AmlEddServiceTest {
     }
 
     @Test
+    @DisplayName("V.2.7 f) pass-through: 72h-n belül mindkét irányú >=küszöb forgalom → EDD-ablak")
+    void marksEddWindowOnPassThroughTrigger() {
+        flagOn();
+        Customer customer = Customer.builder().customerCode("C-5").build();
+        when(transactionRepository.findEddSingleTransactionTriggers(any(), any())).thenReturn(List.of());
+        when(transactionRepository.findEddPassThroughTriggers(
+                DAY.minusDays(2), DAY, new BigDecimal(AmlEddService.EDD_PASSTHROUGH_MIN_DEFAULT)))
+                .thenReturn(List.<Object[]>of(new Object[]{
+                        COMPANY_A, "C-5", new BigDecimal("6000000"), new BigDecimal("5500000")}));
+        when(customerRepository.findByCustomerCodeAndCompanyId("C-5", COMPANY_A))
+                .thenReturn(Optional.of(customer));
+
+        AmlEddService.AmlEddScanResult result = service.scanDate(DAY);
+
+        assertThat(result.marked()).isEqualTo(1);
+        assertThat(customer.getEddUntil()).isEqualTo(LocalDate.of(2027, 6, 30)); // hónapvége-horgony
+        assertThat(customer.getEddReason()).contains("V.2.7 f)").contains("pass-through");
+    }
+
+    @Test
+    @DisplayName("V.2.7 g) profil-kiugrás: aktuális hó >= 5× a 6 havi átlag → EDD-ablak")
+    void marksEddWindowOnProfileOutlier() {
+        flagOn();
+        Customer customer = Customer.builder().customerCode("C-6").build();
+        when(transactionRepository.findEddSingleTransactionTriggers(any(), any())).thenReturn(List.of());
+        when(transactionRepository.findEddMonthlyCumulativeTriggers(
+                DAY.withDayOfMonth(1), DAY, AmlEddService.EDD_MONTHLY_THRESHOLD_HUF)).thenReturn(List.of());
+        // g) jelölt-szűrő (10M zaj-küszöb): aktuális hó 30M
+        when(transactionRepository.findEddMonthlyCumulativeTriggers(
+                DAY.withDayOfMonth(1), DAY, new BigDecimal(AmlEddService.EDD_PROFILE_MIN_DEFAULT)))
+                .thenReturn(List.<Object[]>of(new Object[]{COMPANY_A, "C-6", new BigDecimal("30000000")}));
+        // előzmény: 6 hónap alatt összesen 24M → havi átlag 4M; 30M >= 5×4M=20M → trigger
+        when(transactionRepository.sumCustomerQuarterlyTotal(
+                eq(COMPANY_A), eq("C-6"), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(new BigDecimal("24000000"));
+        when(customerRepository.findByCustomerCodeAndCompanyId("C-6", COMPANY_A))
+                .thenReturn(Optional.of(customer));
+
+        AmlEddService.AmlEddScanResult result = service.scanDate(DAY);
+
+        assertThat(result.marked()).isEqualTo(1);
+        assertThat(customer.getEddReason()).contains("V.2.7 g)").contains("profil-kiugrás");
+    }
+
+    @Test
+    @DisplayName("V.2.7 g): előzmény nélküli (új) ügyfélnél a kiugrás nem értelmezett — nincs jelölés")
+    void profileOutlierSkipsCustomerWithoutHistory() {
+        flagOn();
+        when(transactionRepository.findEddSingleTransactionTriggers(any(), any())).thenReturn(List.of());
+        when(transactionRepository.findEddMonthlyCumulativeTriggers(
+                DAY.withDayOfMonth(1), DAY, AmlEddService.EDD_MONTHLY_THRESHOLD_HUF)).thenReturn(List.of());
+        when(transactionRepository.findEddMonthlyCumulativeTriggers(
+                DAY.withDayOfMonth(1), DAY, new BigDecimal(AmlEddService.EDD_PROFILE_MIN_DEFAULT)))
+                .thenReturn(List.<Object[]>of(new Object[]{COMPANY_A, "C-7", new BigDecimal("30000000")}));
+        when(transactionRepository.sumCustomerQuarterlyTotal(
+                eq(COMPANY_A), eq("C-7"), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(BigDecimal.ZERO);
+
+        AmlEddService.AmlEddScanResult result = service.scanDate(DAY);
+
+        assertThat(result.marked()).isZero();
+        verify(customerRepository, never()).save(any());
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    @DisplayName("V.2.7 g): átlag alatti többszöröződésnél (küszöb alatt) nincs jelölés")
+    void profileOutlierSkipsBelowMultiplier() {
+        flagOn();
+        when(transactionRepository.findEddSingleTransactionTriggers(any(), any())).thenReturn(List.of());
+        when(transactionRepository.findEddMonthlyCumulativeTriggers(
+                DAY.withDayOfMonth(1), DAY, AmlEddService.EDD_MONTHLY_THRESHOLD_HUF)).thenReturn(List.of());
+        when(transactionRepository.findEddMonthlyCumulativeTriggers(
+                DAY.withDayOfMonth(1), DAY, new BigDecimal(AmlEddService.EDD_PROFILE_MIN_DEFAULT)))
+                .thenReturn(List.<Object[]>of(new Object[]{COMPANY_A, "C-8", new BigDecimal("30000000")}));
+        // 6 havi össz 60M → átlag 10M; 30M < 5×10M=50M → nincs trigger
+        when(transactionRepository.sumCustomerQuarterlyTotal(
+                eq(COMPANY_A), eq("C-8"), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(new BigDecimal("60000000"));
+
+        AmlEddService.AmlEddScanResult result = service.scanDate(DAY);
+
+        assertThat(result.marked()).isZero();
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
     @DisplayName("Pmt.30.§(1) manuális jelölés: 1 éves ablak + audit, flag-állástól függetlenül")
     void manualMarkSetsWindowRegardlessOfFlag() {
         Customer customer = Customer.builder().id(42L).customerCode("C-9")

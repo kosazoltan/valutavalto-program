@@ -618,6 +618,30 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * EDD V.2.7 f) (V311): pass-through gyanú — az ablakon (72h) belül MINDKÉT irányban
+     * (vétel ÉS eladás) >=küszöb forgalmú (cég, ügyfél, vétel-összeg, eladás-összeg)
+     * négyesek. Cross-company scheduler-query, a service cégen belül jelöl.
+     */
+    @Query("SELECT t.company.id, t.customerId, " +
+           "SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.BUY THEN t.hufAmount ELSE 0 END), " +
+           "SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.SELL THEN t.hufAmount ELSE 0 END) " +
+           "FROM Transaction t " +
+           "WHERE t.transactionDate BETWEEN :windowStart AND :day " +
+           "AND t.customerId IS NOT NULL AND t.customerId <> '' " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
+           "AND t.transactionType IN (hu.puzzleir.valuta.entity.TransactionType.BUY, " +
+           "                          hu.puzzleir.valuta.entity.TransactionType.SELL) " +
+           "GROUP BY t.company.id, t.customerId " +
+           "HAVING SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.BUY THEN t.hufAmount ELSE 0 END) >= :threshold " +
+           "AND SUM(CASE WHEN t.transactionType = hu.puzzleir.valuta.entity.TransactionType.SELL THEN t.hufAmount ELSE 0 END) >= :threshold")
+    List<Object[]> findEddPassThroughTriggers(
+        @Param("windowStart") LocalDate windowStart,
+        @Param("day") LocalDate day,
+        @Param("threshold") BigDecimal threshold
+    );
+
+    /**
      * Havi tranzakciók branch-hez (havi záráshoz).
      */
     @Query("SELECT t FROM Transaction t " +

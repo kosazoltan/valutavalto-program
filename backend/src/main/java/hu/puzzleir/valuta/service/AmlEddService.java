@@ -44,6 +44,19 @@ public class AmlEddService {
     static final BigDecimal EDD_SINGLE_TX_THRESHOLD_HUF = new BigDecimal("50000000");
     /** V.2.7 b): naptári havi kumulált készpénzforgalom küszöb. */
     static final BigDecimal EDD_MONTHLY_THRESHOLD_HUF = new BigDecimal("100000000");
+
+    // V.2.7 f)/g) (V311): a numerikus értékek SystemParameter-ben hangolhatók — a szabályzat
+    // a f)-nél 24-72h ablakot nevez meg, a g)-nél számszerű küszöböt nem; engineering defaultok.
+    static final String EDD_PASSTHROUGH_MIN_PARAM = "AML_EDD_PASSTHROUGH_MIN_HUF";
+    static final String EDD_PASSTHROUGH_MIN_DEFAULT = "5000000";
+    /** f) pass-through ablak: a szabályzati 24-72h felső határa (konzervatív — többet fog). */
+    static final int EDD_PASSTHROUGH_WINDOW_DAYS = 3;
+    static final String EDD_PROFILE_MULTIPLIER_PARAM = "AML_EDD_PROFILE_OUTLIER_MULTIPLIER";
+    static final String EDD_PROFILE_MULTIPLIER_DEFAULT = "5";
+    static final String EDD_PROFILE_MIN_PARAM = "AML_EDD_PROFILE_OUTLIER_MIN_HUF";
+    static final String EDD_PROFILE_MIN_DEFAULT = "10000000";
+    /** g) profil-átlag visszatekintési ablaka: az előző 6 teljes naptári hónap. */
+    static final int EDD_PROFILE_HISTORY_MONTHS = 6;
     /** Az EDD-ablak hossza. */
     static final int EDD_WINDOW_YEARS = 1;
 
@@ -103,6 +116,53 @@ public class AmlEddService {
             String reason = "V.2.7 b): >=100M Ft havi készpénzforgalom (" + monthStart
                     + " hónap, összesen " + row[2] + " Ft)";
             switch (markEdd((UUID) row[0], (String) row[1], day, monthAnchorUntil, reason)) {
+                case MARKED -> marked++;
+                case EXTENDED -> extended++;
+                default -> unchanged++;
+            }
+        }
+
+        // f) pass-through (V311): 72h-n belül MINDKÉT irányban >=küszöb forgalom —
+        // áteresztő-számla gyanú. Hónapvége-horgony (a b)-vel azonos idempotencia-minta).
+        BigDecimal passThroughMin = paramAsBigDecimal(EDD_PASSTHROUGH_MIN_PARAM, EDD_PASSTHROUGH_MIN_DEFAULT);
+        LocalDate windowStart = day.minusDays(EDD_PASSTHROUGH_WINDOW_DAYS - 1L);
+        for (Object[] row : transactionRepository.findEddPassThroughTriggers(
+                windowStart, day, passThroughMin)) {
+            String reason = "V.2.7 f): pass-through gyanú — 72h-n belül vétel " + row[2]
+                    + " Ft ÉS eladás " + row[3] + " Ft (küszöb: " + passThroughMin.toPlainString() + " Ft)";
+            switch (markEdd((UUID) row[0], (String) row[1], day, monthAnchorUntil, reason)) {
+                case MARKED -> marked++;
+                case EXTENDED -> extended++;
+                default -> unchanged++;
+            }
+        }
+
+        // g) profil-kiugrás (V311): aktuális havi forgalom >= szorzó × előző 6 hónap havi
+        // átlaga (és >= zaj-szűrő minimum). Új ügyfélnél (nincs előzmény) nem értelmezett —
+        // a nagy összegeket az a)/b) szabály fogja.
+        BigDecimal profileMin = paramAsBigDecimal(EDD_PROFILE_MIN_PARAM, EDD_PROFILE_MIN_DEFAULT);
+        BigDecimal multiplier = paramAsBigDecimal(EDD_PROFILE_MULTIPLIER_PARAM, EDD_PROFILE_MULTIPLIER_DEFAULT);
+        LocalDate histStart = monthStart.minusMonths(EDD_PROFILE_HISTORY_MONTHS);
+        LocalDate histEnd = monthStart.minusDays(1);
+        for (Object[] row : transactionRepository.findEddMonthlyCumulativeTriggers(
+                monthStart, day, profileMin)) {
+            UUID companyId = (UUID) row[0];
+            String customerCode = (String) row[1];
+            BigDecimal currentMonth = (BigDecimal) row[2];
+            // Tenant-helyes előzmény: a query company-szűrt (generikus dátum-tartomány összeg)
+            BigDecimal histTotal = transactionRepository.sumCustomerQuarterlyTotal(
+                    companyId, customerCode, histStart, histEnd);
+            if (histTotal == null || histTotal.compareTo(BigDecimal.ZERO) <= 0) {
+                continue; // nincs profil-előzmény — a kiugrás nem értelmezhető
+            }
+            BigDecimal monthlyAvg = histTotal.divide(
+                    BigDecimal.valueOf(EDD_PROFILE_HISTORY_MONTHS), 2, java.math.RoundingMode.HALF_UP);
+            if (currentMonth.compareTo(monthlyAvg.multiply(multiplier)) < 0) {
+                continue;
+            }
+            String reason = "V.2.7 g): profil-kiugrás — aktuális havi forgalom " + currentMonth
+                    + " Ft >= " + multiplier.toPlainString() + "× a 6 havi átlag (" + monthlyAvg.toPlainString() + " Ft)";
+            switch (markEdd(companyId, customerCode, day, monthAnchorUntil, reason)) {
                 case MARKED -> marked++;
                 case EXTENDED -> extended++;
                 default -> unchanged++;
@@ -186,6 +246,17 @@ public class AmlEddService {
                 customer.getCustomerCode() + ":" + newUntil,
                 companyId);
         return wasActive ? MarkOutcome.EXTENDED : MarkOutcome.MARKED;
+    }
+
+    /** Numerikus SystemParameter biztonságos olvasása (hibás érték → default + warn). */
+    private BigDecimal paramAsBigDecimal(String key, String defaultValue) {
+        String raw = systemParameterService.getValue(key, defaultValue);
+        try {
+            return new BigDecimal(raw.trim());
+        } catch (NumberFormatException | NullPointerException e) {
+            log.warn("Érvénytelen numerikus paraméter {}='{}' — default ({}) használata", key, raw, defaultValue);
+            return new BigDecimal(defaultValue);
+        }
     }
 
     /** Aktív-e az ügyfél EDD-ablaka az adott napon. */
