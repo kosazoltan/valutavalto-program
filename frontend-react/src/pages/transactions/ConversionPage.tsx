@@ -891,6 +891,43 @@ export default function ConversionPage() {
         // Codex P1: a single-use grant a jóváhagyott ügyfélhez kötött — ugyanaz a customerName mint amit a
         // konverzió-tranzakció visz (effectiveCustomerName logika: customer-panel név, vagy a kézi mező).
         customerName={customerDataRef.current?.name?.trim() || customerName.trim() || undefined}
+        /* EXCMD b3 FR-AUTH-01..05: engedélykérő adatlap — a konverzió két lába soros bontásként */
+        details={{
+          branchCode: worker?.branchCode ?? undefined,
+          branchName: worker?.branchName ?? undefined,
+          totalHuf: amlAmount,
+          lines: ([
+            fromCurrencyId != null && getRate(fromCurrencyId)
+              ? {
+                  currencyCode: currencies.find((c) => c.id === fromCurrencyId)?.code ?? '?',
+                  amount: parseFloat(fromAmount.replace(',', '.').replace(/\s/g, '')) || 0,
+                  rate: getRate(fromCurrencyId)?.baseBuyRate ?? 0,
+                  hufValue: hufAmount,
+                }
+              : null,
+            toCurrencyId != null && getRate(toCurrencyId)
+              ? {
+                  currencyCode: currencies.find((c) => c.id === toCurrencyId)?.code ?? '?',
+                  amount: parseFloat(toAmount.replace(',', '.').replace(/\s/g, '')) || 0,
+                  rate: getRate(toCurrencyId)?.baseSellRate ?? 0,
+                  hufValue: hufAmount,
+                }
+              : null,
+          ].filter(Boolean)) as Array<{ currencyCode: string; amount: number; rate: number; hufValue: number }>,
+          customer: customerDataRef.current
+            ? {
+                name: customerDataRef.current.name,
+                motherName: customerDataRef.current.motherName,
+                birthDate: customerDataRef.current.birthDate,
+                birthPlace: customerDataRef.current.birthPlace,
+                address: customerDataRef.current.address,
+                residence: customerDataRef.current.residence,
+                documentType: customerDataRef.current.documentType,
+                documentNumber: customerDataRef.current.documentNumber,
+                nationality: customerDataRef.current.nationality,
+              }
+            : undefined,
+        }}
         onApproved={(workerId, name) => {
           approverWorkerIdRef.current = workerId
           setShowAmlApprover(false)

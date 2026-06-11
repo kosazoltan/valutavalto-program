@@ -1694,6 +1694,33 @@ export default function CashierTransactionPage() {
         reason={amlApprovalReason}
         sessionId={approvalSessionIdRef.current ?? ''}
         customerName={customerDataRef.current?.name ?? undefined}
+        /* EXCMD b3 FR-AUTH-01..05: engedélykérő adatlap — pénztár + összeg + soros bontás + ügyfél */
+        details={{
+          branchCode: worker?.branchCode ?? undefined,
+          branchName: worker?.branchName ?? undefined,
+          totalHuf: total,
+          lines: rows
+            .filter((r) => r.currencyCode && r.hufValue > 0)
+            .map((r) => ({
+              currencyCode: r.currencyCode,
+              amount: Number(r.quantity) || 0,
+              rate: r.exchangeRate,
+              hufValue: r.hufValue,
+            })),
+          customer: customerDataRef.current
+            ? {
+                name: customerDataRef.current.name,
+                motherName: customerDataRef.current.motherName,
+                birthDate: customerDataRef.current.birthDate,
+                birthPlace: customerDataRef.current.birthPlace,
+                address: customerDataRef.current.address,
+                residence: customerDataRef.current.residence,
+                documentType: customerDataRef.current.documentType,
+                documentNumber: customerDataRef.current.documentNumber,
+                nationality: customerDataRef.current.nationality,
+              }
+            : undefined,
+        }}
         onApproved={(workerId, name) => {
           approverWorkerIdRef.current = workerId
           setShowAmlApprover(false)
