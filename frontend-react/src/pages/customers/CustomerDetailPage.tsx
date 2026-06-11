@@ -28,7 +28,7 @@ export default function CustomerDetailPage() {
 
   const handleMarkEdd = async () => {
     if (!id || !eddReasonInput.trim()) {
-      setEddError('Az indok megadása kötelező.')
+      setEddError(t('customers.eddMarkReasonRequired'))
       return
     }
     try {
@@ -142,11 +142,13 @@ export default function CustomerDetailPage() {
             {customer.isVip && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">VIP</span>}
             {customer.eddActive && (
               <span
-                title={customer.eddReason || 'Megerősített eljárás (V.2.7)'}
+                title={customer.eddReason || t('customers.eddBadgeFallback')}
                 className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded flex items-center gap-1"
               >
                 <ShieldCheck size={12} />
-                EDD {customer.eddUntil}-ig
+                {t('customers.eddBadge', {
+                  date: customer.eddUntil ? new Date(customer.eddUntil).toLocaleDateString('hu-HU') : '',
+                })}
               </span>
             )}
           </h1>
@@ -156,10 +158,10 @@ export default function CustomerDetailPage() {
             <button
               onClick={() => { setEddError(null); setShowEddModal(true) }}
               className="form-button flex items-center gap-1 text-red-700"
-              title="Pmt. 30.§ (1) bejelentett ügyfél megerősített eljárás (EDD) alá vonása 1 évre"
+              title={t('customers.eddMarkButtonTitle')}
             >
               <ShieldCheck size={16} />
-              EDD-jelölés (Pmt. 30.§)
+              {t('customers.eddMarkButton')}
             </button>
           )}
           <Link
@@ -368,23 +370,27 @@ export default function CustomerDetailPage() {
         </div>
       </div>
 
-      {/* Pmt. 30.§ (1) EDD-jelölő modal — inline (Electron renderer: window.prompt nem támogatott) */}
+      {/* Pmt. 30.§ (1) EDD-jelölő modal — inline (Electron renderer: window.prompt nem támogatott);
+          a11y az AmlApproverModal mintájára (role=dialog + aria + Escape) */}
       {showEddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edd-mark-title"
+          onKeyDown={(e) => { if (e.key === 'Escape' && !eddSaving) setShowEddModal(false) }}
+        >
           <div className="w-full max-w-md rounded bg-white shadow-xl">
             <div className="flex items-center justify-between border-b p-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
+              <h2 id="edd-mark-title" className="text-lg font-semibold flex items-center gap-2">
                 <ShieldCheck size={18} className="text-red-700" />
-                EDD-jelölés — Pmt. 30.§ (1)
+                {t('customers.eddMarkTitle')}
               </h2>
             </div>
             <div className="space-y-3 p-4">
-              <p className="text-sm text-gray-600">
-                Az ügyfél 1 évre megerősített eljárás (V.2.7 c) alá kerül. A jelölés
-                audit-naplózott és nem rövidíthető — csak indokkal adható.
-              </p>
+              <p className="text-sm text-gray-600">{t('customers.eddMarkDescription')}</p>
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-gray-700">Indok (pl. bejelentés azonosító)</span>
+                <span className="mb-1 block font-medium text-gray-700">{t('customers.eddMarkReasonLabel')}</span>
                 <textarea
                   value={eddReasonInput}
                   onChange={(e) => setEddReasonInput(e.target.value)}
@@ -407,7 +413,7 @@ export default function CustomerDetailPage() {
                 disabled={eddSaving || !eddReasonInput.trim()}
                 className="form-button-primary"
               >
-                {eddSaving ? 'Mentés...' : 'EDD-jelölés rögzítése'}
+                {eddSaving ? t('customers.eddMarkSaving') : t('customers.eddMarkSubmit')}
               </button>
             </div>
           </div>

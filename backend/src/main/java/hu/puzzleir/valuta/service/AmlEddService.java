@@ -196,8 +196,19 @@ public class AmlEddService {
                         "Ügyfél nem található: " + customerId));
 
         LocalDate today = LocalDate.now(BUSINESS_ZONE);
-        applyEddWindow(customer, companyId, today, today.plusYears(EDD_WINDOW_YEARS),
-                "Pmt. 30.§ (1) bejelentés (V.2.7 c): " + reason.trim());
+        String fullReason = "Pmt. 30.§ (1) bejelentés (V.2.7 c): " + reason.trim();
+        MarkOutcome outcome = applyEddWindow(
+                customer, companyId, today, today.plusYears(EDD_WINDOW_YEARS), fullReason);
+        // Codex P2: a Pmt.30-bejelentés AKKOR IS audit-köteles, ha a meglévő (hosszabb)
+        // ablak miatt az ablak-mezők változatlanok — a bejelentés ténye 8 évig megőrzendő.
+        if (outcome == MarkOutcome.UNCHANGED) {
+            auditLogService.logForCompany(
+                    AUDIT_ACTION,
+                    "Pmt. 30.§ (1) bejelentés rögzítve — a meglévő EDD-ablak ("
+                            + customer.getEddUntil() + ") hosszabb, mezők változatlanok. " + fullReason,
+                    customer.getCustomerCode() + ":" + customer.getEddUntil(),
+                    companyId);
+        }
         return customer;
     }
 
@@ -259,10 +270,9 @@ public class AmlEddService {
         }
     }
 
-    /** Aktív-e az ügyfél EDD-ablaka az adott napon. */
+    /** Aktív-e az ügyfél EDD-ablaka az adott napon (delegál az entity-helperre). */
     public static boolean isEddActive(Customer customer, LocalDate today) {
-        return customer != null && customer.getEddUntil() != null
-                && !customer.getEddUntil().isBefore(today);
+        return customer != null && customer.isEddActiveOn(today);
     }
 
     private enum MarkOutcome { MARKED, EXTENDED, UNCHANGED }

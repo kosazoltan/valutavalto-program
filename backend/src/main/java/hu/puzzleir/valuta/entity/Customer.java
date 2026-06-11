@@ -303,6 +303,15 @@ public class Customer {
     private LocalDateTime eddSetAt;
 
     /**
+     * Aktív-e a megerősített-eljárás (EDD) ablak az adott napon.
+     * Entity-helper a CashBalance.isLowBalance() mintájára — a mapper/service rétegek
+     * innen származtatják az aktív-státuszt, nem duplikálják a dátum-logikát.
+     */
+    public boolean isEddActiveOn(LocalDate today) {
+        return eddUntil != null && today != null && !eddUntil.isBefore(today);
+    }
+
+    /**
      * Megjegyzések
      */
     @Column(length = 1000)
