@@ -26,7 +26,7 @@ implementált vagy el sem készített részek felderítése.
 
 A 265 érdemi form mindegyike két kategória egyikébe esett:
 
-### COVERED (~210 form) — a mai ERP fedi, file-szintű bizonyítékkal
+### COVERED (~165 form) — a mai ERP fedi, file-szintű bizonyítékkal
 
 Minden üzleti pillér-funkció megvan: tranzakciók (vétel/eladás/konverzió/sztornó),
 zárások (napi/havi/esti + hiányzó-zárás alert), cimletezés (teljes lánc: bevitel,
@@ -37,7 +37,7 @@ kontroll, súlyozott átlagárfolyam (WacService), árfolyam-eltérítés/kedvez
 (RateDiscount), ügyfél-adatlap (AML-mezőkkel), foglaló, dolgozó-törzs,
 pénztár-törzs, terrorlista-szűrés, napi könyv/könyvelési export.
 
-### INFRA (~55 form) — a mai architektúrában értelmetlen vagy 3rd-party
+### INFRA (~100 form) — a mai architektúrában értelmetlen vagy 3rd-party
 
 - **FIREBIRD (51): az `IBConsole.exe`** — a Firebird/InterBase adatbázis-motor
   gyári admin-eszköze, sosem volt a valutaváltó saját üzleti kódja. PostgreSQL váltotta.

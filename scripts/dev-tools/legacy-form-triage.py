@@ -13,7 +13,9 @@ import re
 import sys
 from collections import defaultdict
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+# Sourcery review: nem minden környezetben van sys.stdout.buffer (pl. beágyazott futtató)
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = os.path.join(REPO, "docs", "legacy-analysis", "generated", "legacy-binary-analysis.json")
@@ -29,10 +31,18 @@ GENERIC_RE = re.compile(r"(?i)^T?(FORM|FRM)\d*$|^TABLAZAT$|^TDM\d*$|^TDATAMODULE
 
 
 def main():
-    with open(SRC, encoding="utf-8") as f:
-        data = json.load(f)
-
-    forms = data["forms"]
+    # Copilot review: emberbarát skip/error a stack trace helyett (legacy-binary-analyzer minta)
+    if not os.path.isfile(SRC):
+        print(f"[triage] forrás-riport nem található: {os.path.relpath(SRC, REPO)}")
+        print("[triage] futtasd előbb: python scripts/legacy-binary-analyzer.py --anti-root Anti")
+        return 0
+    try:
+        with open(SRC, encoding="utf-8", errors="replace") as f:
+            data = json.load(f)
+        forms = data["forms"]
+    except (json.JSONDecodeError, KeyError) as exc:
+        print(f"[triage] sérült/hiányos forrás-riport ({exc}) — generáld újra az analyzerrel.")
+        return 1
     unmapped = {k: v for k, v in forms.items() if v.get("implemented") is None}
 
     noise, candidates = [], {}
@@ -47,7 +57,9 @@ def main():
     WRAPPER_RE = re.compile(r"(?i)^(_extracted.*|.*_unpacked|forrasok|szerver|fejleszt|valuta|dll)$")
 
     def module_of(path):
-        parts = [p for p in path.split("\\")[:-1] if not WRAPPER_RE.match(p)]
+        # Codex P2: Linux/felhő-úton a riport "/"-szeparátorral készülhet — mindkettőt kezeljük
+        segments = re.split(r"[\\/]+", path)[:-1]
+        parts = [p for p in segments if not WRAPPER_RE.match(p)]
         return "/".join(parts[:2]).upper() if parts else "(gyökér)"
 
     by_module = defaultdict(list)
@@ -93,4 +105,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)
