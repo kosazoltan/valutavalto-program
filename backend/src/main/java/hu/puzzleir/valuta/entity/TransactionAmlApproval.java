@@ -67,6 +67,14 @@ public class TransactionAmlApproval {
     @Column(name = "approved_by_name", nullable = false, length = 255)
     private String approvedByName;
 
+    /** Az engedélyező BEOSZTÁSA (szerepkör) pillanatkép a jóváhagyáskor — V312, FR-BSZUR-05. */
+    @Column(name = "approved_by_role", length = 50)
+    private String approvedByRole;
+
+    /** AML jóváhagyás-session — a jóváhagyást a tranzakció(k)hoz köti — V312, FR-BSZUR-05. */
+    @Column(name = "approval_session_id", length = 64)
+    private String approvalSessionId;
+
     @Column(name = "approved_at", nullable = false)
     private LocalDateTime approvedAt;
 

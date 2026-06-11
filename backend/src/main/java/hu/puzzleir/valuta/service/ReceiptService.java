@@ -57,6 +57,8 @@ public class ReceiptService {
     private final ReceiptRepository repo;
     private final TransactionRepository transactionRepository;
     private final AuditLogService auditLogService;
+    // FR-BSZUR-05 (V312): ENGEDÉLYEZŐ-dúsítás a jóváhagyás audit-rekordokból
+    private final hu.puzzleir.valuta.repository.TransactionAmlApprovalRepository amlApprovalRepository;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -119,6 +121,7 @@ public class ReceiptService {
             if (customerFilters != null && !customerFilters.isEmpty()) {
                 filtered.removeIf(r -> !receiptMatchesCustomerFilters(r, customerFilters));
             }
+            enrichApprovers(filtered, companyId); // FR-BSZUR-05 (V312)
             return filtered;
         }
 
@@ -187,6 +190,7 @@ public class ReceiptService {
         List<Receipt> result = new ArrayList<>(realReceipts.size() + synthesized.size());
         result.addAll(realReceipts);
         result.addAll(synthesized);
+        enrichApprovers(result, companyId); // FR-BSZUR-05 (V312) — real + synthesized egyben
         return result;
     }
 
@@ -282,6 +286,42 @@ public class ReceiptService {
         r.setCustomerDocumentNumber(tx.getCustomerDocumentNumber());
         // FR-BSZUR-04: képviselő / meghatalmazott neve (jogi személy képviselője is ide kerül).
         r.setCustomerActorName(tx.getCustomerActorName());
+        // FR-BSZUR-05 (V312): a jóváhagyás-session kulcs — az enrichApprovers ebből oldja fel
+        // az ENGEDÉLYEZŐ nevét + beosztását (a kulcs maga @JsonIgnore, nem megy ki a kliensnek).
+        r.setApprovalSessionId(tx.getApprovalSessionId());
+    }
+
+    /**
+     * EXCMD b5b FR-BSZUR-05 (V312): a bizonylatok ENGEDÉLYEZŐ-mezőinek (név + beosztás)
+     * dúsítása a {@code transaction_aml_approval} audit-rekordokból. N+1 ELKERÜLÉSE: az
+     * összes session-kulcsot EGY cég-szűrt batch query-vel oldjuk fel. Jóváhagyás nélküli
+     * bizonylatnál a mezők null-ok maradnak (a UI "—"-t mutat).
+     */
+    private void enrichApprovers(List<Receipt> receipts, UUID companyId) {
+        Set<String> sessionIds = new HashSet<>();
+        for (Receipt r : receipts) {
+            if (r.getApprovalSessionId() != null && !r.getApprovalSessionId().isBlank()) {
+                sessionIds.add(r.getApprovalSessionId());
+            }
+        }
+        if (sessionIds.isEmpty()) {
+            return;
+        }
+        java.util.Map<String, hu.puzzleir.valuta.entity.TransactionAmlApproval> bySession =
+                new java.util.HashMap<>();
+        for (hu.puzzleir.valuta.entity.TransactionAmlApproval approval :
+                amlApprovalRepository.findByCompanyIdAndApprovalSessionIdIn(companyId, sessionIds)) {
+            // Multi-line: egy session egy jóváhagyás — duplikátumnál az első nyer (azonos engedélyező).
+            bySession.putIfAbsent(approval.getApprovalSessionId(), approval);
+        }
+        for (Receipt r : receipts) {
+            hu.puzzleir.valuta.entity.TransactionAmlApproval approval =
+                    r.getApprovalSessionId() != null ? bySession.get(r.getApprovalSessionId()) : null;
+            if (approval != null) {
+                r.setApprovedByName(approval.getApprovedByName());
+                r.setApprovedByRole(approval.getApprovedByRole());
+            }
+        }
     }
 
     /**

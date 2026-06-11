@@ -362,6 +362,8 @@ public class TransactionService {
                 .sourceOfFundsDocType(request.getSourceOfFundsDocType())
                 .sourceOfFundsDocDate(request.getSourceOfFundsDocDate())
                 .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
+                // V312 / FR-BSZUR-05: a jóváhagyás-session perzisztálása a bizonylat-ENGEDÉLYEZŐ lookuphoz
+                .approvalSessionId(request.getApprovalSessionId())
                 // V229 Pmt. snapshot (HIBA #5+#7+#8)
                 .customerBirthPlace(request.getCustomerBirthPlace())
                 .customerBirthDate(request.getCustomerBirthDate())
@@ -579,6 +581,8 @@ public class TransactionService {
                 .sourceOfFundsDocType(request.getSourceOfFundsDocType())
                 .sourceOfFundsDocDate(request.getSourceOfFundsDocDate())
                 .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
+                // V312 / FR-BSZUR-05: a jóváhagyás-session perzisztálása a bizonylat-ENGEDÉLYEZŐ lookuphoz
+                .approvalSessionId(request.getApprovalSessionId())
                 // V229 Pmt. snapshot (HIBA #5+#7+#8)
                 .customerBirthPlace(request.getCustomerBirthPlace())
                 .customerBirthDate(request.getCustomerBirthDate())

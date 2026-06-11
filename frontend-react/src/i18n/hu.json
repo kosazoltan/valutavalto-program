@@ -1219,6 +1219,8 @@
   "receipts": {
     "amlBadgeText": "10M+",
     "amlBadgeTitle": "10 millió Ft feletti — AML küszöb (Pmt.)",
+    "approvedBadgeText": "Engedélyezett",
+    "engedelyezoLabel": "Engedélyező:",
     "bizonylatReszletek": "Bizonylat részletek",
     "bizonylatok": "Bizonylatok",
     "bizonylatszam": "Bizonylatszám:",

@@ -94,4 +94,18 @@ public class Receipt {
     // "Képviselő beosztása" SEHOL nincs az adatmodellben (Transaction + Customer ellenőrizve) → defer.
     @Transient
     private String customerActorName;
+
+    // === EXCMD b5b FR-BSZUR-05 (ENGEDÉLYEZŐ neve + beosztása) — V312 ===
+    // A kapcsolt Transaction.approvalSessionId-n át a transaction_aml_approval rekordból
+    // töltődik (read-through, ld. ReceiptService.enrichApprovers). Csak megjelenítés.
+    // A session-kulcs maga NEM kerül a JSON-ba (belső kapcsoló-adat).
+    @Transient
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String approvalSessionId;
+
+    @Transient
+    private String approvedByName;
+
+    @Transient
+    private String approvedByRole;
 }

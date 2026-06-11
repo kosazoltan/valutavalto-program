@@ -13,4 +13,11 @@ import java.util.UUID;
 public interface TransactionAmlApprovalRepository extends JpaRepository<TransactionAmlApproval, UUID> {
 
     List<TransactionAmlApproval> findByCompanyIdOrderByApprovedAtDesc(UUID companyId);
+
+    /**
+     * V312 / FR-BSZUR-05: a bizonylat-lista ENGEDÉLYEZŐ-dúsításának batch-lookupja —
+     * cég-szűrt, session-kulcsok szerint (N+1 elkerülése, a lista egy query-ből tölt).
+     */
+    List<TransactionAmlApproval> findByCompanyIdAndApprovalSessionIdIn(
+            UUID companyId, java.util.Collection<String> approvalSessionIds);
 }

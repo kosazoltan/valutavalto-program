@@ -229,6 +229,8 @@ public class TransactionMultiLineService {
                 .sourceOfFundsDocType(request.getSourceOfFundsDocType())
                 .sourceOfFundsDocDate(request.getSourceOfFundsDocDate())
                 .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
+                // V312 / FR-BSZUR-05: a jóváhagyás-session perzisztálása a bizonylat-ENGEDÉLYEZŐ lookuphoz
+                .approvalSessionId(request.getApprovalSessionId())
                 .exchangeRate(avgRate)
                 .hufAmount(payableAmount)
                 .handlingFee(serverHandlingFee)
@@ -439,6 +441,8 @@ public class TransactionMultiLineService {
                 .sourceOfFundsDocType(request.getSourceOfFundsDocType())
                 .sourceOfFundsDocDate(request.getSourceOfFundsDocDate())
                 .customerIsPep(Boolean.TRUE.equals(request.getCustomerIsPep()))
+                // V312 / FR-BSZUR-05: a jóváhagyás-session perzisztálása a bizonylat-ENGEDÉLYEZŐ lookuphoz
+                .approvalSessionId(request.getApprovalSessionId())
                 .exchangeRate(avgRate)
                 .hufAmount(payableAmount)
                 .handlingFee(serverHandlingFee)

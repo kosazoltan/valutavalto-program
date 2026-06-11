@@ -55,6 +55,7 @@ class ReceiptServiceB7Test {
     @Mock private ReceiptRepository receiptRepository;
     @Mock private TransactionRepository transactionRepository;
     @Mock private AuditLogService auditLogService;
+    @Mock private hu.puzzleir.valuta.repository.TransactionAmlApprovalRepository amlApprovalRepository;
 
     @InjectMocks private ReceiptService receiptService;
 
@@ -115,6 +116,54 @@ class ReceiptServiceB7Test {
         assertThat(receipts).hasSize(1);
         assertThat(receipts.get(0).getCustomerName()).isEqualTo("Kovács János");
         assertThat(receipts.get(0).getHufAmount()).isEqualByComparingTo("12000000.00");
+    }
+
+    @Test
+    @DisplayName("EXCMD b5b FR-BSZUR-05 (V312): ENGEDÉLYEZŐ név+beosztás dúsítás a jóváhagyás-session kulcson át")
+    void list_enrichesApproverNameAndRoleViaSessionKey() {
+        when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any()))
+                .thenReturn(Collections.emptyList());
+
+        Transaction tx = makeTransaction(602L, "V017000041", TransactionType.BUY);
+        tx.setCustomerName("Nagy Béla");
+        tx.setApprovalSessionId("sess-abc-123");
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(List.of(tx));
+
+        hu.puzzleir.valuta.entity.TransactionAmlApproval approval =
+                hu.puzzleir.valuta.entity.TransactionAmlApproval.builder()
+                        .companyId(COMPANY_ID)
+                        .approvalSessionId("sess-abc-123")
+                        .approvedByWorkerId(10L)
+                        .approvedByName("Kósa Zoltán")
+                        .approvedByRole("MANAGER")
+                        .approvalReason("AML")
+                        .approvedAt(java.time.LocalDateTime.now())
+                        .build();
+        when(amlApprovalRepository.findByCompanyIdAndApprovalSessionIdIn(eq(COMPANY_ID), any()))
+                .thenReturn(List.of(approval));
+
+        List<Receipt> receipts = receiptService.list(null);
+
+        assertThat(receipts).hasSize(1);
+        assertThat(receipts.get(0).getApprovedByName()).isEqualTo("Kósa Zoltán");
+        assertThat(receipts.get(0).getApprovedByRole()).isEqualTo("MANAGER");
+    }
+
+    @Test
+    @DisplayName("EXCMD b5b FR-BSZUR-05: session-kulcs nélküli bizonylatnál nincs approval-query")
+    void list_withoutApprovalSessions_skipsApprovalLookup() {
+        when(receiptRepository.findByCompanyIdAndIssueDateRange(eq(COMPANY_ID), any(), any()))
+                .thenReturn(Collections.emptyList());
+        Transaction tx = makeTransaction(603L, "V017000042", TransactionType.BUY);
+        when(transactionRepository.findReceiptListByCompanyIdAndDateRange(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(List.of(tx));
+
+        List<Receipt> receipts = receiptService.list(null);
+
+        assertThat(receipts).hasSize(1);
+        assertThat(receipts.get(0).getApprovedByName()).isNull();
+        org.mockito.Mockito.verifyNoInteractions(amlApprovalRepository);
     }
 
     @Test

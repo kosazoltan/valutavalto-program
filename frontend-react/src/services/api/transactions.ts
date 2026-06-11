@@ -1521,6 +1521,10 @@ export interface Receipt {
   customerDocumentNumber?: string
   // EXCMD b5b FR-BSZUR-04: képviselő / meghatalmazott neve (jogi személy képviselője) a tx-snapshotból.
   customerActorName?: string
+  // EXCMD b5b FR-BSZUR-05 (V312): ENGEDÉLYEZŐ neve + beosztása az AML-jóváhagyás audit-rekordból
+  // (csak akkor kitöltött, ha a tranzakcióhoz felsővezetői jóváhagyás tartozott). Csak olvasható.
+  approvedByName?: string
+  approvedByRole?: string
 }
 
 export interface CancelledTransactionReceiptRequest {

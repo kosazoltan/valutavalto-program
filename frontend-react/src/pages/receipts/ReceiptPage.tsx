@@ -68,6 +68,16 @@ export const hasCustomer = (name?: string | null): boolean =>
 export const isAmlThresholdExceeded = (hufAmount?: number | null): boolean =>
   typeof hufAmount === 'number' && Number.isFinite(hufAmount) && hufAmount >= AML_10M_THRESHOLD_HUF
 
+// EXCMD b5b FR-BSZUR-05 (V312): az ENGEDÉLYEZŐ beosztás-pillanatkép (Worker.role enum-név)
+// magyar megjelenítő-címkéi. Ismeretlen/új szerepkörnél a nyers kód jelenik meg (nem tör el).
+const APPROVER_ROLE_LABELS: Record<string, string> = {
+  SUPERVISOR: 'Műszakvezető',
+  MANAGER: 'Ügyvezető',
+  ADMIN: 'Adminisztrátor',
+}
+export const approverRoleLabel = (role?: string): string =>
+  role ? (APPROVER_ROLE_LABELS[role.toUpperCase()] ?? role) : ''
+
 const HUF_FORMATTER = new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 0 })
 /** HUF összeg hu-HU formázása (pl. "10 000 000"); üres érték → "—". */
 export const formatHuf = (hufAmount?: number | null): string =>
@@ -698,6 +708,15 @@ export default function ReceiptPage() {
                     {isAmlThresholdExceeded(r.hufAmount) && (
                       <span className="badge badge-red ml-2" title={t('receipts.amlBadgeTitle')}>{t('receipts.amlBadgeText')}</span>
                     )}
+                    {/* EXCMD b5b FR-BSZUR-05 (V312): ENGEDÉLYEZŐ-jelölő — tooltip: név (beosztás) */}
+                    {r.approvedByName && (
+                      <span
+                        className="badge badge-green ml-2"
+                        title={`${r.approvedByName}${r.approvedByRole ? ` (${approverRoleLabel(r.approvedByRole)})` : ''}`}
+                      >
+                        {t('receipts.approvedBadgeText')}
+                      </span>
+                    )}
                   </td>
                   <td>{new Date(r.issueDate).toLocaleDateString('hu-HU')}</td>
                   <td><span className={`badge ${r.isPrinted ? 'badge-green' : 'badge-yellow'}`}>{r.isPrinted ? 'Igen' : 'Nem'}</span></td>
@@ -732,6 +751,13 @@ export default function ReceiptPage() {
                 {isAmlThresholdExceeded(selectedReceipt.hufAmount) && (
                   <span className="badge badge-red ml-2" title={t('receipts.amlBadgeTitle')}>{t('receipts.amlBadgeText')}</span>
                 )}
+              </div>
+              {/* EXCMD b5b FR-BSZUR-05 (V312): ENGEDÉLYEZŐ neve + beosztása (csak olvasható, AML-audit). */}
+              <div>
+                <strong>{t('receipts.engedelyezoLabel')}</strong>{' '}
+                {selectedReceipt.approvedByName
+                  ? `${selectedReceipt.approvedByName}${selectedReceipt.approvedByRole ? ` (${approverRoleLabel(selectedReceipt.approvedByRole)})` : ''}`
+                  : '—'}
               </div>
               <div><strong>{t('receipts.kiadasDatuma')}</strong> {new Date(selectedReceipt.issueDate).toLocaleString('hu-HU')}</div>
               <div><strong>{t('receipts.nyomtatva')}</strong> {selectedReceipt.isPrinted ? 'Igen' : 'Nem'}</div>
