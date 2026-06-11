@@ -6,6 +6,29 @@
  * (szkenner-driver, nyomtató-port, futófény COM, IP-kapcsolat) runtime-feladat az
  * Electron main folyamatban — itt csak a kiválasztott értékek perzisztálódnak
  * (a spec AC-je: "az érték perzisztens 'Rögzítés és kilépés' után").
+ *
+ * FR-14: a settings háromrétegű perzisztenciával mentődik:
+ *   1. localStorage (gyors lokális cache, offline-safe)
+ *   2. Backend PUT /api/v1/machine-config/{workstationCode} (Postgres, multi-tenant)
+ *   Electron SQLite: az általános getConfig/setConfig IPC nincs kibővítve (az Electron main
+ *   módosítása kockázatos), a backend-perzisztencia + localStorage elegendő.
+ *
+ * FR-06 jelszó biztonsági eltérés a spectől:
+ *   A spec plain-text jelszó megjelenítést ír le ("<JELSZO>"), de a b9 NFR-02 és a
+ *   security-standards alapján a jelszót MASZKOLT formában jelenítjük meg (••••).
+ *   A backend BCrypt-tel hash-eli — a hash soha nem kerül vissza a GET válaszba,
+ *   csak a `dailyReportPasswordSet` boolean jelző.
+ *
+ * FR-06 branch mezők kezelése:
+ *   Az értéktár e-mail és szombati nyitvatartás a Branch entitáson már létezik (V293,
+ *   email + closed_saturday). A beállítások oldalon read-only hivatkozással jelennek meg
+ *   (a Pénztár Törzsben szerkeszthetők). Kisebb kockázatú döntés: NEM duplikáljuk a
+ *   branch-adatot a machine_config JSON-ban — elkerüljük az inkonzisztenciát.
+ *
+ * FR-11 futófény konfiguráció:
+ *   A soros-port vezérlés (COM-port tényleges nyitása, adatküldés) runtime/hardver-feladat
+ *   (spec integration_points szerint a COM-vezérlés külön réteg). A panel a KONFIGURÁCIÓT
+ *   rögzíti; a COM-kezelés az Electron main folyamatban fog történni.
  */
 
 export type MachineRole = 'PENZTARI' | 'ERTEKTARI' | 'AFAS'
@@ -19,12 +42,19 @@ export interface PenztarSettings {
   applications: string[]                   // FR-03 (VALUTAVALTAS, WESTERN_UNION, ...)
   displayColor: DisplayColor               // FR-04
   serverIp: [number, number, number, number] // FR-05
-  dailyReportEmail: string                 // FR-06
-  saturdayOpen: boolean                    // FR-06
+  dailyReportEmail: string                 // FR-06 (értéktár e-mail — branch adat olvasásához)
+  saturdayOpen: boolean                    // FR-06 (szombati nyitvatartás — branch adat)
   dataSendFrequencyMin: number             // FR-07 (0–25)
   printerPort: PrinterPort                 // FR-08
   scannerDriver: string                    // FR-09 (driver neve)
   handlingFeeMode: HandlingFeeMode         // FR-10
+  // FR-11: Futófény beállítások (soros-port vezérlés runtime-feladat, ez csak konfig)
+  futofenyDarab: number                    // hány futófénytábla van
+  futofenyCom1: number                     // első tábla COM-portja
+  futofenyCom2: number                     // második tábla COM-portja
+  futofenyMod: FutofenyMode                // megjelenítési mód
+  futofenyKikapcsolva: boolean             // futófény ki/be kapcsolva
+  futofenySebesseg: number                 // 1–10 sebesség-skála
   cardPaymentEnabled: boolean              // FR-12
   adOnDisplay: boolean                     // FR-13
 }
@@ -43,6 +73,13 @@ export const DEFAULT_PENZTAR_SETTINGS: PenztarSettings = {
   printerPort: 'LPT1',
   scannerDriver: '',
   handlingFeeMode: 'EZRELEKES',
+  // FR-11 futófény defaults (spec szerinti alapértékek)
+  futofenyDarab: 0,
+  futofenyCom1: 1,
+  futofenyCom2: 2,
+  futofenyMod: 'ARFOLYAM',
+  futofenyKikapcsolva: false,
+  futofenySebesseg: 5,
   cardPaymentEnabled: false,
   adOnDisplay: false,
 }
@@ -103,6 +140,26 @@ const MACHINE_ROLES: readonly MachineRole[] = ['PENZTARI', 'ERTEKTARI', 'AFAS']
 const DISPLAY_COLORS: readonly DisplayColor[] = ['ZOLD', 'SARGA', 'PIROS']
 const PRINTER_PORTS: readonly PrinterPort[] = ['LPT1', 'USB']
 const HANDLING_FEE_MODES: readonly HandlingFeeMode[] = ['NINCS', 'EZRELEKES', 'SAVOS']
+const FUTOFENY_MODES: readonly FutofenyMode[] = ['ARFOLYAM', 'SZOVEG', 'VALTAKOZO']
+
+/** COM-port szám érvényes-e (1–255 egész). */
+export function isValidComPort(v: unknown): boolean {
+  return typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 255
+}
+
+/** Futófény sebesség 1–10 közé szorítva. */
+export function clampFutofenySebesseg(v: unknown): number {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return DEFAULT_PENZTAR_SETTINGS.futofenySebesseg
+  return Math.min(10, Math.max(1, Math.round(n)))
+}
+
+/** Futófénytáblák száma 0–10 közé szorítva. */
+export function clampFutofenyDarab(v: unknown): number {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return DEFAULT_PENZTAR_SETTINGS.futofenyDarab
+  return Math.min(10, Math.max(0, Math.round(n)))
+}
 
 /** Hiányzó mezők kitöltése default-tal + tartomány-/union-validáció. */
 export function normalize(s: Partial<PenztarSettings>): PenztarSettings {
@@ -121,6 +178,13 @@ export function normalize(s: Partial<PenztarSettings>): PenztarSettings {
     printerPort: oneOf(s.printerPort, PRINTER_PORTS, d.printerPort),
     scannerDriver: typeof s.scannerDriver === 'string' ? s.scannerDriver : d.scannerDriver,
     handlingFeeMode: oneOf(s.handlingFeeMode, HANDLING_FEE_MODES, d.handlingFeeMode),
+    // FR-11 futófény mezők
+    futofenyDarab: clampFutofenyDarab(s.futofenyDarab ?? d.futofenyDarab),
+    futofenyCom1: isValidComPort(s.futofenyCom1) ? (s.futofenyCom1 as number) : d.futofenyCom1,
+    futofenyCom2: isValidComPort(s.futofenyCom2) ? (s.futofenyCom2 as number) : d.futofenyCom2,
+    futofenyMod: oneOf(s.futofenyMod, FUTOFENY_MODES, d.futofenyMod),
+    futofenyKikapcsolva: typeof s.futofenyKikapcsolva === 'boolean' ? s.futofenyKikapcsolva : d.futofenyKikapcsolva,
+    futofenySebesseg: clampFutofenySebesseg(s.futofenySebesseg ?? d.futofenySebesseg),
     cardPaymentEnabled: typeof s.cardPaymentEnabled === 'boolean' ? s.cardPaymentEnabled : d.cardPaymentEnabled,
     adOnDisplay: typeof s.adOnDisplay === 'boolean' ? s.adOnDisplay : d.adOnDisplay,
   }
