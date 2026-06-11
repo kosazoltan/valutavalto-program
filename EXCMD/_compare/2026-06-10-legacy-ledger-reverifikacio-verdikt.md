@@ -62,11 +62,15 @@ hamis-negatívot tartalmaztak — ezeket NEM fogadtuk el:
 - **AML-terv 4) Megerősített eljárás (EDD) követés [M]** — **ZÁRVA 2026-06-11 (PR #1079, V309):**
   `customer.edd_until/edd_reason/edd_set_at` + `AmlEddService` napi scan (a) >=50M egyedi,
   b) >=100M havi KÉSZPÉNZ-forgalom, hónapvége+1 év horgony) + `checkAllThresholds` olvasó-ág.
-  Flag `AML_EDD_TRACKING_ENFORCEMENT` default FALSE — élesítés compliance-vezetői döntés.
+  **ÉLESÍTVE: V310** (ügyvezetői jóváhagyás 2026-06-11) — a napi scan aktív.
   Követő kör: EDD-badge UI, Pmt.30.§(1) manuális jelölő, profil-kiugrás (g), pass-through (f).
+- **AML-terv 5) szankció-pontszám** — **a verdikt tévesen listázta nyitottként:** a kód már a
+  spec szerinti 0.9 (ALIAS) / 0.8 (PARTIAL) súlyokat használja (`SanctionScreeningService:46-48`,
+  A5 spec↔kód igazítás, #1041, 2026-06-04). A score metaadat — a blokkolási döntést nem a
+  score, hanem a match-típus vezérli. Ügyvezetői megerősítés 2026-06-11: a 0.9/0.8 maradhat.
 
 ## Nyitva maradt (őszintén, döntés-/inputfüggő)
 
-- **AML-terv 5) szankció-pontszám (0.9/0.8 vs 0.5/0.7)**: megfelelési vezetői megerősítés kell.
 - **Anti/forrasok bináris re-verifikáció**: a `legacy-transfer-data` branch pushjával
-  feloldva — felhő-sessionben futtatható (fetch-parancs fent).
+  feloldva — felhő-sessionben futtatható (fetch-parancs fent); lokálisan a nyers fák
+  közvetlenül elérhetők.
