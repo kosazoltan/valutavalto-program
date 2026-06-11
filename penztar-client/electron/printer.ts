@@ -1161,27 +1161,30 @@ export async function printReceipt(
     log.info(`[PRINTER] Nyomtatás indítása: ${data.type} ${data.receiptNumber} (${copies} példány)`);
 
     // 1. Próbáljuk soros blokknyomtatón (Star SP500 / kompatibilis)
+    // A sikeresen kinyomtatott példányokat számoljuk, hogy részleges soros hiba
+    // esetén a fallback NE nyomtassa újra a már elkészült példányokat (különben
+    // HUF transfernél 3 példány születhetne 2 helyett).
+    let printedCopies = 0;
     if (serialPort) {
-      let serialSuccess = true;
       for (let copy = 1; copy <= copies; copy++) {
         const ok = await printToSerialPrinter(data, serialPort);
         if (!ok) {
-          serialSuccess = false;
           break;
         }
+        printedCopies++;
       }
-      if (serialSuccess) {
+      if (printedCopies === copies) {
         log.info(`[PRINTER] Soros blokknyomtató (${serialPort}): OK — ${data.receiptNumber} (${copies} példány)`);
         return true;
       }
-      log.warn(`[PRINTER] Soros port ${serialPort} sikertelen, Electron fallback...`);
+      log.warn(`[PRINTER] Soros port ${serialPort} sikertelen (${printedCopies}/${copies} példány kész), Electron fallback a maradékra...`);
     }
 
-    // 2. Fallback: Electron rendszer nyomtató (HTML alapú)
+    // 2. Fallback: Electron rendszer nyomtató (HTML alapú) — csak a hiányzó példányokra
     log.info('[PRINTER] Electron print fallback...');
     const html = await generateReceiptHtml(data);
     let electronSuccess = true;
-    for (let copy = 1; copy <= copies; copy++) {
+    for (let copy = printedCopies + 1; copy <= copies; copy++) {
       const ok = await printViaElectron(html, printerName);
       if (!ok) {
         electronSuccess = false;

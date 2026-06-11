@@ -33,6 +33,13 @@ vi.mock('electron-log/main', () => ({
   },
 }));
 
+// Soros nyomtató mock — a részleges soros hiba (FR-7 fallback) tesztekhez vezérelhető.
+vi.mock('../serial-printer', () => ({
+  printReceiptToSerial: vi.fn().mockResolvedValue(false),
+}));
+
+import { printReceiptToSerial } from '../serial-printer';
+
 import {
   generateReceiptContent,
   printReceipt,
@@ -526,6 +533,34 @@ describe('printer — fejléc-javítás FR-7: HUF transfer dupla példány', () 
     const result = await printReceipt({ ...baseData, type: 'sell', currencyCode: 'HUF' });
     expect(result).toBe(true);
     expect((BrowserWindow as unknown as Mock).mock.calls.length).toBe(1);
+  });
+
+  it('részleges soros hiba: 1 soros példány OK + 2. hibás → fallback csak a MARADÉK 1 példányt nyomtatja (összesen 2, nem 3)', async () => {
+    (printReceiptToSerial as Mock)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    const result = await printReceipt(
+      { ...baseData, type: 'transfer', transferDocType: 'handover', currencyCode: 'HUF', transferTarget: 'SZG-02' },
+      undefined,
+      'COM3',
+    );
+    expect(result).toBe(true);
+    expect((printReceiptToSerial as Mock).mock.calls.length).toBe(2);
+    // Electron fallback csak a hiányzó 1 példányra fut, nem mind a 2-re
+    expect((BrowserWindow as unknown as Mock).mock.calls.length).toBe(1);
+  });
+
+  it('teljes soros siker: 2 soros példány OK → nincs Electron fallback', async () => {
+    (printReceiptToSerial as Mock)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true);
+    const result = await printReceipt(
+      { ...baseData, type: 'transfer', transferDocType: 'handover', currencyCode: 'HUF', transferTarget: 'SZG-02' },
+      undefined,
+      'COM3',
+    );
+    expect(result).toBe(true);
+    expect((BrowserWindow as unknown as Mock).mock.calls.length).toBe(0);
   });
 });
 
