@@ -842,6 +842,9 @@ public class TransferService {
     }
 
     private TransferDto toDto(Transfer t) {
+        // Bizonylat-fejléc javítás (2026-06-11): a bejelentkezett értéktár branch-rekordját
+        // EGYSZER olvassuk fel, és abból képezzük a címet (FR-1) és a telefonszámot (FR-2).
+        Branch vaultBranch = currentVaultBranch();
         return TransferDto.builder()
                 .id(t.getId())
                 .transferNumber(t.getTransferNumber())
@@ -883,7 +886,8 @@ public class TransferService {
                 .isPending(t.getStatus() == Transfer.TransferStatus.PENDING)
                 .lines(mapLines(t))
                 // Értéktári átadás-átvétel bizonylat bővítések:
-                .vaultAddress(currentVaultAddress())
+                .vaultAddress(vaultBranch != null ? formatBranchAddress(vaultBranch) : null)
+                .vaultPhone(vaultBranch != null ? normalizedPhone(vaultBranch.getPhone()) : null)
                 .isCancelled(Boolean.TRUE.equals(t.getIsCancelled()))
                 .cancellationReason(t.getCancellationReason())
                 .cancelledAt(t.getCancelledAt() != null ? t.getCancelledAt().toString() : null)
@@ -893,18 +897,19 @@ public class TransferService {
     }
 
     /**
-     * FR-1: a bejelentkezett értéktár (Branch) saját helyi címe a bizonylat fejlécéhez —
-     * "Város, Cím, IRSZ" (pl. "Szeged, Hajnóczy u. 57., 6722"). A céget+adószámot a frontend tartja;
-     * itt CSAK a cím dinamikus, a JWT branchId-ból. A branchRepository.findById az aktuális
-     * tranzakción belül L1-cache-elt (azonos branchId → 1 query lista-renderelésnél is).
+     * FR-1/FR-2: a bejelentkezett értéktár (Branch) rekordja a bizonylat fejlécéhez — a cím
+     * "Város, Cím, IRSZ" (pl. "Szeged, Hajnóczy u. 57., 6722") és a telefonszám forrása.
+     * A céget+adószámot a frontend tartja; itt CSAK a branch-adat dinamikus, a JWT branchId-ból.
+     * A branchRepository.findById az aktuális tranzakción belül L1-cache-elt (azonos branchId →
+     * 1 query lista-renderelésnél is).
      */
-    private String currentVaultAddress() {
-        // OrNull: SecurityContext nélküli hívás (teszt/scheduler) ne dobjon — ekkor nincs vaultAddress.
+    private Branch currentVaultBranch() {
+        // OrNull: SecurityContext nélküli hívás (teszt/scheduler) ne dobjon — ekkor nincs fejléc-adat.
         UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
         if (branchId == null) {
             return null;
         }
-        return branchRepository.findById(branchId).map(this::formatBranchAddress).orElse(null);
+        return branchRepository.findById(branchId).orElse(null);
     }
 
     private String formatBranchAddress(Branch b) {
@@ -913,6 +918,11 @@ public class TransferService {
         if (b.getAddress() != null && !b.getAddress().isBlank()) parts.add(b.getAddress().trim());
         if (b.getZipCode() != null && !b.getZipCode().isBlank()) parts.add(b.getZipCode().trim());
         return parts.isEmpty() ? null : String.join(", ", parts);
+    }
+
+    /** TBD-3: NULL/üres {@code branch.phone} → NULL, így a bizonylaton nem jelenik meg telefon sor. */
+    private String normalizedPhone(String phone) {
+        return (phone == null || phone.isBlank()) ? null : phone.trim();
     }
 
     private java.util.List<TransferDenominationDto> mapDenominations(Transfer t) {

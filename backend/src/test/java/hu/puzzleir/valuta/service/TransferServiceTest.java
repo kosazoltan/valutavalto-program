@@ -624,6 +624,54 @@ class TransferServiceTest {
     }
 
     @Test
+    @DisplayName("Fejléc-javítás FR-1/FR-2: vaultAddress 'Város, Cím, IRSZ' + vaultPhone a branch.phone-ból")
+    void testToDto_vaultAddressAndPhone_fromBranchMaster() {
+        UUID companyId = UUID.randomUUID();
+        Transfer transfer = buildStornoTarget(companyId);
+        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+
+        UUID vaultBranchId = UUID.randomUUID();
+        Branch vault = Branch.builder().id(vaultBranchId).code("BR105")
+                .city("Szeged").address("Hajnóczy u. 57.").zipCode("6722")
+                .phone("06703800161").build();
+        when(branchRepository.findById(vaultBranchId)).thenReturn(Optional.of(vault));
+
+        try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(vaultBranchId);
+
+            TransferDto dto = service.getStornoPreview(50L);
+
+            assertThat(dto.getVaultAddress()).isEqualTo("Szeged, Hajnóczy u. 57., 6722");
+            assertThat(dto.getVaultPhone()).isEqualTo("06703800161");
+        }
+    }
+
+    @Test
+    @DisplayName("Fejléc-javítás TBD-3: NULL/üres branch.phone → vaultPhone null (nincs telefon sor)")
+    void testToDto_blankBranchPhone_vaultPhoneNull() {
+        UUID companyId = UUID.randomUUID();
+        Transfer transfer = buildStornoTarget(companyId);
+        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+
+        UUID vaultBranchId = UUID.randomUUID();
+        Branch vault = Branch.builder().id(vaultBranchId).code("BR105")
+                .city("Szeged").address("Hajnóczy u. 57.").zipCode("6722")
+                .phone("   ").build();
+        when(branchRepository.findById(vaultBranchId)).thenReturn(Optional.of(vault));
+
+        try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(vaultBranchId);
+
+            TransferDto dto = service.getStornoPreview(50L);
+
+            assertThat(dto.getVaultAddress()).isEqualTo("Szeged, Hajnóczy u. 57., 6722");
+            assertThat(dto.getVaultPhone()).isNull();
+        }
+    }
+
+    @Test
     @DisplayName("FR-20: más cég bizonylatának sztornózása → ResourceNotFoundException (404, VV-TENANT-001)")
     void testStorno_crossTenant_404() {
         UUID transferCompany = UUID.randomUUID();

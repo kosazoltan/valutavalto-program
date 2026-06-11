@@ -83,6 +83,8 @@ export interface PrintReceiptData {
   carrierName?: string;
   /** FR-1: a bejelentkezett értéktár SAJÁT helyi címe a fejléchez (a cégnév marad, csak a cím dinamikus). */
   vaultAddress?: string;
+  /** FR-2 (fejléc-javítás 2026-06-11): az értéktár telefonszáma a `branch.phone`-ból. Hiány esetén nincs telefon sor (TBD-3). */
+  vaultPhone?: string;
   /** FR-2: a bizonylat típusa — 'handover' → „Átadási bizonylat", 'receipt' → „Átvételi bizonylat". */
   transferDocType?: 'handover' | 'receipt';
   /** FR-13..15: sztornó bizonylat-e (fejléc „SZTORNÓ BIZONYLAT" + indoklás). A `stornoReason` hordozza az indoklást. */

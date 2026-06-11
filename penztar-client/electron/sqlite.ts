@@ -576,10 +576,23 @@ export async function initDatabase(): Promise<void> {
         name TEXT NOT NULL,
         company_id TEXT,
         city TEXT,
+        address TEXT,
+        zip_code TEXT,
+        phone TEXT,
         is_active INTEGER DEFAULT 1,
         cached_at TEXT DEFAULT (datetime('now'))
       );
     `);
+
+    // Migrate (fejléc-javítás 2026-06-11, NFR-1 offline): cím/IRSZ/telefon a branch mirrorban,
+    // hogy az átadás-átvételi bizonylat fejléce offline is a branch-törzs adatait mutassa.
+    for (const col of ['address', 'zip_code', 'phone']) {
+      try {
+        db.run(`ALTER TABLE cached_cash_desks ADD COLUMN ${col} TEXT`);
+      } catch {
+        // Column already exists — ignore
+      }
+    }
 
     db.run(`
       CREATE TABLE IF NOT EXISTS cached_workers (
@@ -2935,6 +2948,12 @@ export interface CachedCashDeskRow {
   name: string;
   company_id: string | null;
   city: string | null;
+  /** Fejléc-javítás 2026-06-11 (NFR-1 offline): utca/házszám a bizonylat-fejléchez. */
+  address: string | null;
+  /** Fejléc-javítás 2026-06-11 (NFR-1 offline): irányítószám a bizonylat-fejléchez. */
+  zip_code: string | null;
+  /** Fejléc-javítás 2026-06-11 (NFR-1 offline): telefonszám a bizonylat-fejléchez. */
+  phone: string | null;
   is_active: number;
   cached_at: string;
 }
@@ -2946,20 +2965,26 @@ export function saveCachedCashDesk(
   companyId: string | null,
   city: string | null,
   isActive: boolean,
+  address: string | null = null,
+  zipCode: string | null = null,
+  phone: string | null = null,
 ): void {
   if (!db) return;
 
   db.run(
-    `INSERT INTO cached_cash_desks (id, code, name, company_id, city, is_active, cached_at)
-     VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    `INSERT INTO cached_cash_desks (id, code, name, company_id, city, address, zip_code, phone, is_active, cached_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(id) DO UPDATE SET
        code = excluded.code,
        name = excluded.name,
        company_id = excluded.company_id,
        city = excluded.city,
+       address = excluded.address,
+       zip_code = excluded.zip_code,
+       phone = excluded.phone,
        is_active = excluded.is_active,
        cached_at = excluded.cached_at`,
-    [id, code, name, companyId, city, isActive ? 1 : 0],
+    [id, code, name, companyId, city, address, zipCode, phone, isActive ? 1 : 0],
   );
   saveDatabase();
 }

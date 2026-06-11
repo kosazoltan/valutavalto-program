@@ -535,6 +535,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     name: string;
     company_id: string | null;
     city: string | null;
+    address: string | null;
+    zip_code: string | null;
+    phone: string | null;
     is_active: number;
     cached_at: string;
   }>> =>

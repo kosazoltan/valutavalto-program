@@ -132,6 +132,8 @@ export interface PrintReceiptData {
   transferDocType?: 'handover' | 'receipt';
   isStorno?: boolean;
   vaultAddress?: string;
+  /** Fejléc-javítás 2026-06-11 (FR-2): az értéktár telefonszáma a branch.phone-ból. Hiány → nincs telefon sor (TBD-3). */
+  vaultPhone?: string;
   denominations?: Array<{ quantity: number; faceValue: number }>;
   /** FR-2 (átadás-átvétel): a kért kézbesítési dátum (a fejléc dátuma a kiállítás dátuma). */
   deliveryDate?: string;
@@ -207,8 +209,16 @@ export function generateReceiptContent(data: PrintReceiptData): string {
   lines.push(CMD.NORMAL_SIZE);
   lines.push(company.fullName);
   lines.push(CMD.BOLD_OFF);
-  lines.push(data.type === 'transfer' && data.vaultAddress ? data.vaultAddress : company.address);
-  const phone = data.companyPhone || company.phone;
+  // FR-1/FR-3 (fejléc-javítás 2026-06-11): átadás-átvételnél a cím KIZÁRÓLAG a branch táblából
+  // jövő vaultAddress; ha hiányzik, inkább nincs cím sor, mint félrevezető hardcode-olt székhely.
+  const headerAddress = data.type === 'transfer' ? (data.vaultAddress ?? '') : company.address;
+  if (headerAddress) {
+    lines.push(headerAddress);
+  }
+  // FR-2/FR-3: átadás-átvételnél a telefonszám KIZÁRÓLAG a branch.phone-ból jön (vaultPhone);
+  // hiány esetén nincs telefon sor (TBD-3) — a hardcode-olt cég-telefonszám transfer bizonylatra
+  // nem kerülhet.
+  const phone = data.type === 'transfer' ? (data.vaultPhone ?? '') : (data.companyPhone || company.phone);
   if (phone) {
     lines.push(`Tel: ${phone}`);
   }
@@ -323,7 +333,18 @@ export function generateReceiptContent(data: PrintReceiptData): string {
   lines.push('2007. évi CXVII tv. 85. § e)');
   lines.push(CMD.LINE);
 
-  // Két aláírás sor
+  // FR-5 (fejléc-javítás 2026-06-11): kötelező jogi nyilatkozat — KIZÁRÓLAG átvételi
+  // bizonylaton (transferDocType === 'receipt'), átadásin és sztornón NEM.
+  if (data.type === 'transfer' && data.transferDocType === 'receipt' && !data.isStorno) {
+    lines.push('');
+    lines.push(CMD.ALIGN_LEFT);
+    lines.push('Büntetőjogi felelősségem tudatában,');
+    lines.push('kijelentem, hogy a fentiekben felsorolt');
+    lines.push('pénzkészletet a szállítóktól átvettem,');
+    lines.push('azt tökéletesen átszámoltam.');
+  }
+
+  // Két aláírás sor (FR-6: átvételi bizonylaton a nyilatkozat ALATT — Átadó/Átvevő)
   lines.push('');
   lines.push(CMD.ALIGN_LEFT);
   lines.push('...............    ...............');
@@ -620,13 +641,17 @@ async function generateReceiptHtml(data: PrintReceiptData): Promise<string> {
 
   let bodyContent = '';
 
-  // Fejléc
+  // Fejléc — FR-1/FR-2/FR-3 (fejléc-javítás 2026-06-11): átadás-átvételnél a cím és a telefonszám
+  // KIZÁRÓLAG a branch táblából jövő vaultAddress/vaultPhone; hiány esetén nincs cím/telefon sor
+  // (TBD-3), hardcode-olt székhely/telefon transfer bizonylatra nem kerülhet.
+  const htmlHeaderAddress = data.type === 'transfer' ? (data.vaultAddress ?? '') : company.address;
+  const htmlHeaderPhone = data.type === 'transfer' ? (data.vaultPhone ?? '') : (data.companyPhone || company.phone);
   bodyContent += `
     <div class="center">
       <div class="company-name">${escHtml(company.name)}</div>
       <div class="company-full">${escHtml(company.fullName)}</div>
-      <div>${escHtml(data.type === 'transfer' && data.vaultAddress ? data.vaultAddress : company.address)}</div>
-      ${(data.companyPhone || company.phone) ? `<div>Tel: ${escHtml(data.companyPhone || company.phone)}</div>` : ''}
+      ${htmlHeaderAddress ? `<div>${escHtml(htmlHeaderAddress)}</div>` : ''}
+      ${htmlHeaderPhone ? `<div>Tel: ${escHtml(htmlHeaderPhone)}</div>` : ''}
       <div>Adószám: ${escHtml(data.companyTaxNumber || company.taxNumber)}</div>
     </div>
     <div class="double-line"></div>
@@ -692,7 +717,19 @@ async function generateReceiptHtml(data: PrintReceiptData): Promise<string> {
     <div class="line"></div>
   `;
 
-  // Két aláírás sor
+  // FR-5 (fejléc-javítás 2026-06-11): kötelező jogi nyilatkozat — KIZÁRÓLAG átvételi
+  // bizonylaton (transferDocType === 'receipt'), átadásin és sztornón NEM.
+  if (data.type === 'transfer' && data.transferDocType === 'receipt' && !data.isStorno) {
+    bodyContent += `
+      <div class="line"></div>
+      <div style="font-size: 9px; margin: 4px 0;">
+        Büntetőjogi felelősségem tudatában, kijelentem, hogy a fentiekben felsorolt
+        pénzkészletet a szállítóktól átvettem, azt tökéletesen átszámoltam.
+      </div>
+    `;
+  }
+
+  // Két aláírás sor (FR-6: átvételi bizonylaton a nyilatkozat ALATT — Átadó/Átvevő)
   bodyContent += `
     <div style="display: flex; justify-content: space-around; margin: 12px 0;">
       <div style="text-align: center;">
@@ -1117,25 +1154,46 @@ export async function printReceipt(
   serialPort?: string,
 ): Promise<boolean> {
   try {
-    log.info(`[PRINTER] Nyomtatás indítása: ${data.type} ${data.receiptNumber}`);
+    // FR-7 (fejléc-javítás 2026-06-11): HUF valutanemű átadás-átvételi bizonylat (átadási és
+    // átvételi egyaránt) automatikusan KÉT példányban nyomtat (1. iratározás, 2. könyvelés);
+    // deviza esetén egy példány. Más bizonylat-típusokra nem vonatkozik.
+    const copies = data.type === 'transfer' && data.currencyCode === 'HUF' ? 2 : 1;
+    log.info(`[PRINTER] Nyomtatás indítása: ${data.type} ${data.receiptNumber} (${copies} példány)`);
 
     // 1. Próbáljuk soros blokknyomtatón (Star SP500 / kompatibilis)
+    // A sikeresen kinyomtatott példányokat számoljuk, hogy részleges soros hiba
+    // esetén a fallback NE nyomtassa újra a már elkészült példányokat (különben
+    // HUF transfernél 3 példány születhetne 2 helyett).
+    let printedCopies = 0;
     if (serialPort) {
-      const serialSuccess = await printToSerialPrinter(data, serialPort);
-      if (serialSuccess) {
-        log.info(`[PRINTER] Soros blokknyomtató (${serialPort}): OK — ${data.receiptNumber}`);
+      for (let copy = 1; copy <= copies; copy++) {
+        const ok = await printToSerialPrinter(data, serialPort);
+        if (!ok) {
+          break;
+        }
+        printedCopies++;
+      }
+      if (printedCopies === copies) {
+        log.info(`[PRINTER] Soros blokknyomtató (${serialPort}): OK — ${data.receiptNumber} (${copies} példány)`);
         return true;
       }
-      log.warn(`[PRINTER] Soros port ${serialPort} sikertelen, Electron fallback...`);
+      log.warn(`[PRINTER] Soros port ${serialPort} sikertelen (${printedCopies}/${copies} példány kész), Electron fallback a maradékra...`);
     }
 
-    // 2. Fallback: Electron rendszer nyomtató (HTML alapú)
+    // 2. Fallback: Electron rendszer nyomtató (HTML alapú) — csak a hiányzó példányokra
     log.info('[PRINTER] Electron print fallback...');
     const html = await generateReceiptHtml(data);
-    const electronSuccess = await printViaElectron(html, printerName);
+    let electronSuccess = true;
+    for (let copy = printedCopies + 1; copy <= copies; copy++) {
+      const ok = await printViaElectron(html, printerName);
+      if (!ok) {
+        electronSuccess = false;
+        break;
+      }
+    }
 
     if (electronSuccess) {
-      log.info(`[PRINTER] Electron print: OK — ${data.receiptNumber}`);
+      log.info(`[PRINTER] Electron print: OK — ${data.receiptNumber} (${copies} példány)`);
     } else {
       log.error(`[PRINTER] Nyomtatás sikertelen — ${data.receiptNumber}. Ellenőrizd a nyomtató állapotát (offline / papír kifogyott).`);
     }

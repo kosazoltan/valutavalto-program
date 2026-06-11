@@ -131,6 +131,12 @@ interface CashDeskResponse {
   name: string;
   companyId?: string | null;
   city?: string | null;
+  /** Fejléc-javítás 2026-06-11 (NFR-1 offline): utca/házszám a bizonylat-fejléchez. */
+  address?: string | null;
+  /** Fejléc-javítás 2026-06-11 (NFR-1 offline): irányítószám a bizonylat-fejléchez. */
+  zipCode?: string | null;
+  /** Fejléc-javítás 2026-06-11 (NFR-1 offline): telefonszám a bizonylat-fejléchez. */
+  phone?: string | null;
   isActive?: boolean | null;
 }
 
@@ -1940,6 +1946,9 @@ export class SyncEngine {
           cashDesk.companyId ?? null,
           cashDesk.city ?? null,
           cashDesk.isActive ?? true,
+          cashDesk.address ?? null,
+          cashDesk.zipCode ?? null,
+          cashDesk.phone ?? null,
         );
       }
 

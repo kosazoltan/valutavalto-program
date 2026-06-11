@@ -5,19 +5,24 @@
  * need electron at runtime (only BrowserWindow is used in printViaElectron).
  * We mock electron and test the content generators.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { BrowserWindow } from 'electron';
 
-// Mock electron before importing printer
+// Mock electron before importing printer.
+// FONTOS: `function` kell (nem arrow), mert a printer `new BrowserWindow(...)`-t hív,
+// és az arrow function nem konstruktor (Vitest: "is not a constructor" → silent false).
 vi.mock('electron', () => ({
-  BrowserWindow: vi.fn().mockImplementation(() => ({
-    loadURL: vi.fn().mockResolvedValue(undefined),
-    webContents: {
-      print: vi.fn((_opts: unknown, cb: (success: boolean, reason?: string) => void) => cb(true)),
-    },
-    isDestroyed: vi.fn(() => false),
-    close: vi.fn(),
-    show: false,
-  })),
+  BrowserWindow: vi.fn().mockImplementation(function () {
+    return {
+      loadURL: vi.fn().mockResolvedValue(undefined),
+      webContents: {
+        print: vi.fn((_opts: unknown, cb: (success: boolean, reason?: string) => void) => cb(true)),
+      },
+      isDestroyed: vi.fn(() => false),
+      close: vi.fn(),
+      show: false,
+    };
+  }),
 }));
 
 vi.mock('electron-log/main', () => ({
@@ -27,6 +32,13 @@ vi.mock('electron-log/main', () => ({
     error: vi.fn(),
   },
 }));
+
+// Soros nyomtató mock — a részleges soros hiba (FR-7 fallback) tesztekhez vezérelhető.
+vi.mock('../serial-printer', () => ({
+  printReceiptToSerial: vi.fn().mockResolvedValue(false),
+}));
+
+import { printReceiptToSerial } from '../serial-printer';
 
 import {
   generateReceiptContent,
@@ -386,6 +398,93 @@ describe('printer — generateReceiptContent (ESC/POS)', () => {
     expect(content).toContain('Pénztáros');
     expect(content).toContain('Ügyfél');
   });
+
+  // === Fejléc-javítás 2026-06-11 (FR-1..FR-7) ===
+
+  it('fejléc-javítás FR-1/FR-3: transfer bizonylaton hiányzó vaultAddress esetén NINCS hardcode-olt székhelycím', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'handover',
+      transferTarget: 'SZG-02',
+    });
+    expect(content).not.toContain('Kárász');
+  });
+
+  it('fejléc-javítás FR-2: transfer bizonylaton a vaultPhone jelenik meg, NEM a hardcode-olt cég-telefonszám', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'handover',
+      transferTarget: 'SZG-02',
+      vaultPhone: '06-62-123-456',
+    });
+    expect(content).toContain('Tel: 06-62-123-456');
+    expect(content).not.toContain('06703800161');
+  });
+
+  it('fejléc-javítás TBD-3: transfer bizonylaton hiányzó vaultPhone esetén NINCS telefon sor', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'handover',
+      transferTarget: 'SZG-02',
+    });
+    expect(content).not.toContain('Tel:');
+  });
+
+  it('non-transfer (sell) bizonylaton a cég-székhelycím és telefonszám változatlanul megjelenik (no regression)', () => {
+    const content = generateReceiptContent(baseData);
+    expect(content).toContain('Szeged, Kárász u. 5.');
+    expect(content).toContain('Tel: 06703800161');
+  });
+
+  it('fejléc-javítás FR-5: átvételi bizonylaton megjelenik a kötelező jogi nyilatkozat', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'receipt',
+      transferTarget: 'SZG-02',
+    });
+    expect(content).toContain('Büntetőjogi felelősségem tudatában,');
+    expect(content).toContain('pénzkészletet a szállítóktól átvettem,');
+    expect(content).toContain('azt tökéletesen átszámoltam.');
+  });
+
+  it('fejléc-javítás FR-5: átadási bizonylaton a jogi nyilatkozat NEM jelenik meg', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'handover',
+      transferTarget: 'SZG-02',
+    });
+    expect(content).not.toContain('Büntetőjogi felelősségem tudatában');
+  });
+
+  it('fejléc-javítás FR-5: sztornó bizonylaton a jogi nyilatkozat NEM jelenik meg (átvételi irány esetén sem)', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'receipt',
+      isStorno: true,
+      stornoReason: 'Téves rögzítés',
+      transferTarget: 'SZG-02',
+    });
+    expect(content).not.toContain('Büntetőjogi felelősségem tudatában');
+  });
+
+  it('fejléc-javítás FR-6: átvételi bizonylaton a nyilatkozat UTÁN következnek az Átadó/Átvevő aláírás sorok', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'receipt',
+      transferTarget: 'SZG-02',
+    });
+    const declarationIdx = content.indexOf('Büntetőjogi felelősségem tudatában,');
+    const signatureIdx = content.indexOf('  Átadó                Átvevő');
+    expect(declarationIdx).toBeGreaterThan(-1);
+    expect(signatureIdx).toBeGreaterThan(declarationIdx);
+  });
 });
 
 describe('printer — printReceipt', () => {
@@ -398,6 +497,70 @@ describe('printer — printReceipt', () => {
   it('should accept optional printerName', async () => {
     const result = await printReceipt(baseData, 'EPSON TM-T88V');
     expect(typeof result).toBe('boolean');
+  });
+});
+
+describe('printer — fejléc-javítás FR-7: HUF transfer dupla példány', () => {
+  beforeEach(() => {
+    (BrowserWindow as unknown as Mock).mockClear();
+  });
+
+  it('HUF valutanemű transfer bizonylat KÉT példányban nyomtat', async () => {
+    const result = await printReceipt({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'handover',
+      currencyCode: 'HUF',
+      transferTarget: 'SZG-02',
+    });
+    expect(result).toBe(true);
+    expect((BrowserWindow as unknown as Mock).mock.calls.length).toBe(2);
+  });
+
+  it('deviza (EUR) transfer bizonylat EGY példányban nyomtat', async () => {
+    const result = await printReceipt({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'receipt',
+      currencyCode: 'EUR',
+      transferTarget: 'SZG-02',
+    });
+    expect(result).toBe(true);
+    expect((BrowserWindow as unknown as Mock).mock.calls.length).toBe(1);
+  });
+
+  it('nem-transfer (sell) HUF-os bizonylat EGY példányban nyomtat (a dupla szabály csak transferre vonatkozik)', async () => {
+    const result = await printReceipt({ ...baseData, type: 'sell', currencyCode: 'HUF' });
+    expect(result).toBe(true);
+    expect((BrowserWindow as unknown as Mock).mock.calls.length).toBe(1);
+  });
+
+  it('részleges soros hiba: 1 soros példány OK + 2. hibás → fallback csak a MARADÉK 1 példányt nyomtatja (összesen 2, nem 3)', async () => {
+    (printReceiptToSerial as Mock)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    const result = await printReceipt(
+      { ...baseData, type: 'transfer', transferDocType: 'handover', currencyCode: 'HUF', transferTarget: 'SZG-02' },
+      undefined,
+      'COM3',
+    );
+    expect(result).toBe(true);
+    expect((printReceiptToSerial as Mock).mock.calls.length).toBe(2);
+    // Electron fallback csak a hiányzó 1 példányra fut, nem mind a 2-re
+    expect((BrowserWindow as unknown as Mock).mock.calls.length).toBe(1);
+  });
+
+  it('teljes soros siker: 2 soros példány OK → nincs Electron fallback', async () => {
+    (printReceiptToSerial as Mock)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true);
+    const result = await printReceipt(
+      { ...baseData, type: 'transfer', transferDocType: 'handover', currencyCode: 'HUF', transferTarget: 'SZG-02' },
+      undefined,
+      'COM3',
+    );
+    expect(result).toBe(true);
+    expect((BrowserWindow as unknown as Mock).mock.calls.length).toBe(0);
   });
 });
 

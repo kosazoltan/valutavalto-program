@@ -299,6 +299,11 @@ export default function ShipmentNewPage() {
         if (!b) return undefined
         return [b.city, b.address, b.zipCode].filter(Boolean).join(', ') || undefined
       }
+      // FR-2 (fejléc-javítás 2026-06-11): az értéktár telefonszáma a branch törzsből; hiány → nincs telefon sor.
+      const branchPhone = (id: string): string | undefined => {
+        const b = allBranches.find((x) => x.id === id)
+        return b?.phone?.trim() || undefined
+      }
       const now = new Date()
       setPrintReceiptData({
         type: 'transfer',
@@ -321,6 +326,7 @@ export default function ShipmentNewPage() {
         deliveryDate: created.requestedDeliveryDate || form.deliveryDate || undefined,
         transferTarget: branchLabel(form.toBranchId, created.targetBranchName),
         vaultAddress: branchAddress(ownBranchId),
+        vaultPhone: branchPhone(ownBranchId), // FR-2 (fejléc-javítás)
         transferDocType: direction === 'inbound' ? 'receipt' : 'handover',
         transferNote: created.notes || form.notes || undefined,
         carrierName: created.carrierName || form.carrierName.trim(),

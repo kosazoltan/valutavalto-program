@@ -195,8 +195,16 @@ export default function ReceiptPreviewModal({
             <div className="text-center">
               <p className="text-lg font-bold">NYUGTA</p>
               <p className="text-xs font-bold">{company.fullName}</p>
-              {/* FR-1: átadás-átvételnél a bejelentkezett értéktár SAJÁT címe (a cégnév marad). */}
-              <p className="text-xs">{isTransfer && receiptData.vaultAddress ? receiptData.vaultAddress : company.address}</p>
+              {/* FR-1/FR-3: átadás-átvételnél a bejelentkezett értéktár SAJÁT címe a branch táblából
+                  (a cégnév marad); hiány esetén nincs cím sor — hardcode-olt székhely transfer
+                  bizonylatra nem kerülhet. */}
+              {(isTransfer ? !!receiptData.vaultAddress : true) && (
+                <p className="text-xs">{isTransfer ? receiptData.vaultAddress : company.address}</p>
+              )}
+              {/* FR-2 (fejléc-javítás): az értéktár telefonszáma a branch.phone-ból; hiány esetén nincs telefon sor (TBD-3). */}
+              {isTransfer && receiptData.vaultPhone && (
+                <p className="text-xs">Tel: {receiptData.vaultPhone}</p>
+              )}
               <p className="text-xs">Adószám: {company.taxNumber}</p>
               <p className="text-sm font-bold mt-1">{isTransfer ? transferTitle : (subtypeHu[receiptData.type] ?? receiptData.type)}</p>
               <p className="text-xs">{isTransfer ? '' : (subtypeEn[receiptData.type] ?? '')}</p>
@@ -449,6 +457,17 @@ export default function ReceiptPreviewModal({
               </>
             )}
             </>)}
+
+            {/* FR-5: kötelező jogi nyilatkozat — KIZÁRÓLAG átvételi bizonylaton (átadásin és sztornón NEM). */}
+            {isTransfer && receiptData.transferDocType === 'receipt' && !receiptData.isStorno && (
+              <>
+                <div className="my-3 border-t border-gray-300" />
+                <p className="text-[9px] leading-tight">
+                  Büntetőjogi felelősségem tudatában, kijelentem, hogy a fentiekben felsorolt
+                  pénzkészletet a szállítóktól átvettem, azt tökéletesen átszámoltam.
+                </p>
+              </>
+            )}
 
             {/* === Pénztáros / Átadó + aláírás === */}
             <p className="mb-1">{isTransfer ? 'Ügyintéző' : 'Pénztáros'}: {receiptData.cashierName}</p>
