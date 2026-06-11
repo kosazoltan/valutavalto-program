@@ -15,8 +15,10 @@ WHERE NOT EXISTS (
     SELECT 1 FROM system_parameter WHERE parameter_key = 'AML_EDD_TRACKING_ENFORCEMENT'
 );
 
+-- Review (Sourcery+Copilot): IS DISTINCT FROM a NULL-értéket is "nem true"-ként kezeli,
+-- és az is_active=false sort akkor is aktiválja, ha az érték már 'true' volt.
 UPDATE system_parameter
    SET parameter_value = 'true', is_active = true, updated_at = now(),
        updated_by = 'V310_migration'
  WHERE parameter_key = 'AML_EDD_TRACKING_ENFORCEMENT'
-   AND parameter_value <> 'true';
+   AND (parameter_value IS DISTINCT FROM 'true' OR is_active IS DISTINCT FROM true);
