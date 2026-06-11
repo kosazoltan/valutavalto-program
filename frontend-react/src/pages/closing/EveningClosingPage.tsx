@@ -7,6 +7,7 @@ import { localIsoDate } from '../../utils/dateFormat'
 import { useAuthStore } from '../../stores/authStore'
 import { eveningClosingApi } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
+import VaultClosingChecklistPanel from '../../components/closing/VaultClosingChecklistPanel'
 
 interface EveningClosingPreview {
   branchId: string
@@ -102,6 +103,9 @@ export default function EveningClosingPage() {
           <Eye size={16} /> {loading ? 'Betöltés...' : 'Előnézet'}
         </button>
       </div>
+
+      {/* FR-ZARUI-16..26: Értéktári zárás-előtti ellenőrzőlista — kísérő kontroll, nem blokkoló gate */}
+      <VaultClosingChecklistPanel date={date} />
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>
