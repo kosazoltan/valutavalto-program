@@ -21,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+import static hu.puzzleir.valuta.service.CsvUtils.escapeCsvCell;
+
 /**
  * G19 (EXCMD b9-munkavallalo): munkavállaló al-nyilvántartások CRUD —
  * üzemorvosi vizsgálat (FR-22), szabadságok (FR-19), gyerekek (FR-20).
@@ -173,5 +175,55 @@ public class EmployeeSubRecordService {
 
     private EmployeeChildDto toDto(EmployeeChild e) {
         return new EmployeeChildDto(e.getId(), e.getName(), e.getBirthDate());
+    }
+
+    // ============ CSV export (NFR-03) ============
+
+    /**
+     * Cégszintű üzemorvosi vizsgálatok CSV-exportja.
+     * Oszlopok: dolgozó neve;státusz;határidő;vizsgálat dátuma;eredmény;megkötés
+     * UTF-8 BOM-mal, CSV-injection védelemmel.
+     */
+    @Transactional(readOnly = true)
+    public String exportOccupationalHealthCsv() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<EmployeeOccupationalHealth> records = occupationalHealthRepository.findAllByCompanyId(companyId);
+        StringBuilder sb = new StringBuilder("\uFEFF"); // UTF-8 BOM — explicit escape (Copilot review)
+        sb.append("Dolgozó neve;Státusz;Határidő;Vizsgálat dátuma;Eredmény;Megkötés\n");
+        for (EmployeeOccupationalHealth r : records) {
+            String name = r.getEmployee().getLastName() + " " + r.getEmployee().getFirstName();
+            sb.append(escapeCsvCell(name)).append(';')
+              .append(escapeCsvCell(r.getStatus())).append(';')
+              .append(escapeCsvCell(r.getDeadlineDate() != null ? r.getDeadlineDate().toString() : null)).append(';')
+              .append(escapeCsvCell(r.getExamDate() != null ? r.getExamDate().toString() : null)).append(';')
+              .append(escapeCsvCell(r.getResult())).append(';')
+              .append(escapeCsvCell(r.getRestriction())).append('\n');
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Cégszintű szabadságok CSV-exportja.
+     * Oszlopok: dolgozó neve;év;áthozott;alapszabadság;betegszabadság;kivett;táppénz;fizetés nélküli
+     * UTF-8 BOM-mal, CSV-injection védelemmel.
+     */
+    @Transactional(readOnly = true)
+    public String exportVacationsCsv() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<EmployeeVacation> records = vacationRepository.findAllByCompanyId(companyId);
+        StringBuilder sb = new StringBuilder("\uFEFF"); // UTF-8 BOM — explicit escape (Copilot review)
+        sb.append("Dolgozó neve;Év;Áthozott;Alapszabadság;Betegszabadság;Kivett;Táppénz;Fizetés nélküli\n");
+        for (EmployeeVacation v : records) {
+            String name = v.getEmployee().getLastName() + " " + v.getEmployee().getFirstName();
+            sb.append(escapeCsvCell(name)).append(';')
+              .append(v.getYear()).append(';')
+              .append(v.getBroughtForward()).append(';')
+              .append(v.getVacationDays()).append(';')
+              .append(v.getSickLeaveDays()).append(';')
+              .append(v.getTakenVacation()).append(';')
+              .append(v.getSickPayDays()).append(';')
+              .append(v.getUnpaidLeaveDays()).append('\n');
+        }
+        return sb.toString();
     }
 }

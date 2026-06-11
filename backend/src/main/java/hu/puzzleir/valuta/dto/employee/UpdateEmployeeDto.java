@@ -73,6 +73,16 @@ public class UpdateEmployeeDto {
     private String vocationalQualification;
     private LocalDate certificateDate;
 
+    // Szakmai bizonyítványok (b9 FR-03). Review #1088 (törölhetőség): a dátumok STRING-ként
+    // érkeznek — az üres string "törlés"-t jelent, a null "nincs változás"-t (LocalDate-tel
+    // a kettő nem különböztethető meg, mert a Jackson az üres stringet null-lá alakítja).
+    private String appraiserCertificateNumber;
+    private String appraiserCertificateDate;
+    private String sellerCertificateNumber;
+    private String sellerCertificateDate;
+    private String cashierCertificateNumber;
+    private String cashierCertificateDate;
+
     private String personalTaxCredit;
     private String familyTaxCredit;
     private String twoChildrenCredit;

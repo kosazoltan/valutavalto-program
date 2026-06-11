@@ -1,10 +1,20 @@
 import { useState, useEffect, useCallback } from 'react'
-import { X, Plus, Trash2, Stethoscope, CalendarDays, Baby } from 'lucide-react'
+import { X, Plus, Trash2, Stethoscope, CalendarDays, Baby, Download, GraduationCap } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 
 interface OccHealth { id: number; status?: string; deadlineDate?: string; examDate?: string; result?: string; restriction?: string }
+
+/** EXCMD b9-munkavallalo FR-03: Becsüs / Eladói / Valutapénztárosi bizonyítvány (szám + dátum). */
+interface Certificates {
+  appraiserCertificateNumber?: string
+  appraiserCertificateDate?: string
+  sellerCertificateNumber?: string
+  sellerCertificateDate?: string
+  cashierCertificateNumber?: string
+  cashierCertificateDate?: string
+}
 interface Vacation { id: number; year: number; broughtForward: number; vacationDays: number; sickLeaveDays: number; takenVacation: number; takenSickLeave: number; sickPayDays: number; unpaidLeaveDays: number }
 interface Child { id: number; name: string; birthDate?: string }
 
@@ -27,24 +37,59 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
   const [newOcc, setNewOcc] = useState({ status: '', examDate: '', result: '' })
   const [newVac, setNewVac] = useState({ year: new Date().getFullYear(), vacationDays: 0 })
   const [newChild, setNewChild] = useState({ name: '', birthDate: '' })
+  // FR-03: bizonyítvány-mezők (a PUT /employees/{id} null-safe részleges frissítésével mentve)
+  const [certs, setCerts] = useState<Certificates>({})
+  const [certsSaving, setCertsSaving] = useState(false)
 
   const base = `/employees/${employeeId}`
 
   const load = useCallback(async () => {
     try {
       setError(null)
-      const [oh, vac, ch] = await Promise.all([
+      const [oh, vac, ch, emp] = await Promise.all([
         api.get<OccHealth[]>(`${base}/occupational-health`),
         api.get<Vacation[]>(`${base}/vacations`),
         api.get<Child[]>(`${base}/children`),
+        api.get<Certificates>(base),
       ])
       setOccHealth(safeArray<OccHealth>(oh.data))
       setVacations(safeArray<Vacation>(vac.data))
       setChildren(safeArray<Child>(ch.data))
+      const e = emp.data ?? {}
+      setCerts({
+        appraiserCertificateNumber: e.appraiserCertificateNumber ?? '',
+        appraiserCertificateDate: e.appraiserCertificateDate ?? '',
+        sellerCertificateNumber: e.sellerCertificateNumber ?? '',
+        sellerCertificateDate: e.sellerCertificateDate ?? '',
+        cashierCertificateNumber: e.cashierCertificateNumber ?? '',
+        cashierCertificateDate: e.cashierCertificateDate ?? '',
+      })
     } catch (err) {
       setError(getErrorMessage(err))
     }
   }, [base])
+
+  const saveCerts = async () => {
+    try {
+      setCertsSaving(true)
+      setError(null)
+      // Review #1088 (törölhetőség): üres string = TÖRLÉS a backendnek; a null "nincs
+      // változás"-t jelentene, amivel a kiürített mező nem törlődne.
+      await api.put(base, {
+        appraiserCertificateNumber: certs.appraiserCertificateNumber ?? '',
+        appraiserCertificateDate: certs.appraiserCertificateDate ?? '',
+        sellerCertificateNumber: certs.sellerCertificateNumber ?? '',
+        sellerCertificateDate: certs.sellerCertificateDate ?? '',
+        cashierCertificateNumber: certs.cashierCertificateNumber ?? '',
+        cashierCertificateDate: certs.cashierCertificateDate ?? '',
+      })
+      await load()
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setCertsSaving(false)
+    }
+  }
 
   useEffect(() => { void load() }, [load])
 
@@ -80,6 +125,23 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
     try { await api.delete(`${base}/${path}`); await load() } catch (err) { setError(getErrorMessage(err)) }
   }
 
+  const downloadCsv = async (endpoint: string, filename: string) => {
+    try {
+      setError(null)
+      const response = await api.get<Blob>(endpoint, { responseType: 'blob' })
+      const url = URL.createObjectURL(new Blob([response.data], { type: 'text/csv;charset=utf-8;' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', filename)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-4 shadow-xl">
@@ -90,9 +152,63 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
 
         {error && <div className="form-error mb-3 text-sm">{error}</div>}
 
+        {/* EXCMD b9-munkavallalo FR-03: szakmai bizonyítványok (Becsüs / Eladói / Valutapénztárosi) */}
+        <div className="mb-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 font-semibold">
+              <GraduationCap className="h-4 w-4" /> Szakmai bizonyítványok
+            </h3>
+            <button
+              onClick={() => void saveCerts()}
+              disabled={certsSaving}
+              className="form-button-primary text-xs"
+            >
+              {certsSaving ? 'Mentés...' : 'Bizonyítványok mentése'}
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            {([
+              ['Becsüs bizonyítvány száma', 'appraiserCertificateNumber', 'Becsüs bizonyítvány dátuma', 'appraiserCertificateDate'],
+              ['Eladói bizonyítvány száma', 'sellerCertificateNumber', 'Eladói bizonyítvány dátuma', 'sellerCertificateDate'],
+              ['Valutapénztárosi bizonyítvány száma', 'cashierCertificateNumber', 'Valutapénztárosi bizonyítvány dátuma', 'cashierCertificateDate'],
+            ] as Array<[string, keyof Certificates, string, keyof Certificates]>).map(([numLabel, numKey, dateLabel, dateKey]) => (
+              <div key={numKey} className="contents">
+                <label className="block">
+                  <span className="mb-1 block text-gray-600">{numLabel}</span>
+                  <input
+                    type="text"
+                    maxLength={100}
+                    value={certs[numKey] ?? ''}
+                    onChange={(e) => setCerts((c) => ({ ...c, [numKey]: e.target.value }))}
+                    className="form-input w-full"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-gray-600">{dateLabel}</span>
+                  <input
+                    type="date"
+                    value={certs[dateKey] ?? ''}
+                    onChange={(e) => setCerts((c) => ({ ...c, [dateKey]: e.target.value }))}
+                    className="form-input w-full"
+                  />
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Üzemorvosi vizsgálat */}
         <section className="mb-4">
-          <h3 className="mb-2 flex items-center gap-1 font-semibold"><Stethoscope className="h-4 w-4" />Üzemorvosi vizsgálat</h3>
+          <h3 className="mb-2 flex items-center justify-between font-semibold">
+            <span className="flex items-center gap-1"><Stethoscope className="h-4 w-4" />Üzemorvosi vizsgálat</span>
+            <button
+              onClick={() => void downloadCsv('/employees/occupational-health/export', 'uzemorvosi_vizsgalatok.csv')}
+              className="form-button flex items-center gap-1 text-xs"
+              title="CSV letöltés — cég összes dolgozója"
+            >
+              <Download className="h-3 w-3" />CSV export
+            </button>
+          </h3>
           <table className="w-full text-sm">
             <thead className="bg-gray-50"><tr>
               <th className="p-1 text-left">Állapot</th><th className="p-1 text-left">Vizsgálat dátuma</th>
@@ -120,7 +236,16 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
 
         {/* Szabadságok */}
         <section className="mb-4">
-          <h3 className="mb-2 flex items-center gap-1 font-semibold"><CalendarDays className="h-4 w-4" />Szabadságok</h3>
+          <h3 className="mb-2 flex items-center justify-between font-semibold">
+            <span className="flex items-center gap-1"><CalendarDays className="h-4 w-4" />Szabadságok</span>
+            <button
+              onClick={() => void downloadCsv('/employees/vacations/export', 'szabadsagok.csv')}
+              className="form-button flex items-center gap-1 text-xs"
+              title="CSV letöltés — cég összes dolgozója"
+            >
+              <Download className="h-3 w-3" />CSV export
+            </button>
+          </h3>
           <table className="w-full text-sm">
             <thead className="bg-gray-50"><tr>
               <th className="p-1 text-left">Év</th><th className="p-1 text-right">Szabadság</th>

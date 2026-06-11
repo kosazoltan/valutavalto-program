@@ -202,6 +202,30 @@ public class Employee {
     @Column(name = "certificate_date")
     private LocalDate certificateDate;
 
+    /** Becsüs bizonyítvány száma (b9 FR-03) */
+    @Column(name = "appraiser_certificate_number", length = 100)
+    private String appraiserCertificateNumber;
+
+    /** Becsüs bizonyítvány megszerzési/érvényességi dátuma (b9 FR-03) */
+    @Column(name = "appraiser_certificate_date")
+    private LocalDate appraiserCertificateDate;
+
+    /** Eladói bizonyítvány száma (b9 FR-03) */
+    @Column(name = "seller_certificate_number", length = 100)
+    private String sellerCertificateNumber;
+
+    /** Eladói bizonyítvány megszerzési/érvényességi dátuma (b9 FR-03) */
+    @Column(name = "seller_certificate_date")
+    private LocalDate sellerCertificateDate;
+
+    /** Valutapénztárosi bizonyítvány száma (b9 FR-03) */
+    @Column(name = "cashier_certificate_number", length = 100)
+    private String cashierCertificateNumber;
+
+    /** Valutapénztárosi bizonyítvány megszerzési/érvényességi dátuma (b9 FR-03) */
+    @Column(name = "cashier_certificate_date")
+    private LocalDate cashierCertificateDate;
+
     // ===== Adókedvezmények =====
 
     /** Személyi adókedvezmény */

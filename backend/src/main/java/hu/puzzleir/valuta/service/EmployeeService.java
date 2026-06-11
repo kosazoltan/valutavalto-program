@@ -140,6 +140,12 @@ public class EmployeeService {
                 .vocationalSchoolName(dto.getVocationalSchoolName())
                 .vocationalQualification(dto.getVocationalQualification())
                 .certificateDate(dto.getCertificateDate())
+                .appraiserCertificateNumber(dto.getAppraiserCertificateNumber())
+                .appraiserCertificateDate(dto.getAppraiserCertificateDate())
+                .sellerCertificateNumber(dto.getSellerCertificateNumber())
+                .sellerCertificateDate(dto.getSellerCertificateDate())
+                .cashierCertificateNumber(dto.getCashierCertificateNumber())
+                .cashierCertificateDate(dto.getCashierCertificateDate())
                 .personalTaxCredit(dto.getPersonalTaxCredit())
                 .familyTaxCredit(dto.getFamilyTaxCredit())
                 .twoChildrenCredit(dto.getTwoChildrenCredit())
@@ -212,6 +218,14 @@ public class EmployeeService {
         if (dto.getVocationalSchoolName() != null) employee.setVocationalSchoolName(dto.getVocationalSchoolName());
         if (dto.getVocationalQualification() != null) employee.setVocationalQualification(dto.getVocationalQualification());
         if (dto.getCertificateDate() != null) employee.setCertificateDate(dto.getCertificateDate());
+        // b9 FR-03 (review #1088): üres string = TÖRLÉS, null = nincs változás — így a
+        // mentett bizonyítvány a UI-ból kiüríthető, a részleges PUT-ok pedig nem nulláznak.
+        if (dto.getAppraiserCertificateNumber() != null) employee.setAppraiserCertificateNumber(blankToNull(dto.getAppraiserCertificateNumber()));
+        if (dto.getAppraiserCertificateDate() != null) employee.setAppraiserCertificateDate(parseDateOrNull(dto.getAppraiserCertificateDate()));
+        if (dto.getSellerCertificateNumber() != null) employee.setSellerCertificateNumber(blankToNull(dto.getSellerCertificateNumber()));
+        if (dto.getSellerCertificateDate() != null) employee.setSellerCertificateDate(parseDateOrNull(dto.getSellerCertificateDate()));
+        if (dto.getCashierCertificateNumber() != null) employee.setCashierCertificateNumber(blankToNull(dto.getCashierCertificateNumber()));
+        if (dto.getCashierCertificateDate() != null) employee.setCashierCertificateDate(parseDateOrNull(dto.getCashierCertificateDate()));
         if (dto.getPersonalTaxCredit() != null) employee.setPersonalTaxCredit(dto.getPersonalTaxCredit());
         if (dto.getFamilyTaxCredit() != null) employee.setFamilyTaxCredit(dto.getFamilyTaxCredit());
         if (dto.getTwoChildrenCredit() != null) employee.setTwoChildrenCredit(dto.getTwoChildrenCredit());
@@ -550,6 +564,12 @@ public class EmployeeService {
                 .vocationalSchoolName(e.getVocationalSchoolName())
                 .vocationalQualification(e.getVocationalQualification())
                 .certificateDate(e.getCertificateDate())
+                .appraiserCertificateNumber(e.getAppraiserCertificateNumber())
+                .appraiserCertificateDate(e.getAppraiserCertificateDate())
+                .sellerCertificateNumber(e.getSellerCertificateNumber())
+                .sellerCertificateDate(e.getSellerCertificateDate())
+                .cashierCertificateNumber(e.getCashierCertificateNumber())
+                .cashierCertificateDate(e.getCashierCertificateDate())
                 .personalTaxCredit(e.getPersonalTaxCredit())
                 .familyTaxCredit(e.getFamilyTaxCredit())
                 .twoChildrenCredit(e.getTwoChildrenCredit())
@@ -675,6 +695,24 @@ public class EmployeeService {
         } catch (Exception e) {
             log.warn("Szám parse hiba: '{}'", val);
             return null;
+        }
+    }
+
+    /** b9 FR-03 (review #1088): üres string → null (törlés-szemantika). */
+    private static String blankToNull(String v) {
+        return v.isBlank() ? null : v;
+    }
+
+    /** b9 FR-03 (review #1088): üres string → null (törlés); egyébként ISO-dátum parse. */
+    private static java.time.LocalDate parseDateOrNull(String v) {
+        if (v.isBlank()) {
+            return null;
+        }
+        try {
+            return java.time.LocalDate.parse(v.trim());
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new hu.puzzleir.valuta.exception.ValidationException(
+                    "Érvénytelen bizonyítvány-dátum: '" + v + "' (várt formátum: ÉÉÉÉ-HH-NN)");
         }
     }
 }
