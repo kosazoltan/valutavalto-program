@@ -8,6 +8,7 @@ import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
 import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi, receiptApi } from '../../services/api/index'
 import { api } from '../../services/api/client'
 import AmlApproverModal from '../../components/auth/AmlApproverModal'
+import SuspicionReportModal from '../../components/SuspicionReportModal'
 import type { BuyRequest, SellRequest, TransactionLineRequest, ExchangeRate, CashierCustomRateQuota } from '../../services/api/index'
 import { roundHuf, multiLinePayable } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
@@ -135,6 +136,8 @@ export default function CashierTransactionPage() {
 
   // Customer state (managed by CustomerPanel)
   const customerDataRef = useRef<CustomerPanelData | null>(null)
+  // EXCMD b9-korlevelek FR-03: gyanú-bejelentés (SAR) modal
+  const [showSuspicionModal, setShowSuspicionModal] = useState(false)
   const amlResultRef = useRef<AmlCheckResultDto | null>(null)
 
   // Fees
@@ -1702,6 +1705,19 @@ export default function CashierTransactionPage() {
         onCancel={() => setShowAmlApprover(false)}
       />
 
+      {/* EXCMD b9-korlevelek FR-03: gyanú-bejelentés (SAR) modal */}
+      <SuspicionReportModal
+        open={showSuspicionModal}
+        customerName={customerDataRef.current?.name ?? undefined}
+        hufAmount={total}
+        onClose={() => setShowSuspicionModal(false)}
+        onReported={() => {
+          setShowSuspicionModal(false)
+          toast.warning('Gyanú-bejelentés rögzítve',
+            'A vezetők értesítést kaptak. A tranzakciót NE rögzítse — egyeztessen telefonon a területi vezetővel.')
+        }}
+      />
+
       {/* HOTKEY BAR */}
       <HotkeyBar
         left={[
@@ -1711,6 +1727,8 @@ export default function CashierTransactionPage() {
           { key: 'F5', label: 'Sztornó', onClick: () => navigate('/transactions?action=storno'), variant: 'danger' },
           { key: 'F8', label: 'Árfolyam', onClick: () => navigate('/rates') },
           { key: 'F9', label: 'Díj/Kedv.', onClick: () => { setFeeInput(String(handlingFee || '')); setDiscountInput(String(discount || '')); setShowFeeDialog(true) } },
+          // EXCMD b9-korlevelek FR-03: gyanú-bejelentés (a folyamat felfüggesztése + SAR)
+          { key: 'F10', label: 'Gyanú', onClick: () => setShowSuspicionModal(true), variant: 'danger' },
         ]}
         right={[
           { key: 'Esc', label: 'Mégse', onClick: () => { void handleCancel() }, variant: 'secondary' },

@@ -30,6 +30,11 @@ public class CustomerControlService {
 
     private final CustomerRestrictionRepository restrictionRepository;
     private final CustomerScreeningLogRepository screeningLogRepository;
+    // b9 FR-03 gyanú-bejelentés (SAR) függőségei
+    private final hu.puzzleir.valuta.repository.CustomerRepository customerRepository;
+    private final hu.puzzleir.valuta.repository.WorkerRepository workerRepository;
+    private final NotificationService notificationService;
+    private final AuditLogService auditLogService;
     private final TransactionRepository transactionRepository;
 
     // 15M HUF/év limit
@@ -129,6 +134,77 @@ public class CustomerControlService {
             log.warn("Éves limit túllépve! Ügyfél: {}, összeg: {} HUF", customerId, total);
         }
         return exceeded;
+    }
+
+    /**
+     * EXCMD b9-korlevelek FR-03: pénztárosi gyanú-bejelentés (SAR) rögzítése.
+     *
+     * <p>A gyanús jelek a {@code customer_screening_log}-ba kerülnek (SUSPICION/FLAGGED,
+     * Pmt. szerinti megőrzés), a cég felsővezetői URGENT értesítést kapnak. A pénztáros a
+     * folyamatot felfüggeszti (a tranzakciót NEM rögzíti) és telefonon egyeztet a területi
+     * vezetővel — a felfüggesztés emberi lépés, a rendszer-oldali nyomot ez a rekord adja.</p>
+     *
+     * <p>Tenant-guard: ha {@code customerId} érkezik, csak a saját cég ügyfele jelenthető
+     * (cross-tenant 404). Ismeretlen/törzsön kívüli ügyfélnél a customerId null, a név kötelező.</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public CustomerScreeningLogDto reportSuspicion(hu.puzzleir.valuta.dto.SuspicionReportRequest request) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+
+        // Review (Sourcery+Copilot): defenzív null/blank-guard — a @NotBlank csak a controller
+        // @Valid útján fut; service-szintű hívásnál is kötelező az indok.
+        String signs = request.getSuspicionSigns() != null ? request.getSuspicionSigns().trim() : "";
+        if (signs.isEmpty()) {
+            throw new hu.puzzleir.valuta.exception.ValidationException(
+                    "A gyanús jelek leírása kötelező");
+        }
+
+        String customerName;
+        if (request.getCustomerId() != null) {
+            hu.puzzleir.valuta.entity.Customer customer = customerRepository
+                    .findById(request.getCustomerId())
+                    .filter(c -> c.getCompany() != null && c.getCompany().getId().equals(companyId))
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Ügyfél nem található: " + request.getCustomerId()));
+            // Review (Copilot, audit-integritás): törzsbeli ügyfélnél MINDIG a törzs-név kerül a
+            // naplóba — a kliens által küldött név nem írhatja felül.
+            customerName = customer.getName();
+        } else {
+            customerName = request.getCustomerName() != null ? request.getCustomerName().trim() : "";
+            if (customerName.isEmpty()) {
+                throw new hu.puzzleir.valuta.exception.ValidationException(
+                        "Ismeretlen ügyfélnél az ügyfél neve kötelező a gyanú-bejelentéshez");
+            }
+        }
+
+        String details = "GYANÚ-BEJELENTÉS (b9 FR-03) — ügyfél: " + customerName
+                + (request.getHufAmount() != null
+                        ? "; érintett összeg: " + request.getHufAmount().toPlainString() + " Ft" : "")
+                + "; gyanús jelek: " + signs;
+
+        CustomerScreeningLog saved = screeningLogRepository.save(CustomerScreeningLog.builder()
+                .customerId(request.getCustomerId())
+                .screeningType("SUSPICION")
+                .result("FLAGGED")
+                .details(details)
+                .screenedAt(LocalDateTime.now())
+                .screenedBy(workerId)
+                .build());
+
+        // Felsővezetői értesítés (in-app + email) — a telefonos egyeztetés kötelező emberi lépését
+        // a bejelentés ténye + a pénztáros elérhetősége támogatja.
+        for (hu.puzzleir.valuta.entity.Worker supervisor : workerRepository.findSupervisorsAndAbove(companyId)) {
+            notificationService.sendToWorker(supervisor.getId(),
+                    "Gyanú-bejelentés a pénztárból — azonnali egyeztetés szükséges",
+                    details + " (bejelentő pénztáros workerId: " + workerId + ")",
+                    "URGENT");
+        }
+
+        // Pmt.: 8 éves megőrzésű audit-nyom
+        auditLogService.log("CUSTOMER_SUSPICION_REPORT", details, String.valueOf(saved.getId()));
+        log.warn("Gyanú-bejelentés rögzítve: screeningLogId={}, worker={}", saved.getId(), workerId);
+        return toScreeningDto(saved);
     }
 
     /**
