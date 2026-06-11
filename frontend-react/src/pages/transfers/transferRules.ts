@@ -30,9 +30,9 @@ export function getAvailableTransferTypes(isVaultUser: boolean, direction: 'out'
       { value: 'VAULT_DEPOSIT', label: 'Értéktár feltöltés' },
       { value: 'VAULT_WITHDRAW', label: 'Értéktár leszedés' },
       // Technikai gyűjtő kötés-kódok (legacy RB-gyűjtők, b5-penztar-mozgasok.md:51-72,
-      // c4 P3#5 — üzleti döntés 2026-06-11). A valuta+irány invariánsokat a backend is
-      // kikényszeríti (TransferService.create guard); az értéktári-felhasználó szűrés —
-      // a VAULT_* típusokkal azonos mintával — kliens-oldali.
+      // c4 P3#5 — üzleti döntés 2026-06-11). A valuta+irány+vault-only invariánsokat a
+      // backend is kikényszeríti (TransferService.create guard: Branch.isVault ellenőrzés,
+      // Codex/Copilot P2 #1092) — ez a lista csak a UI-választékot szűri.
       { value: 'ERB', label: 'ERB — Fixing valuta mozgás RB' },
       { value: 'FRB', label: 'FRB — Forint mozgás RB' },
       { value: 'TRB', label: 'TRB — Egyedi kötés RB' },

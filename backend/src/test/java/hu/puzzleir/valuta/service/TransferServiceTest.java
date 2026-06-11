@@ -121,7 +121,7 @@ class TransferServiceTest {
     void testCreate_technicalRbTypes_currencyInvariants() {
         UUID fromId = UUID.randomUUID();
         UUID toId = UUID.randomUUID();
-        Branch fromBranch = Branch.builder().id(fromId).code("BR020").build();
+        Branch fromBranch = Branch.builder().id(fromId).code("BR020").isVault(true).build();
         Branch toBranch = Branch.builder().id(toId).code("ERB").build();
         Worker worker = Worker.builder().id(1L).branch(fromBranch).build();
         Currency eur = Currency.builder().id(4L).code("EUR").build();
@@ -168,7 +168,21 @@ class TransferServiceTest {
                     .hasMessageContaining("átvétel (U) irányban");
         }
 
-        // (4) Multi-line bypass tiltva: ERB (csak deviza) fejléc-EUR mellett HUF-sor → hiba
+        // (4) Vault-only: NEM értéktári fiókból technikai RB-kötés → hiba (Codex/Copilot P2)
+        Branch cashierBranch = Branch.builder().id(UUID.randomUUID()).code("BR105").isVault(false).build();
+        Worker cashier = Worker.builder().id(2L).branch(cashierBranch).build();
+        when(workerRepository.findById(2L)).thenReturn(Optional.of(cashier));
+        CreateTransferDto cashierFrb = new CreateTransferDto();
+        cashierFrb.setToBranchId(toId.toString());
+        cashierFrb.setCurrencyId(6L);
+        cashierFrb.setAmount(new BigDecimal("5000"));
+        cashierFrb.setTransferType("FRB");
+        cashierFrb.setDirection("F");
+        assertThatThrownBy(() -> service.create(cashierFrb, 2L))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("értéktári fiókból");
+
+        // (5) Multi-line bypass tiltva: ERB (csak deviza) fejléc-EUR mellett HUF-sor → hiba
         CreateTransferDto erbHufLine = new CreateTransferDto();
         erbHufLine.setToBranchId(toId.toString());
         erbHufLine.setCurrencyId(4L);
@@ -194,7 +208,7 @@ class TransferServiceTest {
         UUID fromId = UUID.randomUUID();
         UUID toId = UUID.randomUUID();
         Company company = Company.builder().id(UUID.randomUUID()).build();
-        Branch fromBranch = Branch.builder().id(fromId).code("BR020").company(company).build();
+        Branch fromBranch = Branch.builder().id(fromId).code("BR020").company(company).isVault(true).build();
         Branch toBranch = Branch.builder().id(toId).code("ERB").company(company).build();
         Worker worker = Worker.builder().id(1L).branch(fromBranch).build();
         Currency eur = Currency.builder().id(4L).code("EUR").name("Euró").build();

@@ -72,17 +72,27 @@ public class TransferService {
 
         // Kötés-típus parse + technikai gyűjtő-kód invariánsok (ERB/FRB/TRB/PRB, c4 P3#5).
         // A guard a sorszám-generálás ELŐTT fut, hogy elutasításkor ne keletkezzen sorszám-lyuk.
+        if (dto.getTransferType() == null || dto.getTransferType().isBlank()) {
+            // Copilot (#1092): valueOf(null) NPE-t dobna (500), a @NotNull csak a HTTP-útvonalat védi.
+            throw new ValidationException("A kötés-típus megadása kötelező!");
+        }
         Transfer.TransferType transferType;
         try {
             transferType = Transfer.TransferType.valueOf(dto.getTransferType());
         } catch (IllegalArgumentException e) {
             throw new ValidationException("Érvénytelen kötés-típus: " + dto.getTransferType());
         }
+        if (isTechnicalRb(transferType) && !Boolean.TRUE.equals(fromBranch.getIsVault())) {
+            // Codex/Copilot P2 (#1092): a vault-only szabály backend-oldali kikényszerítése —
+            // a technikai RB-kötést csak értéktári fiók dolgozója rögzítheti, a FE-szűrés
+            // közvetlen API-hívással nem kerülhető meg.
+            throw new ValidationException(transferType + " technikai kötés csak értéktári fiókból rögzíthető!");
+        }
         validateTechnicalRbCurrency(transferType, currency);
         if (isTechnicalRb(transferType) && dto.getLines() != null) {
-            // A valuta-invariáns a multi-line sorokra is érvényes (a könyvelés soronként megy);
-            // a currencyRepository.findById a persistence contextből jön, a későbbi sor-feldolgozás
-            // nem fizet érte plusz SQL-t.
+            // A valuta-invariáns a multi-line sorokra is érvényes (a könyvelés soronként megy).
+            // A findById itt tölti be először a sor-valutát; a későbbi sor-feldolgozás ugyanazt
+            // a példányt a persistence contextből kapja, így összességében nincs plusz query.
             for (var l : dto.getLines()) {
                 Currency lineCurrency = currencyRepository.findById(l.getCurrencyId())
                         .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: " + l.getCurrencyId()));
