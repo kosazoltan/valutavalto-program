@@ -188,7 +188,7 @@ public class EmployeeSubRecordService {
     public String exportOccupationalHealthCsv() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         List<EmployeeOccupationalHealth> records = occupationalHealthRepository.findAllByCompanyId(companyId);
-        StringBuilder sb = new StringBuilder("﻿"); // UTF-8 BOM
+        StringBuilder sb = new StringBuilder("\uFEFF"); // UTF-8 BOM — explicit escape (Copilot review)
         sb.append("Dolgozó neve;Státusz;Határidő;Vizsgálat dátuma;Eredmény;Megkötés\n");
         for (EmployeeOccupationalHealth r : records) {
             String name = r.getEmployee().getLastName() + " " + r.getEmployee().getFirstName();
@@ -211,7 +211,7 @@ public class EmployeeSubRecordService {
     public String exportVacationsCsv() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         List<EmployeeVacation> records = vacationRepository.findAllByCompanyId(companyId);
-        StringBuilder sb = new StringBuilder("﻿"); // UTF-8 BOM
+        StringBuilder sb = new StringBuilder("\uFEFF"); // UTF-8 BOM — explicit escape (Copilot review)
         sb.append("Dolgozó neve;Év;Áthozott;Alapszabadság;Betegszabadság;Kivett;Táppénz;Fizetés nélküli\n");
         for (EmployeeVacation v : records) {
             String name = v.getEmployee().getLastName() + " " + v.getEmployee().getFirstName();

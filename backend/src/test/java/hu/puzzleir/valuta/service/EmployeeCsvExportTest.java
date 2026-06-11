@@ -74,7 +74,7 @@ class EmployeeCsvExportTest {
             // Fejléc jelen van
             assertThat(csv).contains("Dolgozó neve;Státusz");
             // BOM jelen van
-            assertThat(csv.charAt(0)).isEqualTo('﻿');
+            assertThat(csv.charAt(0)).isEqualTo('\uFEFF');
         }
         // Csak a cég rekordjait kérdezte le (nem más céget)
         verify(occupationalHealthRepository).findAllByCompanyId(companyId);
@@ -119,7 +119,7 @@ class EmployeeCsvExportTest {
             assertThat(csv).contains("2026");
             assertThat(csv).contains("20");
             assertThat(csv).contains("Dolgozó neve;Év");
-            assertThat(csv.charAt(0)).isEqualTo('﻿');
+            assertThat(csv.charAt(0)).isEqualTo('\uFEFF');
         }
         verify(vacationRepository).findAllByCompanyId(companyId);
         verify(vacationRepository, never()).findAll();
@@ -162,6 +162,23 @@ class EmployeeCsvExportTest {
     @DisplayName("CSV-injection: null értéket üres stringgé alakítja")
     void csvInjection_null() {
         assertThat(CsvUtils.escapeCsvCell(null)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("CSV-injection (review #1088): vezető whitespace/tab utáni képlet is védett")
+    void csvInjection_leadingWhitespace() {
+        assertThat(CsvUtils.escapeCsvCell(" =SUM(A1)")).isEqualTo("' =SUM(A1)");
+        assertThat(CsvUtils.escapeCsvCell("\t=SUM(A1)")).startsWith("'");
+    }
+
+    @Test
+    @DisplayName("RFC 4180 (review #1088): elválasztó/idézőjel/sortörés idézést kap")
+    void rfc4180_quoting() {
+        assertThat(CsvUtils.escapeCsvCell("Kovács; Péter")).isEqualTo("\"Kovács; Péter\"");
+        assertThat(CsvUtils.escapeCsvCell("idéz\"őjel")).isEqualTo("\"idéz\"\"őjel\"");
+        assertThat(CsvUtils.escapeCsvCell("több\nsor")).isEqualTo("\"több\nsor\"");
+        // kombinált: injection-prefix + idézés
+        assertThat(CsvUtils.escapeCsvCell("=1;2")).isEqualTo("\"'=1;2\"");
     }
 
     @Test

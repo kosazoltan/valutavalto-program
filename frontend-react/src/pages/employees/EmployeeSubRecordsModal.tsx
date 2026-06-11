@@ -73,13 +73,15 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
     try {
       setCertsSaving(true)
       setError(null)
+      // Review #1088 (törölhetőség): üres string = TÖRLÉS a backendnek; a null "nincs
+      // változás"-t jelentene, amivel a kiürített mező nem törlődne.
       await api.put(base, {
-        appraiserCertificateNumber: certs.appraiserCertificateNumber || null,
-        appraiserCertificateDate: certs.appraiserCertificateDate || null,
-        sellerCertificateNumber: certs.sellerCertificateNumber || null,
-        sellerCertificateDate: certs.sellerCertificateDate || null,
-        cashierCertificateNumber: certs.cashierCertificateNumber || null,
-        cashierCertificateDate: certs.cashierCertificateDate || null,
+        appraiserCertificateNumber: certs.appraiserCertificateNumber ?? '',
+        appraiserCertificateDate: certs.appraiserCertificateDate ?? '',
+        sellerCertificateNumber: certs.sellerCertificateNumber ?? '',
+        sellerCertificateDate: certs.sellerCertificateDate ?? '',
+        cashierCertificateNumber: certs.cashierCertificateNumber ?? '',
+        cashierCertificateDate: certs.cashierCertificateDate ?? '',
       })
       await load()
     } catch (err) {

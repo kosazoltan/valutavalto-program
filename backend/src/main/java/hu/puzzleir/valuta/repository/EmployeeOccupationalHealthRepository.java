@@ -15,6 +15,7 @@ public interface EmployeeOccupationalHealthRepository extends JpaRepository<Empl
 
     /** Cégszintű export: az adott cég összes dolgozójának üzemorvosi rekordjai (NFR-03). */
     @Query("SELECT o FROM EmployeeOccupationalHealth o " +
+           "JOIN FETCH o.employee " +
            "WHERE o.employee.company.id = :companyId " +
            "ORDER BY o.employee.lastName, o.employee.firstName, o.examDate DESC")
     List<EmployeeOccupationalHealth> findAllByCompanyId(@Param("companyId") UUID companyId);

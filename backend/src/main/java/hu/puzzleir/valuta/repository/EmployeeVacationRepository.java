@@ -17,6 +17,7 @@ public interface EmployeeVacationRepository extends JpaRepository<EmployeeVacati
 
     /** Cégszintű export: az adott cég összes dolgozójának szabadság-sorai (NFR-03). */
     @Query("SELECT v FROM EmployeeVacation v " +
+           "JOIN FETCH v.employee " +
            "WHERE v.employee.company.id = :companyId " +
            "ORDER BY v.employee.lastName, v.employee.firstName, v.year DESC")
     List<EmployeeVacation> findAllByCompanyId(@Param("companyId") UUID companyId);
