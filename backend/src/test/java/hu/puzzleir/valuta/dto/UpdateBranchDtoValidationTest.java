@@ -5,6 +5,8 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,14 +29,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 class UpdateBranchDtoValidationTest {
 
     private static ObjectMapper objectMapper;
+    private static ValidatorFactory validatorFactory;
     private static Validator validator;
 
     @BeforeAll
     static void setUp() {
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-        try (var factory = Validation.buildDefaultValidatorFactory()) {
-            validator = factory.getValidator();
-        }
+        // Codex P1 (#1093): a factory NEM zárható a validátor használata előtt —
+        // a tesztek alatt nyitva marad, @AfterAll zárja.
+        validatorFactory = Validation.buildDefaultValidatorFactory();
+        validator = validatorFactory.getValidator();
+    }
+
+    @AfterAll
+    static void tearDown() {
+        validatorFactory.close();
     }
 
     /** A BranchEditPage tényleges payload-mintája: minden opcionális mező üres string. */
