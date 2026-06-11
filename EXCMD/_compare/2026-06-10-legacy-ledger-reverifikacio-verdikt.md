@@ -59,8 +59,11 @@ hamis-negatívot tartalmaztak — ezeket NEM fogadtuk el:
 
 ## Nyitva maradt (őszintén, döntés-/inputfüggő)
 
-- **AML-terv 4) Megerősített eljárás (EDD) követés [M]**: 1-éves ablakok az ügyfélen,
-  100M havi kumulált, profil-kiugrás — nagyobb kör, ütemezett követő munka (entitás-bővítés
-  + detektálás + UI). Nem blokkolja a többi élesítést.
+- ~~**AML-terv 4) Megerősített eljárás (EDD) követés [M]**~~ — **ZÁRVA 2026-06-11 (PR #1079, V309):**
+  `customer.edd_until/edd_reason/edd_set_at` + `AmlEddService` napi scan (a) >=50M egyedi,
+  b) >=100M havi KÉSZPÉNZ-forgalom, hónapvége+1 év horgony) + `checkAllThresholds` olvasó-ág.
+  Flag `AML_EDD_TRACKING_ENFORCEMENT` default FALSE — élesítés compliance-vezetői döntés.
+  Követő kör: EDD-badge UI, Pmt.30.§(1) manuális jelölő, profil-kiugrás (g), pass-through (f).
 - **AML-terv 5) szankció-pontszám (0.9/0.8 vs 0.5/0.7)**: megfelelési vezetői megerősítés kell.
-- **Anti/forrasok bináris re-verifikáció**: a `legacy-transfer/` push után végezhető el.
+- **Anti/forrasok bináris re-verifikáció**: a `legacy-transfer-data` branch pushjával
+  feloldva — felhő-sessionben futtatható (fetch-parancs fent).
