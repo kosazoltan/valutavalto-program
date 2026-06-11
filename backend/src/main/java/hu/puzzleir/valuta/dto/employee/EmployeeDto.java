@@ -72,6 +72,14 @@ public class EmployeeDto {
     private String vocationalQualification;
     private LocalDate certificateDate;
 
+    // Szakmai bizonyítványok (b9 FR-03)
+    private String appraiserCertificateNumber;
+    private LocalDate appraiserCertificateDate;
+    private String sellerCertificateNumber;
+    private LocalDate sellerCertificateDate;
+    private String cashierCertificateNumber;
+    private LocalDate cashierCertificateDate;
+
     // Adókedvezmények
     private String personalTaxCredit;
     private String familyTaxCredit;

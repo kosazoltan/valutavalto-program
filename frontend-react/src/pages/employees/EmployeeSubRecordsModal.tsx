@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { X, Plus, Trash2, Stethoscope, CalendarDays, Baby } from 'lucide-react'
+import { X, Plus, Trash2, Stethoscope, CalendarDays, Baby, Download } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
@@ -80,6 +80,23 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
     try { await api.delete(`${base}/${path}`); await load() } catch (err) { setError(getErrorMessage(err)) }
   }
 
+  const downloadCsv = async (endpoint: string, filename: string) => {
+    try {
+      setError(null)
+      const response = await api.get<Blob>(endpoint, { responseType: 'blob' })
+      const url = URL.createObjectURL(new Blob([response.data], { type: 'text/csv;charset=utf-8;' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', filename)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-4 shadow-xl">
@@ -92,7 +109,16 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
 
         {/* Üzemorvosi vizsgálat */}
         <section className="mb-4">
-          <h3 className="mb-2 flex items-center gap-1 font-semibold"><Stethoscope className="h-4 w-4" />Üzemorvosi vizsgálat</h3>
+          <h3 className="mb-2 flex items-center justify-between font-semibold">
+            <span className="flex items-center gap-1"><Stethoscope className="h-4 w-4" />Üzemorvosi vizsgálat</span>
+            <button
+              onClick={() => void downloadCsv('/employees/occupational-health/export', 'uzemorvosi_vizsgalatok.csv')}
+              className="form-button flex items-center gap-1 text-xs"
+              title="CSV letöltés — cég összes dolgozója"
+            >
+              <Download className="h-3 w-3" />CSV export
+            </button>
+          </h3>
           <table className="w-full text-sm">
             <thead className="bg-gray-50"><tr>
               <th className="p-1 text-left">Állapot</th><th className="p-1 text-left">Vizsgálat dátuma</th>
@@ -120,7 +146,16 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
 
         {/* Szabadságok */}
         <section className="mb-4">
-          <h3 className="mb-2 flex items-center gap-1 font-semibold"><CalendarDays className="h-4 w-4" />Szabadságok</h3>
+          <h3 className="mb-2 flex items-center justify-between font-semibold">
+            <span className="flex items-center gap-1"><CalendarDays className="h-4 w-4" />Szabadságok</span>
+            <button
+              onClick={() => void downloadCsv('/employees/vacations/export', 'szabadsagok.csv')}
+              className="form-button flex items-center gap-1 text-xs"
+              title="CSV letöltés — cég összes dolgozója"
+            >
+              <Download className="h-3 w-3" />CSV export
+            </button>
+          </h3>
           <table className="w-full text-sm">
             <thead className="bg-gray-50"><tr>
               <th className="p-1 text-left">Év</th><th className="p-1 text-right">Szabadság</th>

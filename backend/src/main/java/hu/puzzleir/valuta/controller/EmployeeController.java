@@ -3,13 +3,17 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.employee.*;
 import hu.puzzleir.valuta.entity.FeorCode;
 import hu.puzzleir.valuta.service.EmployeeService;
+import hu.puzzleir.valuta.service.EmployeeSubRecordService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -34,6 +38,7 @@ import java.util.Map;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final EmployeeSubRecordService employeeSubRecordService;
 
     /**
      * Dolgozók listázása szűréssel.
@@ -123,5 +128,39 @@ public class EmployeeController {
     @GetMapping("/feor-codes")
     public ResponseEntity<List<FeorCode>> getFeorCodes() {
         return ResponseEntity.ok(employeeService.getAllFeorCodes());
+    }
+
+    /**
+     * Cégszintű üzemorvosi vizsgálatok CSV-exportja (NFR-03).
+     * UTF-8 BOM; Excel-kompatibilis pontosvessző-elválasztás.
+     *
+     * GET /api/v1/employees/occupational-health/export
+     */
+    @GetMapping("/occupational-health/export")
+    public ResponseEntity<byte[]> exportOccupationalHealthCsv() {
+        String csv = employeeSubRecordService.exportOccupationalHealthCsv();
+        byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("text/csv; charset=UTF-8"));
+        headers.setContentDispositionFormData("attachment", "uzemorvosi_vizsgalatok.csv");
+        headers.setContentLength(bytes.length);
+        return new ResponseEntity<>(bytes, headers, HttpStatus.OK);
+    }
+
+    /**
+     * Cégszintű szabadságok CSV-exportja (NFR-03).
+     * UTF-8 BOM; Excel-kompatibilis pontosvessző-elválasztás.
+     *
+     * GET /api/v1/employees/vacations/export
+     */
+    @GetMapping("/vacations/export")
+    public ResponseEntity<byte[]> exportVacationsCsv() {
+        String csv = employeeSubRecordService.exportVacationsCsv();
+        byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("text/csv; charset=UTF-8"));
+        headers.setContentDispositionFormData("attachment", "szabadsagok.csv");
+        headers.setContentLength(bytes.length);
+        return new ResponseEntity<>(bytes, headers, HttpStatus.OK);
     }
 }

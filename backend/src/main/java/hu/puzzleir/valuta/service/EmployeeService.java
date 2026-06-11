@@ -140,6 +140,12 @@ public class EmployeeService {
                 .vocationalSchoolName(dto.getVocationalSchoolName())
                 .vocationalQualification(dto.getVocationalQualification())
                 .certificateDate(dto.getCertificateDate())
+                .appraiserCertificateNumber(dto.getAppraiserCertificateNumber())
+                .appraiserCertificateDate(dto.getAppraiserCertificateDate())
+                .sellerCertificateNumber(dto.getSellerCertificateNumber())
+                .sellerCertificateDate(dto.getSellerCertificateDate())
+                .cashierCertificateNumber(dto.getCashierCertificateNumber())
+                .cashierCertificateDate(dto.getCashierCertificateDate())
                 .personalTaxCredit(dto.getPersonalTaxCredit())
                 .familyTaxCredit(dto.getFamilyTaxCredit())
                 .twoChildrenCredit(dto.getTwoChildrenCredit())
@@ -212,6 +218,12 @@ public class EmployeeService {
         if (dto.getVocationalSchoolName() != null) employee.setVocationalSchoolName(dto.getVocationalSchoolName());
         if (dto.getVocationalQualification() != null) employee.setVocationalQualification(dto.getVocationalQualification());
         if (dto.getCertificateDate() != null) employee.setCertificateDate(dto.getCertificateDate());
+        if (dto.getAppraiserCertificateNumber() != null) employee.setAppraiserCertificateNumber(dto.getAppraiserCertificateNumber());
+        if (dto.getAppraiserCertificateDate() != null) employee.setAppraiserCertificateDate(dto.getAppraiserCertificateDate());
+        if (dto.getSellerCertificateNumber() != null) employee.setSellerCertificateNumber(dto.getSellerCertificateNumber());
+        if (dto.getSellerCertificateDate() != null) employee.setSellerCertificateDate(dto.getSellerCertificateDate());
+        if (dto.getCashierCertificateNumber() != null) employee.setCashierCertificateNumber(dto.getCashierCertificateNumber());
+        if (dto.getCashierCertificateDate() != null) employee.setCashierCertificateDate(dto.getCashierCertificateDate());
         if (dto.getPersonalTaxCredit() != null) employee.setPersonalTaxCredit(dto.getPersonalTaxCredit());
         if (dto.getFamilyTaxCredit() != null) employee.setFamilyTaxCredit(dto.getFamilyTaxCredit());
         if (dto.getTwoChildrenCredit() != null) employee.setTwoChildrenCredit(dto.getTwoChildrenCredit());
@@ -550,6 +562,12 @@ public class EmployeeService {
                 .vocationalSchoolName(e.getVocationalSchoolName())
                 .vocationalQualification(e.getVocationalQualification())
                 .certificateDate(e.getCertificateDate())
+                .appraiserCertificateNumber(e.getAppraiserCertificateNumber())
+                .appraiserCertificateDate(e.getAppraiserCertificateDate())
+                .sellerCertificateNumber(e.getSellerCertificateNumber())
+                .sellerCertificateDate(e.getSellerCertificateDate())
+                .cashierCertificateNumber(e.getCashierCertificateNumber())
+                .cashierCertificateDate(e.getCashierCertificateDate())
                 .personalTaxCredit(e.getPersonalTaxCredit())
                 .familyTaxCredit(e.getFamilyTaxCredit())
                 .twoChildrenCredit(e.getTwoChildrenCredit())
