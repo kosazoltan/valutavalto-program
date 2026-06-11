@@ -633,6 +633,44 @@ class BranchServiceTest {
         }
     }
 
+    @Test
+    @DisplayName("FK-025 Codex P2: üres string = explicit törlés — phone/email/shortName→null, city/zip/bankCode→üres")
+    void testUpdate_blankOptionalFields_clearStoredValues() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            Branch existing = Branch.builder().id(BRANCH_ID)
+                    .company(Company.builder().id(COMPANY_ID).build())
+                    .code("BR100").name("Iroda").address("6720 Szeged, Régi utca 1.")
+                    .phone("+36301234567").email("regi@example.hu").shortName("Rövid")
+                    .city("Szeged").zipCode("6720").bankCode("210")
+                    .build();
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(existing));
+            when(branchRepository.save(any(Branch.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(branchMapper.toDto(any())).thenReturn(BranchDto.builder().build());
+
+            // A FE teljes-form: az üres mező a felhasználó törlési szándéka (setter-út = Jackson-út).
+            UpdateBranchDto dto = new UpdateBranchDto();
+            dto.setPhone("");
+            dto.setEmail("   ");
+            dto.setShortName("");
+            dto.setCity("");
+            dto.setZipCode("");
+            dto.setBankCode("");
+
+            service.update(BRANCH_ID, dto);
+
+            ArgumentCaptor<Branch> captor = ArgumentCaptor.forClass(Branch.class);
+            verify(branchRepository).save(captor.capture());
+            Branch saved = captor.getValue();
+            assertThat(saved.getPhone()).isNull();         // nullable oszlop → null
+            assertThat(saved.getEmail()).isNull();
+            assertThat(saved.getShortName()).isNull();
+            assertThat(saved.getCity()).isEmpty();         // NOT NULL oszlop → ""
+            assertThat(saved.getZipCode()).isEmpty();
+            assertThat(saved.getBankCode()).isEmpty();
+        }
+    }
+
     // ============================================================
     // FK-022 — Iroda adatainak szerkesztése (update audit + régió + típus + státusz)
     // ============================================================
