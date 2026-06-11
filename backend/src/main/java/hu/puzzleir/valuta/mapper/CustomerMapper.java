@@ -48,6 +48,12 @@ public class CustomerMapper {
                 .isVip(entity.getIsVip())
                 .isPep(entity.getIsPep())
                 .notes(entity.getNotes())
+                .eddUntil(entity.getEddUntil())
+                .eddReason(entity.getEddReason())
+                // Sourcery review: entity-helper (nem service-statikus) — a zóna az EDD-kör
+                // üzleti zónája (a scan/scheduler is ebben számol, lásd AmlEddService)
+                .eddActive(entity.isEddActiveOn(
+                        java.time.LocalDate.now(hu.puzzleir.valuta.service.AmlEddService.BUSINESS_ZONE)))
                 .lastTransactionDate(entity.getLastTransactionDate())
                 .transactionCount(entity.getTransactionCount())
                 .createdAt(entity.getCreatedAt())

@@ -35,6 +35,10 @@ export interface Customer {
   isVip: boolean
   isPep?: boolean
   notes?: string
+  // Megerősített eljárás (EDD, V.2.7 — V309/V310)
+  eddUntil?: string
+  eddReason?: string
+  eddActive?: boolean
   lastTransactionDate?: string
   transactionCount: number
   createdAt: string
@@ -80,6 +84,11 @@ export const customerApi = {
   },
   getById: async (id: number): Promise<Customer> => {
     const response = await api.get<Customer>(`/customers/${id}`)
+    return response.data
+  },
+  /** Pmt. 30.§ (1) manuális EDD-jelölés (V.2.7 c) — supervisor+ jogosultság. */
+  markEdd: async (id: number, reason: string): Promise<Customer> => {
+    const response = await api.post<Customer>(`/customers/${id}/edd-mark`, { reason })
     return response.data
   },
   getByDocumentNumber: async (documentNumber: string): Promise<Customer> => {

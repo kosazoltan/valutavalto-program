@@ -36,6 +36,7 @@ public class CustomerController {
     private final CustomerService customerService;
     private final CustomerMapper customerMapper;
     private final CustomerStatisticsService customerStatisticsService;
+    private final hu.puzzleir.valuta.service.AmlEddService amlEddService;
 
     /**
      * Új ügyfél létrehozása
@@ -60,6 +61,21 @@ public class CustomerController {
             @PathVariable Long id,
             @Valid @RequestBody CreateCustomerDto dto) {
         Customer customer = customerService.updateCustomer(id, customerMapper.toUpdateRequest(dto));
+        return ResponseEntity.ok(customerMapper.toDto(customer));
+    }
+
+    /**
+     * Pmt. 30.§ (1) bejelentett ügyfél manuális EDD-jelölése (V.2.7 c — V309/V310).
+     * 1 éves megerősített-eljárás ablakot nyit/hosszabbít (extend-only), audit-traillel.
+     *
+     * POST /api/v1/customers/{id}/edd-mark
+     */
+    @PostMapping("/{id}/edd-mark")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<CustomerDto> markCustomerEdd(
+            @PathVariable Long id,
+            @Valid @RequestBody hu.puzzleir.valuta.dto.customer.MarkCustomerEddRequest request) {
+        Customer customer = amlEddService.markManualEdd(id, request.getReason());
         return ResponseEntity.ok(customerMapper.toDto(customer));
     }
 

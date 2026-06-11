@@ -8,6 +8,7 @@ import { customerApi, Customer, CustomerCreateRequest } from '../../services/api
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import { useAuthStore } from '../../stores/authStore'
 
 export default function CustomerDetailPage() {
   const { t } = useTranslation()
@@ -17,6 +18,33 @@ export default function CustomerDetailPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // V.2.7 c) Pmt. 30.§ (1) manuális EDD-jelölés (V309/V310) — supervisor+ művelet
+  const hasRole = useAuthStore((s) => s.hasRole)
+  const canMarkEdd = hasRole('SUPERVISOR') || hasRole('MANAGER')
+  const [showEddModal, setShowEddModal] = useState(false)
+  const [eddReasonInput, setEddReasonInput] = useState('')
+  const [eddSaving, setEddSaving] = useState(false)
+  const [eddError, setEddError] = useState<string | null>(null)
+
+  const handleMarkEdd = async () => {
+    if (!id || !eddReasonInput.trim()) {
+      setEddError(t('customers.eddMarkReasonRequired'))
+      return
+    }
+    try {
+      setEddSaving(true)
+      setEddError(null)
+      const updated = await customerApi.markEdd(Number(id), eddReasonInput.trim())
+      setCustomer(updated)
+      setShowEddModal(false)
+      setEddReasonInput('')
+    } catch (err) {
+      setEddError(getErrorMessage(err))
+      logger.error('CustomerDetailPage', 'EDD-jelölés hiba:', err)
+    } finally {
+      setEddSaving(false)
+    }
+  }
 
   useEffect(() => {
     if (!id) return
@@ -112,9 +140,30 @@ export default function CustomerDetailPage() {
             <User />
             {t('customers.ugyfelAdatai')}
             {customer.isVip && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">VIP</span>}
+            {customer.eddActive && (
+              <span
+                title={customer.eddReason || t('customers.eddBadgeFallback')}
+                className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded flex items-center gap-1"
+              >
+                <ShieldCheck size={12} />
+                {t('customers.eddBadge', {
+                  date: customer.eddUntil ? new Date(customer.eddUntil).toLocaleDateString('hu-HU') : '',
+                })}
+              </span>
+            )}
           </h1>
         </div>
         <div className="flex gap-2">
+          {canMarkEdd && !isEditing && (
+            <button
+              onClick={() => { setEddError(null); setShowEddModal(true) }}
+              className="form-button flex items-center gap-1 text-red-700"
+              title={t('customers.eddMarkButtonTitle')}
+            >
+              <ShieldCheck size={16} />
+              {t('customers.eddMarkButton')}
+            </button>
+          )}
           <Link
             to={`/customers/${id}/representatives`}
             className="form-button flex items-center gap-1"
@@ -320,6 +369,56 @@ export default function CustomerDetailPage() {
           </span>
         </div>
       </div>
+
+      {/* Pmt. 30.§ (1) EDD-jelölő modal — inline (Electron renderer: window.prompt nem támogatott);
+          a11y az AmlApproverModal mintájára (role=dialog + aria + Escape) */}
+      {showEddModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edd-mark-title"
+          onKeyDown={(e) => { if (e.key === 'Escape' && !eddSaving) setShowEddModal(false) }}
+        >
+          <div className="w-full max-w-md rounded bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b p-4">
+              <h2 id="edd-mark-title" className="text-lg font-semibold flex items-center gap-2">
+                <ShieldCheck size={18} className="text-red-700" />
+                {t('customers.eddMarkTitle')}
+              </h2>
+            </div>
+            <div className="space-y-3 p-4">
+              <p className="text-sm text-gray-600">{t('customers.eddMarkDescription')}</p>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-gray-700">{t('customers.eddMarkReasonLabel')}</span>
+                <textarea
+                  value={eddReasonInput}
+                  onChange={(e) => setEddReasonInput(e.target.value)}
+                  rows={3}
+                  maxLength={400}
+                  className="w-full rounded border px-3 py-2"
+                  autoFocus
+                />
+              </label>
+              {eddError && (
+                <div className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-800">{eddError}</div>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t p-4">
+              <button onClick={() => setShowEddModal(false)} className="form-button" disabled={eddSaving}>
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={() => void handleMarkEdd()}
+                disabled={eddSaving || !eddReasonInput.trim()}
+                className="form-button-primary"
+              >
+                {eddSaving ? t('customers.eddMarkSaving') : t('customers.eddMarkSubmit')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

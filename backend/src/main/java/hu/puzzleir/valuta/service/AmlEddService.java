@@ -48,7 +48,7 @@ public class AmlEddService {
     static final int EDD_WINDOW_YEARS = 1;
 
     /** A scheduler is Europe/Budapest zónával fut — a scan-dátum ugyanabban a zónában képződik. */
-    static final java.time.ZoneId BUSINESS_ZONE = java.time.ZoneId.of("Europe/Budapest");
+    public static final java.time.ZoneId BUSINESS_ZONE = java.time.ZoneId.of("Europe/Budapest");
 
     private final TransactionRepository transactionRepository;
     private final CustomerRepository customerRepository;
@@ -119,6 +119,40 @@ public class AmlEddService {
     }
 
     /**
+     * Pmt. 30.§ (1) szerinti bejelentett ügyfél manuális EDD-jelölése (V.2.7 c) eset.
+     * Compliance-művelet: a flag-állástól FÜGGETLENÜL elérhető (a flag csak az automatikus
+     * scant kapcsolja), supervisor+ jogosultsággal a controller-rétegben védve.
+     * Tenant-guard: csak a saját cég ügyfele jelölhető (cross-tenant 404).
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Customer markManualEdd(Long customerId, String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new hu.puzzleir.valuta.exception.ValidationException("Az EDD-jelölés indoka kötelező");
+        }
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        Customer customer = customerRepository.findById(customerId)
+                .filter(c -> c.getCompany() != null && c.getCompany().getId().equals(companyId))
+                .orElseThrow(() -> new hu.puzzleir.valuta.exception.ResourceNotFoundException(
+                        "Ügyfél nem található: " + customerId));
+
+        LocalDate today = LocalDate.now(BUSINESS_ZONE);
+        String fullReason = "Pmt. 30.§ (1) bejelentés (V.2.7 c): " + reason.trim();
+        MarkOutcome outcome = applyEddWindow(
+                customer, companyId, today, today.plusYears(EDD_WINDOW_YEARS), fullReason);
+        // Codex P2: a Pmt.30-bejelentés AKKOR IS audit-köteles, ha a meglévő (hosszabb)
+        // ablak miatt az ablak-mezők változatlanok — a bejelentés ténye 8 évig megőrzendő.
+        if (outcome == MarkOutcome.UNCHANGED) {
+            auditLogService.logForCompany(
+                    AUDIT_ACTION,
+                    "Pmt. 30.§ (1) bejelentés rögzítve — a meglévő EDD-ablak ("
+                            + customer.getEddUntil() + ") hosszabb, mezők változatlanok. " + fullReason,
+                    customer.getCustomerCode() + ":" + customer.getEddUntil(),
+                    companyId);
+        }
+        return customer;
+    }
+
+    /**
      * EDD-ablak jelölése az ügyfélen — extend-only: a meglévő, későbbi lejáratot nem rövidíti.
      */
     private MarkOutcome markEdd(UUID companyId, String customerCode, LocalDate triggerDay,
@@ -130,7 +164,12 @@ public class AmlEddService {
             log.warn("EDD-trigger ismeretlen ügyfélre: company={}, customerCode={}", companyId, customerCode);
             return MarkOutcome.UNCHANGED;
         }
+        return applyEddWindow(customer, companyId, triggerDay, newUntil, reason);
+    }
 
+    /** A közös extend-only ablak-alkalmazó (scan + manuális Pmt.30 út). */
+    private MarkOutcome applyEddWindow(Customer customer, UUID companyId, LocalDate triggerDay,
+                                       LocalDate newUntil, String reason) {
         LocalDate current = customer.getEddUntil();
         if (current != null && !current.isBefore(newUntil)) {
             return MarkOutcome.UNCHANGED; // már fedett ablak — idempotens újrafutás
@@ -155,15 +194,14 @@ public class AmlEddService {
                 AUDIT_ACTION,
                 "Megerősített eljárás (EDD) ablak " + (wasActive ? "hosszabbítva" : "beállítva")
                         + " eddig: " + newUntil + " — " + reason,
-                customerCode + ":" + newUntil,
+                customer.getCustomerCode() + ":" + newUntil,
                 companyId);
         return wasActive ? MarkOutcome.EXTENDED : MarkOutcome.MARKED;
     }
 
-    /** Aktív-e az ügyfél EDD-ablaka az adott napon. */
+    /** Aktív-e az ügyfél EDD-ablaka az adott napon (delegál az entity-helperre). */
     public static boolean isEddActive(Customer customer, LocalDate today) {
-        return customer != null && customer.getEddUntil() != null
-                && !customer.getEddUntil().isBefore(today);
+        return customer != null && customer.isEddActiveOn(today);
     }
 
     private enum MarkOutcome { MARKED, EXTENDED, UNCHANGED }

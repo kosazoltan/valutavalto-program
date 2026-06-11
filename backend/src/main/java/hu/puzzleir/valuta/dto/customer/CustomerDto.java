@@ -64,6 +64,11 @@ public class CustomerDto {
     private Boolean isPep;
     private String notes;
 
+    // Megerősített eljárás (EDD, V.2.7 — V309/V310)
+    private LocalDate eddUntil;
+    private String eddReason;
+    private Boolean eddActive;
+
     // Statisztika
     private LocalDate lastTransactionDate;
     private Integer transactionCount;
