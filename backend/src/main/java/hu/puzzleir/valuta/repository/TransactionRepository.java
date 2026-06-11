@@ -618,6 +618,24 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * EDD V.2.7 g) (V311): a naptári hónap TELJES (nem készpénz-szűrt) forgalma >=küszöb —
+     * a profil-kiugrás a teljes ügyfél-forgalomra értendő, szemben a b) készpénz-szabállyal
+     * (Codex review). Cross-company scheduler-query, a service cégen belül jelöl.
+     */
+    @Query("SELECT t.company.id, t.customerId, SUM(t.hufAmount) FROM Transaction t " +
+           "WHERE t.transactionDate BETWEEN :monthStart AND :day " +
+           "AND t.customerId IS NOT NULL AND t.customerId <> '' " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
+           "GROUP BY t.company.id, t.customerId " +
+           "HAVING SUM(t.hufAmount) >= :threshold")
+    List<Object[]> findEddMonthlyTurnoverTriggers(
+        @Param("monthStart") LocalDate monthStart,
+        @Param("day") LocalDate day,
+        @Param("threshold") BigDecimal threshold
+    );
+
+    /**
      * EDD V.2.7 f) (V311): pass-through gyanú — az ablakon (72h) belül MINDKÉT irányban
      * (vétel ÉS eladás) >=küszöb forgalmú (cég, ügyfél, vétel-összeg, eladás-összeg)
      * négyesek. Cross-company scheduler-query, a service cégen belül jelöl.

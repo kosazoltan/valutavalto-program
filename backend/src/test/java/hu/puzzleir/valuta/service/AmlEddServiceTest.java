@@ -250,7 +250,7 @@ class AmlEddServiceTest {
         when(transactionRepository.findEddMonthlyCumulativeTriggers(
                 DAY.withDayOfMonth(1), DAY, AmlEddService.EDD_MONTHLY_THRESHOLD_HUF)).thenReturn(List.of());
         // g) jelölt-szűrő (10M zaj-küszöb): aktuális hó 30M
-        when(transactionRepository.findEddMonthlyCumulativeTriggers(
+        when(transactionRepository.findEddMonthlyTurnoverTriggers(
                 DAY.withDayOfMonth(1), DAY, new BigDecimal(AmlEddService.EDD_PROFILE_MIN_DEFAULT)))
                 .thenReturn(List.<Object[]>of(new Object[]{COMPANY_A, "C-6", new BigDecimal("30000000")}));
         // előzmény: 6 hónap alatt összesen 24M → havi átlag 4M; 30M >= 5×4M=20M → trigger
@@ -273,7 +273,7 @@ class AmlEddServiceTest {
         when(transactionRepository.findEddSingleTransactionTriggers(any(), any())).thenReturn(List.of());
         when(transactionRepository.findEddMonthlyCumulativeTriggers(
                 DAY.withDayOfMonth(1), DAY, AmlEddService.EDD_MONTHLY_THRESHOLD_HUF)).thenReturn(List.of());
-        when(transactionRepository.findEddMonthlyCumulativeTriggers(
+        when(transactionRepository.findEddMonthlyTurnoverTriggers(
                 DAY.withDayOfMonth(1), DAY, new BigDecimal(AmlEddService.EDD_PROFILE_MIN_DEFAULT)))
                 .thenReturn(List.<Object[]>of(new Object[]{COMPANY_A, "C-7", new BigDecimal("30000000")}));
         when(transactionRepository.sumCustomerQuarterlyTotal(
@@ -294,7 +294,7 @@ class AmlEddServiceTest {
         when(transactionRepository.findEddSingleTransactionTriggers(any(), any())).thenReturn(List.of());
         when(transactionRepository.findEddMonthlyCumulativeTriggers(
                 DAY.withDayOfMonth(1), DAY, AmlEddService.EDD_MONTHLY_THRESHOLD_HUF)).thenReturn(List.of());
-        when(transactionRepository.findEddMonthlyCumulativeTriggers(
+        when(transactionRepository.findEddMonthlyTurnoverTriggers(
                 DAY.withDayOfMonth(1), DAY, new BigDecimal(AmlEddService.EDD_PROFILE_MIN_DEFAULT)))
                 .thenReturn(List.<Object[]>of(new Object[]{COMPANY_A, "C-8", new BigDecimal("30000000")}));
         // 6 havi össz 60M → átlag 10M; 30M < 5×10M=50M → nincs trigger

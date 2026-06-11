@@ -144,7 +144,7 @@ public class AmlEddService {
         BigDecimal multiplier = paramAsBigDecimal(EDD_PROFILE_MULTIPLIER_PARAM, EDD_PROFILE_MULTIPLIER_DEFAULT);
         LocalDate histStart = monthStart.minusMonths(EDD_PROFILE_HISTORY_MONTHS);
         LocalDate histEnd = monthStart.minusDays(1);
-        for (Object[] row : transactionRepository.findEddMonthlyCumulativeTriggers(
+        for (Object[] row : transactionRepository.findEddMonthlyTurnoverTriggers(
                 monthStart, day, profileMin)) {
             UUID companyId = (UUID) row[0];
             String customerCode = (String) row[1];
@@ -259,11 +259,21 @@ public class AmlEddService {
         return wasActive ? MarkOutcome.EXTENDED : MarkOutcome.MARKED;
     }
 
-    /** Numerikus SystemParameter biztonságos olvasása (hibás érték → default + warn). */
+    /**
+     * Numerikus SystemParameter biztonságos olvasása. Sourcery review: a nem-pozitív érték
+     * (0/negatív) a szabályt "mindig-igaz"-zá tenné → hibás/degenerált konfignál a pozitív
+     * engineering default lép életbe (warn-nal).
+     */
     private BigDecimal paramAsBigDecimal(String key, String defaultValue) {
         String raw = systemParameterService.getValue(key, defaultValue);
         try {
-            return new BigDecimal(raw.trim());
+            BigDecimal value = new BigDecimal(raw.trim());
+            if (value.compareTo(BigDecimal.ZERO) <= 0) {
+                log.warn("Nem-pozitív paraméter {}={} — degenerált konfig, default ({}) használata",
+                        key, value.toPlainString(), defaultValue);
+                return new BigDecimal(defaultValue);
+            }
+            return value;
         } catch (NumberFormatException | NullPointerException e) {
             log.warn("Érvénytelen numerikus paraméter {}='{}' — default ({}) használata", key, raw, defaultValue);
             return new BigDecimal(defaultValue);
