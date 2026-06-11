@@ -3,6 +3,7 @@ import {
   receiptTypeLabel,
   hasCustomer,
   isAmlThresholdExceeded,
+  approverRoleLabel,
   formatHuf,
   matchesPeriod,
   periodToBackendRange,
@@ -281,5 +282,20 @@ describe('buildCancelledTransactionPrintData (MEGSEM fizikai nyomtatás)', () =>
     expect(buildCancelledTransactionPrintData({ ...cancelledReceipt, content: '{bad-json' }, worker)).toBeNull()
     expect(buildCancelledTransactionPrintData({ ...cancelledReceipt, content: JSON.stringify({ lines: [] }) }, worker)).toBeNull()
     expect(buildCancelledTransactionPrintData({ ...cancelledReceipt, receiptType: 'BUY' }, worker)).toBeNull()
+  })
+})
+
+describe('approverRoleLabel (EXCMD b5b FR-BSZUR-05 ENGEDÉLYEZŐ beosztás)', () => {
+  it('az ismert szerepkör-kódokat magyar címkére képezi', () => {
+    expect(approverRoleLabel('SUPERVISOR')).toBe('Műszakvezető')
+    expect(approverRoleLabel('MANAGER')).toBe('Ügyvezető')
+    expect(approverRoleLabel('ADMIN')).toBe('Adminisztrátor')
+  })
+
+  it('case-insensitive; ismeretlen role → nyers kód (forward-compat); hiányzó → üres string', () => {
+    expect(approverRoleLabel('manager')).toBe('Ügyvezető')
+    expect(approverRoleLabel('FOERTEKTAROS')).toBe('FOERTEKTAROS')
+    expect(approverRoleLabel(undefined)).toBe('')
+    expect(approverRoleLabel('')).toBe('')
   })
 })

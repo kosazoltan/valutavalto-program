@@ -307,12 +307,22 @@ public class ReceiptService {
         if (sessionIds.isEmpty()) {
             return;
         }
+        // Copilot review: a grant single-use (consumeApprovalGrant) miatt sessionönként 1 jóváhagyás
+        // várható, de az adatbázis ezt nem kényszeríti ki — duplikátumnál DETERMINISZTIKUSAN a
+        // legkorábbi (első) jóváhagyás nyer (approvedAt szerint), nem a query sorrendje.
         java.util.Map<String, hu.puzzleir.valuta.entity.TransactionAmlApproval> bySession =
                 new java.util.HashMap<>();
         for (hu.puzzleir.valuta.entity.TransactionAmlApproval approval :
                 amlApprovalRepository.findByCompanyIdAndApprovalSessionIdIn(companyId, sessionIds)) {
-            // Multi-line: egy session egy jóváhagyás — duplikátumnál az első nyer (azonos engedélyező).
-            bySession.putIfAbsent(approval.getApprovalSessionId(), approval);
+            bySession.merge(approval.getApprovalSessionId(), approval, (existing, candidate) -> {
+                if (existing.getApprovedAt() == null) {
+                    return candidate;
+                }
+                if (candidate.getApprovedAt() == null) {
+                    return existing;
+                }
+                return candidate.getApprovedAt().isBefore(existing.getApprovedAt()) ? candidate : existing;
+            });
         }
         for (Receipt r : receipts) {
             hu.puzzleir.valuta.entity.TransactionAmlApproval approval =
