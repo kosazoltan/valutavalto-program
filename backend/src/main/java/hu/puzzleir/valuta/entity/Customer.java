@@ -284,6 +284,25 @@ public class Customer {
     private LocalDateTime highRiskSetAt;
 
     /**
+     * Megerősített eljárás (EDD, V.2.7) 1 éves ablakának vége.
+     * Amíg >= mai nap, a tranzakciónál fokozott átvilágítás kötelező (V309).
+     */
+    @Column(name = "edd_until")
+    private LocalDate eddUntil;
+
+    /**
+     * Az EDD-ablak indoka (pl. >=50M egyedi / >=100M havi készpénzforgalom)
+     */
+    @Column(name = "edd_reason", length = 500)
+    private String eddReason;
+
+    /**
+     * Az EDD-ablak (utolsó) beállításának időpontja
+     */
+    @Column(name = "edd_set_at")
+    private LocalDateTime eddSetAt;
+
+    /**
      * Megjegyzések
      */
     @Column(length = 1000)

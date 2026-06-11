@@ -655,6 +655,22 @@ public class AmlService {
                 break;
         }
 
+        // V.2.7 EDD (V309): aktív megerősített-eljárás ablak → fokozott átvilágítás akkor is,
+        // ha az aktuális összeg önmagában küszöb alatti. Adat-vezérelt: amíg az AmlEddService
+        // scan (AML_EDD_TRACKING_ENFORCEMENT) nem jelölt ügyfelet, ez az ág inert.
+        if (customerId != null && !customerId.isBlank()) {
+            Optional<Customer> eddCustomer = customerRepository
+                    .findByCustomerCodeAndCompanyId(customerId, SecurityUtils.getCurrentCompanyId());
+            if (eddCustomer.isPresent() && AmlEddService.isEddActive(eddCustomer.get(), LocalDate.now())) {
+                requiresId = true;
+                requiresEnhanced = true;
+                warnings.add("MEGERŐSÍTETT ELJÁRÁS (V.2.7): aktív EDD-ablak eddig: "
+                        + eddCustomer.get().getEddUntil()
+                        + (eddCustomer.get().getEddReason() != null
+                                ? " — " + eddCustomer.get().getEddReason() : ""));
+            }
+        }
+
         // Sprint 5.3 C2 - 8 napos rolling window explicit check
         boolean rollingWindowExceeded = false;
         boolean requiresManagerApproval = false;

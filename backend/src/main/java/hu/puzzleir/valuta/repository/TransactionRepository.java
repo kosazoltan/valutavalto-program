@@ -584,6 +584,38 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * EDD V.2.7 a) (V309): adott napon >=küszöb egyedi tranzakciót adó (cég, ügyfél) párok.
+     * Cross-company — a napi AmlEddService-scan security context nélkül fut, cégenként jelöl.
+     */
+    @Query("SELECT DISTINCT t.company.id, t.customerId FROM Transaction t " +
+           "WHERE t.transactionDate = :day " +
+           "AND t.hufAmount >= :threshold " +
+           "AND t.customerId IS NOT NULL AND t.customerId <> '' " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true")
+    List<Object[]> findEddSingleTransactionTriggers(
+        @Param("day") LocalDate day,
+        @Param("threshold") BigDecimal threshold
+    );
+
+    /**
+     * EDD V.2.7 b) (V309): a naptári hónapban (monthStart..day) >=küszöb kumulált
+     * készpénzforgalmú (cég, ügyfél, összeg) hármasok. Cross-company, lásd fent.
+     */
+    @Query("SELECT t.company.id, t.customerId, SUM(t.hufAmount) FROM Transaction t " +
+           "WHERE t.transactionDate BETWEEN :monthStart AND :day " +
+           "AND t.customerId IS NOT NULL AND t.customerId <> '' " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
+           "GROUP BY t.company.id, t.customerId " +
+           "HAVING SUM(t.hufAmount) >= :threshold")
+    List<Object[]> findEddMonthlyCumulativeTriggers(
+        @Param("monthStart") LocalDate monthStart,
+        @Param("day") LocalDate day,
+        @Param("threshold") BigDecimal threshold
+    );
+
+    /**
      * Havi tranzakciók branch-hez (havi záráshoz).
      */
     @Query("SELECT t FROM Transaction t " +
