@@ -110,7 +110,7 @@ public class StockCriticalAlertService {
     private String buildMessage(List<CashBalance> critical) {
         String items = critical.stream()
                 .limit(20)
-                .map(cb -> cb.getBranch().getCode() + " " + cb.getCurrency().getCode()
+                .map(cb -> safeCode(cb.getBranch().getCode()) + " " + safeCode(cb.getCurrency().getCode())
                         + " (egyenleg: " + cb.getCurrentBalance().toPlainString()
                         + ", küszöb: " + cb.getMinBalance().toPlainString() + ")")
                 .collect(Collectors.joining("; "));
@@ -120,6 +120,11 @@ public class StockCriticalAlertService {
         return "Kritikus küszöb alatti készlet " + critical.size()
                 + " egyenlegnél. Érintettek: " + items
                 + ". Javasolt sürgősségi (EMERGENCY) banki rendelés indítása a Banki rendelések menüpontban.";
+    }
+
+    /** Sourcery review: a comparator null-safe, az üzenet-építés is legyen az. */
+    private static String safeCode(String code) {
+        return code != null ? code : "?";
     }
 
     public record StockCriticalAlertResult(
