@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
-import { Camera, RefreshCw, AlertTriangle, Download } from 'lucide-react'
+import { Camera, RefreshCw, AlertTriangle, Download, Siren } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
@@ -315,6 +316,13 @@ export default function StockSnapshotPage() {
           <button onClick={() => void downloadExcel()} className="form-button-primary flex items-center gap-2">
             <Download className="h-4 w-4" /> {t('common.exportExcel')}
           </button>
+          {/* E-B8 (#279): kritikus készletnél innen indítható EMERGENCY banki rendelés */}
+          <Link
+            to="/bank-orders?create=1&urgency=EMERGENCY"
+            className="form-button flex items-center gap-2 bg-red-600 text-white hover:bg-red-700"
+          >
+            <Siren className="h-4 w-4" /> {t('bankorders.surgossegiBankiKivet')}
+          </Link>
         </div>
       </div>
 

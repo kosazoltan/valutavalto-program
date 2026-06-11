@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Building2, Plus, RefreshCw, X } from 'lucide-react'
 import {
   bankOrdersApi,
@@ -89,6 +90,25 @@ export default function BankOrderPage() {
   const [referenceLoading, setReferenceLoading] = useState(false)
   const [wuLimit, setWuLimit] = useState<WuDailyLimit | null>(null)
   const [wuLimitError, setWuLimitError] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // E-B8 (#279): a Készlet pillanatkép „Sürgősségi banki kivét" gombja
+  // ?create=1&urgency=EMERGENCY paraméterekkel nyitja elő a formot.
+  useEffect(() => {
+    if (searchParams.get('create') !== '1') return
+    const urgencyParam = searchParams.get('urgency')
+    const urgency: BankOrderUrgency =
+      urgencyParam === 'EMERGENCY' || urgencyParam === 'URGENT' ? urgencyParam : 'NORMAL'
+    setCreateForm({ ...EMPTY_CREATE_FORM, urgency })
+    setCreateError(null)
+    setShowCreate(true)
+    void loadReferenceData()
+    setSearchParams({}, { replace: true })
+    // Copilot review: searchParams dependency kell, hogy route-on belüli param-változás
+    // (back/forward, ismételt gomb-kattintás) is megnyissa a formot. Nem loopol: a
+    // param-törlés utáni újrafutás a create!=1 ágon azonnal kilép.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const load = async (statusOverride?: BankOrderStatus | '') => {
     setLoading(true)
