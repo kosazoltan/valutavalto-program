@@ -37,7 +37,7 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../../services/api/client'
 import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
-import AmlApproverModal from '../../components/auth/AmlApproverModal'
+import AmlApproverModal, { toApprovalCustomer } from '../../components/auth/AmlApproverModal'
 
 /**
  * Konverziós tranzakció oldal
@@ -891,6 +891,33 @@ export default function ConversionPage() {
         // Codex P1: a single-use grant a jóváhagyott ügyfélhez kötött — ugyanaz a customerName mint amit a
         // konverzió-tranzakció visz (effectiveCustomerName logika: customer-panel név, vagy a kézi mező).
         customerName={customerDataRef.current?.name?.trim() || customerName.trim() || undefined}
+        /* EXCMD b3 FR-AUTH-01..05: engedélykérő adatlap — a konverzió két lába soros bontásként */
+        details={{
+          branchCode: worker?.branchCode ?? undefined,
+          branchName: worker?.branchName ?? undefined,
+          totalHuf: amlAmount,
+          lines: ([
+            fromCurrencyId != null && getRate(fromCurrencyId)
+              ? {
+                  currencyCode: currencies.find((c) => c.id === fromCurrencyId)?.code ?? '?',
+                  amount: parseFloat(fromAmount.replace(',', '.').replace(/\s/g, '')) || 0,
+                  rate: getRate(fromCurrencyId)?.baseBuyRate ?? 0,
+                  hufValue: hufAmount,
+                }
+              : null,
+            toCurrencyId != null && getRate(toCurrencyId)
+              ? {
+                  currencyCode: currencies.find((c) => c.id === toCurrencyId)?.code ?? '?',
+                  amount: parseFloat(toAmount.replace(',', '.').replace(/\s/g, '')) || 0,
+                  rate: getRate(toCurrencyId)?.baseSellRate ?? 0,
+                  // Codex P2 + Copilot (#1089): a cél-lábon a TÉNYLEGESEN felhasznált HUF
+                  // (a visszajáró levonva) — manuálisan csökkentett cél-összegnél is hű
+                  hufValue: Math.max(0, hufAmount - returnedHuf),
+                }
+              : null,
+          ].filter(Boolean)) as Array<{ currencyCode: string; amount: number; rate: number; hufValue: number }>,
+          customer: toApprovalCustomer(customerDataRef.current),
+        }}
         onApproved={(workerId, name) => {
           approverWorkerIdRef.current = workerId
           setShowAmlApprover(false)

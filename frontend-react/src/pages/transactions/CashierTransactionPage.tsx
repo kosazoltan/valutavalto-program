@@ -7,7 +7,7 @@ import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
 import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi, receiptApi } from '../../services/api/index'
 import { api } from '../../services/api/client'
-import AmlApproverModal from '../../components/auth/AmlApproverModal'
+import AmlApproverModal, { toApprovalCustomer } from '../../components/auth/AmlApproverModal'
 import SuspicionReportModal from '../../components/SuspicionReportModal'
 import type { BuyRequest, SellRequest, TransactionLineRequest, ExchangeRate, CashierCustomRateQuota } from '../../services/api/index'
 import { roundHuf, multiLinePayable } from '../../utils/rounding'
@@ -1694,6 +1694,22 @@ export default function CashierTransactionPage() {
         reason={amlApprovalReason}
         sessionId={approvalSessionIdRef.current ?? ''}
         customerName={customerDataRef.current?.name ?? undefined}
+        /* EXCMD b3 FR-AUTH-01..05: engedélykérő adatlap — pénztár + összeg + soros bontás + ügyfél */
+        details={{
+          branchCode: worker?.branchCode ?? undefined,
+          branchName: worker?.branchName ?? undefined,
+          totalHuf: total,
+          lines: rows
+            .filter((r) => r.currencyCode && r.hufValue > 0)
+            .map((r) => ({
+              currencyCode: r.currencyCode,
+              // Copilot review (#1089): a quantity magyar formátumú string (szóköz, vessző)
+              amount: parseFloat(r.quantity.replace(',', '.').replace(/\s/g, '')) || 0,
+              rate: r.exchangeRate,
+              hufValue: r.hufValue,
+            })),
+          customer: toApprovalCustomer(customerDataRef.current),
+        }}
         onApproved={(workerId, name) => {
           approverWorkerIdRef.current = workerId
           setShowAmlApprover(false)
