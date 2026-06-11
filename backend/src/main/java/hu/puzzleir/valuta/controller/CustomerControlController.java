@@ -51,6 +51,20 @@ public class CustomerControlController {
     }
 
     /**
+     * POST /api/v1/customer-control/suspicion-report — EXCMD b9-korlevelek FR-03:
+     * pénztárosi gyanú-bejelentés (SAR). A pénztáros indítja (CASHIER-től felfelé);
+     * a rendszer screening-logot + felsővezetői URGENT értesítést + audit-nyomot rögzít.
+     */
+    @PostMapping("/suspicion-report")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<CustomerScreeningLogDto> reportSuspicion(
+            @Valid @RequestBody hu.puzzleir.valuta.dto.SuspicionReportRequest request) {
+        log.info("POST /api/v1/customer-control/suspicion-report");
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(customerControlService.reportSuspicion(request));
+    }
+
+    /**
      * DELETE /api/v1/customer-control/restrictions/{id} — Korlátozás eltávolítása
      */
     @DeleteMapping("/restrictions/{id}")

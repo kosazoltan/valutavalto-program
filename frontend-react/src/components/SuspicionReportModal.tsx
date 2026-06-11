@@ -1,0 +1,122 @@
+import { useState } from 'react'
+import { ShieldAlert } from 'lucide-react'
+import { api } from '../services/api'
+import { getErrorMessage } from '../utils/errorHandling'
+
+/**
+ * EXCMD b9-korlevelek FR-03: pénztárosi gyanú-bejelentés (SAR) modal.
+ *
+ * A pénztáros a folyamatot felfüggeszti (a tranzakciót NEM rögzíti), a gyanús jeleket
+ * bejelenti — a backend screening-logot + felsővezetői URGENT értesítést + audit-nyomot ír,
+ * a pénztáros pedig telefonon egyeztet a területi vezetővel. Inline modal (Electron:
+ * window.prompt nem támogatott); a11y az AmlApproverModal mintájára.
+ */
+export default function SuspicionReportModal({
+  open,
+  customerName,
+  hufAmount,
+  onClose,
+  onReported,
+}: {
+  open: boolean
+  customerName?: string
+  hufAmount?: number
+  onClose: () => void
+  onReported: () => void
+}) {
+  const [signs, setSigns] = useState('')
+  const [nameInput, setNameInput] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  if (!open) return null
+
+  const effectiveName = (customerName ?? '').trim() || nameInput.trim()
+
+  const submit = async () => {
+    if (!signs.trim() || !effectiveName) {
+      setError('Az ügyfél neve és a gyanús jelek leírása kötelező.')
+      return
+    }
+    try {
+      setSaving(true)
+      setError(null)
+      await api.post('/customer-control/suspicion-report', {
+        customerName: effectiveName,
+        hufAmount: typeof hufAmount === 'number' && Number.isFinite(hufAmount) && hufAmount > 0 ? hufAmount : undefined,
+        suspicionSigns: signs.trim(),
+      })
+      setSigns('')
+      setNameInput('')
+      onReported()
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="suspicion-report-title"
+      onKeyDown={(e) => { if (e.key === 'Escape' && !saving) onClose() }}
+    >
+      <div className="w-full max-w-md rounded bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b p-4">
+          <h2 id="suspicion-report-title" className="text-lg font-semibold flex items-center gap-2">
+            <ShieldAlert size={18} className="text-red-700" />
+            Gyanú-bejelentés (felfüggesztett ügylet)
+          </h2>
+        </div>
+        <div className="space-y-3 p-4">
+          <p className="text-sm text-gray-600">
+            A bejelentés a szűrési naplóba kerül és a vezetők azonnali értesítést kapnak.
+            A tranzakciót NE rögzítse — a bejelentés után telefonon egyeztessen a területi vezetővel.
+          </p>
+          {!((customerName ?? '').trim()) && (
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-gray-700">Ügyfél neve</span>
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                maxLength={255}
+                className="w-full rounded border px-3 py-2"
+              />
+            </label>
+          )}
+          {(customerName ?? '').trim() && (
+            <div className="text-sm"><strong>Ügyfél:</strong> {customerName}</div>
+          )}
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium text-gray-700">Gyanús jelek leírása</span>
+            <textarea
+              value={signs}
+              onChange={(e) => setSigns(e.target.value)}
+              rows={4}
+              maxLength={1000}
+              className="w-full rounded border px-3 py-2"
+              autoFocus
+            />
+          </label>
+          {error && (
+            <div className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-800">{error}</div>
+          )}
+        </div>
+        <div className="flex items-center justify-end gap-2 border-t p-4">
+          <button onClick={onClose} className="form-button" disabled={saving}>Mégse</button>
+          <button
+            onClick={() => void submit()}
+            disabled={saving || !signs.trim() || !effectiveName}
+            className="form-button-primary"
+          >
+            {saving ? 'Küldés...' : 'Bejelentés rögzítése'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
