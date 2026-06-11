@@ -4,7 +4,7 @@
 fejlesztési tervvel; a hibásan implementált vagy el sem készített részek felderítése és
 önálló javítása — hazugság és hallucináció nélkül.
 
-## Forrás-elérhetőségi tényállás (változatlan blokkoló)
+## Forrás-elérhetőségi tényállás (blokkoló FELOLDVA 2026-06-11)
 
 - ~~A `scripts/legacy-transfer.py` Base64-híd a repóban van, de a **kódolt forráscsomag
   (`legacy-transfer/`) nem került pushra**~~ — **FELOLDVA 2026-06-11:** az Anti-fa
@@ -13,7 +13,8 @@ fejlesztési tervvel; a hibásan implementált vagy el sem készített részek f
   ~1,65 GB). SZÁNDÉKOSAN nem main-en él: a CI-checkoutok ne hízzanak +1,6 GB-bal.
 - **Felhő-oldali használat:**
   ```
-  git fetch origin legacy-transfer-data
+  # explicit cél-refspec: single-branch clone-ban a sima fetch csak FETCH_HEAD-be menne
+  git fetch origin legacy-transfer-data:refs/remotes/origin/legacy-transfer-data
   git checkout origin/legacy-transfer-data -- legacy-transfer/
   python scripts/legacy-transfer.py unpack --in legacy-transfer --dest Anti_transfer
   python scripts/legacy-binary-analyzer.py --anti-root Anti_transfer
