@@ -77,7 +77,7 @@ interface Props {
 export default function VaultClosingChecklistPanel({ date }: Props) {
   const worker = useAuthStore((s) => s.worker)
   const branchId = worker?.branchId ?? ''
-  const workerName = worker?.name ?? worker?.lastName ?? ''
+  const workerName = worker?.fullName ?? `${worker?.lastName ?? ''} ${worker?.firstName ?? ''}`.trim()
 
   const [checklist, setChecklist] = useState<VaultClosingChecklistDto | null>(null)
   const [loading, setLoading] = useState(false)

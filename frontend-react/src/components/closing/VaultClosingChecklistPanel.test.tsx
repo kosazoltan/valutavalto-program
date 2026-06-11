@@ -61,7 +61,9 @@ const baseChecklist = {
 const mockWorker = {
   id: 42,
   branchId: BRANCH_ID,
-  name: 'Kovács Pénztáros',
+  fullName: 'Kovács Pénztáros',
+  lastName: 'Kovács',
+  firstName: 'Pénztáros',
   role: 'CASHIER',
 }
 
@@ -169,12 +171,11 @@ describe('VaultClosingChecklistPanel', () => {
     await userEvent.click(screen.getByText('Zárás véglegesítése'))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-    // Csak a beosztást töltjük ki, a nevet nem
+    // Csak a beosztást töltjük ki, a nevet nem → a véglegesítő gomb tiltott marad,
+    // így üres névvel fizikailag nem indítható a complete (a validate() a 2. védelmi réteg).
     await userEvent.type(screen.getByLabelText(/Beosztás/), 'Értéktáros vezető')
-    fireEvent.click(screen.getByText('Ellenőrző személy adatai rendben'))
-
-    // Validációs hibaüzenet
-    expect(screen.getByText('Az ellenőrző személy neve kötelező')).toBeInTheDocument()
+    const confirmBtn = screen.getByRole('button', { name: 'Ellenőrző személy adatai rendben' })
+    expect(confirmBtn).toBeDisabled()
 
     // complete API NEM hívódik
     expect(mocks.complete).not.toHaveBeenCalled()

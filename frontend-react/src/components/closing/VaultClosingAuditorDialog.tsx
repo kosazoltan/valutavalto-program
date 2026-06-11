@@ -158,7 +158,7 @@ export default function VaultClosingAuditorDialog({ open, onConfirm, onCancel, s
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={submitting}
+            disabled={submitting || !auditorName.trim() || !auditorRole.trim()}
             className="rounded bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
           >
             {submitting ? 'Mentés...' : 'Ellenőrző személy adatai rendben'}
