@@ -706,11 +706,18 @@ public class BranchService {
         if (dto.getAddress() != null) {
             branch.setAddress(dto.getAddress());
         }
+        // FK-025 + Codex P2 (#1093): a DTO blank→null normalizál (Bean Validation miatt),
+        // a clear* jelző hordozza az explicit törlési szándékot. NOT NULL oszlop (city,
+        // zip_code, bank_code) törlése = "", nullable (phone, email, short_name) = null.
         if (dto.getCity() != null) {
             branch.setCity(dto.getCity());
+        } else if (dto.isClearCity()) {
+            branch.setCity("");
         }
         if (dto.getZipCode() != null) {
             branch.setZipCode(dto.getZipCode());
+        } else if (dto.isClearZipCode()) {
+            branch.setZipCode("");
         }
         if (dto.getCountryId() != null) {
             Dictionary country = dictionaryRepository.findById(dto.getCountryId())
@@ -719,12 +726,18 @@ public class BranchService {
         }
         if (dto.getPhone() != null) {
             branch.setPhone(dto.getPhone());
+        } else if (dto.isClearPhone()) {
+            branch.setPhone(null);
         }
         if (dto.getEmail() != null) {
             branch.setEmail(dto.getEmail());
+        } else if (dto.isClearEmail()) {
+            branch.setEmail(null);
         }
         if (dto.getBankCode() != null) {
             branch.setBankCode(dto.getBankCode());
+        } else if (dto.isClearBankCode()) {
+            branch.setBankCode("");
         }
         if (dto.getBranchStatusId() != null) {
             Dictionary status = dictionaryRepository.findById(dto.getBranchStatusId())
@@ -743,6 +756,8 @@ public class BranchService {
         // Pénztár Törzs alapmodul (V293): partial update — csak a nem-null mezők íródnak felül.
         if (dto.getShortName() != null) {
             branch.setShortName(dto.getShortName());
+        } else if (dto.isClearShortName()) {
+            branch.setShortName(null);
         }
         if (dto.getHasAfa() != null) {
             branch.setHasAfa(dto.getHasAfa());

@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
@@ -87,29 +88,48 @@ public class UpdateBranchDto {
     // shortName/phone/email/bankCode mezőket nevesíti; a zipCode és city ugyanazon
     // root cause része (a FE üres stringként küldi őket is — BranchEditPage.tsx:104-105 —
     // és a @Pattern ^\d{4}$ / @Size(min=2) a ""-t elutasítja).
+    //
+    // Codex P2 (#1093): a BranchEditPage TELJES-form (nem patch), így az üres mező a
+    // felhasználó explicit törlési szándéka is lehet. A blank bemenet a validációhoz
+    // null-lá normalizálódik, a clear* jelző pedig a service-nek jelzi a törlést
+    // (EmployeeService "" = törlés precedens). A jelzők JSON-ból nem köthetők
+    // (@JsonIgnore) — kizárólag a blank-setter állítja őket.
     // ========================================================================
 
+    @JsonIgnore @Builder.Default private boolean clearShortName = false;
+    @JsonIgnore @Builder.Default private boolean clearPhone = false;
+    @JsonIgnore @Builder.Default private boolean clearEmail = false;
+    @JsonIgnore @Builder.Default private boolean clearBankCode = false;
+    @JsonIgnore @Builder.Default private boolean clearZipCode = false;
+    @JsonIgnore @Builder.Default private boolean clearCity = false;
+
     public void setShortName(String shortName) {
+        this.clearShortName = shortName != null && shortName.isBlank();
         this.shortName = blankToNull(shortName);
     }
 
     public void setPhone(String phone) {
+        this.clearPhone = phone != null && phone.isBlank();
         this.phone = blankToNull(phone);
     }
 
     public void setEmail(String email) {
+        this.clearEmail = email != null && email.isBlank();
         this.email = blankToNull(email);
     }
 
     public void setBankCode(String bankCode) {
+        this.clearBankCode = bankCode != null && bankCode.isBlank();
         this.bankCode = blankToNull(bankCode);
     }
 
     public void setZipCode(String zipCode) {
+        this.clearZipCode = zipCode != null && zipCode.isBlank();
         this.zipCode = blankToNull(zipCode);
     }
 
     public void setCity(String city) {
+        this.clearCity = city != null && city.isBlank();
         this.city = blankToNull(city);
     }
 

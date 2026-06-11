@@ -65,8 +65,40 @@ class UpdateBranchDtoValidationTest {
         assertThat(dto.getZipCode()).isNull();
         assertThat(dto.getCity()).isNull();
 
+        // Codex P2 (#1093): az üres string explicit törlési szándék is — a clear* jelzők égnek.
+        assertThat(dto.isClearShortName()).isTrue();
+        assertThat(dto.isClearPhone()).isTrue();
+        assertThat(dto.isClearEmail()).isTrue();
+        assertThat(dto.isClearBankCode()).isTrue();
+        assertThat(dto.isClearZipCode()).isTrue();
+        assertThat(dto.isClearCity()).isTrue();
+
         Set<ConstraintViolation<UpdateBranchDto>> violations = validator.validate(dto);
         assertThat(violations).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Hiányzó (nem küldött) mező: érték null ÉS clear-jelző hamis → partial update nem nyúl hozzá")
+    void absentFields_doNotSetClearFlags() throws Exception {
+        UpdateBranchDto dto = objectMapper.readValue("{ \"name\": \"BR020\" }", UpdateBranchDto.class);
+
+        assertThat(dto.getPhone()).isNull();
+        assertThat(dto.isClearPhone()).isFalse();
+        assertThat(dto.isClearEmail()).isFalse();
+        assertThat(dto.isClearShortName()).isFalse();
+        assertThat(dto.isClearBankCode()).isFalse();
+        assertThat(dto.isClearZipCode()).isFalse();
+        assertThat(dto.isClearCity()).isFalse();
+    }
+
+    @Test
+    @DisplayName("A clear* jelzők JSON-ból nem köthetők (@JsonIgnore) — csak a blank-setter állítja")
+    void clearFlags_cannotBeBoundFromJson() throws Exception {
+        UpdateBranchDto dto = objectMapper.readValue(
+                "{ \"clearPhone\": true, \"phone\": \"+36301234567\" }", UpdateBranchDto.class);
+
+        assertThat(dto.isClearPhone()).isFalse();
+        assertThat(dto.getPhone()).isEqualTo("+36301234567");
     }
 
     @Test
