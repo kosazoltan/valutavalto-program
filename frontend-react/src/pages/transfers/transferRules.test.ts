@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isMainCashierBranch, validateCarrierSeal, buildDenominationPayload } from './transferRules'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, isCurrencyOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isMainCashierBranch, validateCarrierSeal, buildDenominationPayload } from './transferRules'
 
 const currencies = [
   { id: 1, code: 'HUF', name: 'Forint' },
@@ -36,6 +36,23 @@ describe('transferRules — átadás-átvétel üzleti szabályok', () => {
       expect(labels).toContain('Kezelési költség átvétel')
       expect(labels).not.toContain('Valuta átadás')
     })
+
+    it('technikai kötés-kódok (ERB/FRB/TRB) CSAK értéktári felhasználónak (c4 P3#5)', () => {
+      const vaultTypes = getAvailableTransferTypes(true, 'out').map(t => t.value)
+      expect(vaultTypes).toContain('ERB')
+      expect(vaultTypes).toContain('FRB')
+      expect(vaultTypes).toContain('TRB')
+      const cashierTypes = getAvailableTransferTypes(false, 'out').map(t => t.value)
+      expect(cashierTypes).not.toContain('ERB')
+      expect(cashierTypes).not.toContain('FRB')
+      expect(cashierTypes).not.toContain('TRB')
+      expect(cashierTypes).not.toContain('PRB')
+    })
+
+    it('PRB (POS átvétel banktól) csak átvétel irányban választható, átadásban NEM', () => {
+      expect(getAvailableTransferTypes(true, 'in').map(t => t.value)).toContain('PRB')
+      expect(getAvailableTransferTypes(true, 'out').map(t => t.value)).not.toContain('PRB')
+    })
   })
 
   describe('filterCurrenciesForType (Req #4 + #5)', () => {
@@ -59,6 +76,21 @@ describe('transferRules — átadás-átvétel üzleti szabályok', () => {
       const result = filterCurrenciesForType(currencies, 'VAULT_DEPOSIT').map(c => c.code)
       expect(result).toEqual(['HUF', 'EUR', 'USD'])
     })
+
+    it('FRB / PRB (forintos technikai RB-kötések) → CSAK HUF', () => {
+      expect(filterCurrenciesForType(currencies, 'FRB').map(c => c.code)).toEqual(['HUF'])
+      expect(filterCurrenciesForType(currencies, 'PRB').map(c => c.code)).toEqual(['HUF'])
+      expect(isHufOnlyTransferType('FRB')).toBe(true)
+      expect(isHufOnlyTransferType('PRB')).toBe(true)
+    })
+
+    it('ERB / TRB (devizás technikai RB-kötések) → HUF NÉLKÜL', () => {
+      expect(filterCurrenciesForType(currencies, 'ERB').map(c => c.code)).toEqual(['EUR', 'USD'])
+      expect(filterCurrenciesForType(currencies, 'TRB').map(c => c.code)).toEqual(['EUR', 'USD'])
+      expect(isCurrencyOnlyTransferType('ERB')).toBe(true)
+      expect(isCurrencyOnlyTransferType('TRB')).toBe(true)
+      expect(isCurrencyOnlyTransferType('CASH')).toBe(false)
+    })
   })
 
   describe('getAllowedTransferTypeValues (DRY — single source of truth)', () => {
@@ -67,6 +99,15 @@ describe('transferRules — átadás-átvétel üzleti szabályok', () => {
     })
     it('értéktár: VAULT_* is benne', () => {
       expect(getAllowedTransferTypeValues(true)).toContain('VAULT_DEPOSIT')
+    })
+    it('értéktár: a PRB az irány-független allowed-halmazban VAN (in-irányú opció, out+in unió)', () => {
+      const allowed = getAllowedTransferTypeValues(true)
+      expect(allowed).toContain('PRB')
+      expect(allowed).toContain('ERB')
+      expect(allowed).toContain('FRB')
+      expect(allowed).toContain('TRB')
+      // nincs duplikátum az unióban
+      expect(new Set(allowed).size).toBe(allowed.length)
     })
     it('konzisztens a getAvailableTransferTypes value-listájával (nincs drift)', () => {
       for (const vault of [true, false]) {

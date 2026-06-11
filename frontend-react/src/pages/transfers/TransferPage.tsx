@@ -40,7 +40,7 @@ import { isElectron } from '../../utils/electron'
 import { toast } from '../../components/ui/toaster'
 import type { PrintReceiptData } from '../../types/receipt'
 import { localIsoDate } from '../../utils/dateFormat'
-import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isTHBranch, isMainCashierBranch, validateCarrierSeal, buildDenominationPayload, type CurrencyLineInput } from './transferRules'
+import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, isCurrencyOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isTHBranch, isMainCashierBranch, validateCarrierSeal, buildDenominationPayload, type CurrencyLineInput } from './transferRules'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -59,6 +59,10 @@ type TransferTypeEnum =
   | 'VAULT_WITHDRAW'
   | 'CORRECTION'
   | 'OTHER'
+  | 'ERB'
+  | 'FRB'
+  | 'TRB'
+  | 'PRB'
 
 /**
  * v2.3.45 (Sourcery #307): TransferTypeEnum union (NEM string), igy a
@@ -75,6 +79,10 @@ function localizeTransferType(rawType: TransferTypeEnum | null | undefined): str
     case 'VAULT_WITHDRAW': return 'Széf kivét'
     case 'CORRECTION': return 'Korrekció'
     case 'OTHER': return 'Egyéb'
+    case 'ERB': return 'Fixing valuta mozgás RB (ERB)'
+    case 'FRB': return 'Forint mozgás RB (FRB)'
+    case 'TRB': return 'Egyedi kötés RB (TRB)'
+    case 'PRB': return 'POS átvétel banktól (PRB)'
     default: {
       // Exhaustive check: ha uj enum bekerul a TransferTypeEnum-ba,
       // a TS compiler itt error-t dob (`Type 'X' is not assignable to type 'never'`).
@@ -212,6 +220,15 @@ export default function TransferPage() {
 
   // (Req #2/#3) Iránytól + felhasználó-típustól függő választható átadás-típusok.
   const availableTransferTypes = getAvailableTransferTypes(isVaultUser, transferDirection)
+  // Irányváltás-guard: a PRB csak átvétel ('in') irányban választható — ha a user PRB-vel
+  // vált át 'out'-ra, a típus visszaesik az alapértelmezett CURRENCY-re (ne maradjon a
+  // select-ben a listából hiányzó, backend által is elutasított érték). Teljes dep-lista,
+  // önjavító (a CURRENCY minden irány/szerep mellett elérhető → nincs loop).
+  useEffect(() => {
+    if (!getAvailableTransferTypes(isVaultUser, transferDirection).some(o => o.value === transferType)) {
+      setTransferType('CURRENCY')
+    }
+  }, [transferDirection, isVaultUser, transferType])
   // (Req #4/#5) Valuta-szűrés a típus szerint.
   const isHufOnlyType = isHufOnlyTransferType(transferType)
   const filteredCurrencies = filterCurrenciesForType(currencies, transferType)
@@ -246,7 +263,9 @@ export default function TransferPage() {
     if (isHufOnlyType) {
       const huf = currencies.find(c => c.code === 'HUF')
       if (huf && currencyId !== huf.id) setCurrencyId(huf.id)
-    } else if (transferType === 'CURRENCY') {
+    } else if (isCurrencyOnlyTransferType(transferType)) {
+      // CURRENCY mellett az ERB/TRB (csak-deviza technikai RB-kötések) is: a beragadt
+      // HUF currencyId-t töröljük, különben üresnek látszó select + backend 400.
       const selected = currencies.find(c => c.id === currencyId)
       if (selected?.code === 'HUF') setCurrencyId(null)
     }

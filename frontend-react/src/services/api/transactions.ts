@@ -1317,7 +1317,7 @@ export interface Transfer {
   fromWorkerName: string
   toWorkerId?: number
   toWorkerName?: string
-  transferType: 'CURRENCY' | 'CASH' | 'HANDLING_FEE' | 'VAULT_DEPOSIT' | 'VAULT_WITHDRAW' | 'CORRECTION' | 'OTHER'
+  transferType: 'CURRENCY' | 'CASH' | 'HANDLING_FEE' | 'VAULT_DEPOSIT' | 'VAULT_WITHDRAW' | 'CORRECTION' | 'OTHER' | 'ERB' | 'FRB' | 'TRB' | 'PRB'
   transferTypeDisplay: string
   direction?: 'F' | 'U' | 'UF' | 'FF'
   status: 'PENDING' | 'IN_TRANSIT' | 'RECEIVED' | 'COMPLETED' | 'REJECTED' | 'CANCELLED'
@@ -1369,7 +1369,7 @@ export interface CreateTransferRequest {
   currencyId: number
   amount: number
   hufValue?: number
-  transferType: 'CURRENCY' | 'CASH' | 'HANDLING_FEE' | 'VAULT_DEPOSIT' | 'VAULT_WITHDRAW' | 'CORRECTION' | 'OTHER'
+  transferType: 'CURRENCY' | 'CASH' | 'HANDLING_FEE' | 'VAULT_DEPOSIT' | 'VAULT_WITHDRAW' | 'CORRECTION' | 'OTHER' | 'ERB' | 'FRB' | 'TRB' | 'PRB'
   direction?: 'F' | 'U' | 'UF' | 'FF'
   notes?: string
   carrierName?: string

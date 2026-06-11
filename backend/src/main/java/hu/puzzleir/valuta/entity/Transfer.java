@@ -146,8 +146,19 @@ public class Transfer {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * Kötés-típus. A négy technikai gyűjtő-kód (ERB/FRB/TRB/PRB) a legacy
+     * rögzítő-bizonylat (RB) gyűjtőit képezi le (b5-penztar-mozgasok.md:51-72,
+     * c4 P3#5 gap, üzleti döntés 2026-06-11):
+     *   ERB = FIXING VALUTA MOZGÁS RB (csak deviza),
+     *   FRB = FORINT MOZGÁS RB (csak HUF),
+     *   TRB = EGYEDI KÖTÉS RB (csak deviza),
+     *   PRB = POS ÁTVÉTEL BANKTÓL (csak HUF, csak átvétel irány).
+     * A bizonylat-sorszám prefix (AT/AV/FF/UF) valuta+irány alapú, típus-független.
+     */
     public enum TransferType {
-        CURRENCY, CASH, HANDLING_FEE, VAULT_DEPOSIT, VAULT_WITHDRAW, CORRECTION, OTHER
+        CURRENCY, CASH, HANDLING_FEE, VAULT_DEPOSIT, VAULT_WITHDRAW, CORRECTION, OTHER,
+        ERB, FRB, TRB, PRB
     }
 
     public enum TransferStatus {

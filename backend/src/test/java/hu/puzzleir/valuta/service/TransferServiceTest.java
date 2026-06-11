@@ -117,6 +117,130 @@ class TransferServiceTest {
     }
 
     @Test
+    @DisplayName("ERB/FRB/TRB/PRB invariánsok: valuta-szabály sértés → hiba, sorszám NEM fogy")
+    void testCreate_technicalRbTypes_currencyInvariants() {
+        UUID fromId = UUID.randomUUID();
+        UUID toId = UUID.randomUUID();
+        Branch fromBranch = Branch.builder().id(fromId).code("BR020").build();
+        Branch toBranch = Branch.builder().id(toId).code("ERB").build();
+        Worker worker = Worker.builder().id(1L).branch(fromBranch).build();
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
+        Currency huf = Currency.builder().id(6L).code("HUF").build();
+
+        when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
+        when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
+        when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
+        when(currencyRepository.findById(6L)).thenReturn(Optional.of(huf));
+
+        // (1) FRB (forint mozgás RB) devizával → hiba
+        CreateTransferDto frbEur = new CreateTransferDto();
+        frbEur.setToBranchId(toId.toString());
+        frbEur.setCurrencyId(4L);
+        frbEur.setAmount(new BigDecimal("100"));
+        frbEur.setTransferType("FRB");
+        frbEur.setDirection("F");
+        assertThatThrownBy(() -> service.create(frbEur, 1L))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("csak HUF");
+
+        // (2) ERB (fixing valuta mozgás RB) HUF-fal → hiba
+        CreateTransferDto erbHuf = new CreateTransferDto();
+        erbHuf.setToBranchId(toId.toString());
+        erbHuf.setCurrencyId(6L);
+        erbHuf.setAmount(new BigDecimal("5000"));
+        erbHuf.setTransferType("ERB");
+        erbHuf.setDirection("F");
+        assertThatThrownBy(() -> service.create(erbHuf, 1L))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("devizával");
+
+        // (3) PRB (POS átvétel banktól) NEM-U irányban → hiba minden átadás-családú iránynál:
+        // F (feladó), FF (dupla feladó) ÉS a kihagyott direction default UF-ja is.
+        for (String dir : new String[]{"F", "FF", null}) {
+            CreateTransferDto prbOut = new CreateTransferDto();
+            prbOut.setToBranchId(toId.toString());
+            prbOut.setCurrencyId(6L);
+            prbOut.setAmount(new BigDecimal("5000"));
+            prbOut.setTransferType("PRB");
+            prbOut.setDirection(dir);
+            assertThatThrownBy(() -> service.create(prbOut, 1L))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("átvétel (U) irányban");
+        }
+
+        // (4) Multi-line bypass tiltva: ERB (csak deviza) fejléc-EUR mellett HUF-sor → hiba
+        CreateTransferDto erbHufLine = new CreateTransferDto();
+        erbHufLine.setToBranchId(toId.toString());
+        erbHufLine.setCurrencyId(4L);
+        erbHufLine.setAmount(new BigDecimal("100"));
+        erbHufLine.setTransferType("ERB");
+        erbHufLine.setDirection("F");
+        TransferLineDto hufLine = new TransferLineDto();
+        hufLine.setCurrencyId(6L);
+        hufLine.setAmount(new BigDecimal("5000"));
+        erbHufLine.setLines(List.of(hufLine));
+        assertThatThrownBy(() -> service.create(erbHufLine, 1L))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("devizával");
+
+        // A guard a sorszám-generálás ELŐTT fut → egyik elutasítás sem fogyaszt sorszámot.
+        verifyNoInteractions(transferSerialSequenceService);
+        verify(transferRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("ERB deviza átadás + PRB HUF átvétel → sikeres, helyes prefix (AT/UF) és típus")
+    void testCreate_technicalRbTypes_happyPath() {
+        UUID fromId = UUID.randomUUID();
+        UUID toId = UUID.randomUUID();
+        Company company = Company.builder().id(UUID.randomUUID()).build();
+        Branch fromBranch = Branch.builder().id(fromId).code("BR020").company(company).build();
+        Branch toBranch = Branch.builder().id(toId).code("ERB").company(company).build();
+        Worker worker = Worker.builder().id(1L).branch(fromBranch).build();
+        Currency eur = Currency.builder().id(4L).code("EUR").name("Euró").build();
+        Currency huf = Currency.builder().id(6L).code("HUF").name("Forint").build();
+
+        when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
+        when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
+        when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
+        when(currencyRepository.findById(6L)).thenReturn(Optional.of(huf));
+        when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
+        when(transferSerialSequenceService.next(any(), eq("UF"))).thenReturn(1L);
+        when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
+        when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(any(), anyLong()))
+                .thenAnswer(inv -> Optional.of(CashBalance.builder().currentBalance(new BigDecimal("1000000")).build()));
+
+        // (1) ERB deviza átadás (F, EUR) → AT-000001, típus=ERB
+        CreateTransferDto erb = new CreateTransferDto();
+        erb.setToBranchId(toId.toString());
+        erb.setCurrencyId(4L);
+        erb.setAmount(new BigDecimal("100"));
+        erb.setTransferType("ERB");
+        erb.setDirection("F");
+        service.create(erb, 1L);
+
+        // (2) PRB HUF átvétel (U, HUF) → UF-000001, típus=PRB
+        CreateTransferDto prb = new CreateTransferDto();
+        prb.setToBranchId(toId.toString());
+        prb.setCurrencyId(6L);
+        prb.setAmount(new BigDecimal("50000"));
+        prb.setTransferType("PRB");
+        prb.setDirection("U");
+        service.create(prb, 1L);
+
+        ArgumentCaptor<hu.puzzleir.valuta.entity.Transfer> captor =
+                ArgumentCaptor.forClass(hu.puzzleir.valuta.entity.Transfer.class);
+        verify(transferRepository, times(2)).save(captor.capture());
+        java.util.List<hu.puzzleir.valuta.entity.Transfer> saved = captor.getAllValues();
+        assertThat(saved.get(0).getTransferNumber()).isEqualTo("AT-000001");
+        assertThat(saved.get(0).getTransferType()).isEqualTo(hu.puzzleir.valuta.entity.Transfer.TransferType.ERB);
+        assertThat(saved.get(1).getTransferNumber()).isEqualTo("UF-000001");
+        assertThat(saved.get(1).getTransferType()).isEqualTo(hu.puzzleir.valuta.entity.Transfer.TransferType.PRB);
+    }
+
+    @Test
     @DisplayName("create — több-valutás (multi-line) F átadás: minden valuta-sor csökkenti a feladó kasszáját (#6)")
     void testCreate_multiLine_decreasesCashPerLine() {
         UUID fromId = UUID.randomUUID();
