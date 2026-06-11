@@ -600,13 +600,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     /**
      * EDD V.2.7 b) (V309): a naptári hónapban (monthStart..day) >=küszöb kumulált
-     * készpénzforgalmú (cég, ügyfél, összeg) hármasok. Cross-company, lásd fent.
+     * KÉSZPÉNZ-forgalmú (cég, ügyfél, összeg) hármasok — a szabály készpénzforgalomra
+     * vonatkozik, a kártyás tranzakció nem számít bele. Cross-company, lásd fent.
      */
     @Query("SELECT t.company.id, t.customerId, SUM(t.hufAmount) FROM Transaction t " +
            "WHERE t.transactionDate BETWEEN :monthStart AND :day " +
            "AND t.customerId IS NOT NULL AND t.customerId <> '' " +
            "AND t.status = 'COMPLETED' " +
            "AND t.financialEffective = true " +
+           "AND t.paymentMethod = hu.puzzleir.valuta.entity.PaymentMethod.CASH " +
            "GROUP BY t.company.id, t.customerId " +
            "HAVING SUM(t.hufAmount) >= :threshold")
     List<Object[]> findEddMonthlyCumulativeTriggers(

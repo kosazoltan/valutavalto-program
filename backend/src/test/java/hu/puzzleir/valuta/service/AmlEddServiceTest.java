@@ -88,7 +88,7 @@ class AmlEddServiceTest {
     }
 
     @Test
-    @DisplayName("V.2.7 b) >=100M havi kumulált: EDD-ablak a havi triggerből")
+    @DisplayName("V.2.7 b) >=100M havi kumulált: hónap-stabil ablak (hónapvége+1 év)")
     void marksEddWindowOnMonthlyCumulativeTrigger() {
         flagOn();
         Customer customer = Customer.builder().customerCode("C-2").build();
@@ -102,8 +102,36 @@ class AmlEddServiceTest {
         AmlEddService.AmlEddScanResult result = service.scanDate(DAY);
 
         assertThat(result.marked()).isEqualTo(1);
-        assertThat(customer.getEddUntil()).isEqualTo(DAY.plusYears(1));
+        // hónapvége-horgony: a hónap bármely trigger-napjára >=1 év, és hónapon belül stabil
+        assertThat(customer.getEddUntil()).isEqualTo(LocalDate.of(2027, 6, 30));
         assertThat(customer.getEddReason()).contains("V.2.7 b)").contains("123000000");
+    }
+
+    @Test
+    @DisplayName("Codex P2 regresszió: havi trigger hónapon belüli újrafutása UNCHANGED, nincs audit-spam")
+    void monthlyRescanWithinSameMonthIsUnchanged() {
+        flagOn();
+        LocalDate laterDay = DAY.plusDays(5); // 2026-06-15 — ugyanaz a hónap
+        Customer customer = Customer.builder()
+                .customerCode("C-2")
+                .eddUntil(LocalDate.of(2027, 6, 30)) // az első scan hónapvége-horgonya
+                .eddReason("V.2.7 b): korábbi jelölés")
+                .build();
+        when(transactionRepository.findEddSingleTransactionTriggers(any(), any())).thenReturn(List.of());
+        when(transactionRepository.findEddMonthlyCumulativeTriggers(
+                laterDay.withDayOfMonth(1), laterDay, AmlEddService.EDD_MONTHLY_THRESHOLD_HUF))
+                .thenReturn(List.<Object[]>of(new Object[]{COMPANY_B, "C-2", new BigDecimal("150000000")}));
+        when(customerRepository.findByCustomerCodeAndCompanyId("C-2", COMPANY_B))
+                .thenReturn(Optional.of(customer));
+
+        AmlEddService.AmlEddScanResult result = service.scanDate(laterDay);
+
+        assertThat(result.unchanged()).isEqualTo(1);
+        assertThat(result.marked()).isZero();
+        assertThat(result.extended()).isZero();
+        assertThat(customer.getEddUntil()).isEqualTo(LocalDate.of(2027, 6, 30));
+        verify(customerRepository, never()).save(any());
+        verifyNoInteractions(auditLogService);
     }
 
     @Test

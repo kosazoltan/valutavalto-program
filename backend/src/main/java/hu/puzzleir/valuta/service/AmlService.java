@@ -661,13 +661,15 @@ public class AmlService {
         if (customerId != null && !customerId.isBlank()) {
             Optional<Customer> eddCustomer = customerRepository
                     .findByCustomerCodeAndCompanyId(customerId, SecurityUtils.getCurrentCompanyId());
-            if (eddCustomer.isPresent() && AmlEddService.isEddActive(eddCustomer.get(), LocalDate.now())) {
+            // Review: a "ma" a scan-nel azonos üzleti zónában képződik (UTC JVM-en se csússzon)
+            if (eddCustomer.isPresent()
+                    && AmlEddService.isEddActive(eddCustomer.get(), LocalDate.now(AmlEddService.BUSINESS_ZONE))) {
                 requiresId = true;
                 requiresEnhanced = true;
+                String eddReason = eddCustomer.get().getEddReason();
                 warnings.add("MEGERŐSÍTETT ELJÁRÁS (V.2.7): aktív EDD-ablak eddig: "
                         + eddCustomer.get().getEddUntil()
-                        + (eddCustomer.get().getEddReason() != null
-                                ? " — " + eddCustomer.get().getEddReason() : ""));
+                        + (eddReason != null && !eddReason.isBlank() ? " — " + eddReason : ""));
             }
         }
 

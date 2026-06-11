@@ -80,24 +80,29 @@ public class AmlEddService {
         int extended = 0;
         int unchanged = 0;
 
-        // a) >=50M egyedi tranzakció
+        // a) >=50M egyedi tranzakció — nap-horgonyzott ablak (a query csak az adott nap
+        // triggereit adja, így az újrafutás természetesen idempotens)
         for (Object[] row : transactionRepository.findEddSingleTransactionTriggers(
                 day, EDD_SINGLE_TX_THRESHOLD_HUF)) {
             String reason = "V.2.7 a): >=50M Ft egyedi tranzakció (" + day + ")";
-            switch (markEdd((UUID) row[0], (String) row[1], day, reason)) {
+            switch (markEdd((UUID) row[0], (String) row[1], day, day.plusYears(EDD_WINDOW_YEARS), reason)) {
                 case MARKED -> marked++;
                 case EXTENDED -> extended++;
                 default -> unchanged++;
             }
         }
 
-        // b) >=100M naptári havi kumulált
+        // b) >=100M naptári havi kumulált KÉSZPÉNZ-forgalom — HÓNAP-stabil horgonyzás
+        // (Codex review): az ablak vége hónapvége+1év, így a hónap további napjain az
+        // ismételt scan ugyanazt az ablakot számolja → UNCHANGED, nincs napi csúsztatás
+        // és audit-spam. A hónapvége-horgony minden hónapon belüli trigger-napra >=1 évet fed.
         LocalDate monthStart = day.withDayOfMonth(1);
+        LocalDate monthAnchorUntil = day.withDayOfMonth(day.lengthOfMonth()).plusYears(EDD_WINDOW_YEARS);
         for (Object[] row : transactionRepository.findEddMonthlyCumulativeTriggers(
                 monthStart, day, EDD_MONTHLY_THRESHOLD_HUF)) {
-            String reason = "V.2.7 b): >=100M Ft havi készpénzforgalom (" + monthStart + ".. " + day
-                    + ", összesen " + row[2] + " Ft)";
-            switch (markEdd((UUID) row[0], (String) row[1], day, reason)) {
+            String reason = "V.2.7 b): >=100M Ft havi készpénzforgalom (" + monthStart
+                    + " hónap, összesen " + row[2] + " Ft)";
+            switch (markEdd((UUID) row[0], (String) row[1], day, monthAnchorUntil, reason)) {
                 case MARKED -> marked++;
                 case EXTENDED -> extended++;
                 default -> unchanged++;
@@ -116,7 +121,8 @@ public class AmlEddService {
     /**
      * EDD-ablak jelölése az ügyfélen — extend-only: a meglévő, későbbi lejáratot nem rövidíti.
      */
-    private MarkOutcome markEdd(UUID companyId, String customerCode, LocalDate triggerDay, String reason) {
+    private MarkOutcome markEdd(UUID companyId, String customerCode, LocalDate triggerDay,
+                                LocalDate newUntil, String reason) {
         Customer customer = customerRepository
                 .findByCustomerCodeAndCompanyId(customerCode, companyId)
                 .orElse(null);
@@ -125,21 +131,23 @@ public class AmlEddService {
             return MarkOutcome.UNCHANGED;
         }
 
-        LocalDate newUntil = triggerDay.plusYears(EDD_WINDOW_YEARS);
         LocalDate current = customer.getEddUntil();
         if (current != null && !current.isBefore(newUntil)) {
             return MarkOutcome.UNCHANGED; // már fedett ablak — idempotens újrafutás
         }
 
+        // Sourcery/Copilot review: minden időbélyeg a BUSINESS_ZONE-ban képződik,
+        // hogy UTC JVM-en se csússzon el a scan-dátumhoz képest.
+        LocalDateTime nowBusiness = LocalDateTime.now(BUSINESS_ZONE);
         boolean wasActive = current != null && !current.isBefore(triggerDay);
         customer.setEddUntil(newUntil);
         customer.setEddReason(reason);
-        customer.setEddSetAt(LocalDateTime.now());
+        customer.setEddSetAt(nowBusiness);
         // V.2.7: az EDD alatt álló ügyfél magas kockázatúként kezelendő
         customer.setHighRiskFlag(true);
         if (customer.getHighRiskReason() == null || customer.getHighRiskReason().isBlank()) {
             customer.setHighRiskReason(reason);
-            customer.setHighRiskSetAt(LocalDateTime.now());
+            customer.setHighRiskSetAt(nowBusiness);
         }
         customerRepository.save(customer);
 
