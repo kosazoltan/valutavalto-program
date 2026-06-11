@@ -457,6 +457,14 @@ public class Transaction {
     @Builder.Default
     private Boolean customerIsPep = false;
 
+    /**
+     * AML jóváhagyás-session azonosító (kliens-generált, opaque) — V312, FR-BSZUR-05.
+     * A tranzakciót a {@code transaction_aml_approval} rekordhoz köti, így a bizonylat-
+     * böngésző meg tudja jeleníteni az ENGEDÉLYEZŐ nevét + beosztását.
+     */
+    @Column(name = "approval_session_id", length = 64)
+    private String approvalSessionId;
+
     // ============ V229: Pmt. azonosítási snapshot mezok (HIBA #5+#7+#8 2026-05-15) ============
 
     @Column(name = "customer_birth_place", length = 255)

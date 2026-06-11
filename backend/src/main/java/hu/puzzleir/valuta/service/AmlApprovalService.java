@@ -101,6 +101,9 @@ public class AmlApprovalService {
                 .approvalReason(approvalReason != null ? approvalReason : "AML felsővezetői jóváhagyás")
                 .approvedByWorkerId(approverWorkerId)
                 .approvedByName(safeName(approver))
+                // V312 / FR-BSZUR-05: beosztás-pillanatkép + session-kulcs a bizonylat-megjelenítéshez
+                .approvedByRole(approver.getRole() != null ? approver.getRole().name() : null)
+                .approvalSessionId(approvalSessionId)
                 .approvedAt(LocalDateTime.now())
                 .build();
         TransactionAmlApproval saved = approvalRepository.save(rec);
