@@ -159,7 +159,10 @@ BEGIN
             NOW(), NOW()
         FROM branch b
         CROSS JOIN catalog cat
-        JOIN currency c ON c.code = cat.code AND c.is_active = true
+        -- Codex P2 #1108: az EUA-t a V298 SZANDEKOSAN is_active=false-szal seedeli
+        -- (minimal blast-radius) — a cimlet-sorait megis letrehozzuk (FK04 "aktiv
+        -- UNION EUA" minta), hogy az EUA aktivalasakor a cimletezes azonnal mukodjon.
+        JOIN currency c ON c.code = cat.code AND (c.is_active = true OR c.code = 'EUA')
         WHERE b.is_active = true
           AND NOT EXISTS (
               SELECT 1 FROM denomination d

@@ -94,30 +94,33 @@ public class DenominationService {
     }
 
     static {
-        FOREIGN_DENOMINATIONS = new LinkedHashMap<>();
-        FOREIGN_DENOMINATIONS.put("EUR", specs("500,200,100,50,20,10,5", "2,1,0.50,0.20,0.10,0.05,0.02,0.01"));
-        FOREIGN_DENOMINATIONS.put("EUA", specs("", "2,1,0.50,0.20,0.10,0.05,0.02,0.01"));
-        FOREIGN_DENOMINATIONS.put("USD", specs("100,50,20,10,5,2,1", "0.50,0.25,0.10,0.05,0.01"));
-        FOREIGN_DENOMINATIONS.put("GBP", specs("50,20,10,5", "2,1,0.50,0.20,0.10,0.05,0.02,0.01"));
-        FOREIGN_DENOMINATIONS.put("CHF", specs("1000,200,100,50,20,10", "5,2,1,0.50,0.20,0.10,0.05"));
-        FOREIGN_DENOMINATIONS.put("AUD", specs("100,50,20,10,5", "2,1,0.50,0.20,0.10,0.05"));
-        FOREIGN_DENOMINATIONS.put("CAD", specs("100,50,20,10,5", "2,1,0.25,0.10,0.05"));
-        FOREIGN_DENOMINATIONS.put("JPY", specs("10000,5000,2000,1000", "500,100,50,10,5,1"));
-        FOREIGN_DENOMINATIONS.put("CZK", specs("5000,2000,1000,500,200,100", "50,20,10,5,2,1"));
-        FOREIGN_DENOMINATIONS.put("PLN", specs("500,200,100,50,20,10", "5,2,1,0.50,0.20,0.10,0.05,0.02,0.01"));
-        FOREIGN_DENOMINATIONS.put("RON", specs("500,200,100,50,20,10,5,1", "0.50,0.10,0.05,0.01"));
+        // Copilot #1108: unmodifiable — a statikus katalógus runtime nem mutálható
+        // (FatfCountryRiskService minta).
+        Map<String, List<DenominationSpec>> catalog = new LinkedHashMap<>();
+        catalog.put("EUR", specs("500,200,100,50,20,10,5", "2,1,0.50,0.20,0.10,0.05,0.02,0.01"));
+        catalog.put("EUA", specs("", "2,1,0.50,0.20,0.10,0.05,0.02,0.01"));
+        catalog.put("USD", specs("100,50,20,10,5,2,1", "0.50,0.25,0.10,0.05,0.01"));
+        catalog.put("GBP", specs("50,20,10,5", "2,1,0.50,0.20,0.10,0.05,0.02,0.01"));
+        catalog.put("CHF", specs("1000,200,100,50,20,10", "5,2,1,0.50,0.20,0.10,0.05"));
+        catalog.put("AUD", specs("100,50,20,10,5", "2,1,0.50,0.20,0.10,0.05"));
+        catalog.put("CAD", specs("100,50,20,10,5", "2,1,0.25,0.10,0.05"));
+        catalog.put("JPY", specs("10000,5000,2000,1000", "500,100,50,10,5,1"));
+        catalog.put("CZK", specs("5000,2000,1000,500,200,100", "50,20,10,5,2,1"));
+        catalog.put("PLN", specs("500,200,100,50,20,10", "5,2,1,0.50,0.20,0.10,0.05,0.02,0.01"));
+        catalog.put("RON", specs("500,200,100,50,20,10,5,1", "0.50,0.10,0.05,0.01"));
         // RSD 20/10: bankjegyként ÉS érmeként is forog — bankjegyként vesszük fel
-        FOREIGN_DENOMINATIONS.put("RSD", specs("5000,2000,1000,500,200,100,50,20,10", "5,2,1"));
-        FOREIGN_DENOMINATIONS.put("ILS", specs("200,100,50,20", "10,5,2,1,0.50,0.10"));
+        catalog.put("RSD", specs("5000,2000,1000,500,200,100,50,20,10", "5,2,1"));
+        catalog.put("ILS", specs("200,100,50,20", "10,5,2,1,0.50,0.10"));
         // UAH 1-10: a kisbankjegyeket érmék váltották (a régi kisbankjegyek 2026.03.02-tól bevontak)
-        FOREIGN_DENOMINATIONS.put("UAH", specs("1000,500,200,100,50,20", "10,5,2,1,0.50,0.10"));
-        FOREIGN_DENOMINATIONS.put("TRY", specs("200,100,50,20,10,5", "1,0.50,0.25,0.10,0.05,0.01"));
-        FOREIGN_DENOMINATIONS.put("CNY", specs("100,50,20,10,5,1", "0.50,0.10"));
-        FOREIGN_DENOMINATIONS.put("BAM", specs("200,100,50,20,10", "5,2,1,0.50,0.20,0.10,0.05"));
-        FOREIGN_DENOMINATIONS.put("THB", specs("1000,500,100,50,20", "10,5,2,1,0.50,0.25"));
-        FOREIGN_DENOMINATIONS.put("BRL", specs("200,100,50,20,10,5,2", "1,0.50,0.25,0.10,0.05"));
-        FOREIGN_DENOMINATIONS.put("MXN", specs("1000,500,200,100,50,20", "10,5,2,1,0.50"));
-        FOREIGN_DENOMINATIONS.put("NZD", specs("100,50,20,10,5", "2,1,0.50,0.20,0.10"));
+        catalog.put("UAH", specs("1000,500,200,100,50,20", "10,5,2,1,0.50,0.10"));
+        catalog.put("TRY", specs("200,100,50,20,10,5", "1,0.50,0.25,0.10,0.05,0.01"));
+        catalog.put("CNY", specs("100,50,20,10,5,1", "0.50,0.10"));
+        catalog.put("BAM", specs("200,100,50,20,10", "5,2,1,0.50,0.20,0.10,0.05"));
+        catalog.put("THB", specs("1000,500,100,50,20", "10,5,2,1,0.50,0.25"));
+        catalog.put("BRL", specs("200,100,50,20,10,5,2", "1,0.50,0.25,0.10,0.05"));
+        catalog.put("MXN", specs("1000,500,200,100,50,20", "10,5,2,1,0.50"));
+        catalog.put("NZD", specs("100,50,20,10,5", "2,1,0.50,0.20,0.10"));
+        FOREIGN_DENOMINATIONS = Collections.unmodifiableMap(catalog);
     }
 
     /**
@@ -245,8 +248,8 @@ public class DenominationService {
     /**
      * HUF címlet típus meghatározása.
      *
-     * Bug fix: a küszöb 1000 Ft — 100 Ft és 200 Ft érmék, nem bankjegyek.
-     * >= 1000 → BANKNOTE, < 1000 → COIN
+     * >= 500 → BANKNOTE, < 500 → COIN (MNB: bankjegyek 500–20 000 Ft,
+     * érmék 5–200 Ft; Copilot #1108 — a Javadoc a tényleges küszöbhöz igazítva).
      */
     DenominationType classifyHufDenomination(BigDecimal faceValue) {
         // MNB-tény: forgalomban lévő bankjegyek 500-20000 Ft, érmék 5-200 Ft.
@@ -302,10 +305,12 @@ public class DenominationService {
 
         // Külföldi valuta címletek inicializálása (idempotens — meglévő bejegyzések kihagyva).
         // Csak AKTÍV valutára (RUB pl. V319 óta inaktív — arra nem hozunk létre sort).
+        // EUA-kivétel (Codex P2 #1108): a V298 szándékosan is_active=false-szal seedeli,
+        // a címlet-sorait mégis létrehozzuk (FK04 "aktív UNION EUA" minta, V320-szal azonosan).
         for (Map.Entry<String, List<DenominationSpec>> entry : FOREIGN_DENOMINATIONS.entrySet()) {
             String currencyCode = entry.getKey();
             currencyRepository.findByCode(currencyCode)
-                    .filter(c -> Boolean.TRUE.equals(c.getActive()))
+                    .filter(c -> Boolean.TRUE.equals(c.getActive()) || "EUA".equals(c.getCode()))
                     .ifPresent(foreignCurrency -> {
                 for (DenominationSpec spec : entry.getValue()) {
                     if (denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(

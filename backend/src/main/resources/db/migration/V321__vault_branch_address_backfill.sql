@@ -1,4 +1,6 @@
--- V321 (Batch2-E adat-ag): ertektar branch-ek cim-adatainak backfillje
+-- V321 (Batch2-E adat-ag): a V239-es branch-ek cim-adatainak backfillje
+-- (9 branch: 8 ertektar + 1 penztar, a BR026 Szeged Mora — mind a V239-ben
+-- kapott cimet, igy mind a 9-re potoljuk, ha ures; Copilot #1108)
 --
 -- GYOKEROK (2026-06-12 Fabulya-teszt, atadas-atvetel bizonylat): a bizonylat
 -- fejleceben az ertektar cime/telefonszama hianyzik. A TransferService.toDto
