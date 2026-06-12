@@ -123,7 +123,7 @@ export default function TransferPage() {
   // Form state for new transfer
   const [showNewTransfer, setShowNewTransfer] = useState(false)
   const [currencies, setCurrencies] = useState<Currency[]>([])
-  const [branches, setBranches] = useState<{ id: string; code: string; name: string; isVault?: boolean; branchTypeCode?: string; region?: string; vaultTerritoryId?: number | null }[]>([])
+  const [branches, setBranches] = useState<{ id: string; code: string; name: string; isVault?: boolean; branchTypeCode?: string; region?: string; regionCode?: string | null; vaultTerritoryId?: number | null }[]>([])
 
   // New transfer form
   const [transferDirection, setTransferDirection] = useState<'out' | 'in'>('out')
@@ -232,13 +232,14 @@ export default function TransferPage() {
   // mezői; „—" csak ha egyik sincs.
   // FR-1/FR-5/FR-6 (bizonylat-doc 2. kör, 2026-06-12): ÉRTÉKTÁRNÁL a formátum
   // "[azonosító]. [Értéktár neve]" (pl. "20. Szeged Értéktár") — az azonosító a
-  // branch.region_code (TBD-1 megerősítve: V239 seed, BR020→'20'; a BranchDto.region
-  // mező hordozza). Pénztárnál marad a kód-név (a region a TERÜLETET jelöli, több
-  // pénztár osztozik rajta — ott nem egyedi azonosító). Hiányzó region-nél TBD-2
-  // szerint kód-név fallback, sosem "—"/null.
+  // NUMERIKUS branch.region_code (TBD-1 megerősítve: V239 seed, BR020→'20'; a
+  // BranchDto.regionCode hordozza — a .region a SZÖVEGES terület-név, pl.
+  // "SZEGED", Codex #1114). Pénztárnál marad a kód-név (a régió-kód a TERÜLETET
+  // jelöli, több pénztár osztozik rajta — ott nem egyedi azonosító). Hiányzó
+  // kódnál TBD-2 szerint kód-név fallback, sosem "—"/null.
   const vaultLabel = ownBranch
-    ? (ownBranch.isVault && ownBranch.region?.trim()
-      ? `${ownBranch.region.trim()}. ${ownBranch.name}`
+    ? (ownBranch.isVault && ownBranch.regionCode?.trim()
+      ? `${ownBranch.regionCode.trim()}. ${ownBranch.name}`
       : `${ownBranch.code} - ${ownBranch.name}`)
     : (worker?.branchName ?? worker?.branchCode ?? '—')
 

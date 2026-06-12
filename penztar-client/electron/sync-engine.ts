@@ -137,8 +137,10 @@ interface CashDeskResponse {
   zipCode?: string | null;
   /** Fejléc-javítás 2026-06-11 (NFR-1 offline): telefonszám a bizonylat-fejléchez. */
   phone?: string | null;
-  /** Bizonylat-doc 2. kör TBD-5 (2026-06-12): region_code az "[azonosító]. [név]" fejléc-formátumhoz (a BranchDto.region hordozza). */
-  region?: string | null;
+  /** Bizonylat-doc 2. kör TBD-5 (2026-06-12): a NUMERIKUS KESZLEX terület-kód (pl. "20") az
+   *  "[azonosító]. [név]" fejléc-formátumhoz — a BranchDto.regionCode mező (a .region a
+   *  szöveges terület-név, Copilot #1114). */
+  regionCode?: string | null;
   isActive?: boolean | null;
 }
 
@@ -1964,7 +1966,7 @@ export class SyncEngine {
           cashDesk.address ?? null,
           cashDesk.zipCode ?? null,
           cashDesk.phone ?? null,
-          cashDesk.region ?? null,
+          cashDesk.regionCode ?? null,
         );
       }
 

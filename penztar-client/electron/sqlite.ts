@@ -2986,6 +2986,8 @@ export interface CachedCashDeskRow {
   zip_code: string | null;
   /** Fejléc-javítás 2026-06-11 (NFR-1 offline): telefonszám a bizonylat-fejléchez. */
   phone: string | null;
+  /** Bizonylat-doc 2. kör TBD-5 (2026-06-12): numerikus KESZLEX terület-kód az "[azonosító]. [név]" formátumhoz (Copilot #1114). */
+  region_code?: string | null;
   is_active: number;
   cached_at: string;
 }
