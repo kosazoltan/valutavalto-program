@@ -18,13 +18,22 @@ describe('useGridNavigation', () => {
     expect(typeof props.onFocus).toBe('function')
   })
 
-  it('onCellFocus sets active cell and editing', () => {
+  it('onCellFocus sets active cell and editing (örökölt alapértelmezés: editOnFocus=true)', () => {
     const { result } = renderHook(() => useGridNavigation({ rows: 3, cols: 4 }))
     act(() => {
       result.current.onCellFocus(2, 1)
     })
     expect(result.current.activeCell).toEqual({ row: 2, col: 1 })
     expect(result.current.editing).toBe(true)
+  })
+
+  it('FK03 FR-1/FR-2: editOnFocus=false → fókusz/kattintás csak kijelöl, NEM lép szerkesztő módba', () => {
+    const { result } = renderHook(() => useGridNavigation({ rows: 3, cols: 4, editOnFocus: false }))
+    act(() => {
+      result.current.onCellFocus(2, 1)
+    })
+    expect(result.current.activeCell).toEqual({ row: 2, col: 1 })
+    expect(result.current.editing).toBe(false)
   })
 
   describe('focusCell with DOM', () => {
@@ -178,6 +187,45 @@ describe('useGridNavigation', () => {
       expect(result.current.editing).toBe(true)
 
       act(() => dispatchKey('Escape'))
+      expect(result.current.editing).toBe(false)
+    })
+
+    it('FK03 FR-5: arrow_key_does_not_set_editing_true — nyilas lépés után sincs szerkesztő mód (editOnFocus=false)', () => {
+      const { result } = renderHook(() => useGridNavigation({ rows: 3, cols: 3, editOnFocus: false }))
+
+      Object.defineProperty(result.current.containerRef, 'current', {
+        writable: true,
+        value: container,
+      })
+
+      act(() => {
+        result.current.focusCell(0, 0)
+      })
+      act(() => dispatchKey('ArrowDown'))
+
+      expect(result.current.activeCell).toEqual({ row: 1, col: 0 })
+      expect(result.current.editing).toBe(false)
+    })
+
+    it('FK03 FR-5: escape_sets_isEscaping_ref_before_blur — az onBlur megkülönböztetheti az Escape-blurt', () => {
+      const { result } = renderHook(() => useGridNavigation({ rows: 3, cols: 3, editOnFocus: false }))
+
+      Object.defineProperty(result.current.containerRef, 'current', {
+        writable: true,
+        value: container,
+      })
+
+      // Blur-pillanatban olvassuk a ref-et — pontosan így használja a RateGrid onBlur-ja.
+      let refAtBlur: boolean | null = null
+      const input = container.querySelector<HTMLInputElement>('[data-grid-row="1"][data-grid-col="1"]')!
+      input.addEventListener('blur', () => { refAtBlur = result.current.isEscapingRef.current })
+
+      act(() => {
+        result.current.focusCell(1, 1, true)
+      })
+      act(() => dispatchKey('Escape'))
+
+      expect(refAtBlur).toBe(true)
       expect(result.current.editing).toBe(false)
     })
 

@@ -10,6 +10,13 @@ interface UseGridNavigationOptions {
   cols: number
   /** CSS selector to find input elements within the grid container */
   inputSelector?: string
+  /**
+   * FK03-fix (FR-1, FR-2): ha false, a kattintás/fókusz csak KIJELÖLI a cellát
+   * (formázott érték látszik), szerkesztő módba dupla kattintás / Enter /
+   * gépelés visz. Alapértelmezés true (örökölt viselkedés) — a scope-on kívüli
+   * fogyasztók (SettlementRateEntry) változatlanok maradnak.
+   */
+  editOnFocus?: boolean
 }
 
 /**
@@ -22,12 +29,18 @@ interface UseGridNavigationOptions {
  * - Escape deactivates cell (blurs input)
  * - Tab/Shift+Tab move right/left
  */
-export function useGridNavigation({ rows, cols }: UseGridNavigationOptions) {
+export function useGridNavigation({ rows, cols, editOnFocus = true }: UseGridNavigationOptions) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [activeCell, setActiveCell] = useState<GridCell | null>(null)
   const [editing, setEditing] = useState(false)
   /** Suppresses onCellFocus when focusCell is driving programmatic focus */
   const suppressFocusRef = useRef(false)
+  /**
+   * FK03-fix (FR-5): az Escape-kezelő az onBlur ELŐTT igazra állítja, hogy a
+   * fogyasztó onBlur-ja megkülönböztethesse az Escape-blurt (revert, NINCS
+   * commit) a normál blurtól (commit). A fogyasztó felelőssége visszaállítani.
+   */
+  const isEscapingRef = useRef(false)
 
   const getInput = useCallback((row: number, col: number): HTMLInputElement | null => {
     if (!containerRef.current) return null
@@ -126,6 +139,9 @@ export function useGridNavigation({ rows, cols }: UseGridNavigationOptions) {
 
       case 'Escape': {
         e.preventDefault()
+        // FK03-fix (FR-5): a blur ELŐTT jelezzük, hogy Escape okozza — az onBlur
+        // így revertál (nem commitol).
+        isEscapingRef.current = true
         setEditing(false)
         // Keep focus on cell but exit edit mode
         const escInput = getInput(row, col)
@@ -163,13 +179,18 @@ export function useGridNavigation({ rows, cols }: UseGridNavigationOptions) {
       return
     }
     setActiveCell({ row, col })
-    setEditing(true)
-  }, [])
+    // FK03-fix (FR-1, FR-2): editOnFocus=false esetén a fókusz ≠ szerkesztő mód —
+    // a cella kijelölt állapotba kerül, szerkesztésbe dupla kattintás / Enter /
+    // gépelés visz (Főlap-referencia viselkedés).
+    if (editOnFocus) setEditing(true)
+  }, [editOnFocus])
 
   return {
     containerRef,
     activeCell,
     editing,
+    setEditing,
+    isEscapingRef,
     focusCell,
     onCellFocus,
     /** data-attributes to spread on each input: data-grid-row, data-grid-col */
