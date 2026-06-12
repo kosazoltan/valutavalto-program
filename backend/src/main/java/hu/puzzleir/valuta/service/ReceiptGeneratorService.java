@@ -41,6 +41,8 @@ public class ReceiptGeneratorService {
     private final ReceiptPdfService receiptPdfService;
     private final EscPosReceiptService escPosReceiptService;
     private final SystemParameterService systemParameterService;
+    // V325 (Batch3-C): tenyleges tulajdonosok betoltese a bizonylat-blokkhoz
+    private final hu.puzzleir.valuta.repository.TransactionBeneficialOwnerRepository transactionBeneficialOwnerRepository;
 
     /** 300.000 Ft — jogszabályi küszöb PEP és Jogcím nyilatkozathoz */
     private static final BigDecimal HIGH_VALUE_THRESHOLD = new BigDecimal("300000");
@@ -639,6 +641,10 @@ public class ReceiptGeneratorService {
         applyRuByDeclarationIfNeeded(builder, tx.getCustomerNationality());
         applyPepDeclarationIfNeeded(builder, tx);
         applySourceDeclarationIfNeeded(builder, tx);
+        // V325 (Batch3-C): jogi személy + tényleges tulajdonosok blokk (legacy
+        // BLOKNYOM Ugyfelnyomtatas jogi ág) — a megbízott/képviselő a customer*
+        // mezőkben, a státusza a PEP-blokkban.
+        applyLegalEntityBlockIfNeeded(builder, tx);
         // Kedvezményes árfolyam — jövőbeli bővítés; jelenleg a helper elérhető
         // az explicit hívásokhoz (pl. VIP ár esetén)
 
@@ -813,6 +819,42 @@ public class ReceiptGeneratorService {
                    .legalDeedNumber(deedNumber);
             log.debug("Jogi személy nyilatkozat blokk aktiválva");
         }
+    }
+
+    /**
+     * V325 (Batch3-C): jogi személy blokk a tranzakció V325-ös mezőiből + a
+     * tényleges tulajdonosok betöltése az altáblából (legacy UJTULAJOK).
+     * A megbízott/képviselő neve a customer mezőből (a pultnál álló személy).
+     */
+    public void applyLegalEntityBlockIfNeeded(ReceiptData.ReceiptDataBuilder builder, Transaction tx) {
+        if (!Boolean.TRUE.equals(tx.getIsLegalEntityCustomer())) {
+            return;
+        }
+        builder.requiresLegalEntityBlock(true)
+                .isLegalEntityCustomer(true)
+                .legalEntityName(tx.getLegalEntityName())
+                .legalEntitySeat(tx.getLegalEntitySeat())
+                .legalEntityTaxNumber(tx.getLegalEntityTaxNumber())
+                .legalDeedNumber(tx.getLegalDeedNumber())
+                .legalRepresentativeName(tx.getCustomerName());
+        if (tx.getId() != null && tx.getCompany() != null) {
+            var owners = transactionBeneficialOwnerRepository
+                    .findByCompanyIdAndTransactionIdOrderByOwnerNo(tx.getCompany().getId(), tx.getId());
+            builder.beneficialOwners(owners.stream()
+                    .map(o -> hu.puzzleir.valuta.dto.transaction.BeneficialOwnerDto.builder()
+                            .name(o.getOwnerName())
+                            .address(o.getOwnerAddress())
+                            .birthPlace(o.getOwnerBirthPlace())
+                            .birthDate(o.getOwnerBirthDate())
+                            .nationality(o.getOwnerNationality())
+                            .residenceAbroad(o.getOwnerResidenceAbroad())
+                            .interestNature(o.getOwnerInterestNature())
+                            .interestExtent(o.getOwnerInterestExtent())
+                            .isPep(o.getOwnerIsPep())
+                            .build())
+                    .toList());
+        }
+        log.debug("V325: jogi személy blokk aktiválva: {}", tx.getLegalEntityName());
     }
 
     /**

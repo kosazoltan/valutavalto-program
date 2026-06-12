@@ -527,6 +527,26 @@ public class Transaction {
     @Column(name = "customer_actor_address", length = 500)
     private String customerActorAddress;
 
+    // ============ V325 (Batch3-C): JOGI SZEMELY ugyfel ============
+    // Legacy BLOKNYOM JogiAdatokBeolvasasa (JOGISZEMELY tabla) tukre. A pultnal
+    // allo kepviselo/megbizott adatait a meglevo customer_* mezok hordozzak;
+    // a tenyleges tulajdonosok a transaction_beneficial_owner altablaban.
+
+    @Column(name = "is_legal_entity_customer")
+    private Boolean isLegalEntityCustomer;
+
+    @Column(name = "legal_entity_name", length = 255)
+    private String legalEntityName;
+
+    @Column(name = "legal_entity_seat", length = 500)
+    private String legalEntitySeat;
+
+    @Column(name = "legal_entity_tax_number", length = 50)
+    private String legalEntityTaxNumber;
+
+    @Column(name = "legal_deed_number", length = 100)
+    private String legalDeedNumber;
+
     // ============ HELPER METHODS ============
 
     /**

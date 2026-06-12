@@ -69,6 +69,33 @@ export interface CustomerPanelData {
   pepKind?: PepKind | null
   // V235 NEW (HIBA #17): actor teljes azonositas, ha onOwnBehalf=false
   actorIdentity?: ActorIdentity | null
+  // V325 (Batch3-C): jogi szemely ugyfel (legacy JOGISZEMELY) — a pultnal allo
+  // szemely (megbizott) a fenti customer-mezokben.
+  isLegalEntity?: boolean
+  legalEntityName?: string
+  legalEntitySeat?: string
+  legalEntityTaxNumber?: string
+  legalDeedNumber?: string
+  /** V325: tenyleges tulajdonosok (Pmt. 9.§, legacy UJTULAJOK) — max 4. */
+  beneficialOwners?: BeneficialOwnerForm[]
+}
+
+/** V325 (Batch3-C): egy tenyleges tulajdonos a formon (legacy UJTULAJOK mezok). */
+export interface BeneficialOwnerForm {
+  name: string
+  address: string
+  birthPlace: string
+  birthDate: string
+  nationality: string
+  residenceAbroad: string
+  interestNature: string
+  interestExtent: string
+  isPep: boolean
+}
+
+const EMPTY_OWNER: BeneficialOwnerForm = {
+  name: '', address: '', birthPlace: '', birthDate: '', nationality: '',
+  residenceAbroad: '', interestNature: '', interestExtent: '', isPep: false,
 }
 
 interface CustomerPanelProps {
@@ -190,6 +217,32 @@ export default function CustomerPanel({
   const [actorDocumentNumber, setActorDocumentNumber] = useState<string>('')
   const [actorAddress, setActorAddress] = useState<string>('')
 
+  // V325 (Batch3-C): jogi szemely ugyfel + tenyleges tulajdonosok (legacy
+  // JOGISZEMELY + UJTULAJOK). A pultnal allo szemely (megbizott) adatai a
+  // fenti customer-mezokben maradnak.
+  const [isLegalEntity, setIsLegalEntity] = useState<boolean>(false)
+  const [legalEntityName, setLegalEntityName] = useState<string>('')
+  const [legalEntitySeat, setLegalEntitySeat] = useState<string>('')
+  const [legalEntityTaxNumber, setLegalEntityTaxNumber] = useState<string>('')
+  const [legalDeedNumber, setLegalDeedNumber] = useState<string>('')
+  const [beneficialOwners, setBeneficialOwners] = useState<BeneficialOwnerForm[]>([])
+
+  // V325: a jogi szemely mezok kozos csomagja MINDKET adat-osszeallitasi ponthoz
+  // (kivalasztott + kezi ugyfel) — kikapcsolt allapotban ures (stale-data vedelem,
+  // a Copilot #695 actorName-mintajaval azonosan).
+  const legalEntityData = useCallback((): Partial<CustomerPanelData> => (
+    isLegalEntity
+      ? {
+        isLegalEntity: true,
+        legalEntityName: legalEntityName.trim() || undefined,
+        legalEntitySeat: legalEntitySeat.trim() || undefined,
+        legalEntityTaxNumber: legalEntityTaxNumber.trim() || undefined,
+        legalDeedNumber: legalDeedNumber.trim() || undefined,
+        beneficialOwners: beneficialOwners.filter(o => o.name.trim() !== ''),
+      }
+      : { isLegalEntity: false }
+  ), [isLegalEntity, legalEntityName, legalEntitySeat, legalEntityTaxNumber, legalDeedNumber, beneficialOwners])
+
   const [amlResult, setAmlResult] = useState<AmlCheckResultDto | null>(null)
   const [amlChecking, setAmlChecking] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -260,6 +313,18 @@ export default function CustomerPanel({
   }, [hufTotal, onAmlResult])
 
   const handleSelectCustomer = useCallback(async (customer: ApiCustomer) => {
+    // V325 (Batch3-C, Codex P2 #1116): a kivalasztott-ugyfel utvonal nem megy at a
+    // missingRequiredFields kapun, ezert itt kulon guard — jogi szemely jelolesnel
+    // az entitas-torzsadat + legalabb egy tenyleges tulajdonos nelkul nem mehet tovabb.
+    if (isLegalEntity
+        && (!legalEntityName.trim() || !legalEntitySeat.trim()
+          || !beneficialOwners.some((o) => o.name.trim()))) {
+      toast.warning(
+        'Hiányzó jogi személy adatok',
+        'Jogi személy nevében eljárásnál a jogi személy neve, székhelye és legalább egy tényleges tulajdonos megadása kötelező.',
+      )
+      return
+    }
     setSelectedCustomer(customer)
     setShowResults(false)
     setSearchQuery('')
@@ -297,6 +362,8 @@ export default function CustomerPanel({
         documentNumber: actorDocumentNumber.trim() || undefined,
         address: actorAddress.trim() || undefined,
       } : null,
+      // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok
+      ...legalEntityData(),
     }
 
     if (customer.id && hufTotal > 0) {
@@ -305,7 +372,8 @@ export default function CustomerPanel({
     onCustomerReady(data)
   }, [hufTotal, onCustomerReady, runAmlCheck, isPep, sourceOfFunds, sourceOfFundsDocType, sourceOfFundsDocDate, onOwnBehalf, actorName,
       pepKind, actorBirthPlace, actorBirthDate, actorMotherName, actorNationality,
-      actorDocumentType, actorDocumentNumber, actorAddress])
+      actorDocumentType, actorDocumentNumber, actorAddress, legalEntityData,
+      isLegalEntity, legalEntityName, legalEntitySeat, beneficialOwners])
 
   // Collect missing required fields per identification level. Empty array = form OK.
   // 2026-05-15 user-direktíva: SIMPLIFIED (100-300k) szinthez Pmt. 2017. évi LIII. tv.
@@ -338,10 +406,19 @@ export default function CustomerPanel({
       // V235 (HIBA #15 2026-05-19): ha PEP, a minoseget is meg kell jelolni
       if (isPep && !pepKind) missing.push('PEP minőség')
     }
+    // V325 (Batch3-C, Codex P2 #1116): jogi szemely eseten az entitas-torzsadat
+    // + legalabb egy tenyleges tulajdonos kotelezo (Pmt. 8-9.§, legacy JOGISZEMELY/
+    // UJTULAJOK) — kulonben a 300k+ bizonylat jogi blokkja hianyosan nyomtatodna.
+    if (isLegalEntity) {
+      if (!legalEntityName.trim()) missing.push('Jogi személy neve')
+      if (!legalEntitySeat.trim()) missing.push('Jogi személy székhelye')
+      if (!beneficialOwners.some((o) => o.name.trim())) missing.push('Tényleges tulajdonos (legalább egy)')
+    }
     if (!privacyNoticeAccepted) missing.push('Adatkezelési tájékoztató')
     return missing
   }, [identificationLevel, customerName, customerDocNumber, customerBirthPlace, customerBirthDate, customerMotherName, customerAddress, hufTotal, sourceOfFunds, onOwnBehalf, actorName,
-      isPep, pepKind, actorBirthPlace, actorBirthDate, actorMotherName, actorDocumentNumber, actorAddress, privacyNoticeAccepted])
+      isPep, pepKind, actorBirthPlace, actorBirthDate, actorMotherName, actorDocumentNumber, actorAddress, privacyNoticeAccepted,
+      isLegalEntity, legalEntityName, legalEntitySeat, beneficialOwners])
 
   const handleSaveManualCustomer = useCallback(async () => {
     // Replace silent `return` with explicit toast — user-visible feedback per #581 bug report
@@ -432,6 +509,8 @@ export default function CustomerPanel({
           documentNumber: actorDocumentNumber.trim() || undefined,
           address: actorAddress.trim() || undefined,
         } : null,
+        // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok
+        ...legalEntityData(),
       }
       setSelectedCustomer(savedCustomer)
 
@@ -1007,6 +1086,135 @@ export default function CustomerPanel({
                         onChange={(e) => setActorAddress(e.target.value)}
                         placeholder="pl. 1234 Budapest, Fo utca 1." />
                     </div>
+                  </div>
+                )}
+                {/* V325 (Batch3-C): JOGI SZEMÉLY nevében jár el — legacy BLOKNYOM
+                    jogi ág (JOGISZEMELY + UJTULAJOK). A pultnál álló személy
+                    (megbízott) adatai a fenti ügyfél-mezőkben. */}
+                <div className="flex items-center gap-4">
+                  <label className="text-xs flex items-center gap-1.5">
+                    <input type="checkbox"
+                      data-testid="legal-entity-checkbox"
+                      checked={isLegalEntity}
+                      onChange={(e) => setIsLegalEntity(e.target.checked)} />
+                    <span>Jogi személy nevében jár el?</span>
+                  </label>
+                </div>
+                {isLegalEntity && (
+                  <div className="ml-4 p-2 rounded border border-indigo-400 dark:border-indigo-600 bg-indigo-100/50 dark:bg-indigo-900/30 space-y-2">
+                    <div className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
+                      Jogi személy adatai (Pmt. 8-9.§)
+                    </div>
+                    <div>
+                      <label className="text-xs block">Jogi személy neve *</label>
+                      <input type="text" className={fieldClass} style={fieldStyle}
+                        data-testid="legal-entity-name-input"
+                        value={legalEntityName}
+                        onChange={(e) => setLegalEntityName(e.target.value)}
+                        placeholder="pl. Példa Kft." />
+                    </div>
+                    <div>
+                      <label className="text-xs block">Székhely *</label>
+                      <input type="text" className={fieldClass} style={fieldStyle}
+                        data-testid="legal-entity-seat-input"
+                        value={legalEntitySeat}
+                        onChange={(e) => setLegalEntitySeat(e.target.value)}
+                        placeholder="pl. 6722 Szeged, Tisza L. krt 57." />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs block">Adószám</label>
+                        <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle}
+                          data-testid="legal-entity-tax-input"
+                          value={legalEntityTaxNumber}
+                          onChange={(e) => setLegalEntityTaxNumber(e.target.value)}
+                          placeholder="12345678-2-06" />
+                      </div>
+                      <div>
+                        <label className="text-xs block">Okiratszám / cégjegyzékszám</label>
+                        <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle}
+                          data-testid="legal-deed-number-input"
+                          value={legalDeedNumber}
+                          onChange={(e) => setLegalDeedNumber(e.target.value)}
+                          placeholder="06-09-123456" />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
+                        Tényleges tulajdonosok (max 4)
+                      </span>
+                      <button type="button"
+                        data-testid="add-owner-button"
+                        disabled={beneficialOwners.length >= 4}
+                        onClick={() => setBeneficialOwners(prev => [...prev, { ...EMPTY_OWNER }])}
+                        className="text-xs px-2 py-0.5 rounded border border-indigo-400 hover:bg-indigo-200/50 disabled:opacity-40">
+                        + Tulajdonos
+                      </button>
+                    </div>
+                    {beneficialOwners.map((o, idx) => {
+                      const upd = (patch: Partial<BeneficialOwnerForm>) =>
+                        setBeneficialOwners(prev => prev.map((x, i) => (i === idx ? { ...x, ...patch } : x)))
+                      return (
+                        <div key={idx} className="p-2 rounded border border-indigo-300 dark:border-indigo-700 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold">{idx + 1}. tulajdonos</span>
+                            <button type="button" className="text-xs text-red-600 hover:underline"
+                              onClick={() => setBeneficialOwners(prev => prev.filter((_, i) => i !== idx))}>
+                              Eltávolítás
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-xs block">Név *</label>
+                              <input type="text" className={fieldClass} style={fieldStyle}
+                                value={o.name} onChange={(e) => upd({ name: e.target.value })} />
+                            </div>
+                            <div>
+                              <label className="text-xs block">Lakcím</label>
+                              <input type="text" className={fieldClass} style={fieldStyle}
+                                value={o.address} onChange={(e) => upd({ address: e.target.value })} />
+                            </div>
+                            <div>
+                              <label className="text-xs block">Születési hely</label>
+                              <input type="text" className={fieldClass} style={fieldStyle}
+                                value={o.birthPlace} onChange={(e) => upd({ birthPlace: e.target.value })} />
+                            </div>
+                            <div>
+                              <label className="text-xs block">Születési idő</label>
+                              <input type="date" className={fieldClass} style={fieldStyle}
+                                value={o.birthDate} onChange={(e) => upd({ birthDate: e.target.value })} />
+                            </div>
+                            <div>
+                              <label className="text-xs block">Állampolgárság</label>
+                              <input type="text" className={fieldClass} style={fieldStyle}
+                                value={o.nationality} onChange={(e) => upd({ nationality: e.target.value })} />
+                            </div>
+                            <div>
+                              <label className="text-xs block">Külföldi tartózkodási hely</label>
+                              <input type="text" className={fieldClass} style={fieldStyle}
+                                value={o.residenceAbroad} onChange={(e) => upd({ residenceAbroad: e.target.value })} />
+                            </div>
+                            <div>
+                              <label className="text-xs block">Érdekeltség jellege</label>
+                              <input type="text" className={fieldClass} style={fieldStyle}
+                                value={o.interestNature} onChange={(e) => upd({ interestNature: e.target.value })}
+                                placeholder="pl. tulajdonos" />
+                            </div>
+                            <div>
+                              <label className="text-xs block">Részesedés mértéke</label>
+                              <input type="text" className={fieldClass} style={fieldStyle}
+                                value={o.interestExtent} onChange={(e) => upd({ interestExtent: e.target.value })}
+                                placeholder="pl. 50%" />
+                            </div>
+                          </div>
+                          <label className="text-xs flex items-center gap-1.5">
+                            <input type="checkbox" checked={o.isPep}
+                              onChange={(e) => upd({ isPep: e.target.checked })} />
+                            <span>Kiemelt közszereplő</span>
+                          </label>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
                 <div>

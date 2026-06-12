@@ -288,6 +288,24 @@ export async function initDatabase(): Promise<void> {
       }
     }
 
+    // V325 (Batch3-C, 2026-06-12): jogi szemely ugyfel + tenyleges tulajdonosok az
+    // offline outboxban — a legacy BLOKNYOM jogi aganak adatai a sync-ig itt elnek.
+    const legalEntityColumns: Array<{ name: string; type: string }> = [
+      { name: 'is_legal_entity_customer', type: 'INTEGER' },   // 0/1 (NULL = nem jogi szemely)
+      { name: 'legal_entity_name', type: 'TEXT' },
+      { name: 'legal_entity_seat', type: 'TEXT' },
+      { name: 'legal_entity_tax_number', type: 'TEXT' },
+      { name: 'legal_deed_number', type: 'TEXT' },
+      { name: 'beneficial_owners_json', type: 'TEXT' },        // max 4 tulajdonos JSON-kent
+    ];
+    for (const col of legalEntityColumns) {
+      try {
+        db.run(`ALTER TABLE pending_transactions ADD COLUMN ${col.name} ${col.type};`);
+      } catch {
+        // Column already exists — expected on fresh installs or repeat migration
+      }
+    }
+
     // V229 + V235 (2026-05-19 HIBA #14 + #17 + #18): teljes Pmt. customer-snapshot
     // a kliens-oldali offline outbox-ban is. A korábbi sync-engine csak 4 alapmezőt
     // küldött át a backend felé, így a bizonylaton hiányzott a szül.hely / szül.idő
@@ -1137,6 +1155,13 @@ export interface PendingTransactionRow {
   handling_fee_override_type?: string | null;
   handling_fee_override_reason?: string | null;
   customer_card_number?: string | null;
+  // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok (JSON, max 4).
+  is_legal_entity_customer?: number | null;
+  legal_entity_name?: string | null;
+  legal_entity_seat?: string | null;
+  legal_entity_tax_number?: string | null;
+  legal_deed_number?: string | null;
+  beneficial_owners_json?: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
   created_at: string;
@@ -1207,6 +1232,13 @@ export interface PendingTransactionInputV2 {
   handlingFeeOverrideType?: string | null;
   handlingFeeOverrideReason?: string | null;
   customerCardNumber?: string | null;
+  // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok (JSON-string, max 4).
+  isLegalEntityCustomer?: boolean | null;
+  legalEntityName?: string | null;
+  legalEntitySeat?: string | null;
+  legalEntityTaxNumber?: string | null;
+  legalDeedNumber?: string | null;
+  beneficialOwnersJson?: string | null;
 }
 
 export interface PendingConversionRow {
@@ -1565,9 +1597,11 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
         customer_actor_document_number, customer_actor_address,
         lines,
         handling_fee_override_type, handling_fee_override_reason, customer_card_number,
+        is_legal_entity_customer, legal_entity_name, legal_entity_seat,
+        legal_entity_tax_number, legal_deed_number, beneficial_owners_json,
         local_reference_number, idempotency_key
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         input.type,
         input.currencyCode,
@@ -1607,6 +1641,12 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
         trimOrNull(input.handlingFeeOverrideType),
         trimOrNull(input.handlingFeeOverrideReason),
         trimOrNull(input.customerCardNumber),
+        boolToInt(input.isLegalEntityCustomer),
+        trimOrNull(input.legalEntityName),
+        trimOrNull(input.legalEntitySeat),
+        trimOrNull(input.legalEntityTaxNumber),
+        trimOrNull(input.legalDeedNumber),
+        input.beneficialOwnersJson ?? null,
         ref,
         idempotencyKey,
       ],

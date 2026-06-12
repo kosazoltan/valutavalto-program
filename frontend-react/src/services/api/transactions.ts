@@ -254,6 +254,23 @@ export interface BuyRequest {
   customerActorName?: string
   // V235 (2026-05-19 HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
   customerPepKind?: 'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+  /** V325 (Batch3-C): jogi szemely ugyfel + tenyleges tulajdonosok (max 4). */
+  isLegalEntityCustomer?: boolean
+  legalEntityName?: string
+  legalEntitySeat?: string
+  legalEntityTaxNumber?: string
+  legalDeedNumber?: string
+  beneficialOwners?: Array<{
+    name: string
+    address?: string
+    birthPlace?: string
+    birthDate?: string
+    nationality?: string
+    residenceAbroad?: string
+    interestNature?: string
+    interestExtent?: string
+    isPep?: boolean
+  }>
   customerActorBirthPlace?: string
   customerActorBirthDate?: string
   customerActorMotherName?: string
@@ -309,6 +326,23 @@ export interface SellRequest {
   customerActorName?: string
   // V235 (2026-05-19 HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
   customerPepKind?: 'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+  /** V325 (Batch3-C): jogi szemely ugyfel + tenyleges tulajdonosok (max 4). */
+  isLegalEntityCustomer?: boolean
+  legalEntityName?: string
+  legalEntitySeat?: string
+  legalEntityTaxNumber?: string
+  legalDeedNumber?: string
+  beneficialOwners?: Array<{
+    name: string
+    address?: string
+    birthPlace?: string
+    birthDate?: string
+    nationality?: string
+    residenceAbroad?: string
+    interestNature?: string
+    interestExtent?: string
+    isPep?: boolean
+  }>
   customerActorBirthPlace?: string
   customerActorBirthDate?: string
   customerActorMotherName?: string
@@ -377,6 +411,23 @@ export interface ConversionRequest {
   customerOnOwnBehalf?: boolean
   customerActorName?: string
   customerPepKind?: 'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+  /** V325 (Batch3-C): jogi szemely ugyfel + tenyleges tulajdonosok (max 4). */
+  isLegalEntityCustomer?: boolean
+  legalEntityName?: string
+  legalEntitySeat?: string
+  legalEntityTaxNumber?: string
+  legalDeedNumber?: string
+  beneficialOwners?: Array<{
+    name: string
+    address?: string
+    birthPlace?: string
+    birthDate?: string
+    nationality?: string
+    residenceAbroad?: string
+    interestNature?: string
+    interestExtent?: string
+    isPep?: boolean
+  }>
   customerActorBirthPlace?: string
   customerActorBirthDate?: string
   customerActorMotherName?: string

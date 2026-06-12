@@ -1278,6 +1278,28 @@ export class SyncEngine {
       addOptionalText('customerActorAddress', tx.customer_actor_address);
     }
 
+    // V325 (Batch3-C): jogi szemely ugyfel + tenyleges tulajdonosok — a REST-tel
+    // azonos mezokkel. NULL flag = nem jogi szemely (regi pending sor is).
+    if (tx.is_legal_entity_customer !== null && tx.is_legal_entity_customer !== undefined) {
+      body['isLegalEntityCustomer'] = tx.is_legal_entity_customer === 1;
+    }
+    if (tx.is_legal_entity_customer === 1) {
+      addOptionalText('legalEntityName', tx.legal_entity_name);
+      addOptionalText('legalEntitySeat', tx.legal_entity_seat);
+      addOptionalText('legalEntityTaxNumber', tx.legal_entity_tax_number);
+      addOptionalText('legalDeedNumber', tx.legal_deed_number);
+      if (tx.beneficial_owners_json) {
+        try {
+          const parsedOwners = JSON.parse(tx.beneficial_owners_json);
+          if (Array.isArray(parsedOwners) && parsedOwners.length > 0) {
+            body['beneficialOwners'] = parsedOwners;
+          }
+        } catch {
+          // Nem parsable → kihagyjuk; a jogi alapmezok igy is felmennek (fail-safe).
+        }
+      }
+    }
+
     // A tárolt idempotency_key-t használjuk — retry-nál is ugyanazt küldjük
     await httpPost(endpoint, body, token, tx.idempotency_key ?? undefined);
   }

@@ -150,6 +150,18 @@ public class ReceiptData {
     /** Jogi személy okiratszáma */
     private String legalDeedNumber;
 
+    /** V325 (Batch3-C): jogi személy székhelye (legacy TELEPHELYCIM). */
+    private String legalEntitySeat;
+
+    /** V325 (Batch3-C): jogi személy adószáma (legacy ADOSZAM). */
+    private String legalEntityTaxNumber;
+
+    /**
+     * V325 (Batch3-C): tényleges tulajdonosok (legacy UJTULAJOK, max 4) — a
+     * 300k+ jogi személyes bizonylat "Tényleges tulajdonosok adatai" blokkjához.
+     */
+    private java.util.List<hu.puzzleir.valuta.dto.transaction.BeneficialOwnerDto> beneficialOwners;
+
     /**
      * Kedvezményes árfolyam melléklet szükséges-e.
      * Ha igaz, a bizonylat tartalmaz egy külön mellékletet a kedvezményes árfolyamról.

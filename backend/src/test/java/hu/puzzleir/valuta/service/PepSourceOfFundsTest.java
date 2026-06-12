@@ -620,6 +620,60 @@ class PepSourceOfFundsTest {
         }
 
         @Test
+        @DisplayName("Batch3-C (V325): jogi személy blokk — cég-adatok + megbízott + tényleges tulajdonosok a legacy sorrendben")
+        void legalEntityBlockPrinted() {
+            ReceiptData data = ReceiptData.builder()
+                    .receiptNumber("V-260405-0005")
+                    .receiptType("BUY")
+                    .companyName("Exclusive Best Change Zrt.")
+                    .currencyCode("EUR")
+                    .hufAmount(new BigDecimal("400000"))
+                    .customerName("Kiss Géza")
+                    .customerAddress("Szeged, Fő u. 1.")
+                    .requiresLegalEntityBlock(true)
+                    .legalEntityName("Teszt Kft.")
+                    .legalEntitySeat("6722 Szeged, Tisza L. krt 57.")
+                    .legalEntityTaxNumber("12345678-2-06")
+                    .legalDeedNumber("06-09-123456")
+                    .legalRepresentativeName("Kiss Géza")
+                    .beneficialOwners(java.util.List.of(
+                            hu.puzzleir.valuta.dto.transaction.BeneficialOwnerDto.builder()
+                                    .name("Nagy Béla").address("Szeged, Ady tér 2.")
+                                    .birthPlace("Szeged").birthDate("1980.01.01")
+                                    .nationality("magyar")
+                                    .interestNature("tulajdonos").interestExtent("50%")
+                                    .isPep(false).build(),
+                            hu.puzzleir.valuta.dto.transaction.BeneficialOwnerDto.builder()
+                                    .name("Kovács Pál").interestExtent("50%").isPep(true).build()))
+                    .build();
+            String content = new String(service.generateBuyReceipt(data),
+                    java.nio.charset.Charset.forName("Cp852"));
+
+            assertThat(content).contains("Jogi személy neve:");
+            assertThat(content).contains("Teszt Kft.");
+            assertThat(content).contains("Jogi személy székhelye:");
+            assertThat(content).contains("Okiratszám: 06-09-123456");
+            assertThat(content).contains("Adószám: 12345678-2-06");
+            assertThat(content).contains("Megbízott neve:");
+            assertThat(content).contains("Tényleges tulajdonosok adatai:");
+            assertThat(content).contains("1. tulajdonos:");
+            assertThat(content).contains("Nagy Béla");
+            assertThat(content).contains("2. tulajdonos:");
+            assertThat(content).contains("A tulaj közszereplő");
+            assertThat(content).contains("Nem közszereplő");
+        }
+
+        @Test
+        @DisplayName("Batch3-C: jogi blokk NEM jelenik meg, ha requiresLegalEntityBlock=false")
+        void legalEntityBlockAbsentWhenNotRequired() {
+            ReceiptData data = buildReceiptData(false, null, true, "Munkabér");
+            String content = new String(service.generateBuyReceipt(data),
+                    java.nio.charset.Charset.forName("Cp852"));
+            assertThat(content).doesNotContain("Jogi személy neve:");
+            assertThat(content).doesNotContain("Tényleges tulajdonosok");
+        }
+
+        @Test
         @DisplayName("Batch2-D: orosz állampolgár EUR-ELADÁS 300k+ → kétnyelvű NYILATKOZAT/DECLARATION")
         void russianDeclaration_presentOnSellEurRussian300k() {
             ReceiptData data = ReceiptData.builder()

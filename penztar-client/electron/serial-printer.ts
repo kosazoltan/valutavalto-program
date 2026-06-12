@@ -247,7 +247,7 @@ export async function openCashDrawer(
 // ============================================================================
 
 // Import a printer.ts-ből (Copilot PR #1102: egyetlen import, type-modifierrel)
-import { isHighValueReceipt, foreignStatusText, pepStatusText, buildSourceDeclarationLines, isRussianEurPurchase, buildRussianDeclarationLines, type PrintReceiptData } from './printer';
+import { isHighValueReceipt, foreignStatusText, pepStatusText, buildSourceDeclarationLines, isRussianEurPurchase, buildRussianDeclarationLines, buildLegalEntityLines, type PrintReceiptData } from './printer';
 
 const JOB_TYPE_LABELS: Record<string, string> = {
   sell: 'ELADÁSI BIZONYLAT',
@@ -522,6 +522,10 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     // C.1: PEP-sor 300k+ vétel/eladás bizonylaton.
     if ((data.type === 'sell' || data.type === 'buy') && isHighValueReceipt(data)) {
       text(pepStatusText(data));
+      // V325 (Batch3-C): jogi személy + tényleges tulajdonosok blokk.
+      for (const legalLine of buildLegalEntityLines(data)) {
+        text(legalLine);
+      }
     }
   }
 

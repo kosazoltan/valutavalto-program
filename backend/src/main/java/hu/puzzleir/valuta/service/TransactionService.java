@@ -58,6 +58,8 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final TransactionLineRepository transactionLineRepository;
+    // V325 (Batch3-C): tenyleges tulajdonosok perzisztalasa jogi szemely ugyfelnel
+    private final TransactionBeneficialOwnerRepository transactionBeneficialOwnerRepository;
     private final CurrencyRepository currencyRepository;
     private final ExchangeRateRepository exchangeRateRepository;
     private final CashBalanceRepository cashBalanceRepository;
@@ -151,6 +153,58 @@ public class TransactionService {
                     java.util.Map.of("startup_phase", "PostConstruct"));
             cachedHufCurrencyId = null;
         }
+    }
+
+    /**
+     * V325 (Batch3-C, Codex P2 #1116): jogi személy ügyfélnél az entitás neve kötelező —
+     * enélkül a 300k+ bizonylat jogi blokkja üresen nyomtatódna. A teljes követelményt
+     * (székhely + legalább egy tényleges tulajdonos) a pénztári UI kényszeríti ki; itt
+     * az integritás-minimum fut, hogy a régi offline pending sorok sync-je ne ragadjon be.
+     */
+    private void requireLegalEntityName(Boolean isLegalEntity, String legalEntityName) {
+        if (Boolean.TRUE.equals(isLegalEntity)
+                && (legalEntityName == null || legalEntityName.isBlank())) {
+            throw new hu.puzzleir.valuta.exception.ValidationException(
+                    "Jogi személy ügyfélnél a jogi személy neve kötelező!");
+        }
+    }
+
+    /**
+     * V325 (Batch3-C): a tényleges tulajdonosok perzisztálása jogi személy ügyfélnél.
+     * Legacy UJTULAJOK tükre — MAX 4 tulajdonos (array[1..4]); a sorszám (ownerNo) a
+     * bizonylat "N. tulajdonos:" fejlécét adja. Üres/null lista: no-op.
+     */
+    private void saveBeneficialOwners(Transaction saved,
+                                      java.util.List<hu.puzzleir.valuta.dto.transaction.BeneficialOwnerDto> owners) {
+        if (owners == null || owners.isEmpty()) {
+            return;
+        }
+        if (owners.size() > 4) {
+            throw new hu.puzzleir.valuta.exception.ValidationException(
+                    "Legfeljebb 4 tényleges tulajdonos adható meg (Pmt./legacy UJTULAJOK korlát)!");
+        }
+        int no = 1;
+        for (var o : owners) {
+            if (o.getName() == null || o.getName().isBlank()) {
+                continue; // üres sor a UI-ból — kihagyjuk
+            }
+            transactionBeneficialOwnerRepository.save(TransactionBeneficialOwner.builder()
+                    .companyId(saved.getCompany().getId())
+                    .transactionId(saved.getId())
+                    .ownerNo(no++)
+                    .ownerName(o.getName().trim())
+                    .ownerAddress(o.getAddress())
+                    .ownerBirthPlace(o.getBirthPlace())
+                    .ownerBirthDate(o.getBirthDate())
+                    .ownerNationality(o.getNationality())
+                    .ownerResidenceAbroad(o.getResidenceAbroad())
+                    .ownerInterestNature(o.getInterestNature())
+                    .ownerInterestExtent(o.getInterestExtent())
+                    .ownerIsPep(Boolean.TRUE.equals(o.getIsPep()))
+                    .build());
+        }
+        log.info("V325: {} tényleges tulajdonos rögzítve a(z) {} tranzakcióhoz",
+                no - 1, saved.getReceiptNumber());
     }
 
     private void linkCameraEvidence(Transaction transaction) {
@@ -380,6 +434,12 @@ public class TransactionService {
                 .customerActorDocumentType(request.getCustomerActorDocumentType())
                 .customerActorDocumentNumber(request.getCustomerActorDocumentNumber())
                 .customerActorAddress(request.getCustomerActorAddress())
+                // V325 (Batch3-C): jogi szemely ugyfel torzsadatai
+                .isLegalEntityCustomer(request.getIsLegalEntityCustomer())
+                .legalEntityName(request.getLegalEntityName())
+                .legalEntitySeat(request.getLegalEntitySeat())
+                .legalEntityTaxNumber(request.getLegalEntityTaxNumber())
+                .legalDeedNumber(request.getLegalDeedNumber())
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
@@ -387,7 +447,9 @@ public class TransactionService {
                 .foreignStatus(ForeignStatus.parseOrNull(request.getForeignStatus()))
                 .build();
 
+        requireLegalEntityName(request.getIsLegalEntityCustomer(), request.getLegalEntityName());
         Transaction saved = transactionRepository.save(transaction);
+        saveBeneficialOwners(saved, request.getBeneficialOwners());
         linkCameraEvidence(saved);
         flagHighRiskAfterBooking(request.getCustomerId());
 
@@ -599,6 +661,12 @@ public class TransactionService {
                 .customerActorDocumentType(request.getCustomerActorDocumentType())
                 .customerActorDocumentNumber(request.getCustomerActorDocumentNumber())
                 .customerActorAddress(request.getCustomerActorAddress())
+                // V325 (Batch3-C): jogi szemely ugyfel torzsadatai
+                .isLegalEntityCustomer(request.getIsLegalEntityCustomer())
+                .legalEntityName(request.getLegalEntityName())
+                .legalEntitySeat(request.getLegalEntitySeat())
+                .legalEntityTaxNumber(request.getLegalEntityTaxNumber())
+                .legalDeedNumber(request.getLegalDeedNumber())
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
                 .notes(request.getNotes())
@@ -606,7 +674,9 @@ public class TransactionService {
                 .foreignStatus(ForeignStatus.parseOrNull(request.getForeignStatus()))
                 .build();
 
+        requireLegalEntityName(request.getIsLegalEntityCustomer(), request.getLegalEntityName());
         Transaction saved = transactionRepository.save(transaction);
+        saveBeneficialOwners(saved, request.getBeneficialOwners());
         linkCameraEvidence(saved);
         flagHighRiskAfterBooking(request.getCustomerId());
 
@@ -1261,6 +1331,13 @@ public class TransactionService {
         private String customerActorDocumentType;
         private String customerActorDocumentNumber;
         private String customerActorAddress;
+        // V325 (Batch3-C): jogi szemely ugyfel + tenyleges tulajdonosok
+        private Boolean isLegalEntityCustomer;
+        private String legalEntityName;
+        private String legalEntitySeat;
+        private String legalEntityTaxNumber;
+        private String legalDeedNumber;
+        private java.util.List<hu.puzzleir.valuta.dto.transaction.BeneficialOwnerDto> beneficialOwners;
         private String notes;
         private Boolean cashierCustomRate;
         private String foreignStatus;
@@ -1317,6 +1394,13 @@ public class TransactionService {
         private String customerActorDocumentType;
         private String customerActorDocumentNumber;
         private String customerActorAddress;
+        // V325 (Batch3-C): jogi szemely ugyfel + tenyleges tulajdonosok
+        private Boolean isLegalEntityCustomer;
+        private String legalEntityName;
+        private String legalEntitySeat;
+        private String legalEntityTaxNumber;
+        private String legalDeedNumber;
+        private java.util.List<hu.puzzleir.valuta.dto.transaction.BeneficialOwnerDto> beneficialOwners;
         private String notes;
         private Boolean cashierCustomRate;
         private String foreignStatus;
