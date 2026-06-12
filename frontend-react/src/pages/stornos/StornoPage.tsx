@@ -449,10 +449,12 @@ export default function StornoPage() {
         qrCodeDataUrl={null}
         allowPrint={isElectron()}
         onPrint={async () => {
+          // Copilot PR #1100: a hibás ágak THROW-val zárulnak — a ReceiptPreviewModal csak
+          // SIKERES onPrint után zár be (2s auto-close), hiba esetén nyitva marad (újrapróbálható).
           printAttemptedRef.current = true
           if (!receiptData) {
             toast.warning('Nyomtatás kihagyva', 'Nincs aktív bizonylat-adat.')
-            return
+            throw new Error('Nincs aktív bizonylat-adat')
           }
           if (!window.electronAPI?.printReceipt) {
             toast.warning(
@@ -461,20 +463,23 @@ export default function StornoPage() {
                 ? 'Electron preload/electronAPI wiring sikertelen — indítsa újra a klienst.'
                 : 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.'
             )
-            return
+            throw new Error('printReceipt nem elérhető')
           }
           try {
             const success = await window.electronAPI.printReceipt(JSON.stringify(receiptData))
-            if (success) {
-              toast.success('Nyomtatás elindítva', `Sztornó bizonylat: ${receiptData.receiptNumber ?? '—'}`)
-            } else {
+            if (!success) {
               toast.error('Nyomtatás sikertelen',
                 'A nyomtató offline / nincs konfigurálva / papír kifogyott. ' +
                 'Beállítások > Nyomtatás → ellenőrizze a soros port + nyomtató nevet.')
+              throw new Error('Nyomtatás sikertelen')
             }
+            toast.success('Nyomtatás elindítva', `Sztornó bizonylat: ${receiptData.receiptNumber ?? '—'}`)
           } catch (err) {
-            const msg = err instanceof Error ? err.message : 'Ismeretlen hiba'
-            toast.error('Nyomtatás váratlan hiba', msg)
+            if (!(err instanceof Error && err.message === 'Nyomtatás sikertelen')) {
+              const msg = err instanceof Error ? err.message : 'Ismeretlen hiba'
+              toast.error('Nyomtatás váratlan hiba', msg)
+            }
+            throw err
           }
         }}
         printLabel={isElectron() ? undefined : 'Nyomtatás nem elérhető'}
