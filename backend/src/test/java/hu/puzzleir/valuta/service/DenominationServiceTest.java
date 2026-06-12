@@ -81,10 +81,10 @@ class DenominationServiceTest {
     }
 
     @Test
-    @DisplayName("classifyHufDenomination: 500 Ft → COIN")
-    void huf500FtShouldBeCoin() {
+    @DisplayName("classifyHufDenomination: 500 Ft → BANKNOTE (MNB: az 500 Ft bankjegy, 500 Ft-os érme nincs)")
+    void huf500FtShouldBeBanknote() {
         DenominationType result = denominationService.classifyHufDenomination(new BigDecimal("500"));
-        assertThat(result).isEqualTo(DenominationType.COIN);
+        assertThat(result).isEqualTo(DenominationType.BANKNOTE);
     }
 
     @Test
@@ -102,35 +102,49 @@ class DenominationServiceTest {
     }
 
     // ============================================================
-    // Bug 2: Foreign currency denomination classification
+    // Bug 2 + Batch2-A: külföldi címlet-katalógus (jegybanki besorolás)
     // ============================================================
 
-    @Test
-    @DisplayName("classifyForeignDenomination: EUR 500 → BANKNOTE")
-    void eur500ShouldBeBanknote() {
-        DenominationType result = denominationService.classifyForeignDenomination(new BigDecimal("500"));
-        assertThat(result).isEqualTo(DenominationType.BANKNOTE);
+    private static DenominationType catalogType(String currency, String faceValue) {
+        return DenominationService.FOREIGN_DENOMINATIONS.get(currency).stream()
+                .filter(s -> s.faceValue().compareTo(new BigDecimal(faceValue)) == 0)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(currency + " " + faceValue + " nincs a katalógusban"))
+                .type();
     }
 
     @Test
-    @DisplayName("classifyForeignDenomination: EUR 1 → BANKNOTE")
-    void eur1ShouldBeBanknote() {
-        DenominationType result = denominationService.classifyForeignDenomination(new BigDecimal("1"));
-        assertThat(result).isEqualTo(DenominationType.BANKNOTE);
+    @DisplayName("katalógus: EUR 500 → BANKNOTE, EUR 2/1 → COIN (ECB)")
+    void eurCatalogTypesShouldMatchEcb() {
+        assertThat(catalogType("EUR", "500")).isEqualTo(DenominationType.BANKNOTE);
+        assertThat(catalogType("EUR", "2")).isEqualTo(DenominationType.COIN);
+        assertThat(catalogType("EUR", "1")).isEqualTo(DenominationType.COIN);
+        assertThat(catalogType("EUR", "0.01")).isEqualTo(DenominationType.COIN);
     }
 
     @Test
-    @DisplayName("classifyForeignDenomination: EUR 0.50 → COIN")
-    void eur050ShouldBeCoin() {
-        DenominationType result = denominationService.classifyForeignDenomination(new BigDecimal("0.50"));
-        assertThat(result).isEqualTo(DenominationType.COIN);
+    @DisplayName("katalógus: USD 1 → BANKNOTE (Fed), CHF 5 → COIN (SNB), JPY 500 → COIN (BoJ)")
+    void mixedCatalogTypesShouldMatchCentralBanks() {
+        assertThat(catalogType("USD", "1")).isEqualTo(DenominationType.BANKNOTE);
+        assertThat(catalogType("CHF", "5")).isEqualTo(DenominationType.COIN);
+        assertThat(catalogType("JPY", "500")).isEqualTo(DenominationType.COIN);
     }
 
     @Test
-    @DisplayName("classifyForeignDenomination: EUR 0.01 → COIN")
-    void eur001ShouldBeCoin() {
-        DenominationType result = denominationService.classifyForeignDenomination(new BigDecimal("0.01"));
-        assertThat(result).isEqualTo(DenominationType.COIN);
+    @DisplayName("katalógus: mind a 21 forgalmazott valuta + EUA benne van, RUB NINCS (user-direktíva)")
+    void catalogShouldCoverTradedCurrenciesWithoutRub() {
+        assertThat(DenominationService.FOREIGN_DENOMINATIONS.keySet()).containsExactlyInAnyOrder(
+                "EUR", "EUA", "USD", "GBP", "CHF", "AUD", "CAD", "JPY", "CZK", "PLN", "RON",
+                "RSD", "ILS", "UAH", "TRY", "CNY", "BAM", "THB", "BRL", "MXN", "NZD");
+        assertThat(DenominationService.FOREIGN_DENOMINATIONS).doesNotContainKey("RUB");
+    }
+
+    @Test
+    @DisplayName("katalógus: EUA (euró érme) kizárólag COIN sorokat tartalmaz")
+    void euaCatalogShouldBeCoinsOnly() {
+        assertThat(DenominationService.FOREIGN_DENOMINATIONS.get("EUA"))
+                .isNotEmpty()
+                .allSatisfy(spec -> assertThat(spec.type()).isEqualTo(DenominationType.COIN));
     }
 
     // ============================================================

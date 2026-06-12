@@ -61,48 +61,63 @@ public class DenominationService {
         new BigDecimal("1")
     };
 
-    // Külföldi valuta bankjegy és érme címletek
-    private static final Map<String, BigDecimal[]> FOREIGN_DENOMINATIONS;
+    /**
+     * Címlet-specifikáció: névérték + bankjegy/érme besorolás.
+     * A besorolás jegybanki tény (nem küszöb-heurisztika): pl. EUR 1/2 érme,
+     * CHF 5/2/1 érme, JPY 500 érme, USD 1 bankjegy.
+     */
+    record DenominationSpec(BigDecimal faceValue, DenominationType type) {}
+
+    /**
+     * Külföldi valuta címlet-katalógus (Batch2-A, 2026-06-12).
+     *
+     * Forrás: hivatalos jegybanki címlet-listák (ECB, Fed, BoE, SNB, RBA, BoC,
+     * BoJ, CNB, NBP, BNR, NBS, BoI, NBU, TCMB, PBoC, CBBH, BoT, BCB, Banxico,
+     * RBNZ), keresztvalidálva a legacy EXCMD katalógussal
+     * (legacy-transfer/text/VALUTA/DLL/KCIMLET/MAKEDLL/Unit2.pas:111-135).
+     * A V320 migráció SQL-katalógusával 1:1 azonos — eltérés esetén a V320 a
+     * meglévő sorokat, ez a térkép az ÚJ branch-inicializálást vezérli.
+     * RUB szándékosan nincs benne (V319: nem forgalmazott, user-direktíva).
+     * EUA = euró érme (apró) külön valutakódként, csak COIN sorokkal.
+     */
+    static final Map<String, List<DenominationSpec>> FOREIGN_DENOMINATIONS;
+
+    private static List<DenominationSpec> specs(String banknotesCsv, String coinsCsv) {
+        List<DenominationSpec> list = new ArrayList<>();
+        for (String v : banknotesCsv.split(",")) {
+            if (!v.isBlank()) list.add(new DenominationSpec(new BigDecimal(v.trim()), DenominationType.BANKNOTE));
+        }
+        for (String v : coinsCsv.split(",")) {
+            if (!v.isBlank()) list.add(new DenominationSpec(new BigDecimal(v.trim()), DenominationType.COIN));
+        }
+        return List.copyOf(list);
+    }
 
     static {
         FOREIGN_DENOMINATIONS = new LinkedHashMap<>();
-        // EUR
-        FOREIGN_DENOMINATIONS.put("EUR", new BigDecimal[]{
-            new BigDecimal("500"), new BigDecimal("200"), new BigDecimal("100"),
-            new BigDecimal("50"), new BigDecimal("20"), new BigDecimal("10"),
-            new BigDecimal("5"), new BigDecimal("2"), new BigDecimal("1"),
-            new BigDecimal("0.50"), new BigDecimal("0.20"), new BigDecimal("0.10"),
-            new BigDecimal("0.05"), new BigDecimal("0.02"), new BigDecimal("0.01")
-        });
-        // USD
-        FOREIGN_DENOMINATIONS.put("USD", new BigDecimal[]{
-            new BigDecimal("100"), new BigDecimal("50"), new BigDecimal("20"),
-            new BigDecimal("10"), new BigDecimal("5"), new BigDecimal("2"),
-            new BigDecimal("1"), new BigDecimal("0.50"), new BigDecimal("0.25"),
-            new BigDecimal("0.10"), new BigDecimal("0.05"), new BigDecimal("0.01")
-        });
-        // GBP
-        FOREIGN_DENOMINATIONS.put("GBP", new BigDecimal[]{
-            new BigDecimal("50"), new BigDecimal("20"), new BigDecimal("10"),
-            new BigDecimal("5"), new BigDecimal("2"), new BigDecimal("1"),
-            new BigDecimal("0.50"), new BigDecimal("0.20"), new BigDecimal("0.10"),
-            new BigDecimal("0.05"), new BigDecimal("0.02"), new BigDecimal("0.01")
-        });
-        // CHF
-        FOREIGN_DENOMINATIONS.put("CHF", new BigDecimal[]{
-            new BigDecimal("1000"), new BigDecimal("200"), new BigDecimal("100"),
-            new BigDecimal("50"), new BigDecimal("20"), new BigDecimal("10"),
-            new BigDecimal("5"), new BigDecimal("2"), new BigDecimal("1"),
-            new BigDecimal("0.50"), new BigDecimal("0.20"), new BigDecimal("0.10"),
-            new BigDecimal("0.05")
-        });
-        // CZK
-        FOREIGN_DENOMINATIONS.put("CZK", new BigDecimal[]{
-            new BigDecimal("5000"), new BigDecimal("2000"), new BigDecimal("1000"),
-            new BigDecimal("500"), new BigDecimal("200"), new BigDecimal("100"),
-            new BigDecimal("50"), new BigDecimal("20"), new BigDecimal("10"),
-            new BigDecimal("5"), new BigDecimal("2"), new BigDecimal("1")
-        });
+        FOREIGN_DENOMINATIONS.put("EUR", specs("500,200,100,50,20,10,5", "2,1,0.50,0.20,0.10,0.05,0.02,0.01"));
+        FOREIGN_DENOMINATIONS.put("EUA", specs("", "2,1,0.50,0.20,0.10,0.05,0.02,0.01"));
+        FOREIGN_DENOMINATIONS.put("USD", specs("100,50,20,10,5,2,1", "0.50,0.25,0.10,0.05,0.01"));
+        FOREIGN_DENOMINATIONS.put("GBP", specs("50,20,10,5", "2,1,0.50,0.20,0.10,0.05,0.02,0.01"));
+        FOREIGN_DENOMINATIONS.put("CHF", specs("1000,200,100,50,20,10", "5,2,1,0.50,0.20,0.10,0.05"));
+        FOREIGN_DENOMINATIONS.put("AUD", specs("100,50,20,10,5", "2,1,0.50,0.20,0.10,0.05"));
+        FOREIGN_DENOMINATIONS.put("CAD", specs("100,50,20,10,5", "2,1,0.25,0.10,0.05"));
+        FOREIGN_DENOMINATIONS.put("JPY", specs("10000,5000,2000,1000", "500,100,50,10,5,1"));
+        FOREIGN_DENOMINATIONS.put("CZK", specs("5000,2000,1000,500,200,100", "50,20,10,5,2,1"));
+        FOREIGN_DENOMINATIONS.put("PLN", specs("500,200,100,50,20,10", "5,2,1,0.50,0.20,0.10,0.05,0.02,0.01"));
+        FOREIGN_DENOMINATIONS.put("RON", specs("500,200,100,50,20,10,5,1", "0.50,0.10,0.05,0.01"));
+        // RSD 20/10: bankjegyként ÉS érmeként is forog — bankjegyként vesszük fel
+        FOREIGN_DENOMINATIONS.put("RSD", specs("5000,2000,1000,500,200,100,50,20,10", "5,2,1"));
+        FOREIGN_DENOMINATIONS.put("ILS", specs("200,100,50,20", "10,5,2,1,0.50,0.10"));
+        // UAH 1-10: a kisbankjegyeket érmék váltották (a régi kisbankjegyek 2026.03.02-tól bevontak)
+        FOREIGN_DENOMINATIONS.put("UAH", specs("1000,500,200,100,50,20", "10,5,2,1,0.50,0.10"));
+        FOREIGN_DENOMINATIONS.put("TRY", specs("200,100,50,20,10,5", "1,0.50,0.25,0.10,0.05,0.01"));
+        FOREIGN_DENOMINATIONS.put("CNY", specs("100,50,20,10,5,1", "0.50,0.10"));
+        FOREIGN_DENOMINATIONS.put("BAM", specs("200,100,50,20,10", "5,2,1,0.50,0.20,0.10,0.05"));
+        FOREIGN_DENOMINATIONS.put("THB", specs("1000,500,100,50,20", "10,5,2,1,0.50,0.25"));
+        FOREIGN_DENOMINATIONS.put("BRL", specs("200,100,50,20,10,5,2", "1,0.50,0.25,0.10,0.05"));
+        FOREIGN_DENOMINATIONS.put("MXN", specs("1000,500,200,100,50,20", "10,5,2,1,0.50"));
+        FOREIGN_DENOMINATIONS.put("NZD", specs("100,50,20,10,5", "2,1,0.50,0.20,0.10"));
     }
 
     /**
@@ -234,18 +249,11 @@ public class DenominationService {
      * >= 1000 → BANKNOTE, < 1000 → COIN
      */
     DenominationType classifyHufDenomination(BigDecimal faceValue) {
-        return faceValue.compareTo(new BigDecimal("1000")) >= 0
-                ? DenominationType.BANKNOTE
-                : DenominationType.COIN;
-    }
-
-    /**
-     * Külföldi valuta (pl. EUR) névérték típus meghatározása.
-     *
-     * >= 1 → BANKNOTE, < 1 → COIN (fillér/cent szintű érmék)
-     */
-    DenominationType classifyForeignDenomination(BigDecimal faceValue) {
-        return faceValue.compareTo(BigDecimal.ONE) >= 0
+        // MNB-tény: forgalomban lévő bankjegyek 500-20000 Ft, érmék 5-200 Ft.
+        // Az 500 Ft BANKJEGY (Rákóczi, megújított sorozat) — 500 Ft-os érme nem
+        // létezik. A korábbi >=1000 küszöb (és a rá épülő V169) téves volt; a
+        // meglévő sorokat a V320 tipus-korrekciója javítja.
+        return faceValue.compareTo(new BigDecimal("500")) >= 0
                 ? DenominationType.BANKNOTE
                 : DenominationType.COIN;
     }
@@ -292,19 +300,22 @@ public class DenominationService {
 
         log.info("HUF címletek inicializálva irodához: {}", branch.getName());
 
-        // Külföldi valuta címletek inicializálása (idempotens — meglévő bejegyzések kihagyva)
-        for (Map.Entry<String, BigDecimal[]> entry : FOREIGN_DENOMINATIONS.entrySet()) {
+        // Külföldi valuta címletek inicializálása (idempotens — meglévő bejegyzések kihagyva).
+        // Csak AKTÍV valutára (RUB pl. V319 óta inaktív — arra nem hozunk létre sort).
+        for (Map.Entry<String, List<DenominationSpec>> entry : FOREIGN_DENOMINATIONS.entrySet()) {
             String currencyCode = entry.getKey();
-            currencyRepository.findByCode(currencyCode).ifPresent(foreignCurrency -> {
-                for (BigDecimal faceValue : entry.getValue()) {
+            currencyRepository.findByCode(currencyCode)
+                    .filter(c -> Boolean.TRUE.equals(c.getActive()))
+                    .ifPresent(foreignCurrency -> {
+                for (DenominationSpec spec : entry.getValue()) {
                     if (denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(
-                            branchId, foreignCurrency.getId(), faceValue).isEmpty()) {
+                            branchId, foreignCurrency.getId(), spec.faceValue()).isEmpty()) {
                         Denomination denomination = Denomination.builder()
                                 .company(company)
                                 .branch(branch)
                                 .currency(foreignCurrency)
-                                .faceValue(faceValue)
-                                .denominationType(classifyForeignDenomination(faceValue))
+                                .faceValue(spec.faceValue())
+                                .denominationType(spec.type())
                                 .quantity(0)
                                 .active(true)
                                 .build();
