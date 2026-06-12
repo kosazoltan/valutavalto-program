@@ -595,10 +595,20 @@ export async function saveAndSyncPendingStorno(
 
     const savedId = await electronAPI.savePendingStorno(entry)
 
+    // Codex PR #1100 P2: a TÉNYLEGES helyi sztornó-referencia (local_reference_number,
+    // pl. LST...) lekérdezése a sync ELŐTT — az azonnal nyomtatott offline bizonylat a
+    // perzisztált/auditálható számot kapja (a reprint-listával egyezően), nem fabrikáltat.
+    // A transfer-úttal azonos minta; lekérdezés-hiba → null fallback.
+    let localReferenceNumbers: (string | null)[] = [null]
+    try {
+      const rows = await electronAPI.getPendingStornos()
+      localReferenceNumbers = [rows.find((row) => row.id === savedId)?.local_reference_number ?? null]
+    } catch { /* régi telepítő / IPC-hiba → null fallback */ }
+
     return finalizeSyncOutcome([savedId], async () => {
       const pending = await electronAPI.getPendingStornos()
       return pending.map((row) => row.id)
-    })
+    }, localReferenceNumbers)
   })
 }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { AlertCircle, CheckCircle, XCircle, ArrowLeft, Save } from 'lucide-react'
 import { stornoApi, transactionApi, StornoRequest, StornoCheckResult, StornoApproval, Transaction } from '../../services/api/index'
@@ -9,7 +9,12 @@ import {
   recordLocalAuditEvent,
   saveAndSyncPendingStorno,
 } from '../../utils/electronTransactions'
+import { getCompanyType } from '../../utils/localQueue'
+import { isElectron } from '../../utils/electron'
 import StornoPinApprovalModal from '../../components/auth/StornoPinApprovalModal'
+import ReceiptPreviewModal from '../../components/electron/ReceiptPreviewModal'
+import type { PrintReceiptData } from '../../types/receipt'
+import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
@@ -28,11 +33,19 @@ export default function StornoPage() {
   const [error, setError] = useState<string | null>(null)
   
   const [reason, setReason] = useState('')
-  const [customRate, setCustomRate] = useState<string>('')
-  const [paymentMethod, setPaymentMethod] = useState<string>('CASH')
+  // FK-penztar-batch D.1 (2026-06-12, user-kérés): az „Egyedi árfolyam" és „Fizetési mód"
+  // mezők ELTÁVOLÍTVA — csak az indok marad. A paymentMethodDid a backenden HALOTT mező
+  // volt (sehol nem olvassák, a sztornó mindig az eredeti fizetési módot örökli —
+  // TransactionReversalService:218), az üres customExchangeRate pedig default az eredeti
+  // árfolyam (TransactionReversalService:184-189).
   // Telefonos supervisor-PIN jóváhagyás (egyszemélyes iroda): a PENDING kéréshez
   // a pénztáros a helyszínről, telefonon bediktált PIN-nel kérhet jóváhagyást.
   const [showPinApproval, setShowPinApproval] = useState(false)
+  // FK-penztar-batch D.2: sztornó után bizonylat-előnézet + nyomtatás (a vétel/eladás
+  // CashierTransactionPage mintája). A navigáció a modal ZÁRÁSAKOR történik.
+  const [receiptData, setReceiptData] = useState<PrintReceiptData | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string>('')
+  const printAttemptedRef = useRef(false)
 
   const loadTransaction = useCallback(async (): Promise<void> => {
     try {
@@ -118,12 +131,31 @@ export default function StornoPage() {
 
     try {
       setLoading(true)
+      // D.1: csak transactionId + reason + approvalId megy — az egyedi árfolyam és a
+      // fizetési mód mezők megszűntek (a backend defaultja: eredeti árfolyam + eredeti
+      // fizetési mód). A StornoRequest mezői opcionálisak, a backend DTO változatlan.
       const request: StornoRequest = {
         transactionId: id!,
         reason,
         approvalId: approval?.id,
-        customExchangeRate: customRate ? parseFloat(customRate) : undefined,
-        paymentMethodDid: paymentMethod
+      }
+
+      const now = new Date()
+      const receiptBase = {
+        type: 'storno' as const,
+        companyType: getCompanyType(worker),
+        branchCode: worker?.branchCode ?? '',
+        cashierName: worker?.fullName ?? '',
+        date: now.toLocaleDateString('hu-HU'),
+        time: now.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }),
+        currencyCode: transaction?.currencyCode,
+        foreignAmount: transaction?.currencyAmount ?? undefined,
+        // D.1 nyomán a sztornó mindig az EREDETI árfolyammal könyvel.
+        rate: transaction?.exchangeRate ?? undefined,
+        customerName: transaction?.customerName ?? undefined,
+        customerDocNumber: transaction?.customerDocumentNumber ?? undefined,
+        stornoReason: reason,
+        originalReceiptNumber: transaction?.receiptNumber,
       }
 
       if (electronQueueAvailable && transaction) {
@@ -137,21 +169,37 @@ export default function StornoPage() {
           exchangeRate: transaction.exchangeRate ?? null,
           reason,
           approvalId: approval?.id ?? null,
-          customExchangeRate: customRate ? parseFloat(customRate) : null,
-          paymentMethod,
+          customExchangeRate: null,
+          paymentMethod: null,
           customerName: transaction.customerName ?? null,
           customerDocumentNumber: transaction.customerDocumentNumber ?? null,
         })
-        navigate('/transactions', {
-          state: {
-            message: outcome.allSavedSynced
-              ? 'Sztornó helyileg rögzítve és azonnal szinkronizálva'
-              : 'Sztornó helyileg rögzítve. A feltöltés az Electron queue-ból folytatódik.',
-          },
+        // D.2: bizonylat-előnézet a localQueue buildStornoReceiptData mezőkiosztása
+        // szerint — offline a helyi referencia-szám szerepel (sync utáni reprint a
+        // Bizonylatok oldalról a végleges sorszámmal elérhető).
+        setSuccessMessage(outcome.allSavedSynced
+          ? 'Sztornó helyileg rögzítve és azonnal szinkronizálva'
+          : 'Sztornó helyileg rögzítve. A feltöltés az Electron queue-ból folytatódik.')
+        setReceiptData({
+          ...receiptBase,
+          receiptNumber: outcome.localReferenceNumbers?.[0] ?? `LOCAL-STORNO-${transaction.id}`,
+          hufAmount: transaction.hufAmount,
+          roundedHufAmount: transaction.hufAmount,
         })
       } else {
-        await stornoApi.execute(request, workerId)
-        navigate('/transactions', { state: { message: 'Sztornó sikeresen végrehajtva' } })
+        // Online: a backend a teljes REVERSAL tranzakciót adja vissza — saját
+        // bizonylatszámmal (az eredeti típus számlálójából, B.6 4. szabály).
+        const reversal = await stornoApi.execute(request, workerId)
+        setSuccessMessage('Sztornó sikeresen végrehajtva')
+        setReceiptData({
+          ...receiptBase,
+          receiptNumber: reversal.receiptNumber ?? `STORNO-${reversal.id}`,
+          currencyCode: reversal.currencyCode ?? receiptBase.currencyCode,
+          foreignAmount: reversal.currencyAmount ?? receiptBase.foreignAmount,
+          rate: reversal.exchangeRate ?? receiptBase.rate,
+          hufAmount: reversal.hufAmount ?? transaction?.hufAmount,
+          roundedHufAmount: reversal.hufAmount ?? transaction?.hufAmount,
+        })
       }
     } catch (err) {
       const errorMessage = getErrorMessage(err)
@@ -361,34 +409,8 @@ export default function StornoPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="form-label">{t('stornos.egyediArfolyamOpcionalis')}</label>
-                <input
-                  type="number"
-                  value={customRate}
-                  onChange={(e) => setCustomRate(e.target.value)}
-                  className="form-input"
-                  placeholder="Ha üres, az eredeti árfolyam kerül használatra"
-                  step="0.0001"
-                  disabled={loading}
-                />
-              </div>
-              <div>
-                <label className="form-label">{t('stornos.fizetesiMod')}</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="form-input"
-                  disabled={loading}
-                >
-                  <option value="CASH">{t('stornos.keszpenz')}</option>
-                  <option value="CARD">{t('stornos.kartya')}</option>
-                  <option value="MIXED">{t('stornos.vegyes')}</option>
-                </select>
-              </div>
-            </div>
-
+            {/* D.1 (2026-06-12): az „Egyedi árfolyam" és „Fizetési mód" mezők eltávolítva —
+                a sztornó mindig az eredeti árfolyammal és fizetési móddal könyvel. */}
             <div className="flex gap-3 pt-4 border-t">
               <button
                 onClick={handleExecuteStorno}
@@ -409,6 +431,59 @@ export default function StornoPage() {
           </div>
         </div>
       )}
+
+      {/* D.2 (2026-06-12): sztornó-bizonylat előnézet + nyomtatás a végrehajtás után.
+          A meglévő 'storno' template-et használja (printer.ts + ReceiptPreviewModal);
+          a navigáció a modal zárásakor történik, hogy a siker-üzenet ne vesszen el. */}
+      <ReceiptPreviewModal
+        isOpen={receiptData !== null}
+        onClose={() => {
+          if (!printAttemptedRef.current) {
+            toast.info('Sztornó befejezve', 'A bizonylatot megtekintette nyomtatás nélkül.')
+          }
+          printAttemptedRef.current = false
+          setReceiptData(null)
+          navigate('/transactions', { state: { message: successMessage } })
+        }}
+        receiptData={receiptData}
+        qrCodeDataUrl={null}
+        allowPrint={isElectron()}
+        onPrint={async () => {
+          // Copilot PR #1100: a hibás ágak THROW-val zárulnak — a ReceiptPreviewModal csak
+          // SIKERES onPrint után zár be (2s auto-close), hiba esetén nyitva marad (újrapróbálható).
+          printAttemptedRef.current = true
+          if (!receiptData) {
+            toast.warning('Nyomtatás kihagyva', 'Nincs aktív bizonylat-adat.')
+            throw new Error('Nincs aktív bizonylat-adat')
+          }
+          if (!window.electronAPI?.printReceipt) {
+            toast.warning(
+              'Nyomtatás nem elérhető',
+              isElectron()
+                ? 'Electron preload/electronAPI wiring sikertelen — indítsa újra a klienst.'
+                : 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.'
+            )
+            throw new Error('printReceipt nem elérhető')
+          }
+          try {
+            const success = await window.electronAPI.printReceipt(JSON.stringify(receiptData))
+            if (!success) {
+              toast.error('Nyomtatás sikertelen',
+                'A nyomtató offline / nincs konfigurálva / papír kifogyott. ' +
+                'Beállítások > Nyomtatás → ellenőrizze a soros port + nyomtató nevet.')
+              throw new Error('Nyomtatás sikertelen')
+            }
+            toast.success('Nyomtatás elindítva', `Sztornó bizonylat: ${receiptData.receiptNumber ?? '—'}`)
+          } catch (err) {
+            if (!(err instanceof Error && err.message === 'Nyomtatás sikertelen')) {
+              const msg = err instanceof Error ? err.message : 'Ismeretlen hiba'
+              toast.error('Nyomtatás váratlan hiba', msg)
+            }
+            throw err
+          }
+        }}
+        printLabel={isElectron() ? undefined : 'Nyomtatás nem elérhető'}
+      />
     </div>
   )
 }
