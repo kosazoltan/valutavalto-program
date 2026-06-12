@@ -730,7 +730,7 @@ public class EscPosReceiptService {
         }
 
         if (data.getBeneficialOwners() != null && !data.getBeneficialOwners().isEmpty()) {
-            b.line("---------------------------------------");
+            b.line("----------------------------------------");
             b.line("Tényleges tulajdonosok adatai:");
             int no = 1;
             for (var o : data.getBeneficialOwners()) {

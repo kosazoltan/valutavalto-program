@@ -156,6 +156,20 @@ public class TransactionService {
     }
 
     /**
+     * V325 (Batch3-C, Codex P2 #1116): jogi személy ügyfélnél az entitás neve kötelező —
+     * enélkül a 300k+ bizonylat jogi blokkja üresen nyomtatódna. A teljes követelményt
+     * (székhely + legalább egy tényleges tulajdonos) a pénztári UI kényszeríti ki; itt
+     * az integritás-minimum fut, hogy a régi offline pending sorok sync-je ne ragadjon be.
+     */
+    private void requireLegalEntityName(Boolean isLegalEntity, String legalEntityName) {
+        if (Boolean.TRUE.equals(isLegalEntity)
+                && (legalEntityName == null || legalEntityName.isBlank())) {
+            throw new hu.puzzleir.valuta.exception.ValidationException(
+                    "Jogi személy ügyfélnél a jogi személy neve kötelező!");
+        }
+    }
+
+    /**
      * V325 (Batch3-C): a tényleges tulajdonosok perzisztálása jogi személy ügyfélnél.
      * Legacy UJTULAJOK tükre — MAX 4 tulajdonos (array[1..4]); a sorszám (ownerNo) a
      * bizonylat "N. tulajdonos:" fejlécét adja. Üres/null lista: no-op.
@@ -433,6 +447,7 @@ public class TransactionService {
                 .foreignStatus(ForeignStatus.parseOrNull(request.getForeignStatus()))
                 .build();
 
+        requireLegalEntityName(request.getIsLegalEntityCustomer(), request.getLegalEntityName());
         Transaction saved = transactionRepository.save(transaction);
         saveBeneficialOwners(saved, request.getBeneficialOwners());
         linkCameraEvidence(saved);
@@ -659,6 +674,7 @@ public class TransactionService {
                 .foreignStatus(ForeignStatus.parseOrNull(request.getForeignStatus()))
                 .build();
 
+        requireLegalEntityName(request.getIsLegalEntityCustomer(), request.getLegalEntityName());
         Transaction saved = transactionRepository.save(transaction);
         saveBeneficialOwners(saved, request.getBeneficialOwners());
         linkCameraEvidence(saved);

@@ -392,7 +392,7 @@ export function buildLegalEntityLines(data: PrintReceiptData): string[] {
   }
   const owners = data.beneficialOwners ?? [];
   if (owners.length > 0) {
-    lines.push('---------------------------------------');
+    lines.push('----------------------------------------');
     lines.push('Tényleges tulajdonosok adatai:');
     owners.forEach((o, i) => {
       lines.push('');

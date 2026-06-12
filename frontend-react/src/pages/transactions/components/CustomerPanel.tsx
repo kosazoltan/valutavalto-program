@@ -313,6 +313,18 @@ export default function CustomerPanel({
   }, [hufTotal, onAmlResult])
 
   const handleSelectCustomer = useCallback(async (customer: ApiCustomer) => {
+    // V325 (Batch3-C, Codex P2 #1116): a kivalasztott-ugyfel utvonal nem megy at a
+    // missingRequiredFields kapun, ezert itt kulon guard — jogi szemely jelolesnel
+    // az entitas-torzsadat + legalabb egy tenyleges tulajdonos nelkul nem mehet tovabb.
+    if (isLegalEntity
+        && (!legalEntityName.trim() || !legalEntitySeat.trim()
+          || !beneficialOwners.some((o) => o.name.trim()))) {
+      toast.warning(
+        'Hiányzó jogi személy adatok',
+        'Jogi személy nevében eljárásnál a jogi személy neve, székhelye és legalább egy tényleges tulajdonos megadása kötelező.',
+      )
+      return
+    }
     setSelectedCustomer(customer)
     setShowResults(false)
     setSearchQuery('')
@@ -360,7 +372,8 @@ export default function CustomerPanel({
     onCustomerReady(data)
   }, [hufTotal, onCustomerReady, runAmlCheck, isPep, sourceOfFunds, sourceOfFundsDocType, sourceOfFundsDocDate, onOwnBehalf, actorName,
       pepKind, actorBirthPlace, actorBirthDate, actorMotherName, actorNationality,
-      actorDocumentType, actorDocumentNumber, actorAddress, legalEntityData])
+      actorDocumentType, actorDocumentNumber, actorAddress, legalEntityData,
+      isLegalEntity, legalEntityName, legalEntitySeat, beneficialOwners])
 
   // Collect missing required fields per identification level. Empty array = form OK.
   // 2026-05-15 user-direktíva: SIMPLIFIED (100-300k) szinthez Pmt. 2017. évi LIII. tv.
@@ -393,10 +406,19 @@ export default function CustomerPanel({
       // V235 (HIBA #15 2026-05-19): ha PEP, a minoseget is meg kell jelolni
       if (isPep && !pepKind) missing.push('PEP minőség')
     }
+    // V325 (Batch3-C, Codex P2 #1116): jogi szemely eseten az entitas-torzsadat
+    // + legalabb egy tenyleges tulajdonos kotelezo (Pmt. 8-9.§, legacy JOGISZEMELY/
+    // UJTULAJOK) — kulonben a 300k+ bizonylat jogi blokkja hianyosan nyomtatodna.
+    if (isLegalEntity) {
+      if (!legalEntityName.trim()) missing.push('Jogi személy neve')
+      if (!legalEntitySeat.trim()) missing.push('Jogi személy székhelye')
+      if (!beneficialOwners.some((o) => o.name.trim())) missing.push('Tényleges tulajdonos (legalább egy)')
+    }
     if (!privacyNoticeAccepted) missing.push('Adatkezelési tájékoztató')
     return missing
   }, [identificationLevel, customerName, customerDocNumber, customerBirthPlace, customerBirthDate, customerMotherName, customerAddress, hufTotal, sourceOfFunds, onOwnBehalf, actorName,
-      isPep, pepKind, actorBirthPlace, actorBirthDate, actorMotherName, actorDocumentNumber, actorAddress, privacyNoticeAccepted])
+      isPep, pepKind, actorBirthPlace, actorBirthDate, actorMotherName, actorDocumentNumber, actorAddress, privacyNoticeAccepted,
+      isLegalEntity, legalEntityName, legalEntitySeat, beneficialOwners])
 
   const handleSaveManualCustomer = useCallback(async () => {
     // Replace silent `return` with explicit toast — user-visible feedback per #581 bug report
