@@ -39,6 +39,9 @@ public class TransferService {
     private final ReceiptSequenceService receiptSequenceService;
     private final TransferSerialSequenceService transferSerialSequenceService;
     private final AuditLogService auditLogService;
+    // Batch3-B (currency_stock-doc FR-1/FR-2): a vault-erintett kassza-mozgasok
+    // currency_stock ("B konyv") tukrozesehez.
+    private final VaultStockFlowService vaultStockFlowService;
 
     @Transactional(rollbackFor = Exception.class)
     public TransferDto create(CreateTransferDto dto, Long workerId) {
@@ -759,6 +762,10 @@ public class TransferService {
         balance.updateBalance(amount, false);
         cashBalanceRepository.save(balance);
         log.debug("Kassza csökkentve: {} {} -= {}", branch.getCode(), currency.getCode(), amount);
+        // Batch3-B FR-2: vault branch-nel a currency_stock IS csokken — a kozos ponton
+        // tukrozve a create (irany-szerinti), a receive es a sztorno-visszafordito agak
+        // automatikusan konzisztensek.
+        applyVaultStockMirror(branch, currency, amount, false);
     }
 
     /**
@@ -774,6 +781,26 @@ public class TransferService {
         balance.updateBalance(amount, true);
         cashBalanceRepository.save(balance);
         log.debug("Kassza növelve: {} {} += {}", branch.getCode(), currency.getCode(), amount);
+        // Batch3-B FR-1: vault branch-nel a currency_stock IS no.
+        applyVaultStockMirror(branch, currency, amount, true);
+    }
+
+    /**
+     * Batch3-B (currency_stock-doc FR-1/FR-2 + 6.b audit): a vault branch-et erinto
+     * kassza-mozgas tukrozese a currency_stock-ba (VaultStockFlowService) + kotelezo
+     * audit-bejegyzes (action=VAULT_STOCK_UPDATE, TX-KAT minta). Nem-vault branch: no-op.
+     */
+    private void applyVaultStockMirror(Branch branch, Currency currency, BigDecimal amount, boolean increase) {
+        if (!Boolean.TRUE.equals(branch.getIsVault())) {
+            return;
+        }
+        vaultStockFlowService.applyGenericVaultStock(branch, currency.getCode(), amount, increase);
+        auditLogService.log("VAULT_STOCK_UPDATE",
+                String.format("Értéktári készlet %s: %s%s %s (branch: %s, territory: %s)",
+                        increase ? "növelés" : "csökkentés",
+                        increase ? "+" : "-", amount, currency.getCode(),
+                        branch.getCode(), branch.getVaultTerritoryId()),
+                branch.getId().toString());
     }
 
     /**

@@ -109,6 +109,65 @@ public class VaultStockFlowService {
         log.info("Transfer COMPLETED: {} {} {} -> {}", amount, currencyCode, sourceBranchCode, targetBranchCode);
     }
 
+    /**
+     * Batch3-B (currency_stock-doc FR-1/FR-2, 2026-06-12): a GENERIKUS atadas-atvetel
+     * (TransferService) vault-erintett aganak currency_stock ("B konyv") tukrozese.
+     *
+     * <p>A TransferService increase/decreaseCashBalance hivasaibol fut, igy a create
+     * (irany-szerinti), a receive (F-fogado) ES a sztorno-visszafordito agak
+     * automatikusan konzisztensek. A branch SAJAT vault_territory_id-jat hasznalja
+     * (a V322 backfill tolti) — NEM az "elso aktiv territory"-t, mint a regi
+     * collection/distribution helper.
+     *
+     * <p>Szabalyok:
+     * <ul>
+     *   <li>Nem-vault branch: no-op.</li>
+     *   <li>Kitoltetlen vault_territory_id: EXPLICIT hiba (doc edge-case: "ne csendes 0").</li>
+     *   <li>Novekedes: a meglevo WAC-on (az atlagar nem valtozik — a belso mozgas
+     *       bekerulesi ara tenyadatbol nem ismert); ures/0 WAC-nal HUF=1, deviza=0
+     *       (a WAC a jovobeni vault-modulos mozgasokbol epul).</li>
+     *   <li>Csokkenes elegtelen keszletnel: WARN + negativba mehet — a
+     *       decrementBranchCashBalance precedensevel azonos uzleti szabaly (a penz
+     *       fizikailag mar mozgott, a konyveles nem blokkolhatja); a V324 backfill
+     *       es a kesobbi adatpotlas rendezi.</li>
+     * </ul>
+     */
+    public void applyGenericVaultStock(Branch branch, String currencyCode,
+                                       BigDecimal amount, boolean increase) {
+        if (!Boolean.TRUE.equals(branch.getIsVault())) {
+            return;
+        }
+        Integer territoryId = branch.getVaultTerritoryId();
+        if (territoryId == null) {
+            throw new ValidationException(String.format(
+                    "Az értéktár (%s) vault_territory_id mezője nincs kitöltve — a készlet-könyvelés "
+                            + "nem végezhető el (V322 backfill / törzsadat-rendezés szükséges).",
+                    branch.getCode()));
+        }
+        UUID companyId = branch.getCompany().getId();
+        CurrencyStock stock = getOrCreateStock(companyId, ENTITY_TYPE_VAULT,
+                territoryId.toString(), currencyCode);
+
+        BigDecimal oldQty = stock.getQuantity();
+        if (increase) {
+            BigDecimal wac = stock.getWeightedAvgCost() != null && stock.getWeightedAvgCost().signum() > 0
+                    ? stock.getWeightedAvgCost()
+                    : ("HUF".equals(currencyCode) ? HUF_WAC : BigDecimal.ZERO);
+            stock.receiveStock(amount, wac);
+        } else if (stock.getQuantity().compareTo(amount) < 0) {
+            log.warn("applyGenericVaultStock: elegtelen vault-keszlet ({} {} < {}), folytatva "
+                            + "(a penz fizikailag mar mozgott; backfill/adatpotlas rendezi) — branch={}",
+                    currencyCode, stock.getQuantity(), amount, branch.getCode());
+            stock.setQuantity(stock.getQuantity().subtract(amount));
+            stock.setLastUpdated(LocalDateTime.now());
+        } else {
+            stock.issueStock(amount);
+        }
+        currencyStockRepository.save(stock);
+        log.info("VAULT_STOCK_UPDATE: territory={} {} {} {} -> {} (branch={})",
+                territoryId, currencyCode, increase ? "+" : "-", amount, stock.getQuantity(), branch.getCode());
+    }
+
     // ============ HELPER METODUSOK ============
 
     private VaultTerritory getFirstActiveTerritory(UUID companyId) {

@@ -49,6 +49,9 @@ class TransferCounterTransactionTest {
     @Mock
     private AuditLogService auditLogService;
 
+    @Mock
+    private VaultStockFlowService vaultStockFlowService;
+
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID FROM_BRANCH_ID = UUID.randomUUID();
     private static final UUID TO_BRANCH_ID = UUID.randomUUID();
