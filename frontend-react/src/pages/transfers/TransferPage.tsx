@@ -20,6 +20,7 @@ import {
   branchApi,
   cashBalanceApi,
   denominationApi,
+  exchangeRateApi,
   Transfer,
   CreateTransferRequest,
   Currency
@@ -32,6 +33,7 @@ import {
   isElectronQueueAvailable,
   recordLocalAuditEvent,
   saveAndSyncPendingTransfer,
+  getElectronCachedRates,
 } from '../../utils/electronTransactions'
 import { getLocalPendingTransfers, getCompanyType, queueOfflineTransferStorno } from '../../utils/localQueue'
 import { useTranslation } from 'react-i18next'
@@ -41,6 +43,7 @@ import { isElectron } from '../../utils/electron'
 import { toast } from '../../components/ui/toaster'
 import type { PrintReceiptData } from '../../types/receipt'
 import { localIsoDate } from '../../utils/dateFormat'
+import { roundHuf } from '../../utils/rounding'
 import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, isCurrencyOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isTHBranch, isMainCashierBranch, validateCarrierSeal, buildDenominationPayload, type CurrencyLineInput } from './transferRules'
 
 /**
@@ -425,10 +428,23 @@ export default function TransferPage() {
         ? enrichedLines.map(l => ({ currencyCode: l.currencyCode ?? `#${l.currencyId}`, amount: l.amount }))
         : undefined
 
+      // Batch2-E: deviza-átadólapon a forintosított érték + árfolyam a bizonylatra.
+      // Egyvalutás deviza-sornál az aktuális publikált vételi árfolyammal számolunk;
+      // több-valutás lapnál (soronként eltérő valuták) a fejléc-szintű forintosítás
+      // nem értelmezhető — ott kimarad (dokumentált korlát).
+      const effCurrencyCode = currencies.find(c => c.id === effCurrencyId)?.code
+      const transferRate = effCurrencyCode && (!effLines || effLines.length <= 1)
+        ? await resolveTransferRate(effCurrencyCode)
+        : null
+      // Codex P1 #1111: a forintosított érték 5 Ft-os MAGYAR kerekítéssel (roundHuf) —
+      // a bizonylat roundedHufAmount mezője és az app HUF-invariánsa is ezt várja.
+      const transferHufValue = transferRate != null ? roundHuf(effAmountValue * transferRate) : null
+
       const request: CreateTransferRequest = {
         toBranchId,
         currencyId: effCurrencyId!,
         amount: effAmountValue,
+        hufValue: transferHufValue ?? undefined,
         transferType,
         direction: transferDirection === 'in' ? 'U' : 'F',
         notes: notes || undefined,
@@ -464,7 +480,7 @@ export default function TransferPage() {
           currencyId: effCurrencyId,
           currencyCode: currency.code,
           amount: effAmountValue,
-          hufValue: null,
+          hufValue: transferHufValue, // Batch2-E: deviza forintosított érték (sync küldi a backendre)
           transferType,
           denominations: effDenominations ? JSON.stringify(effDenominations) : null,
           note: notes || null,
@@ -518,12 +534,16 @@ export default function TransferPage() {
           time: now.toTimeString().slice(0, 8),
           currencyCode: currency.code,
           foreignAmount: effAmountValue,
+          // Batch2-E: árfolyam + forintosított érték a deviza-bizonylaton (ha feloldható).
+          rate: transferRate ?? undefined,
+          roundedHufAmount: transferHufValue ?? undefined,
           transferTarget: transferDirection === 'in' ? vaultLabel : `${branch.code} - ${branch.name}`,
           transferNote: notes || undefined,
           carrierName: carrierName.trim(),
           sealNumber: sealNumber.trim(),
           vaultAddress: offlineVaultAddress, // FR-1 (offline: cached_cash_desks mirrorból)
           vaultPhone: offlineVaultPhone, // FR-2 (offline)
+          vaultBranchLabel: vaultLabel, // Batch2-E: kiállító értéktár kód+név a fejlécben
           transferDocType, // FR-2
           denominations: receiptDenominations, // FR-17..19 (offline: lokális adatokból)
           transferLines: receiptTransferLines, // A.1: több-valutás sorok a bizonylaton
@@ -547,11 +567,13 @@ export default function TransferPage() {
             currencyCode: result.currencyCode,
             foreignAmount: result.amount,
             roundedHufAmount: result.hufValue, // FR-6: HUF forintosított érték
+            rate: transferRate ?? undefined, // Batch2-E: árfolyam a deviza-bizonylaton
             transferNote: result.notes,
             carrierName: result.carrierName,
             sealNumber: result.sealNumber,
             vaultAddress: result.vaultAddress, // FR-1
             vaultPhone: result.vaultPhone, // FR-2 (fejléc-javítás): branch.phone a szerver-válaszból
+            vaultBranchLabel: vaultLabel, // Batch2-E: kiállító értéktár kód+név a fejlécben
             transferDocType, // FR-2
             denominations: result.denominations ?? receiptDenominations, // FR-17..19
             // A.1: a szerver-válasz sorai (currencyCode-dal), fallback a kérés soraira.
@@ -697,16 +719,60 @@ export default function TransferPage() {
     [currencies],
   )
 
+  // Batch2-E (2026-06-12): árfolyam-feloldás a deviza-átadólap forintosított értékéhez.
+  // Az aktuális publikált VÉTELI árfolyammal számolunk (könyv szerinti értékelés);
+  // árfolyam-hiány NEM blokkolja a rögzítést — ilyenkor a bizonylat árfolyam/forint
+  // sor nélkül készül (a korábbi viselkedés).
+  const resolveTransferRate = useCallback(async (currencyCode: string): Promise<number | null> => {
+    if (currencyCode === 'HUF') return null
+    try {
+      if (isElectron()) {
+        const cached = await getElectronCachedRates()
+        const row = cached.find(r => r.currency_code === currencyCode)
+        if (row && row.buy_rate > 0) return row.buy_rate
+      }
+      const rates = await exchangeRateApi.list()
+      const row = rates.find(r => r.currencyCode === currencyCode)
+      if (row && row.baseBuyRate > 0) return row.baseBuyRate
+    } catch { /* árfolyam-cache/API hiánya nem blokkolja a rögzítést */ }
+    return null
+  }, [])
+
+  // Batch2-E: az értéktár cím/telefon fallback a lokális cached_cash_desks mirrorból
+  // (offline rögzített sorok előnézetéhez — azok strukturálisan nem hordoznak fejléc-adatot).
+  const loadOwnVaultContact = useCallback(async (): Promise<{ address?: string; phone?: string }> => {
+    try {
+      const cachedDesks = await window.electronAPI?.getCachedCashDesks?.()
+      const ownDesk = cachedDesks?.find(d => d.id === worker?.branchId)
+      if (ownDesk) {
+        // A backend formatBranchAddress() formátumával egyezően: "Város, Cím, IRSZ".
+        const parts = [ownDesk.city, ownDesk.address, ownDesk.zip_code]
+          .map(p => (p ?? '').trim())
+          .filter(p => p !== '')
+        return {
+          address: parts.length > 0 ? parts.join(', ') : undefined,
+          phone: ownDesk.phone?.trim() || undefined,
+        }
+      }
+    } catch { /* cache-hiány nem blokkolja a bizonylatot */ }
+    return {}
+  }, [worker?.branchId])
+
   // Penztar-batch A.2 (2026-06-12): a lista szem-ikonja a BIZONYLATOT hívja elő.
   // (Korábban a /transfers/:id route-ra navigált, ami ugyanerre a lista-komponensre volt
   // kötve — látható hatás nélkül.) A bizonylat a lista-sor TELJES Transfer objektumából
   // épül (a lista-DTO minden mezőt hordoz, offline pending soroknál is) — nincs extra
   // API-hívás. A Kérő/Cél a kanonikus fromBranch/toBranch mezőkből jön (NEM a bejelentkezett
   // fiók vaultLabel-jéből — visszanézéskor a kiállító eltérhet a nézegetőtől).
-  const openDocumentPreview = (transfer: Transfer) => {
+  const openDocumentPreview = async (transfer: Transfer) => {
     const fromLabel = `${transfer.fromBranchCode} - ${transfer.fromBranchName}`
     const toLabel = `${transfer.toBranchCode} - ${transfer.toBranchName}`
     const isReceiptDoc = transfer.direction === 'U'
+    // Batch2-E: offline (electron-queue) sorok nem hordoznak fejléc cím/telefon adatot —
+    // fallback a lokális cached_cash_desks mirrorból, kizárólag hiány esetén.
+    const vaultContact = (!transfer.vaultAddress || !transfer.vaultPhone)
+      ? await loadOwnVaultContact()
+      : {}
     setPrintReceiptData({
       type: 'transfer',
       companyType: getCompanyType(worker),
@@ -723,11 +789,20 @@ export default function TransferPage() {
       currencyCode: transfer.currencyCode,
       foreignAmount: transfer.amount,
       roundedHufAmount: transfer.hufValue,
+      // Batch2-E: a deviza-bizonylat árfolyama a tárolt forintosított értékből DERIVÁLT
+      // (rate = hufValue / amount) — a transfer-adatmodellben nincs külön rate oszlop,
+      // és definíció szerint pontosan ezzel az aránnyal készült a forintosítás.
+      rate: transfer.currencyCode !== 'HUF' && transfer.hufValue != null && transfer.amount > 0
+        ? Number((transfer.hufValue / transfer.amount).toFixed(2))
+        : undefined,
       transferNote: transfer.notes,
       carrierName: transfer.carrierName,
       sealNumber: transfer.sealNumber,
-      vaultAddress: transfer.vaultAddress,
-      vaultPhone: transfer.vaultPhone,
+      vaultAddress: transfer.vaultAddress ?? vaultContact.address,
+      vaultPhone: transfer.vaultPhone ?? vaultContact.phone,
+      // Batch2-E: a kiállító értéktár azonosító + név a fejlécben (átadásnál a from-,
+      // átvételnél a to-oldal az értéktár).
+      vaultBranchLabel: isReceiptDoc ? toLabel : fromLabel,
       isStorno: transfer.isCancelled === true,
       stornoReason: transfer.cancellationReason,
       denominations: transfer.denominations,
@@ -791,6 +866,7 @@ export default function TransferPage() {
         sealNumber: result.sealNumber,
         vaultAddress: result.vaultAddress,
         vaultPhone: result.vaultPhone, // FR-2 (fejléc-javítás)
+        vaultBranchLabel: stornoIsReceipt ? stornoOther : vaultLabel, // Batch2-E
         isStorno: true, // FR-13/15
         stornoReason: result.cancellationReason ?? reason,
         denominations: result.denominations, // FR-17..19
@@ -829,6 +905,7 @@ export default function TransferPage() {
               sealNumber: target.sealNumber,
               vaultAddress: target.vaultAddress,
               vaultPhone: target.vaultPhone, // FR-2 (fejléc-javítás)
+              vaultBranchLabel: stornoIsReceipt ? stornoOther : vaultLabel, // Batch2-E
               isStorno: true,
               stornoReason: reason,
             })
@@ -959,7 +1036,7 @@ export default function TransferPage() {
                     <div className="flex gap-1">
                       <button
                         type="button"
-                        onClick={() => openDocumentPreview(transfer)}
+                        onClick={() => { void openDocumentPreview(transfer) }}
                         className="toolbar-button"
                         title="Bizonylat megtekintése"
                       >
@@ -1179,6 +1256,23 @@ export default function TransferPage() {
                 >
                   <Download size={16} /> Átvétel (bejövő)
                 </button>
+              </div>
+
+              {/* Batch2-E (Fabulya-teszt 2026-06-12): a saját oldal auto-kitöltött, READ-ONLY
+                  mezőként is látszik a formban — átadásnál ez a Kérő iroda, átvételnél a Cél
+                  iroda (a bizonylaton eddig is így szerepelt, de a formból hiányzott). */}
+              <div>
+                <label className="form-label">
+                  {transferDirection === 'out' ? 'Kérő iroda (saját értéktár)' : 'Cél iroda (saját értéktár)'}
+                </label>
+                <input
+                  type="text"
+                  value={vaultLabel}
+                  readOnly
+                  disabled
+                  className="form-input w-full bg-gray-50 text-gray-600"
+                  aria-label="Saját értéktár (automatikusan kitöltve)"
+                />
               </div>
 
               <div>

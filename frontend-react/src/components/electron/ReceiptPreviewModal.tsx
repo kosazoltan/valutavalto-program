@@ -222,6 +222,12 @@ export default function ReceiptPreviewModal({
             <div className="text-center">
               <p className="text-lg font-bold">NYUGTA</p>
               <p className="text-xs font-bold">{company.fullName}</p>
+              {/* Batch2-E (Fabulya-teszt 2026-06-12): a kiállító értéktár azonosítója + neve a
+                  fejlécben — eddig sosem volt a template része, az értéktár neve csak a
+                  Kérő/Cél sorokban jelent meg. */}
+              {isTransfer && receiptData.vaultBranchLabel && (
+                <p className="text-xs font-bold">{receiptData.vaultBranchLabel}</p>
+              )}
               {/* FR-1/FR-3: átadás-átvételnél a bejelentkezett értéktár SAJÁT címe a branch táblából
                   (a cégnév marad); hiány esetén nincs cím sor — hardcode-olt székhely transfer
                   bizonylatra nem kerülhet. */}
@@ -399,6 +405,10 @@ export default function ReceiptPreviewModal({
                       <p><span className="font-semibold">Összeg:</span> {formatAmount(receiptData.foreignAmount)} {receiptData.currencyCode ?? ''}</p>
                     )}
                   </>
+                )}
+                {/* Batch2-E: árfolyam a deviza-bizonylaton (HUF-átadásnál nincs árfolyam sor). */}
+                {receiptData.rate != null && receiptData.currencyCode !== 'HUF' && (
+                  <p><span className="font-semibold">Árfolyam:</span> {formatRate(receiptData.rate)}</p>
                 )}
                 {(receiptData.roundedHufAmount != null || receiptData.hufAmount != null) && (
                   <p><span className="font-semibold">Forint érték:</span> {formatInt(receiptData.roundedHufAmount ?? receiptData.hufAmount)} HUF</p>

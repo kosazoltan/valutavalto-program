@@ -107,6 +107,8 @@ export interface PrintReceiptData {
   vaultAddress?: string;
   /** FR-2 (fejléc-javítás 2026-06-11): az értéktár telefonszáma a `branch.phone`-ból. Hiány esetén nincs telefon sor (TBD-3). */
   vaultPhone?: string;
+  /** Batch2-E (2026-06-12): a kiállító értéktár azonosítója + neve a fejlécben (pl. "BR075 - Békéscsaba Értéktár") — eddig sosem volt a fejléc-template része. */
+  vaultBranchLabel?: string;
   /** FR-2: a bizonylat típusa — 'handover' → „Átadási bizonylat", 'receipt' → „Átvételi bizonylat". */
   transferDocType?: 'handover' | 'receipt';
   /** FR-13..15: sztornó bizonylat-e (fejléc „SZTORNÓ BIZONYLAT" + indoklás). A `stornoReason` hordozza az indoklást. */

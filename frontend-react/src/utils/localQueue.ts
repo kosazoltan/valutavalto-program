@@ -500,6 +500,10 @@ export async function getLocalPendingTransfers(worker: Worker | null): Promise<T
       amount: row.amount,
       hufValue: row.huf_value ?? undefined,
       notes: row.note ?? undefined,
+      // Batch2-E: a mentés óta tárolt szállító + plombaszám az offline előnézetre is
+      // (eddig strukturálisan elveszett — a szem-ikonos bizonylat üresen mutatta).
+      carrierName: row.carrier_name ?? undefined,
+      sealNumber: row.seal_number ?? undefined,
       handoverPrinted: false,
       receiptPrinted: false,
       createdAt: normalizeTimestamp(row.created_at),
