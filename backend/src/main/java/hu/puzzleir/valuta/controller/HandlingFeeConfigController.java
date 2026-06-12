@@ -40,6 +40,11 @@ public class HandlingFeeConfigController {
     private final CompanyRepository companyRepository;
 
     @GetMapping
+    // FK-KEZDIJ B.1 (2026-06-12, penztar-batch): a PENZTAROS READ-ONLY lekerheti a konfigot,
+    // hogy a kepernyo/helyi bizonylat a szerverrel azonos AUTOMATIKUS dijat mutassa (a kepernyo
+    // eddig 0 Ft-ot mutatott, mikozben a szerver a konfig szerintit konyvelte). A method-szintu
+    // @PreAuthorize feluldefinialja az osztaly-szintut; a PUT valtozatlanul vezetoi jog marad.
+    @PreAuthorize("hasAnyRole('MANAGER','ADMIN','UGYVEZETO','FOERTEKTAR','IRODAVEZETO','BELSO_ELLENOR','CASHIER','PENZTAR','SUPERVISOR','ERTEKTAR')")
     public ResponseEntity<HandlingFeeConfigDto> getConfig() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 

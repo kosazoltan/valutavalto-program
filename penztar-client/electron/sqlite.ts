@@ -272,6 +272,22 @@ export async function initDatabase(): Promise<void> {
       // Column already exists — expected on fresh installs or repeat migration
     }
 
+    // FK-KEZDIJ offline (2026-06-12, penztar-batch B.1/b): kezelesi dij override mezok az
+    // offline outboxban — a Felezes/Elenegedes/Ugyfelkartya eddig CSENDBEN elveszett az
+    // Electron uton (a szerver a teljes alap-dijat konyvelte).
+    const feeOverrideColumns: Array<{ name: string; type: string }> = [
+      { name: 'handling_fee_override_type', type: 'TEXT' },
+      { name: 'handling_fee_override_reason', type: 'TEXT' },
+      { name: 'customer_card_number', type: 'TEXT' },
+    ];
+    for (const col of feeOverrideColumns) {
+      try {
+        db.run(`ALTER TABLE pending_transactions ADD COLUMN ${col.name} ${col.type};`);
+      } catch {
+        // Column already exists — expected on fresh installs or repeat migration
+      }
+    }
+
     // V229 + V235 (2026-05-19 HIBA #14 + #17 + #18): teljes Pmt. customer-snapshot
     // a kliens-oldali offline outbox-ban is. A korábbi sync-engine csak 4 alapmezőt
     // küldött át a backend felé, így a bizonylaton hiányzott a szül.hely / szül.idő
@@ -1114,6 +1130,11 @@ export interface PendingTransactionRow {
    * (backend TransactionLineRequestDto alak). NULL → egysoros (valtozatlan).
    */
   lines: string | null;
+  // FK-KEZDIJ offline (2026-06-12, penztar-batch B.1/b): kezelesi dij override mezok —
+  // eddig az Electron uton CSENDBEN elvesztek (a szerver a teljes alap-dijat konyvelte).
+  handling_fee_override_type?: string | null;
+  handling_fee_override_reason?: string | null;
+  customer_card_number?: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
   created_at: string;
@@ -1179,6 +1200,11 @@ export interface PendingTransactionInputV2 {
    * NULL/undefined → egysoros tranzakcio (valtozatlan viselkedes).
    */
   lines?: string | null;
+  // FK-KEZDIJ offline (2026-06-12, penztar-batch B.1/b): a Felezes/Elenegedes/Ugyfelkartya
+  // override a pending sorban is — a sync-engine a REST-tel azonos mezokkel kuldi fel.
+  handlingFeeOverrideType?: string | null;
+  handlingFeeOverrideReason?: string | null;
+  customerCardNumber?: string | null;
 }
 
 export interface PendingConversionRow {
@@ -1536,9 +1562,10 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
         customer_actor_nationality, customer_actor_document_type,
         customer_actor_document_number, customer_actor_address,
         lines,
+        handling_fee_override_type, handling_fee_override_reason, customer_card_number,
         local_reference_number, idempotency_key
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         input.type,
         input.currencyCode,
@@ -1575,6 +1602,9 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
         normalized.customerActorDocumentNumber,
         normalized.customerActorAddress,
         input.lines ?? null,
+        trimOrNull(input.handlingFeeOverrideType),
+        trimOrNull(input.handlingFeeOverrideReason),
+        trimOrNull(input.customerCardNumber),
         ref,
         idempotencyKey,
       ],
