@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { AxiosError } from 'axios'
 import CurrencyManagerModal, { computeNextDisplayOrder } from './CurrencyManagerModal'
 import { currencyApi } from '../../../services/api/exchange-rates'
 import { toast } from '../../../components/ui/toaster'
@@ -62,22 +63,27 @@ describe('FK04 (FR-8) — CurrencyManagerModal', () => {
     expect(orderInput.value).toBe('23')
   })
 
-  it('duplicate_display_order_shows_409_error: 409 + VV-VALID-003 → hiba-toast, a form nyitva marad', async () => {
+  it('duplicate_display_order_shows_409_error: 409 + VV-VALID-003 → hiba-toast a backend-üzenettel, a form nyitva marad', async () => {
     vi.mocked(currencyApi.getAll).mockResolvedValue([cur('EUR', 1)])
-    const conflict = Object.assign(new Error('Request failed with status code 409'), {
-      response: { status: 409, data: { errorCode: 'VV-VALID-003', message: 'A megjelenitesi sorrend (5) mar foglalt — valassz masik erteket' } },
-    })
+    // Valódi AxiosError, ahogy az api-réteg dobja — a getErrorMessage a response.data.message-t adja vissza.
+    const backendMessage = 'A megjelenitesi sorrend (5) mar foglalt — valassz masik erteket'
+    const conflict = new AxiosError('Request failed with status code 409')
+    conflict.response = {
+      status: 409,
+      data: { code: 'VV-VALID-003', message: backendMessage },
+    } as AxiosError['response']
     vi.mocked(currencyApi.create).mockRejectedValue(conflict)
 
     render(<CurrencyManagerModal isOpen onClose={() => {}} />)
-    await screen.findByText('EUR')
+    await screen.findByText('EUR valuta')
 
     fireEvent.click(screen.getByTestId('currency-manager-toggle-add'))
     fireEvent.change(screen.getByTestId('new-currency-code'), { target: { value: 'AED' } })
     fireEvent.change(screen.getByTestId('new-currency-name'), { target: { value: 'Dirham' } })
     fireEvent.click(screen.getByTestId('new-currency-submit'))
 
-    await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalled())
+    // A felhasználó a BACKEND magyar üzenetét látja (nem generikus hibát) — silent fail tilos.
+    await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalledWith('Hiba', backendMessage))
     // a sikeres-ág nem futott: nincs success toast, a form input megmaradt
     expect(vi.mocked(toast.success)).not.toHaveBeenCalled()
     expect((screen.getByTestId('new-currency-code') as HTMLInputElement).value).toBe('AED')

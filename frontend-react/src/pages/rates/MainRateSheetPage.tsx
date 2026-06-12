@@ -175,14 +175,55 @@ const COL_NAMES: Record<FormulaColumn, string> = {
   weakMultiSell: 'F — Gyenge multis eladás',
 }
 
-/** Képlet-kulcs = `${rowIdx}.${col}`. Csak felhasználói képletek tárolódnak (a legacy képlet-string). */
+/**
+ * Képlet-kulcs = `${valutakód}.${col}` (pl. `EUR.settlement`). Csak felhasználói képletek
+ * tárolódnak (a legacy képlet-string).
+ *
+ * FK04 self-review P0: a korábbi `${rowIdx}.${col}` kulcs a katalógus-vezérelt (változó
+ * tagságú/sorrendű) sorlistában instabil — egy közbeszúrt új valuta minden alatta lévő
+ * sor indexét eltolta volna, és a mentett képletek NÉMÁN rossz valutára kerülnek.
+ * A valutakód stabil azonosító.
+ */
 type FormulaMap = Record<string, string>
 
-function loadFormulasFromStorage(): FormulaMap {
+/**
+ * FK04 legacy-migráció: a régi `${rowIdx}.${col}` kulcsú képleteket az AKKORI sorlista
+ * (localStorage row-cache) alapján valutakód-kulcsra fordítjuk — a képletek a felhasználó
+ * által utoljára LÁTOTT sorokhoz tartoznak, ezt a cache őrzi. Feloldhatatlan index →
+ * a képletet eldobjuk (rossz sorra kerülő képlet rosszabb, mint a hiányzó).
+ */
+export function migrateLegacyFormulaKeys(
+  parsed: Record<string, string>,
+  cachedRows: Array<{ currency: string }>,
+): FormulaMap {
+  const migrated: FormulaMap = {}
+  for (const [key, formula] of Object.entries(parsed)) {
+    const dot = key.indexOf('.')
+    if (dot <= 0) continue
+    const head = key.slice(0, dot)
+    const col = key.slice(dot + 1)
+    if (/^\d+$/.test(head)) {
+      const currency = cachedRows[Number(head)]?.currency
+      if (currency) migrated[`${currency}.${col}`] = formula
+    } else {
+      migrated[key] = formula
+    }
+  }
+  return migrated
+}
+
+export function loadFormulasFromStorage(cachedRows: Array<{ currency: string }>): FormulaMap {
   try {
     const raw = localStorage.getItem(FORMULA_STORAGE_KEY)
     if (!raw) return {}
-    return JSON.parse(raw) as FormulaMap
+    const parsed = JSON.parse(raw) as Record<string, string>
+    const hasLegacyKeys = Object.keys(parsed).some(k => /^\d+\./.test(k))
+    if (!hasLegacyKeys) return parsed
+    const migrated = migrateLegacyFormulaKeys(parsed, cachedRows)
+    try {
+      localStorage.setItem(FORMULA_STORAGE_KEY, JSON.stringify(migrated))
+    } catch { /* quota / privát mód — a migrált map a memóriában él tovább */ }
+    return migrated
   } catch {
     return {}
   }
@@ -203,9 +244,10 @@ export default function MainRateSheetPage() {
   // (a korábbi currencyReloadVersion bump helyett), app-újraindítás nélkül.
   const catalog = useCurrencyCatalog()
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; col: keyof MainRateRow } | null>(null)
-  // Képletek per cella, kulcs = `${rowIdx}.${col}`. Csak a felhasználói képletek
+  // Képletek per cella, kulcs = `${valutakód}.${col}` (FK04). Csak a felhasználói képletek
   // vannak itt — fix számérték NEM kerül ide. Szintaxis: legacy (lásd mainSheetFormula).
-  const [formulas, setFormulas] = useState<FormulaMap>(() => loadFormulasFromStorage())
+  // A legacy rowIdx-kulcsú képleteket a betöltés a row-cache alapján migrálja.
+  const [formulas, setFormulas] = useState<FormulaMap>(() => loadFormulasFromStorage(loadFromStorage()))
   // Codex P1 #581 fix: editBuffer őrzi a felhasználó RAW input-ját az aktív cella szerkesztésekor.
   const [editBuffer, setEditBuffer] = useState<string>('')
   // 2026-05-21 (Kósa Zoltán): Excel-szerű kétállapotú cella — kijelölt (editing=false,
@@ -317,7 +359,7 @@ export default function MainRateSheetPage() {
   //   alapján dönt span vs. input között a render-loop-ban.
 
   // 2026-05-26 (legacy képlet-motor): reaktív újraszámítás. A `formulas` map a
-  // felhasználói képlet-stringeket tárolja (kulcs `${rowIdx}.${field}`); a kiszámolt
+  // felhasználói képlet-stringeket tárolja (kulcs `${valutakód}.${field}`); a kiszámolt
   // értékeket — a korábbi HyperFormula-architektúrával azonos módon — visszaírjuk a
   // `rows` mezőkbe, hogy a render/save/publish változatlanul olvashassa.
   //
@@ -352,7 +394,7 @@ export default function MainRateSheetPage() {
         let nr = row
         const ctx: FormulaContext = { self: snapshot[idx]!, byCurrency }
         for (const field of FORMULA_COLUMNS) {
-          const f = formulas[`${idx}.${field}`]
+          const f = formulas[`${row.currency}.${field}`]
           if (!f) continue
           const res = evaluateFormula(f, ctx)
           if ('error' in res) continue // hibás képlet → érték marad (a hover/edit floating jelzi a képletet)
@@ -398,7 +440,8 @@ export default function MainRateSheetPage() {
     // 2026-05-26 (legacy képlet-motor): ha az input KÉPLET (nem tiszta szám) → tároljuk
     // a képlet-stringet + szinkron kiértékelés a save/dispatch path-hoz (NEM placeholder 0,
     // hogy a publikálás valódi értéket lásson; az effekt később idempotensen újraszámol).
-    const formulaKey = `${rowIdx}.${col}`
+    // FK04: a kulcs valutakód-alapú — a rowIdx a katalógus-vezérelt listában instabil.
+    const formulaKey = `${currentRows[rowIdx]?.currency ?? rowIdx}.${col}`
     const isFormulaCol = FORMULA_COLUMNS.includes(col as FormulaColumn)
     if (isFormulaCol && isFormula(trimmed)) {
       setFormulas(prev => ({ ...prev, [formulaKey]: trimmed }))
@@ -503,7 +546,7 @@ export default function MainRateSheetPage() {
   }, [enrichedRows])
 
   const seedBuffer = useCallback((rowIdx: number, col: keyof MainRateRow): string => {
-    const formula = formulas[`${rowIdx}.${String(col)}`]
+    const formula = formulas[`${enrichedRows[rowIdx]?.currency ?? rowIdx}.${String(col)}`]
     if (formula) return formula
     const v = enrichedRows[rowIdx]?.[col]
     return typeof v === 'number' && v ? v.toFixed(decimalsForCol(rowIdx, col)) : ''
@@ -591,7 +634,7 @@ export default function MainRateSheetPage() {
       return { rows, formulas }
     }
     const trimmed = editBuffer.trim()
-    const key = `${activeCell.rowIdx}.${String(activeCell.col)}`
+    const key = `${rows[activeCell.rowIdx]?.currency ?? activeCell.rowIdx}.${String(activeCell.col)}`
     const isFormulaCol = (FORMULA_COLUMNS as readonly string[]).includes(activeCell.col as string)
     let nextFormulas = formulas
     if (isFormulaCol) {
@@ -1223,7 +1266,7 @@ export default function MainRateSheetPage() {
                 const activeThis = isActive(col)
                 const editingThis = activeThis && editing
                 // Hover (lebegő) jelzés: a cella képlet eredménye-e, kézi- vagy auto-érték.
-                const cellFormula = formulas[`${idx}.${String(col)}`]
+                const cellFormula = formulas[`${row.currency}.${String(col)}`]
                 const isFormulaColHere = (FORMULA_COLUMNS as readonly string[]).includes(col as string)
                 const hoverTitle = cellFormula
                   ? `Képlet: ${cellFormula} = ${currentVal ? currentVal.toFixed(decimalsFor) : '0'}`
