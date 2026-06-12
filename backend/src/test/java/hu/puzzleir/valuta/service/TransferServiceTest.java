@@ -40,6 +40,7 @@ class TransferServiceTest {
     @Mock private ReceiptSequenceService receiptSequenceService;
     @Mock private TransferSerialSequenceService transferSerialSequenceService;
     @Mock private AuditLogService auditLogService;
+    @Mock private VaultStockFlowService vaultStockFlowService;
     @InjectMocks private TransferService service;
 
     @Test
