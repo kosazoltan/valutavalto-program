@@ -148,6 +148,7 @@ public class VaultStockFlowService {
         CurrencyStock stock = getOrCreateStock(companyId, ENTITY_TYPE_VAULT,
                 territoryId.toString(), currencyCode);
 
+        // Copilot #1115: a regi mennyiseg a logban hasznosul (auditalhato old -> new).
         BigDecimal oldQty = stock.getQuantity();
         if (increase) {
             BigDecimal wac = stock.getWeightedAvgCost() != null && stock.getWeightedAvgCost().signum() > 0
@@ -164,8 +165,8 @@ public class VaultStockFlowService {
             stock.issueStock(amount);
         }
         currencyStockRepository.save(stock);
-        log.info("VAULT_STOCK_UPDATE: territory={} {} {} {} -> {} (branch={})",
-                territoryId, currencyCode, increase ? "+" : "-", amount, stock.getQuantity(), branch.getCode());
+        log.info("VAULT_STOCK_UPDATE: territory={} {} {}{} : {} -> {} (branch={})",
+                territoryId, currencyCode, increase ? "+" : "-", amount, oldQty, stock.getQuantity(), branch.getCode());
     }
 
     // ============ HELPER METODUSOK ============

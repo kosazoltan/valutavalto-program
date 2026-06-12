@@ -27,7 +27,7 @@ BEGIN
         0, 0, NOW()
     FROM vault_territory vt
     CROSS JOIN currency c
-    WHERE vt.active = TRUE
+    WHERE vt.is_active = TRUE
       AND c.is_active = TRUE
       AND NOT EXISTS (
           SELECT 1 FROM currency_stock cs

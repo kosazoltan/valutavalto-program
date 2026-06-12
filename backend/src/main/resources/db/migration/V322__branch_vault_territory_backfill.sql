@@ -28,7 +28,7 @@ BEGIN
      WHERE b.is_vault = TRUE
        AND b.vault_territory_id IS NULL
        AND vt.company_id = b.company_id
-       AND vt.active = TRUE
+       AND vt.is_active = TRUE
        AND vt.name = TRIM(REPLACE(b.name, 'Értéktár', ''));
     GET DIAGNOSTICS v_updated = ROW_COUNT;
     RAISE NOTICE 'V322: % vault branch vault_territory_id kitoltve.', v_updated;
