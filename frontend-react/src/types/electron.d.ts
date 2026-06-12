@@ -404,6 +404,8 @@ export interface ElectronAPI {
     idempotency_key: string | null;
     created_at: string;
     synced: number;
+    /** Penztar-batch A.1: a több-valutás sorok JSON-ja (a SQLite `lines TEXT` oszlop — SELECT * adja). */
+    lines?: string | null;
   }>>;
   /** Offline átadás-átvétel SZTORNÓ (internetkimaradáskor): a backend fordítja vissza a készletet szinkronkor. */
   savePendingTransferStorno(payload: { transferId: number; transferNumber?: string | null; reason: string }): Promise<number>;

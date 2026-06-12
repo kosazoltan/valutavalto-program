@@ -91,7 +91,19 @@ export interface PrintReceiptData {
   isStorno?: boolean;
   /** FR-17..19: opcionális címletezés sorai (darab × névleges érték). Üres/hiány → a bizonylaton nem jelenik meg. */
   denominations?: TransferDenominationLine[];
+  /**
+   * Penztar-batch A.1/A.2 (2026-06-12): több-valutás átadólap sorai a bizonylaton.
+   * Ha jelen van (≥1 sor), az átadás-átvétel bizonylat EZEKET listázza a fejléc
+   * currencyCode/foreignAmount helyett (amely az első sort hordozza — kompatibilitás).
+   */
+  transferLines?: TransferReceiptLine[];
   closingSummary?: ClosingPrintData;
+}
+
+/** Penztar-batch A.1: egy valuta-sor a több-valutás átadás-átvétel bizonylaton. */
+export interface TransferReceiptLine {
+  currencyCode: string;
+  amount: number;
 }
 
 /** FR-17..19: egy címletezési sor a bizonylaton (darab × névleges érték = összesen). */
