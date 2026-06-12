@@ -24,6 +24,10 @@ const excludedPrefixes = [
   '.agent/memory/',
   'backend/target/',
   'dist/',
+  // EXCMD/Anti legacy referencia-fa (PR #1105, 9115 fajl, base64 blobok) — a
+  // forrasok/Anti/ precedensevel kizarva: szandekosan nem-UTF8/nem-szkennelendo anyag.
+  'legacy-transfer/',
+  'forrasok/Anti/',
   'frontend-react/dist/',
   'frontend-react/node_modules/',
   'kozponti-client/dist/',
@@ -71,6 +75,9 @@ function listGitFiles() {
     cwd: repoRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
+    // ENOBUFS-fix (2026-06-12): a legacy-transfer/ beemelese (9115 fajl) utan a
+    // ls-files kimenet tullepte a Node default 1MB-os maxBuffer-et → a guard elhalt.
+    maxBuffer: 64 * 1024 * 1024,
   })
   return out.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
 }
