@@ -47,7 +47,7 @@ class AdminCurrencyServiceTest {
     void createCurrency_persistsAndWritesAudit() {
         when(currencyRepository.findByCode("AED")).thenReturn(Optional.empty());
         when(currencyRepository.existsByDisplayOrder(99)).thenReturn(false);
-        when(currencyRepository.save(any(Currency.class))).thenAnswer(inv -> {
+        when(currencyRepository.saveAndFlush(any(Currency.class))).thenAnswer(inv -> {
             Currency c = inv.getArgument(0);
             c.setId(42L);
             return c;
@@ -88,7 +88,31 @@ class AdminCurrencyServiceTest {
                     assertThat(be.getErrorCode()).isEqualTo("VV-VALID-003");
                     assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.CONFLICT);
                 });
-        org.mockito.Mockito.verify(currencyRepository, org.mockito.Mockito.never()).save(any(Currency.class));
+        org.mockito.Mockito.verify(currencyRepository, org.mockito.Mockito.never()).saveAndFlush(any(Currency.class));
+        org.mockito.Mockito.verify(auditRepository, org.mockito.Mockito.never()).save(any(CurrencyAuditLog.class));
+    }
+
+    /**
+     * Codex PR #1096 P2: konkurens createCurrency — két tranzakció ugyanazt a display_order-t
+     * számolja ki, az existsBy előszűrés mindkettőt átengedi, a V318 UNIQUE constraint a
+     * saveAndFlush-nál üt. A DataIntegrityViolationException-nek is 409 + VV-VALID-003-má
+     * kell fordulnia (nem 500).
+     */
+    @Test
+    @DisplayName("FK04 konkurencia: UNIQUE constraint sérülés a flush-nál → 409 + VV-VALID-003 (nem 500)")
+    void createCurrency_concurrentUniqueViolation_mapsTo409() {
+        when(currencyRepository.findByCode("AED")).thenReturn(Optional.empty());
+        when(currencyRepository.existsByDisplayOrder(5)).thenReturn(false);
+        when(currencyRepository.saveAndFlush(any(Currency.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("uq_currency_display_order"));
+
+        assertThatThrownBy(() -> service.createCurrency("AED", "Arab Emirátusi dirham", null, 2, 5))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getErrorCode()).isEqualTo("VV-VALID-003");
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.CONFLICT);
+                });
         org.mockito.Mockito.verify(auditRepository, org.mockito.Mockito.never()).save(any(CurrencyAuditLog.class));
     }
 
@@ -102,7 +126,7 @@ class AdminCurrencyServiceTest {
         when(currencyRepository.findByCode("AED")).thenReturn(Optional.empty());
         when(currencyRepository.findMaxDisplayOrder()).thenReturn(22);
         when(currencyRepository.existsByDisplayOrder(23)).thenReturn(false);
-        when(currencyRepository.save(any(Currency.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(currencyRepository.saveAndFlush(any(Currency.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Currency saved = service.createCurrency("AED", "Arab Emirátusi dirham", null, 2, null);
 

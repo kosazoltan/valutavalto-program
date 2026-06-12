@@ -81,7 +81,22 @@ public class AdminCurrencyService {
                 .displayOrder(resolvedDisplayOrder)
                 .active(true)
                 .build();
-        Currency saved = currencyRepository.save(currency);
+        Currency saved;
+        try {
+            // saveAndFlush: a V318 UNIQUE constraint MOST serüljon (a metoduson belul), ne a
+            // tranzakcio-commitnal — igy a konkurens eset is 409-et ad, nem 500-at.
+            saved = currencyRepository.saveAndFlush(currency);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // Codex PR #1096 P2: ket parhuzamos createCurrency ugyanazt a resolvedDisplayOrder-t
+            // szamolhatja ki (vagy ugyanazt a kodot szurna be) — az existsBy* eloszures atengedi,
+            // a DB unique constraint kapja el. Ugyanaz a 409 + VV-VALID-003, mint az eloszuresnel.
+            VV_LOG.error("VV-VALID-003", "currency.create.unique_constraint_conflict", e,
+                Map.of("code", upperCode, "displayOrder", resolvedDisplayOrder));
+            throw new BusinessException(
+                "Egyideju valuta-felvetel utkozes: a kod vagy a megjelenitesi sorrend ("
+                    + resolvedDisplayOrder + ") idokozben foglalt lett — probald ujra",
+                "VV-VALID-003", HttpStatus.CONFLICT);
+        }
         writeAudit(saved, "CREATE", null, saved);
         // CodeQL log-injection fix (PR #697 review): explicit CRLF strip a user-
         // input mezokre. A logback `%redact(%msg)` converter mar globalisan
