@@ -564,6 +564,121 @@ class PepSourceOfFundsTest {
             // A blokk megjelenik de a forrás sor nem
             assertThat(content).doesNotContain("Pénzeszközöm forrása");
         }
+
+        // ---- Batch2-D (2026-06-12): legacy Jogcimnyilatkozat teljes elem-készlete ----
+
+        @Test
+        @DisplayName("Batch2-D: Jogcím blokk → 5 munkanapos klauzula + dedikált ügyfél-aláírás megjelenik")
+        void sourceDeclaration_containsFiveDayClauseAndCustomerSignature() {
+            ReceiptData data = buildReceiptData(false, null, true, "Munkabér");
+            String content = new String(service.generateBuyReceipt(data),
+                    java.nio.charset.Charset.forName("Cp852"));
+
+            assertThat(content).contains("Tudomásom van arról, hogy 5 (öt)");
+            assertThat(content).contains("eredő kár engem terhel.");
+            assertThat(content).contains("ügyfél aláírása");
+        }
+
+        @Test
+        @DisplayName("Batch2-D: customerIsPep=true + minőség → első személyű PEP-nyilatkozat a Jogcím blokkban")
+        void sourceDeclaration_firstPersonPepWithKind() {
+            ReceiptData data = ReceiptData.builder()
+                    .receiptNumber("V-260405-0002")
+                    .receiptType("BUY")
+                    .companyName("Exclusive Best Change Zrt.")
+                    .currencyCode("EUR")
+                    .hufAmount(new BigDecimal("400000"))
+                    .customerName("Teszt Ügyfél")
+                    .requiresSourceDeclaration(true)
+                    .customerIsPep(true)
+                    .customerPepKind("országgyűlési / önkormányzati képviselő")
+                    .build();
+            String content = new String(service.generateBuyReceipt(data),
+                    java.nio.charset.Charset.forName("Cp852"));
+
+            assertThat(content).contains("Kiemelt közszereplő (vagyok),");
+            assertThat(content).contains("mint: országgyűlési / önkormányzati képviselő");
+        }
+
+        @Test
+        @DisplayName("Batch2-D: customerIsPep=false → 'Nem (vagyok) kiemelt közszereplő.' a Jogcím blokkban")
+        void sourceDeclaration_firstPersonNotPep() {
+            ReceiptData data = ReceiptData.builder()
+                    .receiptNumber("V-260405-0003")
+                    .receiptType("BUY")
+                    .companyName("Exclusive Best Change Zrt.")
+                    .currencyCode("EUR")
+                    .hufAmount(new BigDecimal("400000"))
+                    .customerName("Teszt Ügyfél")
+                    .requiresSourceDeclaration(true)
+                    .customerIsPep(false)
+                    .build();
+            String content = new String(service.generateBuyReceipt(data),
+                    java.nio.charset.Charset.forName("Cp852"));
+
+            assertThat(content).contains("Nem (vagyok) kiemelt közszereplő.");
+        }
+
+        @Test
+        @DisplayName("Batch2-D: orosz állampolgár EUR-ELADÁS 300k+ → kétnyelvű NYILATKOZAT/DECLARATION")
+        void russianDeclaration_presentOnSellEurRussian300k() {
+            ReceiptData data = ReceiptData.builder()
+                    .receiptNumber("V-260405-0004")
+                    .receiptType("SELL")
+                    .companyName("Exclusive Best Change Zrt.")
+                    .currencyCode("EUR")
+                    .hufAmount(new BigDecimal("400000"))
+                    .customerName("Ivanov Ivan")
+                    .customerNationality("orosz")
+                    .build();
+            String content = new String(service.generateSellReceipt(data),
+                    java.nio.charset.Charset.forName("Cp852"));
+
+            assertThat(content).contains("NYILATKOZAT/DECLARATION");
+            assertThat(content).contains("személyes használatra váltottam");
+            assertThat(content).contains("for my personal usage");
+        }
+
+        @Test
+        @DisplayName("Batch2-D: orosz nyilatkozat NEM jelenik meg BUY-nál / nem-EUR-nál / magyar ügyfélnél")
+        void russianDeclaration_absentWhenNotTriggered() {
+            // BUY (a pénztár vesz) — nincs
+            ReceiptData buy = ReceiptData.builder()
+                    .receiptType("BUY").currencyCode("EUR")
+                    .hufAmount(new BigDecimal("400000"))
+                    .customerName("Ivanov Ivan").customerNationality("orosz")
+                    .receiptNumber("V-1").companyName("X").build();
+            assertThat(new String(service.generateBuyReceipt(buy),
+                    java.nio.charset.Charset.forName("Cp852")))
+                    .doesNotContain("NYILATKOZAT/DECLARATION");
+            // SELL, de USD — nincs
+            ReceiptData usd = ReceiptData.builder()
+                    .receiptType("SELL").currencyCode("USD")
+                    .hufAmount(new BigDecimal("400000"))
+                    .customerName("Ivanov Ivan").customerNationality("orosz")
+                    .receiptNumber("V-2").companyName("X").build();
+            assertThat(new String(service.generateSellReceipt(usd),
+                    java.nio.charset.Charset.forName("Cp852")))
+                    .doesNotContain("NYILATKOZAT/DECLARATION");
+            // SELL EUR, de magyar — nincs
+            ReceiptData hun = ReceiptData.builder()
+                    .receiptType("SELL").currencyCode("EUR")
+                    .hufAmount(new BigDecimal("400000"))
+                    .customerName("Kiss Géza").customerNationality("Magyar")
+                    .receiptNumber("V-3").companyName("X").build();
+            assertThat(new String(service.generateSellReceipt(hun),
+                    java.nio.charset.Charset.forName("Cp852")))
+                    .doesNotContain("NYILATKOZAT/DECLARATION");
+            // SELL EUR orosz, de 300k ALATT — nincs
+            ReceiptData low = ReceiptData.builder()
+                    .receiptType("SELL").currencyCode("EUR")
+                    .hufAmount(new BigDecimal("299999"))
+                    .customerName("Ivanov Ivan").customerNationality("orosz")
+                    .receiptNumber("V-4").companyName("X").build();
+            assertThat(new String(service.generateSellReceipt(low),
+                    java.nio.charset.Charset.forName("Cp852")))
+                    .doesNotContain("NYILATKOZAT/DECLARATION");
+        }
     }
 
     // ============ TRANSACTION MAPPER — DTO → inner request ============

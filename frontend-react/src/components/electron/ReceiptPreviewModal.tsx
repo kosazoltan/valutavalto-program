@@ -151,6 +151,14 @@ export default function ReceiptPreviewModal({
   const absHuf = Math.abs(receiptData.payableHufAmount ?? receiptData.hufAmount ?? 0);
   const isMediumValue = absHuf >= MEDIUM_THRESHOLD;
   const isHighValue = absHuf >= HIGH_THRESHOLD;
+  // Batch2-D: orosz EUR-vásárlási nyilatkozat triggere (legacy EzoroszUgyfel tükre,
+  // a printer.ts isRussianEurPurchase-zal egyezően): EUR eladás + orosz állampolgár + 300k+.
+  const nationalityLower = (receiptData.customerNationality ?? '').trim().toLowerCase();
+  const isRussianEurPurchase = receiptData.type === 'sell' && isHighValue
+    && (nationalityLower === 'ru' || nationalityLower === 'rus'
+      || nationalityLower.includes('orosz') || nationalityLower.includes('russia'))
+    && (receiptData.currencyCode === 'EUR'
+      || (receiptData.transactionLines ?? []).some(l => l.currencyCode === 'EUR'));
   // Átadási bizonylat (értéktári átadás-átvétel): nincs ügyfél / deviza-státusz / jogcím-nyilatkozat,
   // ezeket a tranzakció-specifikus szekciókat a transfer bizonylaton elrejtjük.
   const isTransfer = receiptData.type === 'transfer';
@@ -491,12 +499,46 @@ export default function ReceiptPreviewModal({
                       Büntetőjogi felelősségem tudatában nyilatkozom, hogy a fenti tranzakciót saját nevemben bonyolítom,
                     </p>
                   )}
+                  {/* Batch2-D (Fabulya-teszt 2026-06-12): a legacy Jogcimnyilatkozat (BLOKNYOM)
+                      további kötelező elemei — első személyű PEP-nyilatkozat, 5 munkanapos
+                      adatváltozás-klauzula, dedikált ügyfél-aláírás — a nyomtatóval egyezően. */}
+                  <p className="text-[9px] leading-tight mt-1">
+                    {receiptData.customerIsPep
+                      ? <>Kiemelt közszereplő (vagyok){receiptData.customerPepKind ? <>, mint: {receiptData.customerPepKind}</> : null}.</>
+                      : 'Nem (vagyok) kiemelt közszereplő.'}
+                  </p>
+                  <p className="text-[9px] leading-tight mt-1">
+                    Tudomásom van arról, hogy 5 (öt) munkanapon belül köteles vagyok bejelenteni
+                    a szolgáltatónak a fenti adatokban, vagy a saját adataimban bekövetkező
+                    esetleges változásokat, és e kötelezettség elmulasztásából eredő kár engem terhel.
+                  </p>
                   {receiptData.sourceOfFunds && (
                     <p className="mt-1">Pénzeszközöm forrása: <span className="font-bold">{receiptData.sourceOfFunds}</span></p>
                   )}
+                  <p className="mt-3 text-center">.....................................</p>
+                  <p className="text-center">ügyfél aláírása</p>
                 </div>
                 <div className="my-2 border-t border-gray-300" />
               </>
+            )}
+
+            {/* Batch2-D: orosz állampolgár EUR-vásárlása 300k+ felett → kétnyelvű
+                személyes-használat nyilatkozat (legacy OroszNyilatkozat tükre). */}
+            {isRussianEurPurchase && (
+              <div className="mb-2">
+                <div className="my-2 border-t border-gray-300" />
+                <p className="text-center font-bold">NYILATKOZAT/DECLARATION</p>
+                <div className="my-2 border-t border-gray-300" />
+                <p className="text-[9px] leading-tight">
+                  Alulírott {(receiptData.customerName ?? '').trim().substring(0, 30)} kijelentem,
+                  hogy az általam vásárolt EUR valutát személyes használatra váltottam.
+                </p>
+                <p className="text-[9px] leading-tight mt-1">
+                  /I declare that the just purchased EUR currency is for my personal usage.
+                </p>
+                <p className="mt-3 text-center">.....................................</p>
+                <p className="text-center">ügyfél aláírása/signature of buyer</p>
+              </div>
             )}
             </>)}
 

@@ -627,7 +627,7 @@ describe('printer — deviza-státusz + 300k+ nyilatkozatok (C.1/C.2)', () => {
     expect(content).toContain('munkabér');
   });
 
-  it('300k+ PEP ügyfél: kiemelt közszereplő sor a minőséggel', () => {
+  it('300k+ PEP ügyfél: kiemelt közszereplő sor a minőséggel (emberi szöveg, nem kód)', () => {
     const content = generateReceiptContent({
       ...baseData,
       hufAmount: 500000,
@@ -636,7 +636,61 @@ describe('printer — deviza-státusz + 300k+ nyilatkozatok (C.1/C.2)', () => {
       customerIsPep: true,
       customerPepKind: 'PARLAMENTI',
     });
-    expect(content).toContain('Az ügyfél kiemelt közszereplő (PARLAMENTI)');
+    // Batch2-D: a PepKind kód a backend buildPepStatusText kategória-szövegére fordul.
+    expect(content).toContain('Az ügyfél kiemelt közszereplő (országgyűlési / önkormányzati képviselő)');
+    // Első személyű nyilatkozat a JOGCÍM blokkban (legacy KozszerepNyilatkozat).
+    expect(content).toContain('Kiemelt közszereplő (vagyok),');
+    expect(content).toContain('mint: országgyűlési / önkormányzati képviselő');
+  });
+
+  it('Batch2-D: 300k+ JOGCÍM blokk — 5 munkanapos klauzula + ügyfél-aláírás + nem-PEP első személyű sor', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 343000,
+      roundedHufAmount: 343000,
+      customerName: 'Kiss Géza',
+      customerIsPep: false,
+      customerOnOwnBehalf: true,
+      sourceOfFunds: 'munkabér',
+    });
+    expect(content).toContain('Nem (vagyok) kiemelt közszereplő.');
+    expect(content).toContain('Tudomásom van arról, hogy 5 (öt)');
+    expect(content).toContain('eredő kár engem terhel.');
+    expect(content).toContain('ügyfél aláírása');
+  });
+
+  it('Batch2-D: orosz állampolgár EUR-vásárlása 300k+ → kétnyelvű NYILATKOZAT/DECLARATION', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'sell',
+      currencyCode: 'EUR',
+      hufAmount: 400000,
+      roundedHufAmount: 400000,
+      customerName: 'Ivanov Ivan',
+      customerNationality: 'orosz',
+    });
+    expect(content).toContain('NYILATKOZAT/DECLARATION');
+    expect(content).toContain('személyes használatra váltottam');
+    expect(content).toContain('for my personal usage');
+    expect(content).toContain('ügyfél aláírása/signature of buyer');
+  });
+
+  it('Batch2-D: orosz nyilatkozat NEM jelenik meg vételnél / nem-EUR-nál / nem-orosz ügyfélnél', () => {
+    // buy módban (a pénztár VESZI a valutát) nincs orosz nyilatkozat
+    expect(generateReceiptContent({
+      ...baseData, type: 'buy', currencyCode: 'EUR', hufAmount: 400000,
+      roundedHufAmount: 400000, customerNationality: 'orosz', customerName: 'Ivanov Ivan',
+    })).not.toContain('NYILATKOZAT/DECLARATION');
+    // nem-EUR eladásnál sincs
+    expect(generateReceiptContent({
+      ...baseData, type: 'sell', currencyCode: 'USD', hufAmount: 400000,
+      roundedHufAmount: 400000, customerNationality: 'orosz', customerName: 'Ivanov Ivan',
+    })).not.toContain('NYILATKOZAT/DECLARATION');
+    // magyar ügyfélnél sincs
+    expect(generateReceiptContent({
+      ...baseData, type: 'sell', currencyCode: 'EUR', hufAmount: 400000,
+      roundedHufAmount: 400000, customerNationality: 'Magyar', customerName: 'Kiss Géza',
+    })).not.toContain('NYILATKOZAT/DECLARATION');
   });
 
   it('300k+ képviselt fél: actor neve + adatai a nyilatkozatban', () => {
