@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.CurrencyAuditLog;
+import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.CurrencyAuditLogRepository;
@@ -15,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
@@ -44,7 +46,8 @@ class AdminCurrencyServiceTest {
     @DisplayName("createCurrency: új valuta perzisztálva + audit-bejegyzés CREATE")
     void createCurrency_persistsAndWritesAudit() {
         when(currencyRepository.findByCode("AED")).thenReturn(Optional.empty());
-        when(currencyRepository.save(any(Currency.class))).thenAnswer(inv -> {
+        when(currencyRepository.existsByDisplayOrder(99)).thenReturn(false);
+        when(currencyRepository.saveAndFlush(any(Currency.class))).thenAnswer(inv -> {
             Currency c = inv.getArgument(0);
             c.setId(42L);
             return c;
@@ -66,6 +69,68 @@ class AdminCurrencyServiceTest {
         when(currencyRepository.findByCode("AED")).thenReturn(Optional.of(Currency.builder().code("AED").build()));
         assertThatThrownBy(() -> service.createCurrency("AED", "x", null, 2, 99))
                 .isInstanceOf(ValidationException.class);
+    }
+
+    /**
+     * FK04 / FR-7: foglalt display_order → 409 CONFLICT + VV-VALID-003, és NEM jön létre
+     * a valuta (se save, se audit). A V318 UNIQUE constraint service-szintű előszűrése.
+     */
+    @Test
+    @DisplayName("FK04 FR-7: duplikált display_order → BusinessException 409 + VV-VALID-003, nincs mentés")
+    void createCurrency_duplicateDisplayOrder_rejectedWithVvValid003() {
+        when(currencyRepository.findByCode("AED")).thenReturn(Optional.empty());
+        when(currencyRepository.existsByDisplayOrder(5)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.createCurrency("AED", "Arab Emirátusi dirham", null, 2, 5))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getErrorCode()).isEqualTo("VV-VALID-003");
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.CONFLICT);
+                });
+        org.mockito.Mockito.verify(currencyRepository, org.mockito.Mockito.never()).saveAndFlush(any(Currency.class));
+        org.mockito.Mockito.verify(auditRepository, org.mockito.Mockito.never()).save(any(CurrencyAuditLog.class));
+    }
+
+    /**
+     * Codex PR #1096 P2: konkurens createCurrency — két tranzakció ugyanazt a display_order-t
+     * számolja ki, az existsBy előszűrés mindkettőt átengedi, a V318 UNIQUE constraint a
+     * saveAndFlush-nál üt. A DataIntegrityViolationException-nek is 409 + VV-VALID-003-má
+     * kell fordulnia (nem 500).
+     */
+    @Test
+    @DisplayName("FK04 konkurencia: UNIQUE constraint sérülés a flush-nál → 409 + VV-VALID-003 (nem 500)")
+    void createCurrency_concurrentUniqueViolation_mapsTo409() {
+        when(currencyRepository.findByCode("AED")).thenReturn(Optional.empty());
+        when(currencyRepository.existsByDisplayOrder(5)).thenReturn(false);
+        when(currencyRepository.saveAndFlush(any(Currency.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("uq_currency_display_order"));
+
+        assertThatThrownBy(() -> service.createCurrency("AED", "Arab Emirátusi dirham", null, 2, 5))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getErrorCode()).isEqualTo("VV-VALID-003");
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.CONFLICT);
+                });
+        org.mockito.Mockito.verify(auditRepository, org.mockito.Mockito.never()).save(any(CurrencyAuditLog.class));
+    }
+
+    /**
+     * FK04: hiányzó display_order → max+1 (a korábbi fix 99 default a UNIQUE constraint
+     * mellett a második sorrend-nélküli felvételnél ütközne).
+     */
+    @Test
+    @DisplayName("FK04: null display_order → max(displayOrder)+1 kiosztás")
+    void createCurrency_nullDisplayOrder_usesMaxPlusOne() {
+        when(currencyRepository.findByCode("AED")).thenReturn(Optional.empty());
+        when(currencyRepository.findMaxDisplayOrder()).thenReturn(22);
+        when(currencyRepository.existsByDisplayOrder(23)).thenReturn(false);
+        when(currencyRepository.saveAndFlush(any(Currency.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Currency saved = service.createCurrency("AED", "Arab Emirátusi dirham", null, 2, null);
+
+        assertThat(saved.getDisplayOrder()).isEqualTo(23);
     }
 
     @Test

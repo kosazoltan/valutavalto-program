@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.CurrencyAuditLog;
+import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.logging.VVLogger;
@@ -11,6 +12,7 @@ import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,15 +59,44 @@ public class AdminCurrencyService {
             throw new ValidationException("Ezzel a koddal mar letezik valuta: " + upperCode
                 + " (ha inactivalt, hasznald a setActive(id, true)-t)");
         }
+        // FK04 (FR-7): display_order egyediseg — a V318 UNIQUE constraint elott service-szinten
+        // ellenorzunk, hogy beszedes 409 + VV-VALID-003 valaszt kapjon a Valutakezelo (ne 500-at).
+        // Ha a hivo nem adott sorrendet, max+1-et osztunk ki (a korabbi fix 99 default a UNIQUE
+        // mellett a masodik hianyzo-sorrendu felvetelnel utkozne).
+        int resolvedDisplayOrder = displayOrder != null
+                ? displayOrder
+                : currencyRepository.findMaxDisplayOrder() + 1;
+        if (currencyRepository.existsByDisplayOrder(resolvedDisplayOrder)) {
+            VV_LOG.error("VV-VALID-003", "currency.create.duplicate_display_order", null,
+                Map.of("code", upperCode, "displayOrder", resolvedDisplayOrder));
+            throw new BusinessException(
+                "A megjelenitesi sorrend (" + resolvedDisplayOrder + ") mar foglalt — valassz masik erteket",
+                "VV-VALID-003", HttpStatus.CONFLICT);
+        }
         Currency currency = Currency.builder()
                 .code(upperCode)
                 .name(name != null ? name.trim() : upperCode)
                 .symbol(symbol)
                 .decimalPlaces(decimalPlaces != null ? decimalPlaces : 2)
-                .displayOrder(displayOrder != null ? displayOrder : 99)
+                .displayOrder(resolvedDisplayOrder)
                 .active(true)
                 .build();
-        Currency saved = currencyRepository.save(currency);
+        Currency saved;
+        try {
+            // saveAndFlush: a V318 UNIQUE constraint MOST serüljon (a metoduson belul), ne a
+            // tranzakcio-commitnal — igy a konkurens eset is 409-et ad, nem 500-at.
+            saved = currencyRepository.saveAndFlush(currency);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // Codex PR #1096 P2: ket parhuzamos createCurrency ugyanazt a resolvedDisplayOrder-t
+            // szamolhatja ki (vagy ugyanazt a kodot szurna be) — az existsBy* eloszures atengedi,
+            // a DB unique constraint kapja el. Ugyanaz a 409 + VV-VALID-003, mint az eloszuresnel.
+            VV_LOG.error("VV-VALID-003", "currency.create.unique_constraint_conflict", e,
+                Map.of("code", upperCode, "displayOrder", resolvedDisplayOrder));
+            throw new BusinessException(
+                "Egyideju valuta-felvetel utkozes: a kod vagy a megjelenitesi sorrend ("
+                    + resolvedDisplayOrder + ") idokozben foglalt lett — probald ujra",
+                "VV-VALID-003", HttpStatus.CONFLICT);
+        }
         writeAudit(saved, "CREATE", null, saved);
         // CodeQL log-injection fix (PR #697 review): explicit CRLF strip a user-
         // input mezokre. A logback `%redact(%msg)` converter mar globalisan

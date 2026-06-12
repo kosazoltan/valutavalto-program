@@ -7,8 +7,8 @@
 # A `VVLogger.error(error_code, ...)` minden hivasakor a kodnak SZEREPELNIE KELL itt.
 
 version: 1
-last_updated: "2026-05-18"
-total_codes: 44
+last_updated: "2026-06-12"
+total_codes: 47
 
 codes:
 
@@ -469,3 +469,23 @@ codes:
       - Customer-screening-service down?
       Tranzakciot soha NE engedj uregess AML-eredmenyt.
       Mindig nezz at egy konkretabb error_code-ra is.
+
+  # =====================================================
+  # VV-VALID — input/torzs-adat validacio
+  # =====================================================
+
+  VV-VALID-003:
+    name: "Duplikalt egyediseg-ertek torzs-letrehozasnal/modositasnal — muvelet elutasitva"
+    category: VALID
+    level: ERROR
+    user_impact: "A letrehozas/modositas nem tortent meg; masik (nem foglalt) erteket kell megadni"
+    ai_fix_hint: |
+      Kozos kod minden torzs-adat egyediseg-utkozesre (Codex PR #1096: NE szukitsd
+      currency-only jelentesre). Hasznaloi:
+      - RateWorkgroupService (FK02-D): duplikalt munkacsoport-sorszam vagy -kod
+        (ValidationException uzenet-prefixkent hordozza a kodot).
+      - AdminCurrencyService.createCurrency() (FK04): a currency.display_order egyedi
+        (V318 UNIQUE constraint). existsByDisplayOrder eloszures + saveAndFlush ->
+        DataIntegrityViolationException-bol is 409 + VV-VALID-003 (konkurens eset).
+        A frontend (CurrencyManagerModal) az "Uj valuta" formot max(displayOrder)+1
+        defaulttal tolti elo. NE kapcsold ki a constraintet.
