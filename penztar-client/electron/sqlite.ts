@@ -602,7 +602,9 @@ export async function initDatabase(): Promise<void> {
 
     // Migrate (fejléc-javítás 2026-06-11, NFR-1 offline): cím/IRSZ/telefon a branch mirrorban,
     // hogy az átadás-átvételi bizonylat fejléce offline is a branch-törzs adatait mutassa.
-    for (const col of ['address', 'zip_code', 'phone']) {
+    // + region_code (bizonylat-doc 2. kör TBD-5, 2026-06-12): az értéktár "[azonosító]. [név]"
+    // fejléc-formátumához offline is.
+    for (const col of ['address', 'zip_code', 'phone', 'region_code']) {
       try {
         db.run(`ALTER TABLE cached_cash_desks ADD COLUMN ${col} TEXT`);
       } catch {
@@ -2998,12 +3000,13 @@ export function saveCachedCashDesk(
   address: string | null = null,
   zipCode: string | null = null,
   phone: string | null = null,
+  regionCode: string | null = null,
 ): void {
   if (!db) return;
 
   db.run(
-    `INSERT INTO cached_cash_desks (id, code, name, company_id, city, address, zip_code, phone, is_active, cached_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `INSERT INTO cached_cash_desks (id, code, name, company_id, city, address, zip_code, phone, region_code, is_active, cached_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(id) DO UPDATE SET
        code = excluded.code,
        name = excluded.name,
@@ -3012,9 +3015,10 @@ export function saveCachedCashDesk(
        address = excluded.address,
        zip_code = excluded.zip_code,
        phone = excluded.phone,
+       region_code = excluded.region_code,
        is_active = excluded.is_active,
        cached_at = excluded.cached_at`,
-    [id, code, name, companyId, city, address, zipCode, phone, isActive ? 1 : 0],
+    [id, code, name, companyId, city, address, zipCode, phone, regionCode, isActive ? 1 : 0],
   );
   saveDatabase();
 }

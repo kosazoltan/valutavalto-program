@@ -570,7 +570,8 @@ export function generateReceiptContent(data: PrintReceiptData): string {
     lines.push('Büntetőjogi felelősségem tudatában,');
     lines.push('kijelentem, hogy a fentiekben felsorolt');
     lines.push('pénzkészletet a szállítóktól átvettem,');
-    lines.push('azt tökéletesen átszámoltam.');
+    // FR-7 (bizonylat-doc 2. kör, 2026-06-12): "tökéletesen" → "tételesen".
+    lines.push('azt tételesen átszámoltam.');
   }
 
   // Két aláírás sor (FR-6: átvételi bizonylaton a nyilatkozat ALATT — Átadó/Átvevő)
@@ -1006,7 +1007,7 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
       <div class="line"></div>
       <div style="font-size: 9px; margin: 4px 0;">
         Büntetőjogi felelősségem tudatában, kijelentem, hogy a fentiekben felsorolt
-        pénzkészletet a szállítóktól átvettem, azt tökéletesen átszámoltam.
+        pénzkészletet a szállítóktól átvettem, azt tételesen átszámoltam.
       </div>
     `;
   }

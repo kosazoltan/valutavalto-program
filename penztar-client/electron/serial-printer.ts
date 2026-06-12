@@ -568,7 +568,8 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     text('Büntetőjogi felelősségem tudatában,');
     text('kijelentem, hogy a fentiekben felsorolt');
     text('pénzkészletet a szállítóktól átvettem,');
-    text('azt tökéletesen átszámoltam.');
+    // FR-7 (bizonylat-doc 2. kör, 2026-06-12): "tökéletesen" → "tételesen".
+    text('azt tételesen átszámoltam.');
   }
 
   // --- Aláírás sorok (FR-6: átvételi bizonylaton a nyilatkozat ALATT — Átadó/Átvevő) ---

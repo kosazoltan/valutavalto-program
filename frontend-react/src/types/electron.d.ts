@@ -500,6 +500,8 @@ export interface ElectronAPI {
     zip_code?: string | null;
     /** Fejléc-javítás 2026-06-11 (NFR-1 offline): telefonszám — régi mirror-ban hiányozhat. */
     phone?: string | null;
+    /** Bizonylat-doc 2. kör TBD-5 (2026-06-12): region_code az "[azonosító]. [név]" formátumhoz — régi mirror-ban hiányozhat. */
+    region_code?: string | null;
     is_active: number;
     cached_at: string;
   }>>;

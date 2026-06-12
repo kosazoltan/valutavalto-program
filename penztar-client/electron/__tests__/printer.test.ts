@@ -496,7 +496,7 @@ describe('printer — generateReceiptContent (ESC/POS)', () => {
     });
     expect(content).toContain('Büntetőjogi felelősségem tudatában,');
     expect(content).toContain('pénzkészletet a szállítóktól átvettem,');
-    expect(content).toContain('azt tökéletesen átszámoltam.');
+    expect(content).toContain('azt tételesen átszámoltam.');
   });
 
   it('fejléc-javítás FR-5: átadási bizonylaton a jogi nyilatkozat NEM jelenik meg', () => {

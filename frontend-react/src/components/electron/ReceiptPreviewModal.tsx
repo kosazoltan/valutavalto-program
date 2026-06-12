@@ -583,8 +583,9 @@ export default function ReceiptPreviewModal({
               <>
                 <div className="my-3 border-t border-gray-300" />
                 <p className="text-[9px] leading-tight">
+                  {/* FR-7 (bizonylat-doc 2. kör, 2026-06-12): "tökéletesen" → "tételesen". */}
                   Büntetőjogi felelősségem tudatában, kijelentem, hogy a fentiekben felsorolt
-                  pénzkészletet a szállítóktól átvettem, azt tökéletesen átszámoltam.
+                  pénzkészletet a szállítóktól átvettem, azt tételesen átszámoltam.
                 </p>
               </>
             )}
