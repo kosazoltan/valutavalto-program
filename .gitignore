@@ -221,3 +221,4 @@ scripts/media/__pycache__/
 
 # Nyers binaris-caption tartalom miatt nem garantaltan ervenyes UTF-8 (guardrail) - lokalisan reprodukálható
 docs/legacy-analysis/generated/legacy-binary-analysis.json
+.audit-ok

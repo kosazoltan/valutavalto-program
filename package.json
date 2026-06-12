@@ -100,7 +100,9 @@
     "installer:smoke:signed": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/installer-smoke-preflight.ps1 -CheckArtifacts -RequireSignature",
     "installer:smoke:synthetic": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/installer-smoke-synthetic-artifacts.ps1",
     "installer:smoke:clean-vm": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/installer-clean-vm-smoke.ps1",
-    "stop:db": "docker stop valuta-postgres"
+    "stop:db": "docker stop valuta-postgres",
+    "qa:size": "node scripts/qa/pr-size-check.mjs",
+    "qa:audit": "node scripts/qa/pre-push-audit-lite.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
