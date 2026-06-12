@@ -14,6 +14,14 @@ interface BranchPickerModalProps {
   onSave: () => void
   saving: boolean
   canWriteRateCreation: boolean
+  /**
+   * FK05 (FR-6): a kijelölt, de MÁSIK munkacsoporthoz tartozó pénztárak figyelmeztetése —
+   * a backend move-strategy-vel ÁTHELYEZI őket (V234 uk_branch_workgroup_exclusive), a
+   * felhasználó ezt mentés ELŐTT látja a modalban. Elem: "kód — név (jelenlegi csoport)".
+   */
+  moveWarnings?: string[]
+  /** FK05 (FR-6): mentési hiba a MODALON BELÜL (nem csak toast) — pl. constraint-ütközés. */
+  saveError?: string | null
 }
 
 export default function BranchPickerModal({
@@ -28,6 +36,8 @@ export default function BranchPickerModal({
   onSave,
   saving,
   canWriteRateCreation,
+  moveWarnings,
+  saveError,
 }: BranchPickerModalProps) {
   const { t } = useTranslation()
   if (!open) return null
@@ -79,6 +89,22 @@ export default function BranchPickerModal({
           )}
         </div>
 
+        {(moveWarnings?.length ?? 0) > 0 && (
+          <div data-testid="branch-move-warning"
+            className="px-4 py-2 border-t bg-amber-50 text-xs text-amber-800">
+            <div className="font-semibold">{t('rates.athelyezesMasikCsoportbol')}</div>
+            <ul className="list-disc ml-4">
+              {moveWarnings!.map((w) => <li key={w}>{w}</li>)}
+            </ul>
+            <div className="mt-1">{t('rates.athelyezesMagyarazat')}</div>
+          </div>
+        )}
+        {saveError && (
+          <div data-testid="branch-save-error"
+            className="px-4 py-2 border-t bg-red-50 text-xs text-red-700 font-semibold">
+            {saveError}
+          </div>
+        )}
         <div className="flex items-center justify-between px-4 py-2 border-t bg-gray-50">
           <span className="text-xs text-gray-500">{selectedBranchIds.size} {t('rates.irodaKivalasztva')}</span>
           <div className="flex gap-2">
