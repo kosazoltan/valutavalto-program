@@ -27,6 +27,10 @@ export interface TransactionReceiptLine {
   /** A sor nyers (kerekítetlen) HUF-értéke — a teljes bizonylat fejléce hordozza az
    *  összegzett és EGYSZER kerekített végösszeget (lásd `PrintReceiptData.roundedHufAmount`). */
   hufAmount: number;
+  /** Penztar-batch C (2026-06-12): a sor deviza-státusza — többsoros nyugtán a sorok
+   *  eltérhetnek (soronkénti B/K toggle); a fejléc `foreignStatus` csak akkor kitöltött,
+   *  ha minden sor azonos. */
+  foreignStatus?: 'DOMESTIC' | 'FOREIGN';
 }
 
 export interface PrintReceiptData {
@@ -61,8 +65,26 @@ export interface PrintReceiptData {
    * Egysoros bizonylatnál nincs jelen → a viselkedés VÁLTOZATLAN.
    */
   transactionLines?: TransactionReceiptLine[];
+  /**
+   * Codex PR #1102 P1: a Pmt. 300k-s küszöb az AML-lel azonos FIZETENDŐ összegre
+   * (subtotal + kezelési díj − kedvezmény) vonatkozik — egysoros bizonylaton a
+   * hufAmount a díj nélküli sorérték. Hiányában fallback: roundedHufAmount ?? hufAmount.
+   */
+  payableHufAmount?: number;
   customerIsPep?: boolean;
   sourceOfFunds?: string;
+  /** Penztar-batch C.1 (2026-06-12): PEP-minőség (pl. CSALADTAG / PARLAMENTI) — a PEP-sorban jelenik meg. */
+  customerPepKind?: string;
+  /** C.1: saját nevében jár-e el (Pmt. jogcím nyilatkozat); false + actorName → képviselt fél adatai. */
+  customerOnOwnBehalf?: boolean;
+  customerActorName?: string;
+  customerActorBirthPlace?: string;
+  customerActorBirthDate?: string;
+  customerActorMotherName?: string;
+  customerActorNationality?: string;
+  customerActorDocumentType?: string;
+  customerActorDocumentNumber?: string;
+  customerActorAddress?: string;
   navReceiptNumber?: string;
   sealNumber?: string;
   vatExemptionText?: string;

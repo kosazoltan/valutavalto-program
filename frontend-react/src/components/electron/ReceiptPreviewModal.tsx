@@ -147,7 +147,8 @@ export default function ReceiptPreviewModal({
   const formatInt = (value: number | undefined) =>
     value !== undefined ? Math.round(value).toLocaleString('hu-HU') : '0';
 
-  const absHuf = Math.abs(receiptData.hufAmount ?? 0);
+  // Codex PR #1102 P1: a küszöbök az AML-lel azonos FIZETENDŐ összegre (díjjal) számolnak.
+  const absHuf = Math.abs(receiptData.payableHufAmount ?? receiptData.hufAmount ?? 0);
   const isMediumValue = absHuf >= MEDIUM_THRESHOLD;
   const isHighValue = absHuf >= HIGH_THRESHOLD;
   // Átadási bizonylat (értéktári átadás-átvétel): nincs ügyfél / deviza-státusz / jogcím-nyilatkozat,
@@ -432,7 +433,12 @@ export default function ReceiptPreviewModal({
                     {receiptData.customerAddress && <p>Lakcím(ADDRESS): {receiptData.customerAddress}</p>}
                     {receiptData.customerDocType && <p>DOC TYPE: {receiptData.customerDocType}</p>}
                     {receiptData.customerDocNumber && <p>NR.: {receiptData.customerDocNumber}</p>}
-                    <p>{receiptData.customerIsPep ? 'Az ügyfél kiemelt közszereplő' : 'Az ügyfél nem közszereplő'}</p>
+                    {/* Penztar-batch C.1: PEP-minőség is megjelenik, ha ismert. */}
+                    <p>
+                      {receiptData.customerIsPep
+                        ? `Az ügyfél kiemelt közszereplő${receiptData.customerPepKind ? ` (${receiptData.customerPepKind})` : ''}`
+                        : 'Az ügyfél nem közszereplő'}
+                    </p>
                   </>
                 )}
               </div>
@@ -461,9 +467,30 @@ export default function ReceiptPreviewModal({
 
                 <div className="mb-2">
                   <p className="font-bold">JOGCÍM NYILATKOZAT</p>
-                  <p className="text-[9px] leading-tight">
-                    Büntetőjogi felelősségem tudatában nyilatkozom, hogy a fenti tranzakciót saját nevemben bonyolítom,
-                  </p>
+                  {/* Penztar-batch C.1: a „saját nevemben / <képviselt> nevében" ág a TÉNYLEGES
+                      onOwnBehalf flagből — a korábbi statikus „saját nevemben" szöveg helyett
+                      (a kanonikus backend EscPosReceiptService logikájával egyezően). */}
+                  {receiptData.customerOnOwnBehalf === false && receiptData.customerActorName ? (
+                    <>
+                      <p className="text-[9px] leading-tight">
+                        Büntetőjogi felelősségem tudatában nyilatkozom, hogy a fenti tranzakciót{' '}
+                        <span className="font-bold">{receiptData.customerActorName}</span> nevében bonyolítom,
+                      </p>
+                      <p className="text-[9px] leading-tight">Képviselt fél adatai:</p>
+                      {receiptData.customerActorBirthPlace && <p className="text-[9px] pl-2">szül.hely: {receiptData.customerActorBirthPlace}</p>}
+                      {receiptData.customerActorBirthDate && <p className="text-[9px] pl-2">szül.idő: {receiptData.customerActorBirthDate}</p>}
+                      {receiptData.customerActorMotherName && <p className="text-[9px] pl-2">anyja: {receiptData.customerActorMotherName}</p>}
+                      {receiptData.customerActorNationality && <p className="text-[9px] pl-2">állampolg.: {receiptData.customerActorNationality}</p>}
+                      {receiptData.customerActorDocumentNumber && (
+                        <p className="text-[9px] pl-2">{receiptData.customerActorDocumentType ?? 'okmány'}: {receiptData.customerActorDocumentNumber}</p>
+                      )}
+                      {receiptData.customerActorAddress && <p className="text-[9px] pl-2">lakcím: {receiptData.customerActorAddress}</p>}
+                    </>
+                  ) : (
+                    <p className="text-[9px] leading-tight">
+                      Büntetőjogi felelősségem tudatában nyilatkozom, hogy a fenti tranzakciót saját nevemben bonyolítom,
+                    </p>
+                  )}
                   {receiptData.sourceOfFunds && (
                     <p className="mt-1">Pénzeszközöm forrása: <span className="font-bold">{receiptData.sourceOfFunds}</span></p>
                   )}

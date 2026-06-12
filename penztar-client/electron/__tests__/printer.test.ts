@@ -42,6 +42,7 @@ import { printReceiptToSerial } from '../serial-printer';
 
 import {
   generateReceiptContent,
+  generateReceiptHtml,
   printReceipt,
   type PrintReceiptData,
   type ClosingPrintData,
@@ -573,5 +574,211 @@ describe('printer — formatAmount edge cases', () => {
     });
     // formatAmount returns '—' for undefined
     expect(content).toContain('—');
+  });
+});
+
+// ============================================================================
+// Penztar-batch C.1/C.2 (2026-06-12, user-kérés): deviza-státusz + Pmt.-nyilatkozatok
+// ============================================================================
+describe('printer — deviza-státusz + 300k+ nyilatkozatok (C.1/C.2)', () => {
+  it('deviza-státusz sor MINDEN vétel/eladás bizonylaton — FOREIGN → Külföldi', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 40000, // 300k ALATT is kötelező
+      foreignStatus: 'FOREIGN',
+    });
+    expect(content).toContain('Az ügyletet készpénzben teljesítjük');
+    expect(content).toContain('Deviza-státusz: Külföldi');
+  });
+
+  it('deviza-státusz: DOMESTIC → Belföldi, hiányzó → —', () => {
+    expect(generateReceiptContent({ ...baseData, foreignStatus: 'DOMESTIC' }))
+      .toContain('Deviza-státusz: Belföldi');
+    expect(generateReceiptContent({ ...baseData, foreignStatus: undefined }))
+      .toContain('Deviza-státusz: —');
+  });
+
+  it('deviza-státusz sor transzfer-bizonylaton NEM jelenik meg', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'handover',
+      transferTarget: 'SZG-02',
+      foreignStatus: 'FOREIGN',
+    });
+    expect(content).not.toContain('Deviza-státusz:');
+  });
+
+  it('300k+ bizonylaton: PEP-sor (nem közszereplő) + JOGCÍM NYILATKOZAT saját névben', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 343000,
+      roundedHufAmount: 343000,
+      customerName: 'Kiss Géza',
+      customerIsPep: false,
+      customerOnOwnBehalf: true,
+      sourceOfFunds: 'munkabér',
+      foreignStatus: 'FOREIGN',
+    });
+    expect(content).toContain('Az ügyfél nem közszereplő');
+    expect(content).toContain('JOGCÍM NYILATKOZAT');
+    expect(content).toContain('saját nevemben bonyolítom,');
+    expect(content).toContain('Pénzeszközöm forrása:');
+    expect(content).toContain('munkabér');
+  });
+
+  it('300k+ PEP ügyfél: kiemelt közszereplő sor a minőséggel', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 500000,
+      roundedHufAmount: 500000,
+      customerName: 'Kiss Géza',
+      customerIsPep: true,
+      customerPepKind: 'PARLAMENTI',
+    });
+    expect(content).toContain('Az ügyfél kiemelt közszereplő (PARLAMENTI)');
+  });
+
+  it('300k+ képviselt fél: actor neve + adatai a nyilatkozatban', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 400000,
+      roundedHufAmount: 400000,
+      customerName: 'Kiss Géza',
+      customerOnOwnBehalf: false,
+      customerActorName: 'Nagy Béla',
+      customerActorBirthPlace: 'Pécs',
+      customerActorDocumentType: 'szem.ig.',
+      customerActorDocumentNumber: 'AB123456',
+    });
+    expect(content).toContain('Nagy Béla');
+    expect(content).toContain('nevében bonyolítom,');
+    expect(content).toContain('Képviselt fél adatai:');
+    expect(content).toContain('szül.hely: Pécs');
+    expect(content).toContain('szem.ig.: AB123456');
+  });
+
+  it('300k ALATT: nincs PEP-sor és nincs JOGCÍM blokk', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 40000,
+      roundedHufAmount: 40000,
+      customerName: 'Kiss Géza',
+      customerIsPep: false,
+      sourceOfFunds: 'munkabér',
+    });
+    expect(content).not.toContain('JOGCÍM NYILATKOZAT');
+    expect(content).not.toContain('közszereplő');
+  });
+
+  it('vegyes B/K többsoros nyugta: soronkénti deviza-státusz suffix, fejléc —', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 100000,
+      foreignStatus: undefined, // vegyes → a fejléc nem hordozza
+      transactionLines: [
+        { currencyCode: 'EUR', foreignAmount: 100, rate: 400, hufAmount: 40000, foreignStatus: 'FOREIGN' },
+        { currencyCode: 'USD', foreignAmount: 150, rate: 400, hufAmount: 60000, foreignStatus: 'DOMESTIC' },
+      ],
+    });
+    expect(content).toContain('EUR (Külföldi):');
+    expect(content).toContain('USD (Belföldi):');
+    expect(content).toContain('Deviza-státusz: —');
+  });
+});
+
+// Codex PR #1102 P1 + Copilot: payable-küszöb + HTML-útvonal tesztek
+describe('printer — payable-küszöb (Codex #1102 P1) + HTML útvonal', () => {
+  it('a küszöb a FIZETENDŐ összegre számol: 295k sorérték + 10k díj → nyilatkozatok IGEN', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 295000,
+      roundedHufAmount: 295000,
+      payableHufAmount: 305000, // sorérték + kezelési díj (AML-paritás)
+      customerName: 'Kiss Géza',
+      customerIsPep: false,
+    });
+    expect(content).toContain('JOGCÍM NYILATKOZAT');
+    expect(content).toContain('Az ügyfél nem közszereplő');
+  });
+
+  it('payableHufAmount nélkül fallback a roundedHufAmount-ra (változatlan viselkedés)', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 295000,
+      roundedHufAmount: 295000,
+      customerName: 'Kiss Géza',
+    });
+    expect(content).not.toContain('JOGCÍM NYILATKOZAT');
+  });
+
+  it('HTML útvonal: deviza-státusz + JOGCÍM blokk pre-wrap behúzással', async () => {
+    const html = await generateReceiptHtml({
+      ...baseData,
+      hufAmount: 343000,
+      roundedHufAmount: 343000,
+      payableHufAmount: 343000,
+      foreignStatus: 'FOREIGN',
+      customerName: 'Kiss Géza',
+      customerOnOwnBehalf: true,
+      sourceOfFunds: 'munkabér',
+    });
+    expect(html).toContain('Deviza-státusz: Külföldi');
+    expect(html).toContain('JOGCÍM NYILATKOZAT');
+    expect(html).toContain('white-space: pre-wrap');
+    expect(html).toContain('munkabér');
+  });
+
+  it('HTML útvonal: 300k alatt nincs JOGCÍM, de a deviza-státusz sor megvan', async () => {
+    const html = await generateReceiptHtml({
+      ...baseData,
+      foreignStatus: 'DOMESTIC',
+    });
+    expect(html).toContain('Deviza-státusz: Belföldi');
+    expect(html).not.toContain('JOGCÍM NYILATKOZAT');
+  });
+});
+
+// A.1 (PR #1101 follow-up): több-valutás átadólap a nyomtató-template-ekben
+describe('printer — több-valutás átadólap sorok (A.1)', () => {
+  const transferBase: PrintReceiptData = {
+    ...baseData,
+    type: 'transfer',
+    transferDocType: 'handover',
+    currencyCode: 'EUR',
+    foreignAmount: 100,
+    transferTarget: 'BR075 - Békéscsaba Értéktár',
+  };
+
+  it('ESC/POS: transferLines jelenlétekor minden sor listázva, a fejléc-mezős nézet helyett', () => {
+    const content = generateReceiptContent({
+      ...transferBase,
+      transferLines: [
+        { currencyCode: 'EUR', amount: 100 },
+        { currencyCode: 'USD', amount: 10 },
+      ],
+    });
+    expect(content).toContain('Valuták és összegek:');
+    expect(content).toContain('EUR: 100');
+    expect(content).toContain('USD: 10');
+    expect(content).not.toContain('Valutanem:');
+  });
+
+  it('ESC/POS: transferLines nélkül a korábbi egysoros nézet változatlan', () => {
+    const content = generateReceiptContent(transferBase);
+    expect(content).toContain('Valutanem:   EUR');
+    expect(content).not.toContain('Valuták és összegek:');
+  });
+
+  it('HTML: transferLines soronként', async () => {
+    const html = await generateReceiptHtml({
+      ...transferBase,
+      transferLines: [
+        { currencyCode: 'EUR', amount: 100 },
+        { currencyCode: 'USD', amount: 10 },
+      ],
+    });
+    expect(html).toContain('Valuták és összegek:');
+    expect(html).toContain('USD:');
   });
 });

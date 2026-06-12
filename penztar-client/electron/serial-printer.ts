@@ -246,8 +246,8 @@ export async function openCashDrawer(
 // Bizonylat nyomtatás (Star SP500 ESC/POS)
 // ============================================================================
 
-// Import típus a printer.ts-ből
-import type { PrintReceiptData } from './printer';
+// Import a printer.ts-ből (Copilot PR #1102: egyetlen import, type-modifierrel)
+import { isHighValueReceipt, foreignStatusText, pepStatusText, buildSourceDeclarationLines, type PrintReceiptData } from './printer';
 
 const JOB_TYPE_LABELS: Record<string, string> = {
   sell: 'ELADÁSI BIZONYLAT',
@@ -361,8 +361,12 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     const txLines = data.transactionLines;
     if (txLines && txLines.length > 0) {
       // Multi-line aggregate: minden valuta-sor listázva EGY bizonylatszám alatt.
+      // C.2: vegyes B/K nyugtán a sor deviza-státusza a valutakód mellett.
       for (const ln of txLines) {
-        text(`${ln.currencyCode}:`);
+        const statusSuffix = data.foreignStatus == null && ln.foreignStatus != null
+          ? ` (${foreignStatusText(ln.foreignStatus)})`
+          : '';
+        text(`${ln.currencyCode}${statusSuffix}:`);
         text(twoColumn(`  ${fmtAmount(ln.foreignAmount)} x ${fmtRate(ln.rate)}`, `${fmtAmount(ln.hufAmount)} Ft`));
       }
     } else {
@@ -401,8 +405,16 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     // FR-2: kérő iroda + cél iroda (kötelező → mindig, „—" fallback) + valuta/összeg + forintosított érték.
     text(twoColumn('Kérő iroda:', data.branchCode || '—'));
     text(twoColumn('Cél iroda:', data.transferTarget ?? '—'));
-    text(twoColumn('Valutanem:', data.currencyCode ?? '—'));
-    text(twoColumn('Összeg:', `${fmtAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`));
+    // A.1 (PR #1101): több-valutás átadólapon MINDEN sor a bizonylatra kerül.
+    if (data.transferLines && data.transferLines.length > 0) {
+      text('Valuták és összegek:');
+      for (const tl of data.transferLines) {
+        text(twoColumn(`  ${tl.currencyCode}:`, fmtAmount(tl.amount)));
+      }
+    } else {
+      text(twoColumn('Valutanem:', data.currencyCode ?? '—'));
+      text(twoColumn('Összeg:', `${fmtAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`));
+    }
     // NFR-3: 5 Ft-ra kerekített forintosított érték.
     if (data.roundedHufAmount !== undefined || data.hufAmount !== undefined) {
       text(twoColumn('Forint érték:', `${fmtAmount(data.roundedHufAmount ?? data.hufAmount)} HUF`));
@@ -498,6 +510,29 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     if (data.customerDocType) text(twoColumn('Okmány:', data.customerDocType));
     if (data.customerDocNumber) text(twoColumn('Okmányszám:', data.customerDocNumber));
     if (data.customerNationality) text(twoColumn('Államp.:', data.customerNationality));
+    // C.1: PEP-sor 300k+ vétel/eladás bizonylaton.
+    if ((data.type === 'sell' || data.type === 'buy') && isHighValueReceipt(data)) {
+      text(pepStatusText(data));
+    }
+  }
+
+  // C.2 (user-kérés 2026-06-12): deviza-státusz MINDEN vétel/eladás bizonylaton +
+  // C.1: 300k+ felett JOGCÍM NYILATKOZAT (a backend EscPosReceiptService tükre, 42 char sorok).
+  if (data.type === 'sell' || data.type === 'buy') {
+    blank();
+    push(COMMANDS.ALIGN_LEFT);
+    text('Az ügyletet készpénzben teljesítjük');
+    text(`Deviza-státusz: ${foreignStatusText(data.foreignStatus)}`);
+    if (isHighValueReceipt(data)) {
+      blank();
+      push(line(), COMMANDS.LF);
+      push(COMMANDS.BOLD_ON);
+      text('JOGCÍM NYILATKOZAT');
+      push(COMMANDS.BOLD_OFF);
+      for (const declLine of buildSourceDeclarationLines(data)) {
+        text(declLine);
+      }
+    }
   }
 
   // --- ÁFA-mentesség ---

@@ -92,6 +92,8 @@ export interface TransactionReceiptLine {
   /** A sor nyers (kerekítetlen) HUF-értéke. A teljes bizonylat fejléce hordozza az
    *  összegzett és EGYSZER kerekített végösszeget (lásd `roundedHufAmount`). */
   hufAmount: number;
+  /** Penztar-batch C (2026-06-12): a sor deviza-státusza — vegyes B/K nyugtán soronként jelenik meg. */
+  foreignStatus?: 'DOMESTIC' | 'FOREIGN';
 }
 
 export interface PrintReceiptData {
@@ -116,6 +118,34 @@ export interface PrintReceiptData {
   customerBirthPlace?: string;
   customerBirthDate?: string;
   customerNationality?: string;
+  /**
+   * Penztar-batch C.1/C.2 (2026-06-12, user-kérés): deviza-státusz MINDEN vétel/eladás
+   * bizonylaton + 300k+ felett PEP-sor és JOGCÍM NYILATKOZAT — a kanonikus backend
+   * EscPosReceiptService template-jével egyezően.
+   */
+  foreignStatus?: 'DOMESTIC' | 'FOREIGN';
+  /**
+   * Codex PR #1102 P1: a Pmt. 300k-s küszöb az AML-lel azonos FIZETENDŐ összegre
+   * (subtotal + kezelési díj − kedvezmény) vonatkozik — egysoros bizonylaton a
+   * hufAmount a díj NÉLKÜLI sorérték, ezért a küszöbhöz külön mező kell.
+   * Hiányában fallback: roundedHufAmount ?? hufAmount.
+   */
+  payableHufAmount?: number;
+  customerIsPep?: boolean;
+  customerPepKind?: string;
+  sourceOfFunds?: string;
+  customerOnOwnBehalf?: boolean;
+  customerActorName?: string;
+  customerActorBirthPlace?: string;
+  customerActorBirthDate?: string;
+  customerActorMotherName?: string;
+  customerActorNationality?: string;
+  customerActorDocumentType?: string;
+  customerActorDocumentNumber?: string;
+  customerActorAddress?: string;
+  /** Penztar-batch A.1 (PR #1101): több-valutás átadólap sorai — ha jelen van, a transfer
+   *  bizonylat EZEKET listázza a fejléc currencyCode/foreignAmount helyett. */
+  transferLines?: Array<{ currencyCode: string; amount: number }>;
   sealNumber?: string;
   vatExemptionText?: string;
   companyPhone?: string;
@@ -185,6 +215,70 @@ function getJobTypeLabel(data: PrintReceiptData): string {
     return data.transferDocType === 'receipt' ? 'ÁTVÉTELI BIZONYLAT' : 'ÁTADÁSI BIZONYLAT';
   }
   return JOB_TYPE_LABELS[data.type];
+}
+
+// ============================================================================
+// Penztar-batch C (2026-06-12): Pmt.-tartalom segédek — a kanonikus backend
+// EscPosReceiptService küszöbével/szövegeivel egyezően.
+// ============================================================================
+
+/** Pmt. 300k Ft küszöb: e felett PEP-sor + JOGCÍM NYILATKOZAT kötelező a bizonylaton. */
+export const HIGH_VALUE_THRESHOLD = 300000;
+
+export function isHighValueReceipt(data: PrintReceiptData): boolean {
+  // Codex PR #1102 P1: az AML-lel azonos fizetendő összeg az alap (díj+kedvezmény után);
+  // a payableHufAmount-ot a bizonylat-építő adja át, fallback a fejléc-összegre.
+  return Math.abs(data.payableHufAmount ?? data.roundedHufAmount ?? data.hufAmount ?? 0) >= HIGH_VALUE_THRESHOLD;
+}
+
+/** Deviza-státusz szöveg: NULL → „—" (ismeretlen, régi adat), FOREIGN/DOMESTIC explicit. */
+export function foreignStatusText(status: 'DOMESTIC' | 'FOREIGN' | undefined): string {
+  if (status == null) return '—';
+  return status === 'FOREIGN' ? 'Külföldi' : 'Belföldi';
+}
+
+/** PEP-sor szövege (300k+): minőséggel, ha ismert. */
+export function pepStatusText(data: PrintReceiptData): string {
+  return data.customerIsPep
+    ? `Az ügyfél kiemelt közszereplő${data.customerPepKind ? ` (${data.customerPepKind})` : ''}`
+    : 'Az ügyfél nem közszereplő';
+}
+
+/**
+ * JOGCÍM NYILATKOZAT sorai (plain text, ESC/POS + soros nyomtatóra is alkalmas
+ * rövid sorokkal) — a backend EscPosReceiptService:696-752 logikájának tükre:
+ * saját nevemben / képviselt fél adatai + pénzeszköz forrása (tördelt).
+ */
+export function buildSourceDeclarationLines(data: PrintReceiptData): string[] {
+  const lines: string[] = [];
+  lines.push('Büntetőjogi felelősségem tudatá-');
+  lines.push('ban nyilatkozom, hogy a fenti');
+  lines.push('tranzakciót');
+  if (data.customerOnOwnBehalf === false && data.customerActorName) {
+    lines.push(data.customerActorName);
+    lines.push('nevében bonyolítom,');
+    // Pmt. 6.§ (2): a képviselt félre is teljes azonosítás — adatai a bizonylatra.
+    lines.push('Képviselt fél adatai:');
+    if (data.customerActorBirthPlace) lines.push(`  szül.hely: ${data.customerActorBirthPlace}`);
+    if (data.customerActorBirthDate) lines.push(`  szül.idő: ${data.customerActorBirthDate}`);
+    if (data.customerActorMotherName) lines.push(`  anyja: ${data.customerActorMotherName}`);
+    if (data.customerActorNationality) lines.push(`  állampolg.: ${data.customerActorNationality}`);
+    if (data.customerActorDocumentNumber) {
+      lines.push(`  ${data.customerActorDocumentType ?? 'okmány'}: ${data.customerActorDocumentNumber}`);
+    }
+    if (data.customerActorAddress) lines.push(`  lakcím: ${data.customerActorAddress}`);
+  } else {
+    lines.push('saját nevemben bonyolítom,');
+  }
+  if (data.sourceOfFunds && data.sourceOfFunds.trim() !== '') {
+    lines.push('Pénzeszközöm forrása:');
+    const src = data.sourceOfFunds.trim();
+    const maxLen = 38; // 40-42 karakteres hőnyomtató-sor, 2 char behúzással
+    for (let i = 0; i < src.length; i += maxLen) {
+      lines.push(`  ${src.substring(i, Math.min(i + maxLen, src.length))}`);
+    }
+  }
+  return lines;
 }
 
 // ============================================================================
@@ -300,6 +394,29 @@ export function generateReceiptContent(data: PrintReceiptData): string {
     if (data.customerNationality) {
       lines.push(`Államp.:    ${data.customerNationality}`);
     }
+    // C.1: PEP-sor 300k+ vétel/eladás bizonylaton (backend EscPosReceiptService:651-654 tükre).
+    if ((data.type === 'sell' || data.type === 'buy') && isHighValueReceipt(data)) {
+      lines.push(pepStatusText(data));
+    }
+  }
+
+  // C.2 (user-kérés 2026-06-12): deviza-státusz MINDEN vétel/eladás bizonylaton —
+  // azonosítási szinttől és összegtől FÜGGETLENÜL (backend EscPosReceiptService:659-671).
+  if (data.type === 'sell' || data.type === 'buy') {
+    lines.push('');
+    lines.push(CMD.ALIGN_LEFT);
+    lines.push('Az ügyletet készpénzben teljesítjük');
+    lines.push(`Deviza-státusz: ${foreignStatusText(data.foreignStatus)}`);
+
+    // C.1: JOGCÍM NYILATKOZAT — 300k+ Ft felett kötelező (Pmt.).
+    if (isHighValueReceipt(data)) {
+      lines.push('');
+      lines.push(CMD.LINE);
+      lines.push(CMD.BOLD_ON);
+      lines.push('JOGCÍM NYILATKOZAT');
+      lines.push(CMD.BOLD_OFF);
+      lines.push(...buildSourceDeclarationLines(data));
+    }
   }
 
   // QR kód szekció (ha van bizonylat szám — KÖTELEZŐ a bizonylaton)
@@ -382,7 +499,11 @@ function generateTransactionLines(data: PrintReceiptData): string[] {
   if (txLines && txLines.length > 0) {
     // Multi-line aggregate: minden valuta-sor listázva EGY bizonylatszám alatt.
     txLines.forEach((ln) => {
-      lines.push(`${ln.currencyCode}:`);
+      // C.2: vegyes B/K nyugtán a sor deviza-státusza a valutakód mellett.
+      const statusSuffix = data.foreignStatus == null && ln.foreignStatus != null
+        ? ` (${foreignStatusText(ln.foreignStatus)})`
+        : '';
+      lines.push(`${ln.currencyCode}${statusSuffix}:`);
       lines.push(`  ${formatAmount(ln.foreignAmount)} × ${formatRate(ln.rate)} = ${formatAmount(ln.hufAmount)} Ft`);
     });
   } else {
@@ -421,8 +542,16 @@ function generateTransferLines(data: PrintReceiptData): string[] {
   // FR-2 (átadási bizonylat): kérő iroda + cél iroda (kötelező mezők → mindig, „—" fallback) + valuta/összeg + forintosított érték.
   lines.push(`Kérő iroda:  ${data.branchCode || '—'}`);
   lines.push(`Cél iroda:   ${data.transferTarget ?? '—'}`);
-  lines.push(`Valutanem:   ${data.currencyCode ?? '—'}`);
-  lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`);
+  // A.1 (PR #1101): több-valutás átadólapon MINDEN sor a bizonylatra kerül.
+  if (data.transferLines && data.transferLines.length > 0) {
+    lines.push('Valuták és összegek:');
+    for (const tl of data.transferLines) {
+      lines.push(`  ${tl.currencyCode}: ${formatAmount(tl.amount)}`);
+    }
+  } else {
+    lines.push(`Valutanem:   ${data.currencyCode ?? '—'}`);
+    lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`);
+  }
   // NFR-3: 5 Ft-ra kerekített forintosított érték (a kérő-oldalon számolt roundedHufAmount).
   if (data.roundedHufAmount !== undefined || data.hufAmount !== undefined) {
     lines.push(`Forint érték: ${formatAmount(data.roundedHufAmount ?? data.hufAmount)} HUF`);
@@ -635,7 +764,8 @@ function formatRate(value: number | undefined): string {
  * Bizonylat HTML generálása — 80mm szélességre optimalizált.
  * Ezt rendereli a rejtett BrowserWindow a rendszer nyomtató felé.
  */
-async function generateReceiptHtml(data: PrintReceiptData): Promise<string> {
+// Copilot PR #1102: exportált a HTML-útvonal unit-tesztjeihez (deviza-státusz + JOGCÍM blokk).
+export async function generateReceiptHtml(data: PrintReceiptData): Promise<string> {
   const company = COMPANIES[data.companyType] ?? COMPANIES['BEST_CHANGE']!;
   const label = getJobTypeLabel(data);
 
@@ -702,7 +832,32 @@ async function generateReceiptHtml(data: PrintReceiptData): Promise<string> {
       ${data.customerDocType ? `<div class="amount-row"><span>Okmány:</span><span>${escHtml(data.customerDocType)}</span></div>` : ''}
       ${data.customerDocNumber ? `<div class="amount-row"><span>Okmányszám:</span><span>${escHtml(data.customerDocNumber)}</span></div>` : ''}
       ${data.customerNationality ? `<div class="amount-row"><span>Állampolgárság:</span><span>${escHtml(data.customerNationality)}</span></div>` : ''}
+      ${(data.type === 'sell' || data.type === 'buy') && isHighValueReceipt(data)
+        ? `<div>${escHtml(pepStatusText(data))}</div>`
+        : ''}
     `;
+  }
+
+  // C.2 (user-kérés 2026-06-12): deviza-státusz MINDEN vétel/eladás bizonylaton +
+  // C.1: 300k+ felett JOGCÍM NYILATKOZAT (a kanonikus backend template tükre).
+  if (data.type === 'sell' || data.type === 'buy') {
+    bodyContent += `
+      <div style="margin: 4px 0;">
+        <div>Az ügyletet készpénzben teljesítjük</div>
+        <div>Deviza-státusz: ${escHtml(foreignStatusText(data.foreignStatus))}</div>
+      </div>
+    `;
+    if (isHighValueReceipt(data)) {
+      // Copilot PR #1102: white-space: pre-wrap — a 2 szóközös behúzások (képviselt fél
+      // adatai, forrás-sorok) HTML-ben is látszanak, nem csukódnak össze.
+      bodyContent += `
+        <div class="line"></div>
+        <div class="bold">JOGCÍM NYILATKOZAT</div>
+        <div style="font-size: 9px; margin: 2px 0; white-space: pre-wrap;">
+          ${buildSourceDeclarationLines(data).map(l => `<div>${escHtml(l)}</div>`).join('')}
+        </div>
+      `;
+    }
   }
 
   // ÁFA-mentességi szöveg (törvényi kötelező)
@@ -842,9 +997,15 @@ function generateTransactionHtml(data: PrintReceiptData): string {
   const txLines = data.transactionLines;
   const bodyRows = (txLines && txLines.length > 0)
     // Multi-line aggregate: minden valuta-sor listázva EGY bizonylatszám alatt.
-    ? txLines.map((ln) => `
-        <div class="amount-row"><span>${escHtml(ln.currencyCode)}: ${formatAmount(ln.foreignAmount)} × ${formatRate(ln.rate)}</span><span>${formatAmount(ln.hufAmount)} Ft</span></div>
-      `).join('')
+    // C.2: vegyes B/K nyugtán a sor deviza-státusza a valutakód mellett.
+    ? txLines.map((ln) => {
+        const statusSuffix = data.foreignStatus == null && ln.foreignStatus != null
+          ? ` (${foreignStatusText(ln.foreignStatus)})`
+          : '';
+        return `
+        <div class="amount-row"><span>${escHtml(ln.currencyCode)}${escHtml(statusSuffix)}: ${formatAmount(ln.foreignAmount)} × ${formatRate(ln.rate)}</span><span>${formatAmount(ln.hufAmount)} Ft</span></div>
+      `;
+      }).join('')
     : `
       <div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
       <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>
@@ -890,8 +1051,11 @@ function generateTransferHtml(data: PrintReceiptData): string {
       <div class="bold">Átadás-átvétel:</div>
       <div class="amount-row"><span>Kérő iroda:</span><span>${escHtml(data.branchCode || '—')}</span></div>
       <div class="amount-row"><span>Cél iroda:</span><span>${escHtml(data.transferTarget ?? '—')}</span></div>
-      <div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
-      <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>
+      ${data.transferLines && data.transferLines.length > 0
+        ? `<div class="bold">Valuták és összegek:</div>${data.transferLines.map(tl =>
+            `<div class="amount-row"><span>${escHtml(tl.currencyCode)}:</span><span>${formatAmount(tl.amount)}</span></div>`).join('')}`
+        : `<div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
+      <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>`}
       ${(data.roundedHufAmount !== undefined || data.hufAmount !== undefined) ? `<div class="amount-row"><span>Forint érték:</span><span>${formatAmount(data.roundedHufAmount ?? data.hufAmount)} HUF</span></div>` : ''}
       ${data.carrierName ? `<div class="amount-row"><span>Szállító:</span><span>${escHtml(data.carrierName)}</span></div>` : ''}
       ${data.sealNumber ? `<div class="amount-row"><span>Plombaszám:</span><span>${escHtml(data.sealNumber)}</span></div>` : ''}
