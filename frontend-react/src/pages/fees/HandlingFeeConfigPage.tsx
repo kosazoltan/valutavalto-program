@@ -1,9 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Settings, Plus, Trash2, Save } from 'lucide-react'
+import { Settings, Plus, Trash2, Save, Eye } from 'lucide-react'
 import { handlingFeeConfigApi, type HandlingFeeConfig, type HandlingFeeBracketConfig } from '../../services/api/settings'
 import { logger } from '../../utils/logger'
+import { useAuthStore } from '../../stores/authStore'
 
 export default function HandlingFeeConfigPage() {
+  // Batch2-B: a pénztár-kliensben pénztárosnak is látható az oldal (átláthatóság —
+  // a program ezzel a konfiggal számol), de szerkeszteni csak a vezetői körök tudnak.
+  // A szerver-oldali PUT-jog (HandlingFeeConfigController) ugyanez a kör — ez UX-gate.
+  const canEdit = useAuthStore(s => s.hasCanonicalRole)(['ugyvezeto', 'foertektar', 'irodavezeto', 'admin'])
   const [config, setConfig] = useState<HandlingFeeConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -87,15 +92,25 @@ export default function HandlingFeeConfigPage() {
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Settings size={24} /> Kezelési költség beállítások
         </h1>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-        >
-          <Save size={16} /> {saving ? 'Mentés...' : 'Mentés'}
-        </button>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          >
+            <Save size={16} /> {saving ? 'Mentés...' : 'Mentés'}
+          </button>
+        )}
       </div>
+
+      {!canEdit && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded flex items-center gap-2 text-sm">
+          <Eye size={16} className="shrink-0" />
+          Megtekintő nézet — a program ezekkel a beállításokkal számolja a kezelési díjat.
+          Módosításhoz vezetői jogosultság szükséges (ügyvezető / irodavezető / főértéktáros).
+        </div>
+      )}
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
       {success && <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">{success}</div>}
@@ -109,12 +124,13 @@ export default function HandlingFeeConfigPage() {
             { value: 'BRACKET', label: 'Sávos díjszámítás' },
             { value: 'PER_MILLE', label: 'Ezrelékes díjszámítás' },
           ] as const).map(opt => (
-            <label key={opt.value} className="flex items-center gap-2 cursor-pointer">
+            <label key={opt.value} className={`flex items-center gap-2 ${canEdit ? 'cursor-pointer' : 'cursor-default'}`}>
               <input
                 type="radio"
                 name="feeType"
                 value={opt.value}
                 checked={config.feeType === opt.value}
+                disabled={!canEdit}
                 onChange={() => setConfig({ ...config, feeType: opt.value })}
                 className="accent-blue-600"
               />
@@ -136,8 +152,9 @@ export default function HandlingFeeConfigPage() {
                 step="0.1"
                 min="0"
                 value={config.perMilleRate}
+                disabled={!canEdit}
                 onChange={(e) => setConfig({ ...config, perMilleRate: parseFloat(e.target.value) || 0 })}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded px-3 py-2 disabled:bg-gray-50 disabled:text-gray-600"
               />
               <p className="text-xs text-gray-500 mt-1">Pl. 5 = a HUF összeg 5 ezreléke</p>
             </div>
@@ -148,8 +165,9 @@ export default function HandlingFeeConfigPage() {
                 step="100"
                 min="0"
                 value={config.perMilleMaxAmount ?? ''}
+                disabled={!canEdit}
                 onChange={(e) => setConfig({ ...config, perMilleMaxAmount: e.target.value ? parseFloat(e.target.value) : null })}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded px-3 py-2 disabled:bg-gray-50 disabled:text-gray-600"
                 placeholder="Korlátlan"
               />
               <p className="text-xs text-gray-500 mt-1">0 vagy üres = nincs felső korlát</p>
@@ -169,13 +187,15 @@ export default function HandlingFeeConfigPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg border p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">Díjsávok</h2>
-            <button
-              type="button"
-              onClick={addBracket}
-              className="flex items-center gap-1 text-sm bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700"
-            >
-              <Plus size={14} /> Új sáv
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={addBracket}
+                className="flex items-center gap-1 text-sm bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700"
+              >
+                <Plus size={14} /> Új sáv
+              </button>
+            )}
           </div>
 
           {config.brackets.length === 0 ? (
@@ -204,8 +224,9 @@ export default function HandlingFeeConfigPage() {
                           step="1000"
                           min={lowerLimit}
                           value={bracket.upperLimit}
+                          disabled={!canEdit}
                           onChange={(e) => updateBracket(index, 'upperLimit', parseInt(e.target.value) || 0)}
-                          className="w-full border rounded px-2 py-1"
+                          className="w-full border rounded px-2 py-1 disabled:bg-gray-50 disabled:text-gray-600"
                         />
                       </td>
                       <td className="py-2 px-2">
@@ -214,19 +235,22 @@ export default function HandlingFeeConfigPage() {
                           step="50"
                           min="0"
                           value={bracket.feeAmount}
+                          disabled={!canEdit}
                           onChange={(e) => updateBracket(index, 'feeAmount', parseInt(e.target.value) || 0)}
-                          className="w-full border rounded px-2 py-1"
+                          className="w-full border rounded px-2 py-1 disabled:bg-gray-50 disabled:text-gray-600"
                         />
                       </td>
                       <td className="py-2 px-2">
-                        <button
-                          type="button"
-                          onClick={() => removeBracket(index)}
-                          className="text-red-500 hover:text-red-700 p-1"
-                          title="Sáv törlése"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => removeBracket(index)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                            title="Sáv törlése"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   )

@@ -108,9 +108,13 @@ describe('ELLENŐRZÉS — pénztár/értéktár (lokál) modul menüi megfelel�
   it('egyetlen lokál operatív route sincs a central MenuRoleGate-tel szűkített admin-route-ok közt', () => {
     // A central admin-route-ok (App.tsx MenuRoleGate) — ezek operatív userre redirectelnének.
     // (A /workers SZÁNDÉKOSAN nincs köztük: a backend SecurityConfig HTTP-matchere védi — Codex #1059.)
+    // Megj. (Batch2-B 2026-06-12): a /handling-fee-config SZÁNDÉKOSAN nincs már a listában —
+    // kettős listázású route lett (Adminisztráció + Pénztár-csoport), a route-gate uniója
+    // (effectiveCanonicalRolesForPath) a pénztárost is átengedi (read-only nézet, a PUT
+    // szerver-oldalon vezetői jog marad).
     const gatedAdminPaths = new Set([
       '/employees', '/attendance', '/licenses', '/settings',
-      '/settings/permission-matrix', '/scheduler', '/email-settings', '/handling-fee-config',
+      '/settings/permission-matrix', '/scheduler', '/email-settings',
       '/audit-log', '/admin/error-monitor', '/admin/audit-diagnostics',
       '/sanction', '/compliance', '/police-requests', '/seal-tracking', '/admin/branches',
     ])
