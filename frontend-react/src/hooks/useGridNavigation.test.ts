@@ -36,6 +36,23 @@ describe('useGridNavigation', () => {
     expect(result.current.editing).toBe(false)
   })
 
+  it('FK03 Codex #1112: az előző cella szerkesztő módja NEM ragad át az új cellára kattintáskor', () => {
+    const { result } = renderHook(() => useGridNavigation({ rows: 3, cols: 4, editOnFocus: false }))
+    act(() => {
+      result.current.onCellFocus(0, 0)
+    })
+    act(() => {
+      result.current.setEditing(true) // mintha dupla kattintással szerkesztene
+    })
+    expect(result.current.editing).toBe(true)
+    // Kattintás egy MÁSIK cellára → kijelölt állapot, a szerkesztő mód nem ragad.
+    act(() => {
+      result.current.onCellFocus(1, 2)
+    })
+    expect(result.current.activeCell).toEqual({ row: 1, col: 2 })
+    expect(result.current.editing).toBe(false)
+  })
+
   describe('focusCell with DOM', () => {
     let container: HTMLDivElement
 

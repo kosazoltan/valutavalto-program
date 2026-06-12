@@ -181,8 +181,10 @@ export function useGridNavigation({ rows, cols, editOnFocus = true }: UseGridNav
     setActiveCell({ row, col })
     // FK03-fix (FR-1, FR-2): editOnFocus=false esetén a fókusz ≠ szerkesztő mód —
     // a cella kijelölt állapotba kerül, szerkesztésbe dupla kattintás / Enter /
-    // gépelés visz (Főlap-referencia viselkedés).
-    if (editOnFocus) setEditing(true)
+    // gépelés visz (Főlap-referencia viselkedés). Codex/Copilot #1112: mindig
+    // SZINKRONIZÁLUNK (nem csak bekapcsolunk) — különben egy előző cella
+    // szerkesztő módja "ragadna" az új cellára kattintáskor.
+    setEditing(editOnFocus)
   }, [editOnFocus])
 
   return {

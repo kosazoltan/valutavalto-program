@@ -120,6 +120,19 @@ describe('RateGrid (FK03-fix cellaszerkesztés)', () => {
     expect(lInput.value).toBe('388,13')
   })
 
+  it('blur_commit_exits_edit_mode: commit után a cella visszavált formázott megjelenítésre (Copilot #1112)', () => {
+    const { onCommitCell } = renderGrid([row({ buyRate: '388,1267' })])
+    const lInput = screen.getByDisplayValue('388,13') as HTMLInputElement
+    fireEvent.focus(lInput)
+    fireEvent.doubleClick(lInput)
+    fireEvent.change(lInput, { target: { value: '400' } })
+    fireEvent.blur(lInput)
+    expect(onCommitCell).toHaveBeenCalledWith(0, 'buyRate', '400')
+    // A szerkesztő mód lezárult: a (mockolt parent miatt változatlan) perzisztált
+    // érték formázott alakja látszik, nem a nyers buffer.
+    expect(lInput.value).toBe('388,13')
+  })
+
   it('selected_state_blur_does_not_commit: kijelölt (nem szerkesztő) cella elhagyása nem commitol', () => {
     const { onCommitCell } = renderGrid([row({ buyRate: '388,1267' })])
     const lInput = screen.getByDisplayValue('388,13') as HTMLInputElement

@@ -673,7 +673,9 @@ export default function RateCreationPage() {
       for (const { field, raw } of forRow) {
         const trimmed = raw.trim()
         if (isFormula(trimmed)) continue
-        if (field === 'officialRate') nr.officialRate = numOrNull(trimmed)
+        // Codex #1112 (FK03): a J üres értéke a SZERVER-alapértékre áll vissza
+        // (FK02-E FR-9), a commitCell-lel azonosan — nem marad null/üres.
+        if (field === 'officialRate') nr.officialRate = numOrNull(trimmed) ?? (serverOfficialRateRef.current[x.currencyId] ?? null)
         else nr[field] = trimmed
       }
       return nr
@@ -683,11 +685,22 @@ export default function RateCreationPage() {
     if (wgId) {
       const saved = loadGroupRateValues(wgId)
       for (const { row, field, raw } of cells) {
-        if (field === 'officialRate') continue
         const r = rates[row]
         if (!r) continue
         const key = `${r.currencyId}.${field}`
         const trimmed = raw.trim()
+        // Codex P2 #1112 (FK03): a J (officialRate) bulk-szerkesztése IS perzisztálódik
+        // override-ként — a commitCell J-ágával azonos szabállyal (szerver-alapértékkel
+        // egyező vagy üres/formula → kulcstörlés). Korábban a J kimaradt (continue), így
+        // a toolbar-műveletek J-változása újratöltéskor elveszett volna.
+        if (field === 'officialRate') {
+          const n = numOrNull(trimmed)
+          const serverDefault = serverOfficialRateRef.current[r.currencyId] ?? null
+          const isDefault = !isFormula(trimmed) && (n === null || n === serverDefault)
+          if (isFormula(trimmed) || isDefault) delete saved[key]
+          else saved[key] = trimmed
+          continue
+        }
         const serverNum = baselineRatesRef.current[key]
         const nextNum = numOrNull(trimmed)
         const sameAsServer = (trimmed === '' && serverNum === undefined) || (nextNum !== null && nextNum === serverNum)

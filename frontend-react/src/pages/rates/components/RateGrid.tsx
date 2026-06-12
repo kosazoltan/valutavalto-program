@@ -471,7 +471,12 @@ export default function RateGrid({
                           return
                         }
                         // Kijelölt (nem szerkesztő) állapotból távozva nincs mit commitolni.
-                        if (editing) commit(buffer)
+                        // Copilot #1112: commit után KILÉPÜNK a szerkesztő módból — különben a
+                        // fókuszát vesztett cella továbbra is a nyers buffert mutatná.
+                        if (editing) {
+                          commit(buffer)
+                          setEditing(false)
+                        }
                       }}
                       title={title}
                       className={`w-full px-0.5 py-0.5 text-right font-mono text-[13px] ${colorClass} font-bold border-0 bg-transparent ${focusBg} focus:outline-none ${activeBorder} ${formulaBg} ${errorRing}`}
