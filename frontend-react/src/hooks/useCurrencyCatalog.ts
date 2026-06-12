@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { currencyApi } from '../services/api/exchange-rates'
 import type { Currency } from '../services/api/exchange-rates'
 import { logger } from '../utils/logger'
@@ -83,29 +83,31 @@ export function useCurrencyCatalog(): CurrencyCatalog {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [reloadCounter, setReloadCounter] = useState(0)
-  const mountedRef = useRef(true)
 
   useEffect(() => {
-    mountedRef.current = true
+    // FK04 verifikáció P2: futásonkénti cancelled flag (NEM megosztott ref) — két gyors
+    // reload() out-of-order válaszainál a RÉGI (lassabban érkező) válasz nem írhatja
+    // felül az újat: a cleanup a saját futása flagjét állítja, last-requested-wins.
+    let cancelled = false
     setLoading(true)
     currencyApi.getAll()
       .then(data => {
-        if (!mountedRef.current) return
+        if (cancelled) return
         setAll(data)
         setCurrencies(selectCatalogCurrencies(data))
         setError(null)
       })
       .catch((err: unknown) => {
-        if (!mountedRef.current) return
+        if (cancelled) return
         logger.error('useCurrencyCatalog', 'currencies/all betöltés sikertelen', err)
         setError(err instanceof Error ? err : new Error(String(err)))
         setAll([])
         setCurrencies([])
       })
       .finally(() => {
-        if (mountedRef.current) setLoading(false)
+        if (!cancelled) setLoading(false)
       })
-    return () => { mountedRef.current = false }
+    return () => { cancelled = true }
   }, [reloadCounter])
 
   const reload = useCallback(() => setReloadCounter(n => n + 1), [])

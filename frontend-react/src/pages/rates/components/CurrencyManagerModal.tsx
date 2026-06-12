@@ -191,7 +191,10 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                 if (!showAddForm) setNewDisplayOrder(computeNextDisplayOrder(currencies))
                 setShowAddForm((s) => !s)
               }}
-              className="form-button-primary flex items-center gap-1"
+              // Verif P2: a lista betöltéséig tiltva — üres currencies-ből a default 1 lenne,
+              // ami a V317 után garantáltan foglalt (EUR=1) → fals 409 a felhasználónak.
+              disabled={loading}
+              className="form-button-primary flex items-center gap-1 disabled:opacity-50"
               data-testid="currency-manager-toggle-add"
             >
               <Plus size={16} />

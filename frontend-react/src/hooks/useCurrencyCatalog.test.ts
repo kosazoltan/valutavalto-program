@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { useCurrencyCatalog, selectCatalogCurrencies, CROSS_BASE_MAP, getCrossBase } from './useCurrencyCatalog'
 import { currencyApi } from '../services/api/exchange-rates'
 import type { Currency } from '../services/api/exchange-rates'
@@ -80,6 +80,25 @@ describe('FK04 — useCurrencyCatalog', () => {
 
     expect(result.current.error).not.toBeNull()
     expect(result.current.currencies).toEqual([])
+  })
+
+  it('out_of_order_reload: a régebbi (lassabb) válasz nem írja felül az újabbat (last-requested-wins)', async () => {
+    let resolveFirst: (v: Currency[]) => void = () => {}
+    let resolveSecond: (v: Currency[]) => void = () => {}
+    const first = new Promise<Currency[]>(r => { resolveFirst = r })
+    const second = new Promise<Currency[]>(r => { resolveSecond = r })
+    vi.mocked(currencyApi.getAll).mockReturnValueOnce(first).mockReturnValueOnce(second)
+
+    const { result } = renderHook(() => useCurrencyCatalog())
+    // 2. kérés (reload) még az 1. válasza ELŐTT elindul
+    act(() => result.current.reload())
+    // a 2. (frissebb) válasz érkezik előbb…
+    await act(async () => { resolveSecond([cur('EUR', 1)]) })
+    // …majd az 1. (elavult) válasz — ennek már NEM szabad érvényesülnie
+    await act(async () => { resolveFirst(CANONICAL) })
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.currencies.map(c => c.code)).toEqual(['EUR'])
   })
 
   it('reload: a Valutakezelő módosítása után friss listát húz', async () => {

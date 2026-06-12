@@ -239,6 +239,11 @@ export default function MainRateSheetPage() {
   )
   const [rows, setRows] = useState<MainRateRow[]>(() => loadFromStorage())
   const [dirty, setDirty] = useState(false)
+  // FK04 verifikáció P1: a szerver-sync effekt async closure-je a futás-INDÍTÁSKORI dirty-t
+  // látná (stale closure) — a ref-ből a VÁLASZ beérkezésekor érvényes értéket olvassuk,
+  // különben a fetch közben commitolt user-szerkesztést a válasz némán felülírná.
+  const dirtyRef = useRef(dirty)
+  useEffect(() => { dirtyRef.current = dirty }, [dirty])
   // FK04 (FR-1, FR-2): a valutasorok tagsága + sorrendje a currency táblából
   // (useCurrencyCatalog). A Valutakezelő módosítása után catalog.reload() frissít
   // (a korábbi currencyReloadVersion bump helyett), app-újraindítás nélkül.
@@ -685,7 +690,9 @@ export default function MainRateSheetPage() {
     // tagságát és sorrendjét. Hiba esetén offline fallback a localStorage cache-re.
     if (catalog.loading) return
     if (catalog.error) {
-      setRows(loadFromStorage())
+      // Verif P2: in-flight (auto-save által még nem perzisztált) szerkesztést NEM dobunk el
+      // a cache-fallback kedvéért — dirty alatt a memóriabeli rows marad.
+      if (!dirtyRef.current) setRows(loadFromStorage())
       setServerSyncState('offline')
       toast.warning('Offline', 'Szerver nem elérhető — helyi cache betöltve')
       return
@@ -747,11 +754,15 @@ export default function MainRateSheetPage() {
         }
         serverSnapshotRef.current = snapshot
 
-        if (dirty) {
-          // User mar editelt - csak a snapshot kerul, a rows erintetlen marad
+        if (dirtyRef.current) {
+          // User mar editelt (dirtyRef: a VALASZKORI allapot, nem a stale closure — verif P1).
+          // Az ERTEKEIT nem irjuk felul szerver-rataval, de a sorlista TAGSAGAT a friss
+          // katalogushoz igazitjuk (FR-3: uj/inaktivalt valuta dirty alatt is ervenyesul,
+          // kulonben az onCurrencyChanged "a Folap frissult" toastja hamis lenne — verif P2).
+          setRows(prev => buildRowsFromCatalog(catalog.currencies, prev))
           setServerSyncState('online')
           setServerLastSyncAt(new Date().toISOString())
-          logger.info('MainRateSheetPage', `Server sync (user editing - rows preserved): ${serverRates.length} aktiv arfolyam`)
+          logger.info('MainRateSheetPage', `Server sync (user editing - ertekek megorzve, tagsag frissitve): ${serverRates.length} aktiv arfolyam`)
           return
         }
 
@@ -801,6 +812,15 @@ export default function MainRateSheetPage() {
           }
           return row // se master, se hivatalos ráta — marad üres
         })
+        // Verif P1 (2. ablak): a user az MNB-ráták fetch-e KÖZBEN is commitolhatott —
+        // utolsó ellenőrzés a felülírás előtt; dirty alatt csak tagság-frissítés.
+        if (dirtyRef.current) {
+          setRows(prev => buildRowsFromCatalog(catalog.currencies, prev))
+          setServerSyncState('online')
+          setServerLastSyncAt(new Date().toISOString())
+          logger.info('MainRateSheetPage', 'Server sync (user editing a 2. fetch alatt) - ertekek megorzve')
+          return
+        }
         setRows(mergedRows)
         setServerSyncState('online')
         setServerLastSyncAt(new Date().toISOString())
@@ -817,17 +837,18 @@ export default function MainRateSheetPage() {
       } catch (err) {
         if (cancelled) return
         logger.error('MainRateSheetPage', 'Server sync failed - fallback localStorage cache', err)
-        // Sourcery PR #687: explicit reload localStorage cache, ne fugjunk a kezdeti hydratation-tol
-        setRows(loadFromStorage())
+        // Sourcery PR #687: explicit reload localStorage cache, ne fugjunk a kezdeti hydratation-tol.
+        // Verif P2: dirty alatt a memóriabeli (in-flight editet hordozó) rows marad.
+        if (!dirtyRef.current) setRows(loadFromStorage())
         setServerSyncState('offline')
         toast.warning('Offline', 'Szerver nem elérhető — helyi cache betöltve')
       }
     }
     void loadServerData()
     return () => { cancelled = true }
-    // dirty intentional kihagyva a dep-listabol - csak a katalógus betöltésekor ÉS valuta-
-    // aktiválás/inaktiválás után (catalog.reload → catalog.all új referencia) syncolunk;
-    // a dirty-t a runtime-ban olvasunk be a useEffect inside-ban.
+    // dirty szándékosan NINCS a dep-listában — csak a katalógus betöltésekor ÉS valuta-
+    // aktiválás/inaktiválás után (catalog.reload → catalog.all új referencia) syncolunk.
+    // A dirty AKTUÁLIS (válaszkori) értékét a dirtyRef adja, NEM a closure (verif P1).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog.loading, catalog.error, catalog.all, catalog.currencies])
 
