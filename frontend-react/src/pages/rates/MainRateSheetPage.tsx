@@ -706,7 +706,12 @@ export default function MainRateSheetPage() {
         // FR-HL-04/05: az INAKTÍV valuta-kódokat persistáljuk, hogy az offline fallback
         // (loadFromStorage) is kiszűrje őket — így a Valutakezelőben inaktivált valuta szerver
         // nélküli indításkor sem jelenik meg, és reaktiváláskor visszajön.
-        const inactiveCodes = currencies.filter(c => c.active === false).map(c => c.code)
+        // Copilot PR #1097: a katalógus-tag inaktívak (EUA — szándékosan inaktív törzs, V298)
+        // NEM kerülhetnek a szűrőlistába, különben offline eltűnne az EUA sora.
+        const catalogCodes = new Set(catalog.currencies.map(c => c.code))
+        const inactiveCodes = currencies
+          .filter(c => c.active === false && !catalogCodes.has(c.code))
+          .map(c => c.code)
         try {
           localStorage.setItem(INACTIVE_STORAGE_KEY, JSON.stringify(inactiveCodes))
         } catch { /* quota / privát mód → a szerver-szűrés a memóriában akkor is érvényesül */ }

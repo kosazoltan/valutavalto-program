@@ -261,7 +261,12 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                   <input
                     type="number"
                     value={newDisplayOrder}
-                    onChange={(e) => setNewDisplayOrder(parseInt(e.target.value) || computeNextDisplayOrder(currencies))}
+                    onChange={(e) => {
+                      // Copilot PR #1097: explicit NaN-check — a `|| fallback` a 0-t is elnyelte
+                      // (falsy), pedig a min="0" megengedi. NaN (kiürített mező) → max+1 default.
+                      const v = parseInt(e.target.value, 10)
+                      setNewDisplayOrder(Number.isNaN(v) ? computeNextDisplayOrder(currencies) : v)
+                    }}
                     className="form-input w-full"
                     min="0"
                     data-testid="new-currency-display-order"
