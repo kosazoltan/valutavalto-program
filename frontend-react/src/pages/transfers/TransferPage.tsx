@@ -302,8 +302,17 @@ export default function TransferPage() {
     void (async () => {
       try {
         const denoms = await denominationApi.getByCurrencyId(denomCurrencyId)
-        if (cancelled || denoms.length === 0) return
+        if (cancelled) return
+        // Copilot PR #1101: a ref MINDEN kimenetelnél beáll — üres törzs ne okozzon
+        // rerender-enkénti újra-lekérést (checkbox ki/be vagy valutaváltás újraengedi).
         denomPresetCurrencyRef.current = denomCurrencyId
+        if (denoms.length === 0) {
+          // Codex PR #1101 P2: valutaváltáskor az ELŐZŐ valuta stale presetje nem
+          // maradhat — üres törzsnél vissza a szabad bevitelre.
+          setDenomPresetCode(null)
+          setDenominationLines([{ id: denomIdRef.current++, quantity: '', faceValue: '' }])
+          return
+        }
         const code = currencies.find(c => c.id === denomCurrencyId)?.code ?? null
         setDenomPresetCode(code)
         // Címletenként egy sor, csökkenő névértékkel (a DenominationPage rendezése) —
@@ -314,7 +323,9 @@ export default function TransferPage() {
             .map(d => ({ id: denomIdRef.current++, quantity: '', faceValue: String(d.faceValue) })),
         )
       } catch {
-        // törzs nem elérhető (pl. offline) → szabad bevitel, jelzés nélkül
+        // Törzs nem elérhető (pl. offline) → szabad bevitel; a ref beállítása megakadályozza
+        // a rerender-enkénti újrapróbálkozást (Copilot PR #1101) — checkbox-toggle újraenged.
+        if (!cancelled) denomPresetCurrencyRef.current = denomCurrencyId
       }
     })()
     return () => { cancelled = true }
@@ -674,6 +685,14 @@ export default function TransferPage() {
     setStornoTarget(null)
   }
 
+  // Copilot PR #1101: régi/offline pending soroknál a lines currencyCode-ja hiányozhat —
+  // a currencyId alapján a betöltött valuta-törzsből oldjuk fel (végső fallback: #id).
+  const resolveLineCode = useCallback(
+    (line: { currencyId: number; currencyCode?: string }): string =>
+      line.currencyCode ?? currencies.find(c => c.id === line.currencyId)?.code ?? `#${line.currencyId}`,
+    [currencies],
+  )
+
   // Penztar-batch A.2 (2026-06-12): a lista szem-ikonja a BIZONYLATOT hívja elő.
   // (Korábban a /transfers/:id route-ra navigált, ami ugyanerre a lista-komponensre volt
   // kötve — látható hatás nélkül.) A bizonylat a lista-sor TELJES Transfer objektumából
@@ -710,7 +729,7 @@ export default function TransferPage() {
       denominations: transfer.denominations,
       // A.1: több-valutás átadólapon minden sor a bizonylatra kerül.
       transferLines: transfer.lines && transfer.lines.length > 1
-        ? transfer.lines.map(l => ({ currencyCode: l.currencyCode ?? `#${l.currencyId}`, amount: l.amount }))
+        ? transfer.lines.map(l => ({ currencyCode: resolveLineCode(l), amount: l.amount }))
         : undefined,
     })
     setShowReceiptModal(true)
@@ -902,13 +921,14 @@ export default function TransferPage() {
                   <>
                     <td className="font-semibold">
                       {transfer.lines.map((line, i) => (
-                        <div key={i}>{line.currencyCode ?? `#${line.currencyId}`}</div>
+                        <div key={i}>{resolveLineCode(line)}</div>
                       ))}
                     </td>
                     <td className="text-right font-mono">
                       {transfer.lines.map((line, i) => (
                         <div key={i}>
-                          {(line.currencyCode ?? '') === 'HUF'
+                          {/* Copilot PR #1101: a kód a törzsből feloldva — HUF-nál egész formázás. */}
+                          {resolveLineCode(line) === 'HUF'
                             ? formatInteger(line.amount)
                             : formatDecimal(line.amount, 2, 2)}
                         </div>
@@ -1570,19 +1590,28 @@ export default function TransferPage() {
         qrCodeDataUrl={null}
         allowPrint={isElectron()}
         onPrint={async () => {
-          if (!printReceiptData) return
+          // Copilot PR #1100 (storno-minta): a hibás ágak THROW-val zárulnak — a
+          // ReceiptPreviewModal csak SIKERES onPrint után zár be (2s auto-close),
+          // hiba esetén nyitva marad és újrapróbálható.
+          if (!printReceiptData) throw new Error('Nincs aktív bizonylat-adat')
           if (!window.electronAPI?.printReceipt) {
             toast.warning('Nyomtatás nem elérhető', isElectron()
               ? 'Electron preload/electronAPI hiba — indítsa újra a klienst.'
               : 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.')
-            return
+            throw new Error('printReceipt nem elérhető')
           }
           try {
             const ok = await window.electronAPI.printReceipt(JSON.stringify(printReceiptData))
-            if (ok) toast.success('Nyomtatás elindítva', `Bizonylat: ${printReceiptData.receiptNumber ?? '—'}`)
-            else toast.error('Nyomtatás sikertelen', 'Ellenőrizze a nyomtatót (Beállítások > Nyomtatás).')
-          } catch {
-            toast.error('Nyomtatás sikertelen', 'A nyomtatási parancs nem futott le.')
+            if (!ok) {
+              toast.error('Nyomtatás sikertelen', 'Ellenőrizze a nyomtatót (Beállítások > Nyomtatás).')
+              throw new Error('Nyomtatás sikertelen')
+            }
+            toast.success('Nyomtatás elindítva', `Bizonylat: ${printReceiptData.receiptNumber ?? '—'}`)
+          } catch (err) {
+            if (!(err instanceof Error && err.message === 'Nyomtatás sikertelen')) {
+              toast.error('Nyomtatás sikertelen', 'A nyomtatási parancs nem futott le.')
+            }
+            throw err
           }
         }}
       />
