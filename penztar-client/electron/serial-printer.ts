@@ -420,8 +420,9 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
       text(twoColumn('Összeg:', `${fmtAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`));
     }
     // Batch2-E: árfolyam a deviza-bizonylaton (HUF-átadásnál nincs árfolyam sor).
+    // Copilot #1111: a fájl közös fmtRate() formázójával (hu-HU, 2-4 tizedes).
     if (data.rate != null && data.currencyCode !== 'HUF') {
-      text(twoColumn('Árfolyam:', data.rate.toFixed(2)));
+      text(twoColumn('Árfolyam:', fmtRate(data.rate)));
     }
     // NFR-3: 5 Ft-ra kerekített forintosított érték.
     if (data.roundedHufAmount !== undefined || data.hufAmount !== undefined) {

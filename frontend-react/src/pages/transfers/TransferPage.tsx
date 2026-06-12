@@ -43,6 +43,7 @@ import { isElectron } from '../../utils/electron'
 import { toast } from '../../components/ui/toaster'
 import type { PrintReceiptData } from '../../types/receipt'
 import { localIsoDate } from '../../utils/dateFormat'
+import { roundHuf } from '../../utils/rounding'
 import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, isCurrencyOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isTHBranch, isMainCashierBranch, validateCarrierSeal, buildDenominationPayload, type CurrencyLineInput } from './transferRules'
 
 /**
@@ -435,7 +436,9 @@ export default function TransferPage() {
       const transferRate = effCurrencyCode && (!effLines || effLines.length <= 1)
         ? await resolveTransferRate(effCurrencyCode)
         : null
-      const transferHufValue = transferRate != null ? Math.round(effAmountValue * transferRate) : null
+      // Codex P1 #1111: a forintosított érték 5 Ft-os MAGYAR kerekítéssel (roundHuf) —
+      // a bizonylat roundedHufAmount mezője és az app HUF-invariánsa is ezt várja.
+      const transferHufValue = transferRate != null ? roundHuf(effAmountValue * transferRate) : null
 
       const request: CreateTransferRequest = {
         toBranchId,

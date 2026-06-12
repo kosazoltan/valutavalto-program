@@ -343,7 +343,8 @@ describe('printer — generateReceiptContent (ESC/POS)', () => {
       rate: 391.5,
       roundedHufAmount: 391500,
     });
-    expect(eur).toContain('Árfolyam:    391.50');
+    // Copilot #1111: a közös formatRate() hu-HU formázása (tizedesvessző).
+    expect(eur).toContain('Árfolyam:    391,50');
     expect(eur).toContain('Forint érték: ');
 
     const huf = generateReceiptContent({

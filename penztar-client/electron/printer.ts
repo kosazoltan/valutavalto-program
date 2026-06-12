@@ -665,8 +665,9 @@ function generateTransferLines(data: PrintReceiptData): string[] {
     lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`);
   }
   // Batch2-E: árfolyam a deviza-bizonylaton (HUF-átadásnál nincs árfolyam sor).
+  // Copilot #1111: a fájl közös formatRate() formázójával (hu-HU, 2-4 tizedes).
   if (data.rate != null && data.currencyCode !== 'HUF') {
-    lines.push(`Árfolyam:    ${data.rate.toFixed(2)}`);
+    lines.push(`Árfolyam:    ${formatRate(data.rate)}`);
   }
   // NFR-3: 5 Ft-ra kerekített forintosított érték (a kérő-oldalon számolt roundedHufAmount).
   if (data.roundedHufAmount !== undefined || data.hufAmount !== undefined) {
@@ -1182,7 +1183,7 @@ function generateTransferHtml(data: PrintReceiptData): string {
             `<div class="amount-row"><span>${escHtml(tl.currencyCode)}:</span><span>${formatAmount(tl.amount)}</span></div>`).join('')}`
         : `<div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
       <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>`}
-      ${data.rate != null && data.currencyCode !== 'HUF' ? `<div class="amount-row"><span>Árfolyam:</span><span>${data.rate.toFixed(2)}</span></div>` : ''}
+      ${data.rate != null && data.currencyCode !== 'HUF' ? `<div class="amount-row"><span>Árfolyam:</span><span>${formatRate(data.rate)}</span></div>` : ''}
       ${(data.roundedHufAmount !== undefined || data.hufAmount !== undefined) ? `<div class="amount-row"><span>Forint érték:</span><span>${formatAmount(data.roundedHufAmount ?? data.hufAmount)} HUF</span></div>` : ''}
       ${data.carrierName ? `<div class="amount-row"><span>Szállító:</span><span>${escHtml(data.carrierName)}</span></div>` : ''}
       ${data.sealNumber ? `<div class="amount-row"><span>Plombaszám:</span><span>${escHtml(data.sealNumber)}</span></div>` : ''}

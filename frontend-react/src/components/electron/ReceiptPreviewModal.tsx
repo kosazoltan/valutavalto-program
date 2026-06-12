@@ -408,7 +408,7 @@ export default function ReceiptPreviewModal({
                 )}
                 {/* Batch2-E: árfolyam a deviza-bizonylaton (HUF-átadásnál nincs árfolyam sor). */}
                 {receiptData.rate != null && receiptData.currencyCode !== 'HUF' && (
-                  <p><span className="font-semibold">Árfolyam:</span> {receiptData.rate.toFixed(2)}</p>
+                  <p><span className="font-semibold">Árfolyam:</span> {formatRate(receiptData.rate)}</p>
                 )}
                 {(receiptData.roundedHufAmount != null || receiptData.hufAmount != null) && (
                   <p><span className="font-semibold">Forint érték:</span> {formatInt(receiptData.roundedHufAmount ?? receiptData.hufAmount)} HUF</p>
