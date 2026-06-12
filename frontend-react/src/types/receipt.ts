@@ -65,6 +65,12 @@ export interface PrintReceiptData {
    * Egysoros bizonylatnál nincs jelen → a viselkedés VÁLTOZATLAN.
    */
   transactionLines?: TransactionReceiptLine[];
+  /**
+   * Codex PR #1102 P1: a Pmt. 300k-s küszöb az AML-lel azonos FIZETENDŐ összegre
+   * (subtotal + kezelési díj − kedvezmény) vonatkozik — egysoros bizonylaton a
+   * hufAmount a díj nélküli sorérték. Hiányában fallback: roundedHufAmount ?? hufAmount.
+   */
+  payableHufAmount?: number;
   customerIsPep?: boolean;
   sourceOfFunds?: string;
   /** Penztar-batch C.1 (2026-06-12): PEP-minőség (pl. CSALADTAG / PARLAMENTI) — a PEP-sorban jelenik meg. */

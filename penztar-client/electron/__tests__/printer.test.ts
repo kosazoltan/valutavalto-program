@@ -42,6 +42,7 @@ import { printReceiptToSerial } from '../serial-printer';
 
 import {
   generateReceiptContent,
+  generateReceiptHtml,
   printReceipt,
   type PrintReceiptData,
   type ClosingPrintData,
@@ -683,5 +684,57 @@ describe('printer — deviza-státusz + 300k+ nyilatkozatok (C.1/C.2)', () => {
     expect(content).toContain('EUR (Külföldi):');
     expect(content).toContain('USD (Belföldi):');
     expect(content).toContain('Deviza-státusz: —');
+  });
+});
+
+// Codex PR #1102 P1 + Copilot: payable-küszöb + HTML-útvonal tesztek
+describe('printer — payable-küszöb (Codex #1102 P1) + HTML útvonal', () => {
+  it('a küszöb a FIZETENDŐ összegre számol: 295k sorérték + 10k díj → nyilatkozatok IGEN', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 295000,
+      roundedHufAmount: 295000,
+      payableHufAmount: 305000, // sorérték + kezelési díj (AML-paritás)
+      customerName: 'Kiss Géza',
+      customerIsPep: false,
+    });
+    expect(content).toContain('JOGCÍM NYILATKOZAT');
+    expect(content).toContain('Az ügyfél nem közszereplő');
+  });
+
+  it('payableHufAmount nélkül fallback a roundedHufAmount-ra (változatlan viselkedés)', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 295000,
+      roundedHufAmount: 295000,
+      customerName: 'Kiss Géza',
+    });
+    expect(content).not.toContain('JOGCÍM NYILATKOZAT');
+  });
+
+  it('HTML útvonal: deviza-státusz + JOGCÍM blokk pre-wrap behúzással', async () => {
+    const html = await generateReceiptHtml({
+      ...baseData,
+      hufAmount: 343000,
+      roundedHufAmount: 343000,
+      payableHufAmount: 343000,
+      foreignStatus: 'FOREIGN',
+      customerName: 'Kiss Géza',
+      customerOnOwnBehalf: true,
+      sourceOfFunds: 'munkabér',
+    });
+    expect(html).toContain('Deviza-státusz: Külföldi');
+    expect(html).toContain('JOGCÍM NYILATKOZAT');
+    expect(html).toContain('white-space: pre-wrap');
+    expect(html).toContain('munkabér');
+  });
+
+  it('HTML útvonal: 300k alatt nincs JOGCÍM, de a deviza-státusz sor megvan', async () => {
+    const html = await generateReceiptHtml({
+      ...baseData,
+      foreignStatus: 'DOMESTIC',
+    });
+    expect(html).toContain('Deviza-státusz: Belföldi');
+    expect(html).not.toContain('JOGCÍM NYILATKOZAT');
   });
 });

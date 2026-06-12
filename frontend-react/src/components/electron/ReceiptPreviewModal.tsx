@@ -147,7 +147,8 @@ export default function ReceiptPreviewModal({
   const formatInt = (value: number | undefined) =>
     value !== undefined ? Math.round(value).toLocaleString('hu-HU') : '0';
 
-  const absHuf = Math.abs(receiptData.hufAmount ?? 0);
+  // Codex PR #1102 P1: a küszöbök az AML-lel azonos FIZETENDŐ összegre (díjjal) számolnak.
+  const absHuf = Math.abs(receiptData.payableHufAmount ?? receiptData.hufAmount ?? 0);
   const isMediumValue = absHuf >= MEDIUM_THRESHOLD;
   const isHighValue = absHuf >= HIGH_THRESHOLD;
   // Átadási bizonylat (értéktári átadás-átvétel): nincs ügyfél / deviza-státusz / jogcím-nyilatkozat,

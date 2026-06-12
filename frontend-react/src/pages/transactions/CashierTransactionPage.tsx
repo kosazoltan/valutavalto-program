@@ -810,6 +810,11 @@ export default function CashierTransactionPage() {
       // ha minden sor azonos — vegyesnél a soronkénti érték jelenik meg (transactionLines).
       const uniformForeignStatus = (rows: typeof filledRows): 'DOMESTIC' | 'FOREIGN' | undefined =>
         new Set(rows.map(r => r.foreignStatus)).size === 1 ? rows[0]?.foreignStatus : undefined
+      // Codex PR #1102 P1: a Pmt. 300k-s küszöb a FIZETENDŐ összegre vonatkozik (AML-paritás) —
+      // egysoros bizonylaton a sorértékhez a kedvezmény és a kezelési díj is hozzászámít
+      // (a díjat/kedvezményt a per-soros út soronként küldi a szervernek — azzal egyezően).
+      const singleRowPayable = (rowHuf: number): number =>
+        roundHuf(rowHuf * (1 - (discount > 0 ? discount : 0) / 100)) + (handlingFee > 0 ? handlingFee : 0)
 
       if (electronQueueAvailable) {
         // V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): a teljes Pmt. customer-
@@ -950,6 +955,7 @@ export default function CashierTransactionPage() {
               roundedHufAmount: totalPayable,
               roundingDiff: 0,
               handlingFee: handlingFee > 0 ? handlingFee : undefined,
+              payableHufAmount: totalPayable, // Codex #1102 P1: a díjjal együtt
               foreignStatus: uniformForeignStatus(filledRows), // C.2
               transactionLines: filledRows.map((row) => ({
                 currencyCode: row.currencyCode,
@@ -972,6 +978,7 @@ export default function CashierTransactionPage() {
               hufAmount: row.hufValue,
               roundedHufAmount: roundHuf(row.hufValue),
               roundingDiff: roundHuf(row.hufValue) - row.hufValue,
+              payableHufAmount: singleRowPayable(row.hufValue), // Codex #1102 P1
               foreignStatus: row.foreignStatus, // C.2
             }))
             receiptQueueRef.current = receipts.slice(1)
@@ -1057,6 +1064,7 @@ export default function CashierTransactionPage() {
             roundedHufAmount: totalPayable,
             roundingDiff: 0,
             handlingFee: handlingFee > 0 ? handlingFee : undefined,
+            payableHufAmount: totalPayable, // Codex #1102 P1: a díjjal együtt
             foreignStatus: uniformForeignStatus(filledRows), // C.2
             transactionLines: filledRows.map((row) => ({
               currencyCode: row.currencyCode,
@@ -1125,6 +1133,7 @@ export default function CashierTransactionPage() {
               hufAmount: row.hufValue,
               roundedHufAmount: roundHuf(row.hufValue),
               roundingDiff: roundHuf(row.hufValue) - row.hufValue,
+              payableHufAmount: singleRowPayable(row.hufValue), // Codex #1102 P1
               foreignStatus: row.foreignStatus, // C.2
             }))
             receiptQueueRef.current = receipts.slice(1)

@@ -124,6 +124,13 @@ export interface PrintReceiptData {
    * EscPosReceiptService template-jével egyezően.
    */
   foreignStatus?: 'DOMESTIC' | 'FOREIGN';
+  /**
+   * Codex PR #1102 P1: a Pmt. 300k-s küszöb az AML-lel azonos FIZETENDŐ összegre
+   * (subtotal + kezelési díj − kedvezmény) vonatkozik — egysoros bizonylaton a
+   * hufAmount a díj NÉLKÜLI sorérték, ezért a küszöbhöz külön mező kell.
+   * Hiányában fallback: roundedHufAmount ?? hufAmount.
+   */
+  payableHufAmount?: number;
   customerIsPep?: boolean;
   customerPepKind?: string;
   sourceOfFunds?: string;
@@ -216,7 +223,9 @@ function getJobTypeLabel(data: PrintReceiptData): string {
 export const HIGH_VALUE_THRESHOLD = 300000;
 
 export function isHighValueReceipt(data: PrintReceiptData): boolean {
-  return Math.abs(data.roundedHufAmount ?? data.hufAmount ?? 0) >= HIGH_VALUE_THRESHOLD;
+  // Codex PR #1102 P1: az AML-lel azonos fizetendő összeg az alap (díj+kedvezmény után);
+  // a payableHufAmount-ot a bizonylat-építő adja át, fallback a fejléc-összegre.
+  return Math.abs(data.payableHufAmount ?? data.roundedHufAmount ?? data.hufAmount ?? 0) >= HIGH_VALUE_THRESHOLD;
 }
 
 /** Deviza-státusz szöveg: NULL → „—" (ismeretlen, régi adat), FOREIGN/DOMESTIC explicit. */
@@ -744,7 +753,8 @@ function formatRate(value: number | undefined): string {
  * Bizonylat HTML generálása — 80mm szélességre optimalizált.
  * Ezt rendereli a rejtett BrowserWindow a rendszer nyomtató felé.
  */
-async function generateReceiptHtml(data: PrintReceiptData): Promise<string> {
+// Copilot PR #1102: exportált a HTML-útvonal unit-tesztjeihez (deviza-státusz + JOGCÍM blokk).
+export async function generateReceiptHtml(data: PrintReceiptData): Promise<string> {
   const company = COMPANIES[data.companyType] ?? COMPANIES['BEST_CHANGE']!;
   const label = getJobTypeLabel(data);
 
@@ -827,10 +837,12 @@ async function generateReceiptHtml(data: PrintReceiptData): Promise<string> {
       </div>
     `;
     if (isHighValueReceipt(data)) {
+      // Copilot PR #1102: white-space: pre-wrap — a 2 szóközös behúzások (képviselt fél
+      // adatai, forrás-sorok) HTML-ben is látszanak, nem csukódnak össze.
       bodyContent += `
         <div class="line"></div>
         <div class="bold">JOGCÍM NYILATKOZAT</div>
-        <div style="font-size: 9px; margin: 2px 0;">
+        <div style="font-size: 9px; margin: 2px 0; white-space: pre-wrap;">
           ${buildSourceDeclarationLines(data).map(l => `<div>${escHtml(l)}</div>`).join('')}
         </div>
       `;

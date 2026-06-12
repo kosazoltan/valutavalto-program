@@ -246,9 +246,8 @@ export async function openCashDrawer(
 // Bizonylat nyomtatás (Star SP500 ESC/POS)
 // ============================================================================
 
-// Import típus a printer.ts-ből
-import type { PrintReceiptData } from './printer';
-import { isHighValueReceipt, foreignStatusText, pepStatusText, buildSourceDeclarationLines } from './printer';
+// Import a printer.ts-ből (Copilot PR #1102: egyetlen import, type-modifierrel)
+import { isHighValueReceipt, foreignStatusText, pepStatusText, buildSourceDeclarationLines, type PrintReceiptData } from './printer';
 
 const JOB_TYPE_LABELS: Record<string, string> = {
   sell: 'ELADÁSI BIZONYLAT',
