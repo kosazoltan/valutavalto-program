@@ -352,11 +352,26 @@ export default function ReceiptPreviewModal({
                 {receiptData.sealNumber && (
                   <p><span className="font-semibold">Plombaszám:</span> {receiptData.sealNumber}</p>
                 )}
-                {receiptData.currencyCode && (
-                  <p><span className="font-semibold">Valuta:</span> {receiptData.currencyCode}</p>
-                )}
-                {receiptData.foreignAmount !== undefined && (
-                  <p><span className="font-semibold">Összeg:</span> {formatAmount(receiptData.foreignAmount)} {receiptData.currencyCode ?? ''}</p>
+                {/* Penztar-batch A.1 (2026-06-12): több-valutás átadólapon MINDEN sor
+                    megjelenik — egysorosnál a korábbi fejléc-mezős megjelenítés marad. */}
+                {receiptData.transferLines && receiptData.transferLines.length > 0 ? (
+                  <div>
+                    <p className="font-semibold">Valuták és összegek:</p>
+                    {receiptData.transferLines.map((line, idx) => (
+                      <p key={idx} className="pl-2 font-mono">
+                        {line.currencyCode}: {formatAmount(line.amount)}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    {receiptData.currencyCode && (
+                      <p><span className="font-semibold">Valuta:</span> {receiptData.currencyCode}</p>
+                    )}
+                    {receiptData.foreignAmount !== undefined && (
+                      <p><span className="font-semibold">Összeg:</span> {formatAmount(receiptData.foreignAmount)} {receiptData.currencyCode ?? ''}</p>
+                    )}
+                  </>
                 )}
                 {(receiptData.roundedHufAmount != null || receiptData.hufAmount != null) && (
                   <p><span className="font-semibold">Forint érték:</span> {formatInt(receiptData.roundedHufAmount ?? receiptData.hufAmount)} HUF</p>

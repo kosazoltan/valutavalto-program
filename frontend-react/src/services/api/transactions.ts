@@ -1356,6 +1356,23 @@ export interface Transfer {
   stornoSerialNumber?: string
   /** FR-17..19: opcionális címletezés sorai. */
   denominations?: TransferDenomination[]
+  /**
+   * #6 / penztar-batch A.1 (2026-06-12): a több-valutás átadólap sorai — a backend
+   * TransferDto.lines tükre (transfer_lines tábla, V243). A fejléc currencyCode/amount
+   * az ELSŐ sort hordozza; több-valutás átadásnál a lista + bizonylat EZEKET listázza.
+   */
+  lines?: TransferLine[]
+}
+
+/** #6: egy valuta-sor a több-valutás átadólapon (backend TransferLineDto tükre). */
+export interface TransferLine {
+  currencyId: number
+  amount: number
+  currencyCode?: string
+  currencyName?: string
+  receivedAmount?: number
+  difference?: number
+  lineNo?: number
 }
 
 /** FR-17..19: egy címletezési sor (darab × névleges = összesen). */

@@ -446,6 +446,23 @@ export async function printPendingReceiptDraft(receiptData: PrintReceiptData): P
   }
 }
 
+/**
+ * Penztar-batch A.1: a pending_transfers.lines JSON parzolása Transfer.lines-szá.
+ * Hibás/hiányzó JSON → undefined (egysoros viselkedés, nem dob).
+ */
+export function parseTransferLines(raw: string | null | undefined): Transfer['lines'] {
+  if (!raw) return undefined
+  try {
+    const parsed = JSON.parse(raw) as Array<{ currencyId?: number; amount?: number; currencyCode?: string }>
+    if (!Array.isArray(parsed) || parsed.length === 0) return undefined
+    return parsed
+      .filter(l => typeof l?.currencyId === 'number' && typeof l?.amount === 'number')
+      .map(l => ({ currencyId: l.currencyId!, amount: l.amount!, currencyCode: l.currencyCode }))
+  } catch {
+    return undefined
+  }
+}
+
 export async function getLocalPendingTransfers(worker: Worker | null): Promise<Transfer[]> {
   try {
     const electronAPI = getElectronAPI()
@@ -457,6 +474,12 @@ export async function getLocalPendingTransfers(worker: Worker | null): Promise<T
     return pending.map((row) => ({
       id: localNumericId(row.id),
       transferNumber: row.local_reference_number ?? `LOCAL-TRANSFER-${row.id}`,
+      // Penztar-batch A.1 (2026-06-12): a több-valutás sorok a queue-sor lines JSON-jából —
+      // a lista offline is minden valutát mutat (a mentés currencyCode-dal dúsítva írja).
+      lines: parseTransferLines(row.lines),
+      // Verif PR #1101 P2: az irány nélkül az offline 'U' (átvétel) bizonylata a szem-ikonból
+      // fordított orientációval (Átadási címmel) nyílt volna — a SQLite sor hordozza.
+      direction: (row.direction as Transfer['direction']) ?? undefined,
       fromBranchId: worker?.branchId ?? 'LOCAL',
       fromBranchCode: worker?.branchCode ?? 'LOCAL',
       fromBranchName: worker?.branchName ?? 'Helyi pénztár',
