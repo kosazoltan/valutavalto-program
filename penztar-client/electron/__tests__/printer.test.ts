@@ -575,3 +575,113 @@ describe('printer — formatAmount edge cases', () => {
     expect(content).toContain('—');
   });
 });
+
+// ============================================================================
+// Penztar-batch C.1/C.2 (2026-06-12, user-kérés): deviza-státusz + Pmt.-nyilatkozatok
+// ============================================================================
+describe('printer — deviza-státusz + 300k+ nyilatkozatok (C.1/C.2)', () => {
+  it('deviza-státusz sor MINDEN vétel/eladás bizonylaton — FOREIGN → Külföldi', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 40000, // 300k ALATT is kötelező
+      foreignStatus: 'FOREIGN',
+    });
+    expect(content).toContain('Az ügyletet készpénzben teljesítjük');
+    expect(content).toContain('Deviza-státusz: Külföldi');
+  });
+
+  it('deviza-státusz: DOMESTIC → Belföldi, hiányzó → —', () => {
+    expect(generateReceiptContent({ ...baseData, foreignStatus: 'DOMESTIC' }))
+      .toContain('Deviza-státusz: Belföldi');
+    expect(generateReceiptContent({ ...baseData, foreignStatus: undefined }))
+      .toContain('Deviza-státusz: —');
+  });
+
+  it('deviza-státusz sor transzfer-bizonylaton NEM jelenik meg', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'handover',
+      transferTarget: 'SZG-02',
+      foreignStatus: 'FOREIGN',
+    });
+    expect(content).not.toContain('Deviza-státusz:');
+  });
+
+  it('300k+ bizonylaton: PEP-sor (nem közszereplő) + JOGCÍM NYILATKOZAT saját névben', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 343000,
+      roundedHufAmount: 343000,
+      customerName: 'Kiss Géza',
+      customerIsPep: false,
+      customerOnOwnBehalf: true,
+      sourceOfFunds: 'munkabér',
+      foreignStatus: 'FOREIGN',
+    });
+    expect(content).toContain('Az ügyfél nem közszereplő');
+    expect(content).toContain('JOGCÍM NYILATKOZAT');
+    expect(content).toContain('saját nevemben bonyolítom,');
+    expect(content).toContain('Pénzeszközöm forrása:');
+    expect(content).toContain('munkabér');
+  });
+
+  it('300k+ PEP ügyfél: kiemelt közszereplő sor a minőséggel', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 500000,
+      roundedHufAmount: 500000,
+      customerName: 'Kiss Géza',
+      customerIsPep: true,
+      customerPepKind: 'PARLAMENTI',
+    });
+    expect(content).toContain('Az ügyfél kiemelt közszereplő (PARLAMENTI)');
+  });
+
+  it('300k+ képviselt fél: actor neve + adatai a nyilatkozatban', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 400000,
+      roundedHufAmount: 400000,
+      customerName: 'Kiss Géza',
+      customerOnOwnBehalf: false,
+      customerActorName: 'Nagy Béla',
+      customerActorBirthPlace: 'Pécs',
+      customerActorDocumentType: 'szem.ig.',
+      customerActorDocumentNumber: 'AB123456',
+    });
+    expect(content).toContain('Nagy Béla');
+    expect(content).toContain('nevében bonyolítom,');
+    expect(content).toContain('Képviselt fél adatai:');
+    expect(content).toContain('szül.hely: Pécs');
+    expect(content).toContain('szem.ig.: AB123456');
+  });
+
+  it('300k ALATT: nincs PEP-sor és nincs JOGCÍM blokk', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 40000,
+      roundedHufAmount: 40000,
+      customerName: 'Kiss Géza',
+      customerIsPep: false,
+      sourceOfFunds: 'munkabér',
+    });
+    expect(content).not.toContain('JOGCÍM NYILATKOZAT');
+    expect(content).not.toContain('közszereplő');
+  });
+
+  it('vegyes B/K többsoros nyugta: soronkénti deviza-státusz suffix, fejléc —', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 100000,
+      foreignStatus: undefined, // vegyes → a fejléc nem hordozza
+      transactionLines: [
+        { currencyCode: 'EUR', foreignAmount: 100, rate: 400, hufAmount: 40000, foreignStatus: 'FOREIGN' },
+        { currencyCode: 'USD', foreignAmount: 150, rate: 400, hufAmount: 60000, foreignStatus: 'DOMESTIC' },
+      ],
+    });
+    expect(content).toContain('EUR (Külföldi):');
+    expect(content).toContain('USD (Belföldi):');
+    expect(content).toContain('Deviza-státusz: —');
+  });
+});

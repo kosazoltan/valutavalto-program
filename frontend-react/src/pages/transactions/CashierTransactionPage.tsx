@@ -782,6 +782,35 @@ export default function CashierTransactionPage() {
         approvalSessionId: approvalSessionIdRef.current ?? undefined,
       } : {}
 
+      // Penztar-batch C.1/C.2 (2026-06-12, user-kérés): a bizonylat Pmt.-mezői. Ezeket az
+      // adatokat a backend felé eddig is elküldtük (customerData), de a BIZONYLAT-objektumból
+      // hiányoztak — az előnézet '—' deviza-státuszt és statikus „saját nevemben" szöveget
+      // mutatott, a nyomtatott bizonylatról pedig teljesen hiányoztak (printer.ts template).
+      const receiptAmlFields = {
+        customerNationality: cd?.nationality || undefined,
+        customerMotherName: cd?.motherName || undefined,
+        customerBirthPlace: cd?.birthPlace || undefined,
+        customerBirthDate: cd?.birthDate || undefined,
+        customerDocType: cd?.documentType || undefined,
+        customerIsPep: cd?.isPep ?? undefined,
+        customerPepKind: cd?.pepKind ?? undefined,
+        sourceOfFunds: cd?.sourceOfFunds || undefined,
+        customerOnOwnBehalf: cd?.onOwnBehalf ?? undefined,
+        customerActorName: cd?.actorName || undefined,
+        customerActorBirthPlace: cd?.actorIdentity?.birthPlace || undefined,
+        customerActorBirthDate: cd?.actorIdentity?.birthDate || undefined,
+        customerActorMotherName: cd?.actorIdentity?.motherName || undefined,
+        customerActorNationality: cd?.actorIdentity?.nationality || undefined,
+        customerActorDocumentType: cd?.actorIdentity?.documentType || undefined,
+        customerActorDocumentNumber: cd?.actorIdentity?.documentNumber || undefined,
+        customerActorAddress: cd?.actorIdentity?.address || undefined,
+      }
+      // C.2: a deviza-státusz MINDEN azonosítási szinten a bizonylatra kerül (a soronkénti
+      // B/K toggle nem függ az azonosítástól). Többsoros nyugtán a fejléc csak akkor hordozza,
+      // ha minden sor azonos — vegyesnél a soronkénti érték jelenik meg (transactionLines).
+      const uniformForeignStatus = (rows: typeof filledRows): 'DOMESTIC' | 'FOREIGN' | undefined =>
+        new Set(rows.map(r => r.foreignStatus)).size === 1 ? rows[0]?.foreignStatus : undefined
+
       if (electronQueueAvailable) {
         // V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): a teljes Pmt. customer-
         // snapshot atadasa az Electron pending-queue fele. A korabbi payload csak
@@ -891,6 +920,8 @@ export default function CashierTransactionPage() {
             customerDocNumber: cd?.documentNumber || undefined,
             customerAddress: cd?.address || undefined,
             vatExemptionText: 'Tárgyi adómentes az ÁFA tv. 86.§ (1) bek. k) pontja alapján.',
+            // C.1/C.2: deviza-státusz + Pmt.-mezők a bizonylaton (minden azonosítási szinten).
+            ...receiptAmlFields,
           }
 
           if (filledRows.length > 1) {
@@ -919,11 +950,13 @@ export default function CashierTransactionPage() {
               roundedHufAmount: totalPayable,
               roundingDiff: 0,
               handlingFee: handlingFee > 0 ? handlingFee : undefined,
+              foreignStatus: uniformForeignStatus(filledRows), // C.2
               transactionLines: filledRows.map((row) => ({
                 currencyCode: row.currencyCode,
                 foreignAmount: parseFloat(row.quantity) || 0,
                 rate: row.exchangeRate,
                 hufAmount: row.hufValue,
+                foreignStatus: row.foreignStatus, // C.2: vegyes B/K esetén soronként
               })),
             }
             receiptQueueRef.current = []
@@ -939,6 +972,7 @@ export default function CashierTransactionPage() {
               hufAmount: row.hufValue,
               roundedHufAmount: roundHuf(row.hufValue),
               roundingDiff: roundHuf(row.hufValue) - row.hufValue,
+              foreignStatus: row.foreignStatus, // C.2
             }))
             receiptQueueRef.current = receipts.slice(1)
             if (receipts[0]) {
@@ -959,6 +993,8 @@ export default function CashierTransactionPage() {
           customerDocNumber: cd?.documentNumber || undefined,
           customerAddress: cd?.address || undefined,
           vatExemptionText: 'Tárgyi adómentes az ÁFA tv. 86.§ (1) bek. k) pontja alapján.',
+          // C.1/C.2: deviza-státusz + Pmt.-mezők a bizonylaton (minden azonosítási szinten).
+          ...receiptAmlFields,
         }
 
         if (filledRows.length > 1) {
@@ -1021,11 +1057,13 @@ export default function CashierTransactionPage() {
             roundedHufAmount: totalPayable,
             roundingDiff: 0,
             handlingFee: handlingFee > 0 ? handlingFee : undefined,
+            foreignStatus: uniformForeignStatus(filledRows), // C.2
             transactionLines: filledRows.map((row) => ({
               currencyCode: row.currencyCode,
               foreignAmount: parseFloat(row.quantity) || 0,
               rate: row.exchangeRate,
               hufAmount: row.hufValue,
+              foreignStatus: row.foreignStatus, // C.2: vegyes B/K esetén soronként
             })),
           }
           receiptQueueRef.current = []
@@ -1087,6 +1125,7 @@ export default function CashierTransactionPage() {
               hufAmount: row.hufValue,
               roundedHufAmount: roundHuf(row.hufValue),
               roundingDiff: roundHuf(row.hufValue) - row.hufValue,
+              foreignStatus: row.foreignStatus, // C.2
             }))
             receiptQueueRef.current = receipts.slice(1)
             if (receipts[0]) {
@@ -1653,10 +1692,13 @@ export default function CashierTransactionPage() {
         onPrint={async () => {
           // v2.3.35 (B18 audit fix): Print silently fails -> explicit toast feedback
           // v2.3.47 (Sourcery #311): mark printAttempted -> close-toast NEM jon
+          // Copilot PR #1100 (storno-minta): a hibás ágak THROW-val zárulnak — a
+          // ReceiptPreviewModal csak SIKERES onPrint után zár be (2s auto-close),
+          // hiba esetén nyitva marad és újrapróbálható.
           printAttemptedRef.current = true
           if (!receiptData) {
             toast.warning('Nyomtatás kihagyva', 'Nincs aktív bizonylat-adat.')
-            return
+            throw new Error('Nincs aktív bizonylat-adat')
           }
           if (!window.electronAPI?.printReceipt) {
             // v2.3.37 (Sourcery #300 P2): a webes mod ES Electron preload-bug eseten
@@ -1668,20 +1710,23 @@ export default function CashierTransactionPage() {
                 ? 'Electron preload/electronAPI wiring sikertelen — indítsa újra a klienst, ha tartós, frissítse a programot.'
                 : 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.'
             )
-            return
+            throw new Error('printReceipt nem elérhető')
           }
           try {
             const success = await window.electronAPI.printReceipt(JSON.stringify(receiptData))
-            if (success) {
-              toast.success('Nyomtatás elindítva', `Bizonylat: ${receiptData.receiptNumber ?? '—'}`)
-            } else {
+            if (!success) {
               toast.error('Nyomtatás sikertelen',
                 'A nyomtató offline / nincs konfigurálva / papír kifogyott. ' +
                 'Beállítások > Nyomtatás → ellenőrizze a soros port + nyomtató nevet.')
+              throw new Error('Nyomtatás sikertelen')
             }
+            toast.success('Nyomtatás elindítva', `Bizonylat: ${receiptData.receiptNumber ?? '—'}`)
           } catch (err) {
-            const msg = err instanceof Error ? err.message : 'Ismeretlen hiba'
-            toast.error('Nyomtatás váratlan hiba', msg)
+            if (!(err instanceof Error && err.message === 'Nyomtatás sikertelen')) {
+              const msg = err instanceof Error ? err.message : 'Ismeretlen hiba'
+              toast.error('Nyomtatás váratlan hiba', msg)
+            }
+            throw err
           }
         }}
         printLabel={isElectron() ? undefined : 'Nyomtatás nem elérhető'}
