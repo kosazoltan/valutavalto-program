@@ -130,6 +130,11 @@ export interface ElectronAPI {
     // Multi-line aggregate (2026-06-04): tobb-soros nyugta sorai JSON-kent (backend
     // TransactionLineRequestDto alak). NULL/hianyzo → egysoros (valtozatlan viselkedes).
     lines?: string | null
+    // FK-KEZDIJ offline (2026-06-12): kezelesi dij override mezok (HALF/WAIVED/SPECIAL +
+    // indok + ugyfelkartya) — a sync-engine a REST-tel azonos mezokkel kuldi fel.
+    handlingFeeOverrideType?: string | null
+    handlingFeeOverrideReason?: string | null
+    customerCardNumber?: string | null
   }) => Promise<number>;
   savePendingConversion(
     fromCurrencyId: number | null,

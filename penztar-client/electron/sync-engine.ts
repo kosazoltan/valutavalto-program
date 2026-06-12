@@ -1172,6 +1172,19 @@ export class SyncEngine {
       body['handlingFee'] = tx.handling_fee;
     }
 
+    // FK-KEZDIJ offline (2026-06-12, penztar-batch B.1/b): a kezelesi dij override
+    // (Felezes/Elenegedes/Ugyfelkartya) a REST-tel azonos mezokkel — eddig CSENDBEN
+    // elveszett az Electron uton, a szerver a teljes alap-dijat konyvelte.
+    if (tx.handling_fee_override_type) {
+      body['handlingFeeOverrideType'] = tx.handling_fee_override_type;
+    }
+    if (tx.handling_fee_override_reason) {
+      body['handlingFeeOverrideReason'] = tx.handling_fee_override_reason;
+    }
+    if (tx.customer_card_number) {
+      body['customerCardNumber'] = tx.customer_card_number;
+    }
+
     if (tx.discount_percent !== null && tx.discount_percent !== undefined) {
       body['discountPercent'] = tx.discount_percent;
     }

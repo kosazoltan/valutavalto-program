@@ -80,6 +80,14 @@ export interface PendingBuySellInput {
    * NULL/hianyzo → egysoros tranzakcio (valtozatlan viselkedes).
    */
   lines?: string | null
+  /**
+   * FK-KEZDIJ offline (2026-06-12, penztar-batch B.1/b): a kezelesi dij override
+   * (HALF/WAIVED/SPECIAL + indok + ugyfelkartya-szam) az offline outboxban is —
+   * eddig CSENDBEN elveszett az Electron uton (a szerver a teljes alap-dijat konyvelte).
+   */
+  handlingFeeOverrideType?: string | null
+  handlingFeeOverrideReason?: string | null
+  customerCardNumber?: string | null
 }
 
 export interface PendingConversionInput {
@@ -390,6 +398,10 @@ export async function saveAndSyncPendingBuySell(
           approverWorkerId: entry.approverWorkerId ?? null,
           approvalSessionId: entry.approvalSessionId ?? null,
           lines: entry.lines ?? null,
+          // FK-KEZDIJ offline (2026-06-12): a dij-override mezok is atmennek a queue-ba.
+          handlingFeeOverrideType: normalizeOptionalText(entry.handlingFeeOverrideType),
+          handlingFeeOverrideReason: normalizeOptionalText(entry.handlingFeeOverrideReason),
+          customerCardNumber: normalizeOptionalText(entry.customerCardNumber),
         })
       } else {
         // Legacy pozicionalis API — csak az alapmezok mennek at.

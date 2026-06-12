@@ -5,7 +5,9 @@ import { useFKeyHotkey } from '../../hooks/useFKeyHotkey'
 import { AlertTriangle } from 'lucide-react'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
-import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi, receiptApi } from '../../services/api/index'
+import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi, receiptApi, handlingFeeConfigApi } from '../../services/api/index'
+import type { HandlingFeeConfig } from '../../services/api/index'
+import { computeHandlingFee } from '../../utils/handlingFee'
 import { api } from '../../services/api/client'
 import AmlApproverModal, { toApprovalCustomer } from '../../components/auth/AmlApproverModal'
 import SuspicionReportModal from '../../components/SuspicionReportModal'
@@ -152,6 +154,10 @@ export default function CashierTransactionPage() {
   const [feeOverrideType, setFeeOverrideType] = useState<'' | 'HALF' | 'WAIVED' | 'SPECIAL'>('')
   const [feeOverrideReason, setFeeOverrideReason] = useState<'' | 'DIRECTOR_APPROVAL' | 'CUSTOMER_CARD' | 'PROMOTION'>('')
   const [cardNumber, setCardNumber] = useState('')
+  // FK-KEZDIJ B.1 (2026-06-12, user-kérés): a díj a "Kezelési költség beállítások" konfig
+  // szerint AUTOMATIKUSAN számolódik (ezrelékes/sávos) — a szerver eddig is ezzel könyvelt,
+  // de a képernyő/helyi bizonylat 0-t mutatott. A konfigot a pénztáros read-only kérheti le.
+  const [feeConfig, setFeeConfig] = useState<HandlingFeeConfig | null>(null)
 
   // Exchange rates from API
   const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([])
@@ -232,6 +238,26 @@ export default function CashierTransactionPage() {
 
   // Identification level based on HUF total
   const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } = useIdentificationLevel(String(total))
+
+  // FK-KEZDIJ B.1 (2026-06-12): a kezelési díj konfig betöltése (read-only — a backend
+  // GET /handling-fee-config a pénztárosnak is engedélyezett). Régi backend (403) vagy
+  // hálózati hiba → null konfig, a viselkedés a korábbi marad (a szerver sync-kor számol).
+  useEffect(() => {
+    let cancelled = false
+    handlingFeeConfigApi.get()
+      .then(cfg => { if (!cancelled) setFeeConfig(cfg) })
+      .catch(() => { if (!cancelled) setFeeConfig(null) })
+    return () => { cancelled = true }
+  }, [])
+
+  // FK-KEZDIJ B.1: az AUTOMATIKUS díj a konfigból (ezrelékes/sávos) — a képernyő-összesítő
+  // és a helyi bizonylat UGYANAZT mutatja, amit a szerver könyvel. Override (Felezés/
+  // Elengedés/SPECIAL egyedi díj) alatt nem írjuk felül a kézi/szerveres értéket.
+  useEffect(() => {
+    if (!feeConfig || feeOverrideType) return
+    const auto = computeHandlingFee(subtotal, feeConfig)
+    if (auto !== null) setHandlingFee(auto)
+  }, [subtotal, feeConfig, feeOverrideType])
 
   // Focus management
   useEffect(() => {
@@ -834,6 +860,11 @@ export default function CashierTransactionPage() {
           roundedHufAmount: roundHuf(row.hufValue),
           rate: row.exchangeRate,
           handlingFee: handlingFee > 0 ? handlingFee : null,
+          // FK-KEZDIJ offline (2026-06-12, B.1/b): a dij-override eddig CSENDBEN elveszett
+          // az Electron uton — a REST-tel azonos mezok az offline queue-ba is.
+          handlingFeeOverrideType: feeOverrideType || null,
+          handlingFeeOverrideReason: feeOverrideReason || null,
+          customerCardNumber: cardNumber.trim() || null,
           discountPercent: discount > 0 ? discount : null,
           customerIdentifier: cd?.documentNumber || null,
           customerName: cd?.name || null,
@@ -1565,11 +1596,30 @@ export default function CashierTransactionPage() {
                 <div className="bg-blue-50 dark:bg-blue-950/30 p-2 text-xs border-t border-blue-200 dark:border-blue-800">
                   <div className="flex items-center gap-4 flex-wrap">
                     <span className="font-semibold text-blue-700 dark:text-blue-300">{activeRowData.currencyCode} sávok:</span>
-                    {tiers.map((tier) => (
-                      <span key={tier.name} className={`px-1.5 py-0.5 rounded ${band.tierName === tier.name.toLowerCase().replace(' ', '') || (tier.name === 'Alap' && band.tierName === 'alap') ? 'bg-blue-600 text-white font-bold' : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'}`}>
-                        {tier.name}: {tier.rate.toFixed(2)} {tier.minHuf > 0 ? `(${(tier.minHuf / 1000).toFixed(0)}k+)` : ''}
-                      </span>
-                    ))}
+                    {/* FK-SAVOS B.2 (2026-06-12, user-kérés): a sáv-badge-ek KATTINTHATÓK — a
+                        kiválasztott sáv árfolyama a sorra kerül. Csak az összeg-küszöböt elérő
+                        sáv aktív (a küszöb alatti sáv kézi választása marzs-vesztés lenne —
+                        ahhoz a sorban kézi árfolyam írható, a pénztárosi kvóta terhére). */}
+                    {tiers.map((tier) => {
+                      const isCurrent = band.tierName === tier.name.toLowerCase().replace(' ', '') || (tier.name === 'Alap' && band.tierName === 'alap')
+                      const reachable = baseHuf >= tier.minHuf
+                      return (
+                        <button
+                          key={tier.name}
+                          type="button"
+                          disabled={!reachable}
+                          onClick={() => handleRateInput(activeRow, String(tier.rate))}
+                          title={reachable
+                            ? `Sáv alkalmazása: ${tier.rate.toFixed(2)}`
+                            : `A sávhoz legalább ${(tier.minHuf / 1000).toFixed(0)}k Ft összeg kell`}
+                          className={`px-1.5 py-0.5 rounded ${isCurrent
+                            ? 'bg-blue-600 text-white font-bold'
+                            : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'} ${reachable ? 'cursor-pointer hover:ring-1 hover:ring-blue-500' : 'opacity-50 cursor-not-allowed'}`}
+                        >
+                          {tier.name}: {tier.rate.toFixed(2)} {tier.minHuf > 0 ? `(${(tier.minHuf / 1000).toFixed(0)}k+)` : ''}
+                        </button>
+                      )
+                    })}
                     {cashierRateQuota && cashierRateQuota.remaining > 0 && (
                       <span className="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
                         Pénztárosi sáv: {cashierRateQuota.remaining}/{cashierRateQuota.limit} ({(cashierRateQuota.minAmountHuf / 1000).toFixed(0)}k+ Ft)
