@@ -437,8 +437,8 @@ export default function TransferPage() {
         ? enrichedLines.map(l => ({ currencyCode: l.currencyCode ?? `#${l.currencyId}`, amount: l.amount }))
         : undefined
 
-      // Batch2-E: deviza-átadólapon a forintosított érték + árfolyam a bizonylatra.
-      // Egyvalutás deviza-sornál az aktuális publikált vételi árfolyammal számolunk;
+      // Batch2-E + FK05 FR-5: deviza-átadólapon a forintosított érték + árfolyam a bizonylatra.
+      // Egyvalutás deviza-sornál az aktuális publikált ELSZÁMOLÓ árfolyammal számolunk;
       // több-valutás lapnál (soronként eltérő valuták) a fejléc-szintű forintosítás
       // nem értelmezhető — ott kimarad (dokumentált korlát).
       const effCurrencyCode = currencies.find(c => c.id === effCurrencyId)?.code
@@ -728,20 +728,24 @@ export default function TransferPage() {
     [currencies],
   )
 
-  // Batch2-E (2026-06-12): árfolyam-feloldás a deviza-átadólap forintosított értékéhez.
-  // Az aktuális publikált VÉTELI árfolyammal számolunk (könyv szerinti értékelés);
-  // árfolyam-hiány NEM blokkolja a rögzítést — ilyenkor a bizonylat árfolyam/forint
-  // sor nélkül készül (a korábbi viselkedés).
+  // FK05 FR-5 (2026-06-12): árfolyam-feloldás a deviza-átadólap forintosított értékéhez —
+  // az ELSZÁMOLÓ árfolyammal (J oszlop, officialRate), a vételi helyett. A pénztár↔értéktár
+  // átadás/átvétel a legacy-ban is az ELSZAMOLASIARFOLYAM-on számolt forintértéket
+  // (atadvet/unit2.pas 825/1147/1706). Régi adatnál (officialRate null/0) fallback a
+  // vételire; árfolyam-hiány NEM blokkolja a rögzítést — ilyenkor a bizonylat
+  // árfolyam/forint sor nélkül készül (a korábbi viselkedés).
   const resolveTransferRate = useCallback(async (currencyCode: string): Promise<number | null> => {
     if (currencyCode === 'HUF') return null
     try {
       if (isElectron()) {
         const cached = await getElectronCachedRates()
         const row = cached.find(r => r.currency_code === currencyCode)
+        if (row?.official_rate != null && row.official_rate > 0) return row.official_rate
         if (row && row.buy_rate > 0) return row.buy_rate
       }
       const rates = await exchangeRateApi.list()
       const row = rates.find(r => r.currencyCode === currencyCode)
+      if (row?.officialRate != null && row.officialRate > 0) return row.officialRate
       if (row && row.baseBuyRate > 0) return row.baseBuyRate
     } catch { /* árfolyam-cache/API hiánya nem blokkolja a rögzítést */ }
     return null

@@ -13,7 +13,9 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useAuthStore } from '../../stores/authStore'
-import { exchangeRateMasterApi, type ExchangeRateMaster, type CreateMasterRateRequest } from '../../services/api/exchangeRateMaster'
+import { exchangeRateMasterApi, type ExchangeRateMaster } from '../../services/api/exchangeRateMaster'
+// FK05 (FR-1): a Főlap szétküldése is a munkacsoport-publish útvonalon megy.
+import { publishAllWorkgroups, summarizePublishAll } from './publishAllWorkgroups'
 import { exchangeRateApi } from '../../services/api/exchange-rates'
 import { getCrossBase, useCurrencyCatalog } from '../../hooks/useCurrencyCatalog'
 import CurrencyManagerModal from './components/CurrencyManagerModal'
@@ -267,6 +269,8 @@ export default function MainRateSheetPage() {
   const pendingFocusRef = useRef(false)
   const [showHelp, setShowHelp] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  // FK05 (FR-8): "X / Y munkacsoport elküldve" folyamat-visszajelzés a szétküldés alatt.
+  const [publishProgress, setPublishProgress] = useState<{ done: number; total: number } | null>(null)
   // FR-RFM-12/13: Raiffeisen ±N% sáv. A bázis (elszámoló/OTP) és a százalék szabadon
   // állítható, szezonálisan kézzel döntött → localStorage-ban perzisztált.
   const [bandBase, setBandBase] = useState<BandSource>(() => {
@@ -905,47 +909,27 @@ export default function MainRateSheetPage() {
       // NEM dobunk, folytatjuk a szerver-publikalast
     }
 
-    // 2. Codex+Copilot PR #687: csak az aktualisan MODOSITOTT row-okat kuldjuk
-    // (a serverSnapshotRef diff-jevel), NEM az osszes nem-nulla rate-eu valutat.
-    // Ezzel elkeruljuk a duplikalt szerver-publish-eket.
-    // Plus: cross-rate (crossBase != null) sorokra a `settlement` szamitott ertek
-    // a `crossSettlement` mezobol jon (enrichedRows logika replikalva itt).
-    const snapshot = serverSnapshotRef.current
+    // 2. FK05 (FR-1, FR-2): a Főlap szétküldése is a munkacsoport-publish útvonalon megy
+    // (POST /rate-creation/publish-group-rate, MINDEN csoportra) — az exchange-rate-master
+    // create→approve→publish út kivezetése külön technikai-adósság kör (FK05 OUT).
+    // A kiküldés előtti adatminőség-figyelmeztetések (irány, EUA, Raiffeisen-sáv) a 0-s lap
+    // TELJES (nem-nulla rátájú) állományán futnak — a csoportlapok képletei ebből táplálkoznak.
     const eurRowD = rowsToDispatch.find((r) => r.currency === 'EUR')
     const usdRowD = rowsToDispatch.find((r) => r.currency === 'USD')
     const eurS = eurRowD?.settlement ?? 0
     const usdS = usdRowD?.settlement ?? 0
 
-    const modifiedRows = rowsToDispatch.flatMap((r) => {
+    const ratedRows = rowsToDispatch.flatMap((r) => {
       if (r.weakMultiBuy <= 0 || r.weakMultiSell <= 0) return []
       // A oszlop tényleges értéke: kézi felülírás → beírt érték, egyébként a G auto-érték.
-      const effectiveSettlement = resolveSettlement(r, eurS, usdS)
-      const snap = snapshot.get(r.currency)
-      // Ha nincs szerver-snapshot, MINDIG kuldjuk (uj valuta)
-      // Ha van, csak akkor kuldjuk ha mod-detected (abs delta > 0.0001)
-      if (snap) {
-        const dB = Math.abs(r.weakMultiBuy - snap.weakMultiBuy)
-        const dS = Math.abs(r.weakMultiSell - snap.weakMultiSell)
-        const dE = Math.abs(effectiveSettlement - snap.settlement)
-        if (dB < 0.0001 && dS < 0.0001 && dE < 0.0001) return []
-      }
-      return [{ row: r, effectiveSettlement }]
+      return [{ row: r, effectiveSettlement: resolveSettlement(r, eurS, usdS) }]
     })
-
-    if (modifiedRows.length === 0) {
-      toast.warning(
-        'Nincs változás',
-        'A táblázat azonos a központi szerver utolsó publikált állapotával — nincs mit szétküldeni.',
-      )
-      setPublishing(false)
-      return
-    }
 
     // G7 (EXCMD b1-arfolyamkeszito FR-RFM-25): kiküldés előtti irány-validáció —
     // az eladási (weakMultiSell) nem lehet kisebb az elszámolónál, a vételi
     // (weakMultiBuy) nem lehet magasabb. Sértés esetén figyelmeztetés + megerősítés.
     const directionViolations = validateRateDirection(
-      modifiedRows.map(({ row, effectiveSettlement }) => ({
+      ratedRows.map(({ row, effectiveSettlement }) => ({
         currencyCode: row.currency,
         settlement: effectiveSettlement,
         buyRate: row.weakMultiBuy,
@@ -969,7 +953,7 @@ export default function MainRateSheetPage() {
     // (elszámoló VAGY OTP) max bandPercent%-kal térhet el. A bázison kívüli értékek figyelmeztetést
     // adnak a kiküldés előtt (a megbízási szerződés szerinti 10%-os korlát, szabadon állítva).
     const bandViolations = raiffeisenBandViolations(
-      modifiedRows.map(({ row, effectiveSettlement }) => ({
+      ratedRows.map(({ row, effectiveSettlement }) => ({
         currency: row.currency,
         base: bandBase === 'otp' ? row.otp : effectiveSettlement,
         buy: row.weakMultiBuy,
@@ -1000,64 +984,33 @@ export default function MainRateSheetPage() {
       }
     }
 
-    // 3. Szerver-publikalas - kulon try-block (Sourcery PR #687)
+    // 3. FK05 (FR-1, FR-2, FR-8): minden munkacsoport publikálása a munkacsoport-lap
+    // útvonalán (publish-group-rate) — a csoport-adatok a tárolt overlay + képletek
+    // headless kiértékeléséből jönnek (publishAllWorkgroups, TBD-4 tényfeltárás szerint).
     try {
-      const codeToId = currencyIdMapRef.current
-      const errors: string[] = []
-      let publishedCount = 0
-
-      for (const { row, effectiveSettlement } of modifiedRows) {
-        const currencyId = codeToId.get(row.currency)
-        if (!currencyId) {
-          errors.push(`${row.currency}: nincs ID a currencies táblában`)
-          continue
-        }
-        const payload: CreateMasterRateRequest = {
-          currencyId,
-          baseBuyRate: row.weakMultiBuy,
-          baseSellRate: row.weakMultiSell,
-          officialRate: effectiveSettlement || undefined,
-          notes: `Főlap szétküldés (${new Date().toISOString()})`,
-        }
-        try {
-          // Create DRAFT -> Approve -> Publish + automatikus elosztas
-          const draft = await exchangeRateMasterApi.create(payload)
-          await exchangeRateMasterApi.approve(draft.id)
-          await exchangeRateMasterApi.publish(draft.id)
-          publishedCount += 1
-          // Snapshot frissites: a sikeres publikalas utan a snap === aktualis
-          snapshot.set(row.currency, {
-            weakMultiBuy: row.weakMultiBuy,
-            weakMultiSell: row.weakMultiSell,
-            settlement: effectiveSettlement,
-          })
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e)
-          errors.push(`${row.currency}: ${msg}`)
-          logger.error('MainRateSheetPage', `Publish failed for ${row.currency}`, e)
-        }
-      }
+      const result = await publishAllWorkgroups({
+        onProgress: (done, total) => setPublishProgress({ done, total }),
+      })
 
       setDirty(false)
       setServerSyncState('online')
       setServerLastSyncAt(new Date().toISOString())
 
-      if (errors.length === 0) {
-        toast.success(
-          'Szétküldve',
-          `${publishedCount}/${modifiedRows.length} módosított valuta publikálva és szétküldve a pénztáraknak.`,
-        )
-      } else if (publishedCount > 0) {
+      if (result.total === 0) {
         toast.warning(
-          'Részben sikeres',
-          `${publishedCount}/${modifiedRows.length} publikálva. Hibák: ${errors.slice(0, 3).join('; ')}`,
+          'Nincs munkacsoport',
+          'Nincs aktív árfolyam-munkacsoport — előbb hozzon létre csoportot a munkacsoport-lapon.',
         )
       } else {
-        toast.error(
-          'Sikertelen',
-          `Egyetlen valuta sem ment ki. Első hiba: ${errors[0] ?? 'ismeretlen'}`,
-        )
-        setServerSyncState('offline')
+        const summary = summarizePublishAll(result)
+        if (summary.ok) {
+          toast.success(summary.title, summary.detail)
+        } else if (result.published > 0) {
+          toast.warning(summary.title, summary.detail)
+        } else {
+          toast.error('Sikertelen', summary.detail)
+          setServerSyncState('offline')
+        }
       }
     } catch (e) {
       // Csak szerver/network hiba - localStorage mar a kulon try-block-on tul vagyunk
@@ -1065,6 +1018,7 @@ export default function MainRateSheetPage() {
       toast.error('Hálózati hiba', 'Szerver nem elérhető — kérlek próbáld újra.')
       setServerSyncState('offline')
     } finally {
+      setPublishProgress(null)
       setPublishing(false)
     }
   }, [canEdit, flushActiveCell, serverSyncState, bandBase, bandPercent])
@@ -1211,9 +1165,13 @@ export default function MainRateSheetPage() {
         <button
           onClick={() => void dispatchToServer()}
           disabled={publishing || !canEdit}
+          data-testid="dispatch-rates-button"
           className="px-3 py-1 text-xs font-medium bg-green-600 text-white border border-green-700 rounded hover:bg-green-700 disabled:opacity-40 flex items-center gap-1"
         >
-          <Send size={12} /> ÁRFOLYAMOK SZÉTKÜLDÉSE
+          <Send size={12} />
+          {publishing && publishProgress
+            ? `${publishProgress.done} / ${publishProgress.total} MUNKACSOPORT ELKÜLDVE`
+            : 'ÁRFOLYAMOK SZÉTKÜLDÉSE'}
         </button>
         {/* N1 (legacy ARFOLYAM / TINTERNETTMKFORM) — internet-link gyors-megnyitók */}
         {internetLinks.map(link => (

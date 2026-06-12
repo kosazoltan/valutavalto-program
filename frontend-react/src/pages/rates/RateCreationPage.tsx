@@ -32,6 +32,7 @@ import { sortWorkgroupsBySequence } from './workgroupOrdering'
 import { isFormula, type WgValues } from './workgroupSheetFormula'
 import { applyCrossGroupCopy, type CrossGroupCopyCell } from './crossGroupCopy'
 import { isSignificantDeviation } from './deviationCheck'
+import { publishAllWorkgroups, summarizePublishAll } from './publishAllWorkgroups'
 import {
   recomputeWorkgroupSheet,
   FIELD_TO_WGCOL,
@@ -138,6 +139,10 @@ export default function RateCreationPage() {
   const [panelCollapsed, setPanelCollapsed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  // FK05 (FR-8): "X / Y munkacsoport elküldve" folyamat-visszajelzés a szétküldés alatt.
+  const [publishProgress, setPublishProgress] = useState<{ done: number; total: number } | null>(null)
+  // FK05 (FR-6): iroda-mentési hiba a modalon belül (nem csak toast).
+  const [branchSaveError, setBranchSaveError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   // T9.F: képletszintaxis-súgó (A–I / J–S / !Fxxx / #NNL) a csoport-lap szerkesztőhöz.
   const [showFormulaHelp, setShowFormulaHelp] = useState(false)
@@ -827,6 +832,7 @@ export default function RateCreationPage() {
       setAllBranches(branches)
       setSelectedBranchIds(new Set(branches.filter(b => b.assignedToCurrentWorkgroup).map(b => b.id)))
       setBranchFilter('')
+      setBranchSaveError(null)
       setBranchModalOpen(true)
     } catch {
       toast.error('Hiba', 'Nem sikerült az irodák betöltése')
@@ -840,16 +846,24 @@ export default function RateCreationPage() {
       return
     }
     setSavingBranches(true)
+    setBranchSaveError(null)
     try {
       await rateCreationApi.updateWorkgroupBranches(selectedWg.id, Array.from(selectedBranchIds))
       toast.success('Mentve', 'Irodák frissítve')
       setBranchModalOpen(false)
       void loadData()
     } catch (err) {
+      // FK05 (FR-6): a hiba a MODALON BELÜL jelenik meg, érthető szöveggel. A backend
+      // move-strategy miatt 409 normál úton nem keletkezik (RateCreationService
+      // updateWorkgroupBranches áthelyez); a defenzív ág a constraint-versenyt
+      // (uk_branch_workgroup_exclusive) és a régi szerververziót fedi.
       if (err instanceof AxiosError && err.response?.status === 403) {
-        toast.error('Nincs jogosultság', 'Irodák mentéséhez főértéktáros vagy ügyvezető szerepkör kell')
+        setBranchSaveError('Nincs jogosultság: irodák mentéséhez főértéktáros vagy ügyvezető szerepkör kell.')
+      } else if (err instanceof AxiosError && err.response?.status === 409) {
+        setBranchSaveError('Ez a pénztár már szerepel egy másik munkacsoportban. Először helyezze át onnan, majd adja hozzá ide.')
       } else {
-        toast.error('Hiba', 'Nem sikerült az irodák mentése')
+        const msg = err instanceof AxiosError ? (err.response?.data as { message?: string } | undefined)?.message : undefined
+        setBranchSaveError(msg ?? 'Nem sikerült az irodák mentése.')
       }
     } finally {
       setSavingBranches(false)
@@ -964,45 +978,57 @@ export default function RateCreationPage() {
 
     setPublishing(true)
     try {
-      const publishResult = await rateCreationApi.publishGroupRate({
-        groupId: selectedWg.id,
-        rates: validRates.map(r => ({
-          currencyId: r.currencyId,
-          buyRate: parseNum(r.buyRate),
-          sellRate: parseNum(r.sellRate),
-          officialRate: r.officialRate,
-          limit1Amount: selectedWg.limit1Boundary || null,
-          limit1BuyRate: parseNum(r.limit1BuyRate) || null,
-          limit1SellRate: parseNum(r.limit1SellRate) || null,
-          limit2Amount: selectedWg.limit2Boundary || null,
-          limit2BuyRate: parseNum(r.limit2BuyRate) || null,
-          limit2SellRate: parseNum(r.limit2SellRate) || null,
-          limit3Amount: selectedWg.limit3Boundary || null,
-          limit3BuyRate: parseNum(r.limit3BuyRate) || null,
-          limit3SellRate: parseNum(r.limit3SellRate) || null,
-        }))
+      // FK05 (FR-2, FR-8): a szétküldés az ÖSSZES munkacsoportot publikálja, nem csak az
+      // aktuálisat. Az aktuális csoport a KÉPERNYŐ friss állapotából megy (inMemoryGroupRates),
+      // a többi a tárolt overlay + képletek headless kiértékeléséből (publishAllWorkgroups).
+      // A csoport-overlay törlését (FK02-B server-authority) a helper végzi csoportonként.
+      const inMemoryRates = validRates.map(r => ({
+        currencyId: r.currencyId,
+        buyRate: parseNum(r.buyRate),
+        sellRate: parseNum(r.sellRate),
+        officialRate: r.officialRate,
+        limit1Amount: selectedWg.limit1Boundary || null,
+        limit1BuyRate: parseNum(r.limit1BuyRate) || null,
+        limit1SellRate: parseNum(r.limit1SellRate) || null,
+        limit2Amount: selectedWg.limit2Boundary || null,
+        limit2BuyRate: parseNum(r.limit2BuyRate) || null,
+        limit2SellRate: parseNum(r.limit2SellRate) || null,
+        limit3Amount: selectedWg.limit3Boundary || null,
+        limit3BuyRate: parseNum(r.limit3BuyRate) || null,
+        limit3SellRate: parseNum(r.limit3SellRate) || null,
+      }))
+      const result = await publishAllWorkgroups({
+        inMemoryGroupRates: { groupId: selectedWg.id, rates: inMemoryRates },
+        preloaded: overview && workgroups.length > 0
+          ? { overview: overview.currencies, workgroups }
+          : undefined,
+        onProgress: (done, total) => setPublishProgress({ done, total }),
       })
-      if (publishResult && 'publicationId' in publishResult) {
-        toast.success(
-          'Publikálva!',
-          `${publishResult.acceptedRates} árfolyam kiküldve: ${selectedWg.name} (${publishResult.affectedBranches} iroda)`
-        )
-      } else {
-        toast.success('Publikálva!', `${validRates.length} árfolyam kiküldve: ${selectedWg.name} (${selectedWg.branches.length} iroda)`)
-      }
-      // FK02-B / FR-11, FR-12: publikálás után a szerver az authority (vö. published_rate
-      // server_authority policy) — a csoport helyi fix-érték overlay-ét töröljük MINDKÉT tárolóból
-      // (localStorage + tartós SQLite), különben a betöltéskori SQLite-first overlay feltámasztaná az
-      // elavult override-okat (review P0). A loadData() ezután a publikált értékeket tölti vissza.
-      persistGroupRateValues(selectedWg.id, {})
+      const summary = summarizePublishAll(result)
+      if (summary.ok) toast.success(summary.title, summary.detail)
+      else toast.warning(summary.title, summary.detail)
       void loadData()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Hiba a publikálás során'
       toast.error('Publikálási hiba', msg)
     } finally {
+      setPublishProgress(null)
       setPublishing(false)
     }
   }
+
+  // FK05 (FR-6): kijelölt, de MÁSIK munkacsoporthoz tartozó pénztárak — a backend
+  // move-strategy mentéskor áthelyezi őket; itt előre, érthetően jelezzük a modalban.
+  const branchMoveWarnings = useMemo(() => {
+    if (!selectedWg) return []
+    const out: string[] = []
+    for (const b of allBranches) {
+      if (!selectedBranchIds.has(b.id) || b.assignedToCurrentWorkgroup) continue
+      const other = workgroups.find(w => w.id !== selectedWg.id && w.branches.some(x => x.id === b.id))
+      if (other) out.push(`${b.code} — ${b.name} (jelenleg: ${other.name})`)
+    }
+    return out
+  }, [allBranches, selectedBranchIds, workgroups, selectedWg])
 
   // Grouped branches for modal
   const groupedBranches = useMemo(() => {
@@ -1326,7 +1352,11 @@ export default function RateCreationPage() {
             ) : (
               <Send size={16} />
             )}
-            <span className="text-xs">{t('rates.arfolyamokSzetkuldese')}</span>
+            <span className="text-xs" data-testid="publish-button-label">
+              {publishing && publishProgress
+                ? `${publishProgress.done} / ${publishProgress.total} munkacsoport elküldve`
+                : t('rates.arfolyamokSzetkuldese')}
+            </span>
           </button>
         </div>
         )}
@@ -1335,6 +1365,8 @@ export default function RateCreationPage() {
       {/* === BRANCH PICKER MODAL === */}
       <BranchPickerModal
         open={branchModalOpen}
+        moveWarnings={branchMoveWarnings}
+        saveError={branchSaveError}
         selectedWgName={selectedWg?.name}
         branchFilter={branchFilter}
         setBranchFilter={setBranchFilter}
