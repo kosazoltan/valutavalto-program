@@ -12,8 +12,12 @@
 
 DO $$
 BEGIN
+    -- Self-review P1: schema-kvalifikált ellenőrzés (conrelid), hogy egy másik sémában
+    -- azonos nevű constraint ne adjon fals pozitívot megosztott instance-en.
     IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'uq_currency_display_order'
+        SELECT 1 FROM pg_constraint
+         WHERE conname = 'uq_currency_display_order'
+           AND conrelid = 'currency'::regclass
     ) THEN
         ALTER TABLE currency
             ADD CONSTRAINT uq_currency_display_order UNIQUE (display_order);
