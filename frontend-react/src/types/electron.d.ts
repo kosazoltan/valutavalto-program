@@ -406,6 +406,8 @@ export interface ElectronAPI {
     synced: number;
     /** Penztar-batch A.1: a több-valutás sorok JSON-ja (a SQLite `lines TEXT` oszlop — SELECT * adja). */
     lines?: string | null;
+    /** Verif PR #1101: az irány ('F' átadás / 'U' átvétel) — a bizonylat-orientációhoz (SELECT * adja). */
+    direction?: string | null;
   }>>;
   /** Offline átadás-átvétel SZTORNÓ (internetkimaradáskor): a backend fordítja vissza a készletet szinkronkor. */
   savePendingTransferStorno(payload: { transferId: number; transferNumber?: string | null; reason: string }): Promise<number>;

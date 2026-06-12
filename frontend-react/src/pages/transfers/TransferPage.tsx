@@ -298,34 +298,38 @@ export default function TransferPage() {
       ? currencyLines.find(l => l.currencyId != null)?.currencyId ?? null
       : currencyId
     if (denomCurrencyId == null || denomPresetCurrencyRef.current === denomCurrencyId) return
+    // Verif PR #1101 P2: a ref a fetch INDÍTÁSAKOR áll be (nem a válasznál) — így a
+    // gépelés közbeni cleanup (currencyLines minden billentyűre új referencia) nem okoz
+    // billentyűnkénti újra-lekérést; checkbox ki/be vagy valutaváltás újraenged.
+    denomPresetCurrencyRef.current = denomCurrencyId
     let cancelled = false
     void (async () => {
       try {
         const denoms = await denominationApi.getByCurrencyId(denomCurrencyId)
         if (cancelled) return
-        // Copilot PR #1101: a ref MINDEN kimenetelnél beáll — üres törzs ne okozzon
-        // rerender-enkénti újra-lekérést (checkbox ki/be vagy valutaváltás újraengedi).
-        denomPresetCurrencyRef.current = denomCurrencyId
+        // Verif PR #1101 P2: a felhasználó által már elkezdett kitöltést (darabszám) a
+        // később beérkező preset NEM írhatja felül — funkcionális update-ben ellenőrizzük.
+        const applyIfPristine = (next: Array<{ id: number; quantity: string; faceValue: string }>) =>
+          setDenominationLines(prev =>
+            prev.some(r => r.quantity.trim() !== '') ? prev : next)
         if (denoms.length === 0) {
           // Codex PR #1101 P2: valutaváltáskor az ELŐZŐ valuta stale presetje nem
           // maradhat — üres törzsnél vissza a szabad bevitelre.
           setDenomPresetCode(null)
-          setDenominationLines([{ id: denomIdRef.current++, quantity: '', faceValue: '' }])
+          applyIfPristine([{ id: denomIdRef.current++, quantity: '', faceValue: '' }])
           return
         }
         const code = currencies.find(c => c.id === denomCurrencyId)?.code ?? null
         setDenomPresetCode(code)
         // Címletenként egy sor, csökkenő névértékkel (a DenominationPage rendezése) —
         // a felhasználó csak a darabszámot tölti ki; a sorok szerkeszthetők maradnak.
-        setDenominationLines(
+        applyIfPristine(
           [...denoms]
             .sort((a, b) => b.faceValue - a.faceValue)
             .map(d => ({ id: denomIdRef.current++, quantity: '', faceValue: String(d.faceValue) })),
         )
       } catch {
-        // Törzs nem elérhető (pl. offline) → szabad bevitel; a ref beállítása megakadályozza
-        // a rerender-enkénti újrapróbálkozást (Copilot PR #1101) — checkbox-toggle újraenged.
-        if (!cancelled) denomPresetCurrencyRef.current = denomCurrencyId
+        // Törzs nem elérhető (pl. offline) → szabad bevitel marad, jelzés nélkül.
       }
     })()
     return () => { cancelled = true }

@@ -477,6 +477,9 @@ export async function getLocalPendingTransfers(worker: Worker | null): Promise<T
       // Penztar-batch A.1 (2026-06-12): a több-valutás sorok a queue-sor lines JSON-jából —
       // a lista offline is minden valutát mutat (a mentés currencyCode-dal dúsítva írja).
       lines: parseTransferLines(row.lines),
+      // Verif PR #1101 P2: az irány nélkül az offline 'U' (átvétel) bizonylata a szem-ikonból
+      // fordított orientációval (Átadási címmel) nyílt volna — a SQLite sor hordozza.
+      direction: (row.direction as Transfer['direction']) ?? undefined,
       fromBranchId: worker?.branchId ?? 'LOCAL',
       fromBranchCode: worker?.branchCode ?? 'LOCAL',
       fromBranchName: worker?.branchName ?? 'Helyi pénztár',
