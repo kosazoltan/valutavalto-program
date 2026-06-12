@@ -25,6 +25,7 @@ import { logger } from '../../utils/logger'
 import RateGrid from './components/RateGrid'
 import BranchPickerModal from './components/BranchPickerModal'
 import { fmtRate, parseNum, type EditableRate } from './types'
+import { sortByDisplayOrder } from './currencyDisplayOrder'
 import { currentFunctionCode } from './fillHelpers'
 import { validateWorkgroupProtection, workgroupProtectionLabel, type ProtectionRow } from './workgroupProtection'
 import { sortWorkgroupsBySequence } from './workgroupOrdering'
@@ -60,27 +61,10 @@ const WG_STRING_FIELDS: Exclude<WgField, 'officialRate'>[] = [
   'limit3BuyRate', 'limit3SellRate',
 ]
 
-// FK02-B / FR-1 (2026-06-01): a csoport-árfolyamlap valuta-sorrendje EGYEZZEN a Főlapéval
-// (MainRateSheetPage DEFAULT_CURRENCIES), hogy a felhasználó ugyanazt a sorrendet lássa
-// mindkét nézetben. A szerver `overview.currencies` sorrendje nem garantált. Ez a lista a
-// MainRateSheetPage.DEFAULT_CURRENCIES kódjainak tükre (forrás-igazság ott).
-const MAIN_SHEET_CURRENCY_ORDER: readonly string[] = [
-  'EUR', 'USD', 'GBP', 'CHF', 'AUD', 'CAD', 'JPY', 'CZK', 'PLN', 'RON',
-  'RSD', 'ILS', 'UAH', 'RUB', 'EUA', 'TRY', 'CNY', 'BAM', 'THB', 'BRL',
-  'MXN', 'NZD',
-]
-
-/** A főlapi sorrend szerinti rendezés; az ismeretlen kódok a végére, ABC-rendben. */
-function sortByMainSheetOrder<T extends { currencyCode: string }>(rows: T[]): T[] {
-  return [...rows].sort((a, b) => {
-    const ia = MAIN_SHEET_CURRENCY_ORDER.indexOf(a.currencyCode)
-    const ib = MAIN_SHEET_CURRENCY_ORDER.indexOf(b.currencyCode)
-    if (ia === -1 && ib === -1) return a.currencyCode.localeCompare(b.currencyCode)
-    if (ia === -1) return 1
-    if (ib === -1) return -1
-    return ia - ib
-  })
-}
+// FK04 (FR-4): a korábbi hard-coded MAIN_SHEET_CURRENCY_ORDER konstans MEGSZŰNT — a
+// csoport-árfolyamlap valuta-sorrendje a currency tábla displayOrder mezőjéből jön
+// (V317 kanonikus sorrend; a backend overview item hordozza). A rendezés a
+// ./currencyDisplayOrder modulban (ismeretlen kód a végére, ABC-ben — változatlan viselkedés).
 
 // FK02-B / FR-2..5 (2026-06-01): jelentős (≥10%) eltérés az ELŐZŐ MENTETT értékhez képest →
 // megerősítő modal (elgépelés-védelem). Az arány-számítás a ./deviationCheck modulban.
@@ -453,6 +437,7 @@ export default function RateCreationPage() {
         currencyId: c.currencyId,
         currencyCode: c.currencyCode,
         currencyName: c.currencyName,
+        displayOrder: c.displayOrder,
         officialRate: c.officialRate,
         buyRate: fmtRate(c.currentBuyRate),
         sellRate: fmtRate(c.currentSellRate),
@@ -465,8 +450,9 @@ export default function RateCreationPage() {
         hasRate: c.hasRate,
         modified: false,
       }))
-      // FR-1: a Főlap (DEFAULT_CURRENCIES) sorrendjébe rendezzük — konzisztens nézet.
-      setRates(sortByMainSheetOrder(editableRates))
+      // FK04 (FR-4): a currency tábla displayOrder mezője szerint rendezünk (V317 kanonikus
+      // sorrend) — a Főlappal konzisztens nézet; az EUA a RUB és TRY közé kerül (15. hely).
+      setRates(sortByDisplayOrder(editableRates))
       // FK02-B / FR-2..5: a perzisztált baseline rögzítése (a 10%-eltérés ehhez mér; publish/save
       // utáni újratöltéskor frissül). Csak a numerikusan értelmezhető mezőket tároljuk.
       const baseline: Record<string, number> = {}
