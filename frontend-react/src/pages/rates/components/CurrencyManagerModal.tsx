@@ -30,6 +30,16 @@ interface CurrencyManagerModalProps {
   onCurrencyChanged?: () => void  // ertesites a parent-nek hogy ujra-toltse a listat
 }
 
+/**
+ * FK04 (FR-8): az "Új valuta" form alapértelmezett megjelenítési sorrendje a
+ * jelenlegi legnagyobb displayOrder + 1 (a korábbi fix 99 a V318 UNIQUE constraint
+ * mellett a második felvételnél 409-et okozna). Üres lista → 1.
+ */
+export function computeNextDisplayOrder(currencies: Array<{ displayOrder?: number }>): number {
+  if (currencies.length === 0) return 1
+  return Math.max(...currencies.map(c => c.displayOrder ?? 0)) + 1
+}
+
 export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChanged }: CurrencyManagerModalProps) {
   const [currencies, setCurrencies] = useState<Currency[]>([])
   const [loading, setLoading] = useState(false)
@@ -41,7 +51,8 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
   const [newName, setNewName] = useState('')
   const [newSymbol, setNewSymbol] = useState('')
   const [newDecimals, setNewDecimals] = useState<number>(2)
-  const [newDisplayOrder, setNewDisplayOrder] = useState<number>(99)
+  // FK04 (FR-8): a tényleges defaultot a form megnyitásakor számoljuk (max displayOrder + 1).
+  const [newDisplayOrder, setNewDisplayOrder] = useState<number>(1)
   const [submitting, setSubmitting] = useState(false)
 
   // Aktivál/inaktivál megerősítés — Electron-kompatibilis (NEM window.prompt, ami
@@ -132,7 +143,6 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
       setNewName('')
       setNewSymbol('')
       setNewDecimals(2)
-      setNewDisplayOrder(99)
       setShowAddForm(false)
       await refresh()
       onCurrencyChanged?.()
@@ -176,8 +186,15 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
             </div>
             <button
               type="button"
-              onClick={() => setShowAddForm((s) => !s)}
-              className="form-button-primary flex items-center gap-1"
+              onClick={() => {
+                // FK04 (FR-8): a form megnyitásakor a default sorrend = max(displayOrder) + 1.
+                if (!showAddForm) setNewDisplayOrder(computeNextDisplayOrder(currencies))
+                setShowAddForm((s) => !s)
+              }}
+              // Verif P2: a lista betöltéséig tiltva — üres currencies-ből a default 1 lenne,
+              // ami a V317 után garantáltan foglalt (EUR=1) → fals 409 a felhasználónak.
+              disabled={loading}
+              className="form-button-primary flex items-center gap-1 disabled:opacity-50"
               data-testid="currency-manager-toggle-add"
             >
               <Plus size={16} />
@@ -247,9 +264,15 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                   <input
                     type="number"
                     value={newDisplayOrder}
-                    onChange={(e) => setNewDisplayOrder(parseInt(e.target.value) || 99)}
+                    onChange={(e) => {
+                      // Copilot PR #1097: explicit NaN-check — a `|| fallback` a 0-t is elnyelte
+                      // (falsy), pedig a min="0" megengedi. NaN (kiürített mező) → max+1 default.
+                      const v = parseInt(e.target.value, 10)
+                      setNewDisplayOrder(Number.isNaN(v) ? computeNextDisplayOrder(currencies) : v)
+                    }}
                     className="form-input w-full"
                     min="0"
+                    data-testid="new-currency-display-order"
                   />
                 </div>
               </div>

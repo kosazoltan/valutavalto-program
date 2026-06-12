@@ -2,6 +2,8 @@ export interface EditableRate {
   currencyId: number
   currencyCode: string
   currencyName: string
+  /** FK04 (FR-4): a currency tábla megjelenítési sorrendje — a sorok ez alapján rendeződnek. */
+  displayOrder?: number | null
   officialRate: number | null
   buyRate: string
   sellRate: string
