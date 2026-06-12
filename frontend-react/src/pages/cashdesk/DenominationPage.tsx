@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Coins, Save, RefreshCw, Calculator, AlertCircle } from 'lucide-react'
 import {
   denominationBalanceApi,
@@ -29,7 +29,14 @@ export default function DenominationPage() {
   const [_denominationBalances, setDenominationBalances] = useState<DenominationBalanceDTO[]>([])
   const [editingQuantities, setEditingQuantities] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(false)
-  const [calculatedTotal, setCalculatedTotal] = useState<number>(0)
+  // Copilot #1109: az összesítő DERIVÁLT érték a szerkesztett darabszámokból — state-ként
+  // tartva versenyhelyzetes/elcsúszó újraszámításokra volt érzékeny.
+  const calculatedTotal = useMemo(
+    () => denominations
+      .filter(d => d.currencyId === selectedCurrencyId)
+      .reduce((sum, d) => sum + d.faceValue * (editingQuantities[d.id] ?? 0), 0),
+    [denominations, selectedCurrencyId, editingQuantities],
+  )
 
   // Batch2-A (Fabulya-teszt 2026-06-12): a címletek ÉS a mentett egyenlegek betöltése
   // EGY szekvenciális folyamatban. Korábban két párhuzamos hívás versenyzett ugyanazon
@@ -48,15 +55,13 @@ export default function DenominationPage() {
       setDenominationBalances(balances)
 
       // Egyetlen, determinisztikus state-írás: minden címlet 0, felülírva a mentettekkel.
+      // (Az összesítő ebből DERIVÁLT useMemo — külön nem kell beállítani.)
       const quantities: Record<number, number> = {}
       denoms.forEach((d: Denomination) => { quantities[d.id] = 0 })
       balances.forEach(balance => {
         quantities[Number(balance.denominationId)] = balance.quantity
       })
       setEditingQuantities(quantities)
-
-      const total = balances.reduce((sum, b) => sum + b.totalValue, 0)
-      setCalculatedTotal(total)
     } catch (error) {
       logger.error('DenominationPage', 'Címletezés betöltése sikertelen:', error)
     } finally {
@@ -89,23 +94,10 @@ export default function DenominationPage() {
   const handleQuantityChange = (denominationId: number, quantityStr: string) => {
     // Darabszám = egész szám (a backend DTO Integer) — tört darab nem értelmezhető.
     const quantity = Math.max(0, parseInt(quantityStr.replace(/\s/g, ''), 10) || 0)
-    setEditingQuantities({
-      ...editingQuantities,
-      [denominationId]: quantity
-    })
-
-    // Recalculate total
-    const denom = denominations.find(d => d.id === denominationId)
-    if (denom) {
-      const newTotal = Object.entries(editingQuantities)
-        .filter(([id]) => denominations.find(d => d.id === Number(id))?.currencyId === selectedCurrencyId)
-        .reduce((sum, [id, qty]) => {
-          const d = denominations.find(d => d.id === Number(id))
-          const qtyValue = typeof qty === 'string' ? parseFloat(String(qty).replace(/\s/g, '').replace(',', '.')) || 0 : qty
-          return sum + (d ? d.faceValue * (Number(id) === denominationId ? quantity : qtyValue) : 0)
-        }, 0)
-      setCalculatedTotal(newTotal)
-    }
+    // Copilot #1109: funkcionális update — gyors egymás utáni input-eseményeknél a
+    // spread-es minta a stale snapshot miatt frissítést veszíthetne. Az összesítő
+    // derivált érték (useMemo), külön újraszámítás nem kell.
+    setEditingQuantities(prev => ({ ...prev, [denominationId]: quantity }))
   }
 
   const handleSave = async () => {

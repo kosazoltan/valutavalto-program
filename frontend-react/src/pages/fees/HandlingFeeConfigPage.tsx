@@ -7,8 +7,9 @@ import { useAuthStore } from '../../stores/authStore'
 export default function HandlingFeeConfigPage() {
   // Batch2-B: a pénztár-kliensben pénztárosnak is látható az oldal (átláthatóság —
   // a program ezzel a konfiggal számol), de szerkeszteni csak a vezetői körök tudnak.
-  // A szerver-oldali PUT-jog (HandlingFeeConfigController) ugyanez a kör — ez UX-gate.
-  const canEdit = useAuthStore(s => s.hasCanonicalRole)(['ugyvezeto', 'foertektar', 'irodavezeto', 'admin'])
+  // A kör a szerver-oldali PUT-joggal azonos (HandlingFeeConfigController class-szintű
+  // @PreAuthorize: MANAGER/ADMIN/UGYVEZETO/FOERTEKTAR/IRODAVEZETO/BELSO_ELLENOR) — ez UX-gate.
+  const canEdit = useAuthStore(s => s.hasCanonicalRole)(['ugyvezeto', 'foertektar', 'irodavezeto', 'belso_ellenor', 'admin'])
   const [config, setConfig] = useState<HandlingFeeConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

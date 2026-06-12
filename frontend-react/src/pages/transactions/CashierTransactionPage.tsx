@@ -271,7 +271,7 @@ export default function CashierTransactionPage() {
 
   const applyFeeDialog = () => {
     if (!feeInputLocked) {
-      setHandlingFee(Math.max(0, parseInt(feeInput) || 0))
+      setHandlingFee(Math.max(0, parseInt(feeInput, 10) || 0))
     }
     setDiscount(Math.min(15, Math.max(0, parseFloat(discountInput) || 0)))
     setShowFeeDialog(false)
@@ -1395,9 +1395,13 @@ export default function CashierTransactionPage() {
               />
               {feeInputLocked && (
                 <p className="text-xs text-gray-500 mt-1">
-                  A díjat a program számolja a Kezelési költség beállítások szerint
-                  ({feeConfig?.feeType === 'BRACKET' ? 'sávos' : feeConfig?.feeType === 'PER_MILLE' ? 'ezrelékes' : 'nincs díj'}).
-                  Eltérés csak a lenti jogcímes módosítással lehetséges.
+                  {t('transactions.kezelesiDijKonfigSzamolja', {
+                    mode: feeConfig?.feeType === 'BRACKET'
+                      ? t('transactions.kezelesiDijModSavos')
+                      : feeConfig?.feeType === 'PER_MILLE'
+                        ? t('transactions.kezelesiDijModEzrelekes')
+                        : t('transactions.kezelesiDijModNincs'),
+                  })}
                 </p>
               )}
             </div>
@@ -1654,8 +1658,7 @@ export default function CashierTransactionPage() {
                         a limit1-3 sávok. Explicit hint, hogy a pénztáros tudja, hol pótolható. */}
                     {tiers.length === 1 && (
                       <span className="text-gray-500 dark:text-gray-400 italic">
-                        Nincs publikált limit-sáv ehhez a valutához — a sávok a munkacsoport-lapon
-                        (limit 1–3 oszlopok) tölthetők ki, publikálás után választhatók.
+                        {t('transactions.nincsPublikaltLimitSav')}
                       </span>
                     )}
                     {cashierRateQuota && cashierRateQuota.remaining > 0 && (
