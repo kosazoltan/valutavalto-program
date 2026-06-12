@@ -310,8 +310,11 @@ jobs:
           $shaFile = "$flat/windows-unsigned-release-sha256.txt"
           "# Valutavalto v$version UNSIGNED release SHA-256 — Git SHA: ${{ github.sha }}" | Out-File $shaFile
           $shaTargets = @(Get-ChildItem "$flat/*" -Include "*.exe","*.jar" -File | Sort-Object Name)
-          if ($shaTargets.Count -lt 3) {
-            throw "SHA-256 manifest: csak $($shaTargets.Count) artifact talalhato a $flat alatt (minimum 3 vart: 2 telepito + eltavolito) — a glob ujra elromlott?"
+          # Copilot PR #1106: tipusonkenti minimum — a .jar ne maszkolhasson hianyzo .exe-t.
+          $exeCount = @($shaTargets | Where-Object { $_.Extension -eq '.exe' }).Count
+          $jarCount = @($shaTargets | Where-Object { $_.Extension -eq '.jar' }).Count
+          if ($exeCount -lt 3 -or $jarCount -lt 1) {
+            throw "SHA-256 manifest: exe=$exeCount (vart >=3: 2 telepito + eltavolito), jar=$jarCount (vart >=1) a $flat alatt — a glob ujra elromlott?"
           }
           foreach ($f in $shaTargets) {
             "$((Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower())  $($f.Name)" | Out-File $shaFile -Append

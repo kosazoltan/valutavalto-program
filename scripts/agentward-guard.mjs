@@ -139,11 +139,18 @@ function checkGitignore() {
 }
 
 function scanFiles() {
-  const files = listGitFiles().filter(file => !isExcluded(file))
-  for (const file of files) {
+  const allFiles = listGitFiles()
+  let contentScanned = 0
+  for (const file of allFiles) {
+    // Copilot PR #1106: a FAJLNEV-alapu tiltas MINDEN fajlra fut — a kizart fak
+    // (legacy-transfer/, forrasok/Anti/) alatt sem lapulhat OAuth client-secret JSON.
     if (/client_secret.*\.json$/i.test(path.basename(file))) {
       addFinding('oauth-client-secret-file', file, 'Google OAuth client secret JSON must stay outside the repo')
     }
+
+    // A TARTALOM-szkenneles a kizart fakra nem fut (teljesitmeny + base64-zaj).
+    if (isExcluded(file)) continue
+    contentScanned++
 
     const text = safeReadTrackedText(file)
     if (text === null) continue
@@ -165,7 +172,7 @@ function scanFiles() {
     }
   }
 
-  addCheck('secret-and-blocklist-scan', findings.length === 0, findings.length ? `${findings.length} finding(s)` : `${files.length} file(s) scanned`)
+  addCheck('secret-and-blocklist-scan', findings.length === 0, findings.length ? `${findings.length} finding(s)` : `${contentScanned} file(s) content-scanned, ${allFiles.length} filename-checked`)
 }
 
 function hasSecretLikeEnvAssignment(text) {
