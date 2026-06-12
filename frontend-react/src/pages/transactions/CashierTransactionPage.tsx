@@ -234,7 +234,11 @@ export default function CashierTransactionPage() {
   // `total` nem volt 5 Ft többszöröse. (Per-soros összegek külön, már roundHuf-olva mennek a backendre.)
   const subtotal = rows.reduce((sum, r) => sum + r.hufValue, 0)
   const discountAmount = discount > 0 ? roundHuf(subtotal * discount / 100) : 0
-  const total = roundHuf(subtotal + handlingFee - discountAmount)
+  // Codex PR #1103 P1: a fizetendő MÓD-FÜGGŐ — BUY-nál a díj LEVONÓDIK a kifizetésből és a
+  // kedvezmény hozzáadódik, SELL-nél fordítva (a szerver calculateBuyGross/calculateSellGross
+  // tükre = multiLinePayable). A korábbi sell-előjelű képlet BUY-nál díj/kedvezmény mellett
+  // rossz összeget mutatott és rossz AML-küszöböt ellenőrzött.
+  const total = multiLinePayable(subtotal, mode === 'buy' ? 'buy' : 'sell', discount > 0 ? discount : 0, handlingFee > 0 ? handlingFee : 0)
 
   // Identification level based on HUF total
   const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } = useIdentificationLevel(String(total))
@@ -836,11 +840,11 @@ export default function CashierTransactionPage() {
       // ha minden sor azonos — vegyesnél a soronkénti érték jelenik meg (transactionLines).
       const uniformForeignStatus = (rows: typeof filledRows): 'DOMESTIC' | 'FOREIGN' | undefined =>
         new Set(rows.map(r => r.foreignStatus)).size === 1 ? rows[0]?.foreignStatus : undefined
-      // Codex PR #1102 P1: a Pmt. 300k-s küszöb a FIZETENDŐ összegre vonatkozik (AML-paritás) —
-      // egysoros bizonylaton a sorértékhez a kedvezmény és a kezelési díj is hozzászámít
-      // (a díjat/kedvezményt a per-soros út soronként küldi a szervernek — azzal egyezően).
+      // Codex PR #1102 P1 + #1103 P1: a Pmt. 300k-s küszöb a FIZETENDŐ összegre vonatkozik
+      // (AML-paritás), és a fizetendő MÓD-FÜGGŐ (BUY: +kedvezmény −díj; SELL: −kedvezmény +díj)
+      // — a kanonikus multiLinePayable-lel számolunk (a szerver gross-számításának tükre).
       const singleRowPayable = (rowHuf: number): number =>
-        roundHuf(rowHuf * (1 - (discount > 0 ? discount : 0) / 100)) + (handlingFee > 0 ? handlingFee : 0)
+        multiLinePayable(rowHuf, mode === 'buy' ? 'buy' : 'sell', discount > 0 ? discount : 0, handlingFee > 0 ? handlingFee : 0)
 
       if (electronQueueAvailable) {
         // V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): a teljes Pmt. customer-
@@ -1604,20 +1608,26 @@ export default function CashierTransactionPage() {
                       const isCurrent = band.tierName === tier.name.toLowerCase().replace(' ', '') || (tier.name === 'Alap' && band.tierName === 'alap')
                       const reachable = baseHuf >= tier.minHuf
                       return (
-                        <button
+                        // Copilot PR #1103: a title a NEM-disabled wrapper span-en — disabled
+                        // gombon a böngészők többsége nem mutat tooltipet, pedig pont az
+                        // inaktív sávnál kell a „miért nem választható" magyarázat.
+                        <span
                           key={tier.name}
-                          type="button"
-                          disabled={!reachable}
-                          onClick={() => handleRateInput(activeRow, String(tier.rate))}
                           title={reachable
                             ? `Sáv alkalmazása: ${tier.rate.toFixed(2)}`
                             : `A sávhoz legalább ${(tier.minHuf / 1000).toFixed(0)}k Ft összeg kell`}
-                          className={`px-1.5 py-0.5 rounded ${isCurrent
-                            ? 'bg-blue-600 text-white font-bold'
-                            : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'} ${reachable ? 'cursor-pointer hover:ring-1 hover:ring-blue-500' : 'opacity-50 cursor-not-allowed'}`}
                         >
-                          {tier.name}: {tier.rate.toFixed(2)} {tier.minHuf > 0 ? `(${(tier.minHuf / 1000).toFixed(0)}k+)` : ''}
-                        </button>
+                          <button
+                            type="button"
+                            disabled={!reachable}
+                            onClick={() => handleRateInput(activeRow, String(tier.rate))}
+                            className={`px-1.5 py-0.5 rounded ${isCurrent
+                              ? 'bg-blue-600 text-white font-bold'
+                              : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'} ${reachable ? 'cursor-pointer hover:ring-1 hover:ring-blue-500' : 'opacity-50 cursor-not-allowed'}`}
+                          >
+                            {tier.name}: {tier.rate.toFixed(2)} {tier.minHuf > 0 ? `(${(tier.minHuf / 1000).toFixed(0)}k+)` : ''}
+                          </button>
+                        </span>
                       )
                     })}
                     {cashierRateQuota && cashierRateQuota.remaining > 0 && (
