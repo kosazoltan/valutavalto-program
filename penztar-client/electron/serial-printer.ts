@@ -405,8 +405,16 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     // FR-2: kérő iroda + cél iroda (kötelező → mindig, „—" fallback) + valuta/összeg + forintosított érték.
     text(twoColumn('Kérő iroda:', data.branchCode || '—'));
     text(twoColumn('Cél iroda:', data.transferTarget ?? '—'));
-    text(twoColumn('Valutanem:', data.currencyCode ?? '—'));
-    text(twoColumn('Összeg:', `${fmtAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`));
+    // A.1 (PR #1101): több-valutás átadólapon MINDEN sor a bizonylatra kerül.
+    if (data.transferLines && data.transferLines.length > 0) {
+      text('Valuták és összegek:');
+      for (const tl of data.transferLines) {
+        text(twoColumn(`  ${tl.currencyCode}:`, fmtAmount(tl.amount)));
+      }
+    } else {
+      text(twoColumn('Valutanem:', data.currencyCode ?? '—'));
+      text(twoColumn('Összeg:', `${fmtAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`));
+    }
     // NFR-3: 5 Ft-ra kerekített forintosított érték.
     if (data.roundedHufAmount !== undefined || data.hufAmount !== undefined) {
       text(twoColumn('Forint érték:', `${fmtAmount(data.roundedHufAmount ?? data.hufAmount)} HUF`));

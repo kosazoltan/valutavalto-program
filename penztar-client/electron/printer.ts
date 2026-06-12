@@ -143,6 +143,9 @@ export interface PrintReceiptData {
   customerActorDocumentType?: string;
   customerActorDocumentNumber?: string;
   customerActorAddress?: string;
+  /** Penztar-batch A.1 (PR #1101): több-valutás átadólap sorai — ha jelen van, a transfer
+   *  bizonylat EZEKET listázza a fejléc currencyCode/foreignAmount helyett. */
+  transferLines?: Array<{ currencyCode: string; amount: number }>;
   sealNumber?: string;
   vatExemptionText?: string;
   companyPhone?: string;
@@ -539,8 +542,16 @@ function generateTransferLines(data: PrintReceiptData): string[] {
   // FR-2 (átadási bizonylat): kérő iroda + cél iroda (kötelező mezők → mindig, „—" fallback) + valuta/összeg + forintosított érték.
   lines.push(`Kérő iroda:  ${data.branchCode || '—'}`);
   lines.push(`Cél iroda:   ${data.transferTarget ?? '—'}`);
-  lines.push(`Valutanem:   ${data.currencyCode ?? '—'}`);
-  lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`);
+  // A.1 (PR #1101): több-valutás átadólapon MINDEN sor a bizonylatra kerül.
+  if (data.transferLines && data.transferLines.length > 0) {
+    lines.push('Valuták és összegek:');
+    for (const tl of data.transferLines) {
+      lines.push(`  ${tl.currencyCode}: ${formatAmount(tl.amount)}`);
+    }
+  } else {
+    lines.push(`Valutanem:   ${data.currencyCode ?? '—'}`);
+    lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`);
+  }
   // NFR-3: 5 Ft-ra kerekített forintosított érték (a kérő-oldalon számolt roundedHufAmount).
   if (data.roundedHufAmount !== undefined || data.hufAmount !== undefined) {
     lines.push(`Forint érték: ${formatAmount(data.roundedHufAmount ?? data.hufAmount)} HUF`);
@@ -1040,8 +1051,11 @@ function generateTransferHtml(data: PrintReceiptData): string {
       <div class="bold">Átadás-átvétel:</div>
       <div class="amount-row"><span>Kérő iroda:</span><span>${escHtml(data.branchCode || '—')}</span></div>
       <div class="amount-row"><span>Cél iroda:</span><span>${escHtml(data.transferTarget ?? '—')}</span></div>
-      <div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
-      <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>
+      ${data.transferLines && data.transferLines.length > 0
+        ? `<div class="bold">Valuták és összegek:</div>${data.transferLines.map(tl =>
+            `<div class="amount-row"><span>${escHtml(tl.currencyCode)}:</span><span>${formatAmount(tl.amount)}</span></div>`).join('')}`
+        : `<div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
+      <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>`}
       ${(data.roundedHufAmount !== undefined || data.hufAmount !== undefined) ? `<div class="amount-row"><span>Forint érték:</span><span>${formatAmount(data.roundedHufAmount ?? data.hufAmount)} HUF</span></div>` : ''}
       ${data.carrierName ? `<div class="amount-row"><span>Szállító:</span><span>${escHtml(data.carrierName)}</span></div>` : ''}
       ${data.sealNumber ? `<div class="amount-row"><span>Plombaszám:</span><span>${escHtml(data.sealNumber)}</span></div>` : ''}

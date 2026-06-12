@@ -738,3 +738,47 @@ describe('printer — payable-küszöb (Codex #1102 P1) + HTML útvonal', () => 
     expect(html).not.toContain('JOGCÍM NYILATKOZAT');
   });
 });
+
+// A.1 (PR #1101 follow-up): több-valutás átadólap a nyomtató-template-ekben
+describe('printer — több-valutás átadólap sorok (A.1)', () => {
+  const transferBase: PrintReceiptData = {
+    ...baseData,
+    type: 'transfer',
+    transferDocType: 'handover',
+    currencyCode: 'EUR',
+    foreignAmount: 100,
+    transferTarget: 'BR075 - Békéscsaba Értéktár',
+  };
+
+  it('ESC/POS: transferLines jelenlétekor minden sor listázva, a fejléc-mezős nézet helyett', () => {
+    const content = generateReceiptContent({
+      ...transferBase,
+      transferLines: [
+        { currencyCode: 'EUR', amount: 100 },
+        { currencyCode: 'USD', amount: 10 },
+      ],
+    });
+    expect(content).toContain('Valuták és összegek:');
+    expect(content).toContain('EUR: 100');
+    expect(content).toContain('USD: 10');
+    expect(content).not.toContain('Valutanem:');
+  });
+
+  it('ESC/POS: transferLines nélkül a korábbi egysoros nézet változatlan', () => {
+    const content = generateReceiptContent(transferBase);
+    expect(content).toContain('Valutanem:   EUR');
+    expect(content).not.toContain('Valuták és összegek:');
+  });
+
+  it('HTML: transferLines soronként', async () => {
+    const html = await generateReceiptHtml({
+      ...transferBase,
+      transferLines: [
+        { currencyCode: 'EUR', amount: 100 },
+        { currencyCode: 'USD', amount: 10 },
+      ],
+    });
+    expect(html).toContain('Valuták és összegek:');
+    expect(html).toContain('USD:');
+  });
+});
