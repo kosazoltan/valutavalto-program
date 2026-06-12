@@ -13,7 +13,9 @@ function Test-GitRefExists {
     return ($LASTEXITCODE -eq 0)
 }
 
-$excludePathRegex = '^(frontend-react/node_modules|penztar-client/node_modules|backend/target|frontend-react/dist|penztar-client/dist|penztar-client/release|\.git|security-reports|mentés|forrasok/Anti/)'
+# legacy-transfer/: az EXCMD/Anti legacy forrásfa + binárisok (CP1250 Delphi források) —
+# a forrasok/Anti/ precedensével azonosan kizárva (szándékosan nem-UTF8 referencia-anyag).
+$excludePathRegex = '^(frontend-react/node_modules|penztar-client/node_modules|backend/target|frontend-react/dist|penztar-client/dist|penztar-client/release|\.git|security-reports|mentés|forrasok/Anti/|legacy-transfer/)'
 $allowedExtRegex = '\.(java|ts|tsx|js|jsx|json|yml|yaml|md|txt|sql|properties|xml|cmd|bat|ps1|sh)$'
 
 $files = @()
