@@ -104,3 +104,8 @@ kell, nem minden apro kod- vagy dokumentacios szerkeszteshez.
 
 `merge != telepito`. Telepito-build csak Electron/nativ reteg valtozasnal vagy
 milestone release-nel kell.
+
+Telepito-build utan a feladat CSAK akkor teljes, ha a telepito .exe-k le
+vannak toltve a felhasznalo Letoltesek mappajaba (`gh release download`),
+es a zarojelentes fajllista + meret + SHA-256 egyezes bizonyitekot mutat
+(Kosa Zoltan direktiva, 2026-06-12).

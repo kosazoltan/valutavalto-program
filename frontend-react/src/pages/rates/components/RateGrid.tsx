@@ -8,10 +8,14 @@ import type { WgField } from '../workgroupSheetCompute'
 import { replaceFormulaCurrency } from '../workgroupSheetFormula'
 import { useTranslation } from 'react-i18next'
 
-// FK-04/C: a 8 képletezhető oszlop (J=elszámoló read-only, K=ISO kód read-only).
-// A `officialRate` (J) read-only auto, ezért kizárt — így r[field] mindig string.
-type GridField = Exclude<WgField, 'officialRate'>
+// FK03-fix (FR-6..8): a J (officialRate) a rács TELJES JOGÚ 0. oszlopa lett — a
+// `useGridNavigation` rácson belül van (nyilas navigáció eléri, dupla kattintásra
+// szerkeszthető, Escape revertál), a korábbi külön jBuffer/jRow útvonal megszűnt.
+// A parent commit-útvonalai (RateCreationPage commitCell + applyBulkCells) az
+// officialRate-et eddig is kezelték.
+type GridField = WgField
 const EDITABLE_FIELDS: GridField[] = [
+  'officialRate',
   'buyRate', 'sellRate',
   'limit1BuyRate', 'limit1SellRate',
   'limit2BuyRate', 'limit2SellRate',
@@ -20,7 +24,19 @@ const EDITABLE_FIELDS: GridField[] = [
 
 // FK02-B / FR-6..10: a kedvezménysáv-oszlopok indexei az EDITABLE_FIELDS-ben (N–S, azaz limit1–3
 // vétel/eladás) — a „Sávok törlése" toolbar-művelet ezeket üríti, a fő L/M (buy/sell) érintetlenül.
-const BAND_COL_INDICES = [2, 3, 4, 5, 6, 7] as const
+// FK03-fix: a J beszúrása miatt az indexek +1-gyel tolódtak ([2..7] → [3..8]).
+const BAND_COL_INDICES = [3, 4, 5, 6, 7, 8] as const
+
+/**
+ * FK03-fix: a cella perzisztált nyers értéke stringként — a J (`officialRate`)
+ * number|null, az összes többi mező string; a buffer/másolás/lehúzás közös
+ * útvonalai stringgel dolgoznak.
+ */
+function rawFieldValue(r: EditableRate, field: GridField): string {
+  return field === 'officialRate'
+    ? (r.officialRate != null ? String(r.officialRate) : '')
+    : r[field]
+}
 
 // FK02-E (FR-10 / NFR-3): megjelenítési tizedesek — JPY 4, minden más valuta 2 tizedes.
 const decimalsForDisplay = (code: string): number => (code.toUpperCase() === 'JPY' ? 4 : 2)
@@ -96,21 +112,21 @@ export default function RateGrid({
   syncing = false,
 }: RateGridProps) {
   const { t } = useTranslation()
-  const { containerRef, activeCell, getCellProps } = useGridNavigation({
+  // FK03-fix (FR-1, FR-2): editOnFocus=false — kattintás/nyilas navigáció csak KIJELÖL,
+  // szerkesztő módba dupla kattintás / Enter / gépelés visz (Főlap-referencia viselkedés).
+  const { containerRef, activeCell, editing, setEditing, isEscapingRef, getCellProps } = useGridNavigation({
     rows: rates.length,
     cols: EDITABLE_FIELDS.length,
+    editOnFocus: false,
   })
 
   // FK-04/C szerkesztő-buffer: a fókuszált cella nyers szövege (képlet vagy szám). A többi
-  // cella a `rates[field]` SZÁMÍTOTT értékét mutatja; a fókuszált cella a buffert, hogy a
-  // felhasználó a KÉPLETET lássa/szerkessze (0-s lap minta). Commit blur/Enter-kor.
+  // cella a `rates[field]` SZÁMÍTOTT értékét mutatja; a fókuszált cella SZERKESZTŐ MÓDBAN
+  // a buffert, hogy a felhasználó a KÉPLETET lássa/szerkessze (0-s lap minta); kijelölt
+  // (nem szerkesztő) állapotban a formázott értéket (FK03 FR-9). Commit blur/Enter-kor.
+  // FK03-fix: a J (officialRate) korábbi külön jBuffer/jRow útvonala megszűnt — a J a
+  // rács 0. oszlopaként ugyanezt a buffert használja.
   const [buffer, setBuffer] = useState('')
-
-  // FK-04/C: a J (Elszámoló / officialRate) oszlop felülírható (spec: "alapból a 0-s lap A oszlopa,
-  // felülírható"). Külön szerkesztő-buffer, mert a J a táblázat ELSŐ oszlopa (a 8 sávoszlop-rácstól
-  // elkülönül), és a `r.officialRate` szám (a többi mező string). Üres = auto (0-s lap A).
-  const [jBuffer, setJBuffer] = useState('')
-  const [jRow, setJRow] = useState<number | null>(null)
 
   // FK02-B / FR-6..10: Excel-szerű tartomány-kijelölés (egér-drag + Shift+kattintás) és lebegő toolbar.
   const [selStart, setSelStart] = useState<GridCoord | null>(null)
@@ -166,7 +182,9 @@ export default function RateGrid({
       const cells: string[] = []
       for (let col = b.c0; col <= b.c1; col++) {
         const field = EDITABLE_FIELDS[col]
-        cells.push(field ? String(rates[row]?.[field] ?? '') : '')
+        const r = rates[row]
+        // FK03-fix: rawFieldValue — a J (number|null) is stringként másolódik.
+        cells.push(field && r ? rawFieldValue(r, field) : '')
       }
       lines.push(cells.join('\t'))
     }
@@ -250,7 +268,7 @@ export default function RateGrid({
       const src = rates[b.r0]
       if (!src) continue
       // A forrás a kijelölés legfelső sora: a KÉPLET (ha van), különben a megjelenített érték.
-      const srcRaw = formulas[`${src.currencyId}.${field}`] ?? src[field]
+      const srcRaw = formulas[`${src.currencyId}.${field}`] ?? rawFieldValue(src, field)
       for (let row = b.r0 + 1; row <= b.r1; row++) {
         // FK02-D (FR-1..4): relatív valutakód-csere — a `!<oszlop><KÓD>` hivatkozás kódja a
         // célsor valutájára cserélődik, ha megegyezik a forrássor valutájával (TBD-4).
@@ -288,8 +306,8 @@ export default function RateGrid({
       if (!r) continue
       for (let col = b.c0; col <= b.c1; col++) {
         const field = EDITABLE_FIELDS[col]!
-        const raw = formulas[`${r.currencyId}.${field}`] ?? r[field]
-        cells.push({ currencyId: r.currencyId, field, raw: typeof raw === 'string' ? raw : String(raw ?? '') })
+        const raw = formulas[`${r.currencyId}.${field}`] ?? rawFieldValue(r, field)
+        cells.push({ currencyId: r.currencyId, field, raw })
       }
     }
     onCopyToGroups(cells)
@@ -302,7 +320,7 @@ export default function RateGrid({
     const field = EDITABLE_FIELDS[activeCell.col]
     if (!r || !field) return
     const key = `${r.currencyId}.${field}`
-    setBuffer(formulas[key] ?? r[field])
+    setBuffer(formulas[key] ?? rawFieldValue(r, field))
   // eslint-disable-next-line react-hooks/exhaustive-deps -- csak a cella-fókusz váltáskor seed-elünk
   }, [activeCell])
 
@@ -315,7 +333,7 @@ export default function RateGrid({
     const field = EDITABLE_FIELDS[activeCell.col]
     if (!r || !field) return
     const key = `${r.currencyId}.${field}`
-    setBuffer(formulas[key] ?? r[field])
+    setBuffer(formulas[key] ?? rawFieldValue(r, field))
   // eslint-disable-next-line react-hooks/exhaustive-deps -- kizárólag a revert-jelzésre futunk
   }, [revertSignal])
 
@@ -384,35 +402,95 @@ export default function RateGrid({
                   ? 'bg-gray-50'
                   : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
 
+              // FK03-fix: a sor-szintű cella-render — a J (officialRate, colIdx=0) a többi
+              // oszloppal AZONOS útvonalon megy (kijelölés/szerkesztés/Escape/commit),
+              // csak a megjelenítése és a stílusa tér el.
+              const renderCell = (field: GridField, colIdx: number) => {
+                const isJ = field === 'officialRate'
+                const isBuy = field.includes('Buy') || field === 'buyRate'
+                const colorClass = isJ ? 'text-blue-800' : isBuy ? 'text-green-700' : 'text-red-700'
+                const focusBg = isJ ? 'focus:bg-blue-50' : isBuy ? 'focus:bg-green-50' : 'focus:bg-red-50'
+                const isActive = activeCell?.row === idx && activeCell?.col === colIdx
+                // FK03-fix (FR-3, FR-9): kijelölt állapotban a FORMÁZOTT érték látszik;
+                // a buffert (képlet/nyers) csak SZERKESZTŐ módban mutatjuk.
+                const isEditingCell = isActive && editing
+                const activeBorder = isActive ? 'ring-2 ring-blue-500 ring-inset' : ''
+                const selected = isCellSelected(idx, colIdx)
+                const key = `${r.currencyId}.${field}`
+                const hasFormula = !!formulas[key]
+                const cellError = cellErrors[key]
+                // FK02-E (FR-10): megjelenítés a valuta tizedes-szabálya szerint (JPY 4, többi 2);
+                // a J-nél a number|null mező formázása (Copilot: null-ellenőrzés, a 0 is érték).
+                const jDd = decimalsForDisplay(r.currencyCode)
+                const display = isEditingCell
+                  ? buffer
+                  : isJ
+                    ? (r.officialRate != null ? formatDecimal(r.officialRate, jDd, jDd) : '')
+                    : formatCellDisplay(rawFieldValue(r, field), r.currencyCode)
+                const formulaBg = hasFormula && !isEditingCell ? 'bg-indigo-50' : ''
+                const errorRing = cellError ? 'ring-2 ring-red-400 ring-inset' : ''
+                const commit = (raw: string) => {
+                  if (onCommitCell) onCommitCell(idx, field, raw)
+                  else updateRate(idx, field, raw) // visszafelé-kompatibilis fallback
+                }
+                const title = isJ
+                  ? (hasFormula
+                    ? `Elszámoló (J) képlet: ${formulas[key]}${cellError ? ` — HIBA: ${cellError}` : ''}`
+                    : 'Elszámoló árfolyam (J) — felülírható; üres = a 0-s lap A oszlopa')
+                  : (hasFormula ? `Képlet: ${formulas[key]}${cellError ? ` — HIBA: ${cellError}` : ''}` : cellError)
+                return (
+                  <td
+                    key={field}
+                    className={`px-0 py-0 border-r relative ${selected ? 'bg-blue-200/70 ring-1 ring-blue-400 ring-inset' : ''}`}
+                    onMouseDown={e => onCellMouseDown(e, idx, colIdx)}
+                    onMouseEnter={() => onCellMouseEnter(idx, colIdx)}
+                    onMouseUp={e => onCellMouseUp(e, idx, colIdx)}
+                  >
+                    <input
+                      type="text"
+                      value={display}
+                      {...getCellProps(idx, colIdx)}
+                      // FK03-fix (FR-3, FR-7): dupla kattintás → szerkesztő mód (a képlet látszik).
+                      onDoubleClick={() => { if (isActive) setEditing(true) }}
+                      onChange={e => {
+                        // Megj.: szándékosan NEM kapuzzuk `editing`-re — gépelésnél a hook
+                        // keydown-kezelője állítja a szerkesztő módot, de az onChange még az
+                        // újrarender ELŐTT fut (az első karakter különben elveszne).
+                        if (isActive) setBuffer(e.target.value)
+                        else if (!onCommitCell) updateRate(idx, field, e.target.value)
+                      }}
+                      onBlur={() => {
+                        if (!isActive) return
+                        // FK03-fix (FR-5, FR-8): Escape-blur → revert, commit NÉLKÜL. TBD-2
+                        // döntés: az Escape a commit ELŐTT történik, a perzisztált állapot
+                        // változatlan — a lokális buffer-reset elég, parent-revert
+                        // (rateRevertSignal) nem szükséges.
+                        if (isEscapingRef.current) {
+                          isEscapingRef.current = false
+                          setBuffer(formulas[key] ?? rawFieldValue(r, field))
+                          return
+                        }
+                        // Kijelölt (nem szerkesztő) állapotból távozva nincs mit commitolni.
+                        // Copilot #1112: commit után KILÉPÜNK a szerkesztő módból — különben a
+                        // fókuszát vesztett cella továbbra is a nyers buffert mutatná.
+                        if (editing) {
+                          commit(buffer)
+                          setEditing(false)
+                        }
+                      }}
+                      title={title}
+                      className={`w-full px-0.5 py-0.5 text-right font-mono text-[13px] ${colorClass} font-bold border-0 bg-transparent ${focusBg} focus:outline-none ${activeBorder} ${formulaBg} ${errorRing}`}
+                    />
+                    {hasFormula && !isEditingCell && (
+                      <span className={`absolute ${isJ ? 'left-0' : 'left-0.5'} top-0 text-[7px] text-indigo-500 font-bold pointer-events-none`} title={`Képlet: ${formulas[key]}`}>ƒ</span>
+                    )}
+                  </td>
+                )
+              }
+
               return (
                 <tr key={r.currencyId} className={`${rowBg} border-b border-gray-100 hover:bg-blue-50/30`}>
-                  {(() => {
-                    const jKey = `${r.currencyId}.officialRate`
-                    const jHasFormula = !!formulas[jKey]
-                    const jErr = cellErrors[jKey]
-                    const jActive = jRow === idx
-                    // FK02-E (FR-10): a J (elszámoló) megjelenítése a valuta tizedes-szabálya szerint
-                    // (JPY 4, többi 2); fókuszban a teljes precizitású buffer.
-                    const jDd = decimalsForDisplay(r.currencyCode)
-                    // Copilot: null/undefined ellenőrzés (NEM truthy) — egy érvényes 0 override is megjelenjen.
-                    const jDisplay = jActive ? jBuffer : (r.officialRate != null ? formatDecimal(r.officialRate, jDd, jDd) : '')
-                    return (
-                      <td className="px-0 py-0 text-right border-r relative">
-                        <input
-                          type="text"
-                          value={jDisplay}
-                          onFocus={() => { setJRow(idx); setJBuffer(formulas[jKey] ?? (r.officialRate != null ? String(r.officialRate) : '')) }}
-                          onChange={e => setJBuffer(e.target.value)}
-                          onBlur={() => { if (onCommitCell) onCommitCell(idx, 'officialRate', jBuffer); setJRow(null) }}
-                          title={jHasFormula ? `Elszámoló (J) képlet: ${formulas[jKey]}${jErr ? ` — HIBA: ${jErr}` : ''}` : 'Elszámoló árfolyam (J) — felülírható; üres = a 0-s lap A oszlopa'}
-                          className={`w-full px-0.5 py-0.5 text-right font-mono text-[13px] text-blue-800 font-bold border-0 bg-transparent focus:bg-blue-50 focus:outline-none ${jHasFormula && !jActive ? 'bg-indigo-50' : ''} ${jErr ? 'ring-2 ring-red-400 ring-inset' : ''}`}
-                        />
-                        {jHasFormula && !jActive && (
-                          <span className="absolute left-0 top-0 text-[7px] text-indigo-500 font-bold pointer-events-none">ƒ</span>
-                        )}
-                      </td>
-                    )
-                  })()}
+                  {renderCell('officialRate', 0)}
                   <td className="px-0 py-0 text-center border-r w-4">
                     {r.modified && <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-400" />}
                     {isInvalid && <AlertTriangle size={9} className="text-red-500 inline" />}
@@ -420,51 +498,7 @@ export default function RateGrid({
                   <td className="px-1 py-0 text-center font-bold text-blue-700 border-r text-[12.5px]">
                     {r.currencyCode}
                   </td>
-                  {EDITABLE_FIELDS.map((field, colIdx) => {
-                    const isBuy = field.includes('Buy') || field === 'buyRate'
-                    const colorClass = isBuy ? 'text-green-700' : 'text-red-700'
-                    const focusBg = isBuy ? 'focus:bg-green-50' : 'focus:bg-red-50'
-                    const isActive = activeCell?.row === idx && activeCell?.col === colIdx
-                    const activeBorder = isActive ? 'ring-2 ring-blue-500 ring-inset' : ''
-                    const selected = isCellSelected(idx, colIdx)
-                    const key = `${r.currencyId}.${field}`
-                    const hasFormula = !!formulas[key]
-                    const cellError = cellErrors[key]
-                    // A fókuszált cella a buffert (képlet/nyers) mutatja; a többi a számított értéket
-                    // a valuta tizedes-szabálya szerint formázva (FK02-E FR-10: JPY 4, többi 2).
-                    const display = isActive ? buffer : formatCellDisplay(r[field], r.currencyCode)
-                    const formulaBg = hasFormula && !isActive ? 'bg-indigo-50' : ''
-                    const errorRing = cellError ? 'ring-2 ring-red-400 ring-inset' : ''
-                    const commit = (raw: string) => {
-                      if (onCommitCell) onCommitCell(idx, field, raw)
-                      else updateRate(idx, field, raw) // visszafelé-kompatibilis fallback
-                    }
-                    return (
-                      <td
-                        key={field}
-                        className={`px-0 py-0 border-r relative ${selected ? 'bg-blue-200/70 ring-1 ring-blue-400 ring-inset' : ''}`}
-                        onMouseDown={e => onCellMouseDown(e, idx, colIdx)}
-                        onMouseEnter={() => onCellMouseEnter(idx, colIdx)}
-                        onMouseUp={e => onCellMouseUp(e, idx, colIdx)}
-                      >
-                        <input
-                          type="text"
-                          value={display}
-                          {...getCellProps(idx, colIdx)}
-                          onChange={e => {
-                            if (isActive) setBuffer(e.target.value)
-                            else if (!onCommitCell) updateRate(idx, field, e.target.value)
-                          }}
-                          onBlur={() => { if (isActive) commit(buffer) }}
-                          title={hasFormula ? `Képlet: ${formulas[key]}${cellError ? ` — HIBA: ${cellError}` : ''}` : cellError}
-                          className={`w-full px-0.5 py-0.5 text-right font-mono text-[13px] ${colorClass} font-bold border-0 bg-transparent ${focusBg} focus:outline-none ${activeBorder} ${formulaBg} ${errorRing}`}
-                        />
-                        {hasFormula && !isActive && (
-                          <span className="absolute left-0.5 top-0 text-[7px] text-indigo-500 font-bold pointer-events-none" title={`Képlet: ${formulas[key]}`}>ƒ</span>
-                        )}
-                      </td>
-                    )
-                  })}
+                  {EDITABLE_FIELDS.slice(1).map((field, i) => renderCell(field, i + 1))}
                   <td className="px-1 py-0 text-[9px]">
                     {validationErrors[r.currencyId]?.map((err, ei) => (
                       <div key={ei} className="text-red-600 flex items-center gap-0.5">
