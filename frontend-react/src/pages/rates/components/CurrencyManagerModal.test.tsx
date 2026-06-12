@@ -24,7 +24,7 @@ vi.mock('../../../utils/logger', () => ({
 const cur = (code: string, displayOrder: number, active = true): Currency => ({
   id: displayOrder + 1,
   code,
-  name: code,
+  name: `${code} valuta`, // a kódtól eltérő név, hogy a findByText egyértelmű legyen
   decimals: 2,
   displayOrder,
   active,
