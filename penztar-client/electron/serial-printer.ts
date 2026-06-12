@@ -319,6 +319,10 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
   push(COMMANDS.NORMAL_SIZE);
   text(company.fullName);
   push(COMMANDS.BOLD_OFF);
+  // Batch2-E (2026-06-12): a kiállító értéktár azonosítója + neve a fejlécben.
+  if (data.type === 'transfer' && data.vaultBranchLabel) {
+    text(data.vaultBranchLabel);
+  }
   // FR-1/FR-2/FR-3 (fejléc-javítás 2026-06-11): átadás-átvételnél a cím és a telefonszám
   // KIZÁRÓLAG a branch táblából jövő vaultAddress/vaultPhone; hiány esetén nincs cím/telefon
   // sor (TBD-3), hardcode-olt székhely/telefon transfer bizonylatra nem kerülhet.
@@ -414,6 +418,10 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     } else {
       text(twoColumn('Valutanem:', data.currencyCode ?? '—'));
       text(twoColumn('Összeg:', `${fmtAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`));
+    }
+    // Batch2-E: árfolyam a deviza-bizonylaton (HUF-átadásnál nincs árfolyam sor).
+    if (data.rate != null && data.currencyCode !== 'HUF') {
+      text(twoColumn('Árfolyam:', data.rate.toFixed(2)));
     }
     // NFR-3: 5 Ft-ra kerekített forintosított érték.
     if (data.roundedHufAmount !== undefined || data.hufAmount !== undefined) {

@@ -164,6 +164,8 @@ export interface PrintReceiptData {
   vaultAddress?: string;
   /** Fejléc-javítás 2026-06-11 (FR-2): az értéktár telefonszáma a branch.phone-ból. Hiány → nincs telefon sor (TBD-3). */
   vaultPhone?: string;
+  /** Batch2-E (2026-06-12): a kiállító értéktár azonosítója + neve a fejlécben (pl. "BR075 - Békéscsaba Értéktár") — eddig sosem volt a fejléc-template része. */
+  vaultBranchLabel?: string;
   denominations?: Array<{ quantity: number; faceValue: number }>;
   /** FR-2 (átadás-átvétel): a kért kézbesítési dátum (a fejléc dátuma a kiállítás dátuma). */
   deliveryDate?: string;
@@ -401,6 +403,11 @@ export function generateReceiptContent(data: PrintReceiptData): string {
   lines.push(CMD.NORMAL_SIZE);
   lines.push(company.fullName);
   lines.push(CMD.BOLD_OFF);
+  // Batch2-E (Fabulya-teszt 2026-06-12): a kiállító értéktár azonosítója + neve a fejlécben
+  // — eddig sosem volt a template része (az értéktár neve csak a Kérő/Cél sorokban szerepelt).
+  if (data.type === 'transfer' && data.vaultBranchLabel) {
+    lines.push(data.vaultBranchLabel);
+  }
   // FR-1/FR-3 (fejléc-javítás 2026-06-11): átadás-átvételnél a cím KIZÁRÓLAG a branch táblából
   // jövő vaultAddress; ha hiányzik, inkább nincs cím sor, mint félrevezető hardcode-olt székhely.
   const headerAddress = data.type === 'transfer' ? (data.vaultAddress ?? '') : company.address;
@@ -657,6 +664,10 @@ function generateTransferLines(data: PrintReceiptData): string[] {
     lines.push(`Valutanem:   ${data.currencyCode ?? '—'}`);
     lines.push(`Összeg:      ${formatAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`);
   }
+  // Batch2-E: árfolyam a deviza-bizonylaton (HUF-átadásnál nincs árfolyam sor).
+  if (data.rate != null && data.currencyCode !== 'HUF') {
+    lines.push(`Árfolyam:    ${data.rate.toFixed(2)}`);
+  }
   // NFR-3: 5 Ft-ra kerekített forintosított érték (a kérő-oldalon számolt roundedHufAmount).
   if (data.roundedHufAmount !== undefined || data.hufAmount !== undefined) {
     lines.push(`Forint érték: ${formatAmount(data.roundedHufAmount ?? data.hufAmount)} HUF`);
@@ -885,6 +896,7 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
     <div class="center">
       <div class="company-name">${escHtml(company.name)}</div>
       <div class="company-full">${escHtml(company.fullName)}</div>
+      ${data.type === 'transfer' && data.vaultBranchLabel ? `<div><b>${escHtml(data.vaultBranchLabel)}</b></div>` : ''}
       ${htmlHeaderAddress ? `<div>${escHtml(htmlHeaderAddress)}</div>` : ''}
       ${htmlHeaderPhone ? `<div>Tel: ${escHtml(htmlHeaderPhone)}</div>` : ''}
       <div>Adószám: ${escHtml(data.companyTaxNumber || company.taxNumber)}</div>
@@ -1170,6 +1182,7 @@ function generateTransferHtml(data: PrintReceiptData): string {
             `<div class="amount-row"><span>${escHtml(tl.currencyCode)}:</span><span>${formatAmount(tl.amount)}</span></div>`).join('')}`
         : `<div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
       <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>`}
+      ${data.rate != null && data.currencyCode !== 'HUF' ? `<div class="amount-row"><span>Árfolyam:</span><span>${data.rate.toFixed(2)}</span></div>` : ''}
       ${(data.roundedHufAmount !== undefined || data.hufAmount !== undefined) ? `<div class="amount-row"><span>Forint érték:</span><span>${formatAmount(data.roundedHufAmount ?? data.hufAmount)} HUF</span></div>` : ''}
       ${data.carrierName ? `<div class="amount-row"><span>Szállító:</span><span>${escHtml(data.carrierName)}</span></div>` : ''}
       ${data.sealNumber ? `<div class="amount-row"><span>Plombaszám:</span><span>${escHtml(data.sealNumber)}</span></div>` : ''}

@@ -413,6 +413,9 @@ export interface ElectronAPI {
     lines?: string | null;
     /** Verif PR #1101: az irány ('F' átadás / 'U' átvétel) — a bizonylat-orientációhoz (SELECT * adja). */
     direction?: string | null;
+    /** Batch2-E: szállító + plombaszám az offline bizonylat-előnézethez (SELECT * adja). */
+    carrier_name?: string | null;
+    seal_number?: string | null;
   }>>;
   /** Offline átadás-átvétel SZTORNÓ (internetkimaradáskor): a backend fordítja vissza a készletet szinkronkor. */
   savePendingTransferStorno(payload: { transferId: number; transferNumber?: string | null; reason: string }): Promise<number>;

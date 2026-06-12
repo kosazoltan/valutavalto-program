@@ -313,6 +313,52 @@ describe('printer — generateReceiptContent (ESC/POS)', () => {
     expect(content).toContain('Szeged, Hajnóczy u. 57., 6722');
   });
 
+  it('Batch2-E: kiállító értéktár kód+név a transfer fejlécben (csak ha kitöltött)', () => {
+    const withLabel = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'handover',
+      transferTarget: 'SZG-02',
+      vaultBranchLabel: 'BR075 - Békéscsaba Értéktár',
+    });
+    expect(withLabel).toContain('BR075 - Békéscsaba Értéktár');
+
+    const withoutLabel = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'handover',
+      transferTarget: 'SZG-02',
+    });
+    expect(withoutLabel).not.toContain('BR075');
+  });
+
+  it('Batch2-E: árfolyam sor a deviza-átadólapon, HUF-on viszont nincs', () => {
+    const eur = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'handover',
+      transferTarget: 'SZG-02',
+      currencyCode: 'EUR',
+      foreignAmount: 1000,
+      rate: 391.5,
+      roundedHufAmount: 391500,
+    });
+    expect(eur).toContain('Árfolyam:    391.50');
+    expect(eur).toContain('Forint érték: ');
+
+    const huf = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      transferDocType: 'handover',
+      transferTarget: 'SZG-02',
+      currencyCode: 'HUF',
+      foreignAmount: 500000,
+      rate: 1,
+      roundedHufAmount: 500000,
+    });
+    expect(huf).not.toContain('Árfolyam:');
+  });
+
   it('should print transfer denominations only when provided', () => {
     const withoutDenominations = generateReceiptContent({
       ...baseData,
