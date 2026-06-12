@@ -23,6 +23,7 @@ import {
 import { parseNum } from './types'
 import { validateWorkgroupProtection, workgroupProtectionLabel, type ProtectionRow } from './workgroupProtection'
 import { recomputeWorkgroupSheet, type WgComputeRow, type WgField } from './workgroupSheetCompute'
+import type { WgValues } from './workgroupSheetFormula'
 import {
   loadSheet0ByCurrency,
   loadAllGroupValueSnapshots,
@@ -135,6 +136,25 @@ async function buildGroupRates(
     }
   }
 
+  // Codex P2 #1118: a kedvezménysáv-párok iránya is kötelező (a munkacsoport-lap
+  // validációjával azonosan — a backend publishGroupRateInternal csak az alap-párt nézi).
+  for (const r of valid) {
+    const bands: Array<[string, number | null, number | null]> = [
+      ['L1', r.values.limit1BuyRate ?? null, r.values.limit1SellRate ?? null],
+      ['L2', r.values.limit2BuyRate ?? null, r.values.limit2SellRate ?? null],
+      ['L3', r.values.limit3BuyRate ?? null, r.values.limit3SellRate ?? null],
+    ]
+    for (const [label, b, sRate] of bands) {
+      if (b != null && b > 0 && sRate != null && sRate > 0 && b >= sRate) {
+        return {
+          rates: [],
+          protectionRows: [],
+          error: `${r.currencyCode} ${label}: sáv-vétel (${b}) >= sáv-eladás (${sRate})`,
+        }
+      }
+    }
+  }
+
   const rates: PublishGroupRateRequest['rates'] = valid.map((r) => ({
     currencyId: r.currencyId,
     buyRate: r.values.buyRate!,
@@ -197,6 +217,31 @@ export async function publishAllWorkgroups(opts: PublishAllOptions = {}): Promis
   // A képlet-kontextus egyszer töltődik (0-s lap A–I + más csoportok J–S pillanatképei).
   const sheet0ByCurrency = loadSheet0ByCurrency()
   const otherGroupsByCurrency = loadAllGroupValueSnapshots()
+
+  // Codex P1 #1118: az épp nyitott csoport FRISS, memóriabeli értékeit beültetjük a
+  // `#NN` kereszt-hivatkozási kontextusba — különben a rá hivatkozó csoportok a
+  // perzisztált (elavult / fix-csoportnál hiányzó) pillanatképpel számolnának.
+  if (opts.inMemoryGroupRates) {
+    const memGroup = activeGroups.find((g) => g.id === opts.inMemoryGroupRates!.groupId)
+    if (memGroup?.legacyGroupNumber != null) {
+      const codeById = new Map(overview.map((c) => [c.currencyId, c.currencyCode.toUpperCase()]))
+      const byCurrency = new Map<string, WgValues>()
+      for (const r of opts.inMemoryGroupRates.rates) {
+        const code = codeById.get(r.currencyId)
+        if (!code) continue
+        const wgv: WgValues = { L: r.buyRate, M: r.sellRate }
+        if (r.officialRate != null) wgv.J = r.officialRate
+        if (r.limit1BuyRate != null) wgv.N = r.limit1BuyRate
+        if (r.limit1SellRate != null) wgv.O = r.limit1SellRate
+        if (r.limit2BuyRate != null) wgv.P = r.limit2BuyRate
+        if (r.limit2SellRate != null) wgv.Q = r.limit2SellRate
+        if (r.limit3BuyRate != null) wgv.R = r.limit3BuyRate
+        if (r.limit3SellRate != null) wgv.S = r.limit3SellRate
+        byCurrency.set(code, wgv)
+      }
+      otherGroupsByCurrency.set(memGroup.legacyGroupNumber, byCurrency)
+    }
+  }
 
   // NFR-2: csoportonként független publikálás — egy csoport hibája nem állítja le a többit.
   await Promise.allSettled(activeGroups.map(async (group) => {

@@ -92,14 +92,11 @@ export default function BranchPickerModal({
         {(moveWarnings?.length ?? 0) > 0 && (
           <div data-testid="branch-move-warning"
             className="px-4 py-2 border-t bg-amber-50 text-xs text-amber-800">
-            <div className="font-semibold">Áthelyezés másik munkacsoportból:</div>
+            <div className="font-semibold">{t('rates.athelyezesMasikCsoportbol')}</div>
             <ul className="list-disc ml-4">
               {moveWarnings!.map((w) => <li key={w}>{w}</li>)}
             </ul>
-            <div className="mt-1">
-              Ezek a pénztárak már szerepelnek egy másik munkacsoportban — mentéskor
-              automatikusan ÁTHELYEZZÜK ide (egy pénztár csak egy csoportban lehet).
-            </div>
+            <div className="mt-1">{t('rates.athelyezesMagyarazat')}</div>
           </div>
         )}
         {saveError && (

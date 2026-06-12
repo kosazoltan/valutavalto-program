@@ -1354,7 +1354,7 @@ export default function RateCreationPage() {
             )}
             <span className="text-xs" data-testid="publish-button-label">
               {publishing && publishProgress
-                ? `${publishProgress.done} / ${publishProgress.total} munkacsoport elküldve`
+                ? t('rates.munkacsoportElkuldve', { done: publishProgress.done, total: publishProgress.total })
                 : t('rates.arfolyamokSzetkuldese')}
             </span>
           </button>

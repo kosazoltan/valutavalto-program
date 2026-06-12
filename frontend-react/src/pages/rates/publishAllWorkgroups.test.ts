@@ -213,6 +213,52 @@ describe('publishAllWorkgroups — FK05 egységes szétküldés', () => {
     expect(byGroup.get('g2')).toBe(390)
   })
 
+  it('Codex P2 #1118: fordított kedvezménysáv-pár (L1 vétel >= eladás) → failed, publish nélkül', async () => {
+    const result = await publishAllWorkgroups({
+      preloaded: {
+        overview: [item({ limit1BuyRate: 399.5, limit1SellRate: 399 })],
+        workgroups: [group()],
+      },
+    })
+
+    expect(mocks.publishGroupRate).not.toHaveBeenCalled()
+    expect(result.outcomes[0]!.status).toBe('failed')
+    expect(result.outcomes[0]!.message).toContain('L1')
+  })
+
+  it('Codex P1 #1118: a #NN kereszt-hivatkozás az épp nyitott csoport FRISS in-memory értékét látja', async () => {
+    // g2 képlete az 1-es csoport L oszlopára hivatkozik (#01L) — a perzisztált pillanatkép
+    // elavult (380), az in-memory friss érték 391,5: a publikált g2-vétel a frisset követi.
+    localStorage.setItem(
+      'arfolyamkeszito.workgroupSheet.values.v1',
+      JSON.stringify({ '1': { EUR: { L: 380 } } }),
+    )
+    localStorage.setItem(
+      'arfolyamkeszito.workgroupSheet.formulas.v1.g2',
+      JSON.stringify({ '1.buyRate': '#01L' }),
+    )
+
+    const inMemory = [{
+      currencyId: 1, buyRate: 391.5, sellRate: 401.5, officialRate: 396,
+      limit1Amount: null, limit1BuyRate: null, limit1SellRate: null,
+      limit2Amount: null, limit2BuyRate: null, limit2SellRate: null,
+      limit3Amount: null, limit3BuyRate: null, limit3SellRate: null,
+    }]
+
+    await publishAllWorkgroups({
+      inMemoryGroupRates: { groupId: 'g1', rates: inMemory },
+      preloaded: {
+        overview: [item()],
+        workgroups: [group({ id: 'g1' }), group({ id: 'g2', code: 'WG2', name: '2. csoport', legacyGroupNumber: 2 })],
+      },
+    })
+
+    const g2Call = mocks.publishGroupRate.mock.calls
+      .map((c) => c[0] as { groupId: string; rates: Array<{ buyRate: number }> })
+      .find((req) => req.groupId === 'g2')
+    expect(g2Call?.rates[0]!.buyRate).toBe(391.5)
+  })
+
   it('FK-04/E árfolyamvédelem: védett csoportban a J-t sértő ráta → failed, publish nélkül', async () => {
     const result = await publishAllWorkgroups({
       preloaded: {
