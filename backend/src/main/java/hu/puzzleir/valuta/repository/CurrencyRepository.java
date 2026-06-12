@@ -43,6 +43,21 @@ public interface CurrencyRepository extends JpaRepository<Currency, Long> {
     List<Currency> searchByCodeOrName(@Param("search") String search);
 
     /**
+     * FK04 (FR-7): display_order foglaltság-ellenőrzés — a V318 UNIQUE constraint
+     * service-szintű előszűrése, hogy 500 (constraint violation) helyett beszédes
+     * 409 + VV-VALID-003 választ adjunk.
+     */
+    boolean existsByDisplayOrder(Integer displayOrder);
+
+    /**
+     * FK04: a legnagyobb foglalt display_order (üres táblánál 0) — az új valuta
+     * alapértelmezett sorrendje max+1 (a korábbi fix 99 default a UNIQUE constraint
+     * mellett a második sorrend-nélküli felvételnél ütközne).
+     */
+    @Query("SELECT COALESCE(MAX(c.displayOrder), 0) FROM Currency c")
+    int findMaxDisplayOrder();
+
+    /**
      * Összes aktív valuta rendezve (alias)
      */
     default List<Currency> findAllActiveOrdered() {

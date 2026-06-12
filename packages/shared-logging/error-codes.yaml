@@ -7,8 +7,8 @@
 # A `VVLogger.error(error_code, ...)` minden hivasakor a kodnak SZEREPELNIE KELL itt.
 
 version: 1
-last_updated: "2026-05-18"
-total_codes: 44
+last_updated: "2026-06-12"
+total_codes: 47
 
 codes:
 
@@ -469,3 +469,19 @@ codes:
       - Customer-screening-service down?
       Tranzakciot soha NE engedj uregess AML-eredmenyt.
       Mindig nezz at egy konkretabb error_code-ra is.
+
+  # =====================================================
+  # VV-VALID — input/torzs-adat validacio
+  # =====================================================
+
+  VV-VALID-003:
+    name: "Duplikalt currency display_order — valuta-letrehozas elutasitva"
+    category: VALID
+    level: ERROR
+    user_impact: "Az uj valuta nem jott letre; masik megjelenitesi sorrendet kell valasztani"
+    ai_fix_hint: |
+      AdminCurrencyService.createCurrency(): a currency.display_order egyedi
+      (V318 UNIQUE constraint, FK04). A service existsByDisplayOrder-rel eloszur,
+      es 409 + VV-VALID-003-at ad. A frontend (CurrencyManagerModal) az "Uj valuta"
+      formot max(displayOrder)+1 defaulttal tolti elo — ha megis 409 jon, a
+      felhasznalo adjon meg masik sorrend-erteket. NE kapcsold ki a constraintet.
