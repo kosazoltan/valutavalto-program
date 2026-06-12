@@ -303,10 +303,21 @@ jobs:
           New-UpdateManifest $kozponti.FullName "munkaallomas.yml"
 
           # SHA-256 manifest (emberi ellenorzeshez)
+          # FIX (v2.27.100 lelet): a `Get-ChildItem $flat -Include "*.exe"` -Recurse/path-wildcard
+          # NELKUL ures halmazt ad (az -Include a path-elemre, azaz a MAPPARA illeszkedik) →
+          # a fajlba csak a fejlec-sor irodott. Path-wildcarddal + .jar-ral javitva, es
+          # regresszio-orrel: ures manifest eseten a step BUKIK, nem publikal hibas fajlt.
           $shaFile = "$flat/windows-unsigned-release-sha256.txt"
           "# Valutavalto v$version UNSIGNED release SHA-256 — Git SHA: ${{ github.sha }}" | Out-File $shaFile
-          Get-ChildItem $flat -Include "*.exe" -File | Sort-Object Name | ForEach-Object {
-            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" | Out-File $shaFile -Append
+          $shaTargets = @(Get-ChildItem "$flat/*" -Include "*.exe","*.jar" -File | Sort-Object Name)
+          # Copilot PR #1106: tipusonkenti minimum — a .jar ne maszkolhasson hianyzo .exe-t.
+          $exeCount = @($shaTargets | Where-Object { $_.Extension -eq '.exe' }).Count
+          $jarCount = @($shaTargets | Where-Object { $_.Extension -eq '.jar' }).Count
+          if ($exeCount -lt 3 -or $jarCount -lt 1) {
+            throw "SHA-256 manifest: exe=$exeCount (vart >=3: 2 telepito + eltavolito), jar=$jarCount (vart >=1) a $flat alatt — a glob ujra elromlott?"
+          }
+          foreach ($f in $shaTargets) {
+            "$((Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower())  $($f.Name)" | Out-File $shaFile -Append
           }
       - name: Create GitHub Release (unsigned)
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3 (supply-chain: full SHA pin)

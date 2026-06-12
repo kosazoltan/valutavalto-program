@@ -24,6 +24,10 @@ const excludedPrefixes = [
   '.agent/memory/',
   'backend/target/',
   'dist/',
+  // EXCMD/Anti legacy referencia-fa (PR #1105, 9115 fajl, base64 blobok) — a
+  // forrasok/Anti/ precedensevel kizarva: szandekosan nem-UTF8/nem-szkennelendo anyag.
+  'legacy-transfer/',
+  'forrasok/Anti/',
   'frontend-react/dist/',
   'frontend-react/node_modules/',
   'kozponti-client/dist/',
@@ -71,6 +75,9 @@ function listGitFiles() {
     cwd: repoRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
+    // ENOBUFS-fix (2026-06-12): a legacy-transfer/ beemelese (9115 fajl) utan a
+    // ls-files kimenet tullepte a Node default 1MB-os maxBuffer-et → a guard elhalt.
+    maxBuffer: 64 * 1024 * 1024,
   })
   return out.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
 }
@@ -132,11 +139,18 @@ function checkGitignore() {
 }
 
 function scanFiles() {
-  const files = listGitFiles().filter(file => !isExcluded(file))
-  for (const file of files) {
+  const allFiles = listGitFiles()
+  let contentScanned = 0
+  for (const file of allFiles) {
+    // Copilot PR #1106: a FAJLNEV-alapu tiltas MINDEN fajlra fut — a kizart fak
+    // (legacy-transfer/, forrasok/Anti/) alatt sem lapulhat OAuth client-secret JSON.
     if (/client_secret.*\.json$/i.test(path.basename(file))) {
       addFinding('oauth-client-secret-file', file, 'Google OAuth client secret JSON must stay outside the repo')
     }
+
+    // A TARTALOM-szkenneles a kizart fakra nem fut (teljesitmeny + base64-zaj).
+    if (isExcluded(file)) continue
+    contentScanned++
 
     const text = safeReadTrackedText(file)
     if (text === null) continue
@@ -158,7 +172,7 @@ function scanFiles() {
     }
   }
 
-  addCheck('secret-and-blocklist-scan', findings.length === 0, findings.length ? `${findings.length} finding(s)` : `${files.length} file(s) scanned`)
+  addCheck('secret-and-blocklist-scan', findings.length === 0, findings.length ? `${findings.length} finding(s)` : `${contentScanned} file(s) content-scanned, ${allFiles.length} filename-checked`)
 }
 
 function hasSecretLikeEnvAssignment(text) {
