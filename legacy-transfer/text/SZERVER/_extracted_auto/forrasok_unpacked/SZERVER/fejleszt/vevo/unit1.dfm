@@ -1,0 +1,310 @@
+object Form1: TForm1
+  Left = 445
+  Top = 130
+  Width = 540
+  Height = 622
+  Caption = 'Forgalmi adatok '#246'sszes'#237't'#233'se ...'
+  Color = clMedGray
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  Font.Style = []
+  OldCreateOrder = False
+  OnActivate = FormActivate
+  OnMouseMove = FormMouseMove
+  PixelsPerInch = 96
+  TextHeight = 13
+  object Label1: TLabel
+    Left = 136
+    Top = 8
+    Width = 238
+    Height = 36
+    Caption = 'Adatok '#246'sszes'#237't'#233'se'
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clWhite
+    Font.Height = -32
+    Font.Name = 'Times New Roman'
+    Font.Style = [fsBold, fsItalic]
+    ParentFont = False
+    Transparent = True
+  end
+  object Shape1: TShape
+    Left = 64
+    Top = 88
+    Width = 201
+    Height = 169
+  end
+  object Shape2: TShape
+    Left = 272
+    Top = 88
+    Width = 201
+    Height = 169
+  end
+  object Shape3: TShape
+    Left = 64
+    Top = 56
+    Width = 201
+    Height = 33
+    Brush.Color = clAqua
+  end
+  object Label2: TLabel
+    Left = 96
+    Top = 58
+    Width = 129
+    Height = 28
+    Caption = 'KEZD'#336'NAP'
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -24
+    Font.Name = 'Times New Roman'
+    Font.Style = [fsBold, fsItalic]
+    ParentFont = False
+    Transparent = True
+  end
+  object Shape4: TShape
+    Left = 272
+    Top = 56
+    Width = 201
+    Height = 33
+    Brush.Color = clAqua
+  end
+  object Label3: TLabel
+    Left = 304
+    Top = 58
+    Width = 148
+    Height = 28
+    Caption = 'UTOLS'#211' NAP'
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -24
+    Font.Name = 'Times New Roman'
+    Font.Style = [fsBold, fsItalic]
+    ParentFont = False
+    Transparent = True
+  end
+  object Shape5: TShape
+    Left = 64
+    Top = 280
+    Width = 201
+    Height = 33
+    Brush.Color = 13697023
+  end
+  object Shape6: TShape
+    Left = 272
+    Top = 280
+    Width = 201
+    Height = 33
+    Brush.Color = 13697023
+  end
+  object Shape12: TShape
+    Left = 64
+    Top = 368
+    Width = 409
+    Height = 89
+  end
+  object Shape13: TShape
+    Left = 64
+    Top = 464
+    Width = 409
+    Height = 57
+  end
+  object Shape14: TShape
+    Left = 200
+    Top = 536
+    Width = 145
+    Height = 33
+    Brush.Color = clSilver
+    Shape = stEllipse
+  end
+  object Label11: TLabel
+    Left = 232
+    Top = 541
+    Width = 88
+    Height = 22
+    Caption = 'dekanySoft'
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -19
+    Font.Name = 'Times New Roman'
+    Font.Style = [fsBold, fsItalic]
+    ParentFont = False
+    Transparent = True
+  end
+  object Shape15: TShape
+    Left = 64
+    Top = 320
+    Width = 409
+    Height = 41
+    Brush.Color = clAqua
+  end
+  object TOLNAPTAR: TMonthCalendar
+    Left = 64
+    Top = 88
+    Width = 201
+    Height = 169
+    Date = 42088.7167185648
+    TabOrder = 0
+    OnClick = TOLNAPTARClick
+    OnDblClick = TOLNAPTARClick
+  end
+  object IGNAPTAR: TMonthCalendar
+    Left = 272
+    Top = 88
+    Width = 201
+    Height = 169
+    Date = 42088.7167185648
+    TabOrder = 1
+    OnClick = TOLNAPTARClick
+    OnDblClick = TOLNAPTARClick
+  end
+  object STARTGOMB: TBitBtn
+    Left = 72
+    Top = 328
+    Width = 193
+    Height = 25
+    Cursor = crHandPoint
+    Caption = 'SZ'#193'MOL'#193'S INDULHAT'
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -15
+    Font.Name = 'Times New Roman'
+    Font.Style = [fsItalic]
+    ParentFont = False
+    TabOrder = 2
+    OnClick = STARTGOMBClick
+  end
+  object ESCAPEGOMB: TBitBtn
+    Left = 272
+    Top = 328
+    Width = 193
+    Height = 25
+    Cursor = crHandPoint
+    Caption = 'KIL'#201'P'#201'S'
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -15
+    Font.Name = 'Times New Roman'
+    Font.Style = [fsItalic]
+    ParentFont = False
+    TabOrder = 3
+    OnClick = ESCAPEGOMBClick
+  end
+  object PENZTARPANEL: TPanel
+    Left = 72
+    Top = 376
+    Width = 393
+    Height = 33
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -19
+    Font.Name = 'Times New Roman'
+    Font.Style = [fsBold, fsItalic]
+    ParentFont = False
+    TabOrder = 4
+  end
+  object DATUMPANEL: TPanel
+    Left = 72
+    Top = 416
+    Width = 393
+    Height = 33
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -19
+    Font.Name = 'Times New Roman'
+    Font.Style = [fsBold, fsItalic]
+    ParentFont = False
+    TabOrder = 5
+  end
+  object PENZTARCSIK: TProgressBar
+    Left = 72
+    Top = 472
+    Width = 393
+    Height = 17
+    Min = 0
+    Max = 100
+    Smooth = True
+    TabOrder = 6
+  end
+  object REKORDCSIK: TProgressBar
+    Left = 72
+    Top = 496
+    Width = 393
+    Height = 17
+    Min = 0
+    Max = 100
+    Smooth = True
+    TabOrder = 7
+  end
+  object TOLLABEL: TPanel
+    Left = 65
+    Top = 281
+    Width = 199
+    Height = 31
+    BevelOuter = bvNone
+    Color = 13697023
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -24
+    Font.Name = 'Times New Roman'
+    Font.Style = [fsBold, fsItalic]
+    ParentFont = False
+    TabOrder = 8
+  end
+  object IGLABEL: TPanel
+    Left = 273
+    Top = 281
+    Width = 199
+    Height = 31
+    BevelOuter = bvNone
+    Color = 13697023
+    Font.Charset = EASTEUROPE_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -24
+    Font.Name = 'Times New Roman'
+    Font.Style = [fsBold, fsItalic]
+    ParentFont = False
+    TabOrder = 9
+  end
+  object IBQUERY: TIBQuery
+    Database = IBDBASE
+    Transaction = IBTRANZ
+    BufferChunks = 1000
+    CachedUpdates = False
+    Left = 16
+    Top = 88
+  end
+  object IBDBASE: TIBDatabase
+    DatabaseName = 'C:\RECEPTOR\DATABASE\V3.FDB'
+    Params.Strings = (
+      'user_name=SYSDBA'
+      'password=dek@nySo'
+      'lc_ctype=WIN1250')
+    LoginPrompt = False
+    DefaultTransaction = IBTRANZ
+    IdleTimer = 0
+    SQLDialect = 3
+    TraceFlags = []
+    Left = 16
+    Top = 120
+  end
+  object IBTRANZ: TIBTransaction
+    Active = False
+    DefaultDatabase = IBDBASE
+    Params.Strings = (
+      'read_committed'
+      'rec_version'
+      'nowait')
+    AutoStopAction = saNone
+    Left = 16
+    Top = 152
+  end
+  object IBTABLA: TIBTable
+    Database = IBDBASE
+    Transaction = IBTRANZ
+    BufferChunks = 1000
+    CachedUpdates = False
+    Left = 16
+    Top = 56
+  end
+end
