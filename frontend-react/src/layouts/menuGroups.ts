@@ -79,6 +79,12 @@ export const menuGroups: MenuGroup[] = [
       { path: "/transactions", label: "Tranzakciólista", icon: FileText },
       // EXCMD b6b FR-EFM-01: konszolidált „Egyéb feladatok" menü (NAV/POS variáns a konfiguráció szerint).
       { path: "/other-tasks", label: "Egyéb feladatok", icon: Settings },
+      // Batch2-B (Fabulya-teszt 2026-06-12): a kezelési díj konfiguráció a pénztár-kliensben
+      // is elérhető legyen. Pénztárosnak READ-ONLY nézet (a PUT szerver-oldalon továbbra is
+      // vezetői jog — a HandlingFeeConfigPage a szerepkör szerint tiltja a szerkesztést).
+      // Explicit canonicalRoles: a route-gate (effectiveCanonicalRolesForPath UNIÓ) így a
+      // pénztárost ÉS az oversight-bypass-szal belépő vezetőket is átengedi.
+      { path: "/handling-fee-config", label: "Kezelési költség beállítások", icon: Wallet, canonicalRoles: ["penztar", "foertektar", "ugyvezeto", "irodavezeto", "belso_ellenor"] },
     ],
   },
   {
@@ -202,7 +208,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/settings/permission-matrix", label: "Jogosultság mátrix", icon: Shield, canonicalRoles: ["ugyvezeto"] },
       { path: "/scheduler", label: "Ütemező", icon: FileText, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
       { path: "/email-settings", label: "E-mail beállítások", icon: Settings, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
-      { path: "/handling-fee-config", label: "Kezelési költség beállítás", icon: Wallet, canonicalRoles: ["ugyvezeto", "irodavezeto", "belso_ellenor"] },
+      { path: "/handling-fee-config", label: "Kezelési költség beállítások", icon: Wallet, canonicalRoles: ["ugyvezeto", "irodavezeto", "belso_ellenor"] },
     ],
   },
   {

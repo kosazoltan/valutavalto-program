@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Coins, Save, RefreshCw, Calculator, AlertCircle } from 'lucide-react'
 import {
   denominationBalanceApi,
@@ -29,55 +29,45 @@ export default function DenominationPage() {
   const [_denominationBalances, setDenominationBalances] = useState<DenominationBalanceDTO[]>([])
   const [editingQuantities, setEditingQuantities] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(false)
-  const [calculatedTotal, setCalculatedTotal] = useState<number>(0)
+  // Copilot #1109: az összesítő DERIVÁLT érték a szerkesztett darabszámokból — state-ként
+  // tartva versenyhelyzetes/elcsúszó újraszámításokra volt érzékeny.
+  const calculatedTotal = useMemo(
+    () => denominations
+      .filter(d => d.currencyId === selectedCurrencyId)
+      .reduce((sum, d) => sum + d.faceValue * (editingQuantities[d.id] ?? 0), 0),
+    [denominations, selectedCurrencyId, editingQuantities],
+  )
 
-  const loadDenominations = useCallback(async () => {
-    if (!selectedCurrencyId) return
-    try {
-      const data = await denominationApi.getByCurrencyId(selectedCurrencyId)
-      setDenominations(data)
-
-      // Initialize editing quantities
-      const initialQuantities: Record<number, number> = {}
-      data.forEach((d: Denomination) => {
-        initialQuantities[d.id] = 0
-      })
-      setEditingQuantities(initialQuantities)
-    } catch (error) {
-      logger.error('DenominationPage', 'Címletek betöltése sikertelen:', error)
-    }
-  }, [selectedCurrencyId])
-
-  const loadDenominationBalances = useCallback(async () => {
+  // Batch2-A (Fabulya-teszt 2026-06-12): a címletek ÉS a mentett egyenlegek betöltése
+  // EGY szekvenciális folyamatban. Korábban két párhuzamos hívás versenyzett ugyanazon
+  // a state-en (az egyik mindent 0-ra resetelt, a másik a mentett értékeket írta be,
+  // teljes-csere set-tel) — ha a 0-reset futott be utoljára, a mentett címletezés
+  // 0-ként jelent meg, „nem rögzíthető" tünetet okozva.
+  const loadAll = useCallback(async () => {
     if (!selectedCashDeskId || !selectedCurrencyId) return
     setLoading(true)
     try {
-      const data = await denominationBalanceApi.getCashDeskDenominationsByCurrency(selectedCashDeskId, String(selectedCurrencyId))
-      setDenominationBalances(data)
+      const denoms = await denominationApi.getByCurrencyId(selectedCurrencyId)
+      setDenominations(denoms)
 
-      // Load existing quantities into editing state
+      const balances = await denominationBalanceApi.getCashDeskDenominationsByCurrency(
+        selectedCashDeskId, String(selectedCurrencyId))
+      setDenominationBalances(balances)
+
+      // Egyetlen, determinisztikus state-írás: minden címlet 0, felülírva a mentettekkel.
+      // (Az összesítő ebből DERIVÁLT useMemo — külön nem kell beállítani.)
       const quantities: Record<number, number> = {}
-      data.forEach(balance => {
+      denoms.forEach((d: Denomination) => { quantities[d.id] = 0 })
+      balances.forEach(balance => {
         quantities[Number(balance.denominationId)] = balance.quantity
       })
-
-      // Also set quantities for denominations that don't have balances yet
-      denominations.forEach(denom => {
-        if (quantities[denom.id] === undefined) {
-          quantities[denom.id] = 0
-        }
-      })
       setEditingQuantities(quantities)
-
-      // Calculate total
-      const total = data.reduce((sum, b) => sum + b.totalValue, 0)
-      setCalculatedTotal(total)
     } catch (error) {
-      logger.error('DenominationPage', 'Címlet egyenlegek betöltése sikertelen:', error)
+      logger.error('DenominationPage', 'Címletezés betöltése sikertelen:', error)
     } finally {
       setLoading(false)
     }
-  }, [selectedCashDeskId, selectedCurrencyId, denominations])
+  }, [selectedCashDeskId, selectedCurrencyId])
 
   useEffect(() => {
     void loadCurrencies()
@@ -85,10 +75,9 @@ export default function DenominationPage() {
 
   useEffect(() => {
     if (selectedCurrencyId && selectedCashDeskId) {
-      void loadDenominations()
-      void loadDenominationBalances()
+      void loadAll()
     }
-  }, [selectedCurrencyId, selectedCashDeskId, loadDenominations, loadDenominationBalances])
+  }, [selectedCurrencyId, selectedCashDeskId, loadAll])
 
   const loadCurrencies = async () => {
     try {
@@ -103,24 +92,12 @@ export default function DenominationPage() {
   }
 
   const handleQuantityChange = (denominationId: number, quantityStr: string) => {
-    const quantity = Math.max(0, parseFloat(quantityStr.replace(/\s/g, '').replace(',', '.')) || 0)
-    setEditingQuantities({
-      ...editingQuantities,
-      [denominationId]: quantity
-    })
-
-    // Recalculate total
-    const denom = denominations.find(d => d.id === denominationId)
-    if (denom) {
-      const newTotal = Object.entries(editingQuantities)
-        .filter(([id]) => denominations.find(d => d.id === Number(id))?.currencyId === selectedCurrencyId)
-        .reduce((sum, [id, qty]) => {
-          const d = denominations.find(d => d.id === Number(id))
-          const qtyValue = typeof qty === 'string' ? parseFloat(String(qty).replace(/\s/g, '').replace(',', '.')) || 0 : qty
-          return sum + (d ? d.faceValue * (Number(id) === denominationId ? quantity : qtyValue) : 0)
-        }, 0)
-      setCalculatedTotal(newTotal)
-    }
+    // Darabszám = egész szám (a backend DTO Integer) — tört darab nem értelmezhető.
+    const quantity = Math.max(0, parseInt(quantityStr.replace(/\s/g, ''), 10) || 0)
+    // Copilot #1109: funkcionális update — gyors egymás utáni input-eseményeknél a
+    // spread-es minta a stale snapshot miatt frissítést veszíthetne. Az összesítő
+    // derivált érték (useMemo), külön újraszámítás nem kell.
+    setEditingQuantities(prev => ({ ...prev, [denominationId]: quantity }))
   }
 
   const handleSave = async () => {
@@ -130,8 +107,13 @@ export default function DenominationPage() {
     }
 
     try {
+      // Batch2-A: a 0 darabszámot IS elküldjük — korábban a qty>0 szűrő miatt egy
+      // címlet 0-ra állítása (korábbi érték törlése) sosem perzisztálódott.
+      // Csak az aktuálisan kiválasztott valuta címleteit küldjük.
+      const currentIds = new Set(
+        denominations.filter(d => d.currencyId === selectedCurrencyId).map(d => d.id))
       const updates: DenominationQuantityUpdateRequest[] = Object.entries(editingQuantities)
-        .filter(([, qty]) => qty > 0)
+        .filter(([id]) => currentIds.has(Number(id)))
         .map(([denominationId, quantity]) => ({
           denominationId,
           quantity
@@ -139,7 +121,7 @@ export default function DenominationPage() {
 
       await denominationBalanceApi.setDenominationQuantities(selectedCashDeskId, updates)
       toast.success('Címletezés sikeresen mentve!')
-      void loadDenominationBalances()
+      void loadAll()
     } catch (error) {
       logger.error('DenominationPage', 'Mentés sikertelen:', error)
       toast.error('Hiba történt a mentés során')
@@ -185,7 +167,7 @@ export default function DenominationPage() {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={loadDenominationBalances}
+            onClick={loadAll}
             className="form-button flex items-center gap-1 h-8 text-sm"
             disabled={loading}
           >
@@ -239,14 +221,14 @@ export default function DenominationPage() {
                         </td>
                         <td>
                           <NumberInput
-                            value={quantity > 0 ? quantity.toString().replace('.', ',') : ''}
+                            value={quantity > 0 ? String(quantity) : ''}
                             onChange={(val) => handleQuantityChange(denomination.id, val)}
                             className="form-input w-24 text-center"
-                            placeholder="0,00"
-                            allowDecimals={true}
+                            placeholder="0"
+                            allowDecimals={false}
                             allowNegative={false}
                             min={0}
-                            step="0.01"
+                            step="1"
                           />
                         </td>
                         <td className="text-right">

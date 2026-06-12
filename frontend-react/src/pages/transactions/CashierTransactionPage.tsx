@@ -263,6 +263,20 @@ export default function CashierTransactionPage() {
     if (auto !== null) setHandlingFee(auto)
   }, [subtotal, feeConfig, feeOverrideType])
 
+  // Batch2-B (Fabulya-teszt 2026-06-12): betöltött díj-konfig mellett a kézi díj-mező
+  // ZÁRT — a díjat a Kezelési költség beállítások szerint a program számolja; szabad
+  // beírás kizárólag a vezetői SPECIAL felülbírálásban marad. Konfig nélkül (régi
+  // backend 403 / hálózati hiba → feeConfig=null) a korábbi kézi viselkedés él.
+  const feeInputLocked = feeConfig !== null && feeOverrideType !== 'SPECIAL'
+
+  const applyFeeDialog = () => {
+    if (!feeInputLocked) {
+      setHandlingFee(Math.max(0, parseInt(feeInput, 10) || 0))
+    }
+    setDiscount(Math.min(15, Math.max(0, parseFloat(discountInput) || 0)))
+    setShowFeeDialog(false)
+  }
+
   // Focus management
   useEffect(() => {
     if (activeField === 'currency') {
@@ -1358,24 +1372,38 @@ export default function CashierTransactionPage() {
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('transactions.kezelesiDijKedvezmeny')}</h3>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('transactions.kezelesiDijHuf')}</label>
+              {/* Batch2-B (Fabulya-teszt 2026-06-12): ha van betöltött díj-konfig, a díjat a
+                  program számolja (Kezelési költség beállítások) — a kézi mező ZÁRT, kivéve a
+                  vezetői SPECIAL felülbírálást. Konfig nélkül (régi backend / hálózati hiba)
+                  marad a kézi bevitel, hogy a pénztár ne ragadjon be. */}
               <input
                 type="number"
-                value={feeInput}
+                value={feeInputLocked ? String(handlingFee || 0) : feeInput}
+                disabled={feeInputLocked}
                 onChange={(e) => setFeeInput(e.target.value)}
-                className="w-full h-11 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white font-mono text-lg"
-                autoFocus
+                className="w-full h-11 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white font-mono text-lg disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400"
+                autoFocus={!feeInputLocked}
                 min={0}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    setHandlingFee(Math.max(0, parseInt(feeInput) || 0))
-                    setDiscount(Math.min(15, Math.max(0, parseFloat(discountInput) || 0)))
-                    setShowFeeDialog(false)
+                    applyFeeDialog()
                   } else if (e.key === 'Escape') {
                     setFeeOverrideType(''); setFeeOverrideReason(''); setCardNumber('')
                     setShowFeeDialog(false)
                   }
                 }}
               />
+              {feeInputLocked && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {t('transactions.kezelesiDijKonfigSzamolja', {
+                    mode: feeConfig?.feeType === 'BRACKET'
+                      ? t('transactions.kezelesiDijModSavos')
+                      : feeConfig?.feeType === 'PER_MILLE'
+                        ? t('transactions.kezelesiDijModEzrelekes')
+                        : t('transactions.kezelesiDijModNincs'),
+                  })}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('transactions.kedvezmeny')}</label>
@@ -1385,11 +1413,10 @@ export default function CashierTransactionPage() {
                 onChange={(e) => setDiscountInput(e.target.value)}
                 className="w-full h-11 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white font-mono text-lg"
                 min={0}
+                autoFocus={feeInputLocked}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    setHandlingFee(Math.max(0, parseInt(feeInput) || 0))
-                    setDiscount(Math.min(15, Math.max(0, parseFloat(discountInput) || 0)))
-                    setShowFeeDialog(false)
+                    applyFeeDialog()
                   } else if (e.key === 'Escape') {
                     setFeeOverrideType(''); setFeeOverrideReason(''); setCardNumber('')
                     setShowFeeDialog(false)
@@ -1446,11 +1473,7 @@ export default function CashierTransactionPage() {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => {
-                  setHandlingFee(Math.max(0, parseInt(feeInput) || 0))
-                  setDiscount(Math.min(15, Math.max(0, parseFloat(discountInput) || 0)))
-                  setShowFeeDialog(false)
-                }}
+                onClick={applyFeeDialog}
                 className="flex-1 py-2.5 rounded-lg text-white font-semibold"
                 style={{ backgroundColor: 'var(--primary)' }}
               >
@@ -1630,6 +1653,14 @@ export default function CashierTransactionPage() {
                         </span>
                       )
                     })}
+                    {/* Batch2-C (Fabulya-teszt 2026-06-12): ha csak az Alap sáv létezik, az nem
+                        programhiba, hanem adat-állapot — a publikált rátában nincsenek kitöltve
+                        a limit1-3 sávok. Explicit hint, hogy a pénztáros tudja, hol pótolható. */}
+                    {tiers.length === 1 && (
+                      <span className="text-gray-500 dark:text-gray-400 italic">
+                        {t('transactions.nincsPublikaltLimitSav')}
+                      </span>
+                    )}
                     {cashierRateQuota && cashierRateQuota.remaining > 0 && (
                       <span className="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
                         Pénztárosi sáv: {cashierRateQuota.remaining}/{cashierRateQuota.limit} ({(cashierRateQuota.minAmountHuf / 1000).toFixed(0)}k+ Ft)

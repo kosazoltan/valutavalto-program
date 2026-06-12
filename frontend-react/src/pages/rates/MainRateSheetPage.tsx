@@ -81,7 +81,9 @@ interface MainRateRow {
 // ne maradjon a UI-on (defenzív, ha a user már elindította a régi v2.5.60-at).
 // TODO (FK04): eltávolítható, ha minden éles DB lefuttatta a V317+ migrációt és a
 // kollégák kliensei már a katalógus-alapú Főlapot futtatják.
-const REMOVED_CURRENCIES = new Set(['DKK', 'NOK', 'SEK', 'HRK', 'BGN', 'RCH'])
+// + RUB (2026-06-12 user-direktíva, V319): nem forgalmazott valuta — a defenzív szűrő
+// a localStorage-ben ragadt régi cache-sorokból is kiszedi.
+const REMOVED_CURRENCIES = new Set(['DKK', 'NOK', 'SEK', 'HRK', 'BGN', 'RCH', 'RUB'])
 
 const STORAGE_KEY = 'arfolyamkeszito.mainSheet.v1'
 

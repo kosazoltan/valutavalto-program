@@ -18,12 +18,19 @@ describe('FK04 — buildRowsFromCatalog (katalógus-vezérelt sorlista)', () => 
   })
 
   it('loads_currencies_from_hook_not_constant: a tagság + sorrend a katalógusból jön', () => {
-    const rows = buildRowsFromCatalog(cat('EUR', 'RUB', 'EUA', 'TRY'), [])
-    expect(rows.map(r => r.currency)).toEqual(['EUR', 'RUB', 'EUA', 'TRY'])
-    // crossBase a CROSS_BASE_MAP-ből (TBD-1): RUB→USD, TRY→EUR, EUA→null
-    expect(rows.find(r => r.currency === 'RUB')?.crossBase).toBe('USD')
+    // Batch2-G (2026-06-12): a RUB a REMOVED_CURRENCIES-be került (nem forgalmazott,
+    // V319 inaktiválta) — a fixture USD-keresztalapú példája azóta a CNY.
+    const rows = buildRowsFromCatalog(cat('EUR', 'CNY', 'EUA', 'TRY'), [])
+    expect(rows.map(r => r.currency)).toEqual(['EUR', 'CNY', 'EUA', 'TRY'])
+    // crossBase a CROSS_BASE_MAP-ből (TBD-1): CNY→USD, TRY→EUR, EUA→null
+    expect(rows.find(r => r.currency === 'CNY')?.crossBase).toBe('USD')
     expect(rows.find(r => r.currency === 'TRY')?.crossBase).toBe('EUR')
     expect(rows.find(r => r.currency === 'EUA')?.crossBase).toBeNull()
+  })
+
+  it('rub_defensively_filtered: a RUB katalógus-találat esetén is kiszűrve marad (user-direktíva)', () => {
+    const rows = buildRowsFromCatalog(cat('EUR', 'RUB'), [])
+    expect(rows.map(r => r.currency)).toEqual(['EUR'])
   })
 
   it('inactive_currency_not_shown: cache-ben lévő, de katalógusból hiányzó valuta sora eltűnik', () => {
