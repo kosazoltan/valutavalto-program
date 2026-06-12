@@ -671,6 +671,25 @@ public class EscPosReceiptService {
         b.separator();
     }
 
+    /**
+     * Batch2-D: orosz EUR-vásárlási nyilatkozat triggere — a legacy EzoroszUgyfel
+     * (BLOKNYOM Unit2.pas:1929-1938) tükre: EUR eladás (az ügyfél EUR-t VESZ)
+     * + orosz állampolgár. (A 300k-s küszöböt a hívó ellenőrzi.)
+     * A kliens-printer isRussianEurPurchase párja.
+     */
+    static boolean isRussianEurPurchase(ReceiptData data) {
+        if (!"SELL".equalsIgnoreCase(data.getReceiptType())) {
+            return false;
+        }
+        if (!"EUR".equalsIgnoreCase(data.getCurrencyCode())) {
+            return false;
+        }
+        String nat = data.getCustomerNationality() != null
+                ? data.getCustomerNationality().trim().toLowerCase() : "";
+        return nat.equals("ru") || nat.equals("rus")
+                || nat.contains("orosz") || nat.contains("russia");
+    }
+
     private void printReceiptFooter(EscPosBuilder b, ReceiptData data) {
         BigDecimal absHuf = data.getHufAmount() != null ? data.getHufAmount().abs() : BigDecimal.ZERO;
         boolean isHighValue = absHuf.compareTo(HIGH_THRESHOLD) >= 0;
@@ -740,7 +759,32 @@ public class EscPosReceiptService {
             } else {
                 b.line("saját nevemben bonyolítom,");
             }
+            // Batch2-D (2026-06-12): a legacy Jogcimnyilatkozat (BLOKNYOM Unit2.pas:
+            // 1437-1493) kötelező elemei a saját neves/képviselt ág UTÁN — első
+            // személyű PEP-nyilatkozat, 5 munkanapos adatváltozás-klauzula, forrás,
+            // dedikált ügyfél-aláírás. A kliens-printer buildSourceDeclarationLines
+            // tükre (sorrend és szöveg azonos).
+            b.emptyLine();
+            if (data.getCustomerIsPep() != null) {
+                if (Boolean.TRUE.equals(data.getCustomerIsPep())) {
+                    b.line("Kiemelt közszereplő (vagyok),");
+                    if (data.getCustomerPepKind() != null && !data.getCustomerPepKind().isBlank()) {
+                        b.line("mint: " + data.getCustomerPepKind().trim());
+                    }
+                } else {
+                    b.line("Nem (vagyok) kiemelt közszereplő.");
+                }
+                b.emptyLine();
+            }
+            b.line("Tudomásom van arról, hogy 5 (öt)");
+            b.line("munkanapon belül köteles vagyok");
+            b.line("bejelenteni a szolgáltatónak a fenti");
+            b.line("adatokban, vagy a saját adataimban");
+            b.line("bekövetkező esetleges változásokat,");
+            b.line("és e kötelezettség elmulasztásából");
+            b.line("eredő kár engem terhel.");
             if (data.getSourceOfFunds() != null && !data.getSourceOfFunds().isBlank()) {
+                b.emptyLine();
                 b.line("Pénzeszközöm forrása:");
                 String src = data.getSourceOfFunds().trim();
                 int maxLen = LINE_WIDTH - 2;
@@ -748,6 +792,33 @@ public class EscPosReceiptService {
                     b.line("  " + src.substring(i, Math.min(i + maxLen, src.length())));
                 }
             }
+            b.emptyLine();
+            b.line(".....................................");
+            b.line("          ügyfél aláírása");
+            b.separator();
+        }
+
+        // Batch2-D: orosz állampolgár EUR-vásárlása 300k+ felett → kétnyelvű
+        // személyes-használat nyilatkozat (legacy OroszNyilatkozat, BLOKNYOM
+        // Unit2.pas:1929-1963 tükre; trigger: SELL + EUR + orosz + 300k+).
+        if (isHighValue && isRussianEurPurchase(data)) {
+            b.left();
+            b.line("----------------------------------------");
+            b.center();
+            b.line("NYILATKOZAT/DECLARATION");
+            b.left();
+            b.line("----------------------------------------");
+            b.emptyLine();
+            String name = data.getCustomerName() != null ? data.getCustomerName().trim() : "";
+            b.line("Alulírott " + name.substring(0, Math.min(30, name.length())));
+            b.line("kijelentem, hogy az általam vásárolt EUR");
+            b.line("valutát személyes használatra váltottam.");
+            b.emptyLine();
+            b.line("/I declare that the just purchased");
+            b.line("EUR currency is for my personal usage.");
+            b.emptyLine();
+            b.line(".....................................");
+            b.line("  ügyfél aláírása/signature of buyer");
             b.separator();
         }
 

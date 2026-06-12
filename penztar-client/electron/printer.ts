@@ -237,10 +237,30 @@ export function foreignStatusText(status: 'DOMESTIC' | 'FOREIGN' | undefined): s
   return status === 'FOREIGN' ? 'Külföldi' : 'Belföldi';
 }
 
+/**
+ * Batch2-D: a PEP-minőség kód (CustomerPanel PepKind enum) emberi szövege a
+ * bizonylatra — a backend ReceiptGeneratorService.buildPepStatusText kategória-
+ * szövegeivel egyezően. Ismeretlen kód → maga a kód (defenzív).
+ */
+export function pepKindReceiptText(kind: string | undefined): string | undefined {
+  const k = kind?.trim();
+  if (!k) return undefined;
+  switch (k) {
+    case 'CSALADTAG': return 'kiemelt közszereplő családtagja';
+    case 'KOZELI_MUNKATARS': return 'kiemelt közszereplő közeli munkatársa';
+    case 'KORMANYFO': return 'kormányfő / miniszter / államtitkár';
+    case 'PARLAMENTI': return 'országgyűlési / önkormányzati képviselő';
+    case 'NAV_VEZETO': return 'NAV / állami vállalat felsővezetés';
+    case 'EGYEB': return 'egyéb kiemelt közszereplő';
+    default: return k;
+  }
+}
+
 /** PEP-sor szövege (300k+): minőséggel, ha ismert. */
 export function pepStatusText(data: PrintReceiptData): string {
+  const kindText = pepKindReceiptText(data.customerPepKind);
   return data.customerIsPep
-    ? `Az ügyfél kiemelt közszereplő${data.customerPepKind ? ` (${data.customerPepKind})` : ''}`
+    ? `Az ügyfél kiemelt közszereplő${kindText ? ` (${kindText})` : ''}`
     : 'Az ügyfél nem közszereplő';
 }
 
@@ -270,7 +290,39 @@ export function buildSourceDeclarationLines(data: PrintReceiptData): string[] {
   } else {
     lines.push('saját nevemben bonyolítom,');
   }
+
+  // Batch2-D (Fabulya-teszt 2026-06-12): a legacy Jogcimnyilatkozat (BLOKNYOM
+  // Unit2.pas:1437-1493) a saját neves/képviselt ág UTÁN kötelezően nyomtatta:
+  // (a) az ELSŐ SZEMÉLYŰ közszereplő-nyilatkozatot, (b) az 5 munkanapos
+  // adatváltozás-bejelentési klauzulát, (c) a forrás-sort, (d) a dedikált
+  // ügyfél-aláírást. Eddig csak a „saját neves" rész volt meg — pótolva.
+  // Codex P1 #1110: ISMERETLEN PEP-státusznál (null/undefined — régi queue-sorok,
+  // hiányos hívók) SEM pozitív, SEM negatív nyilatkozat nem nyomtatható — a backend
+  // EscPos-út azonos guardja (customerIsPep != null) a minta.
+  if (data.customerIsPep != null) {
+    lines.push('');
+    if (data.customerIsPep) {
+      lines.push('Kiemelt közszereplő (vagyok),');
+      const kindText = pepKindReceiptText(data.customerPepKind);
+      if (kindText) {
+        lines.push(`mint: ${kindText}`);
+      }
+    } else {
+      lines.push('Nem (vagyok) kiemelt közszereplő.');
+    }
+  }
+
+  lines.push('');
+  lines.push('Tudomásom van arról, hogy 5 (öt)');
+  lines.push('munkanapon belül köteles vagyok');
+  lines.push('bejelenteni a szolgáltatónak a fenti');
+  lines.push('adatokban, vagy a saját adataimban');
+  lines.push('bekövetkező esetleges változásokat,');
+  lines.push('és e kötelezettség elmulasztásából');
+  lines.push('eredő kár engem terhel.');
+
   if (data.sourceOfFunds && data.sourceOfFunds.trim() !== '') {
+    lines.push('');
     lines.push('Pénzeszközöm forrása:');
     const src = data.sourceOfFunds.trim();
     const maxLen = 38; // 40-42 karakteres hőnyomtató-sor, 2 char behúzással
@@ -278,7 +330,53 @@ export function buildSourceDeclarationLines(data: PrintReceiptData): string[] {
       lines.push(`  ${src.substring(i, Math.min(i + maxLen, src.length))}`);
     }
   }
+
+  // Legacy: dedikált ügyfél-aláírás a nyilatkozat alatt (a bizonylat-végi
+  // Pénztáros/Ügyfél kettős aláírástól függetlenül).
+  lines.push('');
+  lines.push('');
+  lines.push('.....................................');
+  lines.push('          ügyfél aláírása');
   return lines;
+}
+
+/**
+ * Batch2-D: orosz EUR-vásárlási nyilatkozat triggere — a legacy EzoroszUgyfel
+ * (BLOKNYOM Unit2.pas:1929-1938) tükre: EUR eladás (az ügyfél EUR-t VESZ)
+ * + orosz állampolgár + fizetendő >= 300 000 Ft.
+ */
+export function isRussianEurPurchase(data: PrintReceiptData): boolean {
+  if (data.type !== 'sell') return false;
+  if (!isHighValueReceipt(data)) return false;
+  const nat = (data.customerNationality ?? '').trim().toLowerCase();
+  if (nat !== 'ru' && nat !== 'rus' && !nat.includes('orosz') && !nat.includes('russia')) return false;
+  const hasEur = data.currencyCode === 'EUR'
+    || (data.transactionLines ?? []).some(l => l.currencyCode === 'EUR');
+  return hasEur;
+}
+
+/**
+ * Batch2-D: kétnyelvű személyes-használat nyilatkozat (legacy OroszNyilatkozat,
+ * BLOKNYOM Unit2.pas:1940-1963 tükre).
+ */
+export function buildRussianDeclarationLines(data: PrintReceiptData): string[] {
+  const name = (data.customerName ?? '').trim().substring(0, 30);
+  return [
+    '----------------------------------------',
+    '        NYILATKOZAT/DECLARATION',
+    '----------------------------------------',
+    '',
+    `Alulírott ${name}`,
+    'kijelentem, hogy az általam vásárolt EUR',
+    'valutát személyes használatra váltottam.',
+    '',
+    '/I declare that the just purchased',
+    'EUR currency is for my personal usage.',
+    '',
+    '',
+    '.....................................',
+    '  ügyfél aláírása/signature of buyer',
+  ];
 }
 
 // ============================================================================
@@ -416,6 +514,13 @@ export function generateReceiptContent(data: PrintReceiptData): string {
       lines.push('JOGCÍM NYILATKOZAT');
       lines.push(CMD.BOLD_OFF);
       lines.push(...buildSourceDeclarationLines(data));
+    }
+
+    // Batch2-D: orosz állampolgár EUR-vásárlása 300k+ felett → kétnyelvű
+    // személyes-használat nyilatkozat (legacy OroszNyilatkozat tükre).
+    if (isRussianEurPurchase(data)) {
+      lines.push('');
+      lines.push(...buildRussianDeclarationLines(data));
     }
   }
 
@@ -855,6 +960,15 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
         <div class="bold">JOGCÍM NYILATKOZAT</div>
         <div style="font-size: 9px; margin: 2px 0; white-space: pre-wrap;">
           ${buildSourceDeclarationLines(data).map(l => `<div>${escHtml(l)}</div>`).join('')}
+        </div>
+      `;
+    }
+    // Batch2-D: orosz állampolgár EUR-vásárlása 300k+ felett → kétnyelvű
+    // személyes-használat nyilatkozat (legacy OroszNyilatkozat tükre).
+    if (isRussianEurPurchase(data)) {
+      bodyContent += `
+        <div style="font-size: 9px; margin: 2px 0; white-space: pre-wrap;">
+          ${buildRussianDeclarationLines(data).map(l => `<div>${escHtml(l)}</div>`).join('')}
         </div>
       `;
     }

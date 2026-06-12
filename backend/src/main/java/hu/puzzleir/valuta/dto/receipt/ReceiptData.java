@@ -187,6 +187,17 @@ public class ReceiptData {
     private String pepStatusText;
 
     /**
+     * Batch2-D (2026-06-12): strukturált PEP-adat az ELSŐ SZEMÉLYŰ nyilatkozathoz
+     * (legacy BLOKNYOM KozszerepNyilatkozat) — a pepStatusText harmadik személyű
+     * státuszsor marad, ez a jogcím-blokk "Kiemelt közszereplő (vagyok), mint: ..."
+     * sorát vezérli.
+     */
+    private Boolean customerIsPep;
+
+    /** Batch2-D: PEP-minőség (Pmt. kategória-szöveg), ha ismert. */
+    private String customerPepKind;
+
+    /**
      * Jogcím nyilatkozat szükséges-e.
      * Legacy: BLOKNYOM/Jogcimnyilatkozat — 300k+ tranzakciónál kötelező.
      * Tartalma: "Büntetőjogi felelősségem tudatában nyilatkozom..."

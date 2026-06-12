@@ -721,7 +721,12 @@ public class ReceiptGeneratorService {
                 ? buildPepStatusText(tx.getCustomerPepKind())
                 : "Nem közszereplő";
             builder.requiresPepDeclaration(true)
-                   .pepStatusText(pepStatusText);
+                   .pepStatusText(pepStatusText)
+                   // Batch2-D (2026-06-12): strukturált PEP-adat az első személyű
+                   // nyilatkozathoz (legacy KozszerepNyilatkozat) — a minőség már
+                   // emberi szövegként megy a bizonylat-rétegnek.
+                   .customerIsPep(isPep)
+                   .customerPepKind(isPep ? pepKindFirstPersonText(tx.getCustomerPepKind()) : null);
             log.debug("PEP nyilatkozat blokk aktiválva, isPep={}, pepKind={}", isPep, tx.getCustomerPepKind());
         }
     }
@@ -743,6 +748,26 @@ public class ReceiptGeneratorService {
             case "NAV_VEZETO"       -> "Az ügyfél kiemelt közszereplő — NAV / állami vállalat felsővezetés";
             case "EGYEB"            -> "Az ügyfél kiemelt közszereplő — egyéb minőségben";
             default                 -> "Az ügyfél kiemelt közszereplő";
+        };
+    }
+
+    /**
+     * Batch2-D (2026-06-12): a PEP-minőség ELSŐ SZEMÉLYŰ alakja a jogcím-blokk
+     * "Kiemelt közszereplő (vagyok), mint: ..." sorához (legacy BLOKNYOM
+     * KozszerepNyilatkozat) — a kliens-printer pepKindReceiptText tükre.
+     */
+    private static String pepKindFirstPersonText(String pepKind) {
+        if (pepKind == null || pepKind.isBlank()) {
+            return null;
+        }
+        return switch (pepKind) {
+            case "CSALADTAG"        -> "kiemelt közszereplő családtagja";
+            case "KOZELI_MUNKATARS" -> "kiemelt közszereplő közeli munkatársa";
+            case "KORMANYFO"        -> "kormányfő / miniszter / államtitkár";
+            case "PARLAMENTI"       -> "országgyűlési / önkormányzati képviselő";
+            case "NAV_VEZETO"       -> "NAV / állami vállalat felsővezetés";
+            case "EGYEB"            -> "egyéb kiemelt közszereplő";
+            default                 -> pepKind;
         };
     }
 
