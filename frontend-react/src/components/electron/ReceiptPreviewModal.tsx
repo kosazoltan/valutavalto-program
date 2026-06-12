@@ -148,9 +148,27 @@ export default function ReceiptPreviewModal({
     value !== undefined ? Math.round(value).toLocaleString('hu-HU') : '0';
 
   // Codex PR #1102 P1: a küszöbök az AML-lel azonos FIZETENDŐ összegre (díjjal) számolnak.
-  const absHuf = Math.abs(receiptData.payableHufAmount ?? receiptData.hufAmount ?? 0);
+  // Copilot #1110: a dokumentált fallback-lánc a printer isHighValueReceipt-tel egyezően
+  // payableHufAmount ?? roundedHufAmount ?? hufAmount — a csak roundedHufAmount-ot hordozó
+  // (pl. többsoros) bizonylatokon e nélkül a 300k+ blokkok tévesen elmaradtak volna.
+  const absHuf = Math.abs(receiptData.payableHufAmount ?? receiptData.roundedHufAmount ?? receiptData.hufAmount ?? 0);
   const isMediumValue = absHuf >= MEDIUM_THRESHOLD;
   const isHighValue = absHuf >= HIGH_THRESHOLD;
+  // Codex P2 #1110: a PepKind nyers kódja (CSALADTAG/PARLAMENTI/...) emberi szövegre fordul
+  // — a penztar-client printer.ts pepKindReceiptText tükre (külön package, ezért lokál másolat).
+  const pepKindText = (() => {
+    const k = receiptData.customerPepKind?.trim();
+    if (!k) return undefined;
+    switch (k) {
+      case 'CSALADTAG': return 'kiemelt közszereplő családtagja';
+      case 'KOZELI_MUNKATARS': return 'kiemelt közszereplő közeli munkatársa';
+      case 'KORMANYFO': return 'kormányfő / miniszter / államtitkár';
+      case 'PARLAMENTI': return 'országgyűlési / önkormányzati képviselő';
+      case 'NAV_VEZETO': return 'NAV / állami vállalat felsővezetés';
+      case 'EGYEB': return 'egyéb kiemelt közszereplő';
+      default: return k;
+    }
+  })();
   // Batch2-D: orosz EUR-vásárlási nyilatkozat triggere (legacy EzoroszUgyfel tükre,
   // a printer.ts isRussianEurPurchase-zal egyezően): EUR eladás + orosz állampolgár + 300k+.
   const nationalityLower = (receiptData.customerNationality ?? '').trim().toLowerCase();
@@ -441,10 +459,10 @@ export default function ReceiptPreviewModal({
                     {receiptData.customerAddress && <p>Lakcím(ADDRESS): {receiptData.customerAddress}</p>}
                     {receiptData.customerDocType && <p>DOC TYPE: {receiptData.customerDocType}</p>}
                     {receiptData.customerDocNumber && <p>NR.: {receiptData.customerDocNumber}</p>}
-                    {/* Penztar-batch C.1: PEP-minőség is megjelenik, ha ismert. */}
+                    {/* Penztar-batch C.1: PEP-minőség is megjelenik, ha ismert (emberi szöveg, nem kód). */}
                     <p>
                       {receiptData.customerIsPep
-                        ? `Az ügyfél kiemelt közszereplő${receiptData.customerPepKind ? ` (${receiptData.customerPepKind})` : ''}`
+                        ? `Az ügyfél kiemelt közszereplő${pepKindText ? ` (${pepKindText})` : ''}`
                         : 'Az ügyfél nem közszereplő'}
                     </p>
                   </>
@@ -501,12 +519,20 @@ export default function ReceiptPreviewModal({
                   )}
                   {/* Batch2-D (Fabulya-teszt 2026-06-12): a legacy Jogcimnyilatkozat (BLOKNYOM)
                       további kötelező elemei — első személyű PEP-nyilatkozat, 5 munkanapos
-                      adatváltozás-klauzula, dedikált ügyfél-aláírás — a nyomtatóval egyezően. */}
-                  <p className="text-[9px] leading-tight mt-1">
-                    {receiptData.customerIsPep
-                      ? <>Kiemelt közszereplő (vagyok){receiptData.customerPepKind ? <>, mint: {receiptData.customerPepKind}</> : null}.</>
-                      : 'Nem (vagyok) kiemelt közszereplő.'}
-                  </p>
+                      adatváltozás-klauzula, dedikált ügyfél-aláírás — a nyomtatóval egyezően.
+                      Codex/Copilot #1110: ismeretlen PEP-státusznál (null) NINCS PEP-mondat
+                      (a printer/backend guardjával azonosan); a minőség emberi szövegként,
+                      a nyomtatóval azonos sortöréssel. */}
+                  {receiptData.customerIsPep != null && (
+                    receiptData.customerIsPep ? (
+                      <>
+                        <p className="text-[9px] leading-tight mt-1">Kiemelt közszereplő (vagyok),</p>
+                        {pepKindText && <p className="text-[9px] leading-tight">mint: {pepKindText}</p>}
+                      </>
+                    ) : (
+                      <p className="text-[9px] leading-tight mt-1">Nem (vagyok) kiemelt közszereplő.</p>
+                    )
+                  )}
                   <p className="text-[9px] leading-tight mt-1">
                     Tudomásom van arról, hogy 5 (öt) munkanapon belül köteles vagyok bejelenteni
                     a szolgáltatónak a fenti adatokban, vagy a saját adataimban bekövetkező

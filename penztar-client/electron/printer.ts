@@ -296,15 +296,20 @@ export function buildSourceDeclarationLines(data: PrintReceiptData): string[] {
   // (a) az ELSŐ SZEMÉLYŰ közszereplő-nyilatkozatot, (b) az 5 munkanapos
   // adatváltozás-bejelentési klauzulát, (c) a forrás-sort, (d) a dedikált
   // ügyfél-aláírást. Eddig csak a „saját neves" rész volt meg — pótolva.
-  lines.push('');
-  if (data.customerIsPep) {
-    lines.push('Kiemelt közszereplő (vagyok),');
-    const kindText = pepKindReceiptText(data.customerPepKind);
-    if (kindText) {
-      lines.push(`mint: ${kindText}`);
+  // Codex P1 #1110: ISMERETLEN PEP-státusznál (null/undefined — régi queue-sorok,
+  // hiányos hívók) SEM pozitív, SEM negatív nyilatkozat nem nyomtatható — a backend
+  // EscPos-út azonos guardja (customerIsPep != null) a minta.
+  if (data.customerIsPep != null) {
+    lines.push('');
+    if (data.customerIsPep) {
+      lines.push('Kiemelt közszereplő (vagyok),');
+      const kindText = pepKindReceiptText(data.customerPepKind);
+      if (kindText) {
+        lines.push(`mint: ${kindText}`);
+      }
+    } else {
+      lines.push('Nem (vagyok) kiemelt közszereplő.');
     }
-  } else {
-    lines.push('Nem (vagyok) kiemelt közszereplő.');
   }
 
   lines.push('');

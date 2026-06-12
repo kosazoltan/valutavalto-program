@@ -675,6 +675,39 @@ describe('printer — deviza-státusz + 300k+ nyilatkozatok (C.1/C.2)', () => {
     expect(content).toContain('ügyfél aláírása/signature of buyer');
   });
 
+  it('Batch2-D (Codex P1 #1110): ISMERETLEN PEP-státusznál nincs se pozitív, se negatív PEP-mondat', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 343000,
+      roundedHufAmount: 343000,
+      customerName: 'Kiss Géza',
+      customerOnOwnBehalf: true,
+      sourceOfFunds: 'munkabér',
+      // customerIsPep szándékosan kitöltetlen (régi queue-sor / hiányos hívó)
+    });
+    expect(content).toContain('JOGCÍM NYILATKOZAT');
+    expect(content).not.toContain('Nem (vagyok) kiemelt közszereplő.');
+    expect(content).not.toContain('Kiemelt közszereplő (vagyok),');
+  });
+
+  it('Batch2-D (Sourcery #1110): orosz nyilatkozat transactionLines-ban lévő EUR-ra és "ru" ISO-kódra is', () => {
+    // EUR csak a többsoros lines-ban, a fejléc-valuta USD; nationality ISO 'ru'
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'sell',
+      currencyCode: 'USD',
+      hufAmount: 400000,
+      roundedHufAmount: 400000,
+      customerName: 'Ivanov Ivan',
+      customerNationality: 'RU',
+      transactionLines: [
+        { currencyCode: 'USD', foreignAmount: 500, rate: 350, hufAmount: 175000 },
+        { currencyCode: 'EUR', foreignAmount: 600, rate: 400, hufAmount: 240000 },
+      ],
+    });
+    expect(content).toContain('NYILATKOZAT/DECLARATION');
+  });
+
   it('Batch2-D: orosz nyilatkozat NEM jelenik meg vételnél / nem-EUR-nál / nem-orosz ügyfélnél', () => {
     // buy módban (a pénztár VESZI a valutát) nincs orosz nyilatkozat
     expect(generateReceiptContent({
