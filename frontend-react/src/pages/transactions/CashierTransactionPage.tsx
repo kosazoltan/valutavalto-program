@@ -821,6 +821,23 @@ export default function CashierTransactionPage() {
         customerActorDocumentType: cd.actorIdentity?.documentType,
         customerActorDocumentNumber: cd.actorIdentity?.documentNumber,
         customerActorAddress: cd.actorIdentity?.address,
+        // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok a REST request-be
+        isLegalEntityCustomer: cd.isLegalEntity ?? undefined,
+        legalEntityName: cd.legalEntityName,
+        legalEntitySeat: cd.legalEntitySeat,
+        legalEntityTaxNumber: cd.legalEntityTaxNumber,
+        legalDeedNumber: cd.legalDeedNumber,
+        beneficialOwners: cd.beneficialOwners?.map(o => ({
+          name: o.name,
+          address: o.address || undefined,
+          birthPlace: o.birthPlace || undefined,
+          birthDate: o.birthDate || undefined,
+          nationality: o.nationality || undefined,
+          residenceAbroad: o.residenceAbroad || undefined,
+          interestNature: o.interestNature || undefined,
+          interestExtent: o.interestExtent || undefined,
+          isPep: o.isPep,
+        })),
         // AML felsovezetoi jovahagyas: a jovahagyo workerId a REST buy/sell request-be (spread).
         approverWorkerId: approverWorkerIdRef.current ?? undefined,
         approvalSessionId: approvalSessionIdRef.current ?? undefined,
@@ -848,6 +865,13 @@ export default function CashierTransactionPage() {
         customerActorDocumentType: cd?.actorIdentity?.documentType || undefined,
         customerActorDocumentNumber: cd?.actorIdentity?.documentNumber || undefined,
         customerActorAddress: cd?.actorIdentity?.address || undefined,
+        // V325 (Batch3-C): jogi szemely blokk a bizonylaton (elonezet + nyomtatas)
+        isLegalEntityCustomer: cd?.isLegalEntity ?? undefined,
+        legalEntityName: cd?.legalEntityName || undefined,
+        legalEntitySeat: cd?.legalEntitySeat || undefined,
+        legalEntityTaxNumber: cd?.legalEntityTaxNumber || undefined,
+        legalDeedNumber: cd?.legalDeedNumber || undefined,
+        beneficialOwners: cd?.beneficialOwners?.length ? cd.beneficialOwners : undefined,
       }
       // C.2: a deviza-státusz MINDEN azonosítási szinten a bizonylatra kerül (a soronkénti
       // B/K toggle nem függ az azonosítástól). Többsoros nyugtán a fejléc csak akkor hordozza,
@@ -915,6 +939,15 @@ export default function CashierTransactionPage() {
           // kliens lokalisan perzisztalja, majd a sync a backend-body-ba teszi.
           approverWorkerId: approverWorkerIdRef.current,
           approvalSessionId: approvalSessionIdRef.current,
+          // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok az offline queue-ba is.
+          isLegalEntityCustomer: cd?.isLegalEntity ?? null,
+          legalEntityName: cd?.legalEntityName || null,
+          legalEntitySeat: cd?.legalEntitySeat || null,
+          legalEntityTaxNumber: cd?.legalEntityTaxNumber || null,
+          legalDeedNumber: cd?.legalDeedNumber || null,
+          beneficialOwnersJson: cd?.beneficialOwners?.length
+            ? JSON.stringify(cd.beneficialOwners)
+            : null,
         })
 
         // Multi-line aggregate (2026-06-04): tobb-soros nyugtanal EGY aggregalt pending tranzakciot

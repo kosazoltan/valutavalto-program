@@ -135,6 +135,13 @@ export interface ElectronAPI {
     handlingFeeOverrideType?: string | null
     handlingFeeOverrideReason?: string | null
     customerCardNumber?: string | null
+    // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok (JSON-string, max 4).
+    isLegalEntityCustomer?: boolean | null
+    legalEntityName?: string | null
+    legalEntitySeat?: string | null
+    legalEntityTaxNumber?: string | null
+    legalDeedNumber?: string | null
+    beneficialOwnersJson?: string | null
   }) => Promise<number>;
   savePendingConversion(
     fromCurrencyId: number | null,

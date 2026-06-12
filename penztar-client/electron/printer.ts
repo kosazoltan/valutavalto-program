@@ -143,6 +143,24 @@ export interface PrintReceiptData {
   customerActorDocumentType?: string;
   customerActorDocumentNumber?: string;
   customerActorAddress?: string;
+  /** V325 (Batch3-C): jogi személy ügyfél (legacy JOGISZEMELY) — a 300k+ bizonylat jogi blokkjához. */
+  isLegalEntityCustomer?: boolean;
+  legalEntityName?: string;
+  legalEntitySeat?: string;
+  legalEntityTaxNumber?: string;
+  legalDeedNumber?: string;
+  /** V325: tényleges tulajdonosok (legacy UJTULAJOK, max 4). */
+  beneficialOwners?: Array<{
+    name: string;
+    address?: string;
+    birthPlace?: string;
+    birthDate?: string;
+    nationality?: string;
+    residenceAbroad?: string;
+    interestNature?: string;
+    interestExtent?: string;
+    isPep?: boolean;
+  }>;
   /** Penztar-batch A.1 (PR #1101): több-valutás átadólap sorai — ha jelen van, a transfer
    *  bizonylat EZEKET listázza a fejléc currencyCode/foreignAmount helyett. */
   transferLines?: Array<{ currencyCode: string; amount: number }>;
@@ -343,6 +361,57 @@ export function buildSourceDeclarationLines(data: PrintReceiptData): string[] {
 }
 
 /**
+ * V325 (Batch3-C): JOGI SZEMÉLY ügyfél + TÉNYLEGES TULAJDONOSOK blokk sorai —
+ * a legacy BLOKNYOM Ugyfelnyomtatas jogi ágának (Unit2.pas:1331-1433) tükre,
+ * a backend EscPosReceiptService.printLegalEntityBlock-kal egyezően:
+ * jogi személy neve/székhelye/okiratszám/adószám + megbízott (= a pultnál álló
+ * ügyfél) neve/címe + tényleges tulajdonosok (max 4). A megbízott PEP-státusza
+ * a JOGCÍM blokk első személyű nyilatkozatában.
+ */
+export function buildLegalEntityLines(data: PrintReceiptData): string[] {
+  if (!data.isLegalEntityCustomer) return [];
+  const lines: string[] = [];
+  lines.push('');
+  if (data.legalEntityName) {
+    lines.push('Jogi személy neve:');
+    lines.push(`  ${data.legalEntityName}`);
+  }
+  if (data.legalEntitySeat) {
+    lines.push('Jogi személy székhelye:');
+    lines.push(`  ${data.legalEntitySeat}`);
+  }
+  if (data.legalDeedNumber) lines.push(`Okiratszám: ${data.legalDeedNumber}`);
+  if (data.legalEntityTaxNumber) lines.push(`Adószám: ${data.legalEntityTaxNumber}`);
+  if (data.customerName) {
+    lines.push('Megbízott neve:');
+    lines.push(`  ${data.customerName}`);
+  }
+  if (data.customerAddress) {
+    lines.push('Megbízott címe:');
+    lines.push(`  ${data.customerAddress}`);
+  }
+  const owners = data.beneficialOwners ?? [];
+  if (owners.length > 0) {
+    lines.push('---------------------------------------');
+    lines.push('Tényleges tulajdonosok adatai:');
+    owners.forEach((o, i) => {
+      lines.push('');
+      lines.push(`${i + 1}. tulajdonos:`);
+      lines.push(`  ${o.name}`);
+      if (o.address) lines.push(`  ${o.address}`);
+      const szul = `${o.birthPlace ?? ''} ${o.birthDate ?? ''}`.trim();
+      if (szul) lines.push(`  ${szul}`);
+      if (o.nationality) lines.push(`  ${o.nationality}`);
+      if (o.residenceAbroad) lines.push(`  ${o.residenceAbroad}`);
+      if (o.interestNature) lines.push(`  ${o.interestNature}`);
+      if (o.interestExtent) lines.push(`  ${o.interestExtent}`);
+      lines.push(o.isPep ? '  A tulaj közszereplő' : '  Nem közszereplő');
+    });
+  }
+  return lines;
+}
+
+/**
  * Batch2-D: orosz EUR-vásárlási nyilatkozat triggere — a legacy EzoroszUgyfel
  * (BLOKNYOM Unit2.pas:1929-1938) tükre: EUR eladás (az ügyfél EUR-t VESZ)
  * + orosz állampolgár + fizetendő >= 300 000 Ft.
@@ -502,6 +571,8 @@ export function generateReceiptContent(data: PrintReceiptData): string {
     // C.1: PEP-sor 300k+ vétel/eladás bizonylaton (backend EscPosReceiptService:651-654 tükre).
     if ((data.type === 'sell' || data.type === 'buy') && isHighValueReceipt(data)) {
       lines.push(pepStatusText(data));
+      // V325 (Batch3-C): jogi személy + tényleges tulajdonosok blokk.
+      lines.push(...buildLegalEntityLines(data));
     }
   }
 
@@ -952,7 +1023,8 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
       ${data.customerDocNumber ? `<div class="amount-row"><span>Okmányszám:</span><span>${escHtml(data.customerDocNumber)}</span></div>` : ''}
       ${data.customerNationality ? `<div class="amount-row"><span>Állampolgárság:</span><span>${escHtml(data.customerNationality)}</span></div>` : ''}
       ${(data.type === 'sell' || data.type === 'buy') && isHighValueReceipt(data)
-        ? `<div>${escHtml(pepStatusText(data))}</div>`
+        ? `<div>${escHtml(pepStatusText(data))}</div>
+           <div style="white-space: pre-wrap;">${buildLegalEntityLines(data).map(l => `<div>${escHtml(l)}</div>`).join('')}</div>`
         : ''}
     `;
   }

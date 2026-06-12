@@ -85,6 +85,14 @@ export interface PrintReceiptData {
   customerActorDocumentType?: string;
   customerActorDocumentNumber?: string;
   customerActorAddress?: string;
+  /** V325 (Batch3-C): jogi személy ügyfél (legacy JOGISZEMELY) — a 300k+ bizonylat jogi blokkjához. */
+  isLegalEntityCustomer?: boolean;
+  legalEntityName?: string;
+  legalEntitySeat?: string;
+  legalEntityTaxNumber?: string;
+  legalDeedNumber?: string;
+  /** V325: tényleges tulajdonosok (legacy UJTULAJOK, max 4). */
+  beneficialOwners?: ReceiptBeneficialOwner[];
   navReceiptNumber?: string;
   sealNumber?: string;
   vatExemptionText?: string;
@@ -122,6 +130,19 @@ export interface PrintReceiptData {
    */
   transferLines?: TransferReceiptLine[];
   closingSummary?: ClosingPrintData;
+}
+
+/** V325 (Batch3-C): egy tényleges tulajdonos a bizonylaton (legacy UJTULAJOK mezők). */
+export interface ReceiptBeneficialOwner {
+  name: string;
+  address?: string;
+  birthPlace?: string;
+  birthDate?: string;
+  nationality?: string;
+  residenceAbroad?: string;
+  interestNature?: string;
+  interestExtent?: string;
+  isPep?: boolean;
 }
 
 /** Penztar-batch A.1: egy valuta-sor a több-valutás átadás-átvétel bizonylaton. */

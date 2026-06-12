@@ -109,6 +109,19 @@ public class BuyRequestDto {
     @Size(max = 100) private String customerActorDocumentNumber;
     @Size(max = 500) private String customerActorAddress;
 
+    /** V325 (Batch3-C): jogi szemely ugyfel adatai (legacy JOGISZEMELY) — a pultnal
+     *  allo kepviselo a customer* mezokben. */
+    private Boolean isLegalEntityCustomer;
+    @Size(max = 255) private String legalEntityName;
+    @Size(max = 500) private String legalEntitySeat;
+    @Size(max = 50)  private String legalEntityTaxNumber;
+    @Size(max = 100) private String legalDeedNumber;
+
+    /** V325: tenyleges tulajdonosok (Pmt. 9.§) — max 4 (legacy UJTULAJOK array[1..4]). */
+    @Valid
+    @Size(max = 4, message = "Legfeljebb 4 tényleges tulajdonos adható meg")
+    private List<BeneficialOwnerDto> beneficialOwners;
+
     private String notes;
 
     /** Penztarosi sav: egyedi arfolyam 400k+ Ft felett (napi 5x limit) */

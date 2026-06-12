@@ -475,6 +475,59 @@ export default function ReceiptPreviewModal({
                         ? `Az ügyfél kiemelt közszereplő${pepKindText ? ` (${pepKindText})` : ''}`
                         : 'Az ügyfél nem közszereplő'}
                     </p>
+                    {/* V325 (Batch3-C): JOGI SZEMÉLY blokk — a legacy BLOKNYOM jogi
+                        ágának tükre (a nyomtatóval/backenddel egyezően). */}
+                    {receiptData.isLegalEntityCustomer && (
+                      <div className="mt-1 space-y-0.5">
+                        {receiptData.legalEntityName && (
+                          <>
+                            <p>Jogi személy neve:</p>
+                            <p className="pl-2 font-bold">{receiptData.legalEntityName}</p>
+                          </>
+                        )}
+                        {receiptData.legalEntitySeat && (
+                          <>
+                            <p>Jogi személy székhelye:</p>
+                            <p className="pl-2">{receiptData.legalEntitySeat}</p>
+                          </>
+                        )}
+                        {receiptData.legalDeedNumber && <p>Okiratszám: {receiptData.legalDeedNumber}</p>}
+                        {receiptData.legalEntityTaxNumber && <p>Adószám: {receiptData.legalEntityTaxNumber}</p>}
+                        {receiptData.customerName && (
+                          <>
+                            <p>Megbízott neve:</p>
+                            <p className="pl-2">{receiptData.customerName}</p>
+                          </>
+                        )}
+                        {receiptData.customerAddress && (
+                          <>
+                            <p>Megbízott címe:</p>
+                            <p className="pl-2">{receiptData.customerAddress}</p>
+                          </>
+                        )}
+                        {(receiptData.beneficialOwners?.length ?? 0) > 0 && (
+                          <>
+                            <div className="my-1 border-t border-gray-300" />
+                            <p className="font-bold">Tényleges tulajdonosok adatai:</p>
+                            {receiptData.beneficialOwners!.map((o, i) => (
+                              <div key={i} className="mt-1">
+                                <p>{i + 1}. tulajdonos:</p>
+                                <p className="pl-2">{o.name}</p>
+                                {o.address && <p className="pl-2">{o.address}</p>}
+                                {(o.birthPlace || o.birthDate) && (
+                                  <p className="pl-2">{`${o.birthPlace ?? ''} ${o.birthDate ?? ''}`.trim()}</p>
+                                )}
+                                {o.nationality && <p className="pl-2">{o.nationality}</p>}
+                                {o.residenceAbroad && <p className="pl-2">{o.residenceAbroad}</p>}
+                                {o.interestNature && <p className="pl-2">{o.interestNature}</p>}
+                                {o.interestExtent && <p className="pl-2">{o.interestExtent}</p>}
+                                <p className="pl-2">{o.isPep ? 'A tulaj közszereplő' : 'Nem közszereplő'}</p>
+                              </div>
+                            ))}
+                          </>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </div>

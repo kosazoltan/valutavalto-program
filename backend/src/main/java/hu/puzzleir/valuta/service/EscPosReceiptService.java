@@ -652,6 +652,9 @@ public class EscPosReceiptService {
                 if (Boolean.TRUE.equals(data.getRequiresPepDeclaration())) {
                     b.line(data.getPepStatusText() != null ? data.getPepStatusText() : "Az ügyfél nem közszereplő");
                 }
+                // V325 (Batch3-C): JOGI SZEMÉLY blokk — a legacy BLOKNYOM
+                // Ugyfelnyomtatas jogi ágának (Unit2.pas:1331-1433) tükre.
+                printLegalEntityBlock(b, data);
             }
         }
         // < 100k: nincs ügyfél adat, csak a fejléc
@@ -688,6 +691,65 @@ public class EscPosReceiptService {
                 ? data.getCustomerNationality().trim().toLowerCase() : "";
         return nat.equals("ru") || nat.equals("rus")
                 || nat.contains("orosz") || nat.contains("russia");
+    }
+
+    /**
+     * V325 (Batch3-C): JOGI SZEMÉLY ügyfél + TÉNYLEGES TULAJDONOSOK blokk —
+     * a legacy BLOKNYOM Ugyfelnyomtatas jogi ágának (Unit2.pas:1331-1433) tükre:
+     * jogi személy neve/székhelye/okiratszám/adószám + megbízott neve/címe
+     * (= a pultnál álló ügyfél, customer* mezők) + tényleges tulajdonosok
+     * (név/cím/szül./állampolg./külf. tartózkodási hely/jelleg/mérték/PEP, max 4).
+     * A megbízott PEP-státusza a JOGCÍM blokk első személyű nyilatkozatában.
+     */
+    private void printLegalEntityBlock(EscPosBuilder b, ReceiptData data) {
+        if (!Boolean.TRUE.equals(data.getRequiresLegalEntityBlock())) {
+            return;
+        }
+        b.emptyLine();
+        if (data.getLegalEntityName() != null && !data.getLegalEntityName().isBlank()) {
+            b.line("Jogi személy neve:");
+            b.line("  " + data.getLegalEntityName());
+        }
+        if (data.getLegalEntitySeat() != null && !data.getLegalEntitySeat().isBlank()) {
+            b.line("Jogi személy székhelye:");
+            b.line("  " + data.getLegalEntitySeat());
+        }
+        if (data.getLegalDeedNumber() != null && !data.getLegalDeedNumber().isBlank()) {
+            b.line("Okiratszám: " + data.getLegalDeedNumber());
+        }
+        if (data.getLegalEntityTaxNumber() != null && !data.getLegalEntityTaxNumber().isBlank()) {
+            b.line("Adószám: " + data.getLegalEntityTaxNumber());
+        }
+        if (data.getLegalRepresentativeName() != null && !data.getLegalRepresentativeName().isBlank()) {
+            b.line("Megbízott neve:");
+            b.line("  " + data.getLegalRepresentativeName());
+        }
+        if (data.getCustomerAddress() != null && !data.getCustomerAddress().isBlank()) {
+            b.line("Megbízott címe:");
+            b.line("  " + data.getCustomerAddress());
+        }
+
+        if (data.getBeneficialOwners() != null && !data.getBeneficialOwners().isEmpty()) {
+            b.line("---------------------------------------");
+            b.line("Tényleges tulajdonosok adatai:");
+            int no = 1;
+            for (var o : data.getBeneficialOwners()) {
+                b.emptyLine();
+                b.line(no++ + ". tulajdonos:");
+                if (o.getName() != null) b.line("  " + o.getName());
+                if (o.getAddress() != null && !o.getAddress().isBlank()) b.line("  " + o.getAddress());
+                String szul = ((o.getBirthPlace() != null ? o.getBirthPlace() : "")
+                        + " " + (o.getBirthDate() != null ? o.getBirthDate() : "")).trim();
+                if (!szul.isBlank()) b.line("  " + szul);
+                if (o.getNationality() != null && !o.getNationality().isBlank()) b.line("  " + o.getNationality());
+                if (o.getResidenceAbroad() != null && !o.getResidenceAbroad().isBlank()) {
+                    b.line("  " + o.getResidenceAbroad());
+                }
+                if (o.getInterestNature() != null && !o.getInterestNature().isBlank()) b.line("  " + o.getInterestNature());
+                if (o.getInterestExtent() != null && !o.getInterestExtent().isBlank()) b.line("  " + o.getInterestExtent());
+                b.line(Boolean.TRUE.equals(o.getIsPep()) ? "  A tulaj közszereplő" : "  Nem közszereplő");
+            }
+        }
     }
 
     private void printReceiptFooter(EscPosBuilder b, ReceiptData data) {

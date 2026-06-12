@@ -706,6 +706,64 @@ describe('printer — deviza-státusz + 300k+ nyilatkozatok (C.1/C.2)', () => {
     expect(content).toContain('ügyfél aláírása');
   });
 
+  it('V325 (Batch3-C): 300k+ jogi személy blokk — entitás-adatok + megbízott + tényleges tulajdonosok', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 400000,
+      roundedHufAmount: 400000,
+      customerName: 'Kiss Géza',
+      customerAddress: '6722 Szeged, Tisza u. 1.',
+      customerIsPep: false,
+      isLegalEntityCustomer: true,
+      legalEntityName: 'Példa Kft.',
+      legalEntitySeat: '6720 Szeged, Fő tér 2.',
+      legalEntityTaxNumber: '12345678-2-06',
+      legalDeedNumber: 'Cg.06-09-123456',
+      beneficialOwners: [
+        {
+          name: 'Nagy Anna',
+          address: '6721 Szeged, Kossuth u. 3.',
+          birthPlace: 'Szeged',
+          birthDate: '1980-01-01',
+          nationality: 'magyar',
+          interestNature: 'tulajdonos',
+          interestExtent: '60%',
+          isPep: false,
+        },
+        {
+          name: 'Tóth Béla',
+          isPep: true,
+        },
+      ],
+    });
+    expect(content).toContain('Jogi személy neve:');
+    expect(content).toContain('Példa Kft.');
+    expect(content).toContain('Jogi személy székhelye:');
+    expect(content).toContain('6720 Szeged, Fő tér 2.');
+    expect(content).toContain('Okiratszám: Cg.06-09-123456');
+    expect(content).toContain('Adószám: 12345678-2-06');
+    expect(content).toContain('Megbízott neve:');
+    expect(content).toContain('Tényleges tulajdonosok adatai:');
+    expect(content).toContain('1. tulajdonos:');
+    expect(content).toContain('Nagy Anna');
+    expect(content).toContain('2. tulajdonos:');
+    expect(content).toContain('Tóth Béla');
+    expect(content).toContain('Nem közszereplő');
+    expect(content).toContain('A tulaj közszereplő');
+  });
+
+  it('V325 (Batch3-C): nem jogi személy ügyfélnél NINCS jogi blokk', () => {
+    const content = generateReceiptContent({
+      ...baseData,
+      hufAmount: 400000,
+      roundedHufAmount: 400000,
+      customerName: 'Kiss Géza',
+      customerIsPep: false,
+    });
+    expect(content).not.toContain('Jogi személy neve:');
+    expect(content).not.toContain('Tényleges tulajdonosok adatai:');
+  });
+
   it('Batch2-D: orosz állampolgár EUR-vásárlása 300k+ → kétnyelvű NYILATKOZAT/DECLARATION', () => {
     const content = generateReceiptContent({
       ...baseData,

@@ -88,6 +88,13 @@ export interface PendingBuySellInput {
   handlingFeeOverrideType?: string | null
   handlingFeeOverrideReason?: string | null
   customerCardNumber?: string | null
+  /** V325 (Batch3-C): jogi szemely ugyfel + tenyleges tulajdonosok (JSON) az offline outboxban. */
+  isLegalEntityCustomer?: boolean | null
+  legalEntityName?: string | null
+  legalEntitySeat?: string | null
+  legalEntityTaxNumber?: string | null
+  legalDeedNumber?: string | null
+  beneficialOwnersJson?: string | null
 }
 
 export interface PendingConversionInput {
@@ -402,6 +409,13 @@ export async function saveAndSyncPendingBuySell(
           handlingFeeOverrideType: normalizeOptionalText(entry.handlingFeeOverrideType),
           handlingFeeOverrideReason: normalizeOptionalText(entry.handlingFeeOverrideReason),
           customerCardNumber: normalizeOptionalText(entry.customerCardNumber),
+          // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok az offline queue-ba.
+          isLegalEntityCustomer: entry.isLegalEntityCustomer ?? null,
+          legalEntityName: normalizeOptionalText(entry.legalEntityName),
+          legalEntitySeat: normalizeOptionalText(entry.legalEntitySeat),
+          legalEntityTaxNumber: normalizeOptionalText(entry.legalEntityTaxNumber),
+          legalDeedNumber: normalizeOptionalText(entry.legalDeedNumber),
+          beneficialOwnersJson: entry.beneficialOwnersJson ?? null,
         })
       } else {
         // Legacy pozicionalis API — csak az alapmezok mennek at.
