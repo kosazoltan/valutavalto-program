@@ -851,9 +851,15 @@ public class TransferService {
                 .fromBranchId(t.getFromBranch().getId().toString())
                 .fromBranchCode(t.getFromBranch().getCode())
                 .fromBranchName(t.getFromBranch().getName())
+                // FR-1 (bizonylat-doc 2. kör, 2026-06-12): az értéktár-azonosító
+                // ("[region_code]. [név]" fejléc-formátumhoz) a kliens-oldali
+                // label-összeállításhoz — mindkét oldalra, a visszanézett (szem-ikon)
+                // bizonylat is tudjon region-formátumot képezni.
+                .fromBranchRegionCode(t.getFromBranch().getRegionCode())
                 .toBranchId(t.getToBranch().getId().toString())
                 .toBranchCode(t.getToBranch().getCode())
                 .toBranchName(t.getToBranch().getName())
+                .toBranchRegionCode(t.getToBranch().getRegionCode())
                 .fromWorkerId(t.getFromWorker().getId())
                 .fromWorkerName(t.getFromWorker().getName())
                 .toWorkerId(t.getToWorker() != null ? t.getToWorker().getId() : null)

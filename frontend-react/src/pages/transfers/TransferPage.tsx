@@ -123,7 +123,7 @@ export default function TransferPage() {
   // Form state for new transfer
   const [showNewTransfer, setShowNewTransfer] = useState(false)
   const [currencies, setCurrencies] = useState<Currency[]>([])
-  const [branches, setBranches] = useState<{ id: string; code: string; name: string; isVault?: boolean; branchTypeCode?: string; region?: string; vaultTerritoryId?: number | null }[]>([])
+  const [branches, setBranches] = useState<{ id: string; code: string; name: string; isVault?: boolean; branchTypeCode?: string; region?: string; regionCode?: string | null; vaultTerritoryId?: number | null }[]>([])
 
   // New transfer form
   const [transferDirection, setTransferDirection] = useState<'out' | 'in'>('out')
@@ -228,10 +228,19 @@ export default function TransferPage() {
   const isVaultUser = ownBranch?.isVault === true
 
   // FR-4 (fejléc-javítás 2026-06-11): a „Kérő iroda" automatikus kitöltése. Elsődleges forrás a
-  // betöltött branch-törzs (kód + név, a cél-iroda formátummal egyezően); ha az még nem érhető el,
-  // a worker JWT-kontextus branchName/branchCode mezői; „—" csak ha egyik sincs.
+  // betöltött branch-törzs; ha az még nem érhető el, a worker JWT-kontextus branchName/branchCode
+  // mezői; „—" csak ha egyik sincs.
+  // FR-1/FR-5/FR-6 (bizonylat-doc 2. kör, 2026-06-12): ÉRTÉKTÁRNÁL a formátum
+  // "[azonosító]. [Értéktár neve]" (pl. "20. Szeged Értéktár") — az azonosító a
+  // NUMERIKUS branch.region_code (TBD-1 megerősítve: V239 seed, BR020→'20'; a
+  // BranchDto.regionCode hordozza — a .region a SZÖVEGES terület-név, pl.
+  // "SZEGED", Codex #1114). Pénztárnál marad a kód-név (a régió-kód a TERÜLETET
+  // jelöli, több pénztár osztozik rajta — ott nem egyedi azonosító). Hiányzó
+  // kódnál TBD-2 szerint kód-név fallback, sosem "—"/null.
   const vaultLabel = ownBranch
-    ? `${ownBranch.code} - ${ownBranch.name}`
+    ? (ownBranch.isVault && ownBranch.regionCode?.trim()
+      ? `${ownBranch.regionCode.trim()}. ${ownBranch.name}`
+      : `${ownBranch.code} - ${ownBranch.name}`)
     : (worker?.branchName ?? worker?.branchCode ?? '—')
 
   // (Req #2/#3) Iránytól + felhasználó-típustól függő választható átadás-típusok.
@@ -765,9 +774,17 @@ export default function TransferPage() {
   // API-hívás. A Kérő/Cél a kanonikus fromBranch/toBranch mezőkből jön (NEM a bejelentkezett
   // fiók vaultLabel-jéből — visszanézéskor a kiállító eltérhet a nézegetőtől).
   const openDocumentPreview = async (transfer: Transfer) => {
+    // FR-1 (bizonylat-doc 2. kör): az értéktár-oldal "[region_code]. [név]" formátumban
+    // (pl. "20. Szeged Értéktár"), ha a region_code ismert; egyébként kód-név (TBD-2).
+    const regionLabel = (code: string, name: string, region?: string | null) =>
+      region?.trim() ? `${region.trim()}. ${name}` : `${code} - ${name}`
     const fromLabel = `${transfer.fromBranchCode} - ${transfer.fromBranchName}`
     const toLabel = `${transfer.toBranchCode} - ${transfer.toBranchName}`
     const isReceiptDoc = transfer.direction === 'U'
+    // Átadásnál (F) a from-, átvételnél (U) a to-oldal az értéktár (a kiállító).
+    const vaultSideLabel = isReceiptDoc
+      ? regionLabel(transfer.toBranchCode, transfer.toBranchName, transfer.toBranchRegionCode)
+      : regionLabel(transfer.fromBranchCode, transfer.fromBranchName, transfer.fromBranchRegionCode)
     // Batch2-E: offline (electron-queue) sorok nem hordoznak fejléc cím/telefon adatot —
     // fallback a lokális cached_cash_desks mirrorból, kizárólag hiány esetén.
     const vaultContact = (!transfer.vaultAddress || !transfer.vaultPhone)
@@ -780,7 +797,8 @@ export default function TransferPage() {
       receiptNumber: transfer.isCancelled
         ? (transfer.stornoSerialNumber ?? `${transfer.transferNumber}-SZ`)
         : transfer.transferNumber,
-      branchCode: isReceiptDoc ? toLabel : fromLabel,
+      // FR-5/FR-6: a Kérő/Cél mező értéktár-oldala is region-formátumban.
+      branchCode: vaultSideLabel,
       transferTarget: isReceiptDoc ? fromLabel : toLabel,
       transferDocType: isReceiptDoc ? 'receipt' : 'handover',
       cashierName: transfer.fromWorkerName ?? '',
@@ -800,9 +818,9 @@ export default function TransferPage() {
       sealNumber: transfer.sealNumber,
       vaultAddress: transfer.vaultAddress ?? vaultContact.address,
       vaultPhone: transfer.vaultPhone ?? vaultContact.phone,
-      // Batch2-E: a kiállító értéktár azonosító + név a fejlécben (átadásnál a from-,
-      // átvételnél a to-oldal az értéktár).
-      vaultBranchLabel: isReceiptDoc ? toLabel : fromLabel,
+      // Batch2-E + FR-1: a kiállító értéktár azonosító + név a fejlécben,
+      // region-formátumban ("20. Szeged Értéktár"), ha a region_code ismert.
+      vaultBranchLabel: vaultSideLabel,
       isStorno: transfer.isCancelled === true,
       stornoReason: transfer.cancellationReason,
       denominations: transfer.denominations,

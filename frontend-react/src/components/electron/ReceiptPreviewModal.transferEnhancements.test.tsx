@@ -67,7 +67,7 @@ describe('ReceiptPreviewModal — átadás-átvétel bővítések (FK02-E transf
     const { container } = renderModal({ ...base, transferDocType: 'receipt' })
     const txt = container.textContent ?? ''
     expect(txt).toContain('Büntetőjogi felelősségem tudatában')
-    expect(txt).toContain('pénzkészletet a szállítóktól átvettem, azt tökéletesen átszámoltam')
+    expect(txt).toContain('pénzkészletet a szállítóktól átvettem, azt tételesen átszámoltam')
   })
 
   it('Fejléc-javítás FR-5: átadási bizonylaton a jogi nyilatkozat NEM jelenik meg', () => {

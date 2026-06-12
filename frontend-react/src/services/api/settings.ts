@@ -40,7 +40,10 @@ export interface BranchInfo {
   isVault?: boolean
   vaultTerritoryId?: number | null
   branchTypeCode?: string
+  /** Szöveges terület-név (pl. "SZEGED") — display-célú. */
   region?: string
+  /** Numerikus KESZLEX terület-kód (pl. "20") — az értéktár "[azonosító]. [név]" fejléc-formátumához (Codex #1114). */
+  regionCode?: string | null
   // FK-022: a szerkesztő form előtöltéséhez (elérhetőség + bankkód a BranchDto-ból).
   phone?: string
   email?: string

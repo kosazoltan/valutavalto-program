@@ -1310,9 +1310,13 @@ export interface Transfer {
   fromBranchId: string
   fromBranchCode: string
   fromBranchName: string
+  /** FR-1 (bizonylat-doc 2. kör): branch.region_code — az értéktár "[azonosító]. [név]" fejléc-formátumához. */
+  fromBranchRegionCode?: string | null
   toBranchId: string
   toBranchCode: string
   toBranchName: string
+  /** FR-1 (bizonylat-doc 2. kör): branch.region_code — az értéktár "[azonosító]. [név]" fejléc-formátumához. */
+  toBranchRegionCode?: string | null
   fromWorkerId: number
   fromWorkerName: string
   toWorkerId?: number

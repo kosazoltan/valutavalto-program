@@ -13,9 +13,13 @@ public class TransferDto {
     private String fromBranchId;
     private String fromBranchCode;
     private String fromBranchName;
+    /** FR-1 (bizonylat-doc 2. kör): branch.region_code — az értéktár "[azonosító]. [név]" fejléc-formátumához. */
+    private String fromBranchRegionCode;
     private String toBranchId;
     private String toBranchCode;
     private String toBranchName;
+    /** FR-1 (bizonylat-doc 2. kör): branch.region_code — az értéktár "[azonosító]. [név]" fejléc-formátumához. */
+    private String toBranchRegionCode;
     private Long fromWorkerId;
     private String fromWorkerName;
     private Long toWorkerId;
