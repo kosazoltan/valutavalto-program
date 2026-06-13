@@ -9,7 +9,11 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "Bash(python3 scripts/legacy-transfer.py self-test)"
+      "Bash(git pull *)",
+      "Bash(python3 scripts/legacy-transfer.py self-test)",
+      "Bash(node scripts/check-version-sync.mjs)",
+      "Bash(curl -s -m 15 https://excvaluta.com/api/v1/auth/bootstrap-status)",
+      "Bash(curl -s -m 15 \"https://excvaluta.com/api/v1/public/branches?companyCode=EBC\")"
     ]
   }
 }
