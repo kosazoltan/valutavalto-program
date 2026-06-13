@@ -288,19 +288,33 @@ public class WorkerService {
     @Transactional(readOnly = true)
     public List<WorkerDto> findAllByCompany() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        return workerRepository.findByCompanyId(companyId).stream()
-                .map(WorkerDto::from)
-                .collect(Collectors.toList());
+        return toDtosWithRoleCodes(workerRepository.findByCompanyId(companyId));
     }
-    
+
     /**
      * Aktív dolgozók
      */
     @Transactional(readOnly = true)
     public List<WorkerDto> findActiveWorkers() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        return workerRepository.findByCompanyIdAndActiveTrue(companyId).stream()
-                .map(WorkerDto::from)
+        return toDtosWithRoleCodes(workerRepository.findByCompanyIdAndActiveTrue(companyId));
+    }
+
+    /**
+     * FK-026: worker-lista → WorkerDto-lista, a {@code roleCodes} mezőket EGY batch-lekérdezésből
+     * (N+1 elkerülése, FR-3). A {@code region} a WorkerDto.from-ban a Worker.region-ből töltődik.
+     */
+    private List<WorkerDto> toDtosWithRoleCodes(List<Worker> workers) {
+        if (workers.isEmpty()) {
+            return List.of();
+        }
+        List<Long> workerIds = workers.stream().map(Worker::getId).collect(Collectors.toList());
+        Map<Long, List<String>> roleCodesByWorker = roleAssignmentRepository.findByWorkerIdIn(workerIds).stream()
+                .collect(Collectors.groupingBy(
+                        wra -> wra.getWorker().getId(),
+                        Collectors.mapping(wra -> wra.getRoleDef().getCode(), Collectors.toList())));
+        return workers.stream()
+                .map(w -> WorkerDto.from(w, roleCodesByWorker.getOrDefault(w.getId(), List.of())))
                 .collect(Collectors.toList());
     }
     

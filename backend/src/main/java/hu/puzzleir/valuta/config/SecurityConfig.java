@@ -87,6 +87,12 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/workers/me").authenticated()
                 .requestMatchers("/api/v1/workers/active").authenticated()
 
+                // FK-026 (Codex #1124 P1): a Dolgozói Törzs read-only lista olvasó szerepköreinek
+                // (foertektar, belso_ellenor, ugyvezeto) is hozzá kell férniük — a /workers/**
+                // SUPERVISOR/MANAGER/ADMIN matcher ELÉ, hogy ne essen 403-ba a kanonikus olvasó.
+                .requestMatchers("/api/v1/workers/directory").hasAnyRole(
+                        "SUPERVISOR", "MANAGER", "ADMIN", "FOERTEKTAR", "BELSO_ELLENOR", "UGYVEZETO")
+
                 // Worker management - csak SUPERVISOR és feljebb (a többi endpoint)
                 .requestMatchers("/api/v1/workers/**").hasAnyRole("SUPERVISOR", "MANAGER", "ADMIN")
 

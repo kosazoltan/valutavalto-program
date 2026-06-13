@@ -28,6 +28,7 @@ const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'))
 const SetupWizard = lazy(() => import('./pages/setup/SetupWizard'))
 const CustomerDisplayPage = lazy(() => import('./pages/customer-display/CustomerDisplayPage'))
 const WorkerPage = lazy(() => import('./pages/workers/WorkerPage'))
+const WorkersDatabasePage = lazy(() => import('./pages/workers/WorkersDatabasePage'))
 const TransitPage = lazy(() => import('./pages/transit/TransitPage'))
 const NotFoundPage = lazy(() => import('./pages/common/NotFoundPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
@@ -574,6 +575,16 @@ export default function App() {
             element={
               <RoleGate canonicalRoles={['foertektar', 'ugyvezeto']}>
                 <BranchEditPage />
+              </RoleGate>
+            }
+          />
+          {/* FK-026: Dolgozói Törzs Adatbázis read-only lista (Adminisztráció menücsoport).
+              Ugyanaz a szerepkör-gate, mint a Pénztár Törzs Adatbázisnál (olvasó szerepek). */}
+          <Route
+            path="/admin/workers-database"
+            element={
+              <RoleGate canonicalRoles={['foertektar', 'belso_ellenor', 'ugyvezeto']}>
+                <WorkersDatabasePage />
               </RoleGate>
             }
           />

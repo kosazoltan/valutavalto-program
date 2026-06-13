@@ -12160,6 +12160,8 @@ export interface components {
             lastName?: string;
             fullName?: string;
             role?: string;
+            region?: string;
+            roleCodes?: string[];
             branchId?: string;
             branchCode?: string;
             branchName?: string;
