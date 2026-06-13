@@ -339,10 +339,6 @@ export default function MainRateSheetPage() {
   const [serverSyncState, setServerSyncState] = useState<'loading' | 'online' | 'offline' | 'idle'>('idle')
   const [serverLastSyncAt, setServerLastSyncAt] = useState<string | null>(null)
   const currencyIdMapRef = useRef<Map<string, number>>(new Map())
-  // Codex+Copilot PR #687: a szerver utolso szinkron snapshot-ja - csak ennek
-  // alapján döntheti el a dispatch hogy egy row tényleg módosult-e a szinkron óta.
-  // Map<currencyCode, { weakMultiBuy, weakMultiSell, settlement }>
-  const serverSnapshotRef = useRef<Map<string, { weakMultiBuy: number; weakMultiSell: number; settlement: number }>>(new Map())
 
   // Computed cross settlement for G column
   const eurRow = useMemo(() => rows.find(r => r.currency === 'EUR'), [rows])
@@ -749,17 +745,9 @@ export default function MainRateSheetPage() {
 
         // Codex+Copilot PR #687: ne irjuk felul a user altal in-flight szerkesztett
         // row-okat. Ha a `dirty` flag mar igaz mire a szerver-resp visszater, a user
-        // mar editelt - csak a snapshot-ot rogzitjuk, a row-okat erintetlen hagyjuk.
-        const snapshot = new Map<string, { weakMultiBuy: number; weakMultiSell: number; settlement: number }>()
-        for (const [code, sr] of codeToServerRate.entries()) {
-          snapshot.set(code, {
-            weakMultiBuy: Number(sr.baseBuyRate) || 0,
-            weakMultiSell: Number(sr.baseSellRate) || 0,
-            settlement: Number(sr.officialRate) || 0,
-          })
-        }
-        serverSnapshotRef.current = snapshot
-
+        // mar editelt — a row-okat erintetlen hagyjuk (csak a tagsagot frissitjuk lent).
+        // (FK05 #1118: a korabbi szerver-snapshot diff-tracking megszunt — a Folap
+        // szetkuldese az osszes munkacsoportot publikalja, nem diff-alapon.)
         if (dirtyRef.current) {
           // User mar editelt (dirtyRef: a VALASZKORI allapot, nem a stale closure — verif P1).
           // Az ERTEKEIT nem irjuk felul szerver-rataval, de a sorlista TAGSAGAT a friss
