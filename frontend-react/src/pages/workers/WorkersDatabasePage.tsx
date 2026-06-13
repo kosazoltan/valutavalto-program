@@ -9,7 +9,10 @@ import type { components } from '@valuta/shared-api'
 
 // FK-026: read-only Dolgozói Törzs Adatbázis lista. A backend GET /api/v1/workers
 // most már tartalmazza a region és roleCodes mezőket (WorkerDto bővítés).
-type Worker = components['schemas']['WorkerDto']
+// Copilot #1124: az OpenAPI WorkerDto minden mezője opcionális; a WorkerPage-hez hasonló
+// "local kontraktus" — a stabil mezőket (id/workerCode/fullName) nem-null-ként kezeljük.
+type WorkerDto = components['schemas']['WorkerDto']
+type Worker = Required<Pick<WorkerDto, 'id' | 'workerCode' | 'fullName'>> & Partial<WorkerDto>
 
 interface GroupDef {
   key: string
@@ -183,7 +186,10 @@ export default function WorkersDatabasePage() {
     try {
       setLoading(true)
       setError(null)
-      const res = await api.get('/workers')
+      // FK-026 (Codex #1124 P1): dedikált read-only directory végpont, amely a kanonikus
+      // olvasó szerepköröknek (foertektar/belso_ellenor/ugyvezeto) is elérhető — a sima
+      // /workers SUPERVISOR/MANAGER/ADMIN-ra korlátoz, így 403 lenne 2 szerepkörnél.
+      const res = await api.get('/workers/directory')
       setWorkers(safeArray<Worker>(res.data))
     } catch (err) {
       logger.error('WorkersDatabasePage', 'load error', err)

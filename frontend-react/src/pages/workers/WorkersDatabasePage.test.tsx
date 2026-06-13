@@ -35,7 +35,7 @@ const WORKERS = [
 
 function mockApi() {
   mockGet.mockImplementation((url: string) => {
-    if (typeof url === 'string' && url === '/workers') return Promise.resolve({ data: WORKERS })
+    if (typeof url === 'string' && url === '/workers/directory') return Promise.resolve({ data: WORKERS })
     return Promise.resolve({ data: [] })
   })
 }

@@ -96,12 +96,35 @@ public class WorkerController {
     
     /**
      * Aktív dolgozók
-     * 
+     *
      * GET /api/v1/workers/active
      */
     @GetMapping("/active")
     public ResponseEntity<List<WorkerDto>> getActiveWorkers() {
         List<WorkerDto> workers = workerService.findActiveWorkers();
+        return ResponseEntity.ok(workers);
+    }
+
+    /**
+     * FK-026: Dolgozói Törzs Adatbázis read-only lista (aktív + inaktív, region + roleCodes).
+     *
+     * GET /api/v1/workers/directory
+     *
+     * Külön végpont a /workers-től: a /api/v1/workers/** HTTP-matcher SUPERVISOR/MANAGER/ADMIN-ra
+     * korlátoz (worker-karbantartás), de a Dolgozói Törzs lista kanonikus olvasó szerepköreinek
+     * (foertektar, belso_ellenor, ugyvezeto) is hozzá kell férniük (Codex #1124 P1). A SecurityConfig
+     * ezt a pontos útvonalat ezekre a szerepkörökre engedélyezi; ugyanazt a teljes (aktív+inaktív)
+     * dolgozólistát adja vissza, mint a findAllByCompany — az /active-tól eltérően az inaktívakat is
+     * (FK-026 FR-12). Tenant-izolált (SecurityUtils companyId).
+     *
+     * Itt a method-szintű @PreAuthorize EFFEKTÍV (ellentétben a /workers GET-tel, Codex #1059):
+     * a /workers/directory HTTP-matcher SZÁNDÉKOSAN megengedő ezekre a szerepkörökre, így a
+     * method-gate a vele konzisztens, tesztelhető védelmi réteg (deny-by-default, §2).
+     */
+    @PreAuthorize("hasAnyRole('SUPERVISOR','MANAGER','ADMIN','FOERTEKTAR','BELSO_ELLENOR','UGYVEZETO')")
+    @GetMapping("/directory")
+    public ResponseEntity<List<WorkerDto>> getWorkerDirectory() {
+        List<WorkerDto> workers = workerService.findAllByCompany();
         return ResponseEntity.ok(workers);
     }
     
