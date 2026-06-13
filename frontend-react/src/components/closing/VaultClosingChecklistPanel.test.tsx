@@ -92,9 +92,9 @@ describe('VaultClosingChecklistPanel', () => {
     // API hívódik
     await waitFor(() => expect(mocks.getOrCreate).toHaveBeenCalledWith(BRANCH_ID, DATE))
 
-    // Az 1. tétel szövege megjelenik
+    // Az 1. tétel szövege megjelenik (findBy: bevárja a betöltés utáni renderét)
     expect(
-      screen.getByText(/Minden pénztár készlete feltöltve/),
+      await screen.findByText(/Minden pénztár készlete feltöltve/),
     ).toBeInTheDocument()
 
     // "Zárás véglegesítése" gomb látható (még nincs completedAt)
@@ -109,8 +109,8 @@ describe('VaultClosingChecklistPanel', () => {
     render(<VaultClosingChecklistPanel date={DATE} />)
     await waitFor(() => expect(mocks.getOrCreate).toHaveBeenCalled())
 
-    // Kattintás az 1. tételre
-    const firstItemButton = screen.getByRole('button', { name: /Minden pénztár készlete feltöltve/ })
+    // Kattintás az 1. tételre (findBy: bevárja a betöltés utáni renderét)
+    const firstItemButton = await screen.findByRole('button', { name: /Minden pénztár készlete feltöltve/ })
     await userEvent.click(firstItemButton)
 
     await waitFor(() =>
@@ -137,12 +137,16 @@ describe('VaultClosingChecklistPanel', () => {
     await waitFor(() => expect(mocks.getOrCreate).toHaveBeenCalled())
 
     // "Zárás véglegesítése" gomb kattintás
-    await userEvent.click(screen.getByText('Zárás véglegesítése'))
+    await userEvent.click(await screen.findByText('Zárás véglegesítése'))
 
     // Dialógus megjelenik (FR-ZARUI-26 title)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('Ellenőrző személy adatai')).toBeInTheDocument()
     expect(screen.getByText('A zárószalagot kérem aláírni')).toBeInTheDocument()
+
+    // Autofókusz a név mezőn — determinisztikus (nincs késleltetett fókusz-timer,
+    // ami gépelés közben átirányítaná a billentyűleütéseket)
+    expect(screen.getByLabelText(/Ellenőrző neve/)).toHaveFocus()
 
     // Kitöltés
     await userEvent.type(screen.getByLabelText(/Ellenőrző neve/), 'Kovács Péter')
@@ -168,8 +172,12 @@ describe('VaultClosingChecklistPanel', () => {
     render(<VaultClosingChecklistPanel date={DATE} />)
     await waitFor(() => expect(mocks.getOrCreate).toHaveBeenCalled())
 
-    await userEvent.click(screen.getByText('Zárás véglegesítése'))
+    await userEvent.click(await screen.findByText('Zárás véglegesítése'))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    // Autofókusz a név mezőn — determinisztikus (nincs késleltetett fókusz-timer,
+    // ami a Beosztás mezőbe gépelés közben visszalopná a fókuszt)
+    expect(screen.getByLabelText(/Ellenőrző neve/)).toHaveFocus()
 
     // Csak a beosztást töltjük ki, a nevet nem → a véglegesítő gomb tiltott marad,
     // így üres névvel fizikailag nem indítható a complete (a validate() a 2. védelmi réteg).
@@ -194,8 +202,8 @@ describe('VaultClosingChecklistPanel', () => {
     render(<VaultClosingChecklistPanel date={DATE} />)
     await waitFor(() => expect(mocks.getOrCreate).toHaveBeenCalled())
 
-    // "Zárás véglegesítve" státusz
-    expect(screen.getByText('Zárás véglegesítve')).toBeInTheDocument()
+    // "Zárás véglegesítve" státusz (findBy: bevárja a betöltés utáni renderét)
+    expect(await screen.findByText('Zárás véglegesítve')).toBeInTheDocument()
 
     // "Zárás véglegesítése" gomb NEM látható
     expect(screen.queryByText('Zárás véglegesítése')).not.toBeInTheDocument()

@@ -36,8 +36,10 @@ export default function VaultClosingAuditorDialog({ open, onConfirm, onCancel, s
       setAuditorRole('')
       setNameError('')
       setRoleError('')
-      // fókusz az első mezőre, kis késleltetés a DOM render után
-      setTimeout(() => nameRef.current?.focus(), 50)
+      // Szinkron fókusz: az effect a DOM-commit UTÁN fut, késleltetés nem kell.
+      // (A korábbi 50ms-es setTimeout gépelés közben ellopta a fókuszt a
+      // Beosztás mezőtől — flaky teszt + valós UX-hiba gyors felhasználónál.)
+      nameRef.current?.focus()
     }
   }, [open])
 
