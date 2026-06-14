@@ -3,14 +3,16 @@ title: Code Signing Setup Path — Cert → CI → Signed Release (Azure Key Vau
 type: runbook
 project: Valutavalto-program (BEC ERP)
 created_at: 2026-05-14
-updated_at: 2026-05-18
+updated_at: 2026-06-14
 valid_until: cert kiadás után 3 év (~2029-05)
-status: ACTIVE — DigiCert EV CS validation alatt
+status: ACTIVE — signing LIVE (DigiCert EV CS kiadva, Azure KV-ban; aláírás operatív)
 hsm_platform: Azure Key Vault Premium HSM (DigiCert EV CS Azure-native, 2026-05-15 pivot után)
 cert_vendor_history:
   - 2026-05-14: Sectigo OV CS via SignMyCode ($659.97, BYOH Azure KV) — RENDELVE
   - 2026-05-15: Sectigo OV CS CANCELLED (store credit megtartva) — PIVOT-OK
   - 2026-05-15: DigiCert EV CS ($559.99/év, Azure-native) — UJ RENDELES
+  - 2026-06-07: cert KIADVA + Azure KV-ba importálva — első aláírt release (v2.27.96)
+  - 2026-06-14: aláírás megerősítve LIVE (v2.28.6 — signer CN=EXCLUSIVE BEST Change Zrt., EV CS)
 ---
 
 # Code Signing Setup Path — Cert → CI → Signed Release
@@ -20,6 +22,13 @@ cert_vendor_history:
 > jelenleg aktiv terv: **DigiCert EV CS Azure-native**.
 >
 > A pivot reszletei: `vault/sessions/2026-05-15-digicert-hsm-approval.md`.
+
+> **✅ STÁTUSZ (2026-06-14): ALÁÍRÁS ÉL.** A DigiCert EV CS cert ki van adva és az Azure Key
+> Vault Premium HSM-ben van; a `windows-signed-release.yml` 2026-06-07 óta sikeresen ír alá
+> (AzureSignTool, „Signing completed successfully."). Aláírt release-ek: v2.27.96–v2.27.99,
+> majd v2.28.6 (signer: `CN=EXCLUSIVE BEST Change Zrt.`, EV CS). FIGYELEM: v2.27.100–v2.28.5
+> tévesen UNSIGNED-ként ment ki — az alapértelmezett ÉS helyes út az **aláírt**
+> `windows-signed-release.yml`; az unsigned csak fallback.
 
 A `windows-signed-release.yml` workflow CSAK akkor mukodokepes, ha a teljes **4 lepeses lanc** fut:
 
