@@ -18,6 +18,7 @@
     "check:ipc": "node scripts/check-ipc-contract.mjs",
     "lint": "eslint electron vite.config.ts vitest.config.ts",
     "test": "vitest --config vitest.config.ts --run",
+    "test:unit": "vitest --config vitest.config.ts --run --exclude '**/*.integration.test.ts'",
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:e2e:list": "playwright test --config playwright.config.ts --list"
   },
