@@ -8,6 +8,10 @@ name: Neon Schema Verify (read-only)
 
 on:
   workflow_dispatch:
+  # IDEIGLENES: egyszeri Neon-allapot megfigyelesehez ezen a branchen. PR elott eltavolitando.
+  push:
+    branches: [ops/deploy-gate-db-verify]
+    paths: ['.github/workflows/neon-schema-verify.yml']
 
 permissions:
   contents: read
