@@ -68,30 +68,55 @@ jobs:
             echo "=== Neon backup-szinkron bekapcsolas: $ENVFILE modositas ==="
             NEON_URL=$(printf '%s' "$NEON_URL_B64" | base64 -d)
             if [ -z "$NEON_URL" ]; then echo "::error::ures NEON_URL a dekodolas utan"; exit 1; fi
-            # Biztonsagi masolat (visszaallithatosag)
-            cp -a "$ENVFILE" "$ENVFILE.bak.$(date +%Y%m%d%H%M%S)"
-            # Idempotencia: korabbi NEON_SYNC_ENABLED / NEON_DATABASE_URL sorok eltavolitasa, majd hozzafuzes
+            # Biztonsagi masolat (visszaallithatosag) — ezt allitja vissza az auto-rollback is
+            BAK="$ENVFILE.bak.$(date +%Y%m%d%H%M%S)"
+            cp -a "$ENVFILE" "$BAK"
+            # Idempotencia: korabbi NEON_SYNC_ENABLED / NEON_DATABASE_URL sorok eltavolitasa
             sed -i '/^NEON_SYNC_ENABLED=/d; /^NEON_DATABASE_URL=/d' "$ENVFILE"
+            # KRITIKUS: zaro sortores garancia — kulonben a >> az utolso sorra (fo DB-jelszo) tapad
+            # es elrontja a fo DB-kapcsolatot (ez okozta a korabbi 502-t).
+            [ -n "$(tail -c1 "$ENVFILE")" ] && printf '\n' >> "$ENVFILE"
             printf 'NEON_SYNC_ENABLED=true\n' >> "$ENVFILE"
             printf 'NEON_DATABASE_URL=%s\n' "$NEON_URL" >> "$ENVFILE"
             chown valuta:valuta "$ENVFILE"
             chmod 600 "$ENVFILE"
-            echo ".env frissitve (NEON_SYNC_ENABLED + NEON_DATABASE_URL hozzaadva, jelszo nem logolva)"
+            # VALIDACIO: a ket uj sornak pontosan sor-elejen kell allnia (kulonben append-corrupcio)
+            OK_EN=$(grep -c '^NEON_SYNC_ENABLED=true$' "$ENVFILE" || true)
+            OK_URL=$(grep -c '^NEON_DATABASE_URL=' "$ENVFILE" || true)
+            if [ "$OK_EN" != "1" ] || [ "$OK_URL" != "1" ]; then
+              echo "::error::.env validacio BUKOTT (NEON_SYNC_ENABLED=$OK_EN, NEON_DATABASE_URL=$OK_URL) — append-corrupcio, visszaallitas restart NELKUL"
+              cp -a "$BAK" "$ENVFILE"; chown valuta:valuta "$ENVFILE"; chmod 600 "$ENVFILE"
+              exit 1
+            fi
+            echo ".env frissitve es validalva (NEON_SYNC_ENABLED + NEON_DATABASE_URL sor-elejen, jelszo nem logolva)"
             echo "NEON_DATABASE_URL host: $(echo "$NEON_URL" | sed -E 's|.*@||; s|/.*||')"
             echo "=== valuta-backend.service restart ==="
             systemctl restart valuta-backend.service
             sleep 18
-            systemctl is-active valuta-backend.service || { journalctl -u valuta-backend.service -n 40 --no-pager; echo "::error::backend nem aktiv a restart utan"; exit 1; }
-            echo "service aktiv."
-            # A conditional Neon bean betoltodott-e (NeonDataSourceConfig log-sora)
-            echo "Neon bean log: $(journalctl -u valuta-backend.service -n 400 --no-pager | grep -o 'Neon DataSource konfigural[^"]*' | tail -1 || echo '(nem talalt log-sor — ellenorzes kell)')"
-            # Health
-            for i in 1 2 3 4 5 6; do
+            # Health — ha NEM all fel 200-ra, AUTO-ROLLBACK (a prod NEM maradhat 502-n)
+            HEALTHY=0
+            for i in 1 2 3 4 5 6 7 8; do
               CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 http://localhost:8080/api/v1/auth/bootstrap-status || echo 000)
               echo "health attempt $i: HTTP $CODE"
-              [ "$CODE" = "200" ] && break
+              [ "$CODE" = "200" ] && { HEALTHY=1; break; }
               sleep 10
             done
+            if [ "$HEALTHY" != "1" ]; then
+              echo "::error::backend NEM all fel 200-ra a Neon-bekapcsolas utan — AUTO-ROLLBACK"
+              journalctl -u valuta-backend.service -n 50 --no-pager
+              cp -a "$BAK" "$ENVFILE"; chown valuta:valuta "$ENVFILE"; chmod 600 "$ENVFILE"
+              systemctl restart valuta-backend.service
+              sleep 18
+              for i in 1 2 3 4 5 6; do
+                CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 http://localhost:8080/api/v1/auth/bootstrap-status || echo 000)
+                echo "rollback health attempt $i: HTTP $CODE"
+                [ "$CODE" = "200" ] && { echo "=== AUTO-ROLLBACK OK — prod helyreallt, a Neon-bekapcsolas NEM sikerult ==="; exit 1; }
+                sleep 10
+              done
+              echo "::error::AUTO-ROLLBACK utan sem 200 — KEZI beavatkozas kell"
+              exit 1
+            fi
+            echo "service 200 — Neon bean log: $(journalctl -u valuta-backend.service -n 500 --no-pager | grep -o 'Neon DataSource konfigural[^\"]*' | tail -1 || echo '(nincs log-sor)')"
             # Az elso scheduled sync (fixedDelay) ~indulaskor fut; varjunk ra es nezzuk a logot
             echo "=== Neon sync-log varas (max ~60s) ==="
             for i in 1 2 3 4 5 6; do
