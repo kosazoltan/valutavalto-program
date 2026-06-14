@@ -30,13 +30,18 @@ import java.util.Optional;
 @Slf4j
 public class NeonReplicationService {
 
+    // FONTOS: csak a forras sémában TÉNYLEGESEN létező táblák szerepelhetnek. A korábbi
+    // "stock_snapshot" és "denomination_inventory" nevek soha nem léteztek (sem migráció,
+    // sem @Table entitás), ezért minden ciklusban BadSqlGrammarException (undefined_table)
+    // hibát dobtak, és látszat-lefedettséget keltettek. Eltávolítva (2026-06-14, prod
+    // journal-diagnózis). Új tábla felvétele elott ellenorizd, hogy a Neon CÉL DB-ben is
+    // létezik-e (az upsert ON CONFLICT (id)-t feltételez), és van-e updated_at/created_at
+    // (különben a no-op fullSync ágra esik).
     private static final List<String> SYNC_TABLES = List.of(
             "transaction",
             "receipt",
             "daily_balance",
-            "stock_snapshot",
             "cash_balance",
-            "denomination_inventory",
             "transfer",
             "shipment_request",
             "decade_report",
@@ -86,6 +91,14 @@ public class NeonReplicationService {
      * Egy tábla incremental szinkronizálása.
      */
     int syncTable(String tableName) {
+        // Guard: ha a tábla nem létezik a forrás sémában, ne nyers SQL-kivétellel hasaljon
+        // el minden ciklusban (BadSqlGrammarException), hanem tiszta, akcionálható log + SKIPPED.
+        if (!tableExists(tableName)) {
+            log.warn("Neon sync [{}]: a tábla NEM létezik a forrás DB-ben — kihagyva (ellenőrizd a SYNC_TABLES konfigurációt)", tableName);
+            logSyncResult(tableName, 0, "SKIPPED_TABLE_MISSING", "Tábla nem létezik a forrás sémában");
+            return 0;
+        }
+
         LocalDateTime lastSync = getLastSuccessfulSync(tableName);
         String timestampColumn = detectTimestampColumn(tableName);
 
@@ -223,6 +236,24 @@ public class NeonReplicationService {
         // Ez egyszerű de biztonságos backup célra
         logSyncResult(tableName, 0, "SKIPPED_NO_TIMESTAMP", "Tábla timestamp oszlop nélkül");
         return 0;
+    }
+
+    /**
+     * Tábla létezés-ellenőrzés a forrás (primary) sémában.
+     * Megakadályozza, hogy egy hibásan konfigurált / nem létező táblanév
+     * minden sync-ciklusban undefined_table SQL-kivételt dobjon.
+     */
+    private boolean tableExists(String tableName) {
+        try {
+            Integer n = primaryJdbc.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?",
+                    Integer.class, tableName);
+            return n != null && n > 0;
+        } catch (Exception e) {
+            // Ha maga az ellenőrzés is elhasal, ne blokkoljuk a többi tábla sync-jét.
+            log.warn("Neon sync [{}]: tábla-létezés ellenőrzés hiba: {}", tableName, e.getMessage());
+            return false;
+        }
     }
 
     /**
