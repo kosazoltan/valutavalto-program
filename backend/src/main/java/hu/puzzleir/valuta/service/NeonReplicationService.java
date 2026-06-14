@@ -18,11 +18,15 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Neon DB replikációs szolgáltatás.
  * 5 percenként szinkronizálja a kritikus táblákat a Hetzner VPS-ről a Neon backup DB-be.
- * Incremental sync: csak az utolsó sync óta módosult rekordokat másolja (updated_at alapján).
+ * Két sync-mód:
+ *  - Incremental: csak az utolsó sync óta módosult rekordok (updated_at/created_at alapján).
+ *  - Teljes-snapshot (FULL_SYNC_TABLES): a tábla teljes tartalmának upsert-elése minden
+ *    ciklusban — kis, kritikus tábláknál, ahol nincs megbízható inkrementális idobélyeg.
  * Ha a Neon elérhetetlen → WARNING log, NEM blokkolja a fő működést.
  */
 @Service
@@ -35,8 +39,7 @@ public class NeonReplicationService {
     // sem @Table entitás), ezért minden ciklusban BadSqlGrammarException (undefined_table)
     // hibát dobtak, és látszat-lefedettséget keltettek. Eltávolítva (2026-06-14, prod
     // journal-diagnózis). Új tábla felvétele elott ellenorizd, hogy a Neon CÉL DB-ben is
-    // létezik-e (az upsert ON CONFLICT (id)-t feltételez), és van-e updated_at/created_at
-    // (különben a no-op fullSync ágra esik).
+    // létezik-e (az upsert ON CONFLICT (id)-t feltételez, tehát kell 'id' PK).
     private static final List<String> SYNC_TABLES = List.of(
             "transaction",
             "receipt",
@@ -45,8 +48,24 @@ public class NeonReplicationService {
             "transfer",
             "shipment_request",
             "decade_report",
-            "cash_register_event"
+            "cash_register_event",
+            // 2026-06-14: backup-lefedettség bővítés — a korábbi fantom-nevek valós megfelelői.
+            "currency_stock",        // élő deviza-készlet (id BIGSERIAL PK); teljes-snapshot
+            "denomination_balance"   // címlet-egyenleg (id UUID PK); teljes-snapshot
     );
+
+    // Teljes-snapshottal mentett táblák (a fullSync ág): kicsi, kritikus táblák, ahol nincs
+    // MEGBÍZHATÓ inkrementális idobélyeg, ezért minden ciklusban a teljes tartalmat upsert-eljük.
+    //  - currency_stock: csak last_updated (a detectTimestampColumn nem ismeri fel), kicsi tábla
+    //  - denomination_balance: az updated_at NULL maradhat (nincs @PrePersist) -> az inkrementális
+    //    ág kihagyná a soha nem módosított sorokat; a teljes-snapshot hiánytalan
+    private static final Set<String> FULL_SYNC_TABLES = Set.of(
+            "currency_stock",
+            "denomination_balance"
+    );
+
+    // Teljes-snapshot felso korlatja (felette skip + loud log, hogy ne terheljuk a Neont).
+    private static final int MAX_FULL_SYNC_ROWS = 50_000;
 
     private static final int BATCH_SIZE = 500;
 
@@ -97,6 +116,11 @@ public class NeonReplicationService {
             log.warn("Neon sync [{}]: a tábla NEM létezik a forrás DB-ben — kihagyva (ellenőrizd a SYNC_TABLES konfigurációt)", tableName);
             logSyncResult(tableName, 0, "SKIPPED_TABLE_MISSING", "Tábla nem létezik a forrás sémában");
             return 0;
+        }
+
+        // Explicit teljes-snapshot táblák (nincs megbízható inkrementális idobélyeg).
+        if (FULL_SYNC_TABLES.contains(tableName)) {
+            return fullSync(tableName);
         }
 
         LocalDateTime lastSync = getLastSuccessfulSync(tableName);
@@ -222,20 +246,47 @@ public class NeonReplicationService {
     }
 
     /**
-     * Full sync — ha nincs timestamp oszlop (ritka eset).
+     * Teljes-snapshot szinkronizáció — timestamp-oszlop nélküli / explicit teljes-snapshot
+     * táblákhoz. A tábla TELJES tartalmát beolvassa és upsert-eli a Neonba (ON CONFLICT id).
+     * Törlést NEM végez (konzisztens az inkrementális ág nem-törlő backup-filozófiájával);
+     * MAX_FULL_SYNC_ROWS felett skip + loud log, hogy ne terheljük a Neont.
      */
     private int fullSync(String tableName) {
-        // Full sync csak kis tábláknál — egyébként skip
         Integer count = primaryJdbc.queryForObject(
                 String.format("SELECT COUNT(*) FROM \"%s\"", tableName), Integer.class);
-        if (count == null || count > 10000) {
-            log.warn("Neon sync [{}]: túl nagy tábla full sync-hez ({} sor), skip", tableName, count);
+        if (count == null || count == 0) {
+            logSyncResult(tableName, 0, "SUCCESS", null);
             return 0;
         }
-        // Kis tábláknál: TRUNCATE + INSERT
-        // Ez egyszerű de biztonságos backup célra
-        logSyncResult(tableName, 0, "SKIPPED_NO_TIMESTAMP", "Tábla timestamp oszlop nélkül");
-        return 0;
+        if (count > MAX_FULL_SYNC_ROWS) {
+            log.warn("Neon sync [{}]: túl nagy tábla teljes-snapshothoz ({} sor > limit {}), skip",
+                    tableName, count, MAX_FULL_SYNC_ROWS);
+            logSyncResult(tableName, 0, "SKIPPED_TOO_LARGE",
+                    "Teljes-snapshot tábla " + count + " sor > " + MAX_FULL_SYNC_ROWS);
+            return 0;
+        }
+
+        LocalDateTime syncStart = LocalDateTime.now();
+        List<Object[]> rows = new ArrayList<>();
+        List<String> columnNames = new ArrayList<>();
+
+        primaryJdbc.query(String.format("SELECT * FROM \"%s\"", tableName), rs -> {
+            if (columnNames.isEmpty()) {
+                ResultSetMetaData meta = rs.getMetaData();
+                for (int i = 1; i <= meta.getColumnCount(); i++) {
+                    columnNames.add(meta.getColumnName(i));
+                }
+            }
+            Object[] row = new Object[columnNames.size()];
+            for (int i = 0; i < columnNames.size(); i++) {
+                row[i] = rs.getObject(i + 1);
+            }
+            rows.add(row);
+        });
+
+        int synced = upsertToNeon(tableName, columnNames, rows);
+        logSyncResult(tableName, synced, "SUCCESS", null, syncStart);
+        return synced;
     }
 
     /**
