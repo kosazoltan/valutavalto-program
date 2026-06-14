@@ -1,0 +1,51 @@
+name: Hetzner DB Check (read-only)
+
+# Egyszeri/igény szerinti, KIZÁRÓLAG OLVASÓ ellenőrzés a Hetzner prod 'valuta' DB-n a
+# meglévő deploy-secret SSH-kulccsal (ugyanaz, amivel a deploy-hetzner.yml dolgozik).
+# Célja: a prod DB migráció-verziójának igazolása + a Neon backup-szinkron env állapota.
+# NEM módosít semmit (csak SELECT + systemctl show). A connection string jelszava maszkolva.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  db-check:
+    name: Read-only prod DB + backup-sync check
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Set up SSH (deploy key)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Read-only DB + backup-sync env check
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -uo pipefail
+            echo "## Hetzner prod 'valuta' DB — read-only állapot" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+            echo "=== Prod 'valuta' DB állapot (read-only) ==="
+            echo "hostname        : $(hostname)"
+            echo "max migráció    : V$(sudo -u postgres psql -d valuta -tAc "SELECT max(version::int) FROM flyway_schema_history WHERE version ~ '^[0-9]+\$'" 2>/dev/null)"
+            echo "RUB.is_active   : $(sudo -u postgres psql -d valuta -tAc "SELECT is_active FROM currency WHERE code='RUB'" 2>/dev/null)"
+            echo "aktív valuták   : $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FILTER (WHERE is_active) FROM currency" 2>/dev/null)"
+            echo "curr_stock VAULT: $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM currency_stock WHERE entity_type='VAULT'" 2>/dev/null)"
+            echo "vault_territory : $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM vault_territory" 2>/dev/null)"
+            echo "worker_role_asg : $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM worker_role_assignment" 2>/dev/null)"
+            echo "Szeged ÉT stock : $(sudo -u postgres psql -d valuta -tAc "SELECT (SELECT count(*) FROM currency_stock cs WHERE cs.entity_type='VAULT' AND cs.entity_id=b.vault_territory_id::text) FROM branch b WHERE b.name ILIKE '%Szeged Értéktár%'" 2>/dev/null)"
+            echo ""
+            echo "=== Neon backup-szinkron env (jelszó maszkolva) ==="
+            ENV_DUMP=$(systemctl show valuta-backend.service --property=Environment 2>/dev/null | tr ' ' '\n')
+            echo "NEON_SYNC_ENABLED : $(echo "$ENV_DUMP" | grep -oE 'NEON_SYNC_ENABLED=[^ ]*' || echo '(nincs beállítva -> default false)')"
+            echo "NEON_DB_URL host  : $(echo "$ENV_DUMP" | grep -oE 'NEON_DATABASE_URL=[^ ]+' | sed -E 's|.*@||; s|/.*||' | head -1 || echo '(nincs)')"
+            echo "DATABASE_URL host : $(echo "$ENV_DUMP" | grep -oE 'DATABASE_URL=[^ ]+' | sed -E 's|.*@||; s|/.*||' | head -1 || echo '(localhost / unix socket)')"
+            echo ""
+            echo "=== utolsó 3 Neon sync-log (ha létezik) ==="
+            sudo -u postgres psql -d valuta -tAc "SELECT table_name||' '||status||' '||coalesce(sync_finished_at::text,'-') FROM neon_sync_log ORDER BY sync_finished_at DESC NULLS LAST LIMIT 3" 2>/dev/null || echo "(neon_sync_log nincs / üres)"
+          ENDSSH
