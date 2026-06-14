@@ -1,0 +1,104 @@
+name: Hetzner Prod Ops (write)
+
+# Igeny szerinti, IRO prod-muveletek a Hetzner 'valuta' DB-n / valuta-backend systemd env-jen,
+# a meglevo deploy-secret SSH-kulccsal (ugyanaz, amivel a deploy-hetzner.yml dolgozik).
+# Ket, egymastol fuggetlen muvelet a 'action' choice mogott:
+#   * rub-deactivate   -> a prod RUB.is_active=false (egyezzen a V319 kod-szandekkal). Idempotens UPDATE.
+#   * neon-sync-enable -> a backup-szinkron bekapcsolasa: a box /opt/valutavalto/backend/.env-be
+#                         NEON_SYNC_ENABLED=true + NEON_DATABASE_URL (repo-secret), majd backend restart.
+# A NEON_DATABASE_URL ertek base64-en megy at, sehol nem jelenik meg a logban (GitHub maszkolja is).
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Melyik prod-muvelet fusson'
+        required: true
+        type: choice
+        options:
+          - rub-deactivate
+          - neon-sync-enable
+
+permissions:
+  contents: read
+
+jobs:
+  prod-op:
+    name: 'Prod write op: ${{ github.event.inputs.action }}'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Set up SSH (deploy key)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: 'RUB deaktivalas (prod, idempotens)'
+        if: ${{ github.event.inputs.action == 'rub-deactivate' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            echo "=== RUB deaktivalas a prod 'valuta' DB-n ==="
+            echo "elotte : $(sudo -u postgres psql -d valuta -tAc "SELECT code||'.is_active='||is_active FROM currency WHERE code='RUB'" 2>/dev/null)"
+            sudo -u postgres psql -d valuta -c "UPDATE currency SET is_active=false WHERE code='RUB' AND is_active=true;"
+            echo "utana  : $(sudo -u postgres psql -d valuta -tAc "SELECT code||'.is_active='||is_active FROM currency WHERE code='RUB'" 2>/dev/null)"
+            echo "aktiv valutak  : $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FILTER (WHERE is_active) FROM currency" 2>/dev/null)"
+            echo "=== Kesz ==="
+          ENDSSH
+
+      - name: 'Neon backup-szinkron bekapcsolas (prod .env + restart)'
+        if: ${{ github.event.inputs.action == 'neon-sync-enable' }}
+        env:
+          NEON_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          if [ -z "$NEON_URL" ]; then
+            echo "::error::NEON_DATABASE_URL repo-secret ures/hianyzik — allitsd be elobb."
+            exit 1
+          fi
+          B64=$(printf '%s' "$NEON_URL" | base64 -w0)
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              "NEON_URL_B64='$B64' bash -s" << 'ENDSSH'
+            set -o pipefail
+            ENVFILE=/opt/valutavalto/backend/.env
+            echo "=== Neon backup-szinkron bekapcsolas: $ENVFILE modositas ==="
+            NEON_URL=$(printf '%s' "$NEON_URL_B64" | base64 -d)
+            if [ -z "$NEON_URL" ]; then echo "::error::ures NEON_URL a dekodolas utan"; exit 1; fi
+            # Biztonsagi masolat (visszaallithatosag)
+            cp -a "$ENVFILE" "$ENVFILE.bak.$(date +%Y%m%d%H%M%S)"
+            # Idempotencia: korabbi NEON_SYNC_ENABLED / NEON_DATABASE_URL sorok eltavolitasa, majd hozzafuzes
+            sed -i '/^NEON_SYNC_ENABLED=/d; /^NEON_DATABASE_URL=/d' "$ENVFILE"
+            printf 'NEON_SYNC_ENABLED=true\n' >> "$ENVFILE"
+            printf 'NEON_DATABASE_URL=%s\n' "$NEON_URL" >> "$ENVFILE"
+            chown valuta:valuta "$ENVFILE"
+            chmod 600 "$ENVFILE"
+            echo ".env frissitve (NEON_SYNC_ENABLED + NEON_DATABASE_URL hozzaadva, jelszo nem logolva)"
+            echo "NEON_DATABASE_URL host: $(echo "$NEON_URL" | sed -E 's|.*@||; s|/.*||')"
+            echo "=== valuta-backend.service restart ==="
+            systemctl restart valuta-backend.service
+            sleep 18
+            systemctl is-active valuta-backend.service || { journalctl -u valuta-backend.service -n 40 --no-pager; echo "::error::backend nem aktiv a restart utan"; exit 1; }
+            echo "service aktiv."
+            # A conditional Neon bean betoltodott-e (NeonDataSourceConfig log-sora)
+            echo "Neon bean log: $(journalctl -u valuta-backend.service -n 400 --no-pager | grep -o 'Neon DataSource konfigural[^"]*' | tail -1 || echo '(nem talalt log-sor — ellenorzes kell)')"
+            # Health
+            for i in 1 2 3 4 5 6; do
+              CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 http://localhost:8080/api/v1/auth/bootstrap-status || echo 000)
+              echo "health attempt $i: HTTP $CODE"
+              [ "$CODE" = "200" ] && break
+              sleep 10
+            done
+            # Az elso scheduled sync (fixedDelay) ~indulaskor fut; varjunk ra es nezzuk a logot
+            echo "=== Neon sync-log varas (max ~60s) ==="
+            for i in 1 2 3 4 5 6; do
+              ROWS=$(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM neon_sync_log WHERE sync_finished_at > now() - interval '5 min'" 2>/dev/null || echo 0)
+              echo "friss neon_sync_log sorok: $ROWS"
+              [ "${ROWS:-0}" -gt 0 ] && break
+              sleep 10
+            done
+            sudo -u postgres psql -d valuta -tAc "SELECT table_name||' '||status||' '||coalesce(sync_finished_at::text,'-') FROM neon_sync_log ORDER BY sync_finished_at DESC NULLS LAST LIMIT 5" 2>/dev/null || echo "(neon_sync_log meg ures — a kovetkezo ciklusban tolt)"
+            echo "=== Kesz ==="
+          ENDSSH
