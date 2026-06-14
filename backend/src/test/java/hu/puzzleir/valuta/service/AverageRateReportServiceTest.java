@@ -1,6 +1,11 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.report.AverageRateReportDto;
+import hu.puzzleir.valuta.dto.report.AverageRateReportResponse;
+import hu.puzzleir.valuta.dto.report.AverageRateReportResponse.ColumnGroup;
+import hu.puzzleir.valuta.entity.Currency;
+import hu.puzzleir.valuta.entity.TransactionType;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import jakarta.persistence.EntityManager;
@@ -39,6 +44,9 @@ class AverageRateReportServiceTest {
 
     @Mock
     private CurrencyRepository currencyRepository;
+
+    @Mock
+    private BranchRepository branchRepository;
 
     @Mock
     private EntityManager entityManager;
@@ -217,5 +225,51 @@ class AverageRateReportServiceTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getWeightedAverageRate()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    @DisplayName("FK-027 pivot: Összes iroda → 8+1 oszlopcsoport, Vétel/Eladás súlyozott átlag + összesítő")
+    void generatePivot_allOffices_regionsPlusTotalWeightedAverages() {
+        // Régió-lista query (DISTINCT b.region) — külön mock a tartalom alapján.
+        Query regionsQuery = org.mockito.Mockito.mock(Query.class);
+        when(entityManager.createQuery(org.mockito.ArgumentMatchers.contains("DISTINCT b.region")))
+                .thenReturn(regionsQuery);
+        lenient().when(regionsQuery.setParameter(anyString(), Mockito_any())).thenReturn(regionsQuery);
+        when(regionsQuery.getResultList()).thenReturn(List.of("PECS", "SZEGED"));
+
+        // Aggregáló query (SUM(t.currencyAmount)).
+        Query aggQuery = org.mockito.Mockito.mock(Query.class);
+        when(entityManager.createQuery(org.mockito.ArgumentMatchers.contains("SUM(t.currencyAmount)")))
+                .thenReturn(aggQuery);
+        lenient().when(aggQuery.setParameter(anyString(), Mockito_any())).thenReturn(aggQuery);
+        when(aggQuery.getResultList()).thenReturn(Arrays.asList(
+                new Object[]{"SZEGED", "EUR", TransactionType.BUY, new BigDecimal("1000"), new BigDecimal("400000")},
+                new Object[]{"SZEGED", "EUR", TransactionType.SELL, new BigDecimal("500"), new BigDecimal("210000")},
+                new Object[]{"PECS", "EUR", TransactionType.BUY, new BigDecimal("1000"), new BigDecimal("402000")}
+        ));
+
+        Currency eur = org.mockito.Mockito.mock(Currency.class);
+        when(eur.getCode()).thenReturn("EUR");
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(eur));
+
+        AverageRateReportResponse resp = service.generatePivot(
+                companyId, LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), null);
+
+        // 2 terület + "total" (EXCLUSIVE BEST CHANGE ZRT)
+        assertThat(resp.getColumnGroups()).extracting(ColumnGroup::getGroupCode)
+                .containsExactly("PECS", "SZEGED", "total");
+        assertThat(resp.getColumnGroups().get(2).getGroupName()).isEqualTo("EXCLUSIVE BEST CHANGE ZRT");
+        assertThat(resp.getCurrencyRows()).hasSize(1);
+
+        var eurRow = resp.getCurrencyRows().get(0);
+        // SZEGED: Vétel 400000/1000=400, Eladás 210000/500=420
+        assertThat(eurRow.getValues().get("SZEGED").getBuyAvgRate()).isEqualByComparingTo("400.0000");
+        assertThat(eurRow.getValues().get("SZEGED").getSellAvgRate()).isEqualByComparingTo("420.0000");
+        // total Vétel: (400000+402000)/(1000+1000)=401; összeg=2000
+        assertThat(eurRow.getValues().get("total").getBuyAvgRate()).isEqualByComparingTo("401.0000");
+        assertThat(eurRow.getValues().get("total").getBuySumAmount()).isEqualByComparingTo("2000");
+        // PECS: nincs Eladás → 0 (nem null/hiányzó)
+        assertThat(eurRow.getValues().get("PECS").getSellAvgRate()).isEqualByComparingTo("0");
+        assertThat(eurRow.getValues().get("PECS").getSellSumAmount()).isEqualByComparingTo("0");
     }
 }
