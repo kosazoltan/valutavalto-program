@@ -52,6 +52,11 @@ Cél: a feladat bonyolultságához arányos modellt használni — se alul-, se 
    formázás, log-string csere.
 5. **Subagent-routing:** Explore-subagent mindig L1/L0-on futhat (olvasás, nem döntés).
    Adversariális review-subagent L2+ (minőség-kritikus).
+6. **Cache-biztos routing (hibrid — kötelező):** a fő munkamenet-loop modelljét
+   munkameneten belül **nem váltjuk** — a prompt cache modell-scoped, a váltás kiütné a
+   teljes prefixet (tools+system+messages). Lefelé-routing olcsóbb modellre csak:
+   (a) külön `Explore`/review-subagentben (önálló kontextus), vagy (b) új, független
+   taskban `/clear` után. Ld. `prompt-caching-mandate-2026-06-10.md` §3–§6.
 
 ---
 
