@@ -28,8 +28,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
               bash -s << 'ENDSSH'
-            set -uo pipefail
-            echo "## Hetzner prod 'valuta' DB — read-only állapot" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+            set -o pipefail
             echo "=== Prod 'valuta' DB állapot (read-only) ==="
             echo "hostname        : $(hostname)"
             echo "max migráció    : V$(sudo -u postgres psql -d valuta -tAc "SELECT max(version::int) FROM flyway_schema_history WHERE version ~ '^[0-9]+\$'" 2>/dev/null)"
