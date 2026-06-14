@@ -114,6 +114,13 @@ Deploy/release elott a security gate tovabbra is kotelezo:
 powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1
 ```
 
+Minden Hetzner-deploynal KOTELEZO DB-migracio verify (Kosa direktiva, 2026-06-14,
+automatizalva a `deploy-hetzner.yml`-ben):
+- Gate A (`verify-hetzner-db`): a prod 'valuta' DB Flyway-szintje == repo max V, 0 failed sor.
+- Gate B (`migrate-verify-neon`): a Neon backup-DB sema is migralva (`flyway migrate` + verify).
+A health-check (HTTP 200) onmagaban NEM eleg (a backend felallhat regi semaval). On-demand Neon
+diagnosztika: `neon-schema-verify.yml` (read-only). Ezeket NEM szabad kikapcsolni/megkerulni.
+
 ## 5. Hibajavitasi hurok
 
 - Egy hibara legfeljebb ket azonos jellegu javitasi kiserlet mehet.

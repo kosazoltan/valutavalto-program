@@ -56,6 +56,9 @@ tenyszeruen megtortent.
 - HUF kerekites: 5 Ft-os kerekites.
 - AML/Pmt. es arfolyam TTL szabalyok nem kerulhetok meg.
 - Secret soha nem kerulhet kodba, chatbe vagy memoriaba.
+- Minden Hetzner-deploy KOTELEZOEN ellenorzi a DB-migraciot: a prod 'valuta' DB
+  Flyway-szintje == repo max V (Gate A), es a Neon backup-DB sema is migralva (Gate B,
+  `flyway migrate`). Automatizalva a `deploy-hetzner.yml`-ben; tilos kikapcsolni. Lasd AGENTS.md 4.
 
 ## Helyi toolok (scripts/dev-tools/ — 44 db, zero-API-cost)
 
