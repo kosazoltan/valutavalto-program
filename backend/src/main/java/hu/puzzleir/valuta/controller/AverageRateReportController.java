@@ -4,9 +4,12 @@ import hu.puzzleir.valuta.dto.report.AverageRateReportDto;
 import hu.puzzleir.valuta.dto.report.AverageRateReportResponse;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.AuditEventService;
+import hu.puzzleir.valuta.service.AverageRateReportExcelService;
 import hu.puzzleir.valuta.service.AverageRateReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +29,7 @@ import java.util.UUID;
 public class AverageRateReportController {
 
     private final AverageRateReportService service;
+    private final AverageRateReportExcelService excelService;
     private final AuditEventService auditEventService;
 
     /**
@@ -49,6 +53,31 @@ public class AverageRateReportController {
         AverageRateReportResponse response = service.generatePivot(companyId, from, to, branchId);
         auditAccess("READ", from, to, branchId);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * FK-027 (FR-8): az átlag árfolyam pivot riport Excel exportja (legacy Atlagarfolyam.xls).
+     *
+     * <p>GET /api/v1/reports/average-rate/export — MINDIG a teljes 9-oszlopcsoportos struktúra
+     * (8 terület + összesítő), 22 valuta-sorral; csak a dátum-intervallum szűr (nincs branchId).
+     * Audit: action=EXPORT (FR-9).</p>
+     */
+    @GetMapping("/export")
+    @PreAuthorize("hasAnyRole('MANAGER','TREASURY_MANAGER','MAIN_TREASURY','ADMIN',"
+            + "'REGIONAL_MANAGER','SUPERVISOR','CASHIER_SUPERVISOR')")
+    public ResponseEntity<byte[]> export(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        byte[] xlsx = excelService.generate(companyId, from, to);
+        auditAccess("EXPORT", from, to, null);
+        String filename = "atlag_arfolyam_" + from + "_" + to + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(xlsx);
     }
 
     /** FR-9: read/export audit-esemény az AverageRateReport entitásra (hash-láncolt audit_log). */
