@@ -225,6 +225,35 @@ export interface AverageRateReport {
   weightedAverageRate: number
 }
 
+/** FK-027 pivot: oszlopcsoport (8 terület + összesítő, vagy 1 fiók). */
+export interface AverageRateColumnGroup {
+  groupCode: string
+  groupName: string
+  groupType: 'REGION' | 'TOTAL' | 'BRANCH'
+}
+
+/** FK-027 pivot: egy cella-négyes (Vétel/Eladás Árfolyam + Összeg). */
+export interface AverageRateColumnValues {
+  buyAvgRate: number
+  buySumAmount: number
+  sellAvgRate: number
+  sellSumAmount: number
+}
+
+/** FK-027 pivot: egy valuta-sor — oszlopcsoport-kód → cella-négyes. */
+export interface AverageRateCurrencyRow {
+  currencyCode: string
+  values: Record<string, AverageRateColumnValues>
+}
+
+/** FK-027 pivot riport válasz. */
+export interface AverageRatePivotResponse {
+  periodStart: string
+  periodEnd: string
+  columnGroups: AverageRateColumnGroup[]
+  currencyRows: AverageRateCurrencyRow[]
+}
+
 export const averageRateApi = {
   /**
    * Súlyozott átlagárfolyam riport (HUF-súlyozott, NEM számtani átlag).
@@ -243,6 +272,30 @@ export const averageRateApi = {
     if (transactionType) params.transactionType = transactionType
     const response = await api.get<AverageRateReport[]>('/reports/average-rate', { params })
     return response.data
+  },
+
+  /**
+   * FK-027 pivot riport: sorok = 22 valuta, oszlopcsoportok = 8 terület + "EXCLUSIVE BEST
+   * CHANGE ZRT" összesítő (branchId=null), vagy 1 fiók. Vétel és Eladás párhuzamosan.
+   * Backend: GET /api/v1/reports/average-rate/pivot?from&to[&branchId]
+   */
+  getPivot: async (from: string, to: string, branchId?: string): Promise<AverageRatePivotResponse> => {
+    const params: Record<string, string> = { from, to }
+    if (branchId) params.branchId = branchId
+    const response = await api.get<AverageRatePivotResponse>('/reports/average-rate/pivot', { params })
+    return response.data
+  },
+
+  /**
+   * FK-027 Excel export (legacy Atlagarfolyam.xls). MINDIG a teljes 9-oszlopcsoportos
+   * struktúra; csak from/to szűr. Backend: GET /api/v1/reports/average-rate/export
+   */
+  exportExcel: async (from: string, to: string): Promise<Blob> => {
+    const response = await api.get('/reports/average-rate/export', {
+      params: { from, to },
+      responseType: 'blob',
+    })
+    return response.data as Blob
   },
 }
 
