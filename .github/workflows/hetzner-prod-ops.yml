@@ -17,6 +17,7 @@ on:
         options:
           - rub-deactivate
           - neon-sync-enable
+          - neon-sync-rollback
 
 permissions:
   contents: read
@@ -101,4 +102,36 @@ jobs:
             done
             sudo -u postgres psql -d valuta -tAc "SELECT table_name||' '||status||' '||coalesce(sync_finished_at::text,'-') FROM neon_sync_log ORDER BY sync_finished_at DESC NULLS LAST LIMIT 5" 2>/dev/null || echo "(neon_sync_log meg ures — a kovetkezo ciklusban tolt)"
             echo "=== Kesz ==="
+          ENDSSH
+
+      - name: 'Neon sync ROLLBACK (legutobbi .env.bak visszaallitas + restart)'
+        if: ${{ github.event.inputs.action == 'neon-sync-rollback' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            ENVFILE=/opt/valutavalto/backend/.env
+            echo "=== Neon sync ROLLBACK ==="
+            BAK=$(ls -t "$ENVFILE".bak.* 2>/dev/null | head -1)
+            if [ -z "$BAK" ]; then echo "::error::nincs .env.bak.* — kezi helyreallitas kell"; exit 1; fi
+            echo "visszaallitando backup: $BAK"
+            cp -a "$BAK" "$ENVFILE"
+            chown valuta:valuta "$ENVFILE"
+            chmod 600 "$ENVFILE"
+            echo "NEON sorok a visszaallitott .env-ben (db_url maszkolva):"
+            grep -c '^NEON_SYNC_ENABLED=' "$ENVFILE" | sed 's/^/  NEON_SYNC_ENABLED sorok: /'
+            echo "=== valuta-backend.service restart ==="
+            systemctl restart valuta-backend.service
+            sleep 18
+            systemctl is-active valuta-backend.service || { journalctl -u valuta-backend.service -n 40 --no-pager; echo "::error::backend nem aktiv"; exit 1; }
+            for i in 1 2 3 4 5 6 7 8; do
+              CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 http://localhost:8080/api/v1/auth/bootstrap-status || echo 000)
+              echo "health attempt $i: HTTP $CODE"
+              [ "$CODE" = "200" ] && { echo "=== ROLLBACK OK — prod helyreallt ==="; exit 0; }
+              sleep 10
+            done
+            echo "::error::health meg nem 200 a rollback utan — journalctl:"
+            journalctl -u valuta-backend.service -n 50 --no-pager
+            exit 1
           ENDSSH
