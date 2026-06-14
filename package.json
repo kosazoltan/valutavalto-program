@@ -13,6 +13,7 @@
     "dev:frontend-only": "npm --prefix frontend-react run dev",
     "dev:backend-only": "node scripts/dev-backend.mjs",
     "test": "concurrently -n frontend,penztar -c \"cyan,magenta\" \"npm --prefix frontend-react test\" \"npm --prefix penztar-client test\"",
+    "test:prepush": "concurrently -n frontend,penztar -c \"cyan,magenta\" \"npm --prefix frontend-react run test:unit\" \"npm --prefix penztar-client run test:unit\"",
     "test:backend": "cd backend && mvnw.cmd test",
     "test:e2e": "npm --prefix frontend-react run test:e2e",
     "acceptance:local": "npm run acceptance:local:backend && npm run acceptance:local:postgres-lock && npm run acceptance:local:postgres-seeded && npm run acceptance:local:flows && npm run acceptance:local:frontend",

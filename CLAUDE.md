@@ -26,6 +26,10 @@ cimletezes, arfolyam, atadas-atvetel, foglalo.
 - Dynamic Model Routing: Fable 5 csak komplex/penzu-gyi/security feladathoz;
   Sonnet/Haiku rutin szerkesztesre; Explore-subagent L1/L0-on. Reszletek:
   `vault/feedback/fable5-optimization-mandate-2026-06-10.md`.
+- Cache-biztos routing (hibrid): a fo loop modelljet sessionon belul nem valtjuk
+  (a cache modell-scoped, a valtas kiuti a teljes prefixet); olcsobb modell csak
+  subagentben vagy /clear utani uj taskban. CLAUDE.md/AGENTS.md/mandate szerkesztest
+  kotegelve. Reszletek + Console-diagnosztika a prompt-caching mandate-ben.
 - Context Window: >80% token-terheltsegnel /clear ajanlott uj independent taskhoz.
 - Task Completion: csonka deliverable TILOS; `max_tokens` explicit API-hivasokban.
 - Fallback Signaling: `[WARNING: MODEL_REGRESS_DETECTED]` ha penzu-gyi-kritikus feladat
