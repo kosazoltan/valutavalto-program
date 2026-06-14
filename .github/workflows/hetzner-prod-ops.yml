@@ -18,6 +18,7 @@ on:
           - rub-deactivate
           - neon-sync-enable
           - neon-sync-rollback
+          - neon-sync-verify
 
 permissions:
   contents: read
@@ -126,6 +127,25 @@ jobs:
               sleep 10
             done
             sudo -u postgres psql -d valuta -tAc "SELECT table_name||' '||status||' '||coalesce(sync_finished_at::text,'-') FROM neon_sync_log ORDER BY sync_finished_at DESC NULLS LAST LIMIT 5" 2>/dev/null || echo "(neon_sync_log meg ures — a kovetkezo ciklusban tolt)"
+            echo "=== Kesz ==="
+          ENDSSH
+
+      - name: 'Neon sync VERIFY (read-only diagnosztika)'
+        if: ${{ github.event.inputs.action == 'neon-sync-verify' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            echo "=== .env NEON sorok (jelszo maszkolva) ==="
+            grep -E '^NEON_' /opt/valutavalto/backend/.env | sed -E 's|(://)[^@]+@|\1***@|' || echo "(nincs NEON sor a .env-ben)"
+            echo ""
+            echo "=== backend journal — Neon-vonatkozasu sorok (utolso elofordulasok) ==="
+            journalctl -u valuta-backend.service -n 3000 --no-pager | grep -iE 'neon' | grep -oE '"level":"[A-Z]+"|message":"[^"]*"' | tail -20 || echo "(nincs Neon-sor a journalban)"
+            echo ""
+            echo "=== neon_sync_log (primary 'valuta' DB) ==="
+            sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM neon_sync_log" 2>/dev/null | sed 's/^/  osszes sor: /'
+            sudo -u postgres psql -d valuta -c "SELECT table_name, status, sync_finished_at FROM neon_sync_log ORDER BY sync_finished_at DESC NULLS LAST LIMIT 12" 2>/dev/null || echo "(neon_sync_log nincs/ures)"
             echo "=== Kesz ==="
           ENDSSH
 
