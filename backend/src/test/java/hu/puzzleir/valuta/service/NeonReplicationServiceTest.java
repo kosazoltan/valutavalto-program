@@ -44,6 +44,9 @@ class NeonReplicationServiceTest {
         // Default: nincs korábbi sync log
         when(syncLogRepository.findTopByTableNameAndStatusOrderBySyncFinishedAtDesc(anyString(), eq("SUCCESS")))
                 .thenReturn(Optional.empty());
+        // Default: minden tábla létezik (tableExists guard — information_schema.tables COUNT)
+        when(primaryJdbc.queryForObject(contains("information_schema.tables"), eq(Integer.class), anyString()))
+                .thenReturn(1);
         // Default: timestamp oszlop detektálás
         when(primaryJdbc.queryForList(anyString(), eq(String.class), anyString()))
                 .thenReturn(java.util.List.of("updated_at"));
@@ -75,6 +78,20 @@ class NeonReplicationServiceTest {
 
         int result = service.syncTable("transaction");
         assertThat(result).isEqualTo(0);
+    }
+
+    @Test
+    void syncTable_shouldReturn0AndSkip_whenTableDoesNotExist() {
+        // A guard: nem létező tábla -> tiszta SKIPPED, NEM nyers SQL-kivétel minden ciklusban
+        when(primaryJdbc.queryForObject(contains("information_schema.tables"), eq(Integer.class), eq("stock_snapshot")))
+                .thenReturn(0);
+
+        int result = service.syncTable("stock_snapshot");
+
+        assertThat(result).isEqualTo(0);
+        // SKIPPED_TABLE_MISSING log mentés történik, és NEM fut le a timestamp-detektálás/fullSync
+        verify(syncLogRepository).save(argThat(l -> "SKIPPED_TABLE_MISSING".equals(l.getStatus())));
+        verify(primaryJdbc, never()).queryForList(anyString(), eq(String.class), eq("stock_snapshot"));
     }
 
     @Test
