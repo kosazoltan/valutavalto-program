@@ -1,0 +1,84 @@
+name: Neon Schema Verify (read-only)
+
+# Read-only Flyway diagnosztika a Neon backup-DB ellen: megmutatja a Neon aktualis
+# migracio-allapotat (flyway info) es osszeveti a repo legmagasabb V-verziojaval.
+# NEM modosit semmit (csak info). A NEON_DATABASE_URL repo-secret libpq URI-bol
+# JDBC URL + user + password kerul kibontasra, a jelszo a FLYWAY_PASSWORD env-en megy
+# (GitHub maszkolja a logban). Manualis (workflow_dispatch).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  neon-info:
+    name: Neon Flyway info (read-only)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Repo max migration version
+        id: repo
+        run: |
+          set -euo pipefail
+          MIGR_DIR="backend/src/main/resources/db/migration"
+          REPO_MAX=$(ls "$MIGR_DIR"/V*__*.sql | sed -E 's#.*/V([0-9]+)__.*#\1#' | grep -E '^[0-9]+$' | sort -n | tail -1)
+          echo "repo_max=$REPO_MAX" >> "$GITHUB_OUTPUT"
+          echo "Repo legmagasabb migracio: V$REPO_MAX"
+
+      - name: Parse NEON_DATABASE_URL -> JDBC (jelszo maszkolva)
+        id: parse
+        env:
+          NEON_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NEON_URL:-}" ]; then
+            echo "::error::NEON_DATABASE_URL repo-secret ures/hianyzik."
+            exit 1
+          fi
+          NOSCHEME="${NEON_URL#postgresql://}"; NOSCHEME="${NOSCHEME#postgres://}"
+          CREDS="${NOSCHEME%%@*}"
+          HOSTPART="${NOSCHEME#*@}"
+          NUSER="${CREDS%%:*}"
+          NPASS="${CREDS#*:}"
+          JDBC="jdbc:postgresql://${HOSTPART}"
+          # A jelszot kulon mask-oljuk, hogy a kovetkezo lepesek logjaban se jelenjen meg
+          echo "::add-mask::$NPASS"
+          {
+            echo "jdbc=$JDBC"
+            echo "nuser=$NUSER"
+          } >> "$GITHUB_OUTPUT"
+          # jelszo csak env-fajlba, nem GITHUB_OUTPUT-ba (az is maszkolt, de minimalizaljuk)
+          echo "NPASS=$NPASS" >> "$GITHUB_ENV"
+          echo "Neon JDBC host: $(echo "$HOSTPART" | sed -E 's#/.*##')"
+
+      - name: Flyway info (read-only) a Neon ellen
+        env:
+          FLYWAY_URL: ${{ steps.parse.outputs.jdbc }}
+          FLYWAY_USER: ${{ steps.parse.outputs.nuser }}
+          FLYWAY_PASSWORD: ${{ env.NPASS }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD \
+            -v "$PWD/backend/src/main/resources/db/migration:/flyway/sql:ro" \
+            redgate/flyway:10 \
+            -locations=filesystem:/flyway/sql \
+            -connectRetries=3 \
+            info | tee flyway-info.txt
+
+      - name: Osszesito
+        if: always()
+        run: |
+          {
+            echo "## Neon Schema Verify (read-only)"
+            echo "- **Repo max migracio:** V${{ steps.repo.outputs.repo_max }}"
+            echo ""
+            echo '```'
+            tail -40 flyway-info.txt 2>/dev/null || echo "(nincs flyway-info kimenet)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
