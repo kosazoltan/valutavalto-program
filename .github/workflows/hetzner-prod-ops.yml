@@ -19,6 +19,7 @@ on:
           - rub-reactivate
           - local-rub-data-fix
           - cutover-assess
+          - cutover-backup
           - neon-sync-enable
           - neon-sync-rollback
           - neon-sync-verify
@@ -128,6 +129,57 @@ jobs:
             echo "Lokalis audit_log max: $(sudo -u postgres psql -d valuta -tAc "SELECT max(created_at) FROM audit_log" 2>/dev/null || echo '(n/a)')"
             rm -f /tmp/neon_counts.txt /tmp/local_counts.txt
             echo "=== Kesz — assess read-only, semmi nem valtozott ==="
+          ENDSSH
+
+      - name: 'CUTOVER BACKUP — teljes mentes mindket DB-rol + config-probe + Neon-delta'
+        if: ${{ github.event.inputs.action == 'cutover-backup' }}
+        env:
+          NEON_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          # SAFETY-FIRST a Local-First cutover elott. NEM modosit egyetlen DB-t sem (csak pg_dump +
+          # read-only SELECT + .env OLVASAS maszkoltan). Ket teljes backup (lokalis + Neon) a boxra,
+          # SHA-256 + meret. Plusz a Neon 'mai delta' (a lokalis utolso irasanal ujabb uzleti sorok),
+          # hogy donthessunk a beepitesrol. A Neon URL base64-en megy, sehol nem logolt.
+          if [ -z "${NEON_URL:-}" ]; then echo "::error::NEON_DATABASE_URL ures/hianyzik"; exit 1; fi
+          B64=$(printf '%s' "$NEON_URL" | base64 -w0)
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              "NEON_B64='$B64' bash -s" << 'ENDSSH'
+            set -o pipefail
+            NEON_URI=$(printf '%s' "$NEON_B64" | base64 -d)
+            TS=$(date +%Y%m%d-%H%M%S)
+            BDIR="/var/backups/cutover-$TS"
+            sudo mkdir -p "$BDIR"
+            echo "=== Backup-konyvtar: $BDIR ==="
+            echo ""
+            echo "=== .env aktualis config (jelszo maszkolva) ==="
+            sudo grep -E '^(DATABASE_URL|NEON_DATABASE_URL|NEON_SYNC_ENABLED|DATABASE_USERNAME)=' /opt/valutavalto/backend/.env \
+              | sed -E 's|password=[^&;[:space:]]*|password=***|g; s#(://)[^@/]*@#\1***@#g' || echo "(nincs)"
+            echo ""
+            echo "=== Korabbi .env.bak.* fajlok (a pre-Neon lokalis DATABASE_URL megtalalasahoz) ==="
+            for f in $(sudo ls -t /opt/valutavalto/backend/.env.bak.* 2>/dev/null | head -6); do
+              H=$(sudo grep -E '^DATABASE_URL=' "$f" | sed -E 's|password=[^&;[:space:]]*|password=***|g; s#(://)[^@/]*@#\1***@#g' | sed -E 's#(//[^/?]*).*#\1#')
+              echo "  $f : $H"
+            done
+            echo ""
+            echo "=== 1) Lokalis 'valuta' backup (pg_dump PG16, custom format) ==="
+            sudo -u postgres pg_dump -Fc -d valuta -f "$BDIR/local_valuta.dump"
+            sudo bash -c "ls -l '$BDIR/local_valuta.dump' | awk '{print \"  meret: \"\$5\" byte\"}'; sha256sum '$BDIR/local_valuta.dump'"
+            echo ""
+            echo "=== 2) Neon backup (pg_dump PG17 docker, custom format) ==="
+            docker run --rm -e PGURI="$NEON_URI" postgres:17 sh -c 'pg_dump -Fc "$PGURI"' > /tmp/neon.dump 2>/tmp/neon.err || { echo "::error::Neon pg_dump bukott"; sed -E 's#postgres(ql)?://[^[:space:]]*#<NEON_URI>#g' /tmp/neon.err | tail -8; }
+            sudo mv /tmp/neon.dump "$BDIR/neon_neondb.dump" 2>/dev/null || true
+            sudo bash -c "[ -f '$BDIR/neon_neondb.dump' ] && { ls -l '$BDIR/neon_neondb.dump' | awk '{print \"  meret: \"\$5\" byte\"}'; sha256sum '$BDIR/neon_neondb.dump'; } || echo '(Neon dump hianyzik)'"
+            echo ""
+            echo "=== 3) NEON-DELTA: a lokalis utolso irasanal (2026-06-14 06:30) ujabb uzleti sorok a Neonon ==="
+            for t in transaction collected_transaction data_collection cash_balance daily_session vault_transfer closing_wizard notification receipt; do
+              C=$(psql "$NEON_URI" -tAc "SELECT count(*) FROM $t WHERE created_at > '2026-06-14 06:30:00'" 2>/dev/null)
+              echo "  $t : ${C:-?} uj sor a Neonon (created_at > 2026-06-14 06:30)"
+            done
+            echo ""
+            echo "=== Neon transaction-delta reszletek (ha van) ==="
+            psql "$NEON_URI" -P pager=off -c "SELECT id, created_at, status FROM transaction WHERE created_at > '2026-06-14 06:30:00' ORDER BY created_at DESC LIMIT 20" 2>/dev/null || echo "(nincs / nem olvashato)"
+            echo "=== Kesz — KET backup elkeszult, semmi DB nem valtozott ==="
           ENDSSH
 
       - name: 'FREEZE-WATCHDOG telepítés + engedélyezés (Hetzner anti-freeze öngyógyító)'
