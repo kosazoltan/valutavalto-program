@@ -97,10 +97,15 @@ Minden session végén tényszerűen jelenteni:
 - Futott-e Dream elemzés, milyen eredménnyel
 - Ha nem történt memóriaművelet: az objektív blokkoló ok
 
+## Memória-rétegek (beolvasztva: mandatory-memory-after-each-workflow.md, 2026-06-15)
+
+- rövid távú (állapot/blokkolók/aktív direktívák) · középtávú (handoff, friss workflow-eredmény) ·
+  operatív (reprodukálható parancsok, recovery) · hosszú távú (stabil tények, legacy parity, üzleti szabály).
+- False-success guard: NE jelents REST/sync sikert, ha csak fájl-bundle készült.
+
 ## Kapcsolódó vault dokumentumok
 
 - [`session-closing-protocol-mandatory.md`](session-closing-protocol-mandatory.md) — 9-lépéses session zárás
 - [`continuous-testing-protocol-mandatory.md`](continuous-testing-protocol-mandatory.md) — folyamatos tesztelés
-- [`ai-review-mandate-zero-tolerance.md`](ai-review-mandate-zero-tolerance.md) — minden P0/P1/P2 review-finding kötelező
-- [`hallucinacio-megszuntetese.md`](hallucinacio-megszuntetese.md) — research-first, Context7, iparági standardok
-- [`no-hallucination-lateral-thinking.md`](no-hallucination-lateral-thinking.md) — fact-based, NEM találgatás
+- [`ai-agent-push-ci-doctrine-2026-05-17.md`](ai-agent-push-ci-doctrine-2026-05-17.md) — push→CI→AI-review→merge hurok (merge/deploy előtt)
+- [`no-hallucination-lateral-thinking.md`](no-hallucination-lateral-thinking.md) — research-first (Context7), iparági standardok, fact-based, NEM találgatás

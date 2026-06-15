@@ -12,6 +12,11 @@ related:
 
 # Proaktív CI + AI review polling — KÖTELEZŐ P0
 
+> ⚠️ **HATÁLY-PONTOSÍTÁS (2026-06-15):** **NEM always-on**. A CI/AI-review polling
+> **push/PR/merge után** indokolt — push nélküli lokális doksi-/kódváltozásra NEM
+> (`AGENTS.md` §6; `_active_mandates.md` deprecálta a „15 perces polling / teljes
+> CI-visszaolvasás ott, ahol nem történt push/PR" formát). A push-utáni mag érvényes.
+
 ## A szabály
 
 > "Időzítsd, saját funkcióként, a teljes CI workflow automatikus beolvasását, a

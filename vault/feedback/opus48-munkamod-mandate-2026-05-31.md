@@ -1,7 +1,7 @@
 # MANDATE — Claude Code munkamód (2026-05-31 → frissítve 2026-06-08, P0)
 
 > ⚠️ **Branding-javítás 2026-06-08:** Az eredeti "Opus 4.8" modell-jelölés elavult volt (nem létező modell).
-> A jelenlegi konfiguráció: `opusplan` (tervezés=Opus, végrehajtás=Sonnet) — lásd `feedback_cost_discipline_model_routing.md`.
+> Model-routing részletek: `CLAUDE.md` „Token-optimalizacio es model-routing" + `fable5-optimization-mandate-2026-06-10.md`.
 > A tartalom érvényes és aktív marad.
 >
 > Forrás: user-átadott utasításkészlet (2026-05-31).

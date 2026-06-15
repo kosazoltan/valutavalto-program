@@ -9,6 +9,11 @@ trigger: "minden PR meg-nyitas / push / merge utan automatikusan"
 
 # Lint CI Codex Sourcery Copilot — minden PR-en kotelezo, automatikus
 
+> ⚠️ **HATÁLY-PONTOSÍTÁS (2026-06-15):** A CI-check-lista + reviewer `gh api` jq-szűrők itt
+> **újrahasznosítható operatív referencia**. A polling **push/PR/merge után** indokolt, NEM always-on
+> a push nélküli lokális változásokra (`AGENTS.md` §6; `_active_mandates.md` deprecálta a non-push
+> pollingot). A teljes push→CI→review→merge doktrína: `ai-agent-push-ci-doctrine-2026-05-17.md`.
+
 > **User direktiva 2026-05-03 21:50 CEST (Kosa Zoltan):**
 >
 > "mentsd el a teljes workflot!!! lint CI codex sourcery kötelező minden pr
@@ -125,6 +130,6 @@ gh run list -L 30 --json status,conclusion,workflowName \
 
 ## Hivatkozasok
 
-- [feedback/ai-review-mandate-zero-tolerance.md](./ai-review-mandate-zero-tolerance.md) — eredeti zero-tolerance mandate (2026-04-29)
+- [feedback/ai-agent-push-ci-doctrine-2026-05-17.md](./ai-agent-push-ci-doctrine-2026-05-17.md) — eredeti zero-tolerance mandate (2026-04-29)
 - CLAUDE.md "KÖTELEZŐ ÉRVÉNYŰ: AI Review Zero-Tolerance Mandate (v2.3.18+, 2026-04-29 user-direktíva)" — projekt-szintu kotelezettseg
 - CLAUDE.md "Kötelező AI code review workflow (Sourcery + Codex)" — manualis fallback szakasz

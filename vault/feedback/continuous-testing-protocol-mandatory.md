@@ -116,6 +116,6 @@ a fejlesztést, ha:
 ## Kapcsolódó vault dokumentumok
 
 - [`session-closing-protocol-mandatory.md`](session-closing-protocol-mandatory.md) — 9-lépéses session zárás (a teszt-suite teljes újrafuttatás itt is kötelező)
-- [`ai-review-mandate-zero-tolerance.md`](ai-review-mandate-zero-tolerance.md) — minden P0/P1/P2 review-finding kötelező javítás (ezek tipikusan teszt-coverage hiányt is jelölnek)
-- [`hallucinacio-megszuntetese.md`](hallucinacio-megszuntetese.md) — research-first + Context7 + TDD (test-driven development)
+- [`ai-agent-push-ci-doctrine-2026-05-17.md`](ai-agent-push-ci-doctrine-2026-05-17.md) — minden P0/P1/P2 review-finding kötelező javítás (ezek tipikusan teszt-coverage hiányt is jelölnek)
+- [`no-hallucination-lateral-thinking.md`](no-hallucination-lateral-thinking.md) — research-first + Context7 + TDD (test-driven development)
 - [`no-hallucination-lateral-thinking.md`](no-hallucination-lateral-thinking.md) — TILOS találgatás, csak fact-based döntés (a teszt eredmény TÉNY, az "működik" becslés)

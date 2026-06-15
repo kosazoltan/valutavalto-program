@@ -67,3 +67,9 @@ Ezt user direkten panaszolta el 2026-04-27 11:25-kor + 11:27-kor.
 - **Hibakereses elott:** "Mi a feltevés ami alatt vagyok? Lehet, hogy AZ a hibas, nem a kovetkezmény?"
 - **Build / framework hiba eseten:** AZONNAL WebSearch + WebFetch — Stack Overflow / GitHub Issues / hivatalos docs. NE probalgassam magamtol a megoldast 2 retry felett.
 - **Output-ban:** ha allitok valamit (pl. "PR #238 mergelve"), elotte verifikaltam (`gh pr view`); ha nincs verifikalva, akkor "valoszinuleg" / "ellenorzom" / "meg fut".
+
+## Research-first + iparagi standard (beolvasztva: hallucinacio-megszuntetese.md, 2026-06-15)
+
+- **Context7 MCP** (`resolve-library-id` + `query-docs`) uj feature / library-hasznalat elott: hivatalos docs + best-practice, NE ad-hoc sajat kod.
+- **Iparagi standard libet hasznalj, ne sajatot:** validation=Zod/Valibot/Joi, config=dotenv+Zod, logger=electron-log/Pino/Winston, state=Zustand/TanStack — a projektben mar elerheto libekbol.
+- **TILOS a probalkozas-alapu iteracio** (apro iteracios PR-ek folyamatos generalasa, "majd a Sourcery jelzi"). Build/framework hibanal: WebSearch/WebFetch + hivatalos docs 2 retry felett, nem vak probalgatas.

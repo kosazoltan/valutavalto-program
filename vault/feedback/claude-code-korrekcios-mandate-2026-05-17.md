@@ -103,7 +103,7 @@ DigiCert EV CS HSM kiadásig (várható 2026-05-19/21):
 3. **Flyway migráció a séma forrása** — ha új tábla / oszlop kell, migration. Code-review P0 lehet.
 4. **Lokál Postgres CSAK Hetzner-replikából feltöltve** (anonimizált dump), soha NEM kézi seed.
 
-### 1.9 Önminősítés-ellenőrzés mandate — `feedback_self_review_audit.md`
+### 1.9 Önminősítés-ellenőrzés mandate — `AGENTS.md` agentic-qa (review-evidencia, merge/deploy elott)
 
 1. Minden session ZÁRÁSAKOR `vault/sessions/YYYY-MM-DD-name.md` jegyzet:
    - **Vakfolt-checklist** (claude-code-mukodes 12. fejezet 8 pontja, `[ ]` / `[x]`).
