@@ -22,6 +22,8 @@ on:
           - cutover-backup
           - cutover-preflight
           - cutover-unit-probe
+          - cutover-runtime-probe
+          - restore-local-primary
           - neon-sync-enable
           - neon-sync-rollback
           - neon-sync-verify
@@ -244,6 +246,86 @@ jobs:
                 | sed -E 's|password=[^&;[:space:]]*|password=***|g; s#(://)[^@/]*@#\1***@#g' || echo "     (nincs ilyen sor / nem olvashato)"
             done
             echo "=== Kesz — unit probe read-only ==="
+          ENDSSH
+
+      - name: 'CUTOVER RUNTIME PROBE (read-only) — hol van a backend ELO connection-poolja'
+        if: ${{ github.event.inputs.action == 'cutover-runtime-probe' }}
+        env:
+          NEON_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          # READ-ONLY DONTO TESZT: a backend Hikari-poolja a LOKALIS vagy a NEON DB-n ul-e.
+          # Ha a Neon pg_stat_activity-ben ott a backend ~5+ allando kapcsolata a box IP-jerol -> a app a NEONT szolgalja (arch B).
+          B64=$(printf '%s' "$NEON_URL" | base64 -w0)
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              "NEON_B64='$B64' bash -s" << 'ENDSSH'
+            set -o pipefail
+            NEON_URI=$(printf '%s' "$NEON_B64" | base64 -d)
+            echo "=== LOKALIS valuta — aktiv kapcsolatok (5432, PgBouncer mogott) ==="
+            sudo -u postgres psql -d valuta -P pager=off -c "SELECT count(*) conns, usename, application_name, state FROM pg_stat_activity WHERE datname='valuta' AND backend_type='client backend' GROUP BY usename, application_name, state ORDER BY 1 DESC LIMIT 12" 2>/dev/null || echo "(n/a)"
+            echo ""
+            echo "=== NEON neondb — aktiv kapcsolatok (a backend Hikari-poolja ITT van-e) ==="
+            psql "$NEON_URI" -P pager=off -c "SELECT count(*) conns, usename, application_name, client_addr, state FROM pg_stat_activity WHERE datname='neondb' GROUP BY usename, application_name, client_addr, state ORDER BY 1 DESC LIMIT 12" 2>/dev/null || echo "(n/a)"
+            echo "=== Kesz — runtime probe read-only ==="
+          ENDSSH
+
+      - name: 'RESTORE LOCAL PRIMARY — NEON_SYNC=false (app vissza a lokalisra) + restart + health + auto-rollback'
+        if: ${{ github.event.inputs.action == 'restore-local-primary' }}
+        run: |
+          # GYOKER-FIX: a neon-sync.enabled=true miatt a NeonDataSourceConfig egy masodlagos DataSource
+          # bean-t hoz letre, ami miatt a Spring Boot primary DataSource auto-config VISSZALEP -> a Neon
+          # lesz az app EGYETLEN (es igy @Primary) datasource-a, a DATABASE_URL=localhost-ot figyelmen
+          # kivul hagyva. Megoldas: NEON_SYNC_ENABLED=false -> a masodlagos bean nem tolt be -> a primary
+          # auto-config a DATABASE_URL=localhost-ra epul -> az app ujra a LOKALIS (gazdag) DB-t szolgalja.
+          # A Neon backup-syncot kesobb, a vegleges kod-fix utan (explicit @Primary local + secondary neon)
+          # kapcsoljuk vissza. Backup + health + auto-rollback (a jelenleg mukodo Neon-allapotra).
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            ENVFILE=/opt/valutavalto/backend/.env
+            echo "=== ELOTTE: .env NEON_SYNC + DATABASE_URL (maszkolt) ==="
+            sudo grep -E '^(NEON_SYNC_ENABLED|DATABASE_URL)=' "$ENVFILE" | sed -E 's#(://)[^@/]*@#\1***@#g'
+            BAK="$ENVFILE.bak.$(date +%Y%m%d%H%M%S)"
+            sudo cp -a "$ENVFILE" "$BAK"
+            echo "biztonsagi masolat: $BAK"
+            # NEON_SYNC_ENABLED -> false (idempotens: torol + ujrair)
+            sudo sed -i '/^NEON_SYNC_ENABLED=/d' "$ENVFILE"
+            [ -n "$(sudo tail -c1 "$ENVFILE")" ] && echo | sudo tee -a "$ENVFILE" >/dev/null
+            echo 'NEON_SYNC_ENABLED=false' | sudo tee -a "$ENVFILE" >/dev/null
+            sudo chown valuta:valuta "$ENVFILE"; sudo chmod 600 "$ENVFILE"
+            OK=$(sudo grep -c '^NEON_SYNC_ENABLED=false$' "$ENVFILE")
+            if [ "$OK" != "1" ]; then echo "::error::.env iras BUKOTT — vissza"; sudo cp -a "$BAK" "$ENVFILE"; exit 1; fi
+            echo "=== valuta-backend restart (app -> lokalis @Primary) ==="
+            sudo systemctl restart valuta-backend.service
+            sleep 18
+            HEALTHY=0
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 http://localhost:8080/api/v1/auth/bootstrap-status || echo 000)
+              echo "health attempt $i: HTTP $CODE"
+              [ "$CODE" = "200" ] && { HEALTHY=1; break; }
+              sleep 10
+            done
+            if [ "$HEALTHY" != "1" ]; then
+              echo "::error::backend NEM all fel 200-ra -> AUTO-ROLLBACK (vissza a Neon-primary allapotra)"
+              sudo journalctl -u valuta-backend.service -n 60 --no-pager | grep -iE 'flyway|datasource|hikari|error|caused by' | tail -25
+              sudo cp -a "$BAK" "$ENVFILE"; sudo chown valuta:valuta "$ENVFILE"; sudo chmod 600 "$ENVFILE"
+              sudo systemctl restart valuta-backend.service; sleep 18
+              for i in 1 2 3 4 5 6; do
+                CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 http://localhost:8080/api/v1/auth/bootstrap-status || echo 000)
+                echo "rollback health attempt $i: HTTP $CODE"
+                [ "$CODE" = "200" ] && { echo "=== AUTO-ROLLBACK OK — prod helyreallt (Neon-primary), a local-restore NEM sikerult ==="; exit 1; }
+                sleep 10
+              done
+              echo "::error::rollback utan sem 200 — KEZI beavatkozas"; exit 1
+            fi
+            echo ""
+            echo "=== UTANA: melyik DB-t szolgalja MOST a backend (Flyway-journal + adat) ==="
+            sudo journalctl -u valuta-backend.service -n 400 --no-pager | grep -oE 'Database: jdbc:postgresql://[^ ]*' | tail -1 || echo "(nincs Database log-sor)"
+            echo "Flyway current version (journal): $(sudo journalctl -u valuta-backend.service -n 400 --no-pager | grep -oE 'Current version of schema [^:]*: [0-9]+' | tail -1)"
+            echo "lokalis employee/transaction/RUB (a szolgalo DB):"
+            sudo -u postgres psql -d valuta -tAc "SELECT 'employee='||(SELECT count(*) FROM employee)||'; transaction='||(SELECT count(*) FROM transaction)||'; RUB.is_active='||(SELECT is_active FROM currency WHERE code='RUB')||'; flyway_max=V'||(SELECT max(version::int) FROM flyway_schema_history WHERE success AND version ~ '^[0-9]+$')"
+            echo "=== Kesz — az app a LOKALIS (gazdag) DB-t szolgalja, Neon-sync egyelore KI (kod-fix utan vissza) ==="
           ENDSSH
 
       - name: 'FREEZE-WATCHDOG telepítés + engedélyezés (Hetzner anti-freeze öngyógyító)'
