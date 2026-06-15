@@ -1,0 +1,13 @@
+[Unit]
+Description=Valuta FREEZE-WATCHDOG — anti-freeze öngyógyító (auto-restart + Resend értesítés)
+Documentation=https://github.com/kosazoltan/valutavalto-program/blob/main/deploy/hetzner/ha/freeze-watchdog.sh
+After=network-online.target postgresql@16-main.service valuta-backend.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# root kell a `systemctl restart` + `sudo -u postgres pg_isready` műveletekhez.
+User=root
+ExecStart=/opt/valutavalto/deploy/hetzner/ha/freeze-watchdog.sh
+# A watchdog maga kezeli a hibákat (set -uo pipefail, explicit exit-kódok); ne floodolja a journalt.
+TimeoutStartSec=300
