@@ -86,4 +86,29 @@ describe('AverageRateReportPage — FK-027 pivot', () => {
     fireEvent.click(screen.getByText('Excel export'))
     await waitFor(() => expect(mockExportExcel).toHaveBeenCalled())
   })
+
+  it('FK-031: a VALUTA oszlop és a fejléc rögzített (sticky) osztályokat kap', async () => {
+    mockGetPivot.mockResolvedValue(PIVOT)
+    renderPage()
+    fireEvent.click(screen.getByText('Lekérdezés'))
+    await waitFor(() => expect(screen.getByTestId('pivot-table')).toBeInTheDocument())
+
+    // FR-2: a fejléc-sorok (thead) sticky-top.
+    const thead = screen.getByTestId('pivot-table').querySelector('thead')!
+    expect(thead.className).toContain('sticky')
+    expect(thead.className).toContain('top-0')
+
+    // FR-3: a bal-felső sarokcella ("Valuta" fejléc) sticky MINDKÉT irányban (left-0 + top-0).
+    const valutaTh = screen.getByText('Valuta')
+    expect(valutaTh.tagName).toBe('TH')
+    expect(valutaTh.className).toContain('sticky')
+    expect(valutaTh.className).toContain('left-0')
+    expect(valutaTh.className).toContain('top-0')
+
+    // FR-1: a VALUTA oszlop sor-cellái sticky-left (vízszintes görgetésnél a helyükön).
+    const eurCell = screen.getByText('EUR')
+    expect(eurCell.tagName).toBe('TD')
+    expect(eurCell.className).toContain('sticky')
+    expect(eurCell.className).toContain('left-0')
+  })
 })

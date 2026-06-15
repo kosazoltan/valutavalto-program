@@ -174,13 +174,19 @@ export default function AverageRateReportPage() {
       )}
 
       {!loading && data && currencyRows.length > 0 && (
-        <div className="bg-white rounded shadow overflow-x-auto">
+        <div className="bg-white rounded shadow overflow-auto max-h-[70vh]">
+          {/* FK-031: "ablak rögzítése" (freeze panes) — a VALUTA oszlop (sticky left) és a fejléc-sorok
+              (sticky thead) rögzítve, hogy vízszintes ÉS függőleges görgetésnél is láthatók maradjanak.
+              A konténer mindkét irányban görgethető (overflow-auto) + bounded magasság (max-h). */}
           <table className="min-w-full border-collapse text-sm" data-testid="pivot-table">
-            <thead className="bg-gray-50">
+            {/* sticky top-0: a teljes (2 soros) fejléc a táblázat tetején marad függőleges görgetésnél */}
+            <thead className="bg-gray-50 sticky top-0 z-20">
               <tr>
-                <th rowSpan={2} className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500 border sticky left-0 bg-gray-50">Valuta</th>
+                {/* bal-felső sarokcella: sticky MINDKÉT irányban (left-0 + top-0), legmagasabb z-index;
+                    border-r-2 a görgethető tartalomtól való vizuális elválasztáshoz (FR-3) */}
+                <th rowSpan={2} className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500 border sticky left-0 top-0 z-30 bg-gray-50 border-r-2 border-r-gray-300">Valuta</th>
                 {groups.map((g) => (
-                  <th key={g.groupCode} colSpan={4} className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border">
+                  <th key={g.groupCode} colSpan={4} className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border bg-gray-50">
                     {g.groupName}
                   </th>
                 ))}
@@ -189,7 +195,7 @@ export default function AverageRateReportPage() {
                 {groups.map((g) => (
                   <Fragment key={g.groupCode}>
                     {SUB_HEADERS.map((h) => (
-                      <th key={`${g.groupCode}-${h}`} className="px-2 py-1 text-right text-[10px] font-medium uppercase text-gray-500 border whitespace-nowrap">{h}</th>
+                      <th key={`${g.groupCode}-${h}`} className="px-2 py-1 text-right text-[10px] font-medium uppercase text-gray-500 border bg-gray-50 whitespace-nowrap">{h}</th>
                     ))}
                   </Fragment>
                 ))}
@@ -198,7 +204,9 @@ export default function AverageRateReportPage() {
             <tbody>
               {currencyRows.map((row) => (
                 <tr key={row.currencyCode} className="hover:bg-gray-50">
-                  <td className="px-3 py-1.5 font-semibold border sticky left-0 bg-white">{row.currencyCode}</td>
+                  {/* VALUTA oszlop: sticky left (vízszintes görgetésnél marad); z-10 a sima cellák fölött,
+                      a fejléc (z-20) alatt; opak háttér (NFR-1) + border-r-2 elválasztó (FR-1/FR-3) */}
+                  <td className="px-3 py-1.5 font-semibold border sticky left-0 z-10 bg-white border-r-2 border-r-gray-300">{row.currencyCode}</td>
                   {groups.map((g) => {
                     const v = row.values[g.groupCode]
                     return (
