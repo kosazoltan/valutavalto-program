@@ -324,16 +324,28 @@ jobs:
             NEON_URI=$(printf '%s' "$NEON_B64" | base64 -d)
             EXC="flyway_schema_history neon_sync_log sync_inbox sync_outbox idempotency_record"
             NOTIN="'flyway_schema_history','neon_sync_log','sync_inbox','sync_outbox','idempotency_record'"
-            echo "=== (1) lokalis data-only dump FAJLBA (kizart infra: $EXC) ==="
-            EXCARGS=""; for t in $EXC; do EXCARGS="$EXCARGS --exclude-table=$t"; done
-            sudo -u postgres pg_dump --data-only --no-owner $EXCARGS -d valuta -f /tmp/neon_refresh.sql
+            echo "=== (1) Neon backup-scope (Neon ∩ lokalis tablak) + lokalis data-only dump CSAK ezekre ==="
+            # A Neon NEM teljes sema-tukor: csak a backup-celu tablak leteznek rajta (a tobbit a magas
+            # baseline miatt sosem hozta letre a Flyway). Ezert CSAK a Neonon LETEZO (es lokalison is
+            # meglevo) tablakat toltjuk ujra — kulonben a load 'relation does not exist'-tel elhasal.
+            NEON_TABLES=$(psql "$NEON_URI" -tAc "SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename NOT IN ($NOTIN) ORDER BY tablename" | tr -d ' ' | grep . || true)
+            LOCAL_TABLES=$(sudo -u postgres psql -d valuta -tAc "SELECT tablename FROM pg_tables WHERE schemaname='public'" | tr -d ' ')
+            TBLARGS=""; SCOPE=""
+            for t in $NEON_TABLES; do
+              if echo "$LOCAL_TABLES" | grep -qx "$t"; then TBLARGS="$TBLARGS --table=public.$t"; SCOPE="$SCOPE $t"; fi
+            done
+            CNT=$(echo $SCOPE | wc -w)
+            echo "  backup-scope tabla-szam: $CNT"
+            if [ "$CNT" -eq 0 ]; then echo "::error::ures scope — abort"; exit 1; fi
+            sudo -u postgres pg_dump --data-only --no-owner $TBLARGS -d valuta -f /tmp/neon_refresh.sql
             sudo chmod 644 /tmp/neon_refresh.sql
             echo "  dump meret: $(stat -c '%s' /tmp/neon_refresh.sql) byte"
             echo ""
-            echo "=== (2) FK DROP/ADD + TRUNCATE lista generalas a Neon katalogusbol ==="
+            echo "=== (2) FK DROP/ADD generalas (Neon katalogus) + TRUNCATE lista (scope) ==="
             psql "$NEON_URI" -tAc "SELECT 'ALTER TABLE '||conrelid::regclass||' DROP CONSTRAINT IF EXISTS '||quote_ident(conname)||';' FROM pg_constraint WHERE contype='f' AND connamespace='public'::regnamespace" > /tmp/drop_fk.sql
             psql "$NEON_URI" -tAc "SELECT 'ALTER TABLE '||conrelid::regclass||' ADD CONSTRAINT '||quote_ident(conname)||' '||pg_get_constraintdef(oid)||';' FROM pg_constraint WHERE contype='f' AND connamespace='public'::regnamespace" > /tmp/add_fk.sql
-            TRUNC=$(psql "$NEON_URI" -tAc "SELECT 'TRUNCATE '||string_agg(format('%I',tablename),', ')||';' FROM pg_tables WHERE schemaname='public' AND tablename NOT IN ($NOTIN)")
+            TLIST=$(for t in $SCOPE; do printf '"%s",' "$t"; done | sed 's/,$//')
+            TRUNC="TRUNCATE $TLIST;"
             echo "  FK drop sorok: $(wc -l < /tmp/drop_fk.sql) | FK add sorok: $(wc -l < /tmp/add_fk.sql)"
             if [ -z "$TRUNC" ]; then echo "::error::ures TRUNCATE lista — abort"; exit 1; fi
             echo ""
