@@ -131,6 +131,14 @@ jobs:
             done
             echo "--- a backend melyik DB-ben látja a RUB-ot aktívként? közvetlen mindkét oldal ---"
             echo "LOKÁLIS valuta RUB.is_active : $(sudo -u postgres psql -d valuta -tAc "SELECT is_active FROM currency WHERE code='RUB'" 2>/dev/null)"
+            echo ""
+            echo "=== B2-BACKUP átállítás felderítés (read-only, host maszkolva) ==="
+            echo "--- Neon-kapcsolati string a .env-ben? (jelszó+host maszkolva) ---"
+            grep -E '^(NEON_DATABASE_URL|SPRING_DATASOURCE_URL|DATABASE_URL)=' /opt/valutavalto/backend/.env 2>/dev/null | sed -E 's#//[^@/]*@#//***@#' || echo "(nincs ilyen sor)"
+            echo "--- jelenlegi B2-backup script pg_dump sora ---"
+            grep -nE 'pg_dump' /usr/local/bin/valuta-db-backup.sh 2>/dev/null || echo "(nincs /usr/local/bin/valuta-db-backup.sh)"
+            echo "--- valuta-backup.timer állapota ---"
+            systemctl is-active valuta-backup.timer 2>/dev/null || echo "  timer inactive/nincs"
           ENDSSH
 
       - name: 'Scaleway STANDBY — DB + watchdog failover-log (read-only)'
