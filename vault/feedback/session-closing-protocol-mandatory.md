@@ -107,7 +107,7 @@ session-t, ha bármelyik kötelező ellenőrzés nem futott le vagy nem zöld.
 
 ## Kapcsolódó vault dokumentumok
 
-- [`ai-review-mandate-zero-tolerance.md`](ai-review-mandate-zero-tolerance.md) — minden P0/P1/P2 kötelező javítás
-- [`hallucinacio-megszuntetese.md`](hallucinacio-megszuntetese.md) — research-first, Context7, iparági standardok
+- [`ai-agent-push-ci-doctrine-2026-05-17.md`](ai-agent-push-ci-doctrine-2026-05-17.md) — minden P0/P1/P2 kötelező javítás
+- [`no-hallucination-lateral-thinking.md`](no-hallucination-lateral-thinking.md) — research-first, Context7, iparági standardok
 - [`lint-ci-codex-sourcery-every-pr-mandatory.md`](lint-ci-codex-sourcery-every-pr-mandatory.md) — minden PR-en kötelező CI+Codex+Sourcery+Copilot
 - [`no-hallucination-lateral-thinking.md`](no-hallucination-lateral-thinking.md) — TILOS találgatás, csak fact-based döntés

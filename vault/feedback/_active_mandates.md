@@ -51,33 +51,37 @@ feladat kifejezetten mandate-et vagy agent-mukodest erint.
 - Nincs teszt/CI/security gyengites a zold eredmenyert.
 - Deploy/release elott teljes relevans gate es evidence kell.
 - Ha nincs bizonyitek, azt roviden es oszinten kell jelenteni.
+- Uj mandate hozzaadasakor / lenyeges modositasakor ezt az indexet frissiteni kell (ne lehessen "felejteni").
 
 ## 2026-06-08 uj kotelezo munkammod-mandatumok
 
-### 1. Kettos terv minden valtoztatás elott
-Minden fejlesztes/javitas/modositas elott KET terv kotelezo:
+### 1. Kettos terv nem-trivialis valtoztatás elott (kockazat-aranyos)
+**Nem-trivialis / 3+ fajlt erinto / kockazatos (penzugyi, multi-tenant, contract, security, DB) valtoztatas**
+elott KET terv kotelezo:
 - **Implementacios terv** (mit, hol, miert, mellekhatások)
 - **Lokalis ellenorzesi terv** (melyik Python/Bash script, bemenet/kimenet, melyik teszt/typecheck/grep)
 Csak e ket terv utan kezdodik az implementacio es az ellenorzes.
-Referencia: `memory/feedback_local_sandbox_handoff_protocol.md`
+Trivialis valtoztatasnal (1 mondatban leirhato diff: atnevezes, log-sor, kis lokalis fix, dokumentacio)
+NEM kell — `AGENTS.md` builder-first (ne kerj engedelyt rutin szerkesztesre).
 
-### 2. Globalis hatasvizsglat minden kodmodositas utan
-Szuk scope NEM mentesit: barmilyen DTO/service/endpoint/mapper valtozas utan:
+### 2. Globalis hatasvizsglat contract-erinto / penzugyi valtozas utan (kockazat-aranyos)
+**Contract-erinto vagy penzugyi/multi-tenant valtozasnal** (DTO/endpoint/cross-module szerzodes/mapper,
+penzmozgas, egyenleg, jogosultsag, DB-schema) KOTELEZO a teljes hatasvizsglat:
 1. grep -- modositott osztaly/metodus/endpoint minden hivoja (java+ts+tsx)
 2. Teljes erintett modul tesztek (NEM csak celzott)
 3. TypeCheck mind a 4 kliensen (frontend-react + 3 Electron)
 4. Mentalis vegpont-audit (melyik masik endpoint/tenant/flow erinti)
 Valutavalto-specifikus csapdak: JPQL customerId != '' (nem IS NOT NULL!),
 financialEffective=TRUE, Flyway UNIQUE, 4-area verzio-szinkron, multi-tenant company-scope.
-Referencia: `memory/feedback_global_impact_check_after_changes.md`
+Kis lokalis, contract-semleges valtozasnal a **celzott ellenorzes eleg** (`AGENTS.md` §4) — nem kell teljes kor.
 
 ### 3. Session handoff major task utan
 Minden merge-elt PR / lezart feature / telepito-build / outage-fix utan:
 - `vault/sessions/handoff-YYYY-MM-DD-<tema>.md` letrehozasa (max 30 sor)
 - Jelzem a usernek: "Erdemes uj sessiont nyitni a handoff alapjan."
-Referencia: `memory/feedback_local_sandbox_handoff_protocol.md`
 
 ### 4. Hatályon kívül helyezett mintak (2026-06-08)
-- `mandatory-pre-pr-self-review-gate-2026-05-20.md` (C.25) → superseded, lasd 7-lencsés review
+- `mandatory-pre-pr-self-review-gate-2026-05-20.md` (C.25) → superseded → `AGENTS.md` agentic-qa
+  review-evidencia + `two-rounds-*-mandatory-2026-05-19.md` (csak merge/deploy előtt, nem always-on)
 - `OPUS_GITHUB_QUALITY_MANDATE.md` / `MULTIMODEL_GITHUB_QUALITY_MANDATE_V2.md` → archivalt
 - "Opus 4.8" modell-branding → elavult (tenyleges: opusplan = Opus/Sonnet adaptiv)

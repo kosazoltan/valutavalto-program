@@ -5,7 +5,8 @@ az `AGENTS.md` szabalyozza.
 
 ## PR meret
 
-- Cel: max 300 LOC es max 5 funkcionalis fajl per PR.
+- Plafon: ~400 sor diff per PR (SSOT: `AGENTS.md` agentic-qa blokk). Cel a kisebb,
+  fokuszalt, vertikalisan teljes szelet (iranymutatas: ~5 funkcionalis fajl alatt).
 - Ha a valtozas nagyobb, bontsd ertelmes, mukodo reszekre.
 - Verzioszinkron, lockfile es generated artifact csak akkor lehet kivetel, ha a
   valtozas ezt tenylegesen megkoveteli.

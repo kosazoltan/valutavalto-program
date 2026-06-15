@@ -10,6 +10,12 @@
 
 Az ügynök feladata nem az, hogy "megírja a kódot és reménykedjen", hanem hogy a teljes **Push → CI → review feedback → auto-fix → re-run → deploy gate → merge gate** ciklust végigvigye, amíg a változás bizonyíthatóan zöld, auditálható és biztonságos.
 
+> ⚠️ **HATÁLY (2026-06-15):** Ez a hurok **kockázat-arányos**: push/PR/merge/deploy **után** fut, NEM
+> always-on polling minden lokális (push nélküli) változásra (`AGENTS.md` §6; `_active_mandates.md`
+> deprecálta a non-push pollingot). A konkrét repo CI-check-lista + reviewer `gh api` jq-szűrők:
+> `lint-ci-codex-sourcery-every-pr-mandatory.md`. P2-finding defer megengedett **dokumentált indoklással,
+> GitHub issue-ban követve** (beolvasztva: ai-review-mandate-zero-tolerance.md).
+
 ## Nem alku tárgya (10 alapszabály)
 
 1. **Red CI mellett nincs merge.**

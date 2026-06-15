@@ -60,9 +60,9 @@ tenyszeruen megtortent.
   Flyway-szintje == repo max V (Gate A), es a Neon backup-DB sema is migralva (Gate B,
   `flyway migrate`). Automatizalva a `deploy-hetzner.yml`-ben; tilos kikapcsolni. Lasd AGENTS.md 4.
 
-## Helyi toolok (scripts/dev-tools/ — 44 db, zero-API-cost)
+## Helyi toolok (scripts/dev-tools/ — 45 db, zero-API-cost)
 
-**Trigger-mátrix:** `memory/reference_dev_tools_trigger_matrix.md`
+Trigger: a megfelelo eszkozt a valtozas tipusahoz futtasd (lasd az alabbi blokkokat).
 
 ```powershell
 # Backend Java valtozas utan (mindig)

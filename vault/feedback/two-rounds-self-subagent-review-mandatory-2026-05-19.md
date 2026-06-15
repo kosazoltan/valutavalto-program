@@ -11,6 +11,11 @@ related:
 
 # Kétkörös SAJÁT subagent self-review merge előtt — KÖTELEZŐ P0
 
+> ⚠️ **HATÁLY-PONTOSÍTÁS (2026-06-15):** **NEM always-on**. Az adverzariális
+> subagent-review **merge/deploy/magas-kockázat** előtt kötelező — normál feladatra
+> a célzott self-review elég (`AGENTS.md` §4; `_active_mandates.md` deprecálta a
+> „kötelezett kétkörös self-review normál feladatnál" formát). A merge-előtti mag marad.
+
 ## A szabály
 
 > "Neked kell kétszer ellenőrizned a saját ai közeiddel egy másik ügynökkel
