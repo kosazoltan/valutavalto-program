@@ -20,6 +20,7 @@ on:
           - local-rub-data-fix
           - cutover-assess
           - cutover-backup
+          - cutover-preflight
           - neon-sync-enable
           - neon-sync-rollback
           - neon-sync-verify
@@ -180,6 +181,39 @@ jobs:
             echo "=== Neon transaction-delta reszletek (ha van) ==="
             psql "$NEON_URI" -P pager=off -c "SELECT id, created_at, status FROM transaction WHERE created_at > '2026-06-14 06:30:00' ORDER BY created_at DESC LIMIT 20" 2>/dev/null || echo "(nincs / nem olvashato)"
             echo "=== Kesz — KET backup elkeszult, semmi DB nem valtozott ==="
+          ENDSSH
+
+      - name: 'CUTOVER PREFLIGHT (read-only) — futo backend elo kapcsolata + .env + lokalis-teszt'
+        if: ${{ github.event.inputs.action == 'cutover-preflight' }}
+        run: |
+          # READ-ONLY: NEM indit ujra, NEM ir .env-et. Eldonti, biztonsagos-e a Local-First restart.
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            echo "=== Futo backend allapot ==="
+            PID=$(systemctl show valuta-backend.service -p MainPID --value)
+            echo "MainPID: $PID | uptime: $(systemctl show valuta-backend.service -p ActiveEnterTimestamp --value)"
+            echo ""
+            echo "=== ELO DB-kapcsolatok (a futo backend tenylegesen hova csatlakozik MOST) ==="
+            sudo ss -tnp 2>/dev/null | grep -E "pid=$PID\b" | grep -E ':5432|:6432|:443|:5433' | awk '{print "  "$5" (peer)"}' | sort -u || echo "(ss nem adott sort)"
+            echo "  -- neon-IP feloldas: $(getent hosts ep-polished-morning-altxohe7.c-3.eu-central-1.aws.neon.tech 2>/dev/null | awk '{print $1}' | head -1 || echo '(n/a)')"
+            echo ""
+            echo "=== .env aktualis (maszkolt) + utolso modositas ==="
+            sudo stat -c '  .env mtime: %y' /opt/valutavalto/backend/.env
+            sudo grep -E '^(DATABASE_URL|NEON_DATABASE_URL|NEON_SYNC_ENABLED|DATABASE_USERNAME)=' /opt/valutavalto/backend/.env \
+              | sed -E 's|password=[^&;[:space:]]*|password=***|g; s#(://)[^@/]*@#\1***@#g'
+            echo ""
+            echo "=== LOKALIS-TESZT: a futo backend .env-credjeivel elerheto-e a lokalis valuta + gazdag-e ==="
+            DBU=$(sudo grep -E '^DATABASE_USERNAME=' /opt/valutavalto/backend/.env | head -1 | cut -d= -f2-)
+            DBP=$(sudo grep -E '^DATABASE_PASSWORD=' /opt/valutavalto/backend/.env | head -1 | cut -d= -f2-)
+            DBU=${DBU:-valuta_user}
+            if [ -z "$DBP" ]; then echo "  (nincs DATABASE_PASSWORD a .env-ben — peer/socket auth?)"; fi
+            echo "  user: $DBU (jelszo nem logolt)"
+            PGPASSWORD="$DBP" psql "host=localhost port=6432 dbname=valuta user=$DBU" -tAc \
+              "SELECT 'kapcsolat=OK; employee='||(SELECT count(*) FROM employee)||'; transaction='||(SELECT count(*) FROM transaction)||'; RUB.is_active='||(SELECT is_active FROM currency WHERE code='RUB')||'; flyway_max=V'||(SELECT max(version::int) FROM flyway_schema_history WHERE success AND version ~ '^[0-9]+$')" \
+              2>&1 | sed -E 's|password[^ ]*|password=***|g' | head -5 || echo "  LOKALIS-TESZT BUKOTT (a restart local-ra NEM lenne biztonsagos)"
+            echo "=== Kesz — preflight read-only, semmi nem valtozott ==="
           ENDSSH
 
       - name: 'FREEZE-WATCHDOG telepítés + engedélyezés (Hetzner anti-freeze öngyógyító)'
