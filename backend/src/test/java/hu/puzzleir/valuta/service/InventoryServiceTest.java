@@ -766,4 +766,62 @@ class InventoryServiceTest {
         assertThat(result).extracting(r -> r.getCurrencyCode())
                 .containsExactlyInAnyOrder("EUR", "USD");
     }
+
+    // ============ FK-029: Országos készlet — szintetikus 0-sorok ============
+
+    @Test
+    @DisplayName("FK-029 getAllStock: szintetikus 0-sor a cash_balance nélküli aktív branch-ekre (FR-1/FR-6)")
+    void getAllStock_includesSyntheticZeroRowsForBranchesWithoutCashBalance() {
+        // branch-nek van EUR cash_balance sora; branch2-nek SEMMI.
+        CashBalance realEur = CashBalance.builder()
+                .branch(branch).currency(eurCurrency).company(company)
+                .currentBalance(new BigDecimal("5000")).openingBalance(BigDecimal.ZERO)
+                .build();
+        when(cashBalanceRepository.findByCompanyId(COMPANY_ID)).thenReturn(java.util.List.of(realEur));
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(COMPANY_ID))
+                .thenReturn(java.util.List.of(branch, branch2));
+        when(currencyRepository.findAllActiveOrdered()).thenReturn(java.util.List.of(hufCurrency, eurCurrency));
+
+        var result = inventoryService.getAllStock();
+
+        // FR-6: minden aktív branch szerepel — branch ÉS a cash_balance nélküli branch2 is.
+        assertThat(result).extracting(cb -> cb.getBranch().getId())
+                .contains(BRANCH_ID, BRANCH_ID_2);
+        // branch2 (cash_balance nélkül) mind a 2 aktív valutára 0-egyenlegű szintetikus sort kap.
+        assertThat(result).filteredOn(cb -> BRANCH_ID_2.equals(cb.getBranch().getId()))
+                .hasSize(2)
+                .allMatch(cb -> cb.getCurrentBalance().compareTo(BigDecimal.ZERO) == 0);
+        // branch valódi EUR sora megmarad (5000), + szintetikus HUF (0) = 2 sor.
+        assertThat(result).filteredOn(cb -> BRANCH_ID.equals(cb.getBranch().getId())
+                        && "EUR".equals(cb.getCurrency().getCode()))
+                .singleElement()
+                .extracting(CashBalance::getCurrentBalance)
+                .isEqualTo(new BigDecimal("5000"));
+    }
+
+    @Test
+    @DisplayName("FK-029 getAllStock: a szintetikus sorok NEM perzisztálódnak (FR-3)")
+    void getAllStock_syntheticRowsNotPersisted() {
+        when(cashBalanceRepository.findByCompanyId(COMPANY_ID)).thenReturn(java.util.List.of());
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(COMPANY_ID)).thenReturn(java.util.List.of(branch));
+        when(currencyRepository.findAllActiveOrdered()).thenReturn(java.util.List.of(hufCurrency, eurCurrency));
+
+        inventoryService.getAllStock();
+
+        verify(cashBalanceRepository, never()).save(any(CashBalance.class));
+    }
+
+    @Test
+    @DisplayName("FK-029 getAllStock: a szintetikus sorszám az aktív valuta-számmal egyezik, nem hardcode (FR-7)")
+    void getAllStock_syntheticRowCountMatchesActiveCurrencyCount() {
+        when(cashBalanceRepository.findByCompanyId(COMPANY_ID)).thenReturn(java.util.List.of());
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(COMPANY_ID)).thenReturn(java.util.List.of(branch));
+        when(currencyRepository.findAllActiveOrdered()).thenReturn(java.util.List.of(hufCurrency, eurCurrency)); // 2 aktív
+
+        var result = inventoryService.getAllStock();
+
+        // 1 branch × 2 aktív valuta = 2 szintetikus sor (nincs valódi cash_balance).
+        assertThat(result).hasSize(2);
+        assertThat(result).allMatch(cb -> cb.getCurrentBalance().compareTo(BigDecimal.ZERO) == 0);
+    }
 }

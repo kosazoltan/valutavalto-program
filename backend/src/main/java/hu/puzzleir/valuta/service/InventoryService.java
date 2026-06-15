@@ -502,7 +502,9 @@ public class InventoryService {
             List<CashBalance> result = allRaw.stream().filter(activeBranch).toList();
             log.info("FK-005 getAllStock END (no territory): {} rows after activeBranch filter (was {})",
                     result.size(), allRaw.size());
-            return result;
+            // FK-029: a hívó scope-ján belül minden aktív, nem-vault branch × aktív valuta kapjon
+            // (szintetikus, NEM perzisztált) 0-sort, ha nincs valódi cash_balance rekordja.
+            return appendSyntheticZeroRows(result, companyId, null);
         }
         var territoryBranchIds = branchRepository.findByCompanyIdAndVaultTerritoryId(companyId, territoryFilter)
                 .stream().map(Branch::getId).collect(java.util.stream.Collectors.toSet());
@@ -514,7 +516,70 @@ public class InventoryService {
                 .toList();
         log.info("FK-005 getAllStock END (territory={}): {} rows after activeBranch+territory filter (was {})",
                 territoryFilter, result.size(), allRaw.size());
-        return result;
+        // FK-029: territory-scope-helyes szintézis (ugyanaz a territoryFilter, mint a valódi soroknál).
+        return appendSyntheticZeroRows(result, companyId, territoryFilter);
+    }
+
+    /**
+     * FK-029 (2026-06-15): az Országos készlet / Pénztári készletek nézet adat-fedettségének
+     * helyreállítása. A {@code cash_balance} sorok csak futásidejű inicializálással keletkeznek
+     * (munkamenet-nyitás, tranzakció, admin retrofit); a V145 SQL-seedből jött irodák ezt
+     * megkerülték, így sok aktív pénztár sosem kapott sort és hiányzott a nézetből.
+     *
+     * <p>Ez a metódus a {@code realRows} (valódi, már scope-szűrt sorok) mellé <b>szintetikus,
+     * NEM perzisztált</b> 0-egyenlegű {@link CashBalance} sorokat tesz minden aktív,
+     * {@code is_vault=FALSE} branch × aktív valuta párra, amelyre nincs valódi sor. A szintézis
+     * tisztán in-memory — a {@code cash_balance} táblába semmit nem ír (FR-3, NFR-5).</p>
+     *
+     * <p>Scope-helyesség (FR-5a/FR-5b 1. réteg): a branch-lista a hívó {@code companyId}-jára és
+     * ugyanarra a {@code territoryFilter}-re szűr, mint a valódi sorok. A controller-szintű
+     * {@code AccessScopeService.isBranchVisible()} (2. réteg) ezután a szintetikus sorokra is lefut.</p>
+     *
+     * <p>Vault-branch-ekre (FR-1, TBD-3) a szintézis NEM terjed ki — azokat a frontend FK-007
+     * üres-kártya fallback-je fedi.</p>
+     */
+    private List<CashBalance> appendSyntheticZeroRows(List<CashBalance> realRows, UUID companyId,
+                                                      Integer territoryFilter) {
+        // 1. réteg scope: ugyanaz a territory-szűrés, mint a realRows-nál; csak AKTÍV, NEM-vault branch.
+        List<Branch> scopeBranches = (territoryFilter == null)
+                ? branchRepository.findByCompanyIdAndIsActiveTrue(companyId)
+                : branchRepository.findByCompanyIdAndVaultTerritoryId(companyId, territoryFilter).stream()
+                        .filter(b -> Boolean.TRUE.equals(b.getIsActive()))
+                        .toList();
+        List<Branch> targetBranches = scopeBranches.stream()
+                .filter(b -> !Boolean.TRUE.equals(b.getIsVault()))
+                .toList();
+        if (targetBranches.isEmpty()) {
+            return realRows;
+        }
+        // FR-7: a valuta-lista a futásidejű aktív katalógusból (nem hardcode-olt), RUB dinamikusan.
+        List<hu.puzzleir.valuta.entity.Currency> activeCurrencies = currencyRepository.findAllActiveOrdered();
+        // Meglévő (branchId, currencyId) párok a valódi sorokból — ezekre NEM kell szintetikus sor.
+        java.util.Set<String> existing = realRows.stream()
+                .filter(cb -> cb.getBranch() != null && cb.getCurrency() != null)
+                .map(cb -> cb.getBranch().getId() + ":" + cb.getCurrency().getId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        List<CashBalance> out = new java.util.ArrayList<>(realRows);
+        int synth = 0;
+        for (Branch b : targetBranches) {
+            for (hu.puzzleir.valuta.entity.Currency cur : activeCurrencies) {
+                if (existing.contains(b.getId() + ":" + cur.getId())) {
+                    continue;
+                }
+                out.add(CashBalance.builder()
+                        .company(b.getCompany())
+                        .branch(b)
+                        .currency(cur)
+                        .currentBalance(java.math.BigDecimal.ZERO)
+                        .openingBalance(java.math.BigDecimal.ZERO)
+                        .build());
+                synth++;
+            }
+        }
+        log.info("FK-029 getAllStock: {} szintetikus 0-sor ({} aktiv nem-vault branch x {} aktiv valuta; {} valodi sor)",
+                synth, targetBranches.size(), activeCurrencies.size(), realRows.size());
+        return out;
     }
 
     /**
