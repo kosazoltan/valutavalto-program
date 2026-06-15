@@ -3,7 +3,8 @@ name: Hetzner Prod Ops (write)
 # Igeny szerinti, IRO prod-muveletek a Hetzner 'valuta' DB-n / valuta-backend systemd env-jen,
 # a meglevo deploy-secret SSH-kulccsal (ugyanaz, amivel a deploy-hetzner.yml dolgozik).
 # Ket, egymastol fuggetlen muvelet a 'action' choice mogott:
-#   * rub-deactivate   -> a prod RUB.is_active=false (egyezzen a V319 kod-szandekkal). Idempotens UPDATE.
+#   * rub-reactivate   -> a prod RUB.is_active=true (egyezzen a V327 kod-szandekkal — a RUB
+#                         megis forgalmazott; a 2026-06-12-i V319 teves user-infon alapult). Idempotens UPDATE.
 #   * neon-sync-enable -> a backup-szinkron bekapcsolasa: a box /opt/valutavalto/backend/.env-be
 #                         NEON_SYNC_ENABLED=true + NEON_DATABASE_URL (repo-secret), majd backend restart.
 # A NEON_DATABASE_URL ertek base64-en megy at, sehol nem jelenik meg a logban (GitHub maszkolja is).
@@ -15,7 +16,7 @@ on:
         required: true
         type: choice
         options:
-          - rub-deactivate
+          - rub-reactivate
           - neon-sync-enable
           - neon-sync-rollback
           - neon-sync-verify
@@ -36,16 +37,16 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: 'RUB deaktivalas (prod, idempotens)'
-        if: ${{ github.event.inputs.action == 'rub-deactivate' }}
+      - name: 'RUB reaktivalas (prod, idempotens)'
+        if: ${{ github.event.inputs.action == 'rub-reactivate' }}
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
               bash -s << 'ENDSSH'
             set -o pipefail
-            echo "=== RUB deaktivalas a prod 'valuta' DB-n ==="
+            echo "=== RUB reaktivalas a prod 'valuta' DB-n (V327 kod-szandek) ==="
             echo "elotte : $(sudo -u postgres psql -d valuta -tAc "SELECT code||'.is_active='||is_active FROM currency WHERE code='RUB'" 2>/dev/null)"
-            sudo -u postgres psql -d valuta -c "UPDATE currency SET is_active=false WHERE code='RUB' AND is_active=true;"
+            sudo -u postgres psql -d valuta -c "UPDATE currency SET is_active=true, updated_at=NOW() WHERE code='RUB' AND is_active=false;"
             echo "utana  : $(sudo -u postgres psql -d valuta -tAc "SELECT code||'.is_active='||is_active FROM currency WHERE code='RUB'" 2>/dev/null)"
             echo "aktiv valutak  : $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FILTER (WHERE is_active) FROM currency" 2>/dev/null)"
             echo "=== Kesz ==="
