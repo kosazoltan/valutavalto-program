@@ -305,6 +305,44 @@ jobs:
             sudo sed -n '/^\[databases\]/,/^\[/p' /etc/pgbouncer/pgbouncer.ini 2>/dev/null | grep -vE '^\s*$|^\[|^\s*;' | sed -E 's#password=[^ ]*#password=***#I' | head -10 || echo "(nincs)"
           ENDSSH
 
+      - name: 'P-FREEZE-B VÉGSŐ: PgBouncer SHOW SERVERS (sudo userlist) + Neon API'
+        if: always()
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: |
+          echo "=== HETZNER: PgBouncer admin SHOW SERVERS (a 'valuta' pool tényleges upstream-je) ==="
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            INI=/etc/pgbouncer/pgbouncer.ini
+            AUTHTYPE=$(sudo grep -oE '^\s*auth_type\s*=\s*\S+' "$INI" 2>/dev/null | sed -E 's/.*=\s*//'); echo "auth_type   : ${AUTHTYPE:-?}"
+            ADMIN=$(sudo grep -oE '^\s*admin_users\s*=\s*\S+' "$INI" 2>/dev/null | sed -E 's/.*=\s*//; s/,.*//'); echo "admin_user  : ${ADMIN:-?}"
+            SOCKDIR=$(sudo grep -oE '^\s*unix_socket_dir\s*=\s*\S+' "$INI" 2>/dev/null | sed -E 's/.*=\s*//'); SOCKDIR="${SOCKDIR:-/var/run/postgresql}"; echo "socket_dir  : $SOCKDIR"
+            echo "--- (1) SHOW SERVERS a socketon (peer), user=${ADMIN:-pgbouncer} ---"
+            sudo -u postgres psql -h "$SOCKDIR" -p 6432 -U "${ADMIN:-pgbouncer}" -d pgbouncer -tAc "SHOW SERVERS" 2>&1 | awk -F'|' 'NF>5{print "  db="$3" state="$4" UPSTREAM="$5":"$6} /FATAL|error/{print "  "$0}' | head -12
+            ADMPW=$(sudo grep -E "^\"${ADMIN}\"" /etc/pgbouncer/userlist.txt 2>/dev/null | awk '{print $2}' | tr -d '"' | head -1)
+            if [ -n "$ADMPW" ]; then
+              echo "--- (2) SHOW SERVERS TCP-n (admin userlist-cred, JELSZÓ NEM logolt) ---"
+              PGPASSWORD="$ADMPW" psql -h 127.0.0.1 -p 6432 -U "$ADMIN" -d pgbouncer -tAc "SHOW SERVERS" 2>&1 | awk -F'|' 'NF>5{print "  db="$3" state="$4" UPSTREAM="$5":"$6} /FATAL|error/{print "  "$0}' | head -12
+            fi
+            echo "ÉRTELMEZÉS: a 'valuta' pool UPSTREAM = a tényleges DB. 127.0.0.1:5432 → lokális; publikus/Neon-IP → Neon."
+          ENDSSH
+          echo ""
+          echo "=== NEON API: projekt + utolsó aktivitás (a kulcs maszkolva) ==="
+          if [ -n "$NEON_API_KEY" ]; then
+            curl -s -H "Authorization: Bearer $NEON_API_KEY" "https://console.neon.tech/api/v2/projects" 2>/dev/null \
+              | python3 -c "import json,sys
+try:
+  d=json.load(sys.stdin)
+  for p in d.get('projects',[])[:5]:
+    print('  projekt:', p.get('id'), '|', p.get('name'), '| utolso aktiv:', p.get('last_active_at','-'))
+except Exception as e:
+  print('  (Neon API válasz nem parse-olható:', str(e)[:80], ')')" 2>&1 | head
+          else
+            echo "(nincs NEON_API_KEY env)"
+          fi
+
       - name: 'Scaleway STANDBY — DB + watchdog failover-log (read-only)'
         if: always()
         run: |
