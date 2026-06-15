@@ -205,6 +205,47 @@ jobs:
             sudo -u postgres psql -p 6432 -d pgbouncer -tAc "SHOW POOLS" 2>/dev/null | grep -iE 'valuta' | head -3 || echo "(SHOW POOLS nem elerheto admin nelkul — kihagyva)"
           ENDSSH
 
+      - name: 'MÉLY ELEMZÉS: melyik DB-be ír MA a kolléga? üzleti táblák + flyway + sync (read-only)'
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            NEON_URL=$(grep '^NEON_DATABASE_URL=' /opt/valutavalto/backend/.env 2>/dev/null | cut -d= -f2-)
+            PSQL17=/usr/lib/postgresql/17/bin/psql; [ -x "$PSQL17" ] || PSQL17=psql
+            L() { sudo -u postgres psql -d valuta -tAc "$1" 2>/dev/null; }
+            N() { "$PSQL17" "$NEON_URL" -tAc "$1" 2>/dev/null; }
+            echo "=== MELYIK DB AZ IGAZI PRIMARY? — üzleti írás-frissesség (LOKÁLIS vs NEON) ==="
+            printf '%-30s | %-26s | %-26s\n' "tábla / metrika" "LOKÁLIS valuta" "NEON neondb"
+            printf '%-30s-+-%-26s-+-%-26s\n' "------------------------------" "--------------------------" "--------------------------"
+            cmp() { printf '%-30s | %-26s | %-26s\n' "$1" "$(L "$2")" "$(N "$2")"; }
+            cmp "audit_log max(created_at)"      "SELECT COALESCE(max(created_at)::text,'-') FROM audit_log"
+            cmp "audit_log MAI sorok"            "SELECT count(*) FROM audit_log WHERE created_at::date=CURRENT_DATE"
+            cmp "daily_session max(opened_at)"   "SELECT COALESCE(max(opened_at)::text,'-') FROM daily_session"
+            cmp "daily_session MAI nyitás"       "SELECT count(*) FROM daily_session WHERE opened_at::date=CURRENT_DATE"
+            cmp "exch_rate_master max(created)"  "SELECT COALESCE(max(created_at)::text,'-') FROM exchange_rate_master"
+            cmp "exch_rate_master MAI sorok"     "SELECT count(*) FROM exchange_rate_master WHERE created_at::date=CURRENT_DATE"
+            cmp "collected_tx max(timestamp)"    "SELECT COALESCE(max(transaction_timestamp)::text,'-') FROM collected_transaction"
+            cmp "currency_audit max(created)"    "SELECT COALESCE(max(created_at)::text,'-') FROM currency_audit_log"
+            echo ""
+            echo "=== Flyway: hol és MIKOR futott a V326/327/328/329? ==="
+            cmp "flyway max V"                   "SELECT max(version::int) FROM flyway_schema_history WHERE version ~ '^[0-9]+$'"
+            cmp "flyway V326 installed_on"       "SELECT COALESCE(max(installed_on)::text,'-') FROM flyway_schema_history WHERE version='326'"
+            cmp "flyway V329 installed_on"       "SELECT COALESCE(max(installed_on)::text,'-') FROM flyway_schema_history WHERE version='329'"
+            echo ""
+            echo "=== Neon-sync tényleges működése (neon_sync_log mindkét oldalon) ==="
+            cmp "neon_sync_log max(finished)"    "SELECT COALESCE(max(sync_finished_at)::text,'-') FROM neon_sync_log"
+            cmp "neon_sync_log MAI sorok"        "SELECT count(*) FROM neon_sync_log WHERE sync_finished_at::date=CURRENT_DATE"
+            echo ""
+            echo "=== Backend journal: Neon-sync aktivitás a 10:42-es restart UTÁN ==="
+            journalctl -u valuta-backend.service --since '2026-06-15 10:42' --no-pager 2>/dev/null | grep -iE 'neon.*sync|NeonReplication|sync.*neon|szinkron' | tail -5 || echo "(nincs sync-log a restart után)"
+            echo ""
+            echo "ÉRTELMEZÉS: amelyik DB-ben MA keletkeztek üzleti sorok (audit_log/daily_session/exch_rate),"
+            echo "az az IGAZI primary, amit a kollégák használnak. A flyway installed_on megmondja, a RUB-migráció"
+            echo "melyik DB-re ment. A neon_sync friss sorai mutatják, él-e a local->Neon szinkron."
+          ENDSSH
+
       - name: 'Scaleway STANDBY — DB + watchdog failover-log (read-only)'
         if: always()
         run: |
