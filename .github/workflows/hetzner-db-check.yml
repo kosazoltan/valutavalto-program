@@ -113,8 +113,14 @@ jobs:
             sudo ss -tlnp 2>/dev/null | grep -E ':6432' || echo "(nincs 6432 listener)"
             echo "--- pgbouncer [databases] szekció (host maszkolva) ---"
             sudo grep -A30 '^\[databases\]' /etc/pgbouncer/pgbouncer.ini 2>/dev/null | grep -iE 'valuta|host=|neon|=' | sed -E 's#(password=)[^ ]*#\1***#I' | head -15 || echo "(nincs pgbouncer.ini / databases szekció)"
-            echo "--- MELYIK A @Primary (futásidejű) datasource? Hikari-pool indulási sorok ---"
-            journalctl -u valuta-backend.service --no-pager 2>/dev/null | grep -iE 'HikariPool|HikariDataSource|Added connection|jdbcUrl|Starting\.\.\.|Start completed' | grep -oE '(HikariPool-[0-9]+|[a-zA-Z-]*[Pp]ool)[^,]*|jdbc:postgresql://[^ "}]+|conn=[^ ]+' | sed -E 's#//[^@/]*@#//***@#' | tail -20 || echo "(nincs Hikari log-sor)"
+            echo "--- DÖNTŐ: él-e a backend a LOKÁLIS valuta DB-n? (pg_stat_activity) ---"
+            echo "lokális valuta backend-kapcsolatok : $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM pg_stat_activity WHERE datname='valuta' AND backend_type='client backend'" 2>/dev/null)"
+            echo "ebből aktív (nem idle)             : $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM pg_stat_activity WHERE datname='valuta' AND state='active'" 2>/dev/null)"
+            echo "legutóbbi query a lokális valuta-n  : $(sudo -u postgres psql -d valuta -tAc "SELECT max(query_start) FROM pg_stat_activity WHERE datname='valuta'" 2>/dev/null)"
+            echo "kliens app-ok a lokális valuta-n   :"
+            sudo -u postgres psql -d valuta -tAc "SELECT DISTINCT application_name||' ('||client_addr||')' FROM pg_stat_activity WHERE datname='valuta' AND backend_type='client backend'" 2>/dev/null || echo "  (nincs)"
+            echo "--- @Primary datasource (bounded Hikari log) ---"
+            journalctl -u valuta-backend.service -n 3000 --no-pager 2>/dev/null | grep -iE 'HikariPool|jdbcUrl|Database:' | grep -oE 'HikariPool-[0-9]+|jdbc:postgresql://[^ "}]+' | sed -E 's#//[^@/]*@#//***@#' | sort -u | head -10 || echo "(nincs Hikari log-sor)"
             echo "--- actuator: melyik DB-t kezeli a Flyway + health DB-komponens (no-auth próba) ---"
             for AEP in "/actuator/flyway" "/actuator/health" "/actuator/health/db" "/actuator/configprops"; do
               CODE=$(curl -s -o /tmp/act.json -w "%{http_code}" --max-time 8 "http://localhost:8080$AEP" 2>/dev/null || echo 000)
