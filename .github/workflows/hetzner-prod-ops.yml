@@ -86,14 +86,23 @@ jobs:
             NEON_URL=$(grep '^NEON_DATABASE_URL=' "$ENVF" 2>/dev/null | cut -d= -f2-)
             if [ -z "$NEON_URL" ]; then echo "::error::NEON_DATABASE_URL ures/hianyzik a .env-ben — NINCS valtoztatas"; exit 1; fi
             echo "Neon host: $(echo "$NEON_URL" | sed -E 's#.*@##; s#[/?].*##')"
-            if grep -q 'pg_dump "$NEON_DATABASE_URL"' "$SCRIPT"; then
-              echo "A backup-script MAR a Neonra mutat — idempotens, nincs teendo."; exit 0
+            # A Neon PostgreSQL 17 -> a dumphoz pg_dump 17+ kell (a box default 16-os kliense
+            # 'server version mismatch'-csel elszall). Telepitjuk a pgdg-repobol, ha hianyzik.
+            PGD17=/usr/lib/postgresql/17/bin/pg_dump
+            if [ ! -x "$PGD17" ]; then
+              echo "--- postgresql-client-17 telepitese (pgdg) ---"
+              sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17 || { echo "::error::postgresql-client-17 telepites sikertelen"; exit 1; }
+            fi
+            [ -x "$PGD17" ] || { echo "::error::nincs $PGD17 a telepites utan sem"; exit 1; }
+            echo "pg_dump 17 verzio: $("$PGD17" --version)"
+            if grep -q '/usr/lib/postgresql/17/bin/pg_dump "$NEON_DATABASE_URL"' "$SCRIPT"; then
+              echo "A backup-script MAR a Neonra (pg17) mutat — idempotens, nincs teendo."; exit 0
             fi
             BAK="$SCRIPT.bak.$(date +%Y%m%d%H%M%S)"
             cp -a "$SCRIPT" "$BAK"; echo "biztonsagi masolat: $BAK"
-            # Surgical patch: a pg_dump forras a lokalis 'valuta' helyett a Neon (URL a .env-bol, futasidoben)
-            sed -i 's#^sudo -u postgres pg_dump -Fp valuta#NEON_DATABASE_URL=$(grep "^NEON_DATABASE_URL=" /opt/valutavalto/backend/.env | cut -d= -f2-); pg_dump "$NEON_DATABASE_URL" -Fp#' "$SCRIPT"
-            if ! grep -q 'pg_dump "$NEON_DATABASE_URL"' "$SCRIPT"; then
+            # Surgical patch: a pg_dump forras a lokalis 'valuta' helyett a Neon (URL a .env-bol, pg_dump 17-tel)
+            sed -i 's#^sudo -u postgres pg_dump -Fp valuta#NEON_DATABASE_URL=$(grep "^NEON_DATABASE_URL=" /opt/valutavalto/backend/.env | cut -d= -f2-); /usr/lib/postgresql/17/bin/pg_dump "$NEON_DATABASE_URL" -Fp#' "$SCRIPT"
+            if ! grep -q '/usr/lib/postgresql/17/bin/pg_dump "$NEON_DATABASE_URL"' "$SCRIPT"; then
               echo "::error::a patch NEM alkalmazodott (a pg_dump sor eltert a vartol) — visszaallitas"; cp -a "$BAK" "$SCRIPT"; exit 1
             fi
             echo "--- TESZT-FUTAS: a patchelt backup-script (valodi Neon-dump + B2-feltoltes) ---"
