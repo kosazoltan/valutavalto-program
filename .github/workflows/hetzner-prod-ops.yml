@@ -25,6 +25,7 @@ on:
           - cutover-runtime-probe
           - restore-local-primary
           - neon-backup-plan
+          - neon-backup-refresh
           - neon-sync-enable
           - neon-sync-rollback
           - neon-sync-verify
@@ -300,6 +301,58 @@ jobs:
             done
             rm -f /tmp/closure.txt
             echo "=== Kesz — backup-plan read-only ==="
+          ENDSSH
+
+      - name: 'NEON BACKUP REFRESH — teljes data-only ujratoltes a lokalisbol (atomi, FK-tiszta)'
+        if: ${{ github.event.inputs.action == 'neon-backup-refresh' }}
+        env:
+          NEON_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          # A Neon (BACKUP) DB teljes uzleti-adat ujratoltese a LOKALIS (hiteles) DB-bol — replica-jog
+          # NELKUL, EGY tranzakcioban: (1) minden FK-constraint DROP, (2) minden uzleti tabla TRUNCATE,
+          # (3) lokalis data-only betoltes, (4) FK-constraint-ek VISSZA (integritas-ellenorzes), COMMIT.
+          # Barmely hiba -> ON_ERROR_STOP -> teljes ROLLBACK (a Neon erintetlen marad). Az infra-tablak
+          # (flyway_schema_history, neon_sync_log, sync_*) KIVEVE (Gate B + sync-log vedelme). A Neon nem
+          # szolgal ki (a backend a lokalison fut), teljes pg_dump backup megvan. A pg_dump elobb FAJLBA
+          # megy (exit-kod ellenorzes) -> nincs pipe-felbe-szakadas-utani reszleges COMMIT.
+          if [ -z "${NEON_URL:-}" ]; then echo "::error::NEON_DATABASE_URL ures"; exit 1; fi
+          B64=$(printf '%s' "$NEON_URL" | base64 -w0)
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              "NEON_B64='$B64' bash -s" << 'ENDSSH'
+            set -o pipefail
+            NEON_URI=$(printf '%s' "$NEON_B64" | base64 -d)
+            EXC="flyway_schema_history neon_sync_log sync_inbox sync_outbox idempotency_record"
+            NOTIN="'flyway_schema_history','neon_sync_log','sync_inbox','sync_outbox','idempotency_record'"
+            echo "=== (1) lokalis data-only dump FAJLBA (kizart infra: $EXC) ==="
+            EXCARGS=""; for t in $EXC; do EXCARGS="$EXCARGS --exclude-table=$t"; done
+            sudo -u postgres pg_dump --data-only --no-owner $EXCARGS -d valuta -f /tmp/neon_refresh.sql
+            sudo chmod 644 /tmp/neon_refresh.sql
+            echo "  dump meret: $(stat -c '%s' /tmp/neon_refresh.sql) byte"
+            echo ""
+            echo "=== (2) FK DROP/ADD + TRUNCATE lista generalas a Neon katalogusbol ==="
+            psql "$NEON_URI" -tAc "SELECT 'ALTER TABLE '||conrelid::regclass||' DROP CONSTRAINT IF EXISTS '||quote_ident(conname)||';' FROM pg_constraint WHERE contype='f' AND connamespace='public'::regnamespace" > /tmp/drop_fk.sql
+            psql "$NEON_URI" -tAc "SELECT 'ALTER TABLE '||conrelid::regclass||' ADD CONSTRAINT '||quote_ident(conname)||' '||pg_get_constraintdef(oid)||';' FROM pg_constraint WHERE contype='f' AND connamespace='public'::regnamespace" > /tmp/add_fk.sql
+            TRUNC=$(psql "$NEON_URI" -tAc "SELECT 'TRUNCATE '||string_agg(format('%I',tablename),', ')||';' FROM pg_tables WHERE schemaname='public' AND tablename NOT IN ($NOTIN)")
+            echo "  FK drop sorok: $(wc -l < /tmp/drop_fk.sql) | FK add sorok: $(wc -l < /tmp/add_fk.sql)"
+            if [ -z "$TRUNC" ]; then echo "::error::ures TRUNCATE lista — abort"; exit 1; fi
+            echo ""
+            echo "=== (3) ATOMI tranzakcio a Neonon (DROP FK -> TRUNCATE -> LOAD -> ADD FK) ==="
+            { echo "BEGIN;"; echo "SET statement_timeout=0;"; \
+              cat /tmp/drop_fk.sql; echo "$TRUNC"; cat /tmp/neon_refresh.sql; cat /tmp/add_fk.sql; \
+              echo "COMMIT;"; } | psql "$NEON_URI" -v ON_ERROR_STOP=1 -q 2>&1 | tail -8
+            RC=${PIPESTATUS[1]}
+            rm -f /tmp/neon_refresh.sql /tmp/drop_fk.sql /tmp/add_fk.sql
+            if [ "$RC" != "0" ]; then echo "::error::a refresh-tranzakcio BUKOTT (RC=$RC) — ROLLBACK, a Neon erintetlen"; exit 1; fi
+            echo ""
+            echo "=== (4) VERIFIKACIO: kulcs-tablak sor-szamai (Neon == lokalis?) ==="
+            for t in transaction cash_balance transfer transfer_lines shipment_request receipt currency_stock collected_transaction; do
+              N=$(psql "$NEON_URI" -tAc "SELECT count(*) FROM $t" 2>/dev/null)
+              L=$(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM $t" 2>/dev/null)
+              MARK="OK"; [ "$N" != "$L" ] && MARK="ELTER!"
+              echo "  $t : neon=$N lokalis=$L  [$MARK]"
+            done
+            echo "=== Kesz — Neon backup teljes ujratoltve a lokalisbol ==="
           ENDSSH
 
       - name: 'RESTORE LOCAL PRIMARY — NEON_SYNC=false (app vissza a lokalisra) + restart + health + auto-rollback'
