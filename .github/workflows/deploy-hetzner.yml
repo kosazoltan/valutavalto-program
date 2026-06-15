@@ -198,9 +198,9 @@ jobs:
   #           DB pedig NEM kap éles írást (órákig 0 checkpoint üzleti időben) — elavult maradék.
   #           Ezért a lokális DB V-szintje önmagában NEM jelez deploy-hibát; csak figyelmeztet,
   #           ha eltér. A backend tényleges DB-jét a Gate B (Neon) igazolja.
-  #           TODO (ops): tisztázni a szándékolt topológiát (Neon-primary vs lokális-primary),
-  #           és ehhez igazítani a HA-standby + B2-backup célját is. Lásd a session-incidensjegyzetet.
-  #   Gate B: a backend TÉNYLEGES DB-je (Neon) Flyway-migrációja elérte-e a repo max V-t
+  #           DÖNTÉS (Kósa Zoltán, 2026-06-15): a NEON a primary. Követő ops-feladat: a HA-standby +
+  #           B2-backup célját is a Neonra állítani, a lokális 'valuta' kivezetése. Lásd az incidensjegyzetet.
+  #   Gate B: a backend TÉNYLEGES PROD DB-je (Neon) Flyway-migrációja elérte-e a repo max V-t
   #           (baseline 326 felett idempotens `flyway migrate`). BLOKKOLÓ — ez a valódi gate.
   # A Neon-job FAIL-loud, de a már lefutott Hetzner primer deployt NEM görgeti vissza.
   # ─────────────────────────────────────────────────────────────────────────────
@@ -249,7 +249,7 @@ jobs:
               sudo -u postgres psql -d valuta -c "SELECT version, description, success FROM flyway_schema_history WHERE success=false ORDER BY installed_rank DESC LIMIT 10" 2>/dev/null || true
             fi
             if [ "${PROD_MAX:-x}" != "${REPO_MAX}" ]; then
-              echo "::warning::Hetzner LOKÁLIS DB V${PROD_MAX} != repo V${REPO_MAX} — VÁRT: a lokális DB elavult/nem-szolgáló maradék; a backend tényleges DB-jét (Neon) a Gate B igazolja. TODO(ops): topológia tisztázása."
+              echo "::warning::Hetzner LOKÁLIS DB V${PROD_MAX} != repo V${REPO_MAX} — VÁRT: a lokális DB elavult/nem-szolgáló maradék (kivezetendő); a PROD DB a Neon (Gate B). DÖNTÉS: Neon a primary."
             else
               echo "OK — a lokális Hetzner DB is a repo max verzión (V${REPO_MAX})."
             fi
@@ -266,7 +266,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   migrate-verify-neon:
-    name: Gate B — Migrate + verify Neon backup DB (BLOCKING, no rollback)
+    name: Gate B — Migrate + verify Neon PROD (primary) DB (BLOCKING, no rollback)
     runs-on: ubuntu-latest
     needs: deploy
     environment: production
@@ -289,7 +289,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${NEON_URL:-}" ]; then
-            echo "::error::NEON_DATABASE_URL repo-secret ures/hianyzik — a Neon backup-DB sema NEM ellenorizheto/migralhato."
+            echo "::error::NEON_DATABASE_URL repo-secret ures/hianyzik — a Neon PROD-DB sema NEM ellenorizheto/migralhato."
             exit 1
           fi
           NOSCHEME="${NEON_URL#postgresql://}"; NOSCHEME="${NOSCHEME#postgres://}"
@@ -328,21 +328,21 @@ jobs:
           NEON_VER=$(grep -E 'Schema version:' neon-info.txt | head -1 | sed -E 's/[^0-9]*([0-9]+).*/\1/')
           echo "Neon schema version = V${NEON_VER:-?} | repo max = V${REPO_MAX}"
           if [ "${NEON_VER:-x}" != "${REPO_MAX}" ]; then
-            echo "::error::Neon backup-DB sema V${NEON_VER} != repo V${REPO_MAX} — a Neon migracio NEM sikerult / nem ert celba."
+            echo "::error::Neon PROD-DB sema V${NEON_VER} != repo V${REPO_MAX} — a Neon migracio NEM sikerult / nem ert celba."
             exit 1
           fi
-          echo "OK — Neon backup-DB a repo max verzion (V${REPO_MAX})."
+          echo "OK — Neon PROD-DB a repo max verzion (V${REPO_MAX})."
 
       - name: Summary
         if: always()
         run: |
           {
-            echo "## Gate B — Neon backup DB migrate + verify"
+            echo "## Gate B — Neon PROD (primary) DB migrate + verify"
             echo "- Repo max: V${{ steps.repo.outputs.repo_max }}"
             echo "- Eredmeny: ${{ job.status }}"
           } >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ job.status }}" != "success" ]; then
-            echo "- ⚠️ A Neon backup-DB migracio/verify NEM zold — a primer Hetzner deploy ervenyes maradt, de a Neon NINCS szinkronban. Kezi ellenorzes kell (neon-schema-verify.yml read-only diagnosztika)." >> "$GITHUB_STEP_SUMMARY"
+            echo "- ⚠️ A Neon PROD-DB migracio/verify NEM zold — a primer Hetzner deploy ervenyes maradt, de a Neon NINCS szinkronban. Kezi ellenorzes kell (neon-schema-verify.yml read-only diagnosztika)." >> "$GITHUB_STEP_SUMMARY"
           fi
 
   # 2026-06-05: Scaleway warm standby JAR-szinkron. ELOTTE a standby orokke 2.5.49-en
