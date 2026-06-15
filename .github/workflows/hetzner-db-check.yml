@@ -29,6 +29,15 @@ jobs:
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
               bash -s << 'ENDSSH'
             set -o pipefail
+            echo "=== Prod backend futás-állapot (read-only) ==="
+            echo "futó JAR        : $(readlink -f /opt/valutavalto/backend/target/valuta-backend-current.jar 2>/dev/null || echo '(nincs symlink)')"
+            echo "service uptime  : $(systemctl show valuta-backend.service --property=ActiveEnterTimestamp --value 2>/dev/null)"
+            ENV_DUMP0=$(systemctl show valuta-backend.service --property=Environment 2>/dev/null | tr ' ' '\n')
+            echo "SPRING_FLYWAY_ENABLED (systemd): $(echo "$ENV_DUMP0" | grep -oE 'SPRING_FLYWAY_ENABLED=[^ ]*' || echo '(nincs)')"
+            echo "SPRING_FLYWAY_ENABLED (.env)   : $(grep -E '^SPRING_FLYWAY_ENABLED=' /opt/valutavalto/backend/.env 2>/dev/null || echo '(nincs a .env-ben)')"
+            echo "Flyway startup log (utolsó 5)  :"
+            journalctl -u valuta-backend.service -n 4000 --no-pager 2>/dev/null | grep -iE 'flyway|migrat' | tail -5 || echo "  (nincs flyway log-sor)"
+            echo ""
             echo "=== Prod 'valuta' DB állapot (read-only) ==="
             echo "hostname        : $(hostname)"
             echo "max migráció    : V$(sudo -u postgres psql -d valuta -tAc "SELECT max(version::int) FROM flyway_schema_history WHERE version ~ '^[0-9]+\$'" 2>/dev/null)"
