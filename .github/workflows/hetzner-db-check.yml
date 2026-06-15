@@ -97,6 +97,17 @@ jobs:
             sudo -u postgres psql -d valuta -c "SELECT version, description, success, installed_on FROM flyway_schema_history WHERE version::text IN ('327','328','329') ORDER BY installed_rank" 2>/dev/null || echo "(nincs 327-329 sor)"
             echo "--- flyway history utolsó 5 (mire áll most) ---"
             sudo -u postgres psql -d valuta -c "SELECT version, description, success, installed_on FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 5" 2>/dev/null || true
+            echo ""
+            echo "=== HOVÁ ÍR A BACKEND VALÓJÁBAN? (read-only, jelszó maszkolva) ==="
+            echo "--- .env DB-cél sorok (érték maszkolva) ---"
+            grep -E '^(DATABASE_URL|SPRING_DATASOURCE_URL|DATABASE_USERNAME|DB_HOST|DB_PORT|DB_NAME|POSTGRES)' /opt/valutavalto/backend/.env 2>/dev/null | sed -E 's#(://)[^@]+@#\1***@#; s#(password=)[^&]*#\1***#I' || echo "(nincs DB-sor a .env-ben)"
+            echo "--- backend startup JDBC-cél (Flyway/Hikari log) ---"
+            journalctl -u valuta-backend.service -n 6000 --no-pager 2>/dev/null | grep -oE 'jdbc:postgresql://[^ \"}]+' | sed -E 's#//[^@/]*@#//***@#' | sort -u | tail -5 || echo "(nincs jdbc URL a logban)"
+            echo "--- postgres clusterek + figyelő portok ---"
+            pg_lsclusters 2>/dev/null || echo "(nincs pg_lsclusters)"
+            sudo ss -tlnp 2>/dev/null | grep -iE 'postgres|5432|5433' || echo "(nincs postgres listen port)"
+            echo "--- a 10:42-es RUB-írás létezik-e a lokális DB-ben? (denomination RUB) ---"
+            echo "RUB denomination sorok (lokális): $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM denomination d JOIN currency c ON c.id=d.currency_id WHERE c.code='RUB'" 2>/dev/null)"
           ENDSSH
 
       - name: 'Scaleway STANDBY — DB + watchdog failover-log (read-only)'
