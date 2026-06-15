@@ -21,6 +21,7 @@ on:
           - cutover-assess
           - cutover-backup
           - cutover-preflight
+          - cutover-unit-probe
           - neon-sync-enable
           - neon-sync-rollback
           - neon-sync-verify
@@ -214,6 +215,35 @@ jobs:
               "SELECT 'kapcsolat=OK; employee='||(SELECT count(*) FROM employee)||'; transaction='||(SELECT count(*) FROM transaction)||'; RUB.is_active='||(SELECT is_active FROM currency WHERE code='RUB')||'; flyway_max=V'||(SELECT max(version::int) FROM flyway_schema_history WHERE success AND version ~ '^[0-9]+$')" \
               2>&1 | sed -E 's|password[^ ]*|password=***|g' | head -5 || echo "  LOKALIS-TESZT BUKOTT (a restart local-ra NEM lenne biztonsagos)"
             echo "=== Kesz — preflight read-only, semmi nem valtozott ==="
+          ENDSSH
+
+      - name: 'CUTOVER UNIT PROBE (read-only) — a futo backend TENYLEGES env-forrasa'
+        if: ${{ github.event.inputs.action == 'cutover-unit-probe' }}
+        run: |
+          # READ-ONLY: feloldja a rejtelyt — a .env=localhost, megis Neonra kapcsolodik a backend.
+          # A /proc/PID/environ a futo processz PONTOS env-je (forras-fuggetlen). A systemctl cat
+          # mutatja az EnvironmentFile=/Environment= direktivakat (mit kell modositani a cutoverhez).
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            PID=$(systemctl show valuta-backend.service -p MainPID --value)
+            echo "=== A FUTO backend (PID $PID) TENYLEGES env-je (/proc/$PID/environ, maszkolt) ==="
+            sudo tr '\0' '\n' < /proc/$PID/environ 2>/dev/null \
+              | grep -E '^(DATABASE_URL|NEON_DATABASE_URL|NEON_SYNC_ENABLED|DATABASE_USERNAME|SPRING_DATASOURCE_URL|SPRING_FLYWAY_URL)=' \
+              | sed -E 's|password=[^&;[:space:]]*|password=***|g; s#(://)[^@/]*@#\1***@#g' || echo "(nem olvashato a /proc environ)"
+            echo ""
+            echo "=== systemctl cat valuta-backend.service (EnvironmentFile= / Environment= direktivak) ==="
+            systemctl cat valuta-backend.service 2>/dev/null | grep -E 'EnvironmentFile|Environment=|ExecStart' \
+              | sed -E 's|password=[^&;[:space:]]*|password=***|g; s#(://)[^@/]*@#\1***@#g' || echo "(nincs)"
+            echo ""
+            echo "=== Minden EnvironmentFile DATABASE_URL/NEON sora (maszkolt) ==="
+            for ef in $(systemctl cat valuta-backend.service 2>/dev/null | grep -oE 'EnvironmentFile=-?[^ ]+' | sed 's/EnvironmentFile=-\{0,1\}//'); do
+              echo "  -- $ef --"
+              sudo grep -E '^(DATABASE_URL|NEON_DATABASE_URL|NEON_SYNC_ENABLED|SPRING_DATASOURCE_URL)=' "$ef" 2>/dev/null \
+                | sed -E 's|password=[^&;[:space:]]*|password=***|g; s#(://)[^@/]*@#\1***@#g' || echo "     (nincs ilyen sor / nem olvashato)"
+            done
+            echo "=== Kesz — unit probe read-only ==="
           ENDSSH
 
       - name: 'FREEZE-WATCHDOG telepítés + engedélyezés (Hetzner anti-freeze öngyógyító)'
