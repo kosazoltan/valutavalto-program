@@ -11,9 +11,13 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import javax.sql.DataSource;
 
 /**
- * Neon DB másodlagos DataSource konfiguráció.
+ * Neon DB másodlagos (BACKUP) DataSource konfiguráció.
  * Csak akkor aktív, ha app.neon-sync.enabled=true.
- * A fő DataSource-ot NEM érinti.
+ *
+ * <p>FONTOS: ez a bean önmagában visszaléptetné a Spring Boot primary DataSource auto-configját
+ * (lásd a 2026-06-15 incidenst). Ezért az elsődleges, LOKÁLIS datasource-ot a
+ * {@link PrimaryDataSourceConfig} EXPLICITTÉ és {@code @Primary}-vá teszi — így ez a bean
+ * egyértelműen MÁSODLAGOS marad, és a neon-sync bekapcsolása NEM téríti el a primaryt.
  */
 @Configuration
 @ConditionalOnProperty(name = "app.neon-sync.enabled", havingValue = "true")
