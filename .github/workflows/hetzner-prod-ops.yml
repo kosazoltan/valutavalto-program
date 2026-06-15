@@ -20,6 +20,7 @@ on:
           - neon-sync-enable
           - neon-sync-rollback
           - neon-sync-verify
+          - ha-disable-failover
 
 permissions:
   contents: read
@@ -36,6 +37,39 @@ jobs:
           echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+          # Scaleway standby kulcs (a HA-muveletekhez, pl. ha-disable-failover)
+          echo "${{ secrets.SCALEWAY_SSH_PRIVATE_KEY }}" > ~/.ssh/scaleway_key
+          chmod 600 ~/.ssh/scaleway_key
+          ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: 'HA auto-failover LEALLITAS (Scaleway watchdog stop+disable)'
+        if: ${{ github.event.inputs.action == 'ha-disable-failover' }}
+        run: |
+          ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 \
+              "root@${{ secrets.SCALEWAY_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            echo "=== HA auto-failover leallitas a Scaleway standby-n ==="
+            echo "DONTES (Kosa, 2026-06-15): a Neon a primary -> a lokalis Hetzner<->Scaleway"
+            echo "streaming-HA elavult, es a torott replikacioval (2026-06-14 15:00 ota) az"
+            echo "auto-failover VESZELYES (elavult standby promote + DNS-atiranyitas)."
+            echo ""
+            echo "elotte (watchdog timer/service):"
+            systemctl is-active primary-watchdog.timer 2>/dev/null || echo "  timer: inactive/nincs"
+            systemctl is-active primary-watchdog.service 2>/dev/null || echo "  service: inactive/nincs"
+            echo "--- stop + disable ---"
+            systemctl stop primary-watchdog.timer 2>/dev/null || true
+            systemctl disable primary-watchdog.timer 2>/dev/null || true
+            systemctl stop primary-watchdog.service 2>/dev/null || true
+            systemctl disable primary-watchdog.service 2>/dev/null || true
+            echo ""
+            echo "utana (read-only verify):"
+            echo "  timer enabled : $(systemctl is-enabled primary-watchdog.timer 2>/dev/null || echo 'disabled/nincs')"
+            echo "  timer active  : $(systemctl is-active primary-watchdog.timer 2>/dev/null || echo 'inactive')"
+            echo "  service active: $(systemctl is-active primary-watchdog.service 2>/dev/null || echo 'inactive')"
+            echo "VISSZAALLITAS (ha megis kell): systemctl enable --now primary-watchdog.timer"
+            echo "=== Kesz — az auto-failover NEM fut tobbe ==="
+          ENDSSH
 
       - name: 'RUB reaktivalas (prod, idempotens)'
         if: ${{ github.event.inputs.action == 'rub-reactivate' }}
