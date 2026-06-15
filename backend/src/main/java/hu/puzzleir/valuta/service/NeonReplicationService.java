@@ -40,26 +40,62 @@ public class NeonReplicationService {
     // hibát dobtak, és látszat-lefedettséget keltettek. Eltávolítva (2026-06-14, prod
     // journal-diagnózis). Új tábla felvétele elott ellenorizd, hogy a Neon CÉL DB-ben is
     // létezik-e (az upsert ON CONFLICT (id)-t feltételez, tehát kell 'id' PK).
+    // SORREND = FK-függőség: a SZÜLŐK előrébb, a gyerekek hátrébb. A full-sync upsert-ciklusban a
+    // gyerekek (pl. transaction_line) a már felvitt szülőkre (transaction) hivatkoznak — így a
+    // FK az első teljes cikluson is teljesül (a külső szülők, pl. branch/currency, a Neonon adottak).
     private static final List<String> SYNC_TABLES = List.of(
             "transaction",
+            "transaction_line",
+            "transaction_banknote",
             "receipt",
+            "receipt_sequence",
             "daily_balance",
             "cash_balance",
             "transfer",
+            "transfer_lines",
+            "transfer_denomination",
             "shipment_request",
+            "shipment_request_item",
             "decade_report",
+            "decade_report_line",
             "cash_register_event",
+            "collected_transaction",
+            "vault_bank_transaction",
+            "vault_transfer",
+            "storno_approval",
             // 2026-06-14: backup-lefedettség bővítés — a korábbi fantom-nevek valós megfelelői.
             "currency_stock",        // élő deviza-készlet (id BIGSERIAL PK); teljes-snapshot
             "denomination_balance"   // címlet-egyenleg (id UUID PK); teljes-snapshot
     );
 
-    // Teljes-snapshottal mentett táblák (a fullSync ág): kicsi, kritikus táblák, ahol nincs
-    // MEGBÍZHATÓ inkrementális idobélyeg, ezért minden ciklusban a teljes tartalmat upsert-eljük.
-    //  - currency_stock: csak last_updated (a detectTimestampColumn nem ismeri fel), kicsi tábla
-    //  - denomination_balance: az updated_at NULL maradhat (nincs @PrePersist) -> az inkrementális
-    //    ág kihagyná a soha nem módosított sorokat; a teljes-snapshot hiánytalan
+    // Teljes-snapshottal mentett táblák (a fullSync ág): a teljes tartalmat upsert-eljük minden
+    // ciklusban (ON CONFLICT (id) DO UPDATE → a Neon hűen tükrözi a lokálist, felülírva a divergens
+    // sorokat is). 2026-06-15 (incidens-tanulság): az inkrementális ág `WHERE updated_at > kurzor`
+    // KIHAGYJA a NULL updated_at-ú (sosem módosított) sorokat ÉS a kurzor-eltolódás miatt a
+    // historikus állományt → a backup hiányos lett (pl. cash_balance 39/1235, transaction 36/134).
+    // Ezért a kritikus üzleti táblák MIND teljes-snapshotra kerülnek: hiánytalan + öngyógyító backup.
+    // FELSŐ KORLÁT: MAX_FULL_SYNC_ROWS (50k) felett a fullSync skip+loud log → ha a `transaction` ezt
+    // átlépi, vissza kell térni inkrementálisra COALESCE(updated_at, created_at) kurzorral (követő opt.).
     private static final Set<String> FULL_SYNC_TABLES = Set.of(
+            "transaction",
+            "transaction_line",
+            "transaction_banknote",
+            "receipt",
+            "receipt_sequence",
+            "daily_balance",
+            "cash_balance",
+            "transfer",
+            "transfer_lines",
+            "transfer_denomination",
+            "shipment_request",
+            "shipment_request_item",
+            "decade_report",
+            "decade_report_line",
+            "cash_register_event",
+            "collected_transaction",
+            "vault_bank_transaction",
+            "vault_transfer",
+            "storno_approval",
             "currency_stock",
             "denomination_balance"
     );
