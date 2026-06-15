@@ -108,6 +108,17 @@ jobs:
             sudo ss -tlnp 2>/dev/null | grep -iE 'postgres|5432|5433' || echo "(nincs postgres listen port)"
             echo "--- a 10:42-es RUB-írás létezik-e a lokális DB-ben? (denomination RUB) ---"
             echo "RUB denomination sorok (lokális): $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM denomination d JOIN currency c ON c.id=d.currency_id WHERE c.code='RUB'" 2>/dev/null)"
+            echo ""
+            echo "=== PgBouncer 6432 routing — hová megy a 'valuta' DB? (read-only, maszkolva) ==="
+            sudo ss -tlnp 2>/dev/null | grep -E ':6432' || echo "(nincs 6432 listener)"
+            echo "--- pgbouncer [databases] szekció (host maszkolva) ---"
+            sudo grep -A30 '^\[databases\]' /etc/pgbouncer/pgbouncer.ini 2>/dev/null | grep -iE 'valuta|host=|neon|=' | sed -E 's#(password=)[^ ]*#\1***#I' | head -15 || echo "(nincs pgbouncer.ini / databases szekció)"
+            echo "--- éles API: RUB állapota amit a backend SZOLGÁL (localhost:8080, no-auth próbák) ---"
+            for EP in "/api/v1/currencies/all" "/api/v1/currencies" "/api/v1/exchange-rates/currencies"; do
+              CODE=$(curl -s -o /tmp/cur.json -w "%{http_code}" --max-time 8 "http://localhost:8080$EP" 2>/dev/null || echo 000)
+              echo "GET $EP -> HTTP $CODE"
+              if [ "$CODE" = "200" ]; then grep -oE '"code":"RUB"[^}]*"(is_active|active)":[a-z]+' /tmp/cur.json 2>/dev/null | head -1 || grep -oE 'RUB' /tmp/cur.json | head -1; break; fi
+            done
           ENDSSH
 
       - name: 'Scaleway STANDBY — DB + watchdog failover-log (read-only)'
