@@ -254,12 +254,15 @@ jobs:
               bash -s << 'ENDSSH'
             set -o pipefail
             JPID=$(pgrep -f 'valuta-backend-current.jar' | head -1)
-            echo "=== A futó backend (PID $JPID) ESTABLISHED TCP-kapcsolatai (cél IP:port szerint) ==="
+            echo "=== A futó backend (PID $JPID) ÖSSZES TCP-kapcsolata — ss, NYERS (cél-port szerint) ==="
             NEON_HOST=$(grep -oE 'NEON_DATABASE_URL=.*' /opt/valutavalto/backend/.env 2>/dev/null | sed -E 's#.*@##; s#[/?].*##' | head -1)
-            NEON_IP=$(getent hosts "$NEON_HOST" 2>/dev/null | awk '{print $1}' | head -1)
-            echo "Neon host: $NEON_HOST  -> IP: ${NEON_IP:-(nem feloldható)}"
-            echo "--- kapcsolatok cél-végpont szerint csoportosítva ---"
-            sudo lsof -p "$JPID" -iTCP -nP 2>/dev/null | grep ESTABLISHED | awk '{print $9}' | sed -E 's/.*->//' | sort | uniq -c | sort -rn | head -15 || echo "(lsof nem elérhető)"
+            echo "Neon host: ${NEON_HOST:-(nincs)}"
+            echo "--- a java-processz kimenő :5432 / :6432 / Neon kapcsolatai (NYERS, IP maszkolva) ---"
+            sudo ss -tnp 2>/dev/null | grep "pid=$JPID" | awk '{print $5}' | sed -E 's/:[0-9]+$/:PORT/; s/^[0-9a-f:.]+/HOST/' | sort | uniq -c | sort -rn | head -15 || echo "(ss nem elérhető)"
+            echo "--- cél-PORT eloszlás (ezt biztosan látjuk: 5432=DB-közvetlen, 6432=PgBouncer, 443=Neon-TLS) ---"
+            sudo ss -tnp 2>/dev/null | grep "pid=$JPID" | awk '{print $5}' | grep -oE ':[0-9]+$' | sort | uniq -c | sort -rn | head
+            echo "--- van-e kimenő kapcsolat NEM-lokális (publikus) hostra? (= közvetlen Neon) ---"
+            sudo ss -tnp 2>/dev/null | grep "pid=$JPID" | awk '{print $5}' | grep -vE '^(127\.|\[::1\]|10\.|172\.1[6-9]\.|172\.2[0-9]\.|172\.3[01]\.|192\.168\.)' | sed -E 's/^[0-9a-fA-F:.]+/PUBLIC-HOST/' | sort | uniq -c | head || echo "(nincs publikus kimenő — minden lokális)"
             echo ""
             echo "--- DÖNTŐ: van-e kapcsolat a NEON IP-re (= a backend KÖZVETLENÜL a Neonba ír)? ---"
             if [ -n "$NEON_IP" ]; then
