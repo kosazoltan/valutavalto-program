@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.dto.pos.*;
 import hu.puzzleir.valuta.entity.PosTerminal;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.PosTerminalRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ import java.util.*;
 public class PosTerminalService {
 
     private final PosTerminalRepository repository;
+    private final BranchRepository branchRepository;
     private final SystemParameterService systemParameterService;
     private final OtpTerminalProtocolService otpProtocol;
     private final BorgunProtocolService borgunProtocol;
@@ -73,8 +75,27 @@ public class PosTerminalService {
 
     // ============ TERMINÁL LEKÉRDEZÉSEK ============
 
+    /**
+     * Multi-tenant IDOR-guard: a megadott branch a hívó cégéhez tartozik-e.
+     *
+     * <p>A {@link PosTerminal} entity csak {@code branchId}-t hordoz, a tenancy a branch
+     * szülőjén (company) van. A terminál-lekérdezések a betöltött rekord branchId-jén át
+     * validálnak a hívó cégére.</p>
+     *
+     * <p>A {@link #findAll()} és {@link #findById(UUID)} hívói kizárólag a
+     * {@code PosTerminalController} (SUPERVISOR/MANAGER/ADMIN, user-context) — nincs
+     * @Scheduled/@Async/auth-mentes hívó. A tranzakciós utak ({@code initiatePayment},
+     * {@code dailyClose}) nem ezeken keresztül futnak.</p>
+     */
+    private boolean isOwnBranch(UUID branchId, UUID companyId) {
+        return branchId != null && branchRepository.existsByIdAndCompanyId(branchId, companyId);
+    }
+
     public List<PosTerminal> findAll() {
-        return repository.findByIsActiveTrueOrderByTerminalNameAsc();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return repository.findByIsActiveTrueOrderByTerminalNameAsc().stream()
+                .filter(t -> isOwnBranch(t.getBranchId(), companyId))
+                .toList();
     }
 
     public List<PosTerminal> findByBranch(UUID branchId) {
@@ -82,8 +103,13 @@ public class PosTerminalService {
     }
 
     public PosTerminal findById(UUID id) {
-        return repository.findById(id)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        PosTerminal terminal = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("PosTerminal not found: " + id));
+        if (!isOwnBranch(terminal.getBranchId(), companyId)) {
+            throw new ResourceNotFoundException("PosTerminal not found: " + id);
+        }
+        return terminal;
     }
 
     public Optional<PosTerminal> findByTerminalId(String terminalId) {

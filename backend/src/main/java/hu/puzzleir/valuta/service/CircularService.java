@@ -474,8 +474,17 @@ public class CircularService {
 
     // ============ HELPERS ============
 
+    /**
+     * IDOR-fix (F-6): cég-szűrt körlevél-betöltés. Minden hívó (findById, acknowledge,
+     * acknowledgeByWorker, getAcknowledgmentBreakdownByRole, getAcknowledgmentStatus,
+     * archive, uploadAttachment, getAttachmentPath) ezen az egy ponton védve.
+     * Cross-tenant és nem létező id egyformán ResourceNotFoundException → nincs
+     * id-enumerációs oldalcsatorna. Mind a 8 hívó request-scoped, auth-olt controller
+     * végpontról fut (nincs @Scheduled/belső auth-mentes hívó), így a getCurrentCompanyId()
+     * mindig kontextusban van.
+     */
     private Circular findOrThrow(Long id) {
-        return circularRepository.findById(id)
+        return circularRepository.findByIdAndCompanyId(id, SecurityUtils.getCurrentCompanyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Körlevél nem található: " + id));
     }
 

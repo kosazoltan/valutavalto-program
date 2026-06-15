@@ -109,12 +109,24 @@ public class ClosingWizardService {
     public ClosingWizardDto getWizard(UUID wizardId) {
         ClosingWizard wizard = closingWizardRepository.findByIdWithSteps(wizardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Varázsló nem található: " + wizardId));
-        // IDOR protection: only allow access to wizards belonging to the current branch
+        assertOwnWizard(wizard);
+        return toDto(wizard);
+    }
+
+    /**
+     * F-5: multi-tenant/branch IDOR-védelem — a wizard a hívó irodájához tartozzon.
+     *
+     * <p>A {@code getWizard} eredeti branch-ownership mintáját emeli ki közös helyerbe,
+     * hogy minden wizardId-paraméteres művelet (getStep, navigate, complete, cancel,
+     * generateClosingReport, finalizeClosing) egységesen védve legyen a
+     * {@code findByIdWithSteps(...)} után. Ez user-facing (ClosingWizardController) hívási
+     * útra való; az osztálynak nincs {@code @Scheduled}/auth-mentes hívója.</p>
+     */
+    private void assertOwnWizard(ClosingWizard wizard) {
         UUID currentBranchId = SecurityUtils.getCurrentBranchId();
         if (wizard.getBranch() != null && !wizard.getBranch().getId().equals(currentBranchId)) {
             throw new ValidationException("Nincs jogosultság más iroda zárási varázslójához!");
         }
-        return toDto(wizard);
     }
 
     /**
@@ -124,6 +136,7 @@ public class ClosingWizardService {
     public ClosingWizardStepDto getStep(UUID wizardId, int stepNumber) {
         ClosingWizard wizard = closingWizardRepository.findByIdWithSteps(wizardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Varázsló nem található: " + wizardId));
+        assertOwnWizard(wizard);
 
         return wizard.getSteps().stream()
                 .filter(s -> s.getStepNumber().equals(stepNumber))
@@ -142,6 +155,7 @@ public class ClosingWizardService {
     public ClosingWizardDto navigate(UUID wizardId, int targetStep) {
         ClosingWizard wizard = closingWizardRepository.findByIdWithSteps(wizardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Varázsló nem található: " + wizardId));
+        assertOwnWizard(wizard);
 
         if (wizard.getWizardStatus() != WizardStatus.IN_PROGRESS) {
             throw new ValidationException("Ez a varázsló már nem aktív!");
@@ -188,6 +202,7 @@ public class ClosingWizardService {
     public ClosingWizardDto complete(UUID wizardId, Long workerId) {
         ClosingWizard wizard = closingWizardRepository.findByIdWithSteps(wizardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Varázsló nem található: " + wizardId));
+        assertOwnWizard(wizard);
 
         if (wizard.getWizardStatus() != WizardStatus.IN_PROGRESS) {
             throw new ValidationException("Ez a varázsló már nem aktív!");
@@ -225,6 +240,7 @@ public class ClosingWizardService {
     public ClosingWizardDto cancel(UUID wizardId) {
         ClosingWizard wizard = closingWizardRepository.findByIdWithSteps(wizardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Varázsló nem található: " + wizardId));
+        assertOwnWizard(wizard);
 
         if (wizard.getWizardStatus() != WizardStatus.IN_PROGRESS) {
             throw new ValidationException("Ez a varázsló már nem aktív!");
@@ -400,6 +416,7 @@ public class ClosingWizardService {
     public Map<String, Object> generateClosingReport(UUID wizardId) {
         ClosingWizard wizard = closingWizardRepository.findByIdWithSteps(wizardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Varázsló nem található: " + wizardId));
+        assertOwnWizard(wizard);
 
         UUID branchId = wizard.getBranch().getId();
         DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(branchId, LocalDate.now())
@@ -464,6 +481,7 @@ public class ClosingWizardService {
     public boolean finalizeClosing(UUID wizardId, Long workerId, String discrepancyExplanation) {
         ClosingWizard wizard = closingWizardRepository.findByIdWithSteps(wizardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Varázsló nem található: " + wizardId));
+        assertOwnWizard(wizard);
 
         if (wizard.getWizardStatus() != WizardStatus.IN_PROGRESS) {
             throw new ValidationException("Ez a varázsló már nem aktív!");

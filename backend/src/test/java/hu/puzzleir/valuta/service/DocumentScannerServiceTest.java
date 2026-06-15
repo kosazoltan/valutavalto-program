@@ -33,12 +33,16 @@ class DocumentScannerServiceTest {
 
     @Mock
     private ScannedDocumentRepository scannedDocumentRepository;
+    @Mock
+    private hu.puzzleir.valuta.repository.CustomerRepository customerRepository;
+    @Mock
+    private hu.puzzleir.valuta.repository.TransactionRepository transactionRepository;
 
     private DocumentScannerService service;
 
     @BeforeEach
     void setUp() {
-        service = new DocumentScannerService(scannedDocumentRepository);
+        service = new DocumentScannerService(scannedDocumentRepository, customerRepository, transactionRepository);
         ReflectionTestUtils.setField(service, "maxFileSizeBytes", 1024L);
         ReflectionTestUtils.setField(service, "providerActive", true);
     }

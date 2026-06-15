@@ -211,6 +211,7 @@ public class MnbReportService {
     public MnbSubmissionResult submitReport(UUID reportId) {
         MnbReport report = mnbReportRepository.findById(reportId)
             .orElseThrow(() -> new ResourceNotFoundException("MNB riport nem található: " + reportId));
+        assertOwnReport(report, reportId);
 
         if (report.getStatus() != MnbReportStatus.DRAFT) {
             throw new ValidationException("Csak DRAFT státuszú riport küldhető be! Jelenlegi: " + report.getStatus());
@@ -255,6 +256,7 @@ public class MnbReportService {
     public MnbSubmissionResult retrySubmission(UUID reportId) {
         MnbReport report = mnbReportRepository.findById(reportId)
             .orElseThrow(() -> new ResourceNotFoundException("MNB riport nem található: " + reportId));
+        assertOwnReport(report, reportId);
 
         if (report.getStatus() != MnbReportStatus.REJECTED) {
             throw new ValidationException("Csak REJECTED státuszú riport küldhető újra! Jelenlegi: " + report.getStatus());
@@ -386,8 +388,30 @@ public class MnbReportService {
      */
     @Transactional(readOnly = true)
     public MnbReport getReportStatus(UUID reportId) {
-        return mnbReportRepository.findById(reportId)
+        MnbReport report = mnbReportRepository.findById(reportId)
             .orElseThrow(() -> new ResourceNotFoundException("MNB riport nem található: " + reportId));
+        assertOwnReport(report, reportId);
+        return report;
+    }
+
+    /**
+     * Multi-tenant IDOR-védelem (F-3): a riport tulajdonos cége (branch → company)
+     * egyezzen a hívó cégével. Cross-tenant esetén — az oldalcsatorna elkerülésére —
+     * ugyanazt a {@link ResourceNotFoundException}-t dobja, mint a nem létező riport
+     * (nem szivárogtatja, hogy a reportId más cégnél létezik).
+     *
+     * <p>FONTOS: ez user-facing (controller) hívási útra való. A {@code @Scheduled}
+     * MnbDailyReportScheduler kizárólag a {@code generateDailyReport()}-ot hívja,
+     * ezt a guardot nem érinti.</p>
+     */
+    private void assertOwnReport(MnbReport report, UUID reportId) {
+        UUID callerCompanyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        UUID reportCompanyId = report.getBranch() != null && report.getBranch().getCompany() != null
+            ? report.getBranch().getCompany().getId()
+            : null;
+        if (reportCompanyId == null || !reportCompanyId.equals(callerCompanyId)) {
+            throw new ResourceNotFoundException("MNB riport nem található: " + reportId);
+        }
     }
 
     /**

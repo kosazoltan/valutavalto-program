@@ -70,4 +70,11 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
      * Keresés okmányszám alapján (rendőrségi adatkéréshez) — company szűréssel
      */
     List<Customer> findByCompanyIdAndDocumentNumberContainingIgnoreCase(UUID companyId, String documentNumber);
+
+    /**
+     * IDOR-fix (F-2): cég-szűrt ügyfél-létezés ellenőrzés. A ScannedDocument csak
+     * customerId-t hordoz, a tenancy a szülő Customer-en van — a dokumentum-lekérés
+     * előtt ezzel validáljuk, hogy az ügyfél a hívó cégéhez tartozik-e.
+     */
+    boolean existsByIdAndCompany_Id(Long id, UUID companyId);
 }

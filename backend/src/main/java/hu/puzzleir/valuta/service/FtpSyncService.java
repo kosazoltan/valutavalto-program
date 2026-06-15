@@ -302,6 +302,9 @@ public class FtpSyncService {
      */
     @Transactional(readOnly = true)
     public List<FtpSyncLogDto> getSyncHistory(UUID branchId) {
+        // F-10: multi-tenant IDOR-védelem — a history csak a hívó cégének irodájára adható ki.
+        // A raw findByBranchIdOrderByStartedAtDesc nem szűr cégre, ezért előbb branch-ownership check.
+        assertOwnBranch(branchId);
         return ftpSyncLogRepository.findByBranchIdOrderByStartedAtDesc(branchId)
                 .stream()
                 .map(this::toDto)
@@ -310,9 +313,33 @@ public class FtpSyncService {
 
     // ============ HELPERS ============
 
+    /**
+     * F-10: cég-scope-olt branch betöltés (multi-tenant IDOR-védelem).
+     * Idegen cég branchId-ja → ResourceNotFoundException (cross-tenant nem szivárog).
+     *
+     * <p>Ez user-facing (FtpSyncController) hívási útra való. Az osztály {@code @Deprecated}
+     * legacy FTP-bridge, NINCS {@code @Scheduled}/auth-mentes hívója (csak a controller hívja),
+     * ezért a hívó cég biztosan elérhető a SecurityContextből.</p>
+     */
     private Branch findBranch(UUID branchId) {
-        return branchRepository.findById(branchId)
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+        if (branch.getCompany() == null || !branch.getCompany().getId().equals(companyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+        return branch;
+    }
+
+    /**
+     * F-10: branch-ownership ellenőrzés a hívó cégére (history-query elé).
+     * Cross-tenant → ResourceNotFoundException.
+     */
+    private void assertOwnBranch(UUID branchId) {
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        if (!branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
     }
 
     private FtpSyncLogDto toDto(FtpSyncLog s) {

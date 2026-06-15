@@ -7,7 +7,9 @@ import hu.puzzleir.valuta.entity.ScannedDocumentType;
 import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.CustomerRepository;
 import hu.puzzleir.valuta.repository.ScannedDocumentRepository;
+import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +41,8 @@ public class DocumentScannerService {
     );
 
     private final ScannedDocumentRepository scannedDocumentRepository;
+    private final CustomerRepository customerRepository;
+    private final TransactionRepository transactionRepository;
 
     @Value("${document.scanner.max-size-bytes:10485760}")
     private long maxFileSizeBytes;
@@ -106,6 +110,10 @@ public class DocumentScannerService {
      */
     @Transactional(readOnly = true)
     public List<ScannedDocumentDto> getCustomerDocuments(Long customerId) {
+        // IDOR-fix (F-2): a ScannedDocument csak customerId-t hordoz, a tenancy a szülő
+        // Customer-en van. Más cég ügyfeléhez tartozó (vagy nem létező) customerId esetén
+        // ResourceNotFoundException — így az okmány-PII nem szivárog id-enumerációval.
+        requireCustomerInCurrentCompany(customerId);
         return scannedDocumentRepository
                 .findByCustomerIdAndIsDeletedFalseOrderByScannedAtDesc(customerId)
                 .stream()
@@ -118,6 +126,9 @@ public class DocumentScannerService {
      */
     @Transactional(readOnly = true)
     public List<ScannedDocumentDto> getTransactionDocuments(Long transactionId) {
+        // IDOR-fix (F-2): a tenancy a szülő Transaction-ön van — cég-szűrt lookup, hogy
+        // más cég tranzakciójához tartozó okmányok ne legyenek listázhatók (CVSS 8.2, PII).
+        requireTransactionInCurrentCompany(transactionId);
         return scannedDocumentRepository
                 .findByTransactionIdAndIsDeletedFalseOrderByScannedAtDesc(transactionId)
                 .stream()
@@ -133,6 +144,12 @@ public class DocumentScannerService {
         ScannedDocument doc = scannedDocumentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Dokumentum nem található: " + documentId));
 
+        // IDOR-fix (F-2): a ScannedDocument-en nincs companyId, a tenancy a szülőn (customer/
+        // transaction). A törlés előtt a dokumentum customerId/transactionId-ján át validáljuk,
+        // hogy a szülő a hívó cégéhez tartozik-e — különben cross-tenant törlés lenne lehetséges.
+        // Cross-tenant (vagy árva, egyik szülő-id nélküli) dokumentum → ResourceNotFoundException.
+        assertDocumentParentInCurrentCompany(doc);
+
         doc.setIsDeleted(true);
         doc.setDeletedAt(LocalDateTime.now());
         scannedDocumentRepository.save(doc);
@@ -140,6 +157,46 @@ public class DocumentScannerService {
     }
 
     // ============ HELPERS ============
+
+    /**
+     * IDOR-fix (F-2): a megadott ügyfél a hívó cégéhez tartozik-e. Cross-tenant vagy nem
+     * létező ügyfél esetén ResourceNotFoundException (azonos válasz → nincs enumeráció).
+     */
+    private void requireCustomerInCurrentCompany(Long customerId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (customerId == null || !customerRepository.existsByIdAndCompany_Id(customerId, companyId)) {
+            throw new ResourceNotFoundException("Ügyfél nem található: " + customerId);
+        }
+    }
+
+    /**
+     * IDOR-fix (F-2): a megadott tranzakció a hívó cégéhez tartozik-e. Cross-tenant vagy nem
+     * létező tranzakció esetén ResourceNotFoundException.
+     */
+    private void requireTransactionInCurrentCompany(Long transactionId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (transactionId == null
+                || transactionRepository.findByIdAndCompanyId(transactionId, companyId).isEmpty()) {
+            throw new ResourceNotFoundException("Tranzakció nem található: " + transactionId);
+        }
+    }
+
+    /**
+     * IDOR-fix (F-2): a dokumentum szülője (customer és/vagy transaction) a hívó cégéhez
+     * tartozik-e. Legalább az egyik szülőnek léteznie kell és a cég-ellenőrzésen át kell mennie;
+     * ha a dokumentumnak nincs egyetlen cég-validálható szülője sem, cross-tenant törlés-kísérletként
+     * ResourceNotFoundException dobódik (fail-closed).
+     */
+    private void assertDocumentParentInCurrentCompany(ScannedDocument doc) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        boolean ownedViaCustomer = doc.getCustomerId() != null
+                && customerRepository.existsByIdAndCompany_Id(doc.getCustomerId(), companyId);
+        boolean ownedViaTransaction = doc.getTransactionId() != null
+                && transactionRepository.findByIdAndCompanyId(doc.getTransactionId(), companyId).isPresent();
+        if (!ownedViaCustomer && !ownedViaTransaction) {
+            throw new ResourceNotFoundException("Dokumentum nem található: " + doc.getId());
+        }
+    }
 
     private Long getCurrentWorkerId() {
         try {

@@ -38,8 +38,16 @@ public class AuthorizedRepresentativeService {
 
     @Transactional(readOnly = true)
     public AuthorizedRepresentative findById(UUID id) {
-        return representativeRepository.findById(id)
+        // Multi-tenant IDOR-védelem (F-4): a findAll már company-scope-olt, a findById eddig nyers volt.
+        // Post-load companyId-check: cross-tenant lookup -> ResourceNotFoundException (nem leak).
+        // Ezen keresztül védve az update/delete/recordTransaction is.
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        AuthorizedRepresentative representative = representativeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Meghatalmazott nem található: " + id));
+        if (!companyId.equals(representative.getCompanyId())) {
+            throw new ResourceNotFoundException("Meghatalmazott nem található: " + id);
+        }
+        return representative;
     }
 
     public AuthorizedRepresentative create(AuthorizedRepresentative representative) {
