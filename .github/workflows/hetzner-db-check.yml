@@ -254,9 +254,19 @@ jobs:
               bash -s << 'ENDSSH'
             set -o pipefail
             JPID=$(pgrep -f 'valuta-backend-current.jar' | head -1)
-            echo "=== A futó backend (PID $JPID) ÖSSZES TCP-kapcsolata — ss, NYERS (cél-port szerint) ==="
+            echo "=== A futó backend (PID $JPID) ÖSSZES TCP-kapcsolata — ss NYERS (peer-oszlop, IP nem maszkolt) ==="
             NEON_HOST=$(grep -oE 'NEON_DATABASE_URL=.*' /opt/valutavalto/backend/.env 2>/dev/null | sed -E 's#.*@##; s#[/?].*##' | head -1)
             echo "Neon host: ${NEON_HOST:-(nincs)}"
+            sudo ss -tnp 2>/dev/null | grep "pid=$JPID" | awk '{print "  local="$4"  peer="$5}' | head -20 || echo "(ss: nincs sor)"
+            echo "=== docker ps (mi fut 172.18.0.x-en?) ==="
+            sudo docker ps --format '{{.Names}} | {{.Image}} | {{.Ports}}' 2>/dev/null | head -15 || echo "(nincs docker / nem fut)"
+            echo "=== docker bridge — 172.18.0.2 melyik konténer ==="
+            sudo docker network inspect bridge 2>/dev/null | grep -B2 -E '"IPv4Address": "172.18.0.2' | grep -E '"Name"' | head || sudo docker network ls 2>/dev/null | head || echo "(nincs bridge info)"
+            echo "=== PgBouncer SHOW SERVERS (pgbouncer admin DB) ==="
+            sudo -u postgres psql -h 127.0.0.1 -p 6432 -U postgres -d pgbouncer -c "SHOW SERVERS;" 2>&1 | head -8 || echo "(SHOW SERVERS nem elérhető)"
+            echo "=== actuator health/db (a backend tényleges DB-státusza) ==="
+            curl -s -o /tmp/hdb.json -w "  HTTP %{http_code}\n" --max-time 8 http://localhost:8080/actuator/health/db 2>/dev/null || echo "(curl hiba)"
+            head -c 400 /tmp/hdb.json 2>/dev/null; echo ""
             echo "--- a java-processz kimenő :5432 / :6432 / Neon kapcsolatai (NYERS, IP maszkolva) ---"
             sudo ss -tnp 2>/dev/null | grep "pid=$JPID" | awk '{print $5}' | sed -E 's/:[0-9]+$/:PORT/; s/^[0-9a-f:.]+/HOST/' | sort | uniq -c | sort -rn | head -15 || echo "(ss nem elérhető)"
             echo "--- cél-PORT eloszlás (ezt biztosan látjuk: 5432=DB-közvetlen, 6432=PgBouncer, 443=Neon-TLS) ---"
