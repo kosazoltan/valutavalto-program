@@ -28,7 +28,9 @@ public class DataCollectionScheduler {
     public void scheduledDailyCollection() {
         log.info("Ütemezett napi adatgyűjtés indítása: {}", LocalDate.now());
         try {
-            dataCollectionService.collectAllBranches(LocalDate.now());
+            // Rendszer-szintű (cég-független) gyűjtés — a cron-szálnak NINCS auth-kontextusa, ezért NEM
+            // a company-szűrt collectAllBranches-t hívjuk (az getCurrentCompanyId()-n elhasalna).
+            dataCollectionService.collectAllBranchesForAllCompanies(LocalDate.now());
             log.info("Ütemezett napi adatgyűjtés befejezve.");
         } catch (Exception e) {
             log.error("Ütemezett napi adatgyűjtés HIBA: {}", e.getMessage(), e);

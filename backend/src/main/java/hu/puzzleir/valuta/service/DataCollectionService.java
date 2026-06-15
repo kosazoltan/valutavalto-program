@@ -191,6 +191,30 @@ public class DataCollectionService {
     }
 
     /**
+     * RENDSZER-SZINTŰ (ütemezett) napi adatgyűjtés — MINDEN cég összes aktív irodájára.
+     *
+     * Ezt KIZÁRÓLAG a {@code DataCollectionScheduler} (auth-kontextus NÉLKÜLI cron-szál) hívja, ezért
+     * NEM használ {@link SecurityUtils#getCurrentCompanyId()}-t (az "Nincs bejelentkezett felhasználó"-val
+     * elhasalna — ez volt a 2026-06-15 IDOR-fix regressziója). A user-facing {@link #collectAllBranches}
+     * ezzel szemben a hívó cégére szűr (request-kontextus, ADMIN-gated).
+     */
+    public List<DataCollection> collectAllBranchesForAllCompanies(LocalDate date) {
+        log.info("Rendszer-szintű (ütemezett) napi adatgyűjtés indítása: date={}", date);
+        List<Branch> activeBranches = branchRepository.findByIsActiveTrue(); // GLOBÁLIS — szándékos rendszer-job
+        List<DataCollection> results = new ArrayList<>();
+        for (Branch branch : activeBranches) {
+            try {
+                results.add(collectBranchData(branch.getId(), date));
+            } catch (Exception e) {
+                log.error("Ütemezett adatgyűjtés hiba irodánál: branchId={}, hiba={}",
+                    branch.getId(), e.getMessage(), e);
+            }
+        }
+        log.info("Rendszer-szintű adatgyűjtés kész: date={}, összesen={} iroda", date, results.size());
+        return results;
+    }
+
+    /**
      * Gyűjtés státusz lekérdezése.
      */
     @Transactional(readOnly = true)

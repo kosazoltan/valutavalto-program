@@ -25,8 +25,19 @@ public class HandoverSheetService {
     }
 
     public HandoverSheet getById(UUID id) {
-        return repo.findById(id)
+        HandoverSheet sheet = repo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Átadás-átvételi lap nem található: " + id));
+
+        // Multi-tenant IDOR guard (NEW-1): idegen cég átadás-átvételi lapja nem olvasható
+        // és nem mutálható (print/complete is ezen át megy). Cross-tenant (vagy hiányzó
+        // companyId) → ResourceNotFoundException, hogy a létezés se szivárogjon.
+        // Nincs @Scheduled / belső hívó: a HandoverSheetController az egyetlen belépési
+        // pont, így a getCurrentCompanyId() mindig bejelentkezett usert kap.
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        if (sheet.getCompanyId() == null || !sheet.getCompanyId().equals(currentCompanyId)) {
+            throw new ResourceNotFoundException("Átadás-átvételi lap nem található: " + id);
+        }
+        return sheet;
     }
 
     @Transactional(rollbackFor = Exception.class)

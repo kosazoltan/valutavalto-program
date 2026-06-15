@@ -46,6 +46,7 @@ class CameraExportDualApprovalTest {
     @Mock private CameraStorageService storageService;
     @Mock private CameraEncryptionService encryptionService;
     @Mock private CameraHashChainService hashChainService;
+    @Mock private hu.puzzleir.valuta.repository.BranchRepository branchRepository;
 
     @InjectMocks
     private CameraExportService exportService;
@@ -59,6 +60,8 @@ class CameraExportDualApprovalTest {
     @BeforeEach
     void setUp() {
         when(exportRepository.save(any(CameraExportRequest.class))).thenAnswer(inv -> inv.getArgument(0));
+        // IDOR-guard (audit 2026-06-15): a findRequest branch-ownership-check-et hív; saját cég → true.
+        when(branchRepository.existsByIdAndCompanyId(any(), any())).thenReturn(true);
 
         baseRequest = CameraExportRequest.builder()
                 .id(REQUEST_ID)

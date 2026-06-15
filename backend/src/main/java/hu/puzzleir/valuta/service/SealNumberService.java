@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.SealNumber;
 import hu.puzzleir.valuta.entity.SealNumber.SealType;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.SealNumberRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ import java.util.UUID;
 public class SealNumberService {
 
     private final SealNumberRepository sealNumberRepository;
+    private final BranchRepository branchRepository;
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     /**
@@ -76,6 +78,15 @@ public class SealNumberService {
     public SealNumber markAsUsed(UUID sealId, UUID sessionId) {
         SealNumber seal = sealNumberRepository.findById(sealId)
                 .orElseThrow(() -> new ResourceNotFoundException("Plomba nem található: " + sealId));
+
+        // Multi-tenant IDOR (NEW-6): a SealNumber csak branchId-t hordoz (companyId nincs),
+        // ezért a plomba branch-ének cégét ellenőrizzük a hívó cége ellen. Cross-tenant → 404,
+        // különben idegen cég plombája "felhasználtra" állítható.
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (seal.getBranchId() == null
+                || !branchRepository.existsByIdAndCompanyId(seal.getBranchId(), companyId)) {
+            throw new ResourceNotFoundException("Plomba nem található: " + sealId);
+        }
 
         if (seal.getUsedAt() != null) {
             throw new ValidationException("Ez a plomba már felhasználva: " + seal.getSealNumber());

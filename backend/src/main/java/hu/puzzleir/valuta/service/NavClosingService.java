@@ -192,6 +192,10 @@ public class NavClosingService {
         NavClosing closing = navClosingRepository.findById(closingId)
             .orElseThrow(() -> new ResourceNotFoundException("NAV zárás nem található: " + closingId));
 
+        // Multi-tenant IDOR guard (NEW-2): idegen cég zárása nem küldhető be NAV felé.
+        // A létezést sem szabad elárulni → cross-tenant esetén ResourceNotFoundException.
+        verifyClosingTenant(closing, closingId);
+
         if (closing.getStatus() != NavClosingStatus.CLOSED) {
             throw new ValidationException(
                 "Csak CLOSED státuszú zárás küldhető be! Jelenlegi: " + closing.getStatus());
@@ -272,8 +276,34 @@ public class NavClosingService {
      */
     @Transactional(readOnly = true)
     public NavClosing getClosingById(UUID closingId) {
-        return navClosingRepository.findById(closingId)
+        NavClosing closing = navClosingRepository.findById(closingId)
             .orElseThrow(() -> new ResourceNotFoundException("NAV zárás nem található: " + closingId));
+
+        // Multi-tenant IDOR guard (NEW-2): idegen cég zárása nem olvasható (és így a
+        // controller summary-útja sem deriválhat belőle branchId-t idegen cég napi
+        // összesítőjéhez). Cross-tenant → ResourceNotFoundException (létezés sem szivárog).
+        verifyClosingTenant(closing, closingId);
+        return closing;
+    }
+
+    /**
+     * Ellenőrzi, hogy a NAV zárás a bejelentkezett felhasználó cégéhez tartozik-e.
+     * Cross-tenant (vagy hiányzó branch/company) esetén ResourceNotFoundException,
+     * hogy az idegen erőforrás létezése se szivárogjon ki.
+     *
+     * <p>Csak user-facing (controller) úton hívjuk: a service-nek nincs @Scheduled /
+     * auth-kontextus nélküli hívója (NavClosingController az egyetlen belépési pont),
+     * így a getCurrentCompanyId() biztosan kap bejelentkezett usert.</p>
+     */
+    private void verifyClosingTenant(NavClosing closing, UUID closingId) {
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        Branch branch = closing.getBranch();
+        UUID ownerCompanyId = (branch != null && branch.getCompany() != null)
+            ? branch.getCompany().getId()
+            : null;
+        if (ownerCompanyId == null || !ownerCompanyId.equals(currentCompanyId)) {
+            throw new ResourceNotFoundException("NAV zárás nem található: " + closingId);
+        }
     }
 
     /**
