@@ -57,6 +57,25 @@ jobs:
               deploy/hetzner/ha/freeze-watchdog.service \
               deploy/hetzner/ha/freeze-watchdog.timer \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}:/tmp/"
+          echo "=== Resend-kulcs átmásolása a Scaleway-ról a Hetznerre (base64, NEM logolt) ==="
+          # A működő Resend-kulcs a Scaleway-n él (/etc/primary-watchdog/resend_api_key); a freeze-watchdog
+          # a Hetzneren fut, ezért oda is kell. Base64-en megy át, sehol nem jelenik meg plaintextben.
+          KEY_B64="$(ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 \
+              "root@${{ secrets.SCALEWAY_SERVER_IP }}" \
+              "sudo cat /etc/primary-watchdog/resend_api_key 2>/dev/null | tr -d '\n\r' | base64 -w0" 2>/dev/null || true)"
+          if [ -n "$KEY_B64" ]; then
+            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+                "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+                "RK_B64='$KEY_B64' bash -s" << 'ENDKEY'
+              set -o pipefail
+              sudo mkdir -p /etc/primary-watchdog
+              printf '%s' "$RK_B64" | base64 -d | sudo tee /etc/primary-watchdog/resend_api_key >/dev/null
+              sudo chmod 600 /etc/primary-watchdog/resend_api_key
+              echo "Resend-kulcs telepítve a Hetznerre (Scaleway-ról másolva, $(wc -c < /etc/primary-watchdog/resend_api_key) byte)"
+ENDKEY
+          else
+            echo "FIGYELEM: a Scaleway-n sem találom a Resend-kulcsot — az email-riasztás kézi beállítást igényel."
+          fi
           echo "=== telepítés + engedélyezés a boxon (sudo) ==="
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
