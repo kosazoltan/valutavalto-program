@@ -368,7 +368,11 @@ public class TransferService {
 
     @Transactional(readOnly = true)
     public TransferDto getById(Long id) {
-        return toDto(findOrThrow(id));
+        Transfer transfer = findOrThrow(id);
+        // Multi-tenant IDOR-guard (audit 2026-06-15): szekvenciális Long id-vel enumerálható volt
+        // idegen cég átadás-bizonylata; a getStornoPreview-vel azonos ownership-check.
+        assertOwnCompany(transfer, String.valueOf(id));
+        return toDto(transfer);
     }
 
     /**
@@ -377,16 +381,8 @@ public class TransferService {
      */
     @Transactional(readOnly = true)
     public TransferDto getStornoPreview(Long id) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
         Transfer transfer = transferRepository.findById(id).orElse(null);
-        boolean ownCompany = transfer != null
-                && ((transfer.getFromBranch() != null && transfer.getFromBranch().getCompany() != null
-                        && companyId.equals(transfer.getFromBranch().getCompany().getId()))
-                    || (transfer.getToBranch() != null && transfer.getToBranch().getCompany() != null
-                        && companyId.equals(transfer.getToBranch().getCompany().getId())));
-        if (!ownCompany) {
-            throw new ResourceNotFoundException("Átadás nem található: " + id);
-        }
+        assertOwnCompany(transfer, String.valueOf(id));
         TransferDto preview = toDto(transfer);
         preview.setStornoSerialNumber(transfer.getTransferNumber() + "-SZ");
         return preview;
@@ -396,7 +392,25 @@ public class TransferService {
     public TransferDto getByTransferNumber(String transferNumber) {
         Transfer transfer = transferRepository.findByTransferNumber(transferNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Átadás nem található: " + transferNumber));
+        // Multi-tenant IDOR-guard (audit 2026-06-15): a transferNumber is user-controlled.
+        assertOwnCompany(transfer, transferNumber);
         return toDto(transfer);
+    }
+
+    /**
+     * Multi-tenant ownership-guard: az átadás a hívó cégéhez tartozik-e (from- vagy to-branch
+     * cége egyezik). Cross-tenant → ResourceNotFoundException (nem 403, hogy a létezés se szivárogjon).
+     */
+    private void assertOwnCompany(Transfer transfer, String idForMessage) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        boolean ownCompany = transfer != null && companyId != null
+                && ((transfer.getFromBranch() != null && transfer.getFromBranch().getCompany() != null
+                        && companyId.equals(transfer.getFromBranch().getCompany().getId()))
+                    || (transfer.getToBranch() != null && transfer.getToBranch().getCompany() != null
+                        && companyId.equals(transfer.getToBranch().getCompany().getId())));
+        if (!ownCompany) {
+            throw new ResourceNotFoundException("Átadás nem található: " + idForMessage);
+        }
     }
 
     @Transactional(readOnly = true)

@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.DataCollectionRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -152,13 +153,17 @@ public class DataCollectionService {
     }
 
     /**
-     * Összes aktív iroda adatgyűjtése az adott napra.
+     * Összes aktív iroda adatgyűjtése az adott napra — CSAK a hívó cégének irodáira.
+     *
+     * IDOR védelem (FINDING #9): korábban a globális {@code findByIsActiveTrue()} MINDEN tenant
+     * aktív irodáin operált (cross-tenant). A /collect-all REST végpont request-kontextusban fut
+     * (ADMIN-gated), így a hívó cégének aktív irodáira szűrünk.
      */
-    @SuppressWarnings("deprecation") // Scheduled batch job: szandekos cross-tenant. REST controller atallitasa kulon feladat.
     public List<DataCollection> collectAllBranches(LocalDate date) {
         log.info("Összes iroda adatgyűjtés indítása: date={}", date);
 
-        List<Branch> activeBranches = branchRepository.findByIsActiveTrue();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<Branch> activeBranches = branchRepository.findByCompanyIdAndIsActiveTrue(companyId);
         List<DataCollection> results = new ArrayList<>();
 
         for (Branch branch : activeBranches) {
@@ -190,7 +195,10 @@ public class DataCollectionService {
      */
     @Transactional(readOnly = true)
     public DataCollection getCollectionStatus(UUID branchId, LocalDate date) {
-        return dataCollectionRepository.findByBranchIdAndCollectionDate(branchId, date)
+        // IDOR védelem (FINDING #9): csak a hívó cégének irodájára szóló gyűjtés kérdezhető le.
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return dataCollectionRepository
+            .findByBranchIdAndCollectionDateAndBranchCompanyId(branchId, date, companyId)
             .orElseThrow(() -> new ResourceNotFoundException(
                 "Adatgyűjtés nem található: branchId=" + branchId + ", date=" + date));
     }
@@ -201,7 +209,10 @@ public class DataCollectionService {
      */
     @Transactional(readOnly = true)
     public List<hu.puzzleir.valuta.dto.datacollection.DataCollectionDto> getSummary(LocalDate date) {
-        return dataCollectionRepository.findByCollectionDateOrderByBranchIdAsc(date)
+        // IDOR védelem (FINDING #9): csak a hívó cégének irodáira szóló rekordok (globális leak ellen).
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return dataCollectionRepository
+            .findByCollectionDateAndBranchCompanyIdOrderByBranchIdAsc(date, companyId)
             .stream()
             .map(dc -> hu.puzzleir.valuta.dto.datacollection.DataCollectionDto.builder()
                 .id(dc.getId())

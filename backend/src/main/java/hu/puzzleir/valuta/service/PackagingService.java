@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.dto.packaging.CreatePackagingRecordDto;
 import hu.puzzleir.valuta.dto.packaging.PackagingRecordDto;
 import hu.puzzleir.valuta.entity.PackagingRecord;
 import hu.puzzleir.valuta.repository.PackagingRecordRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,18 @@ public class PackagingService {
 
     private final PackagingRecordRepository repository;
     private final BranchRepository branchRepository;
+
+    /**
+     * Multi-tenant izoláció (IDOR FINDING #6): a branchId-vel paraméterezett lekérdezések
+     * KÖTELEZŐEN a hívó cégének irodájára szólnak. Tenant-idegen iroda → 404 (id-enumeráció ellen).
+     * Mintaforrás: InventoryMovementService.requireOwnBranch.
+     */
+    private void requireOwnBranch(UUID branchId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (branchId == null || !branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+    }
 
     @Transactional(rollbackFor = Exception.class)
     public PackagingRecordDto create(CreatePackagingRecordDto dto) {
@@ -51,6 +64,8 @@ public class PackagingService {
 
     @Transactional(readOnly = true)
     public List<PackagingRecordDto> getByBranch(UUID branchId, LocalDate from, LocalDate to) {
+        // IDOR védelem (FINDING #6): a kért iroda a hívó cégéé kell legyen.
+        requireOwnBranch(branchId);
         if (from != null && to != null) {
             return repository.findByBranchIdAndPackagingDateBetweenOrderByPackagingDateDesc(branchId, from, to)
                 .stream().map(this::toDto).toList();

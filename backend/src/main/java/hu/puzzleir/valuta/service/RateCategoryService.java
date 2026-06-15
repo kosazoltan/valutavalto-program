@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.dto.ratecategory.RateCategoryDto;
 import hu.puzzleir.valuta.entity.RateCategory;
 import hu.puzzleir.valuta.entity.RateCategory.RateCategoryType;
 import hu.puzzleir.valuta.repository.RateCategoryRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,11 @@ public class RateCategoryService {
      */
     @Transactional(readOnly = true)
     public RateCategoryDto getRateForAmount(UUID branchId, String currencyCode, BigDecimal amount) {
+        // FINDING #7 IDOR fix: a branch a hívó cégéé kell legyen (RateCategory branch→company
+        // multi-tenant). Cross-tenant branchId → ResourceNotFoundException, hogy ne szivárogjon
+        // ki más cég árfolyam-kategóriája.
+        assertBranchOwnership(branchId);
+
         RateCategoryType category = determineCategory(amount);
 
         // Először a megfelelő kategóriát keressük
@@ -97,12 +103,28 @@ public class RateCategoryService {
 
     @Transactional(readOnly = true)
     public List<RateCategoryDto> getAll(UUID branchId) {
+        // FINDING #7 IDOR fix: branch-ownership guard a cross-tenant lekérdezés ellen.
+        assertBranchOwnership(branchId);
+
         return rateCategoryRepository.findByBranchId(branchId).stream()
             .map(this::toDto)
             .toList();
     }
 
     // ============ HELPER ============
+
+    /**
+     * FINDING #7 (multi-tenant IDOR): a megadott branch a hívó cégéhez tartozik-e.
+     * A RateCategory branch→company láncon multi-tenant; a branch-param végpontoknál
+     * (getRateForAmount / getAll) a hívó cégéhez kötjük a hozzáférést. Ha a branch nem
+     * létezik vagy más céghez tartozik, ResourceNotFoundException (nem leak-elő üzenet).
+     */
+    private void assertBranchOwnership(UUID branchId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (branchId == null || !branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+    }
 
     /**
      * Kategória meghatározása EUR-egyenérték alapján.

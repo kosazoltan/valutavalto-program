@@ -14,5 +14,13 @@ public interface DecadeReportRepository extends JpaRepository<DecadeReport, UUID
 
     Page<DecadeReport> findByBranchIdAndYear(UUID branchId, int year, Pageable pageable);
 
+    /**
+     * Multi-tenant-safe lista: a dekádjelentések csak a hívó cégének irodájára szólnak
+     * (IDOR FINDING #5). A {@link #findByBranchIdAndYear(UUID, int, Pageable)} company-scope
+     * nélkül idegen cég irodájának jelentéseit is visszaadta.
+     */
+    Page<DecadeReport> findByBranchIdAndYearAndBranchCompanyId(
+        UUID branchId, int year, UUID companyId, Pageable pageable);
+
     Optional<DecadeReport> findByBranchIdAndYearAndDecade(UUID branchId, int year, int decade);
 }
