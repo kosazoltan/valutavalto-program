@@ -246,6 +246,38 @@ jobs:
             echo "melyik DB-re ment. A neon_sync friss sorai mutatják, él-e a local->Neon szinkron."
           ENDSSH
 
+      - name: 'P2 DÖNTŐ: a futó backend TÉNYLEGES TCP-kapcsolatai — Neon vs lokális (read-only)'
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            JPID=$(pgrep -f 'valuta-backend-current.jar' | head -1)
+            echo "=== A futó backend (PID $JPID) ESTABLISHED TCP-kapcsolatai (cél IP:port szerint) ==="
+            NEON_HOST=$(grep -oE 'NEON_DATABASE_URL=.*' /opt/valutavalto/backend/.env 2>/dev/null | sed -E 's#.*@##; s#[/?].*##' | head -1)
+            NEON_IP=$(getent hosts "$NEON_HOST" 2>/dev/null | awk '{print $1}' | head -1)
+            echo "Neon host: $NEON_HOST  -> IP: ${NEON_IP:-(nem feloldható)}"
+            echo "--- kapcsolatok cél-végpont szerint csoportosítva ---"
+            sudo lsof -p "$JPID" -iTCP -nP 2>/dev/null | grep ESTABLISHED | awk '{print $9}' | sed -E 's/.*->//' | sort | uniq -c | sort -rn | head -15 || echo "(lsof nem elérhető)"
+            echo ""
+            echo "--- DÖNTŐ: van-e kapcsolat a NEON IP-re (= a backend KÖZVETLENÜL a Neonba ír)? ---"
+            if [ -n "$NEON_IP" ]; then
+              N=$(sudo lsof -p "$JPID" -iTCP -nP 2>/dev/null | grep ESTABLISHED | grep -c "$NEON_IP" || true)
+              echo "Neon ($NEON_IP) felé ESTABLISHED kapcsolatok száma: ${N:-0}"
+            fi
+            echo "--- lokális PgBouncer (127.0.0.1:6432) felé ---"
+            echo "6432 felé: $(sudo lsof -p "$JPID" -iTCP -nP 2>/dev/null | grep ESTABLISHED | grep -c '127.0.0.1:6432' || true)"
+            echo ""
+            echo "=== PgBouncer: a 6432 valójában HOVÁ tart szerver-kapcsolatot? (SHOW SERVERS) ==="
+            ADMIN=$(sudo grep -oE '^\s*admin_users\s*=\s*\S+' /etc/pgbouncer/pgbouncer.ini 2>/dev/null | sed -E 's/.*=\s*//' | head -1)
+            echo "pgbouncer admin_users: ${ADMIN:-(nincs)}"
+            sudo -u postgres psql -p 6432 -U "${ADMIN:-postgres}" -d pgbouncer -tAc "SHOW SERVERS" 2>/dev/null | awk -F'|' '{print $3, $5, $6}' | head -10 || echo "(SHOW SERVERS admin-auth nélkül nem elérhető)"
+            echo ""
+            echo "=== teljes pgbouncer [databases] szekció (host maszkolva) ==="
+            sudo sed -n '/^\[databases\]/,/^\[/p' /etc/pgbouncer/pgbouncer.ini 2>/dev/null | grep -vE '^\s*$|^\[|^\s*;' | sed -E 's#password=[^ ]*#password=***#I' | head -10 || echo "(nincs)"
+          ENDSSH
+
       - name: 'Scaleway STANDBY — DB + watchdog failover-log (read-only)'
         if: always()
         run: |
