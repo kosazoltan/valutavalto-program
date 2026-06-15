@@ -1,0 +1,13 @@
+[Unit]
+Description=FREEZE-WATCHDOG percenkénti futtatása (Hetzner backend/Postgres anti-freeze)
+
+[Timer]
+# Indítás után 2 perccel kezd (hogy a boot/első deploy ne triggerelje), majd percenként.
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=10s
+# Ha kimaradt futás volt (pl. a gép aludt), egyszer azonnal pótolja.
+Persistent=true
+
+[Install]
+WantedBy=timers.target
