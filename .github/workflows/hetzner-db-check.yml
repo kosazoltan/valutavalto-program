@@ -113,12 +113,18 @@ jobs:
             sudo ss -tlnp 2>/dev/null | grep -E ':6432' || echo "(nincs 6432 listener)"
             echo "--- pgbouncer [databases] szekció (host maszkolva) ---"
             sudo grep -A30 '^\[databases\]' /etc/pgbouncer/pgbouncer.ini 2>/dev/null | grep -iE 'valuta|host=|neon|=' | sed -E 's#(password=)[^ ]*#\1***#I' | head -15 || echo "(nincs pgbouncer.ini / databases szekció)"
-            echo "--- éles API: RUB állapota amit a backend SZOLGÁL (localhost:8080, no-auth próbák) ---"
-            for EP in "/api/v1/currencies/all" "/api/v1/currencies" "/api/v1/exchange-rates/currencies"; do
-              CODE=$(curl -s -o /tmp/cur.json -w "%{http_code}" --max-time 8 "http://localhost:8080$EP" 2>/dev/null || echo 000)
-              echo "GET $EP -> HTTP $CODE"
-              if [ "$CODE" = "200" ]; then grep -oE '"code":"RUB"[^}]*"(is_active|active)":[a-z]+' /tmp/cur.json 2>/dev/null | head -1 || grep -oE 'RUB' /tmp/cur.json | head -1; break; fi
+            echo "--- MELYIK A @Primary (futásidejű) datasource? Hikari-pool indulási sorok ---"
+            journalctl -u valuta-backend.service --no-pager 2>/dev/null | grep -iE 'HikariPool|HikariDataSource|Added connection|jdbcUrl|Starting\.\.\.|Start completed' | grep -oE '(HikariPool-[0-9]+|[a-zA-Z-]*[Pp]ool)[^,]*|jdbc:postgresql://[^ "}]+|conn=[^ ]+' | sed -E 's#//[^@/]*@#//***@#' | tail -20 || echo "(nincs Hikari log-sor)"
+            echo "--- actuator: melyik DB-t kezeli a Flyway + health DB-komponens (no-auth próba) ---"
+            for AEP in "/actuator/flyway" "/actuator/health" "/actuator/health/db" "/actuator/configprops"; do
+              CODE=$(curl -s -o /tmp/act.json -w "%{http_code}" --max-time 8 "http://localhost:8080$AEP" 2>/dev/null || echo 000)
+              echo "GET $AEP -> HTTP $CODE"
+              if [ "$CODE" = "200" ]; then
+                grep -oE '(neon\.tech|localhost:6432|127\.0\.0\.1:5432|"version":"32[0-9]"|jdbc:postgresql://[^"]+)' /tmp/act.json 2>/dev/null | sed -E 's#//[^@/]*@#//***@#' | sort -u | head -10
+              fi
             done
+            echo "--- a backend melyik DB-ben látja a RUB-ot aktívként? közvetlen mindkét oldal ---"
+            echo "LOKÁLIS valuta RUB.is_active : $(sudo -u postgres psql -d valuta -tAc "SELECT is_active FROM currency WHERE code='RUB'" 2>/dev/null)"
           ENDSSH
 
       - name: 'Scaleway STANDBY — DB + watchdog failover-log (read-only)'
