@@ -190,18 +190,18 @@ jobs:
           echo "- **Health check URL:** ${{ env.HEALTH_URL }}" >> $GITHUB_STEP_SUMMARY
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # DB-MIGRÁCIÓ VERIFY (Kósa direktíva, 2026-06-14). Minden deploy után:
-  #   Gate A: a Hetzner LOKÁLIS 'valuta' DB Flyway-szintje. INFORMÁLIS (nem blokkoló) —
-  #           lásd a 2026-06-15-i diagnózist (PR #1147 RUB-visszaállítás nyomán): a backend
-  #           a futásidejű @Primary datasource-ot a NEON-ra köti (a startup-JDBC log csak Neont
-  #           mutat, a Flyway is a Neonra viszi fel a migrációkat), a lokális Hetzner 'valuta'
-  #           DB pedig NEM kap éles írást (órákig 0 checkpoint üzleti időben) — elavult maradék.
-  #           Ezért a lokális DB V-szintje önmagában NEM jelez deploy-hibát; csak figyelmeztet,
-  #           ha eltér. A backend tényleges DB-jét a Gate B (Neon) igazolja.
-  #           DÖNTÉS (Kósa Zoltán, 2026-06-15): a NEON a primary. Követő ops-feladat: a HA-standby +
-  #           B2-backup célját is a Neonra állítani, a lokális 'valuta' kivezetése. Lásd az incidensjegyzetet.
-  #   Gate B: a backend TÉNYLEGES PROD DB-je (Neon) Flyway-migrációja elérte-e a repo max V-t
-  #           (baseline 326 felett idempotens `flyway migrate`). BLOKKOLÓ — ez a valódi gate.
+  # DB-MIGRÁCIÓ VERIFY. Minden deploy után:
+  #   FONTOS KORREKCIÓ (2026-06-15 incidens-megoldás): a korábbi "a NEON a primary" megállapítás
+  #   TÉVES volt. A backend PRIMARY (futásidejű) datasource-a a LOKÁLIS Hetzner 'valuta'
+  #   (DATABASE_URL=localhost:6432). A 2026-06-15-i incidensben a `neon-sync.enabled=true` egy
+  #   másodlagos DataSource bean-t hozott létre, ami visszaléptette a Spring Boot primary
+  #   auto-configot → ÁTMENETILEG a Neon lett az app egyetlen datasource-a; ezt a
+  #   `restore-local-primary` (NEON_SYNC=false) visszaállította a lokálisra. Bizonyíték a tényleges
+  #   datasource-ra: `pg_stat_activity` (hol ül a Hikari-pool), NEM systemctl-show / /proc env.
+  #   Gate A: a Hetzner LOKÁLIS 'valuta' (a TÉNYLEGES szolgáló DB) Flyway-szintje. EZ a valódi gate.
+  #   Gate B: a Neon (BACKUP DB) Flyway-szintje — backup-konzisztencia, informális.
+  #   TEENDŐ (követő PR): a gate-logika megfordítása (Gate A blokkoló = lokális; Gate B informális =
+  #   Neon backup), és a backup-cél visszaállítása local→Neon irányba. Lásd az incidensjegyzetet.
   # A Neon-job FAIL-loud, de a már lefutott Hetzner primer deployt NEM görgeti vissza.
   # ─────────────────────────────────────────────────────────────────────────────
   verify-hetzner-db:
