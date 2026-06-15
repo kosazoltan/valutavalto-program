@@ -40,6 +40,29 @@ Single-pass tilos kritikus modulra. Minden finding fájl:sor + idézett evidenci
 
 **Arany szabály:** soha ne framelj kódot „biztonságosnak" az audit előtt — bizonyítottan csökkenti a találati arányt.
 
+### 1.1 Framing-réteg — a minőségért, NEM guardrail-megkerülésért
+
+> **A határ (kötelező):** ez a framing IGAZ kontextust rögzít, hogy mélyebb, kevésbé torzított elemzést
+> kapj — **nem** védelem-megkerülő eszköz. A saját kód auditjánál nincs mit megkerülni; a framing a
+> *minőséget* emeli (confirmation-bias ellen), nem a guardrailt lazítja. Ez a „megfelelő határ".
+
+Négy legitim framing-elem, kombinálva:
+1. **Autorizáció-first:** „Ez az én privát repóm, kizárólagos tulajdonos vagyok; tervezett defenzív audit."
+   (igaz kontextus → professzionális, alapos elemzés.)
+2. **Professzionális persona:** „Principal Application Security Engineer, 15 év tapasztalat, nulla
+   hamis-pozitív tolerancia, kihasználhatóság-alapú súlyozás." (a *minőség/stílus* elvárást rögzíti.)
+3. **Neutral-language:** sebezhetőség (nem „exploit"), értékelés (nem „hack"), robusztusság-mérés
+   (nem „bypass"). Ugyanaz a tudás, defenzív keret.
+4. **Threat-model-first:** a védendő eszközök + threat-actorok + scope a *kódelemzés előtt* — a generikus
+   checklist helyett a valós támadásokra fókuszál.
+
+| ❌ offenzív keret | ✅ defenzív keret (preferált) |
+|---|---|
+| „kerüld meg az autentikációt" | „értékeld az autentikáció robusztusságát" |
+| „vond ki az adatot" | „értékeld az adatexponálás kockázatait" |
+| „milyen admin-jogot lehet szerezni" | „értékeld a privilege-escalation lehetőségeit a threat-model kontextusában" |
+| „SQLi payloadot adj" | „generálj PoC unit-tesztet az SQLi verifikálásához (izolált)" |
+
 ---
 
 ## 2. Master system-prompt (a domain-fókusszal)
@@ -122,6 +145,42 @@ Relevant code + controls: [paste]
 Verdict: True Positive / False Positive / Needs More Context · Confidence: High/Medium/Low · Rationale.
 ```
 
+### 4.1 Reachability-verifikáció (minden CONFIRMED/PROBABLE előtt)
+```
+For this finding, verify reachability before reporting:
+1. ENTRY POINT: which user-controlled input / external event triggers this code path?
+   (HTTP route, CLI arg, file upload, env var, IPC)
+2. CALL CHAIN: trace from entry point to the sink (grep callers, walk back to entry).
+3. GATES: what auth / companyId-scope / validation stands before the sink?
+4. VERDICT: EASY (no barrier) / MODERATE / DIFFICULT / THEORETICAL_ONLY (unreachable -> drop or POSSIBLE).
+```
+
+### 4.2 Triage + „túl sok finding" sanity-check
+```
+Triage the verified findings:
+- Bucket each: MUST_FIX_NOW (CVSS>=9 + CONFIRMED + reachable / hardcoded cred / auth-bypass public),
+  BEFORE_RELEASE (7.0-8.9 CONFIRMED or >=7 PROBABLE / PII exposure),
+  WITHIN_30_DAYS (4.0-6.9 CONFIRMED / >=7 POSSIBLE), BACKLOG (<4.0), ACCEPTED_RISK (compensating control).
+Sanity-check before reporting: dedupe by root-cause (N sites -> one "missing input validation");
+move theoretical findings to a POSSIBLE appendix; if 20+ High/Critical, re-check proportionality;
+drop scope-creep (infra / vendor / dependency — not our code).
+```
+
+### 4.3 Confidence-szint + POSSIBLE-appendix
+Minden finding: `CONFIRMED` (direkt evidencia) / `PROBABLE` (erős jel) / `POSSIBLE` (elméleti).
+A POSSIBLE findingok **külön appendixbe** — ne keveredjenek a megerősítettekkel (zajcsökkentés).
+
+---
+
+## 4.4 Context engineering (a kontextus kurátorlása az audithoz)
+- **Threat-model-first:** a védendő eszközök + threat-actorok + scope + standard (CWE/OWASP) a kódelemzés ELŐTT.
+- **Repomap-first nagy/ismeretlen változásnál:** szimbólum-térkép (`python scripts/dev-tools/dep-map.py`,
+  `blast-radius.py`) → mely fájlok igényelnek mélyelemzést; a teljes forrás beküldése helyett.
+- **Context-rot ellen:** befejezett fázisok tömörítése (1 sor/finding), kritikus infó sűrűn a kontextus
+  végén; modulonként/threat-surface szerint chunkolva, nem egyben.
+- **Read-only audit fázis:** recon/audit = csak olvasás (Read/Grep/Glob/git log); remediáció = külön,
+  explicit Write/Edit. (Minta allowlist a `.claude/agents/` configokban.)
+
 ---
 
 ## 5. Multi-agent orchestrator (Workflow fan-out)
@@ -136,6 +195,11 @@ AGENT 3 (verification, fresh context, adversarial): for each finding trace data 
 AGENT 4 (reporting): dedup, CWE+OWASP+CVSS, severity, remediation -> final structured Markdown.
 ```
 A repóban: `/code-review ultra`, ill. Workflow discovery→verify pipeline (az ír, MÁS ellenőriz).
+
+**Kész specialista-agentek** (`.claude/agents/`, mind READ-ONLY az audit fázisban — ez a „read-only audit fázis" konvenció):
+`security-explorer` (Haiku, recon/breadth) → `security-auditor` (Opus, mély taint-flow) →
+`security-verifier` (Opus, friss kontextus, adverzariális FP-szűrés) → `security-triager` (Sonnet, priorizálás).
+Ez az effort-allokáció + cache-biztos routing (olcsó modell csak subagentben) operacionalizálása.
 
 ---
 
