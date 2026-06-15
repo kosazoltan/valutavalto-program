@@ -24,6 +24,7 @@ on:
           - cutover-unit-probe
           - cutover-runtime-probe
           - restore-local-primary
+          - neon-backup-plan
           - neon-sync-enable
           - neon-sync-rollback
           - neon-sync-verify
@@ -267,6 +268,38 @@ jobs:
             echo "=== NEON neondb — aktiv kapcsolatok (a backend Hikari-poolja ITT van-e) ==="
             psql "$NEON_URI" -P pager=off -c "SELECT count(*) conns, usename, application_name, client_addr, state FROM pg_stat_activity WHERE datname='neondb' GROUP BY usename, application_name, client_addr, state ORDER BY 1 DESC LIMIT 12" 2>/dev/null || echo "(n/a)"
             echo "=== Kesz — runtime probe read-only ==="
+          ENDSSH
+
+      - name: 'NEON BACKUP PLAN (read-only) — replica-jog teszt + FK-closure + meretek'
+        if: ${{ github.event.inputs.action == 'neon-backup-plan' }}
+        env:
+          NEON_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          # READ-ONLY: a kritikus uzleti tablak TRUNCATE+reload backfilljenek biztonsagi elofeltetelei.
+          # (1) tud-e a neondb_owner session_replication_role=replica-t allitani (FK-bypass a loadhoz);
+          # (2) a seed (SYNC_TABLES + gyerekek) FK-closure-ja (mely tablakat KELL egyutt truncalni);
+          # (3) a closure tablak sor-szamai lokalison. Semmit nem modosit.
+          B64=$(printf '%s' "$NEON_URL" | base64 -w0)
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              "NEON_B64='$B64' bash -s" << 'ENDSSH'
+            set -o pipefail
+            NEON_URI=$(printf '%s' "$NEON_B64" | base64 -d)
+            echo "=== (1) replica-jog teszt a Neonon (neondb_owner) ==="
+            psql "$NEON_URI" -tAc "SET session_replication_role = replica; SHOW session_replication_role;" 2>&1 | sed -E 's#postgres(ql)?://[^ ]*#<NEON_URI>#g' | head -3
+            echo ""
+            CLOSURE_SQL="WITH RECURSIVE seed(t) AS (VALUES ('transaction'),('receipt'),('daily_balance'),('cash_balance'),('transfer'),('shipment_request'),('decade_report'),('cash_register_event'),('currency_stock'),('denomination_balance'),('transfer_lines'),('transfer_denomination'),('transfer_serial_sequence'),('shipment_request_item'),('vault_bank_transaction'),('collected_transaction'),('receipt_sequence'),('vault_transfer')), closure AS (SELECT t FROM seed UNION SELECT c.conrelid::regclass::text FROM pg_constraint c JOIN closure cl ON c.confrelid::regclass::text = cl.t WHERE c.contype='f') SELECT t FROM closure ORDER BY t"
+            echo "=== (2) FK-closure (ezeket KELL egyutt truncalni a lokalis seman szamolva) ==="
+            sudo -u postgres psql -d valuta -tAc "$CLOSURE_SQL" 2>/dev/null | tee /tmp/closure.txt | tr '\n' ' '
+            echo ""
+            echo "closure tabla-szam: $(wc -l < /tmp/closure.txt)"
+            echo ""
+            echo "=== (3) closure tablak sor-szamai (lokalis) ==="
+            for t in $(cat /tmp/closure.txt); do
+              echo "  $t = $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM \"$t\"" 2>/dev/null)"
+            done
+            rm -f /tmp/closure.txt
+            echo "=== Kesz — backup-plan read-only ==="
           ENDSSH
 
       - name: 'RESTORE LOCAL PRIMARY — NEON_SYNC=false (app vissza a lokalisra) + restart + health + auto-rollback'
