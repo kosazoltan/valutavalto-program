@@ -64,15 +64,10 @@ jobs:
               "root@${{ secrets.SCALEWAY_SERVER_IP }}" \
               "sudo cat /etc/primary-watchdog/resend_api_key 2>/dev/null | tr -d '\n\r' | base64 -w0" 2>/dev/null || true)"
           if [ -n "$KEY_B64" ]; then
+            # Egyetlen SSH-parancs (NINCS beágyazott heredoc — az törné a YAML run-blokkot).
             ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
                 "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
-                "RK_B64='$KEY_B64' bash -s" << 'ENDKEY'
-              set -o pipefail
-              sudo mkdir -p /etc/primary-watchdog
-              printf '%s' "$RK_B64" | base64 -d | sudo tee /etc/primary-watchdog/resend_api_key >/dev/null
-              sudo chmod 600 /etc/primary-watchdog/resend_api_key
-              echo "Resend-kulcs telepítve a Hetznerre (Scaleway-ról másolva, $(wc -c < /etc/primary-watchdog/resend_api_key) byte)"
-ENDKEY
+                "sudo mkdir -p /etc/primary-watchdog && printf '%s' '$KEY_B64' | base64 -d | sudo tee /etc/primary-watchdog/resend_api_key >/dev/null && sudo chmod 600 /etc/primary-watchdog/resend_api_key && echo \"Resend-kulcs telepitve a Hetznerre (\$(wc -c < /etc/primary-watchdog/resend_api_key) byte)\""
           else
             echo "FIGYELEM: a Scaleway-n sem találom a Resend-kulcsot — az email-riasztás kézi beállítást igényel."
           fi
