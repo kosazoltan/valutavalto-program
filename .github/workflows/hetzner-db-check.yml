@@ -287,6 +287,20 @@ jobs:
             echo "pgbouncer admin_users: ${ADMIN:-(nincs)}"
             sudo -u postgres psql -p 6432 -U "${ADMIN:-postgres}" -d pgbouncer -tAc "SHOW SERVERS" 2>/dev/null | awk -F'|' '{print $3, $5, $6}' | head -10 || echo "(SHOW SERVERS admin-auth nélkül nem elérhető)"
             echo ""
+            echo "=== P-FREEZE-B DÖNTŐ: a BACKEND ÚTJÁN (PgBouncer 6432) — melyik DB, friss-e? (jelszó nem logolt) ==="
+            DBPW=$(grep -oE '^DATABASE_PASSWORD=.*' /opt/valutavalto/backend/.env 2>/dev/null | cut -d= -f2- | tr -d '\r\n')
+            DBUSER=$(grep -oE '^DATABASE_USERNAME=.*' /opt/valutavalto/backend/.env 2>/dev/null | cut -d= -f2- | tr -d '\r\n'); DBUSER="${DBUSER:-valuta_user}"
+            if [ -n "$DBPW" ]; then
+              echo "--- a backend ÚTJÁN (6432, user=$DBUSER): server-IP + DB + audit_log frissesség ---"
+              PGPASSWORD="$DBPW" psql "host=127.0.0.1 port=6432 dbname=valuta user=$DBUSER" -tAc \
+                "SELECT 'server_ip='||COALESCE(host(inet_server_addr()),'(unix/local)')||'  db='||current_database()||'  audit_max='||COALESCE((SELECT max(created_at) FROM audit_log)::text,'-')" 2>&1 | head -3
+              echo "--- összevetés: KÖZVETLEN lokális 5432 audit_log frissesség ---"
+              sudo -u postgres psql -d valuta -tAc "SELECT 'audit_max_5432='||COALESCE(max(created_at)::text,'-') FROM audit_log" 2>/dev/null
+              echo "ÉRTELMEZÉS: ha a 6432-es audit_max FRISS (ma) és a server_ip NEM lokális → a backend NEM a lokálisra ír."
+            else
+              echo "(nincs DATABASE_PASSWORD a .env-ben — a 6432-próba kihagyva)"
+            fi
+            echo ""
             echo "=== teljes pgbouncer [databases] szekció (host maszkolva) ==="
             sudo sed -n '/^\[databases\]/,/^\[/p' /etc/pgbouncer/pgbouncer.ini 2>/dev/null | grep -vE '^\s*$|^\[|^\s*;' | sed -E 's#password=[^ ]*#password=***#I' | head -10 || echo "(nincs)"
           ENDSSH
