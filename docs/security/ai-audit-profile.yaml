@@ -1,0 +1,135 @@
+# AI defenzív biztonsági audit-profil — valutavalto-program
+# Gépi-olvasható profil a Workflow / subagent audithoz és a /security-review hangolásához.
+# Forrás: vault/feedback/security-audit-mandate-2026-06-15.md
+# Frissítve: 2026-06-15
+
+meta:
+  repo: valutavalto-program
+  domain: hungarian-currency-exchange-erp
+  authorization: own-private-repo            # standing autorizált defenzív tesztelés
+  posture: multi-pass-taint-flow             # discovery -> verification -> remediation
+  single_pass_allowed_on_critical: false
+
+# --- A munkamód magja ---
+passes:
+  - id: discovery
+    goal: széles hipotézis-lista, tág asszociáció (ismert pattern + novel osztály)
+    accept_high_false_positive: true
+  - id: verification
+    goal: adatfolyam-trace + meglévő kontrollok hatásának ellenőrzése
+    verdict_enum: [true_positive, false_positive, needs_more_context]
+    only_verified_to_report: true
+  - id: remediation
+    goal: minimális célzott patch, before/after diff, interfész megtartva
+
+bias_guards:
+  do_not_frame_code_as_secure: true          # confirmation-bias ellen
+  neutral_descriptive_language: true
+  hallucinated_vuln_guard:
+    require_file_line_evidence: true
+    refuter_round_on_critical: true
+
+# --- Fegyelmi korlátok (anti-loop, anti-token-égetés). Alárendelve az AGENTS.md-nek. ---
+discipline_bounds:
+  passes_are_linear_not_a_loop: true         # discovery->verification->remediation egyszer fut
+  max_fix_attempts_per_finding: 2            # AGENTS.md 5. — utána strategiaváltás vagy blokkoló-jelzés
+  variant_rescan_after_fix: 1                # nem nyílt végű variant-hunt
+  stuck_state_stop_after_iterations: 5       # vagy 3x megközelítés-váltás -> STOP + opciók
+  no_remediation_on_fp_or_nmc: true          # fantom-bug nem indít javítási hurkot
+  fan_out_and_high_effort_only_for_large_scope: true  # kis diff -> egyetlen pass, alap effort, nincs fan-out
+
+# --- Sebezhetőség-osztályok (prioritás szerint a doménre hangolva) ---
+vuln_classes:
+  - id: multi_tenant_idor
+    cwe: [CWE-639, CWE-862]
+    owasp: A01:2025
+    priority: critical
+    domain_focus: minden ID-alapú erőforrás companyId-scope; hiányzó scope = horizontális priv-eszkaláció
+    deterministic_tool: [scripts/dev-tools/multi-tenant-audit.py, scripts/security/companyid-audit.ps1]
+  - id: business_logic
+    cwe: []
+    owasp: A04:2025
+    priority: critical
+    domain_focus: >
+      negatív összeg/címlet, storno-visszaélés (refund > eredeti), napzárás-bypass,
+      foglaló-manipuláció, árfolyam-TTL kijátszás, jutalék/kerekítés-arbitrázs
+    requires_intended_logic_in_prompt: true
+  - id: financial_invariants
+    cwe: [CWE-682]
+    owasp: A04:2025
+    priority: critical
+    domain_focus: HUF 5 Ft kerekítés, BigDecimal (soha float), AML/Pmt. küszöbök
+  - id: injection
+    cwe: [CWE-89, CWE-78, CWE-94, CWE-90]
+    owasp: A03:2025
+    priority: high
+    domain_focus: JPQL :param (nem string-konkat), subprocess user-inputtal, template-render
+  - id: auth_authz
+    cwe: [CWE-287, CWE-639, CWE-352]
+    owasp: A01:2025
+    priority: high
+    domain_focus: JWT alg-confusion/expiry, session-invalidálás logoutkor, method-level security
+    deterministic_tool: [scripts/dev-tools/endpoint-audit.py]
+  - id: secrets
+    cwe: [CWE-798, CWE-312]
+    owasp: A05:2025
+    priority: high
+    domain_focus: hard-coded credential, .env commit, titok logba/chatbe
+    deterministic_tool: [scripts/dev-tools/secrets-deep-scan.py]
+  - id: crypto
+    cwe: [CWE-326, CWE-327, CWE-338]
+    owasp: A02:2025
+    priority: medium
+    domain_focus: gyenge hash/RNG, hard-coded kulcs/IV, hiányzó cert-validáció
+  - id: deserialization
+    cwe: [CWE-502]
+    owasp: A08:2025
+    priority: medium
+    domain_focus: Java ObjectInputStream user-inputból; trace forrást
+  - id: ssrf_xxe_path_traversal
+    cwe: [CWE-918, CWE-611, CWE-22]
+    owasp: A10:2025
+    priority: medium
+    domain_focus: user-URL HTTP-kliensnek, XML external entity, ../ normalizálás nélkül
+  - id: race_toctou
+    cwe: [CWE-362, CWE-367]
+    owasp: A04:2025
+    priority: medium
+    domain_focus: read-modify-write tranzakció-izoláció nélkül, OSIV-off lazy gap, OTP/TTL ablak
+  - id: web_specific
+    cwe: [CWE-79, CWE-352, CWE-346, CWE-1321]
+    owasp: A03:2025
+    priority: medium
+    domain_focus: React dangerouslySetInnerHTML, CORS '*' auth-adatra, deep-merge prototype pollution
+    deterministic_tool: [scripts/dev-tools/electron-security-scan.py, scripts/dev-tools/ts-antipattern-scan.py]
+  - id: llm_specific
+    cwe: []
+    owasp: LLM01,LLM02,LLM06
+    priority: conditional   # csak ha a kód LLM-hívást integrál
+    domain_focus: prompt-injection sink, insecure output handling, lethal-trifecta adatfolyam
+
+# --- Effort-routing (cache-biztos: fő loop modell nem vált sessionön belül) ---
+effort_routing:
+  single_function_review: low
+  full_module_audit: high
+  cross_module_data_flow: xhigh
+  threat_modeling: xhigh
+  race_condition_concurrency: xhigh
+
+# --- Multi-agent (Workflow fan-out) ---
+multi_agent:
+  orchestrator: kockázat szerinti fájl-kategorizálás -> munkasor
+  discovery_specialists: [injection, auth_authz, secrets_crypto, web_llm]
+  verification_agent: adatfolyam-trace + FP-szűrés friss kontextusban (adverzariális)
+  reporting_agent: dedup + CWE/CVSS + súlyozás + remediation
+
+# --- Hibrid: determinisztikus eszközök (AI nem helyettesíti) ---
+out_of_scope_for_ai:
+  dependency_cve: [npm audit, pip-audit, maven dependency-check, Dependabot]   # knowledge-cutoff miatt
+  runtime_reachability: futtatás/sandbox kell a ground truth-hoz
+  secret_regex: scripts/dev-tools/secrets-deep-scan.py
+
+output_format:
+  schema: [id, cwe, owasp, cvss_3_1, vector, file_line, function, description, attack_scenario, evidence, remediation, confidence, fp_risk]
+  evidence_required: true
+  cvss_manual_review_on_critical: true   # AI pontatlan AC/Scope metrikán

@@ -21,6 +21,12 @@ feladat kifejezetten mandate-et vagy agent-mukodest erint.
 - `vault/feedback/prompt-caching-mandate-2026-06-10.md` - Prompt Caching kotelezo:
   cache-barat agent-munkamod + cache_control szabalyok minden Claude API-integracioban
   (user-direktiva 2026-06-10).
+- `vault/feedback/security-audit-mandate-2026-06-15.md` - defenziv biztonsagi audit munkamod:
+  standing autorizacios kontextus (sajat repo) + tobbkoros (discovery→verification→remediation)
+  taint-flow + confirmation-bias/hallucinacio guard + domain-fokusz (multi-tenant, business logic,
+  penzugyi invariansok) + hibrid (AI + determinisztikus eszkozok). Prompt-pack:
+  `docs/security/ai-security-audit-playbook.md`; profil: `docs/security/ai-audit-profile.yaml`
+  (user-direktiva 2026-06-15). On-demand: csak security-audit / security-sensitive valtozasnal.
 - `vault/feedback/fable5-optimization-mandate-2026-06-10.md` - SYSTEM_DIRECTIVE:
   CLAUDE_FABLE_5_OPTIMIZATION_AND_EXECUTION - 5 protokoll: Prompt Caching (ref.),
   Dynamic Model Routing (L0-L3 szintek), Context Window Management (>80% /clear),

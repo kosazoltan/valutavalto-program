@@ -107,6 +107,16 @@ powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1
 A security gate parancs deploy/release vagy security-sensitive valtozas elott
 kell, nem minden apro kod- vagy dokumentacios szerkeszteshez.
 
+## Defenziv biztonsagi audit (on-demand)
+
+Biztonsagi auditnal / sebezhetoseg-keresesnel tobbkoros, taint-flow alapu munkamod
+(discovery → verification → remediation), domain-fokusszal (multi-tenant companyId-scope,
+business logic: storno/napzaras/foglalo/arfolyam-TTL, HUF-kerekites, AML). A kodot tilos
+elore „biztonsagosnak" framelni. Determinisztikus eszkozok (multi-tenant-audit.py,
+secrets-deep-scan.py, endpoint-audit.py, `npm/pip audit`) az AI-reteg melle, nem helyette.
+Reszletek: `vault/feedback/security-audit-mandate-2026-06-15.md` (mandate),
+`docs/security/ai-security-audit-playbook.md` (prompt-pack), `docs/security/ai-audit-profile.yaml` (profil).
+
 ## Release megjegyzes
 
 `merge != telepito`. Telepito-build csak Electron/nativ reteg valtozasnal vagy
