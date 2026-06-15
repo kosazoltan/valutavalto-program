@@ -31,6 +31,10 @@ cimletezes, arfolyam, atadas-atvetel, foglalo.
   subagentben vagy /clear utani uj taskban. CLAUDE.md/AGENTS.md/mandate szerkesztest
   kotegelve. Reszletek + Console-diagnosztika a prompt-caching mandate-ben.
 - Context Window: >80% token-terheltsegnel /clear ajanlott uj independent taskhoz.
+- Context engineering: threat-model/cel-kontextus elol; nagy/ismeretlen valtozasnal
+  repomap-first (`dep-map.py`/`blast-radius.py` szimbolum-terkep) a teljes forras helyett;
+  befejezett fazisok tomoritese, kritikus info surun a kontextus vegen (context-rot ellen).
+  Reszletek: `vault/feedback/security-audit-mandate-2026-06-15.md` §8 + playbook §4.4.
 - Task Completion: csonka deliverable TILOS; `max_tokens` explicit API-hivasokban.
 - Fallback Signaling: `[WARNING: MODEL_REGRESS_DETECTED]` ha penzu-gyi-kritikus feladat
   nem Fable 5 / L3-as szinten fut.
