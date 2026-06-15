@@ -47,4 +47,20 @@ jobs:
             echo ""
             echo "=== utolsó 3 Neon sync-log (ha létezik) ==="
             sudo -u postgres psql -d valuta -tAc "SELECT table_name||' '||status||' '||coalesce(sync_finished_at::text,'-') FROM neon_sync_log ORDER BY sync_finished_at DESC NULLS LAST LIMIT 3" 2>/dev/null || echo "(neon_sync_log nincs / üres)"
+            echo ""
+            echo "=== GYÖKÉR-OK PROBE: miért V326 a lokális (futó jar + Flyway-journal + PgBouncer) ==="
+            EXEC=$(systemctl show valuta-backend.service -p ExecStart 2>/dev/null | tr ' ' '\n' | grep -oE '/[^ ;]*\.jar' | head -1)
+            echo "ExecStart jar (path) : ${EXEC:-'(nem található ExecStart-ban; lehet symlink)'}"
+            JAR=$(readlink -f "$EXEC" 2>/dev/null || echo "$EXEC")
+            echo "feloldott jar        : ${JAR:-'(n/a)'}"
+            echo "jar mtime            : $(stat -c '%y' "$JAR" 2>/dev/null || echo '(n/a)')"
+            echo "futó backend uptime  : $(systemctl show valuta-backend.service -p ActiveEnterTimestamp --value 2>/dev/null)"
+            echo "jar-ba ágyazott max migráció V:"
+            ( unzip -Z1 "$JAR" 2>/dev/null || jar tf "$JAR" 2>/dev/null || python3 -c "import zipfile,sys;[print(n) for n in zipfile.ZipFile(sys.argv[1]).namelist()]" "$JAR" 2>/dev/null ) | grep -oE 'db/migration/V[0-9]+__' | sed -E 's#.*/V([0-9]+)__#\1#' | sort -n | tail -4 | sed 's/^/  V/'
+            echo ""
+            echo "=== utolsó backend-indítás Flyway-sorai (journal) ==="
+            journalctl -u valuta-backend.service -n 4000 --no-pager 2>/dev/null | grep -iE 'flyway|migrat|baseline|advisory lock|schema_history' | tail -25 || echo "(nincs Flyway-sor a journalban)"
+            echo ""
+            echo "=== PgBouncer pool-mode + valuta route (read-only) ==="
+            sudo grep -hiE 'pool_mode|^valuta|^\* =|6432' /etc/pgbouncer/pgbouncer.ini 2>/dev/null | sed -E 's|password=[^ ]*|password=***|g' || echo "(pgbouncer.ini nem olvasható)"
           ENDSSH
