@@ -141,6 +141,38 @@ jobs:
             systemctl is-active valuta-backup.timer 2>/dev/null || echo "  timer inactive/nincs"
           ENDSSH
 
+      - name: 'DOMAIN-elhelyezés: worker / branch / currency / whitelist — NEON vs LOKÁLIS (read-only)'
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            NEON_URL=$(grep '^NEON_DATABASE_URL=' /opt/valutavalto/backend/.env 2>/dev/null | cut -d= -f2-)
+            PSQL17=/usr/lib/postgresql/17/bin/psql; [ -x "$PSQL17" ] || PSQL17=psql
+            run_local() { sudo -u postgres psql -d valuta -tAc "$1" 2>/dev/null; }
+            run_neon()  { "$PSQL17" "$NEON_URL" -tAc "$1" 2>/dev/null; }
+            echo "=== DOMAIN-elhelyezés: a négy adat-domain mindkét DB-ben (read-only) ==="
+            echo "(A backend a NEON-t szolgálja ki — ott kell az ÉLŐ adatnak lennie; a lokális 'valuta' elavult.)"
+            printf '%-26s | %-22s | %-22s\n' "metrika" "NEON (élő prod)" "LOKÁLIS valuta (PG16)"
+            printf '%-26s-+-%-22s-+-%-22s\n' "--------------------------" "----------------------" "----------------------"
+            row() { printf '%-26s | %-22s | %-22s\n' "$1" "$(run_neon "$2")" "$(run_local "$2")"; }
+            row "worker sorok"            "SELECT count(*) FROM worker"
+            row "worker max(updated_at)"  "SELECT COALESCE(max(updated_at)::text,'-') FROM worker"
+            row "whitelist (google login)" "SELECT count(*) FROM worker WHERE google_login_enabled"
+            row "whitelist utolsó login"  "SELECT COALESCE(max(google_last_login_at)::text,'-') FROM worker"
+            row "branch (iroda) sorok"    "SELECT count(*) FROM branch"
+            row "branch aktív"            "SELECT count(*) FROM branch WHERE is_active"
+            row "currency sorok"          "SELECT count(*) FROM currency"
+            row "currency aktív"          "SELECT count(*) FILTER (WHERE is_active) FROM currency"
+            row "currency RUB.is_active"  "SELECT is_active FROM currency WHERE code='RUB'"
+            row "flyway max V"            "SELECT max(version::int) FROM flyway_schema_history WHERE version ~ '^[0-9]+$'"
+            row "currency_stock sorok"    "SELECT count(*) FROM currency_stock"
+            echo ""
+            echo "ÉRTELMEZÉS: ha a NEON oszlop friss/teljes és a LOKÁLIS elmaradott (kisebb/régebbi),"
+            echo "akkor mind a négy domain helyesen a Neonon él. Eltérés a domain-eknél = vizsgálandó."
+          ENDSSH
+
       - name: 'Scaleway STANDBY — DB + watchdog failover-log (read-only)'
         if: always()
         run: |
