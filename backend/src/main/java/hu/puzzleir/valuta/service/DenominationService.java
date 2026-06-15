@@ -77,7 +77,9 @@ public class DenominationService {
      * (legacy-transfer/text/VALUTA/DLL/KCIMLET/MAKEDLL/Unit2.pas:111-135).
      * A V320 migráció SQL-katalógusával 1:1 azonos — eltérés esetén a V320 a
      * meglévő sorokat, ez a térkép az ÚJ branch-inicializálást vezérli.
-     * RUB szándékosan nincs benne (V319: nem forgalmazott, user-direktíva).
+     * RUB visszakerült (V327, 2026-06-15: mégis forgalmazott — a V319 téves
+     * user-infón alapult; az SQL-tükör a V328 backfill). A RUB-sora a V320
+     * SQL-katalógusban nem szerepel, viszont az ÚJ branch-init innen kapja.
      * EUA = euró érme (apró) külön valutakódként, csak COIN sorokkal.
      */
     static final Map<String, List<DenominationSpec>> FOREIGN_DENOMINATIONS;
@@ -113,6 +115,9 @@ public class DenominationService {
         catalog.put("ILS", specs("200,100,50,20", "10,5,2,1,0.50,0.10"));
         // UAH 1-10: a kisbankjegyeket érmék váltották (a régi kisbankjegyek 2026.03.02-tól bevontak)
         catalog.put("UAH", specs("1000,500,200,100,50,20", "10,5,2,1,0.50,0.10"));
+        // RUB (V327, 2026-06-15: visszaaktiválva — mégis forgalmazott). Bank of Russia
+        // jelenleg forgalomban lévő készlete; az SQL-tükör a V328 backfill.
+        catalog.put("RUB", specs("5000,2000,1000,500,200,100,50", "10,5,2,1,0.50,0.10"));
         catalog.put("TRY", specs("200,100,50,20,10,5", "1,0.50,0.25,0.10,0.05,0.01"));
         catalog.put("CNY", specs("100,50,20,10,5,1", "0.50,0.10"));
         catalog.put("BAM", specs("200,100,50,20,10", "5,2,1,0.50,0.20,0.10,0.05"));
@@ -304,7 +309,7 @@ public class DenominationService {
         log.info("HUF címletek inicializálva irodához: {}", branch.getName());
 
         // Külföldi valuta címletek inicializálása (idempotens — meglévő bejegyzések kihagyva).
-        // Csak AKTÍV valutára (RUB pl. V319 óta inaktív — arra nem hozunk létre sort).
+        // Csak AKTÍV valutára (a RUB a V327 óta ismét aktív — arra is létrejön a sor).
         // EUA-kivétel (Codex P2 #1108): a V298 szándékosan is_active=false-szal seedeli,
         // a címlet-sorait mégis létrehozzuk (FK04 "aktív UNION EUA" minta, V320-szal azonosan).
         for (Map.Entry<String, List<DenominationSpec>> entry : FOREIGN_DENOMINATIONS.entrySet()) {

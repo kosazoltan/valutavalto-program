@@ -18,8 +18,8 @@ describe('FK04 — buildRowsFromCatalog (katalógus-vezérelt sorlista)', () => 
   })
 
   it('loads_currencies_from_hook_not_constant: a tagság + sorrend a katalógusból jön', () => {
-    // Batch2-G (2026-06-12): a RUB a REMOVED_CURRENCIES-be került (nem forgalmazott,
-    // V319 inaktiválta) — a fixture USD-keresztalapú példája azóta a CNY.
+    // A fixture USD-keresztalapú példája a CNY (a RUB szintén USD-alapú, lásd
+    // a rub_visible_when_active tesztet).
     const rows = buildRowsFromCatalog(cat('EUR', 'CNY', 'EUA', 'TRY'), [])
     expect(rows.map(r => r.currency)).toEqual(['EUR', 'CNY', 'EUA', 'TRY'])
     // crossBase a CROSS_BASE_MAP-ből (TBD-1): CNY→USD, TRY→EUR, EUA→null
@@ -28,19 +28,22 @@ describe('FK04 — buildRowsFromCatalog (katalógus-vezérelt sorlista)', () => 
     expect(rows.find(r => r.currency === 'EUA')?.crossBase).toBeNull()
   })
 
-  it('rub_defensively_filtered: a RUB katalógus-találat esetén is kiszűrve marad (user-direktíva)', () => {
+  it('rub_visible_when_active: a RUB (V327 óta ismét forgalmazott) megjelenik, ha a katalógusban van', () => {
+    // 2026-06-15: a RUB kikerült a REMOVED_CURRENCIES-ből — aktív katalógus-találat
+    // esetén a sor megjelenik, USD-keresztalappal (display_order=14, UAH és EUA közé).
     const rows = buildRowsFromCatalog(cat('EUR', 'RUB'), [])
-    expect(rows.map(r => r.currency)).toEqual(['EUR'])
+    expect(rows.map(r => r.currency)).toEqual(['EUR', 'RUB'])
+    expect(rows.find(r => r.currency === 'RUB')?.crossBase).toBe('USD')
   })
 
   it('inactive_currency_not_shown: cache-ben lévő, de katalógusból hiányzó valuta sora eltűnik', () => {
     const cached = [
       { currency: 'EUR', settlement: 400 },
-      { currency: 'RUB', settlement: 3 }, // inaktiválták → nincs a katalógusban
+      { currency: 'HRK', settlement: 3 }, // véglegesen megszűnt → nincs az aktív katalógusban
     ] as Parameters<typeof buildRowsFromCatalog>[1]
     const rows = buildRowsFromCatalog(cat('EUR', 'TRY'), cached)
     const codes = rows.map(r => r.currency)
-    expect(codes).not.toContain('RUB')
+    expect(codes).not.toContain('HRK')
     expect(codes).toEqual(['EUR', 'TRY'])
     // a cache-elt érték megmarad a megmaradó soron
     expect(rows.find(r => r.currency === 'EUR')?.settlement).toBe(400)
@@ -74,8 +77,8 @@ describe('FR-HL-04/05 — offline cache-betöltés (loadFromStorage)', () => {
     expect(loadInactiveCurrencyCodes().size).toBe(0)
     localStorage.setItem(INACTIVE_KEY, '{nem json')
     expect(loadInactiveCurrencyCodes().size).toBe(0)
-    localStorage.setItem(INACTIVE_KEY, JSON.stringify(['RUB', 'TRY']))
-    expect(loadInactiveCurrencyCodes()).toEqual(new Set(['RUB', 'TRY']))
+    localStorage.setItem(INACTIVE_KEY, JSON.stringify(['NOK', 'TRY']))
+    expect(loadInactiveCurrencyCodes()).toEqual(new Set(['NOK', 'TRY']))
   })
 
   it('üres storage → üres lista (a tagságot online a katalógus adja, nem konstans)', () => {
@@ -83,13 +86,15 @@ describe('FR-HL-04/05 — offline cache-betöltés (loadFromStorage)', () => {
   })
 
   it('tárolt sorból kiszűri az inaktívat (offline is érvényesül a Valutakezelő-szűrés)', () => {
+    // Tetszőleges, a szerver által INAKTÍVnak jelölt valuta (itt a TRY a példa) offline
+    // is kiszűrve marad — a mechanizmus független a véglegesen törölt halmaztól.
     localStorage.setItem(STORAGE_KEY, JSON.stringify([
       { currency: 'EUR', settlement: 400 },
-      { currency: 'RUB', settlement: 3 },
+      { currency: 'TRY', settlement: 3 },
     ]))
-    localStorage.setItem(INACTIVE_KEY, JSON.stringify(['RUB']))
+    localStorage.setItem(INACTIVE_KEY, JSON.stringify(['TRY']))
     const codes = loadFromStorage().map(r => r.currency)
-    expect(codes).not.toContain('RUB')
+    expect(codes).not.toContain('TRY')
     expect(codes).toContain('EUR')
   })
 

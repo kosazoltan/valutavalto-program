@@ -131,12 +131,21 @@ class DenominationServiceTest {
     }
 
     @Test
-    @DisplayName("katalógus: mind a 21 forgalmazott valuta + EUA benne van, RUB NINCS (user-direktíva)")
-    void catalogShouldCoverTradedCurrenciesWithoutRub() {
+    @DisplayName("katalógus: mind a 22 forgalmazott valuta + EUA benne van, a RUB-bal együtt (V327)")
+    void catalogShouldCoverTradedCurrenciesIncludingRub() {
         assertThat(DenominationService.FOREIGN_DENOMINATIONS.keySet()).containsExactlyInAnyOrder(
                 "EUR", "EUA", "USD", "GBP", "CHF", "AUD", "CAD", "JPY", "CZK", "PLN", "RON",
-                "RSD", "ILS", "UAH", "TRY", "CNY", "BAM", "THB", "BRL", "MXN", "NZD");
-        assertThat(DenominationService.FOREIGN_DENOMINATIONS).doesNotContainKey("RUB");
+                "RSD", "ILS", "UAH", "RUB", "TRY", "CNY", "BAM", "THB", "BRL", "MXN", "NZD");
+        assertThat(DenominationService.FOREIGN_DENOMINATIONS).containsKey("RUB");
+    }
+
+    @Test
+    @DisplayName("katalógus: RUB 5000 → BANKNOTE, RUB 50 → BANKNOTE, RUB 10/0.10 → COIN (V327, Bank of Russia)")
+    void rubCatalogTypesShouldMatchBankOfRussia() {
+        assertThat(catalogType("RUB", "5000")).isEqualTo(DenominationType.BANKNOTE);
+        assertThat(catalogType("RUB", "50")).isEqualTo(DenominationType.BANKNOTE);
+        assertThat(catalogType("RUB", "10")).isEqualTo(DenominationType.COIN);
+        assertThat(catalogType("RUB", "0.10")).isEqualTo(DenominationType.COIN);
     }
 
     @Test
