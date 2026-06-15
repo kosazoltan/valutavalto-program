@@ -21,6 +21,7 @@ on:
           - neon-sync-rollback
           - neon-sync-verify
           - ha-disable-failover
+          - ha-backup-to-neon
 
 permissions:
   contents: read
@@ -69,6 +70,46 @@ jobs:
             echo "  service active: $(systemctl is-active primary-watchdog.service 2>/dev/null || echo 'inactive')"
             echo "VISSZAALLITAS (ha megis kell): systemctl enable --now primary-watchdog.timer"
             echo "=== Kesz — az auto-failover NEM fut tobbe ==="
+          ENDSSH
+
+      - name: 'B2-backup atallitas a Neon PROD DB-re (onellenorzo, auto-rollback)'
+        if: ${{ github.event.inputs.action == 'ha-backup-to-neon' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            SCRIPT=/usr/local/bin/valuta-db-backup.sh
+            ENVF=/opt/valutavalto/backend/.env
+            echo "=== B2-backup atallitas a Neon PROD DB-re (DONTES: Neon a primary) ==="
+            [ -f "$SCRIPT" ] || { echo "::error::nincs $SCRIPT"; exit 1; }
+            NEON_URL=$(grep '^NEON_DATABASE_URL=' "$ENVF" 2>/dev/null | cut -d= -f2-)
+            if [ -z "$NEON_URL" ]; then echo "::error::NEON_DATABASE_URL ures/hianyzik a .env-ben — NINCS valtoztatas"; exit 1; fi
+            echo "Neon host: $(echo "$NEON_URL" | sed -E 's#.*@##; s#[/?].*##')"
+            if grep -q 'pg_dump "$NEON_DATABASE_URL"' "$SCRIPT"; then
+              echo "A backup-script MAR a Neonra mutat — idempotens, nincs teendo."; exit 0
+            fi
+            BAK="$SCRIPT.bak.$(date +%Y%m%d%H%M%S)"
+            cp -a "$SCRIPT" "$BAK"; echo "biztonsagi masolat: $BAK"
+            # Surgical patch: a pg_dump forras a lokalis 'valuta' helyett a Neon (URL a .env-bol, futasidoben)
+            sed -i 's#^sudo -u postgres pg_dump -Fp valuta#NEON_DATABASE_URL=$(grep "^NEON_DATABASE_URL=" /opt/valutavalto/backend/.env | cut -d= -f2-); pg_dump "$NEON_DATABASE_URL" -Fp#' "$SCRIPT"
+            if ! grep -q 'pg_dump "$NEON_DATABASE_URL"' "$SCRIPT"; then
+              echo "::error::a patch NEM alkalmazodott (a pg_dump sor eltert a vartol) — visszaallitas"; cp -a "$BAK" "$SCRIPT"; exit 1
+            fi
+            echo "--- TESZT-FUTAS: a patchelt backup-script (valodi Neon-dump + B2-feltoltes) ---"
+            if bash "$SCRIPT"; then
+              LATEST=$(ls -t /var/backups/valuta/valuta-*.sql.gz 2>/dev/null | head -1)
+              SZ=$(stat -c%s "$LATEST" 2>/dev/null || echo 0)
+              HAS=$(gunzip -c "$LATEST" 2>/dev/null | grep -cE 'currency' || true)
+              echo "teszt-dump: $LATEST | meret=$SZ byte | 'currency' nyom=$HAS"
+              if [ "${SZ:-0}" -lt 10000 ] || [ "${HAS:-0}" -lt 1 ]; then
+                echo "::error::a Neon teszt-dump ures/gyanus (meret=$SZ, currency=$HAS) — VISSZAALLITAS a lokalis backupra"; cp -a "$BAK" "$SCRIPT"; exit 1
+              fi
+              echo "=== OK — a B2-backup mostantol a NEON PROD DB-t menti; teszt-dump validalva. ==="
+              echo "Visszaallitas (ha kell): cp -a $BAK $SCRIPT"
+            else
+              echo "::error::a patchelt backup-script FUTASA sikertelen — VISSZAALLITAS a lokalis backupra"; cp -a "$BAK" "$SCRIPT"; exit 1
+            fi
           ENDSSH
 
       - name: 'RUB reaktivalas (prod, idempotens)'
