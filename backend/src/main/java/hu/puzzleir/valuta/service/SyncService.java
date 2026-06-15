@@ -184,7 +184,16 @@ public class SyncService {
         }
 
     private UUID resolveBranch(UUID branchId) {
-        return branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        // Multi-tenant cross-tenant IDOR vedelem: az ADMIN ebben a rendszerben CEG-scoped, nem
+        // globalis super-admin. A megadott branchId-t a hivo cegere validaljuk, hogy idegen ceg
+        // branch-enek sync-naplojat/adatait ne lehessen elerni. Idegen (vagy nem letezo) branch ->
+        // ResourceNotFoundException.
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (!branchRepository.existsByIdAndCompanyId(effectiveBranch, companyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + effectiveBranch);
+        }
+        return effectiveBranch;
     }
 
     private SyncLogDto toDto(SyncLog s) {

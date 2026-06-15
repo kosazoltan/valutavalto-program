@@ -2,7 +2,10 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.transaction.TransactionBanknoteDto;
 import hu.puzzleir.valuta.entity.TransactionBanknote;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.TransactionBanknoteRepository;
+import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +27,21 @@ import java.util.stream.Collectors;
 public class TransactionBanknoteController {
 
     private final TransactionBanknoteRepository repository;
+    private final TransactionRepository transactionRepository;
+
+    /**
+     * Multi-tenant IDOR guard: a path-param {@code transactionId} (Long → enumerálható)
+     * a hívó cégéhez tartozik-e. A TransactionBanknote csak transactionId-t hordoz; a
+     * tenant-izoláció a Transaction-on (company) él. Más cég VAGY nem létező tranzakció →
+     * ResourceNotFoundException (a létezés se szivárogjon). Minden bankjegy-olvasás/-írás
+     * előtt kötelező.
+     */
+    private void requireOwnTransaction(Long transactionId) {
+        if (transactionId == null
+                || transactionRepository.findByIdAndCompanyId(transactionId, SecurityUtils.getCurrentCompanyId()).isEmpty()) {
+            throw new ResourceNotFoundException("Tranzakció nem található: " + transactionId);
+        }
+    }
 
     /**
      * Tranzakció bankjegyeinek listázása.
@@ -32,6 +50,7 @@ public class TransactionBanknoteController {
     public ResponseEntity<List<TransactionBanknoteDto>> findByTransaction(
             @PathVariable Long transactionId,
             @RequestParam(required = false) String direction) {
+        requireOwnTransaction(transactionId);
         List<TransactionBanknote> banknotes;
         if (direction != null) {
             banknotes = repository.findByTransactionIdAndDirection(transactionId, direction);
@@ -48,6 +67,7 @@ public class TransactionBanknoteController {
     public ResponseEntity<TransactionBanknoteDto> create(
             @PathVariable Long transactionId,
             @Valid @RequestBody TransactionBanknoteDto dto) {
+        requireOwnTransaction(transactionId);
         TransactionBanknote entity = TransactionBanknote.builder()
                 .transactionId(transactionId)
                 .transactionLineId(dto.getTransactionLineId())

@@ -87,11 +87,11 @@ public class VaultTransferService {
         VaultTerritory sourceVault = null;
         VaultTerritory targetVault = null;
         if (request.getSourceVaultId() != null) {
-            sourceVault = vaultTerritoryRepository.findById(request.getSourceVaultId())
+            sourceVault = vaultTerritoryRepository.findByIdAndCompanyId(request.getSourceVaultId(), companyId)
                     .orElseThrow(() -> new ResourceNotFoundException("Forrás értéktár nem található: " + request.getSourceVaultId()));
         }
         if (request.getTargetVaultId() != null) {
-            targetVault = vaultTerritoryRepository.findById(request.getTargetVaultId())
+            targetVault = vaultTerritoryRepository.findByIdAndCompanyId(request.getTargetVaultId(), companyId)
                     .orElseThrow(() -> new ResourceNotFoundException("Cél értéktár nem található: " + request.getTargetVaultId()));
         }
 

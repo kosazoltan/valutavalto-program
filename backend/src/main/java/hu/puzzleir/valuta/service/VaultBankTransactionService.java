@@ -73,7 +73,7 @@ public class VaultBankTransactionService {
         VaultTerritory territory = null;
         String entityId;
         if (request.getVaultTerritoryId() != null) {
-            territory = vaultTerritoryRepository.findById(request.getVaultTerritoryId())
+            territory = vaultTerritoryRepository.findByIdAndCompanyId(request.getVaultTerritoryId(), companyId)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Értéktári terület nem található: " + request.getVaultTerritoryId()));
             entityId = territory.getId().toString();

@@ -19,4 +19,12 @@ public interface CashRegisterDeviceRepository extends JpaRepository<CashRegister
     List<CashRegisterDevice> findByBranchIdOrderByCodeAsc(UUID branchId);
 
     List<CashRegisterDevice> findByCompanyIdAndIsActiveTrueOrderByCodeAsc(UUID companyId);
+
+    /**
+     * Cross-tenant IDOR guard: a cashDeskId (= device id) tulajdonosi ellenorzese.
+     * A nem letezo eszkoz es a mas ceg eszkoze ugyanazt az ures eredmenyt adja,
+     * igy a cashDeskId-enumeracio nem szivarogtat letezest. Hasznalat:
+     * {@code DenominationBalanceService.requireOwnCashDesk}.
+     */
+    boolean existsByIdAndCompanyId(UUID id, UUID companyId);
 }
