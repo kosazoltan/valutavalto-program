@@ -327,6 +327,22 @@ jobs:
               PGPASSWORD="$ADMPW" psql -h 127.0.0.1 -p 6432 -U "$ADMIN" -d pgbouncer -tAc "SHOW SERVERS" 2>&1 | awk -F'|' 'NF>5{print "  db="$3" state="$4" UPSTREAM="$5":"$6} /FATAL|error/{print "  "$0}' | head -12
             fi
             echo "ÉRTELMEZÉS: a 'valuta' pool UPSTREAM = a tényleges DB. 127.0.0.1:5432 → lokális; publikus/Neon-IP → Neon."
+            echo ""
+            echo "=== (3) A BACKEND SAJÁT credjével a 6432-n (gondos extrakció; jelszó NEM logolt) ==="
+            ENVF=/opt/valutavalto/backend/.env
+            DBUSER=$(sudo grep -E '^DATABASE_USERNAME=' "$ENVF" 2>/dev/null | head -1 | sed -E 's/^DATABASE_USERNAME=//; s/^"//; s/"$//; s/\r//')
+            echo "DATABASE_USERNAME (nem érzékeny): '${DBUSER:-(nincs a .env-ben)}'"
+            # a jelszót közvetlenül a sudo-grepből egy fájlba tesszük (nem változón át, nem logolt)
+            sudo grep -E '^DATABASE_PASSWORD=' "$ENVF" 2>/dev/null | head -1 | sed -E 's/^DATABASE_PASSWORD=//; s/^"//; s/"$//; s/\r//' > /tmp/.dbpw 2>/dev/null
+            echo "DATABASE_PASSWORD jelen: $([ -s /tmp/.dbpw ] && echo 'IGEN' || echo 'NINCS')"
+            echo "--- valódi PgBouncer unix-socket keresése ---"
+            SOCK=$(sudo ss -xlnp 2>/dev/null | grep -oE '/[^ ]*\.s\.PGSQL\.6432' | head -1); echo "pgbouncer socket: ${SOCK:-(nincs unix socket, csak TCP)}"
+            if [ -n "$DBUSER" ] && [ -s /tmp/.dbpw ]; then
+              echo "--- csatlakozás 6432 TCP-n a backend credjével: server-IP + audit_log frissesség ---"
+              PGPASSWORD="$(cat /tmp/.dbpw)" psql "host=127.0.0.1 port=6432 dbname=valuta user=$DBUSER" -tAc \
+                "SELECT 'server_ip='||COALESCE(host(inet_server_addr()),'(lokál/unix)')||' db='||current_database()||' audit_max='||COALESCE((SELECT max(created_at) FROM audit_log)::text,'-')" 2>&1 | head -3
+            fi
+            rm -f /tmp/.dbpw
           ENDSSH
           echo ""
           echo "=== NEON API: projekt + utolsó aktivitás (a kulcs maszkolva) ==="
