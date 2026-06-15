@@ -208,8 +208,15 @@ public class AverageRateReportService {
         } else {
             @SuppressWarnings("unchecked")
             List<String> regions = entityManager.createQuery(
-                    "SELECT DISTINCT b.region FROM Branch b WHERE b.company.id = :companyId "
-                    + "AND b.isVault = FALSE AND b.region IS NOT NULL ORDER BY b.region")
+                    // FK-030: a VAULT_COUNTERPARTY (virtuális partner) branch-eket kizárjuk, hogy a
+                    // tévesen 'ORSZAGOS' region-ű partnerek ne hozzanak létre üres "ORSZAGOS" oszlopot.
+                    // Defenzív LEFT JOIN: a V330 migráció után region=NULL miatt eleve kimaradnak
+                    // (region IS NOT NULL), de a branch_type-szűrés a migrációtól függetlenül is garantál.
+                    "SELECT DISTINCT b.region FROM Branch b LEFT JOIN b.branchType bt "
+                    + "WHERE b.company.id = :companyId "
+                    + "AND b.isVault = FALSE AND b.region IS NOT NULL "
+                    + "AND (bt IS NULL OR bt.code <> 'VAULT_COUNTERPARTY') "
+                    + "ORDER BY b.region")
                     .setParameter("companyId", companyId)
                     .getResultList();
             for (String r : regions) {
@@ -232,6 +239,9 @@ public class AverageRateReportService {
                 .append("AND t.status = hu.puzzleir.valuta.entity.TransactionStatus.COMPLETED ")
                 .append("AND t.financialEffective = TRUE ")
                 .append("AND t.branch.isVault = FALSE ")
+                // FK-030 (defense-in-depth): a VAULT_COUNTERPARTY partnerek esetleges BUY/SELL
+                // tranzakciói se kerüljenek be a TOTAL ("EXCLUSIVE BEST CHANGE ZRT") aggregátumba.
+                .append("AND (t.branch.branchType IS NULL OR t.branch.branchType.code <> 'VAULT_COUNTERPARTY') ")
                 .append("AND t.transactionType IN ("
                         + "hu.puzzleir.valuta.entity.TransactionType.BUY, "
                         + "hu.puzzleir.valuta.entity.TransactionType.SELL) ");

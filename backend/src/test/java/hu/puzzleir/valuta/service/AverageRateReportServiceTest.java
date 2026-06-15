@@ -272,4 +272,61 @@ class AverageRateReportServiceTest {
         assertThat(eurRow.getValues().get("PECS").getSellAvgRate()).isEqualByComparingTo("0");
         assertThat(eurRow.getValues().get("PECS").getSellSumAmount()).isEqualByComparingTo("0");
     }
+
+    // ============ FK-030: az "ORSZAGOS" oszlop (VAULT_COUNTERPARTY) kizárása ============
+
+    @Test
+    @DisplayName("FK-030: a pivot mindkét lekérdezése kizárja a VAULT_COUNTERPARTY branch-eket (FR-2/FR-3)")
+    void generatePivot_queriesExcludeVaultCounterparty() {
+        Query regionsQuery = org.mockito.Mockito.mock(Query.class);
+        when(entityManager.createQuery(org.mockito.ArgumentMatchers.contains("DISTINCT b.region")))
+                .thenReturn(regionsQuery);
+        lenient().when(regionsQuery.setParameter(anyString(), Mockito_any())).thenReturn(regionsQuery);
+        when(regionsQuery.getResultList()).thenReturn(List.of("SZEGED"));
+        Query aggQuery = org.mockito.Mockito.mock(Query.class);
+        when(entityManager.createQuery(org.mockito.ArgumentMatchers.contains("SUM(t.currencyAmount)")))
+                .thenReturn(aggQuery);
+        lenient().when(aggQuery.setParameter(anyString(), Mockito_any())).thenReturn(aggQuery);
+        when(aggQuery.getResultList()).thenReturn(List.of());
+        Currency eur = org.mockito.Mockito.mock(Currency.class);
+        lenient().when(eur.getCode()).thenReturn("EUR");
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(eur));
+
+        service.generatePivot(companyId, LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), null);
+
+        org.mockito.ArgumentCaptor<String> cap = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(entityManager, org.mockito.Mockito.atLeastOnce()).createQuery(cap.capture());
+        String regionJpql = cap.getAllValues().stream()
+                .filter(s -> s.contains("DISTINCT b.region")).findFirst().orElseThrow();
+        assertThat(regionJpql).contains("LEFT JOIN b.branchType").contains("VAULT_COUNTERPARTY");
+        String aggJpql = cap.getAllValues().stream()
+                .filter(s -> s.contains("SUM(t.currencyAmount)")).findFirst().orElseThrow();
+        assertThat(aggJpql).contains("VAULT_COUNTERPARTY");
+    }
+
+    @Test
+    @DisplayName("FK-030: a pivot oszlopcsoportjai NEM tartalmaznak 'ORSZAGOS'-t (FR-4)")
+    void generatePivot_noOrszagosColumnGroup() {
+        Query regionsQuery = org.mockito.Mockito.mock(Query.class);
+        when(entityManager.createQuery(org.mockito.ArgumentMatchers.contains("DISTINCT b.region")))
+                .thenReturn(regionsQuery);
+        lenient().when(regionsQuery.setParameter(anyString(), Mockito_any())).thenReturn(regionsQuery);
+        // A javított DISTINCT lekérdezés a VAULT_COUNTERPARTY-t kizárja → 'ORSZAGOS' nincs a listában.
+        when(regionsQuery.getResultList()).thenReturn(List.of("PECS", "SZEGED"));
+        Query aggQuery = org.mockito.Mockito.mock(Query.class);
+        when(entityManager.createQuery(org.mockito.ArgumentMatchers.contains("SUM(t.currencyAmount)")))
+                .thenReturn(aggQuery);
+        lenient().when(aggQuery.setParameter(anyString(), Mockito_any())).thenReturn(aggQuery);
+        when(aggQuery.getResultList()).thenReturn(List.of());
+        Currency eur = org.mockito.Mockito.mock(Currency.class);
+        lenient().when(eur.getCode()).thenReturn("EUR");
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(eur));
+
+        AverageRateReportResponse resp = service.generatePivot(
+                companyId, LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), null);
+
+        assertThat(resp.getColumnGroups()).extracting(ColumnGroup::getGroupCode)
+                .doesNotContain("ORSZAGOS")
+                .containsExactly("PECS", "SZEGED", "total");
+    }
 }
