@@ -71,6 +71,26 @@ jobs:
             -connectRetries=3 \
             info | tee flyway-info.txt
 
+      - name: 'RUB + adat-allapot a Neon (szolgalo) DB-n (read-only SELECT)'
+        env:
+          NEON_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          NOSCHEME="${NEON_URL#postgresql://}"; NOSCHEME="${NOSCHEME#postgres://}"
+          CREDS="${NOSCHEME%%@*}"; HOSTPART="${NOSCHEME#*@}"
+          NUSER="${CREDS%%:*}"; NPASS="${CREDS#*:}"
+          echo "::add-mask::$NPASS"
+          HOST="${HOSTPART%%/*}"; REST="${HOSTPART#*/}"; DBN="${REST%%\?*}"
+          echo "Neon host: $HOST | db: $DBN"
+          docker run --rm -e PGPASSWORD="$NPASS" postgres:16 \
+            psql "host=$HOST port=5432 dbname=$DBN user=$NUSER sslmode=require" -tA \
+            -c "SELECT 'RUB.is_active='||is_active FROM currency WHERE code='RUB'" \
+            -c "SELECT 'aktiv_valutak='||count(*) FILTER (WHERE is_active) FROM currency" \
+            -c "SELECT 'RUB_denomination='||count(*) FROM denomination d JOIN currency c ON c.id=d.currency_id WHERE c.code='RUB'" \
+            -c "SELECT 'RUB_currency_stock='||count(*) FROM currency_stock WHERE currency_code='RUB'" \
+            -c "SELECT 'ORSZAGOS_vault_branch='||count(*) FROM branch WHERE region='ORSZAGOS'" \
+            -c "SELECT 'flyway_max=V'||max(version::int) FROM flyway_schema_history WHERE success AND version ~ '^[0-9]+$'" | tee neon-data.txt
+
       - name: Osszesito
         if: always()
         run: |
