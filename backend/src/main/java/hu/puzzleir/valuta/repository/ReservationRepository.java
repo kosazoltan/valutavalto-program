@@ -41,9 +41,17 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findByBranchIdAndStatus(UUID branchId, ReservationStatus status);
 
     /**
-     * Lejárt, de nem lezárt foglalók (ACTIVE státusz, de expiresAt < now)
+     * Lejárt, de nem lezárt foglalók (ACTIVE státusz, de expiresAt < now).
+     * RENDSZER-SZINTŰ (cég-független) — csak a belső auto-expiry job (autoExpireReservations) használja.
      */
     List<Reservation> findByStatusAndExpiresAtBefore(ReservationStatus status, LocalDateTime dateTime);
+
+    /**
+     * IDOR-guard változat: lejárt, nem lezárt foglalók a hívó CÉGÉRE szűrve (user-facing /expired listához).
+     * Audit 2026-06-15 (multi-tenant IDOR fix): a cég-független változat nem adható ki user-facing úton.
+     */
+    List<Reservation> findByCompanyIdAndStatusAndExpiresAtBefore(
+            UUID companyId, ReservationStatus status, LocalDateTime dateTime);
 
     /**
      * Foglalók száma egy irodában adott időszakban és státusszal
@@ -70,6 +78,19 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Object[]> getReservedStockByBranch(@Param("branchId") UUID branchId);
 
     /**
+     * IDOR-guard változat: foglalt készlet valutanemenként, a hívó CÉGÉRE szűrve.
+     * Audit 2026-06-15: a user-facing /reserved-stock?branchId=... nem adhat ki idegen iroda adatot.
+     */
+    @Query("SELECT r.currencyCode, COALESCE(SUM(r.reservedAmount), 0) " +
+           "FROM Reservation r " +
+           "WHERE r.branch.id = :branchId " +
+           "AND r.company.id = :companyId " +
+           "AND r.status = 'ACTIVE' " +
+           "GROUP BY r.currencyCode")
+    List<Object[]> getReservedStockByBranchAndCompany(@Param("branchId") UUID branchId,
+                                                      @Param("companyId") UUID companyId);
+
+    /**
      * Aktív foglalók egy irodához (rendezve lejárati idő szerint)
      */
     @Query("SELECT r FROM Reservation r " +
@@ -77,6 +98,18 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
            "AND r.status = 'ACTIVE' " +
            "ORDER BY r.expiresAt ASC")
     List<Reservation> findActiveByBranch(@Param("branchId") UUID branchId);
+
+    /**
+     * IDOR-guard változat: aktív foglalók egy irodához, a hívó CÉGÉRE szűrve.
+     * Audit 2026-06-15: a user-facing /active?branchId=... nem adhat ki idegen iroda foglalót.
+     */
+    @Query("SELECT r FROM Reservation r " +
+           "WHERE r.branch.id = :branchId " +
+           "AND r.company.id = :companyId " +
+           "AND r.status = 'ACTIVE' " +
+           "ORDER BY r.expiresAt ASC")
+    List<Reservation> findActiveByBranchAndCompany(@Param("branchId") UUID branchId,
+                                                   @Param("companyId") UUID companyId);
 
     /**
      * Ügyfél összes aktív foglalója egy cégben

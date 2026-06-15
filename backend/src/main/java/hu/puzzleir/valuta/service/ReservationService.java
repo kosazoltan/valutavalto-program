@@ -436,21 +436,23 @@ public class ReservationService {
     }
 
     /**
-     * Aktív foglalók listája egy irodához.
+     * Aktív foglalók listája egy irodához — a hívó CÉGÉRE szűrve (multi-tenant IDOR-guard).
      */
     @Transactional(readOnly = true)
     public List<Reservation> getActiveReservations(UUID branchId) {
-        return reservationRepository.findActiveByBranch(branchId).stream()
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return reservationRepository.findActiveByBranchAndCompany(branchId, companyId).stream()
                 .map(this::initLazyAssociations).toList();
     }
 
     /**
-     * Lejárt, de nem lezárt foglalók.
+     * Lejárt, de nem lezárt foglalók — a hívó CÉGÉRE szűrve (multi-tenant IDOR-guard).
      */
     @Transactional(readOnly = true)
     public List<Reservation> getExpiredReservations() {
-        return reservationRepository.findByStatusAndExpiresAtBefore(
-                ReservationStatus.ACTIVE, LocalDateTime.now()).stream()
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return reservationRepository.findByCompanyIdAndStatusAndExpiresAtBefore(
+                companyId, ReservationStatus.ACTIVE, LocalDateTime.now()).stream()
                 .map(this::initLazyAssociations).toList();
     }
 
@@ -462,7 +464,8 @@ public class ReservationService {
      */
     @Transactional(readOnly = true)
     public List<ReservedStockDto> getReservedStock(UUID branchId) {
-        List<Object[]> rawData = reservationRepository.getReservedStockByBranch(branchId);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<Object[]> rawData = reservationRepository.getReservedStockByBranchAndCompany(branchId, companyId);
         List<ReservedStockDto> result = new ArrayList<>();
 
         for (Object[] row : rawData) {
@@ -619,8 +622,18 @@ public class ReservationService {
      * Foglaló lekérdezése ID alapján, ResourceNotFoundException ha nem található.
      */
     private Reservation getReservationById(Long reservationId) {
-        return initLazyAssociations(reservationRepository.findById(reservationId)
+        Reservation r = initLazyAssociations(reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Foglaló nem található: " + reservationId)));
+        // Multi-tenant IDOR-guard (audit 2026-06-15): a foglaló a hívó CÉGÉHEZ tartozik-e.
+        // A GET /{id} és /{id}/receipt szekvenciális numerikus ID-vel enumerálható volt — ownership-check
+        // nélkül cross-tenant olvasás (ügyfél-PII, összeg, árfolyam, PDF-bizonylat). ResourceNotFoundException-t
+        // dobunk (nem 403), hogy az erőforrás LÉTEZÉSE se szivárogjon (lásd CustomerService.findById minta).
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        UUID resCompanyId = (r.getCompany() != null) ? r.getCompany().getId() : null;
+        if (currentCompanyId == null || !currentCompanyId.equals(resCompanyId)) {
+            throw new ResourceNotFoundException("Foglaló nem található: " + reservationId);
+        }
+        return r;
     }
 
     /**
