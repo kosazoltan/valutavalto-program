@@ -18,6 +18,7 @@ on:
         options:
           - rub-reactivate
           - local-rub-data-fix
+          - cutover-assess
           - neon-sync-enable
           - neon-sync-rollback
           - neon-sync-verify
@@ -88,6 +89,45 @@ jobs:
             sudo -u postgres psql -d valuta -tAc "SELECT 'RUB_currency_stock_sorok='||count(*) FROM currency_stock WHERE currency_code='RUB'"
             sudo -u postgres psql -d valuta -tAc "SELECT 'ORSZAGOS_vault_branch_sorok='||count(*) FROM branch WHERE region='ORSZAGOS'"
             echo "=== Kesz — RUB aktiv a lokalis kiszolgalo DB-n, a kollegak latjak ==="
+          ENDSSH
+
+      - name: 'CUTOVER ASSESS (read-only) — Neon vs lokalis divergencia + PG-verzio + meret'
+        if: ${{ github.event.inputs.action == 'cutover-assess' }}
+        env:
+          NEON_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          # READ-ONLY: a Local-First cutover biztonsagi felmerese. Osszeveti a Neon (jelenlegi
+          # szolgalo DB) es a lokalis 'valuta' (cutover-cel) pontos sor-szamait tablankent, PG-verziot,
+          # DB-meretet. A Neon URL base64-en megy a boxra, sehol nem logolt (GitHub is maszkolja).
+          if [ -z "${NEON_URL:-}" ]; then echo "::error::NEON_DATABASE_URL ures/hianyzik"; exit 1; fi
+          B64=$(printf '%s' "$NEON_URL" | base64 -w0)
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              "NEON_B64='$B64' bash -s" << 'ENDSSH'
+            set -o pipefail
+            NEON_URI=$(printf '%s' "$NEON_B64" | base64 -d)
+            COUNTSQL="SELECT relname||'='||(xpath('/row/c/text()', query_to_xml(format('SELECT count(*) AS c FROM %I.%I', schemaname, relname), false, true, '')))[1]::text FROM pg_stat_user_tables ORDER BY relname"
+            echo "=== PG-verzio + DB-meret ==="
+            echo "Neon   : $(psql "$NEON_URI" -tAc "select version()" 2>/dev/null | grep -oE 'PostgreSQL [0-9.]+') | $(psql "$NEON_URI" -tAc "select pg_size_pretty(pg_database_size(current_database()))" 2>/dev/null)"
+            echo "Lokalis: $(sudo -u postgres psql -d valuta -tAc "select version()" 2>/dev/null | grep -oE 'PostgreSQL [0-9.]+') | $(sudo -u postgres psql -d valuta -tAc "select pg_size_pretty(pg_database_size(current_database()))" 2>/dev/null)"
+            echo ""
+            echo "=== Pontos sor-szamok tablankent — NEON (szolgalo) ==="
+            psql "$NEON_URI" -tAc "$COUNTSQL" 2>/dev/null | sort > /tmp/neon_counts.txt
+            cat /tmp/neon_counts.txt
+            echo ""
+            echo "=== Pontos sor-szamok tablankent — LOKALIS (cutover-cel) ==="
+            sudo -u postgres psql -d valuta -tAc "$COUNTSQL" 2>/dev/null | sort > /tmp/local_counts.txt
+            cat /tmp/local_counts.txt
+            echo ""
+            echo "=== DIFF (csak elteres: tabla | neon | lokalis) ==="
+            join -t'=' -a1 -a2 -e '?' -o '0,1.2,2.2' /tmp/neon_counts.txt /tmp/local_counts.txt 2>/dev/null \
+              | awk -F'=' '{split($0,a,"="); n=a[2]; l=a[3]; if(n!=l) print "  "a[1]" | neon="n" | lokalis="l}' || echo "(diff nem szamolhato)"
+            echo ""
+            echo "=== Frissesseg: audit_log legujabb idobelyeg (mikor irtak utoljara) ==="
+            echo "Neon   audit_log max: $(psql "$NEON_URI" -tAc "SELECT max(created_at) FROM audit_log" 2>/dev/null || echo '(n/a)')"
+            echo "Lokalis audit_log max: $(sudo -u postgres psql -d valuta -tAc "SELECT max(created_at) FROM audit_log" 2>/dev/null || echo '(n/a)')"
+            rm -f /tmp/neon_counts.txt /tmp/local_counts.txt
+            echo "=== Kesz — assess read-only, semmi nem valtozott ==="
           ENDSSH
 
       - name: 'FREEZE-WATCHDOG telepítés + engedélyezés (Hetzner anti-freeze öngyógyító)'
