@@ -331,14 +331,7 @@ jobs:
           echo ""
           echo "=== NEON API: projekt + utolsó aktivitás (a kulcs maszkolva) ==="
           if [ -n "$NEON_API_KEY" ]; then
-            curl -s -H "Authorization: Bearer $NEON_API_KEY" "https://console.neon.tech/api/v2/projects" 2>/dev/null \
-              | python3 -c "import json,sys
-try:
-  d=json.load(sys.stdin)
-  for p in d.get('projects',[])[:5]:
-    print('  projekt:', p.get('id'), '|', p.get('name'), '| utolso aktiv:', p.get('last_active_at','-'))
-except Exception as e:
-  print('  (Neon API válasz nem parse-olható:', str(e)[:80], ')')" 2>&1 | head
+            curl -s -H "Authorization: Bearer $NEON_API_KEY" "https://console.neon.tech/api/v2/projects" 2>/dev/null | jq -r '.projects[:5][]? | "  projekt: \(.id) | \(.name) | utolso aktiv: \(.last_active_at // "-")"' 2>&1 | head || echo "(Neon API válasz nem dolgozható fel)"
           else
             echo "(nincs NEON_API_KEY env)"
           fi
