@@ -190,6 +190,19 @@ jobs:
             echo ""
             echo "=== Mi indítja a backendet — systemd ExecStart + DATABASE_URL forrás ==="
             systemctl cat valuta-backend.service 2>/dev/null | grep -iE 'ExecStart|EnvironmentFile|Environment=' | head -5 || echo "(nincs unit)"
+            echo ""
+            echo "=== DÖNTŐ: a FUTÓ backend-processz TÉNYLEGES datasource-env-je (maszkolva) ==="
+            JPID=$(pgrep -f 'valuta-backend-current.jar' | head -1)
+            echo "java PID: ${JPID:-(nincs)}"
+            if [ -n "$JPID" ]; then
+              sudo tr '\0' '\n' < /proc/$JPID/environ 2>/dev/null | grep -E '^(DATABASE_URL|SPRING_DATASOURCE_URL|NEON_DATABASE_URL|NEON_SYNC_ENABLED|app_neon)' | sed -E 's#//[^@/]*@#//***@#; s#(password=)[^&]*#\1***#I' || echo "(nem olvasható a processz env)"
+            fi
+            echo ""
+            echo "=== PgBouncer pool_mode (ez magyarazza-e a 0 idle postgres-kapcsolatot?) ==="
+            sudo grep -E '^\s*(pool_mode|default_pool_size|max_client_conn)' /etc/pgbouncer/pgbouncer.ini 2>/dev/null || echo "(nincs)"
+            echo "PgBouncer aktiv szerver-kapcsolatok (SHOW POOLS-bol, valuta):"
+            PGB_PW=$(sudo grep -oE 'stats_users?\s*=\s*\S+' /etc/pgbouncer/pgbouncer.ini 2>/dev/null | head -1 || true)
+            sudo -u postgres psql -p 6432 -d pgbouncer -tAc "SHOW POOLS" 2>/dev/null | grep -iE 'valuta' | head -3 || echo "(SHOW POOLS nem elerheto admin nelkul — kihagyva)"
           ENDSSH
 
       - name: 'Scaleway STANDBY — DB + watchdog failover-log (read-only)'
