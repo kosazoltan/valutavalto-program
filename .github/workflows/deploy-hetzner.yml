@@ -375,11 +375,15 @@ jobs:
   # 2026-06-05: Scaleway warm standby JAR-szinkron. ELOTTE a standby orokke 2.5.49-en
   # ragadt (a deploy csak Hetznert frissitette) -> egy 10 oras Hetzner-outage alatt a
   # tartalek elavult koddal NEM tudta volna atvenni a forgalmat. Mostantol minden sikeres
-  # primary-deploy utan a standby is megkapja ugyanazt a JAR-t, warm/read-only modban.
-  # Kulon job: ha a standby elerhetetlen, FAIL-loud (latszik a HA-res), de a mar lefutott
-  # primary deployt NEM gorgeti vissza.
+  # DEPRECATED (2026-06-16): a Hetzner↔Scaleway streaming-HA KIVEZETVE (Local-First konszolidáció).
+  # A Scaleway standby postgres leállítva, a replikációs slot (standby_slot_0) eltávolítva,
+  # synchronous_standby_names='' (a primary nem vár senkire). Ez a warm-standby JAR-szinkron job
+  # ezért INAKTÍV (if: false) — a leállított standbyn a pg_is_in_recovery() check amúgy is buktatná
+  # minden deployt. Új védvonal: lokális primary + Neon-backup (~5 perc RPO) + napi B2 + kliens-outbox
+  # + on-host freeze-watchdog. Visszafordítás: lásd vault/operations/scaleway-failover-runbook.md.
   deploy-standby:
-    name: Sync JAR to Scaleway standby (warm)
+    name: Sync JAR to Scaleway standby (warm) [DEPRECATED — HA kivezetve]
+    if: false
     runs-on: ubuntu-latest
     needs: [build, deploy]
     timeout-minutes: 10

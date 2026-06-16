@@ -2,14 +2,26 @@
 title: Scaleway Standby Failover Runbook
 created: 2026-05-13
 last_tested: NEVER (initial — needs live drill)
-maturity: documented-untested
+maturity: DEPRECATED (streaming-HA kivezetve 2026-06-16)
 trigger: Hetzner primary down (excvaluta.com 5xx > 3 min OR backend unreachable)
 estimated_downtime: 2-5 min
 ---
 
 # Scaleway Failover Runbook
 
-> **2-régiós HA**: Hetzner Helsinki (primary, 95.216.191.162) ↔ Scaleway Paris (warm standby, 163.172.152.234)
+> ## ⚠️ DEPRECATED (2026-06-16) — a streaming-HA KIVEZETVE (Local-First)
+>
+> A Hetzner↔Scaleway szinkron replikáció nyugdíjazva. **Prod-állapot:** Scaleway standby postgres
+> leállítva, `standby_slot_0` slot eltávolítva, `synchronous_standby_names=''`, `sync-replication-guard`
+> + `primary-watchdog` leállítva, a `deploy-standby` job és a failover-drill inaktív (`if:false`).
+>
+> **Új védvonal (Local-First):** lokális primary + Neon-backup (~5 perc RPO) + napi B2 `pg_dump` +
+> kliens-outbox (idempotens resync) + on-host `freeze-watchdog`. **Helyreállítás új gépre:** a Neon-backup
+> a Local-First igazság-forrás melletti teljes, friss másolat (lásd `project_neon_backup_local_first_rebuild_2026_06_16`).
+>
+> Az alábbi failover-eljárás **történeti referencia** — csak a streaming-HA visszaállítása után érvényes.
+
+> **2-régiós HA** (történeti): Hetzner Helsinki (primary, 95.216.191.162) ↔ Scaleway Paris (warm standby, 163.172.152.234)
 
 ## 0. Mikor használd?
 

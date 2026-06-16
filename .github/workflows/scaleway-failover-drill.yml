@@ -1,4 +1,10 @@
 # =============================================================================
+# ⚠️ DEPRECATED (2026-06-16) — a Hetzner↔Scaleway streaming-HA KIVEZETVE (Local-First).
+# A Scaleway standby postgres leállítva, a replikációs slot eltávolítva, synchronous_standby_names=''.
+# Ez a drill MÁR NEM FUTTATHATÓ értelmesen (nincs élő standby/replikáció). NE indítsd manuálisan sem,
+# amíg a streaming-HA nincs visszaállítva. Új védvonal: lokális primary + Neon-backup (~5 perc RPO)
+# + napi B2 + kliens-outbox + freeze-watchdog. Részletek: vault/operations/scaleway-failover-runbook.md.
+# =============================================================================
 # Scaleway Failover Drill — automatikus végrehajtás
 # =============================================================================
 # Drill 1: pg_ctl promote + pg_basebackup failback a tunnelen (DNS érintetlen) — biztonságos

@@ -1,5 +1,22 @@
 # High-Availability (HA) - Warm-standby VPS setup
 
+> ## ⚠️ DEPRECATED (2026-06-16) — a streaming-HA KIVEZETVE (Local-First konszolidáció)
+>
+> A Hetzner↔Scaleway szinkron streaming-replikációt nyugdíjaztuk. Konkrét prod-állapot:
+> - Scaleway standby postgres **leállítva** (`valuta-standby-fr`).
+> - A Hetzner replikációs slot (`standby_slot_0`) **eltávolítva**, `synchronous_standby_names=''`
+>   (a primary nem vár senkire), a `sync-replication-guard` és `primary-watchdog` **leállítva/disabled**.
+> - A `deploy-standby` job (`deploy-hetzner.yml`) és a `scaleway-failover-drill.yml` **inaktív**.
+>
+> **Új védvonal (Local-First):** lokális Hetzner primary (a backend ezt szolgálja) + **Neon-backup**
+> (5 percenként, ~5 perc RPO, más felhő) + **napi B2 `pg_dump`** + **kliens-outbox** (pénztári adat a
+> gépeken, idempotens resync) + on-host **`freeze-watchdog`** (auto-restart). Új gép ~5 perc alatt
+> felállítható a Neon-backupból; a kliens-outbox felresync-eli a backup óta keletkezett tételeket.
+>
+> **Visszafordítás** (ha újra kell a streaming-HA): `install-standby.sh` + a slot újralétrehozása +
+> `synchronous_standby_names='scaleway_standby'` + a guard/watchdog újraindítása + a `deploy-standby` /
+> `drill` `if:false` levétele. A lenti dokumentáció **történeti referencia**.
+
 A 60 pénztárhoz szükséges üzletfolytonossági rendszer. Ha a primary Hetzner VPS leáll, a pénztárak 2-5 percen belül átállnak a standby VPS-re, és a munka folytatódik.
 
 ## FONTOS: MULTI-PROVIDER standby (nem csak Hetzner!)
