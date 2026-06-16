@@ -8,10 +8,18 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface HrkTransactionRepository extends JpaRepository<HrkTransaction, UUID> {
+
+    /**
+     * IDOR-szűrt lekérés: a HrkTransaction NOT NULL companyId-jával cég-scope-olva.
+     * Más cég tranzakciója és a nem létező tranzakció ugyanazt az üres eredményt adja
+     * (nincs id-enumeráció oldalcsatorna).
+     */
+    Optional<HrkTransaction> findByIdAndCompanyId(UUID id, UUID companyId);
 
     List<HrkTransaction> findByBranchIdOrderByCreatedAtDesc(UUID branchId);
 

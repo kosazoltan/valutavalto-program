@@ -10,6 +10,8 @@ import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.service.ClosingWizardService;
 import hu.puzzleir.valuta.service.DailyClosingService;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardDto;
+import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -17,6 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -80,6 +84,19 @@ class ClosingFlowTest {
         worker = new Worker();
         worker.setId(WORKER_ID);
         worker.setName("Teszt Pénztáros");
+
+        // IDOR-guard (audit 2026-06-15): assertOwnWizard SecurityUtils.getCurrentBranchId()-t hív
+        // (navigate/complete/cancel/getStep). A hívó branch-e == a wizard branch-e (BRANCH_ID).
+        WorkerAuthenticationDetails details =
+                new WorkerAuthenticationDetails(WORKER_ID, UUID.randomUUID(), BRANCH_ID, "PENZTAROS");
+        TestingAuthenticationToken auth = new TestingAuthenticationToken("t", "x", "ROLE_PENZTAROS");
+        auth.setDetails(details);
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    @AfterEach
+    void tearDownSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     @Nested

@@ -55,12 +55,22 @@ public class TransferService {
         Branch toBranch = branchRepository.findById(UUID.fromString(dto.getToBranchId()))
                 .orElseThrow(() -> new ResourceNotFoundException("Célfiók nem található: " + dto.getToBranchId()));
 
-        Currency currency = currencyRepository.findById(dto.getCurrencyId())
-                .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: " + dto.getCurrencyId()));
-
+        // Azonos-fiók ellenőrzés a tenant-guard ELŐTT: olcsóbb, beszédesebb hibaüzenet, és egy
+        // azonos forrás=cél fiók triviálisan ugyanahhoz a céghez tartozik (nincs cross-tenant kérdés).
         if (fromBranch.getId().equals(toBranch.getId())) {
             throw new ValidationException("A forrás és cél fiók nem lehet azonos!");
         }
+
+        // IDOR-guard: a toBranchId user-vezérelt és eddig sosem volt cég-scope-ra validálva — a
+        // transfer companyId-ja a fromBranch-ből jön, ezért a cél-fióknak a forrás cégéhez kell
+        // tartoznia; cross-tenant → ResourceNotFoundException.
+        if (fromBranch.getCompany() == null
+                || !branchRepository.existsByIdAndCompanyId(toBranch.getId(), fromBranch.getCompany().getId())) {
+            throw new ResourceNotFoundException("Célfiók nem található: " + dto.getToBranchId());
+        }
+
+        Currency currency = currencyRepository.findById(dto.getCurrencyId())
+                .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: " + dto.getCurrencyId()));
 
         // Direction meghatározása (default: UF)
         Transfer.TransferDirection direction = Transfer.TransferDirection.UF;

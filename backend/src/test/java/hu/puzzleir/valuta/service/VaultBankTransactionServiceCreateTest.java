@@ -103,7 +103,7 @@ class VaultBankTransactionServiceCreateTest {
         BankTransactionRequestDto req = buildRequest("BUY", "EUR", new BigDecimal("1000"), new BigDecimal("395.5"));
 
         // territory megvan + HUF stock van eleg
-        when(vaultTerritoryRepository.findById(TERRITORY_ID)).thenReturn(Optional.of(territory));
+        when(vaultTerritoryRepository.findByIdAndCompanyId(TERRITORY_ID, COMPANY_ID)).thenReturn(Optional.of(territory));
 
         CurrencyStock eurStock = CurrencyStock.builder()
                 .company(company).entityType("VAULT").entityId(TERRITORY_ENTITY_ID)
@@ -132,7 +132,7 @@ class VaultBankTransactionServiceCreateTest {
     void createBankTransaction_SELL_debitsForeign_creditsHuf() {
         BankTransactionRequestDto req = buildRequest("SELL", "EUR", new BigDecimal("500"), new BigDecimal("390.0"));
 
-        when(vaultTerritoryRepository.findById(TERRITORY_ID)).thenReturn(Optional.of(territory));
+        when(vaultTerritoryRepository.findByIdAndCompanyId(TERRITORY_ID, COMPANY_ID)).thenReturn(Optional.of(territory));
 
         CurrencyStock eurStock = CurrencyStock.builder()
                 .company(company).entityType("VAULT").entityId(TERRITORY_ENTITY_ID)
@@ -160,7 +160,7 @@ class VaultBankTransactionServiceCreateTest {
     void createBankTransaction_unknownTerritory_throws() {
         BankTransactionRequestDto req = buildRequest("BUY", "EUR", new BigDecimal("100"), new BigDecimal("395.5"));
         req.setVaultTerritoryId(9999);
-        when(vaultTerritoryRepository.findById(9999)).thenReturn(Optional.empty());
+        when(vaultTerritoryRepository.findByIdAndCompanyId(9999, COMPANY_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.createBankTransaction(req))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -171,7 +171,7 @@ class VaultBankTransactionServiceCreateTest {
     @DisplayName("createBankTransaction status COMPLETED + companyId helyesen beallitva (multi-tenant)")
     void createBankTransaction_setsCompanyIdAndStatus() {
         BankTransactionRequestDto req = buildRequest("BUY", "USD", new BigDecimal("100"), new BigDecimal("350"));
-        when(vaultTerritoryRepository.findById(TERRITORY_ID)).thenReturn(Optional.of(territory));
+        when(vaultTerritoryRepository.findByIdAndCompanyId(TERRITORY_ID, COMPANY_ID)).thenReturn(Optional.of(territory));
 
         CurrencyStock usdStock = CurrencyStock.builder()
                 .company(company).entityType("VAULT").entityId(TERRITORY_ENTITY_ID)

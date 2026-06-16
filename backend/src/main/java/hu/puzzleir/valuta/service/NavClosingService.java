@@ -92,6 +92,15 @@ public class NavClosingService {
     public NavClosing createDailyNavClosing(UUID branchId, LocalDate date) {
         log.info("NAV napi zárás létrehozása: branchId={}, date={}", branchId, date);
 
+        // Multi-tenant IDOR guard: a user által megadott branchId a hívó cégéhez
+        // tartozzon (NavClosingController az egyetlen, user-facing hívó — nincs
+        // @Scheduled NAV-zárás-generálás). Cross-tenant → ResourceNotFoundException
+        // (az idegen iroda létezése sem szivárog ki).
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        if (!branchRepository.existsByIdAndCompanyId(branchId, currentCompanyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+
         Branch branch = branchRepository.findById(branchId)
             .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 

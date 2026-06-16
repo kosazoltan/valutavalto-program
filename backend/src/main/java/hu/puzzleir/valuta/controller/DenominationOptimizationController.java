@@ -4,8 +4,11 @@ import hu.puzzleir.valuta.entity.DenominationOptimization;
 import hu.puzzleir.valuta.entity.DenominationRule;
 import hu.puzzleir.valuta.entity.OptimizationStrategy;
 import hu.puzzleir.valuta.entity.DenominationRuleType;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.DenominationOptimizationRepository;
 import hu.puzzleir.valuta.repository.DenominationRuleRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.DenominationRuleSelectionService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -34,6 +37,22 @@ public class DenominationOptimizationController {
     private final DenominationOptimizationRepository optimizationRepository;
     private final DenominationRuleRepository ruleRepository;
     private final DenominationRuleSelectionService selectionService;
+    private final BranchRepository branchRepository;
+
+    /**
+     * IDOR-guard a fiók-scope-os szabály-műveletekhez. A {@link DenominationRule} a tenancyt a
+     * {@code branchId}-n keresztül hordozza; ha a user-megadott branchId nem null, annak az
+     * aktuális céghez kell tartoznia. {@code branchId == null} = cég-globális szabály (a végpontok
+     * már ADMIN/MANAGER/MAIN_TREASURY-re korlátozottak). Cross-tenant → ResourceNotFoundException.
+     */
+    private void assertBranchInCurrentCompany(UUID branchId) {
+        if (branchId == null) {
+            return;
+        }
+        if (!branchRepository.existsByIdAndCompanyId(branchId, SecurityUtils.getCurrentCompanyId())) {
+            throw new ResourceNotFoundException("Fiók nem található: " + branchId);
+        }
+    }
 
     // ==========================================================================
     // Optimization (stratégia konfigurációk)
@@ -94,6 +113,8 @@ public class DenominationOptimizationController {
     @PostMapping("/rules")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','MAIN_TREASURY')")
     public ResponseEntity<DenominationRule> createRule(@Valid @RequestBody RuleCreateRequest req) {
+        // IDOR-guard: a user-megadott branchId-t cég-scope-ra kell validálni a rögzítés előtt.
+        assertBranchInCurrentCompany(req.getBranchId());
         DenominationOptimization opt = optimizationRepository.findById(req.getOptimizationId())
                 .orElseThrow(() -> new IllegalArgumentException("Optimization nem található: " + req.getOptimizationId()));
         DenominationRule rule = DenominationRule.builder()
@@ -115,6 +136,8 @@ public class DenominationOptimizationController {
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','MAIN_TREASURY')")
     public ResponseEntity<Void> deleteRule(@PathVariable UUID id) {
         return ruleRepository.findById(id).map(rule -> {
+            // IDOR-guard: a rule tenancyje a branchId-n keresztül — cross-tenant törlés tiltva.
+            assertBranchInCurrentCompany(rule.getBranchId());
             rule.setIsActive(false);
             ruleRepository.save(rule);
             return ResponseEntity.noContent().<Void>build();
@@ -131,6 +154,8 @@ public class DenominationOptimizationController {
             @RequestParam UUID branchId,
             @RequestParam Long currencyId,
             @RequestParam BigDecimal hufAmount) {
+        // IDOR-guard: a preview a user-megadott branchId-re fut — cég-scope ellenőrzés előbb.
+        assertBranchInCurrentCompany(branchId);
         return selectionService.selectStrategy(branchId, currencyId, hufAmount);
     }
 

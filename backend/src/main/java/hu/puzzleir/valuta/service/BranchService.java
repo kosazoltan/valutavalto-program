@@ -965,6 +965,7 @@ public class BranchService {
             }
             Branch parent = branchRepository.findById(parentBranchId)
                     .orElseThrow(() -> new ResourceNotFoundException("Szülő fiók nem található"));
+            assertParentInCurrentCompany(parent, parentBranchId);
             if (!"KOZPONT".equals(parent.getBranchType().getCode())) {
                 throw new ValidationException("Főértéktár csak központ alá helyezhető");
             }
@@ -977,6 +978,7 @@ public class BranchService {
             }
             Branch parent = branchRepository.findById(parentBranchId)
                     .orElseThrow(() -> new ResourceNotFoundException("Szülő fiók nem található"));
+            assertParentInCurrentCompany(parent, parentBranchId);
             String parentCode = parent.getBranchType().getCode();
             if (!"KOZPONT".equals(parentCode) && !"FOERTEKTAR".equals(parentCode)) {
                 throw new ValidationException("Értéktár csak központ vagy főértéktár alá helyezhető");
@@ -990,9 +992,22 @@ public class BranchService {
             }
             Branch parent = branchRepository.findById(parentBranchId)
                     .orElseThrow(() -> new ResourceNotFoundException("Szülő fiók nem található"));
+            assertParentInCurrentCompany(parent, parentBranchId);
             if (!"ERTEKTAR".equals(parent.getBranchType().getCode())) {
                 throw new ValidationException("Pénztár csak értéktár alá helyezhető");
             }
+        }
+    }
+
+    /**
+     * IDOR-guard: a user által megadott szülő-fiók ({@code dto.getParentBranchId()}) eddig csak
+     * típusra volt ellenőrizve, cég-scope-ra nem. A szülőnek az aktuális céghez kell tartoznia;
+     * cross-tenant → ResourceNotFoundException (a betöltés-mintával összhangban).
+     */
+    private void assertParentInCurrentCompany(Branch parent, UUID parentBranchId) {
+        if (parent.getCompany() == null
+                || !parent.getCompany().getId().equals(SecurityUtils.getCurrentCompanyId())) {
+            throw new ResourceNotFoundException("Szülő fiók nem található: " + parentBranchId);
         }
     }
 }

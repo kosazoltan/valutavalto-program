@@ -438,6 +438,8 @@ class TransferCounterTransactionTest {
     private void setupCommonMocks() {
         when(workerRepository.findById(FROM_WORKER_ID)).thenReturn(Optional.of(fromWorker));
         when(branchRepository.findById(TO_BRANCH_ID)).thenReturn(Optional.of(toBranch));
+        // IDOR-guard (audit 2026-06-15): create() ellenőrzi, hogy a cél-fiók a forrás cégéhez tartozik.
+        when(branchRepository.existsByIdAndCompanyId(eq(TO_BRANCH_ID), eq(COMPANY_ID))).thenReturn(true);
         when(currencyRepository.findById(CURRENCY_ID)).thenReturn(Optional.of(currency));
         when(transferRepository.save(any(Transfer.class))).thenAnswer(inv -> {
             Transfer t = inv.getArgument(0);

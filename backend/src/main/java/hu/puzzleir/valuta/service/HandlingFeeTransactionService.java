@@ -6,6 +6,8 @@ import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeTransactionDto;
 import hu.puzzleir.valuta.entity.HandlingFeeTransaction;
 import hu.puzzleir.valuta.entity.HandlingFeeTransaction.HandlingFeeTransactionType;
 import hu.puzzleir.valuta.repository.HandlingFeeTransactionRepository;
+import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,7 @@ import java.util.stream.Collectors;
 public class HandlingFeeTransactionService {
 
     private final HandlingFeeTransactionRepository repository;
+    private final TransactionRepository transactionRepository;
 
     private static final BigDecimal FIFTY_K = new BigDecimal("50000");
     private static final BigDecimal THREE_HUNDRED_K = new BigDecimal("300000");
@@ -75,6 +78,12 @@ public class HandlingFeeTransactionService {
     @Transactional(rollbackFor = Exception.class)
     public HandlingFeeTransactionDto applyDiscount(UUID feeId, int discountPercent, String reason) {
         HandlingFeeTransaction hft = repository.findById(feeId)
+            .orElseThrow(() -> new ResourceNotFoundException("Kezelési díj nem található: " + feeId));
+
+        // IDOR-guard: a kezelési díj tenancy-je a parent Transaction-ön él (a HFT csak transactionId-t
+        // hordoz, companyId-t nem). Ownership-check a cég-szűrt Transaction-lekéréssel — más cég
+        // tranzakciója és a nem létező tranzakció ugyanazt az üres eredményt adja (nincs txId-enumeráció).
+        transactionRepository.findByIdAndCompanyId(hft.getTransactionId(), SecurityUtils.getCurrentCompanyId())
             .orElseThrow(() -> new ResourceNotFoundException("Kezelési díj nem található: " + feeId));
 
         hft.setDiscountPercent(discountPercent);

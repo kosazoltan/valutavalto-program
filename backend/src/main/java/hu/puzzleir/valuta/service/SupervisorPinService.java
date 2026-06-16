@@ -76,7 +76,9 @@ public class SupervisorPinService {
      */
     @Transactional
     public boolean verifyPin(Long workerId, String pin, String clientIp, String userAgent) {
-        Worker worker = workerRepository.findById(workerId)
+        // IDOR-guard: a workerId a kérés body-jából jön (NEM getCurrentWorkerId), ezért a
+        // PIN-ellenőrzés ELŐTT cég-scope-ra kell szűrni — cross-tenant → ResourceNotFoundException.
+        Worker worker = workerRepository.findByIdAndCompanyId(workerId, SecurityUtils.getCurrentCompanyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Worker nem található: " + workerId));
 
         if (worker.getSupervisorPin() == null) {

@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.dto.inventory.RegenerationResultDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,12 @@ public class InventoryRegenerationService {
      */
     @Transactional(rollbackFor = Exception.class)
     public RegenerationResultDto regenerate(UUID branchId, Long workerId) {
+        // IDOR guard: a branchId user @RequestParam (SUPERVISOR+), ezért a hívó cégének tulajdonát
+        // ellenőrizzük. Cross-tenant → ResourceNotFoundException. (A workerId self/token-bound, az nem itt scope-olt.)
+        if (!branchRepository.existsByIdAndCompanyId(branchId, SecurityUtils.getCurrentCompanyId())) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 

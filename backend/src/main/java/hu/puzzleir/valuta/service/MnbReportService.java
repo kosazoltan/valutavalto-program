@@ -60,6 +60,7 @@ public class MnbReportService {
     public MnbReport generateDailyReport(UUID branchId, LocalDate date) {
         log.info("MNB napi riport generálás: branchId={}, date={}", branchId, date);
 
+        assertBranchOwnership(branchId);
         Branch branch = branchRepository.findById(branchId)
             .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 
@@ -133,6 +134,7 @@ public class MnbReportService {
     public MnbReport generateMonthlyReport(UUID branchId, YearMonth month) {
         log.info("MNB havi riport generálás: branchId={}, month={}", branchId, month);
 
+        assertBranchOwnership(branchId);
         Branch branch = branchRepository.findById(branchId)
             .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 
@@ -319,6 +321,7 @@ public class MnbReportService {
 
         log.info("MNB heti riport generálás: branchId={}, hét={} – {}", branchId, monday, sunday);
 
+        assertBranchOwnership(branchId);
         Branch branch = branchRepository.findById(branchId)
             .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 
@@ -411,6 +414,31 @@ public class MnbReportService {
             : null;
         if (reportCompanyId == null || !reportCompanyId.equals(callerCompanyId)) {
             throw new ResourceNotFoundException("MNB riport nem található: " + reportId);
+        }
+    }
+
+    /**
+     * Multi-tenant IDOR-védelem a branchId-paraméteres riport-generálásra
+     * (generateDaily/Monthly/WeeklyReport): a user által megadott branchId a hívó
+     * cégéhez tartozzon. Cross-tenant esetén — az oldalcsatorna elkerülésére —
+     * ugyanaz a {@link ResourceNotFoundException}, mint a nem létező irodánál.
+     *
+     * <p>FONTOS: a {@code @Scheduled} {@code MnbDailyReportScheduler} auth-kontextus
+     * nélkül, minden cég összes aktív irodáját iterálva hívja a
+     * {@code generateDailyReport()}-ot (kötelező rendszer-batch). Ott nincs
+     * bejelentkezett user, ezért {@link hu.puzzleir.valuta.security.SecurityUtils#getCurrentCompanyIdOrNull()}
+     * {@code null}-t ad → a guard kihagyásra kerül, az ütemezett út NEM törik el.
+     * Ha viszont van auth-kontextus (controller-út), a branch-tulajdon kötelezően ellenőrzött.</p>
+     */
+    private void assertBranchOwnership(UUID branchId) {
+        UUID callerCompanyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyIdOrNull();
+        if (callerCompanyId == null) {
+            // Nincs auth-kontextus → ütemezett rendszer-batch (MnbDailyReportScheduler).
+            // A scheduled cross-tenant generálás szándékos és kötelező, NEM IDOR.
+            return;
+        }
+        if (!branchRepository.existsByIdAndCompanyId(branchId, callerCompanyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
         }
     }
 

@@ -6,6 +6,8 @@ import hu.puzzleir.valuta.dto.printtemplate.PrintTemplateResponse;
 import hu.puzzleir.valuta.entity.PrintTemplate;
 import hu.puzzleir.valuta.entity.PrintTemplateType;
 import hu.puzzleir.valuta.repository.PrintTemplateRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.LegacyCompanyIdentityCodec;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -59,6 +61,10 @@ public class PrintTemplateService {
      */
     @Transactional(rollbackFor = Exception.class)
     public PrintTemplateResponse saveTemplate(PrintTemplateDto dto) {
+        // IDOR-fix: cég-specifikus sablon csak a hívó saját (legacy) cég-id-jával hozható létre.
+        if (dto.getCompanyId() != null) {
+            assertOwnCompanyTag(dto.getCompanyId());
+        }
         PrintTemplate template = PrintTemplate.builder()
                 .name(dto.getName())
                 .templateType(parseTemplateType(dto.getTemplateType()))
@@ -79,6 +85,8 @@ public class PrintTemplateService {
     public PrintTemplateResponse updateTemplate(UUID id, PrintTemplateDto dto) {
         PrintTemplate template = printTemplateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Sablon nem található: " + id));
+        // IDOR-fix: csak saját (vagy globális default) sablont lehet módosítani.
+        assertReadable(template, id);
 
         template.setName(dto.getName());
         template.setTemplateType(parseTemplateType(dto.getTemplateType()));
@@ -87,6 +95,8 @@ public class PrintTemplateService {
             template.setIsDefault(dto.getIsDefault());
         }
         if (dto.getCompanyId() != null) {
+            // Más cég legacy-id-jára átcímkézés tiltva (cross-tenant elbirtoklás ellen).
+            assertOwnCompanyTag(dto.getCompanyId());
             template.setCompanyId(dto.getCompanyId());
         }
 
@@ -112,8 +122,12 @@ public class PrintTemplateService {
     @Transactional(readOnly = true)
     public List<PrintTemplateResponse> getTemplatesByType(String type) {
         PrintTemplateType templateType = parseTemplateType(type);
+        // IDOR-fix (audit 2026-06-15, FINDING #14): csak a globális (companyId==null) defaultok és a
+        // hívó cégének (legacy-int) saját sablonjai — más cég egyedi sablonjai NEM szivároghatnak.
+        Integer caller = currentLegacyCompanyId();
         return printTemplateRepository.findByTemplateType(templateType)
                 .stream()
+                .filter(t -> isReadableBy(t, caller))
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -125,6 +139,7 @@ public class PrintTemplateService {
     public PrintTemplateResponse getTemplateById(UUID id) {
         PrintTemplate template = printTemplateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Sablon nem található: " + id));
+        assertReadable(template, id);
         return toResponse(template);
     }
 
@@ -136,6 +151,7 @@ public class PrintTemplateService {
     public String previewTemplate(UUID templateId, Map<String, Object> data) {
         PrintTemplate template = printTemplateRepository.findById(templateId)
                 .orElseThrow(() -> new ResourceNotFoundException("Sablon nem található: " + templateId));
+        assertReadable(template, templateId);
 
         String rendered = template.getContent();
         if (rendered == null) return "";
@@ -147,6 +163,31 @@ public class PrintTemplateService {
         }
 
         return rendered;
+    }
+
+    /** A hívó cég UUID-jának legacy Integer megfelelője (a PrintTemplate.companyId sémája Integer). */
+    private Integer currentLegacyCompanyId() {
+        return LegacyCompanyIdentityCodec.toLegacyInt(SecurityUtils.getCurrentCompanyId());
+    }
+
+    /** Globális default (companyId==null) mindenkinek olvasható; cég-specifikus csak a sajátnak. */
+    private boolean isReadableBy(PrintTemplate template, Integer callerLegacyCompanyId) {
+        return template.getCompanyId() == null
+                || template.getCompanyId().equals(callerLegacyCompanyId);
+    }
+
+    /** Cross-tenant olvasás/módosítás tiltása — más cég egyedi sablonja "nem található" (404). */
+    private void assertReadable(PrintTemplate template, UUID id) {
+        if (!isReadableBy(template, currentLegacyCompanyId())) {
+            throw new ResourceNotFoundException("Sablon nem található: " + id);
+        }
+    }
+
+    /** A megadott legacy cég-tag a hívó sajátja legyen (create/update átcímkézés ellen). */
+    private void assertOwnCompanyTag(Integer companyIdTag) {
+        if (!companyIdTag.equals(currentLegacyCompanyId())) {
+            throw new ResourceNotFoundException("Sablon nem található: " + companyIdTag);
+        }
     }
 
     private PrintTemplateType parseTemplateType(String type) {

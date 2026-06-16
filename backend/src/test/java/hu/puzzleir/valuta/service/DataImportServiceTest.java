@@ -5,11 +5,15 @@ import hu.puzzleir.valuta.entity.DataImportJob;
 import hu.puzzleir.valuta.entity.DataImportStatus;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.DataImportJobRepository;
+import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
@@ -17,6 +21,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,10 +42,18 @@ class DataImportServiceTest {
         service = new DataImportService(dataImportJobRepository, branchRepository);
         ReflectionTestUtils.setField(service, "simulatedSuccessEnabled", false);
 
+        // IDOR-guard (audit 2026-06-15): findBranch most existsByIdAndCompanyId-t hív → auth-kontextus kell.
+        WorkerAuthenticationDetails details =
+                new WorkerAuthenticationDetails(1L, UUID.randomUUID(), UUID.randomUUID(), "ADMIN");
+        TestingAuthenticationToken auth = new TestingAuthenticationToken("t", "x", "ROLE_ADMIN");
+        auth.setDetails(details);
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
         Branch branch = new Branch();
         branch.setId(BRANCH_ID);
         branch.setCode("B01");
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(branchRepository.existsByIdAndCompanyId(eq(BRANCH_ID), any())).thenReturn(true);
         when(dataImportJobRepository.save(any(DataImportJob.class))).thenAnswer(inv -> {
             DataImportJob job = inv.getArgument(0);
             if (job.getId() == null) {
@@ -48,6 +61,11 @@ class DataImportServiceTest {
             }
             return job;
         });
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test

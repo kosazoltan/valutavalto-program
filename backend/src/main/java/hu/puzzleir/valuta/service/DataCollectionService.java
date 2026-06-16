@@ -48,7 +48,28 @@ public class DataCollectionService {
      * 2. Készlet állapot rögzítése (CashBalance-ból)
      * 3. Státusz frissítése
      */
+    /**
+     * User-facing belépő az egy-iroda gyűjtéshez — a /collect REST végpont EGYETLEN user-úti hívása.
+     *
+     * <p>IDOR guard (FINDING): a branchId user-kontrollált request-body mező, ezért a hívó cégének
+     * tulajdonát ELLENŐRIZZÜK, mielőtt a közös feldolgozó futna. Cross-tenant → ResourceNotFoundException.
+     * A guard KIZÁRÓLAG ezen a user-úton van: az auth-kontextus NÉLKÜLI belső hívók
+     * ({@link #collectAllBranchesForAllCompanies} ütemezett cron-job + {@link #retryFailedCollections})
+     * a guard-mentes {@link #collectBranchDataInternal}-t használják, így a getCurrentCompanyId() nem
+     * hasal el rajtuk.</p>
+     */
     public DataCollection collectBranchData(UUID branchId, LocalDate date) {
+        if (!branchRepository.existsByIdAndCompanyId(branchId, SecurityUtils.getCurrentCompanyId())) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+        return collectBranchDataInternal(branchId, date);
+    }
+
+    /**
+     * Belső (auth-kontextus nélküli) gyűjtés-feldolgozó. KÖZVETLENÜL csak a rendszer-job és a
+     * retry-hurok hívhatja; user-úton mindig a guardolt {@link #collectBranchData}-n keresztül.
+     */
+    DataCollection collectBranchDataInternal(UUID branchId, LocalDate date) {
         log.info("Adatgyűjtés indítása: branchId={}, date={}", branchId, date);
 
         Branch branch = branchRepository.findById(branchId)
@@ -168,7 +189,9 @@ public class DataCollectionService {
 
         for (Branch branch : activeBranches) {
             try {
-                DataCollection result = collectBranchData(branch.getId(), date);
+                // activeBranches már companyId-szűrt (findByCompanyIdAndIsActiveTrue), ezért a
+                // guard-mentes belső feldolgozót hívjuk — nem kell branch-enként újra-ellenőrizni.
+                DataCollection result = collectBranchDataInternal(branch.getId(), date);
                 results.add(result);
             } catch (Exception e) {
                 log.error("Adatgyűjtés hiba irodánál: branchId={}, hiba={}",
@@ -204,7 +227,7 @@ public class DataCollectionService {
         List<DataCollection> results = new ArrayList<>();
         for (Branch branch : activeBranches) {
             try {
-                results.add(collectBranchData(branch.getId(), date));
+                results.add(collectBranchDataInternal(branch.getId(), date));
             } catch (Exception e) {
                 log.error("Ütemezett adatgyűjtés hiba irodánál: branchId={}, hiba={}",
                     branch.getId(), e.getMessage(), e);
@@ -269,7 +292,8 @@ public class DataCollectionService {
         int retried = 0;
         for (DataCollection dc : failed) {
             try {
-                collectBranchData(dc.getBranch().getId(), dc.getCollectionDate());
+                // retryFailedCollections cron-úton (auth-kontextus nélkül) is futhat → guard-mentes belső hívás.
+                collectBranchDataInternal(dc.getBranch().getId(), dc.getCollectionDate());
                 retried++;
             } catch (Exception e) {
                 log.error("Újrapróbálás sikertelen: branchId={}, date={}, hiba={}",

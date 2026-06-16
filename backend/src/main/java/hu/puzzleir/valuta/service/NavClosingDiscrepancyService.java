@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.NavClosingRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.Builder;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -63,6 +64,14 @@ public class NavClosingDiscrepancyService {
     public NavClosingValidationResult validateNavClosingAmount(
             UUID branchId, LocalDate date, BigDecimal navAmount) {
 
+        // Multi-tenant IDOR guard: a user @RequestParam branchId a hívó cégéhez
+        // tartozzon (CASHIER+ végpont). Cross-tenant → ResourceNotFoundException
+        // (az idegen iroda létezése sem szivárog ki).
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        if (!branchRepository.existsByIdAndCompanyId(branchId, currentCompanyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 
@@ -109,6 +118,19 @@ public class NavClosingDiscrepancyService {
     public void approveDiscrepancy(UUID closingId, BigDecimal navAmount, String justification) {
         NavClosing closing = navClosingRepository.findById(closingId)
                 .orElseThrow(() -> new ResourceNotFoundException("NAV zárás nem található: " + closingId));
+
+        // Multi-tenant IDOR guard: a user @PathVariable closingId a hívó cégéhez
+        // tartozó záráshoz mutasson (SUPERVISOR+ jóváhagyás). Cross-tenant (vagy
+        // hiányzó branch/company) esetén ResourceNotFoundException — az idegen
+        // zárás létezése sem szivárog ki.
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        Branch closingBranch = closing.getBranch();
+        UUID ownerCompanyId = (closingBranch != null && closingBranch.getCompany() != null)
+                ? closingBranch.getCompany().getId()
+                : null;
+        if (ownerCompanyId == null || !ownerCompanyId.equals(currentCompanyId)) {
+            throw new ResourceNotFoundException("NAV zárás nem található: " + closingId);
+        }
 
         if (closing.getStatus() != NavClosingStatus.CLOSED) {
             throw new ValidationException(

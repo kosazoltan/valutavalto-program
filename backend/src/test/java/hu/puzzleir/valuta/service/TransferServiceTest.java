@@ -49,11 +49,9 @@ class TransferServiceTest {
         UUID branchId = UUID.randomUUID();
         Branch branch = Branch.builder().id(branchId).code("B1").build();
         Worker worker = Worker.builder().id(1L).branch(branch).build();
-        Currency eur = Currency.builder().id(4L).code("EUR").build();
 
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
-        when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
 
         CreateTransferDto dto = new CreateTransferDto();
         dto.setToBranchId(branchId.toString());
@@ -80,6 +78,7 @@ class TransferServiceTest {
 
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
+        when(branchRepository.existsByIdAndCompanyId(eq(toId), any())).thenReturn(true);
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
         when(currencyRepository.findById(6L)).thenReturn(Optional.of(huf));
         when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
@@ -122,14 +121,16 @@ class TransferServiceTest {
     void testCreate_technicalRbTypes_currencyInvariants() {
         UUID fromId = UUID.randomUUID();
         UUID toId = UUID.randomUUID();
-        Branch fromBranch = Branch.builder().id(fromId).code("BR020").isVault(true).build();
-        Branch toBranch = Branch.builder().id(toId).code("ERB").build();
+        Company company = Company.builder().id(UUID.randomUUID()).build();
+        Branch fromBranch = Branch.builder().id(fromId).code("BR020").company(company).isVault(true).build();
+        Branch toBranch = Branch.builder().id(toId).code("ERB").company(company).build();
         Worker worker = Worker.builder().id(1L).branch(fromBranch).build();
         Currency eur = Currency.builder().id(4L).code("EUR").build();
         Currency huf = Currency.builder().id(6L).code("HUF").build();
 
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
+        when(branchRepository.existsByIdAndCompanyId(eq(toId), any())).thenReturn(true);
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
         when(currencyRepository.findById(6L)).thenReturn(Optional.of(huf));
 
@@ -170,7 +171,7 @@ class TransferServiceTest {
         }
 
         // (4) Vault-only: NEM értéktári fiókból technikai RB-kötés → hiba (Codex/Copilot P2)
-        Branch cashierBranch = Branch.builder().id(UUID.randomUUID()).code("BR105").isVault(false).build();
+        Branch cashierBranch = Branch.builder().id(UUID.randomUUID()).code("BR105").company(company).isVault(false).build();
         Worker cashier = Worker.builder().id(2L).branch(cashierBranch).build();
         when(workerRepository.findById(2L)).thenReturn(Optional.of(cashier));
         CreateTransferDto cashierFrb = new CreateTransferDto();
@@ -217,6 +218,7 @@ class TransferServiceTest {
 
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
+        when(branchRepository.existsByIdAndCompanyId(eq(toId), any())).thenReturn(true);
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
         when(currencyRepository.findById(6L)).thenReturn(Optional.of(huf));
         when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
@@ -269,6 +271,7 @@ class TransferServiceTest {
 
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
+        when(branchRepository.existsByIdAndCompanyId(eq(toId), any())).thenReturn(true);
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
         when(currencyRepository.findById(5L)).thenReturn(Optional.of(usd));
         when(transferSerialSequenceService.next(any(), anyString())).thenReturn(1L);
@@ -310,13 +313,15 @@ class TransferServiceTest {
     void testCreate_multiLine_duplicateCurrency_throws() {
         UUID fromId = UUID.randomUUID();
         UUID toId = UUID.randomUUID();
-        Branch fromBranch = Branch.builder().id(fromId).code("B1").build();
-        Branch toBranch = Branch.builder().id(toId).code("B2").build();
+        Company company = Company.builder().id(UUID.randomUUID()).build();
+        Branch fromBranch = Branch.builder().id(fromId).code("B1").company(company).build();
+        Branch toBranch = Branch.builder().id(toId).code("B2").company(company).build();
         Worker worker = Worker.builder().id(1L).branch(fromBranch).build();
         Currency eur = Currency.builder().id(4L).code("EUR").build();
 
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
+        when(branchRepository.existsByIdAndCompanyId(eq(toId), any())).thenReturn(true);
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
 
         CreateTransferDto dto = new CreateTransferDto();
@@ -374,6 +379,7 @@ class TransferServiceTest {
 
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
+        when(branchRepository.existsByIdAndCompanyId(eq(toId), any())).thenReturn(true);
         when(currencyRepository.findById(6L)).thenReturn(Optional.of(huf));
         when(transferSerialSequenceService.next(any(), eq("FF"))).thenReturn(1L);
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -412,6 +418,7 @@ class TransferServiceTest {
 
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
+        when(branchRepository.existsByIdAndCompanyId(eq(toId), any())).thenReturn(true);
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
         when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
 
@@ -444,6 +451,7 @@ class TransferServiceTest {
 
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
+        when(branchRepository.existsByIdAndCompanyId(eq(toId), any())).thenReturn(true);
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
         when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));

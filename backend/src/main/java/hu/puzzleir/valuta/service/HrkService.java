@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.entity.HrkTransaction;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.HrkTransactionRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -114,7 +115,10 @@ public class HrkService {
      * HRK tranzakció törlése (csak PENDING státuszú)
      */
     public void cancel(UUID transactionId) {
-        HrkTransaction tx = hrkTransactionRepository.findById(transactionId)
+        // IDOR-guard: cég-scope-olt lekérés (a HrkTransaction-nak NOT NULL companyId-ja van).
+        // Cross-tenant id → ugyanaz a ResourceNotFoundException, mint a nem létező id-nél.
+        HrkTransaction tx = hrkTransactionRepository
+                .findByIdAndCompanyId(transactionId, SecurityUtils.getCurrentCompanyId())
                 .orElseThrow(() -> new ResourceNotFoundException("HRK tranzakció nem található: " + transactionId));
 
         if (!"PENDING".equals(tx.getStatus())) {
