@@ -43,7 +43,25 @@ public class NeonReplicationService {
     // SORREND = FK-függőség: a SZÜLŐK előrébb, a gyerekek hátrébb. A full-sync upsert-ciklusban a
     // gyerekek (pl. transaction_line) a már felvitt szülőkre (transaction) hivatkoznak — így a
     // FK az első teljes cikluson is teljesül (a külső szülők, pl. branch/currency, a Neonon adottak).
+    // 2026-06-16: TÖRZS/REFERENCIA-TÁBLÁK a lista ELEJÉN, FK-topológiai sorrendben (szülők előbb).
+    // Gyökér-ok: korábban CSAK üzleti táblák szinkronizálódtak, a FK-céljaik (worker, currency, branch,
+    // company, ...) NEM → a Neonon elavultak/hiányosak voltak, ezért az üzleti táblák upsertje FK-violationön
+    // bukott (pl. transaction.worker_id=271 / cash_balance.currency_id=31 nincs a Neon worker/currency-ben),
+    // és az all-or-nothing batch miatt a TELJES tábla elbukott (transaction 36/134). A Neon menedzselt DB-n a
+    // `session_replication_role=replica` (FK-kikapcsolás) NEM engedélyezett (permission denied), ezért a
+    // helyes FK-SORRENDDEL biztosítjuk az integritást: a törzs-szülők előbb kerülnek a Neonra, mint a rájuk
+    // hivatkozó üzleti táblák. (A fullSync soronkénti fallbackje a maradék elszórt FK-lógást is kezeli.)
     private static final List<String> SYNC_TABLES = List.of(
+            // — Törzs / referencia (FK-célok) —
+            "company",
+            "currency",
+            "dictionary",
+            "denomination",
+            "branch",
+            "vault_territory",
+            "worker",
+            "data_collection",
+            // — Üzleti táblák (a FK-céljaik a fentiek) —
             "transaction",
             "transaction_line",
             "transaction_banknote",
@@ -77,6 +95,16 @@ public class NeonReplicationService {
     // FELSŐ KORLÁT: MAX_FULL_SYNC_ROWS (50k) felett a fullSync skip+loud log → ha a `transaction` ezt
     // átlépi, vissza kell térni inkrementálisra COALESCE(updated_at, created_at) kurzorral (követő opt.).
     private static final Set<String> FULL_SYNC_TABLES = Set.of(
+            // Törzs / referencia (kicsi, nincs megbízható inkrementális idobélyeg → teljes-snapshot).
+            "company",
+            "currency",
+            "dictionary",
+            "denomination",
+            "branch",
+            "vault_territory",
+            "worker",
+            "data_collection",
+            // Üzleti táblák.
             "transaction",
             "transaction_line",
             "transaction_banknote",
@@ -255,30 +283,81 @@ public class NeonReplicationService {
                 "INSERT INTO \"%s\" (%s) VALUES (%s) ON CONFLICT (id) DO UPDATE SET %s",
                 tableName, colList, placeholders, updateSet);
 
-        int totalInserted = 0;
         try (Connection conn = neonDataSource.getConnection()) {
             conn.setAutoCommit(false);
+            int batched = 0;
             try (PreparedStatement ps = conn.prepareStatement(upsertSql)) {
                 for (Object[] row : rows) {
                     for (int i = 0; i < row.length; i++) {
                         ps.setObject(i + 1, row[i]);
                     }
                     ps.addBatch();
-                    totalInserted++;
-
-                    if (totalInserted % BATCH_SIZE == 0) {
+                    batched++;
+                    if (batched % BATCH_SIZE == 0) {
                         ps.executeBatch();
                     }
                 }
                 ps.executeBatch();
+                conn.commit();
+                return rows.size();
+            } catch (Exception batchEx) {
+                // All-or-nothing batch bukott (tipikusan EGYETLEN soron FK-violation). Visszagörgetünk, és
+                // SORONKÉNTI upsertre esünk vissza: a jó sorok átmennek, a FK-lógó/hibás sorok kimaradnak + log.
+                // Így egy elszórt hibás sor nem bukja el a TELJES tábla backup-ját (a korábbi 36/134 gyökér-oka).
+                conn.rollback();
+                log.warn("Neon upsert [{}] batch HIBA, soronkénti fallback: {}", tableName, rootMsg(batchEx));
+                return upsertRowByRow(conn, upsertSql, tableName, rows);
             }
-            conn.commit();
         } catch (Exception e) {
-            log.warn("Neon upsert [{}] HIBA: {}", tableName, e.getMessage());
+            log.warn("Neon upsert [{}] HIBA (kapcsolat): {}", tableName, rootMsg(e));
             throw new RuntimeException("Neon upsert failed for " + tableName, e);
         }
+    }
 
-        return totalInserted;
+    /**
+     * Soronkénti upsert-fallback: minden sor külön tranzakcióban; a FK/constraint-hibás sorok
+     * kimaradnak (log), a jók átmennek. A {@code conn} autoCommit=false állapotban érkezik.
+     * Visszaadja a SIKERESEN upsertelt sorok számát.
+     */
+    private int upsertRowByRow(Connection conn, String upsertSql, String tableName, List<Object[]> rows) throws java.sql.SQLException {
+        int ok = 0;
+        int failed = 0;
+        try (PreparedStatement ps = conn.prepareStatement(upsertSql)) {
+            for (Object[] row : rows) {
+                try {
+                    for (int i = 0; i < row.length; i++) {
+                        ps.setObject(i + 1, row[i]);
+                    }
+                    ps.executeUpdate();
+                    conn.commit();
+                    ok++;
+                } catch (java.sql.SQLException rowEx) {
+                    conn.rollback();
+                    failed++;
+                    if (failed <= 5) {
+                        log.warn("Neon upsert [{}] sor kihagyva (FK/constraint): {}", tableName, rootMsg(rowEx));
+                    }
+                }
+            }
+        }
+        if (failed > 0) {
+            log.warn("Neon upsert [{}] soronkénti fallback eredménye: {} ok, {} kihagyva (lógó FK / hibás sor)", tableName, ok, failed);
+        }
+        return ok;
+    }
+
+    /** A kivétel-lánc legmélyebb (root) üzenete, max 200 char — tiszta, nem-zajos log. */
+    private static String rootMsg(Throwable t) {
+        Throwable r = t;
+        while (r.getCause() != null && r.getCause() != r) {
+            r = r.getCause();
+        }
+        String m = r.getMessage();
+        if (m == null) {
+            return r.getClass().getSimpleName();
+        }
+        m = m.replaceAll("\\s+", " ").trim();
+        return m.length() > 200 ? m.substring(0, 200) : m;
     }
 
     /**
