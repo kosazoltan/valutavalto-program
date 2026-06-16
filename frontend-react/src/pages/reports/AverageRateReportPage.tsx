@@ -174,10 +174,15 @@ export default function AverageRateReportPage() {
       )}
 
       {!loading && data && currencyRows.length > 0 && (
-        <div className="bg-white rounded shadow overflow-auto max-h-[70vh]">
-          {/* FK-031: "ablak rögzítése" (freeze panes) — a VALUTA oszlop (sticky left) és a fejléc-sorok
-              (sticky thead) rögzítve, hogy vízszintes ÉS függőleges görgetésnél is láthatók maradjanak.
-              A konténer mindkét irányban görgethető (overflow-auto) + bounded magasság (max-h). */}
+        <div className="bg-white rounded shadow">
+          {/* FK-031 "ablak rögzítése" (freeze panes) + FK-033 regresszió-javítás: a táblázat saját, belső
+              görgetése (korábbi `overflow-auto max-h-[70vh]`) MEGSZŰNT, hogy NE legyen kettős, egymásba
+              ágyazott scroll-kontextus a layout külső `.app-print-content` konténerével (MainLayout.tsx).
+              Egyetlen görgető kontextus marad (a layout-szintű, külső), amelyhez a VALUTA oszlop (sticky
+              left) és a fejléc-sorok (sticky thead) MEGBÍZHATÓAN kötődnek — minden területi oszlopcsoportnál
+              (Békéscsabától az Exclusive Best Change Zrt-ig) és a teljes függőleges hosszban; a vízszintes
+              görgetősáv is mindig elérhető marad (FK-033 FR-2/FR-3/FR-5). A sticky CSS-osztályok lent
+              változatlanok — azok helyesek voltak, csak a görgető kontextus volt hibás. */}
           <table className="min-w-full border-collapse text-sm" data-testid="pivot-table">
             {/* sticky top-0: a teljes (2 soros) fejléc a táblázat tetején marad függőleges görgetésnél */}
             <thead className="bg-gray-50 sticky top-0 z-20">

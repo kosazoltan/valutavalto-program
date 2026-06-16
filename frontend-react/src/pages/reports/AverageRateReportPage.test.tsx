@@ -111,4 +111,22 @@ describe('AverageRateReportPage — FK-027 pivot', () => {
     expect(eurCell.className).toContain('sticky')
     expect(eurCell.className).toContain('left-0')
   })
+
+  it('FK-033: a táblázat-konténer NEM rendelkezik saját belső görgetéssel (a kettős scroll-context megszűnt)', async () => {
+    mockGetPivot.mockResolvedValue(PIVOT)
+    renderPage()
+    fireEvent.click(screen.getByText('Lekérdezés'))
+    await waitFor(() => expect(screen.getByTestId('pivot-table')).toBeInTheDocument())
+
+    // A táblázat közvetlen szülő-konténere (FK-031-ben `overflow-auto max-h-[70vh]` volt) MOSTANTÓL
+    // NEM rendelkezhet saját, magasság-korlátos kétirányú görgetéssel — különben visszatérne a kettős,
+    // egymásba ágyazott scroll-context (a layout `.app-print-content`-tel), ami a sticky VALUTA oszlopot
+    // elcsúsztatta (FK-033 regresszió). A görgetést a layout külső konténere végzi → egyetlen scroll.
+    const container = screen.getByTestId('pivot-table').parentElement!
+    expect(container.className).not.toContain('overflow-auto')
+    expect(container.className).not.toContain('max-h-')
+    // A vizuális keret (NFR-1) megmarad.
+    expect(container.className).toContain('bg-white')
+    expect(container.className).toContain('shadow')
+  })
 })
