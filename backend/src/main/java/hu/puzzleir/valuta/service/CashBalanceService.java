@@ -207,7 +207,12 @@ public class CashBalanceService {
      */
     public BulkInitResult initializeAllBranchBalancesForCurrentCompany() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        List<Branch> branches = branchRepository.findByCompanyIdAndIsActiveTrue(companyId);
+        // FK-032 (2026-06-16, Codex P2 #1195): a bulk-init a VAULT_COUNTERPARTY virtuális partnereket
+        // (MNB, Raiffeisen alszámlák, Úton lévő pénztár stb.) KIZÁRJA — ezek nem valódi pénztárak/értéktárak,
+        // nincs készletük, ezért nem szabad cash_balance sort létrehozni nekik (különben az Országos készlet
+        // FK-029/FK-032 „BESOROLATLAN" tünete VALÓDI sorokból is visszatérne, a forrásnál). A getAllStock
+        // defense-in-depth csak elrejti a tünetet; ez a forrás-szintű gyökér-fix.
+        List<Branch> branches = branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId);
 
         Map<UUID, Integer> perBranch = new LinkedHashMap<>();
         int totalCreated = 0;

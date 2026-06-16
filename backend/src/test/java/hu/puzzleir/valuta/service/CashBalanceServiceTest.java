@@ -194,6 +194,35 @@ class CashBalanceServiceTest {
         }
     }
 
+    @Test
+    @DisplayName("FK-032: initializeAllBranchBalancesForCurrentCompany a VAULT_COUNTERPARTY-kizáró metódust hívja (Codex P2 #1195)")
+    void initializeAll_excludesVaultCounterparties() {
+        UUID companyId = UUID.randomUUID();
+        Company company = new Company();
+        company.setId(companyId);
+        Branch realBranch = new Branch();
+        realBranch.setId(BRANCH_ID);
+        realBranch.setName("Valódi pénztár");
+        realBranch.setCompany(company);
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            // A kizáró metódus a valódi branch-et adja vissza (a VAULT_COUNTERPARTY-t a JPQL kizárja).
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId))
+                    .thenReturn(List.of(realBranch));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(realBranch));
+            when(currencyRepository.findAllActiveOrdered()).thenReturn(List.of()); // 0 új rekord
+
+            var result = service.initializeAllBranchBalancesForCurrentCompany();
+
+            // A bulk-init a KIZÁRÓ metódust hívja (counterparty-mentes) — NEM a sima findByCompanyIdAndIsActiveTrue-t,
+            // különben a 10 virtuális partnernek is létrejönne valódi cash_balance sor (FK-032 forrás-gyökér).
+            verify(branchRepository).findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId);
+            verify(branchRepository, never()).findByCompanyIdAndIsActiveTrue(companyId);
+            assertThat(result.branchCount()).isEqualTo(1);
+        }
+    }
+
     /** Helper: beallit egy authentikalt SecurityContext-et a teszt erejeig. */
     private static void setAuthenticatedContext(String principal) {
         org.springframework.security.authentication.UsernamePasswordAuthenticationToken auth =
