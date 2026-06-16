@@ -315,7 +315,10 @@ public class NeonReplicationService {
             }
         } catch (Exception e) {
             // Kapcsolati hiba VAGY a soronkénti fallback szisztematikus-hiba rethrow-ja (ok==0).
-            log.warn("Neon upsert [{}] HIBA (kapcsolat vagy szisztematikus): {}", tableName, rootMsg(e));
+            // A minősítő üzenet (e.getMessage(), pl. "mind a N sor bukott") ÉS a gyökér-ok (rootMsg)
+            // is megjelenik — hogy a szisztematikus-kontextus ne vesszen el (Copilot review #1194).
+            log.warn("Neon upsert [{}] HIBA (kapcsolat vagy szisztematikus): {} (root: {})",
+                    tableName, e.getMessage(), rootMsg(e));
             throw new RuntimeException("Neon upsert failed for " + tableName, e);
         }
     }
