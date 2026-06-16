@@ -311,6 +311,7 @@ jobs:
           echo "Neon JDBC host: $(echo "$HOSTPART" | sed -E 's#/.*##')"
 
       - name: Flyway migrate Neon (pending migraciok felvitele; idempotens)
+        id: neon_migrate
         if: steps.parse.outputs.skip != 'true'
         continue-on-error: true
         env:
@@ -324,6 +325,7 @@ jobs:
             redgate/flyway:10 -locations=filesystem:/flyway/sql -connectRetries=3 migrate
 
       - name: Verify Neon schema version == repo max (informalis)
+        id: neon_verify
         if: steps.parse.outputs.skip != 'true'
         continue-on-error: true
         env:
@@ -346,13 +348,29 @@ jobs:
 
       - name: Summary
         if: always()
+        env:
+          SKIPPED: ${{ steps.parse.outputs.skip }}
+          MIGRATE_OUTCOME: ${{ steps.neon_migrate.outcome }}
+          VERIFY_OUTCOME: ${{ steps.neon_verify.outcome }}
         run: |
+          # A migrate/verify continue-on-error → a job.status mindig 'success'. Ezért a TÉNYLEGES
+          # step-eredményeket (outcome) jelenítjük meg, hogy a Neon backup-hibája NE legyen láthatatlan
+          # (Codex/Copilot review #1189). A gate maradon informális (nem blokkol), de a hiba LÁTHATÓ.
           {
             echo "## Gate B — Neon BACKUP DB migrate + verify (INFORMÁLIS)"
             echo "- Repo max: V${{ steps.repo.outputs.repo_max }}"
-            echo "- Eredmeny: ${{ job.status }}"
+            if [ "${SKIPPED:-}" = "true" ]; then
+              echo "- Neon migrate/verify: ⏭️ KIHAGYVA (nincs NEON_DATABASE_URL secret)"
+            else
+              echo "- Neon migrate: \`${MIGRATE_OUTCOME:-?}\` | verify: \`${VERIFY_OUTCOME:-?}\`"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
-          echo "- ℹ️ Ez INFORMÁLIS gate: a Neon a BACKUP-cél. A deploy-blokkolast a Gate A (lokalis szolgalo DB) vegzi; a Neon-elteres csak figyelmeztetes (neon-schema-verify.yml read-only diagnosztika)." >> "$GITHUB_STEP_SUMMARY"
+          # Loud warning, ha a backup-séma migrate/verify ténylegesen hibázott (de NEM blokkol).
+          if [ "${MIGRATE_OUTCOME:-}" = "failure" ] || [ "${VERIFY_OUTCOME:-}" = "failure" ]; then
+            echo "::warning::Gate B (Neon BACKUP) migrate/verify HIBA (migrate=${MIGRATE_OUTCOME:-?}, verify=${VERIFY_OUTCOME:-?}) — informális, a primer deploy érvényes, de a Neon backup NINCS szinkronban. Ellenőrzés: neon-schema-verify.yml."
+            echo "- ⚠️ A Neon backup-séma migrate/verify NEM zöld — a backup lemaradhatott (nem blokkoló)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "- ℹ️ Ez INFORMÁLIS gate: a Neon a BACKUP-cél. A deploy-blokkolast a Gate A (lokalis szolgalo DB) vegzi." >> "$GITHUB_STEP_SUMMARY"
 
   # 2026-06-05: Scaleway warm standby JAR-szinkron. ELOTTE a standby orokke 2.5.49-en
   # ragadt (a deploy csak Hetznert frissitette) -> egy 10 oras Hetzner-outage alatt a
