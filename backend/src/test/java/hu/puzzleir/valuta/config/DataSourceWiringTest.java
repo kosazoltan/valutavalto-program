@@ -11,6 +11,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,7 +40,12 @@ class DataSourceWiringTest {
 
     @Test
     void neonReplicationService_readsFromPrimaryJdbcTemplate() {
-        Constructor<?> ctor = NeonReplicationService.class.getDeclaredConstructors()[0];
+        // A JdbcTemplate-paraméteres (injektálandó) konstruktort keressük, NEM a [0]-t — a
+        // getDeclaredConstructors() sorrendje nem garantált (Copilot review #1190).
+        Constructor<?> ctor = Arrays.stream(NeonReplicationService.class.getDeclaredConstructors())
+                .filter(c -> Arrays.asList(c.getParameterTypes()).contains(JdbcTemplate.class))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("nincs JdbcTemplate-paraméteres konstruktor a NeonReplicationService-ben"));
         Parameter[] params = ctor.getParameters();
 
         Parameter jdbcParam = null;
