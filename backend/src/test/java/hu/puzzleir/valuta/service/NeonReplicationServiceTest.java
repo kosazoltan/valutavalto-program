@@ -19,6 +19,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -120,5 +121,43 @@ class NeonReplicationServiceTest {
         assertThat(result).isEqualTo(0);
         verify(syncLogRepository).save(argThat(l -> "SKIPPED_TOO_LARGE".equals(l.getStatus())));
         verify(primaryJdbc, never()).queryForList(anyString(), eq(String.class), eq("currency_stock"));
+    }
+
+    @Test
+    void fullSync_throws_whenAllRowsFailSystemically() throws SQLException {
+        // Codex P1 (#1191): séma-szintű hiba (pl. hiányzó Neon-tábla/oszlop) -> MINDEN sor bukik a
+        // soronkénti fallbackben. A 0 sikeres sor NEM könyvelhető SUCCESS-ként (a "neon_sync_log
+        // SUCCESS != teljes backup" csapda) -> propagálnia kell, hogy a syncTable FAILED-et logoljon.
+        when(primaryJdbc.queryForObject(contains("\"currency\""), eq(Integer.class))).thenReturn(2);
+        // SELECT * -> 2 sor betöltése a RowCallbackHandler-en át (1 oszlop: id)
+        doAnswer(inv -> {
+            org.springframework.jdbc.core.RowCallbackHandler h = inv.getArgument(1);
+            java.sql.ResultSet rs = mock(java.sql.ResultSet.class);
+            java.sql.ResultSetMetaData md = mock(java.sql.ResultSetMetaData.class);
+            when(md.getColumnCount()).thenReturn(1);
+            when(md.getColumnName(1)).thenReturn("id");
+            when(rs.getMetaData()).thenReturn(md);
+            when(rs.getObject(1)).thenReturn(1L, 2L);
+            h.processRow(rs);
+            h.processRow(rs);
+            return null;
+        }).when(primaryJdbc).query(contains("SELECT * FROM \"currency\""),
+                any(org.springframework.jdbc.core.RowCallbackHandler.class));
+
+        // Neon-oldal: a batch ÉS minden soronkénti upsert is séma-hibát dob (systemic).
+        Connection conn = mock(Connection.class);
+        java.sql.PreparedStatement ps = mock(java.sql.PreparedStatement.class);
+        when(neonDataSource.getConnection()).thenReturn(conn);
+        when(conn.prepareStatement(anyString())).thenReturn(ps);
+        when(ps.executeBatch()).thenThrow(new SQLException("relation \"currency\" does not exist"));
+        when(ps.executeUpdate()).thenThrow(new SQLException("relation \"currency\" does not exist"));
+
+        // A systemic hiba propagál (NEM 0-return + SUCCESS) — a syncToNeon majd FAILED-et logol.
+        assertThatThrownBy(() -> service.syncTable("currency"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Neon upsert failed");
+        // KULCS: currency-re NEM mentődik SUCCESS sync-log.
+        verify(syncLogRepository, never())
+                .save(argThat(l -> "SUCCESS".equals(l.getStatus()) && "currency".equals(l.getTableName())));
     }
 }

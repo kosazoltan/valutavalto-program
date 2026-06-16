@@ -6,7 +6,8 @@
 > - Scaleway standby postgres **leállítva** (`valuta-standby-fr`).
 > - A Hetzner replikációs slot (`standby_slot_0`) **eltávolítva**, `synchronous_standby_names=''`
 >   (a primary nem vár senkire), a `sync-replication-guard` és `primary-watchdog` **leállítva/disabled**.
-> - A `deploy-standby` job (`deploy-hetzner.yml`) és a `scaleway-failover-drill.yml` **inaktív**.
+> - A `deploy-standby` job (`deploy-hetzner.yml`, `if:false`) és a `scaleway-failover-drill.yml`
+>   (minden job `if:false` — a `workflow_dispatch` trigger megmarad, de a job-ok skip-elnek) **inaktív**.
 >
 > **Új védvonal (Local-First):** lokális Hetzner primary (a backend ezt szolgálja) + **Neon-backup**
 > (5 percenként, ~5 perc RPO, más felhő) + **napi B2 `pg_dump`** + **kliens-outbox** (pénztári adat a

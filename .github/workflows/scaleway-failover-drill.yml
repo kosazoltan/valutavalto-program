@@ -56,7 +56,12 @@ concurrency:
 
 jobs:
   preflight:
-    name: 'Pre-flight (HTTP + replikáció)'
+    name: 'Pre-flight (HTTP + replikáció) [DEPRECATED — HA kivezetve]'
+    # 2026-06-16: a streaming-HA KIVEZETVE → a drill nem futtatható (nincs élő standby/replikáció).
+    # Az `if: false` letiltja az EGÉSZ láncot: a `drill` és `dry_run_summary` a preflight.outputs.ready-re
+    # épül, ami skip-elt preflightnál üres → azok is skip-elnek. (A workflow_dispatch trigger megmarad,
+    # de minden job skip-el.) Visszaállítás: lásd vault/operations/scaleway-failover-runbook.md.
+    if: false
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:

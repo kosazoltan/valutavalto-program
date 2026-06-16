@@ -3,14 +3,15 @@
 ## Kontextus
 
 A 2026-06-15-ös incidens-note azt sejtette, hogy a backend a Neont szolgálja (split-brain).
-A 2026-06-16-os prod-probe (SSH `root@95.216.191.162`, kulcs `~/.ssh/hetzner_ed25519`) ezt cáfolta.
+A 2026-06-16-os prod-probe (SSH a Hetzner prod-hoz a deploy-kulccsal — konkrét IP/kulcs-path a
+deploy-secretekben, nem itt) ezt cáfolta.
 
 ## Prod-topológia (bizonyított, 2026-06-16)
 
 | Réteg | Mi | Státusz |
 |---|---|---|
 | **Élő adatbázis** | Hetzner lokális `valuta` DB (PgBouncer 6432 → 127.0.0.1:5432) | ✅ SZOLGÁL |
-| **Streaming standby** | Scaleway 163.172.152.234 (WAL-replikáció, sync_state=sync, ≈0 lag) | ✅ ÉL |
+| **Streaming standby** | Scaleway (WAL-replikáció, sync_state=sync, ≈0 lag) | ⏹️ KIVEZETVE 2026-06-16 (akkor még ÉLT) |
 | **Neon backup** | Egyirányú app-szintű szinkron (NeonReplicationService) | ✅ most helyes, addig hiányos volt |
 | **B2 napi dump** | pg_dump → Backblaze B2 | ✅ a lokális DB-ből megy |
 
@@ -48,9 +49,10 @@ a TELJES üzleti tábla szinkron elbukott (pl. `transaction` 36/134).
 - Törzs-táblák a `SYNC_TABLES`/`FULL_SYNC_TABLES` **elejére** kerültek, FK-sorrendben
 - `upsertToNeon` reziliencia: batch-bukásnál soronkénti fallback (a jó sorok átmennek)
 
-**GOTCHA (follow-up):** `denomination` MÉG a `branch` ELŐTT van a sorrendben (FK: denomination→branch
-irányban fügés nincs, de az adatoknál cross-ref lehetséges) — a reziliencia kezeli, de pontosabb
-sorrend: `branch` a `denomination` elé.
+**Follow-up (LEZÁRVA #1192):** a `denomination` (FK: `denomination.branch_id → branch`) immár a
+`branch`/`vault_territory` UTÁN szinkronizál — a helyes FK-topológiai sorrend (a lokális `pg_constraint`
+gráfból levezetve) a #1192-ben került be. A Codex „branch→vault_territory FK" észrevétele a tényleges
+sémában megcáfolva (nincs ilyen constraint).
 
 **GOTCHA:** Neon menedzselt DB-n `session_replication_role=replica` NEM engedélyezett
 (`ERROR: permission denied`) → FK-trigger letiltás fallback nem működik → csak a sorrend + reziliencia számít.
@@ -107,7 +109,7 @@ Most a Neon teljes → a HA-kivezetés újra megfontolandó (de a Scaleway stand
 
 ## Kulcstanulságok
 
-1. **`neon_sync_log SUCCESS ≠ teljes backup.** Sorszám-összevetés kell: `SELECT COUNT(*) FROM <tábla>`
+1. **`neon_sync_log` SUCCESS ≠ teljes backup.** Sorszám-összevetés kell: `SELECT COUNT(*) FROM <tábla>`
    mind a lokálison, mind a Neonon. Divergencia szilens lehet.
 2. **`@ConditionalOnMissingBean` csapda:** ha egy custom DataSource-hoz `JdbcTemplate`-t is létrehozol,
    a Boot auto-konfigurációja visszalép, és a qualifier-nélküli mezők a nem-várt bean-re kötnek.

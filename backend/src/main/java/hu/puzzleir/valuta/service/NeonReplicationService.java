@@ -314,7 +314,11 @@ public class NeonReplicationService {
                 return upsertRowByRow(conn, upsertSql, tableName, rows);
             }
         } catch (Exception e) {
-            log.warn("Neon upsert [{}] HIBA (kapcsolat): {}", tableName, rootMsg(e));
+            // Kapcsolati hiba VAGY a soronkénti fallback szisztematikus-hiba rethrow-ja (ok==0).
+            // A minősítő üzenet (e.getMessage(), pl. "mind a N sor bukott") ÉS a gyökér-ok (rootMsg)
+            // is megjelenik — hogy a szisztematikus-kontextus ne vesszen el (Copilot review #1194).
+            log.warn("Neon upsert [{}] HIBA (kapcsolat vagy szisztematikus): {} (root: {})",
+                    tableName, e.getMessage(), rootMsg(e));
             throw new RuntimeException("Neon upsert failed for " + tableName, e);
         }
     }
@@ -327,6 +331,7 @@ public class NeonReplicationService {
     private int upsertRowByRow(Connection conn, String upsertSql, String tableName, List<Object[]> rows) throws java.sql.SQLException {
         int ok = 0;
         int failed = 0;
+        java.sql.SQLException lastError = null;
         try (PreparedStatement ps = conn.prepareStatement(upsertSql)) {
             for (Object[] row : rows) {
                 try {
@@ -339,11 +344,22 @@ public class NeonReplicationService {
                 } catch (java.sql.SQLException rowEx) {
                     conn.rollback();
                     failed++;
+                    lastError = rowEx;
                     if (failed <= 5) {
                         log.warn("Neon upsert [{}] sor kihagyva (FK/constraint): {}", tableName, rootMsg(rowEx));
                     }
                 }
             }
+        }
+        // SZISZTEMATIKUS-hiba detektálás (Codex P1, #1191): ha MINDEN sor bukott (ok==0 && failed>0),
+        // az tipikusan nem per-row FK-lógás, hanem séma-szintű probléma a Neon CÉL-on (hiányzó tábla/oszlop,
+        // nincs 'id' ON CONFLICT-target, jogosultság). Ilyenkor a 0 sikeres sort NEM könyvelhetjük el
+        // SUCCESS-ként — különben a sync-log "SUCCESS"-t mond egy üres/elavult backupra (a "neon_sync_log
+        // SUCCESS != teljes backup" csapda). Rethrow → a syncTable FAILED-et logol, a hiba LÁTHATÓ.
+        if (ok == 0 && failed > 0) {
+            throw new java.sql.SQLException(
+                    String.format("Szisztematikus Neon upsert hiba [%s]: mind a(z) %d sor bukott (séma-drift? hiányzó tábla/oszlop?)", tableName, failed),
+                    lastError);
         }
         if (failed > 0) {
             log.warn("Neon upsert [{}] soronkénti fallback eredménye: {} ok, {} kihagyva (lógó FK / hibás sor)", tableName, ok, failed);
