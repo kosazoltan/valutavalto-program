@@ -109,6 +109,7 @@ public class ExchangeRateMasterService {
         ExchangeRateMaster master = masterRepository.findById(masterRateId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                     "Törzs árfolyam nem található: " + masterRateId));
+        assertOwnCompany(master, masterRateId);
 
         if (master.getStatus() != MasterRateStatus.DRAFT) {
             throw new ValidationException(
@@ -144,6 +145,7 @@ public class ExchangeRateMasterService {
         ExchangeRateMaster master = masterRepository.findById(masterRateId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                     "Törzs árfolyam nem található: " + masterRateId));
+        assertOwnCompany(master, masterRateId);
 
         if (master.getStatus() != MasterRateStatus.APPROVED
                 && master.getStatus() != MasterRateStatus.DRAFT) {
@@ -152,9 +154,12 @@ public class ExchangeRateMasterService {
                 + master.getStatus());
         }
 
-        // Lokális final referenciák a lambda-khoz (master lentebb reassigned)
+        // Lokális final referenciák a lambda-khoz (master lentebb reassigned).
+        // Multi-tenant IDOR-guard (audit 2026-06-15, finding #8): a cég-lookup a HÍVÓ
+        // cégéből jön, sosem a cél master sajátjából — az assertOwnCompany garantálja,
+        // hogy a kettő megegyezik, így idegen cég mastere nem publikálható.
         final Long currencyId = master.getCurrencyId();
-        final UUID companyIdForLookup = master.getCompanyId();
+        final UUID companyIdForLookup = SecurityUtils.getCurrentCompanyId();
 
         hu.puzzleir.valuta.entity.Currency currency = currencyRepository.findById(currencyId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -246,6 +251,7 @@ public class ExchangeRateMasterService {
         ExchangeRateMaster master = masterRepository.findById(masterRateId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                     "Törzs árfolyam nem található: " + masterRateId));
+        assertOwnCompany(master, masterRateId);
 
         if (master.getStatus() == MasterRateStatus.ARCHIVED) {
             throw new ValidationException("Archivált árfolyamot nem lehet visszavonni!");
@@ -295,6 +301,12 @@ public class ExchangeRateMasterService {
      */
     @Transactional(readOnly = true)
     public List<ExchangeRateDistribution> getDistributionStatus(UUID masterRateId) {
+        // Multi-tenant IDOR-guard (audit 2026-06-15, finding #8): előbb a master-t töltjük
+        // be és ellenőrizzük a tulajdonost, hogy idegen cég elosztás-állapota ne szivárogjon.
+        ExchangeRateMaster master = masterRepository.findById(masterRateId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Törzs árfolyam nem található: " + masterRateId));
+        assertOwnCompany(master, masterRateId);
         return distributionRepository.findByMasterRateId(masterRateId);
     }
 
@@ -307,12 +319,31 @@ public class ExchangeRateMasterService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                     "Elosztás nem található: " + distributionId));
 
+        // Multi-tenant IDOR-guard (audit 2026-06-15, finding #8): az elosztás a mastere
+        // cégén keresztül kötődik a hívóhoz; idegen cég elosztását nem lehet visszaigazolni.
+        ExchangeRateMaster master = masterRepository.findById(dist.getMasterRateId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Elosztás nem található: " + distributionId));
+        assertOwnCompany(master, distributionId);
+
         dist.setStatus(DistributionStatus.ACKNOWLEDGED);
         dist.setAcknowledgedAt(LocalDateTime.now());
         distributionRepository.save(dist);
     }
 
     // ============ BELSŐ SEGÉD METÓDUSOK ============
+
+    /**
+     * Multi-tenant ownership-guard: a törzs árfolyam a hívó cégéhez tartozik-e.
+     * Cross-tenant → ResourceNotFoundException (nem 403, hogy a létezés se szivárogjon).
+     * Lásd TransferService.assertOwnCompany / CustomerService.findById azonos minta.
+     */
+    private void assertOwnCompany(ExchangeRateMaster master, UUID idForMessage) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (master == null || companyId == null || !companyId.equals(master.getCompanyId())) {
+            throw new ResourceNotFoundException("Törzs árfolyam nem található: " + idForMessage);
+        }
+    }
 
     /**
      * Célpénztárak meghatározása munkacsoport vagy teljes cég alapján.

@@ -39,6 +39,14 @@ public class NotificationService {
     public void markAsRead(UUID id) {
         Notification n = repo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Értesítés nem található: " + id));
+        // FINDING #10 IDOR/integritás fix: csak a SAJÁT értesítését állíthatja olvasottra a hívó.
+        // A Notification.userId a Worker.id String-ként (HIGH FIX #15); a hívó worker-azonosítóját
+        // a SecurityContextből oldjuk fel. Eltérés → ResourceNotFoundException (nem leak: ugyanaz
+        // az üzenet, mint nemlétező id-nél), hogy más user/tenant értesítését ne lehessen piszkálni.
+        String currentUserId = String.valueOf(SecurityUtils.getCurrentWorkerId());
+        if (!currentUserId.equals(n.getUserId())) {
+            throw new ResourceNotFoundException("Értesítés nem található: " + id);
+        }
         n.setIsRead(true);
         repo.save(n);
     }

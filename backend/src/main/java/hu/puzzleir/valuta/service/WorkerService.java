@@ -651,6 +651,13 @@ public class WorkerService {
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Worker not found: " + workerId));
 
+        // IDOR-guard: user @PathVariable workerId — a cég-scope ellenőrzése a szomszéd metódusok
+        // mintájával (worker.getCompany().getId().equals(companyId)); cross-tenant → ResourceNotFound.
+        if (worker.getCompany() == null
+                || !worker.getCompany().getId().equals(SecurityUtils.getCurrentCompanyId())) {
+            throw new ResourceNotFoundException("Worker not found: " + workerId);
+        }
+
         String companyCode = worker.getCompany() != null ? worker.getCompany().getCode() : "";
         String workerCode = worker.getCode();
         String loginKey = normalizeCode(companyCode) + ":" + normalizeLoginCode(workerCode);

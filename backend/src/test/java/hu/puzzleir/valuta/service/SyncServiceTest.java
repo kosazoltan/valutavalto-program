@@ -16,11 +16,17 @@ import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.repository.SyncLogRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
 
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -35,6 +41,7 @@ import static org.mockito.Mockito.*;
  * SyncService UNIT tesztek — Mockito.
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class SyncServiceTest {
 
     @InjectMocks
@@ -68,6 +75,19 @@ class SyncServiceTest {
     private FileTransportService fileTransportService;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
+    private static final UUID COMPANY_ID = UUID.randomUUID();
+
+    @BeforeEach
+    void setUpSecurityAndScope() {
+        // IDOR-guard (audit 2026-06-15): a resolveBranch a branchId-t a hívó cégére validálja
+        // (existsByIdAndCompanyId), és getCurrentCompanyId()-t hív → auth-kontextus + scope-stub kell.
+        WorkerAuthenticationDetails details =
+                new WorkerAuthenticationDetails(1L, COMPANY_ID, BRANCH_ID, "ADMIN");
+        TestingAuthenticationToken auth = new TestingAuthenticationToken("test", "x", "ROLE_ADMIN");
+        auth.setDetails(details);
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        when(branchRepository.existsByIdAndCompanyId(any(), any())).thenReturn(true);
+    }
 
     private Branch createBranch() {
         Branch b = new Branch();

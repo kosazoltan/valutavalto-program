@@ -121,9 +121,99 @@ def check_repository_methods() -> list[str]:
     return issues
 
 
+# ── IDOR by-id detektor (2026-06-15 audit): "lista-scope-olt DE by-id-unscoped" aszimmetria ──
+# Egy entitas multi-tenant, ha kozvetlen company_id-je VAN, vagy a tenancy egy szulon
+# (branch/customer/transaction/worker/vaultTerritory/cashDesk) keresztul el.
+MT_ENTITY_HINT = re.compile(
+    r'company_id|\bcompanyId\b|branch_id|\bbranchId\b|\bcustomerId\b|\btransactionId\b|'
+    r'\bcashDeskId\b|\bvaultTerritoryId\b|\bworkerId\b|'
+    r'@ManyToOne[\s\S]{0,120}?\b(Branch|Customer|Transaction|Worker|VaultTerritory|CashRegisterDevice|Company)\b',
+)
+
+# Ownership-check jelolok (ha a metodus kornyezeteben van, NEM IDOR)
+OWNERSHIP_MARKERS = re.compile(
+    r'companyId|getCurrentCompanyId|getCurrentBranchId|existsByIdAndCompany|findByIdAndCompany|'
+    r'AndCompany_?Id|getCompany\(\)\.getId|validateBranch|assertOwn|requireOwn|verif(y|ied)Company|'
+    r'verif(y|ied)Tenant|verifyClosingTenant|InCompany|OwnBranch|OwnCompany|OwnWizard|OwnReport|'
+    r'OwnCashDesk|OwnTransaction|verifyBranchOwnership|assertBranch|requireBranch|isOwnBranch|'
+    r'InCurrentCompany|assertAccountInCaller|enforceBranchAccess|canAccess|assertOwnedBy|loadOwned|'
+    r'loadScoped|requireCustomerIn|requireTransactionIn|assertDocumentParent|getCurrentWorkerId',
+    re.IGNORECASE,
+)
+
+# Olvasaskori, scope nelkul is veszelytelen lookupok (sajat-kontextus / not-found-utan dob)
+SAFE_RAW_CONTEXT = re.compile(r'findByIdForUpdate|orElse\(null\)\s*;\s*$', re.IGNORECASE)
+
+
+def build_multitenant_entities() -> set[str]:
+    ents: set[str] = set()
+    edir = SRC_JAVA / "hu" / "puzzleir" / "valuta" / "entity"
+    if not edir.exists():
+        return ents
+    for f in edir.rglob("*.java"):
+        txt = f.read_text(encoding="utf-8", errors="replace")
+        if MT_ENTITY_HINT.search(txt):
+            ents.add(f.stem)
+    return ents
+
+
+def build_repo_entity_map() -> dict[str, str]:
+    m: dict[str, str] = {}
+    for f in SRC_JAVA.rglob("*Repository.java"):
+        txt = f.read_text(encoding="utf-8", errors="replace")
+        mm = re.search(r'interface\s+(\w+Repository)\s+extends\s+\w*(?:Jpa|CrudPaging|Crud)?Repository<\s*(\w+)\s*,', txt)
+        if mm:
+            m[mm.group(1)] = mm.group(2)
+    return m
+
+
+def check_findbyid_without_scope() -> list[str]:
+    """Service/Controller: <repo>.findById(...) multi-tenant entitason, ownership-check NELKUL a kornyezetben."""
+    mt = build_multitenant_entities()
+    repo_entity = build_repo_entity_map()
+    issues: list[str] = []
+    targets = list(SRC_JAVA.rglob("*Service.java")) + list(SRC_JAVA.rglob("*Controller.java"))
+    for f in targets:
+        txt = f.read_text(encoding="utf-8", errors="replace")
+        lines = txt.splitlines()
+        # injektalt repo-mezok: TipusRepository varName
+        var_entity: dict[str, str] = {}
+        for vm in re.finditer(r'\b(\w+Repository)\s+(\w+)\s*[;,)=]', txt):
+            ent = repo_entity.get(vm.group(1))
+            if ent:
+                var_entity[vm.group(2)] = ent
+        for i, line in enumerate(lines):
+            for cm in re.finditer(r'\b(\w+)\.findById\s*\(([^)]*)', line):
+                ent = var_entity.get(cm.group(1))
+                if not ent or ent not in mt:
+                    continue
+                arg = cm.group(2)
+                # Sajat-kontextus (a hivo sajat worker/branch/company id-ja) -> NEM cross-tenant IDOR
+                if re.search(r'getCurrent\w*|currentWorker|currentBranch|currentUser|\bme\b|principal', arg, re.IGNORECASE):
+                    continue
+                lo, hi = max(0, i - 32), min(len(lines), i + 36)
+                window = "\n".join(lines[lo:hi])
+                if OWNERSHIP_MARKERS.search(window):
+                    continue
+                rel = str(f.relative_to(ROOT))
+                issues.append(f"  ?  {rel}:{i+1}  {cm.group(1)}.findById({arg.strip()[:30]}) -> {ent} — NINCS ownership-check")
+    return issues
+
+
 def main():
     args   = sys.argv[1:]
     strict = "--strict" in args
+    if "--idor" in args:
+        print("multi-tenant-audit --idor: by-id scope-hiany detektor\n")
+        idor = check_findbyid_without_scope()
+        if not idor:
+            print("OK -- nincs gyanus by-id findById (multi-tenant entitason ownership-check nelkul)")
+            sys.exit(0)
+        print(f"[findById multi-tenant entitason, ownership-check nelkul] ({len(idor)} jelolt -- verifikald)")
+        for x in idor:
+            print(x)
+        print(f"\n{len(idor)} potencialis by-id IDOR-jelolt. Mindegyiket verifikald (false-positive lehet).")
+        sys.exit(1)
 
     print("multi-tenant-audit: scanning for companyId gaps...\n")
 

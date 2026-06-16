@@ -11,10 +11,13 @@ import hu.puzzleir.valuta.entity.EmailAccount;
 import hu.puzzleir.valuta.entity.VaultTerritory;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.repository.EmailAccountRepository;
+import hu.puzzleir.valuta.repository.OwnCompanyRepository;
 import hu.puzzleir.valuta.repository.VaultTerritoryRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.OwnCompany;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,6 +41,7 @@ public class EmailAccountService {
     private final WorkerRepository workerRepository;
     private final VaultTerritoryRepository vaultTerritoryRepository;
     private final BranchRepository branchRepository;
+    private final OwnCompanyRepository ownCompanyRepository;
     private final GmailOAuthConfig gmailOAuthConfig;
     private final GoogleAuthorizationCodeFlow googleAuthorizationCodeFlow;
     private final HttpTransport googleHttpTransport;
@@ -46,8 +50,10 @@ public class EmailAccountService {
      * Email fiók lekérdezése ID alapján.
      */
     public EmailAccount getAccountById(UUID accountId) {
-        return emailAccountRepository.findById(accountId)
+        EmailAccount account = emailAccountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Email fiók nem található: " + accountId));
+        assertAccountInCallerCompany(account);
+        return account;
     }
 
     /**
@@ -152,6 +158,9 @@ public class EmailAccountService {
         if (dto.getId() != null) {
             account = emailAccountRepository.findById(dto.getId())
                     .orElseThrow(() -> new ResourceNotFoundException("Email fiók nem található: " + dto.getId()));
+            // Multi-tenant IDOR-védelem (F-7): a betöltött fiók a hívó cégéhez tartozzon-e
+            // (FK branch/vaultTerritory/ownCompany/worker company-ja alapján), MIELŐTT módosítjuk.
+            assertAccountInCallerCompany(account);
         } else {
             account = new EmailAccount();
         }
@@ -162,20 +171,29 @@ public class EmailAccountService {
         account.setOwnCompany(null);
         account.setWorker(null);
 
+        // Multi-tenant IDOR-védelem (F-7): az ÚJ FK-hozzárendelést is a hívó cégére kell validálni,
+        // különben a fiók más cég branch/vaultTerritory/ownCompany/worker-éhez köthető.
+        UUID callerCompanyId = SecurityUtils.getCurrentCompanyId();
         if (dto.getBranchId() != null) {
+            if (!branchRepository.existsByIdAndCompanyId(dto.getBranchId(), callerCompanyId)) {
+                throw new ResourceNotFoundException("Iroda nem található: " + dto.getBranchId());
+            }
             hu.puzzleir.valuta.entity.Branch branch = new hu.puzzleir.valuta.entity.Branch();
             branch.setId(dto.getBranchId());
             account.setBranch(branch);
         } else if (dto.getVaultTerritoryId() != null) {
-            VaultTerritory vt = vaultTerritoryRepository.findById(dto.getVaultTerritoryId())
+            VaultTerritory vt = vaultTerritoryRepository.findByIdAndCompanyId(dto.getVaultTerritoryId(), callerCompanyId)
                     .orElseThrow(() -> new ResourceNotFoundException("Értéktári terület nem található: " + dto.getVaultTerritoryId()));
             account.setVaultTerritory(vt);
         } else if (dto.getOwnCompanyId() != null) {
-            hu.puzzleir.valuta.entity.OwnCompany oc = new hu.puzzleir.valuta.entity.OwnCompany();
-            oc.setId(dto.getOwnCompanyId());
+            OwnCompany oc = ownCompanyRepository.findById(dto.getOwnCompanyId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Saját cég nem található: " + dto.getOwnCompanyId()));
+            if (!callerCompanyId.equals(oc.getCompanyId())) {
+                throw new ResourceNotFoundException("Saját cég nem található: " + dto.getOwnCompanyId());
+            }
             account.setOwnCompany(oc);
         } else if (dto.getWorkerId() != null) {
-            Worker worker = workerRepository.findById(dto.getWorkerId())
+            Worker worker = workerRepository.findByIdAndCompanyId(dto.getWorkerId(), callerCompanyId)
                     .orElseThrow(() -> new ResourceNotFoundException("Worker nem található: " + dto.getWorkerId()));
             account.setWorker(worker);
         }
@@ -200,6 +218,8 @@ public class EmailAccountService {
     public void deleteAccount(UUID accountId) {
         EmailAccount account = emailAccountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Email fiók nem található: " + accountId));
+        // Multi-tenant IDOR-védelem (F-7): cross-tenant törlés tiltása.
+        assertAccountInCallerCompany(account);
         log.info("Email fiók törlése: id={}, gmail={}", accountId, account.getGmailAddress());
         emailAccountRepository.delete(account);
     }
@@ -210,8 +230,11 @@ public class EmailAccountService {
      */
     public String startOAuthFlow(UUID accountId) {
         // Ellenőrizzük, hogy létezik a fiók
-        emailAccountRepository.findById(accountId)
+        EmailAccount account = emailAccountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Email fiók nem található: " + accountId));
+        // Multi-tenant IDOR-védelem (F-7): cross-tenant OAuth-flow indítás tiltása
+        // (más cég fiókjához token-kötés megakadályozása).
+        assertAccountInCallerCompany(account);
 
         // State = accountId (callback-ban használjuk)
         String state = accountId.toString();
@@ -294,6 +317,40 @@ public class EmailAccountService {
             account.setSyncError("Token frissítés hiba: " + e.getMessage());
             emailAccountRepository.save(account);
             throw new ValidationException("Token frissítés hiba: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Multi-tenant IDOR-védelem (F-7): a betöltött EmailAccount a hívó cégéhez tartozik-e.
+     *
+     * <p>Az EmailAccount entitásnak nincs direkt companyId-ja; a tenancy a kitöltött FK-n él
+     * (branch / vaultTerritory / ownCompany / worker — pontosan 1). A FK company-ját a megfelelő
+     * repository-val ellenőrizzük (saját tranzakcióban), így a metódus a nem-tranzakciós belépési
+     * pontokban (getAccountById, startOAuthFlow) is biztonságos — csak a FK @Id-ját olvassuk,
+     * ami nem triggereli a lazy proxy inicializálását.</p>
+     *
+     * <p>Cross-tenant fiók -> ResourceNotFoundException (nem leak az erőforrás létezéséről).</p>
+     */
+    private void assertAccountInCallerCompany(EmailAccount account) {
+        UUID callerCompanyId = SecurityUtils.getCurrentCompanyId();
+        boolean inCompany = false;
+
+        if (account.getBranch() != null && account.getBranch().getId() != null) {
+            inCompany = branchRepository.existsByIdAndCompanyId(account.getBranch().getId(), callerCompanyId);
+        } else if (account.getVaultTerritory() != null && account.getVaultTerritory().getId() != null) {
+            inCompany = vaultTerritoryRepository
+                    .findByIdAndCompanyId(account.getVaultTerritory().getId(), callerCompanyId).isPresent();
+        } else if (account.getOwnCompany() != null && account.getOwnCompany().getId() != null) {
+            inCompany = ownCompanyRepository.findById(account.getOwnCompany().getId())
+                    .map(oc -> callerCompanyId.equals(oc.getCompanyId()))
+                    .orElse(false);
+        } else if (account.getWorker() != null && account.getWorker().getId() != null) {
+            inCompany = workerRepository
+                    .findByIdAndCompanyId(account.getWorker().getId(), callerCompanyId).isPresent();
+        }
+
+        if (!inCompany) {
+            throw new ResourceNotFoundException("Email fiók nem található: " + account.getId());
         }
     }
 

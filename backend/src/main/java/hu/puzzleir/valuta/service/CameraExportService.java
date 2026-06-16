@@ -41,6 +41,7 @@ public class CameraExportService {
     private final CameraRecordingRepository recordingRepository;
     private final CameraEncryptionService encryptionService;
     private final AuditLogService auditLogService;
+    private final BranchRepository branchRepository;
 
     @Value("${camera.export.baseDir:C:/valuta/camera-exports}")
     private String exportBaseDir;
@@ -57,6 +58,9 @@ public class CameraExportService {
         if (from.isAfter(to)) {
             throw new ValidationException("Kezdő dátum nem lehet később mint a záró dátum!");
         }
+
+        // Multi-tenant IDOR (NEW-5): a kérelmezett branch a hívó cégéhez tartozzon.
+        verifyBranchOwnership(branchId);
 
         String requestedBy = SecurityUtils.getCurrentWorkerCode();
 
@@ -345,19 +349,39 @@ public class CameraExportService {
 
     @Transactional(readOnly = true)
     public List<CameraExportRequest> getRequestsByBranch(UUID branchId) {
+        // Multi-tenant IDOR (NEW-5): a /branch/{branchId} úton branch-ownership guard.
+        verifyBranchOwnership(branchId);
         return exportRepository.findByBranchIdOrderByCreatedAtDesc(branchId);
     }
 
     @Transactional(readOnly = true)
     public List<ChainOfCustodyRecord> getCustodyHistory(UUID exportRequestId) {
+        // Multi-tenant IDOR (NEW-5): a /{requestId}/custody úton előbb a request branch-ének
+        // cég-tulajdonát ellenőrizzük (findRequest → verifyBranchOwnership), különben 404.
+        findRequest(exportRequestId);
         return custodyRepository.findByExportRequestIdOrderByEventTimestampAsc(exportRequestId);
     }
 
     // === HELPERS ===
 
     private CameraExportRequest findRequest(UUID requestId) {
-        return exportRepository.findById(requestId)
+        CameraExportRequest request = exportRepository.findById(requestId)
             .orElseThrow(() -> new ResourceNotFoundException("Export kérelem nem található: " + requestId));
+        // Multi-tenant IDOR (NEW-5): a CameraExportRequest csak branchId-t hordoz (companyId nincs),
+        // ezért a request branch-ének cégét ellenőrizzük a hívó cége ellen. Cross-tenant → 404.
+        verifyBranchOwnership(request.getBranchId());
+        return request;
+    }
+
+    /**
+     * Multi-tenant ownership-guard: a megadott branch a bejelentkezett felhasználó cégéhez tartozzon.
+     * Cross-tenant esetben ResourceNotFoundException (nem leak-eli a létezést).
+     */
+    private void verifyBranchOwnership(UUID branchId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (branchId == null || !branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
+            throw new ResourceNotFoundException("Export kérelem nem található vagy nem hozzáférhető.");
+        }
     }
 
     private void recordCustodyEvent(UUID exportRequestId, UUID branchId, String cameraId,

@@ -32,6 +32,7 @@ import static org.mockito.Mockito.*;
 class SealNumberServiceTest {
 
     @Mock private SealNumberRepository sealNumberRepository;
+    @Mock private hu.puzzleir.valuta.repository.BranchRepository branchRepository;
     @InjectMocks private SealNumberService sealNumberService;
 
     @Test
@@ -79,16 +80,23 @@ class SealNumberServiceTest {
     @Test
     @DisplayName("Dupla felhasználás → ValidationException")
     void shouldRejectDoubleUse() {
-        UUID sealId = UUID.randomUUID();
-        SealNumber existing = SealNumber.builder()
-                .id(sealId)
-                .sealNumber("BC01-20260306-001")
-                .usedAt(java.time.LocalDateTime.now()) // már felhasználva!
-                .build();
+        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+            // IDOR-guard (audit 2026-06-15): markAsUsed előbb branch-ownership-check-et fut → saját cég.
+            mocked.when(SecurityUtils::getCurrentCompanyId).thenReturn(UUID.randomUUID());
+            when(branchRepository.existsByIdAndCompanyId(any(), any())).thenReturn(true);
 
-        when(sealNumberRepository.findById(sealId)).thenReturn(Optional.of(existing));
+            UUID sealId = UUID.randomUUID();
+            SealNumber existing = SealNumber.builder()
+                    .id(sealId)
+                    .sealNumber("BC01-20260306-001")
+                    .branchId(UUID.randomUUID()) // saját céges branch (existsByIdAndCompanyId → true)
+                    .usedAt(java.time.LocalDateTime.now()) // már felhasználva!
+                    .build();
 
-        assertThatThrownBy(() -> sealNumberService.markAsUsed(sealId, UUID.randomUUID()))
-                .hasMessageContaining("már felhasználva");
+            when(sealNumberRepository.findById(sealId)).thenReturn(Optional.of(existing));
+
+            assertThatThrownBy(() -> sealNumberService.markAsUsed(sealId, UUID.randomUUID()))
+                    .hasMessageContaining("már felhasználva");
+        }
     }
 }

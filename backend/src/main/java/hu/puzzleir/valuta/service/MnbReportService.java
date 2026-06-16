@@ -60,6 +60,7 @@ public class MnbReportService {
     public MnbReport generateDailyReport(UUID branchId, LocalDate date) {
         log.info("MNB napi riport generálás: branchId={}, date={}", branchId, date);
 
+        assertBranchOwnership(branchId);
         Branch branch = branchRepository.findById(branchId)
             .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 
@@ -133,6 +134,7 @@ public class MnbReportService {
     public MnbReport generateMonthlyReport(UUID branchId, YearMonth month) {
         log.info("MNB havi riport generálás: branchId={}, month={}", branchId, month);
 
+        assertBranchOwnership(branchId);
         Branch branch = branchRepository.findById(branchId)
             .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 
@@ -211,6 +213,7 @@ public class MnbReportService {
     public MnbSubmissionResult submitReport(UUID reportId) {
         MnbReport report = mnbReportRepository.findById(reportId)
             .orElseThrow(() -> new ResourceNotFoundException("MNB riport nem található: " + reportId));
+        assertOwnReport(report, reportId);
 
         if (report.getStatus() != MnbReportStatus.DRAFT) {
             throw new ValidationException("Csak DRAFT státuszú riport küldhető be! Jelenlegi: " + report.getStatus());
@@ -255,6 +258,7 @@ public class MnbReportService {
     public MnbSubmissionResult retrySubmission(UUID reportId) {
         MnbReport report = mnbReportRepository.findById(reportId)
             .orElseThrow(() -> new ResourceNotFoundException("MNB riport nem található: " + reportId));
+        assertOwnReport(report, reportId);
 
         if (report.getStatus() != MnbReportStatus.REJECTED) {
             throw new ValidationException("Csak REJECTED státuszú riport küldhető újra! Jelenlegi: " + report.getStatus());
@@ -317,6 +321,7 @@ public class MnbReportService {
 
         log.info("MNB heti riport generálás: branchId={}, hét={} – {}", branchId, monday, sunday);
 
+        assertBranchOwnership(branchId);
         Branch branch = branchRepository.findById(branchId)
             .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 
@@ -386,8 +391,55 @@ public class MnbReportService {
      */
     @Transactional(readOnly = true)
     public MnbReport getReportStatus(UUID reportId) {
-        return mnbReportRepository.findById(reportId)
+        MnbReport report = mnbReportRepository.findById(reportId)
             .orElseThrow(() -> new ResourceNotFoundException("MNB riport nem található: " + reportId));
+        assertOwnReport(report, reportId);
+        return report;
+    }
+
+    /**
+     * Multi-tenant IDOR-védelem (F-3): a riport tulajdonos cége (branch → company)
+     * egyezzen a hívó cégével. Cross-tenant esetén — az oldalcsatorna elkerülésére —
+     * ugyanazt a {@link ResourceNotFoundException}-t dobja, mint a nem létező riport
+     * (nem szivárogtatja, hogy a reportId más cégnél létezik).
+     *
+     * <p>FONTOS: ez user-facing (controller) hívási útra való. A {@code @Scheduled}
+     * MnbDailyReportScheduler kizárólag a {@code generateDailyReport()}-ot hívja,
+     * ezt a guardot nem érinti.</p>
+     */
+    private void assertOwnReport(MnbReport report, UUID reportId) {
+        UUID callerCompanyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        UUID reportCompanyId = report.getBranch() != null && report.getBranch().getCompany() != null
+            ? report.getBranch().getCompany().getId()
+            : null;
+        if (reportCompanyId == null || !reportCompanyId.equals(callerCompanyId)) {
+            throw new ResourceNotFoundException("MNB riport nem található: " + reportId);
+        }
+    }
+
+    /**
+     * Multi-tenant IDOR-védelem a branchId-paraméteres riport-generálásra
+     * (generateDaily/Monthly/WeeklyReport): a user által megadott branchId a hívó
+     * cégéhez tartozzon. Cross-tenant esetén — az oldalcsatorna elkerülésére —
+     * ugyanaz a {@link ResourceNotFoundException}, mint a nem létező irodánál.
+     *
+     * <p>FONTOS: a {@code @Scheduled} {@code MnbDailyReportScheduler} auth-kontextus
+     * nélkül, minden cég összes aktív irodáját iterálva hívja a
+     * {@code generateDailyReport()}-ot (kötelező rendszer-batch). Ott nincs
+     * bejelentkezett user, ezért {@link hu.puzzleir.valuta.security.SecurityUtils#getCurrentCompanyIdOrNull()}
+     * {@code null}-t ad → a guard kihagyásra kerül, az ütemezett út NEM törik el.
+     * Ha viszont van auth-kontextus (controller-út), a branch-tulajdon kötelezően ellenőrzött.</p>
+     */
+    private void assertBranchOwnership(UUID branchId) {
+        UUID callerCompanyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyIdOrNull();
+        if (callerCompanyId == null) {
+            // Nincs auth-kontextus → ütemezett rendszer-batch (MnbDailyReportScheduler).
+            // A scheduled cross-tenant generálás szándékos és kötelező, NEM IDOR.
+            return;
+        }
+        if (!branchRepository.existsByIdAndCompanyId(branchId, callerCompanyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
     }
 
     /**

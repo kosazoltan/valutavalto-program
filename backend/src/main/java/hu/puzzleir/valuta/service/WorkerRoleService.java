@@ -11,11 +11,13 @@ import hu.puzzleir.valuta.repository.WorkerRoleAssignmentRepository;
 import hu.puzzleir.valuta.repository.WorkerRoleDefinitionRepository;
 import hu.puzzleir.valuta.repository.WorkerRolePermissionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -104,7 +106,10 @@ public class WorkerRoleService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void assignRole(Long workerId, String roleCode) {
-        Worker worker = workerRepository.findById(workerId)
+        // Multi-tenant IDOR-védelem (F-8): a workert a hívó cégére kell szűrni,
+        // különben cross-tenant privilégium-eszkaláció lehetséges. Minta: WorkerController GET /{id}/roles.
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Worker worker = workerRepository.findByIdAndCompanyId(workerId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Worker nem található: " + workerId));
 
         WorkerRoleDefinition roleDef = roleDefRepository.findByCode(roleCode)
@@ -131,6 +136,12 @@ public class WorkerRoleService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void removeRole(Long workerId, String roleCode) {
+        // Multi-tenant IDOR-védelem (F-8): a worker company-scope gate, mielőtt role-t veszünk el.
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (workerRepository.findByIdAndCompanyId(workerId, companyId).isEmpty()) {
+            throw new ResourceNotFoundException("Worker nem található: " + workerId);
+        }
+
         if (!assignmentRepository.existsByWorkerIdAndRoleDefCode(workerId, roleCode)) {
             throw new ResourceNotFoundException("A worker nem rendelkezik ezzel a szerepkörrel: " + roleCode);
         }

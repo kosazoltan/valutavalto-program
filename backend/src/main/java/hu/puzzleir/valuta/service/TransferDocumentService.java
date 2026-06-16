@@ -88,6 +88,10 @@ public class TransferDocumentService {
         TransferDocument doc = findAndValidate(docId, TransferDocument.Status.PENDING);
         Worker courier = workerRepository.findById(courierId)
                 .orElseThrow(() -> new ResourceNotFoundException("Értékszállító nem található: " + courierId));
+        // IDOR-fix (audit 2026-06-15, FINDING #19): a courierId user-vezérelt (request body) — a
+        // hívó cégéhez tartozzon, különben idegen cég dolgozója köthető a (saját) bizonylathoz, és
+        // annak adatai szivárognának a válaszba. Cross-tenant → 404 (id-enumeráció ellen).
+        assertWorkerInCurrentCompany(courier, courierId, "Értékszállító");
 
         // PIN ellenőrzés
         if (doc.getCourierPinHash() != null) {
@@ -129,6 +133,8 @@ public class TransferDocumentService {
         TransferDocument doc = findAndValidate(docId, TransferDocument.Status.DELIVERED);
         Worker receiver = workerRepository.findById(receiverId)
                 .orElseThrow(() -> new ResourceNotFoundException("Átvevő dolgozó nem található: " + receiverId));
+        // IDOR-fix (audit 2026-06-15, FINDING #19): a receiverId user-vezérelt — a hívó cégéhez kötjük.
+        assertWorkerInCurrentCompany(receiver, receiverId, "Átvevő dolgozó");
 
         doc.setReceiver(receiver);
         doc.setStatus(TransferDocument.Status.CONFIRMED);
@@ -169,6 +175,17 @@ public class TransferDocumentService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (doc.getCompany() == null || !doc.getCompany().getId().equals(companyId)) {
             throw new ResourceNotFoundException("Bizonylat nem található: " + id);
+        }
+    }
+
+    /**
+     * User-vezérelt worker (courier/receiver) tenant-ellenőrzése: a hívó cégéhez tartozzon.
+     * Cross-tenant → 404 (id-enumeráció + idegen-dolgozó adatszivárgás ellen).
+     */
+    private void assertWorkerInCurrentCompany(Worker worker, Long workerId, String label) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (worker.getCompany() == null || !worker.getCompany().getId().equals(companyId)) {
+            throw new ResourceNotFoundException(label + " nem található: " + workerId);
         }
     }
 

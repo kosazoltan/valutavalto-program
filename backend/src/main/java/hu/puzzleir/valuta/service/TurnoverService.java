@@ -33,6 +33,12 @@ import java.util.UUID;
 public class TurnoverService {
 
     private final TransactionRepository transactionRepository;
+    // IDOR-fix (audit 2026-06-15, FINDING #3): branch-ownership guard a per-branch
+    // riportoknál. A branchService.findById(branchId) ResourceNotFoundException-t dob,
+    // ha a branch NEM a hívó cégéhez (SecurityUtils.getCurrentCompanyId()) tartozik —
+    // így a CASHIER-elérhető /daily|/weekly|/monthly|/yearly végpontok nem szivárogtatnak
+    // cross-tenant forgalmi adatot. (A /company végpont már SecurityUtils-szal védett.)
+    private final BranchService branchService;
 
     public TurnoverReportDto getDailyTurnover(UUID branchId, LocalDate date) {
         return buildReport(
@@ -106,6 +112,12 @@ public class TurnoverService {
 
     private TurnoverReportDto buildReport(UUID branchId, String period,
                                            LocalDateTime from, LocalDateTime to) {
+        // IDOR guard (FINDING #3): a branchId KÖTELEZŐEN a hívó cégéhez tartozik.
+        // findById ResourceNotFoundException-t dob cross-tenant branchId-nél, mielőtt
+        // bármilyen branch-szűrt aggregáló query lefutna. Minden per-branch publikus
+        // metódus (daily/weekly/monthly/yearly) ide fut be, ezért egy helyen elég.
+        branchService.findById(branchId);
+
         LocalDate dateFrom = from.toLocalDate();
         LocalDate dateTo = to.toLocalDate();
 

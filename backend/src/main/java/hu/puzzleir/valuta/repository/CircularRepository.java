@@ -8,10 +8,19 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface CircularRepository extends JpaRepository<Circular, Long> {
+
+    /**
+     * IDOR-fix (F-6): cég-szűrt körlevél-lekérés. Más cég körlevele és a nem létező
+     * körlevél ugyanazt az üres eredményt adja — így nincs oldalcsatorna (id-enumeráció).
+     * A companyId == null (legacy, V88 előtti) sorok szándékosan nem szivárognak.
+     */
+    @Query("SELECT c FROM Circular c WHERE c.id = :id AND c.companyId = :companyId")
+    Optional<Circular> findByIdAndCompanyId(@Param("id") Long id, @Param("companyId") UUID companyId);
 
     @Query("SELECT c FROM Circular c WHERE c.acknowledged = false ORDER BY c.urgent DESC, c.createdAt DESC")
     List<Circular> findUnacknowledged();

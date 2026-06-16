@@ -194,6 +194,14 @@ public class SessionOpenService {
         DailySession session = dailySessionRepository.findById(sessionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Munkamenet nem található: " + sessionId));
 
+        // IDOR-guard: a sessionId szekvenciális/enumerálható, a DailySession branch→company
+        // szerint multi-tenant. Cross-tenant session → ugyanaz a ResourceNotFoundException,
+        // mint a nem létezőnél (nincs id-enumeráció oldalcsatorna). A LAZY company/branch
+        // a readOnly tranzakción belül dereferálható (OSIV=off).
+        if (!session.getBranch().getCompany().getId().equals(SecurityUtils.getCurrentCompanyId())) {
+            throw new ResourceNotFoundException("Munkamenet nem található: " + sessionId);
+        }
+
         return calculateOpeningBalances(session.getBranch().getId());
     }
 

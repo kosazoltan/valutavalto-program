@@ -5,8 +5,10 @@ import hu.puzzleir.valuta.dto.denomination.DenominationBalanceDto;
 import hu.puzzleir.valuta.dto.denomination.DenominationQuantityUpdateRequestDto;
 import hu.puzzleir.valuta.entity.Denomination;
 import hu.puzzleir.valuta.entity.DenominationBalance;
+import hu.puzzleir.valuta.repository.CashRegisterDeviceRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,12 +31,32 @@ public class DenominationBalanceService {
 
     private final DenominationBalanceRepository denominationBalanceRepository;
     private final DenominationRepository denominationRepository;
+    private final CashRegisterDeviceRepository cashRegisterDeviceRepository;
+
+    /**
+     * Multi-tenant IDOR guard: a cashDeskId (= CashRegisterDevice id) a hivo cegehez
+     * tartozik-e. A DenominationBalance entity csak cashDeskId-t hordoz, a tenant-izolacio
+     * a CashRegisterDevice-on (company_id) el — ezert minden user-facing, cashDeskId-parameteres
+     * metodusnak ezen kell atmennie, mielott olvas/ir. Cross-tenant VAGY nem letezo eszkoz →
+     * ResourceNotFoundException (a letezes se szivarogjon).
+     *
+     * <p>Csak controller-utak hivjak (getCashDeskDenominations/...ByCurrency/updateQuantity/
+     * batchUpdate/calculateTotal); nincs @Scheduled/@Async/auth nelkuli hivo, ezert a
+     * SecurityUtils.getCurrentCompanyId() biztonsagos.</p>
+     */
+    private void requireOwnCashDesk(UUID cashDeskId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (cashDeskId == null || !cashRegisterDeviceRepository.existsByIdAndCompanyId(cashDeskId, companyId)) {
+            throw new ResourceNotFoundException("Pénztárgép nem található: " + cashDeskId);
+        }
+    }
 
     /**
      * Pénztárgép összes címletének lekérése
      */
     @Transactional(readOnly = true)
     public List<DenominationBalanceDto> getCashDeskDenominations(UUID cashDeskId) {
+        requireOwnCashDesk(cashDeskId);
         return denominationBalanceRepository.findByCashDeskId(cashDeskId)
                 .stream()
                 .map(this::toDto)
@@ -46,6 +68,7 @@ public class DenominationBalanceService {
      */
     @Transactional(readOnly = true)
     public List<DenominationBalanceDto> getCashDeskDenominationsByCurrency(UUID cashDeskId, Long currencyId) {
+        requireOwnCashDesk(cashDeskId);
         return denominationBalanceRepository.findByCashDeskIdAndCurrencyId(cashDeskId, currencyId)
                 .stream()
                 .map(this::toDto)
@@ -56,6 +79,7 @@ public class DenominationBalanceService {
      * Egyedi címlet darabszám frissítése
      */
     public DenominationBalanceDto updateQuantity(UUID cashDeskId, Long denominationId, int quantity) {
+        requireOwnCashDesk(cashDeskId);
         DenominationBalance balance = denominationBalanceRepository
                 .findByCashDeskIdAndDenominationId(cashDeskId, denominationId)
                 .orElseGet(() -> {
@@ -82,6 +106,7 @@ public class DenominationBalanceService {
      * Batch címlet darabszám frissítés
      */
     public List<DenominationBalanceDto> batchUpdate(UUID cashDeskId, List<DenominationQuantityUpdateRequestDto> updates) {
+        requireOwnCashDesk(cashDeskId);
         List<DenominationBalanceDto> results = new ArrayList<>();
 
         for (DenominationQuantityUpdateRequestDto update : updates) {
@@ -99,6 +124,7 @@ public class DenominationBalanceService {
      */
     @Transactional(readOnly = true)
     public BigDecimal calculateTotal(UUID cashDeskId, Long currencyId) {
+        requireOwnCashDesk(cashDeskId);
         return denominationBalanceRepository.sumTotalValueByCashDeskIdAndCurrencyId(cashDeskId, currencyId);
     }
 

@@ -98,6 +98,14 @@ public class WorkerAttendanceService {
      */
     public Page<WorkerAttendanceDto> getAttendanceByWorker(Long workerId, LocalDate from, LocalDate to,
                                                             Pageable pageable) {
+        // Multi-tenant IDOR (NEW-4): a workerId tulajdonos cégét a hívó cégével vetjük össze.
+        // Cross-tenant → ResourceNotFoundException, hogy a Long workerId enumerálásával
+        // ne szivárogjon ki más cég jelenléti-PII adata. A getMyAttendance a saját
+        // workerId-t adja át, így a self-access átmegy.
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (workerRepository.findByIdAndCompanyId(workerId, companyId).isEmpty()) {
+            throw new ResourceNotFoundException("Dolgozó nem található: " + workerId);
+        }
         if (from != null && to != null) {
             LocalDateTime fromDt = from.atStartOfDay();
             LocalDateTime toDt = to.atTime(LocalTime.MAX);

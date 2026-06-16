@@ -3,8 +3,10 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.Contribution;
 import hu.puzzleir.valuta.entity.Transaction;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.ContributionRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -35,18 +37,37 @@ public class ContributionService {
     private final ContributionRepository repository;
     private final TransactionRepository transactionRepository;
     private final SystemParameterService systemParameterService;
+    // IDOR-fix (audit 2026-06-15, FINDING #9): a Contribution tenancy-je a branch_id-n keresztül él
+    // (nincs közvetlen company_id); minden user-vezérelt branchId-t a hívó cégéhez kötünk.
+    private final BranchRepository branchRepository;
 
     public List<Contribution> findAll(UUID branchId, String contributionType) {
-        return repository.findWithFilters(branchId, contributionType);
+        if (branchId != null) {
+            assertBranchInCurrentCompany(branchId);
+            return repository.findWithFilters(branchId, contributionType);
+        }
+        // branchId nélkül cég-szintű lista: a hívó cégéhez tartozó branch-ekre szűkítve
+        // (a findWithFilters önmagában minden céget visszaadna — company_id oszlop hiányában szűrünk).
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return repository.findWithFilters(null, contributionType).stream()
+                .filter(c -> branchRepository.existsByIdAndCompanyId(c.getBranchId(), companyId))
+                .toList();
     }
 
     public Contribution findById(UUID id) {
-        return repository.findById(id)
+        Contribution contribution = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contribution not found: " + id));
+        // branch_id NOT NULL → mindig ellenőrizhető; cross-tenant esetén ugyanaz a "not found".
+        if (!branchRepository.existsByIdAndCompanyId(
+                contribution.getBranchId(), SecurityUtils.getCurrentCompanyId())) {
+            throw new ResourceNotFoundException("Contribution not found: " + id);
+        }
+        return contribution;
     }
 
     @Transactional(rollbackFor = Exception.class)
     public List<Contribution> calculate(UUID branchId, LocalDate periodStart, LocalDate periodEnd) {
+        assertBranchInCurrentCompany(branchId);
         List<Contribution> contributions = new ArrayList<>();
 
         // Calculate total turnover for the period.
@@ -96,7 +117,16 @@ public class ContributionService {
     }
 
     public List<Contribution> findByPeriod(UUID branchId, LocalDate periodStart, LocalDate periodEnd) {
+        assertBranchInCurrentCompany(branchId);
         return repository.findByBranchAndPeriod(branchId, periodStart, periodEnd);
+    }
+
+    /** User által megadott branchId a hívó cégéhez kötése; cross-tenant → ResourceNotFoundException. */
+    private void assertBranchInCurrentCompany(UUID branchId) {
+        if (branchId == null
+                || !branchRepository.existsByIdAndCompanyId(branchId, SecurityUtils.getCurrentCompanyId())) {
+            throw new ResourceNotFoundException("Branch not found: " + branchId);
+        }
     }
 
     /**

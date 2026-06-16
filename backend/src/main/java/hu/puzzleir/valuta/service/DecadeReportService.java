@@ -154,8 +154,12 @@ public class DecadeReportService {
      */
     @Transactional(readOnly = true)
     public Page<DecadeReportDto> getDecadeReports(UUID branchId, int year, int page, int size) {
+        // IDOR védelem (FINDING #5): a lista csak a hívó cégének irodájára szól.
+        // A closeDecade/generate már scope-olt — ehhez igazodunk company-szűrt query-vel.
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
         return decadeReportRepository
-            .findByBranchIdAndYear(branchId, year, PageRequest.of(page, size, Sort.by("decade")))
+            .findByBranchIdAndYearAndBranchCompanyId(
+                branchId, year, currentCompanyId, PageRequest.of(page, size, Sort.by("decade")))
             .map(this::toDto);
     }
 

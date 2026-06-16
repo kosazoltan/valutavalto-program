@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.DataImportJobRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -144,6 +145,14 @@ public class DataImportService {
         DataImportJob job = dataImportJobRepository.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Import job not found: " + jobId));
 
+        // IDOR guard: a jobId user @PathVariable; a job branch-én keresztül ellenőrizzük, hogy a
+        // hívó cégéhez tartozik-e. Cross-tenant → ResourceNotFoundException (létezés-szivárgás ellen).
+        UUID jobBranchId = job.getBranch() != null ? job.getBranch().getId() : null;
+        if (jobBranchId == null
+                || !branchRepository.existsByIdAndCompanyId(jobBranchId, SecurityUtils.getCurrentCompanyId())) {
+            throw new ResourceNotFoundException("Import job not found: " + jobId);
+        }
+
         if (job.getStatus() != DataImportStatus.FAILED) {
             throw new IllegalStateException("Only FAILED jobs can be retried. Current status: " + job.getStatus());
         }
@@ -171,6 +180,12 @@ public class DataImportService {
     // ============ PRIVATE HELPERS ============
 
     private Branch findBranch(UUID branchId) {
+        // IDOR guard: a branchId user-kontrollált (request.getBranchId()) az import* végpontokon.
+        // Csak a hívó cégének branch-jét engedjük; cross-tenant → ResourceNotFoundException.
+        // (Nincs scheduled/auth-mentes import-hívó: minden import* a MANAGER/ADMIN-gated REST-en jön.)
+        if (!branchRepository.existsByIdAndCompanyId(branchId, SecurityUtils.getCurrentCompanyId())) {
+            throw new ResourceNotFoundException("Branch not found: " + branchId);
+        }
         return branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Branch not found: " + branchId));
     }

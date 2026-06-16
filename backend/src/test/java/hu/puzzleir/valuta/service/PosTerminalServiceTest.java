@@ -37,6 +37,9 @@ class PosTerminalServiceTest {
     private PosTerminalRepository repository;
 
     @Mock
+    private hu.puzzleir.valuta.repository.BranchRepository branchRepository;
+
+    @Mock
     private SystemParameterService systemParameterService;
 
     @Mock
@@ -49,7 +52,7 @@ class PosTerminalServiceTest {
         IntegrationTransportProperties properties = new IntegrationTransportProperties();
         properties.setRootPath(tempDir.toString());
         FileTransportService fileTransportService = new FileTransportService(properties, new ObjectMapper());
-        service = new PosTerminalService(repository, systemParameterService, otpProtocol,
+        service = new PosTerminalService(repository, branchRepository, systemParameterService, otpProtocol,
                 new BorgunProtocolService(), new WorldlineProtocolService(),
                 properties, fileTransportService);
         ReflectionTestUtils.setField(service, "bridgeSimulatedApprovalEnabled", false);

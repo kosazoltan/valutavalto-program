@@ -4,12 +4,19 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeTransactionDto;
 import hu.puzzleir.valuta.entity.HandlingFeeTransaction;
 import hu.puzzleir.valuta.entity.PaymentMethod;
+import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.repository.HandlingFeeTransactionRepository;
+import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,6 +27,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -36,7 +44,23 @@ class HandlingFeeTransactionServiceTest {
 
     @Mock
     private HandlingFeeTransactionRepository repository;
+    @Mock private TransactionRepository transactionRepository;
     @Mock private LicenseService licenseService;
+
+    @BeforeEach
+    void setUpSecurityContext() {
+        // IDOR-guard (audit 2026-06-15): applyDiscount most findByIdAndCompanyId-t hív → auth-kontextus kell.
+        WorkerAuthenticationDetails details =
+                new WorkerAuthenticationDetails(1L, UUID.randomUUID(), UUID.randomUUID(), "ADMIN");
+        TestingAuthenticationToken auth = new TestingAuthenticationToken("t", "x", "ROLE_ADMIN");
+        auth.setDetails(details);
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
 
     // =====================================================================
     // Díjszámítás: 0-50K → 0%
@@ -137,6 +161,8 @@ class HandlingFeeTransactionServiceTest {
                 .build();
 
         when(repository.findById(feeId)).thenReturn(Optional.of(hft));
+        when(transactionRepository.findByIdAndCompanyId(eq(1L), any()))
+                .thenReturn(Optional.of(new Transaction()));
         when(repository.save(any(HandlingFeeTransaction.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 

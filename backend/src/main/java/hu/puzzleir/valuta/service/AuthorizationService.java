@@ -23,19 +23,37 @@ import java.util.UUID;
 public class AuthorizationService {
 
     private final AuthorizationRepository authorizationRepository;
+    private final AuthorizedRepresentativeService authorizedRepresentativeService;
 
     @Transactional(readOnly = true)
     public List<Authorization> findByRepresentativeId(UUID representativeId) {
+        // Multi-tenant IDOR-védelem (F-4): az Authorization entitásnak nincs companyId-ja,
+        // a tenancy a representative-en él. A company-scope-olt findById validálja a tulajdonlást
+        // (cross-tenant representativeId -> ResourceNotFoundException), mielőtt jogosultságokat adunk vissza.
+        authorizedRepresentativeService.findById(representativeId);
         return authorizationRepository.findByRepresentativeId(representativeId);
     }
 
     @Transactional(readOnly = true)
     public Authorization findById(UUID id) {
-        return authorizationRepository.findById(id)
+        Authorization auth = authorizationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Jogosultság nem található: " + id));
+        // Multi-tenant IDOR-védelem (F-4): a tenancy a representative-en él. A company-scope-olt
+        // representative-lookup cross-tenant esetén ResourceNotFoundException-t dob; ezt
+        // Jogosultság-not-found-ra fordítjuk, hogy ne szivárogjon a representative létezése.
+        try {
+            authorizedRepresentativeService.findById(auth.getRepresentativeId());
+        } catch (ResourceNotFoundException e) {
+            throw new ResourceNotFoundException("Jogosultság nem található: " + id);
+        }
+        return auth;
     }
 
     public Authorization create(Authorization authorization) {
+        // Multi-tenant IDOR-védelem (F-4): a jogosultság a hívó cégének representative-jéhez kell,
+        // hogy tartozzon — különben más cég meghatalmazottjához köthető AML-limit. Cross-tenant
+        // representativeId -> ResourceNotFoundException.
+        authorizedRepresentativeService.findById(authorization.getRepresentativeId());
         // Domain validation
         if (authorization.getStartDate() != null && authorization.getExpiryDate() != null
                 && authorization.getExpiryDate().isBefore(authorization.getStartDate())) {

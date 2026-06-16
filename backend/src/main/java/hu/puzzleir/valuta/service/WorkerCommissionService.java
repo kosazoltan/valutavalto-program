@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.entity.WorkerCommission;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.WorkerCommissionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
@@ -26,14 +27,25 @@ public class WorkerCommissionService {
     private final WorkerCommissionRepository repository;
     private final TransactionRepository transactionRepository;
     private final WorkerRepository workerRepository;
+    private final BranchRepository branchRepository;
 
     public List<WorkerCommission> findAll(Long workerId, LocalDate periodStart, LocalDate periodEnd) {
-        return repository.findWithFilters(workerId, periodStart, periodEnd);
+        // Multi-tenant IDOR (NEW-3): a query company-scoped (branch→company join),
+        // így a workerId-enumeráció más cég jutalékát nem adja vissza.
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return repository.findWithFilters(companyId, workerId, periodStart, periodEnd);
     }
 
     public WorkerCommission findById(UUID id) {
-        return repository.findById(id)
+        WorkerCommission wc = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("WorkerCommission not found: " + id));
+        // Multi-tenant IDOR (NEW-3): a jutalék branch-e a hívó cégéé-e?
+        // Cross-tenant → ResourceNotFoundException (nem leak az erőforrás létezése).
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (!branchRepository.existsByIdAndCompanyId(wc.getBranchId(), companyId)) {
+            throw new ResourceNotFoundException("WorkerCommission not found: " + id);
+        }
+        return wc;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -104,10 +116,12 @@ public class WorkerCommissionService {
     }
 
     public List<WorkerCommission> findByPeriod(UUID branchId, LocalDate periodStart, LocalDate periodEnd) {
+        requireBranchInCurrentCompany(branchId);
         return repository.findByBranchAndPeriod(branchId, periodStart, periodEnd);
     }
 
     public List<Map<String, Object>> getAccountingList(UUID branchId, LocalDate periodStart, LocalDate periodEnd) {
+        requireBranchInCurrentCompany(branchId);
         List<WorkerCommission> commissions = repository.findByBranchAndPeriod(branchId, periodStart, periodEnd);
         List<Map<String, Object>> result = new ArrayList<>();
 
@@ -127,5 +141,17 @@ public class WorkerCommissionService {
             result.add(m);
         }
         return result;
+    }
+
+    /**
+     * Multi-tenant IDOR (NEW-3): branch-ownership guard.
+     * Ellenőrzi, hogy a kért branchId a hívó cégéhez tartozik-e; ha nem,
+     * ResourceNotFoundException (cross-tenant payroll-PII szivárgás ellen).
+     */
+    private void requireBranchInCurrentCompany(UUID branchId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (!branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
+            throw new ResourceNotFoundException("Branch not found: " + branchId);
+        }
     }
 }

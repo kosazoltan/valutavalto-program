@@ -24,6 +24,14 @@ public interface DataCollectionRepository extends JpaRepository<DataCollection, 
     Optional<DataCollection> findByBranchIdAndCollectionDate(UUID branchId, LocalDate date);
 
     /**
+     * Multi-tenant-safe: gyűjtés keresése iroda + dátum + tulajdonos cég alapján (IDOR FINDING #9).
+     * A {@link #findByBranchIdAndCollectionDate(UUID, LocalDate)} company-scope nélkül idegen cég
+     * irodájának gyűjtését is visszaadta.
+     */
+    Optional<DataCollection> findByBranchIdAndCollectionDateAndBranchCompanyId(
+        UUID branchId, LocalDate date, UUID companyId);
+
+    /**
      * Gyűjtések státusz szerint
      */
     List<DataCollection> findByStatus(DataCollectionStatus status);
@@ -53,4 +61,12 @@ public interface DataCollectionRepository extends JpaRepository<DataCollection, 
      * Ha nincs rekord a napra, üres lista.
      */
     List<DataCollection> findByCollectionDateOrderByBranchIdAsc(LocalDate collectionDate);
+
+    /**
+     * Multi-tenant-safe összesítő: adott napra CSAK a hívó cégének irodáira (IDOR FINDING #9).
+     * A {@link #findByCollectionDateOrderByBranchIdAsc(LocalDate)} globálisan MINDEN cég
+     * összes rekordját visszaadta (globális leak).
+     */
+    List<DataCollection> findByCollectionDateAndBranchCompanyIdOrderByBranchIdAsc(
+        LocalDate collectionDate, UUID companyId);
 }

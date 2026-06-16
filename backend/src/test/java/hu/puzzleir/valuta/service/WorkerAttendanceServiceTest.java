@@ -136,6 +136,9 @@ class WorkerAttendanceServiceTest {
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentWorkerId).thenReturn(1L);
+            // IDOR-guard (audit 2026-06-15): getAttendanceByWorker a worker cég-tulajdonosát ellenőrzi.
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(UUID.randomUUID());
+            when(workerRepository.findByIdAndCompanyId(eq(1L), any())).thenReturn(Optional.of(worker));
             when(attendanceRepository.findByWorkerIdAndDateRange(eq(1L), any(), any(), any()))
                     .thenReturn(new PageImpl<>(List.of(attendance)));
 
@@ -203,10 +206,15 @@ class WorkerAttendanceServiceTest {
                 .loginAt(LocalDateTime.now())
                 .build();
 
-        when(attendanceRepository.findByWorkerId(eq(2L), any()))
-                .thenReturn(new PageImpl<>(List.of(att)));
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            // IDOR-guard (audit 2026-06-15): a workerId cég-tulajdonosát ellenőrizzük a lekérdezés előtt.
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(UUID.randomUUID());
+            when(workerRepository.findByIdAndCompanyId(eq(2L), any())).thenReturn(Optional.of(worker));
+            when(attendanceRepository.findByWorkerId(eq(2L), any()))
+                    .thenReturn(new PageImpl<>(List.of(att)));
 
-        Page<WorkerAttendanceDto> result = service.getAttendanceByWorker(2L, null, null, PageRequest.of(0, 20));
-        assertThat(result.getTotalElements()).isEqualTo(1);
+            Page<WorkerAttendanceDto> result = service.getAttendanceByWorker(2L, null, null, PageRequest.of(0, 20));
+            assertThat(result.getTotalElements()).isEqualTo(1);
+        }
     }
 }

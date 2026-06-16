@@ -1,7 +1,9 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.dto.BranchDto;
 import hu.puzzleir.valuta.dto.turnover.TurnoverReportDto;
 import hu.puzzleir.valuta.repository.TransactionRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +20,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
@@ -32,8 +35,18 @@ class TurnoverServiceBreakdownTest {
     @Mock
     private TransactionRepository transactionRepository;
 
+    // IDOR-guard (audit 2026-06-15, FINDING #3): buildReport branchService.findById-t hív
+    // cég-scope ellenőrzésre — a unit-tesztben mockoljuk, hogy a guard ne dobjon.
+    @Mock
+    private BranchService branchService;
+
     private static final UUID BRANCH_ID = UUID.randomUUID();
     private static final LocalDate TODAY = LocalDate.of(2026, 3, 16);
+
+    @BeforeEach
+    void setUpBranchGuard() {
+        when(branchService.findById(BRANCH_ID)).thenReturn(mock(BranchDto.class));
+    }
 
     // =========================================================================
     // byCurrency lista nem üres, ha van adat

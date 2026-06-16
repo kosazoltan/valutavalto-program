@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.DataCollectionRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,7 +48,28 @@ public class DataCollectionService {
      * 2. Készlet állapot rögzítése (CashBalance-ból)
      * 3. Státusz frissítése
      */
+    /**
+     * User-facing belépő az egy-iroda gyűjtéshez — a /collect REST végpont EGYETLEN user-úti hívása.
+     *
+     * <p>IDOR guard (FINDING): a branchId user-kontrollált request-body mező, ezért a hívó cégének
+     * tulajdonát ELLENŐRIZZÜK, mielőtt a közös feldolgozó futna. Cross-tenant → ResourceNotFoundException.
+     * A guard KIZÁRÓLAG ezen a user-úton van: az auth-kontextus NÉLKÜLI belső hívók
+     * ({@link #collectAllBranchesForAllCompanies} ütemezett cron-job + {@link #retryFailedCollections})
+     * a guard-mentes {@link #collectBranchDataInternal}-t használják, így a getCurrentCompanyId() nem
+     * hasal el rajtuk.</p>
+     */
     public DataCollection collectBranchData(UUID branchId, LocalDate date) {
+        if (!branchRepository.existsByIdAndCompanyId(branchId, SecurityUtils.getCurrentCompanyId())) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+        return collectBranchDataInternal(branchId, date);
+    }
+
+    /**
+     * Belső (auth-kontextus nélküli) gyűjtés-feldolgozó. KÖZVETLENÜL csak a rendszer-job és a
+     * retry-hurok hívhatja; user-úton mindig a guardolt {@link #collectBranchData}-n keresztül.
+     */
+    DataCollection collectBranchDataInternal(UUID branchId, LocalDate date) {
         log.info("Adatgyűjtés indítása: branchId={}, date={}", branchId, date);
 
         Branch branch = branchRepository.findById(branchId)
@@ -152,18 +174,24 @@ public class DataCollectionService {
     }
 
     /**
-     * Összes aktív iroda adatgyűjtése az adott napra.
+     * Összes aktív iroda adatgyűjtése az adott napra — CSAK a hívó cégének irodáira.
+     *
+     * IDOR védelem (FINDING #9): korábban a globális {@code findByIsActiveTrue()} MINDEN tenant
+     * aktív irodáin operált (cross-tenant). A /collect-all REST végpont request-kontextusban fut
+     * (ADMIN-gated), így a hívó cégének aktív irodáira szűrünk.
      */
-    @SuppressWarnings("deprecation") // Scheduled batch job: szandekos cross-tenant. REST controller atallitasa kulon feladat.
     public List<DataCollection> collectAllBranches(LocalDate date) {
         log.info("Összes iroda adatgyűjtés indítása: date={}", date);
 
-        List<Branch> activeBranches = branchRepository.findByIsActiveTrue();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<Branch> activeBranches = branchRepository.findByCompanyIdAndIsActiveTrue(companyId);
         List<DataCollection> results = new ArrayList<>();
 
         for (Branch branch : activeBranches) {
             try {
-                DataCollection result = collectBranchData(branch.getId(), date);
+                // activeBranches már companyId-szűrt (findByCompanyIdAndIsActiveTrue), ezért a
+                // guard-mentes belső feldolgozót hívjuk — nem kell branch-enként újra-ellenőrizni.
+                DataCollection result = collectBranchDataInternal(branch.getId(), date);
                 results.add(result);
             } catch (Exception e) {
                 log.error("Adatgyűjtés hiba irodánál: branchId={}, hiba={}",
@@ -186,11 +214,38 @@ public class DataCollectionService {
     }
 
     /**
+     * RENDSZER-SZINTŰ (ütemezett) napi adatgyűjtés — MINDEN cég összes aktív irodájára.
+     *
+     * Ezt KIZÁRÓLAG a {@code DataCollectionScheduler} (auth-kontextus NÉLKÜLI cron-szál) hívja, ezért
+     * NEM használ {@link SecurityUtils#getCurrentCompanyId()}-t (az "Nincs bejelentkezett felhasználó"-val
+     * elhasalna — ez volt a 2026-06-15 IDOR-fix regressziója). A user-facing {@link #collectAllBranches}
+     * ezzel szemben a hívó cégére szűr (request-kontextus, ADMIN-gated).
+     */
+    public List<DataCollection> collectAllBranchesForAllCompanies(LocalDate date) {
+        log.info("Rendszer-szintű (ütemezett) napi adatgyűjtés indítása: date={}", date);
+        List<Branch> activeBranches = branchRepository.findByIsActiveTrue(); // GLOBÁLIS — szándékos rendszer-job
+        List<DataCollection> results = new ArrayList<>();
+        for (Branch branch : activeBranches) {
+            try {
+                results.add(collectBranchDataInternal(branch.getId(), date));
+            } catch (Exception e) {
+                log.error("Ütemezett adatgyűjtés hiba irodánál: branchId={}, hiba={}",
+                    branch.getId(), e.getMessage(), e);
+            }
+        }
+        log.info("Rendszer-szintű adatgyűjtés kész: date={}, összesen={} iroda", date, results.size());
+        return results;
+    }
+
+    /**
      * Gyűjtés státusz lekérdezése.
      */
     @Transactional(readOnly = true)
     public DataCollection getCollectionStatus(UUID branchId, LocalDate date) {
-        return dataCollectionRepository.findByBranchIdAndCollectionDate(branchId, date)
+        // IDOR védelem (FINDING #9): csak a hívó cégének irodájára szóló gyűjtés kérdezhető le.
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return dataCollectionRepository
+            .findByBranchIdAndCollectionDateAndBranchCompanyId(branchId, date, companyId)
             .orElseThrow(() -> new ResourceNotFoundException(
                 "Adatgyűjtés nem található: branchId=" + branchId + ", date=" + date));
     }
@@ -201,7 +256,10 @@ public class DataCollectionService {
      */
     @Transactional(readOnly = true)
     public List<hu.puzzleir.valuta.dto.datacollection.DataCollectionDto> getSummary(LocalDate date) {
-        return dataCollectionRepository.findByCollectionDateOrderByBranchIdAsc(date)
+        // IDOR védelem (FINDING #9): csak a hívó cégének irodáira szóló rekordok (globális leak ellen).
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return dataCollectionRepository
+            .findByCollectionDateAndBranchCompanyIdOrderByBranchIdAsc(date, companyId)
             .stream()
             .map(dc -> hu.puzzleir.valuta.dto.datacollection.DataCollectionDto.builder()
                 .id(dc.getId())
@@ -234,7 +292,8 @@ public class DataCollectionService {
         int retried = 0;
         for (DataCollection dc : failed) {
             try {
-                collectBranchData(dc.getBranch().getId(), dc.getCollectionDate());
+                // retryFailedCollections cron-úton (auth-kontextus nélkül) is futhat → guard-mentes belső hívás.
+                collectBranchDataInternal(dc.getBranch().getId(), dc.getCollectionDate());
                 retried++;
             } catch (Exception e) {
                 log.error("Újrapróbálás sikertelen: branchId={}, date={}, hiba={}",

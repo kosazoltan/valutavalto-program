@@ -384,7 +384,14 @@ public class BranchService {
     @Transactional(readOnly = true)
     public List<BranchDto> findChildren(UUID parentId) {
         log.debug("Finding children of branch: {}", parentId);
-        List<Branch> branches = branchRepository.findByParentBranchId(parentId);
+        // FINDING #4 IDOR fix: a kiinduló branch-et a scope-olt findById-vel töltjük be
+        // (cross-tenant esetén dob), majd a gyermekek company-ját is a hívóéhoz kötjük.
+        // A findByParentBranchId nem company-szűrt → defenzív utószűrés a hívó cégére.
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        assertBranchInCompany(parentId, companyId);
+        List<Branch> branches = branchRepository.findByParentBranchId(parentId).stream()
+                .filter(b -> isInCompany(b, companyId))
+                .toList();
         return branchMapper.toDtoList(branches);
     }
 
@@ -394,8 +401,34 @@ public class BranchService {
     @Transactional(readOnly = true)
     public List<BranchDto> findPathToRoot(UUID branchId) {
         log.debug("Finding path to root for branch: {}", branchId);
-        List<Branch> path = branchRepository.findPathToRoot(branchId);
+        // FINDING #4 IDOR fix: a kiinduló branch ownership-ellenőrzése (scope-olt findById
+        // mintára) cross-tenant branchId-re dob. A rekurzív CTE path-elemei is csak a hívó
+        // cégéhez tartozhatnak — defenzív utószűrés (a hierarchia cégen belül zárt, de a
+        // path elemeit explicit a hívó cégére korlátozzuk).
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        assertBranchInCompany(branchId, companyId);
+        List<Branch> path = branchRepository.findPathToRoot(branchId).stream()
+                .filter(b -> isInCompany(b, companyId))
+                .toList();
         return branchMapper.toDtoList(path);
+    }
+
+    /**
+     * FINDING #4 (multi-tenant IDOR): a megadott branch a hívó cégéhez tartozik-e.
+     * A {@link #findById(UUID)} scope-olt mintáját követi: cross-tenant vagy nem létező
+     * branch → ResourceNotFoundException (nem leak-elő üzenet).
+     */
+    private void assertBranchInCompany(UUID branchId, UUID companyId) {
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Fiók nem található: " + branchId));
+        if (!isInCompany(branch, companyId)) {
+            throw new ResourceNotFoundException("Fiók nem található: " + branchId);
+        }
+    }
+
+    /** FINDING #4: branch a megadott céghez tartozik-e (null-company → nem). */
+    private boolean isInCompany(Branch branch, UUID companyId) {
+        return branch.getCompany() != null && companyId.equals(branch.getCompany().getId());
     }
 
     /**
@@ -932,6 +965,7 @@ public class BranchService {
             }
             Branch parent = branchRepository.findById(parentBranchId)
                     .orElseThrow(() -> new ResourceNotFoundException("Szülő fiók nem található"));
+            assertParentInCurrentCompany(parent, parentBranchId);
             if (!"KOZPONT".equals(parent.getBranchType().getCode())) {
                 throw new ValidationException("Főértéktár csak központ alá helyezhető");
             }
@@ -944,6 +978,7 @@ public class BranchService {
             }
             Branch parent = branchRepository.findById(parentBranchId)
                     .orElseThrow(() -> new ResourceNotFoundException("Szülő fiók nem található"));
+            assertParentInCurrentCompany(parent, parentBranchId);
             String parentCode = parent.getBranchType().getCode();
             if (!"KOZPONT".equals(parentCode) && !"FOERTEKTAR".equals(parentCode)) {
                 throw new ValidationException("Értéktár csak központ vagy főértéktár alá helyezhető");
@@ -957,9 +992,22 @@ public class BranchService {
             }
             Branch parent = branchRepository.findById(parentBranchId)
                     .orElseThrow(() -> new ResourceNotFoundException("Szülő fiók nem található"));
+            assertParentInCurrentCompany(parent, parentBranchId);
             if (!"ERTEKTAR".equals(parent.getBranchType().getCode())) {
                 throw new ValidationException("Pénztár csak értéktár alá helyezhető");
             }
+        }
+    }
+
+    /**
+     * IDOR-guard: a user által megadott szülő-fiók ({@code dto.getParentBranchId()}) eddig csak
+     * típusra volt ellenőrizve, cég-scope-ra nem. A szülőnek az aktuális céghez kell tartoznia;
+     * cross-tenant → ResourceNotFoundException (a betöltés-mintával összhangban).
+     */
+    private void assertParentInCurrentCompany(Branch parent, UUID parentBranchId) {
+        if (parent.getCompany() == null
+                || !parent.getCompany().getId().equals(SecurityUtils.getCurrentCompanyId())) {
+            throw new ResourceNotFoundException("Szülő fiók nem található: " + parentBranchId);
         }
     }
 }

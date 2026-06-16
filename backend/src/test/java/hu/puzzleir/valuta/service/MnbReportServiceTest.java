@@ -87,6 +87,10 @@ class MnbReportServiceTest {
         TestingAuthenticationToken auth = new TestingAuthenticationToken("test", "pass", "ROLE_MANAGER");
         auth.setDetails(details);
         SecurityContextHolder.getContext().setAuthentication(auth);
+
+        // IDOR-guard (audit 2026-06-15): generateDaily/Monthly/WeeklyReport most assertBranchOwnership-et
+        // hív (existsByIdAndCompanyId) → a hívó cég sajat branch-e legyen elérhető.
+        when(branchRepository.existsByIdAndCompanyId(eq(TEST_BRANCH_ID), any())).thenReturn(true);
     }
 
     // ============ generateDailyReport ============

@@ -215,7 +215,7 @@ class ReservationServiceTest {
         Object[] row = new Object[]{"EUR", new BigDecimal("500")};
         List<Object[]> rawData = new ArrayList<>();
         rawData.add(row);
-        when(reservationRepository.getReservedStockByBranch(BRANCH_ID))
+        when(reservationRepository.getReservedStockByBranchAndCompany(BRANCH_ID, COMPANY_ID))
                 .thenReturn(rawData);
         when(reservationRepository.countActiveByCurrencyAndBranch(BRANCH_ID, "EUR"))
                 .thenReturn(3L);
@@ -231,6 +231,49 @@ class ReservationServiceTest {
         verify(reservationRepository, never())
                 .countByBranchAndStatusAndCreatedAtBetween(any(), any(), any(), any());
         verify(reservationRepository).countActiveByCurrencyAndBranch(BRANCH_ID, "EUR");
+    }
+
+    // ========== IDOR-guard (audit 2026-06-15): multi-tenant foglaló-olvasás ==========
+
+    @Test
+    @DisplayName("IDOR: getReservation — saját céges foglalót visszaad")
+    void getReservation_returnsOwnCompanyReservation() {
+        Reservation res = activeReservation(7L, "EUR",
+                new BigDecimal("100"), new BigDecimal("400"), new BigDecimal("36000"));
+        Company own = new Company();
+        own.setId(COMPANY_ID);
+        res.setCompany(own);
+        when(reservationRepository.findById(7L)).thenReturn(Optional.of(res));
+
+        Reservation got = service.getReservation(7L);
+
+        assertThat(got.getId()).isEqualTo(7L);
+    }
+
+    @Test
+    @DisplayName("IDOR: getReservation — IDEGEN céges foglalóra ResourceNotFoundException (nem szivárog)")
+    void getReservation_crossTenant_throwsNotFound() {
+        Reservation res = activeReservation(8L, "EUR",
+                new BigDecimal("100"), new BigDecimal("400"), new BigDecimal("36000"));
+        Company foreign = new Company();
+        foreign.setId(UUID.randomUUID()); // NEM a hívó cége
+        res.setCompany(foreign);
+        when(reservationRepository.findById(8L)).thenReturn(Optional.of(res));
+
+        assertThatThrownBy(() -> service.getReservation(8L))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("IDOR: getActiveReservations — a CÉG-szűrt repository-metódust hívja")
+    void getActiveReservations_usesCompanyScopedQuery() {
+        when(reservationRepository.findActiveByBranchAndCompany(BRANCH_ID, COMPANY_ID))
+                .thenReturn(List.of());
+
+        service.getActiveReservations(BRANCH_ID);
+
+        verify(reservationRepository).findActiveByBranchAndCompany(BRANCH_ID, COMPANY_ID);
+        verify(reservationRepository, never()).findActiveByBranch(any());
     }
 
     // ========== T5: autoExpireReservations — idempotency ==========
