@@ -2,11 +2,13 @@ package hu.puzzleir.valuta.config;
 
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 
@@ -49,6 +51,29 @@ public class PrimaryDataSourceConfig {
         ds.setDriverClassName(driverClassName);
         log.info("Elsődleges (PRIMARY) DataSource konfigurálva: {}", mask(url));
         return ds;
+    }
+
+    /**
+     * Explicit, elsődleges (LOKÁLIS) {@code @Primary} {@link JdbcTemplate}.
+     *
+     * <p><b>Gyökér-ok (2026-06-16 prod-probe).</b> A {@link NeonDataSourceConfig} definiál egy
+     * {@code neonJdbcTemplate} bean-t (Neon backup). Emiatt a Spring Boot
+     * {@code JdbcTemplateAutoConfiguration} ({@code @ConditionalOnMissingBean(JdbcOperations.class)})
+     * VISSZALÉP, és NEM jön létre a {@code @Primary} (lokális) DataSource-ból az alapértelmezett
+     * {@code jdbcTemplate}. Így az EGYETLEN {@link JdbcTemplate} bean a {@code neonJdbcTemplate} lett
+     * → a {@link NeonReplicationService} {@code primaryJdbc} mezője (qualifier nélkül) a NEONRA
+     * kötődött, ezért a teljes-snapshot a Neont olvasta és önmagába írta vissza (a backup hiányos
+     * maradt: pl. transaction 36/134). Ugyanaz a hijack-minta JdbcTemplate-szinten, mint amit a
+     * DataSource-szinten a {@code dataSource()} {@code @Primary} már kezel.
+     *
+     * <p><b>Megoldás.</b> Explicit {@code @Primary} {@link JdbcTemplate} a {@code @Primary} (lokális)
+     * DataSource-ra; a {@link NeonReplicationService} ezt {@code @Qualifier("primaryJdbcTemplate")}-tel
+     * köti — így az olvasás a LOKÁLISBÓL, az írás a {@code neonDataSource}-ba (Neon backup) megy.
+     */
+    @Bean
+    @Primary
+    public JdbcTemplate primaryJdbcTemplate(@Qualifier("dataSource") DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
     }
 
     private static String mask(String url) {
