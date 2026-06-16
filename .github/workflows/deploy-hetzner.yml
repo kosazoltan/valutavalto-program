@@ -191,21 +191,19 @@ jobs:
 
   # ─────────────────────────────────────────────────────────────────────────────
   # DB-MIGRÁCIÓ VERIFY. Minden deploy után:
-  #   FONTOS KORREKCIÓ (2026-06-15 incidens-megoldás): a korábbi "a NEON a primary" megállapítás
-  #   TÉVES volt. A backend PRIMARY (futásidejű) datasource-a a LOKÁLIS Hetzner 'valuta'
-  #   (DATABASE_URL=localhost:6432). A 2026-06-15-i incidensben a `neon-sync.enabled=true` egy
-  #   másodlagos DataSource bean-t hozott létre, ami visszaléptette a Spring Boot primary
-  #   auto-configot → ÁTMENETILEG a Neon lett az app egyetlen datasource-a; ezt a
-  #   `restore-local-primary` (NEON_SYNC=false) visszaállította a lokálisra. Bizonyíték a tényleges
-  #   datasource-ra: `pg_stat_activity` (hol ül a Hikari-pool), NEM systemctl-show / /proc env.
-  #   Gate A: a Hetzner LOKÁLIS 'valuta' (a TÉNYLEGES szolgáló DB) Flyway-szintje. EZ a valódi gate.
-  #   Gate B: a Neon (BACKUP DB) Flyway-szintje — backup-konzisztencia, informális.
-  #   TEENDŐ (követő PR): a gate-logika megfordítása (Gate A blokkoló = lokális; Gate B informális =
-  #   Neon backup), és a backup-cél visszaállítása local→Neon irányba. Lásd az incidensjegyzetet.
-  # A Neon-job FAIL-loud, de a már lefutott Hetzner primer deployt NEM görgeti vissza.
+  #   TOPOLÓGIA (Local-First, 2026-06-16 prod-probe-bal igazolva): a backend PRIMARY (futásidejű)
+  #   datasource-a a LOKÁLIS Hetzner 'valuta' (DATABASE_URL=localhost:6432, PgBouncer→lokális Postgres).
+  #   Bizonyíték: `pg_stat_activity` mutatja a Hikari-poolt a lokálison; .env NEON_SYNC_ENABLED=true,
+  #   de az explicit @Primary lokális DataSource (PrimaryDataSourceConfig, #1175) garantálja, hogy a
+  #   neon-sync NEM hijackolja a primaryt. A Neon = egyirányú BACKUP-cél (NeonReplicationService,
+  #   5 percenként lokális→Neon FULL_SYNC upsert).
+  #   Gate A: a Hetzner LOKÁLIS 'valuta' (a TÉNYLEGES szolgáló DB) Flyway-szintje — EZ a valódi,
+  #     BLOKKOLÓ gate: ha a szolgáló DB nincs a repo max sémáján, a deploy hibás.
+  #   Gate B: a Neon (BACKUP DB) Flyway-migrate + verify — backup-séma karbantartás, INFORMÁLIS
+  #     (a Neon-eltérés nem blokkolja a primer deployt, de loud warning + summary).
   # ─────────────────────────────────────────────────────────────────────────────
   verify-hetzner-db:
-    name: Gate A — Hetzner LOKÁLIS DB migration (INFORMÁLIS)
+    name: Gate A — Hetzner LOKÁLIS DB migration (BLOKKOLÓ — szolgáló DB)
     runs-on: ubuntu-latest
     needs: deploy
     environment: production
@@ -242,18 +240,26 @@ jobs:
             PROD_MAX=$(sudo -u postgres psql -d valuta -tAc "SELECT max(version::int) FROM flyway_schema_history WHERE success=true AND version !~ '[^0-9]'" 2>/dev/null | tr -d '[:space:]')
             FAILED=$(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM flyway_schema_history WHERE success=false" 2>/dev/null | tr -d '[:space:]')
             echo "Hetzner LOKÁLIS Flyway max = V${PROD_MAX:-?} | repo max = V${REPO_MAX} | failed sorok = ${FAILED:-?}"
-            # INFORMÁLIS gate (2026-06-15): a lokális Hetzner 'valuta' DB elavult maradék — a backend
-            # a Neon-t használja (Gate B igazolja). Az eltérés itt csak FIGYELMEZTETÉS, nem blokkol.
+            # BLOKKOLÓ gate (Local-First): a lokális Hetzner 'valuta' a TÉNYLEGES szolgáló DB.
+            # Ha a sémája nem a repo max-on van, vagy van failed migráció, a deploy hibás → fail.
+            GATE_FAIL=0
+            if [ -z "${PROD_MAX:-}" ]; then
+              echo "::error::Hetzner LOKÁLIS DB Flyway-verzió NEM olvasható (psql/SSH hiba?) — a szolgáló DB állapota ismeretlen, blokkol."
+              GATE_FAIL=1
+            fi
             if [ "${FAILED:-1}" != "0" ]; then
-              echo "::warning::Hetzner LOKÁLIS DB: ${FAILED} db FAILED Flyway sor (informális — a backend a Neont használja, lásd Gate B)."
+              echo "::error::Hetzner LOKÁLIS (szolgáló) DB: ${FAILED} db FAILED Flyway sor."
               sudo -u postgres psql -d valuta -c "SELECT version, description, success FROM flyway_schema_history WHERE success=false ORDER BY installed_rank DESC LIMIT 10" 2>/dev/null || true
+              GATE_FAIL=1
             fi
-            if [ "${PROD_MAX:-x}" != "${REPO_MAX}" ]; then
-              echo "::warning::Hetzner LOKÁLIS DB V${PROD_MAX} != repo V${REPO_MAX} — VÁRT: a lokális DB elavult/nem-szolgáló maradék (kivezetendő); a PROD DB a Neon (Gate B). DÖNTÉS: Neon a primary."
-            else
-              echo "OK — a lokális Hetzner DB is a repo max verzión (V${REPO_MAX})."
+            if [ -n "${PROD_MAX:-}" ] && [ "${PROD_MAX}" != "${REPO_MAX}" ]; then
+              echo "::error::Hetzner LOKÁLIS (szolgáló) DB V${PROD_MAX} != repo V${REPO_MAX} — a deployolt backend Flyway-e nem migrálta fel a szolgáló DB-t a repo max sémára."
+              GATE_FAIL=1
+            elif [ -n "${PROD_MAX:-}" ]; then
+              echo "OK — a lokális (szolgáló) Hetzner DB a repo max verzión (V${REPO_MAX})."
             fi
-            echo "Gate A INFORMÁLIS: a deploy-blokkolást a Gate B (Neon) végzi."
+            echo "Gate A BLOKKOLÓ: ez a tényleges szolgáló DB; a deploy-blokkolást EZ a gate végzi."
+            exit "$GATE_FAIL"
           ENDSSH
 
       - name: Summary
@@ -266,7 +272,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   migrate-verify-neon:
-    name: Gate B — Migrate + verify Neon PROD (primary) DB (BLOCKING, no rollback)
+    name: Gate B — Migrate + verify Neon BACKUP DB (INFORMÁLIS)
     runs-on: ubuntu-latest
     needs: deploy
     environment: production
@@ -289,8 +295,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${NEON_URL:-}" ]; then
-            echo "::error::NEON_DATABASE_URL repo-secret ures/hianyzik — a Neon PROD-DB sema NEM ellenorizheto/migralhato."
-            exit 1
+            echo "::warning::NEON_DATABASE_URL repo-secret ures/hianyzik — a Neon BACKUP-DB sema-verify kihagyva (informalis gate)."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           NOSCHEME="${NEON_URL#postgresql://}"; NOSCHEME="${NOSCHEME#postgres://}"
           CREDS="${NOSCHEME%%@*}"; HOSTPART="${NOSCHEME#*@}"
@@ -304,6 +311,8 @@ jobs:
           echo "Neon JDBC host: $(echo "$HOSTPART" | sed -E 's#/.*##')"
 
       - name: Flyway migrate Neon (pending migraciok felvitele; idempotens)
+        if: steps.parse.outputs.skip != 'true'
+        continue-on-error: true
         env:
           FLYWAY_URL: ${{ steps.parse.outputs.jdbc }}
           FLYWAY_USER: ${{ steps.parse.outputs.nuser }}
@@ -314,7 +323,9 @@ jobs:
             -v "$PWD/backend/src/main/resources/db/migration:/flyway/sql:ro" \
             redgate/flyway:10 -locations=filesystem:/flyway/sql -connectRetries=3 migrate
 
-      - name: Verify Neon schema version == repo max
+      - name: Verify Neon schema version == repo max (informalis)
+        if: steps.parse.outputs.skip != 'true'
+        continue-on-error: true
         env:
           FLYWAY_URL: ${{ steps.parse.outputs.jdbc }}
           FLYWAY_USER: ${{ steps.parse.outputs.nuser }}
@@ -326,24 +337,22 @@ jobs:
             -v "$PWD/backend/src/main/resources/db/migration:/flyway/sql:ro" \
             redgate/flyway:10 -locations=filesystem:/flyway/sql -connectRetries=3 info | tee neon-info.txt
           NEON_VER=$(grep -E 'Schema version:' neon-info.txt | head -1 | sed -E 's/[^0-9]*([0-9]+).*/\1/')
-          echo "Neon schema version = V${NEON_VER:-?} | repo max = V${REPO_MAX}"
+          echo "Neon BACKUP schema version = V${NEON_VER:-?} | repo max = V${REPO_MAX}"
           if [ "${NEON_VER:-x}" != "${REPO_MAX}" ]; then
-            echo "::error::Neon PROD-DB sema V${NEON_VER} != repo V${REPO_MAX} — a Neon migracio NEM sikerult / nem ert celba."
-            exit 1
+            echo "::warning::Neon BACKUP-DB sema V${NEON_VER} != repo V${REPO_MAX} — a backup-sema migracio nem ert celba (informalis; a primer szolgalo DB a lokalis Hetzner, Gate A)."
+          else
+            echo "OK — Neon BACKUP-DB a repo max verzion (V${REPO_MAX})."
           fi
-          echo "OK — Neon PROD-DB a repo max verzion (V${REPO_MAX})."
 
       - name: Summary
         if: always()
         run: |
           {
-            echo "## Gate B — Neon PROD (primary) DB migrate + verify"
+            echo "## Gate B — Neon BACKUP DB migrate + verify (INFORMÁLIS)"
             echo "- Repo max: V${{ steps.repo.outputs.repo_max }}"
             echo "- Eredmeny: ${{ job.status }}"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ job.status }}" != "success" ]; then
-            echo "- ⚠️ A Neon PROD-DB migracio/verify NEM zold — a primer Hetzner deploy ervenyes maradt, de a Neon NINCS szinkronban. Kezi ellenorzes kell (neon-schema-verify.yml read-only diagnosztika)." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          echo "- ℹ️ Ez INFORMÁLIS gate: a Neon a BACKUP-cél. A deploy-blokkolast a Gate A (lokalis szolgalo DB) vegzi; a Neon-elteres csak figyelmeztetes (neon-schema-verify.yml read-only diagnosztika)." >> "$GITHUB_STEP_SUMMARY"
 
   # 2026-06-05: Scaleway warm standby JAR-szinkron. ELOTTE a standby orokke 2.5.49-en
   # ragadt (a deploy csak Hetznert frissitette) -> egy 10 oras Hetzner-outage alatt a
