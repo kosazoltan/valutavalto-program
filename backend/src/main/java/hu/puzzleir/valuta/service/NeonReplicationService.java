@@ -110,7 +110,7 @@ public class NeonReplicationService {
     private final NeonSyncLogRepository syncLogRepository;
 
     public NeonReplicationService(
-            JdbcTemplate primaryJdbc,
+            @Qualifier("primaryJdbcTemplate") JdbcTemplate primaryJdbc,
             @Qualifier("neonDataSource") DataSource neonDataSource,
             NeonSyncLogRepository syncLogRepository) {
         this.primaryJdbc = primaryJdbc;
