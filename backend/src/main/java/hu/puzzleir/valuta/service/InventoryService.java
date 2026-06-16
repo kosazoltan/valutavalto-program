@@ -541,8 +541,13 @@ public class InventoryService {
     private List<CashBalance> appendSyntheticZeroRows(List<CashBalance> realRows, UUID companyId,
                                                       Integer territoryFilter) {
         // 1. réteg scope: ugyanaz a territory-szűrés, mint a realRows-nál; csak AKTÍV, NEM-vault branch.
+        // FK-032 (2026-06-16): a központi (territoryFilter==null) ágon a VAULT_COUNTERPARTY virtuális
+        // partnereket (PRB/UPT/TRB/ERB/FRB/RB/JRB/MNB/TH/FOP1, V277 seed) KIZÁRJUK a szintetikus 0-sor
+        // generálásból — különben az Országos készletben „BESOROLATLAN" szekcióként jelennek meg (FK-029
+        // regresszió). Ezek is_vault=FALSE, így a lenti !isVault szűrőn átmennének. A territory-ág eleve
+        // kizárja őket (nincs vault_territory_id-juk). A kizáró metódus FK-014 óta bevált (StockSnapshotService).
         List<Branch> scopeBranches = (territoryFilter == null)
-                ? branchRepository.findByCompanyIdAndIsActiveTrue(companyId)
+                ? branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId)
                 : branchRepository.findByCompanyIdAndVaultTerritoryId(companyId, territoryFilter).stream()
                         .filter(b -> Boolean.TRUE.equals(b.getIsActive()))
                         .toList();
