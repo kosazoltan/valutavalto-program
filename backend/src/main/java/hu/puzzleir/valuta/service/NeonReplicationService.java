@@ -52,13 +52,18 @@ public class NeonReplicationService {
     // helyes FK-SORRENDDEL biztosítjuk az integritást: a törzs-szülők előbb kerülnek a Neonra, mint a rájuk
     // hivatkozó üzleti táblák. (A fullSync soronkénti fallbackje a maradék elszórt FK-lógást is kezeli.)
     private static final List<String> SYNC_TABLES = List.of(
-            // — Törzs / referencia (FK-célok) —
+            // — Törzs / referencia (FK-célok), topológiai sorrendben (a lokális FK-gráfból, 2026-06-16):
+            //   L0 (nincs törzs-FK): company, currency, dictionary
+            //   L1 (→L0):            branch (→company,dictionary), vault_territory (→company)
+            //   L2 (→L1):            denomination (→branch,company,currency), worker (→branch,company),
+            //                        data_collection (→branch)
+            // A denomination ezért a branch/vault_territory UTÁN kerül (korábban előtte volt → FK-skip).
             "company",
             "currency",
             "dictionary",
-            "denomination",
             "branch",
             "vault_territory",
+            "denomination",
             "worker",
             "data_collection",
             // — Üzleti táblák (a FK-céljaik a fentiek) —
