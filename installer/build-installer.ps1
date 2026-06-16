@@ -116,16 +116,23 @@ function Assert-FileHash($Path, $Expected, $Label) {
     Write-Host "  $Label checksum OK" -ForegroundColor Green
 }
 
-# Robusztus letoltes: a kulso forrasok (pl. nssm.cc, PG-mirror) idoszakosan 503/timeout-ot
-# adnak. Retry exponencialis backoff-fal, hogy a CI-build ne bukjon egy atmeneti hiccup miatt.
-function Invoke-DownloadWithRetry($Uri, $OutFile, $Label, $MaxAttempts = 5) {
+# Robusztus letoltes: a kulso forrasok (pl. nssm.cc, EnterpriseDB PG-mirror) idoszakosan
+# 503/timeout-ot VAGY IP-rate-limit miatt 403/429-et adnak (a CI-runner IP-jet a CDN
+# atmenetileg blokkolja, ha tobb build rovid idon belul ugyanarrol a pool-rol tolt).
+# Hardening (2026-06-16, v2.28.8 build-incidens — EDB 403 a runner IP-re):
+#  - bongeszo User-Agent (no-UA keresekre nemely CDN 403-at ad),
+#  - tobb probalkozas (8) hosszabb, JITTER-elt backoff-fal -> egy tobbperces rate-limit
+#    ablakot is kiulunk, nem bukik a teljes alairt build egy atmeneti CDN-blokkon.
+function Invoke-DownloadWithRetry($Uri, $OutFile, $Label, $MaxAttempts = 8) {
+    $ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
     for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
         try {
-            Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing -TimeoutSec 120
+            Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing -TimeoutSec 180 -UserAgent $ua
             if ((Test-Path $OutFile) -and (Get-Item $OutFile).Length -gt 0) { return }
             throw "Ures fajl: $OutFile"
         } catch {
-            $wait = [math]::Min(30, [math]::Pow(2, $attempt))
+            # Exponencialis backoff 45s-ig + 0-7s jitter (a parhuzamos CI-job-ok ne szinkronban ujrazzanak).
+            $wait = [math]::Min(45, [math]::Pow(2, $attempt)) + (Get-Random -Minimum 0 -Maximum 8)
             Write-Host "  [$Label] letoltes sikertelen ($attempt/$MaxAttempts): $($_.Exception.Message). Ujraprobalkozas ${wait}s mulva..." -ForegroundColor Yellow
             if (Test-Path $OutFile) { Remove-Item $OutFile -Force -ErrorAction SilentlyContinue }
             if ($attempt -eq $MaxAttempts) { throw "[$Label] letoltes $MaxAttempts probalkozas utan is sikertelen: $Uri" }
