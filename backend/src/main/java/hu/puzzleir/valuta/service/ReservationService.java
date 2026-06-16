@@ -622,18 +622,23 @@ public class ReservationService {
      * Foglaló lekérdezése ID alapján, ResourceNotFoundException ha nem található.
      */
     private Reservation getReservationById(Long reservationId) {
-        Reservation r = initLazyAssociations(reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Foglaló nem található: " + reservationId)));
+        Reservation r = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Foglaló nem található: " + reservationId));
         // Multi-tenant IDOR-guard (audit 2026-06-15): a foglaló a hívó CÉGÉHEZ tartozik-e.
         // A GET /{id} és /{id}/receipt szekvenciális numerikus ID-vel enumerálható volt — ownership-check
         // nélkül cross-tenant olvasás (ügyfél-PII, összeg, árfolyam, PDF-bizonylat). ResourceNotFoundException-t
         // dobunk (nem 403), hogy az erőforrás LÉTEZÉSE se szivárogjon (lásd CustomerService.findById minta).
+        //
+        // Copilot-review (#1181): az ownership-checket a MINIMÁLIS adaton (Reservation + company.id)
+        // végezzük ELŐBB, és csak a saját foglalóra inicializáljuk a többi LAZY asszociációt
+        // (customer/branch/worker/supervisorWorker) — idegen cég foglalójára felesleges DB/mem terhelés
+        // nélkül, korai eldobással.
         UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
         UUID resCompanyId = (r.getCompany() != null) ? r.getCompany().getId() : null;
         if (currentCompanyId == null || !currentCompanyId.equals(resCompanyId)) {
             throw new ResourceNotFoundException("Foglaló nem található: " + reservationId);
         }
-        return r;
+        return initLazyAssociations(r);
     }
 
     /**
