@@ -778,7 +778,7 @@ class InventoryServiceTest {
                 .currentBalance(new BigDecimal("5000")).openingBalance(BigDecimal.ZERO)
                 .build();
         when(cashBalanceRepository.findByCompanyId(COMPANY_ID)).thenReturn(java.util.List.of(realEur));
-        when(branchRepository.findByCompanyIdAndIsActiveTrue(COMPANY_ID))
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
                 .thenReturn(java.util.List.of(branch, branch2));
         when(currencyRepository.findAllActiveOrdered()).thenReturn(java.util.List.of(hufCurrency, eurCurrency));
 
@@ -803,7 +803,7 @@ class InventoryServiceTest {
     @DisplayName("FK-029 getAllStock: a szintetikus sorok NEM perzisztálódnak (FR-3)")
     void getAllStock_syntheticRowsNotPersisted() {
         when(cashBalanceRepository.findByCompanyId(COMPANY_ID)).thenReturn(java.util.List.of());
-        when(branchRepository.findByCompanyIdAndIsActiveTrue(COMPANY_ID)).thenReturn(java.util.List.of(branch));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(java.util.List.of(branch));
         when(currencyRepository.findAllActiveOrdered()).thenReturn(java.util.List.of(hufCurrency, eurCurrency));
 
         inventoryService.getAllStock();
@@ -815,7 +815,7 @@ class InventoryServiceTest {
     @DisplayName("FK-029 getAllStock: a szintetikus sorszám az aktív valuta-számmal egyezik, nem hardcode (FR-7)")
     void getAllStock_syntheticRowCountMatchesActiveCurrencyCount() {
         when(cashBalanceRepository.findByCompanyId(COMPANY_ID)).thenReturn(java.util.List.of());
-        when(branchRepository.findByCompanyIdAndIsActiveTrue(COMPANY_ID)).thenReturn(java.util.List.of(branch));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(java.util.List.of(branch));
         when(currencyRepository.findAllActiveOrdered()).thenReturn(java.util.List.of(hufCurrency, eurCurrency)); // 2 aktív
 
         var result = inventoryService.getAllStock();
@@ -823,5 +823,47 @@ class InventoryServiceTest {
         // 1 branch × 2 aktív valuta = 2 szintetikus sor (nincs valódi cash_balance).
         assertThat(result).hasSize(2);
         assertThat(result).allMatch(cb -> cb.getCurrentBalance().compareTo(BigDecimal.ZERO) == 0);
+    }
+
+    // ============ FK-032: Országos készlet — VAULT_COUNTERPARTY virtuális partnerek kizárása ============
+
+    @Test
+    @DisplayName("FK-032 getAllStock (központi): a VAULT_COUNTERPARTY virtuális partnerek kizárva (FR-1/FR-5)")
+    void getAllStock_central_excludesVaultCounterpartyBranches() {
+        // Egy VAULT_COUNTERPARTY virtuális partner (pl. Magyar Nemzeti Bank): is_vault=FALSE (V277 seed),
+        // így a !isVault szűrőn átmenne, ha bekerülne a scope-listába. A kizáró repo-metódus (JPQL) NEM
+        // adja vissza — a fix EZT a metódust hívja a központi ágon (a sima findByCompanyIdAndIsActiveTrue
+        // helyett, ami visszaadná). A virtuális partnereknek 0 valódi cash_balance soruk van (prod-tény).
+        Branch vaultCounterparty = new Branch();
+        vaultCounterparty.setId(UUID.randomUUID());
+        vaultCounterparty.setName("Magyar Nemzeti Bank");
+        vaultCounterparty.setCompany(company);
+
+        // A counterparty-nak VAN egy valódi cash_balance sora (admin-retrofit edge-case): a findByCompanyId
+        // visszaadja, de a scope-szűrésnek (defense-in-depth, Codex P2) ki kell zárnia. Így a teszt NEM vak
+        // (Copilot review #1195): a counterparty valós sora ténylegesen jelen van a bemenetben.
+        CashBalance counterpartyReal = CashBalance.builder()
+                .branch(vaultCounterparty).currency(eurCurrency).company(company)
+                .currentBalance(new BigDecimal("999")).openingBalance(BigDecimal.ZERO).build();
+        CashBalance realEur = CashBalance.builder()
+                .branch(branch).currency(eurCurrency).company(company)
+                .currentBalance(new BigDecimal("5000")).openingBalance(BigDecimal.ZERO).build();
+        when(cashBalanceRepository.findByCompanyId(COMPANY_ID))
+                .thenReturn(java.util.List.of(realEur, counterpartyReal));
+        // A kizáró metódus a valódi branch-et adja vissza, a VAULT_COUNTERPARTY-t NEM (JPQL-szimuláció).
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                .thenReturn(java.util.List.of(branch));
+        when(currencyRepository.findAllActiveOrdered()).thenReturn(java.util.List.of(eurCurrency));
+
+        var result = inventoryService.getAllStock();
+
+        // FR-1/FR-5: a VAULT_COUNTERPARTY branch egyetlen sorban sem szerepel — a 999-es VALÓDI sora is
+        // kiesett (defense-in-depth), nem csak a szintetikus.
+        assertThat(result).extracting(cb -> cb.getBranch().getId())
+                .doesNotContain(vaultCounterparty.getId())
+                .containsOnly(BRANCH_ID);
+        // A fix igazolása: a központi ág a KIZÁRÓ metódust hívja, NEM a sima findByCompanyIdAndIsActiveTrue-t.
+        verify(branchRepository).findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID);
+        verify(branchRepository, never()).findByCompanyIdAndIsActiveTrue(COMPANY_ID);
     }
 }
