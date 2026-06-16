@@ -267,7 +267,11 @@ export default function MainLayout() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col">
+      {/* FK-033: min-w-0 — a flex-item alapértelmezett min-width:auto miatt a main a széles tartalom
+          (pl. Átlag árfolyam riport táblázata) szélességére tágulna, és a body görgetne vízszintesen
+          a .app-print-content helyett → a sticky VALUTA oszlop elcsúszna. A min-w-0 engedi a main
+          zsugorodását, így a .app-print-content (overflow-auto) lesz az EGYETLEN vízszintes scroll. */}
+      <main className="flex-1 flex flex-col min-w-0">
         {/* MODERN Header Bar */}
         <header className="no-print h-10 bg-white border-b border-form-border flex items-center justify-between px-4 shadow-sm">
           <div className="flex items-center gap-3">
@@ -329,7 +333,9 @@ export default function MainLayout() {
         )}
 
         {/* Page content */}
-        <div className="app-print-content flex-1 p-3 overflow-auto min-h-0">
+        {/* FK-033: min-w-0 a min-h-0 mellé — egyetlen, kanonikus görgető kontextus mindkét tengelyen
+            (overflow-auto): a táblázatos riportok (sticky VALUTA + fejléc) megbízhatóan ehhez kötnek. */}
+        <div className="app-print-content flex-1 p-3 overflow-auto min-h-0 min-w-0">
           <Outlet />
         </div>
 
