@@ -839,7 +839,17 @@ class InventoryServiceTest {
         vaultCounterparty.setName("Magyar Nemzeti Bank");
         vaultCounterparty.setCompany(company);
 
-        when(cashBalanceRepository.findByCompanyId(COMPANY_ID)).thenReturn(java.util.List.of());
+        // A counterparty-nak VAN egy valódi cash_balance sora (admin-retrofit edge-case): a findByCompanyId
+        // visszaadja, de a scope-szűrésnek (defense-in-depth, Codex P2) ki kell zárnia. Így a teszt NEM vak
+        // (Copilot review #1195): a counterparty valós sora ténylegesen jelen van a bemenetben.
+        CashBalance counterpartyReal = CashBalance.builder()
+                .branch(vaultCounterparty).currency(eurCurrency).company(company)
+                .currentBalance(new BigDecimal("999")).openingBalance(BigDecimal.ZERO).build();
+        CashBalance realEur = CashBalance.builder()
+                .branch(branch).currency(eurCurrency).company(company)
+                .currentBalance(new BigDecimal("5000")).openingBalance(BigDecimal.ZERO).build();
+        when(cashBalanceRepository.findByCompanyId(COMPANY_ID))
+                .thenReturn(java.util.List.of(realEur, counterpartyReal));
         // A kizáró metódus a valódi branch-et adja vissza, a VAULT_COUNTERPARTY-t NEM (JPQL-szimuláció).
         when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
                 .thenReturn(java.util.List.of(branch));
@@ -847,7 +857,8 @@ class InventoryServiceTest {
 
         var result = inventoryService.getAllStock();
 
-        // FR-1/FR-5: a VAULT_COUNTERPARTY branch egyetlen sorban (valós vagy szintetikus) sem szerepel.
+        // FR-1/FR-5: a VAULT_COUNTERPARTY branch egyetlen sorban sem szerepel — a 999-es VALÓDI sora is
+        // kiesett (defense-in-depth), nem csak a szintetikus.
         assertThat(result).extracting(cb -> cb.getBranch().getId())
                 .doesNotContain(vaultCounterparty.getId())
                 .containsOnly(BRANCH_ID);

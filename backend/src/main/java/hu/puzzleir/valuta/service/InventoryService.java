@@ -554,18 +554,30 @@ public class InventoryService {
         List<Branch> targetBranches = scopeBranches.stream()
                 .filter(b -> !Boolean.TRUE.equals(b.getIsVault()))
                 .toList();
+        // FK-032 defense-in-depth (Codex P2 #1195): a VALÓDI sorokból is kizárjuk a scope-on kívüli
+        // branch-eket — a központi ágon a VAULT_COUNTERPARTY-t (a scopeBranches már kizárta őket). Így a
+        // virtuális partnerek akkor sem szivárognak be, ha valaha valódi cash_balance-t kapnának (FR-1
+        // „sem valós, sem szintetikus"). A territory-ág realRows-a már territory-szűrt → ott változatlan.
+        List<CashBalance> scopedReal = realRows;
+        if (territoryFilter == null) {
+            java.util.Set<UUID> allowedBranchIds = scopeBranches.stream()
+                    .map(Branch::getId).collect(java.util.stream.Collectors.toSet());
+            scopedReal = realRows.stream()
+                    .filter(cb -> cb.getBranch() != null && allowedBranchIds.contains(cb.getBranch().getId()))
+                    .toList();
+        }
         if (targetBranches.isEmpty()) {
-            return realRows;
+            return scopedReal;
         }
         // FR-7: a valuta-lista a futásidejű aktív katalógusból (nem hardcode-olt), RUB dinamikusan.
         List<hu.puzzleir.valuta.entity.Currency> activeCurrencies = currencyRepository.findAllActiveOrdered();
         // Meglévő (branchId, currencyId) párok a valódi sorokból — ezekre NEM kell szintetikus sor.
-        java.util.Set<String> existing = realRows.stream()
+        java.util.Set<String> existing = scopedReal.stream()
                 .filter(cb -> cb.getBranch() != null && cb.getCurrency() != null)
                 .map(cb -> cb.getBranch().getId() + ":" + cb.getCurrency().getId())
                 .collect(java.util.stream.Collectors.toSet());
 
-        List<CashBalance> out = new java.util.ArrayList<>(realRows);
+        List<CashBalance> out = new java.util.ArrayList<>(scopedReal);
         int synth = 0;
         for (Branch b : targetBranches) {
             for (hu.puzzleir.valuta.entity.Currency cur : activeCurrencies) {
@@ -582,8 +594,8 @@ public class InventoryService {
                 synth++;
             }
         }
-        log.info("FK-029 getAllStock: {} szintetikus 0-sor ({} aktiv nem-vault branch x {} aktiv valuta; {} valodi sor)",
-                synth, targetBranches.size(), activeCurrencies.size(), realRows.size());
+        log.info("FK-029 getAllStock: {} szintetikus 0-sor ({} aktiv nem-vault branch x {} aktiv valuta; {} valodi sor scope-szurt)",
+                synth, targetBranches.size(), activeCurrencies.size(), scopedReal.size());
         return out;
     }
 
