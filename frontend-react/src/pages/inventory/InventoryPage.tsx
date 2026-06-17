@@ -39,7 +39,7 @@ function formatCurrency(value: number | null | undefined, code?: string): string
 /** Change-detection kulcs: csak a megjelenített számszerű mezők számítanak. */
 function serializeRows(rows: VaultStockRow[]): string {
   return JSON.stringify(
-    rows.map(r => [r.currencyCode, r.opening, r.received, r.issued, r.closing]),
+    rows.map(r => [r.currencyCode, r.currencyName, r.opening, r.received, r.issued, r.closing]),
   )
 }
 
@@ -100,7 +100,7 @@ export default function InventoryPage() {
     .reduce((sum, r) => sum + (r.closing ?? 0), 0)
 
   return (
-    <div className="space-y-3 app-print-content">
+    <div className="space-y-3">
       <div className="no-print flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-lg font-bold text-secondary-900 flex items-center gap-2">
           <Vault className="h-5 w-5 text-primary-700" />

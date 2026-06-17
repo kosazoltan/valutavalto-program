@@ -17,7 +17,7 @@
     <div id="root"></div>
     <!-- sockjs-client (STOMP/WebSocket, pl. árfolyam- és értéktári-készlet frissítés) a Node-féle
          `global`-ra hivatkozik; böngészőben ezt a `window`-ra kell képezni, MIELŐTT bármely modul betölt. -->
-    <script>window.global = window;</script>
+    <script>window.global = window.global || window;</script>
     <script type="module" src="/src/main.tsx"></script>
     <script>
       // PWA Service Worker regisztráció (Sprint 5 v2.5.50+)

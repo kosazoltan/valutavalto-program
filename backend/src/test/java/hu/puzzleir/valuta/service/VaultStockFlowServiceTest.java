@@ -39,6 +39,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import hu.puzzleir.valuta.dto.inventory.VaultStockChangedMessage;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * F1 fix-batch (Eszter audit) penzugyi-integritas verifikacio.
@@ -200,11 +202,22 @@ class VaultStockFlowServiceTest {
                 .thenReturn(Optional.empty());
         when(currencyStockRepository.save(any(CurrencyStock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        service.applyCollection(COMPANY_ID, "BR017", "EUR", new BigDecimal("100.00"), new BigDecimal("395.5"));
+        // FR-3: aktív tranzakcióban a publish CSAK afterCommit-kor megy ki (rollbacknál NEM).
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.applyCollection(COMPANY_ID, "BR017", "EUR", new BigDecimal("100.00"), new BigDecimal("395.5"));
 
-        // FR-3: vault currency_stock változott → invalidációs jelzés a company-topicra
-        verify(messagingTemplate).convertAndSend(
-                eq("/topic/vault-stock/" + COMPANY_ID), any(VaultStockChangedMessage.class));
+            // commit ELŐTT: a vault-stock invalidáció még nem ment ki (afterCommit-re halasztva)
+            verifyNoInteractions(messagingTemplate);
+
+            // commit szimuláció → MOST megy ki a jelzés a company-topicra
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+            verify(messagingTemplate).convertAndSend(
+                    eq("/topic/vault-stock/" + COMPANY_ID), any(VaultStockChangedMessage.class));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
 
         assertThat(sourceBalance.getCurrentBalance()).isEqualByComparingTo("900.00");
         verify(currencyStockRepository, times(2)).save(any(CurrencyStock.class)); // 1x getOrCreate + 1x receive
@@ -239,14 +252,25 @@ class VaultStockFlowServiceTest {
         when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_TARGET_ID, 978L)).thenReturn(Optional.of(targetBalance));
         when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
 
-        service.applyDistributionLine(COMPANY_ID, "BR035", "EUR", new BigDecimal("100.00"));
+        // FR-3: aktív tranzakcióban a publish CSAK afterCommit-kor megy ki (rollbacknál NEM).
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.applyDistributionLine(COMPANY_ID, "BR035", "EUR", new BigDecimal("100.00"));
 
-        assertThat(vaultStock.getQuantity()).isEqualByComparingTo("400.00");
-        assertThat(targetBalance.getCurrentBalance()).isEqualByComparingTo("100.00");
+            assertThat(vaultStock.getQuantity()).isEqualByComparingTo("400.00");
+            assertThat(targetBalance.getCurrentBalance()).isEqualByComparingTo("100.00");
 
-        // FR-3: vault currency_stock változott → invalidációs jelzés a company-topicra
-        verify(messagingTemplate).convertAndSend(
-                eq("/topic/vault-stock/" + COMPANY_ID), any(VaultStockChangedMessage.class));
+            // commit ELŐTT: a jelzés még nem ment ki
+            verifyNoInteractions(messagingTemplate);
+
+            // commit szimuláció → MOST megy ki a jelzés a company-topicra
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+            verify(messagingTemplate).convertAndSend(
+                    eq("/topic/vault-stock/" + COMPANY_ID), any(VaultStockChangedMessage.class));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test

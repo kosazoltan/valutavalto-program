@@ -204,8 +204,7 @@ public class VaultStockFlowService {
                                 .changedAt(LocalDateTime.now())
                                 .build());
             } catch (Exception e) {
-                log.warn("vault-stock invalidacio publish hiba (elnyelt, a tranzakciot nem befolyasolja): {}",
-                        e.getMessage());
+                log.warn("vault-stock invalidacio publish hiba (elnyelt, a tranzakciot nem befolyasolja)", e);
             }
         };
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
