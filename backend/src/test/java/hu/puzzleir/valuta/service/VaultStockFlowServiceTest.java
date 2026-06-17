@@ -31,10 +31,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+
+import hu.puzzleir.valuta.dto.inventory.VaultStockChangedMessage;
 
 /**
  * F1 fix-batch (Eszter audit) penzugyi-integritas verifikacio.
@@ -64,6 +68,8 @@ class VaultStockFlowServiceTest {
     private VaultTerritoryRepository vaultTerritoryRepository;
     @Mock
     private CompanyRepository companyRepository;
+    @Mock
+    private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
     @InjectMocks
     private VaultStockFlowService service;
@@ -112,6 +118,10 @@ class VaultStockFlowServiceTest {
         when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(Company.builder().id(COMPANY_ID).build()));
 
         service.applyTransfer(COMPANY_ID, "BR017", "BR035", "EUR", new BigDecimal("50.00"));
+
+        // FR-3: az applyTransfer csak branch cash_balance-t mozgat, vault currency_stock-ot NEM
+        // → NEM publikál vault-stock invalidációt.
+        verifyNoInteractions(messagingTemplate);
 
         assertThat(sourceBalance.getCurrentBalance()).isEqualByComparingTo("950.00");
         assertThat(targetBalance.getCurrentBalance()).isEqualByComparingTo("50.00");
@@ -192,6 +202,10 @@ class VaultStockFlowServiceTest {
 
         service.applyCollection(COMPANY_ID, "BR017", "EUR", new BigDecimal("100.00"), new BigDecimal("395.5"));
 
+        // FR-3: vault currency_stock változott → invalidációs jelzés a company-topicra
+        verify(messagingTemplate).convertAndSend(
+                eq("/topic/vault-stock/" + COMPANY_ID), any(VaultStockChangedMessage.class));
+
         assertThat(sourceBalance.getCurrentBalance()).isEqualByComparingTo("900.00");
         verify(currencyStockRepository, times(2)).save(any(CurrencyStock.class)); // 1x getOrCreate + 1x receive
     }
@@ -229,6 +243,10 @@ class VaultStockFlowServiceTest {
 
         assertThat(vaultStock.getQuantity()).isEqualByComparingTo("400.00");
         assertThat(targetBalance.getCurrentBalance()).isEqualByComparingTo("100.00");
+
+        // FR-3: vault currency_stock változott → invalidációs jelzés a company-topicra
+        verify(messagingTemplate).convertAndSend(
+                eq("/topic/vault-stock/" + COMPANY_ID), any(VaultStockChangedMessage.class));
     }
 
     @Test

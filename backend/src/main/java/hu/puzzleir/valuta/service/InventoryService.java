@@ -707,8 +707,6 @@ public class InventoryService {
                             .received(received)
                             .issued(issued)
                             .closing(closing)
-                            .difference(java.math.BigDecimal.ZERO)
-                            .lastUpdated(cs.getLastUpdated())
                             .build();
                 })
                 .sorted((a, b) -> a.getCurrencyCode().compareTo(b.getCurrencyCode()))
