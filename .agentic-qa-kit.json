@@ -1,10 +1,14 @@
 {
-  "kitVersion": "1.0.0",
+  "kitVersion": "1.2.0",
   "profile": "t2",
   "audit": {
     "sentinel": ".audit-ok",
     "maxAgeMinutes": 10,
     "enabled": true,
-    "commands": ["lint", "typecheck", "test:prepush"]
+    "commands": [
+      "lint",
+      "typecheck",
+      "test:prepush"
+    ]
   }
 }
