@@ -1,13 +1,17 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.dto.inventory.VaultStockChangedMessage;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -47,6 +51,7 @@ public class VaultStockFlowService {
     private final CurrencyRepository currencyRepository;
     private final VaultTerritoryRepository vaultTerritoryRepository;
     private final CompanyRepository companyRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     /**
      * Collection COMPLETED: penztar -> ertektar
@@ -73,6 +78,8 @@ public class VaultStockFlowService {
 
         log.info("Collection COMPLETED: {} {} {} branch -> vault territory={}",
                 amount, currencyCode, sourceBranchCode, vaultEntityId);
+
+        publishVaultStockChanged(companyId, territory.getId());
     }
 
     /**
@@ -94,6 +101,8 @@ public class VaultStockFlowService {
 
         log.info("Distribution line COMPLETED: {} {} -> branch={} vault territory={}",
                 amount, currencyCode, targetBranchCode, vaultEntityId);
+
+        publishVaultStockChanged(companyId, territory.getId());
     }
 
     /**
@@ -167,9 +176,48 @@ public class VaultStockFlowService {
         currencyStockRepository.save(stock);
         log.info("VAULT_STOCK_UPDATE: territory={} {} {}{} : {} -> {} (branch={})",
                 territoryId, currencyCode, increase ? "+" : "-", amount, oldQty, stock.getQuantity(), branch.getCode());
+
+        publishVaultStockChanged(companyId, territoryId);
     }
 
     // ============ HELPER METODUSOK ============
+
+    /**
+     * FR-3 (2026-06-17): "Értéktári készlet" nézet invalidációs jelzés a {@code /topic/vault-stock/{companyId}}
+     * STOMP topicra, miután egy COMPLETED esemény módosította a vault {@code currency_stock} egyenleget.
+     *
+     * <p><b>A tranzakciót NEM befolyásolhatja:</b> csak sikeres commit UTÁN publikál
+     * ({@link TransactionSynchronization#afterCommit()}); a publish bármely hibája elnyelve (a COMPLETED
+     * pénzmozgás nem bukhat el a WS-jelzés miatt). Aktív tranzakció nélkül (pl. unit teszt) azonnal publikál.</p>
+     */
+    private void publishVaultStockChanged(UUID companyId, Integer territoryId) {
+        if (companyId == null) {
+            return;
+        }
+        Runnable publish = () -> {
+            try {
+                messagingTemplate.convertAndSend(
+                        "/topic/vault-stock/" + companyId,
+                        (Object) VaultStockChangedMessage.builder()
+                                .companyId(companyId)
+                                .territoryId(territoryId)
+                                .changedAt(LocalDateTime.now())
+                                .build());
+            } catch (Exception e) {
+                log.warn("vault-stock invalidacio publish hiba (elnyelt, a tranzakciot nem befolyasolja)", e);
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    publish.run();
+                }
+            });
+        } else {
+            publish.run();
+        }
+    }
 
     private VaultTerritory getFirstActiveTerritory(UUID companyId) {
         List<VaultTerritory> territories = vaultTerritoryRepository.findByCompanyIdAndActiveTrue(companyId);

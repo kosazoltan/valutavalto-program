@@ -4,17 +4,18 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 /**
- * Értéktár (VAULT) készlet egy valutára: nyitó / átvett / átadott / záró + különbség.
+ * Értéktár (VAULT) készlet egy valutára: nyitó / átvett / átadott / záró.
  *
  * v2.4.9: az "Értéktári készlet" oldal soronkénti adatszerkezete.
  *  - opening: napi nyitókészlet (a daily snapshot vagy null, ha még nincs)
  *  - received: napközben átvett mennyiség (Collection / BankWithdraw összesen)
  *  - issued: napközben átadott mennyiség (Distribution / BankDeposit összesen)
  *  - closing: jelenlegi készlet (= currency_stock.quantity, entity_type=VAULT)
- *  - difference: closing - (opening + received - issued); 0 ha minden mozgás könyvelve van
+ *
+ * 2026-06-17 (FR-1/FR-2): a `difference` (hardcode 0, üzleti értelme nincs) és a `lastUpdated`
+ * (automatikus frissítésnél felesleges) mezők eltávolítva.
  */
 @Data
 @Builder
@@ -25,6 +26,4 @@ public class VaultStockRowDto {
     private BigDecimal received;
     private BigDecimal issued;
     private BigDecimal closing;
-    private BigDecimal difference;
-    private LocalDateTime lastUpdated;
 }
