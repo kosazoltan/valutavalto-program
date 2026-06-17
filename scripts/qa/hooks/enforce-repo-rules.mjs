@@ -94,6 +94,10 @@ try {
     if (/\bgit\b[^|;&]*\b(?:commit|push|merge)\b[^|;&]*--no-verify\b/.test(c)
         || /\b--no-verify\b[^|;&]*\bgit\b/.test(c))
       deny('git --no-verify (a QA-hookok megkerülése)');
+    // `-n` a `git commit` rövid alakja a --no-verify-ra (push esetén --dry-run,
+    // merge esetén --no-stat — ezért SZIGORÚAN csak commit-ra; rövid flag-klaszter is, pl. -nm).
+    if (/\bgit\s+commit\b[^|;&]*\s-[a-z]*n[a-z]*\b/.test(c))
+      deny('git commit -n (a --no-verify rövid alakja — QA-hookok megkerülése)');
     // aláírás-/signoff-megkerülés és branch-protection gyengítés
     if (/\bgit\b[^|;&]*\bpush\b[^|;&]*--no-gpg-sign\b/.test(c))
       warn('git push --no-gpg-sign — aláírás kihagyása; csak ha a felhasználó kérte.');
