@@ -176,13 +176,18 @@ viselkedesre nincs 100%-os garancia.
 - `AI_CONTRACT.md`: hard tiltasok es PR-meret plafon.
 - `AI_CONSTITUTION.md`: rovid mukodesi alapelvek.
 - `.cursor/rules/*`: csak celzott, nem allandoan mindent betolto szabalyok.
+- `.claude/` (Opus Enterprise OS): Claude Code-specifikus fajlalapu skill/agent/memory/
+  reference/command reteg (`Opus48_Enterprise_OS_Real_Full.md` bootstrap). Csak
+  formalizalja a mar ervenyes szabalyokat (teszt-integritas, evidence-first,
+  human-approval gate, minimal patch); ez az AGENTS.md es a vault-mandate-ek
+  felulirjak, ha utkoznek. Codex/Gemini nem olvassa a `.claude/skills/`-et.
 
 Ha egy platformfajl teljes gate-et vagy minden taskban security auditot kovetel,
 azt ezzel a fajllal osszhangban kell ertelmezni: teljes gate csak magas
 kockazatnal, push/merge/deploy/release elott kotelezo.
 
-<!-- agentic-qa-kit:begin v1 — NE szerkeszd kézzel a blokkon belül; frissítés: update-all.mjs -->
-## Agentic QA szabályok (agentic-qa-kit v1)
+<!-- agentic-qa-kit:begin v1.2 — NE szerkeszd kézzel a blokkon belül; frissítés: update-all.mjs -->
+## Agentic QA szabályok (agentic-qa-kit v1.2)
 
 ### Eszkaláció — Stop and Ask
 Állj meg és kérdezz (NE folytasd), ha:
@@ -194,6 +199,17 @@ kockazatnal, push/merge/deploy/release elott kotelezo.
 6. egy eszköz ismételten hibázik, és emberi diagnózis kell;
 7. a bemenet egyik specifikált esethez sem illik;
 8. a feladat a kijelölt hatókörön kívüli fájlok módosítását igényelné.
+
+### Nincs hallucináció
+Csak verifikált állítást írj le. Fájl, sor, függvény, flag vagy konfig említése ELŐTT
+verifikáld a forrásból (Read/Grep/Bash); a memória pont-in-time, minden hivatkozást újra
+meg kell erősíteni a kódból. A bizonytalanságot jelöld (UNKNOWN / UNVERIFIED) — NE pótold
+feltételezéssel. Zsákutcában (ismételt sikertelen próba) válts perspektívát, ne iterálj vakon.
+
+### Terv-először, majd verifikált végrehajtás
+Nem-triviális feladatnál a sorrend kötelező: (1) megértés (cél / nem-cél / érintett fájlok +
+a legközelebbi vezérlőfájl beolvasása), (2) a feladat méretéhez illő terv, (3) végrehajtás,
+(4) verifikáció a célhoz mérve. Kódolás CSAK a terv után indul.
 
 ### Teszt-integritás
 Tesztet a bukás elkerülésére gyengíteni, törölni vagy kikommentezni TILOS — ilyenkor
@@ -226,8 +242,82 @@ Code-review findinget csak fájl:sor hivatkozással és konkrét evidenciával a
 evidencia nélküli finding érvénytelen. Kritikus findingnál előbb próbáld megcáfolni
 (refuter-kör), csak megerősítés után jelentsd.
 
+### Evidence-before-completion
+A „kész / javítva / zöld" állítás CSAK futtatott parancs valódi kimenetével érvényes — a
+zöld teszt önmagában NEM bizonyíték. A megoldást a SPEC-hez mérd, ne a teszt szűk
+bemenetéhez (gyanújel, ha a kód a teszt konkrét értékére van szabva). Sosem jelents sikert
+parancseredmény nélkül; a nem-futtatott lépést jelöld: NOT RUN + ok + kockázat.
+
 ### Destruktív műveletek
 A destruktív-parancs hook (check-destructive) döntéseit tartsd tiszteletben: a DENY
 nem kerülhető meg parancs-átfogalmazással; ha a művelet valóban szükséges, az
 embertől kérj kifejezett megerősítést.
+
+### Kikényszerített tiltások (harness-szintű — enforce-repo-rules hook)
+A repo „Mindig tilos" szabályai NEM csak ajánlások: a PreToolUse `enforce-repo-rules` hook
+kikényszeríti őket (Bash/PowerShell + Edit/Write).
+- **DENY (blokkolt):** `git --no-verify` (a QA-hookok megkerülése). Csak kifejezett emberi
+  megerősítésre tehető meg a következő üzenetben.
+- **WARN (jelez, nem blokkol):** hard-coded secret / private key / AWS-kulcs kódba; `eval()` /
+  `new Function()` / unsafe deszerializáció (pickle, `yaml.load` Loader nélkül); néma
+  `catch{}` / `except: pass`; teszt `skip`/`only`.
+A DENY-t parancs-átfogalmazással megkerülni TILOS. Repo-specifikus bővítés: a
+`scripts/qa/repo-rules.json`-ban további minták (deny/warn) definiálhatók a hook-kód
+módosítása nélkül — így minden repo a saját AGENTS.md-tiltásait kódolhatja.
 <!-- agentic-qa-kit:end -->
+
+<!-- CODEX_SHARED_QUALITY_RULES_START v1 -->
+## Kikényszerített közös Codex minőségkapu
+
+Ez a blokk minden repo-ban kötelező minimumszabály Codex/AI-agent munkához. A
+repo-specifikus szabályokat nem helyettesíti, hanem kikényszerített módon
+kiegészíti. Repo-specifikus szabály csak szigoríthatja vagy pontosíthatja ezt a
+blokkot; nem gyengítheti, nem kapcsolhatja ki és nem írhatja felül. Ütközésnél
+mindig a szigorúbb, biztonságosabb, jobban verifikálható szabály érvényes. Ha a
+repo-specifikus szöveg enyhébb mércét engedne, azt Codex-munkánál érvénytelen
+kivételként kell kezelni.
+
+Repo-specifikus szabályok betöltése kötelező. Minden munkamenetben azonosítsd
+és olvasd el a legközelebbi repo-vezérlő fájlt (AGENTS.md, CLAUDE.md, CODEX.md,
+GEMINI.md), valamint csomag/alrepo munka esetén a közelebbi vezérlő fájlokat is.
+Csak a közös blokk alapján dolgozni tilos, ha a repo saját szabályt tartalmaz. A
+telepített közös blokk a repo saját szövegét nem törölheti és nem írhatja át
+kézzel; csak markerelt blokkban frissíthető.
+
+- Magyarul kommunikálj a felhasználóval, kivéve ha a repo vagy a feladat más
+  nyelvet kér a végtermékben.
+- Tényből dolgozz: ne találj ki fájlt, API-t, route-ot, teszteredményt, logot,
+  buildet, deployt, review-t vagy külső forrást. Ha nem ellenőrizted, írd le,
+  hogy nem ellenőrzött.
+- Munka előtt olvasd el a legközelebbi vezérlő fájlt (AGENTS.md, CLAUDE.md,
+  CODEX.md, GEMINI.md), az adott repo/alrepo saját kiegészítő szabályait és az
+  érintett forrás/teszt fájlokat. Nagy dokumentumot eleje-közepe-vége
+  mintavétellel olvass, ne ess Lost in the Middle hibába.
+- 3+ fájlt, architektúrát, adatmodellt, migrációt, authot, pénzügyi/üzleti
+  logikát, deployt vagy agent/CI szabályt érintő munkánál előbb rövid contract:
+  cél, nem-cél, érintett fájlok, edge case-ek, elfogadási feltételek.
+- Minimális, célzott változtatást készíts. Ne overpolisholj, ne refaktorálj
+  mellékesen, és ne keverd össze a feladatot más nyitott munkával.
+- Tesztet gyengíteni, törölni, skipelni, snapshotot kozmetikázni vagy
+  test-only kerülőutat betenni tilos. A bukó teszt okát javítsd, ne a mércét.
+- Minden érdemi változtatás után futtasd a legszűkebb hasznos ellenőrzést:
+  célzott teszt, lint, typecheck, build, smoke vagy diff-check. Kész állapotot
+  csak valós parancskimenettel vagy pontosan dokumentált blockerrel állíts.
+- UI/megjelenítési változásnál a renderer/unit teszt nem elég. Kötelező valós,
+  teljes képernyős Browser/Playwright render ellenőrzés, amely nézi az átfedést,
+  levágott szöveget, váratlan scrollbart, viewport overflow-t és a javított
+  felhasználói állapotot.
+- Titkot, tokent, privát kulcsot, személyes adatot vagy secret-like azonosítót
+  ne írj chatbe, logba, commitba, dokumentációba vagy fájlnévbe. Használj
+  placeholdert vagy secret-store/environment hivatkozást.
+- Destruktív művelet, adatbázis-migráció, tömeges törlés, deploy, release,
+  credential/cert kezelés vagy külső rendszer módosítása előtt legyen explicit
+  kockázatkezelés és visszaállási pont; ha nincs biztonságos default, állj meg.
+- Dirty worktree-ben ne revertáld és ne írd felül más munkáját. Státusz alapján
+  különítsd el a saját szeletet, user/unknown munkát és generált zajt.
+- Windows hoston parancsoknál preferáld az explicit futtatókat (npm.cmd,
+  npx.cmd, pwsh/powershell -ExecutionPolicy Bypass), ne támaszkodj olyan
+  shimre, amely szerkesztőben nyílhat meg.
+- Záró válaszban sorold fel: módosított fájlok, futtatott ellenőrzések
+  PASS/FAIL eredménnyel, nem futtatott ellenőrzések oka és maradó kockázat.
+<!-- CODEX_SHARED_QUALITY_RULES_END v1 -->
