@@ -8,10 +8,10 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <!-- Supply-chain upgrade: 3.5.11 -> 4.0.6
+        <!-- Supply-chain upgrade: 3.5.11 -> 4.1.0
              - CVE-2026-22731 (Spring Boot Actuator auth bypass) fixed in 3.5.12
-             - CVE-2026-29145 (Tomcat 10.1.52 CLIENT_CERT) fixed by bundled Tomcat 10.1.53 in 4.0.6 -->
-        <version>4.0.6</version>
+             - CVE-2026-29145 (Tomcat 10.1.52 CLIENT_CERT) fixed by bundled Tomcat 10.1.53 in 4.1.0 -->
+        <version>4.1.0</version>
         <relativePath/>
     </parent>
     
@@ -33,7 +33,7 @@
         <!-- CVE-2026-34478/34480/34481 fix: log4j explicit override 2.24.3 -> 2.25.4 -->
         <log4j2.version>2.25.4</log4j2.version>
         <!-- CVE-2026-33186 fix: force patched grpc-api over Google client transitive -->
-        <grpc.version>1.81.0</grpc.version>
+        <grpc.version>1.82.0</grpc.version>
         <!-- AI review fix Codex P1 #263 (2026-04-29): a `<tomcat.version>10.1.54</tomcat.version>`
              override SB 3.5-re volt szükséges (CVE-2026-34483/34486/34487 fix), de SB 4.0.6
              Servlet 6.1 stack-et céloz, ami Tomcat 11.x. A 10.1.x override Servlet 6.0
