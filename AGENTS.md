@@ -95,6 +95,14 @@ Alap mukodes:
 
 - Ne allj meg puszta tervnel, ha a feladat megvalosithato.
 - Ne kerj engedelyt rutin olvasasra, szerkesztesre, tesztre vagy buildre.
+- Ha a feladat telepitot, Electron klienst, release-t vagy build/deploy
+  deliverable-t ker, akkor dependency-hianyra nem hivatkozhatsz elso
+  blocker-kent. Elobb fel kell terkepezni a repo sajat telepito/build
+  scriptjeit, lockfile-jait es Windows utasitasait, majd a szukseges Node,
+  Python, Maven, Electron, JDK es NSIS/toolchain dependency-ket telepiteni
+  vagy bizonyithatoan ellenorizni kell. Csak olyan hiany lehet blocker,
+  amely a repo scriptjeivel es a gepen elerheto csomagkezelokkel nem
+  potolhato, vagy secret/alairasi jogosultsagot igenyel.
 - Ne futtass teljes gate-lancot minden apro valtozasra.
 - Ne nyiss uj nagy refaktort a kert javitas melle.
 - Ha a felhasznalo agent-mukodest ker javitani, ne irj uzleti programkodot.

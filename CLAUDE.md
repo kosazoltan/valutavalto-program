@@ -126,6 +126,29 @@ Reszletek: `vault/feedback/security-audit-mandate-2026-06-15.md` (mandate),
 `merge != telepito`. Telepito-build csak Electron/nativ reteg valtozasnal vagy
 milestone release-nel kell.
 
+Telepito/release feladatnal kotelezo, sorrendben:
+
+1. A repo sajat forrasait kell hasznalni, nem feltetelezest: root `package.json`
+   `package:*` scriptek, kliens `package.json` `package:unsigned`/`package`,
+   `scripts/installer-smoke-preflight.ps1`, `installer/build-installer.ps1`,
+   `.github/workflows/windows-signed-release.yml`,
+   `.github/workflows/windows-unsigned-release.yml`, es az erintett
+   `electron-builder.json` fajlok.
+2. Dependency-t nem szabad "hianyzik" alapon atlepni. Ellenorizni vagy telepiteni
+   kell lockfile-bol: root, `frontend-react`, `penztar-client`,
+   `kozponti-client`, `arfolyam-keszito-client` alatt `npm ci`; Python
+   requirement eseten celzott `python -m pip install -r ...`; Mavennel a repo
+   wrapper (`mvnw.cmd`) hasznalando. Letoltott/binaris dependency csak forras-
+   es hash-ellenorzes utan hasznalhato.
+3. Ha a kert deliverable telepito, tenyleges buildet kell futtatni:
+   `npm run package:penztar`, `npm run package:kozponti`,
+   `npm run package:arfolyam-keszito`, vagy a dokumentalt signed/unsigned
+   GitHub workflow. Build utan kotelezo `npm run installer:smoke:artifacts`
+   vagy signed release eseten `npm run installer:smoke:signed`.
+4. A "nem lehet telepitot kesziteni" allitas csak akkor megengedett, ha a fenti
+   scriptkeszlet es lockfile-alapu dependency telepites lefutott vagy konkret,
+   bizonyitott blocker maradt fenn (pl. secret/alairasi jogosultsag).
+
 Telepito-build utan a feladat CSAK akkor teljes, ha a telepito .exe-k le
 vannak toltve a felhasznalo Letoltesek mappajaba (`gh release download`),
 es a zarojelentes fajllista + meret + SHA-256 egyezes bizonyitekot mutat
