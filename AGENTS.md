@@ -103,6 +103,12 @@ Alap mukodes:
   vagy bizonyithatoan ellenorizni kell. Csak olyan hiany lehet blocker,
   amely a repo scriptjeivel es a gepen elerheto csomagkezelokkel nem
   potolhato, vagy secret/alairasi jogosultsagot igenyel.
+- A release/telepito vegfelhasznaloi EXE-keszlete jelenleg pontosan 3 darab:
+  `Penztar-Setup-<version>-<date>.exe`,
+  `Penztar-Eltavolito-<version>-<date>.exe`,
+  `Kozponti-Munkaallomas-Setup-<version>.exe`. Kulon
+  `Arfolyamkeszito-Setup-*.exe` release-telepitot nem keszitunk; a
+  rate-maker/arfolyamkeszito mod a kozponti munkaallomasba van integralva.
 - Ne futtass teljes gate-lancot minden apro valtozasra.
 - Ne nyiss uj nagy refaktort a kert javitas melle.
 - Ha a felhasznalo agent-mukodest ker javitani, ne irj uzleti programkodot.

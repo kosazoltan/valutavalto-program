@@ -335,7 +335,9 @@ function Add-ClientChecks {
     [string]$Directory,
     [string]$ExpectedAppId,
     [string]$ExpectedProductName,
-    [string]$ExpectedArtifactName
+    [string]$ExpectedArtifactName,
+    [string]$ArtifactRelativeDirectory,
+    [string]$ArtifactNamePattern
   )
 
   $packagePath = "$Directory\package.json"
@@ -378,8 +380,10 @@ function Add-ClientChecks {
   Add-ContentCheck -Area $Name -RelativePath $mainPath -Pattern 'production-urls.json' -Expected 'Main process reads packaged production URLs'
 
   if ($CheckArtifacts) {
-    $artifactPattern = $ExpectedArtifactName.Replace('${version}', $pkg.version)
-    $releaseDir = Get-RepoPath "$Directory\release"
+    $artifactPatternTemplate = if ($ArtifactNamePattern) { $ArtifactNamePattern } else { $ExpectedArtifactName }
+    $artifactPattern = $artifactPatternTemplate.Replace('${version}', $pkg.version)
+    $artifactDirRelative = if ($ArtifactRelativeDirectory) { $ArtifactRelativeDirectory } else { "$Directory\release" }
+    $releaseDir = Get-RepoPath $artifactDirRelative
     $artifact = if (Test-Path -LiteralPath $releaseDir) {
       Get-ChildItem -LiteralPath $releaseDir -Filter $artifactPattern -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     } else {
@@ -406,6 +410,42 @@ function Add-ClientChecks {
   Add-PackagedSecretLeakChecks -Name $Name -Directory $Directory
 }
 
+function Add-NsisArtifactCheck {
+  param(
+    [string]$Name,
+    [string]$RelativeDirectory,
+    [string]$ArtifactPattern
+  )
+
+  if (-not $CheckArtifacts) {
+    Add-Check -Area $Name -Name 'installer artifact check' -Status 'SKIP' `
+      -Evidence 'Run with -CheckArtifacts after installer build' -Expected $ArtifactPattern
+    return
+  }
+
+  $artifactDir = Get-RepoPath $RelativeDirectory
+  $artifact = if (Test-Path -LiteralPath $artifactDir) {
+    Get-ChildItem -LiteralPath $artifactDir -Filter $ArtifactPattern -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  } else {
+    $null
+  }
+
+  if ($artifact) {
+    $ageHours = [Math]::Round(((Get-Date) - $artifact.LastWriteTime).TotalHours, 2)
+    Add-Check -Area $Name -Name 'installer artifact exists' -Status 'PASS' `
+      -Evidence "$($artifact.FullName); size=$($artifact.Length); ageHours=$ageHours" -Expected $ArtifactPattern
+    Add-Check -Area $Name -Name 'installer artifact age' -Status ($(if ($ageHours -le $MaxArtifactAgeHours) { 'PASS' } else { 'FAIL' })) `
+      -Evidence "ageHours=$ageHours" -Expected "<= $MaxArtifactAgeHours"
+    $hash = Get-Sha256Hash -Path $artifact.FullName
+    $hashPath = Join-Path $runDir "$Name.sha256"
+    "$hash *$($artifact.Name)" | Set-Content -LiteralPath $hashPath -Encoding ASCII
+    Add-Check -Area $Name -Name 'installer artifact sha256' -Status 'PASS' -Evidence $hashPath -Expected 'SHA-256 generated'
+    Add-AuthenticodeSignatureCheck -Name $Name -ArtifactPath $artifact.FullName
+  } else {
+    Add-Check -Area $Name -Name 'installer artifact exists' -Status 'FAIL' -Evidence "$artifactDir\$ArtifactPattern" -Expected 'Artifact exists'
+  }
+}
+
 Add-PathCheck -Area 'docs' -RelativePath 'docs\INSTALLER_DOCS_INDEX.md' -Expected 'Installer documentation index exists'
 Add-PathCheck -Area 'docs' -RelativePath 'docs\BUILD_WINDOWS.md' -Expected 'Windows build documentation exists'
 Add-PathCheck -Area 'docs' -RelativePath 'docs\INSTALL_WINDOWS.md' -Expected 'Windows install documentation exists'
@@ -414,19 +454,19 @@ Add-PathCheck -Area 'docs' -RelativePath 'docs\SECURITY_INSTALLER_CHECKLIST.md' 
 Add-PathCheck -Area 'docs' -RelativePath 'docs\ELECTRON_CASHIER_SMOKE_CHECKLIST.md' -Expected 'Electron cashier smoke checklist exists'
 
 Add-ContentCheck -Area 'root' -RelativePath 'package.json' -Pattern '"package:penztar"' -Expected 'Root penztar packaging script is wired'
-Add-ContentCheck -Area 'root' -RelativePath 'package.json' -Pattern '"package:arfolyam-keszito"' -Expected 'Root arfolyam-keszito packaging script is wired'
 Add-ContentCheck -Area 'root' -RelativePath 'package.json' -Pattern '"package:kozponti"' -Expected 'Root kozponti packaging script is wired'
 Add-ContentCheck -Area 'root' -RelativePath 'package.json' -Pattern '"installer:smoke:preflight"' -Expected 'Root installer smoke preflight script is wired'
 Add-ContentCheck -Area 'root' -RelativePath 'package.json' -Pattern '"installer:smoke:artifacts"' -Expected 'Root installer artifact verification script is wired'
+Add-PathCheck -Area 'root' -RelativePath 'installer\build-installer.ps1' -Expected 'Penztar setup NSIS build script exists'
+Add-PathCheck -Area 'root' -RelativePath 'installer\build-cleanup.ps1' -Expected 'Penztar standalone uninstaller build script exists'
 
 Add-ClientChecks -Name 'penztar-client' -Directory 'penztar-client' `
   -ExpectedAppId 'com.bestchange.penztar' `
   -ExpectedProductName 'Valutavalto Penztar' `
-  -ExpectedArtifactName 'Penztar-Setup-${version}.exe'
-Add-ClientChecks -Name 'arfolyam-keszito-client' -Directory 'arfolyam-keszito-client' `
-  -ExpectedAppId 'com.bestchange.arfolyamkeszito' `
-  -ExpectedProductName 'Valutavalto Arfolyamkeszito' `
-  -ExpectedArtifactName 'Arfolyamkeszito-Setup-${version}.exe'
+  -ExpectedArtifactName 'Penztar-Setup-${version}.exe' `
+  -ArtifactRelativeDirectory 'installer\build' `
+  -ArtifactNamePattern 'Penztar-Setup-${version}-*.exe'
+Add-NsisArtifactCheck -Name 'penztar-eltavolito' -RelativeDirectory 'installer\build' -ArtifactPattern "Penztar-Eltavolito-$((Get-RepoJson 'package.json').version)-*.exe"
 Add-ClientChecks -Name 'kozponti-client' -Directory 'kozponti-client' `
   -ExpectedAppId 'com.bestchange.munkaallomas' `
   -ExpectedProductName 'Valutavalto Kozponti Munkaallomas' `
@@ -460,7 +500,7 @@ $summary = [pscustomobject]@{
   skipped = $skipped
   checks = $checks
   pendingExternalEvidence = @(
-    'Run all three unsigned or signed installer package commands on a trusted Windows build machine',
+    'Run the three expected Windows artifacts on a trusted Windows build machine: Penztar Setup, Penztar Eltavolito, Kozponti Munkaallomas',
     'Run this script with -CheckArtifacts and attach generated SHA-256 files',
     'For production release artifacts, run this script with -RequireSignature and attach Authenticode certificate evidence',
     'Install each generated installer on a clean Windows VM',

@@ -117,7 +117,7 @@ try {
 
     // b) unsafe végrehajtás / deszerializáció
     if (/\beval\s*\(/.test(content) || /\bnew\s+Function\s*\(/.test(content))
-      warn('eval()/new Function() — kódinjekció-kockázat; kerüld vagy validáld szigorúan a bemenetet.');
+      warn('eval / new Function használat — kódinjekció-kockázat; kerüld vagy validáld szigorúan a bemenetet.');
     if (/\bpickle\.loads?\s*\(|\byaml\.load\s*\((?![^)]*Loader\s*=)/.test(content))
       warn('unsafe deszerializáció (pickle/yaml.load Loader nélkül) — RCE-kockázat.');
 

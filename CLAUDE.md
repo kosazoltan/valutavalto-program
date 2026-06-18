@@ -50,8 +50,10 @@ tenyszeruen megtortent.
 
 - Backend: Java 21, Spring Boot, PostgreSQL, Flyway, multi-tenant.
 - Frontend: React + TypeScript + Vite.
-- Desktop: Electron kliensek (`penztar-client`, `kozponti-client`,
-  `arfolyam-keszito-client`).
+- Desktop: vegfelhasznaloi Electron telepitok: `penztar-client` es
+  `kozponti-client`. Az arfolyamkeszito/rate-maker mod a `kozponti-client`
+  resze; az `arfolyam-keszito-client` legacy/kozos kodforras, onallo
+  release-telepito nem keszul belole.
 
 ## Fontos invariansok
 
@@ -131,21 +133,29 @@ Telepito/release feladatnal kotelezo, sorrendben:
 1. A repo sajat forrasait kell hasznalni, nem feltetelezest: root `package.json`
    `package:*` scriptek, kliens `package.json` `package:unsigned`/`package`,
    `scripts/installer-smoke-preflight.ps1`, `installer/build-installer.ps1`,
+   `installer/build-cleanup.ps1`,
    `.github/workflows/windows-signed-release.yml`,
    `.github/workflows/windows-unsigned-release.yml`, es az erintett
    `electron-builder.json` fajlok.
 2. Dependency-t nem szabad "hianyzik" alapon atlepni. Ellenorizni vagy telepiteni
    kell lockfile-bol: root, `frontend-react`, `penztar-client`,
-   `kozponti-client`, `arfolyam-keszito-client` alatt `npm ci`; Python
+   `kozponti-client`, es ha typecheck/kodkapcsolat igenyli, a legacy
+   `arfolyam-keszito-client` alatt `npm ci`; Python
    requirement eseten celzott `python -m pip install -r ...`; Mavennel a repo
    wrapper (`mvnw.cmd`) hasznalando. Letoltott/binaris dependency csak forras-
    es hash-ellenorzes utan hasznalhato.
-3. Ha a kert deliverable telepito, tenyleges buildet kell futtatni:
-   `npm run package:penztar`, `npm run package:kozponti`,
-   `npm run package:arfolyam-keszito`, vagy a dokumentalt signed/unsigned
-   GitHub workflow. Build utan kotelezo `npm run installer:smoke:artifacts`
-   vagy signed release eseten `npm run installer:smoke:signed`.
-4. A "nem lehet telepitot kesziteni" allitas csak akkor megengedett, ha a fenti
+3. Ha a kert deliverable telepito/release, a helyes vegfelhasznaloi EXE-keszlet
+   3 darab: `Penztar-Setup-<version>-<date>.exe`,
+   `Penztar-Eltavolito-<version>-<date>.exe`,
+   `Kozponti-Munkaallomas-Setup-<version>.exe`. Kulon
+   `Arfolyamkeszito-Setup-*.exe` release-telepitot TILOS vart artifactkent
+   kezelni, mert a rate-maker mod a kozponti munkaallomasba van integralva.
+4. Tenyleges build: penztar setuphoz `installer/build-installer.ps1`, penztar
+   eltavolitohoz `installer/build-cleanup.ps1`, kozponti modulhoz
+   `npm run package:kozponti`, vagy a dokumentalt signed/unsigned GitHub
+   workflow. Build utan kotelezo `npm run installer:smoke:artifacts` vagy
+   signed release eseten `npm run installer:smoke:signed`.
+5. A "nem lehet telepitot kesziteni" allitas csak akkor megengedett, ha a fenti
    scriptkeszlet es lockfile-alapu dependency telepites lefutott vagy konkret,
    bizonyitott blocker maradt fenn (pl. secret/alairasi jogosultsag).
 

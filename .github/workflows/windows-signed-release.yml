@@ -5,8 +5,8 @@ name: Windows Signed Release (v2.x)
 # Eredmenyek (GitHub Release artifact-okkent):
 #   - Penztar-Setup-<version>-<date>.exe           (NSIS, ~280 MB, kod-alairva)
 #   - Penztar-Eltavolito-<version>-<date>.exe      (NSIS uninstaller, ~60 KB)
-#   - Kozponti-Munkaallomas-Setup-<version>.exe (~100 MB, kod-alairva)
-#   - Arfolyamkeszito-Setup-<version>.exe          (~100 MB, kod-alairva)
+#   - Kozponti-Munkaallomas-Setup-<version>.exe    (~100 MB, kod-alairva;
+#     tartalmazza az arfolyamkeszito/rate-maker modot is)
 #   - SHA-256 manifest (windows-signed-release-sha256.txt)
 #
 # Alairas: Azure Key Vault Premium HSM-en tarolt cert + AzureSignTool (vcsjones).
