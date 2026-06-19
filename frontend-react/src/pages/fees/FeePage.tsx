@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { DollarSign, Plus } from 'lucide-react'
+import { DollarSign, Plus, Trash2 } from 'lucide-react'
 import { feeApi, FeeType, FeeRate, FeeDiscount } from '../../services/api/index'
 import { logger } from '../../utils/logger';
 import { useTranslation } from 'react-i18next'
@@ -58,6 +58,24 @@ export default function FeePage() {
     }
   }
 
+  const handleDelete = async (id: string) => {
+    if (!confirm('Biztosan törli a kiválasztott díjbeállítást?')) return
+    try {
+      setError(null)
+      if (activeTab === 'types') {
+        await feeApi.deleteType(id)
+      } else if (activeTab === 'rates') {
+        await feeApi.deleteRate(id)
+      } else {
+        await feeApi.deleteDiscount(id)
+      }
+      await loadData()
+    } catch (err) {
+      logger.error('FeePage', 'Díj törlési hiba:', err)
+      setError('Hiba történt a törlés során')
+    }
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold flex items-center gap-2"><DollarSign />{t('fees.dijkezeles')}</h1>
@@ -87,7 +105,12 @@ export default function FeePage() {
                 {types.map(ft => (
                   <tr key={ft.id}>
                     <td>{ft.code}</td><td>{ft.name}</td><td>{ft.calculationMethod}</td>
-                    <td><button type="button" onClick={() => { setFormData(ft); setShowForm(true) }} className="form-button text-xs">{t('common.edit')}</button></td>
+                    <td className="flex gap-2">
+                      <button type="button" onClick={() => { setFormData(ft); setShowForm(true) }} className="form-button text-xs">{t('common.edit')}</button>
+                      <button type="button" onClick={() => void handleDelete(ft.id)} className="form-button text-xs text-red-700" title={t('common.delete')}>
+                        <Trash2 size={14} /> {t('common.delete')}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -100,7 +123,12 @@ export default function FeePage() {
                 {rates.map(r => (
                   <tr key={r.id}>
                     <td>{r.feeTypeName}</td><td>{r.currencyCode}</td><td>{r.rate}</td>
-                    <td><button type="button" onClick={() => { setFormData(r); setShowForm(true) }} className="form-button text-xs">{t('common.edit')}</button></td>
+                    <td className="flex gap-2">
+                      <button type="button" onClick={() => { setFormData(r); setShowForm(true) }} className="form-button text-xs">{t('common.edit')}</button>
+                      <button type="button" onClick={() => void handleDelete(r.id)} className="form-button text-xs text-red-700" title={t('common.delete')}>
+                        <Trash2 size={14} /> {t('common.delete')}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -113,7 +141,12 @@ export default function FeePage() {
                 {discounts.map(d => (
                   <tr key={d.id}>
                     <td>{d.code}</td><td>{d.name}</td><td>{d.discountType}</td><td>{d.discountValue}</td>
-                    <td><button type="button" onClick={() => { setFormData(d); setShowForm(true) }} className="form-button text-xs">{t('common.edit')}</button></td>
+                    <td className="flex gap-2">
+                      <button type="button" onClick={() => { setFormData(d); setShowForm(true) }} className="form-button text-xs">{t('common.edit')}</button>
+                      <button type="button" onClick={() => void handleDelete(d.id)} className="form-button text-xs text-red-700" title={t('common.delete')}>
+                        <Trash2 size={14} /> {t('common.delete')}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
