@@ -29,6 +29,7 @@ export default function CameraExportPage() {
   const [custody, setCustody] = useState<ChainOfCustodyRecord[]>([])
   const [branches, setBranches] = useState<BranchInfo[]>([])
   const [loading, setLoading] = useState(false)
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [showNewForm, setShowNewForm] = useState(false)
   const [chainResult, setChainResult] = useState<{ chainIntact: boolean; verifiedAt: string } | null>(null)
@@ -64,10 +65,19 @@ export default function CameraExportPage() {
     } catch { setCustody([]) }
   }
 
-  const handleSelectRequest = (r: CameraExportRequest) => {
+  const handleSelectRequest = async (r: CameraExportRequest) => {
     setSelected(r)
-    loadCustody(r.id)
     setChainResult(null)
+    setDetailLoadingId(r.id)
+    try {
+      const res = await cameraExportApi.getById(r.id)
+      setSelected(res.data)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setDetailLoadingId(null)
+    }
+    await loadCustody(r.id)
   }
 
   const handleCreate = async () => {
@@ -204,8 +214,8 @@ export default function CameraExportPage() {
           {loading && <div className="text-center py-4 text-gray-400">Betöltés...</div>}
           {!loading && requests.length === 0 && <div className="text-gray-400 text-sm text-center py-4">{t('camera.valasszonIrodatAzExportKerelmek')}</div>}
           {requests.map(r => (
-            <div key={r.id} role="button" tabIndex={0} onClick={() => handleSelectRequest(r)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelectRequest(r) } }}
+            <div key={r.id} role="button" tabIndex={0} data-testid={`camera-export-request-${r.id}`} onClick={() => void handleSelectRequest(r)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void handleSelectRequest(r) } }}
               className={`p-3 rounded border cursor-pointer hover:bg-gray-50 transition ${selected?.id === r.id ? 'border-blue-400 bg-blue-50' : 'border-gray-200'}`}>
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
@@ -228,6 +238,9 @@ export default function CameraExportPage() {
             <>
               <div className="p-3 border rounded space-y-2">
                 <h3 className="font-medium text-sm flex items-center gap-1"><FileText size={14} />{t('camera.kerelemReszletek')}</h3>
+                {detailLoadingId === selected.id && (
+                  <div className="text-xs text-blue-600">{t('common.loading')}</div>
+                )}
                 <div className="text-xs space-y-1">
                   <div><StatusBadge status={selected.status} /></div>
                   <div>{t('camera.idoszak')}{fmtDt(selected.periodFrom)} — {fmtDt(selected.periodTo)}</div>
