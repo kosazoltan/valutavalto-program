@@ -671,6 +671,9 @@
   "customers": {
     "alapadatok": "Alapadatok",
     "cegesUgyfel": "Céges ügyfél",
+    "customerCode": "Ügyfélkód",
+    "customerCodeSearch": "Ügyfélkód keresés",
+    "customerCodeSearchPlaceholder": "Ügyfélkód pontos keresése...",
     "teaorCode": "TEÁOR kód",
     "eMail": "E-mail",
     "eMailCim": "E-mail cím",

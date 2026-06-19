@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1030
-frontend production UI/app referenced REST calls: 934
+frontend production UI/app referenced REST calls: 935
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 90
+backend endpoints not referenced by production UI/app calls: 89
 ```
 
 Route/page audit result:
@@ -262,11 +262,15 @@ proven used by UI/app" follow-up work.
 - Wired routed ReceiptPage details to `GET /receipts/{id}` so the bizonylat
   detail modal opens from the backend detail representation instead of only the
   list row snapshot, with mobile render coverage.
+- Wired routed CustomerListPage code lookup to
+  `GET /customers/code/{customerCode}` so users can run an exact backend
+  customer-code lookup beside the existing name/document search, with mobile
+  render coverage.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 90 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 90 confirmed UX
+The stricter audit currently reports 89 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 89 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens.
@@ -279,7 +283,7 @@ integration-or-device            15
 ui-candidate/list-or-view        14
 backend-only/legacy-compat       8
 workflow-action                  7
-ui-candidate/detail              5
+ui-candidate/detail              4
 backend-only/auth-session        3
 backend-only/admin-maintenance   2
 backend-only/diagnostics         2
@@ -489,6 +493,12 @@ python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenc
 npx.cmd vitest run src/pages/receipts/ReceiptPage.test.tsx src/pages/receipts/ReceiptPage.types.test.ts
 npx.cmd eslint src/pages/receipts/ReceiptPage.tsx src/pages/receipts/ReceiptPage.test.tsx e2e/receipt-detail.spec.ts src/i18n/hu.json
 npx.cmd playwright test e2e/receipt-detail.spec.ts --config=playwright.config.ts
+npm.cmd run type-check
+npm.cmd run build
+python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 140
+npx.cmd vitest run src/pages/customers/CustomerListPage.test.tsx
+npx.cmd eslint src/pages/customers/CustomerListPage.tsx src/pages/customers/CustomerListPage.test.tsx e2e/customer-code-search.spec.ts
+npx.cmd playwright test e2e/customer-code-search.spec.ts --config=playwright.config.ts
 npm.cmd run type-check
 npm.cmd run build
 python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 140

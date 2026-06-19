@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 export default function CustomerListPage() {
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
+  const [customerCodeSearch, setCustomerCodeSearch] = useState('')
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -45,6 +46,23 @@ export default function CustomerListPage() {
     }
   }
 
+  const handleCustomerCodeSearch = async () => {
+    const code = customerCodeSearch.trim()
+    if (!code) return
+    try {
+      setLoading(true)
+      setError(null)
+      const customer = await customerApi.getByCode(code)
+      setCustomers([customer])
+    } catch (err) {
+      setCustomers([])
+      setError(getErrorMessage(err))
+      logger.error('CustomerListPage', 'Failed to load customer by code:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-3">
       {/* Header */}
@@ -61,17 +79,31 @@ export default function CustomerListPage() {
 
       {/* Search */}
       <div className="form-panel">
-        <div className="flex gap-1 max-w-md">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="form-input flex-1"
-            placeholder="Keresés név vagy okmányszám alapján..."
-          />
-          <button onClick={() => void loadCustomers()} className="form-button">
-            <Search size={16} />
-          </button>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="flex gap-1">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="form-input flex-1"
+              placeholder="Keresés név vagy okmányszám alapján..."
+            />
+            <button onClick={() => void loadCustomers()} className="form-button" aria-label={t('common.search')}>
+              <Search size={16} />
+            </button>
+          </div>
+          <div className="flex gap-1">
+            <input
+              type="text"
+              value={customerCodeSearch}
+              onChange={(e) => setCustomerCodeSearch(e.target.value)}
+              className="form-input flex-1"
+              placeholder={t('customers.customerCodeSearchPlaceholder')}
+            />
+            <button onClick={() => void handleCustomerCodeSearch()} className="form-button" aria-label={t('customers.customerCodeSearch')}>
+              <Search size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -101,6 +133,7 @@ export default function CustomerListPage() {
             <thead>
               <tr>
                 <th>{t('common.name')}</th>
+                <th>{t('customers.customerCode')}</th>
                 <th>{t('common.birthDate')}</th>
                 <th>{t('common.nationality')}</th>
                 <th>{t('customers.okmanyTipus')}</th>
@@ -117,6 +150,7 @@ export default function CustomerListPage() {
                     {c.name}
                     {c.isVip && <span className="ml-1 text-xs bg-yellow-100 text-yellow-700 px-1 rounded">VIP</span>}
                   </td>
+                  <td className="font-mono text-sm">{c.customerCode || '-'}</td>
                   <td>{c.birthDate ? new Date(c.birthDate).toLocaleDateString('hu-HU') : '-'}</td>
                   <td>{c.nationality || '-'}</td>
                   <td>{c.documentType || '-'}</td>

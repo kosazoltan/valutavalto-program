@@ -41,12 +41,14 @@ const mockCustomers = [
 
 const mockGetActive = vi.fn()
 const mockSearch = vi.fn()
+const mockGetByCode = vi.fn()
 const mockDeactivate = vi.fn()
 
 vi.mock('../../services/api/transactions', () => ({
   customerApi: {
     getActive: (...args: unknown[]) => mockGetActive(...args),
     search: (...args: unknown[]) => mockSearch(...args),
+    getByCode: (...args: unknown[]) => mockGetByCode(...args),
     deactivate: (...args: unknown[]) => mockDeactivate(...args),
   },
 }))
@@ -73,6 +75,7 @@ describe('CustomerListPage', () => {
         ),
       )
     })
+    mockGetByCode.mockResolvedValue({ ...mockCustomers[0], customerCode: 'U000001' })
     mockDeactivate.mockResolvedValue(undefined)
   })
 
@@ -90,6 +93,21 @@ describe('CustomerListPage', () => {
   it('keresési mező megjelenítése', () => {
     renderCustomerListPage()
     expect(screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/Ügyfélkód pontos keresése/)).toBeInTheDocument()
+  })
+
+  it('ügyfélkód pontos keresése a customerApi.getByCode backend wrapperre köt', async () => {
+    renderCustomerListPage()
+    await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    await user.type(screen.getByPlaceholderText(/Ügyfélkód pontos keresése/), 'U000001')
+    await user.click(screen.getByRole('button', { name: 'Ügyfélkód keresés' }))
+
+    await waitFor(() => {
+      expect(mockGetByCode).toHaveBeenCalledWith('U000001')
+    })
+    expect(await screen.findByText('U000001')).toBeInTheDocument()
   })
 
   it('összes ügyfél megjelenítése alapértelmezésben', async () => {
