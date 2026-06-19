@@ -24,7 +24,7 @@ const worker = {
 const dailyReport = {
   id: 'darius-1',
   reportDate: '2026-06-19',
-  status: 'GENERATED',
+  status: 'SUBMITTED',
   companyId: 'company-1',
   totalBuyHuf: 100000,
   totalSellHuf: 50000,
@@ -105,6 +105,14 @@ async function mockApis(page: Page) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(dailyReport) })
     }
 
+    if (path.endsWith('/darius/darius-1/acknowledge') && method === 'POST') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...dailyReport, status: 'ACKNOWLEDGED', ackReference: url.searchParams.get('ackReference') }),
+      })
+    }
+
     if (path.endsWith('/darius/by-date') && method === 'GET') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(dailyReport) })
     }
@@ -144,6 +152,17 @@ test('DARIUS napi lekérdezés mobil nézetben a backend by-date endpointot hasz
   await expect(page.getByText('EUR')).toBeVisible()
   await expect(page.getByText('BUD01')).toBeVisible()
   await expect(page.getByText(/abcdef1234567890/)).toBeVisible()
+
+  const acknowledgeRequest = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return request.method() === 'POST'
+      && url.pathname === '/api/v1/darius/darius-1/acknowledge'
+      && url.searchParams.get('ackReference') === 'ACK-2026-0001'
+  })
+  await page.getByLabel('Visszaigazolási referencia').fill('ACK-2026-0001')
+  await page.getByRole('button', { name: 'Visszaigazolás rögzítése' }).click()
+  await acknowledgeRequest
+  await expect(page.getByText('ACK-2026-0001')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

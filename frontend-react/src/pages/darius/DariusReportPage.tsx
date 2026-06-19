@@ -34,6 +34,8 @@ export default function DariusReportPage() {
   const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [generateDate, setGenerateDate] = useState(localIsoDate())
+  const [ackReference, setAckReference] = useState('')
+  const [ackSaving, setAckSaving] = useState(false)
 
   const loadReports = useCallback(async () => {
     setLoading(true); setError('')
@@ -74,6 +76,7 @@ export default function DariusReportPage() {
     try {
       const res = await dariusApi.generate(generateDate)
       setSelected(res.data)
+      setAckReference(res.data.ackReference || '')
       loadReports()
     } catch (err) { setError(getErrorMessage(err)) }
     finally { setLoading(false) }
@@ -84,6 +87,7 @@ export default function DariusReportPage() {
     try {
       const res = await dariusApi.getByDate(generateDate)
       setSelected(res.data)
+      setAckReference(res.data.ackReference || '')
       setTab('daily')
     } catch (err) { setError(getErrorMessage(err)) }
     finally { setLoading(false) }
@@ -95,6 +99,7 @@ export default function DariusReportPage() {
     try {
       const res = await dariusApi.getById(report.id)
       setSelected(res.data)
+      setAckReference(res.data.ackReference || '')
     } catch (err) { setError(getErrorMessage(err)) }
     finally { setDetailLoadingId(null) }
   }
@@ -102,15 +107,32 @@ export default function DariusReportPage() {
   const handleApprove = async (id: string) => {
     try {
       const res = await dariusApi.approve(id)
-      setSelected(res.data); loadReports()
+      setSelected(res.data); setAckReference(res.data.ackReference || ''); loadReports()
     } catch (err) { setError(getErrorMessage(err)) }
   }
 
   const handleSubmit = async (id: string) => {
     try {
       const res = await dariusApi.submit(id)
-      setSelected(res.data); loadReports()
+      setSelected(res.data); setAckReference(res.data.ackReference || ''); loadReports()
     } catch (err) { setError(getErrorMessage(err)) }
+  }
+
+  const handleAcknowledge = async (id: string) => {
+    const ref = ackReference.trim()
+    if (!ref) {
+      setError('A visszaigazolási referencia megadása kötelező.')
+      return
+    }
+    setAckSaving(true)
+    setError('')
+    try {
+      const res = await dariusApi.acknowledge(id, ref)
+      setSelected(res.data)
+      setAckReference(res.data.ackReference || '')
+      loadReports()
+    } catch (err) { setError(getErrorMessage(err)) }
+    finally { setAckSaving(false) }
   }
 
   const handleRetry = async () => {
@@ -235,6 +257,29 @@ export default function DariusReportPage() {
                     </button>
                   )}
                 </div>
+                {selected.status === 'SUBMITTED' && (
+                  <div className="space-y-2 border-t pt-2">
+                    <label className="block text-xs font-medium text-gray-600" htmlFor="darius-ack-reference">
+                      Visszaigazolási referencia
+                    </label>
+                    <input
+                      id="darius-ack-reference"
+                      type="text"
+                      className="input-field w-full text-sm"
+                      value={ackReference}
+                      onChange={(event) => setAckReference(event.target.value)}
+                      placeholder="pl. ACK-2026-0001"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleAcknowledge(selected.id)}
+                      disabled={ackSaving}
+                      className="btn-primary flex w-full items-center justify-center gap-1 text-xs"
+                    >
+                      <CheckCircle size={12} />{ackSaving ? 'Visszaigazolás mentése...' : 'Visszaigazolás rögzítése'}
+                    </button>
+                  </div>
+                )}
 
                 {/* Lines */}
                 {selected.lines && selected.lines.length > 0 && (

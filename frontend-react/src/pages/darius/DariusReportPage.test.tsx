@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   generate: vi.fn(),
   approve: vi.fn(),
   submit: vi.fn(),
+  acknowledge: vi.fn(),
   retryFailed: vi.fn(),
   getById: vi.fn(),
   getByDate: vi.fn(),
@@ -64,6 +65,7 @@ describe('DariusReportPage backend contract', () => {
     mocks.generate.mockResolvedValue({ data: dailyReport })
     mocks.approve.mockResolvedValue({ data: dailyReport })
     mocks.submit.mockResolvedValue({ data: dailyReport })
+    mocks.acknowledge.mockResolvedValue({ data: { ...dailyReport, status: 'ACKNOWLEDGED', ackReference: 'ACK-2026-0001' } })
     mocks.retryFailed.mockResolvedValue({ data: [] })
     mocks.getById.mockResolvedValue({ data: dailyReport })
     mocks.getByDate.mockResolvedValue({ data: dailyReport })
@@ -105,6 +107,26 @@ describe('DariusReportPage backend contract', () => {
       expect(screen.getByText('EUR')).toBeInTheDocument()
       expect(screen.getByText('BUD01')).toBeInTheDocument()
       expect(screen.getByText(/abcdef1234567890/)).toBeInTheDocument()
+    })
+  })
+
+  it('SUBMITTED jelentésnél meghívja a Darius acknowledge backend szerződést', async () => {
+    const user = userEvent.setup()
+    const submittedReport = { ...dailyReport, status: 'SUBMITTED' }
+    mocks.getByDate.mockResolvedValue({ data: submittedReport })
+
+    render(<DariusReportPage />)
+
+    const dateInputs = await screen.findAllByDisplayValue(/\d{4}-\d{2}-\d{2}/)
+    await user.clear(dateInputs[2]!)
+    await user.type(dateInputs[2]!, '2026-06-19')
+    await user.click(screen.getByRole('button', { name: /Napi lekérdezés/i }))
+
+    await user.type(await screen.findByLabelText('Visszaigazolási referencia'), 'ACK-2026-0001')
+    await user.click(screen.getByRole('button', { name: 'Visszaigazolás rögzítése' }))
+
+    await waitFor(() => {
+      expect(mocks.acknowledge).toHaveBeenCalledWith('darius-1', 'ACK-2026-0001')
     })
   })
 })
