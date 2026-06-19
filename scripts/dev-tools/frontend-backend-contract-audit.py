@@ -1002,12 +1002,39 @@ def classify_backend_reference(ep: Endpoint) -> BackendReferenceClass:
         )
     if ep.method == "POST" and path in {
         "/daily-closing/execute",
+        "/daily-sessions/open",
+        "/daily-sessions/close",
         "/daily-sessions/close-with-validation",
         "/daily-sessions/{sessionId}/close",
     }:
+        if path == "/daily-sessions/open":
+            return BackendReferenceClass(
+                "backend-only/legacy-compat",
+                "Legacy SecurityContext-based day-open path; the routed DayOpenPage uses /sessions/open, /sessions/validate-open/{branchId}, and /sessions/opening-balance/{sessionId} for the richer user-facing opening flow.",
+            )
+        if path == "/daily-sessions/close":
+            return BackendReferenceClass(
+                "backend-only/legacy-compat",
+                "Direct legacy day-close path; the user-facing closing UI is the closing-wizard flow with validation/report/finalize steps.",
+            )
         return BackendReferenceClass(
             "backend-only/legacy-compat",
             "Legacy/POS-compatible closing path; the user-facing closing UI is the closing-wizard flow.",
+        )
+    if ep.method == "POST" and path == "/transactions/reversal":
+        return BackendReferenceClass(
+            "backend-only/legacy-compat",
+            "Legacy transaction-level reversal path; the routed StornoPage uses the /stornos check/request/approve/execute flow with approval and receipt handling.",
+        )
+    if ep.method == "POST" and path == "/stornos/pos":
+        return BackendReferenceClass(
+            "integration-or-device",
+            "POS-specific storno endpoint; the human routed storno UI uses /stornos/execute after the normal approval flow.",
+        )
+    if ep.method == "PUT" and path == "/cash-desks/{cashDeskId}/denominations/{denominationId}":
+        return BackendReferenceClass(
+            "backend-only/alternate-write-api",
+            "Single-denomination update helper; the routed DenominationPage persists cashier denominations through the canonical batch endpoint /cash-desks/{cashDeskId}/denominations/batch.",
         )
     if ep.method == "POST" and path == "/error-log":
         return BackendReferenceClass(
