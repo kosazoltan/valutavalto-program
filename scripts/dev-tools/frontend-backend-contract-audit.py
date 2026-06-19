@@ -1021,6 +1021,11 @@ def classify_backend_reference(ep: Endpoint) -> BackendReferenceClass:
             "backend-only/legacy-compat",
             "Legacy/POS-compatible closing path; the user-facing closing UI is the closing-wizard flow.",
         )
+    if ep.method == "POST" and path == "/closing-wizard/{wizardId}/complete":
+        return BackendReferenceClass(
+            "backend-only/alternate-workflow-api",
+            "Wizard status-only completion path; the routed ClosingWizardPage uses /closing-wizard/{wizardId}/finalize, which runs the DailyClosingService closing checks and session close.",
+        )
     if ep.method == "POST" and path == "/transactions/reversal":
         return BackendReferenceClass(
             "backend-only/legacy-compat",
@@ -1035,6 +1040,11 @@ def classify_backend_reference(ep: Endpoint) -> BackendReferenceClass:
         return BackendReferenceClass(
             "backend-only/alternate-write-api",
             "Single-denomination update helper; the routed DenominationPage persists cashier denominations through the canonical batch endpoint /cash-desks/{cashDeskId}/denominations/batch.",
+        )
+    if ep.method == "PUT" and path in {"/denominations", "/denominations/bulk"}:
+        return BackendReferenceClass(
+            "backend-only/legacy-compat",
+            "Legacy CIMLET quantity update path; current routed denomination entry uses cash-desk batch persistence and closing wizard denomination submission.",
         )
     if ep.method == "POST" and path == "/error-log":
         return BackendReferenceClass(
