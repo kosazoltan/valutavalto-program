@@ -22,6 +22,10 @@ jobs:
           echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+          # Scaleway standby (HA) read-only diagnosztikahoz
+          echo "${{ secrets.SCALEWAY_SSH_PRIVATE_KEY }}" > ~/.ssh/scaleway_key
+          chmod 600 ~/.ssh/scaleway_key
+          ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Read-only DB + backup-sync env check
         run: |
@@ -29,6 +33,15 @@ jobs:
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
               bash -s << 'ENDSSH'
             set -o pipefail
+            echo "=== Prod backend futás-állapot (read-only) ==="
+            echo "futó JAR        : $(readlink -f /opt/valutavalto/backend/target/valuta-backend-current.jar 2>/dev/null || echo '(nincs symlink)')"
+            echo "service uptime  : $(systemctl show valuta-backend.service --property=ActiveEnterTimestamp --value 2>/dev/null)"
+            ENV_DUMP0=$(systemctl show valuta-backend.service --property=Environment 2>/dev/null | tr ' ' '\n')
+            echo "SPRING_FLYWAY_ENABLED (systemd): $(echo "$ENV_DUMP0" | grep -oE 'SPRING_FLYWAY_ENABLED=[^ ]*' || echo '(nincs)')"
+            echo "SPRING_FLYWAY_ENABLED (.env)   : $(grep -E '^SPRING_FLYWAY_ENABLED=' /opt/valutavalto/backend/.env 2>/dev/null || echo '(nincs a .env-ben)')"
+            echo "Flyway startup log (utolsó 5)  :"
+            journalctl -u valuta-backend.service -n 4000 --no-pager 2>/dev/null | grep -iE 'flyway|migrat' | tail -5 || echo "  (nincs flyway log-sor)"
+            echo ""
             echo "=== Prod 'valuta' DB állapot (read-only) ==="
             echo "hostname        : $(hostname)"
             echo "max migráció    : V$(sudo -u postgres psql -d valuta -tAc "SELECT max(version::int) FROM flyway_schema_history WHERE version ~ '^[0-9]+\$'" 2>/dev/null)"
@@ -38,6 +51,18 @@ jobs:
             echo "vault_territory : $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM vault_territory" 2>/dev/null)"
             echo "worker_role_asg : $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM worker_role_assignment" 2>/dev/null)"
             echo "Szeged ÉT stock : $(sudo -u postgres psql -d valuta -tAc "SELECT (SELECT count(*) FROM currency_stock cs WHERE cs.entity_type='VAULT' AND cs.entity_id=b.vault_territory_id::text) FROM branch b WHERE b.name ILIKE '%Szeged Értéktár%'" 2>/dev/null)"
+            echo ""
+            echo "=== HA replikáció-állapot (HETZNER, read-only) ==="
+            echo "pg_is_in_recovery : $(sudo -u postgres psql -d valuta -tAc "SELECT pg_is_in_recovery()" 2>/dev/null)  (t=standby, f=primary)"
+            PGDATA=$(sudo -u postgres psql -tAc "SHOW data_directory" 2>/dev/null)
+            echo "PGDATA            : $PGDATA"
+            echo "standby/recovery jel: $(sudo ls "$PGDATA"/standby.signal "$PGDATA"/recovery.signal 2>/dev/null | tr '\n' ' ' || echo '(nincs — valódi primary)')"
+            echo "--- pg_stat_replication (ha primary: csatlakozott standby-k) ---"
+            sudo -u postgres psql -d valuta -c "SELECT client_addr, state, sync_state, replay_lag FROM pg_stat_replication" 2>/dev/null || echo "(nincs sor)"
+            echo "--- pg_replication_slots ---"
+            sudo -u postgres psql -d valuta -c "SELECT slot_name, slot_type, active, restart_lsn FROM pg_replication_slots" 2>/dev/null || echo "(nincs slot)"
+            echo "--- pg_stat_wal_receiver (ha standby: honnan replikál) ---"
+            sudo -u postgres psql -d valuta -c "SELECT status, sender_host, last_msg_receipt_time FROM pg_stat_wal_receiver" 2>/dev/null || echo "(nincs WAL receiver — nem standby)"
             echo ""
             echo "=== Neon backup-szinkron env (jelszó maszkolva) ==="
             ENV_DUMP=$(systemctl show valuta-backend.service --property=Environment 2>/dev/null | tr ' ' '\n')
@@ -63,4 +88,308 @@ jobs:
             echo ""
             echo "=== PgBouncer pool-mode + valuta route (read-only) ==="
             sudo grep -hiE 'pool_mode|^valuta|^\* =|6432' /etc/pgbouncer/pgbouncer.ini 2>/dev/null | sed -E 's|password=[^ ]*|password=***|g' || echo "(pgbouncer.ini nem olvasható)"
+          ENDSSH
+
+      - name: 'Hetzner ROOT-CAUSE — mi/mikor állítja vissza a primaryt (read-only)'
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            echo "=== HETZNER root-cause (read-only) ==="
+            echo "postmaster start  : $(sudo -u postgres psql -tAc "SELECT pg_postmaster_start_time()" 2>/dev/null)  (ha ~10:43 -> postgres-restart/recovery a revert)"
+            echo "current WAL lsn    : $(sudo -u postgres psql -tAc "SELECT pg_current_wal_lsn()" 2>/dev/null)"
+            echo ""
+            echo "--- cron (root + postgres) restore/backup/sync/rewind ---"
+            (sudo crontab -l 2>/dev/null; sudo -u postgres crontab -l 2>/dev/null; cat /etc/cron.d/* 2>/dev/null) | grep -iE 'restore|backup|basebackup|rewind|resync|sync|valuta|standby|pg_' | grep -v '^#' || echo "(nincs releváns cron sor)"
+            echo "--- systemd timerek (restore/backup/sync) ---"
+            systemctl list-timers --all 2>/dev/null | grep -iE 'restore|backup|sync|valuta|standby|rewind|pg' || echo "(nincs releváns timer)"
+            echo "--- backup/restore logok ---"
+            ls -la /var/log/ 2>/dev/null | grep -iE 'backup|restore|b2|basebackup|resync|rewind' || echo "(nincs backup/restore log a /var/log-ban)"
+            echo "--- postgres log: recovery/restore/rewind/redo a 10:40-11:00 ablakban ---"
+            (sudo journalctl -u postgresql@16-main --since '2026-06-15 10:40' --until '2026-06-15 11:05' --no-pager 2>/dev/null; sudo tail -300 /var/log/postgresql/postgresql-16-main.log 2>/dev/null) | grep -iE 'recovery|restore|rewind|redo|starting point|database system was|shut down|consistent|received|promot|base backup|reset' | tail -25 || echo "(nincs releváns postgres log-sor)"
+            echo "--- legutóbbi V327-329 nyoma a flyway history-ban (volt-e, törölve lett-e) ---"
+            sudo -u postgres psql -d valuta -c "SELECT version, description, success, installed_on FROM flyway_schema_history WHERE version::text IN ('327','328','329') ORDER BY installed_rank" 2>/dev/null || echo "(nincs 327-329 sor)"
+            echo "--- flyway history utolsó 5 (mire áll most) ---"
+            sudo -u postgres psql -d valuta -c "SELECT version, description, success, installed_on FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 5" 2>/dev/null || true
+            echo ""
+            echo "=== HOVÁ ÍR A BACKEND VALÓJÁBAN? (read-only, jelszó maszkolva) ==="
+            echo "--- .env DB-cél sorok (érték maszkolva) ---"
+            grep -E '^(DATABASE_URL|SPRING_DATASOURCE_URL|DATABASE_USERNAME|DB_HOST|DB_PORT|DB_NAME|POSTGRES)' /opt/valutavalto/backend/.env 2>/dev/null | sed -E 's#(://)[^@]+@#\1***@#; s#(password=)[^&]*#\1***#I' || echo "(nincs DB-sor a .env-ben)"
+            echo "--- backend startup JDBC-cél (Flyway/Hikari log) ---"
+            journalctl -u valuta-backend.service -n 6000 --no-pager 2>/dev/null | grep -oE 'jdbc:postgresql://[^ \"}]+' | sed -E 's#//[^@/]*@#//***@#' | sort -u | tail -5 || echo "(nincs jdbc URL a logban)"
+            echo "--- postgres clusterek + figyelő portok ---"
+            pg_lsclusters 2>/dev/null || echo "(nincs pg_lsclusters)"
+            sudo ss -tlnp 2>/dev/null | grep -iE 'postgres|5432|5433' || echo "(nincs postgres listen port)"
+            echo "--- a 10:42-es RUB-írás létezik-e a lokális DB-ben? (denomination RUB) ---"
+            echo "RUB denomination sorok (lokális): $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM denomination d JOIN currency c ON c.id=d.currency_id WHERE c.code='RUB'" 2>/dev/null)"
+            echo ""
+            echo "=== PgBouncer 6432 routing — hová megy a 'valuta' DB? (read-only, maszkolva) ==="
+            sudo ss -tlnp 2>/dev/null | grep -E ':6432' || echo "(nincs 6432 listener)"
+            echo "--- pgbouncer [databases] szekció (host maszkolva) ---"
+            sudo grep -A30 '^\[databases\]' /etc/pgbouncer/pgbouncer.ini 2>/dev/null | grep -iE 'valuta|host=|neon|=' | sed -E 's#(password=)[^ ]*#\1***#I' | head -15 || echo "(nincs pgbouncer.ini / databases szekció)"
+            echo "--- DÖNTŐ: él-e a backend a LOKÁLIS valuta DB-n? (pg_stat_activity) ---"
+            echo "lokális valuta backend-kapcsolatok : $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM pg_stat_activity WHERE datname='valuta' AND backend_type='client backend'" 2>/dev/null)"
+            echo "ebből aktív (nem idle)             : $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM pg_stat_activity WHERE datname='valuta' AND state='active'" 2>/dev/null)"
+            echo "legutóbbi query a lokális valuta-n  : $(sudo -u postgres psql -d valuta -tAc "SELECT max(query_start) FROM pg_stat_activity WHERE datname='valuta'" 2>/dev/null)"
+            echo "kliens app-ok a lokális valuta-n   :"
+            sudo -u postgres psql -d valuta -tAc "SELECT DISTINCT application_name||' ('||client_addr||')' FROM pg_stat_activity WHERE datname='valuta' AND backend_type='client backend'" 2>/dev/null || echo "  (nincs)"
+            echo "--- @Primary datasource (bounded Hikari log) ---"
+            journalctl -u valuta-backend.service -n 3000 --no-pager 2>/dev/null | grep -iE 'HikariPool|jdbcUrl|Database:' | grep -oE 'HikariPool-[0-9]+|jdbc:postgresql://[^ "}]+' | sed -E 's#//[^@/]*@#//***@#' | sort -u | head -10 || echo "(nincs Hikari log-sor)"
+            echo "--- actuator: melyik DB-t kezeli a Flyway + health DB-komponens (no-auth próba) ---"
+            for AEP in "/actuator/flyway" "/actuator/health" "/actuator/health/db" "/actuator/configprops"; do
+              CODE=$(curl -s -o /tmp/act.json -w "%{http_code}" --max-time 8 "http://localhost:8080$AEP" 2>/dev/null || echo 000)
+              echo "GET $AEP -> HTTP $CODE"
+              if [ "$CODE" = "200" ]; then
+                grep -oE '(neon\.tech|localhost:6432|127\.0\.0\.1:5432|"version":"32[0-9]"|jdbc:postgresql://[^"]+)' /tmp/act.json 2>/dev/null | sed -E 's#//[^@/]*@#//***@#' | sort -u | head -10
+              fi
+            done
+            echo "--- a backend melyik DB-ben látja a RUB-ot aktívként? közvetlen mindkét oldal ---"
+            echo "LOKÁLIS valuta RUB.is_active : $(sudo -u postgres psql -d valuta -tAc "SELECT is_active FROM currency WHERE code='RUB'" 2>/dev/null)"
+            echo ""
+            echo "=== B2-BACKUP átállítás felderítés (read-only, host maszkolva) ==="
+            echo "--- Neon-kapcsolati string a .env-ben? (jelszó+host maszkolva) ---"
+            grep -E '^(NEON_DATABASE_URL|SPRING_DATASOURCE_URL|DATABASE_URL)=' /opt/valutavalto/backend/.env 2>/dev/null | sed -E 's#//[^@/]*@#//***@#' || echo "(nincs ilyen sor)"
+            echo "--- jelenlegi B2-backup script pg_dump sora ---"
+            grep -nE 'pg_dump' /usr/local/bin/valuta-db-backup.sh 2>/dev/null || echo "(nincs /usr/local/bin/valuta-db-backup.sh)"
+            echo "--- valuta-backup.timer állapota ---"
+            systemctl is-active valuta-backup.timer 2>/dev/null || echo "  timer inactive/nincs"
+          ENDSSH
+
+      - name: 'DOMAIN-elhelyezés: worker / branch / currency / whitelist — NEON vs LOKÁLIS (read-only)'
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            NEON_URL=$(grep '^NEON_DATABASE_URL=' /opt/valutavalto/backend/.env 2>/dev/null | cut -d= -f2-)
+            PSQL17=/usr/lib/postgresql/17/bin/psql; [ -x "$PSQL17" ] || PSQL17=psql
+            run_local() { sudo -u postgres psql -d valuta -tAc "$1" 2>/dev/null; }
+            run_neon()  { "$PSQL17" "$NEON_URL" -tAc "$1" 2>/dev/null; }
+            echo "=== DOMAIN-elhelyezés: a négy adat-domain mindkét DB-ben (read-only) ==="
+            echo "(A backend a NEON-t szolgálja ki — ott kell az ÉLŐ adatnak lennie; a lokális 'valuta' elavult.)"
+            printf '%-26s | %-22s | %-22s\n' "metrika" "NEON (élő prod)" "LOKÁLIS valuta (PG16)"
+            printf '%-26s-+-%-22s-+-%-22s\n' "--------------------------" "----------------------" "----------------------"
+            row() { printf '%-26s | %-22s | %-22s\n' "$1" "$(run_neon "$2")" "$(run_local "$2")"; }
+            row "worker sorok"            "SELECT count(*) FROM worker"
+            row "worker max(updated_at)"  "SELECT COALESCE(max(updated_at)::text,'-') FROM worker"
+            row "whitelist (google login)" "SELECT count(*) FROM worker WHERE google_login_enabled"
+            row "whitelist utolsó login"  "SELECT COALESCE(max(google_last_login_at)::text,'-') FROM worker"
+            row "branch (iroda) sorok"    "SELECT count(*) FROM branch"
+            row "branch aktív"            "SELECT count(*) FROM branch WHERE is_active"
+            row "currency sorok"          "SELECT count(*) FROM currency"
+            row "currency aktív"          "SELECT count(*) FILTER (WHERE is_active) FROM currency"
+            row "currency RUB.is_active"  "SELECT is_active FROM currency WHERE code='RUB'"
+            row "flyway max V"            "SELECT max(version::int) FROM flyway_schema_history WHERE version ~ '^[0-9]+$'"
+            row "currency_stock sorok"    "SELECT count(*) FROM currency_stock"
+            echo ""
+            echo "ÉRTELMEZÉS: ha a NEON oszlop friss/teljes és a LOKÁLIS elmaradott (kisebb/régebbi),"
+            echo "akkor mind a négy domain helyesen a Neonon él. Eltérés a domain-eknél = vizsgálandó."
+          ENDSSH
+
+      - name: 'FORK-lezárás előkészítés: használja-e a backend a lokálist? + replikációs slot (read-only)'
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            echo "=== Lokális 'valuta' DB: ki csatlakozik rá (a saját diagnosztika NÉLKÜL)? ==="
+            echo "DÖNTŐ: ha a backend (Hikari-pool) NEM tart kapcsolatot a lokálison, biztonságos leállítani."
+            sudo -u postgres psql -d valuta -c "SELECT application_name, usename, client_addr, state, count(*) FROM pg_stat_activity WHERE datname='valuta' AND pid <> pg_backend_pid() AND backend_type='client backend' GROUP BY 1,2,3,4 ORDER BY 5 DESC" 2>/dev/null || echo "(lekérdezés hiba)"
+            echo "összes nem-saját client kapcsolat: $(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM pg_stat_activity WHERE datname='valuta' AND pid <> pg_backend_pid() AND backend_type='client backend'" 2>/dev/null)"
+            echo ""
+            echo "=== Replikációs slot + visszatartott WAL (a frozen Scaleway-standby miatt) ==="
+            sudo -u postgres psql -c "SELECT slot_name, active, restart_lsn, pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS retained_wal FROM pg_replication_slots" 2>/dev/null || echo "(nincs slot)"
+            echo ""
+            echo "=== Mi indítja a backendet — systemd ExecStart + DATABASE_URL forrás ==="
+            systemctl cat valuta-backend.service 2>/dev/null | grep -iE 'ExecStart|EnvironmentFile|Environment=' | head -5 || echo "(nincs unit)"
+            echo ""
+            echo "=== DÖNTŐ: a FUTÓ backend-processz TÉNYLEGES datasource-env-je (maszkolva) ==="
+            JPID=$(pgrep -f 'valuta-backend-current.jar' | head -1)
+            echo "java PID: ${JPID:-(nincs)}"
+            if [ -n "$JPID" ]; then
+              sudo tr '\0' '\n' < /proc/$JPID/environ 2>/dev/null | grep -E '^(DATABASE_URL|SPRING_DATASOURCE_URL|NEON_DATABASE_URL|NEON_SYNC_ENABLED|app_neon)' | sed -E 's#//[^@/]*@#//***@#; s#(password=)[^&]*#\1***#I' || echo "(nem olvasható a processz env)"
+            fi
+            echo ""
+            echo "=== PgBouncer pool_mode (ez magyarazza-e a 0 idle postgres-kapcsolatot?) ==="
+            sudo grep -E '^\s*(pool_mode|default_pool_size|max_client_conn)' /etc/pgbouncer/pgbouncer.ini 2>/dev/null || echo "(nincs)"
+            echo "PgBouncer aktiv szerver-kapcsolatok (SHOW POOLS-bol, valuta):"
+            PGB_PW=$(sudo grep -oE 'stats_users?\s*=\s*\S+' /etc/pgbouncer/pgbouncer.ini 2>/dev/null | head -1 || true)
+            sudo -u postgres psql -p 6432 -d pgbouncer -tAc "SHOW POOLS" 2>/dev/null | grep -iE 'valuta' | head -3 || echo "(SHOW POOLS nem elerheto admin nelkul — kihagyva)"
+          ENDSSH
+
+      - name: 'MÉLY ELEMZÉS: melyik DB-be ír MA a kolléga? üzleti táblák + flyway + sync (read-only)'
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            NEON_URL=$(grep '^NEON_DATABASE_URL=' /opt/valutavalto/backend/.env 2>/dev/null | cut -d= -f2-)
+            PSQL17=/usr/lib/postgresql/17/bin/psql; [ -x "$PSQL17" ] || PSQL17=psql
+            L() { sudo -u postgres psql -d valuta -tAc "$1" 2>/dev/null; }
+            N() { "$PSQL17" "$NEON_URL" -tAc "$1" 2>/dev/null; }
+            echo "=== MELYIK DB AZ IGAZI PRIMARY? — üzleti írás-frissesség (LOKÁLIS vs NEON) ==="
+            printf '%-30s | %-26s | %-26s\n' "tábla / metrika" "LOKÁLIS valuta" "NEON neondb"
+            printf '%-30s-+-%-26s-+-%-26s\n' "------------------------------" "--------------------------" "--------------------------"
+            cmp() { printf '%-30s | %-26s | %-26s\n' "$1" "$(L "$2")" "$(N "$2")"; }
+            cmp "audit_log max(created_at)"      "SELECT COALESCE(max(created_at)::text,'-') FROM audit_log"
+            cmp "audit_log MAI sorok"            "SELECT count(*) FROM audit_log WHERE created_at::date=CURRENT_DATE"
+            cmp "daily_session max(opened_at)"   "SELECT COALESCE(max(opened_at)::text,'-') FROM daily_session"
+            cmp "daily_session MAI nyitás"       "SELECT count(*) FROM daily_session WHERE opened_at::date=CURRENT_DATE"
+            cmp "exch_rate_master max(created)"  "SELECT COALESCE(max(created_at)::text,'-') FROM exchange_rate_master"
+            cmp "exch_rate_master MAI sorok"     "SELECT count(*) FROM exchange_rate_master WHERE created_at::date=CURRENT_DATE"
+            cmp "collected_tx max(timestamp)"    "SELECT COALESCE(max(transaction_timestamp)::text,'-') FROM collected_transaction"
+            cmp "currency_audit max(created)"    "SELECT COALESCE(max(created_at)::text,'-') FROM currency_audit_log"
+            echo ""
+            echo "=== Flyway: hol és MIKOR futott a V326/327/328/329? ==="
+            cmp "flyway max V"                   "SELECT max(version::int) FROM flyway_schema_history WHERE version ~ '^[0-9]+$'"
+            cmp "flyway V326 installed_on"       "SELECT COALESCE(max(installed_on)::text,'-') FROM flyway_schema_history WHERE version='326'"
+            cmp "flyway V329 installed_on"       "SELECT COALESCE(max(installed_on)::text,'-') FROM flyway_schema_history WHERE version='329'"
+            echo ""
+            echo "=== Neon-sync tényleges működése (neon_sync_log mindkét oldalon) ==="
+            cmp "neon_sync_log max(finished)"    "SELECT COALESCE(max(sync_finished_at)::text,'-') FROM neon_sync_log"
+            cmp "neon_sync_log MAI sorok"        "SELECT count(*) FROM neon_sync_log WHERE sync_finished_at::date=CURRENT_DATE"
+            echo ""
+            echo "=== Backend journal: Neon-sync aktivitás a 10:42-es restart UTÁN ==="
+            journalctl -u valuta-backend.service --since '2026-06-15 10:42' --no-pager 2>/dev/null | grep -iE 'neon.*sync|NeonReplication|sync.*neon|szinkron' | tail -5 || echo "(nincs sync-log a restart után)"
+            echo ""
+            echo "ÉRTELMEZÉS: amelyik DB-ben MA keletkeztek üzleti sorok (audit_log/daily_session/exch_rate),"
+            echo "az az IGAZI primary, amit a kollégák használnak. A flyway installed_on megmondja, a RUB-migráció"
+            echo "melyik DB-re ment. A neon_sync friss sorai mutatják, él-e a local->Neon szinkron."
+          ENDSSH
+
+      - name: 'P2 DÖNTŐ: a futó backend TÉNYLEGES TCP-kapcsolatai — Neon vs lokális (read-only)'
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            JPID=$(pgrep -f 'valuta-backend-current.jar' | head -1)
+            echo "=== A futó backend (PID $JPID) ÖSSZES TCP-kapcsolata — ss NYERS (peer-oszlop, IP nem maszkolt) ==="
+            NEON_HOST=$(grep -oE 'NEON_DATABASE_URL=.*' /opt/valutavalto/backend/.env 2>/dev/null | sed -E 's#.*@##; s#[/?].*##' | head -1)
+            echo "Neon host: ${NEON_HOST:-(nincs)}"
+            sudo ss -tnp 2>/dev/null | grep "pid=$JPID" | awk '{print "  local="$4"  peer="$5}' | head -20 || echo "(ss: nincs sor)"
+            echo "=== docker ps (mi fut 172.18.0.x-en?) ==="
+            sudo docker ps --format '{{.Names}} | {{.Image}} | {{.Ports}}' 2>/dev/null | head -15 || echo "(nincs docker / nem fut)"
+            echo "=== docker bridge — 172.18.0.2 melyik konténer ==="
+            sudo docker network inspect bridge 2>/dev/null | grep -B2 -E '"IPv4Address": "172.18.0.2' | grep -E '"Name"' | head || sudo docker network ls 2>/dev/null | head || echo "(nincs bridge info)"
+            echo "=== PgBouncer SHOW SERVERS (pgbouncer admin DB) ==="
+            sudo -u postgres psql -h 127.0.0.1 -p 6432 -U postgres -d pgbouncer -c "SHOW SERVERS;" 2>&1 | head -8 || echo "(SHOW SERVERS nem elérhető)"
+            echo "=== actuator health/db (a backend tényleges DB-státusza) ==="
+            curl -s -o /tmp/hdb.json -w "  HTTP %{http_code}\n" --max-time 8 http://localhost:8080/actuator/health/db 2>/dev/null || echo "(curl hiba)"
+            head -c 400 /tmp/hdb.json 2>/dev/null; echo ""
+            echo "--- a java-processz kimenő :5432 / :6432 / Neon kapcsolatai (NYERS, IP maszkolva) ---"
+            sudo ss -tnp 2>/dev/null | grep "pid=$JPID" | awk '{print $5}' | sed -E 's/:[0-9]+$/:PORT/; s/^[0-9a-f:.]+/HOST/' | sort | uniq -c | sort -rn | head -15 || echo "(ss nem elérhető)"
+            echo "--- cél-PORT eloszlás (ezt biztosan látjuk: 5432=DB-közvetlen, 6432=PgBouncer, 443=Neon-TLS) ---"
+            sudo ss -tnp 2>/dev/null | grep "pid=$JPID" | awk '{print $5}' | grep -oE ':[0-9]+$' | sort | uniq -c | sort -rn | head
+            echo "--- van-e kimenő kapcsolat NEM-lokális (publikus) hostra? (= közvetlen Neon) ---"
+            sudo ss -tnp 2>/dev/null | grep "pid=$JPID" | awk '{print $5}' | grep -vE '^(127\.|\[::1\]|10\.|172\.1[6-9]\.|172\.2[0-9]\.|172\.3[01]\.|192\.168\.)' | sed -E 's/^[0-9a-fA-F:.]+/PUBLIC-HOST/' | sort | uniq -c | head || echo "(nincs publikus kimenő — minden lokális)"
+            echo ""
+            echo "--- DÖNTŐ: van-e kapcsolat a NEON IP-re (= a backend KÖZVETLENÜL a Neonba ír)? ---"
+            if [ -n "$NEON_IP" ]; then
+              N=$(sudo lsof -p "$JPID" -iTCP -nP 2>/dev/null | grep ESTABLISHED | grep -c "$NEON_IP" || true)
+              echo "Neon ($NEON_IP) felé ESTABLISHED kapcsolatok száma: ${N:-0}"
+            fi
+            echo "--- lokális PgBouncer (127.0.0.1:6432) felé ---"
+            echo "6432 felé: $(sudo lsof -p "$JPID" -iTCP -nP 2>/dev/null | grep ESTABLISHED | grep -c '127.0.0.1:6432' || true)"
+            echo ""
+            echo "=== PgBouncer: a 6432 valójában HOVÁ tart szerver-kapcsolatot? (SHOW SERVERS) ==="
+            ADMIN=$(sudo grep -oE '^\s*admin_users\s*=\s*\S+' /etc/pgbouncer/pgbouncer.ini 2>/dev/null | sed -E 's/.*=\s*//' | head -1)
+            echo "pgbouncer admin_users: ${ADMIN:-(nincs)}"
+            sudo -u postgres psql -p 6432 -U "${ADMIN:-postgres}" -d pgbouncer -tAc "SHOW SERVERS" 2>/dev/null | awk -F'|' '{print $3, $5, $6}' | head -10 || echo "(SHOW SERVERS admin-auth nélkül nem elérhető)"
+            echo ""
+            echo "=== P-FREEZE-B DÖNTŐ: a BACKEND ÚTJÁN (PgBouncer 6432) — melyik DB, friss-e? (jelszó nem logolt) ==="
+            DBPW=$(grep -oE '^DATABASE_PASSWORD=.*' /opt/valutavalto/backend/.env 2>/dev/null | cut -d= -f2- | tr -d '\r\n')
+            DBUSER=$(grep -oE '^DATABASE_USERNAME=.*' /opt/valutavalto/backend/.env 2>/dev/null | cut -d= -f2- | tr -d '\r\n'); DBUSER="${DBUSER:-valuta_user}"
+            if [ -n "$DBPW" ]; then
+              echo "--- a backend ÚTJÁN (6432, user=$DBUSER): server-IP + DB + audit_log frissesség ---"
+              PGPASSWORD="$DBPW" psql "host=127.0.0.1 port=6432 dbname=valuta user=$DBUSER" -tAc \
+                "SELECT 'server_ip='||COALESCE(host(inet_server_addr()),'(unix/local)')||'  db='||current_database()||'  audit_max='||COALESCE((SELECT max(created_at) FROM audit_log)::text,'-')" 2>&1 | head -3
+              echo "--- összevetés: KÖZVETLEN lokális 5432 audit_log frissesség ---"
+              sudo -u postgres psql -d valuta -tAc "SELECT 'audit_max_5432='||COALESCE(max(created_at)::text,'-') FROM audit_log" 2>/dev/null
+              echo "ÉRTELMEZÉS: ha a 6432-es audit_max FRISS (ma) és a server_ip NEM lokális → a backend NEM a lokálisra ír."
+            else
+              echo "(nincs DATABASE_PASSWORD a .env-ben — a 6432-próba kihagyva)"
+            fi
+            echo ""
+            echo "=== teljes pgbouncer [databases] szekció (host maszkolva) ==="
+            sudo sed -n '/^\[databases\]/,/^\[/p' /etc/pgbouncer/pgbouncer.ini 2>/dev/null | grep -vE '^\s*$|^\[|^\s*;' | sed -E 's#password=[^ ]*#password=***#I' | head -10 || echo "(nincs)"
+          ENDSSH
+
+      - name: 'P-FREEZE-B VÉGSŐ: PgBouncer SHOW SERVERS (sudo userlist) + Neon API'
+        if: always()
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: |
+          echo "=== HETZNER: PgBouncer admin SHOW SERVERS (a 'valuta' pool tényleges upstream-je) ==="
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            INI=/etc/pgbouncer/pgbouncer.ini
+            AUTHTYPE=$(sudo grep -oE '^\s*auth_type\s*=\s*\S+' "$INI" 2>/dev/null | sed -E 's/.*=\s*//'); echo "auth_type   : ${AUTHTYPE:-?}"
+            ADMIN=$(sudo grep -oE '^\s*admin_users\s*=\s*\S+' "$INI" 2>/dev/null | sed -E 's/.*=\s*//; s/,.*//'); echo "admin_user  : ${ADMIN:-?}"
+            SOCKDIR=$(sudo grep -oE '^\s*unix_socket_dir\s*=\s*\S+' "$INI" 2>/dev/null | sed -E 's/.*=\s*//'); SOCKDIR="${SOCKDIR:-/var/run/postgresql}"; echo "socket_dir  : $SOCKDIR"
+            echo "--- (1) SHOW SERVERS a socketon (peer), user=${ADMIN:-pgbouncer} ---"
+            sudo -u postgres psql -h "$SOCKDIR" -p 6432 -U "${ADMIN:-pgbouncer}" -d pgbouncer -tAc "SHOW SERVERS" 2>&1 | awk -F'|' 'NF>5{print "  db="$3" state="$4" UPSTREAM="$5":"$6} /FATAL|error/{print "  "$0}' | head -12
+            ADMPW=$(sudo grep -E "^\"${ADMIN}\"" /etc/pgbouncer/userlist.txt 2>/dev/null | awk '{print $2}' | tr -d '"' | head -1)
+            if [ -n "$ADMPW" ]; then
+              echo "--- (2) SHOW SERVERS TCP-n (admin userlist-cred, JELSZÓ NEM logolt) ---"
+              PGPASSWORD="$ADMPW" psql -h 127.0.0.1 -p 6432 -U "$ADMIN" -d pgbouncer -tAc "SHOW SERVERS" 2>&1 | awk -F'|' 'NF>5{print "  db="$3" state="$4" UPSTREAM="$5":"$6} /FATAL|error/{print "  "$0}' | head -12
+            fi
+            echo "ÉRTELMEZÉS: a 'valuta' pool UPSTREAM = a tényleges DB. 127.0.0.1:5432 → lokális; publikus/Neon-IP → Neon."
+            echo ""
+            echo "=== (3) A BACKEND SAJÁT credjével a 6432-n (gondos extrakció; jelszó NEM logolt) ==="
+            ENVF=/opt/valutavalto/backend/.env
+            DBUSER=$(sudo grep -E '^DATABASE_USERNAME=' "$ENVF" 2>/dev/null | head -1 | sed -E 's/^DATABASE_USERNAME=//; s/^"//; s/"$//; s/\r//')
+            echo "DATABASE_USERNAME (nem érzékeny): '${DBUSER:-(nincs a .env-ben)}'"
+            # a jelszót közvetlenül a sudo-grepből egy fájlba tesszük (nem változón át, nem logolt)
+            sudo grep -E '^DATABASE_PASSWORD=' "$ENVF" 2>/dev/null | head -1 | sed -E 's/^DATABASE_PASSWORD=//; s/^"//; s/"$//; s/\r//' > /tmp/.dbpw 2>/dev/null
+            echo "DATABASE_PASSWORD jelen: $([ -s /tmp/.dbpw ] && echo 'IGEN' || echo 'NINCS')"
+            echo "--- valódi PgBouncer unix-socket keresése ---"
+            SOCK=$(sudo ss -xlnp 2>/dev/null | grep -oE '/[^ ]*\.s\.PGSQL\.6432' | head -1); echo "pgbouncer socket: ${SOCK:-(nincs unix socket, csak TCP)}"
+            if [ -n "$DBUSER" ] && [ -s /tmp/.dbpw ]; then
+              echo "--- csatlakozás 6432 TCP-n a backend credjével: server-IP + audit_log frissesség ---"
+              PGPASSWORD="$(cat /tmp/.dbpw)" psql "host=127.0.0.1 port=6432 dbname=valuta user=$DBUSER" -tAc \
+                "SELECT 'server_ip='||COALESCE(host(inet_server_addr()),'(lokál/unix)')||' db='||current_database()||' audit_max='||COALESCE((SELECT max(created_at) FROM audit_log)::text,'-')" 2>&1 | head -3
+            fi
+            rm -f /tmp/.dbpw
+          ENDSSH
+          echo ""
+          echo "=== NEON API: projekt + utolsó aktivitás (a kulcs maszkolva) ==="
+          if [ -n "$NEON_API_KEY" ]; then
+            curl -s -H "Authorization: Bearer $NEON_API_KEY" "https://console.neon.tech/api/v2/projects" 2>/dev/null | jq -r '.projects[:5][]? | "  projekt: \(.id) | \(.name) | utolso aktiv: \(.last_active_at // "-")"' 2>&1 | head || echo "(Neon API válasz nem dolgozható fel)"
+          else
+            echo "(nincs NEON_API_KEY env)"
+          fi
+
+      - name: 'Scaleway STANDBY — DB + watchdog failover-log (read-only)'
+        if: always()
+        run: |
+          ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 \
+              "root@${{ secrets.SCALEWAY_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            echo "=== SCALEWAY STANDBY ($(hostname)) ==="
+            echo "pg_is_in_recovery : $(sudo -u postgres psql -d valuta -tAc "SELECT pg_is_in_recovery()" 2>/dev/null)  (t=standby, f=PROMOTED primary!)"
+            echo "max migráció      : V$(sudo -u postgres psql -d valuta -tAc "SELECT max(version::int) FROM flyway_schema_history WHERE version ~ '^[0-9]+\$'" 2>/dev/null)"
+            echo "RUB.is_active     : $(sudo -u postgres psql -d valuta -tAc "SELECT is_active FROM currency WHERE code='RUB'" 2>/dev/null)"
+            echo "last WAL replay   : $(sudo -u postgres psql -d valuta -tAc "SELECT pg_last_wal_replay_lsn()" 2>/dev/null)"
+            echo "last replay ts    : $(sudo -u postgres psql -d valuta -tAc "SELECT pg_last_xact_replay_timestamp()" 2>/dev/null)"
+            echo "postmaster start  : $(sudo -u postgres psql -tAc "SELECT pg_postmaster_start_time()" 2>/dev/null)"
+            echo ""
+            echo "--- postgres log: MIÉRT állt le a replikáció 2026-06-14 15:00 körül ---"
+            (sudo journalctl -u postgresql@16-main --since '2026-06-14 14:55' --until '2026-06-14 15:15' --no-pager 2>/dev/null; sudo tail -500 /var/log/postgresql/postgresql-16-main.log 2>/dev/null) | grep -iE 'replication|streaming|terminating|timeline|connection|wal receiver|could not|error|FATAL|recovery' | tail -20 || echo "(nincs releváns postgres log-sor)"
+            echo ""
+            echo "--- primary-watchdog unit állapot ---"
+            (systemctl is-active primary-watchdog.timer 2>/dev/null; systemctl is-active primary-watchdog.service 2>/dev/null) | tr '\n' ' '; echo ""
+            echo "--- watchdog state file ---"
+            cat /var/lib/primary-watchdog/state 2>/dev/null || echo "(nincs state file)"
+            echo "--- failover-log (utolsó 25 sor) ---"
+            tail -25 /var/log/primary-watchdog-failover.log 2>/dev/null || echo "(nincs failover-log — sosem promote-olt)"
           ENDSSH
