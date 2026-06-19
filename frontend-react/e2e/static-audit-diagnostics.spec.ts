@@ -147,6 +147,22 @@ async function mockDiagnosticsApis(page: Page) {
       })
     }
 
+    if (path.endsWith('/diagnostics/audit/entity/Worker/worker-1') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 'entity-audit-1',
+            ts: '2026-06-19T08:03:00',
+            eventType: 'ENTITY_UPDATED',
+            entityType: 'Worker',
+            entityId: 'worker-1',
+          },
+        ]),
+      })
+    }
+
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
   })
 }
@@ -183,6 +199,16 @@ test('static audit admin panel mobil viewporton /api/static-audit endpointot hí
   await expect(page.getByText('DB connection')).toBeVisible()
   await expect(page.getByText('spring.mail.password')).toBeVisible()
   await expect(page.getByText('MISSING')).toBeVisible()
+
+  await page.getByPlaceholder('entityType').fill('Worker')
+  await page.getByPlaceholder('entityId').fill('worker-1')
+  const entityChainRequest = page.waitForRequest(request =>
+    request.method() === 'GET'
+    && new URL(request.url()).pathname === '/api/v1/diagnostics/audit/entity/Worker/worker-1'
+  )
+  await page.getByRole('button', { name: 'Audit-lanc' }).click()
+  await entityChainRequest
+  await expect(page.getByTestId('entity-chain-results')).toContainText('ENTITY_UPDATED')
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

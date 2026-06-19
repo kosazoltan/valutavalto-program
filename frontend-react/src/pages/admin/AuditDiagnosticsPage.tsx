@@ -29,6 +29,9 @@ export default function AuditDiagnosticsPage() {
   const [catalog, setCatalog] = useState<ErrorCodeCatalog | null>(null)
   const [traceQuery, setTraceQuery] = useState('')
   const [traceResults, setTraceResults] = useState<AuditLogEntry[] | null>(null)
+  const [entityTypeQuery, setEntityTypeQuery] = useState('')
+  const [entityIdQuery, setEntityIdQuery] = useState('')
+  const [entityResults, setEntityResults] = useState<AuditLogEntry[] | null>(null)
   const [integrity, setIntegrity] = useState<HashChainIntegrityResponse | null>(null)
   const [staticAuditToken, setStaticAuditToken] = useState('')
   const [staticAuditChecks, setStaticAuditChecks] = useState<StaticAuditCheck[] | null>(null)
@@ -81,6 +84,23 @@ export default function AuditDiagnosticsPage() {
         error: err instanceof Error ? err.message : String(err),
       })
       setTraceResults([])
+    }
+  }
+
+  const onEntitySearch = async () => {
+    const entityType = entityTypeQuery.trim()
+    const entityId = entityIdQuery.trim()
+    if (!entityType || !entityId) return
+    try {
+      const r = await auditDiagnosticsApi.entityChain(entityType, entityId)
+      setEntityResults(r)
+    } catch (err) {
+      vvLogger.warn('admin.diagnostics.entity_chain_failed', 'VV-TECH-002', {
+        entityType,
+        entityId,
+        error: err instanceof Error ? err.message : String(err),
+      })
+      setEntityResults([])
     }
   }
 
@@ -294,6 +314,48 @@ export default function AuditDiagnosticsPage() {
             <strong>{traceResults.length}</strong> esemeny ehhez a trace-hez.
             <ul className="mt-2 space-y-1">
               {traceResults.map((e) => (
+                <li key={e.id} className="border-b py-1">
+                  <span className="font-mono text-xs text-gray-500">{e.ts}</span>{' '}
+                  <span className="font-semibold">{e.eventType ?? e.action}</span>{' '}
+                  <span className="text-gray-600">{e.entityType}#{e.entityId}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      {/* Entity audit-lanc kereses */}
+      <section className="bg-white shadow rounded p-4">
+        <h2 className="text-lg font-semibold mb-2">Entity audit-lanc</h2>
+        <div className="grid gap-2 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto]">
+          <input
+            type="text"
+            value={entityTypeQuery}
+            onChange={(e) => setEntityTypeQuery(e.target.value)}
+            placeholder="entityType"
+            className="px-3 py-2 border rounded font-mono text-sm"
+          />
+          <input
+            type="text"
+            value={entityIdQuery}
+            onChange={(e) => setEntityIdQuery(e.target.value)}
+            placeholder="entityId"
+            className="px-3 py-2 border rounded font-mono text-sm"
+          />
+          <button
+            type="button"
+            onClick={onEntitySearch}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+          >
+            Audit-lanc
+          </button>
+        </div>
+        {entityResults !== null && (
+          <div className="mt-3 text-sm" data-testid="entity-chain-results">
+            <strong>{entityResults.length}</strong> esemeny ehhez az entityhez.
+            <ul className="mt-2 space-y-1">
+              {entityResults.map((e) => (
                 <li key={e.id} className="border-b py-1">
                   <span className="font-mono text-xs text-gray-500">{e.ts}</span>{' '}
                   <span className="font-semibold">{e.eventType ?? e.action}</span>{' '}

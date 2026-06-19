@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   recent: vi.fn(),
   recentErrors: vi.fn(),
   byTrace: vi.fn(),
+  entityChain: vi.fn(),
   errorCodes: vi.fn(),
   verifyHashChain: vi.fn(),
   staticAudit: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock('../../services/api/diagnostics', () => ({
     recent: mocks.recent,
     recentErrors: mocks.recentErrors,
     byTrace: mocks.byTrace,
+    entityChain: mocks.entityChain,
     errorCodes: mocks.errorCodes,
     verifyHashChain: mocks.verifyHashChain,
     staticAudit: mocks.staticAudit,
@@ -84,6 +86,15 @@ describe('AuditDiagnosticsPage', () => {
       intact: true,
       message: 'OK',
     })
+    mocks.entityChain.mockResolvedValue([
+      {
+        id: 'entity-audit-1',
+        ts: '2026-06-19T08:03:00',
+        eventType: 'ENTITY_UPDATED',
+        entityType: 'Worker',
+        entityId: 'worker-1',
+      },
+    ])
     mocks.staticAudit.mockResolvedValue([
       { name: 'DB connection', pass: true, detail: 'OK' },
       { name: 'spring.mail.password', pass: false, detail: 'MISSING' },
@@ -132,6 +143,22 @@ describe('AuditDiagnosticsPage', () => {
     await waitFor(() => {
       expect(mocks.verifyHashChain).toHaveBeenCalledWith(200)
       expect(screen.getByText('OK - chain ertintetlen')).toBeInTheDocument()
+    })
+  })
+
+  it('entity audit-lanc keresest a backend wrapperre koti', async () => {
+    const user = userEvent.setup()
+
+    render(<AuditDiagnosticsPage />)
+
+    await screen.findByText('Audit Diagnosztika (V234)')
+    await user.type(screen.getByPlaceholderText('entityType'), 'Worker')
+    await user.type(screen.getByPlaceholderText('entityId'), 'worker-1')
+    await user.click(screen.getByRole('button', { name: 'Audit-lanc' }))
+
+    await waitFor(() => {
+      expect(mocks.entityChain).toHaveBeenCalledWith('Worker', 'worker-1')
+      expect(screen.getByTestId('entity-chain-results')).toHaveTextContent('ENTITY_UPDATED')
     })
   })
 })
