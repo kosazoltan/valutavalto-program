@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1028
-frontend production UI/app referenced REST calls: 898
+frontend production UI/app referenced REST calls: 899
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 127
+backend endpoints not referenced by production UI/app calls: 126
 ```
 
 Route/page audit result:
@@ -187,11 +187,14 @@ proven used by UI/app" follow-up work.
 - Wired routed CompetitorPage editing to `GET /competitors/{id}` so the edit
   form opens from the backend detail representation instead of only the list
   row snapshot, with mobile render coverage.
+- Wired routed CurrencyGroupPage editing to `GET /currency-groups/{id}` so the
+  edit form opens from the backend detail representation instead of only the
+  list row snapshot, with mobile render coverage.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 127 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 127 confirmed UX
+The stricter audit currently reports 126 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 126 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens.
@@ -200,7 +203,7 @@ Current summary:
 
 ```text
 ui-candidate/list-or-view        35
-ui-candidate/detail              21
+ui-candidate/detail              20
 ui-candidate/mutation            25
 integration-or-device            15
 backend-only/legacy-compat       8
@@ -325,6 +328,9 @@ npx.cmd eslint src/pages/commissions/CommissionRatePage.tsx src/pages/commission
 npx.cmd vitest run src/pages/competitors/CompetitorPage.test.tsx
 npx.cmd playwright test e2e/competitor-detail.spec.ts --config=playwright.config.ts
 npx.cmd eslint src/pages/competitors/CompetitorPage.tsx src/pages/competitors/CompetitorPage.test.tsx e2e/competitor-detail.spec.ts
+npx.cmd vitest run src/pages/currencies/CurrencyGroupPage.test.tsx
+npx.cmd playwright test e2e/currency-group-detail.spec.ts --config=playwright.config.ts
+npx.cmd eslint src/pages/currencies/CurrencyGroupPage.tsx src/pages/currencies/CurrencyGroupPage.test.tsx e2e/currency-group-detail.spec.ts
 ```
 
 Previous UI verification in the same audit work:

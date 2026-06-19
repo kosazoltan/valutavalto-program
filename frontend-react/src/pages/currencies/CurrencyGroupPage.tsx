@@ -10,8 +10,8 @@ interface CurrencyGroupItem {
   id: string | number
   code?: string
   name?: string
-  description?: string
-  currencyIds?: string
+  description?: string | null
+  currencyIds?: string | null
   isActive?: boolean
 }
 
@@ -24,7 +24,7 @@ interface CurrencyGroupForm {
   isActive: boolean
 }
 
-function currencyCount(currencyIds?: string): string | number {
+function currencyCount(currencyIds?: string | null): string | number {
   if (!currencyIds) return '-'
   try {
     return safeArray<unknown>(JSON.parse(currencyIds)).length
@@ -42,6 +42,7 @@ export default function CurrencyGroupPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [form, setForm] = useState<CurrencyGroupForm | null>(null)
+  const [editingLoadingId, setEditingLoadingId] = useState<string | number | null>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -62,7 +63,7 @@ export default function CurrencyGroupPage() {
     void loadData()
   }, [loadData])
 
-  const openForm = (item?: CurrencyGroupItem) => {
+  const fillForm = (item?: CurrencyGroupItem) => {
     setForm({
       id: item?.id,
       code: item?.code ?? '',
@@ -73,6 +74,26 @@ export default function CurrencyGroupPage() {
     })
     setMessage(null)
     setError(null)
+  }
+
+  const openForm = () => {
+    fillForm()
+  }
+
+  const openEditForm = async (item: CurrencyGroupItem) => {
+    try {
+      setEditingLoadingId(item.id)
+      setMessage(null)
+      setError(null)
+      const detail = await currencyGroupApi.getById(String(item.id))
+      fillForm(detail)
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      setError(msg)
+      logger.error('CurrencyGroupPage', 'Részletek betöltési hiba:', err)
+    } finally {
+      setEditingLoadingId(null)
+    }
   }
 
   const saveGroup = async () => {
@@ -261,8 +282,13 @@ export default function CurrencyGroupPage() {
                 <td className="px-4 py-3 text-sm">{currencyCount(item.currencyIds)}</td>
                 <td className="px-4 py-3 text-sm">{item.isActive ? 'Igen' : 'Nem'}</td>
                 <td className="px-4 py-3 text-right">
-                  <button onClick={() => openForm(item)} className="form-button mr-2 p-1 text-blue-600" title="Szerkesztés">
-                    <Edit2 className="h-4 w-4" />
+                  <button
+                    onClick={() => void openEditForm(item)}
+                    className="form-button mr-2 p-1 text-blue-600"
+                    title="Szerkesztés"
+                    disabled={editingLoadingId === item.id}
+                  >
+                    <Edit2 className={`h-4 w-4 ${editingLoadingId === item.id ? 'animate-pulse' : ''}`} />
                   </button>
                   <button onClick={() => handleDelete(item.id)} className="form-button p-1 text-red-600" title="Törlés">
                     <Trash2 className="h-4 w-4" />
