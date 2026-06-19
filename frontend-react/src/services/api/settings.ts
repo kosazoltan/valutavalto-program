@@ -138,6 +138,10 @@ export const branchApi = {
     const response = await api.get<BranchInfo>(`/branches/${id}`)
     return response.data
   },
+  getByCode: async (code: string): Promise<BranchInfo> => {
+    const response = await api.get<BranchInfo>(`/branches/code/${code}`)
+    return response.data
+  },
   /**
    * Teljes fiók/iroda létrehozás (POST /branches).
    * Nem keverendő a `/branches/simple-cashier` egyszerűsített pénztárfelvétellel:

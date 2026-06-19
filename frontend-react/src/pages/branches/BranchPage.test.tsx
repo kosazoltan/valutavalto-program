@@ -9,6 +9,7 @@ import { vi, describe, beforeEach, it, expect } from 'vitest'
 import BranchPage from './BranchPage'
 
 const mockGet = vi.fn()
+const mockBranchGetByCode = vi.fn()
 
 vi.mock('../../services/api/index', () => ({
   api: {
@@ -17,6 +18,9 @@ vi.mock('../../services/api/index', () => ({
     put: vi.fn(),
     delete: vi.fn(),
     patch: vi.fn(),
+  },
+  branchApi: {
+    getByCode: (...args: unknown[]) => mockBranchGetByCode(...args),
   },
 }))
 
@@ -54,6 +58,14 @@ function renderPage() {
 describe('BranchPage — FK-020 Pénztár Törzs Adatbázis lista', () => {
   beforeEach(() => {
     mockGet.mockReset()
+    mockBranchGetByCode.mockReset()
+    mockBranchGetByCode.mockResolvedValue({
+      id: '1',
+      code: 'BR027',
+      name: 'Backend kód találat',
+      region: 'SZEGED',
+      isActive: true,
+    })
     mockApi()
   })
 
@@ -120,5 +132,18 @@ describe('BranchPage — FK-020 Pénztár Törzs Adatbázis lista', () => {
     expect(within(row).getByText('POS')).toBeInTheDocument()
     expect(within(row).getByText('ÁFA').className).toMatch(/text-blue-700/)
     expect(within(row).getByText('MG').className).toMatch(/text-gray-400/)
+  })
+
+  it('pontos pénztárkód kereséskor a backend code lookup wrappert hívja', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getAllByText('Szeged Tesco').length).toBeGreaterThan(0))
+
+    fireEvent.change(screen.getByLabelText('Pontos pénztárkód'), { target: { value: 'BR027' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Kód keresés' }))
+
+    await waitFor(() => {
+      expect(mockBranchGetByCode).toHaveBeenCalledWith('BR027')
+    })
+    expect(screen.getByTestId('branch-code-result')).toHaveTextContent('Backend kód találat')
   })
 })

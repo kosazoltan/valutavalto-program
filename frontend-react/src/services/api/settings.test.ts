@@ -119,7 +119,14 @@ describe('adminCompanyApi backend contract', () => {
 describe('branchApi backend contract', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockApi.get.mockResolvedValue({ data: { id: 'branch-1', code: 'BR099', name: 'Teszt iroda' } })
     mockApi.post.mockResolvedValue({ data: { id: 'branch-1', code: 'BR099', name: 'Teszt iroda' } })
+  })
+
+  it('getByCode calls BranchController code lookup endpoint', async () => {
+    await branchApi.getByCode('BR027')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/branches/code/BR027')
   })
 
   it('create calls full BranchController create endpoint', async () => {

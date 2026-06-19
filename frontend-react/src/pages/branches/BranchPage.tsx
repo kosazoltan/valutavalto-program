@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Building2, Plus, Edit, Trash2, Search } from 'lucide-react'
-import { api } from '../../services/api/index'
+import { api, branchApi } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -80,6 +80,9 @@ export default function BranchPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [exactCode, setExactCode] = useState('')
+  const [exactCodeResult, setExactCodeResult] = useState<Branch | null>(null)
+  const [exactCodeLoading, setExactCodeLoading] = useState(false)
   // FK-020: területi szűrő (region) + inaktívak megjelenítése (alapból csak aktív).
   const [territoryFilter, setTerritoryFilter] = useState('')
   const [showInactive, setShowInactive] = useState(false)
@@ -184,6 +187,25 @@ export default function BranchPage() {
     }
   }
 
+  const handleExactCodeLookup = async () => {
+    const code = exactCode.trim()
+    if (!code) {
+      setExactCodeResult(null)
+      return
+    }
+    try {
+      setExactCodeLoading(true)
+      setError(null)
+      const branch = await branchApi.getByCode(code)
+      setExactCodeResult(branch as Branch)
+    } catch (err) {
+      setExactCodeResult(null)
+      toast.error('Pénztárkód keresési hiba', getErrorMessage(err))
+    } finally {
+      setExactCodeLoading(false)
+    }
+  }
+
   const renderStats = (b: Branch) => (
     <div className="text-sm">
       <div>{b.workerCount != null ? `${b.workerCount} fő` : '-'}</div>
@@ -226,7 +248,7 @@ export default function BranchPage() {
       )}
 
       <div className="form-panel">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-end gap-3">
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input
@@ -258,7 +280,42 @@ export default function BranchPage() {
             />
             <span className="text-sm">Inaktívak is</span>
           </label>
+          <div className="flex min-w-[220px] flex-1 gap-2 sm:flex-none">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              <input
+                type="text"
+                className="form-input pl-8 w-full"
+                placeholder="Pontos pénztárkód"
+                value={exactCode}
+                onChange={(e) => setExactCode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleExactCodeLookup()
+                }}
+                aria-label="Pontos pénztárkód"
+              />
+            </div>
+            <button
+              type="button"
+              className="form-button min-h-10 whitespace-nowrap"
+              onClick={() => void handleExactCodeLookup()}
+              disabled={exactCodeLoading || !exactCode.trim()}
+            >
+              {exactCodeLoading ? 'Keresés...' : 'Kód keresés'}
+            </button>
+          </div>
         </div>
+        {exactCodeResult && (
+          <div className="mt-3 rounded border border-blue-200 bg-blue-50 p-3 text-sm" data-testid="branch-code-result">
+            <div className="font-semibold text-blue-900">{t('branches.pontosKodTalalat')}</div>
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-blue-900">
+              <span className="font-mono">{exactCodeResult.code}</span>
+              <span>{exactCodeResult.name}</span>
+              <span>{exactCodeResult.region ?? exactCodeResult.city ?? '-'}</span>
+              <span>{exactCodeResult.isActive ? 'Aktív' : 'Inaktív'}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="form-panel hidden md:block">
