@@ -95,6 +95,18 @@ async function mockApis(page: Page) {
       })
     }
 
+    if (path.endsWith('/users/me/password') && method === 'PUT') {
+      const body = route.request().postDataJSON() as { oldPassword?: string; newPassword?: string }
+      if (body.oldPassword !== 'old-password' || body.newPassword !== 'NewPass123') {
+        return route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ message: 'Unexpected password payload' }),
+        })
+      }
+      return route.fulfill({ status: 204, body: '' })
+    }
+
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
   })
 }
@@ -128,6 +140,17 @@ test('beállítások mobil nézetben saját user profilt kér a backendből', as
   await expect(profile.getByText('ADMIN').first()).toBeVisible()
   await expect(profile.getByText('admin@example.com')).toBeVisible()
   await expect(profile.getByText('Budapest 01')).toBeVisible()
+
+  const updatePasswordRequest = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return request.method() === 'PUT' && url.pathname === '/api/v1/users/me/password'
+  })
+  await page.getByLabel('Jelenlegi jelszó').fill('old-password')
+  await page.getByLabel('Új jelszó', { exact: true }).fill('NewPass123')
+  await page.getByLabel('Új jelszó ismét').fill('NewPass123')
+  await page.getByRole('button', { name: 'Jelszó módosítása' }).click()
+  await updatePasswordRequest
+  await expect(page.getByText('Saját jelszó módosítva.')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

@@ -960,6 +960,11 @@ def classify_backend_reference(ep: Endpoint) -> BackendReferenceClass:
             "backend-only/legacy-alias",
             "Legacy alias for the canonical PUT /notifications/{id}/read endpoint, which is used by the frontend.",
         )
+    if ep.method == "POST" and path == "/workers/{id}/change-password":
+        return BackendReferenceClass(
+            "backend-only/legacy-compat",
+            "WorkerController legacy self/admin password route; routed UI uses canonical /users/me/password for own password and /users/{id}/change-password for admin user password changes.",
+        )
     if ep.method in {"GET", "PUT"} and path == "/admin/branches/{id}":
         return BackendReferenceClass(
             "backend-only/alternate-admin-api",

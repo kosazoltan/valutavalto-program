@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react'
 import { LockKeyhole, Loader2, UserRound } from 'lucide-react'
 import { userApi, type UserDetail } from '../../services/api/index'
-import { workerPasswordApi } from '../../services/api/settings'
-import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 
 export default function WorkerPasswordSettingsPanel() {
-  const worker = useAuthStore((state) => state.worker)
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('')
@@ -40,10 +37,6 @@ export default function WorkerPasswordSettingsPanel() {
     setMessage(null)
     setError(null)
 
-    if (!worker?.id) {
-      setError('A jelszóváltáshoz hiányzik a bejelentkezett dolgozó azonosítója.')
-      return
-    }
     if (!oldPassword.trim()) {
       setError('A jelenlegi jelszó kötelező.')
       return
@@ -59,13 +52,13 @@ export default function WorkerPasswordSettingsPanel() {
 
     try {
       setSaving(true)
-      await workerPasswordApi.changeOwn(worker.id, oldPassword, newPassword)
+      await userApi.updatePassword(oldPassword, newPassword)
       setMessage('Saját jelszó módosítva.')
       setOldPassword('')
       setNewPassword('')
       setNewPasswordConfirm('')
     } catch (err) {
-      logger.error('WorkerPasswordSettingsPanel', 'Saját worker jelszóváltás sikertelen', err)
+      logger.error('WorkerPasswordSettingsPanel', 'Saját user jelszóváltás sikertelen', err)
       setError('Saját jelszó módosítása sikertelen.')
     } finally {
       setSaving(false)
@@ -80,7 +73,7 @@ export default function WorkerPasswordSettingsPanel() {
           Saját dolgozói jelszó
         </h2>
         <p className="mt-1 text-sm text-gray-600">
-          A bejelentkezett dolgozó jelszavának módosítása a WorkerController jelszóváltó szerződésén.
+          A bejelentkezett dolgozó jelszavának módosítása a saját felhasználói fiók szerződésén.
         </p>
       </div>
 

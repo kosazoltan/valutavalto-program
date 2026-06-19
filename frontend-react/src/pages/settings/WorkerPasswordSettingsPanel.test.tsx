@@ -5,24 +5,14 @@ import WorkerPasswordSettingsPanel from './WorkerPasswordSettingsPanel'
 
 const mocks = vi.hoisted(() => ({
   getCurrentUser: vi.fn(),
-  changeOwn: vi.fn(),
+  updatePassword: vi.fn(),
   loggerError: vi.fn(),
-}))
-
-vi.mock('../../stores/authStore', () => ({
-  useAuthStore: (selector: (state: unknown) => unknown) =>
-    selector({ worker: { id: 77, fullName: 'Teszt Dolgozó' } }),
 }))
 
 vi.mock('../../services/api/index', () => ({
   userApi: {
     getCurrentUser: mocks.getCurrentUser,
-  },
-}))
-
-vi.mock('../../services/api/settings', () => ({
-  workerPasswordApi: {
-    changeOwn: mocks.changeOwn,
+    updatePassword: mocks.updatePassword,
   },
 }))
 
@@ -48,7 +38,7 @@ describe('WorkerPasswordSettingsPanel', () => {
       lastLoginAt: '2026-06-19T10:00:00',
       createdAt: '2026-06-18T10:00:00',
     })
-    mocks.changeOwn.mockResolvedValue(undefined)
+    mocks.updatePassword.mockResolvedValue(undefined)
   })
 
   it('betölti a saját user profilt a GET /users/me wrapperen keresztül', async () => {
@@ -62,7 +52,7 @@ describe('WorkerPasswordSettingsPanel', () => {
     expect(screen.getByText('Szeged')).toBeInTheDocument()
   })
 
-  it('a bejelentkezett worker id-val meghívja a WorkerController jelszóváltó szerződést', async () => {
+  it('meghívja a saját user jelszóváltó szerződést', async () => {
     const user = userEvent.setup()
     render(<WorkerPasswordSettingsPanel />)
 
@@ -72,7 +62,7 @@ describe('WorkerPasswordSettingsPanel', () => {
     await user.click(screen.getByRole('button', { name: 'Jelszó módosítása' }))
 
     await waitFor(() => {
-      expect(mocks.changeOwn).toHaveBeenCalledWith(77, 'old-password', 'NewPass123')
+      expect(mocks.updatePassword).toHaveBeenCalledWith('old-password', 'NewPass123')
     })
     expect(await screen.findByText('Saját jelszó módosítva.')).toBeInTheDocument()
   })
@@ -86,7 +76,7 @@ describe('WorkerPasswordSettingsPanel', () => {
     await user.type(screen.getByLabelText('Új jelszó ismét'), 'short')
     await user.click(screen.getByRole('button', { name: 'Jelszó módosítása' }))
 
-    expect(mocks.changeOwn).not.toHaveBeenCalled()
+    expect(mocks.updatePassword).not.toHaveBeenCalled()
     expect(screen.getByText('Az új jelszó 8-128 karakter legyen.')).toBeInTheDocument()
   })
 })
