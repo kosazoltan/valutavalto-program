@@ -47,6 +47,7 @@ const mockGetVip = vi.fn()
 const mockGetFrequent = vi.fn()
 const mockGetTop = vi.fn()
 const mockDeactivate = vi.fn()
+const mockActivate = vi.fn()
 
 vi.mock('../../services/api/transactions', () => ({
   customerApi: {
@@ -58,6 +59,7 @@ vi.mock('../../services/api/transactions', () => ({
     getFrequent: (...args: unknown[]) => mockGetFrequent(...args),
     getTop: (...args: unknown[]) => mockGetTop(...args),
     deactivate: (...args: unknown[]) => mockDeactivate(...args),
+    activate: (...args: unknown[]) => mockActivate(...args),
   },
 }))
 
@@ -93,6 +95,7 @@ describe('CustomerListPage', () => {
       { customerId: 4, customerName: 'Top Lista Ügyfél', transactionCount: 7, totalVolumeHuf: 3100000, rank: 1 },
     ])
     mockDeactivate.mockResolvedValue(undefined)
+    mockActivate.mockResolvedValue(undefined)
   })
 
   it('oldal renderelésének ellenőrzése', async () => {
@@ -276,6 +279,24 @@ describe('CustomerListPage', () => {
 
     const deactivateButtons = screen.getAllByTitle('Inaktiválás')
     expect(deactivateButtons.length).toBeGreaterThan(0)
+  })
+
+  it('inaktív ügyfélnél az aktiválás a customerApi.activate backend wrapperre köt', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    mockGetActive.mockResolvedValue([
+      { ...mockCustomers[0], id: 10, name: 'Inaktív Teszt Ügyfél', active: false },
+    ])
+
+    const user = userEvent.setup()
+    renderCustomerListPage()
+    await waitFor(() => expect(screen.getByText('Inaktív Teszt Ügyfél')).toBeInTheDocument())
+
+    await user.click(screen.getByTitle('Aktiválás'))
+
+    await waitFor(() => {
+      expect(mockActivate).toHaveBeenCalledWith(10)
+    })
+    confirmSpy.mockRestore()
   })
 
   it('üres keresési eredmény kezelése', async () => {

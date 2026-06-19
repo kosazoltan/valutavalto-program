@@ -73,12 +73,16 @@ async function mockApis(page: Page) {
           documentNumber: '123456AB',
           phone: '+36301234567',
           isCompany: false,
-          active: true,
+          active: false,
           isVip: false,
           transactionCount: 0,
           createdAt: '2026-06-19T08:00:00',
         }),
       })
+    }
+
+    if (path === '/api/v1/customers/1/activate' && method === 'POST') {
+      return route.fulfill({ status: 204, body: '' })
     }
 
     if (path === '/api/v1/customers/search' && method === 'GET') {
@@ -219,6 +223,14 @@ test('ügyfél lista mobil nézetben ügyfélkód alapján backend detail lookup
 
   await expect(page.getByText('Backend Kód Ügyfél')).toBeVisible()
   await expect(page.getByText('U000001')).toBeVisible()
+  await expect(page.getByText('Inaktív')).toBeVisible()
+
+  const activateRequest = page.waitForRequest(request =>
+    request.method() === 'POST' && new URL(request.url()).pathname === '/api/v1/customers/1/activate'
+  )
+  page.once('dialog', dialog => dialog.accept())
+  await page.getByTitle('Aktiválás').click()
+  await activateRequest
 
   const nameRequest = page.waitForRequest(request =>
     request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/search'

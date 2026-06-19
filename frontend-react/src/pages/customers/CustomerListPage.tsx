@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Search, Plus, Edit, Eye, AlertCircle, Loader2, Star, Trophy } from 'lucide-react'
+import { Users, Search, Plus, Edit, Eye, AlertCircle, Loader2, Star, Trophy, UserCheck } from 'lucide-react'
 import { customerApi, Customer, CustomerRanking } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
@@ -68,6 +68,16 @@ export default function CustomerListPage() {
     if (!confirm('Biztosan inaktiválja az ügyfelet?')) return
     try {
       await customerApi.deactivate(id)
+      void loadCustomers()
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
+  }
+
+  const handleActivate = async (id: number) => {
+    if (!confirm('Biztosan aktiválja az ügyfelet?')) return
+    try {
+      await customerApi.activate(id)
       void loadCustomers()
     } catch (err) {
       setError(getErrorMessage(err))
@@ -270,6 +280,15 @@ export default function CustomerListPage() {
                           title="Inaktiválás"
                         >
                           ×
+                        </button>
+                      )}
+                      {!c.active && (
+                        <button
+                          onClick={() => handleActivate(c.id)}
+                          className="toolbar-button text-emerald-600"
+                          title="Aktiválás"
+                        >
+                          <UserCheck size={14} />
                         </button>
                       )}
                     </div>
