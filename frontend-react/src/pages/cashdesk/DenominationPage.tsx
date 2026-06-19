@@ -31,6 +31,12 @@ interface DenominationQuantityUpdateRequest {
 const STRATEGY_OPTIONS: OptimizationStrategy[] = ['GREEDY', 'DYNAMIC', 'MIN_COINS', 'MIN_BANKNOTES', 'MIN_TOTAL', 'CUSTOM', 'BRANCH_SPECIFIC']
 const RULE_TYPE_OPTIONS: DenominationRuleType[] = ['FIXED', 'AMOUNT_BASED', 'CUSTOMER_TYPE', 'TRANSACTION_TYPE', 'BRANCH_DEFAULT', 'TIME_BASED', 'AVAILABILITY', 'PRIORITY']
 const DENOMINATION_CONFIG_ROLES = new Set(['ADMIN', 'MANAGER', 'MAIN_TREASURY'])
+const denominationSummaryLabels = {
+  saved: 'Mentett:',
+  rows: 'Sorok:',
+  separator: '/',
+  difference: 'Eltérés:',
+}
 
 export default function DenominationPage() {
   const { t } = useTranslation()
@@ -41,7 +47,9 @@ export default function DenominationPage() {
   const [currencies, setCurrencies] = useState<Currency[]>([])
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<number | null>(null)
   const [denominations, setDenominations] = useState<Denomination[]>([])
-  const [_denominationBalances, setDenominationBalances] = useState<DenominationBalanceDTO[]>([])
+  const [denominationBalances, setDenominationBalances] = useState<DenominationBalanceDTO[]>([])
+  const [allDenominationBalances, setAllDenominationBalances] = useState<DenominationBalanceDTO[]>([])
+  const [serverCalculatedTotal, setServerCalculatedTotal] = useState<number | null>(null)
   const [editingQuantities, setEditingQuantities] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(false)
   const [suggestionAmount, setSuggestionAmount] = useState('')
@@ -93,12 +101,16 @@ export default function DenominationPage() {
     if (!selectedCashDeskId || !selectedCurrencyId) return
     setLoading(true)
     try {
-      const denoms = await denominationApi.getByCurrencyId(selectedCurrencyId)
+      const [denoms, allBalances, balances, persistedTotal] = await Promise.all([
+        denominationApi.getByCurrencyId(selectedCurrencyId),
+        denominationBalanceApi.getCashDeskDenominations(selectedCashDeskId),
+        denominationBalanceApi.getCashDeskDenominationsByCurrency(selectedCashDeskId, String(selectedCurrencyId)),
+        denominationBalanceApi.calculateTotalFromDenominations(selectedCashDeskId, String(selectedCurrencyId)),
+      ])
       setDenominations(denoms)
-
-      const balances = await denominationBalanceApi.getCashDeskDenominationsByCurrency(
-        selectedCashDeskId, String(selectedCurrencyId))
+      setAllDenominationBalances(allBalances)
       setDenominationBalances(balances)
+      setServerCalculatedTotal(persistedTotal)
 
       // Egyetlen, determinisztikus state-írás: minden címlet 0, felülírva a mentettekkel.
       // (Az összesítő ebből DERIVÁLT useMemo — külön nem kell beállítani.)
@@ -110,6 +122,7 @@ export default function DenominationPage() {
       setEditingQuantities(quantities)
     } catch (error) {
       logger.error('DenominationPage', 'Címletezés betöltése sikertelen:', error)
+      setServerCalculatedTotal(null)
     } finally {
       setLoading(false)
     }
@@ -396,6 +409,8 @@ export default function DenominationPage() {
   }
 
   const selectedCurrency = currencies.find(c => c.id === selectedCurrencyId)
+  const selectedCurrencySavedBalanceCount = denominationBalances.length
+  const serverTotalDiff = serverCalculatedTotal === null ? null : calculatedTotal - serverCalculatedTotal
   const defaultOptimization = optimizations.find((opt) => opt.isDefault)
   const activeRuleCount = rules.filter((rule) => rule.isActive !== false).length
   const visibleRules = rules
@@ -429,12 +444,29 @@ export default function DenominationPage() {
             ))}
           </select>
           {selectedCurrency && (
-            <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-lg">
-              <Calculator className="text-blue-600" size={14} />
-              <span className="text-sm text-gray-600">{t('cashdesk.osszesitettEgyenleg')}</span>
-              <span className="font-bold text-base font-mono text-green-600">
-                {formatDecimal(calculatedTotal, 2, 2)} {selectedCurrency.code}
-              </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-lg">
+                <Calculator className="text-blue-600" size={14} />
+                <span className="text-sm text-gray-600">{t('cashdesk.osszesitettEgyenleg')}</span>
+                <span className="font-bold text-base font-mono text-green-600">
+                  {formatDecimal(calculatedTotal, 2, 2)} {selectedCurrency.code}
+                </span>
+              </div>
+              <div className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600">
+                {denominationSummaryLabels.saved} <span className="font-mono font-semibold text-gray-900">
+                  {serverCalculatedTotal === null ? '-' : formatDecimal(serverCalculatedTotal, 2, 2)}
+                </span> {selectedCurrency.code}
+              </div>
+              <div className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600">
+                {denominationSummaryLabels.rows} <span className="font-semibold text-gray-900">{selectedCurrencySavedBalanceCount}</span>
+                <span className="text-gray-400"> {denominationSummaryLabels.separator} </span>
+                <span className="font-semibold text-gray-900">{allDenominationBalances.length}</span>
+              </div>
+              {serverTotalDiff !== null && serverTotalDiff !== 0 && (
+                <div className="px-3 py-1 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                  {denominationSummaryLabels.difference} <span className="font-mono font-semibold">{formatDecimal(serverTotalDiff, 2, 2)}</span> {selectedCurrency.code}
+                </div>
+              )}
             </div>
           )}
         </div>

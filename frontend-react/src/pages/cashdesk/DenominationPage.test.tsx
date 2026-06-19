@@ -5,7 +5,9 @@ import DenominationPage from './DenominationPage'
 const mocks = vi.hoisted(() => ({
   currencyGetActive: vi.fn(),
   denominationGetByCurrencyId: vi.fn(),
+  balancesGetAll: vi.fn(),
   balancesGetByCurrency: vi.fn(),
+  balancesCalculateTotal: vi.fn(),
   balancesSetQuantities: vi.fn(),
   suggest: vi.fn(),
   suggestBalanced: vi.fn(),
@@ -50,7 +52,9 @@ vi.mock('../../services/api/index', () => ({
     getByCurrencyId: mocks.denominationGetByCurrencyId,
   },
   denominationBalanceApi: {
+    getCashDeskDenominations: mocks.balancesGetAll,
     getCashDeskDenominationsByCurrency: mocks.balancesGetByCurrency,
+    calculateTotalFromDenominations: mocks.balancesCalculateTotal,
     setDenominationQuantities: mocks.balancesSetQuantities,
   },
   denominationCalculatorApi: {
@@ -79,7 +83,15 @@ describe('DenominationPage', () => {
       { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', quantity: 0, active: true },
       { id: 12, currencyId: 1, currencyCode: 'EUR', faceValue: 10, denominationType: 'BANKNOTE', quantity: 0, active: true },
     ])
-    mocks.balancesGetByCurrency.mockResolvedValue([])
+    mocks.balancesGetAll.mockResolvedValue([
+      { denominationId: '10', currencyCode: 'EUR', quantity: 2, totalValue: 100 },
+      { denominationId: '11', currencyCode: 'EUR', quantity: 1, totalValue: 20 },
+    ])
+    mocks.balancesGetByCurrency.mockResolvedValue([
+      { denominationId: '10', quantity: 2, totalValue: 100 },
+      { denominationId: '11', quantity: 1, totalValue: 20 },
+    ])
+    mocks.balancesCalculateTotal.mockResolvedValue(120)
     mocks.suggest.mockResolvedValue({
       currencyCode: 'EUR',
       requestedAmount: 130,
@@ -161,6 +173,10 @@ describe('DenominationPage', () => {
     render(<DenominationPage />)
 
     await screen.findByText('50 EUR')
+    expect(mocks.balancesGetAll).toHaveBeenCalledWith('branch-1')
+    expect(mocks.balancesCalculateTotal).toHaveBeenCalledWith('branch-1', '1')
+    expect(screen.getByText('120,00')).toBeInTheDocument()
+    expect(screen.getAllByText('2')).toHaveLength(2)
     fireEvent.change(screen.getByPlaceholderText('Összeg EUR'), { target: { value: '130' } })
     fireEvent.click(screen.getByText('Javaslat alkalmazása'))
 
